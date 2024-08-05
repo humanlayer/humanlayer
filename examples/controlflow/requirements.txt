@@ -1,0 +1,5 @@
+controlflow
+python-dotenv
+# install functionlayer in editable mode
+-e ../..
+

@@ -1,0 +1,3 @@
+# copy to .env
+OPENAI_API_KEY=
+FUNCTIONLAYER_API_KEY=
