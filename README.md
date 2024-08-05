@@ -8,7 +8,7 @@
 
 <h3>
 
-[Homepage](https://www.functionlayer.ai/) | [Documentation](./docs) [Examples](./examples) 
+[Homepage](https://www.functionlayer.ai/) | [Documentation](./docs) | [Examples](./examples) 
 
 </h3>
 
