@@ -1,0 +1,115 @@
+[tool.poetry]
+name = "functionlayer"
+version = "0.3.0"
+description = "functionlayer"
+authors = ["functionlayer authors <dexter@metalytics.dev>"]
+repository = "https://github.com/functionlayer/functionlayer"
+readme = "README.md"
+packages = [
+  {include = "functionlayer"}
+]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+pydantic = "^2.8.2"
+python-socketio = {extras = ["asyncio-client"], version = "^5.11.3"}
+human-id = "^0.2.0"
+aiohttp = "^3.10.0"
+
+[tool.poetry.scripts]
+fl = "functionlayer.cli.main:cli"
+functionlayer = "functionlayer.cli.main:cli"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.2.0"
+pytest-cov = "^4.0.0"
+deptry = "^0.12.0"
+mypy = "^1.5.1"
+pre-commit = "^3.4.0"
+tox = "^4.11.1"
+
+[tool.poetry.group.docs.dependencies]
+mkdocs = "^1.4.2"
+mkdocs-material = "^9.2.7"
+mkdocstrings = {extras = ["python"], version = "^0.23.0"}
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.mypy]
+files = ["functionlayer"]
+disallow_untyped_defs = "True"
+disallow_any_unimported = "True"
+no_implicit_optional = "True"
+check_untyped_defs = "True"
+warn_return_any = "True"
+warn_unused_ignores = "True"
+show_error_codes = "True"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py37"
+line-length = 120
+fix = true
+select = [
+    # flake8-2020
+    "YTT",
+    # flake8-bandit
+    "S",
+    # flake8-bugbear
+    "B",
+    # flake8-builtins
+    "A",
+    # flake8-comprehensions
+    "C4",
+    # flake8-debugger
+    "T10",
+    # flake8-simplify
+    "SIM",
+    # isort
+    "I",
+    # mccabe
+    "C90",
+    # pycodestyle
+    "E", "W",
+    # pyflakes
+    "F",
+    # pyupgrade
+    "UP",
+    # ruff
+    "RUF",
+    # tryceratops
+    "TRY",
+]
+ignore = [
+    # LineTooLong
+    "E501",
+    # DoNotAssignLambda
+    "E731",
+]
+
+[tool.ruff.format]
+preview = true
+
+[tool.coverage.report]
+skip_empty = true
+
+[tool.coverage.run]
+branch = true
+source = ["functionlayer"]
+
+
+[tool.ruff.per-file-ignores]
+"tests/*" = ["S101"]
+"functionlayer/cli/main.py" = ["TRY003"]
+"functionlayer/core/types.py" = ["TRY003"]
+
+[tool.ruff.mccabe]
+max-complexity = 12
+
+
+[tool.deptry]
+exclude = ["examples", "venv", ".venv"]

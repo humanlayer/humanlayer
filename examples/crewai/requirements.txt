@@ -1,0 +1,4 @@
+crewai
+crewai-tools
+# install functionlayer in editable mode
+-e ../..
