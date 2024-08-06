@@ -4,7 +4,9 @@
 
 # **FunctionLayer**
 
-**FunctionLayer**: python SDK to enable AI agents to communicate with humans in tool-based and asynchronous workflows. By incorporating humans-in-the-loop, agentic tools can be given access to much more powerful and meaningful tool calls and tasks. Bring your LLM (OpenAI, Claude, etc) and Framework (LangChain, CrewAI, etc) and start giving your AI agents safe access to the world.
+**FunctionLayer**: python SDK to enable AI agents to communicate with humans in tool-based and asynchronous workflows. By incorporating humans-in-the-loop, agentic tools can be given access to much more powerful and meaningful tool calls and tasks. 
+
+Bring your LLM (OpenAI, Claude, etc) and Framework (LangChain, CrewAI, etc) and start giving your AI agents safe access to the world.
 
 <h3>
 
