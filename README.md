@@ -3,8 +3,12 @@
 ![Logo of functionlayer, two diamonds with a plus sign](./docs/functionlayer_logo.png)
 
 # **FunctionLayer**
+</div>
 
-**FunctionLayer**: python SDK to enable AI agents to communicate with humans in tool-based and asynchronous workflows. By incorporating humans-in-the-loop, agentic tools can be given access to much more powerful and meaningful tool calls and tasks. Bring your LLM (OpenAI, Claude, etc) and Framework (LangChain, CrewAI, etc) and start giving your AI agents safe access to the world.
+**FunctionLayer**: A python toolkit to enable AI agents to communicate with humans in tool-based and asynchronous workflows. By incorporating humans-in-the-loop, agentic tools can be given access to much more powerful and meaningful tool calls and tasks. 
+
+Bring your LLM (OpenAI, Llama, Claude, etc) and Framework (LangChain, CrewAI, etc) and start giving your AI agents safe access to the world.
+<div align="center">
 
 <h3>
 
@@ -95,7 +99,7 @@ pip install git+https://github.com/functionlayer/functionlayer
 
 ### 2. Wrapping Your First Function
 
-Set an API token, and then wrap your AI function in
+Set `FUNCTIONLAYER_API_TOKEN` and wrap your AI function in `require_approval()`
 
 ```python
 
