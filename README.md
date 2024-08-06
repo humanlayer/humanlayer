@@ -23,58 +23,13 @@ Bring your LLM (OpenAI, Llama, Claude, etc) and Framework (LangChain, CrewAI, et
 
 ## Table of contents
 
+- [Getting Started](#getting-started)
 - [Why FunctionLayer?](#why-functionlayer)
 - [Key Features](#key-features)
-- [Getting Started](#getting-started)
 - [Examples](#examples)
 - [Roadmap](#roadmap)
 - [Contributing](#contributing)
 - [License](#license)
-
-## Why FunctionLayer?
-
-Functions and tools are a key part of [Agentic Workflows](https://www.deeplearning.ai/the-batch/how-agents-can-improve-llm-performance). They enable LLMs to interact meaningfully with the outside world and automate broad scopes of impactful work. Correct and accurate function calling is essential for AI agents that do meaningful things like book appointments, interact with customers, manage billing information, write+execute code, and more.
-
-[![Tool Calling Loop from Louis Dupont](https://miro.medium.com/v2/resize:fit:1400/format:webp/1*r8rEqjGZs_e6dibWeaqaQg.png)](https://louis-dupont.medium.com/transforming-software-interactions-with-tool-calling-and-llms-dc39185247e9)
-*From https://louis-dupont.medium.com/transforming-software-interactions-with-tool-calling-and-llms-dc39185247e9*
-
-**However**, the most useful functions we can give to an LLM are also the most risky. We can all imagine the value of an AI Database Administrator that constantly tunes and refactors our SQL database, but most teams wouldn't give an LLM access to run arbitrary SQL statements against a production database (heck, we mostly don't even let humans do that). That is:
-
-<div align="center">
-<h3><blockquote>Even with state-of-the-art agentic reasoning and prompt routing, LLMs are not sufficiently reliable to be given access to high-stakes functions without human oversight</blockquote></h3>
-</div>
-
-To better define what is meant by "high stakes", some examples:
-
-- **Low Stakes**: Read Access to public data (e.g. search wikipedia, access public APIs and DataSets)
-- **Low Stakes**: Communicate with agent author (e.g. an engineer might empower an agent to send them a private Slack message with updates on progress)
-- **Medium Stakes**: Read Access to Private Data (e.g. read emails, access calendars, query a CRM)
-- **Medium Stakes**: Communicate with strict rules (e.g. sending based on a specific sequence of hard-coded email templates)
-- **High Stakes**: Communicate on my Behalf or on behalf of my Company (e.g. send emails, post to slack, publish social/blog content)
-- **High Stakes**: Write Access to Private Data (e.g. update CRM records, modify feature toggles, update billing information)
-
-![Image showing the levels of function stakes stacked on top of one another](./docs/images/function_stakes.png)
-
-The high stakes functions are the ones that are the most valuable and promise the most impact in automating away human workflows. The sooner teams can get Agents reliably and safely calling these tools, the sooner they can reap massive benefits. 
-
-FunctionLayer provides a set of tools to *deterministically* guarantee human oversight of high stakes function calls. Even if the LLM makes a mistake or hallucinates, FunctionLayer is baked into the tool/function itself, guaranteeing human oversight of high stakes function calls.
-
-![Function Layer @require_approval decorator wrapping the Commnicate on my behalf function](./docs/images/function_layer_require_approval.png)
-
-<div align="center">
-<h3><blockquote>
-FunctionLayer provides a set of tools to *deterministically* guarantee human oversight of high stakes function calls
-</blockquote></h3>
-</div>
-
-## Key Features
-
-- **Require Human Approval for Function Calls**: the `@fl.require_approval()` decorator blocks specifc function calls until a human has been consulted - upon denial, feedback will be passed to the LLM
-- **Human as Tool**: generic `fl.human_as_tool()` allows for contacting a human for answers, advice, or feedback
-- **OmniChannel Contact**: Contact humans and collect responses across Slack, Email, Discord, and more
-- **Granular Routing**: Route approvals to specific teams or individuals
-- **Bring your own LLM + Framework**: Because FunctionLayer is implemented at tools layer, it supports any LLM and all major orchestration frameworks that support tool calling.
-
 
 ## Getting Started
 
@@ -85,8 +40,6 @@ To get started, check out [Getting Started](./getting-started.md) or jump straig
 - 🦾 [ControlFlow](./examples/controlflow/controlflow_math.py)
 - 🧠 [Raw OpenAI Client](./examples/openai_client/math_example.py)
 
-### 1. Installation
-
 ```shell
 pip install functionlayer
 ```
@@ -96,8 +49,6 @@ or for the bleeding edge
 ```shell
 pip install git+https://github.com/functionlayer/functionlayer
 ```
-
-### 2. Wrapping Your First Function
 
 Set `FUNCTIONLAYER_API_TOKEN` and wrap your AI function in `require_approval()`
 
@@ -122,9 +73,55 @@ run_llm_task(
 
 Then you can start manging LLM actions in slack, email, or whatever channel you prefer:
 
-![A screenshot of slack showing a human replying to the bot](./docs/images/slack_approval_response.png)
+<div align="center"><img style="width: 400px" alt="A screenshot of slack showing a human replying to the bot" src="./docs/images/slack_approval_response.png"></div>
 
 Check out the [FunctionLayer Docs](./docs/) and the [Getting Started Guide](./docs/getting-started.md) for more information.
+
+## Why FunctionLayer?
+
+Functions and tools are a key part of [Agentic Workflows](https://www.deeplearning.ai/the-batch/how-agents-can-improve-llm-performance). They enable LLMs to interact meaningfully with the outside world and automate broad scopes of impactful work. Correct and accurate function calling is essential for AI agents that do meaningful things like book appointments, interact with customers, manage billing information, write+execute code, and more.
+
+[![Tool Calling Loop from Louis Dupont](https://miro.medium.com/v2/resize:fit:1400/format:webp/1*r8rEqjGZs_e6dibWeaqaQg.png)](https://louis-dupont.medium.com/transforming-software-interactions-with-tool-calling-and-llms-dc39185247e9)
+*From https://louis-dupont.medium.com/transforming-software-interactions-with-tool-calling-and-llms-dc39185247e9*
+
+**However**, the most useful functions we can give to an LLM are also the most risky. We can all imagine the value of an AI Database Administrator that constantly tunes and refactors our SQL database, but most teams wouldn't give an LLM access to run arbitrary SQL statements against a production database (heck, we mostly don't even let humans do that). That is:
+
+<div align="center">
+<h3><blockquote>Even with state-of-the-art agentic reasoning and prompt routing, LLMs are not sufficiently reliable to be given access to high-stakes functions without human oversight</blockquote></h3>
+</div>
+
+To better define what is meant by "high stakes", some examples:
+
+- **Low Stakes**: Read Access to public data (e.g. search wikipedia, access public APIs and DataSets)
+- **Low Stakes**: Communicate with agent author (e.g. an engineer might empower an agent to send them a private Slack message with updates on progress)
+- **Medium Stakes**: Read Access to Private Data (e.g. read emails, access calendars, query a CRM)
+- **Medium Stakes**: Communicate with strict rules (e.g. sending based on a specific sequence of hard-coded email templates)
+- **High Stakes**: Communicate on my Behalf or on behalf of my Company (e.g. send emails, post to slack, publish social/blog content)
+- **High Stakes**: Write Access to Private Data (e.g. update CRM records, modify feature toggles, update billing information)
+
+<div align="center"><img style="width: 600px" alt="Image showing the levels of function stakes stacked on top of one another" src="./docs/images/function_stakes.png"></div>
+
+The high stakes functions are the ones that are the most valuable and promise the most impact in automating away human workflows. The sooner teams can get Agents reliably and safely calling these tools, the sooner they can reap massive benefits. 
+
+FunctionLayer provides a set of tools to *deterministically* guarantee human oversight of high stakes function calls. Even if the LLM makes a mistake or hallucinates, FunctionLayer is baked into the tool/function itself, guaranteeing human oversight of high stakes function calls.
+<div align="center"><img style="width: 400px" alt="Function Layer @require_approval decorator wrapping the Commnicate on my behalf function" src="./docs/images/function_layer_require_approval.png"></div>
+
+<div align="center">
+<h3><blockquote>
+FunctionLayer provides a set of tools to *deterministically* guarantee human oversight of high stakes function calls
+</blockquote></h3>
+</div>
+
+## Key Features
+
+- **Require Human Approval for Function Calls**: the `@fl.require_approval()` decorator blocks specifc function calls until a human has been consulted - upon denial, feedback will be passed to the LLM
+- **Human as Tool**: generic `fl.human_as_tool()` allows for contacting a human for answers, advice, or feedback
+- **OmniChannel Contact**: Contact humans and collect responses across Slack, Email, Discord, and more
+- **Granular Routing**: Route approvals to specific teams or individuals
+- **Bring your own LLM + Framework**: Because FunctionLayer is implemented at tools layer, it supports any LLM and all major orchestration frameworks that support tool calling.
+
+
+
 
 
 ## Examples
