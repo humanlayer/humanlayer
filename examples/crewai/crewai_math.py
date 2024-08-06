@@ -24,7 +24,7 @@ general_agent = Agent(
     crew_sharing=False,
 )
 
-task = Task(description="""what is 3 + 5""", agent=general_agent, expected_output="A numerical answer.")
+task = Task(description="""what is 2 * 5 + 32""", agent=general_agent, expected_output="A numerical answer.")
 
 crew = Crew(agents=[general_agent], tasks=[task], verbose=2)
 

@@ -99,9 +99,9 @@ class FunctionLayer(BaseModel):
     def _approve_cli(self, fn: Callable[[T], R]) -> Callable[[T], R]:
         @wraps(fn)
         def wrapper(*args, **kwargs) -> R:
-            approved = input(f"allow {fn.__name__} with args {args} and kwargs {kwargs} (Y/n): ")
-            if approved.lower() not in {None, "", "y", "Y"}:
-                raise UserDeniedError(f"User denied {fn.__name__}")
+            feedback = input(f"allow {fn.__name__} with args {args} and kwargs {kwargs} (Y/n): ")
+            if feedback.lower() not in {None, "", "y", "Y"}:
+                return str(UserDeniedError(f"User denied {fn.__name__} with feedback: {feedback}"))
             try:
                 return fn(*args, **kwargs)
             except Exception as e:
