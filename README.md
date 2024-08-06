@@ -20,10 +20,10 @@
 ## Table of contents
 
 - [Why FunctionLayer?](#why-functionlayer)
-- [Getting Started](#getting-started)
 - [Key Features](#key-features)
+- [Getting Started](#getting-started)
 - [Examples](#examples)
-- [Contribution](#contribution)
+- [Contributing](#contributing)
 - [License](#license)
 
 ## Why FunctionLayer?
@@ -31,8 +31,9 @@
 Functions and tools are a key part of [Agentic Workflows](https://www.deeplearning.ai/the-batch/how-agents-can-improve-llm-performance). They enable LLMs to interact meaningfully with the outside world and automate broad scopes of impactful work. Correct and accurate function calling is essential for AI agents that do meaningful things like book appointments, interact with customers, manage billing information, write+execute code, and more.
 
 [![Tool Calling Loop from Louis Dupont](https://miro.medium.com/v2/resize:fit:1400/format:webp/1*r8rEqjGZs_e6dibWeaqaQg.png)](https://louis-dupont.medium.com/transforming-software-interactions-with-tool-calling-and-llms-dc39185247e9)
+*From https://louis-dupont.medium.com/transforming-software-interactions-with-tool-calling-and-llms-dc39185247e9*
 
-**However**, the most useful functions we can give to an LLM are also the most risky. We can all imagine the value of an AI DBA that constantly tunes and refactors our SQL database, but most teams wouldn't give an LLM access to run arbitrary SQL statements against a production database (heck, we mostly don't even let humans do that). That is, **even with state-of-the-art agentic reasoning and prompt routing, LLMs are not sufficiently reliable to be given access to certain higher-stakes functions without human oversight.**
+**However**, the most useful functions we can give to an LLM are also the most risky. We can all imagine the value of an AI Database Administrator that constantly tunes and refactors our SQL database, but most teams wouldn't give an LLM access to run arbitrary SQL statements against a production database (heck, we mostly don't even let humans do that). That is, **even with state-of-the-art agentic reasoning and prompt routing, LLMs are not sufficiently reliable to be given access to certain higher-stakes functions without human oversight.**
 
 <div align="center">
 <h3><blockquote>Even with state-of-the-art agentic reasoning and prompt routing, LLMs are not sufficiently reliable to be given access to high-stakes functions without human oversight</blockquote></h3>
@@ -41,14 +42,14 @@ Functions and tools are a key part of [Agentic Workflows](https://www.deeplearni
 To better define what is meant by "high stakes", some examples:
 
 - **Low Stakes**: Read Access to public data (e.g. search wikipedia, access public APIs and DataSets)
+- **Low Stakes**: Communicate with agent author (e.g. an engineer might empower an agent to send them a private Slack message with updates on progress)
 - **Medium Stakes**: Read Access to Private Data (e.g. read emails, access calendars, query a CRM)
-- **Medium Stakes**: Communicate with agent author (e.g. an engineer might empower an agent to send them a private Slack message with updates on progress)
 - **High Stakes**: Communicate on my Behalf or on behalf of my Company (e.g. send emails, post to slack, publish social/blog content)
 - **High Stakes**: Write Access to Private Data (e.g. update CRM records, modify feature toggles, update billing information)
 
 ![Image showing the levels of function stakes stacked on top of one another](./docs/images/function_stakes.png)
 
-The high stakes functions are the ones that are the most valuable and promise the most impact in automating away human workflows. The sooner we can get Agents reliably and safely calling these tools, the sooner we can hit massive benefits. 
+The high stakes functions are the ones that are the most valuable and promise the most impact in automating away human workflows. The sooner teams can get Agents reliably and safely calling these tools, the sooner they can reap massive benefits. 
 
 FunctionLayer provides a set of tools to *deterministically* gate access to these functions. Even if the LLM makes a mistake or hallucinates, FunctionLayer is baked into the tool/function itself, guaranteeing human oversight of high stakes function calls.
 

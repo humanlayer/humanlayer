@@ -29,10 +29,13 @@ To get started, check out [Getting Started](./getting-started.md) or jump straig
 
 ### Functions and Tools
 
-Functions and tools are a key part of [Agentic Workflows](https://www.deeplearning.ai/the-batch/how-agents-can-improve-llm-performance). FunctionLayer is design to supercharge
-your agent workflows by adding various flavors of human-in-the-loop functionality to your functions.
+Functions and tools are a very powerful element of "Agentic Workflows" in AI. Dupont's excellent [Transforming ](https://louis-dupont.medium.com/transforming-software-interactions-with-tool-calling-and-llms-dc39185247e9). 
 
 In the AI context, a function is just a generic python function that you've written. Information about this function like name, description, parameters, and types are passed to the AI model as a "tool". The AI model can then indicate that it would like call this function as part of its reasoning process. 
+
+[![Image of tool calling chain](https://miro.medium.com/v2/resize:fit:1400/format:webp/1*BMuedV7BREfHuJgRJR01Lg.png)](https://louis-dupont.medium.com/transforming-software-interactions-with-tool-calling-and-llms-dc39185247e9)
+
+*From https://louis-dupont.medium.com/transforming-software-interactions-with-tool-calling-and-llms-dc39185247e9*
 
 From the [OpenAI docs](https://platform.openai.com/docs/guides/function-calling)
 
@@ -61,6 +64,7 @@ The LLM can then produce a response based on the results of the tool call:
 
 Learn more:
 - [Function Calling - OpenAI Docs](https://platform.openai.com/docs/guides/function-calling)
+- Louis Dupont's excellent [Transforming Software Interactions with Tool Calling and LLMs](https://louis-dupont.medium.com/transforming-software-interactions-with-tool-calling-and-llms-dc39185247e9)
 - [Leverage OpenAI Tool Calling: Building a Reliable AI Agent from Scratch](https://towardsdatascience.com/leverage-openai-tool-calling-building-a-reliable-ai-agent-from-scratch-4e21fcd15b62)
 - [How Does Tool Calling Work in Langchain](https://blog.langchain.dev/tool-calling-with-langchain/)
 - [Tool Calling in Crew AI](https://docs.crewai.com/core-concepts/Tools/)
