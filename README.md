@@ -105,7 +105,7 @@ To better define what is meant by "high stakes", some examples:
 
 The high stakes functions are the ones that are the most valuable and promise the most impact in automating away human workflows. The sooner teams can get Agents reliably and safely calling these tools, the sooner they can reap massive benefits.
 
-FunctionLayer provides a set of tools to _deterministically_ guarantee human oversight of high stakes function calls. Even if the LLM makes a mistake or hallucinates, FunctionLayer is baked into the tool/function itself, guaranteeing human oversight of high stakes function calls.
+FunctionLayer provides a set of tools to _deterministically_ guarantee human oversight of high stakes function calls. Even if the LLM makes a mistake or hallucinates, FunctionLayer is baked into the tool/function itself, guaranteeing a human in the loop.
 
 <div align="center"><img style="width: 400px" alt="Function Layer @require_approval decorator wrapping the Commnicate on my behalf function" src="./docs/images/function_layer_require_approval.png"></div>
 
