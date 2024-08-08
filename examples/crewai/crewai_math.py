@@ -1,10 +1,10 @@
 from crewai import Agent, Crew, Task
 from crewai_tools import tool
+from functionlayer import ApprovalMethod, FunctionLayer
 from dotenv import load_dotenv
 
 load_dotenv()
 
-from functionlayer import ApprovalMethod, FunctionLayer
 
 fl = FunctionLayer(approval_method=ApprovalMethod.CLOUD)
 
