@@ -7,16 +7,30 @@ no frameworks are used to manage the tool calling loop. Among other things, this
 In this example, as in others, the `multiply(x: int, y: int) -> int` function is wrapped with
 `@fl.require_approval`.
 
+Two ways to get started:
 
-First, install the requirements 
+1. [If you're comfortable with virtualenvs](#if-youre-comfortable-with-virtualenvs)
+2. [If you prefer docker](#if-you-prefer-docker)
+
+## If you're comfortable with virtualenvs
+
+Activate a new virtualenv however you prefer
 
 ```
 pip install -r requirements.txt
 ```
 
 ```
-python math_example.py
+python 01-math_example.py
 ```
+
+## If you prefer docker
+
+```
+docker compose run examples 01-math_example.py
+```
+
+## What you should see
 
 The script will proceed with the prompt `multiply 2 and 5` until the first function call, after which it will wait for approval:
 

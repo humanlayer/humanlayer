@@ -8,11 +8,10 @@ RUN apt-get update && apt-get install -y git
 
 RUN pip install \
     python-dotenv \
-    langchain \
-    langchain-openai \
+    openai \
     git+https://github.com/functionlayer/functionlayer
 
 COPY . /app
 
 ENTRYPOINT ["python3"]
-CMD ["01-math_example.py"]
+CMD ["math_example.py"]

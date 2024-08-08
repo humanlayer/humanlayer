@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-fl = FunctionLayer(approval_method=ApprovalMethod.WEBAPP)
+fl = FunctionLayer(approval_method=ApprovalMethod.CLOUD)
 
 
 @tool

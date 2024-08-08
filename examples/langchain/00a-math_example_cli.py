@@ -1,7 +1,8 @@
 #
 # an example that runs some langchain math operations
 # where the multiply function requires approval
-# via functionlayer
+# via functionlayer, and FunctionLayer is configured to
+# use local / CLI mode
 #
 from langchain.agents import initialize_agent
 from langchain.agents import AgentType

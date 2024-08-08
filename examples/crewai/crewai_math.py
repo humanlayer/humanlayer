@@ -1,9 +1,14 @@
 from crewai import Agent, Task, Crew
 from crewai_tools import tool
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from functionlayer import ApprovalMethod, FunctionLayer
 
 fl = FunctionLayer(approval_method=ApprovalMethod.CLOUD)
+
 
 @tool
 @fl.require_approval()
@@ -24,7 +29,11 @@ general_agent = Agent(
     crew_sharing=False,
 )
 
-task = Task(description="""what is 2 * 5 + 32""", agent=general_agent, expected_output="A numerical answer.")
+task = Task(
+    description="""what is 2 * 5 + 32""",
+    agent=general_agent,
+    expected_output="A numerical answer.",
+)
 
 crew = Crew(agents=[general_agent], tasks=[task], verbose=2)
 
