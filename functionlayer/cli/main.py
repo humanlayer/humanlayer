@@ -18,5 +18,6 @@ def cli() -> None:
 def cli_check() -> None:
     click.echo("Your installation is valid!")
 
+
 if __name__ == "__main__":
     cli()
