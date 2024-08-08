@@ -11,10 +11,11 @@ packages = [
 
 [tool.poetry.dependencies]
 python = "^3.11"
-pydantic = "^2.8.2"
-python-socketio = {extras = ["asyncio-client"], version = "^5.11.3"}
-human-id = "^0.2.0"
-aiohttp = "^3.10.0"
+pydantic = "2.8.2"
+python-socketio = {extras = ["asyncio-client"], version = "5.11.3"}
+human-id = "0.2.0"
+aiohttp = "3.10.0"
+requests = "2.32.3"
 
 [tool.poetry.scripts]
 fl = "functionlayer.cli.main:cli"
