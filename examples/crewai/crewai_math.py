@@ -1,16 +1,28 @@
 from crewai import Agent, Crew, Task
 from crewai_tools import tool
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from functionlayer import ApprovalMethod, FunctionLayer
 
 fl = FunctionLayer(approval_method=ApprovalMethod.CLOUD)
 
+PROMPT = """multiply 2 and 5, then add 32 to the result"""
+
+
+@tool
+def add(a: int, b: int) -> int:
+    """Add two numbers together."""
+    return a + b
+
 
 @tool
 @fl.require_approval()
-def add(a: int, b: int) -> int:
-    """add two numbers"""
-    return a + b
+def multiply(a: int, b: int) -> int:
+    """multiply two numbers"""
+    return a * b
 
 
 general_agent = Agent(
@@ -25,7 +37,11 @@ general_agent = Agent(
     crew_sharing=False,
 )
 
-task = Task(description="""what is 2 * 5 + 32""", agent=general_agent, expected_output="A numerical answer.")
+task = Task(
+    description=PROMPT,
+    agent=general_agent,
+    expected_output="A numerical answer.",
+)
 
 crew = Crew(agents=[general_agent], tasks=[task], verbose=2)
 

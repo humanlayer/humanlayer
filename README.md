@@ -43,7 +43,7 @@ To get started, check out [Getting Started](./getting-started.md), watch the [2:
 - 🧠 [Raw OpenAI Client](./examples/openai_client/math_example.py)
 
 ```shell
-pip install functionlayer
+pip install functionlayer-ai
 ```
 
 or for the bleeding edge
