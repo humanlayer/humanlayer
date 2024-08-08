@@ -14,7 +14,6 @@ Or, for the bleeding edge:
 pip install git+https://github.com/functionlayer/functionlayer
 ```
 
-
 ### Choose an LLM Client and Write your first tool-calling agent
 
 You'll need a short python script that defines a function that you want to gate with FunctionLayer,
@@ -95,7 +94,7 @@ Invoking: `add` with `{'x': 10, 'y': 32}`
 
 
 42The result of multiplying 2 and 5, then adding 32 to the result, is 42.
-                
+
 > Finished chain.
 
 
@@ -144,8 +143,8 @@ fl = FunctionLayer()
 def add(x: int, y: int) -> int:
     """Add two numbers together."""
     return x + y
-    
-    
+
+
 @tool
 + @fl.require_approval()
 def multiply(x: int, y: int) -> int:
@@ -204,7 +203,7 @@ This should run until the first function call, and then pause to ask for approva
 Invoking: `multiply` with `{'x': 2, 'y': 5}`
 
 
-allow multiply with args () and kwargs {'x': 2, 'y': 5} (Y/n): 
+allow multiply with args () and kwargs {'x': 2, 'y': 5} (Y/n):
 ```
 
 You can hit ENTER to allow this, or give the agent some feedback like `no, use 7 instead of 5`.
@@ -252,13 +251,12 @@ Then you can change your script to use `ApprovalMethod.CLOUD`:
 def add(x: int, y: int) -> int:
     """Add two numbers together."""
     return x + y
-    
+
 ```
 
 Re-running the script, you'll see the same function now show in your approval queue at [FunctionLayer Cloud](https://app.functionlayer.com).
 
 Navigate to the Approval Queue and click the Status button to approve the function call.
-
 
 ![Approval Queue](./images/getting_started_web_queue.png)
 
@@ -266,15 +264,12 @@ Navigate to the Approval Queue and click the Status button to approve the functi
 
 ![Approval Result](./images/getting_started_web_approved.png)
 
-
 ## Next Steps
 
 ### Connect Slack
 
-Web approvals are a start, but FunctionLayer really shines when you connect your slack instance. See [configuring slack](./configuring_slack.md) for more information on how to do this, and then you can 
-
+Web approvals are a start, but FunctionLayer really shines when you connect your slack instance. See [configuring slack](./configuring_slack.md) for more information on how to do this, and then you can
 
 ### Try a Human as tool
 
 `fl.human_as_tool()` gives you a generic, LLM-ready tool that an agent can call to contact a human for feedback, advice, or other input. See [the langchain human as tool example](../examples/langchain/03-human_as_tool.py) for more.
-

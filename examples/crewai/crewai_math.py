@@ -1,4 +1,4 @@
-from crewai import Agent, Task, Crew
+from crewai import Agent, Crew, Task
 from crewai_tools import tool
 
 from dotenv import load_dotenv
@@ -27,12 +27,12 @@ def multiply(a: int, b: int) -> int:
 
 general_agent = Agent(
     role="Math Professor",
-    goal="""Provide the solution to the students that are asking 
+    goal="""Provide the solution to the students that are asking
     mathematical questions and give them the answer.""",
-    backstory="""You are an excellent math professor that likes to solve math questions 
+    backstory="""You are an excellent math professor that likes to solve math questions
     in a way that everyone can understand your solution""",
     allow_delegation=False,
-    tools=[add, multiply],
+    tools=[add],
     verbose=True,
     crew_sharing=False,
 )

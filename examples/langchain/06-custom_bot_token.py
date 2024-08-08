@@ -1,14 +1,19 @@
+import os
+
 import langchain_core.tools as langchain_tools
 from dotenv import load_dotenv
 from langchain.agents import AgentType, initialize_agent
 from langchain_openai import ChatOpenAI
 
-from functionlayer import ApprovalMethod, ContactChannel, FunctionLayer, SlackContactChannel
+from functionlayer import (
+    ApprovalMethod,
+    ContactChannel,
+    FunctionLayer,
+    SlackContactChannel,
+)
 
 load_dotenv()
 
-# if set, will override default project token
-import os
 
 override_bot_token = os.getenv("SLACK_BOT_TOKEN")
 

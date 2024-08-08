@@ -4,13 +4,12 @@
 # via functionlayer, and FunctionLayer is configured to
 # use local / CLI mode
 #
-from langchain.agents import initialize_agent
-from langchain.agents import AgentType
+from dotenv import load_dotenv
+from langchain.agents import AgentType, initialize_agent
 from langchain.tools import tool
 from langchain_openai import ChatOpenAI
-from functionlayer import FunctionLayer
 
-from dotenv import load_dotenv
+from functionlayer import FunctionLayer
 
 load_dotenv()
 
