@@ -7,18 +7,19 @@
 </div>
 
 Table of Contents:
+
 - [Getting Started](#getting-started)
 - [Concepts](#concepts)
-    - [Functions and Tools](#functions-and-tools)
-    - [High Stakes Functions](#high-stakes-functions)
-    - [Approvals](#approvals)
-    - [Human As Tool](#human-as-tool)
-    - [Contact Channels](#contact-channels)
+  - [Functions and Tools](#functions-and-tools)
+  - [High Stakes Functions](#high-stakes-functions)
+  - [Approvals](#approvals)
+  - [Human As Tool](#human-as-tool)
+  - [Contact Channels](#contact-channels)
 - [Features](#features)
-    - [Function Decorators](#function-decorators)
-    - [Human as Tool](#human-as-tool)
-    - [Functionlayer CLI](#functionlayer-cli)
-    - [Functionlayer Cloud](#functionlayer-cloud)
+  - [Function Decorators](#function-decorators)
+  - [Human as Tool](#human-as-tool)
+  - [Functionlayer CLI](#functionlayer-cli)
+  - [Functionlayer Cloud](#functionlayer-cloud)
 - [Reference](#reference)
 
 ## Getting Started
@@ -36,13 +37,13 @@ To get started, check out [Getting Started](./getting-started.md) or jump straig
 
 ### Functions and Tools
 
-Functions and tools are a very powerful element of "Agentic Workflows" in AI. Dupont's excellent [Transforming ](https://louis-dupont.medium.com/transforming-software-interactions-with-tool-calling-and-llms-dc39185247e9). 
+Functions and tools are a very powerful element of "Agentic Workflows" in AI. Dupont's excellent [Transforming ](https://louis-dupont.medium.com/transforming-software-interactions-with-tool-calling-and-llms-dc39185247e9).
 
-In the AI context, a function is just a generic python function that you've written. Information about this function like name, description, parameters, and types are passed to the AI model as a "tool". The AI model can then indicate that it would like call this function as part of its reasoning process. 
+In the AI context, a function is just a generic python function that you've written. Information about this function like name, description, parameters, and types are passed to the AI model as a "tool". The AI model can then indicate that it would like call this function as part of its reasoning process.
 
 [![Image of tool calling chain](https://miro.medium.com/v2/resize:fit:1400/format:webp/1*BMuedV7BREfHuJgRJR01Lg.png)](https://louis-dupont.medium.com/transforming-software-interactions-with-tool-calling-and-llms-dc39185247e9)
 
-*From https://louis-dupont.medium.com/transforming-software-interactions-with-tool-calling-and-llms-dc39185247e9*
+_From https://louis-dupont.medium.com/transforming-software-interactions-with-tool-calling-and-llms-dc39185247e9_
 
 From the [OpenAI docs](https://platform.openai.com/docs/guides/function-calling)
 
@@ -68,8 +69,8 @@ The LLM can then produce a response based on the results of the tool call:
 
 > **User**: "Thanks!"
 
-
 Learn more:
+
 - [Function Calling - OpenAI Docs](https://platform.openai.com/docs/guides/function-calling)
 - Louis Dupont's excellent [Transforming Software Interactions with Tool Calling and LLMs](https://louis-dupont.medium.com/transforming-software-interactions-with-tool-calling-and-llms-dc39185247e9)
 - [Leverage OpenAI Tool Calling: Building a Reliable AI Agent from Scratch](https://towardsdatascience.com/leverage-openai-tool-calling-building-a-reliable-ai-agent-from-scratch-4e21fcd15b62)
@@ -100,7 +101,7 @@ FunctionLayer provides a set of decorators that can be used to add approval requ
 @fl.require_approval()
 def send_email(to: str, subject: str, body: str):
   """Send an email to the customer"""
-  ... 
+  ...
 ```
 
 When a function requiring approval is triggered, the execution will block until an approval is received from a human. These approvals can be routed and received via API, Web Application, Slack, Email, or any other channel that FunctionLayer supports. Here's an example slack approval:
@@ -138,19 +139,18 @@ ceo_direct_message = ContactChannel(
 run_llm_task(
   prompt="Determine the top objectives for the customer success org and send them to the CEO",
   tools=[
-    fl.human_as_tool(customer_success_direct_message), 
-    fl.human_as_tool(ceo_direct_message)    
+    fl.human_as_tool(customer_success_direct_message),
+    fl.human_as_tool(ceo_direct_message)
   ],
   llm=OpenAI(model="gpt-4o")
 )
 ```
 
-You can add as many of these "human as tool" functions as you like to your LLM toolset. The AI will see a function with the signature 
+You can add as many of these "human as tool" functions as you like to your LLM toolset. The AI will see a function with the signature
 
 ```
 contact_human_in_a_dm_with_the_head_of_sales(msg: str) -> str
 ```
-
 
 ### Contact Channels
 
@@ -247,7 +247,6 @@ This will cause a message to be sent to a configured channel, e.g. a particular 
 
 You may want to customize which channel or user the approval request is sent to. You can do this by passing a `ContactChannel` object to the `require_approval` decorator.
 
-
 ```python
 from functionlayer import ContactChannel, SlackContactChannel
 
@@ -291,7 +290,7 @@ tools = [
 ]
 ```
 
-this builds a function that can be passed to `langchain.tools.StructuredTool.from_function()` or any other LLM framework's tool calling system. The AI will see a function with the signature 
+this builds a function that can be passed to `langchain.tools.StructuredTool.from_function()` or any other LLM framework's tool calling system. The AI will see a function with the signature
 
 ```
 contact_human_in_a_dm_with_the_head_of_sales(msg: str) -> str

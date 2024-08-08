@@ -2,12 +2,10 @@
 # for comparison, a bare-bones math example
 # with no approvals required
 #
-from langchain.agents import initialize_agent
-from langchain.agents import AgentType
+from dotenv import load_dotenv
+from langchain.agents import AgentType, initialize_agent
 from langchain.tools import tool
 from langchain_openai import ChatOpenAI
-
-from dotenv import load_dotenv
 
 load_dotenv()
 
