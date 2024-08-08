@@ -1,6 +1,5 @@
 # Contributing to FunctionLayer
 
-
 If you're looking to contribute, please:
 
 - fork the repository.
