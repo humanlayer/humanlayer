@@ -3,13 +3,10 @@ FROM python:3.11-slim-bookworm as prod
 
 WORKDIR /app
 
-# tmp workaround until pip package is live
-RUN apt-get update && apt-get install -y git
-
 RUN pip install \
     python-dotenv \
     openai \
-    git+https://github.com/functionlayer/functionlayer
+    functionlayer-ai
 
 COPY . /app
 

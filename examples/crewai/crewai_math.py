@@ -9,12 +9,20 @@ from functionlayer import ApprovalMethod, FunctionLayer
 
 fl = FunctionLayer(approval_method=ApprovalMethod.CLOUD)
 
+PROMPT = """multiply 2 and 5, then add 32 to the result"""
+
+
+@tool
+def add(a: int, b: int) -> int:
+    """Add two numbers together."""
+    return a + b
+
 
 @tool
 @fl.require_approval()
-def add(a: int, b: int) -> int:
-    """add two numbers"""
-    return a + b
+def multiply(a: int, b: int) -> int:
+    """multiply two numbers"""
+    return a * b
 
 
 general_agent = Agent(
@@ -24,13 +32,13 @@ general_agent = Agent(
     backstory="""You are an excellent math professor that likes to solve math questions 
     in a way that everyone can understand your solution""",
     allow_delegation=False,
-    tools=[add],
+    tools=[add, multiply],
     verbose=True,
     crew_sharing=False,
 )
 
 task = Task(
-    description="""what is 2 * 5 + 32""",
+    description=PROMPT,
     agent=general_agent,
     expected_output="A numerical answer.",
 )

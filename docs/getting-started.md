@@ -5,7 +5,7 @@ To get started, you can check out one of the [Examples](../examples/) or follow 
 In your desired python environment, run:
 
 ```bash
-pip install functionlayer
+pip install functionlayer-ai
 ```
 
 Or, for the bleeding edge:
