@@ -1,17 +1,16 @@
-from dotenv import load_dotenv
-from langchain.agents import AgentType
-from langchain.agents import initialize_agent
 import langchain_core.tools as langchain_tools
+from dotenv import load_dotenv
+from langchain.agents import AgentType, initialize_agent
 from langchain_openai import ChatOpenAI
 
-from functionlayer import FunctionLayer, ApprovalMethod, ContactChannel, SlackContactChannel
+from functionlayer import ApprovalMethod, ContactChannel, FunctionLayer, SlackContactChannel
 
 load_dotenv()
 
 fl = FunctionLayer(approval_method=ApprovalMethod.CLOUD)
 
 task_prompt = """
-figure out the wizard's favorite color, 
+figure out the wizard's favorite color,
 contact a human for help if you need it
 """
 

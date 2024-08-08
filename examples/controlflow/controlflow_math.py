@@ -1,10 +1,9 @@
-
+import controlflow as cf
 from dotenv import load_dotenv
-from functionlayer import FunctionLayer, ApprovalMethod
+
+from functionlayer import ApprovalMethod, FunctionLayer
 
 load_dotenv()
-
-import controlflow as cf
 
 
 fl = FunctionLayer(approval_method=ApprovalMethod.CLOUD)
