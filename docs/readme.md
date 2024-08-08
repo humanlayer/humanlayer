@@ -18,7 +18,7 @@ Table of Contents:
 - [Features](#features)
   - [Function Decorators](#function-decorators)
   - [Human as Tool](#human-as-tool)
-  - [Functionlayer CLI](#functionlayer-cli)
+  - [Functionlayer CLI](#cli-mode)
   - [Functionlayer Cloud](#functionlayer-cloud)
 - [Reference](#reference)
 
@@ -28,10 +28,10 @@ Table of Contents:
 
 To get started, check out [Getting Started](./getting-started.md) or jump straight into one of the [Examples](../examples/):
 
-- 🦜⛓️ [LangChain](./examples/langchain/math_example.py)
-- 🚣‍ [CrewAI](./examples/crewai/crewai_math.py)
-- 🦾 [ControlFlow](./examples/controlflow/controlflow_math.py)
-- 🧠 [Raw OpenAI Client](./examples/openai_client/math_example.py)
+- 🦜⛓️ [LangChain](../examples/langchain/01-math_example.py)
+- 🚣‍ [CrewAI](../examples/crewai/crewai_math.py)
+- 🦾 [ControlFlow](../examples/controlflow/controlflow_math.py)
+- 🧠 [Raw OpenAI Client](../examples/openai_client/math_example.py)
 
 ## Concepts
 
@@ -296,7 +296,7 @@ this builds a function that can be passed to `langchain.tools.StructuredTool.fro
 contact_human_in_a_dm_with_the_head_of_sales(msg: str) -> str
 ```
 
-See [Langchain Human as Tool Example](../examples/langchain_human_as_tool.py) for an example of how to use this in a Langchain context.
+See [Langchain Human as Tool Example](../examples/langchain/03-human_as_tool.py) for an example of how to use this in a Langchain context.
 
 ### Functionlayer Cloud
 

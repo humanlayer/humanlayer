@@ -20,6 +20,15 @@ repos:
     rev: "v3.0.3"
     hooks:
       - id: prettier
+  #  - repo: https://github.com/tcort/markdown-link-check
+  #    rev: "v3.12.2"
+  #    hooks:
+  #      - id: markdown-link-check
+  #        args:
+  #          [
+  #            --quiet,
+  #            --ignore=https://platform.openai.com/docs/guides/function-calling,
+  #          ]
 #  - repo: https://github.com/psf/black-pre-commit-mirror
 #    rev: 24.8.0
 #    hooks:

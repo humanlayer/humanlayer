@@ -77,11 +77,16 @@ def run_chain(prompt: str, tools_openai: list[dict], tools_map: dict) -> str:
         response_message = response.choices[0].message
         tool_calls = response_message.tool_calls
         if tool_calls:
-            messages.append(response_message)  # extend conversation with assistant's reply
+            messages.append(
+                response_message
+            )  # extend conversation with assistant's reply
             logger.info(
                 "last message led to %s tool calls: %s",
                 len(tool_calls),
-                [(tool_call.function.name, tool_call.function.arguments) for tool_call in tool_calls],
+                [
+                    (tool_call.function.name, tool_call.function.arguments)
+                    for tool_call in tool_calls
+                ],
             )
             for tool_call in tool_calls:
                 function_name = tool_call.function.name
@@ -100,7 +105,11 @@ def run_chain(prompt: str, tools_openai: list[dict], tools_map: dict) -> str:
                         }
                     )
 
-                logger.info("tool %s responded with %s", function_name, function_response_json[:200])
+                logger.info(
+                    "tool %s responded with %s",
+                    function_name,
+                    function_response_json[:200],
+                )
                 messages.append(
                     {
                         "tool_call_id": tool_call.id,

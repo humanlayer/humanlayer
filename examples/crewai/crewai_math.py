@@ -1,6 +1,5 @@
 from crewai import Agent, Crew, Task
 from crewai_tools import tool
-
 from dotenv import load_dotenv
 
 load_dotenv()

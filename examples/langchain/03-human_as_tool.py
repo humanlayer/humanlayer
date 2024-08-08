@@ -3,7 +3,12 @@ from dotenv import load_dotenv
 from langchain.agents import AgentType, initialize_agent
 from langchain_openai import ChatOpenAI
 
-from functionlayer import ApprovalMethod, ContactChannel, FunctionLayer, SlackContactChannel
+from functionlayer import (
+    ApprovalMethod,
+    ContactChannel,
+    FunctionLayer,
+    SlackContactChannel,
+)
 
 load_dotenv()
 

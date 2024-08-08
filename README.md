@@ -37,7 +37,7 @@ Bring your LLM (OpenAI, Llama, Claude, etc) and Framework (LangChain, CrewAI, et
 
 To get started, check out [Getting Started](./docs/getting-started.md), watch the [2:30 Getting Started Video](https://www.loom.com/share/97ead4e4a0b84b3dac4fec2ff1b410bf), or jump straight into one of the [Examples](./examples/):
 
-- 🦜⛓️ [LangChain](./examples/langchain/math_example.py)
+- 🦜⛓️ [LangChain](./examples/langchain/01-math_example.py)
 - 🚣‍ [CrewAI](./examples/crewai/crewai_math.py)
 - 🦾 [ControlFlow](./examples/controlflow/controlflow_math.py)
 - 🧠 [Raw OpenAI Client](./examples/openai_client/math_example.py)
@@ -127,8 +127,8 @@ FunctionLayer provides a set of tools to *deterministically* guarantee human ove
 
 You can test different real life examples of FunctionLayer in the [examples folder](./examples/):
 
-- 🦜⛓️ [LangChain Math](./examples/langchain/math_example.py)
-- 🦜⛓️ [LangChain Human As Tool](./examples/langchain/human_as_tool.py)
+- 🦜⛓️ [LangChain Math](./examples/langchain/01-math_example.py)
+- 🦜⛓️ [LangChain Human As Tool](./examples/langchain/03-human_as_tool.py)
 - 🚣‍ [CrewAI Math](./examples/crewai/crewai_math.py)
 - 🦾 [ControlFlow Math](./examples/controlflow/controlflow_math.py)
 - 🧠 [Raw OpenAI Client](./examples/openai_client/math_example.py)
