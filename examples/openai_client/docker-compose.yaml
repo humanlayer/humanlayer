@@ -1,0 +1,9 @@
+version: '3.7'
+services:
+  examples:
+    build:
+        context: .
+        dockerfile: Dockerfile
+    volumes:
+      - ${PWD}:/app
+

@@ -1,7 +1,8 @@
 #
 # an example that runs some langchain math operations
 # where the multiply function requires approval
-# via functionlayer
+# via functionlayer, and FunctionLayer is configured to
+# use local / CLI mode
 #
 from dotenv import load_dotenv
 from langchain.agents import AgentType, initialize_agent
