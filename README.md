@@ -3,8 +3,12 @@
 ![Logo of functionlayer, two diamonds with a plus sign](./docs/functionlayer_logo.png)
 
 # **FunctionLayer**
+</div>
 
-**FunctionLayer**: python SDK to enable AI agents to communicate with humans in tool-based and asynchronous workflows. By incorporating humans-in-the-loop, agentic tools can be given access to much more powerful and meaningful tool calls and tasks. Bring your LLM (OpenAI, Claude, etc) and Framework (LangChain, CrewAI, etc) and start giving your AI agents safe access to the world.
+**FunctionLayer**: A python toolkit to enable AI agents to communicate with humans in tool-based and asynchronous workflows. By incorporating humans-in-the-loop, agentic tools can be given access to much more powerful and meaningful tool calls and tasks. 
+
+Bring your LLM (OpenAI, Llama, Claude, etc) and Framework (LangChain, CrewAI, etc) and start giving your AI agents safe access to the world.
+<div align="center">
 
 <h3>
 
@@ -19,13 +23,59 @@
 
 ## Table of contents
 
+- [Getting Started](#getting-started)
 - [Why FunctionLayer?](#why-functionlayer)
 - [Key Features](#key-features)
-- [Getting Started](#getting-started)
 - [Examples](#examples)
 - [Roadmap](#roadmap)
 - [Contributing](#contributing)
 - [License](#license)
+
+## Getting Started
+
+To get started, check out [Getting Started](./getting-started.md), watch the [2:30 Getting Started Video](https://www.loom.com/share/97ead4e4a0b84b3dac4fec2ff1b410bf), or jump straight into one of the [Examples](../examples/):
+
+- 🦜⛓️ [LangChain](./examples/langchain/math_example.py)
+- 🚣‍ [CrewAI](./examples/crewai/crewai_math.py)
+- 🦾 [ControlFlow](./examples/controlflow/controlflow_math.py)
+- 🧠 [Raw OpenAI Client](./examples/openai_client/math_example.py)
+
+```shell
+pip install functionlayer
+```
+
+or for the bleeding edge
+
+```shell
+pip install git+https://github.com/functionlayer/functionlayer
+```
+
+Set `FUNCTIONLAYER_API_TOKEN` and wrap your AI function in `require_approval()`
+
+```python
+
+from functionlayer import ApprovalMethod, FunctionLayer
+fl = FunctionLayer(approval_method=ApprovalMethod.CLOUD) # or CLI
+
+@fl.require_approval()
+def send_email(to: str, subject: str, body: str):
+    """Send an email to the customer"""
+    ... 
+
+
+# made up method, use whatever framework you prefer
+run_llm_task(
+    prompt="Send an email welcoming the customer to the platform and encouraging them to invite a team member.",
+    tools=[send_email],
+    llm=OpenAI(model="gpt-4o")
+)
+```
+
+Then you can start manging LLM actions in slack, email, or whatever channel you prefer:
+
+<div align="center"><img style="width: 400px" alt="A screenshot of slack showing a human replying to the bot" src="./docs/images/slack_approval_response.png"></div>
+
+Check out the [FunctionLayer Docs](./docs/) and the [Getting Started Guide](./docs/getting-started.md) for more information.
 
 ## Why FunctionLayer?
 
@@ -49,13 +99,12 @@ To better define what is meant by "high stakes", some examples:
 - **High Stakes**: Communicate on my Behalf or on behalf of my Company (e.g. send emails, post to slack, publish social/blog content)
 - **High Stakes**: Write Access to Private Data (e.g. update CRM records, modify feature toggles, update billing information)
 
-![Image showing the levels of function stakes stacked on top of one another](./docs/images/function_stakes.png)
+<div align="center"><img style="width: 600px" alt="Image showing the levels of function stakes stacked on top of one another" src="./docs/images/function_stakes.png"></div>
 
 The high stakes functions are the ones that are the most valuable and promise the most impact in automating away human workflows. The sooner teams can get Agents reliably and safely calling these tools, the sooner they can reap massive benefits. 
 
 FunctionLayer provides a set of tools to *deterministically* guarantee human oversight of high stakes function calls. Even if the LLM makes a mistake or hallucinates, FunctionLayer is baked into the tool/function itself, guaranteeing human oversight of high stakes function calls.
-
-![Function Layer @require_approval decorator wrapping the Commnicate on my behalf function](./docs/images/function_layer_require_approval.png)
+<div align="center"><img style="width: 400px" alt="Function Layer @require_approval decorator wrapping the Commnicate on my behalf function" src="./docs/images/function_layer_require_approval.png"></div>
 
 <div align="center">
 <h3><blockquote>
@@ -72,55 +121,7 @@ FunctionLayer provides a set of tools to *deterministically* guarantee human ove
 - **Bring your own LLM + Framework**: Because FunctionLayer is implemented at tools layer, it supports any LLM and all major orchestration frameworks that support tool calling.
 
 
-## Getting Started
 
-To get started, check out [Getting Started](./getting-started.md) or jump straight into one of the [Examples](../examples/):
-
-- 🦜⛓️ [LangChain](./examples/langchain/math_example.py)
-- 🚣‍ [CrewAI](./examples/crewai/crewai_math.py)
-- 🦾 [ControlFlow](./examples/controlflow/controlflow_math.py)
-- 🧠 [Raw OpenAI Client](./examples/openai_client/math_example.py)
-
-### 1. Installation
-
-```shell
-pip install functionlayer
-```
-
-or for the bleeding edge
-
-```shell
-pip install git+https://github.com/functionlayer/functionlayer
-```
-
-### 2. Wrapping Your First Function
-
-Set an API token, and then wrap your AI function in
-
-```python
-
-from functionlayer import ApprovalMethod, FunctionLayer
-fl = FunctionLayer(approval_method=ApprovalMethod.CLOUD) # or CLI
-
-@fl.require_approval()
-def send_email(to: str, subject: str, body: str):
-    """Send an email to the customer"""
-    ... 
-
-
-# made up method, use whatever framework you prefer
-run_llm_task(
-    prompt="Send an email welcoming the customer to the platform and encouraging them to invite a team member.",
-    tools=[send_email],
-    llm=OpenAI(model="gpt-4o")
-)
-```
-
-Then you can start manging LLM actions in slack, email, or whatever channel you prefer:
-
-![A screenshot of slack showing a human replying to the bot](./docs/images/slack_approval_response.png)
-
-Check out the [FunctionLayer Docs](./docs/) and the [Getting Started Guide](./docs/getting-started.md) for more information.
 
 
 ## Examples
