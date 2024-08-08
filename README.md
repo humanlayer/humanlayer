@@ -35,7 +35,7 @@ Bring your LLM (OpenAI, Llama, Claude, etc) and Framework (LangChain, CrewAI, et
 
 ## Getting Started
 
-To get started, check out [Getting Started](./getting-started.md), watch the [2:30 Getting Started Video](https://www.loom.com/share/97ead4e4a0b84b3dac4fec2ff1b410bf), or jump straight into one of the [Examples](../examples/):
+To get started, check out [Getting Started](./docs/getting-started.md), watch the [2:30 Getting Started Video](https://www.loom.com/share/97ead4e4a0b84b3dac4fec2ff1b410bf), or jump straight into one of the [Examples](./examples/):
 
 - 🦜⛓️ [LangChain](./examples/langchain/math_example.py)
 - 🚣‍ [CrewAI](./examples/crewai/crewai_math.py)
