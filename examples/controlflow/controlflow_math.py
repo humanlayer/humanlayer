@@ -7,7 +7,6 @@ load_dotenv()
 import controlflow as cf
 
 fl = FunctionLayer(approval_method=ApprovalMethod.CLOUD)
-fl2 = FunctionLayer(approve_method=ApprovalMethod.CLOUD, contact_channel)
 
 
 def add(x: int, y: int) -> int:
