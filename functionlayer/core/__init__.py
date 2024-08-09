@@ -1,2 +1,2 @@
-from approval import *
-from types import *
+from .approval import *
+from .types import *
