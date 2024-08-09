@@ -67,7 +67,6 @@ class FunctionLayer(BaseModel):
     approval_method: ApprovalMethod = os.getenv(
         "FUNCTIONLAYER_APPROVAL_METHOD", ApprovalMethod.CLI
     )
-    approval_method: ApprovalMethod = ApprovalMethod.name
     sio: socketio.AsyncClient = socketio.AsyncClient()
 
     CLI: ApprovalMethod = ApprovalMethod.CLI
