@@ -169,7 +169,13 @@ class FunctionLayer(BaseModel):
                     if function_call.get("status", {}).get("approved", False):
                         return fn(*args, **kwargs)
                     else:
-                        return f"User denied {fn.__name__} with message: {function_call.get('status', {}).get('comment')}"
+                        if (
+                            contact_channel.slack
+                            and contact_channel.slack.context_about_channel_or_user
+                        ):
+                            return f"User in {contact_channel.slack.context_about_channel_or_user} denied {fn.__name__} with message: {function_call.get('status', {}).get('comment')}"
+                        else:
+                            return f"User denied {fn.__name__} with message: {function_call.get('status', {}).get('comment')}"
             except Exception as e:
                 logger.exception("Error requesting approval")
                 return f"Error running {fn.__name__}: {e}"
