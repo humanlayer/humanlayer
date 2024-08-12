@@ -40,7 +40,12 @@ agent = initialize_agent(
     handle_parsing_errors=True,
 )
 
-if __name__ == "__main__":
+
+def main():
     result = agent.run("multiply 2 and 5, then add 32 to the result")
     print("\n\n----------Result----------\n\n")
     print(result)
+
+
+if __name__ == "__main__":
+    main()
