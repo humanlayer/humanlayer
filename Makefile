@@ -46,3 +46,27 @@ help:
 	grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
 .DEFAULT_GOAL := help
+
+.PHONY: test-examples
+test-examples:
+	:
+	: 🦾 controlflow
+	:
+	docker compose -f examples/controlflow/docker-compose.yaml run examples
+	:
+	: 🚣 crewai
+	:
+	docker compose -f examples/crewai/docker-compose.yaml run examples
+	docker compose -f examples/crewai/docker-compose.yaml run examples crewai_onboarding_agent.py
+	docker compose -f examples/crewai/docker-compose.yaml run examples crewai_onboarding_agent_human_as_tool.py
+	:
+	: 🦜⛓️ langchain
+	:
+	docker compose -f examples/langchain/docker-compose.yaml run examples 01-math_example.py
+	docker compose -f examples/langchain/docker-compose.yaml run examples 03-human_as_tool.py
+	docker compose -f examples/langchain/docker-compose.yaml run examples 04-human_as_tool_onboarding.py
+	docker compose -f examples/langchain/docker-compose.yaml run examples 05-approvals_and_humans_composite.py
+	:
+	: 🧠 OpenAI
+	:
+	docker compose -f examples/openai_client/docker-compose.yaml run examples
