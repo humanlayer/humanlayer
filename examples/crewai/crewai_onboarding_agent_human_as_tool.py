@@ -3,7 +3,7 @@ from crewai_tools import tool
 
 from dotenv import load_dotenv
 
-from examples.langchain.channels import dm_with_ceo
+from channels import dm_with_head_of_marketing
 
 load_dotenv()
 
@@ -18,6 +18,8 @@ and send each one an email to encourage them to complete the onboarding process.
 offer a meeting to help them where it makes sense.
 
 If they are fully onboard, you should simply request feedback and offer a meeting.
+
+Get approval from the head of marketing before sending
 
 """
 
@@ -43,8 +45,8 @@ def get_info_about_customer(customer_email: str) -> str:
         return "This customer has completed all the of the onboarding steps and is actively using the product."
 
 
+# no approval, human routed in at the prompt layer
 @tool
-@fl.require_approval()
 def send_email(to: str, subject: str, body: str) -> str:
     """Send an email to a user"""
 
@@ -73,7 +75,12 @@ send friendly and encouraging emails to customers to help them fully onboard
 into the product.
 """,
     allow_delegation=False,
-    tools=[get_info_about_customer, get_recently_signed_up_customers, send_email],
+    tools=[
+        get_info_about_customer,
+        get_recently_signed_up_customers,
+        send_email,
+        tool(fl.human_as_tool(dm_with_head_of_marketing)),
+    ],
     verbose=True,
     crew_sharing=False,
 )
@@ -86,7 +93,10 @@ task = Task(
 
 crew = Crew(agents=[general_agent], tasks=[task], verbose=2)
 
+def main():
+    return crew.kickoff()
+
 if __name__ == "__main__":
-    result = crew.kickoff()
+    result = main()
     print("\n\n---------- RESULT ----------\n\n")
     print(result)

@@ -42,6 +42,7 @@ def get_info_about_customer(customer_email: str) -> str:
     """
 
 
+# require CEO approval to send an email
 @fl.require_approval(contact_channel=dm_with_ceo)
 def send_email(to: str, subject: str, body: str) -> str:
     """Send an email to a user"""
@@ -52,11 +53,13 @@ tools = [
     langchain_tools.StructuredTool.from_function(get_info_about_customer),
     langchain_tools.StructuredTool.from_function(send_email),
     langchain_tools.StructuredTool.from_function(
+        # allow the agent to contact the head of marketing for help
         fl.human_as_tool(
             contact_channel=dm_with_head_of_marketing,
         )
     ),
     langchain_tools.StructuredTool.from_function(
+        # allow the agent to contact the summer intern
         fl.human_as_tool(
             contact_channel=dm_with_summer_intern,
         )

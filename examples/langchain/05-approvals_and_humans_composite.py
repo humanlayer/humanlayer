@@ -49,11 +49,14 @@ tools = [
     langchain_tools.StructuredTool.from_function(get_info_about_customer),
     langchain_tools.StructuredTool.from_function(send_email),
     langchain_tools.StructuredTool.from_function(
+        # allow the agent to contact the head of marketing,
+        # but require approval from the CEO before sending
         fl.require_approval(contact_channel=dm_with_ceo).wrap(
             fl.human_as_tool(contact_channel=dm_with_head_of_marketing)
         )
     ),
     langchain_tools.StructuredTool.from_function(
+        # allow the agent to contact the summer intern
         fl.human_as_tool(contact_channel=dm_with_summer_intern)
     ),
 ]

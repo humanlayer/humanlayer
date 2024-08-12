@@ -86,9 +86,9 @@ task = Task(
 crew = Crew(agents=[general_agent], tasks=[task], verbose=2)
 
 def main():
-    result = crew.kickoff()
-    print("\n\n---------- RESULT ----------\n\n")
-    print(result)
+    return crew.kickoff()
 
 if __name__ == "__main__":
     result = main()
+    print("\n\n---------- RESULT ----------\n\n")
+    print(result)

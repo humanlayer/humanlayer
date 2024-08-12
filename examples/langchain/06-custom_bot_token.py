@@ -27,6 +27,7 @@ contact a human for help if you need it
 
 tools = [
     langchain_tools.StructuredTool.from_function(
+        # override the project's slack bot token
         fl.human_as_tool(
             contact_channel=ContactChannel(
                 slack=SlackContactChannel(
