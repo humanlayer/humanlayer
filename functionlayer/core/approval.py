@@ -170,7 +170,8 @@ class FunctionLayer(BaseModel):
                         return fn(*args, **kwargs)
                     else:
                         if (
-                            contact_channel.slack
+                            contact_channel
+                            and contact_channel.slack
                             and contact_channel.slack.context_about_channel_or_user
                         ):
                             return f"User in {contact_channel.slack.context_about_channel_or_user} denied {fn.__name__} with message: {function_call.get('status', {}).get('comment')}"
