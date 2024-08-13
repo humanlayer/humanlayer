@@ -161,9 +161,9 @@ class FunctionLayer(BaseModel):
                     logger.debug(
                         "response %d %s",
                         resp.status_code,
-                        json.dumps(resp.json(), indent=2),
+                        json.dumps(function_call, indent=2),
                     )
-                    if function_call.get("status") is None:
+                    if function_call.get("status", {}).get("approved") is None:
                         continue
 
                     if function_call.get("status", {}).get("approved", False):
