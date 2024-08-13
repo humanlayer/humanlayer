@@ -14,7 +14,7 @@ Bring your LLM (OpenAI, Llama, Claude, etc) and Framework (LangChain, CrewAI, et
 
 <h3>
 
-[Homepage](https://www.functionlayer.ai/) | [Get Started](./docs/getting-started.md) | [Documentation](./docs) | [Examples](./examples)
+[Homepage](https://www.functionlayer.ai/) | [Get Started](./docs/getting-started.md) | [Discord](https://discord.gg/KNATT2xK) | [Documentation](./docs) | [Examples](./examples)
 
 </h3>
 
