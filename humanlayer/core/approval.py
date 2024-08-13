@@ -12,7 +12,7 @@ import requests
 import socketio  # type: ignore
 from pydantic import BaseModel
 
-from functionlayer.core.types import (
+from humanlayer.core.types import (
     ContactChannel,
     FunctionCall,
     FunctionCallSpec,

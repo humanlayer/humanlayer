@@ -27,7 +27,7 @@ class SlackContactChannel(BaseModel):
 
     # a bot token to override the default contact channel
     # if you use a custom bot token, you must set your app's
-    # slack webhook destination appropriately so your functionlayer server can receive them
+    # slack webhook destination appropriately so your humanlayer server can receive them
     bot_token: str | None = None
     #
     # bot_token_ref: str | None

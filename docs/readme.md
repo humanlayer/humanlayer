@@ -26,12 +26,12 @@ Table of Contents:
 
 **[Getting Started Guide](./getting-started.md)**
 
-To get started, check out [Getting Started](./getting-started.md) or jump straight into one of the [Examples](../examples/):
+To get started, check out [Getting Started](./getting-started.md) or jump straight into one of the [Examples](../examples):
 
-- 🦜⛓️ [LangChain](../examples/langchain/01-math_example.py)
-- 🚣‍ [CrewAI](../examples/crewai/crewai_math.py)
-- 🦾 [ControlFlow](../examples/controlflow/controlflow_math.py)
-- 🧠 [Raw OpenAI Client](../examples/openai_client/math_example.py)
+- 🦜⛓️ [LangChain](../examples/langchain/)
+- 🚣‍ [CrewAI](../examples/crewai/)
+- 🦾 [ControlFlow](../examples/controlflow/)
+- 🧠 [Raw OpenAI Client](../examples/openai_client/)
 
 ## Concepts
 

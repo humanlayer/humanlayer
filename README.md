@@ -1,12 +1,12 @@
 <div align="center">
 
-![Logo of functionlayer, two diamonds with a plus sign](./docs/functionlayer_logo.png)
+![Wordmark Logo of HumanLayer](./docs/images/humanlayer-logo.png)
 
-# **FunctionLayer**
+# **HumanLayer**
 
 </div>
 
-**FunctionLayer**: A python toolkit to enable AI agents to communicate with humans in tool-based and asynchronous workflows. By incorporating humans-in-the-loop, agentic tools can be given access to much more powerful and meaningful tool calls and tasks.
+**HumanLayer**: A python toolkit to enable AI agents to communicate with humans in tool-based and asynchronous workflows. By incorporating humans-in-the-loop, agentic tools can be given access to much more powerful and meaningful tool calls and tasks.
 
 Bring your LLM (OpenAI, Llama, Claude, etc) and Framework (LangChain, CrewAI, etc) and start giving your AI agents safe access to the world.
 
@@ -14,11 +14,11 @@ Bring your LLM (OpenAI, Llama, Claude, etc) and Framework (LangChain, CrewAI, et
 
 <h3>
 
-[Homepage](https://www.functionlayer.ai/) | [Get Started](./docs/getting-started.md) | [Discord](https://discord.gg/KNATT2xK) | [Documentation](./docs) | [Examples](./examples)
+[Homepage](https://www.humanlayer.dev/) | [Get Started](./docs/getting-started.md) | [Discord](https://discord.gg/KNATT2xK) | [Documentation](./docs) | [Examples](./examples)
 
 </h3>
 
-[![GitHub Repo stars](https://img.shields.io/github/stars/functionlayer/functionlayer)](https://github.com/functionlayer/functionlayer)
+[![GitHub Repo stars](https://img.shields.io/github/stars/humanlayer/humanlayer)](https://github.com/humanlayer/humanlayer)
 [![License: Apache-2](https://img.shields.io/badge/License-Apache-green.svg)](https://opensource.org/licenses/Apache-2)
 
 </div>
@@ -26,7 +26,7 @@ Bring your LLM (OpenAI, Llama, Claude, etc) and Framework (LangChain, CrewAI, et
 ## Table of contents
 
 - [Getting Started](#getting-started)
-- [Why FunctionLayer?](#why-functionlayer)
+- [Why FunctionLayer?](#why-humanlayer)
 - [Key Features](#key-features)
 - [Examples](#examples)
 - [Roadmap](#roadmap)
@@ -43,7 +43,7 @@ To get started, check out [Getting Started](./docs/getting-started.md), watch th
 - 🧠 [Raw OpenAI Client](./examples/openai_client/math_example.py)
 
 ```shell
-pip install functionlayer-ai
+pip install humanlayer
 ```
 
 or for the bleeding edge
