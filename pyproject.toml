@@ -1,7 +1,7 @@
 [tool.poetry]
-name = "functionlayer"
+name = "functionlayer-ai"
 version = "0.3.0"
-description = "functionlayer"
+description = "functionlayer-ai"
 authors = ["functionlayer authors <dexter@metalytics.dev>"]
 repository = "https://github.com/functionlayer/functionlayer"
 readme = "README.md"
@@ -14,7 +14,7 @@ python = "^3.11"
 pydantic = "2.8.2"
 python-socketio = {extras = ["asyncio-client"], version = "5.11.3"}
 human-id = "0.2.0"
-aiohttp = "3.10.0"
+aiohttp = "3.10.2"
 requests = "2.32.3"
 
 [tool.poetry.scripts]

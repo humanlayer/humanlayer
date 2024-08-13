@@ -5,9 +5,12 @@ from langchain_openai import ChatOpenAI
 
 from functionlayer import (
     ApprovalMethod,
-    ContactChannel,
     FunctionLayer,
-    SlackContactChannel,
+)
+from .channels import (
+    dm_with_ceo,
+    dm_with_head_of_marketing,
+    dm_with_summer_intern,
 )
 
 load_dotenv()
@@ -37,16 +40,6 @@ def get_info_about_customer(customer_email: str) -> str:
     """
 
 
-revops_approval = fl.require_approval(
-    contact_channel=ContactChannel(
-        slack=SlackContactChannel(
-            channel_or_user_id="U06AHHRUCQ6",
-            context_about_channel_or_user="a DM with the revops engineer",
-        )
-    )
-)
-
-
 def send_email(email: str, message: str) -> str:
     """Send an email to a user"""
     return f"Email sent to {email} with message: {message}"
@@ -56,26 +49,15 @@ tools = [
     langchain_tools.StructuredTool.from_function(get_info_about_customer),
     langchain_tools.StructuredTool.from_function(send_email),
     langchain_tools.StructuredTool.from_function(
-        revops_approval.wrap(
-            fl.human_as_tool(
-                contact_channel=ContactChannel(
-                    slack=SlackContactChannel(
-                        channel_or_user_id="C07BU3B7DBM",
-                        context_about_channel_or_user="a DM with the head of marketing",
-                    ),
-                )
-            )
+        # allow the agent to contact the head of marketing,
+        # but require approval from the CEO before sending
+        fl.require_approval(contact_channel=dm_with_ceo).wrap(
+            fl.human_as_tool(contact_channel=dm_with_head_of_marketing)
         )
     ),
     langchain_tools.StructuredTool.from_function(
-        fl.human_as_tool(
-            contact_channel=ContactChannel(
-                slack=SlackContactChannel(
-                    channel_or_user_id="C07BU3B7DBM",
-                    context_about_channel_or_user="a DM with the summer intern",
-                ),
-            )
-        )
+        # allow the agent to contact the summer intern
+        fl.human_as_tool(contact_channel=dm_with_summer_intern)
     ),
 ]
 

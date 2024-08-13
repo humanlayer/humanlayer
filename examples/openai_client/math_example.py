@@ -10,6 +10,8 @@ load_dotenv()
 
 fl = FunctionLayer(approval_method=ApprovalMethod.CLOUD)
 
+PROMPT = "multiply 2 and 5, then add 32 to the result"
+
 
 def add(x: int, y: int) -> int:
     """Add two numbers together."""
@@ -125,6 +127,6 @@ def run_chain(prompt: str, tools_openai: list[dict], tools_map: dict) -> str:
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
-    result = run_chain("multiply 2 and 5", math_tools_openai, math_tools_map)
+    result = run_chain(PROMPT, math_tools_openai, math_tools_map)
     print("\n\n----------Result----------\n\n")
     print(result)

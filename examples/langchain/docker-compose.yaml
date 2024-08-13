@@ -5,4 +5,4 @@ services:
       context: .
       dockerfile: Dockerfile
     volumes:
-      - ${PWD}:/app
+      - ./:/app

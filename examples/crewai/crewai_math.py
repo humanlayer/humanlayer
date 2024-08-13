@@ -31,7 +31,7 @@ general_agent = Agent(
     backstory="""You are an excellent math professor that likes to solve math questions
     in a way that everyone can understand your solution""",
     allow_delegation=False,
-    tools=[add],
+    tools=[add, multiply],
     verbose=True,
     crew_sharing=False,
 )
