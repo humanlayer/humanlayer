@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "functionlayer-ai"
-version = "0.2.0"
+version = "0.3.0"
 description = "functionlayer-ai"
 authors = ["functionlayer authors <dexter@metalytics.dev>"]
 repository = "https://github.com/functionlayer/functionlayer"
