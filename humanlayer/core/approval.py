@@ -27,11 +27,11 @@ R = TypeVar("R")
 logger = logging.getLogger(__name__)
 
 
-class FunctionLayerError(Exception):
+class HumanLayerError(Exception):
     pass
 
 
-class UserDeniedError(FunctionLayerError):
+class UserDeniedError(HumanLayerError):
     pass
 
 
@@ -44,7 +44,7 @@ class ApprovalMethod(Enum):
     CLOUD = "cloud"
 
 
-class FunctionLayerWrapper:
+class HumanLayerWrapper:
     def __init__(self, decorator: Callable) -> None:
         self.decorator = decorator
 
@@ -55,8 +55,8 @@ class FunctionLayerWrapper:
         return self.decorator(fn)
 
 
-class FunctionLayer(BaseModel):
-    """🧱 FunctionLayer"""
+class HumanLayer(BaseModel):
+    """🧱 HumanLayer"""
 
     model_config = {"arbitrary_types_allowed": True}
 
@@ -86,11 +86,11 @@ class FunctionLayer(BaseModel):
             raise ValueError(exception)
 
     def __str__(self):
-        return "FunctionLayer()"
+        return "HumanLayer()"
 
     def require_approval(
         self, contact_channel: ContactChannel | None = None
-    ) -> FunctionLayerWrapper:
+    ) -> HumanLayerWrapper:
         def decorator(fn):
             if self.approval_method is ApprovalMethod.CLI:
                 return self._approve_cli(fn)
@@ -100,7 +100,7 @@ class FunctionLayer(BaseModel):
                 exception = f"Approval method {self.approval_method} not implemented"
                 raise NotImplementedError(exception)
 
-        return FunctionLayerWrapper(decorator)
+        return HumanLayerWrapper(decorator)
 
     def _approve_cli(self, fn: Callable[[T], R]) -> Callable[[T], R]:
         @wraps(fn)

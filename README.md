@@ -49,17 +49,17 @@ pip install humanlayer
 or for the bleeding edge
 
 ```shell
-pip install git+https://github.com/functionlayer/functionlayer
+pip install git+https://github.com/humanlayer/humanlayer-ai-llm-agents
 ```
 
-Set `FUNCTIONLAYER_API_TOKEN` and wrap your AI function in `require_approval()`
+Set `HUMANLAYER_API_TOKEN` and wrap your AI function in `require_approval()`
 
 ```python
 
-from functionlayer import ApprovalMethod, FunctionLayer
-fl = FunctionLayer(approval_method=ApprovalMethod.CLOUD) # or CLI
+from humanlayer import ApprovalMethod, HumanLayer
+hl = HumanLayer(approval_method=ApprovalMethod.CLOUD) # or CLI
 
-@fl.require_approval()
+@hl.require_approval()
 def send_email(to: str, subject: str, body: str):
     """Send an email to the customer"""
     ...
