@@ -8,11 +8,11 @@ from langchain.agents import AgentType, initialize_agent
 from langchain.tools import tool
 from langchain_openai import ChatOpenAI
 
-from functionlayer import ApprovalMethod, FunctionLayer
+from functionlayer import ApprovalMethod, HumanLayer
 
 load_dotenv()
 
-fl = FunctionLayer(approval_method=ApprovalMethod.CLOUD)
+hl = HumanLayer(approval_method=ApprovalMethod.CLOUD)
 
 
 @tool

@@ -2,7 +2,7 @@
 
 This is a straightforward and simple (albeit verbose) example of tool calling with a plain OpenAI Client -
 no frameworks are used to manage the tool calling loop. Among other things, this example serves as a good
-"look under the hood" for how frameworks generally implement tool calling. 
+"look under the hood" for how frameworks generally implement tool calling.
 
 In this example, as in others, the `multiply(x: int, y: int) -> int` function is wrapped with
 `@fl.require_approval`.
@@ -39,4 +39,3 @@ INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1
 INFO:__main__:last message led to 1 tool calls: [('multiply', '{"x":2,"y":5}')]
 INFO:__main__:CALL tool multiply with {'x': 2, 'y': 5}
 ```
-

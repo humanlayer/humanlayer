@@ -3,19 +3,20 @@ from dotenv import load_dotenv
 from langchain.agents import AgentType, initialize_agent
 from langchain_openai import ChatOpenAI
 
-from examples.langchain.channels import (
-    dm_with_summer_intern,
-    dm_with_head_of_marketing,
-    dm_with_ceo,
-)
 from functionlayer.core.approval import (
     ApprovalMethod,
     FunctionLayer,
 )
 
+from .channels import (
+    dm_with_ceo,
+    dm_with_head_of_marketing,
+    dm_with_summer_intern,
+)
+
 load_dotenv()
 
-fl = FunctionLayer(approval_method=ApprovalMethod.CLOUD)
+hl = HumanLayer(approval_method=ApprovalMethod.CLOUD)
 
 task_prompt = """
 
@@ -37,7 +38,7 @@ def get_info_about_customer(customer_email: str) -> str:
     """get info about a customer"""
     return """
     This customer has completed most of the onboarding steps,
-    but still needs to invite a few team members before they can be 
+    but still needs to invite a few team members before they can be
     considered fully onboarded
     """
 
