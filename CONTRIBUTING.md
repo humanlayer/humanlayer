@@ -1,4 +1,4 @@
-# Contributing to FunctionLayer
+# Contributing to HumanLayer
 
 If you're looking to contribute, please:
 

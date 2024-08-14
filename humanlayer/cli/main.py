@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 load_dotenv(dotenv_path=os.path.join(os.getcwd(), ".env"))
 
 
-@click.group(name="functionlayer")
+@click.group(name="humanlayer")
 def cli() -> None:
     pass
 

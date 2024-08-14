@@ -1,9 +1,8 @@
-version: '3.7'
+version: "3.7"
 services:
   examples:
     build:
-        context: .
-        dockerfile: Dockerfile
+      context: .
+      dockerfile: Dockerfile
     volumes:
       - ./:/app
-

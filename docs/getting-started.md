@@ -11,7 +11,7 @@ pip install functionlayer-ai
 Or, for the bleeding edge:
 
 ```bash
-pip install git+https://github.com/functionlayer/functionlayer
+pip install git+https://github.com/humanlayer/humanlayer
 ```
 
 ### Choose an LLM Client and Write your first tool-calling agent
@@ -20,10 +20,10 @@ You'll need a short python script that defines a function that you want to gate 
 and an agent+prompt that will execute the function.
 There are a number of different examples you can start from, including:
 
-- 🦜⛓️ [LangChain Math](./examples/langchain/math_example.py)
-- 🚣‍ [CrewAI Math](./examples/crewai/crewai_math.py)
-- 🦾 [ControlFlow Math](./examples/controlflow/controlflow_math.py)
-- 🧠 [Raw OpenAI Client](./examples/openai_client/math_example.py)
+- 🦜⛓️ [LangChain Math](../examples/langchain/01-math_example.py)
+- 🚣‍ [CrewAI Math](../examples/crewai/crewai_math.py)
+- 🦾 [ControlFlow Math](../examples/controlflow/controlflow_math.py)
+- 🧠 [Raw OpenAI Client](../examples/openai_client/math_example.py)
 
 We'll use LangChain and OpenAI here since it's fairly succinct for this use case.
 
@@ -105,7 +105,7 @@ The result of multiplying 2 and 5, then adding 32 to the result, is 42.
 
 ```
 
-### Wrap a function with functionlayer
+### Wrap a function with humanlayer
 
 Once you've run the example and verified it works, it's time to wrap the function with FunctionLayer.
 Add the following to the top of your file:
@@ -116,8 +116,8 @@ from langchain.agents import AgentType
 from langchain.tools import tool
 from langchain_openai import ChatOpenAI
 
-+ from functionlayer import FunctionLayer
-+ fl = FunctionLayer()
++ from humanlayer import HumanLayer
++ hl = HumanLayer()
 
 
 @tool
@@ -132,11 +132,11 @@ def multiply(x: int, y: int) -> int:
     return x * y
 ```
 
-and then wrap your `multiply` function with `@fl.require_approval()`:
+and then wrap your `multiply` function with `@hl.require_approval()`:
 
 ```diff
-from functionlayer import FunctionLayer
-fl = FunctionLayer()
+from humanlayer import HumanLayer
+hl = HumanLayer()
 
 
 @tool
@@ -146,7 +146,7 @@ def add(x: int, y: int) -> int:
 
 
 @tool
-+ @fl.require_approval()
++ @hl.require_approval()
 def multiply(x: int, y: int) -> int:
     """multiply two numbers"""
     return x * y
@@ -172,7 +172,7 @@ def add(x: int, y: int) -> int:
 
 
 @tool
-@fl.require_approval()
+@hl.require_approval()
 def multiply(x: int, y: int) -> int:
     """multiply two numbers"""
     return x * y
@@ -268,7 +268,7 @@ Navigate to the Approval Queue and click the Status button to approve the functi
 
 ### Connect Slack
 
-Web approvals are a start, but FunctionLayer really shines when you connect your slack instance. See [configuring slack](./configuring_slack.md) for more information on how to do this, and then you can
+Web approvals are a start, but FunctionLayer really shines when you connect your slack instance. See [configuring slack](./configuring-slack.md) for more information on how to do this, and then you can
 
 ### Try a Human as tool
 

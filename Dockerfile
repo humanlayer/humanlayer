@@ -24,7 +24,7 @@ RUN --mount=type=cache,target=/root/.cache/pypoetry/cache \
     poetry install --no-interaction --no-ansi --without dev
 
 # Copy Python code to the Docker image
-COPY functionlayer-core /code/functionlayer-core
+COPY humanlayer /code/humanlayer
 
 ENTRYPOINT ["functionlayer"]
 

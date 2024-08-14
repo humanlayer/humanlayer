@@ -12,7 +12,7 @@ import requests
 import socketio  # type: ignore
 from pydantic import BaseModel
 
-from functionlayer.core.types import (
+from humanlayer.core.types import (
     ContactChannel,
     FunctionCall,
     FunctionCallSpec,
@@ -27,11 +27,11 @@ R = TypeVar("R")
 logger = logging.getLogger(__name__)
 
 
-class FunctionLayerError(Exception):
+class HumanLayerError(Exception):
     pass
 
 
-class UserDeniedError(FunctionLayerError):
+class UserDeniedError(HumanLayerError):
     pass
 
 
@@ -44,7 +44,7 @@ class ApprovalMethod(Enum):
     CLOUD = "cloud"
 
 
-class FunctionLayerWrapper:
+class HumanLayerWrapper:
     def __init__(self, decorator: Callable) -> None:
         self.decorator = decorator
 
@@ -55,8 +55,8 @@ class FunctionLayerWrapper:
         return self.decorator(fn)
 
 
-class FunctionLayer(BaseModel):
-    """🧱 FunctionLayer"""
+class HumanLayer(BaseModel):
+    """🧱 HumanLayer"""
 
     model_config = {"arbitrary_types_allowed": True}
 
@@ -64,9 +64,7 @@ class FunctionLayer(BaseModel):
     api_base_url: str | None = None
     ws_base_url: str | None = None
     run_id: str | None = None
-    approval_method: ApprovalMethod = os.getenv(
-        "FUNCTIONLAYER_APPROVAL_METHOD", ApprovalMethod.CLI
-    )
+    approval_method: ApprovalMethod | None
     sio: socketio.AsyncClient = socketio.AsyncClient()
 
     CLI: ApprovalMethod = ApprovalMethod.CLI
@@ -80,7 +78,7 @@ class FunctionLayer(BaseModel):
         )
         self.ws_base_url = self.ws_base_url or os.getenv("FUNCTIONLAYER_WS_BASE")
         self.approval_method = self.approval_method or os.getenv(
-            "FUNCTIONLAYER_APPROVAL_METHOD"
+            "FUNCTIONLAYER_APPROVAL_METHOD", ApprovalMethod.CLI
         )
         self.run_id = self.run_id or os.getenv("FUNCTIONLAYER_RUN_ID", genid("run"))
         if not self.api_key and self.approval_method is not ApprovalMethod.CLI:
@@ -88,11 +86,11 @@ class FunctionLayer(BaseModel):
             raise ValueError(exception)
 
     def __str__(self):
-        return "FunctionLayer()"
+        return "HumanLayer()"
 
     def require_approval(
         self, contact_channel: ContactChannel | None = None
-    ) -> FunctionLayerWrapper:
+    ) -> HumanLayerWrapper:
         def decorator(fn):
             if self.approval_method is ApprovalMethod.CLI:
                 return self._approve_cli(fn)
@@ -102,7 +100,7 @@ class FunctionLayer(BaseModel):
                 exception = f"Approval method {self.approval_method} not implemented"
                 raise NotImplementedError(exception)
 
-        return FunctionLayerWrapper(decorator)
+        return HumanLayerWrapper(decorator)
 
     def _approve_cli(self, fn: Callable[[T], R]) -> Callable[[T], R]:
         @wraps(fn)

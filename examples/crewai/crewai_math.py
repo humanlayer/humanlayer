@@ -1,13 +1,13 @@
 from crewai import Agent, Crew, Task
 from crewai_tools import tool
-
 from dotenv import load_dotenv
+
+from functionlayer import ApprovalMethod, HumanLayer
 
 load_dotenv()
 
-from functionlayer import ApprovalMethod, FunctionLayer
 
-fl = FunctionLayer(approval_method=ApprovalMethod.CLOUD)
+hl = HumanLayer(approval_method=ApprovalMethod.CLOUD)
 
 PROMPT = """multiply 2 and 5, then add 32 to the result"""
 

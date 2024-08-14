@@ -3,19 +3,20 @@ from dotenv import load_dotenv
 from langchain.agents import AgentType, initialize_agent
 from langchain_openai import ChatOpenAI
 
-from examples.langchain.channels import (
-    dm_with_ceo,
-    dm_with_head_of_marketing,
-    dm_with_summer_intern,
-)
-from functionlayer.core.approval import (
+from functionlayer import (
     ApprovalMethod,
     FunctionLayer,
 )
 
+from .channels import (
+    dm_with_ceo,
+    dm_with_head_of_marketing,
+    dm_with_summer_intern,
+)
+
 load_dotenv()
 
-fl = FunctionLayer(approval_method=ApprovalMethod.CLOUD)
+hl = HumanLayer(approval_method=ApprovalMethod.CLOUD)
 
 task_prompt = """
 

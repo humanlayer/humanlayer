@@ -13,7 +13,6 @@ Activate a new virtualenv however you prefer
 pip install -r requirements.txt
 ```
 
-
 ```
 python crewai_math.py
 ```

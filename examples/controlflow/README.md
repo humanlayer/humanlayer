@@ -11,7 +11,6 @@ Activate a new virtualenv however you prefer
 pip install -r requirements.txt
 ```
 
-
 ```
 python controlflow_math.py
 ```
