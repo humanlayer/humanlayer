@@ -7,7 +7,7 @@ RUN pip install \
     python-dotenv \
     crewai \
     crewai-tools \
-    humanlayer
+    humanlayer==0.4.0
 
 COPY . /app
 
