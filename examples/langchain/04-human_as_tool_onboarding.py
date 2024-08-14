@@ -3,9 +3,9 @@ from dotenv import load_dotenv
 from langchain.agents import AgentType, initialize_agent
 from langchain_openai import ChatOpenAI
 
-from functionlayer.core.approval import (
+from humanlayer.core.approval import (
     ApprovalMethod,
-    FunctionLayer,
+    HumanLayer,
 )
 
 from .channels import (
