@@ -8,7 +8,7 @@ from humanlayer.core.approval import (
     HumanLayer,
 )
 
-from .channels import (
+from channels import (
     dm_with_ceo,
     dm_with_head_of_marketing,
     dm_with_summer_intern,
@@ -55,13 +55,13 @@ tools = [
     langchain_tools.StructuredTool.from_function(send_email),
     langchain_tools.StructuredTool.from_function(
         # allow the agent to contact the head of marketing for help
-        fl.human_as_tool(
+        hl.human_as_tool(
             contact_channel=dm_with_head_of_marketing,
         )
     ),
     langchain_tools.StructuredTool.from_function(
         # allow the agent to contact the summer intern
-        fl.human_as_tool(
+        hl.human_as_tool(
             contact_channel=dm_with_summer_intern,
         )
     ),

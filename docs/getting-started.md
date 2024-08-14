@@ -272,4 +272,4 @@ Web approvals are a start, but HumanLayer really shines when you connect your sl
 
 ### Try a Human as tool
 
-`fl.human_as_tool()` gives you a generic, LLM-ready tool that an agent can call to contact a human for feedback, advice, or other input. See [the langchain human as tool example](../examples/langchain/03-human_as_tool.py) for more.
+`hl.human_as_tool()` gives you a generic, LLM-ready tool that an agent can call to contact a human for feedback, advice, or other input. See [the langchain human as tool example](../examples/langchain/03-human_as_tool.py) for more.

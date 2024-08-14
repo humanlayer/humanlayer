@@ -139,8 +139,8 @@ ceo_direct_message = ContactChannel(
 run_llm_task(
   prompt="Determine the top objectives for the customer success org and send them to the CEO",
   tools=[
-    fl.human_as_tool(customer_success_direct_message),
-    fl.human_as_tool(ceo_direct_message)
+    hl.human_as_tool(customer_success_direct_message),
+    hl.human_as_tool(ceo_direct_message)
   ],
   llm=OpenAI(model="gpt-4o")
 )
@@ -271,7 +271,7 @@ from humanlayer import ContactChannel, HumanLayer, SlackContactChannel
 hl = HumanLayer()
 
 tools = [
-    fl.human_as_tool(
+    hl.human_as_tool(
         ContactChannel(
             slack=SlackContactChannel(
                 channel_or_user_id="U01JQX9KZZ",
@@ -279,7 +279,7 @@ tools = [
             )
         )
     ),
-    fl.human_as_tool(
+    hl.human_as_tool(
         ContactChannel(
             slack=SlackContactChannel(
                 channel_or_user_id="CQZIQ0X9KZZ",
