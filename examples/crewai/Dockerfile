@@ -7,7 +7,7 @@ RUN pip install \
     python-dotenv \
     crewai \
     crewai-tools \
-    functionlayer-ai
+    humanlayer
 
 COPY . /app
 
