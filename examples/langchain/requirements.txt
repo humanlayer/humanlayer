@@ -1,5 +1,5 @@
 langchain
 langchain-openai
 python-dotenv
-# install functionlayer in editable mode
+# install humanlayer in editable mode
 -e ../..

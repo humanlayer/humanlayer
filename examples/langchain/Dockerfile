@@ -7,7 +7,7 @@ RUN pip install \
     python-dotenv \
     langchain \
     langchain-openai \
-    functionlayer-ai
+    humanlayer
 
 COPY . /app
 

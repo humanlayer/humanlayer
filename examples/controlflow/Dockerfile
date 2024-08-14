@@ -6,7 +6,7 @@ WORKDIR /app
 RUN pip install \
     python-dotenv \
     controlflow \
-    functionlayer-ai
+    humanlayer
 
 COPY . /app
 
