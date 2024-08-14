@@ -55,7 +55,7 @@ Set `HUMANLAYER_API_TOKEN` and wrap your AI function in `require_approval()`
 ```python
 
 from humanlayer import ApprovalMethod, HumanLayer
-hl = HumanLayer(approval_method=ApprovalMethod.CLOUD) # or CLI
+hl = HumanLayer.cloud() # or CLI
 
 @hl.require_approval()
 def send_email(to: str, subject: str, body: str):
@@ -116,7 +116,7 @@ HumanLayer provides a set of tools to *deterministically* guarantee human oversi
 ## Key Features
 
 - **Require Human Approval for Function Calls**: the `@hl.require_approval()` decorator blocks specifc function calls until a human has been consulted - upon denial, feedback will be passed to the LLM
-- **Human as Tool**: generic `fl.human_as_tool()` allows for contacting a human for answers, advice, or feedback
+- **Human as Tool**: generic `hl.human_as_tool()` allows for contacting a human for answers, advice, or feedback
 - **OmniChannel Contact**: Contact humans and collect responses across Slack, Email, Discord, and more
 - **Granular Routing**: Route approvals to specific teams or individuals
 - **Bring your own LLM + Framework**: Because HumanLayer is implemented at tools layer, it supports any LLM and all major orchestration frameworks that support tool calling.

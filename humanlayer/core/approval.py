@@ -74,19 +74,27 @@ class HumanLayer(BaseModel):
         super().__init__(**kwargs)
         self.api_key = self.api_key or os.getenv("HUMANLAYER_API_KEY")
         self.api_base_url = self.api_base_url or os.getenv(
-            "HUMANLAYER_API_BASE", "https://api.functionlayer.com/functionlayer/v1"
+            "HUMANLAYER_API_BASE", "https://api.humanlayer.dev/humanlayer/v1"
         )
-        self.ws_base_url = self.ws_base_url or os.getenv("FUNCTIONLAYER_WS_BASE")
+        self.ws_base_url = self.ws_base_url or os.getenv("HUMANLAYER_WS_BASE")
         self.approval_method = self.approval_method or os.getenv(
-            "FUNCTIONLAYER_APPROVAL_METHOD", ApprovalMethod.CLI
+            "HUMANLAYER_APPROVAL_METHOD", ApprovalMethod.CLI
         )
-        self.run_id = self.run_id or os.getenv("FUNCTIONLAYER_RUN_ID", genid("run"))
+        self.run_id = self.run_id or os.getenv("HUMANLAYER_RUN_ID", genid("run"))
         if not self.api_key and self.approval_method is not ApprovalMethod.CLI:
             exception = f"HUMANLAYER_API_KEY is required for approval_method {self.approval_method}"
             raise ValueError(exception)
 
     def __str__(self):
         return "HumanLayer()"
+
+    @classmethod
+    def cloud(cls, **kwargs):
+        return cls(approval_method=ApprovalMethod.CLOUD, **kwargs)
+
+    @classmethod
+    def cli(cls, **kwargs):
+        return cls(approval_method=ApprovalMethod.CLI, **kwargs)
 
     def require_approval(
         self, contact_channel: ContactChannel | None = None

@@ -7,7 +7,14 @@ Two ways to get started:
 
 ## If you're comfortable with virtualenvs
 
-Activate a new virtualenv however you prefer
+Activate a new virtualenv however you prefer, for example:
+
+```
+python3 -m venv venv
+source venv/bin/activate
+```
+
+install requirements
 
 ```
 pip install -r requirements.txt
