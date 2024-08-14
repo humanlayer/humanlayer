@@ -1,4 +1,4 @@
-from functionlayer import ContactChannel, SlackContactChannel
+from humanlayer import ContactChannel, SlackContactChannel
 
 dm_with_ceo = ContactChannel(
     slack=SlackContactChannel(

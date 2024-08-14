@@ -4,7 +4,7 @@ import logging
 from dotenv import load_dotenv
 from openai import OpenAI
 
-from functionlayer import ApprovalMethod, FunctionLayer
+from humanlayer import ApprovalMethod, HumanLayer
 
 load_dotenv()
 

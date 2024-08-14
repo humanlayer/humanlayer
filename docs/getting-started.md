@@ -5,7 +5,7 @@ To get started, you can check out one of the [Examples](../examples/) or follow 
 In your desired python environment, run:
 
 ```bash
-pip install functionlayer-ai
+pip install humanlayer
 ```
 
 Or, for the bleeding edge:
@@ -16,7 +16,7 @@ pip install git+https://github.com/humanlayer/humanlayer
 
 ### Choose an LLM Client and Write your first tool-calling agent
 
-You'll need a short python script that defines a function that you want to gate with FunctionLayer,
+You'll need a short python script that defines a function that you want to gate with HumanLayer,
 and an agent+prompt that will execute the function.
 There are a number of different examples you can start from, including:
 
@@ -107,7 +107,7 @@ The result of multiplying 2 and 5, then adding 32 to the result, is 42.
 
 ### Wrap a function with humanlayer
 
-Once you've run the example and verified it works, it's time to wrap the function with FunctionLayer.
+Once you've run the example and verified it works, it's time to wrap the function with HumanLayer.
 Add the following to the top of your file:
 
 ```diff
@@ -161,8 +161,8 @@ from langchain.agents import AgentType
 from langchain.tools import tool
 from langchain_openai import ChatOpenAI
 
-from functionlayer import FunctionLayer
-fl = FunctionLayer()
+from humanlayer import HumanLayer
+hl = HumanLayer()
 
 
 @tool
@@ -228,10 +228,10 @@ Invoking: `add` with `{'x': 14, 'y': 32}`
 The result of multiplying 2 and 7, then adding 32 to the result, is 46.
 ```
 
-### Integrate with a functionlayer server
+### Integrate with a humanlayer server
 
 To enable collaborative approvals across slack, email, and other channels, you'll need to connect the
-functionlayer SDK to a server. The easiest way to do this is to log into [FunctionLayer Cloud](https://app.functionlayer.com) and create a new project and API token, then set it in your shell environment or `.env` file:
+humanlayer SDK to a server. The easiest way to do this is to log into [HumanLayer Cloud](https://app.humanlayer.com) and create a new project and API token, then set it in your shell environment or `.env` file:
 
 ```bash
 export FUNCTIONLAYER_API_TOKEN=sk-proj-...
@@ -241,10 +241,10 @@ Then you can change your script to use `ApprovalMethod.CLOUD`:
 
 ```diff
 
-- from functionlayer import FunctionLayer
-- fl = FunctionLayer()
-+ from functionlayer import ApprovalMethod, FunctionLayer
-+ fl = FunctionLayer(approval_method=ApprovalMethod.CLOUD)
+- from humanlayer import HumanLayer
+- hl = HumanLayer()
++ from humanlayer import ApprovalMethod, HumanLayer
++ hl = HumanLayer(approval_method=ApprovalMethod.CLOUD)
 
 
 @tool
@@ -254,7 +254,7 @@ def add(x: int, y: int) -> int:
 
 ```
 
-Re-running the script, you'll see the same function now show in your approval queue at [FunctionLayer Cloud](https://app.functionlayer.com).
+Re-running the script, you'll see the same function now show in your approval queue at [HumanLayer Cloud](https://app.humanlayer.dev).
 
 Navigate to the Approval Queue and click the Status button to approve the function call.
 
@@ -268,7 +268,7 @@ Navigate to the Approval Queue and click the Status button to approve the functi
 
 ### Connect Slack
 
-Web approvals are a start, but FunctionLayer really shines when you connect your slack instance. See [configuring slack](./configuring-slack.md) for more information on how to do this, and then you can
+Web approvals are a start, but HumanLayer really shines when you connect your slack instance. See [configuring slack](./configuring-slack.md) for more information on how to do this, and then you can
 
 ### Try a Human as tool
 

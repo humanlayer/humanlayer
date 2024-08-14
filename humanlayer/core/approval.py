@@ -72,7 +72,7 @@ class HumanLayer(BaseModel):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.api_key = self.api_key or os.getenv("FUNCTIONLAYER_API_KEY")
+        self.api_key = self.api_key or os.getenv("HUMANLAYER_API_KEY")
         self.api_base_url = self.api_base_url or os.getenv(
             "FUNCTIONLAYER_API_BASE", "https://api.functionlayer.com/functionlayer/v1"
         )
@@ -82,7 +82,7 @@ class HumanLayer(BaseModel):
         )
         self.run_id = self.run_id or os.getenv("FUNCTIONLAYER_RUN_ID", genid("run"))
         if not self.api_key and self.approval_method is not ApprovalMethod.CLI:
-            exception = f"FUNCTIONLAYER_API_KEY is required for approval_method {self.approval_method}"
+            exception = f"HUMANLAYER_API_KEY is required for approval_method {self.approval_method}"
             raise ValueError(exception)
 
     def __str__(self):

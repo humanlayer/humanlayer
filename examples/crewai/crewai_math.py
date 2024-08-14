@@ -2,7 +2,7 @@ from crewai import Agent, Crew, Task
 from crewai_tools import tool
 from dotenv import load_dotenv
 
-from functionlayer import ApprovalMethod, HumanLayer
+from humanlayer import ApprovalMethod, HumanLayer
 
 load_dotenv()
 
@@ -19,7 +19,7 @@ def add(a: int, b: int) -> int:
 
 
 @tool
-@fl.require_approval()
+@hl.require_approval()
 def multiply(a: int, b: int) -> int:
     """multiply two numbers"""
     return a * b
@@ -43,7 +43,7 @@ task = Task(
     expected_output="A numerical answer.",
 )
 
-crew = Crew(agents=[general_agent], tasks=[task], verbose=2)
+crew = Crew(agents=[general_agent], tasks=[task], verbose=True)
 
 if __name__ == "__main__":
     result = crew.kickoff()
