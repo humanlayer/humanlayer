@@ -7,7 +7,7 @@ RUN pip install \
     python-dotenv \
     langchain \
     langchain-openai \
-    humanlayer
+    humanlayer==0.4.0
 
 COPY . /app
 

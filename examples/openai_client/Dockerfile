@@ -6,7 +6,7 @@ WORKDIR /app
 RUN pip install \
     python-dotenv \
     openai \
-    humanlayer
+    humanlayer==0.4.0
 
 COPY . /app
 
