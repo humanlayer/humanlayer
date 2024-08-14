@@ -1,7 +1,7 @@
 #
 # an example that runs some langchain math operations
 # where the multiply function requires approval
-# via functionlayer
+# via humanlayer
 #
 from dotenv import load_dotenv
 from langchain.agents import AgentType, initialize_agent

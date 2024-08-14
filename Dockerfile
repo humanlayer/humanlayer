@@ -26,7 +26,7 @@ RUN --mount=type=cache,target=/root/.cache/pypoetry/cache \
 # Copy Python code to the Docker image
 COPY humanlayer /code/humanlayer
 
-ENTRYPOINT ["functionlayer"]
+ENTRYPOINT ["humanlayer"]
 
 FROM prod as dev
 
