@@ -3,11 +3,8 @@ FROM python:3.11-slim-bookworm as prod
 
 WORKDIR /app
 
-RUN pip install \
-    python-dotenv \
-    crewai \
-    crewai-tools \
-    humanlayer==0.4.0
+COPY requirements.txt /app
+RUN pip install -r requirements.txt
 
 COPY . /app
 
