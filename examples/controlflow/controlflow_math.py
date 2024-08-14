@@ -6,7 +6,7 @@ load_dotenv()
 
 import controlflow as cf
 
-hl = HumanLayer(approval_method=ApprovalMethod.CLOUD)
+hl = HumanLayer.cloud()
 
 
 def add(x: int, y: int) -> int:

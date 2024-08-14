@@ -17,7 +17,7 @@ load_dotenv()
 
 override_bot_token = os.getenv("SLACK_BOT_TOKEN")
 
-hl = HumanLayer(approval_method=ApprovalMethod.CLOUD)
+hl = HumanLayer.cloud()
 
 
 task_prompt = """

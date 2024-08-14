@@ -55,7 +55,7 @@ Set `HUMANLAYER_API_TOKEN` and wrap your AI function in `require_approval()`
 ```python
 
 from humanlayer import ApprovalMethod, HumanLayer
-hl = HumanLayer(approval_method=ApprovalMethod.CLOUD) # or CLI
+hl = HumanLayer.cloud() # or CLI
 
 @hl.require_approval()
 def send_email(to: str, subject: str, body: str):

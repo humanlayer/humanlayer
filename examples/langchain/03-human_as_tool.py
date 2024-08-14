@@ -12,7 +12,7 @@ from humanlayer import (
 
 load_dotenv()
 
-hl = HumanLayer(approval_method=ApprovalMethod.CLOUD)
+hl = HumanLayer.cloud()
 
 task_prompt = """
 figure out the wizard's favorite color,

@@ -49,7 +49,7 @@ From the [OpenAI docs](https://platform.openai.com/docs/guides/function-calling)
 
 > Under the hood, functions are injected into the system message in a syntax the model has been trained on
 
-When a tool call is selected by the LLM, it is the responsibility of the client code or framework to actually cal the function and send the result back to the LLM.
+When a tool call is selected by the LLM, it is the responsibility of the client code or framework to actually call the function and send the result back to the LLM.
 
 An example tool calling workflow might look like
 
@@ -119,7 +119,7 @@ In addition to gating function calls, HumanLayer can also provide a more generic
 ```python
 from humanlayer import ApprovalMethod, ContactChannel, HumanLayer, SlackContactChannel
 
-hl = HumanLayer(approval_method=ApprovalMethod.CLOUD)
+hl = HumanLayer.cloud()
 
 customer_success_direct_message = ContactChannel(
   slack=SlackContactChannel(
@@ -171,19 +171,16 @@ dm_sales = ContactChannel(
     )
 )
 
-dm_engineering = ContactChannel(
+channel_engineering = ContactChannel(
   discord=DiscordContactChannel(
-    channel_or_user_id="U02ZJXQKZ9",
+    channel_or_user_id="C02ZJXQKZ9",
     context_about_channel_or_user="a channel with the site reliability engineering team",
   )
 )
 
-fl_default = HumanLayer(approval_method=ApprovalMethod.CLOUD)
+hl_default = HumanLayer.cloud()
 
-fl_sales = HumanLayer(
-    approval_method=ApprovalMethod.CLOUD,
-    contact_channel=dm_sales,
-)
+hl_sales = HumanLayer.cloud(contact_channel=dm_sales)
 
 @hl_default.require_approval() # uses project default contact channel
 def send_email(to: str, subject: str, body: str):
@@ -195,19 +192,20 @@ def update_crm_record(opportunity_id: str, status: str):
   """Update the CRM record for the opportunity"""
   ...
 
-@hl_default.require_approval(dm_engineering) # uses the engineering contact channel
+@hl_default.require_approval(channel_engineering) # uses the engineering contact channel
 def drop_production_database(database_name: str):
   """Drop the specified database"""
   ...
 ```
 
-The same is possible for "human as tool" functions:
+The same is possible for "human as tool", where the contact channel
+for a project can be overriden at `HumanLayer` or `human_as_tool()` level.
 
 ```python
 tools = [
-   fl_default.human_as_tool(),
-   fl_sales.human_as_tool(),
-   fl_default.human_as_tool(dm_engineering),
+   hl_default.human_as_tool(),
+   hl_sales.human_as_tool(),
+   hl_default.human_as_tool(channel_engineering),
 ]
 ```
 
@@ -230,7 +228,7 @@ import os
 
 from humanlayer import HumanLayer
 
-hl = HumanLayer(api_token=os.getenv("FUNCTIONLAYER_API_TOKEN"))
+hl = HumanLayer(api_token=os.getenv("HUMANLAYER_API_TOKEN"))
 
 @hl.require_approval()
 def send_email_to_customer(email: str, subject: str, body: str) -> str:
@@ -305,14 +303,14 @@ By default, HumanLayer will run in [CLI mode](#cli-mode), which allows a human t
 To get started with FuntionLayer Cloud, get an API token from https://app.humanlayer.dev and set it in your environment
 
 ```
-export FUNCTIONLAYER_API_TOKEN=
+export HUMANLAYER_API_TOKEN=
 ```
 
-then initialize HumanLayer with `ApprovalMethod.CLOUD`
+then initialize HumanLayer with `HumanLayer.cloud()`
 
 ```python
-from humanlayer import ApprovalMethod, HumanLayer
-hl = HumanLayer(approval_method=ApprovalMethod.CLOUD)
+from humanlayer import HumanLayer
+hl = HumanLayer.cloud()
 ```
 
 See [Getting Started](./getting-started.md) for more information on how to set up and use HumanLayer Cloud.
@@ -327,13 +325,13 @@ The functionlayer CLI mode allows for a local development mode whereby all "huma
 
 It can be a good way to experiment with LLM workflows without needing to integrat slack, email, or any of the [HumanLayer Cloud](#functionlayer-cloud) components.
 
-to run in CLI mode, initialize HumanLayer with `ApprovalMethod.CLI`
+to run in CLI mode, initialize HumanLayer with `HumanLayer.cli()`
 
 ```python
 
 from humanlayer import HumanLayer, ApprovalMethod
 
-hl = HumanLayer(approval_method=ApprovalMethod.CLI)
+hl = HumanLayer.cli()
 
 ```
 
