@@ -98,7 +98,7 @@ The High stakes functions are the ones that are the most valuable and promise th
 FunctionLayer provides a set of decorators that can be used to add approval requirements to specific functions.
 
 ```python
-@fl.require_approval()
+@hl.require_approval()
 def send_email(to: str, subject: str, body: str):
   """Send an email to the customer"""
   ...
@@ -119,7 +119,7 @@ In addition to gating function calls, FunctionLayer can also provide a more gene
 ```python
 from functionlayer import ApprovalMethod, ContactChannel, FunctionLayer, SlackContactChannel
 
-fl = FunctionLayer(approval_method=ApprovalMethod.CLOUD)
+hl = HumanLayer(approval_method=ApprovalMethod.CLOUD)
 
 customer_success_direct_message = ContactChannel(
   slack=SlackContactChannel(
@@ -185,17 +185,17 @@ fl_sales = FunctionLayer(
     contact_channel=dm_sales,
 )
 
-@fl_default.require_approval() # uses project default contact channel
+@hl_default.require_approval() # uses project default contact channel
 def send_email(to: str, subject: str, body: str):
   """Send an email to the customer"""
   ...
 
-@fl_sales.require_approval() # uses the sales contact channel
+@hl_sales.require_approval() # uses the sales contact channel
 def update_crm_record(opportunity_id: str, status: str):
   """Update the CRM record for the opportunity"""
   ...
 
-@fl_default.require_approval(dm_engineering) # uses the engineering contact channel
+@hl_default.require_approval(dm_engineering) # uses the engineering contact channel
 def drop_production_database(database_name: str):
   """Drop the specified database"""
   ...
@@ -230,9 +230,9 @@ import os
 
 from functionlayer import FunctionLayer
 
-fl = FunctionLayer(api_token=os.getenv("FUNCTIONLAYER_API_TOKEN"))
+hl = HumanLayer(api_token=os.getenv("FUNCTIONLAYER_API_TOKEN"))
 
-@fl.require_approval()
+@hl.require_approval()
 def send_email_to_customer(email: str, subject: str, body: str) -> str:
   """
   send an email to the customer
@@ -257,7 +257,7 @@ head_of_sales = ContactChannel(
   )
 )
 
-@fl.require_approval(head_of_sales)
+@hl.require_approval(head_of_sales)
 def send_email_to_customer(email: str, subject: str, body: str) -> str:
     ...
 ```
@@ -268,7 +268,7 @@ In addition to blocking function execution based on human feedback, functionlaye
 
 ```python
 from functionlayer import ContactChannel, FunctionLayer, SlackContactChannel
-fl = FunctionLayer()
+hl = HumanLayer()
 
 tools = [
     fl.human_as_tool(
@@ -312,7 +312,7 @@ then initialize FunctionLayer with `ApprovalMethod.CLOUD`
 
 ```python
 from functionlayer import ApprovalMethod, FunctionLayer
-fl = FunctionLayer(approval_method=ApprovalMethod.CLOUD)
+hl = HumanLayer(approval_method=ApprovalMethod.CLOUD)
 ```
 
 See [Getting Started](./getting-started.md) for more information on how to set up and use FunctionLayer Cloud.
@@ -333,14 +333,14 @@ to run in CLI mode, initialize FunctionLayer with `ApprovalMethod.CLI`
 
 from functionlayer import FunctionLayer, ApprovalMethod
 
-fl = FunctionLayer(approval_method=ApprovalMethod.CLI)
+hl = HumanLayer(approval_method=ApprovalMethod.CLI)
 
 ```
 
 Then, you can decorate your functions as normal.
 
 ```python
-@fl.require_approval()
+@hl.require_approval()
 def send_email_to_customer(email: str, subject: str, body: str) -> str:
     """
     send an email to the customer
