@@ -39,7 +39,7 @@ def get_info_about_customer(customer_email: str) -> str:
 
 
 @tool
-@fl.require_approval()
+@hl.require_approval()
 def send_email(to: str, subject: str, body: str) -> str:
     """Send an email to a user"""
 
