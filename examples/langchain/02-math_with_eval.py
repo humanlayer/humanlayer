@@ -16,7 +16,7 @@ hl = HumanLayer(approval_method=ApprovalMethod.CLOUD)
 
 
 @tool
-@fl.require_approval()
+@hl.require_approval()
 def run_python_code(code: str) -> str:
     """run a snippet of python code and return the stdout"""
     return str(eval(code))

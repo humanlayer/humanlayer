@@ -44,7 +44,7 @@ def get_info_about_customer(customer_email: str) -> str:
 
 
 # require CEO approval to send an email
-@fl.require_approval(contact_channel=dm_with_ceo)
+@hl.require_approval(contact_channel=dm_with_ceo)
 def send_email(to: str, subject: str, body: str) -> str:
     """Send an email to a user"""
     return f"Email sent to {to} with subject: {subject}"

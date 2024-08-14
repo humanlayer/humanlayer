@@ -5,7 +5,7 @@ no frameworks are used to manage the tool calling loop. Among other things, this
 "look under the hood" for how frameworks generally implement tool calling.
 
 In this example, as in others, the `multiply(x: int, y: int) -> int` function is wrapped with
-`@fl.require_approval`.
+`@hl.require_approval`.
 
 Two ways to get started:
 
