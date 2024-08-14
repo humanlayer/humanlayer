@@ -23,7 +23,7 @@ def add(x: int, y: int) -> int:
 
 
 @tool
-@fl.require_approval()
+@hl.require_approval()
 def multiply(x: int, y: int) -> int:
     """multiply two numbers"""
     return x * y

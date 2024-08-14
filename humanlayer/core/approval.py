@@ -74,7 +74,7 @@ class HumanLayer(BaseModel):
         super().__init__(**kwargs)
         self.api_key = self.api_key or os.getenv("HUMANLAYER_API_KEY")
         self.api_base_url = self.api_base_url or os.getenv(
-            "FUNCTIONLAYER_API_BASE", "https://api.functionlayer.com/functionlayer/v1"
+            "HUMANLAYER_API_BASE", "https://api.functionlayer.com/functionlayer/v1"
         )
         self.ws_base_url = self.ws_base_url or os.getenv("FUNCTIONLAYER_WS_BASE")
         self.approval_method = self.approval_method or os.getenv(
