@@ -17,7 +17,7 @@ load_dotenv()
 
 override_bot_token = os.getenv("SLACK_BOT_TOKEN")
 
-hl = HumanLayer(approval_method=ApprovalMethod.CLOUD)
+hl = HumanLayer.cloud()
 
 
 task_prompt = """
@@ -28,7 +28,7 @@ contact a human for help if you need it
 tools = [
     langchain_tools.StructuredTool.from_function(
         # override the project's slack bot token
-        fl.human_as_tool(
+        hl.human_as_tool(
             contact_channel=ContactChannel(
                 slack=SlackContactChannel(
                     channel_or_user_id="C07BU3B7DBM",

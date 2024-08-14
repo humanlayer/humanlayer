@@ -6,7 +6,7 @@ load_dotenv()
 
 from humanlayer import ApprovalMethod, HumanLayer
 
-hl = HumanLayer(approval_method=ApprovalMethod.CLOUD)
+hl = HumanLayer.cloud()
 
 task_prompt = """
 

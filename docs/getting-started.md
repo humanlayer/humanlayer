@@ -234,7 +234,7 @@ To enable collaborative approvals across slack, email, and other channels, you'l
 humanlayer SDK to a server. The easiest way to do this is to log into [HumanLayer Cloud](https://app.humanlayer.com) and create a new project and API token, then set it in your shell environment or `.env` file:
 
 ```bash
-export FUNCTIONLAYER_API_TOKEN=sk-proj-...
+export HUMANLAYER_API_TOKEN=sk-proj-...
 ```
 
 Then you can change your script to use `ApprovalMethod.CLOUD`:
@@ -244,7 +244,7 @@ Then you can change your script to use `ApprovalMethod.CLOUD`:
 - from humanlayer import HumanLayer
 - hl = HumanLayer()
 + from humanlayer import ApprovalMethod, HumanLayer
-+ hl = HumanLayer(approval_method=ApprovalMethod.CLOUD)
++ hl = HumanLayer.cloud()
 
 
 @tool
@@ -272,4 +272,4 @@ Web approvals are a start, but HumanLayer really shines when you connect your sl
 
 ### Try a Human as tool
 
-`fl.human_as_tool()` gives you a generic, LLM-ready tool that an agent can call to contact a human for feedback, advice, or other input. See [the langchain human as tool example](../examples/langchain/03-human_as_tool.py) for more.
+`hl.human_as_tool()` gives you a generic, LLM-ready tool that an agent can call to contact a human for feedback, advice, or other input. See [the langchain human as tool example](../examples/langchain/03-human_as_tool.py) for more.

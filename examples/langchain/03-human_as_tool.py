@@ -12,7 +12,7 @@ from humanlayer import (
 
 load_dotenv()
 
-hl = HumanLayer(approval_method=ApprovalMethod.CLOUD)
+hl = HumanLayer.cloud()
 
 task_prompt = """
 figure out the wizard's favorite color,
@@ -20,9 +20,9 @@ contact a human for help if you need it
 """
 
 tools = [
-    # langchain_tools.StructuredTool.from_function(fl.human_as_tool()),
+    # langchain_tools.StructuredTool.from_function(hl.human_as_tool()),
     langchain_tools.StructuredTool.from_function(
-        fl.human_as_tool(
+        hl.human_as_tool(
             contact_channel=ContactChannel(
                 slack=SlackContactChannel(
                     channel_or_user_id="C07BU3B7DBM",
@@ -32,7 +32,7 @@ tools = [
         )
     ),
     langchain_tools.StructuredTool.from_function(
-        fl.human_as_tool(
+        hl.human_as_tool(
             contact_channel=ContactChannel(
                 slack=SlackContactChannel(
                     channel_or_user_id="C07BU3B7DBM",

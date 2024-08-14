@@ -7,7 +7,7 @@ load_dotenv()
 
 from humanlayer import ApprovalMethod, HumanLayer
 
-hl = HumanLayer(approval_method=ApprovalMethod.CLOUD)
+hl = HumanLayer.cloud()
 
 task_prompt = """
 
@@ -77,7 +77,7 @@ into the product.
         get_info_about_customer,
         get_recently_signed_up_customers,
         send_email,
-        tool(fl.human_as_tool(dm_with_head_of_marketing)),
+        tool(hl.human_as_tool(dm_with_head_of_marketing)),
     ],
     verbose=True,
     crew_sharing=False,

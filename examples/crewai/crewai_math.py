@@ -7,7 +7,7 @@ from humanlayer import ApprovalMethod, HumanLayer
 load_dotenv()
 
 
-hl = HumanLayer(approval_method=ApprovalMethod.CLOUD)
+hl = HumanLayer.cloud()
 
 PROMPT = """multiply 2 and 5, then add 32 to the result"""
 
