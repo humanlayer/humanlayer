@@ -1,7 +1,7 @@
 #
 # an example that runs some langchain math operations
 # where the multiply function requires approval
-# via functionlayer, and FunctionLayer is configured to
+# via functionlayer, and HumanLayer is configured to
 # use local / CLI mode
 #
 from dotenv import load_dotenv
@@ -9,7 +9,7 @@ from langchain.agents import AgentType, initialize_agent
 from langchain.tools import tool
 from langchain_openai import ChatOpenAI
 
-from functionlayer import FunctionLayer
+from humanlayer import HumanLayer
 
 load_dotenv()
 

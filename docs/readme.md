@@ -1,8 +1,8 @@
 <div align="center">
 
-![Logo of functionlayer, two diamonds with a plus sign](./functionlayer_logo.png)
+![Logo of humanlayer, two diamonds with a plus sign](./humanlayer_log.png)
 
-# **FunctionLayer Docs**
+# **HumanLayer Docs**
 
 </div>
 
@@ -18,8 +18,8 @@ Table of Contents:
 - [Features](#features)
   - [Function Decorators](#function-decorators)
   - [Human as Tool](#human-as-tool)
-  - [Functionlayer CLI](#cli-mode)
-  - [Functionlayer Cloud](#functionlayer-cloud)
+  - [HumanLayer CLI](#cli-mode)
+  - [HumanLayer Cloud](#humanlayer-cloud)
 - [Reference](#reference)
 
 ## Getting Started
@@ -104,7 +104,7 @@ def send_email(to: str, subject: str, body: str):
   ...
 ```
 
-When a function requiring approval is triggered, the execution will block until an approval is received from a human. These approvals can be routed and received via API, Web Application, Slack, Email, or any other channel that FunctionLayer supports. Here's an example slack approval:
+When a function requiring approval is triggered, the execution will block until an approval is received from a human. These approvals can be routed and received via API, Web Application, Slack, Email, or any other channel that HumanLayer supports. Here's an example slack approval:
 
 ![A screenshot of slack showing a human replying to the bot](./images/slack_approval_response.png)
 
@@ -114,10 +114,10 @@ If the function is rejected, the LLM will receive a message indicating that the 
 
 ### Human As Tool
 
-In addition to gating function calls, FunctionLayer can also provide a more generic "human as tool" function for an agent to reach out across various channels.
+In addition to gating function calls, HumanLayer can also provide a more generic "human as tool" function for an agent to reach out across various channels.
 
 ```python
-from functionlayer import ApprovalMethod, ContactChannel, FunctionLayer, SlackContactChannel
+from humanlayer import ApprovalMethod, ContactChannel, HumanLayer, SlackContactChannel
 
 hl = HumanLayer(approval_method=ApprovalMethod.CLOUD)
 
@@ -160,7 +160,7 @@ FunctionLayer defines the concept of a Contact Channel, which is a way to route 
 - "A DM with the head of marketing"
 - "An email to the director of engineering"
 
-If you use FunctionLayer Cloud, you can define a default contact channel at the Project level, or you can define custom contact channels per function or tool:
+If you use HumanLayer Cloud, you can define a default contact channel at the Project level, or you can define custom contact channels per function or tool:
 
 ```python
 
@@ -178,9 +178,9 @@ dm_engineering = ContactChannel(
   )
 )
 
-fl_default = FunctionLayer(approval_method=ApprovalMethod.CLOUD)
+fl_default = HumanLayer(approval_method=ApprovalMethod.CLOUD)
 
-fl_sales = FunctionLayer(
+fl_sales = HumanLayer(
     approval_method=ApprovalMethod.CLOUD,
     contact_channel=dm_sales,
 )
@@ -228,7 +228,7 @@ FunctionLayer provides a set of decorators that can be used to add human in the 
 ```python
 import os
 
-from functionlayer import FunctionLayer
+from humanlayer import HumanLayer
 
 hl = HumanLayer(api_token=os.getenv("FUNCTIONLAYER_API_TOKEN"))
 
@@ -248,7 +248,7 @@ This will cause a message to be sent to a configured channel, e.g. a particular 
 You may want to customize which channel or user the approval request is sent to. You can do this by passing a `ContactChannel` object to the `require_approval` decorator.
 
 ```python
-from functionlayer import ContactChannel, SlackContactChannel
+from humanlayer import ContactChannel, SlackContactChannel
 
 head_of_sales = ContactChannel(
   slack=SlackContactChannel(
@@ -267,7 +267,7 @@ def send_email_to_customer(email: str, subject: str, body: str) -> str:
 In addition to blocking function execution based on human feedback, functionlayer can also provide a more generic "human as tool" function for an agent to reach out across various channels.
 
 ```python
-from functionlayer import ContactChannel, FunctionLayer, SlackContactChannel
+from humanlayer import ContactChannel, HumanLayer, SlackContactChannel
 hl = HumanLayer()
 
 tools = [
@@ -300,22 +300,22 @@ See [Langchain Human as Tool Example](../examples/langchain/03-human_as_tool.py)
 
 ### Functionlayer Cloud
 
-By default, FunctionLayer will run in [CLI mode](#cli-mode), which allows a human to interact with the LLM via the command line. However, FunctionLayer really shines in cloud mode, where humans can be pulled into the agentic loop via email, slack, or other integrations.
+By default, HumanLayer will run in [CLI mode](#cli-mode), which allows a human to interact with the LLM via the command line. However, HumanLayer really shines in cloud mode, where humans can be pulled into the agentic loop via email, slack, or other integrations.
 
-To get started with FuntionLayer Cloud, get an API token from https://app.functionlayer.com and set it in your environment
+To get started with FuntionLayer Cloud, get an API token from https://app.humanlayer.dev and set it in your environment
 
 ```
 export FUNCTIONLAYER_API_TOKEN=
 ```
 
-then initialize FunctionLayer with `ApprovalMethod.CLOUD`
+then initialize HumanLayer with `ApprovalMethod.CLOUD`
 
 ```python
-from functionlayer import ApprovalMethod, FunctionLayer
+from humanlayer import ApprovalMethod, HumanLayer
 hl = HumanLayer(approval_method=ApprovalMethod.CLOUD)
 ```
 
-See [Getting Started](./getting-started.md) for more information on how to set up and use FunctionLayer Cloud.
+See [Getting Started](./getting-started.md) for more information on how to set up and use HumanLayer Cloud.
 
 #### Slack Notifications
 
@@ -325,13 +325,13 @@ To enable Slack notifications, you'll need to set up a Slack app and set a bot t
 
 The functionlayer CLI mode allows for a local development mode whereby all "human in the loop" and "human as tool" will be assesed as simple python `input()` calls.
 
-It can be a good way to experiment with LLM workflows without needing to integrat slack, email, or any of the [FunctionLayer Cloud](#functionlayer-cloud) components.
+It can be a good way to experiment with LLM workflows without needing to integrat slack, email, or any of the [HumanLayer Cloud](#functionlayer-cloud) components.
 
-to run in CLI mode, initialize FunctionLayer with `ApprovalMethod.CLI`
+to run in CLI mode, initialize HumanLayer with `ApprovalMethod.CLI`
 
 ```python
 
-from functionlayer import FunctionLayer, ApprovalMethod
+from humanlayer import HumanLayer, ApprovalMethod
 
 hl = HumanLayer(approval_method=ApprovalMethod.CLI)
 

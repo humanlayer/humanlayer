@@ -8,7 +8,7 @@ from langchain.agents import AgentType, initialize_agent
 from langchain.tools import tool
 from langchain_openai import ChatOpenAI
 
-from functionlayer import ApprovalMethod, HumanLayer
+from humanlayer import ApprovalMethod, HumanLayer
 
 load_dotenv()
 

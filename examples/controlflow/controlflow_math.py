@@ -1,6 +1,6 @@
 from dotenv import load_dotenv
 
-from functionlayer import ApprovalMethod, HumanLayer
+from humanlayer import ApprovalMethod, HumanLayer
 
 load_dotenv()
 

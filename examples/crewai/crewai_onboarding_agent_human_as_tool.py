@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from functionlayer import ApprovalMethod, FunctionLayer
+from humanlayer import ApprovalMethod, HumanLayer
 
 hl = HumanLayer(approval_method=ApprovalMethod.CLOUD)
 
