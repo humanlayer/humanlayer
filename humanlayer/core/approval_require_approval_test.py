@@ -4,7 +4,7 @@ from humanlayer import AgentBackend, FunctionCall, FunctionCallSpec, HumanLayer
 from humanlayer.core.protocol import AgentStore
 
 
-def test_require():
+def test_require() -> None:
     mock_backend = Mock(spec=AgentBackend)
     functions = Mock(spec=AgentStore[FunctionCall])
     mock_backend.functions.return_value = functions

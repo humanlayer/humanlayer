@@ -5,7 +5,7 @@ import secrets
 import time
 from enum import Enum
 from functools import wraps
-from typing import Callable, TypeVar
+from typing import Any, Callable, TypeVar
 
 from pydantic import BaseModel
 from slugify import slugify
@@ -45,7 +45,7 @@ class ApprovalMethod(Enum):
 
 
 class HumanLayerWrapper:
-    def __init__(self, decorator: Callable) -> None:
+    def __init__(self, decorator: Callable[[Any], Callable]) -> None:
         self.decorator = decorator
 
     def wrap(self, fn: Callable) -> Callable:
@@ -64,13 +64,16 @@ class HumanLayer(BaseModel):
     approval_method: ApprovalMethod | None = None
     backend: AgentBackend | None = None
     agent_name: str | None = None
-    genid: Callable[[], str] = genid
+    genid: Callable[[str], str] = genid
 
     # convenience for forwarding down to Connection
     api_key: str | None = None
     api_base_url: str | None = None
 
-    def __init__(self, **kwargs):
+    def __init__(  # type: ignore
+        self,
+        **kwargs,
+    ) -> None:
         super().__init__(**kwargs)
         # check env first
         if self.approval_method is None and os.getenv("HUMANLAYER_APPROVAL_METHOD") is not None:
@@ -98,17 +101,17 @@ class HumanLayer(BaseModel):
         if self.approval_method == ApprovalMethod.CLOUD and not self.backend:
             raise ValueError("backend is required for cloud approvals")
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "HumanLayer()"
 
     @classmethod
-    def cloud(
+    def cloud(  # type: ignore
         cls,
         connection: HumanLayerCloudConnection | None = None,
         api_key: str | None = None,
         api_base_url: str | None = None,
         **kwargs,
-    ):
+    ) -> "HumanLayer":
         if not connection:
             connection = HumanLayerCloudConnection(
                 api_key=api_key,
@@ -123,11 +126,14 @@ class HumanLayer(BaseModel):
         )
 
     @classmethod
-    def cli(cls, **kwargs):
+    def cli(  # type: ignore
+        cls,
+        **kwargs,
+    ) -> "HumanLayer":
         return cls(approval_method=ApprovalMethod.CLI, **kwargs)
 
     def require_approval(self, contact_channel: ContactChannel | None = None) -> HumanLayerWrapper:
-        def decorator(fn):
+        def decorator(fn):  # type: ignore
             if self.approval_method is ApprovalMethod.CLI:
                 return self._approve_cli(fn)
             elif self.approval_method is ApprovalMethod.CLOUD:
@@ -138,15 +144,29 @@ class HumanLayer(BaseModel):
 
         return HumanLayerWrapper(decorator)
 
-    def _approve_cli(self, fn: Callable[[T], R]) -> Callable[[T], R]:
+    def _approve_cli(self, fn: Callable[[T], R]) -> Callable[[T], R | str]:
+        """
+        NOTE we convert a callable[[T], R] to a Callable [[T], R | str]
+
+        this is safe to do for most LLM use cases. It will blow up
+        a normal function.
+
+        If we can guarantee the function calling framework
+        is properly handling exceptions, then we can
+        just raise and let the framework handle the stringification
+        of what went wrong.
+
+        Because some frameworks don't handle exceptions well, we're stuck with the hack for now
+        """
+
         @wraps(fn)
-        def wrapper(*args, **kwargs) -> R:
+        def wrapper(*args, **kwargs) -> R | str:  # type: ignore
             print(
                 f"""Agent {self.run_id} wants to call
 
 {fn.__name__}({json.dumps(kwargs, indent=2)})
 
-{"" if not args else " with args: " + args}"""
+{"" if not args else " with args: " + str(args)}"""
             )
             feedback = input("Hit ENTER to proceed, or provide feedback to the agent to deny: \n\n")
             if feedback not in {
@@ -161,13 +181,30 @@ class HumanLayer(BaseModel):
 
         return wrapper
 
-    def _approve_webapp(self, fn: Callable[[T], R], contact_channel: ContactChannel | None = None) -> Callable[[T], R]:
+    def _approve_webapp(
+        self, fn: Callable[[T], R], contact_channel: ContactChannel | None = None
+    ) -> Callable[[T], R | str]:
+        """
+        NOTE we convert a callable[[T], R] to a Callable [[T], R | str]
+
+        this is safe to do for most LLM use cases. It will blow up
+        a normal function.
+
+        If we can guarantee the function calling framework
+        is properly handling exceptions, then we can
+        just raise and let the framework handle the stringification
+        of what went wrong.
+
+        Because some frameworks don't handle exceptions well, we're stuck with the hack for now
+        """
+
         @wraps(fn)
-        def wrapper(*args, **kwargs) -> R:
+        def wrapper(*args, **kwargs) -> R | str:  # type: ignore
+            assert self.backend is not None
             call_id = self.genid("call")
             try:
                 call = FunctionCall(
-                    run_id=self.run_id,
+                    run_id=self.run_id,  # type: ignore
                     call_id=call_id,
                     spec=FunctionCallSpec(
                         fn=fn.__name__,
@@ -192,7 +229,7 @@ class HumanLayer(BaseModel):
                             and function_call.spec.channel.slack
                             and function_call.spec.channel.slack.context_about_channel_or_user
                         ):
-                            return f"User in {contact_channel.slack.context_about_channel_or_user} denied {fn.__name__} with message: {function_call.status.comment}"
+                            return f"User in {function_call.spec.channel.slack.context_about_channel_or_user} denied {fn.__name__} with message: {function_call.status.comment}"
                         else:
                             return f"User denied {fn.__name__} with message: {function_call.status.comment}"
             except Exception as e:
@@ -203,7 +240,7 @@ class HumanLayer(BaseModel):
 
         return wrapper
 
-    def human_as_tool(self, contact_channel: ContactChannel | None = None):
+    def human_as_tool(self, contact_channel: ContactChannel | None = None) -> Callable[[str], str]:
         if self.approval_method is ApprovalMethod.CLI:
             return self._human_as_tool_cli()
         elif self.approval_method is ApprovalMethod.CLOUD:
@@ -211,7 +248,7 @@ class HumanLayer(BaseModel):
         else:
             raise NotImplementedError(f"approval_method {self.approval_method} not supported")
 
-    def _human_as_tool_cli(self):
+    def _human_as_tool_cli(self) -> Callable[[str], str]:
         def contact_human(question: str) -> str:
             """ask a human a question on the CLI"""
             print(
@@ -228,10 +265,11 @@ class HumanLayer(BaseModel):
     def _human_as_tool(self, contact_channel: ContactChannel | None = None) -> Callable[[str], str]:
         def contact_human(question: str) -> str:
             """Ask a human a question"""
+            assert self.backend is not None
             call_id = self.genid("human_call")
 
             contact = HumanContact(
-                run_id=self.run_id,
+                run_id=self.run_id,  # type: ignore
                 call_id=call_id,
                 spec=HumanContactSpec(
                     msg=question,

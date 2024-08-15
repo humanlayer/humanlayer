@@ -23,8 +23,8 @@ class HumanLayerCloudConnection(BaseModel):
     api_key: str | None = None
     api_base_url: str | None = None
 
-    @model_validator(mode="after")
-    def validate(self) -> None:
+    @model_validator(mode="after")  # type: ignore
+    def post_validate(self) -> None:
         self.api_key = self.api_key or os.getenv("HUMANLAYER_API_KEY")
         self.api_base_url = self.api_base_url or os.getenv(
             "HUMANLAYER_API_BASE", "https://api.humanlayer.dev/humanlayer/v1"
@@ -32,7 +32,12 @@ class HumanLayerCloudConnection(BaseModel):
         if not self.api_key:
             raise ValueError("HUMANLAYER_API_KEY is required for cloud approvals")
 
-    def request(self, method: str, path: str, **kwargs):
+    def request(  # type: ignore
+        self,
+        method: str,
+        path: str,
+        **kwargs,
+    ) -> requests.Response:
         return requests.request(
             method,
             f"{self.api_base_url}{path}",

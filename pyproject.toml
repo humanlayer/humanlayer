@@ -12,11 +12,10 @@ packages = [
 [tool.poetry.dependencies]
 python = "^3.11"
 pydantic = "2.8.2"
-python-socketio = {extras = ["asyncio-client"], version = "5.11.3"}
-human-id = "0.2.0"
-aiohttp = "3.10.2"
 requests = "2.32.3"
 python-slugify = "^8.0.4"
+python-dotenv = "^1.0.1"
+click = "^8.1.7"
 
 [tool.poetry.scripts]
 hl = "humanlayer.cli.main:cli"
@@ -30,6 +29,7 @@ mypy = "^1.5.1"
 pre-commit = "^3.4.0"
 tox = "^4.11.1"
 ruff = "^0.5.6"
+types-requests = "^2.32.0.20240712"
 
 [tool.poetry.group.docs.dependencies]
 mkdocs = "^1.4.2"
@@ -121,6 +121,7 @@ source = ["humanlayer"]
 "**/core/protocol.py" = ["A003"]
 "**/test_*.py" = ["S101"]
 "**/*_test.py" = ["S101"]
+"**/approval.py" = ["S101"]
 
 [tool.ruff.mccabe]
 max-complexity = 12
@@ -128,3 +129,8 @@ max-complexity = 12
 
 [tool.deptry]
 exclude = ["examples", "venv", ".venv"]
+
+
+[tool.deptry.per_rule_ignores]
+DEP003 = ["click"]
+DEP004 = ["pytest"]
