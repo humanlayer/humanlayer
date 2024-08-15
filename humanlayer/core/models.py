@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Iterable, Protocol
 
 from pydantic import BaseModel
 
@@ -68,13 +67,3 @@ class HumanContact(BaseModel):
     call_id: str
     spec: HumanContactSpec
     status: HumanContactStatus | None = None
-
-
-class FunctionCallStore(Protocol):
-    def add(self, function_call: FunctionCall) -> None: ...
-
-    def get(self, call_id: str) -> FunctionCall: ...
-
-    def respond(self, call_id: str, status: FunctionCallStatus): ...
-
-    def list(self) -> Iterable[FunctionCall]: ...

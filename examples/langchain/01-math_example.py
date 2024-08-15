@@ -4,15 +4,15 @@
 # via humanlayer
 #
 from dotenv import load_dotenv
-from langchain.agents import AgentType, initialize_agent
-from langchain.tools import tool
 from langchain_openai import ChatOpenAI
 
-from humanlayer.core.approval import ApprovalMethod, HumanLayer
+from humanlayer.core.approval import HumanLayer
+from langchain.agents import AgentType, initialize_agent
+from langchain.tools import tool
 
 load_dotenv()
 
-hl = HumanLayer.cloud()
+hl = HumanLayer()
 
 
 @tool

@@ -1,16 +1,11 @@
+from langchain.agents import AgentType, initialize_agent
 import langchain_core.tools as langchain_tools
-from channels import (
-    dm_with_ceo,
-    dm_with_head_of_marketing,
-    dm_with_summer_intern,
-)
-from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 
-from humanlayer.core.approval import (
-    HumanLayer,
-)
-from langchain.agents import AgentType, initialize_agent
+from dotenv import load_dotenv
+
+
+from humanlayer.core.approval import HumanLayer
 
 load_dotenv()
 
@@ -19,15 +14,11 @@ hl = HumanLayer()
 task_prompt = """
 
 You are the email onboarding assistant. You check on the progress customers
-are making and get other information, then based on that info, you
+are making and then based on that info, you
 send friendly and encouraging emails to customers to help them fully onboard
 into the product.
 
-Before sending an email, you check with the head of marketing for feedback,
-and incorporate that feedback into your email before sending. You repeat the
-feedback process until the head of marketing approves the request
-
-Your task is to prepare an email to send to the customer danny@metacorp.com
+Your task is to send an email to the customer danny@example.com
 
 """
 
@@ -41,8 +32,8 @@ def get_info_about_customer(customer_email: str) -> str:
     """
 
 
-# require CEO approval to send an email
-@hl.require_approval(contact_channel=dm_with_ceo)
+# require approval to send an email
+@hl.require_approval()
 def send_email(to: str, subject: str, body: str) -> str:
     """Send an email to a user"""
     return f"Email sent to {to} with subject: {subject}"
@@ -51,18 +42,6 @@ def send_email(to: str, subject: str, body: str) -> str:
 tools = [
     langchain_tools.StructuredTool.from_function(get_info_about_customer),
     langchain_tools.StructuredTool.from_function(send_email),
-    langchain_tools.StructuredTool.from_function(
-        # allow the agent to contact the head of marketing for help
-        hl.human_as_tool(
-            contact_channel=dm_with_head_of_marketing,
-        )
-    ),
-    langchain_tools.StructuredTool.from_function(
-        # allow the agent to contact the summer intern
-        hl.human_as_tool(
-            contact_channel=dm_with_summer_intern,
-        )
-    ),
 ]
 
 llm = ChatOpenAI(model="gpt-4o", temperature=0)

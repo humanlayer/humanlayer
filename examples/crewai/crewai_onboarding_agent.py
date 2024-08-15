@@ -4,9 +4,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from humanlayer import ApprovalMethod, HumanLayer
+from humanlayer import HumanLayer
 
-hl = HumanLayer.cloud()
+hl = HumanLayer()
 
 task_prompt = """
 
