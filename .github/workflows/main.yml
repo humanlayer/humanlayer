@@ -56,7 +56,3 @@ jobs:
 
       - name: Test with tox
         run: tox
-
-      - name: Upload coverage reports to Codecov with GitHub Action on Python 3.11
-        uses: codecov/codecov-action@v3
-        if: ${{ matrix.python-version == '3.11' }}
