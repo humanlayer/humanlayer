@@ -3,9 +3,10 @@
 # with no approvals required
 #
 from dotenv import load_dotenv
+from langchain_openai import ChatOpenAI
+
 from langchain.agents import AgentType, initialize_agent
 from langchain.tools import tool
-from langchain_openai import ChatOpenAI
 
 load_dotenv()
 
