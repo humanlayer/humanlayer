@@ -1,12 +1,12 @@
 from dotenv import load_dotenv
 
-from humanlayer import ApprovalMethod, HumanLayer
+from humanlayer import HumanLayer
 
 load_dotenv()
 
 import controlflow as cf
 
-hl = HumanLayer.cloud()
+hl = HumanLayer()
 
 
 def add(x: int, y: int) -> int:
@@ -14,8 +14,7 @@ def add(x: int, y: int) -> int:
     return x + y
 
 
-# multiply must be approved via email by a user in the admin group
-@hl.require_approval()
+@hl.require_approval()  # require user approval before this function can be called
 def multiply(x: int, y: int) -> int:
     """multiply two numbers"""
     return x * y

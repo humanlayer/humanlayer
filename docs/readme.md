@@ -1,6 +1,6 @@
 <div align="center">
 
-![Logo of humanlayer, two diamonds with a plus sign](./humanlayer_log.png)
+![Wordmark Logo of HumanLayer](./docs/images/humanlayer-logo.png)
 
 # **HumanLayer Docs**
 
@@ -117,9 +117,10 @@ If the function is rejected, the LLM will receive a message indicating that the 
 In addition to gating function calls, HumanLayer can also provide a more generic "human as tool" function for an agent to reach out across various channels.
 
 ```python
-from humanlayer import ApprovalMethod, ContactChannel, HumanLayer, SlackContactChannel
+from humanlayer import
+ContactChannel, HumanLayer, SlackContactChannel
 
-hl = HumanLayer.cloud()
+hl = HumanLayer()
 
 customer_success_direct_message = ContactChannel(
   slack=SlackContactChannel(
@@ -178,9 +179,9 @@ channel_engineering = ContactChannel(
   )
 )
 
-hl_default = HumanLayer.cloud()
+hl_default = HumanLayer()
 
-hl_sales = HumanLayer.cloud(contact_channel=dm_sales)
+hl_sales = HumanLayer(contact_channel=dm_sales)
 
 @hl_default.require_approval() # uses project default contact channel
 def send_email(to: str, subject: str, body: str):
@@ -228,7 +229,7 @@ import os
 
 from humanlayer import HumanLayer
 
-hl = HumanLayer(api_token=os.getenv("HUMANLAYER_API_TOKEN"))
+hl = HumanLayer(api_token=os.getenv("HUMANLAYER_API_KEY"))
 
 @hl.require_approval()
 def send_email_to_customer(email: str, subject: str, body: str) -> str:
@@ -303,14 +304,14 @@ By default, HumanLayer will run in [CLI mode](#cli-mode), which allows a human t
 To get started with FuntionLayer Cloud, get an API token from https://app.humanlayer.dev and set it in your environment
 
 ```
-export HUMANLAYER_API_TOKEN=
+export HUMANLAYER_API_KEY=
 ```
 
-then initialize HumanLayer with `HumanLayer.cloud()`
+then initialize HumanLayer with `HumanLayer()`
 
 ```python
 from humanlayer import HumanLayer
-hl = HumanLayer.cloud()
+hl = HumanLayer()
 ```
 
 See [Getting Started](./getting-started.md) for more information on how to set up and use HumanLayer Cloud.

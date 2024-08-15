@@ -40,22 +40,15 @@ To get started, check out [Getting Started](./docs/getting-started.md), watch th
 - 🦾 [ControlFlow](./examples/controlflow/controlflow_math.py)
 - 🧠 [Raw OpenAI Client](./examples/openai_client/math_example.py)
 
+## Example
+
 ```shell
 pip install humanlayer
 ```
 
-or for the bleeding edge
-
-```shell
-pip install git+https://github.com/humanlayer/humanlayer-ai-llm-agents
-```
-
-Set `HUMANLAYER_API_TOKEN` and wrap your AI function in `require_approval()`
-
 ```python
-
-from humanlayer import ApprovalMethod, HumanLayer
-hl = HumanLayer.cloud() # or CLI
+from humanlayer import HumanLayer
+hl = HumanLayer()
 
 @hl.require_approval()
 def send_email(to: str, subject: str, body: str):
@@ -63,19 +56,50 @@ def send_email(to: str, subject: str, body: str):
     ...
 
 
-# made up method, use whatever framework you prefer
+# made up function, use whatever
+# tool-calling framework you prefer
 run_llm_task(
-    prompt="Send an email welcoming the customer to the platform and encouraging them to invite a team member.",
+    prompt="""Send an email welcoming the customer to
+    the platform and encouraging them to invite a team member.""",
     tools=[send_email],
-    llm=OpenAI(model="gpt-4o")
+    llm="gpt-4o"
 )
 ```
 
-Then you can start manging LLM actions in slack, email, or whatever channel you prefer:
-
 <div align="center"><img style="width: 400px" alt="A screenshot of slack showing a human replying to the bot" src="./docs/images/slack_approval_response.png"></div>
 
-Check out the [HumanLayer Docs](./docs/) and the [Getting Started Guide](./docs/getting-started.md) for more information.
+Check out the [framework specific examples](./examples) or the [Getting Started Guide](./docs/getting-started.md) to get hands on.
+
+#### Human as Tool
+
+You can also use `hl.human_as_tool()` to bring a human into the loop for any reason. This can be useful for debugging, asking for advice, or just getting a human's opinion on something.
+
+```python
+# human_as_tool.py
+
+from humanlayer import HumanLayer
+hl = HumanLayer()
+contact_a_human = hl.human_as_tool()
+
+def send_email(to: str, subject: str, body: str):
+    """Send an email to the customer"""
+    ...
+
+# made up method, use whatever
+# framework you prefer
+run_llm_task(
+    prompt="""Send an email welcoming the customer to
+    the platform and encouraging them to invite a team member.
+
+    Contact a human for collaboration and feedback on your email
+    draft
+    """,
+    tools=[send_email, contact_a_human],
+    llm="gpt-4o"
+)
+```
+
+See the [examples](./examples) for more advanced human as tool examples, and workflows that combine both concepts.
 
 ## Why HumanLayer?
 

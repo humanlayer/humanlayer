@@ -7,18 +7,18 @@ from enum import Enum
 from functools import wraps
 from typing import Any, Callable, TypeVar
 
-import aiohttp
-import requests
-import socketio  # type: ignore
 from pydantic import BaseModel
+from slugify import slugify
 
-from humanlayer.core.types import (
+from humanlayer.core.cloud import CloudHumanLayerBackend, HumanLayerCloudConnection
+from humanlayer.core.models import (
     ContactChannel,
     FunctionCall,
     FunctionCallSpec,
     HumanContact,
     HumanContactSpec,
 )
+from humanlayer.core.protocol import AgentBackend
 
 # Define TypeVars for input and output types
 T = TypeVar("T")
@@ -45,7 +45,7 @@ class ApprovalMethod(Enum):
 
 
 class HumanLayerWrapper:
-    def __init__(self, decorator: Callable) -> None:
+    def __init__(self, decorator: Callable[[Any], Callable]) -> None:
         self.decorator = decorator
 
     def wrap(self, fn: Callable) -> Callable:
@@ -60,46 +60,80 @@ class HumanLayer(BaseModel):
 
     model_config = {"arbitrary_types_allowed": True}
 
+    run_id: str | None = None
+    approval_method: ApprovalMethod | None = None
+    backend: AgentBackend | None = None
+    agent_name: str | None = None
+    genid: Callable[[str], str] = genid
+
+    # convenience for forwarding down to Connection
     api_key: str | None = None
     api_base_url: str | None = None
-    ws_base_url: str | None = None
-    run_id: str | None = None
-    approval_method: ApprovalMethod | None
-    sio: socketio.AsyncClient = socketio.AsyncClient()
 
-    CLI: ApprovalMethod = ApprovalMethod.CLI
-    CLOUD: ApprovalMethod = ApprovalMethod.CLOUD
-
-    def __init__(self, **kwargs):
+    def __init__(  # type: ignore
+        self,
+        **kwargs,
+    ) -> None:
         super().__init__(**kwargs)
-        self.api_key = self.api_key or os.getenv("HUMANLAYER_API_KEY")
-        self.api_base_url = self.api_base_url or os.getenv(
-            "HUMANLAYER_API_BASE", "https://api.humanlayer.dev/humanlayer/v1"
-        )
-        self.ws_base_url = self.ws_base_url or os.getenv("HUMANLAYER_WS_BASE")
-        self.approval_method = self.approval_method or os.getenv(
-            "HUMANLAYER_APPROVAL_METHOD", ApprovalMethod.CLI
-        )
-        self.run_id = self.run_id or os.getenv("HUMANLAYER_RUN_ID", genid("run"))
-        if not self.api_key and self.approval_method is not ApprovalMethod.CLI:
-            exception = f"HUMANLAYER_API_KEY is required for approval_method {self.approval_method}"
-            raise ValueError(exception)
+        # check env first
+        if self.approval_method is None and os.getenv("HUMANLAYER_APPROVAL_METHOD") is not None:
+            self.approval_method = ApprovalMethod(os.getenv("HUMANLAYER_APPROVAL_METHOD"))
 
-    def __str__(self):
+        # then infer from API_KEY setting
+        if self.approval_method is None:
+            if self.backend is not None or self.api_key or os.getenv("HUMANLAYER_API_KEY"):
+                self.approval_method = ApprovalMethod.CLOUD
+                self.backend = self.backend or CloudHumanLayerBackend(
+                    connection=HumanLayerCloudConnection(
+                        api_key=self.api_key,
+                        api_base_url=self.api_base_url,
+                    )
+                )
+            else:
+                logger.info("No HUMANLAYER_API_KEY found, defaulting to CLI approval")
+                self.approval_method = ApprovalMethod.CLI
+
+        self.run_id = self.run_id or os.getenv(
+            "HUMANLAYER_RUN_ID",
+            self.genid(f"{slugify(self.agent_name or 'agent')}"),
+        )
+
+        if self.approval_method == ApprovalMethod.CLOUD and not self.backend:
+            raise ValueError("backend is required for cloud approvals")
+
+    def __str__(self) -> str:
         return "HumanLayer()"
 
     @classmethod
-    def cloud(cls, **kwargs):
-        return cls(approval_method=ApprovalMethod.CLOUD, **kwargs)
+    def cloud(  # type: ignore
+        cls,
+        connection: HumanLayerCloudConnection | None = None,
+        api_key: str | None = None,
+        api_base_url: str | None = None,
+        **kwargs,
+    ) -> "HumanLayer":
+        if not connection:
+            connection = HumanLayerCloudConnection(
+                api_key=api_key,
+                api_base_url=api_base_url,
+            )
+        return cls(
+            approval_method=ApprovalMethod.CLOUD,
+            backend=CloudHumanLayerBackend(
+                connection=connection,
+            ),
+            **kwargs,
+        )
 
     @classmethod
-    def cli(cls, **kwargs):
+    def cli(  # type: ignore
+        cls,
+        **kwargs,
+    ) -> "HumanLayer":
         return cls(approval_method=ApprovalMethod.CLI, **kwargs)
 
-    def require_approval(
-        self, contact_channel: ContactChannel | None = None
-    ) -> HumanLayerWrapper:
-        def decorator(fn):
+    def require_approval(self, contact_channel: ContactChannel | None = None) -> HumanLayerWrapper:
+        def decorator(fn):  # type: ignore
             if self.approval_method is ApprovalMethod.CLI:
                 return self._approve_cli(fn)
             elif self.approval_method is ApprovalMethod.CLOUD:
@@ -110,18 +144,36 @@ class HumanLayer(BaseModel):
 
         return HumanLayerWrapper(decorator)
 
-    def _approve_cli(self, fn: Callable[[T], R]) -> Callable[[T], R]:
+    def _approve_cli(self, fn: Callable[[T], R]) -> Callable[[T], R | str]:
+        """
+        NOTE we convert a callable[[T], R] to a Callable [[T], R | str]
+
+        this is safe to do for most LLM use cases. It will blow up
+        a normal function.
+
+        If we can guarantee the function calling framework
+        is properly handling exceptions, then we can
+        just raise and let the framework handle the stringification
+        of what went wrong.
+
+        Because some frameworks don't handle exceptions well, we're stuck with the hack for now
+        """
+
         @wraps(fn)
-        def wrapper(*args, **kwargs) -> R:
-            feedback = input(
-                f"allow {fn.__name__} with args {args} and kwargs {kwargs} (Y/n): "
+        def wrapper(*args, **kwargs) -> R | str:  # type: ignore
+            print(
+                f"""Agent {self.run_id} wants to call
+
+{fn.__name__}({json.dumps(kwargs, indent=2)})
+
+{"" if not args else " with args: " + str(args)}"""
             )
-            if feedback.lower() not in {None, "", "y", "Y"}:
-                return str(
-                    UserDeniedError(
-                        f"User denied {fn.__name__} with feedback: {feedback}"
-                    )
-                )
+            feedback = input("Hit ENTER to proceed, or provide feedback to the agent to deny: \n\n")
+            if feedback not in {
+                None,
+                "",
+            }:
+                return str(UserDeniedError(f"User denied {fn.__name__} with feedback: {feedback}"))
             try:
                 return fn(*args, **kwargs)
             except Exception as e:
@@ -131,125 +183,105 @@ class HumanLayer(BaseModel):
 
     def _approve_webapp(
         self, fn: Callable[[T], R], contact_channel: ContactChannel | None = None
-    ) -> Callable[[T], R]:
+    ) -> Callable[[T], R | str]:
+        """
+        NOTE we convert a callable[[T], R] to a Callable [[T], R | str]
+
+        this is safe to do for most LLM use cases. It will blow up
+        a normal function.
+
+        If we can guarantee the function calling framework
+        is properly handling exceptions, then we can
+        just raise and let the framework handle the stringification
+        of what went wrong.
+
+        Because some frameworks don't handle exceptions well, we're stuck with the hack for now
+        """
+
         @wraps(fn)
-        def wrapper(*args, **kwargs) -> R:
-            call_id = genid("call")
+        def wrapper(*args, **kwargs) -> R | str:  # type: ignore
+            assert self.backend is not None
+            call_id = self.genid("call")
             try:
-                url = f"{self.api_base_url}/function_calls"
-                resp = requests.post(
-                    url,
-                    json=FunctionCall(
-                        run_id=self.run_id,
-                        call_id=call_id,
-                        spec=FunctionCallSpec(
-                            fn=fn.__name__,
-                            kwargs=kwargs,
-                            channel=contact_channel,
-                        ),
-                    ).model_dump(),
-                    headers={"Authorization": f"Bearer {self.api_key}"},
-                    timeout=10,
+                call = FunctionCall(
+                    run_id=self.run_id,  # type: ignore
+                    call_id=call_id,
+                    spec=FunctionCallSpec(
+                        fn=fn.__name__,
+                        kwargs=kwargs,
+                        channel=contact_channel,
+                    ),
                 )
-                logger.debug("response %s", json.dumps(resp.json(), indent=2))
-                if resp.status_code != 200:
-                    return f"Error requesting approval: {resp.json()}"
+                self.backend.functions().add(call)
 
                 # todo let's do a more async-y websocket soon
                 while True:
                     time.sleep(3)
-                    resp = requests.get(
-                        f"{self.api_base_url}/function_calls/{call_id}",
-                        headers={"Authorization": f"Bearer {self.api_key}"},
-                        timeout=10,
-                    )
-                    function_call = resp.json()
-                    logger.debug(
-                        "response %d %s",
-                        resp.status_code,
-                        json.dumps(function_call, indent=2),
-                    )
-                    if function_call.get("status", {}).get("approved") is None:
+                    function_call: FunctionCall = self.backend.functions().get(call_id)
+                    if function_call.status is None or function_call.status.approved is None:
                         continue
 
-                    if function_call.get("status", {}).get("approved", False):
+                    if function_call.status.approved:
                         return fn(*args, **kwargs)
                     else:
                         if (
-                            contact_channel
-                            and contact_channel.slack
-                            and contact_channel.slack.context_about_channel_or_user
+                            function_call.spec.channel
+                            and function_call.spec.channel.slack
+                            and function_call.spec.channel.slack.context_about_channel_or_user
                         ):
-                            return f"User in {contact_channel.slack.context_about_channel_or_user} denied {fn.__name__} with message: {function_call.get('status', {}).get('comment')}"
+                            return f"User in {function_call.spec.channel.slack.context_about_channel_or_user} denied {fn.__name__} with message: {function_call.status.comment}"
                         else:
-                            return f"User denied {fn.__name__} with message: {function_call.get('status', {}).get('comment')}"
+                            return f"User denied {fn.__name__} with message: {function_call.status.comment}"
             except Exception as e:
                 logger.exception("Error requesting approval")
+                # todo - raise vs. catch behavior - many tool clients handle+wrap errors
+                # but not all of them :rolling_eyes:
                 return f"Error running {fn.__name__}: {e}"
 
         return wrapper
 
-    def _async_approve_cli(self, fn: Callable[[T], R]) -> Callable[[T], R]:
-        @wraps(fn)
-        async def wrapper(*args, **kwargs) -> R:
-            approved = input(
-                f"allow {fn.__name__} with args {args} and kwargs {kwargs} (Y/n): "
+    def human_as_tool(self, contact_channel: ContactChannel | None = None) -> Callable[[str], str]:
+        if self.approval_method is ApprovalMethod.CLI:
+            return self._human_as_tool_cli()
+        elif self.approval_method is ApprovalMethod.CLOUD:
+            return self._human_as_tool(contact_channel)
+        else:
+            raise NotImplementedError(f"approval_method {self.approval_method} not supported")
+
+    def _human_as_tool_cli(self) -> Callable[[str], str]:
+        def contact_human(question: str) -> str:
+            """ask a human a question on the CLI"""
+            print(
+                f"""Agent {self.run_id} requests assistance:
+
+{question}
+"""
             )
-            if approved.lower() not in {None, "", "y"}:
-                raise ValueError(f"User denied {fn.__name__}")
-            try:
-                return fn(*args, **kwargs)
-            except Exception as e:
-                return f"Error running {fn.__name__}: {e}"
+            feedback = input("Please enter a response: \n\n")
+            return feedback
 
-        return wrapper
+        return contact_human
 
-    async def _request(self, *args, **kwargs) -> Any:
-        async with aiohttp.ClientSession() as session, session.request(
-            *args, **kwargs
-        ) as response:
-            return await response.json()
-
-    def human_as_tool(
-        self, contact_channel: ContactChannel | None = None
-    ) -> Callable[[str], str]:
+    def _human_as_tool(self, contact_channel: ContactChannel | None = None) -> Callable[[str], str]:
         def contact_human(question: str) -> str:
             """Ask a human a question"""
-            call_id = genid("human_call")
+            assert self.backend is not None
+            call_id = self.genid("human_call")
 
-            resp = requests.post(
-                f"{self.api_base_url}/contact_requests",
-                json=HumanContact(
-                    run_id=self.run_id,
-                    call_id=call_id,
-                    spec=HumanContactSpec(
-                        msg=question,
-                        channel=contact_channel,
-                    ),
-                ).model_dump(),
-                headers={"Authorization": f"Bearer {self.api_key}"},
-                timeout=10,
+            contact = HumanContact(
+                run_id=self.run_id,  # type: ignore
+                call_id=call_id,
+                spec=HumanContactSpec(
+                    msg=question,
+                    channel=contact_channel,
+                ),
             )
-            logger.debug(
-                "response %d %s", resp.status_code, json.dumps(resp.text, indent=2)
-            )
-            if resp.status_code != 200:
-                raise ValueError(f"Error requesting approval: {resp.json()}")
+            self.backend.contacts().add(contact)
 
             # todo let's do a more async-y websocket soon
             while True:
                 time.sleep(3)
-                resp = requests.get(
-                    f"{self.api_base_url}/contact_requests/{call_id}",
-                    headers={"Authorization": f"Bearer {self.api_key}"},
-                    timeout=10,
-                )
-                human_contact = HumanContact.model_validate(resp.json())
-                logger.debug(
-                    "response %d %s",
-                    resp.status_code,
-                    json.dumps(resp.json(), indent=2),
-                )
+                human_contact = self.backend.contacts().get(call_id)
                 if human_contact.status is None:
                     continue
 
@@ -262,11 +294,8 @@ class HumanLayer(BaseModel):
             contact_human.__doc__ = "Contact a human via slack and wait for a response"
             contact_human.__name__ = "contact_human_in_slack"
             if contact_channel.slack.context_about_channel_or_user:
-                contact_human.__doc__ += (
-                    f" in {contact_channel.slack.context_about_channel_or_user}"
-                )
-                contact_human.__name__ = f"contact_human_in_slack_in_{contact_channel.slack.context_about_channel_or_user.replace(' ', '_')}"
-
-            contact_human._context = contact_channel.slack.context_about_channel_or_user
+                contact_human.__doc__ += f" in {contact_channel.slack.context_about_channel_or_user}"
+                fn_ctx = contact_channel.slack.context_about_channel_or_user.replace(" ", "_")
+                contact_human.__name__ = f"contact_human_in_slack_in_{fn_ctx}"
 
         return contact_human

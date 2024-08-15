@@ -2,17 +2,22 @@ To get started, you can check out one of the [Examples](../examples/) or follow 
 
 ### Installation
 
-In your desired python environment, run:
+In your desired python environment\*\*, run:
 
 ```bash
 pip install humanlayer
 ```
 
-Or, for the bleeding edge:
+<details>
+<summary>**Creating a VirtualEnv</summary>
+In case you need it, you can create a fresh virtualenv with
 
-```bash
-pip install git+https://github.com/humanlayer/humanlayer
+```shell
+python3 -m venv venv
+source venv/bin/activate
 ```
+
+</details>
 
 ### Choose an LLM Client and Write your first tool-calling agent
 
@@ -203,7 +208,15 @@ This should run until the first function call, and then pause to ask for approva
 Invoking: `multiply` with `{'x': 2, 'y': 5}`
 
 
-allow multiply with args () and kwargs {'x': 2, 'y': 5} (Y/n):
+Agent agent-KxoVZglhSI4 wants to call
+
+multiply({
+  "x": 2,
+  "y": 5
+})
+
+
+Hit ENTER to proceed, or provide feedback to the agent to deny:
 ```
 
 You can hit ENTER to allow this, or give the agent some feedback like `no, use 7 instead of 5`.
@@ -214,7 +227,16 @@ The full output might look something like
 Invoking: `multiply` with `{'x': 2, 'y': 5}`
 
 
-allow multiply with args () and kwargs {'x': 2, 'y': 5} (Y/n): no use 7 instead of 5
+Agent agent-KxoVZglhSI4 wants to call
+
+multiply({
+  "x": 2,
+  "y": 5
+})
+
+
+Hit ENTER to proceed, or provide feedback to the agent to deny: no use 7 instead of 5
+
 User denied multiply with feedback: no use 7 instead of 5
 Invoking: `multiply` with `{'x': 2, 'y': 7}`
 
@@ -231,28 +253,13 @@ The result of multiplying 2 and 7, then adding 32 to the result, is 46.
 ### Integrate with a humanlayer server
 
 To enable collaborative approvals across slack, email, and other channels, you'll need to connect the
-humanlayer SDK to a server. The easiest way to do this is to log into [HumanLayer Cloud](https://app.humanlayer.com) and create a new project and API token, then set it in your shell environment or `.env` file:
+humanlayer SDK to a server. The easiest way to do this is to log into https://app.humanlayer.dev and create a new project and API token, then set it in your shell environment or `.env` file:
 
 ```bash
-export HUMANLAYER_API_TOKEN=sk-proj-...
+export HUMANLAYER_API_KEY=sk-proj-...
 ```
 
-Then you can change your script to use `ApprovalMethod.CLOUD`:
-
-```diff
-
-- from humanlayer import HumanLayer
-- hl = HumanLayer()
-+ from humanlayer import ApprovalMethod, HumanLayer
-+ hl = HumanLayer.cloud()
-
-
-@tool
-def add(x: int, y: int) -> int:
-    """Add two numbers together."""
-    return x + y
-
-```
+With this change, your invocation of `hl = HumanLayer()` will connect to the humanlayer server and allow you to approve functions from the web interface.
 
 Re-running the script, you'll see the same function now show in your approval queue at [HumanLayer Cloud](https://app.humanlayer.dev).
 
