@@ -66,21 +66,25 @@ class HumanLayer(BaseModel):
     agent_name: str | None = None
     genid: Callable[[], str] = genid
 
+    # convenience for forwarding down to Connection
+    api_key: str | None = None
+    api_base_url: str | None = None
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         # check env first
-        if self.approval_method is None:
-            if os.getenv("HUMANLAYER_APPROVAL_METHOD") is not None:
-                self.approval_method = ApprovalMethod(
-                    os.getenv("HUMANLAYER_APPROVAL_METHOD")
-                )
+        if self.approval_method is None and os.getenv("HUMANLAYER_APPROVAL_METHOD") is not None:
+            self.approval_method = ApprovalMethod(os.getenv("HUMANLAYER_APPROVAL_METHOD"))
 
         # then infer from API_KEY setting
         if self.approval_method is None:
-            if self.backend is not None or os.getenv("HUMANLAYER_API_KEY"):
+            if self.backend is not None or self.api_key or os.getenv("HUMANLAYER_API_KEY"):
                 self.approval_method = ApprovalMethod.CLOUD
                 self.backend = self.backend or CloudHumanLayerBackend(
-                    connection=HumanLayerCloudConnection()
+                    connection=HumanLayerCloudConnection(
+                        api_key=self.api_key,
+                        api_base_url=self.api_base_url,
+                    )
                 )
             else:
                 logger.info("No HUMANLAYER_API_KEY found, defaulting to CLI approval")
@@ -122,9 +126,7 @@ class HumanLayer(BaseModel):
     def cli(cls, **kwargs):
         return cls(approval_method=ApprovalMethod.CLI, **kwargs)
 
-    def require_approval(
-        self, contact_channel: ContactChannel | None = None
-    ) -> HumanLayerWrapper:
+    def require_approval(self, contact_channel: ContactChannel | None = None) -> HumanLayerWrapper:
         def decorator(fn):
             if self.approval_method is ApprovalMethod.CLI:
                 return self._approve_cli(fn)
@@ -140,24 +142,18 @@ class HumanLayer(BaseModel):
         @wraps(fn)
         def wrapper(*args, **kwargs) -> R:
             print(
-                f"""Agent {self.run_id} wants to call 
-                
+                f"""Agent {self.run_id} wants to call
+
 {fn.__name__}({json.dumps(kwargs, indent=2)})
 
 {"" if not args else " with args: " + args}"""
             )
-            feedback = input(
-                "Hit ENTER to proceed, or provide feedback to the agent to deny: "
-            )
+            feedback = input("Hit ENTER to proceed, or provide feedback to the agent to deny: \n\n")
             if feedback not in {
                 None,
                 "",
             }:
-                return str(
-                    UserDeniedError(
-                        f"User denied {fn.__name__} with feedback: {feedback}"
-                    )
-                )
+                return str(UserDeniedError(f"User denied {fn.__name__} with feedback: {feedback}"))
             try:
                 return fn(*args, **kwargs)
             except Exception as e:
@@ -165,9 +161,7 @@ class HumanLayer(BaseModel):
 
         return wrapper
 
-    def _approve_webapp(
-        self, fn: Callable[[T], R], contact_channel: ContactChannel | None = None
-    ) -> Callable[[T], R]:
+    def _approve_webapp(self, fn: Callable[[T], R], contact_channel: ContactChannel | None = None) -> Callable[[T], R]:
         @wraps(fn)
         def wrapper(*args, **kwargs) -> R:
             call_id = self.genid("call")
@@ -187,10 +181,7 @@ class HumanLayer(BaseModel):
                 while True:
                     time.sleep(3)
                     function_call: FunctionCall = self.backend.functions().get(call_id)
-                    if (
-                        function_call.status is None
-                        or function_call.status.approved is None
-                    ):
+                    if function_call.status is None or function_call.status.approved is None:
                         continue
 
                     if function_call.status.approved:
@@ -212,9 +203,29 @@ class HumanLayer(BaseModel):
 
         return wrapper
 
-    def human_as_tool(
-        self, contact_channel: ContactChannel | None = None
-    ) -> Callable[[str], str]:
+    def human_as_tool(self, contact_channel: ContactChannel | None = None):
+        if self.approval_method is ApprovalMethod.CLI:
+            return self._human_as_tool_cli()
+        elif self.approval_method is ApprovalMethod.CLOUD:
+            return self._human_as_tool(contact_channel)
+        else:
+            raise NotImplementedError(f"approval_method {self.approval_method} not supported")
+
+    def _human_as_tool_cli(self):
+        def contact_human(question: str) -> str:
+            """ask a human a question on the CLI"""
+            print(
+                f"""Agent {self.run_id} requests assistance:
+
+{question}
+"""
+            )
+            feedback = input("Please enter a response: \n\n")
+            return feedback
+
+        return contact_human
+
+    def _human_as_tool(self, contact_channel: ContactChannel | None = None) -> Callable[[str], str]:
         def contact_human(question: str) -> str:
             """Ask a human a question"""
             call_id = self.genid("human_call")
@@ -245,9 +256,8 @@ class HumanLayer(BaseModel):
             contact_human.__doc__ = "Contact a human via slack and wait for a response"
             contact_human.__name__ = "contact_human_in_slack"
             if contact_channel.slack.context_about_channel_or_user:
-                contact_human.__doc__ += (
-                    f" in {contact_channel.slack.context_about_channel_or_user}"
-                )
-                contact_human.__name__ = f"contact_human_in_slack_in_{contact_channel.slack.context_about_channel_or_user.replace(' ', '_')}"
+                contact_human.__doc__ += f" in {contact_channel.slack.context_about_channel_or_user}"
+                fn_ctx = contact_channel.slack.context_about_channel_or_user.replace(" ", "_")
+                contact_human.__name__ = f"contact_human_in_slack_in_{fn_ctx}"
 
         return contact_human

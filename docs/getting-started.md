@@ -2,8 +2,7 @@ To get started, you can check out one of the [Examples](../examples/) or follow 
 
 ### Installation
 
-In your desired python environment**, run:
-
+In your desired python environment\*\*, run:
 
 ```bash
 pip install humanlayer
@@ -17,6 +16,7 @@ In case you need it, you can create a fresh virtualenv with
 python3 -m venv venv
 source venv/bin/activate
 ```
+
 </details>
 
 ### Choose an LLM Client and Write your first tool-calling agent

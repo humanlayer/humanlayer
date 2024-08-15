@@ -120,6 +120,7 @@ source = ["humanlayer"]
 "**/__init__.py" = ["F403"]
 "**/core/protocol.py" = ["A003"]
 "**/test_*.py" = ["S101"]
+"**/*_test.py" = ["S101"]
 
 [tool.ruff.mccabe]
 max-complexity = 12

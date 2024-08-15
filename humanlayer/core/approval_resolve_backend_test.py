@@ -1,6 +1,6 @@
 import pytest
 
-from humanlayer import ApprovalMethod, HumanLayer, CloudHumanLayerBackend
+from humanlayer import ApprovalMethod, CloudHumanLayerBackend, HumanLayer
 from humanlayer.testing import env_var
 
 
@@ -29,7 +29,7 @@ def test_env_cli() -> None:
 
 def test_cloud() -> None:
     with pytest.raises(Exception) as e:
-        HumanLayer()
+        HumanLayer.cloud()
     assert "HUMANLAYER_API_KEY is required for cloud approvals" in str(e.value)
 
 
@@ -39,9 +39,7 @@ def test_cloud_endpoint_kwarg_default() -> None:
     assert hl.backend is not None
     assert isinstance(hl.backend, CloudHumanLayerBackend)
     assert hl.backend.connection.api_key == "foo"
-    assert (
-        hl.backend.connection.api_base_url == "https://api.humanlayer.dev/humanlayer/v1"
-    )
+    assert hl.backend.connection.api_base_url == "https://api.humanlayer.dev/humanlayer/v1"
 
 
 def test_cloud_endpoint_kwarg() -> None:
@@ -52,14 +50,11 @@ def test_cloud_endpoint_kwarg() -> None:
     assert hl.backend.connection.api_base_url == "fake"
 
 
-def test_env_var_cloud():
+def test_env_var_cloud() -> None:
     with env_var("HUMANLAYER_API_KEY", "foo"):
         hl = HumanLayer()
         assert hl.approval_method == ApprovalMethod.CLOUD
         assert hl.backend is not None
         assert isinstance(hl.backend, CloudHumanLayerBackend)
         assert hl.backend.connection.api_key == "foo"
-        assert (
-            hl.backend.connection.api_base_url
-            == "https://api.humanlayer.dev/humanlayer/v1"
-        )
+        assert hl.backend.connection.api_base_url == "https://api.humanlayer.dev/humanlayer/v1"
