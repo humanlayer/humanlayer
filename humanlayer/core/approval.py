@@ -64,6 +64,7 @@ class HumanLayer(BaseModel):
     approval_method: ApprovalMethod | None = None
     backend: AgentBackend | None = None
     agent_name: str | None = None
+    genid: Callable[[], str] = genid
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -78,14 +79,16 @@ class HumanLayer(BaseModel):
         if self.approval_method is None:
             if self.backend is not None or os.getenv("HUMANLAYER_API_KEY"):
                 self.approval_method = ApprovalMethod.CLOUD
-                self.backend = CloudHumanLayerBackend(connection=HumanLayerCloudConnection())
+                self.backend = self.backend or CloudHumanLayerBackend(
+                    connection=HumanLayerCloudConnection()
+                )
             else:
                 logger.info("No HUMANLAYER_API_KEY found, defaulting to CLI approval")
                 self.approval_method = ApprovalMethod.CLI
 
         self.run_id = self.run_id or os.getenv(
             "HUMANLAYER_RUN_ID",
-            genid(f"{slugify(self.agent_name or 'agent')}"),
+            self.genid(f"{slugify(self.agent_name or 'agent')}"),
         )
 
         if self.approval_method == ApprovalMethod.CLOUD and not self.backend:
@@ -95,7 +98,13 @@ class HumanLayer(BaseModel):
         return "HumanLayer()"
 
     @classmethod
-    def cloud(cls, connection: HumanLayerCloudConnection | None = None,  api_key: str | None = None, api_base_url: str | None = None, **kwargs):
+    def cloud(
+        cls,
+        connection: HumanLayerCloudConnection | None = None,
+        api_key: str | None = None,
+        api_base_url: str | None = None,
+        **kwargs,
+    ):
         if not connection:
             connection = HumanLayerCloudConnection(
                 api_key=api_key,
@@ -161,7 +170,7 @@ class HumanLayer(BaseModel):
     ) -> Callable[[T], R]:
         @wraps(fn)
         def wrapper(*args, **kwargs) -> R:
-            call_id = genid("call")
+            call_id = self.genid("call")
             try:
                 call = FunctionCall(
                     run_id=self.run_id,
@@ -208,7 +217,7 @@ class HumanLayer(BaseModel):
     ) -> Callable[[str], str]:
         def contact_human(question: str) -> str:
             """Ask a human a question"""
-            call_id = genid("human_call")
+            call_id = self.genid("human_call")
 
             contact = HumanContact(
                 run_id=self.run_id,
