@@ -61,7 +61,8 @@ def run_llm_task(prompt, tools, llm):
     """
     made up method, use whatever framework you prefer
     
-    see examples for langchain, openai, crewai, controlflow, etc"""
+    see examples for langchain, openai, crewai, controlflow, etc
+    """
     ...
 
 run_llm_task(
@@ -163,6 +164,7 @@ Hit ENTER to proceed, or provide feedback to the agent to deny:
 
 </details>
 
+#### Approvals via Slack, Email, Etc
 
 Head to https://app.humanlayer.dev and grab your `HUMANLAYER_API_KEY` to start routing approvals via slack, email, or web. See [the getting started video](https://www.loom.com/share/97ead4e4a0b84b3dac4fec2ff1b410bf) for a quick walkthrough.
 
@@ -176,6 +178,44 @@ Then you can start manging LLM actions in slack, email, or whatever channel you 
 <div align="center"><img style="width: 400px" alt="A screenshot of slack showing a human replying to the bot" src="./docs/images/slack_approval_response.png"></div>
 
 Check out the [HumanLayer Docs](./docs/) and the [Getting Started Guide](./docs/getting-started.md) for more information.
+
+#### Human as Tool
+
+You can also use `hl.human_as_tool()` to bring a human into the loop for any reason. This can be useful for debugging, asking for advice, or just getting a human's opinion on something.
+
+```python
+# human_as_tool.py
+
+from humanlayer import HumanLayer
+hl = HumanLayer()
+contact_a_human = hl.human_as_tool()
+
+def send_email(to: str, subject: str, body: str):
+    """Send an email to the customer"""
+    ...
+
+def run_llm_task(prompt, tools, llm):
+    """
+    made up method, use whatever framework you prefer
+    
+    see examples for langchain, openai, crewai, controlflow, etc
+    """
+    ...
+
+run_llm_task(
+    prompt="""Send an email welcoming the customer to 
+    the platform and encouraging them to invite a team member.
+    
+    Contact a human for collaboration and feedback on your email
+    draft
+    """,
+    tools=[send_email, contact_a_human],
+    llm="gpt-4o"
+)
+```
+
+See the [examples](./examples) for more advanced human as tool examples, and workflows that combine both concepts.
+
 
 ## Why HumanLayer?
 
