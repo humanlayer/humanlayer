@@ -47,7 +47,6 @@ pip install humanlayer
 Example usage might look something like the below, 
 
 ```python
-
 from humanlayer import HumanLayer
 hl = HumanLayer() 
 
@@ -57,14 +56,17 @@ def send_email(to: str, subject: str, body: str):
     ...
 
 def run_llm_task(prompt, tools, llm):
-    """made up method, use whatever framework you prefer"""
+    """
+    made up method, use whatever framework you prefer
+    
+    see examples for langchain, openai, crewai, controlflow, etc"""
     ...
 
-# made up method, use whatever framework you prefer
 run_llm_task(
-    prompt="Send an email welcoming the customer to the platform and encouraging them to invite a team member.",
+    prompt="""Send an email welcoming the customer to 
+    the platform and encouraging them to invite a team member.""",
     tools=[send_email],
-    llm=OpenAI(model="gpt-4o")
+    llm="gpt-4o"
 )
 ```
 Check out the [framework specific examples](./examples) for something runnable.
@@ -164,6 +166,7 @@ Head to https://app.humanlayer.dev and grab your `HUMANLAYER_API_KEY` to start r
 
 ```shell
 export HUMANLAYER_API_KEY=...
+python example.py
 ```
 
 Then you can start manging LLM actions in slack, email, or whatever channel you prefer:
