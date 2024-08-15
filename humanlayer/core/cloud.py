@@ -42,8 +42,10 @@ class HumanLayerCloudConnection(BaseModel):
         )
 
 
-class CloudFunctionCallStore(BaseModel, AgentStore[FunctionCall]):
-    connection: HumanLayerCloudConnection
+class CloudFunctionCallStore(AgentStore[FunctionCall]):
+
+    def __init__(self, connection: HumanLayerCloudConnection) -> None:
+        self.connection = connection
 
     def add(self, item: FunctionCall) -> None:
         resp = self.connection.request(
@@ -77,8 +79,10 @@ class CloudFunctionCallStore(BaseModel, AgentStore[FunctionCall]):
         raise NotImplementedError()
 
 
-class CloudHumanContactStore(BaseModel, AgentStore[HumanContact]):
-    connection: HumanLayerCloudConnection
+class CloudHumanContactStore(AgentStore[HumanContact]):
+
+    def __init__(self, connection: HumanLayerCloudConnection) -> None:
+        self.connection = connection
 
     def add(self, item: HumanContact) -> None:
         resp = self.connection.request(

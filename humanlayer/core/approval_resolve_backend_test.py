@@ -1,22 +1,7 @@
-import contextlib
 import pytest
-import os
 
 from humanlayer import ApprovalMethod, HumanLayer, CloudHumanLayerBackend
-
-
-# context manager to set + unset an env var
-@contextlib.contextmanager
-def env_var(var_name: str, var_value: str) -> None:
-    prev_value = os.environ.get(var_name)
-    os.environ[var_name] = var_value
-    try:
-        yield
-    finally:
-        if prev_value is not None:
-            os.environ[var_name] = prev_value
-        else:
-            del os.environ[var_name]
+from humanlayer.testing import env_var
 
 
 def test_no_args() -> None:
@@ -47,13 +32,17 @@ def test_cloud() -> None:
         HumanLayer()
     assert "HUMANLAYER_API_KEY is required for cloud approvals" in str(e.value)
 
+
 def test_cloud_endpoint_kwarg_default() -> None:
     hl = HumanLayer(api_key="foo")
     assert hl.approval_method == ApprovalMethod.CLOUD
     assert hl.backend is not None
     assert isinstance(hl.backend, CloudHumanLayerBackend)
     assert hl.backend.connection.api_key == "foo"
-    assert hl.backend.connection.api_base_url == "https://api.humanlayer.dev/humanlayer/v1"
+    assert (
+        hl.backend.connection.api_base_url == "https://api.humanlayer.dev/humanlayer/v1"
+    )
+
 
 def test_cloud_endpoint_kwarg() -> None:
     hl = HumanLayer(api_key="foo", api_base_url="fake")
@@ -62,6 +51,7 @@ def test_cloud_endpoint_kwarg() -> None:
     assert isinstance(hl.backend, CloudHumanLayerBackend)
     assert hl.backend.connection.api_base_url == "fake"
 
+
 def test_env_var_cloud():
     with env_var("HUMANLAYER_API_KEY", "foo"):
         hl = HumanLayer()
@@ -69,5 +59,7 @@ def test_env_var_cloud():
         assert hl.backend is not None
         assert isinstance(hl.backend, CloudHumanLayerBackend)
         assert hl.backend.connection.api_key == "foo"
-        assert hl.backend.connection.api_base_url == "https://api.humanlayer.dev/humanlayer/v1"
-
+        assert (
+            hl.backend.connection.api_base_url
+            == "https://api.humanlayer.dev/humanlayer/v1"
+        )
