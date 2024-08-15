@@ -21,7 +21,6 @@ Bring your LLM (OpenAI, Llama, Claude, etc) and Framework (LangChain, CrewAI, et
 
 </div>
 
-
 ## Table of contents
 
 - [Getting Started](#getting-started)
@@ -43,7 +42,6 @@ To get started, check out [Getting Started](./docs/getting-started.md), watch th
 
 ## Example
 
-
 ```shell
 pip install humanlayer
 ```
@@ -58,10 +56,10 @@ def send_email(to: str, subject: str, body: str):
     ...
 
 
-# made up function, use whatever 
+# made up function, use whatever
 # tool-calling framework you prefer
 run_llm_task(
-    prompt="""Send an email welcoming the customer to 
+    prompt="""Send an email welcoming the customer to
     the platform and encouraging them to invite a team member.""",
     tools=[send_email],
     llm="gpt-4o"
@@ -69,7 +67,6 @@ run_llm_task(
 ```
 
 <div align="center"><img style="width: 400px" alt="A screenshot of slack showing a human replying to the bot" src="./docs/images/slack_approval_response.png"></div>
-
 
 Check out the [framework specific examples](./examples) or the [Getting Started Guide](./docs/getting-started.md) to get hands on.
 
@@ -88,12 +85,12 @@ def send_email(to: str, subject: str, body: str):
     """Send an email to the customer"""
     ...
 
-# made up method, use whatever 
+# made up method, use whatever
 # framework you prefer
 run_llm_task(
-    prompt="""Send an email welcoming the customer to 
+    prompt="""Send an email welcoming the customer to
     the platform and encouraging them to invite a team member.
-    
+
     Contact a human for collaboration and feedback on your email
     draft
     """,
@@ -103,7 +100,6 @@ run_llm_task(
 ```
 
 See the [examples](./examples) for more advanced human as tool examples, and workflows that combine both concepts.
-
 
 ## Why HumanLayer?
 

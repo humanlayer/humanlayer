@@ -1,7 +1,6 @@
 from unittest.mock import Mock
-from unittest.mock import ANY
 
-from humanlayer import HumanLayer, AgentBackend, FunctionCall, FunctionCallSpec
+from humanlayer import AgentBackend, FunctionCall, FunctionCallSpec, HumanLayer
 from humanlayer.core.protocol import AgentStore
 
 
@@ -16,7 +15,10 @@ def test_require():
     mock_function.__name__ = "_fn_"
     mock_function.return_value = "bosh"
 
-    hl = HumanLayer(backend=mock_backend, genid=lambda x: "generated-id")
+    hl = HumanLayer(
+        backend=mock_backend,
+        genid=lambda x: "generated-id",
+    )
 
     wrapped = hl.require_approval().wrap(mock_function)
 
@@ -28,7 +30,6 @@ def test_require():
             run_id="generated-id",
             call_id="generated-id",
             spec=FunctionCallSpec(fn="_fn_", kwargs={"bar": "baz"}, channel=None),
-            strict=False,
         )
     )
     mock_function.assert_called_with(bar="baz")

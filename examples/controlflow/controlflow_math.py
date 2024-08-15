@@ -14,7 +14,7 @@ def add(x: int, y: int) -> int:
     return x + y
 
 
-@hl.require_approval() # require user approval before this function can be called
+@hl.require_approval()  # require user approval before this function can be called
 def multiply(x: int, y: int) -> int:
     """multiply two numbers"""
     return x * y

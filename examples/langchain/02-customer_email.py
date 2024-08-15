@@ -5,9 +5,7 @@ from langchain_openai import ChatOpenAI
 from dotenv import load_dotenv
 
 
-from humanlayer.core.approval import (
-    HumanLayer
-)
+from humanlayer.core.approval import HumanLayer
 
 load_dotenv()
 
@@ -23,6 +21,7 @@ into the product.
 Your task is to send an email to the customer danny@example.com
 
 """
+
 
 def get_info_about_customer(customer_email: str) -> str:
     """get info about a customer"""

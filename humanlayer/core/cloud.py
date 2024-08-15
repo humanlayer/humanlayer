@@ -5,15 +5,15 @@ import os
 import requests
 from pydantic import BaseModel, model_validator
 
-from humanlayer.core.protocol import (
-    AgentBackend,
-    AgentStore,
-    HumanLayerException,
-)
 from humanlayer.core.models import (
     FunctionCall,
     FunctionCallStatus,
     HumanContact,
+)
+from humanlayer.core.protocol import (
+    AgentBackend,
+    AgentStore,
+    HumanLayerException,
 )
 
 logger = logging.getLogger(__name__)
@@ -43,7 +43,6 @@ class HumanLayerCloudConnection(BaseModel):
 
 
 class CloudFunctionCallStore(AgentStore[FunctionCall]):
-
     def __init__(self, connection: HumanLayerCloudConnection) -> None:
         self.connection = connection
 
@@ -55,9 +54,7 @@ class CloudFunctionCallStore(AgentStore[FunctionCall]):
         )
         resp_json = resp.json()
 
-        logger.debug(
-            "response %d %s", resp.status_code, json.dumps(resp_json, indent=2)
-        )
+        logger.debug("response %d %s", resp.status_code, json.dumps(resp_json, indent=2))
 
         if resp.status_code != 200:
             raise HumanLayerException(f"Error creating function call: {resp_json}")
@@ -82,7 +79,6 @@ class CloudFunctionCallStore(AgentStore[FunctionCall]):
 
 
 class CloudHumanContactStore(AgentStore[HumanContact]):
-
     def __init__(self, connection: HumanLayerCloudConnection) -> None:
         self.connection = connection
 
@@ -94,9 +90,7 @@ class CloudHumanContactStore(AgentStore[HumanContact]):
         )
         resp_json = resp.json()
 
-        logger.debug(
-            "response %d %s", resp.status_code, json.dumps(resp_json, indent=2)
-        )
+        logger.debug("response %d %s", resp.status_code, json.dumps(resp_json, indent=2))
 
         if resp.status_code != 200:
             raise HumanLayerException(f"Error creating function call: {resp_json}")

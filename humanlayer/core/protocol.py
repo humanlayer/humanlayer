@@ -1,4 +1,4 @@
-from typing import Generic, Iterable, Protocol, TypeVar
+from typing import Generic, Iterable, TypeVar
 
 from humanlayer.core.models import (
     FunctionCall,
