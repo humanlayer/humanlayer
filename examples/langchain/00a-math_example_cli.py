@@ -5,11 +5,11 @@
 # use local / CLI mode
 #
 from dotenv import load_dotenv
-from langchain.agents import AgentType, initialize_agent
-from langchain.tools import tool
 from langchain_openai import ChatOpenAI
 
 from humanlayer import HumanLayer
+from langchain.agents import AgentType, initialize_agent
+from langchain.tools import tool
 
 load_dotenv()
 

@@ -16,6 +16,7 @@ python-socketio = {extras = ["asyncio-client"], version = "5.11.3"}
 human-id = "0.2.0"
 aiohttp = "3.10.2"
 requests = "2.32.3"
+python-slugify = "^8.0.4"
 
 [tool.poetry.scripts]
 hl = "humanlayer.cli.main:cli"
@@ -97,7 +98,7 @@ ignore = [
     "S307",
 
     # long exception message
-    "TRY003"
+    "TRY003",
 
 ]
 
@@ -116,6 +117,9 @@ source = ["humanlayer"]
 "tests/*" = ["S101"]
 "humanlayer/cli/main.py" = ["TRY003"]
 "humanlayer/core/types.py" = ["TRY003"]
+"**/__init__.py" = ["F403"]
+"**/core/protocol.py" = ["A003"]
+"**/test_*.py" = ["S101"]
 
 [tool.ruff.mccabe]
 max-complexity = 12

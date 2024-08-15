@@ -44,24 +44,21 @@ To get started, check out [Getting Started](./docs/getting-started.md), watch th
 pip install humanlayer
 ```
 
-or for the bleeding edge
-
-```shell
-pip install git+https://github.com/humanlayer/humanlayer-ai-llm-agents
-```
-
-Set `HUMANLAYER_API_TOKEN` and wrap your AI function in `require_approval()`
+Example usage might look something like the below, 
 
 ```python
 
-from humanlayer import ApprovalMethod, HumanLayer
-hl = HumanLayer.cloud() # or CLI
+from humanlayer import HumanLayer
+hl = HumanLayer() 
 
 @hl.require_approval()
 def send_email(to: str, subject: str, body: str):
     """Send an email to the customer"""
     ...
 
+def run_llm_task(prompt, tools, llm):
+    """made up method, use whatever framework you prefer"""
+    ...
 
 # made up method, use whatever framework you prefer
 run_llm_task(
@@ -69,6 +66,104 @@ run_llm_task(
     tools=[send_email],
     llm=OpenAI(model="gpt-4o")
 )
+```
+Check out the [framework specific examples](./examples) for something runnable.
+
+<details>
+<summary>🦜⛓️ LangChain Example w/ OpenAI</summary>
+
+[All LangChain Examples](./examples/langchain/)
+
+```shell
+pip install langchain langchain-openai
+export OPENAI_API_KEY=...
+```
+
+```python
+from langchain.agents import AgentType, initialize_agent
+import langchain_core.tools as langchain_tools
+from langchain_openai import ChatOpenAI
+
+from humanlayer.core.approval import (
+    HumanLayer
+)
+
+hl = HumanLayer()
+
+task_prompt = """
+
+You are the email onboarding assistant. You check on the progress customers
+are making and then based on that info, you
+send friendly and encouraging emails to customers to help them fully onboard
+into the product.
+
+Your task is to send an email to the customer danny@example.com
+
+"""
+
+def get_info_about_customer(customer_email: str) -> str:
+    """get info about a customer"""
+    return """
+    This customer has completed most of the onboarding steps,
+    but still needs to invite a few team members before they can be
+    considered fully onboarded
+    """
+
+
+# require approval to send an email
+@hl.require_approval()
+def send_email(to: str, subject: str, body: str) -> str:
+    """Send an email to a user"""
+    return f"Email sent to {to} with subject: {subject}"
+
+
+tools = [
+    langchain_tools.StructuredTool.from_function(get_info_about_customer),
+    langchain_tools.StructuredTool.from_function(send_email),
+]
+
+llm = ChatOpenAI(model="gpt-4o", temperature=0)
+agent = initialize_agent(
+    tools=tools,
+    llm=llm,
+    agent=AgentType.OPENAI_FUNCTIONS,
+    verbose=True,
+    handle_parsing_errors=True,
+)
+
+if __name__ == "__main__":
+    result = agent.run(task_prompt)
+    print("\n\n----------Result----------\n\n")
+    print(result)
+```
+</details>
+
+By default, approvals will be requests on the CLI. 
+
+
+<details>
+<summary>Example CLI Response</summary>
+
+```
+Agent agent-KxoVZglhSI4 wants to call
+
+send_email({
+  "to": "danny@example.com",
+  "subject": "You're Almost There!",
+  "body": "Hi Danny,\n\nWe noticed that you've made great progress with your onboarding process. That's fantastic! The last step to fully onboard is to invite a few team members to join you.\n\nInviting your team will help you get the most out of our product and ensure everyone is on the same page.\n\nIf you need any assistance or have any questions, feel free to reach out. We're here to help!\n\nBest regards,\nThe Onboarding Team"
+})
+
+
+Hit ENTER to proceed, or provide feedback to the agent to deny:
+```
+
+</details>
+
+
+Head to https://app.humanlayer.dev and grab your `HUMANLAYER_API_KEY` to start routing approvals via slack, email, or web. See [the getting started video](https://www.loom.com/share/97ead4e4a0b84b3dac4fec2ff1b410bf) for a quick walkthrough.
+
+```shell
+export HUMANLAYER_API_KEY=...
 ```
 
 Then you can start manging LLM actions in slack, email, or whatever channel you prefer:

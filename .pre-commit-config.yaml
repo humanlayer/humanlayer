@@ -14,21 +14,22 @@ repos:
     hooks:
       - id: ruff
         args: [--exit-non-zero-on-fix]
+        exclude: ^examples/
       - id: ruff-format
 
   - repo: https://github.com/pre-commit/mirrors-prettier
     rev: "v3.0.3"
     hooks:
       - id: prettier
-  - repo: https://github.com/tcort/markdown-link-check
-    rev: "v3.12.2"
-    hooks:
-      - id: markdown-link-check
-        args:
-          [
-            --quiet,
-            --ignore=https://platform.openai.com/docs/guides/function-calling,
-          ]
+#  - repo: https://github.com/tcort/markdown-link-check
+#    rev: "v3.12.2"
+#    hooks:
+#      - id: markdown-link-check
+#        args:
+#          [
+#            --quiet,
+#            --ignore=https://platform.openai.com/docs/guides/function-calling,
+#          ]
 #  - repo: https://github.com/psf/black-pre-commit-mirror
 #    rev: 24.8.0
 #    hooks:

@@ -5,20 +5,20 @@ import secrets
 import time
 from enum import Enum
 from functools import wraps
-from typing import Any, Callable, TypeVar
+from typing import Callable, TypeVar
 
-import aiohttp
-import requests
-import socketio  # type: ignore
 from pydantic import BaseModel
+from slugify import slugify
 
-from humanlayer.core.types import (
+from humanlayer.core.cloud import CloudHumanLayerBackend, HumanLayerCloudConnection
+from humanlayer.core.models import (
     ContactChannel,
     FunctionCall,
     FunctionCallSpec,
     HumanContact,
     HumanContactSpec,
 )
+from humanlayer.core.protocol import AgentBackend
 
 # Define TypeVars for input and output types
 T = TypeVar("T")
@@ -60,37 +60,54 @@ class HumanLayer(BaseModel):
 
     model_config = {"arbitrary_types_allowed": True}
 
-    api_key: str | None = None
-    api_base_url: str | None = None
-    ws_base_url: str | None = None
     run_id: str | None = None
-    approval_method: ApprovalMethod | None
-    sio: socketio.AsyncClient = socketio.AsyncClient()
-
-    CLI: ApprovalMethod = ApprovalMethod.CLI
-    CLOUD: ApprovalMethod = ApprovalMethod.CLOUD
+    approval_method: ApprovalMethod | None = None
+    backend: AgentBackend | None = None
+    agent_name: str | None = None
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.api_key = self.api_key or os.getenv("HUMANLAYER_API_KEY")
-        self.api_base_url = self.api_base_url or os.getenv(
-            "HUMANLAYER_API_BASE", "https://api.humanlayer.dev/humanlayer/v1"
+        # check env first
+        if self.approval_method is None:
+            if os.getenv("HUMANLAYER_APPROVAL_METHOD") is not None:
+                self.approval_method = ApprovalMethod(
+                    os.getenv("HUMANLAYER_APPROVAL_METHOD")
+                )
+
+        # then infer from API_KEY setting
+        if self.approval_method is None:
+            if self.backend is not None or os.getenv("HUMANLAYER_API_KEY"):
+                self.approval_method = ApprovalMethod.CLOUD
+                self.backend = CloudHumanLayerBackend(connection=HumanLayerCloudConnection())
+            else:
+                logger.info("No HUMANLAYER_API_KEY found, defaulting to CLI approval")
+                self.approval_method = ApprovalMethod.CLI
+
+        self.run_id = self.run_id or os.getenv(
+            "HUMANLAYER_RUN_ID",
+            genid(f"{slugify(self.agent_name or 'agent')}"),
         )
-        self.ws_base_url = self.ws_base_url or os.getenv("HUMANLAYER_WS_BASE")
-        self.approval_method = self.approval_method or os.getenv(
-            "HUMANLAYER_APPROVAL_METHOD", ApprovalMethod.CLI
-        )
-        self.run_id = self.run_id or os.getenv("HUMANLAYER_RUN_ID", genid("run"))
-        if not self.api_key and self.approval_method is not ApprovalMethod.CLI:
-            exception = f"HUMANLAYER_API_KEY is required for approval_method {self.approval_method}"
-            raise ValueError(exception)
+
+        if self.approval_method == ApprovalMethod.CLOUD and not self.backend:
+            raise ValueError("backend is required for cloud approvals")
 
     def __str__(self):
         return "HumanLayer()"
 
     @classmethod
-    def cloud(cls, **kwargs):
-        return cls(approval_method=ApprovalMethod.CLOUD, **kwargs)
+    def cloud(cls, connection: HumanLayerCloudConnection | None = None,  api_key: str | None = None, api_base_url: str | None = None, **kwargs):
+        if not connection:
+            connection = HumanLayerCloudConnection(
+                api_key=api_key,
+                api_base_url=api_base_url,
+            )
+        return cls(
+            approval_method=ApprovalMethod.CLOUD,
+            backend=CloudHumanLayerBackend(
+                connection=connection,
+            ),
+            **kwargs,
+        )
 
     @classmethod
     def cli(cls, **kwargs):
@@ -113,10 +130,20 @@ class HumanLayer(BaseModel):
     def _approve_cli(self, fn: Callable[[T], R]) -> Callable[[T], R]:
         @wraps(fn)
         def wrapper(*args, **kwargs) -> R:
-            feedback = input(
-                f"allow {fn.__name__} with args {args} and kwargs {kwargs} (Y/n): "
+            print(
+                f"""Agent {self.run_id} wants to call 
+                
+{fn.__name__}({json.dumps(kwargs, indent=2)})
+
+{"" if not args else " with args: " + args}"""
             )
-            if feedback.lower() not in {None, "", "y", "Y"}:
+            feedback = input(
+                "Hit ENTER to proceed, or provide feedback to the agent to deny: "
+            )
+            if feedback not in {
+                None,
+                "",
+            }:
                 return str(
                     UserDeniedError(
                         f"User denied {fn.__name__} with feedback: {feedback}"
@@ -136,79 +163,45 @@ class HumanLayer(BaseModel):
         def wrapper(*args, **kwargs) -> R:
             call_id = genid("call")
             try:
-                url = f"{self.api_base_url}/function_calls"
-                resp = requests.post(
-                    url,
-                    json=FunctionCall(
-                        run_id=self.run_id,
-                        call_id=call_id,
-                        spec=FunctionCallSpec(
-                            fn=fn.__name__,
-                            kwargs=kwargs,
-                            channel=contact_channel,
-                        ),
-                    ).model_dump(),
-                    headers={"Authorization": f"Bearer {self.api_key}"},
-                    timeout=10,
+                call = FunctionCall(
+                    run_id=self.run_id,
+                    call_id=call_id,
+                    spec=FunctionCallSpec(
+                        fn=fn.__name__,
+                        kwargs=kwargs,
+                        channel=contact_channel,
+                    ),
                 )
-                logger.debug("response %s", json.dumps(resp.json(), indent=2))
-                if resp.status_code != 200:
-                    return f"Error requesting approval: {resp.json()}"
+                self.backend.functions().add(call)
 
                 # todo let's do a more async-y websocket soon
                 while True:
                     time.sleep(3)
-                    resp = requests.get(
-                        f"{self.api_base_url}/function_calls/{call_id}",
-                        headers={"Authorization": f"Bearer {self.api_key}"},
-                        timeout=10,
-                    )
-                    function_call = resp.json()
-                    logger.debug(
-                        "response %d %s",
-                        resp.status_code,
-                        json.dumps(function_call, indent=2),
-                    )
-                    if function_call.get("status", {}).get("approved") is None:
+                    function_call: FunctionCall = self.backend.functions().get(call_id)
+                    if (
+                        function_call.status is None
+                        or function_call.status.approved is None
+                    ):
                         continue
 
-                    if function_call.get("status", {}).get("approved", False):
+                    if function_call.status.approved:
                         return fn(*args, **kwargs)
                     else:
                         if (
-                            contact_channel
-                            and contact_channel.slack
-                            and contact_channel.slack.context_about_channel_or_user
+                            function_call.spec.channel
+                            and function_call.spec.channel.slack
+                            and function_call.spec.channel.slack.context_about_channel_or_user
                         ):
-                            return f"User in {contact_channel.slack.context_about_channel_or_user} denied {fn.__name__} with message: {function_call.get('status', {}).get('comment')}"
+                            return f"User in {contact_channel.slack.context_about_channel_or_user} denied {fn.__name__} with message: {function_call.status.comment}"
                         else:
-                            return f"User denied {fn.__name__} with message: {function_call.get('status', {}).get('comment')}"
+                            return f"User denied {fn.__name__} with message: {function_call.status.comment}"
             except Exception as e:
                 logger.exception("Error requesting approval")
+                # todo - raise vs. catch behavior - many tool clients handle+wrap errors
+                # but not all of them :rolling_eyes:
                 return f"Error running {fn.__name__}: {e}"
 
         return wrapper
-
-    def _async_approve_cli(self, fn: Callable[[T], R]) -> Callable[[T], R]:
-        @wraps(fn)
-        async def wrapper(*args, **kwargs) -> R:
-            approved = input(
-                f"allow {fn.__name__} with args {args} and kwargs {kwargs} (Y/n): "
-            )
-            if approved.lower() not in {None, "", "y"}:
-                raise ValueError(f"User denied {fn.__name__}")
-            try:
-                return fn(*args, **kwargs)
-            except Exception as e:
-                return f"Error running {fn.__name__}: {e}"
-
-        return wrapper
-
-    async def _request(self, *args, **kwargs) -> Any:
-        async with aiohttp.ClientSession() as session, session.request(
-            *args, **kwargs
-        ) as response:
-            return await response.json()
 
     def human_as_tool(
         self, contact_channel: ContactChannel | None = None
@@ -217,39 +210,20 @@ class HumanLayer(BaseModel):
             """Ask a human a question"""
             call_id = genid("human_call")
 
-            resp = requests.post(
-                f"{self.api_base_url}/contact_requests",
-                json=HumanContact(
-                    run_id=self.run_id,
-                    call_id=call_id,
-                    spec=HumanContactSpec(
-                        msg=question,
-                        channel=contact_channel,
-                    ),
-                ).model_dump(),
-                headers={"Authorization": f"Bearer {self.api_key}"},
-                timeout=10,
+            contact = HumanContact(
+                run_id=self.run_id,
+                call_id=call_id,
+                spec=HumanContactSpec(
+                    msg=question,
+                    channel=contact_channel,
+                ),
             )
-            logger.debug(
-                "response %d %s", resp.status_code, json.dumps(resp.text, indent=2)
-            )
-            if resp.status_code != 200:
-                raise ValueError(f"Error requesting approval: {resp.json()}")
+            self.backend.contacts().add(contact)
 
             # todo let's do a more async-y websocket soon
             while True:
                 time.sleep(3)
-                resp = requests.get(
-                    f"{self.api_base_url}/contact_requests/{call_id}",
-                    headers={"Authorization": f"Bearer {self.api_key}"},
-                    timeout=10,
-                )
-                human_contact = HumanContact.model_validate(resp.json())
-                logger.debug(
-                    "response %d %s",
-                    resp.status_code,
-                    json.dumps(resp.json(), indent=2),
-                )
+                human_contact = self.backend.contacts().get(call_id)
                 if human_contact.status is None:
                     continue
 
@@ -266,7 +240,5 @@ class HumanLayer(BaseModel):
                     f" in {contact_channel.slack.context_about_channel_or_user}"
                 )
                 contact_human.__name__ = f"contact_human_in_slack_in_{contact_channel.slack.context_about_channel_or_user.replace(' ', '_')}"
-
-            contact_human._context = contact_channel.slack.context_about_channel_or_user
 
         return contact_human
