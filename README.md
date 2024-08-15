@@ -47,6 +47,8 @@ pip install humanlayer
 Example usage might look something like the below, 
 
 ```python
+# example.py
+
 from humanlayer import HumanLayer
 hl = HumanLayer() 
 

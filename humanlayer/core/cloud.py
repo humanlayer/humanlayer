@@ -55,7 +55,9 @@ class CloudFunctionCallStore(AgentStore[FunctionCall]):
         )
         resp_json = resp.json()
 
-        logger.debug("response %d %s", resp.status_code, json.dumps(resp_json, indent=2))
+        logger.debug(
+            "response %d %s", resp.status_code, json.dumps(resp_json, indent=2)
+        )
 
         if resp.status_code != 200:
             raise HumanLayerException(f"Error creating function call: {resp_json}")
@@ -63,7 +65,7 @@ class CloudFunctionCallStore(AgentStore[FunctionCall]):
     def get(self, call_id: str) -> FunctionCall:
         resp = self.connection.request(
             "GET",
-            "/function_calls/{call_id}",
+            f"/function_calls/{call_id}",
         )
         resp_json = resp.json()
         logger.debug(
@@ -92,7 +94,9 @@ class CloudHumanContactStore(AgentStore[HumanContact]):
         )
         resp_json = resp.json()
 
-        logger.debug("response %d %s", resp.status_code, json.dumps(resp_json, indent=2))
+        logger.debug(
+            "response %d %s", resp.status_code, json.dumps(resp_json, indent=2)
+        )
 
         if resp.status_code != 200:
             raise HumanLayerException(f"Error creating function call: {resp_json}")
