@@ -3,7 +3,7 @@
 To get started, you can check out one of the [Examples](../examples/) or follow the instructions below.
 
 <div align="center">
-<a href="https://www.loom.com/share/f27d4a254c4a40278d61d4814c7d698f"><img width="60%" alt="video thumbnail showing editor" src="./images/video-thumb.png"></a>
+<a target="_blank" href="https://www.loom.com/share/f27d4a254c4a40278d61d4814c7d698f"><img width="60%" alt="video thumbnail showing editor" src="./images/video-thumb.png"></a>
 </div>
 
 ### Installation
