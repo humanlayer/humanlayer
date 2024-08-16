@@ -1,4 +1,8 @@
+# Getting Started
+
 To get started, you can check out one of the [Examples](../examples/) or follow the instructions below.
+
+[![video thumbnail showing editor](./images/video-thumb.png)](https://www.loom.com/share/f27d4a254c4a40278d61d4814c7d698f)
 
 ### Installation
 

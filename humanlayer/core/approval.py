@@ -56,7 +56,7 @@ class HumanLayerWrapper:
 
 
 class HumanLayer(BaseModel):
-    """🧱 HumanLayer"""
+    """HumanLayer"""
 
     model_config = {"arbitrary_types_allowed": True}
 
