@@ -5,8 +5,9 @@ from humanlayer.testing import env_var
 
 
 def test_no_args() -> None:
-    hl = HumanLayer()
-    assert hl.approval_method == ApprovalMethod.CLI
+    with env_var("HUMANLAYER_API_KEY", ""):
+        hl = HumanLayer()
+        assert hl.approval_method == ApprovalMethod.CLI
 
 
 def test_cli_hardcoded() -> None:
@@ -28,9 +29,10 @@ def test_env_cli() -> None:
 
 
 def test_cloud() -> None:
-    with pytest.raises(Exception) as e:
-        HumanLayer.cloud()
-    assert "HUMANLAYER_API_KEY is required for cloud approvals" in str(e.value)
+    with env_var("HUMANLAYER_API_KEY", ""):
+        with pytest.raises(Exception) as e:
+            HumanLayer.cloud()
+        assert "HUMANLAYER_API_KEY is required for cloud approvals" in str(e.value)
 
 
 def test_cloud_endpoint_kwarg_default() -> None:

@@ -89,7 +89,7 @@ task = Task(
     expected_output="A numerical answer.",
 )
 
-crew = Crew(agents=[general_agent], tasks=[task], verbose=2)
+crew = Crew(agents=[general_agent], tasks=[task], verbose=True)
 
 
 def main():
