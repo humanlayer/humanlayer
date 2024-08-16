@@ -41,7 +41,7 @@ To get started, check out [Getting Started](./docs/getting-started.md), watch th
 - 🧠 [Raw OpenAI Client](./examples/openai_client/)
 
 <div align="center">
-<a href="https://www.loom.com/share/f27d4a254c4a40278d61d4814c7d698f"><img width="60%" alt="video thumbnail showing editor" src="./docs/images/video-thumb.png"></a>
+<a target="_blank" href="https://www.loom.com/share/f27d4a254c4a40278d61d4814c7d698f"><img width="60%" alt="video thumbnail showing editor" src="./docs/images/video-thumb.png"></a>
 </div>
 
 ## Example
