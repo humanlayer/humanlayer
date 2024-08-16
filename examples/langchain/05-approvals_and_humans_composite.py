@@ -7,7 +7,7 @@ from humanlayer import (
 )
 from langchain.agents import AgentType, initialize_agent
 
-from .channels import (
+from channels import (
     dm_with_ceo,
     dm_with_head_of_marketing,
     dm_with_summer_intern,

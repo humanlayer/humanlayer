@@ -76,11 +76,11 @@ class HumanLayer(BaseModel):
     ) -> None:
         super().__init__(**kwargs)
         # check env first
-        if self.approval_method is None and os.getenv("HUMANLAYER_APPROVAL_METHOD") is not None:
+        if not self.approval_method and os.getenv("HUMANLAYER_APPROVAL_METHOD"):
             self.approval_method = ApprovalMethod(os.getenv("HUMANLAYER_APPROVAL_METHOD"))
 
         # then infer from API_KEY setting
-        if self.approval_method is None:
+        if not self.approval_method:
             if self.backend is not None or self.api_key or os.getenv("HUMANLAYER_API_KEY"):
                 self.approval_method = ApprovalMethod.CLOUD
                 self.backend = self.backend or CloudHumanLayerBackend(
