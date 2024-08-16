@@ -25,10 +25,10 @@ You'll need a short python script that defines a function that you want to gate 
 and an agent+prompt that will execute the function.
 There are a number of different examples you can start from, including:
 
-- 🦜⛓️ [LangChain Math](../examples/langchain/01-math_example.py)
-- 🚣‍ [CrewAI Math](../examples/crewai/crewai_math.py)
-- 🦾 [ControlFlow Math](../examples/controlflow/controlflow_math.py)
-- 🧠 [Raw OpenAI Client](../examples/openai_client/math_example.py)
+- 🦜⛓️ [LangChain](../examples/langchain/)
+- 🚣‍ [CrewAI](../examples/crewai/)
+- 🦾 [ControlFlow](../examples/controlflow/)
+- 🧠 [Raw OpenAI Client](../examples/openai_client/)
 
 We'll use LangChain and OpenAI here since it's fairly succinct for this use case.
 
