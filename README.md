@@ -35,10 +35,10 @@ Bring your LLM (OpenAI, Llama, Claude, etc) and Framework (LangChain, CrewAI, et
 
 To get started, check out [Getting Started](./docs/getting-started.md), watch the [2:30 Getting Started Video](https://www.loom.com/share/97ead4e4a0b84b3dac4fec2ff1b410bf), or jump straight into one of the [Examples](./examples/):
 
-- 🦜⛓️ [LangChain](./examples/langchain/01-math_example.py)
-- 🚣‍ [CrewAI](./examples/crewai/crewai_math.py)
-- 🦾 [ControlFlow](./examples/controlflow/controlflow_math.py)
-- 🧠 [Raw OpenAI Client](./examples/openai_client/math_example.py)
+- 🦜⛓️ [LangChain](./examples/langchain/)
+- 🚣‍ [CrewAI](./examples/crewai/)
+- 🦾 [ControlFlow](./examples/controlflow/)
+- 🧠 [Raw OpenAI Client](./examples/openai_client/)
 
 ## Example
 
