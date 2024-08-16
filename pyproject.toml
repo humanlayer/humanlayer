@@ -30,6 +30,7 @@ pre-commit = "^3.4.0"
 tox = "^4.11.1"
 ruff = "^0.5.6"
 types-requests = "^2.32.0.20240712"
+types-python-slugify = "^8.0.2.20240310"
 
 [tool.poetry.group.docs.dependencies]
 mkdocs = "^1.4.2"
