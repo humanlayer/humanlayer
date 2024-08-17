@@ -230,6 +230,12 @@ class HumanLayer(BaseModel):
                             and function_call.spec.channel.slack.context_about_channel_or_user
                         ):
                             return f"User in {function_call.spec.channel.slack.context_about_channel_or_user} denied {fn.__name__} with message: {function_call.status.comment}"
+                        elif (
+                            contact_channel
+                            and contact_channel.slack
+                            and contact_channel.slack.context_about_channel_or_user
+                        ):
+                            return f"User in {contact_channel.slack.context_about_channel_or_user} denied {fn.__name__} with message: {function_call.status.comment}"
                         else:
                             return f"User denied {fn.__name__} with message: {function_call.status.comment}"
             except Exception as e:
@@ -263,8 +269,8 @@ class HumanLayer(BaseModel):
         return contact_human
 
     def _human_as_tool(self, contact_channel: ContactChannel | None = None) -> Callable[[str], str]:
-        def contact_human(question: str) -> str:
-            """Ask a human a question"""
+        def contact_human(message: str) -> str:
+            """contact a human"""
             assert self.backend is not None
             call_id = self.genid("human_call")
 
@@ -272,7 +278,7 @@ class HumanLayer(BaseModel):
                 run_id=self.run_id,  # type: ignore
                 call_id=call_id,
                 spec=HumanContactSpec(
-                    msg=question,
+                    msg=message,
                     channel=contact_channel,
                 ),
             )
@@ -285,7 +291,8 @@ class HumanLayer(BaseModel):
                 if human_contact.status is None:
                     continue
 
-                return human_contact.status.response
+                if human_contact.status.response is not None:
+                    return human_contact.status.response
 
         if contact_channel is None:
             return contact_human
