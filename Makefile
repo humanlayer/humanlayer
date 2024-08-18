@@ -71,7 +71,7 @@ test-examples:
 	:
 	docker compose -f examples/langchain/docker-compose.yaml run examples 01-math_example.py
 	docker compose -f examples/langchain/docker-compose.yaml run examples 02-customer_email.py
-	docker compose -f examples/langchain/docker-compose.yaml run examples 03-human_as_tool.py
+	docker compose -f examples/langchain/docker-compose.yaml run examples 04-human_as_tool_linkedin.py
 	docker compose -f examples/langchain/docker-compose.yaml run examples 04-human_as_tool_onboarding.py
 	docker compose -f examples/langchain/docker-compose.yaml run examples 05-approvals_and_humans_composite.py
 	:
