@@ -78,3 +78,11 @@ test-examples:
 	: 🧠 OpenAI
 	:
 	docker compose -f examples/openai_client/docker-compose.yaml run examples
+
+.PHONY: githooks
+githooks:
+	:
+	: 🚀 Installing pre-push hook
+	:
+	echo 'make check test' > .git/hooks/pre-push
+	chmod +x .git/hooks/pre-push
