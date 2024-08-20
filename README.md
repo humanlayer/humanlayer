@@ -189,7 +189,7 @@ We do it for you all!
 [![Star History Chart](https://api.star-history.com/svg?repos=humanlayer/humanlayer&type=Date)](https://star-history.com/#humanlayer/humanlayer&Date)
 
 
-Shouts out to [@erquhart](https://github.com/erquhart)for this one
+Shouts out to [@erquhart](https://github.com/erquhart) for this one
 
 <div align="center">
 <img width="360" src="https://github.com/user-attachments/assets/849a7149-daff-43a7-8ca9-427ccd0ae77c" />
