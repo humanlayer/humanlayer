@@ -1,6 +1,6 @@
 <div align="center">
 
-![Wordmark Logo of HumanLayer](./docs/images/humanlayer-logo.png)
+![Wordmark Logo of HumanLayer](./images/humanlayer-logo.png)
 
 # **HumanLayer Docs**
 
