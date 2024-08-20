@@ -182,6 +182,19 @@ You can test different real life examples of HumanLayer in the [examples folder]
 
 HumanLayer is open-source and we welcome contributions in the form of issues, documentation, pull requests, and more. See [CONTRIBUTING.md](./CONTRIBUTING.md) for more details.
 
+## Fun Stuff
+
+We do it for you all!
+
+[![Star History Chart](https://api.star-history.com/svg?repos=humanlayer/humanlayer&type=Date)](https://star-history.com/#humanlayer/humanlayer&Date)
+
+
+Shouts out to [@erquhart](https://github.com/erquhart)for this one
+
+<div align="center">
+<img width="360" src="https://github.com/user-attachments/assets/849a7149-daff-43a7-8ca9-427ccd0ae77c" />
+</div>
+
 ## License
 
 The HumanLayer SDK in this repo is licensed under the Apache 2 License.
