@@ -1,3 +1,20 @@
+"""
+the summer marketing intern wrote an onboarding assistant
+to keep up to date with customers by emailing
+them suggestions.
+
+they want the agent to collaborate with their boss, the head of
+marketing to ensure emails are well-written and likely to
+achieve the desired outcome.
+
+The intern doesn't want the agent to annoy the head of marketing
+or ask questions that don't make sense, so they
+wrap the "contact head of marketing" tool in an
+approval requirement, so they can review any messages that would
+be sent to the head of marketing.
+
+"""
+
 import langchain_core.tools as langchain_tools
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
@@ -8,7 +25,6 @@ from humanlayer import (
 from langchain.agents import AgentType, initialize_agent
 
 from channels import (
-    dm_with_ceo,
     dm_with_head_of_marketing,
     dm_with_summer_intern,
 )
@@ -50,14 +66,10 @@ tools = [
     langchain_tools.StructuredTool.from_function(send_email),
     langchain_tools.StructuredTool.from_function(
         # allow the agent to contact the head of marketing,
-        # but require approval from the CEO before sending
-        hl.require_approval(contact_channel=dm_with_ceo).wrap(
+        # but require approval from the summer intern before sending
+        hl.require_approval(contact_channel=dm_with_summer_intern).wrap(
             hl.human_as_tool(contact_channel=dm_with_head_of_marketing)
         )
-    ),
-    langchain_tools.StructuredTool.from_function(
-        # allow the agent to contact the summer intern
-        hl.human_as_tool(contact_channel=dm_with_summer_intern)
     ),
 ]
 
