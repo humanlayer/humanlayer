@@ -65,7 +65,8 @@ def test_human_as_tool_instance_contact_channel() -> None:
 
     contact_channel = ContactChannel(
         slack=SlackContactChannel(
-            channel_or_user_id="U8675309", context_about_channel_or_user="a dm with the librarian"
+            channel_or_user_id="U8675309",
+            context_about_channel_or_user="a dm with the librarian",
         )
     )
 
@@ -135,7 +136,8 @@ def test_human_as_tool_fn_contact_channel() -> None:
 
     contact_channel = ContactChannel(
         slack=SlackContactChannel(
-            channel_or_user_id="U8675309", context_about_channel_or_user="a dm with the librarian"
+            channel_or_user_id="U8675309",
+            context_about_channel_or_user="a dm with the librarian",
         )
     )
 
