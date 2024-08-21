@@ -129,7 +129,7 @@ To better define what is meant by "high stakes", some examples:
 
 <div align="center"><img style="width: 600px" alt="Image showing the levels of function stakes stacked on top of one another" src="./docs/images/function_stakes.png"></div>
 
-The high stakes functions are the ones that are the most valuable and promise the most impact in automating away human workflows. The sooner teams can get Agents reliably and safely calling these tools, the sooner they can reap massive benefits.
+The high stakes functions are the ones that are the most valuable and promise the most impact in automating away human workflows. But they are also the ones where "90% accuracy" is not acceptable. Reliability is further impacted by today's LLMs' tendency to hallucinate or craft low-quality text that is clearly AI generated. The sooner teams can get Agents reliably and safely calling these tools with high-quality inputs, the sooner they can reap massive benefits.
 
 HumanLayer provides a set of tools to _deterministically_ guarantee human oversight of high stakes function calls. Even if the LLM makes a mistake or hallucinates, HumanLayer is baked into the tool/function itself, guaranteeing a human in the loop.
 
@@ -140,6 +140,24 @@ HumanLayer provides a set of tools to _deterministically_ guarantee human oversi
 HumanLayer provides a set of tools to *deterministically* guarantee human oversight of high stakes function calls
 </blockquote></h3>
 </div>
+
+### The Future: Autonomous Agents and the "Outer Loop"
+
+Between `require_approval` and `human_as_tool`, HumanLayer is built to empower the next generation of AI agents - Autonomous Agents, but it's just a piece of the puzzle. To clarify "next generation", we can summarize briefly the history of LLM applications.
+
+- **Gen 1**: Chat - human-initiated question / response interface
+- **Gen 2**: Agentic Assistants - frameworks drive prompt routing, tool calling, chain of thought, and context window management to get much more reliability and functionality. Most workflows are initiated by humans in single-shot "here's a task, go do it" or rolling chat interfaces.
+- **Gen 3**: Autonomous Agents - no longer human initiated, agents will live in the "outer loop" driving toward their goals using various tools and functions. Human/Agent communication is Agent-initiated rather than human-initiated.
+
+![gen2 vs gen 3 agents](./docs/images/gen-2-gen-3-agents.png)
+
+Gen 3 autonomous agents will need ways to consult humans for input on various tasks. In order for these agents to perform actual useful work, they'll need human oversight for sensitive operations.
+
+These agents will require ways to contact one or more humans across various channels including chat, email, sms, and more.
+
+While early versions of these agents may technically be "human initiated" in that they get kicked off on a regular schedule by e.g. a cron or similar, the best ones will be managing their own scheduling and costs. This will require toolkits for inspecting costs and something akin to `sleep_until`. They'll need to run in orchestration frameworks that can durably serialize and resume agent workflows across tool calls that might not return for hours or days. These frameworks will need to support context window management by a "manager LLM" and enable agents to fork sub-chains to handle specialized tasks and roles.
+
+Example use cases for these outer loop agents include [the linkedin inbox assistant](./examples/langchain/04-human_as_tool_linkedin.py) and [the customer onboarding assistant](./examples/langchain/05-approvals_and_humans_composite.py), but that's really just scratching the surface.
 
 ## Key Features
 
