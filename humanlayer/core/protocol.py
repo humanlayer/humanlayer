@@ -38,6 +38,8 @@ class AdminStore(Generic[T_Call, T_Status]):
         raise NotImplementedError()
 
 
+# this is probably cleaner as a Protocol but
+# Mock libs are bein' weird rn
 class AgentBackend:
     def functions(self) -> AgentStore[FunctionCall]:
         raise NotImplementedError()

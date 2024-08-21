@@ -1,6 +1,8 @@
+from unittest.mock import Mock
+
 import pytest
 
-from humanlayer import ApprovalMethod, CloudHumanLayerBackend, HumanLayer
+from humanlayer import AgentBackend, ApprovalMethod, CloudHumanLayerBackend, HumanLayer
 from humanlayer.testing import env_var
 
 
@@ -19,13 +21,19 @@ def test_env_invalid_breaks() -> None:
     with env_var("HUMANLAYER_APPROVAL_METHOD", "bar"):
         with pytest.raises(ValueError) as e:
             HumanLayer()
-        assert str(e.value) == "'bar' is not a valid ApprovalMethod"
+        assert "'bar' is not a valid ApprovalMethod" in str(e.value)
 
 
 def test_env_cli() -> None:
     with env_var("HUMANLAYER_APPROVAL_METHOD", "cli"):
         hl = HumanLayer()
         assert hl.approval_method == ApprovalMethod.CLI
+
+
+def test_env_backend() -> None:
+    with env_var("HUMANLAYER_APPROVAL_METHOD", "backend"):
+        hl = HumanLayer(backend=Mock(spec=AgentBackend))
+        assert hl.approval_method == ApprovalMethod.BACKEND
 
 
 def test_cloud() -> None:
@@ -37,7 +45,7 @@ def test_cloud() -> None:
 
 def test_cloud_endpoint_kwarg_default() -> None:
     hl = HumanLayer(api_key="foo")
-    assert hl.approval_method == ApprovalMethod.CLOUD
+    assert hl.approval_method == ApprovalMethod.BACKEND
     assert hl.backend is not None
     assert isinstance(hl.backend, CloudHumanLayerBackend)
     assert hl.backend.connection.api_key == "foo"
@@ -46,7 +54,7 @@ def test_cloud_endpoint_kwarg_default() -> None:
 
 def test_cloud_endpoint_kwarg() -> None:
     hl = HumanLayer(api_key="foo", api_base_url="fake")
-    assert hl.approval_method == ApprovalMethod.CLOUD
+    assert hl.approval_method == ApprovalMethod.BACKEND
     assert hl.backend is not None
     assert isinstance(hl.backend, CloudHumanLayerBackend)
     assert hl.backend.connection.api_base_url == "fake"
@@ -55,7 +63,7 @@ def test_cloud_endpoint_kwarg() -> None:
 def test_env_var_cloud() -> None:
     with env_var("HUMANLAYER_API_KEY", "foo"):
         hl = HumanLayer()
-        assert hl.approval_method == ApprovalMethod.CLOUD
+        assert hl.approval_method == ApprovalMethod.BACKEND
         assert hl.backend is not None
         assert isinstance(hl.backend, CloudHumanLayerBackend)
         assert hl.backend.connection.api_key == "foo"

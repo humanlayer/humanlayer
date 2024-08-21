@@ -10,7 +10,10 @@ from typing import Any, Callable, TypeVar
 from pydantic import BaseModel
 from slugify import slugify
 
-from humanlayer.core.cloud import CloudHumanLayerBackend, HumanLayerCloudConnection
+from humanlayer.core.cloud import (
+    CloudHumanLayerBackend,
+    HumanLayerCloudConnection,
+)
 from humanlayer.core.models import (
     ContactChannel,
     FunctionCall,
@@ -18,7 +21,9 @@ from humanlayer.core.models import (
     HumanContact,
     HumanContactSpec,
 )
-from humanlayer.core.protocol import AgentBackend
+from humanlayer.core.protocol import (
+    AgentBackend,
+)
 
 # Define TypeVars for input and output types
 T = TypeVar("T")
@@ -41,11 +46,14 @@ def genid(prefix: str) -> str:
 
 class ApprovalMethod(Enum):
     CLI = "cli"
-    CLOUD = "cloud"
+    BACKEND = "backend"
 
 
 class HumanLayerWrapper:
-    def __init__(self, decorator: Callable[[Any], Callable]) -> None:
+    def __init__(
+        self,
+        decorator: Callable[[Any], Callable],
+    ) -> None:
         self.decorator = decorator
 
     def wrap(self, fn: Callable) -> Callable:
@@ -65,16 +73,14 @@ class HumanLayer(BaseModel):
     backend: AgentBackend | None = None
     agent_name: str | None = None
     genid: Callable[[str], str] = genid
+    sleep: Callable[[int], None] = time.sleep
+    contact_channel: ContactChannel | None = None
 
     # convenience for forwarding down to Connection
     api_key: str | None = None
     api_base_url: str | None = None
 
-    def __init__(  # type: ignore
-        self,
-        **kwargs,
-    ) -> None:
-        super().__init__(**kwargs)
+    def model_post_init(self, __context: Any) -> None:
         # check env first
         if not self.approval_method and os.getenv("HUMANLAYER_APPROVAL_METHOD"):
             self.approval_method = ApprovalMethod(os.getenv("HUMANLAYER_APPROVAL_METHOD"))
@@ -82,7 +88,7 @@ class HumanLayer(BaseModel):
         # then infer from API_KEY setting
         if not self.approval_method:
             if self.backend is not None or self.api_key or os.getenv("HUMANLAYER_API_KEY"):
-                self.approval_method = ApprovalMethod.CLOUD
+                self.approval_method = ApprovalMethod.BACKEND
                 self.backend = self.backend or CloudHumanLayerBackend(
                     connection=HumanLayerCloudConnection(
                         api_key=self.api_key,
@@ -93,12 +99,13 @@ class HumanLayer(BaseModel):
                 logger.info("No HUMANLAYER_API_KEY found, defaulting to CLI approval")
                 self.approval_method = ApprovalMethod.CLI
 
+        agent = "agent"
         self.run_id = self.run_id or os.getenv(
             "HUMANLAYER_RUN_ID",
-            self.genid(f"{slugify(self.agent_name or 'agent')}"),
+            self.genid(f"{slugify(self.agent_name or agent)}"),
         )
 
-        if self.approval_method == ApprovalMethod.CLOUD and not self.backend:
+        if self.approval_method == ApprovalMethod.BACKEND and not self.backend:
             raise ValueError("backend is required for cloud approvals")
 
     def __str__(self) -> str:
@@ -118,7 +125,7 @@ class HumanLayer(BaseModel):
                 api_base_url=api_base_url,
             )
         return cls(
-            approval_method=ApprovalMethod.CLOUD,
+            approval_method=ApprovalMethod.BACKEND,
             backend=CloudHumanLayerBackend(
                 connection=connection,
             ),
@@ -130,17 +137,20 @@ class HumanLayer(BaseModel):
         cls,
         **kwargs,
     ) -> "HumanLayer":
-        return cls(approval_method=ApprovalMethod.CLI, **kwargs)
+        return cls(
+            approval_method=ApprovalMethod.CLI,
+            **kwargs,
+        )
 
-    def require_approval(self, contact_channel: ContactChannel | None = None) -> HumanLayerWrapper:
+    def require_approval(
+        self,
+        contact_channel: ContactChannel | None = None,
+    ) -> HumanLayerWrapper:
         def decorator(fn):  # type: ignore
             if self.approval_method is ApprovalMethod.CLI:
                 return self._approve_cli(fn)
-            elif self.approval_method is ApprovalMethod.CLOUD:
-                return self._approve_webapp(fn, contact_channel)
-            else:
-                exception = f"Approval method {self.approval_method} not implemented"
-                raise NotImplementedError(exception)
+
+            return self._approve_with_backend(fn, contact_channel)
 
         return HumanLayerWrapper(decorator)
 
@@ -156,7 +166,7 @@ class HumanLayer(BaseModel):
         just raise and let the framework handle the stringification
         of what went wrong.
 
-        Because some frameworks don't handle exceptions well, we're stuck with the hack for now
+        Because some frameworks dont handle exceptions well, were stuck with the hack for now
         """
 
         @wraps(fn)
@@ -181,8 +191,10 @@ class HumanLayer(BaseModel):
 
         return wrapper
 
-    def _approve_webapp(
-        self, fn: Callable[[T], R], contact_channel: ContactChannel | None = None
+    def _approve_with_backend(
+        self,
+        fn: Callable[[T], R],
+        contact_channel: ContactChannel | None = None,
     ) -> Callable[[T], R | str]:
         """
         NOTE we convert a callable[[T], R] to a Callable [[T], R | str]
@@ -195,8 +207,9 @@ class HumanLayer(BaseModel):
         just raise and let the framework handle the stringification
         of what went wrong.
 
-        Because some frameworks don't handle exceptions well, we're stuck with the hack for now
+        Because some frameworks dont handle exceptions well, were stuck with the hack for now
         """
+        contact_channel = contact_channel or self.contact_channel
 
         @wraps(fn)
         def wrapper(*args, **kwargs) -> R | str:  # type: ignore
@@ -214,9 +227,9 @@ class HumanLayer(BaseModel):
                 )
                 self.backend.functions().add(call)
 
-                # todo let's do a more async-y websocket soon
+                # todo lets do a more async-y websocket soon
                 while True:
-                    time.sleep(3)
+                    self.sleep(3)
                     function_call: FunctionCall = self.backend.functions().get(call_id)
                     if function_call.status is None or function_call.status.approved is None:
                         continue
@@ -246,16 +259,21 @@ class HumanLayer(BaseModel):
 
         return wrapper
 
-    def human_as_tool(self, contact_channel: ContactChannel | None = None) -> Callable[[str], str]:
+    def human_as_tool(
+        self,
+        contact_channel: ContactChannel | None = None,
+    ) -> Callable[[str], str]:
         if self.approval_method is ApprovalMethod.CLI:
             return self._human_as_tool_cli()
-        elif self.approval_method is ApprovalMethod.CLOUD:
-            return self._human_as_tool(contact_channel)
-        else:
-            raise NotImplementedError(f"approval_method {self.approval_method} not supported")
 
-    def _human_as_tool_cli(self) -> Callable[[str], str]:
-        def contact_human(question: str) -> str:
+        return self._human_as_tool(contact_channel)
+
+    def _human_as_tool_cli(
+        self,
+    ) -> Callable[[str], str]:
+        def contact_human(
+            question: str,
+        ) -> str:
             """ask a human a question on the CLI"""
             print(
                 f"""Agent {self.run_id} requests assistance:
@@ -268,8 +286,15 @@ class HumanLayer(BaseModel):
 
         return contact_human
 
-    def _human_as_tool(self, contact_channel: ContactChannel | None = None) -> Callable[[str], str]:
-        def contact_human(message: str) -> str:
+    def _human_as_tool(
+        self,
+        contact_channel: ContactChannel | None = None,
+    ) -> Callable[[str], str]:
+        contact_channel = contact_channel or self.contact_channel
+
+        def contact_human(
+            message: str,
+        ) -> str:
             """contact a human"""
             assert self.backend is not None
             call_id = self.genid("human_call")
@@ -284,9 +309,9 @@ class HumanLayer(BaseModel):
             )
             self.backend.contacts().add(contact)
 
-            # todo let's do a more async-y websocket soon
+            # todo lets do a more async-y websocket soon
             while True:
-                time.sleep(3)
+                self.sleep(3)
                 human_contact = self.backend.contacts().get(call_id)
                 if human_contact.status is None:
                     continue
