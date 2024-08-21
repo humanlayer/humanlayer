@@ -130,7 +130,7 @@ max-complexity = 12
 
 
 [tool.black]
-line_length = 88
+line_length = 104
 
 [tool.deptry]
 exclude = ["examples", "venv", ".venv"]
