@@ -133,7 +133,7 @@ The high stakes functions are the ones that are the most valuable and promise th
 
 HumanLayer provides a set of tools to _deterministically_ guarantee human oversight of high stakes function calls. Even if the LLM makes a mistake or hallucinates, HumanLayer is baked into the tool/function itself, guaranteeing a human in the loop.
 
-<div align="center"><img style="width: 400px" alt="Function Layer @require_approval decorator wrapping the Commnicate on my behalf function" src="./docs/images/function_layer_require_approval.png"></div>
+<div align="center"><img style="width: 400px" alt="Function Layer @require_approval decorator wrapping the Commnicate on my behalf function" src="./docs/images/humanlayer_require_approval.png"></div>
 
 <div align="center">
 <h3><blockquote>
@@ -205,7 +205,6 @@ HumanLayer is open-source and we welcome contributions in the form of issues, do
 We do it for you all!
 
 [![Star History Chart](https://api.star-history.com/svg?repos=humanlayer/humanlayer&type=Date)](https://star-history.com/#humanlayer/humanlayer&Date)
-
 
 Shouts out to [@erquhart](https://github.com/erquhart) for this one
 
