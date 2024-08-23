@@ -106,7 +106,7 @@ class HumanLayer(BaseModel):
         )
 
         if self.approval_method == ApprovalMethod.BACKEND and not self.backend:
-            raise ValueError("backend is required for cloud approvals")
+            raise ValueError("backend is required for non-cli approvals")
 
     def __str__(self) -> str:
         return "HumanLayer()"
