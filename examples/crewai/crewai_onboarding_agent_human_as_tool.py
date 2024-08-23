@@ -37,8 +37,11 @@ def get_info_about_customer(customer_email: str) -> str:
         but still needs to invite a few team members before they can be
         considered fully onboarded
         """
-    else:
-        return "This customer has completed all the of the onboarding steps and is actively using the product."
+
+    return """
+        This customer has completed all the of the onboarding steps and is actively using the
+        product.
+    """
 
 
 # no approval, human routed in at the prompt layer
@@ -86,7 +89,7 @@ into the product.
 task = Task(
     description=task_prompt,
     agent=general_agent,
-    expected_output="A numerical answer.",
+    expected_output="a summary of actions taken",
 )
 
 crew = Crew(agents=[general_agent], tasks=[task], verbose=True)
