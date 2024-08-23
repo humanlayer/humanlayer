@@ -79,7 +79,7 @@ into the product.
 task = Task(
     description=task_prompt,
     agent=general_agent,
-    expected_output="A numerical answer.",
+    expected_output="a summary of actions taken",
 )
 
 crew = Crew(agents=[general_agent], tasks=[task], verbose=True)
