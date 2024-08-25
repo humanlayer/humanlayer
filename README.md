@@ -161,7 +161,7 @@ Example use cases for these outer loop agents include [the linkedin inbox assist
 
 ## Key Features
 
-- **Require Human Approval for Function Calls**: the `@hl.require_approval()` decorator blocks specifc function calls until a human has been consulted - upon denial, feedback will be passed to the LLM
+- **Require Human Approval for Function Calls**: the `@hl.require_approval()` decorator blocks specific function calls until a human has been consulted - upon denial, feedback will be passed to the LLM
 - **Human as Tool**: generic `hl.human_as_tool()` allows for contacting a human for answers, advice, or feedback
 - **OmniChannel Contact**: Contact humans and collect responses across Slack, Email, Discord, and more
 - **Granular Routing**: Route approvals to specific teams or individuals
