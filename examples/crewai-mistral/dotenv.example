@@ -1,0 +1,6 @@
+# copy to .env
+OPENAI_API_KEY=your-mistral-api-key
+OPENAI_API_BASE=https://api.mistral.ai/v1
+OPENAI_MODEL_NAME=mistral-small
+
+HUMANLAYER_API_KEY=
