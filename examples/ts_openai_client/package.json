@@ -3,9 +3,10 @@
   "version": "0.1.0",
   "description": "example of using humanlayer with openai in typescript",
   "main": "index.ts",
+  "type": "module",
   "scripts": {
     "build": "tsc",
-    "dev": "node --env-file=.env -r ts-node/register index.ts"
+    "dev": "tsx --env-file=.env index.ts"
   },
   "repository": {
     "type": "git",
@@ -26,6 +27,7 @@
   "devDependencies": {
     "@types/node": "^20.14.9",
     "ts-node": "^10.9.2",
+    "tsx": "^4.19.0",
     "typescript": "^5.5.2"
   }
 }
