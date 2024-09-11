@@ -133,7 +133,7 @@ max-complexity = 12
 line_length = 104
 
 [tool.deptry]
-exclude = ["examples", "venv", ".venv"]
+exclude = ["examples", "venv", ".venv", "humanlayer-ts"]
 
 
 [tool.deptry.per_rule_ignores]
