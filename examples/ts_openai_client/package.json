@@ -1,0 +1,31 @@
+{
+  "name": "humanlayer-ts-openai-client",
+  "version": "0.1.0",
+  "description": "example of using humanlayer with openai in typescript",
+  "main": "index.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "node --env-file=.env -r ts-node/register index.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/humanlayer/humanlayer.git"
+  },
+  "keywords": [
+    "human-in-the-loop",
+    "ai-agents",
+    "tool-use",
+    "function-calling"
+  ],
+  "author": "HumanLayer Authors",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "humanlayer": "file:../../humanlayer-ts",
+    "openai": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.9",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.2"
+  }
+}

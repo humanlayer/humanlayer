@@ -1,0 +1,37 @@
+{
+  "name": "humanlayer",
+  "version": "0.5.4-rc1",
+  "description": "typescript client for humanlayer.dev",
+  "main": "src/index.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "node -r ts-node/register src/index.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/humanlayer/humanlayer.git"
+  },
+  "keywords": [
+    "human-in-the-loop",
+    "ai-agents",
+    "tool-use",
+    "function-calling"
+  ],
+  "author": "HumanLayer Authors",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/humanlayer/humanlayer/issues"
+  },
+  "homepage": "https://github.com/humanlayer/humanlayer#readme",
+  "devDependencies": {
+    "@types/jest": "^29.5.12",
+    "@types/node": "^20.14.9",
+    "eslint": "^8.57.0",
+    "jest": "^29.7.0",
+    "prettier": "^3.3.2",
+    "ts-jest": "^29.1.5",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.2"
+  }
+}
