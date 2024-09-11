@@ -1,0 +1,1 @@
+console.log("sucessfully installed humanlayer-ts")
