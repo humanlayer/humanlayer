@@ -11,7 +11,7 @@ cp dotenv.example .env
 
 ```
 npm install
-npm run dev
+npm run example
 ```
 
 ## If you prefer docker

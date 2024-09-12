@@ -1,16 +1,22 @@
-import { FunctionCallSpec } from "humanlayer";
+import { HumanLayer } from "humanlayer";
 import OpenAI from "openai";
 import { ChatCompletionTool } from "openai/src/resources/index.js";
 
+const hl = new HumanLayer();
+
 const PROMPT = "multiply 2 and 5, then add 32 to the result";
 
-const multiply = ({ a, b }: { a: number; b: number }) => a * b;
 const add = ({ a, b }: { a: number; b: number }) => a + b;
 
+const multiply = ({ a, b }: { a: number; b: number }) => a * b;
+
 const tools_map = {
-  multiply: multiply,
+  multiply: hl.requireApproval()(multiply),
   add: add,
 };
+
+console.log(tools_map.add.name);
+console.log(tools_map.multiply.name);
 
 const openai_tools: ChatCompletionTool[] = [
   {
@@ -57,7 +63,7 @@ const openAIHello = async (
   const messages: any[] = [{ role: "user", content: prompt }];
 
   let response = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
+    model: "gpt-4o",
     messages: messages,
     tools: openai_tools,
     tool_choice: "auto",
@@ -72,7 +78,7 @@ const openAIHello = async (
       console.log(
         `calling tools ${tool_name}(${tool_call.function.arguments})`,
       );
-      const tool_result = tools_map[tool_name](tool_args);
+      const tool_result = await tools_map[tool_name](tool_args);
       messages.push({
         role: "tool",
         name: tool_name,

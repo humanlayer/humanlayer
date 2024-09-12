@@ -3,6 +3,7 @@
   "version": "0.5.4-rc1",
   "description": "typescript client for humanlayer.dev",
   "main": "src/index.ts",
+  "type": "module",
   "scripts": {
     "build": "tsc",
     "dev": "node -r ts-node/register src/index.ts",

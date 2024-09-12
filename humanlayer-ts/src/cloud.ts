@@ -2,17 +2,17 @@ import { AgentBackend, AgentStore, HumanLayerException } from './protocol'
 import { FunctionCall, HumanContact } from './models'
 
 class HumanLayerCloudConnection {
-  api_key?: string
-  api_base_url?: string
+  apiKey?: string
+  apiBaseURL?: string
 
   constructor(api_key?: string, api_base_url?: string) {
-    this.api_key = api_key
-    this.api_base_url = api_base_url
+    this.apiKey = api_key
+    this.apiBaseURL = api_base_url
 
-    if (!this.api_key) {
+    if (!this.apiKey) {
       throw new Error('HUMANLAYER_API_KEY is required for cloud approvals')
     }
-    this.api_base_url = this.api_base_url || 'https://api.humanlayer.dev/humanlayer/v1'
+    this.apiBaseURL = this.apiBaseURL || 'https://api.humanlayer.dev/humanlayer/v1'
     // todo ping api to validate token
   }
 
@@ -25,16 +25,18 @@ class HumanLayerCloudConnection {
     path: string
     body?: any
   }): Promise<Response> {
-    const resp = await fetch(`${this.api_base_url}${path}`, {
+    const resp = await fetch(`${this.apiBaseURL}${path}`, {
       method,
       headers: {
-        Authorization: `Bearer ${this.api_key}`,
+        Authorization: `Bearer ${this.apiKey}`,
+        'content-type': 'application/json',
       },
-      body,
+      body: JSON.stringify(body),
     })
 
     if (resp.status >= 400) {
-      throw new HumanLayerException(`${method} ${path} ${resp.status}: ${await resp.text()}`)
+      const err = new HumanLayerException(`${method} ${path} ${resp.status}: ${await resp.text()}`)
+      throw err
     }
     return resp
   }
@@ -51,7 +53,7 @@ class CloudFunctionCallStore implements AgentStore<FunctionCall> {
     await this.connection.request({
       method: 'POST',
       path: '/function_calls',
-      body: JSON.stringify(item),
+      body: item,
     })
   }
 
@@ -76,7 +78,7 @@ class CloudHumanContactStore implements AgentStore<HumanContact> {
     const resp = await this.connection.request({
       method: 'POST',
       path: '/contact_requests',
-      body: JSON.stringify(item),
+      body: item,
     })
   }
 
@@ -91,10 +93,12 @@ class CloudHumanContactStore implements AgentStore<HumanContact> {
 }
 
 class CloudHumanLayerBackend implements AgentBackend {
+  public connection: HumanLayerCloudConnection
   private _function_calls: CloudFunctionCallStore
   private _human_contacts: CloudHumanContactStore
 
   constructor(connection: HumanLayerCloudConnection) {
+    this.connection = connection
     this._function_calls = new CloudFunctionCallStore(connection)
     this._human_contacts = new CloudHumanContactStore(connection)
   }
