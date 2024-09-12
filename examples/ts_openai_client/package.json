@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
-    "dev": "tsx --env-file=.env index.ts"
+    "example": "tsx --env-file=.env index.ts"
   },
   "repository": {
     "type": "git",
@@ -21,7 +21,7 @@
   "author": "HumanLayer Authors",
   "license": "Apache-2.0",
   "dependencies": {
-    "humanlayer": "file:../../humanlayer-ts",
+    "humanlayer": "file:../../humanlayer-ts/",
     "openai": "^4.0.0"
   },
   "devDependencies": {
