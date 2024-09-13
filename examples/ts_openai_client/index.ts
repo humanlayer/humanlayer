@@ -53,7 +53,7 @@ const openai_tools: ChatCompletionTool[] = [
 
 const openAIHello = async (
   prompt: string,
-  tools_map: { [key: string]: (args: any) => any },
+  tools_map: { [key: string]: any },
   openai_tools: ChatCompletionTool[],
 ) => {
   const openai = new OpenAI({
@@ -79,6 +79,7 @@ const openAIHello = async (
         `calling tools ${tool_name}(${tool_call.function.arguments})`,
       );
       const tool_result = await tools_map[tool_name](tool_args);
+      console.log(`result: ${tool_result}`);
       messages.push({
         role: "tool",
         name: tool_name,
@@ -88,7 +89,7 @@ const openAIHello = async (
     }
 
     response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-4o",
       messages: messages,
     });
   }

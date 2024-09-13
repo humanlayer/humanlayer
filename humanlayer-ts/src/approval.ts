@@ -68,7 +68,7 @@ export class HumanLayer {
       this.approvalMethod = ApprovalMethod[envApprovalMethod]
     } else if (!approvalMethod) {
       this.approvalMethod =
-        backend || process.env.HUMANLAYER_API_KEY ? ApprovalMethod.backend : ApprovalMethod.cli
+        backend || apiKey || process.env.HUMANLAYER_API_KEY ? ApprovalMethod.backend : ApprovalMethod.cli
     } else {
       this.approvalMethod = approvalMethod
     }
@@ -145,6 +145,7 @@ ${kwargs.length ? ' with args: ' + JSON.stringify(kwargs, null, 2) : ''}`)
   }
 
   approveWithBackend<TFn extends Function>(fn: TFn, contactChannel?: ContactChannel): TFn {
+    const channel = contactChannel || this.contactChannel
     const name = fn.name
     // todo fix the types here
     const f: any = async (kwargs: any) => {
@@ -156,7 +157,7 @@ ${kwargs.length ? ' with args: ' + JSON.stringify(kwargs, null, 2) : ''}`)
         spec: {
           fn: fn.name,
           kwargs: kwargs,
-          channel: contactChannel,
+          channel: channel,
         },
       })
       while (true) {
@@ -179,4 +180,127 @@ ${kwargs.length ? ' with args: ' + JSON.stringify(kwargs, null, 2) : ''}`)
     Object.defineProperty(f, 'name', { value: name, writable: false })
     return f
   }
+
+  /**
+   *
+   def human_as_tool(
+   self,
+   contact_channel: ContactChannel | None = None,
+   ) -> Callable[[str], str]:
+   if self.approval_method is ApprovalMethod.CLI:
+   return self._human_as_tool_cli()
+
+   return self._human_as_tool(contact_channel)
+
+   def _human_as_tool_cli(
+   self,
+   ) -> Callable[[str], str]:
+   def contact_human(
+   question: str,
+   ) -> str:
+   """ask a human a question on the CLI"""
+   print(
+   f"""Agent {self.run_id} requests assistance:
+
+   {question}
+   """
+   )
+   feedback = input("Please enter a response: \n\n")
+   return feedback
+
+   return contact_human
+
+   def _human_as_tool(
+   self,
+   contact_channel: ContactChannel | None = None,
+   ) -> Callable[[str], str]:
+   contact_channel = contact_channel or self.contact_channel
+
+   def contact_human(
+   message: str,
+   ) -> str:
+   """contact a human"""
+   assert self.backend is not None
+   call_id = self.genid("human_call")
+
+   contact = HumanContact(
+   run_id=self.run_id,  # type: ignore
+   call_id=call_id,
+   spec=HumanContactSpec(
+   msg=message,
+   channel=contact_channel,
+   ),
+   )
+   self.backend.contacts().add(contact)
+
+   # todo lets do a more async-y websocket soon
+   while True:
+   self.sleep(3)
+   human_contact = self.backend.contacts().get(call_id)
+   if human_contact.status is None:
+   continue
+
+   if human_contact.status.response is not None:
+   return human_contact.status.response
+
+   if contact_channel is None:
+   return contact_human
+
+   if contact_channel.slack:
+   contact_human.__doc__ = "Contact a human via slack and wait for a response"
+   contact_human.__name__ = "contact_human_in_slack"
+   if contact_channel.slack.context_about_channel_or_user:
+   contact_human.__doc__ += f" in {contact_channel.slack.context_about_channel_or_user}"
+   fn_ctx = contact_channel.slack.context_about_channel_or_user.replace(" ", "_")
+   contact_human.__name__ = f"contact_human_in_slack_in_{fn_ctx}"
+
+   return contact_human
+   */
+  humanAsTool(contactChannel?: ContactChannel): (message: string) => Promise<string> {
+    if (this.approvalMethod === ApprovalMethod.cli) {
+      return this.humanAsToolCli()
+    }
+
+    return this.humanAsToolBackend(contactChannel)
+  }
+
+  humanAsToolCli(): (message: string) => Promise<string> {
+    return async (message: string) => {
+      console.log(`Agent ${this.runId} requests assistance:
+
+      ${message}
+      `)
+      const feedback = prompt('Please enter a response: \n\n')
+
+      return feedback || ""
+    }
+  }
+
+  humanAsToolBackend(contactChannel?: ContactChannel): (message: string) => Promise<string> {
+    return async (message: string) => {
+      const backend = this.backend!
+      const callId = this.genid('human_call')
+      const contact = {
+        run_id: this.runId,
+        call_id: callId,
+        spec: {
+          msg: message,
+          channel: this.contactChannel,
+        },
+      }
+      await backend.contacts().add(contact)
+
+      while (true) {
+        await this.sleep(3000)
+        const humanContact = await backend.contacts().get(callId)
+        if (!humanContact.status?.response) {
+          continue
+        }
+
+        return humanContact.status.response
+      }
+    }
+  }
 }
+
+
