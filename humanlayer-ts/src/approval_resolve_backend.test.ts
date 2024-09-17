@@ -60,7 +60,7 @@ test('HumanLayer.cloud() with apiKey', () => {
 })
 
 test('Humanlayer with api key and endpoint', () => {
-  const hl = new HumanLayer({ apiKey: "abc", apiBaseUrl: "fake"})
+  const hl = new HumanLayer({ apiKey: 'abc', apiBaseUrl: 'fake' })
   expect(hl.approvalMethod).toBe(ApprovalMethod.backend)
   expect(hl.backend).toBeDefined()
   expect(hl.backend).toBeInstanceOf(CloudHumanLayerBackend)
@@ -80,4 +80,3 @@ test('HumanLayer() with env var', () => {
     expect(cloudBackend.connection.apiBaseURL).toBe('https://api.humanlayer.dev/humanlayer/v1')
   })
 })
-

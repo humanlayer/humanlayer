@@ -1,6 +1,6 @@
-import {AgentBackend, AgentStore} from "./protocol";
-import {FunctionCall} from "./models";
-import {HumanLayer} from "./approval";
+import { AgentBackend, AgentStore } from './protocol'
+import { FunctionCall } from './models'
+import { HumanLayer } from './approval'
 
 test('Humanlayer#requireApproval()', async () => {
   const mockBackend: any = {
@@ -39,7 +39,7 @@ test('Humanlayer#requireApproval()', async () => {
     status: {
       requested_at: new Date(),
       approved: true,
-    }
+    },
   }
   functions.get.mockReturnValue(returnValue)
 
@@ -56,7 +56,6 @@ test('Humanlayer#requireApproval()', async () => {
 
   expect(functions.get).toHaveBeenCalledWith('generated-id')
   expect(mockFunction).toHaveBeenCalledWith({ bar: 'baz' })
-
 })
 
 test('Humanlayer(contactChannel)#requireApproval()', async () => {
@@ -83,7 +82,7 @@ test('Humanlayer(contactChannel)#requireApproval()', async () => {
       slack: {
         channel_or_user_id: 'U8675309',
         context_about_channel_or_user: 'a dm with the librarian',
-      }
+      },
     },
     backend: mockBackend,
     genid: (x: string) => 'generated-id',
@@ -102,13 +101,13 @@ test('Humanlayer(contactChannel)#requireApproval()', async () => {
         slack: {
           channel_or_user_id: 'U8675309',
           context_about_channel_or_user: 'a dm with the librarian',
-        }
-      }
+        },
+      },
     },
     status: {
       requested_at: new Date(),
       approved: true,
-    }
+    },
   }
   functions.get.mockReturnValue(returnValue)
 
@@ -124,8 +123,8 @@ test('Humanlayer(contactChannel)#requireApproval()', async () => {
         slack: {
           channel_or_user_id: 'U8675309',
           context_about_channel_or_user: 'a dm with the librarian',
-        }
-      }
+        },
+      },
     },
   })
 
@@ -159,10 +158,10 @@ test('Humanlayer()#requireApproval(contactChannel)', async () => {
   })
 
   const wrapped = hl.requireApproval({
-      slack: {
-        channel_or_user_id: 'U8675309',
-        context_about_channel_or_user: 'a dm with the librarian',
-      }
+    slack: {
+      channel_or_user_id: 'U8675309',
+      context_about_channel_or_user: 'a dm with the librarian',
+    },
   })(mockFunction)
 
   const returnValue: FunctionCall = {
@@ -175,13 +174,13 @@ test('Humanlayer()#requireApproval(contactChannel)', async () => {
         slack: {
           channel_or_user_id: 'U8675309',
           context_about_channel_or_user: 'a dm with the librarian',
-        }
-      }
+        },
+      },
     },
     status: {
       requested_at: new Date(),
       approved: true,
-    }
+    },
   }
   functions.get.mockReturnValue(returnValue)
 
@@ -197,8 +196,8 @@ test('Humanlayer()#requireApproval(contactChannel)', async () => {
         slack: {
           channel_or_user_id: 'U8675309',
           context_about_channel_or_user: 'a dm with the librarian',
-        }
-      }
+        },
+      },
     },
   })
 
@@ -244,7 +243,7 @@ test('Humanlayer()#requireApproval() with deny', async () => {
       requested_at: new Date(),
       approved: false,
       comment: 'nope',
-    }
+    },
   }
   functions.get.mockReturnValue(returnValue)
 
