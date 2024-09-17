@@ -68,7 +68,9 @@ export class HumanLayer {
       this.approvalMethod = ApprovalMethod[envApprovalMethod]
     } else if (!approvalMethod) {
       this.approvalMethod =
-        backend || apiKey || process.env.HUMANLAYER_API_KEY ? ApprovalMethod.backend : ApprovalMethod.cli
+        backend || apiKey || process.env.HUMANLAYER_API_KEY
+          ? ApprovalMethod.backend
+          : ApprovalMethod.cli
     } else {
       this.approvalMethod = approvalMethod
     }
@@ -272,7 +274,7 @@ ${kwargs.length ? ' with args: ' + JSON.stringify(kwargs, null, 2) : ''}`)
       `)
       const feedback = prompt('Please enter a response: \n\n')
 
-      return feedback || ""
+      return feedback || ''
     }
   }
 
@@ -302,5 +304,3 @@ ${kwargs.length ? ' with args: ' + JSON.stringify(kwargs, null, 2) : ''}`)
     }
   }
 }
-
-

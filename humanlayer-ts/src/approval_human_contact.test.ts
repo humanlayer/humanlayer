@@ -1,5 +1,5 @@
-import {HumanLayer} from "./approval";
-import {HumanContact} from "./models";
+import { HumanLayer } from './approval'
+import { HumanContact } from './models'
 
 test('HumanLayer()#humanAsTool()', async () => {
   const mockBackend: any = {
@@ -19,14 +19,13 @@ test('HumanLayer()#humanAsTool()', async () => {
     run_id: 'generated-id',
     call_id: 'generated-id',
     spec: {
-      msg: '867'
+      msg: '867',
     },
     status: {
       response: '5309',
-    }
+    },
   }
-  contacts.get.mockReturnValue({
-  })
+  contacts.get.mockReturnValue({})
   const hl = new HumanLayer({
     backend: mockBackend,
     sleep: (x: number) => Promise.resolve(),
@@ -38,7 +37,6 @@ test('HumanLayer()#humanAsTool()', async () => {
   const resp = await tool('867')
   expect(resp).toBe('5309')
 
-
   expect(contacts.add).toHaveBeenCalledWith({
     run_id: 'generated-id',
     call_id: 'generated-id',
@@ -47,5 +45,4 @@ test('HumanLayer()#humanAsTool()', async () => {
     },
   })
   expect(contacts.get).toHaveBeenCalledWith('generated-id')
-
 })
