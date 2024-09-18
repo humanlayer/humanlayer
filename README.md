@@ -18,6 +18,7 @@ Bring your LLM (OpenAI, Llama, Claude, etc) and Framework (LangChain, CrewAI, et
 
 [![GitHub Repo stars](https://img.shields.io/github/stars/humanlayer/humanlayer)](https://github.com/humanlayer/humanlayer)
 [![License: Apache-2](https://img.shields.io/badge/License-Apache-green.svg)](https://opensource.org/licenses/Apache-2)
+<img referrerpolicy="no-referrer-when-downgrade" src="https://static.scarf.sh/a.png?x-pxid=fcfc0926-d841-47fb-b8a6-6aba3a6c3228" />
 
 </div>
 
@@ -217,3 +218,4 @@ The HumanLayer SDK in this repo is licensed under the Apache 2 License.
 ## QR Code
 
 <img width="500" src="./docs/images/humanlayer-qr.png" alt="qr code to this repo">
+
