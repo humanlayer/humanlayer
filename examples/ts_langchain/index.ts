@@ -9,23 +9,29 @@ import { output, z } from "zod";
 import { ZodObjectAny } from "@langchain/core/dist/types/zod";
 import { CallbackManagerForToolRun } from "@langchain/core/dist/callbacks/manager";
 import { RunnableConfig } from "@langchain/core/runnables";
-import { TavilySearchResults } from "langchain/dist/util/testing/tools/tavily_search";
+import { HumanLayer } from "humanlayer";
 
-class AddTool extends Tool {
+const hl = new HumanLayer();
+
+class AddTool extends StructuredTool {
   name: string = "add";
   description: string = "add two numbers";
-  // the schema is two args, a and b, both numbers
   schema = z.object({
     a: z.number(),
     b: z.number(),
   });
 
-  _call(
+  __call(
     arg: output<ZodObjectAny>,
     runManager?: CallbackManagerForToolRun,
     parentConfig?: RunnableConfig,
-  ): Promise<number> {
-    return Promise.resolve(arg.a + arg.b);
+  ): Promise<string> {
+    return Promise.resolve(`${arg.a + arg.b}`);
+  }
+  _call(arg: any) {
+    const f = this.__call.bind(this);
+    Object.defineProperty(f, "name", { value: this.name });
+    return hl.requireApproval()(f)(arg);
   }
 }
 
@@ -57,20 +63,14 @@ async function main() {
   });
 
   const result = await agentExecutor.invoke({
-    input: "what is LangChain?",
-  });
-
-  console.log(result);
-
-  const result2 = await agentExecutor.invoke({
-    input: "what's my name?",
+    input: "what's 6 + 7?",
     chat_history: [
-      new HumanMessage("hi! my name is cob"),
-      new AIMessage("Hello Cob! How can I assist you today?"),
+      new HumanMessage("hi i love math"),
+      new AIMessage("hi i love math too"),
     ],
   });
 
-  console.log(result2);
+  console.log(result);
 }
 
 main().then(console.log).catch(console.error);
