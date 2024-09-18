@@ -14,8 +14,25 @@ npm install
 npm run example
 ```
 
-## If you prefer docker
+once again, we're doing math here
 
-```
-docker compose run examples
+```javascript
+{
+  input: "what's 6 + 7?",
+  chat_history: [
+    HumanMessage {
+      "content": "hi i love math",
+      "additional_kwargs": {},
+      "response_metadata": {}
+    },
+    AIMessage {
+      "content": "hi i love math too",
+      "additional_kwargs": {},
+      "response_metadata": {},
+      "tool_calls": [],
+      "invalid_tool_calls": []
+    }
+  ],
+  output: '6 + 7 equals 13'
+}
 ```

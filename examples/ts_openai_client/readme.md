@@ -39,9 +39,3 @@ calling tools add({"a":14,"b":32})
 result: 46
 The result of multiplying 2 and 7, then adding 32 to the result is 46.
 ```
-
-## If you prefer docker
-
-```
-docker compose run examples
-```
