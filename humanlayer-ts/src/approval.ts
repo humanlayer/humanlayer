@@ -258,7 +258,7 @@ ${kwargs.length ? ' with args: ' + JSON.stringify(kwargs, null, 2) : ''}`)
 
    return contact_human
    */
-  humanAsTool(contactChannel?: ContactChannel): (message: string) => Promise<string> {
+  humanAsTool(contactChannel?: ContactChannel): ({ message }: { message: string }) => Promise<string> {
     if (this.approvalMethod === ApprovalMethod.cli) {
       return this.humanAsToolCli()
     }
@@ -266,8 +266,8 @@ ${kwargs.length ? ' with args: ' + JSON.stringify(kwargs, null, 2) : ''}`)
     return this.humanAsToolBackend(contactChannel)
   }
 
-  humanAsToolCli(): (message: string) => Promise<string> {
-    return async (message: string) => {
+  humanAsToolCli(): ({ message }: { message: string }) => Promise<string> {
+    return async ({ message }: { message: string }) => {
       console.log(`Agent ${this.runId} requests assistance:
 
       ${message}
@@ -278,8 +278,11 @@ ${kwargs.length ? ' with args: ' + JSON.stringify(kwargs, null, 2) : ''}`)
     }
   }
 
-  humanAsToolBackend(contactChannel?: ContactChannel): (message: string) => Promise<string> {
-    return async (message: string) => {
+  humanAsToolBackend(
+    contactChannel?: ContactChannel,
+  ): ({ message }: { message: string }) => Promise<string> {
+    const channel = contactChannel || this.contactChannel
+    return async ({ message }: { message: string }) => {
       const backend = this.backend!
       const callId = this.genid('human_call')
       const contact = {
@@ -287,7 +290,7 @@ ${kwargs.length ? ' with args: ' + JSON.stringify(kwargs, null, 2) : ''}`)
         call_id: callId,
         spec: {
           msg: message,
-          channel: this.contactChannel,
+          channel: channel,
         },
       }
       await backend.contacts().add(contact)

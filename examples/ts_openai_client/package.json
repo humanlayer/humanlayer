@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
-    "example": "tsx --env-file=.env index.ts"
+    "example": "tsx --env-file=.env index.ts",
+    "human-as-tool": "tsx --env-file=.env human-as-tool.ts"
   },
   "repository": {
     "type": "git",
