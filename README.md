@@ -202,8 +202,6 @@ HumanLayer is open-source and we welcome contributions in the form of issues, do
 
 ## Fun Stuff
 
-We do it for you all!
-
 [![Star History Chart](https://api.star-history.com/svg?repos=humanlayer/humanlayer&type=Date)](https://star-history.com/#humanlayer/humanlayer&Date)
 
 Shouts out to [@erquhart](https://github.com/erquhart) for this one
@@ -215,3 +213,7 @@ Shouts out to [@erquhart](https://github.com/erquhart) for this one
 ## License
 
 The HumanLayer SDK in this repo is licensed under the Apache 2 License.
+
+## QR Code
+
+<img width="500" src="./docs/images/humanlayer-qr.png" alt="qr code to this repo">
