@@ -4,7 +4,9 @@ import { ChatCompletionTool } from "openai/src/resources/index.js";
 
 const hl = new HumanLayer();
 
-const PROMPT = "multiply 2 and 5, then add 32 to the result";
+const PROMPT = `multiply 2 and 5, then add 32 to the result.
+
+Do not do math yourself, you must use the tools provided.`;
 
 const add = ({ a, b }: { a: number; b: number }) => a + b;
 
@@ -14,9 +16,6 @@ const tools_map = {
   multiply: hl.requireApproval()(multiply),
   add: add,
 };
-
-console.log(tools_map.add.name);
-console.log(tools_map.multiply.name);
 
 const openai_tools: ChatCompletionTool[] = [
   {
@@ -91,6 +90,7 @@ const openAIHello = async (
     response = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: messages,
+      tools: openai_tools,
     });
   }
 
