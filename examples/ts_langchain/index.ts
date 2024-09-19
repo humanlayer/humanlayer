@@ -21,11 +21,7 @@ class AddTool extends StructuredTool {
     b: z.number(),
   });
 
-  __call(
-    arg: output<ZodObjectAny>,
-    runManager?: CallbackManagerForToolRun,
-    parentConfig?: RunnableConfig,
-  ): Promise<string> {
+  __call(arg: output<ZodObjectAny>): Promise<string> {
     return Promise.resolve(`${arg.a + arg.b}`);
   }
   _call(arg: any) {
