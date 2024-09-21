@@ -78,6 +78,10 @@ test-examples:
 	docker compose -f examples/langchain/docker-compose.yaml run examples 04-human_as_tool_onboarding.py
 	docker compose -f examples/langchain/docker-compose.yaml run examples 05-approvals_and_humans_composite.py
 	:
+	: 🦜⛓️ langchain-anthropic
+	:
+	docker compose -f examples/langchain-anthropic/docker-compose.yaml run examples 04-linkedin-anthropic.py
+	:
 	: 🧠 OpenAI
 	:
 	docker compose -f examples/openai_client/docker-compose.yaml run examples

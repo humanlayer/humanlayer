@@ -47,5 +47,3 @@ You can also run the Human as Tool / linkedin assistant example
 npm install
 npm run human-as-tool
 ```
-
-
