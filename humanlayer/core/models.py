@@ -34,6 +34,7 @@ class SlackContactChannel(BaseModel):
     # a list of responders to allow to respond to this message
     # other messages will be ignored
     # allowed_responder_ids: list[str] | None
+    experimental_slack_blocks: bool | None = None
 
 
 class ContactChannel(BaseModel):
