@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Any
 
 import langchain_core.tools as langchain_tools
 from dotenv import load_dotenv
@@ -9,6 +10,7 @@ from pydantic import BaseModel
 from channels import (
     dm_with_ceo,
 )
+from humanlayer import ContactChannel, SlackContactChannel
 from humanlayer.core.approval import (
     HumanLayer,
 )
@@ -21,22 +23,13 @@ task_prompt = """
 
 You are the linkedin inbox assistant. You check on
 the CEO's linkedin inbox and decide if there are any messages
-that seem interesting, then contact the human in slack with a summary.
+that seem interesting.
 
-don't provide detail on spam-looking messages, or messages
-that appear to be selling a service or software
+Don't respond to spam-looking messages
 
-You can offer to perform  actions like schedule time.
+Send replies to new messages that seem legitimate, and offer to schedule time.
 
-Example slack dm to send:
-
-Your inbox for today includes 4 spam messages,
-and 1 message from Devin who seems interested in your
-product - [here's the link](https://linkedin.com/in/devin).
-
-Terri has still not responded to your question about scheduling an onboarding call.
-
-Would you like me to respond to Devin with your availability?
+For users who have not responded to a previous message in a few days, follow up with a reminder.
 
 """
 
@@ -108,21 +101,25 @@ def get_linkedin_threads() -> list[LinkedInThread]:
     ]
 
 
-@hl.require_approval(contact_channel=dm_with_ceo)
-def send_linkedin_message(thread_id: str, to_name: str, msg: str) -> str:
-    """send a message in a thread in LinkedIn"""
-    return f"message successfully sent to {to_name}"
+channel = ContactChannel(
+    slack=SlackContactChannel(
+        channel_or_user_id="C07HR5JL15F",
+        context_about_channel_or_user="the dm with the CEO",
+        experimental_slack_blocks=True,
+    ),
+)
+
+
+@hl.require_approval(contact_channel=channel)
+def send_linkedin_messages(message: list[Any]) -> str:
+    """send a set messages on LinkedIn"""
+    return f"messages successfully sent"
 
 
 tools = [
     langchain_tools.StructuredTool.from_function(get_linkedin_threads),
-    langchain_tools.StructuredTool.from_function(send_linkedin_message),
-    langchain_tools.StructuredTool.from_function(
-        # allow the agent to contact the CEO
-        hl.human_as_tool(
-            contact_channel=dm_with_ceo,
-        )
-    ),
+    langchain_tools.StructuredTool.from_function(send_linkedin_messages),
+    langchain_tools.StructuredTool.from_function(get_time),
 ]
 
 llm = ChatOpenAI(model="gpt-4o", temperature=0)
