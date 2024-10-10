@@ -11,7 +11,7 @@ import { CallbackManagerForToolRun } from "@langchain/core/dist/callbacks/manage
 import { RunnableConfig } from "@langchain/core/runnables";
 import { HumanLayer } from "humanlayer";
 
-const hl = new HumanLayer();
+const hl = new HumanLayer({ verbose: true });
 
 class AddTool extends StructuredTool {
   name: string = "add";

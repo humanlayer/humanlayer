@@ -1,14 +1,17 @@
 from unittest.mock import Mock
 
+import pytest
+
 from humanlayer import (
     AgentBackend,
     ContactChannel,
     FunctionCall,
     FunctionCallSpec,
     HumanLayer,
+    ResponseOption,
     SlackContactChannel,
 )
-from humanlayer.core.protocol import AgentStore
+from humanlayer.core.protocol import AgentStore, HumanLayerException
 
 
 def test_require_approval() -> None:
@@ -131,3 +134,26 @@ def test_require_approval_wrapper_contact_channel() -> None:
     )
     functions.get.assert_called_once_with("generated-id")
     mock_function.assert_called_with(bar="baz")
+
+
+def test_require_approval_unique_reject_option_names() -> None:
+    hl = HumanLayer()
+    with pytest.raises(HumanLayerException) as e:
+        hl.require_approval(
+            reject_options=[
+                ResponseOption(
+                    name="foo",
+                    title="foo",
+                    description="foo",
+                    prompt_fill="foo",
+                ),
+                ResponseOption(
+                    name="foo",
+                    title="bar",
+                    description="bar",
+                    prompt_fill="bar",
+                ),
+            ]
+        )
+
+    assert "reject_options must have unique names" in str(e.value)

@@ -8,15 +8,15 @@ from pydantic import BaseModel
 
 from channels import (
     dm_with_ceo,
-    dm_with_head_of_marketing,
 )
+from humanlayer import ResponseOption
 from humanlayer.core.approval import (
     HumanLayer,
 )
 
 load_dotenv()
 
-hl = HumanLayer()
+hl = HumanLayer(verbose=True)
 
 task_prompt = """
 
@@ -103,7 +103,23 @@ def get_linkedin_threads() -> list[LinkedInThread]:
     ]
 
 
-@hl.require_approval(contact_channel=dm_with_ceo)
+@hl.require_approval(
+    contact_channel=dm_with_ceo,
+    # reject options lets you show custom pre-filled rejection prompts to the human
+    reject_options=[
+        ResponseOption(
+            name="reject",
+            description="Reject the message",
+            prompt_fill="try again but this time ",
+        ),
+        ResponseOption(
+            name="skip",
+            title="Skip it",  # optional - add a title
+            description="Skip this operation",
+            prompt_fill="skip this and move on to the next task ",
+        ),
+    ],
+)
 def send_linkedin_message(thread_id: str, to_name: str, msg: str) -> str:
     """send a message in a thread in LinkedIn"""
     return f"message successfully sent to {to_name}"
@@ -116,6 +132,7 @@ tools = [
         # allow the agent to contact the CEO
         hl.human_as_tool(
             contact_channel=dm_with_ceo,
+            response_options=None,
         ),
     ),
 ]
