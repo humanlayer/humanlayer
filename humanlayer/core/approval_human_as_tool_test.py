@@ -1,5 +1,7 @@
 from unittest.mock import Mock
 
+import pytest
+
 from humanlayer import (
     AgentBackend,
     ContactChannel,
@@ -9,7 +11,8 @@ from humanlayer import (
     HumanLayer,
     SlackContactChannel,
 )
-from humanlayer.core.protocol import AgentStore
+from humanlayer.core.models import ResponseOption
+from humanlayer.core.protocol import AgentStore, HumanLayerException
 
 
 def test_human_as_tool_generic() -> None:
@@ -185,3 +188,29 @@ def test_human_as_tool_fn_contact_channel() -> None:
     contacts.get.assert_called_once_with("generated-id")
 
     pass
+
+
+def test_human_as_tool_response_names_must_be_unique() -> None:
+    """
+    test that the response names in the response_options must be unique
+    """
+    hl = HumanLayer()
+    with pytest.raises(HumanLayerException) as e:
+        hl.human_as_tool(
+            response_options=[
+                ResponseOption(
+                    name="foo",
+                    title="foo",
+                    description="foo",
+                    prompt_fill="foo",
+                ),
+                ResponseOption(
+                    name="foo",
+                    title="bar",
+                    description="bar",
+                    prompt_fill="bar",
+                ),
+            ]
+        )
+
+    assert "response_options must have unique names" in str(e.value)
