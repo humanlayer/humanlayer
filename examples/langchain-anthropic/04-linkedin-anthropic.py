@@ -19,7 +19,7 @@ from humanlayer.core.approval import (
 
 load_dotenv()
 
-hl = HumanLayer()
+hl = HumanLayer(verbose=True)
 
 task_prompt = """
 
