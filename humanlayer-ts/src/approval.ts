@@ -1,12 +1,6 @@
 import crypto from 'crypto'
 import { AgentBackend, HumanLayerException } from './protocol'
-import {
-  ContactChannel,
-  FunctionCall,
-  FunctionCallSpec,
-  HumanContact,
-  HumanContactSpec,
-} from './models'
+import { ContactChannel } from './models'
 import { CloudHumanLayerBackend, HumanLayerCloudConnection } from './cloud'
 import { logger } from './logger'
 import { type } from 'node:os'
@@ -31,6 +25,7 @@ export class HumanLayer {
   genid: (prefix: string) => string
   sleep: (ms: number) => Promise<void>
   contactChannel?: ContactChannel
+  verbose?: boolean
 
   constructor(params?: {
     runId?: string
@@ -42,6 +37,7 @@ export class HumanLayer {
     contactChannel?: ContactChannel
     apiKey?: string
     apiBaseUrl?: string
+    verbose?: boolean
   }) {
     const {
       runId,
@@ -53,9 +49,11 @@ export class HumanLayer {
       contactChannel,
       apiKey,
       apiBaseUrl,
+      verbose = false,
     } = params || {}
     this.genid = genid
     this.sleep = sleep
+    this.verbose = verbose
     this.contactChannel = contactChannel
 
     // Determine approval method based on environment variables or provided arguments
@@ -125,24 +123,38 @@ export class HumanLayer {
   }
 
   approveCli<TFn extends Function>(fn: TFn): TFn {
+    const name = fn.name
     // todo fix the types here
-    const f: any = (kwargs: any) => {
+    const f: any = async (kwargs: any) => {
       console.log(`Agent ${this.runId} wants to call
 
 ${fn.name}(${JSON.stringify(kwargs, null, 2)})
 
 ${kwargs.length ? ' with args: ' + JSON.stringify(kwargs, null, 2) : ''}`)
-      const feedback = prompt('Hit ENTER to proceed, or provide feedback to the agent to deny: \n\n')
+      const readline = require('readline').createInterface({
+        input: process.stdin,
+        output: process.stdout,
+      })
+
+      const feedback = await new Promise(resolve => {
+        readline.question(
+          'Hit ENTER to proceed, or provide feedback to the agent to deny: \n\n',
+          (answer: string) => {
+            readline.close()
+            resolve(answer)
+          },
+        )
+      })
       if (feedback !== null && feedback !== '') {
-        return new Error(`User denied ${fn.name} with feedback: ${feedback}`)
+        return `User denied ${fn.name} with feedback: ${feedback}`
       }
       try {
-        return fn(kwargs)
+        return await fn(kwargs)
       } catch (e) {
         return `Error running ${fn.name}: ${e}`
       }
     }
-    f.name = fn.name
+    Object.defineProperty(f, 'name', { value: name, writable: false })
     return f
   }
 
@@ -162,6 +174,9 @@ ${kwargs.length ? ' with args: ' + JSON.stringify(kwargs, null, 2) : ''}`)
           channel: channel,
         },
       })
+      if (this.verbose) {
+        console.log(`HumanLayer: Requested approval for function ${name}`)
+      }
       while (true) {
         await this.sleep(3000)
         const functionCall = await backend.functions().get(callId)
@@ -173,6 +188,9 @@ ${kwargs.length ? ' with args: ' + JSON.stringify(kwargs, null, 2) : ''}`)
         }
 
         if (functionCall.status?.approved) {
+          if (this.verbose) {
+            console.log(`HumanLayer: User approved function ${functionCall.spec.fn}`)
+          }
           return fn(kwargs)
         } else {
           return `User denied function ${functionCall.spec.fn} with comment: ${functionCall.status?.comment}`
@@ -183,81 +201,6 @@ ${kwargs.length ? ' with args: ' + JSON.stringify(kwargs, null, 2) : ''}`)
     return f
   }
 
-  /**
-   *
-   def human_as_tool(
-   self,
-   contact_channel: ContactChannel | None = None,
-   ) -> Callable[[str], str]:
-   if self.approval_method is ApprovalMethod.CLI:
-   return self._human_as_tool_cli()
-
-   return self._human_as_tool(contact_channel)
-
-   def _human_as_tool_cli(
-   self,
-   ) -> Callable[[str], str]:
-   def contact_human(
-   question: str,
-   ) -> str:
-   """ask a human a question on the CLI"""
-   print(
-   f"""Agent {self.run_id} requests assistance:
-
-   {question}
-   """
-   )
-   feedback = input("Please enter a response: \n\n")
-   return feedback
-
-   return contact_human
-
-   def _human_as_tool(
-   self,
-   contact_channel: ContactChannel | None = None,
-   ) -> Callable[[str], str]:
-   contact_channel = contact_channel or self.contact_channel
-
-   def contact_human(
-   message: str,
-   ) -> str:
-   """contact a human"""
-   assert self.backend is not None
-   call_id = self.genid("human_call")
-
-   contact = HumanContact(
-   run_id=self.run_id,  # type: ignore
-   call_id=call_id,
-   spec=HumanContactSpec(
-   msg=message,
-   channel=contact_channel,
-   ),
-   )
-   self.backend.contacts().add(contact)
-
-   # todo lets do a more async-y websocket soon
-   while True:
-   self.sleep(3)
-   human_contact = self.backend.contacts().get(call_id)
-   if human_contact.status is None:
-   continue
-
-   if human_contact.status.response is not None:
-   return human_contact.status.response
-
-   if contact_channel is None:
-   return contact_human
-
-   if contact_channel.slack:
-   contact_human.__doc__ = "Contact a human via slack and wait for a response"
-   contact_human.__name__ = "contact_human_in_slack"
-   if contact_channel.slack.context_about_channel_or_user:
-   contact_human.__doc__ += f" in {contact_channel.slack.context_about_channel_or_user}"
-   fn_ctx = contact_channel.slack.context_about_channel_or_user.replace(" ", "_")
-   contact_human.__name__ = f"contact_human_in_slack_in_{fn_ctx}"
-
-   return contact_human
-   */
   humanAsTool(contactChannel?: ContactChannel): ({ message }: { message: string }) => Promise<string> {
     if (this.approvalMethod === ApprovalMethod.cli) {
       return this.humanAsToolCli()
@@ -295,6 +238,9 @@ ${kwargs.length ? ' with args: ' + JSON.stringify(kwargs, null, 2) : ''}`)
       }
       await backend.contacts().add(contact)
 
+      if (this.verbose) {
+        console.log(`HumanLayer: Requested human contact for message ${message}`)
+      }
       while (true) {
         await this.sleep(3000)
         const humanContact = await backend.contacts().get(callId)
@@ -302,6 +248,9 @@ ${kwargs.length ? ' with args: ' + JSON.stringify(kwargs, null, 2) : ''}`)
           continue
         }
 
+        if (this.verbose) {
+          console.log(`HumanLayer: Received human contact response: ${humanContact.status.response}`)
+        }
         return humanContact.status.response
       }
     }

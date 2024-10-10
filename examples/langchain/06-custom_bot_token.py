@@ -16,7 +16,7 @@ load_dotenv()
 
 override_bot_token = os.getenv("SLACK_BOT_TOKEN")
 
-hl = HumanLayer()
+hl = HumanLayer(verbose=True)
 
 
 task_prompt = """
