@@ -70,6 +70,10 @@ test-examples:
 	docker compose -f examples/crewai/docker-compose.yaml run examples crewai_onboarding_agent.py
 	docker compose -f examples/crewai/docker-compose.yaml run examples crewai_onboarding_agent_human_as_tool.py
 	:
+	: 🚣 crewai-mistral
+	:
+	#docker compose -f examples/crewai-mistral/docker-compose.yaml run examples
+	:
 	: 🦜⛓️ langchain
 	:
 	docker compose -f examples/langchain/docker-compose.yaml run examples 01-math_example.py
@@ -85,6 +89,15 @@ test-examples:
 	: 🧠 OpenAI
 	:
 	docker compose -f examples/openai_client/docker-compose.yaml run examples
+	:
+	: 🦜⛓️ ts_langchain
+	:
+	npm run --prefix examples/ts_langchain example
+	:
+	: 🧠 ts_openai
+	:
+	npm run --prefix examples/ts_openai_client example
+	npm run --prefix examples/ts_openai_client human-as-tool
 
 .PHONY: githooks
 githooks:
