@@ -20,9 +20,11 @@ from humanlayer.core.models import (
     FunctionCallSpec,
     HumanContact,
     HumanContactSpec,
+    ResponseOption,
 )
 from humanlayer.core.protocol import (
     AgentBackend,
+    HumanLayerException,
 )
 
 # Define TypeVars for input and output types
@@ -75,6 +77,7 @@ class HumanLayer(BaseModel):
     genid: Callable[[str], str] = genid
     sleep: Callable[[int], None] = time.sleep
     contact_channel: ContactChannel | None = None
+    verbose: bool = False
 
     # convenience for forwarding down to Connection
     api_key: str | None = None
@@ -145,12 +148,23 @@ class HumanLayer(BaseModel):
     def require_approval(
         self,
         contact_channel: ContactChannel | None = None,
+        reject_options: list[ResponseOption] | None = None,
     ) -> HumanLayerWrapper:
+        # if any of the reject-options have the same name, raise an error
+        if reject_options:
+            names = [opt.name for opt in reject_options]
+            if len(names) != len(set(names)):
+                raise HumanLayerException("reject_options must have unique names")
+
         def decorator(fn):  # type: ignore
             if self.approval_method is ApprovalMethod.CLI:
                 return self._approve_cli(fn)
 
-            return self._approve_with_backend(fn, contact_channel)
+            return self._approve_with_backend(
+                fn=fn,
+                contact_channel=contact_channel,
+                reject_options=reject_options,
+            )
 
         return HumanLayerWrapper(decorator)
 
@@ -195,6 +209,7 @@ class HumanLayer(BaseModel):
         self,
         fn: Callable[[T], R],
         contact_channel: ContactChannel | None = None,
+        reject_options: list[ResponseOption] | None = None,
     ) -> Callable[[T], R | str]:
         """
         NOTE we convert a callable[[T], R] to a Callable [[T], R | str]
@@ -223,11 +238,14 @@ class HumanLayer(BaseModel):
                         fn=fn.__name__,
                         kwargs=kwargs,
                         channel=contact_channel,
+                        reject_options=reject_options,
                     ),
                 )
                 self.backend.functions().add(call)
 
                 # todo lets do a more async-y websocket soon
+                if self.verbose:
+                    print(f"HumanLayer: waiting for approval for {fn.__name__}")
                 while True:
                     self.sleep(3)
                     function_call: FunctionCall = self.backend.functions().get(call_id)
@@ -235,8 +253,14 @@ class HumanLayer(BaseModel):
                         continue
 
                     if function_call.status.approved:
+                        if self.verbose:
+                            print(f"HumanLayer: human approved {fn.__name__}")
                         return fn(*args, **kwargs)
                     else:
+                        if self.verbose:
+                            print(
+                                f"HumanLayer: human denied {fn.__name__} with message: {function_call.status.comment}"
+                            )
                         if (
                             function_call.spec.channel
                             and function_call.spec.channel.slack
@@ -262,11 +286,17 @@ class HumanLayer(BaseModel):
     def human_as_tool(
         self,
         contact_channel: ContactChannel | None = None,
+        response_options: list[ResponseOption] | None = None,
     ) -> Callable[[str], str]:
+        if response_options:
+            names = [opt.name for opt in response_options]
+            if len(names) != len(set(names)):
+                raise HumanLayerException("response_options must have unique names")
+
         if self.approval_method is ApprovalMethod.CLI:
             return self._human_as_tool_cli()
 
-        return self._human_as_tool(contact_channel)
+        return self._human_as_tool(contact_channel, response_options)
 
     def _human_as_tool_cli(
         self,
@@ -289,6 +319,7 @@ class HumanLayer(BaseModel):
     def _human_as_tool(
         self,
         contact_channel: ContactChannel | None = None,
+        response_options: list[ResponseOption] | None = None,
     ) -> Callable[[str], str]:
         contact_channel = contact_channel or self.contact_channel
 
@@ -305,11 +336,14 @@ class HumanLayer(BaseModel):
                 spec=HumanContactSpec(
                     msg=message,
                     channel=contact_channel,
+                    response_options=response_options,
                 ),
             )
             self.backend.contacts().add(contact)
 
             # todo lets do a more async-y websocket soon
+            if self.verbose:
+                print("HumanLayer: waiting for human response")
             while True:
                 self.sleep(3)
                 human_contact = self.backend.contacts().get(call_id)
@@ -317,6 +351,8 @@ class HumanLayer(BaseModel):
                     continue
 
                 if human_contact.status.response is not None:
+                    if self.verbose:
+                        print(f"HumanLayer: human responded with: {human_contact.status.response}")
                     return human_contact.status.response
 
         if contact_channel is None:

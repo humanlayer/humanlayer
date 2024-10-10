@@ -9,7 +9,7 @@ from humanlayer.core.approval import HumanLayer
 
 load_dotenv()
 
-hl = HumanLayer()
+hl = HumanLayer(verbose=True)
 
 task_prompt = """
 

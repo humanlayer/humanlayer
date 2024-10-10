@@ -2,7 +2,7 @@ import { ContactChannel, HumanLayer } from "humanlayer";
 import OpenAI from "openai";
 import { ChatCompletionTool } from "openai/src/resources/index.js";
 
-const hl = new HumanLayer();
+const hl = new HumanLayer({ verbose: true });
 
 const PROMPT = `
 

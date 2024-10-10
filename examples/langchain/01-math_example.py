@@ -12,7 +12,7 @@ from langchain.tools import tool
 
 load_dotenv()
 
-hl = HumanLayer()
+hl = HumanLayer(verbose=True)
 
 
 @tool
