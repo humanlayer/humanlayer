@@ -8,7 +8,7 @@ from humanlayer import HumanLayer
 
 load_dotenv()
 
-hl = HumanLayer()
+hl = HumanLayer(verbose=True)
 
 PROMPT = "multiply 2 and 5, then add 32 to the result"
 
