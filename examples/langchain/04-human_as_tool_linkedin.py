@@ -64,7 +64,7 @@ def get_linkedin_threads() -> list[LinkedInThread]:
     return [
         LinkedInThread(
             thread_id="123",
-            thread_url="https://linkedin.com/in/msg/123",
+            thread_url="https://linkedin.com/_fake/msg/123",
             with_name="Danny",
             messages=[
                 LinkedInMessage(
@@ -78,7 +78,7 @@ def get_linkedin_threads() -> list[LinkedInThread]:
         LinkedInThread(
             thread_id="124",
             with_name="Sarah",
-            thread_url="https://linkedin.com/in/msg/124",
+            thread_url="https://linkedin.com/_fake/msg/124",
             messages=[
                 LinkedInMessage(
                     message="Hello, I am interested in your product, what's the best way to get started",
@@ -90,7 +90,7 @@ def get_linkedin_threads() -> list[LinkedInThread]:
         LinkedInThread(
             thread_id="125",
             with_name="Terri",
-            thread_url="https://linkedin.com/in/msg/125",
+            thread_url="https://linkedin.com/_fake/msg/125",
             messages=[
                 LinkedInMessage(
                     message="Hello, I am interested in your product, what's the best way to get started",

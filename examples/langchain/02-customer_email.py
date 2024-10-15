@@ -1,3 +1,4 @@
+from humanlayer import ContactChannel, SlackContactChannel
 from langchain.agents import AgentType, initialize_agent
 import langchain_core.tools as langchain_tools
 from langchain_openai import ChatOpenAI
@@ -9,7 +10,15 @@ from humanlayer.core.approval import HumanLayer
 
 load_dotenv()
 
-hl = HumanLayer(verbose=True)
+hl = HumanLayer(
+    verbose=True,
+    contact_channel=ContactChannel(
+        slack=SlackContactChannel(
+            channel_or_user_id="",
+            experimental_slack_blocks=True,
+        )
+    ),
+)
 
 task_prompt = """
 
