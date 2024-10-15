@@ -1,0 +1,6 @@
+# copy to .env
+OPENAI_API_KEY=
+HUMANLAYER_API_KEY=
+
+# you can set this to override the slack destination used by Functionlayer Cloud
+# SLACK_BOT_TOKEN=

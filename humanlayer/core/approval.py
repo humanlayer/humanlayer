@@ -79,6 +79,10 @@ class HumanLayer(BaseModel):
     contact_channel: ContactChannel | None = None
     verbose: bool = False
 
+    # opt into some extra args/kwargs munging that is specific to how griptape
+    # agents call tools
+    griptape_munging: bool = False
+
     # convenience for forwarding down to Connection
     api_key: str | None = None
     api_base_url: str | None = None
@@ -230,13 +234,19 @@ class HumanLayer(BaseModel):
         def wrapper(*args, **kwargs) -> R | str:  # type: ignore
             assert self.backend is not None
             call_id = self.genid("call")
+            # griptape passes args[1] as the input
+            if self.griptape_munging and args and not kwargs:
+                display_kwargs = args[1]
+            else:
+                display_kwargs = kwargs
+
             try:
                 call = FunctionCall(
                     run_id=self.run_id,  # type: ignore
                     call_id=call_id,
                     spec=FunctionCallSpec(
                         fn=fn.__name__,
-                        kwargs=kwargs,
+                        kwargs=display_kwargs,
                         channel=contact_channel,
                         reject_options=reject_options,
                     ),
