@@ -234,8 +234,8 @@ class HumanLayer(BaseModel):
         def wrapper(*args, **kwargs) -> R | str:  # type: ignore
             assert self.backend is not None
             call_id = self.genid("call")
-            # griptape passes args[1] as the input
-            if self.griptape_munging and args and not kwargs:
+            if self.griptape_munging and args and not kwargs:  # noqa: SIM108
+                # griptape passes args[1] as the input kwargs
                 display_kwargs = args[1]
             else:
                 display_kwargs = kwargs
