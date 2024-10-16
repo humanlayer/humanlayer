@@ -17,12 +17,7 @@ from griptape.utils.decorators import activity
 hl = HumanLayer(
     verbose=True,
     griptape_munging=True,
-    contact_channel=ContactChannel(
-        slack=SlackContactChannel(
-            channel_or_user_id="",
-            experimental_slack_blocks=True
-        )
-    )
+    contact_channel=ContactChannel(slack=SlackContactChannel(channel_or_user_id="", experimental_slack_blocks=True)),
 )
 
 
@@ -33,7 +28,6 @@ class MathTool(BaseTool):
             "schema": Schema({"a": int, "b": int}),
         }
     )
-    @hl.require_approval()
     def add(self, params: dict) -> TextArtifact:
         a = params["values"]["a"]
         b = params["values"]["b"]
@@ -53,7 +47,6 @@ class MathTool(BaseTool):
 
 
 if __name__ == "__main__":
-
     agent = Agent(
         input="Multiply 2 and 5, then add 32 to the result",
         tools=[MathTool()],
@@ -61,4 +54,5 @@ if __name__ == "__main__":
 
     res = agent.run()
 
-    print(res)
+    print("\n\n------------RESULT----------\n\n")
+    print(res.output.value)

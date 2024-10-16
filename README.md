@@ -180,26 +180,27 @@ You can test different real life examples of HumanLayer in the [examples folder]
 
 ## Roadmap
 
-| Feature                      | Status              |
-| ---------------------------- | ------------------- |
-| Require Approval             | ⚙️ Beta            |
-| Human as Tool                | ⚙️ Beta            |
-| CLI Approvals                | ⚙️ Beta            |
-| CLI Human as Tool            | ⚙️ Beta          |
-| Slack Approvals              | ⚙️ Beta            |
-| Langchain Support            | ⚙️ Beta             |
-| CrewAI Support               | ⚙️ Beta            |
-| [GripTape Support](./examples/griptape)             | ⚗️ Alpha            |
-| Controlflow Support          | ⚗️ Alpha            |
-| Custom Response options      | ⚗️ Alpha            |
-| Open Protocol for BYO server | 🗓️ Planned          |
-| Composite Contact Channels   | 🚧 Work in progress |
-| Async / Webhook support      | 🗓️ Planned          |
-| SMS/RCS Approvals            | 🗓️ Planned          |
-| Discord Approvals            | 🗓️ Planned          |
-| Email Approvals              | 🗓️ Planned          |
-| LLamaIndex Support           | 🗓️ Planned          |
-| Haystack Support             | 🗓️ Planned          |
+| Feature                                                                            | Status              |
+| ---------------------------------------------------------------------------------- | ------------------- |
+| Require Approval                                                                   | ⚙️ Beta             |
+| Human as Tool                                                                      | ⚙️ Beta             |
+| CLI Approvals                                                                      | ⚙️ Beta             |
+| CLI Human as Tool                                                                  | ⚙️ Beta             |
+| Slack Approvals                                                                    | ⚙️ Beta             |
+| Langchain Support                                                                  | ⚙️ Beta             |
+| CrewAI Support                                                                     | ⚙️ Beta             |
+| [GripTape Support](./examples/griptape)                                            | ⚗️ Alpha            |
+| [GripTape Builtin Tools Support](./examples/griptape/02-decorate-existing-tool.py) | 🗓️ Planned          |
+| Controlflow Support                                                                | ⚗️ Alpha            |
+| Custom Response options                                                            | ⚗️ Alpha            |
+| Open Protocol for BYO server                                                       | 🗓️ Planned          |
+| Composite Contact Channels                                                         | 🚧 Work in progress |
+| Async / Webhook support                                                            | 🗓️ Planned          |
+| SMS/RCS Approvals                                                                  | 🗓️ Planned          |
+| Discord Approvals                                                                  | 🗓️ Planned          |
+| Email Approvals                                                                    | 🗓️ Planned          |
+| LlamaIndex Support                                                                 | 🗓️ Planned          |
+| Haystack Support                                                                   | 🗓️ Planned          |
 
 ## Contributing
 
