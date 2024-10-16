@@ -157,3 +157,41 @@ def test_require_approval_unique_reject_option_names() -> None:
         )
 
     assert "reject_options must have unique names" in str(e.value)
+
+
+def test_griptape_support() -> None:
+    mock_backend = Mock(spec=AgentBackend)
+    functions = Mock(spec=AgentStore[FunctionCall])
+    mock_backend.functions.return_value = functions
+
+    functions.add.return_value = None
+
+    mock_function = Mock()
+    mock_function.__name__ = "_fn_"
+    mock_function.return_value = "bosh"
+
+    hl = HumanLayer(
+        griptape_munging=True,
+        backend=mock_backend,
+        genid=lambda x: "generated-id",
+        sleep=lambda x: None,
+        api_key="sk-proj-123",
+    )
+
+    wrapped = hl.require_approval().wrap(mock_function)
+
+    ret = wrapped(..., {"values": {"a": 1, "b": 2}})
+    assert ret == "bosh"
+
+    functions.add.assert_called_once_with(
+        FunctionCall(
+            run_id="generated-id",
+            call_id="generated-id",
+            spec=FunctionCallSpec(
+                fn="_fn_",
+                kwargs={"values": {"a": 1, "b": 2}},
+            ),
+        )
+    )
+    functions.get.assert_called_once_with("generated-id")
+    mock_function.assert_called_with(..., {"values": {"a": 1, "b": 2}})
