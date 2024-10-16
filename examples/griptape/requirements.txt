@@ -1,0 +1,7 @@
+griptape[all]
+python-dotenv
+schema
+# install humanlayer
+# humanlayer==0.5.6
+# or if you want an editable version
+-e ../../
