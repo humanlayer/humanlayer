@@ -59,6 +59,7 @@ test-examples:
 	docker compose -f examples/crewai/docker-compose.yaml build examples
 	docker compose -f examples/langchain/docker-compose.yaml build examples
 	docker compose -f examples/openai_client/docker-compose.yaml build examples
+	docker compose -f examples/griptape/docker-compose.yaml build examples
 	:
 	: 🦾 controlflow
 	:
@@ -69,6 +70,10 @@ test-examples:
 	docker compose -f examples/crewai/docker-compose.yaml run examples
 	docker compose -f examples/crewai/docker-compose.yaml run examples crewai_onboarding_agent.py
 	docker compose -f examples/crewai/docker-compose.yaml run examples crewai_onboarding_agent_human_as_tool.py
+	:
+	: 🚣 griptape
+	:
+	docker compose -f examples/griptape/docker-compose.yaml run examples
 	:
 	: 🚣 crewai-mistral
 	:
