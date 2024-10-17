@@ -144,6 +144,8 @@ HumanLayer provides a set of tools to *deterministically* guarantee human oversi
 
 ### The Future: Autonomous Agents and the "Outer Loop"
 
+*Read More: [OpenAI's RealTime API is a step towards outer-loop agents](https://theouterloop.substack.com/p/openais-realtime-api-is-a-step-towards)*
+
 Between `require_approval` and `human_as_tool`, HumanLayer is built to empower the next generation of AI agents - Autonomous Agents, but it's just a piece of the puzzle. To clarify "next generation", we can summarize briefly the history of LLM applications.
 
 - **Gen 1**: Chat - human-initiated question / response interface
