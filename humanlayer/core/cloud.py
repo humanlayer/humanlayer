@@ -87,7 +87,7 @@ class CloudHumanContactStore(AgentStore[HumanContact]):
     def __init__(self, connection: HumanLayerCloudConnection) -> None:
         self.connection = connection
 
-    def add(self, item: HumanContact) -> None:
+    def add(self, item: HumanContact) -> HumanContact:
         resp = self.connection.request(
             "POST",
             "/contact_requests",
@@ -98,7 +98,9 @@ class CloudHumanContactStore(AgentStore[HumanContact]):
         logger.debug("response %d %s", resp.status_code, json.dumps(resp_json, indent=2))
 
         if resp.status_code != 200:
-            raise HumanLayerException(f"Error creating function call: {resp_json}")
+            raise HumanLayerException(f"Error creating contact request: {resp_json}")
+
+        return HumanContact.model_validate(resp_json)
 
     def get(self, call_id: str) -> HumanContact:
         resp = self.connection.request(

@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal, TypeAlias
 
 from pydantic import BaseModel
 
@@ -93,6 +94,30 @@ class FunctionCallStatus(BaseModel):
     responded_at: datetime | None = None
     approved: bool | None = None
     comment: str | None = None
+
+    class Approved(BaseModel):
+        approved: Literal[True]
+        comment: str | None
+
+    class Rejected(BaseModel):
+        approved: Literal[False]
+        comment: str
+
+    def as_completed(self) -> Approved | Rejected:
+        if self.approved is None:
+            raise ValueError("FunctionCallStatus.typed called before approval")
+        if self.approved is False and self.comment is None:
+            raise ValueError("FunctionCallStatus.rejected with no comment")
+
+        if self.approved:
+            return FunctionCallStatus.Approved(
+                approved=self.approved,
+                comment=self.comment,
+            )
+        return FunctionCallStatus.Rejected(
+            approved=self.approved,
+            comment=self.comment,
+        )
 
 
 class FunctionCall(BaseModel):
