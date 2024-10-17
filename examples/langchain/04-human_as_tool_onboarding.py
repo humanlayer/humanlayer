@@ -14,7 +14,11 @@ from langchain.agents import AgentType, initialize_agent
 
 load_dotenv()
 
-hl = HumanLayer(verbose=True)
+hl = HumanLayer(
+    verbose=True,
+    # run_id is optional -it can be used to identify the agent in approval history
+    run_id="langchain-human-as-tool-onboarding",
+)
 
 task_prompt = """
 
