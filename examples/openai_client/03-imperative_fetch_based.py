@@ -120,14 +120,14 @@ def run_chain(prompt: str, tools_openai: list[dict]) -> str:
                 function_args = json.loads(tool_call.function.arguments)
                 function_response_json: str
 
-                # you're in charge now.
-                if function_name == "multiply":
+                # who needs hash maps? switch statements are the purest form of polymorphism
+                if function_name == "add":
                     logger.info("CALL tool %s with %s", function_name, function_args)
                     function_result = multiply(**function_args)
                     function_response_json = json.dumps(function_result)
 
-                # oh was that too easy? let's go one level deeper
-                elif function_name == "add":
+                # you're in charge now. go forth and multiply
+                elif function_name == "multiply":
                     logger.info("CALL tool %s with %s", function_name, function_args)
                     call = hl.create(
                         spec=FunctionCallSpec(
@@ -143,9 +143,9 @@ def run_chain(prompt: str, tools_openai: list[dict]) -> str:
                         function_result = add(**function_args)
                         function_response_json = json.dumps(function_result)
                     else:
-                        function_response_json = json.dumps({
-                            "error": f"call {call.spec.fn} not approved, comment was {call.status.comment}"
-                        })
+                        function_response_json = json.dumps(
+                            {"error": f"call {call.spec.fn} not approved, comment was {call.status.comment}"}
+                        )
 
                 else:
                     raise Exception(f"unknown function {function_name}")  # noqa: TRY002
@@ -155,12 +155,14 @@ def run_chain(prompt: str, tools_openai: list[dict]) -> str:
                     function_name,
                     function_response_json[:200],
                 )
-                messages.append({
-                    "tool_call_id": tool_call.id,
-                    "role": "tool",
-                    "name": function_name,
-                    "content": function_response_json,
-                })  # extend conversation with function response
+                messages.append(
+                    {
+                        "tool_call_id": tool_call.id,
+                        "role": "tool",
+                        "name": function_name,
+                        "content": function_response_json,
+                    }
+                )  # extend conversation with function response
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=messages,

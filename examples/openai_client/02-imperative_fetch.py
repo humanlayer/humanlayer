@@ -121,12 +121,14 @@ def run_chain(prompt: str, tools_openai: list[dict], tools_map: dict) -> str:
                 )
 
                 if not resp.approved:
-                    messages.append({
-                        "tool_call_id": tool_call.id,
-                        "role": "tool",
-                        "name": function_name,
-                        "content": f"User rejected the tool call with comment: {resp.comment}",
-                    })
+                    messages.append(
+                        {
+                            "tool_call_id": tool_call.id,
+                            "role": "tool",
+                            "name": function_name,
+                            "content": f"User rejected the tool call with comment: {resp.comment}",
+                        }
+                    )
                     continue
 
                 function_response_json: str
@@ -134,21 +136,25 @@ def run_chain(prompt: str, tools_openai: list[dict], tools_map: dict) -> str:
                     function_response = function_to_call(**function_args)
                     function_response_json = json.dumps(function_response)
                 except Exception as e:
-                    function_response_json = json.dumps({
-                        "error": str(e),
-                    })
+                    function_response_json = json.dumps(
+                        {
+                            "error": str(e),
+                        }
+                    )
 
                 logger.info(
                     "tool %s responded with %s",
                     function_name,
                     function_response_json[:200],
                 )
-                messages.append({
-                    "tool_call_id": tool_call.id,
-                    "role": "tool",
-                    "name": function_name,
-                    "content": function_response_json,
-                })  # extend conversation with function response
+                messages.append(
+                    {
+                        "tool_call_id": tool_call.id,
+                        "role": "tool",
+                        "name": function_name,
+                        "content": function_response_json,
+                    }
+                )  # extend conversation with function response
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=messages,
