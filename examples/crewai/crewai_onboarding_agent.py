@@ -6,7 +6,10 @@ load_dotenv()
 
 from humanlayer import HumanLayer
 
-hl = HumanLayer()
+hl = HumanLayer(
+    # run_id is optional -it can be used to identify the agent in approval history
+    run_id="crewai-onboarding-agent",
+)
 
 task_prompt = """
 

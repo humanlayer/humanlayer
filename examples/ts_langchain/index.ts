@@ -7,11 +7,13 @@ import { AgentExecutor, createOpenAIFunctionsAgent } from "langchain/agents";
 import { StructuredTool, Tool } from "@langchain/core/tools";
 import { output, z } from "zod";
 import { ZodObjectAny } from "@langchain/core/dist/types/zod";
-import { CallbackManagerForToolRun } from "@langchain/core/dist/callbacks/manager";
-import { RunnableConfig } from "@langchain/core/runnables";
 import { HumanLayer } from "humanlayer";
 
-const hl = new HumanLayer({ verbose: true });
+const hl = new HumanLayer({
+  verbose: true,
+  // runId is optional -it can be used to identify the agent in approval history
+  runId: "ts-langchain-math-example",
+});
 
 class AddTool extends StructuredTool {
   name: string = "add";

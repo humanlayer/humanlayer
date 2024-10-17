@@ -16,7 +16,11 @@ load_dotenv()
 
 override_bot_token = os.getenv("SLACK_BOT_TOKEN")
 
-hl = HumanLayer(verbose=True)
+hl = HumanLayer(
+    verbose=True,
+    # run_id is optional -it can be used to identify the agent in approval history
+    run_id="langchain-custom-bot-token",
+)
 
 
 task_prompt = """

@@ -216,10 +216,13 @@ class HumanLayer(BaseModel):
         reject_options: list[ResponseOption] | None = None,
     ) -> Callable[[T], R | str]:
         """
-        NOTE we convert a callable[[T], R] to a Callable [[T], R | str]
+        NOTE we convert a callable[[T], R] to a Callable [[T], R | str],
+        hijacking the type signature to return a string on rejection or error
 
-        this is safe to do for most LLM use cases. It will blow up
-        a normal function.
+        this is safe to do for most LLM use cases, because the llm doesn't care whether
+        the input in structured in any particular way.
+
+        This will blow up a normal function.
 
         If we can guarantee the function calling framework
         is properly handling exceptions, then we can
@@ -233,7 +236,7 @@ class HumanLayer(BaseModel):
         @wraps(fn)
         def wrapper(*args, **kwargs) -> R | str:  # type: ignore
             assert self.backend is not None
-            call_id = self.genid("call")
+
             if self.griptape_munging and args and not kwargs:  # noqa: SIM108
                 # griptape passes args[1] as the input kwargs
                 display_kwargs = args[1]
@@ -241,55 +244,31 @@ class HumanLayer(BaseModel):
                 display_kwargs = kwargs
 
             try:
-                call = FunctionCall(
-                    run_id=self.run_id,  # type: ignore
-                    call_id=call_id,
-                    spec=FunctionCallSpec(
+                function_call = self.fetch_approval(
+                    FunctionCallSpec(
                         fn=fn.__name__,
                         kwargs=display_kwargs,
                         channel=contact_channel,
                         reject_options=reject_options,
                     ),
                 )
-                self.backend.functions().add(call)
 
-                # todo lets do a more async-y websocket soon
-                if self.verbose:
-                    print(f"HumanLayer: waiting for approval for {fn.__name__}")
-                while True:
-                    self.sleep(3)
-                    function_call: FunctionCall = self.backend.functions().get(call_id)
-                    if function_call.status is None or function_call.status.approved is None:
-                        continue
+                channel = function_call.call.spec.channel or contact_channel
+                response = function_call.as_completed()
 
-                    if function_call.status.approved:
-                        if self.verbose:
-                            print(f"HumanLayer: human approved {fn.__name__}")
-                        return fn(*args, **kwargs)
+                if response.approved is True:
+                    if self.verbose:
+                        print(f"HumanLayer: human approved {fn.__name__}")
+                    return fn(*args, **kwargs)
+                else:
+                    if self.verbose:
+                        print(f"HumanLayer: human denied {fn.__name__} with message: {response.comment}")
+                    if channel and channel.slack and channel.slack.context_about_channel_or_user:
+                        return f"User in {channel.slack.context_about_channel_or_user} denied {fn.__name__} with message: {response.comment}"
                     else:
-                        if self.verbose:
-                            print(
-                                f"HumanLayer: human denied {fn.__name__} with message: {function_call.status.comment}"
-                            )
-                        if (
-                            function_call.spec.channel
-                            and function_call.spec.channel.slack
-                            and function_call.spec.channel.slack.context_about_channel_or_user
-                        ):
-                            return f"User in {function_call.spec.channel.slack.context_about_channel_or_user} denied {fn.__name__} with message: {function_call.status.comment}"
-                        elif (
-                            contact_channel
-                            and contact_channel.slack
-                            and contact_channel.slack.context_about_channel_or_user
-                        ):
-                            return f"User in {contact_channel.slack.context_about_channel_or_user} denied {fn.__name__} with message: {function_call.status.comment}"
-                        else:
-                            return f"User denied {fn.__name__} with message: {function_call.status.comment}"
+                        return f"User denied {fn.__name__} with message: {response.comment}"
             except Exception as e:
-                logger.exception("Error requesting approval")
-                # todo - raise vs. catch behavior - many tool clients handle+wrap errors
-                # but not all of them :rolling_eyes:
-                return f"Error running {fn.__name__}: {e}"
+                return f"Error fetching approval for {fn.__name__}: {e}"
 
         return wrapper
 
@@ -377,3 +356,109 @@ class HumanLayer(BaseModel):
                 contact_human.__name__ = f"contact_human_in_slack_in_{fn_ctx}"
 
         return contact_human
+
+    def fetch_approval(
+        self,
+        spec: FunctionCallSpec,
+    ) -> FunctionCall.Completed:
+        """
+        fetch approval for a function call
+        """
+        # if no channel is specified, use this HumanLayer instance's contact channel (if any)
+        if spec.channel is None:
+            spec.channel = self.contact_channel
+
+        call = self.create_function_call(spec)
+
+        # todo lets do a more async-y websocket soon
+        if self.verbose:
+            print(f"HumanLayer: waiting for approval for {spec.fn}")
+
+        while True:
+            self.sleep(3)
+            call = self.get_function_call(call.call_id)
+            if call.status is None:
+                continue
+            if call.status.approved is None:
+                continue
+            return FunctionCall.Completed(call=call)
+
+    def create_function_call(
+        self,
+        spec: FunctionCallSpec,
+        call_id: str | None = None,
+    ) -> FunctionCall:
+        """
+        create a function call
+        """
+        assert self.backend is not None, "create requires a backend, did you forget your HUMANLAYER_API_KEY?"
+        call_id = call_id or self.genid("call")
+        call = FunctionCall(
+            run_id=self.run_id,  # type: ignore
+            call_id=call_id,
+            spec=spec,
+        )
+        return self.backend.functions().add(call)
+
+    def get_function_call(
+        self,
+        call_id: str,
+    ) -> FunctionCall:
+        """
+        get a function call
+        """
+        assert self.backend is not None, "get requires a backend, did you forget your HUMANLAYER_API_KEY?"
+        return self.backend.functions().get(call_id)
+
+    def fetch_human_response(
+        self,
+        spec: HumanContactSpec,
+    ) -> HumanContact.Completed:
+        """
+        fetch a human response
+        """
+        assert (
+            self.backend is not None
+        ), "fetch human response requires a backend, did you forget your HUMANLAYER_API_KEY?"
+
+        # if no channel is specified, use this HumanLayer instance's contact channel (if any)
+        if spec.channel is None:
+            spec.channel = self.contact_channel
+
+        contact = self.create_human_contact(spec)
+
+        # todo lets do a more async-y websocket soon
+        if self.verbose:
+            print(f"HumanLayer: waiting for human response for {spec.msg}")
+
+        while True:
+            self.sleep(3)
+            contact = self.get_human_contact(contact.call_id)
+            if contact.status is None:
+                continue
+            if contact.status.response is None:
+                continue
+            return HumanContact.Completed(contact=contact)
+
+    def create_human_contact(
+        self,
+        spec: HumanContactSpec,
+        call_id: str | None = None,
+    ) -> HumanContact:
+        assert self.backend is not None, "create requires a backend, did you forget your HUMANLAYER_API_KEY?"
+        call_id = call_id or self.genid("call")
+        contact = HumanContact(
+            run_id=self.run_id,  # type: ignore
+            call_id=call_id,
+            spec=spec,
+        )
+        return self.backend.contacts().add(contact)
+
+    def get_human_contact(
+        self,
+        call_id: str,
+    ) -> HumanContact:
+        assert (
+            self.backend is not None
+        ), "get human response requires a backend, did you forget your HUMANLAYER_API_KEY?"
+        return self.backend.contacts().get(call_id)

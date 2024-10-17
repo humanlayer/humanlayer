@@ -18,6 +18,8 @@ hl = HumanLayer(
     verbose=True,
     griptape_munging=True,
     contact_channel=ContactChannel(slack=SlackContactChannel(channel_or_user_id="", experimental_slack_blocks=True)),
+    # run_id is optional -it can be used to identify the agent in approval history
+    run_id="griptape-math",
 )
 
 

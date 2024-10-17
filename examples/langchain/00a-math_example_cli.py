@@ -13,7 +13,11 @@ from langchain.tools import tool
 
 load_dotenv()
 
-hl = HumanLayer()
+hl = HumanLayer(
+    verbose=True,
+    # run_id is optional -it can be used to identify the agent in approval history
+    run_id="langchain-math",
+)
 
 
 @tool

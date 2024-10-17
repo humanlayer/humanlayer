@@ -18,6 +18,8 @@ hl = HumanLayer(
             experimental_slack_blocks=True,
         )
     ),
+    # run_id is optional -it can be used to identify the agent in approval history
+    run_id="langchain-customer-email",
 )
 
 task_prompt = """
