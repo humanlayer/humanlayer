@@ -20,14 +20,14 @@ def test_require_approval() -> None:
     functions = Mock(spec=AgentStore[FunctionCall])
     mock_backend.functions.return_value = functions
 
-    functions.add.return_value = None
-    functions.get.return_value = FunctionCall(
+    function_call = FunctionCall(
         run_id="generated-id",
         call_id="generated-id",
         spec=FunctionCallSpec(fn="_fn_", kwargs={"bar": "baz"}, channel=None),
-        status=FunctionCallStatus(
-            approved=True,
-        ),
+    )
+    functions.add.return_value = function_call
+    functions.get.return_value = function_call.model_copy(
+        deep=True, update={"status": FunctionCallStatus(approved=True)}
     )
 
     mock_function = Mock()
@@ -37,6 +37,7 @@ def test_require_approval() -> None:
     hl = HumanLayer(
         backend=mock_backend,
         genid=lambda x: "generated-id",
+        sleep=lambda x: None,
     )
 
     wrapped = hl.require_approval().wrap(mock_function)
@@ -76,18 +77,22 @@ def test_require_approval_instance_contact_channel() -> None:
         )
     )
 
-    functions.get.return_value = FunctionCall(
+    function_call = FunctionCall(
         run_id="generated-id",
         call_id="generated-id",
         spec=FunctionCallSpec(fn="_fn_", kwargs={"bar": "baz"}, channel=contact_channel),
-        status=FunctionCallStatus(
-            approved=True,
-        ),
+    )
+
+    functions.add.return_value = function_call
+    functions.get.return_value = function_call.model_copy(
+        deep=True,
+        update={"status": FunctionCallStatus(approved=True)},
     )
 
     hl = HumanLayer(
         backend=mock_backend,
         genid=lambda x: "generated-id",
+        sleep=lambda x: None,
         contact_channel=contact_channel,
     )
 
@@ -119,8 +124,6 @@ def test_require_approval_wrapper_contact_channel() -> None:
     functions = Mock(spec=AgentStore[FunctionCall])
     mock_backend.functions.return_value = functions
 
-    functions.add.return_value = None
-
     mock_function = Mock()
     mock_function.__name__ = "_fn_"
     mock_function.return_value = "bosh"
@@ -132,13 +135,15 @@ def test_require_approval_wrapper_contact_channel() -> None:
         )
     )
 
-    functions.get.return_value = FunctionCall(
+    function_call = FunctionCall(
         run_id="generated-id",
         call_id="generated-id",
         spec=FunctionCallSpec(fn="_fn_", kwargs={"bar": "baz"}, channel=contact_channel),
-        status=FunctionCallStatus(
-            approved=True,
-        ),
+    )
+    functions.add.return_value = function_call
+    functions.get.return_value = function_call.model_copy(
+        deep=True,
+        update={"status": FunctionCallStatus(approved=True)},
     )
 
     hl = HumanLayer(backend=mock_backend, genid=lambda x: "generated-id", sleep=lambda x: None)
@@ -191,14 +196,15 @@ def test_griptape_support() -> None:
     functions = Mock(spec=AgentStore[FunctionCall])
     mock_backend.functions.return_value = functions
 
-    functions.add.return_value = None
-    functions.get.return_value = FunctionCall(
+    function_call = FunctionCall(
         run_id="generated-id",
         call_id="generated-id",
         spec=FunctionCallSpec(fn="_fn_", kwargs={"bar": "baz"}, channel=None),
-        status=FunctionCallStatus(
-            approved=True,
-        ),
+    )
+    functions.add.return_value = function_call
+    functions.get.return_value = function_call.model_copy(
+        deep=True,
+        update={"status": FunctionCallStatus(approved=True)},
     )
 
     mock_function = Mock()
@@ -241,8 +247,6 @@ def test_fetch_approval_forwards_contact_channel() -> None:
     functions = Mock(spec=AgentStore[FunctionCall])
     mock_backend.functions.return_value = functions
 
-    functions.add.return_value = None
-
     contact_channel = ContactChannel(
         slack=SlackContactChannel(
             channel_or_user_id="U8675309",
@@ -250,18 +254,19 @@ def test_fetch_approval_forwards_contact_channel() -> None:
         )
     )
 
-    functions.get.return_value = FunctionCall(
+    add_call = FunctionCall(
         run_id="generated-id",
         call_id="generated-id",
         spec=FunctionCallSpec(fn="_fn_", kwargs={"bar": "baz"}, channel=contact_channel),
-        status=FunctionCallStatus(
-            approved=True,
-        ),
     )
+
+    functions.add.return_value = add_call
+    functions.get.return_value = add_call.model_copy(deep=True, update={"status": FunctionCallStatus(approved=True)})
 
     hl = HumanLayer(
         backend=mock_backend,
         genid=lambda x: "generated-id",
+        sleep=lambda x: None,
         contact_channel=contact_channel,
     )
 

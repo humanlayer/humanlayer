@@ -225,8 +225,6 @@ def test_human_as_tool_forwards_contact_channel() -> None:
     contacts = Mock(spec=AgentStore[HumanContact])
     mock_backend.contacts.return_value = contacts
 
-    contacts.add.return_value = None
-
     contact_channel = ContactChannel(
         slack=SlackContactChannel(
             channel_or_user_id="U8675309",
@@ -234,18 +232,25 @@ def test_human_as_tool_forwards_contact_channel() -> None:
         )
     )
 
-    contacts.get.return_value = HumanContact(
+    human_contact = HumanContact(
         run_id="generated-id",
         call_id="generated-id",
         spec=HumanContactSpec(msg="What is your favorite color?", channel=contact_channel),
-        status=HumanContactStatus(
-            response="Blue",
-        ),
     )
+    contacts.add.return_value = human_contact
 
+    contacts.get.return_value = human_contact.model_copy(
+        update={
+            "status": HumanContactStatus(
+                response="Blue",
+            )
+        },
+        deep=True,
+    )
     hl = HumanLayer(
         backend=mock_backend,
         genid=lambda x: "generated-id",
+        sleep=lambda x: None,
         contact_channel=contact_channel,
     )
 
