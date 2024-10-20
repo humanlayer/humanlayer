@@ -16,6 +16,7 @@ Examples:
 
 - Improved Makefile harness for running/testing examples with prerelease version or local API instances
 - Updated examples to use `run_id` to identify agents in slack and in approval history
+- Support for python 3.10 - please let us know if you hit any issues with 3.10!
 
 ## 0.5.7
 
