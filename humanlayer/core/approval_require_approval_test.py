@@ -230,3 +230,56 @@ def test_griptape_support() -> None:
     )
     functions.get.assert_called_once_with("generated-id")
     mock_function.assert_called_with(..., {"values": {"a": 1, "b": 2}})
+
+
+def test_fetch_approval_forwards_contact_channel() -> None:
+    """
+    test that the fetch_approval method forwards the contact channel,
+    even if the passed FunctionCallSpec does not have one
+    """
+    mock_backend = Mock(spec=AgentBackend)
+    functions = Mock(spec=AgentStore[FunctionCall])
+    mock_backend.functions.return_value = functions
+
+    functions.add.return_value = None
+
+    contact_channel = ContactChannel(
+        slack=SlackContactChannel(
+            channel_or_user_id="U8675309",
+            context_about_channel_or_user="a dm with the librarian",
+        )
+    )
+
+    functions.get.return_value = FunctionCall(
+        run_id="generated-id",
+        call_id="generated-id",
+        spec=FunctionCallSpec(fn="_fn_", kwargs={"bar": "baz"}, channel=contact_channel),
+        status=FunctionCallStatus(
+            approved=True,
+        ),
+    )
+
+    hl = HumanLayer(
+        backend=mock_backend,
+        genid=lambda x: "generated-id",
+        contact_channel=contact_channel,
+    )
+
+    resp = hl.fetch_approval(
+        FunctionCallSpec(fn="_fn_", kwargs={"bar": "baz"}),
+    ).as_completed()
+
+    assert resp.approved is True
+
+    functions.add.assert_called_once_with(
+        FunctionCall(
+            run_id="generated-id",
+            call_id="generated-id",
+            spec=FunctionCallSpec(
+                fn="_fn_",
+                kwargs={"bar": "baz"},
+                channel=contact_channel,
+            ),
+        )
+    )
+    functions.get.assert_called_once_with("generated-id")

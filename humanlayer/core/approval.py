@@ -360,12 +360,14 @@ class HumanLayer(BaseModel):
     def fetch_approval(
         self,
         spec: FunctionCallSpec,
-        contact_channel: ContactChannel | None = None,
-        reject_options: list[ResponseOption] | None = None,
     ) -> FunctionCall.Completed:
         """
         fetch approval for a function call
         """
+        # if no channel is specified, use this HumanLayer instance's contact channel (if any)
+        if spec.channel is None:
+            spec.channel = self.contact_channel
+
         assert self.backend is not None, "fetch approval requires a backend, did you forget your HUMANLAYER_API_KEY?"
         call_id = self.genid("approval")
         call = FunctionCall(
