@@ -18,7 +18,6 @@ from humanlayer.core.models import (
     ContactChannel,
     FunctionCall,
     FunctionCallSpec,
-    FunctionCallStatus,
     HumanContact,
     HumanContactSpec,
     ResponseOption,
@@ -254,19 +253,20 @@ class HumanLayer(BaseModel):
                     ),
                 )
 
-                channel = function_call.spec.channel or contact_channel
+                channel = function_call.call.spec.channel or contact_channel
+                response = function_call.as_completed()
 
-                if function_call.status.approved:
+                if response.approved is True:
                     if self.verbose:
                         print(f"HumanLayer: human approved {fn.__name__}")
                     return fn(*args, **kwargs)
                 else:
                     if self.verbose:
-                        print(f"HumanLayer: human denied {fn.__name__} with message: {function_call.status.comment}")
+                        print(f"HumanLayer: human denied {fn.__name__} with message: {response.comment}")
                     if channel and channel.slack and channel.slack.context_about_channel_or_user:
-                        return f"User in {channel.slack.context_about_channel_or_user} denied {fn.__name__} with message: {function_call.status.comment}"
+                        return f"User in {channel.slack.context_about_channel_or_user} denied {fn.__name__} with message: {response.comment}"
                     else:
-                        return f"User denied {fn.__name__} with message: {function_call.status.comment}"
+                        return f"User denied {fn.__name__} with message: {response.comment}"
             except Exception as e:
                 return f"Error fetching approval for {fn.__name__}: {e}"
 
@@ -362,7 +362,7 @@ class HumanLayer(BaseModel):
         spec: FunctionCallSpec,
         contact_channel: ContactChannel | None = None,
         reject_options: list[ResponseOption] | None = None,
-    ) -> FunctionCallStatus.Rejected | FunctionCallStatus.Approved:
+    ) -> FunctionCall.Completed:
         """
         fetch approval for a function call
         """
@@ -375,17 +375,18 @@ class HumanLayer(BaseModel):
         )
         self.backend.functions().add(call)
 
+        # todo lets do a more async-y websocket soon
+        if self.verbose:
+            print(f"HumanLayer: waiting for approval for {spec.fn}")
+
         while True:
-            # todo lets do a more async-y websocket soon
-            if self.verbose:
-                print(f"HumanLayer: waiting for approval for {spec.fn}")
             self.sleep(3)
             call = self.backend.functions().get(call_id)
             if call.status is None:
                 continue
             if call.status.approved is None:
                 continue
-            return call.status.as_completed()
+            return FunctionCall.Completed(call=call)
 
     def create(
         self,
@@ -413,3 +414,36 @@ class HumanLayer(BaseModel):
         """
         assert self.backend is not None, "get requires a backend, did you forget your HUMANLAYER_API_KEY?"
         return self.backend.functions().get(call_id)
+
+    def fetch_human_response(
+        self,
+        spec: HumanContactSpec,
+        contact_channel: ContactChannel | None = None,
+        response_options: list[ResponseOption] | None = None,
+    ) -> HumanContact.Completed:
+        """
+        fetch a human response
+        """
+        assert (
+            self.backend is not None
+        ), "fetch human response requires a backend, did you forget your HUMANLAYER_API_KEY?"
+        call_id = self.genid("human_contact")
+        contact = HumanContact(
+            run_id=self.run_id,  # type: ignore
+            call_id=call_id,
+            spec=spec,
+        )
+        self.backend.contacts().add(contact)
+
+        # todo lets do a more async-y websocket soon
+        if self.verbose:
+            print(f"HumanLayer: waiting for human response for {spec.msg}")
+
+        while True:
+            self.sleep(3)
+            contact = self.backend.contacts().get(call_id)
+            if contact.status is None:
+                continue
+            if contact.status.response is None:
+                continue
+            return HumanContact.Completed(contact=contact)

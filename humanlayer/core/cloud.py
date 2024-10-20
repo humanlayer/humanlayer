@@ -51,7 +51,7 @@ class CloudFunctionCallStore(AgentStore[FunctionCall]):
     def __init__(self, connection: HumanLayerCloudConnection) -> None:
         self.connection = connection
 
-    def add(self, item: FunctionCall) -> None:
+    def add(self, item: FunctionCall) -> FunctionCall:
         resp = self.connection.request(
             "POST",
             "/function_calls",
@@ -61,8 +61,9 @@ class CloudFunctionCallStore(AgentStore[FunctionCall]):
 
         logger.debug("response %d %s", resp.status_code, json.dumps(resp_json, indent=2))
 
-        if resp.status_code != 200:
-            raise HumanLayerException(f"Error creating function call: {resp_json}")
+        HumanLayerException.raise_for_status(resp)
+
+        return FunctionCall.model_validate(resp_json)
 
     def get(self, call_id: str) -> FunctionCall:
         resp = self.connection.request(
@@ -75,8 +76,8 @@ class CloudFunctionCallStore(AgentStore[FunctionCall]):
             resp.status_code,
             json.dumps(resp_json, indent=2),
         )
-        if resp.status_code != 200:
-            raise HumanLayerException(f"Error fetching function call: {resp_json}")
+        HumanLayerException.raise_for_status(resp)
+
         return FunctionCall.model_validate(resp_json)
 
     def respond(self, call_id: str, status: FunctionCallStatus) -> None:
@@ -97,8 +98,7 @@ class CloudHumanContactStore(AgentStore[HumanContact]):
 
         logger.debug("response %d %s", resp.status_code, json.dumps(resp_json, indent=2))
 
-        if resp.status_code != 200:
-            raise HumanLayerException(f"Error creating contact request: {resp_json}")
+        HumanLayerException.raise_for_status(resp)
 
         return HumanContact.model_validate(resp_json)
 
@@ -113,6 +113,9 @@ class CloudHumanContactStore(AgentStore[HumanContact]):
             resp.status_code,
             json.dumps(resp_json, indent=2),
         )
+
+        HumanLayerException.raise_for_status(resp)
+
         return HumanContact.model_validate(resp_json)
 
 

@@ -11,6 +11,7 @@ from humanlayer import (
     ResponseOption,
     SlackContactChannel,
 )
+from humanlayer.core.models import FunctionCallStatus
 from humanlayer.core.protocol import AgentStore, HumanLayerException
 
 
@@ -20,6 +21,14 @@ def test_require_approval() -> None:
     mock_backend.functions.return_value = functions
 
     functions.add.return_value = None
+    functions.get.return_value = FunctionCall(
+        run_id="generated-id",
+        call_id="generated-id",
+        spec=FunctionCallSpec(fn="_fn_", kwargs={"bar": "baz"}, channel=None),
+        status=FunctionCallStatus(
+            approved=True,
+        ),
+    )
 
     mock_function = Mock()
     mock_function.__name__ = "_fn_"
@@ -67,6 +76,15 @@ def test_require_approval_instance_contact_channel() -> None:
         )
     )
 
+    functions.get.return_value = FunctionCall(
+        run_id="generated-id",
+        call_id="generated-id",
+        spec=FunctionCallSpec(fn="_fn_", kwargs={"bar": "baz"}, channel=contact_channel),
+        status=FunctionCallStatus(
+            approved=True,
+        ),
+    )
+
     hl = HumanLayer(
         backend=mock_backend,
         genid=lambda x: "generated-id",
@@ -112,6 +130,15 @@ def test_require_approval_wrapper_contact_channel() -> None:
             channel_or_user_id="U8675309",
             context_about_channel_or_user="a dm with the librarian",
         )
+    )
+
+    functions.get.return_value = FunctionCall(
+        run_id="generated-id",
+        call_id="generated-id",
+        spec=FunctionCallSpec(fn="_fn_", kwargs={"bar": "baz"}, channel=contact_channel),
+        status=FunctionCallStatus(
+            approved=True,
+        ),
     )
 
     hl = HumanLayer(backend=mock_backend, genid=lambda x: "generated-id", sleep=lambda x: None)
@@ -165,6 +192,14 @@ def test_griptape_support() -> None:
     mock_backend.functions.return_value = functions
 
     functions.add.return_value = None
+    functions.get.return_value = FunctionCall(
+        run_id="generated-id",
+        call_id="generated-id",
+        spec=FunctionCallSpec(fn="_fn_", kwargs={"bar": "baz"}, channel=None),
+        status=FunctionCallStatus(
+            approved=True,
+        ),
+    )
 
     mock_function = Mock()
     mock_function.__name__ = "_fn_"
