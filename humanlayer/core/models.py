@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel
 
@@ -94,12 +95,46 @@ class FunctionCallStatus(BaseModel):
     approved: bool | None = None
     comment: str | None = None
 
+    class Approved(BaseModel):
+        approved: Literal[True]
+        comment: str | None
+
+    class Rejected(BaseModel):
+        approved: Literal[False]
+        comment: str
+
+    def as_completed(self) -> Approved | Rejected:
+        if self.approved is None:
+            raise ValueError("FunctionCallStatus.as_completed() called before approval")
+
+        if self.approved is True:
+            return FunctionCallStatus.Approved(
+                approved=self.approved,
+                comment=self.comment,
+            )
+
+        if self.approved is False and self.comment is None:
+            raise ValueError("FunctionCallStatus.Rejected with no comment")
+
+        return FunctionCallStatus.Rejected(
+            approved=self.approved,
+            comment=self.comment,
+        )
+
 
 class FunctionCall(BaseModel):
     run_id: str
     call_id: str
     spec: FunctionCallSpec
     status: FunctionCallStatus | None = None
+
+    class Completed(BaseModel):
+        call: "FunctionCall"
+
+        def as_completed(self) -> FunctionCallStatus.Approved | FunctionCallStatus.Rejected:
+            if self.call.status is None:
+                raise ValueError("FunctionCall.Completed.as_completed() called before approval")
+            return self.call.status.as_completed()
 
 
 class HumanContactSpec(BaseModel):
@@ -119,3 +154,11 @@ class HumanContact(BaseModel):
     call_id: str
     spec: HumanContactSpec
     status: HumanContactStatus | None = None
+
+    class Completed(BaseModel):
+        contact: "HumanContact"
+
+        def as_completed(self) -> str:
+            if self.contact.status is None or self.contact.status.response is None:
+                raise ValueError("HumanContact.Completed.as_completed() called before response")
+            return self.contact.status.response

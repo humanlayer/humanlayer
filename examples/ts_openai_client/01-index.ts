@@ -2,7 +2,11 @@ import { HumanLayer } from "humanlayer";
 import OpenAI from "openai";
 import { ChatCompletionTool } from "openai/src/resources/index.js";
 
-const hl = new HumanLayer({ verbose: true });
+const hl = new HumanLayer({
+  verbose: true,
+  // runId is optional -it can be used to identify the agent in approval history
+  runId: "ts-openai-client-math-example",
+});
 
 const PROMPT = `multiply 2 and 5, then add 32 to the result.
 

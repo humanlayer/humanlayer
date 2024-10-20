@@ -63,24 +63,22 @@ test-examples:
 	:
 	: 🦾 controlflow
 	:
+	docker compose -f examples/controlflow/docker-compose.yaml up examples
 	docker compose -f examples/controlflow/docker-compose.yaml run examples
 	:
 	: 🚣 crewai
 	:
-	docker compose -f examples/crewai/docker-compose.yaml run examples
+	docker compose -f examples/crewai/docker-compose.yaml up examples
 	docker compose -f examples/crewai/docker-compose.yaml run examples crewai_onboarding_agent.py
 	docker compose -f examples/crewai/docker-compose.yaml run examples crewai_onboarding_agent_human_as_tool.py
 	:
 	: 🚣 griptape
 	:
-	docker compose -f examples/griptape/docker-compose.yaml run examples
-	:
-	: 🚣 crewai-mistral
-	:
-	#docker compose -f examples/crewai-mistral/docker-compose.yaml run examples
+	docker compose -f examples/griptape/docker-compose.yaml up examples
 	:
 	: 🦜⛓️ langchain
 	:
+	docker compose -f examples/langchain/docker-compose.yaml up examples
 	docker compose -f examples/langchain/docker-compose.yaml run examples 01-math_example.py
 	docker compose -f examples/langchain/docker-compose.yaml run examples 02-customer_email.py
 	docker compose -f examples/langchain/docker-compose.yaml run examples 04-human_as_tool_linkedin.py
@@ -90,11 +88,13 @@ test-examples:
 	:
 	: 🦜⛓️ langchain-anthropic
 	:
-	docker compose -f examples/langchain-anthropic/docker-compose.yaml run examples 04-linkedin-anthropic.py
+	docker compose -f examples/langchain-anthropic/docker-compose.yaml up examples
 	:
 	: 🧠 OpenAI
 	:
-	docker compose -f examples/openai_client/docker-compose.yaml run examples
+	docker compose -f examples/openai_client/docker-compose.yaml up examples
+	docker compose -f examples/openai_client/docker-compose.yaml run examples 02-imperative_fetch.py
+	docker compose -f examples/openai_client/docker-compose.yaml run examples 03-imperative_fetch_based.py
 	:
 	: 🦜⛓️ ts_langchain
 	:
@@ -112,3 +112,29 @@ githooks:
 	:
 	echo 'make check test' > .git/hooks/pre-push
 	chmod +x .git/hooks/pre-push
+
+.PHONY: update-examples-versions
+VERSION?=
+update-examples-versions:
+	@if [ -z "$(VERSION)" ]; then \
+		echo "VERSION is not set"; \
+		exit 1; \
+	fi; \
+	: 🚀 Updating examples versions to $(VERSION)
+	find examples/*/requirements.txt -type f -exec sed -i '' 's/humanlayer==.*$$/humanlayer==$(VERSION)/g' {} +
+
+.PHONY: update-examples-tokens
+HUMANLAYER_API_KEY?=
+HUMANLAYER_API_BASE?=
+update-examples-tokens:
+	@if [ -z "$(HUMANLAYER_API_KEY)" ]; then \
+		echo "HUMANLAYER_API_KEY must be set"; \
+		exit 1; \
+	fi; \
+	: 🚀 Updating examples .env files with new tokens
+	find examples/*/.env -type f -exec sh -c ' \
+		echo "" >> "{}"; \
+		echo "# added by Makefile at $(shell date)" >> "{}"; \
+		echo "HUMANLAYER_API_KEY=$(HUMANLAYER_API_KEY)" >> "{}"; \
+		echo "HUMANLAYER_API_BASE=$(HUMANLAYER_API_BASE)" >> "{}"; \
+	' \;
