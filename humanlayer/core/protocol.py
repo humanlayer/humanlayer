@@ -1,5 +1,7 @@
 from typing import Generic, Iterable, TypeVar
 
+import requests
+
 from humanlayer.core.models import (
     FunctionCall,
     FunctionCallStatus,
@@ -17,7 +19,7 @@ class AgentStore(Generic[T_Call]):
     """
 
     # should this return the T_Call with any updated status?
-    def add(self, item: T_Call) -> None:
+    def add(self, item: T_Call) -> T_Call:
         raise NotImplementedError()
 
     def get(self, call_id: str) -> T_Call:
@@ -31,7 +33,7 @@ class AdminStore(Generic[T_Call, T_Status]):
     """
 
     # should this return the T_Call with any updated status?
-    def respond(self, call_id: str, status: T_Status) -> None:
+    def respond(self, call_id: str, status: T_Status) -> T_Call:
         raise NotImplementedError()
 
     def list(self, call_id: str) -> Iterable[T_Call]:
@@ -57,4 +59,9 @@ class AdminBackend:
 
 
 class HumanLayerException(Exception):
-    pass
+    @staticmethod
+    def raise_for_status(resp: requests.Response) -> None:
+        try:
+            resp.raise_for_status()
+        except requests.HTTPError as e:
+            raise HumanLayerException(e) from e

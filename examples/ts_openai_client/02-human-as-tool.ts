@@ -48,7 +48,7 @@ const getLinkedinThreads = (): LinkedInThread[] => {
   return [
     {
       thread_id: "123",
-      thread_url: "https://linkedin.com/in/msg/123",
+      thread_url: "https://linkedin.com/_fake/in/msg/123",
       with_name: "Danny",
       messages: [
         {
@@ -60,7 +60,7 @@ const getLinkedinThreads = (): LinkedInThread[] => {
     },
     {
       thread_id: "124",
-      thread_url: "https://linkedin.com/in/msg/124",
+      thread_url: "https://linkedin.com/_fake/in/msg/124",
       with_name: "Sarah",
       messages: [
         {
@@ -72,7 +72,7 @@ const getLinkedinThreads = (): LinkedInThread[] => {
     },
     {
       thread_id: "125",
-      thread_url: "https://linkedin.com/in/msg/125",
+      thread_url: "https://linkedin.com/_fake/in/msg/125",
       with_name: "Terri",
       messages: [
         {

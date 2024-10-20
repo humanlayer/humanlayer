@@ -16,7 +16,11 @@ from humanlayer.core.approval import (
 
 load_dotenv()
 
-hl = HumanLayer(verbose=True)
+hl = HumanLayer(
+    verbose=True,
+    # run_id is optional -it can be used to identify the agent in approval history
+    run_id="langchain-linkedin-frustration",
+)
 
 task_prompt = """
 

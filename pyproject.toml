@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "humanlayer"
-version = "0.5.8-rc1"
+version = "0.5.8-rc4"
 description = "humanlayer"
 authors = ["humanlayer authors <dexter@metalytics.dev>"]
 repository = "https://github.com/humanlayer/humanlayer"
@@ -10,7 +10,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = ">=3.10,<4.0"
 pydantic = "2.8.2"
 requests = "2.32.3"
 python-slugify = "8.0.4"
