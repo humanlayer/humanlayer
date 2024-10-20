@@ -368,14 +368,7 @@ class HumanLayer(BaseModel):
         if spec.channel is None:
             spec.channel = self.contact_channel
 
-        assert self.backend is not None, "fetch approval requires a backend, did you forget your HUMANLAYER_API_KEY?"
-        call_id = self.genid("approval")
-        call = FunctionCall(
-            run_id=self.run_id,  # type: ignore
-            call_id=call_id,
-            spec=spec,
-        )
-        self.backend.functions().add(call)
+        call = self.create_function_call(spec)
 
         # todo lets do a more async-y websocket soon
         if self.verbose:
@@ -383,14 +376,14 @@ class HumanLayer(BaseModel):
 
         while True:
             self.sleep(3)
-            call = self.backend.functions().get(call_id)
+            call = self.get_function_call(call.call_id)
             if call.status is None:
                 continue
             if call.status.approved is None:
                 continue
             return FunctionCall.Completed(call=call)
 
-    def create(
+    def create_function_call(
         self,
         spec: FunctionCallSpec,
     ) -> FunctionCall:
@@ -406,7 +399,7 @@ class HumanLayer(BaseModel):
         )
         return self.backend.functions().add(call)
 
-    def get(
+    def get_function_call(
         self,
         call_id: str,
     ) -> FunctionCall:
@@ -431,13 +424,7 @@ class HumanLayer(BaseModel):
         if spec.channel is None:
             spec.channel = self.contact_channel
 
-        call_id = self.genid("human_contact")
-        contact = HumanContact(
-            run_id=self.run_id,  # type: ignore
-            call_id=call_id,
-            spec=spec,
-        )
-        self.backend.contacts().add(contact)
+        contact = self.create_human_contact(spec)
 
         # todo lets do a more async-y websocket soon
         if self.verbose:
@@ -445,9 +432,31 @@ class HumanLayer(BaseModel):
 
         while True:
             self.sleep(3)
-            contact = self.backend.contacts().get(call_id)
+            contact = self.get_human_contact(contact.call_id)
             if contact.status is None:
                 continue
             if contact.status.response is None:
                 continue
             return HumanContact.Completed(contact=contact)
+
+    def create_human_contact(
+        self,
+        spec: HumanContactSpec,
+    ) -> HumanContact:
+        assert self.backend is not None, "create requires a backend, did you forget your HUMANLAYER_API_KEY?"
+        call_id = self.genid("call")
+        contact = HumanContact(
+            run_id=self.run_id,  # type: ignore
+            call_id=call_id,
+            spec=spec,
+        )
+        return self.backend.contacts().add(contact)
+
+    def get_human_contact(
+        self,
+        call_id: str,
+    ) -> HumanContact:
+        assert (
+            self.backend is not None
+        ), "get human response requires a backend, did you forget your HUMANLAYER_API_KEY?"
+        return self.backend.contacts().get(call_id)

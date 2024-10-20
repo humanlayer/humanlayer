@@ -129,7 +129,7 @@ def run_chain(prompt: str, tools_openai: list[dict]) -> str:
                 # you're in charge now. go forth and multiply
                 elif function_name == "multiply":
                     logger.info("CALL tool %s with %s", function_name, function_args)
-                    call = hl.create(
+                    call = hl.create_function_call(
                         spec=FunctionCallSpec(
                             fn="add",
                             kwargs=function_args,
@@ -138,7 +138,7 @@ def run_chain(prompt: str, tools_openai: list[dict]) -> str:
                     # loop until the call is approved
                     while (not call.status) or (call.status.approved is None):
                         time.sleep(5)
-                        call: FunctionCall = hl.get(call.call_id)
+                        call: FunctionCall = hl.get_function_call(call.call_id)
                     if call.status.approved:
                         function_result = add(**function_args)
                         function_response_json = json.dumps(function_result)
