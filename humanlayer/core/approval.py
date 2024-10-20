@@ -404,8 +404,7 @@ class HumanLayer(BaseModel):
             call_id=call_id,
             spec=spec,
         )
-        self.backend.functions().add(call)
-        return call
+        return self.backend.functions().add(call)
 
     def get(
         self,
@@ -420,8 +419,6 @@ class HumanLayer(BaseModel):
     def fetch_human_response(
         self,
         spec: HumanContactSpec,
-        contact_channel: ContactChannel | None = None,
-        response_options: list[ResponseOption] | None = None,
     ) -> HumanContact.Completed:
         """
         fetch a human response
@@ -429,6 +426,11 @@ class HumanLayer(BaseModel):
         assert (
             self.backend is not None
         ), "fetch human response requires a backend, did you forget your HUMANLAYER_API_KEY?"
+
+        # if no channel is specified, use this HumanLayer instance's contact channel (if any)
+        if spec.channel is None:
+            spec.channel = self.contact_channel
+
         call_id = self.genid("human_contact")
         contact = HumanContact(
             run_id=self.run_id,  # type: ignore

@@ -214,3 +214,54 @@ def test_human_as_tool_response_names_must_be_unique() -> None:
         )
 
     assert "response_options must have unique names" in str(e.value)
+
+
+def test_human_as_tool_forwards_contact_channel() -> None:
+    """
+    Test that the human_as_tool method forwards the contact channel,
+    even if not explicitly provided in the method call.
+    """
+    mock_backend = Mock(spec=AgentBackend)
+    contacts = Mock(spec=AgentStore[HumanContact])
+    mock_backend.contacts.return_value = contacts
+
+    contacts.add.return_value = None
+
+    contact_channel = ContactChannel(
+        slack=SlackContactChannel(
+            channel_or_user_id="U8675309",
+            context_about_channel_or_user="a dm with the librarian",
+        )
+    )
+
+    contacts.get.return_value = HumanContact(
+        run_id="generated-id",
+        call_id="generated-id",
+        spec=HumanContactSpec(msg="What is your favorite color?", channel=contact_channel),
+        status=HumanContactStatus(
+            response="Blue",
+        ),
+    )
+
+    hl = HumanLayer(
+        backend=mock_backend,
+        genid=lambda x: "generated-id",
+        contact_channel=contact_channel,
+    )
+
+    human_tool = hl.fetch_human_response(HumanContactSpec(msg="What is your favorite color?"))
+    response = human_tool.as_completed()
+
+    assert response == "Blue"
+
+    contacts.add.assert_called_once_with(
+        HumanContact(
+            run_id="generated-id",
+            call_id="generated-id",
+            spec=HumanContactSpec(
+                msg="What is your favorite color?",
+                channel=contact_channel,
+            ),
+        )
+    )
+    contacts.get.assert_called_once_with("generated-id")
