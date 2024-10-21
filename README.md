@@ -47,6 +47,8 @@ To get started, check out [Getting Started](./docs/getting-started.md), watch th
 
 ## Example
 
+HumanLayer supports either Python or Typescript / JS.
+
 ```shell
 pip install humanlayer
 ```
@@ -73,7 +75,13 @@ run_llm_task(
 
 <div align="center"><img style="width: 400px" alt="A screenshot of slack showing a human replying to the bot" src="./docs/images/slack_approval_response.png"></div>
 
-Check out the [framework specific examples](./examples) or the [Getting Started Guide](./docs/getting-started.md) to get hands on.
+For Typescript, install with npm:
+
+```
+npm install humanlayer
+```
+
+More python and TS examples in the [framework specific examples](./examples) or the [Getting Started Guide](./docs/getting-started.md) to get hands on.
 
 #### Human as Tool
 
