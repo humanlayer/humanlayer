@@ -18,6 +18,9 @@ Bring your LLM (OpenAI, Llama, Claude, etc) and Framework (LangChain, CrewAI, et
 
 [![GitHub Repo stars](https://img.shields.io/github/stars/humanlayer/humanlayer)](https://github.com/humanlayer/humanlayer)
 [![License: Apache-2](https://img.shields.io/badge/License-Apache-green.svg)](https://opensource.org/licenses/Apache-2)
+[![PyPi Version](https://img.shields.io/pypi/v/humanlayer?color=006dad)](https://pypi.org/project/humanlayer/)
+[![NPM Version](https://img.shields.io/npm/v/humanlayer?color=ea2039)](https://www.npmjs.com/package/humanlayer)
+
 <img referrerpolicy="no-referrer-when-downgrade" src="https://static.scarf.sh/a.png?x-pxid=fcfc0926-d841-47fb-b8a6-6aba3a6c3228" />
 
 </div>
