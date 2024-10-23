@@ -189,7 +189,7 @@ You can test different real life examples of HumanLayer in the [examples folder]
 - 🦜⛓️ [LangChain Human As Tool](./examples/langchain/03-human_as_tool.py)
 - 🚣‍ [CrewAI Math](./examples/crewai/crewai_math.py)
 - 🦾 [ControlFlow Math](./examples/controlflow/controlflow_math.py)
-- 🧠 [Raw OpenAI Client](./examples/openai_client/math_example.py)
+- 🧠 [Raw OpenAI Client](./examples/openai_client/01-math_example.py)
 
 ## Roadmap
 
