@@ -64,4 +64,4 @@ class HumanLayerException(Exception):
         try:
             resp.raise_for_status()
         except requests.HTTPError as e:
-            raise HumanLayerException(e) from e
+            raise HumanLayerException(f"{e}: {resp.text}") from e
