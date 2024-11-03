@@ -1,8 +1,9 @@
 import { FunctionCall, FunctionCallStatus, HumanContact, HumanContactStatus } from './models'
 
-export type AgentStore<T_Call> = {
+export type AgentStore<T_Call, T_Status> = {
   add: (item: T_Call) => Promise<void>
   get: (call_id: string) => Promise<T_Call>
+  respond: (call_id: string, status: T_Status) => Promise<T_Call>
 }
 
 export type AdminStore<T_Call, T_Status> = {
