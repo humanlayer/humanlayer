@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
-    "example": "tsx --env-file=.env 01-math_example.ts",
+    "example": "tsx --env-file=.env 01-index.ts",
     "human-as-tool": "tsx --env-file=.env 02-human-as-tool.ts",
     "agent-side": "tsx --env-file=.env 04-agent-side-approvals.ts"
   },
@@ -23,7 +23,7 @@
   "author": "HumanLayer Authors",
   "license": "Apache-2.0",
   "dependencies": {
-    "humanlayer": "file:../../humanlayer-ts",
+    "humanlayer": "^0.5.9",
     "openai": "^4.0.0"
   },
   "devDependencies": {
