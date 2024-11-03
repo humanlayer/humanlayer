@@ -1,7 +1,7 @@
 #
 # an example that runs some langchain math operations
 # where the multiply function requires approval
-# via functionlayer, and HumanLayer is configured to
+# via HumanLayer, and HumanLayer is configured to
 # use local / CLI mode
 #
 from dotenv import load_dotenv

@@ -95,7 +95,7 @@ The High stakes functions are the ones that are the most valuable and promise th
 
 ### Approvals
 
-FunctionLayer provides a set of decorators that can be used to add approval requirements to specific functions.
+HumanLayer provides a set of decorators that can be used to add approval requirements to specific functions.
 
 ```python
 @hl.require_approval()
@@ -155,7 +155,7 @@ contact_human_in_a_dm_with_the_head_of_sales(msg: str) -> str
 
 ### Contact Channels
 
-FunctionLayer defines the concept of a Contact Channel, which is a way to route agent requests to the right person or group of people. Some example contact channels might be:
+HumanLayer defines the concept of a Contact Channel, which is a way to route agent requests to the right person or group of people. Some example contact channels might be:
 
 - "A Slack channel with the AI Engineering team"
 - "A DM with the head of marketing"
@@ -214,7 +214,7 @@ tools = [
 
 The elephant in the room here is the "block until approval is reached" - in conventional LLM frameworks, that means you have a python worker sitting in a wait loop, blocking the execution of the chain until a response is received from a human. This is not ideal for a number of reasons.
 
-One of the goals of the Function Layer project is to work with the community and framework builders to find the right implementation for asynchronous agent workflows, where tool calls or other operations might need to pause a conversation thread for hours or days.
+One of the goals of HumanLayer is to work with the community and framework builders to find the right implementation for asynchronous agent workflows, where tool calls or other operations might need to pause a conversation thread for hours or days.
 
 There's lots of open questions in this space, including how and when we want LLM agents to interrupt us and by what channels. We'll save these for a future, perhaps more philosophical, discussion.
 
@@ -222,7 +222,7 @@ There's lots of open questions in this space, including how and when we want LLM
 
 ### Function Decorators
 
-FunctionLayer provides a set of decorators that can be used to add human in the loop functionality to your functions. Rather than relying on LLM reasoning and logic to determine which functions to call and how to do it safely, you can move the approval out of the LLM layer and into the function layer. This brings strict determinism the "if/when" of an LLM asking for human approval on sensitive actions.
+HumanLayer provides a set of decorators that can be used to add human in the loop functionality to your functions. Rather than relying on LLM reasoning and logic to determine which functions to call and how to do it safely, you can move the approval out of the LLM layer and into HumanLayer. This brings strict determinism the "if/when" of an LLM asking for human approval on sensitive actions.
 
 ```python
 import os
@@ -263,7 +263,7 @@ def send_email_to_customer(email: str, subject: str, body: str) -> str:
 
 ### Human as Tool
 
-In addition to blocking function execution based on human feedback, functionlayer can also provide a more generic "human as tool" function for an agent to reach out across various channels.
+In addition to blocking function execution based on human feedback, HumanLayer can also provide a more generic "human as tool" function for an agent to reach out across various channels.
 
 ```python
 from humanlayer import ContactChannel, HumanLayer, SlackContactChannel
@@ -297,11 +297,11 @@ contact_human_in_a_dm_with_the_head_of_sales(msg: str) -> str
 
 See [Langchain Human as Tool Example](../examples/langchain/03-human_as_tool.py) for an example of how to use this in a Langchain context.
 
-### Functionlayer Cloud
+### HumanLayer Cloud
 
 By default, HumanLayer will run in [CLI mode](#cli-mode), which allows a human to interact with the LLM via the command line. However, HumanLayer really shines in cloud mode, where humans can be pulled into the agentic loop via email, slack, or other integrations.
 
-To get started with FuntionLayer Cloud, get an API token from https://app.humanlayer.dev and set it in your environment
+To get started with HumanLayer Cloud, get an API token from https://app.humanlayer.dev and set it in your environment
 
 ```
 export HUMANLAYER_API_KEY=
@@ -318,13 +318,13 @@ See [Getting Started](./getting-started.md) for more information on how to set u
 
 #### Slack Notifications
 
-To enable Slack notifications, you'll need to set up a Slack app and set a bot token in functionlayer, or install the functionlayer Slack app. See [configuring slack](./configuring-slack.md) for more detail.
+To enable Slack notifications, you'll need to set up a Slack app and set a bot token in HumanLayer, or install the HumanLayer Slack app. See [configuring slack](./configuring-slack.md) for more detail.
 
 ### CLI Mode
 
-The functionlayer CLI mode allows for a local development mode whereby all "human in the loop" and "human as tool" will be assesed as simple python `input()` calls.
+The HumanLayer CLI mode allows for a local development mode whereby all "human in the loop" and "human as tool" will be assesed as simple python `input()` calls.
 
-It can be a good way to experiment with LLM workflows without needing to integrat slack, email, or any of the [HumanLayer Cloud](#functionlayer-cloud) components.
+It can be a good way to experiment with LLM workflows without needing to integrat slack, email, or any of the [HumanLayer Cloud](#humanlayer-cloud) components.
 
 to run in CLI mode, initialize HumanLayer with `HumanLayer.cli()`
 

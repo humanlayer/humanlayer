@@ -32,4 +32,4 @@ docker compose run examples 01-math_example.py
 
 ## All Examples
 
-- [01-math_example.py](01-math_example.py) - A simple math example that uses functionlayer to gate access to the `multiply` function
+- [01-math_example.py](01-math_example.py) - A simple math example that uses HumanLayer to gate access to the `multiply` function
