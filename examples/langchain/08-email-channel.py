@@ -56,9 +56,27 @@ Mosey Corporation
 """
 
 
+def get_linear_projects() -> str:
+    """get all linear projects"""
+    return [
+        {"id": "1", "name": "operations"},
+        {"id": "2", "name": "marketing"},
+        {"id": "3", "name": "engineering"},
+        {"id": "4", "name": "design"},
+    ]
+
+
+def get_linear_assignees() -> str:
+    """get all linear assignees"""
+    return [
+        {"id": "1", "name": "Austin"},
+        {"id": "2", "name": "Dexter"},
+    ]
+
+
 @hl.require_approval()
 def create_linear_ticket(title: str, assignee: str, description: str, project: str) -> str:
-    """Get the customer's issue details"""
+    """create a ticket in linear"""
     if project != "operations":
         return "that project does not exist"
 
@@ -66,6 +84,8 @@ def create_linear_ticket(title: str, assignee: str, description: str, project: s
 
 
 tools = [
+    langchain_tools.StructuredTool.from_function(get_linear_projects),
+    langchain_tools.StructuredTool.from_function(get_linear_assignees),
     langchain_tools.StructuredTool.from_function(create_linear_ticket),
     langchain_tools.StructuredTool.from_function(hl.human_as_tool()),
 ]
