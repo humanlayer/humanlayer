@@ -1,5 +1,5 @@
 import { AgentBackend, AgentStore, HumanLayerException } from './protocol'
-import { FunctionCall, HumanContact } from './models'
+import { FunctionCall, FunctionCallStatus, HumanContact, HumanContactStatus } from './models'
 
 class HumanLayerCloudConnection {
   apiKey?: string
@@ -42,7 +42,7 @@ class HumanLayerCloudConnection {
   }
 }
 
-class CloudFunctionCallStore implements AgentStore<FunctionCall> {
+class CloudFunctionCallStore implements AgentStore<FunctionCall, FunctionCallStatus> {
   private connection: HumanLayerCloudConnection
 
   constructor(connection: HumanLayerCloudConnection) {
@@ -65,9 +65,19 @@ class CloudFunctionCallStore implements AgentStore<FunctionCall> {
     const data = await resp.json()
     return data as FunctionCall
   }
+
+  async respond(call_id: string, status: FunctionCallStatus): Promise<FunctionCall> {
+    const resp = await this.connection.request({
+      method: 'POST',
+      path: `/agent/function_calls/${call_id}/respond`,
+      body: status,
+    })
+    const data = await resp.json()
+    return data as FunctionCall
+  }
 }
 
-class CloudHumanContactStore implements AgentStore<HumanContact> {
+class CloudHumanContactStore implements AgentStore<HumanContact, HumanContactStatus> {
   private connection: HumanLayerCloudConnection
 
   constructor(connection: HumanLayerCloudConnection) {
@@ -86,6 +96,16 @@ class CloudHumanContactStore implements AgentStore<HumanContact> {
     const resp = await this.connection.request({
       method: 'GET',
       path: `/contact_requests/${call_id}`,
+    })
+    const data = await resp.json()
+    return data as HumanContact
+  }
+
+  async respond(call_id: string, status: HumanContactStatus): Promise<HumanContact> {
+    const resp = await this.connection.request({
+      method: 'POST',
+      path: `/agent/human_contacts/${call_id}/respond`,
+      body: status,
     })
     const data = await resp.json()
     return data as HumanContact
