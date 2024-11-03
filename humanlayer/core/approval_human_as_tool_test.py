@@ -22,7 +22,7 @@ def test_human_as_tool_generic() -> None:
     or reject the call
     """
     mock_backend = Mock(spec=AgentBackend)
-    contacts = Mock(spec=AgentStore[HumanContact])
+    contacts = Mock(spec=AgentStore[HumanContact, HumanContactStatus])
     mock_backend.contacts.return_value = contacts
 
     contacts.add.return_value = None
@@ -61,7 +61,7 @@ def test_human_as_tool_instance_contact_channel() -> None:
     HumanLayer constructor
     """
     mock_backend = Mock(spec=AgentBackend)
-    contacts = Mock(spec=AgentStore[HumanContact])
+    contacts = Mock(spec=AgentStore[HumanContact, HumanContactStatus])
     mock_backend.contacts.return_value = contacts
 
     contacts.add.return_value = None
@@ -132,7 +132,7 @@ def test_human_as_tool_fn_contact_channel() -> None:
     human_as_tool() method
     """
     mock_backend = Mock(spec=AgentBackend)
-    contacts = Mock(spec=AgentStore[HumanContact])
+    contacts = Mock(spec=AgentStore[HumanContact, HumanContactStatus])
     mock_backend.contacts.return_value = contacts
 
     contacts.add.return_value = None
@@ -222,7 +222,7 @@ def test_human_as_tool_forwards_contact_channel() -> None:
     even if not explicitly provided in the method call.
     """
     mock_backend = Mock(spec=AgentBackend)
-    contacts = Mock(spec=AgentStore[HumanContact])
+    contacts = Mock(spec=AgentStore[HumanContact, HumanContactStatus])
     mock_backend.contacts.return_value = contacts
 
     contact_channel = ContactChannel(
@@ -277,7 +277,7 @@ def test_create_human_contact_with_call_id() -> None:
     test that the create_human_contact method works when you supply a call_id
     """
     mock_backend = Mock(spec=AgentBackend)
-    contacts = Mock(spec=AgentStore[HumanContact])
+    contacts = Mock(spec=AgentStore[HumanContact, HumanContactStatus])
     mock_backend.contacts.return_value = contacts
 
     call_id = "special-id"
