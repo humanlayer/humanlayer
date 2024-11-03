@@ -104,6 +104,7 @@ test-examples:
 	:
 	npm run --prefix examples/ts_openai_client example
 	npm run --prefix examples/ts_openai_client human-as-tool
+	npm run --prefix examples/ts_openai_client agent-side
 
 .PHONY: githooks
 githooks:
