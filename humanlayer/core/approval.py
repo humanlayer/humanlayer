@@ -355,6 +355,14 @@ class HumanLayer(BaseModel):
                 fn_ctx = contact_channel.slack.context_about_channel_or_user.replace(" ", "_")
                 contact_human.__name__ = f"contact_human_in_slack_in_{fn_ctx}"
 
+        if contact_channel.email:
+            contact_human.__doc__ = "Contact a human via email and wait for a response"
+            contact_human.__name__ = "contact_human_via_email"
+            contact_human.__annotations__ = {"subject": str, "message": str, "return": str}
+            if contact_channel.email.address:
+                fn_ctx = contact_channel.email.address.replace("@", "_").replace(".", "_")
+                contact_human.__name__ = f"contact_human_via_email_{fn_ctx}"
+
         return contact_human
 
     def fetch_approval(
