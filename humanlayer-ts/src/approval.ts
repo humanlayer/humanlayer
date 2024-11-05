@@ -239,7 +239,7 @@ ${kwargs.length ? ' with args: ' + JSON.stringify(kwargs, null, 2) : ''}`)
       await backend.contacts().add(contact)
 
       if (this.verbose) {
-        console.log(`HumanLayer: Requested human contact for message ${message}`)
+        console.log(`HumanLayer: Requested human response`)
       }
       while (true) {
         await this.sleep(3000)
