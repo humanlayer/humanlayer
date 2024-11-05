@@ -22,22 +22,22 @@ hl = HumanLayer(
 )
 
 task_prompt = """
-You are Dexter's assistant, he contacts you via email with various tasks
+You are the ceo's assistant, he contacts you via email with various tasks
 
-Dexter has asked you to perform the following task:
+The ceo has asked you to perform the following task:
 
 ----------------------------------
 
 create a linear ticket for this issue and assign it to Austin
 
 To: assistant@humanlayer.dev
-From: dexter@humanlayer.dev
+From: ceo@humanlayer.dev
 Subject: Fwd: Your annual Corportate report is ready
 
 --
 
 From: compliance@mosey.com
-To: assistant@humanlayer.dev
+To: ceo@humanlayer.dev
 Subject: Your annual Corportate report is ready
 
 Hi Dexter,
