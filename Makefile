@@ -53,48 +53,45 @@ help:
 .PHONY: test-examples
 test-examples:
 	:
-	: 🐳 build
-	:
-	docker compose -f examples/controlflow/docker-compose.yaml build examples
-	docker compose -f examples/crewai/docker-compose.yaml build examples
-	docker compose -f examples/langchain/docker-compose.yaml build examples
-	docker compose -f examples/openai_client/docker-compose.yaml build examples
-	docker compose -f examples/griptape/docker-compose.yaml build examples
-	:
 	: 🦾 controlflow
 	:
-	docker compose -f examples/controlflow/docker-compose.yaml up examples
-	docker compose -f examples/controlflow/docker-compose.yaml run examples
+	examples/controlflow/venv/bin/pip install -r examples/controlflow/requirements.txt
+	examples/controlflow/venv/bin/python examples/controlflow/controlflow_math.py
 	:
 	: 🚣 crewai
 	:
-	docker compose -f examples/crewai/docker-compose.yaml up examples
-	docker compose -f examples/crewai/docker-compose.yaml run examples crewai_onboarding_agent.py
-	docker compose -f examples/crewai/docker-compose.yaml run examples crewai_onboarding_agent_human_as_tool.py
+	examples/crewai/venv/bin/pip install -r examples/crewai/requirements.txt
+	examples/crewai/venv/bin/python examples/crewai/crewai_math.py
+	examples/crewai/venv/bin/python examples/crewai/crewai_onboarding_agent.py
+	examples/crewai/venv/bin/python examples/crewai/crewai_onboarding_agent_human_as_tool.py
 	:
 	: 🚣 griptape
 	:
-	docker compose -f examples/griptape/docker-compose.yaml up examples
+	examples/griptape/venv/bin/pip install -r examples/griptape/requirements.txt
+	examples/griptape/venv/bin/python examples/griptape/01-math_example.py
 	:
 	: 🦜⛓️ langchain
 	:
-	docker compose -f examples/langchain/docker-compose.yaml up examples
-	docker compose -f examples/langchain/docker-compose.yaml run examples 01-math_example.py
-	docker compose -f examples/langchain/docker-compose.yaml run examples 02-customer_email.py
-	docker compose -f examples/langchain/docker-compose.yaml run examples 04-human_as_tool_linkedin.py
-	docker compose -f examples/langchain/docker-compose.yaml run examples 04-human_as_tool_onboarding.py
-	docker compose -f examples/langchain/docker-compose.yaml run examples 04-human_as_tool_linkedin_frustration.py
-	docker compose -f examples/langchain/docker-compose.yaml run examples 05-approvals_and_humans_composite.py
+	examples/langchain/venv/bin/pip install -r examples/langchain/requirements.txt
+	examples/langchain/venv/bin/python examples/langchain/01-math_example.py
+	examples/langchain/venv/bin/python examples/langchain/02-customer_email.py
+	examples/langchain/venv/bin/python examples/langchain/04-human_as_tool_linkedin.py
+	examples/langchain/venv/bin/python examples/langchain/04-human_as_tool_onboarding.py
+	examples/langchain/venv/bin/python examples/langchain/04-human_as_tool_linkedin_frustration.py
+	examples/langchain/venv/bin/python examples/langchain/05-approvals_and_humans_composite.py
+	examples/langchain/venv/bin/python examples/langchain/08-email-channel.py
+	examples/langchain/venv/bin/python examples/langchain/09-email-contact.py
 	:
 	: 🦜⛓️ langchain-anthropic
 	:
-	docker compose -f examples/langchain-anthropic/docker-compose.yaml up examples
+	examples/langchain-anthropic/venv/bin/pip install -r examples/langchain-anthropic/requirements.txt
+	examples/langchain-anthropic/venv/bin/python examples/langchain-anthropic/01-math_example.py
 	:
 	: 🧠 OpenAI
 	:
-	docker compose -f examples/openai_client/docker-compose.yaml up examples
-	docker compose -f examples/openai_client/docker-compose.yaml run examples 02-imperative_fetch.py
-	docker compose -f examples/openai_client/docker-compose.yaml run examples 03-imperative_fetch_based.py
+	examples/openai_client/venv/bin/pip install -r examples/openai_client/requirements.txt
+	examples/openai_client/venv/bin/python examples/openai_client/02-imperative_fetch.py
+	examples/openai_client/venv/bin/python examples/openai_client/03-imperative_fetch_based.py
 	:
 	: 🦜⛓️ ts_langchain
 	:
@@ -104,6 +101,7 @@ test-examples:
 	:
 	npm run --prefix examples/ts_openai_client example
 	npm run --prefix examples/ts_openai_client human-as-tool
+	npm run --prefix examples/ts_openai_client human-email
 	npm run --prefix examples/ts_openai_client agent-side
 
 .PHONY: githooks
