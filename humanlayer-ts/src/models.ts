@@ -12,10 +12,36 @@ type SlackContactChannel = {
   context_about_channel_or_user?: string
   // the bot token to use to contact the channel or user
   bot_token?: string
+  experimental_slack_blocks?: boolean
+}
+
+type SMSContactChannel = {
+  phone_number: string
+  context_about_user?: string
+}
+
+type WhatsAppContactChannel = {
+  phone_number: string
+  context_about_user?: string
+}
+
+type EmailContactChannel = {
+  address: string
+  context_about_user?: string
 }
 
 type ContactChannel = {
   slack?: SlackContactChannel
+  sms?: SMSContactChannel
+  whatsapp?: WhatsAppContactChannel
+  email?: EmailContactChannel
+}
+
+type ResponseOption = {
+  name: string
+  title?: string
+  description?: string
+  prompt_fill?: string
 }
 
 type FunctionCallSpec = {
@@ -25,6 +51,7 @@ type FunctionCallSpec = {
   kwargs: Record<string, any>
   // the contact channel to use to contact the human
   channel?: ContactChannel
+  reject_options?: ResponseOption[]
 }
 
 type FunctionCall = {
@@ -40,11 +67,14 @@ type HumanContactSpec = {
   msg: string
   // the contact channel to use to contact the human
   channel?: ContactChannel
+  response_options?: ResponseOption[]
 }
 
 type HumanContactStatus = {
+  requested_at?: Date
+  responded_at?: Date
   // the response from the human
-  response: string
+  response?: string
 }
 
 type HumanContact = {
@@ -60,7 +90,11 @@ type HumanContact = {
 export {
   FunctionCallStatus,
   SlackContactChannel,
+  SMSContactChannel,
+  WhatsAppContactChannel,
+  EmailContactChannel,
   ContactChannel,
+  ResponseOption,
   FunctionCallSpec,
   FunctionCall,
   HumanContactSpec,
