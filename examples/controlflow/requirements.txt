@@ -1,6 +1,6 @@
 controlflow
 python-dotenv
 # install humanlayer
-humanlayer==0.5.10
+humanlayer==0.5.11-rc1
 # or if you want an editable version
 # -e ../../
