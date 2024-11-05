@@ -17,7 +17,7 @@ from humanlayer.core.protocol import AgentStore, HumanLayerException
 
 def test_require_approval() -> None:
     mock_backend = Mock(spec=AgentBackend)
-    functions = Mock(spec=AgentStore[FunctionCall])
+    functions = Mock(spec=AgentStore[FunctionCall, FunctionCallStatus])
     mock_backend.functions.return_value = functions
 
     function_call = FunctionCall(
@@ -61,7 +61,7 @@ def test_require_approval_instance_contact_channel() -> None:
     test setting contact channel on the instance
     """
     mock_backend = Mock(spec=AgentBackend)
-    functions = Mock(spec=AgentStore[FunctionCall])
+    functions = Mock(spec=AgentStore[FunctionCall, FunctionCallStatus])
     mock_backend.functions.return_value = functions
 
     functions.add.return_value = None
@@ -121,7 +121,7 @@ def test_require_approval_wrapper_contact_channel() -> None:
     test setting contact channel on the decorator/wrapper
     """
     mock_backend = Mock(spec=AgentBackend)
-    functions = Mock(spec=AgentStore[FunctionCall])
+    functions = Mock(spec=AgentStore[FunctionCall, FunctionCallStatus])
     mock_backend.functions.return_value = functions
 
     mock_function = Mock()
@@ -193,7 +193,7 @@ def test_require_approval_unique_reject_option_names() -> None:
 
 def test_griptape_support() -> None:
     mock_backend = Mock(spec=AgentBackend)
-    functions = Mock(spec=AgentStore[FunctionCall])
+    functions = Mock(spec=AgentStore[FunctionCall, FunctionCallStatus])
     mock_backend.functions.return_value = functions
 
     function_call = FunctionCall(
@@ -244,7 +244,7 @@ def test_fetch_approval_forwards_contact_channel() -> None:
     even if the passed FunctionCallSpec does not have one
     """
     mock_backend = Mock(spec=AgentBackend)
-    functions = Mock(spec=AgentStore[FunctionCall])
+    functions = Mock(spec=AgentStore[FunctionCall, FunctionCallStatus])
     mock_backend.functions.return_value = functions
 
     contact_channel = ContactChannel(
@@ -295,7 +295,7 @@ def test_create_function_call_with_call_id() -> None:
     test that the create_function_call method works when you supply a call_id
     """
     mock_backend = Mock(spec=AgentBackend)
-    functions = Mock(spec=AgentStore[FunctionCall])
+    functions = Mock(spec=AgentStore[FunctionCall, FunctionCallStatus])
     mock_backend.functions.return_value = functions
 
     call_id = "special-id"

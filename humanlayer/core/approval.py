@@ -18,8 +18,10 @@ from humanlayer.core.models import (
     ContactChannel,
     FunctionCall,
     FunctionCallSpec,
+    FunctionCallStatus,
     HumanContact,
     HumanContactSpec,
+    HumanContactStatus,
     ResponseOption,
 )
 from humanlayer.core.protocol import (
@@ -418,6 +420,14 @@ class HumanLayer(BaseModel):
         assert self.backend is not None, "get requires a backend, did you forget your HUMANLAYER_API_KEY?"
         return self.backend.functions().get(call_id)
 
+    def respond_to_function_call(
+        self,
+        call_id: str,
+        status: FunctionCallStatus,
+    ) -> FunctionCall:
+        assert self.backend is not None, "respond requires a backend, did you forget your HUMANLAYER_API_KEY?"
+        return self.backend.functions().respond(call_id, status)
+
     def fetch_human_response(
         self,
         spec: HumanContactSpec,
@@ -470,3 +480,11 @@ class HumanLayer(BaseModel):
             self.backend is not None
         ), "get human response requires a backend, did you forget your HUMANLAYER_API_KEY?"
         return self.backend.contacts().get(call_id)
+
+    def respond_to_human_contact(
+        self,
+        call_id: str,
+        status: HumanContactStatus,
+    ) -> HumanContact:
+        assert self.backend is not None, "respond requires a backend, did you forget your HUMANLAYER_API_KEY?"
+        return self.backend.contacts().respond(call_id, status)
