@@ -83,7 +83,7 @@ def get_linear_assignees() -> str:
 
 
 @hl.require_approval()
-def create_linear_ticket(title: str, assignee: str, description: str, project: str) -> str:
+def create_linear_ticket(title: str, assignee: str, description: str, project: str, due_date: str) -> str:
     """create a ticket in linear"""
     if project != "operations":
         return "that project does not exist"
