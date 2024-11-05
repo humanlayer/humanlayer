@@ -155,6 +155,7 @@ class FunctionCall(BaseModel):
 
 class HumanContactSpec(BaseModel):
     msg: str
+    subject: str | None = None
     channel: ContactChannel | None = None
     response_options: list[ResponseOption] | None = None
 
