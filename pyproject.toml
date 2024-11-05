@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "humanlayer"
-version = "0.5.11-rc1"
+version = "0.5.11"
 description = "humanlayer"
 authors = ["humanlayer authors <dexter@metalytics.dev>"]
 repository = "https://github.com/humanlayer/humanlayer"
