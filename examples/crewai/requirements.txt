@@ -1,6 +1,6 @@
 crewai
 crewai-tools
 # install humanlayer
-humanlayer==0.5.9
+humanlayer==0.5.10
 # or if you want an editable version
 # -e ../../
