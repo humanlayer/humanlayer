@@ -13,7 +13,7 @@ T_Call = TypeVar("T_Call", FunctionCall, HumanContact)
 T_Status = TypeVar("T_Status", FunctionCallStatus, HumanContactStatus, covariant=True)
 
 
-class AgentStore(Generic[T_Call]):
+class AgentStore(Generic[T_Call, T_Status]):
     """
     Agent-facing actions for HumanLayer, allows for creating and checking the status of
     """
@@ -23,6 +23,9 @@ class AgentStore(Generic[T_Call]):
         raise NotImplementedError()
 
     def get(self, call_id: str) -> T_Call:
+        raise NotImplementedError()
+
+    def respond(self, call_id: str, status: T_Status) -> T_Call:
         raise NotImplementedError()
 
 
@@ -43,10 +46,10 @@ class AdminStore(Generic[T_Call, T_Status]):
 # this is probably cleaner as a Protocol but
 # Mock libs are bein' weird rn
 class AgentBackend:
-    def functions(self) -> AgentStore[FunctionCall]:
+    def functions(self) -> AgentStore[FunctionCall, FunctionCallStatus]:
         raise NotImplementedError()
 
-    def contacts(self) -> AgentStore[HumanContact]:
+    def contacts(self) -> AgentStore[HumanContact, HumanContactStatus]:
         raise NotImplementedError()
 
 

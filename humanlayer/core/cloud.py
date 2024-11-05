@@ -9,6 +9,7 @@ from humanlayer.core.models import (
     FunctionCall,
     FunctionCallStatus,
     HumanContact,
+    HumanContactStatus,
 )
 from humanlayer.core.protocol import (
     AgentBackend,
@@ -47,7 +48,7 @@ class HumanLayerCloudConnection(BaseModel):
         )
 
 
-class CloudFunctionCallStore(AgentStore[FunctionCall]):
+class CloudFunctionCallStore(AgentStore[FunctionCall, FunctionCallStatus]):
     def __init__(self, connection: HumanLayerCloudConnection) -> None:
         self.connection = connection
 
@@ -80,11 +81,19 @@ class CloudFunctionCallStore(AgentStore[FunctionCall]):
 
         return FunctionCall.model_validate(resp_json)
 
-    def respond(self, call_id: str, status: FunctionCallStatus) -> None:
-        raise NotImplementedError()
+    def respond(self, call_id: str, status: FunctionCallStatus) -> FunctionCall:
+        resp = self.connection.request(
+            "POST",
+            f"/agent/function_calls/{call_id}/respond",
+            json=status.model_dump(),
+        )
+
+        HumanLayerException.raise_for_status(resp)
+
+        return FunctionCall.model_validate(resp.json())
 
 
-class CloudHumanContactStore(AgentStore[HumanContact]):
+class CloudHumanContactStore(AgentStore[HumanContact, HumanContactStatus]):
     def __init__(self, connection: HumanLayerCloudConnection) -> None:
         self.connection = connection
 
@@ -117,6 +126,17 @@ class CloudHumanContactStore(AgentStore[HumanContact]):
         HumanLayerException.raise_for_status(resp)
 
         return HumanContact.model_validate(resp_json)
+
+    def respond(self, call_id: str, status: HumanContactStatus) -> HumanContact:
+        resp = self.connection.request(
+            "POST",
+            f"/agent/human_contacts/{call_id}/respond",
+            json=status.model_dump(),
+        )
+
+        HumanLayerException.raise_for_status(resp)
+
+        return HumanContact.model_validate(resp.json())
 
 
 class CloudHumanLayerBackend(AgentBackend):
