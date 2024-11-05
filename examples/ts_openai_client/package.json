@@ -8,6 +8,7 @@
     "build": "tsc",
     "example": "tsx --env-file=.env 01-index.ts",
     "human-as-tool": "tsx --env-file=.env 02-human-as-tool.ts",
+    "human-email": "tsx --env-file=.env 03-human-email.ts",
     "agent-side": "tsx --env-file=.env 04-agent-side-approvals.ts"
   },
   "repository": {
