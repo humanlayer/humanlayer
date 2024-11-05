@@ -60,10 +60,24 @@ class WhatsAppContactChannel(BaseModel):
     context_about_user: str | None = None
 
 
+class EmailContactChannel(BaseModel):
+    """
+    Route for contacting a user via email
+    """
+
+    address: str
+
+    # any context for the LLM about the user this channel can contact
+    # e.g. "the user you are assisting" will update the tool name to
+    # contact_human_via_email_to_the_user_you_are_assisting
+    context_about_user: str | None = None
+
+
 class ContactChannel(BaseModel):
     slack: SlackContactChannel | None = None
     sms: SMSContactChannel | None = None
     whatsapp: WhatsAppContactChannel | None = None
+    email: EmailContactChannel | None = None
 
     def context(self) -> str | None:
         if self.slack:
@@ -72,6 +86,8 @@ class ContactChannel(BaseModel):
             return self.sms.context_about_user
         if self.whatsapp:
             return self.whatsapp.context_about_user
+        if self.email:
+            return self.email.context_about_user
         return None
 
 
@@ -139,6 +155,7 @@ class FunctionCall(BaseModel):
 
 class HumanContactSpec(BaseModel):
     msg: str
+    subject: str | None = None
     channel: ContactChannel | None = None
     response_options: list[ResponseOption] | None = None
 

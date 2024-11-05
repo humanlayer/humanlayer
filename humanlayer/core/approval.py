@@ -1,3 +1,4 @@
+import inspect
 import json
 import logging
 import os
@@ -316,6 +317,7 @@ class HumanLayer(BaseModel):
 
         def contact_human(
             message: str,
+            subject: str | None = None,
         ) -> str:
             """contact a human"""
             assert self.backend is not None
@@ -326,6 +328,7 @@ class HumanLayer(BaseModel):
                 call_id=call_id,
                 spec=HumanContactSpec(
                     msg=message,
+                    subject=subject,
                     channel=contact_channel,
                     response_options=response_options,
                 ),
@@ -356,6 +359,17 @@ class HumanLayer(BaseModel):
                 contact_human.__doc__ += f" in {contact_channel.slack.context_about_channel_or_user}"
                 fn_ctx = contact_channel.slack.context_about_channel_or_user.replace(" ", "_")
                 contact_human.__name__ = f"contact_human_in_slack_in_{fn_ctx}"
+
+        if contact_channel.email:
+            contact_human.__doc__ = "Contact a human via email and wait for a response"
+            contact_human.__name__ = "contact_human_via_email"
+            contact_human.__annotations__ = {"subject": str, "message": str, "return": str}
+            if contact_channel.email.address:
+                fn_ctx = contact_channel.email.address.replace("@", "_").replace(".", "_")
+                contact_human.__name__ = f"contact_human_via_email_{fn_ctx}"
+        else:
+            contact_human.__annotations__ = {"message": str, "return": str}
+            contact_human = remove_parameter_from_signature(contact_human, "subject")
 
         return contact_human
 
@@ -480,3 +494,12 @@ class HumanLayer(BaseModel):
     ) -> HumanContact:
         assert self.backend is not None, "respond requires a backend, did you forget your HUMANLAYER_API_KEY?"
         return self.backend.contacts().respond(call_id, status)
+
+
+def remove_parameter_from_signature(func: Any, param_name: str) -> Any:
+    sig = inspect.signature(func)
+    params = list(sig.parameters.values())
+    params = [p for p in params if p.name != param_name]
+    new_sig = sig.replace(parameters=params)
+    func.__signature__ = new_sig
+    return func
