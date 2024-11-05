@@ -1,6 +1,6 @@
 {
   "name": "humanlayer",
-  "version": "0.5.9-rc1",
+  "version": "0.6.1-rc1",
   "description": "typescript client for humanlayer.dev",
   "main": "src/index.ts",
   "type": "module",
