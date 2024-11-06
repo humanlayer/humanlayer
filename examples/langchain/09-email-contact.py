@@ -1,3 +1,4 @@
+from typing import Any
 from humanlayer import ContactChannel, EmailContactChannel
 from langchain.agents import AgentType, initialize_agent
 import langchain_core.tools as langchain_tools
@@ -64,7 +65,7 @@ Mosey Corporation
 """
 
 
-def get_linear_projects() -> str:
+def get_linear_projects() -> Any:
     """get all linear projects"""
     return [
         {"id": "1", "name": "operations"},
@@ -74,8 +75,9 @@ def get_linear_projects() -> str:
     ]
 
 
-def get_linear_assignees() -> str:
+def get_linear_assignees() -> Any:
     """get all linear assignees"""
+
     return [
         {"id": "1", "name": "Austin"},
         {"id": "2", "name": "Dexter"},
