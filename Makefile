@@ -50,6 +50,12 @@ help:
 
 .DEFAULT_GOAL := help
 
+.PHONY: smoke-test-examples
+smoke-test-examples:
+	examples/langchain/venv/bin/pip install -r examples/langchain/requirements.txt
+	examples/langchain/venv/bin/python examples/langchain/04-human_as_tool_linkedin.py
+	examples/langchain/venv/bin/python examples/langchain/09-email-contact.py
+
 .PHONY: test-examples
 test-examples:
 	:
