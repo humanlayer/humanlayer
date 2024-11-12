@@ -72,6 +72,13 @@ class EmailContactChannel(BaseModel):
     # contact_human_via_email_to_the_user_you_are_assisting
     context_about_user: str | None = None
 
+    # a subject line to override the default subject line
+    # - useful if you are getting approval for a workflow that
+    #   was initiated by an email and you want to reply on that same thread
+    experimental_subject_line: str | None = None
+    experimental_references_message_id: str | None = None
+    experimental_in_reply_to_message_id: str | None = None
+
 
 class ContactChannel(BaseModel):
     slack: SlackContactChannel | None = None
