@@ -1,0 +1,105 @@
+---
+title: "CrewAI"
+description: "Use Humanlayer with CrewAI"
+icon: "users"
+---
+
+## Overview
+
+Humanlayer integrates seamlessly with [CrewAI](https://github.com/joaomdmoura/crewAI) to add human oversight to your AI applications. This guide shows you how to use Humanlayer with CrewAI.
+
+## Installation
+
+Install the required packages:
+
+```bash
+pip install humanlayer crewai crewai-tools python-dotenv
+```
+
+## Basic Example
+
+Let's create a simple math agent that performs basic arithmetic operations with human oversight.
+
+<CodeGroup>
+
+```python main.py
+from dotenv import load_dotenv
+from crewai import Agent, Crew, Task
+from crewai_tools import tool
+
+load_dotenv()
+
+from humanlayer import HumanLayer
+
+hl = HumanLayer(
+    # run_id is optional - it can be used to identify the agent in approval history
+    run_id="crewai-math",
+)
+
+@tool
+def add(a: int, b: int) -> int:
+    """Add two numbers together."""
+    return a + b
+
+@tool
+@hl.require_approval()
+def multiply(a: int, b: int) -> int:
+    """multiply two numbers"""
+    return a * b
+
+general_agent = Agent(
+    role="Math Professor",
+    goal="""Provide the solution to the students that are asking
+    mathematical questions and give them the answer.""",
+    backstory="""You are an excellent math professor that likes to solve math questions
+    in a way that everyone can understand your solution""",
+    allow_delegation=False,
+    tools=[add, multiply],
+    verbose=True,
+    crew_sharing=False,
+)
+
+task = Task(
+    description="multiply 2 and 5, then add 32 to the result",
+    agent=general_agent,
+    expected_output="A numerical answer.",
+)
+
+crew = Crew(agents=[general_agent], tasks=[task], verbose=True)
+
+if __name__ == "__main__":
+    result = crew.kickoff()
+    print("\n\n---------- RESULT ----------\n\n")
+    print(result)
+```
+
+```env .env
+OPENAI_API_KEY=<your-openai-api-key>
+HUMANLAYER_API_KEY=<your-humanlayer-api-key>
+```
+
+</CodeGroup>
+
+## How it Works
+
+1. We create a HumanLayer instance with an optional `run_id` to identify this agent in the approval history
+2. Define two math functions as CrewAI tools using the `@tool` decorator
+3. Use `@hl.require_approval()` to require human approval before the `multiply` function can be called
+4. Create a CrewAI agent with these tools and a task to perform
+5. The agent will request approval before executing the multiply function
+
+## Running the Example
+
+1. Set up your environment variables in `.env`
+2. Run the example:
+```bash
+python main.py
+```
+
+When the agent attempts to use the `multiply` function, it will pause and request human approval through your configured contact channel (Slack, Email, etc).
+
+## Next Steps
+
+- Learn more about [require_approval](/core/require-approval)
+- Configure [contact channels](/channels/slack)
+- Explore [response options](/core/customize-response-options)

@@ -51,7 +51,27 @@
   "navigation": [
     {
       "group": "Get Started",
-      "pages": ["introduction", "quickstart-python", "quickstart-typescript"]
+      "pages": [
+        "introduction",
+        "quickstart-python",
+        "quickstart-typescript"
+      ]
+    },
+    {
+      "group": "Core Features",
+      "pages": [
+        "core/require-approval",
+        "core/human-as-tool",
+        "core/customize-response-options"
+      ]
+    },
+    {
+      "group": "Contact Channels",
+      "pages": [
+        "channels/slack",
+        "channels/email",
+        "channels/react-embed"
+      ]
     },
     {
       "group": "Frameworks",
@@ -64,7 +84,9 @@
     },
     {
       "group": "API Documentation",
-      "pages": ["api-reference/introduction"]
+      "pages": [
+        "api-reference/introduction"
+      ]
     },
     {
       "group": "Endpoint Examples",
