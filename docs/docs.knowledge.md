@@ -52,7 +52,24 @@ The documentation is organized around AI framework integrations:
 - OpenAI integration
 - Langchain integration
 - CrewAI integration
-- ControlFlow integration
+- ControlFlow integration (supports function calling and human approvals)
+
+Style guidelines for framework documentation:
+- Use concise titles (e.g. "LangChain" not "LangChain Integration")
+- Focus on practical, real-world examples
+- Follow consistent structure: Overview, Installation, Basic Example, How it Works, Running the Example, Next Steps
+
+Documentation structure for framework integrations:
+- Overview: Brief introduction to the framework and Humanlayer integration
+- Installation: Required packages with pip install commands
+- Basic Example: Complete working example with environment setup
+- How it Works: Step-by-step breakdown of the example
+- Running the Example: Clear steps to execute the code
+- Next Steps: Links to core concepts (require_approval, contact channels, etc.)
+
+Example patterns:
+- Math operations for simple demonstrations
+- Customer onboarding for real-world use cases
 
 Focus documentation on framework integration patterns and examples rather than basic features.
 
