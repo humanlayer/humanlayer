@@ -1,0 +1,31 @@
+---
+title: "Introduction"
+description: "API Reference for Humanlayer Agent Endpoints"
+---
+
+## Authentication
+
+All API endpoints require authentication using a Bearer token. Include the token in the Authorization header:
+
+```bash
+Authorization: Bearer <your-token>
+```
+
+## Base URL
+
+The API is available at:
+
+```
+https://api.humanlayer.dev
+```
+
+## Response Format
+
+All responses are in JSON format. Error responses include an `error` object with `message` and optional `code` fields.
+
+## Rate Limiting
+
+API requests are limited based on your plan's usage credits. When you exceed your limit, requests will either:
+
+- Be rejected with a 400 status if default-open is disabled
+- Auto-approve if default-open is enabled

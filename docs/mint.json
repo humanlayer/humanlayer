@@ -1,0 +1,83 @@
+{
+  "$schema": "https://mintlify.com/schema.json",
+  "name": "Humanlayer",
+  "logo": {
+    "dark": "/images/wordmark-dark.svg",
+    "light": "/images/wordmark-light.svg"
+  },
+  "favicon": "/images/humanlayer-light.png",
+  "colors": {
+    "primary": "#0D9373",
+    "light": "#07C983",
+    "dark": "#0D9373",
+    "anchors": {
+      "from": "#0D9373",
+      "to": "#07C983"
+    }
+  },
+  "topbarLinks": [
+    {
+      "name": "Discord",
+      "url": "https://discord.gg/qWmbF4pp"
+    }
+  ],
+  "topbarCtaButton": {
+    "name": "Dashboard",
+    "url": "https://app.humanlayer.dev"
+  },
+  "tabs": [
+    {
+      "name": "API Reference",
+      "url": "api-reference"
+    }
+  ],
+  "anchors": [
+    {
+      "name": "Documentation",
+      "icon": "book-open-cover",
+      "url": "https://humanlayer.dev/docs"
+    },
+    {
+      "name": "Community",
+      "icon": "discord",
+      "url": "https://discord.gg/qWmbF4pp"
+    },
+    {
+      "name": "GitHub",
+      "icon": "github",
+      "url": "https://github.com/humanlayer/humanlayer"
+    }
+  ],
+  "navigation": [
+    {
+      "group": "Get Started",
+      "pages": ["introduction", "quickstart-python", "quickstart-typescript"]
+    },
+    {
+      "group": "Frameworks",
+      "pages": [
+        "frameworks/open-ai",
+        "frameworks/langchain",
+        "frameworks/crewai",
+        "frameworks/controlflow"
+      ]
+    },
+    {
+      "group": "API Documentation",
+      "pages": ["api-reference/introduction"]
+    },
+    {
+      "group": "Endpoint Examples",
+      "pages": [
+        "api-reference/endpoint/get",
+        "api-reference/endpoint/create",
+        "api-reference/endpoint/delete"
+      ]
+    }
+  ],
+  "footerSocials": {
+    "x": "https://x.com/mintlify",
+    "github": "https://github.com/mintlify",
+    "linkedin": "https://linkedin.com/company/mintlify"
+  }
+}
