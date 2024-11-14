@@ -68,6 +68,7 @@
     {
       "group": "Contact Channels",
       "pages": [
+        "channels/introduction",
         "channels/slack",
         "channels/email",
         "channels/react-embed"
@@ -85,21 +86,16 @@
     {
       "group": "API Documentation",
       "pages": [
-        "api-reference/introduction"
-      ]
-    },
-    {
-      "group": "Endpoint Examples",
-      "pages": [
-        "api-reference/endpoint/get",
-        "api-reference/endpoint/create",
-        "api-reference/endpoint/delete"
+        "api-reference/introduction",
+        "api-reference/function-calls",
+        "api-reference/human-contacts",
+        "api-reference/classifications"
       ]
     }
   ],
   "footerSocials": {
-    "x": "https://x.com/mintlify",
-    "github": "https://github.com/mintlify",
-    "linkedin": "https://linkedin.com/company/mintlify"
+    "x": "https://x.com/humanlayer_dev",
+    "github": "https://github.com/humanlayer",
+    "linkedin": "https://linkedin.com/company/humanlayer"
   }
 }

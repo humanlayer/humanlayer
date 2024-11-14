@@ -11,6 +11,11 @@ All API endpoints require authentication using a Bearer token. Include the token
 Authorization: Bearer <your-token>
 ```
 
+HumanLayer clients should support a `HUMANLAYER_API_KEY` environment variable to set the token in an Authorization header.
+
+Clients should also support a `HUMANLAYER_API_BASE`, with a default value of `https://api.humanlayer.dev/humanlayer/v1`.
+
+
 ## Base URL
 
 The API is available at:
@@ -23,7 +28,7 @@ https://api.humanlayer.dev
 
 All responses are in JSON format. Error responses include an `error` object with `message` and optional `code` fields.
 
-## Rate Limiting
+## Usage Limiting
 
 API requests are limited based on your plan's usage credits. When you exceed your limit, requests will either:
 
