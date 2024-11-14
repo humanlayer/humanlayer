@@ -8,6 +8,7 @@ from enum import Enum
 from functools import wraps
 from typing import Any, Callable, TypeVar
 
+import websockets
 from pydantic import BaseModel
 from slugify import slugify
 
@@ -385,6 +386,7 @@ class HumanLayer(BaseModel):
             spec.channel = self.contact_channel
 
         call = self.create_function_call(spec)
+        # call = asyncio.run(self.create_function_call_ws(spec))
 
         # todo lets do a more async-y websocket soon
         if self.verbose:
@@ -398,6 +400,34 @@ class HumanLayer(BaseModel):
             if call.status.approved is None:
                 continue
             return FunctionCall.Completed(call=call)
+
+    async def create_function_call_ws(
+        self,
+        spec: FunctionCallSpec,
+        call_id: str | None = None,
+    ) -> FunctionCall:
+        call_id = call_id or self.genid("call")
+        call = FunctionCall(
+            run_id=self.run_id,  # type: ignore
+            call_id=call_id,
+            spec=spec,
+        )
+
+        async with websockets.connect("ws://localhost:8000/ws") as websocket:
+            print("Connected to the server!")
+            await websocket.send(json.dumps(call.model_dump()))
+
+            # Start a task to listen for incoming messages
+
+            return await self.handle_websocket_messages(websocket)
+
+    async def handle_websocket_messages(self, websocket) -> FunctionCall:  # type: ignore
+        # Start a loop to listen for incoming messages
+        while True:
+            response = json.loads(await websocket.recv())
+            if response.get("status"):
+                await websocket.close()
+                return FunctionCall.model_validate(response)
 
     def create_function_call(
         self,
