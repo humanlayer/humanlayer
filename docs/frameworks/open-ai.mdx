@@ -1,0 +1,189 @@
+---
+title: "OpenAI"
+description: "Use Humanlayer with OpenAI"
+icon: "brain"
+---
+
+## Overview
+
+Humanlayer integrates seamlessly with OpenAI to add human oversight to your AI applications. This guide shows you how to use Humanlayer with OpenAI's APIs.
+
+## Installation
+
+Install the required packages:
+
+```bash
+pip install humanlayer openai python-dotenv
+```
+
+Then, load your OPENAI_API_KEY and HUMANLAYER_API_KEY (or add to a `.env` file):
+
+<CodeGroup>
+```bash shell
+export OPENAI_API_KEY="sk-..."
+export HUMANLAYER_API_KEY="sk-..."
+```
+
+```bash .env
+OPENAI_API_KEY="sk-..."
+HUMANLAYER_API_KEY="sk-..."
+```
+
+</CodeGroup>
+
+## Basic Usage
+
+The simplest way to add human oversight is using the `@require_approval` decorator:
+
+```python
+from humanlayer import HumanLayer
+from openai import OpenAI
+import json
+from dotenv import load_dotenv
+
+load_dotenv()
+
+hl = HumanLayer(
+    verbose=True,
+    run_id="openai-math-example"
+)
+
+def add(x: int, y: int) -> int:
+    """Add two numbers together."""
+    return x + y
+
+@hl.require_approval()
+def multiply(x: int, y: int) -> int:
+    """multiply two numbers"""
+    return x * y
+
+# Define tools for OpenAI
+math_tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "multiply",
+            "description": "multiply two numbers",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "x": {"type": "number"},
+                    "y": {"type": "number"},
+                },
+                "required": ["x", "y"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "add",
+            "description": "add two numbers",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "x": {"type": "number"},
+                    "y": {"type": "number"},
+                },
+                "required": ["x", "y"],
+            },
+        },
+    },
+]
+
+def run_chain(prompt: str, tools: list[dict], tools_map: dict) -> str:
+    client = OpenAI()
+    messages = [{"role": "user", "content": prompt}]
+
+    response = client.chat.completions.create(
+        model="gpt-4",
+        messages=messages,
+        tools=tools,
+        tool_choice="auto",
+    )
+
+    while response.choices[0].finish_reason != "stop":
+        response_message = response.choices[0].message
+        tool_calls = response_message.tool_calls
+        if tool_calls:
+            messages.append(response_message)
+            for tool_call in tool_calls:
+                function_name = tool_call.function.name
+                function_to_call = tools_map[function_name]
+                function_args = json.loads(tool_call.function.arguments)
+
+                try:
+                    function_response = function_to_call(**function_args)
+                    function_response_json = json.dumps(function_response)
+                except Exception as e:
+                    function_response_json = json.dumps({"error": str(e)})
+
+                messages.append({
+                    "tool_call_id": tool_call.id,
+                    "role": "tool",
+                    "name": function_name,
+                    "content": function_response_json,
+                })
+
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=messages,
+            tools=tools,
+        )
+
+    return response.choices[0].message.content
+```
+
+## Advanced Usage
+
+### Imperative Approval Flow
+
+For more control over the approval flow, you can use the `fetch_approval` method:
+
+```python
+from humanlayer.core.models import FunctionCallSpec
+
+approval = hl.fetch_approval(
+    FunctionCallSpec(
+        fn="multiply",
+        kwargs={"x": 2, "y": 5}
+    ),
+)
+
+completed = approval.as_completed()
+if completed.approved:
+    result = multiply(x=2, y=5)
+else:
+    print(f"Rejected with comment: {completed.comment}")
+```
+
+### Low-Level Control
+
+For maximum control, you can create and fetch approvals separately:
+
+```python
+call = hl.create_function_call(
+    spec=FunctionCallSpec(
+        fn="multiply",
+        kwargs=function_args,
+    ),
+    call_id=tool_call.id,  # Optional: use OpenAI's tool_call_id
+)
+
+while (not call.status) or (call.status.approved is None):
+    time.sleep(5)
+    call = hl.get_function_call(call_id=tool_call.id)
+
+if call.status.approved:
+    result = multiply(**function_args)
+else:
+    print(f"Rejected: {call.status.comment}")
+```
+
+## Next Steps
+
+- [Configure contact channels](/channels/introduction)
+- [Add response options](/core/customize-response-options)
+- [View full examples](https://github.com/humanlayer/humanlayer/tree/main/examples/openai_client)
+
+For more framework examples, see https://github.com/humanlayer/humanlayer/tree/main/examples

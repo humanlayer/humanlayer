@@ -134,7 +134,7 @@ def run_chain(prompt: str, tools_openai: list[dict]) -> str:
                     logger.info("CALL tool %s with %s", function_name, function_args)
                     call = hl.create_function_call(
                         spec=FunctionCallSpec(
-                            fn="add",
+                            fn="multiply",
                             kwargs=function_args,
                         ),
                         # call_id is optional but you can supply it if you want,
