@@ -1,0 +1,74 @@
+---
+title: "Slack"
+description: "Send messages and collect responses via Slack channels or DMs"
+---
+
+<Frame>
+  <img
+    src="https://humanlayer.dev/img-approval-social.png"
+    alt="HumanLayer Slack Approval Flow"
+  />
+</Frame>
+
+## Configuration
+
+The Slack contact channel allows agents to send messages and collect responses through Slack channels or direct messages.
+Configure a Slack channel using the `SlackContactChannel` model:
+
+```python
+from humanlayer import ContactChannel, SlackContactChannel
+
+dm_with_ceo = ContactChannel(
+    slack=SlackContactChannel(
+        channel_or_user_id="U123456",  # Must be an ID like C123456 or U123456, not #channel or @user
+        context_about_channel_or_user="a DM with the CEO",  # Optional context for the LLM
+        experimental_slack_blocks=True,  # Optional - enables rich message formatting
+    )
+)
+```
+
+### Channel/User ID
+
+The `channel_or_user_id` must be a Slack ID:
+
+- Channel IDs start with `C` (e.g. `C123456`)
+- User IDs start with `U` (e.g. `U123456`)
+- Do not use channel names (`#general`) or usernames (`@user`)
+
+### Context
+
+The optional `context_about_channel_or_user` field helps the LLM understand who it's talking to:
+
+```python
+# Good context examples
+"a DM with the CEO"
+"the channel with the SRE team"
+"a private channel for approvals"
+```
+
+## Usage
+
+Use the Slack channel with either core feature:
+
+```python
+# With require_approval
+@hl.require_approval(contact_channel=dm_with_ceo)
+def send_email(to: str, subject: str, body: str) -> str:
+    """Send an email to a customer"""
+    return f"Email sent to {to}"
+
+# With human_as_tool
+tools = [
+    langchain_tools.StructuredTool.from_function(
+        hl.human_as_tool(
+            contact_channel=dm_with_ceo,
+        )
+    ),
+]
+```
+
+## Next Steps
+
+- [Connect your Slack workspace](/channels/slack/connect)
+- [Configure response options](/core/customize-response-options)
+- [Try composite channels](/channels/composite-channels)
