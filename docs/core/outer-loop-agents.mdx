@@ -1,0 +1,29 @@
+---
+title: "Outer Loop Agents"
+description: "The future of autonomous AI agents"
+---
+
+_Read More: [OpenAI's RealTime API is a step towards outer-loop agents](https://theouterloop.substack.com/p/openais-realtime-api-is-a-step-towards)_
+
+Between `require_approval` and `human_as_tool`, HumanLayer is built to empower the next generation of AI agents - Autonomous Agents, but it's just a piece of the puzzle. To clarify "next generation", we can summarize briefly the history of LLM applications.
+
+- **Gen 1**: Chat - human-initiated question / response interface
+- **Gen 2**: Agentic Assistants - frameworks drive prompt routing, tool calling, chain of thought, and context window management to get much more reliability and functionality. Most workflows are initiated by humans in single-shot "here's a task, go do it" or rolling chat interfaces.
+- **Gen 3**: Autonomous Agents - no longer human initiated, agents will live in the "outer loop" driving toward their goals using various tools and functions. Human/Agent communication is Agent-initiated rather than human-initiated.
+
+<Frame>
+  <img src="/images/gen-2-gen-3-agents.png" alt="Gen 2 vs Gen 3 Agents" />
+</Frame>
+
+Gen 3 autonomous agents will need ways to consult humans for input on various tasks. In order for these agents to perform actual useful work, they'll need human oversight for sensitive operations.
+
+These agents will require ways to contact one or more humans across various channels including chat, email, sms, and more.
+
+While early versions of these agents may technically be "human initiated" in that they get kicked off on a regular schedule by e.g. a cron or similar, the best ones will be managing their own scheduling and costs. This will require toolkits for inspecting costs and something akin to `sleep_until`. They'll need to run in orchestration frameworks that can durably serialize and resume agent workflows across tool calls that might not return for hours or days. These frameworks will need to support context window management by a "manager LLM" and enable agents to fork sub-chains to handle specialized tasks and roles.
+
+Example use cases for these outer loop agents include:
+
+- [The LinkedIn inbox assistant](https://github.com/humanlayer/humanlayer/tree/main/examples/langchain/04-human_as_tool_linkedin.py)
+- [The customer onboarding assistant](https://github.com/humanlayer/humanlayer/tree/main/examples/langchain/05-approvals_and_humans_composite.py)
+
+But that's really just scratching the surface of what's possible with autonomous agents.

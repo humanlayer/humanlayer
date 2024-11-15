@@ -4,7 +4,6 @@ description: "Get started with Humanlayer using Python and OpenAI"
 icon: "python"
 ---
 
-
 ### Setup Environment
 
 ```bash
@@ -19,37 +18,38 @@ pip install humanlayer openai
 
 <AccordionGroup>
 <Accordion icon="sparkles" title="Using uv (faster alternative)">
-  [uv](https://github.com/astral-sh/uv) is a fast Python package installer and resolver. 
+  [uv](https://github.com/astral-sh/uv) is a fast Python package installer and resolver.
   [Install uv](https://github.com/astral-sh/uv#installation):
 
-  ```bash
-  curl -LsSf https://astral.sh/uv/install.sh | sh
-  ```
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
 
-  Then use uv to install the packages:
+Then use uv to install the packages:
 
-  ```bash
-  uv init
-  uv add humanlayer openai
-  ```
+```bash
+uv init
+uv add humanlayer openai
+```
+
 </Accordion>
 
 <Accordion icon="terminal" title="Using a virtual environment">
   We recommend using a virtual environment to manage your dependencies. Create and activate a virtual environment:
 
-  ```bash
-  python -m venv env
-  source env/bin/activate  # On Windows, use `env\Scripts\activate`
-  ```
+```bash
+python -m venv env
+source env/bin/activate  # On Windows, use `env\Scripts\activate`
+```
 
-  Then install the packages:
+Then install the packages:
 
-  ```bash
-  pip install humanlayer openai
-  ```
+```bash
+pip install humanlayer openai
+```
+
 </Accordion>
 </AccordionGroup>
-
 
 Next, get your OpenAI API key from the [OpenAI dashboard](https://platform.openai.com/api-keys).
 
@@ -60,10 +60,14 @@ export OPENAI_API_KEY=<your-openai-api-key>
 and set your HumanLayer API key
 
 <Accordion icon="video" title="Getting your HumanLayer API key">
-Head over to the [HumanLayer dashboard](https://app.humanlayer.dev) and create a new project to get your API key.
-<Frame>
-  <img src="https://www.humanlayer.dev/get-token.gif" alt="HumanLayer Get Started" />
-</Frame>
+  Head over to the [HumanLayer dashboard](https://app.humanlayer.dev) and create
+  a new project to get your API key.
+  <Frame>
+    <img
+      src="https://www.humanlayer.dev/get-token.gif"
+      alt="HumanLayer Get Started"
+    />
+  </Frame>
 </Accordion>
 
 ```bash
@@ -72,7 +76,7 @@ export HUMANLAYER_API_KEY=<your-humanlayer-api-key>
 
 ### Create a simple agent
 
-First, let's create a simple math agent that can perform basic arithmetic operations. 
+First, let's create a simple math agent that can perform basic arithmetic operations.
 
 <Accordion icon="file" title="main.py">
 
@@ -206,28 +210,27 @@ if __name__ == "__main__":
 
 </Accordion>
 
-
-
 <Accordion icon="key" title="Using a .env file">
   You can also use a `.env` file to store your keys:
 
-  ```bash
-  echo "OPENAI_API_KEY=<your-openai-api-key>" >> .env
-  echo "HUMANLAYER_API_KEY=<your-humanlayer-api-key>" >> .env
-  ```
+```bash
+echo "OPENAI_API_KEY=<your-openai-api-key>" >> .env
+echo "HUMANLAYER_API_KEY=<your-humanlayer-api-key>" >> .env
+```
 
-  Install the `python-dotenv` package:
+Install the `python-dotenv` package:
 
-  ```bash
-  pip install python-dotenv
-  ```
+```bash
+pip install python-dotenv
+```
 
-  then load the keys near the top of your script:
+then load the keys near the top of your script:
 
-  ```python
-  from dotenv import load_dotenv
-  load_dotenv()
-  ```
+```python
+from dotenv import load_dotenv
+load_dotenv()
+```
+
 </Accordion>
 
 You can run this script with:
@@ -241,7 +244,6 @@ Or, with uv:
 ```bash
 uv run main.py
 ```
-
 
 You should see output like:
 
@@ -267,7 +269,7 @@ Sure, not a particularly useful agent, but enough to get you started with tool c
 
 ### Add HumanLayer
 
-Now, let's add a human approval step to the script to see how it works. 
+Now, let's add a human approval step to the script to see how it works.
 
 We'll wrap the multiply function with `@hl.require_approval()` so that the LLM has to get your approval before it can run the function.
 
@@ -284,13 +286,12 @@ hl = HumanLayer(
 
 Then, wrap the multiply function with `@hl.require_approval()`:
 
-
-```diff 
+```diff
   def add(x: int, y: int) -> int:
       """Add two numbers together."""
       return x + y
 
-+ @hl.require_approval() 
++ @hl.require_approval()
   def multiply(x: int, y: int) -> int:
       """multiply two numbers"""
       return x * y
@@ -433,6 +434,7 @@ if __name__ == "__main__":
     print("\n\n----------Result----------\n\n")
     print(result)
 ```
+
 </Accordion>
 
 Now, when you run the script, it will prompt you for approval before performing the multiply operation.
@@ -447,7 +449,6 @@ HumanLayer: waiting for approval for multiply
 ```
 
 Try rejecting the tool call with something like "use 7 instead of 5" to see how your feedback is passed into the agent.
-
 
 <Accordion icon="video" title="Rejecting a tool call">
 When you reject a tool call, HumanLayer will pass your feedback back to the agent, which can then adjust its approach based on your input.
@@ -471,18 +472,19 @@ HumanLayer: waiting for approval for multiply
 This time, you can approve the tool call.
 
 <Accordion icon="video" title="Approving a tool call">
-<Frame>
-  <img src="https://www.humanlayer.dev/approve-tool.gif" alt="Approving a tool call" />
-</Frame>
+  <Frame>
+    <img
+      src="https://www.humanlayer.dev/approve-tool.gif"
+      alt="Approving a tool call"
+    />
+  </Frame>
 </Accordion>
 
 That's it, you've now added a human approval step to your tool-calling agent!
 
-
 ### Connect Slack or try an email approval
 
 Head over to the integrations panel to [connect Slack as an approval channel](/channels/slack) and run the script again.
-
 
 Or you can try an [email approval](/channels/email) by setting the contact channel in @require_approval.
 

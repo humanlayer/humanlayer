@@ -1,0 +1,215 @@
+---
+title: "React Embed"
+description: "Embed approval flows in your React applications"
+---
+
+<Note>
+  This feature is currently in alpha, and the design of it is rapidly evolving.
+  Contact us at contact@humanlayer.dev to get early access.
+</Note>
+
+## Overview
+
+The React embed channel allows you to embed HumanLayer approval flows directly in your React applications. This enables:
+
+- Custom approval UIs that match your application's design
+- In-app approval workflows
+- Real-time updates using websockets
+- Integration with your existing authentication system
+
+## Installation
+
+```bash
+npm install @humanlayer/react
+```
+
+## Backend Setup
+
+In general you will need to implement two routes:
+
+1. Auth - Generate a JWT token containing user/tenant info, usually `/api/humanlayer-auth`
+2. Embed - Handle the embed requests, usually `/api/humanlayer-embed`
+
+The specific location of your backend routes can be configured in the `HumanLayerProvider` component in [Frontend Setup](#frontend-setup).
+
+For HumanLayer to verify the JWT token, you need to use the same signing key that you configured in the [HumanLayer dashboard](https://app.humanlayer.dev/).
+
+<AccordionGroup>
+
+<Accordion title="FastAPI">
+
+```bash
+pip install "humanlayer-embed[fastapi]"
+```
+
+Create a FastAPI route to handle the embed requests and generate JWT tokens.
+
+You'll also need to upload your public signing key to the HumanLayer dashboard.
+
+```python
+from fastapi import FastAPI, Request
+import jwt
+import humanlayer_embed
+
+app = FastAPI()
+
+@app.post("/api/humanlayer-auth")
+async def get_auth_token(
+  user: Annotated[User, Depends(get_user)],
+):
+    # Generate a signed JWT containing user/tenant info
+    token = jwt.encode(
+        {
+            "user_id": user.id,  # from your auth middleware
+            "tenant_id": user.organization_id,  # from your auth middleware
+            "exp": datetime.utcnow() + timedelta(minutes=15)  # token expires in 15 min
+        },
+        "your-signing-key",  # use your signing key
+        algorithm="HS256"
+    )
+
+    return {"token": token}
+
+@app.post("/api/humanlayer-embed")
+async def handle_embed(request: Request):
+    return await humanlayer_embed.handle_request_fastapi(request)
+```
+
+</Accordion>
+
+<Accordion title="Django">
+
+```bash
+pip install "humanlayer-embed[django]"
+```
+
+Create a Django view to handle the embed requests and generate JWT tokens.
+
+<CodeGroup>
+
+```python views.py
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.timezone import datetime, timedelta
+import jwt
+import humanlayer_embed
+import json
+
+@csrf_exempt
+def get_auth_token(request):
+    # Get user from your auth middleware
+    user = request.user
+
+    # Generate a signed JWT containing user/tenant info
+    token = jwt.encode(
+        {
+            "user_id": user.id,
+            "tenant_id": user.organization_id,
+            "exp": datetime.utcnow() + timedelta(minutes=15)  # token expires in 15 min
+        },
+        "your-signing-key",  # use your signing key
+        algorithm="HS256"
+    )
+
+    return JsonResponse({"token": token})
+
+@csrf_exempt
+async def handle_embed(request):
+    return await humanlayer_embed.handle_request_django(request)
+
+```
+
+```python urls.py
+
+path('api/humanlayer-auth', views.get_auth_token),
+path('api/humanlayer-embed', views.handle_embed),
+```
+
+</CodeGroup>
+
+</Accordion>
+<Accordion title="Express">
+
+```bash
+npm install @humanlayer/express
+```
+
+Create an Express route handler to handle the embed requests and generate JWT tokens.
+
+```ts
+import { handleRequest } from "@humanlayer/express";
+
+function getAuthToken(req: Request, res: Response) {
+  // Get user from your auth middleware
+  const user = req.user;
+
+  // Generate a signed JWT containing user/tenant info
+  const token = jwt.sign(
+    {
+      user_id: user.id,
+      tenant_id: user.organization_id,
+    },
+    "your-signing-key",
+  );
+
+  res.json({ token });
+}
+
+app.post("/api/humanlayer-auth", getAuthToken);
+app.post("/api/humanlayer-embed", handleRequest);
+```
+
+</Accordion>
+
+</AccordionGroup>
+## Frontend Setup
+
+```tsx
+import { HumanLayerProvider, ApprovalQueue } from "@humanlayer/react";
+
+function App() {
+  const [token, setToken] = useState<string>();
+
+  useEffect(() => {
+    // Fetch auth token from your backend
+    fetch("/api/humanlayer-auth")
+      .then((r) => r.json())
+      .then((data) => setToken(data.token));
+  }, []);
+
+  if (!token) return null;
+
+  return (
+    <HumanLayerProvider token={token}>
+      <ApprovalQueue />
+    </HumanLayerProvider>
+  );
+}
+```
+
+## React Hooks
+
+The React embed package also provides hooks for fetching data:
+
+```tsx
+import { useApprovals } from "@humanlayer/react";
+
+function ApprovalList() {
+  const { approvals, loading } = useApprovals();
+
+  if (loading) return <div>Loading...</div>;
+
+  return (
+    <div>
+      {approvals.map((approval) => (
+        <div key={approval.id}>{approval.message}</div>
+      ))}
+    </div>
+  );
+}
+```
+
+## Next Steps
+
+- [Configure response options](/core/customize-response-options)
+- [Try composite channels](/channels/composite-channels)

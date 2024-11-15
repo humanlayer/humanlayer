@@ -3,16 +3,16 @@ title: "Human Contacts"
 description: "Generic agent-to-human outreach for help, questions, or feedback"
 ---
 
-## Create Function Call
+## Create Human Contact
 
 <ParamField path="POST /humanlayer/v1/human_contacts" method="POST">
-  Request approval to execute a function
+  Create a human contact
 </ParamField>
 
 ### Request Body
 
-<ParamField body="function_call" type="object">
-  <Expandable title="FunctionCall">
+<ParamField body="human_contact" type="object">
+  <Expandable title="HumanContact">
     <ParamField body="run_id" type="string" required>
       Unique identifier for the execution run
     </ParamField>
@@ -20,12 +20,9 @@ description: "Generic agent-to-human outreach for help, questions, or feedback"
       Unique identifier for this specific function call
     </ParamField>
     <ParamField body="spec" type="object" required>
-      <Expandable title="FunctionCallSpec">
-        <ParamField body="fn" type="string" required>
-          Name of the function to execute
-        </ParamField>
-        <ParamField body="kwargs" type="object" required>
-          Arguments to pass to the function
+      <Expandable title="HumanContactSpec">
+        <ParamField body="msg" type="string" required>
+          Message to send to the human
         </ParamField>
         <ParamField body="channel" type="object">
           Optional communication channel configuration
@@ -77,17 +74,23 @@ description: "Generic agent-to-human outreach for help, questions, or feedback"
                 <ParamField body="experimental_subject_line" type="string">
                   Optional custom email subject line
                 </ParamField>
-                <ParamField body="experimental_references_message_id" type="string">
+                <ParamField
+                  body="experimental_references_message_id"
+                  type="string"
+                >
                   Optional References message ID
                 </ParamField>
-                <ParamField body="experimental_in_reply_to_message_id" type="string">
+                <ParamField
+                  body="experimental_in_reply_to_message_id"
+                  type="string"
+                >
                   Optional In-Reply-To message ID
                 </ParamField>
               </Expandable>
             </ParamField>
           </Expandable>
         </ParamField>
-        <ParamField body="reject_options" type="array">
+        <ParamField body="response_options" type="array">
           Optional list of rejection reason options
           <Expandable title="ResponseOption">
             <ParamField body="name" type="string" required>
@@ -111,8 +114,8 @@ description: "Generic agent-to-human outreach for help, questions, or feedback"
 
 ### Response
 
-<ParamField body="function_call" type="object">
-  <Expandable title="FunctionCall">
+<ParamField body="human_contact" type="object">
+  <Expandable title="HumanContact">
     <ParamField body="run_id" type="string" required>
       Unique identifier for the execution run
     </ParamField>
@@ -120,12 +123,9 @@ description: "Generic agent-to-human outreach for help, questions, or feedback"
       Unique identifier for this specific function call
     </ParamField>
     <ParamField body="spec" type="object" required>
-      <Expandable title="FunctionCallSpec">
-        <ParamField body="fn" type="string" required>
-          Name of the function to execute
-        </ParamField>
-        <ParamField body="kwargs" type="object" required>
-          Arguments to pass to the function
+      <Expandable title="HumanContactSpec">
+        <ParamField body="msg" type="string" required>
+          Message to send to the human
         </ParamField>
         <ParamField body="channel" type="object">
           Optional communication channel configuration
@@ -177,18 +177,24 @@ description: "Generic agent-to-human outreach for help, questions, or feedback"
                 <ParamField body="experimental_subject_line" type="string">
                   Optional custom email subject line
                 </ParamField>
-                <ParamField body="experimental_references_message_id" type="string">
+                <ParamField
+                  body="experimental_references_message_id"
+                  type="string"
+                >
                   Optional References message ID
                 </ParamField>
-                <ParamField body="experimental_in_reply_to_message_id" type="string">
+                <ParamField
+                  body="experimental_in_reply_to_message_id"
+                  type="string"
+                >
                   Optional In-Reply-To message ID
                 </ParamField>
               </Expandable>
             </ParamField>
           </Expandable>
         </ParamField>
-        <ParamField body="reject_options" type="array">
-          Optional list of rejection reason options
+        <ParamField body="response_options" type="array">
+          Optional list of response options
           <Expandable title="ResponseOption">
             <ParamField body="name" type="string" required>
               Name of the response option
@@ -209,7 +215,6 @@ description: "Generic agent-to-human outreach for help, questions, or feedback"
   </Expandable>
 </ParamField>
 
-
 ### Example Request
 
 ```json
@@ -217,11 +222,7 @@ description: "Generic agent-to-human outreach for help, questions, or feedback"
   "run_id": "run_123",
   "call_id": "call_456",
   "spec": {
-    "fn": "send_email",
-    "kwargs": {
-      "to": "user@example.com",
-      "subject": "Hello"
-    },
+    "msg": "Hello, I tried to restart pod core-api-249832490-aj37ux but its stuck in an ImagePullBackOff state. Can you help?",
     "channel": {
       "slack": {
         "channel_or_user_id": "C123456",
