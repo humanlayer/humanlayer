@@ -1,0 +1,61 @@
+---
+title: "Run IDs and Call IDs"
+description: "Understanding HumanLayer's request identification system"
+---
+
+HumanLayer uses two types of identifiers to track requests:
+
+## Run IDs
+
+A run ID identifies a single execution of an agent or workflow. It groups together all function calls and human contacts made during that execution.
+
+```python
+hl = HumanLayer(
+    run_id="linkedin-inbox-assistant",  # Optional - defaults to auto-generated ID
+)
+```
+
+If not specified, HumanLayer will generate a run ID using the agent name or a random identifier.
+
+## Call IDs
+
+Each individual function call or human contact gets a unique call ID. This ID is used to:
+
+- Track the status of the request
+- Fetch updates about approval/response
+- Match responses back to the original request
+
+Call IDs are automatically generated but can be specified manually if needed:
+
+```python
+# Auto-generated call ID
+call = hl.create_function_call(
+    spec=FunctionCallSpec(
+        fn="send_email",
+        kwargs={"to": "user@example.com"},
+    ),
+)
+
+# Manual call ID (e.g. to match external system IDs like an OpenAI tool_call_id)
+call = hl.create_function_call(
+    spec=FunctionCallSpec(
+        fn="send_email",
+        kwargs={"to": "user@example.com"},
+    ),
+    call_id="email-123",
+)
+```
+
+## Usage in Approvals
+
+When using `require_approval` or `human_as_tool`, the IDs are used to track the request through the approval process:
+
+```python
+@hl.require_approval()
+def send_email(to: str, subject: str, body: str) -> str:
+    """Send an email to a customer"""
+    # Function call will be tracked with auto-generated run_id and call_id
+    return f"Email sent to {to}"
+```
+
+You can view these IDs in the HumanLayer dashboard to track and audit agent activity.

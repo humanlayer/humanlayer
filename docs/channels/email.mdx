@@ -1,0 +1,110 @@
+---
+title: "Email"
+description: "Send emails and collect responses via email threads"
+---
+
+## Configuration
+
+The Email contact channel allows agents to send emails and collect responses through email threads.
+Configure an email channel using the `EmailContactChannel` model:
+
+```python
+from humanlayer import ContactChannel, EmailContactChannel
+
+email_with_compliance = ContactChannel(
+    email=EmailContactChannel(
+        address="compliance@example.com",
+        context_about_user="an email with the compliance team",
+        experimental_subject_line="Re: Compliance Review",  # Optional - custom subject line
+    )
+)
+```
+
+<Frame>
+  <img
+    src="/images/email-create-linear-ticket.png"
+    alt="HumanLayer Email Flow"
+  />
+</Frame>
+
+### Email Address
+
+The `address` field must be a valid email address that will receive the messages.
+
+### Context
+
+The optional `context_about_user` field helps the LLM understand who it's emailing:
+
+```python
+# Good context examples
+"an email with the compliance team"
+"an email with the user you are helping"
+"an email with the head of marketing"
+```
+
+## Usage
+
+Use the email channel with either core feature:
+
+```python
+# With require_approval
+@hl.require_approval(contact_channel=email_with_compliance)
+def send_email(to: str, subject: str, body: str) -> str:
+    """Send an email to a customer"""
+    return f"Email sent to {to}"
+
+# With human_as_tool
+tools = [
+    langchain_tools.StructuredTool.from_function(
+        hl.human_as_tool(
+            contact_channel=email_with_compliance,
+        )
+    ),
+]
+```
+
+## Advanced - Collecting Agent Emails in a single thread
+
+By default, every human contact or function call with trigger a new standalone email thread.
+
+However, if you're building agents that are kicked off by email runs,
+you likely want the email responses to be collected in a single thread.
+
+You can do this by using the `experimental_in_reply_to_message_id` and `experimental_references_message_id` parameters
+to the EmailContactChannel, using the inbound emails `Message-ID` header as the value.
+
+Below is an example where the inbound email is sent by the same human who will be responding to approval/human_as_tool requests.
+
+```python
+
+def handle_inbound_email(raw_email_content: str, headers: dict) -> str:
+    message_id = headers["Message-ID"]
+
+    email_with_threading = ContactChannel(
+        email=EmailContactChannel(
+            address=headers["From"], # send agent messages to whomever initiated the email thread
+            context_about_user="an email thread with the user you're assisting",
+            experimental_in_reply_to_message_id=message_id,
+            experimental_references_message_id=message_id,
+        )
+    )
+
+    hl = HumanLayer(contact_channel=email_with_threading)
+
+    run_agent_in_response_to_email(
+        base_prompt="You are a helpful compliance assistant, please handle this email",
+        raw_email_content=raw_email_content,
+        tools=[
+            some_readonly_tool,
+            hl.require_approval(some_risky_tool),
+            hl.human_as_tool(),
+
+        ]
+    )
+
+```
+
+## Next Steps
+
+- [Configure response options](/core/customize-response-options)
+- [Try composite channels](/channels/composite-channels)

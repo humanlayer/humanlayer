@@ -1,9 +1,150 @@
-## Approvals
+---
+title: "Require Approval"
+description: "Add human approval requirements to any function"
+---
 
-Use the `require_approval`
-
-
+- The [Decorator](#decorator) method is the easiest way to add approval requirements to a function
+- The [Fetch Approval](#fetch-approval) method is useful if you don't want to use a framework like LangChain or CrewAI, and prefer to roll your own agent execution logic
+- The [Creating / Fetching](#creating-and-fetching) method is useful if you also want to control how and when your process checks for results of the approval.
+- See [Advanced Usage](#advanced-usage) for concepts like websockets and webhooks
 
 ## Structure
 
 Approvals are built on the [Function Call](/api-reference/function-calls) API.
+
+## Methods
+
+There are three main jobs-to-be-done that you can control when using approvals:
+
+- Creating the approval request
+- Halting execution until the human approves or rejects the action
+- Running the function if approved, or, if rejected, doing something with the rejecter's feedback
+
+In all cases, HumanLayer handles accepting the approval request, and the HumanLayer backend is
+responsible for finding the right human and collecting their feedback on the proposed action.
+
+### Decorator
+
+You can use the `require_approval` decorator to halt execution until the human approves or rejects the action.
+
+```python
+@require_approval
+def send_email(to: str, subject: str, body: str) -> str:
+    """
+    Send an email to the customer
+    """
+    ...
+```
+
+In this case, the HumanLayer SDK handles:
+
+- Creating the approval request
+- Halting execution until the human approves or rejects the action
+- Running the function if approved, or returning feedback to the LLM if rejected
+
+#### Example
+
+See [01_math_example.py](https://github.com/humanlayer/humanlayer/tree/main/examples/openai_client/01_math_example.py) for a full example.
+
+### Fetching an Approval
+
+You can use the `fetch_approval` method to halt execution until the human approves or rejects the action,
+and receive a result that you can use to decide what to do next.
+
+<Note type="tip">
+  Fetch Approval is useful if you don't want to use a framework like LangChain
+  or CrewAI, and prefer to roll your own agent execution logic.
+</Note>
+
+```python
+approval = fetch_approval(
+    FunctionCallSpec(
+        fn="send_email",
+        kwargs={
+            "to": "customer@example.com",
+            "subject": "Welcome!",
+            "body": "Thanks for signing up!"
+        }
+    ),
+)
+
+completed = approval.as_completed()
+
+if completed.approved:
+    print("Email sent!")
+else:
+    print(f"Email not sent, comment was {completed.comment}")
+```
+
+In this case, the HumanLayer SDK handles:
+
+- Creating the approval request
+- Halting execution until the human approves or rejects the action
+
+And your code is reponsible for:
+
+- Running the function if approved, or doing something with the feedback if rejected
+
+Usually you will be passing it back to an LLM but you could also hand it to a human who take over the task, log it, or anything else.
+
+#### Example
+
+See [02_imperative_fetch.py](https://github.com/humanlayer/humanlayer/tree/main/examples/openai_client/02_imperative_fetch.py) for a full example.
+
+### Creating and Fetching
+
+For the (perhaps extra-based) who want maximum control over execution flow, you can create and fetch approvals separately.
+This is useful if you want to implement your own waiting logic or integrate with a custom event loop.
+
+```python
+# Example of low-level approval flow
+elif function_name == "multiply":
+    call = hl.create_function_call(
+        spec=FunctionCallSpec(
+            fn="multiply",
+            kwargs=function_args,
+        ),
+        # call_id is optional but you can supply it if you want,
+        # in this case the openai tool_call_id is a natural choice
+        call_id=tool_call.id,
+    )
+    # loop until the call is approved
+    while (not call.status) or (call.status.approved is None):
+        time.sleep(5)
+        call = hl.get_function_call(call_id=tool_call.id)
+    if call.status.approved:
+        function_result = multiply(**function_args)
+        function_response_json = json.dumps(function_result)
+    else:
+        function_response_json = json.dumps(
+            {"error": f"call {call.spec.fn} not approved, comment was {call.status.comment}"}
+        )
+```
+
+You can also create and fetch approvals separately, which is useful if you want to implement your own waiting logic:
+
+In this case, the HumanLayer SDK handles:
+
+- Creating the approval request
+- Fetching the approval status
+
+And your code is reponsible for:
+
+- Halting execution until the human approves or rejects the action (usually waiting in some sort of loop)
+- Running the function if approved, or doing something with the feedback if rejected
+
+#### Example
+
+See [03_imperative_fetch_based.py](https://github.com/humanlayer/humanlayer/tree/main/examples/openai_client/03_imperative_fetch_based.py) for a full example.
+
+## Advanced Usage
+
+### Websockets and Asyncio
+
+As of version 0.6.1, there is work in progress to add websocket support to the HumanLayer SDK, which will also include an asyncio-ready client implementation.
+
+### Webhooks
+
+Webhooks let you do something like in [create and fetch](#creating-and-fetching), but receive a webhook instead of polling.
+
+If you are interested in webhooks, please reach out to us at contact@humanlayer.dev and we can add you to the beta.

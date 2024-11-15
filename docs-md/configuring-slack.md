@@ -1,3 +1,0 @@
-# Configuring Slack
-
-🚧Coming Soon 🚧

@@ -1,0 +1,91 @@
+---
+title: "Introduction"
+description: "Overview of HumanLayer's contact channel options"
+---
+
+HumanLayer provides multiple channels for agents to contact humans and collect responses. Each channel can be used with both `require_approval` and `human_as_tool`.
+
+<CardGroup cols={2}>
+  <Card title="Slack" icon="slack" href="/channels/slack">
+    Send messages and collect responses via Slack channels or DMs
+  </Card>
+  <Card title="Email" icon="envelope" href="/channels/email">
+    Send emails and collect responses via email threads
+  </Card>
+  <Card title="React Embed" icon="code" href="/channels/react-embed">
+    Embed approval flows in your React applications
+  </Card>
+  <Card
+    title="Composite Channels"
+    icon="layer-group"
+    href="/channels/composite-channels"
+  >
+    Chain multiple channels together for complex workflows
+  </Card>
+</CardGroup>
+
+## Channel Configuration
+
+Contact channels are configured using the `ContactChannel` model:
+
+```python
+from humanlayer import ContactChannel, SlackContactChannel, EmailContactChannel
+
+# Configure a Slack channel
+dm_with_ceo = ContactChannel(
+    slack=SlackContactChannel(
+        channel_or_user_id="U123456",
+        context_about_channel_or_user="a DM with the CEO",
+    )
+)
+
+# Configure an email channel
+email_with_compliance = ContactChannel(
+    email=EmailContactChannel(
+        address="compliance@example.com",
+        context_about_user="an email with the compliance team",
+    )
+)
+```
+
+## Configuration Levels
+
+Contact channels can be configured at three levels:
+
+### Operation Level
+
+Configure channels directly on individual operations:
+
+```python
+# With require_approval
+@hl.require_approval(contact_channel=dm_with_ceo)
+def send_email(to: str, subject: str, body: str) -> str:
+    """Send an email to a customer"""
+    return f"Email sent to {to}"
+
+# With human_as_tool
+tools = [
+    langchain_tools.StructuredTool.from_function(
+        hl.human_as_tool(
+            contact_channel=dm_with_ceo,
+        )
+    ),
+]
+```
+
+### SDK Level
+
+Configure a default channel for all operations in a HumanLayer instance:
+
+```python
+hl = HumanLayer(contact_channel=dm_with_ceo)
+
+@hl.require_approval() # will use the dm_with_ceo channel
+def send_email(to: str, subject: str, body: str) -> str:
+    """Send an email to a customer"""
+    return f"Email sent to {to}"
+```
+
+### Project Level
+
+Configure default channels for your entire project in the [HumanLayer Dashboard](https://app.humanlayer.dev). These will be used when no channel is specified at the operation or SDK level.

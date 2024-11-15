@@ -51,18 +51,17 @@
   "navigation": [
     {
       "group": "Get Started",
-      "pages": [
-        "introduction",
-        "quickstart-python",
-        "quickstart-typescript"
-      ]
+      "pages": ["introduction", "quickstart-python", "quickstart-typescript"]
     },
     {
-      "group": "Core Features",
+      "group": "Core Concepts",
       "pages": [
         "core/require-approval",
         "core/human-as-tool",
-        "core/customize-response-options"
+        "core/customize-response-options",
+        "core/llm-tool-calling",
+        "core/outer-loop-agents",
+        "core/run-ids-and-call-ids"
       ]
     },
     {
@@ -71,7 +70,8 @@
         "channels/introduction",
         "channels/slack",
         "channels/email",
-        "channels/react-embed"
+        "channels/react-embed",
+        "channels/composite-channels"
       ]
     },
     {

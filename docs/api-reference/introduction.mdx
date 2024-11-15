@@ -3,6 +3,30 @@ title: "Introduction"
 description: "API Reference for Humanlayer Agent Endpoints"
 ---
 
+<CardGroup cols={2}>
+  <Card
+    title="Function Calls"
+    icon="function"
+    href="/api-reference/function-calls"
+  >
+    Request approval for function execution
+  </Card>
+  <Card
+    title="Human Contacts"
+    icon="message"
+    href="/api-reference/human-contacts"
+  >
+    Generic agent-to-human outreach for help or feedback
+  </Card>
+  <Card
+    title="Classifications"
+    icon="tag"
+    href="/api-reference/classifications"
+  >
+    Agent-to-human outreach to collect structured data labels
+  </Card>
+</CardGroup>
+
 ## Authentication
 
 All API endpoints require authentication using a Bearer token. Include the token in the Authorization header:
@@ -14,7 +38,6 @@ Authorization: Bearer <your-token>
 HumanLayer clients should support a `HUMANLAYER_API_KEY` environment variable to set the token in an Authorization header.
 
 Clients should also support a `HUMANLAYER_API_BASE`, with a default value of `https://api.humanlayer.dev/humanlayer/v1`.
-
 
 ## Base URL
 

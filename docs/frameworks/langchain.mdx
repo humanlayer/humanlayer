@@ -47,7 +47,7 @@ hl = HumanLayer(
 
 task_prompt = """
 You are the email onboarding assistant. You check on the progress customers
-are making and then based on that info, you send friendly and encouraging 
+are making and then based on that info, you send friendly and encouraging
 emails to customers to help them fully onboard into the product.
 
 Your task is to send an email to the customer danny@example.com
@@ -109,6 +109,7 @@ HUMANLAYER_API_KEY=<your-humanlayer-api-key>
 1. Set up your environment variables in `.env`
 2. Configure your Slack channel ID in the `contact_channel`
 3. Run the example:
+
 ```bash
 python main.py
 ```
@@ -121,3 +122,5 @@ When the agent attempts to send an email, it will pause and request approval thr
 - Configure [contact channels](/channels/slack)
 - Explore [response options](/core/customize-response-options)
 - Try the [human-as-tool pattern](/core/human-as-tool)
+
+For more framework examples, see https://github.com/humanlayer/humanlayer/tree/main/examples

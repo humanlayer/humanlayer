@@ -1,0 +1,85 @@
+---
+title: "Customize Response Options"
+description: "Guide human responses with structured options"
+---
+
+You can provide structured response options to guide how humans respond to both approvals and human-as-tool contacts.
+
+## Structure
+
+Response options are built on the `ResponseOption` model:
+
+```python
+from humanlayer import ResponseOption
+
+options = [
+    ResponseOption(
+        name="reject",
+        description="Reject the message",
+        prompt_fill="try again but this time ",  # Optional pre-filled text
+    ),
+    ResponseOption(
+        name="skip",
+        title="Skip it",  # Optional display title
+        description="Skip this operation",
+        prompt_fill="skip this and move on to the next task ",
+    ),
+]
+```
+
+## Usage with require_approval
+
+You can add response options to any function that requires approval:
+
+```python
+@hl.require_approval(
+    contact_channel=dm_with_ceo,
+    reject_options=[
+        ResponseOption(
+            name="reject",
+            description="Reject the message",
+            prompt_fill="try again but this time ",
+        ),
+        ResponseOption(
+            name="skip",
+            title="Skip it",
+            description="Skip this operation",
+            prompt_fill="skip this and move on to the next task ",
+        ),
+    ],
+)
+def send_linkedin_message(thread_id: str, to_name: str, msg: str) -> str:
+    """send a message in a thread in LinkedIn"""
+    return f"message successfully sent to {to_name}"
+```
+
+## Usage with human_as_tool
+
+You can also add response options to human-as-tool contacts:
+
+```python
+tools = [
+    langchain_tools.StructuredTool.from_function(
+        hl.human_as_tool(
+            contact_channel=dm_with_ceo,
+            response_options=[
+                ResponseOption(
+                    name="approve",
+                    title="Looks good",
+                    description="The message looks good to send",
+                ),
+                ResponseOption(
+                    name="revise",
+                    title="Needs revision",
+                    description="The message needs changes",
+                    prompt_fill="revise this to ",
+                ),
+            ],
+        )
+    ),
+]
+```
+
+## Example
+
+See [04-human_as_tool_linkedin_frustration.py](https://github.com/humanlayer/humanlayer/tree/main/examples/langchain/04-human_as_tool_linkedin_frustration.py) for a complete example of using response options with both approvals and human-as-tool contacts.

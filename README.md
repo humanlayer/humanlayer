@@ -12,7 +12,7 @@ Bring your LLM (OpenAI, Llama, Claude, etc) and Framework (LangChain, CrewAI, et
 
 <h3>
 
-[Homepage](https://www.humanlayer.dev/) | [Get Started](./docs/getting-started.md) | [Discord](https://discord.gg/AK6bWGFY7d) | [Documentation](./docs) | [Examples](./examples)
+[Homepage](https://www.humanlayer.dev/) | [Get Started](https://humanlayer.dev/docs/quickstart-python) | [Discord](https://discord.gg/AK6bWGFY7d) | [Documentation](https://humanlayer.dev/docs) | [Examples](./examples)
 
 </h3>
 
@@ -37,7 +37,7 @@ Bring your LLM (OpenAI, Llama, Claude, etc) and Framework (LangChain, CrewAI, et
 
 ## Getting Started
 
-To get started, check out [Getting Started](./docs/getting-started.md), watch the [Getting Started Video](https://www.loom.com/share/7c65d48d18d1421a864a1591ff37e2bf), or jump straight into one of the [Examples](./examples/):
+To get started, check out [Getting Started](https://humanlayer.dev/docs/quickstart-python), watch the [Getting Started Video](https://www.loom.com/share/7c65d48d18d1421a864a1591ff37e2bf), or jump straight into one of the [Examples](./examples/):
 
 - 🦜⛓️ [LangChain](./examples/langchain/)
 - 🚣‍ [CrewAI](./examples/crewai/)
@@ -84,7 +84,7 @@ For Typescript, install with npm:
 npm install humanlayer
 ```
 
-More python and TS examples in the [framework specific examples](./examples) or the [Getting Started Guide](./docs/getting-started.md) to get hands on.
+More python and TS examples in the [framework specific examples](./examples) or the [Getting Started Guides](https://humanlayer.dev/docs/frameworks) to get hands on.
 
 #### Human as Tool
 
@@ -211,13 +211,13 @@ You can test different real life examples of HumanLayer in the [examples folder]
 | Async / Webhook support                                                            | 🗓️ Planned          |
 | SMS/RCS Approvals                                                                  | 🗓️ Planned          |
 | Discord Approvals                                                                  | 🗓️ Planned          |
-| Email Approvals                                                                    | 🗓️ Planned          |
+| Email Approvals                                                                    | ⚙️ Beta             |
 | LlamaIndex Support                                                                 | 🗓️ Planned          |
 | Haystack Support                                                                   | 🗓️ Planned          |
 
 ## Contributing
 
-HumanLayer is open-source and we welcome contributions in the form of issues, documentation, pull requests, and more. See [CONTRIBUTING.md](./CONTRIBUTING.md) for more details.
+The HumanLayer SDK and docs are open-source and we welcome contributions in the form of issues, documentation, pull requests, and more. See [CONTRIBUTING.md](./CONTRIBUTING.md) for more details.
 
 ## Fun Stuff
 
