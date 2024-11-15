@@ -19,10 +19,6 @@ The React embed channel allows you to embed HumanLayer approval flows directly i
 
 ## Installation
 
-```bash
-npm install @humanlayer/react
-```
-
 ## Backend Setup
 
 In general you will need to implement two routes:
@@ -37,10 +33,6 @@ For HumanLayer to verify the JWT token, you need to use the same signing key tha
 <AccordionGroup>
 
 <Accordion title="FastAPI">
-
-```bash
-pip install "humanlayer-embed[fastapi]"
-```
 
 Create a FastAPI route to handle the embed requests and generate JWT tokens.
 
@@ -78,10 +70,6 @@ async def handle_embed(request: Request):
 </Accordion>
 
 <Accordion title="Django">
-
-```bash
-pip install "humanlayer-embed[django]"
-```
 
 Create a Django view to handle the embed requests and generate JWT tokens.
 
@@ -130,10 +118,6 @@ path('api/humanlayer-embed', views.handle_embed),
 </Accordion>
 <Accordion title="Express">
 
-```bash
-npm install @humanlayer/express
-```
-
 Create an Express route handler to handle the embed requests and generate JWT tokens.
 
 ```ts
@@ -164,6 +148,12 @@ app.post("/api/humanlayer-embed", handleRequest);
 </AccordionGroup>
 ## Frontend Setup
 
+```bash
+npm install @humanlayer/react
+```
+
+### Components
+
 ```tsx
 import { HumanLayerProvider, ApprovalQueue } from "@humanlayer/react";
 
@@ -187,7 +177,7 @@ function App() {
 }
 ```
 
-## React Hooks
+### React Hooks
 
 The React embed package also provides hooks for fetching data:
 
