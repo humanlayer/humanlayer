@@ -51,11 +51,7 @@
   "navigation": [
     {
       "group": "Get Started",
-      "pages": [
-        "introduction",
-        "quickstart-python",
-        "quickstart-typescript"
-      ]
+      "pages": ["introduction", "quickstart-python", "quickstart-typescript"]
     },
     {
       "group": "Core Concepts",
