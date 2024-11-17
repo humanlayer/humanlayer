@@ -1,3 +1,20 @@
+## 0.6.1
+
+### Features
+
+- Added initial Mintlify documentation structure
+- Added API reference documentation for function calls and classifications
+- Added smoke test target for faster example testing
+- Added email threading support ([docs](https://humanlayer.dev/docs/channels/email)) with:
+  - `experimental_subject_line`
+  - `experimental_references_message_id`
+  - `experimental_in_reply_to_message_id`
+
+### Documentation
+
+- Updated documentation links to point to humanlayer.dev
+- Added Docker configuration for local documentation development
+
 ## 0.6.0
 
 ### Features

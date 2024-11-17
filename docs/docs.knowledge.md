@@ -3,6 +3,7 @@
 ## Version Control and Releases
 
 ### Release Process
+
 - Version tags follow semver (vX.Y.Z)
 - Features added in main branch
 - Examples updated alongside feature development
@@ -13,6 +14,18 @@
   - Use `git log --oneline v0.5.11..v0.6.0` to see commit messages
   - Use `git diff v0.5.11..v0.6.0 --name-only` to list changed files
   - Always verify changes from git before updating CHANGELOG.md
+- Changelog priorities:
+  - Document API changes first, especially new fields and parameters
+  - Note experimental features and fields explicitly (e.g. experimental_subject_line)
+  - Include interface/model changes even if not visible in git diff
+  - Internal changes (testing, docs, etc) are lower priority
+  - Always document experimental parameters with their exact names
+  - Link to relevant documentation when adding new features
+- Changelog organization:
+  - Document features in their final release version, not in prep/RC versions
+  - Prep/RC versions should have minimal changelog entries pointing to their final version
+  - Link to docs using humanlayer.dev/docs/... format
+  - Link to examples using full GitHub paths (https://github.com/humanlayer/humanlayer/tree/main/examples/...)
 - Generate release notes using git commands:
   - Use `git diff v0.5.11..v0.6.0` to see file changes between versions
   - Use `git log --oneline v0.5.11..v0.6.0` to see commit messages
@@ -21,6 +34,7 @@
 - Generate release notes using git diff between version tags: `git diff v0.5.11..v0.6.0`
 
 ### Feature Development Pattern
+
 - New features accompanied by examples
 - Examples directory organized by framework integration
 - Changes coordinated across Python/TypeScript implementations
@@ -29,6 +43,7 @@
 ## Version Control and Releases
 
 ### Release Process
+
 - Version tags follow semver (vX.Y.Z)
 - Features added in main branch
 - Examples updated alongside feature development
@@ -36,11 +51,11 @@
 - Both Python and TypeScript packages versioned together
 
 ### Feature Development Pattern
+
 - New features accompanied by examples
 - Examples directory organized by framework integration
 - Changes coordinated across Python/TypeScript implementations
 - Email channel example: subject lines, threading, and framework-specific implementations
-
 
 ## Platform Choice
 
