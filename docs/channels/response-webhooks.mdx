@@ -1,0 +1,101 @@
+---
+title: Response Webhooks
+description: "Receive notifications when an approval is requested or completed"
+icon: "bell"
+---
+
+Response Webhooks are a way to receive notifications when an approval is requested or completed.
+
+This is an advanced feature that requires a bit of setup on your end. If you're interested in getting started quickly, we
+reccomend using one of the following methods instead:
+
+- [Approval Decorator](/core/require-approval#decorator)
+- [fetch approval](/core/require-approval#fetching-an-approval)
+- [fetch response](/core/human-as-tool#fetch-response)
+
+<Note>
+  Response Webhooks are currently in alpha. If you'd like to help us test and
+  improve the feature, please reach out to us at contact@humanlayer.dev
+</Note>
+
+## Overview
+
+Using response webhooks generally involves a few steps. We'll use the term "operation" to refer to the agent request being approved / responded to.
+
+1. [Choose a way you'll uniquely identify the operation](#1-choose-an-operation-identifier)
+2. [Create an operation ](#2-create-the-operation) for [approval](/core/human-as-tool#creating-and-fetching) or [human contact](/core/human-as-tool#creating-and-fetching)
+   - if you are using an external identifier, set it as the `call_id` during creation
+
+- [Store your agent's workflow state / running context window](#3-store-operation-state) somewhere, in a way that you can look it up by the operation's identifier
+- Create a webhook endpoint on your server that will receive notifications from HumanLayer
+- Add your webhook endpoint as a callback URL in the HumanLayer dashboard, subscribing to the approval_completed or human_contact_completed events
+- When a valid webhook is received, look up the operation's state using the identifier you chose, append the human's response to the context window, and continue the agent's workflow
+
+### 1. Choose an Operation Identifier
+
+First, decide how you'll uniquely identify each operation in your system. You have several options:
+
+- Use a server-generated [call_id](/core/run-ids-and-call-ids)
+- Use an external identifier (like OpenAI's `tool_call_id`)
+- Create your own custom identifier system
+
+### 2. Create the Operation
+
+Use the appropriate creation endpoint based on your needs:
+
+- For approvals: Use the [approval creation endpoint](/core/human-as-tool#creating-and-fetching)
+- For human contact: Use the [human contact creation endpoint](/core/human-as-tool#creating-and-fetching)
+
+If you're using an external identifier, make sure to set it as the `call_id` parameter during creation.
+
+After creating the operation, you'll want to pause your workflow somehow. For example, in LangGraph you can use the [NodeInterrupt exception](https://langchain-ai.github.io/langgraph/how-tos/human_in_the_loop/dynamic_breakpoints/) to halt execution.
+
+### 3. Store Operation State
+
+Implement a storage solution for your agent's workflow state and context so you can resume it when the webhook response arrives. The way you do this will be framework-specific, but a few examples include
+
+- [Database Storage](#database-storage)
+- [Orchestrator State](#orchestrator-state)
+
+#### Database Storage
+
+Store your context in a SQL database with fields like:
+
+- Operation ID
+- Agent state
+- Message history
+- Timestamp
+
+#### State Management
+
+Use a state management solution like LangGraph to maintain your agent's context. In this case you'll want to use a LangGraph identifier as your call ID.
+
+### 4. Create Webhook Endpoint
+
+Set up an endpoint on your server that will:
+
+- Receive POST requests from HumanLayer
+- Validate webhook signatures
+- Process the incoming webhook data
+
+Webhooks will be sent with the fully completed [FunctionCall](/api-reference/function-calls) or [HumanContact](/api-reference/human-contacts) object,
+which will include the `call_id` you set during creation, as well as the resolved response in `status`.
+
+### 5. Configure Webhook in Dashboard
+
+In the HumanLayer dashboard:
+
+- Navigate to the webhooks section
+- Add your endpoint URL
+- Subscribe to relevant events:
+  - `approval_completed`
+  - `human_contact_completed`
+
+### 6. Handle Webhook Response
+
+When your endpoint receives a webhook:
+
+- Look up the operation using your chosen identifier
+- Retrieve the stored agent state/context
+- Append the human's response to the context
+- Resume your agent's workflow with the updated information
