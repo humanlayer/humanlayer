@@ -1,3 +1,35 @@
+## 0.6.1
+
+### Features
+
+- Added initial Mintlify documentation structure
+- Added API reference documentation for function calls and classifications
+- Added smoke test target for faster example testing
+- Added email threading support ([docs](https://humanlayer.dev/docs/channels/email)) with:
+  - `experimental_subject_line`
+  - `experimental_references_message_id`
+  - `experimental_in_reply_to_message_id`
+
+### Documentation
+
+- Updated documentation links to point to humanlayer.dev
+- Added Docker configuration for local documentation development
+
+## 0.6.0
+
+### Features
+
+- Added email channel support with subject line customization and threading capabilities ([docs](https://humanlayer.dev/docs/channels/email))
+- Added new examples demonstrating email channel usage:
+  - Email channel with Linear ticket creation ([example](https://github.com/humanlayer/humanlayer/tree/main/examples/langchain/08-email-channel.py))
+  - Email contact handling with threading ([example](https://github.com/humanlayer/humanlayer/tree/main/examples/langchain/09-email-contact.py))
+- Updated TypeScript definitions for email channel models
+- Updated all example dependencies to latest versions
+
+## 0.5.11
+
+Initial prep for email feature, use 0.6.0 instead
+
 ## 0.5.10
 
 ### Enhancements
