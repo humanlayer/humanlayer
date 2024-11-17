@@ -1,0 +1,40 @@
+---
+title: Agent Webhooks
+description: "Launch agents in response to emails"
+icon: "rocket"
+---
+
+Agent webhooks are designed to allow you to launch an agent in response to a message from a platform like email, slack, etc.
+
+Not to be confused with [webhooks](/channels/webhooks), which allows you to receive a notification when an [approval](/core/human-as-tool#approvals) or [human contact](/core/human-as-tool#human-contacts)
+is completed, Agent webhooks are specifically designed for kicking off new tasks and workflows
+
+<Note>
+  Agent webhooks are currently in beta. If you'd like to help us test and
+  improve the feature, please reach out to us at contact@humanlayer.dev
+</Note>
+
+## Use cases
+
+Agent webhooks are useful for:
+
+- Forwarding an email to an agent to handle
+- Launching an agent workflow in response to a message in Slack
+
+## Overview
+
+To get started with agent webhooks, you'll need to:
+
+1. Implement an AI Agent in your language and/or framework of choice
+2. Create a publically reachable URL that can receive webhooks from HumanLayer (we recommend [ngrok](https://ngrok.com/) to catch webhooks while you're developing locally)
+3. Create a new agent webhook in the [HumanLayer dashboard](https://app.humanlayer.dev/), setting the callback URL to your webhook endpoint
+4. Test the webhook in the HumanLayer dashboard
+5. Test the webhook by sending an email to the channel (slack support coming soon)
+
+### Email
+
+### Using Ngrok for local development
+
+1. Start your local API server and note the port it's running on
+2. Install ngrok and run `ngrok http <port>`
+3. Copy the ngrok URL and use it as the callback URL in the HumanLayer dashboard
