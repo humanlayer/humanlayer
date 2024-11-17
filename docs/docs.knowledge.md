@@ -1,5 +1,42 @@
 # Documentation System
 
+## Version Control and Releases
+
+### Release Process
+- Version tags follow semver (vX.Y.Z)
+- Features added in main branch
+- Examples updated alongside feature development
+- Changelog maintained for each version
+- Both Python and TypeScript packages versioned together
+- Generate release notes using git commands:
+  - Use `git diff v0.5.11..v0.6.0` to see file changes between versions
+  - Use `git log --oneline v0.5.11..v0.6.0` to see commit messages
+  - Use `git diff v0.5.11..v0.6.0 --name-only` to list changed files
+  - Always verify changes from git before updating CHANGELOG.md
+- Generate release notes using git diff between version tags: `git diff v0.5.11..v0.6.0`
+
+### Feature Development Pattern
+- New features accompanied by examples
+- Examples directory organized by framework integration
+- Changes coordinated across Python/TypeScript implementations
+- Email channel example: subject lines, threading, and framework-specific implementations
+
+## Version Control and Releases
+
+### Release Process
+- Version tags follow semver (vX.Y.Z)
+- Features added in main branch
+- Examples updated alongside feature development
+- Changelog maintained for each version
+- Both Python and TypeScript packages versioned together
+
+### Feature Development Pattern
+- New features accompanied by examples
+- Examples directory organized by framework integration
+- Changes coordinated across Python/TypeScript implementations
+- Email channel example: subject lines, threading, and framework-specific implementations
+
+
 ## Platform Choice
 
 Mintlify is the chosen documentation platform. It provides:
@@ -62,8 +99,9 @@ The project is transitioning from Metalytics to Humanlayer branding - ensure new
 Documentation links follow these rules:
 
 - Keep external package/tool links (npm, pip) pointing to their original sources
-- Update framework/feature documentation to point to humanlayer.dev/docs
+- Documentation links should use humanlayer.dev/docs/... format (e.g., humanlayer.dev/docs/channels/email)
 - Use relative links for internal navigation between doc pages
+- Example links should point to GitHub repository with full path (e.g., https://github.com/humanlayer/humanlayer/tree/main/examples/langchain)
 - Framework documentation must link to examples repository (https://github.com/humanlayer/humanlayer/tree/main/examples)
 
 The documentation is organized around AI framework integrations:
