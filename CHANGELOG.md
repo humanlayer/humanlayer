@@ -1,4 +1,4 @@
-## 0.5.11
+## 0.6.0
 
 ### Features
 
@@ -8,6 +8,10 @@
   - Email contact handling with threading ([example](https://github.com/humanlayer/humanlayer/tree/main/examples/langchain/09-email-contact.py))
 - Updated TypeScript definitions for email channel models
 - Updated all example dependencies to latest versions
+
+## 0.5.11
+
+Initial prep for email feature, use 0.6.0 instead
 
 ## 0.5.10
 
