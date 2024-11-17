@@ -13,6 +13,11 @@
   - Use `git log --oneline v0.5.11..v0.6.0` to see commit messages
   - Use `git diff v0.5.11..v0.6.0 --name-only` to list changed files
   - Always verify changes from git before updating CHANGELOG.md
+- Generate release notes using git commands:
+  - Use `git diff v0.5.11..v0.6.0` to see file changes between versions
+  - Use `git log --oneline v0.5.11..v0.6.0` to see commit messages
+  - Use `git diff v0.5.11..v0.6.0 --name-only` to list changed files
+  - Always verify changes from git before updating CHANGELOG.md
 - Generate release notes using git diff between version tags: `git diff v0.5.11..v0.6.0`
 
 ### Feature Development Pattern
