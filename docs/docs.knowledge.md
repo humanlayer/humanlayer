@@ -11,27 +11,25 @@
 - Both Python and TypeScript packages versioned together
 - Generate release notes using git commands:
   - Use `git diff v0.5.11..v0.6.0` to see file changes between versions
-  - Use `git log --oneline v0.5.11..v0.6.0` to see commit messages
-  - Use `git diff v0.5.11..v0.6.0 --name-only` to list changed files
-  - Always verify changes from git before updating CHANGELOG.md
+  - Always query changes from git before updating CHANGELOG.md
 - Changelog priorities:
   - Document API changes first, especially new fields and parameters
-  - Note experimental features and fields explicitly (e.g. experimental_subject_line)
-  - Include interface/model changes even if not visible in git diff
   - Internal changes (testing, docs, etc) are lower priority
-  - Always document experimental parameters with their exact names
+  - Always document new parameters in models.py or models.ts with their exact names
   - Link to relevant documentation when adding new features
 - Changelog organization:
   - Document features in their final release version, not in prep/RC versions
   - Prep/RC versions should have minimal changelog entries pointing to their final version
   - Link to docs using humanlayer.dev/docs/... format
   - Link to examples using full GitHub paths (https://github.com/humanlayer/humanlayer/tree/main/examples/...)
-- Generate release notes using git commands:
-  - Use `git diff v0.5.11..v0.6.0` to see file changes between versions
-  - Use `git log --oneline v0.5.11..v0.6.0` to see commit messages
-  - Use `git diff v0.5.11..v0.6.0 --name-only` to list changed files
-  - Always verify changes from git before updating CHANGELOG.md
-- Generate release notes using git diff between version tags: `git diff v0.5.11..v0.6.0`
+- The steps to create a new release are:
+  - merge all the code to main in github
+  - checkout the latest on `main`
+  - edit pyproject.toml and/or package.json with the current version, e.g. change 0.6.1-rc1 to 0.6.1
+  - run make build-and-publish for python, npm publish for ts
+  - commit and tag the changes with the release tag, e.g. v0.6.1, push the commit+tag
+  - update all the examples versions to use the new tag with `make update... version=0.6.1`
+  - bump the versions in pyproject and package.json to ${NEXT_PATCH_VERSION}-rc1
 
 ### Feature Development Pattern
 
