@@ -98,6 +98,10 @@ For the (perhaps extra-based) who want maximum control over execution flow, you 
 This is useful if you want to implement your own waiting logic or integrate with a custom event loop.
 
 ```python
+from humanlayer import FuntionCallSpec
+```
+
+```python
 # Example of low-level approval flow
 elif function_name == "multiply":
     call = hl.create_function_call(
