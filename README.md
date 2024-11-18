@@ -1,6 +1,6 @@
 <div align="center">
 
-![Wordmark Logo of HumanLayer](./docs/images/humanlayer-logo.png)
+![Wordmark Logo of HumanLayer](./docs/images/wordmark-light.svg)
 
 </div>
 
@@ -45,7 +45,7 @@ To get started, check out [Getting Started](https://humanlayer.dev/docs/quicksta
 - 🧠 [Raw OpenAI Client](./examples/openai_client/)
 
 <div align="center">
-<a target="_blank" href="https://www.loom.com/share/7c65d48d18d1421a864a1591ff37e2bf"><img width="60%" alt="video thumbnail showing editor" src="./docs/images/video-thumb.png"></a>
+<a target="_blank" href="https://youtu.be/5sbN8rh_S5Q"><img width="60%" alt="video thumbnail showing editor" src="https://www.humanlayer.dev/video-thumb.png"></a>
 </div>
 
 ## Example
@@ -76,7 +76,7 @@ run_llm_task(
 )
 ```
 
-<div align="center"><img style="width: 400px" alt="A screenshot of slack showing a human replying to the bot" src="./docs/images/slack_approval_response.png"></div>
+<div align="center"><img style="width: 400px" alt="A screenshot of slack showing a human replying to the bot" src="https://www.humanlayer.dev/hl-slack-oct11.png"></div>
 
 For Typescript, install with npm:
 
