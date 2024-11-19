@@ -5,15 +5,12 @@ First need to install ollama in local
 
 visit to [ollama website](https://ollama.com/download)
 
-After download pull lamma 3.1 in local
+After download pull lamma 3.1 in local and start 
 ```
 ollama run llama3.1
 ```
 
-Now start model locally
-```
-ollama run llama3.1
-```
+
 
 Two ways to get started:
 
