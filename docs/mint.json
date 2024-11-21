@@ -62,7 +62,8 @@
         "core/llm-tool-calling",
         "core/outer-loop-agents",
         "core/run-ids-and-call-ids",
-        "core/agent-webhooks"
+        "core/agent-webhooks",
+        "core/response-webhooks"
       ]
     },
     {
@@ -72,8 +73,7 @@
         "channels/slack",
         "channels/email",
         "channels/react-embed",
-        "channels/composite-channels",
-        "channels/webhooks"
+        "channels/composite-channels"
       ]
     },
     {
