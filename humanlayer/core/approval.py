@@ -388,7 +388,8 @@ class HumanLayer(BaseModel):
 
         # todo lets do a more async-y websocket soon
         if self.verbose:
-            print(f"HumanLayer: waiting for approval for {spec.fn}")
+            if self.approval_method == ApprovalMethod.BACKEND:
+                print(f"HumanLayer: waiting for approval for {spec.fn} via humanlayer cloud")
 
         while True:
             self.sleep(3)
@@ -451,10 +452,10 @@ class HumanLayer(BaseModel):
 
         contact = self.create_human_contact(spec)
 
-        # todo lets do a more async-y websocket soon
         if self.verbose:
             print(f"HumanLayer: waiting for human response for {spec.msg}")
 
+        # todo lets do a more async-y websocket soon
         while True:
             self.sleep(3)
             contact = self.get_human_contact(contact.call_id)

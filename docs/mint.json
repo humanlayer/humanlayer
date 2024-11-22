@@ -18,7 +18,7 @@
   "topbarLinks": [
     {
       "name": "Discord",
-      "url": "https://discord.gg/qWmbF4pp"
+      "url": "https://humanlayer.dev/discord"
     }
   ],
   "topbarCtaButton": {
@@ -40,7 +40,7 @@
     {
       "name": "Community",
       "icon": "discord",
-      "url": "https://discord.gg/qWmbF4pp"
+      "url": "https://humanlayer.dev/discord"
     },
     {
       "name": "GitHub",
