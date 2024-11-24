@@ -1,5 +1,9 @@
 ## 0.6.2
 
+### Features
+
+- Added beta support for agent webhooks to launch agents in response to emails ([docs](https://humanlayer.dev/docs/core/agent-webhooks)) - support for slack inbound coming soon!
+
 ### Enhancements
 
 - Added support for non-experimental email threading fields:
