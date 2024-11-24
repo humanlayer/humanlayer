@@ -11,7 +11,7 @@ from humanlayer import (
     HumanLayer,
     SlackContactChannel,
 )
-from humanlayer.core.models import ResponseOption
+from humanlayer.core.models import EmailContactChannel, ResponseOption
 from humanlayer.core.protocol import AgentStore, HumanLayerException
 
 
@@ -301,3 +301,66 @@ def test_create_human_contact_with_call_id() -> None:
     assert resp == human_contact
 
     contacts.add.assert_called_once_with(human_contact)
+
+
+def test_email_channel_in_reply_to() -> None:
+    """
+    test that the email contact channel works
+    """
+    mock_backend = Mock(spec=AgentBackend)
+    contacts = Mock(spec=AgentStore[HumanContact, HumanContactStatus])
+    mock_backend.contacts.return_value = contacts
+
+    hl = HumanLayer(
+        backend=mock_backend,
+        genid=lambda x: "generated-id",
+        sleep=lambda x: None,
+        contact_channel=ContactChannel(
+            email=EmailContactChannel.in_reply_to(
+                from_address="test@example.com",
+                subject="test subject",
+                message_id="1234567890",
+                context_about_user="the user you are assisting",
+            )
+        ),
+    )
+
+    contacts.get.return_value = HumanContact(
+        run_id="generated-id",
+        call_id="generated-id",
+        spec=HumanContactSpec(
+            msg="test message",
+            subject="re: test subject",
+            channel=ContactChannel(
+                email=EmailContactChannel(
+                    address="test@example.com",
+                    context_about_user="the user you are assisting",
+                    experimental_subject_line="re: test subject",
+                    experimental_in_reply_to_message_id="1234567890",
+                    experimental_references_message_id="1234567890",
+                )
+            ),
+        ),
+    )
+
+    hl.human_as_tool()("test message")
+
+    contacts.add.assert_called_once_with(
+        HumanContact(
+            run_id="generated-id",
+            call_id="generated-id",
+            spec=HumanContactSpec(
+                msg="test message",
+                subject="re: test subject",
+                channel=ContactChannel(
+                    email=EmailContactChannel(
+                        address="test@example.com",
+                        context_about_user="the user you are assisting",
+                        experimental_subject_line="re: test subject",
+                        experimental_in_reply_to_message_id="1234567890",
+                        experimental_references_message_id="1234567890",
+                    )
+                ),
+            ),
+        )
+    )
