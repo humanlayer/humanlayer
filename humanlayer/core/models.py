@@ -1,7 +1,10 @@
+import logging
 from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel
+
+logger = logging.getLogger(__name__)
 
 
 class SlackContactChannel(BaseModel):
@@ -72,12 +75,56 @@ class EmailContactChannel(BaseModel):
     # contact_human_via_email_to_the_user_you_are_assisting
     context_about_user: str | None = None
 
-    # a subject line to override the default subject line
-    # - useful if you are getting approval for a workflow that
-    #   was initiated by an email and you want to reply on that same thread
+    # for replying on an existing email thread
+    subject: str | None = None
+    references_message_id: str | None = None
+    in_reply_to_message_id: str | None = None
+
+    # these are all deprecated, use subject, references_message_id, and in_reply_to_message_id instead
     experimental_subject_line: str | None = None
     experimental_references_message_id: str | None = None
     experimental_in_reply_to_message_id: str | None = None
+
+    def __init__(self, **kwargs) -> None:  # type: ignore
+        super().__init__(**kwargs)
+        if self.experimental_subject_line is not None:
+            logger.debug("EmailContactChannel.experimental_subject_line is deprecated, use subject instead")
+            if self.subject is None:
+                self.subject = self.experimental_subject_line
+        else:
+            self.experimental_subject_line = self.subject
+        if self.experimental_references_message_id is not None:
+            logger.debug(
+                "EmailContactChannel.experimental_references_message_id is deprecated, use references_message_id instead"
+            )
+            if self.references_message_id is None:
+                self.references_message_id = self.experimental_references_message_id
+        else:
+            self.experimental_references_message_id = self.references_message_id
+        if self.experimental_in_reply_to_message_id is not None:
+            logger.debug(
+                "EmailContactChannel.experimental_in_reply_to_message_id is deprecated, use in_reply_to_message_id instead"
+            )
+            if self.in_reply_to_message_id is None:
+                self.in_reply_to_message_id = self.experimental_in_reply_to_message_id
+        else:
+            self.experimental_in_reply_to_message_id = self.in_reply_to_message_id
+
+    @classmethod
+    def in_reply_to(
+        cls,
+        from_address: str,
+        subject: str,
+        message_id: str,
+        context_about_user: str | None = None,
+    ) -> "EmailContactChannel":
+        return cls(
+            address=from_address,
+            context_about_user=context_about_user,
+            experimental_subject_line=f"Re: {subject}",
+            experimental_in_reply_to_message_id=message_id,
+            experimental_references_message_id=message_id,
+        )
 
 
 class ContactChannel(BaseModel):
