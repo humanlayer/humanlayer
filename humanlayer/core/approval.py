@@ -2,6 +2,7 @@ import inspect
 import json
 import logging
 import os
+import re
 import secrets
 import time
 from enum import Enum
@@ -323,6 +324,9 @@ class HumanLayer(BaseModel):
             assert self.backend is not None
             call_id = self.genid("human_call")
 
+            if contact_channel and contact_channel.email and contact_channel.email.experimental_subject_line is not None:
+                subject = contact_channel.email.experimental_subject_line
+
             contact = HumanContact(
                 run_id=self.run_id,  # type: ignore
                 call_id=call_id,
@@ -365,7 +369,8 @@ class HumanLayer(BaseModel):
             contact_human.__name__ = "contact_human_via_email"
             contact_human.__annotations__ = {"subject": str, "message": str, "return": str}
             if contact_channel.email.address:
-                fn_ctx = contact_channel.email.address.replace("@", "_").replace(".", "_")
+                fn_ctx = re.sub(r"[^a-zA-Z0-9]+", "_", contact_channel.email.address)
+                fn_ctx = re.sub(r"_+", "_", fn_ctx).strip("_")
                 contact_human.__name__ = f"contact_human_via_email_{fn_ctx}"
         else:
             contact_human.__annotations__ = {"message": str, "return": str}
