@@ -1,16 +1,26 @@
-from typing import List, Dict, Any, Callable
-from langchain.agents import AgentType, initialize_agent
-from langchain_ollama import OllamaLLM
-from langchain.tools import StructuredTool, Tool
-from langchain.callbacks.base import BaseCallbackHandler
-from langchain.schema import AgentAction
-from langchain.prompts import PromptTemplate
 import functools
+import os
 import json
+from typing import Any, Callable, Dict
 
+from langchain.agents import AgentType, initialize_agent
+from langchain.callbacks.base import BaseCallbackHandler
+from langchain.prompts import PromptTemplate
+from langchain.schema import AgentAction
+from langchain.tools import StructuredTool
+from langchain_ollama import OllamaLLM
+from dotenv import load_dotenv
+
+
+load_dotenv()
+
+
+OLLAMA_HOST = os.getenv("OLLAMA_HOST", "localhost")
+OLLAMA_PORT = os.getenv("OLLAMA_PORT", 11434)
+OLLAMA_URL = f"http://{OLLAMA_HOST}:{OLLAMA_PORT}"
 class FunctionInvocationHandler(BaseCallbackHandler):
     """Handles function invocation display and logging"""
-    
+
     def on_tool_start(
         self,
         serialized: Dict[str, Any],
@@ -28,7 +38,7 @@ class FunctionInvocationHandler(BaseCallbackHandler):
                     input_dict = {"input": input_str}
             else:
                 input_dict = input_str
-            
+
             print(f"\nInvoking: `{tool_name}` with arguments:")
             for key, value in input_dict.items():
                 print(f"  - {key}: {value}")
@@ -42,17 +52,20 @@ class FunctionInvocationHandler(BaseCallbackHandler):
     def on_agent_action(self, action: AgentAction, **kwargs: Any) -> Any:
         """Log agent's thought process"""
         print(f"Thought: {action.log}")
+
+
 class LlamaToolkit:
     """Toolkit for managing custom functions with Llama"""
-    
+
     def __init__(self, model_name: str = "llama3.1", temperature: float = 0.1):
         self.tools = []
         self.model_name = model_name
         self.temperature = temperature
         self.callback_handler = FunctionInvocationHandler()
-    
+
     def add_function(self, name: str = None, description: str = None):
         """A decorator to add a function to the toolkit"""
+
         def decorator(func: Callable):
             nonlocal name, description
             if name is None:
@@ -69,24 +82,18 @@ class LlamaToolkit:
                     return f"Error in {name}: {str(e)}"
 
             tool = StructuredTool.from_function(
-                func=wrapped_func,
-                name=name,
-                description=description,
-                return_direct=False
+                func=wrapped_func, name=name, description=description, return_direct=False
             )
 
             self.tools.append(tool)
             return wrapped_func
-        
+
         return decorator
-    
+
     def create_agent(self):
         """Create a Llama agent with the registered tools"""
-        llm = OllamaLLM(
-            model=self.model_name,
-            temperature=self.temperature
-        )
-        
+        llm = OllamaLLM(model=self.model_name, temperature=self.temperature)
+
         # Custom prompt template
         template = """you are math expert that can answer math questions.
         
@@ -104,12 +111,9 @@ class LlamaToolkit:
         Assistant: Let me help you solve this step by step.
         {agent_scratchpad}
         """
-        
-        prompt = PromptTemplate(
-            input_variables=["tools", "input", "agent_scratchpad"],
-            template=template
-        )
-        
+
+        prompt = PromptTemplate(input_variables=["tools", "input", "agent_scratchpad"], template=template)
+
         return initialize_agent(
             tools=self.tools,
             llm=llm,
@@ -118,5 +122,5 @@ class LlamaToolkit:
             callbacks=[self.callback_handler],
             handle_parsing_errors=True,
             max_iterations=5,
-            agent_kwargs={"prompt": prompt}
+            agent_kwargs={"prompt": prompt},
         )

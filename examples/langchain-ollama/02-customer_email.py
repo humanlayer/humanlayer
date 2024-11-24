@@ -1,13 +1,7 @@
-from humanlayer import ContactChannel, SlackContactChannel
-from langchain.agents import AgentType, initialize_agent
-import langchain_core.tools as langchain_tools
-from langchain_openai import ChatOpenAI
-
 from dotenv import load_dotenv
-
-from humanlayer import HumanLayer
-
 from llama_toolkit import LlamaToolkit
+
+from humanlayer import ContactChannel, HumanLayer, SlackContactChannel
 
 load_dotenv()
 
