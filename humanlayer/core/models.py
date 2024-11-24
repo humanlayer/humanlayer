@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime
-from typing import Literal, Self
+from typing import Literal
 
 from pydantic import BaseModel
 
@@ -117,7 +117,7 @@ class EmailContactChannel(BaseModel):
         subject: str,
         message_id: str,
         context_about_user: str | None = None,
-    ) -> Self:
+    ) -> "EmailContactChannel":
         return cls(
             address=from_address,
             context_about_user=context_about_user,
