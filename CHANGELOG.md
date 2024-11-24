@@ -1,3 +1,31 @@
+## 0.6.2
+
+### Enhancements
+
+- Added support for non-experimental email threading fields:
+
+  - `subject` replaces `experimental_subject_line`
+  - `references_message_id` replaces `experimental_references_message_id`
+  - `in_reply_to_message_id` replaces `experimental_in_reply_to_message_id`
+  - Old fields remain supported for backwards compatibility
+
+- Added convienience method `EmailContactChannel.in_reply_to` for easily creating an email contact channel that is in reply to another email
+
+- Improved handling of `human_as_tool.__name__` generation to exclude more special characters
+
+### Documentation
+
+- Enhanced Slack channel documentation with setup instructions and ID lookup tips
+- Improved email channel documentation with clearer threading examples
+- Added Ruby and cURL examples for API reference
+- Updated documentation navigation and cross-linking
+- Added webhook documentation clarifications
+
+### Branding
+
+- Updated logo and documentation assets
+- Updated documentation links and social references
+
 ## 0.6.1
 
 ### Features
