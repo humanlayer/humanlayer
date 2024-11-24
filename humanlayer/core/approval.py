@@ -322,36 +322,28 @@ class HumanLayer(BaseModel):
         ) -> str:
             """contact a human"""
             assert self.backend is not None
-            call_id = self.genid("human_call")
 
-            if contact_channel and contact_channel.email and contact_channel.email.experimental_subject_line is not None:
+            # we actually want the contact channel subject
+            # to overrides the model-generated subject, since
+            # it has detail about the thread we're on and how
+            # to keep the reply in-thread
+            if (
+                contact_channel
+                and contact_channel.email
+                and contact_channel.email.experimental_subject_line is not None
+            ):
                 subject = contact_channel.email.experimental_subject_line
 
-            contact = HumanContact(
-                run_id=self.run_id,  # type: ignore
-                call_id=call_id,
-                spec=HumanContactSpec(
+            resp = self.fetch_human_response(
+                HumanContactSpec(
                     msg=message,
                     subject=subject,
                     channel=contact_channel,
                     response_options=response_options,
                 ),
             )
-            self.backend.contacts().add(contact)
 
-            # todo lets do a more async-y websocket soon
-            if self.verbose:
-                print("HumanLayer: waiting for human response")
-            while True:
-                self.sleep(3)
-                human_contact = self.backend.contacts().get(call_id)
-                if human_contact.status is None:
-                    continue
-
-                if human_contact.status.response is not None:
-                    if self.verbose:
-                        print(f"HumanLayer: human responded with: {human_contact.status.response}")
-                    return human_contact.status.response
+            return resp.as_completed()
 
         if contact_channel is None:
             return contact_human
@@ -392,9 +384,8 @@ class HumanLayer(BaseModel):
         call = self.create_function_call(spec)
 
         # todo lets do a more async-y websocket soon
-        if self.verbose:
-            if self.approval_method == ApprovalMethod.BACKEND:
-                print(f"HumanLayer: waiting for approval for {spec.fn} via humanlayer cloud")
+        if self.verbose and self.approval_method == ApprovalMethod.BACKEND:
+            print(f"HumanLayer: waiting for approval for {spec.fn} via humanlayer cloud")
 
         while True:
             self.sleep(3)
