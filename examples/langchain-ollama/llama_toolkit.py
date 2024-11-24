@@ -15,9 +15,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-OLLAMA_HOST = os.getenv("OLLAMA_HOST", "localhost")
-OLLAMA_PORT = os.getenv("OLLAMA_PORT", 11434)
-OLLAMA_URL = f"http://{OLLAMA_HOST}:{OLLAMA_PORT}"
+
 class FunctionInvocationHandler(BaseCallbackHandler):
     """Handles function invocation display and logging"""
 
