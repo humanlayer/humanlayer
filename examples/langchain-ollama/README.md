@@ -47,5 +47,3 @@ docker compose run examples 01-math_example.py
 
 - [01-math_example.py](01-math_example.py) - A simple math example that uses functionlayer to gate access to the `multiply` function
 - [02-customer_email.py](02-customer_email.py) - A simple email send to new on board User by `send_email()` and take apporval from Admin
-
-
