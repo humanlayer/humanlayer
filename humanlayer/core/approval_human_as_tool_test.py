@@ -24,8 +24,12 @@ def test_human_as_tool_generic() -> None:
     mock_backend = Mock(spec=AgentBackend)
     contacts = Mock(spec=AgentStore[HumanContact, HumanContactStatus])
     mock_backend.contacts.return_value = contacts
-
-    contacts.add.return_value = None
+    contact = HumanContact(
+        run_id="generated-id",
+        call_id="generated-id",
+        spec=HumanContactSpec(msg="what is your favorite color"),
+    )
+    contacts.add.return_value = contact
 
     hl = HumanLayer(
         backend=mock_backend,
@@ -63,8 +67,21 @@ def test_human_as_tool_instance_contact_channel() -> None:
     mock_backend = Mock(spec=AgentBackend)
     contacts = Mock(spec=AgentStore[HumanContact, HumanContactStatus])
     mock_backend.contacts.return_value = contacts
-
-    contacts.add.return_value = None
+    contact_channel = ContactChannel(
+        slack=SlackContactChannel(
+            channel_or_user_id="U8675309",
+            context_about_channel_or_user="a dm with the librarian",
+        )
+    )
+    contact = HumanContact(
+        run_id="generated-id",
+        call_id="generated-id",
+        spec=HumanContactSpec(
+            msg="what is your favorite color",
+            channel=contact_channel,
+        ),
+    )
+    contacts.add.return_value = contact
 
     contact_channel = ContactChannel(
         slack=SlackContactChannel(
@@ -134,8 +151,21 @@ def test_human_as_tool_fn_contact_channel() -> None:
     mock_backend = Mock(spec=AgentBackend)
     contacts = Mock(spec=AgentStore[HumanContact, HumanContactStatus])
     mock_backend.contacts.return_value = contacts
-
-    contacts.add.return_value = None
+    contact_channel = ContactChannel(
+        slack=SlackContactChannel(
+            channel_or_user_id="U8675309",
+            context_about_channel_or_user="a dm with the librarian",
+        )
+    )
+    contact = HumanContact(
+        run_id="generated-id",
+        call_id="generated-id",
+        spec=HumanContactSpec(
+            msg="what is your favorite color",
+            channel=contact_channel,
+        ),
+    )
+    contacts.add.return_value = contact
 
     contact_channel = ContactChannel(
         slack=SlackContactChannel(
@@ -330,17 +360,18 @@ def test_email_channel_in_reply_to() -> None:
         call_id="generated-id",
         spec=HumanContactSpec(
             msg="test message",
-            subject="re: test subject",
+            subject="Re: test subject",
             channel=ContactChannel(
                 email=EmailContactChannel(
                     address="test@example.com",
                     context_about_user="the user you are assisting",
-                    experimental_subject_line="re: test subject",
+                    experimental_subject_line="Re: test subject",
                     experimental_in_reply_to_message_id="1234567890",
                     experimental_references_message_id="1234567890",
                 )
             ),
         ),
+        status=HumanContactStatus(response="Blue"),
     )
 
     hl.human_as_tool()("test message")
@@ -351,12 +382,12 @@ def test_email_channel_in_reply_to() -> None:
             call_id="generated-id",
             spec=HumanContactSpec(
                 msg="test message",
-                subject="re: test subject",
+                subject="Re: test subject",
                 channel=ContactChannel(
                     email=EmailContactChannel(
                         address="test@example.com",
                         context_about_user="the user you are assisting",
-                        experimental_subject_line="re: test subject",
+                        experimental_subject_line="Re: test subject",
                         experimental_in_reply_to_message_id="1234567890",
                         experimental_references_message_id="1234567890",
                     )
