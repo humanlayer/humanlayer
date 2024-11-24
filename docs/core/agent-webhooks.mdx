@@ -21,17 +21,95 @@ Agent webhooks are useful for:
 - Forwarding an email to an agent to handle
 - Launching an agent workflow in response to a message in Slack
 
+You can see an end to end example of using agent webhooks in [Mailcrew](https://github.com/dexhorthy/mailcrew), an open source agent that uses HumanLayer to receive and respond to inbound emails.
+
 ## Overview
 
 To get started with agent webhooks, you'll need to:
 
-1. Implement an AI Agent in your language and/or framework of choice
+1. Implement an AI Agent in your language and/or framework of choice, and create an API endpoint that can launch the agent
 2. Create a publically reachable URL that can receive webhooks from HumanLayer (we recommend [ngrok](https://ngrok.com/) to catch webhooks while you're developing locally)
 3. Create a new agent webhook in the [HumanLayer dashboard](https://app.humanlayer.dev/), setting the callback URL to your webhook endpoint
-4. Test the webhook in the HumanLayer dashboard
-5. Test the webhook by sending an email to the channel (slack support coming soon)
 
-### Email
+![Create an agent webhook](/images/agent-webhooks.png)
+
+4. Test the webhook in the HumanLayer dashboard
+5. Test the webhook by sending an email to the webhook email address (slack support coming soon)
+
+### Email Payload
+
+For email webhooks, the payload will be look like
+
+<ParamField body="email_payload" type="object">
+  <Expandable title="EmailPayload">
+    <ParamField body="from_address" type="string" required>
+      Email address of the sender
+    </ParamField>
+    <ParamField body="to_address" type="string" required>
+      Email address of the recipient
+    </ParamField>
+    <ParamField body="subject" type="string" required>
+      Subject line of the email
+    </ParamField>
+    <ParamField body="body" type="string" required>
+      Body content of the email
+    </ParamField>
+    <ParamField body="message_id" type="string" required>
+      Unique message ID of the email
+    </ParamField>
+    <ParamField body="previous_thread" type="array">
+      Optional list of previous messages in the thread
+      <Expandable title="EmailMessage">
+        <ParamField body="from_address" type="string" required>
+          Email address of the sender
+        </ParamField>
+        <ParamField body="to_address" type="array" required>
+          List of recipient email addresses
+        </ParamField>
+        <ParamField body="cc_address" type="array" required>
+          List of CC'd email addresses
+        </ParamField>
+        <ParamField body="subject" type="string" required>
+          Subject line of the email
+        </ParamField>
+        <ParamField body="content" type="string" required>
+          Content of the email
+        </ParamField>
+        <ParamField body="datetime" type="string" required>
+          Timestamp of when the email was sent
+        </ParamField>
+      </Expandable>
+    </ParamField>
+    <ParamField body="raw_email" type="string" required>
+      Raw email content including headers
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+a JSON example might look like
+
+```json
+{
+  "from_address": "overworked-admin@coolcompany.com",
+  "to_address": "cool-agent@humanlayer.dev",
+  "subject": "FWD: help",
+  "body": "can you add a ticket for this?",
+  "message_id": "<1234567890@mailsrv.coolcompany.com>",
+  "raw_email": "This is a placeholder for a test email - if this were a real email, it would include headers, etc.",
+  "datetime": "2024-01-02T00:00:00Z",
+  "previous_thread": [
+    {
+      "from_address": "needy-employee@coolcompany.com",
+      "to_address": ["overworked-admin@coolcompany.com"],
+      "cc_address": [],
+      "subject": "help",
+      "content": "i need some help",
+      "raw_email": "i need some help",
+      "datetime": "2024-01-01T00:00:00Z"
+    }
+  ]
+}
+```
 
 ### Using Ngrok for local development
 
