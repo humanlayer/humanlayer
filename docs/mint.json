@@ -7,9 +7,9 @@
   },
   "favicon": "/images/humanlayer-light.png",
   "colors": {
-    "primary": "#0D9373",
-    "light": "#07C983",
-    "dark": "#0D9373",
+    "primary": "#426699",
+    "light": "#82aaee",
+    "dark": "#426699",
     "anchors": {
       "from": "#0D9373",
       "to": "#07C983"
