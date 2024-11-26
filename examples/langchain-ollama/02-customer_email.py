@@ -8,7 +8,6 @@ load_dotenv()
 toolkit = LlamaToolkit(model_name="llama3.1", temperature=0.1)
 hl = HumanLayer(
     verbose=True,
-    
     contact_channel=ContactChannel(
         slack=SlackContactChannel(
             channel_or_user_id="",
@@ -32,16 +31,19 @@ then you send the email.
 your task is to prepare an email to send to the customer danny@metacorp.com
 """
 
+
 @toolkit.add_function()
 def get_info_about_customer(email: str) -> str:
     return f"Customer {email} is a small company that makes a product called MetaCorp. They are looking for a new employee to join their team."
+
 
 @toolkit.add_function()
 @hl.require_approval()
 def send_email(email: str, subject: str, body: str) -> str:
     return f"Email sent to {email} with subject: {subject}"
 
+
 agent = toolkit.create_agent()
 
 if __name__ == "__main__":
-    agent.invoke(task_prompt )
+    agent.invoke(task_prompt)
