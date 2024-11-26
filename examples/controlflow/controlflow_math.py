@@ -1,10 +1,11 @@
-from dotenv import load_dotenv
+# /// script
+# dependencies = ["controlflow", "humanlayer"]
+# ///
+
+# https://controlflow.ai/welcome
+import controlflow as cf
 
 from humanlayer import HumanLayer
-
-load_dotenv()
-
-import controlflow as cf
 
 hl = HumanLayer(
     # run_id is optional -it can be used to identify the agent in approval history
@@ -23,12 +24,11 @@ def multiply(x: int, y: int) -> int:
     return x * y
 
 
-@cf.task(tools=[add, multiply])
-def do_math() -> int:
-    """multiply 2 and 5, then add 32 to the result"""
-
-
 if __name__ == "__main__":
-    result = do_math()
+    result = cf.run(
+        "multiply 2 and 5, then add 32 to the result",
+        tools=[add, multiply],
+    )
+
     print("\n\n---------- RESULT ----------\n\n")
     print(result)
