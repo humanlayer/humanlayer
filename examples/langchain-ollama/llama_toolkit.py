@@ -15,7 +15,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-
 class FunctionInvocationHandler(BaseCallbackHandler):
     """Handles function invocation display and logging"""
 
@@ -94,17 +93,17 @@ class LlamaToolkit:
 
         # Custom prompt template
         template = """you are math expert that can answer math questions.
-        
+
         When performing tasks:
             1. If a suitable tool is available, you may use it
             2. If no tool is available, use your own intelligence to solve the problem
             3. Never refuse to help just because a tool is missing
 
-            
-        
+
+
         Available functions:
         {tools}
-        
+
         Human: {input}
         Assistant: Let me help you solve this step by step.
         {agent_scratchpad}
