@@ -1,0 +1,22 @@
+version: "3.7"
+services:
+  examples:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./:/app
+    # Add network configuration for Ollama connection
+    networks:
+      - ollama-network
+    environment:
+      - OLLAMA_HOST=host.docker.internal
+      - OLLAMA_PORT=11434
+    # Add extra_hosts for Linux compatibility
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+# Define the bridge network
+networks:
+  ollama-network:
+    driver: bridge
