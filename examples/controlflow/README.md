@@ -24,6 +24,9 @@ python controlflow_math.py
 
 ## If you prefer docker
 
+Be sure to set the environment variables in the `.env` file or pass them explicitly via the `-e` flag.
+
 ```
+# docker compose
 docker compose run examples controlflow_math.py
 ```
