@@ -16,6 +16,7 @@ requests = "2.32.3"
 python-slugify = "8.0.4"
 python-dotenv = "1.0.1"
 click = "8.1.7"
+websockets = "14.1"
 
 [tool.poetry.scripts]
 hl = "humanlayer.cli.main:cli"
