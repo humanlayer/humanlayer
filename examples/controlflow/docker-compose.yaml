@@ -6,3 +6,5 @@ services:
       dockerfile: Dockerfile
     volumes:
       - ./:/app
+    env_file:
+      - .env
