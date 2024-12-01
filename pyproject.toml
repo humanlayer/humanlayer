@@ -5,17 +5,15 @@ description = "humanlayer"
 authors = ["humanlayer authors <dexter@metalytics.dev>"]
 repository = "https://github.com/humanlayer/humanlayer"
 readme = "README.md"
-packages = [
-  {include = "humanlayer"}
-]
+packages = [{ include = "humanlayer" }]
 
 [tool.poetry.dependencies]
 python = ">=3.10,<4.0"
-pydantic = "2.8.2"
-requests = "2.32.3"
-python-slugify = "8.0.4"
-python-dotenv = "1.0.1"
-click = "8.1.7"
+pydantic = "~=2.8.2"
+requests = "~=2.32.3"
+python-slugify = "~=8.0.4"
+python-dotenv = "~=1.0.1"
+click = "~=8.1.7"
 
 [tool.poetry.scripts]
 hl = "humanlayer.cli.main:cli"
@@ -36,7 +34,7 @@ black = "^24.8.0"
 [tool.poetry.group.docs.dependencies]
 mkdocs = "^1.4.2"
 mkdocs-material = "^9.2.7"
-mkdocstrings = {extras = ["python"], version = "^0.23.0"}
+mkdocstrings = { extras = ["python"], version = "^0.23.0" }
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
@@ -60,47 +58,48 @@ target-version = "py37"
 line-length = 120
 fix = true
 select = [
-    # flake8-2020
-    "YTT",
-    # flake8-bandit
-    "S",
-    # flake8-bugbear
-    "B",
-    # flake8-builtins
-    "A",
-    # flake8-comprehensions
-    "C4",
-    # flake8-debugger
-    "T10",
-    # flake8-simplify
-    "SIM",
-    # isort
-    "I",
-    # mccabe
-    "C90",
-    # pycodestyle
-    "E", "W",
-    # pyflakes
-    "F",
-    # pyupgrade
-    "UP",
-    # ruff
-    "RUF",
-    # tryceratops
-    "TRY",
+  # flake8-2020
+  "YTT",
+  # flake8-bandit
+  "S",
+  # flake8-bugbear
+  "B",
+  # flake8-builtins
+  "A",
+  # flake8-comprehensions
+  "C4",
+  # flake8-debugger
+  "T10",
+  # flake8-simplify
+  "SIM",
+  # isort
+  "I",
+  # mccabe
+  "C90",
+  # pycodestyle
+  "E",
+  "W",
+  # pyflakes
+  "F",
+  # pyupgrade
+  "UP",
+  # ruff
+  "RUF",
+  # tryceratops
+  "TRY",
 ]
 ignore = [
-    # LineTooLong
-    "E501",
+  # LineTooLong
+  "E501",
 
-    # DoNotAssignLambda
-    "E731",
+  # DoNotAssignLambda
+  "E731",
 
-    # Unsafe eval
-    "S307",
+  # Unsafe eval
+  "S307",
 
-    # long exception message
-    "TRY003",
+  # long exception message
+  "TRY003",
 
 ]
 
