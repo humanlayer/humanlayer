@@ -9,14 +9,15 @@ Please provide the following information:
 
 -->
 
-**- What I did**
+### What I did
 
-**- How I did it**
+### How I did it
 
-**- How to verify it**
+- [ ] I have ensured `make check test` passes
 
-**- Description for the changelog**
+### How to verify it
 
+### Description for the changelog
 <!--
 Write a short (one line) summary that describes the changes in this
 pull request for inclusion in the changelog:
