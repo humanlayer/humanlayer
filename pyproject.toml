@@ -9,11 +9,11 @@ packages = [{ include = "humanlayer" }]
 
 [tool.poetry.dependencies]
 python = ">=3.10,<4.0"
-pydantic = "~=2.8.2"
-requests = "~=2.32.3"
-python-slugify = "~=8.0.4"
-python-dotenv = "~=1.0.1"
-click = "~=8.1.7"
+pydantic = "^2.8.2"
+requests = "^2.32.3"
+python-slugify = "^8.0.4"
+python-dotenv = "^1.0.1"
+click = "^8.1.7"
 
 [tool.poetry.scripts]
 hl = "humanlayer.cli.main:cli"
