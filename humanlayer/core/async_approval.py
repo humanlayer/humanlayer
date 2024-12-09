@@ -66,11 +66,14 @@ class AsyncHumanLayerWrapper:
     ) -> None:
         self.decorator = decorator
 
-    async def wrap(self, fn: Callable) -> AsyncCallable:
-        return await self.decorator(fn)
+    def __call__(self, fn: Callable) -> AsyncCallable:
+        async def wrapper(*args: Any, **kwargs: Any) -> Any:
+            decorated_fn = await self.decorator(fn)
+            return await decorated_fn(*args, **kwargs)
 
-    async def __call__(self, fn: Callable) -> AsyncCallable:
-        return await self.decorator(fn)
+        return wrapper
+
+    wrap = __call__
 
 
 class AsyncHumanLayer(BaseModel):
@@ -154,12 +157,12 @@ class AsyncHumanLayer(BaseModel):
             **kwargs,
         )
 
-    async def require_approval(
+    def require_approval(
         self,
         contact_channel: ContactChannel | None = None,
         reject_options: list[ResponseOption] | None = None,
     ) -> AsyncHumanLayerWrapper:
-        # if any of the reject-options have the same name, raise an error
+        # if any of the reject-options have the same names, raise an error
         if reject_options:
             names = [opt.name for opt in reject_options]
             if len(names) != len(set(names)):
