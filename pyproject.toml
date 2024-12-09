@@ -16,6 +16,7 @@ requests = "2.32.3"
 python-slugify = "8.0.4"
 python-dotenv = "1.0.1"
 click = "8.1.7"
+aiohttp = "^3.11.10"
 
 [tool.poetry.scripts]
 hl = "humanlayer.cli.main:cli"
@@ -124,6 +125,7 @@ source = ["humanlayer"]
 "**/test_*.py" = ["S101"]
 "**/*_test.py" = ["S101"]
 "**/approval.py" = ["S101"]
+"**/async_approval.py" = ["S101"]
 
 [tool.ruff.mccabe]
 max-complexity = 12
