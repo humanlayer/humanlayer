@@ -3,6 +3,7 @@ import inspect
 import json
 import logging
 import os
+import re
 import secrets
 from enum import Enum
 from functools import wraps
@@ -11,6 +12,7 @@ from typing import Any, Awaitable, Callable, TypeVar, Union
 from pydantic import BaseModel
 from slugify import slugify
 
+from humanlayer.core.approval import remove_parameter_from_signature
 from humanlayer.core.async_cloud import (
     AsyncCloudHumanLayerBackend,
     AsyncHumanLayerCloudConnection,
@@ -20,6 +22,10 @@ from humanlayer.core.models import (
     ContactChannel,
     FunctionCall,
     FunctionCallSpec,
+    FunctionCallStatus,
+    HumanContact,
+    HumanContactSpec,
+    HumanContactStatus,
     ResponseOption,
 )
 from humanlayer.core.protocol import (
@@ -270,6 +276,101 @@ class AsyncHumanLayer(BaseModel):
 
         return wrapper
 
+    async def human_as_tool(
+        self,
+        contact_channel: ContactChannel | None = None,
+        response_options: list[ResponseOption] | None = None,
+    ) -> Callable[[str], Awaitable[str]]:
+        if response_options:
+            names = [opt.name for opt in response_options]
+            if len(names) != len(set(names)):
+                raise HumanLayerException("response_options must have unique names")
+
+        if self.approval_method is ApprovalMethod.CLI:
+            return self._human_as_tool_cli()
+
+        return self._human_as_tool(contact_channel, response_options)
+
+    def _human_as_tool_cli(
+        self,
+    ) -> Callable[[str], Awaitable[str]]:
+        async def contact_human(
+            question: str,
+        ) -> str:
+            """ask a human a question on the CLI"""
+            print(
+                f"""Agent {self.run_id} requests assistance:
+
+{question}
+"""
+            )
+            # Note: input() is blocking, but that's OK for CLI interaction
+            feedback = input("Please enter a response: \n\n")
+            return feedback
+
+        return contact_human
+
+    def _human_as_tool(
+        self,
+        contact_channel: ContactChannel | None = None,
+        response_options: list[ResponseOption] | None = None,
+    ) -> Callable[[str], Awaitable[str]]:
+        contact_channel = contact_channel or self.contact_channel
+
+        async def contact_human(
+            message: str,
+            subject: str | None = None,
+        ) -> str:
+            """contact a human"""
+            assert self.backend is not None
+
+            # we actually want the contact channel subject
+            # to overrides the model-generated subject, since
+            # it has detail about the thread we're on and how
+            # to keep the reply in-thread
+            if (
+                contact_channel
+                and contact_channel.email
+                and contact_channel.email.experimental_subject_line is not None
+            ):
+                subject = contact_channel.email.experimental_subject_line
+
+            resp = await self.fetch_human_response(
+                HumanContactSpec(
+                    msg=message,
+                    subject=subject,
+                    channel=contact_channel,
+                    response_options=response_options,
+                ),
+            )
+
+            return resp.as_completed()
+
+        if contact_channel is None:
+            return contact_human
+
+        if contact_channel.slack:
+            contact_human.__doc__ = "Contact a human via slack and wait for a response"
+            contact_human.__name__ = "contact_human_in_slack"
+            if contact_channel.slack.context_about_channel_or_user:
+                contact_human.__doc__ += f" in {contact_channel.slack.context_about_channel_or_user}"
+                fn_ctx = contact_channel.slack.context_about_channel_or_user.replace(" ", "_")
+                contact_human.__name__ = f"contact_human_in_slack_in_{fn_ctx}"
+
+        if contact_channel.email:
+            contact_human.__doc__ = "Contact a human via email and wait for a response"
+            contact_human.__name__ = "contact_human_via_email"
+            contact_human.__annotations__ = {"subject": str, "message": str, "return": str}
+            if contact_channel.email.address:
+                fn_ctx = re.sub(r"[^a-zA-Z0-9]+", "_", contact_channel.email.address)
+                fn_ctx = re.sub(r"_+", "_", fn_ctx).strip("_")
+                contact_human.__name__ = f"contact_human_via_email_{fn_ctx}"
+        else:
+            contact_human.__annotations__ = {"message": str, "return": str}
+            contact_human = remove_parameter_from_signature(contact_human, "subject")
+
+        return contact_human
+
     async def fetch_approval(
         self,
         spec: FunctionCallSpec,
@@ -320,3 +421,75 @@ class AsyncHumanLayer(BaseModel):
         """Get a function call asynchronously"""
         assert self.backend is not None, "get requires a backend, did you forget your HUMANLAYER_API_KEY?"
         return await self.backend.functions().get(call_id)
+
+    async def respond_to_function_call(
+        self,
+        call_id: str,
+        status: FunctionCallStatus,
+    ) -> FunctionCall:
+        """Respond to a function call asynchronously"""
+        assert self.backend is not None, "respond requires a backend, did you forget your HUMANLAYER_API_KEY?"
+        return await self.backend.functions().respond(call_id, status)
+
+    async def create_human_contact(
+        self,
+        spec: HumanContactSpec,
+        call_id: str | None = None,
+    ) -> HumanContact:
+        """Create a human contact request asynchronously"""
+        assert self.backend is not None, "create requires a backend, did you forget your HUMANLAYER_API_KEY?"
+        call_id = call_id or self.genid("call")
+        contact = HumanContact(
+            run_id=self.run_id,  # type: ignore
+            call_id=call_id,
+            spec=spec,
+        )
+        return await self.backend.contacts().add(contact)
+
+    async def get_human_contact(
+        self,
+        call_id: str,
+    ) -> HumanContact:
+        """Get a human contact request asynchronously"""
+        assert (
+            self.backend is not None
+        ), "get human response requires a backend, did you forget your HUMANLAYER_API_KEY?"
+        return await self.backend.contacts().get(call_id)
+
+    async def fetch_human_response(
+        self,
+        spec: HumanContactSpec,
+    ) -> HumanContact.Completed:
+        """
+        fetch a human response asynchronously
+        """
+        assert (
+            self.backend is not None
+        ), "fetch human response requires a backend, did you forget your HUMANLAYER_API_KEY?"
+
+        # if no channel is specified, use this HumanLayer instance's contact channel (if any)
+        if spec.channel is None:
+            spec.channel = self.contact_channel
+
+        contact = await self.create_human_contact(spec)
+
+        if self.verbose:
+            print(f"HumanLayer: waiting for human response for {spec.msg}")
+
+        while True:
+            await self.sleep(3)
+            contact = await self.get_human_contact(contact.call_id)
+            if contact.status is None:
+                continue
+            if contact.status.response is None:
+                continue
+            return HumanContact.Completed(contact=contact)
+
+    async def respond_to_human_contact(
+        self,
+        call_id: str,
+        status: HumanContactStatus,
+    ) -> HumanContact:
+        """Respond to a human contact request asynchronously"""
+        assert self.backend is not None, "respond requires a backend, did you forget your HUMANLAYER_API_KEY?"
+        return await self.backend.contacts().respond(call_id, status)
