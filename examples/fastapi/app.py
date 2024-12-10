@@ -60,7 +60,7 @@ async def math_divide(a: int, b: int) -> Dict[str, str | float]:
 # Health check endpoint
 @app.get("/health")
 async def health_check() -> Dict[str, str]:
-    result = await multiply(2, 5)
+    result = await multiply(a=2, b=5)
     if isinstance(result, str):  # Handle denial message
         return {"status": "denied", "message": result}
 
