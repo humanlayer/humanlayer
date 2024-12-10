@@ -3,14 +3,13 @@ import inspect
 import logging
 import os
 import re
-import secrets
 from functools import wraps
 from typing import Any, Awaitable, Callable, Union
 
 from pydantic import BaseModel
 from slugify import slugify
 
-from humanlayer.core.approval import ApprovalMethod, R, T, remove_parameter_from_signature
+from humanlayer.core.approval import ApprovalMethod, R, T, genid, remove_parameter_from_signature
 from humanlayer.core.async_cloud import (
     AsyncCloudHumanLayerBackend,
     AsyncHumanLayerCloudConnection,
@@ -34,10 +33,6 @@ from humanlayer.core.protocol import (
 AsyncCallable = Callable[..., Awaitable[Union[R, str]]]
 
 logger = logging.getLogger(__name__)
-
-
-def genid(prefix: str) -> str:
-    return f"{prefix}-{secrets.token_urlsafe(8)}"
 
 
 class AsyncHumanLayerWrapper:
