@@ -54,6 +54,7 @@ The main application (`app.py`) shows how to:
    ```
 
 3. Handle approvals in endpoints:
+
    ```python
    @app.post("/math/multiply")
    async def math_multiply(a: int, b: int) -> Dict[str, str | int]:
@@ -61,13 +62,13 @@ The main application (`app.py`) shows how to:
        if isinstance(result, str):  # Handle denial message
            return {"status": "denied", "message": result}
        return {"status": "success", "result": result}
-or, with fetch_approval
-   
+   or, with fetch_approval
+
    @app.post("/math/multiply")
    async def math_multiply(a: int, b: int) -> Dict[str, str | int]:
        approval_result = await hl.fetch_approval(
             FunctionCallSpec(
-                fn="multiply", 
+                fn="multiply",
                 kwargs={"a": a, "b": b},
             )
        )
@@ -75,6 +76,7 @@ or, with fetch_approval
            return {"status": "denied", "message": result}
        result = await multiply(a, b)
        return {"status": "success", "result": result}
+   ```
 
 ## Running the Application
 
@@ -133,7 +135,9 @@ Denied operation:
 
 ## Notes
 
-- All operations requiring approval are wrapped with `@hl.require_approval()`
-- Responses must handle both successful operations and denials
-- Use `isinstance(result, str)` to check for denial messages
+- Operations requiring approval can be handled in two ways:
+  1. Using the `@hl.require_approval()` decorator
+  2. Using `hl.fetch_approval()` to explicitly check approval before execution
+- When using `fetch_approval()`, check `approval_result.approved` to handle approvals/denials
 - The health check demonstrates a complete approval flow
+- Responses should handle both successful operations and denials
