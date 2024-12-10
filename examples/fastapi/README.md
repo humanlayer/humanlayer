@@ -61,7 +61,20 @@ The main application (`app.py`) shows how to:
        if isinstance(result, str):  # Handle denial message
            return {"status": "denied", "message": result}
        return {"status": "success", "result": result}
-   ```
+or, with fetch_approval
+   
+   @app.post("/math/multiply")
+   async def math_multiply(a: int, b: int) -> Dict[str, str | int]:
+       approval_result = await hl.fetch_approval(
+            FunctionCallSpec(
+                fn="multiply", 
+                kwargs={"a": a, "b": b},
+            )
+       )
+       if not approval_result.approved:
+           return {"status": "denied", "message": result}
+       result = await multiply(a, b)
+       return {"status": "success", "result": result}
 
 ## Running the Application
 
