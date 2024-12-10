@@ -1,18 +1,16 @@
 import asyncio
 import inspect
-import json
 import logging
 import os
 import re
 import secrets
-from enum import Enum
 from functools import wraps
-from typing import Any, Awaitable, Callable, TypeVar, Union
+from typing import Any, Awaitable, Callable, Union
 
 from pydantic import BaseModel
 from slugify import slugify
 
-from humanlayer.core.approval import remove_parameter_from_signature
+from humanlayer.core.approval import ApprovalMethod, R, T, remove_parameter_from_signature
 from humanlayer.core.async_cloud import (
     AsyncCloudHumanLayerBackend,
     AsyncHumanLayerCloudConnection,
@@ -32,31 +30,14 @@ from humanlayer.core.protocol import (
     HumanLayerException,
 )
 
-# Define TypeVars for input and output types
-T = TypeVar("T")
-R = TypeVar("R")
-
 # Define type aliases for async functions
 AsyncCallable = Callable[..., Awaitable[Union[R, str]]]
 
 logger = logging.getLogger(__name__)
 
 
-class HumanLayerError(Exception):
-    pass
-
-
-class UserDeniedError(HumanLayerError):
-    pass
-
-
 def genid(prefix: str) -> str:
     return f"{prefix}-{secrets.token_urlsafe(8)}"
-
-
-class ApprovalMethod(Enum):
-    CLI = "cli"
-    BACKEND = "backend"
 
 
 class AsyncHumanLayerWrapper:
@@ -170,7 +151,7 @@ class AsyncHumanLayer(BaseModel):
 
         async def decorator(fn):  # type: ignore
             if self.approval_method is ApprovalMethod.CLI:
-                return await self._approve_cli(fn)
+                raise HumanLayerException("CLI approval method is not supported for async HumanLayer")
 
             return await self._approve_with_backend(
                 fn=fn,
@@ -179,42 +160,6 @@ class AsyncHumanLayer(BaseModel):
             )
 
         return AsyncHumanLayerWrapper(decorator)
-
-    async def _approve_cli(self, fn: Callable[[T], R]) -> AsyncCallable:
-        """
-        Async CLI approval method that wraps a function with CLI-based approval flow.
-
-        Args:
-            fn: Either a sync or async function to be wrapped
-
-        Returns:
-            AsyncCallable: An async function that handles the approval flow before executing fn.
-            On approval, returns the original function's return type R.
-            On rejection/error, returns a string message.
-        """
-
-        @wraps(fn)
-        async def wrapper(*args: Any, **kwargs: Any) -> Union[R, str]:
-            print(
-                f"""Agent {self.run_id} wants to call
-
-{fn.__name__}({json.dumps(kwargs, indent=2)})
-
-{"" if not args else " with args: " + str(args)}"""
-            )
-            # Note: input() is blocking, but that's OK for CLI interaction
-            feedback = input("Hit ENTER to proceed, or provide feedback to the agent to deny: \n\n")
-            if feedback not in {None, ""}:
-                return str(UserDeniedError(f"User denied {fn.__name__} with feedback: {feedback}"))
-            try:
-                if inspect.iscoroutinefunction(fn):
-                    result: R = await fn(*args, **kwargs)
-                    return result
-                return fn(*args, **kwargs)
-            except Exception as e:
-                return f"Error running {fn.__name__}: {e}"
-
-        return wrapper
 
     async def _approve_with_backend(
         self,
