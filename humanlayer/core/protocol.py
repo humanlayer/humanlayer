@@ -1,4 +1,4 @@
-from typing import Generic, Iterable, TypeVar
+from typing import Generic, Iterable, NoReturn, TypeVar
 
 import aiohttp
 import requests
@@ -68,28 +68,28 @@ class HumanLayerException(Exception):
         raise HumanLayerException(f"{e}: {getattr(resp, 'text', str(e))}")
 
     @staticmethod
-    def _raise_client_error(resp: aiohttp.ClientResponse) -> "HumanLayerException":
+    def _raise_client_error(resp: aiohttp.ClientResponse) -> None:
         e = aiohttp.ClientResponseError(
             request_info=resp.request_info,
             history=resp.history,
             status=resp.status,
         )
-        return HumanLayerException(f"{e}: {e!s}")
+        raise HumanLayerException(f"{e}: {e!s}")
 
     @staticmethod
-    def _raise_request_error(resp: requests.Response) -> "HumanLayerException":
+    def _raise_request_error(resp: requests.Response) -> None:
         try:
             resp.raise_for_status()
         except requests.HTTPError as e:
-            return HumanLayerException(f"{e}: {resp.text}")
-        return HumanLayerException("Unknown error")  # Should never reach here
+            raise HumanLayerException(f"{e}: {resp.text}") from e
+        raise HumanLayerException("Unknown error")  # Should never reach here
 
     @staticmethod
-    def raise_for_status(resp: requests.Response | aiohttp.ClientResponse) -> "HumanLayerException":
+    def raise_for_status(resp: requests.Response | aiohttp.ClientResponse) -> NoReturn:
         """Maintains compatibility with both raise HumanLayerException.raise_for_status()
         and HumanLayerException.raise_for_status() patterns"""
         if isinstance(resp, requests.Response):
-            return HumanLayerException._raise_request_error(resp)
+            HumanLayerException._raise_request_error(resp)
         elif not resp.ok:  # aiohttp case
-            return HumanLayerException._raise_client_error(resp)
-        return HumanLayerException("Unknown error")  # Should never reach here
+            HumanLayerException._raise_client_error(resp)
+        raise HumanLayerException("Unknown error")  # Should never reach here
