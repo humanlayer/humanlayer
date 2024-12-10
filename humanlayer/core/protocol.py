@@ -1,5 +1,6 @@
 from typing import Generic, Iterable, TypeVar
 
+import aiohttp
 import requests
 
 from humanlayer.core.models import (
@@ -63,8 +64,32 @@ class AdminBackend:
 
 class HumanLayerException(Exception):
     @staticmethod
-    def raise_for_status(resp: requests.Response) -> None:
+    def _handle_response_error(resp: requests.Response | aiohttp.ClientResponse, e: Exception) -> None:
+        raise HumanLayerException(f"{e}: {getattr(resp, 'text', str(e))}")
+
+    @staticmethod
+    def _raise_client_error(resp: aiohttp.ClientResponse) -> "HumanLayerException":
+        e = aiohttp.ClientResponseError(
+            request_info=resp.request_info,
+            history=resp.history,
+            status=resp.status,
+        )
+        return HumanLayerException(f"{e}: {e!s}")
+
+    @staticmethod
+    def _raise_request_error(resp: requests.Response) -> "HumanLayerException":
         try:
             resp.raise_for_status()
         except requests.HTTPError as e:
-            raise HumanLayerException(f"{e}: {resp.text}") from e
+            return HumanLayerException(f"{e}: {resp.text}")
+        return HumanLayerException("Unknown error")  # Should never reach here
+
+    @staticmethod
+    def raise_for_status(resp: requests.Response | aiohttp.ClientResponse) -> "HumanLayerException":
+        """Maintains compatibility with both raise HumanLayerException.raise_for_status()
+        and HumanLayerException.raise_for_status() patterns"""
+        if isinstance(resp, requests.Response):
+            return HumanLayerException._raise_request_error(resp)
+        elif not resp.ok:  # aiohttp case
+            return HumanLayerException._raise_client_error(resp)
+        return HumanLayerException("Unknown error")  # Should never reach here
