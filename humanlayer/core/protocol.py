@@ -1,4 +1,4 @@
-from typing import Generic, Iterable, NoReturn, TypeVar
+from typing import Generic, Iterable, TypeVar
 
 import aiohttp
 import requests
@@ -82,14 +82,12 @@ class HumanLayerException(Exception):
             resp.raise_for_status()
         except requests.HTTPError as e:
             raise HumanLayerException(f"{e}: {resp.text}") from e
-        raise HumanLayerException("Unknown error")  # Should never reach here
 
     @staticmethod
-    def raise_for_status(resp: requests.Response | aiohttp.ClientResponse) -> NoReturn:
+    def raise_for_status(resp: requests.Response | aiohttp.ClientResponse) -> None:
         """Maintains compatibility with both raise HumanLayerException.raise_for_status()
         and HumanLayerException.raise_for_status() patterns"""
         if isinstance(resp, requests.Response):
             HumanLayerException._raise_request_error(resp)
         elif not resp.ok:  # aiohttp case
             HumanLayerException._raise_client_error(resp)
-        raise HumanLayerException("Unknown error")  # Should never reach here
