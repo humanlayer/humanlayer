@@ -60,7 +60,7 @@ call_id = pending_approval.call_id
 
 Store your agent's workflow state so you can resume it when the webhook arrives. Common approaches include:
 
-#### Dictionary Storage (Simple)
+#### Dictionary Storage
 
 ```python
 # In-memory storage (for demonstration)
@@ -68,14 +68,13 @@ operations = {}
 operations[call_id] = pending_approval
 ```
 
-#### Database Storage (Production)
+#### Database Storage
 
 ```python
 # Using your preferred database
 await db.operations.insert({
     "call_id": call_id,
-    "status": "pending",
-    "spec": pending_approval.spec.model_dump(),
+    "object": pending_approval.spec.model_dump(mode="json"),
     "created_at": datetime.now()
 })
 ```
@@ -84,9 +83,18 @@ await db.operations.insert({
 
 Create an endpoint in your application to receive webhook notifications:
 
+Set up an endpoint on your server that will:
+
+- Receive POST requests from HumanLayer
+- Validate webhook signatures
+- Process the incoming webhook data
+
 ```python
 @app.post("/webhook/inbound")
 async def webhook_inbound(webhook: FunctionCall) -> Dict[str, str]:
+    # todo validate webhook signature
+    ...
+
     # Retrieve the operation using call_id
     call_id = webhook.call_id
 
@@ -104,6 +112,9 @@ async def webhook_inbound(webhook: FunctionCall) -> Dict[str, str]:
     return {"status": "ok"}
 ```
 
+Webhooks will be sent with the fully completed [FunctionCall](/api-reference/function-calls) or [HumanContact](/api-reference/human-contacts) object,
+which will include the `call_id` you set during creation, as well as the resolved response in `status`.
+
 ### 5. Configure Webhook in Dashboard
 
 In the [HumanLayer Dashboard](https://app.humanlayer.dev):
@@ -114,14 +125,13 @@ In the [HumanLayer Dashboard](https://app.humanlayer.dev):
    - `function_call.completed`
    - `human_contact.completed`
 
-### 6. Handle Webhook Response
+### 6. Approve the request
 
-When your endpoint receives a webhook:
+Approve the request using any of the supported channels in HumanLayer, e.g. the web app, slack, email, etc.
 
-1. Validate the webhook payload
-2. Update your stored operation state
-3. Execute any approved operations
-4. Return a success response
+### 7. Handle the payload
+
+The approval should trigger a webhook to your endpoint, which will include the fully completed [FunctionCall](/api-reference/function-calls) or [HumanContact](/api-reference/human-contacts) object.
 
 ## Complete Example
 
