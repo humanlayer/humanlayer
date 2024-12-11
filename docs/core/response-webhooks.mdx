@@ -14,22 +14,22 @@ recommend using one of the following methods instead:
 - [fetch response](/core/human-as-tool#fetch-response)
 
 <Note>
-  Response Webhooks are currently in alpha. If you'd like to help us test and
+  Response Webhooks are currently in beta. If you'd like to help us test and
   improve the feature, please reach out to us at contact@humanlayer.dev
 </Note>
 
 ## Overview
 
-Using response webhooks generally involves a few steps. We'll use the term "operation" to refer to the agent request being approved / responded to.
+Using response webhooks generally involves a few steps:
 
 1. [Choose a way you'll uniquely identify the operation](#1-choose-an-operation-identifier)
-2. [Create an operation ](#2-create-the-operation) for [approval](/core/human-as-tool#creating-and-fetching) or [human contact](/core/human-as-tool#creating-and-fetching)
-   - if you are using an external identifier, set it as the `call_id` during creation
+2. [Create an operation](#2-create-the-operation)
+3. [Store your agent's workflow state](#3-store-operation-state)
+4. [Create a webhook endpoint](#4-create-webhook-endpoint)
+5. [Configure webhook in HumanLayer](#5-configure-webhook-in-dashboard)
+6. [Handle webhook responses](#6-handle-webhook-response)
 
-- [Store your agent's workflow state / running context window](#3-store-operation-state) somewhere, in a way that you can look it up by the operation's identifier
-- Create a webhook endpoint on your server that will receive notifications from HumanLayer
-- Add your webhook endpoint as a callback URL in the HumanLayer dashboard, subscribing to the approval_completed or human_contact_completed events
-- When a valid webhook is received, look up the operation's state using the identifier you chose, append the human's response to the context window, and continue the agent's workflow
+You can find a complete working example in our [FastAPI Webhooks Example](https://github.com/humanlayer/humanlayer/tree/main/examples/fastapi-webhooks).
 
 ### 1. Choose an Operation Identifier
 
@@ -43,59 +43,93 @@ First, decide how you'll uniquely identify each operation in your system. You ha
 
 Use the appropriate creation endpoint based on your needs:
 
-- For approvals: Use the [approval creation endpoint](/core/human-as-tool#creating-and-fetching)
-- For human contact: Use the [human contact creation endpoint](/core/human-as-tool#creating-and-fetching)
+```python
+# Create a pending approval
+pending_approval = await hl.create_function_call(
+    spec=FunctionCallSpec(
+        fn="purchase_materials",
+        kwargs={"material": "wood", "quantity": 10},
+    )
+)
 
-If you're using an external identifier, make sure to set it as the `call_id` parameter during creation.
-
-After creating the operation, you'll want to pause your workflow somehow. For example, in LangGraph you can use the [NodeInterrupt exception](https://langchain-ai.github.io/langgraph/how-tos/human_in_the_loop/dynamic_breakpoints/) to halt execution.
+# Store the call_id for later use
+call_id = pending_approval.call_id
+```
 
 ### 3. Store Operation State
 
-Implement a storage solution for your agent's workflow state and context so you can resume it when the webhook response arrives. The way you do this will be framework-specific, but a few examples include
+Store your agent's workflow state so you can resume it when the webhook arrives. Common approaches include:
 
-- [Database Storage](#database-storage)
-- [Orchestrator State](#orchestrator-state)
+#### Dictionary Storage (Simple)
 
-#### Database Storage
+```python
+# In-memory storage (for demonstration)
+operations = {}
+operations[call_id] = pending_approval
+```
 
-Store your context in a SQL database with fields like:
+#### Database Storage (Production)
 
-- Operation ID
-- Agent state
-- Message history
-- Timestamp
-
-#### State Management
-
-Use a state management solution like LangGraph to maintain your agent's context. In this case you'll want to use a LangGraph identifier as your call ID.
+```python
+# Using your preferred database
+await db.operations.insert({
+    "call_id": call_id,
+    "status": "pending",
+    "spec": pending_approval.spec.model_dump(),
+    "created_at": datetime.now()
+})
+```
 
 ### 4. Create Webhook Endpoint
 
-Set up an endpoint on your server that will:
+Create an endpoint in your application to receive webhook notifications:
 
-- Receive POST requests from HumanLayer
-- Validate webhook signatures
-- Process the incoming webhook data
+```python
+@app.post("/webhook/inbound")
+async def webhook_inbound(webhook: FunctionCall) -> Dict[str, str]:
+    # Retrieve the operation using call_id
+    call_id = webhook.call_id
 
-Webhooks will be sent with the fully completed [FunctionCall](/api-reference/function-calls) or [HumanContact](/api-reference/human-contacts) object,
-which will include the `call_id` you set during creation, as well as the resolved response in `status`.
+    # Update operation status
+    operations[call_id] = webhook
+
+    # Handle approval/rejection
+    if webhook.status is not None and webhook.status.approved:
+        # Execute the approved operation
+        await execute_operation(webhook.spec.fn, webhook.spec.kwargs)
+    else:
+        print(f"Operation {call_id} denied")
+        # or append the rejection to an LLM context window and let it try again
+
+    return {"status": "ok"}
+```
 
 ### 5. Configure Webhook in Dashboard
 
-In the HumanLayer dashboard:
+In the [HumanLayer Dashboard](https://app.humanlayer.dev):
 
-- Navigate to the webhooks section
-- Add your endpoint URL
-- Subscribe to relevant events:
-  - `approval_completed`
-  - `human_contact_completed`
+1. Navigate to `Response Webhooks`
+2. Create a new endpoint with your URL
+3. Subscribe to relevant events:
+   - `function_call.completed`
+   - `human_contact.completed`
 
 ### 6. Handle Webhook Response
 
 When your endpoint receives a webhook:
 
-- Look up the operation using your chosen identifier
-- Retrieve the stored agent state/context
-- Append the human's response to the context
-- Resume your agent's workflow with the updated information
+1. Validate the webhook payload
+2. Update your stored operation state
+3. Execute any approved operations
+4. Return a success response
+
+## Complete Example
+
+For a complete working example including ngrok setup for local development, see our [FastAPI Webhooks Example](https://github.com/humanlayer/humanlayer/tree/main/examples/fastapi-webhooks).
+
+The example demonstrates:
+
+- Setting up a FastAPI application with webhook handling
+- Managing operation state
+- Processing approvals and rejections
+- Local development with ngrok
