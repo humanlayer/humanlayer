@@ -1,3 +1,14 @@
+## 0.6.3
+
+### Features
+
+- Added async support for HumanLayer python SDK with `AsyncHumanLayer` class ([example](https://github.com/humanlayer/humanlayer/tree/main/examples/fastapi))
+- Added FastAPI example demonstrating webhooks and async usage ([example](https://github.com/humanlayer/humanlayer/tree/main/examples/fastapi-webhooks))
+
+### Documentation
+
+- Improved webhook documentation and added concrete examples
+
 ## 0.6.2
 
 ### Features
