@@ -59,8 +59,8 @@ class AsyncHumanLayerCloudConnection(BaseModel):
                 response.status,
                 json.dumps(response_json, indent=2),
             )
-            if not response.ok:
-                raise HumanLayerException.raise_for_status(response)
+            HumanLayerException.raise_for_status(response)
+
             return dict(response_json)
 
 
