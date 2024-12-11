@@ -2,6 +2,8 @@
 
 This example demonstrates how to use HumanLayer webhooks with FastAPI.
 
+[![thumbnail](./img/thumb.png)](https://www.loom.com/share/e9a65173098749e2917d04bf0a6a56dc)
+
 ## Overview
 
 This example uses a "purchase materials" endpoint that requires human approval.
@@ -38,7 +40,6 @@ This is obviously a bit of a toy example, but you can use it to see how webhooks
    cp .env.example .env
    # Add your keys to .env:
    # HUMANLAYER_API_KEY=your_key_here
-   # OPENAI_API_KEY=your_key_here
    ```
 
 4. Get an ngrok.com account and claim your free static subdomain.
