@@ -2,6 +2,6 @@ langchain
 langchain-anthropic
 python-dotenv
 # install humanlayer
-humanlayer==0.6.2
+humanlayer==0.6.3-rc2
 # or if you want an editable version
 # -e ../../
