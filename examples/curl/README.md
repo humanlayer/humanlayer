@@ -23,7 +23,8 @@ curl -X POST https://api.humanlayer.dev/humanlayer/v1/function_calls \
     "fn": "send_email",
     "kwargs": {
       "to": "user@example.com",
-      "subject": "Hello"
+      "subject": "Hello",
+      "body": "This is a test email"
     }
   }
 }'
@@ -50,7 +51,8 @@ This will create a new approval request with a randomly generated UUID. The outp
     "fn": "send_email",
     "kwargs": {
       "to": "user@example.com",
-      "subject": "Hello"
+      "subject": "Hello",
+      "body": "This is a test email"
     }
   },
   "status": {
@@ -62,10 +64,10 @@ This will create a new approval request with a randomly generated UUID. The outp
 
 ### 2. Check Approval Status
 
-Check the status of your approval request:
+Check the status of your approval request, using the call_id from the approval request:
 
 ```bash
-make check-approval
+make check-approval random_id=1234-5678-...
 ```
 
 If not yet approved, you'll see:
@@ -78,7 +80,8 @@ If not yet approved, you'll see:
     "fn": "send_email",
     "kwargs": {
       "to": "user@example.com",
-      "subject": "Hello"
+      "subject": "Hello",
+      "body": "This is a test email"
     }
   },
   "status": {
@@ -98,7 +101,8 @@ Once approved:
     "fn": "send_email",
     "kwargs": {
       "to": "user@example.com",
-      "subject": "Hello"
+      "subject": "Hello",
+      "body": "This is a test email"
     }
   },
   "status": {

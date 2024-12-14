@@ -1,5 +1,4 @@
-
-random_id = $(shell uuidgen)
+random_id = curl-example-$(shell date +%s)
 HUMANLAYER_API_BASE = https://api.humanlayer.dev/humanlayer/v1
 
 .PHONY: check-api-key
@@ -12,7 +11,7 @@ check-jq:
 
 .PHONY: create-approval
 create-approval: check-api-key check-jq
-	curl -X POST $(HUMANLAYER_API_BASE)/function_calls \
+	@curl -s -X POST $(HUMANLAYER_API_BASE)/function_calls \
 		-H "Authorization: Bearer ${HUMANLAYER_API_KEY}" \
 		-H "Content-Type: application/json" \
 		-d '{ \
@@ -22,27 +21,26 @@ create-approval: check-api-key check-jq
 				"fn": "send_email", \
 				"kwargs": { \
 					"to": "user@example.com", \
-					"subject": "Hello" \
+					"subject": "Hello", \
+					"body": "This is a test email" \
 				} \
 			} \
 		}' | jq .
 
-check-approval: check-api-key check-jq
-	curl -X GET $(HUMANLAYER_API_BASE)/function_calls/curl-example/$(random_id) \
-		-H "Authorization: Bearer ${HUMANLAYER_API_KEY}" \
-		-H "Content-Type: application/json" | jq .
-
-
 .PHONY:
 run-agent: check-api-key check-jq
+	: creating approval
 	@$(MAKE) create-approval
-	@$(MAKE) check-approval
-	while [ "$(shell curl -X GET $(HUMANLAYER_API_BASE)/function_calls/curl-example/$(random_id) \
+	: polling for approval status
+	@while curl -s -X GET $(HUMANLAYER_API_BASE)/function_calls/$(random_id) \
 		-H "Authorization: Bearer ${HUMANLAYER_API_KEY}" \
-		-H "Content-Type: application/json" | jq -r '.status.approved')" != "true" ]; do
-		sleep 3
-		echo "waiting for approval"
+		-H "Content-Type: application/json" | jq -r '.status.approved' | grep -q null; do \
+		sleep 3; \
+		curl -s -X GET $(HUMANLAYER_API_BASE)/function_calls/$(random_id) \
+			-H "Authorization: Bearer ${HUMANLAYER_API_KEY}" \
+			-H "Content-Type: application/json" | jq -r '.status.approved'; \
 	done
-	@echo "approval granted with comment $(shell curl -X GET $(HUMANLAYER_API_BASE)/function_calls/curl-example/$(random_id) \
+	: response received
+	@curl -s -X GET $(HUMANLAYER_API_BASE)/function_calls/$(random_id) \
 		-H "Authorization: Bearer ${HUMANLAYER_API_KEY}" \
-		-H "Content-Type: application/json" | jq -r '.status.comment')"
+		-H "Content-Type: application/json" | jq -r '.status'
