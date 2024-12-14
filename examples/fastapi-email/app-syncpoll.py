@@ -1,14 +1,18 @@
 # a webhooks-free version
+import logging
 from enum import Enum
 import random
-from fastapi import FastAPI, HTTPException
+from fastapi import BackgroundTasks, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Any, Dict, List, Literal, TypedDict
+
+from pydantic import BaseModel
 from humanlayer import AsyncHumanLayer, FunctionCall, FunctionCallSpec
 from humanlayer.core.models import ContactChannel, EmailContactChannel, HumanContact, HumanContactSpec
-from .types import EmailPayload
 
 app = FastAPI(title="HumanLayer FastAPI Email Example", version="1.0.0")
+
+logger = logging.getLogger(__name__)
 
 
 # Root endpoint
@@ -32,20 +36,12 @@ class CampaignRequest(TypedDict):
     intent: Literal["ready_to_create_campaign"]
 
 
-class UnknownRequest(TypedDict):
-    intent: Literal["next_step_unknown"]
-    message: str
-
-
-# dummy method, replace with your AI / classifier of choice
-def determine_next_step(thread: "Thread") -> ClarificationRequest | CampaignRequest | UnknownRequest:
+def determine_next_step(thread: "Thread") -> ClarificationRequest | CampaignRequest:
     """determine the next step in the email thread"""
     if "campaign" in str(thread["events"][-1]["data"]).lower():
-        return CampaignRequest()
-    elif "campaign" not in str(thread["initial_email"]).lower():
-        return ClarificationRequest(message="Please clarify the campaign details")
+        return CampaignRequest(intent="ready_to_create_campaign")
     else:
-        return UnknownRequest(message="Unknown request")
+        return ClarificationRequest(intent="request_more_information", message="Please clarify the campaign details")
 
 
 class CampaignItem(TypedDict):
@@ -80,11 +76,11 @@ def draft_or_redraft_campaign(thread_history: "Thread") -> Campaign:
 
 def publish_campaign(campaign: Campaign) -> None:
     """tool to publish a campaign"""
-    print(f"Published campaign {campaign.id} at {campaign.url}")
+    print(f"Published campaign {campaign['id']} at {campaign['url']}")
 
 
 ##########################
-########  State   ########
+######## CONTEXT #########
 ##########################
 class EventType(Enum):
     EMAIL_RECEIVED = "email_received"
@@ -95,7 +91,7 @@ class EventType(Enum):
     CAMPAIGN_DRAFTED = "campaign_drafted"
     HUMAN_SUPPLIED_CAMPAIGN_DRAFT_FEEDBACK = "human_supplied_campaign_draft_feedback"
 
-    DRAFT_PUBLISHED = "draft_published"
+    CAMPAIGN_PUBLISHED = "campaign_published"
 
 
 class Event(TypedDict):
@@ -104,37 +100,52 @@ class Event(TypedDict):
 
 
 class Thread(TypedDict):
-    initial_email: EmailPayload
+    initial_email: "EmailPayload"
     events: list[Event]
 
-    # example of how you can use this as the rolling context state for the LLM
-    def to_prompt(self) -> str:
-        """convert the thread to a prompt for the LLM"""
-        history = "\n\n".join([f"{event.type} ==> {event.data}" for event in self.events])
 
-        return f"""
-        Email Thread:
-        {self.initial_email.body}
+# example of how you can use this as the rolling context state for the LLM
+def to_prompt(thread: Thread) -> str:
+    """convert the thread to a prompt for the LLM"""
+    history = "\n\n".join([f"{event['type']} ==> {event['data']}" for event in thread["events"]])
 
-        Steps taken so far:
-        {history}
+    return f"""
+    Email Thread:
+    {thread["initial_email"].body}
 
-        Select the next action to take, it should be one of:
+    Steps taken so far:
+    {history}
 
-        - request_more_information(message: str)
-        - ready_to_create_campaign()
-        - next_step_unknown(message: str)
-        """
+    Select the next action to take, it should be one of:
+
+    - request_more_information(message: str)
+    - ready_to_create_campaign()
+    """
 
 
 ##########################
 ######## Handlers ########
 ##########################
-@app.get("/webhook/new-email-thread")
-async def email_inbound(email_payload: EmailPayload) -> Dict[str, Any]:
-    """
-    route to kick off new processing thread from an email
-    """
+class EmailMessage(BaseModel):
+    from_address: str
+    to_address: list[str]
+    cc_address: list[str]
+    subject: str
+    content: str
+    datetime: str
+
+
+class EmailPayload(BaseModel):
+    from_address: str
+    to_address: str
+    subject: str
+    body: str
+    message_id: str
+    previous_thread: list[EmailMessage] | None = None
+    raw_email: str
+
+
+async def handle_inbound_email(email_payload: EmailPayload) -> None:
     thread_id = email_payload.message_id  # for emails, can use the message id as the unique thread identifier
     thread = Thread(initial_email=email_payload, events=[])
 
@@ -149,51 +160,78 @@ async def email_inbound(email_payload: EmailPayload) -> Dict[str, Any]:
         ),
     )
 
-    thread.events.append(Event(type=EventType.EMAIL_RECEIVED, data=email_payload))
+    thread["events"].append(Event(type=EventType.EMAIL_RECEIVED, data=email_payload))
 
     while True:
         next_step = determine_next_step(thread)
-        if isinstance(next_step, UnknownRequest):
-            # todo warn or something
-            return {"status": "ok"}
-
-        elif isinstance(next_step, ClarificationRequest):
-            thread.events.append(Event(type=EventType.REQUEST_MORE_INFORMATION, data=next_step.message))
+        logger.info(f"next_step: {next_step}")
+        if next_step["intent"] == "request_more_information":
+            thread["events"].append(Event(type=EventType.REQUEST_MORE_INFORMATION, data=next_step["message"]))
 
             # send the question on the email thread and block until the human responds
-            response = await humanlayer.fetch_human_response(
-                spec=HumanContactSpec(
-                    message=next_step.message,
+            response = (
+                await humanlayer.fetch_human_response(
+                    spec=HumanContactSpec(
+                        msg=next_step["message"],
+                    )
                 )
             ).as_completed()
+            logger.info(f"response: {response}")
 
-            thread.events.append(
+            thread["events"].append(
                 Event(type=EventType.HUMAN_SUPPLIED_MORE_INFORMATION, data={"human_response": response})
             )
 
-        elif isinstance(next_step, CampaignRequest):
+        elif next_step["intent"] == "ready_to_create_campaign":
             campaign_info = draft_or_redraft_campaign(thread)
-            thread.events.append(Event(type=EventType.CAMPAIGN_DRAFTED, data=campaign_info))
-            approval_response = await humanlayer.fetch_approval(
-                spec=FunctionCallSpec(
-                    fn="publish_campaign",
-                    kwargs={
-                        "inbound_request": email_payload.body,
-                        "campaign_info": campaign_info,
-                        "thought": "the preview campaign is live - is this good to publish?",
-                    },
+            logger.info(f"drafted campaign_info: {campaign_info}")
+            thread["events"].append(Event(type=EventType.CAMPAIGN_DRAFTED, data=campaign_info))
+            logger.info(f"getting approval from human for campaign {campaign_info['id']}")
+            approval_response = (
+                await humanlayer.fetch_approval(
+                    spec=FunctionCallSpec(
+                        fn="publish_campaign",
+                        kwargs={
+                            "inbound_request": email_payload.body,
+                            "campaign_info": campaign_info,
+                            "thought": "the preview campaign is live - is this good to publish?",
+                        },
+                    )
                 )
             ).as_completed()
 
+            logger.info(f"approval_response: {approval_response}")
+
             if approval_response.approved is False:
-                thread.events.append(Event(type=EventType.HUMAN_DENIED_PUBLISH, data=approval_response.comment))
+                thread["events"].append(
+                    Event(type=EventType.HUMAN_SUPPLIED_CAMPAIGN_DRAFT_FEEDBACK, data=approval_response.comment)
+                )
+                logger.info("appended human feedback to thread, trying again")
                 continue
             else:
                 publish_campaign(campaign_info)
-                return {"status": "ok"}
+                thread["events"].append(Event(type=EventType.CAMPAIGN_PUBLISHED, data=campaign_info))
+                logger.info("campaign_published, returning")
+
+
+@app.post("/webhook/new-email-thread")
+async def email_inbound(email_payload: EmailPayload, background_tasks: BackgroundTasks) -> Dict[str, Any]:
+    """
+    route to kick off new processing thread from an email
+    """
+    # test payload
+    if email_payload.from_address == "overworked-admin@coolcompany.com":
+        logger.info("test payload received, skipping")
+        return {"status": "ok"}
+
+    background_tasks.add_task(handle_inbound_email, email_payload)
+
+    return {"status": "ok"}
 
 
 if __name__ == "__main__":
     import uvicorn
+
+    logging.basicConfig(level=logging.INFO)
 
     uvicorn.run(app, host="0.0.0.0", port=8000)  # noqa: S104
