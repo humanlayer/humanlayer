@@ -79,6 +79,12 @@ def publish_campaign(campaign: Campaign) -> None:
     print(f"Published campaign {campaign['id']} at {campaign['url']}")
 
 
+# dummy method...use a classifier or whatever you want
+def is_approval(message: str) -> bool:
+    """check if the human approved the campaign"""
+    return message.lower() in ["yes", "y", "affirmative", "approve", "approved"]
+
+
 ##########################
 ######## CONTEXT #########
 ##########################
@@ -146,11 +152,9 @@ class EmailPayload(BaseModel):
 
 
 async def handle_inbound_email(email_payload: EmailPayload) -> None:
-    thread_id = email_payload.message_id  # for emails, can use the message id as the unique thread identifier
     thread = Thread(initial_email=email_payload, events=[])
 
     humanlayer = AsyncHumanLayer(
-        run_id=thread_id,  # will be added to all requests for this email thread
         contact_channel=ContactChannel(
             email=EmailContactChannel.in_reply_to(
                 from_address=email_payload.from_address,
@@ -163,8 +167,11 @@ async def handle_inbound_email(email_payload: EmailPayload) -> None:
     thread["events"].append(Event(type=EventType.EMAIL_RECEIVED, data=email_payload))
 
     while True:
+        # determine the next step to take
         next_step = determine_next_step(thread)
         logger.info(f"next_step: {next_step}")
+
+        # llm decided it needs more information
         if next_step["intent"] == "request_more_information":
             thread["events"].append(Event(type=EventType.REQUEST_MORE_INFORMATION, data=next_step["message"]))
 
@@ -182,36 +189,40 @@ async def handle_inbound_email(email_payload: EmailPayload) -> None:
                 Event(type=EventType.HUMAN_SUPPLIED_MORE_INFORMATION, data={"human_response": response})
             )
 
+        # llm decided its ready to create a campaign
         elif next_step["intent"] == "ready_to_create_campaign":
+            # draft the campaign, probably an llm again
             campaign_info = draft_or_redraft_campaign(thread)
+
             logger.info(f"drafted campaign_info: {campaign_info}")
             thread["events"].append(Event(type=EventType.CAMPAIGN_DRAFTED, data=campaign_info))
+
+            # send the campaign to the human for approval
             logger.info(f"getting approval from human for campaign {campaign_info['id']}")
-            approval_response = (
-                await humanlayer.fetch_approval(
-                    spec=FunctionCallSpec(
-                        fn="publish_campaign",
-                        kwargs={
-                            "inbound_request": email_payload.body,
-                            "campaign_info": campaign_info,
-                            "thought": "the preview campaign is live - is this good to publish?",
-                        },
-                    )
-                )
-            ).as_completed()
+            msg = f"""
+            The preview campaign is live at {campaign_info["url"]}\n\n
+            Campaign Details:\n""" + "\n".join([
+                f"- Title: {item['name']}\n- Description: {item['description']}" for item in campaign_info["items"]
+            ])
+
+            approval_response = (await humanlayer.fetch_human_response(spec=HumanContactSpec(msg=msg))).as_completed()
 
             logger.info(f"approval_response: {approval_response}")
+            thread["events"].append(
+                Event(type=EventType.HUMAN_SUPPLIED_CAMPAIGN_DRAFT_FEEDBACK, data=approval_response)
+            )
 
-            if approval_response.approved is False:
-                thread["events"].append(
-                    Event(type=EventType.HUMAN_SUPPLIED_CAMPAIGN_DRAFT_FEEDBACK, data=approval_response.comment)
-                )
-                logger.info("appended human feedback to thread, trying again")
+            if not is_approval(approval_response):
                 continue
-            else:
-                publish_campaign(campaign_info)
-                thread["events"].append(Event(type=EventType.CAMPAIGN_PUBLISHED, data=campaign_info))
-                logger.info("campaign_published, returning")
+
+            # todo could do some error handling here as well
+            publish_campaign(campaign_info)
+            thread["events"].append(Event(type=EventType.CAMPAIGN_PUBLISHED, data=campaign_info))
+            logger.info("campaign_published, returning")
+            await humanlayer.create_human_contact(
+                HumanContactSpec(msg="Approved and published campaign. Closing this thread.")
+            )
+            break
 
 
 @app.post("/webhook/new-email-thread")
