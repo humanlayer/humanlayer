@@ -2,7 +2,6 @@
 
 This example demonstrates how to use HumanLayer email with FastAPI.
 
-
 ### todo video
 
 ## Overview
@@ -11,7 +10,7 @@ This example showcases a campaign creation workflow.
 
 The workflow is:
 
-- Send an email to a HumanLayer agent email 
+- Send an email to a HumanLayer agent email
 - HumanLayer will send the webhook to the `/webhook/inbound` endpoint here
 - email is classified into one of the following intents:
   - `ready_to_create_campaign`

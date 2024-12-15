@@ -1,14 +1,14 @@
 # a webhooks-free version
 import logging
 from enum import Enum
-import random
-from fastapi import BackgroundTasks, FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from typing import Any, Dict, List, Literal, TypedDict
+from fastapi import BackgroundTasks, FastAPI
+from typing import Any, Dict, Literal, Union
+import marvin
+
 
 from pydantic import BaseModel
-from humanlayer import AsyncHumanLayer, FunctionCall, FunctionCallSpec
-from humanlayer.core.models import ContactChannel, EmailContactChannel, HumanContact, HumanContactSpec
+from humanlayer import AsyncHumanLayer
+from humanlayer.core.models import ContactChannel, EmailContactChannel, HumanContactSpec
 
 app = FastAPI(title="HumanLayer FastAPI Email Example", version="1.0.0")
 
@@ -24,65 +24,67 @@ async def root() -> Dict[str, str]:
     }
 
 
-####################################
-########  Tools/Biz Logic   ########
-####################################
-class ClarificationRequest(TypedDict):
+##############################
+########  Biz Logic   ########
+##############################
+class ClarificationRequest(BaseModel):
     intent: Literal["request_more_information"]
     message: str
 
 
-class CampaignRequest(TypedDict):
+class CampaignRequest(BaseModel):
     intent: Literal["ready_to_create_campaign"]
+    campaign: "Campaign"
 
 
-def determine_next_step(thread: "Thread") -> ClarificationRequest | CampaignRequest:
+# # dummy method, replace with your deterministic or LLM-backed workflow of choice
+# # you can build this to use specifc args, or just build this method
+# # to dump the entire thread history as LLM context for the redraft,
+# # since it will include the previous draft and the feedback from the human
+async def determine_next_step(thread: "Thread") -> ClarificationRequest | CampaignRequest:
     """determine the next step in the email thread"""
-    if "campaign" in str(thread["events"][-1]["data"]).lower():
-        return CampaignRequest(intent="ready_to_create_campaign")
-    else:
-        return ClarificationRequest(intent="request_more_information", message="Please clarify the campaign details")
+
+    response: Union[ClarificationRequest, CampaignRequest] = await marvin.cast_async(
+        thread.model_dump_json(),
+        Union[ClarificationRequest, CampaignRequest],
+        instructions="""
+        determine if you have enough information to create a campaign, or if you need more input.
+        The campaign should be a list of gift boxes to include in a promotional campaign
+        """,
+    )
+    return response
 
 
-class CampaignItem(TypedDict):
+class CampaignItem(BaseModel):
     id: int
     name: str
     description: str
 
 
-class Campaign(TypedDict):
+class Campaign(BaseModel):
     id: int
     url: str
     items: list[CampaignItem]
 
 
-# dummy method, replace with your deterministic or LLM-backed workflow of choice
-# you can build this to use specifc args, or just build this method
-# to dump the entire thread history as LLM context for the redraft,
-# since it will include the previous draft and the feedback from the human
-def draft_or_redraft_campaign(thread_history: "Thread") -> Campaign:
-    """draft or redraft the campaign based on the thread history"""
-
-    # todo - do something with the thread to generate a new campaign,
-    # prorbably working
-
-    campaign_id = random.randint(100000, 999999)  # noqa: S311
-    return Campaign(
-        id=campaign_id,
-        url=f"https://example.com/campaign/{campaign_id}",
-        items=[CampaignItem(id=2, name="item 2", description="item 2 description")],
-    )
-
-
-def publish_campaign(campaign: Campaign) -> None:
+async def publish_campaign(campaign: Campaign) -> None:
     """tool to publish a campaign"""
-    print(f"Published campaign {campaign['id']} at {campaign['url']}")
+    print(f"Published campaign {campaign.id} at {campaign.url}")
 
 
 # dummy method...use a classifier or whatever you want
-def is_approval(message: str) -> bool:
+async def is_approval(message: str) -> bool:
     """check if the human approved the campaign"""
-    return message.lower() in ["yes", "y", "affirmative", "approve", "approved"]
+    answer: str = await marvin.classify_async(
+        message,
+        [
+            "approved",
+            "rejected",
+            "unknown",
+        ],
+    )
+
+    return answer == "approved"
 
 
 ##########################
@@ -100,12 +102,12 @@ class EventType(Enum):
     CAMPAIGN_PUBLISHED = "campaign_published"
 
 
-class Event(TypedDict):
+class Event(BaseModel):
     type: EventType
     data: Any  # don't really care about this, it will just be context to the LLM
 
 
-class Thread(TypedDict):
+class Thread(BaseModel):
     initial_email: "EmailPayload"
     events: list[Event]
 
@@ -113,20 +115,23 @@ class Thread(TypedDict):
 # example of how you can use this as the rolling context state for the LLM
 def to_prompt(thread: Thread) -> str:
     """convert the thread to a prompt for the LLM"""
-    history = "\n\n".join([f"{event['type']} ==> {event['data']}" for event in thread["events"]])
+    history = "\n\n".join([f"{event.type} ==> {event.data}" for event in thread.events])
 
-    return f"""
-    Email Thread:
-    {thread["initial_email"].body}
+    return (
+        f"""
+        Email Thread:
+        {thread.initial_email.body}
 
-    Steps taken so far:
-    {history}
+        Steps taken so far:
+        {history}
 
-    Select the next action to take, it should be one of:
-
+        Select the next action to take, it should be one of:
+        """
+        """
     - request_more_information(message: str)
-    - ready_to_create_campaign()
+    - ready_to_create_campaign(campaign: {id: int, url: str, items: list[{id: int, name: str, description: str}]})
     """
+    )
 
 
 ##########################
@@ -164,65 +169,73 @@ async def handle_inbound_email(email_payload: EmailPayload) -> None:
         ),
     )
 
-    thread["events"].append(Event(type=EventType.EMAIL_RECEIVED, data=email_payload))
+    thread.events.append(Event(type=EventType.EMAIL_RECEIVED, data=email_payload))
 
     while True:
-        # determine the next step to take
-        next_step = determine_next_step(thread)
+        next_step = await determine_next_step(thread)
         logger.info(f"next_step: {next_step}")
 
         # llm decided it needs more information
-        if next_step["intent"] == "request_more_information":
-            thread["events"].append(Event(type=EventType.REQUEST_MORE_INFORMATION, data=next_step["message"]))
-
+        if next_step.intent == "request_more_information":
+            thread.events.append(Event(type=EventType.REQUEST_MORE_INFORMATION, data=next_step.message))
             # send the question on the email thread and block until the human responds
             response = (
                 await humanlayer.fetch_human_response(
                     spec=HumanContactSpec(
-                        msg=next_step["message"],
+                        msg=next_step.message,
                     )
                 )
             ).as_completed()
             logger.info(f"response: {response}")
-
-            thread["events"].append(
+            thread.events.append(
                 Event(type=EventType.HUMAN_SUPPLIED_MORE_INFORMATION, data={"human_response": response})
             )
-
-        # llm decided its ready to create a campaign
-        elif next_step["intent"] == "ready_to_create_campaign":
-            # draft the campaign, probably an llm again
-            campaign_info = draft_or_redraft_campaign(thread)
-
+            continue
+        # llm decided it's ready to create a campaign
+        elif next_step.intent == "ready_to_create_campaign":
+            campaign_info = next_step.campaign
             logger.info(f"drafted campaign_info: {campaign_info}")
-            thread["events"].append(Event(type=EventType.CAMPAIGN_DRAFTED, data=campaign_info))
+            thread.events.append(Event(type=EventType.CAMPAIGN_DRAFTED, data=campaign_info))
 
             # send the campaign to the human for approval
-            logger.info(f"getting approval from human for campaign {campaign_info['id']}")
-            msg = f"""
-            The preview campaign is live at {campaign_info["url"]}\n\n
-            Campaign Details:\n""" + "\n".join([
-                f"- Title: {item['name']}\n- Description: {item['description']}" for item in campaign_info["items"]
-            ])
+            approval_response = await get_human_feedback_on_campaign(campaign_info, humanlayer, thread)
 
-            approval_response = (await humanlayer.fetch_human_response(spec=HumanContactSpec(msg=msg))).as_completed()
-
-            logger.info(f"approval_response: {approval_response}")
-            thread["events"].append(
-                Event(type=EventType.HUMAN_SUPPLIED_CAMPAIGN_DRAFT_FEEDBACK, data=approval_response)
-            )
-
-            if not is_approval(approval_response):
+            if not await is_approval(approval_response):
+                logger.info("human rejected the campaign, continuing")
                 continue
 
-            # todo could do some error handling here as well
-            publish_campaign(campaign_info)
-            thread["events"].append(Event(type=EventType.CAMPAIGN_PUBLISHED, data=campaign_info))
-            logger.info("campaign_published, returning")
-            await humanlayer.create_human_contact(
-                HumanContactSpec(msg="Approved and published campaign. Closing this thread.")
-            )
+            await publish_and_finalize(campaign_info, humanlayer, thread)
             break
+
+
+async def publish_and_finalize(campaign_info, humanlayer, thread):
+    # todo could do some error handling here as well
+    await publish_campaign(campaign_info)
+    thread.events.append(Event(type=EventType.CAMPAIGN_PUBLISHED, data=campaign_info))
+    logger.info("campaign_published, returning")
+
+    # optional, use create_human_contact (instead of fetch_human_response) to fire off the request without waiting for an answer
+    # if you implement webhooks you can have "infinite threads" but for now let's assume this process might restart/reschedule
+    # and not set the expectation that the ai will respond past this point
+    await humanlayer.create_human_contact(
+        HumanContactSpec(
+            msg="Approved and published campaign. Closing this thread, please send a new email to make changes."
+        )
+    )
+
+
+async def get_human_feedback_on_campaign(campaign_info, humanlayer, thread):
+    logger.info(f"getting approval from human for campaign {campaign_info.id}")
+    # you get to decide how you want to format it, or just send the url if you want
+    msg = f"""
+            The preview campaign is live at {campaign_info.url}
+
+            Do you think this is good to publish?
+            """
+    approval_response = (await humanlayer.fetch_human_response(spec=HumanContactSpec(msg=msg))).as_completed()
+    logger.info(f"approval_response: {approval_response}")
+    thread.events.append(Event(type=EventType.HUMAN_SUPPLIED_CAMPAIGN_DRAFT_FEEDBACK, data=approval_response))
+    return approval_response
 
 
 @app.post("/webhook/new-email-thread")
@@ -243,6 +256,10 @@ async def email_inbound(email_payload: EmailPayload, background_tasks: Backgroun
 if __name__ == "__main__":
     import uvicorn
 
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
 
     uvicorn.run(app, host="0.0.0.0", port=8000)  # noqa: S104
