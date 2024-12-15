@@ -51,9 +51,9 @@ This is obviously a bit of a toy example, but you can use it to see how webhooks
 
 4. Get an ngrok.com account and claim your free static subdomain.
 
-5. Set up response webhooks in the HumanLayer saas
+5. Set up an [agent webhook](https://humanlayer.dev/docs/core/agent-webhooks) to point to your ngrok subdomain
 
-> https://your-subdomain.ngrok-free.app/webhook/inbound
+> https://your-subdomain.ngrok-free.app/webhook/new-email-thread
 
 ![webhooks](./img/webhooks.png)
 
@@ -75,37 +75,26 @@ ngrok http 8000 --domain=your-subdomain.ngrok-free.app
 
 ## Step by step walkthough
 
-1. Open http://localhost:8000/purchase-materials - this will queue a purchase for approval
+1. Send an email to the agent email address, e.g.
 
-![purchase-materials](./img/purchase-materials.png)
+> We need to create a campaign for the Super Bowl
 
-2. Open http://localhost:8000/purchases - this will show the pending approval
+2. HumanLayer will send a webhook to the `/webhook/new-email-thread` endpoint
 
-![purchases](./img/purchases.png)
+3. Watch the logs to see the agent respond to the email, usually asking for clarification
 
-3. Approve the purchase w/ HumanLayer - in this example we'll use the slack integration
+> What sorts of items do you want in the campaign
 
-![approve](./img/approve.png)
+4. reply to the email with more information
 
-4. Open http://localhost:8000/purchases - this will show the purchase was finalized
+> i dunno maybe do little toy footballs, add some beer or something, i don't care we have tons of crap in the warehouse just pick things football people would like
 
-![purchases](./img/purchases-finalized.png)
+5. When agent is ready to draft a campaign, it will send a reply to the email with the draft details
 
-5. You can check the app logs to see that the webhook was received and the purchase was executed
+6. The human user can reply to the email with feedback, which will be sent back to the agent
 
-![logs](./img/logs.png)
+> this sucks it needs more wings and beer
 
-The code that handles this is in app.py:
+7. this "draft" / "feedback" loop will continue until the human user is happy with the campaign, answering with something like:
 
-```python
-@app.post("/webhook/inbound")
-async def webhook_inbound(webhook: FunctionCall) -> Dict[str, str]:
-    purchases[webhook.call_id] = webhook
-
-    if webhook.status is not None and webhook.status.approved:
-        finalize_purchase(webhook.spec.kwargs["material"], webhook.spec.kwargs["quantity"])
-    else:
-        print(f"Purchase {webhook.call_id} denied")
-
-    return {"status": "ok"}
-```
+> great campaign, publish it
