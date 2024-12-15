@@ -208,7 +208,7 @@ async def handle_inbound_email(email_payload: EmailPayload) -> None:
             break
 
 
-async def publish_and_finalize(campaign_info, humanlayer, thread):
+async def publish_and_finalize(campaign_info, humanlayer, thread) -> None:
     # todo could do some error handling here as well
     await publish_campaign(campaign_info)
     thread.events.append(Event(type=EventType.CAMPAIGN_PUBLISHED, data=campaign_info))
@@ -224,11 +224,17 @@ async def publish_and_finalize(campaign_info, humanlayer, thread):
     )
 
 
-async def get_human_feedback_on_campaign(campaign_info, humanlayer, thread):
+async def get_human_feedback_on_campaign(campaign_info, humanlayer, thread) -> str:
     logger.info(f"getting approval from human for campaign {campaign_info.id}")
     # you get to decide how you want to format it, or just send the url if you want
+    items_str = "\n".join(f"• {item.name} - {item.description}" for item in campaign_info.items)
+
     msg = f"""
             The preview campaign is live at {campaign_info.url}
+
+
+            The items include:
+            {items_str}
 
             Do you think this is good to publish?
             """
