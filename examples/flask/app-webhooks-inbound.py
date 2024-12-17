@@ -1,4 +1,3 @@
-
 from flask import Flask, jsonify, request, redirect
 from typing import Dict, Any
 from agent import run_agent
@@ -62,6 +61,7 @@ def run_by_id(call_id: str) -> Dict[str, Any]:
 def get_function_calls() -> Dict[str, Any]:
     return {"function_calls": [call.model_dump(mode="json") for call in function_calls.values()]}
 
+
 class EmailMessage(BaseModel):
     from_address: str
     to_address: list[str]
@@ -86,6 +86,7 @@ def webhook_inbound() -> Dict[str, str]:
     webhook = EmailPayload.model_validate(request.json)
 
     ...  # do something with the email payload
+
 
 @app.route("/webhook/inbound", methods=["POST"])
 def webhook_inbound() -> Dict[str, str]:
