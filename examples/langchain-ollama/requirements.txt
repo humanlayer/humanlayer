@@ -1,0 +1,5 @@
+langchain
+langchain-ollama
+python-dotenv
+# install humanlayer
+humanlayer==0.6.4

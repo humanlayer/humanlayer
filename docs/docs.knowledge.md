@@ -1,5 +1,60 @@
 # Documentation System
 
+## Version Control and Releases
+
+### Release Process
+
+- Version tags follow semver (vX.Y.Z)
+- Features added in main branch
+- Examples updated alongside feature development
+- Changelog maintained for each version
+- Both Python and TypeScript packages versioned together
+- Generate release notes using git commands:
+  - Use `git diff v0.5.11..v0.6.0` to see file changes between versions
+  - Always query changes from git before updating CHANGELOG.md
+- Changelog priorities:
+  - Document API changes first, especially new fields and parameters
+  - Internal changes (testing, docs, etc) are lower priority
+  - Always document new parameters in models.py or models.ts with their exact names
+  - Link to relevant documentation when adding new features
+- Changelog organization:
+  - Document features in their final release version, not in prep/RC versions
+  - Prep/RC versions should have minimal changelog entries pointing to their final version
+  - Link to docs using humanlayer.dev/docs/... format
+  - Link to examples using full GitHub paths (https://github.com/humanlayer/humanlayer/tree/main/examples/...)
+- The steps to create a new release are:
+  - merge all the code to main in github
+  - checkout the latest on `main`
+  - edit pyproject.toml and/or package.json with the current version, e.g. change 0.6.1-rc1 to 0.6.1
+  - run make build-and-publish for python, npm publish for ts
+  - commit and tag the changes with the release tag, e.g. v0.6.1, push the commit+tag
+  - update all the examples versions to use the new tag with `make update... version=0.6.1`
+  - bump the versions in pyproject and package.json to ${NEXT_PATCH_VERSION}-rc1
+
+### Feature Development Pattern
+
+- New features accompanied by examples
+- Examples directory organized by framework integration
+- Changes coordinated across Python/TypeScript implementations
+- Email channel example: subject lines, threading, and framework-specific implementations
+
+## Version Control and Releases
+
+### Release Process
+
+- Version tags follow semver (vX.Y.Z)
+- Features added in main branch
+- Examples updated alongside feature development
+- Changelog maintained for each version
+- Both Python and TypeScript packages versioned together
+
+### Feature Development Pattern
+
+- New features accompanied by examples
+- Examples directory organized by framework integration
+- Changes coordinated across Python/TypeScript implementations
+- Email channel example: subject lines, threading, and framework-specific implementations
+
 ## Platform Choice
 
 Mintlify is the chosen documentation platform. It provides:
@@ -62,8 +117,9 @@ The project is transitioning from Metalytics to Humanlayer branding - ensure new
 Documentation links follow these rules:
 
 - Keep external package/tool links (npm, pip) pointing to their original sources
-- Update framework/feature documentation to point to humanlayer.dev/docs
+- Documentation links should use humanlayer.dev/docs/... format (e.g., humanlayer.dev/docs/channels/email)
 - Use relative links for internal navigation between doc pages
+- Example links should point to GitHub repository with full path (e.g., https://github.com/humanlayer/humanlayer/tree/main/examples/langchain)
 - Framework documentation must link to examples repository (https://github.com/humanlayer/humanlayer/tree/main/examples)
 
 The documentation is organized around AI framework integrations:

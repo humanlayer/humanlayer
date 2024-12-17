@@ -1,13 +1,15 @@
-# syntax=docker/dockerfile:1
-FROM python:3.11-slim-bookworm as prod
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
 
 WORKDIR /app
 
-COPY requirements.txt /app
-RUN  --mount=type=cache,target=/root/.cache/pip \
-    pip install -r requirements.txt
+ENV UV_SYSTEM_PYTHON=1
+ENV PATH="/root/.local/bin:$PATH"
 
-COPY . /app
+COPY requirements.txt .
 
-ENTRYPOINT ["python3"]
-CMD ["controlflow_math.py"]
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv pip install -r requirements.txt
+
+COPY controlflow_math.py .
+
+ENTRYPOINT ["uv", "run", "controlflow_math.py"]

@@ -7,9 +7,9 @@
   },
   "favicon": "/images/humanlayer-light.png",
   "colors": {
-    "primary": "#0D9373",
-    "light": "#07C983",
-    "dark": "#0D9373",
+    "primary": "#426699",
+    "light": "#82aaee",
+    "dark": "#426699",
     "anchors": {
       "from": "#0D9373",
       "to": "#07C983"
@@ -18,7 +18,7 @@
   "topbarLinks": [
     {
       "name": "Discord",
-      "url": "https://discord.gg/qWmbF4pp"
+      "url": "https://humanlayer.dev/discord"
     }
   ],
   "topbarCtaButton": {
@@ -40,7 +40,7 @@
     {
       "name": "Community",
       "icon": "discord",
-      "url": "https://discord.gg/qWmbF4pp"
+      "url": "https://humanlayer.dev/discord"
     },
     {
       "name": "GitHub",
@@ -61,7 +61,9 @@
         "core/customize-response-options",
         "core/llm-tool-calling",
         "core/outer-loop-agents",
-        "core/run-ids-and-call-ids"
+        "core/run-ids-and-call-ids",
+        "core/agent-webhooks",
+        "core/response-webhooks"
       ]
     },
     {

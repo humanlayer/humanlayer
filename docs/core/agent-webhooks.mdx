@@ -1,0 +1,121 @@
+---
+title: Agent Webhooks
+description: "Launch agents in response to emails"
+icon: "rocket"
+---
+
+Agent webhooks are designed to allow you to launch an agent in response to a message from a platform like email, slack, etc.
+
+Not to be confused with [webhooks](/core/response-webhooks), which allows you to receive a notification when an [approval](/core/human-as-tool#approvals) or [human contact](/core/human-as-tool#human-contacts)
+is completed, Agent webhooks are specifically designed for kicking off new tasks and workflows
+
+<Note>
+  Agent webhooks are currently in beta. If you'd like to help us test and
+  improve the feature, please reach out to us at contact@humanlayer.dev
+</Note>
+
+## Use cases
+
+Agent webhooks are useful for:
+
+- Forwarding an email to an agent to handle
+- Launching an agent workflow in response to a message in Slack
+
+You can see examples of using agent webhooks in:
+
+- [Mailcrew](https://github.com/dexhorthy/mailcrew) - an open source agent that uses HumanLayer to receive and respond to inbound emails
+- [FastAPI Email Example](https://github.com/humanlayer/humanlayer/tree/main/examples/fastapi-email) - a complete example of handling inbound emails with FastAPI
+
+## Overview
+
+To get started with agent webhooks, you'll need to:
+
+1. Implement an AI Agent in your language and/or framework of choice, and create an API endpoint that can launch the agent
+2. Create a publicly reachable URL that can receive webhooks from HumanLayer (we recommend [ngrok](https://ngrok.com/) to catch webhooks while you're developing locally)
+3. Create a new agent webhook in the [HumanLayer dashboard](https://app.humanlayer.dev/), setting the callback URL to your webhook endpoint
+
+![Create an agent webhook](/images/agent-webhooks.png)
+
+4. Test the webhook in the HumanLayer dashboard
+5. Test the webhook by sending an email to the webhook email address (slack support coming soon)
+
+### Email Payload
+
+For email webhooks, the payload will be look like
+
+<ParamField body="email_payload" type="object">
+  <Expandable title="EmailPayload">
+    <ParamField body="from_address" type="string" required>
+      Email address of the sender
+    </ParamField>
+    <ParamField body="to_address" type="string" required>
+      Email address of the recipient
+    </ParamField>
+    <ParamField body="subject" type="string" required>
+      Subject line of the email
+    </ParamField>
+    <ParamField body="body" type="string" required>
+      Body content of the email
+    </ParamField>
+    <ParamField body="message_id" type="string" required>
+      Unique message ID of the email
+    </ParamField>
+    <ParamField body="previous_thread" type="array">
+      Optional list of previous messages in the thread
+      <Expandable title="EmailMessage">
+        <ParamField body="from_address" type="string" required>
+          Email address of the sender
+        </ParamField>
+        <ParamField body="to_address" type="array" required>
+          List of recipient email addresses
+        </ParamField>
+        <ParamField body="cc_address" type="array" required>
+          List of CC'd email addresses
+        </ParamField>
+        <ParamField body="subject" type="string" required>
+          Subject line of the email
+        </ParamField>
+        <ParamField body="content" type="string" required>
+          Content of the email
+        </ParamField>
+        <ParamField body="datetime" type="string" required>
+          Timestamp of when the email was sent
+        </ParamField>
+      </Expandable>
+    </ParamField>
+    <ParamField body="raw_email" type="string" required>
+      Raw email content including headers
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+a JSON example might look like
+
+```json
+{
+  "from_address": "overworked-admin@coolcompany.com",
+  "to_address": "cool-agent@humanlayer.dev",
+  "subject": "FWD: help",
+  "body": "can you add a ticket for this?",
+  "message_id": "<1234567890@mailsrv.coolcompany.com>",
+  "raw_email": "This is a placeholder for a test email - if this were a real email, it would include headers, etc.",
+  "datetime": "2024-01-02T00:00:00Z",
+  "previous_thread": [
+    {
+      "from_address": "needy-employee@coolcompany.com",
+      "to_address": ["overworked-admin@coolcompany.com"],
+      "cc_address": [],
+      "subject": "help",
+      "content": "i need some help",
+      "raw_email": "i need some help",
+      "datetime": "2024-01-01T00:00:00Z"
+    }
+  ]
+}
+```
+
+### Using Ngrok for local development
+
+1. Start your local API server and note the port it's running on
+2. Install ngrok and run `ngrok http <port>`
+3. Copy the ngrok URL and use it as the callback URL in the HumanLayer dashboard

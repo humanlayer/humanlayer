@@ -1,6 +1,7 @@
 ---
 title: "Email"
 description: "Send emails and collect responses via email threads"
+icon: "envelope"
 ---
 
 ## Configuration
@@ -44,16 +45,18 @@ The optional `context_about_user` field helps the LLM understand who it's emaili
 
 ## Usage
 
-Use the email channel with either core feature:
+Use the email channel with either `require_approval` or `human_as_tool` features:
 
 ```python
 # With require_approval
 @hl.require_approval(contact_channel=email_with_compliance)
-def send_email(to: str, subject: str, body: str) -> str:
-    """Send an email to a customer"""
-    return f"Email sent to {to}"
+def create_linear_ticket(title: str, assignee: str, description: str, project: str, due_date: str) -> str:
+    """create a ticket in linear"""
+    ...
 
-# With human_as_tool
+import langchain_tools
+
+# With human_as_tool in langchain
 tools = [
     langchain_tools.StructuredTool.from_function(
         hl.human_as_tool(
@@ -62,6 +65,15 @@ tools = [
     ),
 ]
 ```
+
+Or you can pass the `contact_channel` to the `HumanLayer` instance:
+
+```python
+hl = HumanLayer(contact_channel=email_with_compliance)
+```
+
+If you pass a channel to the `HumanLayer` instance, you don't need to pass it to the `require_approval` or `human_as_tool` features.
+If you pass it to both, the channel in the `require_approval` or `human_as_tool` will take precedence.
 
 ## Advanced - Collecting Agent Emails in a single thread
 
@@ -84,8 +96,8 @@ def handle_inbound_email(raw_email_content: str, headers: dict) -> str:
         email=EmailContactChannel(
             address=headers["From"], # send agent messages to whomever initiated the email thread
             context_about_user="an email thread with the user you're assisting",
-            experimental_in_reply_to_message_id=message_id,
-            experimental_references_message_id=message_id,
+            experimental_in_reply_to_message_id=message_id, # reply to the inbound email
+            experimental_references_message_id=message_id, # reference the inbound email
         )
     )
 
@@ -104,7 +116,11 @@ def handle_inbound_email(raw_email_content: str, headers: dict) -> str:
 
 ```
 
+These features are marked as experimental because we're still working on documenting how different email providers handle threading
+why one or both of these headers are used.
+
 ## Next Steps
 
 - [Configure response options](/core/customize-response-options)
 - [Try composite channels](/channels/composite-channels)
+- [See a complete FastAPI email example](https://github.com/humanlayer/humanlayer/tree/main/examples/fastapi-email)

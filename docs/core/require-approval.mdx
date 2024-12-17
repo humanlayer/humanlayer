@@ -1,6 +1,7 @@
 ---
 title: "Require Approval"
 description: "Add human approval requirements to any function"
+icon: "thumbs-up"
 ---
 
 - The [Decorator](#decorator) method is the easiest way to add approval requirements to a function
@@ -81,7 +82,7 @@ In this case, the HumanLayer SDK handles:
 - Creating the approval request
 - Halting execution until the human approves or rejects the action
 
-And your code is reponsible for:
+And your code is responsible for:
 
 - Running the function if approved, or doing something with the feedback if rejected
 
@@ -95,6 +96,10 @@ See [02_imperative_fetch.py](https://github.com/humanlayer/humanlayer/tree/main/
 
 For the (perhaps extra-based) who want maximum control over execution flow, you can create and fetch approvals separately.
 This is useful if you want to implement your own waiting logic or integrate with a custom event loop.
+
+```python
+from humanlayer import FuntionCallSpec
+```
 
 ```python
 # Example of low-level approval flow
@@ -128,7 +133,7 @@ In this case, the HumanLayer SDK handles:
 - Creating the approval request
 - Fetching the approval status
 
-And your code is reponsible for:
+And your code is responsible for:
 
 - Halting execution until the human approves or rejects the action (usually waiting in some sort of loop)
 - Running the function if approved, or doing something with the feedback if rejected

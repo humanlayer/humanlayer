@@ -232,3 +232,68 @@ description: "Generic agent-to-human outreach for help, questions, or feedback"
   }
 }
 ```
+
+or, for email, you can use an [email contact channel](/channels/email)
+
+````json
+{
+  "run_id": "run_123",
+  "call_id": "call_456",
+  "spec": {
+    "msg": "Hi, I need help reviewing this PR. Can you take a look when you have a chance?",
+    "subject": "PR Review Request",
+    "channel": {
+      "email": {
+        "address": "engineering@company.com",
+        "subject": "PR Review Request",
+        "in_reply_to": "msg_789"
+      }
+    }
+  }
+}
+
+
+Or, in ruby:
+
+```ruby
+require 'net/http'
+require 'json'
+
+uri = URI('https://api.humanlayer.io/humanlayer/v1/human_contacts')
+http = Net::HTTP.new(uri.host, uri.port)
+http.use_ssl = true
+
+request = Net::HTTP::Post.new(uri.path,
+  'Content-Type' => 'application/json',
+  'Authorization' => 'Bearer YOUR_API_KEY'
+)
+
+request.body = {
+  run_id: 'run_123',
+  call_id: 'call_456',
+  spec: {
+    msg: 'Hi, I need help reviewing this PR. Can you take a look when you have a chance?',
+    subject: 'PR Review Request',
+    channel: {
+      email: {
+        address: 'engineering@company.com',
+        subject: 'PR Review Request',
+        in_reply_to: 'msg_789'
+      }
+    }
+  }
+}.to_json
+
+response = http.request(request)
+puts response.body
+
+````
+
+or with curl
+
+```
+curl -X POST https://api.humanlayer.io/humanlayer/v1/human_contacts \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -d '{"run_id": "run_123", "call_id": "call_456", "spec": {"msg": "Hi, I need help reviewing this PR. Can you take a look when you have a chance?"}}'
+```
