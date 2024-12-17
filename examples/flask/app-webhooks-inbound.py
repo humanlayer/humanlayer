@@ -84,14 +84,8 @@ class EmailPayload(BaseModel):
 @app.route("/webhook/new-email-thread", methods=["POST"])
 def webhook_inbound() -> Dict[str, str]:
     webhook = EmailPayload.model_validate(request.json)
-    function_calls[webhook.call_id] = webhook
 
-    if webhook.status is not None and webhook.status.approved:
-        print(f"Function call {webhook.call_id} approved")
-    else:
-        print(f"Function call {webhook.call_id} denied")
-
-    return {"status": "ok"}
+    ...  # do something with the email payload
 
 @app.route("/webhook/inbound", methods=["POST"])
 def webhook_inbound() -> Dict[str, str]:
