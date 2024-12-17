@@ -55,15 +55,14 @@ jobs:
       - name: Set up Python ${{ matrix.python-version }}
         run: uv python install ${{ matrix.python-version }}
 
-      - name: Load cached venv
-        uses: actions/cache@v3
+      - name: Test
+        run: make test
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          path: .tox
-          key: venv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('uv.lock') }}
-
-      - name: Install tox
-        run: |
-          uv add tox tox-gh-actions
-
-      - name: Test with tox
-        run: uv run tox
+          name: pytest-results-${{ matrix.python-version }}
+          path: |
+            junit.xml
+            coverage.xml

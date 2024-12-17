@@ -14,7 +14,7 @@ typecheck: ## just the typechecks
 
 .PHONY: test
 test: ## Test the code with pytest
-	uv run pytest ./humanlayer --cov --cov-config=pyproject.toml --cov-report=xml
+	uv run pytest ./humanlayer --cov --cov-config=pyproject.toml --cov-report=xml --junitxml=junit.xml
 
 .PHONY: build
 build: clean-build ## Build wheel file using uv
