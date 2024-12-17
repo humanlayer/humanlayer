@@ -1,3 +1,9 @@
+## 0.6.4
+
+### Features
+
+- Add support for required slack responders, restricting who can respond to a slack message. See https://humanlayer.dev/docs/channels/slack for more detail
+
 ## 0.6.3
 
 ### Features
