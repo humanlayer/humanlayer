@@ -2,7 +2,7 @@ import logging
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 logger = logging.getLogger(__name__)
 
@@ -32,9 +32,16 @@ class SlackContactChannel(BaseModel):
 
     # a list of responders to allow to respond to this message
     # other messages will be ignored
-    # allowed_responder_ids: list[str] | None
+    allowed_responder_ids: list[str] | None = None
 
     experimental_slack_blocks: bool | None = None
+
+    @field_validator("allowed_responder_ids")
+    @classmethod
+    def validate_allowed_responder_ids(cls, v: list[str] | None) -> list[str] | None:
+        if v is not None and len(v) == 0:
+            raise ValueError("allowed_responder_ids if provided must not be empty")
+        return v
 
 
 class SMSContactChannel(BaseModel):

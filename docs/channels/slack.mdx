@@ -36,11 +36,36 @@ dm_with_ceo = ContactChannel(
         channel_or_user_id="U123456",  # Must be an ID like C123456 or U123456, not #channel or @user
         context_about_channel_or_user="a DM with the CEO",  # Optional context for the LLM
         experimental_slack_blocks=True,  # Optional - enables rich message formatting
+        allowed_responder_ids=["U123456"],  # Optional - restrict who can respond
     )
 )
 
 hl = HumanLayer(contact_channel=dm_with_ceo)
 ```
+
+### Allowed Responders
+
+You can restrict which Slack users are allowed to respond to a message using `allowed_responder_ids`:
+
+```python
+# Only allow specific users to approve add operations
+add_approver_channel = ContactChannel(
+    slack=SlackContactChannel(
+        channel_or_user_id="C123456",
+        context_about_channel_or_user="the channel for add operations",
+        allowed_responder_ids=["U123456"],  # Only this user can approve
+    )
+)
+
+@hl.require_approval(contact_channel=add_approver_channel)
+def add(a: float, b: float) -> float:
+    """Add two numbers"""
+    return a + b
+```
+
+The `allowed_responder_ids` must be Slack user IDs (starting with `U`). Messages from other users will be ignored.
+
+See [01-math-example-allowed-repliers.py](https://github.com/humanlayer/humanlayer/tree/main/examples/langchain/01-math_example_allowed_repliers.py) for a complete example.
 
 You can also override the contact channel at the per-request level:
 
