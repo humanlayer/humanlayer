@@ -52,10 +52,8 @@ jobs:
           enable-cache: true
           cache-dependency-glob: "uv.lock"
 
-      - name: "Set up Python"
-        uses: actions/setup-python@v5
-        with:
-          python-version-file: "pyproject.toml"
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
 
       - name: Load cached venv
         uses: actions/cache@v3
@@ -65,8 +63,8 @@ jobs:
 
       - name: Install tox
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install tox tox-gh-actions
+          uv pip install --upgrade pip
+          uv pip install tox tox-gh-actions
 
       - name: Test with tox
         run: tox
