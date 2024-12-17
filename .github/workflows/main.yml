@@ -63,8 +63,7 @@ jobs:
 
       - name: Install tox
         run: |
-          uv pip install --upgrade pip
-          uv pip install tox tox-gh-actions
+          uv add tox tox-gh-actions
 
       - name: Test with tox
-        run: tox
+        run: uv run tox
