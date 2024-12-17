@@ -1,3 +1,11 @@
+## 0.6.5-rc1
+
+### Features
+
+### Enhancements
+
+- Move to `uv` for project management (examples still encourage throwaway envs with `pip` / `requirements.txt`)
+
 ## 0.6.4
 
 ### Features

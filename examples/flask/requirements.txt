@@ -1,5 +1,5 @@
 flask
 python-dotenv
-humanlayer>=0.6.2
 langchain
 langchain-openai
+humanlayer==0.6.4
