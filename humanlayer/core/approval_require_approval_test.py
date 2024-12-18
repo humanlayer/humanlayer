@@ -290,6 +290,54 @@ def test_fetch_approval_forwards_contact_channel() -> None:
     functions.get.assert_called_once_with("generated-id")
 
 
+def test_fetch_approval_forwards_state() -> None:
+    """
+    test that the fetch_approval method forwards the state,
+    even if not explicitly provided in the method call
+    """
+    mock_backend = Mock(spec=AgentBackend)
+    functions = Mock(spec=AgentStore[FunctionCall, FunctionCallStatus])
+    mock_backend.functions.return_value = functions
+
+    state = {"conversation_history": ["hello", "world"]}
+    function_call = FunctionCall(
+        run_id="generated-id",
+        call_id="generated-id",
+        spec=FunctionCallSpec(fn="_fn_", kwargs={"bar": "baz"}, state=state),
+    )
+
+    functions.add.return_value = function_call
+    functions.get.return_value = function_call.model_copy(
+        deep=True,
+        update={"status": FunctionCallStatus(approved=True)},
+    )
+
+    hl = HumanLayer(
+        backend=mock_backend,
+        genid=lambda x: "generated-id",
+        sleep=lambda x: None,
+    )
+
+    resp = hl.fetch_approval(
+        FunctionCallSpec(fn="_fn_", kwargs={"bar": "baz"}, state=state),
+    ).as_completed()
+
+    assert resp.approved is True
+
+    functions.add.assert_called_once_with(
+        FunctionCall(
+            run_id="generated-id",
+            call_id="generated-id",
+            spec=FunctionCallSpec(
+                fn="_fn_",
+                kwargs={"bar": "baz"},
+                state=state,
+            ),
+        )
+    )
+    functions.get.assert_called_once_with("generated-id")
+
+
 def test_create_function_call_with_call_id() -> None:
     """
     test that the create_function_call method works when you supply a call_id

@@ -35,24 +35,21 @@ class AsyncHumanLayerCloudConnection(BaseModel):
         if not self.api_key:
             raise ValueError("HUMANLAYER_API_KEY is required for cloud approvals")
 
-    async def get_session(self) -> aiohttp.ClientSession:
-        if self._session is None or self._session.closed:
-            self._session = aiohttp.ClientSession(headers={"Authorization": f"Bearer {self.api_key}"})
-        return self._session
-
     async def request(
         self,
         method: str,
         path: str,
         **kwargs: Any,
     ) -> Dict[str, Any]:
-        session = await self.get_session()
-        async with session.request(
-            method,
-            f"{self.api_base_url}{path}",
-            timeout=aiohttp.ClientTimeout(total=10),
-            **kwargs,
-        ) as response:
+        async with (
+            aiohttp.ClientSession(headers={"Authorization": f"Bearer {self.api_key}"}) as session,
+            session.request(
+                method,
+                f"{self.api_base_url}{path}",
+                timeout=aiohttp.ClientTimeout(total=10),
+                **kwargs,
+            ) as response,
+        ):
             response_json = await response.json()
             logger.debug(
                 "response %d %s",
