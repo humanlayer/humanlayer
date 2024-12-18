@@ -64,7 +64,7 @@ async def handle_response(human_response: HumanContact):
 
     # Update thread with new response
     thread.events.append(
-        Event(type=EventType.HUMAN_RESPONSE, 
+        Event(type=EventType.HUMAN_RESPONSE,
               data={"response": human_response.status.response})
     )
 
@@ -93,11 +93,11 @@ async def handle_webhook(
   **Important**: Version your state objects carefully! If you change your Pydantic models,
   responses from old webhooks may fail to deserialize. Consider:
 
-  - Adding version fields to state objects
-  - Supporting multiple versions of model schemas
-  - Using migration functions for old state formats
-  - Keeping old model versions around until all pending webhooks are processed
-</Warning>
+- Adding version fields to state objects
+- Supporting multiple versions of model schemas
+- Using migration functions for old state formats
+- Keeping old model versions around until all pending webhooks are processed
+  </Warning>
 
 Example of versioned state:
 
