@@ -32,6 +32,17 @@ curl -X POST https://api.humanlayer.dev/humanlayer/v1/function_calls \
 
 ## Usage w/ Makefile
 
+### Test Large Context Size Limit
+
+Test the context size limit by sending a large payload:
+
+```bash
+export HUMANLAYER_API_KEY=<your-api-key>
+make test-large-context
+```
+
+This will send a function call with a large array in the state field to test the context size limits.
+
 ### 1. Create an Approval Request
 
 Create a new function call approval request:

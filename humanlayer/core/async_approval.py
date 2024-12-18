@@ -349,6 +349,10 @@ class AsyncHumanLayer(BaseModel):
     ) -> FunctionCall:
         """Create a function call asynchronously"""
         assert self.backend is not None, "create requires a backend, did you forget your HUMANLAYER_API_KEY?"
+
+        if not spec.channel:
+            spec.channel = self.contact_channel
+
         call_id = call_id or self.genid("call")
         call = FunctionCall(
             run_id=self.run_id,  # type: ignore
@@ -381,6 +385,10 @@ class AsyncHumanLayer(BaseModel):
     ) -> HumanContact:
         """Create a human contact request asynchronously"""
         assert self.backend is not None, "create requires a backend, did you forget your HUMANLAYER_API_KEY?"
+
+        if not spec.channel:
+            spec.channel = self.contact_channel
+
         call_id = call_id or self.genid("call")
         contact = HumanContact(
             run_id=self.run_id,  # type: ignore
