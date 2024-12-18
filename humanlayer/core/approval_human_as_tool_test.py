@@ -302,6 +302,54 @@ def test_human_as_tool_forwards_contact_channel() -> None:
     contacts.get.assert_called_once_with("generated-id")
 
 
+def test_human_contact_preserves_state() -> None:
+    """
+    test that the human contact preserves state through the request lifecycle
+    """
+    mock_backend = Mock(spec=AgentBackend)
+    contacts = Mock(spec=AgentStore[HumanContact, HumanContactStatus])
+    mock_backend.contacts.return_value = contacts
+
+    state = {"conversation_history": ["hello", "world"]}
+    human_contact = HumanContact(
+        run_id="generated-id",
+        call_id="generated-id",
+        spec=HumanContactSpec(msg="What is your favorite color?", state=state),
+    )
+    contacts.add.return_value = human_contact
+
+    contacts.get.return_value = human_contact.model_copy(
+        update={
+            "status": HumanContactStatus(
+                response="Blue",
+            )
+        },
+        deep=True,
+    )
+    hl = HumanLayer(
+        backend=mock_backend,
+        genid=lambda x: "generated-id",
+        sleep=lambda x: None,
+    )
+
+    human_tool = hl.fetch_human_response(HumanContactSpec(msg="What is your favorite color?", state=state))
+    response = human_tool.as_completed()
+
+    assert response == "Blue"
+
+    contacts.add.assert_called_once_with(
+        HumanContact(
+            run_id="generated-id",
+            call_id="generated-id",
+            spec=HumanContactSpec(
+                msg="What is your favorite color?",
+                state=state,
+            ),
+        )
+    )
+    contacts.get.assert_called_once_with("generated-id")
+
+
 def test_create_human_contact_with_call_id() -> None:
     """
     test that the create_human_contact method works when you supply a call_id

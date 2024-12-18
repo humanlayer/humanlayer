@@ -137,23 +137,7 @@ def to_prompt(thread: Thread) -> str:
 ##########################
 ######## Handlers ########
 ##########################
-class EmailMessage(BaseModel):
-    from_address: str
-    to_address: list[str]
-    cc_address: list[str]
-    subject: str
-    content: str
-    datetime: str
-
-
-class EmailPayload(BaseModel):
-    from_address: str
-    to_address: str
-    subject: str
-    body: str
-    message_id: str
-    previous_thread: list[EmailMessage] | None = None
-    raw_email: str
+from humanlayer.core.models_agent_webhook import EmailMessage, EmailPayload
 
 
 async def handle_inbound_email(email_payload: EmailPayload) -> None:
@@ -238,7 +222,9 @@ async def get_human_feedback_on_campaign(campaign_info, humanlayer, thread) -> s
 
             Do you think this is good to publish?
             """
-    approval_response = (await humanlayer.fetch_human_response(spec=HumanContactSpec(msg=msg))).as_completed()
+    approval_response = (
+        await humanlayer.fetch_human_response(spec=HumanContactSpec(msg=msg, state=thread.model_dump()))
+    ).as_completed()
     logger.info(f"approval_response: {approval_response}")
     thread.events.append(Event(type=EventType.HUMAN_SUPPLIED_CAMPAIGN_DRAFT_FEEDBACK, data=approval_response))
     return approval_response

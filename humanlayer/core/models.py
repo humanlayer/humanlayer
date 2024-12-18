@@ -164,6 +164,7 @@ class FunctionCallSpec(BaseModel):
     kwargs: dict
     channel: ContactChannel | None = None
     reject_options: list[ResponseOption] | None = None
+    state: dict | None = None  # Optional state to be preserved across the request lifecycle
 
 
 class FunctionCallStatus(BaseModel):
@@ -219,6 +220,7 @@ class HumanContactSpec(BaseModel):
     subject: str | None = None
     channel: ContactChannel | None = None
     response_options: list[ResponseOption] | None = None
+    state: dict | None = None  # Optional state to be preserved across the request lifecycle
 
 
 class HumanContactStatus(BaseModel):
