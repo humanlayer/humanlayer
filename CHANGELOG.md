@@ -2,7 +2,7 @@
 
 ### Features
 
-- Added state preservation support to FunctionCallSpec and HumanContactSpec for maintaining context across request lifecycles ([docs](https://humanlayer.dev/docs/core/run-ids-and-call-ids))
+- Added state preservation support to FunctionCallSpec and HumanContactSpec for maintaining context across request lifecycles ([docs](https://humanlayer.dev/docs/core/state-management)) ([example](https://github.com/humanlayer/humanlayer/blob/main/examples/fastapi-email/app-statehooks.py))
 
 ### Enhancements
 
