@@ -1,4 +1,4 @@
 fastapi
 uvicorn
 python-dotenv
-humanlayer==0.6.5-rc2
+humanlayer==0.6.5
