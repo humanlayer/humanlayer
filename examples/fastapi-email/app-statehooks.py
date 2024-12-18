@@ -1,4 +1,3 @@
-# a webhooks-free version
 import json
 import logging
 from enum import Enum
@@ -145,7 +144,9 @@ class Thread(BaseModel):
 ######## Handlers ########
 ##########################
 async def handle_continued_thread(thread: Thread) -> None:
-    humanlayer = AsyncHumanLayer(contact_channel=ContactChannel(email=thread.initial_email.as_channel()))
+    humanlayer = AsyncHumanLayer(
+        contact_channel=ContactChannel(email=thread.initial_email.as_channel())
+    )
 
     # maybe: if thread gets too long, summarize parts of it - your call!
     # new_thread = maybe_summarize_parts_of_thread(thread)
@@ -157,7 +158,9 @@ async def handle_continued_thread(thread: Thread) -> None:
     if next_step.intent == "request_more_information":
         logger.info(f"requesting more information: {next_step.message}")
         thread.events.append(Event(type=EventType.REQUEST_MORE_INFORMATION, data=next_step.message))
-        await humanlayer.create_human_contact(spec=HumanContactSpec(msg=next_step.message, state=thread.to_state()))
+        await humanlayer.create_human_contact(
+            spec=HumanContactSpec(msg=next_step.message, state=thread.to_state())
+        )
 
     elif next_step.intent == "ready_to_draft_campaign":
         campaign_info = next_step.campaign
@@ -182,7 +185,9 @@ async def handle_continued_thread(thread: Thread) -> None:
 
 
 @app.post("/webhook/new-email-thread")
-async def email_inbound(email_payload: EmailPayload, background_tasks: BackgroundTasks) -> Dict[str, Any]:
+async def email_inbound(
+    email_payload: EmailPayload, background_tasks: BackgroundTasks
+) -> Dict[str, Any]:
     """
     route to kick off new processing thread from an email
     """
@@ -216,7 +221,9 @@ async def human_response(
 
     if isinstance(human_response, HumanContact):
         thread.events.append(
-            Event(type=EventType.HUMAN_RESPONSE, data={"human_response": human_response.status.response})
+            Event(
+                type=EventType.HUMAN_RESPONSE, data={"human_response": human_response.status.response}
+            )
         )
         background_tasks.add_task(handle_continued_thread, thread)
 
