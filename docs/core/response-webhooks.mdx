@@ -52,7 +52,7 @@ pending_approval = await hl.create_function_call(
     )
 )
 
-# Store the call_id for later use
+# optional - store the call_id for later use
 call_id = pending_approval.call_id
 ```
 
@@ -79,6 +79,34 @@ await db.operations.insert({
 })
 ```
 
+#### Using HumanLayer to store your state
+
+When making function calls or human contacts, you can include a state object that will be preserved and returned in webhooks. This allows your application to be stateless while maintaining context across the request lifecycle.
+
+Example:
+
+```python
+# Store the current state when requesting approval
+function_call = FunctionCall(
+    run_id="run_123",
+    call_id="call_456",
+    spec=FunctionCallSpec(
+        fn="send_email",
+        kwargs={"to": "user@example.com"},
+        state={
+            "conversation_history": previous_messages,
+            "user_preferences": preferences,
+        }
+    )
+)
+```
+
+When the webhook arrives, the state will be returned in the webhook payload, allowing you to restore the conversation context.
+
+
+For a complete example of using state preservation with webhooks, see the [FastAPI Email Example](https://github.com/humanlayer/humanlayer/tree/main/examples/fastapi-email) which demonstrates maintaining conversation state across multiple email interactions.
+
+
 ### 4. Create Webhook Endpoint
 
 Create an endpoint in your application to receive webhook notifications:
@@ -90,7 +118,7 @@ Set up an endpoint on your server that will:
 - Process the incoming webhook data
 
 ```python
-@app.post("/webhook/inbound")
+@app.post("/webhook/function-call-completed")
 async def webhook_inbound(webhook: FunctionCall) -> Dict[str, str]:
     # todo validate webhook signature
     ...
@@ -113,7 +141,7 @@ async def webhook_inbound(webhook: FunctionCall) -> Dict[str, str]:
 ```
 
 Webhooks will be sent with the fully completed [FunctionCall](/api-reference/function-calls) or [HumanContact](/api-reference/human-contacts) object,
-which will include the `call_id` you set during creation, as well as the resolved response in `status`.
+which will include the `call_id` you set during creation, as well as the resolved response in `status`, and any state you set in the `spec`.
 
 ### 5. Configure Webhook in Dashboard
 
