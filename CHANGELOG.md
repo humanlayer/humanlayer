@@ -1,10 +1,15 @@
-## 0.6.5-rc1
+## 0.6.5
 
 ### Features
 
+- Added state preservation support to FunctionCallSpec and HumanContactSpec for maintaining context across request lifecycles ([docs](https://humanlayer.dev/docs/core/state-management)) ([example](https://github.com/humanlayer/humanlayer/blob/main/examples/fastapi-email/app-statehooks.py))
+
 ### Enhancements
 
-- Move to `uv` for project management (examples still encourage throwaway envs with `pip` / `requirements.txt`)
+- Moved to `uv` for project management (examples still encourage throwaway envs with `pip` / `requirements.txt`)
+- Updated CI/CD pipeline to use uv instead of poetry
+- Improved PR template with clearer sections and guidance
+- Updated all example dependencies to use v0.6.5
 
 ## 0.6.4
 
