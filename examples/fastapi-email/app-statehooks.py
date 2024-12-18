@@ -1,4 +1,3 @@
-# a webhooks-free version
 import json
 import logging
 from enum import Enum
