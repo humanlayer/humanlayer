@@ -1,45 +1,34 @@
-.PHONY: install
-install: ## Install the poetry environment and install the pre-commit hooks
-	poetry install
-	 poetry run pre-commit install
-	poetry shell
-
 .PHONY: check
 check: ## Run code quality tools.
-	: 🚀 Checking Poetry lock file consistency with 'pyproject.toml': Running poetry lock --check
-	poetry check --lock
+	: 🚀 installing uv deps
+	uv sync
 	: 🚀 Linting code: Running pre-commit
-	poetry run pre-commit run -a
+	uv run pre-commit run -a
 	@$(MAKE) typecheck
 	: 🚀 Checking for obsolete dependencies: Running deptry
-	poetry run deptry .
+	uv run deptry .
 
 typecheck: ## just the typechecks
 	: 🚀 Static type checking: Running mypy
-	poetry run mypy
+	uv run mypy
 
 .PHONY: test
 test: ## Test the code with pytest
-	poetry run pytest ./humanlayer --cov --cov-config=pyproject.toml --cov-report=xml
+	uv run pytest ./humanlayer --cov --cov-config=pyproject.toml --cov-report=xml --junitxml=junit.xml
 
 .PHONY: build
-build: clean-build ## Build wheel file using poetry
+build: clean-build ## Build wheel file using uv
 	: 🚀 Creating wheel file
-	poetry build
+	uv build
 
 .PHONY: clean-build
 clean-build: ## clean build artifacts
 	@rm -rf dist
 
 .PHONY: publish
-publish: ## publish a release to pypi.
-	: 🚀 Publishing: Dry run.
-	poetry export -f requirements.txt --output requirements.txt
-	poetry config pypi-token.pypi $(PYPI_TOKEN)
-	poetry publish --dry-run
+publish: ## publish a release to pypi. with UV_PUBLISH_TOKEN
 	: 🚀 Publishing.
-	poetry publish
-	rm requirements.txt
+	uv publish
 
 .PHONY: build-and-publish
 build-and-publish: build publish ## Build and publish.
