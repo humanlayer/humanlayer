@@ -1,0 +1,164 @@
+---
+title: "State Management"
+description: "Managing state across agent interactions"
+icon: "database"
+---
+
+HumanLayer provides built-in state preservation to help maintain context across agent interactions. This is particularly useful when building agents that need to maintain conversation history or workflow state across multiple human interactions.
+
+## Overview
+
+State can be preserved in both function calls and human contacts through the `state` field:
+
+```python
+# Store state when creating a function call
+function_call = await hl.create_function_call(
+    spec=FunctionCallSpec(
+        fn="send_email",
+        kwargs={"to": "user@example.com"},
+        state={
+            "conversation_history": previous_messages,
+            "workflow_context": current_context
+        }
+    )
+)
+
+# Store state when creating a human contact
+contact = await hl.create_human_contact(
+    spec=HumanContactSpec(
+        msg="Do you approve this draft?",
+        state={
+            "draft_version": 1,
+            "previous_feedback": feedback_history
+        }
+    )
+)
+```
+
+The state object will be preserved and returned in webhooks, allowing your application to restore context when handling responses.
+
+## Example: Email Thread Management
+
+Here's a practical example of using state to manage an email conversation thread:
+
+```python
+class Thread:
+    initial_email: EmailPayload
+    events: list[Event]  # Track all events in the conversation
+
+    def to_state(self) -> dict:
+        """Convert thread to a state dict"""
+        return self.model_dump(mode="json")
+
+    @classmethod
+    def from_state(cls, state: dict) -> "Thread":
+        """Restore thread from preserved state"""
+        return cls.model_validate(state)
+
+async def handle_response(human_response: HumanContact):
+    # Restore thread state from the response
+    if human_response.spec.state is not None:
+        thread = Thread.model_validate(human_response.spec.state)
+    else:
+        raise ValueError("state is required")
+
+    # Update thread with new response
+    thread.events.append(
+        Event(type=EventType.HUMAN_RESPONSE, 
+              data={"response": human_response.status.response})
+    )
+
+    # Continue the conversation with preserved context
+    await handle_continued_thread(thread)
+```
+
+Here's how to handle webhook responses with FastAPI background tasks:
+
+```python
+@app.post("/webhook/human-response")
+async def handle_webhook(
+    response: HumanContact,
+    background_tasks: BackgroundTasks
+) -> Dict[str, str]:
+    """Handle webhook responses from HumanLayer"""
+    if response.spec.state is None:
+        return {"status": "error", "message": "missing state"}
+
+    # Process response in background to avoid webhook timeout
+    background_tasks.add_task(handle_response, response)
+    return {"status": "ok"}
+```
+
+<Warning>
+  **Important**: Version your state objects carefully! If you change your Pydantic models,
+  responses from old webhooks may fail to deserialize. Consider:
+
+  - Adding version fields to state objects
+  - Supporting multiple versions of model schemas
+  - Using migration functions for old state formats
+  - Keeping old model versions around until all pending webhooks are processed
+</Warning>
+
+Example of versioned state:
+
+```python
+class ThreadStateV1(BaseModel):
+    version: Literal[1] = 1
+    initial_email: EmailPayload
+    events: list[Event]
+
+class ThreadStateV2(BaseModel):
+    version: Literal[2] = 2
+    initial_email: EmailPayload
+    events: list[Event]
+    metadata: dict  # New in V2
+
+def migrate_v1_to_v2(v1: ThreadStateV1) -> ThreadStateV2:
+    """Migrate old state format to new version"""
+    return ThreadStateV2(
+        initial_email=v1.initial_email,
+        events=v1.events,
+        metadata={},  # Set defaults for new fields
+    )
+
+def load_thread_state(state: dict) -> Thread:
+    """Load thread state with version handling"""
+    version = state.get("version", 1)
+    if version == 1:
+        v1 = ThreadStateV1.model_validate(state)
+        return migrate_v1_to_v2(v1)
+    elif version == 2:
+        return ThreadStateV2.model_validate(state)
+    else:
+        raise ValueError(f"Unknown state version: {version}")
+```
+
+## Best Practices
+
+1. **Serializable State**: Ensure your state object can be serialized to JSON
+2. **Minimal State**: Store only what's necessary to restore context
+3. **Type Safety**: Use Pydantic models to ensure type safety of state objects
+4. **Validation**: Always validate state when restoring from webhooks
+5. **Error Handling**: Have fallbacks for missing or invalid state
+
+## State vs Run IDs
+
+While [run IDs](/core/run-ids-and-call-ids) group related operations together, state preservation allows for richer context:
+
+- Run IDs: Group related operations, useful for audit trails
+- State: Preserve detailed context needed for conversation continuity
+
+Use both in combination for robust agent workflows:
+
+```python
+hl = HumanLayer(
+    run_id="email-campaign-assistant",  # Group operations
+)
+
+await hl.create_human_contact(
+    spec=HumanContactSpec(
+        msg="Review this campaign draft?",
+        state=thread.to_state(),  # Preserve conversation context
+    )
+)
+```
