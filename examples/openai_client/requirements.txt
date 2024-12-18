@@ -2,6 +2,6 @@ openai
 python-dotenv
 
 # install humanlayer
-humanlayer==0.6.4
+humanlayer==0.6.5-rc2
 # or if you want an editable version
 # -e ../../
