@@ -41,7 +41,9 @@ To get started with agent webhooks, you'll need to:
 
 ### Email Payload
 
-For email webhooks, the payload will be look like
+The webhook payload models are defined in [models_agent_webhook.py](https://github.com/humanlayer/humanlayer/blob/main/humanlayer/core/models_agent_webhook.py).
+
+For email webhooks, the payload will look like
 
 <ParamField body="email_payload" type="object">
   <Expandable title="EmailPayload">
@@ -91,27 +93,54 @@ For email webhooks, the payload will be look like
 
 a JSON example might look like
 
-```json
+## State Preservation
+
+When making function calls or human contacts, you can include a state object that will be preserved and returned in webhooks. This allows your application to be stateless while maintaining context across the request lifecycle.
+
+Example:
+
+```python
+# Store the current state when requesting approval
+function_call = FunctionCall(
+    run_id="run_123",
+    call_id="call_456",
+    spec=FunctionCallSpec(
+        fn="send_email",
+        kwargs={"to": "user@example.com"},
+        state={
+            "conversation_history": previous_messages,
+            "user_preferences": preferences,
+        }
+    )
+)
+
+# The state will be returned in the webhook payload
+# allowing you to restore the conversation context
+```
+
+## Next Stepsjson
+
 {
-  "from_address": "overworked-admin@coolcompany.com",
-  "to_address": "cool-agent@humanlayer.dev",
-  "subject": "FWD: help",
-  "body": "can you add a ticket for this?",
-  "message_id": "<1234567890@mailsrv.coolcompany.com>",
-  "raw_email": "This is a placeholder for a test email - if this were a real email, it would include headers, etc.",
-  "datetime": "2024-01-02T00:00:00Z",
-  "previous_thread": [
-    {
-      "from_address": "needy-employee@coolcompany.com",
-      "to_address": ["overworked-admin@coolcompany.com"],
-      "cc_address": [],
-      "subject": "help",
-      "content": "i need some help",
-      "raw_email": "i need some help",
-      "datetime": "2024-01-01T00:00:00Z"
-    }
-  ]
+"from_address": "overworked-admin@coolcompany.com",
+"to_address": "cool-agent@humanlayer.dev",
+"subject": "FWD: help",
+"body": "can you add a ticket for this?",
+"message_id": "<1234567890@mailsrv.coolcompany.com>",
+"raw_email": "This is a placeholder for a test email - if this were a real email, it would include headers, etc.",
+"datetime": "2024-01-02T00:00:00Z",
+"previous_thread": [
+{
+"from_address": "needy-employee@coolcompany.com",
+"to_address": ["overworked-admin@coolcompany.com"],
+"cc_address": [],
+"subject": "help",
+"content": "i need some help",
+"raw_email": "i need some help",
+"datetime": "2024-01-01T00:00:00Z"
 }
+]
+}
+
 ```
 
 ### Using Ngrok for local development
@@ -119,3 +148,4 @@ a JSON example might look like
 1. Start your local API server and note the port it's running on
 2. Install ngrok and run `ngrok http <port>`
 3. Copy the ngrok URL and use it as the callback URL in the HumanLayer dashboard
+```

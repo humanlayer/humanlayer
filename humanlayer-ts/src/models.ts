@@ -52,6 +52,8 @@ type FunctionCallSpec = {
   // the contact channel to use to contact the human
   channel?: ContactChannel
   reject_options?: ResponseOption[]
+  // Optional state to be preserved across the request lifecycle
+  state?: Record<string, any>
 }
 
 type FunctionCall = {
@@ -68,6 +70,8 @@ type HumanContactSpec = {
   // the contact channel to use to contact the human
   channel?: ContactChannel
   response_options?: ResponseOption[]
+  // Optional state to be preserved across the request lifecycle
+  state?: Record<string, any>
 }
 
 type HumanContactStatus = {
