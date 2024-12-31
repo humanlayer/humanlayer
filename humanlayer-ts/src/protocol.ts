@@ -1,7 +1,7 @@
 import { FunctionCall, FunctionCallStatus, HumanContact, HumanContactStatus } from './models'
 
 export type AgentStore<T_Call, T_Status> = {
-  add: (item: T_Call) => Promise<void>
+  add: (item: T_Call) => Promise<T_Call>
   get: (call_id: string) => Promise<T_Call>
   respond: (call_id: string, status: T_Status) => Promise<T_Call>
 }
@@ -14,8 +14,8 @@ export type AdminStore<T_Call, T_Status> = {
 export class HumanLayerException extends Error {}
 
 export type AgentBackend = {
-  functions(): AgentStore<FunctionCall>
-  contacts(): AgentStore<HumanContact>
+  functions(): AgentStore<FunctionCall, FunctionCallStatus>
+  contacts(): AgentStore<HumanContact, HumanContactStatus>
 }
 
 export type AdminBackend = {

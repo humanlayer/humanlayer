@@ -49,12 +49,14 @@ class CloudFunctionCallStore implements AgentStore<FunctionCall, FunctionCallSta
     this.connection = connection
   }
 
-  async add(item: FunctionCall): Promise<void> {
-    await this.connection.request({
+  async add(item: FunctionCall): Promise<FunctionCall> {
+    const resp = await this.connection.request({
       method: 'POST',
       path: '/function_calls',
       body: item,
     })
+    const data = await resp.json()
+    return data as FunctionCall
   }
 
   async get(call_id: string): Promise<FunctionCall> {
@@ -84,12 +86,14 @@ class CloudHumanContactStore implements AgentStore<HumanContact, HumanContactSta
     this.connection = connection
   }
 
-  async add(item: HumanContact): Promise<void> {
+  async add(item: HumanContact): Promise<HumanContact> {
     const resp = await this.connection.request({
       method: 'POST',
       path: '/contact_requests',
       body: item,
     })
+    const data = await resp.json()
+    return data as HumanContact
   }
 
   async get(call_id: string): Promise<HumanContact> {
