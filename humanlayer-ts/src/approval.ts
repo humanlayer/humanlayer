@@ -1,6 +1,14 @@
 import crypto from 'crypto'
 import { AgentBackend, HumanLayerException } from './protocol'
-import { ContactChannel } from './models'
+import {
+  ContactChannel,
+  FunctionCall,
+  FunctionCallSpec,
+  FunctionCallStatus,
+  HumanContact,
+  HumanContactSpec,
+  HumanContactStatus,
+} from './models'
 import { CloudHumanLayerBackend, HumanLayerCloudConnection } from './cloud'
 import { logger } from './logger'
 import { type } from 'node:os'
@@ -9,6 +17,8 @@ export enum ApprovalMethod {
   cli = 'cli',
   backend = 'backend',
 }
+
+const nullIsh = (value: any) => value === null || typeof value === 'undefined'
 
 /**
  * sure this'll work for now
@@ -226,33 +236,101 @@ ${kwargs.length ? ' with args: ' + JSON.stringify(kwargs, null, 2) : ''}`)
   ): ({ message }: { message: string }) => Promise<string> {
     const channel = contactChannel || this.contactChannel
     return async ({ message }: { message: string }) => {
-      const backend = this.backend!
-      const callId = this.genid('human_call')
-      const contact = {
-        run_id: this.runId,
-        call_id: callId,
+      return this.fetchHumanResponse({
         spec: {
           msg: message,
           channel: channel,
         },
-      }
-      await backend.contacts().add(contact)
-
-      if (this.verbose) {
-        console.log(`HumanLayer: Requested human response`)
-      }
-      while (true) {
-        await this.sleep(3000)
-        const humanContact = await backend.contacts().get(callId)
-        if (!humanContact.status?.response) {
-          continue
-        }
-
-        if (this.verbose) {
-          console.log(`HumanLayer: Received human contact response: ${humanContact.status.response}`)
-        }
-        return humanContact.status.response
-      }
+      })
     }
+  }
+
+  async fetchHumanResponse({ spec }: { spec: HumanContactSpec }): Promise<string> {
+    spec.channel = nullIsh(spec.channel) ? this.contactChannel : spec.channel
+    let humanContact = await this.createHumanContact({ spec })
+    if (this.verbose) {
+      console.log(`HumanLayer: Requested human response from HumanLayer cloud`)
+    }
+    while (true) {
+      await this.sleep(3000)
+      humanContact = await this.getHumanContact(humanContact.call_id)
+      if (!humanContact.status?.response) {
+        continue
+      }
+      if (this.verbose) {
+        console.log(`HumanLayer: Received human response: ${humanContact.status.response}`)
+      }
+      return humanContact.status.response
+    }
+  }
+
+  async createHumanContact({ spec }: { spec: HumanContactSpec }): Promise<HumanContact> {
+    spec.channel = nullIsh(spec.channel) ? this.contactChannel : spec.channel
+    if (!this.backend) {
+      throw new HumanLayerException('createHumanContact requires a backend')
+    }
+    const callId = this.genid('human_call')
+    const ret = await this.backend.contacts().add({
+      run_id: this.runId,
+      call_id: callId,
+      spec: spec,
+    })
+    return ret
+  }
+
+  getHumanContact(call_id: string): Promise<HumanContact> {
+    if (!this.backend) {
+      throw new HumanLayerException('getHumanContact requires a backend')
+    }
+    return this.backend.contacts().get(call_id)
+  }
+
+  async fetchHumanApproval({ spec }: { spec: FunctionCallSpec }): Promise<FunctionCallStatus> {
+    spec.channel = nullIsh(spec.channel) ? this.contactChannel : spec.channel
+    const callId = this.genid('call')
+    let functionCall = await this.createFunctionCall({
+      spec: spec,
+    })
+    if (this.verbose) {
+      console.log(`HumanLayer: Requested human approval from HumanLayer cloud`)
+    }
+    while (true) {
+      await this.sleep(3000)
+      functionCall = await this.getFunctionCall(callId)
+      if (
+        functionCall.status?.approved === null ||
+        typeof functionCall.status?.approved === 'undefined'
+      ) {
+        continue
+      }
+      if (this.verbose) {
+        console.log(
+          `HumanLayer: Received response ${
+            functionCall.status?.approved ? ' (approved)' : ' (denied)'
+          } ${functionCall.status?.comment ? `with comment: ${functionCall.status?.comment}` : ''}`,
+        )
+      }
+      return functionCall.status!
+    }
+  }
+
+  async createFunctionCall({ spec }: { spec: FunctionCallSpec }): Promise<FunctionCall> {
+    spec.channel = nullIsh(spec.channel) ? this.contactChannel : spec.channel
+    if (!this.backend) {
+      throw new HumanLayerException('createFunctionCall requires a backend')
+    }
+    const callId = this.genid('call')
+    return this.backend.functions().add({
+      run_id: this.runId,
+      call_id: callId,
+      spec: spec,
+    })
+  }
+
+  async getFunctionCall(call_id: string): Promise<FunctionCall> {
+    if (!this.backend) {
+      throw new HumanLayerException('getFunctionCall requires a backend')
+    }
+    return this.backend.functions().get(call_id)
   }
 }
