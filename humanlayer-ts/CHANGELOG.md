@@ -1,3 +1,9 @@
+## 0.6.1
+
+- Fix - Add more comprehensive module exports for CommonJS and ES modules
+- Enhancement - add lower-level create/fetch methods to typescript package
+- Enhancement - expand EmailContactChannel to support experimental subject and message id fields
+
 ## 0.5.8
 
 ### Enhancements
