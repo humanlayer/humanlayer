@@ -1,4 +1,26 @@
-# HumanLayer example using OpenAI client in Typescript
+# HumanLayer + Vercel AI SDK example
+
+## Overview
+
+This example demonstrates how to use HumanLayer with the Vercel AI SDK in Typescript.
+
+It makes user of the `humanlayer-ts-vercel-ai-sdk` package, which includes methods
+specifically for wrapping Vercel AI SDK tools.
+
+There are two examples:
+
+- `npm run math` will run a math problem, where `add` can be called without approval, but `multiply` requires approval.
+
+![initial prompt](./doc/math-prompt.png)
+
+![math-request](./doc/math-request.png)
+
+- `npm run human-as-tool` will run a prompt where the model should select the "contact a human" tool, which will fetch a human response via humanlayer
+
+![initial prompt](./doc/prompt.png)
+![human-as-tool](./doc/humanlayer-clarification.png)
+
+## Running the Example
 
 Set up env
 
@@ -12,27 +34,4 @@ cp dotenv.example .env
 ```
 npm install
 npm run example
-```
-
-once again, we're doing math here
-
-```javascript
-{
-  input: "what's 6 + 7?",
-  chat_history: [
-    HumanMessage {
-      "content": "hi i love math",
-      "additional_kwargs": {},
-      "response_metadata": {}
-    },
-    AIMessage {
-      "content": "hi i love math too",
-      "additional_kwargs": {},
-      "response_metadata": {},
-      "tool_calls": [],
-      "invalid_tool_calls": []
-    }
-  ],
-  output: '6 + 7 equals 13'
-}
 ```

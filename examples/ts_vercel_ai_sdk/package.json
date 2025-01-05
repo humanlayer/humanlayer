@@ -6,14 +6,15 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
-    "example": "tsx --env-file=.env index.ts"
+    "math": "tsx --env-file=.env math.ts",
+    "human-as-tool": "tsx --env-file=.env human-as-tool.ts"
   },
   "author": "HumanLayer Authors",
   "license": "Apache-2.0",
   "dependencies": {
-    "humanlayer": "0.7.0",
     "@ai-sdk/openai": "^1.0.13",
-    "ai": "^4.0.26"
+    "ai": "^4.0.26",
+    "humanlayer-vercel-ai-sdk": "v0.1.0-alpha1"
   },
   "devDependencies": {
     "@types/node": "^20.14.9",

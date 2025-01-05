@@ -1,6 +1,6 @@
 {
-  "name": "humanlayer",
-  "version": "0.7.1-rc1",
+  "name": "humanlayer-vercel-ai-sdk",
+  "version": "0.1.0-alpha1",
   "description": "typescript client for humanlayer.dev",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
@@ -40,7 +40,7 @@
   "dependencies": {
     "@ai-sdk/openai": "^1.0.13",
     "ai": "^4.0.26",
-    "humanlayer": "^0.7.0"
+    "humanlayer": "0.7.1-rc1"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",
