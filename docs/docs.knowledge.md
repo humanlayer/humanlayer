@@ -323,6 +323,20 @@ Example: When detecting user frustration, provide response options that:
 
 ## Documentation Style
 
+### TypeScript Constructor Pattern
+
+In TypeScript, always use the `humanlayer()` function instead of `new HumanLayer()`:
+
+```typescript
+// Preferred
+import { humanlayer } from "humanlayer";
+const hl = humanlayer({ runId: "my-agent" });
+
+// Avoid
+import { HumanLayer } from "humanlayer";
+const hl = new HumanLayer({ runId: "my-agent" });
+```
+
 Documentation should follow these principles:
 
 - Use precise technical terminology (e.g. "HumanLayer SDK" not just "HumanLayer")

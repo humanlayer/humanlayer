@@ -9,7 +9,7 @@ from typing import Any, Awaitable, Callable, Union
 from pydantic import BaseModel
 from slugify import slugify
 
-from humanlayer.core.approval import ApprovalMethod, R, T, genid, remove_parameter_from_signature
+from humanlayer.core.approval import R, T, genid, remove_parameter_from_signature
 from humanlayer.core.async_cloud import (
     AsyncCloudHumanLayerBackend,
     AsyncHumanLayerCloudConnection,
@@ -58,7 +58,6 @@ class AsyncHumanLayer(BaseModel):
     model_config = {"arbitrary_types_allowed": True}
 
     run_id: str | None = None
-    approval_method: ApprovalMethod | None = None
     backend: AsyncAgentBackend | None = None
     agent_name: str | None = None
     genid: Callable[[str], str] = genid
@@ -75,62 +74,26 @@ class AsyncHumanLayer(BaseModel):
     api_base_url: str | None = None
 
     def model_post_init(self, __context: Any) -> None:
-        # check env first
-        if not self.approval_method and os.getenv("HUMANLAYER_APPROVAL_METHOD"):
-            self.approval_method = ApprovalMethod(os.getenv("HUMANLAYER_APPROVAL_METHOD"))
+        has_credentials = self.backend is not None or self.api_key or os.getenv("HUMANLAYER_API_KEY")
 
-        # then infer from API_KEY setting
-        if not self.approval_method:
-            if self.backend is not None or self.api_key or os.getenv("HUMANLAYER_API_KEY"):
-                self.approval_method = ApprovalMethod.BACKEND
-                self.backend = self.backend or AsyncCloudHumanLayerBackend(
-                    connection=AsyncHumanLayerCloudConnection(
-                        api_key=self.api_key,
-                        api_base_url=self.api_base_url,
-                    )
+        if not has_credentials:
+            raise HumanLayerException(
+                "No HUMANLAYER_API_KEY found, and CLI approval method is not supported for AsyncHumanLayer"
+                " - try setting an API key or using the sync HumanLayer() instead"
+            )
+
+        if self.backend is None:
+            self.backend = AsyncCloudHumanLayerBackend(
+                connection=AsyncHumanLayerCloudConnection(
+                    api_key=self.api_key,
+                    api_base_url=self.api_base_url,
                 )
-            else:
-                logger.info("No HUMANLAYER_API_KEY found, defaulting to CLI approval")
-                self.approval_method = ApprovalMethod.CLI
+            )
 
         agent = "agent"
         self.run_id = self.run_id or os.getenv(
             "HUMANLAYER_RUN_ID",
             self.genid(f"{slugify(self.agent_name or agent)}"),
-        )
-
-        if self.approval_method == ApprovalMethod.BACKEND and not self.backend:
-            raise ValueError("backend is required for non-cli approvals")
-
-    @classmethod
-    def cloud(  # type: ignore
-        cls,
-        connection: AsyncHumanLayerCloudConnection | None = None,
-        api_key: str | None = None,
-        api_base_url: str | None = None,
-        **kwargs,
-    ) -> "AsyncHumanLayer":
-        if not connection:
-            connection = AsyncHumanLayerCloudConnection(
-                api_key=api_key,
-                api_base_url=api_base_url,
-            )
-        return cls(
-            approval_method=ApprovalMethod.BACKEND,
-            backend=AsyncCloudHumanLayerBackend(
-                connection=connection,
-            ),
-            **kwargs,
-        )
-
-    @classmethod
-    def cli(  # type: ignore
-        cls,
-        **kwargs,
-    ) -> "AsyncHumanLayer":
-        return cls(
-            approval_method=ApprovalMethod.CLI,
-            **kwargs,
         )
 
     def require_approval(
@@ -145,10 +108,7 @@ class AsyncHumanLayer(BaseModel):
                 raise HumanLayerException("reject_options must have unique names")
 
         async def decorator(fn):  # type: ignore
-            if self.approval_method is ApprovalMethod.CLI:
-                raise HumanLayerException("CLI approval method is not supported for async HumanLayer")
-
-            return await self._approve_with_backend(
+            return self._approve_with_backend(
                 fn=fn,
                 contact_channel=contact_channel,
                 reject_options=reject_options,
@@ -156,7 +116,7 @@ class AsyncHumanLayer(BaseModel):
 
         return AsyncHumanLayerWrapper(decorator)
 
-    async def _approve_with_backend(
+    def _approve_with_backend(
         self,
         fn: Callable[[T], R],
         contact_channel: ContactChannel | None = None,
@@ -219,7 +179,7 @@ class AsyncHumanLayer(BaseModel):
 
         return wrapper
 
-    async def human_as_tool(
+    def human_as_tool(
         self,
         contact_channel: ContactChannel | None = None,
         response_options: list[ResponseOption] | None = None,
@@ -228,9 +188,6 @@ class AsyncHumanLayer(BaseModel):
             names = [opt.name for opt in response_options]
             if len(names) != len(set(names)):
                 raise HumanLayerException("response_options must have unique names")
-
-        if self.approval_method is ApprovalMethod.CLI:
-            return self._human_as_tool_cli()
 
         return self._human_as_tool(contact_channel, response_options)
 
@@ -330,7 +287,7 @@ class AsyncHumanLayer(BaseModel):
         call = await self.create_function_call(spec)
 
         # todo lets do a more async-y websocket soon
-        if self.verbose and self.approval_method == ApprovalMethod.BACKEND:
+        if self.verbose:
             print(f"HumanLayer: waiting for approval for {spec.fn} via humanlayer cloud")
 
         while True:

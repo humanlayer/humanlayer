@@ -10,7 +10,7 @@ app = FastAPI(
 )
 
 # Initialize HumanLayer
-hl = AsyncHumanLayer.cloud(verbose=True)
+hl = AsyncHumanLayer(verbose=True)
 
 
 # Root endpoint

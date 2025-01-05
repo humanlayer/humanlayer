@@ -1,5 +1,5 @@
-.PHONY: check
-check: ## Run code quality tools.
+.PHONY: check-py
+check-py: ## Run code quality tools.
 	: 🚀 installing uv deps
 	uv sync
 	: 🚀 Linting code: Running pre-commit
@@ -8,27 +8,52 @@ check: ## Run code quality tools.
 	: 🚀 Checking for obsolete dependencies: Running deptry
 	uv run deptry .
 
+.PHONY: check-ts
+check-ts:
+	npm -C humanlayer-ts run check
+
+.PHONY: check
+check: check-py check-ts
+
 typecheck: ## just the typechecks
 	: 🚀 Static type checking: Running mypy
 	uv run mypy
 
-.PHONY: test
-test: ## Test the code with pytest
+.PHONY: test-py
+test-py: ## Test the code with pytest
 	uv run pytest ./humanlayer --cov --cov-config=pyproject.toml --cov-report=xml --junitxml=junit.xml
+
+.PHONY: test-ts
+test-ts: ## Test the code with jest
+	npm -C humanlayer-ts run test
+
+.PHONY: test
+test: test-py test-ts
 
 .PHONY: build
 build: clean-build ## Build wheel file using uv
 	: 🚀 Creating wheel file
 	uv build
 
+.PHONY: build-ts
+build-ts:
+	npm -C humanlayer-ts run build
+
 .PHONY: clean-build
 clean-build: ## clean build artifacts
 	@rm -rf dist
 
-.PHONY: publish
-publish: ## publish a release to pypi. with UV_PUBLISH_TOKEN
+.PHONY: publish-py
+publish-py: ## publish a release to pypi. with UV_PUBLISH_TOKEN
 	: 🚀 Publishing.
 	uv publish
+
+.PHONY: publish
+publish: publish-py
+
+.PHONY: publish-ts
+publish-ts: build-ts
+	npm -C humanlayer-ts publish
 
 .PHONY: build-and-publish
 build-and-publish: build publish ## Build and publish.
@@ -39,12 +64,29 @@ help:
 
 .DEFAULT_GOAL := help
 
-.PHONY: smoke-test-examples
-smoke-test-examples:
+.PHONY: smoke-test-examples-py
+smoke-test-examples-py:
 	examples/langchain/venv/bin/pip install -r examples/langchain/requirements.txt
+	: 🦾 human_as_tool_linkedin
 	examples/langchain/venv/bin/python examples/langchain/04-human_as_tool_linkedin.py
+	: 🦾 human_as_tool_linkedin
 	examples/langchain/venv/bin/python examples/langchain/04-human_as_tool_linkedin_frustration.py
 	examples/langchain/venv/bin/python examples/langchain/09-email-contact.py
+
+.PHONY: smoke-test-examples-ts
+smoke-test-examples-ts:
+	npm -C examples/ts_openai_client install
+	: 🦾 human-as-tool
+	npm -C examples/ts_openai_client run human-as-tool
+	: 🦾 human-email
+	npm -C examples/ts_openai_client run human-email
+
+	npm -C examples/ts_langchain install
+	: 🦾 ts_langchain
+	npm -C examples/ts_langchain run example
+
+.PHONY: smoke-test-examples
+smoke-test-examples: smoke-test-examples-py smoke-test-examples-ts
 
 .PHONY: test-examples
 test-examples:
@@ -117,6 +159,10 @@ update-examples-versions:
 	fi; \
 	: 🚀 Updating examples versions to $(VERSION)
 	find examples/*/requirements.txt -type f -exec sed -i '' 's/humanlayer==.*$$/humanlayer==$(VERSION)/g' {} +
+
+.PHONY: update-examples-ts-versions
+update-examples-ts-versions:
+	find examples/*/package.json -type f -exec sed -i '' 's/"humanlayer": ".*"/"humanlayer": "$(VERSION)"/g' {} +
 
 .PHONY: update-examples-tokens
 HUMANLAYER_API_KEY?=

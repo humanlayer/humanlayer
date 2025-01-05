@@ -92,11 +92,7 @@ class HumanLayer(BaseModel):
     api_base_url: str | None = None
 
     def model_post_init(self, __context: Any) -> None:
-        # check env first
-        if not self.approval_method and os.getenv("HUMANLAYER_APPROVAL_METHOD"):
-            self.approval_method = ApprovalMethod(os.getenv("HUMANLAYER_APPROVAL_METHOD"))
-
-        # then infer from API_KEY setting
+        # infer from API_KEY setting
         if not self.approval_method:
             if self.backend is not None or self.api_key or os.getenv("HUMANLAYER_API_KEY"):
                 self.approval_method = ApprovalMethod.BACKEND
