@@ -1,6 +1,6 @@
 {
   "name": "humanlayer",
-  "version": "0.7.0-rc1",
+  "version": "0.7.0",
   "description": "typescript client for humanlayer.dev",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
@@ -38,8 +38,8 @@
   },
   "homepage": "https://github.com/humanlayer/humanlayer#readme",
   "devDependencies": {
-    "@types/jest": "^29.5.12",
-    "@types/node": "^20.14.9",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^20.17.11",
     "eslint": "^8.57.0",
     "jest": "^29.7.0",
     "prettier": "^3.3.2",
