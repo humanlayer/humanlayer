@@ -1,5 +1,9 @@
 # HumanLayer + Vercel AI SDK example
 
+<a href="https://www.loom.com/share/e822a0f0889540f988d0af085b7a567f">
+  <img style="max-width:300px;" src="https://cdn.loom.com/sessions/thumbnails/e822a0f0889540f988d0af085b7a567f-ae3cf45e48e5c87a-full-play.gif">
+</a>
+
 ## Overview
 
 This example demonstrates how to use HumanLayer with the Vercel AI SDK in Typescript.
