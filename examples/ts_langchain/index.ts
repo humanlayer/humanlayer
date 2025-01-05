@@ -7,9 +7,9 @@ import { AgentExecutor, createOpenAIFunctionsAgent } from "langchain/agents";
 import { StructuredTool, Tool } from "@langchain/core/tools";
 import { output, z } from "zod";
 import { ZodObjectAny } from "@langchain/core/dist/types/zod";
-import { HumanLayer } from "humanlayer";
+import { humanlayer } from "humanlayer";
 
-const hl = new HumanLayer({
+const hl = humanlayer({
   verbose: true,
   // runId is optional -it can be used to identify the agent in approval history
   runId: "ts-langchain-math-example",

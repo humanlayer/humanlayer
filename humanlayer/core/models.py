@@ -95,23 +95,18 @@ class EmailContactChannel(BaseModel):
     def __init__(self, **kwargs) -> None:  # type: ignore
         super().__init__(**kwargs)
         if self.experimental_subject_line is not None:
-            logger.debug("EmailContactChannel.experimental_subject_line is deprecated, use subject instead")
             if self.subject is None:
                 self.subject = self.experimental_subject_line
         else:
             self.experimental_subject_line = self.subject
+
         if self.experimental_references_message_id is not None:
-            logger.debug(
-                "EmailContactChannel.experimental_references_message_id is deprecated, use references_message_id instead"
-            )
             if self.references_message_id is None:
                 self.references_message_id = self.experimental_references_message_id
         else:
             self.experimental_references_message_id = self.references_message_id
+
         if self.experimental_in_reply_to_message_id is not None:
-            logger.debug(
-                "EmailContactChannel.experimental_in_reply_to_message_id is deprecated, use in_reply_to_message_id instead"
-            )
             if self.in_reply_to_message_id is None:
                 self.in_reply_to_message_id = self.experimental_in_reply_to_message_id
         else:
