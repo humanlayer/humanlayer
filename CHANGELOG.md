@@ -1,3 +1,12 @@
+
+## 0.7.0
+
+- AsyncHumanLayer.human_as_tool() is no longer async (but the tool it returns still is) 
+    - simplifies syntax to `await hl.human_as_tool()(message="lorem ipsum")` instead of `await (await hl.human_as_tool())(message="lorem ipsum")`
+- remove all approval_method logic for AsyncHumanLayer - only `backend` usage is supported. Use a sync HumanLayer if you want to use the cli or toggle between backend/cli methods
+- BREAKING - remove AsyncHumanLayer.cloud()
+- BREAKING - reduce ways to configure approval method by remoing env var for HUMANLAYER_APPROVAL_METHOD
+
 ## 0.6.5
 
 ### Features

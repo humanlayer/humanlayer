@@ -8,7 +8,7 @@ app = FastAPI(
 )
 
 # Initialize HumanLayer
-hl = AsyncHumanLayer.cloud(verbose=True)
+hl = AsyncHumanLayer(verbose=True)
 
 # Configure CORS
 app.add_middleware(
@@ -43,7 +43,7 @@ async def divide(a: int, b: int) -> float:
 # Math operations endpoint
 @app.post("/math/multiply")
 async def math_multiply(a: int, b: int) -> Dict[str, str | int]:
-    result = await multiply(a, b)
+    result = await multiply(a=a, b=b)
     if isinstance(result, str):  # Handle denial message
         return {"status": "denied", "message": result}
     return {"status": "success", "result": result}
@@ -51,9 +51,16 @@ async def math_multiply(a: int, b: int) -> Dict[str, str | int]:
 
 @app.post("/math/divide")
 async def math_divide(a: int, b: int) -> Dict[str, str | float]:
-    result = await divide(a, b)
+    result = await divide(a=a, b=b)
     if isinstance(result, str):  # Handle denial message
         return {"status": "denied", "message": result}
+    return {"status": "success", "result": result}
+
+
+@app.post("/ask-question")
+async def ask_question(question: str) -> Dict[str, str | float]:
+    contact_human = hl.human_as_tool()  # todo needs kwarg-only signature for the returned type, ignore for now
+    result = await contact_human(message=question)  # type: ignore
     return {"status": "success", "result": result}
 
 

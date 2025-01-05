@@ -1,6 +1,6 @@
 {
   "name": "humanlayer",
-  "version": "0.6.1",
+  "version": "0.7.0-rc1",
   "description": "typescript client for humanlayer.dev",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
@@ -17,6 +17,7 @@
   },
   "scripts": {
     "build": "tsc && pkgroll",
+    "check": "tsc --noEmit",
     "dev": "node -r ts-node/register src/index.ts",
     "test": "jest"
   },

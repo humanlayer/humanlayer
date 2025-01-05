@@ -1,8 +1,8 @@
-import { ContactChannel, HumanLayer } from "humanlayer";
+import { ContactChannel, humanlayer } from "humanlayer";
 import OpenAI from "openai";
 import { ChatCompletionTool } from "openai/src/resources/index.js";
 
-const hl = new HumanLayer({ verbose: true });
+const hl = humanlayer({ verbose: true });
 
 const PROMPT = `
 
@@ -104,6 +104,7 @@ const dmWithCEO: ContactChannel = {
   slack: {
     channel_or_user_id: "C07HR5JL15F",
     context_about_channel_or_user: "a dm with the ceo",
+    experimental_slack_blocks: true,
   },
 };
 
@@ -231,4 +232,9 @@ const main = async (): Promise<any> => {
   return resp;
 };
 
-main().then(console.log).catch(console.error);
+main()
+  .then(console.log)
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });

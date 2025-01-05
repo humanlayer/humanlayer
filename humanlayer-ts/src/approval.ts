@@ -11,7 +11,6 @@ import {
 } from './models'
 import { CloudHumanLayerBackend, HumanLayerCloudConnection } from './cloud'
 import { logger } from './logger'
-import { type } from 'node:os'
 
 export enum ApprovalMethod {
   cli = 'cli',
@@ -23,8 +22,25 @@ const nullIsh = (value: any) => value === null || typeof value === 'undefined'
 /**
  * sure this'll work for now
  */
-export const defaultGenid = (prefix: string) => {
+const defaultGenid = (prefix: string) => {
   return `${prefix}-${crypto.randomUUID().slice(0, 8)}`
+}
+
+export const humanlayer = (params?: HumanLayerParams) => {
+  return new HumanLayer(params)
+}
+
+export interface HumanLayerParams {
+  runId?: string
+  approvalMethod?: ApprovalMethod
+  backend?: AgentBackend
+  agentName?: string
+  genid?: (prefix: string) => string
+  sleep?: (ms: number) => Promise<void>
+  contactChannel?: ContactChannel
+  apiKey?: string
+  apiBaseUrl?: string
+  verbose?: boolean
 }
 
 export class HumanLayer {
@@ -37,18 +53,7 @@ export class HumanLayer {
   contactChannel?: ContactChannel
   verbose?: boolean
 
-  constructor(params?: {
-    runId?: string
-    approvalMethod?: ApprovalMethod
-    backend?: AgentBackend
-    agentName?: string
-    genid?: (prefix: string) => string
-    sleep?: (ms: number) => Promise<void>
-    contactChannel?: ContactChannel
-    apiKey?: string
-    apiBaseUrl?: string
-    verbose?: boolean
-  }) {
+  constructor(params?: HumanLayerParams) {
     const {
       runId,
       approvalMethod,
@@ -66,22 +71,12 @@ export class HumanLayer {
     this.verbose = verbose
     this.contactChannel = contactChannel
 
-    // Determine approval method based on environment variables or provided arguments
-    const envApprovalMethod = process.env.HUMANLAYER_APPROVAL_METHOD as keyof typeof ApprovalMethod
-
-    if (!approvalMethod && envApprovalMethod && !(envApprovalMethod in ApprovalMethod)) {
-      throw new HumanLayerException(`Invalid HUMANLAYER_APPROVAL_METHOD: ${envApprovalMethod}`)
-    }
-    if (!approvalMethod && envApprovalMethod && envApprovalMethod in ApprovalMethod) {
-      this.approvalMethod = ApprovalMethod[envApprovalMethod]
-    } else if (!approvalMethod) {
-      this.approvalMethod =
-        backend || apiKey || process.env.HUMANLAYER_API_KEY
-          ? ApprovalMethod.backend
-          : ApprovalMethod.cli
-    } else {
-      this.approvalMethod = approvalMethod
-    }
+    // Simplified approval method logic
+    this.approvalMethod =
+      approvalMethod ||
+      (backend || apiKey || process.env.HUMANLAYER_API_KEY
+        ? ApprovalMethod.backend
+        : ApprovalMethod.cli)
 
     // Initialize backend if approval method is backend
     if (this.approvalMethod === ApprovalMethod.backend) {
@@ -136,7 +131,7 @@ export class HumanLayer {
     const name = fn.name
     // todo fix the types here
     const f: any = async (kwargs: any) => {
-      console.log(`Agent ${this.runId} wants to call
+      logger.info(`Agent ${this.runId} wants to call
 
 ${fn.name}(${JSON.stringify(kwargs, null, 2)})
 
@@ -185,7 +180,7 @@ ${kwargs.length ? ' with args: ' + JSON.stringify(kwargs, null, 2) : ''}`)
         },
       })
       if (this.verbose) {
-        console.log(`HumanLayer: Requested approval for function ${name}`)
+        logger.info(`HumanLayer: Requested approval for function ${name}`)
       }
       while (true) {
         await this.sleep(3000)
@@ -199,7 +194,7 @@ ${kwargs.length ? ' with args: ' + JSON.stringify(kwargs, null, 2) : ''}`)
 
         if (functionCall.status?.approved) {
           if (this.verbose) {
-            console.log(`HumanLayer: User approved function ${functionCall.spec.fn}`)
+            logger.info(`HumanLayer: User approved function ${functionCall.spec.fn}`)
           }
           return fn(kwargs)
         } else {
@@ -221,7 +216,7 @@ ${kwargs.length ? ' with args: ' + JSON.stringify(kwargs, null, 2) : ''}`)
 
   humanAsToolCli(): ({ message }: { message: string }) => Promise<string> {
     return async ({ message }: { message: string }) => {
-      console.log(`Agent ${this.runId} requests assistance:
+      logger.info(`Agent ${this.runId} requests assistance:
 
       ${message}
       `)
@@ -249,7 +244,7 @@ ${kwargs.length ? ' with args: ' + JSON.stringify(kwargs, null, 2) : ''}`)
     spec.channel = nullIsh(spec.channel) ? this.contactChannel : spec.channel
     let humanContact = await this.createHumanContact({ spec })
     if (this.verbose) {
-      console.log(`HumanLayer: Requested human response from HumanLayer cloud`)
+      logger.info(`HumanLayer: Requested human response from HumanLayer cloud`)
     }
     while (true) {
       await this.sleep(3000)
@@ -258,7 +253,7 @@ ${kwargs.length ? ' with args: ' + JSON.stringify(kwargs, null, 2) : ''}`)
         continue
       }
       if (this.verbose) {
-        console.log(`HumanLayer: Received human response: ${humanContact.status.response}`)
+        logger.info(`HumanLayer: Received human response: ${humanContact.status.response}`)
       }
       return humanContact.status.response
     }
@@ -287,16 +282,15 @@ ${kwargs.length ? ' with args: ' + JSON.stringify(kwargs, null, 2) : ''}`)
 
   async fetchHumanApproval({ spec }: { spec: FunctionCallSpec }): Promise<FunctionCallStatus> {
     spec.channel = nullIsh(spec.channel) ? this.contactChannel : spec.channel
-    const callId = this.genid('call')
     let functionCall = await this.createFunctionCall({
       spec: spec,
     })
     if (this.verbose) {
-      console.log(`HumanLayer: Requested human approval from HumanLayer cloud`)
+      logger.info(`HumanLayer: Requested human approval from HumanLayer cloud`)
     }
     while (true) {
       await this.sleep(3000)
-      functionCall = await this.getFunctionCall(callId)
+      functionCall = await this.getFunctionCall(functionCall.call_id)
       if (
         functionCall.status?.approved === null ||
         typeof functionCall.status?.approved === 'undefined'
@@ -304,7 +298,7 @@ ${kwargs.length ? ' with args: ' + JSON.stringify(kwargs, null, 2) : ''}`)
         continue
       }
       if (this.verbose) {
-        console.log(
+        logger.info(
           `HumanLayer: Received response ${
             functionCall.status?.approved ? ' (approved)' : ' (denied)'
           } ${functionCall.status?.comment ? `with comment: ${functionCall.status?.comment}` : ''}`,
