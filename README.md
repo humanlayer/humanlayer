@@ -12,7 +12,7 @@ Bring your LLM (OpenAI, Llama, Claude, etc) and Framework (LangChain, CrewAI, et
 
 <h3>
 
-[Homepage](https://www.humanlayer.dev/) | [Get Started](https://humanlayer.dev/docs/quickstart-python) | [Discord](https://humanlayer.dev/discord
+[Homepage](https://www.humanlayer.dev/) | [Get Started](https://humanlayer.dev/docs/quickstart-python) | [Discord](https://humanlayer.dev/discord)
 
 </h3>
 
