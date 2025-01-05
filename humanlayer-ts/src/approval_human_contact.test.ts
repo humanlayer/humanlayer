@@ -14,7 +14,13 @@ test('HumanLayer()#humanAsTool()', async () => {
 
   mockBackend.contacts.mockReturnValue(contacts)
 
-  contacts.add.mockReturnValue(null)
+  contacts.add.mockReturnValue({
+    run_id: 'generated-id',
+    call_id: 'generated-id',
+    spec: {
+      msg: '867',
+    },
+  })
 
   const returnValue: HumanContact = {
     run_id: 'generated-id',
@@ -61,7 +67,18 @@ test('HumanLayer(ContactChannel)#humanAsTool()', async () => {
 
   mockBackend.contacts.mockReturnValue(contacts)
 
-  contacts.add.mockReturnValue(null)
+  contacts.add.mockReturnValue({
+    run_id: 'generated-id',
+    call_id: 'generated-id',
+    spec: {
+      msg: '867',
+      channel: {
+        slack: {
+          channel_or_user_id: 'test-channel',
+        },
+      },
+    },
+  })
 
   const returnValue: HumanContact = {
     run_id: 'generated-id',
@@ -126,7 +143,18 @@ test('HumanLayer()#humanAsTool(ContactChannel)', async () => {
 
   mockBackend.contacts.mockReturnValue(contacts)
 
-  contacts.add.mockReturnValue(null)
+  contacts.add.mockReturnValue({
+    run_id: 'generated-id',
+    call_id: 'generated-id',
+    spec: {
+      msg: '867',
+      channel: {
+        slack: {
+          channel_or_user_id: 'test-channel',
+        },
+      },
+    },
+  })
 
   const returnValue: HumanContact = {
     run_id: 'generated-id',

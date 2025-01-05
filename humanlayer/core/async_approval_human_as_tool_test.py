@@ -45,7 +45,7 @@ async def test_human_as_tool_generic() -> None:
         status=HumanContactStatus(response="magenta"),
     )
 
-    contact_human = await hl.human_as_tool()
+    contact_human = hl.human_as_tool()
     ret = await contact_human("what is your favorite color")
 
     assert ret == "magenta"
@@ -103,7 +103,7 @@ async def test_human_as_tool_instance_contact_channel() -> None:
         status=HumanContactStatus(response="magenta"),
     )
 
-    tool = await hl.human_as_tool()
+    tool = hl.human_as_tool()
 
     assert tool.__name__ == "contact_human_in_slack_in_a_dm_with_the_librarian"
     assert tool.__doc__ == "Contact a human via slack and wait for a response in a dm with the librarian"
@@ -131,9 +131,9 @@ async def test_human_as_tool_response_names_must_be_unique() -> None:
     """
     test that the response names in the response_options must be unique
     """
-    hl = AsyncHumanLayer()
+    hl = AsyncHumanLayer(api_key="test")
     with pytest.raises(HumanLayerException) as e:
-        await hl.human_as_tool(
+        hl.human_as_tool(
             response_options=[
                 ResponseOption(
                     name="foo",

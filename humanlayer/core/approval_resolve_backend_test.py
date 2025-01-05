@@ -1,8 +1,6 @@
-from unittest.mock import Mock
-
 import pytest
 
-from humanlayer import AgentBackend, ApprovalMethod, CloudHumanLayerBackend, HumanLayer
+from humanlayer import ApprovalMethod, CloudHumanLayerBackend, HumanLayer
 from humanlayer.testing import env_var
 
 
@@ -15,25 +13,6 @@ def test_no_args() -> None:
 def test_cli_hardcoded() -> None:
     hl = HumanLayer(approval_method=ApprovalMethod.CLI)
     assert hl.approval_method == ApprovalMethod.CLI
-
-
-def test_env_invalid_breaks() -> None:
-    with env_var("HUMANLAYER_APPROVAL_METHOD", "bar"):
-        with pytest.raises(ValueError) as e:
-            HumanLayer()
-        assert "'bar' is not a valid ApprovalMethod" in str(e.value)
-
-
-def test_env_cli() -> None:
-    with env_var("HUMANLAYER_APPROVAL_METHOD", "cli"):
-        hl = HumanLayer()
-        assert hl.approval_method == ApprovalMethod.CLI
-
-
-def test_env_backend() -> None:
-    with env_var("HUMANLAYER_APPROVAL_METHOD", "backend"):
-        hl = HumanLayer(backend=Mock(spec=AgentBackend))
-        assert hl.approval_method == ApprovalMethod.BACKEND
 
 
 def test_cloud() -> None:

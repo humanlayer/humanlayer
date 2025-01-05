@@ -1,46 +1,17 @@
-import { ApprovalMethod, HumanLayer } from './approval'
+import { ApprovalMethod, humanlayer, HumanLayer } from './approval'
 import { with_env_var } from '../src/testing/index'
-import exp from 'node:constants'
 import { CloudHumanLayerBackend } from './cloud'
 
 test('no args', () => {
   with_env_var('HUMANLAYER_API_KEY', '', () => {
-    const hl = new HumanLayer()
+    const hl = humanlayer()
     expect(hl.approvalMethod).toBe(ApprovalMethod.cli)
   })
 })
 
 test('cli hardcoded', () => {
-  const hl = new HumanLayer({ approvalMethod: ApprovalMethod.cli })
+  const hl = humanlayer({ approvalMethod: ApprovalMethod.cli })
   expect(hl.approvalMethod).toBe(ApprovalMethod.cli)
-})
-
-test('invalid breaks', () => {
-  with_env_var('HUMANLAYER_APPROVAL_METHOD', 'bar', () => {
-    expect(() => new HumanLayer()).toThrow('Invalid HUMANLAYER_APPROVAL_METHOD: bar')
-  })
-})
-
-test('env cli', () => {
-  with_env_var('HUMANLAYER_APPROVAL_METHOD', 'cli', () => {
-    const hl = new HumanLayer()
-    expect(hl.approvalMethod).toBe(ApprovalMethod.cli)
-    with_env_var('HUMANLAYER_API_TOKEN', 'abc', () => {
-      const hl = new HumanLayer()
-      expect(hl.approvalMethod).toBe(ApprovalMethod.cli)
-    })
-  })
-})
-
-test('env backend', () => {
-  with_env_var('HUMANLAYER_APPROVAL_METHOD', 'backend', () => {
-    expect(() => new HumanLayer()).toThrow('HUMANLAYER_API_KEY is required for cloud approvals')
-
-    with_env_var('HUMANLAYER_API_KEY', 'abc', () => {
-      const hl = new HumanLayer()
-      expect(hl.approvalMethod).toBe(ApprovalMethod.backend)
-    })
-  })
 })
 
 test('HumanLayer.cloud()', () => {

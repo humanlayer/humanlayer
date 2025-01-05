@@ -1,11 +1,18 @@
-import { HumanLayer } from "humanlayer";
+import { humanlayer } from "humanlayer";
 import OpenAI from "openai";
 import { ChatCompletionTool } from "openai/src/resources/index.js";
 
-const hl = new HumanLayer({
+const hl = humanlayer({
   verbose: true,
   // runId is optional -it can be used to identify the agent in approval history
   runId: "ts-openai-client-math-example",
+  contactChannel: {
+    slack: {
+      channel_or_user_id: "",
+      context_about_channel_or_user: "",
+      experimental_slack_blocks: true,
+    },
+  },
 });
 
 const PROMPT = `multiply 2 and 5, then add 32 to the result.
@@ -106,4 +113,9 @@ const main = async (): Promise<any> => {
   return resp;
 };
 
-main().then(console.log).catch(console.error);
+main()
+  .then(console.log)
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });

@@ -1,8 +1,8 @@
-import { ContactChannel, HumanLayer } from "humanlayer";
+import { ContactChannel, humanlayer } from "humanlayer";
 import OpenAI from "openai";
 import { ChatCompletionTool } from "openai/src/resources/index.js";
 
-const hl = new HumanLayer({ verbose: true, runId: "ts-human-email" });
+const hl = humanlayer({ verbose: true, runId: "ts-human-email" });
 
 const PROMPT = `
 
@@ -230,4 +230,9 @@ const main = async (): Promise<any> => {
   return resp;
 };
 
-main().then(console.log).catch(console.error);
+main()
+  .then(console.log)
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });

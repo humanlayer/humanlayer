@@ -1,8 +1,8 @@
-import { HumanLayer } from "humanlayer";
+import { humanlayer } from "humanlayer";
 import OpenAI from "openai";
 import { ChatCompletionTool } from "openai/src/resources/index.js";
 
-const hl = new HumanLayer({
+const hl = humanlayer({
   verbose: true,
   // runId is optional -it can be used to identify the agent in approval history
   runId: "openai-imperative-fetch-04",
@@ -141,4 +141,9 @@ const main = async (): Promise<any> => {
   return resp;
 };
 
-main().then(console.log).catch(console.error);
+main()
+  .then(console.log)
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });

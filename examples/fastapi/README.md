@@ -42,7 +42,7 @@ The main application (`app.py`) shows how to:
 
    ```python
    from humanlayer import AsyncHumanLayer
-   hl = AsyncHumanLayer.cloud(verbose=True)
+   hl = AsyncHumanLayer(verbose=True)
    ```
 
 2. Create functions requiring approval:
@@ -94,14 +94,16 @@ Using curl:
 
 ```bash
 # Test multiplication
-curl -X POST "http://localhost:8000/math/multiply" \
-     -H "Content-Type: application/json" \
-     -d '{"a": 5, "b": 3}'
+curl -X POST "http://localhost:8000/math/multiply?a=5&b=3"
 
 # Test division
-curl -X POST "http://localhost:8000/math/divide" \
-     -H "Content-Type: application/json" \
-     -d '{"a": 10, "b": 2}'
+curl -X POST "http://localhost:8000/math/divide?a=10&b=2"
+```
+
+Or you can ask a question to the human in an asyncio/fastapi compatible way:
+
+```bash
+curl -X POST "http://localhost:8000/ask-question?question=what+is+the+weather+in+tokyo"
 ```
 
 ## Response Formats
