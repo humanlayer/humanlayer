@@ -232,7 +232,3 @@ Shouts out to [@erquhart](https://github.com/erquhart) for this one
 ## License
 
 The HumanLayer SDK in this repo is licensed under the Apache 2 License.
-
-## QR Code
-
-<img width="500" src="./docs/images/humanlayer-qr.png" alt="qr code to this repo">
