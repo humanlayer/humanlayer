@@ -46,7 +46,7 @@ class AsyncHumanLayerCloudConnection(BaseModel):
             session.request(
                 method,
                 f"{self.api_base_url}{path}",
-                timeout=aiohttp.ClientTimeout(total=10),
+                timeout=aiohttp.ClientTimeout(total=self.http_timeout_seconds),
                 **kwargs,
             ) as response,
         ):

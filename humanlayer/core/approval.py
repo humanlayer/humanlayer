@@ -355,7 +355,11 @@ class HumanLayer(BaseModel):
         if contact_channel.email:
             contact_human.__doc__ = "Contact a human via email and wait for a response"
             contact_human.__name__ = "contact_human_via_email"
-            contact_human.__annotations__ = {"subject": str, "message": str, "return": str}
+            contact_human.__annotations__ = {
+                "subject": str,
+                "message": str,
+                "return": str,
+            }
             if contact_channel.email.address:
                 fn_ctx = re.sub(r"[^a-zA-Z0-9]+", "_", contact_channel.email.address)
                 fn_ctx = re.sub(r"_+", "_", fn_ctx).strip("_")

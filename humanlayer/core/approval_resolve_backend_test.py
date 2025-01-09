@@ -47,3 +47,13 @@ def test_env_var_cloud() -> None:
         assert isinstance(hl.backend, CloudHumanLayerBackend)
         assert hl.backend.connection.api_key == "foo"
         assert hl.backend.connection.api_base_url == "https://api.humanlayer.dev/humanlayer/v1"
+
+
+def test_timeout() -> None:
+    with (
+        env_var("HUMANLAYER_HTTP_TIMEOUT_SECONDS", "30"),
+        env_var("HUMANLAYER_API_KEY", "foo"),
+    ):
+        hl = HumanLayer()
+        assert hl.backend is not None
+        assert hl.backend.connection.http_timeout == 30

@@ -4,10 +4,12 @@ import { FunctionCall, FunctionCallStatus, HumanContact, HumanContactStatus } fr
 class HumanLayerCloudConnection {
   apiKey?: string
   apiBaseURL?: string
+  httpTimeoutSeconds: number
 
-  constructor(api_key?: string, api_base_url?: string) {
+  constructor(api_key?: string, api_base_url?: string, http_timeout_seconds: number = 10) {
     this.apiKey = api_key
     this.apiBaseURL = api_base_url
+    this.httpTimeoutSeconds = http_timeout_seconds
 
     if (!this.apiKey) {
       throw new Error('HUMANLAYER_API_KEY is required for cloud approvals')
