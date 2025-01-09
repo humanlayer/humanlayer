@@ -8,7 +8,6 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
 
 jobs:
-  # todo needs check-ts and test-ts too!
   quality-py:
     runs-on: ubuntu-latest
     steps:
@@ -67,3 +66,46 @@ jobs:
           path: |
             junit.xml
             coverage.xml
+
+  quality-ts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run TypeScript checks
+        run: make check-ts
+
+  tests-ts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run TypeScript tests
+        run: make test-ts
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jest-results
+          path: coverage/
