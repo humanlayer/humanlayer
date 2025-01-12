@@ -80,6 +80,7 @@ jobs:
           cache: "npm"
 
       - name: Install dependencies
+        working-directory: ./humanlayer-ts
         run: npm ci
 
       - name: Run TypeScript checks
@@ -98,6 +99,7 @@ jobs:
           cache: "npm"
 
       - name: Install dependencies
+        working-directory: ./humanlayer-ts
         run: npm ci
 
       - name: Run TypeScript tests
