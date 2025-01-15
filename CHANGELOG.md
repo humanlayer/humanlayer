@@ -1,15 +1,44 @@
 ## 0.7.1
 
-### Added
-- Added comprehensive examples documentation with new examples/README.md providing detailed categorization and descriptions of all example projects
+### Features
+- Support for `interactive: bool` on ReponseOption - setting to false will cause prompts to be written in by default
+    - BREAKING - if you are using prompt_fill on ReponseOption, and want to give users the option to edit promopt, you will need to add interactive=True
 
-### Changed
-- Fixed Discord link in README
-- Updated example dependencies to use editable installs for development (-e .) instead of pinned versions
-- Simplified HTTP timeout handling - removed configurable timeouts in favor of fixed 10 second timeout
+```python
+# before
+@hl.require_approval(
+    # reject options lets you show custom pre-filled rejection prompts to the human
+    reject_options=[
+        ResponseOption(
+            name="reject",
+            description="Reject the message",
+            prompt_fill="try again but this time ",
+        ),
+   # ...
+```
 
-### Removed
-- Removed QR code section from README
+```diff
+# after
+@hl.require_approval(
+    # reject options lets you show custom pre-filled rejection prompts to the human
+    reject_options=[
+        ResponseOption(
+            name="reject",
+            description="Reject the message",
+            prompt_fill="try again but this time ",
++           interactive=True
+        ),
+   # ...
+
+
+```
+
+- API now returns `HumanContactStatus.response_option_name` and `FunctionCallStatus.reject_option_name` on objects for consuming human classification/steering reponses with deterministic (non-llm) code
+
+### Updates
+- Changed default http client timeout to 30s in python clients
+
+### Examples
 
 ## 0.7.0
 

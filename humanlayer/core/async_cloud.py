@@ -25,6 +25,7 @@ class AsyncHumanLayerCloudConnection(BaseModel):
     api_key: str | None = None
     api_base_url: str | None = None
     _session: aiohttp.ClientSession | None = None
+    http_timeout_seconds: int = 30
 
     @model_validator(mode="after")  # type: ignore
     def post_validate(self) -> None:
@@ -46,8 +47,8 @@ class AsyncHumanLayerCloudConnection(BaseModel):
             session.request(
                 method,
                 f"{self.api_base_url}{path}",
-                timeout=aiohttp.ClientTimeout(total=self.http_timeout_seconds),
                 **kwargs,
+                timeout=aiohttp.ClientTimeout(total=self.http_timeout_seconds),
             ) as response,
         ):
             response_json = await response.json()

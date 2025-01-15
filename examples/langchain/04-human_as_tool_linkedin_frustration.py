@@ -115,12 +115,14 @@ def get_linkedin_threads() -> list[LinkedInThread]:
             name="reject",
             description="Reject the message",
             prompt_fill="try again but this time ",
+            interactive=True,
         ),
         ResponseOption(
             name="skip",
             title="Skip it",  # optional - add a title
             description="Skip this operation",
             prompt_fill="skip this and move on to the next task ",
+            interactive=False,
         ),
     ],
 )
@@ -136,7 +138,22 @@ tools = [
         # allow the agent to contact the CEO
         hl.human_as_tool(
             contact_channel=dm_with_ceo,
-            response_options=None,
+            response_options=[
+                ResponseOption(
+                    name="respond",
+                    title="Respond",
+                    description="Respond to the message",
+                    prompt_fill="",
+                    interactive=True,
+                ),
+                ResponseOption(
+                    name="20pct_off",
+                    title="20% off",
+                    description="Offer a 20% discount",
+                    prompt_fill="offer a 20% discount",
+                    interactive=False,
+                ),
+            ],
         ),
     ),
 ]
