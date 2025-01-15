@@ -23,7 +23,6 @@ logger = logging.getLogger(__name__)
 class HumanLayerCloudConnection(BaseModel):
     api_key: str | None = None
     api_base_url: str | None = None
-    http_timeout_seconds: int = Field(default_factory=lambda: int(os.getenv("HUMANLAYER_HTTP_TIMEOUT_SECONDS", "10")))
 
     @model_validator(mode="after")  # type: ignore
     def post_validate(self) -> None:
@@ -44,7 +43,7 @@ class HumanLayerCloudConnection(BaseModel):
             method,
             f"{self.api_base_url}{path}",
             headers={"Authorization": f"Bearer {self.api_key}"},
-            timeout=self.http_timeout_seconds,
+            timeout=10,
             **kwargs,
         )
 

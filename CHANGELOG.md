@@ -1,3 +1,16 @@
+## 0.7.1
+
+### Added
+- Added comprehensive examples documentation with new examples/README.md providing detailed categorization and descriptions of all example projects
+
+### Changed
+- Fixed Discord link in README
+- Updated example dependencies to use editable installs for development (-e .) instead of pinned versions
+- Simplified HTTP timeout handling - removed configurable timeouts in favor of fixed 10 second timeout
+
+### Removed
+- Removed QR code section from README
+
 ## 0.7.0
 
 - AsyncHumanLayer.human_as_tool() is no longer async (but the tool it returns still is)

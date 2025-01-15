@@ -179,3 +179,77 @@ update-examples-tokens:
 		echo "HUMANLAYER_API_KEY=$(HUMANLAYER_API_KEY)" >> "{}"; \
 		echo "HUMANLAYER_API_BASE=$(HUMANLAYER_API_BASE)" >> "{}"; \
 	' \;
+
+
+## Release process
+
+#way too manual for now. on a branch with a clean git workspace
+
+#- TS - publish release candidate
+#- TS - udpate examples to rc versions, run smoketests
+#- TS - publish full version
+#- TS - udpate examples to published version, run smoketests
+#
+#- PY - publish release candidate
+#- PY - udpate examples to rc versions, run smoketests
+#- PY - publish full version
+#- PY - udpate examples to published version, run smoketests
+
+#- COMMIT
+#- MERGE
+#- TAG
+
+#- TS - update to new rc version
+#- PY - update to new rc version
+
+
+current-ts-version = $(shell cat humanlayer-ts/package.json | jq -r '.version')
+current-py-version = $(shell cat pyproject.toml | grep version | head -1 | cut -d'"' -f2)
+new-version = $(shell echo $(current-ts-version) | sed 's/-rc.*//')
+
+.PHONY: release-plan
+release-plan:
+	@echo "Current versions:"
+	@echo "  TS: $(current-ts-version)"
+	@echo "  PY: $(current-py-version)"
+	@echo "  New version: $(new-version)"
+	@if [ "$(shell git rev-parse --abbrev-ref HEAD)" != "release-$(new-version)" ]; then \
+		echo "Must be on branch release-$(new-version)"; \
+		echo; \
+		echo "   git checkout -b release-$(new-version)"; \
+		echo; \
+		exit 1; \
+	fi
+	@echo
+	@echo "Release steps:"
+	@echo "1. Publish TypeScript:"
+	@echo "   - cd humanlayer-ts && npm publish"
+	@echo "   - make update-examples-ts-versions VERSION=$(current-ts-version)"
+	@echo "   - make smoke-test-examples-ts"
+	@echo
+	@echo "2. Publish Python:"
+	@echo "   - make build-and-publish"
+	@echo "   - make update-examples-versions VERSION=$(current-py-version)"
+	@echo "   - make smoke-test-examples-py"
+	@echo
+	@echo "3. Finalize:"
+	@echo "   - git commit -am 'release: v$(current-ts-version)' && git push origin main"
+	@echo "   - git tag v$(current-ts-version)"
+	@echo "   - git push origin main --tags"
+	@echo
+	@echo "4. Next RC:"
+	@echo "   - Update version in package.json to next rc"
+	@echo "   - Update version in pyproject.toml to next rc"
+	@echo "   - git commit -am 'bump to next rc'"
+	@echo "   - git push origin main"
+
+
+
+.PHONY: release-everything
+release-everything:
+	@if ! grep -q "rc" "humanlayer-ts/package.json"; then \
+		echo "Version in humanlayer-ts/package.json must contain 'rc'"; \
+		exit 1; \
+	fi
+	cd humanlayer-ts && npm publish
+	$(MAKE) update-examples-ts-versions VERSION=
