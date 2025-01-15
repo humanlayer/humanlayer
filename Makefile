@@ -345,18 +345,18 @@ release-and-test-prod: _release-plan-versions _release-branch-check _production-
 	#@read -p "Press Enter to continue..."
 	#cd humanlayer-ts && npm publish
 	#@$(MAKE) update-examples-ts-versions VERSION=$(new-version)
-	@$(MAKE) smoke-test-examples-ts
+	#@$(MAKE) smoke-test-examples-ts
 
-	@echo "Publish Python:"
-	sed -i '' 's/$(current-py-version)/$(new-version)/' pyproject.toml
-	cat pyproject.toml | grep version
-	@read -p "Press Enter to continue..."
-	@$(MAKE) build-and-publish
-	@$(MAKE) update-examples-versions VERSION=$(new-version)
-	@$(MAKE) smoke-test-examples-py
+	#@echo "Publish Python:"
+	#sed -i '' 's/$(current-py-version)/$(new-version)/' pyproject.toml
+	#cat pyproject.toml | grep version
+	#@read -p "Press Enter to continue..."
+	#@$(MAKE) build-and-publish
+	#@$(MAKE) update-examples-versions VERSION=$(new-version)
+	#@$(MAKE) smoke-test-examples-py
 
 	@echo "Finalize:"
-	git commit -am 'release: v$(current-ts-version)' && git push upstream release-$(new-version)
+	#git commit -am 'release: v$(current-ts-version)' && git push upstream release-$(new-version)
 	git tag v$(current-ts-version)
 	git push upstream release-$(new-version) --tags
 
@@ -364,4 +364,6 @@ release-and-test-prod: _release-plan-versions _release-branch-check _production-
 	sed -i '' 's/$(new-version)/$(next-rc-version)/' humanlayer-ts/package.json
 	sed -i '' 's/$(new-version)/$(next-rc-version)/' pyproject.toml
 	git commit -am 'release: bump to next rc'
-	git push origin release-$(new-version)
+	git push upstream release-$(new-version)
+
+	hub compare
