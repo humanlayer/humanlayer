@@ -1,12 +1,13 @@
 {
-  "name": "humanlayer-ts-langchain",
+  "name": "humanlayer-ts-email-classifier",
   "version": "0.1.0",
-  "description": "example of using humanlayer with langchain in typescript",
+  "description": "example of using humanlayer with openai in typescript",
   "main": "index.ts",
   "type": "module",
   "scripts": {
     "build": "tsc",
-    "example": "tsx --env-file=.env index.ts"
+    "no-humans": "tsx --env-file=.env 01-no-humans.ts",
+    "human-review-sync": "tsx --env-file=.env 02-human-review-sync.ts"
   },
   "repository": {
     "type": "git",
@@ -21,8 +22,10 @@
   "author": "HumanLayer Authors",
   "license": "Apache-2.0",
   "dependencies": {
+    "@types/express": "^5.0.0",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
     "humanlayer": "0.7.1",
-    "langchain": "^0.2.19",
     "openai": "^4.0.0"
   },
   "devDependencies": {

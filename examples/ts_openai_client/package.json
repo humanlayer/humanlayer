@@ -9,7 +9,8 @@
     "example": "tsx --env-file=.env 01-index.ts",
     "human-as-tool": "tsx --env-file=.env 02-human-as-tool.ts",
     "human-email": "tsx --env-file=.env 03-human-email.ts",
-    "agent-side": "tsx --env-file=.env 04-agent-side-approvals.ts"
+    "agent-side": "tsx --env-file=.env 04-agent-side-approvals.ts",
+    "task-classifier": "tsx --env-file=.env 05-task-classifier.ts"
   },
   "repository": {
     "type": "git",
@@ -24,7 +25,8 @@
   "author": "HumanLayer Authors",
   "license": "Apache-2.0",
   "dependencies": {
-    "humanlayer": "0.7.0",
+    "dotenv": "^16.4.7",
+    "humanlayer": "0.7.1",
     "openai": "^4.0.0"
   },
   "devDependencies": {

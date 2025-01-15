@@ -41,6 +41,7 @@ export interface HumanLayerParams {
   apiKey?: string
   apiBaseUrl?: string
   verbose?: boolean
+  httpTimeoutSeconds?: number
 }
 
 export class HumanLayer {
@@ -65,6 +66,7 @@ export class HumanLayer {
       apiKey,
       apiBaseUrl,
       verbose = false,
+      httpTimeoutSeconds = parseInt(process.env.HUMANLAYER_HTTP_TIMEOUT_SECONDS || '10'),
     } = params || {}
     this.genid = genid
     this.sleep = sleep

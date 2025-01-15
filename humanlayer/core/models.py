@@ -152,6 +152,7 @@ class ResponseOption(BaseModel):
     title: str | None = None
     description: str | None = None
     prompt_fill: str | None = None
+    interactive: bool = False
 
 
 class FunctionCallSpec(BaseModel):
@@ -167,6 +168,7 @@ class FunctionCallStatus(BaseModel):
     responded_at: datetime | None = None
     approved: bool | None = None
     comment: str | None = None
+    reject_option_name: str | None = None
 
     class Approved(BaseModel):
         approved: Literal[True]
@@ -204,7 +206,9 @@ class FunctionCall(BaseModel):
     class Completed(BaseModel):
         call: "FunctionCall"
 
-        def as_completed(self) -> FunctionCallStatus.Approved | FunctionCallStatus.Rejected:
+        def as_completed(
+            self,
+        ) -> FunctionCallStatus.Approved | FunctionCallStatus.Rejected:
             if self.call.status is None:
                 raise ValueError("FunctionCall.Completed.as_completed() called before approval")
             return self.call.status.as_completed()
@@ -222,6 +226,7 @@ class HumanContactStatus(BaseModel):
     requested_at: datetime | None = None
     responded_at: datetime | None = None
     response: str | None = None
+    response_option_name: str | None = None
 
 
 class HumanContact(BaseModel):

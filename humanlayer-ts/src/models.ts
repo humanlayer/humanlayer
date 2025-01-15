@@ -3,6 +3,7 @@ type FunctionCallStatus = {
   responded_at?: Date
   approved?: boolean
   comment?: string
+  reject_option_name?: string
 }
 
 type SlackContactChannel = {
@@ -46,6 +47,7 @@ type ResponseOption = {
   title?: string
   description?: string
   prompt_fill?: string
+  interactive?: boolean
 }
 
 type FunctionCallSpec = {
@@ -83,6 +85,8 @@ type HumanContactStatus = {
   responded_at?: Date
   // the response from the human
   response?: string
+  // the name of the selected response option
+  response_option_name?: string
 }
 
 type HumanContact = {
@@ -96,7 +100,6 @@ type HumanContact = {
 }
 
 export {
-  FunctionCallStatus,
   SlackContactChannel,
   SMSContactChannel,
   WhatsAppContactChannel,
@@ -104,6 +107,7 @@ export {
   ContactChannel,
   ResponseOption,
   FunctionCallSpec,
+  FunctionCallStatus,
   FunctionCall,
   HumanContactSpec,
   HumanContactStatus,

@@ -1,3 +1,50 @@
+## 0.7.1
+
+### Features
+
+- Support for `interactive: bool` on ReponseOption - setting to false will cause prompts to be written in by default
+  - BREAKING - if you are using prompt_fill on ReponseOption, and want to give users the option to edit prompt, you will need to add interactive=True
+
+```python
+# before
+@hl.require_approval(
+    # reject options lets you show custom pre-filled rejection prompts to the human
+    reject_options=[
+        ResponseOption(
+            name="reject",
+            description="Reject the message",
+            prompt_fill="try again but this time ",
+        ),
+   # ...
+```
+
+```diff
+# after
+@hl.require_approval(
+    # reject options lets you show custom pre-filled rejection prompts to the human
+    reject_options=[
+        ResponseOption(
+            name="reject",
+            description="Reject the message",
+            prompt_fill="try again but this time ",
++           interactive=True
+        ),
+   # ...
+
+
+```
+
+- API now returns `HumanContactStatus.response_option_name` and `FunctionCallStatus.reject_option_name` on objects for consuming human classification/steering reponses with deterministic (non-llm) code
+
+### Updates
+
+- Changed default http client timeout to 30s in python clients
+
+### Examples
+
+- Added ts_email_classifier example in [./examples/ts_email_classifier](./examples/ts_email_classifier)
+- Added in-depth examples docs in [./examples/README.md](./examples/README.md)
+
 ## 0.7.0
 
 - AsyncHumanLayer.human_as_tool() is no longer async (but the tool it returns still is)

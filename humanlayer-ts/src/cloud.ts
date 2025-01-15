@@ -4,7 +4,6 @@ import { FunctionCall, FunctionCallStatus, HumanContact, HumanContactStatus } fr
 class HumanLayerCloudConnection {
   apiKey?: string
   apiBaseURL?: string
-
   constructor(api_key?: string, api_base_url?: string) {
     this.apiKey = api_key
     this.apiBaseURL = api_base_url

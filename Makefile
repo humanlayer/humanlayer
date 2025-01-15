@@ -1,4 +1,5 @@
 .PHONY: check-py
+
 check-py: ## Run code quality tools.
 	: 🚀 installing uv deps
 	uv sync
@@ -84,6 +85,12 @@ smoke-test-examples-ts:
 	npm -C examples/ts_langchain install
 	: 🦾 ts_langchain
 	npm -C examples/ts_langchain run example
+
+	npm -C examples/ts_email_classifier install
+	: 🦾 ts_email_classifier
+	npm -C examples/ts_email_classifier run human-review-sync
+	: skipping async for now
+	: npm -C examples/ts_email_classifier run human-review-async
 
 .PHONY: smoke-test-examples
 smoke-test-examples: smoke-test-examples-py smoke-test-examples-ts
@@ -179,3 +186,184 @@ update-examples-tokens:
 		echo "HUMANLAYER_API_KEY=$(HUMANLAYER_API_KEY)" >> "{}"; \
 		echo "HUMANLAYER_API_BASE=$(HUMANLAYER_API_BASE)" >> "{}"; \
 	' \;
+
+
+## Release process
+
+#way too manual for now. on a branch with a clean git workspace
+
+#- TS - publish release candidate
+#- TS - udpate examples to rc versions, run smoketests
+#- TS - publish full version
+#- TS - udpate examples to published version, run smoketests
+#
+#- PY - publish release candidate
+#- PY - udpate examples to rc versions, run smoketests
+#- PY - publish full version
+#- PY - udpate examples to published version, run smoketests
+
+#- COMMIT
+#- MERGE
+#- TAG
+
+#- TS - update to new rc version
+#- PY - update to new rc version
+
+
+current-ts-version = $(shell cat humanlayer-ts/package.json | jq -r '.version')
+current-py-version = $(shell cat pyproject.toml | grep version | head -1 | cut -d'"' -f2)
+new-version = $(shell echo $(current-ts-version) | sed 's/-rc.*//')
+increment := patch
+next-rc-version = $(shell npx semver -i $(increment) $(new-version))-rc1
+
+_check-uv-publish-token:
+	@if [ -z "$(UV_PUBLISH_TOKEN)" ]; then \
+		echo "UV_PUBLISH_TOKEN must be set"; \
+		echo "   export UV_PUBLISH_TOKEN=..."; \
+		echo; \
+		exit 1; \
+	fi
+
+.PHONY: _release-plan-versions
+_release-plan-versions:
+	@echo "Current versions:"
+	@echo "  TS: $(current-ts-version)"
+	@echo "  PY: $(current-py-version)"
+	@echo "  New version: $(new-version)"
+	@echo "  Next RC version: $(next-rc-version)"
+
+_release-branch-check:
+	@if [ "$(shell git rev-parse --abbrev-ref HEAD)" != "release-$(new-version)" ]; then \
+		echo "Must be on branch release-$(new-version)"; \
+		echo; \
+		echo "   git checkout -b release-$(new-version)"; \
+		echo; \
+		exit 1; \
+	else \
+	    echo; \
+		echo "On branch release-$(new-version)"; \
+		echo; \
+	fi
+
+_staging-env-check:
+	@if [ -z "$(HUMANLAYER_API_BASE)" ]; then \
+		echo "HUMANLAYER_API_BASE must be set"; \
+		echo "   export HUMANLAYER_API_BASE=https://api.dev.humanlayer.dev/humanlayer/v1"; \
+		echo "   export HUMANLAYER_API_KEY="; \
+		echo; \
+		exit 1; \
+	else \
+		echo "HUMANLAYER_API_BASE is set to $(HUMANLAYER_API_BASE)"; \
+		echo; \
+	fi
+
+_production-env-check:
+	@if [ ! -z "$(HUMANLAYER_API_BASE)" ] && [ "$(HUMANLAYER_API_BASE)" != "https://api.humanlayer.dev/humanlayer/v1" ]; then \
+		echo "HUMANLAYER_API_BASE must be empty or set to https://api.humanlayer.dev/humanlayer/v1"; \
+		echo "   unset HUMANLAYER_API_BASE"; \
+		echo "   export HUMANLAYER_API_KEY="; \
+		echo; \
+		exit 1; \
+	else \
+		echo "HUMANLAYER_API_BASE is set to $(HUMANLAYER_API_BASE)"; \
+		echo; \
+	fi
+
+.PHONY: release-plan
+release-plan: _release-plan-versions _release-branch-check _staging-env-check
+	@echo
+	@echo "Release steps:"
+	@echo "1. Publish TypeScript RC:"
+	@echo "   - cd humanlayer-ts && npm publish"
+	@echo "   - make update-examples-ts-versions VERSION=$(current-ts-version)"
+	@echo "   - make smoke-test-examples-ts"
+	@echo
+	@echo "2. Publish Python RC:"
+	@echo "   - make build-and-publish"
+	@echo "   - make update-examples-versions VERSION=$(current-py-version)"
+	@echo "   - make smoke-test-examples-py"
+	@echo
+	@echo "3. Switch to production env"
+	@: check with the user to ensure they are pointed at production
+	@echo "   - export HUMANLAYER_API_BASE=https://api.humanlayer.dev/humanlayer/v1"
+	@echo "   - export HUMANLAYER_API_KEY="
+	@echo
+	@echo "4. Publish TypeScript:"
+	@echo "   - sed -i '' 's/$(current-ts-version)/$(new-version)/' humanlayer-ts/package.json"
+	@echo "   - cd humanlayer-ts && npm publish"
+	@echo "   - make update-examples-ts-versions VERSION=$(new-version)"
+	@echo "   - make smoke-test-examples-ts"
+	@echo
+	@echo "5. Publish Python:"
+	@echo "   - sed -i '' 's/$(current-py-version)/$(new-version)/' pyproject.toml"
+	@echo "   - make build-and-publish"
+	@echo "   - make update-examples-versions VERSION=$(new-version)"
+	@echo "   - make smoke-test-examples-py"
+	@echo
+	@echo "6. Finalize:"
+	@echo "   - git commit -am 'release: v$(current-ts-version)' && git push upstream release-$(new-version)"
+	@echo "   - git tag v$(current-ts-version)"
+	@echo "   - git push upstream release-$(new-version) --tags"
+	@echo
+	@echo "7. Next RC:"
+	@echo "   - Update version in package.json to $(next-rc-version)"
+	@echo "   - sed -i '' 's/$(current-ts-version)/$(next-rc-version)/' humanlayer-ts/package.json"
+	@echo "   - Update version in pyproject.toml to $(next-rc-version)"
+	@echo "   - sed -i '' 's/$(current-py-version)/$(next-rc-version)/' pyproject.toml"
+	@echo "   - git commit -am 'bump to next rc'"
+	@echo "   - git push origin main"
+
+
+
+.PHONY: release-rc
+release-rc: _check-uv-publish-token release-plan
+	: confirming release plan
+	@read -p "Press Enter to continue..."
+	@echo "Releasing..."
+	# cd humanlayer-ts && npm run build && npm publish
+	# @$(MAKE) update-examples-ts-versions VERSION=$(current-ts-version)
+	# @$(MAKE) smoke-test-examples-ts
+	# @$(MAKE) build-and-publish
+	# @$(MAKE) update-examples-versions VERSION=$(current-py-version)
+	@$(MAKE) smoke-test-examples-py
+
+	@echo "RC tested against staging, to proceed, update env vars to point at production"
+	@echo
+	@echo "    export HUMANLAYER_API_BASE=https://api.humanlayer.dev/humanlayer/v1"
+	@echo "    export HUMANLAYER_API_KEY=..."
+	@echo "    (manual) promote saas release to production"
+	@echo "    make release-and-test-prod"
+
+
+
+.PHONY: release-and-test-prod
+release-and-test-prod: _release-plan-versions _release-branch-check _production-env-check
+	@echo "Releasing..."
+	@echo "Publish TypeScript:"
+	#sed -i '' 's/$(current-ts-version)/$(new-version)/' humanlayer-ts/package.json
+	#cat humanlayer-ts/package.json | grep version
+	#@read -p "Press Enter to continue..."
+	#cd humanlayer-ts && npm publish
+	#@$(MAKE) update-examples-ts-versions VERSION=$(new-version)
+	#@$(MAKE) smoke-test-examples-ts
+
+	#@echo "Publish Python:"
+	#sed -i '' 's/$(current-py-version)/$(new-version)/' pyproject.toml
+	#cat pyproject.toml | grep version
+	#@read -p "Press Enter to continue..."
+	#@$(MAKE) build-and-publish
+	#@$(MAKE) update-examples-versions VERSION=$(new-version)
+	#@$(MAKE) smoke-test-examples-py
+
+	@echo "Finalize:"
+	#git commit -am 'release: v$(current-ts-version)' && git push upstream release-$(new-version)
+	git tag v$(current-ts-version)
+	git push upstream release-$(new-version) --tags
+
+	@echo "Next RC:"
+	sed -i '' 's/$(new-version)/$(next-rc-version)/' humanlayer-ts/package.json
+	sed -i '' 's/$(new-version)/$(next-rc-version)/' pyproject.toml
+	git commit -am 'release: bump to next rc'
+	git push upstream release-$(new-version)
+
+	hub compare
