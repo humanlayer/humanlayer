@@ -2,5 +2,5 @@ langchain
 langchain-openai
 python-dotenv
 # install humanlayer
-humanlayer==0.7.1-rc1
+humanlayer==0.7.1
 # or if you want an editable version

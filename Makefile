@@ -340,11 +340,11 @@ release-rc: _check-uv-publish-token release-plan
 release-and-test-prod: _release-plan-versions _release-branch-check _production-env-check
 	@echo "Releasing..."
 	@echo "Publish TypeScript:"
-	sed -i '' 's/$(current-ts-version)/$(new-version)/' humanlayer-ts/package.json
-	cat humanlayer-ts/package.json | grep version
-	@read -p "Press Enter to continue..."
-	cd humanlayer-ts && npm publish
-	@$(MAKE) update-examples-ts-versions VERSION=$(new-version)
+	#sed -i '' 's/$(current-ts-version)/$(new-version)/' humanlayer-ts/package.json
+	#cat humanlayer-ts/package.json | grep version
+	#@read -p "Press Enter to continue..."
+	#cd humanlayer-ts && npm publish
+	#@$(MAKE) update-examples-ts-versions VERSION=$(new-version)
 	@$(MAKE) smoke-test-examples-ts
 
 	@echo "Publish Python:"

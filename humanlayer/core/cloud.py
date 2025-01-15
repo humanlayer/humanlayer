@@ -3,7 +3,7 @@ import logging
 import os
 
 import requests
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, model_validator
 
 from humanlayer.core.models import (
     FunctionCall,

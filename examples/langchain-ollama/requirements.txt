@@ -2,4 +2,4 @@ langchain
 langchain-ollama
 python-dotenv
 # install humanlayer
-humanlayer==0.7.1-rc1
+humanlayer==0.7.1
