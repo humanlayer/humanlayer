@@ -3,7 +3,7 @@
 ### Features
 
 - Support for `interactive: bool` on ReponseOption - setting to false will cause prompts to be written in by default
-  - BREAKING - if you are using prompt_fill on ReponseOption, and want to give users the option to edit promopt, you will need to add interactive=True
+  - BREAKING - if you are using prompt_fill on ReponseOption, and want to give users the option to edit prompt, you will need to add interactive=True
 
 ```python
 # before
@@ -41,6 +41,9 @@
 - Changed default http client timeout to 30s in python clients
 
 ### Examples
+
+- Added ts_email_classifier example in [./examples/ts_email_classifier](./examples/ts_email_classifier)
+- Added in-depth examples docs in [./examples/README.md](./examples/README.md)
 
 ## 0.7.0
 
