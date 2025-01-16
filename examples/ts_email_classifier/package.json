@@ -25,7 +25,7 @@
     "@types/express": "^5.0.0",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
-    "humanlayer": "0.7.1",
+    "humanlayer": "0.7.3",
     "openai": "^4.0.0"
   },
   "devDependencies": {

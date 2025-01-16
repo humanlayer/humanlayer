@@ -1,5 +1,5 @@
 fastapi
 uvicorn
 python-dotenv
-humanlayer==0.7.1
+humanlayer==0.7.3
 marvin
