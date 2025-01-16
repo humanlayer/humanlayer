@@ -40,8 +40,4 @@ be received by a webhook, and the results will be printed out.
 
 ![human-review-async](./img/human-review-async.png)
 
-### Next Steps
 
-If you're familiar with this example and want to take it further, there are some ideas:
-
-- use the beta "fine tuning" feature to export your human responses for usage in fine-tuning
