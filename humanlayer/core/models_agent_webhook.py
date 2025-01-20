@@ -9,11 +9,11 @@ For example, when an email is received, HumanLayer will send an EmailPayload to 
 configured webhook endpoint containing the email content and metadata.
 """
 
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 from pydantic import BaseModel
 
-from humanlayer.core.models import EmailContactChannel
+from humanlayer.core.models import FunctionCall, HumanContact
 
 
 class EmailMessage(BaseModel):
@@ -22,6 +22,7 @@ class EmailMessage(BaseModel):
     from_address: str
     to_address: List[str]
     cc_address: List[str]
+    bcc_address: List[str]
     subject: str
     content: str
     datetime: str
@@ -39,14 +40,6 @@ class EmailPayload(BaseModel):
     raw_email: str
     is_test: bool | None = None  # will be set if the email is a test webhook from the server
 
-    def as_channel(self, context_about_user: str | None = None) -> EmailContactChannel:
-        return EmailContactChannel.in_reply_to(
-            from_address=self.from_address,
-            message_id=self.message_id,
-            subject=self.subject,
-            context_about_user=context_about_user,
-        )
-
 
 class SlackMessage(BaseModel):
     from_user_id: str
@@ -59,3 +52,27 @@ class SlackThread(BaseModel):
     thread_ts: str
     channel_id: str
     events: list[SlackMessage]
+
+
+class V1Beta2EmailEventReceived(BaseModel):
+    is_test: bool | None = None
+    type: Literal["agent_email.received"] = "agent_email.received"  # noqa: A003
+    event: EmailPayload
+
+
+class V1Beta2SlackEventReceived(BaseModel):
+    is_test: bool | None = None
+    type: Literal["agent_slack.received"] = "agent_slack.received"  # noqa: A003
+    event: SlackThread
+
+
+class V1Beta2FunctionCallCompleted(BaseModel):
+    is_test: bool | None = None
+    type: Literal["function_call.completed"] = "function_call.completed"  # noqa: A003
+    event: FunctionCall
+
+
+class V1Beta2HumanContactCompleted(BaseModel):
+    is_test: bool | None = None
+    type: Literal["human_contact.completed"] = "human_contact.completed"  # noqa: A003
+    event: HumanContact
