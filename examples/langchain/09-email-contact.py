@@ -1,8 +1,9 @@
 from typing import Any
 from humanlayer import ContactChannel, EmailContactChannel
-from langchain.agents import AgentType, initialize_agent
+from langchain_core.prompts import ChatPromptTemplate
 import langchain_core.tools as langchain_tools
 from langchain_openai import ChatOpenAI
+from langchain.agents import AgentExecutor, create_tool_calling_agent
 
 from dotenv import load_dotenv
 
@@ -61,7 +62,6 @@ Should you require any assistance with the filing process through the California
 Best regards,
 Compliance Team
 Mosey Corporation
-
 """
 
 
@@ -77,7 +77,6 @@ def get_linear_projects() -> Any:
 
 def get_linear_assignees() -> Any:
     """get all linear assignees"""
-
     return [
         {"id": "1", "name": "Austin"},
         {"id": "2", "name": "Dexter"},
@@ -101,15 +100,25 @@ tools = [
 ]
 
 llm = ChatOpenAI(model="gpt-4o", temperature=0)
-agent = initialize_agent(
-    tools=tools,
-    llm=llm,
-    agent=AgentType.OPENAI_FUNCTIONS,
-    verbose=True,
-    handle_parsing_errors=True,
+
+# Prompt for creating Tool Calling Agent
+prompt = ChatPromptTemplate.from_messages(
+    [
+        (
+            "system",
+            "You are a helpful assistant.",
+        ),
+        ("placeholder", "{chat_history}"),
+        ("human", "{input}"),
+        ("placeholder", "{agent_scratchpad}"),
+    ]
 )
 
+# Construct the Tool Calling Agent
+agent = create_tool_calling_agent(llm, tools, prompt)
+agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
+
 if __name__ == "__main__":
-    result = agent.run(task_prompt)
+    result = agent_executor.invoke({"input": task_prompt})
     print("\n\n----------Result----------\n\n")
     print(result)

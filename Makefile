@@ -375,3 +375,10 @@ release-and-test-prod: _release-plan-versions _release-branch-check _production-
 	git push upstream release-$(new-version)
 
 	hub compare
+
+.PHONY: check-local
+check-local:
+	@if [[ $$(git rev-parse --abbrev-ref HEAD) == local/* ]]; then \
+		echo "blocking push of local branch"; \
+		exit 1; \
+	fi

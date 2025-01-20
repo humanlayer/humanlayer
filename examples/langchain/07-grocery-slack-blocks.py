@@ -3,8 +3,9 @@ from typing import Any
 
 import langchain_core.tools as langchain_tools
 from dotenv import load_dotenv
-from langchain.agents import AgentType, initialize_agent
+from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
+from langchain.agents import AgentExecutor, create_tool_calling_agent
 from pydantic import BaseModel
 
 from channels import (
@@ -24,7 +25,6 @@ hl = HumanLayer(
 )
 
 task_prompt = """
-
 You are the mealprep power assistant.
 
 You are responsible for planning the meals and shopping
@@ -36,7 +36,6 @@ i like tacos and sushi, but i'm open to new ideas.
 I like to eat healthy, and I'm trying to lose weight.
 
 Make the best decision and order the groceries. Don't confirm with me.
-
 """
 
 
@@ -80,15 +79,25 @@ tools = [
 ]
 
 llm = ChatOpenAI(model="gpt-4o", temperature=0)
-agent = initialize_agent(
-    tools=tools,
-    llm=llm,
-    agent=AgentType.OPENAI_FUNCTIONS,
-    verbose=True,
-    handle_parsing_errors=True,
+
+# Prompt for creating Tool Calling Agent
+prompt = ChatPromptTemplate.from_messages(
+    [
+        (
+            "system",
+            "You are a helpful assistant.",
+        ),
+        ("placeholder", "{chat_history}"),
+        ("human", "{input}"),
+        ("placeholder", "{agent_scratchpad}"),
+    ]
 )
 
+# Construct the Tool Calling Agent
+agent = create_tool_calling_agent(llm, tools, prompt)
+agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
+
 if __name__ == "__main__":
-    result = agent.run(task_prompt)
+    result = agent_executor.invoke({"input": task_prompt})
     print("\n\n----------Result----------\n\n")
     print(result)
