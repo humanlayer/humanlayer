@@ -343,8 +343,12 @@ release-and-test-prod: _release-plan-versions _release-branch-check _production-
 	sed -i '' 's/$(current-ts-version)/$(new-version)/' humanlayer-ts/package.json
 	cat humanlayer-ts/package.json | grep version
 	@read -p "Press Enter to continue..."
-	cd humanlayer-ts && npm publish
+	cd humanlayer-ts && npm run build && npm publish
 	@$(MAKE) update-examples-ts-versions VERSION=$(new-version)
+	:
+	: waiting for ts publish to complete
+	:
+	@sleep 30
 	@$(MAKE) smoke-test-examples-ts
 
 	@echo "Publish Python:"
@@ -353,10 +357,14 @@ release-and-test-prod: _release-plan-versions _release-branch-check _production-
 	@read -p "Press Enter to continue..."
 	@$(MAKE) build-and-publish
 	@$(MAKE) update-examples-versions VERSION=$(new-version)
+	:
+	: waiting for py publish to complete
+	:
+	@sleep 30
 	@$(MAKE) smoke-test-examples-py
 
 	@echo "Finalize:"
-	#git commit -am 'release: v$(current-ts-version)' && git push upstream release-$(new-version)
+	git commit -am 'release: v$(current-ts-version)' && git push upstream release-$(new-version)
 	git tag v$(current-ts-version)
 	git push upstream release-$(new-version) --tags
 
