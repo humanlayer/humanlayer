@@ -1,7 +1,8 @@
 from dotenv import load_dotenv
-from langchain.agents import AgentType, initialize_agent
+from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
-from langchain.tools import StructuredTool
+import langchain.tools
+from langchain.agents import AgentExecutor, create_tool_calling_agent
 
 from humanlayer import ContactChannel, HumanLayer, SlackContactChannel
 
@@ -43,19 +44,30 @@ def multiply(a: float, b: float) -> float:
 
 
 tools = [
-    StructuredTool.from_function(add),
-    StructuredTool.from_function(multiply),
+    langchain.tools.StructuredTool.from_function(add),
+    langchain.tools.StructuredTool.from_function(multiply),
 ]
 
 llm = ChatOpenAI(model="gpt-4", temperature=0)
-agent = initialize_agent(
-    tools=tools,
-    llm=llm,
-    agent=AgentType.OPENAI_FUNCTIONS,
-    verbose=True,
+
+# Prompt for creating Tool Calling Agent
+prompt = ChatPromptTemplate.from_messages(
+    [
+        (
+            "system",
+            "You are a helpful assistant.",
+        ),
+        ("placeholder", "{chat_history}"),
+        ("human", "{input}"),
+        ("placeholder", "{agent_scratchpad}"),
+    ]
 )
 
+# Construct the Tool Calling Agent
+agent = create_tool_calling_agent(llm, tools, prompt)
+agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
+
 if __name__ == "__main__":
-    result = agent.run("What is (4 + 5) * 3?")
+    result = agent_executor.invoke({"input": "What is (4 + 5) * 3?"})
     print("\n\n----------Result----------\n\n")
     print(result)

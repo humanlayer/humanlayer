@@ -2,8 +2,9 @@ from datetime import datetime
 
 import langchain_core.tools as langchain_tools
 from dotenv import load_dotenv
-from langchain.agents import AgentType, initialize_agent
+from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
+from langchain.agents import AgentExecutor, create_tool_calling_agent
 from pydantic import BaseModel
 
 from channels import (
@@ -22,7 +23,6 @@ hl = HumanLayer(
 )
 
 task_prompt = """
-
 You are the linkedin inbox assistant. You check on
 the CEO's linkedin inbox and decide if there are any messages
 that seem interesting, then contact the human in slack with a summary.
@@ -30,18 +30,7 @@ that seem interesting, then contact the human in slack with a summary.
 don't provide detail on spam-looking messages, or messages
 that appear to be selling a service or software
 
-You can offer to perform  actions like schedule time.
-
-Example slack dm to send:
-
-Your inbox for today includes 4 spam messages,
-and 1 message from Devin who seems interested in your
-product - [here's the link](https://linkedin.com/in/devin).
-
-Terri has still not responded to your question about scheduling an onboarding call.
-
-Would you like me to respond to Devin with your availability?
-
+You can offer to perform actions like schedule time.
 """
 
 
@@ -130,15 +119,25 @@ tools = [
 ]
 
 llm = ChatOpenAI(model="gpt-4o", temperature=0)
-agent = initialize_agent(
-    tools=tools,
-    llm=llm,
-    agent=AgentType.OPENAI_FUNCTIONS,
-    verbose=True,
-    handle_parsing_errors=True,
+
+# Prompt for creating Tool Calling Agent
+prompt = ChatPromptTemplate.from_messages(
+    [
+        (
+            "system",
+            "You are a helpful assistant.",
+        ),
+        ("placeholder", "{chat_history}"),
+        ("human", "{input}"),
+        ("placeholder", "{agent_scratchpad}"),
+    ]
 )
 
+# Construct the Tool Calling Agent
+agent = create_tool_calling_agent(llm, tools, prompt)
+agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
+
 if __name__ == "__main__":
-    result = agent.run(task_prompt)
+    result = agent_executor.invoke({"input": task_prompt})
     print("\n\n----------Result----------\n\n")
     print(result)

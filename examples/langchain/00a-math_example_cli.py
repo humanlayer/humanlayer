@@ -56,6 +56,7 @@ prompt = ChatPromptTemplate.from_messages(
 agent = create_tool_calling_agent(llm, tools, prompt)
 agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
 
+
 def main() -> None:
     result = agent_executor.invoke({"input": "multiply 2 and 5, then add 32 to the result"})
     print("\n\n----------Result----------\n\n")
