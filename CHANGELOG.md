@@ -1,3 +1,11 @@
+## 0.7.3
+
+This was an internal release with build/release process changes, but no user-facing changes.
+
+## 0.7.2 - Deprecated
+
+This was an internal release with no user-facing changes. It did introduce a small issue, so please upgrade to 0.7.3.
+
 ## 0.7.1
 
 ### Features

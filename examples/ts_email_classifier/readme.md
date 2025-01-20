@@ -39,5 +39,3 @@ In this example, all LLM classifications are computed, and then they are all sen
 be received by a webhook, and the results will be printed out.
 
 ![human-review-async](./img/human-review-async.png)
-
-
