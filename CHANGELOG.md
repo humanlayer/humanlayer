@@ -1,3 +1,7 @@
+## 0.7.4 (unreleased)
+
+- Add [v1beta2 webhook payload](https://humanlayer.dev/docs/core/response-webhooks) types to ts and python sdks
+
 ## 0.7.3
 
 This was an internal release with build/release process changes, but no user-facing changes.

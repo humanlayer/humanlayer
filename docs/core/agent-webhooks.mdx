@@ -7,11 +7,19 @@ icon: "rocket"
 Agent webhooks are designed to allow you to launch an agent in response to a message from a platform like email, slack, etc.
 
 Not to be confused with [webhooks](/core/response-webhooks), which allows you to receive a notification when an [approval](/core/human-as-tool#approvals) or [human contact](/core/human-as-tool#human-contacts)
-is completed, Agent webhooks are specifically designed for kicking off new tasks and workflows
+is completed, Agent webhooks are specifically designed for kicking off new tasks and workflows. They use the same webhook
+console in the [HumanLayer dashboard](https://app.humanlayer.dev/), with an event type of `v1beta2.agent_email.received`.
 
 <Note>
   Agent webhooks are currently in beta. If you'd like to help us test and
   improve the feature, please reach out to us at contact@humanlayer.dev
+</Note>
+
+<Note>
+  Breaking Change 01/2025: Agent webhooks are transitioning to a new format.
+  Please use the `v1beta2.agent_email.received` event type to configure where
+  email webhooks are sent. The email address configuration functionality remains
+  unchanged.
 </Note>
 
 ## Use cases
@@ -32,66 +40,121 @@ To get started with agent webhooks, you'll need to:
 
 1. Implement an AI Agent in your language and/or framework of choice, and create an API endpoint that can launch the agent
 2. Create a publicly reachable URL that can receive webhooks from HumanLayer (we recommend [ngrok](https://ngrok.com/) to catch webhooks while you're developing locally)
-3. Create a new agent webhook in the [HumanLayer dashboard](https://app.humanlayer.dev/), setting the callback URL to your webhook endpoint
-
-![Create an agent webhook](/images/agent-webhooks.png)
-
-4. Test the webhook in the HumanLayer dashboard
-5. Test the webhook by sending an email to the webhook email address (slack support coming soon)
+3. Create a new agent webhook in the [HumanLayer dashboard](https://app.humanlayer.dev/)
+4. Configure your webhook endpoint to receive events with the `v1beta2.agent_email.received` event type in the Response Webhooks section of the [HumanLayer dashboard](https://app.humanlayer.dev/)
+5. Test the webhook by sending an email to the webhook email address
 
 ### Email Payload
 
 The webhook payload models are defined in [models_agent_webhook.py](https://github.com/humanlayer/humanlayer/blob/main/humanlayer/core/models_agent_webhook.py).
 
-For email webhooks, the payload will look like
+For email webhooks, the payload will have the following structure:
 
-<ParamField body="email_payload" type="object">
-  <Expandable title="EmailPayload">
-    <ParamField body="from_address" type="string" required>
-      Email address of the sender
+<ParamField body="webhook_payload" type="object">
+  <Expandable title="WebhookPayload">
+    <ParamField body="type" type="string" required>
+      The event type: "agent_email.received"
     </ParamField>
-    <ParamField body="to_address" type="string" required>
-      Email address of the recipient
+    <ParamField body="is_test" type="boolean">
+      Whether this is a test webhook
     </ParamField>
-    <ParamField body="subject" type="string" required>
-      Subject line of the email
-    </ParamField>
-    <ParamField body="body" type="string" required>
-      Body content of the email
-    </ParamField>
-    <ParamField body="message_id" type="string" required>
-      Unique message ID of the email
-    </ParamField>
-    <ParamField body="previous_thread" type="array">
-      Optional list of previous messages in the thread
-      <Expandable title="EmailMessage">
+    <ParamField body="event" type="object">
+      <Expandable title="EmailPayload">
         <ParamField body="from_address" type="string" required>
           Email address of the sender
         </ParamField>
-        <ParamField body="to_address" type="array" required>
-          List of recipient email addresses
-        </ParamField>
-        <ParamField body="cc_address" type="array" required>
-          List of CC'd email addresses
+        <ParamField body="to_address" type="string" required>
+          Email address of the recipient
         </ParamField>
         <ParamField body="subject" type="string" required>
           Subject line of the email
         </ParamField>
-        <ParamField body="content" type="string" required>
-          Content of the email
+        <ParamField body="body" type="string" required>
+          Body content of the email
         </ParamField>
-        <ParamField body="datetime" type="string" required>
-          Timestamp of when the email was sent
+        <ParamField body="message_id" type="string" required>
+          Unique message ID of the email
+        </ParamField>
+        <ParamField body="previous_thread" type="array">
+          Optional list of previous messages in the thread
+          <Expandable title="EmailMessage">
+            <ParamField body="from_address" type="string" required>
+              Email address of the sender
+            </ParamField>
+            <ParamField body="to_address" type="array" required>
+              List of recipient email addresses
+            </ParamField>
+            <ParamField body="cc_address" type="array" required>
+              List of CC'd email addresses
+            </ParamField>
+            <ParamField body="bcc_address" type="array" required>
+              List of BCC'd email addresses
+            </ParamField>
+            <ParamField body="subject" type="string" required>
+              Subject line of the email
+            </ParamField>
+            <ParamField body="content" type="string" required>
+              Content of the email
+            </ParamField>
+            <ParamField body="datetime" type="string" required>
+              Timestamp of when the email was sent
+            </ParamField>
+          </Expandable>
+        </ParamField>
+        <ParamField body="raw_email" type="string" required>
+          Raw email content including headers
         </ParamField>
       </Expandable>
-    </ParamField>
-    <ParamField body="raw_email" type="string" required>
-      Raw email content including headers
     </ParamField>
   </Expandable>
 </ParamField>
 
 a JSON example might look like
+
+```
+{
+  "event": {
+    "body": "Hello,\n\nJust a reminder about our important meeting scheduled for tomorrow at 2 PM. Please come prepared with your quarterly reports.\n\nBest regards,\nSender",
+    "from_address": "sender@example.com",
+    "message_id": "<20230615123456.ABC123@example.com>",
+    "previous_thread": [
+      {
+        "bcc_address": [],
+        "cc_address": [
+          "manager@example.com"
+        ],
+        "content": "Thank you for the update. I'll review the documents and get back to you soon.",
+        "datetime": "2023-06-14T15:30:00Z",
+        "from_address": "recipient@example.com",
+        "subject": "Re: Project Update",
+        "to_address": [
+          "sender@example.com"
+        ]
+      },
+      {
+        "bcc_address": [
+          "archive@example.com"
+        ],
+        "cc_address": [
+          "manager@example.com"
+        ],
+        "content": "Hi,\n\nI've attached the latest project documents for your review. Let me know if you have any questions.",
+        "datetime": "2023-06-14T14:00:00Z",
+        "from_address": "sender@example.com",
+        "subject": "Project Update",
+        "to_address": [
+          "recipient@example.com"
+        ]
+      }
+    ],
+    "raw_email": "From: sender@example.com\nTo: recipient@example.com\nSubject: Important Meeting Tomorrow\nDate: Thu, 15 Jun 2023 12:34:56 +0000\nMessage-ID: <20230615123456.ABC123@example.com>\n\nHello,\n\nJust a reminder about our important meeting scheduled for tomorrow at 2 PM. Please come prepared with your quarterly reports.\n\nBest regards,\nSender",
+    "subject": "Important Meeting Tomorrow",
+    "to_address": "recipient@example.com"
+  },
+  "is_test": true,
+  "type": "agent_email.received"
+}
+```
 
 ## State Preservation
 
@@ -114,34 +177,6 @@ function_call = FunctionCall(
     )
 )
 
-# The state will be returned in the webhook payload
-# allowing you to restore the conversation context
-```
-
-## Next Stepsjson
-
-{
-"from_address": "overworked-admin@coolcompany.com",
-"to_address": "cool-agent@humanlayer.dev",
-"subject": "FWD: help",
-"body": "can you add a ticket for this?",
-"message_id": "<1234567890@mailsrv.coolcompany.com>",
-"raw_email": "This is a placeholder for a test email - if this were a real email, it would include headers, etc.",
-"datetime": "2024-01-02T00:00:00Z",
-"previous_thread": [
-{
-"from_address": "needy-employee@coolcompany.com",
-"to_address": ["overworked-admin@coolcompany.com"],
-"cc_address": [],
-"subject": "help",
-"content": "i need some help",
-"raw_email": "i need some help",
-"datetime": "2024-01-01T00:00:00Z"
-}
-]
-}
-
-```
 
 ### Using Ngrok for local development
 
