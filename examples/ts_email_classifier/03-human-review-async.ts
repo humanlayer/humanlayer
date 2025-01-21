@@ -1,7 +1,14 @@
 import { FunctionCall, HumanLayer, ResponseOption } from "humanlayer";
 import { config } from "dotenv";
 import express, { Request, Response } from "express";
-import { Classification, classificationValues, ClassifiedEmail, classifyEmail, twoEmailsShuffled, logEmails } from "./common";
+import {
+  Classification,
+  classificationValues,
+  ClassifiedEmail,
+  classifyEmail,
+  twoEmailsShuffled,
+  logEmails,
+} from "./common";
 
 config(); // Load environment variables
 
@@ -14,10 +21,9 @@ const hl = new HumanLayer({
     slack: {
       channel_or_user_id: "", // default to DM from app
       experimental_slack_blocks: true,
-    }
-  }
+    },
+  },
 });
-
 
 async function main() {
   try {
@@ -34,7 +40,7 @@ async function main() {
 
     Object.values(classifiedEmails).forEach((email) => {
       const remainingOptions = classificationValues.filter(
-        (c) => c !== email.classification,
+        (c) => c !== email.classification
       );
 
       const responseOptions: ResponseOption[] = remainingOptions.map((c) => ({
@@ -53,7 +59,7 @@ async function main() {
             from: email.from,
             subject: email.subject,
             body: email.body,
-            classification: email.classification
+            classification: email.classification,
           },
           reject_options: responseOptions,
           state: {
@@ -80,8 +86,12 @@ app.get("/healthz", (req: Request, res: Response) => {
 });
 
 app.post("/webhook/human-response", (req: Request, res: Response) => {
-  const response: FunctionCall = req.body;
-  console.log("human response received for", `"${response.spec.kwargs.subject}"`, response.status?.reject_option_name || "approved");
+  const response: FunctionCall = req.body.event;
+  console.log(
+    "human response received for",
+    `"${response.spec.kwargs.subject}"`,
+    response.status?.reject_option_name || "approved"
+  );
   const email = classifiedEmails[response.spec.state?.emailId];
   if (!email) {
     console.error("email not found for", response.spec.kwargs.subject);
@@ -90,12 +100,17 @@ app.post("/webhook/human-response", (req: Request, res: Response) => {
     return;
   }
   if (!response.status?.approved) {
-    console.log(`${email.id}: ${email.subject} was overriden by human as ${response.status?.reject_option_name}`);
-    email.humanClassification = response.status?.reject_option_name as Classification;
+    console.log(
+      `${email.id}: ${email.subject} was overriden by human as ${response.status?.reject_option_name}`
+    );
+    email.humanClassification = response.status
+      ?.reject_option_name as Classification;
     email.hasHumanReview = true;
     email.humanComment = response.status?.comment;
   } else {
-    console.log(`${email.id}: ${email.subject} was approved by human as ${email.classification}`);
+    console.log(
+      `${email.id}: ${email.subject} was approved by human as ${email.classification}`
+    );
     email.humanClassification = email.classification;
     email.hasHumanReview = true;
     email.humanComment = response.status?.comment;
@@ -113,8 +128,18 @@ app.get("/emails", (req: Request, res: Response) => {
 });
 
 // Start the server before running the main logic
-const server = app.listen(PORT, () => {
+const server = app.listen(PORT, async () => {
   console.log(`Server is running on port ${PORT}`);
+
+  console.log(
+    `fetching project from ${process.env.HUMANLAYER_API_BASE}/project`
+  );
+  const project = await fetch(`${process.env.HUMANLAYER_API_BASE}/project`, {
+    headers: {
+      Authorization: `Bearer ${process.env.HUMANLAYER_API_KEY}`,
+    },
+  });
+  console.log(await project.json());
 
   // Run the main application logic after server starts
   main()
@@ -129,4 +154,3 @@ server.on("error", (error) => {
   console.error("Server error:", error);
   process.exit(1);
 });
-
