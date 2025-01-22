@@ -1,6 +1,6 @@
 {
   "name": "humanlayer",
-  "version": "0.7.4-alpha.2",
+  "version": "0.7.4",
   "description": "typescript client for humanlayer.dev",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",

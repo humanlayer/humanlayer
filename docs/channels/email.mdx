@@ -103,7 +103,7 @@ function_call_template = ContactChannel(
 
             <div style="margin-top: 20px;">
                 <a href="{{ urls.base_url }}?approve=true"
-                   style="background: #4CAF50; color: white; padding: 10px; 
+                   style="background: #4CAF50; color: white; padding: 10px;
                           text-decoration: none; border-radius: 5px; margin-right: 10px;">
                     Approve
                 </a>
@@ -159,7 +159,7 @@ human_contact_template = ContactChannel(
                 <p>Please select one of these responses:</p>
                 {% for option in event.spec.response_options %}
                 <a href="{{ urls.base_url }}?option={{ option.name }}"
-                   style="display: block; background: #2196F3; color: white; 
+                   style="display: block; background: #2196F3; color: white;
                           padding: 10px; text-decoration: none; border-radius: 5px;
                           margin-bottom: 10px;">
                     {{ option.title or option.name }}
@@ -193,6 +193,7 @@ tools = [
 ### Template Variables
 
 Both types of templates receive these variables:
+
 - `event` - The full event object (function call or human contact)
 - `urls.base_url` - The URL for approval/response actions
 - `type` - Either "v1beta2.function_call" or "v1beta2.human_contact"

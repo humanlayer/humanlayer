@@ -33,12 +33,12 @@ const testRequireApproval = async () => {
   };
   const approvedReticulateSpline: typeof reticulateSplineImpl =
     hlClient.requireApproval(fnChannel)(
-      reticulateSplineImpl
+      reticulateSplineImpl,
     ) as typeof reticulateSplineImpl;
 
   logger.info(
     { approvalMethod: hlClient.approvalMethod },
-    "Attempting to get approval from HumanLayer to reticulate a spline"
+    "Attempting to get approval from HumanLayer to reticulate a spline",
   );
   const approvalResult = await approvedReticulateSpline({
     splineArgs: "spline::qwq::transform",
