@@ -1,7 +1,7 @@
-## 0.7.4 (unreleased)
+## 0.7.4
 
 - Add [v1beta2 webhook payload](https://humanlayer.dev/docs/core/response-webhooks) types to ts and python sdks
-- Add `spec.channel.email.template` to all operation types, enabling custom jinja templates for email payloads
+- Add `spec.channel.email.template` to all operation types, allowing [custom jinja templates for email payloads](https://humanlayer.dev/docs/channels/email#custom-email-templates)
 
 ## 0.7.3
 
