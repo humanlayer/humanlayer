@@ -185,6 +185,12 @@ Core concepts around contact channels:
 
 - Channels are composable - can be combined for multi-channel approval flows
 - Each channel has unique properties (context, threading, etc)
+- Email channel supports custom Jinja2 templates for full HTML control
+  - Template variables:
+    - event: The full event object (function call or human contact)
+    - type: Event type ("v1beta2.function_call" or "v1beta2.human_contact")
+    - urls: Contains base_url for approval/response actions
+  - Falls back to default HTML template if no custom template provided
 - Implementation patterns:
 
   - Python is the primary implementation language, TypeScript/JavaScript examples should be secondary

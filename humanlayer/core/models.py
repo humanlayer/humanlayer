@@ -92,6 +92,9 @@ class EmailContactChannel(BaseModel):
     experimental_references_message_id: str | None = None
     experimental_in_reply_to_message_id: str | None = None
 
+    # If provided, this Jinja2 template will be used to render the email body
+    template: str | None = None
+
     def __init__(self, **kwargs) -> None:  # type: ignore
         super().__init__(**kwargs)
         if self.experimental_subject_line is not None:

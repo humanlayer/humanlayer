@@ -33,6 +33,9 @@ type EmailContactChannel = {
   experimental_subject_line?: string
   experimental_in_reply_to_message_id?: string
   experimental_references_message_id?: string
+
+  // If provided, this Jinja2 template will be used to render the email body
+  template?: string
 }
 
 type ContactChannel = {
