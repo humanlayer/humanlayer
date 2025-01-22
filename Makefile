@@ -274,7 +274,7 @@ release-plan: _release-plan-versions _release-branch-check _staging-env-check
 	@echo
 	@echo "Release steps:"
 	@echo "1. Publish TypeScript alpha:"
-	@echo "   - cd humanlayer-ts && npm publish"
+	@echo "   - cd humanlayer-ts && npm publish --tag alpha"
 	@echo "   - make update-examples-ts-versions VERSION=$(current-ts-version)"
 	@echo "   - make smoke-test-examples-ts"
 	@echo
@@ -320,10 +320,18 @@ release-alpha: _check-uv-publish-token release-plan
 	: confirming release plan
 	@read -p "Press Enter to continue..."
 	@echo "Releasing..."
-	cd humanlayer-ts && npm run build && npm publish
-	@$(MAKE) update-examples-ts-versions VERSION=$(current-ts-version)
+	#cd humanlayer-ts && npm run build && npm publish --tag alpha
+	:
+	: waiting for ts publish to complete
+	:
+	#sleep 30
+	#@$(MAKE) update-examples-ts-versions VERSION=$(current-ts-version)
 	@$(MAKE) smoke-test-examples-ts
 	@$(MAKE) build-and-publish
+	:
+	: waiting for py publish to complete
+	:
+	sleep 30
 	@$(MAKE) update-examples-versions VERSION=$(current-py-version)
 	@$(MAKE) smoke-test-examples-py
 
