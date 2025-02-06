@@ -102,7 +102,7 @@ const sendLinkedinMessage = ({
 
 const emailWithCEO: ContactChannel = {
   email: {
-    address: "dexter@humanlayer.dev",
+    address: process.env.HL_EXAMPLE_CONTACT_EMAIL || "dexter@humanlayer.dev",
   },
 };
 

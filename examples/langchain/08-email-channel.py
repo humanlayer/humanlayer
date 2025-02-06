@@ -1,3 +1,5 @@
+import os
+
 from humanlayer import ContactChannel, EmailContactChannel
 from langchain_core.prompts import ChatPromptTemplate
 import langchain_core.tools as langchain_tools
@@ -14,7 +16,7 @@ hl = HumanLayer(
     verbose=True,
     contact_channel=ContactChannel(
         email=EmailContactChannel(
-            address="dexter@humanlayer.dev",
+            address=os.getenv("HL_EXAMPLE_CONTACT_EMAIL", "dexter@humanlayer.dev"),
             context_about_user="the user you are helping",
         )
     ),
