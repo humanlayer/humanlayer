@@ -15,7 +15,7 @@ const testRequireApproval = async () => {
   };
   const fnChannel = {
     email: {
-      address: "dexter@humanlayer.dev",
+      address: process.env.HL_EXAMPLE_CONTACT_EMAIL || "dexter@humanlayer.dev",
       experimental_subject_line: "Reticulating a spline",
       template: `
       <html>
