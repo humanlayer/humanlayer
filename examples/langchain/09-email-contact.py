@@ -20,10 +20,141 @@ hl = HumanLayer(
         email=EmailContactChannel(
             address=os.getenv("HL_EXAMPLE_CONTACT_EMAIL", "dexter@humanlayer.dev"),
             context_about_user="the user you are helping",
+            template="""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body {
+                        font-family: Arial, sans-serif;
+                        line-height: 1.6;
+                        color: #333;
+                        max-width: 800px;
+                        margin: 0 auto;
+                        padding: 20px;
+                        background-color: #faf5ff;
+                    }
+                    .greeting {
+                        font-size: 1.2em;
+                        color: #6b46c1;
+                        border-bottom: 2px solid #9f7aea;
+                        padding-bottom: 8px;
+                        display: inline-block;
+                    }
+                    .content {
+                        margin: 20px 0;
+                        background-color: white;
+                        padding: 20px;
+                        border-radius: 8px;
+                        border-left: 4px solid #805ad5;
+                    }
+                    .signature {
+                        color: #553c9a;
+                        font-style: italic;
+                        text-shadow: 1px 1px 2px rgba(107, 70, 193, 0.1);
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="content">
+                    {{event.spec.msg}}
+                </div>
+            </body>
+            </html>
+            """,
         )
     ),
     # run_id is optional -it can be used to identify the agent in approval history
     run_id=run_id,
+)
+
+approval_channel = ContactChannel(
+    email=EmailContactChannel(
+        address=os.getenv("HL_EXAMPLE_CONTACT_EMAIL", "dexter@humanlayer.dev"),
+        context_about_user="the user you are helping",
+        template="""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body {
+                        font-family: Arial, sans-serif;
+                        line-height: 1.6;
+                        color: #333;
+                        max-width: 800px;
+                        margin: 0 auto;
+                        padding: 20px;
+                        background-color: #f8f4ff;
+                    }
+                    .header {
+                        background: linear-gradient(135deg, #6b46c1, #805ad5);
+                        color: white;
+                        padding: 20px;
+                        border-radius: 8px;
+                        margin-bottom: 30px;
+                        box-shadow: 0 4px 6px rgba(107, 70, 193, 0.2);
+                    }
+                    .function-name {
+                        font-size: 1.5em;
+                        font-weight: bold;
+                        margin-bottom: 10px;
+                        text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+                    }
+                    .parameters {
+                        background-color: white;
+                        padding: 20px;
+                        border-radius: 8px;
+                        box-shadow: 0 2px 8px rgba(107, 70, 193, 0.15);
+                        border-left: 4px solid #9f7aea;
+                    }
+                    .param-row {
+                        display: flex;
+                        padding: 10px 0;
+                        border-bottom: 1px solid #e9d8fd;
+                        transition: background-color 0.2s;
+                    }
+                    .param-row:hover {
+                        background-color: #faf5ff;
+                    }
+                    .param-key {
+                        font-weight: bold;
+                        width: 200px;
+                        color: #553c9a;
+                    }
+                    .param-value {
+                        flex: 1;
+                        color: #2d3748;
+                    }
+                    .signature {
+                        margin-top: 30px;
+                        color: #6b46c1;
+                        font-style: italic;
+                        border-top: 2px solid #9f7aea;
+                        padding-top: 15px;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <div class="function-name">Function Call: {{event.spec.fn}}</div>
+                </div>
+                <div class="parameters">
+                    {% for key, value in event.spec.kwargs.items() %}
+                    <div class="param-row">
+                        <div class="param-key">{{key}}</div>
+                        <div class="param-value">{{value}}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="signature">
+                    Best regards,<br>
+                    Your Assistant
+                </div>
+            </body>
+            </html>
+        """,
+    )
 )
 
 task_prompt = f"""
@@ -84,7 +215,7 @@ def get_linear_assignees() -> Any:
     ]
 
 
-@hl.require_approval()
+@hl.require_approval(contact_channel=approval_channel)
 def create_linear_ticket(title: str, assignee: str, description: str, project: str, due_date: str) -> str:
     """create a ticket in linear"""
     if project != "operations":

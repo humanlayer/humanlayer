@@ -1,0 +1,119 @@
+---
+title: "Classifications"
+description: "Agent-to-human outreach to collect or confirm structured data labels"
+icon: "tags"
+---
+
+## Overview
+
+Classifications enable agents to collect structured data labels from humans. Common use cases:
+
+- Content moderation
+- Sentiment analysis
+- Support ticket triage
+- Data validation
+- Training data collection
+
+## Basic Example
+
+```typescript
+import { humanlayer, ResponseOption } from "humanlayer";
+
+// Initialize with descriptive run ID
+const hl = humanlayer({ runId: "email-classifier" });
+
+// Define clear, mutually exclusive options
+const priorities = [
+  new ResponseOption({
+    name: "urgent",
+    title: "Urgent",
+    description: "Requires immediate attention (SLA < 1 hour)",
+    promptFill: "This is urgent because...",
+  }),
+  new ResponseOption({
+    name: "high",
+    title: "High Priority",
+    description: "Important but not time-critical (SLA < 24 hours)",
+  }),
+  new ResponseOption({
+    name: "normal",
+    title: "Normal",
+    description: "Standard priority (SLA < 72 hours)",
+  }),
+];
+
+// Create classification tool
+const classifyTicket = hl.humanAsTool({
+  responseOptions: priorities,
+});
+
+// Use in your agent
+const priority = await classifyTicket(
+  "Please classify the priority of this support ticket:\n\n" +
+    "Subject: Service Down\n" +
+    "Message: Our production API is returning 500 errors",
+);
+
+console.log(`Ticket classified as: ${priority}`);
+```
+
+## Synchronous vs Async
+
+### Synchronous (Default)
+
+Agent waits for human input:
+
+```typescript
+const result = await classifyEmail("Please classify this email's sentiment");
+```
+
+### Asynchronous
+
+Agent continues while waiting for classification:
+
+```typescript
+// Request classification
+const callId = await classifyEmail.createRequest(
+  "Please classify this email's sentiment",
+);
+
+// Continue processing other tasks...
+
+// Later, fetch the result
+const result = await classifyEmail.getResponse(callId);
+```
+
+## Best Practices
+
+1. **Clear Options**
+
+   - Use mutually exclusive categories
+   - Include specific examples in descriptions
+   - Set clear criteria for each option
+
+2. **Structured Feedback**
+
+   - Use `promptFill` for consistent responses
+   - Guide humans to provide specific details
+   - Collect rationale for important decisions
+
+3. **Quality Control**
+
+   - Consider multiple reviewers for critical data
+   - Track inter-rater agreement
+   - Use `runId` to group related classifications
+
+4. **Efficient Workflows**
+   - Batch similar items together
+   - Use async mode for large volumes
+   - Provide sufficient context in prompts
+
+## Next Steps
+
+- [Configure contact channels](/channels/introduction)
+- [Customize response options](/core/customize-response-options)
+- [See email classifier example](https://github.com/humanlayer/humanlayer/tree/main/examples/ts_email_classifier)
+
+## Private Beta
+
+Classifications are currently in private beta. To request access, please contact us at [contact@humanlayer.dev](mailto:contact@humanlayer.dev).

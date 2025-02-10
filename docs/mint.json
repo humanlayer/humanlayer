@@ -64,7 +64,8 @@
         "core/run-ids-and-call-ids",
         "core/agent-webhooks",
         "core/response-webhooks",
-        "core/state-management"
+        "core/state-management",
+        "core/classifications"
       ]
     },
     {
@@ -83,7 +84,9 @@
         "frameworks/open-ai",
         "frameworks/langchain",
         "frameworks/crewai",
-        "frameworks/controlflow"
+        "frameworks/controlflow",
+        "frameworks/chainlit",
+        "frameworks/vercel-ai-sdk"
       ]
     },
     {
@@ -91,8 +94,7 @@
       "pages": [
         "api-reference/introduction",
         "api-reference/function-calls",
-        "api-reference/human-contacts",
-        "api-reference/classifications"
+        "api-reference/human-contacts"
       ]
     }
   ],
