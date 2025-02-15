@@ -18,6 +18,7 @@ from humanlayer.core.cloud import (
 )
 from humanlayer.core.models import (
     ContactChannel,
+    Escalation,
     FunctionCall,
     FunctionCallSpec,
     FunctionCallStatus,
@@ -431,6 +432,14 @@ class HumanLayer(BaseModel):
         assert self.backend is not None, "respond requires a backend, did you forget your HUMANLAYER_API_KEY?"
         return self.backend.functions().respond(call_id, status)
 
+    def escalate_email_function_call(
+        self,
+        call_id: str,
+        escalation: Escalation,
+    ) -> FunctionCall:
+        assert self.backend is not None, "respond requires a backend, did you forget your HUMANLAYER_API_KEY?"
+        return self.backend.functions().escalate_email(call_id, escalation)
+
     def fetch_human_response(
         self,
         spec: HumanContactSpec,
@@ -491,6 +500,14 @@ class HumanLayer(BaseModel):
     ) -> HumanContact:
         assert self.backend is not None, "respond requires a backend, did you forget your HUMANLAYER_API_KEY?"
         return self.backend.contacts().respond(call_id, status)
+
+    def escalate_email_human_contact(
+        self,
+        call_id: str,
+        escalation: Escalation,
+    ) -> HumanContact:
+        assert self.backend is not None, "respond requires a backend, did you forget your HUMANLAYER_API_KEY?"
+        return self.backend.contacts().escalate_email(call_id, escalation)
 
 
 def remove_parameter_from_signature(func: Any, param_name: str) -> Any:

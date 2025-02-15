@@ -1,5 +1,11 @@
 import { AgentBackend, AgentStore, HumanLayerException } from './protocol'
-import { FunctionCall, FunctionCallStatus, HumanContact, HumanContactStatus } from './models'
+import {
+  Escalation,
+  FunctionCall,
+  FunctionCallStatus,
+  HumanContact,
+  HumanContactStatus,
+} from './models'
 
 class HumanLayerCloudConnection {
   apiKey?: string
@@ -76,6 +82,16 @@ class CloudFunctionCallStore implements AgentStore<FunctionCall, FunctionCallSta
     const data = await resp.json()
     return data as FunctionCall
   }
+
+  async escalateEmail(call_id: string, escalation: Escalation): Promise<FunctionCall> {
+    const resp = await this.connection.request({
+      method: 'POST',
+      path: `/agent/function_calls/${call_id}/escalate_email`,
+      body: escalation,
+    })
+    const data = await resp.json()
+    return data as FunctionCall
+  }
 }
 
 class CloudHumanContactStore implements AgentStore<HumanContact, HumanContactStatus> {
@@ -109,6 +125,16 @@ class CloudHumanContactStore implements AgentStore<HumanContact, HumanContactSta
       method: 'POST',
       path: `/agent/human_contacts/${call_id}/respond`,
       body: status,
+    })
+    const data = await resp.json()
+    return data as HumanContact
+  }
+
+  async escalateEmail(call_id: string, escalation: Escalation): Promise<HumanContact> {
+    const resp = await this.connection.request({
+      method: 'POST',
+      path: `/agent/human_contacts/${call_id}/escalate_email`,
+      body: escalation,
     })
     const data = await resp.json()
     return data as HumanContact

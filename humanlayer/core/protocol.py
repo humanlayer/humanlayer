@@ -4,6 +4,7 @@ import aiohttp
 import requests
 
 from humanlayer.core.models import (
+    Escalation,
     FunctionCall,
     FunctionCallStatus,
     HumanContact,
@@ -27,6 +28,9 @@ class AgentStore(Generic[T_Call, T_Status]):
         raise NotImplementedError()
 
     def respond(self, call_id: str, status: T_Status) -> T_Call:
+        raise NotImplementedError()
+
+    def escalate_email(self, call_id: str, escalation: Escalation) -> T_Call:
         raise NotImplementedError()
 
 

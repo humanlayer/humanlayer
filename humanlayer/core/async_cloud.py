@@ -11,6 +11,7 @@ from humanlayer.core.async_protocol import (
     AsyncAgentStore,
 )
 from humanlayer.core.models import (
+    Escalation,
     FunctionCall,
     FunctionCallStatus,
     HumanContact,
@@ -89,6 +90,14 @@ class AsyncCloudFunctionCallStore(AsyncAgentStore[FunctionCall, FunctionCallStat
         )
         return FunctionCall.model_validate(resp_json)
 
+    async def escalate_email(self, call_id: str, escalation: Escalation) -> FunctionCall:
+        resp_json = await self.connection.request(
+            "POST",
+            f"/agent/function_calls/{call_id}/escalate_email",
+            json=escalation.model_dump(),
+        )
+        return FunctionCall.model_validate(resp_json)
+
 
 class AsyncCloudHumanContactStore(AsyncAgentStore[HumanContact, HumanContactStatus]):
     def __init__(self, connection: AsyncHumanLayerCloudConnection) -> None:
@@ -114,6 +123,14 @@ class AsyncCloudHumanContactStore(AsyncAgentStore[HumanContact, HumanContactStat
             "POST",
             f"/agent/human_contacts/{call_id}/respond",
             json=status.model_dump(),
+        )
+        return HumanContact.model_validate(resp_json)
+
+    async def escalate_email(self, call_id: str, escalation: Escalation) -> HumanContact:
+        resp_json = await self.connection.request(
+            "POST",
+            f"/agent/human_contacts/{call_id}/escalate_email",
+            json=escalation.model_dump(),
         )
         return HumanContact.model_validate(resp_json)
 

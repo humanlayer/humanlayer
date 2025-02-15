@@ -6,6 +6,7 @@ import requests
 from pydantic import BaseModel, model_validator
 
 from humanlayer.core.models import (
+    Escalation,
     FunctionCall,
     FunctionCallStatus,
     HumanContact,
@@ -93,6 +94,16 @@ class CloudFunctionCallStore(AgentStore[FunctionCall, FunctionCallStatus]):
 
         return FunctionCall.model_validate(resp.json())
 
+    def escalate_email(self, call_id: str, escalation: Escalation) -> FunctionCall:
+        resp = self.connection.request(
+            "POST",
+            f"/agent/function_calls/{call_id}/escalate_email",
+            json=escalation.model_dump(),
+        )
+        HumanLayerException.raise_for_status(resp)
+
+        return FunctionCall.model_validate(resp.json())
+
 
 class CloudHumanContactStore(AgentStore[HumanContact, HumanContactStatus]):
     def __init__(self, connection: HumanLayerCloudConnection) -> None:
@@ -135,6 +146,16 @@ class CloudHumanContactStore(AgentStore[HumanContact, HumanContactStatus]):
             json=status.model_dump(),
         )
 
+        HumanLayerException.raise_for_status(resp)
+
+        return HumanContact.model_validate(resp.json())
+
+    def escalate_email(self, call_id: str, escalation: Escalation) -> HumanContact:
+        resp = self.connection.request(
+            "POST",
+            f"/agent/human_contacts/{call_id}/escalate_email",
+            json=escalation.model_dump(),
+        )
         HumanLayerException.raise_for_status(resp)
 
         return HumanContact.model_validate(resp.json())
