@@ -103,7 +103,7 @@ logger = logging.getLogger(__name__)
 async def run_chain(messages: list[dict], tools_openai: list[dict], tools_map: dict) -> str:
     client = AsyncOpenAI()
     response = await client.chat.completions.create(
-        model="gpt-4",
+        model="gpt-4o",
         messages=messages,
         tools=tools_openai,
         tool_choice="auto",

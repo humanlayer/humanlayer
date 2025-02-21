@@ -72,11 +72,6 @@ const emailChannel = {
     contextAboutUser: 'the support team',
   },
 }
-
-// Multiple channels
-const multiChannel = {
-  all_of: [slackChannel, emailChannel],
-}
 ```
 
 ## Response Options
