@@ -18,7 +18,7 @@ const demoEscalation = async () => {
         call.call_id, {
             escalation_msg: "please take a look because it's been too long",
             additional_recipients: [{
-                address: process.env.HL_EXAMPLE_SECOND_CONTACT_EMAIL || "", 
+                address: process.env.HL_EXAMPLE_SECOND_CONTACT_EMAIL || "",
                 field: "to"}],
         },
     );
