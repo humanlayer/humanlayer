@@ -1,3 +1,21 @@
+## 0.7.5-alpha
+
+(pre-release notes)
+
+### Documentation
+
+- Add [quickstart guide for using the humanlayer typescript sdk](https://humanlayer.dev/docs/quickstart-typescript)
+- Add [guide for using Function Calls for Classification](https://humanlayer.dev/docs/core/classifications) with human-in-the-loop
+- Add [framework guide for using humanlayer with chainlit](https://humanlayer.dev/docs/frameworks/chainlit)
+- Add [framework guide for using humanlayer with the vercel ai sdk](https://humanlayer.dev/docs/frameworks/vercel-ai-sdk)
+- Update [humanlayer-ts readme](https://github.com/humanlayer/humanlayer-ts) to include quickstart guide
+
+### Examples
+
+- Add [example of a fullstack chat app with nextjs and the vercel ai sdk](https://github.com/humanlayer/humanlayer/tree/main/examples/vercel_ai_nextjs)
+- Simplify the [chainlit example](https://github.com/humanlayer/humanlayer/tree/main/examples/chainlit) by using `AsyncHumanLayer`
+- Update [langchain email example](https://github.com/humanlayer/humanlayer/tree/main/examples/langchain/09-email-contact.py) to showcase the use of custom jinja templates for email payloads
+
 ## 0.7.4
 
 - Add [v1beta2 webhook payload](https://humanlayer.dev/docs/core/response-webhooks) types to ts and python sdks

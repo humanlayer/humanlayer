@@ -6,6 +6,111 @@ icon: "npm"
 
 HumanLayer has [a dedicated client for TypeScript](https://github.com/humanlayer/humanlayer/tree/main/humanlayer-ts).
 
-## 🚧 Guide Coming Soon 🚧
+## Installation
 
-In lieu of an in-depth guide, please explore one of the [Typescript examples in the humanlayer repo](https://github.com/humanlayer/humanlayer/tree/main/examples#typescript-examples)
+Install the HumanLayer TypeScript SDK:
+
+```bash
+npm install humanlayer
+```
+
+## Basic Example
+
+Here's a minimal example using HumanLayer with OpenAI - the full code is available in the [humanlayer-ts repo](https://github.com/humanlayer/humanlayer/tree/main/examples/ts_openai_client).
+
+### Configuration
+
+Set your API keys in your environment:
+
+```bash
+export OPENAI_API_KEY=your-openai-key
+export HUMANLAYER_API_KEY=your-humanlayer-key
+```
+
+### Basic TS Agent
+
+This basic example shows how to use HumanLayer as a tool in an OpenAI chat completion loop.
+
+```typescript
+import { humanlayer } from "humanlayer";
+import OpenAI from "openai";
+
+// Initialize clients
+const hl = humanlayer({ runId: "quickstart", verbose: true });
+const openai = new OpenAI();
+
+// Define a function that requires approval
+const sendEmail = hl.requireApproval(
+  async (to: string, subject: string, body: string) => {
+    // Your email sending logic here
+    return `Email sent to ${to}`;
+  },
+);
+
+// Use in an OpenAI chat completion
+const messages = [
+  { role: "system", content: "You are a helpful assistant." },
+  { role: "user", content: "Send a welcome email to new@example.com" },
+];
+
+const completion = await openai.chat.completions.create({
+  messages,
+  model: "gpt-3.5-turbo",
+  tools: [
+    {
+      type: "function",
+      function: {
+        name: "sendEmail",
+        description: "Send an email to a user",
+        parameters: {
+          type: "object",
+          properties: {
+            to: { type: "string", description: "Recipient email" },
+            subject: { type: "string", description: "Subject line" },
+            body: { type: "string", description: "Email content" },
+          },
+          required: ["to", "subject", "body"],
+        },
+      },
+    },
+  ],
+});
+
+// Handle tool calls
+const message = completion.choices[0].message;
+if (message.tool_calls) {
+  for (const toolCall of message.tool_calls) {
+    if (toolCall.type === "function") {
+      const args = JSON.parse(toolCall.function.arguments);
+      await sendEmail(args.to, args.subject, args.body);
+    }
+  }
+}
+```
+
+## Contact Channels
+
+Configure how approvals are requested:
+
+```typescript
+import { humanlayer, ContactChannel, SlackContactChannel } from "humanlayer";
+
+const hl = humanlayer({
+  runId: "quickstart",
+  contactChannel: new ContactChannel({
+    slack: new SlackContactChannel({
+      channelOrUserId: "C123456",
+      contextAboutChannelOrUser: "the compliance team",
+    }),
+  }),
+});
+```
+
+## Next Steps
+
+- Explore some of the [Typescript examples in the humanlayer repo](https://github.com/humanlayer/humanlayer/tree/main/examples#typescript-examples)
+- Learn about [require_approval](/core/require-approval)
+- Configure [contact channels](/channels/slack)
+- Explore [response options](/core/customize-response-options)
+- See more [TypeScript examples](https://github.com/humanlayer/humanlayer/tree/main/examples#typescript-examples)
+- Try the [complete quickstart example](https://github.com/humanlayer/humanlayer/tree/main/examples/ts_openai_client/02-human-as-tool.ts)

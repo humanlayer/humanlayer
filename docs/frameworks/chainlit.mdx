@@ -1,3 +1,24 @@
+---
+title: "Chainlit"
+description: "Use Humanlayer with Chainlit"
+icon: "message-bot"
+---
+
+## Overview
+
+[Chainlit](https://github.com/Chainlit/chainlit) is a Python framework for building chat interfaces. HumanLayer adds human oversight to your AI applications.
+
+## Installation
+
+```bash
+pip install humanlayer chainlit python-dotenv
+```
+
+## Complete Example
+
+Create a customer service chat interface with human oversight:
+
+```python
 import json
 import logging
 from openai import AsyncOpenAI
@@ -9,32 +30,15 @@ load_dotenv()
 
 hl = AsyncHumanLayer(verbose=True)
 
-
 # Functions that don't require approval
 @cl.step(type="tool")
-async def fetch_active_orders(email: str) -> list[dict]:
+async def fetch_active_orders(email: str) -> int:
     """Fetch active orders."""
-    return [
-        {
-            "order_id": "123",
-            "status": "active",
-            "amount": 100,
-            "created_at": "2021-01-01",
-            "updated_at": "2021-01-01",
-        },
-        {
-            "order_id": "456",
-            "status": "cancelled",
-            "amount": 200,
-            "created_at": "2021-01-01",
-            "updated_at": "2021-01-01",
-        },
-    ]
-
+    return [1]
 
 # Functions requiring approval
 @cl.step(type="tool")
-async def reimburse_order(order_id, reason) -> str:
+async def reimburse_order(order_id, reason) -> int:
     """Process a refund with human approval"""
     call = await hl.create_function_call(
         spec=FunctionCallSpec(
@@ -48,30 +52,27 @@ async def reimburse_order(order_id, reason) -> str:
             call = await hl.get_function_call(call_id=call.call_id)
         if call.status.approved:
             # Reimbursement logic here
-            function_response_json = json.dumps("Reimbursement approved")
-            step.output = function_response_json
-            return function_response_json
+            function_response_json = json.dumps(True)
         else:
             function_response_json = json.dumps(
                 {"error": f"call {call.spec.fn} not approved, comment was {call.status.comment}"}
             )
-            step.output = "Reimbursement not approved"
-            return function_response_json
-
+        step.output = function_response_json
+    return function_response_json
 
 # Define available tools
-tools_map = {
+math_tools_map = {
     "reimburse_order": reimburse_order,
     "fetch_active_orders": fetch_active_orders,
 }
 
 # Define OpenAI function schemas
-tools = [
+math_tools_openai = [
     {
         "type": "function",
         "function": {
             "name": "reimburse_order",
-            "description": "Reimburses an order, ensure you get a reason from the human before calling.",
+            "description": "Reimburses an order.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -99,11 +100,10 @@ tools = [
 
 logger = logging.getLogger(__name__)
 
-
 async def run_chain(messages: list[dict], tools_openai: list[dict], tools_map: dict) -> str:
     client = AsyncOpenAI()
     response = await client.chat.completions.create(
-        model="gpt-4o",
+        model="gpt-4",
         messages=messages,
         tools=tools_openai,
         tool_choice="auto",
@@ -150,7 +150,6 @@ async def run_chain(messages: list[dict], tools_openai: list[dict], tools_map: d
 
     return response.choices[0].message.content
 
-
 @cl.on_chat_start
 def start_chat():
     cl.user_session.set(
@@ -163,7 +162,6 @@ def start_chat():
         ],
     )
 
-
 @cl.on_message
 async def on_message(message: cl.Message):
     message_history = cl.user_session.get("message_history")
@@ -171,5 +169,48 @@ async def on_message(message: cl.Message):
 
     logging.basicConfig(level=logging.INFO)
 
-    result = await run_chain(message_history, tools, tools_map)
+    result = await run_chain(message_history, math_tools_openai, math_tools_map)
     await cl.Message(content=result).send()
+```
+
+## Configuration
+
+```bash
+# .env
+OPENAI_API_KEY=your-openai-key
+HUMANLAYER_API_KEY=your-humanlayer-key
+```
+
+## Key Features
+
+1. **Human Oversight**
+
+   - Require approval for sensitive operations (reimburse_order)
+   - Safe read-only operations (fetch_active_orders)
+   - Native async/await support with AsyncHumanLayer
+
+2. **Tool Integration**
+
+   - OpenAI function calling
+   - Chainlit steps for visibility
+   - Error handling and logging
+
+3. **State Management**
+   - Message history tracking
+   - User session management
+   - Async/await support
+
+## Running the Example
+
+1. Set up environment variables in `.env`
+2. Run the app:
+
+```bash
+chainlit run app.py
+```
+
+## Next Steps
+
+- [Configure contact channels](/channels/introduction)
+- [Customize response options](/core/customize-response-options)
+- [See complete example](https://github.com/humanlayer/humanlayer/tree/main/examples/chainlit)

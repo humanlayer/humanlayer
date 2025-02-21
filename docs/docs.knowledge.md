@@ -235,6 +235,30 @@ Core concepts around contact channels:
   - Components handle their own authentication flow
   - Minimal configuration required in parent components
   - Keep token management internal to components where possible
+
+### Async Framework Integration
+
+- Use AsyncHumanLayer for async frameworks (FastAPI, Chainlit, etc.)
+- All HumanLayer methods become async (create_function_call, get_function_call, etc.)
+- No need for make_async wrappers or other async adapters
+- Polling loops should use framework-specific sleep functions (e.g., cl.sleep for Chainlit)
+
+### Vercel AI SDK Integration
+
+- Use raw JSON schema for tool parameters instead of zod
+- Tools should be defined with parameters in OpenAI function format
+- Streaming responses require OpenAIStream and StreamingTextResponse from 'ai'
+- Tool execution should be async and return strings
+- Tool definitions don't use zod schemas directly, convert to JSON schema format
+- For injecting messages during tool calls:
+
+  - Use TransformStream to modify the stream
+  - Add newlines around injected messages for clean separation
+  - Track first chunk if special handling is needed
+  - Use TextEncoder for converting messages to stream format
+  - Return text-delta type chunks for proper streaming
+  - Inject messages after the original chunk to maintain flow
+
 - Authentication handled at multiple levels:
   - JWT token generation in framework-specific auth endpoints
   - Signing key configuration in HumanLayer dashboard
