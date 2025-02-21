@@ -29,7 +29,7 @@ const demoEscalation = async () => {
     },
   );
 
-  console.log(`Check your email ${JSON.stringify(escalated_call)}`);
+  console.log(`Check your email ${JSON.stringify(escalated_call, null, 2)}`);
 };
 
 const main = async (): Promise<any> => {
