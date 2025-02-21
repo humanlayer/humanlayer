@@ -41,7 +41,7 @@ type EmailContactChannel = {
 type EmailRecipient = {
   address: string
   context_about_user?: string
-  field?: 'to' | 'cc' | 'bcc'
+  field: 'to' | 'cc' | 'bcc'
 }
 
 type ContactChannel = {

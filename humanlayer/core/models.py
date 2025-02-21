@@ -228,7 +228,6 @@ class FunctionCall(BaseModel):
             return self.call.status.as_completed()
 
 
-# TODO(dbentley): how to mark as experimental?
 class Escalation(BaseModel):
     escalation_msg: str
     additional_recipients: list[EmailRecipient] | None = None
