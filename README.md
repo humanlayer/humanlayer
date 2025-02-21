@@ -4,7 +4,7 @@
 
 </div>
 
-**HumanLayer**: A python toolkit to enable AI agents to communicate with humans in tool-based and asynchronous workflows. By incorporating humans-in-the-loop, agentic tools can be given access to much more powerful and meaningful tool calls and tasks.
+**HumanLayer** is an API and SDK that enables AI Agents to contact humans for help, feedback, and approvals.
 
 Bring your LLM (OpenAI, Llama, Claude, etc) and Framework (LangChain, CrewAI, etc) and start giving your AI agents safe access to the world.
 
