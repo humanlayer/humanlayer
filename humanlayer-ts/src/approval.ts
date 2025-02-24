@@ -2,6 +2,7 @@ import crypto from 'crypto'
 import { AgentBackend, HumanLayerException } from './protocol'
 import {
   ContactChannel,
+  Escalation,
   FunctionCall,
   FunctionCallSpec,
   FunctionCallStatus,
@@ -275,6 +276,14 @@ ${kwargs.length ? ' with args: ' + JSON.stringify(kwargs, null, 2) : ''}`)
     return ret
   }
 
+  async escalateEmailHumanContact(call_id: string, escalation: Escalation): Promise<HumanContact> {
+    if (!this.backend) {
+      throw new HumanLayerException('escalateEmailFunctionCall requires a backend')
+    }
+
+    return this.backend.contacts().escalateEmail(call_id, escalation)
+  }
+
   getHumanContact(call_id: string): Promise<HumanContact> {
     if (!this.backend) {
       throw new HumanLayerException('getHumanContact requires a backend')
@@ -321,6 +330,14 @@ ${kwargs.length ? ' with args: ' + JSON.stringify(kwargs, null, 2) : ''}`)
       call_id: callId,
       spec: spec,
     })
+  }
+
+  async escalateEmailFunctionCall(call_id: string, escalation: Escalation): Promise<FunctionCall> {
+    if (!this.backend) {
+      throw new HumanLayerException('escalateEmailFunctionCall requires a backend')
+    }
+
+    return this.backend.functions().escalateEmail(call_id, escalation)
   }
 
   async getFunctionCall(call_id: string): Promise<FunctionCall> {

@@ -82,6 +82,8 @@ class EmailContactChannel(BaseModel):
     # contact_human_via_email_to_the_user_you_are_assisting
     context_about_user: str | None = None
 
+    additional_recipients: list["EmailRecipient"] | None = None
+
     # for replying on an existing email thread
     subject: str | None = None
     references_message_id: str | None = None
@@ -130,6 +132,15 @@ class EmailContactChannel(BaseModel):
             experimental_in_reply_to_message_id=message_id,
             experimental_references_message_id=message_id,
         )
+
+
+class EmailRecipient(BaseModel):
+    address: str
+    # any context for the LLM about the user this channel can contact
+    # e.g. "the user you are assisting" will update the tool name to
+    # contact_human_via_email_to_the_user_you_are_assisting
+    context_about_user: str | None = None
+    field: Literal["to"] | Literal["cc"] | Literal["bcc"] | None = None
 
 
 class ContactChannel(BaseModel):
@@ -215,6 +226,11 @@ class FunctionCall(BaseModel):
             if self.call.status is None:
                 raise ValueError("FunctionCall.Completed.as_completed() called before approval")
             return self.call.status.as_completed()
+
+
+class Escalation(BaseModel):
+    escalation_msg: str
+    additional_recipients: list[EmailRecipient] | None = None
 
 
 class HumanContactSpec(BaseModel):

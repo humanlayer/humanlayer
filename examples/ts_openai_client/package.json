@@ -10,7 +10,7 @@
     "human-as-tool": "tsx --env-file=.env 02-human-as-tool.ts",
     "human-email": "tsx --env-file=.env 03-human-email.ts",
     "agent-side": "tsx --env-file=.env 04-agent-side-approvals.ts",
-    "task-classifier": "tsx --env-file=.env 05-task-classifier.ts"
+    "imperative-fetch-based": "tsx --env-file=.env 05-imperative-fetch-based.ts"
   },
   "repository": {
     "type": "git",

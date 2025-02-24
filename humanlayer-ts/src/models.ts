@@ -38,6 +38,12 @@ type EmailContactChannel = {
   template?: string
 }
 
+type EmailRecipient = {
+  address: string
+  context_about_user?: string
+  field: 'to' | 'cc' | 'bcc'
+}
+
 type ContactChannel = {
   slack?: SlackContactChannel
   sms?: SMSContactChannel
@@ -71,6 +77,11 @@ type FunctionCall = {
   call_id: string
   spec: FunctionCallSpec
   status?: FunctionCallStatus
+}
+
+type Escalation = {
+  escalation_msg: string
+  additional_recipients?: EmailRecipient[]
 }
 
 type HumanContactSpec = {
@@ -107,11 +118,13 @@ export {
   SMSContactChannel,
   WhatsAppContactChannel,
   EmailContactChannel,
+  EmailRecipient,
   ContactChannel,
   ResponseOption,
   FunctionCallSpec,
   FunctionCallStatus,
   FunctionCall,
+  Escalation,
   HumanContactSpec,
   HumanContactStatus,
   HumanContact,

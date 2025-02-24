@@ -1,6 +1,7 @@
 from typing import Generic
 
 from humanlayer.core.models import (
+    Escalation,
     FunctionCall,
     FunctionCallStatus,
     HumanContact,
@@ -21,6 +22,9 @@ class AsyncAgentStore(Generic[T_Call, T_Status]):
         raise NotImplementedError()
 
     async def respond(self, call_id: str, status: T_Status) -> T_Call:
+        raise NotImplementedError()
+
+    async def escalate_email(self, call_id: str, escalation: Escalation) -> T_Call:
         raise NotImplementedError()
 
 
