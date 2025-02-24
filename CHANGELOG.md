@@ -1,6 +1,9 @@
-## 0.7.5-alpha
+## 0.7.5
 
-(pre-release notes)
+### Features
+
+- Add `additional_recipients` to `EmailContactChannel` to enable `to`, `cc`, `bcc` email recipients
+- Add `escalate_email` methods for Function Call and Human Contact objects, allowing for followup/escalation emails to be sent with additional recipients
 
 ### Documentation
 
