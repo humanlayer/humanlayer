@@ -320,12 +320,12 @@ release-alpha: _check-uv-publish-token release-plan
 	: confirming release plan
 	@read -p "Press Enter to continue..."
 	@echo "Releasing..."
-	#cd humanlayer-ts && npm run build && npm publish --tag alpha
+	cd humanlayer-ts && npm run build && npm publish --tag alpha
 	:
 	: waiting for ts publish to complete
 	:
-	#sleep 30
-	#@$(MAKE) update-examples-ts-versions VERSION=$(current-ts-version)
+	sleep 30
+	@$(MAKE) update-examples-ts-versions VERSION=$(current-ts-version)
 	@$(MAKE) smoke-test-examples-ts
 	@$(MAKE) build-and-publish
 	:
