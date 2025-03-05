@@ -1,8 +1,6 @@
 .PHONY: check-py
 
-check-py: ## Run code quality tools.
-	: 🚀 installing uv deps
-	uv sync
+check-py: install-py-deps
 	: 🚀 Linting code: Running pre-commit
 	uv run pre-commit run -a
 	@$(MAKE) typecheck
@@ -10,22 +8,22 @@ check-py: ## Run code quality tools.
 	uv run deptry .
 
 .PHONY: check-ts
-check-ts:
+check-ts: install-ts-deps
 	npm -C humanlayer-ts run check
 
 .PHONY: check
 check: check-py check-ts
 
-typecheck: ## just the typechecks
+typecheck: install-py-deps
 	: 🚀 Static type checking: Running mypy
 	uv run mypy
 
 .PHONY: test-py
-test-py: ## Test the code with pytest
+test-py: install-py-deps
 	uv run pytest ./humanlayer --cov --cov-config=pyproject.toml --cov-report=xml --junitxml=junit.xml
 
 .PHONY: test-ts
-test-ts: ## Test the code with jest
+test-ts: install-ts-deps
 	npm -C humanlayer-ts run test
 
 .PHONY: test
@@ -62,6 +60,17 @@ build-and-publish: build publish ## Build and publish.
 .PHONY: help
 help:
 	grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
+
+.PHONY: install-py-deps
+install-py-deps:
+	@command -v uv >/dev/null 2>&1 || { echo "Installing uv..."; pip install uv; }
+	: 🚀 Installing Python dependencies
+	uv sync --all-extras --dev
+
+.PHONY: install-ts-deps
+install-ts-deps:
+	: 🚀 Installing TypeScript dependencies
+	npm -C humanlayer-ts install
 
 .DEFAULT_GOAL := help
 
