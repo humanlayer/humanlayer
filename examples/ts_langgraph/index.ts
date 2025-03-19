@@ -15,6 +15,13 @@ const hl = humanlayer({
   verbose: true
 });
 
+interface ResearchProposal {
+  title: string;
+  description: string;
+  budget: number;
+  timeline: string;
+}
+
 // Define research tools
 class ResearchTool extends StructuredTool {
   name = "research";
@@ -58,7 +65,7 @@ class ResearchTool extends StructuredTool {
     return String(synthesisResponse.content);
   }
 
-  _call(args: any) {
+  _call(args: z.output<typeof this.schema>) {
     const f = this.__call.bind(this);
     Object.defineProperty(f, "name", { value: this.name });
     return hl.requireApproval()(f)(args);
@@ -104,5 +111,17 @@ async function main() {
     console.log("Result:", result.output);
   }
 }
+
+/* eslint-disable @typescript-eslint/no-unused-vars */
+async function validateResearchProposal(proposal: ResearchProposal): Promise<void> {
+  // TODO: Implement validation logic
+  throw new Error("Not implemented");
+}
+
+async function approveResearchProposal(proposal: ResearchProposal): Promise<void> {
+  // TODO: Implement approval logic
+  throw new Error("Not implemented");
+}
+/* eslint-enable @typescript-eslint/no-unused-vars */
 
 main().catch(console.error);
