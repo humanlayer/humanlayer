@@ -92,6 +92,10 @@ smoke-test-examples-ts:
 	: skipping async for now
 	: npm -C examples/ts_email_classifier run human-review-async
 
+	npm -C examples/ts_langgraph install
+	: 🦾 ts_langgraph
+	npm -C examples/ts_langgraph run example
+
 .PHONY: smoke-test-examples
 smoke-test-examples: smoke-test-examples-py smoke-test-examples-ts
 
