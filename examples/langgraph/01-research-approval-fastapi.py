@@ -25,6 +25,8 @@ reject_options = [
     ResponseOption(name="needs_expert", description="This requires expert consultation"),
     ResponseOption(name="reject", description="This query should be rejected")
 ]
+    
+llm = ChatOpenAI(model="gpt-4o-mini")
 
 class ResearchState(TypedDict):
     query: str
@@ -107,7 +109,6 @@ def research_approval(query: str) -> dict:
 
 async def process_research(state: ResearchState) -> Dict:
     """Process the research based on the path"""
-    llm = ChatOpenAI(model="gpt-4o-mini")
     
     if state["current_path"] == ResearchPaths.QUICK_SEARCH.value:
         prompt = f"Provide a quick and concise answer to: {state['query']}"
@@ -116,7 +117,7 @@ async def process_research(state: ResearchState) -> Dict:
     else:  # EXPERT_CONSULT
         prompt = f"Provide an expert-level analysis with technical details for: {state['query']}"
     
-    response = llm.invoke(prompt)
+    response = await llm.ainvoke(prompt)
     logger.info(f"Research response: {response}")
     state["final_result"] = response.content
     
@@ -126,11 +127,14 @@ async def process_research(state: ResearchState) -> Dict:
         "result": state["final_result"]
     }
 
+class ResearchRequest(BaseModel):
+    query: str
+
 @app.post("/research")
-async def research_endpoint(query: str):
+async def research_endpoint(request: ResearchRequest):
     try:
         try:
-            research_approval(query=query)
+            research_approval(query=request.query)
             raise NodeInterrupt("Waiting for approval")
         except HumanLayerException as e:
             return {"status": "error", "message": f"Research rejected: {str(e)}"}

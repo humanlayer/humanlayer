@@ -38,8 +38,7 @@ def human_approval_node(state: ResearchState):
         try:
             research_approval(
                 query=state["query"],
-                complexity=state["complexity"],
-                proposed_path=proposed_path
+                complexity=state["complexity"]
             )
             state["current_path"] = proposed_path
         except HumanLayerException as e:

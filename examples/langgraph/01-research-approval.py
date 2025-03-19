@@ -12,6 +12,8 @@ logger = LoggerFactory()
 
 load_dotenv()
 
+llm = ChatOpenAI(model="gpt-4o-mini")
+
 hl = HumanLayer(run_id="research-assistant-demo")
 
 reject_options = [
@@ -35,7 +37,6 @@ class ResearchPaths(Enum):
 
 def analyze_complexity(state: ResearchState):
     """Determine the complexity of the research query"""
-    llm = ChatOpenAI(temperature=0, model="gpt-4o-mini")
     prompt = f"""Analyze the complexity of this research query: '{state["query"]}'
     Respond with only one word: 'simple', 'medium', or 'complex'."""
     
@@ -86,7 +87,6 @@ def route_research(state: ResearchState):
 
 def quick_search(state: ResearchState):
     """Handle simple queries with quick lookup"""
-    llm = ChatOpenAI(model="gpt-4o-mini")
     state["findings"].append("Quick search result")
     state["current_path"] = "quick_search"
     return state
@@ -105,7 +105,6 @@ def expert_consult(state: ResearchState):
 
 def synthesize_results(state: ResearchState):
     """Combine findings into final result"""
-    llm = ChatOpenAI(model="gpt-4o-mini")
     prompt = f"""Synthesize these findings for the query '{state["query"]}':
     Research path: {state["current_path"]}
     Findings: {json.dumps(state["findings"])}
