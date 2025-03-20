@@ -94,7 +94,7 @@ smoke-test-examples-ts:
 
 	npm -C examples/ts_langgraph install
 	: 🦾 ts_langgraph
-	npm -C examples/ts_langgraph run example
+	npm -C examples/ts_langgraph run start
 
 .PHONY: smoke-test-examples
 smoke-test-examples: smoke-test-examples-py smoke-test-examples-ts
