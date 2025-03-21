@@ -14,6 +14,8 @@ type SlackContactChannel = {
   // the bot token to use to contact the channel or user
   bot_token?: string
   experimental_slack_blocks?: boolean
+  // the thread ts to use for sending the request in a thread
+  thread_ts?: string
 }
 
 type SMSContactChannel = {

@@ -57,3 +57,10 @@ type V1Beta2HumanContactCompleted = {
   type: 'human_contact.completed'
   event: HumanContact
 }
+
+export {
+  V1Beta2EmailEventReceived,
+  V1Beta2SlackEventReceived,
+  V1Beta2FunctionCallCompleted,
+  V1Beta2HumanContactCompleted,
+}
