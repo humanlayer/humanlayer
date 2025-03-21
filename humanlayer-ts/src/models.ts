@@ -4,6 +4,7 @@ type FunctionCallStatus = {
   approved?: boolean
   comment?: string
   reject_option_name?: string
+  slack_message_ts?: string
 }
 
 type SlackContactChannel = {
