@@ -3,7 +3,7 @@ import sys
 from loguru import logger
 
 
-class LoggerFactory():
+class LoggerFactory:
     """Factory class for creating and configuring loggers.
 
     Implements the LoggerInterface to provide standardized logging functionality.

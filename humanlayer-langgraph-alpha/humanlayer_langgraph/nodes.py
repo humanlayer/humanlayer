@@ -1,13 +1,13 @@
 """Node implementation for HumanLayer integration with LangGraph."""
 
 import asyncio
-import logging
 import json
-from typing import Any, Callable, Dict, List, Optional, TypedDict, Union, cast, Tuple, Literal
-from humanlayer import HumanLayer, FunctionCallSpec, ContactChannel, SlackContactChannel
+import logging
+from typing import Any, Optional, Union
+
+from humanlayer import ContactChannel, FunctionCallSpec, HumanLayer, SlackContactChannel
+from langchain_core.messages import AIMessage, AnyMessage, ToolMessage
 from langchain_core.tools import BaseTool
-from langchain_core.messages import AIMessage, ToolMessage, HumanMessage, AnyMessage
-from langgraph.store.base import BaseStore
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -18,7 +18,7 @@ class HumanLayerToolNode:
 
     def __init__(
         self,
-        tools: List[BaseTool],
+        tools: list[BaseTool],
         human_layer: HumanLayer,
         require_approval: bool = True,
         messages_key: str = "messages",
@@ -37,10 +37,12 @@ class HumanLayerToolNode:
         self.messages_key = messages_key
         self.store = None  # Will be set by the graph when compiled
 
-    def __call__(self, state: Union[List[AnyMessage], Dict[str, Any], BaseModel]) -> Union[List[AnyMessage], Dict[str, Any]]:
+    def __call__(
+        self, state: Union[list[AnyMessage], dict[str, Any], BaseModel]
+    ) -> Union[list[AnyMessage], dict[str, Any]]:
         """Invoke the tools based on the state."""
         logger.info("Processing HumanLayerToolNode")
-        
+
         # Extract messages from state
         if isinstance(state, list):
             messages = state
@@ -51,44 +53,44 @@ class HumanLayerToolNode:
         else:
             messages = getattr(state, self.messages_key, [])
             input_type = "dict"
-        
+
         # Find the last AI message with tool calls
         ai_message = None
         for msg in reversed(messages):
             if isinstance(msg, AIMessage) and getattr(msg, "tool_calls", None):
                 ai_message = msg
                 break
-        
+
         if not ai_message:
             logger.info("No AI message with tool calls found")
             return state
-        
+
         # Get unanswered tool calls
         answered_ids = {
-            msg.tool_call_id for msg in messages 
+            msg.tool_call_id
+            for msg in messages
             if isinstance(msg, ToolMessage) and hasattr(msg, "tool_call_id")
         }
-        
-        unanswered_tool_calls = [
-            tc for tc in ai_message.tool_calls
-            if tc["id"] not in answered_ids
-        ]
-        
+
+        unanswered_tool_calls = [tc for tc in ai_message.tool_calls if tc["id"] not in answered_ids]
+
         if not unanswered_tool_calls:
             logger.info("All tool calls already answered")
             return state
-        
+
         # Process each unanswered tool call
         new_tool_messages = []
         for tool_call in unanswered_tool_calls:
             tool_name = tool_call["name"]
             tool_args = tool_call["args"]
             tool_id = tool_call["id"]
-            
+
             logger.info(f"Processing tool call: {tool_name}({json.dumps(tool_args)})")
-            
+
             if tool_name not in self.tools:
-                error_msg = f"Tool {tool_name} not found. Available tools: {', '.join(self.tools.keys())}"
+                error_msg = (
+                    f"Tool {tool_name} not found. Available tools: {', '.join(self.tools.keys())}"
+                )
                 logger.error(error_msg)
                 new_tool_messages.append(
                     ToolMessage(
@@ -98,15 +100,15 @@ class HumanLayerToolNode:
                     )
                 )
                 continue
-            
+
             # Get approval if required
             approved = True
             approval_comment = ""
-            
+
             if self.require_approval:
                 try:
                     logger.info(f"Requesting approval for {tool_name}...")
-                    
+
                     # Create contact channel for Slack notifications
                     contact = ContactChannel(
                         slack=SlackContactChannel(
@@ -114,35 +116,35 @@ class HumanLayerToolNode:
                             experimental_slack_blocks=True,
                         )
                     )
-                    
+
                     # Create function call spec with contact channel
                     spec = FunctionCallSpec(
                         fn=tool_name,
                         kwargs=tool_args,
                         channel=contact,
                     )
-                    
+
                     # Wait for human approval using fetch_approval
                     logger.info("Waiting for human approval via Slack...")
                     completed = self.human_layer.fetch_approval(spec=spec)
                     logger.info(f"Approval result: {completed.call}")
-                    
+
                     # Process approval result
                     approved = completed.call.status.approved
                     approval_comment = completed.call.status.comment or ""
                     logger.info(f"Approval result: {approved}, comment: '{approval_comment}'")
-                    
+
                 except Exception as e:
                     logger.error(f"Error getting approval: {e}")
                     approved = False
                     approval_comment = f"Error getting approval: {str(e)}"
-            
+
             # Execute the tool if approved
             if approved:
                 logger.info(f"Executing tool: {tool_name}")
                 try:
                     tool = self.tools[tool_name]
-                    
+
                     # LangChain decorated tools require special handling
                     # For @tool decorated functions or BaseTool objects
                     if hasattr(tool, "_run") and callable(tool._run):
@@ -184,7 +186,7 @@ class HumanLayerToolNode:
                                     result = tool.invoke(str(tool_args))
                             else:
                                 raise
-                    elif hasattr(tool, "__call__") and callable(tool.__call__):
+                    elif callable(tool) and callable(tool.__call__):
                         logger.info(f"Using direct call for tool {tool_name}")
                         # If the tool is directly callable
                         if isinstance(tool_args, dict):
@@ -193,9 +195,9 @@ class HumanLayerToolNode:
                             result = tool(tool_args)
                     else:
                         raise ValueError(f"Cannot determine how to invoke tool {tool_name}")
-                    
+
                     logger.info(f"Tool result: {result}")
-                    
+
                     # Create a tool message with the result
                     new_tool_messages.append(
                         ToolMessage(
@@ -225,7 +227,7 @@ class HumanLayerToolNode:
                         name=tool_name,
                     )
                 )
-        
+
         # Update the state with the new tool messages
         if input_type == "list":
             return messages + new_tool_messages
@@ -253,7 +255,9 @@ class HumanApprovalNode:
         self.message_template = message_template
         self.timeout = timeout
 
-    async def ainvoke(self, state: Dict[str, Any], action: str = "Continue execution") -> Dict[str, Any]:
+    async def ainvoke(
+        self, state: dict[str, Any], action: str = "Continue execution"
+    ) -> dict[str, Any]:
         """Request human approval for an action.
 
         Args:
@@ -264,9 +268,9 @@ class HumanApprovalNode:
             Updated state with approval information
         """
         message = self.message_template.format(action=action)
-        
+
         logger.info(f"Requesting human approval: {message}")
-        
+
         # In a real implementation, this would wait for human approval
         # approval_result = await self.human_layer.require_approval(
         #     message=message,
@@ -274,14 +278,18 @@ class HumanApprovalNode:
         #     run_id=self.human_layer.run_id,
         #     timeout=self.timeout,
         # )
-        
+
         # For this example, we'll simulate approval
         logger.info("Simulating human approval (would wait for response in real implementation)")
-        approval_result = type('ApprovalResult', (), {
-            'approved': True,
-            'feedback': 'Automatically approved for example',
-            'timestamp': '2025-03-21T12:00:00Z'
-        })
+        approval_result = type(
+            "ApprovalResult",
+            (),
+            {
+                "approved": True,
+                "feedback": "Automatically approved for example",
+                "timestamp": "2025-03-21T12:00:00Z",
+            },
+        )
 
         # Update state with approval result
         return {
@@ -293,7 +301,7 @@ class HumanApprovalNode:
             },
         }
 
-    def invoke(self, state: Dict[str, Any], action: str = "Continue execution") -> Dict[str, Any]:
+    def invoke(self, state: dict[str, Any], action: str = "Continue execution") -> dict[str, Any]:
         """Synchronous version of ainvoke."""
         loop = asyncio.get_event_loop()
         return loop.run_until_complete(self.ainvoke(state, action))
@@ -322,7 +330,9 @@ class HumanInputNode:
         self.timeout = timeout
         self.response_key = response_key
 
-    async def ainvoke(self, state: Dict[str, Any], prompt: str = "Your input is needed") -> Dict[str, Any]:
+    async def ainvoke(
+        self, state: dict[str, Any], prompt: str = "Your input is needed"
+    ) -> dict[str, Any]:
         """Request input from a human.
 
         Args:
@@ -333,9 +343,9 @@ class HumanInputNode:
             Updated state with human input
         """
         formatted_prompt = self.prompt_template.format(prompt=prompt)
-        
+
         logger.info(f"Requesting human input: {formatted_prompt}")
-        
+
         # In a real implementation, this would wait for human input
         # input_result = await self.human_layer.request_human_input(
         #     prompt=formatted_prompt,
@@ -343,13 +353,14 @@ class HumanInputNode:
         #     run_id=self.human_layer.run_id,
         #     timeout=self.timeout,
         # )
-        
+
         # For this example, we'll simulate input
         logger.info("Simulating human input (would wait for response in real implementation)")
-        input_result = type('InputResult', (), {
-            'response': 'Simulated human response',
-            'timestamp': '2025-03-21T12:00:00Z'
-        })
+        input_result = type(
+            "InputResult",
+            (),
+            {"response": "Simulated human response", "timestamp": "2025-03-21T12:00:00Z"},
+        )
 
         # Update state with input result
         return {
@@ -360,7 +371,7 @@ class HumanInputNode:
             },
         }
 
-    def invoke(self, state: Dict[str, Any], prompt: str = "Your input is needed") -> Dict[str, Any]:
+    def invoke(self, state: dict[str, Any], prompt: str = "Your input is needed") -> dict[str, Any]:
         """Synchronous version of ainvoke."""
         loop = asyncio.get_event_loop()
         return loop.run_until_complete(self.ainvoke(state, prompt))
