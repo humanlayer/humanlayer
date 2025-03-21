@@ -1,5 +1,5 @@
 [project]
-name = "humanlayer-langgraph"
+name = "humanlayer-langgraph-alpha"
 version = "0.1.0"
 description = "HumanLayer integration for LangGraph"
 authors = [
@@ -15,9 +15,23 @@ requires-python = ">=3.9"
 readme = "README.md"
 license = { file = "LICENSE" }
 
+[project.optional-dependencies]
+dev = [
+    "black>=23.0.0",
+    "ruff>=0.0.280",
+    "mypy>=1.0.0",
+    "pytest>=7.0.0",
+    "build>=1.0.0",
+    "twine>=4.0.0",
+    "bump2version>=1.0.0",
+]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["humanlayer_langgraph"]
 
 [tool.ruff]
 line-length = 100
@@ -25,3 +39,24 @@ target-version = "py39"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "B", "UP"]
+
+[tool.black]
+line-length = 100
+target-version = ["py39"]
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+
+[tool.bumpversion]
+current_version = "0.1.0"
+commit = true
+tag = true
+tag_name = "v{new_version}"

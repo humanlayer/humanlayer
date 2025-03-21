@@ -13,9 +13,10 @@ from langchain_openai import ChatOpenAI
 from langgraph.graph import END, START, StateGraph
 
 # Configure logging
-from humanlayer_langgraph.logger import LoggerFactory
+import logging
 
-logger = LoggerFactory()
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 class MessagesState(TypedDict):

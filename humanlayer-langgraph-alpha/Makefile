@@ -1,11 +1,11 @@
-.PHONY: lint format test clean build publish publish-test
+.PHONY: lint format test clean build publish publish-test run-examples bump-patch bump-minor bump-major
 
 # Set variables
-PACKAGE_NAME := humanlayer-langgraph
+PACKAGE_NAME := humanlayer-langgraph-alpha
 PYTHON := python3
 
 # Default virtual environment
-VENV_NAME := .venv
+VENV_NAME := venv
 VENV_ACTIVATE := $(VENV_NAME)/bin/activate
 VENV_PYTHON := $(VENV_NAME)/bin/python
 
@@ -17,6 +17,7 @@ MYPY := $(VENV_PYTHON) -m mypy
 PYTEST := $(VENV_PYTHON) -m pytest
 BUILD := $(VENV_PYTHON) -m build
 TWINE := $(VENV_PYTHON) -m twine
+BUMP := $(VENV_PYTHON) -m bump2version
 
 # Create virtual environment
 venv:
@@ -26,11 +27,11 @@ venv:
 
 # Format code with black
 format:
-	$(BLACK) humanlayer_langgraph tests
+	$(BLACK) humanlayer_langgraph tests examples
 
 # Run linters
 lint:
-	$(RUFF) check humanlayer_langgraph tests
+	$(RUFF) check humanlayer_langgraph tests examples
 	$(MYPY) humanlayer_langgraph
 
 # Run tests
@@ -51,13 +52,37 @@ build: clean
 	$(BUILD) --sdist --wheel .
 
 # Publish to PyPI
-publish: build
+publish: build test
 	$(TWINE) upload dist/*
 
 # Publish to TestPyPI
-publish-test: build
-	$(TWINE) upload --repository-url https://test.pypi.org/legacy/ dist/*
+publish-test: build test
+	$(TWINE) upload --repository-url https://test.pypi.org/legacy/ dist/* --verbose
 
 # Development setup
 setup-dev: venv
 	$(PIP) install -e ".[dev]"
+
+# Run examples
+run-examples:
+	@echo "Running weather agent example..."
+	cd examples && $(VENV_PYTHON) weather_agent.py
+
+# Version bumping
+bump-patch:
+	$(PIP) install -U bump2version
+	$(BUMP) patch
+
+bump-minor:
+	$(PIP) install -U bump2version
+	$(BUMP) minor
+
+bump-major:
+	$(PIP) install -U bump2version
+	$(BUMP) major
+
+# Full CI process
+ci: venv lint test build
+
+# Full release process (local)
+release: clean lint test build publish

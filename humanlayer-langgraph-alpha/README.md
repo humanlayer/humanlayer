@@ -1,6 +1,6 @@
 # HumanLayer for LangGraph
 
-[![PyPI version](https://badge.fury.io/py/humanlayer-langgraph.svg)](https://badge.fury.io/py/humanlayer-langgraph)
+[![PyPI version](https://badge.fury.io/py/humanlayer-langgraph-alpha.svg)](https://badge.fury.io/py/humanlayer-langgraph-alpha)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 An integration package for using [HumanLayer](https://humanlayer.com) with [LangGraph](https://github.com/langchain-ai/langgraph) to build human-in-the-loop agents.
@@ -8,7 +8,7 @@ An integration package for using [HumanLayer](https://humanlayer.com) with [Lang
 ## Installation
 
 ```bash
-pip install humanlayer-langgraph
+pip install humanlayer-langgraph-alpha
 ```
 
 ## Features
@@ -93,9 +93,75 @@ input_node = create_human_input_node(
 graph_builder.add_node("human_input", input_node)
 ```
 
-## Complete Example
+## Examples
 
-See the `examples/` directory for complete examples of HumanLayer integration with LangGraph.
+See the `examples/` directory for complete examples of HumanLayer integration with LangGraph. You can run the examples with:
+
+```bash
+make run-examples
+```
+
+## Development
+
+### Setting Up Development Environment
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/humanlayer/humanlayer-langgraph-alpha.git
+   cd humanlayer-langgraph-alpha
+   ```
+
+2. Create a virtual environment and install development dependencies:
+   ```bash
+   make setup-dev
+   ```
+
+3. Run the tests:
+   ```bash
+   make test
+   ```
+
+### Development Commands
+
+- `make format`: Format code with black
+- `make lint`: Run linters (ruff, mypy)
+- `make test`: Run tests
+- `make run-examples`: Run example scripts
+- `make clean`: Clean build artifacts
+- `make build`: Build package
+
+## Publishing
+
+### Local Publishing
+
+To release a new version:
+
+1. Bump the version (patch, minor, or major):
+   ```bash
+   make bump-patch  # or bump-minor, bump-major
+   ```
+
+2. Build and publish:
+   ```bash
+   make publish  # or publish-test for TestPyPI
+   ```
+
+### GitHub Actions
+
+This package uses GitHub Actions to automate the release process:
+
+1. Go to the "Actions" tab in the GitHub repository
+2. Select the "Publish Package" workflow
+3. Click "Run workflow"
+4. Select the release type (patch, minor, or major)
+5. Click "Run workflow"
+
+The action will:
+- Run tests
+- Bump the version
+- Build the package
+- Push the new tag
+- Publish to PyPI
 
 ## Documentation
 
