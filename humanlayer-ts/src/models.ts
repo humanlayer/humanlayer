@@ -4,6 +4,7 @@ type FunctionCallStatus = {
   approved?: boolean
   comment?: string
   reject_option_name?: string
+  slack_message_ts?: string
 }
 
 type SlackContactChannel = {
@@ -14,6 +15,8 @@ type SlackContactChannel = {
   // the bot token to use to contact the channel or user
   bot_token?: string
   experimental_slack_blocks?: boolean
+  // the thread ts to use for sending the request in a thread
+  thread_ts?: string
 }
 
 type SMSContactChannel = {
