@@ -1,6 +1,6 @@
 # LangGraph and HumanLayer
 
-This repository demonstrates how to integrate human-in-the-loop approval workflows using [LangGraph](https://github.com/langchain-ai/langgraph) and [HumanLayer](https://humanlayer.dev).
+This repository demonstrates a research classification example that integrate human-in-the-loop approval workflows via HumanLayer using [LangGraph](https://github.com/langchain-ai/langgraph) and [HumanLayer](https://humanlayer.dev).
 
 ## Quick Start
 
