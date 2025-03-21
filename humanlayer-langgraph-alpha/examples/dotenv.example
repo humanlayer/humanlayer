@@ -1,0 +1,3 @@
+# copy to .env
+OPENAI_API_KEY=
+HUMANLAYER_API_KEY=

@@ -1,0 +1,27 @@
+[project]
+name = "humanlayer-langgraph"
+version = "0.1.0"
+description = "HumanLayer integration for LangGraph"
+authors = [
+    { name = "HumanLayer", email = "info@humanlayer.com" }
+]
+dependencies = [
+    "humanlayer>=0.1.0",
+    "langgraph>=0.0.10",
+    "langchain-core>=0.1.0",
+    "langchain-openai>=0.0.5",
+]
+requires-python = ">=3.9"
+readme = "README.md"
+license = { file = "LICENSE" }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "B", "UP"] 
