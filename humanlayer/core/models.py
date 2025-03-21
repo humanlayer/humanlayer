@@ -35,6 +35,7 @@ class SlackContactChannel(BaseModel):
     allowed_responder_ids: list[str] | None = None
 
     experimental_slack_blocks: bool | None = None
+    thread_ts: str | None = None
 
     @field_validator("allowed_responder_ids")
     @classmethod
@@ -183,6 +184,7 @@ class FunctionCallStatus(BaseModel):
     approved: bool | None = None
     comment: str | None = None
     reject_option_name: str | None = None
+    slack_message_ts: str | None = None
 
     class Approved(BaseModel):
         approved: Literal[True]
