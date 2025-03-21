@@ -3,8 +3,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 import langchain.tools
 from langchain.agents import AgentExecutor, create_tool_calling_agent
-from typing import Optional
-from humanlayer import HumanLayer, ContactChannel, SlackContactChannel, FunctionCallSpec
+from humanlayer import HumanLayer, ContactChannel, SlackContactChannel, FunctionCallSpec, HumanContactSpec
 import time
 
 load_dotenv()
@@ -32,7 +31,6 @@ def create_thread(message: str) -> str:
             channel=contact,
         )
     )
-    # Return the thread_ts value
     return call.call.status.slack_message_ts
 
 
@@ -42,7 +40,10 @@ def reply_in_thread(message: str, thread_ts: str) -> str:
         slack=SlackContactChannel(channel_or_user_id="C08EDEYS1SB", experimental_slack_blocks=True, thread_ts=thread_ts)
     )
     call = hl.fetch_human_response(
-        spec=FunctionCallSpec(fn="reply_in_thread", kwargs={"message": message}, channel=contact)
+        spec=HumanContactSpec(
+            msg=message,
+            channel=contact,
+        )
     )
     return call.call.status.slack_message_ts
 
