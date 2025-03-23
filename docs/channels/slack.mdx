@@ -6,7 +6,7 @@ icon: "slack"
 
 <Frame>
   <img
-    src="https://humanlayer.dev/img-approval-social.png"
+    src="/images/slack-conversation.png"
     alt="HumanLayer Slack Approval Flow"
   />
 </Frame>
@@ -67,6 +67,35 @@ The `allowed_responder_ids` must be Slack user IDs (starting with `U`). Messages
 
 See [01-math-example-allowed-repliers.py](https://github.com/humanlayer/humanlayer/tree/main/examples/langchain/01-math_example_allowed_repliers.py) for a complete example.
 
+### Thread Messages
+
+You can specify a thread to post messages in using the `thread_ts` parameter:
+
+```python
+# Post in a specific Slack thread
+threaded_channel = ContactChannel(
+    slack=SlackContactChannel(
+        channel_or_user_id="C123456",
+        thread_ts="1234567890.123456",  # Timestamp of the parent message
+    )
+)
+```
+
+The `thread_ts` parameter accepts a Slack message timestamp (e.g. "1234567890.123456") which identifies the parent message of the thread. When specified, all messages will be posted as replies in that thread instead of as new messages in the channel.
+
+This is useful for organizing related approvals or keeping discussions contained within specific threads.
+
+### Channel/User ID
+
+The `channel_or_user_id` must be a Slack ID:
+
+- Channel IDs start with `C` (e.g. `C123456`)
+- User IDs start with `U` (e.g. `U123456`)
+- Do not use channel names (`#general`) or usernames (`@user`)
+
+You can get a channel ID in slack by right-clicking the channel, going to "Channel Details", and copying the ID at the bottom of the modal.
+
+
 You can also override the contact channel at the per-request level:
 
 ```python
@@ -85,17 +114,6 @@ tools = [
   hl.human_as_tool(contact_channel=dm_with_ceo),
 ]
 ```
-
-### Channel/User ID
-
-The `channel_or_user_id` must be a Slack ID:
-
-- Channel IDs start with `C` (e.g. `C123456`)
-- User IDs start with `U` (e.g. `U123456`)
-- Do not use channel names (`#general`) or usernames (`@user`)
-
-You can get a channel ID in slack by right-clicking the channel, going to "Channel Details", and copying the ID at the bottom of the modal.
-
 ### Context
 
 The optional `context_about_channel_or_user` field helps the LLM understand who it's talking to:
