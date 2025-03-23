@@ -95,7 +95,6 @@ The `channel_or_user_id` must be a Slack ID:
 
 You can get a channel ID in slack by right-clicking the channel, going to "Channel Details", and copying the ID at the bottom of the modal.
 
-
 You can also override the contact channel at the per-request level:
 
 ```python
@@ -114,6 +113,7 @@ tools = [
   hl.human_as_tool(contact_channel=dm_with_ceo),
 ]
 ```
+
 ### Context
 
 The optional `context_about_channel_or_user` field helps the LLM understand who it's talking to:

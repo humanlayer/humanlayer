@@ -1,3 +1,20 @@
+## 0.7.6
+
+### Features
+
+- Add `thread_ts` support for `SlackContactChannel` to enable sending messages in threads
+- Add `slack_message_ts` to `FunctionCallStatus` for tracking slack message timestamps
+- Export v1beta2 webhook types from typescript package root for better developer experience
+
+### Examples
+
+- Add langchain example demonstrating Slack thread creation and management
+- Update typescript examples with email escalation patterns
+
+### Documentation
+
+- Update examples to latest version and dependency management
+
 ## 0.7.5
 
 ### Features

@@ -26,7 +26,7 @@
   "license": "Apache-2.0",
   "dependencies": {
     "dotenv": "^16.4.7",
-    "humanlayer": "0.7.5",
+    "humanlayer": "",
     "openai": "^4.0.0"
   },
   "devDependencies": {

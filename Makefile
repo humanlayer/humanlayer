@@ -343,7 +343,6 @@ release-alpha: _check-uv-publish-token release-plan
 	@echo "    make release-and-test-prod"
 
 
-
 .PHONY: release-and-test-prod
 release-and-test-prod: _release-plan-versions _release-branch-check _production-env-check
 	@echo "Releasing..."
