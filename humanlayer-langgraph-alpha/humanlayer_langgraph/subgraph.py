@@ -1,124 +1,184 @@
-"""Subgraph implementation for HumanLayer LangGraph integration."""
-
+from typing import Any, Literal, Tuple, Union
+from pydantic import BaseModel
 import logging
-from typing import TypedDict, Optional
 
-from humanlayer import HumanLayer
-from langchain_core.messages import AnyMessage
-from langchain_core.tools import BaseTool
-
-from .nodes import HumanLayerToolNode, HumanApprovalNode, HumanInputNode
+from humanlayer import FunctionCallSpec, HumanLayer, HumanLayerException
+from langgraph.store.base import BaseStore
+from langchain_core.messages import AIMessage, ToolMessage, AnyMessage, ToolCall
+from langgraph.graph import END, START, MessagesState, StateGraph
+from langgraph.types import interrupt
+from langgraph.prebuilt import ToolNode
+from langgraph.errors import NodeInterrupt
+from langgraph.types import Command
 
 logger = logging.getLogger(__name__)
 
 
-class HumanLayerSubgraphState(TypedDict):
-    """State for the HumanLayer subgraph."""
+def split_answered_unanswered_tool_calls(
+    messages: list[AnyMessage],
+) -> tuple[list[ToolCall], list[ToolCall]]:
+    """Split tool calls into answered and unanswered ones."""
+    index = -1
+    already_answered_tool_calls = []
+    while True:
+        msg: AnyMessage = messages[index]
+        if isinstance(msg, AIMessage):
+            break
+        if isinstance(msg, ToolMessage):
+            already_answered_tool_calls.append(msg.tool_call_id)
+        else:
+            raise ValueError(
+                f"found non tool message {type(msg)} while rewinding to find initial list of tool calls"
+            )
+        index -= 1
 
-    messages: list[AnyMessage]
+    answered_tool_calls = [
+        t for t in msg.tool_calls if t["id"] in already_answered_tool_calls
+    ]
+    unanswered_tool_calls = [
+        t for t in msg.tool_calls if t["id"] not in already_answered_tool_calls
+    ]
+    return answered_tool_calls, unanswered_tool_calls
+
+
+class HumanLayerSubgraphState(MessagesState):
+    """State for the HumanLayer subgraph."""
     thread_id: str
-    require_approval: bool
 
 
 def build_humanlayer_subgraph(
-    tools: list[BaseTool],
-    human_layer: HumanLayer,
-    require_approval: bool = True,
-) -> HumanLayerToolNode:
-    """Build a HumanLayer tool node for LangGraph.
-
-    This creates a HumanLayerToolNode that manages tool execution with human approval.
-
-    Args:
-        tools: List of tools to use
-        human_layer: HumanLayer instance for human interaction
-        require_approval: Whether to require human approval before executing tools
-
-    Returns:
-        A HumanLayerToolNode that can be used in a LangGraph
+    tools: list,
+    hl: HumanLayer,
+):
+    """Build the HumanLayer subgraph with the new structure.
+    
+    The graph follows this structure:
+    START -> Human Feedback Node -> Decision -> Run Tools Node -> END
     """
-    logger.info("Building HumanLayer tool node with approval requirement: %s", require_approval)
-
-    # Create HumanLayerToolNode with approval requirements
-    tool_node = HumanLayerToolNode(
-        tools=tools,
-        human_layer=human_layer,
-        require_approval=require_approval,
+    graph_builder = StateGraph(HumanLayerSubgraphState)
+    
+    # Add nodes
+    graph_builder.add_node("human_feedback", human_feedback_node(hl))
+    graph_builder.add_node("run_tools", IncrementalToolNode(tools))
+    
+    # Add edges
+    graph_builder.add_edge(START, "human_feedback")
+    graph_builder.add_conditional_edges(
+        "human_feedback",
+        decision_node(),
     )
-
-    # Log the configured approval status
-    if require_approval:
-        logger.info("Human approval will be required before any tool execution")
-    else:
-        logger.info("Tools will execute without requiring human approval")
-
-    return tool_node
+    graph_builder.add_edge("run_tools", "human_feedback")  # Loop back for next tool calls
+    
+    return graph_builder.compile()
 
 
-def create_humanlayer_node(
-    tools: list[BaseTool],
-    human_layer: HumanLayer,
-    require_approval: bool = True,
-) -> HumanLayerToolNode:
-    """Create a HumanLayer tool node.
+def human_feedback_node(hl: HumanLayer, end_on_any_rejection: bool = True):
+    def human_feedback(state):
+        logger.info("---human_feedback---")
+        tool_call_ai_message = state["messages"][-1]
+        assert isinstance(tool_call_ai_message, AIMessage)
+        assert tool_call_ai_message.tool_calls is not None
 
-    Alias for build_humanlayer_subgraph.
+        new_messages = []
+        needs_interrupt = False
+        for tool_call in tool_call_ai_message.tool_calls:
+            assert tool_call["id"] is not None
 
-    Args:
-        tools: List of tools to use
-        human_layer: HumanLayer instance for human interaction
-        require_approval: Whether to require human approval before executing tools
+            try:
+                call = hl.get_function_call(call_id=tool_call["id"])
+                logger.info(f"got function call: {call.spec.fn} ({call.call_id})")
+            except HumanLayerException:
+                call = hl.create_function_call(
+                    call_id=tool_call["id"],
+                    spec=FunctionCallSpec(
+                        fn=tool_call["name"],
+                        kwargs=tool_call["args"],
+                        state=state,
+                    ),
+                )
+                logger.info(
+                    f"created function call: {call.spec.fn} ({call.call_id}), will interrupt graph"
+                )
+                needs_interrupt = True
 
-    Returns:
-        A HumanLayerToolNode that can be used in a LangGraph
+            if call.status.approved is None:
+                logger.info("---function call status is None, will interrupt graph---")
+                needs_interrupt = True
+            elif call.status.approved:
+                logger.info("---function call approved, doing nothing---")
+            else:
+                logger.info("---function call denied, appending tool message---")
+                msg = ToolMessage(
+                    tool_call_id=tool_call["id"],
+                    name=tool_call["name"],
+                    content=f"User denied {tool_call['name']} with feedback: {call.status.comment}",
+                )
+                logger.info(msg.model_dump_json())
+                new_messages.append(msg)
+
+        return {"messages": new_messages}
+
+    return human_feedback
+
+
+def decision_node():
+    """Implements the Decision Node.
+    
+    Checks if all tool calls have been answered and routes accordingly.
     """
-    return build_humanlayer_subgraph(tools, human_layer, require_approval)
+    def decision(state):
+        logger.info("---decision_node---")
+        
+        # Split tool calls
+        rejected_tool_calls, approved_unexecuted_tool_calls = (
+            split_answered_unanswered_tool_calls(state["messages"])
+        )
+        
+        # If we have rejected tool calls, end the graph
+        if rejected_tool_calls:
+            logger.info("---tool calls were rejected, ending graph---")
+            return END
+            
+        # If we have approved but unexecuted tool calls, run them
+        if approved_unexecuted_tool_calls:
+            logger.info("---some tool calls are unanswered, proceeding to run_tools---")
+            return "run_tools"
+            
+        # All tool calls are answered, end the graph
+        logger.info("---all tool calls answered, ending graph---")
+        return END
+
+    return decision
 
 
-def create_human_approval_node(
-    human_layer: HumanLayer,
-    message_template: str = "Please approve this action: {action}",
-    timeout: Optional[int] = 300,
-) -> HumanApprovalNode:
-    """Create a node that requests human approval before proceeding.
+class IncrementalToolNode(ToolNode):
+    """Node that executes approved tools incrementally."""
+    
+    def __init__(self, tools: list) -> None:
+        super().__init__(tools)
 
-    Args:
-        human_layer: The HumanLayer instance to use
-        message_template: Template for the approval message
-        timeout: Timeout in seconds for the approval request
+    def _parse_input(
+        self,
+        input: Union[list[AnyMessage], dict[str, Any], BaseModel],
+        store: BaseStore,
+    ) -> Tuple[list[ToolCall], Literal["list", "dict"]]:
+        """Parse input to get unanswered tool calls."""
+        input_type: Literal["list", "dict"]
+        if isinstance(input, list):
+            input_type = "list"
+            the_messages: list[AnyMessage] = input
+        elif isinstance(input, dict) and (messages := input.get(self.messages_key, [])):
+            input_type = "dict"
+            the_messages = messages
+        elif messages := getattr(input, self.messages_key, None):
+            input_type = "dict"
+            the_messages = messages
+        else:
+            raise ValueError("No message found in input")
 
-    Returns:
-        A HumanApprovalNode that can be used in a LangGraph
-    """
-    logger.info("Creating human approval node")
-    return HumanApprovalNode(
-        human_layer=human_layer,
-        message_template=message_template,
-        timeout=timeout,
-    )
+        _, unanswered_tool_calls = split_answered_unanswered_tool_calls(the_messages)
+        tool_calls = [
+            self._inject_tool_args(call, input, store) for call in unanswered_tool_calls
+        ]
 
-
-def create_human_input_node(
-    human_layer: HumanLayer,
-    prompt_template: str = "Please provide input: {prompt}",
-    timeout: Optional[int] = 300,
-    response_key: str = "_humanlayer_input",
-) -> HumanInputNode:
-    """Create a node that requests human input.
-
-    Args:
-        human_layer: The HumanLayer instance to use
-        prompt_template: Template for the input prompt
-        timeout: Timeout in seconds for the input request
-        response_key: Key to store the input in the state
-
-    Returns:
-        A HumanInputNode that can be used in a LangGraph
-    """
-    logger.info("Creating human input node")
-    return HumanInputNode(
-        human_layer=human_layer,
-        prompt_template=prompt_template,
-        timeout=timeout,
-        response_key=response_key,
-    )
+        return tool_calls, input_type
