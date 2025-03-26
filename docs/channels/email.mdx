@@ -10,7 +10,7 @@ The Email contact channel allows agents to send emails and collect responses thr
 Configure an email channel using the `EmailContactChannel` model:
 
 ```python
-from humanlayer import ContactChannel, EmailContactChannel
+from humanlayer import ContactChannel, EmailContactChannel, HumanLayer
 
 email_with_compliance = ContactChannel(
     email=EmailContactChannel(
@@ -19,6 +19,8 @@ email_with_compliance = ContactChannel(
         subject="Re: Compliance Review",  # Optional - custom subject line
     )
 )
+
+hl = HumanLayer(contact_channel=email_with_compliance)
 ```
 
 <Frame>
