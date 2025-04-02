@@ -63,7 +63,6 @@ Mastra provides flexible options for integrating tools into your AI agents.
 </Info>
 
 ```typescript src/mastra/tools/vercelTools.ts
-// src/mastra/tools/vercelTool.ts
 import { tool } from "ai";
 import { z } from "zod";
 
@@ -83,10 +82,9 @@ export const weatherInfo = tool({
 You can use Vercel tools alongside Mastra tools in your agents:
 
 ```typescript src/mastra/agents/weatherAgent.ts
-// src/mastra/agents/weatherAgent.ts
 import { Agent } from "@mastra/core/agent";
 import { openai } from "@ai-sdk/openai";
-import { weatherInfo } from "../tools/vercelTool";
+import { weatherInfo } from "../tools/vercelTools";
 import * as mastraTools from "../tools/mastraTools";
 
 export const weatherAgent = new Agent({
