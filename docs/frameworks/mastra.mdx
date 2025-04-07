@@ -91,7 +91,7 @@ export const weatherAgent = new Agent({
   name: "Weather Agent",
   instructions:
     "You are a helpful assistant that provides weather information.",
-  model: openai("gpt-4"),
+  model: openai("gpt-4o"),
   tools: {
     weatherInfo, // Vercel tool
     ...mastraTools, // Mastra tools
