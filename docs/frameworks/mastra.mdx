@@ -18,173 +18,53 @@ The easiest way to get started with Mastra is to use `create-mastra`:
 npx create-mastra@latest
 ```
 
-This command will guide you through setting up a new Mastra project with all the necessary configurations.
+When prompted, accept the default options for the setup.
+
+<Tip>
+  During the `create-mastra` setup, you'll be prompted to choose a model provider. While this guide uses OpenAI models in the examples, Mastra supports all models available through the Vercel AI SDK (e.g., OpenAI, Anthropic, Google, etc.). Accepting the defaults will typically select OpenAI.
+</Tip>
+
+This command will guide you through setting up a new Mastra project, asking for a project name and other configurations.
+
+After the setup is complete, navigate into your new project directory:
+
+```bash
+cd your-project-name
+# Replace 'your-project-name' with the name you chose during setup
+```
 
 <Tip>
   For more installation and project set up details, check Mastra's documentation
   [here](https://mastra.ai/docs)
 </Tip>
 
-### Model Providers
-
-<Info>
-  While a mix of OpenAI and Google Gemini models are used in the examples below, Mastra supports
-  all models available through the AI SDK:
-</Info>
-
-- OpenAI: `import { openai } from "@ai-sdk/openai"`
-- Anthropic: `import { anthropic } from "@ai-sdk/anthropic"`
-- Google: `import { google } from "@ai-sdk/google"`
-- And more...
-
-### Running Your Project
-
-Once your project is set up, you can run it using:
+Next, install the necessary packages for memory management and HumanLayer integration:
 
 ```bash
-npm run dev
+npm install @mastra/memory humanlayer-vercel-ai-sdk
 ```
 
-This will start your Mastra application, and you can access the playground at:
+### Configuration
 
-```
-http://localhost:4111
-```
+Set up your environment variables. Create a `.env.development` file in your project root and add your API keys:
 
-## Tool Support
-
-Mastra provides flexible options for integrating tools into your AI agents.
-
-### Vercel AI SDK Tool Format
-
-<Info>
-  Mastra supports tools created using the Vercel AI SDK format. The HumanLayer
-  integration with Mastra uses this tool format.
-</Info>
-
-```typescript src/mastra/tools/vercelTools.ts
-import { tool } from "ai";
-import { z } from "zod";
-
-export const weatherInfo = tool({
-  description: "Fetches the current weather information for a given city",
-  parameters: z.object({
-    city: z.string().describe("The city to get weather for"),
-  }),
-  execute: async ({ city }) => {
-    // Replace with actual API call
-    const data = await fetch(`https://api.example.com/weather?city=${city}`);
-    return data.json();
-  },
-});
+```bash .env.development
+OPENAI_API_KEY=your-openai-key
+HUMANLAYER_API_KEY=your-humanlayer-key
 ```
 
-You can use Vercel tools alongside Mastra tools in your agents:
-
-```typescript src/mastra/agents/weatherAgent.ts
-import { Agent } from "@mastra/core/agent";
-import { openai } from "@ai-sdk/openai";
-import { weatherInfo } from "../tools/vercelTools";
-import * as mastraTools from "../tools/mastraTools";
-
-export const weatherAgent = new Agent({
-  name: "Weather Agent",
-  instructions:
-    "You are a helpful assistant that provides weather information.",
-  model: openai("gpt-4o"),
-  tools: {
-    weatherInfo, // Vercel tool
-    ...mastraTools, // Mastra tools
-  },
-});
-```
-
-<Note>
-  Both tool formats will work seamlessly within your agent's workflow.
-</Note>
-
-## Basic Example
-
-Here's a simple example showing how to use HumanLayer with Mastra:
-
-```typescript
-import { tool } from "ai";
-import { Agent } from "@mastra/core/agent";
-import { Memory } from "@mastra/memory";
-import { google } from "@ai-sdk/google";
-import { humanlayer } from "humanlayer-vercel-ai-sdk";
-import { z } from "zod";
-
-const hl = humanlayer({
-  verbose: true,
-});
-
-// Simple math operations
-const add = tool({
-  parameters: z.object({
-    a: z.number(),
-    b: z.number(),
-  }),
-  execute: async (args) => {
-    return args.a + args.b;
-  },
-});
-
-// Multiply requires approval
-const multiplyTool = tool({
-  parameters: z.object({
-    a: z.number(),
-    b: z.number(),
-  }),
-  execute: async (args) => {
-    return args.a * args.b;
-  },
-});
-
-// Wrap multiply with approval requirement
-const multiply = hl.requireApproval({ multiplyTool });
-
-// Human consultation tool
-const contactHuman = hl.humanAsTool();
-
-// Create a Mastra agent
-const mathAgent = new Agent({
-  name: "math-agent",
-  instructions:
-    "You are a helpful math assistant. Use the provided tools to perform calculations.",
-  model: google("gemini-2.0-flash-001"),
-  tools: { add, multiply, contactHuman },
-  memory: new Memory(),
-});
-```
+<Tip>
+  You can get your HumanLayer API key from the [HumanLayer dashboard](https://app.humanlayer.dev).
+</Tip>
 
 ## Chef Agent Example
 
-### Agent Definition
-
-```typescript src/mastra/agents/chefAgent.ts
-import { google } from "@ai-sdk/google";
-import { Agent } from "@mastra/core/agent";
-import { Memory } from "@mastra/memory";
-import { checkIngredients } from "../tools/kitchenTools";
-
-export const chefAgent = new Agent({
-  name: "chef-agent",
-  instructions:
-    "You are Michel, a practical and experienced home chef. " +
-    "You help people cook with whatever ingredients they have available. " +
-    "Use the checkIngredients tool to check what ingredients are available.",
-  model: google("gemini-2.0-flash-001"),
-  tools: { checkIngredients },
-  memory: new Memory(),
-});
-```
+This example demonstrates building a "Chef Agent" that can check available ingredients and then cook a meal. Checking ingredients is a simple read operation, while cooking the meal is an action that requires human approval via HumanLayer.
 
 ### Tools Definition
 
 <Tip>
-  The tools below follow the Vercel AI SDK tool format for compatibility with
-  HumanLayer.
+  Mastra offers flexibility by supporting both its native tool format and the Vercel AI SDK tool format. For seamless integration with HumanLayer, this guide utilizes the Vercel AI SDK format. Learn more about adding tools in Mastra [here](https://mastra.ai/docs/agents/adding-tools).
 </Tip>
 
 ```typescript src/mastra/tools/kitchenTools.ts
@@ -194,11 +74,12 @@ import { humanlayer } from "humanlayer-vercel-ai-sdk";
 
 const hl = humanlayer({ verbose: true });
 
-const checkAvailableIngredients = tool({
-  description: "Checks the available ingredients",
+// Tool to check ingredients (read operation, no approval needed)
+export const checkIngredients = tool({
+  description: "Checks the available ingredients in the kitchen.",
   parameters: z.object({}),
   execute: async () => {
-    // Hardcoded list of available ingredients with categories and quantities
+    // Hardcoded list of available ingredients
     return [
       {
         category: "Proteins",
@@ -224,8 +105,46 @@ const checkAvailableIngredients = tool({
   },
 });
 
-export const checkIngredients = hl.requireApproval({
-  checkAvailableIngredients,
+// Tool to cook a meal (write operation, requires approval)
+const cookMealTool = tool({
+    description: "Cooks a specified meal using available ingredients.",
+    parameters: z.object({
+        mealName: z.string().describe("The name of the meal to cook, e.g., 'Chicken Stir-fry'"),
+    }),
+    execute: async ({ mealName }) => {
+        // Simulate the cooking process
+        console.log(`Cooking ${mealName}...`);
+        // In a real scenario, this might interact with smart kitchen devices,
+        // update inventory, or log the meal.
+        return `${mealName} has been cooked successfully!`;
+    },
+});
+
+// Wrap the cookMealTool with HumanLayer approval
+export const cookMeal = hl.requireApproval({ cookMealTool });
+
+```
+
+### Agent Definition
+
+Now that the tools are defined, we can create the agent that uses them.
+
+```typescript src/mastra/agents/chefAgent.ts
+import { openai } from "@ai-sdk/openai";
+import { Agent } from "@mastra/core/agent";
+import { Memory } from "@mastra/memory";
+import { checkIngredients, cookMeal } from "../tools/kitchenTools"; // Import the tools
+
+export const chefAgent = new Agent({
+  name: "chef-agent",
+  instructions:
+    "You are Michel, a practical and experienced home chef. " +
+    "You help people cook with whatever ingredients they have available. " +
+    "Use the checkIngredients tool to see what's available. " +
+    "Use the cookMeal tool to prepare a meal, but be aware this requires approval.",
+  model: openai("gpt-4o"),
+  tools: { checkIngredients, cookMeal }, // Use the imported tools
+  memory: new Memory(),
 });
 ```
 
@@ -252,18 +171,17 @@ To run your chef agent:
 
 2. Access the Mastra playground at `http://localhost:4111`
 
-3. Interact with your chef agent by asking questions about recipes based on available ingredients.
+3. Interact with your chef agent. Ask it to check ingredients (this won't require approval). Then, ask it to cook a specific meal (e.g., "Cook chicken stir-fry").
 
-4. When the agent attempts to use the `checkIngredients` tool, HumanLayer will require approval before proceeding.
+4. When the agent attempts to use the `cookMeal` tool, HumanLayer will require approval before proceeding. The `checkIngredients` tool will execute without interruption.
 
 <Warning>
-  The agent will pause execution while waiting for human approval of the tool
-  usage.
+  The agent will pause execution *only* when attempting to use the `cookMeal` tool, while waiting for human approval.
 </Warning>
 
 ### Approving Actions via HumanLayer Dashboard
 
-When your agent uses a tool wrapped with `hl.requireApproval()`, you'll need to approve the action:
+When your agent uses the `cookMeal` tool (wrapped with `hl.requireApproval()`), you'll need to approve the action:
 
 1. Access the HumanLayer dashboard at:
 
@@ -271,12 +189,12 @@ When your agent uses a tool wrapped with `hl.requireApproval()`, you'll need to 
    https://app.humanlayer.dev/[org]/[your-project-slug]/approvals
    ```
 
-2. View pending approval requests in the approvals table.
+2. View the pending approval request for `cookMealTool`.
 
-3. Review the details of each request, including:
+3. Review the details of the request, including:
 
-   - The tool being used
-   - Parameters passed to the tool
+   - The tool being used (`cookMealTool`)
+   - Parameters passed (e.g., `mealName: "Chicken Stir-fry"`)
    - Context of the request
 
 4. Choose to approve or deny the request.
@@ -286,7 +204,7 @@ When your agent uses a tool wrapped with `hl.requireApproval()`, you'll need to 
   receive approval requests through those channels.
 </Info>
 
-Once approved, the agent will continue execution with the results from the approved tool.
+Once approved, the agent will continue execution, receiving the confirmation message from the `cookMealTool`.
 
 ## Integrating HumanLayer with Mastra
 
@@ -297,18 +215,11 @@ Once approved, the agent will continue execution with the results from the appro
 
 The integration follows these simple steps:
 
-1. Create your tools using the Vercel AI SDK `tool()` function
-2. Initialize HumanLayer and wrap tools with `hl.requireApproval()`
-3. Add these wrapped tools to your Mastra agents
-4. Human involvement is automatically triggered when these tools are used
-
-## Configuration
-
-```bash
-# .env.development
-GOOGLE_GENERATIVE_AI_API_KEY=your-google-key
-HUMANLAYER_API_KEY=your-humanlayer-key
-```
+1. Create your tools using the Vercel AI SDK `tool()` function.
+2. Initialize HumanLayer.
+3. Wrap the specific tools that require oversight (like `cookMealTool`) with `hl.requireApproval()`.
+4. Add both standard and approval-wrapped tools to your Mastra agents.
+5. Human involvement is automatically triggered only when the wrapped tools are used.
 
 ## Next Steps
 
