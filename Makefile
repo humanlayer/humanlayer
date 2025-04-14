@@ -355,7 +355,7 @@ release-and-test-prod: _release-plan-versions _release-branch-check _production-
 	:
 	: waiting for ts publish to complete
 	:
-	@sleep 30
+	sleep 30
 	@$(MAKE) smoke-test-examples-ts
 
 	@echo "Publish Python:"
@@ -382,6 +382,7 @@ release-and-test-prod: _release-plan-versions _release-branch-check _production-
 	git push upstream release-$(new-version)
 
 	hub compare
+
 
 .PHONY: check-local
 check-local:

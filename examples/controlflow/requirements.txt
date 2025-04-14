@@ -1,5 +1,5 @@
 controlflow
 # install humanlayer
-humanlayer==0.7.6
+humanlayer==0.7.7
 # or if you want an editable version
 # -e ../../
