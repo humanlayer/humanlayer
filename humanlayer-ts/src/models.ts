@@ -33,6 +33,8 @@ type EmailContactChannel = {
   address: string
   context_about_user?: string
 
+  additional_recipients?: EmailRecipient[]
+
   experimental_subject_line?: string
   experimental_in_reply_to_message_id?: string
   experimental_references_message_id?: string
