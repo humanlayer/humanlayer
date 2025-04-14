@@ -383,6 +383,7 @@ release-and-test-prod: _release-plan-versions _release-branch-check _production-
 
 	hub compare
 
+
 .PHONY: check-local
 check-local:
 	@if [[ $$(git rev-parse --abbrev-ref HEAD) == local/* ]]; then \

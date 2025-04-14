@@ -14,11 +14,12 @@ const demoMultiple = async () => {
           additional_recipients: [
             {
               address:
-                process.env.HL_EXAMPLE_SECOND_CONTACT_EMAIL || "sundeep@humanlayer.dev",
+                process.env.HL_EXAMPLE_SECOND_CONTACT_EMAIL ||
+                "sundeep@humanlayer.dev",
               field: "cc",
             },
           ],
-        }, 
+        },
       },
     },
   });

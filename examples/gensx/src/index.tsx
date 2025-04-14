@@ -7,7 +7,6 @@ import { z } from "zod";
 import { ChatCompletion, OpenAIProvider, GSXTool } from "@gensx/openai";
 import { humanlayer } from "humanlayer";
 
-
 if (!process.env.HUMANLAYER_API_KEY) {
   throw new Error("HUMANLAYER_API_KEY is not set");
 }
@@ -17,14 +16,20 @@ interface RespondProps {
 }
 type RespondOutput = string;
 
-const hl = humanlayer({verbose: true});
+const hl = humanlayer({ verbose: true });
 
 type Weather = {
   temperature: number;
   conditions: string;
-}
+};
 
-const _changeWeather = ({city, weather}: {city: string, weather: Weather}) => {
+const _changeWeather = ({
+  city,
+  weather,
+}: {
+  city: string;
+  weather: Weather;
+}) => {
   console.log("changing weather for", city, weather);
   weathers[city] = weather;
 };
@@ -45,12 +50,14 @@ const weathers: Record<string, Weather> = {
     conditions: "Rainy",
   },
 };
-const fetchWeather = async ({city}: {city: string}): Promise<Weather> => {
+const fetchWeather = async ({ city }: { city: string }): Promise<Weather> => {
   console.log("fetching weather for", city);
-  return weathers[city] || {
-    temperature: 15,
-    conditions: "unknown",
-  };
+  return (
+    weathers[city] || {
+      temperature: 15,
+      conditions: "unknown",
+    }
+  );
 };
 
 const fetchWeatherTool = new GSXTool({
@@ -60,7 +67,7 @@ const fetchWeatherTool = new GSXTool({
     city: z.string(),
   }),
   run: async ({ city }: { city: string }) => {
-    const data = await fetchWeather({city});
+    const data = await fetchWeather({ city });
     return data;
   },
 });
@@ -70,13 +77,13 @@ const changeWeatherTool = new GSXTool({
   description: "Change the weather for a given city",
   schema: z.object({
     city: z.string(),
-    weather: z.object({ 
+    weather: z.object({
       temperature: z.number(),
       conditions: z.string(),
     }),
   }),
-  run: async ({ city, weather }: { city: string, weather: Weather }) => {
-    await changeWeather({city, weather});
+  run: async ({ city, weather }: { city: string; weather: Weather }) => {
+    await changeWeather({ city, weather });
     return weathers[city];
   },
 });

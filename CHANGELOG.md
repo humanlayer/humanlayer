@@ -1,9 +1,8 @@
 ## 0.7.7
 
-
 ### Fixes
 
-- Add `additional_recipients` field to `EmailContactChannel` in TypeScript SDK 
+- Add `additional_recipients` field to `EmailContactChannel` in TypeScript SDK
 - No Python SDK changes, this field was already supported in the Python SDK and the upstream API
 
 ## 0.7.6

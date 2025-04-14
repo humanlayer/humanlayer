@@ -20,7 +20,7 @@ You'll see a basic weather workflow, with the starting prompt
 
 > What is the weather in Paris? Make it warm and sunny please
 
-and tools 
+and tools
 
 ```
 fetchWeather({city: string})
