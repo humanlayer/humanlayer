@@ -18,7 +18,7 @@ const demoMultiple = async () => {
               field: "cc",
             },
           ],
-        } as EmailContactChannel, // todo release new types
+        }, 
       },
     },
   });

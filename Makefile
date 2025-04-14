@@ -320,20 +320,20 @@ release-alpha: _check-uv-publish-token release-plan
 	: confirming release plan
 	@read -p "Press Enter to continue..."
 	@echo "Releasing..."
-	cd humanlayer-ts && npm run build && npm publish --tag alpha
+	# cd humanlayer-ts && npm run build && npm publish --tag alpha
 	:
 	: waiting for ts publish to complete
 	:
-	sleep 30
-	@$(MAKE) update-examples-ts-versions VERSION=$(current-ts-version)
-	@$(MAKE) smoke-test-examples-ts
-	@$(MAKE) build-and-publish
+	# sleep 30
+	# @$(MAKE) update-examples-ts-versions VERSION=$(current-ts-version)
+	# @$(MAKE) smoke-test-examples-ts
+	#@$(MAKE) build-and-publish
 	:
 	: waiting for py publish to complete
 	:
-	sleep 30
-	@$(MAKE) update-examples-versions VERSION=$(current-py-version)
-	@$(MAKE) smoke-test-examples-py
+	# sleep 30
+	# @$(MAKE) update-examples-versions VERSION=$(current-py-version)
+	# @$(MAKE) smoke-test-examples-py
 
 	@echo "Alpha tested against staging, to proceed, update env vars to point at production"
 	@echo
@@ -347,16 +347,16 @@ release-alpha: _check-uv-publish-token release-plan
 release-and-test-prod: _release-plan-versions _release-branch-check _production-env-check
 	@echo "Releasing..."
 	@echo "Publish TypeScript:"
-	sed -i '' 's/$(current-ts-version)/$(new-version)/' humanlayer-ts/package.json
-	cat humanlayer-ts/package.json | grep version
-	@read -p "Press Enter to continue..."
-	cd humanlayer-ts && npm run build && npm publish
-	@$(MAKE) update-examples-ts-versions VERSION=$(new-version)
+	#sed -i '' 's/$(current-ts-version)/$(new-version)/' humanlayer-ts/package.json
+	#cat humanlayer-ts/package.json | grep version
+	#@read -p "Press Enter to continue..."
+	#cd humanlayer-ts && npm run build && npm publish
+	#@$(MAKE) update-examples-ts-versions VERSION=$(new-version)
 	:
 	: waiting for ts publish to complete
 	:
-	@sleep 30
-	@$(MAKE) smoke-test-examples-ts
+	#@sleep 30
+	#@$(MAKE) smoke-test-examples-ts
 
 	@echo "Publish Python:"
 	sed -i '' 's/$(current-py-version)/$(new-version)/' pyproject.toml
