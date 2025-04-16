@@ -181,6 +181,7 @@ If you encounter issues with your custom Slack app integration:
 1. **Verify Scopes** - Ensure your app has all the required scopes listed in the manifest
 2. **Check Request URLs** - The event subscription and interactivity URLs must point to the HumanLayer API
 3. **Verify Signing Secret** - Double-check the signing secret entered in the HumanLayer dashboard
+4. **Update/Reauthorize Slack Apps** - If you're updating an existing Slack app and have added new scopes, you'll need to reauthorize the app via the OAuth flow you've built. Be sure to take a look at the embedded markup Slack provides in the "Manage Distribution" section of your app's settings as these links and markup can change once you've updated scopes.
 
 ## Customizing Channels
 
