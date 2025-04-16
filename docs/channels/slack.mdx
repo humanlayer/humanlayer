@@ -13,13 +13,140 @@ icon: "slack"
 
 ## Configuration
 
-To connect slack, you can:
+### Option 1: Using the HumanLayer Slack App
+
+The quickest way to get started with Slack integration:
 
 1. Head to the [HumanLayer dashboard](https://app.humanlayer.dev)
 2. Navigate to "Integrations"
 3. Click "Add to Slack"
 4. Follow the Slack Approval Workflow
 5. Congrats - your HumanLayer agents will now contact you in Slack for approvals
+
+### Option 2: Using Your Own Slack App
+
+For teams that need more customization, you can use your own Slack app. This option is ideal for:
+
+- Customizing the bot's display name, icon, and branding
+- Using a consistent bot identity across multiple integrations
+- Managing app distribution and permissions at an organizational level
+- Custom approval UI with your brand's look and feel
+- Enterprise policy compliance
+
+1. **Create a Slack App** - Create a new Slack app in your workspace with the following manifest:
+
+```json
+{
+  "display_information": {
+    "name": "My App",
+    "description": "My App", 
+    "background_color": "#000000"
+  },
+  "features": {
+    "bot_user": {
+      "display_name": "My App",
+      "always_online": false
+    }
+  },
+  "oauth_config": {
+    "scopes": {
+      "bot": [
+        "app_mentions:read",
+        "users.profile:read",
+        "users:read",
+        "commands",
+        "channels:history",
+        "channels:read",
+        "chat:write",
+        "groups:history",
+        "groups:write",
+        "im:history",
+        "im:read",
+        "im:write"
+      ]
+    }
+  },
+  "settings": {
+    "event_subscriptions": {
+      "request_url": "https://api.humanlayer.dev/humanlayer/v1/slack/events",
+      "bot_events": [
+        "message.channels",
+        "message.groups", 
+        "message.im",
+        "app_mention"
+      ]
+    },
+    "interactivity": {
+      "is_enabled": true,
+      "request_url": "https://api.humanlayer.dev/humanlayer/v1/slack/interactions"
+    },
+    "org_deploy_enabled": false,
+    "socket_mode_enabled": false,
+    "token_rotation_enabled": false
+  }
+}
+```
+
+2. **Configure Your App in HumanLayer**:
+   - In the HumanLayer dashboard, navigate to your project's settings
+   - Go to Integrations > Slack Settings
+   - Enter your Slack app's Signing Secret and App ID
+   - Save the configuration
+
+3. **Get Your OAuth Token**:
+   - For testing, you can use the Bot User OAuth Token from your Slack app settings
+   - For production, implement a proper OAuth flow following [Slack's documentation](https://api.slack.com/quickstart)
+
+4. **Use Your Bot Token with HumanLayer SDK**:
+   - When initializing HumanLayer, provide your bot token in the contact channel configuration:
+
+```python
+from humanlayer import HumanLayer, ContactChannel, SlackContactChannel
+
+# Your custom Slack bot token
+custom_bot_token = "xoxb-your-token-here"
+
+hl = HumanLayer(
+  api_key=os.getenv("HUMANLAYER_API_KEY"),
+  contact_channel=ContactChannel(
+    slack=SlackContactChannel(
+      bot_token=custom_bot_token,
+      channel_or_user_id="", # leave blank to DM whoever installed the app
+      experimental_slack_blocks=True,
+    )
+  )
+)
+```
+
+```typescript
+import { humanlayer } from "humanlayer";
+
+// Your custom Slack bot token
+const customBotToken = "xoxb-your-token-here";
+
+const hl = humanlayer({
+  apiKey: process.env.HUMANLAYER_API_KEY,
+  contactChannel: {
+    slack: {
+      bot_token: customBotToken,
+      channel_or_user_id: "", // leave blank to DM whoever installed the app
+      experimental_slack_blocks: true,
+    },
+  },
+});
+```
+
+For a complete example, see [06-custom_bot_token.py](https://github.com/humanlayer/humanlayer/tree/main/examples/langchain/06-custom_bot_token.py) in our examples directory.
+
+### Troubleshooting
+
+If you encounter issues with your custom Slack app integration:
+
+1. **Verify Scopes** - Ensure your app has all the required scopes listed in the manifest
+2. **Check Request URLs** - The event subscription and interactivity URLs must point to the HumanLayer API
+3. **Verify Signing Secret** - Double-check the signing secret entered in the HumanLayer dashboard
+4. **Token Permissions** - Make sure your bot token has the necessary permissions to post messages
+5. **App Distribution** - For Enterprise Grid workspaces, check if additional approval is needed
 
 ## Customizing Channels
 
@@ -148,6 +275,5 @@ tools = [
 
 ## Next Steps
 
-- [Connect your Slack workspace](/channels/slack/connect)
 - [Configure response options](/core/customize-response-options)
 - [Try composite channels](/channels/composite-channels)
