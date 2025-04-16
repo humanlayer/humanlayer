@@ -133,13 +133,15 @@ bot_token=bot_token,
 channel_or_user_id="", # leave blank to dm whoever installed the app
 experimental_slack_blocks=True,
 )
-)
+),
 )
 
-hl.fetch_approval(spec=FunctionCallSpec(
+hl.fetch_approval(
+spec=FunctionCallSpec(
 fn="add",
 kwargs={"x": 2, "y": 5},
-))
+)
+)
 
 ````
 
@@ -172,7 +174,7 @@ const hl = humanlayer({
 
 </CodeGroup>
 
-For a complete example, see [06-custom_bot_token.py](https://github.com/humanlayer/humanlayer/tree/main/examples/langchain/06-custom_bot_token.py) in our examples directory.
+For a complete example that makes use of a custom Slack app, see [06-custom_bot_token.py](https://github.com/humanlayer/humanlayer/tree/main/examples/langchain/06-custom_bot_token.py) in our `examples` directory. Be sure you have a Slack application setup before attempting to run the script.
 
 ### Troubleshooting
 
@@ -184,8 +186,6 @@ If you encounter issues with your custom Slack app integration:
 4. **Update/Reauthorize Slack Apps** - If you're updating an existing Slack app and have added new scopes, you'll need to reauthorize the app via the OAuth flow you've built. Be sure to take a look at the embedded markup Slack provides in the "Manage Distribution" section of your app's settings as these links and markup can change once you've updated scopes.
 
 ## Customizing Channels
-
-By default,
 
 The Slack contact channel allows agents to send messages and collect responses through Slack channels or direct messages.
 Configure a Slack channel using the `SlackContactChannel` model:
