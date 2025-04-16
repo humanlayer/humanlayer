@@ -16,10 +16,7 @@ icon: "slack"
 ### Option 1: Using the HumanLayer Slack App
 
 <Frame>
-  <img
-    src="/images/slack-humanlayer.png"
-    alt="HumanLayer Slack App"
-  />
+  <img src="/images/slack-humanlayer.png" alt="HumanLayer Slack App" />
 </Frame>
 
 The quickest way to get started with Slack integration:
@@ -33,12 +30,8 @@ The quickest way to get started with Slack integration:
 ### Option 2: Using Your Own Slack App
 
 <Frame>
-  <img
-    src="/images/slack-byo.png"
-    alt="Use your own Slack App"
-  />
+  <img src="/images/slack-byo.png" alt="Use your own Slack App" />
 </Frame>
-
 
 For teams that need more customization, you can use your own Slack app. This option is ideal for:
 
@@ -61,7 +54,7 @@ For teams that need more customization, you can use your own Slack app. This opt
 {
   "display_information": {
     "name": "My App",
-    "description": "My App", 
+    "description": "My App",
     "background_color": "#000000"
   },
   "features": {
@@ -93,7 +86,7 @@ For teams that need more customization, you can use your own Slack app. This opt
       "request_url": "https://api.humanlayer.dev/humanlayer/v1/slack/events",
       "bot_events": [
         "message.channels",
-        "message.groups", 
+        "message.groups",
         "message.im",
         "app_mention"
       ]
@@ -110,12 +103,14 @@ For teams that need more customization, you can use your own Slack app. This opt
 ```
 
 2. **Configure Your App in HumanLayer**:
+
    - In the HumanLayer dashboard, navigate to your project's settings
    - Navigate to "Integrations". Select "Use Your Own" under the Slack section.
    - Enter your Slack app's Signing Secret and App ID
    - Save the configuration
 
 3. **Get Your OAuth Token**:
+
    - For testing, you can use the Bot User OAuth Token from your Slack app settings
    - For production, implement a proper OAuth flow following [Slack's documentation](https://api.slack.com/quickstart)
 
@@ -130,22 +125,23 @@ from humanlayer import HumanLayer, ContactChannel, SlackContactChannel, Function
 bot_token = "...YOUR BOT TOKEN"
 
 hl = HumanLayer(
-  api_key=os.getenv("HUMANLAYER_API_KEY"),
-  verbose=True,
-  contact_channel=ContactChannel(
-    slack=SlackContactChannel(
-      bot_token=bot_token,
-      channel_or_user_id="", # leave blank to dm whoever installed the app
-      experimental_slack_blocks=True,
-    )
-  )
+api_key=os.getenv("HUMANLAYER_API_KEY"),
+verbose=True,
+contact_channel=ContactChannel(
+slack=SlackContactChannel(
+bot_token=bot_token,
+channel_or_user_id="", # leave blank to dm whoever installed the app
+experimental_slack_blocks=True,
+)
+)
 )
 
 hl.fetch_approval(spec=FunctionCallSpec(
-  fn="add",
-  kwargs={"x": 2, "y": 5},
+fn="add",
+kwargs={"x": 2, "y": 5},
 ))
-```
+
+````
 
 ```typescript example.ts
 import { humanlayer } from "humanlayer";
@@ -172,7 +168,8 @@ const hl = humanlayer({
     },
   });
 })();
-```
+````
+
 </CodeGroup>
 
 For a complete example, see [06-custom_bot_token.py](https://github.com/humanlayer/humanlayer/tree/main/examples/langchain/06-custom_bot_token.py) in our examples directory.
