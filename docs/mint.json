@@ -86,7 +86,8 @@
         "frameworks/crewai",
         "frameworks/controlflow",
         "frameworks/chainlit",
-        "frameworks/vercel-ai-sdk"
+        "frameworks/vercel-ai-sdk",
+        "frameworks/mastra"
       ]
     },
     {
