@@ -28,14 +28,15 @@ class AsyncHumanLayerCloudConnection(BaseModel):
     _session: aiohttp.ClientSession | None = None
     http_timeout_seconds: int = 30
 
-    @model_validator(mode="after")  # type: ignore
-    def post_validate(self) -> None:
+    @model_validator(mode="after")
+    def post_validate(self) -> "AsyncHumanLayerCloudConnection":
         self.api_key = self.api_key or os.getenv("HUMANLAYER_API_KEY")
         self.api_base_url = self.api_base_url or os.getenv(
             "HUMANLAYER_API_BASE", "https://api.humanlayer.dev/humanlayer/v1"
         )
         if not self.api_key:
             raise ValueError("HUMANLAYER_API_KEY is required for cloud approvals")
+        return self
 
     async def request(
         self,
