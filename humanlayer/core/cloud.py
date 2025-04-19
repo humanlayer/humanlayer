@@ -4,7 +4,6 @@ import os
 
 import requests
 from pydantic import BaseModel, model_validator
-from typing_extensions import Self
 
 from humanlayer.core.models import (
     Escalation,
@@ -28,7 +27,7 @@ class HumanLayerCloudConnection(BaseModel):
     http_timeout_seconds: int = 30
 
     @model_validator(mode="after")
-    def post_validate(self) -> Self:
+    def post_validate(self) -> "HumanLayerCloudConnection":
         self.api_key = self.api_key or os.getenv("HUMANLAYER_API_KEY")
         self.api_base_url = self.api_base_url or os.getenv(
             "HUMANLAYER_API_BASE", "https://api.humanlayer.dev/humanlayer/v1"
