@@ -1,16 +1,16 @@
 {
   "name": "@humanlayer/mcp",
-  "version": "0.1.0",
+  "version": "0.1.4-alpha.1",
   "description": "A Model Context Protocol server for HumanLayer",
   "type": "module",
   "bin": {
-    "humanlayer-mcp": "./build/index.js"
+    "mcp": "./build/index.js"
   },
   "files": [
     "build"
   ],
   "scripts": {
-    "build": "tsc && node -e \"require('fs').chmodSync('build/index.js', '755')\"",
+    "build": "tsc && chmod +x build/index.js",
     "prepare": "npm run build",
     "check": "npx tsc --noEmit",
     "watch": "tsc --watch",
