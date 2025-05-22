@@ -1,18 +1,12 @@
 {
-    "mcpServers": {
-        "humanlayer_local": {
-            "command": "npm",
-            "args": [
-                "run",
-                "dev"
-            ]
-        },
-        "humanlayer": {
-            "command": "npx",
-            "args": [
-                "-y",
-                "@humanlayer/mcp@alpha"
-            ]
-        }
+  "mcpServers": {
+    "humanlayer_local": {
+      "command": "npm",
+      "args": ["run", "dev"]
+    },
+    "humanlayer": {
+      "command": "npx",
+      "args": ["-y", "@humanlayer/mcp@alpha"]
     }
+  }
 }

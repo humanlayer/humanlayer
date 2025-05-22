@@ -13,7 +13,10 @@ import fs from "fs/promises";
 import { FunctionCallSpec, FunctionCallStatus, humanlayer } from "humanlayer";
 
 async function log(message: any) {
-  await fs.appendFile("log.txt", new Date().toISOString() + " " + JSON.stringify(message, null, 2) + "\n");
+  await fs.appendFile(
+    "log.txt",
+    new Date().toISOString() + " " + JSON.stringify(message, null, 2) + "\n",
+  );
 }
 
 const server = new Server(
@@ -52,7 +55,15 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           },
           required: ["spline_type"],
         },
-      }
+      },
+      {
+        name: "hardcoded",
+        description: "Hardcoded tool",
+        inputSchema: {
+          type: "object",
+          properties: {},
+        },
+      },
     ],
   };
 });
@@ -62,18 +73,17 @@ const hl = humanlayer({
     slack: {
       channel_or_user_id: "",
       experimental_slack_blocks: true,
-    }
-  }
-
+    },
+  },
 });
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  await log("============")
-  await log("REQUEST")
-  await log("------------")
-  await log(request)
+  await log("============");
+  await log("REQUEST");
+  await log("------------");
+  await log(request);
 
-  /* params looks like 
+  /* params looks like
   {
   "name": "request_permission",
   "arguments": {
@@ -86,11 +96,16 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 } */
 
   if (request.params.name === "request_permission") {
-    log("requesting permission")
+    log("requesting permission");
 
-    const toolName: string|undefined  = request.params.arguments?.tool_name as string|undefined;
+    const toolName: string | undefined = request.params.arguments?.tool_name as
+      | string
+      | undefined;
     if (!toolName) {
-      throw new McpError(ErrorCode.InvalidRequest, "Invalid tool name requesting permissions");
+      throw new McpError(
+        ErrorCode.InvalidRequest,
+        "Invalid tool name requesting permissions",
+      );
     }
     const input: Record<string, any> = request.params.arguments?.input || {};
 
@@ -98,26 +113,25 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       spec: {
         fn: toolName,
         kwargs: input,
-      }
+      },
     });
 
     if (!result.approved) {
       return {
         result: false,
         message: result.comment,
-      }
+      };
     }
 
     return {
       result: true,
       message: "approved",
     };
-
   } else if (request.params.name === "reticulate_splines") {
-    log("reticulating splines")
+    log("reticulating splines");
     const splineType = request.params.arguments?.spline_type;
     const result = Math.random() * 100;
-    await new Promise(resolve => setTimeout(resolve, result));
+    await new Promise((resolve) => setTimeout(resolve, result));
 
     return {
       content: [
@@ -125,9 +139,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           type: "text",
           text: `splines reticulated, ${result}ms`,
         },
-      ]
+      ],
     };
-  } else if (request.params.name === "approve") {
+  } else if (request.params.name === "hardcoded") {
     const payload = JSON.parse(process.env.APPROVE_PAYLOAD || "{}");
     return payload;
   }
