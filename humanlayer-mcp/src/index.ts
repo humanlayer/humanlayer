@@ -9,6 +9,13 @@ import {
   McpError,
 } from "@modelcontextprotocol/sdk/types.js";
 
+import fs from "fs/promises";
+import { FunctionCallSpec, humanlayer } from "humanlayer";
+
+async function log(message: any) {
+  await fs.appendFile("log.txt", new Date().toISOString() + " " + JSON.stringify(message, null, 2) + "\n");
+}
+
 const server = new Server(
   {
     name: "mcp-server",
@@ -25,25 +32,104 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
   return {
     tools: [
       {
-        name: "calculate_sum",
-        description: "Add two numbers together",
+        name: "request_permission",
+        description: "Request permission to perform an action",
         inputSchema: {
           type: "object",
           properties: {
-            a: { type: "number" },
-            b: { type: "number" },
+            action: { type: "string" },
           },
-          required: ["a", "b"],
+          required: ["action"],
         },
       },
+      {
+        name: "reticulate_splines",
+        description: "Reticulate splines",
+        inputSchema: {
+          type: "object",
+          properties: {
+            spline_type: { type: "string" },
+          },
+          required: ["spline_type"],
+        },
+      }
     ],
   };
 });
 
+const hl = humanlayer({
+  contactChannel: {
+    slack: {
+      channel_or_user_id: "",
+      experimental_slack_blocks: true,
+    }
+  }
+
+});
+
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  if (request.params.name === "calculate_sum") {
-    const { a, b } = request.params.arguments as { a: number; b: number };
-    return { toolResult: a + b };
+  await log("============")
+  await log("REQUEST")
+  await log("------------")
+  await log(request)
+
+  /* params looks like 
+  {
+  "name": "request_permission",
+  "arguments": {
+    "tool_name": "Bash",
+    "input": {
+      "command": "touch \"/Users/dex/go/src/github.com/humanlayer/humanlayer/humanlayer-mcp/blah.txt\"",
+      "description": "Create empty blah.txt file"
+    }
+  }
+} */
+
+  if (request.params.name === "request_permission") {
+    log("requesting permission")
+
+    const toolName: string|undefined  = request.params.arguments?.tool_name as string|undefined;
+    if (!toolName) {
+      throw new McpError(ErrorCode.InvalidRequest, "Invalid tool name requesting permissions");
+    }
+    const input: Record<string, any> = request.params.arguments?.input || {};
+
+    const result = await hl.fetchHumanApproval({
+      spec: {
+        fn: toolName,
+        kwargs: input,
+      }
+    });
+
+    if (!result.approved) {
+      return {
+        result: false,
+        message: result.comment,
+      }
+    }
+
+    return {
+      result: true,
+      message: "approved",
+    };
+
+  } else if (request.params.name === "reticulate_splines") {
+    log("reticulating splines")
+    const splineType = request.params.arguments?.spline_type;
+    const result = Math.random() * 100;
+    await new Promise(resolve => setTimeout(resolve, result));
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: `splines reticulated, ${result}ms`,
+        },
+      ]
+    };
+  } else if (request.params.name === "approve") {
+    const payload = JSON.parse(process.env.APPROVE_PAYLOAD || "{}");
+    return payload;
   }
   throw new McpError(ErrorCode.InvalidRequest, "Invalid tool name");
 });
