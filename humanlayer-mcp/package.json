@@ -5,6 +5,12 @@
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.cts",
+  "bin": {
+    "mcp-server": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
   "exports": {
     "require": {
       "types": "./dist/index.d.cts",

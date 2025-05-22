@@ -13,8 +13,11 @@ check-py: ## Run code quality tools.
 check-ts:
 	npm -C humanlayer-ts run check
 
+check-mcp:
+	npm -C humanlayer-mcp run check
+
 .PHONY: check
-check: check-py check-ts
+check: check-py check-ts check-mcp
 
 typecheck: ## just the typechecks
 	: 🚀 Static type checking: Running mypy
