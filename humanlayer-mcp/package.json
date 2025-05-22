@@ -1,6 +1,6 @@
 {
   "name": "@humanlayer/mcp",
-  "version": "0.1.4-alpha.1",
+  "version": "0.1.4-alpha.2",
   "description": "A Model Context Protocol server for HumanLayer",
   "type": "module",
   "bin": {

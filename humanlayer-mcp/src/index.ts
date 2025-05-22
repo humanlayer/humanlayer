@@ -10,7 +10,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 
 import fs from "fs/promises";
-import { FunctionCallSpec, humanlayer } from "humanlayer";
+import { FunctionCallSpec, FunctionCallStatus, humanlayer } from "humanlayer";
 
 async function log(message: any) {
   await fs.appendFile("log.txt", new Date().toISOString() + " " + JSON.stringify(message, null, 2) + "\n");
@@ -94,7 +94,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     }
     const input: Record<string, any> = request.params.arguments?.input || {};
 
-    const result = await hl.fetchHumanApproval({
+    const result: FunctionCallStatus = await hl.fetchHumanApproval({
       spec: {
         fn: toolName,
         kwargs: input,
