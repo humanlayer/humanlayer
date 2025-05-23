@@ -2,6 +2,7 @@ import dotenv from 'dotenv'
 import fs from 'fs'
 import path from 'path'
 import chalk from 'chalk'
+import { ContactChannel } from 'humanlayer'
 
 // Load environment variables
 dotenv.config()
@@ -34,13 +35,14 @@ export function loadConfigFile(): ConfigFile {
         return JSON.parse(configContent)
       }
     } catch (error) {
-      console.error(chalk.yellow(`Warning: Could not parse config file ${configPath}`))
+      console.error(chalk.yellow(`Warning: Could not parse config file ${configPath}: ${error}`))
     }
   }
 
   return {}
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function buildContactChannel(options: any, config: ConfigFile) {
   // Priority: CLI flags > env vars > config file
 
@@ -74,7 +76,7 @@ export function buildContactChannel(options: any, config: ConfigFile) {
   const emailContext =
     options.emailContext || process.env.HUMANLAYER_EMAIL_CONTEXT || config.email?.context_about_user
 
-  const contactChannel: any = {}
+  const contactChannel: ContactChannel = {}
 
   if (slackChannelId || slackBotToken) {
     contactChannel.slack = {
