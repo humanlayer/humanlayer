@@ -24,18 +24,21 @@ claude -p "do some work" | npx hlyr contact_human -m -
 
 or
 
-```
+```bash
 claude -p "do some work" | npx hlyr contact_human --message-stdin | claude -p -
 ```
 
 or
 
-```
+```bash
+allowedTools='Write,Edit,Bash(grep:*)'
 message="make me a file hello.txt with contents 'hello world'"
+
+claude_answer=$(claude -p "$message" --allowedTools "$allowedTools")
 while :; do
-claude_answer=$(claude -p "$message")
-human_answer=$(echo "$claude_answer" | npx hlyr contact_human --message-stdin)
+human_answer=$(echo "$claude_answer" | npx hlyr contact_human -m -)
 message="$human_answer"
+claude_answer=$(claude -p "$message" --allowedTools "$allowedTools" --continue)
 done
 ```
 
