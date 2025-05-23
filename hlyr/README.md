@@ -16,6 +16,52 @@ npx hlyr contact_human -m "Need help with deployment approval"
 npx hlyr contact_human --message "Review this pull request"
 ```
 
+### Configuration
+
+you will probably always want:
+
+```bash
+export HUMANLAYER_API_KEY=...
+```
+
+Using cli flags:
+
+```bash
+hlyr contact_human --message "Review this pull request" --slack-channel "C08G5C3V552"
+```
+
+using environment variables:
+
+```bash
+export HUMANLAYER_SLACK_CHANNEL=C08G5C3V552
+hlyr contact_human --message "Review this pull request"
+```
+
+or
+
+```
+export HUMANLAYER_EMAIL_ADDRESS=human@example.com
+hlyr contact_human --message "Review this pull request"
+```
+
+using a config file:
+
+```bash
+echo '
+{
+  "channel": {
+    "slack": {
+      "channel_or_user_id": "C08G5C3V552"
+    }
+  }
+}
+' > .hlyr.json
+```
+
+```bash
+hlyr contact_human --message "Review this pull request" --config-file .hlyr.json
+```
+
 ### Run with claude code
 
 ```

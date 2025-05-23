@@ -8,23 +8,19 @@ import { ContactChannel } from 'humanlayer'
 dotenv.config()
 
 export type ConfigFile = {
-  slack?: {
-    channel_or_user_id?: string
-    context_about_channel_or_user?: string
-    bot_token?: string
-    experimental_slack_blocks?: boolean
-    thread_ts?: string
-  }
-  email?: {
-    address?: string
-    context_about_user?: string
-  }
+  channel: ContactChannel
 }
 
-export function loadConfigFile(): ConfigFile {
+export function loadConfigFile(configFile?: string): ConfigFile {
+  if (configFile) {
+    const configContent = fs.readFileSync(configFile, 'utf8')
+    return JSON.parse(configContent)
+  }
+
+  // these do not merge today
   const configPaths = [
     'humanlayer.json',
-    path.join(process.env.HOME || '', 'humanlayer.json'),
+    path.join(process.env.HOME || '', '.humanlayer.json'),
     '/etc/humanlayer.json',
   ]
 
@@ -39,42 +35,44 @@ export function loadConfigFile(): ConfigFile {
     }
   }
 
-  return {}
+  return { channel: {} }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function buildContactChannel(options: any, config: ConfigFile) {
   // Priority: CLI flags > env vars > config file
 
+  const channel = config.channel || {}
+
   const slackChannelId =
     options.slackChannel ||
     process.env.HUMANLAYER_SLACK_CHANNEL ||
-    config.slack?.channel_or_user_id ||
+    channel.slack?.channel_or_user_id ||
     ''
 
   const slackBotToken =
-    options.slackBotToken || process.env.HUMANLAYER_SLACK_BOT_TOKEN || config.slack?.bot_token
+    options.slackBotToken || process.env.HUMANLAYER_SLACK_BOT_TOKEN || channel.slack?.bot_token
 
   const slackContext =
     options.slackContext ||
     process.env.HUMANLAYER_SLACK_CONTEXT ||
-    config.slack?.context_about_channel_or_user
+    channel.slack?.context_about_channel_or_user
 
   const slackThreadTs =
-    options.slackThreadTs || process.env.HUMANLAYER_SLACK_THREAD_TS || config.slack?.thread_ts
+    options.slackThreadTs || process.env.HUMANLAYER_SLACK_THREAD_TS || channel.slack?.thread_ts
 
   const slackBlocks =
     options.slackBlocks !== undefined
       ? options.slackBlocks
       : process.env.HUMANLAYER_SLACK_BLOCKS === 'true' ||
-        config.slack?.experimental_slack_blocks ||
+        channel.slack?.experimental_slack_blocks ||
         true
 
   const emailAddress =
-    options.emailAddress || process.env.HUMANLAYER_EMAIL_ADDRESS || config.email?.address
+    options.emailAddress || process.env.HUMANLAYER_EMAIL_ADDRESS || channel.email?.address
 
   const emailContext =
-    options.emailContext || process.env.HUMANLAYER_EMAIL_CONTEXT || config.email?.context_about_user
+    options.emailContext || process.env.HUMANLAYER_EMAIL_CONTEXT || channel.email?.context_about_user
 
   const contactChannel: ContactChannel = {}
 

@@ -7,7 +7,7 @@ import { loadConfigFile, buildContactChannel } from './config.js'
 
 const program = new Command()
 
-program.name('hlyr').description('HumanLayer, but on your command-line.').version('0.1.0')
+program.name('humanlayer').description('HumanLayer, but on your command-line.').version('0.1.0')
 
 program
   .command('contact_human')
@@ -20,6 +20,7 @@ program
   .option('--slack-blocks [boolean]', 'Use experimental Slack blocks', true)
   .option('--email-address <email>', 'Email address to contact')
   .option('--email-context <context>', 'Context about the email recipient')
+  .option('--config-file <file>', 'Path to config file')
   .action(async options => {
     let message = options.message
 
@@ -36,7 +37,7 @@ program
     }
 
     try {
-      const config = loadConfigFile()
+      const config = loadConfigFile(options.configFile)
       const contactChannel = buildContactChannel(options, config)
 
       if (Object.keys(contactChannel).length === 0) {
