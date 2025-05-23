@@ -8,28 +8,32 @@
   },
   "scripts": {
     "build": "tsup src/index.ts --format esm --target es2020 --clean",
-    "dev": "tsup src/index.ts --format esm --target es2020 --watch",
+    "build:watch": "tsup src/index.ts --format esm --target es2020 --watch",
+    "dev": "npm run build && node dist/index.js",
     "lint": "eslint . --ext .ts",
     "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check": "npm run lint && npm run test && npm run build"
+    "check": "npm run format:check && npm run lint && npm run test && npm run build"
   },
   "dependencies": {
+    "chalk": "^5.2.0",
     "commander": "^11.0.0",
-    "chalk": "^5.2.0"
+    "dotenv": "^16.5.0",
+    "humanlayer": "^0.7.7"
   },
   "devDependencies": {
-    "typescript": "^5.4.0",
-    "tsup": "^8.0.0",
-    "vitest": "^1.5.0",
-    "eslint": "^8.57.0",
-    "@typescript-eslint/parser": "^7.0.0",
+    "@types/node": "^20.0.0",
     "@typescript-eslint/eslint-plugin": "^7.0.0",
-    "prettier": "^3.3.0",
-    "eslint-plugin-prettier": "^5.1.3",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
-    "@types/node": "^20.0.0"
+    "eslint-plugin-prettier": "^5.1.3",
+    "prettier": "^3.3.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.0",
+    "vitest": "^1.5.0"
   },
   "engines": {
     "node": ">=16"

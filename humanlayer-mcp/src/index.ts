@@ -38,7 +38,7 @@ const server = new Server(
 
 server.setRequestHandler(ListToolsRequestSchema, async () => {
   // TODO: Get this type under control
-  const tools:any = [
+  const tools: any = [
     {
       name: "request_permission",
       description: "Request permission to perform an action",
@@ -83,7 +83,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           type: "object",
           properties: {},
         },
-      }
+      },
     );
   }
 
@@ -161,7 +161,7 @@ const handleContactHuman = async (request: any) => {
         text: response,
       },
     ],
-  }
+  };
 };
 /**
  * a dummy tool you can use to test the server
