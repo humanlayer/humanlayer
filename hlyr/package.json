@@ -1,0 +1,45 @@
+{
+  "name": "hlyr",
+  "version": "0.1.0",
+  "description": "HumanLayer, but on your command-line.",
+  "type": "module",
+  "bin": {
+    "hlyr": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --target es2020 --clean",
+    "dev": "tsup src/index.ts --format esm --target es2020 --watch",
+    "lint": "eslint . --ext .ts",
+    "format": "prettier --write .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check": "npm run lint && npm run test && npm run build"
+  },
+  "dependencies": {
+    "commander": "^11.0.0",
+    "chalk": "^5.2.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "tsup": "^8.0.0",
+    "vitest": "^1.5.0",
+    "eslint": "^8.57.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "prettier": "^3.3.0",
+    "eslint-plugin-prettier": "^5.1.3",
+    "eslint-config-prettier": "^9.1.0",
+    "@types/node": "^20.0.0"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "keywords": [
+    "cli",
+    "human",
+    "communication",
+    "humanlayer"
+  ],
+  "author": "HumanLayer Authors",
+  "license": "Apache-2.0"
+}

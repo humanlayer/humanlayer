@@ -37,19 +37,34 @@ const server = new Server(
 );
 
 server.setRequestHandler(ListToolsRequestSchema, async () => {
-  return {
-    tools: [
-      {
-        name: "request_permission",
-        description: "Request permission to perform an action",
-        inputSchema: {
-          type: "object",
-          properties: {
-            action: { type: "string" },
-          },
-          required: ["action"],
+  // TODO: Get this type under control
+  const tools:any = [
+    {
+      name: "request_permission",
+      description: "Request permission to perform an action",
+      inputSchema: {
+        type: "object",
+        properties: {
+          action: { type: "string" },
         },
+        required: ["action"],
       },
+    },
+    {
+      name: "contact_human",
+      description: "Contact a human for assistance",
+      inputSchema: {
+        type: "object",
+        properties: {
+          message: { type: "string" },
+        },
+        required: ["message"],
+      },
+    },
+  ];
+
+  if (DEBUG) {
+    tools.push(
       {
         name: "reticulate_splines",
         description: "Reticulate splines",
@@ -68,9 +83,11 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           type: "object",
           properties: {},
         },
-      },
-    ],
-  };
+      }
+    );
+  }
+
+  return { tools };
 });
 
 const hl = humanlayer({
@@ -138,16 +155,13 @@ const handleContactHuman = async (request: any) => {
   });
 
   return {
-    toolResult: response,
-  };
-  // return {
-  //   content: [
-  //     {
-  //       type: "text",
-  //       text: response,
-  //     },
-  //   ],
-  // }
+    content: [
+      {
+        type: "text",
+        text: response,
+      },
+    ],
+  }
 };
 /**
  * a dummy tool you can use to test the server

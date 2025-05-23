@@ -174,3 +174,5 @@ cython_debug/
 ._*
 .Spotlight-V100
 .Trashes
+
+.idea/
