@@ -12,7 +12,9 @@ program.name('humanlayer').description('HumanLayer, but on your command-line.').
 program
   .command('login')
   .description('Login to HumanLayer and save API token')
-  .option('--api-base <url>', 'API base URL', 'https://api.humanlayer.dev')
+  .option('--api-base <url>', 'API base URL')
+  .option('--app-base <url>', 'App base URL')
+  .option('--config-file <path>', 'Path to config file')
   .action(loginCommand)
 
 program.command('tui').description('Run the HumanLayer Terminal UI').action(tuiCommand)

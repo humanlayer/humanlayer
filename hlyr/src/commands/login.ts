@@ -5,6 +5,8 @@ import { loadConfigFile, saveConfigFile, getDefaultConfigPath } from '../config.
 
 interface LoginOptions {
   apiBase?: string
+  appBase?: string
+  configFile?: string
 }
 
 export async function loginCommand(options: LoginOptions): Promise<void> {
@@ -20,7 +22,13 @@ export async function loginCommand(options: LoginOptions): Promise<void> {
   }
 
   try {
-    const appUrl = process.env.HUMANLAYER_APP_URL || 'https://app.humanlayer.dev'
+    // Load existing config if config file flag is set
+    const existingConfig = options.configFile ? loadConfigFile(options.configFile) : { channel: {} }
+    
+    const appUrl = options.appBase || 
+                   existingConfig.app_base_url || 
+                   process.env.HUMANLAYER_APP_URL || 
+                   'https://app.humanlayer.dev'
     const loginUrl = `${appUrl}/cli-login`
 
     console.log(chalk.blue('HumanLayer Login'))
@@ -64,7 +72,7 @@ export async function loginCommand(options: LoginOptions): Promise<void> {
       process.exit(1)
     }
 
-    const configPath = getDefaultConfigPath()
+    const configPath = options.configFile || getDefaultConfigPath()
     console.log(chalk.yellow(`Token will be written to: ${configPath}`))
 
     const proceed = await question('Continue? (y/N): ')
@@ -73,14 +81,16 @@ export async function loginCommand(options: LoginOptions): Promise<void> {
       process.exit(0)
     }
 
-    const existingConfig = loadConfigFile()
     const newConfig = {
       ...existingConfig,
       api_token: token.trim(),
-      api_base_url: options.apiBase || 'https://api.humanlayer.dev',
+      api_base_url: options.apiBase || 
+                    existingConfig.api_base_url || 
+                    'https://api.humanlayer.dev',
+      app_base_url: appUrl,
     }
 
-    saveConfigFile(newConfig)
+    saveConfigFile(newConfig, options.configFile)
     console.log(chalk.green('Login successful!'))
   } catch (error) {
     console.error(chalk.red(`Error during login: ${error}`))

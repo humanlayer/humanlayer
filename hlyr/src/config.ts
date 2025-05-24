@@ -11,6 +11,7 @@ export type ConfigFile = {
   channel: ContactChannel
   api_token?: string
   api_base_url?: string
+  app_base_url?: string
 }
 
 export function loadConfigFile(configFile?: string): ConfigFile {
@@ -22,8 +23,7 @@ export function loadConfigFile(configFile?: string): ConfigFile {
   // these do not merge today
   const configPaths = [
     'humanlayer.json',
-    path.join(process.env.HOME || '', '.humanlayer.json'),
-    '/etc/humanlayer.json',
+    getDefaultConfigPath(),
   ]
 
   for (const configPath of configPaths) {
@@ -101,9 +101,13 @@ export function buildContactChannel(options: any, config: ConfigFile) {
 }
 
 export function saveConfigFile(config: ConfigFile, configFile?: string): void {
-  const configPath = configFile || path.join(process.env.HOME || '', '.humanlayer.json')
+  const configPath = configFile || getDefaultConfigPath()
 
   console.log(chalk.yellow(`Writing config to ${configPath}`))
+
+  // Create directory if it doesn't exist
+  const configDir = path.dirname(configPath)
+  fs.mkdirSync(configDir, { recursive: true })
 
   fs.writeFileSync(configPath, JSON.stringify(config, null, 2))
 
@@ -111,5 +115,6 @@ export function saveConfigFile(config: ConfigFile, configFile?: string): void {
 }
 
 export function getDefaultConfigPath(): string {
-  return path.join(process.env.HOME || '', '.humanlayer.json')
+  const xdgConfigHome = process.env.XDG_CONFIG_HOME || path.join(process.env.HOME || '', '.config')
+  return path.join(xdgConfigHome, 'humanlayer', 'humanlayer.json')
 }
