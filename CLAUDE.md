@@ -118,9 +118,16 @@ Each framework example follows the pattern of wrapping functions with HumanLayer
 - `pkgroll` for building packages
 - Standard npm workflows
 
+### CLI Tool
+
+- **HumanLayer CLI**: `npx humanlayer` - Command-line interface for authentication, configuration, and human contact
+- Available commands: `login`, `config show`, `contact_human`, `tui`
+- Use `npx humanlayer --help` for detailed usage information
+
 ### Important Notes
 
 - Always use `uv add` for Python dependencies, never `uv pip`
 - Run `make check test` before submitting PRs
 - The MCP server requires Node.js and provides Claude Desktop integration
 - Examples use virtual environments and have their own dependency files
+- For CLI usage, always use `npx humanlayer` command format

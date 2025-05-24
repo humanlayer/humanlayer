@@ -58,6 +58,15 @@
       "pages": ["introduction", "quickstart-python", "quickstart-typescript"]
     },
     {
+      "group": "CLI",
+      "pages": [
+        "cli/introduction",
+        "cli/login",
+        "cli/config-show",
+        "cli/contact-human"
+      ]
+    },
+    {
       "group": "Core Concepts",
       "pages": [
         "core/require-approval",

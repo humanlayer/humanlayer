@@ -1,0 +1,102 @@
+---
+title: "Login Command"
+description: "Authenticate with HumanLayer and save your API token"
+---
+
+# npx humanlayer login
+
+The `login` command authenticates you with HumanLayer and saves your API token for future CLI usage. This is typically the first command you'll run when setting up the CLI.
+
+## Usage
+
+```bash
+npx humanlayer login [options]
+```
+
+## Options
+
+| Flag                   | Description         | Default                                |
+| ---------------------- | ------------------- | -------------------------------------- |
+| `--api-base <url>`     | API base URL        | `https://api.humanlayer.dev`           |
+| `--app-base <url>`     | App base URL        | `https://app.humanlayer.dev`           |
+| `--config-file <path>` | Path to config file | `~/.config/humanlayer/humanlayer.json` |
+
+## How It Works
+
+1. **Open login page**: The command will attempt to open your default browser to the HumanLayer login page
+2. **Get API token**: After logging in, copy your API token from the dashboard
+3. **Paste token**: Return to the terminal and paste your API token when prompted
+4. **Save configuration**: The token is saved to your configuration file for future use
+
+## Interactive Flow
+
+```bash
+$ npx humanlayer login
+HumanLayer Login
+To get your API token, visit: https://app.humanlayer.dev/cli-login
+
+Press Enter to open in default browser or ESC to continue manually:
+Opening browser...
+
+Paste your API token: hl_abc123...
+Token will be written to: /Users/yourname/.config/humanlayer/humanlayer.json
+Continue? (y/N): y
+Login successful!
+```
+
+## Examples
+
+### Basic Login
+
+```bash
+npx humanlayer login
+```
+
+### Login with Custom Config File
+
+```bash
+npx humanlayer login --config-file ./my-config.json
+```
+
+### Login with Custom API Endpoints
+
+```bash
+npx humanlayer login --api-base https://api.mycompany.com --app-base https://app.mycompany.com
+```
+
+## Configuration File
+
+After successful login, your configuration file will contain:
+
+```json
+{
+  "api_token": "hl_abc123...",
+  "api_base_url": "https://api.humanlayer.dev",
+  "app_base_url": "https://app.humanlayer.dev",
+  "channel": {}
+}
+```
+
+## Troubleshooting
+
+### Browser Won't Open
+
+If the browser doesn't open automatically, you can:
+
+1. Press ESC when prompted
+2. Manually navigate to the URL shown in the terminal
+3. Complete the login process and copy your token
+
+### Permission Errors
+
+If you get permission errors writing to the config file:
+
+1. Check that the directory exists: `~/.config/humanlayer/`
+2. Ensure you have write permissions to the directory
+3. Use a custom config file location with `--config-file`
+
+### Token Issues
+
+- Make sure you copy the complete token from the dashboard
+- Tokens start with `hl_` prefix
+- If the token seems invalid, try logging in again

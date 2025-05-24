@@ -9,6 +9,9 @@ dotenv.config()
 
 export type ConfigFile = {
   channel: ContactChannel
+  api_token?: string
+  api_base_url?: string
+  app_base_url?: string
 }
 
 export function loadConfigFile(configFile?: string): ConfigFile {
@@ -18,11 +21,7 @@ export function loadConfigFile(configFile?: string): ConfigFile {
   }
 
   // these do not merge today
-  const configPaths = [
-    'humanlayer.json',
-    path.join(process.env.HOME || '', '.humanlayer.json'),
-    '/etc/humanlayer.json',
-  ]
+  const configPaths = ['humanlayer.json', getDefaultConfigPath()]
 
   for (const configPath of configPaths) {
     try {
@@ -96,4 +95,49 @@ export function buildContactChannel(options: any, config: ConfigFile) {
   }
 
   return contactChannel
+}
+
+export function saveConfigFile(config: ConfigFile, configFile?: string): void {
+  const configPath = configFile || getDefaultConfigPath()
+
+  console.log(chalk.yellow(`Writing config to ${configPath}`))
+
+  // Create directory if it doesn't exist
+  const configDir = path.dirname(configPath)
+  fs.mkdirSync(configDir, { recursive: true })
+
+  fs.writeFileSync(configPath, JSON.stringify(config, null, 2))
+
+  console.log(chalk.green('Config saved successfully'))
+}
+
+export function getDefaultConfigPath(): string {
+  const xdgConfigHome = process.env.XDG_CONFIG_HOME || path.join(process.env.HOME || '', '.config')
+  return path.join(xdgConfigHome, 'humanlayer', 'humanlayer.json')
+}
+
+export type ResolvedConfig = {
+  api_token?: string
+  api_base_url: string
+  app_base_url: string
+  contact_channel: ContactChannel
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function resolveFullConfig(options: any): ResolvedConfig {
+  const config = options.configFile ? loadConfigFile(options.configFile) : loadConfigFile()
+
+  const api_token = config.api_token || process.env.HUMANLAYER_API_TOKEN
+  const api_base_url =
+    config.api_base_url || process.env.HUMANLAYER_API_BASE_URL || 'https://api.humanlayer.dev'
+  const app_base_url =
+    config.app_base_url || process.env.HUMANLAYER_APP_URL || 'https://app.humanlayer.dev'
+  const contact_channel = buildContactChannel(options, config)
+
+  return {
+    api_token,
+    api_base_url,
+    app_base_url,
+    contact_channel,
+  }
 }
