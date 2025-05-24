@@ -4,6 +4,7 @@ import { Command } from 'commander'
 import { loginCommand } from './commands/login.js'
 import { tuiCommand } from './commands/tui.js'
 import { contactHumanCommand } from './commands/contactHuman.js'
+import { configShowCommand } from './commands/configShow.js'
 
 const program = new Command()
 
@@ -18,6 +19,22 @@ program
   .action(loginCommand)
 
 program.command('tui').description('Run the HumanLayer Terminal UI').action(tuiCommand)
+
+program
+  .command('config')
+  .description('Configuration management')
+  .command('show')
+  .description('Show current configuration')
+  .option('--config-file <path>', 'Path to config file')
+  .option('--slack-channel <id>', 'Slack channel or user ID')
+  .option('--slack-bot-token <token>', 'Slack bot token')
+  .option('--slack-context <context>', 'Context about the Slack channel or user')
+  .option('--slack-thread-ts <ts>', 'Slack thread timestamp')
+  .option('--slack-blocks [boolean]', 'Use experimental Slack blocks')
+  .option('--email-address <email>', 'Email address to contact')
+  .option('--email-context <context>', 'Context about the email recipient')
+  .option('--json', 'Output as JSON with masked keys')
+  .action(configShowCommand)
 
 program
   .command('contact_human')
