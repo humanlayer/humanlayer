@@ -9,6 +9,8 @@ dotenv.config()
 
 export type ConfigFile = {
   channel: ContactChannel
+  api_token?: string
+  api_base_url?: string
 }
 
 export function loadConfigFile(configFile?: string): ConfigFile {
@@ -96,4 +98,18 @@ export function buildContactChannel(options: any, config: ConfigFile) {
   }
 
   return contactChannel
+}
+
+export function saveConfigFile(config: ConfigFile, configFile?: string): void {
+  const configPath = configFile || path.join(process.env.HOME || '', '.humanlayer.json')
+
+  console.log(chalk.yellow(`Writing config to ${configPath}`))
+
+  fs.writeFileSync(configPath, JSON.stringify(config, null, 2))
+
+  console.log(chalk.green('Config saved successfully'))
+}
+
+export function getDefaultConfigPath(): string {
+  return path.join(process.env.HOME || '', '.humanlayer.json')
 }
