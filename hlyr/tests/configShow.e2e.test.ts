@@ -9,14 +9,14 @@ interface TestCase {
   env?: Record<string, string>
   flags?: string[]
   configFile?: {
-    content: any
+    content: Record<string, unknown>
     path?: string
   }
   expected: {
     api_token?: string
     api_base_url: string
     app_base_url: string
-    contact_channel: any
+    contact_channel: Record<string, unknown>
   }
 }
 
@@ -51,7 +51,7 @@ describe('config show e2e tests', () => {
     // Cleanup temp files
     try {
       await fs.rm(tempDir, { recursive: true, force: true })
-    } catch (error) {
+    } catch {
       // Ignore cleanup errors
     }
   })

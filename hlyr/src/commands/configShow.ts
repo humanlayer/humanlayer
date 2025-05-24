@@ -1,10 +1,5 @@
 import chalk from 'chalk'
-import {
-  loadConfigFile,
-  buildContactChannel,
-  getDefaultConfigPath,
-  resolveFullConfig,
-} from '../config.js'
+import { getDefaultConfigPath, resolveFullConfig } from '../config.js'
 
 interface ConfigShowOptions {
   configFile?: string

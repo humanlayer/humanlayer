@@ -2,7 +2,19 @@ import chalk from 'chalk'
 import { humanlayer } from 'humanlayer'
 import { resolveFullConfig } from '../config.js'
 
-export async function contactHumanCommand(options: any) {
+interface ContactHumanOptions {
+  message: string
+  configFile?: string
+  slackChannel?: string
+  slackBotToken?: string
+  slackContext?: string
+  slackThreadTs?: string
+  slackBlocks?: boolean
+  emailAddress?: string
+  emailContext?: string
+}
+
+export async function contactHumanCommand(options: ContactHumanOptions) {
   let message = options.message
 
   if (message === '-') {

@@ -1,6 +1,11 @@
 {
   "permissions": {
-    "allow": ["Bash(npm -C hlyr run test)"],
+    "allow": [
+      "Bash(npm -C hlyr run test)",
+      "Bash(npm -C hlyr run lint)",
+      "Bash(npm -C hlyr run format)",
+      "Bash(npm -C hlyr run check)"
+    ],
     "deny": []
   }
 }
