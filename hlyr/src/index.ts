@@ -1,15 +1,13 @@
 #!/usr/bin/env node
 
 import { Command } from 'commander'
-import chalk from 'chalk'
-import { humanlayer } from 'humanlayer'
-import { loadConfigFile, buildContactChannel } from './config.js'
 import { loginCommand } from './commands/login.js'
 import { tuiCommand } from './commands/tui.js'
+import { contactHumanCommand } from './commands/contactHuman.js'
 
 const program = new Command()
 
-program.name('hlyr').description('HumanLayer, but on your command-line.').version('0.1.0')
+program.name('humanlayer').description('HumanLayer, but on your command-line.').version('0.4.0')
 
 program
   .command('login')
@@ -30,50 +28,6 @@ program
   .option('--slack-blocks [boolean]', 'Use experimental Slack blocks', true)
   .option('--email-address <email>', 'Email address to contact')
   .option('--email-context <context>', 'Context about the email recipient')
-  .action(async options => {
-    let message = options.message
-
-    if (message === '-') {
-      // Read from stdin
-      process.stdin.setEncoding('utf8')
-      let stdinData = ''
-
-      for await (const chunk of process.stdin) {
-        stdinData += chunk
-      }
-
-      message = stdinData.trim()
-    }
-
-    try {
-      const config = loadConfigFile()
-      const contactChannel = buildContactChannel(options, config)
-
-      if (Object.keys(contactChannel).length === 0) {
-        console.error(
-          chalk.red(
-            'Error: No contact channel configured. Please specify --slack-channel, --email-address, or use environment variables/config file.',
-          ),
-        )
-        process.exit(1)
-      }
-
-      const hl = humanlayer({ contactChannel })
-
-      console.error(chalk.yellow('Contacting human...'))
-
-      const response = await hl.fetchHumanResponse({
-        spec: {
-          msg: message,
-        },
-      })
-
-      console.error(chalk.green('Human response received'))
-      console.log(response)
-    } catch (error) {
-      console.error(chalk.red('Error contacting human:'), error)
-      process.exit(1)
-    }
-  })
+  .action(contactHumanCommand)
 
 program.parse(process.argv)
