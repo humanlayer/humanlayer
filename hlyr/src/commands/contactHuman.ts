@@ -1,6 +1,6 @@
 import chalk from 'chalk'
 import { humanlayer } from 'humanlayer'
-import { loadConfigFile, buildContactChannel } from '../config.js'
+import { resolveFullConfig } from '../config.js'
 
 export async function contactHumanCommand(options: any) {
   let message = options.message
@@ -18,10 +18,9 @@ export async function contactHumanCommand(options: any) {
   }
 
   try {
-    const config = loadConfigFile()
-    const contactChannel = buildContactChannel(options, config)
+    const resolvedConfig = resolveFullConfig(options)
 
-    if (Object.keys(contactChannel).length === 0) {
+    if (Object.keys(resolvedConfig.contact_channel).length === 0) {
       console.error(
         chalk.red(
           'Error: No contact channel configured. Please specify --slack-channel, --email-address, or use environment variables/config file.',
@@ -30,7 +29,7 @@ export async function contactHumanCommand(options: any) {
       process.exit(1)
     }
 
-    const hl = humanlayer({ contactChannel })
+    const hl = humanlayer({ contactChannel: resolvedConfig.contact_channel })
 
     console.error(chalk.yellow('Contacting human...'))
 

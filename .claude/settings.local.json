@@ -1,0 +1,6 @@
+{
+  "permissions": {
+    "allow": ["Bash(npm -C hlyr run test)"],
+    "deny": []
+  }
+}

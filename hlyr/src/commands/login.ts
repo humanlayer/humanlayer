@@ -24,11 +24,12 @@ export async function loginCommand(options: LoginOptions): Promise<void> {
   try {
     // Load existing config if config file flag is set
     const existingConfig = options.configFile ? loadConfigFile(options.configFile) : { channel: {} }
-    
-    const appUrl = options.appBase || 
-                   existingConfig.app_base_url || 
-                   process.env.HUMANLAYER_APP_URL || 
-                   'https://app.humanlayer.dev'
+
+    const appUrl =
+      options.appBase ||
+      existingConfig.app_base_url ||
+      process.env.HUMANLAYER_APP_URL ||
+      'https://app.humanlayer.dev'
     const loginUrl = `${appUrl}/cli-login`
 
     console.log(chalk.blue('HumanLayer Login'))
@@ -84,9 +85,7 @@ export async function loginCommand(options: LoginOptions): Promise<void> {
     const newConfig = {
       ...existingConfig,
       api_token: token.trim(),
-      api_base_url: options.apiBase || 
-                    existingConfig.api_base_url || 
-                    'https://api.humanlayer.dev',
+      api_base_url: options.apiBase || existingConfig.api_base_url || 'https://api.humanlayer.dev',
       app_base_url: appUrl,
     }
 
