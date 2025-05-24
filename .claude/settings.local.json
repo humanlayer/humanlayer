@@ -1,7 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Bash(go mod:*)"
+      "Bash(go mod:*)",
       "Bash(npm -C hlyr run test)",
       "Bash(npm -C hlyr run lint)",
       "Bash(npm -C hlyr run format)",
