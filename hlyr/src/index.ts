@@ -1,13 +1,40 @@
 #!/usr/bin/env node
 
 import { Command } from 'commander'
-import chalk from 'chalk'
-import { humanlayer } from 'humanlayer'
-import { loadConfigFile, buildContactChannel } from './config.js'
+import { loginCommand } from './commands/login.js'
+import { tuiCommand } from './commands/tui.js'
+import { contactHumanCommand } from './commands/contactHuman.js'
+import { configShowCommand } from './commands/configShow.js'
 
 const program = new Command()
 
-program.name('humanlayer').description('HumanLayer, but on your command-line.').version('0.1.0')
+program.name('humanlayer').description('HumanLayer, but on your command-line.').version('0.4.0')
+
+program
+  .command('login')
+  .description('Login to HumanLayer and save API token')
+  .option('--api-base <url>', 'API base URL')
+  .option('--app-base <url>', 'App base URL')
+  .option('--config-file <path>', 'Path to config file')
+  .action(loginCommand)
+
+program.command('tui').description('Run the HumanLayer Terminal UI').action(tuiCommand)
+
+program
+  .command('config')
+  .description('Configuration management')
+  .command('show')
+  .description('Show current configuration')
+  .option('--config-file <path>', 'Path to config file')
+  .option('--slack-channel <id>', 'Slack channel or user ID')
+  .option('--slack-bot-token <token>', 'Slack bot token')
+  .option('--slack-context <context>', 'Context about the Slack channel or user')
+  .option('--slack-thread-ts <ts>', 'Slack thread timestamp')
+  .option('--slack-blocks [boolean]', 'Use experimental Slack blocks')
+  .option('--email-address <email>', 'Email address to contact')
+  .option('--email-context <context>', 'Context about the email recipient')
+  .option('--json', 'Output as JSON with masked keys')
+  .action(configShowCommand)
 
 program
   .command('contact_human')
@@ -20,51 +47,6 @@ program
   .option('--slack-blocks [boolean]', 'Use experimental Slack blocks', true)
   .option('--email-address <email>', 'Email address to contact')
   .option('--email-context <context>', 'Context about the email recipient')
-  .option('--config-file <file>', 'Path to config file')
-  .action(async options => {
-    let message = options.message
-
-    if (message === '-') {
-      // Read from stdin
-      process.stdin.setEncoding('utf8')
-      let stdinData = ''
-
-      for await (const chunk of process.stdin) {
-        stdinData += chunk
-      }
-
-      message = stdinData.trim()
-    }
-
-    try {
-      const config = loadConfigFile(options.configFile)
-      const contactChannel = buildContactChannel(options, config)
-
-      if (Object.keys(contactChannel).length === 0) {
-        console.error(
-          chalk.red(
-            'Error: No contact channel configured. Please specify --slack-channel, --email-address, or use environment variables/config file.',
-          ),
-        )
-        process.exit(1)
-      }
-
-      const hl = humanlayer({ contactChannel })
-
-      console.error(chalk.yellow('Contacting human...'))
-
-      const response = await hl.fetchHumanResponse({
-        spec: {
-          msg: message,
-        },
-      })
-
-      console.error(chalk.green('Human response received'))
-      console.log(response)
-    } catch (error) {
-      console.error(chalk.red('Error contacting human:'), error)
-      process.exit(1)
-    }
-  })
+  .action(contactHumanCommand)
 
 program.parse(process.argv)
