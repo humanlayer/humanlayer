@@ -32,16 +32,11 @@ export async function contactHumanCommand(options: ContactHumanOptions) {
   try {
     const resolvedConfig = resolveFullConfig(options)
 
-    if (Object.keys(resolvedConfig.contact_channel).length === 0) {
-      console.error(
-        chalk.red(
-          'Error: No contact channel configured. Please specify --slack-channel, --email-address, or use environment variables/config file.',
-        ),
-      )
-      process.exit(1)
-    }
-
-    const hl = humanlayer({ contactChannel: resolvedConfig.contact_channel })
+    // Use contact channel if configured, otherwise default to web UI
+    const hl =
+      Object.keys(resolvedConfig.contact_channel).length > 0
+        ? humanlayer({ contactChannel: resolvedConfig.contact_channel })
+        : humanlayer()
 
     console.error(chalk.yellow('Contacting human...'))
 

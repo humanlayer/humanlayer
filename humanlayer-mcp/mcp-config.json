@@ -1,8 +1,0 @@
-{
-  "mcpServers": {
-    "humanlayer_local": {
-      "command": "npm",
-      "args": ["run", "dev"]
-    }
-  }
-}
