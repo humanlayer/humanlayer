@@ -1,7 +1,8 @@
 import chalk from 'chalk'
 import readline from 'readline'
 import { spawn } from 'child_process'
-import { loadConfigFile, saveConfigFile, getDefaultConfigPath } from '../config.js'
+import { loadConfigFile, saveConfigFile, getDefaultConfigPath, resolveFullConfig } from '../config.js'
+import { getProject } from '../hlClient.js'
 
 interface LoginOptions {
   apiBase?: string
@@ -81,29 +82,14 @@ export async function loginCommand(options: LoginOptions): Promise<void> {
       process.exit(0)
     }
 
-    // Validate token by making a request to /me endpoint
-    // TODO: NOT WORKING ATM, need to fix this
-    // const apiBaseUrl = options.apiBase || existingConfig.api_base_url || process.env.HUMANLAYER_API_BASE_URL || 'https://api.humanlayer.dev'
-
-    // console.log("apiBaseUrl", apiBaseUrl)
-    // try {
-    //   console.log(chalk.blue('Validating token...'))
-    //   const response = await fetch(`${apiBaseUrl}/me`, {
-    //     headers: {
-    //       'Authorization': `Bearer ${token.trim()}`
-    //     }
-    //   })
-
-    //   if (!response.ok) {
-    //     throw new Error(`Token validation failed: ${response.statusText}`)
-    //   }
-
-    //   const userData = await response.json()
-    //   console.log(chalk.green(`Token validated successfully! Logged in as: ${userData.email || 'Unknown'}`))
-    // } catch (error) {
-    //   console.error(chalk.red(`Token validation failed: ${error}`))
-    //   process.exit(1)
-    // }
+    const oldConfig = resolveFullConfig({})
+    let project;
+    try {
+       project = await getProject(oldConfig.api_base_url, token.trim())
+    } catch (error) {
+      console.error(chalk.red(`Returned token was invalid.`))
+      process.exit(1);
+    }
 
     const newConfig = {
       ...existingConfig,
@@ -113,7 +99,7 @@ export async function loginCommand(options: LoginOptions): Promise<void> {
     }
 
     saveConfigFile(newConfig, options.configFile)
-    console.log(chalk.green('Login successful!'))
+    console.log(chalk.green(`Login successful, using project ${chalk.bold(project.name)}`))
   } catch (error) {
     console.error(chalk.red(`Error during login: ${error}`))
     process.exit(1)
