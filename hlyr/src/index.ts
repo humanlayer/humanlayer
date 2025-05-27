@@ -81,4 +81,9 @@ mcpCommand
     spawn('npx', args, { stdio: 'inherit', cwd: process.cwd() })
   })
 
+// Set up default action when no command is provided
+program.action(() => {
+  tuiCommand()
+})
+
 program.parse(process.argv)
