@@ -1,8 +1,12 @@
-# hlyr
+# HumanLayer CLI
 
 HumanLayer, but on your command-line.
 
-A CLI tool for contacting humans directly from your terminal or scripts.
+A unified CLI tool that provides:
+
+- Direct human contact from terminal or scripts
+- MCP (Model Context Protocol) server functionality
+- Integration with Claude Code SDK for approval workflows
 
 ## Quickstart
 
@@ -10,10 +14,10 @@ A CLI tool for contacting humans directly from your terminal or scripts.
 
 ```bash
 # Contact a human with a message
-npx hlyr contact_human -m "Need help with deployment approval"
+npx humanlayer contact_human -m "Need help with deployment approval"
 
 # Or use the long form
-npx hlyr contact_human --message "Review this pull request"
+npx humanlayer contact_human --message "Review this pull request"
 ```
 
 ### Configuration
@@ -27,22 +31,24 @@ export HUMANLAYER_API_KEY=...
 Using cli flags:
 
 ```bash
-hlyr contact_human --message "Review this pull request" --slack-channel "C08G5C3V552"
+humanlayer contact_human --message "Review this pull request" --slack-channel "C08G5C3V552"
 ```
 
 using environment variables:
 
 ```bash
 export HUMANLAYER_SLACK_CHANNEL=C08G5C3V552
-hlyr contact_human --message "Review this pull request"
+humanlayer contact_human --message "Review this pull request"
 ```
 
 or
 
 ```
 export HUMANLAYER_EMAIL_ADDRESS=human@example.com
-hlyr contact_human --message "Review this pull request"
+humanlayer contact_human --message "Review this pull request"
 ```
+
+**Note:** If no contact channel is configured, HumanLayer will default to the web UI for human interactions.
 
 using a config file:
 
@@ -59,19 +65,55 @@ echo '
 ```
 
 ```bash
-hlyr contact_human --message "Review this pull request" --config-file .hlyr.json
+humanlayer contact_human --message "Review this pull request" --config-file .hlyr.json
+```
+
+### MCP Server Usage
+
+Start an MCP server for integration with MCP clients like Claude Desktop:
+
+```bash
+# Contact human functionality
+humanlayer mcp serve
+
+# Claude Code SDK approval integration
+humanlayer mcp claude_approvals
+
+# Debug MCP servers with inspector
+humanlayer mcp inspector serve
+humanlayer mcp inspector claude_approvals
+```
+
+### Claude Code SDK Integration
+
+For automated approval workflows with Claude Code SDK:
+
+`mcp-config.json`:
+
+```json
+{
+  "mcpServers": {
+    "approvals": {
+      "command": "npx",
+      "args": ["-y", "humanlayer", "mcp", "claude_approvals"],
+      "env": {
+        "HUMANLAYER_API_KEY": "<YOUR_API_KEY>"
+      }
+    }
+  }
+}
+```
+
+```bash
+claude -p "write hello world to a file" \
+  --mcp-config mcp-config.json \
+  --permission-prompt-tool mcp__approvals__request_permission
 ```
 
 ### Run with claude code
 
 ```
-claude -p "do some work" | npx hlyr contact_human -m -
-```
-
-or
-
-```bash
-claude -p "do some work" | npx hlyr contact_human --message-stdin | claude -p -
+claude -p "do some work" | npx humanlayer contact_human -m -
 ```
 
 or
@@ -82,7 +124,7 @@ message="make me a file hello.txt with contents 'hello world'"
 
 claude_answer=$(claude -p "$message" --allowedTools "$allowedTools")
 while :; do
-human_answer=$(echo "$claude_answer" | npx hlyr contact_human -m -)
+human_answer=$(echo "$claude_answer" | npx humanlayer contact_human -m -)
 message="$human_answer"
 claude_answer=$(claude -p "$message" --allowedTools "$allowedTools" --continue)
 done
@@ -94,7 +136,7 @@ done
 npm install -g hlyr
 
 # Then use directly
-hlyr contact_human -m "Production database needs review"
+humanlayer contact_human -m "Production database needs review"
 ```
 
 ## Commands
@@ -104,7 +146,7 @@ hlyr contact_human -m "Production database needs review"
 Contact a human with a message and wait for a response.
 
 ```bash
-hlyr contact_human -m "Your message here"
+humanlayer contact_human -m "Your message here"
 ```
 
 **Options:**
@@ -115,17 +157,32 @@ hlyr contact_human -m "Your message here"
 
 ```bash
 # Simple message
-hlyr contact_human -m "Please review the deployment logs"
+humanlayer contact_human -m "Please review the deployment logs"
 
 # Multi-word message
-hlyr contact_human -m "The API is returning 500 errors, need immediate help"
+humanlayer contact_human -m "The API is returning 500 errors, need immediate help"
 
 # Using in scripts
 #!/bin/bash
 if [ $? -ne 0 ]; then
-  hlyr contact_human -m "Build failed, manual intervention needed"
+  humanlayer contact_human -m "Build failed, manual intervention needed"
 fi
 ```
+
+### `mcp`
+
+Model Context Protocol server functionality.
+
+```bash
+humanlayer mcp <subcommand>
+```
+
+**Subcommands:**
+
+- `serve` - Start the default MCP server for contact_human functionality
+- `claude_approvals` - Start the Claude approvals MCP server for permission requests
+- `wrapper` - Wrap an existing MCP server with human approval functionality (not implemented yet)
+- `inspector [command]` - Run MCP inspector for debugging MCP servers (defaults to 'serve')
 
 ## Use Cases
 

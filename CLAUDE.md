@@ -19,11 +19,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `make publish-py` - Publish Python package to PyPI
 - `make publish-ts` - Publish TypeScript package to npm
 
-### MCP Server
+### CLI Tool and MCP Server
 
-- `make check-mcp` - Check MCP server TypeScript code
-- `npm -C humanlayer-mcp run build` - Build MCP server
-- `npm -C humanlayer-mcp run inspector` - Run MCP inspector for debugging
+- `make check-hlyr` - Check CLI and MCP server TypeScript code
+- `npm -C hlyr run build` - Build CLI and MCP server
+- `npx humanlayer mcp inspector [command]` - Run MCP inspector for debugging (defaults to 'serve')
 
 ### Example Testing
 
@@ -45,7 +45,7 @@ HumanLayer is a multi-language SDK (Python/TypeScript) that enables AI agents to
 
 - `humanlayer/` - Python package source
 - `humanlayer-ts/` - TypeScript package source
-- `humanlayer-mcp/` - Model Context Protocol server
+- `hlyr/` - CLI tool with integrated MCP server functionality
 - `examples/` - Framework integrations (LangChain, CrewAI, OpenAI, etc.)
 - `docs/` - Documentation site
 

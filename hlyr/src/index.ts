@@ -5,6 +5,7 @@ import { loginCommand } from './commands/login.js'
 import { tuiCommand } from './commands/tui.js'
 import { contactHumanCommand } from './commands/contactHuman.js'
 import { configShowCommand } from './commands/configShow.js'
+import { startDefaultMCPServer, startClaudeApprovalsMCPServer } from './mcp.js'
 
 const program = new Command()
 
@@ -48,5 +49,36 @@ program
   .option('--email-address <email>', 'Email address to contact')
   .option('--email-context <context>', 'Context about the email recipient')
   .action(contactHumanCommand)
+
+const mcpCommand = program.command('mcp').description('MCP server functionality')
+
+mcpCommand
+  .command('serve')
+  .description('Start the default MCP server for contact_human functionality')
+  .action(startDefaultMCPServer)
+
+mcpCommand
+  .command('claude_approvals')
+  .description('Start the Claude approvals MCP server for permission requests')
+  .action(startClaudeApprovalsMCPServer)
+
+mcpCommand
+  .command('wrapper')
+  .description('Wrap an existing MCP server with human approval functionality (not implemented yet)')
+  .action(() => {
+    console.log('MCP wrapper functionality is not implemented yet.')
+    console.log('This will allow wrapping any existing MCP server with human approval.')
+    process.exit(1)
+  })
+
+mcpCommand
+  .command('inspector')
+  .description('Run MCP inspector for debugging MCP servers')
+  .argument('[command]', 'MCP server command to inspect', 'serve')
+  .action(command => {
+    const { spawn } = require('child_process')
+    const args = ['@modelcontextprotocol/inspector', 'node', 'dist/index.js', 'mcp', command]
+    spawn('npx', args, { stdio: 'inherit', cwd: process.cwd() })
+  })
 
 program.parse(process.argv)

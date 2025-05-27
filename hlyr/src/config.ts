@@ -127,7 +127,7 @@ export type ResolvedConfig = {
 export function resolveFullConfig(options: any): ResolvedConfig {
   const config = options.configFile ? loadConfigFile(options.configFile) : loadConfigFile()
 
-  const api_token = config.api_token || process.env.HUMANLAYER_API_TOKEN
+  const api_token = config.api_token || process.env.HUMANLAYER_API_KEY
   const api_base_url =
     config.api_base_url || process.env.HUMANLAYER_API_BASE_URL || 'https://api.humanlayer.dev'
   const app_base_url =

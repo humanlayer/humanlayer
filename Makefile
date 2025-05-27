@@ -13,9 +13,6 @@ check-py: ## Run code quality tools.
 check-ts:
 	npm -C humanlayer-ts run check
 
-check-mcp:
-	npm -C humanlayer-mcp run check
-
 check-hlyr:
 	npm -C hlyr run check
 
@@ -23,7 +20,7 @@ check-tui:
 	@$(MAKE) -C humanlayer-tui check
 
 .PHONY: check
-check: check-py check-ts check-mcp check-hlyr check-tui
+check: check-py check-ts check-hlyr check-tui
 
 typecheck: ## just the typechecks
 	: 🚀 Static type checking: Running mypy
