@@ -13,7 +13,7 @@ interface TestCase {
     path?: string
   }
   expected: {
-    api_token?: string
+    api_key?: string
     api_base_url: string
     app_base_url: string
     contact_channel: Record<string, unknown>
@@ -82,14 +82,14 @@ describe('config show e2e tests', () => {
     {
       name: 'environment variables',
       env: {
-        HUMANLAYER_API_TOKEN: 'test-token-123456',
-        HUMANLAYER_API_BASE_URL: 'https://api.example.com',
+        HUMANLAYER_API_KEY: 'test-token-123456',
+        HUMANLAYER_API_BASE: 'https://api.example.com',
         HUMANLAYER_APP_URL: 'https://app.example.com',
         HUMANLAYER_SLACK_CHANNEL: 'C789012',
         HUMANLAYER_SLACK_BOT_TOKEN: 'xoxb-test-bot-token',
       },
       expected: {
-        api_token: 'test-t...',
+        api_key: 'test-t...',
         api_base_url: 'https://api.example.com',
         app_base_url: 'https://app.example.com',
         contact_channel: {
@@ -143,7 +143,7 @@ describe('config show e2e tests', () => {
       name: 'config file with API settings',
       configFile: {
         content: {
-          api_token: 'config-token-123456',
+          api_key: 'config-token-123456',
           api_base_url: 'https://config-api.example.com',
           app_base_url: 'https://config-app.example.com',
           channel: {
@@ -157,7 +157,7 @@ describe('config show e2e tests', () => {
         },
       },
       expected: {
-        api_token: 'config...',
+        api_key: 'config...',
         api_base_url: 'https://config-api.example.com',
         app_base_url: 'https://config-app.example.com',
         contact_channel: {
@@ -218,7 +218,7 @@ describe('config show e2e tests', () => {
       }
 
       // Execute command
-      const result = await runCommand(args, testCase.env)
+      const result = await runCommand(args, testCase.env, tempDir)
 
       expect(result.exitCode).toBe(0)
       expect(result.stderr).toBe('')
@@ -231,9 +231,13 @@ describe('config show e2e tests', () => {
   })
 
   it('should show human-readable output without --json flag', async () => {
-    const result = await runCommand(['config', 'show'], {
-      HUMANLAYER_SLACK_CHANNEL: 'C123456',
-    })
+    const result = await runCommand(
+      ['config', 'show'],
+      {
+        HUMANLAYER_SLACK_CHANNEL: 'C123456',
+      },
+      tempDir,
+    )
 
     expect(result.exitCode).toBe(0)
     expect(result.stdout).toContain('HumanLayer Configuration')
@@ -247,6 +251,7 @@ describe('config show e2e tests', () => {
 async function runCommand(
   args: string[],
   env?: Record<string, string>,
+  cwd?: string,
 ): Promise<{
   stdout: string
   stderr: string
@@ -256,8 +261,23 @@ async function runCommand(
     // Build path to the CLI binary
     const cliPath = join(__dirname, '..', 'dist', 'index.js')
 
+    // Create isolated environment that prevents reading actual config files
+    const isolatedEnv = {
+      // Remove all HUMANLAYER_ env vars that might leak from the real environment
+      ...Object.fromEntries(
+        Object.entries(process.env).filter(([key]) => !key.startsWith('HUMANLAYER_')),
+      ),
+      // Set HOME to temp directory to isolate XDG_CONFIG_HOME
+      HOME: cwd || process.env.TMPDIR || '/tmp',
+      // Clear XDG_CONFIG_HOME to use HOME/.config
+      XDG_CONFIG_HOME: undefined,
+      // Add test-specific env vars
+      ...env,
+    }
+
     const child = spawn('node', [cliPath, ...args], {
-      env: { ...process.env, ...env },
+      env: isolatedEnv,
+      cwd: cwd || process.env.TMPDIR || '/tmp',
       stdio: 'pipe',
     })
 

@@ -26,11 +26,8 @@ export async function loginCommand(options: LoginOptions): Promise<void> {
     // Load existing config if config file flag is set
     const existingConfig = options.configFile ? loadConfigFile(options.configFile) : { channel: {} }
 
-    const appUrl =
-      options.appBase ||
-      existingConfig.app_base_url ||
-      process.env.HUMANLAYER_APP_URL ||
-      'https://app.humanlayer.dev'
+    const config = resolveFullConfig({ ...options, configFile: options.configFile })
+    const appUrl = options.appBase || config.app_base_url
     const loginUrl = `${appUrl}/cli-login`
 
     console.log(chalk.blue('HumanLayer Login'))
@@ -76,25 +73,27 @@ export async function loginCommand(options: LoginOptions): Promise<void> {
     const configPath = options.configFile || getDefaultConfigPath()
     console.log(chalk.yellow(`Token will be written to: ${configPath}`))
 
-    const proceed = await question('Continue? (y/N): ')
-    if (proceed.toLowerCase() !== 'y' && proceed.toLowerCase() !== 'yes') {
+    const proceed = await question('Continue? (Y/n): ')
+    if (proceed.toLowerCase() === 'n' || proceed.toLowerCase() === 'no') {
       console.log(chalk.gray('Login cancelled'))
       process.exit(0)
     }
 
-    const oldConfig = resolveFullConfig({})
-    let project;
+    // Use API base URL from config resolution
+    const apiBaseUrl = options.apiBase || config.api_base_url
+
+    let project
     try {
-       project = await getProject(oldConfig.api_base_url, token.trim())
+      project = await getProject(apiBaseUrl, token.trim())
     } catch (error) {
-      console.error(chalk.red(`Returned token was invalid.`))
-      process.exit(1);
+      console.error(chalk.red(`Returned token was invalid: ${error}`))
+      process.exit(1)
     }
 
     const newConfig = {
       ...existingConfig,
-      api_token: token.trim(),
-      api_base_url: options.apiBase || existingConfig.api_base_url || 'https://api.humanlayer.dev',
+      api_key: token.trim(),
+      api_base_url: apiBaseUrl,
       app_base_url: appUrl,
     }
 

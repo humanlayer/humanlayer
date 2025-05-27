@@ -12,7 +12,7 @@ import { resolveFullConfig } from './config.js'
 function validateAuth(): void {
   const config = resolveFullConfig({})
 
-  if (!config.api_token) {
+  if (!config.api_key) {
     console.error('Error: No HumanLayer API token found.')
     console.error('Please set HUMANLAYER_API_KEY environment variable or run `humanlayer login`')
     process.exit(1)

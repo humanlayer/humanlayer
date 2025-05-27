@@ -9,7 +9,7 @@ dotenv.config()
 
 export type ConfigFile = {
   channel: ContactChannel
-  api_token?: string
+  api_key?: string
   api_base_url?: string
   app_base_url?: string
 }
@@ -117,7 +117,7 @@ export function getDefaultConfigPath(): string {
 }
 
 export type ResolvedConfig = {
-  api_token?: string
+  api_key?: string
   api_base_url: string
   app_base_url: string
   contact_channel: ContactChannel
@@ -127,15 +127,15 @@ export type ResolvedConfig = {
 export function resolveFullConfig(options: any): ResolvedConfig {
   const config = options.configFile ? loadConfigFile(options.configFile) : loadConfigFile()
 
-  const api_token = process.env.HUMANLAYER_API_KEY || config.api_token 
+  const api_key = process.env.HUMANLAYER_API_KEY || config.api_key
   const api_base_url =
-    process.env.HUMANLAYER_API_BASE_URL || config.api_base_url || 'https://api.humanlayer.dev'
+    process.env.HUMANLAYER_API_BASE || config.api_base_url || 'https://api.humanlayer.dev'
   const app_base_url =
     process.env.HUMANLAYER_APP_URL || config.app_base_url || 'https://app.humanlayer.dev'
   const contact_channel = buildContactChannel(options, config)
 
   return {
-    api_token,
+    api_key,
     api_base_url,
     app_base_url,
     contact_channel,

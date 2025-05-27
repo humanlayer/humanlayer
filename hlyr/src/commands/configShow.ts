@@ -20,9 +20,7 @@ export function configShowCommand(options: ConfigShowOptions): void {
     // JSON output mode
     if (options.json) {
       const jsonOutput = {
-        api_token: resolvedConfig.api_token
-          ? resolvedConfig.api_token.substring(0, 6) + '...'
-          : undefined,
+        api_key: resolvedConfig.api_key ? resolvedConfig.api_key.substring(0, 6) + '...' : undefined,
         api_base_url: resolvedConfig.api_base_url,
         app_base_url: resolvedConfig.app_base_url,
         contact_channel: resolvedConfig.contact_channel,
@@ -51,11 +49,9 @@ export function configShowCommand(options: ConfigShowOptions): void {
 
     // Show API configuration
     console.log(chalk.yellow('API Configuration:'))
-    const apiToken = resolvedConfig.api_token || '<not set>'
+    const apiKey = resolvedConfig.api_key || '<not set>'
 
-    console.log(
-      `  API Token: ${apiToken === '<not set>' ? chalk.red(apiToken) : chalk.green('***set***')}`,
-    )
+    console.log(`  API Key: ${apiKey === '<not set>' ? chalk.red(apiKey) : chalk.green('***set***')}`)
     console.log(`  API Base URL: ${chalk.cyan(resolvedConfig.api_base_url)}`)
     console.log(`  App Base URL: ${chalk.cyan(resolvedConfig.app_base_url)}`)
     console.log('')
@@ -95,7 +91,7 @@ export function configShowCommand(options: ConfigShowOptions): void {
     // Show environment variables
     console.log(chalk.yellow('Environment Variables:'))
     const envVars = [
-      'HUMANLAYER_API_TOKEN',
+      'HUMANLAYER_API_KEY',
       'HUMANLAYER_API_BASE_URL',
       'HUMANLAYER_APP_URL',
       'HUMANLAYER_SLACK_CHANNEL',
@@ -111,7 +107,7 @@ export function configShowCommand(options: ConfigShowOptions): void {
     envVars.forEach(envVar => {
       const value = process.env[envVar]
       if (value) {
-        const displayValue = envVar.includes('TOKEN') ? '***set***' : value
+        const displayValue = envVar.includes('TOKEN') || envVar.includes('KEY') ? '***set***' : value
         console.log(`  ${envVar}: ${chalk.green(displayValue)}`)
       } else {
         console.log(`  ${envVar}: ${chalk.gray('<not set>')}`)
