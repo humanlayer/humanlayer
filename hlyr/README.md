@@ -88,8 +88,9 @@ humanlayer mcp inspector claude_approvals
 
 For automated approval workflows with Claude Code SDK:
 
+`mcp-config.json`:
+
 ```json
-// mcp-config.json
 {
   "mcpServers": {
     "approvals": {
