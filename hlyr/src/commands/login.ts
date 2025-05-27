@@ -33,8 +33,6 @@ export async function loginCommand(options: LoginOptions): Promise<void> {
     const loginUrl = `${appUrl}/cli-login`
 
     console.log(chalk.blue('HumanLayer Login'))
-    console.log(chalk.gray(`To get your API token, visit: ${loginUrl}`))
-    console.log('')
 
     // Try to open the URL in the default browser
     const openBrowser = async (url: string) => {
@@ -54,6 +52,7 @@ export async function loginCommand(options: LoginOptions): Promise<void> {
         console.log(chalk.green('Opening browser...'))
       } catch (error) {
         console.log(chalk.yellow(`Could not open browser automatically: ${error}`))
+        console.log(chalk.gray(`To get your API token, visit: ${loginUrl}`))
       }
     }
 
@@ -81,6 +80,30 @@ export async function loginCommand(options: LoginOptions): Promise<void> {
       console.log(chalk.gray('Login cancelled'))
       process.exit(0)
     }
+
+    // Validate token by making a request to /me endpoint
+    // TODO: NOT WORKING ATM, need to fix this
+    // const apiBaseUrl = options.apiBase || existingConfig.api_base_url || process.env.HUMANLAYER_API_BASE_URL || 'https://api.humanlayer.dev'
+
+    // console.log("apiBaseUrl", apiBaseUrl)
+    // try {
+    //   console.log(chalk.blue('Validating token...'))
+    //   const response = await fetch(`${apiBaseUrl}/me`, {
+    //     headers: {
+    //       'Authorization': `Bearer ${token.trim()}`
+    //     }
+    //   })
+
+    //   if (!response.ok) {
+    //     throw new Error(`Token validation failed: ${response.statusText}`)
+    //   }
+
+    //   const userData = await response.json()
+    //   console.log(chalk.green(`Token validated successfully! Logged in as: ${userData.email || 'Unknown'}`))
+    // } catch (error) {
+    //   console.error(chalk.red(`Token validation failed: ${error}`))
+    //   process.exit(1)
+    // }
 
     const newConfig = {
       ...existingConfig,
