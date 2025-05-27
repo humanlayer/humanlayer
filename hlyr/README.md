@@ -3,8 +3,9 @@
 HumanLayer, but on your command-line.
 
 A unified CLI tool that provides:
+
 - Direct human contact from terminal or scripts
-- MCP (Model Context Protocol) server functionality  
+- MCP (Model Context Protocol) server functionality
 - Integration with Claude Code SDK for approval workflows
 
 ## Quickstart
@@ -178,7 +179,7 @@ humanlayer mcp <subcommand>
 **Subcommands:**
 
 - `serve` - Start the default MCP server for contact_human functionality
-- `claude_approvals` - Start the Claude approvals MCP server for permission requests  
+- `claude_approvals` - Start the Claude approvals MCP server for permission requests
 - `wrapper` - Wrap an existing MCP server with human approval functionality (not implemented yet)
 - `inspector [command]` - Run MCP inspector for debugging MCP servers (defaults to 'serve')
 
