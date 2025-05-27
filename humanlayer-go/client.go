@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -23,10 +24,15 @@ type ClientOption func(*Client) error
 // NewClient creates a new HumanLayer client
 func NewClient(opts ...ClientOption) (*Client, error) {
 	c := &Client{
-		baseURL: "https://api.humanlayer.dev",
+		baseURL: "https://api.humanlayer.dev/humanlayer/v1",
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
+	}
+
+	// Check for API key in environment if not provided
+	if apiKey := os.Getenv("HUMANLAYER_API_KEY"); apiKey != "" {
+		c.apiKey = apiKey
 	}
 
 	for _, opt := range opts {
@@ -36,7 +42,7 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 	}
 
 	if c.apiKey == "" {
-		return nil, fmt.Errorf("API key is required")
+		return nil, fmt.Errorf("API key is required (set HUMANLAYER_API_KEY or use WithAPIKey)")
 	}
 
 	return c, nil
@@ -102,64 +108,79 @@ func (c *Client) doRequest(ctx context.Context, method, path string, body interf
 	return resp, nil
 }
 
-// GetPendingApprovals fetches all pending approval requests
-func (c *Client) GetPendingApprovals(ctx context.Context) ([]ApprovalRequest, error) {
-	resp, err := c.doRequest(ctx, "GET", "/v1/approvals/pending", nil)
+// GetPendingFunctionCalls fetches all pending function call approval requests
+func (c *Client) GetPendingFunctionCalls(ctx context.Context) ([]FunctionCall, error) {
+	resp, err := c.doRequest(ctx, "GET", "/agent/function_calls/pending", nil)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 
-	var result struct {
-		Approvals []ApprovalRequest `json:"approvals"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	var functionCalls []FunctionCall
+	if err := json.NewDecoder(resp.Body).Decode(&functionCalls); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	return result.Approvals, nil
+	return functionCalls, nil
 }
 
 // GetPendingHumanContacts fetches all pending human contact requests
-func (c *Client) GetPendingHumanContacts(ctx context.Context) ([]HumanContactRequest, error) {
-	resp, err := c.doRequest(ctx, "GET", "/v1/human-contacts/pending", nil)
+func (c *Client) GetPendingHumanContacts(ctx context.Context) ([]HumanContact, error) {
+	resp, err := c.doRequest(ctx, "GET", "/agent/human_contacts/pending", nil)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 
-	var result struct {
-		Contacts []HumanContactRequest `json:"contacts"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	var humanContacts []HumanContact
+	if err := json.NewDecoder(resp.Body).Decode(&humanContacts); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	return result.Contacts, nil
+	return humanContacts, nil
 }
 
-// ApproveRequest approves a pending request
-func (c *Client) ApproveRequest(ctx context.Context, requestID string, response *ApprovalResponse) error {
-	path := fmt.Sprintf("/v1/approvals/%s/respond", requestID)
-	_, err := c.doRequest(ctx, "POST", path, response)
-	return err
+// RespondToFunctionCall responds to a function call approval request
+func (c *Client) RespondToFunctionCall(ctx context.Context, callID string, status FunctionCallStatus) error {
+	path := fmt.Sprintf("/agent/function_calls/%s/respond", callID)
+	resp, err := c.doRequest(ctx, "POST", path, status)
+	if err != nil {
+		return err
+	}
+	resp.Body.Close()
+	return nil
 }
 
-// DenyRequest denies a pending request with feedback
-func (c *Client) DenyRequest(ctx context.Context, requestID string, reason string) error {
-	response := &ApprovalResponse{
-		Approved: false,
+// ApproveFunctionCall approves a function call
+func (c *Client) ApproveFunctionCall(ctx context.Context, callID string, comment string) error {
+	approved := true
+	status := FunctionCallStatus{
+		Approved: &approved,
+		Comment:  comment,
+	}
+	return c.RespondToFunctionCall(ctx, callID, status)
+}
+
+// DenyFunctionCall denies a function call with a reason
+func (c *Client) DenyFunctionCall(ctx context.Context, callID string, reason string) error {
+	approved := false
+	status := FunctionCallStatus{
+		Approved: &approved,
 		Comment:  reason,
 	}
-	return c.ApproveRequest(ctx, requestID, response)
+	return c.RespondToFunctionCall(ctx, callID, status)
 }
 
 // RespondToHumanContact responds to a human contact request
-func (c *Client) RespondToHumanContact(ctx context.Context, requestID string, message string) error {
-	path := fmt.Sprintf("/v1/human-contacts/%s/respond", requestID)
-	body := map[string]string{
-		"response": message,
+func (c *Client) RespondToHumanContact(ctx context.Context, callID string, response string) error {
+	path := fmt.Sprintf("/agent/human_contacts/%s/respond", callID)
+	status := HumanContactStatus{
+		Response: response,
 	}
-	_, err := c.doRequest(ctx, "POST", path, body)
-	return err
+	resp, err := c.doRequest(ctx, "POST", path, status)
+	if err != nil {
+		return err
+	}
+	resp.Body.Close()
+	return nil
 }

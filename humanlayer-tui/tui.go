@@ -26,11 +26,13 @@ const (
 // Request represents either an approval or human contact
 type Request struct {
 	ID          string
+	CallID      string  
+	RunID       string
 	Type        RequestType
 	Message     string
 	Tool        string // For approvals
 	Parameters  map[string]interface{} // For approvals
-	TimeAgo     time.Duration
+	CreatedAt   time.Time
 	AgentName   string
 }
 
@@ -155,22 +157,43 @@ func fetchRequests(client *humanlayer.Client) tea.Cmd {
 
 		var allRequests []Request
 
-		// Fetch approvals
-		approvals, err := client.GetPendingApprovals(ctx)
+		// Fetch function calls (approvals)
+		functionCalls, err := client.GetPendingFunctionCalls(ctx)
 		if err != nil {
 			return fetchRequestsMsg{err: err}
 		}
 
-		// Convert approvals to our Request type
-		for _, approval := range approvals {
+		// Convert function calls to our Request type
+		for _, fc := range functionCalls {
+			// Build a message from the function name and kwargs
+			message := fmt.Sprintf("Call %s", fc.Spec.Fn)
+			if len(fc.Spec.Kwargs) > 0 {
+				// Add first few parameters to message
+				params := []string{}
+				for k, v := range fc.Spec.Kwargs {
+					params = append(params, fmt.Sprintf("%s=%v", k, v))
+					if len(params) >= 2 {
+						break
+					}
+				}
+				message += fmt.Sprintf(" with %s", strings.Join(params, ", "))
+			}
+			
+			createdAt := time.Now() // Default to now if not available
+			if fc.Status != nil && fc.Status.RequestedAt != nil {
+				createdAt = fc.Status.RequestedAt.Time
+			}
+
 			allRequests = append(allRequests, Request{
-				ID:         approval.ID,
+				ID:         fc.CallID,
+				CallID:     fc.CallID,
+				RunID:      fc.RunID,
 				Type:       ApprovalRequest,
-				Message:    approval.Message,
-				Tool:       approval.Tool,
-				Parameters: approval.ToolArgs,
-				TimeAgo:    time.Since(approval.CreatedAt),
-				AgentName:  approval.AgentName,
+				Message:    message,
+				Tool:       fc.Spec.Fn,
+				Parameters: fc.Spec.Kwargs,
+				CreatedAt:  createdAt,
+				AgentName:  "Agent", // TODO: Get from somewhere
 			})
 		}
 
@@ -181,13 +204,20 @@ func fetchRequests(client *humanlayer.Client) tea.Cmd {
 		}
 
 		// Convert contacts to our Request type
-		for _, contact := range contacts {
+		for _, hc := range contacts {
+			createdAt := time.Now() // Default to now if not available
+			if hc.Status != nil && hc.Status.RequestedAt != nil {
+				createdAt = hc.Status.RequestedAt.Time
+			}
+
 			allRequests = append(allRequests, Request{
-				ID:        contact.ID,
+				ID:        hc.CallID,
+				CallID:    hc.CallID,
+				RunID:     hc.RunID,
 				Type:      HumanContactRequest,
-				Message:   contact.Message,
-				TimeAgo:   time.Since(contact.CreatedAt),
-				AgentName: contact.AgentName,
+				Message:   hc.Spec.Msg,
+				CreatedAt: createdAt,
+				AgentName: "Agent", // TODO: Get from somewhere
 			})
 		}
 
@@ -426,7 +456,7 @@ func (m model) listViewRender() string {
 				typeIcon,
 				truncate(req.Tool, 20),
 				truncate(req.Message, 30),
-				formatDuration(req.TimeAgo),
+				formatDuration(time.Since(req.CreatedAt)),
 			)
 
 			if i == m.cursor {
@@ -479,7 +509,7 @@ func (m model) detailViewRender() string {
 		s.WriteString(details.Render(fmt.Sprintf("Type: %s\n", req.Type)))
 		s.WriteString(details.Render(fmt.Sprintf("Tool: %s\n", req.Tool)))
 		s.WriteString(details.Render(fmt.Sprintf("Agent: %s\n", req.AgentName)))
-		s.WriteString(details.Render(fmt.Sprintf("Time: %s ago\n", formatDuration(req.TimeAgo))))
+		s.WriteString(details.Render(fmt.Sprintf("Time: %s ago\n", formatDuration(time.Since(req.CreatedAt)))))
 		s.WriteString("\n")
 		s.WriteString(details.Render("Parameters:\n"))
 		for k, v := range req.Parameters {
@@ -487,7 +517,7 @@ func (m model) detailViewRender() string {
 		}
 	} else {
 		s.WriteString(details.Render(fmt.Sprintf("From: %s\n", req.AgentName)))
-		s.WriteString(details.Render(fmt.Sprintf("Time: %s ago\n", formatDuration(req.TimeAgo))))
+		s.WriteString(details.Render(fmt.Sprintf("Time: %s ago\n", formatDuration(time.Since(req.CreatedAt)))))
 		s.WriteString("\n")
 		s.WriteString(details.Render("Message:\n"))
 		s.WriteString(details.Render(req.Message + "\n"))
@@ -602,22 +632,19 @@ type humanResponseSentMsg struct {
 }
 
 // Command to send approval/denial
-func (m model) sendApproval(requestID string, approved bool, comment string) tea.Cmd {
+func (m model) sendApproval(callID string, approved bool, comment string) tea.Cmd {
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
 		var err error
 		if approved {
-			err = m.client.ApproveRequest(ctx, requestID, &humanlayer.ApprovalResponse{
-				Approved: true,
-				Comment:  comment,
-			})
+			err = m.client.ApproveFunctionCall(ctx, callID, comment)
 		} else {
-			err = m.client.DenyRequest(ctx, requestID, comment)
+			err = m.client.DenyFunctionCall(ctx, callID, comment)
 		}
 
-		return approvalSentMsg{requestID: requestID, err: err}
+		return approvalSentMsg{requestID: callID, err: err}
 	}
 }
 
