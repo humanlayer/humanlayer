@@ -24,7 +24,7 @@ package main
 import (
     "context"
     "log"
-    
+
     "github.com/humanlayer/humanlayer-go"
 )
 
@@ -37,27 +37,27 @@ func main() {
     if err != nil {
         log.Fatal(err)
     }
-    
+
     ctx := context.Background()
-    
+
     // Get pending approvals
     approvals, err := client.GetPendingApprovals(ctx)
     if err != nil {
         log.Fatal(err)
     }
-    
+
     // Approve a request
     err = client.ApproveRequest(ctx, approvals[0].ID, &humanlayer.ApprovalResponse{
         Approved: true,
         Comment:  "Looks good",
     })
-    
+
     // Get human contacts
     contacts, err := client.GetPendingHumanContacts(ctx)
     if err != nil {
         log.Fatal(err)
     }
-    
+
     // Respond to human contact
     err = client.RespondToHumanContact(ctx, contacts[0].ID, "Use RS256 for consistency")
 }
@@ -66,6 +66,7 @@ func main() {
 ## API Coverage
 
 ### Core Operations
+
 - [x] GetPendingApprovals
 - [x] GetPendingHumanContacts
 - [x] ApproveRequest
@@ -73,6 +74,7 @@ func main() {
 - [x] RespondToHumanContact
 
 ### Future (as needed)
+
 - [ ] WebSocket support for real-time updates
 - [ ] Batch operations
 - [ ] Channel configuration

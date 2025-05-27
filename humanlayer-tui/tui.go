@@ -26,7 +26,7 @@ const (
 // Request represents either an approval or human contact
 type Request struct {
 	ID          string
-	CallID      string  
+	CallID      string
 	RunID       string
 	Type        RequestType
 	Message     string
@@ -51,15 +51,15 @@ type model struct {
 	cursor        int
 	viewState     viewState
 	width, height int
-	
+
 	// For detail view
 	selectedRequest *Request
-	
+
 	// For feedback view
 	feedbackInput textinput.Model
 	feedbackFor   *Request
 	isApproving   bool // true for approve with comment, false for deny/human response
-	
+
 	// For error handling
 	err error
 }
@@ -119,7 +119,7 @@ func newModel() model {
 
 	// Get optional API base URL
 	baseURL := os.Getenv("HUMANLAYER_API_BASE_URL")
-	
+
 	// Create client
 	opts := []humanlayer.ClientOption{
 		humanlayer.WithAPIKey(apiKey),
@@ -127,7 +127,7 @@ func newModel() model {
 	if baseURL != "" {
 		opts = append(opts, humanlayer.WithBaseURL(baseURL))
 	}
-	
+
 	client, err := humanlayer.NewClient(opts...)
 	if err != nil {
 		log.Fatal("Failed to create HumanLayer client:", err)
@@ -178,7 +178,7 @@ func fetchRequests(client *humanlayer.Client) tea.Cmd {
 				}
 				message += fmt.Sprintf(" with %s", strings.Join(params, ", "))
 			}
-			
+
 			createdAt := time.Now() // Default to now if not available
 			if fc.Status != nil && fc.Status.RequestedAt != nil {
 				createdAt = fc.Status.RequestedAt.Time
@@ -287,7 +287,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		// Clear error on any key press
 		m.err = nil
-		
+
 		switch m.viewState {
 		case listView:
 			return m.updateListView(msg)
@@ -525,12 +525,12 @@ func (m model) detailViewRender() string {
 
 	// Actions
 	s.WriteString("\n" + strings.Repeat("─", m.width) + "\n")
-	
+
 	actions := "[y] approve  [n] deny  [esc] back"
 	if req.Type == HumanContactRequest {
 		actions = "[n] respond  [esc] back"
 	}
-	
+
 	footer := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("240")).
 		Render(actions)
@@ -561,11 +561,11 @@ func (m model) feedbackViewRender() string {
 		Foreground(lipgloss.Color("240"))
 
 	if m.feedbackFor.Type == ApprovalRequest {
-		s.WriteString(context.Render(fmt.Sprintf("Denying: %s on %v\n\n", 
-			m.feedbackFor.Tool, 
+		s.WriteString(context.Render(fmt.Sprintf("Denying: %s on %v\n\n",
+			m.feedbackFor.Tool,
 			m.feedbackFor.Parameters["file"])))
 	} else {
-		s.WriteString(context.Render(fmt.Sprintf("Responding to: %s\n\n", 
+		s.WriteString(context.Render(fmt.Sprintf("Responding to: %s\n\n",
 			truncate(m.feedbackFor.Message, 50))))
 	}
 

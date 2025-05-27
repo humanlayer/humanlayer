@@ -17,28 +17,28 @@ func (ct *CustomTime) UnmarshalJSON(b []byte) error {
 	if s == "null" {
 		return nil
 	}
-	
+
 	// Try parsing with timezone first
 	t, err := time.Parse(time.RFC3339, s)
 	if err == nil {
 		ct.Time = t
 		return nil
 	}
-	
+
 	// Try without timezone (assume UTC)
 	t, err = time.Parse("2006-01-02T15:04:05.999999", s)
 	if err == nil {
 		ct.Time = t.UTC()
 		return nil
 	}
-	
+
 	// Try without microseconds
 	t, err = time.Parse("2006-01-02T15:04:05", s)
 	if err == nil {
 		ct.Time = t.UTC()
 		return nil
 	}
-	
+
 	return fmt.Errorf("unable to parse time: %s", s)
 }
 
