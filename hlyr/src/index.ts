@@ -75,7 +75,7 @@ mcpCommand
   .command('inspector')
   .description('Run MCP inspector for debugging MCP servers')
   .argument('[command]', 'MCP server command to inspect', 'serve')
-  .action((command) => {
+  .action(command => {
     const { spawn } = require('child_process')
     const args = ['@modelcontextprotocol/inspector', 'node', 'dist/index.js', 'mcp', command]
     spawn('npx', args, { stdio: 'inherit', cwd: process.cwd() })
