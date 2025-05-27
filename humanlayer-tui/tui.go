@@ -561,9 +561,22 @@ func (m model) feedbackViewRender() string {
 		Foreground(lipgloss.Color("240"))
 
 	if m.feedbackFor.Type == ApprovalRequest {
-		s.WriteString(context.Render(fmt.Sprintf("Denying: %s on %v\n\n",
+		// Build a description of what we're denying
+		target := ""
+		if file, ok := m.feedbackFor.Parameters["file"]; ok {
+			target = fmt.Sprintf(" on %v", file)
+		} else if cmd, ok := m.feedbackFor.Parameters["command"]; ok {
+			target = fmt.Sprintf(": %v", cmd)
+		} else if len(m.feedbackFor.Parameters) > 0 {
+			// Show first parameter if we don't recognize the type
+			for k, v := range m.feedbackFor.Parameters {
+				target = fmt.Sprintf(" (%s: %v)", k, v)
+				break
+			}
+		}
+		s.WriteString(context.Render(fmt.Sprintf("Denying: %s%s\n\n",
 			m.feedbackFor.Tool,
-			m.feedbackFor.Parameters["file"])))
+			target)))
 	} else {
 		s.WriteString(context.Render(fmt.Sprintf("Responding to: %s\n\n",
 			truncate(m.feedbackFor.Message, 50))))
