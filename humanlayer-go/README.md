@@ -40,17 +40,22 @@ func main() {
 
     ctx := context.Background()
 
-    // Get pending approvals
-    approvals, err := client.GetPendingApprovals(ctx)
+    // Get pending function calls (approvals)
+    functionCalls, err := client.GetPendingFunctionCalls(ctx)
     if err != nil {
         log.Fatal(err)
     }
 
-    // Approve a request
-    err = client.ApproveRequest(ctx, approvals[0].ID, &humanlayer.ApprovalResponse{
-        Approved: true,
-        Comment:  "Looks good",
-    })
+    // Approve a function call
+    if len(functionCalls) > 0 {
+        err = client.ApproveFunctionCall(ctx, functionCalls[0].CallID, "Looks good")
+        if err != nil {
+            log.Fatal(err)
+        }
+    }
+
+    // Or deny a function call
+    // err = client.DenyFunctionCall(ctx, functionCalls[0].CallID, "Need more information")
 
     // Get human contacts
     contacts, err := client.GetPendingHumanContacts(ctx)
@@ -59,7 +64,12 @@ func main() {
     }
 
     // Respond to human contact
-    err = client.RespondToHumanContact(ctx, contacts[0].ID, "Use RS256 for consistency")
+    if len(contacts) > 0 {
+        err = client.RespondToHumanContact(ctx, contacts[0].CallID, "Use RS256 for consistency")
+        if err != nil {
+            log.Fatal(err)
+        }
+    }
 }
 ```
 
@@ -67,10 +77,10 @@ func main() {
 
 ### Core Operations
 
-- [x] GetPendingApprovals
+- [x] GetPendingFunctionCalls
 - [x] GetPendingHumanContacts
-- [x] ApproveRequest
-- [x] DenyRequest
+- [x] ApproveFunctionCall
+- [x] DenyFunctionCall
 - [x] RespondToHumanContact
 
 ### Future (as needed)
