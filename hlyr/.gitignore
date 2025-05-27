@@ -90,3 +90,6 @@ Thumbs.db
 # Temporary folders
 tmp/
 temp/
+
+# test-mcp config files
+mcp-config.json
