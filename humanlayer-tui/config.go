@@ -24,8 +24,8 @@ func LoadConfig() (*Config, error) {
 	v.SetConfigType("json")
 
 	// Add config paths in order of preference
-	v.AddConfigPath(".")                                    // Current directory
-	v.AddConfigPath(getDefaultConfigDir())                  // XDG config directory
+	v.AddConfigPath(".")                                                       // Current directory
+	v.AddConfigPath(getDefaultConfigDir())                                     // XDG config directory
 	v.AddConfigPath(filepath.Join(os.Getenv("HOME"), ".config", "humanlayer")) // Fallback config directory
 
 	// Set environment variable prefix and automatic env reading
@@ -33,9 +33,9 @@ func LoadConfig() (*Config, error) {
 	v.AutomaticEnv()
 
 	// Map environment variables to config keys
-	v.BindEnv("api_key", "HUMANLAYER_API_KEY")
-	v.BindEnv("api_base_url", "HUMANLAYER_API_BASE_URL", "HUMANLAYER_API_BASE")
-	v.BindEnv("app_base_url", "HUMANLAYER_APP_URL")
+	_ = v.BindEnv("api_key", "HUMANLAYER_API_KEY")
+	_ = v.BindEnv("api_base_url", "HUMANLAYER_API_BASE_URL", "HUMANLAYER_API_BASE")
+	_ = v.BindEnv("app_base_url", "HUMANLAYER_APP_URL")
 
 	// Set defaults
 	v.SetDefault("api_base_url", "https://api.humanlayer.dev")
@@ -63,12 +63,12 @@ func getDefaultConfigDir() string {
 	if xdgConfigHome := os.Getenv("XDG_CONFIG_HOME"); xdgConfigHome != "" {
 		return filepath.Join(xdgConfigHome, "humanlayer")
 	}
-	
+
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return filepath.Join(".", ".config", "humanlayer")
 	}
-	
+
 	return filepath.Join(homeDir, ".config", "humanlayer")
 }
 

@@ -93,8 +93,16 @@ export async function loginCommand(options: LoginOptions): Promise<void> {
     const newConfig = {
       ...existingConfig,
       api_key: token.trim(),
-      api_base_url: apiBaseUrl,
-      app_base_url: appUrl,
+    }
+
+    // Only save API base URL if explicitly provided via flag
+    if (options.apiBase) {
+      newConfig.api_base_url = options.apiBase
+    }
+
+    // Only save app base URL if explicitly provided via flag
+    if (options.appBase) {
+      newConfig.app_base_url = options.appBase
     }
 
     saveConfigFile(newConfig, options.configFile)

@@ -13,21 +13,21 @@ func TestConfigPriority(t *testing.T) {
 	oldAPIKey := os.Getenv("HUMANLAYER_API_KEY")
 	oldBaseURL := os.Getenv("HUMANLAYER_API_BASE_URL")
 	defer func() {
-		os.Setenv("HUMANLAYER_API_KEY", oldAPIKey)
-		os.Setenv("HUMANLAYER_API_BASE_URL", oldBaseURL)
+		_ = os.Setenv("HUMANLAYER_API_KEY", oldAPIKey)
+		_ = os.Setenv("HUMANLAYER_API_BASE_URL", oldBaseURL)
 	}()
 
 	// Create a temporary directory for test config files
 	tempDir := t.TempDir()
 	oldPwd, _ := os.Getwd()
-	defer os.Chdir(oldPwd)
-	os.Chdir(tempDir)
+	defer func() { _ = os.Chdir(oldPwd) }()
+	_ = os.Chdir(tempDir)
 
 	t.Run("config file only", func(t *testing.T) {
 		// Clear env vars
-		os.Unsetenv("HUMANLAYER_API_KEY")
-		os.Unsetenv("HUMANLAYER_API_BASE_URL")
-		
+		_ = os.Unsetenv("HUMANLAYER_API_KEY")
+		_ = os.Unsetenv("HUMANLAYER_API_BASE_URL")
+
 		// Reset viper to clear any cached values
 		viper.Reset()
 
@@ -59,8 +59,8 @@ func TestConfigPriority(t *testing.T) {
 		viper.Reset()
 
 		// Set env vars
-		os.Setenv("HUMANLAYER_API_KEY", "env_var_key")
-		os.Setenv("HUMANLAYER_API_BASE_URL", "https://env.var.url")
+		_ = os.Setenv("HUMANLAYER_API_KEY", "env_var_key")
+		_ = os.Setenv("HUMANLAYER_API_BASE_URL", "https://env.var.url")
 
 		// Create config file with different values
 		configContent := `{
@@ -87,48 +87,45 @@ func TestConfigPriority(t *testing.T) {
 	})
 
 	t.Run("defaults when no config or env", func(t *testing.T) {
+		// Save original environment
+		oldHome := os.Getenv("HOME")
+		oldXDGConfig := os.Getenv("XDG_CONFIG_HOME")
+
+		defer func() {
+			_ = os.Setenv("HOME", oldHome)
+			_ = os.Setenv("XDG_CONFIG_HOME", oldXDGConfig)
+		}()
+
+		// Set HOME to temp directory to isolate from user's actual config
+		_ = os.Setenv("HOME", tempDir)
+		_ = os.Unsetenv("XDG_CONFIG_HOME")
+
 		// Clear env vars
-		os.Unsetenv("HUMANLAYER_API_KEY")
-		os.Unsetenv("HUMANLAYER_API_BASE_URL")
-		
+		_ = os.Unsetenv("HUMANLAYER_API_KEY")
+		_ = os.Unsetenv("HUMANLAYER_API_BASE_URL")
+
 		// Reset viper to clear any cached values
 		viper.Reset()
 
-		// Remove config file
-		os.Remove("humanlayer.json")
+		// Remove any config files in current directory
+		_ = os.Remove("humanlayer.json")
 
 		config, err := LoadConfig()
 		if err != nil {
 			t.Fatalf("LoadConfig failed: %v", err)
 		}
 
-		// Should use defaults (but may be overridden by local dev environment)
+		// Should use defaults when no config or env vars are set
 		if config.APIKey != "" {
 			t.Errorf("Expected empty API key, got '%s'", config.APIKey)
 		}
-		// Allow for local dev defaults or production defaults
-		expectedURLs := []string{"https://api.humanlayer.dev", "http://localhost:8080/humanlayer/v1"}
-		found := false
-		for _, expected := range expectedURLs {
-			if config.APIBaseURL == expected {
-				found = true
-				break
-			}
+
+		if config.APIBaseURL != "https://api.humanlayer.dev" {
+			t.Errorf("Expected default API base URL 'https://api.humanlayer.dev', got '%s'", config.APIBaseURL)
 		}
-		if !found {
-			t.Errorf("Expected API base URL to be one of %v, got '%s'", expectedURLs, config.APIBaseURL)
-		}
-		
-		expectedAppURLs := []string{"https://app.humanlayer.dev", "http://localhost:3000"}
-		found = false
-		for _, expected := range expectedAppURLs {
-			if config.AppBaseURL == expected {
-				found = true
-				break
-			}
-		}
-		if !found {
-			t.Errorf("Expected app base URL to be one of %v, got '%s'", expectedAppURLs, config.AppBaseURL)
+
+		if config.AppBaseURL != "https://app.humanlayer.dev" {
+			t.Errorf("Expected default app base URL 'https://app.humanlayer.dev', got '%s'", config.AppBaseURL)
 		}
 	})
 
@@ -157,25 +154,25 @@ func TestConfigPriority(t *testing.T) {
 	t.Run("XDG config directory", func(t *testing.T) {
 		// Test XDG config home directory
 		oldXDGConfigHome := os.Getenv("XDG_CONFIG_HOME")
-		defer os.Setenv("XDG_CONFIG_HOME", oldXDGConfigHome)
+		defer func() { _ = os.Setenv("XDG_CONFIG_HOME", oldXDGConfigHome) }()
 
 		testXDGDir := filepath.Join(tempDir, "test_xdg")
-		os.Setenv("XDG_CONFIG_HOME", testXDGDir)
+		_ = os.Setenv("XDG_CONFIG_HOME", testXDGDir)
 
 		configDir := getDefaultConfigDir()
 		expectedDir := filepath.Join(testXDGDir, "humanlayer")
-		
+
 		if configDir != expectedDir {
 			t.Errorf("Expected config dir '%s', got '%s'", expectedDir, configDir)
 		}
 
 		// Test fallback to ~/.config when XDG_CONFIG_HOME is not set
-		os.Unsetenv("XDG_CONFIG_HOME")
-		
+		_ = os.Unsetenv("XDG_CONFIG_HOME")
+
 		configDir = getDefaultConfigDir()
 		homeDir, _ := os.UserHomeDir()
 		expectedDir = filepath.Join(homeDir, ".config", "humanlayer")
-		
+
 		if configDir != expectedDir {
 			t.Errorf("Expected fallback config dir '%s', got '%s'", expectedDir, configDir)
 		}

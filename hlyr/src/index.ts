@@ -8,8 +8,28 @@ import { contactHumanCommand } from './commands/contactHuman.js'
 import { configShowCommand } from './commands/configShow.js'
 import { pingCommand } from './commands/ping.js'
 import { startDefaultMCPServer, startClaudeApprovalsMCPServer } from './mcp.js'
-import { getDefaultConfigPath, resolveFullConfig } from './config.js'
+import { getDefaultConfigPath, resolveFullConfig, resolveConfigWithSources } from './config.js'
 import { getProject } from './hlClient.js'
+import chalk from 'chalk'
+
+function showAbbreviatedConfig() {
+  const configWithSources = resolveConfigWithSources({})
+  console.log(`\n${chalk.yellow('Current configuration:')}`)
+  console.log(
+    `  API Base URL: ${chalk.cyan(configWithSources.api_base_url.value)} ${chalk.gray(
+      `(${configWithSources.api_base_url.sourceName})`,
+    )}`,
+  )
+  console.log(
+    `  App Base URL: ${chalk.cyan(configWithSources.app_base_url.value)} ${chalk.gray(
+      `(${configWithSources.app_base_url.sourceName})`,
+    )}`,
+  )
+  const apiKeyDisplay = configWithSources.api_key?.value
+    ? chalk.green(configWithSources.api_key.value.substring(0, 6) + '...')
+    : chalk.red('<not set>')
+  console.log(`  API Key: ${apiKeyDisplay} ${chalk.gray(`(${configWithSources.api_key?.sourceName})`)}`)
+}
 
 const program = new Command()
 
@@ -18,6 +38,7 @@ async function authenticate(printSelectedProject: boolean = false) {
 
   if (!config.api_key) {
     console.error('Error: No HumanLayer API token found.')
+    showAbbreviatedConfig()
     process.exit(1)
   }
 
@@ -27,7 +48,8 @@ async function authenticate(printSelectedProject: boolean = false) {
       console.log(`Selected project: ${project.name}`)
     }
   } catch (error) {
-    console.error(error)
+    console.error(chalk.red('Authentication failed:'), error)
+    showAbbreviatedConfig()
     process.exit(1)
   }
 }

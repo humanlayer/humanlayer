@@ -1,5 +1,5 @@
 import chalk from 'chalk'
-import { getDefaultConfigPath, resolveFullConfig } from '../config.js'
+import { getDefaultConfigPath, resolveFullConfig, resolveConfigWithSources } from '../config.js'
 
 interface ConfigShowOptions {
   configFile?: string
@@ -20,7 +20,11 @@ export function configShowCommand(options: ConfigShowOptions): void {
     // JSON output mode
     if (options.json) {
       const jsonOutput = {
-        api_key: resolvedConfig.api_key ? resolvedConfig.api_key.substring(0, 6) + '...' : undefined,
+        api_key: resolvedConfig.api_key
+          ? resolvedConfig.api_key.length > 6
+            ? resolvedConfig.api_key.substring(0, 6) + '...'
+            : resolvedConfig.api_key + '...'
+          : undefined,
         api_base_url: resolvedConfig.api_base_url,
         app_base_url: resolvedConfig.app_base_url,
         contact_channel: resolvedConfig.contact_channel,
@@ -28,8 +32,9 @@ export function configShowCommand(options: ConfigShowOptions): void {
 
       // Mask bot token if present
       if (jsonOutput.contact_channel.slack?.bot_token) {
+        const token = jsonOutput.contact_channel.slack.bot_token
         jsonOutput.contact_channel.slack.bot_token =
-          jsonOutput.contact_channel.slack.bot_token.substring(0, 6) + '...'
+          token.length > 6 ? token.substring(0, 6) + '...' : token + '...'
       }
 
       console.log(JSON.stringify(jsonOutput, null, 2))
@@ -51,7 +56,11 @@ export function configShowCommand(options: ConfigShowOptions): void {
     console.log(chalk.yellow('API Configuration:'))
     const apiKey = resolvedConfig.api_key || '<not set>'
 
-    console.log(`  API Key: ${apiKey === '<not set>' ? chalk.red(apiKey) : chalk.green('***set***')}`)
+    const displayApiKey =
+      apiKey === '<not set>'
+        ? chalk.red(apiKey)
+        : chalk.green(apiKey.length > 6 ? apiKey.substring(0, 6) + '...' : apiKey + '...')
+    console.log(`  API Key: ${displayApiKey}`)
     console.log(`  API Base URL: ${chalk.cyan(resolvedConfig.api_base_url)}`)
     console.log(`  App Base URL: ${chalk.cyan(resolvedConfig.app_base_url)}`)
     console.log('')
@@ -65,11 +74,14 @@ export function configShowCommand(options: ConfigShowOptions): void {
       console.log(
         `    Channel/User ID: ${chalk.cyan(contactChannel.slack.channel_or_user_id || '<not set>')}`,
       )
-      console.log(
-        `    Bot Token: ${
-          contactChannel.slack.bot_token ? chalk.green('***set***') : chalk.red('<not set>')
-        }`,
-      )
+      const displayBotToken = contactChannel.slack.bot_token
+        ? chalk.green(
+            contactChannel.slack.bot_token.length > 6
+              ? contactChannel.slack.bot_token.substring(0, 6) + '...'
+              : contactChannel.slack.bot_token + '...',
+          )
+        : chalk.red('<not set>')
+      console.log(`    Bot Token: ${displayBotToken}`)
       console.log(
         `    Context: ${chalk.cyan(contactChannel.slack.context_about_channel_or_user || '<not set>')}`,
       )
@@ -84,16 +96,45 @@ export function configShowCommand(options: ConfigShowOptions): void {
     }
 
     if (!contactChannel.slack && !contactChannel.email) {
-      console.log(chalk.red('  No contact channel configured'))
+      console.log(chalk.gray('  No contact channel configured'))
     }
     console.log('')
 
-    // Show environment variables
-    console.log(chalk.yellow('Environment Variables:'))
-    const envVars = [
-      'HUMANLAYER_API_KEY',
-      'HUMANLAYER_API_BASE_URL',
-      'HUMANLAYER_APP_URL',
+    // Show configuration sources
+    console.log(chalk.yellow('Configuration Sources:'))
+    const configWithSources = resolveConfigWithSources(options)
+
+    // Show API configuration sources
+    if (configWithSources.api_key?.value) {
+      const displayValue =
+        configWithSources.api_key.value.length > 6
+          ? configWithSources.api_key.value.substring(0, 6) + '...'
+          : configWithSources.api_key.value + '...'
+      console.log(
+        `  API Key: ${chalk.green(displayValue)} ${chalk.gray(
+          `(${configWithSources.api_key.sourceName})`,
+        )}`,
+      )
+    }
+
+    if (configWithSources.api_base_url.source !== 'default') {
+      console.log(
+        `  API Base URL: ${chalk.cyan(configWithSources.api_base_url.value)} ${chalk.gray(
+          `(${configWithSources.api_base_url.sourceName})`,
+        )}`,
+      )
+    }
+
+    if (configWithSources.app_base_url.source !== 'default') {
+      console.log(
+        `  App Base URL: ${chalk.cyan(configWithSources.app_base_url.value)} ${chalk.gray(
+          `(${configWithSources.app_base_url.sourceName})`,
+        )}`,
+      )
+    }
+
+    // Show configured environment variables that aren't already shown above
+    const otherEnvVars = [
       'HUMANLAYER_SLACK_CHANNEL',
       'HUMANLAYER_SLACK_BOT_TOKEN',
       'HUMANLAYER_SLACK_CONTEXT',
@@ -101,18 +142,31 @@ export function configShowCommand(options: ConfigShowOptions): void {
       'HUMANLAYER_SLACK_BLOCKS',
       'HUMANLAYER_EMAIL_ADDRESS',
       'HUMANLAYER_EMAIL_CONTEXT',
-      'XDG_CONFIG_HOME',
     ]
 
-    envVars.forEach(envVar => {
+    otherEnvVars.forEach(envVar => {
       const value = process.env[envVar]
       if (value) {
-        const displayValue = envVar.includes('TOKEN') || envVar.includes('KEY') ? '***set***' : value
-        console.log(`  ${envVar}: ${chalk.green(displayValue)}`)
-      } else {
-        console.log(`  ${envVar}: ${chalk.gray('<not set>')}`)
+        const displayValue =
+          envVar.includes('TOKEN') || envVar.includes('KEY')
+            ? value.length > 6
+              ? value.substring(0, 6) + '...'
+              : value + '...'
+            : value
+        console.log(`  ${envVar}: ${chalk.green(displayValue)} ${chalk.gray('(env)')}`)
       }
     })
+
+    // Show if no additional configuration is found
+    const hasAdditionalConfig =
+      configWithSources.api_key?.value ||
+      configWithSources.api_base_url.source !== 'default' ||
+      configWithSources.app_base_url.source !== 'default' ||
+      otherEnvVars.some(envVar => process.env[envVar])
+
+    if (!hasAdditionalConfig) {
+      console.log(chalk.gray('  Using default configuration'))
+    }
   } catch (error) {
     console.error(chalk.red(`Error showing config: ${error}`))
     process.exit(1)

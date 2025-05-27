@@ -24,15 +24,15 @@ const (
 
 // Request represents either an approval or human contact
 type Request struct {
-	ID          string
-	CallID      string
-	RunID       string
-	Type        RequestType
-	Message     string
-	Tool        string // For approvals
-	Parameters  map[string]interface{} // For approvals
-	CreatedAt   time.Time
-	AgentName   string
+	ID         string
+	CallID     string
+	RunID      string
+	Type       RequestType
+	Message    string
+	Tool       string                 // For approvals
+	Parameters map[string]interface{} // For approvals
+	CreatedAt  time.Time
+	AgentName  string
 }
 
 // View states
@@ -64,13 +64,13 @@ type model struct {
 }
 
 type keyMap struct {
-	Up       key.Binding
-	Down     key.Binding
-	Enter    key.Binding
-	Back     key.Binding
-	Approve  key.Binding
-	Deny     key.Binding
-	Quit     key.Binding
+	Up      key.Binding
+	Down    key.Binding
+	Enter   key.Binding
+	Back    key.Binding
+	Approve key.Binding
+	Deny    key.Binding
+	Quit    key.Binding
 }
 
 var keys = keyMap{
