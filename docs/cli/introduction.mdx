@@ -1,0 +1,97 @@
+---
+title: "CLI Introduction"
+description: "Get started with the HumanLayer command-line interface"
+---
+
+# HumanLayer CLI
+
+The HumanLayer CLI provides a powerful command-line interface for interacting with HumanLayer services directly from your terminal. Whether you need to authenticate, manage configurations, or contact humans for approvals, the CLI offers a streamlined workflow for developers.
+
+## Installation
+
+The HumanLayer CLI is distributed as an npm package and can be used directly with npx (recommended):
+
+```bash
+npx humanlayer --help
+```
+
+Or install globally:
+
+```bash
+npm install -g hlyr
+npx humanlayer --help
+```
+
+## Quick Start
+
+1. **Login to HumanLayer**:
+
+   ```bash
+   npx humanlayer login
+   ```
+
+2. **Show your current configuration**:
+
+   ```bash
+   npx humanlayer config show
+   ```
+
+3. **Contact a human**:
+
+   ```bash
+   npx humanlayer contact_human "Need approval for deployment"
+   ```
+
+4. **Launch the Terminal UI**:
+   ```bash
+   npx humanlayer tui
+   ```
+
+## Available Commands
+
+| Command         | Description                                     |
+| --------------- | ----------------------------------------------- |
+| `login`         | Authenticate with HumanLayer and save API token |
+| `config show`   | Display current configuration settings          |
+| `contact_human` | Send a message to a human and wait for response |
+| `tui`           | Launch the Terminal User Interface              |
+
+## Configuration
+
+The CLI supports multiple configuration methods, in order of precedence:
+
+1. **Command-line flags** (highest priority)
+2. **Environment variables**
+3. **Configuration files** (lowest priority)
+
+### Configuration Files
+
+The CLI looks for configuration files in the following locations:
+
+- `./humanlayer.json` (local project config)
+- `~/.config/humanlayer/humanlayer.json` (user config)
+
+### Environment Variables
+
+All configuration options can be set via environment variables with the `HUMANLAYER_` prefix:
+
+- `HUMANLAYER_API_TOKEN` - Your HumanLayer API token
+- `HUMANLAYER_API_BASE_URL` - API base URL (default: https://api.humanlayer.dev)
+- `HUMANLAYER_APP_URL` - App base URL (default: https://app.humanlayer.dev)
+- `HUMANLAYER_SLACK_CHANNEL` - Slack channel or user ID
+- `HUMANLAYER_SLACK_BOT_TOKEN` - Slack bot token
+- `HUMANLAYER_SLACK_CONTEXT` - Context about the Slack channel/user
+- `HUMANLAYER_SLACK_THREAD_TS` - Slack thread timestamp
+- `HUMANLAYER_SLACK_BLOCKS` - Enable experimental Slack blocks (true/false)
+- `HUMANLAYER_EMAIL_ADDRESS` - Email address to contact
+- `HUMANLAYER_EMAIL_CONTEXT` - Context about the email recipient
+
+## Getting Help
+
+Use the `--help` flag with any command to get detailed usage information:
+
+```bash
+npx humanlayer --help
+npx humanlayer login --help
+npx humanlayer config show --help
+```

@@ -19,8 +19,11 @@ check-mcp:
 check-hlyr:
 	npm -C hlyr run check
 
+check-tui:
+	@$(MAKE) -C humanlayer-tui check
+
 .PHONY: check
-check: check-py check-ts check-mcp check-hlyr
+check: check-py check-ts check-mcp check-hlyr check-tui
 
 typecheck: ## just the typechecks
 	: 🚀 Static type checking: Running mypy

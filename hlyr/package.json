@@ -1,6 +1,6 @@
 {
   "name": "hlyr",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "HumanLayer, but on your command-line.",
   "type": "module",
   "bin": {
@@ -8,7 +8,8 @@
     "humanlayer": "./dist/index.js"
   },
   "scripts": {
-    "build": "tsup src/index.ts --format esm --target es2020 --clean",
+    "build": "tsup src/index.ts --format esm --target es2020 --clean && npm run build-go",
+    "build-go": "cd ../humanlayer-tui && go build -o humanlayer-tui . && mkdir -p ../hlyr/dist/bin && cp humanlayer-tui ../hlyr/dist/bin/",
     "build:watch": "tsup src/index.ts --format esm --target es2020 --watch",
     "dev": "npm run build && node dist/index.js",
     "lint": "eslint . --ext .ts",
