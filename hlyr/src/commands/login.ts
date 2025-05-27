@@ -1,7 +1,8 @@
 import chalk from 'chalk'
 import readline from 'readline'
 import { spawn } from 'child_process'
-import { loadConfigFile, saveConfigFile, getDefaultConfigPath } from '../config.js'
+import { loadConfigFile, saveConfigFile, getDefaultConfigPath, resolveFullConfig } from '../config.js'
+import { getProject } from '../hlClient.js'
 
 interface LoginOptions {
   apiBase?: string
@@ -33,8 +34,6 @@ export async function loginCommand(options: LoginOptions): Promise<void> {
     const loginUrl = `${appUrl}/cli-login`
 
     console.log(chalk.blue('HumanLayer Login'))
-    console.log(chalk.gray(`To get your API token, visit: ${loginUrl}`))
-    console.log('')
 
     // Try to open the URL in the default browser
     const openBrowser = async (url: string) => {
@@ -54,6 +53,7 @@ export async function loginCommand(options: LoginOptions): Promise<void> {
         console.log(chalk.green('Opening browser...'))
       } catch (error) {
         console.log(chalk.yellow(`Could not open browser automatically: ${error}`))
+        console.log(chalk.gray(`To get your API token, visit: ${loginUrl}`))
       }
     }
 
@@ -82,6 +82,15 @@ export async function loginCommand(options: LoginOptions): Promise<void> {
       process.exit(0)
     }
 
+    const oldConfig = resolveFullConfig({})
+    let project;
+    try {
+       project = await getProject(oldConfig.api_base_url, token.trim())
+    } catch (error) {
+      console.error(chalk.red(`Returned token was invalid.`))
+      process.exit(1);
+    }
+
     const newConfig = {
       ...existingConfig,
       api_token: token.trim(),
@@ -90,7 +99,7 @@ export async function loginCommand(options: LoginOptions): Promise<void> {
     }
 
     saveConfigFile(newConfig, options.configFile)
-    console.log(chalk.green('Login successful!'))
+    console.log(chalk.green(`Login successful, using project ${chalk.bold(project.name)}`))
   } catch (error) {
     console.error(chalk.red(`Error during login: ${error}`))
     process.exit(1)
