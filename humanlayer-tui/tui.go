@@ -1,7 +1,10 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"log"
+	"os"
 	"strings"
 	"time"
 
@@ -9,6 +12,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	humanlayer "github.com/humanlayer/humanlayer-go"
 )
 
 // Request types
@@ -40,6 +44,7 @@ const (
 )
 
 type model struct {
+	client        *humanlayer.Client
 	requests      []Request
 	cursor        int
 	viewState     viewState
@@ -52,6 +57,9 @@ type model struct {
 	feedbackInput textinput.Model
 	feedbackFor   *Request
 	isApproving   bool // true for approve with comment, false for deny/human response
+	
+	// For error handling
+	err error
 }
 
 type keyMap struct {
@@ -101,45 +109,97 @@ func newModel() model {
 	ti.CharLimit = 500
 	ti.Width = 60
 
-	// Mock data for now
-	requests := []Request{
-		{
-			ID:          "req_001",
-			Type:        HumanContactRequest,
-			Message:     "Should I use RS256 or HS256 for JWT signing?",
-			TimeAgo:     2 * time.Second,
-			AgentName:   "Claude Code",
-		},
-		{
-			ID:          "req_002",
-			Type:        ApprovalRequest,
-			Tool:        "edit_file",
-			Message:     "Edit auth.py to add JWT validation",
-			Parameters:  map[string]interface{}{"file": "/src/auth.py", "changes": "Add JWT validation..."},
-			TimeAgo:     15 * time.Second,
-			AgentName:   "Claude Code",
-		},
-		{
-			ID:          "req_003",
-			Type:        ApprovalRequest,
-			Tool:        "run_command",
-			Message:     "Run npm test",
-			Parameters:  map[string]interface{}{"command": "npm test", "cwd": "/workspace"},
-			TimeAgo:     1 * time.Minute,
-			AgentName:   "OpenCode",
-		},
+	// Get API key from environment
+	apiKey := os.Getenv("HUMANLAYER_API_KEY")
+	if apiKey == "" {
+		log.Fatal("HUMANLAYER_API_KEY environment variable is required")
 	}
 
-	return model{
-		requests:      requests,
+	// Get optional API base URL
+	baseURL := os.Getenv("HUMANLAYER_API_BASE_URL")
+	
+	// Create client
+	opts := []humanlayer.ClientOption{
+		humanlayer.WithAPIKey(apiKey),
+	}
+	if baseURL != "" {
+		opts = append(opts, humanlayer.WithBaseURL(baseURL))
+	}
+	
+	client, err := humanlayer.NewClient(opts...)
+	if err != nil {
+		log.Fatal("Failed to create HumanLayer client:", err)
+	}
+
+	m := model{
+		client:        client,
+		requests:      []Request{},
 		cursor:        0,
 		viewState:     listView,
 		feedbackInput: ti,
 	}
+
+	return m
+}
+
+// Tea command to fetch requests
+type fetchRequestsMsg struct {
+	requests []Request
+	err      error
+}
+
+func fetchRequests(client *humanlayer.Client) tea.Cmd {
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		var allRequests []Request
+
+		// Fetch approvals
+		approvals, err := client.GetPendingApprovals(ctx)
+		if err != nil {
+			return fetchRequestsMsg{err: err}
+		}
+
+		// Convert approvals to our Request type
+		for _, approval := range approvals {
+			allRequests = append(allRequests, Request{
+				ID:         approval.ID,
+				Type:       ApprovalRequest,
+				Message:    approval.Message,
+				Tool:       approval.Tool,
+				Parameters: approval.ToolArgs,
+				TimeAgo:    time.Since(approval.CreatedAt),
+				AgentName:  approval.AgentName,
+			})
+		}
+
+		// Fetch human contacts
+		contacts, err := client.GetPendingHumanContacts(ctx)
+		if err != nil {
+			return fetchRequestsMsg{err: err}
+		}
+
+		// Convert contacts to our Request type
+		for _, contact := range contacts {
+			allRequests = append(allRequests, Request{
+				ID:        contact.ID,
+				Type:      HumanContactRequest,
+				Message:   contact.Message,
+				TimeAgo:   time.Since(contact.CreatedAt),
+				AgentName: contact.AgentName,
+			})
+		}
+
+		return fetchRequestsMsg{requests: allRequests}
+	}
 }
 
 func (m model) Init() tea.Cmd {
-	return textinput.Blink
+	return tea.Batch(
+		textinput.Blink,
+		fetchRequests(m.client),
+	)
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -151,7 +211,53 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		return m, nil
 
+	case fetchRequestsMsg:
+		if msg.err != nil {
+			m.err = msg.err
+			return m, nil
+		}
+		m.requests = msg.requests
+		m.err = nil
+		return m, nil
+
+	case approvalSentMsg:
+		if msg.err != nil {
+			m.err = msg.err
+			return m, nil
+		}
+		// Remove the request and refresh
+		m.requests = removeRequestByID(m.requests, msg.requestID)
+		if m.cursor >= len(m.requests) && m.cursor > 0 {
+			m.cursor--
+		}
+		m.viewState = listView
+		m.selectedRequest = nil
+		m.feedbackFor = nil
+		m.feedbackInput.Reset()
+		// Refresh the list
+		return m, fetchRequests(m.client)
+
+	case humanResponseSentMsg:
+		if msg.err != nil {
+			m.err = msg.err
+			return m, nil
+		}
+		// Remove the request and refresh
+		m.requests = removeRequestByID(m.requests, msg.requestID)
+		if m.cursor >= len(m.requests) && m.cursor > 0 {
+			m.cursor--
+		}
+		m.viewState = listView
+		m.selectedRequest = nil
+		m.feedbackFor = nil
+		m.feedbackInput.Reset()
+		// Refresh the list
+		return m, fetchRequests(m.client)
+
 	case tea.KeyMsg:
+		// Clear error on any key press
+		m.err = nil
+		
 		switch m.viewState {
 		case listView:
 			return m.updateListView(msg)
@@ -181,28 +287,30 @@ func (m model) updateListView(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 
 	case key.Matches(msg, keys.Enter):
-		m.selectedRequest = &m.requests[m.cursor]
-		m.viewState = detailView
+		if len(m.requests) > 0 {
+			m.selectedRequest = &m.requests[m.cursor]
+			m.viewState = detailView
+		}
 
 	case key.Matches(msg, keys.Approve):
-		req := &m.requests[m.cursor]
-		if req.Type == ApprovalRequest {
-			// Quick approve
-			// TODO: Actually send approval
-			m.requests = removeRequest(m.requests, m.cursor)
-			if m.cursor >= len(m.requests) && m.cursor > 0 {
-				m.cursor--
+		if len(m.requests) > 0 {
+			req := &m.requests[m.cursor]
+			if req.Type == ApprovalRequest {
+				// Quick approve
+				return m, m.sendApproval(req.ID, true, "")
 			}
 		}
 
 	case key.Matches(msg, keys.Deny):
-		req := &m.requests[m.cursor]
-		m.feedbackFor = req
-		m.isApproving = false
-		m.feedbackInput.Reset()
-		m.feedbackInput.Focus()
-		m.viewState = feedbackView
-		return m, textinput.Blink
+		if len(m.requests) > 0 {
+			req := &m.requests[m.cursor]
+			m.feedbackFor = req
+			m.isApproving = false
+			m.feedbackInput.Reset()
+			m.feedbackInput.Focus()
+			m.viewState = feedbackView
+			return m, textinput.Blink
+		}
 	}
 
 	return m, nil
@@ -216,10 +324,7 @@ func (m model) updateDetailView(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, keys.Approve):
 		if m.selectedRequest.Type == ApprovalRequest {
-			// TODO: Actually send approval
-			m.requests = removeRequestByID(m.requests, m.selectedRequest.ID)
-			m.viewState = listView
-			m.selectedRequest = nil
+			return m, m.sendApproval(m.selectedRequest.ID, true, "")
 		}
 
 	case key.Matches(msg, keys.Deny):
@@ -248,12 +353,14 @@ func (m model) updateFeedbackView(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// Submit feedback
 		feedback := m.feedbackInput.Value()
 		if feedback != "" {
-			// TODO: Actually send the feedback/response
-			m.requests = removeRequestByID(m.requests, m.feedbackFor.ID)
+			if m.feedbackFor.Type == ApprovalRequest {
+				// Deny with reason
+				return m, m.sendApproval(m.feedbackFor.ID, false, feedback)
+			} else {
+				// Human contact response
+				return m, m.sendHumanResponse(m.feedbackFor.ID, feedback)
+			}
 		}
-		m.viewState = listView
-		m.feedbackFor = nil
-		m.feedbackInput.Reset()
 		return m, nil
 
 	default:
@@ -287,33 +394,49 @@ func (m model) listViewRender() string {
 	s.WriteString(header + "\n")
 	s.WriteString(strings.Repeat("─", m.width) + "\n\n")
 
+	// Show error if any
+	if m.err != nil {
+		errStyle := lipgloss.NewStyle().
+			Foreground(lipgloss.Color("196")).
+			Padding(0, 1)
+		s.WriteString(errStyle.Render(fmt.Sprintf("Error: %v", m.err)) + "\n\n")
+	}
+
 	// Request list
-	for i, req := range m.requests {
-		cursor := "  "
-		if i == m.cursor {
-			cursor = " >"
+	if len(m.requests) == 0 {
+		emptyStyle := lipgloss.NewStyle().
+			Foreground(lipgloss.Color("240")).
+			Italic(true).
+			Padding(0, 2)
+		s.WriteString(emptyStyle.Render("No pending requests") + "\n")
+	} else {
+		for i, req := range m.requests {
+			cursor := "  "
+			if i == m.cursor {
+				cursor = " >"
+			}
+
+			typeIcon := "📋" // approval
+			if req.Type == HumanContactRequest {
+				typeIcon = "💬" // human contact
+			}
+
+			line := fmt.Sprintf("%s %s %-20s %-30s %s",
+				cursor,
+				typeIcon,
+				truncate(req.Tool, 20),
+				truncate(req.Message, 30),
+				formatDuration(req.TimeAgo),
+			)
+
+			if i == m.cursor {
+				line = lipgloss.NewStyle().
+					Foreground(lipgloss.Color("205")).
+					Render(line)
+			}
+
+			s.WriteString(line + "\n")
 		}
-
-		typeIcon := "📋" // approval
-		if req.Type == HumanContactRequest {
-			typeIcon = "💬" // human contact
-		}
-
-		line := fmt.Sprintf("%s %s %-20s %-30s %s",
-			cursor,
-			typeIcon,
-			truncate(req.Tool, 20),
-			truncate(req.Message, 30),
-			formatDuration(req.TimeAgo),
-		)
-
-		if i == m.cursor {
-			line = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("205")).
-				Render(line)
-		}
-
-		s.WriteString(line + "\n")
 	}
 
 	// Footer
@@ -465,4 +588,46 @@ func formatDuration(d time.Duration) string {
 		return fmt.Sprintf("%dm", int(d.Minutes()))
 	}
 	return fmt.Sprintf("%dh", int(d.Hours()))
+}
+
+// API command messages
+type approvalSentMsg struct {
+	requestID string
+	err       error
+}
+
+type humanResponseSentMsg struct {
+	requestID string
+	err       error
+}
+
+// Command to send approval/denial
+func (m model) sendApproval(requestID string, approved bool, comment string) tea.Cmd {
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		var err error
+		if approved {
+			err = m.client.ApproveRequest(ctx, requestID, &humanlayer.ApprovalResponse{
+				Approved: true,
+				Comment:  comment,
+			})
+		} else {
+			err = m.client.DenyRequest(ctx, requestID, comment)
+		}
+
+		return approvalSentMsg{requestID: requestID, err: err}
+	}
+}
+
+// Command to send human response
+func (m model) sendHumanResponse(requestID string, response string) tea.Cmd {
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		err := m.client.RespondToHumanContact(ctx, requestID, response)
+		return humanResponseSentMsg{requestID: requestID, err: err}
+	}
 }
