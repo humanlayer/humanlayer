@@ -60,7 +60,7 @@ describe('config show e2e tests', () => {
     {
       name: 'default config with no env or flags',
       expected: {
-        api_base_url: 'https://api.humanlayer.dev',
+        api_base_url: 'https://api.humanlayer.dev/humanlayer/v1',
         app_base_url: 'https://app.humanlayer.dev',
         contact_channel: {},
       },
@@ -69,7 +69,7 @@ describe('config show e2e tests', () => {
       name: 'slack channel flag override',
       flags: ['--slack-channel', 'C123456'],
       expected: {
-        api_base_url: 'https://api.humanlayer.dev',
+        api_base_url: 'https://api.humanlayer.dev/humanlayer/v1',
         app_base_url: 'https://app.humanlayer.dev',
         contact_channel: {
           slack: {
@@ -108,7 +108,7 @@ describe('config show e2e tests', () => {
         HUMANLAYER_EMAIL_CONTEXT: 'Support team',
       },
       expected: {
-        api_base_url: 'https://api.humanlayer.dev',
+        api_base_url: 'https://api.humanlayer.dev/humanlayer/v1',
         app_base_url: 'https://app.humanlayer.dev',
         contact_channel: {
           email: {
@@ -126,7 +126,7 @@ describe('config show e2e tests', () => {
       },
       flags: ['--slack-channel', 'C222222', '--email-address', 'flag@example.com'],
       expected: {
-        api_base_url: 'https://api.humanlayer.dev',
+        api_base_url: 'https://api.humanlayer.dev/humanlayer/v1',
         app_base_url: 'https://app.humanlayer.dev',
         contact_channel: {
           slack: {
@@ -177,7 +177,7 @@ describe('config show e2e tests', () => {
       },
       flags: ['--slack-channel', 'C444444', '--slack-context', 'Flag context'],
       expected: {
-        api_base_url: 'https://api.humanlayer.dev',
+        api_base_url: 'https://api.humanlayer.dev/humanlayer/v1',
         app_base_url: 'https://app.humanlayer.dev',
         contact_channel: {
           slack: {
