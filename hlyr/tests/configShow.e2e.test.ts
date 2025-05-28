@@ -220,8 +220,8 @@ describe('config show e2e tests', () => {
       // Execute command
       const result = await runCommand(args, testCase.env, tempDir)
 
-      expect(result.exitCode).toBe(0)
       expect(result.stderr).toBe('')
+      expect(result.exitCode).toBe(0)
 
       const output = JSON.parse(result.stdout)
 
