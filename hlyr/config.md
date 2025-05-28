@@ -107,9 +107,9 @@ flowchart TD
     B -->|No| D[Start login process]
 
     C --> E{Token from config file?}
-    E -->|Yes| F[config.api_token]
+    E -->|Yes| F[config.api_key]
     E -->|No| G{Token from env var?}
-    G -->|Yes| H[HUMANLAYER_API_TOKEN]
+    G -->|Yes| H[HUMANLAYER_API_KEY]
     G -->|No| I[No token available]
 
     D --> J[Open browser to login URL]
@@ -134,8 +134,8 @@ The following environment variables are supported:
 
 | Variable                     | Purpose                         | Example                      |
 | ---------------------------- | ------------------------------- | ---------------------------- |
-| `HUMANLAYER_API_TOKEN`       | API authentication token        | `hl_live_abc123...`          |
-| `HUMANLAYER_API_BASE_URL`    | API server base URL             | `https://api.humanlayer.dev` |
+| `HUMANLAYER_API_KEY`         | API authentication token        | `hl_live_abc123...`          |
+| `HUMANLAYER_API_BASE`        | API server base URL             | `https://api.humanlayer.dev` |
 | `HUMANLAYER_APP_URL`         | Web app base URL                | `https://app.humanlayer.dev` |
 | `HUMANLAYER_SLACK_CHANNEL`   | Slack channel/user ID           | `C1234567890`                |
 | `HUMANLAYER_SLACK_BOT_TOKEN` | Slack bot token                 | `xoxb-...`                   |
@@ -152,7 +152,7 @@ The configuration file is JSON with the following structure:
 
 ```json
 {
-  "api_token": "hl_live_abc123...",
+  "api_key": "hl_live_abc123...",
   "api_base_url": "https://api.humanlayer.dev",
   "app_base_url": "https://app.humanlayer.dev",
   "channel": {
@@ -205,8 +205,8 @@ Given:
 
 Given:
 
-- Environment: `HUMANLAYER_API_TOKEN=env_token_123`
-- Config file: `"api_token": "file_token_456"`
+- Environment: `HUMANLAYER_API_KEY=env_token_123`
+- Config file: `"api_key": "file_token_456"`
 
 **Result**: `env_token_123` (environment variable wins)
 

@@ -36,7 +36,7 @@ export async function contactHumanCommand(options: ContactHumanOptions) {
     const hl =
       Object.keys(resolvedConfig.contact_channel).length > 0
         ? humanlayer({ contactChannel: resolvedConfig.contact_channel })
-        : humanlayer()
+        : humanlayer({ apiKey: resolvedConfig.api_key, apiBaseUrl: resolvedConfig.api_base_url })
 
     console.error(chalk.yellow('Contacting human...'))
 

@@ -1,11 +1,11 @@
 {
   "name": "hlyr",
-  "version": "0.4.0",
+  "version": "0.7.0",
   "description": "HumanLayer, but on your command-line.",
   "type": "module",
   "bin": {
-    "hlyr": "./dist/index.js",
-    "humanlayer": "./dist/index.js"
+    "hlyr": "dist/index.js",
+    "humanlayer": "dist/index.js"
   },
   "scripts": {
     "build": "tsup src/index.ts --format esm --target es2020 --clean && npm run build-go",

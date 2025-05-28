@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
 	"strings"
 	"time"
 
@@ -25,15 +24,15 @@ const (
 
 // Request represents either an approval or human contact
 type Request struct {
-	ID          string
-	CallID      string
-	RunID       string
-	Type        RequestType
-	Message     string
-	Tool        string // For approvals
-	Parameters  map[string]interface{} // For approvals
-	CreatedAt   time.Time
-	AgentName   string
+	ID         string
+	CallID     string
+	RunID      string
+	Type       RequestType
+	Message    string
+	Tool       string                 // For approvals
+	Parameters map[string]interface{} // For approvals
+	CreatedAt  time.Time
+	AgentName  string
 }
 
 // View states
@@ -65,13 +64,13 @@ type model struct {
 }
 
 type keyMap struct {
-	Up       key.Binding
-	Down     key.Binding
-	Enter    key.Binding
-	Back     key.Binding
-	Approve  key.Binding
-	Deny     key.Binding
-	Quit     key.Binding
+	Up      key.Binding
+	Down    key.Binding
+	Enter   key.Binding
+	Back    key.Binding
+	Approve key.Binding
+	Deny    key.Binding
+	Quit    key.Binding
 }
 
 var keys = keyMap{
@@ -111,21 +110,23 @@ func newModel() model {
 	ti.CharLimit = 500
 	ti.Width = 60
 
-	// Get API key from environment
-	apiKey := os.Getenv("HUMANLAYER_API_KEY")
-	if apiKey == "" {
-		log.Fatal("HUMANLAYER_API_KEY environment variable is required")
+	// Load configuration
+	config, err := LoadConfig()
+	if err != nil {
+		log.Fatal("Failed to load configuration:", err)
 	}
 
-	// Get optional API base URL
-	baseURL := os.Getenv("HUMANLAYER_API_BASE_URL")
+	// Validate configuration
+	if err := ValidateConfig(config); err != nil {
+		log.Fatal("Configuration validation failed:", err)
+	}
 
-	// Create client
+	// Create client options
 	opts := []humanlayer.ClientOption{
-		humanlayer.WithAPIKey(apiKey),
+		humanlayer.WithAPIKey(config.APIKey),
 	}
-	if baseURL != "" {
-		opts = append(opts, humanlayer.WithBaseURL(baseURL))
+	if config.APIBaseURL != "" {
+		opts = append(opts, humanlayer.WithBaseURL(config.APIBaseURL))
 	}
 
 	client, err := humanlayer.NewClient(opts...)
