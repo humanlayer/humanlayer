@@ -34,6 +34,9 @@ jobs:
       - name: Install the project
         run: uv sync --all-extras --dev
 
+      - name: Install humanlayer-ts dependencies
+        run: npm -C humanlayer-ts install
+
       - name: Run checks
         run: make check
 
