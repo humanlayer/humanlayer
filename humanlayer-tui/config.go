@@ -38,7 +38,7 @@ func LoadConfig() (*Config, error) {
 	_ = v.BindEnv("app_base_url", "HUMANLAYER_APP_URL")
 
 	// Set defaults
-	v.SetDefault("api_base_url", "https://api.humanlayer.dev")
+	v.SetDefault("api_base_url", "https://api.humanlayer.dev/humanlayer/v1")
 	v.SetDefault("app_base_url", "https://app.humanlayer.dev")
 
 	// Read config file (ignore if not found)

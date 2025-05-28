@@ -120,8 +120,8 @@ func TestConfigPriority(t *testing.T) {
 			t.Errorf("Expected empty API key, got '%s'", config.APIKey)
 		}
 
-		if config.APIBaseURL != "https://api.humanlayer.dev" {
-			t.Errorf("Expected default API base URL 'https://api.humanlayer.dev', got '%s'", config.APIBaseURL)
+		if config.APIBaseURL != "https://api.humanlayer.dev/humanlayer/v1" {
+			t.Errorf("Expected default API base URL 'https://api.humanlayer.dev/humanlayer/v1', got '%s'", config.APIBaseURL)
 		}
 
 		if config.AppBaseURL != "https://app.humanlayer.dev" {
@@ -133,7 +133,7 @@ func TestConfigPriority(t *testing.T) {
 		// Test valid config
 		validConfig := &Config{
 			APIKey:     "valid_key",
-			APIBaseURL: "https://api.humanlayer.dev",
+			APIBaseURL: "https://api.humanlayer.dev/humanlayer/v1",
 			AppBaseURL: "https://app.humanlayer.dev",
 		}
 		if err := ValidateConfig(validConfig); err != nil {
@@ -143,7 +143,7 @@ func TestConfigPriority(t *testing.T) {
 		// Test invalid config (missing API key)
 		invalidConfig := &Config{
 			APIKey:     "",
-			APIBaseURL: "https://api.humanlayer.dev",
+			APIBaseURL: "https://api.humanlayer.dev/humanlayer/v1",
 			AppBaseURL: "https://app.humanlayer.dev",
 		}
 		if err := ValidateConfig(invalidConfig); err == nil {

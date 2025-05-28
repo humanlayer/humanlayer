@@ -57,7 +57,7 @@ const CONFIG_SCHEMA: ConfigSchema = {
     envVar: 'HUMANLAYER_API_BASE',
     configKey: 'api_base_url',
     flagKey: 'apiBase',
-    defaultValue: 'https://api.humanlayer.dev',
+    defaultValue: 'https://api.humanlayer.dev/humanlayer/v1',
     required: true,
   },
   app_base_url: {

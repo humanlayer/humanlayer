@@ -124,6 +124,16 @@ export async function startClaudeApprovalsMCPServer() {
   })
 
   server.setRequestHandler(CallToolRequestSchema, async request => {
+    /**
+     * example input
+     * {
+     *  "tool_name": "Write",
+     *  "input": {
+     *    "file_name": "hello.txt"
+     *    "content": "Hello, how are you?"
+     *  }
+     * }
+     */
     if (request.params.name === 'request_permission') {
       const toolName: string | undefined = request.params.arguments?.tool_name
 
