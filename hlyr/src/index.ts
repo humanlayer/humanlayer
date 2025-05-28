@@ -8,7 +8,12 @@ import { contactHumanCommand } from './commands/contactHuman.js'
 import { configShowCommand } from './commands/configShow.js'
 import { pingCommand } from './commands/ping.js'
 import { startDefaultMCPServer, startClaudeApprovalsMCPServer } from './mcp.js'
-import { getDefaultConfigPath, resolveFullConfig, resolveConfigWithSources } from './config.js'
+import {
+  getDefaultConfigPath,
+  resolveFullConfig,
+  resolveConfigWithSources,
+  maskSensitiveValue,
+} from './config.js'
 import { getProject } from './hlClient.js'
 import chalk from 'chalk'
 
@@ -26,8 +31,8 @@ function showAbbreviatedConfig() {
     )}`,
   )
   const apiKeyDisplay = configWithSources.api_key?.value
-    ? chalk.green(configWithSources.api_key.value.substring(0, 6) + '...')
-    : chalk.red('<not set>')
+    ? chalk.green(maskSensitiveValue(configWithSources.api_key.value))
+    : chalk.red(maskSensitiveValue(undefined))
   console.log(`  API Key: ${apiKeyDisplay} ${chalk.gray(`(${configWithSources.api_key?.sourceName})`)}`)
 }
 

@@ -1,5 +1,10 @@
 import chalk from 'chalk'
-import { getDefaultConfigPath, resolveFullConfig, resolveConfigWithSources } from '../config.js'
+import {
+  getDefaultConfigPath,
+  resolveFullConfig,
+  resolveConfigWithSources,
+  maskSensitiveValue,
+} from '../config.js'
 
 interface ConfigShowOptions {
   configFile?: string
@@ -20,11 +25,7 @@ export function configShowCommand(options: ConfigShowOptions): void {
     // JSON output mode
     if (options.json) {
       const jsonOutput = {
-        api_key: resolvedConfig.api_key
-          ? resolvedConfig.api_key.length > 6
-            ? resolvedConfig.api_key.substring(0, 6) + '...'
-            : resolvedConfig.api_key + '...'
-          : undefined,
+        api_key: resolvedConfig.api_key ? maskSensitiveValue(resolvedConfig.api_key) : undefined,
         api_base_url: resolvedConfig.api_base_url,
         app_base_url: resolvedConfig.app_base_url,
         contact_channel: resolvedConfig.contact_channel,
@@ -32,9 +33,9 @@ export function configShowCommand(options: ConfigShowOptions): void {
 
       // Mask bot token if present
       if (jsonOutput.contact_channel.slack?.bot_token) {
-        const token = jsonOutput.contact_channel.slack.bot_token
-        jsonOutput.contact_channel.slack.bot_token =
-          token.length > 6 ? token.substring(0, 6) + '...' : token + '...'
+        jsonOutput.contact_channel.slack.bot_token = maskSensitiveValue(
+          jsonOutput.contact_channel.slack.bot_token,
+        )
       }
 
       console.log(JSON.stringify(jsonOutput, null, 2))
@@ -57,9 +58,7 @@ export function configShowCommand(options: ConfigShowOptions): void {
     const apiKey = resolvedConfig.api_key || '<not set>'
 
     const displayApiKey =
-      apiKey === '<not set>'
-        ? chalk.red(apiKey)
-        : chalk.green(apiKey.length > 6 ? apiKey.substring(0, 6) + '...' : apiKey + '...')
+      apiKey === '<not set>' ? chalk.red(apiKey) : chalk.green(maskSensitiveValue(apiKey))
     console.log(`  API Key: ${displayApiKey}`)
     console.log(`  API Base URL: ${chalk.cyan(resolvedConfig.api_base_url)}`)
     console.log(`  App Base URL: ${chalk.cyan(resolvedConfig.app_base_url)}`)
@@ -75,11 +74,7 @@ export function configShowCommand(options: ConfigShowOptions): void {
         `    Channel/User ID: ${chalk.cyan(contactChannel.slack.channel_or_user_id || '<not set>')}`,
       )
       const displayBotToken = contactChannel.slack.bot_token
-        ? chalk.green(
-            contactChannel.slack.bot_token.length > 6
-              ? contactChannel.slack.bot_token.substring(0, 6) + '...'
-              : contactChannel.slack.bot_token + '...',
-          )
+        ? chalk.green(maskSensitiveValue(contactChannel.slack.bot_token))
         : chalk.red('<not set>')
       console.log(`    Bot Token: ${displayBotToken}`)
       console.log(
@@ -106,10 +101,7 @@ export function configShowCommand(options: ConfigShowOptions): void {
 
     // Show API configuration sources
     if (configWithSources.api_key?.value) {
-      const displayValue =
-        configWithSources.api_key.value.length > 6
-          ? configWithSources.api_key.value.substring(0, 6) + '...'
-          : configWithSources.api_key.value + '...'
+      const displayValue = maskSensitiveValue(configWithSources.api_key.value)
       console.log(
         `  API Key: ${chalk.green(displayValue)} ${chalk.gray(
           `(${configWithSources.api_key.sourceName})`,
@@ -148,11 +140,7 @@ export function configShowCommand(options: ConfigShowOptions): void {
       const value = process.env[envVar]
       if (value) {
         const displayValue =
-          envVar.includes('TOKEN') || envVar.includes('KEY')
-            ? value.length > 6
-              ? value.substring(0, 6) + '...'
-              : value + '...'
-            : value
+          envVar.includes('TOKEN') || envVar.includes('KEY') ? maskSensitiveValue(value) : value
         console.log(`  ${envVar}: ${chalk.green(displayValue)} ${chalk.gray('(env)')}`)
       }
     })

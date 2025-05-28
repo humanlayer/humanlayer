@@ -308,3 +308,16 @@ export function resolveFullConfig(options: Record<string, unknown> = {}): Resolv
   const resolver = new ConfigResolver(options)
   return resolver.resolveFullConfig(options)
 }
+
+// Utility function for masking sensitive values consistently
+export function maskSensitiveValue(value: string | undefined): string {
+  if (!value) {
+    return '<not set>'
+  }
+
+  if (value.length <= 6) {
+    return value + '...'
+  }
+
+  return value.substring(0, 6) + '...'
+}
