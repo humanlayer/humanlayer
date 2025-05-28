@@ -105,12 +105,8 @@ configCommand
     const configFile = options.configFile || getDefaultConfigPath()
     spawn(editor, [configFile], { stdio: 'inherit' })
   })
-<<<<<<< HEAD
 
 configCommand
-=======
-  // config show
->>>>>>> 1e1a79d (Broaden checks/tests run to encompass JS)
   .command('show')
   .description('Show current configuration')
   .option('--config-file <path>', 'Path to config file')
