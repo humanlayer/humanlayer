@@ -37,6 +37,14 @@ jobs:
       - name: Install ts deps
         run: npm -C humanlayer-ts install && npm -C hlyr install
 
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      # TODO: Update this, let's just pull the binary?
+      - name: Install golangci-lint
+        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+
       - name: Build CLI
         run: npm -C hlyr run build
 
