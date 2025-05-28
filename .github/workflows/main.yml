@@ -9,7 +9,7 @@ on:
 
 jobs:
   # todo needs check-ts and test-ts too!
-  quality-py:
+  checks:
     runs-on: ubuntu-latest
     steps:
       - name: Check out
@@ -35,9 +35,9 @@ jobs:
         run: uv sync --all-extras --dev
 
       - name: Run checks
-        run: make check-py
+        run: make check
 
-  tests-py:
+  tests:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -57,7 +57,7 @@ jobs:
         run: uv python install ${{ matrix.python-version }}
 
       - name: Test
-        run: make test-py
+        run: make test
 
       - name: Upload Test Results
         if: always()
