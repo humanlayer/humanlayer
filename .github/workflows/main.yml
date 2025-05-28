@@ -37,6 +37,9 @@ jobs:
       - name: Install ts deps
         run: npm -C humanlayer-ts install && npm -C hlyr install
 
+      - name: Build CLI
+        run: npm -C hlyr run build
+
       - name: Run checks
         run: make check
 
@@ -67,6 +70,9 @@ jobs:
 
       - name: Install ts deps
         run: npm -C humanlayer-ts install && npm -C hlyr install
+
+      - name: Build CLI
+        run: npm -C hlyr run build
 
       - name: Test
         run: make test
