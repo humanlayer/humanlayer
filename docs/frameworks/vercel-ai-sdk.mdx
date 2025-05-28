@@ -11,7 +11,7 @@ The [Vercel AI SDK](https://sdk.vercel.ai/docs) enables streaming AI responses i
 ## Installation
 
 ```bash
-npm install humanlayer ai
+npm install humanlayer-sdk ai
 ```
 
 ## Basic Example
@@ -78,7 +78,7 @@ const { text, steps } = await generateText({
 ### API Route (app/api/chat/route.ts)
 
 ```typescript
-import { humanlayer } from "humanlayer";
+import { humanlayer } from "humanlayer-sdk";
 import { StreamingTextResponse, LangChainStream } from "ai";
 import { ChatOpenAI } from "langchain/chat_models/openai";
 import { AIMessage, HumanMessage, SystemMessage } from "langchain/schema";

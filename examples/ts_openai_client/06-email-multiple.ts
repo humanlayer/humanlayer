@@ -1,4 +1,4 @@
-import { EmailContactChannel, FunctionCall, humanlayer } from "humanlayer";
+import { EmailContactChannel, FunctionCall, humanlayer } from "humanlayer-sdk";
 
 const hl = humanlayer({ verbose: true, runId: "email-multiple" });
 

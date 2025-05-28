@@ -40,7 +40,7 @@
   "dependencies": {
     "@ai-sdk/openai": "^1.0.13",
     "ai": "^4.0.26",
-    "humanlayer": "0.7.1-rc1"
+    "humanlayer-sdk": "0.7.1-rc1"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",

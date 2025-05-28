@@ -1,5 +1,5 @@
 import { config } from "dotenv";
-import { HumanLayer } from "humanlayer";
+import { HumanLayer } from "humanlayer-sdk";
 import {
   ClassifiedEmail,
   classifyEmail,

@@ -1,4 +1,4 @@
-import { humanlayer } from "humanlayer";
+import { humanlayer } from "humanlayer-sdk";
 
 const hlClient = humanlayer({ verbose: true, runId: "spline-reticulator" });
 
