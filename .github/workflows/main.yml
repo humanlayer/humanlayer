@@ -34,8 +34,8 @@ jobs:
       - name: Install the project
         run: uv sync --all-extras --dev
 
-      - name: Install humanlayer-ts dependencies
-        run: npm -C humanlayer-ts install
+      - name: Install ts deps
+        run: npm -C humanlayer-ts install && npm -C hlyr install
 
       - name: Run checks
         run: make check
@@ -65,8 +65,8 @@ jobs:
       - name: Set up Python ${{ matrix.python-version }}
         run: uv python install ${{ matrix.python-version }}
 
-      - name: Install humanlayer-ts dependencies
-        run: npm -C humanlayer-ts install
+      - name: Install ts deps
+        run: npm -C humanlayer-ts install && npm -C hlyr install
 
       - name: Test
         run: make test
