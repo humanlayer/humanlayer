@@ -9,7 +9,7 @@ on:
 
 jobs:
   # todo needs check-ts and test-ts too!
-  quality-py:
+  checks:
     runs-on: ubuntu-latest
     steps:
       - name: Check out
@@ -34,10 +34,24 @@ jobs:
       - name: Install the project
         run: uv sync --all-extras --dev
 
-      - name: Run checks
-        run: make check-py
+      - name: Install ts deps
+        run: npm -C humanlayer-ts install && npm -C hlyr install
 
-  tests-py:
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      # TODO: Update this, let's just pull the binary?
+      - name: Install golangci-lint
+        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+
+      - name: Build CLI
+        run: npm -C hlyr run build
+
+      - name: Run checks
+        run: make check
+
+  tests:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -46,6 +60,12 @@ jobs:
     steps:
       - name: Check out
         uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "npm"
+          cache-dependency-path: humanlayer-ts/package-lock.json
 
       - name: Install uv
         uses: astral-sh/setup-uv@v4
@@ -56,8 +76,14 @@ jobs:
       - name: Set up Python ${{ matrix.python-version }}
         run: uv python install ${{ matrix.python-version }}
 
+      - name: Install ts deps
+        run: npm -C humanlayer-ts install && npm -C hlyr install
+
+      - name: Build CLI
+        run: npm -C hlyr run build
+
       - name: Test
-        run: make test-py
+        run: make test
 
       - name: Upload Test Results
         if: always()
