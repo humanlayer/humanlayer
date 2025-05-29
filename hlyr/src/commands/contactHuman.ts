@@ -1,5 +1,5 @@
 import chalk from 'chalk'
-import { humanlayer } from 'humanlayer'
+import { humanlayer } from '@humanlayer/sdk'
 import { resolveFullConfig } from '../config.js'
 
 interface ContactHumanOptions {
