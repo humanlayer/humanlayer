@@ -1,4 +1,4 @@
-import { humanlayer } from "humanlayer-sdk";
+import { humanlayer } from "@humanlayer/sdk";
 import OpenAI from "openai";
 import { ChatCompletionTool } from "openai/src/resources/index.js";
 

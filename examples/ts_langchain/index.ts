@@ -7,7 +7,7 @@ import { AgentExecutor, createOpenAIFunctionsAgent } from "langchain/agents";
 import { StructuredTool, Tool } from "@langchain/core/tools";
 import { output, z } from "zod";
 import { ZodObjectAny } from "@langchain/core/dist/types/zod";
-import { humanlayer } from "humanlayer-sdk";
+import { humanlayer } from "@humanlayer/sdk";
 
 const hl = humanlayer({
   verbose: true,

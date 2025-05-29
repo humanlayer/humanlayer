@@ -1,4 +1,4 @@
-import { FunctionCall, humanlayer } from "humanlayer-sdk";
+import { FunctionCall, humanlayer } from "@humanlayer/sdk";
 
 const hl = humanlayer({ verbose: true, runId: "email-escalation" });
 

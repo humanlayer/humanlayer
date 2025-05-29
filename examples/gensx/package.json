@@ -19,7 +19,7 @@
   "dependencies": {
     "@gensx/core": "^0.3.7",
     "@gensx/openai": "^0.1.19",
-    "humanlayer-sdk": "0.7.7",
+    "@humanlayer/sdk": "0.7.8-alpha.1",
     "openai": "^4.90.0"
   },
   "devDependencies": {

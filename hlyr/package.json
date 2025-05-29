@@ -24,7 +24,7 @@
     "chalk": "^5.4.1",
     "commander": "^14.0.0",
     "dotenv": "^16.5.0",
-    "humanlayer-sdk": "^0.7.7"
+    "@humanlayer/sdk": "^0.7.7"
   },
   "devDependencies": {
     "@types/node": "^22.15.21",
