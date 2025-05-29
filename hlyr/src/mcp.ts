@@ -6,7 +6,7 @@ import {
   ListToolsRequestSchema,
   McpError,
 } from '@modelcontextprotocol/sdk/types.js'
-import { humanlayer } from 'humanlayer'
+import { humanlayer } from '@humanlayer/sdk'
 import { resolveFullConfig } from './config.js'
 
 function validateAuth(): void {
