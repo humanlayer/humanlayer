@@ -1,6 +1,7 @@
 {
-  "name": "humanlayer-sdk",
-  "version": "0.7.8-alpha.1",
+  "name": "@humanlayer/sdk",
+  "version": "0.7.8",
+  "private": false,
   "description": "typescript client for humanlayer.dev",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",

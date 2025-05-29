@@ -1,4 +1,4 @@
-import { HumanLayer, ResponseOption } from "humanlayer-sdk";
+import { HumanLayer, ResponseOption } from "@humanlayer/sdk";
 import { config } from "dotenv";
 import {
   Classification,
