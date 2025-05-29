@@ -11,7 +11,7 @@ HumanLayer has [a dedicated client for TypeScript](https://github.com/humanlayer
 Install the HumanLayer TypeScript SDK:
 
 ```bash
-npm install humanlayer
+npm install humanlayer-sdk
 ```
 
 ## Basic Example
@@ -32,7 +32,7 @@ export HUMANLAYER_API_KEY=your-humanlayer-key
 This basic example shows how to use HumanLayer as a tool in an OpenAI chat completion loop.
 
 ```typescript
-import { humanlayer } from "humanlayer";
+import { humanlayer } from "humanlayer-sdk";
 import OpenAI from "openai";
 
 // Initialize clients
@@ -93,7 +93,7 @@ if (message.tool_calls) {
 Configure how approvals are requested:
 
 ```typescript
-import { humanlayer, ContactChannel, SlackContactChannel } from "humanlayer";
+import { humanlayer, ContactChannel, SlackContactChannel } from "humanlayer-sdk";
 
 const hl = humanlayer({
   runId: "quickstart",

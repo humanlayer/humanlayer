@@ -21,7 +21,7 @@
   "author": "HumanLayer Authors",
   "license": "Apache-2.0",
   "dependencies": {
-    "humanlayer": "0.7.7",
+    "humanlayer-sdk": "0.7.7",
     "langchain": "^0.2.19",
     "openai": "^4.0.0"
   },
