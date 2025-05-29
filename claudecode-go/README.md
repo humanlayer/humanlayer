@@ -21,7 +21,7 @@ package main
 import (
     "fmt"
     "log"
-    
+
     claudecode "github.com/humanlayer/humanlayer/claudecode-go"
 )
 
@@ -31,7 +31,7 @@ func main() {
     if err != nil {
         log.Fatal(err)
     }
-    
+
     // Run a simple prompt
     result, err := client.LaunchAndWait(claudecode.SessionConfig{
         Prompt: "Write a hello world function in Go",
@@ -39,7 +39,7 @@ func main() {
     if err != nil {
         log.Fatal(err)
     }
-    
+
     fmt.Println(result.Result)
 }
 ```
@@ -108,17 +108,17 @@ type SessionConfig struct {
     // Core
     Prompt    string
     SessionID string // Resume existing session
-    
+
     // Model
     Model Model // ModelOpus or ModelSonnet
-    
+
     // Output
     OutputFormat OutputFormat
-    
+
     // MCP
     MCPConfig            *MCPConfig
     PermissionPromptTool string
-    
+
     // Control
     MaxTurns           int
     WorkingDir         string

@@ -65,7 +65,7 @@ type StreamEvent struct {
 	Message   *Message     `json:"message,omitempty"`
 	Tools     []string     `json:"tools,omitempty"`
 	MCPServers []MCPStatus `json:"mcp_servers,omitempty"`
-	
+
 	// Result event fields (when type="result")
 	CostUSD     float64   `json:"cost_usd,omitempty"`
 	IsError     bool      `json:"is_error,omitempty"`
@@ -132,10 +132,10 @@ type Session struct {
 	ID        string
 	Config    SessionConfig
 	StartTime time.Time
-	
+
 	// For streaming
 	Events    chan StreamEvent
-	
+
 	// Process management
 	cmd       *exec.Cmd
 	done      chan struct{}

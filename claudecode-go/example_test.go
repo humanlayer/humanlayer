@@ -3,7 +3,7 @@ package claudecode_test
 import (
 	"fmt"
 	"log"
-	
+
 	"github.com/humanlayer/humanlayer/claudecode-go"
 )
 
@@ -13,7 +13,7 @@ func ExampleClient_LaunchAndWait() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	
+
 	// Simple text output
 	result, err := client.LaunchAndWait(claudecode.SessionConfig{
 		Prompt:       "Write a hello world function in Go",
@@ -22,7 +22,7 @@ func ExampleClient_LaunchAndWait() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	
+
 	fmt.Println("Claude says:", result.Result)
 }
 
@@ -32,7 +32,7 @@ func ExampleClient_Launch_streaming() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	
+
 	// Launch with streaming JSON
 	session, err := client.Launch(claudecode.SessionConfig{
 		Prompt:       "Build a REST API",
@@ -43,7 +43,7 @@ func ExampleClient_Launch_streaming() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	
+
 	// Process events as they arrive
 	for event := range session.Events {
 		switch event.Type {
@@ -61,13 +61,13 @@ func ExampleClient_Launch_streaming() {
 			fmt.Printf("Completed! Cost: $%.4f\n", event.CostUSD)
 		}
 	}
-	
+
 	// Wait for completion
 	result, err := session.Wait()
 	if err != nil {
 		log.Fatal(err)
 	}
-	
+
 	fmt.Printf("Session %s completed in %dms\n", result.SessionID, result.DurationMS)
 }
 
@@ -76,7 +76,7 @@ func ExampleClient_Launch_withMCP() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	
+
 	// Configure MCP server for approvals
 	mcpConfig := &claudecode.MCPConfig{
 		MCPServers: map[string]claudecode.MCPServer{
@@ -90,7 +90,7 @@ func ExampleClient_Launch_withMCP() {
 			},
 		},
 	}
-	
+
 	// Launch with MCP and approvals
 	session, err := client.Launch(claudecode.SessionConfig{
 		Prompt:               "Delete all files in /tmp",
@@ -102,18 +102,18 @@ func ExampleClient_Launch_withMCP() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	
+
 	// Process events
 	for event := range session.Events {
 		// Handle events...
 		_ = event
 	}
-	
+
 	result, err := session.Wait()
 	if err != nil {
 		log.Fatal(err)
 	}
-	
+
 	fmt.Printf("Completed with %d turns\n", result.NumTurns)
 }
 
@@ -122,7 +122,7 @@ func ExampleSessionConfig_resume() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	
+
 	// Resume a previous session
 	result, err := client.LaunchAndWait(claudecode.SessionConfig{
 		SessionID:    "550e8400-e29b-41d4-a716-446655440000",
@@ -132,6 +132,6 @@ func ExampleSessionConfig_resume() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	
+
 	fmt.Printf("Resumed session cost: $%.4f\n", result.CostUSD)
 }

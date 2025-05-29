@@ -10,7 +10,7 @@
 //	if err != nil {
 //	    log.Fatal(err)
 //	}
-//	
+//
 //	result, err := client.LaunchAndWait(claudecode.SessionConfig{
 //	    Prompt: "Write a hello world function",
 //	})
@@ -22,7 +22,7 @@
 //	    Prompt:       "Build a web server",
 //	    OutputFormat: claudecode.OutputStreamJSON,
 //	})
-//	
+//
 //	for event := range session.Events {
 //	    // Process events as they arrive
 //	}

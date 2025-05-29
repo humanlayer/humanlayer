@@ -3,7 +3,7 @@ package claudecode_test
 import (
 	"testing"
 	"time"
-	
+
 	"github.com/humanlayer/humanlayer/claudecode-go"
 )
 
@@ -12,7 +12,7 @@ func TestClient_LaunchAndWait(t *testing.T) {
 	if err != nil {
 		t.Skip("claude binary not found in PATH")
 	}
-	
+
 	tests := []struct {
 		name   string
 		config claudecode.SessionConfig
@@ -59,7 +59,7 @@ func TestClient_LaunchAndWait(t *testing.T) {
 			},
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result, err := client.LaunchAndWait(tt.config)
@@ -73,7 +73,7 @@ func TestClient_LaunchStreaming(t *testing.T) {
 	if err != nil {
 		t.Skip("claude binary not found in PATH")
 	}
-	
+
 	session, err := client.Launch(claudecode.SessionConfig{
 		Prompt:       "Count to 2",
 		OutputFormat: claudecode.OutputStreamJSON,
@@ -82,11 +82,11 @@ func TestClient_LaunchStreaming(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to launch: %v", err)
 	}
-	
+
 	// Collect events
 	eventCount := 0
 	timeout := time.After(30 * time.Second)
-	
+
 	for {
 		select {
 		case event, ok := <-session.Events:
@@ -95,7 +95,7 @@ func TestClient_LaunchStreaming(t *testing.T) {
 				goto done
 			}
 			eventCount++
-			
+
 			// Verify event has required fields
 			if event.Type == "" {
 				t.Error("event missing type")
@@ -103,17 +103,17 @@ func TestClient_LaunchStreaming(t *testing.T) {
 			if event.SessionID == "" && event.Type != "system" {
 				t.Error("event missing session ID")
 			}
-			
+
 		case <-timeout:
 			t.Fatal("timeout waiting for events")
 		}
 	}
-	
+
 done:
 	if eventCount < 3 {
 		t.Errorf("expected at least 3 events (init, message, result), got %d", eventCount)
 	}
-	
+
 	// Wait for completion
 	result, err := session.Wait()
 	if err != nil {
