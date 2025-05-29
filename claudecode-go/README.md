@@ -1,4 +1,4 @@
-# Claude Code Go SDK
+# Claude Code Go SDK (Experimental)
 
 A Go SDK for programmatically interacting with Claude Code (Anthropic's AI coding assistant).
 
