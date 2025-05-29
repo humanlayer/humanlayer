@@ -45,7 +45,7 @@ To get started, check out [Getting Started](https://humanlayer.dev/docs/quicksta
 - 🧠 [Raw OpenAI Client](./examples/openai_client/)
 
 <div align="center">
-<a target="_blank" href="https://youtu.be/5sbN8rh_S5Q"><img width="60%" alt="video thumbnail showing editor" src="https://www.humanlayer.dev/video-thumb.png"></a>
+<a target="_blank" href="https://youtu.be/5sbN8rh_S5Q"><img width="60%" alt="video thumbnail showing editor" src="./docs/images/video-preview.png"></a>
 </div>
 
 ## Example
@@ -76,12 +76,12 @@ run_llm_task(
 )
 ```
 
-<div align="center"><img style="width: 400px" alt="A screenshot of slack showing a human replying to the bot" src="https://www.humanlayer.dev/hl-slack-oct11.png"></div>
+<div align="center"><img style="width: 400px" alt="A screenshot of slack showing a human replying to the bot" src="https://www.humanlayer.dev/slack-conversation.png"></div>
 
 For Typescript, install with npm:
 
 ```
-npm install humanlayer
+npm install @humanlayer/sdk
 ```
 
 More python and TS examples in the [framework specific examples](./examples) or the [Getting Started Guides](https://humanlayer.dev/docs/frameworks) to get hands on.
