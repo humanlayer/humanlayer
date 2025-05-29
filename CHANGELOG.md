@@ -1,3 +1,9 @@
+## 0.7.8
+
+### Changes
+
+- Rename `humanlayer` package in npm to `@humanlayer/sdk` - if you are using the humanlayer sdk, you should change your package.json to use the new package.
+
 ## 0.7.7
 
 ### Fixes
