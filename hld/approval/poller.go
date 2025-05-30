@@ -6,18 +6,7 @@ import (
 	"log/slog"
 	"sync"
 	"time"
-
-	humanlayer "github.com/humanlayer/humanlayer/humanlayer-go"
 )
-
-// APIClient defines the interface for interacting with the HumanLayer API
-type APIClient interface {
-	GetPendingFunctionCalls(ctx context.Context) ([]humanlayer.FunctionCall, error)
-	GetPendingHumanContacts(ctx context.Context) ([]humanlayer.HumanContact, error)
-	ApproveFunctionCall(ctx context.Context, callID string, comment string) error
-	DenyFunctionCall(ctx context.Context, callID string, reason string) error
-	RespondToHumanContact(ctx context.Context, callID string, response string) error
-}
 
 // Poller polls the HumanLayer API for pending approvals
 type Poller struct {

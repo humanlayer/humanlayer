@@ -3,148 +3,41 @@ package approval
 import (
 	"context"
 	"errors"
-	"sync"
 	"testing"
 	"time"
 
 	humanlayer "github.com/humanlayer/humanlayer/humanlayer-go"
+	"go.uber.org/mock/gomock"
 )
 
-// mockClient is a mock implementation of the HumanLayer client for testing
-type mockClient struct {
-	functionCalls   []humanlayer.FunctionCall
-	humanContacts   []humanlayer.HumanContact
-	fcError         error
-	hcError         error
-	fcCallCount     int
-	hcCallCount     int
-	mu              sync.Mutex
-}
-
-func (m *mockClient) GetPendingFunctionCalls(ctx context.Context) ([]humanlayer.FunctionCall, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.fcCallCount++
-	if m.fcError != nil {
-		return nil, m.fcError
-	}
-	return m.functionCalls, nil
-}
-
-func (m *mockClient) GetPendingHumanContacts(ctx context.Context) ([]humanlayer.HumanContact, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.hcCallCount++
-	if m.hcError != nil {
-		return nil, m.hcError
-	}
-	return m.humanContacts, nil
-}
-
-func (m *mockClient) ApproveFunctionCall(ctx context.Context, callID string, comment string) error {
-	return nil
-}
-
-func (m *mockClient) DenyFunctionCall(ctx context.Context, callID string, reason string) error {
-	return nil
-}
-
-func (m *mockClient) RespondToHumanContact(ctx context.Context, callID string, response string) error {
-	return nil
-}
-
-func (m *mockClient) getFCCallCount() int {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	return m.fcCallCount
-}
-
-func (m *mockClient) getHCCallCount() int {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	return m.hcCallCount
-}
-
-// mockStore is a mock implementation of Store for testing
-type mockStore struct {
-	functionCalls map[string]*humanlayer.FunctionCall
-	humanContacts map[string]*humanlayer.HumanContact
-	storeError    error
-}
-
-func newMockStore() *mockStore {
-	return &mockStore{
-		functionCalls: make(map[string]*humanlayer.FunctionCall),
-		humanContacts: make(map[string]*humanlayer.HumanContact),
-	}
-}
-
-func (m *mockStore) StoreFunctionCall(fc humanlayer.FunctionCall) error {
-	if m.storeError != nil {
-		return m.storeError
-	}
-	m.functionCalls[fc.CallID] = &fc
-	return nil
-}
-
-func (m *mockStore) StoreHumanContact(hc humanlayer.HumanContact) error {
-	if m.storeError != nil {
-		return m.storeError
-	}
-	m.humanContacts[hc.CallID] = &hc
-	return nil
-}
-
-func (m *mockStore) GetFunctionCall(callID string) (*humanlayer.FunctionCall, error) {
-	fc, ok := m.functionCalls[callID]
-	if !ok {
-		return nil, errors.New("not found")
-	}
-	return fc, nil
-}
-
-func (m *mockStore) GetHumanContact(callID string) (*humanlayer.HumanContact, error) {
-	hc, ok := m.humanContacts[callID]
-	if !ok {
-		return nil, errors.New("not found")
-	}
-	return hc, nil
-}
-
-func (m *mockStore) GetAllPending() ([]PendingApproval, error) {
-	return []PendingApproval{}, nil
-}
-
-func (m *mockStore) GetPendingByRunID(runID string) ([]PendingApproval, error) {
-	return []PendingApproval{}, nil
-}
-
-func (m *mockStore) MarkFunctionCallResponded(callID string) error {
-	return nil
-}
-
-func (m *mockStore) MarkHumanContactResponded(callID string) error {
-	return nil
-}
-
 func TestPoller_Poll(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
 	// Create mock client with test data
-	client := &mockClient{
-		functionCalls: []humanlayer.FunctionCall{
-			{CallID: "fc-1", RunID: "run-1"},
-			{CallID: "fc-2", RunID: "run-2"},
-		},
-		humanContacts: []humanlayer.HumanContact{
-			{CallID: "hc-1", RunID: "run-1"},
-		},
+	mockClient := NewMockAPIClient(ctrl)
+	mockStore := NewMockStore(ctrl)
+
+	testFunctionCalls := []humanlayer.FunctionCall{
+		{CallID: "fc-1", RunID: "run-1"},
+		{CallID: "fc-2", RunID: "run-2"},
+	}
+	testHumanContacts := []humanlayer.HumanContact{
+		{CallID: "hc-1", RunID: "run-1"},
 	}
 
-	store := newMockStore()
+	// Set expectations
+	mockClient.EXPECT().GetPendingFunctionCalls(gomock.Any()).Return(testFunctionCalls, nil)
+	mockClient.EXPECT().GetPendingHumanContacts(gomock.Any()).Return(testHumanContacts, nil)
+
+	mockStore.EXPECT().StoreFunctionCall(testFunctionCalls[0]).Return(nil)
+	mockStore.EXPECT().StoreFunctionCall(testFunctionCalls[1]).Return(nil)
+	mockStore.EXPECT().StoreHumanContact(testHumanContacts[0]).Return(nil)
 
 	// Create poller with short interval for testing
 	poller := &Poller{
-		client:        client,
-		store:         store,
+		client:        mockClient,
+		store:         mockStore,
 		interval:      10 * time.Millisecond,
 		maxBackoff:    100 * time.Millisecond,
 		backoffFactor: 2.0,
@@ -154,14 +47,6 @@ func TestPoller_Poll(t *testing.T) {
 	ctx := context.Background()
 	poller.poll(ctx)
 
-	// Verify data was stored
-	if len(store.functionCalls) != 2 {
-		t.Errorf("expected 2 function calls stored, got %d", len(store.functionCalls))
-	}
-	if len(store.humanContacts) != 1 {
-		t.Errorf("expected 1 human contact stored, got %d", len(store.humanContacts))
-	}
-
 	// Verify no failure count
 	if poller.failureCount != 0 {
 		t.Errorf("expected failure count 0, got %d", poller.failureCount)
@@ -169,17 +54,25 @@ func TestPoller_Poll(t *testing.T) {
 }
 
 func TestPoller_Backoff(t *testing.T) {
-	// Create mock client that returns errors
-	client := &mockClient{
-		fcError: errors.New("API error"),
-		hcError: errors.New("API error"),
-	}
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
 
-	store := newMockStore()
+	mockClient := NewMockAPIClient(ctrl)
+	mockStore := NewMockStore(ctrl)
+
+	apiErr := errors.New("API error")
+
+	// First two calls fail
+	mockClient.EXPECT().GetPendingFunctionCalls(gomock.Any()).Return(nil, apiErr).Times(2)
+	mockClient.EXPECT().GetPendingHumanContacts(gomock.Any()).Return(nil, apiErr).Times(2)
+
+	// Third call succeeds
+	mockClient.EXPECT().GetPendingFunctionCalls(gomock.Any()).Return([]humanlayer.FunctionCall{}, nil)
+	mockClient.EXPECT().GetPendingHumanContacts(gomock.Any()).Return([]humanlayer.HumanContact{}, nil)
 
 	poller := &Poller{
-		client:        client,
-		store:         store,
+		client:        mockClient,
+		store:         mockStore,
 		interval:      10 * time.Millisecond,
 		maxBackoff:    100 * time.Millisecond,
 		backoffFactor: 2.0,
@@ -219,8 +112,6 @@ func TestPoller_Backoff(t *testing.T) {
 	}
 
 	// Test reset on success
-	client.fcError = nil
-	client.hcError = nil
 	poller.poll(ctx)
 	if poller.failureCount != 0 {
 		t.Errorf("expected failure count reset to 0, got %d", poller.failureCount)
@@ -228,10 +119,17 @@ func TestPoller_Backoff(t *testing.T) {
 }
 
 func TestPoller_StartStop(t *testing.T) {
-	client := &mockClient{}
-	store := newMockStore()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
 
-	poller := NewPoller(client, store, 50*time.Millisecond)
+	mockClient := NewMockAPIClient(ctrl)
+	mockStore := NewMockStore(ctrl)
+
+	// Expect at least 2 polls during the test duration
+	mockClient.EXPECT().GetPendingFunctionCalls(gomock.Any()).Return([]humanlayer.FunctionCall{}, nil).MinTimes(2)
+	mockClient.EXPECT().GetPendingHumanContacts(gomock.Any()).Return([]humanlayer.HumanContact{}, nil).MinTimes(2)
+
+	poller := NewPoller(mockClient, mockStore, 50*time.Millisecond)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -244,16 +142,6 @@ func TestPoller_StartStop(t *testing.T) {
 
 	// Wait for a few polls
 	time.Sleep(120 * time.Millisecond)
-
-	// Verify it polled multiple times
-	fcCount := client.getFCCallCount()
-	hcCount := client.getHCCallCount()
-	if fcCount < 2 {
-		t.Errorf("expected at least 2 function call polls, got %d", fcCount)
-	}
-	if hcCount < 2 {
-		t.Errorf("expected at least 2 human contact polls, got %d", hcCount)
-	}
 
 	// Try to start again while running should fail
 	err = poller.Start(ctx)

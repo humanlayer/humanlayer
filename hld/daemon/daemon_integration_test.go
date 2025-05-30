@@ -1,9 +1,11 @@
+//go:build integration
 // +build integration
 
 package daemon
 
 import (
 	"context"
+	"github.com/humanlayer/humanlayer/hld/internal/testutil"
 	"net"
 	"os"
 	"os/exec"
@@ -12,7 +14,6 @@ import (
 	"syscall"
 	"testing"
 	"time"
-	"github.com/humanlayer/humanlayer/hld/internal/testutil"
 )
 
 // TestDaemonBinaryIntegration tests the actual daemon binary

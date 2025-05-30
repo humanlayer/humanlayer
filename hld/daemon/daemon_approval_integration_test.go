@@ -20,6 +20,7 @@ import (
 )
 
 // mockAPIClient is a test implementation of the HumanLayer API client
+// This simulates a backend API for integration testing
 type mockAPIClient struct {
 	functionCalls []humanlayer.FunctionCall
 	humanContacts []humanlayer.HumanContact
@@ -82,51 +83,6 @@ func (m *mockAPIClient) RespondToHumanContact(ctx context.Context, callID string
 	return nil
 }
 
-// testApprovalManager implements approval.Manager for testing
-type testApprovalManager struct {
-	client approval.APIClient
-	store  approval.Store
-	poller *approval.Poller
-}
-
-func (m *testApprovalManager) Start(ctx context.Context) error {
-	// Poller is already started in the test
-	return nil
-}
-
-func (m *testApprovalManager) Stop() {
-	// Poller is stopped in the test
-}
-
-func (m *testApprovalManager) GetPendingApprovals(sessionID string) ([]approval.PendingApproval, error) {
-	return m.store.GetAllPending()
-}
-
-func (m *testApprovalManager) GetPendingApprovalsByRunID(runID string) ([]approval.PendingApproval, error) {
-	return m.store.GetPendingByRunID(runID)
-}
-
-func (m *testApprovalManager) ApproveFunctionCall(ctx context.Context, callID string, comment string) error {
-	if err := m.client.ApproveFunctionCall(ctx, callID, comment); err != nil {
-		return err
-	}
-	return m.store.MarkFunctionCallResponded(callID)
-}
-
-func (m *testApprovalManager) DenyFunctionCall(ctx context.Context, callID string, reason string) error {
-	if err := m.client.DenyFunctionCall(ctx, callID, reason); err != nil {
-		return err
-	}
-	return m.store.MarkFunctionCallResponded(callID)
-}
-
-func (m *testApprovalManager) RespondToHumanContact(ctx context.Context, callID string, response string) error {
-	if err := m.client.RespondToHumanContact(ctx, callID, response); err != nil {
-		return err
-	}
-	return m.store.MarkHumanContactResponded(callID)
-}
-
 func TestDaemonApprovalIntegration(t *testing.T) {
 	// Create test socket path
 	socketPath := testutil.SocketPath(t, "daemon-approval-test")
@@ -162,25 +118,15 @@ func TestDaemonApprovalIntegration(t *testing.T) {
 		},
 	}
 
-	// Create approval manager with mock client
-	// We need to create a wrapper that satisfies the manager structure
-	// For testing, we'll create a minimal manager-like structure
+	// Create real approval components for integration testing
 	store := approval.NewMemoryStore()
 	poller := approval.NewPoller(mockClient, store, 50*time.Millisecond)
 
-	// Start poller in background
-	pollerCtx, pollerCancel := context.WithCancel(context.Background())
-	defer pollerCancel()
-	if err := poller.Start(pollerCtx); err != nil {
-		t.Fatalf("failed to start poller: %v", err)
-	}
-	defer poller.Stop()
-
-	// Create a mock approval manager that uses our test components
-	approvalManager := &testApprovalManager{
-		client: mockClient,
-		store:  store,
-		poller: poller,
+	// We need to manually construct the manager with our test client
+	approvalManager := &approval.DefaultManager{
+		Client: mockClient,
+		Store:  store,
+		Poller: poller,
 	}
 
 	// Create test daemon with approval manager

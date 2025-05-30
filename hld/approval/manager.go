@@ -19,9 +19,9 @@ type Config struct {
 
 // DefaultManager is the default implementation of Manager
 type DefaultManager struct {
-	client APIClient
-	store  Store
-	poller *Poller
+	Client APIClient
+	Store  Store
+	Poller *Poller
 }
 
 // NewManager creates a new approval manager
@@ -61,20 +61,20 @@ func NewManager(cfg Config) (Manager, error) {
 	poller.backoffFactor = cfg.BackoffFactor
 
 	return &DefaultManager{
-		client: client,
-		store:  store,
-		poller: poller,
+		Client: client,
+		Store:  store,
+		Poller: poller,
 	}, nil
 }
 
 // Start begins polling for approvals
 func (m *DefaultManager) Start(ctx context.Context) error {
-	return m.poller.Start(ctx)
+	return m.Poller.Start(ctx)
 }
 
 // Stop stops the approval manager
 func (m *DefaultManager) Stop() {
-	m.poller.Stop()
+	m.Poller.Stop()
 }
 
 // GetPendingApprovals returns all pending approvals, optionally filtered by session
@@ -84,29 +84,29 @@ func (m *DefaultManager) GetPendingApprovals(sessionID string) ([]PendingApprova
 		// For now, return empty since we don't have session->run_id mapping yet
 		return []PendingApproval{}, nil
 	}
-	return m.store.GetAllPending()
+	return m.Store.GetAllPending()
 }
 
 // GetPendingApprovalsByRunID returns pending approvals for a specific run_id
 func (m *DefaultManager) GetPendingApprovalsByRunID(runID string) ([]PendingApproval, error) {
-	return m.store.GetPendingByRunID(runID)
+	return m.Store.GetPendingByRunID(runID)
 }
 
 // ApproveFunctionCall approves a function call
 func (m *DefaultManager) ApproveFunctionCall(ctx context.Context, callID string, comment string) error {
 	// First check if we have this function call
-	_, err := m.store.GetFunctionCall(callID)
+	_, err := m.Store.GetFunctionCall(callID)
 	if err != nil {
 		return fmt.Errorf("function call not found: %w", err)
 	}
 
 	// Send approval to API
-	if err := m.client.ApproveFunctionCall(ctx, callID, comment); err != nil {
+	if err := m.Client.ApproveFunctionCall(ctx, callID, comment); err != nil {
 		return fmt.Errorf("failed to approve function call: %w", err)
 	}
 
 	// Mark as responded in local store
-	if err := m.store.MarkFunctionCallResponded(callID); err != nil {
+	if err := m.Store.MarkFunctionCallResponded(callID); err != nil {
 		return fmt.Errorf("failed to update local state: %w", err)
 	}
 
@@ -116,18 +116,18 @@ func (m *DefaultManager) ApproveFunctionCall(ctx context.Context, callID string,
 // DenyFunctionCall denies a function call
 func (m *DefaultManager) DenyFunctionCall(ctx context.Context, callID string, reason string) error {
 	// First check if we have this function call
-	_, err := m.store.GetFunctionCall(callID)
+	_, err := m.Store.GetFunctionCall(callID)
 	if err != nil {
 		return fmt.Errorf("function call not found: %w", err)
 	}
 
 	// Send denial to API
-	if err := m.client.DenyFunctionCall(ctx, callID, reason); err != nil {
+	if err := m.Client.DenyFunctionCall(ctx, callID, reason); err != nil {
 		return fmt.Errorf("failed to deny function call: %w", err)
 	}
 
 	// Mark as responded in local store
-	if err := m.store.MarkFunctionCallResponded(callID); err != nil {
+	if err := m.Store.MarkFunctionCallResponded(callID); err != nil {
 		return fmt.Errorf("failed to update local state: %w", err)
 	}
 
@@ -137,18 +137,18 @@ func (m *DefaultManager) DenyFunctionCall(ctx context.Context, callID string, re
 // RespondToHumanContact sends a response to a human contact request
 func (m *DefaultManager) RespondToHumanContact(ctx context.Context, callID string, response string) error {
 	// First check if we have this human contact
-	_, err := m.store.GetHumanContact(callID)
+	_, err := m.Store.GetHumanContact(callID)
 	if err != nil {
 		return fmt.Errorf("human contact not found: %w", err)
 	}
 
 	// Send response to API
-	if err := m.client.RespondToHumanContact(ctx, callID, response); err != nil {
+	if err := m.Client.RespondToHumanContact(ctx, callID, response); err != nil {
 		return fmt.Errorf("failed to respond to human contact: %w", err)
 	}
 
 	// Mark as responded in local store
-	if err := m.store.MarkHumanContactResponded(callID); err != nil {
+	if err := m.Store.MarkHumanContactResponded(callID); err != nil {
 		return fmt.Errorf("failed to update local state: %w", err)
 	}
 

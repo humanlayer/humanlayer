@@ -12,11 +12,11 @@ import (
 // ApprovalHandlers provides RPC handlers for approval management
 type ApprovalHandlers struct {
 	approvals approval.Manager
-	sessions  *session.Manager
+	sessions  session.SessionManager
 }
 
 // NewApprovalHandlers creates new approval RPC handlers
-func NewApprovalHandlers(approvals approval.Manager, sessions *session.Manager) *ApprovalHandlers {
+func NewApprovalHandlers(approvals approval.Manager, sessions session.SessionManager) *ApprovalHandlers {
 	return &ApprovalHandlers{
 		approvals: approvals,
 		sessions:  sessions,

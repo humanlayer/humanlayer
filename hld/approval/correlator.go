@@ -8,36 +8,12 @@ import (
 	humanlayer "github.com/humanlayer/humanlayer/humanlayer-go"
 )
 
-// Store manages approval storage and correlation
-type Store interface {
-	// Storage methods
-	StoreFunctionCall(fc humanlayer.FunctionCall) error
-	StoreHumanContact(hc humanlayer.HumanContact) error
-
-	// Retrieval methods
-	GetFunctionCall(callID string) (*humanlayer.FunctionCall, error)
-	GetHumanContact(callID string) (*humanlayer.HumanContact, error)
-	GetAllPending() ([]PendingApproval, error)
-	GetPendingByRunID(runID string) ([]PendingApproval, error)
-
-	// Update methods
-	MarkFunctionCallResponded(callID string) error
-	MarkHumanContactResponded(callID string) error
-}
-
-// PendingApproval wraps either a function call or human contact
-type PendingApproval struct {
-	Type         string                      `json:"type"` // "function_call" or "human_contact"
-	FunctionCall *humanlayer.FunctionCall    `json:"function_call,omitempty"`
-	HumanContact *humanlayer.HumanContact    `json:"human_contact,omitempty"`
-}
-
 // MemoryStore is an in-memory implementation of Store
 type MemoryStore struct {
 	mu            sync.RWMutex
 	functionCalls map[string]*humanlayer.FunctionCall // indexed by call_id
 	humanContacts map[string]*humanlayer.HumanContact // indexed by call_id
-	byRunID       map[string][]string                  // run_id -> []call_id
+	byRunID       map[string][]string                 // run_id -> []call_id
 }
 
 // NewMemoryStore creates a new in-memory store
