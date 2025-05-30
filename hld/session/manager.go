@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	claudecode "github.com/humanlayer/humanlayer/claudecode-go"
+	"github.com/google/uuid"
 )
 
 // Manager handles the lifecycle of Claude Code sessions
