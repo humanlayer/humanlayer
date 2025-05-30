@@ -1,9 +1,9 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"log"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -11,7 +11,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	humanlayer "github.com/humanlayer/humanlayer-go"
+	"github.com/humanlayer/humanlayer/hld/client"
 )
 
 // Request types
@@ -45,7 +45,7 @@ const (
 )
 
 type model struct {
-	client        *humanlayer.Client
+	daemonClient  client.Client
 	requests      []Request
 	cursor        int
 	viewState     viewState
@@ -116,26 +116,30 @@ func newModel() model {
 		log.Fatal("Failed to load configuration:", err)
 	}
 
-	// Validate configuration
-	if err := ValidateConfig(config); err != nil {
-		log.Fatal("Configuration validation failed:", err)
+	// Determine socket path
+	socketPath := "~/.humanlayer/daemon.sock"
+	if config.DaemonSocket != "" {
+		socketPath = config.DaemonSocket
 	}
 
-	// Create client options
-	opts := []humanlayer.ClientOption{
-		humanlayer.WithAPIKey(config.APIKey),
-	}
-	if config.APIBaseURL != "" {
-		opts = append(opts, humanlayer.WithBaseURL(config.APIBaseURL))
+	// Expand ~ to home directory
+	if socketPath[0] == '~' {
+		home := mustGetHomeDir()
+		socketPath = filepath.Join(home, socketPath[1:])
 	}
 
-	client, err := humanlayer.NewClient(opts...)
+	// Connect to daemon with retries
+	daemonClient, err := client.Connect(socketPath, 3, time.Second)
 	if err != nil {
-		log.Fatal("Failed to create HumanLayer client:", err)
+		log.Fatal("Failed to connect to HumanLayer daemon at ", socketPath, "\n\n",
+			"The daemon is not running. Please start it with:\n",
+			"  hld\n\n",
+			"Or use 'npx humanlayer tui' which will start the daemon automatically.\n\n",
+			"Error: ", err)
 	}
 
 	m := model{
-		client:        client,
+		daemonClient:  daemonClient,
 		requests:      []Request{},
 		cursor:        0,
 		viewState:     listView,
@@ -151,75 +155,67 @@ type fetchRequestsMsg struct {
 	err      error
 }
 
-func fetchRequests(client *humanlayer.Client) tea.Cmd {
+func fetchRequests(daemonClient client.Client) tea.Cmd {
 	return func() tea.Msg {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-
 		var allRequests []Request
 
-		// Fetch function calls (approvals)
-		functionCalls, err := client.GetPendingFunctionCalls(ctx)
+		// Fetch all pending approvals from daemon
+		approvals, err := daemonClient.FetchApprovals("")
 		if err != nil {
 			return fetchRequestsMsg{err: err}
 		}
 
-		// Convert function calls to our Request type
-		for _, fc := range functionCalls {
-			// Build a message from the function name and kwargs
-			message := fmt.Sprintf("Call %s", fc.Spec.Fn)
-			if len(fc.Spec.Kwargs) > 0 {
-				// Add first few parameters to message
-				params := []string{}
-				for k, v := range fc.Spec.Kwargs {
-					params = append(params, fmt.Sprintf("%s=%v", k, v))
-					if len(params) >= 2 {
-						break
+		// Convert approvals to our Request type
+		for _, approval := range approvals {
+			if approval.Type == "function_call" && approval.FunctionCall != nil {
+				fc := approval.FunctionCall
+				// Build a message from the function name and kwargs
+				message := fmt.Sprintf("Call %s", fc.Spec.Fn)
+				if len(fc.Spec.Kwargs) > 0 {
+					// Add first few parameters to message
+					params := []string{}
+					for k, v := range fc.Spec.Kwargs {
+						params = append(params, fmt.Sprintf("%s=%v", k, v))
+						if len(params) >= 2 {
+							break
+						}
 					}
+					message += fmt.Sprintf(" with %s", strings.Join(params, ", "))
 				}
-				message += fmt.Sprintf(" with %s", strings.Join(params, ", "))
+
+				createdAt := time.Now() // Default to now if not available
+				if fc.Status != nil && fc.Status.RequestedAt != nil {
+					createdAt = fc.Status.RequestedAt.Time
+				}
+
+				allRequests = append(allRequests, Request{
+					ID:         fc.CallID,
+					CallID:     fc.CallID,
+					RunID:      fc.RunID,
+					Type:       ApprovalRequest,
+					Message:    message,
+					Tool:       fc.Spec.Fn,
+					Parameters: fc.Spec.Kwargs,
+					CreatedAt:  createdAt,
+					AgentName:  "Agent", // TODO: Get from somewhere
+				})
+			} else if approval.Type == "human_contact" && approval.HumanContact != nil {
+				hc := approval.HumanContact
+				createdAt := time.Now() // Default to now if not available
+				if hc.Status != nil && hc.Status.RequestedAt != nil {
+					createdAt = hc.Status.RequestedAt.Time
+				}
+
+				allRequests = append(allRequests, Request{
+					ID:        hc.CallID,
+					CallID:    hc.CallID,
+					RunID:     hc.RunID,
+					Type:      HumanContactRequest,
+					Message:   hc.Spec.Msg,
+					CreatedAt: createdAt,
+					AgentName: "Agent", // TODO: Get from somewhere
+				})
 			}
-
-			createdAt := time.Now() // Default to now if not available
-			if fc.Status != nil && fc.Status.RequestedAt != nil {
-				createdAt = fc.Status.RequestedAt.Time
-			}
-
-			allRequests = append(allRequests, Request{
-				ID:         fc.CallID,
-				CallID:     fc.CallID,
-				RunID:      fc.RunID,
-				Type:       ApprovalRequest,
-				Message:    message,
-				Tool:       fc.Spec.Fn,
-				Parameters: fc.Spec.Kwargs,
-				CreatedAt:  createdAt,
-				AgentName:  "Agent", // TODO: Get from somewhere
-			})
-		}
-
-		// Fetch human contacts
-		contacts, err := client.GetPendingHumanContacts(ctx)
-		if err != nil {
-			return fetchRequestsMsg{err: err}
-		}
-
-		// Convert contacts to our Request type
-		for _, hc := range contacts {
-			createdAt := time.Now() // Default to now if not available
-			if hc.Status != nil && hc.Status.RequestedAt != nil {
-				createdAt = hc.Status.RequestedAt.Time
-			}
-
-			allRequests = append(allRequests, Request{
-				ID:        hc.CallID,
-				CallID:    hc.CallID,
-				RunID:     hc.RunID,
-				Type:      HumanContactRequest,
-				Message:   hc.Spec.Msg,
-				CreatedAt: createdAt,
-				AgentName: "Agent", // TODO: Get from somewhere
-			})
 		}
 
 		return fetchRequestsMsg{requests: allRequests}
@@ -229,7 +225,7 @@ func fetchRequests(client *humanlayer.Client) tea.Cmd {
 func (m model) Init() tea.Cmd {
 	return tea.Batch(
 		textinput.Blink,
-		fetchRequests(m.client),
+		fetchRequests(m.daemonClient),
 	)
 }
 
@@ -266,7 +262,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.feedbackFor = nil
 		m.feedbackInput.Reset()
 		// Refresh the list
-		return m, fetchRequests(m.client)
+		return m, fetchRequests(m.daemonClient)
 
 	case humanResponseSentMsg:
 		if msg.err != nil {
@@ -283,7 +279,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.feedbackFor = nil
 		m.feedbackInput.Reset()
 		// Refresh the list
-		return m, fetchRequests(m.client)
+		return m, fetchRequests(m.daemonClient)
 
 	case tea.KeyMsg:
 		// Clear error on any key press
@@ -648,16 +644,12 @@ type humanResponseSentMsg struct {
 // Command to send approval/denial
 func (m model) sendApproval(callID string, approved bool, comment string) tea.Cmd {
 	return func() tea.Msg {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-
-		var err error
-		if approved {
-			err = m.client.ApproveFunctionCall(ctx, callID, comment)
-		} else {
-			err = m.client.DenyFunctionCall(ctx, callID, comment)
+		decision := "approve"
+		if !approved {
+			decision = "deny"
 		}
 
+		err := m.daemonClient.SendDecision(callID, "function_call", decision, comment)
 		return approvalSentMsg{requestID: callID, err: err}
 	}
 }
@@ -665,10 +657,7 @@ func (m model) sendApproval(callID string, approved bool, comment string) tea.Cm
 // Command to send human response
 func (m model) sendHumanResponse(requestID string, response string) tea.Cmd {
 	return func() tea.Msg {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-
-		err := m.client.RespondToHumanContact(ctx, requestID, response)
+		err := m.daemonClient.SendDecision(requestID, "human_contact", "respond", response)
 		return humanResponseSentMsg{requestID: requestID, err: err}
 	}
 }

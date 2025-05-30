@@ -7,9 +7,15 @@
     "humanlayer": "dist/index.js",
     "hlyr": "dist/index.js"
   },
+  "files": [
+    "dist/**/*",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsup src/index.ts --format esm --target es2020 --clean && npm run build-go",
-    "build-go": "cd ../humanlayer-tui && go build -o humanlayer-tui . && mkdir -p ../hlyr/dist/bin && cp humanlayer-tui ../hlyr/dist/bin/",
+    "build-go": "npm run build-daemon && npm run build-tui",
+    "build-daemon": "cd ../hld && go build -o hld ./cmd/hld && mkdir -p ../hlyr/dist/bin && cp hld ../hlyr/dist/bin/",
+    "build-tui": "cd ../humanlayer-tui && go build -o humanlayer-tui . && mkdir -p ../hlyr/dist/bin && cp humanlayer-tui ../hlyr/dist/bin/",
     "build:watch": "tsup src/index.ts --format esm --target es2020 --watch",
     "dev": "npm run build && ./dist/index.js",
     "lint": "eslint . --ext .ts",
@@ -17,14 +23,15 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check": "npm run format:check && npm run lint && npm run test && npm run build"
+    "check": "npm run format:check && npm run lint && npm run test && npm run build",
+    "clean": "rm -rf dist/"
   },
   "dependencies": {
+    "@humanlayer/sdk": "^0.7.7",
     "@modelcontextprotocol/sdk": "^1.12.0",
     "chalk": "^5.4.1",
     "commander": "^14.0.0",
-    "dotenv": "^16.5.0",
-    "@humanlayer/sdk": "^0.7.7"
+    "dotenv": "^16.5.0"
   },
   "devDependencies": {
     "@types/node": "^22.15.21",

@@ -24,3 +24,9 @@ func SocketPath(t *testing.T, suffix string) string {
 
 	return path
 }
+
+// CreateTestSocket creates a test socket path with automatic cleanup
+func CreateTestSocket(t *testing.T) string {
+	t.Helper()
+	return SocketPath(t, "test")
+}

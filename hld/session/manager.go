@@ -42,13 +42,21 @@ func (m *Manager) LaunchSession(ctx context.Context, config claudecode.SessionCo
 
 	// Add HUMANLAYER_RUN_ID to MCP server environment
 	if config.MCPConfig != nil {
+		slog.Debug("configuring MCP servers", "count", len(config.MCPConfig.MCPServers))
 		for name, server := range config.MCPConfig.MCPServers {
 			if server.Env == nil {
 				server.Env = make(map[string]string)
 			}
 			server.Env["HUMANLAYER_RUN_ID"] = runID
 			config.MCPConfig.MCPServers[name] = server
+			slog.Debug("configured MCP server",
+				"name", name,
+				"command", server.Command,
+				"args", server.Args,
+				"run_id", runID)
 		}
+	} else {
+		slog.Debug("no MCP config provided")
 	}
 
 	// Create session record
@@ -84,7 +92,8 @@ func (m *Manager) LaunchSession(ctx context.Context, config claudecode.SessionCo
 	slog.Info("launched Claude session",
 		"session_id", sessionID,
 		"run_id", runID,
-		"prompt", config.Prompt)
+		"prompt", config.Prompt,
+		"permission_prompt_tool", config.PermissionPromptTool)
 
 	return session, nil
 }
