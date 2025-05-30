@@ -44,3 +44,4 @@ status:
 # Generate mocks
 mocks:
 	mockgen -source=session/types.go -destination=session/mock_session.go -package=session SessionManager
+	mockgen -source=approval/types.go -destination=approval/mock_approval.go -package=approval Manager,Store,APIClient

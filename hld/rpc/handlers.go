@@ -23,17 +23,17 @@ func NewSessionHandlers(manager session.SessionManager) *SessionHandlers {
 
 // LaunchSessionRequest is the request for launching a new session
 type LaunchSessionRequest struct {
-	Prompt             string                    `json:"prompt"`
-	Model              string                    `json:"model,omitempty"`
-	MCPConfig          *claudecode.MCPConfig     `json:"mcp_config,omitempty"`
-	WorkingDir         string                    `json:"working_dir,omitempty"`
-	MaxTurns           int                       `json:"max_turns,omitempty"`
-	SystemPrompt       string                    `json:"system_prompt,omitempty"`
-	AppendSystemPrompt string                    `json:"append_system_prompt,omitempty"`
-	AllowedTools       []string                  `json:"allowed_tools,omitempty"`
-	DisallowedTools    []string                  `json:"disallowed_tools,omitempty"`
-	CustomInstructions string                    `json:"custom_instructions,omitempty"`
-	Verbose            bool                      `json:"verbose,omitempty"`
+	Prompt             string                `json:"prompt"`
+	Model              string                `json:"model,omitempty"`
+	MCPConfig          *claudecode.MCPConfig `json:"mcp_config,omitempty"`
+	WorkingDir         string                `json:"working_dir,omitempty"`
+	MaxTurns           int                   `json:"max_turns,omitempty"`
+	SystemPrompt       string                `json:"system_prompt,omitempty"`
+	AppendSystemPrompt string                `json:"append_system_prompt,omitempty"`
+	AllowedTools       []string              `json:"allowed_tools,omitempty"`
+	DisallowedTools    []string              `json:"disallowed_tools,omitempty"`
+	CustomInstructions string                `json:"custom_instructions,omitempty"`
+	Verbose            bool                  `json:"verbose,omitempty"`
 }
 
 // LaunchSessionResponse is the response for launching a new session
