@@ -12,6 +12,8 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/humanlayer/humanlayer/hld/internal/testutil"
 )
 
 // TestDaemonBinaryIntegration tests the actual daemon binary
@@ -25,13 +27,16 @@ func TestDaemonBinaryIntegration(t *testing.T) {
 
 	// Test 1: Daemon starts successfully
 	t.Run("daemon_starts", func(t *testing.T) {
-		socketPath := filepath.Join(t.TempDir(), "daemon.sock")
+		socketPath := testutil.SocketPath(t, "starts")
 		t.Setenv("HUMANLAYER_DAEMON_SOCKET", socketPath)
 
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
 
 		cmd := exec.CommandContext(ctx, binPath)
+		// Capture output for debugging
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
 		if err := cmd.Start(); err != nil {
 			t.Fatalf("failed to start daemon: %v", err)
 		}
@@ -68,7 +73,7 @@ func TestDaemonBinaryIntegration(t *testing.T) {
 
 	// Test 2: Daemon refuses double start
 	t.Run("refuses_double_start", func(t *testing.T) {
-		socketPath := filepath.Join(t.TempDir(), "daemon.sock")
+		socketPath := testutil.SocketPath(t, "starts")
 		t.Setenv("HUMANLAYER_DAEMON_SOCKET", socketPath)
 
 		// Start first daemon
@@ -104,7 +109,7 @@ func TestDaemonBinaryIntegration(t *testing.T) {
 	t.Run("graceful_shutdown", func(t *testing.T) {
 		for _, sig := range []syscall.Signal{syscall.SIGINT, syscall.SIGTERM} {
 			t.Run(sig.String(), func(t *testing.T) {
-				socketPath := filepath.Join(t.TempDir(), "daemon.sock")
+				socketPath := testutil.SocketPath(t, sig.String())
 				t.Setenv("HUMANLAYER_DAEMON_SOCKET", socketPath)
 
 				cmd := exec.Command(binPath)

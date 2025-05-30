@@ -7,18 +7,16 @@ import (
 	"errors"
 	"net"
 	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/humanlayer/humanlayer/hld/config"
+	"github.com/humanlayer/humanlayer/hld/internal/testutil"
 	"github.com/humanlayer/humanlayer/hld/rpc"
 )
 
 func TestDaemonLifecycle(t *testing.T) {
-	// Use a shorter test-specific socket path
-	tmpDir := t.TempDir()
-	socketPath := filepath.Join(tmpDir, "d.sock")
+	socketPath := testutil.SocketPath(t, "lifecycle")
 	
 	// Override the default socket path for testing
 	d := &Daemon{
@@ -109,8 +107,7 @@ func TestDaemonLifecycle(t *testing.T) {
 
 func TestDaemonRefusesDoubleStart(t *testing.T) {
 	// Set up a temporary config directory
-	tmpDir := t.TempDir()
-	socketPath := filepath.Join(tmpDir, "test.sock")
+	socketPath := testutil.SocketPath(t, "double")
 	
 	// Override config loading for test
 	t.Setenv("HUMANLAYER_DAEMON_SOCKET", socketPath)
@@ -146,8 +143,7 @@ func TestDaemonRefusesDoubleStart(t *testing.T) {
 
 func TestDaemonConcurrentConnections(t *testing.T) {
 	// Use a shorter test-specific socket path to avoid macOS path length limits
-	tmpDir := t.TempDir()
-	socketPath := filepath.Join(tmpDir, "d.sock")
+	socketPath := testutil.SocketPath(t, "concurrent")
 	
 	d := &Daemon{
 		socketPath: socketPath,
@@ -231,8 +227,7 @@ func TestDaemonConcurrentConnections(t *testing.T) {
 // TestIntegrationRPCRoundTrip is the main integration test required by Phase 1
 func TestIntegrationRPCRoundTrip(t *testing.T) {
 	// Use a test-specific socket path for true isolation
-	tmpDir := t.TempDir()
-	socketPath := filepath.Join(tmpDir, "int.sock")
+	socketPath := testutil.SocketPath(t, "rpc")
 	
 	// Create daemon with test socket path
 	d := &Daemon{
