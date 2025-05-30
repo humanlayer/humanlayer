@@ -38,7 +38,12 @@ export async function startDefaultMCPServer() {
     },
   )
 
-  const hl = humanlayer()
+  // Use run_id from env if provided
+  const runId = process.env.HUMANLAYER_RUN_ID
+  
+  const hl = humanlayer({
+    ...(runId && { runId }),
+  })
 
   server.setRequestHandler(ListToolsRequestSchema, async () => {
     return {
@@ -102,7 +107,12 @@ export async function startClaudeApprovalsMCPServer() {
     },
   )
 
-  const hl = humanlayer()
+  // Use run_id from env if provided
+  const runId = process.env.HUMANLAYER_RUN_ID
+  
+  const hl = humanlayer({
+    ...(runId && { runId }),
+  })
 
   server.setRequestHandler(ListToolsRequestSchema, async () => {
     return {
