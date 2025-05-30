@@ -12,7 +12,6 @@ import (
 	"syscall"
 	"testing"
 	"time"
-
 	"github.com/humanlayer/humanlayer/hld/internal/testutil"
 )
 
@@ -34,9 +33,6 @@ func TestDaemonBinaryIntegration(t *testing.T) {
 		defer cancel()
 
 		cmd := exec.CommandContext(ctx, binPath)
-		// Capture output for debugging
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
 		if err := cmd.Start(); err != nil {
 			t.Fatalf("failed to start daemon: %v", err)
 		}
