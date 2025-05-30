@@ -40,7 +40,7 @@ export async function startDefaultMCPServer() {
 
   // Use run_id from env if provided
   const runId = process.env.HUMANLAYER_RUN_ID
-  
+
   const hl = humanlayer({
     ...(runId && { runId }),
   })
@@ -109,7 +109,7 @@ export async function startClaudeApprovalsMCPServer() {
 
   // Use run_id from env if provided
   const runId = process.env.HUMANLAYER_RUN_ID
-  
+
   const hl = humanlayer({
     ...(runId && { runId }),
   })
