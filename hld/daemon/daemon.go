@@ -76,6 +76,7 @@ func New() (*Daemon, error) {
 	// Create approval manager if API key is configured
 	var approvalManager approval.Manager
 	if cfg.APIKey != "" {
+		slog.Info("creating approval manager", "api_base_url", cfg.APIBaseURL)
 		approvalCfg := approval.Config{
 			APIKey:  cfg.APIKey,
 			BaseURL: cfg.APIBaseURL,
@@ -85,6 +86,9 @@ func New() (*Daemon, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to create approval manager: %w", err)
 		}
+		slog.Debug("approval manager created successfully")
+	} else {
+		slog.Warn("no API key configured, approval features disabled")
 	}
 
 	return &Daemon{

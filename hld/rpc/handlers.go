@@ -23,17 +23,18 @@ func NewSessionHandlers(manager session.SessionManager) *SessionHandlers {
 
 // LaunchSessionRequest is the request for launching a new session
 type LaunchSessionRequest struct {
-	Prompt             string                `json:"prompt"`
-	Model              string                `json:"model,omitempty"`
-	MCPConfig          *claudecode.MCPConfig `json:"mcp_config,omitempty"`
-	WorkingDir         string                `json:"working_dir,omitempty"`
-	MaxTurns           int                   `json:"max_turns,omitempty"`
-	SystemPrompt       string                `json:"system_prompt,omitempty"`
-	AppendSystemPrompt string                `json:"append_system_prompt,omitempty"`
-	AllowedTools       []string              `json:"allowed_tools,omitempty"`
-	DisallowedTools    []string              `json:"disallowed_tools,omitempty"`
-	CustomInstructions string                `json:"custom_instructions,omitempty"`
-	Verbose            bool                  `json:"verbose,omitempty"`
+	Prompt               string                `json:"prompt"`
+	Model                string                `json:"model,omitempty"`
+	MCPConfig            *claudecode.MCPConfig `json:"mcp_config,omitempty"`
+	PermissionPromptTool string                `json:"permission_prompt_tool,omitempty"`
+	WorkingDir           string                `json:"working_dir,omitempty"`
+	MaxTurns             int                   `json:"max_turns,omitempty"`
+	SystemPrompt         string                `json:"system_prompt,omitempty"`
+	AppendSystemPrompt   string                `json:"append_system_prompt,omitempty"`
+	AllowedTools         []string              `json:"allowed_tools,omitempty"`
+	DisallowedTools      []string              `json:"disallowed_tools,omitempty"`
+	CustomInstructions   string                `json:"custom_instructions,omitempty"`
+	Verbose              bool                  `json:"verbose,omitempty"`
 }
 
 // LaunchSessionResponse is the response for launching a new session
@@ -56,17 +57,18 @@ func (h *SessionHandlers) HandleLaunchSession(ctx context.Context, params json.R
 
 	// Build session config
 	config := claudecode.SessionConfig{
-		Prompt:             req.Prompt,
-		MCPConfig:          req.MCPConfig,
-		WorkingDir:         req.WorkingDir,
-		MaxTurns:           req.MaxTurns,
-		SystemPrompt:       req.SystemPrompt,
-		AppendSystemPrompt: req.AppendSystemPrompt,
-		AllowedTools:       req.AllowedTools,
-		DisallowedTools:    req.DisallowedTools,
-		CustomInstructions: req.CustomInstructions,
-		Verbose:            req.Verbose,
-		OutputFormat:       claudecode.OutputStreamJSON, // Always use streaming JSON for monitoring
+		Prompt:               req.Prompt,
+		MCPConfig:            req.MCPConfig,
+		PermissionPromptTool: req.PermissionPromptTool,
+		WorkingDir:           req.WorkingDir,
+		MaxTurns:             req.MaxTurns,
+		SystemPrompt:         req.SystemPrompt,
+		AppendSystemPrompt:   req.AppendSystemPrompt,
+		AllowedTools:         req.AllowedTools,
+		DisallowedTools:      req.DisallowedTools,
+		CustomInstructions:   req.CustomInstructions,
+		Verbose:              req.Verbose,
+		OutputFormat:         claudecode.OutputStreamJSON, // Always use streaming JSON for monitoring
 	}
 
 	// Parse model if provided

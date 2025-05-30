@@ -45,3 +45,4 @@ status:
 mocks:
 	mockgen -source=session/types.go -destination=session/mock_session.go -package=session SessionManager
 	mockgen -source=approval/types.go -destination=approval/mock_approval.go -package=approval Manager,Store,APIClient
+	mockgen -source=client/types.go -destination=client/mock_client.go -package=client Client,Factory
