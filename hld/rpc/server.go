@@ -26,10 +26,10 @@ func NewServer() *Server {
 	s := &Server{
 		handlers: make(map[string]HandlerFunc),
 	}
-	
+
 	// Register built-in handlers
 	s.registerBuiltinHandlers()
-	
+
 	return s
 }
 
@@ -50,32 +50,32 @@ func (s *Server) ServeConn(ctx context.Context, conn net.Conn) error {
 	// Use a scanner to read line-delimited JSON
 	scanner := bufio.NewScanner(conn)
 	scanner.Buffer(make([]byte, 1024*1024), 1024*1024) // 1MB buffer
-	
+
 	for scanner.Scan() {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
 		}
-		
+
 		line := scanner.Bytes()
 		if len(line) == 0 {
 			continue
 		}
-		
+
 		// Process the request
 		response := s.handleRequest(ctx, line)
-		
+
 		// Send response
 		if err := s.sendResponse(conn, response); err != nil {
 			return fmt.Errorf("failed to send response: %w", err)
 		}
 	}
-	
+
 	if err := scanner.Err(); err != nil {
 		return fmt.Errorf("scanner error: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -124,7 +124,7 @@ func (s *Server) handleRequest(ctx context.Context, data []byte) *Response {
 			ID: nil,
 		}
 	}
-	
+
 	// Validate JSON-RPC version
 	if req.JSONRPC != "2.0" {
 		return &Response{
@@ -136,12 +136,12 @@ func (s *Server) handleRequest(ctx context.Context, data []byte) *Response {
 			ID: req.ID,
 		}
 	}
-	
+
 	// Find handler
 	s.mu.RLock()
 	handler, ok := s.handlers[req.Method]
 	s.mu.RUnlock()
-	
+
 	if !ok {
 		return &Response{
 			JSONRPC: "2.0",
@@ -152,7 +152,7 @@ func (s *Server) handleRequest(ctx context.Context, data []byte) *Response {
 			ID: req.ID,
 		}
 	}
-	
+
 	// Execute handler
 	result, err := handler(ctx, req.Params)
 	if err != nil {
@@ -165,7 +165,7 @@ func (s *Server) handleRequest(ctx context.Context, data []byte) *Response {
 			ID: req.ID,
 		}
 	}
-	
+
 	return &Response{
 		JSONRPC: "2.0",
 		Result:  result,
@@ -179,12 +179,12 @@ func (s *Server) sendResponse(conn net.Conn, resp *Response) error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal response: %w", err)
 	}
-	
+
 	// Write response followed by newline
 	if _, err := conn.Write(append(data, '\n')); err != nil {
 		return fmt.Errorf("failed to write response: %w", err)
 	}
-	
+
 	return nil
 }
 
