@@ -1,4 +1,4 @@
-.PHONY: build test test-unit test-integration test-race clean
+.PHONY: build test test-unit test-integration test-race clean mocks
 
 # Build the daemon binary
 build:
@@ -40,3 +40,7 @@ status:
 	else \
 		echo "Daemon is not running"; \
 	fi
+
+# Generate mocks
+mocks:
+	mockgen -source=session/types.go -destination=session/mock_session.go -package=session SessionManager

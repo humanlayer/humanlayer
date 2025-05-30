@@ -19,3 +19,6 @@
 # Temporary files
 *.tmp
 *.log
+
+# Generated mocks
+session/mock_session.go

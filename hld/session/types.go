@@ -1,6 +1,7 @@
 package session
 
 import (
+	"context"
 	"time"
 
 	claudecode "github.com/humanlayer/humanlayer/claudecode-go"
@@ -40,4 +41,22 @@ type Info struct {
 	Error     string                    `json:"error,omitempty"`
 	Prompt    string                    `json:"prompt"`
 	Model     string                    `json:"model,omitempty"`
+}
+
+// SessionManager defines the interface for managing Claude Code sessions
+type SessionManager interface {
+	// LaunchSession starts a new Claude Code session
+	LaunchSession(ctx context.Context, config claudecode.SessionConfig) (*Session, error)
+
+	// GetSession returns a session by ID
+	GetSession(sessionID string) (*Session, error)
+
+	// ListSessions returns all sessions
+	ListSessions() []*Session
+
+	// GetSessionInfo returns a JSON-safe view of a session
+	GetSessionInfo(sessionID string) (*Info, error)
+
+	// ListSessionInfo returns JSON-safe views of all sessions
+	ListSessionInfo() []Info
 }
