@@ -1,0 +1,21 @@
+# Binary
+hld
+
+# Test artifacts
+*.test
+*.out
+
+# Coverage
+*.cover
+*.coverprofile
+
+# OS files
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Temporary files
+*.tmp
+*.log
