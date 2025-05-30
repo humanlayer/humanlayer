@@ -106,7 +106,7 @@ func (m *Manager) monitorSession(ctx context.Context, session *Session) {
 
 	// Wait for session to complete
 	result, err := session.claude.Wait()
-	
+
 	endTime := time.Now()
 	if err != nil {
 		m.updateSessionStatus(session.ID, StatusFailed, err.Error())

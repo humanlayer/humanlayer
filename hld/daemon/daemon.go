@@ -102,11 +102,11 @@ func (d *Daemon) Run(ctx context.Context) error {
 
 	// Create and start RPC server
 	d.rpcServer = rpc.NewServer()
-	
+
 	// Register session handlers
 	sessionHandlers := rpc.NewSessionHandlers(d.sessions)
 	sessionHandlers.Register(d.rpcServer)
-	
+
 	slog.Info("daemon started", "socket", d.socketPath)
 
 	// Accept connections until context is cancelled
@@ -114,10 +114,10 @@ func (d *Daemon) Run(ctx context.Context) error {
 
 	// Wait for shutdown signal
 	<-ctx.Done()
-	
+
 	// Close listener to stop accepting new connections
 	listener.Close()
-	
+
 	return nil
 }
 
@@ -144,13 +144,13 @@ func (d *Daemon) acceptConnections(ctx context.Context) {
 // handleConnection processes a single client connection
 func (d *Daemon) handleConnection(ctx context.Context, conn net.Conn) {
 	defer conn.Close()
-	
+
 	slog.Debug("new client connected", "remote", conn.RemoteAddr())
-	
+
 	// Let RPC server handle the connection
 	if err := d.rpcServer.ServeConn(ctx, conn); err != nil {
 		slog.Error("error serving connection", "error", err)
 	}
-	
+
 	slog.Debug("client disconnected", "remote", conn.RemoteAddr())
 }

@@ -25,7 +25,7 @@ type Session struct {
 	EndTime   *time.Time                `json:"end_time,omitempty"`
 	Error     string                    `json:"error,omitempty"`
 	Config    claudecode.SessionConfig  `json:"config"`
-	
+
 	// Process tracking
 	claude    *claudecode.Session       // The actual Claude session
 }
