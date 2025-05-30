@@ -25,7 +25,7 @@ type Daemon struct {
 	socketPath string
 	listener   net.Listener
 	rpcServer  *rpc.Server
-	sessions   *session.Manager
+	sessions   session.SessionManager
 	mu         sync.Mutex
 }
 

@@ -11,11 +11,11 @@ import (
 
 // SessionHandlers provides RPC handlers for session management
 type SessionHandlers struct {
-	manager *session.Manager
+	manager session.SessionManager
 }
 
 // NewSessionHandlers creates new session RPC handlers
-func NewSessionHandlers(manager *session.Manager) *SessionHandlers {
+func NewSessionHandlers(manager session.SessionManager) *SessionHandlers {
 	return &SessionHandlers{
 		manager: manager,
 	}

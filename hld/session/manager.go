@@ -18,6 +18,9 @@ type Manager struct {
 	client   *claudecode.Client
 }
 
+// Compile-time check that Manager implements SessionManager
+var _ SessionManager = (*Manager)(nil)
+
 // NewManager creates a new session manager
 func NewManager() (*Manager, error) {
 	client, err := claudecode.NewClient()
