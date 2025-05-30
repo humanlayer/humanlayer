@@ -10,6 +10,7 @@ replace (
 require (
 	github.com/google/uuid v1.6.0
 	github.com/humanlayer/humanlayer/claudecode-go v0.0.0-00010101000000-000000000000
+	github.com/humanlayer/humanlayer/humanlayer-go v0.0.0-00010101000000-000000000000
 	github.com/spf13/viper v1.20.1
 )
 
