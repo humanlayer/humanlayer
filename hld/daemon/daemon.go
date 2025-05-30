@@ -128,14 +128,14 @@ func (d *Daemon) Run(ctx context.Context) error {
 	if d.approvals != nil {
 		approvalHandlers := rpc.NewApprovalHandlers(d.approvals, d.sessions)
 		approvalHandlers.Register(d.rpcServer)
-		
+
 		// Start approval polling
 		if err := d.approvals.Start(ctx); err != nil {
 			listener.Close()
 			return fmt.Errorf("failed to start approval poller: %w", err)
 		}
 		defer d.approvals.Stop()
-		
+
 		slog.Info("approval polling started")
 	} else {
 		slog.Warn("approval manager not configured (no API key)")

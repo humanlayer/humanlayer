@@ -41,12 +41,12 @@ func NewManager(cfg Config) (Manager, error) {
 	opts := []humanlayer.ClientOption{
 		humanlayer.WithAPIKey(cfg.APIKey),
 	}
-	
+
 	// Add base URL if provided
 	if cfg.BaseURL != "" {
 		opts = append(opts, humanlayer.WithBaseURL(cfg.BaseURL))
 	}
-	
+
 	client, err := humanlayer.NewClient(opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create HumanLayer client: %w", err)

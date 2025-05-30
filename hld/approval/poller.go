@@ -90,7 +90,7 @@ func (p *Poller) pollLoop(ctx context.Context) {
 	for {
 		// Calculate next poll interval based on failure count
 		interval := p.calculateInterval()
-		
+
 		select {
 		case <-ctx.Done():
 			return
@@ -169,8 +169,8 @@ func (p *Poller) updateFailureCount(hadError bool) {
 	if hadError {
 		p.failureCount++
 		nextInterval := p.calculateIntervalLocked()
-		slog.Warn("poll failed, backing off", 
-			"failure_count", p.failureCount, 
+		slog.Warn("poll failed, backing off",
+			"failure_count", p.failureCount,
 			"next_interval", nextInterval)
 	} else {
 		if p.failureCount > 0 {

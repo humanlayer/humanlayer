@@ -51,7 +51,7 @@ func (h *ApprovalHandlers) HandleFetchApprovals(ctx context.Context, params json
 		if err != nil {
 			return nil, fmt.Errorf("session not found: %w", err)
 		}
-		
+
 		// Get approvals by run_id
 		approvals, err = h.approvals.GetPendingApprovalsByRunID(sessionInfo.RunID)
 		if err != nil {

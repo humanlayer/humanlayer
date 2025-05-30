@@ -230,7 +230,7 @@ func TestPoller_Backoff(t *testing.T) {
 func TestPoller_StartStop(t *testing.T) {
 	client := &mockClient{}
 	store := newMockStore()
-	
+
 	poller := NewPoller(client, store, 50*time.Millisecond)
 
 	ctx, cancel := context.WithCancel(context.Background())

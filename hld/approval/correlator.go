@@ -218,13 +218,13 @@ func (s *MemoryStore) addToRunIndex(runID, callID string) {
 	if _, exists := s.byRunID[runID]; !exists {
 		s.byRunID[runID] = []string{}
 	}
-	
+
 	// Check if callID already exists to avoid duplicates
 	for _, id := range s.byRunID[runID] {
 		if id == callID {
 			return
 		}
 	}
-	
+
 	s.byRunID[runID] = append(s.byRunID[runID], callID)
 }

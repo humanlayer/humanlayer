@@ -36,7 +36,7 @@ func newMockAPIClient() *mockAPIClient {
 func (m *mockAPIClient) GetPendingFunctionCalls(ctx context.Context) ([]humanlayer.FunctionCall, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	// Return only function calls that haven't been decided
 	var pending []humanlayer.FunctionCall
 	for _, fc := range m.functionCalls {
@@ -50,7 +50,7 @@ func (m *mockAPIClient) GetPendingFunctionCalls(ctx context.Context) ([]humanlay
 func (m *mockAPIClient) GetPendingHumanContacts(ctx context.Context) ([]humanlayer.HumanContact, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	// Return only contacts that haven't been decided
 	var pending []humanlayer.HumanContact
 	for _, hc := range m.humanContacts {
@@ -167,7 +167,7 @@ func TestDaemonApprovalIntegration(t *testing.T) {
 	// For testing, we'll create a minimal manager-like structure
 	store := approval.NewMemoryStore()
 	poller := approval.NewPoller(mockClient, store, 50*time.Millisecond)
-	
+
 	// Start poller in background
 	pollerCtx, pollerCancel := context.WithCancel(context.Background())
 	defer pollerCancel()
@@ -175,7 +175,7 @@ func TestDaemonApprovalIntegration(t *testing.T) {
 		t.Fatalf("failed to start poller: %v", err)
 	}
 	defer poller.Stop()
-	
+
 	// Create a mock approval manager that uses our test components
 	approvalManager := &testApprovalManager{
 		client: mockClient,
@@ -320,7 +320,7 @@ type rpcClient struct {
 
 func (c *rpcClient) call(method string, params interface{}, result interface{}) error {
 	c.id++
-	
+
 	// Send request
 	req := map[string]interface{}{
 		"jsonrpc": "2.0",
@@ -328,25 +328,25 @@ func (c *rpcClient) call(method string, params interface{}, result interface{}) 
 		"params":  params,
 		"id":      c.id,
 	}
-	
+
 	encoder := json.NewEncoder(c.conn)
 	if err := encoder.Encode(req); err != nil {
 		return err
 	}
-	
+
 	// Read response
 	var resp map[string]interface{}
 	decoder := json.NewDecoder(c.conn)
 	if err := decoder.Decode(&resp); err != nil {
 		return err
 	}
-	
+
 	// Check for error
 	if errObj, ok := resp["error"]; ok {
 		errMap := errObj.(map[string]interface{})
 		return fmt.Errorf("RPC error: %v", errMap["message"])
 	}
-	
+
 	// Unmarshal result
 	if resp["result"] != nil {
 		resultBytes, err := json.Marshal(resp["result"])
@@ -355,6 +355,6 @@ func (c *rpcClient) call(method string, params interface{}, result interface{}) 
 		}
 		return json.Unmarshal(resultBytes, result)
 	}
-	
+
 	return nil
 }
