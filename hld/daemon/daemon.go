@@ -11,6 +11,7 @@ import (
 
 	"github.com/humanlayer/humanlayer/hld/config"
 	"github.com/humanlayer/humanlayer/hld/rpc"
+	"github.com/humanlayer/humanlayer/hld/session"
 )
 
 const (
@@ -24,6 +25,7 @@ type Daemon struct {
 	socketPath string
 	listener   net.Listener
 	rpcServer  *rpc.Server
+	sessions   session.SessionManager
 	mu         sync.Mutex
 }
 
@@ -63,9 +65,16 @@ func New() (*Daemon, error) {
 		}
 	}
 
+	// Create session manager
+	sessionManager, err := session.NewManager()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create session manager: %w", err)
+	}
+
 	return &Daemon{
 		config:     cfg,
 		socketPath: socketPath,
+		sessions:   sessionManager,
 	}, nil
 }
 
@@ -93,6 +102,10 @@ func (d *Daemon) Run(ctx context.Context) error {
 
 	// Create and start RPC server
 	d.rpcServer = rpc.NewServer()
+
+	// Register session handlers
+	sessionHandlers := rpc.NewSessionHandlers(d.sessions)
+	sessionHandlers.Register(d.rpcServer)
 
 	slog.Info("daemon started", "socket", d.socketPath)
 
