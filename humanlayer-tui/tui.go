@@ -1692,6 +1692,34 @@ func (m model) sessionDetailViewRender() string {
 		contentLines = append(contentLines, infoStyle.Render("No approvals for this session"))
 	}
 
+	// Session output/result section
+	if sess.Status == session.StatusCompleted && sess.Result != nil {
+		contentLines = append(contentLines, "")
+		contentLines = append(contentLines, sectionHeader.Render("Session Output"))
+		contentLines = append(contentLines, "")
+
+		if sess.Result.Result != "" {
+			// Wrap the result text
+			resultLines := strings.Split(sess.Result.Result, "\n")
+			for _, line := range resultLines {
+				wrapped := wrapText(line, m.width-4)
+				for _, wl := range wrapped {
+					contentLines = append(contentLines, infoStyle.Render(wl))
+				}
+			}
+		} else {
+			contentLines = append(contentLines, infoStyle.Render("No output available"))
+		}
+
+		// Show cost and performance metrics
+		if sess.Result.CostUSD > 0 {
+			contentLines = append(contentLines, "")
+			contentLines = append(contentLines, infoStyle.Render(fmt.Sprintf("Cost: $%.4f", sess.Result.CostUSD)))
+			contentLines = append(contentLines, infoStyle.Render(fmt.Sprintf("Turns: %d", sess.Result.NumTurns)))
+			contentLines = append(contentLines, infoStyle.Render(fmt.Sprintf("Duration: %dms", sess.Result.DurationMS)))
+		}
+	}
+
 	// Apply scrolling
 	visibleHeight := m.height - 8 // Account for header, footer, status bar
 	startLine := m.sessionDetailScroll
@@ -1922,6 +1950,8 @@ func (m model) getHelpContent() helpContent {
 						{"", "Full prompt text"},
 						{"", "All approvals for this session"},
 						{"", "Error details if failed"},
+						{"", "Session output/result (when completed)"},
+						{"", "Cost and performance metrics"},
 					},
 				},
 			},
