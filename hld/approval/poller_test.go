@@ -30,6 +30,11 @@ func TestPoller_Poll(t *testing.T) {
 	mockClient.EXPECT().GetPendingFunctionCalls(gomock.Any()).Return(testFunctionCalls, nil)
 	mockClient.EXPECT().GetPendingHumanContacts(gomock.Any()).Return(testHumanContacts, nil)
 
+	// Expect checks for existing approvals
+	mockStore.EXPECT().GetFunctionCall("fc-1").Return(nil, errors.New("not found"))
+	mockStore.EXPECT().GetFunctionCall("fc-2").Return(nil, errors.New("not found"))
+	mockStore.EXPECT().GetHumanContact("hc-1").Return(nil, errors.New("not found"))
+
 	mockStore.EXPECT().StoreFunctionCall(testFunctionCalls[0]).Return(nil)
 	mockStore.EXPECT().StoreFunctionCall(testFunctionCalls[1]).Return(nil)
 	mockStore.EXPECT().StoreHumanContact(testHumanContacts[0]).Return(nil)
@@ -129,7 +134,7 @@ func TestPoller_StartStop(t *testing.T) {
 	mockClient.EXPECT().GetPendingFunctionCalls(gomock.Any()).Return([]humanlayer.FunctionCall{}, nil).MinTimes(2)
 	mockClient.EXPECT().GetPendingHumanContacts(gomock.Any()).Return([]humanlayer.HumanContact{}, nil).MinTimes(2)
 
-	poller := NewPoller(mockClient, mockStore, 50*time.Millisecond)
+	poller := NewPoller(mockClient, mockStore, 50*time.Millisecond, nil)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

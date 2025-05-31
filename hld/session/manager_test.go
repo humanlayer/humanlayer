@@ -11,7 +11,7 @@ import (
 )
 
 func TestNewManager(t *testing.T) {
-	manager, err := NewManager()
+	manager, err := NewManager(nil)
 	if err != nil {
 		t.Fatalf("Failed to create manager: %v", err)
 	}

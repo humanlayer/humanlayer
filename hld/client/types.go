@@ -24,6 +24,9 @@ type Client interface {
 	// SendDecision sends a decision (approve/deny/respond) for an approval
 	SendDecision(callID, approvalType, decision, comment string) error
 
+	// Subscribe subscribes to events from the daemon
+	Subscribe(req rpc.SubscribeRequest) (<-chan rpc.EventNotification, error)
+
 	// Close closes the connection to the daemon
 	Close() error
 }

@@ -5,6 +5,7 @@ This guide covers testing the Phase 4 integration where the TUI communicates wit
 ## Prerequisites
 
 1. Build the hlyr package (includes both daemon and TUI binaries):
+
    ```bash
    cd hlyr
    npm run build
@@ -31,6 +32,7 @@ npx humanlayer tui
 ```
 
 The daemon will:
+
 - Listen on `~/.humanlayer/daemon.sock`
 - Load API configuration from environment/config
 - Start polling for approvals
@@ -51,6 +53,7 @@ npx humanlayer launch "Simple task" --no-approvals
 ```
 
 This command will:
+
 - Connect to the daemon
 - Create a new Claude Code session with a unique `run_id`
 - Configure the MCP approvals server
@@ -65,6 +68,7 @@ npx humanlayer tui
 ```
 
 The TUI will:
+
 - Connect to the daemon (auto-start if needed)
 - Display all pending approvals
 - Show which session each approval belongs to (via run_id)
@@ -76,6 +80,7 @@ The TUI will:
 ### Basic Approval Flow
 
 1. Launch a session that will trigger approvals:
+
    ```bash
    npx humanlayer launch "Create a new Python file with a hello world function"
    ```
@@ -87,6 +92,7 @@ The TUI will:
 ### Multiple Concurrent Sessions
 
 1. Launch multiple sessions:
+
    ```bash
    npx humanlayer launch "Task 1: Write a README"
    npx humanlayer launch "Task 2: Create a test file"
@@ -138,6 +144,7 @@ echo '{"jsonrpc":"2.0","method":"fetchApprovals","params":{},"id":1}' | nc -U ~/
 ## Debugging Tips
 
 ### Enable Debug Logging
+
 ```bash
 # Run daemon with debug logging
 hld -debug
@@ -147,19 +154,23 @@ HUMANLAYER_DEBUG=true hld
 ```
 
 Debug mode will show:
+
 - MCP server configuration details
 - Polling attempts and results
 - API request/response details
 - Session lifecycle events
 
 ### Check Daemon Logs
+
 The daemon logs to stdout, showing:
+
 - Session launches with run_id
 - Polling activity (every 5 seconds)
 - Approval correlation
 - API communication errors
 
 ### Verify Socket Connection
+
 ```bash
 # Check if socket exists
 ls -la ~/.humanlayer/daemon.sock
@@ -169,6 +180,7 @@ lsof -U | grep daemon.sock
 ```
 
 ### Environment Variables
+
 - `HUMANLAYER_DAEMON_SOCKET`: Override default socket path
 - `HUMANLAYER_API_KEY`: Required for daemon operation
 - `HUMANLAYER_API_BASE_URL`: Override API base URL (default: https://api.humanlayer.dev/humanlayer/v1)
@@ -189,6 +201,7 @@ lsof -U | grep daemon.sock
 ## Common Issues
 
 ### No Approvals Showing
+
 1. Check daemon is running with debug logging
 2. Verify API key is configured: `echo $HUMANLAYER_API_KEY`
 3. Look for "approval poller started" in daemon logs
@@ -197,6 +210,7 @@ lsof -U | grep daemon.sock
 6. Ensure the Claude session is actually making tool calls that require approval
 
 ### API Connection Issues
+
 - Check API base URL is correct
 - Verify API key is valid
 - Look for HTTP error codes in daemon logs

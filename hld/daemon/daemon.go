@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/humanlayer/humanlayer/hld/approval"
+	"github.com/humanlayer/humanlayer/hld/bus"
 	"github.com/humanlayer/humanlayer/hld/config"
 	"github.com/humanlayer/humanlayer/hld/rpc"
 	"github.com/humanlayer/humanlayer/hld/session"
@@ -28,6 +29,7 @@ type Daemon struct {
 	rpcServer  *rpc.Server
 	sessions   session.SessionManager
 	approvals  approval.Manager
+	eventBus   bus.EventBus
 	mu         sync.Mutex
 }
 
@@ -67,8 +69,11 @@ func New() (*Daemon, error) {
 		}
 	}
 
+	// Create event bus
+	eventBus := bus.NewEventBus()
+
 	// Create session manager
-	sessionManager, err := session.NewManager()
+	sessionManager, err := session.NewManager(eventBus)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create session manager: %w", err)
 	}
@@ -82,7 +87,7 @@ func New() (*Daemon, error) {
 			BaseURL: cfg.APIBaseURL,
 			// Use defaults for now, could add to daemon config later
 		}
-		approvalManager, err = approval.NewManager(approvalCfg)
+		approvalManager, err = approval.NewManager(approvalCfg, eventBus)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create approval manager: %w", err)
 		}
@@ -96,6 +101,7 @@ func New() (*Daemon, error) {
 		socketPath: socketPath,
 		sessions:   sessionManager,
 		approvals:  approvalManager,
+		eventBus:   eventBus,
 	}, nil
 }
 
@@ -123,6 +129,10 @@ func (d *Daemon) Run(ctx context.Context) error {
 
 	// Create and start RPC server
 	d.rpcServer = rpc.NewServer()
+
+	// Register subscription handlers
+	subscriptionHandlers := rpc.NewSubscriptionHandlers(d.eventBus)
+	d.rpcServer.SetSubscriptionHandlers(subscriptionHandlers)
 
 	// Register session handlers
 	sessionHandlers := rpc.NewSessionHandlers(d.sessions)

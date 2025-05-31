@@ -33,6 +33,96 @@ func New(socketPath string) (Client, error) {
 	}, nil
 }
 
+// Subscribe subscribes to events from the daemon
+func (c *client) Subscribe(req rpc.SubscribeRequest) (<-chan rpc.EventNotification, error) {
+	// Create a separate connection for subscription
+	conn, err := net.Dial("unix", c.socketPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create subscription connection: %w", err)
+	}
+
+	// Send subscribe request
+	encoder := json.NewEncoder(conn)
+	jsonReq := jsonRPCRequest{
+		JSONRPC: "2.0",
+		Method:  "Subscribe",
+		Params:  req,
+		ID:      atomic.AddInt64(&c.id, 1),
+	}
+	if err := encoder.Encode(jsonReq); err != nil {
+		conn.Close()
+		return nil, fmt.Errorf("failed to send subscribe request: %w", err)
+	}
+
+	// Create channel for events
+	eventChan := make(chan rpc.EventNotification, 100)
+
+	// Create a channel to signal when subscription is confirmed
+	ready := make(chan struct{})
+
+	// Start goroutine to read events
+	go func() {
+		defer close(eventChan)
+		defer conn.Close()
+
+		decoder := json.NewDecoder(conn)
+		subscriptionConfirmed := false
+
+		for {
+			var resp jsonRPCResponse
+			if err := decoder.Decode(&resp); err != nil {
+				// Connection closed or error
+				return
+			}
+
+			// Skip non-result messages
+			if resp.Error != nil || len(resp.Result) == 0 {
+				continue
+			}
+
+			// First check if it's a subscription response
+			if !subscriptionConfirmed {
+				var subResp rpc.SubscribeResponse
+				if err := json.Unmarshal(resp.Result, &subResp); err == nil && subResp.SubscriptionID != "" {
+					// This is the initial subscription confirmation
+					subscriptionConfirmed = true
+					close(ready)
+					continue
+				}
+			}
+
+			// Check if it's a heartbeat
+			var heartbeat map[string]interface{}
+			if err := json.Unmarshal(resp.Result, &heartbeat); err == nil {
+				if hbType, ok := heartbeat["type"].(string); ok && hbType == "heartbeat" {
+					// Skip heartbeats
+					continue
+				}
+			}
+
+			// Try to decode as event notification
+			var notification rpc.EventNotification
+			if err := json.Unmarshal(resp.Result, &notification); err == nil && notification.Event.Type != "" {
+				select {
+				case eventChan <- notification:
+				default:
+					// Channel full, drop event
+				}
+			}
+		}
+	}()
+
+	// Wait for subscription confirmation with timeout
+	select {
+	case <-ready:
+		// Subscription confirmed
+		return eventChan, nil
+	case <-time.After(5 * time.Second):
+		conn.Close()
+		return nil, fmt.Errorf("timeout waiting for subscription confirmation")
+	}
+}
+
 // Close closes the connection to the daemon
 func (c *client) Close() error {
 	c.mu.Lock()
@@ -56,7 +146,7 @@ type jsonRPCResponse struct {
 	JSONRPC string          `json:"jsonrpc"`
 	Result  json.RawMessage `json:"result,omitempty"`
 	Error   *rpc.Error      `json:"error,omitempty"`
-	ID      int64           `json:"id"`
+	ID      interface{}     `json:"id,omitempty"` // Can be number, string, or null for notifications
 }
 
 // call sends an RPC request and waits for the response
@@ -190,7 +280,7 @@ func (c *client) Reconnect() error {
 // Connect attempts to connect to the daemon with retries
 func Connect(socketPath string, maxRetries int, retryDelay time.Duration) (Client, error) {
 	var lastErr error
-	
+
 	for i := 0; i <= maxRetries; i++ {
 		client, err := New(socketPath)
 		if err == nil {
@@ -200,12 +290,12 @@ func Connect(socketPath string, maxRetries int, retryDelay time.Duration) (Clien
 			}
 			client.Close()
 		}
-		
+
 		lastErr = err
 		if i < maxRetries {
 			time.Sleep(retryDelay)
 		}
 	}
-	
+
 	return nil, fmt.Errorf("failed to connect to daemon after %d attempts: %w", maxRetries+1, lastErr)
 }

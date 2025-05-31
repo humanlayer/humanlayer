@@ -6,12 +6,15 @@ import (
 	"log/slog"
 	"sync"
 	"time"
+
+	"github.com/humanlayer/humanlayer/hld/bus"
 )
 
 // Poller polls the HumanLayer API for pending approvals
 type Poller struct {
 	client        APIClient
 	store         Store
+	eventBus      bus.EventBus
 	interval      time.Duration
 	maxBackoff    time.Duration
 	backoffFactor float64
@@ -21,13 +24,14 @@ type Poller struct {
 }
 
 // NewPoller creates a new approval poller
-func NewPoller(client APIClient, store Store, interval time.Duration) *Poller {
+func NewPoller(client APIClient, store Store, interval time.Duration, eventBus bus.EventBus) *Poller {
 	if interval <= 0 {
 		interval = 5 * time.Second
 	}
 	return &Poller{
 		client:        client,
 		store:         store,
+		eventBus:      eventBus,
 		interval:      interval,
 		maxBackoff:    5 * time.Minute,
 		backoffFactor: 2.0,
@@ -124,12 +128,30 @@ func (p *Poller) poll(ctx context.Context) {
 		slog.Error("failed to fetch function calls", "error", err)
 		hadError = true
 	} else {
+		newCount := 0
 		for _, fc := range functionCalls {
+			// Check if this is a new approval
+			if existing, err := p.store.GetFunctionCall(fc.CallID); err != nil || existing == nil {
+				newCount++
+			}
+
 			if err := p.store.StoreFunctionCall(fc); err != nil {
 				slog.Error("failed to store function call", "call_id", fc.CallID, "error", err)
 			}
 		}
-		slog.Debug("fetched function calls", "count", len(functionCalls))
+		slog.Debug("fetched function calls", "count", len(functionCalls), "new", newCount)
+
+		// Publish event if we have new approvals
+		if newCount > 0 && p.eventBus != nil {
+			p.eventBus.Publish(bus.Event{
+				Type: bus.EventNewApproval,
+				Data: map[string]interface{}{
+					"type":  "function_call",
+					"count": newCount,
+					"total": len(functionCalls),
+				},
+			})
+		}
 	}
 
 	// Fetch human contacts
@@ -138,12 +160,30 @@ func (p *Poller) poll(ctx context.Context) {
 		slog.Error("failed to fetch human contacts", "error", err)
 		hadError = true
 	} else {
+		newCount := 0
 		for _, hc := range humanContacts {
+			// Check if this is a new approval
+			if existing, err := p.store.GetHumanContact(hc.CallID); err != nil || existing == nil {
+				newCount++
+			}
+
 			if err := p.store.StoreHumanContact(hc); err != nil {
 				slog.Error("failed to store human contact", "call_id", hc.CallID, "error", err)
 			}
 		}
-		slog.Debug("fetched human contacts", "count", len(humanContacts))
+		slog.Debug("fetched human contacts", "count", len(humanContacts), "new", newCount)
+
+		// Publish event if we have new approvals
+		if newCount > 0 && p.eventBus != nil {
+			p.eventBus.Publish(bus.Event{
+				Type: bus.EventNewApproval,
+				Data: map[string]interface{}{
+					"type":  "human_contact",
+					"count": newCount,
+					"total": len(humanContacts),
+				},
+			})
+		}
 	}
 
 	// Update failure count based on results
