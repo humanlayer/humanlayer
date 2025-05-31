@@ -202,7 +202,7 @@ func TestEventBus_ConcurrentPublishSubscribe(t *testing.T) {
 	// Verify each subscriber received all events
 	for i, sub := range subscribers {
 		received := 0
-		
+
 		// Drain the channel
 		for {
 			select {
@@ -213,7 +213,7 @@ func TestEventBus_ConcurrentPublishSubscribe(t *testing.T) {
 				goto checkCount
 			}
 		}
-		
+
 	checkCount:
 		if received != numEvents {
 			t.Errorf("subscriber %d: expected %d events, received %d", i, numEvents, received)

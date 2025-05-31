@@ -67,13 +67,13 @@ func (eb *eventBus) Unsubscribe(subscriberID string) {
 	if sub, ok := eb.subscribers[subscriberID]; ok {
 		// Remove from map first to prevent double cleanup
 		delete(eb.subscribers, subscriberID)
-		
+
 		// Cancel context (this might trigger the cleanup goroutine)
 		sub.cancelFn()
-		
+
 		// Close channel
 		close(sub.Channel)
-		
+
 		slog.Debug("event bus unsubscribe", "subscriber_id", subscriberID)
 	}
 }
@@ -85,7 +85,7 @@ func (eb *eventBus) Publish(event Event) {
 		slog.Error("attempted to publish event with empty type", "data", event.Data)
 		return
 	}
-	
+
 	eb.mu.RLock()
 	defer eb.mu.RUnlock()
 
