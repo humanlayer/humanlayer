@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"sync"
 
+	"github.com/humanlayer/humanlayer/hld/approval"
+	"github.com/humanlayer/humanlayer/hld/bus"
 	"github.com/humanlayer/humanlayer/hld/config"
 	"github.com/humanlayer/humanlayer/hld/rpc"
 	"github.com/humanlayer/humanlayer/hld/session"
@@ -26,6 +28,8 @@ type Daemon struct {
 	listener   net.Listener
 	rpcServer  *rpc.Server
 	sessions   session.SessionManager
+	approvals  approval.Manager
+	eventBus   bus.EventBus
 	mu         sync.Mutex
 }
 
@@ -65,16 +69,39 @@ func New() (*Daemon, error) {
 		}
 	}
 
+	// Create event bus
+	eventBus := bus.NewEventBus()
+
 	// Create session manager
-	sessionManager, err := session.NewManager()
+	sessionManager, err := session.NewManager(eventBus)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create session manager: %w", err)
+	}
+
+	// Create approval manager if API key is configured
+	var approvalManager approval.Manager
+	if cfg.APIKey != "" {
+		slog.Info("creating approval manager", "api_base_url", cfg.APIBaseURL)
+		approvalCfg := approval.Config{
+			APIKey:  cfg.APIKey,
+			BaseURL: cfg.APIBaseURL,
+			// Use defaults for now, could add to daemon config later
+		}
+		approvalManager, err = approval.NewManager(approvalCfg, eventBus)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create approval manager: %w", err)
+		}
+		slog.Debug("approval manager created successfully")
+	} else {
+		slog.Warn("no API key configured, approval features disabled")
 	}
 
 	return &Daemon{
 		config:     cfg,
 		socketPath: socketPath,
 		sessions:   sessionManager,
+		approvals:  approvalManager,
+		eventBus:   eventBus,
 	}, nil
 }
 
@@ -103,9 +130,30 @@ func (d *Daemon) Run(ctx context.Context) error {
 	// Create and start RPC server
 	d.rpcServer = rpc.NewServer()
 
+	// Register subscription handlers
+	subscriptionHandlers := rpc.NewSubscriptionHandlers(d.eventBus)
+	d.rpcServer.SetSubscriptionHandlers(subscriptionHandlers)
+
 	// Register session handlers
 	sessionHandlers := rpc.NewSessionHandlers(d.sessions)
 	sessionHandlers.Register(d.rpcServer)
+
+	// Register approval handlers if approval manager is available
+	if d.approvals != nil {
+		approvalHandlers := rpc.NewApprovalHandlers(d.approvals, d.sessions)
+		approvalHandlers.Register(d.rpcServer)
+
+		// Start approval polling
+		if err := d.approvals.Start(ctx); err != nil {
+			listener.Close()
+			return fmt.Errorf("failed to start approval poller: %w", err)
+		}
+		defer d.approvals.Stop()
+
+		slog.Info("approval polling started")
+	} else {
+		slog.Warn("approval manager not configured (no API key)")
+	}
 
 	slog.Info("daemon started", "socket", d.socketPath)
 

@@ -14,17 +14,23 @@ const Version = "0.1.0"
 
 // Server handles JSON-RPC requests
 type Server struct {
-	handlers map[string]HandlerFunc
-	mu       sync.RWMutex
+	handlers        map[string]HandlerFunc
+	connHandlers    map[string]ConnHandlerFunc
+	subscriptionMgr *SubscriptionHandlers
+	mu              sync.RWMutex
 }
 
 // HandlerFunc is a function that handles an RPC method
 type HandlerFunc func(ctx context.Context, params json.RawMessage) (interface{}, error)
 
+// ConnHandlerFunc is a function that handles an RPC method with direct connection access
+type ConnHandlerFunc func(ctx context.Context, conn net.Conn, params json.RawMessage) error
+
 // NewServer creates a new RPC server
 func NewServer() *Server {
 	s := &Server{
-		handlers: make(map[string]HandlerFunc),
+		handlers:     make(map[string]HandlerFunc),
+		connHandlers: make(map[string]ConnHandlerFunc),
 	}
 
 	// Register built-in handlers
@@ -45,6 +51,20 @@ func (s *Server) Register(method string, handler HandlerFunc) {
 	s.handlers[method] = handler
 }
 
+// RegisterConnHandler adds a new RPC method handler with connection access
+func (s *Server) RegisterConnHandler(method string, handler ConnHandlerFunc) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.connHandlers[method] = handler
+}
+
+// SetSubscriptionHandlers sets the subscription manager
+func (s *Server) SetSubscriptionHandlers(mgr *SubscriptionHandlers) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.subscriptionMgr = mgr
+}
+
 // ServeConn handles a single client connection
 func (s *Server) ServeConn(ctx context.Context, conn net.Conn) error {
 	// Use a scanner to read line-delimited JSON
@@ -63,7 +83,30 @@ func (s *Server) ServeConn(ctx context.Context, conn net.Conn) error {
 			continue
 		}
 
-		// Process the request
+		// Parse request to check if it's a Subscribe
+		var req Request
+		if err := json.Unmarshal(line, &req); err != nil {
+			response := &Response{
+				JSONRPC: "2.0",
+				Error: &Error{
+					Code:    ParseError,
+					Message: "Parse error",
+				},
+				ID: nil,
+			}
+			if err := s.sendResponse(conn, response); err != nil {
+				return fmt.Errorf("failed to send error response: %w", err)
+			}
+			continue
+		}
+
+		// Check if this is a Subscribe request
+		if req.Method == "Subscribe" && s.subscriptionMgr != nil {
+			// Handle subscription directly
+			return s.subscriptionMgr.SubscribeConn(ctx, conn, req.Params)
+		}
+
+		// Process normal request
 		response := s.handleRequest(ctx, line)
 
 		// Send response

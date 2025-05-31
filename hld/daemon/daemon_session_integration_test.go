@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
+	claudecode "github.com/humanlayer/humanlayer/claudecode-go"
 	"github.com/humanlayer/humanlayer/hld/internal/testutil"
 	"github.com/humanlayer/humanlayer/hld/rpc"
-	claudecode "github.com/humanlayer/humanlayer/claudecode-go"
 )
 
 // TestSessionLaunchIntegration tests launching a session through the daemon

@@ -11,7 +11,7 @@ import (
 )
 
 func TestNewManager(t *testing.T) {
-	manager, err := NewManager()
+	manager, err := NewManager(nil)
 	if err != nil {
 		t.Fatalf("Failed to create manager: %v", err)
 	}
@@ -32,9 +32,9 @@ func TestSessionLifecycle(t *testing.T) {
 	}
 
 	testCases := []struct {
-		name     string
-		setup    func()
-		test     func(t *testing.T)
+		name  string
+		setup func()
+		test  func(t *testing.T)
 	}{
 		{
 			name: "list empty sessions",
@@ -187,9 +187,9 @@ func TestSessionLifecycle(t *testing.T) {
 
 func TestGetNonExistentSession(t *testing.T) {
 	testCases := []struct {
-		name           string
-		sessionID      string
-		expectedError  string
+		name          string
+		sessionID     string
+		expectedError string
 	}{
 		{
 			name:          "non-existent session",

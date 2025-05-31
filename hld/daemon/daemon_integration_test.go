@@ -1,3 +1,4 @@
+//go:build integration
 // +build integration
 
 package daemon
@@ -12,6 +13,7 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
 	"github.com/humanlayer/humanlayer/hld/internal/testutil"
 )
 

@@ -12,6 +12,7 @@ export type ConfigFile = {
   api_key?: string
   api_base_url?: string
   app_base_url?: string
+  daemon_socket?: string
 }
 
 export type ConfigSource = 'flag' | 'env' | 'config' | 'default' | 'none'
@@ -44,6 +45,13 @@ export interface ConfigSchema {
     defaultValue: string
     required: boolean
   }
+  daemon_socket: {
+    envVar: 'HUMANLAYER_DAEMON_SOCKET'
+    configKey: 'daemon_socket'
+    flagKey: 'daemonSocket'
+    defaultValue: string
+    required: boolean
+  }
 }
 
 const CONFIG_SCHEMA: ConfigSchema = {
@@ -65,6 +73,13 @@ const CONFIG_SCHEMA: ConfigSchema = {
     configKey: 'app_base_url',
     flagKey: 'appBase',
     defaultValue: 'https://app.humanlayer.dev',
+    required: true,
+  },
+  daemon_socket: {
+    envVar: 'HUMANLAYER_DAEMON_SOCKET',
+    configKey: 'daemon_socket',
+    flagKey: 'daemonSocket',
+    defaultValue: '~/.humanlayer/daemon.sock',
     required: true,
   },
 }
@@ -173,11 +188,13 @@ export class ConfigResolver {
     const api_key = this.resolveValue('api_key', options)
     const api_base_url = this.resolveValue('api_base_url', options)
     const app_base_url = this.resolveValue('app_base_url', options)
+    const daemon_socket = this.resolveValue('daemon_socket', options)
 
     return {
       api_key,
       api_base_url,
       app_base_url,
+      daemon_socket,
       contact_channel: buildContactChannel(options, this.configFile),
     }
   }
@@ -189,6 +206,7 @@ export class ConfigResolver {
       api_key: resolved.api_key.value,
       api_base_url: resolved.api_base_url.value!,
       app_base_url: resolved.app_base_url.value!,
+      daemon_socket: resolved.daemon_socket.value!,
       contact_channel: resolved.contact_channel,
     }
   }
@@ -281,6 +299,7 @@ export type ResolvedConfig = {
   api_key?: string
   api_base_url: string
   app_base_url: string
+  daemon_socket: string
   contact_channel: ContactChannel
 }
 
@@ -288,6 +307,7 @@ export type ConfigWithSources = {
   api_key?: ConfigValue<string | undefined>
   api_base_url: ConfigValue<string>
   app_base_url: ConfigValue<string>
+  daemon_socket: ConfigValue<string>
   contact_channel: ContactChannel
 }
 
@@ -300,6 +320,7 @@ export function resolveConfigWithSources(options: Record<string, unknown> = {}):
     api_key: resolved.api_key,
     api_base_url: resolved.api_base_url as ConfigValue<string>,
     app_base_url: resolved.app_base_url as ConfigValue<string>,
+    daemon_socket: resolved.daemon_socket as ConfigValue<string>,
     contact_channel: resolved.contact_channel,
   }
 }

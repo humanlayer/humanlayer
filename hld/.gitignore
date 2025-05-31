@@ -22,3 +22,5 @@
 
 # Generated mocks
 session/mock_session.go
+approval/mock_approval.go
+client/mock_client.go
