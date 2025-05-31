@@ -18,15 +18,18 @@ async function launchSession(socketPath: string, prompt: string, options: Launch
   return new Promise((resolve, reject) => {
     const client = connect(socketPath, () => {
       // Build MCP config (approvals enabled by default unless explicitly disabled)
-      const mcpConfig = options.approvals !== false ? {
-        mcpServers: {
-          approvals: {
-            command: 'npx',
-            args: ['humanlayer', 'mcp', 'claude_approvals']
-          }
-        }
-      } : undefined
-      
+      const mcpConfig =
+        options.approvals !== false
+          ? {
+              mcpServers: {
+                approvals: {
+                  command: 'npx',
+                  args: ['humanlayer', 'mcp', 'claude_approvals'],
+                },
+              },
+            }
+          : undefined
+
       const request = {
         jsonrpc: '2.0',
         method: 'launchSession',
@@ -38,24 +41,24 @@ async function launchSession(socketPath: string, prompt: string, options: Launch
           mcp_config: mcpConfig,
           permission_prompt_tool: mcpConfig ? 'mcp__approvals__request_permission' : undefined,
         },
-        id: 1
+        id: 1,
       }
-      
+
       client.write(JSON.stringify(request) + '\n')
     })
-    
+
     let buffer = ''
-    client.on('data', (data) => {
+    client.on('data', data => {
       buffer += data.toString()
       const lines = buffer.split('\n')
       buffer = lines.pop() || ''
-      
+
       for (const line of lines) {
         if (line.trim()) {
           try {
             const response = JSON.parse(line)
             client.end()
-            
+
             if (response.error) {
               reject(new Error(`RPC Error: ${response.error.message}`))
             } else {
@@ -67,8 +70,8 @@ async function launchSession(socketPath: string, prompt: string, options: Launch
         }
       }
     })
-    
-    client.on('error', (err) => {
+
+    client.on('error', err => {
       reject(new Error(`Connection failed: ${err.message}`))
     })
   })
@@ -79,20 +82,20 @@ export const launchCommand = async (prompt: string, options: LaunchOptions = {})
     // Get socket path from configuration
     const config = resolveFullConfig(options)
     let socketPath = config.daemon_socket
-    
+
     // Expand ~ to home directory if needed
     if (socketPath.startsWith('~')) {
       socketPath = join(homedir(), socketPath.slice(1))
     }
-    
+
     console.log('Launching Claude Code session...')
     console.log('Prompt:', prompt)
     if (options.model) console.log('Model:', options.model)
     console.log('Working directory:', options.workingDir || process.cwd())
     console.log('Approvals enabled:', options.approvals !== false)
-    
-    const result = await launchSession(socketPath, prompt, options) as any
-    
+
+    const result = (await launchSession(socketPath, prompt, options)) as any
+
     console.log('\nSession launched successfully!')
     console.log('Session ID:', result.session_id)
     console.log('Run ID:', result.run_id)
