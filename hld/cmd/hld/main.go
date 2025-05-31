@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -11,11 +12,23 @@ import (
 )
 
 func main() {
+	// Parse command line flags
+	debug := flag.Bool("debug", false, "Enable debug logging")
+	flag.Parse()
+
 	// Set up structured logging
+	level := slog.LevelInfo
+	if *debug || os.Getenv("HUMANLAYER_DEBUG") == "true" {
+		level = slog.LevelDebug
+	}
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
-		Level: slog.LevelInfo,
+		Level: level,
 	}))
 	slog.SetDefault(logger)
+
+	if level == slog.LevelDebug {
+		slog.Debug("debug logging enabled")
+	}
 
 	// Create daemon instance
 	d, err := daemon.New()
