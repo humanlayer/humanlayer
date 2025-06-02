@@ -26,6 +26,7 @@ type Session struct {
 	EndTime   *time.Time               `json:"end_time,omitempty"`
 	Error     string                   `json:"error,omitempty"`
 	Config    claudecode.SessionConfig `json:"config"`
+	Result    *claudecode.Result       `json:"result,omitempty"`
 
 	// Process tracking
 	claude *claudecode.Session // The actual Claude session
@@ -33,14 +34,15 @@ type Session struct {
 
 // Info provides a JSON-safe view of the session
 type Info struct {
-	ID        string     `json:"id"`
-	RunID     string     `json:"run_id"`
-	Status    Status     `json:"status"`
-	StartTime time.Time  `json:"start_time"`
-	EndTime   *time.Time `json:"end_time,omitempty"`
-	Error     string     `json:"error,omitempty"`
-	Prompt    string     `json:"prompt"`
-	Model     string     `json:"model,omitempty"`
+	ID        string                `json:"id"`
+	RunID     string                `json:"run_id"`
+	Status    Status                `json:"status"`
+	StartTime time.Time             `json:"start_time"`
+	EndTime   *time.Time            `json:"end_time,omitempty"`
+	Error     string                `json:"error,omitempty"`
+	Prompt    string                `json:"prompt"`
+	Model     string                `json:"model,omitempty"`
+	Result    *claudecode.Result    `json:"result,omitempty"`
 }
 
 // SessionManager defines the interface for managing Claude Code sessions

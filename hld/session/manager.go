@@ -145,7 +145,21 @@ func (m *Manager) monitorSession(ctx context.Context, session *Session) {
 		m.mu.Lock()
 		session.Status = StatusCompleted
 		session.EndTime = &endTime
+		session.Result = result
 		m.mu.Unlock()
+
+		// Publish status change event
+		if m.eventBus != nil {
+			m.eventBus.Publish(bus.Event{
+				Type: bus.EventSessionStatusChanged,
+				Data: map[string]interface{}{
+					"session_id": session.ID,
+					"run_id":     session.RunID,
+					"old_status": string(StatusRunning),
+					"new_status": string(StatusCompleted),
+				},
+			})
+		}
 	}
 
 	slog.Info("session completed",
@@ -232,6 +246,7 @@ func (m *Manager) GetSessionInfo(sessionID string) (*Info, error) {
 		Error:     session.Error,
 		Prompt:    session.Config.Prompt,
 		Model:     string(session.Config.Model),
+		Result:    session.Result,
 	}, nil
 }
 
@@ -252,6 +267,7 @@ func (m *Manager) ListSessionInfo() []Info {
 			Error:     session.Error,
 			Prompt:    session.Config.Prompt,
 			Model:     string(session.Config.Model),
+			Result:    session.Result,
 		}
 		infos = append(infos, info)
 	}

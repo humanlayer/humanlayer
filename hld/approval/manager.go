@@ -127,6 +127,7 @@ func (m *DefaultManager) ApproveFunctionCall(ctx context.Context, callID string,
 			},
 		})
 	}
+
 	return nil
 }
 
