@@ -7,6 +7,7 @@ import { tuiCommand } from './commands/tui.js'
 import { contactHumanCommand } from './commands/contactHuman.js'
 import { configShowCommand } from './commands/configShow.js'
 import { pingCommand } from './commands/ping.js'
+import { launchCommand } from './commands/launch.js'
 import { startDefaultMCPServer, startClaudeApprovalsMCPServer } from './mcp.js'
 import {
   getDefaultConfigPath,
@@ -92,7 +93,23 @@ program
   .option('--config-file <path>', 'Path to config file')
   .action(loginCommand)
 
-program.command('tui').description('Run the HumanLayer Terminal UI').action(tuiCommand)
+program
+  .command('tui')
+  .description('Run the HumanLayer Terminal UI')
+  .option('--daemon-socket <path>', 'Path to daemon socket')
+  .option('--config-file <path>', 'Path to config file')
+  .action(tuiCommand)
+
+program
+  .command('launch <prompt>')
+  .description('Launch a new Claude Code session via the daemon')
+  .option('-m, --model <model>', 'Model to use (opus or sonnet)', 'sonnet')
+  .option('-w, --working-dir <path>', 'Working directory for the session')
+  .option('--max-turns <number>', 'Maximum number of turns', parseInt)
+  .option('--no-approvals', 'Disable HumanLayer approvals for high-stakes operations')
+  .option('--daemon-socket <path>', 'Path to daemon socket')
+  .option('--config-file <path>', 'Path to config file')
+  .action(launchCommand)
 
 const configCommand = program.command('config').description('Configuration management')
 

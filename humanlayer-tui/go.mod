@@ -6,7 +6,7 @@ require (
 	github.com/charmbracelet/bubbles v0.20.0
 	github.com/charmbracelet/bubbletea v1.1.0
 	github.com/charmbracelet/lipgloss v0.13.1
-	github.com/humanlayer/humanlayer-go v0.0.0
+	github.com/humanlayer/humanlayer/hld v0.0.0
 	github.com/spf13/viper v1.20.1
 )
 
@@ -18,6 +18,9 @@ require (
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
 	github.com/fsnotify/fsnotify v1.8.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.2.1 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/humanlayer/humanlayer/claudecode-go v0.0.0-00010101000000-000000000000 // indirect
+	github.com/humanlayer/humanlayer/humanlayer-go v0.0.0-00010101000000-000000000000 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-localereader v0.0.1 // indirect
@@ -34,6 +37,7 @@ require (
 	github.com/spf13/pflag v1.0.6 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
+	go.uber.org/mock v0.5.2 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
 	golang.org/x/sync v0.10.0 // indirect
 	golang.org/x/sys v0.29.0 // indirect
@@ -41,4 +45,8 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/humanlayer/humanlayer-go => ../humanlayer-go
+replace (
+	github.com/humanlayer/humanlayer/claudecode-go => ../claudecode-go
+	github.com/humanlayer/humanlayer/hld => ../hld
+	github.com/humanlayer/humanlayer/humanlayer-go => ../humanlayer-go
+)

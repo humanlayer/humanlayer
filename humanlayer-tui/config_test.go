@@ -10,11 +10,9 @@ import (
 
 func TestConfigPriority(t *testing.T) {
 	// Clean up environment variables
-	oldAPIKey := os.Getenv("HUMANLAYER_API_KEY")
-	oldBaseURL := os.Getenv("HUMANLAYER_API_BASE_URL")
+	oldDaemonSocket := os.Getenv("HUMANLAYER_DAEMON_SOCKET")
 	defer func() {
-		_ = os.Setenv("HUMANLAYER_API_KEY", oldAPIKey)
-		_ = os.Setenv("HUMANLAYER_API_BASE_URL", oldBaseURL)
+		_ = os.Setenv("HUMANLAYER_DAEMON_SOCKET", oldDaemonSocket)
 	}()
 
 	// Create a temporary directory for test config files
@@ -25,16 +23,14 @@ func TestConfigPriority(t *testing.T) {
 
 	t.Run("config file only", func(t *testing.T) {
 		// Clear env vars
-		_ = os.Unsetenv("HUMANLAYER_API_KEY")
-		_ = os.Unsetenv("HUMANLAYER_API_BASE_URL")
+		_ = os.Unsetenv("HUMANLAYER_DAEMON_SOCKET")
 
 		// Reset viper to clear any cached values
 		viper.Reset()
 
 		// Create config file
 		configContent := `{
-			"api_key": "config_file_key",
-			"api_base_url": "https://config.file.url"
+			"daemon_socket": "/custom/path/daemon.sock"
 		}`
 		err := os.WriteFile("humanlayer.json", []byte(configContent), 0644)
 		if err != nil {
@@ -46,11 +42,8 @@ func TestConfigPriority(t *testing.T) {
 			t.Fatalf("LoadConfig failed: %v", err)
 		}
 
-		if config.APIKey != "config_file_key" {
-			t.Errorf("Expected API key 'config_file_key', got '%s'", config.APIKey)
-		}
-		if config.APIBaseURL != "https://config.file.url" {
-			t.Errorf("Expected API base URL 'https://config.file.url', got '%s'", config.APIBaseURL)
+		if config.DaemonSocket != "/custom/path/daemon.sock" {
+			t.Errorf("Expected daemon socket '/custom/path/daemon.sock', got '%s'", config.DaemonSocket)
 		}
 	})
 
@@ -59,13 +52,11 @@ func TestConfigPriority(t *testing.T) {
 		viper.Reset()
 
 		// Set env vars
-		_ = os.Setenv("HUMANLAYER_API_KEY", "env_var_key")
-		_ = os.Setenv("HUMANLAYER_API_BASE_URL", "https://env.var.url")
+		_ = os.Setenv("HUMANLAYER_DAEMON_SOCKET", "/env/path/daemon.sock")
 
 		// Create config file with different values
 		configContent := `{
-			"api_key": "config_file_key",
-			"api_base_url": "https://config.file.url"
+			"daemon_socket": "/config/path/daemon.sock"
 		}`
 		err := os.WriteFile("humanlayer.json", []byte(configContent), 0644)
 		if err != nil {
@@ -78,11 +69,8 @@ func TestConfigPriority(t *testing.T) {
 		}
 
 		// Env vars should override config file
-		if config.APIKey != "env_var_key" {
-			t.Errorf("Expected API key 'env_var_key', got '%s'", config.APIKey)
-		}
-		if config.APIBaseURL != "https://env.var.url" {
-			t.Errorf("Expected API base URL 'https://env.var.url', got '%s'", config.APIBaseURL)
+		if config.DaemonSocket != "/env/path/daemon.sock" {
+			t.Errorf("Expected daemon socket '/env/path/daemon.sock', got '%s'", config.DaemonSocket)
 		}
 	})
 
@@ -101,8 +89,7 @@ func TestConfigPriority(t *testing.T) {
 		_ = os.Unsetenv("XDG_CONFIG_HOME")
 
 		// Clear env vars
-		_ = os.Unsetenv("HUMANLAYER_API_KEY")
-		_ = os.Unsetenv("HUMANLAYER_API_BASE_URL")
+		_ = os.Unsetenv("HUMANLAYER_DAEMON_SOCKET")
 
 		// Reset viper to clear any cached values
 		viper.Reset()
@@ -116,39 +103,22 @@ func TestConfigPriority(t *testing.T) {
 		}
 
 		// Should use defaults when no config or env vars are set
-		if config.APIKey != "" {
-			t.Errorf("Expected empty API key, got '%s'", config.APIKey)
-		}
-
-		if config.APIBaseURL != "https://api.humanlayer.dev/humanlayer/v1" {
-			t.Errorf("Expected default API base URL 'https://api.humanlayer.dev/humanlayer/v1', got '%s'", config.APIBaseURL)
-		}
-
-		if config.AppBaseURL != "https://app.humanlayer.dev" {
-			t.Errorf("Expected default app base URL 'https://app.humanlayer.dev', got '%s'", config.AppBaseURL)
+		if config.DaemonSocket != "~/.humanlayer/daemon.sock" {
+			t.Errorf("Expected default daemon socket '~/.humanlayer/daemon.sock', got '%s'", config.DaemonSocket)
 		}
 	})
 
 	t.Run("config validation", func(t *testing.T) {
 		// Test valid config
 		validConfig := &Config{
-			APIKey:     "valid_key",
-			APIBaseURL: "https://api.humanlayer.dev/humanlayer/v1",
-			AppBaseURL: "https://app.humanlayer.dev",
+			DaemonSocket: "/path/to/daemon.sock",
 		}
 		if err := ValidateConfig(validConfig); err != nil {
 			t.Errorf("Valid config should not return error: %v", err)
 		}
 
-		// Test invalid config (missing API key)
-		invalidConfig := &Config{
-			APIKey:     "",
-			APIBaseURL: "https://api.humanlayer.dev/humanlayer/v1",
-			AppBaseURL: "https://app.humanlayer.dev",
-		}
-		if err := ValidateConfig(invalidConfig); err == nil {
-			t.Error("Invalid config should return error")
-		}
+		// ValidateConfig now always returns nil (no validation needed)
+		// so there's no invalid case to test
 	})
 
 	t.Run("XDG config directory", func(t *testing.T) {

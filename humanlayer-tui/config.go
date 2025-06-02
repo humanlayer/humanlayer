@@ -10,9 +10,7 @@ import (
 
 // Config represents the configuration structure
 type Config struct {
-	APIKey     string `mapstructure:"api_key"`
-	APIBaseURL string `mapstructure:"api_base_url"`
-	AppBaseURL string `mapstructure:"app_base_url"`
+	DaemonSocket string `mapstructure:"daemon_socket"`
 }
 
 // LoadConfig loads configuration with priority: flags > env vars > config file > defaults
@@ -33,13 +31,10 @@ func LoadConfig() (*Config, error) {
 	v.AutomaticEnv()
 
 	// Map environment variables to config keys
-	_ = v.BindEnv("api_key", "HUMANLAYER_API_KEY")
-	_ = v.BindEnv("api_base_url", "HUMANLAYER_API_BASE_URL", "HUMANLAYER_API_BASE")
-	_ = v.BindEnv("app_base_url", "HUMANLAYER_APP_URL")
+	_ = v.BindEnv("daemon_socket", "HUMANLAYER_DAEMON_SOCKET")
 
 	// Set defaults
-	v.SetDefault("api_base_url", "https://api.humanlayer.dev/humanlayer/v1")
-	v.SetDefault("app_base_url", "https://app.humanlayer.dev")
+	v.SetDefault("daemon_socket", "~/.humanlayer/daemon.sock")
 
 	// Read config file (ignore if not found)
 	if err := v.ReadInConfig(); err != nil {
@@ -74,8 +69,16 @@ func getDefaultConfigDir() string {
 
 // ValidateConfig validates that required configuration is present
 func ValidateConfig(config *Config) error {
-	if config.APIKey == "" {
-		return fmt.Errorf("API key is required. Set HUMANLAYER_API_KEY environment variable or add api_key to config file")
-	}
+	// No validation needed for daemon-based operation
+	// The daemon handles API key validation
 	return nil
+}
+
+// mustGetHomeDir returns the user's home directory and panics if it fails
+func mustGetHomeDir() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		panic(fmt.Sprintf("failed to get home directory: %v", err))
+	}
+	return home
 }
