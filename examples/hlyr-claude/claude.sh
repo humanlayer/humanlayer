@@ -7,14 +7,14 @@ function printTurn() {
 export HUMANLAYER_RUN_ID="claude"
 
 message="you are claude, a helpful assistant. Greet the user and await further instructions."
-# allowedTools="Write,Edit"
+
 allowedTools=""
+# can uncomment to allow-on specific tools
+# allowedTools="Write,Edit"
 
 CLAUDE_ANSWER=$(
     claude -p "$message" \
      --allowedTools="$allowedTools" \
-     --mcp-config=./mcp-config.json \
-     --permission-prompt-tool=mcp__approvals__request_permission \
 )
 
 
