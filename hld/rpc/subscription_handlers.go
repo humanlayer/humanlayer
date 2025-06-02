@@ -120,7 +120,7 @@ func (h *SubscriptionHandlers) SubscribeConn(ctx context.Context, conn net.Conn,
 	// Create a context that cancels when connection closes
 	connCtx, connCancel := context.WithCancel(ctx)
 	defer connCancel()
-	
+
 	// Monitor connection in a separate goroutine
 	go func() {
 		// Try to read from connection - will fail when closed

@@ -65,7 +65,7 @@ type model struct {
 	err error
 
 	// For subscription
-	subscribed  bool
+	subscribed   bool
 	eventChannel <-chan rpc.EventNotification
 }
 

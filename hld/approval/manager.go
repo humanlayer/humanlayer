@@ -162,7 +162,7 @@ func (m *DefaultManager) DenyFunctionCall(ctx context.Context, callID string, re
 			},
 		})
 	}
-  
+
 	return nil
 }
 
