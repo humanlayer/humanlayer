@@ -35,8 +35,15 @@ export async function contactHumanCommand(options: ContactHumanOptions) {
     // Use contact channel if configured, otherwise default to web UI
     const hl =
       Object.keys(resolvedConfig.contact_channel).length > 0
-        ? humanlayer({ contactChannel: resolvedConfig.contact_channel })
-        : humanlayer({ apiKey: resolvedConfig.api_key, apiBaseUrl: resolvedConfig.api_base_url })
+        ? humanlayer({
+            contactChannel: resolvedConfig.contact_channel,
+            ...(resolvedConfig.run_id && { runId: resolvedConfig.run_id }),
+          })
+        : humanlayer({
+            apiKey: resolvedConfig.api_key,
+            apiBaseUrl: resolvedConfig.api_base_url,
+            ...(resolvedConfig.run_id && { runId: resolvedConfig.run_id }),
+          })
 
     console.error(chalk.yellow('Contacting human...'))
 

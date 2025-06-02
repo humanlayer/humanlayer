@@ -13,6 +13,7 @@ export type ConfigFile = {
   api_base_url?: string
   app_base_url?: string
   daemon_socket?: string
+  run_id?: string
 }
 
 export type ConfigSource = 'flag' | 'env' | 'config' | 'default' | 'none'
@@ -52,6 +53,13 @@ export interface ConfigSchema {
     defaultValue: string
     required: boolean
   }
+  run_id: {
+    envVar: 'HUMANLAYER_RUN_ID'
+    configKey: 'run_id'
+    flagKey: 'runId'
+    defaultValue?: string
+    required: boolean
+  }
 }
 
 const CONFIG_SCHEMA: ConfigSchema = {
@@ -81,6 +89,12 @@ const CONFIG_SCHEMA: ConfigSchema = {
     flagKey: 'daemonSocket',
     defaultValue: '~/.humanlayer/daemon.sock',
     required: true,
+  },
+  run_id: {
+    envVar: 'HUMANLAYER_RUN_ID',
+    configKey: 'run_id',
+    flagKey: 'runId',
+    required: false,
   },
 }
 
@@ -189,12 +203,14 @@ export class ConfigResolver {
     const api_base_url = this.resolveValue('api_base_url', options)
     const app_base_url = this.resolveValue('app_base_url', options)
     const daemon_socket = this.resolveValue('daemon_socket', options)
+    const run_id = this.resolveValue('run_id', options)
 
     return {
       api_key,
       api_base_url,
       app_base_url,
       daemon_socket,
+      run_id,
       contact_channel: buildContactChannel(options, this.configFile),
     }
   }
@@ -207,6 +223,7 @@ export class ConfigResolver {
       api_base_url: resolved.api_base_url.value!,
       app_base_url: resolved.app_base_url.value!,
       daemon_socket: resolved.daemon_socket.value!,
+      run_id: resolved.run_id.value,
       contact_channel: resolved.contact_channel,
     }
   }
@@ -300,6 +317,7 @@ export type ResolvedConfig = {
   api_base_url: string
   app_base_url: string
   daemon_socket: string
+  run_id?: string
   contact_channel: ContactChannel
 }
 
@@ -308,6 +326,7 @@ export type ConfigWithSources = {
   api_base_url: ConfigValue<string>
   app_base_url: ConfigValue<string>
   daemon_socket: ConfigValue<string>
+  run_id?: ConfigValue<string | undefined>
   contact_channel: ContactChannel
 }
 
@@ -321,6 +340,7 @@ export function resolveConfigWithSources(options: Record<string, unknown> = {}):
     api_base_url: resolved.api_base_url as ConfigValue<string>,
     app_base_url: resolved.app_base_url as ConfigValue<string>,
     daemon_socket: resolved.daemon_socket as ConfigValue<string>,
+    run_id: resolved.run_id,
     contact_channel: resolved.contact_channel,
   }
 }

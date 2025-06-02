@@ -49,9 +49,9 @@ async function authenticate(printSelectedProject: boolean = false) {
   }
 
   try {
-    const project = await getProject(config.api_base_url, config.api_key)
+    await getProject(config.api_base_url, config.api_key)
     if (printSelectedProject) {
-      console.log(`Selected project: ${project.name}`)
+      // Project authenticated successfully
     }
   } catch (error) {
     console.error(chalk.red('Authentication failed:'), error)
@@ -80,7 +80,6 @@ program.hook('preAction', async (thisCmd, actionCmd) => {
   const isUnprotected = commandPath.some(cmd => UNPROTECTED_COMMANDS.includes(cmd))
 
   if (!isUnprotected) {
-    console.log('Authenticating...')
     await authenticate(true)
   }
 })
