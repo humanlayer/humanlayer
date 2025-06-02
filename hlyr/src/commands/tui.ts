@@ -28,7 +28,10 @@ async function isDaemonRunning(socketPath: string): Promise<boolean> {
 }
 
 // Start the daemon in the background
-async function startDaemon(daemonPath: string, config: any): Promise<void> {
+async function startDaemon(
+  daemonPath: string,
+  config: { api_key?: string; api_base_url?: string },
+): Promise<void> {
   return new Promise((resolve, reject) => {
     console.log('Starting HumanLayer daemon...')
 

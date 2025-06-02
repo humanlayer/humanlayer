@@ -127,7 +127,6 @@ func (m *DefaultManager) ApproveFunctionCall(ctx context.Context, callID string,
 			},
 		})
 	}
-
 	return nil
 }
 
@@ -163,7 +162,7 @@ func (m *DefaultManager) DenyFunctionCall(ctx context.Context, callID string, re
 			},
 		})
 	}
-
+  
 	return nil
 }
 
