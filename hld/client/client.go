@@ -190,7 +190,7 @@ func (c *client) Reconnect() error {
 // Connect attempts to connect to the daemon with retries
 func Connect(socketPath string, maxRetries int, retryDelay time.Duration) (Client, error) {
 	var lastErr error
-	
+
 	for i := 0; i <= maxRetries; i++ {
 		client, err := New(socketPath)
 		if err == nil {
@@ -200,12 +200,12 @@ func Connect(socketPath string, maxRetries int, retryDelay time.Duration) (Clien
 			}
 			client.Close()
 		}
-		
+
 		lastErr = err
 		if i < maxRetries {
 			time.Sleep(retryDelay)
 		}
 	}
-	
+
 	return nil, fmt.Errorf("failed to connect to daemon after %d attempts: %w", maxRetries+1, lastErr)
 }

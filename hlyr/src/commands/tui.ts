@@ -14,11 +14,11 @@ async function isDaemonRunning(socketPath: string): Promise<boolean> {
       client.end()
       resolve(true)
     })
-    
+
     client.on('error', () => {
       resolve(false)
     })
-    
+
     // Set a timeout
     client.setTimeout(1000, () => {
       client.destroy()
@@ -31,7 +31,7 @@ async function isDaemonRunning(socketPath: string): Promise<boolean> {
 async function startDaemon(daemonPath: string, config: any): Promise<void> {
   return new Promise((resolve, reject) => {
     console.log('Starting HumanLayer daemon...')
-    
+
     // Pass configuration via environment variables
     const env = { ...process.env }
     if (config.api_key) {
@@ -40,21 +40,21 @@ async function startDaemon(daemonPath: string, config: any): Promise<void> {
     if (config.api_base_url) {
       env.HUMANLAYER_API_BASE_URL = config.api_base_url
     }
-    
+
     const daemon = spawn(daemonPath, [], {
       detached: true,
       stdio: 'ignore',
-      env
+      env,
     })
-    
-    daemon.on('error', (err) => {
+
+    daemon.on('error', err => {
       reject(new Error(`Failed to start daemon: ${err.message}`))
     })
-    
+
     daemon.on('spawn', () => {
       // Daemon started successfully
       daemon.unref() // Allow parent to exit independently
-      
+
       // Give the daemon a moment to initialize
       setTimeout(() => {
         console.log('Daemon started successfully')
@@ -75,25 +75,25 @@ export const tuiCommand = async (options: Record<string, unknown> = {}) => {
     // Get socket path from configuration
     const config = resolveFullConfig(options)
     let socketPath = config.daemon_socket
-    
+
     // Expand ~ to home directory if needed
     if (socketPath.startsWith('~')) {
       socketPath = join(homedir(), socketPath.slice(1))
     }
-    
+
     // Check if daemon is running
     const daemonRunning = await isDaemonRunning(socketPath)
-    
+
     if (!daemonRunning) {
       // Look for daemon binary
       const daemonPath = join(__dirname, './bin/hld')
-      
+
       if (!existsSync(daemonPath)) {
         console.error('Daemon binary not found at:', daemonPath)
         console.error('Please ensure the HumanLayer daemon is installed.')
         process.exit(1)
       }
-      
+
       try {
         await startDaemon(daemonPath, config)
       } catch (err) {
