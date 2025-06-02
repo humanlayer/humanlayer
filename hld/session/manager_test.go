@@ -11,7 +11,9 @@ import (
 )
 
 func TestNewManager(t *testing.T) {
-	manager, err := NewManager(nil)
+	var eventBus *bus.EventBus = nil // no bus for this test
+	manager, err := NewManager(eventBus)
+
 	if err != nil {
 		t.Fatalf("Failed to create manager: %v", err)
 	}

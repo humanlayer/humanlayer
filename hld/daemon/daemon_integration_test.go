@@ -5,6 +5,7 @@ package daemon
 
 import (
 	"context"
+	"github.com/humanlayer/humanlayer/hld/internal/testutil"
 	"net"
 	"os"
 	"os/exec"

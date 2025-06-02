@@ -354,6 +354,7 @@ func fetchSessionApprovals(daemonClient client.Client, sessionID string) tea.Cmd
 					if req.SessionModel == "" {
 						req.SessionModel = "default"
 					}
+					message += fmt.Sprintf(" with %s", strings.Join(params, ", "))
 				}
 
 				requests = append(requests, req)
@@ -726,7 +727,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.feedbackInput.Reset()
 		// Refresh the list
 		return m, fetchRequests(m.daemonClient)
-
+    
 	case launchSessionMsg:
 		if msg.err != nil {
 			m.err = msg.err
