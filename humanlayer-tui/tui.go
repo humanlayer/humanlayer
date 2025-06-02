@@ -73,10 +73,10 @@ type model struct {
 	// Tab management
 	activeTab    tab
 	tabNames     []string
-	tabViewState []viewState // Track view state per tab
-	tabCursors   []int       // Track cursor position per tab
+	tabViewState []viewState    // Track view state per tab
+	tabCursors   []int          // Track cursor position per tab
 	sessions     []session.Info // For sessions tab
-	history      []Request   // For history tab
+	history      []Request      // For history tab
 
 	// For detail view
 	selectedRequest *Request
@@ -87,15 +87,15 @@ type model struct {
 	isApproving   bool // true for approve with comment, false for deny/human response
 
 	// For launch session view
-	launchPromptInput  textinput.Model
-	launchModelSelect  int // 0=default, 1=opus, 2=sonnet
-	launchWorkingDir   textinput.Model
-	launchActiveField  int // 0=prompt, 1=model, 2=workingDir
+	launchPromptInput textinput.Model
+	launchModelSelect int // 0=default, 1=opus, 2=sonnet
+	launchWorkingDir  textinput.Model
+	launchActiveField int // 0=prompt, 1=model, 2=workingDir
 
 	// For session detail view
-	selectedSession      *session.Info
-	sessionApprovals     []Request
-	sessionDetailScroll  int
+	selectedSession     *session.Info
+	sessionApprovals    []Request
+	sessionDetailScroll int
 
 	// For help view
 	helpContext      viewState // Which view help was opened from
@@ -105,7 +105,7 @@ type model struct {
 	err error
 
 	// For subscription
-	subscribed  bool
+	subscribed   bool
 	eventChannel <-chan rpc.EventNotification
 
 	// For status bar
@@ -329,6 +329,18 @@ func fetchSessionApprovals(daemonClient client.Client, sessionID string) tea.Cmd
 				fc := approval.FunctionCall
 				message := fmt.Sprintf("Call %s", fc.Spec.Fn)
 
+				// Add parameters to message
+				if len(fc.Spec.Kwargs) > 0 {
+					params := []string{}
+					for k, v := range fc.Spec.Kwargs {
+						params = append(params, fmt.Sprintf("%s=%v", k, v))
+						if len(params) >= 2 {
+							break
+						}
+					}
+					message += fmt.Sprintf(" with %s", strings.Join(params, ", "))
+				}
+
 				createdAt := time.Now()
 				if fc.Status != nil && fc.Status.RequestedAt != nil {
 					createdAt = fc.Status.RequestedAt.Time
@@ -354,7 +366,6 @@ func fetchSessionApprovals(daemonClient client.Client, sessionID string) tea.Cmd
 					if req.SessionModel == "" {
 						req.SessionModel = "default"
 					}
-					message += fmt.Sprintf(" with %s", strings.Join(params, ", "))
 				}
 
 				requests = append(requests, req)
@@ -727,7 +738,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.feedbackInput.Reset()
 		// Refresh the list
 		return m, fetchRequests(m.daemonClient)
-    
+
 	case launchSessionMsg:
 		if msg.err != nil {
 			m.err = msg.err
@@ -1238,7 +1249,7 @@ func (m model) renderStatusBar() string {
 	leftWidth := lipgloss.Width(leftContent)
 	centerWidth := lipgloss.Width(centerContent)
 
-	leftPadding := (totalWidth - centerWidth) / 2 - leftWidth
+	leftPadding := (totalWidth-centerWidth)/2 - leftWidth
 	if leftPadding < 1 {
 		leftPadding = 1
 	}
@@ -1839,7 +1850,7 @@ func (m model) getHelpContent() helpContent {
 				Title: "Approvals List Help",
 				Sections: []helpSection{
 					{
-						Name:     "Navigation",
+						Name: "Navigation",
 						Commands: append(globalCommands, []helpCommand{
 							{"↑/k", "Move up"},
 							{"↓/j", "Move down"},
@@ -1869,7 +1880,7 @@ func (m model) getHelpContent() helpContent {
 				Title: "Sessions List Help",
 				Sections: []helpSection{
 					{
-						Name:     "Navigation",
+						Name: "Navigation",
 						Commands: append(globalCommands, []helpCommand{
 							{"↑/k", "Move up"},
 							{"↓/j", "Move down"},
