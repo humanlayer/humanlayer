@@ -94,7 +94,10 @@ export const launchCommand = async (prompt: string, options: LaunchOptions = {})
     console.log('Working directory:', options.workingDir || process.cwd())
     console.log('Approvals enabled:', options.approvals !== false)
 
-    const result = (await launchSession(socketPath, prompt, options)) as any
+    const result = (await launchSession(socketPath, prompt, options)) as {
+      session_id: string
+      run_id: string
+    }
 
     console.log('\nSession launched successfully!')
     console.log('Session ID:', result.session_id)
