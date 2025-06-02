@@ -120,7 +120,7 @@ func TestDaemonApprovalIntegration(t *testing.T) {
 
 	// Create real approval components for integration testing
 	store := approval.NewMemoryStore()
-	poller := approval.NewPoller(mockClient, store, 50*time.Millisecond)
+	poller := approval.NewPoller(mockClient, store, 50*time.Millisecond, nil)
 
 	// We need to manually construct the manager with our test client
 	approvalManager := &approval.DefaultManager{
@@ -140,7 +140,7 @@ func TestDaemonApprovalIntegration(t *testing.T) {
 	}
 
 	// Create session manager (we don't need real sessions for this test)
-	sessionManager, err := session.NewManager()
+	sessionManager, err := session.NewManager(nil)
 	if err != nil {
 		t.Fatalf("failed to create session manager: %v", err)
 	}

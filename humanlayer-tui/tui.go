@@ -11,7 +11,9 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/humanlayer/humanlayer/hld/bus"
 	"github.com/humanlayer/humanlayer/hld/client"
+	"github.com/humanlayer/humanlayer/hld/rpc"
 )
 
 // Request types
@@ -61,6 +63,10 @@ type model struct {
 
 	// For error handling
 	err error
+
+	// For subscription
+	subscribed   bool
+	eventChannel <-chan rpc.EventNotification
 }
 
 type keyMap struct {
@@ -226,7 +232,54 @@ func (m model) Init() tea.Cmd {
 	return tea.Batch(
 		textinput.Blink,
 		fetchRequests(m.daemonClient),
+		subscribeToEvents(m.daemonClient),
 	)
+}
+
+// Event message types
+type eventMsg struct {
+	event bus.Event
+}
+
+type subscriptionErrorMsg struct {
+	err error
+}
+
+// subscribeToEvents subscribes to daemon events
+func subscribeToEvents(client client.Client) tea.Cmd {
+	return func() tea.Msg {
+		// Subscribe to all approval events
+		eventChan, err := client.Subscribe(rpc.SubscribeRequest{
+			EventTypes: []string{
+				string(bus.EventNewApproval),
+				string(bus.EventApprovalResolved),
+			},
+		})
+		if err != nil {
+			return subscriptionErrorMsg{err: err}
+		}
+
+		// Store the channel for continuous listening
+		return eventChannelMsg{channel: eventChan}
+	}
+}
+
+// eventChannelMsg carries the event channel
+type eventChannelMsg struct {
+	channel <-chan rpc.EventNotification
+}
+
+// listenForEvents listens for events from the subscription channel
+func listenForEvents(eventChan <-chan rpc.EventNotification) tea.Cmd {
+	return func() tea.Msg {
+		// Wait for next event
+		notification, ok := <-eventChan
+		if !ok {
+			// Channel closed, subscription ended
+			return subscriptionErrorMsg{err: fmt.Errorf("subscription ended")}
+		}
+		return eventMsg{event: notification.Event}
+	}
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -280,6 +333,36 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.feedbackInput.Reset()
 		// Refresh the list
 		return m, fetchRequests(m.daemonClient)
+
+	case eventChannelMsg:
+		// Store the event channel and start listening
+		m.eventChannel = msg.channel
+		m.subscribed = true
+		return m, listenForEvents(m.eventChannel)
+
+	case eventMsg:
+		// Handle events from subscription
+		switch msg.event.Type {
+		case bus.EventNewApproval:
+			// New approvals arrived, refresh the list
+			cmd = fetchRequests(m.daemonClient)
+		case bus.EventApprovalResolved:
+			// An approval was resolved, refresh the list
+			cmd = fetchRequests(m.daemonClient)
+		}
+		// Continue listening for more events
+		if m.eventChannel != nil {
+			cmd = tea.Batch(cmd, listenForEvents(m.eventChannel))
+		}
+		return m, cmd
+
+	case subscriptionErrorMsg:
+		// Subscription error, try to reconnect after a delay
+		m.err = msg.err
+		m.subscribed = false
+		return m, tea.Tick(5*time.Second, func(t time.Time) tea.Msg {
+			return subscribeToEvents(m.daemonClient)
+		})
 
 	case tea.KeyMsg:
 		// Clear error on any key press

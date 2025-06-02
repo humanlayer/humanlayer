@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/humanlayer/humanlayer/hld/bus"
 	humanlayer "github.com/humanlayer/humanlayer/humanlayer-go"
 )
 
@@ -19,13 +20,14 @@ type Config struct {
 
 // DefaultManager is the default implementation of Manager
 type DefaultManager struct {
-	Client APIClient
-	Store  Store
-	Poller *Poller
+	Client   APIClient
+	Store    Store
+	Poller   *Poller
+	EventBus bus.EventBus
 }
 
 // NewManager creates a new approval manager
-func NewManager(cfg Config) (Manager, error) {
+func NewManager(cfg Config, eventBus bus.EventBus) (Manager, error) {
 	// Set defaults
 	if cfg.PollInterval <= 0 {
 		cfg.PollInterval = 5 * time.Second
@@ -56,14 +58,15 @@ func NewManager(cfg Config) (Manager, error) {
 	store := NewMemoryStore()
 
 	// Create poller with configured interval
-	poller := NewPoller(client, store, cfg.PollInterval)
+	poller := NewPoller(client, store, cfg.PollInterval, eventBus)
 	poller.maxBackoff = cfg.MaxBackoff
 	poller.backoffFactor = cfg.BackoffFactor
 
 	return &DefaultManager{
-		Client: client,
-		Store:  store,
-		Poller: poller,
+		Client:   client,
+		Store:    store,
+		Poller:   poller,
+		EventBus: eventBus,
 	}, nil
 }
 
@@ -110,6 +113,20 @@ func (m *DefaultManager) ApproveFunctionCall(ctx context.Context, callID string,
 		return fmt.Errorf("failed to update local state: %w", err)
 	}
 
+	// Publish event
+	if m.EventBus != nil {
+		fc, _ := m.Store.GetFunctionCall(callID)
+		m.EventBus.Publish(bus.Event{
+			Type: bus.EventApprovalResolved,
+			Data: map[string]interface{}{
+				"type":     "function_call",
+				"call_id":  callID,
+				"run_id":   fc.RunID,
+				"decision": "approved",
+				"comment":  comment,
+			},
+		})
+	}
 	return nil
 }
 
@@ -131,6 +148,21 @@ func (m *DefaultManager) DenyFunctionCall(ctx context.Context, callID string, re
 		return fmt.Errorf("failed to update local state: %w", err)
 	}
 
+	// Publish event
+	if m.EventBus != nil {
+		fc, _ := m.Store.GetFunctionCall(callID)
+		m.EventBus.Publish(bus.Event{
+			Type: bus.EventApprovalResolved,
+			Data: map[string]interface{}{
+				"type":     "function_call",
+				"call_id":  callID,
+				"run_id":   fc.RunID,
+				"decision": "denied",
+				"reason":   reason,
+			},
+		})
+	}
+
 	return nil
 }
 
@@ -150,6 +182,21 @@ func (m *DefaultManager) RespondToHumanContact(ctx context.Context, callID strin
 	// Mark as responded in local store
 	if err := m.Store.MarkHumanContactResponded(callID); err != nil {
 		return fmt.Errorf("failed to update local state: %w", err)
+	}
+
+	// Publish event
+	if m.EventBus != nil {
+		hc, _ := m.Store.GetHumanContact(callID)
+		m.EventBus.Publish(bus.Event{
+			Type: bus.EventApprovalResolved,
+			Data: map[string]interface{}{
+				"type":     "human_contact",
+				"call_id":  callID,
+				"run_id":   hc.RunID,
+				"decision": "responded",
+				"response": response,
+			},
+		})
 	}
 
 	return nil

@@ -14,6 +14,7 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
 	"github.com/humanlayer/humanlayer/hld/internal/testutil"
 )
 

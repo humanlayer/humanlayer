@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/humanlayer/humanlayer/hld/bus"
 	claudecode "github.com/humanlayer/humanlayer/claudecode-go"
 	"github.com/google/uuid"
 )
@@ -16,13 +17,14 @@ type Manager struct {
 	sessions map[string]*Session
 	mu       sync.RWMutex
 	client   *claudecode.Client
+	eventBus bus.EventBus
 }
 
 // Compile-time check that Manager implements SessionManager
 var _ SessionManager = (*Manager)(nil)
 
 // NewManager creates a new session manager
-func NewManager() (*Manager, error) {
+func NewManager(eventBus bus.EventBus) (*Manager, error) {
 	client, err := claudecode.NewClient()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Claude client: %w", err)
@@ -31,6 +33,7 @@ func NewManager() (*Manager, error) {
 	return &Manager{
 		sessions: make(map[string]*Session),
 		client:   client,
+		eventBus: eventBus,
 	}, nil
 }
 
@@ -80,11 +83,25 @@ func (m *Manager) LaunchSession(ctx context.Context, config claudecode.SessionCo
 		return nil, fmt.Errorf("failed to launch Claude session: %w", err)
 	}
 
-	// Update session with Claude reference
+	// Update session with Claude reference and status
 	m.mu.Lock()
 	session.claude = claudeSession
+	oldStatus := session.Status
 	session.Status = StatusRunning
 	m.mu.Unlock()
+
+	// Publish status change event
+	if m.eventBus != nil && oldStatus != StatusRunning {
+		m.eventBus.Publish(bus.Event{
+			Type: bus.EventSessionStatusChanged,
+			Data: map[string]interface{}{
+				"session_id": sessionID,
+				"run_id":     runID,
+				"old_status": string(oldStatus),
+				"new_status": string(StatusRunning),
+			},
+		})
+	}
 
 	// Monitor session lifecycle in background
 	go m.monitorSession(ctx, session)
@@ -143,6 +160,7 @@ func (m *Manager) updateSessionStatus(sessionID string, status Status, errorMsg 
 	defer m.mu.Unlock()
 
 	if session, ok := m.sessions[sessionID]; ok {
+		oldStatus := session.Status
 		session.Status = status
 		if errorMsg != "" {
 			session.Error = errorMsg
@@ -150,6 +168,20 @@ func (m *Manager) updateSessionStatus(sessionID string, status Status, errorMsg 
 		if status == StatusCompleted || status == StatusFailed {
 			now := time.Now()
 			session.EndTime = &now
+		}
+
+		// Publish event if status changed
+		if m.eventBus != nil && oldStatus != status {
+			m.eventBus.Publish(bus.Event{
+				Type: bus.EventSessionStatusChanged,
+				Data: map[string]interface{}{
+					"session_id": sessionID,
+					"run_id":     session.RunID,
+					"old_status": string(oldStatus),
+					"new_status": string(status),
+					"error":      errorMsg,
+				},
+			})
 		}
 	}
 }
