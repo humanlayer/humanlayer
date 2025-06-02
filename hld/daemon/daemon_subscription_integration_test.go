@@ -164,8 +164,11 @@ func TestDaemonSubscriptionIntegration(t *testing.T) {
 
 		// Make sure client 1 doesn't get resolved events
 		select {
-		case notification := <-eventChan1:
-			t.Errorf("Client 1 unexpectedly received event - Type: %q, Data: %+v", notification.Event.Type, notification.Event.Data)
+		case notification, ok := <-eventChan1:
+			if ok && notification.Event.Type != "" {
+				t.Errorf("Client 1 unexpectedly received event - Type: %q, Data: %+v", notification.Event.Type, notification.Event.Data)
+			}
+			// If channel is closed (!ok) or empty event, that's fine during cleanup
 		case <-time.After(100 * time.Millisecond):
 			// Expected - no event
 		}

@@ -7,11 +7,12 @@ import (
 	"time"
 
 	claudecode "github.com/humanlayer/humanlayer/claudecode-go"
+	"github.com/humanlayer/humanlayer/hld/bus"
 	"go.uber.org/mock/gomock"
 )
 
 func TestNewManager(t *testing.T) {
-	var eventBus *bus.EventBus = nil // no bus for this test
+	var eventBus bus.EventBus = nil // no bus for this test
 	manager, err := NewManager(eventBus)
 
 	if err != nil {
