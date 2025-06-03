@@ -307,8 +307,8 @@ release-plan: _release-plan-versions _release-branch-check _staging-env-check
 	@echo "   - make smoke-test-examples-py"
 	@echo
 	@echo "6. Finalize:"
-	@echo "   - git commit -am 'release: v$(current-ts-version)' && git push upstream release-$(new-version)"
-	@echo "   - git tag v$(current-ts-version)"
+	@echo "   - git commit -am 'release: v$(new-version)' && git push upstream release-$(new-version)"
+	@echo "   - git tag v$(new-version)"
 	@echo "   - git push upstream release-$(new-version) --tags"
 	@echo
 	@echo "7. Next alpha:"
@@ -317,7 +317,8 @@ release-plan: _release-plan-versions _release-branch-check _staging-env-check
 	@echo "   - Update version in pyproject.toml to $(next-alpha-version)"
 	@echo "   - sed -i '' 's/$(current-py-version)/$(next-alpha-version)/' pyproject.toml"
 	@echo "   - git commit -am 'bump to next alpha'"
-	@echo "   - git push origin main"
+	@echo "   - git diff PREVIOUS_TAG | claude -p 'update the changelog' --allowedTools="Edit"
+	@echo "   - git push upstream release-$(new-version)"
 
 
 
