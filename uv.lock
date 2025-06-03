@@ -508,7 +508,7 @@ wheels = [
 
 [[package]]
 name = "humanlayer"
-version = "0.7.9a1"
+version = "0.7.9"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },
