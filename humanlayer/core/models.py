@@ -233,6 +233,7 @@ class FunctionCall(BaseModel):
 class Escalation(BaseModel):
     escalation_msg: str
     additional_recipients: list[EmailRecipient] | None = None
+    channel: ContactChannel | None = None
 
 
 class HumanContactSpec(BaseModel):

@@ -87,6 +87,7 @@ type FunctionCall = {
 type Escalation = {
   escalation_msg: string
   additional_recipients?: EmailRecipient[]
+  channel?: ContactChannel
 }
 
 type HumanContactSpec = {
