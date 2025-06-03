@@ -129,7 +129,16 @@ func (h *SubscriptionHandlers) SubscribeConn(ctx context.Context, conn net.Conn,
 			conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
 			_, err := conn.Read(buf)
 			if err != nil {
-				// Connection closed or error
+				// Check if it's a timeout error (which is expected)
+				if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+					// Timeout is expected, continue monitoring
+					continue
+				}
+				// Real error or connection closed
+				slog.Debug("subscription connection closed",
+					"subscription_id", sub.ID,
+					"error", err,
+				)
 				connCancel()
 				return
 			}

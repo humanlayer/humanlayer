@@ -31,7 +31,8 @@
     "@modelcontextprotocol/sdk": "^1.12.0",
     "chalk": "^5.4.1",
     "commander": "^14.0.0",
-    "dotenv": "^16.5.0"
+    "dotenv": "^16.5.0",
+    "play-sound": "^1.1.6"
   },
   "devDependencies": {
     "@types/node": "^22.15.21",

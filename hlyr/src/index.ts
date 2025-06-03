@@ -8,6 +8,7 @@ import { contactHumanCommand } from './commands/contactHuman.js'
 import { configShowCommand } from './commands/configShow.js'
 import { pingCommand } from './commands/ping.js'
 import { launchCommand } from './commands/launch.js'
+import { alertCommand } from './commands/alert.js'
 import { startDefaultMCPServer, startClaudeApprovalsMCPServer } from './mcp.js'
 import {
   getDefaultConfigPath,
@@ -153,6 +154,17 @@ program
   .command('ping')
   .description('Check authentication and display current project')
   .action(pingCommand)
+
+program
+  .command('alert')
+  .description('Monitor daemon for new approval alerts with audio notifications')
+  .option('--event-types <types...>', 'Event types to watch (default: new_approval)')
+  .option('--session-id <id>', 'Filter by session ID')
+  .option('--run-id <id>', 'Filter by run ID')
+  .option('--sound-file <path>', 'Custom sound file to play on alerts')
+  .option('--quiet', 'Disable sound notifications')
+  .option('--daemon-socket <path>', 'Path to daemon socket')
+  .action(alertCommand)
 
 const mcpCommand = program.command('mcp').description('MCP server functionality')
 

@@ -1,5 +1,5 @@
+import { connectWithRetry } from '../daemonClient.js'
 import { resolveFullConfig } from '../config.js'
-import { connect } from 'net'
 import { homedir } from 'os'
 import { join } from 'path'
 
@@ -11,70 +11,6 @@ interface LaunchOptions {
   daemonSocket?: string
   configFile?: string
   approvals?: boolean
-}
-
-// Simple JSON-RPC client for launching sessions
-async function launchSession(socketPath: string, prompt: string, options: LaunchOptions = {}) {
-  return new Promise((resolve, reject) => {
-    const client = connect(socketPath, () => {
-      // Build MCP config (approvals enabled by default unless explicitly disabled)
-      const mcpConfig =
-        options.approvals !== false
-          ? {
-              mcpServers: {
-                approvals: {
-                  command: 'npx',
-                  args: ['humanlayer', 'mcp', 'claude_approvals'],
-                },
-              },
-            }
-          : undefined
-
-      const request = {
-        jsonrpc: '2.0',
-        method: 'launchSession',
-        params: {
-          prompt: prompt,
-          model: options.model,
-          working_dir: options.workingDir || process.cwd(),
-          max_turns: options.maxTurns,
-          mcp_config: mcpConfig,
-          permission_prompt_tool: mcpConfig ? 'mcp__approvals__request_permission' : undefined,
-        },
-        id: 1,
-      }
-
-      client.write(JSON.stringify(request) + '\n')
-    })
-
-    let buffer = ''
-    client.on('data', data => {
-      buffer += data.toString()
-      const lines = buffer.split('\n')
-      buffer = lines.pop() || ''
-
-      for (const line of lines) {
-        if (line.trim()) {
-          try {
-            const response = JSON.parse(line)
-            client.end()
-
-            if (response.error) {
-              reject(new Error(`RPC Error: ${response.error.message}`))
-            } else {
-              resolve(response.result)
-            }
-          } catch (err) {
-            reject(new Error(`Failed to parse response: ${err}`))
-          }
-        }
-      }
-    })
-
-    client.on('error', err => {
-      reject(new Error(`Connection failed: ${err.message}`))
-    })
-  })
 }
 
 export const launchCommand = async (prompt: string, options: LaunchOptions = {}) => {
@@ -94,19 +30,45 @@ export const launchCommand = async (prompt: string, options: LaunchOptions = {})
     console.log('Working directory:', options.workingDir || process.cwd())
     console.log('Approvals enabled:', options.approvals !== false)
 
-    const result = (await launchSession(socketPath, prompt, options)) as {
-      session_id: string
-      run_id: string
-    }
+    // Connect to daemon
+    const client = await connectWithRetry(socketPath, 3, 1000)
 
-    console.log('\nSession launched successfully!')
-    console.log('Session ID:', result.session_id)
-    console.log('Run ID:', result.run_id)
-    console.log('\nYou can now use "npx humanlayer tui" to manage approvals for this session.')
+    try {
+      // Build MCP config (approvals enabled by default unless explicitly disabled)
+      const mcpConfig =
+        options.approvals !== false
+          ? {
+              mcpServers: {
+                approvals: {
+                  command: 'npx',
+                  args: ['humanlayer', 'mcp', 'claude_approvals'],
+                },
+              },
+            }
+          : undefined
+
+      // Launch the session
+      const result = await client.launchSession({
+        prompt: prompt,
+        model: options.model,
+        working_dir: options.workingDir || process.cwd(),
+        max_turns: options.maxTurns,
+        mcp_config: mcpConfig,
+        permission_prompt_tool: mcpConfig ? 'mcp__approvals__request_permission' : undefined,
+      })
+
+      console.log('\nSession launched successfully!')
+      console.log('Session ID:', result.session_id)
+      console.log('Run ID:', result.run_id)
+      console.log('\nYou can now use "npx humanlayer tui" to manage approvals for this session.')
+    } finally {
+      // Close the client connection
+      client.close()
+    }
   } catch (error) {
     console.error('Failed to launch session:', error)
     console.error('\nMake sure the daemon is running. You can start it with:')
-    console.error('  hld')
+    console.error('  npx humanlayer tui')
     process.exit(1)
   }
 }
