@@ -10,7 +10,7 @@ dependencies = [
   "aiohttp>=3.11.10,<4.0.0",
 ]
 name = "humanlayer"
-version = "0.7.9-alpha.1"
+version = "0.7.10-alpha.1"
 description = "humanlayer"
 readme = "README.md"
 

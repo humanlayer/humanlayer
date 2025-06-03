@@ -1,3 +1,10 @@
+## 0.7.9
+
+### Features
+
+- Add `channel` field to `Escalation` model to allow channel overrides during escalation
+- Escalations can now specify a different contact channel than the original request
+
 ## 0.7.8
 
 ### Changes
