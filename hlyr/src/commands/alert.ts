@@ -1,9 +1,17 @@
 import chalk from 'chalk'
-import { DaemonClient } from '../daemonClient.js'
+import { DaemonClient, connectWithRetry } from '../daemonClient.js'
 import { resolveFullConfig } from '../config.js'
 import playSound from 'play-sound'
 import { homedir } from 'os'
 import { join } from 'path'
+import { EventEmitter } from 'events'
+
+// Re-export the Event interface from daemonClient
+interface Event {
+  type: 'new_approval' | 'approval_resolved' | 'session_status_changed'
+  timestamp: string
+  data: EventData
+}
 
 interface AlertOptions {
   daemonSocket?: string
@@ -111,12 +119,13 @@ export async function alertCommand(options: AlertOptions = {}): Promise<void> {
 
   console.log()
 
-  const client = new DaemonClient(socketPath)
+  let client: DaemonClient | undefined
+  let subscriptionEmitter: EventEmitter | undefined
 
   // Handle cleanup on exit
   const cleanup = () => {
     console.log(chalk.yellow('\nStopping alert monitor...'))
-    client.close()
+    if (client) client.close()
     process.exit(0)
   }
 
@@ -124,13 +133,24 @@ export async function alertCommand(options: AlertOptions = {}): Promise<void> {
   process.on('SIGTERM', cleanup)
 
   try {
-    // Connect to daemon
+    // Connect to daemon with retries
     console.log(chalk.gray('Connecting to daemon...'))
-    await client.connect()
+    client = await connectWithRetry(socketPath, 3, 1000)
     console.log(chalk.green('✓ Connected to daemon'))
 
+    // Subscribe to events
+    console.log(chalk.gray('Subscribing to events...'))
+    subscriptionEmitter = await client.subscribe({
+      event_types: eventTypes,
+      session_id: options.sessionId,
+      run_id: options.runId,
+    })
+
+    console.log(chalk.green('✓ Subscribed successfully'))
+    console.log(chalk.blue('\n👂 Listening for events...\n'))
+
     // Set up event handler
-    client.onEvent(async event => {
+    subscriptionEmitter.on('event', async (event: Event) => {
       const timestamp = formatTimestamp(event.timestamp)
       const emoji =
         event.type === 'new_approval' ? '🆕' : event.type === 'approval_resolved' ? '✅' : '📌'
@@ -146,26 +166,15 @@ export async function alertCommand(options: AlertOptions = {}): Promise<void> {
     })
 
     // Handle connection close
-    client.onClose(() => {
+    subscriptionEmitter.on('close', () => {
       console.error(chalk.red('\n✗ Lost connection to daemon'))
       process.exit(1)
     })
 
     // Handle errors
-    client.onError(err => {
+    subscriptionEmitter.on('error', (err: Error) => {
       console.error(chalk.red(`\n✗ Error: ${err.message}`))
     })
-
-    // Subscribe to events
-    console.log(chalk.gray('Subscribing to events...'))
-    const subscriptionId = await client.subscribe({
-      event_types: eventTypes,
-      session_id: options.sessionId,
-      run_id: options.runId,
-    })
-
-    console.log(chalk.green(`✓ Subscribed successfully (ID: ${subscriptionId})`))
-    console.log(chalk.blue('\n👂 Listening for events...\n'))
 
     // Keep the process alive
     process.stdin.resume()
