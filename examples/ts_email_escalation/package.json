@@ -1,0 +1,34 @@
+{
+  "name": "humanlayer-ts-email-escalation",
+  "version": "0.1.0",
+  "description": "example of using humanlayer email escalation in typescript",
+  "main": "email-escalation.ts",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "tsx --env-file=.env email-escalation.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/humanlayer/humanlayer.git"
+  },
+  "keywords": [
+    "human-in-the-loop",
+    "ai-agents",
+    "email-escalation",
+    "function-calling"
+  ],
+  "author": "HumanLayer Authors",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@humanlayer/sdk": "0.7.9",
+    "chalk": "^5.4.1",
+    "dotenv": "^16.4.7"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.9",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.2"
+  }
+}
