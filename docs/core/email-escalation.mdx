@@ -1,0 +1,266 @@
+---
+title: "Email Escalation"
+description: "Escalate function calls and human contacts via email when response time is critical"
+icon: "arrow-up"
+---
+
+Email escalation allows you to re-send function calls or human contacts with increased urgency when you haven't received a response within an acceptable timeframe. This is essential for time-sensitive operations that require human oversight.
+
+## When to Use Email Escalation
+
+- **Time-critical approvals**: When a function call approval is blocking critical business operations
+- **No response received**: When the initial contact hasn't responded within your SLA
+- **Different stakeholder needed**: When you need to involve higher-level decision makers
+- **Channel change required**: When you need to send to a different email address for urgency
+
+## Types of Email Escalation
+
+### Basic Escalation
+
+Add additional email recipients to the existing email channel while keeping the same contact method and subject line.
+
+<CodeGroup>
+
+```python example.py
+hl.escalate_email_function_call(
+    call_id=call.call_id,
+    escalation=Escalation(
+        escalation_msg="Please review - this approval is blocking deployment",
+        additional_recipients=[
+            EmailRecipient(
+                address="manager@company.com",
+                field="cc"
+            )
+        ]
+    )
+)
+```
+
+```typescript example.ts
+await hl.escalateEmailFunctionCall(call.call_id, {
+  escalation_msg: "Please review - this approval is blocking deployment",
+  additional_recipients: [
+    {
+      address: "manager@company.com",
+      field: "cc"
+    }
+  ]
+});
+```
+
+</CodeGroup>
+
+### Channel-Based Escalation
+
+Send the escalation to a completely different email address, with optional custom subject line and recipients.
+
+<CodeGroup>
+
+```python example.py
+hl.escalate_email_function_call(
+    call_id=call.call_id,
+    escalation=Escalation(
+        escalation_msg="URGENT: Production deployment blocked - need immediate approval",
+        channel=ContactChannel(
+            email=EmailContactChannel(
+                address="ceo@company.com",
+                experimental_subject_line="🚨 URGENT: Production Approval Required",
+                additional_recipients=[
+                    EmailRecipient(address="cto@company.com", field="cc")
+                ]
+            )
+        )
+    )
+)
+```
+
+```typescript example.ts
+await hl.escalateEmailFunctionCall(call.call_id, {
+  escalation_msg: "URGENT: Production deployment blocked - need immediate approval",
+  channel: {
+    email: {
+      address: "ceo@company.com",
+      experimental_subject_line: "🚨 URGENT: Production Approval Required",
+      additional_recipients: [
+        { address: "cto@company.com", field: "cc" }
+      ]
+    }
+  }
+});
+```
+
+</CodeGroup>
+
+## Escalation Patterns
+
+### Progressive Escalation
+
+Start with adding recipients, then escalate to different email addresses:
+
+<CodeGroup>
+
+```python example.py
+# First escalation: Add team members
+hl.escalate_email_function_call(
+    call_id=call.call_id,
+    escalation=Escalation(
+        escalation_msg="Needs review - please take a look",
+        additional_recipients=[
+            EmailRecipient(address="team-lead@company.com", field="to")
+        ]
+    )
+)
+
+# Wait for response...
+time.sleep(300)  # 5 minutes
+
+# Second escalation: Different email with urgency
+hl.escalate_email_function_call(
+    call_id=call.call_id,
+    escalation=Escalation(
+        escalation_msg="URGENT: Still no response - escalating to management",
+        channel=ContactChannel(
+            email=EmailContactChannel(
+                address="director@company.com", 
+                experimental_subject_line="🚨 URGENT: Approval Required"
+            )
+        )
+    )
+)
+```
+
+```typescript example.ts
+// First escalation: Add team members
+await hl.escalateEmailFunctionCall(call.call_id, {
+  escalation_msg: "Needs review - please take a look",
+  additional_recipients: [
+    { address: "team-lead@company.com", field: "to" }
+  ]
+});
+
+// Wait for response...
+await new Promise(resolve => setTimeout(resolve, 300000)); // 5 minutes
+
+// Second escalation: Different email with urgency
+await hl.escalateEmailFunctionCall(call.call_id, {
+  escalation_msg: "URGENT: Still no response - escalating to management",
+  channel: {
+    email: {
+      address: "director@company.com", 
+      experimental_subject_line: "🚨 URGENT: Approval Required"
+    }
+  }
+});
+```
+
+</CodeGroup>
+
+### No-Channel-to-Channel Escalation
+
+Create function calls without email channels (using project defaults), then escalate with specific email addresses:
+
+<CodeGroup>
+
+```python example.py
+# Create without specific email channel
+call = hl.create_function_call(
+    spec=FunctionCallSpec(
+        fn="delete_production_data",
+        kwargs={"table": "users"}
+        # No channel - uses project defaults or CLI
+    )
+)
+
+# Later escalate with specific high-priority email
+hl.escalate_email_function_call(
+    call_id=call.call_id,
+    escalation=Escalation(
+        escalation_msg="CRITICAL: Production data deletion requires executive approval",
+        channel=ContactChannel(
+            email=EmailContactChannel(
+                address="ceo@company.com",
+                experimental_subject_line="⚠️ CRITICAL: Production Data Deletion"
+            )
+        )
+    )
+)
+```
+
+```typescript example.ts
+// Create without specific email channel
+const call = await hl.createFunctionCall({
+  spec: {
+    fn: "delete_production_data",
+    kwargs: { table: "users" }
+    // No channel - uses project defaults or CLI
+  }
+});
+
+// Later escalate with specific high-priority email
+await hl.escalateEmailFunctionCall(call.call_id, {
+  escalation_msg: "CRITICAL: Production data deletion requires executive approval",
+  channel: {
+    email: {
+      address: "ceo@company.com",
+      experimental_subject_line: "⚠️ CRITICAL: Production Data Deletion"
+    }
+  }
+});
+```
+
+</CodeGroup>
+
+## API Methods
+
+<CodeGroup>
+
+```python example.py
+# Function Call Email Escalation
+hl.escalate_email_function_call(call_id=call_id, escalation=escalation)
+
+# Human Contact Email Escalation
+hl.escalate_email_human_contact(call_id=call_id, escalation=escalation)
+```
+
+```typescript example.ts
+// Function Call Email Escalation
+hl.escalateEmailFunctionCall(call_id, escalation)
+
+// Human Contact Email Escalation
+hl.escalateEmailHumanContact(call_id, escalation)
+```
+
+</CodeGroup>
+
+## Escalation Object
+
+```typescript
+interface Escalation {
+  escalation_msg: string;                    // Required: Reason for escalation
+  additional_recipients?: EmailRecipient[];  // Optional: Extra email recipients
+  channel?: ContactChannel;                  // Optional: New email channel override to escalate to
+}
+```
+
+### Channel Priority and Recipient Handling
+
+When both the original call and escalation have email channels:
+
+1. **Escalation channel provided**: Uses the escalation email channel as the primary recipient
+2. **No escalation channel**: Uses the original function call/contact email channel as primary
+3. **Recipients merging**: The system combines recipients from multiple sources:
+   - Original channel's `additional_recipients`
+   - Escalation's `additional_recipients` 
+   - Escalation channel's `additional_recipients` (if channel override provided)
+
+## Example Implementation
+
+See the complete email escalation examples:
+- [TypeScript Email Escalation Example](https://github.com/humanlayer/humanlayer/tree/main/examples/ts_email_escalation/)
+- [Python Email Escalation Example](https://github.com/humanlayer/humanlayer/tree/main/examples/email_escalation/)
+
+## Related Concepts
+
+- [Require Approval](/core/require-approval) - Adding approval requirements to functions
+- [Email Channels](/channels/email) - Configuring email communication
+- [Response Options](/core/customize-response-options) - Customizing human response choices

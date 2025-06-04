@@ -75,6 +75,7 @@
         "core/llm-tool-calling",
         "core/outer-loop-agents",
         "core/run-ids-and-call-ids",
+        "core/email-escalation",
         "core/agent-webhooks",
         "core/response-webhooks",
         "core/state-management",
