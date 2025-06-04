@@ -25,7 +25,8 @@ const demoEscalation = async () => {
       kwargs: { foo: "bar" },
       channel: {
         email: {
-          experimental_subject_line: "FunctionCall Approval, a HumanLayer Test",
+          experimental_subject_line:
+            "FunctionCall Approval, a HumanLayer Test CLEAN",
           address: process.env.HL_EXAMPLE_CONTACT_EMAIL,
         },
       },
@@ -33,7 +34,11 @@ const demoEscalation = async () => {
   });
 
   console.log(
-    `First function call sent to ${chalk.green(process.env.HL_EXAMPLE_CONTACT_EMAIL)}. Waiting 5 more seconds and then escalating to ${chalk.yellow(process.env.HL_EXAMPLE_SECOND_CONTACT_EMAIL)}...\n`
+    `First function call sent to ${chalk.green(
+      process.env.HL_EXAMPLE_CONTACT_EMAIL,
+    )}. Waiting 5 more seconds and then escalating to ${chalk.yellow(
+      process.env.HL_EXAMPLE_SECOND_CONTACT_EMAIL,
+    )}...\n`,
   );
 
   // EXAMPLE - escalate immediately after 5 seconds
@@ -44,7 +49,6 @@ const demoEscalation = async () => {
     escalation_msg: "please take a look because it's been too long",
     additional_recipients: [
       {
-        experimental_subject_line: "FunctionCall Approval, a HumanLayer Test (1st Escalation)",
         address: process.env.HL_EXAMPLE_SECOND_CONTACT_EMAIL,
         field: "to",
       },
@@ -52,7 +56,11 @@ const demoEscalation = async () => {
   });
 
   console.log(
-    `First escalation sent to ${chalk.yellow(process.env.HL_EXAMPLE_SECOND_CONTACT_EMAIL)}. Waiting 5 more seconds and then sending to ${chalk.red(process.env.HL_EXAMPLE_THIRD_CONTACT_EMAIL)}...\n`
+    `First escalation sent to ${chalk.yellow(
+      process.env.HL_EXAMPLE_SECOND_CONTACT_EMAIL,
+    )}. Waiting 5 more seconds and then sending to ${chalk.red(
+      process.env.HL_EXAMPLE_THIRD_CONTACT_EMAIL,
+    )}...\n`,
   );
 
   // Wait another 5 seconds, then escalate to a different channel entirely
@@ -64,19 +72,18 @@ const demoEscalation = async () => {
       escalation_msg: "URGENT: Still no response - escalating to management",
       channel: {
         email: {
-          experimental_subject_line: "FunctionCall Approval, a HumanLayer Test (2nd Escalation)",
           address: process.env.HL_EXAMPLE_THIRD_CONTACT_EMAIL,
         },
       },
-    }
+    },
   );
 
   console.log(
     `Check your emails - escalated to different address: ${JSON.stringify(
       second_escalation,
       null,
-      2
-    )}`
+      2,
+    )}`,
   );
 };
 

@@ -24,7 +24,7 @@ console = Console()
 required_env_vars = [
     "HUMANLAYER_API_KEY",
     "HL_EXAMPLE_CONTACT_EMAIL",
-    "HL_EXAMPLE_SECOND_CONTACT_EMAIL", 
+    "HL_EXAMPLE_SECOND_CONTACT_EMAIL",
     "HL_EXAMPLE_THIRD_CONTACT_EMAIL",
 ]
 
@@ -35,6 +35,7 @@ for env_var in required_env_vars:
 
 # Initialize HumanLayer
 hl = HumanLayer(verbose=True, run_id="email-escalation")
+
 
 def main():
     """Main function"""
@@ -52,14 +53,16 @@ def main():
                 ),
             )
         )
-        
-        console.print(f"First function call sent to [green]{os.getenv('HL_EXAMPLE_CONTACT_EMAIL')}[/green]. "
-                      f"Waiting 5 more seconds and then escalating to [yellow]{os.getenv('HL_EXAMPLE_SECOND_CONTACT_EMAIL')}[/yellow]...\n")
-        
+
+        console.print(
+            f"First function call sent to [green]{os.getenv('HL_EXAMPLE_CONTACT_EMAIL')}[/green]. "
+            f"Waiting 5 more seconds and then escalating to [yellow]{os.getenv('HL_EXAMPLE_SECOND_CONTACT_EMAIL')}[/yellow]...\n"
+        )
+
         # EXAMPLE - escalate immediately after 5 seconds
         # in reality, this would happen after some longer amount of time has passed
         time.sleep(5)
-        
+
         # First escalation: add additional recipient
         hl.escalate_email_function_call(
             call_id=call.call_id,
@@ -71,15 +74,17 @@ def main():
                         field="to",
                     )
                 ],
-            )
+            ),
         )
-        
-        console.print(f"First escalation sent to [yellow]{os.getenv('HL_EXAMPLE_SECOND_CONTACT_EMAIL')}[/yellow]. "
-                      f"Waiting 5 more seconds and then sending to [red]{os.getenv('HL_EXAMPLE_THIRD_CONTACT_EMAIL')}[/red]...\n")
-        
+
+        console.print(
+            f"First escalation sent to [yellow]{os.getenv('HL_EXAMPLE_SECOND_CONTACT_EMAIL')}[/yellow]. "
+            f"Waiting 5 more seconds and then sending to [red]{os.getenv('HL_EXAMPLE_THIRD_CONTACT_EMAIL')}[/red]...\n"
+        )
+
         # Wait another 5 seconds, then escalate to a different channel entirely
         time.sleep(5)
-        
+
         # Second escalation: switch to different channel
         second_escalation = hl.escalate_email_function_call(
             call_id=call.call_id,
@@ -91,14 +96,14 @@ def main():
                         address=os.getenv("HL_EXAMPLE_THIRD_CONTACT_EMAIL"),
                     )
                 ),
-            )
+            ),
         )
-        
+
         json_output = second_escalation.model_dump_json(indent=2)
         syntax = Syntax(json_output, "json", theme="monokai", line_numbers=False)
         console.print("Check your emails - escalated to different address:")
         console.print(syntax)
-        
+
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
         sys.exit(1)

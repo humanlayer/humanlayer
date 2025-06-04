@@ -42,9 +42,9 @@ await hl.escalateEmailFunctionCall(call.call_id, {
   additional_recipients: [
     {
       address: "manager@company.com",
-      field: "cc"
-    }
-  ]
+      field: "cc",
+    },
+  ],
 });
 ```
 
@@ -76,16 +76,15 @@ hl.escalate_email_function_call(
 
 ```typescript example.ts
 await hl.escalateEmailFunctionCall(call.call_id, {
-  escalation_msg: "URGENT: Production deployment blocked - need immediate approval",
+  escalation_msg:
+    "URGENT: Production deployment blocked - need immediate approval",
   channel: {
     email: {
       address: "ceo@company.com",
       experimental_subject_line: "🚨 URGENT: Production Approval Required",
-      additional_recipients: [
-        { address: "cto@company.com", field: "cc" }
-      ]
-    }
-  }
+      additional_recipients: [{ address: "cto@company.com", field: "cc" }],
+    },
+  },
 });
 ```
 
@@ -121,7 +120,7 @@ hl.escalate_email_function_call(
         escalation_msg="URGENT: Still no response - escalating to management",
         channel=ContactChannel(
             email=EmailContactChannel(
-                address="director@company.com", 
+                address="director@company.com",
                 experimental_subject_line="🚨 URGENT: Approval Required"
             )
         )
@@ -133,23 +132,21 @@ hl.escalate_email_function_call(
 // First escalation: Add team members
 await hl.escalateEmailFunctionCall(call.call_id, {
   escalation_msg: "Needs review - please take a look",
-  additional_recipients: [
-    { address: "team-lead@company.com", field: "to" }
-  ]
+  additional_recipients: [{ address: "team-lead@company.com", field: "to" }],
 });
 
 // Wait for response...
-await new Promise(resolve => setTimeout(resolve, 300000)); // 5 minutes
+await new Promise((resolve) => setTimeout(resolve, 300000)); // 5 minutes
 
 // Second escalation: Different email with urgency
 await hl.escalateEmailFunctionCall(call.call_id, {
   escalation_msg: "URGENT: Still no response - escalating to management",
   channel: {
     email: {
-      address: "director@company.com", 
-      experimental_subject_line: "🚨 URGENT: Approval Required"
-    }
-  }
+      address: "director@company.com",
+      experimental_subject_line: "🚨 URGENT: Approval Required",
+    },
+  },
 });
 ```
 
@@ -191,20 +188,21 @@ hl.escalate_email_function_call(
 const call = await hl.createFunctionCall({
   spec: {
     fn: "delete_production_data",
-    kwargs: { table: "users" }
+    kwargs: { table: "users" },
     // No channel - uses project defaults or CLI
-  }
+  },
 });
 
 // Later escalate with specific high-priority email
 await hl.escalateEmailFunctionCall(call.call_id, {
-  escalation_msg: "CRITICAL: Production data deletion requires executive approval",
+  escalation_msg:
+    "CRITICAL: Production data deletion requires executive approval",
   channel: {
     email: {
       address: "ceo@company.com",
-      experimental_subject_line: "⚠️ CRITICAL: Production Data Deletion"
-    }
-  }
+      experimental_subject_line: "⚠️ CRITICAL: Production Data Deletion",
+    },
+  },
 });
 ```
 
@@ -224,10 +222,10 @@ hl.escalate_email_human_contact(call_id=call_id, escalation=escalation)
 
 ```typescript example.ts
 // Function Call Email Escalation
-hl.escalateEmailFunctionCall(call_id, escalation)
+hl.escalateEmailFunctionCall(call_id, escalation);
 
 // Human Contact Email Escalation
-hl.escalateEmailHumanContact(call_id, escalation)
+hl.escalateEmailHumanContact(call_id, escalation);
 ```
 
 </CodeGroup>
@@ -236,9 +234,9 @@ hl.escalateEmailHumanContact(call_id, escalation)
 
 ```typescript
 interface Escalation {
-  escalation_msg: string;                    // Required: Reason for escalation
-  additional_recipients?: EmailRecipient[];  // Optional: Extra email recipients
-  channel?: ContactChannel;                  // Optional: New email channel override to escalate to
+  escalation_msg: string; // Required: Reason for escalation
+  additional_recipients?: EmailRecipient[]; // Optional: Extra email recipients
+  channel?: ContactChannel; // Optional: New email channel override to escalate to
 }
 ```
 
@@ -250,12 +248,13 @@ When both the original call and escalation have email channels:
 2. **No escalation channel**: Uses the original function call/contact email channel as primary
 3. **Recipients merging**: The system combines recipients from multiple sources:
    - Original channel's `additional_recipients`
-   - Escalation's `additional_recipients` 
+   - Escalation's `additional_recipients`
    - Escalation channel's `additional_recipients` (if channel override provided)
 
 ## Example Implementation
 
 See the complete email escalation examples:
+
 - [TypeScript Email Escalation Example](https://github.com/humanlayer/humanlayer/tree/main/examples/ts_email_escalation/)
 - [Python Email Escalation Example](https://github.com/humanlayer/humanlayer/tree/main/examples/email_escalation/)
 
