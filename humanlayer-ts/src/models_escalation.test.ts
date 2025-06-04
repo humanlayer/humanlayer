@@ -48,6 +48,6 @@ test('Escalation type - serialization includes channel', () => {
   expect(serialized.channel).toBeDefined()
   expect(serialized.channel.email.address).toBe('ceo@company.com')
   expect(serialized.channel.email.experimental_subject_line).toBe(
-    'CRITICAL: Immediate approval required'
+    'CRITICAL: Immediate approval required',
   )
 })

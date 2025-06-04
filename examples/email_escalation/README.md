@@ -13,11 +13,13 @@ The example demonstrates a two-stage email escalation workflow:
 ## Setup
 
 1. Install dependencies with uv:
+
    ```bash
    uv sync
    ```
 
 2. Copy environment file and configure:
+
    ```bash
    cp dotenv.example .env
    ```
@@ -26,7 +28,7 @@ The example demonstrates a two-stage email escalation workflow:
    ```
    HUMANLAYER_API_KEY=your_api_key_here
    HL_EXAMPLE_CONTACT_EMAIL=first@example.com
-   HL_EXAMPLE_SECOND_CONTACT_EMAIL=second@example.com  
+   HL_EXAMPLE_SECOND_CONTACT_EMAIL=second@example.com
    HL_EXAMPLE_THIRD_CONTACT_EMAIL=management@example.com
    ```
 
@@ -41,6 +43,7 @@ uv run email_escalation.py
 The example uses HumanLayer's `escalate_email_function_call()` method with two different escalation patterns:
 
 ### Adding Recipients
+
 ```python
 human_layer.escalate_email_function_call(
     call_id=call.call_id,
@@ -57,6 +60,7 @@ human_layer.escalate_email_function_call(
 ```
 
 ### Channel Switching
+
 ```python
 human_layer.escalate_email_function_call(
     call_id=call.call_id,

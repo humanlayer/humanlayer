@@ -13,11 +13,13 @@ The example demonstrates a two-stage email escalation workflow:
 ## Setup
 
 1. Install dependencies:
+
    ```bash
    npm install
    ```
 
 2. Copy environment file and configure:
+
    ```bash
    cp dotenv.example .env
    ```
@@ -26,7 +28,7 @@ The example demonstrates a two-stage email escalation workflow:
    ```
    HUMANLAYER_API_KEY=your_api_key_here
    HL_EXAMPLE_CONTACT_EMAIL=first@example.com
-   HL_EXAMPLE_SECOND_CONTACT_EMAIL=second@example.com  
+   HL_EXAMPLE_SECOND_CONTACT_EMAIL=second@example.com
    HL_EXAMPLE_THIRD_CONTACT_EMAIL=management@example.com
    ```
 
@@ -41,17 +43,21 @@ npm run start
 The example uses HumanLayer's `escalateEmailFunctionCall()` method with two different escalation patterns:
 
 ### Adding Recipients
+
 ```typescript
 await hl.escalateEmailFunctionCall(call.call_id, {
   escalation_msg: "please take a look because it's been too long",
-  additional_recipients: [{
-    address: process.env.HL_EXAMPLE_SECOND_CONTACT_EMAIL,
-    field: "to",
-  }],
+  additional_recipients: [
+    {
+      address: process.env.HL_EXAMPLE_SECOND_CONTACT_EMAIL,
+      field: "to",
+    },
+  ],
 });
 ```
 
 ### Channel Switching
+
 ```typescript
 await hl.escalateEmailFunctionCall(call.call_id, {
   escalation_msg: "URGENT: Still no response - escalating to management",
