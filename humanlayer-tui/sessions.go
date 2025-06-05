@@ -14,9 +14,9 @@ import (
 
 // sessionModel contains all state related to the sessions tab
 type sessionModel struct {
-	sessions     []session.Info
-	cursor       int
-	viewState    viewState
+	sessions  []session.Info
+	cursor    int
+	viewState viewState
 
 	// For session detail view
 	selectedSession     *session.Info
@@ -275,7 +275,7 @@ func (sm *sessionModel) renderListView(m *model) string {
 		selected := i == sm.cursor
 
 		// Status icon
-		statusIcon := "⏸"  // paused/unknown
+		statusIcon := "⏸" // paused/unknown
 		switch sess.Status {
 		case "starting":
 			statusIcon = "🔄"
@@ -471,7 +471,7 @@ func (sm *sessionModel) renderSessionDetailView(m *model) string {
 	// Apply scrolling
 	lines := strings.Split(content.String(), "\n")
 	visibleHeight := m.height - 6 // Account for tab bar, status bar, etc.
-	
+
 	if sm.sessionDetailScroll > len(lines)-visibleHeight {
 		sm.sessionDetailScroll = len(lines) - visibleHeight
 		if sm.sessionDetailScroll < 0 {

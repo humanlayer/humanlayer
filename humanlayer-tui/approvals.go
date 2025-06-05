@@ -60,7 +60,7 @@ func (am *approvalModel) Update(msg tea.Msg, m *model) tea.Cmd {
 		}
 		am.requests = msg.requests
 		m.pendingApprovalCount = len(am.requests)
-		
+
 		// Preserve cursor position if possible
 		if am.cursor >= len(am.requests) && len(am.requests) > 0 {
 			am.cursor = len(am.requests) - 1
@@ -382,7 +382,7 @@ func (am *approvalModel) renderDetailView(m *model) string {
 	s.WriteString(labelStyle.Render("Agent:") + valueStyle.Render(req.AgentName) + "\n")
 
 	if req.SessionID != "" {
-		sessionInfo := fmt.Sprintf("%s", req.SessionPrompt)
+		sessionInfo := req.SessionPrompt
 		if req.SessionModel != "" && req.SessionModel != "default" {
 			sessionInfo += fmt.Sprintf(" (%s)", req.SessionModel)
 		}
