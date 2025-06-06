@@ -376,9 +376,16 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 
 // AddConversationEvent adds a new conversation event
 func (s *SQLiteStore) AddConversationEvent(ctx context.Context, event *ConversationEvent) error {
-	// Get next sequence number for this claude session
+	// Use a transaction to avoid race conditions with sequence numbers
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	// Get next sequence number for this claude session within the transaction
 	var maxSeq sql.NullInt64
-	err := s.db.QueryRowContext(ctx,
+	err = tx.QueryRowContext(ctx,
 		"SELECT MAX(sequence) FROM conversation_events WHERE claude_session_id = ?",
 		event.ClaudeSessionID,
 	).Scan(&maxSeq)
@@ -398,7 +405,7 @@ func (s *SQLiteStore) AddConversationEvent(ctx context.Context, event *Conversat
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
-	result, err := s.db.ExecContext(ctx, query,
+	result, err := tx.ExecContext(ctx, query,
 		event.SessionID, event.ClaudeSessionID, event.Sequence, event.EventType,
 		event.Role, event.Content,
 		event.ToolID, event.ToolName, event.ToolInputJSON,
@@ -414,7 +421,7 @@ func (s *SQLiteStore) AddConversationEvent(ctx context.Context, event *Conversat
 		event.ID = id
 	}
 
-	return nil
+	return tx.Commit()
 }
 
 // GetConversation retrieves all events for a Claude session
