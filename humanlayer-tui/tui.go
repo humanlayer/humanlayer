@@ -33,7 +33,6 @@ type Request struct {
 	Tool       string                 // For approvals
 	Parameters map[string]interface{} // For approvals
 	CreatedAt  time.Time
-	AgentName  string
 	// Session context
 	SessionID    string
 	SessionQuery string // First 50 chars of query

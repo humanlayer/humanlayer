@@ -123,7 +123,6 @@ func fetchRequests(daemonClient client.Client) tea.Cmd {
 					Tool:       fc.Spec.Fn,
 					Parameters: fc.Spec.Kwargs,
 					CreatedAt:  createdAt,
-					AgentName:  "Agent", // TODO: Get from somewhere
 				}
 
 				// Enrich with session info if available
@@ -151,7 +150,6 @@ func fetchRequests(daemonClient client.Client) tea.Cmd {
 					Type:      HumanContactRequest,
 					Message:   hc.Spec.Msg,
 					CreatedAt: createdAt,
-					AgentName: "Agent",
 				}
 
 				// Enrich with session info if available
@@ -241,7 +239,6 @@ func fetchSessionApprovals(daemonClient client.Client, sessionID string) tea.Cmd
 					Tool:       fc.Spec.Fn,
 					Parameters: fc.Spec.Kwargs,
 					CreatedAt:  createdAt,
-					AgentName:  "Agent",
 				}
 
 				// Add session info if available
@@ -269,7 +266,6 @@ func fetchSessionApprovals(daemonClient client.Client, sessionID string) tea.Cmd
 					Type:      HumanContactRequest,
 					Message:   hc.Spec.Msg,
 					CreatedAt: createdAt,
-					AgentName: "Agent",
 				}
 
 				// Add session info if available

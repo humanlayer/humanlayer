@@ -379,7 +379,6 @@ func (am *approvalModel) renderDetailView(m *model) string {
 		Foreground(lipgloss.Color("252"))
 
 	s.WriteString(labelStyle.Render("Time:") + valueStyle.Render(req.CreatedAt.Format("15:04:05")) + "\n")
-	s.WriteString(labelStyle.Render("Agent:") + valueStyle.Render(req.AgentName) + "\n")
 
 	if req.SessionID != "" {
 		sessionInfo := req.SessionQuery
