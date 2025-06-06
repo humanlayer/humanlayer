@@ -20,6 +20,13 @@ jobs:
           path: ~/.cache/pre-commit
           key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropics/claude-code
+
       - name: Install uv
         uses: astral-sh/setup-uv@v4
         with:
@@ -72,6 +79,9 @@ jobs:
           node-version: 22
           cache: "npm"
           cache-dependency-path: humanlayer-ts/package-lock.json
+
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropics/claude-code
 
       - name: Install uv
         uses: astral-sh/setup-uv@v4
