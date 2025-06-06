@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
 	claudecode "github.com/humanlayer/humanlayer/claudecode-go"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSQLiteStore(t *testing.T) {
@@ -28,13 +28,13 @@ func TestSQLiteStore(t *testing.T) {
 	t.Run("CreateAndGetSession", func(t *testing.T) {
 		// Create a session
 		session := &Session{
-			ID:               "test-session-1",
-			RunID:            "test-run-1",
-			Query:            "Test query",
-			Model:            "sonnet",
-			Status:           SessionStatusStarting,
-			CreatedAt:        time.Now(),
-			LastActivityAt:   time.Now(),
+			ID:             "test-session-1",
+			RunID:          "test-run-1",
+			Query:          "Test query",
+			Model:          "sonnet",
+			Status:         SessionStatusStarting,
+			CreatedAt:      time.Now(),
+			LastActivityAt: time.Now(),
 		}
 
 		err := store.CreateSession(ctx, session)

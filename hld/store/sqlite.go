@@ -234,10 +234,20 @@ func (s *SQLiteStore) UpdateSession(ctx context.Context, sessionID string, updat
 	query += " WHERE id = ?"
 	args = append(args, sessionID)
 
-	_, err := s.db.ExecContext(ctx, query, args...)
+	result, err := s.db.ExecContext(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("failed to update session: %w", err)
 	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("session not found: %s", sessionID)
+	}
+
 	return nil
 }
 
@@ -465,7 +475,6 @@ func (s *SQLiteStore) GetSessionConversation(ctx context.Context, sessionID stri
 
 	return s.GetConversation(ctx, claudeSessionID.String)
 }
-
 
 // GetPendingToolCall finds the most recent uncompleted tool call for a given session and tool name
 func (s *SQLiteStore) GetPendingToolCall(ctx context.Context, sessionID string, toolName string) (*ConversationEvent, error) {

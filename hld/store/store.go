@@ -39,59 +39,59 @@ type ConversationStore interface {
 
 // Session represents a Claude Code session
 type Session struct {
-	ID               string
-	RunID            string
-	ClaudeSessionID  string
-	ParentSessionID  string
-	Query            string
-	Model            string
-	WorkingDir       string
-	MaxTurns         int
-	SystemPrompt     string
+	ID                 string
+	RunID              string
+	ClaudeSessionID    string
+	ParentSessionID    string
+	Query              string
+	Model              string
+	WorkingDir         string
+	MaxTurns           int
+	SystemPrompt       string
 	CustomInstructions string
-	Status           string
-	CreatedAt        time.Time
-	LastActivityAt   time.Time
-	CompletedAt      *time.Time
-	CostUSD          *float64
-	TotalTokens      *int
-	DurationMS       *int
-	ErrorMessage     string
+	Status             string
+	CreatedAt          time.Time
+	LastActivityAt     time.Time
+	CompletedAt        *time.Time
+	CostUSD            *float64
+	TotalTokens        *int
+	DurationMS         *int
+	ErrorMessage       string
 }
 
 // SessionUpdate contains fields that can be updated
 type SessionUpdate struct {
-	ClaudeSessionID  *string
-	Status           *string
-	LastActivityAt   *time.Time
-	CompletedAt      *time.Time
-	CostUSD          *float64
-	TotalTokens      *int
-	DurationMS       *int
-	ErrorMessage     *string
+	ClaudeSessionID *string
+	Status          *string
+	LastActivityAt  *time.Time
+	CompletedAt     *time.Time
+	CostUSD         *float64
+	TotalTokens     *int
+	DurationMS      *int
+	ErrorMessage    *string
 }
 
 // ConversationEvent represents a single event in a conversation
 type ConversationEvent struct {
-	ID                 int64
-	SessionID          string
-	ClaudeSessionID    string
-	Sequence           int
-	EventType          string // 'message', 'tool_call', 'tool_result', 'system'
-	CreatedAt          time.Time
+	ID              int64
+	SessionID       string
+	ClaudeSessionID string
+	Sequence        int
+	EventType       string // 'message', 'tool_call', 'tool_result', 'system'
+	CreatedAt       time.Time
 
 	// Message fields
 	Role    string // user, assistant, system
 	Content string
 
 	// Tool call fields
-	ToolID       string
-	ToolName     string
+	ToolID        string
+	ToolName      string
 	ToolInputJSON string
 
 	// Tool result fields
-	ToolResultForID     string
-	ToolResultContent   string
+	ToolResultForID   string
+	ToolResultContent string
 
 	// Tool call tracking
 	IsCompleted    bool   // TRUE when tool result received
