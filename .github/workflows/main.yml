@@ -48,6 +48,9 @@ jobs:
       - name: Build CLI
         run: npm -C hlyr run build
 
+      - name: Generate Go mocks
+        run: make -C hld mocks
+
       - name: Run checks
         run: make check
 
