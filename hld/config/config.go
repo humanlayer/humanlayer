@@ -29,7 +29,7 @@ func Load() (*Config, error) {
 	v := viper.New()
 
 	// Set config name and paths
-	v.SetConfigName("daemon")
+	v.SetConfigName("humanlayer")
 	v.SetConfigType("json")
 
 	// Add config paths in order of preference
