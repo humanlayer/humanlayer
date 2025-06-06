@@ -38,12 +38,12 @@ func New() (*Daemon, error) {
 	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {
-		return nil, fmt.Errorf("failed to load config: %w", err)
+		return nil, fmt.Errorf("load config: %w", err)
 	}
 
 	// Validate configuration
 	if err := cfg.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid configuration: %w", err)
+		return nil, fmt.Errorf("validate configuration: %w", err)
 	}
 
 	socketPath := cfg.SocketPath
@@ -51,7 +51,7 @@ func New() (*Daemon, error) {
 	// Ensure directory exists
 	socketDir := filepath.Dir(socketPath)
 	if err := os.MkdirAll(socketDir, 0700); err != nil {
-		return nil, fmt.Errorf("failed to create socket directory: %w", err)
+		return nil, fmt.Errorf("create socket directory: %w", err)
 	}
 
 	// Check if socket already exists (another daemon running)
@@ -60,12 +60,12 @@ func New() (*Daemon, error) {
 		conn, err := net.Dial("unix", socketPath)
 		if err == nil {
 			_ = conn.Close()
-			return nil, fmt.Errorf("%w at %s", ErrDaemonAlreadyRunning, socketPath)
+			return nil, fmt.Errorf("daemon already running at %s: %w", socketPath, ErrDaemonAlreadyRunning)
 		}
 		// Socket exists but can't connect, remove stale socket
 		slog.Info("removing stale socket file", "path", socketPath)
 		if err := os.Remove(socketPath); err != nil {
-			return nil, fmt.Errorf("failed to remove stale socket: %w", err)
+			return nil, fmt.Errorf("remove stale socket: %w", err)
 		}
 	}
 
@@ -75,7 +75,7 @@ func New() (*Daemon, error) {
 	// Initialize SQLite store
 	conversationStore, err := store.NewSQLiteStore(cfg.DatabasePath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create SQLite store: %w", err)
+		return nil, fmt.Errorf("create SQLite store: %w", err)
 	}
 
 	// Create session manager with store and config
