@@ -180,10 +180,10 @@ func TestSessionManagerWithStore(t *testing.T) {
 
 	// Create manager with real store
 	manager := &Manager{
-		sessions: make(map[string]*Session),
-		client:   nil, // We'll inject mock client
-		eventBus: eventBus,
-		store:    testStore,
+		activeProcesses: make(map[string]*claudecode.Session),
+		client:          nil, // We'll inject mock client
+		eventBus:        eventBus,
+		store:           testStore,
 	}
 
 	// Inject mock Claude client
@@ -226,19 +226,9 @@ func TestSessionManagerWithStore(t *testing.T) {
 			t.Fatalf("failed to create mock claude session: %v", err)
 		}
 
-		// Create our session object
-		session := &Session{
-			ID:        sessionID,
-			RunID:     runID,
-			Config:    config,
-			Status:    StatusRunning,
-			StartTime: time.Now(),
-			claude:    claudeSess,
-		}
-
-		// Add to manager
+		// Store active process
 		manager.mu.Lock()
-		manager.sessions[sessionID] = session
+		manager.activeProcesses[sessionID] = claudeSess
 		manager.mu.Unlock()
 
 		// Instead of calling monitorSession (which expects a real Claude session),
@@ -258,14 +248,12 @@ func TestSessionManagerWithStore(t *testing.T) {
 				}
 
 				// Process event
-				manager.processStreamEvent(ctx, session, claudeSessionID, event)
+				manager.processStreamEvent(ctx, sessionID, claudeSessionID, event)
 			}
 
-			// Mark session as completed
+			// Clean up active process
 			manager.mu.Lock()
-			session.Status = StatusCompleted
-			now := time.Now()
-			session.EndTime = &now
+			delete(manager.activeProcesses, sessionID)
 			manager.mu.Unlock()
 
 			// Update database
@@ -293,10 +281,12 @@ func TestSessionManagerWithStore(t *testing.T) {
 		// Wait for processing to complete
 		time.Sleep(100 * time.Millisecond)
 
-		// Verify session status
-		manager.mu.RLock()
-		finalStatus := session.Status
-		manager.mu.RUnlock()
+		// Verify session status in database
+		dbSession, err = testStore.GetSession(ctx, sessionID)
+		if err != nil {
+			t.Fatalf("failed to get session from database: %v", err)
+		}
+		finalStatus := Status(dbSession.Status)
 
 		if finalStatus != StatusCompleted {
 			t.Errorf("expected status %s, got %s", StatusCompleted, finalStatus)
@@ -409,12 +399,11 @@ func TestSessionManagerWithStore(t *testing.T) {
 					Config:    config,
 					Status:    StatusRunning,
 					StartTime: time.Now(),
-					claude:    claudeSess,
 				}
 
-				// Add to manager
+				// Store active process
 				manager.mu.Lock()
-				manager.sessions[sessionID] = session
+				manager.activeProcesses[sessionID] = claudeSess
 				manager.mu.Unlock()
 
 				// Simulate session completion in background
@@ -449,16 +438,17 @@ func TestSessionManagerWithStore(t *testing.T) {
 		// Give time for background goroutines to complete
 		time.Sleep(100 * time.Millisecond)
 
-		// Verify all sessions completed
+		// Verify all sessions completed in database
 		for i := 0; i < sessionCount; i++ {
 			sessionID := fmt.Sprintf("concurrent-session-%d", i)
-			manager.mu.RLock()
-			if session, ok := manager.sessions[sessionID]; ok {
-				if session.Status != StatusCompleted {
-					t.Errorf("session %d: expected status %s, got %s", i, StatusCompleted, session.Status)
-				}
+			dbSession, err := testStore.GetSession(ctx, sessionID)
+			if err != nil {
+				t.Errorf("session %d: failed to get from database: %v", i, err)
+				continue
 			}
-			manager.mu.RUnlock()
+			if dbSession.Status != string(StatusCompleted) {
+				t.Errorf("session %d: expected status %s, got %s", i, StatusCompleted, dbSession.Status)
+			}
 		}
 
 		// Verify all sessions in database
@@ -516,11 +506,7 @@ func TestSessionManagerEventProcessing(t *testing.T) {
 		t.Fatalf("failed to create session: %v", err)
 	}
 
-	// Create mock session for testing
-	session := &Session{
-		ID:    sessionID,
-		RunID: "event-run-1",
-	}
+	// Session is already created in database
 
 	t.Run("complex_tool_use", func(t *testing.T) {
 		// Test processing of complex tool input
@@ -550,7 +536,7 @@ func TestSessionManagerEventProcessing(t *testing.T) {
 			},
 		}
 
-		err := manager.processStreamEvent(ctx, session, claudeSessionID, event)
+		err := manager.processStreamEvent(ctx, sessionID, claudeSessionID, event)
 		if err != nil {
 			t.Fatalf("failed to process complex tool use: %v", err)
 		}
@@ -620,7 +606,7 @@ func TestSessionManagerEventProcessing(t *testing.T) {
 			},
 		}
 
-		err := manager.processStreamEvent(ctx, session, claudeSessionID, event)
+		err := manager.processStreamEvent(ctx, sessionID, claudeSessionID, event)
 		if err != nil {
 			t.Fatalf("failed to process multiple content blocks: %v", err)
 		}
@@ -669,7 +655,7 @@ func TestSessionManagerEventProcessing(t *testing.T) {
 			},
 		}
 
-		err := manager.processStreamEvent(ctx, session, claudeSessionID, toolCallEvent)
+		err := manager.processStreamEvent(ctx, sessionID, claudeSessionID, toolCallEvent)
 		if err != nil {
 			t.Fatalf("failed to process tool call: %v", err)
 		}
@@ -689,7 +675,7 @@ func TestSessionManagerEventProcessing(t *testing.T) {
 			},
 		}
 
-		err = manager.processStreamEvent(ctx, session, claudeSessionID, toolResultEvent)
+		err = manager.processStreamEvent(ctx, sessionID, claudeSessionID, toolResultEvent)
 		if err != nil {
 			t.Fatalf("failed to process tool result: %v", err)
 		}
