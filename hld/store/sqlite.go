@@ -34,11 +34,11 @@ func NewSQLiteStore(dbPath string) (*SQLiteStore, error) {
 
 	// Enable foreign keys and WAL mode for better concurrency
 	if _, err := db.Exec("PRAGMA foreign_keys = ON"); err != nil {
-		db.Close()
+		_ = db.Close()
 		return nil, fmt.Errorf("failed to enable foreign keys: %w", err)
 	}
 	if _, err := db.Exec("PRAGMA journal_mode = WAL"); err != nil {
-		db.Close()
+		_ = db.Close()
 		return nil, fmt.Errorf("failed to enable WAL mode: %w", err)
 	}
 
@@ -46,7 +46,7 @@ func NewSQLiteStore(dbPath string) (*SQLiteStore, error) {
 
 	// Initialize schema
 	if err := store.initSchema(); err != nil {
-		db.Close()
+		_ = db.Close()
 		return nil, fmt.Errorf("failed to initialize schema: %w", err)
 	}
 
@@ -323,7 +323,7 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to list sessions: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var sessions []*Session
 	for rows.Next() {
@@ -434,7 +434,7 @@ func (s *SQLiteStore) GetConversation(ctx context.Context, claudeSessionID strin
 	if err != nil {
 		return nil, fmt.Errorf("failed to get conversation: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var events []*ConversationEvent
 	for rows.Next() {
@@ -609,7 +609,7 @@ func (s *SQLiteStore) StoreMCPServers(ctx context.Context, sessionID string, ser
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	query := `
 		INSERT INTO mcp_servers (session_id, name, command, args_json, env_json)
@@ -639,7 +639,7 @@ func (s *SQLiteStore) GetMCPServers(ctx context.Context, sessionID string) ([]MC
 	if err != nil {
 		return nil, fmt.Errorf("failed to get MCP servers: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var servers []MCPServer
 	for rows.Next() {

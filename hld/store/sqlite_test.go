@@ -15,12 +15,12 @@ func TestSQLiteStore(t *testing.T) {
 	// Create temp database
 	tmpDir, err := os.MkdirTemp("", "hld-test-*")
 	require.NoError(t, err)
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	dbPath := filepath.Join(tmpDir, "test.db")
 	store, err := NewSQLiteStore(dbPath)
 	require.NoError(t, err)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	ctx := context.Background()
 	claudeSessionID := "claude-123" // Used across multiple tests
