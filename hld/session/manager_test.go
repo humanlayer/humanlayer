@@ -8,12 +8,19 @@ import (
 
 	claudecode "github.com/humanlayer/humanlayer/claudecode-go"
 	"github.com/humanlayer/humanlayer/hld/bus"
+	"github.com/humanlayer/humanlayer/hld/store"
 	"go.uber.org/mock/gomock"
 )
 
 func TestNewManager(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	// Create mock store
+	mockStore := store.NewMockConversationStore(ctrl)
+
 	var eventBus bus.EventBus = nil // no bus for this test
-	manager, err := NewManager(eventBus)
+	manager, err := NewManager(eventBus, mockStore)
 
 	if err != nil {
 		t.Fatalf("Failed to create manager: %v", err)
@@ -28,10 +35,30 @@ func TestNewManager(t *testing.T) {
 	}
 }
 
+func TestNewManager_RequiresStore(t *testing.T) {
+	var eventBus bus.EventBus = nil
+	_, err := NewManager(eventBus, nil)
+
+	if err == nil {
+		t.Fatal("Expected error when store is nil")
+	}
+
+	if err.Error() != "store is required" {
+		t.Errorf("Expected 'store is required' error, got: %v", err)
+	}
+}
+
 func TestSessionLifecycle(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	// Create mock store
+	mockStore := store.NewMockConversationStore(ctrl)
+
 	// Create a manager with empty sessions map
 	manager := &Manager{
 		sessions: make(map[string]*Session),
+		store:    mockStore,
 	}
 
 	testCases := []struct {
@@ -141,7 +168,8 @@ func TestSessionLifecycle(t *testing.T) {
 		{
 			name: "update session status to completed",
 			setup: func() {
-				// No additional setup needed
+				// Expect store update to be called
+				mockStore.EXPECT().UpdateSession(gomock.Any(), "test-session-1", gomock.Any()).Return(nil)
 			},
 			test: func(t *testing.T) {
 				manager.updateSessionStatus("test-session-1", StatusCompleted, "")
@@ -159,7 +187,8 @@ func TestSessionLifecycle(t *testing.T) {
 		{
 			name: "update session status to failed with error",
 			setup: func() {
-				// No additional setup needed
+				// Expect store update to be called
+				mockStore.EXPECT().UpdateSession(gomock.Any(), "test-session-2", gomock.Any()).Return(nil)
 			},
 			test: func(t *testing.T) {
 				manager.updateSessionStatus("test-session-2", StatusFailed, "test error")
@@ -239,8 +268,16 @@ func TestGetNonExistentSession(t *testing.T) {
 }
 
 func TestConcurrentSessionAccess(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	// Create mock store that allows any number of updates
+	mockStore := store.NewMockConversationStore(ctrl)
+	mockStore.EXPECT().UpdateSession(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+
 	manager := &Manager{
 		sessions: make(map[string]*Session),
+		store:    mockStore,
 	}
 
 	// Pre-populate sessions
