@@ -69,7 +69,8 @@ func TestSessionLifecycle(t *testing.T) {
 		{
 			name: "list empty sessions",
 			setup: func() {
-				// No setup needed
+				// Expect ListSessions to be called and return empty list
+				mockStore.EXPECT().ListSessions(gomock.Any()).Return([]*store.Session{}, nil)
 			},
 			test: func(t *testing.T) {
 				sessions := manager.ListSessions()
@@ -152,6 +153,20 @@ func TestSessionLifecycle(t *testing.T) {
 					}
 					manager.sessions[session.ID] = session
 				}
+
+				// Set up expectation for ListSessions
+				dbSessions := []*store.Session{}
+				for _, s := range manager.sessions {
+					dbSessions = append(dbSessions, &store.Session{
+						ID:        s.ID,
+						RunID:     s.RunID,
+						Query:     s.Config.Query,
+						CreatedAt: s.StartTime,
+						Model:     string(s.Config.Model),
+						Status:    string(s.Status),
+					})
+				}
+				mockStore.EXPECT().ListSessions(gomock.Any()).Return(dbSessions, nil)
 			},
 			test: func(t *testing.T) {
 				sessions := manager.ListSessions()
@@ -271,9 +286,10 @@ func TestConcurrentSessionAccess(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	// Create mock store that allows any number of updates
+	// Create mock store that allows any number of updates and list operations
 	mockStore := store.NewMockConversationStore(ctrl)
 	mockStore.EXPECT().UpdateSession(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	mockStore.EXPECT().ListSessions(gomock.Any()).Return([]*store.Session{}, nil).AnyTimes()
 
 	manager := &Manager{
 		sessions: make(map[string]*Session),

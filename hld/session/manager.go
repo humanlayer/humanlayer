@@ -314,25 +314,41 @@ func (m *Manager) GetSessionInfo(sessionID string) (*Info, error) {
 	}, nil
 }
 
-// ListSessionInfo returns JSON-safe views of all sessions
+// ListSessionInfo returns JSON-safe views of all sessions from the database
 func (m *Manager) ListSessionInfo() []Info {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
+	ctx := context.Background()
+	dbSessions, err := m.store.ListSessions(ctx)
+	if err != nil {
+		slog.Error("failed to list sessions from database", "error", err)
+		return []Info{}
+	}
 
-	infos := make([]Info, 0, len(m.sessions))
-
-	for _, session := range m.sessions {
+	// Convert database sessions to Info
+	infos := make([]Info, 0, len(dbSessions))
+	for _, dbSession := range dbSessions {
 		info := Info{
-			ID:        session.ID,
-			RunID:     session.RunID,
-			Status:    session.Status,
-			StartTime: session.StartTime,
-			EndTime:   session.EndTime,
-			Error:     session.Error,
-			Query:     session.Config.Query,
-			Model:     string(session.Config.Model),
-			Result:    session.Result,
+			ID:        dbSession.ID,
+			RunID:     dbSession.RunID,
+			Status:    Status(dbSession.Status),
+			StartTime: dbSession.CreatedAt,
+			Error:     dbSession.ErrorMessage,
+			Query:     dbSession.Query,
+			Model:     dbSession.Model,
 		}
+
+		// Set end time if completed
+		// TODO: Make these two fields match (JsonRPC name and sqlite storage name)
+		if dbSession.CompletedAt != nil {
+			info.EndTime = dbSession.CompletedAt
+		}
+
+		// Set result if available (from in-memory session for now)
+		m.mu.RLock()
+		if memSession, ok := m.sessions[dbSession.ID]; ok && memSession.Result != nil {
+			info.Result = memSession.Result
+		}
+		m.mu.RUnlock()
+
 		infos = append(infos, info)
 	}
 
