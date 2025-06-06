@@ -16,11 +16,11 @@ import (
 
 // Manager handles the lifecycle of Claude Code sessions
 type Manager struct {
-	sessions map[string]*Session
-	mu       sync.RWMutex
-	client   *claudecode.Client
-	eventBus bus.EventBus
-	store    store.ConversationStore
+	activeProcesses map[string]*claudecode.Session // Maps session ID to active Claude process
+	mu              sync.RWMutex
+	client          *claudecode.Client
+	eventBus        bus.EventBus
+	store           store.ConversationStore
 }
 
 // Compile-time check that Manager implements SessionManager
@@ -38,10 +38,10 @@ func NewManager(eventBus bus.EventBus, store store.ConversationStore) (*Manager,
 	}
 
 	return &Manager{
-		sessions: make(map[string]*Session),
-		client:   client,
-		eventBus: eventBus,
-		store:    store,
+		activeProcesses: make(map[string]*claudecode.Session),
+		client:          client,
+		eventBus:        eventBus,
+		store:           store,
 	}, nil
 }
 
@@ -70,14 +70,8 @@ func (m *Manager) LaunchSession(ctx context.Context, config claudecode.SessionCo
 		slog.Debug("no MCP config provided")
 	}
 
-	// Create session record
-	session := &Session{
-		ID:        sessionID,
-		RunID:     runID,
-		Status:    StatusStarting,
-		StartTime: time.Now(),
-		Config:    config,
-	}
+	// Create session record directly in database
+	startTime := time.Now()
 
 	// Store session in database
 	dbSession := store.NewSessionFromConfig(sessionID, runID, config)
@@ -95,10 +89,7 @@ func (m *Manager) LaunchSession(ctx context.Context, config claudecode.SessionCo
 		}
 	}
 
-	// Store session in memory
-	m.mu.Lock()
-	m.sessions[sessionID] = session
-	m.mu.Unlock()
+	// No longer storing full session in memory
 
 	// Launch Claude session
 	claudeSession, err := m.client.Launch(config)
@@ -107,11 +98,9 @@ func (m *Manager) LaunchSession(ctx context.Context, config claudecode.SessionCo
 		return nil, fmt.Errorf("failed to launch Claude session: %w", err)
 	}
 
-	// Update session with Claude reference and status
+	// Store active Claude process
 	m.mu.Lock()
-	session.claude = claudeSession
-	oldStatus := session.Status
-	session.Status = StatusRunning
+	m.activeProcesses[sessionID] = claudeSession
 	m.mu.Unlock()
 
 	// Update database with running status
@@ -123,24 +112,24 @@ func (m *Manager) LaunchSession(ctx context.Context, config claudecode.SessionCo
 	}
 	if err := m.store.UpdateSession(ctx, sessionID, update); err != nil {
 		slog.Error("failed to update session status to running", "error", err)
-		// Continue anyway - in-memory state is updated
+		// Continue anyway
 	}
 
 	// Publish status change event
-	if m.eventBus != nil && oldStatus != StatusRunning {
+	if m.eventBus != nil {
 		m.eventBus.Publish(bus.Event{
 			Type: bus.EventSessionStatusChanged,
 			Data: map[string]interface{}{
 				"session_id": sessionID,
 				"run_id":     runID,
-				"old_status": string(oldStatus),
+				"old_status": string(StatusStarting),
 				"new_status": string(StatusRunning),
 			},
 		})
 	}
 
 	// Monitor session lifecycle in background
-	go m.monitorSession(ctx, session)
+	go m.monitorSession(ctx, sessionID, runID, claudeSession, startTime, config)
 
 	slog.Info("launched Claude session",
 		"session_id", sessionID,
@@ -148,20 +137,27 @@ func (m *Manager) LaunchSession(ctx context.Context, config claudecode.SessionCo
 		"query", config.Query,
 		"permission_prompt_tool", config.PermissionPromptTool)
 
-	return session, nil
+	// Return minimal session info for launch response
+	return &Session{
+		ID:        sessionID,
+		RunID:     runID,
+		Status:    StatusRunning,
+		StartTime: startTime,
+		Config:    config,
+	}, nil
 }
 
 // monitorSession tracks the lifecycle of a Claude session
-func (m *Manager) monitorSession(ctx context.Context, session *Session) {
+func (m *Manager) monitorSession(ctx context.Context, sessionID, runID string, claudeSession *claudecode.Session, startTime time.Time, config claudecode.SessionConfig) {
 	// Get the session ID from the Claude session once available
 	var claudeSessionID string
-	for event := range session.claude.Events {
+	for event := range claudeSession.Events {
 		// Store raw event for debugging
 		eventJSON, err := json.Marshal(event)
 		if err != nil {
 			slog.Error("failed to marshal event", "error", err)
 		} else {
-			if err := m.store.StoreRawEvent(ctx, session.ID, string(eventJSON)); err != nil {
+			if err := m.store.StoreRawEvent(ctx, sessionID, string(eventJSON)); err != nil {
 				slog.Debug("failed to store raw event", "error", err)
 			}
 		}
@@ -169,43 +165,36 @@ func (m *Manager) monitorSession(ctx context.Context, session *Session) {
 		// Capture Claude session ID
 		if event.SessionID != "" && claudeSessionID == "" {
 			claudeSessionID = event.SessionID
-			// Update our session with Claude's session ID for resume capability
-			m.mu.Lock()
-			session.Config.SessionID = claudeSessionID
-			m.mu.Unlock()
+			// Note: Claude session ID captured for resume capability
 			slog.Debug("captured Claude session ID",
-				"session_id", session.ID,
+				"session_id", sessionID,
 				"claude_session_id", claudeSessionID)
 
 			// Update database
 			update := store.SessionUpdate{
 				ClaudeSessionID: &claudeSessionID,
 			}
-			if err := m.store.UpdateSession(ctx, session.ID, update); err != nil {
+			if err := m.store.UpdateSession(ctx, sessionID, update); err != nil {
 				slog.Error("failed to update session in database", "error", err)
 			}
 		}
 
 		// Process and store event
-		if err := m.processStreamEvent(ctx, session, claudeSessionID, event); err != nil {
+		if err := m.processStreamEvent(ctx, sessionID, claudeSessionID, event); err != nil {
 			slog.Error("failed to process stream event", "error", err)
 		}
 	}
 
 	// Wait for session to complete
-	result, err := session.claude.Wait()
+	result, err := claudeSession.Wait()
 
 	endTime := time.Now()
 	if err != nil {
-		m.updateSessionStatus(ctx, session.ID, StatusFailed, err.Error())
+		m.updateSessionStatus(ctx, sessionID, StatusFailed, err.Error())
 	} else if result != nil && result.IsError {
-		m.updateSessionStatus(ctx, session.ID, StatusFailed, result.Error)
+		m.updateSessionStatus(ctx, sessionID, StatusFailed, result.Error)
 	} else {
-		m.mu.Lock()
-		session.Status = StatusCompleted
-		session.EndTime = &endTime
-		session.Result = result
-		m.mu.Unlock()
+		// No longer updating in-memory session
 
 		// Update database with completion status
 		statusCompleted := string(StatusCompleted)
@@ -217,10 +206,10 @@ func (m *Manager) monitorSession(ctx context.Context, session *Session) {
 			if result.CostUSD > 0 {
 				update.CostUSD = &result.CostUSD
 			}
-			duration := int(endTime.Sub(session.StartTime).Milliseconds())
+			duration := int(endTime.Sub(startTime).Milliseconds())
 			update.DurationMS = &duration
 		}
-		if err := m.store.UpdateSession(ctx, session.ID, update); err != nil {
+		if err := m.store.UpdateSession(ctx, sessionID, update); err != nil {
 			slog.Error("failed to update session completion in database", "error", err)
 		}
 
@@ -229,8 +218,8 @@ func (m *Manager) monitorSession(ctx context.Context, session *Session) {
 			m.eventBus.Publish(bus.Event{
 				Type: bus.EventSessionStatusChanged,
 				Data: map[string]interface{}{
-					"session_id": session.ID,
-					"run_id":     session.RunID,
+					"session_id": sessionID,
+					"run_id":     runID,
 					"old_status": string(StatusRunning),
 					"new_status": string(StatusCompleted),
 				},
@@ -239,111 +228,70 @@ func (m *Manager) monitorSession(ctx context.Context, session *Session) {
 	}
 
 	slog.Info("session completed",
-		"session_id", session.ID,
-		"status", session.Status,
-		"duration", endTime.Sub(session.StartTime))
-}
+		"session_id", sessionID,
+		"status", StatusCompleted,
+		"duration", endTime.Sub(startTime))
 
-// updateSessionStatus updates the status of a session
-func (m *Manager) updateSessionStatus(ctx context.Context, sessionID string, status Status, errorMsg string) {
+	// Clean up active process
 	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	if session, ok := m.sessions[sessionID]; ok {
-		oldStatus := session.Status
-		session.Status = status
-		if errorMsg != "" {
-			session.Error = errorMsg
-		}
-		if status == StatusCompleted || status == StatusFailed {
-			now := time.Now()
-			session.EndTime = &now
-		}
-
-		// Update database
-		dbStatus := string(status)
-		update := store.SessionUpdate{
-			Status: &dbStatus,
-		}
-		if errorMsg != "" {
-			update.ErrorMessage = &errorMsg
-		}
-		if status == StatusCompleted || status == StatusFailed {
-			now := time.Now()
-			update.CompletedAt = &now
-		}
-		if err := m.store.UpdateSession(ctx, sessionID, update); err != nil {
-			slog.Error("failed to update session status in database", "error", err)
-		}
-
-		// Publish event if status changed
-		if m.eventBus != nil && oldStatus != status {
-			m.eventBus.Publish(bus.Event{
-				Type: bus.EventSessionStatusChanged,
-				Data: map[string]interface{}{
-					"session_id": sessionID,
-					"run_id":     session.RunID,
-					"old_status": string(oldStatus),
-					"new_status": string(status),
-					"error":      errorMsg,
-				},
-			})
-		}
-	}
+	delete(m.activeProcesses, sessionID)
+	m.mu.Unlock()
 }
 
-// GetSession returns a session by ID
-func (m *Manager) GetSession(sessionID string) (*Session, error) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
+// updateSessionStatus updates the status of a session in the database
+func (m *Manager) updateSessionStatus(ctx context.Context, sessionID string, status Status, errorMsg string) {
+	// Update database
+	dbStatus := string(status)
+	update := store.SessionUpdate{
+		Status: &dbStatus,
+	}
+	if errorMsg != "" {
+		update.ErrorMessage = &errorMsg
+	}
+	if status == StatusCompleted || status == StatusFailed {
+		now := time.Now()
+		update.CompletedAt = &now
 
-	session, ok := m.sessions[sessionID]
-	if !ok {
-		return nil, fmt.Errorf("session not found: %s", sessionID)
+		// Clean up active process if exists
+		m.mu.Lock()
+		delete(m.activeProcesses, sessionID)
+		m.mu.Unlock()
+	}
+	if err := m.store.UpdateSession(ctx, sessionID, update); err != nil {
+		slog.Error("failed to update session status in database", "error", err)
 	}
 
-	return session, nil
+	// Note: We can't publish status change events without knowing the old status
+	// This would require a database read. For now, we'll skip the event.
 }
 
-// ListSessions returns all sessions
-func (m *Manager) ListSessions() []*Session {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
-	sessions := make([]*Session, 0, len(m.sessions))
-	for _, session := range m.sessions {
-		sessions = append(sessions, session)
-	}
-
-	return sessions
-}
-
-// GetSessionInfo returns a JSON-safe view of a session
+// GetSessionInfo returns session info from the database by ID
 func (m *Manager) GetSessionInfo(sessionID string) (*Info, error) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
-	session, ok := m.sessions[sessionID]
-	if !ok {
-		return nil, fmt.Errorf("session not found: %s", sessionID)
+	ctx := context.Background()
+	dbSession, err := m.store.GetSession(ctx, sessionID)
+	if err != nil {
+		return nil, fmt.Errorf("session not found: %w", err)
 	}
 
-	// Create a copy while holding the lock
-	return &Info{
-		ID:        session.ID,
-		RunID:     session.RunID,
-		Status:    session.Status,
-		StartTime: session.StartTime,
-		EndTime:   session.EndTime,
-		Error:     session.Error,
-		Query:     session.Config.Query,
-		Model:     string(session.Config.Model),
-		Result:    session.Result,
-	}, nil
+	info := &Info{
+		ID:        dbSession.ID,
+		RunID:     dbSession.RunID,
+		Status:    Status(dbSession.Status),
+		StartTime: dbSession.CreatedAt,
+		Error:     dbSession.ErrorMessage,
+		Query:     dbSession.Query,
+		Model:     dbSession.Model,
+	}
+
+	if dbSession.CompletedAt != nil {
+		info.EndTime = dbSession.CompletedAt
+	}
+
+	return info, nil
 }
 
-// ListSessionInfo returns JSON-safe views of all sessions from the database
-func (m *Manager) ListSessionInfo() []Info {
+// ListSessions returns all sessions from the database
+func (m *Manager) ListSessions() []Info {
 	ctx := context.Background()
 	dbSessions, err := m.store.ListSessions(ctx)
 	if err != nil {
@@ -370,12 +318,8 @@ func (m *Manager) ListSessionInfo() []Info {
 			info.EndTime = dbSession.CompletedAt
 		}
 
-		// Set result if available (from in-memory session for now)
-		m.mu.RLock()
-		if memSession, ok := m.sessions[dbSession.ID]; ok && memSession.Result != nil {
-			info.Result = memSession.Result
-		}
-		m.mu.RUnlock()
+		// TODO: Results are no longer stored in memory
+		// Would need to serialize results to database if we want to preserve them
 
 		infos = append(infos, info)
 	}
@@ -384,7 +328,7 @@ func (m *Manager) ListSessionInfo() []Info {
 }
 
 // processStreamEvent processes a streaming event and stores it in the database
-func (m *Manager) processStreamEvent(ctx context.Context, session *Session, claudeSessionID string, event claudecode.StreamEvent) error {
+func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, claudeSessionID string, event claudecode.StreamEvent) error {
 	// Skip events without claude session ID
 	if claudeSessionID == "" {
 		return nil
@@ -396,7 +340,7 @@ func (m *Manager) processStreamEvent(ctx context.Context, session *Session, clau
 		if event.Subtype == "session_created" {
 			// Store system event
 			convEvent := &store.ConversationEvent{
-				SessionID:       session.ID,
+				SessionID:       sessionID,
 				ClaudeSessionID: claudeSessionID,
 				EventType:       store.EventTypeSystem,
 				Role:            "system",
@@ -415,7 +359,7 @@ func (m *Manager) processStreamEvent(ctx context.Context, session *Session, clau
 				case "text":
 					// Text message
 					convEvent := &store.ConversationEvent{
-						SessionID:       session.ID,
+						SessionID:       sessionID,
 						ClaudeSessionID: claudeSessionID,
 						EventType:       store.EventTypeMessage,
 						Role:            event.Message.Role,
@@ -433,7 +377,7 @@ func (m *Manager) processStreamEvent(ctx context.Context, session *Session, clau
 					}
 
 					convEvent := &store.ConversationEvent{
-						SessionID:       session.ID,
+						SessionID:       sessionID,
 						ClaudeSessionID: claudeSessionID,
 						EventType:       store.EventTypeToolCall,
 						ToolID:          content.ID,
@@ -448,7 +392,7 @@ func (m *Manager) processStreamEvent(ctx context.Context, session *Session, clau
 				case "tool_result":
 					// Tool result (in user message)
 					convEvent := &store.ConversationEvent{
-						SessionID:         session.ID,
+						SessionID:         sessionID,
 						ClaudeSessionID:   claudeSessionID,
 						EventType:         store.EventTypeToolResult,
 						Role:              "user",
@@ -460,10 +404,10 @@ func (m *Manager) processStreamEvent(ctx context.Context, session *Session, clau
 					}
 
 					// Mark the corresponding tool call as completed
-					if err := m.store.MarkToolCallCompleted(ctx, content.ToolUseID, session.ID); err != nil {
+					if err := m.store.MarkToolCallCompleted(ctx, content.ToolUseID, sessionID); err != nil {
 						slog.Error("failed to mark tool call as completed",
 							"tool_id", content.ToolUseID,
-							"session_id", session.ID,
+							"session_id", sessionID,
 							"error", err)
 						// Continue anyway - this is not fatal
 					}
@@ -488,7 +432,7 @@ func (m *Manager) processStreamEvent(ctx context.Context, session *Session, clau
 			update.ErrorMessage = &event.Error
 		}
 
-		return m.store.UpdateSession(ctx, session.ID, update)
+		return m.store.UpdateSession(ctx, sessionID, update)
 	}
 
 	return nil

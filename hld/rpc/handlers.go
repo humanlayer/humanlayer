@@ -116,7 +116,7 @@ func (h *SessionHandlers) HandleListSessions(ctx context.Context, params json.Ra
 	}
 
 	// Get all sessions
-	sessions := h.manager.ListSessionInfo()
+	sessions := h.manager.ListSessions()
 
 	return &ListSessionsResponse{
 		Sessions: sessions,
