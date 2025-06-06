@@ -61,7 +61,7 @@ func New() (*Daemon, error) {
 		// Try to connect to see if it's alive
 		conn, err := net.Dial("unix", socketPath)
 		if err == nil {
-			conn.Close()
+			_ = conn.Close()
 			return nil, fmt.Errorf("%w at %s", ErrDaemonAlreadyRunning, socketPath)
 		}
 		// Socket exists but can't connect, remove stale socket
@@ -83,7 +83,7 @@ func New() (*Daemon, error) {
 	// Create session manager with store
 	sessionManager, err := session.NewManager(eventBus, conversationStore)
 	if err != nil {
-		conversationStore.Close()
+		_ = conversationStore.Close()
 		return nil, fmt.Errorf("failed to create session manager: %w", err)
 	}
 
@@ -126,16 +126,16 @@ func (d *Daemon) Run(ctx context.Context) error {
 
 	// Set socket permissions
 	if err := os.Chmod(d.socketPath, SocketPermissions); err != nil {
-		listener.Close()
+		_ = listener.Close()
 		return fmt.Errorf("failed to set socket permissions: %w", err)
 	}
 
 	// Ensure cleanup on exit
 	defer func() {
-		listener.Close()
-		os.Remove(d.socketPath)
+		_ = listener.Close()
+		_ = os.Remove(d.socketPath)
 		if d.store != nil {
-			d.store.Close()
+			_ = d.store.Close()
 		}
 		slog.Info("cleaned up resources", "path", d.socketPath)
 	}()
@@ -158,7 +158,7 @@ func (d *Daemon) Run(ctx context.Context) error {
 
 		// Start approval polling
 		if err := d.approvals.Start(ctx); err != nil {
-			listener.Close()
+			_ = listener.Close()
 			return fmt.Errorf("failed to start approval poller: %w", err)
 		}
 		defer d.approvals.Stop()
@@ -204,7 +204,7 @@ func (d *Daemon) acceptConnections(ctx context.Context) {
 
 // handleConnection processes a single client connection
 func (d *Daemon) handleConnection(ctx context.Context, conn net.Conn) {
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	slog.Debug("new client connected", "remote", conn.RemoteAddr())
 

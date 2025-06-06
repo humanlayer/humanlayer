@@ -73,7 +73,7 @@ func TestSessionLaunchIntegration(t *testing.T) {
 
 		request := rpc.LaunchSessionRequest{
 			Query: "Say hello and exit immediately",
-			Model:  "sonnet",
+			Model: "sonnet",
 			MCPConfig: &claudecode.MCPConfig{
 				MCPServers: map[string]claudecode.MCPServer{
 					"test-server": {
