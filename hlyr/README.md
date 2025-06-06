@@ -105,7 +105,7 @@ For automated approval workflows with Claude Code SDK:
 ```
 
 ```bash
-claude -p "write hello world to a file" \
+claude --print "write hello world to a file" \
   --mcp-config mcp-config.json \
   --permission-prompt-tool mcp__approvals__request_permission
 ```
@@ -113,7 +113,7 @@ claude -p "write hello world to a file" \
 ### Run with claude code
 
 ```
-claude -p "do some work" | npx humanlayer contact_human -m -
+claude --print "do some work" | npx humanlayer contact_human -m -
 ```
 
 or
@@ -122,11 +122,11 @@ or
 allowedTools='Write,Edit,Bash(grep:*)'
 message="make me a file hello.txt with contents 'hello world'"
 
-claude_answer=$(claude -p "$message" --allowedTools "$allowedTools")
+claude_answer=$(claude --print "$message" --allowedTools "$allowedTools")
 while :; do
 human_answer=$(echo "$claude_answer" | npx humanlayer contact_human -m -)
 message="$human_answer"
-claude_answer=$(claude -p "$message" --allowedTools "$allowedTools" --continue)
+claude_answer=$(claude --print "$message" --allowedTools "$allowedTools" --continue)
 done
 ```
 

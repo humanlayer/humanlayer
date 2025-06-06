@@ -63,21 +63,21 @@ func (s *SQLiteStore) initSchema() error {
 		run_id TEXT NOT NULL UNIQUE,
 		claude_session_id TEXT,
 		parent_session_id TEXT,
-		
+
 		-- Launch configuration
-		prompt TEXT NOT NULL,
+		query TEXT NOT NULL,
 		model TEXT,
 		working_dir TEXT,
 		max_turns INTEGER,
 		system_prompt TEXT,
 		custom_instructions TEXT,
-		
+
 		-- Runtime status
 		status TEXT NOT NULL DEFAULT 'starting',
 		created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		last_activity_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		completed_at TIMESTAMP,
-		
+
 		-- Results
 		cost_usd REAL,
 		total_tokens INTEGER,
@@ -95,35 +95,35 @@ func (s *SQLiteStore) initSchema() error {
 		claude_session_id TEXT,
 		sequence INTEGER NOT NULL,
 		event_type TEXT NOT NULL,
-		
+
 		-- Common fields
 		created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-		
+
 		-- Message fields
 		role TEXT,
 		content TEXT,
-		
+
 		-- Tool call fields
 		tool_id TEXT,
 		tool_name TEXT,
 		tool_input_json TEXT,
-		
+
 		-- Tool result fields
 		tool_result_for_id TEXT,
 		tool_result_content TEXT,
-		
+
 		-- Tool call completion and approval tracking
 		is_completed BOOLEAN DEFAULT FALSE,  -- TRUE when tool result received
 		approval_status TEXT,        -- NULL, 'pending', 'approved', 'denied'
 		approval_id TEXT,           -- HumanLayer approval ID when correlated
-		
+
 		FOREIGN KEY (session_id) REFERENCES sessions(id)
 	);
 	CREATE INDEX IF NOT EXISTS idx_conversation_claude_session ON conversation_events(claude_session_id, sequence);
 	CREATE INDEX IF NOT EXISTS idx_conversation_session ON conversation_events(session_id, sequence);
 	CREATE INDEX IF NOT EXISTS idx_conversation_approval ON conversation_events(approval_id);
-	CREATE INDEX IF NOT EXISTS idx_conversation_pending_approvals 
-		ON conversation_events(approval_status) 
+	CREATE INDEX IF NOT EXISTS idx_conversation_pending_approvals
+		ON conversation_events(approval_status)
 		WHERE approval_status = 'pending';
 
 	-- MCP servers configuration
@@ -134,7 +134,7 @@ func (s *SQLiteStore) initSchema() error {
 		command TEXT NOT NULL,
 		args_json TEXT,
 		env_json TEXT,
-		
+
 		FOREIGN KEY (session_id) REFERENCES sessions(id)
 	);
 	CREATE INDEX IF NOT EXISTS idx_mcp_servers_session ON mcp_servers(session_id);
@@ -145,7 +145,7 @@ func (s *SQLiteStore) initSchema() error {
 		session_id TEXT NOT NULL,
 		event_json TEXT NOT NULL,
 		created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-		
+
 		FOREIGN KEY (session_id) REFERENCES sessions(id)
 	);
 	CREATE INDEX IF NOT EXISTS idx_raw_events_session ON raw_events(session_id, created_at);
@@ -164,7 +164,7 @@ func (s *SQLiteStore) initSchema() error {
 
 	// Record schema version
 	_, err := s.db.Exec(`
-		INSERT OR IGNORE INTO schema_version (version, description) 
+		INSERT OR IGNORE INTO schema_version (version, description)
 		VALUES (1, 'Initial schema with conversation events')
 	`)
 	return err
@@ -180,14 +180,14 @@ func (s *SQLiteStore) CreateSession(ctx context.Context, session *Session) error
 	query := `
 		INSERT INTO sessions (
 			id, run_id, claude_session_id, parent_session_id,
-			prompt, model, working_dir, max_turns, system_prompt, custom_instructions,
+			query, model, working_dir, max_turns, system_prompt, custom_instructions,
 			status, created_at, last_activity_at
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	_, err := s.db.ExecContext(ctx, query,
 		session.ID, session.RunID, session.ClaudeSessionID, session.ParentSessionID,
-		session.Prompt, session.Model, session.WorkingDir, session.MaxTurns,
+		session.Query, session.Model, session.WorkingDir, session.MaxTurns,
 		session.SystemPrompt, session.CustomInstructions,
 		session.Status, session.CreatedAt, session.LastActivityAt,
 	)
@@ -245,7 +245,7 @@ func (s *SQLiteStore) UpdateSession(ctx context.Context, sessionID string, updat
 func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Session, error) {
 	query := `
 		SELECT id, run_id, claude_session_id, parent_session_id,
-			prompt, model, working_dir, max_turns, system_prompt, custom_instructions,
+			query, model, working_dir, max_turns, system_prompt, custom_instructions,
 			status, created_at, last_activity_at, completed_at,
 			cost_usd, total_tokens, duration_ms, error_message
 		FROM sessions WHERE id = ?
@@ -260,7 +260,7 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 	var errorMessage sql.NullString
 	err := s.db.QueryRowContext(ctx, query, sessionID).Scan(
 		&session.ID, &session.RunID, &claudeSessionID, &parentSessionID,
-		&session.Prompt, &model, &workingDir, &session.MaxTurns,
+		&session.Query, &model, &workingDir, &session.MaxTurns,
 		&systemPrompt, &customInstructions,
 		&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
 		&costUSD, &totalTokens, &durationMS, &errorMessage,
@@ -302,7 +302,7 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 	query := `
 		SELECT id, run_id, claude_session_id, parent_session_id,
-			prompt, model, working_dir, max_turns, system_prompt, custom_instructions,
+			query, model, working_dir, max_turns, system_prompt, custom_instructions,
 			status, created_at, last_activity_at, completed_at,
 			cost_usd, total_tokens, duration_ms, error_message
 		FROM sessions
@@ -326,7 +326,7 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 		var errorMessage sql.NullString
 		err := rows.Scan(
 			&session.ID, &session.RunID, &claudeSessionID, &parentSessionID,
-			&session.Prompt, &model, &workingDir, &session.MaxTurns,
+			&session.Query, &model, &workingDir, &session.MaxTurns,
 			&systemPrompt, &customInstructions,
 			&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
 			&costUSD, &totalTokens, &durationMS, &errorMessage,
@@ -476,7 +476,7 @@ func (s *SQLiteStore) GetPendingToolCall(ctx context.Context, sessionID string, 
 			tool_result_for_id, tool_result_content,
 			is_completed, approval_status, approval_id
 		FROM conversation_events
-		WHERE tool_name = ? 
+		WHERE tool_name = ?
 		  AND session_id = ?
 		  AND event_type = 'tool_call'
 		  AND is_completed = FALSE
@@ -506,7 +506,7 @@ func (s *SQLiteStore) GetPendingToolCall(ctx context.Context, sessionID string, 
 // MarkToolCallCompleted marks a tool call as completed when its result is received
 func (s *SQLiteStore) MarkToolCallCompleted(ctx context.Context, toolID string, sessionID string) error {
 	query := `
-		UPDATE conversation_events 
+		UPDATE conversation_events
 		SET is_completed = TRUE
 		WHERE tool_id = ?
 		  AND session_id = ?
@@ -561,7 +561,7 @@ func (s *SQLiteStore) CorrelateApproval(ctx context.Context, sessionID string, t
 
 	// Update the found event
 	updateQuery := `
-		UPDATE conversation_events 
+		UPDATE conversation_events
 		SET approval_status = 'pending', approval_id = ?
 		WHERE id = ?
 	`
@@ -570,7 +570,7 @@ func (s *SQLiteStore) CorrelateApproval(ctx context.Context, sessionID string, t
 	if err != nil {
 		return fmt.Errorf("failed to correlate approval: %w", err)
 	}
-	
+
 	rows, _ := result.RowsAffected()
 	slog.Info("updated tool call with approval",
 		"event_id", toolCall.ID,
@@ -582,7 +582,7 @@ func (s *SQLiteStore) CorrelateApproval(ctx context.Context, sessionID string, t
 // UpdateApprovalStatus updates the status of an approval
 func (s *SQLiteStore) UpdateApprovalStatus(ctx context.Context, approvalID string, status string) error {
 	query := `
-		UPDATE conversation_events 
+		UPDATE conversation_events
 		SET approval_status = ?
 		WHERE approval_id = ?
 	`

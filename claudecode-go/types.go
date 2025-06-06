@@ -37,7 +37,7 @@ type MCPConfig struct {
 // SessionConfig contains all configuration for launching a Claude session
 type SessionConfig struct {
 	// Required
-	Prompt string
+	Query string
 
 	// Session management
 	SessionID string // If set, resumes this session

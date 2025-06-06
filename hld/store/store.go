@@ -43,7 +43,7 @@ type Session struct {
 	RunID            string
 	ClaudeSessionID  string
 	ParentSessionID  string
-	Prompt           string
+	Query            string
 	Model            string
 	WorkingDir       string
 	MaxTurns         int
@@ -140,7 +140,7 @@ func NewSessionFromConfig(id, runID string, config claudecode.SessionConfig) *Se
 	return &Session{
 		ID:                 id,
 		RunID:              runID,
-		Prompt:             config.Prompt,
+		Query:              config.Query,
 		Model:              string(config.Model),
 		WorkingDir:         config.WorkingDir,
 		MaxTurns:           config.MaxTurns,

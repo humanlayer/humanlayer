@@ -41,7 +41,7 @@ func (c *Client) buildArgs(config SessionConfig) ([]string, error) {
 	args := []string{}
 
 	// Always use print mode for SDK
-	args = append(args, "--print", config.Prompt)
+	args = append(args, "--print", config.Query)
 
 	// Session management
 	if config.SessionID != "" {

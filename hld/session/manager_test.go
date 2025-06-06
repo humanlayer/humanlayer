@@ -65,7 +65,7 @@ func TestSessionLifecycle(t *testing.T) {
 					Status:    StatusStarting,
 					StartTime: time.Now(),
 					Config: claudecode.SessionConfig{
-						Prompt: "Test prompt",
+						Query: "Test query",
 					},
 				}
 				manager.sessions[session.ID] = session
@@ -104,8 +104,8 @@ func TestSessionLifecycle(t *testing.T) {
 					t.Errorf("Expected run ID 'test-run-1', got %s", info.RunID)
 				}
 
-				if info.Prompt != "Test prompt" {
-					t.Errorf("Expected prompt 'Test prompt', got %s", info.Prompt)
+				if info.Query != "Test query" {
+					t.Errorf("Expected query 'Test query', got %s", info.Query)
 				}
 			},
 		},
@@ -120,7 +120,7 @@ func TestSessionLifecycle(t *testing.T) {
 						Status:    StatusRunning,
 						StartTime: time.Now(),
 						Config: claudecode.SessionConfig{
-							Prompt: fmt.Sprintf("Test prompt %d", i),
+							Query: fmt.Sprintf("Test query %d", i),
 						},
 					}
 					manager.sessions[session.ID] = session
@@ -251,7 +251,7 @@ func TestConcurrentSessionAccess(t *testing.T) {
 			Status:    StatusRunning,
 			StartTime: time.Now(),
 			Config: claudecode.SessionConfig{
-				Prompt: fmt.Sprintf("Test prompt %d", i),
+				Query: fmt.Sprintf("Test query %d", i),
 			},
 		}
 		manager.sessions[session.ID] = session
@@ -346,14 +346,14 @@ func TestSessionManagerInterface_WithMock(t *testing.T) {
 					Status:    StatusRunning,
 					StartTime: time.Now(),
 					Config: claudecode.SessionConfig{
-						Prompt: "Test prompt",
+						Query: "Test query",
 					},
 				}
 				mock.EXPECT().LaunchSession(gomock.Any(), gomock.Any()).Return(expectedSession, nil)
 			},
 			test: func(t *testing.T, mock SessionManager) {
 				session, err := mock.LaunchSession(context.Background(), claudecode.SessionConfig{
-					Prompt: "Test prompt",
+					Query: "Test query",
 				})
 
 				if err != nil {
@@ -372,7 +372,7 @@ func TestSessionManagerInterface_WithMock(t *testing.T) {
 			},
 			test: func(t *testing.T, mock SessionManager) {
 				session, err := mock.LaunchSession(context.Background(), claudecode.SessionConfig{
-					Prompt: "Test prompt",
+					Query: "Test query",
 				})
 
 				if err == nil {

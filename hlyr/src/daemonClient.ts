@@ -55,7 +55,7 @@ interface EventNotification {
 }
 
 interface LaunchSessionRequest {
-  prompt: string
+  query: string
   model?: string
   mcp_config?: unknown
   permission_prompt_tool?: string

@@ -124,7 +124,7 @@ echo '{
   "jsonrpc":"2.0",
   "method":"launchSession",
   "params":{
-    "prompt":"test prompt",
+    "query":"test query",
     "mcp_config":{
       "mcpServers":{
         "approvals":{

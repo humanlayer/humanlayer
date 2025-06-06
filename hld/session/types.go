@@ -40,7 +40,7 @@ type Info struct {
 	StartTime time.Time             `json:"start_time"`
 	EndTime   *time.Time            `json:"end_time,omitempty"`
 	Error     string                `json:"error,omitempty"`
-	Prompt    string                `json:"prompt"`
+	Query     string                `json:"query"`
 	Model     string                `json:"model,omitempty"`
 	Result    *claudecode.Result    `json:"result,omitempty"`
 }

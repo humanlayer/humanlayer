@@ -30,7 +30,7 @@ func TestSQLiteStore(t *testing.T) {
 		session := &Session{
 			ID:               "test-session-1",
 			RunID:            "test-run-1",
-			Prompt:           "Test prompt",
+			Query:            "Test query",
 			Model:            "sonnet",
 			Status:           SessionStatusStarting,
 			CreatedAt:        time.Now(),
@@ -45,7 +45,7 @@ func TestSQLiteStore(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, session.ID, retrieved.ID)
 		require.Equal(t, session.RunID, retrieved.RunID)
-		require.Equal(t, session.Prompt, retrieved.Prompt)
+		require.Equal(t, session.Query, retrieved.Query)
 		require.Equal(t, session.Model, retrieved.Model)
 		require.Equal(t, session.Status, retrieved.Status)
 	})
@@ -53,12 +53,12 @@ func TestSQLiteStore(t *testing.T) {
 	t.Run("UpdateSession", func(t *testing.T) {
 		sessionID := "test-session-1"
 		status := SessionStatusRunning
-		
+
 		update := SessionUpdate{
 			ClaudeSessionID: &claudeSessionID,
 			Status:          &status,
 		}
-		
+
 		err := store.UpdateSession(ctx, sessionID, update)
 		require.NoError(t, err)
 
@@ -129,7 +129,7 @@ func TestSQLiteStore(t *testing.T) {
 
 	t.Run("MCPServers", func(t *testing.T) {
 		sessionID := "test-session-1"
-		
+
 		// Create MCP servers from config
 		mcpConfig := map[string]claudecode.MCPServer{
 			"test-server": {
@@ -169,13 +169,13 @@ func TestSQLiteStore(t *testing.T) {
 		// First, let's verify the tool call exists
 		conv, err := store.GetConversation(ctx, claudeSessionID)
 		require.NoError(t, err)
-		
+
 		// Find the calculate tool call
 		var foundToolCall bool
 		for _, event := range conv {
 			if event.EventType == EventTypeToolCall && event.ToolName == "calculate" {
 				foundToolCall = true
-				t.Logf("Found tool call: ID=%d, SessionID=%s, EventType=%s, ToolName=%s, ApprovalStatus='%s', ApprovalID='%s'", 
+				t.Logf("Found tool call: ID=%d, SessionID=%s, EventType=%s, ToolName=%s, ApprovalStatus='%s', ApprovalID='%s'",
 					event.ID, event.SessionID, event.EventType, event.ToolName, event.ApprovalStatus, event.ApprovalID)
 			}
 		}
@@ -188,10 +188,10 @@ func TestSQLiteStore(t *testing.T) {
 		// Check if the correlation worked by looking at the conversation again
 		conv2, err := store.GetConversation(ctx, claudeSessionID)
 		require.NoError(t, err)
-		
+
 		for _, event := range conv2 {
 			if event.EventType == EventTypeToolCall && event.ToolName == "calculate" {
-				t.Logf("After correlation: ID=%d, ApprovalStatus=%s, ApprovalID=%s", 
+				t.Logf("After correlation: ID=%d, ApprovalStatus=%s, ApprovalID=%s",
 					event.ID, event.ApprovalStatus, event.ApprovalID)
 			}
 		}
@@ -199,12 +199,12 @@ func TestSQLiteStore(t *testing.T) {
 		// Check the conversation shows the pending approval
 		conv3, err := store.GetConversation(ctx, claudeSessionID)
 		require.NoError(t, err)
-		
+
 		var pendingCount int
 		for _, event := range conv3 {
 			if event.ApprovalStatus == ApprovalStatusPending {
 				pendingCount++
-				t.Logf("Pending approval found in conversation: ToolName=%s, ApprovalID=%s", 
+				t.Logf("Pending approval found in conversation: ToolName=%s, ApprovalID=%s",
 					event.ToolName, event.ApprovalID)
 			}
 		}
@@ -233,7 +233,7 @@ func TestSQLiteStore(t *testing.T) {
 		// Verify in conversation that it's marked as completed
 		conv, err := store.GetConversation(ctx, claudeSessionID)
 		require.NoError(t, err)
-		
+
 		for _, event := range conv {
 			if event.EventType == EventTypeToolCall && event.ToolName == "calculate" {
 				require.True(t, event.IsCompleted, "Tool call should be marked as completed")
@@ -248,7 +248,7 @@ func TestSQLiteStore(t *testing.T) {
 		session2 := &Session{
 			ID:             "test-session-2",
 			RunID:          "test-run-2",
-			Prompt:         "Another test",
+			Query:          "Another test",
 			Status:         SessionStatusRunning,
 			CreatedAt:      time.Now(),
 			LastActivityAt: time.Now(),

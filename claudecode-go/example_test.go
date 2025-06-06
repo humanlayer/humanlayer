@@ -16,7 +16,7 @@ func ExampleClient_LaunchAndWait() {
 
 	// Simple text output
 	result, err := client.LaunchAndWait(claudecode.SessionConfig{
-		Prompt:       "Write a hello world function in Go",
+		Query:        "Write a hello world function in Go",
 		OutputFormat: claudecode.OutputText,
 	})
 	if err != nil {
@@ -35,7 +35,7 @@ func ExampleClient_Launch_streaming() {
 
 	// Launch with streaming JSON
 	session, err := client.Launch(claudecode.SessionConfig{
-		Prompt:       "Build a REST API",
+		Query:        "Build a REST API",
 		Model:        claudecode.ModelSonnet,
 		OutputFormat: claudecode.OutputStreamJSON,
 		MaxTurns:     5,
@@ -93,7 +93,7 @@ func ExampleClient_Launch_withMCP() {
 
 	// Launch with MCP and approvals
 	session, err := client.Launch(claudecode.SessionConfig{
-		Prompt:               "Delete all files in /tmp",
+		Query:                "Delete all files in /tmp",
 		OutputFormat:         claudecode.OutputStreamJSON,
 		MCPConfig:            mcpConfig,
 		PermissionPromptTool: "mcp__approvals__request_permission",
@@ -126,7 +126,7 @@ func ExampleSessionConfig_resume() {
 	// Resume a previous session
 	result, err := client.LaunchAndWait(claudecode.SessionConfig{
 		SessionID:    "550e8400-e29b-41d4-a716-446655440000",
-		Prompt:       "Add error handling to the previous code",
+		Query:        "Add error handling to the previous code",
 		OutputFormat: claudecode.OutputJSON,
 	})
 	if err != nil {

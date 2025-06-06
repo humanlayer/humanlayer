@@ -361,7 +361,7 @@ func fetchSessionApprovals(daemonClient client.Client, sessionID string) tea.Cmd
 				// Add session info if available
 				if sessionInfo != nil {
 					req.SessionID = sessionInfo.ID
-					req.SessionPrompt = truncate(sessionInfo.Prompt, 50)
+					req.SessionPrompt = truncate(sessionInfo.Query, 50)
 					req.SessionModel = sessionInfo.Model
 					if req.SessionModel == "" {
 						req.SessionModel = "default"
@@ -389,7 +389,7 @@ func fetchSessionApprovals(daemonClient client.Client, sessionID string) tea.Cmd
 				// Add session info if available
 				if sessionInfo != nil {
 					req.SessionID = sessionInfo.ID
-					req.SessionPrompt = truncate(sessionInfo.Prompt, 50)
+					req.SessionPrompt = truncate(sessionInfo.Query, 50)
 					req.SessionModel = sessionInfo.Model
 					if req.SessionModel == "" {
 						req.SessionModel = "default"
@@ -477,7 +477,7 @@ func fetchRequests(daemonClient client.Client) tea.Cmd {
 				// Enrich with session info if available
 				if sess, ok := sessionsByRunID[fc.RunID]; ok {
 					req.SessionID = sess.ID
-					req.SessionPrompt = truncate(sess.Prompt, 50)
+					req.SessionPrompt = truncate(sess.Query, 50)
 					req.SessionModel = sess.Model
 					if req.SessionModel == "" {
 						req.SessionModel = "default"
@@ -505,7 +505,7 @@ func fetchRequests(daemonClient client.Client) tea.Cmd {
 				// Enrich with session info if available
 				if sess, ok := sessionsByRunID[hc.RunID]; ok {
 					req.SessionID = sess.ID
-					req.SessionPrompt = truncate(sess.Prompt, 50)
+					req.SessionPrompt = truncate(sess.Query, 50)
 					req.SessionModel = sess.Model
 					if req.SessionModel == "" {
 						req.SessionModel = "default"
@@ -1373,7 +1373,7 @@ func (m model) sessionsListViewRender() string {
 			}
 
 			// Format prompt preview
-			promptPreview := truncate(sess.Prompt, 30)
+			promptPreview := truncate(sess.Query, 30)
 
 			line := fmt.Sprintf("%s %s %s  %-7s  %-5s  %s",
 				cursor,
@@ -1665,7 +1665,7 @@ func (m model) sessionDetailViewRender() string {
 	contentLines = append(contentLines, "")
 
 	// Wrap long prompt lines
-	promptLines := strings.Split(sess.Prompt, "\n")
+	promptLines := strings.Split(sess.Query, "\n")
 	for _, line := range promptLines {
 		wrapped := wrapText(line, m.width-4)
 		for _, wl := range wrapped {
@@ -2269,7 +2269,7 @@ func (m model) launchSession() tea.Cmd {
 
 		// Build launch request
 		req := rpc.LaunchSessionRequest{
-			Prompt:     m.launchPromptInput.Value(),
+			Query:      m.launchPromptInput.Value(),
 			Model:      modelName,
 			WorkingDir: m.launchWorkingDir.Value(),
 		}

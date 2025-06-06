@@ -4,7 +4,7 @@ import { homedir } from 'os'
 import { join } from 'path'
 
 interface LaunchOptions {
-  prompt?: string
+  query?: string
   model?: string
   workingDir?: string
   maxTurns?: number
@@ -13,7 +13,7 @@ interface LaunchOptions {
   approvals?: boolean
 }
 
-export const launchCommand = async (prompt: string, options: LaunchOptions = {}) => {
+export const launchCommand = async (query: string, options: LaunchOptions = {}) => {
   try {
     // Get socket path from configuration
     const config = resolveFullConfig(options)
@@ -25,7 +25,7 @@ export const launchCommand = async (prompt: string, options: LaunchOptions = {})
     }
 
     console.log('Launching Claude Code session...')
-    console.log('Prompt:', prompt)
+    console.log('Query:', query)
     if (options.model) console.log('Model:', options.model)
     console.log('Working directory:', options.workingDir || process.cwd())
     console.log('Approvals enabled:', options.approvals !== false)
@@ -49,7 +49,7 @@ export const launchCommand = async (prompt: string, options: LaunchOptions = {})
 
       // Launch the session
       const result = await client.launchSession({
-        prompt: prompt,
+        query: query,
         model: options.model,
         working_dir: options.workingDir || process.cwd(),
         max_turns: options.maxTurns,
