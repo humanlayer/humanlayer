@@ -187,7 +187,7 @@ func TestSessionLifecycle(t *testing.T) {
 				mockStore.EXPECT().UpdateSession(gomock.Any(), "test-session-1", gomock.Any()).Return(nil)
 			},
 			test: func(t *testing.T) {
-				manager.updateSessionStatus("test-session-1", StatusCompleted, "")
+				manager.updateSessionStatus(context.Background(), "test-session-1", StatusCompleted, "")
 
 				session, _ := manager.GetSession("test-session-1")
 				if session.Status != StatusCompleted {
@@ -206,7 +206,7 @@ func TestSessionLifecycle(t *testing.T) {
 				mockStore.EXPECT().UpdateSession(gomock.Any(), "test-session-2", gomock.Any()).Return(nil)
 			},
 			test: func(t *testing.T) {
-				manager.updateSessionStatus("test-session-2", StatusFailed, "test error")
+				manager.updateSessionStatus(context.Background(), "test-session-2", StatusFailed, "test error")
 
 				session, _ := manager.GetSession("test-session-2")
 				if session.Status != StatusFailed {
@@ -321,9 +321,9 @@ func TestConcurrentSessionAccess(t *testing.T) {
 					for j := 0; j < 10; j++ {
 						sessionID := fmt.Sprintf("session-%d", j)
 						if i%2 == 0 {
-							manager.updateSessionStatus(sessionID, StatusCompleted, "")
+							manager.updateSessionStatus(context.Background(), sessionID, StatusCompleted, "")
 						} else {
-							manager.updateSessionStatus(sessionID, StatusFailed, "test error")
+							manager.updateSessionStatus(context.Background(), sessionID, StatusFailed, "test error")
 						}
 					}
 				}
@@ -352,7 +352,7 @@ func TestConcurrentSessionAccess(t *testing.T) {
 						_ = manager.ListSessions()
 					} else {
 						sessionID := fmt.Sprintf("session-%d", i%10)
-						manager.updateSessionStatus(sessionID, StatusRunning, "")
+						manager.updateSessionStatus(context.Background(), sessionID, StatusRunning, "")
 					}
 				}
 			},

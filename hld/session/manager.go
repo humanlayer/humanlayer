@@ -103,7 +103,7 @@ func (m *Manager) LaunchSession(ctx context.Context, config claudecode.SessionCo
 	// Launch Claude session
 	claudeSession, err := m.client.Launch(config)
 	if err != nil {
-		m.updateSessionStatus(sessionID, StatusFailed, err.Error())
+		m.updateSessionStatus(ctx, sessionID, StatusFailed, err.Error())
 		return nil, fmt.Errorf("failed to launch Claude session: %w", err)
 	}
 
@@ -113,6 +113,18 @@ func (m *Manager) LaunchSession(ctx context.Context, config claudecode.SessionCo
 	oldStatus := session.Status
 	session.Status = StatusRunning
 	m.mu.Unlock()
+
+	// Update database with running status
+	statusRunning := string(StatusRunning)
+	now := time.Now()
+	update := store.SessionUpdate{
+		Status:         &statusRunning,
+		LastActivityAt: &now,
+	}
+	if err := m.store.UpdateSession(ctx, sessionID, update); err != nil {
+		slog.Error("failed to update session status to running", "error", err)
+		// Continue anyway - in-memory state is updated
+	}
 
 	// Publish status change event
 	if m.eventBus != nil && oldStatus != StatusRunning {
@@ -185,15 +197,32 @@ func (m *Manager) monitorSession(ctx context.Context, session *Session) {
 
 	endTime := time.Now()
 	if err != nil {
-		m.updateSessionStatus(session.ID, StatusFailed, err.Error())
+		m.updateSessionStatus(ctx, session.ID, StatusFailed, err.Error())
 	} else if result != nil && result.IsError {
-		m.updateSessionStatus(session.ID, StatusFailed, result.Error)
+		m.updateSessionStatus(ctx, session.ID, StatusFailed, result.Error)
 	} else {
 		m.mu.Lock()
 		session.Status = StatusCompleted
 		session.EndTime = &endTime
 		session.Result = result
 		m.mu.Unlock()
+
+		// Update database with completion status
+		statusCompleted := string(StatusCompleted)
+		update := store.SessionUpdate{
+			Status:      &statusCompleted,
+			CompletedAt: &endTime,
+		}
+		if result != nil {
+			if result.CostUSD > 0 {
+				update.CostUSD = &result.CostUSD
+			}
+			duration := int(endTime.Sub(session.StartTime).Milliseconds())
+			update.DurationMS = &duration
+		}
+		if err := m.store.UpdateSession(ctx, session.ID, update); err != nil {
+			slog.Error("failed to update session completion in database", "error", err)
+		}
 
 		// Publish status change event
 		if m.eventBus != nil {
@@ -216,7 +245,7 @@ func (m *Manager) monitorSession(ctx context.Context, session *Session) {
 }
 
 // updateSessionStatus updates the status of a session
-func (m *Manager) updateSessionStatus(sessionID string, status Status, errorMsg string) {
+func (m *Manager) updateSessionStatus(ctx context.Context, sessionID string, status Status, errorMsg string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -232,7 +261,6 @@ func (m *Manager) updateSessionStatus(sessionID string, status Status, errorMsg 
 		}
 
 		// Update database
-		ctx := context.Background()
 		dbStatus := string(status)
 		update := store.SessionUpdate{
 			Status: &dbStatus,
