@@ -163,8 +163,8 @@ var keys = keyMap{
 		key.WithHelp("3", "history tab"),
 	),
 	Launch: key.NewBinding(
-		key.WithKeys("l"),
-		key.WithHelp("l", "launch session"),
+		key.WithKeys("c"),
+		key.WithHelp("c", "create session"),
 	),
 	Help: key.NewBinding(
 		key.WithKeys("?", "f1"),
@@ -563,7 +563,7 @@ func (m model) renderHelpView() string {
 	actionKeys := []struct{ key, desc string }{
 		{"y", "Approve (in approvals)"},
 		{"n", "Deny/respond"},
-		{"l", "Launch session (in sessions)"},
+		{"c", "Create session (in sessions)"},
 		{"r", "Refresh current view"},
 		{"?/F1", "Show this help"},
 		{"q", "Quit (from list view)"},

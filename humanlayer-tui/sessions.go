@@ -337,7 +337,7 @@ func (sm *sessionModel) renderListView(m *model) string {
 	instructionStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("243")).
 		Italic(true)
-	s.WriteString(instructionStyle.Render("Press [l] to launch new session, [enter] to view details"))
+	s.WriteString(instructionStyle.Render("Press [c] to create new session, [enter] to view details"))
 
 	return s.String()
 }
