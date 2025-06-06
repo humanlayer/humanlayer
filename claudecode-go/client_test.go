@@ -21,7 +21,7 @@ func TestClient_LaunchAndWait(t *testing.T) {
 		{
 			name: "text output",
 			config: claudecode.SessionConfig{
-				Prompt:       "Say exactly: test",
+				Query:        "Say exactly: test",
 				OutputFormat: claudecode.OutputText,
 			},
 			check: func(t *testing.T, result *claudecode.Result, err error) {
@@ -39,7 +39,7 @@ func TestClient_LaunchAndWait(t *testing.T) {
 		{
 			name: "json output",
 			config: claudecode.SessionConfig{
-				Prompt:       "What is 1+1?",
+				Query:        "What is 1+1?",
 				OutputFormat: claudecode.OutputJSON,
 				Model:        claudecode.ModelSonnet,
 			},
@@ -75,7 +75,7 @@ func TestClient_LaunchStreaming(t *testing.T) {
 	}
 
 	session, err := client.Launch(claudecode.SessionConfig{
-		Prompt:       "Count to 2",
+		Query:        "Count to 2",
 		OutputFormat: claudecode.OutputStreamJSON,
 		Model:        claudecode.ModelSonnet,
 	})
