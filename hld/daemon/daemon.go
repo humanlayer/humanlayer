@@ -14,6 +14,7 @@ import (
 	"github.com/humanlayer/humanlayer/hld/config"
 	"github.com/humanlayer/humanlayer/hld/rpc"
 	"github.com/humanlayer/humanlayer/hld/session"
+	"github.com/humanlayer/humanlayer/hld/store"
 )
 
 const (
@@ -30,6 +31,7 @@ type Daemon struct {
 	sessions   session.SessionManager
 	approvals  approval.Manager
 	eventBus   bus.EventBus
+	store      store.ConversationStore
 	mu         sync.Mutex
 }
 
@@ -72,9 +74,16 @@ func New() (*Daemon, error) {
 	// Create event bus
 	eventBus := bus.NewEventBus()
 
-	// Create session manager
-	sessionManager, err := session.NewManager(eventBus)
+	// Initialize SQLite store
+	conversationStore, err := store.NewSQLiteStore(cfg.DatabasePath)
 	if err != nil {
+		return nil, fmt.Errorf("failed to create SQLite store: %w", err)
+	}
+
+	// Create session manager with store
+	sessionManager, err := session.NewManager(eventBus, conversationStore)
+	if err != nil {
+		conversationStore.Close()
 		return nil, fmt.Errorf("failed to create session manager: %w", err)
 	}
 
@@ -102,6 +111,7 @@ func New() (*Daemon, error) {
 		sessions:   sessionManager,
 		approvals:  approvalManager,
 		eventBus:   eventBus,
+		store:      conversationStore,
 	}, nil
 }
 
@@ -120,11 +130,14 @@ func (d *Daemon) Run(ctx context.Context) error {
 		return fmt.Errorf("failed to set socket permissions: %w", err)
 	}
 
-	// Ensure socket is cleaned up on exit
+	// Ensure cleanup on exit
 	defer func() {
 		listener.Close()
 		os.Remove(d.socketPath)
-		slog.Info("cleaned up socket", "path", d.socketPath)
+		if d.store != nil {
+			d.store.Close()
+		}
+		slog.Info("cleaned up resources", "path", d.socketPath)
 	}()
 
 	// Create and start RPC server

@@ -13,6 +13,9 @@ type Config struct {
 	// Socket configuration
 	SocketPath string `mapstructure:"socket_path"`
 
+	// Database configuration
+	DatabasePath string `mapstructure:"database_path"`
+
 	// API configuration (for future phases)
 	APIKey     string `mapstructure:"api_key"`
 	APIBaseURL string `mapstructure:"api_base_url"`
@@ -40,12 +43,14 @@ func Load() (*Config, error) {
 
 	// Map environment variables to config keys
 	_ = v.BindEnv("socket_path", "HUMANLAYER_DAEMON_SOCKET")
+	_ = v.BindEnv("database_path", "HUMANLAYER_DATABASE_PATH")
 	_ = v.BindEnv("api_key", "HUMANLAYER_API_KEY")
 	_ = v.BindEnv("api_base_url", "HUMANLAYER_API_BASE_URL", "HUMANLAYER_API_BASE")
 	_ = v.BindEnv("log_level", "HUMANLAYER_LOG_LEVEL")
 
 	// Set defaults
 	v.SetDefault("socket_path", "~/.humanlayer/daemon.sock")
+	v.SetDefault("database_path", "~/.humanlayer/daemon.db")
 	v.SetDefault("api_base_url", "https://api.humanlayer.dev/humanlayer/v1")
 	v.SetDefault("log_level", "info")
 
@@ -62,8 +67,9 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("error unmarshaling config: %w", err)
 	}
 
-	// Expand home directory in socket path
+	// Expand home directory in paths
 	config.SocketPath = expandHome(config.SocketPath)
+	config.DatabasePath = expandHome(config.DatabasePath)
 
 	return &config, nil
 }

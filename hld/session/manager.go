@@ -2,12 +2,14 @@ package session
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"sync"
 	"time"
 
 	"github.com/humanlayer/humanlayer/hld/bus"
+	"github.com/humanlayer/humanlayer/hld/store"
 	claudecode "github.com/humanlayer/humanlayer/claudecode-go"
 	"github.com/google/uuid"
 )
@@ -18,13 +20,18 @@ type Manager struct {
 	mu       sync.RWMutex
 	client   *claudecode.Client
 	eventBus bus.EventBus
+	store    store.ConversationStore
 }
 
 // Compile-time check that Manager implements SessionManager
 var _ SessionManager = (*Manager)(nil)
 
-// NewManager creates a new session manager
-func NewManager(eventBus bus.EventBus) (*Manager, error) {
+// NewManager creates a new session manager with required store
+func NewManager(eventBus bus.EventBus, store store.ConversationStore) (*Manager, error) {
+	if store == nil {
+		return nil, fmt.Errorf("store is required")
+	}
+
 	client, err := claudecode.NewClient()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Claude client: %w", err)
@@ -34,6 +41,7 @@ func NewManager(eventBus bus.EventBus) (*Manager, error) {
 		sessions: make(map[string]*Session),
 		client:   client,
 		eventBus: eventBus,
+		store:    store,
 	}, nil
 }
 
@@ -71,7 +79,23 @@ func (m *Manager) LaunchSession(ctx context.Context, config claudecode.SessionCo
 		Config:    config,
 	}
 
-	// Store session
+	// Store session in database
+	dbSession := store.NewSessionFromConfig(sessionID, runID, config)
+	if err := m.store.CreateSession(ctx, dbSession); err != nil {
+		return nil, fmt.Errorf("failed to store session in database: %w", err)
+	}
+
+	// Store MCP servers if configured
+	if config.MCPConfig != nil && len(config.MCPConfig.MCPServers) > 0 {
+		servers, err := store.MCPServersFromConfig(sessionID, config.MCPConfig.MCPServers)
+		if err != nil {
+			slog.Error("failed to convert MCP servers", "error", err)
+		} else if err := m.store.StoreMCPServers(ctx, sessionID, servers); err != nil {
+			slog.Error("failed to store MCP servers", "error", err)
+		}
+	}
+
+	// Store session in memory
 	m.mu.Lock()
 	m.sessions[sessionID] = session
 	m.mu.Unlock()
@@ -120,6 +144,17 @@ func (m *Manager) monitorSession(ctx context.Context, session *Session) {
 	// Get the session ID from the Claude session once available
 	var claudeSessionID string
 	for event := range session.claude.Events {
+		// Store raw event for debugging
+		eventJSON, err := json.Marshal(event)
+		if err != nil {
+			slog.Error("failed to marshal event", "error", err)
+		} else {
+			if err := m.store.StoreRawEvent(ctx, session.ID, string(eventJSON)); err != nil {
+				slog.Debug("failed to store raw event", "error", err)
+			}
+		}
+
+		// Capture Claude session ID
 		if event.SessionID != "" && claudeSessionID == "" {
 			claudeSessionID = event.SessionID
 			// Update our session with Claude's session ID for resume capability
@@ -129,8 +164,20 @@ func (m *Manager) monitorSession(ctx context.Context, session *Session) {
 			slog.Debug("captured Claude session ID",
 				"session_id", session.ID,
 				"claude_session_id", claudeSessionID)
+
+			// Update database
+			update := store.SessionUpdate{
+				ClaudeSessionID: &claudeSessionID,
+			}
+			if err := m.store.UpdateSession(ctx, session.ID, update); err != nil {
+				slog.Error("failed to update session in database", "error", err)
+			}
 		}
-		// Could store events for later retrieval if needed
+
+		// Process and store event
+		if err := m.processStreamEvent(ctx, session, claudeSessionID, event); err != nil {
+			slog.Error("failed to process stream event", "error", err)
+		}
 	}
 
 	// Wait for session to complete
@@ -182,6 +229,23 @@ func (m *Manager) updateSessionStatus(sessionID string, status Status, errorMsg 
 		if status == StatusCompleted || status == StatusFailed {
 			now := time.Now()
 			session.EndTime = &now
+		}
+
+		// Update database
+		ctx := context.Background()
+		dbStatus := string(status)
+		update := store.SessionUpdate{
+			Status: &dbStatus,
+		}
+		if errorMsg != "" {
+			update.ErrorMessage = &errorMsg
+		}
+		if status == StatusCompleted || status == StatusFailed {
+			now := time.Now()
+			update.CompletedAt = &now
+		}
+		if err := m.store.UpdateSession(ctx, sessionID, update); err != nil {
+			slog.Error("failed to update session status in database", "error", err)
 		}
 
 		// Publish event if status changed
@@ -273,4 +337,115 @@ func (m *Manager) ListSessionInfo() []Info {
 	}
 
 	return infos
+}
+
+// processStreamEvent processes a streaming event and stores it in the database
+func (m *Manager) processStreamEvent(ctx context.Context, session *Session, claudeSessionID string, event claudecode.StreamEvent) error {
+	// Skip events without claude session ID
+	if claudeSessionID == "" {
+		return nil
+	}
+
+	switch event.Type {
+	case "system":
+		// System events (session created, tools available, etc)
+		if event.Subtype == "session_created" {
+			// Store system event
+			convEvent := &store.ConversationEvent{
+				SessionID:       session.ID,
+				ClaudeSessionID: claudeSessionID,
+				EventType:       store.EventTypeSystem,
+				Role:            "system",
+				Content:         fmt.Sprintf("Session created with ID: %s", event.SessionID),
+			}
+			return m.store.AddConversationEvent(ctx, convEvent)
+		}
+		// Other system events can be added as needed
+
+	case "assistant", "user":
+		// Messages contain the actual content
+		if event.Message != nil {
+			// Process each content block
+			for _, content := range event.Message.Content {
+				switch content.Type {
+				case "text":
+					// Text message
+					convEvent := &store.ConversationEvent{
+						SessionID:       session.ID,
+						ClaudeSessionID: claudeSessionID,
+						EventType:       store.EventTypeMessage,
+						Role:            event.Message.Role,
+						Content:         content.Text,
+					}
+					if err := m.store.AddConversationEvent(ctx, convEvent); err != nil {
+						return err
+					}
+
+				case "tool_use":
+					// Tool call
+					inputJSON, err := json.Marshal(content.Input)
+					if err != nil {
+						return fmt.Errorf("failed to marshal tool input: %w", err)
+					}
+
+					convEvent := &store.ConversationEvent{
+						SessionID:       session.ID,
+						ClaudeSessionID: claudeSessionID,
+						EventType:       store.EventTypeToolCall,
+						ToolID:          content.ID,
+						ToolName:        content.Name,
+						ToolInputJSON:   string(inputJSON),
+						// We don't know yet if this needs approval - that comes from HumanLayer API
+					}
+					if err := m.store.AddConversationEvent(ctx, convEvent); err != nil {
+						return err
+					}
+
+				case "tool_result":
+					// Tool result (in user message)
+					convEvent := &store.ConversationEvent{
+						SessionID:         session.ID,
+						ClaudeSessionID:   claudeSessionID,
+						EventType:         store.EventTypeToolResult,
+						Role:              "user",
+						ToolResultForID:   content.ToolUseID,
+						ToolResultContent: content.Content,
+					}
+					if err := m.store.AddConversationEvent(ctx, convEvent); err != nil {
+						return err
+					}
+
+					// Mark the corresponding tool call as completed
+					if err := m.store.MarkToolCallCompleted(ctx, content.ToolUseID, session.ID); err != nil {
+						slog.Error("failed to mark tool call as completed",
+							"tool_id", content.ToolUseID,
+							"session_id", session.ID,
+							"error", err)
+						// Continue anyway - this is not fatal
+					}
+				}
+			}
+		}
+
+	case "result":
+		// Session completion
+		status := store.SessionStatusCompleted
+		if event.IsError {
+			status = store.SessionStatusFailed
+		}
+
+		update := store.SessionUpdate{
+			Status:      &status,
+			CompletedAt: &[]time.Time{time.Now()}[0],
+			CostUSD:     &event.CostUSD,
+			DurationMS:  &event.DurationMS,
+		}
+		if event.Error != "" {
+			update.ErrorMessage = &event.Error
+		}
+
+		return m.store.UpdateSession(ctx, session.ID, update)
+	}
+
+	return nil
 }
