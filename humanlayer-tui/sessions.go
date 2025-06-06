@@ -24,20 +24,20 @@ type sessionModel struct {
 	sessionDetailScroll int
 
 	// For launch session view
-	launchPromptInput textinput.Model
+	launchQueryInput  textinput.Model
 	launchModelSelect int // 0=default, 1=opus, 2=sonnet
 	launchWorkingDir  textinput.Model
-	launchActiveField int // 0=prompt, 1=model, 2=workingDir
+	launchActiveField int // 0=query, 1=model, 2=workingDir
 }
 
 // newSessionModel creates a new session model with default state
 func newSessionModel() sessionModel {
 	// Create launch session inputs
-	promptInput := textinput.New()
-	promptInput.Placeholder = "Enter prompt for Claude..."
-	promptInput.CharLimit = 1000
-	promptInput.Width = 60
-	promptInput.Focus()
+	queryInput := textinput.New()
+	queryInput.Placeholder = "Enter query for Claude..."
+	queryInput.CharLimit = 1000
+	queryInput.Width = 60
+	queryInput.Focus()
 
 	workingDirInput := textinput.New()
 	workingDirInput.Placeholder = "Working directory (optional)"
@@ -48,10 +48,10 @@ func newSessionModel() sessionModel {
 		sessions:          []session.Info{},
 		cursor:            0,
 		viewState:         listView,
-		launchPromptInput: promptInput,
+		launchQueryInput:  queryInput,
 		launchWorkingDir:  workingDirInput,
 		launchModelSelect: 0, // default
-		launchActiveField: 0, // prompt field
+		launchActiveField: 0, // query field
 	}
 }
 
@@ -92,7 +92,7 @@ func (sm *sessionModel) Update(msg tea.Msg, m *model) tea.Cmd {
 			return nil
 		}
 		// Clear form and go back to list
-		sm.launchPromptInput.Reset()
+		sm.launchQueryInput.Reset()
 		sm.launchWorkingDir.Reset()
 		sm.launchModelSelect = 0
 		sm.launchActiveField = 0
@@ -137,7 +137,7 @@ func (sm *sessionModel) updateListView(msg tea.KeyMsg, m *model) tea.Cmd {
 	case key.Matches(msg, keys.Launch):
 		// Open launch session view
 		sm.viewState = launchSessionView
-		sm.launchPromptInput.Focus()
+		sm.launchQueryInput.Focus()
 
 	case key.Matches(msg, keys.Refresh):
 		return fetchSessions(m.daemonClient)
@@ -190,12 +190,12 @@ func (sm *sessionModel) updateLaunchSessionView(msg tea.KeyMsg, m *model) tea.Cm
 		}
 
 		// Update focus
-		sm.launchPromptInput.Blur()
+		sm.launchQueryInput.Blur()
 		sm.launchWorkingDir.Blur()
 
 		switch sm.launchActiveField {
 		case 0:
-			sm.launchPromptInput.Focus()
+			sm.launchQueryInput.Focus()
 		case 2:
 			sm.launchWorkingDir.Focus()
 		}
@@ -206,12 +206,12 @@ func (sm *sessionModel) updateLaunchSessionView(msg tea.KeyMsg, m *model) tea.Cm
 			// If on model select, just move to next field
 			sm.launchActiveField = 2
 			sm.launchWorkingDir.Focus()
-		} else if sm.launchPromptInput.Value() != "" {
+		} else if sm.launchQueryInput.Value() != "" {
 			// Launch the session
-			prompt := sm.launchPromptInput.Value()
+			query := sm.launchQueryInput.Value()
 			model := []string{"", "claude-3-opus-20240229", "claude-3-5-sonnet-20241022"}[sm.launchModelSelect]
 			workingDir := sm.launchWorkingDir.Value()
-			return launchSession(m.daemonClient, prompt, model, workingDir)
+			return launchSession(m.daemonClient, query, model, workingDir)
 		}
 
 	case key.Matches(msg, keys.Left), key.Matches(msg, keys.Right):
@@ -229,7 +229,7 @@ func (sm *sessionModel) updateLaunchSessionView(msg tea.KeyMsg, m *model) tea.Cm
 		var cmd tea.Cmd
 		switch sm.launchActiveField {
 		case 0:
-			sm.launchPromptInput, cmd = sm.launchPromptInput.Update(msg)
+			sm.launchQueryInput, cmd = sm.launchQueryInput.Update(msg)
 		case 2:
 			sm.launchWorkingDir, cmd = sm.launchWorkingDir.Update(msg)
 		}
@@ -315,11 +315,11 @@ func (sm *sessionModel) renderListView(m *model) string {
 			}
 		}
 
-		// Prompt preview
-		promptPreview := truncate(sess.Prompt, 40)
+		// Query preview
+		queryPreview := truncate(sess.Query, 40)
 
 		// Build the item
-		item := fmt.Sprintf("%s %s [%s] %s %s", statusIcon, sessionID, modelName, duration, promptPreview)
+		item := fmt.Sprintf("%s %s [%s] %s %s", statusIcon, sessionID, modelName, duration, queryPreview)
 
 		// Apply styling
 		itemStyle := lipgloss.NewStyle().Padding(0, 2)
@@ -418,15 +418,15 @@ func (sm *sessionModel) renderSessionDetailView(m *model) string {
 
 	content.WriteString("\n")
 
-	// Prompt
-	promptStyle := lipgloss.NewStyle().
+	// Query
+	queryStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("252")).
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color("237")).
 		Padding(1, 2)
 
-	content.WriteString(labelStyle.Render("Prompt:") + "\n")
-	content.WriteString(promptStyle.Render(sess.Prompt) + "\n\n")
+	content.WriteString(labelStyle.Render("Query:") + "\n")
+	content.WriteString(queryStyle.Render(sess.Query) + "\n\n")
 
 	// Approvals for this session
 	if len(sm.sessionApprovals) > 0 {
@@ -526,15 +526,15 @@ func (sm *sessionModel) renderLaunchSessionView(m *model) string {
 		Foreground(lipgloss.Color("205")).
 		Bold(true)
 
-	// Prompt field
-	promptLabel := "Prompt:"
+	// Query field
+	queryLabel := "Query:"
 	if sm.launchActiveField == 0 {
-		promptLabel = activeStyle.Render(promptLabel)
+		queryLabel = activeStyle.Render(queryLabel)
 	} else {
-		promptLabel = labelStyle.Render(promptLabel)
+		queryLabel = labelStyle.Render(queryLabel)
 	}
-	s.WriteString(promptLabel + "\n")
-	s.WriteString(sm.launchPromptInput.View() + "\n\n")
+	s.WriteString(queryLabel + "\n")
+	s.WriteString(sm.launchQueryInput.View() + "\n\n")
 
 	// Model selection
 	modelLabel := "Model:"

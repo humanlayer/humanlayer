@@ -129,7 +129,7 @@ func fetchRequests(daemonClient client.Client) tea.Cmd {
 				// Enrich with session info if available
 				if sess, ok := sessionsByRunID[fc.RunID]; ok {
 					req.SessionID = sess.ID
-					req.SessionPrompt = truncate(sess.Prompt, 50)
+					req.SessionQuery = truncate(sess.Query, 50)
 					req.SessionModel = sess.Model
 					if req.SessionModel == "" {
 						req.SessionModel = "default"
@@ -157,7 +157,7 @@ func fetchRequests(daemonClient client.Client) tea.Cmd {
 				// Enrich with session info if available
 				if sess, ok := sessionsByRunID[hc.RunID]; ok {
 					req.SessionID = sess.ID
-					req.SessionPrompt = truncate(sess.Prompt, 50)
+					req.SessionQuery = truncate(sess.Query, 50)
 					req.SessionModel = sess.Model
 					if req.SessionModel == "" {
 						req.SessionModel = "default"
@@ -247,7 +247,7 @@ func fetchSessionApprovals(daemonClient client.Client, sessionID string) tea.Cmd
 				// Add session info if available
 				if sessionInfo != nil {
 					req.SessionID = sessionInfo.ID
-					req.SessionPrompt = truncate(sessionInfo.Prompt, 50)
+					req.SessionQuery = truncate(sessionInfo.Query, 50)
 					req.SessionModel = sessionInfo.Model
 					if req.SessionModel == "" {
 						req.SessionModel = "default"
@@ -275,7 +275,7 @@ func fetchSessionApprovals(daemonClient client.Client, sessionID string) tea.Cmd
 				// Add session info if available
 				if sessionInfo != nil {
 					req.SessionID = sessionInfo.ID
-					req.SessionPrompt = truncate(sessionInfo.Prompt, 50)
+					req.SessionQuery = truncate(sessionInfo.Query, 50)
 					req.SessionModel = sessionInfo.Model
 					if req.SessionModel == "" {
 						req.SessionModel = "default"
@@ -316,10 +316,10 @@ func listenForEvents(eventChan <-chan rpc.EventNotification) tea.Cmd {
 	}
 }
 
-func launchSession(daemonClient client.Client, prompt, model, workingDir string) tea.Cmd {
+func launchSession(daemonClient client.Client, query, model, workingDir string) tea.Cmd {
 	return func() tea.Msg {
 		req := rpc.LaunchSessionRequest{
-			Prompt:     prompt,
+			Query:      query,
 			Model:      model,
 			WorkingDir: workingDir,
 		}

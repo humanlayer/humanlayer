@@ -32,9 +32,9 @@ func main() {
         log.Fatal(err)
     }
 
-    // Run a simple prompt
+    // Run a simple query
     result, err := client.LaunchAndWait(claudecode.SessionConfig{
-        Prompt: "Write a hello world function in Go",
+        Query: "Write a hello world function in Go",
     })
     if err != nil {
         log.Fatal(err)
@@ -49,7 +49,7 @@ func main() {
 ```go
 // Launch with streaming output
 session, err := client.Launch(claudecode.SessionConfig{
-    Prompt:       "Build a REST API",
+    Query:        "Build a REST API",
     Model:        claudecode.ModelSonnet,
     OutputFormat: claudecode.OutputStreamJSON,
 })
@@ -80,7 +80,7 @@ mcpConfig := &claudecode.MCPConfig{
 
 // Launch with approval handling
 session, err := client.Launch(claudecode.SessionConfig{
-    Prompt:               "Deploy to production",
+    Query:                "Deploy to production",
     MCPConfig:            mcpConfig,
     PermissionPromptTool: "mcp__approvals__request_permission",
     AllowedTools:         []string{"mcp__approvals__*"},
@@ -106,7 +106,7 @@ session, err := client.Launch(claudecode.SessionConfig{
 ```go
 type SessionConfig struct {
     // Core
-    Prompt    string
+    Query     string
     SessionID string // Resume existing session
 
     // Model

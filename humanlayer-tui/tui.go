@@ -35,9 +35,9 @@ type Request struct {
 	CreatedAt  time.Time
 	AgentName  string
 	// Session context
-	SessionID     string
-	SessionPrompt string // First 50 chars of prompt
-	SessionModel  string
+	SessionID    string
+	SessionQuery string // First 50 chars of query
+	SessionModel string
 }
 
 // View states

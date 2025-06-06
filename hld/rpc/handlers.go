@@ -23,7 +23,7 @@ func NewSessionHandlers(manager session.SessionManager) *SessionHandlers {
 
 // LaunchSessionRequest is the request for launching a new session
 type LaunchSessionRequest struct {
-	Prompt               string                `json:"prompt"`
+	Query                string                `json:"query"`
 	Model                string                `json:"model,omitempty"`
 	MCPConfig            *claudecode.MCPConfig `json:"mcp_config,omitempty"`
 	PermissionPromptTool string                `json:"permission_prompt_tool,omitempty"`
@@ -51,13 +51,13 @@ func (h *SessionHandlers) HandleLaunchSession(ctx context.Context, params json.R
 	}
 
 	// Validate required fields
-	if req.Prompt == "" {
-		return nil, fmt.Errorf("prompt is required")
+	if req.Query == "" {
+		return nil, fmt.Errorf("query is required")
 	}
 
 	// Build session config
 	config := claudecode.SessionConfig{
-		Prompt:               req.Prompt,
+		Query:                req.Query,
 		MCPConfig:            req.MCPConfig,
 		PermissionPromptTool: req.PermissionPromptTool,
 		WorkingDir:           req.WorkingDir,

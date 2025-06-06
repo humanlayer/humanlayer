@@ -299,7 +299,7 @@ func (am *approvalModel) renderListView(m *model) string {
 				Bold(true).
 				Padding(0, 1)
 
-			header := fmt.Sprintf("Session: %s", group.requests[0].SessionPrompt)
+			header := fmt.Sprintf("Session: %s", group.requests[0].SessionQuery)
 			if group.sessionModel != "" && group.sessionModel != "default" {
 				header += fmt.Sprintf(" (%s)", group.sessionModel)
 			}
@@ -382,7 +382,7 @@ func (am *approvalModel) renderDetailView(m *model) string {
 	s.WriteString(labelStyle.Render("Agent:") + valueStyle.Render(req.AgentName) + "\n")
 
 	if req.SessionID != "" {
-		sessionInfo := req.SessionPrompt
+		sessionInfo := req.SessionQuery
 		if req.SessionModel != "" && req.SessionModel != "default" {
 			sessionInfo += fmt.Sprintf(" (%s)", req.SessionModel)
 		}

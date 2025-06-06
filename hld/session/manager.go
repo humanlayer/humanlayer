@@ -109,7 +109,7 @@ func (m *Manager) LaunchSession(ctx context.Context, config claudecode.SessionCo
 	slog.Info("launched Claude session",
 		"session_id", sessionID,
 		"run_id", runID,
-		"prompt", config.Prompt,
+		"query", config.Query,
 		"permission_prompt_tool", config.PermissionPromptTool)
 
 	return session, nil
@@ -244,7 +244,7 @@ func (m *Manager) GetSessionInfo(sessionID string) (*Info, error) {
 		StartTime: session.StartTime,
 		EndTime:   session.EndTime,
 		Error:     session.Error,
-		Prompt:    session.Config.Prompt,
+		Query:     session.Config.Query,
 		Model:     string(session.Config.Model),
 		Result:    session.Result,
 	}, nil
@@ -265,7 +265,7 @@ func (m *Manager) ListSessionInfo() []Info {
 			StartTime: session.StartTime,
 			EndTime:   session.EndTime,
 			Error:     session.Error,
-			Prompt:    session.Config.Prompt,
+			Query:     session.Config.Query,
 			Model:     string(session.Config.Model),
 			Result:    session.Result,
 		}
