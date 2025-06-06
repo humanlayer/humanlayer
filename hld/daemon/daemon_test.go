@@ -177,7 +177,7 @@ func TestDaemonConcurrentConnections(t *testing.T) {
 				done <- false
 				return
 			}
-			defer conn.Close()
+			defer func() { _ = conn.Close() }()
 
 			// Send request
 			request := map[string]interface{}{
@@ -264,7 +264,7 @@ func TestIntegrationRPCRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to connect to daemon: %v", err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Send health check request
 	request := map[string]interface{}{

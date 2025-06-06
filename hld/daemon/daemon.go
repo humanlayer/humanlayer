@@ -7,7 +7,6 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"sync"
 
 	"github.com/humanlayer/humanlayer/hld/approval"
 	"github.com/humanlayer/humanlayer/hld/bus"
@@ -32,7 +31,6 @@ type Daemon struct {
 	approvals  approval.Manager
 	eventBus   bus.EventBus
 	store      store.ConversationStore
-	mu         sync.Mutex
 }
 
 // New creates a new daemon instance
@@ -80,7 +78,7 @@ func New() (*Daemon, error) {
 		return nil, fmt.Errorf("failed to create SQLite store: %w", err)
 	}
 
-	// Create session manager with store
+	// Create session manager with store and config
 	sessionManager, err := session.NewManager(eventBus, conversationStore)
 	if err != nil {
 		_ = conversationStore.Close()
@@ -132,10 +130,16 @@ func (d *Daemon) Run(ctx context.Context) error {
 
 	// Ensure cleanup on exit
 	defer func() {
-		_ = listener.Close()
-		_ = os.Remove(d.socketPath)
+		if err := listener.Close(); err != nil {
+			slog.Warn("failed to close listener", "error", err)
+		}
+		if err := os.Remove(d.socketPath); err != nil {
+			slog.Warn("failed to remove socket file", "path", d.socketPath, "error", err)
+		}
 		if d.store != nil {
-			_ = d.store.Close()
+			if err := d.store.Close(); err != nil {
+				slog.Warn("failed to close store", "error", err)
+			}
 		}
 		slog.Info("cleaned up resources", "path", d.socketPath)
 	}()
@@ -151,12 +155,12 @@ func (d *Daemon) Run(ctx context.Context) error {
 	sessionHandlers := rpc.NewSessionHandlers(d.sessions)
 	sessionHandlers.Register(d.rpcServer)
 
-	// Register approval handlers if approval manager is available
-	if d.approvals != nil {
-		approvalHandlers := rpc.NewApprovalHandlers(d.approvals, d.sessions)
-		approvalHandlers.Register(d.rpcServer)
+	// Always register approval handlers (even without API key)
+	approvalHandlers := rpc.NewApprovalHandlers(d.approvals, d.sessions)
+	approvalHandlers.Register(d.rpcServer)
 
-		// Start approval polling
+	// Start approval polling if approval manager is available
+	if d.approvals != nil {
 		if err := d.approvals.Start(ctx); err != nil {
 			_ = listener.Close()
 			return fmt.Errorf("failed to start approval poller: %w", err)
@@ -177,7 +181,9 @@ func (d *Daemon) Run(ctx context.Context) error {
 	<-ctx.Done()
 
 	// Close listener to stop accepting new connections
-	listener.Close()
+	if err := listener.Close(); err != nil {
+		slog.Warn("error closing listener during shutdown", "error", err)
+	}
 
 	return nil
 }
