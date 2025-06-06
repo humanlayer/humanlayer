@@ -35,7 +35,7 @@ jobs:
         run: uv sync --all-extras --dev
 
       - name: Install ts deps
-        run: npm -C humanlayer-ts install && npm -C hlyr install
+        run: npm -C humanlayer-ts install && npm -C hlyr install && npm -C humanlayer-ts-vercel-ai-sdk install
 
       - uses: actions/setup-go@v5
         with:
