@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	claudecode "github.com/humanlayer/humanlayer/claudecode-go"
 	"github.com/humanlayer/humanlayer/hld/session"
@@ -162,7 +163,7 @@ func (h *SessionHandlers) HandleGetConversation(ctx context.Context, params json
 			ClaudeSessionID:   event.ClaudeSessionID,
 			Sequence:          event.Sequence,
 			EventType:         event.EventType,
-			CreatedAt:         event.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			CreatedAt:         event.CreatedAt.Format(time.RFC3339),
 			Role:              event.Role,
 			Content:           event.Content,
 			ToolID:            event.ToolID,
@@ -208,14 +209,14 @@ func (h *SessionHandlers) HandleGetSessionState(ctx context.Context, params json
 		Query:           session.Query,
 		Model:           session.Model,
 		WorkingDir:      session.WorkingDir,
-		CreatedAt:       session.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-		LastActivityAt:  session.LastActivityAt.Format("2006-01-02T15:04:05Z07:00"),
+		CreatedAt:       session.CreatedAt.Format(time.RFC3339),
+		LastActivityAt:  session.LastActivityAt.Format(time.RFC3339),
 		ErrorMessage:    session.ErrorMessage,
 	}
 
 	// Set optional fields
 	if session.CompletedAt != nil {
-		state.CompletedAt = session.CompletedAt.Format("2006-01-02T15:04:05Z07:00")
+		state.CompletedAt = session.CompletedAt.Format(time.RFC3339)
 	}
 	if session.CostUSD != nil {
 		state.CostUSD = *session.CostUSD
