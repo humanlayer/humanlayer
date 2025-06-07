@@ -60,7 +60,7 @@ func New() (*Daemon, error) {
 		conn, err := net.Dial("unix", socketPath)
 		if err == nil {
 			_ = conn.Close()
-			return nil, fmt.Errorf("daemon already running at %s: %w", socketPath, ErrDaemonAlreadyRunning)
+			return nil, fmt.Errorf("%w at %s", ErrDaemonAlreadyRunning, socketPath)
 		}
 		// Socket exists but can't connect, remove stale socket
 		slog.Info("removing stale socket file", "path", socketPath)
