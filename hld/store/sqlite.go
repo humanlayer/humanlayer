@@ -20,10 +20,12 @@ type SQLiteStore struct {
 
 // NewSQLiteStore creates a new SQLite-backed store
 func NewSQLiteStore(dbPath string) (*SQLiteStore, error) {
-	// Ensure directory exists
-	dbDir := filepath.Dir(dbPath)
-	if err := os.MkdirAll(dbDir, 0700); err != nil {
-		return nil, fmt.Errorf("failed to create database directory: %w", err)
+	// Ensure directory exists (skip for in-memory databases)
+	if dbPath != ":memory:" {
+		dbDir := filepath.Dir(dbPath)
+		if err := os.MkdirAll(dbDir, 0700); err != nil {
+			return nil, fmt.Errorf("failed to create database directory: %w", err)
+		}
 	}
 
 	// Open database
