@@ -3,9 +3,11 @@ package approval
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/humanlayer/humanlayer/hld/bus"
+	"github.com/humanlayer/humanlayer/hld/store"
 	humanlayer "github.com/humanlayer/humanlayer/humanlayer-go"
 )
 
@@ -20,14 +22,15 @@ type Config struct {
 
 // DefaultManager is the default implementation of Manager
 type DefaultManager struct {
-	Client   APIClient
-	Store    Store
-	Poller   *Poller
-	EventBus bus.EventBus
+	Client            APIClient
+	Store             Store
+	Poller            *Poller
+	EventBus          bus.EventBus
+	ConversationStore store.ConversationStore
 }
 
 // NewManager creates a new approval manager
-func NewManager(cfg Config, eventBus bus.EventBus) (Manager, error) {
+func NewManager(cfg Config, eventBus bus.EventBus, conversationStore store.ConversationStore) (Manager, error) {
 	// Set defaults
 	if cfg.PollInterval <= 0 {
 		cfg.PollInterval = 5 * time.Second
@@ -58,15 +61,16 @@ func NewManager(cfg Config, eventBus bus.EventBus) (Manager, error) {
 	store := NewMemoryStore()
 
 	// Create poller with configured interval
-	poller := NewPoller(client, store, cfg.PollInterval, eventBus)
+	poller := NewPoller(client, store, conversationStore, cfg.PollInterval, eventBus)
 	poller.maxBackoff = cfg.MaxBackoff
 	poller.backoffFactor = cfg.BackoffFactor
 
 	return &DefaultManager{
-		Client:   client,
-		Store:    store,
-		Poller:   poller,
-		EventBus: eventBus,
+		Client:            client,
+		Store:             store,
+		Poller:            poller,
+		EventBus:          eventBus,
+		ConversationStore: conversationStore,
 	}, nil
 }
 
@@ -82,10 +86,16 @@ func (m *DefaultManager) Stop() {
 
 // GetPendingApprovals returns all pending approvals, optionally filtered by session
 func (m *DefaultManager) GetPendingApprovals(sessionID string) ([]PendingApproval, error) {
-	if sessionID != "" {
-		// In the future, we'll need to look up the run_id for this session
-		// For now, return empty since we don't have session->run_id mapping yet
-		return []PendingApproval{}, nil
+	if sessionID != "" && m.ConversationStore != nil {
+		// Look up the session to get its run_id
+		ctx := context.Background()
+		session, err := m.ConversationStore.GetSession(ctx, sessionID)
+		if err != nil {
+			slog.Debug("session not found for approval filter", "session_id", sessionID, "error", err)
+			return []PendingApproval{}, nil
+		}
+		// Get approvals by run_id
+		return m.Store.GetPendingByRunID(session.RunID)
 	}
 	return m.Store.GetAllPending()
 }
@@ -113,9 +123,45 @@ func (m *DefaultManager) ApproveFunctionCall(ctx context.Context, callID string,
 		return fmt.Errorf("failed to update local state: %w", err)
 	}
 
+	// Get the function call to access run_id
+	fc, _ := m.Store.GetFunctionCall(callID)
+
+	// Update approval status in database if we have a conversation store
+	if m.ConversationStore != nil && fc != nil {
+		if err := m.ConversationStore.UpdateApprovalStatus(ctx, callID, store.ApprovalStatusApproved); err != nil {
+			slog.Error("failed to update approval status in database", "error", err)
+			// Don't fail the whole operation for this
+		}
+
+		// Update session status back to running since approval is resolved
+		if fc.RunID != "" {
+			// Look up the session by run_id
+			sessions, err := m.ConversationStore.ListSessions(ctx)
+			if err == nil {
+				for _, session := range sessions {
+					if session.RunID == fc.RunID && session.Status == store.SessionStatusWaitingInput {
+						runningStatus := store.SessionStatusRunning
+						update := store.SessionUpdate{
+							Status: &runningStatus,
+						}
+						if err := m.ConversationStore.UpdateSession(ctx, session.ID, update); err != nil {
+							slog.Error("failed to update session status to running",
+								"session_id", session.ID,
+								"error", err)
+						} else {
+							slog.Info("updated session status back to running after approval",
+								"session_id", session.ID,
+								"approval_id", callID)
+						}
+						break
+					}
+				}
+			}
+		}
+	}
+
 	// Publish event
-	if m.EventBus != nil {
-		fc, _ := m.Store.GetFunctionCall(callID)
+	if m.EventBus != nil && fc != nil {
 		m.EventBus.Publish(bus.Event{
 			Type: bus.EventApprovalResolved,
 			Data: map[string]interface{}{
@@ -134,7 +180,7 @@ func (m *DefaultManager) ApproveFunctionCall(ctx context.Context, callID string,
 // DenyFunctionCall denies a function call
 func (m *DefaultManager) DenyFunctionCall(ctx context.Context, callID string, reason string) error {
 	// First check if we have this function call
-	_, err := m.Store.GetFunctionCall(callID)
+	fc, err := m.Store.GetFunctionCall(callID)
 	if err != nil {
 		return fmt.Errorf("function call not found: %w", err)
 	}
@@ -149,9 +195,42 @@ func (m *DefaultManager) DenyFunctionCall(ctx context.Context, callID string, re
 		return fmt.Errorf("failed to update local state: %w", err)
 	}
 
+	// Update approval status in database if we have a conversation store
+	if m.ConversationStore != nil && fc != nil {
+		if err := m.ConversationStore.UpdateApprovalStatus(ctx, callID, store.ApprovalStatusDenied); err != nil {
+			slog.Error("failed to update approval status in database", "error", err)
+			// Don't fail the whole operation for this
+		}
+
+		// Update session status back to running since approval is resolved (denied)
+		if fc.RunID != "" {
+			// Look up the session by run_id
+			sessions, err := m.ConversationStore.ListSessions(ctx)
+			if err == nil {
+				for _, session := range sessions {
+					if session.RunID == fc.RunID && session.Status == store.SessionStatusWaitingInput {
+						runningStatus := store.SessionStatusRunning
+						update := store.SessionUpdate{
+							Status: &runningStatus,
+						}
+						if err := m.ConversationStore.UpdateSession(ctx, session.ID, update); err != nil {
+							slog.Error("failed to update session status to running",
+								"session_id", session.ID,
+								"error", err)
+						} else {
+							slog.Info("updated session status back to running after denial",
+								"session_id", session.ID,
+								"approval_id", callID)
+						}
+						break
+					}
+				}
+			}
+		}
+	}
+
 	// Publish event
-	if m.EventBus != nil {
-		fc, _ := m.Store.GetFunctionCall(callID)
+	if m.EventBus != nil && fc != nil {
 		m.EventBus.Publish(bus.Event{
 			Type: bus.EventApprovalResolved,
 			Data: map[string]interface{}{

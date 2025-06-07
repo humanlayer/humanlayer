@@ -134,7 +134,7 @@ func TestPoller_StartStop(t *testing.T) {
 	mockClient.EXPECT().GetPendingFunctionCalls(gomock.Any()).Return([]humanlayer.FunctionCall{}, nil).MinTimes(2)
 	mockClient.EXPECT().GetPendingHumanContacts(gomock.Any()).Return([]humanlayer.HumanContact{}, nil).MinTimes(2)
 
-	poller := NewPoller(mockClient, mockStore, 50*time.Millisecond, nil)
+	poller := NewPoller(mockClient, mockStore, nil, 50*time.Millisecond, nil)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

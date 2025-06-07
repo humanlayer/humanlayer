@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/humanlayer/humanlayer/hld/approval"
 	"github.com/humanlayer/humanlayer/hld/bus"
@@ -94,7 +95,7 @@ func New() (*Daemon, error) {
 			BaseURL: cfg.APIBaseURL,
 			// Use defaults for now, could add to daemon config later
 		}
-		approvalManager, err = approval.NewManager(approvalCfg, eventBus)
+		approvalManager, err = approval.NewManager(approvalCfg, eventBus, conversationStore)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create approval manager: %w", err)
 		}
@@ -146,6 +147,12 @@ func (d *Daemon) Run(ctx context.Context) error {
 
 	// Create and start RPC server
 	d.rpcServer = rpc.NewServer()
+
+	// Mark orphaned sessions as failed (from previous daemon run)
+	if err := d.markOrphanedSessionsAsFailed(ctx); err != nil {
+		slog.Warn("failed to mark orphaned sessions as failed", "error", err)
+		// Don't fail startup for this
+	}
 
 	// Register subscription handlers
 	subscriptionHandlers := rpc.NewSubscriptionHandlers(d.eventBus)
@@ -220,4 +227,50 @@ func (d *Daemon) handleConnection(ctx context.Context, conn net.Conn) {
 	}
 
 	slog.Debug("client disconnected", "remote", conn.RemoteAddr())
+}
+
+// markOrphanedSessionsAsFailed marks any sessions that were running or waiting
+// when the daemon restarted as failed
+func (d *Daemon) markOrphanedSessionsAsFailed(ctx context.Context) error {
+	if d.store == nil {
+		return nil
+	}
+
+	// Get all sessions from the database
+	sessions, err := d.store.ListSessions(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to list sessions: %w", err)
+	}
+
+	orphanedCount := 0
+	for _, session := range sessions {
+		// Mark running or waiting sessions as failed
+		if session.Status == store.SessionStatusRunning ||
+			session.Status == store.SessionStatusWaitingInput ||
+			session.Status == store.SessionStatusStarting {
+			failedStatus := store.SessionStatusFailed
+			errorMsg := "daemon restarted while session was active"
+			now := time.Now()
+			update := store.SessionUpdate{
+				Status:       &failedStatus,
+				CompletedAt:  &now,
+				ErrorMessage: &errorMsg,
+			}
+
+			if err := d.store.UpdateSession(ctx, session.ID, update); err != nil {
+				slog.Error("failed to mark orphaned session as failed",
+					"session_id", session.ID,
+					"error", err)
+				// Continue with other sessions
+			} else {
+				orphanedCount++
+			}
+		}
+	}
+
+	if orphanedCount > 0 {
+		slog.Info("marked orphaned sessions as failed", "count", orphanedCount)
+	}
+
+	return nil
 }

@@ -8,34 +8,38 @@ import (
 	"time"
 
 	"github.com/humanlayer/humanlayer/hld/bus"
+	"github.com/humanlayer/humanlayer/hld/store"
+	humanlayer "github.com/humanlayer/humanlayer/humanlayer-go"
 )
 
 // Poller polls the HumanLayer API for pending approvals
 type Poller struct {
-	client        APIClient
-	store         Store
-	eventBus      bus.EventBus
-	interval      time.Duration
-	maxBackoff    time.Duration
-	backoffFactor float64
-	mu            sync.Mutex
-	cancel        context.CancelFunc
-	failureCount  int
+	client            APIClient
+	store             Store
+	conversationStore store.ConversationStore
+	eventBus          bus.EventBus
+	interval          time.Duration
+	maxBackoff        time.Duration
+	backoffFactor     float64
+	mu                sync.Mutex
+	cancel            context.CancelFunc
+	failureCount      int
 }
 
 // NewPoller creates a new approval poller
-func NewPoller(client APIClient, store Store, interval time.Duration, eventBus bus.EventBus) *Poller {
+func NewPoller(client APIClient, store Store, conversationStore store.ConversationStore, interval time.Duration, eventBus bus.EventBus) *Poller {
 	if interval <= 0 {
 		interval = 5 * time.Second
 	}
 	return &Poller{
-		client:        client,
-		store:         store,
-		eventBus:      eventBus,
-		interval:      interval,
-		maxBackoff:    5 * time.Minute,
-		backoffFactor: 2.0,
-		failureCount:  0,
+		client:            client,
+		store:             store,
+		conversationStore: conversationStore,
+		eventBus:          eventBus,
+		interval:          interval,
+		maxBackoff:        5 * time.Minute,
+		backoffFactor:     2.0,
+		failureCount:      0,
 	}
 }
 
@@ -138,6 +142,11 @@ func (p *Poller) poll(ctx context.Context) {
 			if err := p.store.StoreFunctionCall(fc); err != nil {
 				slog.Error("failed to store function call", "call_id", fc.CallID, "error", err)
 			}
+
+			// Correlate with tool calls in the database
+			if p.conversationStore != nil && fc.RunID != "" {
+				p.correlateApproval(pollCtx, fc)
+			}
 		}
 		slog.Debug("fetched function calls", "count", len(functionCalls), "new", newCount)
 
@@ -225,4 +234,50 @@ func (p *Poller) calculateIntervalLocked() time.Duration {
 	}
 
 	return time.Duration(backoff)
+}
+
+// correlateApproval attempts to match an approval with a pending tool call
+func (p *Poller) correlateApproval(ctx context.Context, fc humanlayer.FunctionCall) {
+	// First check if we have any sessions with this run_id
+	// The GetPendingToolCall method will handle finding the right session
+	toolName := fc.Spec.Fn
+
+	// Try to find a pending tool call for this run_id and tool
+	// This will only return a tool call if we have a session with this run_id
+	toolCall, err := p.conversationStore.GetPendingToolCall(ctx, fc.RunID, toolName)
+	if err != nil || toolCall == nil {
+		// This is expected for approvals that aren't from our Claude sessions
+		slog.Debug("no matching session or pending tool call for approval",
+			"run_id", fc.RunID,
+			"tool_name", toolName,
+			"approval_id", fc.CallID)
+		return
+	}
+
+	// Found a matching tool call in one of our sessions - correlate it
+	if err := p.conversationStore.CorrelateApproval(ctx, toolCall.SessionID, toolName, fc.CallID); err != nil {
+		slog.Error("failed to correlate approval with tool call",
+			"approval_id", fc.CallID,
+			"session_id", toolCall.SessionID,
+			"tool_name", toolName,
+			"error", err)
+		return
+	}
+
+	slog.Info("correlated approval with tool call",
+		"approval_id", fc.CallID,
+		"session_id", toolCall.SessionID,
+		"tool_name", toolName,
+		"run_id", fc.RunID)
+
+	// Update session status to waiting_input
+	waitingStatus := store.SessionStatusWaitingInput
+	update := store.SessionUpdate{
+		Status: &waitingStatus,
+	}
+	if err := p.conversationStore.UpdateSession(ctx, toolCall.SessionID, update); err != nil {
+		slog.Error("failed to update session status to waiting_input",
+			"session_id", toolCall.SessionID,
+			"error", err)
+	}
 }
