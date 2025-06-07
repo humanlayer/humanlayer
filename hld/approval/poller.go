@@ -238,16 +238,37 @@ func (p *Poller) calculateIntervalLocked() time.Duration {
 
 // correlateApproval attempts to match an approval with a pending tool call
 func (p *Poller) correlateApproval(ctx context.Context, fc humanlayer.FunctionCall) {
-	// First check if we have any sessions with this run_id
-	// The GetPendingToolCall method will handle finding the right session
-	toolName := fc.Spec.Fn
+	// First find the session with this run_id
+	sessions, err := p.conversationStore.ListSessions(ctx)
+	if err != nil {
+		slog.Error("failed to list sessions for correlation",
+			"run_id", fc.RunID,
+			"error", err)
+		return
+	}
 
-	// Try to find a pending tool call for this run_id and tool
-	// This will only return a tool call if we have a session with this run_id
-	toolCall, err := p.conversationStore.GetPendingToolCall(ctx, fc.RunID, toolName)
-	if err != nil || toolCall == nil {
+	var sessionID string
+	for _, session := range sessions {
+		if session.RunID == fc.RunID {
+			sessionID = session.ID
+			break
+		}
+	}
+
+	if sessionID == "" {
 		// This is expected for approvals that aren't from our Claude sessions
-		slog.Debug("no matching session or pending tool call for approval",
+		slog.Debug("no matching session for approval",
+			"run_id", fc.RunID,
+			"approval_id", fc.CallID)
+		return
+	}
+
+	toolName := fc.Spec.Fn
+	// Try to find a pending tool call for this session and tool
+	toolCall, err := p.conversationStore.GetPendingToolCall(ctx, sessionID, toolName)
+	if err != nil || toolCall == nil {
+		slog.Debug("no matching pending tool call for approval",
+			"session_id", sessionID,
 			"run_id", fc.RunID,
 			"tool_name", toolName,
 			"approval_id", fc.CallID)
@@ -255,7 +276,7 @@ func (p *Poller) correlateApproval(ctx context.Context, fc humanlayer.FunctionCa
 	}
 
 	// Found a matching tool call in one of our sessions - correlate it
-	if err := p.conversationStore.CorrelateApproval(ctx, toolCall.SessionID, toolName, fc.CallID); err != nil {
+	if err := p.conversationStore.CorrelateApproval(ctx, sessionID, toolName, fc.CallID); err != nil {
 		slog.Error("failed to correlate approval with tool call",
 			"approval_id", fc.CallID,
 			"session_id", toolCall.SessionID,
