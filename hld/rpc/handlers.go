@@ -4,20 +4,24 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	claudecode "github.com/humanlayer/humanlayer/claudecode-go"
 	"github.com/humanlayer/humanlayer/hld/session"
+	"github.com/humanlayer/humanlayer/hld/store"
 )
 
 // SessionHandlers provides RPC handlers for session management
 type SessionHandlers struct {
 	manager session.SessionManager
+	store   store.ConversationStore
 }
 
 // NewSessionHandlers creates new session RPC handlers
-func NewSessionHandlers(manager session.SessionManager) *SessionHandlers {
+func NewSessionHandlers(manager session.SessionManager, store store.ConversationStore) *SessionHandlers {
 	return &SessionHandlers{
 		manager: manager,
+		store:   store,
 	}
 }
 
@@ -123,8 +127,116 @@ func (h *SessionHandlers) HandleListSessions(ctx context.Context, params json.Ra
 	}, nil
 }
 
+// HandleGetConversation handles the GetConversation RPC method
+func (h *SessionHandlers) HandleGetConversation(ctx context.Context, params json.RawMessage) (interface{}, error) {
+	var req GetConversationRequest
+	if err := json.Unmarshal(params, &req); err != nil {
+		return nil, fmt.Errorf("invalid request: %w", err)
+	}
+
+	// Validate that either SessionID or ClaudeSessionID is provided
+	if req.SessionID == "" && req.ClaudeSessionID == "" {
+		return nil, fmt.Errorf("either session_id or claude_session_id is required")
+	}
+
+	var events []*store.ConversationEvent
+	var err error
+
+	if req.ClaudeSessionID != "" {
+		// Get conversation by Claude session ID
+		events, err = h.store.GetConversation(ctx, req.ClaudeSessionID)
+	} else {
+		// Get conversation by session ID
+		events, err = h.store.GetSessionConversation(ctx, req.SessionID)
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to get conversation: %w", err)
+	}
+
+	// Convert store events to RPC events
+	rpcEvents := make([]ConversationEvent, len(events))
+	for i, event := range events {
+		rpcEvents[i] = ConversationEvent{
+			ID:                event.ID,
+			SessionID:         event.SessionID,
+			ClaudeSessionID:   event.ClaudeSessionID,
+			Sequence:          event.Sequence,
+			EventType:         event.EventType,
+			CreatedAt:         event.CreatedAt.Format(time.RFC3339),
+			Role:              event.Role,
+			Content:           event.Content,
+			ToolID:            event.ToolID,
+			ToolName:          event.ToolName,
+			ToolInputJSON:     event.ToolInputJSON,
+			ToolResultForID:   event.ToolResultForID,
+			ToolResultContent: event.ToolResultContent,
+			IsCompleted:       event.IsCompleted,
+			ApprovalStatus:    event.ApprovalStatus,
+			ApprovalID:        event.ApprovalID,
+		}
+	}
+
+	return &GetConversationResponse{
+		Events: rpcEvents,
+	}, nil
+}
+
+// HandleGetSessionState handles the GetSessionState RPC method
+func (h *SessionHandlers) HandleGetSessionState(ctx context.Context, params json.RawMessage) (interface{}, error) {
+	var req GetSessionStateRequest
+	if err := json.Unmarshal(params, &req); err != nil {
+		return nil, fmt.Errorf("invalid request: %w", err)
+	}
+
+	// Validate required fields
+	if req.SessionID == "" {
+		return nil, fmt.Errorf("session_id is required")
+	}
+
+	// Get session from store
+	session, err := h.store.GetSession(ctx, req.SessionID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get session: %w", err)
+	}
+
+	// Convert to RPC session state
+	state := SessionState{
+		ID:              session.ID,
+		RunID:           session.RunID,
+		ClaudeSessionID: session.ClaudeSessionID,
+		Status:          session.Status,
+		Query:           session.Query,
+		Model:           session.Model,
+		WorkingDir:      session.WorkingDir,
+		CreatedAt:       session.CreatedAt.Format(time.RFC3339),
+		LastActivityAt:  session.LastActivityAt.Format(time.RFC3339),
+		ErrorMessage:    session.ErrorMessage,
+	}
+
+	// Set optional fields
+	if session.CompletedAt != nil {
+		state.CompletedAt = session.CompletedAt.Format(time.RFC3339)
+	}
+	if session.CostUSD != nil {
+		state.CostUSD = *session.CostUSD
+	}
+	if session.TotalTokens != nil {
+		state.TotalTokens = *session.TotalTokens
+	}
+	if session.DurationMS != nil {
+		state.DurationMS = *session.DurationMS
+	}
+
+	return &GetSessionStateResponse{
+		Session: state,
+	}, nil
+}
+
 // Register registers all session handlers with the RPC server
 func (h *SessionHandlers) Register(server *Server) {
 	server.Register("launchSession", h.HandleLaunchSession)
 	server.Register("listSessions", h.HandleListSessions)
+	server.Register("getConversation", h.HandleGetConversation)
+	server.Register("getSessionState", h.HandleGetSessionState)
 }

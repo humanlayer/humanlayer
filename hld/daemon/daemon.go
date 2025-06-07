@@ -152,7 +152,7 @@ func (d *Daemon) Run(ctx context.Context) error {
 	d.rpcServer.SetSubscriptionHandlers(subscriptionHandlers)
 
 	// Register session handlers
-	sessionHandlers := rpc.NewSessionHandlers(d.sessions)
+	sessionHandlers := rpc.NewSessionHandlers(d.sessions, d.store)
 	sessionHandlers.Register(d.rpcServer)
 
 	// Always register approval handlers (even without API key)

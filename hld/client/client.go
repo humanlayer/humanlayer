@@ -286,6 +286,42 @@ func (c *client) SendDecision(callID, approvalType, decision, comment string) er
 	return nil
 }
 
+// GetConversation fetches the conversation history for a session
+func (c *client) GetConversation(sessionID string) (*rpc.GetConversationResponse, error) {
+	req := rpc.GetConversationRequest{
+		SessionID: sessionID,
+	}
+	var resp rpc.GetConversationResponse
+	if err := c.call("getConversation", req, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// GetConversationByClaudeSessionID fetches the conversation history by Claude session ID
+func (c *client) GetConversationByClaudeSessionID(claudeSessionID string) (*rpc.GetConversationResponse, error) {
+	req := rpc.GetConversationRequest{
+		ClaudeSessionID: claudeSessionID,
+	}
+	var resp rpc.GetConversationResponse
+	if err := c.call("getConversation", req, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// GetSessionState fetches the current state of a session
+func (c *client) GetSessionState(sessionID string) (*rpc.GetSessionStateResponse, error) {
+	req := rpc.GetSessionStateRequest{
+		SessionID: sessionID,
+	}
+	var resp rpc.GetSessionStateResponse
+	if err := c.call("getSessionState", req, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
 // Reconnect attempts to reconnect to the daemon
 func (c *client) Reconnect() error {
 	c.mu.Lock()
