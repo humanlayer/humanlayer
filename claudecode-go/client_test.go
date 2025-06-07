@@ -1,6 +1,7 @@
 package claudecode_test
 
 import (
+	"os"
 	"testing"
 	"time"
 
@@ -8,6 +9,10 @@ import (
 )
 
 func TestClient_LaunchAndWait(t *testing.T) {
+	if os.Getenv("ANTHROPIC_API_KEY") == "" {
+		t.Skip("ANTHROPIC_API_KEY not set")
+	}
+
 	client, err := claudecode.NewClient()
 	if err != nil {
 		t.Skip("claude binary not found in PATH")
@@ -69,6 +74,10 @@ func TestClient_LaunchAndWait(t *testing.T) {
 }
 
 func TestClient_LaunchStreaming(t *testing.T) {
+	if os.Getenv("ANTHROPIC_API_KEY") == "" {
+		t.Skip("ANTHROPIC_API_KEY not set")
+	}
+
 	client, err := claudecode.NewClient()
 	if err != nil {
 		t.Skip("claude binary not found in PATH")

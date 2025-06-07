@@ -1,0 +1,704 @@
+package store
+
+import (
+	"context"
+	"database/sql"
+	"encoding/json"
+	"fmt"
+	"log/slog"
+	"os"
+	"path/filepath"
+
+	claudecode "github.com/humanlayer/humanlayer/claudecode-go"
+	_ "github.com/mattn/go-sqlite3"
+)
+
+// SQLiteStore implements ConversationStore using SQLite
+type SQLiteStore struct {
+	db *sql.DB
+}
+
+// NewSQLiteStore creates a new SQLite-backed store
+func NewSQLiteStore(dbPath string) (*SQLiteStore, error) {
+	// Ensure directory exists
+	dbDir := filepath.Dir(dbPath)
+	if err := os.MkdirAll(dbDir, 0700); err != nil {
+		return nil, fmt.Errorf("failed to create database directory: %w", err)
+	}
+
+	// Open database
+	db, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open database: %w", err)
+	}
+
+	// Enable foreign keys and WAL mode for better concurrency
+	if _, err := db.Exec("PRAGMA foreign_keys = ON"); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("failed to enable foreign keys: %w", err)
+	}
+	if _, err := db.Exec("PRAGMA journal_mode = WAL"); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("failed to enable WAL mode: %w", err)
+	}
+
+	store := &SQLiteStore{db: db}
+
+	// Initialize schema
+	if err := store.initSchema(); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("failed to initialize schema: %w", err)
+	}
+
+	slog.Info("SQLite store initialized", "path", dbPath)
+	return store, nil
+}
+
+// initSchema creates the database schema if it doesn't exist
+func (s *SQLiteStore) initSchema() error {
+	schema := `
+	-- Sessions table (metadata and configuration)
+	CREATE TABLE IF NOT EXISTS sessions (
+		id TEXT PRIMARY KEY,
+		run_id TEXT NOT NULL UNIQUE,
+		claude_session_id TEXT,
+		parent_session_id TEXT,
+
+		-- Launch configuration
+		query TEXT NOT NULL,
+		model TEXT,
+		working_dir TEXT,
+		max_turns INTEGER,
+		system_prompt TEXT,
+		custom_instructions TEXT,
+
+		-- Runtime status
+		status TEXT NOT NULL DEFAULT 'starting',
+		created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		last_activity_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		completed_at TIMESTAMP,
+
+		-- Results
+		cost_usd REAL,
+		total_tokens INTEGER,
+		duration_ms INTEGER,
+		error_message TEXT
+	);
+	CREATE INDEX IF NOT EXISTS idx_sessions_claude ON sessions(claude_session_id);
+	CREATE INDEX IF NOT EXISTS idx_sessions_status ON sessions(status);
+	CREATE INDEX IF NOT EXISTS idx_sessions_run_id ON sessions(run_id);
+
+	-- Single conversation events table
+	CREATE TABLE IF NOT EXISTS conversation_events (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		session_id TEXT NOT NULL,
+		claude_session_id TEXT,
+		sequence INTEGER NOT NULL,
+		event_type TEXT NOT NULL,
+
+		-- Common fields
+		created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+		-- Message fields
+		role TEXT,
+		content TEXT,
+
+		-- Tool call fields
+		tool_id TEXT,
+		tool_name TEXT,
+		tool_input_json TEXT,
+
+		-- Tool result fields
+		tool_result_for_id TEXT,
+		tool_result_content TEXT,
+
+		-- Tool call completion and approval tracking
+		is_completed BOOLEAN DEFAULT FALSE,  -- TRUE when tool result received
+		approval_status TEXT,        -- NULL, 'pending', 'approved', 'denied'
+		approval_id TEXT,           -- HumanLayer approval ID when correlated
+
+		FOREIGN KEY (session_id) REFERENCES sessions(id)
+	);
+	CREATE INDEX IF NOT EXISTS idx_conversation_claude_session ON conversation_events(claude_session_id, sequence);
+	CREATE INDEX IF NOT EXISTS idx_conversation_session ON conversation_events(session_id, sequence);
+	CREATE INDEX IF NOT EXISTS idx_conversation_approval ON conversation_events(approval_id);
+	CREATE INDEX IF NOT EXISTS idx_conversation_pending_approvals
+		ON conversation_events(approval_status)
+		WHERE approval_status = 'pending';
+
+	-- MCP servers configuration
+	CREATE TABLE IF NOT EXISTS mcp_servers (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		session_id TEXT NOT NULL,
+		name TEXT NOT NULL,
+		command TEXT NOT NULL,
+		args_json TEXT,
+		env_json TEXT,
+
+		FOREIGN KEY (session_id) REFERENCES sessions(id)
+	);
+	CREATE INDEX IF NOT EXISTS idx_mcp_servers_session ON mcp_servers(session_id);
+
+	-- Raw events for debugging
+	CREATE TABLE IF NOT EXISTS raw_events (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		session_id TEXT NOT NULL,
+		event_json TEXT NOT NULL,
+		created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+		FOREIGN KEY (session_id) REFERENCES sessions(id)
+	);
+	CREATE INDEX IF NOT EXISTS idx_raw_events_session ON raw_events(session_id, created_at);
+
+	-- Schema versioning
+	CREATE TABLE IF NOT EXISTS schema_version (
+		version INTEGER PRIMARY KEY,
+		applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		description TEXT
+	);
+	`
+
+	if _, err := s.db.Exec(schema); err != nil {
+		return fmt.Errorf("failed to create schema: %w", err)
+	}
+
+	// Record schema version
+	_, err := s.db.Exec(`
+		INSERT OR IGNORE INTO schema_version (version, description)
+		VALUES (1, 'Initial schema with conversation events')
+	`)
+	return err
+}
+
+// Close closes the database connection
+func (s *SQLiteStore) Close() error {
+	return s.db.Close()
+}
+
+// CreateSession creates a new session
+func (s *SQLiteStore) CreateSession(ctx context.Context, session *Session) error {
+	query := `
+		INSERT INTO sessions (
+			id, run_id, claude_session_id, parent_session_id,
+			query, model, working_dir, max_turns, system_prompt, custom_instructions,
+			status, created_at, last_activity_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`
+
+	_, err := s.db.ExecContext(ctx, query,
+		session.ID, session.RunID, session.ClaudeSessionID, session.ParentSessionID,
+		session.Query, session.Model, session.WorkingDir, session.MaxTurns,
+		session.SystemPrompt, session.CustomInstructions,
+		session.Status, session.CreatedAt, session.LastActivityAt,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create session: %w", err)
+	}
+	return nil
+}
+
+// UpdateSession updates session fields
+func (s *SQLiteStore) UpdateSession(ctx context.Context, sessionID string, updates SessionUpdate) error {
+	query := `UPDATE sessions SET last_activity_at = CURRENT_TIMESTAMP`
+	args := []interface{}{}
+
+	if updates.ClaudeSessionID != nil {
+		query += ", claude_session_id = ?"
+		args = append(args, *updates.ClaudeSessionID)
+	}
+	if updates.Status != nil {
+		query += ", status = ?"
+		args = append(args, *updates.Status)
+	}
+	if updates.CompletedAt != nil {
+		query += ", completed_at = ?"
+		args = append(args, *updates.CompletedAt)
+	}
+	if updates.CostUSD != nil {
+		query += ", cost_usd = ?"
+		args = append(args, *updates.CostUSD)
+	}
+	if updates.TotalTokens != nil {
+		query += ", total_tokens = ?"
+		args = append(args, *updates.TotalTokens)
+	}
+	if updates.DurationMS != nil {
+		query += ", duration_ms = ?"
+		args = append(args, *updates.DurationMS)
+	}
+	if updates.ErrorMessage != nil {
+		query += ", error_message = ?"
+		args = append(args, *updates.ErrorMessage)
+	}
+
+	query += " WHERE id = ?"
+	args = append(args, sessionID)
+
+	result, err := s.db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return fmt.Errorf("failed to update session: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("session not found: %s", sessionID)
+	}
+
+	return nil
+}
+
+// GetSession retrieves a session by ID
+func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Session, error) {
+	query := `
+		SELECT id, run_id, claude_session_id, parent_session_id,
+			query, model, working_dir, max_turns, system_prompt, custom_instructions,
+			status, created_at, last_activity_at, completed_at,
+			cost_usd, total_tokens, duration_ms, error_message
+		FROM sessions WHERE id = ?
+	`
+
+	var session Session
+	var claudeSessionID, parentSessionID, model, workingDir, systemPrompt, customInstructions sql.NullString
+	var completedAt sql.NullTime
+	var costUSD sql.NullFloat64
+	var totalTokens, durationMS sql.NullInt64
+
+	var errorMessage sql.NullString
+	err := s.db.QueryRowContext(ctx, query, sessionID).Scan(
+		&session.ID, &session.RunID, &claudeSessionID, &parentSessionID,
+		&session.Query, &model, &workingDir, &session.MaxTurns,
+		&systemPrompt, &customInstructions,
+		&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
+		&costUSD, &totalTokens, &durationMS, &errorMessage,
+	)
+	if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("session not found: %s", sessionID)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get session: %w", err)
+	}
+
+	// Handle nullable fields
+	session.ClaudeSessionID = claudeSessionID.String
+	session.ParentSessionID = parentSessionID.String
+	session.Model = model.String
+	session.WorkingDir = workingDir.String
+	session.SystemPrompt = systemPrompt.String
+	session.CustomInstructions = customInstructions.String
+	session.ErrorMessage = errorMessage.String
+	if completedAt.Valid {
+		session.CompletedAt = &completedAt.Time
+	}
+	if costUSD.Valid {
+		session.CostUSD = &costUSD.Float64
+	}
+	if totalTokens.Valid {
+		tokens := int(totalTokens.Int64)
+		session.TotalTokens = &tokens
+	}
+	if durationMS.Valid {
+		duration := int(durationMS.Int64)
+		session.DurationMS = &duration
+	}
+
+	return &session, nil
+}
+
+// ListSessions retrieves all sessions
+func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
+	query := `
+		SELECT id, run_id, claude_session_id, parent_session_id,
+			query, model, working_dir, max_turns, system_prompt, custom_instructions,
+			status, created_at, last_activity_at, completed_at,
+			cost_usd, total_tokens, duration_ms, error_message
+		FROM sessions
+		ORDER BY created_at DESC
+	`
+
+	rows, err := s.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list sessions: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var sessions []*Session
+	for rows.Next() {
+		var session Session
+		var claudeSessionID, parentSessionID, model, workingDir, systemPrompt, customInstructions sql.NullString
+		var completedAt sql.NullTime
+		var costUSD sql.NullFloat64
+		var totalTokens, durationMS sql.NullInt64
+
+		var errorMessage sql.NullString
+		err := rows.Scan(
+			&session.ID, &session.RunID, &claudeSessionID, &parentSessionID,
+			&session.Query, &model, &workingDir, &session.MaxTurns,
+			&systemPrompt, &customInstructions,
+			&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
+			&costUSD, &totalTokens, &durationMS, &errorMessage,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan session: %w", err)
+		}
+
+		// Handle nullable fields
+		session.ClaudeSessionID = claudeSessionID.String
+		session.ParentSessionID = parentSessionID.String
+		session.Model = model.String
+		session.WorkingDir = workingDir.String
+		session.SystemPrompt = systemPrompt.String
+		session.CustomInstructions = customInstructions.String
+		session.ErrorMessage = errorMessage.String
+		if completedAt.Valid {
+			session.CompletedAt = &completedAt.Time
+		}
+		if costUSD.Valid {
+			session.CostUSD = &costUSD.Float64
+		}
+		if totalTokens.Valid {
+			tokens := int(totalTokens.Int64)
+			session.TotalTokens = &tokens
+		}
+		if durationMS.Valid {
+			duration := int(durationMS.Int64)
+			session.DurationMS = &duration
+		}
+
+		sessions = append(sessions, &session)
+	}
+
+	return sessions, nil
+}
+
+// AddConversationEvent adds a new conversation event
+func (s *SQLiteStore) AddConversationEvent(ctx context.Context, event *ConversationEvent) error {
+	// Use a transaction to avoid race conditions with sequence numbers
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	// Get next sequence number for this claude session within the transaction
+	var maxSeq sql.NullInt64
+	err = tx.QueryRowContext(ctx,
+		"SELECT MAX(sequence) FROM conversation_events WHERE claude_session_id = ?",
+		event.ClaudeSessionID,
+	).Scan(&maxSeq)
+	if err != nil && err != sql.ErrNoRows {
+		return fmt.Errorf("failed to get max sequence: %w", err)
+	}
+
+	event.Sequence = int(maxSeq.Int64) + 1
+
+	query := `
+		INSERT INTO conversation_events (
+			session_id, claude_session_id, sequence, event_type,
+			role, content,
+			tool_id, tool_name, tool_input_json,
+			tool_result_for_id, tool_result_content,
+			is_completed, approval_status, approval_id
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`
+
+	result, err := tx.ExecContext(ctx, query,
+		event.SessionID, event.ClaudeSessionID, event.Sequence, event.EventType,
+		event.Role, event.Content,
+		event.ToolID, event.ToolName, event.ToolInputJSON,
+		event.ToolResultForID, event.ToolResultContent,
+		event.IsCompleted, event.ApprovalStatus, event.ApprovalID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to add conversation event: %w", err)
+	}
+
+	id, err := result.LastInsertId()
+	if err == nil {
+		event.ID = id
+	}
+
+	return tx.Commit()
+}
+
+// GetConversation retrieves all events for a Claude session
+func (s *SQLiteStore) GetConversation(ctx context.Context, claudeSessionID string) ([]*ConversationEvent, error) {
+	query := `
+		SELECT id, session_id, claude_session_id, sequence, event_type, created_at,
+			role, content,
+			tool_id, tool_name, tool_input_json,
+			tool_result_for_id, tool_result_content,
+			is_completed, approval_status, approval_id
+		FROM conversation_events
+		WHERE claude_session_id = ?
+		ORDER BY sequence
+	`
+
+	rows, err := s.db.QueryContext(ctx, query, claudeSessionID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get conversation: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var events []*ConversationEvent
+	for rows.Next() {
+		event := &ConversationEvent{}
+		err := rows.Scan(
+			&event.ID, &event.SessionID, &event.ClaudeSessionID,
+			&event.Sequence, &event.EventType, &event.CreatedAt,
+			&event.Role, &event.Content,
+			&event.ToolID, &event.ToolName, &event.ToolInputJSON,
+			&event.ToolResultForID, &event.ToolResultContent,
+			&event.IsCompleted, &event.ApprovalStatus, &event.ApprovalID,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan event: %w", err)
+		}
+		events = append(events, event)
+	}
+
+	return events, nil
+}
+
+// GetSessionConversation retrieves all events for a session
+func (s *SQLiteStore) GetSessionConversation(ctx context.Context, sessionID string) ([]*ConversationEvent, error) {
+	// First get the claude_session_id for this session
+	var claudeSessionID sql.NullString
+	err := s.db.QueryRowContext(ctx,
+		"SELECT claude_session_id FROM sessions WHERE id = ?",
+		sessionID,
+	).Scan(&claudeSessionID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get session: %w", err)
+	}
+
+	if !claudeSessionID.Valid {
+		// No claude session yet, return empty
+		return []*ConversationEvent{}, nil
+	}
+
+	return s.GetConversation(ctx, claudeSessionID.String)
+}
+
+// GetPendingToolCall finds the most recent uncompleted tool call for a given session and tool name
+func (s *SQLiteStore) GetPendingToolCall(ctx context.Context, sessionID string, toolName string) (*ConversationEvent, error) {
+	query := `
+		SELECT id, session_id, claude_session_id, sequence, event_type, created_at,
+			role, content,
+			tool_id, tool_name, tool_input_json,
+			tool_result_for_id, tool_result_content,
+			is_completed, approval_status, approval_id
+		FROM conversation_events
+		WHERE tool_name = ?
+		  AND session_id = ?
+		  AND event_type = 'tool_call'
+		  AND is_completed = FALSE
+		ORDER BY created_at DESC
+		LIMIT 1
+	`
+
+	event := &ConversationEvent{}
+	err := s.db.QueryRowContext(ctx, query, toolName, sessionID).Scan(
+		&event.ID, &event.SessionID, &event.ClaudeSessionID,
+		&event.Sequence, &event.EventType, &event.CreatedAt,
+		&event.Role, &event.Content,
+		&event.ToolID, &event.ToolName, &event.ToolInputJSON,
+		&event.ToolResultForID, &event.ToolResultContent,
+		&event.IsCompleted, &event.ApprovalStatus, &event.ApprovalID,
+	)
+	if err == sql.ErrNoRows {
+		return nil, nil // No pending tool call found
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get pending tool call: %w", err)
+	}
+
+	return event, nil
+}
+
+// MarkToolCallCompleted marks a tool call as completed when its result is received
+func (s *SQLiteStore) MarkToolCallCompleted(ctx context.Context, toolID string, sessionID string) error {
+	query := `
+		UPDATE conversation_events
+		SET is_completed = TRUE
+		WHERE tool_id = ?
+		  AND session_id = ?
+		  AND event_type = 'tool_call'
+	`
+
+	result, err := s.db.ExecContext(ctx, query, toolID, sessionID)
+	if err != nil {
+		return fmt.Errorf("failed to mark tool call completed: %w", err)
+	}
+
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		slog.Debug("no matching tool call found to mark completed",
+			"tool_id", toolID,
+			"session_id", sessionID)
+	}
+
+	return nil
+}
+
+// CorrelateApproval correlates an approval with a tool call
+func (s *SQLiteStore) CorrelateApproval(ctx context.Context, sessionID string, toolName string, approvalID string) error {
+	// Find the pending tool call
+	toolCall, err := s.GetPendingToolCall(ctx, sessionID, toolName)
+	if err != nil {
+		return fmt.Errorf("failed to find pending tool call: %w", err)
+	}
+	if toolCall == nil {
+		slog.Debug("no matching tool call found for approval",
+			"session_id", sessionID,
+			"tool_name", toolName,
+			"approval_id", approvalID)
+		return nil // Not an error - approval might be for a different session
+	}
+
+	// Ensure it doesn't already have an approval
+	if toolCall.ApprovalStatus != "" {
+		slog.Warn("tool call already has approval status",
+			"tool_id", toolCall.ToolID,
+			"existing_status", toolCall.ApprovalStatus,
+			"approval_id", approvalID)
+		return nil
+	}
+
+	slog.Debug("found tool call to correlate",
+		"event_id", toolCall.ID,
+		"tool_id", toolCall.ToolID,
+		"session_id", sessionID,
+		"tool_name", toolName,
+		"approval_id", approvalID)
+
+	// Update the found event
+	updateQuery := `
+		UPDATE conversation_events
+		SET approval_status = 'pending', approval_id = ?
+		WHERE id = ?
+	`
+
+	result, err := s.db.ExecContext(ctx, updateQuery, approvalID, toolCall.ID)
+	if err != nil {
+		return fmt.Errorf("failed to correlate approval: %w", err)
+	}
+
+	rows, _ := result.RowsAffected()
+	slog.Info("updated tool call with approval",
+		"event_id", toolCall.ID,
+		"rows_affected", rows)
+
+	return nil
+}
+
+// UpdateApprovalStatus updates the status of an approval
+func (s *SQLiteStore) UpdateApprovalStatus(ctx context.Context, approvalID string, status string) error {
+	query := `
+		UPDATE conversation_events
+		SET approval_status = ?
+		WHERE approval_id = ?
+	`
+
+	_, err := s.db.ExecContext(ctx, query, status, approvalID)
+	if err != nil {
+		return fmt.Errorf("failed to update approval status: %w", err)
+	}
+	return nil
+}
+
+// StoreMCPServers stores MCP server configurations
+func (s *SQLiteStore) StoreMCPServers(ctx context.Context, sessionID string, servers []MCPServer) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	query := `
+		INSERT INTO mcp_servers (session_id, name, command, args_json, env_json)
+		VALUES (?, ?, ?, ?, ?)
+	`
+
+	for _, server := range servers {
+		_, err := tx.ExecContext(ctx, query,
+			sessionID, server.Name, server.Command, server.ArgsJSON, server.EnvJSON)
+		if err != nil {
+			return fmt.Errorf("failed to insert MCP server: %w", err)
+		}
+	}
+
+	return tx.Commit()
+}
+
+// GetMCPServers retrieves MCP servers for a session
+func (s *SQLiteStore) GetMCPServers(ctx context.Context, sessionID string) ([]MCPServer, error) {
+	query := `
+		SELECT id, session_id, name, command, args_json, env_json
+		FROM mcp_servers
+		WHERE session_id = ?
+	`
+
+	rows, err := s.db.QueryContext(ctx, query, sessionID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get MCP servers: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var servers []MCPServer
+	for rows.Next() {
+		var server MCPServer
+		err := rows.Scan(
+			&server.ID, &server.SessionID, &server.Name,
+			&server.Command, &server.ArgsJSON, &server.EnvJSON,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan MCP server: %w", err)
+		}
+		servers = append(servers, server)
+	}
+
+	return servers, nil
+}
+
+// StoreRawEvent stores a raw event for debugging
+func (s *SQLiteStore) StoreRawEvent(ctx context.Context, sessionID string, eventJSON string) error {
+	query := `
+		INSERT INTO raw_events (session_id, event_json)
+		VALUES (?, ?)
+	`
+
+	_, err := s.db.ExecContext(ctx, query, sessionID, eventJSON)
+	if err != nil {
+		return fmt.Errorf("failed to store raw event: %w", err)
+	}
+	return nil
+}
+
+// Helper function to convert MCP config to store format
+func MCPServersFromConfig(sessionID string, config map[string]claudecode.MCPServer) ([]MCPServer, error) {
+	servers := make([]MCPServer, 0, len(config))
+	for name, server := range config {
+		argsJSON, err := json.Marshal(server.Args)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal args: %w", err)
+		}
+
+		envJSON, err := json.Marshal(server.Env)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal env: %w", err)
+		}
+
+		servers = append(servers, MCPServer{
+			SessionID: sessionID,
+			Name:      name,
+			Command:   server.Command,
+			ArgsJSON:  string(argsJSON),
+			EnvJSON:   string(envJSON),
+		})
+	}
+	return servers, nil
+}

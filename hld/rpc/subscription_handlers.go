@@ -57,7 +57,7 @@ func (h *SubscriptionHandlers) HandleSubscribe(ctx context.Context, params json.
 
 	// This is a special handler that needs access to the connection
 	// We'll need to modify how this works to support long-polling
-	return nil, fmt.Errorf("Subscribe method requires special handling - use SubscribeConn instead")
+	return nil, fmt.Errorf("subscribe method requires special handling - use SubscribeConn instead")
 }
 
 // SubscribeConn handles a subscription connection with long-polling
@@ -126,7 +126,7 @@ func (h *SubscriptionHandlers) SubscribeConn(ctx context.Context, conn net.Conn,
 		// Try to read from connection - will fail when closed
 		buf := make([]byte, 1)
 		for {
-			conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+			_ = conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
 			_, err := conn.Read(buf)
 			if err != nil {
 				// Check if it's a timeout error (which is expected)

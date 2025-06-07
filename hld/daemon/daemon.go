@@ -7,13 +7,13 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"sync"
 
 	"github.com/humanlayer/humanlayer/hld/approval"
 	"github.com/humanlayer/humanlayer/hld/bus"
 	"github.com/humanlayer/humanlayer/hld/config"
 	"github.com/humanlayer/humanlayer/hld/rpc"
 	"github.com/humanlayer/humanlayer/hld/session"
+	"github.com/humanlayer/humanlayer/hld/store"
 )
 
 const (
@@ -30,7 +30,7 @@ type Daemon struct {
 	sessions   session.SessionManager
 	approvals  approval.Manager
 	eventBus   bus.EventBus
-	mu         sync.Mutex
+	store      store.ConversationStore
 }
 
 // New creates a new daemon instance
@@ -59,7 +59,7 @@ func New() (*Daemon, error) {
 		// Try to connect to see if it's alive
 		conn, err := net.Dial("unix", socketPath)
 		if err == nil {
-			conn.Close()
+			_ = conn.Close()
 			return nil, fmt.Errorf("%w at %s", ErrDaemonAlreadyRunning, socketPath)
 		}
 		// Socket exists but can't connect, remove stale socket
@@ -72,9 +72,16 @@ func New() (*Daemon, error) {
 	// Create event bus
 	eventBus := bus.NewEventBus()
 
-	// Create session manager
-	sessionManager, err := session.NewManager(eventBus)
+	// Initialize SQLite store
+	conversationStore, err := store.NewSQLiteStore(cfg.DatabasePath)
 	if err != nil {
+		return nil, fmt.Errorf("failed to create SQLite store: %w", err)
+	}
+
+	// Create session manager with store and config
+	sessionManager, err := session.NewManager(eventBus, conversationStore)
+	if err != nil {
+		_ = conversationStore.Close()
 		return nil, fmt.Errorf("failed to create session manager: %w", err)
 	}
 
@@ -102,6 +109,7 @@ func New() (*Daemon, error) {
 		sessions:   sessionManager,
 		approvals:  approvalManager,
 		eventBus:   eventBus,
+		store:      conversationStore,
 	}, nil
 }
 
@@ -116,15 +124,24 @@ func (d *Daemon) Run(ctx context.Context) error {
 
 	// Set socket permissions
 	if err := os.Chmod(d.socketPath, SocketPermissions); err != nil {
-		listener.Close()
+		_ = listener.Close()
 		return fmt.Errorf("failed to set socket permissions: %w", err)
 	}
 
-	// Ensure socket is cleaned up on exit
+	// Ensure cleanup on exit
 	defer func() {
-		listener.Close()
-		os.Remove(d.socketPath)
-		slog.Info("cleaned up socket", "path", d.socketPath)
+		if err := listener.Close(); err != nil {
+			slog.Warn("failed to close listener", "error", err)
+		}
+		if err := os.Remove(d.socketPath); err != nil {
+			slog.Warn("failed to remove socket file", "path", d.socketPath, "error", err)
+		}
+		if d.store != nil {
+			if err := d.store.Close(); err != nil {
+				slog.Warn("failed to close store", "error", err)
+			}
+		}
+		slog.Info("cleaned up resources", "path", d.socketPath)
 	}()
 
 	// Create and start RPC server
@@ -138,14 +155,14 @@ func (d *Daemon) Run(ctx context.Context) error {
 	sessionHandlers := rpc.NewSessionHandlers(d.sessions)
 	sessionHandlers.Register(d.rpcServer)
 
-	// Register approval handlers if approval manager is available
-	if d.approvals != nil {
-		approvalHandlers := rpc.NewApprovalHandlers(d.approvals, d.sessions)
-		approvalHandlers.Register(d.rpcServer)
+	// Always register approval handlers (even without API key)
+	approvalHandlers := rpc.NewApprovalHandlers(d.approvals, d.sessions)
+	approvalHandlers.Register(d.rpcServer)
 
-		// Start approval polling
+	// Start approval polling if approval manager is available
+	if d.approvals != nil {
 		if err := d.approvals.Start(ctx); err != nil {
-			listener.Close()
+			_ = listener.Close()
 			return fmt.Errorf("failed to start approval poller: %w", err)
 		}
 		defer d.approvals.Stop()
@@ -164,7 +181,9 @@ func (d *Daemon) Run(ctx context.Context) error {
 	<-ctx.Done()
 
 	// Close listener to stop accepting new connections
-	listener.Close()
+	if err := listener.Close(); err != nil {
+		slog.Warn("error closing listener during shutdown", "error", err)
+	}
 
 	return nil
 }
@@ -191,7 +210,7 @@ func (d *Daemon) acceptConnections(ctx context.Context) {
 
 // handleConnection processes a single client connection
 func (d *Daemon) handleConnection(ctx context.Context, conn net.Conn) {
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	slog.Debug("new client connected", "remote", conn.RemoteAddr())
 

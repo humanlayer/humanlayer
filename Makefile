@@ -12,6 +12,7 @@ check-py: ## Run code quality tools.
 .PHONY: check-ts
 check-ts:
 	npm -C humanlayer-ts run check
+	npm -C humanlayer-ts-vercel-ai-sdk run check
 
 check-hlyr:
 	npm -C hlyr run check
@@ -19,8 +20,14 @@ check-hlyr:
 check-tui:
 	@$(MAKE) -C humanlayer-tui check
 
+check-hld:
+	@$(MAKE) -C hld check
+
+check-claudecode-go:
+	@$(MAKE) -C claudecode-go check
+
 .PHONY: check
-check: check-py check-ts check-hlyr check-tui
+check: check-py check-ts check-hlyr check-tui check-hld check-claudecode-go
 
 typecheck: ## just the typechecks
 	: 🚀 Static type checking: Running mypy
@@ -33,9 +40,26 @@ test-py: ## Test the code with pytest
 .PHONY: test-ts
 test-ts: ## Test the code with jest
 	npm -C humanlayer-ts run test
+	npm -C humanlayer-ts-vercel-ai-sdk run test
+
+.PHONY: test-hlyr
+test-hlyr: ## Test hlyr CLI tool
+	npm -C hlyr run test
+
+.PHONY: test-hld
+test-hld: ## Test hld daemon (unit tests only)
+	@$(MAKE) -C hld test-unit
+
+.PHONY: test-hld-integration
+test-hld-integration: ## Test hld daemon (including integration tests)
+	@$(MAKE) -C hld test
+
+.PHONY: test-claudecode-go
+test-claudecode-go: ## Test claudecode-go
+	@$(MAKE) -C claudecode-go test
 
 .PHONY: test
-test: test-py test-ts
+test: test-py test-ts test-hlyr test-hld test-claudecode-go
 
 .PHONY: build
 build: clean-build ## Build wheel file using uv

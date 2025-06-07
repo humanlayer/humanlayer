@@ -24,3 +24,5 @@
 session/mock_session.go
 approval/mock_approval.go
 client/mock_client.go
+bus/mock_bus.go
+store/mock_store.go

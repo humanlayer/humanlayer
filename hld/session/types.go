@@ -27,22 +27,19 @@ type Session struct {
 	Error     string                   `json:"error,omitempty"`
 	Config    claudecode.SessionConfig `json:"config"`
 	Result    *claudecode.Result       `json:"result,omitempty"`
-
-	// Process tracking
-	claude *claudecode.Session // The actual Claude session
 }
 
 // Info provides a JSON-safe view of the session
 type Info struct {
-	ID        string                `json:"id"`
-	RunID     string                `json:"run_id"`
-	Status    Status                `json:"status"`
-	StartTime time.Time             `json:"start_time"`
-	EndTime   *time.Time            `json:"end_time,omitempty"`
-	Error     string                `json:"error,omitempty"`
-	Query     string                `json:"query"`
-	Model     string                `json:"model,omitempty"`
-	Result    *claudecode.Result    `json:"result,omitempty"`
+	ID        string             `json:"id"`
+	RunID     string             `json:"run_id"`
+	Status    Status             `json:"status"`
+	StartTime time.Time          `json:"start_time"`
+	EndTime   *time.Time         `json:"end_time,omitempty"`
+	Error     string             `json:"error,omitempty"`
+	Query     string             `json:"query"`
+	Model     string             `json:"model,omitempty"`
+	Result    *claudecode.Result `json:"result,omitempty"`
 }
 
 // SessionManager defines the interface for managing Claude Code sessions
@@ -50,15 +47,9 @@ type SessionManager interface {
 	// LaunchSession starts a new Claude Code session
 	LaunchSession(ctx context.Context, config claudecode.SessionConfig) (*Session, error)
 
-	// GetSession returns a session by ID
-	GetSession(sessionID string) (*Session, error)
-
-	// ListSessions returns all sessions
-	ListSessions() []*Session
-
-	// GetSessionInfo returns a JSON-safe view of a session
+	// GetSessionInfo returns session info from the database by ID
 	GetSessionInfo(sessionID string) (*Info, error)
 
-	// ListSessionInfo returns JSON-safe views of all sessions
-	ListSessionInfo() []Info
+	// ListSessions returns all sessions from the database
+	ListSessions() []Info
 }

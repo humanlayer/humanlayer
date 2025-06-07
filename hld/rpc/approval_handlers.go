@@ -35,6 +35,11 @@ type FetchApprovalsResponse struct {
 
 // HandleFetchApprovals handles the FetchApprovals RPC method
 func (h *ApprovalHandlers) HandleFetchApprovals(ctx context.Context, params json.RawMessage) (interface{}, error) {
+	// Check if approval manager is configured
+	if h.approvals == nil {
+		return nil, fmt.Errorf("approval features not available: no API key configured")
+	}
+
 	var req FetchApprovalsRequest
 	if params != nil {
 		if err := json.Unmarshal(params, &req); err != nil {
@@ -86,6 +91,11 @@ type SendDecisionResponse struct {
 
 // HandleSendDecision handles the SendDecision RPC method
 func (h *ApprovalHandlers) HandleSendDecision(ctx context.Context, params json.RawMessage) (interface{}, error) {
+	// Check if approval manager is configured
+	if h.approvals == nil {
+		return nil, fmt.Errorf("approval features not available: no API key configured")
+	}
+
 	var req SendDecisionRequest
 	if err := json.Unmarshal(params, &req); err != nil {
 		return nil, fmt.Errorf("invalid request: %w", err)

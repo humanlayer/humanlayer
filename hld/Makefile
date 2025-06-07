@@ -1,4 +1,4 @@
-.PHONY: build test test-unit test-integration test-race clean mocks
+.PHONY: build test test-unit test-integration test-race clean mocks check fmt vet lint
 
 # Build the daemon binary
 build:
@@ -47,3 +47,22 @@ mocks:
 	mockgen -source=approval/types.go -destination=approval/mock_approval.go -package=approval Manager,Store,APIClient
 	mockgen -source=client/types.go -destination=client/mock_client.go -package=client Client,Factory
 	mockgen -source=bus/types.go -destination=bus/mock_bus.go -package=bus EventBus
+	mockgen -source=store/store.go -destination=store/mock_store.go -package=store ConversationStore
+
+# Format code
+fmt:
+	go fmt ./...
+
+# Vet code
+vet:
+	go vet ./...
+
+install-lint:
+	@[ -x "$$(which golangci-lint)" ] || brew install golangci-lint
+
+# Lint code
+lint: install-lint
+	golangci-lint run ./...
+
+# Run all checks
+check: fmt vet lint test-unit

@@ -30,7 +30,7 @@ func newMockRPCServer(t *testing.T) (*mockRPCServer, string) {
 	socketPath := testutil.CreateTestSocket(t)
 
 	// Remove existing socket if any
-	os.Remove(socketPath)
+	_ = os.Remove(socketPath)
 
 	listener, err := net.Listen("unix", socketPath)
 	require.NoError(t, err)
@@ -75,7 +75,7 @@ func (s *mockRPCServer) start() {
 }
 
 func (s *mockRPCServer) handleConnection(conn net.Conn) {
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 	decoder := json.NewDecoder(conn)
 	encoder := json.NewEncoder(conn)
 
@@ -120,7 +120,7 @@ func (s *mockRPCServer) handleConnection(conn net.Conn) {
 
 func (s *mockRPCServer) stop() {
 	close(s.shutdown)
-	s.listener.Close()
+	_ = s.listener.Close()
 }
 
 func TestClient_Health(t *testing.T) {
@@ -133,7 +133,7 @@ func TestClient_Health(t *testing.T) {
 
 	c, err := New(socketPath)
 	require.NoError(t, err)
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 
 	err = c.Health()
 	assert.NoError(t, err)
@@ -152,8 +152,8 @@ func TestClient_FetchApprovals(t *testing.T) {
 				Spec: humanlayer.FunctionCallSpec{
 					Fn: "test_function",
 					Kwargs: map[string]interface{}{
-							"arg": "value",
-						},
+						"arg": "value",
+					},
 				},
 				RunID: "run-123",
 			},
@@ -181,7 +181,7 @@ func TestClient_FetchApprovals(t *testing.T) {
 
 	c, err := New(socketPath)
 	require.NoError(t, err)
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 
 	approvals, err := c.FetchApprovals("")
 	assert.NoError(t, err)
@@ -204,7 +204,7 @@ func TestClient_SendDecision(t *testing.T) {
 
 	server.setHandler("sendDecision", func(params json.RawMessage) (interface{}, error) {
 		var req rpc.SendDecisionRequest
-		json.Unmarshal(params, &req)
+		_ = json.Unmarshal(params, &req)
 
 		// Simple validation
 		if req.CallID == "" {
@@ -224,7 +224,7 @@ func TestClient_SendDecision(t *testing.T) {
 
 	c, err := New(socketPath)
 	require.NoError(t, err)
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 
 	// Test approve
 	err = c.SendDecision("test-123", "function_call", "approve", "looks good")

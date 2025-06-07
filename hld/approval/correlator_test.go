@@ -93,9 +93,15 @@ func TestMemoryStore_GetAllPending(t *testing.T) {
 		Spec:   humanlayer.HumanContactSpec{Msg: "msg1"},
 	}
 
-	store.StoreFunctionCall(fc1)
-	store.StoreFunctionCall(fc2) // This one is responded, should not be included
-	store.StoreHumanContact(hc1)
+	if err := store.StoreFunctionCall(fc1); err != nil {
+		t.Fatalf("failed to store function call fc1: %v", err)
+	}
+	if err := store.StoreFunctionCall(fc2); err != nil {
+		t.Fatalf("failed to store function call fc2: %v", err)
+	}
+	if err := store.StoreHumanContact(hc1); err != nil {
+		t.Fatalf("failed to store human contact hc1: %v", err)
+	}
 
 	// Get all pending
 	pending, err := store.GetAllPending()
@@ -148,9 +154,15 @@ func TestMemoryStore_GetPendingByRunID(t *testing.T) {
 		Spec:   humanlayer.HumanContactSpec{Msg: "msg1"},
 	}
 
-	store.StoreFunctionCall(fc1)
-	store.StoreFunctionCall(fc2)
-	store.StoreHumanContact(hc1)
+	if err := store.StoreFunctionCall(fc1); err != nil {
+		t.Fatalf("failed to store function call fc1: %v", err)
+	}
+	if err := store.StoreFunctionCall(fc2); err != nil {
+		t.Fatalf("failed to store function call fc2: %v", err)
+	}
+	if err := store.StoreHumanContact(hc1); err != nil {
+		t.Fatalf("failed to store human contact hc1: %v", err)
+	}
 
 	// Get pending for run-1
 	pending, err := store.GetPendingByRunID("run-1")
@@ -201,8 +213,12 @@ func TestMemoryStore_MarkResponded(t *testing.T) {
 		Spec:   humanlayer.HumanContactSpec{Msg: "msg1"},
 	}
 
-	store.StoreFunctionCall(fc)
-	store.StoreHumanContact(hc)
+	if err := store.StoreFunctionCall(fc); err != nil {
+		t.Fatalf("failed to store function call: %v", err)
+	}
+	if err := store.StoreHumanContact(hc); err != nil {
+		t.Fatalf("failed to store human contact: %v", err)
+	}
 
 	// Mark function call as responded
 	err := store.MarkFunctionCallResponded("fc-1")
@@ -233,25 +249,37 @@ func TestMemoryStore_ConcurrentAccess(t *testing.T) {
 
 	// Concurrent writes
 	go func() {
+		var errors []error
 		for i := 0; i < 100; i++ {
 			fc := humanlayer.FunctionCall{
 				CallID: fmt.Sprintf("fc-%d", i),
 				RunID:  fmt.Sprintf("run-%d", i%10),
 				Spec:   humanlayer.FunctionCallSpec{Fn: "func"},
 			}
-			store.StoreFunctionCall(fc)
+			if err := store.StoreFunctionCall(fc); err != nil {
+				errors = append(errors, err)
+			}
+		}
+		if len(errors) > 0 {
+			t.Errorf("StoreFunctionCall errors during concurrent access: %v", errors)
 		}
 		done <- true
 	}()
 
 	go func() {
+		var errors []error
 		for i := 0; i < 100; i++ {
 			hc := humanlayer.HumanContact{
 				CallID: fmt.Sprintf("hc-%d", i),
 				RunID:  fmt.Sprintf("run-%d", i%10),
 				Spec:   humanlayer.HumanContactSpec{Msg: "msg"},
 			}
-			store.StoreHumanContact(hc)
+			if err := store.StoreHumanContact(hc); err != nil {
+				errors = append(errors, err)
+			}
+		}
+		if len(errors) > 0 {
+			t.Errorf("StoreHumanContact errors during concurrent access: %v", errors)
 		}
 		done <- true
 	}()
@@ -259,8 +287,8 @@ func TestMemoryStore_ConcurrentAccess(t *testing.T) {
 	// Concurrent reads
 	go func() {
 		for i := 0; i < 100; i++ {
-			store.GetAllPending()
-			store.GetPendingByRunID(fmt.Sprintf("run-%d", i%10))
+			_, _ = store.GetAllPending()
+			_, _ = store.GetPendingByRunID(fmt.Sprintf("run-%d", i%10))
 		}
 		done <- true
 	}()

@@ -76,10 +76,10 @@ func (c *Client) buildArgs(config SessionConfig) ([]string, error) {
 		}
 
 		if _, err := tmpFile.Write(mcpJSON); err != nil {
-			tmpFile.Close()
+			_ = tmpFile.Close()
 			return nil, fmt.Errorf("failed to write MCP config: %w", err)
 		}
-		tmpFile.Close()
+		_ = tmpFile.Close()
 
 		args = append(args, "--mcp-config", tmpFile.Name())
 		// Note: temp file will be cleaned up when process exits

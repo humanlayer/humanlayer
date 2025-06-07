@@ -243,6 +243,7 @@ export class DaemonClient extends EventEmitter {
     // Read response
     return new Promise((resolve, reject) => {
       let buffer = ''
+      let timeout: NodeJS.Timeout | undefined
 
       const dataHandler = (data: Buffer) => {
         buffer += data.toString()
@@ -256,7 +257,16 @@ export class DaemonClient extends EventEmitter {
 
               // Check if this is our response
               if (response.id === id) {
-                this.conn!.removeListener('data', dataHandler)
+                // Clear the timeout first
+                if (timeout) {
+                  clearTimeout(timeout)
+                  timeout = undefined
+                }
+
+                // Remove the data handler
+                if (this.conn) {
+                  this.conn.removeListener('data', dataHandler)
+                }
 
                 if (response.error) {
                   reject(new Error(`RPC error ${response.error.code}: ${response.error.message}`))
@@ -275,8 +285,14 @@ export class DaemonClient extends EventEmitter {
       this.conn!.on('data', dataHandler)
 
       // Set a timeout
-      setTimeout(() => {
-        this.conn!.removeListener('data', dataHandler)
+      timeout = setTimeout(() => {
+        // Clear the timeout reference
+        timeout = undefined
+
+        // Only try to remove listener if connection still exists
+        if (this.conn) {
+          this.conn.removeListener('data', dataHandler)
+        }
         reject(new Error('RPC call timeout'))
       }, 30000)
     })
