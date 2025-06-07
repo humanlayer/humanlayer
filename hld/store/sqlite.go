@@ -20,10 +20,12 @@ type SQLiteStore struct {
 
 // NewSQLiteStore creates a new SQLite-backed store
 func NewSQLiteStore(dbPath string) (*SQLiteStore, error) {
-	// Ensure directory exists
-	dbDir := filepath.Dir(dbPath)
-	if err := os.MkdirAll(dbDir, 0700); err != nil {
-		return nil, fmt.Errorf("failed to create database directory: %w", err)
+	// Ensure directory exists (skip for in-memory databases)
+	if dbPath != ":memory:" {
+		dbDir := filepath.Dir(dbPath)
+		if err := os.MkdirAll(dbDir, 0700); err != nil {
+			return nil, fmt.Errorf("failed to create database directory: %w", err)
+		}
 	}
 
 	// Open database
@@ -283,6 +285,64 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 	}
 
 	// Handle nullable fields
+	session.ClaudeSessionID = claudeSessionID.String
+	session.ParentSessionID = parentSessionID.String
+	session.Model = model.String
+	session.WorkingDir = workingDir.String
+	session.SystemPrompt = systemPrompt.String
+	session.CustomInstructions = customInstructions.String
+	session.ErrorMessage = errorMessage.String
+	if completedAt.Valid {
+		session.CompletedAt = &completedAt.Time
+	}
+	if costUSD.Valid {
+		session.CostUSD = &costUSD.Float64
+	}
+	if totalTokens.Valid {
+		tokens := int(totalTokens.Int64)
+		session.TotalTokens = &tokens
+	}
+	if durationMS.Valid {
+		duration := int(durationMS.Int64)
+		session.DurationMS = &duration
+	}
+
+	return &session, nil
+}
+
+// GetSessionByRunID retrieves a session by its run_id
+func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Session, error) {
+	query := `
+		SELECT id, run_id, claude_session_id, parent_session_id,
+			query, model, working_dir, max_turns, system_prompt, custom_instructions,
+			status, created_at, last_activity_at, completed_at,
+			cost_usd, total_tokens, duration_ms, error_message
+		FROM sessions
+		WHERE run_id = ?
+	`
+
+	var session Session
+	var claudeSessionID, parentSessionID, model, workingDir, systemPrompt, customInstructions sql.NullString
+	var completedAt sql.NullTime
+	var costUSD sql.NullFloat64
+	var totalTokens, durationMS sql.NullInt64
+	var errorMessage sql.NullString
+
+	err := s.db.QueryRowContext(ctx, query, runID).Scan(
+		&session.ID, &session.RunID, &claudeSessionID, &parentSessionID,
+		&session.Query, &model, &workingDir, &session.MaxTurns,
+		&systemPrompt, &customInstructions,
+		&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
+		&costUSD, &totalTokens, &durationMS, &errorMessage,
+	)
+	if err == sql.ErrNoRows {
+		return nil, nil // No session found
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get session by run_id: %w", err)
+	}
+
+	// Convert nullable fields
 	session.ClaudeSessionID = claudeSessionID.String
 	session.ParentSessionID = parentSessionID.String
 	session.Model = model.String
