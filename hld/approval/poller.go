@@ -238,24 +238,16 @@ func (p *Poller) calculateIntervalLocked() time.Duration {
 
 // correlateApproval attempts to match an approval with a pending tool call
 func (p *Poller) correlateApproval(ctx context.Context, fc humanlayer.FunctionCall) {
-	// First find the session with this run_id
-	sessions, err := p.conversationStore.ListSessions(ctx)
+	// Find the session with this run_id
+	session, err := p.conversationStore.GetSessionByRunID(ctx, fc.RunID)
 	if err != nil {
-		slog.Error("failed to list sessions for correlation",
+		slog.Error("failed to get session for correlation",
 			"run_id", fc.RunID,
 			"error", err)
 		return
 	}
 
-	var sessionID string
-	for _, session := range sessions {
-		if session.RunID == fc.RunID {
-			sessionID = session.ID
-			break
-		}
-	}
-
-	if sessionID == "" {
+	if session == nil {
 		// This is expected for approvals that aren't from our Claude sessions
 		slog.Debug("no matching session for approval",
 			"run_id", fc.RunID,
@@ -265,10 +257,10 @@ func (p *Poller) correlateApproval(ctx context.Context, fc humanlayer.FunctionCa
 
 	toolName := fc.Spec.Fn
 	// Try to find a pending tool call for this session and tool
-	toolCall, err := p.conversationStore.GetPendingToolCall(ctx, sessionID, toolName)
+	toolCall, err := p.conversationStore.GetPendingToolCall(ctx, session.ID, toolName)
 	if err != nil || toolCall == nil {
 		slog.Debug("no matching pending tool call for approval",
-			"session_id", sessionID,
+			"session_id", session.ID,
 			"run_id", fc.RunID,
 			"tool_name", toolName,
 			"approval_id", fc.CallID)
@@ -276,10 +268,10 @@ func (p *Poller) correlateApproval(ctx context.Context, fc humanlayer.FunctionCa
 	}
 
 	// Found a matching tool call in one of our sessions - correlate it
-	if err := p.conversationStore.CorrelateApproval(ctx, sessionID, toolName, fc.CallID); err != nil {
+	if err := p.conversationStore.CorrelateApproval(ctx, session.ID, toolName, fc.CallID); err != nil {
 		slog.Error("failed to correlate approval with tool call",
 			"approval_id", fc.CallID,
-			"session_id", toolCall.SessionID,
+			"session_id", session.ID,
 			"tool_name", toolName,
 			"error", err)
 		return
@@ -287,7 +279,7 @@ func (p *Poller) correlateApproval(ctx context.Context, fc humanlayer.FunctionCa
 
 	slog.Info("correlated approval with tool call",
 		"approval_id", fc.CallID,
-		"session_id", toolCall.SessionID,
+		"session_id", session.ID,
 		"tool_name", toolName,
 		"run_id", fc.RunID)
 
@@ -296,9 +288,9 @@ func (p *Poller) correlateApproval(ctx context.Context, fc humanlayer.FunctionCa
 	update := store.SessionUpdate{
 		Status: &waitingStatus,
 	}
-	if err := p.conversationStore.UpdateSession(ctx, toolCall.SessionID, update); err != nil {
+	if err := p.conversationStore.UpdateSession(ctx, session.ID, update); err != nil {
 		slog.Error("failed to update session status to waiting_input",
-			"session_id", toolCall.SessionID,
+			"session_id", session.ID,
 			"error", err)
 	}
 }

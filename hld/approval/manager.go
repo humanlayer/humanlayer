@@ -136,25 +136,20 @@ func (m *DefaultManager) ApproveFunctionCall(ctx context.Context, callID string,
 		// Update session status back to running since approval is resolved
 		if fc.RunID != "" {
 			// Look up the session by run_id
-			sessions, err := m.ConversationStore.ListSessions(ctx)
-			if err == nil {
-				for _, session := range sessions {
-					if session.RunID == fc.RunID && session.Status == store.SessionStatusWaitingInput {
-						runningStatus := store.SessionStatusRunning
-						update := store.SessionUpdate{
-							Status: &runningStatus,
-						}
-						if err := m.ConversationStore.UpdateSession(ctx, session.ID, update); err != nil {
-							slog.Error("failed to update session status to running",
-								"session_id", session.ID,
-								"error", err)
-						} else {
-							slog.Info("updated session status back to running after approval",
-								"session_id", session.ID,
-								"approval_id", callID)
-						}
-						break
-					}
+			session, err := m.ConversationStore.GetSessionByRunID(ctx, fc.RunID)
+			if err == nil && session != nil && session.Status == store.SessionStatusWaitingInput {
+				runningStatus := store.SessionStatusRunning
+				update := store.SessionUpdate{
+					Status: &runningStatus,
+				}
+				if err := m.ConversationStore.UpdateSession(ctx, session.ID, update); err != nil {
+					slog.Error("failed to update session status to running",
+						"session_id", session.ID,
+						"error", err)
+				} else {
+					slog.Info("updated session status back to running after approval",
+						"session_id", session.ID,
+						"approval_id", callID)
 				}
 			}
 		}
@@ -205,25 +200,20 @@ func (m *DefaultManager) DenyFunctionCall(ctx context.Context, callID string, re
 		// Update session status back to running since approval is resolved (denied)
 		if fc.RunID != "" {
 			// Look up the session by run_id
-			sessions, err := m.ConversationStore.ListSessions(ctx)
-			if err == nil {
-				for _, session := range sessions {
-					if session.RunID == fc.RunID && session.Status == store.SessionStatusWaitingInput {
-						runningStatus := store.SessionStatusRunning
-						update := store.SessionUpdate{
-							Status: &runningStatus,
-						}
-						if err := m.ConversationStore.UpdateSession(ctx, session.ID, update); err != nil {
-							slog.Error("failed to update session status to running",
-								"session_id", session.ID,
-								"error", err)
-						} else {
-							slog.Info("updated session status back to running after denial",
-								"session_id", session.ID,
-								"approval_id", callID)
-						}
-						break
-					}
+			session, err := m.ConversationStore.GetSessionByRunID(ctx, fc.RunID)
+			if err == nil && session != nil && session.Status == store.SessionStatusWaitingInput {
+				runningStatus := store.SessionStatusRunning
+				update := store.SessionUpdate{
+					Status: &runningStatus,
+				}
+				if err := m.ConversationStore.UpdateSession(ctx, session.ID, update); err != nil {
+					slog.Error("failed to update session status to running",
+						"session_id", session.ID,
+						"error", err)
+				} else {
+					slog.Info("updated session status back to running after denial",
+						"session_id", session.ID,
+						"approval_id", callID)
 				}
 			}
 		}

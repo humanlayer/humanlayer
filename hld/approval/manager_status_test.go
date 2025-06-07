@@ -44,15 +44,13 @@ func TestManager_SessionStatusTransitions(t *testing.T) {
 				// Update approval status
 				convStore.EXPECT().UpdateApprovalStatus(gomock.Any(), callID, store.ApprovalStatusApproved).Return(nil)
 
-				// List sessions to find matching one
-				sessions := []*store.Session{
-					{
-						ID:     sessionID,
-						RunID:  runID,
-						Status: store.SessionStatusWaitingInput,
-					},
+				// Get session by run_id
+				session := &store.Session{
+					ID:     sessionID,
+					RunID:  runID,
+					Status: store.SessionStatusWaitingInput,
 				}
-				convStore.EXPECT().ListSessions(gomock.Any()).Return(sessions, nil)
+				convStore.EXPECT().GetSessionByRunID(gomock.Any(), runID).Return(session, nil)
 
 				// Expect status update to running
 				convStore.EXPECT().
@@ -94,15 +92,13 @@ func TestManager_SessionStatusTransitions(t *testing.T) {
 				// Update approval status
 				convStore.EXPECT().UpdateApprovalStatus(gomock.Any(), callID, store.ApprovalStatusDenied).Return(nil)
 
-				// List sessions to find matching one
-				sessions := []*store.Session{
-					{
-						ID:     sessionID,
-						RunID:  runID,
-						Status: store.SessionStatusWaitingInput,
-					},
+				// Get session by run_id
+				session := &store.Session{
+					ID:     sessionID,
+					RunID:  runID,
+					Status: store.SessionStatusWaitingInput,
 				}
-				convStore.EXPECT().ListSessions(gomock.Any()).Return(sessions, nil)
+				convStore.EXPECT().GetSessionByRunID(gomock.Any(), runID).Return(session, nil)
 
 				// Expect status update to running
 				convStore.EXPECT().
@@ -144,15 +140,13 @@ func TestManager_SessionStatusTransitions(t *testing.T) {
 				// Update approval status
 				convStore.EXPECT().UpdateApprovalStatus(gomock.Any(), callID, store.ApprovalStatusApproved).Return(nil)
 
-				// List sessions - session is already running, not waiting
-				sessions := []*store.Session{
-					{
-						ID:     sessionID,
-						RunID:  runID,
-						Status: store.SessionStatusRunning, // Already running
-					},
+				// Get session - session is already running, not waiting
+				session := &store.Session{
+					ID:     sessionID,
+					RunID:  runID,
+					Status: store.SessionStatusRunning, // Already running
 				}
-				convStore.EXPECT().ListSessions(gomock.Any()).Return(sessions, nil)
+				convStore.EXPECT().GetSessionByRunID(gomock.Any(), runID).Return(session, nil)
 
 				// No status update should happen since session is not waiting
 

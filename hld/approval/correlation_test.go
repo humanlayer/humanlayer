@@ -31,14 +31,12 @@ func TestPoller_CorrelateApproval(t *testing.T) {
 				},
 			},
 			setupStore: func(mockStore *store.MockConversationStore) {
-				// First expect ListSessions to find the session by run_id
+				// Expect GetSessionByRunID to find the session
 				mockStore.EXPECT().
-					ListSessions(gomock.Any()).
-					Return([]*store.Session{
-						{
-							ID:    "sess-789",
-							RunID: "run-456",
-						},
+					GetSessionByRunID(gomock.Any(), "run-456").
+					Return(&store.Session{
+						ID:    "sess-789",
+						RunID: "run-456",
 					}, nil)
 
 				// Return a pending tool call
@@ -78,15 +76,10 @@ func TestPoller_CorrelateApproval(t *testing.T) {
 				},
 			},
 			setupStore: func(mockStore *store.MockConversationStore) {
-				// ListSessions returns no matching session
+				// GetSessionByRunID returns nil (no matching session)
 				mockStore.EXPECT().
-					ListSessions(gomock.Any()).
-					Return([]*store.Session{
-						{
-							ID:    "other-session",
-							RunID: "other-run",
-						},
-					}, nil)
+					GetSessionByRunID(gomock.Any(), "unknown-run").
+					Return(nil, nil)
 
 				// No further calls should happen
 			},
@@ -103,14 +96,12 @@ func TestPoller_CorrelateApproval(t *testing.T) {
 				},
 			},
 			setupStore: func(mockStore *store.MockConversationStore) {
-				// ListSessions returns a matching session
+				// GetSessionByRunID returns a matching session
 				mockStore.EXPECT().
-					ListSessions(gomock.Any()).
-					Return([]*store.Session{
-						{
-							ID:    "sess-nil",
-							RunID: "run-nil",
-						},
+					GetSessionByRunID(gomock.Any(), "run-nil").
+					Return(&store.Session{
+						ID:    "sess-nil",
+						RunID: "run-nil",
 					}, nil)
 
 				// Return nil tool call (no error but no result)
@@ -124,7 +115,7 @@ func TestPoller_CorrelateApproval(t *testing.T) {
 			expectStatusUpdate: false,
 		},
 		{
-			name: "list_sessions_error",
+			name: "get_session_error",
 			functionCall: humanlayer.FunctionCall{
 				CallID: "fc-error",
 				RunID:  "run-error",
@@ -133,9 +124,9 @@ func TestPoller_CorrelateApproval(t *testing.T) {
 				},
 			},
 			setupStore: func(mockStore *store.MockConversationStore) {
-				// ListSessions returns an error
+				// GetSessionByRunID returns an error
 				mockStore.EXPECT().
-					ListSessions(gomock.Any()).
+					GetSessionByRunID(gomock.Any(), "run-error").
 					Return(nil, fmt.Errorf("database error"))
 
 				// No further calls should happen
