@@ -131,3 +131,90 @@ Each framework example follows the pattern of wrapping functions with HumanLayer
 - The MCP server requires Node.js and provides Claude Desktop integration
 - Examples use virtual environments and have their own dependency files
 - For CLI usage, always use `npx humanlayer` command format
+
+### Golang style guidelines
+
+#### Context usage
+
+> **General rule:** any function that may block, perform I/O, or launch goroutines **must accept a `context.Context`** as its first parameter.
+
+```go
+// GOOD
+func FetchUser(ctx context.Context, db *sql.DB, id int64) (*User, error) { … }
+
+// BAD – no cancellation, harder to test
+func FetchUser(db *sql.DB, id int64) (*User, error) { … }
+```
+
+Key points:
+
+1. **First parameter:** `ctx` is always the first arg after the receiver (`func (s *Svc) Foo(ctx context.Context, …)`).
+2. **Never store contexts** in struct fields; pass them down the call stack.
+3. **Cancellation & timeouts:** create them _at the edge_ (HTTP handler, CLI `main`, etc.).
+   ```go
+   ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+   defer cancel()
+   ```
+4. **Don’t pass `context.Background()`** from libraries—bubble the parent ctx instead. Use `Background` only in `main()` or tests.
+5. **Use context.TODO()** only SPARINGLY when you're deep in code that doesn't support context, and adding context to every method in the call stack isn't appropriate right at the very moment you're adding context support to a method
+6. **Goroutines:** when spawning, derive a child context so they stop when the parent is cancelled.
+   ```go
+   go func() {
+       if err := work(ctx); err != nil { … }
+   }()
+   ```
+7. **Testing:** use `context.TODO()` or `context.Background()` _inside tests only_ when cancellation isn’t needed.
+
+#### Test assertions
+
+use stretchr testify require assertions that should fail the whole test.
+
+bad:
+
+```go
+if err != nil {
+    t.Fatalf("failed to store function call: %v", err)
+}
+```
+
+good
+
+```go
+req := require.New(t)
+req.NoError(err, "failed to store function call")
+```
+
+if you want to assert a value but continue running the test, you can use assert instead:
+
+```go
+assert := assert.New(t)
+assert.Equal(fc.CallID, retrieved.CallID, "call_id mismatch")
+assert.Equal(fc.RunID, retrieved.RunID, "run_id mismatch")
+```
+
+In the above example, the test will continue to run even if the first assert fails.
+This might be more signal-rich than just bailing on the first failure.
+
+#### Error handling
+
+Use `fmt.Errorf` for error wrapping to build stack traces and provide context.
+
+bad:
+
+```go
+if err != nil {
+    return fmt.Errorf("failed to connect to database: %v", err)
+}
+```
+
+good:
+
+```go
+if err != nil {
+    return fmt.Errorf("connect to database: %w", err)
+}
+```
+
+Error messages should describe the operation being attempted, not the failure. Use present tense verb phrases (e.g., "connect to database", "parse config file", "create user account"). This builds readable error stacks that trace the call hierarchy: `parse config file: connect to database: connection refused`.
+
+Avoid over-wrapping errors. Only wrap errors at abstraction boundaries where the extra context helps the caller understand what failed. Leaf functions can often return the original error unchanged.
