@@ -24,6 +24,15 @@ type Client interface {
 	// SendDecision sends a decision (approve/deny/respond) for an approval
 	SendDecision(callID, approvalType, decision, comment string) error
 
+	// GetConversation fetches the conversation history for a session
+	GetConversation(sessionID string) (*rpc.GetConversationResponse, error)
+
+	// GetConversationByClaudeSessionID fetches the conversation history by Claude session ID
+	GetConversationByClaudeSessionID(claudeSessionID string) (*rpc.GetConversationResponse, error)
+
+	// GetSessionState fetches the current state of a session
+	GetSessionState(sessionID string) (*rpc.GetSessionStateResponse, error)
+
 	// Subscribe subscribes to events from the daemon
 	Subscribe(req rpc.SubscribeRequest) (<-chan rpc.EventNotification, error)
 
