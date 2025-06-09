@@ -256,6 +256,15 @@ func (c *client) ListSessions() (*rpc.ListSessionsResponse, error) {
 	return &resp, nil
 }
 
+// ContinueSession continues an existing completed session with a new query
+func (c *client) ContinueSession(req rpc.ContinueSessionRequest) (*rpc.ContinueSessionResponse, error) {
+	var resp rpc.ContinueSessionResponse
+	if err := c.call("continueSession", req, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
 // FetchApprovals fetches pending approvals from the daemon
 func (c *client) FetchApprovals(sessionID string) ([]approval.PendingApproval, error) {
 	req := rpc.FetchApprovalsRequest{

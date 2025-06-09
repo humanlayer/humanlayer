@@ -262,3 +262,203 @@ func TestSQLiteStore(t *testing.T) {
 		require.Len(t, sessions, 2)
 	})
 }
+
+func TestGetSessionConversationWithParentChain(t *testing.T) {
+	// Create temp database
+	tmpDir, err := os.MkdirTemp("", "hld-test-parent-*")
+	require.NoError(t, err)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
+
+	dbPath := filepath.Join(tmpDir, "test.db")
+	store, err := NewSQLiteStore(dbPath)
+	require.NoError(t, err)
+	defer func() { _ = store.Close() }()
+
+	ctx := context.Background()
+
+	// Create parent session
+	parentSession := &Session{
+		ID:              "parent-1",
+		RunID:           "run-1",
+		ClaudeSessionID: "claude-parent",
+		Query:           "Tell me about Go",
+		Status:          SessionStatusCompleted,
+		CreatedAt:       time.Now(),
+		LastActivityAt:  time.Now(),
+	}
+	err = store.CreateSession(ctx, parentSession)
+	require.NoError(t, err)
+
+	// Add events to parent session
+	parentEvents := []*ConversationEvent{
+		{
+			SessionID:       "parent-1",
+			ClaudeSessionID: "claude-parent",
+			Sequence:        1,
+			EventType:       EventTypeMessage,
+			Role:            "user",
+			Content:         "Tell me about Go",
+			CreatedAt:       time.Now(),
+		},
+		{
+			SessionID:       "parent-1",
+			ClaudeSessionID: "claude-parent",
+			Sequence:        2,
+			EventType:       EventTypeMessage,
+			Role:            "assistant",
+			Content:         "Go is a statically typed programming language...",
+			CreatedAt:       time.Now().Add(1 * time.Second),
+		},
+	}
+	for _, event := range parentEvents {
+		err = store.AddConversationEvent(ctx, event)
+		require.NoError(t, err)
+	}
+
+	// Create child session
+	childSession := &Session{
+		ID:              "child-1",
+		RunID:           "run-2",
+		ClaudeSessionID: "claude-child",
+		ParentSessionID: "parent-1",
+		Query:           "Tell me more about goroutines",
+		Status:          SessionStatusCompleted,
+		CreatedAt:       time.Now().Add(5 * time.Second),
+		LastActivityAt:  time.Now().Add(5 * time.Second),
+	}
+	err = store.CreateSession(ctx, childSession)
+	require.NoError(t, err)
+
+	// Add events to child session
+	childEvents := []*ConversationEvent{
+		{
+			SessionID:       "child-1",
+			ClaudeSessionID: "claude-child",
+			Sequence:        1,
+			EventType:       EventTypeMessage,
+			Role:            "user",
+			Content:         "Tell me more about goroutines",
+			CreatedAt:       time.Now().Add(10 * time.Second),
+		},
+		{
+			SessionID:       "child-1",
+			ClaudeSessionID: "claude-child",
+			Sequence:        2,
+			EventType:       EventTypeMessage,
+			Role:            "assistant",
+			Content:         "Goroutines are lightweight threads...",
+			CreatedAt:       time.Now().Add(11 * time.Second),
+		},
+	}
+	for _, event := range childEvents {
+		err = store.AddConversationEvent(ctx, event)
+		require.NoError(t, err)
+	}
+
+	// Create grandchild session
+	grandchildSession := &Session{
+		ID:              "grandchild-1",
+		RunID:           "run-3",
+		ClaudeSessionID: "claude-grandchild",
+		ParentSessionID: "child-1",
+		Query:           "How do channels work?",
+		Status:          SessionStatusRunning,
+		CreatedAt:       time.Now().Add(20 * time.Second),
+		LastActivityAt:  time.Now().Add(20 * time.Second),
+	}
+	err = store.CreateSession(ctx, grandchildSession)
+	require.NoError(t, err)
+
+	// Add events to grandchild session
+	grandchildEvents := []*ConversationEvent{
+		{
+			SessionID:       "grandchild-1",
+			ClaudeSessionID: "claude-grandchild",
+			Sequence:        1,
+			EventType:       EventTypeMessage,
+			Role:            "user",
+			Content:         "How do channels work?",
+			CreatedAt:       time.Now().Add(25 * time.Second),
+		},
+		{
+			SessionID:       "grandchild-1",
+			ClaudeSessionID: "claude-grandchild",
+			Sequence:        2,
+			EventType:       EventTypeMessage,
+			Role:            "assistant",
+			Content:         "Channels are Go's way of communication...",
+			CreatedAt:       time.Now().Add(26 * time.Second),
+		},
+	}
+	for _, event := range grandchildEvents {
+		err = store.AddConversationEvent(ctx, event)
+		require.NoError(t, err)
+	}
+
+	t.Run("GetSessionConversation_IncludesFullHistory", func(t *testing.T) {
+		// Get conversation for grandchild - should include all parent events
+		events, err := store.GetSessionConversation(ctx, "grandchild-1")
+		require.NoError(t, err)
+		require.Len(t, events, 6) // 2 from parent + 2 from child + 2 from grandchild
+
+		// Verify chronological order
+		expectedContents := []string{
+			"Tell me about Go",
+			"Go is a statically typed programming language...",
+			"Tell me more about goroutines",
+			"Goroutines are lightweight threads...",
+			"How do channels work?",
+			"Channels are Go's way of communication...",
+		}
+
+		for i, event := range events {
+			require.Equal(t, expectedContents[i], event.Content)
+		}
+	})
+
+	t.Run("GetSessionConversation_SessionWithoutClaudeID", func(t *testing.T) {
+		// Create session without claude_session_id yet
+		newSession := &Session{
+			ID:             "new-session",
+			RunID:          "run-4",
+			Query:          "New query",
+			Status:         SessionStatusStarting,
+			CreatedAt:      time.Now(),
+			LastActivityAt: time.Now(),
+		}
+		err = store.CreateSession(ctx, newSession)
+		require.NoError(t, err)
+
+		// Should return empty events
+		events, err := store.GetSessionConversation(ctx, "new-session")
+		require.NoError(t, err)
+		require.Len(t, events, 0)
+	})
+
+	t.Run("GetSessionConversation_NonExistentSession", func(t *testing.T) {
+		// Should return empty events for non-existent session
+		events, err := store.GetSessionConversation(ctx, "does-not-exist")
+		require.NoError(t, err)
+		require.Len(t, events, 0)
+	})
+
+	t.Run("GetSessionConversation_NoParent", func(t *testing.T) {
+		// Get conversation for parent session (no parents)
+		events, err := store.GetSessionConversation(ctx, "parent-1")
+		require.NoError(t, err)
+		require.Len(t, events, 2) // Only parent's events
+	})
+
+	t.Run("GetSessionConversation_MiddleOfChain", func(t *testing.T) {
+		// Get conversation for child (middle of chain)
+		events, err := store.GetSessionConversation(ctx, "child-1")
+		require.NoError(t, err)
+		require.Len(t, events, 4) // Parent's 2 + child's 2
+
+		// Verify we get parent events first, then child
+		require.Equal(t, "Tell me about Go", events[0].Content)
+		require.Equal(t, "Go is a statically typed programming language...", events[1].Content)
+		require.Equal(t, "Tell me more about goroutines", events[2].Content)
+		require.Equal(t, "Goroutines are lightweight threads...", events[3].Content)
+	})
+}

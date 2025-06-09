@@ -42,10 +42,27 @@ type Info struct {
 	Result    *claudecode.Result `json:"result,omitempty"`
 }
 
+// ContinueSessionConfig contains the configuration for continuing a session
+type ContinueSessionConfig struct {
+	ParentSessionID      string                // The parent session to resume from
+	Query                string                // The new query
+	SystemPrompt         string                // Optional system prompt override
+	AppendSystemPrompt   string                // Optional append to system prompt
+	MCPConfig            *claudecode.MCPConfig // Optional MCP config override
+	PermissionPromptTool string                // Optional permission prompt tool
+	AllowedTools         []string              // Optional allowed tools override
+	DisallowedTools      []string              // Optional disallowed tools override
+	CustomInstructions   string                // Optional custom instructions
+	MaxTurns             int                   // Optional max turns override
+}
+
 // SessionManager defines the interface for managing Claude Code sessions
 type SessionManager interface {
 	// LaunchSession starts a new Claude Code session
 	LaunchSession(ctx context.Context, config claudecode.SessionConfig) (*Session, error)
+
+	// ContinueSession resumes an existing completed session with a new query and optional config overrides
+	ContinueSession(ctx context.Context, req ContinueSessionConfig) (*Session, error)
 
 	// GetSessionInfo returns session info from the database by ID
 	GetSessionInfo(sessionID string) (*Info, error)

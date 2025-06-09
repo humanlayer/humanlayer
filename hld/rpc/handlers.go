@@ -146,7 +146,7 @@ func (h *SessionHandlers) HandleGetConversation(ctx context.Context, params json
 		// Get conversation by Claude session ID
 		events, err = h.store.GetConversation(ctx, req.ClaudeSessionID)
 	} else {
-		// Get conversation by session ID
+		// Get conversation by session ID - always returns full history including parents
 		events, err = h.store.GetSessionConversation(ctx, req.SessionID)
 	}
 
@@ -205,6 +205,7 @@ func (h *SessionHandlers) HandleGetSessionState(ctx context.Context, params json
 		ID:              session.ID,
 		RunID:           session.RunID,
 		ClaudeSessionID: session.ClaudeSessionID,
+		ParentSessionID: session.ParentSessionID,
 		Status:          session.Status,
 		Query:           session.Query,
 		Model:           session.Model,
@@ -233,10 +234,62 @@ func (h *SessionHandlers) HandleGetSessionState(ctx context.Context, params json
 	}, nil
 }
 
+// HandleContinueSession handles the ContinueSession RPC method
+func (h *SessionHandlers) HandleContinueSession(ctx context.Context, params json.RawMessage) (interface{}, error) {
+	var req ContinueSessionRequest
+	if err := json.Unmarshal(params, &req); err != nil {
+		return nil, fmt.Errorf("invalid request: %w", err)
+	}
+
+	// Validate required fields
+	if req.SessionID == "" {
+		return nil, fmt.Errorf("session_id is required")
+	}
+	if req.Query == "" {
+		return nil, fmt.Errorf("query is required")
+	}
+
+	// Build session config for manager
+	config := session.ContinueSessionConfig{
+		ParentSessionID:      req.SessionID,
+		Query:                req.Query,
+		SystemPrompt:         req.SystemPrompt,
+		AppendSystemPrompt:   req.AppendSystemPrompt,
+		PermissionPromptTool: req.PermissionPromptTool,
+		AllowedTools:         req.AllowedTools,
+		DisallowedTools:      req.DisallowedTools,
+		CustomInstructions:   req.CustomInstructions,
+		MaxTurns:             req.MaxTurns,
+	}
+
+	// Parse MCP config if provided as JSON string
+	if req.MCPConfig != "" {
+		var mcpConfig claudecode.MCPConfig
+		if err := json.Unmarshal([]byte(req.MCPConfig), &mcpConfig); err != nil {
+			return nil, fmt.Errorf("invalid mcp_config JSON: %w", err)
+		}
+		config.MCPConfig = &mcpConfig
+	}
+
+	// Continue session
+	session, err := h.manager.ContinueSession(ctx, config)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ContinueSessionResponse{
+		SessionID:       session.ID,
+		RunID:           session.RunID,
+		ClaudeSessionID: "", // Will be populated when events stream in
+		ParentSessionID: req.SessionID,
+	}, nil
+}
+
 // Register registers all session handlers with the RPC server
 func (h *SessionHandlers) Register(server *Server) {
 	server.Register("launchSession", h.HandleLaunchSession)
 	server.Register("listSessions", h.HandleListSessions)
 	server.Register("getConversation", h.HandleGetConversation)
 	server.Register("getSessionState", h.HandleGetSessionState)
+	server.Register("continueSession", h.HandleContinueSession)
 }

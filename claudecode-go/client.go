@@ -185,7 +185,7 @@ func (c *Client) Launch(config SessionConfig) (*Session, error) {
 	// Wait for process to complete in background
 	go func() {
 		// Wait for the command to exit
-		session.err = cmd.Wait()
+		session.SetError(cmd.Wait())
 
 		// IMPORTANT: Wait for parsing to complete before signaling done.
 		// This ensures that all output has been read and processed before
@@ -213,8 +213,8 @@ func (c *Client) LaunchAndWait(config SessionConfig) (*Result, error) {
 func (s *Session) Wait() (*Result, error) {
 	<-s.done
 
-	if s.err != nil && s.result == nil {
-		return nil, fmt.Errorf("claude process failed: %w", s.err)
+	if err := s.Error(); err != nil && s.result == nil {
+		return nil, fmt.Errorf("claude process failed: %w", err)
 	}
 
 	return s.result, nil
@@ -232,9 +232,11 @@ func (s *Session) Kill() error {
 func (s *Session) parseStreamingJSON(stdout, stderr io.Reader) {
 	scanner := bufio.NewScanner(stdout)
 	var stderrBuf strings.Builder
+	stderrDone := make(chan struct{})
 
 	// Capture stderr in background
 	go func() {
+		defer close(stderrDone)
 		buf := make([]byte, 1024)
 		for {
 			n, err := stderr.Read(buf)
@@ -283,9 +285,12 @@ func (s *Session) parseStreamingJSON(stdout, stderr io.Reader) {
 		s.Events <- event
 	}
 
+	// Wait for stderr reading to complete before accessing the buffer
+	<-stderrDone
+
 	// If we got stderr output, that's an error
 	if stderrOutput := stderrBuf.String(); stderrOutput != "" {
-		s.err = fmt.Errorf("claude error: %s", stderrOutput)
+		s.SetError(fmt.Errorf("claude error: %s", stderrOutput))
 	}
 
 	// Close events channel when done parsing
@@ -296,7 +301,7 @@ func (s *Session) parseStreamingJSON(stdout, stderr io.Reader) {
 func (s *Session) parseSingleJSON(stdout, stderr io.Reader) {
 	defer func() {
 		if r := recover(); r != nil {
-			s.err = fmt.Errorf("panic in parseSingleJSON: %v", r)
+			s.SetError(fmt.Errorf("panic in parseSingleJSON: %v", r))
 		}
 	}()
 
@@ -304,26 +309,26 @@ func (s *Session) parseSingleJSON(stdout, stderr io.Reader) {
 
 	// Read all stdout
 	if _, err := io.Copy(&stdoutBuf, stdout); err != nil {
-		s.err = fmt.Errorf("failed to read stdout: %w", err)
+		s.SetError(fmt.Errorf("failed to read stdout: %w", err))
 		return
 	}
 
 	// Read all stderr
 	if _, err := io.Copy(&stderrBuf, stderr); err != nil {
-		s.err = fmt.Errorf("failed to read stderr: %w", err)
+		s.SetError(fmt.Errorf("failed to read stderr: %w", err))
 		return
 	}
 
 	// Parse JSON result
 	output := stdoutBuf.String()
 	if output == "" {
-		s.err = fmt.Errorf("no output from claude")
+		s.SetError(fmt.Errorf("no output from claude"))
 		return
 	}
 
 	var result Result
 	if err := json.Unmarshal([]byte(output), &result); err != nil {
-		s.err = fmt.Errorf("failed to parse JSON output: %w\nOutput was: %s", err, output)
+		s.SetError(fmt.Errorf("failed to parse JSON output: %w\nOutput was: %s", err, output))
 		return
 	}
 	s.result = &result
@@ -333,7 +338,7 @@ func (s *Session) parseSingleJSON(stdout, stderr io.Reader) {
 	if stderrOutput := stderrBuf.String(); stderrOutput != "" {
 		// Don't override result if we got valid JSON
 		if s.result == nil {
-			s.err = fmt.Errorf("claude error: %s", stderrOutput)
+			s.SetError(fmt.Errorf("claude error: %s", stderrOutput))
 		}
 	}
 }
@@ -344,13 +349,13 @@ func (s *Session) parseTextOutput(stdout, stderr io.Reader) {
 
 	// Read all stdout
 	if _, err := io.Copy(&stdoutBuf, stdout); err != nil {
-		s.err = fmt.Errorf("failed to read stdout: %w", err)
+		s.SetError(fmt.Errorf("failed to read stdout: %w", err))
 		return
 	}
 
 	// Read all stderr
 	if _, err := io.Copy(&stderrBuf, stderr); err != nil {
-		s.err = fmt.Errorf("failed to read stderr: %w", err)
+		s.SetError(fmt.Errorf("failed to read stderr: %w", err))
 		return
 	}
 
@@ -365,6 +370,6 @@ func (s *Session) parseTextOutput(stdout, stderr io.Reader) {
 
 	// If we got stderr output, that's an error
 	if stderrOutput := stderrBuf.String(); stderrOutput != "" {
-		s.err = fmt.Errorf("claude error: %s", stderrOutput)
+		s.SetError(fmt.Errorf("claude error: %s", stderrOutput))
 	}
 }

@@ -18,6 +18,9 @@ type Client interface {
 	// ListSessions lists all active sessions
 	ListSessions() (*rpc.ListSessionsResponse, error)
 
+	// ContinueSession continues an existing completed session with a new query
+	ContinueSession(req rpc.ContinueSessionRequest) (*rpc.ContinueSessionResponse, error)
+
 	// FetchApprovals fetches pending approvals from the daemon
 	FetchApprovals(sessionID string) ([]approval.PendingApproval, error)
 
