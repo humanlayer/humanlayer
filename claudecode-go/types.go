@@ -2,6 +2,7 @@ package claudecode
 
 import (
 	"os/exec"
+	"sync"
 	"time"
 )
 
@@ -140,5 +141,24 @@ type Session struct {
 	cmd    *exec.Cmd
 	done   chan struct{}
 	result *Result
-	err    error
+
+	// Thread-safe error handling
+	mu  sync.RWMutex
+	err error
+}
+
+// SetError safely sets the error
+func (s *Session) SetError(err error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.err == nil {
+		s.err = err
+	}
+}
+
+// Error safely gets the error
+func (s *Session) Error() error {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.err
 }
