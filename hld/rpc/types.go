@@ -58,6 +58,7 @@ type SessionState struct {
 	ID              string  `json:"id"`
 	RunID           string  `json:"run_id"`
 	ClaudeSessionID string  `json:"claude_session_id,omitempty"`
+	ParentSessionID string  `json:"parent_session_id,omitempty"`
 	Status          string  `json:"status"` // starting, running, completed, failed, waiting_input
 	Query           string  `json:"query"`
 	Model           string  `json:"model,omitempty"`
@@ -74,4 +75,26 @@ type SessionState struct {
 // GetSessionStateResponse is the response for fetching session state
 type GetSessionStateResponse struct {
 	Session SessionState `json:"session"`
+}
+
+// ContinueSessionRequest is the request for continuing an existing session
+type ContinueSessionRequest struct {
+	SessionID            string   `json:"session_id"`                       // The session to continue (required)
+	Query                string   `json:"query"`                            // The new query/message to send (required)
+	SystemPrompt         string   `json:"system_prompt,omitempty"`          // Override system prompt
+	AppendSystemPrompt   string   `json:"append_system_prompt,omitempty"`   // Append to system prompt
+	MCPConfig            string   `json:"mcp_config,omitempty"`             // JSON string of MCP config (to avoid import cycle)
+	PermissionPromptTool string   `json:"permission_prompt_tool,omitempty"` // MCP tool for permission prompts
+	AllowedTools         []string `json:"allowed_tools,omitempty"`          // Allowed tools list
+	DisallowedTools      []string `json:"disallowed_tools,omitempty"`       // Disallowed tools list
+	CustomInstructions   string   `json:"custom_instructions,omitempty"`    // Custom instructions
+	MaxTurns             int      `json:"max_turns,omitempty"`              // Max conversation turns
+}
+
+// ContinueSessionResponse is the response for continuing a session
+type ContinueSessionResponse struct {
+	SessionID       string `json:"session_id"`        // The new session ID
+	RunID           string `json:"run_id"`            // The new run ID
+	ClaudeSessionID string `json:"claude_session_id"` // The new Claude session ID (unique for each resume)
+	ParentSessionID string `json:"parent_session_id"` // The parent session ID
 }

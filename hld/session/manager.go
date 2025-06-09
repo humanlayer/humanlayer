@@ -437,3 +437,143 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 
 	return nil
 }
+
+// ContinueSession resumes an existing completed session with a new query and optional config overrides
+func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig) (*Session, error) {
+	// Get parent session from database
+	parentSession, err := m.store.GetSession(ctx, req.ParentSessionID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get parent session: %w", err)
+	}
+
+	// Validate parent session status
+	if parentSession.Status != store.SessionStatusCompleted {
+		return nil, fmt.Errorf("cannot continue session with status %s (must be completed)", parentSession.Status)
+	}
+
+	// Validate parent session has claude_session_id
+	if parentSession.ClaudeSessionID == "" {
+		return nil, fmt.Errorf("parent session missing claude_session_id (cannot resume)")
+	}
+
+	// Build config for resumed session
+	// Start with minimal required fields
+	config := claudecode.SessionConfig{
+		Query:        req.Query,
+		SessionID:    parentSession.ClaudeSessionID, // This triggers --resume flag
+		OutputFormat: claudecode.OutputStreamJSON,   // Always use streaming JSON
+		// Model and WorkingDir are inherited from Claude's internal state
+	}
+
+	// Apply optional overrides
+	if req.SystemPrompt != "" {
+		config.SystemPrompt = req.SystemPrompt
+	}
+	if req.AppendSystemPrompt != "" {
+		config.AppendSystemPrompt = req.AppendSystemPrompt
+	}
+	if req.MCPConfig != nil {
+		config.MCPConfig = req.MCPConfig
+	}
+	if req.PermissionPromptTool != "" {
+		config.PermissionPromptTool = req.PermissionPromptTool
+	}
+	if len(req.AllowedTools) > 0 {
+		config.AllowedTools = req.AllowedTools
+	}
+	if len(req.DisallowedTools) > 0 {
+		config.DisallowedTools = req.DisallowedTools
+	}
+	if req.CustomInstructions != "" {
+		config.CustomInstructions = req.CustomInstructions
+	}
+	if req.MaxTurns > 0 {
+		config.MaxTurns = req.MaxTurns
+	}
+
+	// Create new session with parent reference
+	sessionID := uuid.New().String()
+	runID := uuid.New().String()
+
+	// Store session in database with parent reference
+	dbSession := store.NewSessionFromConfig(sessionID, runID, config)
+	dbSession.ParentSessionID = req.ParentSessionID
+	// Note: ClaudeSessionID will be captured from streaming events (will be different from parent)
+	if err := m.store.CreateSession(ctx, dbSession); err != nil {
+		return nil, fmt.Errorf("failed to store session in database: %w", err)
+	}
+
+	// Add run_id to MCP server environments
+	if config.MCPConfig != nil {
+		for name, server := range config.MCPConfig.MCPServers {
+			if server.Env == nil {
+				server.Env = make(map[string]string)
+			}
+			server.Env["HUMANLAYER_RUN_ID"] = runID
+			config.MCPConfig.MCPServers[name] = server
+		}
+
+		// Store MCP servers configuration
+		servers, err := store.MCPServersFromConfig(sessionID, config.MCPConfig.MCPServers)
+		if err != nil {
+			slog.Error("failed to convert MCP servers", "error", err)
+		} else if err := m.store.StoreMCPServers(ctx, sessionID, servers); err != nil {
+			slog.Error("failed to store MCP servers", "error", err)
+		}
+	}
+
+	// Launch resumed Claude session
+	claudeSession, err := m.client.Launch(config)
+	if err != nil {
+		m.updateSessionStatus(ctx, sessionID, StatusFailed, err.Error())
+		return nil, fmt.Errorf("failed to launch resumed Claude session: %w", err)
+	}
+
+	// Store active Claude process
+	m.mu.Lock()
+	m.activeProcesses[sessionID] = claudeSession
+	m.mu.Unlock()
+
+	// Update database with running status
+	statusRunning := string(StatusRunning)
+	now := time.Now()
+	update := store.SessionUpdate{
+		Status:         &statusRunning,
+		LastActivityAt: &now,
+	}
+	if err := m.store.UpdateSession(ctx, sessionID, update); err != nil {
+		slog.Error("failed to update session status to running", "error", err)
+	}
+
+	// Publish status change event
+	if m.eventBus != nil {
+		m.eventBus.Publish(bus.Event{
+			Type: bus.EventSessionStatusChanged,
+			Data: map[string]interface{}{
+				"session_id":        sessionID,
+				"run_id":            runID,
+				"parent_session_id": req.ParentSessionID,
+				"old_status":        string(StatusStarting),
+				"new_status":        string(StatusRunning),
+			},
+		})
+	}
+
+	// Monitor session lifecycle in background
+	go m.monitorSession(ctx, sessionID, runID, claudeSession, time.Now(), config)
+
+	slog.Info("continued Claude session",
+		"session_id", sessionID,
+		"parent_session_id", req.ParentSessionID,
+		"run_id", runID,
+		"query", req.Query)
+
+	// Return minimal session info
+	return &Session{
+		ID:        sessionID,
+		RunID:     runID,
+		Status:    StatusRunning,
+		StartTime: time.Now(),
+		Config:    config,
+	}, nil
+}

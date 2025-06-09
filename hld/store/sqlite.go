@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 
 	claudecode "github.com/humanlayer/humanlayer/claudecode-go"
 	_ "github.com/mattn/go-sqlite3"
@@ -523,24 +524,98 @@ func (s *SQLiteStore) GetConversation(ctx context.Context, claudeSessionID strin
 	return events, nil
 }
 
-// GetSessionConversation retrieves all events for a session
+// GetSessionConversation retrieves all events for a session including parent history
 func (s *SQLiteStore) GetSessionConversation(ctx context.Context, sessionID string) ([]*ConversationEvent, error) {
-	// First get the claude_session_id for this session
-	var claudeSessionID sql.NullString
-	err := s.db.QueryRowContext(ctx,
-		"SELECT claude_session_id FROM sessions WHERE id = ?",
-		sessionID,
-	).Scan(&claudeSessionID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get session: %w", err)
+	// Walk up the parent chain to get all related claude session IDs
+	claudeSessionIDs := []string{}
+	currentID := sessionID
+
+	for currentID != "" {
+		var claudeSessionID sql.NullString
+		var parentID sql.NullString
+
+		err := s.db.QueryRowContext(ctx,
+			"SELECT claude_session_id, parent_session_id FROM sessions WHERE id = ?",
+			currentID,
+		).Scan(&claudeSessionID, &parentID)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				break // Session not found, stop walking
+			}
+			return nil, fmt.Errorf("failed to get session: %w", err)
+		}
+
+		// Add claude session ID if present (in reverse order for chronological events)
+		if claudeSessionID.Valid && claudeSessionID.String != "" {
+			claudeSessionIDs = append([]string{claudeSessionID.String}, claudeSessionIDs...)
+		}
+
+		// Move to parent
+		if parentID.Valid {
+			currentID = parentID.String
+		} else {
+			currentID = ""
+		}
 	}
 
-	if !claudeSessionID.Valid {
-		// No claude session yet, return empty
+	if len(claudeSessionIDs) == 0 {
+		// No claude sessions yet, return empty
 		return []*ConversationEvent{}, nil
 	}
 
-	return s.GetConversation(ctx, claudeSessionID.String)
+	// Get all events for all claude session IDs in chronological order
+	placeholders := make([]string, len(claudeSessionIDs))
+	args := make([]interface{}, len(claudeSessionIDs))
+	for i, id := range claudeSessionIDs {
+		placeholders[i] = "?"
+		args[i] = id
+	}
+
+	// Build query that orders by the position in the claude session ID list first
+	// This ensures parent events come before child events
+	orderCases := make([]string, len(claudeSessionIDs))
+	for i := range claudeSessionIDs {
+		orderCases[i] = fmt.Sprintf("WHEN claude_session_id = ? THEN %d", i)
+		args = append(args, claudeSessionIDs[i])
+	}
+
+	query := fmt.Sprintf(`
+		SELECT id, session_id, claude_session_id, sequence, event_type, created_at,
+			role, content,
+			tool_id, tool_name, tool_input_json,
+			tool_result_for_id, tool_result_content,
+			is_completed, approval_status, approval_id
+		FROM conversation_events
+		WHERE claude_session_id IN (%s)
+		ORDER BY
+			CASE %s END,
+			sequence
+	`, strings.Join(placeholders, ","), strings.Join(orderCases, " "))
+
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get conversation: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var events []*ConversationEvent
+	for rows.Next() {
+		event := &ConversationEvent{}
+		err := rows.Scan(
+			&event.ID, &event.SessionID, &event.ClaudeSessionID,
+			&event.Sequence, &event.EventType, &event.CreatedAt,
+			&event.Role, &event.Content,
+			&event.ToolID, &event.ToolName, &event.ToolInputJSON,
+			&event.ToolResultForID, &event.ToolResultContent,
+			&event.IsCompleted, &event.ApprovalStatus, &event.ApprovalID,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan event: %w", err)
+		}
+		events = append(events, event)
+	}
+
+	return events, nil
 }
 
 // GetPendingToolCall finds the most recent uncompleted tool call for a given session and tool name
