@@ -57,6 +57,8 @@ type Session struct {
 	CostUSD            *float64
 	TotalTokens        *int
 	DurationMS         *int
+	NumTurns           *int
+	ResultContent      string
 	ErrorMessage       string
 }
 
@@ -69,6 +71,8 @@ type SessionUpdate struct {
 	CostUSD         *float64
 	TotalTokens     *int
 	DurationMS      *int
+	NumTurns        *int
+	ResultContent   *string
 	ErrorMessage    *string
 }
 

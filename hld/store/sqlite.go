@@ -85,6 +85,8 @@ func (s *SQLiteStore) initSchema() error {
 		cost_usd REAL,
 		total_tokens INTEGER,
 		duration_ms INTEGER,
+		num_turns INTEGER,
+		result_content TEXT,
 		error_message TEXT
 	);
 	CREATE INDEX IF NOT EXISTS idx_sessions_claude ON sessions(claude_session_id);
@@ -234,6 +236,14 @@ func (s *SQLiteStore) UpdateSession(ctx context.Context, sessionID string, updat
 		setParts = append(setParts, "duration_ms = ?")
 		args = append(args, *updates.DurationMS)
 	}
+	if updates.NumTurns != nil {
+		setParts = append(setParts, "num_turns = ?")
+		args = append(args, *updates.NumTurns)
+	}
+	if updates.ResultContent != nil {
+		setParts = append(setParts, "result_content = ?")
+		args = append(args, *updates.ResultContent)
+	}
 	if updates.ErrorMessage != nil {
 		setParts = append(setParts, "error_message = ?")
 		args = append(args, *updates.ErrorMessage)
@@ -271,7 +281,7 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 		SELECT id, run_id, claude_session_id, parent_session_id,
 			query, model, working_dir, max_turns, system_prompt, custom_instructions,
 			status, created_at, last_activity_at, completed_at,
-			cost_usd, total_tokens, duration_ms, error_message
+			cost_usd, total_tokens, duration_ms, num_turns, result_content, error_message
 		FROM sessions WHERE id = ?
 	`
 
@@ -279,15 +289,15 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 	var claudeSessionID, parentSessionID, model, workingDir, systemPrompt, customInstructions sql.NullString
 	var completedAt sql.NullTime
 	var costUSD sql.NullFloat64
-	var totalTokens, durationMS sql.NullInt64
+	var totalTokens, durationMS, numTurns sql.NullInt64
+	var resultContent, errorMessage sql.NullString
 
-	var errorMessage sql.NullString
 	err := s.db.QueryRowContext(ctx, query, sessionID).Scan(
 		&session.ID, &session.RunID, &claudeSessionID, &parentSessionID,
 		&session.Query, &model, &workingDir, &session.MaxTurns,
 		&systemPrompt, &customInstructions,
 		&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
-		&costUSD, &totalTokens, &durationMS, &errorMessage,
+		&costUSD, &totalTokens, &durationMS, &numTurns, &resultContent, &errorMessage,
 	)
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("session not found: %s", sessionID)
@@ -303,6 +313,7 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 	session.WorkingDir = workingDir.String
 	session.SystemPrompt = systemPrompt.String
 	session.CustomInstructions = customInstructions.String
+	session.ResultContent = resultContent.String
 	session.ErrorMessage = errorMessage.String
 	if completedAt.Valid {
 		session.CompletedAt = &completedAt.Time
@@ -318,6 +329,10 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 		duration := int(durationMS.Int64)
 		session.DurationMS = &duration
 	}
+	if numTurns.Valid {
+		turns := int(numTurns.Int64)
+		session.NumTurns = &turns
+	}
 
 	return &session, nil
 }
@@ -328,7 +343,7 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 		SELECT id, run_id, claude_session_id, parent_session_id,
 			query, model, working_dir, max_turns, system_prompt, custom_instructions,
 			status, created_at, last_activity_at, completed_at,
-			cost_usd, total_tokens, duration_ms, error_message
+			cost_usd, total_tokens, duration_ms, num_turns, result_content, error_message
 		FROM sessions
 		WHERE run_id = ?
 	`
@@ -337,15 +352,15 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 	var claudeSessionID, parentSessionID, model, workingDir, systemPrompt, customInstructions sql.NullString
 	var completedAt sql.NullTime
 	var costUSD sql.NullFloat64
-	var totalTokens, durationMS sql.NullInt64
-	var errorMessage sql.NullString
+	var totalTokens, durationMS, numTurns sql.NullInt64
+	var resultContent, errorMessage sql.NullString
 
 	err := s.db.QueryRowContext(ctx, query, runID).Scan(
 		&session.ID, &session.RunID, &claudeSessionID, &parentSessionID,
 		&session.Query, &model, &workingDir, &session.MaxTurns,
 		&systemPrompt, &customInstructions,
 		&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
-		&costUSD, &totalTokens, &durationMS, &errorMessage,
+		&costUSD, &totalTokens, &durationMS, &numTurns, &resultContent, &errorMessage,
 	)
 	if err == sql.ErrNoRows {
 		return nil, nil // No session found
@@ -361,6 +376,7 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 	session.WorkingDir = workingDir.String
 	session.SystemPrompt = systemPrompt.String
 	session.CustomInstructions = customInstructions.String
+	session.ResultContent = resultContent.String
 	session.ErrorMessage = errorMessage.String
 	if completedAt.Valid {
 		session.CompletedAt = &completedAt.Time
@@ -376,6 +392,10 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 		duration := int(durationMS.Int64)
 		session.DurationMS = &duration
 	}
+	if numTurns.Valid {
+		turns := int(numTurns.Int64)
+		session.NumTurns = &turns
+	}
 
 	return &session, nil
 }
@@ -386,7 +406,7 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 		SELECT id, run_id, claude_session_id, parent_session_id,
 			query, model, working_dir, max_turns, system_prompt, custom_instructions,
 			status, created_at, last_activity_at, completed_at,
-			cost_usd, total_tokens, duration_ms, error_message
+			cost_usd, total_tokens, duration_ms, num_turns, result_content, error_message
 		FROM sessions
 		ORDER BY last_activity_at DESC
 	`
@@ -403,15 +423,15 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 		var claudeSessionID, parentSessionID, model, workingDir, systemPrompt, customInstructions sql.NullString
 		var completedAt sql.NullTime
 		var costUSD sql.NullFloat64
-		var totalTokens, durationMS sql.NullInt64
+		var totalTokens, durationMS, numTurns sql.NullInt64
+		var resultContent, errorMessage sql.NullString
 
-		var errorMessage sql.NullString
 		err := rows.Scan(
 			&session.ID, &session.RunID, &claudeSessionID, &parentSessionID,
 			&session.Query, &model, &workingDir, &session.MaxTurns,
 			&systemPrompt, &customInstructions,
 			&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
-			&costUSD, &totalTokens, &durationMS, &errorMessage,
+			&costUSD, &totalTokens, &durationMS, &numTurns, &resultContent, &errorMessage,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan session: %w", err)
@@ -424,6 +444,7 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 		session.WorkingDir = workingDir.String
 		session.SystemPrompt = systemPrompt.String
 		session.CustomInstructions = customInstructions.String
+		session.ResultContent = resultContent.String
 		session.ErrorMessage = errorMessage.String
 		if completedAt.Valid {
 			session.CompletedAt = &completedAt.Time
@@ -438,6 +459,10 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 		if durationMS.Valid {
 			duration := int(durationMS.Int64)
 			session.DurationMS = &duration
+		}
+		if numTurns.Valid {
+			turns := int(numTurns.Int64)
+			session.NumTurns = &turns
 		}
 
 		sessions = append(sessions, &session)
