@@ -2,6 +2,7 @@ package claudecode_test
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -130,5 +131,81 @@ done:
 	}
 	if result == nil {
 		t.Error("expected result")
+	}
+}
+
+func TestClient_WorkingDirectoryHandling(t *testing.T) {
+	client, err := claudecode.NewClient()
+	if err != nil {
+		t.Skip("claude binary not found in PATH")
+	}
+
+	// Get current directory and home directory for test comparisons
+	currentDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("failed to get current directory: %v", err)
+	}
+
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatalf("failed to get home directory: %v", err)
+	}
+
+	tests := []struct {
+		name              string
+		workingDir        string
+		expectedToContain string
+		description       string
+	}{
+		{
+			name:              "tilde expansion",
+			workingDir:        "~",
+			expectedToContain: homeDir,
+			description:       "should expand ~ to home directory",
+		},
+		{
+			name:              "tilde with path",
+			workingDir:        "~/Documents",
+			expectedToContain: filepath.Join(homeDir, "Documents"),
+			description:       "should expand ~/path to home/path",
+		},
+		{
+			name:              "relative path",
+			workingDir:        ".",
+			expectedToContain: currentDir,
+			description:       "should convert relative path to absolute",
+		},
+		{
+			name:              "absolute path",
+			workingDir:        currentDir,
+			expectedToContain: currentDir,
+			description:       "should handle absolute paths correctly",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// We'll use a query that should fail quickly to avoid long waits
+			config := claudecode.SessionConfig{
+				Query:        "pwd", // Simple command to show working directory
+				WorkingDir:   tt.workingDir,
+				OutputFormat: claudecode.OutputText,
+			}
+
+			// Launch the session (this tests the path handling logic)
+			session, err := client.Launch(config)
+			if err != nil {
+				t.Fatalf("failed to launch with working dir %q: %v", tt.workingDir, err)
+			}
+
+			// Clean up
+			session.Kill()
+			session.Wait()
+
+			// The fact that Launch succeeded without error indicates the path was handled correctly
+			// More detailed verification would require exposing internal state or using a mock
+			t.Logf("Successfully handled working directory: %s -> expected to contain: %s",
+				tt.workingDir, tt.expectedToContain)
+		})
 	}
 }

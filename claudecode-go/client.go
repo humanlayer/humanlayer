@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -130,7 +131,26 @@ func (c *Client) Launch(config SessionConfig) (*Session, error) {
 
 	// Set working directory if specified
 	if config.WorkingDir != "" {
-		cmd.Dir = config.WorkingDir
+		workingDir := config.WorkingDir
+
+		// Expand tilde to user home directory
+		if strings.HasPrefix(workingDir, "~/") {
+			if home, err := os.UserHomeDir(); err == nil {
+				workingDir = filepath.Join(home, workingDir[2:])
+			}
+		} else if workingDir == "~" {
+			if home, err := os.UserHomeDir(); err == nil {
+				workingDir = home
+			}
+		}
+
+		// Convert to absolute path and clean it
+		if absPath, err := filepath.Abs(workingDir); err == nil {
+			cmd.Dir = filepath.Clean(absPath)
+		} else {
+			// Fallback to original if absolute path conversion fails
+			cmd.Dir = workingDir
+		}
 	}
 
 	// Set up pipes for stdout/stderr
