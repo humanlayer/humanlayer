@@ -27,6 +27,13 @@ type Client interface {
 	// SendDecision sends a decision (approve/deny/respond) for an approval
 	SendDecision(callID, approvalType, decision, comment string) error
 
+	// Type-safe approval methods for function calls
+	ApproveFunctionCall(callID, comment string) error
+	DenyFunctionCall(callID, reason string) error
+
+	// Type-safe approval methods for human contacts
+	RespondToHumanContact(callID, response string) error
+
 	// GetConversation fetches the conversation history for a session
 	GetConversation(sessionID string) (*rpc.GetConversationResponse, error)
 

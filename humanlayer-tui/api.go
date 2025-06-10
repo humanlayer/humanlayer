@@ -334,12 +334,13 @@ func launchSession(daemonClient client.Client, query, model, workingDir string) 
 
 func sendApproval(daemonClient client.Client, callID string, approved bool, comment string) tea.Cmd {
 	return func() tea.Msg {
-		decision := "denied"
+		var err error
 		if approved {
-			decision = "approved"
+			err = daemonClient.ApproveFunctionCall(callID, comment)
+		} else {
+			err = daemonClient.DenyFunctionCall(callID, comment)
 		}
 
-		err := daemonClient.SendDecision(callID, "function_call", decision, comment)
 		if err != nil {
 			return approvalSentMsg{err: err}
 		}
@@ -350,7 +351,7 @@ func sendApproval(daemonClient client.Client, callID string, approved bool, comm
 
 func sendHumanResponse(daemonClient client.Client, requestID string, response string) tea.Cmd {
 	return func() tea.Msg {
-		err := daemonClient.SendDecision(requestID, "human_contact", "responded", response)
+		err := daemonClient.RespondToHumanContact(requestID, response)
 		if err != nil {
 			return humanResponseSentMsg{err: err}
 		}
