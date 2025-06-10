@@ -199,8 +199,8 @@ func TestClient_WorkingDirectoryHandling(t *testing.T) {
 			}
 
 			// Clean up
-			session.Kill()
-			session.Wait()
+			_ = session.Kill()
+			_, _ = session.Wait()
 
 			// The fact that Launch succeeded without error indicates the path was handled correctly
 			// More detailed verification would require exposing internal state or using a mock
