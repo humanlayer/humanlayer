@@ -14,6 +14,11 @@ import (
 // Helper functions
 
 func truncate(s string, max int) string {
+	// Replace newlines and other whitespace with spaces first
+	s = strings.ReplaceAll(s, "\n", " ")
+	s = strings.ReplaceAll(s, "\r", " ")
+	s = strings.ReplaceAll(s, "\t", " ")
+
 	if len(s) <= max {
 		return s
 	}

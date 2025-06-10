@@ -49,6 +49,7 @@ const (
 	launchSessionView
 	sessionDetailView
 	helpView
+	queryModalView
 )
 
 // Tab represents a main navigation tab
@@ -257,7 +258,24 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
-		// Global key handling
+		// Skip global key handling when in modal views to allow full text input
+		if m.getCurrentViewState() == queryModalView {
+			// Delegate directly to tab without global processing
+			switch m.activeTab {
+			case approvalsTab:
+				cmd = m.approvals.Update(msg, &m)
+			case sessionsTab:
+				cmd = m.sessions.Update(msg, &m)
+			case historyTab:
+				cmd = m.history.Update(msg, &m)
+			}
+			if cmd != nil {
+				cmds = append(cmds, cmd)
+			}
+			return m, tea.Batch(cmds...)
+		}
+
+		// Global key handling (only when not in modal)
 		switch {
 		case key.Matches(msg, keys.Quit):
 			// Only quit from list views
