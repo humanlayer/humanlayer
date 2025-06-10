@@ -208,6 +208,12 @@ func (m *Manager) monitorSession(ctx context.Context, sessionID, runID string, c
 			}
 			duration := int(endTime.Sub(startTime).Milliseconds())
 			update.DurationMS = &duration
+			if result.NumTurns > 0 {
+				update.NumTurns = &result.NumTurns
+			}
+			if result.Result != "" {
+				update.ResultContent = &result.Result
+			}
 		}
 		if err := m.store.UpdateSession(ctx, sessionID, update); err != nil {
 			slog.Error("failed to update session completion in database", "error", err)
@@ -290,6 +296,33 @@ func (m *Manager) GetSessionInfo(sessionID string) (*Info, error) {
 		info.EndTime = dbSession.CompletedAt
 	}
 
+	// Populate Result field if we have result data
+	if dbSession.ResultContent != "" || dbSession.NumTurns != nil || dbSession.CostUSD != nil || dbSession.DurationMS != nil {
+		result := &claudecode.Result{
+			Type:      "result",
+			Subtype:   "session_completed",
+			Result:    dbSession.ResultContent,
+			SessionID: dbSession.ClaudeSessionID, // Use Claude session ID for consistency
+		}
+
+		if dbSession.CostUSD != nil {
+			result.CostUSD = *dbSession.CostUSD
+			result.TotalCost = *dbSession.CostUSD // Both fields should have same value
+		}
+		if dbSession.NumTurns != nil {
+			result.NumTurns = *dbSession.NumTurns
+		}
+		if dbSession.DurationMS != nil {
+			result.DurationMS = *dbSession.DurationMS
+		}
+		if dbSession.ErrorMessage != "" {
+			result.Error = dbSession.ErrorMessage
+			result.IsError = true
+		}
+
+		info.Result = result
+	}
+
 	return info, nil
 }
 
@@ -324,8 +357,32 @@ func (m *Manager) ListSessions() []Info {
 			info.EndTime = dbSession.CompletedAt
 		}
 
-		// TODO: Results are no longer stored in memory
-		// Would need to serialize results to database if we want to preserve them
+		// Populate Result field if we have result data
+		if dbSession.ResultContent != "" || dbSession.NumTurns != nil || dbSession.CostUSD != nil || dbSession.DurationMS != nil {
+			result := &claudecode.Result{
+				Type:      "result",
+				Subtype:   "session_completed",
+				Result:    dbSession.ResultContent,
+				SessionID: dbSession.ClaudeSessionID, // Use Claude session ID for consistency
+			}
+
+			if dbSession.CostUSD != nil {
+				result.CostUSD = *dbSession.CostUSD
+				result.TotalCost = *dbSession.CostUSD // Both fields should have same value
+			}
+			if dbSession.NumTurns != nil {
+				result.NumTurns = *dbSession.NumTurns
+			}
+			if dbSession.DurationMS != nil {
+				result.DurationMS = *dbSession.DurationMS
+			}
+			if dbSession.ErrorMessage != "" {
+				result.Error = dbSession.ErrorMessage
+				result.IsError = true
+			}
+
+			info.Result = result
+		}
 
 		infos = append(infos, info)
 	}
