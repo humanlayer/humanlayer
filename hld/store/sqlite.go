@@ -202,37 +202,48 @@ func (s *SQLiteStore) CreateSession(ctx context.Context, session *Session) error
 
 // UpdateSession updates session fields
 func (s *SQLiteStore) UpdateSession(ctx context.Context, sessionID string, updates SessionUpdate) error {
-	query := `UPDATE sessions SET last_activity_at = CURRENT_TIMESTAMP`
+	query := `UPDATE sessions SET`
 	args := []interface{}{}
+	setParts := []string{}
 
+	if updates.LastActivityAt != nil {
+		setParts = append(setParts, "last_activity_at = ?")
+		args = append(args, *updates.LastActivityAt)
+	}
 	if updates.ClaudeSessionID != nil {
-		query += ", claude_session_id = ?"
+		setParts = append(setParts, "claude_session_id = ?")
 		args = append(args, *updates.ClaudeSessionID)
 	}
 	if updates.Status != nil {
-		query += ", status = ?"
+		setParts = append(setParts, "status = ?")
 		args = append(args, *updates.Status)
 	}
 	if updates.CompletedAt != nil {
-		query += ", completed_at = ?"
+		setParts = append(setParts, "completed_at = ?")
 		args = append(args, *updates.CompletedAt)
 	}
 	if updates.CostUSD != nil {
-		query += ", cost_usd = ?"
+		setParts = append(setParts, "cost_usd = ?")
 		args = append(args, *updates.CostUSD)
 	}
 	if updates.TotalTokens != nil {
-		query += ", total_tokens = ?"
+		setParts = append(setParts, "total_tokens = ?")
 		args = append(args, *updates.TotalTokens)
 	}
 	if updates.DurationMS != nil {
-		query += ", duration_ms = ?"
+		setParts = append(setParts, "duration_ms = ?")
 		args = append(args, *updates.DurationMS)
 	}
 	if updates.ErrorMessage != nil {
-		query += ", error_message = ?"
+		setParts = append(setParts, "error_message = ?")
 		args = append(args, *updates.ErrorMessage)
 	}
+
+	if len(setParts) == 0 {
+		return fmt.Errorf("no fields to update")
+	}
+
+	query += " " + strings.Join(setParts, ", ")
 
 	query += " WHERE id = ?"
 	args = append(args, sessionID)
@@ -377,7 +388,7 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 			status, created_at, last_activity_at, completed_at,
 			cost_usd, total_tokens, duration_ms, error_message
 		FROM sessions
-		ORDER BY created_at DESC
+		ORDER BY last_activity_at DESC
 	`
 
 	rows, err := s.db.QueryContext(ctx, query)

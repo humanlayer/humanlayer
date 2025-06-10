@@ -274,13 +274,16 @@ func (m *Manager) GetSessionInfo(sessionID string) (*Info, error) {
 	}
 
 	info := &Info{
-		ID:        dbSession.ID,
-		RunID:     dbSession.RunID,
-		Status:    Status(dbSession.Status),
-		StartTime: dbSession.CreatedAt,
-		Error:     dbSession.ErrorMessage,
-		Query:     dbSession.Query,
-		Model:     dbSession.Model,
+		ID:              dbSession.ID,
+		RunID:           dbSession.RunID,
+		ClaudeSessionID: dbSession.ClaudeSessionID,
+		Status:          Status(dbSession.Status),
+		StartTime:       dbSession.CreatedAt,
+		LastActivityAt:  dbSession.LastActivityAt,
+		Error:           dbSession.ErrorMessage,
+		Query:           dbSession.Query,
+		Model:           dbSession.Model,
+		WorkingDir:      dbSession.WorkingDir,
 	}
 
 	if dbSession.CompletedAt != nil {
@@ -303,13 +306,16 @@ func (m *Manager) ListSessions() []Info {
 	infos := make([]Info, 0, len(dbSessions))
 	for _, dbSession := range dbSessions {
 		info := Info{
-			ID:        dbSession.ID,
-			RunID:     dbSession.RunID,
-			Status:    Status(dbSession.Status),
-			StartTime: dbSession.CreatedAt,
-			Error:     dbSession.ErrorMessage,
-			Query:     dbSession.Query,
-			Model:     dbSession.Model,
+			ID:              dbSession.ID,
+			RunID:           dbSession.RunID,
+			ClaudeSessionID: dbSession.ClaudeSessionID,
+			Status:          Status(dbSession.Status),
+			StartTime:       dbSession.CreatedAt,
+			LastActivityAt:  dbSession.LastActivityAt,
+			Error:           dbSession.ErrorMessage,
+			Query:           dbSession.Query,
+			Model:           dbSession.Model,
+			WorkingDir:      dbSession.WorkingDir,
 		}
 
 		// Set end time if completed

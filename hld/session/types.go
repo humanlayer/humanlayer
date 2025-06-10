@@ -31,15 +31,18 @@ type Session struct {
 
 // Info provides a JSON-safe view of the session
 type Info struct {
-	ID        string             `json:"id"`
-	RunID     string             `json:"run_id"`
-	Status    Status             `json:"status"`
-	StartTime time.Time          `json:"start_time"`
-	EndTime   *time.Time         `json:"end_time,omitempty"`
-	Error     string             `json:"error,omitempty"`
-	Query     string             `json:"query"`
-	Model     string             `json:"model,omitempty"`
-	Result    *claudecode.Result `json:"result,omitempty"`
+	ID              string             `json:"id"`
+	RunID           string             `json:"run_id"`
+	ClaudeSessionID string             `json:"claude_session_id,omitempty"`
+	Status          Status             `json:"status"`
+	StartTime       time.Time          `json:"start_time"`
+	EndTime         *time.Time         `json:"end_time,omitempty"`
+	LastActivityAt  time.Time          `json:"last_activity_at"`
+	Error           string             `json:"error,omitempty"`
+	Query           string             `json:"query"`
+	Model           string             `json:"model,omitempty"`
+	WorkingDir      string             `json:"working_dir,omitempty"`
+	Result          *claudecode.Result `json:"result,omitempty"`
 }
 
 // ContinueSessionConfig contains the configuration for continuing a session

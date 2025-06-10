@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -14,9 +15,10 @@ import (
 
 // sessionModel contains all state related to the sessions tab
 type sessionModel struct {
-	sessions  []session.Info
-	cursor    int
-	viewState viewState
+	sessions       []session.Info
+	sortedSessions []session.Info // Cached sorted sessions for navigation
+	cursor         int
+	viewState      viewState
 
 	// For session detail view
 	selectedSession     *session.Info
@@ -46,6 +48,7 @@ func newSessionModel() sessionModel {
 
 	return sessionModel{
 		sessions:          []session.Info{},
+		sortedSessions:    []session.Info{},
 		cursor:            0,
 		viewState:         listView,
 		launchQueryInput:  queryInput,
@@ -74,6 +77,7 @@ func (sm *sessionModel) Update(msg tea.Msg, m *model) tea.Cmd {
 			return nil
 		}
 		sm.sessions = msg.sessions
+		sm.updateSortedSessions() // Update cached sorted sessions
 		m.activeSessionCount = 0
 		for _, sess := range sm.sessions {
 			if sess.Status == "running" || sess.Status == "starting" {
@@ -81,8 +85,8 @@ func (sm *sessionModel) Update(msg tea.Msg, m *model) tea.Cmd {
 			}
 		}
 		// Preserve cursor position if possible
-		if sm.cursor >= len(sm.sessions) && len(sm.sessions) > 0 {
-			sm.cursor = len(sm.sessions) - 1
+		if sm.cursor >= len(sm.sortedSessions) && len(sm.sortedSessions) > 0 {
+			sm.cursor = len(sm.sortedSessions) - 1
 		}
 		return nil
 
@@ -112,6 +116,38 @@ func (sm *sessionModel) Update(msg tea.Msg, m *model) tea.Cmd {
 	return nil
 }
 
+// updateSortedSessions updates the cached sorted sessions
+func (sm *sessionModel) updateSortedSessions() {
+	sm.sortedSessions = make([]session.Info, len(sm.sessions))
+	copy(sm.sortedSessions, sm.sessions)
+
+	sort.Slice(sm.sortedSessions, func(i, j int) bool {
+		a, b := sm.sortedSessions[i], sm.sortedSessions[j]
+
+		// Status priority: running > completed > failed
+		statusPriority := func(status session.Status) int {
+			switch status {
+			case "running", "starting":
+				return 0
+			case "completed":
+				return 1
+			case "failed":
+				return 2
+			default:
+				return 3
+			}
+		}
+
+		aPrio, bPrio := statusPriority(a.Status), statusPriority(b.Status)
+		if aPrio != bPrio {
+			return aPrio < bPrio
+		}
+
+		// Within same status, sort by last activity (most recent first)
+		return a.LastActivityAt.After(b.LastActivityAt)
+	})
+}
+
 // updateListView handles key events in the sessions list view
 func (sm *sessionModel) updateListView(msg tea.KeyMsg, m *model) tea.Cmd {
 	switch {
@@ -121,13 +157,13 @@ func (sm *sessionModel) updateListView(msg tea.KeyMsg, m *model) tea.Cmd {
 		}
 
 	case key.Matches(msg, keys.Down):
-		if sm.cursor < len(sm.sessions)-1 {
+		if sm.cursor < len(sm.sortedSessions)-1 {
 			sm.cursor++
 		}
 
 	case key.Matches(msg, keys.Enter):
-		if sm.cursor < len(sm.sessions) {
-			sm.selectedSession = &sm.sessions[sm.cursor]
+		if sm.cursor < len(sm.sortedSessions) {
+			sm.selectedSession = &sm.sortedSessions[sm.cursor]
 			sm.sessionDetailScroll = 0
 			sm.viewState = sessionDetailView
 			// Fetch approvals for this session
@@ -251,9 +287,9 @@ func (sm *sessionModel) View(m *model) string {
 	}
 }
 
-// renderListView renders the sessions list
+// renderListView renders the sessions list in table format
 func (sm *sessionModel) renderListView(m *model) string {
-	if len(sm.sessions) == 0 {
+	if len(sm.sortedSessions) == 0 {
 		emptyStyle := lipgloss.NewStyle().
 			Foreground(lipgloss.Color("241")).
 			Italic(true).
@@ -270,12 +306,26 @@ func (sm *sessionModel) renderListView(m *model) string {
 		MarginBottom(1)
 	s.WriteString(headerStyle.Render("Claude Sessions") + "\n\n")
 
+	// Column headers with proper centering
+	headerRow := centerText("Status", 8) +
+		centerText("Modified", 11) +
+		centerText("Created", 11) +
+		centerText("Working Dir", 20) +
+		centerText("Model", 9) +
+		"Query"
+	headerColStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("243")).
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderBottom(true)
+	s.WriteString(headerColStyle.Render(headerRow) + "\n")
+
 	// Sessions list
-	for i, sess := range sm.sessions {
+	for i, sess := range sm.sortedSessions {
 		selected := i == sm.cursor
 
 		// Status icon
-		statusIcon := "⏸" // paused/unknown
+		statusIcon := "⏸"
 		switch sess.Status {
 		case "starting":
 			statusIcon = "🔄"
@@ -287,13 +337,19 @@ func (sm *sessionModel) renderListView(m *model) string {
 			statusIcon = "❌"
 		}
 
-		// Session ID (truncated)
-		sessionID := sess.ID
-		if len(sessionID) > 8 {
-			sessionID = sessionID[:8]
+		// Relative times
+		modifiedTime := formatRelativeTime(sess.LastActivityAt)
+		createdTime := formatRelativeTime(sess.StartTime)
+
+		// Working directory (truncated)
+		workingDir := sess.WorkingDir
+		if workingDir == "" {
+			workingDir = "~"
+		} else if len(workingDir) > 18 {
+			workingDir = "..." + workingDir[len(workingDir)-15:]
 		}
 
-		// Model name
+		// Model name (shortened)
 		modelName := sess.Model
 		if modelName == "" {
 			modelName = "default"
@@ -303,33 +359,26 @@ func (sm *sessionModel) renderListView(m *model) string {
 			modelName = "sonnet"
 		}
 
-		// Duration
-		duration := ""
-		if !sess.StartTime.IsZero() {
-			if sess.EndTime != nil {
-				d := sess.EndTime.Sub(sess.StartTime)
-				duration = formatDuration(d)
-			} else {
-				d := time.Since(sess.StartTime)
-				duration = formatDuration(d)
-			}
-		}
+		// Query preview (truncated to fit remaining space)
+		queryPreview := truncate(sess.Query, 45)
 
-		// Query preview
-		queryPreview := truncate(sess.Query, 40)
-
-		// Build the item
-		item := fmt.Sprintf("%s %s [%s] %s %s", statusIcon, sessionID, modelName, duration, queryPreview)
+		// Build the row with properly aligned columns
+		row := centerText(statusIcon, 8) +
+			centerText(modifiedTime, 11) +
+			centerText(createdTime, 11) +
+			leftPadText(workingDir, 20) +
+			centerText(modelName, 9) +
+			queryPreview
 
 		// Apply styling
-		itemStyle := lipgloss.NewStyle().Padding(0, 2)
+		itemStyle := lipgloss.NewStyle().Padding(0, 1)
 		if selected {
 			itemStyle = itemStyle.
 				Background(lipgloss.Color("235")).
 				Foreground(lipgloss.Color("215"))
 		}
 
-		s.WriteString(itemStyle.Render(item) + "\n")
+		s.WriteString(itemStyle.Render(row) + "\n")
 	}
 
 	// Instructions
@@ -379,7 +428,12 @@ func (sm *sessionModel) renderSessionDetailView(m *model) string {
 	}
 	content.WriteString(labelStyle.Render("Status:") + valueStyle.Render(fmt.Sprintf("%s %s", statusIcon, sess.Status)) + "\n")
 
-	content.WriteString(labelStyle.Render("Session ID:") + valueStyle.Render(sess.ID) + "\n")
+	// Show Claude Session ID for resume capability, fall back to internal ID
+	displayID := sess.ClaudeSessionID
+	if displayID == "" {
+		displayID = sess.ID
+	}
+	content.WriteString(labelStyle.Render("Session ID:") + valueStyle.Render(displayID) + "\n")
 	content.WriteString(labelStyle.Render("Run ID:") + valueStyle.Render(sess.RunID) + "\n")
 
 	// Model
@@ -592,4 +646,44 @@ func formatDuration(d time.Duration) string {
 		return fmt.Sprintf("%dm%ds", int(d.Minutes()), int(d.Seconds())%60)
 	}
 	return fmt.Sprintf("%dh%dm", int(d.Hours()), int(d.Minutes())%60)
+}
+
+// formatRelativeTime formats a timestamp as a relative time (e.g., "2m ago", "1h ago")
+func formatRelativeTime(t time.Time) string {
+	now := time.Now()
+	diff := now.Sub(t)
+
+	if diff < time.Minute {
+		return "now"
+	} else if diff < time.Hour {
+		return fmt.Sprintf("%dm ago", int(diff.Minutes()))
+	} else if diff < 24*time.Hour {
+		return fmt.Sprintf("%dh ago", int(diff.Hours()))
+	} else if diff < 7*24*time.Hour {
+		return fmt.Sprintf("%dd ago", int(diff.Hours()/24))
+	}
+
+	// For older items, show the date
+	return t.Format("Jan 2")
+}
+
+// centerText centers text within a fixed width column
+func centerText(text string, width int) string {
+	if len(text) >= width {
+		return text[:width]
+	}
+
+	totalPadding := width - len(text)
+	leftPadding := totalPadding / 2
+	rightPadding := totalPadding - leftPadding
+
+	return strings.Repeat(" ", leftPadding) + text + strings.Repeat(" ", rightPadding)
+}
+
+// leftPadText left-aligns text within a fixed width column
+func leftPadText(text string, width int) string {
+	if len(text) >= width {
+		return text[:width]
+	}
+	return text + strings.Repeat(" ", width-len(text))
 }
