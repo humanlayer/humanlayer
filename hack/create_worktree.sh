@@ -10,11 +10,11 @@ set -e  # Exit on any error
 generate_unique_name() {
     local adjectives=("swift" "bright" "clever" "smooth" "quick" "clean" "sharp" "neat" "cool" "fast")
     local nouns=("fix" "task" "work" "dev" "patch" "branch" "code" "build" "test" "run")
-    
+
     local adj=${adjectives[$RANDOM % ${#adjectives[@]}]}
     local noun=${nouns[$RANDOM % ${#nouns[@]}]}
     local timestamp=$(date +%H%M)
-    
+
     echo "${adj}_${noun}_${timestamp}"
 }
 

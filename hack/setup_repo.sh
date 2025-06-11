@@ -13,7 +13,7 @@ make -C hld mocks
 
 echo "📦 Installing NPM dependencies..."
 npm i -C hlyr
-npm i -C humanlayer-ts  
+npm i -C humanlayer-ts
 npm i -C humanlayer-ts-vercel-ai-sdk
 
 echo "🏗️  Building hlyr (requires mocks and npm dependencies)..."
