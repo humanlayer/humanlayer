@@ -667,7 +667,7 @@ func (s *SQLiteStore) GetPendingToolCall(ctx context.Context, sessionID string, 
 		  AND session_id = ?
 		  AND event_type = 'tool_call'
 		  AND is_completed = FALSE
-		ORDER BY created_at DESC
+		ORDER BY sequence ASC
 		LIMIT 1
 	`
 
