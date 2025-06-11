@@ -40,10 +40,14 @@ type Store interface {
 	GetHumanContact(callID string) (*humanlayer.HumanContact, error)
 	GetAllPending() ([]PendingApproval, error)
 	GetPendingByRunID(runID string) ([]PendingApproval, error)
+	GetAllCachedFunctionCalls() ([]humanlayer.FunctionCall, error)
+	GetAllCachedHumanContacts() ([]humanlayer.HumanContact, error)
 
 	// Update methods
 	MarkFunctionCallResponded(callID string) error
 	MarkHumanContactResponded(callID string) error
+	RemoveFunctionCall(callID string) error
+	RemoveHumanContact(callID string) error
 }
 
 // APIClient defines the interface for interacting with the HumanLayer API

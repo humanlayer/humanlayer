@@ -132,35 +132,8 @@ func (p *Poller) poll(ctx context.Context) {
 		slog.Error("failed to fetch function calls", "error", err)
 		hadError = true
 	} else {
-		newCount := 0
-		for _, fc := range functionCalls {
-			// Check if this is a new approval
-			if existing, err := p.store.GetFunctionCall(fc.CallID); err != nil || existing == nil {
-				newCount++
-			}
-
-			if err := p.store.StoreFunctionCall(fc); err != nil {
-				slog.Error("failed to store function call", "call_id", fc.CallID, "error", err)
-			}
-
-			// Correlate with tool calls in the database
-			if p.conversationStore != nil && fc.RunID != "" {
-				p.correlateApproval(pollCtx, fc)
-			}
-		}
-		slog.Debug("fetched function calls", "count", len(functionCalls), "new", newCount)
-
-		// Publish event if we have new approvals
-		if newCount > 0 && p.eventBus != nil {
-			p.eventBus.Publish(bus.Event{
-				Type: bus.EventNewApproval,
-				Data: map[string]interface{}{
-					"type":  "function_call",
-					"count": newCount,
-					"total": len(functionCalls),
-				},
-			})
-		}
+		// Reconcile with cached state
+		p.reconcileFunctionCalls(pollCtx, functionCalls)
 	}
 
 	// Fetch human contacts
@@ -169,34 +142,194 @@ func (p *Poller) poll(ctx context.Context) {
 		slog.Error("failed to fetch human contacts", "error", err)
 		hadError = true
 	} else {
-		newCount := 0
-		for _, hc := range humanContacts {
-			// Check if this is a new approval
-			if existing, err := p.store.GetHumanContact(hc.CallID); err != nil || existing == nil {
-				newCount++
-			}
-
-			if err := p.store.StoreHumanContact(hc); err != nil {
-				slog.Error("failed to store human contact", "call_id", hc.CallID, "error", err)
-			}
-		}
-		slog.Debug("fetched human contacts", "count", len(humanContacts), "new", newCount)
-
-		// Publish event if we have new approvals
-		if newCount > 0 && p.eventBus != nil {
-			p.eventBus.Publish(bus.Event{
-				Type: bus.EventNewApproval,
-				Data: map[string]interface{}{
-					"type":  "human_contact",
-					"count": newCount,
-					"total": len(humanContacts),
-				},
-			})
-		}
+		// Reconcile with cached state
+		p.reconcileHumanContacts(pollCtx, humanContacts)
 	}
 
 	// Update failure count based on results
 	p.updateFailureCount(hadError)
+}
+
+// reconcileFunctionCalls reconciles fetched function calls with cached state
+func (p *Poller) reconcileFunctionCalls(ctx context.Context, functionCalls []humanlayer.FunctionCall) {
+	// Get all cached function calls
+	cachedCalls, err := p.store.GetAllCachedFunctionCalls()
+	if err != nil {
+		slog.Error("failed to get cached function calls", "error", err)
+		return
+	}
+
+	// Create a map of fetched calls for quick lookup
+	fetchedMap := make(map[string]*humanlayer.FunctionCall)
+	for i := range functionCalls {
+		fc := &functionCalls[i]
+		fetchedMap[fc.CallID] = fc
+	}
+
+	// Check for calls that were resolved externally
+	removedCount := 0
+	for _, cached := range cachedCalls {
+		if _, exists := fetchedMap[cached.CallID]; !exists {
+			// This approval is no longer pending, it was resolved externally
+			slog.Info("detected externally resolved function call",
+				"call_id", cached.CallID,
+				"run_id", cached.RunID)
+
+			// Remove from local store
+			if err := p.store.RemoveFunctionCall(cached.CallID); err != nil {
+				slog.Error("failed to remove resolved function call", "error", err)
+			} else {
+				removedCount++
+			}
+
+			// Update database status if we have a conversation store
+			if p.conversationStore != nil {
+				if err := p.conversationStore.UpdateApprovalStatus(ctx, cached.CallID, store.ApprovalStatusResolved); err != nil {
+					slog.Error("failed to update approval status in database", "error", err)
+				}
+
+				// Update session status back to running if it was waiting
+				if cached.RunID != "" {
+					session, err := p.conversationStore.GetSessionByRunID(ctx, cached.RunID)
+					if err == nil && session != nil && session.Status == store.SessionStatusWaitingInput {
+						runningStatus := store.SessionStatusRunning
+						update := store.SessionUpdate{
+							Status: &runningStatus,
+						}
+						if err := p.conversationStore.UpdateSession(ctx, session.ID, update); err != nil {
+							slog.Error("failed to update session status", "error", err)
+						}
+					}
+				}
+			}
+
+			// Publish event
+			if p.eventBus != nil {
+				p.eventBus.Publish(bus.Event{
+					Type: bus.EventApprovalResolved,
+					Data: map[string]interface{}{
+						"type":               "function_call",
+						"call_id":            cached.CallID,
+						"run_id":             cached.RunID,
+						"resolved_externally": true,
+					},
+				})
+			}
+		}
+	}
+
+	// Store new/updated function calls
+	newCount := 0
+	for _, fc := range functionCalls {
+		// Check if this is a new approval
+		if existing, err := p.store.GetFunctionCall(fc.CallID); err != nil || existing == nil {
+			newCount++
+		}
+
+		if err := p.store.StoreFunctionCall(fc); err != nil {
+			slog.Error("failed to store function call", "call_id", fc.CallID, "error", err)
+		}
+
+		// Correlate with tool calls in the database
+		if p.conversationStore != nil && fc.RunID != "" {
+			p.correlateApproval(ctx, fc)
+		}
+	}
+
+	slog.Debug("reconciled function calls",
+		"fetched", len(functionCalls),
+		"new", newCount,
+		"removed", removedCount)
+
+	// Publish event if we have new approvals
+	if newCount > 0 && p.eventBus != nil {
+		p.eventBus.Publish(bus.Event{
+			Type: bus.EventNewApproval,
+			Data: map[string]interface{}{
+				"type":  "function_call",
+				"count": newCount,
+				"total": len(functionCalls),
+			},
+		})
+	}
+}
+
+// reconcileHumanContacts reconciles fetched human contacts with cached state
+func (p *Poller) reconcileHumanContacts(ctx context.Context, humanContacts []humanlayer.HumanContact) {
+	// Get all cached human contacts
+	cachedContacts, err := p.store.GetAllCachedHumanContacts()
+	if err != nil {
+		slog.Error("failed to get cached human contacts", "error", err)
+		return
+	}
+
+	// Create a map of fetched contacts for quick lookup
+	fetchedMap := make(map[string]*humanlayer.HumanContact)
+	for i := range humanContacts {
+		hc := &humanContacts[i]
+		fetchedMap[hc.CallID] = hc
+	}
+
+	// Check for contacts that were resolved externally
+	removedCount := 0
+	for _, cached := range cachedContacts {
+		if _, exists := fetchedMap[cached.CallID]; !exists {
+			// This contact is no longer pending, it was resolved externally
+			slog.Info("detected externally resolved human contact",
+				"call_id", cached.CallID,
+				"run_id", cached.RunID)
+
+			// Remove from local store
+			if err := p.store.RemoveHumanContact(cached.CallID); err != nil {
+				slog.Error("failed to remove resolved human contact", "error", err)
+			} else {
+				removedCount++
+			}
+
+			// Publish event
+			if p.eventBus != nil {
+				p.eventBus.Publish(bus.Event{
+					Type: bus.EventApprovalResolved,
+					Data: map[string]interface{}{
+						"type":               "human_contact",
+						"call_id":            cached.CallID,
+						"run_id":             cached.RunID,
+						"resolved_externally": true,
+					},
+				})
+			}
+		}
+	}
+
+	// Store new/updated human contacts
+	newCount := 0
+	for _, hc := range humanContacts {
+		// Check if this is a new approval
+		if existing, err := p.store.GetHumanContact(hc.CallID); err != nil || existing == nil {
+			newCount++
+		}
+
+		if err := p.store.StoreHumanContact(hc); err != nil {
+			slog.Error("failed to store human contact", "call_id", hc.CallID, "error", err)
+		}
+	}
+
+	slog.Debug("reconciled human contacts",
+		"fetched", len(humanContacts),
+		"new", newCount,
+		"removed", removedCount)
+
+	// Publish event if we have new approvals
+	if newCount > 0 && p.eventBus != nil {
+		p.eventBus.Publish(bus.Event{
+			Type: bus.EventNewApproval,
+			Data: map[string]interface{}{
+				"type":  "human_contact",
+				"count": newCount,
+				"total": len(humanContacts),
+			},
+		})
+	}
 }
 
 // updateFailureCount updates the failure count for backoff calculation
