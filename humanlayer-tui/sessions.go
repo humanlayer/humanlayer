@@ -7,8 +7,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/humanlayer/humanlayer/hld/session"
@@ -20,6 +22,9 @@ type sessionModel struct {
 	sortedSessions []session.Info // Cached sorted sessions for navigation
 	cursor         int
 	viewState      viewState
+
+	// For list scrolling
+	viewport viewport.Model
 
 	// For session detail view
 	selectedSession     *session.Info
@@ -56,16 +61,28 @@ func newSessionModel() sessionModel {
 	workingDirInput.CharLimit = 200
 	workingDirInput.Width = 60
 
+	vp := viewport.New(80, 20) // Will be resized later
+	vp.SetContent("")
+
 	return sessionModel{
 		sessions:          []session.Info{},
 		sortedSessions:    []session.Info{},
 		cursor:            0,
 		viewState:         listView,
+		viewport:          vp,
 		launchQueryInput:  queryInput,
 		launchWorkingDir:  workingDirInput,
 		launchModelSelect: 0, // default
 		launchActiveField: 0, // query field
 	}
+}
+
+// updateSize updates the viewport dimensions
+func (sm *sessionModel) updateSize(width, height int) {
+	sm.viewport.Width = width
+	sm.viewport.Height = height
+	sm.launchQueryInput.Width = width - 20
+	sm.launchWorkingDir.Width = width - 20
 }
 
 // Update handles messages for the sessions tab
@@ -175,11 +192,9 @@ func (sm *sessionModel) updateListView(msg tea.KeyMsg, m *model) tea.Cmd {
 
 	case key.Matches(msg, keys.Enter):
 		if sm.cursor < len(sm.sortedSessions) {
-			sm.selectedSession = &sm.sortedSessions[sm.cursor]
-			sm.sessionDetailScroll = 0
-			sm.viewState = sessionDetailView
-			// Fetch approvals for this session
-			return fetchSessionApprovals(m.daemonClient, sm.selectedSession.ID)
+			session := sm.sortedSessions[sm.cursor]
+			// Open conversation view for the selected session
+			return m.openConversationView(session.ID)
 		}
 
 	case key.Matches(msg, keys.Launch):
@@ -444,6 +459,37 @@ func (sm *sessionModel) updateQueryModalView(msg tea.KeyMsg, m *model) tea.Cmd {
 		// Insert tab character
 		sm.modalLines[sm.modalCursor] += "\t"
 
+	case "ctrl+v", "cmd+v":
+		// Read from clipboard and paste
+		text, err := clipboard.ReadAll()
+		if err != nil {
+			// Silently ignore clipboard errors
+			return nil
+		}
+
+		// Split pasted text into lines
+		lines := strings.Split(text, "\n")
+
+		if len(lines) == 1 {
+			// Single line paste - insert at current cursor position
+			sm.modalLines[sm.modalCursor] += lines[0]
+		} else {
+			// Multi-line paste
+			// Insert first line at current position
+			sm.modalLines[sm.modalCursor] += lines[0]
+
+			// Insert remaining lines after current line
+			for i, line := range lines[1:] {
+				insertPos := sm.modalCursor + i + 1
+				// Insert new line at position
+				sm.modalLines = append(sm.modalLines[:insertPos], sm.modalLines[insertPos-1:]...)
+				sm.modalLines[insertPos] = line
+			}
+
+			// Move cursor to end of pasted content
+			sm.modalCursor += len(lines) - 1
+		}
+
 	default:
 		// Everything else is text input - including k, j, c, numbers, etc.
 		if len(keyStr) == 1 && keyStr[0] >= 32 && keyStr[0] <= 126 {
@@ -475,7 +521,9 @@ func (sm *sessionModel) renderListView(m *model) string {
 			Foreground(lipgloss.Color("241")).
 			Italic(true).
 			Padding(2, 0)
-		return emptyStyle.Render("No sessions. Press [l] to launch a new session.")
+		content := emptyStyle.Render("No sessions. Press [l] to launch a new session.")
+		sm.viewport.SetContent(content)
+		return sm.viewport.View()
 	}
 
 	var s strings.Builder
@@ -569,7 +617,9 @@ func (sm *sessionModel) renderListView(m *model) string {
 		Italic(true)
 	s.WriteString(instructionStyle.Render("Press [c] to create new session, [enter] to view details"))
 
-	return s.String()
+	// Set content in viewport and return the viewport view
+	sm.viewport.SetContent(s.String())
+	return sm.viewport.View()
 }
 
 // renderSessionDetailView renders the detailed view of a session

@@ -8,6 +8,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -18,6 +19,9 @@ type approvalModel struct {
 	cursor          int
 	viewState       viewState
 	selectedRequest *Request
+
+	// For list scrolling
+	viewport viewport.Model
 
 	// For feedback view
 	feedbackInput textinput.Model
@@ -32,12 +36,23 @@ func newApprovalModel() approvalModel {
 	ti.CharLimit = 500
 	ti.Width = 60
 
+	vp := viewport.New(80, 20) // Will be resized later
+	vp.SetContent("")
+
 	return approvalModel{
 		requests:      []Request{},
 		cursor:        0,
 		viewState:     listView,
+		viewport:      vp,
 		feedbackInput: ti,
 	}
+}
+
+// updateSize updates the viewport dimensions
+func (am *approvalModel) updateSize(width, height int) {
+	am.viewport.Width = width
+	am.viewport.Height = height
+	am.feedbackInput.Width = width - 20 // Leave some padding
 }
 
 // Update handles messages for the approvals tab
@@ -128,8 +143,15 @@ func (am *approvalModel) updateListView(msg tea.KeyMsg, m *model) tea.Cmd {
 
 	case key.Matches(msg, keys.Enter):
 		if am.cursor < len(am.requests) {
-			am.selectedRequest = &am.requests[am.cursor]
-			am.viewState = detailView
+			req := am.requests[am.cursor]
+			// If the approval is tied to a session, open conversation view
+			if req.SessionID != "" {
+				return m.openConversationView(req.SessionID)
+			} else {
+				// Fallback to detail view for approvals without session context
+				am.selectedRequest = &req
+				am.viewState = detailView
+			}
 		}
 
 	case key.Matches(msg, keys.Approve):
@@ -234,7 +256,9 @@ func (am *approvalModel) renderListView(m *model) string {
 			Foreground(lipgloss.Color("241")).
 			Italic(true).
 			Padding(2, 0)
-		return emptyStyle.Render("No pending approvals")
+		content := emptyStyle.Render("No pending approvals")
+		am.viewport.SetContent(content)
+		return am.viewport.View()
 	}
 
 	var s strings.Builder
@@ -347,7 +371,9 @@ func (am *approvalModel) renderListView(m *model) string {
 		}
 	}
 
-	return s.String()
+	// Set content in viewport and return the viewport view
+	am.viewport.SetContent(s.String())
+	return am.viewport.View()
 }
 
 // renderDetailView renders the detailed view of a single approval
