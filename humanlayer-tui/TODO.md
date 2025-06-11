@@ -129,6 +129,22 @@
   **Files**: `conversation.go` (resume input handling), needs modal dialog similar to session creation
   **Priority**: High - resume is a key workflow and current implementation is very frustrating
 
+### Working Directory Not Inherited on Session Continuation
+
+**Issue**: When resuming a session, the working directory from the parent session is not properly inherited
+**Current behavior**: Continued sessions show working directory as "~" in TUI display, but actual working directory may be correctly set in backend
+**Root cause**: `ContinueSessionConfig` struct doesn't include `WorkingDir` field, and session manager doesn't copy working directory from parent session to new session config
+**Technical details**:
+
+- TUI sends `ContinueSessionRequest` without working directory information (`hld/rpc/types.go:80-92`)
+- `HandleContinueSession` builds `session.ContinueSessionConfig` without working directory (`hld/rpc/handlers.go:252-263`)
+- `ContinueSessionConfig` struct lacks `WorkingDir` field (`hld/session/types.go:48-60`)
+- Session manager comment says "Model and WorkingDir are inherited from Claude's internal state" but this may not be reliable (`hld/session/manager.go:528`)
+- TUI display shows "~" instead of actual working directory from parent session (`humanlayer-tui/sessions.go:574-579`)
+  **Expected behavior**: Continued sessions should inherit and display the working directory from their parent session
+  **Files**: `hld/session/types.go` (add WorkingDir to ContinueSessionConfig), `hld/session/manager.go` (copy parent WorkingDir), `hld/rpc/types.go` (potentially add WorkingDir to request), `humanlayer-tui/conversation.go` (session continuation)
+  **Priority**: Medium - affects session context accuracy and user workflow understanding
+
 ## Phase 5 TUI Enhancement Features
 
 ### Advanced Launch Parameters
