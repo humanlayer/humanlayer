@@ -530,11 +530,67 @@ func (cm *conversationModel) renderToolCall(event *rpc.ConversationEvent) string
 	return s.String()
 }
 
-// renderToolResult renders a tool result event (hidden by default)
+// renderToolResult renders a tool result event with context-aware formatting
 func (cm *conversationModel) renderToolResult(event *rpc.ConversationEvent) string {
-	// Hide tool results by default to reduce clutter
-	// User can click/expand tool calls to see results later
-	return ""
+	if event.ToolResultContent == "" {
+		return "" // No content to show
+	}
+
+	// TODO: This sequential lookup should be replaced with proper approval correlation
+	// See TODO.md for detailed explanation of the proper fix
+
+	// Find the corresponding tool_call by looking for the tool_call with matching tool_id
+	var correspondingToolCall *rpc.ConversationEvent
+	for i := range cm.events {
+		if cm.events[i].EventType == "tool_call" && cm.events[i].ToolID == event.ToolResultForID {
+			correspondingToolCall = &cm.events[i]
+			break
+		}
+	}
+
+	// If the corresponding tool call was denied, render as denial feedback
+	if correspondingToolCall != nil && correspondingToolCall.ApprovalStatus == "denied" {
+		return cm.renderDenialReason(event.ToolResultContent)
+	}
+
+	// Otherwise render as tool output with truncation
+	return cm.renderToolOutput(event.ToolResultContent)
+}
+
+// renderDenialReason renders user denial feedback with distinctive styling
+func (cm *conversationModel) renderDenialReason(content string) string {
+	denialStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("196")). // Red
+		Bold(true)
+
+	return denialStyle.Render("💬 Denial Reason:") + "\n" + content
+}
+
+// renderToolOutput renders tool output with smart truncation
+func (cm *conversationModel) renderToolOutput(content string) string {
+	const maxLines = 5
+	const maxChars = 200
+
+	toolOutputStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("245")). // Gray
+		Italic(true)
+
+	// Split into lines for line-based truncation
+	lines := strings.Split(content, "\n")
+
+	// Truncate by lines if too many
+	if len(lines) > maxLines {
+		lines = lines[:maxLines]
+		lines = append(lines, "...")
+		content = strings.Join(lines, "\n")
+	}
+
+	// Truncate by characters if still too long
+	if len(content) > maxChars {
+		content = content[:maxChars-3] + "..."
+	}
+
+	return toolOutputStyle.Render("📄 Tool Output:") + "\n" + content
 }
 
 // renderInputPrompts renders any active input prompts

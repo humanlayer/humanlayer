@@ -254,3 +254,11 @@
 **Use cases**: Documentation, debugging, team sharing, compliance/audit
 **Implementation**: Could leverage existing conversation data, add export endpoints
 **Unknown**: What formats and detail levels are most valuable?
+
+### Tool Result Approval Correlation Quick Fix
+
+**Issue**: Tool_result events lack approval_status in database, requiring frontend correlation with tool_call events
+**Current implementation**: `conversation.go` `renderToolResult()` searches events array to find corresponding tool_call approval_status
+**Proper fix**: Move correlation to database storage layer in `/hld/session/manager.go` tool_result creation
+**Why quick fix**: Avoids touching critical database write path while unblocking denial reason display
+**Priority**: Medium - works but inefficient, should be moved to backend for all consumers
