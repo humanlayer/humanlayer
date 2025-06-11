@@ -2,6 +2,7 @@ package approval
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -105,26 +106,63 @@ func (m *DefaultManager) GetPendingApprovalsByRunID(runID string) ([]PendingAppr
 	return m.Store.GetPendingByRunID(runID)
 }
 
+// ErrAlreadyResponded is returned when an approval has already been responded to
+var ErrAlreadyResponded = errors.New("this approval has already been responded to")
+
+// handleConflictError checks if an error is a conflict and handles it appropriately
+func (m *DefaultManager) handleConflictError(ctx context.Context, err error, callID string, approvalType string) error {
+	var apiErr *humanlayer.APIError
+	if errors.As(err, &apiErr) && apiErr.IsConflict() {
+		slog.Info("approval already responded externally",
+			"type", approvalType,
+			"call_id", callID,
+			"error", apiErr.Body)
+
+		// Remove from local cache
+		if approvalType == "function_call" {
+			m.Store.RemoveFunctionCall(callID)
+		} else {
+			m.Store.RemoveHumanContact(callID)
+		}
+
+		// Update database status if we have a conversation store
+		if m.ConversationStore != nil {
+			if err := m.ConversationStore.UpdateApprovalStatus(ctx, callID, store.ApprovalStatusResolved); err != nil {
+				slog.Error("failed to update approval status in database", "error", err)
+			}
+		}
+
+		// Return a specific error to indicate it was already responded
+		return ErrAlreadyResponded
+	}
+	return err
+}
+
 // ApproveFunctionCall approves a function call
 func (m *DefaultManager) ApproveFunctionCall(ctx context.Context, callID string, comment string) error {
 	// First check if we have this function call
-	_, err := m.Store.GetFunctionCall(callID)
+	fc, err := m.Store.GetFunctionCall(callID)
 	if err != nil {
 		return fmt.Errorf("function call not found: %w", err)
 	}
 
 	// Send approval to API
 	if err := m.Client.ApproveFunctionCall(ctx, callID, comment); err != nil {
-		return fmt.Errorf("failed to approve function call: %w", err)
+		// Handle conflict error specially
+		conflictErr := m.handleConflictError(ctx, err, callID, "function_call")
+		if errors.Is(conflictErr, ErrAlreadyResponded) {
+			// Return the already responded error directly
+			return conflictErr
+		}
+		if conflictErr != nil {
+			return fmt.Errorf("failed to approve function call: %w", conflictErr)
+		}
 	}
 
 	// Mark as responded in local store
 	if err := m.Store.MarkFunctionCallResponded(callID); err != nil {
 		return fmt.Errorf("failed to update local state: %w", err)
 	}
-
-	// Get the function call to access run_id
-	fc, _ := m.Store.GetFunctionCall(callID)
 
 	// Update approval status in database if we have a conversation store
 	if m.ConversationStore != nil && fc != nil {
@@ -182,7 +220,15 @@ func (m *DefaultManager) DenyFunctionCall(ctx context.Context, callID string, re
 
 	// Send denial to API
 	if err := m.Client.DenyFunctionCall(ctx, callID, reason); err != nil {
-		return fmt.Errorf("failed to deny function call: %w", err)
+		// Handle conflict error specially
+		conflictErr := m.handleConflictError(ctx, err, callID, "function_call")
+		if errors.Is(conflictErr, ErrAlreadyResponded) {
+			// Return the already responded error directly
+			return conflictErr
+		}
+		if conflictErr != nil {
+			return fmt.Errorf("failed to deny function call: %w", conflictErr)
+		}
 	}
 
 	// Mark as responded in local store
@@ -239,14 +285,22 @@ func (m *DefaultManager) DenyFunctionCall(ctx context.Context, callID string, re
 // RespondToHumanContact sends a response to a human contact request
 func (m *DefaultManager) RespondToHumanContact(ctx context.Context, callID string, response string) error {
 	// First check if we have this human contact
-	_, err := m.Store.GetHumanContact(callID)
+	hc, err := m.Store.GetHumanContact(callID)
 	if err != nil {
 		return fmt.Errorf("human contact not found: %w", err)
 	}
 
 	// Send response to API
 	if err := m.Client.RespondToHumanContact(ctx, callID, response); err != nil {
-		return fmt.Errorf("failed to respond to human contact: %w", err)
+		// Handle conflict error specially
+		conflictErr := m.handleConflictError(ctx, err, callID, "human_contact")
+		if errors.Is(conflictErr, ErrAlreadyResponded) {
+			// Return the already responded error directly
+			return conflictErr
+		}
+		if conflictErr != nil {
+			return fmt.Errorf("failed to respond to human contact: %w", conflictErr)
+		}
 	}
 
 	// Mark as responded in local store
@@ -255,8 +309,7 @@ func (m *DefaultManager) RespondToHumanContact(ctx context.Context, callID strin
 	}
 
 	// Publish event
-	if m.EventBus != nil {
-		hc, _ := m.Store.GetHumanContact(callID)
+	if m.EventBus != nil && hc != nil {
 		m.EventBus.Publish(bus.Event{
 			Type: bus.EventApprovalResolved,
 			Data: map[string]interface{}{
