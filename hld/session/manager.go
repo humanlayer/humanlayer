@@ -342,6 +342,7 @@ func (m *Manager) ListSessions() []Info {
 			ID:              dbSession.ID,
 			RunID:           dbSession.RunID,
 			ClaudeSessionID: dbSession.ClaudeSessionID,
+			ParentSessionID: dbSession.ParentSessionID,
 			Status:          Status(dbSession.Status),
 			StartTime:       dbSession.CreatedAt,
 			LastActivityAt:  dbSession.LastActivityAt,
@@ -525,7 +526,9 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 		Query:        req.Query,
 		SessionID:    parentSession.ClaudeSessionID, // This triggers --resume flag
 		OutputFormat: claudecode.OutputStreamJSON,   // Always use streaming JSON
-		// Model and WorkingDir are inherited from Claude's internal state
+		// Inherit Model and WorkingDir from parent session for database storage
+		Model:      claudecode.Model(parentSession.Model),
+		WorkingDir: parentSession.WorkingDir,
 	}
 
 	// Apply optional overrides
@@ -561,6 +564,13 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 	// Store session in database with parent reference
 	dbSession := store.NewSessionFromConfig(sessionID, runID, config)
 	dbSession.ParentSessionID = req.ParentSessionID
+	// Explicitly ensure inherited values are stored (in case NewSessionFromConfig didn't capture them)
+	if dbSession.Model == "" && parentSession.Model != "" {
+		dbSession.Model = parentSession.Model
+	}
+	if dbSession.WorkingDir == "" && parentSession.WorkingDir != "" {
+		dbSession.WorkingDir = parentSession.WorkingDir
+	}
 	// Note: ClaudeSessionID will be captured from streaming events (will be different from parent)
 	if err := m.store.CreateSession(ctx, dbSession); err != nil {
 		return nil, fmt.Errorf("failed to store session in database: %w", err)
