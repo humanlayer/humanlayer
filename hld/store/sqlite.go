@@ -809,6 +809,42 @@ func (s *SQLiteStore) CorrelateApproval(ctx context.Context, sessionID string, t
 	return nil
 }
 
+// CorrelateApprovalByToolID correlates an approval with a specific tool call by tool_id
+func (s *SQLiteStore) CorrelateApprovalByToolID(ctx context.Context, sessionID string, toolID string, approvalID string) error {
+	// Update the tool call directly by tool_id
+	updateQuery := `
+		UPDATE conversation_events
+		SET approval_status = 'pending', approval_id = ?
+		WHERE session_id = ?
+		  AND tool_id = ?
+		  AND event_type = 'tool_call'
+		  AND is_completed = FALSE
+		  AND approval_status IS NULL
+	`
+
+	result, err := s.db.ExecContext(ctx, updateQuery, approvalID, sessionID, toolID)
+	if err != nil {
+		return fmt.Errorf("failed to correlate approval by tool_id: %w", err)
+	}
+
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		slog.Debug("no matching tool call found for approval by tool_id",
+			"session_id", sessionID,
+			"tool_id", toolID,
+			"approval_id", approvalID)
+		return nil // Not an error
+	}
+
+	slog.Info("correlated approval with tool call by tool_id",
+		"tool_id", toolID,
+		"session_id", sessionID,
+		"approval_id", approvalID,
+		"rows_affected", rows)
+
+	return nil
+}
+
 // UpdateApprovalStatus updates the status of an approval
 func (s *SQLiteStore) UpdateApprovalStatus(ctx context.Context, approvalID string, status string) error {
 	query := `

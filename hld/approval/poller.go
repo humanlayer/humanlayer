@@ -283,6 +283,20 @@ func (p *Poller) correlateApproval(ctx context.Context, fc humanlayer.FunctionCa
 		"tool_name", toolName,
 		"run_id", fc.RunID)
 
+	// Publish event to notify that approval has been correlated
+	if p.eventBus != nil {
+		p.eventBus.Publish(bus.Event{
+			Type: bus.EventApprovalResolved,
+			Data: map[string]interface{}{
+				"approval_id": fc.CallID,
+				"session_id":  session.ID,
+				"tool_name":   toolName,
+				"run_id":      fc.RunID,
+				"status":      "correlated",
+			},
+		})
+	}
+
 	// Update session status to waiting_input
 	waitingStatus := store.SessionStatusWaitingInput
 	update := store.SessionUpdate{
