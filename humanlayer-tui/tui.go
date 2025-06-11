@@ -505,6 +505,11 @@ func (m model) handleTabSwitching(msg tea.KeyMsg) (bool, tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, keys.Tab1):
 		if m.activeTab != approvalsTab {
+			// Clear conversation view when switching tabs
+			if m.conversation.sessionID != "" {
+				m.conversation.stopPolling()
+				m.conversation.sessionID = ""
+			}
 			m.activeTab = approvalsTab
 			m.showNotification = false // Hide notification when going to approvals
 			return true, m, m.fetchDataForTab(approvalsTab)
@@ -512,6 +517,11 @@ func (m model) handleTabSwitching(msg tea.KeyMsg) (bool, tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, keys.Tab2):
 		if m.activeTab != sessionsTab {
+			// Clear conversation view when switching tabs
+			if m.conversation.sessionID != "" {
+				m.conversation.stopPolling()
+				m.conversation.sessionID = ""
+			}
 			m.activeTab = sessionsTab
 			return true, m, m.fetchDataForTab(sessionsTab)
 		}
