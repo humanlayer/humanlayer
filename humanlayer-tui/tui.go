@@ -111,7 +111,7 @@ type model struct {
 
 	// For conversation caching
 	conversationCache *conversationCache
-	
+
 	// For two-step quit behavior
 	lastQuitTime time.Time
 	quitWarningShown bool
@@ -295,7 +295,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if !key.Matches(msg, keys.Quit) && time.Since(m.lastQuitTime) > 500*time.Millisecond {
 			m.quitWarningShown = false
 		}
-		
+
 		// Handle global keys even in modal views
 		if m.getCurrentViewState() == queryModalView {
 			// Check for quit key first
@@ -325,7 +325,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, nil
 				}
 			}
-			
+
 			// Delegate other keys to tab handlers
 			switch m.activeTab {
 			case approvalsTab:
