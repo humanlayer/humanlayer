@@ -332,6 +332,40 @@ func (p *Poller) reconcileHumanContacts(ctx context.Context, humanContacts []hum
 	}
 }
 
+// ReconcileApprovalsForSession checks for any approvals that might belong to a session
+// This is useful when a session restarts and needs to reclaim pending approvals
+func (p *Poller) ReconcileApprovalsForSession(ctx context.Context, runID string) error {
+	// Get all cached function calls
+	functionCalls, err := p.store.GetAllCachedFunctionCalls()
+	if err != nil {
+		return fmt.Errorf("failed to get cached function calls: %w", err)
+	}
+
+	// Check each one to see if it matches this run_id
+	for _, fc := range functionCalls {
+		if fc.RunID == runID {
+			// Re-correlate this approval
+			p.correlateApproval(ctx, fc)
+		}
+	}
+
+	// Also check human contacts
+	humanContacts, err := p.store.GetAllCachedHumanContacts()
+	if err != nil {
+		return fmt.Errorf("failed to get cached human contacts: %w", err)
+	}
+
+	for _, hc := range humanContacts {
+		if hc.RunID == runID {
+			slog.Info("found orphaned human contact for session",
+				"call_id", hc.CallID,
+				"run_id", runID)
+		}
+	}
+
+	return nil
+}
+
 // updateFailureCount updates the failure count for backoff calculation
 func (p *Poller) updateFailureCount(hadError bool) {
 	p.mu.Lock()
@@ -392,6 +426,41 @@ func (p *Poller) correlateApproval(ctx context.Context, fc humanlayer.FunctionCa
 	// Try to find a pending tool call for this session and tool
 	toolCall, err := p.conversationStore.GetPendingToolCall(ctx, session.ID, toolName)
 	if err != nil || toolCall == nil {
+		// For continued sessions, also check the parent session's tool calls
+		if session.ParentSessionID != "" {
+			parentToolCall, err := p.conversationStore.GetPendingToolCall(ctx, session.ParentSessionID, toolName)
+			if err == nil && parentToolCall != nil {
+				// Found in parent session - correlate with parent
+				if err := p.conversationStore.CorrelateApproval(ctx, session.ParentSessionID, toolName, fc.CallID); err != nil {
+					slog.Error("failed to correlate approval with parent session tool call",
+						"approval_id", fc.CallID,
+						"parent_session_id", session.ParentSessionID,
+						"tool_name", toolName,
+						"error", err)
+					return
+				}
+
+				slog.Info("correlated approval with parent session tool call",
+					"approval_id", fc.CallID,
+					"parent_session_id", session.ParentSessionID,
+					"current_session_id", session.ID,
+					"tool_name", toolName,
+					"run_id", fc.RunID)
+
+				// Update current session status to waiting_input
+				waitingStatus := store.SessionStatusWaitingInput
+				update := store.SessionUpdate{
+					Status: &waitingStatus,
+				}
+				if err := p.conversationStore.UpdateSession(ctx, session.ID, update); err != nil {
+					slog.Error("failed to update session status to waiting_input",
+						"session_id", session.ID,
+						"error", err)
+				}
+				return
+			}
+		}
+
 		slog.Debug("no matching pending tool call for approval",
 			"session_id", session.ID,
 			"run_id", fc.RunID,

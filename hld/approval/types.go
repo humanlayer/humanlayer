@@ -27,6 +27,9 @@ type Manager interface {
 	ApproveFunctionCall(ctx context.Context, callID string, comment string) error
 	DenyFunctionCall(ctx context.Context, callID string, reason string) error
 	RespondToHumanContact(ctx context.Context, callID string, response string) error
+
+	// Recovery methods
+	ReconcileApprovalsForSession(ctx context.Context, runID string) error
 }
 
 // Store manages approval storage and correlation

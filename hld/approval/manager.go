@@ -324,3 +324,12 @@ func (m *DefaultManager) RespondToHumanContact(ctx context.Context, callID strin
 
 	return nil
 }
+
+
+// ReconcileApprovalsForSession reconciles approvals for a session after restart
+func (m *DefaultManager) ReconcileApprovalsForSession(ctx context.Context, runID string) error {
+	if m.Poller == nil {
+		return nil // No poller configured
+	}
+	return m.Poller.ReconcileApprovalsForSession(ctx, runID)
+}

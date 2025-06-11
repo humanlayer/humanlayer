@@ -16,11 +16,12 @@ import (
 
 // Manager handles the lifecycle of Claude Code sessions
 type Manager struct {
-	activeProcesses map[string]*claudecode.Session // Maps session ID to active Claude process
-	mu              sync.RWMutex
-	client          *claudecode.Client
-	eventBus        bus.EventBus
-	store           store.ConversationStore
+	activeProcesses   map[string]*claudecode.Session // Maps session ID to active Claude process
+	mu                sync.RWMutex
+	client            *claudecode.Client
+	eventBus          bus.EventBus
+	store             store.ConversationStore
+	approvalReconciler ApprovalReconciler
 }
 
 // Compile-time check that Manager implements SessionManager
@@ -43,6 +44,13 @@ func NewManager(eventBus bus.EventBus, store store.ConversationStore) (*Manager,
 		eventBus:        eventBus,
 		store:           store,
 	}, nil
+}
+
+// SetApprovalReconciler sets the approval reconciler for the session manager
+func (m *Manager) SetApprovalReconciler(reconciler ApprovalReconciler) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.approvalReconciler = reconciler
 }
 
 // LaunchSession starts a new Claude Code session
@@ -130,6 +138,20 @@ func (m *Manager) LaunchSession(ctx context.Context, config claudecode.SessionCo
 
 	// Monitor session lifecycle in background
 	go m.monitorSession(ctx, sessionID, runID, claudeSession, startTime, config)
+
+	// Reconcile any existing approvals for this run_id
+	if m.approvalReconciler != nil {
+		go func() {
+			// Give the session a moment to start
+			time.Sleep(2 * time.Second)
+			if err := m.approvalReconciler.ReconcileApprovalsForSession(ctx, runID); err != nil {
+				slog.Error("failed to reconcile approvals for session",
+					"session_id", sessionID,
+					"run_id", runID,
+					"error", err)
+			}
+		}()
+	}
 
 	slog.Info("launched Claude session",
 		"session_id", sessionID,
@@ -634,6 +656,21 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 
 	// Monitor session lifecycle in background
 	go m.monitorSession(ctx, sessionID, runID, claudeSession, time.Now(), config)
+
+	// Reconcile any existing approvals for this run_id (same run_id is reused for continuations)
+	if m.approvalReconciler != nil {
+		go func() {
+			// Give the session a moment to start
+			time.Sleep(2 * time.Second)
+			if err := m.approvalReconciler.ReconcileApprovalsForSession(ctx, runID); err != nil {
+				slog.Error("failed to reconcile approvals for continued session",
+					"session_id", sessionID,
+					"parent_session_id", req.ParentSessionID,
+					"run_id", runID,
+					"error", err)
+			}
+		}()
+	}
 
 	slog.Info("continued Claude session",
 		"session_id", sessionID,
