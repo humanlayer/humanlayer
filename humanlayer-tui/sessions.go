@@ -528,7 +528,6 @@ func (sm *sessionModel) renderListView(m *model) string {
 
 	var s strings.Builder
 
-
 	// Column headers with proper centering
 	headerRow := centerText("Status", 8) +
 		centerText("Modified", 11) +
@@ -624,7 +623,6 @@ func (sm *sessionModel) renderSessionDetailView(m *model) string {
 
 	sess := sm.selectedSession
 	var content strings.Builder
-
 
 	// Session info
 	labelStyle := lipgloss.NewStyle().

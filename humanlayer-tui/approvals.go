@@ -385,7 +385,6 @@ func (am *approvalModel) renderDetailView(m *model) string {
 	req := am.selectedRequest
 	var s strings.Builder
 
-
 	// Metadata
 	labelStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("243")).
@@ -457,7 +456,6 @@ func (am *approvalModel) renderFeedbackView(m *model) string {
 	}
 
 	var s strings.Builder
-
 
 	// Show what we're responding to
 	contextStyle := lipgloss.NewStyle().
