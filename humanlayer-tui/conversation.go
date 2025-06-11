@@ -124,15 +124,16 @@ func (cm *conversationModel) isActiveSession() bool {
 	return cm.session != nil && (cm.session.Status == "running" || cm.session.Status == "starting")
 }
 
-// updateSize updates the viewport dimensions based on terminal size
+// updateSize updates the viewport dimensions based on content area size
 func (cm *conversationModel) updateSize(width, height int) {
-	// Account for tab bar (2 lines), status bar (1 line), header (2 lines), and some padding
-	viewportHeight := height - 6
+	// height is already the content area (terminal - tab bar - status bar)
+	// We need to account for our own header (2 lines) and input area (1 line minimum)
+	viewportHeight := height - 2 - 1 // content height - header - input area
 	if viewportHeight < 5 {
 		viewportHeight = 5 // Minimum height
 	}
 
-	viewportWidth := width - 4 // Some padding
+	viewportWidth := width
 	if viewportWidth < 20 {
 		viewportWidth = 20 // Minimum width
 	}

@@ -79,10 +79,24 @@ func newSessionModel() sessionModel {
 
 // updateSize updates the viewport dimensions
 func (sm *sessionModel) updateSize(width, height int) {
+	// Ensure minimum dimensions
+	if width < 20 {
+		width = 20
+	}
+	if height < 5 {
+		height = 5
+	}
+	
 	sm.viewport.Width = width
 	sm.viewport.Height = height
-	sm.launchQueryInput.Width = width - 20
-	sm.launchWorkingDir.Width = width - 20
+	
+	// Update input field widths with bounds checking
+	inputWidth := width - 20
+	if inputWidth < 10 {
+		inputWidth = 10
+	}
+	sm.launchQueryInput.Width = inputWidth
+	sm.launchWorkingDir.Width = inputWidth
 }
 
 // Update handles messages for the sessions tab
@@ -230,7 +244,12 @@ func (sm *sessionModel) updateSessionDetailView(msg tea.KeyMsg, m *model) tea.Cm
 			// Build the actual content to get accurate line count
 			content := sm.buildSessionDetailContent()
 			lines := strings.Split(content, "\n")
-			visibleHeight := m.height - 6 // Account for UI chrome
+			// Calculate content height properly (terminal - tab bar - status bar - header)
+			contentHeight := m.height - TabBarHeight - StatusBarHeight
+			visibleHeight := contentHeight - 3 // Account for session detail header
+			if visibleHeight < MinContentHeight {
+				visibleHeight = MinContentHeight
+			}
 			maxScroll := len(lines) - visibleHeight
 			if maxScroll < 0 {
 				maxScroll = 0
@@ -309,6 +328,8 @@ func (sm *sessionModel) updateLaunchSessionView(msg tea.KeyMsg, m *model) tea.Cm
 			sm.modalCursor = 0
 			sm.modalType = "query"
 			sm.viewState = queryModalView
+			// Trigger layout update for modal view
+			m.updateAllViewSizes()
 		case 2:
 			// Open modal editor for working directory field
 			sm.modalQuery = sm.launchWorkingDir.Value()
@@ -319,6 +340,8 @@ func (sm *sessionModel) updateLaunchSessionView(msg tea.KeyMsg, m *model) tea.Cm
 			sm.modalCursor = 0
 			sm.modalType = "workingdir"
 			sm.viewState = queryModalView
+			// Trigger layout update for modal view
+			m.updateAllViewSizes()
 		}
 
 	case msg.String() == "c", msg.String() == "ctrl+enter":
@@ -435,6 +458,8 @@ func (sm *sessionModel) updateQueryModalView(msg tea.KeyMsg, m *model) tea.Cmd {
 
 		// If no query, just return to form
 		sm.viewState = launchSessionView
+		// Trigger layout update when returning to form view
+		m.updateAllViewSizes()
 
 	case "up":
 		// Only respond to actual arrow keys, not letter bindings
@@ -811,7 +836,12 @@ func (sm *sessionModel) renderSessionDetailView(m *model) string {
 
 	// Apply scrolling
 	lines := strings.Split(content, "\n")
-	visibleHeight := m.height - 6 // Account for tab bar, status bar, etc.
+	// Calculate content height properly (terminal - tab bar - status bar - header)
+	contentHeight := m.height - TabBarHeight - StatusBarHeight
+	visibleHeight := contentHeight - 3 // Account for session detail header
+	if visibleHeight < MinContentHeight {
+		visibleHeight = MinContentHeight
+	}
 
 	if sm.sessionDetailScroll > len(lines)-visibleHeight {
 		sm.sessionDetailScroll = len(lines) - visibleHeight
@@ -999,12 +1029,22 @@ func (sm *sessionModel) renderLaunchSessionView(m *model) string {
 func (sm *sessionModel) renderQueryModalView(m *model) string {
 	var s strings.Builder
 
+	// Calculate content dimensions (account for tab bar and status bar)
+	contentWidth := m.width - 2
+	if contentWidth < MinContentWidth {
+		contentWidth = MinContentWidth
+	}
+	contentHeight := m.height - TabBarHeight - StatusBarHeight
+	if contentHeight < MinContentHeight {
+		contentHeight = MinContentHeight
+	}
+
 	// Header
 	headerStyle := lipgloss.NewStyle().
 		Bold(true).
 		Foreground(lipgloss.Color("205")).
 		MarginBottom(1).
-		Width(m.width)
+		Width(contentWidth)
 
 	title := "✏️  Edit Query"
 	if sm.modalType == "workingdir" {
@@ -1013,13 +1053,16 @@ func (sm *sessionModel) renderQueryModalView(m *model) string {
 	s.WriteString(headerStyle.Render(title) + "\n\n")
 
 	// Content area
-	contentHeight := m.height - 6 // Header + instructions
+	modalContentHeight := contentHeight - 6 // Header + instructions
+	if modalContentHeight < 3 {
+		modalContentHeight = 3
+	}
 	editorStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color("237")).
 		Padding(1, 2).
-		Width(m.width - 4).
-		Height(contentHeight)
+		Width(contentWidth - 4).
+		Height(modalContentHeight)
 
 	// Build editor content with line numbers and cursor
 	var content strings.Builder
@@ -1057,7 +1100,7 @@ func (sm *sessionModel) renderQueryModalView(m *model) string {
 	instructionStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("243")).
 		Italic(true).
-		Width(m.width)
+		Width(contentWidth)
 
 	instructions := []string{
 		"[↑/↓] move cursor",
