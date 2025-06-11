@@ -5,27 +5,40 @@
 
 set -e  # Exit on any error
 
+# Helper function to run commands silently unless they fail
+run_silent() {
+    local description="$1"
+    shift
+    local temp_output=$(mktemp)
+
+    if "$@" > "$temp_output" 2>&1; then
+        rm "$temp_output"
+    else
+        cat "$temp_output"
+        echo
+        echo "❌ $description failed. Please check the output above."
+        rm "$temp_output"
+        exit 1
+    fi
+}
+
 echo "🔧 Setting up HumanLayer repository..."
 
 # Repository-specific setup commands
 echo "📦 Generating HLD mocks..."
-make -C hld mocks
+run_silent "HLD mock generation" make -C hld mocks
 
 echo "📦 Installing NPM dependencies..."
-npm i -C hlyr
-npm i -C humanlayer-ts
-npm i -C humanlayer-ts-vercel-ai-sdk
+run_silent "hlyr npm install" npm i -C hlyr
+run_silent "humanlayer-ts npm install" npm i -C humanlayer-ts
+run_silent "humanlayer-ts-vercel-ai-sdk npm install" npm i -C humanlayer-ts-vercel-ai-sdk
 
 echo "🏗️  Building hlyr (requires mocks and npm dependencies)..."
-npm run build -C hlyr
+run_silent "hlyr build" npm run build -C hlyr
 
 echo "✅ Repository setup complete!"
 
 echo "🧪 Running checks and tests to verify setup..."
-if output=$(make check test 2>&1); then
-    echo "✅ All checks and tests pass! Repository is ready."
-else
-    echo "❌ Setup verification failed. Please check the output below:"
-    echo "$output"
-    exit 1
-fi
+run_silent "Setup verification (make check test)" make check test
+
+echo "✅ All checks and tests pass! Repository is ready."
