@@ -31,6 +31,10 @@ type conversationModel struct {
 	resumeInput      textinput.Model
 	showResumePrompt bool
 
+	// Parent session data for inheritance (stored during resume)
+	parentModel      string
+	parentWorkingDir string
+
 	// Loading states
 	loading     bool
 	error       error
@@ -73,6 +77,9 @@ func (cm *conversationModel) setSession(sessionID string) {
 	cm.clearApprovalState()
 	cm.clearResumeState()
 	cm.stopPolling() // Stop any existing polling
+	// Clear parent data when switching sessions
+	cm.parentModel = ""
+	cm.parentWorkingDir = ""
 }
 
 // clearApprovalState resets approval-related state
@@ -164,6 +171,16 @@ func (cm *conversationModel) Update(msg tea.Msg, m *model) tea.Cmd {
 		cm.session = msg.session
 		cm.events = msg.events
 		cm.lastRefresh = time.Now()
+
+		// If this is a child session with missing data, use parent data stored during resume
+		if cm.session != nil && cm.session.ParentSessionID != "" {
+			if cm.session.Model == "" && cm.parentModel != "" {
+				cm.session.Model = cm.parentModel
+			}
+			if cm.session.WorkingDir == "" && cm.parentWorkingDir != "" {
+				cm.session.WorkingDir = cm.parentWorkingDir
+			}
+		}
 
 		// Cache the conversation for future use (if session and events are not nil)
 		if cm.session != nil && cm.events != nil {
@@ -313,6 +330,9 @@ func (cm *conversationModel) updateResumeInput(msg tea.KeyMsg, m *model) tea.Cmd
 		if cm.session != nil && cm.sessionID != "" {
 			query := cm.resumeInput.Value()
 			if query != "" {
+				// Store parent session data for inheritance
+				cm.parentModel = cm.session.Model
+				cm.parentWorkingDir = cm.session.WorkingDir
 				return continueSession(m.daemonClient, cm.sessionID, query)
 			}
 		}
