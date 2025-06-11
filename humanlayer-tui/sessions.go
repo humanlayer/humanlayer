@@ -153,17 +153,19 @@ func (sm *sessionModel) updateSortedSessions() {
 	sort.Slice(sm.sortedSessions, func(i, j int) bool {
 		a, b := sm.sortedSessions[i], sm.sortedSessions[j]
 
-		// Status priority: running > completed > failed
+		// Status priority: waiting_input > running > completed > failed
 		statusPriority := func(status session.Status) int {
 			switch status {
-			case "running", "starting":
+			case "waiting_input":
 				return 0
-			case "completed":
+			case "running", "starting":
 				return 1
-			case "failed":
+			case "completed":
 				return 2
-			default:
+			case "failed":
 				return 3
+			default:
+				return 4
 			}
 		}
 
@@ -556,6 +558,8 @@ func (sm *sessionModel) renderListView(m *model) string {
 		// Status icon
 		statusIcon := "⏸"
 		switch sess.Status {
+		case "waiting_input":
+			statusIcon = "⏳"
 		case "starting":
 			statusIcon = "🔄"
 		case "running":
