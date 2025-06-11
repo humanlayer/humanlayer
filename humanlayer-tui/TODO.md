@@ -2,36 +2,6 @@
 
 ## Features (Planned)
 
-### Message Count Display
-
-**Status**: ❌ **NOT IMPLEMENTED** - Turn count available in detail view only, not sessions table
-**Goal**: Show conversation length in sessions table like Claude Code's `--resume` view
-**Current state**: `sess.Result.NumTurns` is displayed in session detail view but not in the main sessions table
-**Implementation options**:
-
-1. Add "Turns" column to sessions table using existing `sess.Result.NumTurns` data
-2. Fetch on-demand when session is selected (lazy loading)
-3. Add conversation summary endpoint to RPC for bulk metadata
-4. Cache counts client-side with invalidation
-   **Technical challenge**: Need to handle cases where `sess.Result` is nil (incomplete sessions)
-   **Files**: `sessions.go` (table headers lines 540-545, row rendering lines 596-601)
-   **Performance consideration**: Using existing `NumTurns` field would have no performance impact
-   **Priority**: Medium - data is available, just needs table integration
-
-### Session Sorting - Waiting Input Priority
-
-**Issue**: Sessions with "waiting_input" status (pending approvals) don't appear at top of list
-**Current behavior**: Sessions needing approval appear after completed/failed sessions
-**Root cause**: `statusPriority` function in `sessions.go` doesn't handle "waiting_input" status
-**Technical details**:
-
-- Sessions with "waiting_input" fall into default case (priority 3)
-- Running sessions get priority 0, so they appear above waiting sessions
-- No specific status icon for "waiting_input" (shows generic pause icon)
-  **Expected behavior**: Sessions requiring user action should be prioritized above all others
-  **Files**: `sessions.go` (updateSortedSessions function, statusPriority logic)
-  **Priority**: High - sessions needing attention should be most visible
-
 ### Token/Cost Display in Detailed Session View
 
 **Goal**: Show cost and token usage for power users to understand resource consumption
@@ -71,49 +41,6 @@
   **Files**: `conversation.go` (message rendering), potentially `../hld/approval/manager.go` (denial handling)
   **Priority**: Medium - functional but poor UX for conversation review
 
-### Extra Header Text Appearing Above Content
-
-**Issue**: Extra line of text appears above normal content in all views (approvals, sessions, conversation)
-**Current behavior**: Text like "10. **Step 10: Keyboard Navigation**" or headers appear above expected content
-**Root cause**: Layout responsibility conflict between main layout and sub-view headers
-**Technical details**:
-
-- `tui.go` renders tab bar + separator, then calls sub-view content
-- Each sub-view adds its own header (e.g., "Claude Sessions" in `sessions.go`)
-- Creates duplicate/unexpected header content above normal view area
-  **Expected behavior**: Clean layout with only intended headers visible
-  **Files**: `tui.go` (main layout), `sessions.go`, `conversation.go`, `approvals.go` (sub-view headers)
-  **Priority**: High - visual bug affects all views
-
-### Tab Switching Doesn't Exit Conversation View
-
-**Issue**: Pressing "1" or "2" to switch tabs doesn't exit active conversation view
-**Current behavior**: Tab switches but conversation view remains open, creating janky UX
-**Root cause**: Tab switching only works from `listView` state, blocked when in `conversationView`
-**Technical details**:
-
-- `handleTabSwitching` function only allows switching when `getCurrentViewState() == listView`
-- When viewing conversation, pressing "1"/"2" does nothing
-- No logic to clear conversation state during tab switching
-  **Expected behavior**: Tab switching should exit conversation view and show selected tab's list
-  **Files**: `tui.go` (tab switching logic, lines ~495-520)
-  **Priority**: High - breaks expected navigation behavior
-
-### Session Detail View Infinite Scrolling
-
-**Issue**: Users can scroll past the bottom of session detail content with j/k keys, requiring the same number of key presses to scroll back up
-**Root cause**: Down key handling (`updateSessionDetailView` lines 210-212) has no bounds checking - it unconditionally increments `sessionDetailScroll` regardless of content length
-**Current behavior**: Users can press 'j' 100 times past the bottom, then must press 'k' 100 times to get back to normal scrolling
-**Expected behavior**: Scrolling should stop at the bottom of content, requiring only one 'k' press to scroll back up
-**Technical details**:
-
-- Key handling layer allows unlimited scrolling without bounds validation
-- Render function (`renderSessionDetailView` lines 707-712) corrects display bounds but doesn't sync back to navigation state
-- Creates separation of concerns issue where input validation happens at display layer instead of input layer
-  **Fix approach**: Add bounds checking to Down key handler using content length and visible height calculation
-  **Files**: `sessions.go` - `updateSessionDetailView` function around line 210-212
-  **Impact**: Poor UX when reviewing long session details, especially with fast key repeat
-
 ### Resume/Continue Session UX Issues
 
 **Status**: ❌ **STILL BROKEN** - User testing confirms issues persist
@@ -128,22 +55,6 @@
   **Technical debt**: Using simple textinput.Model instead of modal approach used elsewhere
   **Files**: `conversation.go` (resume input handling), needs modal dialog similar to session creation
   **Priority**: High - resume is a key workflow and current implementation is very frustrating
-
-### Working Directory Not Inherited on Session Continuation
-
-**Issue**: When resuming a session, the working directory from the parent session is not properly inherited
-**Current behavior**: Continued sessions show working directory as "~" in TUI display, but actual working directory may be correctly set in backend
-**Root cause**: `ContinueSessionConfig` struct doesn't include `WorkingDir` field, and session manager doesn't copy working directory from parent session to new session config
-**Technical details**:
-
-- TUI sends `ContinueSessionRequest` without working directory information (`hld/rpc/types.go:80-92`)
-- `HandleContinueSession` builds `session.ContinueSessionConfig` without working directory (`hld/rpc/handlers.go:252-263`)
-- `ContinueSessionConfig` struct lacks `WorkingDir` field (`hld/session/types.go:48-60`)
-- Session manager comment says "Model and WorkingDir are inherited from Claude's internal state" but this may not be reliable (`hld/session/manager.go:528`)
-- TUI display shows "~" instead of actual working directory from parent session (`humanlayer-tui/sessions.go:574-579`)
-  **Expected behavior**: Continued sessions should inherit and display the working directory from their parent session
-  **Files**: `hld/session/types.go` (add WorkingDir to ContinueSessionConfig), `hld/session/manager.go` (copy parent WorkingDir), `hld/rpc/types.go` (potentially add WorkingDir to request), `humanlayer-tui/conversation.go` (session continuation)
-  **Priority**: Medium - affects session context accuracy and user workflow understanding
 
 ## Phase 5 TUI Enhancement Features
 
