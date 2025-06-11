@@ -543,7 +543,7 @@ func (cm *conversationModel) renderToolCall(event *rpc.ConversationEvent) string
 	case "pending":
 		toolIcon = "⏳"
 		statusText = " (pending approval"
-		
+
 		// Find which approval number this is
 		for i, pa := range cm.pendingApprovals {
 			if pa == event {
@@ -554,7 +554,7 @@ func (cm *conversationModel) renderToolCall(event *rpc.ConversationEvent) string
 			}
 		}
 		statusText += ")"
-		
+
 		if event == cm.pendingApproval {
 			statusText += " - Press [y] to approve, [n] to deny"
 		}

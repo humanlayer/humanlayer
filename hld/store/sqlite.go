@@ -668,7 +668,6 @@ func (s *SQLiteStore) GetPendingToolCall(ctx context.Context, sessionID string, 
 		  AND session_id = ?
 		  AND event_type = 'tool_call'
 		  AND is_completed = FALSE
-		  AND approval_status IS NULL  -- Don't match already correlated approvals
 		ORDER BY sequence DESC  -- Most recent first
 		LIMIT 1
 	`
@@ -687,6 +686,44 @@ func (s *SQLiteStore) GetPendingToolCall(ctx context.Context, sessionID string, 
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to get pending tool call: %w", err)
+	}
+
+	return event, nil
+}
+
+// GetUncorrelatedPendingToolCall finds the most recent uncompleted tool call without approval correlation
+func (s *SQLiteStore) GetUncorrelatedPendingToolCall(ctx context.Context, sessionID string, toolName string) (*ConversationEvent, error) {
+	// Find the most recent uncompleted tool call by sequence number without approval
+	query := `
+		SELECT id, session_id, claude_session_id, sequence, event_type, created_at,
+			role, content,
+			tool_id, tool_name, tool_input_json,
+			tool_result_for_id, tool_result_content,
+			is_completed, approval_status, approval_id
+		FROM conversation_events
+		WHERE tool_name = ?
+		  AND session_id = ?
+		  AND event_type = 'tool_call'
+		  AND is_completed = FALSE
+		  AND (approval_status IS NULL OR approval_status = '')
+		ORDER BY sequence DESC  -- Most recent first
+		LIMIT 1
+	`
+
+	event := &ConversationEvent{}
+	err := s.db.QueryRowContext(ctx, query, toolName, sessionID).Scan(
+		&event.ID, &event.SessionID, &event.ClaudeSessionID,
+		&event.Sequence, &event.EventType, &event.CreatedAt,
+		&event.Role, &event.Content,
+		&event.ToolID, &event.ToolName, &event.ToolInputJSON,
+		&event.ToolResultForID, &event.ToolResultContent,
+		&event.IsCompleted, &event.ApprovalStatus, &event.ApprovalID,
+	)
+	if err == sql.ErrNoRows {
+		return nil, nil // No pending tool call found
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get uncorrelated pending tool call: %w", err)
 	}
 
 	return event, nil
@@ -819,7 +856,7 @@ func (s *SQLiteStore) CorrelateApprovalByToolID(ctx context.Context, sessionID s
 		  AND tool_id = ?
 		  AND event_type = 'tool_call'
 		  AND is_completed = FALSE
-		  AND approval_status IS NULL
+		  AND (approval_status IS NULL OR approval_status = '')
 	`
 
 	result, err := s.db.ExecContext(ctx, updateQuery, approvalID, sessionID, toolID)

@@ -256,8 +256,18 @@ func (p *Poller) correlateApproval(ctx context.Context, fc humanlayer.FunctionCa
 	}
 
 	toolName := fc.Spec.Fn
-	// Try to find a pending tool call for this session and tool
-	toolCall, err := p.conversationStore.GetPendingToolCall(ctx, session.ID, toolName)
+	// Try to find an uncorrelated pending tool call for this session and tool
+	// Use the specialized method that only finds tool calls without approvals
+	var toolCall *store.ConversationEvent
+	
+	// Check if the store has the GetUncorrelatedPendingToolCall method
+	if uncorrelatedStore, ok := p.conversationStore.(*store.SQLiteStore); ok {
+		toolCall, err = uncorrelatedStore.GetUncorrelatedPendingToolCall(ctx, session.ID, toolName)
+	} else {
+		// Fallback to regular GetPendingToolCall
+		toolCall, err = p.conversationStore.GetPendingToolCall(ctx, session.ID, toolName)
+	}
+	
 	if err != nil || toolCall == nil {
 		slog.Debug("no matching pending tool call for approval",
 			"session_id", session.ID,
