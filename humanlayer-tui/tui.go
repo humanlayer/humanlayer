@@ -650,12 +650,22 @@ func (m model) renderStatusBar() string {
 	connStatusRendered := connStyle.Render(connStatus)
 	connStatusWidth := lipgloss.Width(connStatusRendered)
 
+	// Build help text based on current view
+	helpText := m.getContextualHelp()
+	helpStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("243")).
+		Italic(true).
+		Padding(0, 1)
+	helpRendered := helpStyle.Render(helpText)
+	helpWidth := lipgloss.Width(helpRendered)
+
 	// Error message if any
 	errorMsg := ""
+	errorWidth := 0
 	if m.err != nil {
 		// Calculate available width for error message
-		// Account for connection status, spacing, and some padding
-		availableWidth := m.width - connStatusWidth - 4
+		// Account for connection status, help text, spacing, and some padding
+		availableWidth := m.width - connStatusWidth - helpWidth - 6
 		if availableWidth < 20 {
 			availableWidth = 20 // Minimum width for error display
 		}
@@ -672,19 +682,78 @@ func (m model) renderStatusBar() string {
 			errorHint = " [e]"
 		}
 		errorMsg = errorStyle.Render(fmt.Sprintf("Error: %s%s", truncatedError, errorHint))
+		errorWidth = lipgloss.Width(errorMsg)
 	}
 
-	// Build status bar
+	// Build status bar with proper spacing
 	statusStyle := lipgloss.NewStyle().
 		Background(lipgloss.Color("235")).
 		Width(m.width)
 
+	// Calculate spacing
 	leftContent := connStatusRendered
 	if errorMsg != "" {
 		leftContent += " " + errorMsg
 	}
+	leftWidth := connStatusWidth + errorWidth
+	if errorMsg != "" {
+		leftWidth += 1 // Space between connection and error
+	}
+
+	// Add spacing between left and right content
+	spacing := m.width - leftWidth - helpWidth
+	if spacing > 0 {
+		leftContent += strings.Repeat(" ", spacing) + helpRendered
+	} else {
+		// Not enough space, just show left content
+		leftContent = leftContent
+	}
 
 	return statusStyle.Render(leftContent)
+}
+
+// getContextualHelp returns appropriate help text based on current view
+func (m model) getContextualHelp() string {
+	// Don't show help if in special views
+	if m.showErrorDetail {
+		return "[e] close • [esc] dismiss"
+	}
+
+	currentView := m.getCurrentViewState()
+
+	// Special handling for conversation view since it has its own help
+	if currentView == conversationView {
+		return ""
+	}
+
+	switch currentView {
+	case helpView:
+		return "[esc] close"
+	case feedbackView:
+		return "[enter] submit • [esc] cancel"
+	case launchSessionView:
+		return "[tab] next field • [enter] launch • [esc] cancel"
+	case queryModalView:
+		return "[enter] submit • [esc] cancel"
+	case listView:
+		// Context-specific help for list views
+		switch m.activeTab {
+		case approvalsTab:
+			if len(m.approvals.requests) > 0 {
+				return "[↑/↓] navigate • [enter] view • [y] approve • [n] deny • [?] help"
+			}
+			return "[tab] switch tab • [?] help • [q] quit"
+		case sessionsTab:
+			if len(m.sessions.sortedSessions) > 0 {
+				return "[↑/↓] navigate • [enter] view • [c] create • [?] help"
+			}
+			return "[c] create session • [tab] switch tab • [?] help • [q] quit"
+		}
+	case detailView, sessionDetailView:
+		return "[esc] back • [?] help"
+	}
+
+	return "[?] help • [q] quit"
 }
 
 // renderHelpView renders the help screen
