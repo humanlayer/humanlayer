@@ -3,14 +3,40 @@ package claudecode
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 )
+
+// isClosedPipeError checks if an error is due to a closed pipe (expected when process exits)
+func isClosedPipeError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	// Check for common closed pipe error patterns
+	errStr := err.Error()
+	if strings.Contains(errStr, "file already closed") ||
+		strings.Contains(errStr, "broken pipe") ||
+		strings.Contains(errStr, "use of closed network connection") {
+		return true
+	}
+
+	// Check for syscall errors indicating closed pipe
+	var syscallErr *os.SyscallError
+	if errors.As(err, &syscallErr) {
+		return syscallErr.Err == syscall.EPIPE || syscallErr.Err == syscall.EBADF
+	}
+
+	// Check for EOF (which can happen when pipe closes)
+	return errors.Is(err, io.EOF)
+}
 
 // Client provides methods to interact with the Claude Code SDK
 type Client struct {
@@ -327,14 +353,14 @@ func (s *Session) parseSingleJSON(stdout, stderr io.Reader) {
 
 	var stdoutBuf, stderrBuf strings.Builder
 
-	// Read all stdout
-	if _, err := io.Copy(&stdoutBuf, stdout); err != nil {
+	// Read all stdout - ignore expected pipe closure
+	if _, err := io.Copy(&stdoutBuf, stdout); err != nil && !isClosedPipeError(err) {
 		s.SetError(fmt.Errorf("failed to read stdout: %w", err))
 		return
 	}
 
-	// Read all stderr
-	if _, err := io.Copy(&stderrBuf, stderr); err != nil {
+	// Read all stderr - ignore expected pipe closure
+	if _, err := io.Copy(&stderrBuf, stderr); err != nil && !isClosedPipeError(err) {
 		s.SetError(fmt.Errorf("failed to read stderr: %w", err))
 		return
 	}
@@ -367,14 +393,14 @@ func (s *Session) parseSingleJSON(stdout, stderr io.Reader) {
 func (s *Session) parseTextOutput(stdout, stderr io.Reader) {
 	var stdoutBuf, stderrBuf strings.Builder
 
-	// Read all stdout
-	if _, err := io.Copy(&stdoutBuf, stdout); err != nil {
+	// Read all stdout - ignore expected pipe closure
+	if _, err := io.Copy(&stdoutBuf, stdout); err != nil && !isClosedPipeError(err) {
 		s.SetError(fmt.Errorf("failed to read stdout: %w", err))
 		return
 	}
 
-	// Read all stderr
-	if _, err := io.Copy(&stderrBuf, stderr); err != nil {
+	// Read all stderr - ignore expected pipe closure
+	if _, err := io.Copy(&stderrBuf, stderr); err != nil && !isClosedPipeError(err) {
 		s.SetError(fmt.Errorf("failed to read stderr: %w", err))
 		return
 	}
