@@ -305,10 +305,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Global key handling (only when not in modal)
 		switch {
 		case key.Matches(msg, keys.Quit):
-			// Only quit from list views
-			if m.getCurrentViewState() == listView {
-				return m, tea.Quit
-			}
+			// Allow quit from any view
+			return m, tea.Quit
 
 		case key.Matches(msg, keys.Help):
 			if m.getCurrentViewState() != helpView {
