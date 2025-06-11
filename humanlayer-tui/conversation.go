@@ -167,14 +167,21 @@ func (cm *conversationModel) calculateBottomContentHeight() int {
 
 	// Account for input prompts
 	if cm.showApprovalPrompt || cm.showResumePrompt {
-		// Input prompt takes about 6 lines (border + padding + content)
-		height += 6
+		// Input prompt with border, padding, and multi-line content:
+		// - Top border: 1 line
+		// - Top padding: 1 line
+		// - Prompt text: 1 line
+		// - Input field: 1 line
+		// - Helper text: 1 line
+		// - Bottom padding: 1 line
+		// - Bottom border: 1 line
+		height += 7
 	} else {
 		// Status line when no prompts are shown
 		height += 1
 	}
 
-	// Add a line for spacing
+	// Add extra line for breathing room
 	height += 1
 
 	return height
@@ -185,6 +192,11 @@ func (cm *conversationModel) Update(msg tea.Msg, m *model) tea.Cmd {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		// Handle window resize - update viewport dimensions
+		cm.updateSize(m.width, m.height)
+		return nil
+
 	case tea.KeyMsg:
 		// Handle different input modes
 		if cm.showApprovalPrompt && cm.approvalInput.Focused() {
@@ -247,6 +259,8 @@ func (cm *conversationModel) Update(msg tea.Msg, m *model) tea.Cmd {
 	case pollRefreshMsg:
 		// Only refresh if we're still viewing the same session and it's active
 		if msg.sessionID == cm.sessionID && cm.isActiveSession() {
+			// Remember scroll position before refresh
+			cm.wasAtBottom = cm.viewport.AtBottom()
 			// Silently refresh in background - don't show loading state
 			cmds = append(cmds, fetchConversationSilent(m.daemonClient, cm.sessionID))
 			// Continue polling
