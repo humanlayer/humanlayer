@@ -22,9 +22,10 @@ npm run build -C hlyr
 echo "✅ Repository setup complete!"
 
 echo "🧪 Running checks and tests to verify setup..."
-if make check test; then
+if output=$(make check test 2>&1); then
     echo "✅ All checks and tests pass! Repository is ready."
 else
-    echo "❌ Setup verification failed. Please check the output above."
+    echo "❌ Setup verification failed. Please check the output below:"
+    echo "$output"
     exit 1
 fi
