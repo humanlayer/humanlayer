@@ -151,11 +151,32 @@ func TestClient_WorkingDirectoryHandling(t *testing.T) {
 		t.Fatalf("failed to get home directory: %v", err)
 	}
 
+	// Find an existing subdirectory in home for tilde expansion test
+	var tildeSubdir string
+	var tildeSubdirPath string
+
+	// Try common directories that might exist
+	candidates := []string{"Documents", "work", ".config", "Desktop"}
+	for _, candidate := range candidates {
+		candidatePath := filepath.Join(homeDir, candidate)
+		if _, err := os.Stat(candidatePath); err == nil {
+			tildeSubdir = "~/" + candidate
+			tildeSubdirPath = candidatePath
+			break
+		}
+	}
+
+	// If no subdirectory found, skip the tilde with path test
+	if tildeSubdir == "" {
+		t.Logf("No common subdirectories found in %s, will skip tilde with path test", homeDir)
+	}
+
 	tests := []struct {
 		name              string
 		workingDir        string
 		expectedToContain string
 		description       string
+		skip              bool
 	}{
 		{
 			name:              "tilde expansion",
@@ -165,9 +186,10 @@ func TestClient_WorkingDirectoryHandling(t *testing.T) {
 		},
 		{
 			name:              "tilde with path",
-			workingDir:        "~/Documents",
-			expectedToContain: filepath.Join(homeDir, "Documents"),
+			workingDir:        tildeSubdir,
+			expectedToContain: tildeSubdirPath,
 			description:       "should expand ~/path to home/path",
+			skip:              tildeSubdir == "",
 		},
 		{
 			name:              "relative path",
@@ -185,6 +207,10 @@ func TestClient_WorkingDirectoryHandling(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			if tt.skip {
+				t.Skip("Skipping test - required directory not found")
+			}
+
 			// We'll use a query that should fail quickly to avoid long waits
 			config := claudecode.SessionConfig{
 				Query:        "pwd", // Simple command to show working directory
