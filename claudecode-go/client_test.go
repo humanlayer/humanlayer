@@ -45,7 +45,7 @@ func TestClient_LaunchAndWait(t *testing.T) {
 		{
 			name: "json output",
 			config: claudecode.SessionConfig{
-				Query:        "What is 1+1?",
+				Query:        "Say exactly: test",
 				OutputFormat: claudecode.OutputJSON,
 				Model:        claudecode.ModelSonnet,
 			},
