@@ -385,18 +385,6 @@ func (am *approvalModel) renderDetailView(m *model) string {
 	req := am.selectedRequest
 	var s strings.Builder
 
-	// Header
-	headerStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("205")).
-		MarginBottom(1)
-
-	if req.Type == ApprovalRequest {
-		s.WriteString(headerStyle.Render("🔐 Approval Request") + "\n\n")
-	} else {
-		s.WriteString(headerStyle.Render("💬 Human Contact Request") + "\n\n")
-	}
-
 	// Metadata
 	labelStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("243")).
@@ -468,22 +456,6 @@ func (am *approvalModel) renderFeedbackView(m *model) string {
 	}
 
 	var s strings.Builder
-
-	// Header
-	headerStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("205")).
-		MarginBottom(1)
-
-	if am.feedbackFor.Type == ApprovalRequest {
-		if am.isApproving {
-			s.WriteString(headerStyle.Render("✅ Approve with Comment") + "\n\n")
-		} else {
-			s.WriteString(headerStyle.Render("❌ Deny with Reason") + "\n\n")
-		}
-	} else {
-		s.WriteString(headerStyle.Render("💬 Send Response") + "\n\n")
-	}
 
 	// Show what we're responding to
 	contextStyle := lipgloss.NewStyle().

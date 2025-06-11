@@ -544,13 +544,6 @@ func (sm *sessionModel) renderListView(m *model) string {
 
 	var s strings.Builder
 
-	// Header
-	headerStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("205")).
-		MarginBottom(1)
-	s.WriteString(headerStyle.Render("Claude Sessions") + "\n\n")
-
 	// Column headers with proper centering
 	headerRow := centerText("Status", 8) +
 		centerText("Modified", 11) +
@@ -660,13 +653,6 @@ func (sm *sessionModel) buildSessionDetailContent() string {
 
 	sess := sm.selectedSession
 	var content strings.Builder
-
-	// Header
-	headerStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("205")).
-		MarginBottom(1)
-	content.WriteString(headerStyle.Render("Session Details") + "\n\n")
 
 	// Session info
 	labelStyle := lipgloss.NewStyle().
