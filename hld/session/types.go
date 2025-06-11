@@ -34,6 +34,7 @@ type Info struct {
 	ID              string             `json:"id"`
 	RunID           string             `json:"run_id"`
 	ClaudeSessionID string             `json:"claude_session_id,omitempty"`
+	ParentSessionID string             `json:"parent_session_id,omitempty"`
 	Status          Status             `json:"status"`
 	StartTime       time.Time          `json:"start_time"`
 	EndTime         *time.Time         `json:"end_time,omitempty"`

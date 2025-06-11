@@ -342,6 +342,7 @@ func (m *Manager) ListSessions() []Info {
 			ID:              dbSession.ID,
 			RunID:           dbSession.RunID,
 			ClaudeSessionID: dbSession.ClaudeSessionID,
+			ParentSessionID: dbSession.ParentSessionID,
 			Status:          Status(dbSession.Status),
 			StartTime:       dbSession.CreatedAt,
 			LastActivityAt:  dbSession.LastActivityAt,

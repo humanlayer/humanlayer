@@ -573,16 +573,44 @@ func (sm *sessionModel) renderListView(m *model) string {
 		// Working directory (truncated)
 		workingDir := sess.WorkingDir
 		if workingDir == "" {
-			workingDir = "~"
-		} else if len(workingDir) > 18 {
+			// Try to inherit from parent session if this is a child session
+			if sess.ParentSessionID != "" {
+				for _, parentSess := range sm.sessions {
+					if parentSess.ID == sess.ParentSessionID && parentSess.WorkingDir != "" {
+						workingDir = parentSess.WorkingDir
+						break
+					}
+				}
+			}
+			// Fall back to "~" if no inheritance possible
+			if workingDir == "" {
+				workingDir = "~"
+			}
+		}
+		// Truncate if too long
+		if len(workingDir) > 18 {
 			workingDir = "..." + workingDir[len(workingDir)-15:]
 		}
 
 		// Model name (shortened)
 		modelName := sess.Model
 		if modelName == "" {
-			modelName = "default"
-		} else if strings.Contains(modelName, "opus") {
+			// Try to inherit from parent session if this is a child session
+			if sess.ParentSessionID != "" {
+				for _, parentSess := range sm.sessions {
+					if parentSess.ID == sess.ParentSessionID && parentSess.Model != "" {
+						modelName = parentSess.Model
+						break
+					}
+				}
+			}
+			// Fall back to "default" if no inheritance possible
+			if modelName == "" {
+				modelName = "default"
+			}
+		}
+		// Shorten model names for display
+		if strings.Contains(modelName, "opus") {
 			modelName = "opus"
 		} else if strings.Contains(modelName, "sonnet") {
 			modelName = "sonnet"
