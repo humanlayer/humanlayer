@@ -541,6 +541,7 @@ func (sm *sessionModel) renderListView(m *model) string {
 		centerText("Created", 11) +
 		centerText("Working Dir", 20) +
 		centerText("Model", 9) +
+		centerText("Turns", 6) +
 		"Query"
 	headerColStyle := lipgloss.NewStyle().
 		Bold(true).
@@ -588,8 +589,18 @@ func (sm *sessionModel) renderListView(m *model) string {
 			modelName = "sonnet"
 		}
 
+		// Turn count
+		turnCount := "-"
+		if sess.Result != nil && sess.Result.NumTurns > 0 {
+			if sess.Result.NumTurns >= 1000 {
+				turnCount = fmt.Sprintf("%.1fk", float64(sess.Result.NumTurns)/1000)
+			} else {
+				turnCount = fmt.Sprintf("%d", sess.Result.NumTurns)
+			}
+		}
+
 		// Query preview (truncated to fit remaining space)
-		queryPreview := truncate(sess.Query, 45)
+		queryPreview := truncate(sess.Query, 39)
 
 		// Build the row with properly aligned columns
 		row := centerText(statusIcon, 8) +
@@ -597,6 +608,7 @@ func (sm *sessionModel) renderListView(m *model) string {
 			centerText(createdTime, 11) +
 			leftPadText(workingDir, 20) +
 			centerText(modelName, 9) +
+			centerText(turnCount, 6) +
 			queryPreview
 
 		// Apply styling
