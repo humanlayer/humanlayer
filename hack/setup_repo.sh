@@ -37,8 +37,3 @@ echo "🏗️  Building hlyr (requires mocks and npm dependencies)..."
 run_silent "hlyr build" npm run build -C hlyr
 
 echo "✅ Repository setup complete!"
-
-echo "🧪 Running checks and tests to verify setup..."
-run_silent "Setup verification (make check test)" make check test
-
-echo "✅ All checks and tests pass! Repository is ready."

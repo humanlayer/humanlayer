@@ -78,7 +78,13 @@ if ! make setup; then
 fi
 
 echo "🧪 Verifying worktree with checks and tests..."
-if ! make check test; then
+temp_output=$(mktemp)
+if make check test > "$temp_output" 2>&1; then
+    rm "$temp_output"
+    echo "✅ All checks and tests pass!"
+else
+    cat "$temp_output"
+    rm "$temp_output"
     echo "❌ Checks and tests failed. Cleaning up worktree..."
     cd - > /dev/null
     git worktree remove --force "$WORKTREE_PATH"
