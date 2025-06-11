@@ -165,6 +165,9 @@ func (cm *conversationModel) updateSize(width, height int) {
 func (cm *conversationModel) calculateBottomContentHeight() int {
 	height := 0
 
+	// Leading newline that separates input prompts from viewport
+	height += 1
+
 	// Account for input prompts
 	if cm.showApprovalPrompt || cm.showResumePrompt {
 		// Input prompt with border, padding, and multi-line content:
@@ -175,14 +178,12 @@ func (cm *conversationModel) calculateBottomContentHeight() int {
 		// - Helper text: 1 line
 		// - Bottom padding: 1 line
 		// - Bottom border: 1 line
-		height += 7
+		// - Trailing newline: 1 line
+		height += 8
 	} else {
 		// Status line when no prompts are shown
 		height += 1
 	}
-
-	// Add extra line for breathing room
-	height += 1
 
 	return height
 }
@@ -454,9 +455,9 @@ func (cm *conversationModel) View(m *model) string {
 	s.WriteString(cm.renderHeader(m) + "\n")
 
 	// Conversation content
-	s.WriteString(cm.viewport.View() + "\n")
+	s.WriteString(cm.viewport.View())
 
-	// Input prompts
+	// Input prompts (already includes leading newline if needed)
 	s.WriteString(cm.renderInputPrompts(m))
 
 	return s.String()
@@ -677,6 +678,9 @@ func (cm *conversationModel) renderToolOutput(content string) string {
 // renderInputPrompts renders any active input prompts
 func (cm *conversationModel) renderInputPrompts(m *model) string {
 	var s strings.Builder
+
+	// Add leading newline to separate from viewport
+	s.WriteString("\n")
 
 	// Approval prompt
 	if cm.showApprovalPrompt {
