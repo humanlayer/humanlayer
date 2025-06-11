@@ -6,6 +6,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	claudecode "github.com/humanlayer/humanlayer/claudecode-go"
 	"github.com/humanlayer/humanlayer/hld/client"
 	"github.com/humanlayer/humanlayer/hld/rpc"
 	"github.com/humanlayer/humanlayer/hld/session"
@@ -319,10 +320,22 @@ func listenForEvents(eventChan <-chan rpc.EventNotification) tea.Cmd {
 
 func launchSession(daemonClient client.Client, query, model, workingDir string) tea.Cmd {
 	return func() tea.Msg {
+		// Build MCP config for approvals (matching hlyr/src/commands/launch.ts)
+		mcpConfig := &claudecode.MCPConfig{
+			MCPServers: map[string]claudecode.MCPServer{
+				"approvals": {
+					Command: "npx",
+					Args:    []string{"humanlayer", "mcp", "claude_approvals"},
+				},
+			},
+		}
+
 		req := rpc.LaunchSessionRequest{
-			Query:      query,
-			Model:      model,
-			WorkingDir: workingDir,
+			Query:                query,
+			Model:                model,
+			WorkingDir:           workingDir,
+			MCPConfig:            mcpConfig,
+			PermissionPromptTool: "mcp__approvals__request_permission",
 		}
 
 		resp, err := daemonClient.LaunchSession(req)
