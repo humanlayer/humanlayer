@@ -2,6 +2,10 @@
 setup: ## Set up the repository with all dependencies and builds
 	hack/setup_repo.sh
 
+.PHONY: worktree
+worktree: ## Create a new worktree for development work (use hack/create_worktree.sh branch_name for specific names)
+	hack/create_worktree.sh
+
 .PHONY: check-py
 
 check-py: ## Run code quality tools.
