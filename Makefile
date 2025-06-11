@@ -1,3 +1,7 @@
+.PHONY: setup
+setup: ## Set up the repository with all dependencies and builds
+	hack/setup_repo.sh
+
 .PHONY: check-py
 
 check-py: ## Run code quality tools.
