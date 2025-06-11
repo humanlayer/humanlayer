@@ -39,6 +39,19 @@ type Request struct {
 	SessionModel string
 }
 
+// conversationCache represents a cached conversation
+type conversationCacheEntry struct {
+	session      *rpc.SessionState
+	events       []rpc.ConversationEvent
+	lastAccessed time.Time
+}
+
+// conversationCache implements a simple LRU cache for conversations
+type conversationCache struct {
+	entries map[string]*conversationCacheEntry
+	maxSize int
+}
+
 // View states
 type viewState int
 
@@ -50,6 +63,7 @@ const (
 	sessionDetailView
 	helpView
 	queryModalView
+	conversationView
 )
 
 // Tab represents a main navigation tab
@@ -58,7 +72,6 @@ type tab int
 const (
 	approvalsTab tab = iota
 	sessionsTab
-	historyTab
 )
 
 type model struct {
@@ -70,9 +83,9 @@ type model struct {
 	tabNames  []string
 
 	// Sub-models for each tab
-	approvals approvalModel
-	sessions  sessionModel
-	history   historyModel
+	approvals    approvalModel
+	sessions     sessionModel
+	conversation conversationModel
 
 	// For help view
 	helpContext      viewState // Which view help was opened from
@@ -90,6 +103,14 @@ type model struct {
 	lastDaemonCheck      time.Time
 	pendingApprovalCount int
 	activeSessionCount   int
+
+	// For notifications
+	showNotification     bool
+	notificationMessage  string
+	notificationShowTime time.Time
+
+	// For conversation caching
+	conversationCache *conversationCache
 }
 
 type keyMap struct {
@@ -104,7 +125,6 @@ type keyMap struct {
 	ShiftTab key.Binding
 	Tab1     key.Binding
 	Tab2     key.Binding
-	Tab3     key.Binding
 	Launch   key.Binding
 	Help     key.Binding
 	Refresh  key.Binding
@@ -158,10 +178,6 @@ var keys = keyMap{
 		key.WithKeys("2"),
 		key.WithHelp("2", "sessions tab"),
 	),
-	Tab3: key.NewBinding(
-		key.WithKeys("3"),
-		key.WithHelp("3", "history tab"),
-	),
 	Launch: key.NewBinding(
 		key.WithKeys("c"),
 		key.WithHelp("c", "create session"),
@@ -212,15 +228,26 @@ func newModel() model {
 		daemonClient: daemonClient,
 		// Initialize tab management
 		activeTab: approvalsTab,
-		tabNames:  []string{"Approvals", "Sessions", "History"},
+		tabNames:  []string{"Approvals", "Sessions"},
 		// Initialize sub-models
-		approvals: newApprovalModel(),
-		sessions:  newSessionModel(),
-		history:   newHistoryModel(),
+		approvals:    newApprovalModel(),
+		sessions:     newSessionModel(),
+		conversation: newConversationModel(),
 		// Initialize status bar
 		daemonConnected: true, // We successfully connected
 		lastDaemonCheck: time.Now(),
+		// Initialize cache
+		conversationCache: &conversationCache{
+			entries: make(map[string]*conversationCacheEntry),
+			maxSize: 100,
+		},
+		// Initialize with reasonable defaults that will be updated on first window size message
+		width:  80,
+		height: 24,
 	}
+
+	// Initialize all view sizes
+	m.updateAllViewSizes()
 
 	return m
 }
@@ -255,6 +282,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+		// Update all view sizes
+		m.updateAllViewSizes()
 		return m, nil
 
 	case tea.KeyMsg:
@@ -266,8 +295,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmd = m.approvals.Update(msg, &m)
 			case sessionsTab:
 				cmd = m.sessions.Update(msg, &m)
-			case historyTab:
-				cmd = m.history.Update(msg, &m)
 			}
 			if cmd != nil {
 				cmds = append(cmds, cmd)
@@ -295,11 +322,21 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.getCurrentViewState() == helpView {
 				m.setViewState(m.helpContext)
 				return m, nil
+			} else if m.getCurrentViewState() == conversationView {
+				// Clear conversation view and return to appropriate tab
+				m.conversation.stopPolling() // Stop any active polling
+				m.conversation.sessionID = ""
+				return m, nil
 			}
 		}
 
 		// Tab switching
 		if handled, newModel, tabCmd := m.handleTabSwitching(msg); handled {
+			// Hide notification when switching tabs
+			if modelCast, ok := newModel.(model); ok {
+				modelCast.showNotification = false
+				return modelCast, tabCmd
+			}
 			return newModel, tabCmd
 		}
 
@@ -316,8 +353,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case eventNotificationMsg:
 		// Handle real-time events
 		switch msg.event.Event.Type {
-		case bus.EventNewApproval, bus.EventApprovalResolved:
-			// Refresh approvals on approval events
+		case bus.EventNewApproval:
+			// Show notification for new approvals (only if not already on approvals tab)
+			if m.activeTab != approvalsTab && m.getCurrentViewState() != conversationView {
+				m.showNotification = true
+				m.notificationMessage = "New approval required. Press '1' to view"
+				m.notificationShowTime = time.Now()
+			}
+			// Refresh approvals
+			cmds = append(cmds, fetchRequests(m.daemonClient))
+		case bus.EventApprovalResolved:
+			// Refresh approvals on approval resolution
 			if m.activeTab == approvalsTab {
 				cmds = append(cmds, fetchRequests(m.daemonClient))
 			}
@@ -337,14 +383,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	// Delegate to active tab's update function
-	switch m.activeTab {
-	case approvalsTab:
-		cmd = m.approvals.Update(msg, &m)
-	case sessionsTab:
-		cmd = m.sessions.Update(msg, &m)
-	case historyTab:
-		cmd = m.history.Update(msg, &m)
+	// Delegate to active view
+	currentView := m.getCurrentViewState()
+	if currentView == conversationView {
+		cmd = m.conversation.Update(msg, &m)
+	} else {
+		// Delegate to active tab's update function
+		switch m.activeTab {
+		case approvalsTab:
+			cmd = m.approvals.Update(msg, &m)
+		case sessionsTab:
+			cmd = m.sessions.Update(msg, &m)
+		}
 	}
 
 	if cmd != nil {
@@ -369,14 +419,18 @@ func (m model) View() string {
 	if m.getCurrentViewState() == helpView {
 		content = m.renderHelpView()
 	} else {
-		// Delegate to active tab's view
-		switch m.activeTab {
-		case approvalsTab:
-			content = m.approvals.View(&m)
-		case sessionsTab:
-			content = m.sessions.View(&m)
-		case historyTab:
-			content = m.history.View(&m)
+		// Delegate to active view
+		currentView := m.getCurrentViewState()
+		if currentView == conversationView {
+			content = m.conversation.View(&m)
+		} else {
+			// Delegate to active tab's view
+			switch m.activeTab {
+			case approvalsTab:
+				content = m.approvals.View(&m)
+			case sessionsTab:
+				content = m.sessions.View(&m)
+			}
 		}
 	}
 
@@ -395,18 +449,31 @@ func (m model) View() string {
 	// Render status bar at bottom
 	s.WriteString(m.renderStatusBar())
 
+	// Render notification popup on top if shown
+	if m.showNotification {
+		// Auto-hide after 5 seconds
+		if time.Since(m.notificationShowTime) > 5*time.Second {
+			m.showNotification = false
+		} else {
+			return m.renderWithNotification(s.String())
+		}
+	}
+
 	return s.String()
 }
 
-// getCurrentViewState returns the current view state based on active tab
+// getCurrentViewState returns the current view state based on active tab or conversation
 func (m model) getCurrentViewState() viewState {
+	// Check if we're in conversation view first
+	if m.conversation.sessionID != "" {
+		return conversationView
+	}
+
 	switch m.activeTab {
 	case approvalsTab:
 		return m.approvals.viewState
 	case sessionsTab:
 		return m.sessions.viewState
-	case historyTab:
-		return m.history.viewState
 	}
 	return listView
 }
@@ -418,8 +485,6 @@ func (m *model) setViewState(state viewState) {
 		m.approvals.viewState = state
 	case sessionsTab:
 		m.sessions.viewState = state
-	case historyTab:
-		m.history.viewState = state
 	}
 }
 
@@ -441,6 +506,7 @@ func (m model) handleTabSwitching(msg tea.KeyMsg) (bool, tea.Model, tea.Cmd) {
 	case key.Matches(msg, keys.Tab1):
 		if m.activeTab != approvalsTab {
 			m.activeTab = approvalsTab
+			m.showNotification = false // Hide notification when going to approvals
 			return true, m, m.fetchDataForTab(approvalsTab)
 		}
 
@@ -450,11 +516,6 @@ func (m model) handleTabSwitching(msg tea.KeyMsg) (bool, tea.Model, tea.Cmd) {
 			return true, m, m.fetchDataForTab(sessionsTab)
 		}
 
-	case key.Matches(msg, keys.Tab3):
-		if m.activeTab != historyTab {
-			m.activeTab = historyTab
-			return true, m, m.fetchDataForTab(historyTab)
-		}
 	}
 
 	return false, m, nil
@@ -567,7 +628,7 @@ func (m model) renderHelpView() string {
 		{"esc", "Go back"},
 		{"tab", "Next tab"},
 		{"shift+tab", "Previous tab"},
-		{"1/2/3", "Jump to tab"},
+		{"1/2", "Jump to tab"},
 	}
 	for _, k := range navigationKeys {
 		s.WriteString(fmt.Sprintf("  %s  %s\n",
@@ -614,4 +675,141 @@ func (m model) renderHelpView() string {
 // Error message type
 type errMsg struct {
 	err error
+}
+
+// renderWithNotification overlays a notification popup on top of the main content
+func (m model) renderWithNotification(mainContent string) string {
+	lines := strings.Split(mainContent, "\n")
+
+	// Create notification popup style
+	notificationStyle := lipgloss.NewStyle().
+		Background(lipgloss.Color("208")). // Orange background
+		Foreground(lipgloss.Color("16")).  // Black text
+		Padding(0, 1).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("208"))
+
+	notification := notificationStyle.Render("🔔 " + m.notificationMessage)
+	notificationWidth := lipgloss.Width(notification)
+
+	// Position in top-right corner
+	if len(lines) > 0 && m.width > notificationWidth+2 {
+		// Calculate position
+		firstLine := lines[0]
+		firstLineWidth := len(firstLine)
+
+		// If first line is shorter than screen, pad and add notification
+		if firstLineWidth < m.width-notificationWidth-2 {
+			padding := m.width - firstLineWidth - notificationWidth - 2
+			lines[0] = firstLine + strings.Repeat(" ", padding) + notification
+		} else {
+			// Insert notification at the beginning
+			lines = append([]string{strings.Repeat(" ", m.width-notificationWidth) + notification}, lines...)
+		}
+	}
+
+	return strings.Join(lines, "\n")
+}
+
+// Conversation cache methods
+
+// get retrieves a conversation from cache if available
+func (c *conversationCache) get(sessionID string) (*rpc.SessionState, []rpc.ConversationEvent, bool) {
+	entry, exists := c.entries[sessionID]
+	if !exists {
+		return nil, nil, false
+	}
+
+	// Update access time for LRU
+	entry.lastAccessed = time.Now()
+	return entry.session, entry.events, true
+}
+
+// put stores a conversation in cache, evicting oldest if necessary
+func (c *conversationCache) put(sessionID string, session *rpc.SessionState, events []rpc.ConversationEvent) {
+	// If at capacity, evict least recently used
+	if len(c.entries) >= c.maxSize {
+		c.evictLRU()
+	}
+
+	c.entries[sessionID] = &conversationCacheEntry{
+		session:      session,
+		events:       events,
+		lastAccessed: time.Now(),
+	}
+}
+
+// evictLRU removes the least recently used entry
+func (c *conversationCache) evictLRU() {
+	if len(c.entries) == 0 {
+		return
+	}
+
+	var oldestKey string
+	var oldestTime time.Time
+	first := true
+
+	for key, entry := range c.entries {
+		if first || entry.lastAccessed.Before(oldestTime) {
+			oldestKey = key
+			oldestTime = entry.lastAccessed
+			first = false
+		}
+	}
+
+	delete(c.entries, oldestKey)
+}
+
+// invalidate removes a specific conversation from cache (useful when it's updated)
+func (c *conversationCache) invalidate(sessionID string) {
+	delete(c.entries, sessionID)
+}
+
+// updateAllViewSizes updates the size of all sub-views based on terminal dimensions
+func (m *model) updateAllViewSizes() {
+	// Calculate available content height (terminal - tab bar - status bar)
+	contentHeight := m.height - 3 // 2 lines for tab bar, 1 for status
+	if contentHeight < 5 {
+		contentHeight = 5 // Minimum
+	}
+
+	contentWidth := m.width - 2 // Some padding
+	if contentWidth < 20 {
+		contentWidth = 20 // Minimum
+	}
+
+	// Update conversation view
+	m.conversation.updateSize(m.width, m.height)
+
+	// Update approvals view (add viewport if needed)
+	m.approvals.updateSize(contentWidth, contentHeight)
+
+	// Update sessions view (add viewport if needed)
+	m.sessions.updateSize(contentWidth, contentHeight)
+}
+
+// openConversationView opens the conversation view for a specific session
+func (m *model) openConversationView(sessionID string) tea.Cmd {
+	m.conversation.setSession(sessionID)
+
+	// Update conversation view size to match terminal
+	m.conversation.updateSize(m.width, m.height)
+
+	// Check cache first - always show cached data immediately if available
+	if session, events, found := m.conversationCache.get(sessionID); found {
+		// Return cached data immediately, then fetch fresh data
+		return tea.Batch(
+			func() tea.Msg {
+				return fetchConversationMsg{
+					session: session,
+					events:  events,
+				}
+			},
+			// Follow up with fresh data from server
+			fetchConversation(m.daemonClient, sessionID),
+		)
+	}
+
+	// Not in cache, fetch from API
+	return fetchConversation(m.daemonClient, sessionID)
 }
