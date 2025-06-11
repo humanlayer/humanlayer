@@ -225,8 +225,22 @@ func (sm *sessionModel) updateSessionDetailView(msg tea.KeyMsg, m *model) tea.Cm
 		}
 
 	case key.Matches(msg, keys.Down):
-		// Allow scrolling if content is longer than view
-		sm.sessionDetailScroll++
+		// Calculate bounds to prevent scrolling past content
+		if sm.selectedSession != nil {
+			// Build the actual content to get accurate line count
+			content := sm.buildSessionDetailContent()
+			lines := strings.Split(content, "\n")
+			visibleHeight := m.height - 6 // Account for UI chrome
+			maxScroll := len(lines) - visibleHeight
+			if maxScroll < 0 {
+				maxScroll = 0
+			}
+
+			// Only increment if we haven't reached the bottom
+			if sm.sessionDetailScroll < maxScroll {
+				sm.sessionDetailScroll++
+			}
+		}
 
 	case key.Matches(msg, keys.Refresh):
 		if sm.selectedSession != nil {
@@ -626,10 +640,10 @@ func (sm *sessionModel) renderListView(m *model) string {
 	return sm.viewport.View()
 }
 
-// renderSessionDetailView renders the detailed view of a session
-func (sm *sessionModel) renderSessionDetailView(m *model) string {
+// buildSessionDetailContent builds the content string for session details
+func (sm *sessionModel) buildSessionDetailContent() string {
 	if sm.selectedSession == nil {
-		return "No session selected"
+		return ""
 	}
 
 	sess := sm.selectedSession
@@ -757,8 +771,20 @@ func (sm *sessionModel) renderSessionDetailView(m *model) string {
 		}
 	}
 
+	return content.String()
+}
+
+// renderSessionDetailView renders the detailed view of a session
+func (sm *sessionModel) renderSessionDetailView(m *model) string {
+	if sm.selectedSession == nil {
+		return "No session selected"
+	}
+
+	// Build the content
+	content := sm.buildSessionDetailContent()
+
 	// Apply scrolling
-	lines := strings.Split(content.String(), "\n")
+	lines := strings.Split(content, "\n")
 	visibleHeight := m.height - 6 // Account for tab bar, status bar, etc.
 
 	if sm.sessionDetailScroll > len(lines)-visibleHeight {
