@@ -391,6 +391,18 @@ func (m *Manager) ListSessions() []Info {
 	return infos
 }
 
+// updateSessionActivity updates the last_activity_at timestamp for a session
+func (m *Manager) updateSessionActivity(ctx context.Context, sessionID string) {
+	now := time.Now()
+	if err := m.store.UpdateSession(ctx, sessionID, store.SessionUpdate{
+		LastActivityAt: &now,
+	}); err != nil {
+		slog.Warn("failed to update session activity timestamp",
+			"session_id", sessionID,
+			"error", err)
+	}
+}
+
 // processStreamEvent processes a streaming event and stores it in the database
 func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, claudeSessionID string, event claudecode.StreamEvent) error {
 	// Skip events without claude session ID
@@ -433,6 +445,9 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 						return err
 					}
 
+					// Update session activity timestamp for text messages
+					m.updateSessionActivity(ctx, sessionID)
+
 				case "tool_use":
 					// Tool call
 					inputJSON, err := json.Marshal(content.Input)
@@ -453,6 +468,9 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 						return err
 					}
 
+					// Update session activity timestamp for tool calls
+					m.updateSessionActivity(ctx, sessionID)
+
 				case "tool_result":
 					// Tool result (in user message)
 					convEvent := &store.ConversationEvent{
@@ -466,6 +484,9 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 					if err := m.store.AddConversationEvent(ctx, convEvent); err != nil {
 						return err
 					}
+
+					// Update session activity timestamp for tool results
+					m.updateSessionActivity(ctx, sessionID)
 
 					// Mark the corresponding tool call as completed
 					if err := m.store.MarkToolCallCompleted(ctx, content.ToolUseID, sessionID); err != nil {
@@ -486,11 +507,13 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 			status = store.SessionStatusFailed
 		}
 
+		now := time.Now()
 		update := store.SessionUpdate{
-			Status:      &status,
-			CompletedAt: &[]time.Time{time.Now()}[0],
-			CostUSD:     &event.CostUSD,
-			DurationMS:  &event.DurationMS,
+			Status:         &status,
+			CompletedAt:    &now,
+			LastActivityAt: &now,
+			CostUSD:        &event.CostUSD,
+			DurationMS:     &event.DurationMS,
 		}
 		if event.Error != "" {
 			update.ErrorMessage = &event.Error
