@@ -111,6 +111,10 @@ type model struct {
 
 	// For conversation caching
 	conversationCache *conversationCache
+	
+	// For two-step quit behavior
+	lastQuitTime time.Time
+	quitWarningShown bool
 }
 
 type keyMap struct {
@@ -287,12 +291,39 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
+		// Clear quit warning on non-quit keys (unless it's too recent)
+		if !key.Matches(msg, keys.Quit) && time.Since(m.lastQuitTime) > 500*time.Millisecond {
+			m.quitWarningShown = false
+		}
+		
 		// Handle global keys even in modal views
 		if m.getCurrentViewState() == queryModalView {
 			// Check for quit key first
 			if key.Matches(msg, keys.Quit) {
-				// Allow quit from modal views
-				return m, tea.Quit
+				// Implement two-step quit: first navigate back, then quit
+				currentView := m.getCurrentViewState()
+				if currentView != listView {
+					// First Ctrl+C: navigate back to list view
+					m.setViewState(listView)
+					m.showNotification = true
+					m.notificationMessage = "Press Ctrl+C again to quit"
+					m.notificationShowTime = time.Now()
+					m.quitWarningShown = true
+					m.lastQuitTime = time.Now()
+					return m, nil
+				} else {
+					// Second Ctrl+C from list view, or repeated within 2 seconds
+					if m.quitWarningShown && time.Since(m.lastQuitTime) < 2*time.Second {
+						return m, tea.Quit
+					}
+					// Show warning again if too much time passed
+					m.showNotification = true
+					m.notificationMessage = "Press Ctrl+C again to quit"
+					m.notificationShowTime = time.Now()
+					m.quitWarningShown = true
+					m.lastQuitTime = time.Now()
+					return m, nil
+				}
 			}
 			
 			// Delegate other keys to tab handlers
@@ -311,8 +342,35 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Global key handling (only when not in modal)
 		switch {
 		case key.Matches(msg, keys.Quit):
-			// Allow quit from any view
-			return m, tea.Quit
+			// Implement two-step quit: first navigate back, then quit
+			currentView := m.getCurrentViewState()
+			if currentView != listView {
+				// First Ctrl+C: navigate back to list view
+				m.setViewState(listView)
+				m.showNotification = true
+				m.notificationMessage = "Press Ctrl+C again to quit"
+				m.notificationShowTime = time.Now()
+				m.quitWarningShown = true
+				m.lastQuitTime = time.Now()
+				// Stop conversation polling if in conversation view
+				if currentView == conversationView {
+					m.conversation.stopPolling()
+					m.conversation.sessionID = ""
+				}
+				return m, nil
+			} else {
+				// Second Ctrl+C from list view, or repeated within 2 seconds
+				if m.quitWarningShown && time.Since(m.lastQuitTime) < 2*time.Second {
+					return m, tea.Quit
+				}
+				// Show warning again if too much time passed
+				m.showNotification = true
+				m.notificationMessage = "Press Ctrl+C again to quit"
+				m.notificationShowTime = time.Now()
+				m.quitWarningShown = true
+				m.lastQuitTime = time.Now()
+				return m, nil
+			}
 
 		case key.Matches(msg, keys.Help):
 			if m.getCurrentViewState() != helpView {
