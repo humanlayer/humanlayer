@@ -287,9 +287,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
-		// Skip global key handling when in modal views to allow full text input
+		// Handle global keys even in modal views
 		if m.getCurrentViewState() == queryModalView {
-			// Delegate directly to tab without global processing
+			// Check for quit key first
+			if key.Matches(msg, keys.Quit) {
+				// Quit immediately from any view
+				return m, tea.Quit
+			}
+
+			// Delegate other keys to tab handlers
 			switch m.activeTab {
 			case approvalsTab:
 				cmd = m.approvals.Update(msg, &m)
@@ -305,10 +311,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Global key handling (only when not in modal)
 		switch {
 		case key.Matches(msg, keys.Quit):
-			// Only quit from list views
-			if m.getCurrentViewState() == listView {
-				return m, tea.Quit
-			}
+			// Quit immediately from any view
+			return m, tea.Quit
 
 		case key.Matches(msg, keys.Help):
 			if m.getCurrentViewState() != helpView {
