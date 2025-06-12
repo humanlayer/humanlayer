@@ -23,6 +23,14 @@ const (
 	HumanContactRequest RequestType = "human_contact"
 )
 
+// Layout constants for consistent dimension calculations
+const (
+	TabBarHeight    = 2 // Tab bar takes 2 lines
+	StatusBarHeight = 1 // Status bar takes 1 line
+	MinContentWidth = 20
+	MinContentHeight = 5
+)
+
 // Request represents either an approval or human contact
 type Request struct {
 	ID         string
@@ -981,23 +989,23 @@ func (c *conversationCache) invalidate(sessionID string) {
 // updateAllViewSizes updates the size of all sub-views based on terminal dimensions
 func (m *model) updateAllViewSizes() {
 	// Calculate available content height (terminal - tab bar - status bar)
-	contentHeight := m.height - 3 // 2 lines for tab bar, 1 for status
-	if contentHeight < 5 {
-		contentHeight = 5 // Minimum
+	contentHeight := m.height - TabBarHeight - StatusBarHeight
+	if contentHeight < MinContentHeight {
+		contentHeight = MinContentHeight
 	}
 
 	contentWidth := m.width - 2 // Some padding
-	if contentWidth < 20 {
-		contentWidth = 20 // Minimum
+	if contentWidth < MinContentWidth {
+		contentWidth = MinContentWidth
 	}
 
-	// Update conversation view
-	m.conversation.updateSize(m.width, m.height)
+	// Update conversation view - pass content dimensions, not full terminal
+	m.conversation.updateSize(contentWidth, contentHeight)
 
-	// Update approvals view (add viewport if needed)
+	// Update approvals view
 	m.approvals.updateSize(contentWidth, contentHeight)
 
-	// Update sessions view (add viewport if needed)
+	// Update sessions view
 	m.sessions.updateSize(contentWidth, contentHeight)
 }
 
@@ -1005,8 +1013,8 @@ func (m *model) updateAllViewSizes() {
 func (m *model) openConversationView(sessionID string) tea.Cmd {
 	m.conversation.setSession(sessionID)
 
-	// Update conversation view size to match terminal
-	m.conversation.updateSize(m.width, m.height)
+	// Update conversation view size using the standardized update function
+	m.updateAllViewSizes()
 
 	// Check cache first - always show cached data immediately if available
 	if session, events, found := m.conversationCache.get(sessionID); found {

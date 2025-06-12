@@ -50,9 +50,23 @@ func newApprovalModel() approvalModel {
 
 // updateSize updates the viewport dimensions
 func (am *approvalModel) updateSize(width, height int) {
+	// Ensure minimum dimensions
+	if width < 20 {
+		width = 20
+	}
+	if height < 5 {
+		height = 5
+	}
+	
 	am.viewport.Width = width
 	am.viewport.Height = height
-	am.feedbackInput.Width = width - 20 // Leave some padding
+	
+	// Update input field width with bounds checking
+	inputWidth := width - 20
+	if inputWidth < 10 {
+		inputWidth = 10
+	}
+	am.feedbackInput.Width = inputWidth
 }
 
 // Update handles messages for the approvals tab
@@ -103,6 +117,8 @@ func (am *approvalModel) Update(msg tea.Msg, m *model) tea.Cmd {
 		// Go back to list view
 		am.viewState = listView
 		am.selectedRequest = nil
+		// Trigger layout update when returning to list view
+		m.updateAllViewSizes()
 		return fetchRequests(m.daemonClient)
 
 	case humanResponseSentMsg:
@@ -125,6 +141,8 @@ func (am *approvalModel) Update(msg tea.Msg, m *model) tea.Cmd {
 		// Go back to list view
 		am.viewState = listView
 		am.selectedRequest = nil
+		// Trigger layout update when returning to list view
+		m.updateAllViewSizes()
 		return fetchRequests(m.daemonClient)
 	}
 
@@ -174,6 +192,8 @@ func (am *approvalModel) updateListView(msg tea.KeyMsg, m *model) tea.Cmd {
 			am.feedbackInput.Reset()
 			am.feedbackInput.Focus()
 			am.viewState = feedbackView
+			// Trigger layout update for the new view state
+			m.updateAllViewSizes()
 		}
 
 	case key.Matches(msg, keys.Refresh):
@@ -189,6 +209,8 @@ func (am *approvalModel) updateDetailView(msg tea.KeyMsg, m *model) tea.Cmd {
 	case key.Matches(msg, keys.Back):
 		am.viewState = listView
 		am.selectedRequest = nil
+		// Trigger layout update when returning to list view
+		m.updateAllViewSizes()
 
 	case key.Matches(msg, keys.Approve):
 		if am.selectedRequest != nil && am.selectedRequest.Type == ApprovalRequest {
@@ -202,6 +224,8 @@ func (am *approvalModel) updateDetailView(msg tea.KeyMsg, m *model) tea.Cmd {
 			am.feedbackInput.Reset()
 			am.feedbackInput.Focus()
 			am.viewState = feedbackView
+			// Trigger layout update for the new view state
+			m.updateAllViewSizes()
 		}
 	}
 
@@ -216,6 +240,8 @@ func (am *approvalModel) updateFeedbackView(msg tea.KeyMsg, m *model) tea.Cmd {
 		if am.selectedRequest == nil {
 			am.viewState = listView
 		}
+		// Trigger layout update when changing view states
+		m.updateAllViewSizes()
 
 	case key.Matches(msg, keys.Enter):
 		// Submit feedback
