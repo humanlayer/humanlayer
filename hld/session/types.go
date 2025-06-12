@@ -7,6 +7,11 @@ import (
 	claudecode "github.com/humanlayer/humanlayer/claudecode-go"
 )
 
+// ApprovalReconciler interface for reconciling approvals after session restart
+type ApprovalReconciler interface {
+	ReconcileApprovalsForSession(ctx context.Context, runID string) error
+}
+
 // Status represents the current state of a session
 type Status string
 

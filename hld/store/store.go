@@ -127,6 +127,7 @@ const (
 	ApprovalStatusPending  = "pending"
 	ApprovalStatusApproved = "approved"
 	ApprovalStatusDenied   = "denied"
+	ApprovalStatusResolved = "resolved" // Generic resolved status for external resolutions
 )
 
 // SessionStatus constants

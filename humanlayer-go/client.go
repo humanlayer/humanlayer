@@ -11,6 +11,22 @@ import (
 	"time"
 )
 
+// APIError represents an error response from the HumanLayer API
+type APIError struct {
+	StatusCode int
+	Body       string
+}
+
+// Error implements the error interface
+func (e *APIError) Error() string {
+	return fmt.Sprintf("API error: %s (status %d)", e.Body, e.StatusCode)
+}
+
+// IsConflict returns true if this is a 409 Conflict error
+func (e *APIError) IsConflict() bool {
+	return e.StatusCode == http.StatusConflict
+}
+
 // Client is the HumanLayer API client
 type Client struct {
 	apiKey     string
@@ -102,7 +118,10 @@ func (c *Client) doRequest(ctx context.Context, method, path string, body interf
 	if resp.StatusCode >= 400 {
 		defer resp.Body.Close()
 		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API error: %s (status %d)", string(body), resp.StatusCode)
+		return nil, &APIError{
+			StatusCode: resp.StatusCode,
+			Body:       string(body),
+		}
 	}
 
 	return resp, nil
