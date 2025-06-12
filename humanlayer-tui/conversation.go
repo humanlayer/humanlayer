@@ -445,7 +445,9 @@ func (cm *conversationModel) View(m *model) string {
 		errorStyle := lipgloss.NewStyle().
 			Foreground(lipgloss.Color("196")).
 			Padding(2, 0)
-		return errorStyle.Render(fmt.Sprintf("Error: %v", cm.error))
+		// Use the full width for conversation errors since they replace content
+		errorMsg := preprocessError(cm.error.Error())
+		return errorStyle.Render(fmt.Sprintf("Error: %s", errorMsg))
 	}
 
 	if cm.session == nil {

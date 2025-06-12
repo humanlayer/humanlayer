@@ -71,6 +71,7 @@ func (am *approvalModel) Update(msg tea.Msg, m *model) tea.Cmd {
 	case fetchRequestsMsg:
 		if msg.err != nil {
 			m.err = msg.err
+			m.fullError = msg.err
 			return nil
 		}
 		am.requests = msg.requests
@@ -85,6 +86,7 @@ func (am *approvalModel) Update(msg tea.Msg, m *model) tea.Cmd {
 	case approvalSentMsg:
 		if msg.err != nil {
 			m.err = msg.err
+			m.fullError = msg.err
 			return nil
 		}
 		// Remove the approved/denied request from the list
@@ -106,6 +108,7 @@ func (am *approvalModel) Update(msg tea.Msg, m *model) tea.Cmd {
 	case humanResponseSentMsg:
 		if msg.err != nil {
 			m.err = msg.err
+			m.fullError = msg.err
 			return nil
 		}
 		// Remove the responded request from the list

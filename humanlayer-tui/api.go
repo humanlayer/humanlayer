@@ -29,6 +29,38 @@ func truncate(s string, max int) string {
 	return s[:max]
 }
 
+// preprocessError converts common API errors into user-friendly messages
+func preprocessError(errMsg string) string {
+	// Handle "call already has a response" errors
+	if strings.Contains(errMsg, "call already has a response") {
+		// Extract just the key part of the error
+		if strings.Contains(errMsg, "400 Bad Request") {
+			return "Approval already responded to"
+		}
+		return "Call already has a response"
+	}
+
+	// Handle other common API errors
+	if strings.Contains(errMsg, "409 Conflict") {
+		return "Conflict: Resource already exists"
+	}
+
+	if strings.Contains(errMsg, "404 Not Found") {
+		return "Resource not found"
+	}
+
+	if strings.Contains(errMsg, "500 Internal Server Error") {
+		return "Server error occurred"
+	}
+
+	// Remove excessive technical details like stack traces
+	if idx := strings.Index(errMsg, "\n"); idx > 0 {
+		errMsg = errMsg[:idx]
+	}
+
+	return errMsg
+}
+
 // API command messages
 
 type fetchRequestsMsg struct {

@@ -103,6 +103,7 @@ func (sm *sessionModel) Update(msg tea.Msg, m *model) tea.Cmd {
 	case fetchSessionsMsg:
 		if msg.err != nil {
 			m.err = msg.err
+			m.fullError = msg.err
 			return nil
 		}
 		sm.sessions = msg.sessions
@@ -122,6 +123,7 @@ func (sm *sessionModel) Update(msg tea.Msg, m *model) tea.Cmd {
 	case launchSessionMsg:
 		if msg.err != nil {
 			m.err = msg.err
+			m.fullError = msg.err
 			return nil
 		}
 		// Clear form and go back to list
@@ -136,6 +138,7 @@ func (sm *sessionModel) Update(msg tea.Msg, m *model) tea.Cmd {
 	case fetchSessionApprovalsMsg:
 		if msg.err != nil {
 			m.err = msg.err
+			m.fullError = msg.err
 			return nil
 		}
 		sm.sessionApprovals = msg.approvals
