@@ -43,6 +43,10 @@ type conversationModel struct {
 	// Polling state for active sessions
 	isPolling  bool
 	pollTicker *time.Ticker
+	
+	// Dimensions for dynamic layout
+	contentWidth  int
+	contentHeight int
 }
 
 // newConversationModel creates a new conversation model
@@ -87,12 +91,16 @@ func (cm *conversationModel) clearApprovalState() {
 	cm.pendingApproval = nil
 	cm.showApprovalPrompt = false
 	cm.approvalInput.Reset()
+	// Restore viewport size when hiding prompt
+	cm.adjustViewportSize()
 }
 
 // clearResumeState resets resume-related state
 func (cm *conversationModel) clearResumeState() {
 	cm.showResumePrompt = false
 	cm.resumeInput.Reset()
+	// Restore viewport size when hiding prompt
+	cm.adjustViewportSize()
 }
 
 // startPolling begins 3-second polling for active sessions
@@ -127,23 +135,49 @@ func (cm *conversationModel) isActiveSession() bool {
 // updateSize updates the viewport dimensions based on content area size
 func (cm *conversationModel) updateSize(width, height int) {
 	// height is already the content area (terminal - tab bar - status bar)
-	// We need to account for our own header (2 lines) and input area (1 line minimum)
-	viewportHeight := height - 2 - 1 // content height - header - input area
+	// Store dimensions for dynamic adjustment
+	cm.contentWidth = width
+	cm.contentHeight = height
+	
+	// Calculate viewport size based on current state
+	cm.adjustViewportSize()
+
+	// Also update input field widths
+	inputWidth := width - 10
+	if inputWidth < 10 {
+		inputWidth = 10
+	}
+	cm.approvalInput.Width = inputWidth
+	cm.resumeInput.Width = inputWidth
+}
+
+// adjustViewportSize dynamically adjusts viewport based on active prompts
+func (cm *conversationModel) adjustViewportSize() {
+	// Skip if dimensions not set yet
+	if cm.contentWidth == 0 || cm.contentHeight == 0 {
+		return
+	}
+	
+	// Start with content dimensions
+	viewportHeight := cm.contentHeight - 2 - 1 // header (2 lines) + status line (1 line)
+	
+	// Reduce height when input prompts are shown
+	if cm.showApprovalPrompt || cm.showResumePrompt {
+		// Input prompt takes: border (2) + padding (2) + content (3 lines) + spacing (1) = 8 lines
+		viewportHeight -= 8
+	}
+	
 	if viewportHeight < 5 {
 		viewportHeight = 5 // Minimum height
 	}
 
-	viewportWidth := width
+	viewportWidth := cm.contentWidth
 	if viewportWidth < 20 {
 		viewportWidth = 20 // Minimum width
 	}
 
 	cm.viewport.Width = viewportWidth
 	cm.viewport.Height = viewportHeight
-
-	// Also update input field widths
-	cm.approvalInput.Width = viewportWidth - 10
-	cm.resumeInput.Width = viewportWidth - 10
 }
 
 // Update handles messages for the conversation view
@@ -267,6 +301,8 @@ func (cm *conversationModel) updateConversationView(msg tea.KeyMsg, m *model) te
 			cm.showApprovalPrompt = true
 			cm.approvalInput.Focus()
 			cm.approvalInput.Placeholder = "Reason for denial..."
+			// Adjust viewport to make room for input prompt
+			cm.adjustViewportSize()
 		}
 
 	case msg.String() == "r":
@@ -274,6 +310,8 @@ func (cm *conversationModel) updateConversationView(msg tea.KeyMsg, m *model) te
 		if cm.session != nil && cm.session.Status == "completed" {
 			cm.showResumePrompt = true
 			cm.resumeInput.Focus()
+			// Adjust viewport to make room for input prompt
+			cm.adjustViewportSize()
 		}
 
 	case msg.String() == "p":
