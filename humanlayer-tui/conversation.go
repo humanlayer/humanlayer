@@ -23,7 +23,8 @@ type conversationModel struct {
 	viewport        viewport.Model
 
 	// For inline approval handling
-	pendingApproval    *rpc.ConversationEvent
+	pendingApprovals   []*rpc.ConversationEvent
+	pendingApproval    *rpc.ConversationEvent // Current approval being processed
 	approvalInput      textinput.Model
 	showApprovalPrompt bool
 
@@ -349,16 +350,22 @@ func (cm *conversationModel) updateResumeInput(msg tea.KeyMsg, m *model) tea.Cmd
 
 // findPendingApproval looks for pending approvals in the conversation
 func (cm *conversationModel) findPendingApproval() {
+	cm.pendingApprovals = nil
 	cm.pendingApproval = nil
 
+	// Find all pending approvals
 	for i := range cm.events {
 		event := &cm.events[i]
 		if event.EventType == "tool_call" &&
 			event.ApprovalStatus == "pending" &&
 			!event.IsCompleted {
-			cm.pendingApproval = event
-			break
+			cm.pendingApprovals = append(cm.pendingApprovals, event)
 		}
+	}
+
+	// Set the first one as the current pending approval if not already handling one
+	if len(cm.pendingApprovals) > 0 && cm.pendingApproval == nil {
+		cm.pendingApproval = cm.pendingApprovals[0]
 	}
 }
 
@@ -435,6 +442,18 @@ func (cm *conversationModel) renderHeader(m *model) string {
 	// Add parent indicator if this is a continued session
 	if cm.session.ParentSessionID != "" {
 		title += " [continued]"
+	}
+
+	// Add pending approval count if any
+	if len(cm.pendingApprovals) > 0 {
+		approvalStyle := lipgloss.NewStyle().
+			Foreground(lipgloss.Color("226")).
+			Bold(true)
+		approvalText := fmt.Sprintf(" | %d pending approval", len(cm.pendingApprovals))
+		if len(cm.pendingApprovals) > 1 {
+			approvalText = fmt.Sprintf(" | %d pending approvals", len(cm.pendingApprovals))
+		}
+		title += approvalStyle.Render(approvalText)
 	}
 
 	return headerStyle.Render(title)
@@ -523,7 +542,19 @@ func (cm *conversationModel) renderToolCall(event *rpc.ConversationEvent) string
 	switch event.ApprovalStatus {
 	case "pending":
 		toolIcon = "⏳"
-		statusText = " (pending approval)"
+		statusText = " (pending approval"
+
+		// Find which approval number this is
+		for i, pa := range cm.pendingApprovals {
+			if pa == event {
+				if len(cm.pendingApprovals) > 1 {
+					statusText += fmt.Sprintf(" %d of %d", i+1, len(cm.pendingApprovals))
+				}
+				break
+			}
+		}
+		statusText += ")"
+
 		if event == cm.pendingApproval {
 			statusText += " - Press [y] to approve, [n] to deny"
 		}

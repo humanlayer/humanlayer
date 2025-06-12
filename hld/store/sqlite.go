@@ -656,6 +656,7 @@ func (s *SQLiteStore) GetSessionConversation(ctx context.Context, sessionID stri
 
 // GetPendingToolCall finds the most recent uncompleted tool call for a given session and tool name
 func (s *SQLiteStore) GetPendingToolCall(ctx context.Context, sessionID string, toolName string) (*ConversationEvent, error) {
+	// Find the most recent uncompleted tool call by sequence number (temporal proximity)
 	query := `
 		SELECT id, session_id, claude_session_id, sequence, event_type, created_at,
 			role, content,
@@ -667,7 +668,7 @@ func (s *SQLiteStore) GetPendingToolCall(ctx context.Context, sessionID string, 
 		  AND session_id = ?
 		  AND event_type = 'tool_call'
 		  AND is_completed = FALSE
-		ORDER BY sequence ASC
+		ORDER BY sequence DESC  -- Most recent first
 		LIMIT 1
 	`
 
@@ -688,6 +689,85 @@ func (s *SQLiteStore) GetPendingToolCall(ctx context.Context, sessionID string, 
 	}
 
 	return event, nil
+}
+
+// GetUncorrelatedPendingToolCall finds the most recent uncompleted tool call without approval correlation
+func (s *SQLiteStore) GetUncorrelatedPendingToolCall(ctx context.Context, sessionID string, toolName string) (*ConversationEvent, error) {
+	// Find the most recent uncompleted tool call by sequence number without approval
+	query := `
+		SELECT id, session_id, claude_session_id, sequence, event_type, created_at,
+			role, content,
+			tool_id, tool_name, tool_input_json,
+			tool_result_for_id, tool_result_content,
+			is_completed, approval_status, approval_id
+		FROM conversation_events
+		WHERE tool_name = ?
+		  AND session_id = ?
+		  AND event_type = 'tool_call'
+		  AND is_completed = FALSE
+		  AND (approval_status IS NULL OR approval_status = '')
+		ORDER BY sequence DESC  -- Most recent first
+		LIMIT 1
+	`
+
+	event := &ConversationEvent{}
+	err := s.db.QueryRowContext(ctx, query, toolName, sessionID).Scan(
+		&event.ID, &event.SessionID, &event.ClaudeSessionID,
+		&event.Sequence, &event.EventType, &event.CreatedAt,
+		&event.Role, &event.Content,
+		&event.ToolID, &event.ToolName, &event.ToolInputJSON,
+		&event.ToolResultForID, &event.ToolResultContent,
+		&event.IsCompleted, &event.ApprovalStatus, &event.ApprovalID,
+	)
+	if err == sql.ErrNoRows {
+		return nil, nil // No pending tool call found
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get uncorrelated pending tool call: %w", err)
+	}
+
+	return event, nil
+}
+
+// GetPendingToolCalls finds all uncompleted tool calls for a given session
+func (s *SQLiteStore) GetPendingToolCalls(ctx context.Context, sessionID string) ([]*ConversationEvent, error) {
+	query := `
+		SELECT id, session_id, claude_session_id, sequence, event_type, created_at,
+			role, content,
+			tool_id, tool_name, tool_input_json,
+			tool_result_for_id, tool_result_content,
+			is_completed, approval_status, approval_id
+		FROM conversation_events
+		WHERE session_id = ?
+		  AND event_type = 'tool_call'
+		  AND is_completed = FALSE
+		ORDER BY sequence DESC
+	`
+
+	rows, err := s.db.QueryContext(ctx, query, sessionID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get pending tool calls: %w", err)
+	}
+	defer rows.Close()
+
+	var events []*ConversationEvent
+	for rows.Next() {
+		event := &ConversationEvent{}
+		err := rows.Scan(
+			&event.ID, &event.SessionID, &event.ClaudeSessionID,
+			&event.Sequence, &event.EventType, &event.CreatedAt,
+			&event.Role, &event.Content,
+			&event.ToolID, &event.ToolName, &event.ToolInputJSON,
+			&event.ToolResultForID, &event.ToolResultContent,
+			&event.IsCompleted, &event.ApprovalStatus, &event.ApprovalID,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan event: %w", err)
+		}
+		events = append(events, event)
+	}
+
+	return events, nil
 }
 
 // MarkToolCallCompleted marks a tool call as completed when its result is received
@@ -761,6 +841,42 @@ func (s *SQLiteStore) CorrelateApproval(ctx context.Context, sessionID string, t
 	rows, _ := result.RowsAffected()
 	slog.Info("updated tool call with approval",
 		"event_id", toolCall.ID,
+		"rows_affected", rows)
+
+	return nil
+}
+
+// CorrelateApprovalByToolID correlates an approval with a specific tool call by tool_id
+func (s *SQLiteStore) CorrelateApprovalByToolID(ctx context.Context, sessionID string, toolID string, approvalID string) error {
+	// Update the tool call directly by tool_id
+	updateQuery := `
+		UPDATE conversation_events
+		SET approval_status = 'pending', approval_id = ?
+		WHERE session_id = ?
+		  AND tool_id = ?
+		  AND event_type = 'tool_call'
+		  AND is_completed = FALSE
+		  AND (approval_status IS NULL OR approval_status = '')
+	`
+
+	result, err := s.db.ExecContext(ctx, updateQuery, approvalID, sessionID, toolID)
+	if err != nil {
+		return fmt.Errorf("failed to correlate approval by tool_id: %w", err)
+	}
+
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		slog.Debug("no matching tool call found for approval by tool_id",
+			"session_id", sessionID,
+			"tool_id", toolID,
+			"approval_id", approvalID)
+		return nil // Not an error
+	}
+
+	slog.Info("correlated approval with tool call by tool_id",
+		"tool_id", toolID,
+		"session_id", sessionID,
+		"approval_id", approvalID,
 		"rows_affected", rows)
 
 	return nil

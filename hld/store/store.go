@@ -23,8 +23,10 @@ type ConversationStore interface {
 
 	// Tool call operations
 	GetPendingToolCall(ctx context.Context, sessionID string, toolName string) (*ConversationEvent, error)
+	GetPendingToolCalls(ctx context.Context, sessionID string) ([]*ConversationEvent, error)
 	MarkToolCallCompleted(ctx context.Context, toolID string, sessionID string) error
 	CorrelateApproval(ctx context.Context, sessionID string, toolName string, approvalID string) error
+	CorrelateApprovalByToolID(ctx context.Context, sessionID string, toolID string, approvalID string) error
 	UpdateApprovalStatus(ctx context.Context, approvalID string, status string) error
 
 	// MCP server operations

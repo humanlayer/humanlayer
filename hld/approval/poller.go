@@ -423,8 +423,18 @@ func (p *Poller) correlateApproval(ctx context.Context, fc humanlayer.FunctionCa
 	}
 
 	toolName := fc.Spec.Fn
-	// Try to find a pending tool call for this session and tool
-	toolCall, err := p.conversationStore.GetPendingToolCall(ctx, session.ID, toolName)
+	// Try to find an uncorrelated pending tool call for this session and tool
+	// Use the specialized method that only finds tool calls without approvals
+	var toolCall *store.ConversationEvent
+	
+	// Check if the store has the GetUncorrelatedPendingToolCall method
+	if uncorrelatedStore, ok := p.conversationStore.(*store.SQLiteStore); ok {
+		toolCall, err = uncorrelatedStore.GetUncorrelatedPendingToolCall(ctx, session.ID, toolName)
+	} else {
+		// Fallback to regular GetPendingToolCall
+		toolCall, err = p.conversationStore.GetPendingToolCall(ctx, session.ID, toolName)
+	}
+	
 	if err != nil || toolCall == nil {
 		// For continued sessions, also check the parent session's tool calls
 		if session.ParentSessionID != "" {
@@ -484,6 +494,20 @@ func (p *Poller) correlateApproval(ctx context.Context, fc humanlayer.FunctionCa
 		"session_id", session.ID,
 		"tool_name", toolName,
 		"run_id", fc.RunID)
+
+	// Publish event to notify that approval has been correlated
+	if p.eventBus != nil {
+		p.eventBus.Publish(bus.Event{
+			Type: bus.EventApprovalResolved,
+			Data: map[string]interface{}{
+				"approval_id": fc.CallID,
+				"session_id":  session.ID,
+				"tool_name":   toolName,
+				"run_id":      fc.RunID,
+				"status":      "correlated",
+			},
+		})
+	}
 
 	// Update session status to waiting_input
 	waitingStatus := store.SessionStatusWaitingInput
