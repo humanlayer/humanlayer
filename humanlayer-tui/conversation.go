@@ -44,6 +44,9 @@ type conversationModel struct {
 	// Polling state for active sessions
 	isPolling  bool
 	pollTicker *time.Ticker
+
+	// Scroll position tracking
+	wasAtBottom bool // Track if user was at bottom before update
 }
 
 // newConversationModel creates a new conversation model
@@ -81,6 +84,8 @@ func (cm *conversationModel) setSession(sessionID string) {
 	// Clear parent data when switching sessions
 	cm.parentModel = ""
 	cm.parentWorkingDir = ""
+	// Reset scroll tracking
+	cm.wasAtBottom = true
 }
 
 // clearApprovalState resets approval-related state
@@ -127,8 +132,19 @@ func (cm *conversationModel) isActiveSession() bool {
 
 // updateSize updates the viewport dimensions based on terminal size
 func (cm *conversationModel) updateSize(width, height int) {
-	// Account for tab bar (2 lines), status bar (1 line), header (2 lines), and some padding
-	viewportHeight := height - 6
+	// Calculate dynamic height based on actual content
+	// Start with full height minus tab bar (2 lines) and status bar (1 line)
+	availableHeight := height - 3
+
+	// Account for conversation header (2 lines)
+	availableHeight -= 2
+
+	// Account for bottom content dynamically
+	bottomContentHeight := cm.calculateBottomContentHeight()
+	availableHeight -= bottomContentHeight
+
+	// Ensure minimum height
+	viewportHeight := availableHeight
 	if viewportHeight < 5 {
 		viewportHeight = 5 // Minimum height
 	}
@@ -146,11 +162,43 @@ func (cm *conversationModel) updateSize(width, height int) {
 	cm.resumeInput.Width = viewportWidth - 10
 }
 
+// calculateBottomContentHeight calculates the height of dynamic bottom content
+func (cm *conversationModel) calculateBottomContentHeight() int {
+	height := 0
+
+	// Leading newline that separates input prompts from viewport
+	height += 1
+
+	// Account for input prompts
+	if cm.showApprovalPrompt || cm.showResumePrompt {
+		// Input prompt with border, padding, and multi-line content:
+		// - Top border: 1 line
+		// - Top padding: 1 line
+		// - Prompt text: 1 line
+		// - Input field: 1 line
+		// - Helper text: 1 line
+		// - Bottom padding: 1 line
+		// - Bottom border: 1 line
+		// - Trailing newline: 1 line
+		height += 8
+	} else {
+		// Status line when no prompts are shown
+		height += 1
+	}
+
+	return height
+}
+
 // Update handles messages for the conversation view
 func (cm *conversationModel) Update(msg tea.Msg, m *model) tea.Cmd {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		// Handle window resize - update viewport dimensions
+		cm.updateSize(m.width, m.height)
+		return nil
+
 	case tea.KeyMsg:
 		// Handle different input modes
 		if cm.showApprovalPrompt && cm.approvalInput.Focused() {
@@ -191,12 +239,17 @@ func (cm *conversationModel) Update(msg tea.Msg, m *model) tea.Cmd {
 		// Find any pending approvals
 		cm.findPendingApproval()
 
+		// Store current scroll position before updating content
+		cm.wasAtBottom = cm.viewport.AtBottom()
+
 		// Update viewport content
 		content := cm.renderConversationContent()
 		cm.viewport.SetContent(content)
 
-		// Auto-scroll to bottom for new conversations
-		cm.viewport.GotoBottom()
+		// Only auto-scroll if user was already at bottom or this is initial load
+		if cm.wasAtBottom || cm.lastRefresh.IsZero() {
+			cm.viewport.GotoBottom()
+		}
 
 		// Start polling if this is an active session
 		if cm.isActiveSession() && !cm.isPolling {
@@ -208,6 +261,8 @@ func (cm *conversationModel) Update(msg tea.Msg, m *model) tea.Cmd {
 	case pollRefreshMsg:
 		// Only refresh if we're still viewing the same session and it's active
 		if msg.sessionID == cm.sessionID && cm.isActiveSession() {
+			// Remember scroll position before refresh
+			cm.wasAtBottom = cm.viewport.AtBottom()
 			// Silently refresh in background - don't show loading state
 			cmds = append(cmds, fetchConversationSilent(m.daemonClient, cm.sessionID))
 			// Continue polling
@@ -249,10 +304,14 @@ func (cm *conversationModel) updateConversationView(msg tea.KeyMsg, m *model) te
 		// Go back to previous view
 		return nil
 
-	case key.Matches(msg, keys.Up), key.Matches(msg, keys.Down):
+	case key.Matches(msg, keys.Up), key.Matches(msg, keys.Down),
+		msg.String() == "pgup", msg.String() == "pgdown",
+		msg.String() == "home", msg.String() == "end":
 		// Scroll conversation
 		var cmd tea.Cmd
 		cm.viewport, cmd = cm.viewport.Update(msg)
+		// Update scroll position tracking after manual scrolling
+		cm.wasAtBottom = cm.viewport.AtBottom()
 		return cmd
 
 	case key.Matches(msg, keys.Approve):
@@ -371,6 +430,9 @@ func (cm *conversationModel) findPendingApproval() {
 
 // View renders the conversation view
 func (cm *conversationModel) View(m *model) string {
+	// Always update size based on current terminal dimensions
+	cm.updateSize(m.width, m.height)
+
 	if cm.loading {
 		loadingStyle := lipgloss.NewStyle().
 			Foreground(lipgloss.Color("243")).
@@ -400,9 +462,9 @@ func (cm *conversationModel) View(m *model) string {
 	s.WriteString(cm.renderHeader(m) + "\n")
 
 	// Conversation content
-	s.WriteString(cm.viewport.View() + "\n")
+	s.WriteString(cm.viewport.View())
 
-	// Input prompts
+	// Input prompts (already includes leading newline if needed)
 	s.WriteString(cm.renderInputPrompts(m))
 
 	return s.String()
@@ -647,6 +709,9 @@ func (cm *conversationModel) renderToolOutput(content string) string {
 // renderInputPrompts renders any active input prompts
 func (cm *conversationModel) renderInputPrompts(m *model) string {
 	var s strings.Builder
+
+	// Add leading newline to separate from viewport
+	s.WriteString("\n")
 
 	// Approval prompt
 	if cm.showApprovalPrompt {
