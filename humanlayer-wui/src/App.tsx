@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import reactLogo from './assets/react.svg'
 import { invoke } from '@tauri-apps/api/core'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 import './App.css'
 
 function App() {
@@ -13,35 +14,24 @@ function App() {
   }
 
   return (
-    <main className="container">
-      <h1>Welcome to Tauri + React</h1>
-
-      <div className="row">
-        <a href="https://vitejs.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://reactjs.org" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
+    <main className="container min-h-screen flex flex-col items-start justify-center gap-4 p-8 max-w-[80%] mx-auto">
+      <h1 className="text-4xl font-bold tracking-tight text-foreground mb-4">
+        Welcome to the Humanlayer WUI, a HumanLayer Experiment
+      </h1>
 
       <form
-        className="row"
+        className="flex flex-row gap-2"
         onSubmit={e => {
           e.preventDefault()
           greet()
         }}
       >
-        <input
+        <Input
           id="greet-input"
           onChange={e => setName(e.currentTarget.value)}
           placeholder="Enter a name..."
         />
-        <button type="submit">Greet</button>
+        <Button type="submit">Greet</Button>
       </form>
       <p>{greetMsg}</p>
     </main>

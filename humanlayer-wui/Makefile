@@ -2,7 +2,7 @@
 
 DOCKER_TTY := $(shell if [ -t 0 ]; then echo -it; fi)
 
-.PHONY: help dev build lint format format-check check clean install build-local
+.PHONY: help dev build lint format format-check typecheck check clean install build-local
 
 help: ## Show this help message
 	@echo "Available commands:"
@@ -24,12 +24,15 @@ lint: build-local ## Run ESLint
 	docker run --rm $(DOCKER_TTY) humanlayer-wui-local:latest bun run lint
 
 format: build-local ## Format code with Prettier
-	docker run --rm $(DOCKER_TTY) -v $(PWD)/src:/app/src humanlayer-wui-local:latest bun run format
+	docker run --rm $(DOCKER_TTY) -v $(PWD):/app humanlayer-wui-local:latest bun run format
 
 format-check: build-local ## Check code formatting
 	docker run --rm $(DOCKER_TTY) humanlayer-wui-local:latest bun run format:check
 
-check: build-local ## Run all quality checks (format + lint)
+typecheck: build-local ## Run TypeScript type checking
+	docker run --rm $(DOCKER_TTY) humanlayer-wui-local:latest bun run typecheck
+
+check: build-local ## Run all quality checks (format + lint + typecheck)
 	docker run --rm $(DOCKER_TTY) humanlayer-wui-local:latest bun run check
 
 clean: ## Clean build artifacts
