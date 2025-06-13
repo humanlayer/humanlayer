@@ -12,6 +12,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/humanlayer/humanlayer/hld/client"
 	"github.com/humanlayer/humanlayer/hld/rpc"
+	"github.com/humanlayer/humanlayer/humanlayer-tui/internal/util"
 )
 
 // conversationModel contains all state related to the conversation view
@@ -229,7 +230,7 @@ func (cm *conversationModel) Update(msg tea.Msg, m *model) tea.Cmd {
 
 		// Cache the conversation for future use (if session and events are not nil)
 		if cm.session != nil && cm.events != nil {
-			m.conversationCache.put(cm.sessionID, cm.session, cm.events)
+			m.conversationCache.Put(cm.sessionID, cm.session, cm.events)
 		}
 
 		// Find any pending approvals
@@ -276,7 +277,7 @@ func (cm *conversationModel) Update(msg tea.Msg, m *model) tea.Cmd {
 		// Clear approval state and refresh conversation
 		cm.clearApprovalState()
 		// Invalidate cache since approval status changed
-		m.conversationCache.invalidate(cm.sessionID)
+		m.conversationCache.Invalidate(cm.sessionID)
 		return fetchConversation(m.daemonClient, cm.sessionID)
 
 	case continueSessionMsg:
@@ -344,7 +345,7 @@ func (cm *conversationModel) updateConversationView(msg tea.KeyMsg, m *model) te
 
 	case key.Matches(msg, keys.Refresh):
 		// Refresh conversation - invalidate cache to force fresh data
-		m.conversationCache.invalidate(cm.sessionID)
+		m.conversationCache.Invalidate(cm.sessionID)
 		return fetchConversation(m.daemonClient, cm.sessionID)
 	}
 
@@ -446,7 +447,7 @@ func (cm *conversationModel) View(m *model) string {
 			Foreground(lipgloss.Color("196")).
 			Padding(2, 0)
 		// Use the full width for conversation errors since they replace content
-		errorMsg := preprocessError(cm.error.Error())
+		errorMsg := util.PreprocessError(cm.error.Error())
 		return errorStyle.Render(fmt.Sprintf("Error: %s", errorMsg))
 	}
 

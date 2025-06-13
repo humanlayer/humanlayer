@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -13,73 +12,8 @@ import (
 	"github.com/humanlayer/humanlayer/hld/bus"
 	"github.com/humanlayer/humanlayer/hld/client"
 	"github.com/humanlayer/humanlayer/hld/rpc"
-)
-
-// Request types
-type RequestType string
-
-const (
-	ApprovalRequest     RequestType = "approval"
-	HumanContactRequest RequestType = "human_contact"
-)
-
-// Layout constants for consistent dimension calculations
-const (
-	TabBarHeight     = 2 // Tab bar takes 2 lines
-	StatusBarHeight  = 1 // Status bar takes 1 line
-	MinContentWidth  = 20
-	MinContentHeight = 5
-)
-
-// Request represents either an approval or human contact
-type Request struct {
-	ID         string
-	CallID     string
-	RunID      string
-	Type       RequestType
-	Message    string
-	Tool       string                 // For approvals
-	Parameters map[string]interface{} // For approvals
-	CreatedAt  time.Time
-	// Session context
-	SessionID    string
-	SessionQuery string // First 50 chars of query
-	SessionModel string
-}
-
-// conversationCache represents a cached conversation
-type conversationCacheEntry struct {
-	session      *rpc.SessionState
-	events       []rpc.ConversationEvent
-	lastAccessed time.Time
-}
-
-// conversationCache implements a simple LRU cache for conversations
-type conversationCache struct {
-	entries map[string]*conversationCacheEntry
-	maxSize int
-}
-
-// View states
-type viewState int
-
-const (
-	listView viewState = iota
-	detailView
-	feedbackView
-	launchSessionView
-	sessionDetailView
-	helpView
-	queryModalView
-	conversationView
-)
-
-// Tab represents a main navigation tab
-type tab int
-
-const (
-	approvalsTab tab = iota
-	sessionsTab
+	"github.com/humanlayer/humanlayer/humanlayer-tui/internal/domain"
+	"github.com/humanlayer/humanlayer/humanlayer-tui/internal/util"
 )
 
 type model struct {
@@ -87,7 +21,7 @@ type model struct {
 	width, height int
 
 	// Tab management
-	activeTab tab
+	activeTab domain.Tab
 	tabNames  []string
 
 	// Sub-models for each tab
@@ -96,8 +30,8 @@ type model struct {
 	conversation conversationModel
 
 	// For help view
-	helpContext      viewState // Which view help was opened from
-	helpScrollOffset int       // For scrolling help content
+	helpContext      domain.ViewState // Which view help was opened from
+	helpScrollOffset int              // For scrolling help content
 
 	// For error handling
 	err             error
@@ -120,7 +54,7 @@ type model struct {
 	notificationShowTime time.Time
 
 	// For conversation caching
-	conversationCache *conversationCache
+	conversationCache *domain.ConversationCache
 }
 
 type keyMap struct {
@@ -242,7 +176,7 @@ func newModel() model {
 	m := model{
 		daemonClient: daemonClient,
 		// Initialize tab management
-		activeTab: approvalsTab,
+		activeTab: domain.ApprovalsTab,
 		tabNames:  []string{"Approvals", "Sessions"},
 		// Initialize sub-models
 		approvals:    newApprovalModel(),
@@ -252,10 +186,7 @@ func newModel() model {
 		daemonConnected: true, // We successfully connected
 		lastDaemonCheck: time.Now(),
 		// Initialize cache
-		conversationCache: &conversationCache{
-			entries: make(map[string]*conversationCacheEntry),
-			maxSize: 100,
-		},
+		conversationCache: domain.NewConversationCache(100),
 		// Initialize with reasonable defaults that will be updated on first window size message
 		width:  80,
 		height: 24,
@@ -271,48 +202,7 @@ func expandSocketPath(socketPath string) string {
 	if socketPath == "" {
 		socketPath = "~/.humanlayer/daemon.sock"
 	}
-	// Expand ~ to home directory
-	if socketPath[0] == '~' {
-		home := mustGetHomeDir()
-		socketPath = filepath.Join(home, socketPath[1:])
-	}
-	return socketPath
-}
-
-// truncateError intelligently truncates error messages to fit within available width
-func truncateError(err error, maxWidth int) string {
-	if err == nil {
-		return ""
-	}
-
-	errMsg := err.Error()
-
-	// Preprocess common error patterns
-	errMsg = preprocessError(errMsg)
-
-	// Account for "Error: " prefix (7 chars)
-	availableWidth := maxWidth - 7
-	if availableWidth <= 0 {
-		return "Error"
-	}
-
-	// If message fits, return as-is
-	if len(errMsg) <= availableWidth {
-		return errMsg
-	}
-
-	// Need to truncate - try to break at word boundary
-	if availableWidth > 3 {
-		truncated := errMsg[:availableWidth-3]
-		// Try to find last space to break at word boundary
-		lastSpace := strings.LastIndex(truncated, " ")
-		if lastSpace > availableWidth/2 { // Only use if we keep at least half the width
-			truncated = truncated[:lastSpace]
-		}
-		return truncated + "..."
-	}
-
-	return errMsg[:availableWidth]
+	return util.ExpandSocketPath(socketPath)
 }
 
 func (m model) Init() tea.Cmd {
@@ -339,7 +229,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		// Handle global keys even in modal views
-		if m.getCurrentViewState() == queryModalView {
+		if m.getCurrentViewState() == domain.QueryModalView {
 			// Check for quit key first
 			if key.Matches(msg, keys.Quit) {
 				// Quit immediately from any view
@@ -348,9 +238,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// Delegate other keys to tab handlers
 			switch m.activeTab {
-			case approvalsTab:
+			case domain.ApprovalsTab:
 				cmd = m.approvals.Update(msg, &m)
-			case sessionsTab:
+			case domain.SessionsTab:
 				cmd = m.sessions.Update(msg, &m)
 			}
 			if cmd != nil {
@@ -366,18 +256,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 
 		case key.Matches(msg, keys.Help):
-			if m.getCurrentViewState() != helpView {
+			if m.getCurrentViewState() != domain.HelpView {
 				m.helpContext = m.getCurrentViewState()
-				m.setViewState(helpView)
+				m.setViewState(domain.HelpView)
 				m.helpScrollOffset = 0
 			}
 			return m, nil
 
 		case key.Matches(msg, keys.Back):
-			if m.getCurrentViewState() == helpView {
+			if m.getCurrentViewState() == domain.HelpView {
 				m.setViewState(m.helpContext)
 				return m, nil
-			} else if m.getCurrentViewState() == conversationView {
+			} else if m.getCurrentViewState() == domain.ConversationView {
 				// Clear conversation view and return to appropriate tab
 				m.conversation.stopPolling() // Stop any active polling
 				m.conversation.sessionID = ""
@@ -422,7 +312,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.event.Event.Type {
 		case bus.EventNewApproval:
 			// Show notification for new approvals (only if not already on approvals tab)
-			if m.activeTab != approvalsTab && m.getCurrentViewState() != conversationView {
+			if m.activeTab != domain.ApprovalsTab && m.getCurrentViewState() != domain.ConversationView {
 				m.showNotification = true
 				m.notificationMessage = "New approval required. Press '1' to view"
 				m.notificationShowTime = time.Now()
@@ -431,12 +321,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, fetchRequests(m.daemonClient))
 		case bus.EventApprovalResolved:
 			// Refresh approvals on approval resolution
-			if m.activeTab == approvalsTab {
+			if m.activeTab == domain.ApprovalsTab {
 				cmds = append(cmds, fetchRequests(m.daemonClient))
 			}
 		case bus.EventSessionStatusChanged:
 			// Refresh sessions on session events
-			if m.activeTab == sessionsTab {
+			if m.activeTab == domain.SessionsTab {
 				cmds = append(cmds, fetchSessions(m.daemonClient))
 			}
 		}
@@ -453,14 +343,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// Delegate to active view
 	currentView := m.getCurrentViewState()
-	if currentView == conversationView {
+	if currentView == domain.ConversationView {
 		cmd = m.conversation.Update(msg, &m)
 	} else {
 		// Delegate to active tab's update function
 		switch m.activeTab {
-		case approvalsTab:
+		case domain.ApprovalsTab:
 			cmd = m.approvals.Update(msg, &m)
-		case sessionsTab:
+		case domain.SessionsTab:
 			cmd = m.sessions.Update(msg, &m)
 		}
 	}
@@ -484,19 +374,19 @@ func (m model) View() string {
 
 	// Render content based on current view state
 	var content string
-	if m.getCurrentViewState() == helpView {
+	if m.getCurrentViewState() == domain.HelpView {
 		content = m.renderHelpView()
 	} else {
 		// Delegate to active view
 		currentView := m.getCurrentViewState()
-		if currentView == conversationView {
+		if currentView == domain.ConversationView {
 			content = m.conversation.View(&m)
 		} else {
 			// Delegate to active tab's view
 			switch m.activeTab {
-			case approvalsTab:
+			case domain.ApprovalsTab:
 				content = m.approvals.View(&m)
-			case sessionsTab:
+			case domain.SessionsTab:
 				content = m.sessions.View(&m)
 			}
 		}
@@ -536,27 +426,27 @@ func (m model) View() string {
 }
 
 // getCurrentViewState returns the current view state based on active tab or conversation
-func (m model) getCurrentViewState() viewState {
+func (m model) getCurrentViewState() domain.ViewState {
 	// Check if we're in conversation view first
 	if m.conversation.sessionID != "" {
-		return conversationView
+		return domain.ConversationView
 	}
 
 	switch m.activeTab {
-	case approvalsTab:
+	case domain.ApprovalsTab:
 		return m.approvals.viewState
-	case sessionsTab:
+	case domain.SessionsTab:
 		return m.sessions.viewState
 	}
-	return listView
+	return domain.ListView
 }
 
 // setViewState sets the view state for the current tab
-func (m *model) setViewState(state viewState) {
+func (m *model) setViewState(state domain.ViewState) {
 	switch m.activeTab {
-	case approvalsTab:
+	case domain.ApprovalsTab:
 		m.approvals.viewState = state
-	case sessionsTab:
+	case domain.SessionsTab:
 		m.sessions.viewState = state
 	}
 }
@@ -565,38 +455,38 @@ func (m *model) setViewState(state viewState) {
 func (m model) handleTabSwitching(msg tea.KeyMsg) (bool, tea.Model, tea.Cmd) {
 	switch {
 	case key.Matches(msg, keys.Tab):
-		if m.getCurrentViewState() == listView {
-			m.activeTab = (m.activeTab + 1) % tab(len(m.tabNames))
+		if m.getCurrentViewState() == domain.ListView {
+			m.activeTab = (m.activeTab + 1) % domain.Tab(len(m.tabNames))
 			return true, m, m.fetchDataForTab(m.activeTab)
 		}
 
 	case key.Matches(msg, keys.ShiftTab):
-		if m.getCurrentViewState() == listView {
-			m.activeTab = (m.activeTab + tab(len(m.tabNames)) - 1) % tab(len(m.tabNames))
+		if m.getCurrentViewState() == domain.ListView {
+			m.activeTab = (m.activeTab + domain.Tab(len(m.tabNames)) - 1) % domain.Tab(len(m.tabNames))
 			return true, m, m.fetchDataForTab(m.activeTab)
 		}
 
 	case key.Matches(msg, keys.Tab1):
-		if m.activeTab != approvalsTab {
+		if m.activeTab != domain.ApprovalsTab {
 			// Clear conversation view when switching tabs
 			if m.conversation.sessionID != "" {
 				m.conversation.stopPolling()
 				m.conversation.sessionID = ""
 			}
-			m.activeTab = approvalsTab
+			m.activeTab = domain.ApprovalsTab
 			m.showNotification = false // Hide notification when going to approvals
-			return true, m, m.fetchDataForTab(approvalsTab)
+			return true, m, m.fetchDataForTab(domain.ApprovalsTab)
 		}
 
 	case key.Matches(msg, keys.Tab2):
-		if m.activeTab != sessionsTab {
+		if m.activeTab != domain.SessionsTab {
 			// Clear conversation view when switching tabs
 			if m.conversation.sessionID != "" {
 				m.conversation.stopPolling()
 				m.conversation.sessionID = ""
 			}
-			m.activeTab = sessionsTab
-			return true, m, m.fetchDataForTab(sessionsTab)
+			m.activeTab = domain.SessionsTab
+			return true, m, m.fetchDataForTab(domain.SessionsTab)
 		}
 
 	}
@@ -605,11 +495,11 @@ func (m model) handleTabSwitching(msg tea.KeyMsg) (bool, tea.Model, tea.Cmd) {
 }
 
 // fetchDataForTab returns commands to fetch data for a specific tab
-func (m model) fetchDataForTab(tab tab) tea.Cmd {
+func (m model) fetchDataForTab(tab domain.Tab) tea.Cmd {
 	switch tab {
-	case approvalsTab:
+	case domain.ApprovalsTab:
 		return fetchRequests(m.daemonClient)
-	case sessionsTab:
+	case domain.SessionsTab:
 		return fetchSessions(m.daemonClient)
 	default:
 		return nil
@@ -632,9 +522,9 @@ func (m model) renderTabBar() string {
 
 		// Add count indicators
 		label := fmt.Sprintf("[%d] %s", i+1, name)
-		if i == int(approvalsTab) && m.pendingApprovalCount > 0 {
+		if i == int(domain.ApprovalsTab) && m.pendingApprovalCount > 0 {
 			label += fmt.Sprintf(" (%d)", m.pendingApprovalCount)
-		} else if i == int(sessionsTab) && m.activeSessionCount > 0 {
+		} else if i == int(domain.SessionsTab) && m.activeSessionCount > 0 {
 			label += fmt.Sprintf(" (%d)", m.activeSessionCount)
 		}
 
@@ -682,7 +572,7 @@ func (m model) renderStatusBar() string {
 			availableWidth = 20 // Minimum width for error display
 		}
 
-		truncatedError := truncateError(m.err, availableWidth)
+		truncatedError := util.TruncateError(m.err, availableWidth)
 
 		errorStyle := lipgloss.NewStyle().
 			Foreground(lipgloss.Color("196")).
@@ -690,7 +580,7 @@ func (m model) renderStatusBar() string {
 
 		// Add hint if error was truncated
 		errorHint := ""
-		if len(preprocessError(m.err.Error())) > availableWidth {
+		if len(util.PreprocessError(m.err.Error())) > availableWidth {
 			errorHint = " [e]"
 		}
 		errorMsg = errorStyle.Render(fmt.Sprintf("Error: %s%s", truncatedError, errorHint))
@@ -732,34 +622,34 @@ func (m model) getContextualHelp() string {
 	currentView := m.getCurrentViewState()
 
 	// Special handling for conversation view since it has its own help
-	if currentView == conversationView {
+	if currentView == domain.ConversationView {
 		return ""
 	}
 
 	switch currentView {
-	case helpView:
+	case domain.HelpView:
 		return "[esc] close"
-	case feedbackView:
+	case domain.FeedbackView:
 		return "[enter] submit • [esc] cancel"
-	case launchSessionView:
+	case domain.LaunchSessionView:
 		return "[tab] next field • [enter] launch • [esc] cancel"
-	case queryModalView:
+	case domain.QueryModalView:
 		return "[enter] submit • [esc] cancel"
-	case listView:
+	case domain.ListView:
 		// Context-specific help for list views
 		switch m.activeTab {
-		case approvalsTab:
+		case domain.ApprovalsTab:
 			if len(m.approvals.requests) > 0 {
 				return "[↑/↓] navigate • [enter] view • [y] approve • [n] deny • [?] help"
 			}
 			return "[tab] switch tab • [?] help • [q] quit"
-		case sessionsTab:
+		case domain.SessionsTab:
 			if len(m.sessions.sortedSessions) > 0 {
 				return "[↑/↓] navigate • [enter] view • [c] create • [?] help"
 			}
 			return "[c] create session • [tab] switch tab • [?] help • [q] quit"
 		}
-	case detailView, sessionDetailView:
+	case domain.DetailView, domain.SessionDetailView:
 		return "[esc] back • [?] help"
 	}
 
@@ -824,9 +714,9 @@ func (m model) renderHelpView() string {
 	// Context-specific help
 	s.WriteString("\n" + sectionStyle.Render("Context-Specific") + "\n")
 	switch m.helpContext {
-	case feedbackView:
+	case domain.FeedbackView:
 		s.WriteString("  " + descStyle.Render("Type your response and press enter to submit") + "\n")
-	case launchSessionView:
+	case domain.LaunchSessionView:
 		s.WriteString("  " + descStyle.Render("Fill in the form fields and press enter to launch") + "\n")
 		s.WriteString("  " + descStyle.Render("Use tab to navigate between fields") + "\n")
 		s.WriteString("  " + descStyle.Render("Use ←/→ arrows to select model") + "\n")
@@ -930,71 +820,17 @@ func (m model) renderWithErrorDetail(mainContent string) string {
 	return strings.Join(lines, "\n")
 }
 
-// Conversation cache methods
-
-// get retrieves a conversation from cache if available
-func (c *conversationCache) get(sessionID string) (*rpc.SessionState, []rpc.ConversationEvent, bool) {
-	entry, exists := c.entries[sessionID]
-	if !exists {
-		return nil, nil, false
-	}
-
-	// Update access time for LRU
-	entry.lastAccessed = time.Now()
-	return entry.session, entry.events, true
-}
-
-// put stores a conversation in cache, evicting oldest if necessary
-func (c *conversationCache) put(sessionID string, session *rpc.SessionState, events []rpc.ConversationEvent) {
-	// If at capacity, evict least recently used
-	if len(c.entries) >= c.maxSize {
-		c.evictLRU()
-	}
-
-	c.entries[sessionID] = &conversationCacheEntry{
-		session:      session,
-		events:       events,
-		lastAccessed: time.Now(),
-	}
-}
-
-// evictLRU removes the least recently used entry
-func (c *conversationCache) evictLRU() {
-	if len(c.entries) == 0 {
-		return
-	}
-
-	var oldestKey string
-	var oldestTime time.Time
-	first := true
-
-	for key, entry := range c.entries {
-		if first || entry.lastAccessed.Before(oldestTime) {
-			oldestKey = key
-			oldestTime = entry.lastAccessed
-			first = false
-		}
-	}
-
-	delete(c.entries, oldestKey)
-}
-
-// invalidate removes a specific conversation from cache (useful when it's updated)
-func (c *conversationCache) invalidate(sessionID string) {
-	delete(c.entries, sessionID)
-}
-
 // updateAllViewSizes updates the size of all sub-views based on terminal dimensions
 func (m *model) updateAllViewSizes() {
 	// Calculate available content height (terminal - tab bar - status bar)
-	contentHeight := m.height - TabBarHeight - StatusBarHeight
-	if contentHeight < MinContentHeight {
-		contentHeight = MinContentHeight
+	contentHeight := m.height - domain.TabBarHeight - domain.StatusBarHeight
+	if contentHeight < domain.MinContentHeight {
+		contentHeight = domain.MinContentHeight
 	}
 
 	contentWidth := m.width - 2 // Some padding
-	if contentWidth < MinContentWidth {
-		contentWidth = MinContentWidth
+	if contentWidth < domain.MinContentWidth {
+		contentWidth = domain.MinContentWidth
 	}
 
 	// Update conversation view - pass content dimensions, not full terminal
@@ -1015,7 +851,7 @@ func (m *model) openConversationView(sessionID string) tea.Cmd {
 	m.updateAllViewSizes()
 
 	// Check cache first - always show cached data immediately if available
-	if session, events, found := m.conversationCache.get(sessionID); found {
+	if session, events, found := m.conversationCache.Get(sessionID); found {
 		// Return cached data immediately, then fetch fresh data
 		return tea.Batch(
 			func() tea.Msg {

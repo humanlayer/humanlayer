@@ -14,6 +14,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/humanlayer/humanlayer/hld/session"
+	"github.com/humanlayer/humanlayer/humanlayer-tui/internal/domain"
+	"github.com/humanlayer/humanlayer/humanlayer-tui/internal/util"
 )
 
 // sessionModel contains all state related to the sessions tab
@@ -21,14 +23,14 @@ type sessionModel struct {
 	sessions       []session.Info
 	sortedSessions []session.Info // Cached sorted sessions for navigation
 	cursor         int
-	viewState      viewState
+	viewState      domain.ViewState
 
 	// For list scrolling
 	viewport viewport.Model
 
 	// For session detail view
 	selectedSession     *session.Info
-	sessionApprovals    []Request
+	sessionApprovals    []domain.Request
 	sessionDetailScroll int
 
 	// For launch session view
@@ -68,7 +70,7 @@ func newSessionModel() sessionModel {
 		sessions:          []session.Info{},
 		sortedSessions:    []session.Info{},
 		cursor:            0,
-		viewState:         listView,
+		viewState:         domain.ListView,
 		viewport:          vp,
 		launchQueryInput:  queryInput,
 		launchWorkingDir:  workingDirInput,
@@ -104,13 +106,13 @@ func (sm *sessionModel) Update(msg tea.Msg, m *model) tea.Cmd {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch sm.viewState {
-		case listView:
+		case domain.ListView:
 			return sm.updateListView(msg, m)
-		case sessionDetailView:
+		case domain.SessionDetailView:
 			return sm.updateSessionDetailView(msg, m)
-		case launchSessionView:
+		case domain.LaunchSessionView:
 			return sm.updateLaunchSessionView(msg, m)
-		case queryModalView:
+		case domain.QueryModalView:
 			return sm.updateQueryModalView(msg, m)
 		}
 
@@ -145,7 +147,7 @@ func (sm *sessionModel) Update(msg tea.Msg, m *model) tea.Cmd {
 		sm.launchWorkingDir.Reset()
 		sm.launchModelSelect = 0
 		sm.launchActiveField = 0
-		sm.viewState = listView
+		sm.viewState = domain.ListView
 		// Refresh sessions list
 		return fetchSessions(m.daemonClient)
 
@@ -218,7 +220,7 @@ func (sm *sessionModel) updateListView(msg tea.KeyMsg, m *model) tea.Cmd {
 
 	case key.Matches(msg, keys.Launch):
 		// Open launch session view
-		sm.viewState = launchSessionView
+		sm.viewState = domain.LaunchSessionView
 		sm.launchQueryInput.Focus()
 
 	case key.Matches(msg, keys.Refresh):
@@ -232,9 +234,9 @@ func (sm *sessionModel) updateListView(msg tea.KeyMsg, m *model) tea.Cmd {
 func (sm *sessionModel) updateSessionDetailView(msg tea.KeyMsg, m *model) tea.Cmd {
 	switch {
 	case key.Matches(msg, keys.Back):
-		sm.viewState = listView
+		sm.viewState = domain.ListView
 		sm.selectedSession = nil
-		sm.sessionApprovals = []Request{}
+		sm.sessionApprovals = []domain.Request{}
 
 	case key.Matches(msg, keys.Up):
 		if sm.sessionDetailScroll > 0 {
@@ -248,10 +250,10 @@ func (sm *sessionModel) updateSessionDetailView(msg tea.KeyMsg, m *model) tea.Cm
 			content := sm.buildSessionDetailContent()
 			lines := strings.Split(content, "\n")
 			// Calculate content height properly (terminal - tab bar - status bar - header)
-			contentHeight := m.height - TabBarHeight - StatusBarHeight
+			contentHeight := m.height - domain.TabBarHeight - domain.StatusBarHeight
 			visibleHeight := contentHeight - 3 // Account for session detail header
-			if visibleHeight < MinContentHeight {
-				visibleHeight = MinContentHeight
+			if visibleHeight < domain.MinContentHeight {
+				visibleHeight = domain.MinContentHeight
 			}
 			maxScroll := len(lines) - visibleHeight
 			if maxScroll < 0 {
@@ -280,7 +282,7 @@ func (sm *sessionModel) updateSessionDetailView(msg tea.KeyMsg, m *model) tea.Cm
 func (sm *sessionModel) updateLaunchSessionView(msg tea.KeyMsg, m *model) tea.Cmd {
 	switch {
 	case key.Matches(msg, keys.Back):
-		sm.viewState = listView
+		sm.viewState = domain.ListView
 
 	case key.Matches(msg, keys.Tab), key.Matches(msg, keys.ShiftTab), key.Matches(msg, keys.Down), msg.String() == "j":
 		// Cycle through fields (forward)
@@ -330,7 +332,7 @@ func (sm *sessionModel) updateLaunchSessionView(msg tea.KeyMsg, m *model) tea.Cm
 			}
 			sm.modalCursor = 0
 			sm.modalType = "query"
-			sm.viewState = queryModalView
+			sm.viewState = domain.QueryModalView
 			// Trigger layout update for modal view
 			m.updateAllViewSizes()
 		case 2:
@@ -342,7 +344,7 @@ func (sm *sessionModel) updateLaunchSessionView(msg tea.KeyMsg, m *model) tea.Cm
 			}
 			sm.modalCursor = 0
 			sm.modalType = "workingdir"
-			sm.viewState = queryModalView
+			sm.viewState = domain.QueryModalView
 			// Trigger layout update for modal view
 			m.updateAllViewSizes()
 		}
@@ -414,7 +416,7 @@ func (sm *sessionModel) updateQueryModalView(msg tea.KeyMsg, m *model) tea.Cmd {
 			}
 			sm.launchWorkingDir.SetValue(dir)
 		}
-		sm.viewState = launchSessionView
+		sm.viewState = domain.LaunchSessionView
 
 	case "ctrl+enter":
 		// Save and submit
@@ -460,7 +462,7 @@ func (sm *sessionModel) updateQueryModalView(msg tea.KeyMsg, m *model) tea.Cmd {
 		}
 
 		// If no query, just return to form
-		sm.viewState = launchSessionView
+		sm.viewState = domain.LaunchSessionView
 		// Trigger layout update when returning to form view
 		m.updateAllViewSizes()
 
@@ -547,11 +549,11 @@ func (sm *sessionModel) updateQueryModalView(msg tea.KeyMsg, m *model) tea.Cmd {
 // View renders the sessions tab
 func (sm *sessionModel) View(m *model) string {
 	switch sm.viewState {
-	case sessionDetailView:
+	case domain.SessionDetailView:
 		return sm.renderSessionDetailView(m)
-	case launchSessionView:
+	case domain.LaunchSessionView:
 		return sm.renderLaunchSessionView(m)
-	case queryModalView:
+	case domain.QueryModalView:
 		return sm.renderQueryModalView(m)
 	default:
 		return sm.renderListView(m)
@@ -573,12 +575,12 @@ func (sm *sessionModel) renderListView(m *model) string {
 	var s strings.Builder
 
 	// Column headers with proper centering
-	headerRow := centerText("Status", 8) +
-		centerText("Modified", 11) +
-		centerText("Created", 11) +
-		centerText("Working Dir", 20) +
-		centerText("Model", 9) +
-		centerText("Turns", 6) +
+	headerRow := util.CenterText("Status", 8) +
+		util.CenterText("Modified", 11) +
+		util.CenterText("Created", 11) +
+		util.CenterText("Working Dir", 20) +
+		util.CenterText("Model", 9) +
+		util.CenterText("Turns", 6) +
 		"Query"
 	headerColStyle := lipgloss.NewStyle().
 		Bold(true).
@@ -667,15 +669,15 @@ func (sm *sessionModel) renderListView(m *model) string {
 		}
 
 		// Query preview (truncated to fit remaining space)
-		queryPreview := truncate(sess.Query, 39)
+		queryPreview := util.Truncate(sess.Query, 39)
 
 		// Build the row with properly aligned columns
-		row := centerText(statusIcon, 8) +
-			centerText(modifiedTime, 11) +
-			centerText(createdTime, 11) +
-			leftPadText(workingDir, 20) +
-			centerText(modelName, 9) +
-			centerText(turnCount, 6) +
+		row := util.CenterText(statusIcon, 8) +
+			util.CenterText(modifiedTime, 11) +
+			util.CenterText(createdTime, 11) +
+			util.LeftPadText(workingDir, 20) +
+			util.CenterText(modelName, 9) +
+			util.CenterText(turnCount, 6) +
 			queryPreview
 
 		// Apply styling
@@ -794,7 +796,7 @@ func (sm *sessionModel) buildSessionDetailContent() string {
 
 		for _, approval := range sm.sessionApprovals {
 			icon := "📋"
-			if approval.Type == HumanContactRequest {
+			if approval.Type == domain.HumanContactRequest {
 				icon = "💬"
 			}
 			approvalLine := fmt.Sprintf("%s %s - %s", icon, approval.CreatedAt.Format("15:04:05"), approval.Message)
@@ -840,10 +842,10 @@ func (sm *sessionModel) renderSessionDetailView(m *model) string {
 	// Apply scrolling
 	lines := strings.Split(content, "\n")
 	// Calculate content height properly (terminal - tab bar - status bar - header)
-	contentHeight := m.height - TabBarHeight - StatusBarHeight
+	contentHeight := m.height - domain.TabBarHeight - domain.StatusBarHeight
 	visibleHeight := contentHeight - 3 // Account for session detail header
-	if visibleHeight < MinContentHeight {
-		visibleHeight = MinContentHeight
+	if visibleHeight < domain.MinContentHeight {
+		visibleHeight = domain.MinContentHeight
 	}
 
 	if sm.sessionDetailScroll > len(lines)-visibleHeight {
@@ -1034,12 +1036,12 @@ func (sm *sessionModel) renderQueryModalView(m *model) string {
 
 	// Calculate content dimensions (account for tab bar and status bar)
 	contentWidth := m.width - 2
-	if contentWidth < MinContentWidth {
-		contentWidth = MinContentWidth
+	if contentWidth < domain.MinContentWidth {
+		contentWidth = domain.MinContentWidth
 	}
-	contentHeight := m.height - TabBarHeight - StatusBarHeight
-	if contentHeight < MinContentHeight {
-		contentHeight = MinContentHeight
+	contentHeight := m.height - domain.TabBarHeight - domain.StatusBarHeight
+	if contentHeight < domain.MinContentHeight {
+		contentHeight = domain.MinContentHeight
 	}
 
 	// Header
@@ -1144,25 +1146,4 @@ func formatRelativeTime(t time.Time) string {
 
 	// For older items, show the date
 	return t.Format("Jan 2")
-}
-
-// centerText centers text within a fixed width column
-func centerText(text string, width int) string {
-	if len(text) >= width {
-		return text[:width]
-	}
-
-	totalPadding := width - len(text)
-	leftPadding := totalPadding / 2
-	rightPadding := totalPadding - leftPadding
-
-	return strings.Repeat(" ", leftPadding) + text + strings.Repeat(" ", rightPadding)
-}
-
-// leftPadText left-aligns text within a fixed width column
-func leftPadText(text string, width int) string {
-	if len(text) >= width {
-		return text[:width]
-	}
-	return text + strings.Repeat(" ", width-len(text))
 }

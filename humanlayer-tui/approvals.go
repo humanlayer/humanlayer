@@ -11,21 +11,22 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/humanlayer/humanlayer/humanlayer-tui/internal/domain"
 )
 
 // approvalModel contains all state related to the approvals tab
 type approvalModel struct {
-	requests        []Request
+	requests        []domain.Request
 	cursor          int
-	viewState       viewState
-	selectedRequest *Request
+	viewState       domain.ViewState
+	selectedRequest *domain.Request
 
 	// For list scrolling
 	viewport viewport.Model
 
 	// For feedback view
 	feedbackInput textinput.Model
-	feedbackFor   *Request
+	feedbackFor   *domain.Request
 	isApproving   bool // true for approve with comment, false for deny/human response
 }
 
@@ -40,9 +41,9 @@ func newApprovalModel() approvalModel {
 	vp.SetContent("")
 
 	return approvalModel{
-		requests:      []Request{},
+		requests:      []domain.Request{},
 		cursor:        0,
-		viewState:     listView,
+		viewState:     domain.ListView,
 		viewport:      vp,
 		feedbackInput: ti,
 	}
@@ -74,11 +75,11 @@ func (am *approvalModel) Update(msg tea.Msg, m *model) tea.Cmd {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch am.viewState {
-		case listView:
+		case domain.ListView:
 			return am.updateListView(msg, m)
-		case detailView:
+		case domain.DetailView:
 			return am.updateDetailView(msg, m)
-		case feedbackView:
+		case domain.FeedbackView:
 			return am.updateFeedbackView(msg, m)
 		}
 
@@ -115,7 +116,7 @@ func (am *approvalModel) Update(msg tea.Msg, m *model) tea.Cmd {
 			am.cursor = len(am.requests) - 1
 		}
 		// Go back to list view
-		am.viewState = listView
+		am.viewState = domain.ListView
 		am.selectedRequest = nil
 		// Trigger layout update when returning to list view
 		m.updateAllViewSizes()
@@ -139,7 +140,7 @@ func (am *approvalModel) Update(msg tea.Msg, m *model) tea.Cmd {
 			am.cursor = len(am.requests) - 1
 		}
 		// Go back to list view
-		am.viewState = listView
+		am.viewState = domain.ListView
 		am.selectedRequest = nil
 		// Trigger layout update when returning to list view
 		m.updateAllViewSizes()
@@ -171,7 +172,7 @@ func (am *approvalModel) updateListView(msg tea.KeyMsg, m *model) tea.Cmd {
 			} else {
 				// Fallback to detail view for approvals without session context
 				am.selectedRequest = &req
-				am.viewState = detailView
+				am.viewState = domain.DetailView
 			}
 		}
 
@@ -179,7 +180,7 @@ func (am *approvalModel) updateListView(msg tea.KeyMsg, m *model) tea.Cmd {
 		// Quick approve without comment
 		if am.cursor < len(am.requests) {
 			req := am.requests[am.cursor]
-			if req.Type == ApprovalRequest {
+			if req.Type == domain.ApprovalRequest {
 				return sendApproval(m.daemonClient, req.CallID, true, "")
 			}
 		}
@@ -191,7 +192,7 @@ func (am *approvalModel) updateListView(msg tea.KeyMsg, m *model) tea.Cmd {
 			am.isApproving = false
 			am.feedbackInput.Reset()
 			am.feedbackInput.Focus()
-			am.viewState = feedbackView
+			am.viewState = domain.FeedbackView
 			// Trigger layout update for the new view state
 			m.updateAllViewSizes()
 		}
@@ -207,13 +208,13 @@ func (am *approvalModel) updateListView(msg tea.KeyMsg, m *model) tea.Cmd {
 func (am *approvalModel) updateDetailView(msg tea.KeyMsg, m *model) tea.Cmd {
 	switch {
 	case key.Matches(msg, keys.Back):
-		am.viewState = listView
+		am.viewState = domain.ListView
 		am.selectedRequest = nil
 		// Trigger layout update when returning to list view
 		m.updateAllViewSizes()
 
 	case key.Matches(msg, keys.Approve):
-		if am.selectedRequest != nil && am.selectedRequest.Type == ApprovalRequest {
+		if am.selectedRequest != nil && am.selectedRequest.Type == domain.ApprovalRequest {
 			return sendApproval(m.daemonClient, am.selectedRequest.CallID, true, "")
 		}
 
@@ -223,7 +224,7 @@ func (am *approvalModel) updateDetailView(msg tea.KeyMsg, m *model) tea.Cmd {
 			am.isApproving = false
 			am.feedbackInput.Reset()
 			am.feedbackInput.Focus()
-			am.viewState = feedbackView
+			am.viewState = domain.FeedbackView
 			// Trigger layout update for the new view state
 			m.updateAllViewSizes()
 		}
@@ -236,9 +237,9 @@ func (am *approvalModel) updateDetailView(msg tea.KeyMsg, m *model) tea.Cmd {
 func (am *approvalModel) updateFeedbackView(msg tea.KeyMsg, m *model) tea.Cmd {
 	switch {
 	case key.Matches(msg, keys.Back):
-		am.viewState = detailView
+		am.viewState = domain.DetailView
 		if am.selectedRequest == nil {
-			am.viewState = listView
+			am.viewState = domain.ListView
 		}
 		// Trigger layout update when changing view states
 		m.updateAllViewSizes()
@@ -247,7 +248,7 @@ func (am *approvalModel) updateFeedbackView(msg tea.KeyMsg, m *model) tea.Cmd {
 		// Submit feedback
 		if am.feedbackFor != nil {
 			feedback := am.feedbackInput.Value()
-			if am.feedbackFor.Type == ApprovalRequest {
+			if am.feedbackFor.Type == domain.ApprovalRequest {
 				// For approvals, send with comment
 				return sendApproval(m.daemonClient, am.feedbackFor.CallID, am.isApproving, feedback)
 			} else {
@@ -269,9 +270,9 @@ func (am *approvalModel) updateFeedbackView(msg tea.KeyMsg, m *model) tea.Cmd {
 // View renders the approvals tab
 func (am *approvalModel) View(m *model) string {
 	switch am.viewState {
-	case detailView:
+	case domain.DetailView:
 		return am.renderDetailView(m)
-	case feedbackView:
+	case domain.FeedbackView:
 		return am.renderFeedbackView(m)
 	default:
 		return am.renderListView(m)
@@ -293,8 +294,8 @@ func (am *approvalModel) renderListView(m *model) string {
 	var s strings.Builder
 
 	// Group approvals by session
-	sessionGroups := make(map[string][]Request)
-	var noSession []Request
+	sessionGroups := make(map[string][]domain.Request)
+	var noSession []domain.Request
 
 	for _, req := range am.requests {
 		if req.SessionID != "" {
@@ -307,7 +308,7 @@ func (am *approvalModel) renderListView(m *model) string {
 	// Sort sessions by most recent approval
 	type sessionGroup struct {
 		sessionID    string
-		requests     []Request
+		requests     []domain.Request
 		mostRecent   time.Time
 		sessionModel string
 	}
@@ -366,7 +367,7 @@ func (am *approvalModel) renderListView(m *model) string {
 
 			// Icon based on type
 			icon := "📋" // Approval
-			if req.Type == HumanContactRequest {
+			if req.Type == domain.HumanContactRequest {
 				icon = "💬" // Human contact
 			}
 
@@ -434,7 +435,7 @@ func (am *approvalModel) renderDetailView(m *model) string {
 	s.WriteString("\n")
 
 	// Main content
-	if req.Type == ApprovalRequest {
+	if req.Type == domain.ApprovalRequest {
 		// Tool/Function
 		s.WriteString(labelStyle.Render("Function:") + valueStyle.Render(req.Tool) + "\n\n")
 
@@ -469,7 +470,7 @@ func (am *approvalModel) renderDetailView(m *model) string {
 		Foreground(lipgloss.Color("243")).
 		Italic(true)
 
-	if req.Type == ApprovalRequest {
+	if req.Type == domain.ApprovalRequest {
 		s.WriteString(actionStyle.Render("Press [y] to approve, [n] to deny, [esc] to go back"))
 	} else {
 		s.WriteString(actionStyle.Render("Press [n] to respond, [esc] to go back"))
@@ -492,7 +493,7 @@ func (am *approvalModel) renderFeedbackView(m *model) string {
 		Italic(true).
 		MarginBottom(1)
 
-	if am.feedbackFor.Type == ApprovalRequest {
+	if am.feedbackFor.Type == domain.ApprovalRequest {
 		context := fmt.Sprintf("Function: %s", am.feedbackFor.Tool)
 		s.WriteString(contextStyle.Render(context) + "\n\n")
 	} else {

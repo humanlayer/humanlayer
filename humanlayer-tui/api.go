@@ -10,61 +10,14 @@ import (
 	"github.com/humanlayer/humanlayer/hld/client"
 	"github.com/humanlayer/humanlayer/hld/rpc"
 	"github.com/humanlayer/humanlayer/hld/session"
+	"github.com/humanlayer/humanlayer/humanlayer-tui/internal/domain"
+	"github.com/humanlayer/humanlayer/humanlayer-tui/internal/util"
 )
-
-// Helper functions
-
-func truncate(s string, max int) string {
-	// Replace newlines and other whitespace with spaces first
-	s = strings.ReplaceAll(s, "\n", " ")
-	s = strings.ReplaceAll(s, "\r", " ")
-	s = strings.ReplaceAll(s, "\t", " ")
-
-	if len(s) <= max {
-		return s
-	}
-	if max > 3 {
-		return s[:max-3] + "..."
-	}
-	return s[:max]
-}
-
-// preprocessError converts common API errors into user-friendly messages
-func preprocessError(errMsg string) string {
-	// Handle "call already has a response" errors
-	if strings.Contains(errMsg, "call already has a response") {
-		// Extract just the key part of the error
-		if strings.Contains(errMsg, "400 Bad Request") {
-			return "Approval already responded to"
-		}
-		return "Call already has a response"
-	}
-
-	// Handle other common API errors
-	if strings.Contains(errMsg, "409 Conflict") {
-		return "Conflict: Resource already exists"
-	}
-
-	if strings.Contains(errMsg, "404 Not Found") {
-		return "Resource not found"
-	}
-
-	if strings.Contains(errMsg, "500 Internal Server Error") {
-		return "Server error occurred"
-	}
-
-	// Remove excessive technical details like stack traces
-	if idx := strings.Index(errMsg, "\n"); idx > 0 {
-		errMsg = errMsg[:idx]
-	}
-
-	return errMsg
-}
 
 // API command messages
 
 type fetchRequestsMsg struct {
-	requests []Request
+	requests []domain.Request
 	err      error
 }
 
@@ -80,7 +33,7 @@ type launchSessionMsg struct {
 }
 
 type fetchSessionApprovalsMsg struct {
-	approvals []Request
+	approvals []domain.Request
 	err       error
 }
 
@@ -108,7 +61,7 @@ type eventNotificationMsg struct {
 
 func fetchRequests(daemonClient client.Client) tea.Cmd {
 	return func() tea.Msg {
-		var allRequests []Request
+		var allRequests []domain.Request
 
 		// Fetch all pending approvals from daemon
 		approvals, err := daemonClient.FetchApprovals("")
@@ -152,11 +105,11 @@ func fetchRequests(daemonClient client.Client) tea.Cmd {
 					createdAt = fc.Status.RequestedAt.Time
 				}
 
-				req := Request{
+				req := domain.Request{
 					ID:         fc.CallID,
 					CallID:     fc.CallID,
 					RunID:      fc.RunID,
-					Type:       ApprovalRequest,
+					Type:       domain.ApprovalRequest,
 					Message:    message,
 					Tool:       fc.Spec.Fn,
 					Parameters: fc.Spec.Kwargs,
@@ -166,7 +119,7 @@ func fetchRequests(daemonClient client.Client) tea.Cmd {
 				// Enrich with session info if available
 				if sess, ok := sessionsByRunID[fc.RunID]; ok {
 					req.SessionID = sess.ID
-					req.SessionQuery = truncate(sess.Query, 50)
+					req.SessionQuery = util.Truncate(sess.Query, 50)
 					req.SessionModel = sess.Model
 					if req.SessionModel == "" {
 						req.SessionModel = "default"
@@ -181,11 +134,11 @@ func fetchRequests(daemonClient client.Client) tea.Cmd {
 					createdAt = hc.Status.RequestedAt.Time
 				}
 
-				req := Request{
+				req := domain.Request{
 					ID:        hc.CallID,
 					CallID:    hc.CallID,
 					RunID:     hc.RunID,
-					Type:      HumanContactRequest,
+					Type:      domain.HumanContactRequest,
 					Message:   hc.Spec.Msg,
 					CreatedAt: createdAt,
 				}
@@ -193,7 +146,7 @@ func fetchRequests(daemonClient client.Client) tea.Cmd {
 				// Enrich with session info if available
 				if sess, ok := sessionsByRunID[hc.RunID]; ok {
 					req.SessionID = sess.ID
-					req.SessionQuery = truncate(sess.Query, 50)
+					req.SessionQuery = util.Truncate(sess.Query, 50)
 					req.SessionModel = sess.Model
 					if req.SessionModel == "" {
 						req.SessionModel = "default"
@@ -245,7 +198,7 @@ func fetchSessionApprovals(daemonClient client.Client, sessionID string) tea.Cmd
 		}
 
 		// Convert to Request type
-		var requests []Request
+		var requests []domain.Request
 		for _, approval := range approvals {
 			if approval.Type == "function_call" && approval.FunctionCall != nil {
 				fc := approval.FunctionCall
@@ -268,11 +221,11 @@ func fetchSessionApprovals(daemonClient client.Client, sessionID string) tea.Cmd
 					createdAt = fc.Status.RequestedAt.Time
 				}
 
-				req := Request{
+				req := domain.Request{
 					ID:         fc.CallID,
 					CallID:     fc.CallID,
 					RunID:      fc.RunID,
-					Type:       ApprovalRequest,
+					Type:       domain.ApprovalRequest,
 					Message:    message,
 					Tool:       fc.Spec.Fn,
 					Parameters: fc.Spec.Kwargs,
@@ -282,7 +235,7 @@ func fetchSessionApprovals(daemonClient client.Client, sessionID string) tea.Cmd
 				// Add session info if available
 				if sessionInfo != nil {
 					req.SessionID = sessionInfo.ID
-					req.SessionQuery = truncate(sessionInfo.Query, 50)
+					req.SessionQuery = util.Truncate(sessionInfo.Query, 50)
 					req.SessionModel = sessionInfo.Model
 					if req.SessionModel == "" {
 						req.SessionModel = "default"
@@ -297,11 +250,11 @@ func fetchSessionApprovals(daemonClient client.Client, sessionID string) tea.Cmd
 					createdAt = hc.Status.RequestedAt.Time
 				}
 
-				req := Request{
+				req := domain.Request{
 					ID:        hc.CallID,
 					CallID:    hc.CallID,
 					RunID:     hc.RunID,
-					Type:      HumanContactRequest,
+					Type:      domain.HumanContactRequest,
 					Message:   hc.Spec.Msg,
 					CreatedAt: createdAt,
 				}
@@ -309,7 +262,7 @@ func fetchSessionApprovals(daemonClient client.Client, sessionID string) tea.Cmd
 				// Add session info if available
 				if sessionInfo != nil {
 					req.SessionID = sessionInfo.ID
-					req.SessionQuery = truncate(sessionInfo.Query, 50)
+					req.SessionQuery = util.Truncate(sessionInfo.Query, 50)
 					req.SessionModel = sessionInfo.Model
 					if req.SessionModel == "" {
 						req.SessionModel = "default"

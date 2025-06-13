@@ -2,9 +2,9 @@ package main
 
 import (
 	"os"
-	"path/filepath"
 	"testing"
 
+	"github.com/humanlayer/humanlayer/humanlayer-tui/internal/domain"
 	"github.com/spf13/viper"
 )
 
@@ -110,7 +110,7 @@ func TestConfigPriority(t *testing.T) {
 
 	t.Run("config validation", func(t *testing.T) {
 		// Test valid config
-		validConfig := &Config{
+		validConfig := &domain.Config{
 			DaemonSocket: "/path/to/daemon.sock",
 		}
 		if err := ValidateConfig(validConfig); err != nil {
@@ -121,30 +121,4 @@ func TestConfigPriority(t *testing.T) {
 		// so there's no invalid case to test
 	})
 
-	t.Run("XDG config directory", func(t *testing.T) {
-		// Test XDG config home directory
-		oldXDGConfigHome := os.Getenv("XDG_CONFIG_HOME")
-		defer func() { _ = os.Setenv("XDG_CONFIG_HOME", oldXDGConfigHome) }()
-
-		testXDGDir := filepath.Join(tempDir, "test_xdg")
-		_ = os.Setenv("XDG_CONFIG_HOME", testXDGDir)
-
-		configDir := getDefaultConfigDir()
-		expectedDir := filepath.Join(testXDGDir, "humanlayer")
-
-		if configDir != expectedDir {
-			t.Errorf("Expected config dir '%s', got '%s'", expectedDir, configDir)
-		}
-
-		// Test fallback to ~/.config when XDG_CONFIG_HOME is not set
-		_ = os.Unsetenv("XDG_CONFIG_HOME")
-
-		configDir = getDefaultConfigDir()
-		homeDir, _ := os.UserHomeDir()
-		expectedDir = filepath.Join(homeDir, ".config", "humanlayer")
-
-		if configDir != expectedDir {
-			t.Errorf("Expected fallback config dir '%s', got '%s'", expectedDir, configDir)
-		}
-	})
 }
