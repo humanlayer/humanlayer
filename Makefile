@@ -25,6 +25,9 @@ check-ts:
 check-hlyr:
 	npm -C hlyr run check
 
+check-wui:
+	@$(MAKE) -C humanlayer-wui check
+
 check-tui:
 	@$(MAKE) -C humanlayer-tui check
 
@@ -35,7 +38,7 @@ check-claudecode-go:
 	@$(MAKE) -C claudecode-go check
 
 .PHONY: check
-check: check-py check-ts check-hlyr check-tui check-hld check-claudecode-go
+check: check-py check-ts check-hlyr check-wui check-tui check-hld check-claudecode-go
 
 typecheck: ## just the typechecks
 	: 🚀 Static type checking: Running mypy

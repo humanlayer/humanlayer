@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { daemonClient } from "./daemon-client";
 import "./App.css";
@@ -242,7 +243,7 @@ function App() {
         </>
       )}
     </main>
-  );
+  )
 }
 
-export default App;
+export default App
