@@ -104,6 +104,11 @@ func New() (*Daemon, error) {
 		slog.Warn("no API key configured, approval features disabled")
 	}
 
+	// Set approval reconciler on session manager if approval manager exists
+	if approvalManager != nil {
+		sessionManager.SetApprovalReconciler(approvalManager)
+	}
+
 	return &Daemon{
 		config:     cfg,
 		socketPath: socketPath,

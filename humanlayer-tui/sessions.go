@@ -2,11 +2,15 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"sort"
 	"strings"
 	"time"
 
+	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/humanlayer/humanlayer/hld/session"
@@ -14,9 +18,13 @@ import (
 
 // sessionModel contains all state related to the sessions tab
 type sessionModel struct {
-	sessions  []session.Info
-	cursor    int
-	viewState viewState
+	sessions       []session.Info
+	sortedSessions []session.Info // Cached sorted sessions for navigation
+	cursor         int
+	viewState      viewState
+
+	// For list scrolling
+	viewport viewport.Model
 
 	// For session detail view
 	selectedSession     *session.Info
@@ -28,6 +36,15 @@ type sessionModel struct {
 	launchModelSelect int // 0=default, 1=opus, 2=sonnet
 	launchWorkingDir  textinput.Model
 	launchActiveField int // 0=query, 1=model, 2=workingDir
+
+	// For modal editors
+	modalQuery  string   // Text being edited in modal
+	modalLines  []string // Split text for easier editing
+	modalCursor int      // Line cursor position
+	modalType   string   // "query" or "workingdir" - which field is being edited
+
+	// Separate storage for each field
+	savedQueryContent string // Persistent multiline query storage
 }
 
 // newSessionModel creates a new session model with default state
@@ -40,19 +57,46 @@ func newSessionModel() sessionModel {
 	queryInput.Focus()
 
 	workingDirInput := textinput.New()
-	workingDirInput.Placeholder = "Working directory (optional)"
+	workingDirInput.Placeholder = "Working directory (defaults to current)"
 	workingDirInput.CharLimit = 200
 	workingDirInput.Width = 60
 
+	vp := viewport.New(80, 20) // Will be resized later
+	vp.SetContent("")
+
 	return sessionModel{
 		sessions:          []session.Info{},
+		sortedSessions:    []session.Info{},
 		cursor:            0,
 		viewState:         listView,
+		viewport:          vp,
 		launchQueryInput:  queryInput,
 		launchWorkingDir:  workingDirInput,
 		launchModelSelect: 0, // default
 		launchActiveField: 0, // query field
 	}
+}
+
+// updateSize updates the viewport dimensions
+func (sm *sessionModel) updateSize(width, height int) {
+	// Ensure minimum dimensions
+	if width < 20 {
+		width = 20
+	}
+	if height < 5 {
+		height = 5
+	}
+	
+	sm.viewport.Width = width
+	sm.viewport.Height = height
+	
+	// Update input field widths with bounds checking
+	inputWidth := width - 20
+	if inputWidth < 10 {
+		inputWidth = 10
+	}
+	sm.launchQueryInput.Width = inputWidth
+	sm.launchWorkingDir.Width = inputWidth
 }
 
 // Update handles messages for the sessions tab
@@ -66,14 +110,18 @@ func (sm *sessionModel) Update(msg tea.Msg, m *model) tea.Cmd {
 			return sm.updateSessionDetailView(msg, m)
 		case launchSessionView:
 			return sm.updateLaunchSessionView(msg, m)
+		case queryModalView:
+			return sm.updateQueryModalView(msg, m)
 		}
 
 	case fetchSessionsMsg:
 		if msg.err != nil {
 			m.err = msg.err
+			m.fullError = msg.err
 			return nil
 		}
 		sm.sessions = msg.sessions
+		sm.updateSortedSessions() // Update cached sorted sessions
 		m.activeSessionCount = 0
 		for _, sess := range sm.sessions {
 			if sess.Status == "running" || sess.Status == "starting" {
@@ -81,14 +129,15 @@ func (sm *sessionModel) Update(msg tea.Msg, m *model) tea.Cmd {
 			}
 		}
 		// Preserve cursor position if possible
-		if sm.cursor >= len(sm.sessions) && len(sm.sessions) > 0 {
-			sm.cursor = len(sm.sessions) - 1
+		if sm.cursor >= len(sm.sortedSessions) && len(sm.sortedSessions) > 0 {
+			sm.cursor = len(sm.sortedSessions) - 1
 		}
 		return nil
 
 	case launchSessionMsg:
 		if msg.err != nil {
 			m.err = msg.err
+			m.fullError = msg.err
 			return nil
 		}
 		// Clear form and go back to list
@@ -103,6 +152,7 @@ func (sm *sessionModel) Update(msg tea.Msg, m *model) tea.Cmd {
 	case fetchSessionApprovalsMsg:
 		if msg.err != nil {
 			m.err = msg.err
+			m.fullError = msg.err
 			return nil
 		}
 		sm.sessionApprovals = msg.approvals
@@ -110,6 +160,40 @@ func (sm *sessionModel) Update(msg tea.Msg, m *model) tea.Cmd {
 	}
 
 	return nil
+}
+
+// updateSortedSessions updates the cached sorted sessions
+func (sm *sessionModel) updateSortedSessions() {
+	sm.sortedSessions = make([]session.Info, len(sm.sessions))
+	copy(sm.sortedSessions, sm.sessions)
+
+	sort.Slice(sm.sortedSessions, func(i, j int) bool {
+		a, b := sm.sortedSessions[i], sm.sortedSessions[j]
+
+		// Status priority: waiting_input > running > completed > failed
+		statusPriority := func(status session.Status) int {
+			switch status {
+			case "waiting_input":
+				return 0
+			case "running", "starting":
+				return 1
+			case "completed":
+				return 2
+			case "failed":
+				return 3
+			default:
+				return 4
+			}
+		}
+
+		aPrio, bPrio := statusPriority(a.Status), statusPriority(b.Status)
+		if aPrio != bPrio {
+			return aPrio < bPrio
+		}
+
+		// Within same status, sort by last activity (most recent first)
+		return a.LastActivityAt.After(b.LastActivityAt)
+	})
 }
 
 // updateListView handles key events in the sessions list view
@@ -121,17 +205,15 @@ func (sm *sessionModel) updateListView(msg tea.KeyMsg, m *model) tea.Cmd {
 		}
 
 	case key.Matches(msg, keys.Down):
-		if sm.cursor < len(sm.sessions)-1 {
+		if sm.cursor < len(sm.sortedSessions)-1 {
 			sm.cursor++
 		}
 
 	case key.Matches(msg, keys.Enter):
-		if sm.cursor < len(sm.sessions) {
-			sm.selectedSession = &sm.sessions[sm.cursor]
-			sm.sessionDetailScroll = 0
-			sm.viewState = sessionDetailView
-			// Fetch approvals for this session
-			return fetchSessionApprovals(m.daemonClient, sm.selectedSession.ID)
+		if sm.cursor < len(sm.sortedSessions) {
+			session := sm.sortedSessions[sm.cursor]
+			// Open conversation view for the selected session
+			return m.openConversationView(session.ID)
 		}
 
 	case key.Matches(msg, keys.Launch):
@@ -160,8 +242,27 @@ func (sm *sessionModel) updateSessionDetailView(msg tea.KeyMsg, m *model) tea.Cm
 		}
 
 	case key.Matches(msg, keys.Down):
-		// Allow scrolling if content is longer than view
-		sm.sessionDetailScroll++
+		// Calculate bounds to prevent scrolling past content
+		if sm.selectedSession != nil {
+			// Build the actual content to get accurate line count
+			content := sm.buildSessionDetailContent()
+			lines := strings.Split(content, "\n")
+			// Calculate content height properly (terminal - tab bar - status bar - header)
+			contentHeight := m.height - TabBarHeight - StatusBarHeight
+			visibleHeight := contentHeight - 3 // Account for session detail header
+			if visibleHeight < MinContentHeight {
+				visibleHeight = MinContentHeight
+			}
+			maxScroll := len(lines) - visibleHeight
+			if maxScroll < 0 {
+				maxScroll = 0
+			}
+
+			// Only increment if we haven't reached the bottom
+			if sm.sessionDetailScroll < maxScroll {
+				sm.sessionDetailScroll++
+			}
+		}
 
 	case key.Matches(msg, keys.Refresh):
 		if sm.selectedSession != nil {
@@ -181,9 +282,9 @@ func (sm *sessionModel) updateLaunchSessionView(msg tea.KeyMsg, m *model) tea.Cm
 	case key.Matches(msg, keys.Back):
 		sm.viewState = listView
 
-	case key.Matches(msg, keys.Tab), key.Matches(msg, keys.ShiftTab):
-		// Cycle through fields
-		if key.Matches(msg, keys.Tab) {
+	case key.Matches(msg, keys.Tab), key.Matches(msg, keys.ShiftTab), key.Matches(msg, keys.Down), msg.String() == "j":
+		// Cycle through fields (forward)
+		if key.Matches(msg, keys.Tab) || key.Matches(msg, keys.Down) || msg.String() == "j" {
 			sm.launchActiveField = (sm.launchActiveField + 1) % 3
 		} else {
 			sm.launchActiveField = (sm.launchActiveField + 2) % 3 // Go backwards
@@ -200,17 +301,67 @@ func (sm *sessionModel) updateLaunchSessionView(msg tea.KeyMsg, m *model) tea.Cm
 			sm.launchWorkingDir.Focus()
 		}
 
-	case key.Matches(msg, keys.Enter):
-		// Submit the form
-		if sm.launchActiveField == 1 {
-			// If on model select, just move to next field
-			sm.launchActiveField = 2
+	case key.Matches(msg, keys.Up), msg.String() == "k":
+		// Navigate fields backward
+		sm.launchActiveField = (sm.launchActiveField + 2) % 3
+
+		// Update focus
+		sm.launchQueryInput.Blur()
+		sm.launchWorkingDir.Blur()
+
+		switch sm.launchActiveField {
+		case 0:
+			sm.launchQueryInput.Focus()
+		case 2:
 			sm.launchWorkingDir.Focus()
-		} else if sm.launchQueryInput.Value() != "" {
-			// Launch the session
-			query := sm.launchQueryInput.Value()
-			model := []string{"", "claude-3-opus-20240229", "claude-3-5-sonnet-20241022"}[sm.launchModelSelect]
+		}
+
+	case key.Matches(msg, keys.Enter):
+		switch sm.launchActiveField {
+		case 0:
+			// Open modal editor for query field
+			content := sm.savedQueryContent
+			if content == "" {
+				content = sm.launchQueryInput.Value()
+			}
+			sm.modalLines = strings.Split(content, "\n")
+			if len(sm.modalLines) == 0 || (len(sm.modalLines) == 1 && sm.modalLines[0] == "") {
+				sm.modalLines = []string{""}
+			}
+			sm.modalCursor = 0
+			sm.modalType = "query"
+			sm.viewState = queryModalView
+			// Trigger layout update for modal view
+			m.updateAllViewSizes()
+		case 2:
+			// Open modal editor for working directory field
+			sm.modalQuery = sm.launchWorkingDir.Value()
+			sm.modalLines = strings.Split(sm.modalQuery, "\n")
+			if len(sm.modalLines) == 0 || (len(sm.modalLines) == 1 && sm.modalLines[0] == "") {
+				sm.modalLines = []string{""}
+			}
+			sm.modalCursor = 0
+			sm.modalType = "workingdir"
+			sm.viewState = queryModalView
+			// Trigger layout update for modal view
+			m.updateAllViewSizes()
+		}
+
+	case msg.String() == "c", msg.String() == "ctrl+enter":
+		// Launch session with 'c' or Ctrl+Enter (only if query has content)
+		query := sm.savedQueryContent
+		if query == "" {
+			query = sm.launchQueryInput.Value()
+		}
+		if query != "" {
+			model := []string{"", "opus", "sonnet"}[sm.launchModelSelect]
 			workingDir := sm.launchWorkingDir.Value()
+			// Use current working directory if none specified
+			if workingDir == "" {
+				if cwd, err := os.Getwd(); err == nil {
+					workingDir = cwd
+				}
+			}
 			return launchSession(m.daemonClient, query, model, workingDir)
 		}
 
@@ -225,15 +376,169 @@ func (sm *sessionModel) updateLaunchSessionView(msg tea.KeyMsg, m *model) tea.Cm
 		}
 
 	default:
-		// Handle text input for the active field
-		var cmd tea.Cmd
-		switch sm.launchActiveField {
-		case 0:
-			sm.launchQueryInput, cmd = sm.launchQueryInput.Update(msg)
-		case 2:
-			sm.launchWorkingDir, cmd = sm.launchWorkingDir.Update(msg)
+		// Both text fields now use modal editors only
+		// No direct text input in the form
+	}
+
+	return nil
+}
+
+// updateQueryModalView handles key events in the query modal editor
+func (sm *sessionModel) updateQueryModalView(msg tea.KeyMsg, m *model) tea.Cmd {
+	// Handle ONLY specific keys explicitly - everything else is text input
+	keyStr := msg.String()
+
+	switch keyStr {
+	case "esc":
+		// Save modal content and return
+		content := strings.Join(sm.modalLines, "\n")
+		switch sm.modalType {
+		case "query":
+			sm.savedQueryContent = content // Store full multiline content
+		case "workingdir":
+			// Working directory validation
+			dir := strings.TrimSpace(content)
+			if dir != "" {
+				// Expand tilde
+				if strings.HasPrefix(dir, "~/") {
+					if home, err := os.UserHomeDir(); err == nil {
+						dir = home + dir[1:]
+					}
+				}
+				// Check if directory exists
+				if _, err := os.Stat(dir); os.IsNotExist(err) {
+					// TODO: Show validation error in UI
+					// For now, just don't save invalid directory
+					return nil
+				}
+			}
+			sm.launchWorkingDir.SetValue(dir)
 		}
-		return cmd
+		sm.viewState = launchSessionView
+
+	case "ctrl+enter":
+		// Save and submit
+		content := strings.Join(sm.modalLines, "\n")
+		switch sm.modalType {
+		case "query":
+			sm.savedQueryContent = content // Store full multiline content
+		case "workingdir":
+			// Working directory validation
+			dir := strings.TrimSpace(content)
+			if dir != "" {
+				// Expand tilde
+				if strings.HasPrefix(dir, "~/") {
+					if home, err := os.UserHomeDir(); err == nil {
+						dir = home + dir[1:]
+					}
+				}
+				// Check if directory exists
+				if _, err := os.Stat(dir); os.IsNotExist(err) {
+					// TODO: Show validation error in UI
+					// For now, just don't save invalid directory
+					return nil
+				}
+			}
+			sm.launchWorkingDir.SetValue(dir)
+		}
+
+		// Launch if query has content
+		query := sm.savedQueryContent
+		if query == "" {
+			query = sm.launchQueryInput.Value()
+		}
+		if query != "" {
+			model := []string{"", "opus", "sonnet"}[sm.launchModelSelect]
+			workingDir := sm.launchWorkingDir.Value()
+			// Use current working directory if none specified
+			if workingDir == "" {
+				if cwd, err := os.Getwd(); err == nil {
+					workingDir = cwd
+				}
+			}
+			return launchSession(m.daemonClient, query, model, workingDir)
+		}
+
+		// If no query, just return to form
+		sm.viewState = launchSessionView
+		// Trigger layout update when returning to form view
+		m.updateAllViewSizes()
+
+	case "up":
+		// Only respond to actual arrow keys, not letter bindings
+		if sm.modalCursor > 0 {
+			sm.modalCursor--
+		}
+
+	case "down":
+		// Only respond to actual arrow keys, not letter bindings
+		if sm.modalCursor < len(sm.modalLines)-1 {
+			sm.modalCursor++
+		}
+
+	case "enter":
+		if sm.modalType == "workingdir" {
+			// Working directory doesn't allow multiline - ignore enter
+			return nil
+		}
+		// Insert new line for query field
+		currentLine := sm.modalLines[sm.modalCursor]
+		sm.modalLines[sm.modalCursor] = currentLine // Keep current line content
+		// Insert new empty line after current
+		sm.modalLines = append(sm.modalLines[:sm.modalCursor+1], sm.modalLines[sm.modalCursor:]...)
+		sm.modalLines[sm.modalCursor+1] = ""
+		sm.modalCursor++
+
+	case "backspace":
+		if len(sm.modalLines[sm.modalCursor]) > 0 {
+			// Remove last character from current line
+			sm.modalLines[sm.modalCursor] = sm.modalLines[sm.modalCursor][:len(sm.modalLines[sm.modalCursor])-1]
+		} else if sm.modalCursor > 0 {
+			// Remove empty line and move up
+			sm.modalLines = append(sm.modalLines[:sm.modalCursor], sm.modalLines[sm.modalCursor+1:]...)
+			sm.modalCursor--
+		}
+
+	case "tab":
+		// Insert tab character
+		sm.modalLines[sm.modalCursor] += "\t"
+
+	case "ctrl+v", "cmd+v":
+		// Read from clipboard and paste
+		text, err := clipboard.ReadAll()
+		if err != nil {
+			// Silently ignore clipboard errors
+			return nil
+		}
+
+		// Split pasted text into lines
+		lines := strings.Split(text, "\n")
+
+		if len(lines) == 1 {
+			// Single line paste - insert at current cursor position
+			sm.modalLines[sm.modalCursor] += lines[0]
+		} else {
+			// Multi-line paste
+			// Insert first line at current position
+			sm.modalLines[sm.modalCursor] += lines[0]
+
+			// Insert remaining lines after current line
+			for i, line := range lines[1:] {
+				insertPos := sm.modalCursor + i + 1
+				// Insert new line at position
+				sm.modalLines = append(sm.modalLines[:insertPos], sm.modalLines[insertPos-1:]...)
+				sm.modalLines[insertPos] = line
+			}
+
+			// Move cursor to end of pasted content
+			sm.modalCursor += len(lines) - 1
+		}
+
+	default:
+		// Everything else is text input - including k, j, c, numbers, etc.
+		if len(keyStr) == 1 && keyStr[0] >= 32 && keyStr[0] <= 126 {
+			sm.modalLines[sm.modalCursor] += keyStr
+		}
 	}
 
 	return nil
@@ -246,37 +551,51 @@ func (sm *sessionModel) View(m *model) string {
 		return sm.renderSessionDetailView(m)
 	case launchSessionView:
 		return sm.renderLaunchSessionView(m)
+	case queryModalView:
+		return sm.renderQueryModalView(m)
 	default:
 		return sm.renderListView(m)
 	}
 }
 
-// renderListView renders the sessions list
+// renderListView renders the sessions list in table format
 func (sm *sessionModel) renderListView(m *model) string {
-	if len(sm.sessions) == 0 {
+	if len(sm.sortedSessions) == 0 {
 		emptyStyle := lipgloss.NewStyle().
 			Foreground(lipgloss.Color("241")).
 			Italic(true).
 			Padding(2, 0)
-		return emptyStyle.Render("No sessions. Press [l] to launch a new session.")
+		content := emptyStyle.Render("No sessions. Press [l] to launch a new session.")
+		sm.viewport.SetContent(content)
+		return sm.viewport.View()
 	}
 
 	var s strings.Builder
 
-	// Header
-	headerStyle := lipgloss.NewStyle().
+	// Column headers with proper centering
+	headerRow := centerText("Status", 8) +
+		centerText("Modified", 11) +
+		centerText("Created", 11) +
+		centerText("Working Dir", 20) +
+		centerText("Model", 9) +
+		centerText("Turns", 6) +
+		"Query"
+	headerColStyle := lipgloss.NewStyle().
 		Bold(true).
-		Foreground(lipgloss.Color("205")).
-		MarginBottom(1)
-	s.WriteString(headerStyle.Render("Claude Sessions") + "\n\n")
+		Foreground(lipgloss.Color("243")).
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderBottom(true)
+	s.WriteString(headerColStyle.Render(headerRow) + "\n")
 
 	// Sessions list
-	for i, sess := range sm.sessions {
+	for i, sess := range sm.sortedSessions {
 		selected := i == sm.cursor
 
 		// Status icon
-		statusIcon := "⏸" // paused/unknown
+		statusIcon := "⏸"
 		switch sess.Status {
+		case "waiting_input":
+			statusIcon = "⏳"
 		case "starting":
 			statusIcon = "🔄"
 		case "running":
@@ -287,49 +606,87 @@ func (sm *sessionModel) renderListView(m *model) string {
 			statusIcon = "❌"
 		}
 
-		// Session ID (truncated)
-		sessionID := sess.ID
-		if len(sessionID) > 8 {
-			sessionID = sessionID[:8]
+		// Relative times
+		modifiedTime := formatRelativeTime(sess.LastActivityAt)
+		createdTime := formatRelativeTime(sess.StartTime)
+
+		// Working directory (truncated)
+		workingDir := sess.WorkingDir
+		if workingDir == "" {
+			// Try to inherit from parent session if this is a child session
+			if sess.ParentSessionID != "" {
+				for _, parentSess := range sm.sessions {
+					if parentSess.ID == sess.ParentSessionID && parentSess.WorkingDir != "" {
+						workingDir = parentSess.WorkingDir
+						break
+					}
+				}
+			}
+			// Fall back to "~" if no inheritance possible
+			if workingDir == "" {
+				workingDir = "~"
+			}
+		}
+		// Truncate if too long
+		if len(workingDir) > 18 {
+			workingDir = "..." + workingDir[len(workingDir)-15:]
 		}
 
-		// Model name
+		// Model name (shortened)
 		modelName := sess.Model
 		if modelName == "" {
-			modelName = "default"
-		} else if strings.Contains(modelName, "opus") {
+			// Try to inherit from parent session if this is a child session
+			if sess.ParentSessionID != "" {
+				for _, parentSess := range sm.sessions {
+					if parentSess.ID == sess.ParentSessionID && parentSess.Model != "" {
+						modelName = parentSess.Model
+						break
+					}
+				}
+			}
+			// Fall back to "default" if no inheritance possible
+			if modelName == "" {
+				modelName = "default"
+			}
+		}
+		// Shorten model names for display
+		if strings.Contains(modelName, "opus") {
 			modelName = "opus"
 		} else if strings.Contains(modelName, "sonnet") {
 			modelName = "sonnet"
 		}
 
-		// Duration
-		duration := ""
-		if !sess.StartTime.IsZero() {
-			if sess.EndTime != nil {
-				d := sess.EndTime.Sub(sess.StartTime)
-				duration = formatDuration(d)
+		// Turn count
+		turnCount := "-"
+		if sess.Result != nil && sess.Result.NumTurns > 0 {
+			if sess.Result.NumTurns >= 1000 {
+				turnCount = fmt.Sprintf("%.1fk", float64(sess.Result.NumTurns)/1000)
 			} else {
-				d := time.Since(sess.StartTime)
-				duration = formatDuration(d)
+				turnCount = fmt.Sprintf("%d", sess.Result.NumTurns)
 			}
 		}
 
-		// Query preview
-		queryPreview := truncate(sess.Query, 40)
+		// Query preview (truncated to fit remaining space)
+		queryPreview := truncate(sess.Query, 39)
 
-		// Build the item
-		item := fmt.Sprintf("%s %s [%s] %s %s", statusIcon, sessionID, modelName, duration, queryPreview)
+		// Build the row with properly aligned columns
+		row := centerText(statusIcon, 8) +
+			centerText(modifiedTime, 11) +
+			centerText(createdTime, 11) +
+			leftPadText(workingDir, 20) +
+			centerText(modelName, 9) +
+			centerText(turnCount, 6) +
+			queryPreview
 
 		// Apply styling
-		itemStyle := lipgloss.NewStyle().Padding(0, 2)
+		itemStyle := lipgloss.NewStyle().Padding(0, 1)
 		if selected {
 			itemStyle = itemStyle.
 				Background(lipgloss.Color("235")).
 				Foreground(lipgloss.Color("215"))
 		}
 
-		s.WriteString(itemStyle.Render(item) + "\n")
+		s.WriteString(itemStyle.Render(row) + "\n")
 	}
 
 	// Instructions
@@ -339,24 +696,19 @@ func (sm *sessionModel) renderListView(m *model) string {
 		Italic(true)
 	s.WriteString(instructionStyle.Render("Press [c] to create new session, [enter] to view details"))
 
-	return s.String()
+	// Set content in viewport and return the viewport view
+	sm.viewport.SetContent(s.String())
+	return sm.viewport.View()
 }
 
-// renderSessionDetailView renders the detailed view of a session
-func (sm *sessionModel) renderSessionDetailView(m *model) string {
+// buildSessionDetailContent builds the content string for session details
+func (sm *sessionModel) buildSessionDetailContent() string {
 	if sm.selectedSession == nil {
-		return "No session selected"
+		return ""
 	}
 
 	sess := sm.selectedSession
 	var content strings.Builder
-
-	// Header
-	headerStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("205")).
-		MarginBottom(1)
-	content.WriteString(headerStyle.Render("Session Details") + "\n\n")
 
 	// Session info
 	labelStyle := lipgloss.NewStyle().
@@ -379,7 +731,12 @@ func (sm *sessionModel) renderSessionDetailView(m *model) string {
 	}
 	content.WriteString(labelStyle.Render("Status:") + valueStyle.Render(fmt.Sprintf("%s %s", statusIcon, sess.Status)) + "\n")
 
-	content.WriteString(labelStyle.Render("Session ID:") + valueStyle.Render(sess.ID) + "\n")
+	// Show Claude Session ID for resume capability, fall back to internal ID
+	displayID := sess.ClaudeSessionID
+	if displayID == "" {
+		displayID = sess.ID
+	}
+	content.WriteString(labelStyle.Render("Session ID:") + valueStyle.Render(displayID) + "\n")
 	content.WriteString(labelStyle.Render("Run ID:") + valueStyle.Render(sess.RunID) + "\n")
 
 	// Model
@@ -468,9 +825,26 @@ func (sm *sessionModel) renderSessionDetailView(m *model) string {
 		}
 	}
 
+	return content.String()
+}
+
+// renderSessionDetailView renders the detailed view of a session
+func (sm *sessionModel) renderSessionDetailView(m *model) string {
+	if sm.selectedSession == nil {
+		return "No session selected"
+	}
+
+	// Build the content
+	content := sm.buildSessionDetailContent()
+
 	// Apply scrolling
-	lines := strings.Split(content.String(), "\n")
-	visibleHeight := m.height - 6 // Account for tab bar, status bar, etc.
+	lines := strings.Split(content, "\n")
+	// Calculate content height properly (terminal - tab bar - status bar - header)
+	contentHeight := m.height - TabBarHeight - StatusBarHeight
+	visibleHeight := contentHeight - 3 // Account for session detail header
+	if visibleHeight < MinContentHeight {
+		visibleHeight = MinContentHeight
+	}
 
 	if sm.sessionDetailScroll > len(lines)-visibleHeight {
 		sm.sessionDetailScroll = len(lines) - visibleHeight
@@ -526,7 +900,7 @@ func (sm *sessionModel) renderLaunchSessionView(m *model) string {
 		Foreground(lipgloss.Color("205")).
 		Bold(true)
 
-	// Query field
+	// Query field - show hint instead of text input
 	queryLabel := "Query:"
 	if sm.launchActiveField == 0 {
 		queryLabel = activeStyle.Render(queryLabel)
@@ -534,7 +908,47 @@ func (sm *sessionModel) renderLaunchSessionView(m *model) string {
 		queryLabel = labelStyle.Render(queryLabel)
 	}
 	s.WriteString(queryLabel + "\n")
-	s.WriteString(sm.launchQueryInput.View() + "\n\n")
+
+	// Show query content or hint
+	queryValue := sm.savedQueryContent
+	if queryValue == "" {
+		queryValue = sm.launchQueryInput.Value()
+	}
+
+	if queryValue == "" {
+		// Show hint when no query is set
+		hintStyle := lipgloss.NewStyle().
+			Foreground(lipgloss.Color("243")).
+			Italic(true)
+		if sm.launchActiveField == 0 {
+			hintStyle = hintStyle.
+				Background(lipgloss.Color("235")).
+				Foreground(lipgloss.Color("215"))
+		}
+		s.WriteString(hintStyle.Render("Press Enter to edit") + "\n\n")
+	} else {
+		// Show query preview
+		previewStyle := lipgloss.NewStyle().
+			Foreground(lipgloss.Color("252")).
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("237")).
+			Padding(0, 1).
+			Width(60)
+		if sm.launchActiveField == 0 {
+			previewStyle = previewStyle.
+				BorderForeground(lipgloss.Color("205"))
+		}
+
+		// Show up to 5 lines for preview
+		lines := strings.Split(queryValue, "\n")
+		var preview string
+		if len(lines) > 5 {
+			preview = strings.Join(lines[:5], "\n") + "\n..."
+		} else {
+			preview = queryValue
+		}
+		s.WriteString(previewStyle.Render(preview) + "\n\n")
+	}
 
 	// Model selection
 	modelLabel := "Model:"
@@ -545,7 +959,7 @@ func (sm *sessionModel) renderLaunchSessionView(m *model) string {
 	}
 	s.WriteString(modelLabel + "\n")
 
-	models := []string{"Default", "Claude 3 Opus", "Claude 3.5 Sonnet"}
+	models := []string{"Default", "Claude 4 Opus", "Claude 4 Sonnet"}
 	modelOptions := ""
 	for i, model := range models {
 		optionStyle := lipgloss.NewStyle().Padding(0, 2)
@@ -558,7 +972,7 @@ func (sm *sessionModel) renderLaunchSessionView(m *model) string {
 	}
 	s.WriteString(modelOptions + "\n\n")
 
-	// Working directory field
+	// Working directory field - show hint instead of text input
 	dirLabel := "Working Dir:"
 	if sm.launchActiveField == 2 {
 		dirLabel = activeStyle.Render(dirLabel)
@@ -566,7 +980,36 @@ func (sm *sessionModel) renderLaunchSessionView(m *model) string {
 		dirLabel = labelStyle.Render(dirLabel)
 	}
 	s.WriteString(dirLabel + "\n")
-	s.WriteString(sm.launchWorkingDir.View() + "\n\n")
+
+	// Show working directory content or hint
+	workingDirValue := sm.launchWorkingDir.Value()
+
+	if workingDirValue == "" {
+		// Show hint when no working directory is set
+		hintStyle := lipgloss.NewStyle().
+			Foreground(lipgloss.Color("243")).
+			Italic(true)
+		if sm.launchActiveField == 2 {
+			hintStyle = hintStyle.
+				Background(lipgloss.Color("235")).
+				Foreground(lipgloss.Color("215"))
+		}
+		s.WriteString(hintStyle.Render("Press Enter to edit (defaults to current directory)") + "\n\n")
+	} else {
+		// Show working directory preview
+		previewStyle := lipgloss.NewStyle().
+			Foreground(lipgloss.Color("252")).
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("237")).
+			Padding(0, 1).
+			Width(60)
+		if sm.launchActiveField == 2 {
+			previewStyle = previewStyle.
+				BorderForeground(lipgloss.Color("205"))
+		}
+
+		s.WriteString(previewStyle.Render(workingDirValue) + "\n\n")
+	}
 
 	// Instructions
 	instructionStyle := lipgloss.NewStyle().
@@ -574,10 +1017,100 @@ func (sm *sessionModel) renderLaunchSessionView(m *model) string {
 		Italic(true)
 
 	instructions := []string{
-		"[tab] to navigate fields",
-		"[←/→] to select model",
-		"[enter] to launch",
-		"[esc] to cancel",
+		"[tab/j/k] navigate fields",
+		"[enter] edit field",
+		"[←/→] select model",
+		"[c] launch session",
+		"[esc] cancel",
+	}
+	s.WriteString(instructionStyle.Render(strings.Join(instructions, " • ")))
+
+	return s.String()
+}
+
+// renderQueryModalView renders the full-screen query editor modal
+func (sm *sessionModel) renderQueryModalView(m *model) string {
+	var s strings.Builder
+
+	// Calculate content dimensions (account for tab bar and status bar)
+	contentWidth := m.width - 2
+	if contentWidth < MinContentWidth {
+		contentWidth = MinContentWidth
+	}
+	contentHeight := m.height - TabBarHeight - StatusBarHeight
+	if contentHeight < MinContentHeight {
+		contentHeight = MinContentHeight
+	}
+
+	// Header
+	headerStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("205")).
+		MarginBottom(1).
+		Width(contentWidth)
+
+	title := "✏️  Edit Query"
+	if sm.modalType == "workingdir" {
+		title = "📁  Edit Working Directory"
+	}
+	s.WriteString(headerStyle.Render(title) + "\n\n")
+
+	// Content area
+	modalContentHeight := contentHeight - 6 // Header + instructions
+	if modalContentHeight < 3 {
+		modalContentHeight = 3
+	}
+	editorStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("237")).
+		Padding(1, 2).
+		Width(contentWidth - 4).
+		Height(modalContentHeight)
+
+	// Build editor content with line numbers and cursor
+	var content strings.Builder
+	for i, line := range sm.modalLines {
+		lineNumStyle := lipgloss.NewStyle().
+			Foreground(lipgloss.Color("243")).
+			Width(3)
+
+		lineStyle := lipgloss.NewStyle().
+			Foreground(lipgloss.Color("252"))
+
+		if i == sm.modalCursor {
+			// Highlight current line
+			lineStyle = lineStyle.
+				Background(lipgloss.Color("235")).
+				Foreground(lipgloss.Color("215"))
+		}
+
+		lineNum := fmt.Sprintf("%2d", i+1)
+		content.WriteString(lineNumStyle.Render(lineNum) + " " + lineStyle.Render(line))
+
+		if i == sm.modalCursor {
+			// Add cursor indicator
+			content.WriteString("█")
+		}
+
+		if i < len(sm.modalLines)-1 {
+			content.WriteString("\n")
+		}
+	}
+
+	s.WriteString(editorStyle.Render(content.String()) + "\n")
+
+	// Instructions
+	instructionStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("243")).
+		Italic(true).
+		Width(contentWidth)
+
+	instructions := []string{
+		"[↑/↓] move cursor",
+		"[enter] new line",
+		"[backspace] delete",
+		"[esc] save & return",
+		"[ctrl+enter] save & launch",
 	}
 	s.WriteString(instructionStyle.Render(strings.Join(instructions, " • ")))
 
@@ -592,4 +1125,44 @@ func formatDuration(d time.Duration) string {
 		return fmt.Sprintf("%dm%ds", int(d.Minutes()), int(d.Seconds())%60)
 	}
 	return fmt.Sprintf("%dh%dm", int(d.Hours()), int(d.Minutes())%60)
+}
+
+// formatRelativeTime formats a timestamp as a relative time (e.g., "2m ago", "1h ago")
+func formatRelativeTime(t time.Time) string {
+	now := time.Now()
+	diff := now.Sub(t)
+
+	if diff < time.Minute {
+		return "now"
+	} else if diff < time.Hour {
+		return fmt.Sprintf("%dm ago", int(diff.Minutes()))
+	} else if diff < 24*time.Hour {
+		return fmt.Sprintf("%dh ago", int(diff.Hours()))
+	} else if diff < 7*24*time.Hour {
+		return fmt.Sprintf("%dd ago", int(diff.Hours()/24))
+	}
+
+	// For older items, show the date
+	return t.Format("Jan 2")
+}
+
+// centerText centers text within a fixed width column
+func centerText(text string, width int) string {
+	if len(text) >= width {
+		return text[:width]
+	}
+
+	totalPadding := width - len(text)
+	leftPadding := totalPadding / 2
+	rightPadding := totalPadding - leftPadding
+
+	return strings.Repeat(" ", leftPadding) + text + strings.Repeat(" ", rightPadding)
+}
+
+// leftPadText left-aligns text within a fixed width column
+func leftPadText(text string, width int) string {
+	if len(text) >= width {
+		return text[:width]
+	}
+	return text + strings.Repeat(" ", width-len(text))
 }

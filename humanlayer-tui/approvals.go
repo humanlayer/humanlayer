@@ -8,6 +8,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -18,6 +19,9 @@ type approvalModel struct {
 	cursor          int
 	viewState       viewState
 	selectedRequest *Request
+
+	// For list scrolling
+	viewport viewport.Model
 
 	// For feedback view
 	feedbackInput textinput.Model
@@ -32,12 +36,37 @@ func newApprovalModel() approvalModel {
 	ti.CharLimit = 500
 	ti.Width = 60
 
+	vp := viewport.New(80, 20) // Will be resized later
+	vp.SetContent("")
+
 	return approvalModel{
 		requests:      []Request{},
 		cursor:        0,
 		viewState:     listView,
+		viewport:      vp,
 		feedbackInput: ti,
 	}
+}
+
+// updateSize updates the viewport dimensions
+func (am *approvalModel) updateSize(width, height int) {
+	// Ensure minimum dimensions
+	if width < 20 {
+		width = 20
+	}
+	if height < 5 {
+		height = 5
+	}
+	
+	am.viewport.Width = width
+	am.viewport.Height = height
+	
+	// Update input field width with bounds checking
+	inputWidth := width - 20
+	if inputWidth < 10 {
+		inputWidth = 10
+	}
+	am.feedbackInput.Width = inputWidth
 }
 
 // Update handles messages for the approvals tab
@@ -56,6 +85,7 @@ func (am *approvalModel) Update(msg tea.Msg, m *model) tea.Cmd {
 	case fetchRequestsMsg:
 		if msg.err != nil {
 			m.err = msg.err
+			m.fullError = msg.err
 			return nil
 		}
 		am.requests = msg.requests
@@ -70,6 +100,7 @@ func (am *approvalModel) Update(msg tea.Msg, m *model) tea.Cmd {
 	case approvalSentMsg:
 		if msg.err != nil {
 			m.err = msg.err
+			m.fullError = msg.err
 			return nil
 		}
 		// Remove the approved/denied request from the list
@@ -86,11 +117,14 @@ func (am *approvalModel) Update(msg tea.Msg, m *model) tea.Cmd {
 		// Go back to list view
 		am.viewState = listView
 		am.selectedRequest = nil
+		// Trigger layout update when returning to list view
+		m.updateAllViewSizes()
 		return fetchRequests(m.daemonClient)
 
 	case humanResponseSentMsg:
 		if msg.err != nil {
 			m.err = msg.err
+			m.fullError = msg.err
 			return nil
 		}
 		// Remove the responded request from the list
@@ -107,6 +141,8 @@ func (am *approvalModel) Update(msg tea.Msg, m *model) tea.Cmd {
 		// Go back to list view
 		am.viewState = listView
 		am.selectedRequest = nil
+		// Trigger layout update when returning to list view
+		m.updateAllViewSizes()
 		return fetchRequests(m.daemonClient)
 	}
 
@@ -128,8 +164,15 @@ func (am *approvalModel) updateListView(msg tea.KeyMsg, m *model) tea.Cmd {
 
 	case key.Matches(msg, keys.Enter):
 		if am.cursor < len(am.requests) {
-			am.selectedRequest = &am.requests[am.cursor]
-			am.viewState = detailView
+			req := am.requests[am.cursor]
+			// If the approval is tied to a session, open conversation view
+			if req.SessionID != "" {
+				return m.openConversationView(req.SessionID)
+			} else {
+				// Fallback to detail view for approvals without session context
+				am.selectedRequest = &req
+				am.viewState = detailView
+			}
 		}
 
 	case key.Matches(msg, keys.Approve):
@@ -149,6 +192,8 @@ func (am *approvalModel) updateListView(msg tea.KeyMsg, m *model) tea.Cmd {
 			am.feedbackInput.Reset()
 			am.feedbackInput.Focus()
 			am.viewState = feedbackView
+			// Trigger layout update for the new view state
+			m.updateAllViewSizes()
 		}
 
 	case key.Matches(msg, keys.Refresh):
@@ -164,6 +209,8 @@ func (am *approvalModel) updateDetailView(msg tea.KeyMsg, m *model) tea.Cmd {
 	case key.Matches(msg, keys.Back):
 		am.viewState = listView
 		am.selectedRequest = nil
+		// Trigger layout update when returning to list view
+		m.updateAllViewSizes()
 
 	case key.Matches(msg, keys.Approve):
 		if am.selectedRequest != nil && am.selectedRequest.Type == ApprovalRequest {
@@ -177,6 +224,8 @@ func (am *approvalModel) updateDetailView(msg tea.KeyMsg, m *model) tea.Cmd {
 			am.feedbackInput.Reset()
 			am.feedbackInput.Focus()
 			am.viewState = feedbackView
+			// Trigger layout update for the new view state
+			m.updateAllViewSizes()
 		}
 	}
 
@@ -191,6 +240,8 @@ func (am *approvalModel) updateFeedbackView(msg tea.KeyMsg, m *model) tea.Cmd {
 		if am.selectedRequest == nil {
 			am.viewState = listView
 		}
+		// Trigger layout update when changing view states
+		m.updateAllViewSizes()
 
 	case key.Matches(msg, keys.Enter):
 		// Submit feedback
@@ -234,7 +285,9 @@ func (am *approvalModel) renderListView(m *model) string {
 			Foreground(lipgloss.Color("241")).
 			Italic(true).
 			Padding(2, 0)
-		return emptyStyle.Render("No pending approvals")
+		content := emptyStyle.Render("No pending approvals")
+		am.viewport.SetContent(content)
+		return am.viewport.View()
 	}
 
 	var s strings.Builder
@@ -347,7 +400,9 @@ func (am *approvalModel) renderListView(m *model) string {
 		}
 	}
 
-	return s.String()
+	// Set content in viewport and return the viewport view
+	am.viewport.SetContent(s.String())
+	return am.viewport.View()
 }
 
 // renderDetailView renders the detailed view of a single approval
@@ -358,18 +413,6 @@ func (am *approvalModel) renderDetailView(m *model) string {
 
 	req := am.selectedRequest
 	var s strings.Builder
-
-	// Header
-	headerStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("205")).
-		MarginBottom(1)
-
-	if req.Type == ApprovalRequest {
-		s.WriteString(headerStyle.Render("🔐 Approval Request") + "\n\n")
-	} else {
-		s.WriteString(headerStyle.Render("💬 Human Contact Request") + "\n\n")
-	}
 
 	// Metadata
 	labelStyle := lipgloss.NewStyle().
@@ -442,22 +485,6 @@ func (am *approvalModel) renderFeedbackView(m *model) string {
 	}
 
 	var s strings.Builder
-
-	// Header
-	headerStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("205")).
-		MarginBottom(1)
-
-	if am.feedbackFor.Type == ApprovalRequest {
-		if am.isApproving {
-			s.WriteString(headerStyle.Render("✅ Approve with Comment") + "\n\n")
-		} else {
-			s.WriteString(headerStyle.Render("❌ Deny with Reason") + "\n\n")
-		}
-	} else {
-		s.WriteString(headerStyle.Render("💬 Send Response") + "\n\n")
-	}
 
 	// Show what we're responding to
 	contextStyle := lipgloss.NewStyle().

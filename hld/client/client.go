@@ -295,6 +295,27 @@ func (c *client) SendDecision(callID, approvalType, decision, comment string) er
 	return nil
 }
 
+// ApproveFunctionCall approves a function call with an optional comment
+func (c *client) ApproveFunctionCall(callID, comment string) error {
+	return c.SendDecision(callID, string(rpc.ApprovalTypeFunctionCall), string(rpc.DecisionApprove), comment)
+}
+
+// DenyFunctionCall denies a function call with a required reason
+func (c *client) DenyFunctionCall(callID, reason string) error {
+	if reason == "" {
+		return fmt.Errorf("reason is required when denying a function call")
+	}
+	return c.SendDecision(callID, string(rpc.ApprovalTypeFunctionCall), string(rpc.DecisionDeny), reason)
+}
+
+// RespondToHumanContact responds to a human contact request
+func (c *client) RespondToHumanContact(callID, response string) error {
+	if response == "" {
+		return fmt.Errorf("response is required for human contact")
+	}
+	return c.SendDecision(callID, string(rpc.ApprovalTypeHumanContact), string(rpc.DecisionRespond), response)
+}
+
 // GetConversation fetches the conversation history for a session
 func (c *client) GetConversation(sessionID string) (*rpc.GetConversationResponse, error) {
 	req := rpc.GetConversationRequest{

@@ -189,6 +189,72 @@ func (s *MemoryStore) MarkHumanContactResponded(callID string) error {
 	return nil
 }
 
+// GetAllCachedFunctionCalls returns all cached function calls
+func (s *MemoryStore) GetAllCachedFunctionCalls() ([]humanlayer.FunctionCall, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	calls := make([]humanlayer.FunctionCall, 0, len(s.functionCalls))
+	for _, fc := range s.functionCalls {
+		calls = append(calls, *fc)
+	}
+	return calls, nil
+}
+
+// GetAllCachedHumanContacts returns all cached human contacts
+func (s *MemoryStore) GetAllCachedHumanContacts() ([]humanlayer.HumanContact, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	contacts := make([]humanlayer.HumanContact, 0, len(s.humanContacts))
+	for _, hc := range s.humanContacts {
+		contacts = append(contacts, *hc)
+	}
+	return contacts, nil
+}
+
+// RemoveFunctionCall removes a function call from the store
+func (s *MemoryStore) RemoveFunctionCall(callID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	fc, ok := s.functionCalls[callID]
+	if !ok {
+		return nil // Already removed
+	}
+
+	// Remove from main map
+	delete(s.functionCalls, callID)
+
+	// Remove from run_id index
+	if fc.RunID != "" {
+		s.removeFromRunIndex(fc.RunID, callID)
+	}
+
+	return nil
+}
+
+// RemoveHumanContact removes a human contact from the store
+func (s *MemoryStore) RemoveHumanContact(callID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	hc, ok := s.humanContacts[callID]
+	if !ok {
+		return nil // Already removed
+	}
+
+	// Remove from main map
+	delete(s.humanContacts, callID)
+
+	// Remove from run_id index
+	if hc.RunID != "" {
+		s.removeFromRunIndex(hc.RunID, callID)
+	}
+
+	return nil
+}
+
 // addToRunIndex adds a call_id to the run_id index
 func (s *MemoryStore) addToRunIndex(runID, callID string) {
 	if _, exists := s.byRunID[runID]; !exists {
@@ -203,4 +269,26 @@ func (s *MemoryStore) addToRunIndex(runID, callID string) {
 	}
 
 	s.byRunID[runID] = append(s.byRunID[runID], callID)
+}
+
+// removeFromRunIndex removes a call_id from the run_id index
+func (s *MemoryStore) removeFromRunIndex(runID, callID string) {
+	ids, exists := s.byRunID[runID]
+	if !exists {
+		return
+	}
+
+	// Filter out the callID
+	newIDs := make([]string, 0, len(ids))
+	for _, id := range ids {
+		if id != callID {
+			newIDs = append(newIDs, id)
+		}
+	}
+
+	if len(newIDs) == 0 {
+		delete(s.byRunID, runID)
+	} else {
+		s.byRunID[runID] = newIDs
+	}
 }

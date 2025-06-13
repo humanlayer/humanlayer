@@ -6,6 +6,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	claudecode "github.com/humanlayer/humanlayer/claudecode-go"
 	"github.com/humanlayer/humanlayer/hld/client"
 	"github.com/humanlayer/humanlayer/hld/rpc"
 	"github.com/humanlayer/humanlayer/hld/session"
@@ -14,6 +15,11 @@ import (
 // Helper functions
 
 func truncate(s string, max int) string {
+	// Replace newlines and other whitespace with spaces first
+	s = strings.ReplaceAll(s, "\n", " ")
+	s = strings.ReplaceAll(s, "\r", " ")
+	s = strings.ReplaceAll(s, "\t", " ")
+
 	if len(s) <= max {
 		return s
 	}
@@ -21,6 +27,38 @@ func truncate(s string, max int) string {
 		return s[:max-3] + "..."
 	}
 	return s[:max]
+}
+
+// preprocessError converts common API errors into user-friendly messages
+func preprocessError(errMsg string) string {
+	// Handle "call already has a response" errors
+	if strings.Contains(errMsg, "call already has a response") {
+		// Extract just the key part of the error
+		if strings.Contains(errMsg, "400 Bad Request") {
+			return "Approval already responded to"
+		}
+		return "Call already has a response"
+	}
+
+	// Handle other common API errors
+	if strings.Contains(errMsg, "409 Conflict") {
+		return "Conflict: Resource already exists"
+	}
+
+	if strings.Contains(errMsg, "404 Not Found") {
+		return "Resource not found"
+	}
+
+	if strings.Contains(errMsg, "500 Internal Server Error") {
+		return "Server error occurred"
+	}
+
+	// Remove excessive technical details like stack traces
+	if idx := strings.Index(errMsg, "\n"); idx > 0 {
+		errMsg = errMsg[:idx]
+	}
+
+	return errMsg
 }
 
 // API command messages
@@ -314,10 +352,22 @@ func listenForEvents(eventChan <-chan rpc.EventNotification) tea.Cmd {
 
 func launchSession(daemonClient client.Client, query, model, workingDir string) tea.Cmd {
 	return func() tea.Msg {
+		// Build MCP config for approvals (matching hlyr/src/commands/launch.ts)
+		mcpConfig := &claudecode.MCPConfig{
+			MCPServers: map[string]claudecode.MCPServer{
+				"approvals": {
+					Command: "npx",
+					Args:    []string{"humanlayer", "mcp", "claude_approvals"},
+				},
+			},
+		}
+
 		req := rpc.LaunchSessionRequest{
-			Query:      query,
-			Model:      model,
-			WorkingDir: workingDir,
+			Query:                query,
+			Model:                model,
+			WorkingDir:           workingDir,
+			MCPConfig:            mcpConfig,
+			PermissionPromptTool: "mcp__approvals__request_permission",
 		}
 
 		resp, err := daemonClient.LaunchSession(req)
@@ -334,12 +384,13 @@ func launchSession(daemonClient client.Client, query, model, workingDir string) 
 
 func sendApproval(daemonClient client.Client, callID string, approved bool, comment string) tea.Cmd {
 	return func() tea.Msg {
-		decision := "denied"
+		var err error
 		if approved {
-			decision = "approved"
+			err = daemonClient.ApproveFunctionCall(callID, comment)
+		} else {
+			err = daemonClient.DenyFunctionCall(callID, comment)
 		}
 
-		err := daemonClient.SendDecision(callID, "function_call", decision, comment)
 		if err != nil {
 			return approvalSentMsg{err: err}
 		}
@@ -350,7 +401,7 @@ func sendApproval(daemonClient client.Client, callID string, approved bool, comm
 
 func sendHumanResponse(daemonClient client.Client, requestID string, response string) tea.Cmd {
 	return func() tea.Msg {
-		err := daemonClient.SendDecision(requestID, "human_contact", "responded", response)
+		err := daemonClient.RespondToHumanContact(requestID, response)
 		if err != nil {
 			return humanResponseSentMsg{err: err}
 		}

@@ -16,11 +16,12 @@ import (
 
 // Manager handles the lifecycle of Claude Code sessions
 type Manager struct {
-	activeProcesses map[string]*claudecode.Session // Maps session ID to active Claude process
-	mu              sync.RWMutex
-	client          *claudecode.Client
-	eventBus        bus.EventBus
-	store           store.ConversationStore
+	activeProcesses   map[string]*claudecode.Session // Maps session ID to active Claude process
+	mu                sync.RWMutex
+	client            *claudecode.Client
+	eventBus          bus.EventBus
+	store             store.ConversationStore
+	approvalReconciler ApprovalReconciler
 }
 
 // Compile-time check that Manager implements SessionManager
@@ -43,6 +44,13 @@ func NewManager(eventBus bus.EventBus, store store.ConversationStore) (*Manager,
 		eventBus:        eventBus,
 		store:           store,
 	}, nil
+}
+
+// SetApprovalReconciler sets the approval reconciler for the session manager
+func (m *Manager) SetApprovalReconciler(reconciler ApprovalReconciler) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.approvalReconciler = reconciler
 }
 
 // LaunchSession starts a new Claude Code session
@@ -131,6 +139,20 @@ func (m *Manager) LaunchSession(ctx context.Context, config claudecode.SessionCo
 	// Monitor session lifecycle in background
 	go m.monitorSession(ctx, sessionID, runID, claudeSession, startTime, config)
 
+	// Reconcile any existing approvals for this run_id
+	if m.approvalReconciler != nil {
+		go func() {
+			// Give the session a moment to start
+			time.Sleep(2 * time.Second)
+			if err := m.approvalReconciler.ReconcileApprovalsForSession(ctx, runID); err != nil {
+				slog.Error("failed to reconcile approvals for session",
+					"session_id", sessionID,
+					"run_id", runID,
+					"error", err)
+			}
+		}()
+	}
+
 	slog.Info("launched Claude session",
 		"session_id", sessionID,
 		"run_id", runID,
@@ -208,6 +230,12 @@ func (m *Manager) monitorSession(ctx context.Context, sessionID, runID string, c
 			}
 			duration := int(endTime.Sub(startTime).Milliseconds())
 			update.DurationMS = &duration
+			if result.NumTurns > 0 {
+				update.NumTurns = &result.NumTurns
+			}
+			if result.Result != "" {
+				update.ResultContent = &result.Result
+			}
 		}
 		if err := m.store.UpdateSession(ctx, sessionID, update); err != nil {
 			slog.Error("failed to update session completion in database", "error", err)
@@ -274,17 +302,47 @@ func (m *Manager) GetSessionInfo(sessionID string) (*Info, error) {
 	}
 
 	info := &Info{
-		ID:        dbSession.ID,
-		RunID:     dbSession.RunID,
-		Status:    Status(dbSession.Status),
-		StartTime: dbSession.CreatedAt,
-		Error:     dbSession.ErrorMessage,
-		Query:     dbSession.Query,
-		Model:     dbSession.Model,
+		ID:              dbSession.ID,
+		RunID:           dbSession.RunID,
+		ClaudeSessionID: dbSession.ClaudeSessionID,
+		Status:          Status(dbSession.Status),
+		StartTime:       dbSession.CreatedAt,
+		LastActivityAt:  dbSession.LastActivityAt,
+		Error:           dbSession.ErrorMessage,
+		Query:           dbSession.Query,
+		Model:           dbSession.Model,
+		WorkingDir:      dbSession.WorkingDir,
 	}
 
 	if dbSession.CompletedAt != nil {
 		info.EndTime = dbSession.CompletedAt
+	}
+
+	// Populate Result field if we have result data
+	if dbSession.ResultContent != "" || dbSession.NumTurns != nil || dbSession.CostUSD != nil || dbSession.DurationMS != nil {
+		result := &claudecode.Result{
+			Type:      "result",
+			Subtype:   "session_completed",
+			Result:    dbSession.ResultContent,
+			SessionID: dbSession.ClaudeSessionID, // Use Claude session ID for consistency
+		}
+
+		if dbSession.CostUSD != nil {
+			result.CostUSD = *dbSession.CostUSD
+			result.TotalCost = *dbSession.CostUSD // Both fields should have same value
+		}
+		if dbSession.NumTurns != nil {
+			result.NumTurns = *dbSession.NumTurns
+		}
+		if dbSession.DurationMS != nil {
+			result.DurationMS = *dbSession.DurationMS
+		}
+		if dbSession.ErrorMessage != "" {
+			result.Error = dbSession.ErrorMessage
+			result.IsError = true
+		}
+
+		info.Result = result
 	}
 
 	return info, nil
@@ -303,13 +361,17 @@ func (m *Manager) ListSessions() []Info {
 	infos := make([]Info, 0, len(dbSessions))
 	for _, dbSession := range dbSessions {
 		info := Info{
-			ID:        dbSession.ID,
-			RunID:     dbSession.RunID,
-			Status:    Status(dbSession.Status),
-			StartTime: dbSession.CreatedAt,
-			Error:     dbSession.ErrorMessage,
-			Query:     dbSession.Query,
-			Model:     dbSession.Model,
+			ID:              dbSession.ID,
+			RunID:           dbSession.RunID,
+			ClaudeSessionID: dbSession.ClaudeSessionID,
+			ParentSessionID: dbSession.ParentSessionID,
+			Status:          Status(dbSession.Status),
+			StartTime:       dbSession.CreatedAt,
+			LastActivityAt:  dbSession.LastActivityAt,
+			Error:           dbSession.ErrorMessage,
+			Query:           dbSession.Query,
+			Model:           dbSession.Model,
+			WorkingDir:      dbSession.WorkingDir,
 		}
 
 		// Set end time if completed
@@ -318,13 +380,49 @@ func (m *Manager) ListSessions() []Info {
 			info.EndTime = dbSession.CompletedAt
 		}
 
-		// TODO: Results are no longer stored in memory
-		// Would need to serialize results to database if we want to preserve them
+		// Populate Result field if we have result data
+		if dbSession.ResultContent != "" || dbSession.NumTurns != nil || dbSession.CostUSD != nil || dbSession.DurationMS != nil {
+			result := &claudecode.Result{
+				Type:      "result",
+				Subtype:   "session_completed",
+				Result:    dbSession.ResultContent,
+				SessionID: dbSession.ClaudeSessionID, // Use Claude session ID for consistency
+			}
+
+			if dbSession.CostUSD != nil {
+				result.CostUSD = *dbSession.CostUSD
+				result.TotalCost = *dbSession.CostUSD // Both fields should have same value
+			}
+			if dbSession.NumTurns != nil {
+				result.NumTurns = *dbSession.NumTurns
+			}
+			if dbSession.DurationMS != nil {
+				result.DurationMS = *dbSession.DurationMS
+			}
+			if dbSession.ErrorMessage != "" {
+				result.Error = dbSession.ErrorMessage
+				result.IsError = true
+			}
+
+			info.Result = result
+		}
 
 		infos = append(infos, info)
 	}
 
 	return infos
+}
+
+// updateSessionActivity updates the last_activity_at timestamp for a session
+func (m *Manager) updateSessionActivity(ctx context.Context, sessionID string) {
+	now := time.Now()
+	if err := m.store.UpdateSession(ctx, sessionID, store.SessionUpdate{
+		LastActivityAt: &now,
+	}); err != nil {
+		slog.Warn("failed to update session activity timestamp",
+			"session_id", sessionID,
+			"error", err)
+	}
 }
 
 // processStreamEvent processes a streaming event and stores it in the database
@@ -369,6 +467,9 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 						return err
 					}
 
+					// Update session activity timestamp for text messages
+					m.updateSessionActivity(ctx, sessionID)
+
 				case "tool_use":
 					// Tool call
 					inputJSON, err := json.Marshal(content.Input)
@@ -389,6 +490,9 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 						return err
 					}
 
+					// Update session activity timestamp for tool calls
+					m.updateSessionActivity(ctx, sessionID)
+
 				case "tool_result":
 					// Tool result (in user message)
 					convEvent := &store.ConversationEvent{
@@ -402,6 +506,9 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 					if err := m.store.AddConversationEvent(ctx, convEvent); err != nil {
 						return err
 					}
+
+					// Update session activity timestamp for tool results
+					m.updateSessionActivity(ctx, sessionID)
 
 					// Mark the corresponding tool call as completed
 					if err := m.store.MarkToolCallCompleted(ctx, content.ToolUseID, sessionID); err != nil {
@@ -422,11 +529,13 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 			status = store.SessionStatusFailed
 		}
 
+		now := time.Now()
 		update := store.SessionUpdate{
-			Status:      &status,
-			CompletedAt: &[]time.Time{time.Now()}[0],
-			CostUSD:     &event.CostUSD,
-			DurationMS:  &event.DurationMS,
+			Status:         &status,
+			CompletedAt:    &now,
+			LastActivityAt: &now,
+			CostUSD:        &event.CostUSD,
+			DurationMS:     &event.DurationMS,
 		}
 		if event.Error != "" {
 			update.ErrorMessage = &event.Error
@@ -462,7 +571,9 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 		Query:        req.Query,
 		SessionID:    parentSession.ClaudeSessionID, // This triggers --resume flag
 		OutputFormat: claudecode.OutputStreamJSON,   // Always use streaming JSON
-		// Model and WorkingDir are inherited from Claude's internal state
+		// Inherit Model and WorkingDir from parent session for database storage
+		Model:      claudecode.Model(parentSession.Model),
+		WorkingDir: parentSession.WorkingDir,
 	}
 
 	// Apply optional overrides
@@ -498,6 +609,13 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 	// Store session in database with parent reference
 	dbSession := store.NewSessionFromConfig(sessionID, runID, config)
 	dbSession.ParentSessionID = req.ParentSessionID
+	// Explicitly ensure inherited values are stored (in case NewSessionFromConfig didn't capture them)
+	if dbSession.Model == "" && parentSession.Model != "" {
+		dbSession.Model = parentSession.Model
+	}
+	if dbSession.WorkingDir == "" && parentSession.WorkingDir != "" {
+		dbSession.WorkingDir = parentSession.WorkingDir
+	}
 	// Note: ClaudeSessionID will be captured from streaming events (will be different from parent)
 	if err := m.store.CreateSession(ctx, dbSession); err != nil {
 		return nil, fmt.Errorf("failed to store session in database: %w", err)
@@ -561,6 +679,21 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 
 	// Monitor session lifecycle in background
 	go m.monitorSession(ctx, sessionID, runID, claudeSession, time.Now(), config)
+
+	// Reconcile any existing approvals for this run_id (same run_id is reused for continuations)
+	if m.approvalReconciler != nil {
+		go func() {
+			// Give the session a moment to start
+			time.Sleep(2 * time.Second)
+			if err := m.approvalReconciler.ReconcileApprovalsForSession(ctx, runID); err != nil {
+				slog.Error("failed to reconcile approvals for continued session",
+					"session_id", sessionID,
+					"parent_session_id", req.ParentSessionID,
+					"run_id", runID,
+					"error", err)
+			}
+		}()
+	}
 
 	slog.Info("continued Claude session",
 		"session_id", sessionID,

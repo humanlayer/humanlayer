@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"strings"
 	"testing"
 	"time"
 
@@ -193,7 +194,7 @@ func TestIntegrationContinueSession(t *testing.T) {
 			Status:          store.SessionStatusCompleted,
 			Query:           "original query",
 			Model:           "claude-3-opus",
-			WorkingDir:      "/test/dir",
+			WorkingDir:      "", // Empty working dir to avoid chdir errors in tests
 			CreatedAt:       time.Now(),
 			LastActivityAt:  time.Now(),
 			CompletedAt:     &time.Time{},
@@ -240,7 +241,9 @@ func TestIntegrationContinueSession(t *testing.T) {
 		result, err := sendRPC(t, "continueSession", req)
 		if err != nil {
 			// Expected - Claude binary might not exist in test environment
-			if err.Error() != "failed to continue session: failed to launch resumed Claude session: failed to start claude: exec: \"claude\": executable file not found in $PATH" {
+			expectedErr1 := "failed to continue session: failed to launch resumed Claude session: failed to start claude: exec: \"claude\": executable file not found in $PATH"
+			expectedErr2 := "failed to continue session: failed to launch resumed Claude session: failed to start claude: chdir"
+			if err.Error() != expectedErr1 && !strings.Contains(err.Error(), expectedErr2) {
 				t.Errorf("Unexpected error: %v", err)
 			}
 			// Even if Claude fails to launch, we should have created the session

@@ -85,6 +85,8 @@ func (s *SQLiteStore) initSchema() error {
 		cost_usd REAL,
 		total_tokens INTEGER,
 		duration_ms INTEGER,
+		num_turns INTEGER,
+		result_content TEXT,
 		error_message TEXT
 	);
 	CREATE INDEX IF NOT EXISTS idx_sessions_claude ON sessions(claude_session_id);
@@ -202,37 +204,56 @@ func (s *SQLiteStore) CreateSession(ctx context.Context, session *Session) error
 
 // UpdateSession updates session fields
 func (s *SQLiteStore) UpdateSession(ctx context.Context, sessionID string, updates SessionUpdate) error {
-	query := `UPDATE sessions SET last_activity_at = CURRENT_TIMESTAMP`
+	query := `UPDATE sessions SET`
 	args := []interface{}{}
+	setParts := []string{}
 
+	if updates.LastActivityAt != nil {
+		setParts = append(setParts, "last_activity_at = ?")
+		args = append(args, *updates.LastActivityAt)
+	}
 	if updates.ClaudeSessionID != nil {
-		query += ", claude_session_id = ?"
+		setParts = append(setParts, "claude_session_id = ?")
 		args = append(args, *updates.ClaudeSessionID)
 	}
 	if updates.Status != nil {
-		query += ", status = ?"
+		setParts = append(setParts, "status = ?")
 		args = append(args, *updates.Status)
 	}
 	if updates.CompletedAt != nil {
-		query += ", completed_at = ?"
+		setParts = append(setParts, "completed_at = ?")
 		args = append(args, *updates.CompletedAt)
 	}
 	if updates.CostUSD != nil {
-		query += ", cost_usd = ?"
+		setParts = append(setParts, "cost_usd = ?")
 		args = append(args, *updates.CostUSD)
 	}
 	if updates.TotalTokens != nil {
-		query += ", total_tokens = ?"
+		setParts = append(setParts, "total_tokens = ?")
 		args = append(args, *updates.TotalTokens)
 	}
 	if updates.DurationMS != nil {
-		query += ", duration_ms = ?"
+		setParts = append(setParts, "duration_ms = ?")
 		args = append(args, *updates.DurationMS)
 	}
+	if updates.NumTurns != nil {
+		setParts = append(setParts, "num_turns = ?")
+		args = append(args, *updates.NumTurns)
+	}
+	if updates.ResultContent != nil {
+		setParts = append(setParts, "result_content = ?")
+		args = append(args, *updates.ResultContent)
+	}
 	if updates.ErrorMessage != nil {
-		query += ", error_message = ?"
+		setParts = append(setParts, "error_message = ?")
 		args = append(args, *updates.ErrorMessage)
 	}
+
+	if len(setParts) == 0 {
+		return fmt.Errorf("no fields to update")
+	}
+
+	query += " " + strings.Join(setParts, ", ")
 
 	query += " WHERE id = ?"
 	args = append(args, sessionID)
@@ -260,7 +281,7 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 		SELECT id, run_id, claude_session_id, parent_session_id,
 			query, model, working_dir, max_turns, system_prompt, custom_instructions,
 			status, created_at, last_activity_at, completed_at,
-			cost_usd, total_tokens, duration_ms, error_message
+			cost_usd, total_tokens, duration_ms, num_turns, result_content, error_message
 		FROM sessions WHERE id = ?
 	`
 
@@ -268,15 +289,15 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 	var claudeSessionID, parentSessionID, model, workingDir, systemPrompt, customInstructions sql.NullString
 	var completedAt sql.NullTime
 	var costUSD sql.NullFloat64
-	var totalTokens, durationMS sql.NullInt64
+	var totalTokens, durationMS, numTurns sql.NullInt64
+	var resultContent, errorMessage sql.NullString
 
-	var errorMessage sql.NullString
 	err := s.db.QueryRowContext(ctx, query, sessionID).Scan(
 		&session.ID, &session.RunID, &claudeSessionID, &parentSessionID,
 		&session.Query, &model, &workingDir, &session.MaxTurns,
 		&systemPrompt, &customInstructions,
 		&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
-		&costUSD, &totalTokens, &durationMS, &errorMessage,
+		&costUSD, &totalTokens, &durationMS, &numTurns, &resultContent, &errorMessage,
 	)
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("session not found: %s", sessionID)
@@ -292,6 +313,7 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 	session.WorkingDir = workingDir.String
 	session.SystemPrompt = systemPrompt.String
 	session.CustomInstructions = customInstructions.String
+	session.ResultContent = resultContent.String
 	session.ErrorMessage = errorMessage.String
 	if completedAt.Valid {
 		session.CompletedAt = &completedAt.Time
@@ -307,6 +329,10 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 		duration := int(durationMS.Int64)
 		session.DurationMS = &duration
 	}
+	if numTurns.Valid {
+		turns := int(numTurns.Int64)
+		session.NumTurns = &turns
+	}
 
 	return &session, nil
 }
@@ -317,7 +343,7 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 		SELECT id, run_id, claude_session_id, parent_session_id,
 			query, model, working_dir, max_turns, system_prompt, custom_instructions,
 			status, created_at, last_activity_at, completed_at,
-			cost_usd, total_tokens, duration_ms, error_message
+			cost_usd, total_tokens, duration_ms, num_turns, result_content, error_message
 		FROM sessions
 		WHERE run_id = ?
 	`
@@ -326,15 +352,15 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 	var claudeSessionID, parentSessionID, model, workingDir, systemPrompt, customInstructions sql.NullString
 	var completedAt sql.NullTime
 	var costUSD sql.NullFloat64
-	var totalTokens, durationMS sql.NullInt64
-	var errorMessage sql.NullString
+	var totalTokens, durationMS, numTurns sql.NullInt64
+	var resultContent, errorMessage sql.NullString
 
 	err := s.db.QueryRowContext(ctx, query, runID).Scan(
 		&session.ID, &session.RunID, &claudeSessionID, &parentSessionID,
 		&session.Query, &model, &workingDir, &session.MaxTurns,
 		&systemPrompt, &customInstructions,
 		&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
-		&costUSD, &totalTokens, &durationMS, &errorMessage,
+		&costUSD, &totalTokens, &durationMS, &numTurns, &resultContent, &errorMessage,
 	)
 	if err == sql.ErrNoRows {
 		return nil, nil // No session found
@@ -350,6 +376,7 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 	session.WorkingDir = workingDir.String
 	session.SystemPrompt = systemPrompt.String
 	session.CustomInstructions = customInstructions.String
+	session.ResultContent = resultContent.String
 	session.ErrorMessage = errorMessage.String
 	if completedAt.Valid {
 		session.CompletedAt = &completedAt.Time
@@ -365,6 +392,10 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 		duration := int(durationMS.Int64)
 		session.DurationMS = &duration
 	}
+	if numTurns.Valid {
+		turns := int(numTurns.Int64)
+		session.NumTurns = &turns
+	}
 
 	return &session, nil
 }
@@ -375,9 +406,9 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 		SELECT id, run_id, claude_session_id, parent_session_id,
 			query, model, working_dir, max_turns, system_prompt, custom_instructions,
 			status, created_at, last_activity_at, completed_at,
-			cost_usd, total_tokens, duration_ms, error_message
+			cost_usd, total_tokens, duration_ms, num_turns, result_content, error_message
 		FROM sessions
-		ORDER BY created_at DESC
+		ORDER BY last_activity_at DESC
 	`
 
 	rows, err := s.db.QueryContext(ctx, query)
@@ -392,15 +423,15 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 		var claudeSessionID, parentSessionID, model, workingDir, systemPrompt, customInstructions sql.NullString
 		var completedAt sql.NullTime
 		var costUSD sql.NullFloat64
-		var totalTokens, durationMS sql.NullInt64
+		var totalTokens, durationMS, numTurns sql.NullInt64
+		var resultContent, errorMessage sql.NullString
 
-		var errorMessage sql.NullString
 		err := rows.Scan(
 			&session.ID, &session.RunID, &claudeSessionID, &parentSessionID,
 			&session.Query, &model, &workingDir, &session.MaxTurns,
 			&systemPrompt, &customInstructions,
 			&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
-			&costUSD, &totalTokens, &durationMS, &errorMessage,
+			&costUSD, &totalTokens, &durationMS, &numTurns, &resultContent, &errorMessage,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan session: %w", err)
@@ -413,6 +444,7 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 		session.WorkingDir = workingDir.String
 		session.SystemPrompt = systemPrompt.String
 		session.CustomInstructions = customInstructions.String
+		session.ResultContent = resultContent.String
 		session.ErrorMessage = errorMessage.String
 		if completedAt.Valid {
 			session.CompletedAt = &completedAt.Time
@@ -427,6 +459,10 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 		if durationMS.Valid {
 			duration := int(durationMS.Int64)
 			session.DurationMS = &duration
+		}
+		if numTurns.Valid {
+			turns := int(numTurns.Int64)
+			session.NumTurns = &turns
 		}
 
 		sessions = append(sessions, &session)
@@ -620,6 +656,7 @@ func (s *SQLiteStore) GetSessionConversation(ctx context.Context, sessionID stri
 
 // GetPendingToolCall finds the most recent uncompleted tool call for a given session and tool name
 func (s *SQLiteStore) GetPendingToolCall(ctx context.Context, sessionID string, toolName string) (*ConversationEvent, error) {
+	// Find the most recent uncompleted tool call by sequence number (temporal proximity)
 	query := `
 		SELECT id, session_id, claude_session_id, sequence, event_type, created_at,
 			role, content,
@@ -631,7 +668,7 @@ func (s *SQLiteStore) GetPendingToolCall(ctx context.Context, sessionID string, 
 		  AND session_id = ?
 		  AND event_type = 'tool_call'
 		  AND is_completed = FALSE
-		ORDER BY created_at DESC
+		ORDER BY sequence DESC  -- Most recent first
 		LIMIT 1
 	`
 
@@ -652,6 +689,85 @@ func (s *SQLiteStore) GetPendingToolCall(ctx context.Context, sessionID string, 
 	}
 
 	return event, nil
+}
+
+// GetUncorrelatedPendingToolCall finds the most recent uncompleted tool call without approval correlation
+func (s *SQLiteStore) GetUncorrelatedPendingToolCall(ctx context.Context, sessionID string, toolName string) (*ConversationEvent, error) {
+	// Find the most recent uncompleted tool call by sequence number without approval
+	query := `
+		SELECT id, session_id, claude_session_id, sequence, event_type, created_at,
+			role, content,
+			tool_id, tool_name, tool_input_json,
+			tool_result_for_id, tool_result_content,
+			is_completed, approval_status, approval_id
+		FROM conversation_events
+		WHERE tool_name = ?
+		  AND session_id = ?
+		  AND event_type = 'tool_call'
+		  AND is_completed = FALSE
+		  AND (approval_status IS NULL OR approval_status = '')
+		ORDER BY sequence DESC  -- Most recent first
+		LIMIT 1
+	`
+
+	event := &ConversationEvent{}
+	err := s.db.QueryRowContext(ctx, query, toolName, sessionID).Scan(
+		&event.ID, &event.SessionID, &event.ClaudeSessionID,
+		&event.Sequence, &event.EventType, &event.CreatedAt,
+		&event.Role, &event.Content,
+		&event.ToolID, &event.ToolName, &event.ToolInputJSON,
+		&event.ToolResultForID, &event.ToolResultContent,
+		&event.IsCompleted, &event.ApprovalStatus, &event.ApprovalID,
+	)
+	if err == sql.ErrNoRows {
+		return nil, nil // No pending tool call found
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get uncorrelated pending tool call: %w", err)
+	}
+
+	return event, nil
+}
+
+// GetPendingToolCalls finds all uncompleted tool calls for a given session
+func (s *SQLiteStore) GetPendingToolCalls(ctx context.Context, sessionID string) ([]*ConversationEvent, error) {
+	query := `
+		SELECT id, session_id, claude_session_id, sequence, event_type, created_at,
+			role, content,
+			tool_id, tool_name, tool_input_json,
+			tool_result_for_id, tool_result_content,
+			is_completed, approval_status, approval_id
+		FROM conversation_events
+		WHERE session_id = ?
+		  AND event_type = 'tool_call'
+		  AND is_completed = FALSE
+		ORDER BY sequence DESC
+	`
+
+	rows, err := s.db.QueryContext(ctx, query, sessionID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get pending tool calls: %w", err)
+	}
+	defer rows.Close()
+
+	var events []*ConversationEvent
+	for rows.Next() {
+		event := &ConversationEvent{}
+		err := rows.Scan(
+			&event.ID, &event.SessionID, &event.ClaudeSessionID,
+			&event.Sequence, &event.EventType, &event.CreatedAt,
+			&event.Role, &event.Content,
+			&event.ToolID, &event.ToolName, &event.ToolInputJSON,
+			&event.ToolResultForID, &event.ToolResultContent,
+			&event.IsCompleted, &event.ApprovalStatus, &event.ApprovalID,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan event: %w", err)
+		}
+		events = append(events, event)
+	}
+
+	return events, nil
 }
 
 // MarkToolCallCompleted marks a tool call as completed when its result is received
@@ -725,6 +841,42 @@ func (s *SQLiteStore) CorrelateApproval(ctx context.Context, sessionID string, t
 	rows, _ := result.RowsAffected()
 	slog.Info("updated tool call with approval",
 		"event_id", toolCall.ID,
+		"rows_affected", rows)
+
+	return nil
+}
+
+// CorrelateApprovalByToolID correlates an approval with a specific tool call by tool_id
+func (s *SQLiteStore) CorrelateApprovalByToolID(ctx context.Context, sessionID string, toolID string, approvalID string) error {
+	// Update the tool call directly by tool_id
+	updateQuery := `
+		UPDATE conversation_events
+		SET approval_status = 'pending', approval_id = ?
+		WHERE session_id = ?
+		  AND tool_id = ?
+		  AND event_type = 'tool_call'
+		  AND is_completed = FALSE
+		  AND (approval_status IS NULL OR approval_status = '')
+	`
+
+	result, err := s.db.ExecContext(ctx, updateQuery, approvalID, sessionID, toolID)
+	if err != nil {
+		return fmt.Errorf("failed to correlate approval by tool_id: %w", err)
+	}
+
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		slog.Debug("no matching tool call found for approval by tool_id",
+			"session_id", sessionID,
+			"tool_id", toolID,
+			"approval_id", approvalID)
+		return nil // Not an error
+	}
+
+	slog.Info("correlated approval with tool call by tool_id",
+		"tool_id", toolID,
+		"session_id", sessionID,
+		"approval_id", approvalID,
 		"rows_affected", rows)
 
 	return nil
