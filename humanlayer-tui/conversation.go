@@ -10,8 +10,8 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/humanlayer/humanlayer/hld/client"
 	"github.com/humanlayer/humanlayer/hld/rpc"
+	"github.com/humanlayer/humanlayer/humanlayer-tui/internal/domain"
 	"github.com/humanlayer/humanlayer/humanlayer-tui/internal/util"
 )
 
@@ -121,7 +121,7 @@ func (cm *conversationModel) startPolling() tea.Cmd {
 
 	return func() tea.Msg {
 		<-cm.pollTicker.C
-		return pollRefreshMsg{sessionID: cm.sessionID}
+		return domain.PollRefreshMsg{SessionID: cm.sessionID}
 	}
 }
 
@@ -208,14 +208,14 @@ func (cm *conversationModel) Update(msg tea.Msg, m *model) tea.Cmd {
 		// Regular conversation view navigation
 		return cm.updateConversationView(msg, m)
 
-	case fetchConversationMsg:
+	case domain.FetchConversationMsg:
 		cm.loading = false
-		if msg.err != nil {
-			cm.error = msg.err
+		if msg.Err != nil {
+			cm.error = msg.Err
 			return nil
 		}
-		cm.session = msg.session
-		cm.events = msg.events
+		cm.session = msg.Session
+		cm.events = msg.Events
 		cm.lastRefresh = time.Now()
 
 		// If this is a child session with missing data, use parent data stored during resume
@@ -255,13 +255,13 @@ func (cm *conversationModel) Update(msg tea.Msg, m *model) tea.Cmd {
 
 		return nil
 
-	case pollRefreshMsg:
+	case domain.PollRefreshMsg:
 		// Only refresh if we're still viewing the same session and it's active
-		if msg.sessionID == cm.sessionID && cm.isActiveSession() {
+		if msg.SessionID == cm.sessionID && cm.isActiveSession() {
 			// Remember scroll position before refresh
 			cm.wasAtBottom = cm.viewport.AtBottom()
 			// Silently refresh in background - don't show loading state
-			cmds = append(cmds, fetchConversationSilent(m.daemonClient, cm.sessionID))
+			cmds = append(cmds, fetchConversationSilent(m.apiClient, cm.sessionID))
 			// Continue polling
 			if cm.isPolling {
 				cmds = append(cmds, cm.startPolling())
@@ -269,26 +269,26 @@ func (cm *conversationModel) Update(msg tea.Msg, m *model) tea.Cmd {
 		}
 		return tea.Batch(cmds...)
 
-	case approvalSentMsg:
-		if msg.err != nil {
-			cm.error = msg.err
+	case domain.ApprovalSentMsg:
+		if msg.Err != nil {
+			cm.error = msg.Err
 			return nil
 		}
 		// Clear approval state and refresh conversation
 		cm.clearApprovalState()
 		// Invalidate cache since approval status changed
 		m.conversationCache.Invalidate(cm.sessionID)
-		return fetchConversation(m.daemonClient, cm.sessionID)
+		return fetchConversation(m.apiClient, cm.sessionID)
 
-	case continueSessionMsg:
-		if msg.err != nil {
-			cm.error = msg.err
+	case domain.ContinueSessionMsg:
+		if msg.Err != nil {
+			cm.error = msg.Err
 			return nil
 		}
 		// Navigate to the new session
 		cm.clearResumeState()
-		cm.setSession(msg.sessionID)
-		return fetchConversation(m.daemonClient, msg.sessionID)
+		cm.setSession(msg.SessionID)
+		return fetchConversation(m.apiClient, msg.SessionID)
 	}
 
 	return tea.Batch(cmds...)
@@ -314,7 +314,7 @@ func (cm *conversationModel) updateConversationView(msg tea.KeyMsg, m *model) te
 	case key.Matches(msg, keys.Approve):
 		// Quick approve pending approval
 		if cm.pendingApproval != nil && cm.pendingApproval.ApprovalID != "" {
-			return sendApproval(m.daemonClient, cm.pendingApproval.ApprovalID, true, "")
+			return sendApproval(m.apiClient, cm.pendingApproval.ApprovalID, true, "")
 		}
 
 	case key.Matches(msg, keys.Deny):
@@ -340,13 +340,13 @@ func (cm *conversationModel) updateConversationView(msg tea.KeyMsg, m *model) te
 		// Jump to parent session if this is a continued session
 		if cm.session != nil && cm.session.ParentSessionID != "" {
 			cm.setSession(cm.session.ParentSessionID)
-			return fetchConversation(m.daemonClient, cm.session.ParentSessionID)
+			return fetchConversation(m.apiClient, cm.session.ParentSessionID)
 		}
 
 	case key.Matches(msg, keys.Refresh):
 		// Refresh conversation - invalidate cache to force fresh data
 		m.conversationCache.Invalidate(cm.sessionID)
-		return fetchConversation(m.daemonClient, cm.sessionID)
+		return fetchConversation(m.apiClient, cm.sessionID)
 	}
 
 	return nil
@@ -365,7 +365,7 @@ func (cm *conversationModel) updateApprovalInput(msg tea.KeyMsg, m *model) tea.C
 			comment := cm.approvalInput.Value()
 			approvalID := cm.pendingApproval.ApprovalID
 			cm.clearApprovalState()
-			return sendApproval(m.daemonClient, approvalID, false, comment)
+			return sendApproval(m.apiClient, approvalID, false, comment)
 		}
 		cm.clearApprovalState()
 		return nil
@@ -394,7 +394,7 @@ func (cm *conversationModel) updateResumeInput(msg tea.KeyMsg, m *model) tea.Cmd
 				// Store parent session data for inheritance
 				cm.parentModel = cm.session.Model
 				cm.parentWorkingDir = cm.session.WorkingDir
-				return continueSession(m.daemonClient, cm.sessionID, query)
+				return continueSession(m.apiClient, cm.sessionID, query)
 			}
 		}
 		cm.clearResumeState()
@@ -778,102 +778,4 @@ func (cm *conversationModel) renderInputPrompts(m *model) string {
 	return s.String()
 }
 
-// Message types for conversation functionality
-
-type fetchConversationMsg struct {
-	session *rpc.SessionState
-	events  []rpc.ConversationEvent
-	err     error
-}
-
-type continueSessionMsg struct {
-	sessionID       string
-	claudeSessionID string
-	err             error
-}
-
-type pollRefreshMsg struct {
-	sessionID string
-}
-
-// API functions for conversation functionality
-
-func fetchConversation(daemonClient client.Client, sessionID string) tea.Cmd {
-	return func() tea.Msg {
-		var session *rpc.SessionState
-		var events []rpc.ConversationEvent
-
-		// Fetch session state first
-		if sessionID == "" {
-			return fetchConversationMsg{err: fmt.Errorf("no session ID provided")}
-		}
-
-		sessionResp, err := daemonClient.GetSessionState(sessionID)
-		if err != nil {
-			return fetchConversationMsg{err: err}
-		}
-		session = &sessionResp.Session
-
-		// Fetch conversation events using session ID
-		convResp, err := daemonClient.GetConversation(sessionID)
-		if err != nil {
-			return fetchConversationMsg{err: err}
-		}
-
-		events = convResp.Events
-
-		return fetchConversationMsg{
-			session: session,
-			events:  events,
-		}
-	}
-}
-
-func continueSession(daemonClient client.Client, sessionID, query string) tea.Cmd {
-	return func() tea.Msg {
-		resp, err := daemonClient.ContinueSession(rpc.ContinueSessionRequest{
-			SessionID: sessionID,
-			Query:     query,
-		})
-		if err != nil {
-			return continueSessionMsg{err: err}
-		}
-
-		return continueSessionMsg{
-			sessionID:       resp.SessionID,
-			claudeSessionID: resp.ClaudeSessionID,
-		}
-	}
-}
-
-// fetchConversationSilent fetches conversation without showing loading state (for polling)
-func fetchConversationSilent(daemonClient client.Client, sessionID string) tea.Cmd {
-	return func() tea.Msg {
-		var session *rpc.SessionState
-		var events []rpc.ConversationEvent
-
-		// Fetch session state first
-		if sessionID == "" {
-			return fetchConversationMsg{err: fmt.Errorf("no session ID provided")}
-		}
-
-		sessionResp, err := daemonClient.GetSessionState(sessionID)
-		if err != nil {
-			return fetchConversationMsg{err: err}
-		}
-		session = &sessionResp.Session
-
-		// Fetch conversation events using session ID
-		convResp, err := daemonClient.GetConversation(sessionID)
-		if err != nil {
-			return fetchConversationMsg{err: err}
-		}
-
-		events = convResp.Events
-
-		return fetchConversationMsg{
-			session: session,
-			events:  events,
-		}
-	}
-}
+// API helper functions that delegate to the API layer defined in api.go

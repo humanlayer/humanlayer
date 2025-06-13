@@ -83,13 +83,13 @@ func (am *approvalModel) Update(msg tea.Msg, m *model) tea.Cmd {
 			return am.updateFeedbackView(msg, m)
 		}
 
-	case fetchRequestsMsg:
-		if msg.err != nil {
-			m.err = msg.err
-			m.fullError = msg.err
+	case domain.FetchRequestsMsg:
+		if msg.Err != nil {
+			m.err = msg.Err
+			m.fullError = msg.Err
 			return nil
 		}
-		am.requests = msg.requests
+		am.requests = msg.Requests
 		m.pendingApprovalCount = len(am.requests)
 
 		// Preserve cursor position if possible
@@ -98,15 +98,15 @@ func (am *approvalModel) Update(msg tea.Msg, m *model) tea.Cmd {
 		}
 		return nil
 
-	case approvalSentMsg:
-		if msg.err != nil {
-			m.err = msg.err
-			m.fullError = msg.err
+	case domain.ApprovalSentMsg:
+		if msg.Err != nil {
+			m.err = msg.Err
+			m.fullError = msg.Err
 			return nil
 		}
 		// Remove the approved/denied request from the list
 		for i, req := range am.requests {
-			if req.ID == msg.requestID {
+			if req.ID == msg.RequestID {
 				am.requests = append(am.requests[:i], am.requests[i+1:]...)
 				break
 			}
@@ -120,17 +120,17 @@ func (am *approvalModel) Update(msg tea.Msg, m *model) tea.Cmd {
 		am.selectedRequest = nil
 		// Trigger layout update when returning to list view
 		m.updateAllViewSizes()
-		return fetchRequests(m.daemonClient)
+		return fetchRequests(m.apiClient)
 
-	case humanResponseSentMsg:
-		if msg.err != nil {
-			m.err = msg.err
-			m.fullError = msg.err
+	case domain.HumanResponseSentMsg:
+		if msg.Err != nil {
+			m.err = msg.Err
+			m.fullError = msg.Err
 			return nil
 		}
 		// Remove the responded request from the list
 		for i, req := range am.requests {
-			if req.ID == msg.requestID {
+			if req.ID == msg.RequestID {
 				am.requests = append(am.requests[:i], am.requests[i+1:]...)
 				break
 			}
@@ -144,7 +144,7 @@ func (am *approvalModel) Update(msg tea.Msg, m *model) tea.Cmd {
 		am.selectedRequest = nil
 		// Trigger layout update when returning to list view
 		m.updateAllViewSizes()
-		return fetchRequests(m.daemonClient)
+		return fetchRequests(m.apiClient)
 	}
 
 	return nil
@@ -181,7 +181,7 @@ func (am *approvalModel) updateListView(msg tea.KeyMsg, m *model) tea.Cmd {
 		if am.cursor < len(am.requests) {
 			req := am.requests[am.cursor]
 			if req.Type == domain.ApprovalRequest {
-				return sendApproval(m.daemonClient, req.CallID, true, "")
+				return sendApproval(m.apiClient, req.CallID, true, "")
 			}
 		}
 
@@ -198,7 +198,7 @@ func (am *approvalModel) updateListView(msg tea.KeyMsg, m *model) tea.Cmd {
 		}
 
 	case key.Matches(msg, keys.Refresh):
-		return fetchRequests(m.daemonClient)
+		return fetchRequests(m.apiClient)
 	}
 
 	return nil
@@ -215,7 +215,7 @@ func (am *approvalModel) updateDetailView(msg tea.KeyMsg, m *model) tea.Cmd {
 
 	case key.Matches(msg, keys.Approve):
 		if am.selectedRequest != nil && am.selectedRequest.Type == domain.ApprovalRequest {
-			return sendApproval(m.daemonClient, am.selectedRequest.CallID, true, "")
+			return sendApproval(m.apiClient, am.selectedRequest.CallID, true, "")
 		}
 
 	case key.Matches(msg, keys.Deny):
@@ -250,10 +250,10 @@ func (am *approvalModel) updateFeedbackView(msg tea.KeyMsg, m *model) tea.Cmd {
 			feedback := am.feedbackInput.Value()
 			if am.feedbackFor.Type == domain.ApprovalRequest {
 				// For approvals, send with comment
-				return sendApproval(m.daemonClient, am.feedbackFor.CallID, am.isApproving, feedback)
+				return sendApproval(m.apiClient, am.feedbackFor.CallID, am.isApproving, feedback)
 			} else {
 				// For human contact, send response
-				return sendHumanResponse(m.daemonClient, am.feedbackFor.ID, feedback)
+				return sendHumanResponse(m.apiClient, am.feedbackFor.ID, feedback)
 			}
 		}
 

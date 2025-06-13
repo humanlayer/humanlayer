@@ -12,12 +12,13 @@ import (
 	"github.com/humanlayer/humanlayer/hld/bus"
 	"github.com/humanlayer/humanlayer/hld/client"
 	"github.com/humanlayer/humanlayer/hld/rpc"
+	"github.com/humanlayer/humanlayer/humanlayer-tui/internal/api"
 	"github.com/humanlayer/humanlayer/humanlayer-tui/internal/domain"
 	"github.com/humanlayer/humanlayer/humanlayer-tui/internal/util"
 )
 
 type model struct {
-	daemonClient  client.Client
+	apiClient     api.Client
 	width, height int
 
 	// Tab management
@@ -173,8 +174,11 @@ func newModel() model {
 			"Error: ", err)
 	}
 
+	// Create API client wrapper
+	apiClient := api.NewClient(daemonClient)
+
 	m := model{
-		daemonClient: daemonClient,
+		apiClient: apiClient,
 		// Initialize tab management
 		activeTab: domain.ApprovalsTab,
 		tabNames:  []string{"Approvals", "Sessions"},
@@ -208,9 +212,9 @@ func expandSocketPath(socketPath string) string {
 func (m model) Init() tea.Cmd {
 	// Initial commands to run
 	return tea.Batch(
-		fetchRequests(m.daemonClient),
-		fetchSessions(m.daemonClient),
-		subscribeToEvents(m.daemonClient),
+		fetchRequests(m.apiClient),
+		fetchSessions(m.apiClient),
+		subscribeToEvents(m.apiClient),
 	)
 }
 
@@ -296,20 +300,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return newModel, tabCmd
 		}
 
-	case subscriptionMsg:
-		if msg.err != nil {
-			m.err = msg.err
-			m.fullError = msg.err
+	case domain.SubscriptionMsg:
+		if msg.Err != nil {
+			m.err = msg.Err
+			m.fullError = msg.Err
 			return m, nil
 		}
 		m.subscribed = true
-		m.eventChannel = msg.eventChannel
+		m.eventChannel = msg.EventChannel
 		// Start listening for events
-		return m, listenForEvents(msg.eventChannel)
+		return m, listenForEvents(m.apiClient, msg.EventChannel)
 
-	case eventNotificationMsg:
+	case domain.EventNotificationMsg:
 		// Handle real-time events
-		switch msg.event.Event.Type {
+		switch msg.Event.Event.Type {
 		case bus.EventNewApproval:
 			// Show notification for new approvals (only if not already on approvals tab)
 			if m.activeTab != domain.ApprovalsTab && m.getCurrentViewState() != domain.ConversationView {
@@ -318,26 +322,26 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.notificationShowTime = time.Now()
 			}
 			// Refresh approvals
-			cmds = append(cmds, fetchRequests(m.daemonClient))
+			cmds = append(cmds, fetchRequests(m.apiClient))
 		case bus.EventApprovalResolved:
 			// Refresh approvals on approval resolution
 			if m.activeTab == domain.ApprovalsTab {
-				cmds = append(cmds, fetchRequests(m.daemonClient))
+				cmds = append(cmds, fetchRequests(m.apiClient))
 			}
 		case bus.EventSessionStatusChanged:
 			// Refresh sessions on session events
 			if m.activeTab == domain.SessionsTab {
-				cmds = append(cmds, fetchSessions(m.daemonClient))
+				cmds = append(cmds, fetchSessions(m.apiClient))
 			}
 		}
 		// Continue listening for more events
 		if m.eventChannel != nil {
-			cmds = append(cmds, listenForEvents(m.eventChannel))
+			cmds = append(cmds, listenForEvents(m.apiClient, m.eventChannel))
 		}
 
-	case errMsg:
-		m.err = msg.err
-		m.fullError = msg.err
+	case domain.ErrMsg:
+		m.err = msg.Err
+		m.fullError = msg.Err
 		return m, nil
 	}
 
@@ -498,9 +502,9 @@ func (m model) handleTabSwitching(msg tea.KeyMsg) (bool, tea.Model, tea.Cmd) {
 func (m model) fetchDataForTab(tab domain.Tab) tea.Cmd {
 	switch tab {
 	case domain.ApprovalsTab:
-		return fetchRequests(m.daemonClient)
+		return fetchRequests(m.apiClient)
 	case domain.SessionsTab:
-		return fetchSessions(m.daemonClient)
+		return fetchSessions(m.apiClient)
 	default:
 		return nil
 	}
@@ -731,11 +735,6 @@ func (m model) renderHelpView() string {
 	return s.String()
 }
 
-// Error message type
-type errMsg struct {
-	err error
-}
-
 // renderWithNotification overlays a notification popup on top of the main content
 func (m model) renderWithNotification(mainContent string) string {
 	lines := strings.Split(mainContent, "\n")
@@ -855,16 +854,16 @@ func (m *model) openConversationView(sessionID string) tea.Cmd {
 		// Return cached data immediately, then fetch fresh data
 		return tea.Batch(
 			func() tea.Msg {
-				return fetchConversationMsg{
-					session: session,
-					events:  events,
+				return domain.FetchConversationMsg{
+					Session: session,
+					Events:  events,
 				}
 			},
 			// Follow up with fresh data from server
-			fetchConversation(m.daemonClient, sessionID),
+			fetchConversation(m.apiClient, sessionID),
 		)
 	}
 
 	// Not in cache, fetch from API
-	return fetchConversation(m.daemonClient, sessionID)
+	return fetchConversation(m.apiClient, sessionID)
 }

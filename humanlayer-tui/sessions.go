@@ -116,13 +116,13 @@ func (sm *sessionModel) Update(msg tea.Msg, m *model) tea.Cmd {
 			return sm.updateQueryModalView(msg, m)
 		}
 
-	case fetchSessionsMsg:
-		if msg.err != nil {
-			m.err = msg.err
-			m.fullError = msg.err
+	case domain.FetchSessionsMsg:
+		if msg.Err != nil {
+			m.err = msg.Err
+			m.fullError = msg.Err
 			return nil
 		}
-		sm.sessions = msg.sessions
+		sm.sessions = msg.Sessions
 		sm.updateSortedSessions() // Update cached sorted sessions
 		m.activeSessionCount = 0
 		for _, sess := range sm.sessions {
@@ -136,10 +136,10 @@ func (sm *sessionModel) Update(msg tea.Msg, m *model) tea.Cmd {
 		}
 		return nil
 
-	case launchSessionMsg:
-		if msg.err != nil {
-			m.err = msg.err
-			m.fullError = msg.err
+	case domain.LaunchSessionMsg:
+		if msg.Err != nil {
+			m.err = msg.Err
+			m.fullError = msg.Err
 			return nil
 		}
 		// Clear form and go back to list
@@ -149,15 +149,15 @@ func (sm *sessionModel) Update(msg tea.Msg, m *model) tea.Cmd {
 		sm.launchActiveField = 0
 		sm.viewState = domain.ListView
 		// Refresh sessions list
-		return fetchSessions(m.daemonClient)
+		return fetchSessions(m.apiClient)
 
-	case fetchSessionApprovalsMsg:
-		if msg.err != nil {
-			m.err = msg.err
-			m.fullError = msg.err
+	case domain.FetchSessionApprovalsMsg:
+		if msg.Err != nil {
+			m.err = msg.Err
+			m.fullError = msg.Err
 			return nil
 		}
-		sm.sessionApprovals = msg.approvals
+		sm.sessionApprovals = msg.Approvals
 		return nil
 	}
 
@@ -224,7 +224,7 @@ func (sm *sessionModel) updateListView(msg tea.KeyMsg, m *model) tea.Cmd {
 		sm.launchQueryInput.Focus()
 
 	case key.Matches(msg, keys.Refresh):
-		return fetchSessions(m.daemonClient)
+		return fetchSessions(m.apiClient)
 	}
 
 	return nil
@@ -269,8 +269,8 @@ func (sm *sessionModel) updateSessionDetailView(msg tea.KeyMsg, m *model) tea.Cm
 	case key.Matches(msg, keys.Refresh):
 		if sm.selectedSession != nil {
 			return tea.Batch(
-				fetchSessions(m.daemonClient),
-				fetchSessionApprovals(m.daemonClient, sm.selectedSession.ID),
+				fetchSessions(m.apiClient),
+				fetchSessionApprovals(m.apiClient, sm.selectedSession.ID),
 			)
 		}
 	}
@@ -364,7 +364,7 @@ func (sm *sessionModel) updateLaunchSessionView(msg tea.KeyMsg, m *model) tea.Cm
 					workingDir = cwd
 				}
 			}
-			return launchSession(m.daemonClient, query, model, workingDir)
+			return launchSession(m.apiClient, query, model, workingDir)
 		}
 
 	case key.Matches(msg, keys.Left), key.Matches(msg, keys.Right):
@@ -458,7 +458,7 @@ func (sm *sessionModel) updateQueryModalView(msg tea.KeyMsg, m *model) tea.Cmd {
 					workingDir = cwd
 				}
 			}
-			return launchSession(m.daemonClient, query, model, workingDir)
+			return launchSession(m.apiClient, query, model, workingDir)
 		}
 
 		// If no query, just return to form
