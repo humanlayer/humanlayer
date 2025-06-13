@@ -21,11 +21,11 @@ function App() {
       await daemonClient.connect();
       setConnected(true);
       setStatus("Connected!");
-      
+
       // Check health
       const health = await daemonClient.health();
       setStatus(`Connected! Daemon version: ${health.version}`);
-      
+
       // Load sessions
       await loadSessions();
     } catch (error) {
@@ -54,20 +54,20 @@ function App() {
       const response = await daemonClient.launchSession({
         query: query.trim(),
         model: "sonnet",
-        verbose: true
+        verbose: true,
       });
-      
+
       setActiveSessionId(response.session_id);
       setStatus(`Session launched! ID: ${response.session_id}`);
-      
+
       // Subscribe to events
       const unsubscribe = await daemonClient.subscribeToEvents({
-        session_id: response.session_id
+        session_id: response.session_id,
       });
-      
+
       // Refresh sessions list
       await loadSessions();
-      
+
       // Start polling for approvals
       pollForApprovals(response.session_id);
     } catch (error) {
@@ -80,10 +80,13 @@ function App() {
       try {
         const response = await daemonClient.fetchApprovals(sessionId);
         setApprovals(response.approvals);
-        
+
         // Check session status
         const sessionState = await daemonClient.getSessionState(sessionId);
-        if (sessionState.session.status === 'completed' || sessionState.session.status === 'failed') {
+        if (
+          sessionState.session.status === "completed" ||
+          sessionState.session.status === "failed"
+        ) {
           clearInterval(interval);
           setStatus(`Session ${sessionState.session.status}`);
           await loadSessions();
@@ -96,19 +99,28 @@ function App() {
 
   async function handleApproval(approval: any, approved: boolean) {
     try {
-      if (approval.type === 'function_call' && approval.function_call) {
+      if (approval.type === "function_call" && approval.function_call) {
         if (approved) {
-          await daemonClient.approveFunctionCall(approval.function_call.call_id, "Approved via UI");
+          await daemonClient.approveFunctionCall(
+            approval.function_call.call_id,
+            "Approved via UI",
+          );
         } else {
-          await daemonClient.denyFunctionCall(approval.function_call.call_id, "Denied via UI");
+          await daemonClient.denyFunctionCall(
+            approval.function_call.call_id,
+            "Denied via UI",
+          );
         }
-      } else if (approval.type === 'human_contact' && approval.human_contact) {
+      } else if (approval.type === "human_contact" && approval.human_contact) {
         const response = prompt("Enter your response:");
         if (response) {
-          await daemonClient.respondToHumanContact(approval.human_contact.call_id, response);
+          await daemonClient.respondToHumanContact(
+            approval.human_contact.call_id,
+            response,
+          );
         }
       }
-      
+
       // Refresh approvals
       if (activeSessionId) {
         const response = await daemonClient.fetchApprovals(activeSessionId);
@@ -122,11 +134,11 @@ function App() {
   return (
     <main className="container">
       <h1>HumanLayer Daemon Client Test</h1>
-      
-      <div style={{ marginBottom: '20px' }}>
+
+      <div style={{ marginBottom: "20px" }}>
         <strong>Status:</strong> {status}
         {!connected && (
-          <button onClick={connectToDaemon} style={{ marginLeft: '10px' }}>
+          <button onClick={connectToDaemon} style={{ marginLeft: "10px" }}>
             Retry Connection
           </button>
         )}
@@ -134,31 +146,48 @@ function App() {
 
       {connected && (
         <>
-          <div style={{ marginBottom: '20px' }}>
+          <div style={{ marginBottom: "20px" }}>
             <h2>Launch New Session</h2>
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Enter your query..."
-              style={{ width: '300px', marginRight: '10px' }}
+              style={{ width: "300px", marginRight: "10px" }}
             />
             <button onClick={launchSession}>Launch Session</button>
           </div>
 
-          <div style={{ marginBottom: '20px' }}>
+          <div style={{ marginBottom: "20px" }}>
             <h2>Sessions ({sessions.length})</h2>
-            <div style={{ maxHeight: '200px', overflow: 'auto', border: '1px solid #ccc', padding: '10px' }}>
+            <div
+              style={{
+                maxHeight: "200px",
+                overflow: "auto",
+                border: "1px solid #ccc",
+                padding: "10px",
+              }}
+            >
               {sessions.map((session) => (
-                <div key={session.id} style={{ marginBottom: '10px', padding: '5px', background: '#f0f0f0' }}>
-                  <strong>{session.query}</strong><br />
-                  ID: {session.id}<br />
-                  Status: {session.status}<br />
+                <div
+                  key={session.id}
+                  style={{
+                    marginBottom: "10px",
+                    padding: "5px",
+                    background: "#f0f0f0",
+                  }}
+                >
+                  <strong>{session.query}</strong>
+                  <br />
+                  ID: {session.id}
+                  <br />
+                  Status: {session.status}
+                  <br />
                   Started: {new Date(session.start_time).toLocaleString()}
                 </div>
               ))}
             </div>
-            <button onClick={loadSessions} style={{ marginTop: '10px' }}>
+            <button onClick={loadSessions} style={{ marginTop: "10px" }}>
               Refresh Sessions
             </button>
           </div>
@@ -167,13 +196,28 @@ function App() {
             <div>
               <h2>Pending Approvals ({approvals.length})</h2>
               {approvals.map((approval, index) => (
-                <div key={index} style={{ marginBottom: '10px', padding: '10px', border: '1px solid #ff6600' }}>
-                  <strong>Type:</strong> {approval.type}<br />
+                <div
+                  key={index}
+                  style={{
+                    marginBottom: "10px",
+                    padding: "10px",
+                    border: "1px solid #ff6600",
+                  }}
+                >
+                  <strong>Type:</strong> {approval.type}
+                  <br />
                   {approval.function_call && (
                     <>
-                      <strong>Function:</strong> {approval.function_call.spec.fn}<br />
-                      <strong>Args:</strong> {JSON.stringify(approval.function_call.spec.kwargs)}<br />
-                      <button onClick={() => handleApproval(approval, true)} style={{ marginRight: '5px' }}>
+                      <strong>Function:</strong>{" "}
+                      {approval.function_call.spec.fn}
+                      <br />
+                      <strong>Args:</strong>{" "}
+                      {JSON.stringify(approval.function_call.spec.kwargs)}
+                      <br />
+                      <button
+                        onClick={() => handleApproval(approval, true)}
+                        style={{ marginRight: "5px" }}
+                      >
                         Approve
                       </button>
                       <button onClick={() => handleApproval(approval, false)}>
@@ -183,7 +227,9 @@ function App() {
                   )}
                   {approval.human_contact && (
                     <>
-                      <strong>Message:</strong> {approval.human_contact.spec.msg}<br />
+                      <strong>Message:</strong>{" "}
+                      {approval.human_contact.spec.msg}
+                      <br />
                       <button onClick={() => handleApproval(approval, true)}>
                         Respond
                       </button>

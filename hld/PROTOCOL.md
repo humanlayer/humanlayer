@@ -17,6 +17,7 @@ The HumanLayer Daemon (HLD) uses a JSON-RPC 2.0 protocol over Unix domain socket
 All requests and responses follow the JSON-RPC 2.0 specification:
 
 ### Request Format
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -27,6 +28,7 @@ All requests and responses follow the JSON-RPC 2.0 specification:
 ```
 
 ### Response Format
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -36,6 +38,7 @@ All requests and responses follow the JSON-RPC 2.0 specification:
 ```
 
 ### Error Response Format
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -51,6 +54,7 @@ All requests and responses follow the JSON-RPC 2.0 specification:
 ## Error Codes
 
 Standard JSON-RPC 2.0 error codes:
+
 - `-32700`: Parse error
 - `-32600`: Invalid request
 - `-32601`: Method not found
@@ -66,6 +70,7 @@ Standard JSON-RPC 2.0 error codes:
 **Request Parameters**: None
 
 **Response**:
+
 ```json
 {
   "status": "ok",
@@ -80,6 +85,7 @@ Standard JSON-RPC 2.0 error codes:
 **Method**: `launchSession`
 
 **Request Parameters**:
+
 ```json
 {
   "query": "string (required)",
@@ -100,6 +106,7 @@ Standard JSON-RPC 2.0 error codes:
 ```
 
 **Response**:
+
 ```json
 {
   "session_id": "string",
@@ -114,6 +121,7 @@ Standard JSON-RPC 2.0 error codes:
 **Request Parameters**: None or empty object
 
 **Response**:
+
 ```json
 {
   "sessions": [
@@ -143,6 +151,7 @@ Standard JSON-RPC 2.0 error codes:
 **Method**: `getSessionState`
 
 **Request Parameters**:
+
 ```json
 {
   "session_id": "string (required)"
@@ -150,6 +159,7 @@ Standard JSON-RPC 2.0 error codes:
 ```
 
 **Response**:
+
 ```json
 {
   "session": {
@@ -177,6 +187,7 @@ Standard JSON-RPC 2.0 error codes:
 **Method**: `continueSession`
 
 **Request Parameters**:
+
 ```json
 {
   "session_id": "string (required)",
@@ -193,6 +204,7 @@ Standard JSON-RPC 2.0 error codes:
 ```
 
 **Response**:
+
 ```json
 {
   "session_id": "string",
@@ -209,15 +221,18 @@ Standard JSON-RPC 2.0 error codes:
 **Method**: `getConversation`
 
 **Request Parameters**:
+
 ```json
 {
   "session_id": "string (optional)",
   "claude_session_id": "string (optional)"
 }
 ```
+
 Note: Either `session_id` or `claude_session_id` is required.
 
 **Response**:
+
 ```json
 {
   "events": [
@@ -250,6 +265,7 @@ Note: Either `session_id` or `claude_session_id` is required.
 **Method**: `fetchApprovals`
 
 **Request Parameters**:
+
 ```json
 {
   "session_id": "string (optional)"
@@ -257,6 +273,7 @@ Note: Either `session_id` or `claude_session_id` is required.
 ```
 
 **Response**:
+
 ```json
 {
   "approvals": [
@@ -278,6 +295,7 @@ Note: Either `session_id` or `claude_session_id` is required.
 **Method**: `sendDecision`
 
 **Request Parameters**:
+
 ```json
 {
   "call_id": "string (required)",
@@ -288,10 +306,12 @@ Note: Either `session_id` or `claude_session_id` is required.
 ```
 
 Decision rules:
+
 - For `function_call` type: `approve` or `deny` (deny requires comment)
 - For `human_contact` type: `respond` (requires comment)
 
 **Response**:
+
 ```json
 {
   "success": "boolean",
@@ -306,6 +326,7 @@ Decision rules:
 **Method**: `Subscribe`
 
 **Request Parameters**:
+
 ```json
 {
   "event_types": ["string array (optional)"],
@@ -315,11 +336,13 @@ Decision rules:
 ```
 
 Event types:
+
 - `new_approval`: New approval(s) received
 - `approval_resolved`: Approval resolved (approved/denied/responded)
 - `session_status_changed`: Session status changed
 
 **Initial Response**:
+
 ```json
 {
   "subscription_id": "string",
@@ -328,6 +351,7 @@ Event types:
 ```
 
 **Event Notifications** (streamed):
+
 ```json
 {
   "event": {
@@ -341,6 +365,7 @@ Event types:
 ```
 
 **Heartbeat** (sent every 30 seconds):
+
 ```json
 {
   "type": "heartbeat",
@@ -360,6 +385,7 @@ Note: The Subscribe method uses long-polling and maintains the connection until 
 ## Data Types
 
 ### Session Status Values
+
 - `starting`: Session is initializing
 - `running`: Session is actively processing
 - `completed`: Session finished successfully
@@ -367,6 +393,7 @@ Note: The Subscribe method uses long-polling and maintains the connection until 
 - `waiting_input`: Session is waiting for user input
 
 ### Approval Status Values
+
 - `NULL`: No approval needed
 - `pending`: Awaiting approval decision
 - `approved`: Approved
@@ -374,6 +401,7 @@ Note: The Subscribe method uses long-polling and maintains the connection until 
 - `resolved`: Generically resolved (external resolution)
 
 ### Event Types
+
 - `message`: Chat message (user/assistant/system)
 - `tool_call`: Tool invocation
 - `tool_result`: Tool execution result
@@ -382,6 +410,7 @@ Note: The Subscribe method uses long-polling and maintains the connection until 
 ## Example Usage
 
 ### Connecting to the daemon
+
 ```bash
 # Using netcat (for testing)
 nc -U ~/.humanlayer/daemon.sock
@@ -391,6 +420,7 @@ nc -U ~/.humanlayer/daemon.sock
 ```
 
 ### Launching a session
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -405,6 +435,7 @@ nc -U ~/.humanlayer/daemon.sock
 ```
 
 ### Subscribing to events
+
 ```json
 {
   "jsonrpc": "2.0",
