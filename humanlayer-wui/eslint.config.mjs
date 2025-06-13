@@ -1,0 +1,47 @@
+import globals from 'globals'
+import js from '@eslint/js'
+import tseslint from 'typescript-eslint'
+import eslintConfigPrettier from 'eslint-config-prettier/flat'
+
+export default [
+  {
+    files: ['**/*.{js,mjs,cjs,ts,tsx}'],
+    ...js.configs.recommended,
+  },
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    languageOptions: {
+      parser: tseslint.parser,
+      parserOptions: {
+        project: './tsconfig.json',
+        ecmaFeatures: {
+          jsx: true,
+        },
+      },
+      globals: {
+        ...globals.browser,
+      },
+    },
+    plugins: {
+      '@typescript-eslint': tseslint.plugin,
+    },
+    rules: {
+      ...tseslint.configs.recommended.rules,
+      'no-undef': 'error',
+      '@typescript-eslint/no-unused-vars': 'error',
+      'react/react-in-jsx-scope': 'off',
+    },
+  },
+  {
+    files: ['*.config.{ts,js}', '.prettierrc.js'],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+      },
+    },
+    rules: {
+      'no-undef': 'error',
+    },
+  },
+  eslintConfigPrettier,
+]
