@@ -57,10 +57,10 @@ func (am *approvalModel) updateSize(width, height int) {
 	if height < 5 {
 		height = 5
 	}
-	
+
 	am.viewport.Width = width
 	am.viewport.Height = height
-	
+
 	// Update input field width with bounds checking
 	inputWidth := width - 20
 	if inputWidth < 10 {

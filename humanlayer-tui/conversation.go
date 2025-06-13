@@ -47,7 +47,7 @@ type conversationModel struct {
 
 	// Scroll position tracking
 	wasAtBottom bool // Track if user was at bottom before update
-	
+
 	// Dimensions for dynamic layout
 	contentWidth  int
 	contentHeight int
@@ -144,7 +144,7 @@ func (cm *conversationModel) updateSize(width, height int) {
 	// Store dimensions for dynamic adjustment
 	cm.contentWidth = width
 	cm.contentHeight = height
-	
+
 	// Calculate viewport size based on current state
 	cm.adjustViewportSize()
 
@@ -163,10 +163,10 @@ func (cm *conversationModel) adjustViewportSize() {
 	if cm.contentWidth == 0 || cm.contentHeight == 0 {
 		return
 	}
-	
+
 	// Start with content dimensions
 	viewportHeight := cm.contentHeight - 2 - 1 // header (2 lines) + status line (1 line)
-	
+
 	// Reduce height when input prompts are shown
 	if cm.showApprovalPrompt || cm.showResumePrompt {
 		// Input prompt takes: border (2) + padding (2) + content (3 lines) + spacing (1) = 8 lines
