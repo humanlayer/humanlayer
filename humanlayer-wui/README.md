@@ -4,5 +4,5 @@ This is a web/desktop-based UI for the HumanLayer daemon, `hld`. It's still in a
 
 # Getting Started
 
-* `bun install` - To install dependencies.
-* `bun run tauri dev` - To start the dev server
+- `bun install` - To install dependencies.
+- `bun run tauri dev` - To start the dev server

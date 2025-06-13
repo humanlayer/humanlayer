@@ -120,9 +120,13 @@ func (m *DefaultManager) handleConflictError(ctx context.Context, err error, cal
 
 		// Remove from local cache
 		if approvalType == "function_call" {
-			m.Store.RemoveFunctionCall(callID)
+			if err := m.Store.RemoveFunctionCall(callID); err != nil {
+				slog.Error("failed to remove function call from cache", "call_id", callID, "error", err)
+			}
 		} else {
-			m.Store.RemoveHumanContact(callID)
+			if err := m.Store.RemoveHumanContact(callID); err != nil {
+				slog.Error("failed to remove human contact from cache", "call_id", callID, "error", err)
+			}
 		}
 
 		// Update database status if we have a conversation store
@@ -324,7 +328,6 @@ func (m *DefaultManager) RespondToHumanContact(ctx context.Context, callID strin
 
 	return nil
 }
-
 
 // ReconcileApprovalsForSession reconciles approvals for a session after restart
 func (m *DefaultManager) ReconcileApprovalsForSession(ctx context.Context, runID string) error {

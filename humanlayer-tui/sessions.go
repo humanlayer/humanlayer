@@ -86,10 +86,10 @@ func (sm *sessionModel) updateSize(width, height int) {
 	if height < 5 {
 		height = 5
 	}
-	
+
 	sm.viewport.Width = width
 	sm.viewport.Height = height
-	
+
 	// Update input field widths with bounds checking
 	inputWidth := width - 20
 	if inputWidth < 10 {

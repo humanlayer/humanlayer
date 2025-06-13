@@ -16,11 +16,11 @@ import (
 
 // Manager handles the lifecycle of Claude Code sessions
 type Manager struct {
-	activeProcesses   map[string]*claudecode.Session // Maps session ID to active Claude process
-	mu                sync.RWMutex
-	client            *claudecode.Client
-	eventBus          bus.EventBus
-	store             store.ConversationStore
+	activeProcesses    map[string]*claudecode.Session // Maps session ID to active Claude process
+	mu                 sync.RWMutex
+	client             *claudecode.Client
+	eventBus           bus.EventBus
+	store              store.ConversationStore
 	approvalReconciler ApprovalReconciler
 }
 
