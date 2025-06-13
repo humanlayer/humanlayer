@@ -748,7 +748,7 @@ func (s *SQLiteStore) GetPendingToolCalls(ctx context.Context, sessionID string)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get pending tool calls: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var events []*ConversationEvent
 	for rows.Next() {

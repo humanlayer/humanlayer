@@ -185,7 +185,6 @@ func (cm *conversationModel) adjustViewportSize() {
 	cm.viewport.Height = viewportHeight
 }
 
-
 // Update handles messages for the conversation view
 func (cm *conversationModel) Update(msg tea.Msg, m *model) tea.Cmd {
 	var cmds []tea.Cmd

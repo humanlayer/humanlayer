@@ -208,9 +208,9 @@ func (p *Poller) reconcileFunctionCalls(ctx context.Context, functionCalls []hum
 				p.eventBus.Publish(bus.Event{
 					Type: bus.EventApprovalResolved,
 					Data: map[string]interface{}{
-						"type":               "function_call",
-						"call_id":            cached.CallID,
-						"run_id":             cached.RunID,
+						"type":                "function_call",
+						"call_id":             cached.CallID,
+						"run_id":              cached.RunID,
 						"resolved_externally": true,
 					},
 				})
@@ -291,9 +291,9 @@ func (p *Poller) reconcileHumanContacts(ctx context.Context, humanContacts []hum
 				p.eventBus.Publish(bus.Event{
 					Type: bus.EventApprovalResolved,
 					Data: map[string]interface{}{
-						"type":               "human_contact",
-						"call_id":            cached.CallID,
-						"run_id":             cached.RunID,
+						"type":                "human_contact",
+						"call_id":             cached.CallID,
+						"run_id":              cached.RunID,
 						"resolved_externally": true,
 					},
 				})

@@ -129,7 +129,7 @@ func TestManager_SessionStatusTransitions(t *testing.T) {
 						Fn: "test_function",
 					},
 				}
-				mockStore.EXPECT().GetFunctionCall(callID).Return(fc, nil).Times(2)
+				mockStore.EXPECT().GetFunctionCall(callID).Return(fc, nil).Times(1)
 
 				// API approval succeeds
 				mockClient.EXPECT().ApproveFunctionCall(gomock.Any(), callID, "test comment").Return(nil)

@@ -25,9 +25,9 @@ const (
 
 // Layout constants for consistent dimension calculations
 const (
-	TabBarHeight    = 2 // Tab bar takes 2 lines
-	StatusBarHeight = 1 // Status bar takes 1 line
-	MinContentWidth = 20
+	TabBarHeight     = 2 // Tab bar takes 2 lines
+	StatusBarHeight  = 1 // Status bar takes 1 line
+	MinContentWidth  = 20
 	MinContentHeight = 5
 )
 
@@ -716,10 +716,8 @@ func (m model) renderStatusBar() string {
 	spacing := m.width - leftWidth - helpWidth
 	if spacing > 0 {
 		leftContent += strings.Repeat(" ", spacing) + helpRendered
-	} else {
-		// Not enough space, just show left content
-		leftContent = leftContent
 	}
+	// If not enough space, just show left content as-is
 
 	return statusStyle.Render(leftContent)
 }
