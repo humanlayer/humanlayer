@@ -31,13 +31,13 @@ impl SubscriptionManager {
     ) -> Result<mpsc::Receiver<EventNotification>> {
         let (event_tx, event_rx) = mpsc::channel(CHANNEL_BUFFER_SIZE);
         let (cancel_tx, cancel_rx) = mpsc::channel(1);
-        
+
         // Store the cancel sender
         {
             let mut subs = self.active_subscriptions.lock().await;
             subs.insert(id, cancel_tx);
         }
-        
+
         // Send the subscription request
         let request = JsonRpcRequest {
             jsonrpc: "2.0".to_string(),
@@ -45,12 +45,12 @@ impl SubscriptionManager {
             params: Some(serde_json::to_value(req)?),
             id,
         };
-        
+
         let request_str = serde_json::to_string(&request)?;
-        
+
         // Clone for the async task
         let active_subscriptions = self.active_subscriptions.clone();
-        
+
         // Spawn the subscription handler
         tokio::spawn(async move {
             if let Err(e) = handle_subscription(
@@ -66,7 +66,7 @@ impl SubscriptionManager {
                 error!("Subscription {} error: {}", id, e);
             }
         });
-        
+
         Ok(event_rx)
     }
 
@@ -102,15 +102,15 @@ async fn handle_subscription(
         .write_all(format!("{}\n", request_str).as_bytes())
         .await?;
     stream.flush().await?;
-    
+
     let mut reader = BufReader::new(&mut stream);
     let mut line = String::new();
     let mut subscription_confirmed = false;
-    
+
     // Create a heartbeat interval
     let mut heartbeat_interval = interval(HEARTBEAT_INTERVAL);
     heartbeat_interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
-    
+
     loop {
         tokio::select! {
             // Handle incoming messages
@@ -125,9 +125,9 @@ async fn handle_subscription(
                         if line.ends_with('\n') {
                             line.pop();
                         }
-                        
+
                         debug!("Subscription {} received: {}", id, line);
-                        
+
                         // Try to parse as JSON-RPC response first (for initial confirmation)
                         if !subscription_confirmed {
                             if let Ok(response) = serde_json::from_str::<JsonRpcResponse>(&line) {
@@ -135,7 +135,7 @@ async fn handle_subscription(
                                     error!("Subscription {} error: {:?}", id, response.error);
                                     break;
                                 }
-                                
+
                                 if let Some(result) = response.result {
                                     if let Ok(sub_response) = serde_json::from_value::<SubscribeResponse>(result) {
                                         info!(
@@ -167,7 +167,7 @@ async fn handle_subscription(
                                 }
                             }
                         }
-                        
+
                         line.clear();
                     }
                     Err(e) => {
@@ -176,26 +176,26 @@ async fn handle_subscription(
                     }
                 }
             }
-            
+
             // Handle cancellation
             _ = cancel_rx.recv() => {
                 info!("Subscription {} cancelled", id);
                 break;
             }
-            
+
             // Handle heartbeat interval (for logging/monitoring)
             _ = heartbeat_interval.tick() => {
                 debug!("Subscription {} still active", id);
             }
         }
     }
-    
+
     // Clean up
     {
         let mut subs = active_subscriptions.lock().await;
         subs.remove(&id);
     }
-    
+
     info!("Subscription {} handler terminated", id);
     Ok(())
 }

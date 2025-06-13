@@ -39,7 +39,7 @@ impl DaemonClient {
     pub async fn new(socket_path: Option<PathBuf>) -> Result<Self> {
         let connection = Connection::new(socket_path).await?;
         let subscription_manager = Arc::new(SubscriptionManager::new());
-        
+
         Ok(DaemonClient {
             connection: Arc::new(RwLock::new(connection)),
             subscription_manager,
@@ -54,7 +54,7 @@ impl DaemonClient {
     ) -> Result<Self> {
         let connection = Connection::connect_with_retries(socket_path, max_retries).await?;
         let subscription_manager = Arc::new(SubscriptionManager::new());
-        
+
         Ok(DaemonClient {
             connection: Arc::new(RwLock::new(connection)),
             subscription_manager,
@@ -69,30 +69,30 @@ impl DaemonClient {
         R: serde::de::DeserializeOwned,
     {
         let id = self.request_id.fetch_add(1, Ordering::SeqCst);
-        
+
         let request = JsonRpcRequest {
             jsonrpc: "2.0".to_string(),
             method: method.to_string(),
             params: params.map(|p| serde_json::to_value(p).unwrap_or(Value::Null)),
             id,
         };
-        
+
         let request_str = serde_json::to_string(&request)?;
         debug!("Sending RPC request: {}", request_str);
-        
+
         let connection = self.connection.read().await;
         let response_str = connection.send_request(&request_str).await?;
         debug!("Received RPC response: {}", response_str);
-        
+
         let response: JsonRpcResponse = serde_json::from_str(&response_str)?;
-        
+
         if let Some(error) = response.error {
             return Err(Error::Rpc {
                 code: error.code,
                 message: error.message,
             });
         }
-        
+
         if let Some(result) = response.result {
             serde_json::from_value(result)
                 .map_err(|e| Error::InvalidResponse(format!("Failed to parse result: {}", e)))
@@ -149,7 +149,7 @@ impl DaemonClientTrait for DaemonClient {
                 "Either session_id or claude_session_id is required".to_string(),
             ));
         }
-        
+
         let req = GetConversationRequest {
             session_id: session_id.map(|s| s.to_string()),
             claude_session_id: claude_session_id.map(|s| s.to_string()),
@@ -179,14 +179,14 @@ impl DaemonClientTrait for DaemonClient {
                 approval_type.as_str()
             )));
         }
-        
+
         let req = SendDecisionRequest {
             call_id: call_id.to_string(),
             approval_type: approval_type.as_str().to_string(),
             decision: decision.as_str().to_string(),
             comment: comment.map(|s| s.to_string()),
         };
-        
+
         self.send_rpc_request("sendDecision", Some(req)).await
     }
 
@@ -194,13 +194,13 @@ impl DaemonClientTrait for DaemonClient {
         let response = self
             .send_decision(call_id, ApprovalType::FunctionCall, Decision::Approve, comment)
             .await?;
-        
+
         if !response.success {
             return Err(Error::Approval(
                 response.error.unwrap_or_else(|| "Unknown error".to_string()),
             ));
         }
-        
+
         Ok(())
     }
 
@@ -213,13 +213,13 @@ impl DaemonClientTrait for DaemonClient {
                 Some(reason),
             )
             .await?;
-        
+
         if !response.success {
             return Err(Error::Approval(
                 response.error.unwrap_or_else(|| "Unknown error".to_string()),
             ));
         }
-        
+
         Ok(())
     }
 
@@ -232,27 +232,27 @@ impl DaemonClientTrait for DaemonClient {
                 Some(response),
             )
             .await?;
-        
+
         if !resp.success {
             return Err(Error::Approval(
                 resp.error.unwrap_or_else(|| "Unknown error".to_string()),
             ));
         }
-        
+
         Ok(())
     }
 
     async fn subscribe(&self, req: SubscribeRequest) -> Result<tokio::sync::mpsc::Receiver<EventNotification>> {
         let connection = self.connection.read().await;
         let sub_stream = connection.create_subscription_connection().await?;
-        
+
         let id = self.request_id.fetch_add(1, Ordering::SeqCst);
         let receiver = self.subscription_manager.create_subscription(
             id,
             sub_stream,
             req,
         ).await?;
-        
+
         Ok(receiver)
     }
 }
@@ -266,7 +266,7 @@ mod tests {
         assert!(Decision::Approve.is_valid_for_approval_type("function_call"));
         assert!(Decision::Deny.is_valid_for_approval_type("function_call"));
         assert!(!Decision::Respond.is_valid_for_approval_type("function_call"));
-        
+
         assert!(Decision::Respond.is_valid_for_approval_type("human_contact"));
         assert!(!Decision::Approve.is_valid_for_approval_type("human_contact"));
         assert!(!Decision::Deny.is_valid_for_approval_type("human_contact"));

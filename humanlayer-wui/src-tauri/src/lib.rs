@@ -15,7 +15,7 @@ struct AppState {
 #[tauri::command]
 async fn connect_daemon(state: State<'_, AppState>) -> std::result::Result<String, String> {
     let mut client_guard = state.client.lock().await;
-    
+
     match DaemonClient::connect_with_retries(None, 3).await {
         Ok(client) => {
             *client_guard = Some(client);
@@ -31,7 +31,7 @@ async fn connect_daemon(state: State<'_, AppState>) -> std::result::Result<Strin
 #[tauri::command]
 async fn daemon_health(state: State<'_, AppState>) -> std::result::Result<daemon_client::HealthCheckResponse, String> {
     let client_guard = state.client.lock().await;
-    
+
     match &*client_guard {
         Some(client) => client
             .health()
@@ -47,7 +47,7 @@ async fn launch_session(
     request: daemon_client::LaunchSessionRequest,
 ) -> std::result::Result<daemon_client::LaunchSessionResponse, String> {
     let client_guard = state.client.lock().await;
-    
+
     match &*client_guard {
         Some(client) => client
             .launch_session(request)
@@ -62,7 +62,7 @@ async fn list_sessions(
     state: State<'_, AppState>,
 ) -> std::result::Result<daemon_client::ListSessionsResponse, String> {
     let client_guard = state.client.lock().await;
-    
+
     match &*client_guard {
         Some(client) => client
             .list_sessions()
@@ -78,7 +78,7 @@ async fn get_session_state(
     session_id: String,
 ) -> std::result::Result<daemon_client::GetSessionStateResponse, String> {
     let client_guard = state.client.lock().await;
-    
+
     match &*client_guard {
         Some(client) => client
             .get_session_state(&session_id)
@@ -94,7 +94,7 @@ async fn continue_session(
     request: daemon_client::ContinueSessionRequest,
 ) -> std::result::Result<daemon_client::ContinueSessionResponse, String> {
     let client_guard = state.client.lock().await;
-    
+
     match &*client_guard {
         Some(client) => client
             .continue_session(request)
@@ -111,7 +111,7 @@ async fn get_conversation(
     claude_session_id: Option<String>,
 ) -> std::result::Result<daemon_client::GetConversationResponse, String> {
     let client_guard = state.client.lock().await;
-    
+
     match &*client_guard {
         Some(client) => client
             .get_conversation(
@@ -130,7 +130,7 @@ async fn fetch_approvals(
     session_id: Option<String>,
 ) -> std::result::Result<daemon_client::FetchApprovalsResponse, String> {
     let client_guard = state.client.lock().await;
-    
+
     match &*client_guard {
         Some(client) => client
             .fetch_approvals(session_id.as_deref())
@@ -147,7 +147,7 @@ async fn approve_function_call(
     comment: Option<String>,
 ) -> std::result::Result<(), String> {
     let client_guard = state.client.lock().await;
-    
+
     match &*client_guard {
         Some(client) => client
             .approve_function_call(&call_id, comment.as_deref())
@@ -164,7 +164,7 @@ async fn deny_function_call(
     reason: String,
 ) -> std::result::Result<(), String> {
     let client_guard = state.client.lock().await;
-    
+
     match &*client_guard {
         Some(client) => client
             .deny_function_call(&call_id, &reason)
@@ -181,7 +181,7 @@ async fn respond_to_human_contact(
     response: String,
 ) -> std::result::Result<(), String> {
     let client_guard = state.client.lock().await;
-    
+
     match &*client_guard {
         Some(client) => client
             .respond_to_human_contact(&call_id, &response)
@@ -199,7 +199,7 @@ async fn subscribe_to_events(
     request: daemon_client::SubscribeRequest,
 ) -> std::result::Result<String, String> {
     let client_guard = state.client.lock().await;
-    
+
     match &*client_guard {
         Some(client) => {
             match client.subscribe(request).await {
@@ -226,7 +226,7 @@ async fn subscribe_to_events(
 pub fn run() {
     // Initialize tracing
     tracing_subscriber::fmt::init();
-    
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .manage(AppState {

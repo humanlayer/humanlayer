@@ -21,7 +21,7 @@ impl Connection {
     pub async fn new(socket_path: Option<PathBuf>) -> Result<Self> {
         let path = socket_path.unwrap_or_else(Self::default_socket_path);
         let stream = Self::connect_to_socket(&path).await?;
-        
+
         Ok(Connection {
             stream: Mutex::new(stream),
             socket_path: path,
@@ -34,7 +34,7 @@ impl Connection {
         max_retries: u32,
     ) -> Result<Self> {
         let path = socket_path.unwrap_or_else(Self::default_socket_path);
-        
+
         for attempt in 0..=max_retries {
             match Self::connect_to_socket(&path).await {
                 Ok(stream) => {
@@ -59,7 +59,7 @@ impl Connection {
                 }
             }
         }
-        
+
         Err(Error::Connection(format!(
             "Failed to connect after {} attempts",
             max_retries + 1
@@ -69,7 +69,7 @@ impl Connection {
     /// Send a message and receive a response
     pub async fn send_request(&self, message: &str) -> Result<String> {
         let mut stream = self.stream.lock().await;
-        
+
         // Send the message with newline
         let message_with_newline = format!("{}\n", message);
         stream
@@ -77,11 +77,11 @@ impl Connection {
             .await
             .map_err(|e| Error::Socket(e))?;
         stream.flush().await.map_err(|e| Error::Socket(e))?;
-        
+
         // Read the response
         let mut reader = BufReader::new(&mut *stream);
         let mut response = String::new();
-        
+
         match timeout(CONNECTION_TIMEOUT, reader.read_line(&mut response)).await {
             Ok(Ok(0)) => Err(Error::Connection("Connection closed by daemon".to_string())),
             Ok(Ok(_)) => {
@@ -116,7 +116,7 @@ impl Connection {
                 path
             )));
         }
-        
+
         match timeout(CONNECTION_TIMEOUT, UnixStream::connect(path)).await {
             Ok(Ok(stream)) => Ok(stream),
             Ok(Err(e)) => Err(Error::Socket(e)),
@@ -134,7 +134,7 @@ impl Connection {
             Ok(guard) => guard,
             Err(_) => return false,
         };
-        
+
         // Check if we can peek at the stream
         match stream_guard.try_read(&mut [0u8; 0]) {
             Ok(_) => true,
