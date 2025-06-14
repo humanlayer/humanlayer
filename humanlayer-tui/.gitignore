@@ -1,1 +1,4 @@
 ./humanlayer-tui
+
+# Generated mocks
+internal/api/mock_api.go

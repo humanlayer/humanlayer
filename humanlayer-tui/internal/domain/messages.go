@@ -83,3 +83,9 @@ type PollRefreshMsg struct {
 
 // TickMsg represents a timer tick
 type TickMsg time.Time
+
+// TimeoutMsg represents a timeout during an API operation
+type TimeoutMsg struct {
+	Operation string
+	Duration  time.Duration
+}

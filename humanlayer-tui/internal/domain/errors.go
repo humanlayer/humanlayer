@@ -40,4 +40,7 @@ var (
 
 	// ErrCacheMiss indicates that the requested item was not found in cache
 	ErrCacheMiss = errors.New("cache miss")
+
+	// ErrUnexpectedResponse indicates an unexpected response from the API
+	ErrUnexpectedResponse = errors.New("unexpected response from API")
 )
