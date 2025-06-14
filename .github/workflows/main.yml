@@ -41,8 +41,16 @@ jobs:
       - name: Install the project
         run: uv sync --all-extras --dev
 
+      - name: Install bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
       - name: Install ts deps
         run: npm -C humanlayer-ts install && npm -C hlyr install && npm -C humanlayer-ts-vercel-ai-sdk install
+
+      - name: Install wui deps
+        run: bun install --cwd=humanlayer-wui
 
       - uses: actions/setup-go@v5
         with:
