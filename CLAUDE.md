@@ -131,3 +131,21 @@ Each framework example follows the pattern of wrapping functions with HumanLayer
 - The MCP server requires Node.js and provides Claude Desktop integration
 - Examples use virtual environments and have their own dependency files
 - For CLI usage, always use `npx humanlayer` command format
+
+### Quiet Build Output
+
+The build system supports quiet output mode to reduce verbosity:
+
+- `make check` - Runs all checks with minimal output (default)
+- `make test` - Runs all tests with minimal output (default)
+- `make check-verbose` or `VERBOSE=1 make check` - Shows full output
+- `make test-verbose` or `VERBOSE=1 make test` - Shows full output
+
+In quiet mode:
+
+- Only shows ✓/✗ status indicators for each step
+- Displays test counts where available
+- Shows full error output when commands fail
+- Reduces 500+ lines to ~50 lines for successful runs
+
+The quiet system uses `hack/run_silent.sh` which provides helper functions for child Makefiles.

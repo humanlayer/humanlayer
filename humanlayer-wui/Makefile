@@ -27,10 +27,31 @@ format-check: ## Check code formatting
 typecheck: ## Run TypeScript type checking
 	bun run typecheck
 
-test: ## Run tests (placeholder for future tests)
-	@echo "No tests configured yet"
+# Placeholder for future test command
 
-check: format-check lint typecheck ## Run all quality checks (format + lint + typecheck)
+check-quiet: ## Run all quality checks with quiet output
+	@. ../hack/run_silent.sh && print_header "humanlayer-wui" "Web UI checks"
+	@. ../hack/run_silent.sh && run_silent "Format check passed" "bun run format:check"
+	@. ../hack/run_silent.sh && run_silent "Lint check passed" "bun run lint"
+	@. ../hack/run_silent.sh && run_silent "Type checking passed" "bun run typecheck"
+
+test-quiet: ## Run tests with quiet output
+	@. ../hack/run_silent.sh && print_header "humanlayer-wui" "Web UI tests"
+	@echo "  No tests configured yet"
+
+check: ## Run all quality checks (format + lint + typecheck)
+	@if [ -n "$$VERBOSE" ]; then \
+		$(MAKE) format-check lint typecheck; \
+	else \
+		$(MAKE) check-quiet; \
+	fi
+
+test: ## Run tests
+	@if [ -n "$$VERBOSE" ]; then \
+		echo "No tests configured yet"; \
+	else \
+		$(MAKE) test-quiet; \
+	fi
 
 clean: ## Clean build artifacts
 	rm -rf dist/
