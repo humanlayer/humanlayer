@@ -9,47 +9,47 @@ import SessionTable from './components/internal/SessionTable'
 interface StoreState {
   /* Sessions */
   sessions: SessionInfo[]
-  selectedSessionId: string | null
+  focusedSession: SessionInfo | null
   initSessions: (sessions: SessionInfo[]) => void
-  setSelectedSessionId: (sessionId: string | null) => void
-  selectNextSession: () => void
-  selectPreviousSession: () => void
+  setFocusedSession: (session: SessionInfo | null) => void
+  focusNextSession: () => void
+  focusPreviousSession: () => void
 }
 
 const useStore = create<StoreState>(set => ({
   sessions: [],
-  selectedSessionId: null,
+  focusedSession: null,
   initSessions: (sessions: SessionInfo[]) => set({ sessions }),
-  setSelectedSessionId: (sessionId: string | null) => set({ selectedSessionId: sessionId }),
-  selectNextSession: () =>
+  setFocusedSession: (session: SessionInfo | null) => set({ focusedSession: session }),
+  focusNextSession: () =>
     set(state => {
-      const { sessions, selectedSessionId } = state
+      const { sessions, focusedSession } = state
       if (sessions.length === 0) return state
 
-      const currentIndex = selectedSessionId ? sessions.findIndex(s => s.id === selectedSessionId) : -1
+      const currentIndex = focusedSession ? sessions.findIndex(s => s.id === focusedSession.id) : -1
 
-      // If no session is selected or we're at the last session, select the first session
+      // If no session is focused or we're at the last session, focus the first session
       if (currentIndex === -1 || currentIndex === sessions.length - 1) {
-        return { selectedSessionId: sessions[0].id }
+        return { focusedSession: sessions[0] }
       }
 
-      // Select the next session
-      return { selectedSessionId: sessions[currentIndex + 1].id }
+      // Focus the next session
+      return { focusedSession: sessions[currentIndex + 1] }
     }),
-  selectPreviousSession: () =>
+  focusPreviousSession: () =>
     set(state => {
-      const { sessions, selectedSessionId } = state
+      const { sessions, focusedSession } = state
       if (sessions.length === 0) return state
 
-      const currentIndex = selectedSessionId ? sessions.findIndex(s => s.id === selectedSessionId) : -1
+      const currentIndex = focusedSession ? sessions.findIndex(s => s.id === focusedSession.id) : -1
 
-      // If no session is selected or we're at the first session, select the last session
+      // If no session is focused or we're at the first session, focus the last session
       if (currentIndex === -1 || currentIndex === 0) {
-        return { selectedSessionId: sessions[sessions.length - 1].id }
+        return { focusedSession: sessions[sessions.length - 1] }
       }
 
-      // Select the previous session
-      return { selectedSessionId: sessions[currentIndex - 1].id }
+      // Focus the previous session
+      return { focusedSession: sessions[currentIndex - 1] }
     }),
 }))
 
@@ -57,11 +57,11 @@ function App() {
   // const activeSessionId = null;
   // const selectedSessionId = null;
   // const approvals = [];
-  const selectedSessionId = useStore(state => state.selectedSessionId)
+  const focusedSession = useStore(state => state.focusedSession)
   const sessions = useStore(state => state.sessions)
-  const setSelectedSessionId = useStore(state => state.setSelectedSessionId)
-  const selectNextSession = useStore(state => state.selectNextSession)
-  const selectPreviousSession = useStore(state => state.selectPreviousSession)
+  const setFocusedSession = useStore(state => state.setFocusedSession)
+  const focusNextSession = useStore(state => state.focusNextSession)
+  const focusPreviousSession = useStore(state => state.focusPreviousSession)
   const [status, setStatus] = useState('')
   const [approvals, setApprovals] = useState<any[]>([])
   const [activeSessionId] = useState<string | null>(null)
@@ -159,11 +159,11 @@ function App() {
             <div style={{ marginBottom: '20px' }}>
               <SessionTable
                 sessions={sessions}
-                handleFocusSession={sessionId => setSelectedSessionId(sessionId)}
-                handleBlurSession={() => setSelectedSessionId(null)}
-                selectedSessionId={selectedSessionId}
-                handleSelectNextSession={selectNextSession}
-                handleSelectPreviousSession={selectPreviousSession}
+                handleFocusSession={session => setFocusedSession(session)}
+                handleBlurSession={() => setFocusedSession(null)}
+                focusedSession={focusedSession}
+                handleFocusNextSession={focusNextSession}
+                handleFocusPreviousSession={focusPreviousSession}
               />
               {/*
               These will return, temporarily commenting out.
