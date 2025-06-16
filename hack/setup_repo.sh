@@ -28,6 +28,9 @@ echo "🔧 Setting up HumanLayer repository..."
 echo "📦 Generating HLD mocks..."
 run_silent "HLD mock generation" make -C hld mocks
 
+echo "📦 Generating TUI mocks..."
+run_silent "TUI mock generation" make -C humanlayer-tui mocks
+
 echo "📦 Installing NPM dependencies..."
 run_silent "hlyr npm install" npm i -C hlyr
 run_silent "humanlayer-ts npm install" npm i -C humanlayer-ts
