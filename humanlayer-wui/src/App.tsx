@@ -1,12 +1,64 @@
 import { useState, useEffect } from 'react'
-import { daemonClient } from '@/lib/daemon'
+import { daemonClient, SessionInfo } from './daemon-client'
+import { create } from 'zustand'
 import { Button } from '@/components/ui/button'
 import './App.css'
+import SessionTable from './components/internal/SessionTable'
+
+interface StoreState {
+  /* Sessions */
+  sessions: SessionInfo[]
+  selectedSessionId: string | null
+  initSessions: (sessions: SessionInfo[]) => void
+  setSelectedSessionId: (sessionId: string | null) => void
+  selectNextSession: () => void
+  selectPreviousSession: () => void
+}
+
+const useStore = create<StoreState>(set => ({
+  sessions: [],
+  selectedSessionId: null,
+  initSessions: sessions => set({ sessions }),
+  setSelectedSessionId: sessionId => set({ selectedSessionId: sessionId }),
+  selectNextSession: () => set(state => {
+    const { sessions, selectedSessionId } = state
+    if (sessions.length === 0) return state
+
+    const currentIndex = selectedSessionId 
+      ? sessions.findIndex(s => s.id === selectedSessionId)
+      : -1
+
+    // If no session is selected or we're at the last session, select the first session
+    if (currentIndex === -1 || currentIndex === sessions.length - 1) {
+      return { selectedSessionId: sessions[0].id }
+    }
+
+    // Select the next session
+    return { selectedSessionId: sessions[currentIndex + 1].id }
+  }),
+  selectPreviousSession: () => set(state => {
+    const { sessions, selectedSessionId } = state
+    if (sessions.length === 0) return state
+
+    const currentIndex = selectedSessionId 
+      ? sessions.findIndex(s => s.id === selectedSessionId)
+      : -1
+
+    // If no session is selected or we're at the first session, select the last session
+    if (currentIndex === -1 || currentIndex === 0) {
+      return { selectedSessionId: sessions[sessions.length - 1].id }
+    }
+
+    // Select the previous session
+    return { selectedSessionId: sessions[currentIndex - 1].id }
+  }),
+}))
 
 function App() {
+  const sessions = useStore(state => state.sessions)
+  const selectedSessionId = useStore(state => state.selectedSessionId)
   const [connected, setConnected] = useState(false)
   const [status, setStatus] = useState('')
-  const [sessions, setSessions] = useState<any[]>([])
   const [approvals, setApprovals] = useState<any[]>([])
   const [query, setQuery] = useState('')
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
@@ -41,7 +93,7 @@ function App() {
     }
   }, [activeSessionId])
 
-  async function connectToDaemon() {
+  const connectToDaemon = async () => {
     try {
       setStatus('Connecting to daemon...')
       await daemonClient.connect()
@@ -50,7 +102,7 @@ function App() {
 
       // Check health
       const health = await daemonClient.health()
-      setStatus(`Connected! Daemon version: ${health.version}`)
+      setStatus(`Connected! Daemon @ ${health.version}`)
 
       // Load sessions
       await loadSessions()
@@ -60,16 +112,17 @@ function App() {
     }
   }
 
-  async function loadSessions() {
+  const loadSessions = async () => {
     try {
       const response = await daemonClient.listSessions()
-      setSessions(response.sessions)
+      console.log('response.sessions', response.sessions)
+      useStore.getState().initSessions(response.sessions)
     } catch (error) {
       console.error('Failed to load sessions:', error)
     }
   }
 
-  async function launchSession() {
+  const launchSession = async () => {
     if (!query.trim()) {
       alert('Please enter a query')
       return
@@ -96,7 +149,7 @@ function App() {
     }
   }
 
-  async function pollForApprovals(sessionId: string) {
+  const pollForApprovals = async (sessionId: string) => {
     const interval = setInterval(async () => {
       try {
         const response = await daemonClient.fetchApprovals(sessionId)
@@ -115,7 +168,7 @@ function App() {
     }, 2000)
   }
 
-  async function handleApproval(approval: any, approved: boolean) {
+  const handleApproval = async (approval: any, approved: boolean) => {
     try {
       if (approval.type === 'function_call' && approval.function_call) {
         if (approved) {
@@ -141,109 +194,102 @@ function App() {
   }
 
   return (
-    <main className="container">
-      <h1>HumanLayer Daemon Client Test</h1>
+    <div className="min-h-screen flex flex-col">
+      <main className="container max-w-[80%] mx-auto flex-1 flex flex-col justify-center p-8">
+        {connected && (
+          <>
+            <div style={{ marginBottom: '20px' }}>
+              <SessionTable 
+                sessions={sessions} 
+                handleFocusSession={(sessionId) => useStore.getState().setSelectedSessionId(sessionId)} 
+                handleBlurSession={() => useStore.getState().setSelectedSessionId(null)} 
+                selectedSessionId={selectedSessionId} 
+                handleSelectNextSession={() => useStore.getState().selectNextSession()} 
+                handleSelectPreviousSession={() => useStore.getState().selectPreviousSession()} 
+              />
+              {/* 
+              These will return, temporarily commenting out.
+              <div style={{ marginBottom: '20px' }}>
+                <h2>Launch New Session</h2>
+                <input
+                  type="text"
+                  value={query}
+                  onChange={e => setQuery(e.target.value)}
+                  placeholder="Enter your query..."
+                  style={{ width: '300px', marginRight: '10px' }}
+                />
+                <Button onClick={launchSession}>Launch Session</Button>
+              </div>
 
-      <div style={{ marginBottom: '20px' }}>
-        <strong>Status:</strong> {status}
-        {!connected && (
-          <Button onClick={connectToDaemon} style={{ marginLeft: '10px' }}>
-            Retry Connection
-          </Button>
+              <Button onClick={loadSessions} style={{ marginTop: '10px' }}>
+                Refresh Sessions
+              </Button> */}
+            </div>
+
+            {approvals.length > 0 && (
+              <div>
+                <h2>Pending Approvals ({approvals.length})</h2>
+                {approvals.map((approval, index) => (
+                  <div
+                    key={index}
+                    style={{
+                      marginBottom: '10px',
+                      padding: '10px',
+                      border: '1px solid #ff6600',
+                    }}
+                  >
+                    <strong>Type:</strong> {approval.type}
+                    <br />
+                    {approval.function_call && (
+                      <>
+                        <strong>Function:</strong> {approval.function_call.spec.fn}
+                        <br />
+                        <strong>Args:</strong> {JSON.stringify(approval.function_call.spec.kwargs)}
+                        <br />
+                        <Button
+                          onClick={() => handleApproval(approval, true)}
+                          style={{ marginRight: '5px' }}
+                        >
+                          Approve
+                        </Button>
+                        <Button onClick={() => handleApproval(approval, false)}>Deny</Button>
+                      </>
+                    )}
+                    {approval.human_contact && (
+                      <>
+                        <strong>Message:</strong> {approval.human_contact.spec.msg}
+                        <br />
+                        <Button onClick={() => handleApproval(approval, true)}>Respond</Button>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
         )}
-      </div>
+      </main>
 
-      {connected && (
-        <>
-          <div style={{ marginBottom: '20px' }}>
-            <h2>Launch New Session</h2>
-            <input
-              type="text"
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-              placeholder="Enter your query..."
-              style={{ width: '300px', marginRight: '10px' }}
-            />
-            <Button onClick={launchSession}>Launch Session</Button>
-          </div>
-
-          <div style={{ marginBottom: '20px' }}>
-            <h2>Sessions ({sessions.length})</h2>
-            <div
-              style={{
-                maxHeight: '200px',
-                overflow: 'auto',
-                border: '1px solid #ccc',
-                padding: '10px',
-              }}
+      <div className="fixed bottom-0 left-0 right-0 bg-gray-900 text-white p-2 flex justify-between items-center">
+        <div className="flex-1">
+          {!connected && (
+            <Button
+              onClick={connectToDaemon}
+              variant="ghost"
+              className="text-white hover:text-gray-300"
             >
-              {sessions.map(session => (
-                <div
-                  key={session.id}
-                  style={{
-                    marginBottom: '10px',
-                    padding: '5px',
-                    background: '#f0f0f0',
-                  }}
-                >
-                  <strong>{session.query}</strong>
-                  <br />
-                  ID: {session.id}
-                  <br />
-                  Status: {session.status}
-                  <br />
-                  Started: {new Date(session.start_time).toLocaleString()}
-                </div>
-              ))}
-            </div>
-            <Button onClick={loadSessions} style={{ marginTop: '10px' }}>
-              Refresh Sessions
+              Retry Connection
             </Button>
-          </div>
-
-          {approvals.length > 0 && (
-            <div>
-              <h2>Pending Approvals ({approvals.length})</h2>
-              {approvals.map((approval, index) => (
-                <div
-                  key={index}
-                  style={{
-                    marginBottom: '10px',
-                    padding: '10px',
-                    border: '1px solid #ff6600',
-                  }}
-                >
-                  <strong>Type:</strong> {approval.type}
-                  <br />
-                  {approval.function_call && (
-                    <>
-                      <strong>Function:</strong> {approval.function_call.spec.fn}
-                      <br />
-                      <strong>Args:</strong> {JSON.stringify(approval.function_call.spec.kwargs)}
-                      <br />
-                      <Button
-                        onClick={() => handleApproval(approval, true)}
-                        style={{ marginRight: '5px' }}
-                      >
-                        Approve
-                      </Button>
-                      <Button onClick={() => handleApproval(approval, false)}>Deny</Button>
-                    </>
-                  )}
-                  {approval.human_contact && (
-                    <>
-                      <strong>Message:</strong> {approval.human_contact.spec.msg}
-                      <br />
-                      <Button onClick={() => handleApproval(approval, true)}>Respond</Button>
-                    </>
-                  )}
-                </div>
-              ))}
-            </div>
           )}
-        </>
-      )}
-    </main>
+        </div>
+        <div className="flex items-center space-x-2">
+          <span className="text-sm uppercase text-[0.8em]">{status}</span>
+          <span
+            className={`w-2 h-2 rounded-full ${connected ? 'bg-emerald-300' : 'bg-rose-400'}`}
+          ></span>
+        </div>
+      </div>
+    </div>
   )
 }
 
