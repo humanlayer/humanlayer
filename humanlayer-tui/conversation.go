@@ -314,7 +314,7 @@ func (cm *conversationModel) updateConversationView(msg tea.KeyMsg, m *model) te
 	case key.Matches(msg, keys.Approve):
 		// Quick approve pending approval
 		if cm.pendingApproval != nil && cm.pendingApproval.ApprovalID != "" {
-			return sendApproval(m.apiClient, cm.pendingApproval.ApprovalID, true, "")
+			return m.apiClient.SendApproval(cm.pendingApproval.ApprovalID, true, "")
 		}
 
 	case key.Matches(msg, keys.Deny):
@@ -365,7 +365,7 @@ func (cm *conversationModel) updateApprovalInput(msg tea.KeyMsg, m *model) tea.C
 			comment := cm.approvalInput.Value()
 			approvalID := cm.pendingApproval.ApprovalID
 			cm.clearApprovalState()
-			return sendApproval(m.apiClient, approvalID, false, comment)
+			return m.apiClient.SendApproval(approvalID, false, comment)
 		}
 		cm.clearApprovalState()
 		return nil

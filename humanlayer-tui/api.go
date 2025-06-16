@@ -32,14 +32,6 @@ func launchSession(apiClient api.Client, query, model, workingDir string) tea.Cm
 	return apiClient.LaunchSession(query, model, workingDir)
 }
 
-func sendApproval(apiClient api.Client, callID string, approved bool, comment string) tea.Cmd {
-	return apiClient.SendApproval(callID, approved, comment)
-}
-
-func sendHumanResponse(apiClient api.Client, requestID string, response string) tea.Cmd {
-	return apiClient.SendHumanResponse(requestID, response)
-}
-
 func fetchConversation(apiClient api.Client, sessionID string) tea.Cmd {
 	return apiClient.FetchConversation(sessionID)
 }

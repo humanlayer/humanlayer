@@ -438,7 +438,7 @@ func (m model) getCurrentViewState() domain.ViewState {
 
 	switch m.activeTab {
 	case domain.ApprovalsTab:
-		return m.approvals.viewState
+		return m.approvals.getViewState()
 	case domain.SessionsTab:
 		return m.sessions.viewState
 	}
@@ -449,7 +449,7 @@ func (m model) getCurrentViewState() domain.ViewState {
 func (m *model) setViewState(state domain.ViewState) {
 	switch m.activeTab {
 	case domain.ApprovalsTab:
-		m.approvals.viewState = state
+		m.approvals.setViewState(state)
 	case domain.SessionsTab:
 		m.sessions.viewState = state
 	}
@@ -643,7 +643,7 @@ func (m model) getContextualHelp() string {
 		// Context-specific help for list views
 		switch m.activeTab {
 		case domain.ApprovalsTab:
-			if len(m.approvals.requests) > 0 {
+			if m.approvals.hasRequests() {
 				return "[↑/↓] navigate • [enter] view • [y] approve • [n] deny • [?] help"
 			}
 			return "[tab] switch tab • [?] help • [q] quit"
