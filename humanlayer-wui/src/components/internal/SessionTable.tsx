@@ -16,6 +16,7 @@ interface SessionTableProps {
   handleBlurSession?: () => void
   handleFocusNextSession?: () => void
   handleFocusPreviousSession?: () => void
+  handleActivateSession?: (session: SessionInfo) => void
   focusedSession: SessionInfo | null
 }
 
@@ -25,10 +26,16 @@ export default function SessionTable({
   handleBlurSession,
   handleFocusNextSession,
   handleFocusPreviousSession,
+  handleActivateSession,
   focusedSession,
 }: SessionTableProps) {
   useHotkeys('j', () => handleFocusNextSession?.())
   useHotkeys('k', () => handleFocusPreviousSession?.())
+  useHotkeys('enter', () => {
+    if (focusedSession) {
+      handleActivateSession?.(focusedSession)
+    }
+  })
 
   return (
     <Table>
@@ -48,7 +55,8 @@ export default function SessionTable({
             key={session.id}
             onMouseEnter={() => handleFocusSession?.(session)}
             onMouseLeave={() => handleBlurSession?.()}
-            className={focusedSession?.id === session.id ? '!bg-emerald-200' : ''}
+            onClick={() => handleActivateSession?.(session)}
+            className={`cursor-pointer ${focusedSession?.id === session.id ? '!bg-emerald-200' : ''}`}
           >
             <TableCell>{session.status}</TableCell>
             <TableCell>{session.query}</TableCell>
