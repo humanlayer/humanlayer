@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { daemonClient, SessionStatus, LaunchSessionRequest } from '@/lib/daemon'
+import { daemonClient, LaunchSessionRequest } from '@/lib/daemon'
 import { SessionSummary } from '@/types/ui'
 import { formatError } from '@/utils/errors'
 
@@ -8,6 +8,7 @@ interface UseSessionsReturn {
   loading: boolean
   error: string | null
   refresh: () => Promise<void>
+  // eslint-disable-next-line no-unused-vars
   launchSession: (request: LaunchSessionRequest) => Promise<{ sessionId: string; runId: string }>
 }
 
@@ -71,7 +72,13 @@ export function useSessions(): UseSessionsReturn {
     loading,
     error,
     refresh: fetchSessions,
-    launchSession,
+    launchSession: async (request: LaunchSessionRequest) => {
+      const response = await launchSession(request)
+      return {
+        sessionId: response.session_id,
+        runId: response.run_id,
+      }
+    },
   }
 }
 

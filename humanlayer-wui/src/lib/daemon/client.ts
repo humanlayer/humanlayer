@@ -62,12 +62,24 @@ export class DaemonClient {
     return await invoke('respond_to_human_contact', { callId, response })
   }
 
-  async subscribeToEvents(request: SubscribeRequest): Promise<() => void> {
+  async subscribeToEvents(
+    request: SubscribeRequest,
+    handlers: {
+      // eslint-disable-next-line no-unused-vars
+      onEvent?: (event: EventNotification) => void
+      // eslint-disable-next-line no-unused-vars
+      onError?: (error: Error) => void
+    } = {},
+  ): Promise<() => void> {
     await invoke('subscribe_to_events', { request })
 
-    // Return unsubscribe function
+    // Listen for daemon events and forward to handlers
     const unlisten = await listen<EventNotification>('daemon-event', event => {
-      console.log('Received daemon event:', event.payload)
+      try {
+        handlers.onEvent?.(event.payload)
+      } catch (error) {
+        handlers.onError?.(error instanceof Error ? error : new Error(String(error)))
+      }
     })
 
     return unlisten

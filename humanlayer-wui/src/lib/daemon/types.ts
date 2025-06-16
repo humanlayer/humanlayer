@@ -1,4 +1,5 @@
 // Enums
+/* eslint-disable no-unused-vars */
 export enum SessionStatus {
   Starting = 'starting',
   Running = 'running',
@@ -17,6 +18,7 @@ export enum Decision {
   Deny = 'deny',
   Respond = 'respond',
 }
+/* eslint-enable no-unused-vars */
 
 // Type definitions matching the Rust types
 export interface HealthCheckResponse {

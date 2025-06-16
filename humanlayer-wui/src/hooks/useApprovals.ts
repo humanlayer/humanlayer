@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { daemonClient, ApprovalType } from '@/lib/daemon'
+import { daemonClient } from '@/lib/daemon'
 import { UnifiedApprovalRequest } from '@/types/ui'
 import { enrichApprovals } from '@/utils/enrichment'
 import { formatError } from '@/utils/errors'
@@ -9,8 +9,11 @@ interface UseApprovalsReturn {
   loading: boolean
   error: string | null
   refresh: () => Promise<void>
+  // eslint-disable-next-line no-unused-vars
   approve: (callId: string, comment?: string) => Promise<void>
+  // eslint-disable-next-line no-unused-vars
   deny: (callId: string, reason: string) => Promise<void>
+  // eslint-disable-next-line no-unused-vars
   respond: (callId: string, response: string) => Promise<void>
 }
 
@@ -105,32 +108,53 @@ export function useApprovalsWithSubscription(sessionId?: string): UseApprovalsRe
 
   useEffect(() => {
     let unsubscribe: (() => void) | null = null
+    let isSubscribed = true
 
     const subscribe = async () => {
       try {
-        unsubscribe = await daemonClient.subscribeToEvents({
-          event_types: ['approval_requested', 'approval_resolved'],
-          session_id: sessionId,
-        })
+        unsubscribe = await daemonClient.subscribeToEvents(
+          {
+            event_types: ['approval_requested', 'approval_resolved', 'session_status_changed'],
+            session_id: sessionId,
+          },
+          {
+            onEvent: event => {
+              if (!isSubscribed) return
 
-        // The daemon-client.ts needs to be updated to handle events
-        // For now, we'll poll every 5 seconds
-        const interval = setInterval(() => {
-          base.refresh()
-        }, 5000)
-
-        return () => {
-          clearInterval(interval)
-          unsubscribe?.()
-        }
+              // Handle different event types
+              switch (event.event.type) {
+                case 'approval_requested':
+                case 'approval_resolved':
+                  // Refresh approvals when relevant events occur
+                  base.refresh()
+                  break
+                case 'session_status_changed':
+                  // Could update session status if needed
+                  break
+              }
+            },
+            onError: error => {
+              console.error('Subscription error:', error)
+            },
+          },
+        )
       } catch (err) {
         console.error('Failed to subscribe to events:', err)
+        // Fall back to polling on subscription failure
+        const interval = setInterval(() => {
+          if (isSubscribed) {
+            base.refresh()
+          }
+        }, 5000)
+
+        return () => clearInterval(interval)
       }
     }
 
     subscribe()
 
     return () => {
+      isSubscribed = false
       unsubscribe?.()
     }
   }, [sessionId, base.refresh])

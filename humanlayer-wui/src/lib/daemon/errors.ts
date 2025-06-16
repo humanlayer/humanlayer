@@ -1,13 +1,14 @@
 // Daemon-specific error types
 
 export class DaemonError extends Error {
-  constructor(
-    message: string,
-    public code?: string,
-    public details?: any,
-  ) {
+  declare code?: string
+  declare details?: any
+
+  constructor(message: string, code?: string, details?: any) {
     super(message)
     this.name = 'DaemonError'
+    this.code = code
+    this.details = details
   }
 }
 
