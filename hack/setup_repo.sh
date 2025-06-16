@@ -33,6 +33,9 @@ run_silent "hlyr npm install" npm i -C hlyr
 run_silent "humanlayer-ts npm install" npm i -C humanlayer-ts
 run_silent "humanlayer-ts-vercel-ai-sdk npm install" npm i -C humanlayer-ts-vercel-ai-sdk
 
+echo "📦 Installing WUI dependencies..."
+run_silent "humanlayer-wui bun install" bun install --cwd=humanlayer-wui
+
 echo "🏗️  Building hlyr (requires mocks and npm dependencies)..."
 run_silent "hlyr build" npm run build -C hlyr
 
