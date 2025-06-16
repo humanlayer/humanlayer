@@ -20,7 +20,7 @@ export function useDaemonConnection(): UseDaemonConnectionReturn {
   const checkHealth = useCallback(async () => {
     try {
       const response = await daemonClient.health()
-      setConnected(response.status === 'healthy')
+      setConnected(response.status === 'ok')
       setVersion(response.version)
       setError(null)
     } catch (err) {

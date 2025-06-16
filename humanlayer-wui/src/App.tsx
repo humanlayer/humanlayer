@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { daemonClient, SessionInfo } from './daemon-client'
+import { daemonClient } from '@/lib/daemon'
+import type { SessionInfo } from '@/lib/daemon/types'
 import { create } from 'zustand'
 import { Button } from '@/components/ui/button'
 import './App.css'
@@ -53,11 +54,18 @@ const useStore = create<StoreState>(set => ({
 }))
 
 function App() {
+  // const activeSessionId = null;
+  // const selectedSessionId = null;
+  // const approvals = [];
   const selectedSessionId = useStore(state => state.selectedSessionId)
-  const [connected, setConnected] = useState(false)
+  const sessions = useStore(state => state.sessions)
+  const setSelectedSessionId = useStore(state => state.setSelectedSessionId)
+  const selectNextSession = useStore(state => state.selectNextSession)
+  const selectPreviousSession = useStore(state => state.selectPreviousSession)
   const [status, setStatus] = useState('')
   const [approvals, setApprovals] = useState<any[]>([])
   const [activeSessionId] = useState<string | null>(null)
+  const [connected, setConnected] = useState(false)
 
   // Connect to daemon on mount
   useEffect(() => {
@@ -93,8 +101,8 @@ function App() {
     try {
       setStatus('Connecting to daemon...')
       await daemonClient.connect()
-      setConnected(true)
       setStatus('Connected!')
+      setConnected(true)
 
       // Check health
       const health = await daemonClient.health()
@@ -150,12 +158,12 @@ function App() {
           <>
             <div style={{ marginBottom: '20px' }}>
               <SessionTable
-                sessions={useStore(state => state.sessions)}
-                handleFocusSession={sessionId => useStore.getState().setSelectedSessionId(sessionId)}
-                handleBlurSession={() => useStore.getState().setSelectedSessionId(null)}
+                sessions={sessions}
+                handleFocusSession={sessionId => setSelectedSessionId(sessionId)}
+                handleBlurSession={() => setSelectedSessionId(null)}
                 selectedSessionId={selectedSessionId}
-                handleSelectNextSession={() => useStore.getState().selectNextSession()}
-                handleSelectPreviousSession={() => useStore.getState().selectPreviousSession()}
+                handleSelectNextSession={selectNextSession}
+                handleSelectPreviousSession={selectPreviousSession}
               />
               {/*
               These will return, temporarily commenting out.
