@@ -1,134 +1,142 @@
-
-import { useState, useEffect } from "react";
-import { daemonClient } from "./daemon-client";
-import "./App.css";
+import { useState, useEffect } from 'react'
+import { daemonClient } from '@/lib/daemon'
+import { Button } from '@/components/ui/button'
+import './App.css'
 
 function App() {
-  const [connected, setConnected] = useState(false);
-  const [status, setStatus] = useState("");
-  const [sessions, setSessions] = useState<any[]>([]);
-  const [approvals, setApprovals] = useState<any[]>([]);
-  const [query, setQuery] = useState("");
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [connected, setConnected] = useState(false)
+  const [status, setStatus] = useState('')
+  const [sessions, setSessions] = useState<any[]>([])
+  const [approvals, setApprovals] = useState<any[]>([])
+  const [query, setQuery] = useState('')
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
 
   // Connect to daemon on mount
   useEffect(() => {
-    connectToDaemon();
-  }, []);
+    connectToDaemon()
+  }, [])
+
+  // Cleanup subscription when component unmounts or session changes
+  useEffect(() => {
+    let unsubscribe: (() => void) | null = null
+
+    if (activeSessionId) {
+      // Subscribe to events for the active session
+      daemonClient
+        .subscribeToEvents({
+          session_id: activeSessionId,
+        })
+        .then((unsub: () => void) => {
+          unsubscribe = unsub
+        })
+        .catch((error: Error) => {
+          console.error('Failed to subscribe to events:', error)
+        })
+    }
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe()
+      }
+    }
+  }, [activeSessionId])
 
   async function connectToDaemon() {
     try {
-      setStatus("Connecting to daemon...");
-      await daemonClient.connect();
-      setConnected(true);
-      setStatus("Connected!");
+      setStatus('Connecting to daemon...')
+      await daemonClient.connect()
+      setConnected(true)
+      setStatus('Connected!')
 
       // Check health
-      const health = await daemonClient.health();
-      setStatus(`Connected! Daemon version: ${health.version}`);
+      const health = await daemonClient.health()
+      setStatus(`Connected! Daemon version: ${health.version}`)
 
       // Load sessions
-      await loadSessions();
+      await loadSessions()
     } catch (error) {
-      setStatus(`Failed to connect: ${error}`);
-      setConnected(false);
+      setStatus(`Failed to connect: ${error}`)
+      setConnected(false)
     }
   }
 
   async function loadSessions() {
     try {
-      const response = await daemonClient.listSessions();
-      setSessions(response.sessions);
+      const response = await daemonClient.listSessions()
+      setSessions(response.sessions)
     } catch (error) {
-      console.error("Failed to load sessions:", error);
+      console.error('Failed to load sessions:', error)
     }
   }
 
   async function launchSession() {
     if (!query.trim()) {
-      alert("Please enter a query");
-      return;
+      alert('Please enter a query')
+      return
     }
 
     try {
-      setStatus("Launching session...");
+      setStatus('Launching session...')
       const response = await daemonClient.launchSession({
         query: query.trim(),
-        model: "sonnet",
+        model: 'sonnet',
         verbose: true,
-      });
+      })
 
-      setActiveSessionId(response.session_id);
-      setStatus(`Session launched! ID: ${response.session_id}`);
-
-      // Subscribe to events
-      const unsubscribe = await daemonClient.subscribeToEvents({
-        session_id: response.session_id,
-      });
+      setActiveSessionId(response.session_id)
+      setStatus(`Session launched! ID: ${response.session_id}`)
 
       // Refresh sessions list
-      await loadSessions();
+      await loadSessions()
 
       // Start polling for approvals
-      pollForApprovals(response.session_id);
+      pollForApprovals(response.session_id)
     } catch (error) {
-      setStatus(`Failed to launch session: ${error}`);
+      setStatus(`Failed to launch session: ${error}`)
     }
   }
 
   async function pollForApprovals(sessionId: string) {
     const interval = setInterval(async () => {
       try {
-        const response = await daemonClient.fetchApprovals(sessionId);
-        setApprovals(response.approvals);
+        const response = await daemonClient.fetchApprovals(sessionId)
+        setApprovals(response.approvals)
 
         // Check session status
-        const sessionState = await daemonClient.getSessionState(sessionId);
-        if (
-          sessionState.session.status === "completed" ||
-          sessionState.session.status === "failed"
-        ) {
-          clearInterval(interval);
-          setStatus(`Session ${sessionState.session.status}`);
-          await loadSessions();
+        const sessionState = await daemonClient.getSessionState(sessionId)
+        if (sessionState.session.status === 'completed' || sessionState.session.status === 'failed') {
+          clearInterval(interval)
+          setStatus(`Session ${sessionState.session.status}`)
+          await loadSessions()
         }
       } catch (error) {
-        console.error("Failed to fetch approvals:", error);
+        console.error('Failed to fetch approvals:', error)
       }
-    }, 2000);
+    }, 2000)
   }
 
   async function handleApproval(approval: any, approved: boolean) {
     try {
-      if (approval.type === "function_call" && approval.function_call) {
+      if (approval.type === 'function_call' && approval.function_call) {
         if (approved) {
-          await daemonClient.approveFunctionCall(
-            approval.function_call.call_id,
-            "Approved via UI",
-          );
+          await daemonClient.approveFunctionCall(approval.function_call.call_id, 'Approved via UI')
         } else {
-          await daemonClient.denyFunctionCall(
-            approval.function_call.call_id,
-            "Denied via UI",
-          );
+          await daemonClient.denyFunctionCall(approval.function_call.call_id, 'Denied via UI')
         }
-      } else if (approval.type === "human_contact" && approval.human_contact) {
-        const response = prompt("Enter your response:");
+      } else if (approval.type === 'human_contact' && approval.human_contact) {
+        const response = prompt('Enter your response:')
         if (response) {
-          await daemonClient.respondToHumanContact(
-            approval.human_contact.call_id,
-            response,
-          );
+          await daemonClient.respondToHumanContact(approval.human_contact.call_id, response)
         }
       }
 
       // Refresh approvals
       if (activeSessionId) {
-        const response = await daemonClient.fetchApprovals(activeSessionId);
-        setApprovals(response.approvals);
+        const response = await daemonClient.fetchApprovals(activeSessionId)
+        setApprovals(response.approvals)
       }
     } catch (error) {
-      alert(`Failed to handle approval: ${error}`);
+      alert(`Failed to handle approval: ${error}`)
     }
   }
 
@@ -136,46 +144,46 @@ function App() {
     <main className="container">
       <h1>HumanLayer Daemon Client Test</h1>
 
-      <div style={{ marginBottom: "20px" }}>
+      <div style={{ marginBottom: '20px' }}>
         <strong>Status:</strong> {status}
         {!connected && (
-          <button onClick={connectToDaemon} style={{ marginLeft: "10px" }}>
+          <Button onClick={connectToDaemon} style={{ marginLeft: '10px' }}>
             Retry Connection
-          </button>
+          </Button>
         )}
       </div>
 
       {connected && (
         <>
-          <div style={{ marginBottom: "20px" }}>
+          <div style={{ marginBottom: '20px' }}>
             <h2>Launch New Session</h2>
             <input
               type="text"
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={e => setQuery(e.target.value)}
               placeholder="Enter your query..."
-              style={{ width: "300px", marginRight: "10px" }}
+              style={{ width: '300px', marginRight: '10px' }}
             />
-            <button onClick={launchSession}>Launch Session</button>
+            <Button onClick={launchSession}>Launch Session</Button>
           </div>
 
-          <div style={{ marginBottom: "20px" }}>
+          <div style={{ marginBottom: '20px' }}>
             <h2>Sessions ({sessions.length})</h2>
             <div
               style={{
-                maxHeight: "200px",
-                overflow: "auto",
-                border: "1px solid #ccc",
-                padding: "10px",
+                maxHeight: '200px',
+                overflow: 'auto',
+                border: '1px solid #ccc',
+                padding: '10px',
               }}
             >
-              {sessions.map((session) => (
+              {sessions.map(session => (
                 <div
                   key={session.id}
                   style={{
-                    marginBottom: "10px",
-                    padding: "5px",
-                    background: "#f0f0f0",
+                    marginBottom: '10px',
+                    padding: '5px',
+                    background: '#f0f0f0',
                   }}
                 >
                   <strong>{session.query}</strong>
@@ -188,9 +196,9 @@ function App() {
                 </div>
               ))}
             </div>
-            <button onClick={loadSessions} style={{ marginTop: "10px" }}>
+            <Button onClick={loadSessions} style={{ marginTop: '10px' }}>
               Refresh Sessions
-            </button>
+            </Button>
           </div>
 
           {approvals.length > 0 && (
@@ -200,40 +208,33 @@ function App() {
                 <div
                   key={index}
                   style={{
-                    marginBottom: "10px",
-                    padding: "10px",
-                    border: "1px solid #ff6600",
+                    marginBottom: '10px',
+                    padding: '10px',
+                    border: '1px solid #ff6600',
                   }}
                 >
                   <strong>Type:</strong> {approval.type}
                   <br />
                   {approval.function_call && (
                     <>
-                      <strong>Function:</strong>{" "}
-                      {approval.function_call.spec.fn}
+                      <strong>Function:</strong> {approval.function_call.spec.fn}
                       <br />
-                      <strong>Args:</strong>{" "}
-                      {JSON.stringify(approval.function_call.spec.kwargs)}
+                      <strong>Args:</strong> {JSON.stringify(approval.function_call.spec.kwargs)}
                       <br />
-                      <button
+                      <Button
                         onClick={() => handleApproval(approval, true)}
-                        style={{ marginRight: "5px" }}
+                        style={{ marginRight: '5px' }}
                       >
                         Approve
-                      </button>
-                      <button onClick={() => handleApproval(approval, false)}>
-                        Deny
-                      </button>
+                      </Button>
+                      <Button onClick={() => handleApproval(approval, false)}>Deny</Button>
                     </>
                   )}
                   {approval.human_contact && (
                     <>
-                      <strong>Message:</strong>{" "}
-                      {approval.human_contact.spec.msg}
+                      <strong>Message:</strong> {approval.human_contact.spec.msg}
                       <br />
-                      <button onClick={() => handleApproval(approval, true)}>
-                        Respond
-                      </button>
+                      <Button onClick={() => handleApproval(approval, true)}>Respond</Button>
                     </>
                   )}
                 </div>
