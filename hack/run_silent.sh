@@ -17,13 +17,13 @@ VERBOSE=${VERBOSE:-0}
 run_silent() {
     local description="$1"
     local command="$2"
-    
+
     if [[ "$VERBOSE" == "1" ]]; then
         echo "  → Running: $command"
         eval "$command"
         return $?
     fi
-    
+
     local tmp_file=$(mktemp)
     if eval "$command" > "$tmp_file" 2>&1; then
         printf "  ${GREEN}✓${NC} %s\n" "$description"
@@ -43,13 +43,13 @@ run_silent() {
 run_with_quiet() {
     local description="$1"
     local command="$2"
-    
+
     if [[ "$VERBOSE" == "1" ]]; then
         echo "  → Running: $command"
         eval "$command"
         return $?
     fi
-    
+
     local tmp_file=$(mktemp)
     if eval "$command" > "$tmp_file" 2>&1; then
         printf "  ${GREEN}✓${NC} %s\n" "$description"
@@ -69,16 +69,16 @@ run_silent_with_test_count() {
     local description="$1"
     local command="$2"
     local test_type="${3:-pytest}"  # Default to pytest
-    
+
     if [[ "$VERBOSE" == "1" ]]; then
         echo "  → Running: $command"
         eval "$command"
         return $?
     fi
-    
+
     local tmp_file=$(mktemp)
     local test_count=""
-    
+
     if eval "$command" > "$tmp_file" 2>&1; then
         # Extract test count based on test type
         case "$test_type" in
