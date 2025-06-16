@@ -15,6 +15,7 @@
     "check": "bun run format:check && bun run lint && bun run typecheck"
   },
   "dependencies": {
+    "@radix-ui/react-collapsible": "^1.1.11",
     "@radix-ui/react-slot": "^1.2.3",
     "@tailwindcss/vite": "^4.1.10",
     "@tauri-apps/api": "^2",

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { daemonClient } from './daemon-client'
+import { daemonClient } from '@/lib/daemon'
 import { Button } from '@/components/ui/button'
 import './App.css'
 
@@ -26,10 +26,10 @@ function App() {
         .subscribeToEvents({
           session_id: activeSessionId,
         })
-        .then(unsub => {
+        .then((unsub: () => void) => {
           unsubscribe = unsub
         })
-        .catch(error => {
+        .catch((error: Error) => {
           console.error('Failed to subscribe to events:', error)
         })
     }
