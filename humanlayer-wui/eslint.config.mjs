@@ -30,6 +30,8 @@ export default [
       'no-undef': 'error',
       '@typescript-eslint/no-unused-vars': 'error',
       'react/react-in-jsx-scope': 'off',
+      // Per docs, no-unused-vars needs to be off when we're using `typescript-eslint`'s no-unused-vars
+      'no-unused-vars': 'off',
     },
   },
   {

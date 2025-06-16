@@ -18,50 +18,46 @@ interface StoreState {
 const useStore = create<StoreState>(set => ({
   sessions: [],
   selectedSessionId: null,
-  initSessions: sessions => set({ sessions }),
-  setSelectedSessionId: sessionId => set({ selectedSessionId: sessionId }),
-  selectNextSession: () => set(state => {
-    const { sessions, selectedSessionId } = state
-    if (sessions.length === 0) return state
+  initSessions: (sessions: SessionInfo[]) => set({ sessions }),
+  setSelectedSessionId: (sessionId: string | null) => set({ selectedSessionId: sessionId }),
+  selectNextSession: () =>
+    set(state => {
+      const { sessions, selectedSessionId } = state
+      if (sessions.length === 0) return state
 
-    const currentIndex = selectedSessionId 
-      ? sessions.findIndex(s => s.id === selectedSessionId)
-      : -1
+      const currentIndex = selectedSessionId ? sessions.findIndex(s => s.id === selectedSessionId) : -1
 
-    // If no session is selected or we're at the last session, select the first session
-    if (currentIndex === -1 || currentIndex === sessions.length - 1) {
-      return { selectedSessionId: sessions[0].id }
-    }
+      // If no session is selected or we're at the last session, select the first session
+      if (currentIndex === -1 || currentIndex === sessions.length - 1) {
+        return { selectedSessionId: sessions[0].id }
+      }
 
-    // Select the next session
-    return { selectedSessionId: sessions[currentIndex + 1].id }
-  }),
-  selectPreviousSession: () => set(state => {
-    const { sessions, selectedSessionId } = state
-    if (sessions.length === 0) return state
+      // Select the next session
+      return { selectedSessionId: sessions[currentIndex + 1].id }
+    }),
+  selectPreviousSession: () =>
+    set(state => {
+      const { sessions, selectedSessionId } = state
+      if (sessions.length === 0) return state
 
-    const currentIndex = selectedSessionId 
-      ? sessions.findIndex(s => s.id === selectedSessionId)
-      : -1
+      const currentIndex = selectedSessionId ? sessions.findIndex(s => s.id === selectedSessionId) : -1
 
-    // If no session is selected or we're at the first session, select the last session
-    if (currentIndex === -1 || currentIndex === 0) {
-      return { selectedSessionId: sessions[sessions.length - 1].id }
-    }
+      // If no session is selected or we're at the first session, select the last session
+      if (currentIndex === -1 || currentIndex === 0) {
+        return { selectedSessionId: sessions[sessions.length - 1].id }
+      }
 
-    // Select the previous session
-    return { selectedSessionId: sessions[currentIndex - 1].id }
-  }),
+      // Select the previous session
+      return { selectedSessionId: sessions[currentIndex - 1].id }
+    }),
 }))
 
 function App() {
-  const sessions = useStore(state => state.sessions)
   const selectedSessionId = useStore(state => state.selectedSessionId)
   const [connected, setConnected] = useState(false)
   const [status, setStatus] = useState('')
   const [approvals, setApprovals] = useState<any[]>([])
-  const [query, setQuery] = useState('')
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
+  const [activeSessionId] = useState<string | null>(null)
 
   // Connect to daemon on mount
   useEffect(() => {
@@ -122,52 +118,6 @@ function App() {
     }
   }
 
-  const launchSession = async () => {
-    if (!query.trim()) {
-      alert('Please enter a query')
-      return
-    }
-
-    try {
-      setStatus('Launching session...')
-      const response = await daemonClient.launchSession({
-        query: query.trim(),
-        model: 'sonnet',
-        verbose: true,
-      })
-
-      setActiveSessionId(response.session_id)
-      setStatus(`Session launched! ID: ${response.session_id}`)
-
-      // Refresh sessions list
-      await loadSessions()
-
-      // Start polling for approvals
-      pollForApprovals(response.session_id)
-    } catch (error) {
-      setStatus(`Failed to launch session: ${error}`)
-    }
-  }
-
-  const pollForApprovals = async (sessionId: string) => {
-    const interval = setInterval(async () => {
-      try {
-        const response = await daemonClient.fetchApprovals(sessionId)
-        setApprovals(response.approvals)
-
-        // Check session status
-        const sessionState = await daemonClient.getSessionState(sessionId)
-        if (sessionState.session.status === 'completed' || sessionState.session.status === 'failed') {
-          clearInterval(interval)
-          setStatus(`Session ${sessionState.session.status}`)
-          await loadSessions()
-        }
-      } catch (error) {
-        console.error('Failed to fetch approvals:', error)
-      }
-    }, 2000)
-  }
-
   const handleApproval = async (approval: any, approved: boolean) => {
     try {
       if (approval.type === 'function_call' && approval.function_call) {
@@ -199,15 +149,15 @@ function App() {
         {connected && (
           <>
             <div style={{ marginBottom: '20px' }}>
-              <SessionTable 
-                sessions={sessions} 
-                handleFocusSession={(sessionId) => useStore.getState().setSelectedSessionId(sessionId)} 
-                handleBlurSession={() => useStore.getState().setSelectedSessionId(null)} 
-                selectedSessionId={selectedSessionId} 
-                handleSelectNextSession={() => useStore.getState().selectNextSession()} 
-                handleSelectPreviousSession={() => useStore.getState().selectPreviousSession()} 
+              <SessionTable
+                sessions={useStore(state => state.sessions)}
+                handleFocusSession={sessionId => useStore.getState().setSelectedSessionId(sessionId)}
+                handleBlurSession={() => useStore.getState().setSelectedSessionId(null)}
+                selectedSessionId={selectedSessionId}
+                handleSelectNextSession={() => useStore.getState().selectNextSession()}
+                handleSelectPreviousSession={() => useStore.getState().selectPreviousSession()}
               />
-              {/* 
+              {/*
               These will return, temporarily commenting out.
               <div style={{ marginBottom: '20px' }}>
                 <h2>Launch New Session</h2>

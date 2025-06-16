@@ -27,7 +27,6 @@ export default function SessionTable({
   handleSelectPreviousSession,
   selectedSessionId,
 }: SessionTableProps) {
-
   useHotkeys('j', () => handleSelectNextSession?.())
   useHotkeys('k', () => handleSelectPreviousSession?.())
 
@@ -45,11 +44,11 @@ export default function SessionTable({
       </TableHeader>
       <TableBody>
         {sessions.map(session => (
-          <TableRow 
-            key={session.id} 
-            onMouseEnter={() => handleFocusSession?.(session.id)} 
+          <TableRow
+            key={session.id}
+            onMouseEnter={() => handleFocusSession?.(session.id)}
             onMouseLeave={() => handleBlurSession?.()}
-            className={session.id === selectedSessionId ? "!bg-emerald-200" : ""}
+            className={session.id === selectedSessionId ? '!bg-emerald-200' : ''}
           >
             <TableCell>{session.status}</TableCell>
             <TableCell>{session.query}</TableCell>
