@@ -9,10 +9,7 @@ interface UseConversationReturn {
   refresh: () => Promise<void>
 }
 
-export function useConversation(
-  sessionId?: string,
-  claudeSessionId?: string
-): UseConversationReturn {
+export function useConversation(sessionId?: string, claudeSessionId?: string): UseConversationReturn {
   const [events, setEvents] = useState<ConversationEvent[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -27,7 +24,7 @@ export function useConversation(
     try {
       setLoading(true)
       setError(null)
-      
+
       const response = await daemonClient.getConversation(sessionId, claudeSessionId)
       setEvents(response.events)
     } catch (err) {
@@ -45,7 +42,7 @@ export function useConversation(
     events,
     loading,
     error,
-    refresh: fetchConversation
+    refresh: fetchConversation,
   }
 }
 
@@ -66,14 +63,14 @@ export interface FormattedMessage {
 
 export function useFormattedConversation(
   sessionId?: string,
-  claudeSessionId?: string
+  claudeSessionId?: string,
 ): UseConversationReturn & { formattedEvents: FormattedMessage[] } {
   const base = useConversation(sessionId, claudeSessionId)
-  
+
   const formattedEvents: FormattedMessage[] = base.events.map(event => {
     let content = event.content || ''
     let type: FormattedMessage['type'] = 'message'
-    
+
     if (event.event_type === 'tool_call') {
       type = 'tool_call'
       content = `Calling ${event.tool_name || 'tool'}`
@@ -92,7 +89,7 @@ export function useFormattedConversation(
       type = 'approval'
       content = `Approval ${event.approval_status}`
     }
-    
+
     return {
       id: event.id,
       type,
@@ -103,13 +100,13 @@ export function useFormattedConversation(
         toolName: event.tool_name,
         toolId: event.tool_id,
         approvalStatus: event.approval_status || undefined,
-        approvalId: event.approval_id
-      }
+        approvalId: event.approval_id,
+      },
     }
   })
-  
+
   return {
     ...base,
-    formattedEvents
+    formattedEvents,
   }
 }

@@ -6,10 +6,10 @@ export interface UnifiedApprovalRequest {
   callId: string
   runId: string
   type: ApprovalType
-  title: string        // Formatted title for display
-  description: string  // Formatted description
-  tool?: string        // Function name for function calls
-  parameters?: Record<string, any>  // Function parameters
+  title: string // Formatted title for display
+  description: string // Formatted description
+  tool?: string // Function name for function calls
+  parameters?: Record<string, any> // Function parameters
   createdAt: Date
   // Enriched session context
   sessionId?: string

@@ -28,11 +28,11 @@ List and launch Claude Code sessions.
 
 ```typescript
 const {
-  sessions,      // SessionSummary[]
-  loading,       // boolean
-  error,         // string | null
-  refresh,       // () => Promise<void>
-  launchSession  // (request: LaunchSessionRequest) => Promise<{ sessionId, runId }>
+  sessions, // SessionSummary[]
+  loading, // boolean
+  error, // string | null
+  refresh, // () => Promise<void>
+  launchSession, // (request: LaunchSessionRequest) => Promise<{ sessionId, runId }>
 } = useSessions()
 ```
 
@@ -68,12 +68,12 @@ Monitor daemon connection health.
 
 ```typescript
 const {
-  connected,    // boolean
-  connecting,   // boolean
-  error,        // string | null
-  version,      // string | null
-  connect,      // () => Promise<void>
-  checkHealth   // () => Promise<void>
+  connected, // boolean
+  connecting, // boolean
+  error, // string | null
+  version, // string | null
+  connect, // () => Promise<void>
+  checkHealth, // () => Promise<void>
 } = useDaemonConnection()
 ```
 
@@ -89,14 +89,14 @@ interface UnifiedApprovalRequest {
   callId: string
   runId: string
   type: ApprovalType
-  title: string              // Formatted for display
-  description: string        // Full details
-  tool?: string             // Function name
+  title: string // Formatted for display
+  description: string // Full details
+  tool?: string // Function name
   parameters?: Record<string, any>
   createdAt: Date
-  sessionId?: string        // Enriched data
-  sessionQuery?: string     // Enriched data
-  sessionModel?: string     // Enriched data
+  sessionId?: string // Enriched data
+  sessionQuery?: string // Enriched data
+  sessionModel?: string // Enriched data
 }
 ```
 
@@ -105,7 +105,7 @@ interface UnifiedApprovalRequest {
 ```typescript
 interface LaunchSessionRequest {
   query: string
-  model?: string            // 'opus' | 'sonnet'
+  model?: string // 'opus' | 'sonnet'
   working_dir?: string
   max_turns?: number
   // ... see types.ts for all options
@@ -115,13 +115,17 @@ interface LaunchSessionRequest {
 ## Utilities
 
 ### formatTimestamp(date)
+
 Format dates for display (e.g., "5m ago", "2h ago")
 
 ### truncate(text, maxLength)
+
 Truncate text with ellipsis
 
 ### formatError(error)
+
 Convert technical errors to user-friendly messages
 
 ### enrichApprovals(approvals, sessions)
+
 Join approval data with session context

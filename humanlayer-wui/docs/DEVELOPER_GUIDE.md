@@ -7,27 +7,30 @@ This guide helps you build UI components that interact with the HumanLayer daemo
 ### ✅ DO
 
 #### Use Hooks for Everything
+
 ```tsx
 import { useApprovals, useSessions } from '@/hooks'
 
 function MyComponent() {
   const { approvals, loading, error, approve, deny } = useApprovals()
   const { sessions, launchSession } = useSessions()
-  
+
   // Hooks handle all the complexity
 }
 ```
 
 #### Use UI Types for Props
+
 ```tsx
 import { UnifiedApprovalRequest } from '@/types/ui'
 
 interface Props {
-  approval: UnifiedApprovalRequest  // ✅ UI type
+  approval: UnifiedApprovalRequest // ✅ UI type
 }
 ```
 
 #### Import Enums When Needed
+
 ```tsx
 import { ApprovalType, SessionStatus } from '@/lib/daemon/types'
 
@@ -39,6 +42,7 @@ if (approval.type === ApprovalType.FunctionCall) {
 ### ❌ DON'T
 
 #### Don't Use the Daemon Client Directly
+
 ```tsx
 // ❌ WRONG - Never do this in components
 import { daemonClient } from '@/lib/daemon'
@@ -49,6 +53,7 @@ const { approvals } = useApprovals()
 ```
 
 #### Don't Use Raw Protocol Types in Components
+
 ```tsx
 // ❌ WRONG - FunctionCall is a protocol type
 import { FunctionCall } from '@/lib/daemon/types'
@@ -66,11 +71,12 @@ interface Props {
 ## Common Patterns
 
 ### Handling Approvals
+
 ```tsx
 function ApprovalCard({ approval }: { approval: UnifiedApprovalRequest }) {
   const { approve, deny, respond } = useApprovals()
   const [isProcessing, setIsProcessing] = useState(false)
-  
+
   const handleApprove = async () => {
     setIsProcessing(true)
     try {
@@ -82,7 +88,7 @@ function ApprovalCard({ approval }: { approval: UnifiedApprovalRequest }) {
       setIsProcessing(false)
     }
   }
-  
+
   return (
     <Card>
       <h3>{approval.title}</h3>
@@ -96,24 +102,25 @@ function ApprovalCard({ approval }: { approval: UnifiedApprovalRequest }) {
 ```
 
 ### Launching Sessions
+
 ```tsx
 function LaunchButton() {
   const { launchSession } = useSessions()
   const [query, setQuery] = useState('')
-  
+
   const handleLaunch = async () => {
     try {
       const { sessionId } = await launchSession({
         query,
         model: 'sonnet',
-        working_dir: '/path/to/project'
+        working_dir: '/path/to/project',
       })
       navigate(`/sessions/${sessionId}`)
     } catch (error) {
       alert(error.message)
     }
   }
-  
+
   return (
     <>
       <input value={query} onChange={e => setQuery(e.target.value)} />
@@ -124,11 +131,12 @@ function LaunchButton() {
 ```
 
 ### Real-time Updates
+
 ```tsx
 function LiveApprovals() {
   // This hook automatically polls for updates
   const { approvals } = useApprovalsWithSubscription()
-  
+
   return (
     <div>
       {approvals.map(approval => (
@@ -142,22 +150,26 @@ function LiveApprovals() {
 ## Understanding the Layers
 
 ### 1. Components (Your Code)
+
 - Import hooks and UI types
 - Handle user interactions
 - Render UI
 
 ### 2. Hooks (React Layer)
+
 - Manage state with useState
 - Handle loading/error states
 - Enrich data (join approvals + sessions)
 - Format errors for display
 
 ### 3. Daemon Client (Protocol Layer)
+
 - Type-safe Tauri invocations
 - 1:1 mapping to Rust API
 - No business logic
 
 ### 4. Rust/Daemon
+
 - Handles actual daemon communication
 - Manages Unix socket connection
 - Protocol implementation

@@ -20,7 +20,7 @@ export function isValidApprovalType(value: any): value is ApprovalType {
  */
 export function isValidDecisionForApprovalType(
   decision: Decision,
-  approvalType: ApprovalType
+  approvalType: ApprovalType,
 ): boolean {
   switch (approvalType) {
     case ApprovalType.FunctionCall:
@@ -38,31 +38,31 @@ export function isValidDecisionForApprovalType(
 export function validateDecisionRequest(
   decision: Decision,
   approvalType: ApprovalType,
-  comment?: string
+  comment?: string,
 ): { valid: boolean; error?: string } {
   // Check decision is valid for approval type
   if (!isValidDecisionForApprovalType(decision, approvalType)) {
     return {
       valid: false,
-      error: `Invalid decision '${decision}' for approval type '${approvalType}'`
+      error: `Invalid decision '${decision}' for approval type '${approvalType}'`,
     }
   }
-  
+
   // Check required fields
   if (decision === Decision.Deny && !comment) {
     return {
       valid: false,
-      error: 'Comment is required when denying a function call'
+      error: 'Comment is required when denying a function call',
     }
   }
-  
+
   if (decision === Decision.Respond && !comment) {
     return {
       valid: false,
-      error: 'Response is required for human contact'
+      error: 'Response is required for human contact',
     }
   }
-  
+
   return { valid: true }
 }
 
@@ -87,18 +87,15 @@ export function isPendingApproval(obj: any): obj is {
 /**
  * Validate session status transitions
  */
-export function isValidStatusTransition(
-  currentStatus: string,
-  newStatus: string
-): boolean {
+export function isValidStatusTransition(currentStatus: string, newStatus: string): boolean {
   const validTransitions: Record<string, string[]> = {
-    'starting': ['running', 'failed'],
-    'running': ['completed', 'failed', 'waiting_input'],
-    'waiting_input': ['running', 'failed'],
-    'completed': [], // Terminal state
-    'failed': []     // Terminal state
+    starting: ['running', 'failed'],
+    running: ['completed', 'failed', 'waiting_input'],
+    waiting_input: ['running', 'failed'],
+    completed: [], // Terminal state
+    failed: [], // Terminal state
   }
-  
+
   const allowed = validTransitions[currentStatus]
   return allowed ? allowed.includes(newStatus) : false
 }

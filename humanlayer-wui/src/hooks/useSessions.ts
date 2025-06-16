@@ -20,9 +20,9 @@ export function useSessions(): UseSessionsReturn {
     try {
       setLoading(true)
       setError(null)
-      
+
       const response = await daemonClient.listSessions()
-      
+
       // Transform to UI-friendly format
       const summaries: SessionSummary[] = response.sessions.map(session => ({
         id: session.id,
@@ -32,12 +32,12 @@ export function useSessions(): UseSessionsReturn {
         model: session.model || 'default',
         startTime: new Date(session.start_time),
         endTime: session.end_time ? new Date(session.end_time) : undefined,
-        hasApprovals: false // Will be enriched later if needed
+        hasApprovals: false, // Will be enriched later if needed
       }))
-      
+
       // Sort by start time (newest first)
       summaries.sort((a, b) => b.startTime.getTime() - a.startTime.getTime())
-      
+
       setSessions(summaries)
     } catch (err) {
       setError(formatError(err))
@@ -52,23 +52,26 @@ export function useSessions(): UseSessionsReturn {
   }, [fetchSessions])
 
   // Launch a new session
-  const launchSession = useCallback(async (request: LaunchSessionRequest) => {
-    try {
-      const response = await daemonClient.launchSession(request)
-      // Refresh the list after launching
-      await fetchSessions()
-      return response
-    } catch (err) {
-      throw new Error(formatError(err))
-    }
-  }, [fetchSessions])
+  const launchSession = useCallback(
+    async (request: LaunchSessionRequest) => {
+      try {
+        const response = await daemonClient.launchSession(request)
+        // Refresh the list after launching
+        await fetchSessions()
+        return response
+      } catch (err) {
+        throw new Error(formatError(err))
+      }
+    },
+    [fetchSessions],
+  )
 
   return {
     sessions,
     loading,
     error,
     refresh: fetchSessions,
-    launchSession
+    launchSession,
   }
 }
 
@@ -82,7 +85,7 @@ export function useSession(sessionId: string) {
     try {
       setLoading(true)
       setError(null)
-      
+
       const response = await daemonClient.getSessionState(sessionId)
       setSession(response.session)
     } catch (err) {
@@ -100,7 +103,7 @@ export function useSession(sessionId: string) {
         fetchSession()
       }
     }, 2000)
-    
+
     return () => clearInterval(interval)
   }, [fetchSession, session?.status])
 
@@ -108,6 +111,6 @@ export function useSession(sessionId: string) {
     session,
     loading,
     error,
-    refresh: fetchSession
+    refresh: fetchSession,
   }
 }

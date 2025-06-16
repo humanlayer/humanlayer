@@ -23,19 +23,16 @@ export function useApprovals(sessionId?: string): UseApprovalsReturn {
     try {
       setLoading(true)
       setError(null)
-      
+
       // Fetch approvals and sessions in parallel
       const [approvalsResponse, sessionsResponse] = await Promise.all([
         daemonClient.fetchApprovals(sessionId),
-        daemonClient.listSessions()
+        daemonClient.listSessions(),
       ])
-      
+
       // Enrich approvals with session context
-      const enriched = enrichApprovals(
-        approvalsResponse.approvals,
-        sessionsResponse.sessions
-      )
-      
+      const enriched = enrichApprovals(approvalsResponse.approvals, sessionsResponse.sessions)
+
       setApprovals(enriched)
     } catch (err) {
       setError(formatError(err))
@@ -50,37 +47,46 @@ export function useApprovals(sessionId?: string): UseApprovalsReturn {
   }, [fetchApprovals])
 
   // Approve a function call
-  const approve = useCallback(async (callId: string, comment?: string) => {
-    try {
-      await daemonClient.approveFunctionCall(callId, comment)
-      // Refresh the list after approval
-      await fetchApprovals()
-    } catch (err) {
-      throw new Error(formatError(err))
-    }
-  }, [fetchApprovals])
+  const approve = useCallback(
+    async (callId: string, comment?: string) => {
+      try {
+        await daemonClient.approveFunctionCall(callId, comment)
+        // Refresh the list after approval
+        await fetchApprovals()
+      } catch (err) {
+        throw new Error(formatError(err))
+      }
+    },
+    [fetchApprovals],
+  )
 
   // Deny a function call
-  const deny = useCallback(async (callId: string, reason: string) => {
-    try {
-      await daemonClient.denyFunctionCall(callId, reason)
-      // Refresh the list after denial
-      await fetchApprovals()
-    } catch (err) {
-      throw new Error(formatError(err))
-    }
-  }, [fetchApprovals])
+  const deny = useCallback(
+    async (callId: string, reason: string) => {
+      try {
+        await daemonClient.denyFunctionCall(callId, reason)
+        // Refresh the list after denial
+        await fetchApprovals()
+      } catch (err) {
+        throw new Error(formatError(err))
+      }
+    },
+    [fetchApprovals],
+  )
 
   // Respond to human contact
-  const respond = useCallback(async (callId: string, response: string) => {
-    try {
-      await daemonClient.respondToHumanContact(callId, response)
-      // Refresh the list after response
-      await fetchApprovals()
-    } catch (err) {
-      throw new Error(formatError(err))
-    }
-  }, [fetchApprovals])
+  const respond = useCallback(
+    async (callId: string, response: string) => {
+      try {
+        await daemonClient.respondToHumanContact(callId, response)
+        // Refresh the list after response
+        await fetchApprovals()
+      } catch (err) {
+        throw new Error(formatError(err))
+      }
+    },
+    [fetchApprovals],
+  )
 
   return {
     approvals,
@@ -89,30 +95,30 @@ export function useApprovals(sessionId?: string): UseApprovalsReturn {
     refresh: fetchApprovals,
     approve,
     deny,
-    respond
+    respond,
   }
 }
 
 // Hook for real-time updates
 export function useApprovalsWithSubscription(sessionId?: string): UseApprovalsReturn {
   const base = useApprovals(sessionId)
-  
+
   useEffect(() => {
     let unsubscribe: (() => void) | null = null
-    
+
     const subscribe = async () => {
       try {
         unsubscribe = await daemonClient.subscribeToEvents({
           event_types: ['approval_requested', 'approval_resolved'],
-          session_id: sessionId
+          session_id: sessionId,
         })
-        
+
         // The daemon-client.ts needs to be updated to handle events
         // For now, we'll poll every 5 seconds
         const interval = setInterval(() => {
           base.refresh()
         }, 5000)
-        
+
         return () => {
           clearInterval(interval)
           unsubscribe?.()
@@ -121,13 +127,13 @@ export function useApprovalsWithSubscription(sessionId?: string): UseApprovalsRe
         console.error('Failed to subscribe to events:', err)
       }
     }
-    
+
     subscribe()
-    
+
     return () => {
       unsubscribe?.()
     }
   }, [sessionId, base.refresh])
-  
+
   return base
 }

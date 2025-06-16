@@ -34,7 +34,7 @@ export function useDaemonConnection(): UseDaemonConnectionReturn {
     try {
       setConnecting(true)
       setError(null)
-      
+
       await daemonClient.connect()
       await checkHealth()
     } catch (err) {
@@ -52,7 +52,7 @@ export function useDaemonConnection(): UseDaemonConnectionReturn {
   // Periodic health checks
   useEffect(() => {
     if (!connected) return
-    
+
     const interval = setInterval(checkHealth, 30000) // Every 30 seconds
     return () => clearInterval(interval)
   }, [connected, checkHealth])
@@ -63,6 +63,6 @@ export function useDaemonConnection(): UseDaemonConnectionReturn {
     error,
     version,
     connect,
-    checkHealth
+    checkHealth,
   }
 }

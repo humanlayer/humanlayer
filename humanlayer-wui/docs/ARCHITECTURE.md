@@ -9,17 +9,17 @@ graph LR
         RH[React Hooks]
         DC[Daemon Client]
     end
-    
+
     subgraph "Tauri Bridge"
         TC[Tauri Commands<br/>src-tauri/src/lib.rs]
         RDC[Rust Daemon Client<br/>src-tauri/src/daemon_client]
     end
-    
+
     subgraph "Backend"
         HLD[HumanLayer Daemon<br/>hld]
         CC[Claude Code<br/>Sessions]
     end
-    
+
     RC -->|"uses"| RH
     RH -->|"calls"| DC
     DC -->|"invoke"| TC
@@ -38,7 +38,7 @@ sequenceDiagram
     participant Tauri as Tauri Command
     participant Rust as Rust Client
     participant Daemon as HLD
-    
+
     UI->>Hook: approve(callId)
     Hook->>Client: approveFunctionCall(callId)
     Client->>Tauri: invoke('approve_function_call')
@@ -55,6 +55,7 @@ sequenceDiagram
 ## Code Organization
 
 ### Frontend (src/)
+
 ```
 src/
 ├── lib/
@@ -76,6 +77,7 @@ src/
 ```
 
 ### Tauri Bridge (src-tauri/)
+
 ```
 src-tauri/
 ├── src/
@@ -91,21 +93,25 @@ src-tauri/
 ## Key Design Principles
 
 ### 1. Layer Separation
+
 - **Daemon Client**: Pure protocol implementation, no UI logic
 - **Hooks**: React state management and data enrichment
 - **Components**: Presentation only, use hooks for all logic
 
 ### 2. Type Safety
+
 - Full TypeScript types matching Rust/Go protocol
 - Enums for constants (SessionStatus, ApprovalType, etc.)
 - Separate UI types for enriched data
 
 ### 3. Data Enrichment
+
 - Raw daemon data is enriched in the hooks layer
 - Approvals are joined with session context
 - UI-friendly formatting happens in TypeScript
 
 ### 4. Error Handling
+
 - Daemon errors are caught and formatted in hooks
 - User-friendly messages replace technical errors
 - Components receive simple error strings
@@ -115,6 +121,7 @@ src-tauri/
 The daemon uses JSON-RPC 2.0 over Unix domain sockets. See [hld/PROTOCOL.md](../../hld/PROTOCOL.md) for the full specification.
 
 Key RPC methods:
+
 - `launchSession` - Start a new Claude Code session
 - `listSessions` - Get all sessions
 - `fetchApprovals` - Get pending approvals
