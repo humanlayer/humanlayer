@@ -1,74 +1,18 @@
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
-
-// Type definitions matching the Rust types
-export interface HealthCheckResponse {
-  status: string
-  version: string
-}
-
-export interface LaunchSessionRequest {
-  query: string
-  model?: string
-  mcp_config?: any
-  permission_prompt_tool?: string
-  working_dir?: string
-  max_turns?: number
-  system_prompt?: string
-  append_system_prompt?: string
-  allowed_tools?: string[]
-  disallowed_tools?: string[]
-  custom_instructions?: string
-  verbose?: boolean
-}
-
-export interface LaunchSessionResponse {
-  session_id: string
-  run_id: string
-}
-
-export interface SessionInfo {
-  id: string
-  run_id: string
-  claude_session_id?: string
-  parent_session_id?: string
-  status: 'starting' | 'running' | 'completed' | 'failed' | 'waiting_input'
-  start_time: string
-  end_time?: string
-  last_activity_at: string
-  error?: string
-  query: string
-  model?: string
-  working_dir?: string
-  result?: any
-}
-
-export interface ListSessionsResponse {
-  sessions: SessionInfo[]
-}
-
-export interface PendingApproval {
-  type: 'function_call' | 'human_contact'
-  function_call?: any
-  human_contact?: any
-}
-
-export interface FetchApprovalsResponse {
-  approvals: PendingApproval[]
-}
-
-export interface EventNotification {
-  event: {
-    type: string
-    timestamp: string
-    data: any
-  }
-}
-
-// Daemon client API
-export interface GetSessionStateResponse {
-  session: SessionInfo
-}
+import type {
+  HealthCheckResponse,
+  LaunchSessionRequest,
+  LaunchSessionResponse,
+  ListSessionsResponse,
+  GetSessionStateResponse,
+  ContinueSessionRequest,
+  ContinueSessionResponse,
+  GetConversationResponse,
+  FetchApprovalsResponse,
+  EventNotification,
+  SubscribeRequest,
+} from './types'
 
 export class DaemonClient {
   async connect(): Promise<void> {
@@ -91,11 +35,14 @@ export class DaemonClient {
     return await invoke('get_session_state', { sessionId })
   }
 
-  async continueSession(request: any) {
+  async continueSession(request: ContinueSessionRequest): Promise<ContinueSessionResponse> {
     return await invoke('continue_session', { request })
   }
 
-  async getConversation(sessionId?: string, claudeSessionId?: string) {
+  async getConversation(
+    sessionId?: string,
+    claudeSessionId?: string,
+  ): Promise<GetConversationResponse> {
     return await invoke('get_conversation', { sessionId, claudeSessionId })
   }
 
@@ -115,11 +62,7 @@ export class DaemonClient {
     return await invoke('respond_to_human_contact', { callId, response })
   }
 
-  async subscribeToEvents(request: {
-    event_types?: string[]
-    session_id?: string
-    run_id?: string
-  }): Promise<() => void> {
+  async subscribeToEvents(request: SubscribeRequest): Promise<() => void> {
     await invoke('subscribe_to_events', { request })
 
     // Return unsubscribe function
