@@ -164,10 +164,7 @@ function App() {
         {connected && (
           <>
             {activeSession ? (
-              <SessionDetail 
-                session={activeSession} 
-                onClose={() => setActiveSession(null)} 
-              />
+              <SessionDetail session={activeSession} onClose={() => setActiveSession(null)} />
             ) : (
               <div style={{ marginBottom: '20px' }}>
                 <SessionTable
