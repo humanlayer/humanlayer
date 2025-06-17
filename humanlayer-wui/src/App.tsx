@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button'
 import { ThemeSelector } from '@/components/ThemeSelector'
 import './App.css'
 import SessionTable from './components/internal/SessionTable'
-import SessionDetail from './components/internal/SessionDetail'
 import { ThemeProvider } from './components/providers/ThemeProvider'
 import { SessionLauncher } from './components/SessionLauncher'
 import { useSessionLauncher, useSessionLauncherHotkeys } from './hooks/useSessionLauncher'
@@ -61,10 +60,8 @@ export const useStore = create<StoreState>(set => ({
 
 function App() {
   const focusedSession = useStore(state => state.focusedSession)
-  const activeSession = useStore(state => state.activeSession)
   const sessions = useStore(state => state.sessions)
   const setFocusedSession = useStore(state => state.setFocusedSession)
-  const setActiveSession = useStore(state => state.setActiveSession)
   const focusNextSession = useStore(state => state.focusNextSession)
   const focusPreviousSession = useStore(state => state.focusPreviousSession)
   const [status, setStatus] = useState('')
@@ -216,21 +213,16 @@ function App() {
         <main className="flex-1 flex flex-col p-4 overflow-hidden">
           {connected && (
             <>
-              {activeSession ? (
-                <SessionDetail session={activeSession} onClose={() => setActiveSession(null)} />
-              ) : (
-                <div className="flex-1 overflow-hidden">
-                  <SessionTable
-                    sessions={sessions}
-                    handleFocusSession={session => setFocusedSession(session)}
-                    handleBlurSession={() => setFocusedSession(null)}
-                    handleActivateSession={session => setActiveSession(session)}
-                    focusedSession={focusedSession}
-                    handleFocusNextSession={focusNextSession}
-                    handleFocusPreviousSession={focusPreviousSession}
-                  />
-                </div>
-              )}
+              <div className="flex-1 overflow-hidden">
+                <SessionTable
+                  sessions={sessions}
+                  handleFocusSession={session => setFocusedSession(session)}
+                  handleBlurSession={() => setFocusedSession(null)}
+                  focusedSession={focusedSession}
+                  handleFocusNextSession={focusNextSession}
+                  handleFocusPreviousSession={focusPreviousSession}
+                />
+              </div>
 
               {approvals.length > 0 && (
                 <div className="mt-4 border-t border-border pt-4">
