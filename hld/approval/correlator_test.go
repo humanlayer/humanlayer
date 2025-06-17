@@ -6,9 +6,13 @@ import (
 	"time"
 
 	humanlayer "github.com/humanlayer/humanlayer/humanlayer-go"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMemoryStore_StoreFunctionCall(t *testing.T) {
+	req := require.New(t)
+	assert := assert.New(t)
 	store := NewMemoryStore()
 
 	fc := humanlayer.FunctionCall{
@@ -21,25 +25,19 @@ func TestMemoryStore_StoreFunctionCall(t *testing.T) {
 
 	// Store function call
 	err := store.StoreFunctionCall(fc)
-	if err != nil {
-		t.Fatalf("failed to store function call: %v", err)
-	}
+	req.NoError(err, "failed to store function call")
 
 	// Retrieve it
 	retrieved, err := store.GetFunctionCall("test-call-1")
-	if err != nil {
-		t.Fatalf("failed to get function call: %v", err)
-	}
+	req.NoError(err, "failed to get function call")
 
-	if retrieved.CallID != fc.CallID {
-		t.Errorf("expected call_id %s, got %s", fc.CallID, retrieved.CallID)
-	}
-	if retrieved.RunID != fc.RunID {
-		t.Errorf("expected run_id %s, got %s", fc.RunID, retrieved.RunID)
-	}
+	assert.Equal(fc.CallID, retrieved.CallID, "call_id mismatch")
+	assert.Equal(fc.RunID, retrieved.RunID, "run_id mismatch")
 }
 
 func TestMemoryStore_StoreHumanContact(t *testing.T) {
+	req := require.New(t)
+	assert := assert.New(t)
 	store := NewMemoryStore()
 
 	hc := humanlayer.HumanContact{
@@ -52,25 +50,19 @@ func TestMemoryStore_StoreHumanContact(t *testing.T) {
 
 	// Store human contact
 	err := store.StoreHumanContact(hc)
-	if err != nil {
-		t.Fatalf("failed to store human contact: %v", err)
-	}
+	req.NoError(err, "failed to store human contact")
 
 	// Retrieve it
 	retrieved, err := store.GetHumanContact("test-contact-1")
-	if err != nil {
-		t.Fatalf("failed to get human contact: %v", err)
-	}
+	req.NoError(err, "failed to get human contact")
 
-	if retrieved.CallID != hc.CallID {
-		t.Errorf("expected call_id %s, got %s", hc.CallID, retrieved.CallID)
-	}
-	if retrieved.RunID != hc.RunID {
-		t.Errorf("expected run_id %s, got %s", hc.RunID, retrieved.RunID)
-	}
+	assert.Equal(hc.CallID, retrieved.CallID, "call_id mismatch")
+	assert.Equal(hc.RunID, retrieved.RunID, "run_id mismatch")
 }
 
 func TestMemoryStore_GetAllPending(t *testing.T) {
+	req := require.New(t)
+	assert := assert.New(t)
 	store := NewMemoryStore()
 
 	// Store some approvals
@@ -93,26 +85,16 @@ func TestMemoryStore_GetAllPending(t *testing.T) {
 		Spec:   humanlayer.HumanContactSpec{Msg: "msg1"},
 	}
 
-	if err := store.StoreFunctionCall(fc1); err != nil {
-		t.Fatalf("failed to store function call fc1: %v", err)
-	}
-	if err := store.StoreFunctionCall(fc2); err != nil {
-		t.Fatalf("failed to store function call fc2: %v", err)
-	}
-	if err := store.StoreHumanContact(hc1); err != nil {
-		t.Fatalf("failed to store human contact hc1: %v", err)
-	}
+	req.NoError(store.StoreFunctionCall(fc1), "failed to store function call fc1")
+	req.NoError(store.StoreFunctionCall(fc2), "failed to store function call fc2")
+	req.NoError(store.StoreHumanContact(hc1), "failed to store human contact hc1")
 
 	// Get all pending
 	pending, err := store.GetAllPending()
-	if err != nil {
-		t.Fatalf("failed to get pending: %v", err)
-	}
+	req.NoError(err, "failed to get pending")
 
 	// Should have 2 pending (fc1 and hc1, not fc2)
-	if len(pending) != 2 {
-		t.Errorf("expected 2 pending approvals, got %d", len(pending))
-	}
+	assert.Len(pending, 2, "expected 2 pending approvals")
 
 	// Verify the right ones are included
 	foundFC1 := false
@@ -126,15 +108,13 @@ func TestMemoryStore_GetAllPending(t *testing.T) {
 		}
 	}
 
-	if !foundFC1 {
-		t.Error("expected to find fc-1 in pending approvals")
-	}
-	if !foundHC1 {
-		t.Error("expected to find hc-1 in pending approvals")
-	}
+	assert.True(foundFC1, "expected to find fc-1 in pending approvals")
+	assert.True(foundHC1, "expected to find hc-1 in pending approvals")
 }
 
 func TestMemoryStore_GetPendingByRunID(t *testing.T) {
+	req := require.New(t)
+	assert := assert.New(t)
 	store := NewMemoryStore()
 
 	// Store approvals for different runs
@@ -154,51 +134,29 @@ func TestMemoryStore_GetPendingByRunID(t *testing.T) {
 		Spec:   humanlayer.HumanContactSpec{Msg: "msg1"},
 	}
 
-	if err := store.StoreFunctionCall(fc1); err != nil {
-		t.Fatalf("failed to store function call fc1: %v", err)
-	}
-	if err := store.StoreFunctionCall(fc2); err != nil {
-		t.Fatalf("failed to store function call fc2: %v", err)
-	}
-	if err := store.StoreHumanContact(hc1); err != nil {
-		t.Fatalf("failed to store human contact hc1: %v", err)
-	}
+	req.NoError(store.StoreFunctionCall(fc1), "failed to store function call fc1")
+	req.NoError(store.StoreFunctionCall(fc2), "failed to store function call fc2")
+	req.NoError(store.StoreHumanContact(hc1), "failed to store human contact hc1")
 
 	// Get pending for run-1
 	pending, err := store.GetPendingByRunID("run-1")
-	if err != nil {
-		t.Fatalf("failed to get pending by run_id: %v", err)
-	}
-
-	// Should have 2 approvals for run-1
-	if len(pending) != 2 {
-		t.Errorf("expected 2 pending approvals for run-1, got %d", len(pending))
-	}
+	req.NoError(err, "failed to get pending by run_id")
+	assert.Len(pending, 2, "expected 2 pending approvals for run-1")
 
 	// Get pending for run-2
 	pending, err = store.GetPendingByRunID("run-2")
-	if err != nil {
-		t.Fatalf("failed to get pending by run_id: %v", err)
-	}
-
-	// Should have 1 approval for run-2
-	if len(pending) != 1 {
-		t.Errorf("expected 1 pending approval for run-2, got %d", len(pending))
-	}
+	req.NoError(err, "failed to get pending by run_id")
+	assert.Len(pending, 1, "expected 1 pending approval for run-2")
 
 	// Get pending for non-existent run
 	pending, err = store.GetPendingByRunID("run-999")
-	if err != nil {
-		t.Fatalf("failed to get pending by run_id: %v", err)
-	}
-
-	// Should have 0 approvals
-	if len(pending) != 0 {
-		t.Errorf("expected 0 pending approvals for non-existent run, got %d", len(pending))
-	}
+	req.NoError(err, "failed to get pending by run_id")
+	assert.Empty(pending, "expected 0 pending approvals for non-existent run")
 }
 
 func TestMemoryStore_MarkResponded(t *testing.T) {
+	req := require.New(t)
+	assert := assert.New(t)
 	store := NewMemoryStore()
 
 	// Store approvals
@@ -213,37 +171,24 @@ func TestMemoryStore_MarkResponded(t *testing.T) {
 		Spec:   humanlayer.HumanContactSpec{Msg: "msg1"},
 	}
 
-	if err := store.StoreFunctionCall(fc); err != nil {
-		t.Fatalf("failed to store function call: %v", err)
-	}
-	if err := store.StoreHumanContact(hc); err != nil {
-		t.Fatalf("failed to store human contact: %v", err)
-	}
+	req.NoError(store.StoreFunctionCall(fc), "failed to store function call")
+	req.NoError(store.StoreHumanContact(hc), "failed to store human contact")
 
 	// Mark function call as responded
-	err := store.MarkFunctionCallResponded("fc-1")
-	if err != nil {
-		t.Fatalf("failed to mark function call responded: %v", err)
-	}
+	req.NoError(store.MarkFunctionCallResponded("fc-1"), "failed to mark function call responded")
 
 	// Mark human contact as responded
-	err = store.MarkHumanContactResponded("hc-1")
-	if err != nil {
-		t.Fatalf("failed to mark human contact responded: %v", err)
-	}
+	req.NoError(store.MarkHumanContactResponded("hc-1"), "failed to mark human contact responded")
 
 	// Verify they're no longer pending
 	pending, err := store.GetAllPending()
-	if err != nil {
-		t.Fatalf("failed to get pending: %v", err)
-	}
-
-	if len(pending) != 0 {
-		t.Errorf("expected 0 pending approvals after marking responded, got %d", len(pending))
-	}
+	req.NoError(err, "failed to get pending")
+	assert.Empty(pending, "expected 0 pending approvals after marking responded")
 }
 
 func TestMemoryStore_ConcurrentAccess(t *testing.T) {
+	req := require.New(t)
+	assert := assert.New(t)
 	store := NewMemoryStore()
 	done := make(chan bool)
 
@@ -260,9 +205,7 @@ func TestMemoryStore_ConcurrentAccess(t *testing.T) {
 				errors = append(errors, err)
 			}
 		}
-		if len(errors) > 0 {
-			t.Errorf("StoreFunctionCall errors during concurrent access: %v", errors)
-		}
+		assert.Empty(errors, "StoreFunctionCall errors during concurrent access")
 		done <- true
 	}()
 
@@ -278,9 +221,7 @@ func TestMemoryStore_ConcurrentAccess(t *testing.T) {
 				errors = append(errors, err)
 			}
 		}
-		if len(errors) > 0 {
-			t.Errorf("StoreHumanContact errors during concurrent access: %v", errors)
-		}
+		assert.Empty(errors, "StoreHumanContact errors during concurrent access")
 		done <- true
 	}()
 
@@ -300,12 +241,6 @@ func TestMemoryStore_ConcurrentAccess(t *testing.T) {
 
 	// Verify data integrity
 	pending, err := store.GetAllPending()
-	if err != nil {
-		t.Fatalf("failed to get pending: %v", err)
-	}
-
-	// Should have 200 approvals (100 function calls + 100 human contacts)
-	if len(pending) != 200 {
-		t.Errorf("expected 200 pending approvals, got %d", len(pending))
-	}
+	req.NoError(err, "failed to get pending")
+	assert.Len(pending, 200, "expected 200 pending approvals (100 function calls + 100 human contacts)")
 }
