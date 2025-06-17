@@ -167,7 +167,7 @@ function App() {
       </div>
 
       <div className="min-h-screen flex flex-col">
-        <main className="container max-w-[80%] mx-auto flex-1 flex flex-col justify-center p-8">
+        <main className="container max-w-[95%] mx-auto flex-1 flex flex-col justify-center p-8">
           {connected && (
             <>
               {activeSession ? (
