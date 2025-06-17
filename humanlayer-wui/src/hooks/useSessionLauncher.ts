@@ -153,11 +153,25 @@ export function useSessionLauncherHotkeys() {
   // Helper to check if user is typing in an input
   const isInputFocused = () => {
     const active = document.activeElement
-    return (
-      active?.tagName === 'INPUT' ||
-      active?.tagName === 'TEXTAREA' ||
-      (active as HTMLElement)?.contentEditable === 'true'
-    )
+    if (!active) return false
+    
+    // Check for input and textarea elements
+    if (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA') {
+      return true
+    }
+    
+    // Check for contentEditable elements
+    if ((active as HTMLElement).contentEditable === 'true') {
+      return true
+    }
+    
+    // Check if we're inside the command palette modal (more specific check)
+    const commandPalette = document.querySelector('[data-command-palette]')
+    if (commandPalette && commandPalette.contains(active)) {
+      return true
+    }
+    
+    return false
   }
 
   return {

@@ -62,6 +62,7 @@ export function SessionLauncher({ isOpen, onClose }: SessionLauncherProps) {
     >
       <Card
         ref={modalRef}
+        data-command-palette
         className={cn(
           'w-full max-w-2xl bg-background border-2 shadow-xl',
           'animate-in fade-in-0 zoom-in-95 duration-200',
