@@ -8,7 +8,6 @@ import './App.css'
 import SessionTable from './components/internal/SessionTable'
 import SessionDetail from './components/internal/SessionDetail'
 import { ThemeProvider } from './components/providers/ThemeProvider'
-import { ModeToggle } from './components/internal/ModeToggle'
 import { SessionLauncher } from './components/SessionLauncher'
 import { useSessionLauncher, useSessionLauncherHotkeys } from './hooks/useSessionLauncher'
 
@@ -138,7 +137,6 @@ function App() {
   const loadSessions = async () => {
     try {
       const response = await daemonClient.listSessions()
-      console.log('response.sessions', response.sessions)
       useStore.getState().initSessions(response.sessions)
     } catch (error) {
       console.error('Failed to load sessions:', error)
@@ -171,6 +169,7 @@ function App() {
   }
 
   return (
+    <ThemeProvider>
     <div className="h-screen flex flex-col bg-background text-foreground">
       {/* Header */}
       <div className="border-b border-border"></div>
@@ -280,6 +279,7 @@ function App() {
 
       {/* Session Launcher */}
       <SessionLauncher isOpen={isOpen} onClose={close} />
+    </div>
     </ThemeProvider>
   )
 }
