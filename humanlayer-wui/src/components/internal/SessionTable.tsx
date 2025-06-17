@@ -21,7 +21,7 @@ interface SessionTableProps {
   focusedSession: SessionInfo | null
 }
 
-export const SessionTableHotkeysScope = "session-table"
+export const SessionTableHotkeysScope = 'session-table'
 
 export default function SessionTable({
   sessions,
@@ -32,22 +32,26 @@ export default function SessionTable({
   handleActivateSession,
   focusedSession,
 }: SessionTableProps) {
-  const { enableScope, disableScope  } = useHotkeysContext()
+  const { enableScope, disableScope } = useHotkeysContext()
 
   useEffect(() => {
-      enableScope(SessionTableHotkeysScope)
-      return () => {
-        disableScope(SessionTableHotkeysScope)
-      }
+    enableScope(SessionTableHotkeysScope)
+    return () => {
+      disableScope(SessionTableHotkeysScope)
+    }
   }, [])
 
   useHotkeys('j', () => handleFocusNextSession?.(), { scopes: SessionTableHotkeysScope })
   useHotkeys('k', () => handleFocusPreviousSession?.(), { scopes: SessionTableHotkeysScope })
-  useHotkeys('enter', () => {
-    if (focusedSession) {
-      handleActivateSession?.(focusedSession)
-    }
-  }, { scopes: SessionTableHotkeysScope })
+  useHotkeys(
+    'enter',
+    () => {
+      if (focusedSession) {
+        handleActivateSession?.(focusedSession)
+      }
+    },
+    { scopes: SessionTableHotkeysScope },
+  )
 
   return (
     <Table>

@@ -183,7 +183,11 @@ export function highlightMatches(
  */
 export function fuzzySearchDirectories(directories: string[], pattern: string): FuzzyMatch[] {
   // Enhance pattern matching for directory paths
-  const enhancedPattern = pattern.replace(/^~/, process.env.HOME || '')
+  const enhancedPattern = pattern.replace(
+    /^~/,
+    // eslint-disable-next-line no-undef
+    (typeof process !== 'undefined' && process.env?.HOME) || '',
+  )
 
   return fuzzySearch(directories, enhancedPattern, {
     threshold: 0.1,
