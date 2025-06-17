@@ -1,5 +1,6 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
+@import '@wooorm/starry-night/style/both';
 
 @custom-variant dark (&:is(.dark *));
 

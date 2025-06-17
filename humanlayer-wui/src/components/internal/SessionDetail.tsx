@@ -1,10 +1,18 @@
+import { common, createStarryNight } from '@wooorm/starry-night'
+import textMd from '@wooorm/starry-night/text.md'
+import { toJsxRuntime } from 'hast-util-to-jsx-runtime'
+import { Fragment, jsx, jsxs } from 'react/jsx-runtime'
+
 import { ConversationEvent, ConversationEventType, SessionInfo } from '@/lib/daemon/types'
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
+import { Card, CardContent } from '../ui/card'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { useFormattedConversation, useConversation } from '@/hooks/useConversation'
 import { Skeleton } from '../ui/skeleton'
 import { Suspense, useEffect, useRef } from 'react'
 import { Bot, MessageCircleDashed, Wrench } from 'lucide-react'
+
+/* I, Sundeep, don't know how I feel about what's going on here. */
+let starryNight: StarryNight | null = null
 
 interface SessionDetailProps {
   session: SessionInfo
@@ -35,8 +43,10 @@ function eventToDisplayObject(event: ConversationEvent) {
   }
 
   if (event.event_type === ConversationEventType.Message) {
-    subject = <span>{event.content?.split('\n')[0]}</span>
-    body = <span>{event.content?.split('\n').slice(1).join('\n')}</span>
+    const subjectTree = starryNight?.highlight(event.content?.split('\n')[0], 'text.md')
+    subject = <span>{toJsxRuntime(subjectTree, { Fragment, jsx, jsxs })}</span>
+    const bodyTree = starryNight?.highlight(event.content?.split('\n').slice(1).join('\n'), 'text.md')
+    body = <span>{toJsxRuntime(bodyTree, { Fragment, jsx, jsxs })}</span>
   }
 
   if (event.role === 'assistant') {
@@ -67,6 +77,10 @@ function ConversationContent({ sessionId }: { sessionId: string }) {
   useEffect(() => {
     if (!loading && containerRef.current) {
       containerRef.current.scrollTop = containerRef.current.scrollHeight
+    }
+
+    if (!starryNight) {
+      createStarryNight([textMd]).then(sn => (starryNight = sn))
     }
   }, [loading, formattedEvents])
 
@@ -101,19 +115,22 @@ function ConversationContent({ sessionId }: { sessionId: string }) {
     <div ref={containerRef} className="max-h-[calc(100vh-375px)] overflow-y-auto">
       <div className="space-y-4">
         {nonEmptyDisplayObjects.map((displayObject, index) => (
-          <div key={displayObject.id} className={`pb-4 ${index !== nonEmptyDisplayObjects.length - 1 ? 'border-b' : ''}`}>
-              <div className="flex items-center gap-2 mb-2">
-                {displayObject.iconComponent && (
-                  <span className="text-sm text-gray-500">{displayObject.iconComponent}</span>
-                )}
+          <div
+            key={displayObject.id}
+            className={`pb-4 ${index !== nonEmptyDisplayObjects.length - 1 ? 'border-b' : ''}`}
+          >
+            <div className="flex items-center gap-2 mb-2">
+              {displayObject.iconComponent && (
+                <span className="text-sm text-gray-500">{displayObject.iconComponent}</span>
+              )}
 
-                <span className="whitespace-pre-wrap">{displayObject.subject}</span>
-                {/* <span className="font-medium">{displayObject.role}</span> */}
-                {/* <span className="text-sm text-gray-500">{displayObject.timestamp.toLocaleTimeString()}</span> */}
-              </div>
-              {displayObject.body && <p className="whitespace-pre-wrap">{displayObject.body}</p>}
+              <span className="whitespace-pre-wrap">{displayObject.subject}</span>
+              {/* <span className="font-medium">{displayObject.role}</span> */}
+              {/* <span className="text-sm text-gray-500">{displayObject.timestamp.toLocaleTimeString()}</span> */}
             </div>
-          ))}
+            {displayObject.body && <p className="whitespace-pre-wrap">{displayObject.body}</p>}
+          </div>
+        ))}
       </div>
     </div>
   )
@@ -121,7 +138,7 @@ function ConversationContent({ sessionId }: { sessionId: string }) {
 
 function SessionDetail({ session, onClose }: SessionDetailProps) {
   useHotkeys('escape', onClose)
-  console.log('session', session);
+  console.log('session', session)
 
   return (
     <section className="flex flex-col gap-4">

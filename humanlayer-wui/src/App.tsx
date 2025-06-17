@@ -230,7 +230,7 @@ function App() {
           )}
         </main>
 
-        <div className="fixed bottom-0 left-0 right-0 bg-gray-900 text-white p-2 flex justify-between items-center">
+        <div className="fixed bottom-0 left-0 right-0 bg-gray-900 dark:bg-gray-100 text-white dark:text-black p-2 flex justify-between items-center">
           <div className="flex-1">
             {!connected && (
               <Button
