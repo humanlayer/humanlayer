@@ -149,14 +149,89 @@ function eventToDisplayObject(event: ConversationEvent) {
   }
 }
 
+function EventMetaInfo({ event }: { event: ConversationEvent }) {
+  return (
+    <div className="bg-muted/20 rounded p-4 mt-2 text-sm">
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <span className="font-medium text-muted-foreground">Event ID:</span>
+          <span className="ml-2 font-mono">{event.id}</span>
+        </div>
+        <div>
+          <span className="font-medium text-muted-foreground">Sequence:</span>
+          <span className="ml-2 font-mono">{event.sequence}</span>
+        </div>
+        <div>
+          <span className="font-medium text-muted-foreground">Type:</span>
+          <span className="ml-2 font-mono">{event.event_type}</span>
+        </div>
+        <div>
+          <span className="font-medium text-muted-foreground">Role:</span>
+          <span className="ml-2 font-mono">{event.role || 'N/A'}</span>
+        </div>
+        <div>
+          <span className="font-medium text-muted-foreground">Created:</span>
+          <span className="ml-2 font-mono text-xs">{new Date(event.created_at).toLocaleString()}</span>
+        </div>
+        <div>
+          <span className="font-medium text-muted-foreground">Completed:</span>
+          <span className="ml-2">{event.is_completed ? '✓' : '⏳'}</span>
+        </div>
+        {event.tool_name && (
+          <>
+            <div>
+              <span className="font-medium text-muted-foreground">Tool:</span>
+              <span className="ml-2 font-mono">{event.tool_name}</span>
+            </div>
+            <div>
+              <span className="font-medium text-muted-foreground">Tool ID:</span>
+              <span className="ml-2 font-mono text-xs">{event.tool_id}</span>
+            </div>
+          </>
+        )}
+        {event.approval_status && (
+          <div>
+            <span className="font-medium text-muted-foreground">Approval:</span>
+            <span className="ml-2 font-mono">{event.approval_status}</span>
+          </div>
+        )}
+      </div>
+
+      {event.tool_input_json && (
+        <div className="mt-3">
+          <span className="font-medium text-muted-foreground">Tool Input:</span>
+          <pre className="mt-1 text-xs bg-background rounded p-2 overflow-x-auto">
+            {JSON.stringify(JSON.parse(event.tool_input_json), null, 2)}
+          </pre>
+        </div>
+      )}
+
+      {event.tool_result_content && (
+        <div className="mt-3">
+          <span className="font-medium text-muted-foreground">Tool Result:</span>
+          <pre className="mt-1 text-xs bg-background rounded p-2 overflow-x-auto max-h-32 overflow-y-auto">
+            {event.tool_result_content}
+          </pre>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function ConversationContent({
   sessionId,
   focusedEventId,
   setFocusedEventId,
+  expandedEventId,
+  setExpandedEventId,
+  isWideView,
 }: {
   sessionId: string
   focusedEventId: number | null
   setFocusedEventId: (id: number | null) => void
+  expandedEventId: number | null
+  setExpandedEventId: (id: number | null) => void
+  isWideView: boolean
 }) {
   const { formattedEvents, loading, error } = useFormattedConversation(sessionId)
   const { events } = useConversation(sessionId)
@@ -242,21 +317,32 @@ function ConversationContent({
     <div ref={containerRef} className="max-h-[calc(100vh-375px)] overflow-y-auto">
       <div>
         {nonEmptyDisplayObjects.map((displayObject, index) => (
-          <div
-            key={displayObject.id}
-            className={`py-3 px-2 ${index !== nonEmptyDisplayObjects.length - 1 ? 'border-b' : ''} ${focusedEventId === displayObject.id ? '!bg-accent/20 -mx-2 px-4 rounded' : ''}`}
-          >
-            <div className="flex items-center gap-2">
-              {displayObject.iconComponent && (
-                <span className="text-sm text-accent">{displayObject.iconComponent}</span>
-              )}
+          <div key={displayObject.id}>
+            <div
+              onMouseEnter={() => setFocusedEventId(displayObject.id)}
+              onMouseLeave={() => setFocusedEventId(null)}
+              onClick={() =>
+                setExpandedEventId(expandedEventId === displayObject.id ? null : displayObject.id)
+              }
+              className={`py-3 px-2 cursor-pointer ${index !== nonEmptyDisplayObjects.length - 1 ? 'border-b' : ''} ${focusedEventId === displayObject.id ? '!bg-accent/20 -mx-2 px-4 rounded' : ''}`}
+            >
+              <div className="flex items-center gap-2">
+                {displayObject.iconComponent && (
+                  <span className="text-sm text-accent">{displayObject.iconComponent}</span>
+                )}
 
-              <span className="whitespace-pre-wrap text-accent">{displayObject.subject}</span>
-              {/* <span className="font-medium">{displayObject.role}</span> */}
-              {/* <span className="text-sm text-muted-foreground">{displayObject.timestamp.toLocaleTimeString()}</span> */}
+                <span className="whitespace-pre-wrap text-accent">{displayObject.subject}</span>
+                {/* <span className="font-medium">{displayObject.role}</span> */}
+                {/* <span className="text-sm text-muted-foreground">{displayObject.timestamp.toLocaleTimeString()}</span> */}
+              </div>
+              {displayObject.body && (
+                <p className="whitespace-pre-wrap text-foreground">{displayObject.body}</p>
+              )}
             </div>
-            {displayObject.body && (
-              <p className="whitespace-pre-wrap text-foreground">{displayObject.body}</p>
+
+            {/* Expanded content for slim view */}
+            {!isWideView && expandedEventId === displayObject.id && (
+              <EventMetaInfo event={events.find(e => e.id === displayObject.id)!} />
             )}
           </div>
         ))}
@@ -267,10 +353,35 @@ function ConversationContent({
 
 function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [focusedEventId, setFocusedEventId] = useState<number | null>(null)
+  const [expandedEventId, setExpandedEventId] = useState<number | null>(null)
+  const [isWideView, setIsWideView] = useState(false)
 
-  // Clear focus on escape, then close if no focus
-  useHotkeys('escape', () => {
+  // Get events for sidebar access
+  const { events } = useConversation(session.id)
+
+  // Screen width detection for responsive layout
+  useEffect(() => {
+    const checkScreenWidth = () => {
+      setIsWideView(window.innerWidth >= 1024) // lg breakpoint
+    }
+
+    checkScreenWidth()
+    window.addEventListener('resize', checkScreenWidth)
+    return () => window.removeEventListener('resize', checkScreenWidth)
+  }, [])
+
+  // Enter key to expand/collapse focused event
+  useHotkeys('enter', () => {
     if (focusedEventId) {
+      setExpandedEventId(expandedEventId === focusedEventId ? null : focusedEventId)
+    }
+  })
+
+  // Clear focus/expansion on escape, then close if nothing focused
+  useHotkeys('escape', () => {
+    if (expandedEventId) {
+      setExpandedEventId(null)
+    } else if (focusedEventId) {
       setFocusedEventId(null)
     } else {
       onClose()
@@ -285,8 +396,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
           {session.status} / {session.id} / {session.model}
         </small>
       </hgroup>
-      <div className="flex flex-col gap-4">
-        <Card>
+      <div className={`flex gap-4 ${isWideView ? 'flex-row' : 'flex-col'}`}>
+        <Card className={isWideView ? 'flex-1' : 'w-full'}>
           <CardContent>
             <Suspense
               fallback={
@@ -301,10 +412,22 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                 sessionId={session.id}
                 focusedEventId={focusedEventId}
                 setFocusedEventId={setFocusedEventId}
+                expandedEventId={expandedEventId}
+                setExpandedEventId={setExpandedEventId}
+                isWideView={isWideView}
               />
             </Suspense>
           </CardContent>
         </Card>
+
+        {/* Sidebar for wide view */}
+        {isWideView && focusedEventId && (
+          <Card className="w-[40%]">
+            <CardContent>
+              <EventMetaInfo event={events.find(e => e.id === focusedEventId)!} />
+            </CardContent>
+          </Card>
+        )}
       </div>
     </section>
   )
