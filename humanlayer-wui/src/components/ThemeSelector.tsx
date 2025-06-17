@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useTheme, type Theme } from '@/contexts/ThemeContext'
 import { Moon, Sun, Coffee, Cat, ScanEye } from 'lucide-react'
 
@@ -88,8 +88,8 @@ export function ThemeSelector() {
                   index === selectedIndex
                     ? 'bg-accent/20 text-accent'
                     : theme === themeOption.value
-                    ? 'bg-accent/10 text-accent'
-                    : 'text-foreground hover:bg-accent/5'
+                      ? 'bg-accent/10 text-accent'
+                      : 'text-foreground hover:bg-accent/5'
                 }`}
               >
                 <themeOption.icon className="w-3 h-3" />
