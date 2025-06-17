@@ -5,51 +5,58 @@ import { create } from 'zustand'
 import { Button } from '@/components/ui/button'
 import './App.css'
 import SessionTable from './components/internal/SessionTable'
+import SessionDetail from './components/internal/SessionDetail'
+import { ThemeProvider } from './components/providers/ThemeProvider'
+import { ModeToggle } from './components/internal/ModeToggle'
 
 interface StoreState {
   /* Sessions */
   sessions: SessionInfo[]
-  selectedSessionId: string | null
+  focusedSession: SessionInfo | null
+  activeSession: SessionInfo | null
   initSessions: (sessions: SessionInfo[]) => void
-  setSelectedSessionId: (sessionId: string | null) => void
-  selectNextSession: () => void
-  selectPreviousSession: () => void
+  setFocusedSession: (session: SessionInfo | null) => void
+  setActiveSession: (session: SessionInfo | null) => void
+  focusNextSession: () => void
+  focusPreviousSession: () => void
 }
 
 const useStore = create<StoreState>(set => ({
   sessions: [],
-  selectedSessionId: null,
+  focusedSession: null,
+  activeSession: null,
   initSessions: (sessions: SessionInfo[]) => set({ sessions }),
-  setSelectedSessionId: (sessionId: string | null) => set({ selectedSessionId: sessionId }),
-  selectNextSession: () =>
+  setFocusedSession: (session: SessionInfo | null) => set({ focusedSession: session }),
+  setActiveSession: (session: SessionInfo | null) => set({ activeSession: session }),
+  focusNextSession: () =>
     set(state => {
-      const { sessions, selectedSessionId } = state
+      const { sessions, focusedSession } = state
       if (sessions.length === 0) return state
 
-      const currentIndex = selectedSessionId ? sessions.findIndex(s => s.id === selectedSessionId) : -1
+      const currentIndex = focusedSession ? sessions.findIndex(s => s.id === focusedSession.id) : -1
 
-      // If no session is selected or we're at the last session, select the first session
+      // If no session is focused or we're at the last session, focus the first session
       if (currentIndex === -1 || currentIndex === sessions.length - 1) {
-        return { selectedSessionId: sessions[0].id }
+        return { focusedSession: sessions[0] }
       }
 
-      // Select the next session
-      return { selectedSessionId: sessions[currentIndex + 1].id }
+      // Focus the next session
+      return { focusedSession: sessions[currentIndex + 1] }
     }),
-  selectPreviousSession: () =>
+  focusPreviousSession: () =>
     set(state => {
-      const { sessions, selectedSessionId } = state
+      const { sessions, focusedSession } = state
       if (sessions.length === 0) return state
 
-      const currentIndex = selectedSessionId ? sessions.findIndex(s => s.id === selectedSessionId) : -1
+      const currentIndex = focusedSession ? sessions.findIndex(s => s.id === focusedSession.id) : -1
 
-      // If no session is selected or we're at the first session, select the last session
+      // If no session is focused or we're at the first session, focus the last session
       if (currentIndex === -1 || currentIndex === 0) {
-        return { selectedSessionId: sessions[sessions.length - 1].id }
+        return { focusedSession: sessions[sessions.length - 1] }
       }
 
-      // Select the previous session
-      return { selectedSessionId: sessions[currentIndex - 1].id }
+      // Focus the previous session
+      return { focusedSession: sessions[currentIndex - 1] }
     }),
 }))
 
@@ -57,11 +64,13 @@ function App() {
   // const activeSessionId = null;
   // const selectedSessionId = null;
   // const approvals = [];
-  const selectedSessionId = useStore(state => state.selectedSessionId)
+  const focusedSession = useStore(state => state.focusedSession)
+  const activeSession = useStore(state => state.activeSession)
   const sessions = useStore(state => state.sessions)
-  const setSelectedSessionId = useStore(state => state.setSelectedSessionId)
-  const selectNextSession = useStore(state => state.selectNextSession)
-  const selectPreviousSession = useStore(state => state.selectPreviousSession)
+  const setFocusedSession = useStore(state => state.setFocusedSession)
+  const setActiveSession = useStore(state => state.setActiveSession)
+  const focusNextSession = useStore(state => state.focusNextSession)
+  const focusPreviousSession = useStore(state => state.focusPreviousSession)
   const [status, setStatus] = useState('')
   const [approvals, setApprovals] = useState<any[]>([])
   const [activeSessionId] = useState<string | null>(null)
@@ -152,102 +161,97 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <main className="container max-w-[80%] mx-auto flex-1 flex flex-col justify-center p-8">
-        {connected && (
-          <>
-            <div style={{ marginBottom: '20px' }}>
-              <SessionTable
-                sessions={sessions}
-                handleFocusSession={sessionId => setSelectedSessionId(sessionId)}
-                handleBlurSession={() => setSelectedSessionId(null)}
-                selectedSessionId={selectedSessionId}
-                handleSelectNextSession={selectNextSession}
-                handleSelectPreviousSession={selectPreviousSession}
-              />
-              {/*
-              These will return, temporarily commenting out.
-              <div style={{ marginBottom: '20px' }}>
-                <h2>Launch New Session</h2>
-                <input
-                  type="text"
-                  value={query}
-                  onChange={e => setQuery(e.target.value)}
-                  placeholder="Enter your query..."
-                  style={{ width: '300px', marginRight: '10px' }}
-                />
-                <Button onClick={launchSession}>Launch Session</Button>
-              </div>
+    <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
+      <div className="fixed top-0 right-0 p-4">
+        <ModeToggle />
+      </div>
 
-              <Button onClick={loadSessions} style={{ marginTop: '10px' }}>
-                Refresh Sessions
-              </Button> */}
-            </div>
+      <div className="min-h-screen flex flex-col">
+        <main className="container max-w-[95%] mx-auto flex-1 flex flex-col justify-center p-8">
+          {connected && (
+            <>
+              {activeSession ? (
+                <SessionDetail session={activeSession} onClose={() => setActiveSession(null)} />
+              ) : (
+                <div style={{ marginBottom: '20px' }}>
+                  <SessionTable
+                    sessions={sessions}
+                    handleFocusSession={session => setFocusedSession(session)}
+                    handleBlurSession={() => setFocusedSession(null)}
+                    handleActivateSession={session => setActiveSession(session)}
+                    focusedSession={focusedSession}
+                    handleFocusNextSession={focusNextSession}
+                    handleFocusPreviousSession={focusPreviousSession}
+                  />
+                </div>
+              )}
 
-            {approvals.length > 0 && (
-              <div>
-                <h2>Pending Approvals ({approvals.length})</h2>
-                {approvals.map((approval, index) => (
-                  <div
-                    key={index}
-                    style={{
-                      marginBottom: '10px',
-                      padding: '10px',
-                      border: '1px solid #ff6600',
-                    }}
-                  >
-                    <strong>Type:</strong> {approval.type}
-                    <br />
-                    {approval.function_call && (
-                      <>
-                        <strong>Function:</strong> {approval.function_call.spec.fn}
-                        <br />
-                        <strong>Args:</strong> {JSON.stringify(approval.function_call.spec.kwargs)}
-                        <br />
-                        <Button
-                          onClick={() => handleApproval(approval, true)}
-                          style={{ marginRight: '5px' }}
-                        >
-                          Approve
-                        </Button>
-                        <Button onClick={() => handleApproval(approval, false)}>Deny</Button>
-                      </>
-                    )}
-                    {approval.human_contact && (
-                      <>
-                        <strong>Message:</strong> {approval.human_contact.spec.msg}
-                        <br />
-                        <Button onClick={() => handleApproval(approval, true)}>Respond</Button>
-                      </>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </>
-        )}
-      </main>
-
-      <div className="fixed bottom-0 left-0 right-0 bg-gray-900 text-white p-2 flex justify-between items-center">
-        <div className="flex-1">
-          {!connected && (
-            <Button
-              onClick={connectToDaemon}
-              variant="ghost"
-              className="text-white hover:text-gray-300"
-            >
-              Retry Connection
-            </Button>
+              {approvals.length > 0 && (
+                <div>
+                  <h2>Pending Approvals ({approvals.length})</h2>
+                  {approvals.map((approval, index) => (
+                    <div
+                      key={index}
+                      style={{
+                        marginBottom: '10px',
+                        padding: '10px',
+                        border: '1px solid #ff6600',
+                      }}
+                    >
+                      <strong>Type:</strong> {approval.type}
+                      <br />
+                      {approval.function_call && (
+                        <>
+                          <strong>Function:</strong> {approval.function_call.spec.fn}
+                          <br />
+                          <strong>Args:</strong> {JSON.stringify(approval.function_call.spec.kwargs)}
+                          <br />
+                          <Button
+                            onClick={() => handleApproval(approval, true)}
+                            style={{ marginRight: '5px' }}
+                          >
+                            Approve
+                          </Button>
+                          <Button onClick={() => handleApproval(approval, false)}>Deny</Button>
+                        </>
+                      )}
+                      {approval.human_contact && (
+                        <>
+                          <strong>Message:</strong> {approval.human_contact.spec.msg}
+                          <br />
+                          <Button onClick={() => handleApproval(approval, true)}>Respond</Button>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
           )}
-        </div>
-        <div className="flex items-center space-x-2">
-          <span className="text-sm uppercase text-[0.8em]">{status}</span>
-          <span
-            className={`w-2 h-2 rounded-full ${connected ? 'bg-emerald-300' : 'bg-rose-400'}`}
-          ></span>
+        </main>
+
+        <div className="fixed bottom-0 left-0 right-0 bg-gray-900 dark:bg-gray-100 text-white dark:text-black p-2 flex justify-between items-center">
+          <div className="flex-1">
+            {!connected && (
+              <Button
+                onClick={connectToDaemon}
+                variant="ghost"
+                className="text-white hover:text-gray-300"
+              >
+                Retry Connection
+              </Button>
+            )}
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <span className="text-sm uppercase text-[0.8em]">{status}</span>
+            <span
+              className={`w-2 h-2 rounded-full ${connected ? 'bg-emerald-300' : 'bg-rose-400'}`}
+            ></span>
+          </div>
         </div>
       </div>
-    </div>
+    </ThemeProvider>
   )
 }
 

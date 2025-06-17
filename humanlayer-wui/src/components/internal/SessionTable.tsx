@@ -1,4 +1,4 @@
-import { SessionInfo } from '@/daemon-client'
+import { SessionInfo } from '@/lib/daemon/types'
 import {
   Table,
   TableBody,
@@ -12,23 +12,30 @@ import { useHotkeys } from 'react-hotkeys-hook'
 
 interface SessionTableProps {
   sessions: SessionInfo[]
-  handleFocusSession?: (sessionId: string) => void
+  handleFocusSession?: (session: SessionInfo) => void
   handleBlurSession?: () => void
-  handleSelectNextSession?: () => void
-  handleSelectPreviousSession?: () => void
-  selectedSessionId: string | null
+  handleFocusNextSession?: () => void
+  handleFocusPreviousSession?: () => void
+  handleActivateSession?: (session: SessionInfo) => void
+  focusedSession: SessionInfo | null
 }
 
 export default function SessionTable({
   sessions,
   handleFocusSession,
   handleBlurSession,
-  handleSelectNextSession,
-  handleSelectPreviousSession,
-  selectedSessionId,
+  handleFocusNextSession,
+  handleFocusPreviousSession,
+  handleActivateSession,
+  focusedSession,
 }: SessionTableProps) {
-  useHotkeys('j', () => handleSelectNextSession?.())
-  useHotkeys('k', () => handleSelectPreviousSession?.())
+  useHotkeys('j', () => handleFocusNextSession?.())
+  useHotkeys('k', () => handleFocusPreviousSession?.())
+  useHotkeys('enter', () => {
+    if (focusedSession) {
+      handleActivateSession?.(focusedSession)
+    }
+  })
 
   return (
     <Table>
@@ -46,9 +53,10 @@ export default function SessionTable({
         {sessions.map(session => (
           <TableRow
             key={session.id}
-            onMouseEnter={() => handleFocusSession?.(session.id)}
+            onMouseEnter={() => handleFocusSession?.(session)}
             onMouseLeave={() => handleBlurSession?.()}
-            className={session.id === selectedSessionId ? '!bg-emerald-200' : ''}
+            onClick={() => handleActivateSession?.(session)}
+            className={`cursor-pointer ${focusedSession?.id === session.id ? '!bg-emerald-200 dark:!bg-emerald-300 dark:text-black' : ''}`}
           >
             <TableCell>{session.status}</TableCell>
             <TableCell>{session.query}</TableCell>
