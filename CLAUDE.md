@@ -19,7 +19,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### How to Choose Your Persona
 
 - **Asked to write code, fix bugs, or implement features?** → Use Developer Agent
-- **Asked to review code changes?** → Use Code Reviewer Agent  
+- **Asked to review code changes?** → Use Code Reviewer Agent
 - **Asked to clean git history or rebase changes?** → Use Rebaser Agent
 - **Asked to merge branches or consolidate work?** → Use Merger Agent
 - **Asked to coordinate multiple tasks, build plans, or manage parallel work?** → Use Multiplan Manager Agent
