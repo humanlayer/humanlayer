@@ -16,10 +16,8 @@ interface StoreState {
   /* Sessions */
   sessions: SessionInfo[]
   focusedSession: SessionInfo | null
-  activeSession: SessionInfo | null
   initSessions: (sessions: SessionInfo[]) => void
   setFocusedSession: (session: SessionInfo | null) => void
-  setActiveSession: (session: SessionInfo | null) => void
   focusNextSession: () => void
   focusPreviousSession: () => void
 }
@@ -27,10 +25,8 @@ interface StoreState {
 export const useStore = create<StoreState>(set => ({
   sessions: [],
   focusedSession: null,
-  activeSession: null,
   initSessions: (sessions: SessionInfo[]) => set({ sessions }),
   setFocusedSession: (session: SessionInfo | null) => set({ focusedSession: session }),
-  setActiveSession: (session: SessionInfo | null) => set({ activeSession: session }),
   focusNextSession: () =>
     set(state => {
       const { sessions, focusedSession } = state

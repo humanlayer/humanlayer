@@ -10,6 +10,7 @@ import {
 } from '../ui/table'
 import { useHotkeys, useHotkeysContext } from 'react-hotkeys-hook'
 import { useEffect } from 'react'
+import { CircleOff } from 'lucide-react'
 
 interface SessionTableProps {
   sessions: SessionInfo[]
@@ -76,7 +77,7 @@ export default function SessionTable({
           >
             <TableCell>{session.status}</TableCell>
             <TableCell>{session.query}</TableCell>
-            <TableCell>{session.model}</TableCell>
+            <TableCell>{session.model || <CircleOff className="w-4 h-4" />}</TableCell>
             <TableCell>{session.start_time}</TableCell>
             <TableCell>{session.last_activity_at}</TableCell>
           </TableRow>

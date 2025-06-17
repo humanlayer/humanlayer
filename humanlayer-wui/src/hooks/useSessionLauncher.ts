@@ -100,7 +100,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
       const response = await daemonClient.launchSession(request)
 
       // Navigate to new session (will be handled by parent component)
-      window.location.hash = `#/session/${response.session_id}`
+      window.location.hash = `#/sessions/${response.session_id}`
 
       // Close launcher
       get().close()
@@ -124,7 +124,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
 
   openSessionById: (sessionId: string) => {
     // Navigate to existing session
-    window.location.hash = `#/session/${sessionId}`
+    window.location.hash = `#/sessions/${sessionId}`
     get().close()
   },
 
@@ -211,8 +211,8 @@ export function useSessionLauncherHotkeys() {
       if (gPrefixMode && e.key === 's') {
         e.preventDefault()
         setGPrefixMode(false)
-        // TODO: Navigate to sessions view
-        console.log('Navigate to sessions (Phase 2)')
+        // Navigate to sessions view
+        window.location.hash = '#/'
         return
       }
     },
