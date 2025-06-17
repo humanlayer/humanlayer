@@ -1,4 +1,4 @@
-import { common, createStarryNight } from '@wooorm/starry-night'
+import { createStarryNight } from '@wooorm/starry-night'
 import textMd from '@wooorm/starry-night/text.md'
 import { toJsxRuntime } from 'hast-util-to-jsx-runtime'
 import { Fragment, jsx, jsxs } from 'react/jsx-runtime'
@@ -12,7 +12,7 @@ import { Suspense, useEffect, useRef } from 'react'
 import { Bot, MessageCircleDashed, Wrench } from 'lucide-react'
 
 /* I, Sundeep, don't know how I feel about what's going on here. */
-let starryNight: StarryNight | null = null
+let starryNight: any | null = null
 
 interface SessionDetailProps {
   session: SessionInfo
@@ -20,7 +20,6 @@ interface SessionDetailProps {
 }
 
 function eventToDisplayObject(event: ConversationEvent) {
-  // const toolName = event.tool_name
   let subject = <span>Unknown Subject</span>
   let body = null
   let iconComponent = null
@@ -32,11 +31,24 @@ function eventToDisplayObject(event: ConversationEvent) {
 
   if (event.event_type === ConversationEventType.ToolCall) {
     iconComponent = <Wrench className="w-4 h-4" />
+
+    // Claude Code converts "LS" to "List"
     if (event.tool_name === 'LS') {
       const toolInput = JSON.parse(event.tool_input_json!)
       subject = (
         <span>
-          <span className="font-bold">{toolInput.path}</span>
+          <span className="font-bold">List </span>
+          <span className="font-mono text-sm text-gray-800">{toolInput.path}</span>
+        </span>
+      )
+    }
+
+    if (event.tool_name === 'Read') {
+      const toolInput = JSON.parse(event.tool_input_json!)
+      subject = (
+        <span>
+          <span className="font-bold">{event.tool_name} </span>
+          <span className="font-mono text-sm text-gray-800">{toolInput.file_path}</span>
         </span>
       )
     }
@@ -44,8 +56,9 @@ function eventToDisplayObject(event: ConversationEvent) {
 
   if (event.event_type === ConversationEventType.Message) {
     const subjectTree = starryNight?.highlight(event.content?.split('\n')[0], 'text.md')
-    subject = <span>{toJsxRuntime(subjectTree, { Fragment, jsx, jsxs })}</span>
     const bodyTree = starryNight?.highlight(event.content?.split('\n').slice(1).join('\n'), 'text.md')
+
+    subject = <span>{toJsxRuntime(subjectTree, { Fragment, jsx, jsxs })}</span>
     body = <span>{toJsxRuntime(bodyTree, { Fragment, jsx, jsxs })}</span>
   }
 
