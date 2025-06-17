@@ -1,15 +1,76 @@
 import { useState, useEffect } from 'react'
 import { daemonClient } from '@/lib/daemon'
+import type { SessionInfo } from '@/lib/daemon/types'
+import { create } from 'zustand'
 import { Button } from '@/components/ui/button'
+import { ThemeSelector } from '@/components/ThemeSelector'
 import './App.css'
+import SessionTable from './components/internal/SessionTable'
+import SessionDetail from './components/internal/SessionDetail'
+
+interface StoreState {
+  /* Sessions */
+  sessions: SessionInfo[]
+  focusedSession: SessionInfo | null
+  activeSession: SessionInfo | null
+  initSessions: (sessions: SessionInfo[]) => void
+  setFocusedSession: (session: SessionInfo | null) => void
+  setActiveSession: (session: SessionInfo | null) => void
+  focusNextSession: () => void
+  focusPreviousSession: () => void
+}
+
+const useStore = create<StoreState>(set => ({
+  sessions: [],
+  focusedSession: null,
+  activeSession: null,
+  initSessions: (sessions: SessionInfo[]) => set({ sessions }),
+  setFocusedSession: (session: SessionInfo | null) => set({ focusedSession: session }),
+  setActiveSession: (session: SessionInfo | null) => set({ activeSession: session }),
+  focusNextSession: () =>
+    set(state => {
+      const { sessions, focusedSession } = state
+      if (sessions.length === 0) return state
+
+      const currentIndex = focusedSession ? sessions.findIndex(s => s.id === focusedSession.id) : -1
+
+      // If no session is focused or we're at the last session, focus the first session
+      if (currentIndex === -1 || currentIndex === sessions.length - 1) {
+        return { focusedSession: sessions[0] }
+      }
+
+      // Focus the next session
+      return { focusedSession: sessions[currentIndex + 1] }
+    }),
+  focusPreviousSession: () =>
+    set(state => {
+      const { sessions, focusedSession } = state
+      if (sessions.length === 0) return state
+
+      const currentIndex = focusedSession ? sessions.findIndex(s => s.id === focusedSession.id) : -1
+
+      // If no session is focused or we're at the first session, focus the last session
+      if (currentIndex === -1 || currentIndex === 0) {
+        return { focusedSession: sessions[sessions.length - 1] }
+      }
+
+      // Focus the previous session
+      return { focusedSession: sessions[currentIndex - 1] }
+    }),
+}))
 
 function App() {
-  const [connected, setConnected] = useState(false)
+  const focusedSession = useStore(state => state.focusedSession)
+  const activeSession = useStore(state => state.activeSession)
+  const sessions = useStore(state => state.sessions)
+  const setFocusedSession = useStore(state => state.setFocusedSession)
+  const setActiveSession = useStore(state => state.setActiveSession)
+  const focusNextSession = useStore(state => state.focusNextSession)
+  const focusPreviousSession = useStore(state => state.focusPreviousSession)
   const [status, setStatus] = useState('')
-  const [sessions, setSessions] = useState<any[]>([])
   const [approvals, setApprovals] = useState<any[]>([])
-  const [query, setQuery] = useState('')
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
+  const [activeSessionId] = useState<string | null>(null)
+  const [connected, setConnected] = useState(false)
 
   // Connect to daemon on mount
   useEffect(() => {
@@ -41,16 +102,16 @@ function App() {
     }
   }, [activeSessionId])
 
-  async function connectToDaemon() {
+  const connectToDaemon = async () => {
     try {
       setStatus('Connecting to daemon...')
       await daemonClient.connect()
-      setConnected(true)
       setStatus('Connected!')
+      setConnected(true)
 
       // Check health
       const health = await daemonClient.health()
-      setStatus(`Connected! Daemon version: ${health.version}`)
+      setStatus(`Connected! Daemon @ ${health.version}`)
 
       // Load sessions
       await loadSessions()
@@ -60,62 +121,17 @@ function App() {
     }
   }
 
-  async function loadSessions() {
+  const loadSessions = async () => {
     try {
       const response = await daemonClient.listSessions()
-      setSessions(response.sessions)
+      console.log('response.sessions', response.sessions)
+      useStore.getState().initSessions(response.sessions)
     } catch (error) {
       console.error('Failed to load sessions:', error)
     }
   }
 
-  async function launchSession() {
-    if (!query.trim()) {
-      alert('Please enter a query')
-      return
-    }
-
-    try {
-      setStatus('Launching session...')
-      const response = await daemonClient.launchSession({
-        query: query.trim(),
-        model: 'sonnet',
-        verbose: true,
-      })
-
-      setActiveSessionId(response.session_id)
-      setStatus(`Session launched! ID: ${response.session_id}`)
-
-      // Refresh sessions list
-      await loadSessions()
-
-      // Start polling for approvals
-      pollForApprovals(response.session_id)
-    } catch (error) {
-      setStatus(`Failed to launch session: ${error}`)
-    }
-  }
-
-  async function pollForApprovals(sessionId: string) {
-    const interval = setInterval(async () => {
-      try {
-        const response = await daemonClient.fetchApprovals(sessionId)
-        setApprovals(response.approvals)
-
-        // Check session status
-        const sessionState = await daemonClient.getSessionState(sessionId)
-        if (sessionState.session.status === 'completed' || sessionState.session.status === 'failed') {
-          clearInterval(interval)
-          setStatus(`Session ${sessionState.session.status}`)
-          await loadSessions()
-        }
-      } catch (error) {
-        console.error('Failed to fetch approvals:', error)
-      }
-    }, 2000)
-  }
-
-  async function handleApproval(approval: any, approved: boolean) {
+  const handleApproval = async (approval: any, approved: boolean) => {
     try {
       if (approval.type === 'function_call' && approval.function_call) {
         if (approved) {
@@ -141,109 +157,113 @@ function App() {
   }
 
   return (
-    <main className="container">
-      <h1>HumanLayer Daemon Client Test</h1>
+    <div className="h-screen flex flex-col bg-background text-foreground">
+      {/* Header */}
+      <div className="border-b border-border"></div>
 
-      <div style={{ marginBottom: '20px' }}>
-        <strong>Status:</strong> {status}
-        {!connected && (
-          <Button onClick={connectToDaemon} style={{ marginLeft: '10px' }}>
-            Retry Connection
-          </Button>
+      {/* Main content */}
+      <main className="flex-1 flex flex-col p-4 overflow-hidden">
+        {connected && (
+          <>
+            {activeSession ? (
+              <SessionDetail session={activeSession} onClose={() => setActiveSession(null)} />
+            ) : (
+              <div className="flex-1 overflow-hidden">
+                <SessionTable
+                  sessions={sessions}
+                  handleFocusSession={session => setFocusedSession(session)}
+                  handleBlurSession={() => setFocusedSession(null)}
+                  handleActivateSession={session => setActiveSession(session)}
+                  focusedSession={focusedSession}
+                  handleFocusNextSession={focusNextSession}
+                  handleFocusPreviousSession={focusPreviousSession}
+                />
+              </div>
+            )}
+
+            {approvals.length > 0 && (
+              <div className="mt-4 border-t border-border pt-4">
+                <h2 className="font-mono uppercase tracking-wider text-accent mb-4">
+                  Pending Approvals ({approvals.length})
+                </h2>
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {approvals.map((approval, index) => (
+                    <div
+                      key={index}
+                      className="p-4 border border-border bg-secondary/20 font-mono text-sm"
+                    >
+                      <div className="mb-2">
+                        <span className="text-accent">Type:</span> {approval.type}
+                      </div>
+                      {approval.function_call && (
+                        <>
+                          <div className="mb-2">
+                            <span className="text-accent">Function:</span>{' '}
+                            {approval.function_call.spec.fn}
+                          </div>
+                          <div className="mb-3">
+                            <span className="text-accent">Args:</span>{' '}
+                            {JSON.stringify(approval.function_call.spec.kwargs)}
+                          </div>
+                          <div className="flex gap-2">
+                            <Button onClick={() => handleApproval(approval, true)} size="sm">
+                              Approve
+                            </Button>
+                            <Button
+                              onClick={() => handleApproval(approval, false)}
+                              variant="destructive"
+                              size="sm"
+                            >
+                              Deny
+                            </Button>
+                          </div>
+                        </>
+                      )}
+                      {approval.human_contact && (
+                        <>
+                          <div className="mb-3">
+                            <span className="text-accent">Message:</span>{' '}
+                            {approval.human_contact.spec.msg}
+                          </div>
+                          <Button onClick={() => handleApproval(approval, true)} size="sm">
+                            Respond
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
         )}
-      </div>
+      </main>
 
-      {connected && (
-        <>
-          <div style={{ marginBottom: '20px' }}>
-            <h2>Launch New Session</h2>
-            <input
-              type="text"
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-              placeholder="Enter your query..."
-              style={{ width: '300px', marginRight: '10px' }}
-            />
-            <Button onClick={launchSession}>Launch Session</Button>
+      {/* Status bar */}
+      <div className="flex justify-between items-center px-3 py-1.5 border-t border-border bg-secondary/30">
+        <div className="flex items-center gap-4">
+          <div className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+            humanlayer
           </div>
-
-          <div style={{ marginBottom: '20px' }}>
-            <h2>Sessions ({sessions.length})</h2>
-            <div
-              style={{
-                maxHeight: '200px',
-                overflow: 'auto',
-                border: '1px solid #ccc',
-                padding: '10px',
-              }}
-            >
-              {sessions.map(session => (
-                <div
-                  key={session.id}
-                  style={{
-                    marginBottom: '10px',
-                    padding: '5px',
-                    background: '#f0f0f0',
-                  }}
-                >
-                  <strong>{session.query}</strong>
-                  <br />
-                  ID: {session.id}
-                  <br />
-                  Status: {session.status}
-                  <br />
-                  Started: {new Date(session.start_time).toLocaleString()}
-                </div>
-              ))}
-            </div>
-            <Button onClick={loadSessions} style={{ marginTop: '10px' }}>
-              Refresh Sessions
+          {!connected && (
+            <Button onClick={connectToDaemon} variant="ghost" size="sm">
+              Retry Connection
             </Button>
-          </div>
-
-          {approvals.length > 0 && (
-            <div>
-              <h2>Pending Approvals ({approvals.length})</h2>
-              {approvals.map((approval, index) => (
-                <div
-                  key={index}
-                  style={{
-                    marginBottom: '10px',
-                    padding: '10px',
-                    border: '1px solid #ff6600',
-                  }}
-                >
-                  <strong>Type:</strong> {approval.type}
-                  <br />
-                  {approval.function_call && (
-                    <>
-                      <strong>Function:</strong> {approval.function_call.spec.fn}
-                      <br />
-                      <strong>Args:</strong> {JSON.stringify(approval.function_call.spec.kwargs)}
-                      <br />
-                      <Button
-                        onClick={() => handleApproval(approval, true)}
-                        style={{ marginRight: '5px' }}
-                      >
-                        Approve
-                      </Button>
-                      <Button onClick={() => handleApproval(approval, false)}>Deny</Button>
-                    </>
-                  )}
-                  {approval.human_contact && (
-                    <>
-                      <strong>Message:</strong> {approval.human_contact.spec.msg}
-                      <br />
-                      <Button onClick={() => handleApproval(approval, true)}>Respond</Button>
-                    </>
-                  )}
-                </div>
-              ))}
-            </div>
           )}
-        </>
-      )}
-    </main>
+        </div>
+        <div className="flex items-center gap-3">
+          <ThemeSelector />
+          <div className="flex items-center gap-2 font-mono text-xs">
+            <span className="uppercase tracking-wider">{status}</span>
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${
+                connected ? 'bg-[--terminal-success]' : 'bg-[--terminal-error]'
+              }`}
+            ></span>
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
 

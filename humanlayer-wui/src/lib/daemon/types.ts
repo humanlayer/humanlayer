@@ -18,6 +18,26 @@ export enum Decision {
   Deny = 'deny',
   Respond = 'respond',
 }
+
+export enum ConversationEventType {
+  Message = 'message',
+  ToolCall = 'tool_call',
+  ToolResult = 'tool_result',
+  System = 'system',
+}
+
+export enum ConversationRole {
+  User = 'user',
+  Assistant = 'assistant',
+  System = 'system',
+}
+
+export enum ApprovalStatus {
+  Pending = 'pending',
+  Approved = 'approved',
+  Denied = 'denied',
+  Resolved = 'resolved',
+}
 /* eslint-enable no-unused-vars */
 
 // Type definitions matching the Rust types
@@ -200,9 +220,9 @@ export interface ConversationEvent {
   session_id: string
   claude_session_id: string
   sequence: number
-  event_type: 'message' | 'tool_call' | 'tool_result' | 'system'
+  event_type: ConversationEventType
   created_at: string
-  role?: 'user' | 'assistant' | 'system'
+  role?: ConversationRole
   content?: string
   tool_id?: string
   tool_name?: string
@@ -210,7 +230,7 @@ export interface ConversationEvent {
   tool_result_for_id?: string
   tool_result_content?: string
   is_completed: boolean
-  approval_status?: 'pending' | 'approved' | 'denied' | 'resolved' | null
+  approval_status?: ApprovalStatus | null
   approval_id?: string
 }
 
