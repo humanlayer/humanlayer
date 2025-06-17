@@ -17,10 +17,11 @@ repos:
         exclude: ^examples/
       - id: ruff-format
 
-  - repo: https://github.com/pre-commit/mirrors-prettier
-    rev: "v3.0.3"
-    hooks:
-      - id: prettier
+# Prettier disabled for now, no longer supported and breaking
+# - repo: https://github.com/pre-commit/mirrors-prettier
+#   rev: "v3.0.3"
+#   hooks:
+#     - id: prettier
 #  - repo: https://github.com/tcort/markdown-link-check
 #    rev: "v3.12.2"
 #    hooks:
