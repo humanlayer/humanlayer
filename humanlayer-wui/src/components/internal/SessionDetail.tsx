@@ -8,7 +8,7 @@ import { Card, CardContent } from '../ui/card'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { useFormattedConversation, useConversation } from '@/hooks/useConversation'
 import { Skeleton } from '../ui/skeleton'
-import { Suspense, useEffect, useRef } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
 import { Bot, MessageCircleDashed, Wrench } from 'lucide-react'
 
 /* I, Sundeep, don't know how I feel about what's going on here. */
@@ -19,6 +19,7 @@ interface SessionDetailProps {
   onClose: () => void
 }
 
+/* This will almost certainly become something else over time, but for the moment while we get a feel for the data, this is okay */
 function eventToDisplayObject(event: ConversationEvent) {
   let subject = <span>Unknown Subject</span>
   let body = null
@@ -66,13 +67,15 @@ function eventToDisplayObject(event: ConversationEvent) {
     if (event.tool_name === 'TodoWrite') {
       const toolInput = JSON.parse(event.tool_input_json!)
       const todos = toolInput.todos
-      const completedCount = todos.filter(todo => todo.status === 'completed').length
-      const pendingCount = todos.filter(todo => todo.status === 'pending').length
+      const completedCount = todos.filter((todo: any) => todo.status === 'completed').length
+      const pendingCount = todos.filter((todo: any) => todo.status === 'pending').length
 
       subject = (
         <span>
           <span className="font-bold">Update TODOs </span>
-          <span className="font-mono text-sm text-muted-foreground">{completedCount} completed, {pendingCount} pending</span>
+          <span className="font-mono text-sm text-muted-foreground">
+            {completedCount} completed, {pendingCount} pending
+          </span>
         </span>
       )
     }
@@ -92,7 +95,10 @@ function eventToDisplayObject(event: ConversationEvent) {
       subject = (
         <span>
           <span className="font-bold">{event.tool_name} </span>
-          <span className="font-mono text-sm text-muted-foreground">{toolInput.edits.length} edit{toolInput.edits.length === 1 ? '' : 's'} to {toolInput.file_path}</span>
+          <span className="font-mono text-sm text-muted-foreground">
+            {toolInput.edits.length} edit{toolInput.edits.length === 1 ? '' : 's'} to{' '}
+            {toolInput.file_path}
+          </span>
         </span>
       )
     }
@@ -143,12 +149,53 @@ function eventToDisplayObject(event: ConversationEvent) {
   }
 }
 
-function ConversationContent({ sessionId }: { sessionId: string }) {
+function ConversationContent({
+  sessionId,
+  focusedEventId,
+  setFocusedEventId,
+}: {
+  sessionId: string
+  focusedEventId: number | null
+  setFocusedEventId: (id: number | null) => void
+}) {
   const { formattedEvents, loading, error } = useFormattedConversation(sessionId)
   const { events } = useConversation(sessionId)
   console.log('raw events', events)
   const displayObjects = events.map(eventToDisplayObject)
   const nonEmptyDisplayObjects = displayObjects.filter(displayObject => displayObject !== null)
+
+  // Navigation handlers
+  const focusNextEvent = () => {
+    if (nonEmptyDisplayObjects.length === 0) return
+
+    const currentIndex = focusedEventId
+      ? nonEmptyDisplayObjects.findIndex(obj => obj.id === focusedEventId)
+      : -1
+
+    if (currentIndex === -1 || currentIndex === nonEmptyDisplayObjects.length - 1) {
+      setFocusedEventId(nonEmptyDisplayObjects[0].id)
+    } else {
+      setFocusedEventId(nonEmptyDisplayObjects[currentIndex + 1].id)
+    }
+  }
+
+  const focusPreviousEvent = () => {
+    if (nonEmptyDisplayObjects.length === 0) return
+
+    const currentIndex = focusedEventId
+      ? nonEmptyDisplayObjects.findIndex(obj => obj.id === focusedEventId)
+      : -1
+
+    if (currentIndex === -1 || currentIndex === 0) {
+      setFocusedEventId(nonEmptyDisplayObjects[nonEmptyDisplayObjects.length - 1].id)
+    } else {
+      setFocusedEventId(nonEmptyDisplayObjects[currentIndex - 1].id)
+    }
+  }
+
+  // Keyboard navigation
+  useHotkeys('j', focusNextEvent)
+  useHotkeys('k', focusPreviousEvent)
 
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -193,13 +240,13 @@ function ConversationContent({ sessionId }: { sessionId: string }) {
 
   return (
     <div ref={containerRef} className="max-h-[calc(100vh-375px)] overflow-y-auto">
-      <div className="space-y-4">
+      <div>
         {nonEmptyDisplayObjects.map((displayObject, index) => (
           <div
             key={displayObject.id}
-            className={`pb-4 ${index !== nonEmptyDisplayObjects.length - 1 ? 'border-b' : ''}`}
+            className={`py-3 px-2 ${index !== nonEmptyDisplayObjects.length - 1 ? 'border-b' : ''} ${focusedEventId === displayObject.id ? '!bg-accent/20 -mx-2 px-4 rounded' : ''}`}
           >
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2">
               {displayObject.iconComponent && (
                 <span className="text-sm text-accent">{displayObject.iconComponent}</span>
               )}
@@ -219,7 +266,16 @@ function ConversationContent({ sessionId }: { sessionId: string }) {
 }
 
 function SessionDetail({ session, onClose }: SessionDetailProps) {
-  useHotkeys('escape', onClose)
+  const [focusedEventId, setFocusedEventId] = useState<number | null>(null)
+
+  // Clear focus on escape, then close if no focus
+  useHotkeys('escape', () => {
+    if (focusedEventId) {
+      setFocusedEventId(null)
+    } else {
+      onClose()
+    }
+  })
 
   return (
     <section className="flex flex-col gap-4">
@@ -241,7 +297,11 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                 </div>
               }
             >
-              <ConversationContent sessionId={session.id} />
+              <ConversationContent
+                sessionId={session.id}
+                focusedEventId={focusedEventId}
+                setFocusedEventId={setFocusedEventId}
+              />
             </Suspense>
           </CardContent>
         </Card>

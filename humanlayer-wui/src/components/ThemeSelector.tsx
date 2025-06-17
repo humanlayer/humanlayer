@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useTheme, type Theme } from '@/contexts/ThemeContext'
 import { Moon, Sun, Coffee, Cat, ScanEye } from 'lucide-react'
 

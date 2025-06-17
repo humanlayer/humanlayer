@@ -8,7 +8,7 @@ interface UseSessionsReturn {
   loading: boolean
   error: string | null
   refresh: () => Promise<void>
-  // eslint-disable-next-line no-unused-vars
+
   launchSession: (request: LaunchSessionRequest) => Promise<{ sessionId: string; runId: string }>
 }
 
