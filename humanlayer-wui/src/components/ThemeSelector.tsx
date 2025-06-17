@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useTheme, type Theme } from '@/contexts/ThemeContext'
+import { Moon, Sun, Coffee, Cat, ScanEye } from 'lucide-react'
 
-const themes: { value: Theme; label: string; icon: string }[] = [
-  { value: 'solarized-dark', label: 'Solarized Dark', icon: '◐' },
-  { value: 'solarized-light', label: 'Solarized Light', icon: '◯' },
-  { value: 'cappuccino', label: 'Cappuccino', icon: '☕' },
-  { value: 'catppuccin', label: 'Catppuccin', icon: '🐱' },
-  { value: 'high-contrast', label: 'High Contrast', icon: '●' },
+const themes: { value: Theme; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { value: 'solarized-dark', label: 'Solarized Dark', icon: Moon },
+  { value: 'solarized-light', label: 'Solarized Light', icon: Sun },
+  { value: 'cappuccino', label: 'Cappuccino', icon: Coffee },
+  { value: 'catppuccin', label: 'Catppuccin', icon: Cat },
+  { value: 'high-contrast', label: 'High Contrast', icon: ScanEye },
 ]
 
 export function ThemeSelector() {
@@ -69,7 +70,7 @@ export function ThemeSelector() {
         className="px-1.5 py-0.5 text-xs font-mono border border-border bg-background text-foreground hover:bg-accent/10 transition-colors"
         title={`Theme: ${currentTheme?.label || 'Unknown'}`}
       >
-        {currentTheme?.icon || '⚙'}
+        {currentTheme ? <currentTheme.icon className="w-3 h-3" /> : <ScanEye className="w-3 h-3" />}
       </button>
 
       {isOpen && (
@@ -91,7 +92,7 @@ export function ThemeSelector() {
                       : 'text-foreground hover:bg-accent/5'
                 }`}
               >
-                <span>{themeOption.icon}</span>
+                <themeOption.icon className="w-3 h-3" />
                 <span>{themeOption.label}</span>
               </button>
             ))}
