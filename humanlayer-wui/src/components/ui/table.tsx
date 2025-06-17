@@ -5,7 +5,14 @@ import { cn } from '@/lib/utils'
 function Table({ className, ...props }: React.ComponentProps<'table'>) {
   return (
     <div data-slot="table-container" className="relative w-full overflow-x-auto">
-      <table data-slot="table" className={cn('w-full caption-bottom text-sm', className)} {...props} />
+      <table
+        data-slot="table"
+        className={cn(
+          'w-full caption-bottom text-sm font-mono bg-background text-foreground',
+          className,
+        )}
+        {...props}
+      />
     </div>
   )
 }
@@ -35,7 +42,7 @@ function TableRow({ className, ...props }: React.ComponentProps<'tr'>) {
     <tr
       data-slot="table-row"
       className={cn(
-        'hover:bg-muted/50 data-[state=selected]:bg-muted border-b transition-colors',
+        'hover:bg-accent/10 data-[state=selected]:bg-accent/20 border-b border-border transition-colors',
         className,
       )}
       {...props}
@@ -48,7 +55,7 @@ function TableHead({ className, ...props }: React.ComponentProps<'th'>) {
     <th
       data-slot="table-head"
       className={cn(
-        'text-foreground h-10 px-2 text-left align-middle font-medium whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]',
+        'text-accent h-10 px-2 text-left align-middle font-medium font-mono uppercase tracking-wider whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]',
         className,
       )}
       {...props}
@@ -61,7 +68,7 @@ function TableCell({ className, ...props }: React.ComponentProps<'td'>) {
     <td
       data-slot="table-cell"
       className={cn(
-        'p-2 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]',
+        'p-2 align-middle font-mono whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]',
         className,
       )}
       {...props}
@@ -73,7 +80,7 @@ function TableCaption({ className, ...props }: React.ComponentProps<'caption'>) 
   return (
     <caption
       data-slot="table-caption"
-      className={cn('text-muted-foreground mt-4 text-sm', className)}
+      className={cn('text-muted-foreground mt-4 text-sm font-mono', className)}
       {...props}
     />
   )
