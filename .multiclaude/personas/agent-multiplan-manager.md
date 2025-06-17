@@ -20,7 +20,8 @@ These scripts are designed to be reused for different management tasks by updati
 3. **CRITICAL**: ALWAYS COMMIT ANY CHANGES to scripts, Makefiles, or configuration files before running npx multiclaude launch. Worker worktrees will not see uncommitted changes from the manager worktree.
 4. launch each worker individually using: `npx multiclaude launch <branch_name> <plan_file>`
 5. **OBSERVE AND MERGE**: Once agents are launched, the agents will work autonomously. It is your job to adopt the merger persona (`hack/agent-merger.md`) and watch them working and merge their work in.
-6. You can use the `tmux` commands below to monitor the agents and see if they're stuck, send them messages, etc.
+6. **REGULAR CHECKINS**: Every 10-15 minutes, check agent worktrees for `.claude/settings.local.json` files and merge any whitelisted commands into your local `.claude/settings.local.json`
+7. You can use the `tmux` commands below to monitor the agents and see if they're stuck, send them messages, etc.
 
 ## LAUNCHING WORKERS
 
@@ -50,6 +51,19 @@ Each call adds a new window to the `${MULTICLAUDE_TMUX_SESSION}` or `${REPO_NAME
 **Agent done but no commit?**: `tmux send-keys -t session:window "Please commit your completed work" C-m`
 
 **Agents MUST commit every 5-10 minutes. No exceptions.**
+
+## SETTINGS MANAGEMENT
+
+**Check agent settings**: Every 10-15 minutes, check for `.claude/settings.local.json` in agent worktrees:
+
+```bash
+# Check specific agent worktree for new settings
+cat /Users/dex/.humanlayer/worktrees/humanlayer_<branch>/.claude/settings.local.json
+
+# Merge whitelisted commands into your ~/.claude/settings.local.json
+```
+
+**Whitelist**: Only merge safe dev commands (make, npm, bun, python -m, etc.)
 
 ## PREVENT CONFLICTS
 
@@ -108,8 +122,7 @@ git log --oneline -10 integration-testing
 
 When adding new branches for the merge agent to monitor:
 
-```bash
-# Edit the merge agent's plan directly
+```bash # Edit the merge agent's plan directly
 vim /Users/dex/.humanlayer/worktrees/agentcontrolplane_merge/plan-merge-agent.md
 
 # The merge agent will pick up changes on its next monitoring cycle

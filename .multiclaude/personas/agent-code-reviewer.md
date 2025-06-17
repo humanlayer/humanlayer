@@ -48,31 +48,19 @@ because you miss a lot of delicate logic which then causes you to give incomplet
 
 ```bash
 # Check what files are related to this change
-find . -name "*.go" -exec grep -l "FunctionName\|TypeName\|PackageName" {} \;
+find . -name "*.py" -exec grep -l "FunctionName\|TypeName\|PackageName" {} \;
 
 # Look at recent changes to understand the feature
 git log --oneline -10 -- path/to/file.go
 
 # Check if there are tests for this code
-find . -name "*_test.go" -exec grep -l "TestFunctionName\|functionName" {} \;
+find . -name "*_test.ts" -exec grep -l "TestFunctionName\|functionName" {} \;
 ```
 
 ### Step 3: BUILD AND TEST - VERIFY QUALITY
 
 ```bash
-make -C acp fmt vet lint test
-# If this fails, CRITICAL ISSUE - this breaks the build
-# If tests fail, CRITICAL ISSUE - this breaks functionality
-# Don't ignore these - they're blocking issues
-```
-
-### Step 4: SECURITY AND VULNERABILITY REVIEW
-
-```bash
-# Check for common security issues
-grep -r "os.Getenv.*PASSWORD\|os.Getenv.*SECRET\|os.Getenv.*KEY" .
-grep -r "consol.log.Printf.*%.*password\|log.*password\|log.*secret" .
-grep -r "exec.Command\|os.Exec\|syscall" .
+make check test
 ```
 
 ### Step 5: GENERATE STRUCTURED REVIEW
