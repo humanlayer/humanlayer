@@ -273,8 +273,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			} else if m.getCurrentViewState() == domain.ConversationView {
 				// Clear conversation view and return to appropriate tab
-				m.conversation.stopPolling() // Stop any active polling
-				m.conversation.sessionID = ""
+				m.conversation.clearSession()
 				return m, nil
 			} else if m.showErrorDetail {
 				// Close error detail popup
@@ -432,7 +431,7 @@ func (m model) View() string {
 // getCurrentViewState returns the current view state based on active tab or conversation
 func (m model) getCurrentViewState() domain.ViewState {
 	// Check if we're in conversation view first
-	if m.conversation.sessionID != "" {
+	if m.conversation.sessionID() != "" {
 		return domain.ConversationView
 	}
 
@@ -473,9 +472,8 @@ func (m model) handleTabSwitching(msg tea.KeyMsg) (bool, tea.Model, tea.Cmd) {
 	case key.Matches(msg, keys.Tab1):
 		if m.activeTab != domain.ApprovalsTab {
 			// Clear conversation view when switching tabs
-			if m.conversation.sessionID != "" {
-				m.conversation.stopPolling()
-				m.conversation.sessionID = ""
+			if m.conversation.sessionID() != "" {
+				m.conversation.clearSession()
 			}
 			m.activeTab = domain.ApprovalsTab
 			m.showNotification = false // Hide notification when going to approvals
@@ -485,9 +483,8 @@ func (m model) handleTabSwitching(msg tea.KeyMsg) (bool, tea.Model, tea.Cmd) {
 	case key.Matches(msg, keys.Tab2):
 		if m.activeTab != domain.SessionsTab {
 			// Clear conversation view when switching tabs
-			if m.conversation.sessionID != "" {
-				m.conversation.stopPolling()
-				m.conversation.sessionID = ""
+			if m.conversation.sessionID() != "" {
+				m.conversation.clearSession()
 			}
 			m.activeTab = domain.SessionsTab
 			return true, m, m.fetchDataForTab(domain.SessionsTab)

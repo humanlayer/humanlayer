@@ -43,11 +43,3 @@ func sendHumanResponse(apiClient api.Client, requestID string, response string) 
 func fetchConversation(apiClient api.Client, sessionID string) tea.Cmd {
 	return apiClient.FetchConversation(sessionID)
 }
-
-func fetchConversationSilent(apiClient api.Client, sessionID string) tea.Cmd {
-	return apiClient.FetchConversationSilent(sessionID)
-}
-
-func continueSession(apiClient api.Client, sessionID, query string) tea.Cmd {
-	return apiClient.ContinueSession(sessionID, query)
-}

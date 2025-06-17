@@ -178,3 +178,4 @@ cython_debug/
 .Trashes
 
 .idea/
+test-results.json
