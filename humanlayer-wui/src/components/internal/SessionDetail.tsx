@@ -324,7 +324,9 @@ function ConversationContent({
               onClick={() =>
                 setExpandedEventId(expandedEventId === displayObject.id ? null : displayObject.id)
               }
-              className={`py-3 px-2 cursor-pointer ${index !== nonEmptyDisplayObjects.length - 1 ? 'border-b' : ''} ${focusedEventId === displayObject.id ? '!bg-accent/20 -mx-2 px-4 rounded' : ''}`}
+              className={`py-3 px-2 cursor-pointer ${
+                index !== nonEmptyDisplayObjects.length - 1 ? 'border-b' : ''
+              } ${focusedEventId === displayObject.id ? '!bg-accent/20 -mx-2 px-4 rounded' : ''}`}
             >
               <div className="flex items-center gap-2">
                 {displayObject.iconComponent && (
