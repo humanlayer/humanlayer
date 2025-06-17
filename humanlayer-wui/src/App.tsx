@@ -10,6 +10,7 @@ import SessionDetail from './components/internal/SessionDetail'
 import { ThemeProvider } from './components/providers/ThemeProvider'
 import { SessionLauncher } from './components/SessionLauncher'
 import { useSessionLauncher, useSessionLauncherHotkeys } from './hooks/useSessionLauncher'
+import { useHotkeysContext } from 'react-hotkeys-hook'
 
 interface StoreState {
   /* Sessions */
@@ -74,6 +75,7 @@ function App() {
   const [approvals, setApprovals] = useState<any[]>([])
   const [activeSessionId] = useState<string | null>(null)
   const [connected, setConnected] = useState(false)
+  const { activeScopes } = useHotkeysContext()
 
   // Session launcher state
   const { isOpen, close } = useSessionLauncher()
@@ -124,6 +126,11 @@ function App() {
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [handleKeyDown])
+
+  // log active scopes for now to understand how hotkeys scopes work
+  useEffect(() => {
+    console.log('activeScopes', activeScopes)
+  }, [activeScopes])
 
   // Cleanup subscription when component unmounts or session changes
   useEffect(() => {
