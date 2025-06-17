@@ -137,6 +137,12 @@ const handleApproval = () => { ... }
 
 ## 🚫 CRITICAL RULES - BREAK THESE AND EVERYTHING FAILS
 
+### Project specific rules
+
+- `humanlayer-wui` - I am running the server with `npm run tauri dev` - you should never try to run the wui
+- `humanlayer-tui` - Do not try to run the tui, i will rebuild and run when you are ready for me to test it
+- `hld` - I am runnign this in the background, don't try to run it yourself
+
 ### NEVER CREATE NEW FILES (unless absolutely required)
 
 - Think you need a new file? YOU DON'T

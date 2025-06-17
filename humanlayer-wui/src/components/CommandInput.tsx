@@ -112,7 +112,7 @@ export default function CommandInput({
           placeholder="/path/to/directory or leave empty for current directory"
           maxResults={6}
           emptyMessage="Type a directory path..."
-          renderItem={(item) => (
+          renderItem={item => (
             <div className="flex items-center space-x-2">
               <span className="text-blue-500">📁</span>
               <span className="font-mono">{item}</span>
@@ -159,7 +159,9 @@ export default function CommandInput({
               <input
                 type="number"
                 value={config.maxTurns || ''}
-                onChange={e => updateConfig({ maxTurns: e.target.value ? parseInt(e.target.value) : undefined })}
+                onChange={e =>
+                  updateConfig({ maxTurns: e.target.value ? parseInt(e.target.value) : undefined })
+                }
                 placeholder="Default"
                 min="1"
                 max="100"

@@ -63,7 +63,6 @@ because you miss a lot of delicate logic which then causes you to add more bad c
 - `examples/` - Framework integrations (LangChain, CrewAI, OpenAI, etc.)
 - `docs/` - Documentation site
 
-
 ## Examples
 
 The `examples/` directory contains examples of using humanlayer with major AI frameworks:

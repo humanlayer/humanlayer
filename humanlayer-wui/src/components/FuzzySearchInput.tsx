@@ -37,13 +37,13 @@ export default function FuzzySearchInput<T>({
   // Perform fuzzy search
   const searchResults = useMemo(() => {
     if (!value.trim()) return []
-    
+
     const results = fuzzySearch(items, value, {
       keys: searchKeys,
       threshold: 0.1,
       includeMatches: true,
     })
-    
+
     return results.slice(0, maxResults)
   }, [items, value, searchKeys, maxResults])
 
@@ -111,12 +111,12 @@ export default function FuzzySearchInput<T>({
   const defaultRenderItem = (item: T, matches: FuzzyMatch['matches']) => {
     const text = String(item)
     const match = matches[0]
-    
+
     if (match && match.indices) {
       const segments = highlightMatches(text, match.indices)
       return defaultRenderHighlight(segments)
     }
-    
+
     return <span>{text}</span>
   }
 
@@ -151,7 +151,7 @@ export default function FuzzySearchInput<T>({
           'placeholder:text-muted-foreground/60',
           'disabled:opacity-50 disabled:cursor-not-allowed',
           'border-border hover:border-primary/50 focus:border-primary focus:ring-2 focus:ring-primary/20',
-          className
+          className,
         )}
         autoComplete="off"
       />
@@ -159,11 +159,8 @@ export default function FuzzySearchInput<T>({
       {isOpen && (
         <>
           {/* Backdrop */}
-          <div 
-            className="fixed inset-0 z-10" 
-            onClick={() => setIsOpen(false)} 
-          />
-          
+          <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
+
           {/* Results dropdown */}
           <div
             ref={listRef}
@@ -178,20 +175,20 @@ export default function FuzzySearchInput<T>({
                     'border-b border-border/50 last:border-b-0',
                     index === selectedIndex
                       ? 'bg-primary text-primary-foreground'
-                      : 'hover:bg-muted/50'
+                      : 'hover:bg-muted/50',
                   )}
                   onClick={() => handleItemClick(result.item, index)}
                   onMouseEnter={() => setSelectedIndex(index)}
                 >
-                  {renderItem ? renderItem(result.item, result.matches) : defaultRenderItem(result.item, result.matches)}
+                  {renderItem
+                    ? renderItem(result.item, result.matches)
+                    : defaultRenderItem(result.item, result.matches)}
                 </div>
               ))
             ) : (
-              <div className="px-3 py-2 text-sm text-muted-foreground text-center">
-                {emptyMessage}
-              </div>
+              <div className="px-3 py-2 text-sm text-muted-foreground text-center">{emptyMessage}</div>
             )}
-            
+
             {/* Footer with navigation hints */}
             {searchResults.length > 0 && (
               <div className="px-3 py-1 text-xs text-muted-foreground bg-muted/30 border-t border-border/50 flex items-center justify-between">

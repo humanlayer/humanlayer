@@ -2,7 +2,6 @@ import { create } from 'zustand'
 import { daemonClient } from '@/lib/daemon'
 import type { LaunchSessionRequest } from '@/lib/daemon/types'
 
-
 interface SessionConfig {
   query: string
   workingDir: string
@@ -35,7 +34,6 @@ interface LauncherState {
   reset: () => void
 }
 
-
 export const useSessionLauncher = create<LauncherState>((set, get) => ({
   isOpen: false,
   mode: 'command',
@@ -66,11 +64,12 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
       gPrefixMode: false,
     }),
 
-  setQuery: query => set(state => ({ 
-    query, 
-    config: { ...state.config, query },
-    error: undefined 
-  })),
+  setQuery: query =>
+    set(state => ({
+      query,
+      config: { ...state.config, query },
+      error: undefined,
+    })),
 
   setConfig: config => set({ config, error: undefined }),
 
@@ -105,7 +104,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
 
       // Close launcher
       get().close()
-      
+
       // Trigger a session refresh
       // Import loadSessions from App or dispatch a custom event
       window.dispatchEvent(new CustomEvent('session-created'))
@@ -151,7 +150,7 @@ export function useSessionLauncherHotkeys() {
   const isTypingInInput = () => {
     const active = document.activeElement
     if (!active) return false
-    
+
     // Only block hotkeys when actively typing in actual input fields
     return (
       active.tagName === 'INPUT' ||

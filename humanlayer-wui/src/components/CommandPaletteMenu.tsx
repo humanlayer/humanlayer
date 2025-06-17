@@ -12,11 +12,10 @@ interface MenuOption {
   action: () => void
 }
 
-
 export default function CommandPaletteMenu() {
   const { createNewSession, openSessionById, selectedMenuIndex, setSelectedMenuIndex, mode } =
     useSessionLauncher()
-  
+
   const [searchQuery, setSearchQuery] = useState('')
 
   // Get sessions from the main app store
@@ -34,28 +33,31 @@ export default function CommandPaletteMenu() {
 
   // Command mode: Only Create Session
   // Search mode: All sessions (for fuzzy search) but limit display to 5
-  const sessionOptions: MenuOption[] = mode === 'search' 
-    ? sessions.map(session => ({
-        id: `open-${session.id}`,
-        label: `${session.query.slice(0, 40)}${session.query.length > 40 ? '...' : ''}`,
-        description: `${session.status} • ${session.model || 'Unknown model'}`,
-        action: () => openSessionById(session.id),
-      }))
-    : [] // No sessions in command mode
+  const sessionOptions: MenuOption[] =
+    mode === 'search'
+      ? sessions.map(session => ({
+          id: `open-${session.id}`,
+          label: `${session.query.slice(0, 40)}${session.query.length > 40 ? '...' : ''}`,
+          description: `${session.status} • ${session.model || 'Unknown model'}`,
+          action: () => openSessionById(session.id),
+        }))
+      : [] // No sessions in command mode
 
   // Apply fuzzy search if in search mode and there's a query
-  const filteredSessions = searchQuery && mode === 'search' 
-    ? fuzzySearch(sessionOptions, searchQuery, {
-        keys: ['label', 'description'],
-        threshold: 0.1,
-        includeMatches: true,
-      })
-    : sessionOptions.map(session => ({ item: session, matches: [], score: 1, indices: [] }))
+  const filteredSessions =
+    searchQuery && mode === 'search'
+      ? fuzzySearch(sessionOptions, searchQuery, {
+          keys: ['label', 'description'],
+          threshold: 0.1,
+          includeMatches: true,
+        })
+      : sessionOptions.map(session => ({ item: session, matches: [], score: 1, indices: [] }))
 
   // Combine options based on mode
-  const menuOptions: MenuOption[] = mode === 'command' 
-    ? baseOptions  // Command: Only Create Session
-    : filteredSessions.slice(0, 5).map(result => result.item)  // Search: Only sessions (no Create Session), limit to 5
+  const menuOptions: MenuOption[] =
+    mode === 'command'
+      ? baseOptions // Command: Only Create Session
+      : filteredSessions.slice(0, 5).map(result => result.item) // Search: Only sessions (no Create Session), limit to 5
 
   // Keyboard navigation
   useHotkeys(
@@ -101,7 +103,9 @@ export default function CommandPaletteMenu() {
           {segments.map((segment, i) => (
             <span
               key={i}
-              className={segment.highlighted ? 'bg-yellow-200/80 dark:bg-yellow-900/60 font-medium' : ''}
+              className={
+                segment.highlighted ? 'bg-yellow-200/80 dark:bg-yellow-900/60 font-medium' : ''
+              }
             >
               {segment.text}
             </span>
@@ -154,9 +158,10 @@ export default function CommandPaletteMenu() {
 
       {menuOptions.map((option, index) => {
         // Find the corresponding match data for highlighting
-        const matchData = mode === 'search' && searchQuery 
-          ? filteredSessions.find(result => result.item.id === option.id)
-          : null
+        const matchData =
+          mode === 'search' && searchQuery
+            ? filteredSessions.find(result => result.item.id === option.id)
+            : null
 
         return (
           <div
@@ -165,7 +170,7 @@ export default function CommandPaletteMenu() {
               'p-2 rounded cursor-pointer transition-all duration-150',
               index === selectedMenuIndex
                 ? 'bg-primary text-primary-foreground'
-                : 'bg-muted/30 hover:bg-muted/60'
+                : 'bg-muted/30 hover:bg-muted/60',
             )}
             onClick={() => {
               setSelectedMenuIndex(index)
@@ -174,16 +179,20 @@ export default function CommandPaletteMenu() {
             onMouseEnter={() => setSelectedMenuIndex(index)}
           >
             <div className="text-sm font-medium truncate">
-              {matchData ? renderHighlightedText(option.label, matchData.matches, 'label') : option.label}
+              {matchData
+                ? renderHighlightedText(option.label, matchData.matches, 'label')
+                : option.label}
             </div>
             {option.description && (
               <div
                 className={cn(
                   'text-xs mt-0.5 truncate',
-                  index === selectedMenuIndex ? 'text-primary-foreground/70' : 'text-muted-foreground'
+                  index === selectedMenuIndex ? 'text-primary-foreground/70' : 'text-muted-foreground',
                 )}
               >
-                {matchData ? renderHighlightedText(option.description, matchData.matches, 'description') : option.description}
+                {matchData
+                  ? renderHighlightedText(option.description, matchData.matches, 'description')
+                  : option.description}
               </div>
             )}
           </div>
@@ -193,7 +202,6 @@ export default function CommandPaletteMenu() {
       {menuOptions.length === 0 && mode === 'search' && (
         <div className="text-xs text-muted-foreground text-center py-4">No sessions found</div>
       )}
-
 
       <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t border-border/30">
         <div className="flex items-center space-x-3">

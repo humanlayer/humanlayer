@@ -39,15 +39,15 @@ function fuzzyMatchString(pattern: string, text: string): { score: number; indic
     if (pattern[patternIdx] === text[textIdx]) {
       indices.push(textIdx)
       consecutiveMatches++
-      
+
       // Bonus for consecutive matches (like Superhuman)
       score += consecutiveMatches * 2
-      
+
       // Bonus for start of word matches
       if (textIdx === 0 || text[textIdx - 1] === ' ' || text[textIdx - 1] === '/') {
         score += 5
       }
-      
+
       patternIdx++
     } else {
       consecutiveMatches = 0
@@ -61,7 +61,7 @@ function fuzzyMatchString(pattern: string, text: string): { score: number; indic
   } else {
     // Bonus for shorter strings (exact matches rank higher)
     score += Math.max(0, 100 - text.length)
-    
+
     // Bonus for match density
     score += (indices.length / text.length) * 50
   }
@@ -75,13 +75,9 @@ function fuzzyMatchString(pattern: string, text: string): { score: number; indic
 export function fuzzySearch<T>(
   items: T[],
   pattern: string,
-  options: FuzzySearchOptions = {}
+  options: FuzzySearchOptions = {},
 ): FuzzyMatch[] {
-  const {
-    keys = [],
-    threshold = 0.1,
-    minMatchCharLength = 1,
-  } = options
+  const { keys = [], threshold = 0.1, minMatchCharLength = 1 } = options
 
   if (!pattern || pattern.length < minMatchCharLength) {
     return items.map(item => ({
@@ -142,7 +138,10 @@ export function fuzzySearch<T>(
 /**
  * Highlight matched characters in text (for rendering)
  */
-export function highlightMatches(text: string, indices: number[]): Array<{ text: string; highlighted: boolean }> {
+export function highlightMatches(
+  text: string,
+  indices: number[],
+): Array<{ text: string; highlighted: boolean }> {
   if (!indices.length) {
     return [{ text, highlighted: false }]
   }
@@ -185,7 +184,7 @@ export function highlightMatches(text: string, indices: number[]): Array<{ text:
 export function fuzzySearchDirectories(directories: string[], pattern: string): FuzzyMatch[] {
   // Enhance pattern matching for directory paths
   const enhancedPattern = pattern.replace(/^~/, process.env.HOME || '')
-  
+
   return fuzzySearch(directories, enhancedPattern, {
     threshold: 0.1,
     minMatchCharLength: 1,
