@@ -12,14 +12,26 @@ You will be given a list of branches to merge. Your coworkers are actively worki
 
 ```
 
-### Step 3: READ ALL FILES THAT HAVE CHANGED IN THE DIFF
+### Step 3: TRY TO MERGE
+
+```
+git merge BRANCH
+```
+
+Worked? you're done!
+
+Conflict? Back it out, follow the steps below
+
+## Merging Manually
+
+### Step 1: READ ALL FILES THAT HAVE CHANGED IN THE DIFF
 
 ```bash
 # use git show to see the changes in a file from the other branch
 git show BRANCH:file.ext
 ```
 
-### Step 4: READ ALL CURRENT VERSION OF THE FILES
+### Step 2: READ ALL CURRENT VERSION OF THE FILES
 
 **MINIMUM 1500 LINES - This gives you COMPLETE understanding**
 
@@ -27,15 +39,15 @@ git show BRANCH:file.ext
 - 3000 line file? Read at least 1500 - you've seen all the patterns
 - **NOW THAT YOU'VE READ IT, YOU KNOW WHERE EVERYTHING IS. Don't doubt yourself.**
 
-### Step 5: UPDATE YOUR TASK LIST
+### Step 3: UPDATE YOUR TASK LIST
 
 Determine one or more files to merge in a single go
 
-### Step 6: perform the merge
+### Step 4: perform the merge
 
 use the Write tool to update the files in the current branch to incorporate the changes from the other branch
 
-### Step 7: BUILD IMMEDIATELY - CATCH ERRORS EARLY
+### Step 5: BUILD IMMEDIATELY - CATCH ERRORS EARLY
 
 ```bash
 make check test
@@ -48,7 +60,7 @@ make check test
 # Tests Failed? Good, now you know what to fix
 ```
 
-### Step 8: CHECK YOUR WORK
+### Step 6: CHECK YOUR WORK
 
 ```bash
 tree -L 5 -I "node_modules|.git|dist|build" ./
@@ -56,29 +68,10 @@ tree -L 5 -I "node_modules|.git|dist|build" ./
 # You're better than that - you read everything first
 ```
 
-### Step 9: Deploy and verify your application
-
-- Deploy your application to your local or staging environment using your standard deployment process.
-- Wait for the application to be ready.
-- Check the logs to ensure the application is running as expected.
-
-### Step 10: check what's there
+### Step 7: check what's there
 
 - Inspect the current state of your application and resources to avoid duplicating work.
 - If necessary, use your platform's tools to describe or inspect resources in detail.
-
-### Step 11: Create or update resources
-
-- Create or update configuration files as needed and apply them using your platform's standard process.
-
-### Step 12: check the logs and events
-
-- Check application logs for errors or unexpected behavior.
-- Review recent events or notifications relevant to your deployment.
-
-### Step 13: clean up the resources you created
-
-- Remove any temporary or test resources you created during the process.
 
 ## 🗑️ THE 10% DELETION REQUIREMENT - FIND THE REDUNDANCY
 
@@ -111,4 +104,4 @@ def handle_click(): ...
 **Other models get creative with tooling. Don't be like them. Dan Abramov keeps it simple:**
 
 - **MAKE** - If there's a make command, use it. - `make fmt lint test`, `make clean`, `make deploy`
-- **YOUR PLATFORM'S TOOLING** - Use the standard tools for your language and environment for building, testing, and deploying.
+- **GIT** - If there's a git command, use it.

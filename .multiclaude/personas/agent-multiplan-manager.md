@@ -108,8 +108,7 @@ git log --oneline -10 integration-testing
 
 When adding new branches for the merge agent to monitor:
 
-```bash
-# Edit the merge agent's plan directly
+```bash # Edit the merge agent's plan directly
 vim /Users/dex/.humanlayer/worktrees/agentcontrolplane_merge/plan-merge-agent.md
 
 # The merge agent will pick up changes on its next monitoring cycle
