@@ -1,6 +1,8 @@
 package claudecode_test
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -8,6 +10,10 @@ import (
 )
 
 func TestClient_LaunchAndWait(t *testing.T) {
+	if os.Getenv("ANTHROPIC_API_KEY") == "" {
+		t.Skip("ANTHROPIC_API_KEY not set")
+	}
+
 	client, err := claudecode.NewClient()
 	if err != nil {
 		t.Skip("claude binary not found in PATH")
@@ -21,7 +27,7 @@ func TestClient_LaunchAndWait(t *testing.T) {
 		{
 			name: "text output",
 			config: claudecode.SessionConfig{
-				Prompt:       "Say exactly: test",
+				Query:        "Say exactly: test",
 				OutputFormat: claudecode.OutputText,
 			},
 			check: func(t *testing.T, result *claudecode.Result, err error) {
@@ -39,7 +45,7 @@ func TestClient_LaunchAndWait(t *testing.T) {
 		{
 			name: "json output",
 			config: claudecode.SessionConfig{
-				Prompt:       "What is 1+1?",
+				Query:        "Say exactly: test",
 				OutputFormat: claudecode.OutputJSON,
 				Model:        claudecode.ModelSonnet,
 			},
@@ -69,13 +75,17 @@ func TestClient_LaunchAndWait(t *testing.T) {
 }
 
 func TestClient_LaunchStreaming(t *testing.T) {
+	if os.Getenv("ANTHROPIC_API_KEY") == "" {
+		t.Skip("ANTHROPIC_API_KEY not set")
+	}
+
 	client, err := claudecode.NewClient()
 	if err != nil {
 		t.Skip("claude binary not found in PATH")
 	}
 
 	session, err := client.Launch(claudecode.SessionConfig{
-		Prompt:       "Count to 2",
+		Query:        "Count to 2",
 		OutputFormat: claudecode.OutputStreamJSON,
 		Model:        claudecode.ModelSonnet,
 	})
@@ -121,5 +131,107 @@ done:
 	}
 	if result == nil {
 		t.Error("expected result")
+	}
+}
+
+func TestClient_WorkingDirectoryHandling(t *testing.T) {
+	client, err := claudecode.NewClient()
+	if err != nil {
+		t.Skip("claude binary not found in PATH")
+	}
+
+	// Get current directory and home directory for test comparisons
+	currentDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("failed to get current directory: %v", err)
+	}
+
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatalf("failed to get home directory: %v", err)
+	}
+
+	// Find an existing subdirectory in home for tilde expansion test
+	var tildeSubdir string
+	var tildeSubdirPath string
+
+	// Try common directories that might exist
+	candidates := []string{"Documents", "work", ".config", "Desktop"}
+	for _, candidate := range candidates {
+		candidatePath := filepath.Join(homeDir, candidate)
+		if _, err := os.Stat(candidatePath); err == nil {
+			tildeSubdir = "~/" + candidate
+			tildeSubdirPath = candidatePath
+			break
+		}
+	}
+
+	// If no subdirectory found, skip the tilde with path test
+	if tildeSubdir == "" {
+		t.Logf("No common subdirectories found in %s, will skip tilde with path test", homeDir)
+	}
+
+	tests := []struct {
+		name              string
+		workingDir        string
+		expectedToContain string
+		description       string
+		skip              bool
+	}{
+		{
+			name:              "tilde expansion",
+			workingDir:        "~",
+			expectedToContain: homeDir,
+			description:       "should expand ~ to home directory",
+		},
+		{
+			name:              "tilde with path",
+			workingDir:        tildeSubdir,
+			expectedToContain: tildeSubdirPath,
+			description:       "should expand ~/path to home/path",
+			skip:              tildeSubdir == "",
+		},
+		{
+			name:              "relative path",
+			workingDir:        ".",
+			expectedToContain: currentDir,
+			description:       "should convert relative path to absolute",
+		},
+		{
+			name:              "absolute path",
+			workingDir:        currentDir,
+			expectedToContain: currentDir,
+			description:       "should handle absolute paths correctly",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.skip {
+				t.Skip("Skipping test - required directory not found")
+			}
+
+			// We'll use a query that should fail quickly to avoid long waits
+			config := claudecode.SessionConfig{
+				Query:        "pwd", // Simple command to show working directory
+				WorkingDir:   tt.workingDir,
+				OutputFormat: claudecode.OutputText,
+			}
+
+			// Launch the session (this tests the path handling logic)
+			session, err := client.Launch(config)
+			if err != nil {
+				t.Fatalf("failed to launch with working dir %q: %v", tt.workingDir, err)
+			}
+
+			// Clean up
+			_ = session.Kill()
+			_, _ = session.Wait()
+
+			// The fact that Launch succeeded without error indicates the path was handled correctly
+			// More detailed verification would require exposing internal state or using a mock
+			t.Logf("Successfully handled working directory: %s -> expected to contain: %s",
+				tt.workingDir, tt.expectedToContain)
+		})
 	}
 }

@@ -15,11 +15,11 @@ func SocketPath(t *testing.T, suffix string) string {
 	path := fmt.Sprintf("/tmp/hld-%d-%s.sock", os.Getpid(), suffix)
 
 	// Ensure any existing socket is removed first
-	os.Remove(path)
+	_ = os.Remove(path)
 
 	// Register cleanup
 	t.Cleanup(func() {
-		os.Remove(path)
+		_ = os.Remove(path)
 	})
 
 	return path

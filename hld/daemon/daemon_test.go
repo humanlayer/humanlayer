@@ -40,7 +40,7 @@ func TestDaemonLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to connect to daemon: %v", err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Test 2: Send health check request
 	request := map[string]interface{}{
@@ -121,7 +121,11 @@ func TestDaemonRefusesDoubleStart(t *testing.T) {
 	ctx1, cancel1 := context.WithCancel(context.Background())
 	defer cancel1()
 
-	go d1.Run(ctx1)
+	go func() {
+		if err := d1.Run(ctx1); err != nil {
+			t.Logf("daemon run error: %v", err)
+		}
+	}()
 
 	// Wait for first daemon to start
 	time.Sleep(100 * time.Millisecond)
@@ -152,7 +156,11 @@ func TestDaemonConcurrentConnections(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	go d.Run(ctx)
+	go func() {
+		if err := d.Run(ctx); err != nil {
+			t.Logf("daemon run error: %v", err)
+		}
+	}()
 
 	// Wait longer for daemon to fully start
 	time.Sleep(200 * time.Millisecond)
@@ -169,7 +177,7 @@ func TestDaemonConcurrentConnections(t *testing.T) {
 				done <- false
 				return
 			}
-			defer conn.Close()
+			defer func() { _ = conn.Close() }()
 
 			// Send request
 			request := map[string]interface{}{
@@ -242,7 +250,11 @@ func TestIntegrationRPCRoundTrip(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	go d.Run(ctx)
+	go func() {
+		if err := d.Run(ctx); err != nil {
+			t.Logf("daemon run error: %v", err)
+		}
+	}()
 
 	// Wait for daemon to be ready
 	time.Sleep(200 * time.Millisecond)
@@ -252,7 +264,7 @@ func TestIntegrationRPCRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to connect to daemon: %v", err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Send health check request
 	request := map[string]interface{}{

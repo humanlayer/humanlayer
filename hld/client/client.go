@@ -18,6 +18,9 @@ type client struct {
 	conn       net.Conn
 	mu         sync.Mutex
 	id         int64
+	// Track subscription connections to close them when client closes
+	subConns []net.Conn
+	subMu    sync.Mutex
 }
 
 // New creates a new client that connects to the daemon's Unix socket
@@ -41,6 +44,11 @@ func (c *client) Subscribe(req rpc.SubscribeRequest) (<-chan rpc.EventNotificati
 		return nil, fmt.Errorf("failed to create subscription connection: %w", err)
 	}
 
+	// Track this subscription connection
+	c.subMu.Lock()
+	c.subConns = append(c.subConns, conn)
+	c.subMu.Unlock()
+
 	// Send subscribe request
 	encoder := json.NewEncoder(conn)
 	jsonReq := jsonRPCRequest{
@@ -50,7 +58,7 @@ func (c *client) Subscribe(req rpc.SubscribeRequest) (<-chan rpc.EventNotificati
 		ID:      atomic.AddInt64(&c.id, 1),
 	}
 	if err := encoder.Encode(jsonReq); err != nil {
-		conn.Close()
+		_ = conn.Close()
 		return nil, fmt.Errorf("failed to send subscribe request: %w", err)
 	}
 
@@ -63,7 +71,18 @@ func (c *client) Subscribe(req rpc.SubscribeRequest) (<-chan rpc.EventNotificati
 	// Start goroutine to read events
 	go func() {
 		defer close(eventChan)
-		defer conn.Close()
+		defer func() { _ = conn.Close() }()
+		defer func() {
+			// Remove this connection from tracked subscriptions
+			c.subMu.Lock()
+			for i, subConn := range c.subConns {
+				if subConn == conn {
+					c.subConns = append(c.subConns[:i], c.subConns[i+1:]...)
+					break
+				}
+			}
+			c.subMu.Unlock()
+		}()
 
 		decoder := json.NewDecoder(conn)
 		subscriptionConfirmed := false
@@ -118,7 +137,7 @@ func (c *client) Subscribe(req rpc.SubscribeRequest) (<-chan rpc.EventNotificati
 		// Subscription confirmed
 		return eventChan, nil
 	case <-time.After(5 * time.Second):
-		conn.Close()
+		_ = conn.Close()
 		return nil, fmt.Errorf("timeout waiting for subscription confirmation")
 	}
 }
@@ -127,6 +146,16 @@ func (c *client) Subscribe(req rpc.SubscribeRequest) (<-chan rpc.EventNotificati
 func (c *client) Close() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
+	// Close all subscription connections
+	c.subMu.Lock()
+	for _, conn := range c.subConns {
+		_ = conn.Close()
+	}
+	c.subConns = nil
+	c.subMu.Unlock()
+
+	// Close main connection
 	if c.conn != nil {
 		return c.conn.Close()
 	}
@@ -227,6 +256,15 @@ func (c *client) ListSessions() (*rpc.ListSessionsResponse, error) {
 	return &resp, nil
 }
 
+// ContinueSession continues an existing completed session with a new query
+func (c *client) ContinueSession(req rpc.ContinueSessionRequest) (*rpc.ContinueSessionResponse, error) {
+	var resp rpc.ContinueSessionResponse
+	if err := c.call("continueSession", req, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
 // FetchApprovals fetches pending approvals from the daemon
 func (c *client) FetchApprovals(sessionID string) ([]approval.PendingApproval, error) {
 	req := rpc.FetchApprovalsRequest{
@@ -257,6 +295,63 @@ func (c *client) SendDecision(callID, approvalType, decision, comment string) er
 	return nil
 }
 
+// ApproveFunctionCall approves a function call with an optional comment
+func (c *client) ApproveFunctionCall(callID, comment string) error {
+	return c.SendDecision(callID, string(rpc.ApprovalTypeFunctionCall), string(rpc.DecisionApprove), comment)
+}
+
+// DenyFunctionCall denies a function call with a required reason
+func (c *client) DenyFunctionCall(callID, reason string) error {
+	if reason == "" {
+		return fmt.Errorf("reason is required when denying a function call")
+	}
+	return c.SendDecision(callID, string(rpc.ApprovalTypeFunctionCall), string(rpc.DecisionDeny), reason)
+}
+
+// RespondToHumanContact responds to a human contact request
+func (c *client) RespondToHumanContact(callID, response string) error {
+	if response == "" {
+		return fmt.Errorf("response is required for human contact")
+	}
+	return c.SendDecision(callID, string(rpc.ApprovalTypeHumanContact), string(rpc.DecisionRespond), response)
+}
+
+// GetConversation fetches the conversation history for a session
+func (c *client) GetConversation(sessionID string) (*rpc.GetConversationResponse, error) {
+	req := rpc.GetConversationRequest{
+		SessionID: sessionID,
+	}
+	var resp rpc.GetConversationResponse
+	if err := c.call("getConversation", req, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// GetConversationByClaudeSessionID fetches the conversation history by Claude session ID
+func (c *client) GetConversationByClaudeSessionID(claudeSessionID string) (*rpc.GetConversationResponse, error) {
+	req := rpc.GetConversationRequest{
+		ClaudeSessionID: claudeSessionID,
+	}
+	var resp rpc.GetConversationResponse
+	if err := c.call("getConversation", req, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// GetSessionState fetches the current state of a session
+func (c *client) GetSessionState(sessionID string) (*rpc.GetSessionStateResponse, error) {
+	req := rpc.GetSessionStateRequest{
+		SessionID: sessionID,
+	}
+	var resp rpc.GetSessionStateResponse
+	if err := c.call("getSessionState", req, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
 // Reconnect attempts to reconnect to the daemon
 func (c *client) Reconnect() error {
 	c.mu.Lock()
@@ -264,7 +359,7 @@ func (c *client) Reconnect() error {
 
 	// Close existing connection if any
 	if c.conn != nil {
-		c.conn.Close()
+		_ = c.conn.Close()
 	}
 
 	// Try to reconnect
@@ -288,7 +383,7 @@ func Connect(socketPath string, maxRetries int, retryDelay time.Duration) (Clien
 			if err := client.Health(); err == nil {
 				return client, nil
 			}
-			client.Close()
+			_ = client.Close()
 		}
 
 		lastErr = err

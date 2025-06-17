@@ -1,0 +1,36 @@
+[project]
+name = "email-escalation"
+version = "0.1.0"
+description = "HumanLayer email escalation example"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "humanlayer",
+    "python-dotenv>=1.0.1",
+    "rich>=13.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "black>=25.1.0",
+    "mypy>=1.15.0",
+    "ruff>=0.9.6",
+]
+
+[tool.black]
+line-length = 104
+exclude = '''
+/(
+    \.venv
+)/
+'''
+
+[tool.mypy]
+exclude = [
+    '.venv',
+]
+
+[tool.ruff]
+exclude = [
+    ".venv",
+]

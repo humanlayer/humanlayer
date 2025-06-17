@@ -101,7 +101,7 @@ program
   .action(tuiCommand)
 
 program
-  .command('launch <prompt>')
+  .command('launch <query>')
   .description('Launch a new Claude Code session via the daemon')
   .option('-m, --model <model>', 'Model to use (opus or sonnet)', 'sonnet')
   .option('-w, --working-dir <path>', 'Working directory for the session')

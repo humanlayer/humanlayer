@@ -20,6 +20,13 @@ jobs:
           path: ~/.cache/pre-commit
           key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+
       - name: Install uv
         uses: astral-sh/setup-uv@v4
         with:
@@ -34,8 +41,16 @@ jobs:
       - name: Install the project
         run: uv sync --all-extras --dev
 
+      - name: Install bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
       - name: Install ts deps
-        run: npm -C humanlayer-ts install && npm -C hlyr install
+        run: npm -C humanlayer-ts install && npm -C hlyr install && npm -C humanlayer-ts-vercel-ai-sdk install
+
+      - name: Install wui deps
+        run: bun install --cwd=humanlayer-wui
 
       - uses: actions/setup-go@v5
         with:
@@ -45,8 +60,14 @@ jobs:
       - name: Install golangci-lint
         run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 
+      - name: Install mockgen
+        run: go install go.uber.org/mock/mockgen@latest
+
       - name: Build CLI
         run: npm -C hlyr run build
+
+      - name: Generate Go mocks
+        run: make -C hld mocks
 
       - name: Run checks
         run: make check
@@ -67,6 +88,9 @@ jobs:
           cache: "npm"
           cache-dependency-path: humanlayer-ts/package-lock.json
 
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+
       - name: Install uv
         uses: astral-sh/setup-uv@v4
         with:
@@ -77,10 +101,20 @@ jobs:
         run: uv python install ${{ matrix.python-version }}
 
       - name: Install ts deps
-        run: npm -C humanlayer-ts install && npm -C hlyr install
+        run: npm -C humanlayer-ts install && npm -C hlyr install && npm -C humanlayer-ts-vercel-ai-sdk install
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Install mockgen
+        run: go install go.uber.org/mock/mockgen@latest
 
       - name: Build CLI
         run: npm -C hlyr run build
+
+      - name: Generate Go mocks
+        run: make -C hld mocks
 
       - name: Test
         run: make test

@@ -1,4 +1,4 @@
-import { HumanLayer as HumanLayerBase, ContactChannel, HumanLayerParams } from 'humanlayer'
+import { HumanLayer as HumanLayerBase, ContactChannel, HumanLayerParams } from '@humanlayer/sdk'
 import { CoreTool, tool, ToolExecutionOptions } from 'ai'
 import { z } from 'zod'
 

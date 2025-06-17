@@ -41,6 +41,8 @@ export async function startDefaultMCPServer() {
   const resolvedConfig = resolveFullConfig({})
 
   const hl = humanlayer({
+    apiKey: resolvedConfig.api_key,
+    ...(resolvedConfig.api_base_url && { apiBaseUrl: resolvedConfig.api_base_url }),
     ...(resolvedConfig.run_id && { runId: resolvedConfig.run_id }),
     ...(Object.keys(resolvedConfig.contact_channel).length > 0 && {
       contactChannel: resolvedConfig.contact_channel,
@@ -112,6 +114,8 @@ export async function startClaudeApprovalsMCPServer() {
   const resolvedConfig = resolveFullConfig({})
 
   const hl = humanlayer({
+    apiKey: resolvedConfig.api_key,
+    ...(resolvedConfig.api_base_url && { apiBaseUrl: resolvedConfig.api_base_url }),
     ...(resolvedConfig.run_id && { runId: resolvedConfig.run_id }),
     ...(Object.keys(resolvedConfig.contact_channel).length > 0 && {
       contactChannel: resolvedConfig.contact_channel,

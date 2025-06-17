@@ -16,6 +16,7 @@ import (
 	"github.com/humanlayer/humanlayer/hld/internal/testutil"
 	"github.com/humanlayer/humanlayer/hld/rpc"
 	"github.com/humanlayer/humanlayer/hld/session"
+	"github.com/humanlayer/humanlayer/hld/store"
 	humanlayer "github.com/humanlayer/humanlayer/humanlayer-go"
 )
 
@@ -118,15 +119,23 @@ func TestDaemonApprovalIntegration(t *testing.T) {
 		},
 	}
 
+	// Create a minimal in-memory store for testing
+	testStore, err := store.NewSQLiteStore(":memory:")
+	if err != nil {
+		t.Fatalf("failed to create test store: %v", err)
+	}
+	defer testStore.Close()
+
 	// Create real approval components for integration testing
-	store := approval.NewMemoryStore()
-	poller := approval.NewPoller(mockClient, store, 50*time.Millisecond, nil)
+	approvalStore := approval.NewMemoryStore()
+	poller := approval.NewPoller(mockClient, approvalStore, testStore, 50*time.Millisecond, nil)
 
 	// We need to manually construct the manager with our test client
 	approvalManager := &approval.DefaultManager{
-		Client: mockClient,
-		Store:  store,
-		Poller: poller,
+		Client:            mockClient,
+		Store:             approvalStore,
+		Poller:            poller,
+		ConversationStore: testStore,
 	}
 
 	// Create test daemon with approval manager
@@ -140,7 +149,8 @@ func TestDaemonApprovalIntegration(t *testing.T) {
 	}
 
 	// Create session manager (we don't need real sessions for this test)
-	sessionManager, err := session.NewManager(nil)
+
+	sessionManager, err := session.NewManager(nil, testStore)
 	if err != nil {
 		t.Fatalf("failed to create session manager: %v", err)
 	}

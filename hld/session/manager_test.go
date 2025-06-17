@@ -6,14 +6,20 @@ import (
 	"testing"
 	"time"
 
-	claudecode "github.com/humanlayer/humanlayer/claudecode-go"
 	"github.com/humanlayer/humanlayer/hld/bus"
+	"github.com/humanlayer/humanlayer/hld/store"
 	"go.uber.org/mock/gomock"
 )
 
 func TestNewManager(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	// Create mock store
+	mockStore := store.NewMockConversationStore(ctrl)
+
 	var eventBus bus.EventBus = nil // no bus for this test
-	manager, err := NewManager(eventBus)
+	manager, err := NewManager(eventBus, mockStore)
 
 	if err != nil {
 		t.Fatalf("Failed to create manager: %v", err)
@@ -23,429 +29,366 @@ func TestNewManager(t *testing.T) {
 		t.Fatal("Manager should not be nil")
 	}
 
-	if manager.sessions == nil {
-		t.Fatal("Sessions map should be initialized")
+	// Manager is successfully created with store
+}
+
+func TestNewManager_RequiresStore(t *testing.T) {
+	var eventBus bus.EventBus = nil
+	_, err := NewManager(eventBus, nil)
+
+	if err == nil {
+		t.Fatal("Expected error when store is nil")
+	}
+
+	if err.Error() != "store is required" {
+		t.Errorf("Expected 'store is required' error, got: %v", err)
 	}
 }
 
-func TestSessionLifecycle(t *testing.T) {
-	// Create a manager with empty sessions map
-	manager := &Manager{
-		sessions: make(map[string]*Session),
-	}
-
-	testCases := []struct {
-		name  string
-		setup func()
-		test  func(t *testing.T)
-	}{
-		{
-			name: "list empty sessions",
-			setup: func() {
-				// No setup needed
-			},
-			test: func(t *testing.T) {
-				sessions := manager.ListSessions()
-				if len(sessions) != 0 {
-					t.Errorf("Expected 0 sessions, got %d", len(sessions))
-				}
-
-				infos := manager.ListSessionInfo()
-				if len(infos) != 0 {
-					t.Errorf("Expected 0 session infos, got %d", len(infos))
-				}
-			},
-		},
-		{
-			name: "add and retrieve session",
-			setup: func() {
-				session := &Session{
-					ID:        "test-session-1",
-					RunID:     "test-run-1",
-					Status:    StatusStarting,
-					StartTime: time.Now(),
-					Config: claudecode.SessionConfig{
-						Prompt: "Test prompt",
-					},
-				}
-				manager.sessions[session.ID] = session
-			},
-			test: func(t *testing.T) {
-				retrieved, err := manager.GetSession("test-session-1")
-				if err != nil {
-					t.Fatalf("Failed to get session: %v", err)
-				}
-
-				if retrieved.ID != "test-session-1" {
-					t.Errorf("Expected session ID 'test-session-1', got %s", retrieved.ID)
-				}
-
-				if retrieved.RunID != "test-run-1" {
-					t.Errorf("Expected run ID 'test-run-1', got %s", retrieved.RunID)
-				}
-			},
-		},
-		{
-			name: "get session info",
-			setup: func() {
-				// Session already added from previous test
-			},
-			test: func(t *testing.T) {
-				info, err := manager.GetSessionInfo("test-session-1")
-				if err != nil {
-					t.Fatalf("Failed to get session info: %v", err)
-				}
-
-				if info.ID != "test-session-1" {
-					t.Errorf("Expected session ID 'test-session-1', got %s", info.ID)
-				}
-
-				if info.RunID != "test-run-1" {
-					t.Errorf("Expected run ID 'test-run-1', got %s", info.RunID)
-				}
-
-				if info.Prompt != "Test prompt" {
-					t.Errorf("Expected prompt 'Test prompt', got %s", info.Prompt)
-				}
-			},
-		},
-		{
-			name: "list multiple sessions",
-			setup: func() {
-				// Add more sessions
-				for i := 2; i <= 3; i++ {
-					session := &Session{
-						ID:        fmt.Sprintf("test-session-%d", i),
-						RunID:     fmt.Sprintf("test-run-%d", i),
-						Status:    StatusRunning,
-						StartTime: time.Now(),
-						Config: claudecode.SessionConfig{
-							Prompt: fmt.Sprintf("Test prompt %d", i),
-						},
-					}
-					manager.sessions[session.ID] = session
-				}
-			},
-			test: func(t *testing.T) {
-				sessions := manager.ListSessions()
-				if len(sessions) != 3 {
-					t.Errorf("Expected 3 sessions, got %d", len(sessions))
-				}
-
-				infos := manager.ListSessionInfo()
-				if len(infos) != 3 {
-					t.Errorf("Expected 3 session infos, got %d", len(infos))
-				}
-			},
-		},
-		{
-			name: "update session status to completed",
-			setup: func() {
-				// No additional setup needed
-			},
-			test: func(t *testing.T) {
-				manager.updateSessionStatus("test-session-1", StatusCompleted, "")
-
-				session, _ := manager.GetSession("test-session-1")
-				if session.Status != StatusCompleted {
-					t.Errorf("Expected status %s, got %s", StatusCompleted, session.Status)
-				}
-
-				if session.EndTime == nil {
-					t.Error("EndTime should be set when status is completed")
-				}
-			},
-		},
-		{
-			name: "update session status to failed with error",
-			setup: func() {
-				// No additional setup needed
-			},
-			test: func(t *testing.T) {
-				manager.updateSessionStatus("test-session-2", StatusFailed, "test error")
-
-				session, _ := manager.GetSession("test-session-2")
-				if session.Status != StatusFailed {
-					t.Errorf("Expected status %s, got %s", StatusFailed, session.Status)
-				}
-
-				if session.Error != "test error" {
-					t.Errorf("Expected error 'test error', got %s", session.Error)
-				}
-
-				if session.EndTime == nil {
-					t.Error("EndTime should be set when status is failed")
-				}
-			},
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			tc.setup()
-			tc.test(t)
-		})
-	}
-}
-
-func TestGetNonExistentSession(t *testing.T) {
-	testCases := []struct {
-		name          string
-		sessionID     string
-		expectedError string
-	}{
-		{
-			name:          "non-existent session",
-			sessionID:     "non-existent",
-			expectedError: "session not found: non-existent",
-		},
-		{
-			name:          "empty session ID",
-			sessionID:     "",
-			expectedError: "session not found: ",
-		},
-		{
-			name:          "special characters in ID",
-			sessionID:     "session-with-@#$%",
-			expectedError: "session not found: session-with-@#$%",
-		},
-	}
-
-	manager := &Manager{
-		sessions: make(map[string]*Session),
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			_, err := manager.GetSession(tc.sessionID)
-			if err == nil {
-				t.Error("Expected error for non-existent session")
-			}
-
-			if err.Error() != tc.expectedError {
-				t.Errorf("Expected error '%s', got '%s'", tc.expectedError, err.Error())
-			}
-
-			_, err = manager.GetSessionInfo(tc.sessionID)
-			if err == nil {
-				t.Error("Expected error for non-existent session info")
-			}
-
-			if err.Error() != tc.expectedError {
-				t.Errorf("Expected error '%s', got '%s'", tc.expectedError, err.Error())
-			}
-		})
-	}
-}
-
-func TestConcurrentSessionAccess(t *testing.T) {
-	manager := &Manager{
-		sessions: make(map[string]*Session),
-	}
-
-	// Pre-populate sessions
-	for i := 0; i < 10; i++ {
-		session := &Session{
-			ID:        fmt.Sprintf("session-%d", i),
-			RunID:     fmt.Sprintf("run-%d", i),
-			Status:    StatusRunning,
-			StartTime: time.Now(),
-			Config: claudecode.SessionConfig{
-				Prompt: fmt.Sprintf("Test prompt %d", i),
-			},
-		}
-		manager.sessions[session.ID] = session
-	}
-
-	concurrentOps := []struct {
-		name string
-		op   func()
-	}{
-		{
-			name: "status updates",
-			op: func() {
-				for i := 0; i < 10; i++ {
-					for j := 0; j < 10; j++ {
-						sessionID := fmt.Sprintf("session-%d", j)
-						if i%2 == 0 {
-							manager.updateSessionStatus(sessionID, StatusCompleted, "")
-						} else {
-							manager.updateSessionStatus(sessionID, StatusFailed, "test error")
-						}
-					}
-				}
-			},
-		},
-		{
-			name: "read operations",
-			op: func() {
-				for i := 0; i < 100; i++ {
-					_ = manager.ListSessions()
-					_ = manager.ListSessionInfo()
-
-					for j := 0; j < 10; j++ {
-						sessionID := fmt.Sprintf("session-%d", j)
-						_, _ = manager.GetSession(sessionID)
-						_, _ = manager.GetSessionInfo(sessionID)
-					}
-				}
-			},
-		},
-		{
-			name: "mixed operations",
-			op: func() {
-				for i := 0; i < 50; i++ {
-					if i%2 == 0 {
-						_ = manager.ListSessions()
-					} else {
-						sessionID := fmt.Sprintf("session-%d", i%10)
-						manager.updateSessionStatus(sessionID, StatusRunning, "")
-					}
-				}
-			},
-		},
-	}
-
-	// Run operations concurrently
-	done := make(chan bool, len(concurrentOps))
-
-	for _, op := range concurrentOps {
-		go func(operation func()) {
-			operation()
-			done <- true
-		}(op.op)
-	}
-
-	// Wait for all operations to complete
-	for i := 0; i < len(concurrentOps); i++ {
-		<-done
-	}
-
-	// Verify final state
-	sessions := manager.ListSessions()
-	if len(sessions) != 10 {
-		t.Errorf("Expected 10 sessions, got %d", len(sessions))
-	}
-}
-
-func TestSessionManagerInterface_WithMock(t *testing.T) {
+func TestListSessions(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
+	mockStore := store.NewMockConversationStore(ctrl)
+	manager, _ := NewManager(nil, mockStore)
+
+	// Test empty list
+	mockStore.EXPECT().ListSessions(gomock.Any()).Return([]*store.Session{}, nil)
+
+	sessions := manager.ListSessions()
+	if len(sessions) != 0 {
+		t.Errorf("Expected 0 sessions, got %d", len(sessions))
+	}
+
+	// Test with sessions
+	dbSessions := []*store.Session{
+		{
+			ID:        "test-1",
+			RunID:     "run-1",
+			Status:    "running",
+			Query:     "test query",
+			CreatedAt: time.Now(),
+		},
+	}
+	mockStore.EXPECT().ListSessions(gomock.Any()).Return(dbSessions, nil)
+
+	sessions = manager.ListSessions()
+	if len(sessions) != 1 {
+		t.Errorf("Expected 1 session, got %d", len(sessions))
+	}
+}
+
+func TestGetSessionInfo(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockStore := store.NewMockConversationStore(ctrl)
+	manager, _ := NewManager(nil, mockStore)
+
+	// Test not found
+	mockStore.EXPECT().GetSession(gomock.Any(), "not-found").Return(nil, fmt.Errorf("not found"))
+
+	_, err := manager.GetSessionInfo("not-found")
+	if err == nil {
+		t.Error("Expected error for non-existent session")
+	}
+
+	// Test found
+	dbSession := &store.Session{
+		ID:        "test-1",
+		RunID:     "run-1",
+		Status:    "running",
+		Query:     "test query",
+		CreatedAt: time.Now(),
+	}
+	mockStore.EXPECT().GetSession(gomock.Any(), "test-1").Return(dbSession, nil)
+
+	info, err := manager.GetSessionInfo("test-1")
+	if err != nil {
+		t.Fatalf("Failed to get session info: %v", err)
+	}
+	if info.ID != "test-1" {
+		t.Errorf("Expected ID test-1, got %s", info.ID)
+	}
+}
+
+// Note: Most of the old tests were removed because they tested internal implementation
+// details (in-memory maps) that no longer exist. The real functionality is now
+// tested by the integration tests which use actual SQLite database.
+
+func TestContinueSession_ValidatesParentExists(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockStore := store.NewMockConversationStore(ctrl)
+	manager, _ := NewManager(nil, mockStore)
+
+	// Test parent not found
+	mockStore.EXPECT().GetSession(gomock.Any(), "not-found").Return(nil, fmt.Errorf("session not found"))
+
+	req := ContinueSessionConfig{
+		ParentSessionID: "not-found",
+		Query:           "continue this",
+	}
+	_, err := manager.ContinueSession(context.Background(), req)
+	if err == nil {
+		t.Error("Expected error for non-existent parent session")
+	}
+	if err.Error() != "failed to get parent session: session not found" {
+		t.Errorf("Unexpected error: %v", err)
+	}
+}
+
+func TestContinueSession_ValidatesParentStatus(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockStore := store.NewMockConversationStore(ctrl)
+	manager, _ := NewManager(nil, mockStore)
+
 	testCases := []struct {
-		name  string
-		setup func(mock *MockSessionManager)
-		test  func(t *testing.T, mock SessionManager)
+		name          string
+		parentStatus  string
+		expectedError string
 	}{
 		{
-			name: "launch session successfully",
-			setup: func(mock *MockSessionManager) {
-				expectedSession := &Session{
-					ID:        "test-session-123",
-					RunID:     "test-run-456",
-					Status:    StatusRunning,
-					StartTime: time.Now(),
-					Config: claudecode.SessionConfig{
-						Prompt: "Test prompt",
-					},
-				}
-				mock.EXPECT().LaunchSession(gomock.Any(), gomock.Any()).Return(expectedSession, nil)
-			},
-			test: func(t *testing.T, mock SessionManager) {
-				session, err := mock.LaunchSession(context.Background(), claudecode.SessionConfig{
-					Prompt: "Test prompt",
-				})
-
-				if err != nil {
-					t.Fatalf("Expected no error, got %v", err)
-				}
-
-				if session.ID != "test-session-123" {
-					t.Errorf("Expected session ID 'test-session-123', got %s", session.ID)
-				}
-			},
+			name:          "running session",
+			parentStatus:  store.SessionStatusRunning,
+			expectedError: "cannot continue session with status running (must be completed)",
 		},
 		{
-			name: "launch session with error",
-			setup: func(mock *MockSessionManager) {
-				mock.EXPECT().LaunchSession(gomock.Any(), gomock.Any()).Return(nil, fmt.Errorf("launch failed"))
-			},
-			test: func(t *testing.T, mock SessionManager) {
-				session, err := mock.LaunchSession(context.Background(), claudecode.SessionConfig{
-					Prompt: "Test prompt",
-				})
-
-				if err == nil {
-					t.Fatal("Expected error, got nil")
-				}
-
-				if session != nil {
-					t.Fatal("Expected nil session on error")
-				}
-			},
+			name:          "failed session",
+			parentStatus:  store.SessionStatusFailed,
+			expectedError: "cannot continue session with status failed (must be completed)",
 		},
 		{
-			name: "get existing session",
-			setup: func(mock *MockSessionManager) {
-				expectedSession := &Session{
-					ID:     "test-session-789",
-					Status: StatusCompleted,
-				}
-				mock.EXPECT().GetSession("test-session-789").Return(expectedSession, nil)
-			},
-			test: func(t *testing.T, mock SessionManager) {
-				session, err := mock.GetSession("test-session-789")
-
-				if err != nil {
-					t.Fatalf("Expected no error, got %v", err)
-				}
-
-				if session.ID != "test-session-789" {
-					t.Errorf("Expected session ID 'test-session-789', got %s", session.ID)
-				}
-
-				if session.Status != StatusCompleted {
-					t.Errorf("Expected status %s, got %s", StatusCompleted, session.Status)
-				}
-			},
+			name:          "starting session",
+			parentStatus:  store.SessionStatusStarting,
+			expectedError: "cannot continue session with status starting (must be completed)",
 		},
 		{
-			name: "list sessions with multiple results",
-			setup: func(mock *MockSessionManager) {
-				sessions := []*Session{
-					{ID: "session-1", Status: StatusRunning},
-					{ID: "session-2", Status: StatusCompleted},
-					{ID: "session-3", Status: StatusFailed},
-				}
-				mock.EXPECT().ListSessions().Return(sessions)
-			},
-			test: func(t *testing.T, mock SessionManager) {
-				sessions := mock.ListSessions()
-
-				if len(sessions) != 3 {
-					t.Fatalf("Expected 3 sessions, got %d", len(sessions))
-				}
-
-				expectedIDs := map[string]bool{
-					"session-1": true,
-					"session-2": true,
-					"session-3": true,
-				}
-
-				for _, session := range sessions {
-					if !expectedIDs[session.ID] {
-						t.Errorf("Unexpected session ID: %s", session.ID)
-					}
-				}
-			},
+			name:          "waiting input session",
+			parentStatus:  store.SessionStatusWaitingInput,
+			expectedError: "cannot continue session with status waiting_input (must be completed)",
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			mock := NewMockSessionManager(ctrl)
-			tc.setup(mock)
-			tc.test(t, mock)
+			parentSession := &store.Session{
+				ID:              "parent-1",
+				RunID:           "run-1",
+				ClaudeSessionID: "claude-1",
+				Status:          tc.parentStatus,
+				Query:           "original query",
+				CreatedAt:       time.Now(),
+			}
+			mockStore.EXPECT().GetSession(gomock.Any(), "parent-1").Return(parentSession, nil)
+
+			req := ContinueSessionConfig{
+				ParentSessionID: "parent-1",
+				Query:           "continue this",
+			}
+			_, err := manager.ContinueSession(context.Background(), req)
+			if err == nil {
+				t.Error("Expected error for non-completed parent session")
+			}
+			if err.Error() != tc.expectedError {
+				t.Errorf("Expected error '%s', got: %v", tc.expectedError, err)
+			}
 		})
 	}
+}
+
+func TestContinueSession_ValidatesClaudeSessionID(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockStore := store.NewMockConversationStore(ctrl)
+	manager, _ := NewManager(nil, mockStore)
+
+	// Parent without claude_session_id
+	parentSession := &store.Session{
+		ID:              "parent-1",
+		RunID:           "run-1",
+		ClaudeSessionID: "", // Empty
+		Status:          store.SessionStatusCompleted,
+		Query:           "original query",
+		CreatedAt:       time.Now(),
+	}
+	mockStore.EXPECT().GetSession(gomock.Any(), "parent-1").Return(parentSession, nil)
+
+	req := ContinueSessionConfig{
+		ParentSessionID: "parent-1",
+		Query:           "continue this",
+	}
+	_, err := manager.ContinueSession(context.Background(), req)
+	if err == nil {
+		t.Error("Expected error for parent without claude_session_id")
+	}
+	if err.Error() != "parent session missing claude_session_id (cannot resume)" {
+		t.Errorf("Unexpected error: %v", err)
+	}
+}
+
+func TestContinueSession_CreatesNewSessionWithParentReference(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockStore := store.NewMockConversationStore(ctrl)
+	manager, _ := NewManager(nil, mockStore)
+
+	// Mock parent session
+	parentSession := &store.Session{
+		ID:              "parent-1",
+		RunID:           "run-1",
+		ClaudeSessionID: "claude-1",
+		Status:          store.SessionStatusCompleted,
+		Query:           "original query",
+		Model:           "claude-3-opus",
+		WorkingDir:      "/test/dir",
+		CreatedAt:       time.Now(),
+	}
+	mockStore.EXPECT().GetSession(gomock.Any(), "parent-1").Return(parentSession, nil)
+
+	// Expect session creation with parent reference
+	mockStore.EXPECT().CreateSession(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(ctx interface{}, session *store.Session) error {
+			// Validate the created session
+			if session.ParentSessionID != "parent-1" {
+				t.Errorf("Expected parent_session_id to be 'parent-1', got '%s'", session.ParentSessionID)
+			}
+			if session.Query != "continue this" {
+				t.Errorf("Expected query 'continue this', got '%s'", session.Query)
+			}
+			if session.Status != store.SessionStatusStarting {
+				t.Errorf("Expected status 'starting', got '%s'", session.Status)
+			}
+			// Should not inherit claude_session_id (will be set from streaming events)
+			if session.ClaudeSessionID != "" {
+				t.Errorf("Expected empty claude_session_id, got '%s'", session.ClaudeSessionID)
+			}
+			return nil
+		})
+
+	// Expect status update to running (we can't test the full flow without mocking Claude client)
+	// May be called twice if Claude fails to launch in background
+	mockStore.EXPECT().UpdateSession(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+
+	req := ContinueSessionConfig{
+		ParentSessionID: "parent-1",
+		Query:           "continue this",
+	}
+
+	// Try to continue session - this tests our logic, not Claude launch
+	session, err := manager.ContinueSession(context.Background(), req)
+
+	// If Claude binary exists, it might succeed; if not, it will fail
+	// Either way, our mock expectations should have been met (session created with parent)
+	if err != nil {
+		// Expected - Claude binary might not exist in test environment
+		if !containsError(err, "failed to launch resumed Claude session") {
+			t.Errorf("Unexpected error: %v", err)
+		}
+	} else {
+		// Claude launched successfully - verify session has expected properties
+		if session.ID == "" {
+			t.Error("Expected session ID to be set")
+		}
+		if session.RunID == "" {
+			t.Error("Expected run ID to be set")
+		}
+	}
+}
+
+func TestContinueSession_HandlesOptionalOverrides(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockStore := store.NewMockConversationStore(ctrl)
+	manager, _ := NewManager(nil, mockStore)
+
+	// Mock parent session
+	parentSession := &store.Session{
+		ID:              "parent-1",
+		RunID:           "run-1",
+		ClaudeSessionID: "claude-1",
+		Status:          store.SessionStatusCompleted,
+		Query:           "original query",
+		CreatedAt:       time.Now(),
+	}
+	mockStore.EXPECT().GetSession(gomock.Any(), "parent-1").Return(parentSession, nil)
+
+	// Test with various overrides
+	req := ContinueSessionConfig{
+		ParentSessionID:      "parent-1",
+		Query:                "continue with overrides",
+		SystemPrompt:         "You are a pirate",
+		AppendSystemPrompt:   "Always say arr",
+		PermissionPromptTool: "mcp__custom__tool",
+		AllowedTools:         []string{"tool1", "tool2"},
+		DisallowedTools:      []string{"dangerous_tool"},
+		CustomInstructions:   "Be helpful",
+		MaxTurns:             5,
+	}
+
+	// Expect session creation
+	mockStore.EXPECT().CreateSession(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(ctx interface{}, session *store.Session) error {
+			// Validate overrides are stored
+			if session.SystemPrompt != "You are a pirate" {
+				t.Errorf("Expected system prompt override, got '%s'", session.SystemPrompt)
+			}
+			if session.CustomInstructions != "Be helpful" {
+				t.Errorf("Expected custom instructions override, got '%s'", session.CustomInstructions)
+			}
+			if session.MaxTurns != 5 {
+				t.Errorf("Expected max turns 5, got %d", session.MaxTurns)
+			}
+			return nil
+		})
+
+	// Expect status update
+	// May be called twice if Claude fails to launch in background
+	mockStore.EXPECT().UpdateSession(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+
+	session, err := manager.ContinueSession(context.Background(), req)
+
+	// Test passes if our mock expectations were met (session created with overrides)
+	// Whether Claude actually launches depends on the environment
+	if err != nil {
+		// Expected - Claude binary might not exist
+		if !containsError(err, "failed to launch resumed Claude session") {
+			t.Errorf("Unexpected error: %v", err)
+		}
+	} else {
+		// Claude launched - verify session properties
+		if session.ID == "" {
+			t.Error("Expected session ID to be set")
+		}
+		if session.RunID == "" {
+			t.Error("Expected run ID to be set")
+		}
+	}
+}
+
+// Helper function to check if error contains a substring
+func containsError(err error, substr string) bool {
+	if err == nil {
+		return false
+	}
+	return contains(err.Error(), substr)
+}
+
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsStr(s, substr))
+}
+
+func containsStr(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
 }

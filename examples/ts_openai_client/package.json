@@ -26,8 +26,9 @@
   "author": "HumanLayer Authors",
   "license": "Apache-2.0",
   "dependencies": {
-    "dotenv": "^16.4.7",
     "@humanlayer/sdk": "0.7.9",
+    "chalk": "^5.4.1",
+    "dotenv": "^16.4.7",
     "openai": "^4.0.0"
   },
   "devDependencies": {

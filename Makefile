@@ -1,41 +1,100 @@
-.PHONY: check-py
+.PHONY: setup
+setup: ## Set up the repository with all dependencies and builds
+	hack/setup_repo.sh
 
+.PHONY: worktree
+worktree: ## Create a new worktree for development work (use hack/create_worktree.sh branch_name for specific names)
+	hack/create_worktree.sh
+
+.PHONY: check-py
 check-py: ## Run code quality tools.
-	: 🚀 installing uv deps
-	uv sync
-	: 🚀 Linting code: Running pre-commit
-	uv run pre-commit run -a
-	@$(MAKE) typecheck
-	: 🚀 Checking for obsolete dependencies: Running deptry
-	uv run deptry .
+	@. ./hack/run_silent.sh && print_header "humanlayer" "Python checks"
+	@. ./hack/run_silent.sh && run_with_quiet "Dependencies synced" "uv sync -q"
+	@. ./hack/run_silent.sh && run_silent "Pre-commit hooks passed" "uv run pre-commit run -a"
+	@. ./hack/run_silent.sh && run_silent "Type checking passed (mypy)" "uv run mypy"
+	@. ./hack/run_silent.sh && run_silent "Dependency analysis passed" "uv run deptry ."
 
 .PHONY: check-ts
 check-ts:
-	npm -C humanlayer-ts run check
+	@. ./hack/run_silent.sh && print_header "humanlayer-ts" "TypeScript checks"
+	@. ./hack/run_silent.sh && run_silent "Type checking passed" "npm --silent -C humanlayer-ts run check"
+	@. ./hack/run_silent.sh && print_header "humanlayer-ts-vercel-ai-sdk" "TypeScript checks"
+	@. ./hack/run_silent.sh && run_silent "Type checking passed" "npm --silent -C humanlayer-ts-vercel-ai-sdk run check"
 
 check-hlyr:
-	npm -C hlyr run check
+	@$(MAKE) -C hlyr check VERBOSE=$(VERBOSE)
+
+check-wui:
+	@$(MAKE) -C humanlayer-wui check VERBOSE=$(VERBOSE)
 
 check-tui:
-	@$(MAKE) -C humanlayer-tui check
+	@$(MAKE) -C humanlayer-tui check VERBOSE=$(VERBOSE)
+
+check-hld:
+	@$(MAKE) -C hld check VERBOSE=$(VERBOSE)
+
+check-claudecode-go:
+	@$(MAKE) -C claudecode-go check VERBOSE=$(VERBOSE)
+
+.PHONY: check-header
+check-header:
+	@. ./hack/run_silent.sh && print_main_header "Running Checks"
+
+# Summary removed - tracking doesn't work across sub-makes
 
 .PHONY: check
-check: check-py check-ts check-hlyr check-tui
+check: check-header check-py check-ts check-hlyr check-wui check-tui check-hld check-claudecode-go
 
 typecheck: ## just the typechecks
-	: 🚀 Static type checking: Running mypy
-	uv run mypy
+	@. ./hack/run_silent.sh && run_silent "Static type checking: mypy" "uv run mypy"
 
 .PHONY: test-py
 test-py: ## Test the code with pytest
-	uv run pytest ./humanlayer --cov --cov-config=pyproject.toml --cov-report=xml --junitxml=junit.xml
+	@. ./hack/run_silent.sh && print_header "humanlayer" "Python tests"
+	@. ./hack/run_silent.sh && run_silent_with_test_count "Pytest passed" "uv run pytest ./humanlayer --cov --cov-config=pyproject.toml --cov-report=xml --junitxml=junit.xml" "pytest"
 
 .PHONY: test-ts
 test-ts: ## Test the code with jest
-	npm -C humanlayer-ts run test
+	@. ./hack/run_silent.sh && print_header "humanlayer-ts" "TypeScript tests"
+	@. ./hack/run_silent.sh && run_silent_with_test_count "Jest passed" "npm --silent -C humanlayer-ts run test -- --json --outputFile=test-results.json" "jest"
+	@. ./hack/run_silent.sh && print_header "humanlayer-ts-vercel-ai-sdk" "TypeScript tests"
+	@. ./hack/run_silent.sh && run_silent_with_test_count "Jest passed" "npm --silent -C humanlayer-ts-vercel-ai-sdk run test -- --json --outputFile=test-results.json" "jest"
+
+.PHONY: test-hlyr
+test-hlyr: ## Test hlyr CLI tool
+	@$(MAKE) -C hlyr test VERBOSE=$(VERBOSE)
+
+.PHONY: test-hld
+test-hld: ## Test hld daemon (unit tests only)
+	@$(MAKE) -C hld test-unit VERBOSE=$(VERBOSE)
+
+.PHONY: test-hld-integration
+test-hld-integration: ## Test hld daemon (including integration tests)
+	@$(MAKE) -C hld test
+
+.PHONY: test-claudecode-go
+test-claudecode-go: ## Test claudecode-go
+	@$(MAKE) -C claudecode-go test VERBOSE=$(VERBOSE)
+
+.PHONY: test-header
+test-header:
+	@. ./hack/run_silent.sh && print_main_header "Running Tests"
 
 .PHONY: test
-test: test-py test-ts
+test: test-header test-py test-ts test-hlyr test-hld test-claudecode-go
+
+.PHONY: check-test
+check-test: ## Run all checks and tests
+	@$(MAKE) check
+	@$(MAKE) test
+
+.PHONY: check-verbose
+check-verbose: ## Run checks with verbose output
+	@VERBOSE=1 $(MAKE) check
+
+.PHONY: test-verbose
+test-verbose: ## Run tests with verbose output
+	@VERBOSE=1 $(MAKE) test
 
 .PHONY: build
 build: clean-build ## Build wheel file using uv

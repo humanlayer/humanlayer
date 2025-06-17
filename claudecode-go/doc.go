@@ -12,14 +12,14 @@
 //	}
 //
 //	result, err := client.LaunchAndWait(claudecode.SessionConfig{
-//	    Prompt: "Write a hello world function",
+//	    Query: "Write a hello world function",
 //	})
 //	fmt.Println(result.Result)
 //
 // For streaming output:
 //
 //	session, err := client.Launch(claudecode.SessionConfig{
-//	    Prompt:       "Build a web server",
+//	    Query:        "Build a web server",
 //	    OutputFormat: claudecode.OutputStreamJSON,
 //	})
 //

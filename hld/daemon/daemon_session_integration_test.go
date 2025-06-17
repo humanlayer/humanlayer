@@ -72,8 +72,8 @@ func TestSessionLaunchIntegration(t *testing.T) {
 		}
 
 		request := rpc.LaunchSessionRequest{
-			Prompt: "Say hello and exit immediately",
-			Model:  "sonnet",
+			Query: "Say hello and exit immediately",
+			Model: "sonnet",
 			MCPConfig: &claudecode.MCPConfig{
 				MCPServers: map[string]claudecode.MCPServer{
 					"test-server": {
@@ -264,7 +264,7 @@ func TestConcurrentSessions(t *testing.T) {
 
 			// Launch session
 			request := rpc.LaunchSessionRequest{
-				Prompt: fmt.Sprintf("Test session %d", sessionNum),
+				Query: fmt.Sprintf("Test session %d", sessionNum),
 			}
 
 			reqData, _ := json.Marshal(map[string]interface{}{
