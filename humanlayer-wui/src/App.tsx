@@ -84,6 +84,41 @@ function App() {
     connectToDaemon()
   }, [])
 
+  // Poll for session updates every 2 seconds
+  useEffect(() => {
+    if (!connected) return
+
+    const interval = setInterval(() => {
+      loadSessions()
+    }, 2000)
+
+    return () => clearInterval(interval)
+  }, [connected])
+
+  // Refresh sessions on window focus
+  useEffect(() => {
+    const handleFocus = () => {
+      if (connected) {
+        loadSessions()
+      }
+    }
+
+    window.addEventListener('focus', handleFocus)
+    return () => window.removeEventListener('focus', handleFocus)
+  }, [connected])
+
+  // Refresh sessions when a new session is created
+  useEffect(() => {
+    const handleSessionCreated = () => {
+      if (connected) {
+        loadSessions()
+      }
+    }
+
+    window.addEventListener('session-created', handleSessionCreated)
+    return () => window.removeEventListener('session-created', handleSessionCreated)
+  }, [connected])
+
   // Global hotkey handler
   useEffect(() => {
     document.addEventListener('keydown', handleKeyDown)

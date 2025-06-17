@@ -66,7 +66,11 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
       gPrefixMode: false,
     }),
 
-  setQuery: query => set({ query, error: undefined }),
+  setQuery: query => set(state => ({ 
+    query, 
+    config: { ...state.config, query },
+    error: undefined 
+  })),
 
   setConfig: config => set({ config, error: undefined }),
 
@@ -101,6 +105,10 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
 
       // Close launcher
       get().close()
+      
+      // Trigger a session refresh
+      // Import loadSessions from App or dispatch a custom event
+      window.dispatchEvent(new CustomEvent('session-created'))
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Failed to launch session',

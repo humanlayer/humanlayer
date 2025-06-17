@@ -43,7 +43,7 @@ export default function CommandInput({
     '/usr/local',
     '/opt',
     '/tmp',
-    process.cwd() || './',
+    './',
   ]
 
   useEffect(() => {
