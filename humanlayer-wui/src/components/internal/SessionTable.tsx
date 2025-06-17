@@ -56,7 +56,7 @@ export default function SessionTable({
             onMouseEnter={() => handleFocusSession?.(session)}
             onMouseLeave={() => handleBlurSession?.()}
             onClick={() => handleActivateSession?.(session)}
-            className={`cursor-pointer ${focusedSession?.id === session.id ? '!bg-emerald-200' : ''}`}
+            className={`cursor-pointer ${focusedSession?.id === session.id ? '!bg-emerald-200 dark:!bg-emerald-300 dark:text-black' : ''}`}
           >
             <TableCell>{session.status}</TableCell>
             <TableCell>{session.query}</TableCell>

@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button'
 import './App.css'
 import SessionTable from './components/internal/SessionTable'
 import SessionDetail from './components/internal/SessionDetail'
+import { ThemeProvider } from './components/providers/ThemeProvider'
+import { ModeToggle } from './components/internal/ModeToggle'
 
 interface StoreState {
   /* Sessions */
@@ -159,90 +161,97 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <main className="container max-w-[80%] mx-auto flex-1 flex flex-col justify-center p-8">
-        {connected && (
-          <>
-            {activeSession ? (
-              <SessionDetail session={activeSession} onClose={() => setActiveSession(null)} />
-            ) : (
-              <div style={{ marginBottom: '20px' }}>
-                <SessionTable
-                  sessions={sessions}
-                  handleFocusSession={session => setFocusedSession(session)}
-                  handleBlurSession={() => setFocusedSession(null)}
-                  handleActivateSession={session => setActiveSession(session)}
-                  focusedSession={focusedSession}
-                  handleFocusNextSession={focusNextSession}
-                  handleFocusPreviousSession={focusPreviousSession}
-                />
-              </div>
-            )}
+    <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
+      <div className="fixed top-0 right-0 p-4">
+        <ModeToggle />
+      </div>
 
-            {approvals.length > 0 && (
-              <div>
-                <h2>Pending Approvals ({approvals.length})</h2>
-                {approvals.map((approval, index) => (
-                  <div
-                    key={index}
-                    style={{
-                      marginBottom: '10px',
-                      padding: '10px',
-                      border: '1px solid #ff6600',
-                    }}
-                  >
-                    <strong>Type:</strong> {approval.type}
-                    <br />
-                    {approval.function_call && (
-                      <>
-                        <strong>Function:</strong> {approval.function_call.spec.fn}
-                        <br />
-                        <strong>Args:</strong> {JSON.stringify(approval.function_call.spec.kwargs)}
-                        <br />
-                        <Button
-                          onClick={() => handleApproval(approval, true)}
-                          style={{ marginRight: '5px' }}
-                        >
-                          Approve
-                        </Button>
-                        <Button onClick={() => handleApproval(approval, false)}>Deny</Button>
-                      </>
-                    )}
-                    {approval.human_contact && (
-                      <>
-                        <strong>Message:</strong> {approval.human_contact.spec.msg}
-                        <br />
-                        <Button onClick={() => handleApproval(approval, true)}>Respond</Button>
-                      </>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </>
-        )}
-      </main>
+      <div className="min-h-screen flex flex-col">
+        <main className="container max-w-[80%] mx-auto flex-1 flex flex-col justify-center p-8">
+          {connected && (
+            <>
+              {activeSession ? (
+                <SessionDetail session={activeSession} onClose={() => setActiveSession(null)} />
+              ) : (
+                <div style={{ marginBottom: '20px' }}>
+                  <SessionTable
+                    sessions={sessions}
+                    handleFocusSession={session => setFocusedSession(session)}
+                    handleBlurSession={() => setFocusedSession(null)}
+                    handleActivateSession={session => setActiveSession(session)}
+                    focusedSession={focusedSession}
+                    handleFocusNextSession={focusNextSession}
+                    handleFocusPreviousSession={focusPreviousSession}
+                  />
+                </div>
+              )}
 
-      <div className="fixed bottom-0 left-0 right-0 bg-gray-900 text-white p-2 flex justify-between items-center">
-        <div className="flex-1">
-          {!connected && (
-            <Button
-              onClick={connectToDaemon}
-              variant="ghost"
-              className="text-white hover:text-gray-300"
-            >
-              Retry Connection
-            </Button>
+              {approvals.length > 0 && (
+                <div>
+                  <h2>Pending Approvals ({approvals.length})</h2>
+                  {approvals.map((approval, index) => (
+                    <div
+                      key={index}
+                      style={{
+                        marginBottom: '10px',
+                        padding: '10px',
+                        border: '1px solid #ff6600',
+                      }}
+                    >
+                      <strong>Type:</strong> {approval.type}
+                      <br />
+                      {approval.function_call && (
+                        <>
+                          <strong>Function:</strong> {approval.function_call.spec.fn}
+                          <br />
+                          <strong>Args:</strong> {JSON.stringify(approval.function_call.spec.kwargs)}
+                          <br />
+                          <Button
+                            onClick={() => handleApproval(approval, true)}
+                            style={{ marginRight: '5px' }}
+                          >
+                            Approve
+                          </Button>
+                          <Button onClick={() => handleApproval(approval, false)}>Deny</Button>
+                        </>
+                      )}
+                      {approval.human_contact && (
+                        <>
+                          <strong>Message:</strong> {approval.human_contact.spec.msg}
+                          <br />
+                          <Button onClick={() => handleApproval(approval, true)}>Respond</Button>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
           )}
-        </div>
-        <div className="flex items-center space-x-2">
-          <span className="text-sm uppercase text-[0.8em]">{status}</span>
-          <span
-            className={`w-2 h-2 rounded-full ${connected ? 'bg-emerald-300' : 'bg-rose-400'}`}
-          ></span>
+        </main>
+
+        <div className="fixed bottom-0 left-0 right-0 bg-gray-900 text-white p-2 flex justify-between items-center">
+          <div className="flex-1">
+            {!connected && (
+              <Button
+                onClick={connectToDaemon}
+                variant="ghost"
+                className="text-white hover:text-gray-300"
+              >
+                Retry Connection
+              </Button>
+            )}
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <span className="text-sm uppercase text-[0.8em]">{status}</span>
+            <span
+              className={`w-2 h-2 rounded-full ${connected ? 'bg-emerald-300' : 'bg-rose-400'}`}
+            ></span>
+          </div>
         </div>
       </div>
-    </div>
+    </ThemeProvider>
   )
 }
 
