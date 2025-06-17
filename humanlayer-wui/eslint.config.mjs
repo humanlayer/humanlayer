@@ -5,6 +5,9 @@ import eslintConfigPrettier from 'eslint-config-prettier/flat'
 
 export default [
   {
+    ignores: ['dist/**/*']
+  },
+  {
     files: ['**/*.{js,mjs,cjs,ts,tsx}'],
     ...js.configs.recommended,
   },

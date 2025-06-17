@@ -57,16 +57,20 @@ function eventToDisplayObject(event: ConversationEvent) {
   if (event.event_type === ConversationEventType.Message) {
     const subjectText = event.content?.split('\n')[0] || ''
     const bodyText = event.content?.split('\n').slice(1).join('\n') || ''
-    
+
     const subjectTree = starryNight?.highlight(subjectText, 'text.md')
     const bodyTree = starryNight?.highlight(bodyText, 'text.md')
 
-    subject = subjectTree 
-      ? <span>{toJsxRuntime(subjectTree, { Fragment, jsx, jsxs })}</span>
-      : <span>{subjectText}</span>
-    body = bodyTree 
-      ? <span>{toJsxRuntime(bodyTree, { Fragment, jsx, jsxs })}</span>
-      : <span>{bodyText}</span>
+    subject = subjectTree ? (
+      <span>{toJsxRuntime(subjectTree, { Fragment, jsx, jsxs })}</span>
+    ) : (
+      <span>{subjectText}</span>
+    )
+    body = bodyTree ? (
+      <span>{toJsxRuntime(bodyTree, { Fragment, jsx, jsxs })}</span>
+    ) : (
+      <span>{bodyText}</span>
+    )
   }
 
   if (event.role === 'assistant') {

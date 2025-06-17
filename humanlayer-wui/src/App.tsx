@@ -23,7 +23,7 @@ interface StoreState {
   focusPreviousSession: () => void
 }
 
-const useStore = create<StoreState>(set => ({
+export const useStore = create<StoreState>(set => ({
   sessions: [],
   focusedSession: null,
   activeSession: null,
