@@ -8,6 +8,8 @@ import SessionTable from './components/internal/SessionTable'
 import SessionDetail from './components/internal/SessionDetail'
 import { ThemeProvider } from './components/providers/ThemeProvider'
 import { ModeToggle } from './components/internal/ModeToggle'
+import { SessionLauncher } from './components/SessionLauncher'
+import { useSessionLauncher, useSessionLauncherHotkeys } from './hooks/useSessionLauncher'
 
 interface StoreState {
   /* Sessions */
@@ -61,9 +63,6 @@ const useStore = create<StoreState>(set => ({
 }))
 
 function App() {
-  // const activeSessionId = null;
-  // const selectedSessionId = null;
-  // const approvals = [];
   const focusedSession = useStore(state => state.focusedSession)
   const activeSession = useStore(state => state.activeSession)
   const sessions = useStore(state => state.sessions)
@@ -76,10 +75,20 @@ function App() {
   const [activeSessionId] = useState<string | null>(null)
   const [connected, setConnected] = useState(false)
 
+  // Session launcher state
+  const { isOpen, close } = useSessionLauncher()
+  const { handleKeyDown } = useSessionLauncherHotkeys()
+
   // Connect to daemon on mount
   useEffect(() => {
     connectToDaemon()
   }, [])
+
+  // Global hotkey handler
+  useEffect(() => {
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [handleKeyDown])
 
   // Cleanup subscription when component unmounts or session changes
   useEffect(() => {
@@ -251,6 +260,9 @@ function App() {
           </div>
         </div>
       </div>
+
+      {/* Session Launcher */}
+      <SessionLauncher isOpen={isOpen} onClose={close} />
     </ThemeProvider>
   )
 }

@@ -1,6 +1,6 @@
-import { forwardRef, useEffect, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
+import { Button } from './ui/button'
 import { cn } from '@/lib/utils'
-import { Input } from './ui/input'
 
 interface CommandInputProps {
   value: string
@@ -8,81 +8,93 @@ interface CommandInputProps {
   onSubmit: () => void
   placeholder?: string
   isLoading?: boolean
-  disabled?: boolean
 }
 
-export const CommandInput = forwardRef<HTMLInputElement, CommandInputProps>(
-  ({ value, onChange, onSubmit, placeholder, isLoading = false, disabled = false }, ref) => {
-    const internalRef = useRef<HTMLInputElement>(null)
-    const inputRef = ref || internalRef
+export default function CommandInput({
+  value,
+  onChange,
+  onSubmit,
+  placeholder = 'Enter your command...',
+  isLoading = false,
+}: CommandInputProps) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [isFocused, setIsFocused] = useState(false)
 
-    // Auto-focus when component mounts
-    useEffect(() => {
-      if (inputRef && 'current' in inputRef && inputRef.current) {
-        inputRef.current.focus()
-      }
-    }, [inputRef])
-
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault()
-        onSubmit()
-      }
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.focus()
     }
+  }, [])
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      onChange(e.target.value)
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      onSubmit()
     }
-
-    const characterCount = value.length
-
-    return (
-      <div className="space-y-3">
-        <div className="relative">
-          <Input
-            ref={inputRef}
-            value={value}
-            onChange={handleChange}
-            onKeyDown={handleKeyDown}
-            placeholder={placeholder || 'Enter your query (e.g. "debug login component", "/src fix auth flow")'}
-            disabled={disabled || isLoading}
-            className={cn(
-              // Large input styling
-              'h-12 text-lg px-4 py-3',
-              // Monospace font for code-like appearance
-              'font-mono',
-              // High contrast styling
-              'bg-background border-2 border-border',
-              // Focus styling that matches existing patterns
-              'focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-4',
-              // Disabled state
-              isLoading && 'opacity-60',
-              // Enhanced styling for the launcher
-              'transition-all duration-200'
-            )}
-            autoComplete="off"
-            spellCheck={false}
-          />
-          
-          {isLoading && (
-            <div className="absolute right-3 top-1/2 -translate-y-1/2">
-              <div className="animate-spin h-5 w-5 border-2 border-muted border-t-foreground rounded-full" />
-            </div>
-          )}
-        </div>
-        
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <div className="font-mono">
-            {characterCount} characters
-          </div>
-          <div className="space-x-4">
-            <span className="font-mono">↵ Launch</span>
-            <span className="font-mono">⌘K Close</span>
-          </div>
-        </div>
-      </div>
-    )
   }
-)
 
-CommandInput.displayName = 'CommandInput'
+  return (
+    <div className="space-y-3">
+      <div className="relative">
+        <input
+          ref={inputRef}
+          type="text"
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          placeholder={placeholder}
+          disabled={isLoading}
+          className={cn(
+            'w-full h-12 px-4 py-3 text-base',
+            'font-mono leading-relaxed',
+            'bg-background border-2 rounded-lg',
+            'transition-all duration-200',
+            'placeholder:text-muted-foreground/60',
+            'disabled:opacity-50 disabled:cursor-not-allowed',
+            isFocused
+              ? 'border-primary ring-4 ring-primary/20'
+              : 'border-border hover:border-primary/50',
+          )}
+          autoComplete="off"
+          spellCheck={false}
+        />
+
+        {isLoading && (
+          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+            <div className="animate-spin h-4 w-4 border-2 border-primary border-r-transparent rounded-full" />
+          </div>
+        )}
+      </div>
+
+      {value.trim() && (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2 text-xs text-muted-foreground">
+            {value.startsWith('/') && (
+              <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded">
+                Working directory mode
+              </span>
+            )}
+          </div>
+
+          <Button
+            onClick={onSubmit}
+            disabled={!value.trim() || isLoading}
+            size="sm"
+            className="font-mono"
+          >
+            {isLoading ? (
+              <>
+                <div className="animate-spin h-3 w-3 border border-current border-r-transparent rounded-full mr-2" />
+                Launching...
+              </>
+            ) : (
+              'Launch Session'
+            )}
+          </Button>
+        </div>
+      )}
+    </div>
+  )
+}
