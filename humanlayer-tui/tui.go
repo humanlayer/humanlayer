@@ -14,6 +14,7 @@ import (
 	"github.com/humanlayer/humanlayer/hld/rpc"
 	"github.com/humanlayer/humanlayer/humanlayer-tui/internal/api"
 	"github.com/humanlayer/humanlayer/humanlayer-tui/internal/domain"
+	"github.com/humanlayer/humanlayer/humanlayer-tui/internal/tui/components/sessions"
 	"github.com/humanlayer/humanlayer/humanlayer-tui/internal/util"
 )
 
@@ -27,7 +28,7 @@ type model struct {
 
 	// Sub-models for each tab
 	approvals    approvalModel
-	sessions     sessionModel
+	sessions     *sessions.Model
 	conversation conversationModel
 
 	// For help view
@@ -184,7 +185,7 @@ func newModel() model {
 		tabNames:  []string{"Approvals", "Sessions"},
 		// Initialize sub-models
 		approvals:    newApprovalModel(),
-		sessions:     newSessionModel(),
+		sessions:     sessions.New(apiClient),
 		conversation: newConversationModel(),
 		// Initialize status bar
 		daemonConnected: true, // We successfully connected
@@ -245,7 +246,23 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case domain.ApprovalsTab:
 				cmd = m.approvals.Update(msg, &m)
 			case domain.SessionsTab:
-				cmd = m.sessions.Update(msg, &m)
+				result := m.sessions.Update(msg, sessions.DefaultKeyMap())
+				if result.Cmd != nil {
+					cmd = result.Cmd
+				}
+				if result.OpenConversation {
+					cmd = m.openConversationView(result.OpenConversationID)
+				}
+				if result.TriggerSizeUpdate {
+					m.updateAllViewSizes()
+				}
+				if result.ActiveSessionCount > 0 {
+					m.activeSessionCount = result.ActiveSessionCount
+				}
+				if result.Err != nil {
+					m.err = result.Err
+					m.fullError = result.Err
+				}
 			}
 			if cmd != nil {
 				cmds = append(cmds, cmd)
@@ -355,7 +372,23 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case domain.ApprovalsTab:
 			cmd = m.approvals.Update(msg, &m)
 		case domain.SessionsTab:
-			cmd = m.sessions.Update(msg, &m)
+			result := m.sessions.Update(msg, sessions.DefaultKeyMap())
+			if result.Cmd != nil {
+				cmd = result.Cmd
+			}
+			if result.OpenConversation {
+				cmd = m.openConversationView(result.OpenConversationID)
+			}
+			if result.TriggerSizeUpdate {
+				m.updateAllViewSizes()
+			}
+			if result.ActiveSessionCount > 0 {
+				m.activeSessionCount = result.ActiveSessionCount
+			}
+			if result.Err != nil {
+				m.err = result.Err
+				m.fullError = result.Err
+			}
 		}
 	}
 
@@ -391,7 +424,7 @@ func (m model) View() string {
 			case domain.ApprovalsTab:
 				content = m.approvals.View(&m)
 			case domain.SessionsTab:
-				content = m.sessions.View(&m)
+				content = m.sessions.View()
 			}
 		}
 	}
@@ -440,7 +473,7 @@ func (m model) getCurrentViewState() domain.ViewState {
 	case domain.ApprovalsTab:
 		return m.approvals.viewState
 	case domain.SessionsTab:
-		return m.sessions.viewState
+		return m.sessions.GetViewState()
 	}
 	return domain.ListView
 }
@@ -451,7 +484,7 @@ func (m *model) setViewState(state domain.ViewState) {
 	case domain.ApprovalsTab:
 		m.approvals.viewState = state
 	case domain.SessionsTab:
-		m.sessions.viewState = state
+		// Sessions component manages its own view state internally
 	}
 }
 
@@ -648,7 +681,7 @@ func (m model) getContextualHelp() string {
 			}
 			return "[tab] switch tab • [?] help • [q] quit"
 		case domain.SessionsTab:
-			if len(m.sessions.sortedSessions) > 0 {
+			if len(m.sessions.GetSortedSessions()) > 0 {
 				return "[↑/↓] navigate • [enter] view • [c] create • [?] help"
 			}
 			return "[c] create session • [tab] switch tab • [?] help • [q] quit"
@@ -839,7 +872,7 @@ func (m *model) updateAllViewSizes() {
 	m.approvals.updateSize(contentWidth, contentHeight)
 
 	// Update sessions view
-	m.sessions.updateSize(contentWidth, contentHeight)
+	m.sessions.UpdateSize(contentWidth, contentHeight)
 }
 
 // openConversationView opens the conversation view for a specific session
