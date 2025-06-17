@@ -53,14 +53,17 @@ interface CommandInputProps {
 ```typescript
 interface LauncherState {
   isOpen: boolean
+  mode: 'command' | 'search'  // command = launch sessions, search = find sessions/approvals
   query: string
   isLaunching: boolean
   error?: string
+  gPrefixMode: boolean
   
   // Actions
-  open: () => void
+  open: (mode?: 'command' | 'search') => void
   close: () => void
   setQuery: (query: string) => void
+  setGPrefixMode: (enabled: boolean) => void
   launchSession: () => Promise<void>
   reset: () => void
 }
@@ -155,22 +158,48 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
 }))
 ```
 
-### Step 4: Global Hotkey Integration (30 minutes)
+### Step 4: Global Hotkey Integration (45 minutes)
 
 ```typescript
-// Add to App.tsx or main component
+// Add to App.tsx or main component  
 useEffect(() => {
   const handleKeyDown = (e: KeyboardEvent) => {
+    // Cmd+K - Global command palette
     if (e.metaKey && e.key === 'k') {
       e.preventDefault()
-      openLauncher()
+      openLauncher('command')
+    }
+    
+    // / - Search sessions and approvals
+    if (e.key === '/' && !e.metaKey && !e.ctrlKey && !isInputFocused()) {
+      e.preventDefault()
+      openLauncher('search')
+    }
+    
+    // G prefix navigation (prepare for Phase 2)
+    if (e.key === 'g' && !e.metaKey && !e.ctrlKey && !isInputFocused()) {
+      e.preventDefault()
+      setGPrefixMode(true)
+      setTimeout(() => setGPrefixMode(false), 2000)
     }
   }
   
   document.addEventListener('keydown', handleKeyDown)
   return () => document.removeEventListener('keydown', handleKeyDown)
 }, [])
+
+// Helper to check if user is typing in an input
+const isInputFocused = () => {
+  const active = document.activeElement
+  return active?.tagName === 'INPUT' || active?.tagName === 'TEXTAREA' || active?.contentEditable === 'true'
+}
 ```
+
+**Enhanced Hotkey Features**:
+- `Cmd+K` - Opens command palette in "command" mode (launch sessions)
+- `/` - Opens command palette in "search" mode (find sessions/approvals)
+- `g` prefix - Sets up for vim-style navigation (Phase 2: g+a = approvals, g+s = sessions)
+- Smart input detection to avoid conflicts when user is typing
 
 ### Step 5: Session Launch Integration (30 minutes)
 
