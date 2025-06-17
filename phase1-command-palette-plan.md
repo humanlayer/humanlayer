@@ -18,8 +18,8 @@ Build the minimal viable command palette launcher - a full-screen overlay trigge
 
 ```typescript
 interface SessionLauncherProps {
-  isOpen: boolean
-  onClose: () => void
+  isOpen: boolean;
+  onClose: () => void;
 }
 
 // Features:
@@ -34,10 +34,10 @@ interface SessionLauncherProps {
 
 ```typescript
 interface CommandInputProps {
-  value: string
-  onChange: (value: string) => void
-  onSubmit: () => void
-  placeholder?: string
+  value: string;
+  onChange: (value: string) => void;
+  onSubmit: () => void;
+  placeholder?: string;
 }
 
 // Features:
@@ -52,20 +52,20 @@ interface CommandInputProps {
 
 ```typescript
 interface LauncherState {
-  isOpen: boolean
-  mode: 'command' | 'search'  // command = launch sessions, search = find sessions/approvals
-  query: string
-  isLaunching: boolean
-  error?: string
-  gPrefixMode: boolean
-  
+  isOpen: boolean;
+  mode: "command" | "search"; // command = launch sessions, search = find sessions/approvals
+  query: string;
+  isLaunching: boolean;
+  error?: string;
+  gPrefixMode: boolean;
+
   // Actions
-  open: (mode?: 'command' | 'search') => void
-  close: () => void
-  setQuery: (query: string) => void
-  setGPrefixMode: (enabled: boolean) => void
-  launchSession: () => Promise<void>
-  reset: () => void
+  open: (mode?: "command" | "search") => void;
+  close: () => void;
+  setQuery: (query: string) => void;
+  setGPrefixMode: (enabled: boolean) => void;
+  launchSession: () => Promise<void>;
+  reset: () => void;
 }
 ```
 
@@ -73,8 +73,8 @@ interface LauncherState {
 
 ```typescript
 interface ParsedQuery {
-  query: string        // Main text
-  workingDir?: string  // If query starts with /path
+  query: string; // Main text
+  workingDir?: string; // If query starts with /path
 }
 
 // Parse patterns:
@@ -110,6 +110,7 @@ export function SessionLauncher({ isOpen, onClose }: SessionLauncherProps) {
 ```
 
 **Styling Requirements**:
+
 - Full viewport overlay with backdrop-blur
 - Centered modal (max-width: 600px)
 - Monospace font family
@@ -130,6 +131,7 @@ export function CommandInput({ value, onChange, onSubmit }: CommandInputProps) {
 ```
 
 **Features**:
+
 - Large text input (48px height minimum)
 - Monospace font
 - Placeholder text with examples
@@ -143,59 +145,64 @@ export function CommandInput({ value, onChange, onSubmit }: CommandInputProps) {
 // useSessionLauncher.ts
 export const useSessionLauncher = create<LauncherState>((set, get) => ({
   isOpen: false,
-  query: '',
+  query: "",
   isLaunching: false,
-  
+
   open: () => set({ isOpen: true }),
-  close: () => set({ isOpen: false, query: '', error: undefined }),
+  close: () => set({ isOpen: false, query: "", error: undefined }),
   setQuery: (query) => set({ query }),
-  
+
   launchSession: async () => {
     // Basic session launch logic
     // Error handling
     // Success navigation
-  }
-}))
+  },
+}));
 ```
 
 ### Step 4: Global Hotkey Integration (45 minutes)
 
 ```typescript
-// Add to App.tsx or main component  
+// Add to App.tsx or main component
 useEffect(() => {
   const handleKeyDown = (e: KeyboardEvent) => {
     // Cmd+K - Global command palette
-    if (e.metaKey && e.key === 'k') {
-      e.preventDefault()
-      openLauncher('command')
+    if (e.metaKey && e.key === "k") {
+      e.preventDefault();
+      openLauncher("command");
     }
-    
+
     // / - Search sessions and approvals
-    if (e.key === '/' && !e.metaKey && !e.ctrlKey && !isInputFocused()) {
-      e.preventDefault()
-      openLauncher('search')
+    if (e.key === "/" && !e.metaKey && !e.ctrlKey && !isInputFocused()) {
+      e.preventDefault();
+      openLauncher("search");
     }
-    
+
     // G prefix navigation (prepare for Phase 2)
-    if (e.key === 'g' && !e.metaKey && !e.ctrlKey && !isInputFocused()) {
-      e.preventDefault()
-      setGPrefixMode(true)
-      setTimeout(() => setGPrefixMode(false), 2000)
+    if (e.key === "g" && !e.metaKey && !e.ctrlKey && !isInputFocused()) {
+      e.preventDefault();
+      setGPrefixMode(true);
+      setTimeout(() => setGPrefixMode(false), 2000);
     }
-  }
-  
-  document.addEventListener('keydown', handleKeyDown)
-  return () => document.removeEventListener('keydown', handleKeyDown)
-}, [])
+  };
+
+  document.addEventListener("keydown", handleKeyDown);
+  return () => document.removeEventListener("keydown", handleKeyDown);
+}, []);
 
 // Helper to check if user is typing in an input
 const isInputFocused = () => {
-  const active = document.activeElement
-  return active?.tagName === 'INPUT' || active?.tagName === 'TEXTAREA' || active?.contentEditable === 'true'
-}
+  const active = document.activeElement;
+  return (
+    active?.tagName === "INPUT" ||
+    active?.tagName === "TEXTAREA" ||
+    active?.contentEditable === "true"
+  );
+};
 ```
 
 **Enhanced Hotkey Features**:
+
 - `Cmd+K` - Opens command palette in "command" mode (launch sessions)
 - `/` - Opens command palette in "search" mode (find sessions/approvals)
 - `g` prefix - Sets up for vim-style navigation (Phase 2: g+a = approvals, g+s = sessions)
@@ -206,30 +213,31 @@ const isInputFocused = () => {
 ```typescript
 const launchSession = async () => {
   try {
-    set({ isLaunching: true, error: undefined })
-    
-    const parsed = parseQuery(get().query)
+    set({ isLaunching: true, error: undefined });
+
+    const parsed = parseQuery(get().query);
     const response = await daemonClient.launchSession({
       query: parsed.query,
-      working_dir: parsed.workingDir || process.cwd()
-    })
-    
+      working_dir: parsed.workingDir || process.cwd(),
+    });
+
     // Navigate to new session
-    navigate(`/session/${response.session_id}`)
-    
+    navigate(`/session/${response.session_id}`);
+
     // Close launcher
-    get().close()
+    get().close();
   } catch (error) {
-    set({ error: error.message })
+    set({ error: error.message });
   } finally {
-    set({ isLaunching: false })
+    set({ isLaunching: false });
   }
-}
+};
 ```
 
 ## UI Design Requirements
 
 ### Visual Style
+
 - **Background**: Full-screen overlay with backdrop-blur-sm
 - **Modal**: Centered, rounded corners, dark background
 - **Typography**: Monospace font (ui-monospace, Monaco, "Cascadia Code")
@@ -237,6 +245,7 @@ const launchSession = async () => {
 - **Spacing**: Generous padding and margins for breathing room
 
 ### Layout Structure
+
 ```
 ┌─────────────────────────────────────────────────┐
 │                   [OVERLAY]                     │
@@ -253,6 +262,7 @@ const launchSession = async () => {
 ```
 
 ### Interaction States
+
 - **Default**: Clean input with placeholder
 - **Typing**: Real-time character count
 - **Loading**: Spinner + "Launching..." text
@@ -262,16 +272,17 @@ const launchSession = async () => {
 ## Integration Points
 
 ### App.tsx Integration
+
 ```typescript
 function App() {
   const { isOpen, close } = useSessionLauncher()
-  
+
   return (
     <>
       {/* Existing app content */}
       <SessionTable />
       <SessionDetail />
-      
+
       {/* Command palette overlay */}
       <SessionLauncher isOpen={isOpen} onClose={close} />
     </>
@@ -280,9 +291,11 @@ function App() {
 ```
 
 ### SessionTable Button
+
 Add floating action button or header button:
+
 ```typescript
-<Button 
+<Button
   onClick={() => useSessionLauncher.getState().open()}
   className="fixed bottom-6 right-6"
 >
@@ -293,6 +306,7 @@ Add floating action button or header button:
 ## Testing Requirements
 
 ### Unit Tests
+
 - SessionLauncher renders correctly
 - CommandInput handles input changes
 - Hotkey triggers launcher open
@@ -300,6 +314,7 @@ Add floating action button or header button:
 - Error states display properly
 
 ### Integration Tests
+
 - End-to-end session creation flow
 - Keyboard navigation works
 - Mobile responsiveness
@@ -329,6 +344,7 @@ Add floating action button or header button:
 ## Next Phase Preparation
 
 This implementation should be designed to easily extend with:
+
 - Template parsing (`:debug`, `:review`)
 - Model selection (`@claude-opus`)
 - Advanced flags (`--max-turns=5`)

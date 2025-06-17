@@ -6,7 +6,6 @@
 - g-t go templates
 - g-p go pending
 
-
 commands available through cmd+k:
 
 - all go-to commands (sesions, approvals, templates, etc)

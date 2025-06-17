@@ -73,22 +73,22 @@ src/components/
 
 ```typescript
 interface LauncherState {
-  isOpen: boolean
-  query: string
-  parsedCommand: ParsedCommand
-  suggestions: Suggestion[]
-  recentSessions: RecentSession[]
-  templates: Template[]
+  isOpen: boolean;
+  query: string;
+  parsedCommand: ParsedCommand;
+  suggestions: Suggestion[];
+  recentSessions: RecentSession[];
+  templates: Template[];
 }
 
 interface ParsedCommand {
-  query: string                   // Main query text
-  model?: string                  // @claude-opus, @gpt-4, etc.
-  workingDir?: string            // /src/components
-  template?: string              // :debug, :review
-  maxTurns?: number              // --max-turns=10
-  approvals?: boolean            // --approvals, --no-approvals
-  customInstructions?: string    // Additional context
+  query: string; // Main query text
+  model?: string; // @claude-opus, @gpt-4, etc.
+  workingDir?: string; // /src/components
+  template?: string; // :debug, :review
+  maxTurns?: number; // --max-turns=10
+  approvals?: boolean; // --approvals, --no-approvals
+  customInstructions?: string; // Additional context
 }
 ```
 
@@ -98,18 +98,18 @@ Leveraging the full `LaunchSessionRequest` interface:
 
 ```typescript
 interface LaunchSessionRequest {
-  query: string                   // ✅ Main input
-  model?: string                  // ✅ Smart model selection
-  working_dir?: string            // ✅ Auto-detected/specified
-  max_turns?: number              // ✅ Template defaults
-  system_prompt?: string          // ✅ Template system prompts
-  append_system_prompt?: string   // ✅ User customizations
-  custom_instructions?: string    // ✅ Project-specific context
-  allowed_tools?: string[]        // ✅ Template restrictions
-  disallowed_tools?: string[]     // ✅ Security controls
-  mcp_config?: unknown           // ✅ Advanced MCP settings
-  permission_prompt_tool?: string // ✅ Approval tool selection
-  verbose?: boolean              // ✅ Debug mode
+  query: string; // ✅ Main input
+  model?: string; // ✅ Smart model selection
+  working_dir?: string; // ✅ Auto-detected/specified
+  max_turns?: number; // ✅ Template defaults
+  system_prompt?: string; // ✅ Template system prompts
+  append_system_prompt?: string; // ✅ User customizations
+  custom_instructions?: string; // ✅ Project-specific context
+  allowed_tools?: string[]; // ✅ Template restrictions
+  disallowed_tools?: string[]; // ✅ Security controls
+  mcp_config?: unknown; // ✅ Advanced MCP settings
+  permission_prompt_tool?: string; // ✅ Approval tool selection
+  verbose?: boolean; // ✅ Debug mode
 }
 ```
 
@@ -121,50 +121,50 @@ interface LaunchSessionRequest {
 // Auto-detect project context
 const detectContext = async (): Promise<SessionContext> => {
   return {
-    gitRepo: await detectGitRepo(),           // Current branch, status
+    gitRepo: await detectGitRepo(), // Current branch, status
     packageManager: await detectPackageManager(), // npm, yarn, bun
-    framework: await detectFramework(),        // React, Next.js, etc.
+    framework: await detectFramework(), // React, Next.js, etc.
     runningProcesses: await getRunningProcesses(), // dev servers
-    recentFiles: await getMostRecentFiles(),   // Recently edited
-    workingDir: process.cwd()
-  }
-}
+    recentFiles: await getMostRecentFiles(), // Recently edited
+    workingDir: process.cwd(),
+  };
+};
 ```
 
 ### 2. Template System
 
 ```typescript
 interface Template {
-  id: string                    // 'debug', 'review', 'refactor'
-  trigger: string              // ':debug'
-  name: string                 // 'Debug Session'
-  description: string          // 'Debug performance issues'
-  systemPrompt: string         // Template-specific instructions
-  allowedTools?: string[]      // Restricted tool access
-  maxTurns: number            // Default turn limit
-  model: string               // Preferred model
-  tags: string[]              // For filtering/search
+  id: string; // 'debug', 'review', 'refactor'
+  trigger: string; // ':debug'
+  name: string; // 'Debug Session'
+  description: string; // 'Debug performance issues'
+  systemPrompt: string; // Template-specific instructions
+  allowedTools?: string[]; // Restricted tool access
+  maxTurns: number; // Default turn limit
+  model: string; // Preferred model
+  tags: string[]; // For filtering/search
 }
 
 const BUILTIN_TEMPLATES: Template[] = [
   {
-    id: 'debug',
-    trigger: ':debug',
-    name: 'Debug Session',
-    systemPrompt: 'You are debugging code. Focus on finding root causes.',
-    allowedTools: ['terminal', 'file_ops', 'browser'],
+    id: "debug",
+    trigger: ":debug",
+    name: "Debug Session",
+    systemPrompt: "You are debugging code. Focus on finding root causes.",
+    allowedTools: ["terminal", "file_ops", "browser"],
     maxTurns: 20,
-    model: 'claude-3-5-sonnet-20241022'
+    model: "claude-3-5-sonnet-20241022",
   },
   {
-    id: 'review',
-    trigger: ':review',
-    name: 'Code Review',
-    systemPrompt: 'Review code for bugs, performance, and best practices.',
+    id: "review",
+    trigger: ":review",
+    name: "Code Review",
+    systemPrompt: "Review code for bugs, performance, and best practices.",
     maxTurns: 10,
-    model: 'claude-3-5-sonnet-20241022'
-  }
-]
+    model: "claude-3-5-sonnet-20241022",
+  },
+];
 ```
 
 ### 3. Intelligent Suggestions
@@ -172,22 +172,22 @@ const BUILTIN_TEMPLATES: Template[] = [
 ```typescript
 const generateSuggestions = (query: string, context: SessionContext) => {
   // Fuzzy match templates
-  const templateSuggestions = templates.filter(t =>
-    fuzzyMatch(query, t.name) || fuzzyMatch(query, t.tags)
-  )
+  const templateSuggestions = templates.filter(
+    (t) => fuzzyMatch(query, t.name) || fuzzyMatch(query, t.tags),
+  );
 
   // Recent session patterns
   const recentSuggestions = recentSessions
-    .filter(s => fuzzyMatch(query, s.query))
-    .slice(0, 3)
+    .filter((s) => fuzzyMatch(query, s.query))
+    .slice(0, 3);
 
   // File-based suggestions
   const fileSuggestions = context.recentFiles
-    .filter(f => fuzzyMatch(query, f.name))
-    .map(f => `debug ${f.name}`)
+    .filter((f) => fuzzyMatch(query, f.name))
+    .map((f) => `debug ${f.name}`);
 
-  return [...templateSuggestions, ...recentSuggestions, ...fileSuggestions]
-}
+  return [...templateSuggestions, ...recentSuggestions, ...fileSuggestions];
+};
 ```
 
 ## Implementation Phases
@@ -195,11 +195,13 @@ const generateSuggestions = (query: string, context: SessionContext) => {
 ### Phase 1: Core Command Palette (4 hours)
 
 **Files**:
+
 - `SessionLauncher.tsx` - Full-screen overlay with search
 - `CommandInput.tsx` - Smart input parsing
 - `useSessionLauncher.ts` - State management hook
 
 **Features**:
+
 - Global `Cmd+K` hotkey
 - Single input with instant preview
 - Basic query parsing (templates, model selection)
@@ -208,10 +210,12 @@ const generateSuggestions = (query: string, context: SessionContext) => {
 ### Phase 2: Smart Context (3 hours)
 
 **Files**:
+
 - `useContextDetection.ts` - Auto-detect project context
 - `templates.ts` - Built-in template definitions
 
 **Features**:
+
 - Auto-detect working directory, git status
 - Template system with `:shortcut` triggers
 - Recent session history
@@ -220,6 +224,7 @@ const generateSuggestions = (query: string, context: SessionContext) => {
 ### Phase 3: Advanced Parsing (2 hours)
 
 **Features**:
+
 - Full command parsing (`@model --flags /paths`)
 - Real-time validation and error states
 - Advanced daemon client options
@@ -228,6 +233,7 @@ const generateSuggestions = (query: string, context: SessionContext) => {
 ### Phase 4: Polish & Performance (3 hours)
 
 **Features**:
+
 - Sub-100ms interactions
 - Keyboard navigation perfection
 - Mobile-responsive design

@@ -38,7 +38,7 @@ function eventToDisplayObject(event: ConversationEvent) {
       subject = (
         <span>
           <span className="font-bold">List </span>
-          <span className="font-mono text-sm text-gray-800">{toolInput.path}</span>
+          <span className="font-mono text-sm text-muted-foreground">{toolInput.path}</span>
         </span>
       )
     }
@@ -48,7 +48,7 @@ function eventToDisplayObject(event: ConversationEvent) {
       subject = (
         <span>
           <span className="font-bold">{event.tool_name} </span>
-          <span className="font-mono text-sm text-gray-800">{toolInput.file_path}</span>
+          <span className="font-mono text-sm text-muted-foreground">{toolInput.file_path}</span>
         </span>
       )
     }
@@ -109,7 +109,7 @@ function ConversationContent({ sessionId }: { sessionId: string }) {
   }, [loading, formattedEvents])
 
   if (error) {
-    return <div className="text-red-500">Error loading conversation: {error}</div>
+    return <div className="text-destructive">Error loading conversation: {error}</div>
   }
 
   if (loading) {
@@ -126,11 +126,13 @@ function ConversationContent({ sessionId }: { sessionId: string }) {
   if (formattedEvents.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-8 text-center">
-        <div className="text-gray-400 mb-2">
+        <div className="text-muted-foreground mb-2">
           <MessageCircleDashed className="w-12 h-12 mx-auto" />
         </div>
-        <h3 className="text-lg font-medium text-gray-900">No conversation yet</h3>
-        <p className="mt-1 text-sm text-gray-500">The conversation will appear here once it starts.</p>
+        <h3 className="text-lg font-medium text-foreground">No conversation yet</h3>
+        <p className="mt-1 text-sm text-muted-foreground">
+          The conversation will appear here once it starts.
+        </p>
       </div>
     )
   }
@@ -145,14 +147,16 @@ function ConversationContent({ sessionId }: { sessionId: string }) {
           >
             <div className="flex items-center gap-2 mb-2">
               {displayObject.iconComponent && (
-                <span className="text-sm text-gray-500">{displayObject.iconComponent}</span>
+                <span className="text-sm text-accent">{displayObject.iconComponent}</span>
               )}
 
-              <span className="whitespace-pre-wrap">{displayObject.subject}</span>
+              <span className="whitespace-pre-wrap text-accent">{displayObject.subject}</span>
               {/* <span className="font-medium">{displayObject.role}</span> */}
-              {/* <span className="text-sm text-gray-500">{displayObject.timestamp.toLocaleTimeString()}</span> */}
+              {/* <span className="text-sm text-muted-foreground">{displayObject.timestamp.toLocaleTimeString()}</span> */}
             </div>
-            {displayObject.body && <p className="whitespace-pre-wrap">{displayObject.body}</p>}
+            {displayObject.body && (
+              <p className="whitespace-pre-wrap text-foreground">{displayObject.body}</p>
+            )}
           </div>
         ))}
       </div>
@@ -167,8 +171,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   return (
     <section className="flex flex-col gap-4">
       <hgroup className="flex flex-col gap-1">
-        <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{session.query} </h2>
-        <small className="text-gray-500 font-mono text-sm uppercase">
+        <h2 className="text-lg font-medium text-foreground font-mono">{session.query} </h2>
+        <small className="text-muted-foreground font-mono text-xs uppercase tracking-wider">
           {session.status} / {session.id} / {session.model}
         </small>
       </hgroup>
