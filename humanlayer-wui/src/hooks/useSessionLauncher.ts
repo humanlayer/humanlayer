@@ -2,9 +2,12 @@ import { create } from 'zustand'
 import { daemonClient } from '@/lib/daemon'
 import type { LaunchSessionRequest } from '@/lib/daemon/types'
 
-interface ParsedQuery {
+
+interface SessionConfig {
   query: string
-  workingDir?: string
+  workingDir: string
+  model?: string
+  maxTurns?: number
 }
 
 interface LauncherState {
@@ -12,6 +15,7 @@ interface LauncherState {
   mode: 'command' | 'search'
   view: 'menu' | 'input'
   query: string
+  config: SessionConfig
   isLaunching: boolean
   error?: string
   gPrefixMode: boolean
@@ -21,6 +25,7 @@ interface LauncherState {
   open: (mode?: 'command' | 'search') => void
   close: () => void
   setQuery: (query: string) => void
+  setConfig: (config: SessionConfig) => void
   setGPrefixMode: (enabled: boolean) => void
   setView: (view: 'menu' | 'input') => void
   setSelectedMenuIndex: (index: number) => void
@@ -30,34 +35,13 @@ interface LauncherState {
   reset: () => void
 }
 
-// Parse basic query patterns
-function parseQuery(query: string): ParsedQuery {
-  const trimmed = query.trim()
-
-  // Check for working directory pattern: "/path rest of query"
-  if (trimmed.startsWith('/')) {
-    const spaceIndex = trimmed.indexOf(' ')
-    if (spaceIndex > 0) {
-      return {
-        query: trimmed.slice(spaceIndex + 1).trim(),
-        workingDir: trimmed.slice(0, spaceIndex),
-      }
-    }
-    // If just "/path" with no additional query, treat as working dir change
-    return {
-      query: '',
-      workingDir: trimmed,
-    }
-  }
-
-  return { query: trimmed }
-}
 
 export const useSessionLauncher = create<LauncherState>((set, get) => ({
   isOpen: false,
   mode: 'command',
   view: 'menu',
   query: '',
+  config: { query: '', workingDir: '' },
   isLaunching: false,
   gPrefixMode: false,
   selectedMenuIndex: 0,
@@ -76,12 +60,15 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
       isOpen: false,
       view: 'menu',
       query: '',
+      config: { query: '', workingDir: '' },
       selectedMenuIndex: 0,
       error: undefined,
       gPrefixMode: false,
     }),
 
   setQuery: query => set({ query, error: undefined }),
+
+  setConfig: config => set({ config, error: undefined }),
 
   setGPrefixMode: enabled => set({ gPrefixMode: enabled }),
 
@@ -90,10 +77,9 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
   setSelectedMenuIndex: index => set({ selectedMenuIndex: index }),
 
   launchSession: async () => {
-    const { query } = get()
-    const parsed = parseQuery(query)
+    const { query, config } = get()
 
-    if (!parsed.query && !parsed.workingDir) {
+    if (!query.trim()) {
       set({ error: 'Please enter a query to launch a session' })
       return
     }
@@ -102,8 +88,10 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
       set({ isLaunching: true, error: undefined })
 
       const request: LaunchSessionRequest = {
-        query: parsed.query || 'Help me with the current directory',
-        working_dir: parsed.workingDir,
+        query: query.trim(),
+        working_dir: config.workingDir || undefined,
+        model: config.model || undefined,
+        max_turns: config.maxTurns || undefined,
       }
 
       const response = await daemonClient.launchSession(request)
@@ -139,6 +127,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
       mode: 'command',
       view: 'menu',
       query: '',
+      config: { query: '', workingDir: '' },
       selectedMenuIndex: 0,
       isLaunching: false,
       error: undefined,
@@ -150,28 +139,17 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
 export function useSessionLauncherHotkeys() {
   const { open, close, isOpen, gPrefixMode, setGPrefixMode, createNewSession } = useSessionLauncher()
 
-  // Helper to check if user is typing in an input
-  const isInputFocused = () => {
+  // Helper to check if user is actively typing in a text input
+  const isTypingInInput = () => {
     const active = document.activeElement
     if (!active) return false
     
-    // Check for input and textarea elements
-    if (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA') {
-      return true
-    }
-    
-    // Check for contentEditable elements
-    if ((active as HTMLElement).contentEditable === 'true') {
-      return true
-    }
-    
-    // Check if we're inside the command palette modal (more specific check)
-    const commandPalette = document.querySelector('[data-command-palette]')
-    if (commandPalette && commandPalette.contains(active)) {
-      return true
-    }
-    
-    return false
+    // Only block hotkeys when actively typing in actual input fields
+    return (
+      active.tagName === 'INPUT' ||
+      active.tagName === 'TEXTAREA' ||
+      (active as HTMLElement).contentEditable === 'true'
+    )
   }
 
   return {
@@ -188,21 +166,25 @@ export function useSessionLauncherHotkeys() {
       }
 
       // C - Create new session directly (bypasses command palette)
-      if (e.key === 'c' && !e.metaKey && !e.ctrlKey && !isInputFocused()) {
+      if (e.key === 'c' && !e.metaKey && !e.ctrlKey && !isTypingInInput()) {
         e.preventDefault()
+        // Open launcher if not already open
+        if (!isOpen) {
+          open('command')
+        }
         createNewSession()
         return
       }
 
       // / - Search sessions and approvals (only when not typing)
-      if (e.key === '/' && !e.metaKey && !e.ctrlKey && !isInputFocused()) {
+      if (e.key === '/' && !e.metaKey && !e.ctrlKey && !isTypingInInput()) {
         e.preventDefault()
         open('search')
         return
       }
 
       // G prefix navigation (prepare for Phase 2)
-      if (e.key === 'g' && !e.metaKey && !e.ctrlKey && !isInputFocused()) {
+      if (e.key === 'g' && !e.metaKey && !e.ctrlKey && !isTypingInInput()) {
         e.preventDefault()
         setGPrefixMode(true)
         setTimeout(() => setGPrefixMode(false), 2000)

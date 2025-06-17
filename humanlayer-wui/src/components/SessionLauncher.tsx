@@ -13,7 +13,7 @@ interface SessionLauncherProps {
 
 export function SessionLauncher({ isOpen, onClose }: SessionLauncherProps) {
   const modalRef = useRef<HTMLDivElement>(null)
-  const { query, setQuery, launchSession, isLaunching, error, mode, view, setView } =
+  const { query, setQuery, config, setConfig, launchSession, isLaunching, error, mode, view, setView } =
     useSessionLauncher()
 
   // Escape key to close - enable even when input is focused
@@ -92,7 +92,7 @@ export function SessionLauncher({ isOpen, onClose }: SessionLauncherProps) {
             </div>
 
             {view === 'menu' ? (
-              <CommandPaletteMenu onClose={onClose} />
+              <CommandPaletteMenu />
             ) : (
               <>
                 <CommandInput
@@ -101,6 +101,8 @@ export function SessionLauncher({ isOpen, onClose }: SessionLauncherProps) {
                   onSubmit={handleSubmit}
                   placeholder="Enter your prompt to start a session..."
                   isLoading={isLaunching}
+                  config={config}
+                  onConfigChange={setConfig}
                 />
 
                 {error && (
