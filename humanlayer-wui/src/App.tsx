@@ -124,7 +124,6 @@ function App() {
   const loadSessions = async () => {
     try {
       const response = await daemonClient.listSessions()
-      console.log('response.sessions', response.sessions)
       useStore.getState().initSessions(response.sessions)
     } catch (error) {
       console.error('Failed to load sessions:', error)

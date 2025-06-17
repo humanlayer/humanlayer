@@ -12,7 +12,6 @@ export function ModeToggle() {
     setTheme(isDark ? 'light' : 'dark')
   }
 
-  console.log('theme', theme)
 
   return (
     <Button variant="outline" size="icon" className="cursor-pointer" onClick={handleClick}>

@@ -52,6 +52,62 @@ function eventToDisplayObject(event: ConversationEvent) {
         </span>
       )
     }
+
+    if (event.tool_name === 'Task') {
+      const toolInput = JSON.parse(event.tool_input_json!)
+      subject = (
+        <span>
+          <span className="font-bold">{event.tool_name} </span>
+          <span className="font-mono text-sm text-muted-foreground">{toolInput.description}</span>
+        </span>
+      )
+    }
+
+    if (event.tool_name === 'TodoWrite') {
+      const toolInput = JSON.parse(event.tool_input_json!)
+      const todos = toolInput.todos
+      const completedCount = todos.filter(todo => todo.status === 'completed').length
+      const pendingCount = todos.filter(todo => todo.status === 'pending').length
+
+      subject = (
+        <span>
+          <span className="font-bold">Update TODOs </span>
+          <span className="font-mono text-sm text-muted-foreground">{completedCount} completed, {pendingCount} pending</span>
+        </span>
+      )
+    }
+
+    if (event.tool_name === 'Edit') {
+      const toolInput = JSON.parse(event.tool_input_json!)
+      subject = (
+        <span>
+          <span className="font-bold">{event.tool_name} </span>
+          <span className="font-mono text-sm text-muted-foreground">Edit to {toolInput.file_path}</span>
+        </span>
+      )
+    }
+
+    if (event.tool_name === 'MultiEdit') {
+      const toolInput = JSON.parse(event.tool_input_json!)
+      subject = (
+        <span>
+          <span className="font-bold">{event.tool_name} </span>
+          <span className="font-mono text-sm text-muted-foreground">{toolInput.edits.length} edit{toolInput.edits.length === 1 ? '' : 's'} to {toolInput.file_path}</span>
+        </span>
+      )
+    }
+
+    if (event.tool_name === 'Grep') {
+      const toolInput = JSON.parse(event.tool_input_json!)
+      subject = (
+        <span>
+          <span className="font-bold">{event.tool_name} </span>
+          <span className="font-mono text-sm text-muted-foreground">{toolInput.pattern}</span>
+        </span>
+      )
+    }
+
+    console.log('tool call raw event', event)
   }
 
   if (event.event_type === ConversationEventType.Message) {
@@ -90,12 +146,10 @@ function eventToDisplayObject(event: ConversationEvent) {
 function ConversationContent({ sessionId }: { sessionId: string }) {
   const { formattedEvents, loading, error } = useFormattedConversation(sessionId)
   const { events } = useConversation(sessionId)
+  console.log('raw events', events)
   const displayObjects = events.map(eventToDisplayObject)
   const nonEmptyDisplayObjects = displayObjects.filter(displayObject => displayObject !== null)
 
-  console.log('formattedEvents', formattedEvents)
-  console.log('raw events', events)
-  console.log('displayObjects', displayObjects)
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -166,7 +220,6 @@ function ConversationContent({ sessionId }: { sessionId: string }) {
 
 function SessionDetail({ session, onClose }: SessionDetailProps) {
   useHotkeys('escape', onClose)
-  console.log('session', session)
 
   return (
     <section className="flex flex-col gap-4">
