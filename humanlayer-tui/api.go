@@ -27,11 +27,3 @@ func listenForEvents(apiClient api.Client, eventChan <-chan rpc.EventNotificatio
 func fetchConversation(apiClient api.Client, sessionID string) tea.Cmd {
 	return apiClient.FetchConversation(sessionID)
 }
-
-func fetchConversationSilent(apiClient api.Client, sessionID string) tea.Cmd {
-	return apiClient.FetchConversationSilent(sessionID)
-}
-
-func continueSession(apiClient api.Client, sessionID, query string) tea.Cmd {
-	return apiClient.ContinueSession(sessionID, query)
-}
