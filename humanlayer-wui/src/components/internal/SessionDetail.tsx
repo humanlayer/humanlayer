@@ -112,8 +112,6 @@ function eventToDisplayObject(event: ConversationEvent) {
         </span>
       )
     }
-
-    console.log('tool call raw event', event)
   }
 
   if (event.event_type === ConversationEventType.Message) {
@@ -395,7 +393,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       <hgroup className="flex flex-col gap-1">
         <h2 className="text-lg font-medium text-foreground font-mono">{session.query} </h2>
         <small className="text-muted-foreground font-mono text-xs uppercase tracking-wider">
-          {session.status} / {session.id} / {session.model}
+          {`${session.status}${session.model ? `/ ${session.model}` : ''}`}
         </small>
       </hgroup>
       <div className={`flex gap-4 ${isWideView ? 'flex-row' : 'flex-col'}`}>

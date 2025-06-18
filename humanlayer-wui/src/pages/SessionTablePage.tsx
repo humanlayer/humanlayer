@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { useStore } from '@/App'
+import { useStore } from '@/AppStore'
 import SessionTable from '@/components/internal/SessionTable'
 
 export function SessionTablePage() {
