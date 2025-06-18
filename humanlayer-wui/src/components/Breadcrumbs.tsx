@@ -1,6 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Home } from 'lucide-react'
-import { useStore } from '@/App'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -13,7 +12,6 @@ import {
 export function Breadcrumbs() {
   const location = useLocation()
   const navigate = useNavigate()
-  const sessions = useStore(state => state.sessions)
 
   const pathSegments = location.pathname.split('/').filter(Boolean)
   const isHome = pathSegments.length === 0
@@ -46,8 +44,7 @@ export function Breadcrumbs() {
               <BreadcrumbPage>
                 {(() => {
                   const sessionId = pathSegments[1]
-                  const session = sessions.find(s => s.id === sessionId)
-                  return session?.query || `Session ${sessionId.slice(0, 8)}`
+                  return `Session ${sessionId.slice(0, 8)}`
                 })()}
               </BreadcrumbPage>
             </BreadcrumbItem>

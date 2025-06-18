@@ -6,7 +6,8 @@ import { ThemeSelector } from '@/components/ThemeSelector'
 import { SessionLauncher } from '@/components/SessionLauncher'
 import { Breadcrumbs } from '@/components/Breadcrumbs'
 import { useSessionLauncher, useSessionLauncherHotkeys } from '@/hooks/useSessionLauncher'
-import { useStore } from '@/App'
+import { useStore } from '@/AppStore'
+import '@/App.css'
 
 export function Layout() {
   const [status, setStatus] = useState('')
@@ -63,31 +64,6 @@ export function Layout() {
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [handleKeyDown])
-
-  // Cleanup subscription when component unmounts or session changes
-  useEffect(() => {
-    let unsubscribe: (() => void) | null = null
-
-    if (activeSessionId) {
-      // Subscribe to events for the active session
-      daemonClient
-        .subscribeToEvents({
-          session_id: activeSessionId,
-        })
-        .then((unsub: () => void) => {
-          unsubscribe = unsub
-        })
-        .catch((error: Error) => {
-          console.error('Failed to subscribe to events:', error)
-        })
-    }
-
-    return () => {
-      if (unsubscribe) {
-        unsubscribe()
-      }
-    }
-  }, [activeSessionId])
 
   const connectToDaemon = async () => {
     try {

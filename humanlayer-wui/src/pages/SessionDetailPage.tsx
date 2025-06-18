@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom'
-import { useStore } from '@/App'
+import { useStore } from '@/AppStore'
 import SessionDetail from '@/components/internal/SessionDetail'
 
 export function SessionDetailPage() {
