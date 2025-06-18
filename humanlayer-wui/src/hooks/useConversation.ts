@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { daemonClient, ConversationEvent } from '@/lib/daemon'
 import { formatError } from '@/utils/errors'
 
@@ -36,26 +36,34 @@ export function useConversation(
       setLoading(true)
       setError(null)
 
-      console.log('fetching conversation', sessionId, claudeSessionId)
       const response = await daemonClient.getConversation(sessionId, claudeSessionId)
       setEvents(response.events)
       setErrorCount(0)
       setIsInitialLoad(false)
     } catch (err) {
       setError(formatError(err))
-      setErrorCount(errorCount + 1)
+      setErrorCount(prev => prev + 1)
     } finally {
       setLoading(false)
     }
-  }, [sessionId, claudeSessionId])
+  }, [sessionId, claudeSessionId, errorCount])
+
+  // Store the latest fetchConversation function in a ref
+  const fetchConversationRef = useRef(fetchConversation)
+  fetchConversationRef.current = fetchConversation
 
   useEffect(() => {
+    // Initial fetch
+    fetchConversationRef.current()
+
     const interval = setInterval(() => {
-      fetchConversation()
+      fetchConversationRef.current()
     }, pollInterval)
 
-    return () => clearInterval(interval)
-  })
+    return () => {
+      clearInterval(interval)
+    }
+  }, []) // Empty dependency array - only runs once on mount
 
   return {
     events,
