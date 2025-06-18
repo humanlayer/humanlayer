@@ -7,6 +7,7 @@ import { SessionLauncher } from '@/components/SessionLauncher'
 import { Breadcrumbs } from '@/components/Breadcrumbs'
 import { useSessionLauncher, useSessionLauncherHotkeys } from '@/hooks/useSessionLauncher'
 import { useStore } from '@/AppStore'
+import { useSessionSubscriptions } from '@/hooks/useSubscriptions'
 import '@/App.css'
 
 export function Layout() {
@@ -19,20 +20,19 @@ export function Layout() {
   const { isOpen, close } = useSessionLauncher()
   const { handleKeyDown } = useSessionLauncherHotkeys()
 
+  // Set up real-time subscriptions when connected
+  useSessionSubscriptions(connected)
+
   // Connect to daemon on mount
   useEffect(() => {
     connectToDaemon()
   }, [])
 
-  // Poll for session updates every 2 seconds
+  // Load sessions initially when connected
   useEffect(() => {
-    if (!connected) return
-
-    const interval = setInterval(() => {
+    if (connected) {
       loadSessions()
-    }, 2000)
-
-    return () => clearInterval(interval)
+    }
   }, [connected])
 
   // Refresh sessions on window focus
@@ -86,8 +86,7 @@ export function Layout() {
 
   const loadSessions = async () => {
     try {
-      const response = await daemonClient.listSessions()
-      useStore.getState().initSessions(response.sessions)
+      await useStore.getState().refreshSessions()
     } catch (error) {
       console.error('Failed to load sessions:', error)
     }

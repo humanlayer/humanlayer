@@ -104,15 +104,54 @@ export function useSession(sessionId: string) {
 
   useEffect(() => {
     fetchSession()
-    // Poll for updates while session is running
-    const interval = setInterval(() => {
-      if (session?.status === 'running' || session?.status === 'starting') {
-        fetchSession()
-      }
-    }, 2000)
 
-    return () => clearInterval(interval)
-  }, [fetchSession, session?.status])
+    // Subscribe to session updates
+    let unsubscribe: (() => void) | null = null
+    let isActive = true
+
+    const subscribe = async () => {
+      try {
+        unsubscribe = await daemonClient.subscribeToEvents(
+          {
+            event_types: ['session_status_changed'],
+            session_id: sessionId,
+          },
+          {
+            onEvent: event => {
+              if (!isActive) return
+
+              if (event.event.type === 'session_status_changed') {
+                // Refresh session details when status changes
+                fetchSession()
+              }
+            },
+            onError: error => {
+              console.error('Session subscription error:', error)
+              // Fall back to polling for running sessions
+              if (isActive && (session?.status === 'running' || session?.status === 'starting')) {
+                const interval = setInterval(() => {
+                  if (isActive) {
+                    fetchSession()
+                  }
+                }, 3000)
+
+                setTimeout(() => clearInterval(interval), 30000) // Stop polling after 30s
+              }
+            },
+          },
+        )
+      } catch (err) {
+        console.error('Failed to subscribe to session events:', err)
+      }
+    }
+
+    subscribe()
+
+    return () => {
+      isActive = false
+      unsubscribe?.()
+    }
+  }, [fetchSession, sessionId])
 
   return {
     session,

@@ -444,7 +444,24 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 				Role:            "system",
 				Content:         fmt.Sprintf("Session created with ID: %s", event.SessionID),
 			}
-			return m.store.AddConversationEvent(ctx, convEvent)
+			if err := m.store.AddConversationEvent(ctx, convEvent); err != nil {
+				return err
+			}
+
+			// Publish conversation updated event
+			if m.eventBus != nil {
+				m.eventBus.Publish(bus.Event{
+					Type: bus.EventConversationUpdated,
+					Data: map[string]interface{}{
+						"session_id":        sessionID,
+						"claude_session_id": claudeSessionID,
+						"event_type":        "system",
+						"subtype":           event.Subtype,
+						"content":           fmt.Sprintf("Session created with ID: %s", event.SessionID),
+						"content_type":      "system",
+					},
+				})
+			}
 		}
 		// Other system events can be added as needed
 
@@ -470,6 +487,21 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 					// Update session activity timestamp for text messages
 					m.updateSessionActivity(ctx, sessionID)
 
+					// Publish conversation updated event
+					if m.eventBus != nil {
+						m.eventBus.Publish(bus.Event{
+							Type: bus.EventConversationUpdated,
+							Data: map[string]interface{}{
+								"session_id":        sessionID,
+								"claude_session_id": claudeSessionID,
+								"event_type":        "message",
+								"role":              event.Message.Role,
+								"content":           content.Text,
+								"content_type":      "text",
+							},
+						})
+					}
+
 				case "tool_use":
 					// Tool call
 					inputJSON, err := json.Marshal(content.Input)
@@ -493,6 +525,28 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 					// Update session activity timestamp for tool calls
 					m.updateSessionActivity(ctx, sessionID)
 
+					// Publish conversation updated event
+					if m.eventBus != nil {
+						// Parse tool input for event data
+						var toolInput map[string]interface{}
+						if err := json.Unmarshal([]byte(string(inputJSON)), &toolInput); err != nil {
+							toolInput = nil // Don't include invalid JSON
+						}
+
+						m.eventBus.Publish(bus.Event{
+							Type: bus.EventConversationUpdated,
+							Data: map[string]interface{}{
+								"session_id":        sessionID,
+								"claude_session_id": claudeSessionID,
+								"event_type":        "tool_call",
+								"tool_id":           content.ID,
+								"tool_name":         content.Name,
+								"tool_input":        toolInput,
+								"content_type":      "tool_use",
+							},
+						})
+					}
+
 				case "tool_result":
 					// Tool result (in user message)
 					convEvent := &store.ConversationEvent{
@@ -509,6 +563,21 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 
 					// Update session activity timestamp for tool results
 					m.updateSessionActivity(ctx, sessionID)
+
+					// Publish conversation updated event
+					if m.eventBus != nil {
+						m.eventBus.Publish(bus.Event{
+							Type: bus.EventConversationUpdated,
+							Data: map[string]interface{}{
+								"session_id":          sessionID,
+								"claude_session_id":   claudeSessionID,
+								"event_type":          "tool_result",
+								"tool_result_for_id":  content.ToolUseID,
+								"tool_result_content": content.Content,
+								"content_type":        "tool_result",
+							},
+						})
+					}
 
 					// Mark the corresponding tool call as completed
 					if err := m.store.MarkToolCallCompleted(ctx, content.ToolUseID, sessionID); err != nil {

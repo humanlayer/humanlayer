@@ -114,7 +114,7 @@ export function useApprovalsWithSubscription(sessionId?: string): UseApprovalsRe
       try {
         unsubscribe = await daemonClient.subscribeToEvents(
           {
-            event_types: ['approval_requested', 'approval_resolved', 'session_status_changed'],
+            event_types: ['new_approval', 'approval_resolved', 'session_status_changed'],
             session_id: sessionId,
           },
           {
@@ -123,7 +123,7 @@ export function useApprovalsWithSubscription(sessionId?: string): UseApprovalsRe
 
               // Handle different event types
               switch (event.event.type) {
-                case 'approval_requested':
+                case 'new_approval':
                 case 'approval_resolved':
                   // Refresh approvals when relevant events occur
                   base.refresh()

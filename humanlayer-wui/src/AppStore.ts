@@ -1,11 +1,14 @@
 import type { SessionInfo } from '@/lib/daemon/types'
 import { create } from 'zustand'
+import { daemonClient } from '@/lib/daemon'
 
 interface StoreState {
   /* Sessions */
   sessions: SessionInfo[]
   focusedSession: SessionInfo | null
   initSessions: (sessions: SessionInfo[]) => void
+  updateSession: (sessionId: string, updates: Partial<SessionInfo>) => void
+  refreshSessions: () => Promise<void>
   setFocusedSession: (session: SessionInfo | null) => void
   focusNextSession: () => void
   focusPreviousSession: () => void
@@ -15,6 +18,24 @@ export const useStore = create<StoreState>(set => ({
   sessions: [],
   focusedSession: null,
   initSessions: (sessions: SessionInfo[]) => set({ sessions }),
+  updateSession: (sessionId: string, updates: Partial<SessionInfo>) =>
+    set(state => ({
+      sessions: state.sessions.map(session =>
+        session.id === sessionId ? { ...session, ...updates } : session,
+      ),
+      focusedSession:
+        state.focusedSession?.id === sessionId
+          ? { ...state.focusedSession, ...updates }
+          : state.focusedSession,
+    })),
+  refreshSessions: async () => {
+    try {
+      const response = await daemonClient.listSessions()
+      set({ sessions: response.sessions })
+    } catch (error) {
+      console.error('Failed to refresh sessions:', error)
+    }
+  },
   setFocusedSession: (session: SessionInfo | null) => set({ focusedSession: session }),
   focusNextSession: () =>
     set(state => {

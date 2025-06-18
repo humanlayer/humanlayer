@@ -15,6 +15,8 @@ const (
 	EventApprovalResolved EventType = "approval_resolved"
 	// EventSessionStatusChanged indicates a session status has changed
 	EventSessionStatusChanged EventType = "session_status_changed"
+	// EventConversationUpdated indicates new conversation content has been added to a session
+	EventConversationUpdated EventType = "conversation_updated"
 )
 
 // Event represents an event in the system
