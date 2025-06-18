@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { daemonClient, ConversationEvent } from '@/lib/daemon'
 import { formatError } from '@/utils/errors'
 
@@ -6,15 +6,26 @@ interface UseConversationReturn {
   events: ConversationEvent[]
   loading: boolean
   error: string | null
+  isInitialLoad: boolean
   refresh: () => Promise<void>
 }
 
-export function useConversation(sessionId?: string, claudeSessionId?: string): UseConversationReturn {
+export function useConversation(
+  sessionId?: string,
+  claudeSessionId?: string,
+  pollInterval: number = 1000,
+): UseConversationReturn {
   const [events, setEvents] = useState<ConversationEvent[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [errorCount, setErrorCount] = useState(0)
+  const [isInitialLoad, setIsInitialLoad] = useState(true)
 
   const fetchConversation = useCallback(async () => {
+    if (errorCount > 3) {
+      return
+    }
+
     if (!sessionId && !claudeSessionId) {
       setError('Either sessionId or claudeSessionId must be provided')
       setLoading(false)
@@ -27,22 +38,39 @@ export function useConversation(sessionId?: string, claudeSessionId?: string): U
 
       const response = await daemonClient.getConversation(sessionId, claudeSessionId)
       setEvents(response.events)
+      setErrorCount(0)
+      setIsInitialLoad(false)
     } catch (err) {
       setError(formatError(err))
+      setErrorCount(prev => prev + 1)
     } finally {
       setLoading(false)
     }
-  }, [sessionId, claudeSessionId])
+  }, [sessionId, claudeSessionId, errorCount])
+
+  // Store the latest fetchConversation function in a ref
+  const fetchConversationRef = useRef(fetchConversation)
+  fetchConversationRef.current = fetchConversation
 
   useEffect(() => {
-    fetchConversation()
-  }, [fetchConversation])
+    // Initial fetch
+    fetchConversationRef.current()
+
+    const interval = setInterval(() => {
+      fetchConversationRef.current()
+    }, pollInterval)
+
+    return () => {
+      clearInterval(interval)
+    }
+  }, []) // Empty dependency array - only runs once on mount
 
   return {
     events,
     loading,
     error,
     refresh: fetchConversation,
+    isInitialLoad,
   }
 }
 
