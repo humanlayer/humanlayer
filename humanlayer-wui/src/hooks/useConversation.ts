@@ -6,15 +6,26 @@ interface UseConversationReturn {
   events: ConversationEvent[]
   loading: boolean
   error: string | null
+  isInitialLoad: boolean
   refresh: () => Promise<void>
 }
 
-export function useConversation(sessionId?: string, claudeSessionId?: string): UseConversationReturn {
+export function useConversation(
+  sessionId?: string,
+  claudeSessionId?: string,
+  pollInterval: number = 1000,
+): UseConversationReturn {
   const [events, setEvents] = useState<ConversationEvent[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [errorCount, setErrorCount] = useState(0)
+  const [isInitialLoad, setIsInitialLoad] = useState(true)
 
   const fetchConversation = useCallback(async () => {
+    if (errorCount > 3) {
+      return
+    }
+
     if (!sessionId && !claudeSessionId) {
       setError('Either sessionId or claudeSessionId must be provided')
       setLoading(false)
@@ -25,24 +36,33 @@ export function useConversation(sessionId?: string, claudeSessionId?: string): U
       setLoading(true)
       setError(null)
 
+      console.log('fetching conversation', sessionId, claudeSessionId)
       const response = await daemonClient.getConversation(sessionId, claudeSessionId)
       setEvents(response.events)
+      setErrorCount(0)
+      setIsInitialLoad(false)
     } catch (err) {
       setError(formatError(err))
+      setErrorCount(errorCount + 1)
     } finally {
       setLoading(false)
     }
   }, [sessionId, claudeSessionId])
 
   useEffect(() => {
-    fetchConversation()
-  }, [fetchConversation])
+    const interval = setInterval(() => {
+      fetchConversation()
+    }, pollInterval)
+
+    return () => clearInterval(interval)
+  })
 
   return {
     events,
     loading,
     error,
     refresh: fetchConversation,
+    isInitialLoad,
   }
 }
 

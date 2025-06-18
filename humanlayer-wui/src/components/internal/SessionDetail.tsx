@@ -6,7 +6,7 @@ import { Fragment, jsx, jsxs } from 'react/jsx-runtime'
 import { ConversationEvent, ConversationEventType, SessionInfo } from '@/lib/daemon/types'
 import { Card, CardContent } from '../ui/card'
 import { useHotkeys } from 'react-hotkeys-hook'
-import { useFormattedConversation, useConversation } from '@/hooks/useConversation'
+import { useConversation } from '@/hooks/useConversation'
 import { Skeleton } from '../ui/skeleton'
 import { Suspense, useEffect, useRef, useState } from 'react'
 import { Bot, MessageCircleDashed, Wrench } from 'lucide-react'
@@ -231,9 +231,8 @@ function ConversationContent({
   setExpandedEventId: (id: number | null) => void
   isWideView: boolean
 }) {
-  const { formattedEvents, loading, error } = useFormattedConversation(sessionId)
-  const { events } = useConversation(sessionId)
-  console.log('raw events', events)
+  // const { formattedEvents, loading, error } = useFormattedConversation(sessionId)
+  const { events, loading, error, isInitialLoad } = useConversation(sessionId, undefined, 1000)
   const displayObjects = events.map(eventToDisplayObject)
   const nonEmptyDisplayObjects = displayObjects.filter(displayObject => displayObject !== null)
 
@@ -280,13 +279,13 @@ function ConversationContent({
     if (!starryNight) {
       createStarryNight([textMd]).then(sn => (starryNight = sn))
     }
-  }, [loading, formattedEvents])
+  }, [loading, events])
 
   if (error) {
     return <div className="text-destructive">Error loading conversation: {error}</div>
   }
 
-  if (loading) {
+  if (loading && isInitialLoad) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-4 w-3/4" />
@@ -297,7 +296,7 @@ function ConversationContent({
   }
 
   // No events yet.
-  if (formattedEvents.length === 0) {
+  if (events.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-8 text-center">
         <div className="text-muted-foreground mb-2">
@@ -392,7 +391,11 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     <section className="flex flex-col gap-4">
       <hgroup className="flex flex-col gap-1">
         <h2 className="text-lg font-medium text-foreground font-mono">{session.query} </h2>
-        <small className="text-muted-foreground font-mono text-xs uppercase tracking-wider">
+        <small
+          className={`font-mono text-xs uppercase tracking-wider ${
+            session.status === 'running' ? 'text-green-600 font-bold' : 'text-muted-foreground'
+          }`}
+        >
           {`${session.status}${session.model ? `/ ${session.model}` : ''}`}
         </small>
       </hgroup>
