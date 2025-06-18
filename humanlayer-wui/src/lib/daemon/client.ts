@@ -65,9 +65,8 @@ export class DaemonClient {
   async subscribeToEvents(
     request: SubscribeRequest,
     handlers: {
-      // eslint-disable-next-line no-unused-vars
       onEvent?: (event: EventNotification) => void
-      // eslint-disable-next-line no-unused-vars
+
       onError?: (error: Error) => void
     } = {},
   ): Promise<() => void> {

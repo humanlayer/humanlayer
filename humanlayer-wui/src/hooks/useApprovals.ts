@@ -9,11 +9,11 @@ interface UseApprovalsReturn {
   loading: boolean
   error: string | null
   refresh: () => Promise<void>
-  // eslint-disable-next-line no-unused-vars
+
   approve: (callId: string, comment?: string) => Promise<void>
-  // eslint-disable-next-line no-unused-vars
+
   deny: (callId: string, reason: string) => Promise<void>
-  // eslint-disable-next-line no-unused-vars
+
   respond: (callId: string, response: string) => Promise<void>
 }
 

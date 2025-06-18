@@ -7,6 +7,10 @@ import { ThemeSelector } from '@/components/ThemeSelector'
 import './App.css'
 import SessionTable from './components/internal/SessionTable'
 import SessionDetail from './components/internal/SessionDetail'
+import { ThemeProvider } from './components/providers/ThemeProvider'
+import { SessionLauncher } from './components/SessionLauncher'
+import { useSessionLauncher, useSessionLauncherHotkeys } from './hooks/useSessionLauncher'
+import { useHotkeysContext } from 'react-hotkeys-hook'
 
 interface StoreState {
   /* Sessions */
@@ -20,7 +24,7 @@ interface StoreState {
   focusPreviousSession: () => void
 }
 
-const useStore = create<StoreState>(set => ({
+export const useStore = create<StoreState>(set => ({
   sessions: [],
   focusedSession: null,
   activeSession: null,
@@ -71,11 +75,62 @@ function App() {
   const [approvals, setApprovals] = useState<any[]>([])
   const [activeSessionId] = useState<string | null>(null)
   const [connected, setConnected] = useState(false)
+  const { activeScopes } = useHotkeysContext()
+
+  // Session launcher state
+  const { isOpen, close } = useSessionLauncher()
+  const { handleKeyDown } = useSessionLauncherHotkeys()
 
   // Connect to daemon on mount
   useEffect(() => {
     connectToDaemon()
   }, [])
+
+  // Poll for session updates every 2 seconds
+  useEffect(() => {
+    if (!connected) return
+
+    const interval = setInterval(() => {
+      loadSessions()
+    }, 2000)
+
+    return () => clearInterval(interval)
+  }, [connected])
+
+  // Refresh sessions on window focus
+  useEffect(() => {
+    const handleFocus = () => {
+      if (connected) {
+        loadSessions()
+      }
+    }
+
+    window.addEventListener('focus', handleFocus)
+    return () => window.removeEventListener('focus', handleFocus)
+  }, [connected])
+
+  // Refresh sessions when a new session is created
+  useEffect(() => {
+    const handleSessionCreated = () => {
+      if (connected) {
+        loadSessions()
+      }
+    }
+
+    window.addEventListener('session-created', handleSessionCreated)
+    return () => window.removeEventListener('session-created', handleSessionCreated)
+  }, [connected])
+
+  // Global hotkey handler
+  useEffect(() => {
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [handleKeyDown])
+
+  // log active scopes for now to understand how hotkeys scopes work
+  useEffect(() => {
+    console.log('activeScopes', activeScopes)
+  }, [activeScopes])
 
   // Cleanup subscription when component unmounts or session changes
   useEffect(() => {
@@ -124,7 +179,6 @@ function App() {
   const loadSessions = async () => {
     try {
       const response = await daemonClient.listSessions()
-      console.log('response.sessions', response.sessions)
       useStore.getState().initSessions(response.sessions)
     } catch (error) {
       console.error('Failed to load sessions:', error)
@@ -157,113 +211,118 @@ function App() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-background text-foreground">
-      {/* Header */}
-      <div className="border-b border-border"></div>
+    <ThemeProvider>
+      <div className="h-screen flex flex-col bg-background text-foreground">
+        {/* Header */}
+        <div className="border-b border-border"></div>
 
-      {/* Main content */}
-      <main className="flex-1 flex flex-col p-4 overflow-hidden">
-        {connected && (
-          <>
-            {activeSession ? (
-              <SessionDetail session={activeSession} onClose={() => setActiveSession(null)} />
-            ) : (
-              <div className="flex-1 overflow-hidden">
-                <SessionTable
-                  sessions={sessions}
-                  handleFocusSession={session => setFocusedSession(session)}
-                  handleBlurSession={() => setFocusedSession(null)}
-                  handleActivateSession={session => setActiveSession(session)}
-                  focusedSession={focusedSession}
-                  handleFocusNextSession={focusNextSession}
-                  handleFocusPreviousSession={focusPreviousSession}
-                />
-              </div>
-            )}
-
-            {approvals.length > 0 && (
-              <div className="mt-4 border-t border-border pt-4">
-                <h2 className="font-mono uppercase tracking-wider text-accent mb-4">
-                  Pending Approvals ({approvals.length})
-                </h2>
-                <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {approvals.map((approval, index) => (
-                    <div
-                      key={index}
-                      className="p-4 border border-border bg-secondary/20 font-mono text-sm"
-                    >
-                      <div className="mb-2">
-                        <span className="text-accent">Type:</span> {approval.type}
-                      </div>
-                      {approval.function_call && (
-                        <>
-                          <div className="mb-2">
-                            <span className="text-accent">Function:</span>{' '}
-                            {approval.function_call.spec.fn}
-                          </div>
-                          <div className="mb-3">
-                            <span className="text-accent">Args:</span>{' '}
-                            {JSON.stringify(approval.function_call.spec.kwargs)}
-                          </div>
-                          <div className="flex gap-2">
-                            <Button onClick={() => handleApproval(approval, true)} size="sm">
-                              Approve
-                            </Button>
-                            <Button
-                              onClick={() => handleApproval(approval, false)}
-                              variant="destructive"
-                              size="sm"
-                            >
-                              Deny
-                            </Button>
-                          </div>
-                        </>
-                      )}
-                      {approval.human_contact && (
-                        <>
-                          <div className="mb-3">
-                            <span className="text-accent">Message:</span>{' '}
-                            {approval.human_contact.spec.msg}
-                          </div>
-                          <Button onClick={() => handleApproval(approval, true)} size="sm">
-                            Respond
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  ))}
+        {/* Main content */}
+        <main className="flex-1 flex flex-col p-4 overflow-hidden">
+          {connected && (
+            <>
+              {activeSession ? (
+                <SessionDetail session={activeSession} onClose={() => setActiveSession(null)} />
+              ) : (
+                <div className="flex-1 overflow-hidden">
+                  <SessionTable
+                    sessions={sessions}
+                    handleFocusSession={session => setFocusedSession(session)}
+                    handleBlurSession={() => setFocusedSession(null)}
+                    handleActivateSession={session => setActiveSession(session)}
+                    focusedSession={focusedSession}
+                    handleFocusNextSession={focusNextSession}
+                    handleFocusPreviousSession={focusPreviousSession}
+                  />
                 </div>
-              </div>
-            )}
-          </>
-        )}
-      </main>
+              )}
 
-      {/* Status bar */}
-      <div className="flex justify-between items-center px-3 py-1.5 border-t border-border bg-secondary/30">
-        <div className="flex items-center gap-4">
-          <div className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-            humanlayer
-          </div>
-          {!connected && (
-            <Button onClick={connectToDaemon} variant="ghost" size="sm">
-              Retry Connection
-            </Button>
+              {approvals.length > 0 && (
+                <div className="mt-4 border-t border-border pt-4">
+                  <h2 className="font-mono uppercase tracking-wider text-accent mb-4">
+                    Pending Approvals ({approvals.length})
+                  </h2>
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                    {approvals.map((approval, index) => (
+                      <div
+                        key={index}
+                        className="p-4 border border-border bg-secondary/20 font-mono text-sm"
+                      >
+                        <div className="mb-2">
+                          <span className="text-accent">Type:</span> {approval.type}
+                        </div>
+                        {approval.function_call && (
+                          <>
+                            <div className="mb-2">
+                              <span className="text-accent">Function:</span>{' '}
+                              {approval.function_call.spec.fn}
+                            </div>
+                            <div className="mb-3">
+                              <span className="text-accent">Args:</span>{' '}
+                              {JSON.stringify(approval.function_call.spec.kwargs)}
+                            </div>
+                            <div className="flex gap-2">
+                              <Button onClick={() => handleApproval(approval, true)} size="sm">
+                                Approve
+                              </Button>
+                              <Button
+                                onClick={() => handleApproval(approval, false)}
+                                variant="destructive"
+                                size="sm"
+                              >
+                                Deny
+                              </Button>
+                            </div>
+                          </>
+                        )}
+                        {approval.human_contact && (
+                          <>
+                            <div className="mb-3">
+                              <span className="text-accent">Message:</span>{' '}
+                              {approval.human_contact.spec.msg}
+                            </div>
+                            <Button onClick={() => handleApproval(approval, true)} size="sm">
+                              Respond
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
           )}
-        </div>
-        <div className="flex items-center gap-3">
-          <ThemeSelector />
-          <div className="flex items-center gap-2 font-mono text-xs">
-            <span className="uppercase tracking-wider">{status}</span>
-            <span
-              className={`w-1.5 h-1.5 rounded-full ${
-                connected ? 'bg-[--terminal-success]' : 'bg-[--terminal-error]'
-              }`}
-            ></span>
+        </main>
+
+        {/* Status bar */}
+        <div className="flex justify-between items-center px-3 py-1.5 border-t border-border bg-secondary/30">
+          <div className="flex items-center gap-4">
+            <div className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+              humanlayer
+            </div>
+            {!connected && (
+              <Button onClick={connectToDaemon} variant="ghost" size="sm">
+                Retry Connection
+              </Button>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            <ThemeSelector />
+            <div className="flex items-center gap-2 font-mono text-xs">
+              <span className="uppercase tracking-wider">{status}</span>
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${
+                  connected ? 'bg-[--terminal-success]' : 'bg-[--terminal-error]'
+                }`}
+              ></span>
+            </div>
           </div>
         </div>
+
+        {/* Session Launcher */}
+        <SessionLauncher isOpen={isOpen} onClose={close} />
       </div>
-    </div>
+    </ThemeProvider>
   )
 }
 

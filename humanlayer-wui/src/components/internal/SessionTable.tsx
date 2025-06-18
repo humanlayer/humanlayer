@@ -8,7 +8,8 @@ import {
   TableHeader,
   TableRow,
 } from '../ui/table'
-import { useHotkeys } from 'react-hotkeys-hook'
+import { useHotkeys, useHotkeysContext } from 'react-hotkeys-hook'
+import { useEffect } from 'react'
 
 interface SessionTableProps {
   sessions: SessionInfo[]
@@ -20,6 +21,8 @@ interface SessionTableProps {
   focusedSession: SessionInfo | null
 }
 
+export const SessionTableHotkeysScope = "session-table"
+
 export default function SessionTable({
   sessions,
   handleFocusSession,
@@ -29,13 +32,22 @@ export default function SessionTable({
   handleActivateSession,
   focusedSession,
 }: SessionTableProps) {
-  useHotkeys('j', () => handleFocusNextSession?.())
-  useHotkeys('k', () => handleFocusPreviousSession?.())
+  const { enableScope, disableScope  } = useHotkeysContext()
+
+  useEffect(() => {
+      enableScope(SessionTableHotkeysScope)
+      return () => {
+        disableScope(SessionTableHotkeysScope)
+      }
+  }, [])
+
+  useHotkeys('j', () => handleFocusNextSession?.(), { scopes: SessionTableHotkeysScope })
+  useHotkeys('k', () => handleFocusPreviousSession?.(), { scopes: SessionTableHotkeysScope })
   useHotkeys('enter', () => {
     if (focusedSession) {
       handleActivateSession?.(focusedSession)
     }
-  })
+  }, { scopes: SessionTableHotkeysScope })
 
   return (
     <Table>

@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useTheme, type Theme } from '@/contexts/ThemeContext'
 import { Moon, Sun, Coffee, Cat, ScanEye } from 'lucide-react'
+import { useHotkeys, useHotkeysContext } from 'react-hotkeys-hook'
+import { SessionTableHotkeysScope } from './internal/SessionTable'
 
 const themes: { value: Theme; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { value: 'solarized-dark', label: 'Solarized Dark', icon: Moon },
@@ -10,11 +12,14 @@ const themes: { value: Theme; label: string; icon: React.ComponentType<{ classNa
   { value: 'high-contrast', label: 'High Contrast', icon: ScanEye },
 ]
 
+export const ThemeSelectorHotkeysScope = 'theme-selector'
+
 export function ThemeSelector() {
   const { theme, setTheme } = useTheme()
   const [isOpen, setIsOpen] = useState(false)
   const [selectedIndex, setSelectedIndex] = useState(0)
   const currentTheme = themes.find(t => t.value === theme)
+  const { enableScope, disableScope } = useHotkeysContext()
 
   // Update selected index when theme changes or dropdown opens
   useEffect(() => {
@@ -24,44 +29,67 @@ export function ThemeSelector() {
     }
   }, [theme, isOpen])
 
+  // manage hotkey scopes when this componetn is opened/closed
   useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      // Ctrl+T to toggle dropdown
-      if (event.ctrlKey && event.key === 't') {
-        event.preventDefault()
-        setIsOpen(prev => !prev)
-        return
-      }
-
-      // Only handle navigation when dropdown is open
-      if (!isOpen) return
-
-      switch (event.key) {
-        case 'ArrowDown':
-        case 'j':
-          event.preventDefault()
-          setSelectedIndex(prev => (prev + 1) % themes.length)
-          break
-        case 'ArrowUp':
-        case 'k':
-          event.preventDefault()
-          setSelectedIndex(prev => (prev - 1 + themes.length) % themes.length)
-          break
-        case 'Enter':
-          event.preventDefault()
-          setTheme(themes[selectedIndex].value)
-          setIsOpen(false)
-          break
-        case 'Escape':
-          event.preventDefault()
-          setIsOpen(false)
-          break
-      }
+    if (isOpen) {
+      enableScope(ThemeSelectorHotkeysScope)
+      disableScope(SessionTableHotkeysScope)
+    } else {
+      enableScope(SessionTableHotkeysScope)
+      disableScope(ThemeSelectorHotkeysScope)
     }
+  }, [isOpen])
 
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [isOpen, selectedIndex, setTheme])
+  // Hotkey to toggle dropdown
+  useHotkeys(
+    'ctrl+t',
+    () => {
+      setIsOpen(prev => !prev)
+    },
+    { preventDefault: true },
+  )
+
+  // Navigation hotkeys (only when dropdown is open)
+  useHotkeys(
+    'j, ArrowDown',
+    () => {
+      if (isOpen) {
+        setSelectedIndex(prev => (prev + 1) % themes.length)
+      }
+    },
+    { preventDefault: true, enabled: isOpen, scopes: ThemeSelectorHotkeysScope },
+  )
+
+  useHotkeys(
+    'k, ArrowUp',
+    () => {
+      if (isOpen) {
+        setSelectedIndex(prev => (prev - 1 + themes.length) % themes.length)
+      }
+    },
+    { preventDefault: true, enabled: isOpen, scopes: ThemeSelectorHotkeysScope },
+  )
+
+  useHotkeys(
+    'enter',
+    () => {
+      if (isOpen) {
+        setTheme(themes[selectedIndex].value)
+        setIsOpen(false)
+      }
+    },
+    { preventDefault: true, enabled: isOpen, scopes: ThemeSelectorHotkeysScope },
+  )
+
+  useHotkeys(
+    'escape',
+    () => {
+      if (isOpen) {
+        setIsOpen(false)
+      }
+    },
+    { preventDefault: true, enabled: isOpen, scopes: ThemeSelectorHotkeysScope },
+  )
 
   return (
     <div className="relative">
@@ -88,8 +116,8 @@ export function ThemeSelector() {
                   index === selectedIndex
                     ? 'bg-accent/20 text-accent'
                     : theme === themeOption.value
-                      ? 'bg-accent/10 text-accent'
-                      : 'text-foreground hover:bg-accent/5'
+                    ? 'bg-accent/10 text-accent'
+                    : 'text-foreground hover:bg-accent/5'
                 }`}
               >
                 <themeOption.icon className="w-3 h-3" />
