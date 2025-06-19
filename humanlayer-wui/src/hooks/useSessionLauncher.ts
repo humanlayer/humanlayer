@@ -90,11 +90,23 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
     try {
       set({ isLaunching: true, error: undefined })
 
+      // Build MCP config (approvals enabled by default)
+      const mcpConfig = {
+        mcpServers: {
+          approvals: {
+            command: 'npx',
+            args: ['humanlayer', 'mcp', 'claude_approvals'],
+          },
+        },
+      }
+
       const request: LaunchSessionRequest = {
         query: query.trim(),
         working_dir: config.workingDir || undefined,
         model: config.model || undefined,
         max_turns: config.maxTurns || undefined,
+        mcp_config: mcpConfig,
+        permission_prompt_tool: 'mcp__approvals__request_permission',
       }
 
       const response = await daemonClient.launchSession(request)
