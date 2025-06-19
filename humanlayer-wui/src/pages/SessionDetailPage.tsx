@@ -1,13 +1,11 @@
 import { useParams, useNavigate } from 'react-router-dom'
-import { useStore } from '@/AppStore'
 import SessionDetail from '@/components/internal/SessionDetail'
+import { useSession } from '@/hooks'
 
 export function SessionDetailPage() {
   const { sessionId } = useParams<{ sessionId: string }>()
   const navigate = useNavigate()
-  const sessions = useStore(state => state.sessions)
-
-  const session = sessions.find(s => s.id === sessionId)
+  const { session } = useSession(sessionId)
 
   const handleClose = () => {
     navigate('/')

@@ -83,10 +83,18 @@ export function useSessions(): UseSessionsReturn {
 }
 
 // Hook for a single session with details
-export function useSession(sessionId: string) {
+export function useSession(sessionId: string | undefined) {
   const [session, setSession] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  if (!sessionId) {
+    return {
+      session: null,
+      loading: false,
+      error: "No session ID provided",
+    }
+  }
 
   const fetchSession = useCallback(async () => {
     try {
