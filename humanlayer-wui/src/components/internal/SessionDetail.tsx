@@ -1,15 +1,22 @@
 import { createStarryNight } from '@wooorm/starry-night'
+import jsonGrammar from '@wooorm/starry-night/source.json'
 import textMd from '@wooorm/starry-night/text.md'
 import { toJsxRuntime } from 'hast-util-to-jsx-runtime'
 import { Fragment, jsx, jsxs } from 'react/jsx-runtime'
 
-import { ConversationEvent, ConversationEventType, SessionInfo } from '@/lib/daemon/types'
+import {
+  ConversationEvent,
+  ConversationEventType,
+  SessionInfo,
+  ApprovalStatus,
+} from '@/lib/daemon/types'
 import { Card, CardContent } from '../ui/card'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { useConversation } from '@/hooks/useConversation'
 import { Skeleton } from '../ui/skeleton'
 import { Suspense, useEffect, useRef, useState } from 'react'
-import { Bot, MessageCircleDashed, Wrench } from 'lucide-react'
+import { Bot, MessageCircleDashed, UserCheck, Wrench } from 'lucide-react'
+import { getStatusTextClass } from '@/utils/component-utils'
 
 /* I, Sundeep, don't know how I feel about what's going on here. */
 let starryNight: any | null = null
@@ -17,6 +24,16 @@ let starryNight: any | null = null
 interface SessionDetailProps {
   session: SessionInfo
   onClose: () => void
+}
+
+function starryNightJson(json: string) {
+  try {
+    const formatted = JSON.stringify(JSON.parse(json), null, 2) 
+    const tree = starryNight?.highlight(formatted, 'source.json')
+    return tree ? toJsxRuntime(tree, { Fragment, jsx, jsxs }) : <span>{json}</span>
+  } catch {
+    return null
+  }
 }
 
 /* This will almost certainly become something else over time, but for the moment while we get a feel for the data, this is okay */
@@ -112,6 +129,27 @@ function eventToDisplayObject(event: ConversationEvent) {
         </span>
       )
     }
+  }
+
+  if (event.approval_status) {
+    const approvalStatusToColor = {
+      [ApprovalStatus.Pending]: 'text-[var(--terminal-warning)]',
+      [ApprovalStatus.Approved]: 'text-[var(--terminal-success)]',
+      [ApprovalStatus.Denied]: 'text-[var(--terminal-error)]',
+      [ApprovalStatus.Resolved]: 'text-[var(--terminal-success)]',
+    }
+    iconComponent = <UserCheck className="w-4 h-4" />
+    subject = (
+      <span>
+        <span className={`font-bold ${approvalStatusToColor[event.approval_status]}`}>
+          Approval ({event.approval_status})
+        </span>
+        <div className="font-mono text-sm text-muted-foreground">
+          Assistant would like to use <span className="font-bold">{event.tool_name}</span>
+        </div>
+        {starryNightJson(event.tool_input_json!)}
+      </span>
+    )
   }
 
   if (event.event_type === ConversationEventType.Message) {
@@ -277,7 +315,7 @@ function ConversationContent({
     }
 
     if (!starryNight) {
-      createStarryNight([textMd]).then(sn => (starryNight = sn))
+      createStarryNight([textMd, jsonGrammar]).then(sn => (starryNight = sn))
     }
   }, [loading, events])
 
@@ -392,9 +430,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       <hgroup className="flex flex-col gap-1">
         <h2 className="text-lg font-medium text-foreground font-mono">{session.query} </h2>
         <small
-          className={`font-mono text-xs uppercase tracking-wider ${
-            session.status === 'running' ? 'text-green-600 font-bold' : 'text-muted-foreground'
-          }`}
+          className={`font-mono text-xs uppercase tracking-wider ${getStatusTextClass(session.status)}`}
         >
           {`${session.status}${session.model ? `/ ${session.model}` : ''}`}
         </small>

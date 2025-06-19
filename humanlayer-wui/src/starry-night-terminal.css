@@ -1,0 +1,159 @@
+/* Custom Starry Night Terminal Theme
+ * Based on the terminal color variables used in this application
+ * See <https://github.com/wooorm/starry-night> for more info.
+ */
+
+/* Syntax highlighting colors using terminal variables */
+:root {
+  --color-prettylights-syntax-brackethighlighter-angle: var(--terminal-border);
+  --color-prettylights-syntax-brackethighlighter-unmatched: var(--terminal-error);
+  --color-prettylights-syntax-carriage-return-bg: var(--terminal-error);
+  --color-prettylights-syntax-carriage-return-text: var(--terminal-bg);
+  --color-prettylights-syntax-comment: var(--terminal-fg-dim);
+  --color-prettylights-syntax-constant: var(--terminal-accent);
+  --color-prettylights-syntax-constant-other-reference-link: var(--terminal-accent-alt);
+  --color-prettylights-syntax-entity: var(--terminal-accent-alt);
+  --color-prettylights-syntax-entity-tag: var(--terminal-accent);
+  --color-prettylights-syntax-invalid-illegal-bg: var(--terminal-error);
+  --color-prettylights-syntax-invalid-illegal-text: var(--terminal-bg);
+  --color-prettylights-syntax-keyword: var(--terminal-warning);
+  --color-prettylights-syntax-markup-changed-bg: var(--terminal-bg-alt);
+  --color-prettylights-syntax-markup-changed-text: var(--terminal-warning);
+  --color-prettylights-syntax-markup-deleted-bg: var(--terminal-bg-alt);
+  --color-prettylights-syntax-markup-deleted-text: var(--terminal-error);
+  --color-prettylights-syntax-markup-heading: var(--terminal-accent);
+  --color-prettylights-syntax-markup-ignored-bg: var(--terminal-accent);
+  --color-prettylights-syntax-markup-ignored-text: var(--terminal-bg);
+  --color-prettylights-syntax-markup-inserted-bg: var(--terminal-bg-alt);
+  --color-prettylights-syntax-markup-inserted-text: var(--terminal-success);
+  --color-prettylights-syntax-markup-list: var(--terminal-fg);
+  --color-prettylights-syntax-meta-diff-range: var(--terminal-accent-alt);
+  --color-prettylights-syntax-string: var(--terminal-success);
+  --color-prettylights-syntax-string-regexp: var(--terminal-accent-alt);
+  --color-prettylights-syntax-sublimelinter-gutter-mark: var(--terminal-fg-dim);
+  --color-prettylights-syntax-variable: var(--terminal-fg);
+  --color-prettylights-syntax-markup-bold: var(--terminal-fg);
+  --color-prettylights-syntax-markup-italic: var(--terminal-fg);
+  --color-prettylights-syntax-storage-modifier-import: var(--terminal-fg);
+}
+
+/* Syntax highlighting classes */
+.pl-c {
+  color: var(--color-prettylights-syntax-comment);
+}
+
+.pl-c1,
+.pl-s .pl-v {
+  color: var(--color-prettylights-syntax-constant);
+}
+
+.pl-e,
+.pl-en {
+  color: var(--color-prettylights-syntax-entity);
+}
+
+.pl-smi,
+.pl-s .pl-s1 {
+  color: var(--color-prettylights-syntax-storage-modifier-import);
+}
+
+.pl-ent {
+  color: var(--color-prettylights-syntax-entity-tag);
+}
+
+.pl-k {
+  color: var(--color-prettylights-syntax-keyword);
+}
+
+.pl-s,
+.pl-pds,
+.pl-s .pl-pse .pl-s1,
+.pl-sr,
+.pl-sr .pl-cce,
+.pl-sr .pl-sre,
+.pl-sr .pl-sra {
+  color: var(--color-prettylights-syntax-string);
+}
+
+.pl-v,
+.pl-smw {
+  color: var(--color-prettylights-syntax-variable);
+}
+
+.pl-bu {
+  color: var(--color-prettylights-syntax-brackethighlighter-unmatched);
+}
+
+.pl-ii {
+  color: var(--color-prettylights-syntax-invalid-illegal-text);
+  background-color: var(--color-prettylights-syntax-invalid-illegal-bg);
+}
+
+.pl-c2 {
+  color: var(--color-prettylights-syntax-carriage-return-text);
+  background-color: var(--color-prettylights-syntax-carriage-return-bg);
+}
+
+.pl-sr .pl-cce {
+  font-weight: bold;
+  color: var(--color-prettylights-syntax-string-regexp);
+}
+
+.pl-ml {
+  color: var(--color-prettylights-syntax-markup-list);
+}
+
+.pl-mh,
+.pl-mh .pl-en,
+.pl-ms {
+  font-weight: bold;
+  color: var(--color-prettylights-syntax-markup-heading);
+}
+
+.pl-mi {
+  font-style: italic;
+  color: var(--color-prettylights-syntax-markup-italic);
+}
+
+.pl-mb {
+  font-weight: bold;
+  color: var(--color-prettylights-syntax-markup-bold);
+}
+
+.pl-md {
+  color: var(--color-prettylights-syntax-markup-deleted-text);
+  background-color: var(--color-prettylights-syntax-markup-deleted-bg);
+}
+
+.pl-mi1 {
+  color: var(--color-prettylights-syntax-markup-inserted-text);
+  background-color: var(--color-prettylights-syntax-markup-inserted-bg);
+}
+
+.pl-mc {
+  color: var(--color-prettylights-syntax-markup-changed-text);
+  background-color: var(--color-prettylights-syntax-markup-changed-bg);
+}
+
+.pl-mi2 {
+  color: var(--color-prettylights-syntax-markup-ignored-text);
+  background-color: var(--color-prettylights-syntax-markup-ignored-bg);
+}
+
+.pl-mdr {
+  font-weight: bold;
+  color: var(--color-prettylights-syntax-meta-diff-range);
+}
+
+.pl-ba {
+  color: var(--color-prettylights-syntax-brackethighlighter-angle);
+}
+
+.pl-sg {
+  color: var(--color-prettylights-syntax-sublimelinter-gutter-mark);
+}
+
+.pl-corl {
+  text-decoration: underline;
+  color: var(--color-prettylights-syntax-constant-other-reference-link);
+} 
