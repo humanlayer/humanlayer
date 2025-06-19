@@ -75,6 +75,16 @@ pub struct LaunchSessionResponse {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct InterruptSessionRequest {
+    pub session_id: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct InterruptSessionResponse {
+    pub success: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ListSessionsRequest {}
 
 #[derive(Debug, Serialize, Deserialize)]

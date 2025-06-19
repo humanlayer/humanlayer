@@ -394,3 +394,15 @@ func Connect(socketPath string, maxRetries int, retryDelay time.Duration) (Clien
 
 	return nil, fmt.Errorf("failed to connect to daemon after %d attempts: %w", maxRetries+1, lastErr)
 }
+
+// InterruptSession interrupts a running session
+func (c *client) InterruptSession(sessionID string) error {
+	req := rpc.InterruptSessionRequest{
+		SessionID: sessionID,
+	}
+	var resp struct{} // Empty response
+	if err := c.call("interruptSession", req, &resp); err != nil {
+		return fmt.Errorf("failed to interrupt session: %w", err)
+	}
+	return nil
+}

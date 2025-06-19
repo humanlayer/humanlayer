@@ -285,6 +285,42 @@ func (h *SessionHandlers) HandleContinueSession(ctx context.Context, params json
 	}, nil
 }
 
+// InterruptSessionRequest is the request for interrupting a session
+type InterruptSessionRequest struct {
+	SessionID string `json:"session_id"`
+}
+
+// HandleInterruptSession handles the InterruptSession RPC method
+func (h *SessionHandlers) HandleInterruptSession(ctx context.Context, params json.RawMessage) (interface{}, error) {
+	var req InterruptSessionRequest
+	if err := json.Unmarshal(params, &req); err != nil {
+		return nil, fmt.Errorf("invalid request: %w", err)
+	}
+
+	// Validate required fields
+	if req.SessionID == "" {
+		return nil, fmt.Errorf("session_id is required")
+	}
+
+	// Get session from store
+	session, err := h.store.GetSession(ctx, req.SessionID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get session: %w", err)
+	}
+
+	// Validate session is running
+	if session.Status != store.SessionStatusRunning {
+		return nil, fmt.Errorf("cannot interrupt session with status %s (must be running)", session.Status)
+	}
+
+	// Interrupt session
+	if err := h.manager.InterruptSession(ctx, req.SessionID); err != nil {
+		return nil, fmt.Errorf("failed to interrupt session: %w", err)
+	}
+
+	return struct{}{}, nil
+}
+
 // Register registers all session handlers with the RPC server
 func (h *SessionHandlers) Register(server *Server) {
 	server.Register("launchSession", h.HandleLaunchSession)
@@ -292,4 +328,5 @@ func (h *SessionHandlers) Register(server *Server) {
 	server.Register("getConversation", h.HandleGetConversation)
 	server.Register("getSessionState", h.HandleGetSessionState)
 	server.Register("continueSession", h.HandleContinueSession)
+	server.Register("interruptSession", h.HandleInterruptSession)
 }

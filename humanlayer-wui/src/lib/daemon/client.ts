@@ -83,6 +83,10 @@ export class DaemonClient {
 
     return unlisten
   }
+
+  async interruptSession(sessionId: string): Promise<void> {
+    return await invoke('interrupt_session', { sessionId })
+  }
 }
 
 // Export a singleton instance

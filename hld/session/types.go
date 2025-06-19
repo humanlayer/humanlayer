@@ -78,4 +78,7 @@ type SessionManager interface {
 
 	// ListSessions returns all sessions from the database
 	ListSessions() []Info
+
+	// InterruptSession interrupts a running session
+	InterruptSession(ctx context.Context, sessionID string) error
 }

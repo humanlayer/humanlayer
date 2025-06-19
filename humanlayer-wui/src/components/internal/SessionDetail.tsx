@@ -10,6 +10,7 @@ import { useConversation } from '@/hooks/useConversation'
 import { Skeleton } from '../ui/skeleton'
 import { Suspense, useEffect, useRef, useState } from 'react'
 import { Bot, MessageCircleDashed, Wrench } from 'lucide-react'
+import { useStore } from '@/AppStore'
 
 /* I, Sundeep, don't know how I feel about what's going on here. */
 let starryNight: any | null = null
@@ -354,6 +355,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [focusedEventId, setFocusedEventId] = useState<number | null>(null)
   const [expandedEventId, setExpandedEventId] = useState<number | null>(null)
   const [isWideView, setIsWideView] = useState(false)
+  const interruptSession = useStore(state => state.interruptSession)
 
   // Get events for sidebar access
   const { events } = useConversation(session.id)
@@ -384,6 +386,13 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       setFocusedEventId(null)
     } else {
       onClose()
+    }
+  })
+
+  // Ctrl+X to interrupt session
+  useHotkeys('ctrl+x', () => {
+    if (session.status === 'running' || session.status === 'starting') {
+      interruptSession(session.id)
     }
   })
 

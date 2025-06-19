@@ -26,6 +26,7 @@ pub trait DaemonClientTrait: Send + Sync {
     async fn deny_function_call(&self, call_id: &str, reason: &str) -> Result<()>;
     async fn respond_to_human_contact(&self, call_id: &str, response: &str) -> Result<()>;
     async fn subscribe(&self, req: SubscribeRequest) -> Result<tokio::sync::mpsc::Receiver<EventNotification>>;
+    async fn interrupt_session(&self, session_id: &str) -> Result<()>;
 }
 
 pub struct DaemonClient {
@@ -123,6 +124,7 @@ impl DaemonClientTrait for DaemonClient {
     async fn launch_session(&self, req: LaunchSessionRequest) -> Result<LaunchSessionResponse> {
         self.send_rpc_request("launchSession", Some(req)).await
     }
+    
 
     async fn list_sessions(&self) -> Result<ListSessionsResponse> {
         self.send_rpc_request("listSessions", None::<()>).await
@@ -254,6 +256,13 @@ impl DaemonClientTrait for DaemonClient {
         ).await?;
 
         Ok(receiver)
+    }
+
+    async fn interrupt_session(&self, session_id: &str) -> Result<()> {
+        let req = InterruptSessionRequest {
+            session_id: session_id.to_string(),
+        };
+        self.send_rpc_request("interruptSession", Some(req)).await
     }
 }
 

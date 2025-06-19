@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"testing"
 	"time"
 
@@ -235,5 +236,110 @@ func TestHandleGetSessionState(t *testing.T) {
 		_, err := handlers.HandleGetSessionState(context.Background(), reqJSON)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to get session")
+	})
+}
+
+func TestHandleInterruptSession(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockManager := session.NewMockSessionManager(ctrl)
+	mockStore := store.NewMockConversationStore(ctrl)
+	handlers := NewSessionHandlers(mockManager, mockStore)
+
+	t.Run("successful interrupt", func(t *testing.T) {
+		sessionID := "test-123"
+
+		// Mock store response
+		mockStore.EXPECT().
+			GetSession(gomock.Any(), sessionID).
+			Return(&store.Session{
+				ID:     sessionID,
+				Status: store.SessionStatusRunning,
+			}, nil)
+
+		// Mock manager response
+		mockManager.EXPECT().
+			InterruptSession(gomock.Any(), sessionID).
+			Return(nil)
+
+		req := InterruptSessionRequest{
+			SessionID: sessionID,
+		}
+		reqJSON, _ := json.Marshal(req)
+
+		result, err := handlers.HandleInterruptSession(context.Background(), reqJSON)
+		require.NoError(t, err)
+		require.NotNil(t, result)
+	})
+
+	t.Run("missing session ID", func(t *testing.T) {
+		req := InterruptSessionRequest{}
+		reqJSON, _ := json.Marshal(req)
+
+		_, err := handlers.HandleInterruptSession(context.Background(), reqJSON)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "session_id is required")
+	})
+
+	t.Run("session not found", func(t *testing.T) {
+		sessionID := "nonexistent"
+
+		mockStore.EXPECT().
+			GetSession(gomock.Any(), sessionID).
+			Return(nil, fmt.Errorf("session not found"))
+
+		req := InterruptSessionRequest{
+			SessionID: sessionID,
+		}
+		reqJSON, _ := json.Marshal(req)
+
+		_, err := handlers.HandleInterruptSession(context.Background(), reqJSON)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to get session")
+	})
+
+	t.Run("session not running", func(t *testing.T) {
+		sessionID := "completed-123"
+
+		mockStore.EXPECT().
+			GetSession(gomock.Any(), sessionID).
+			Return(&store.Session{
+				ID:     sessionID,
+				Status: store.SessionStatusCompleted,
+			}, nil)
+
+		req := InterruptSessionRequest{
+			SessionID: sessionID,
+		}
+		reqJSON, _ := json.Marshal(req)
+
+		_, err := handlers.HandleInterruptSession(context.Background(), reqJSON)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "cannot interrupt session with status completed")
+	})
+
+	t.Run("interrupt fails", func(t *testing.T) {
+		sessionID := "fail-123"
+
+		mockStore.EXPECT().
+			GetSession(gomock.Any(), sessionID).
+			Return(&store.Session{
+				ID:     sessionID,
+				Status: store.SessionStatusRunning,
+			}, nil)
+
+		mockManager.EXPECT().
+			InterruptSession(gomock.Any(), sessionID).
+			Return(fmt.Errorf("interrupt failed"))
+
+		req := InterruptSessionRequest{
+			SessionID: sessionID,
+		}
+		reqJSON, _ := json.Marshal(req)
+
+		_, err := handlers.HandleInterruptSession(context.Background(), reqJSON)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to interrupt session")
 	})
 }
