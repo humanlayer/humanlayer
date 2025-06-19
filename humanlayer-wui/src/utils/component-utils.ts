@@ -22,4 +22,4 @@ export function getStatusBackgroundClass(status: string): string {
     default:
       return ''
   }
-} 
+}

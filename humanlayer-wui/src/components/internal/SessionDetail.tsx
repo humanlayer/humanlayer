@@ -166,7 +166,7 @@ function eventToDisplayObject(
     // Add approve/deny buttons for pending approvals
     if (event.approval_status === ApprovalStatus.Pending && event.approval_id && onApprove && onDeny) {
       const isDenying = denyingApprovalId === event.approval_id
-      
+
       body = (
         <div className="mt-4 flex gap-2 justify-end">
           {!isDenying ? (
@@ -195,11 +195,7 @@ function eventToDisplayObject(
               </Button>
             </>
           ) : (
-            <DenyForm
-              approvalId={event.approval_id!}
-              onDeny={onDeny}
-              onCancel={onCancelDeny}
-            />
+            <DenyForm approvalId={event.approval_id!} onDeny={onDeny} onCancel={onCancelDeny} />
           )}
         </div>
       )
@@ -262,7 +258,9 @@ function EventMetaInfo({ event }: { event: ConversationEvent }) {
         </div>
         <div>
           <span className="font-medium text-muted-foreground">Created:</span>
-          <span className="ml-2 font-mono text-xs">{format(parseISO(event.created_at), 'MMM d, yyyy h:mm a')}</span>
+          <span className="ml-2 font-mono text-xs">
+            {format(parseISO(event.created_at), 'MMM d, yyyy h:mm a')}
+          </span>
         </div>
         <div>
           <span className="font-medium text-muted-foreground">Completed:</span>
@@ -309,14 +307,14 @@ function EventMetaInfo({ event }: { event: ConversationEvent }) {
   )
 }
 
-function DenyForm({ 
-  approvalId, 
-  onDeny, 
-  onCancel 
-}: { 
+function DenyForm({
+  approvalId,
+  onDeny,
+  onCancel,
+}: {
   approvalId: string
   onDeny?: (approvalId: string, reason: string) => void
-  onCancel?: () => void 
+  onCancel?: () => void
 }) {
   const [reason, setReason] = useState('')
 
@@ -333,7 +331,7 @@ function DenyForm({
         type="text"
         placeholder="Reason for denial..."
         value={reason}
-        onChange={(e) => setReason(e.target.value)}
+        onChange={e => setReason(e.target.value)}
         className="flex-1"
         autoFocus
       />
@@ -346,13 +344,7 @@ function DenyForm({
       >
         Deny
       </Button>
-      <Button
-        className="cursor-pointer"
-        type="button"
-        size="sm"
-        variant="outline"
-        onClick={onCancel}
-      >
+      <Button className="cursor-pointer" type="button" size="sm" variant="outline" onClick={onCancel}>
         Cancel
       </Button>
     </form>
@@ -381,16 +373,11 @@ function ConversationContent({
   // const { formattedEvents, loading, error } = useFormattedConversation(sessionId)
   const { events, loading, error, isInitialLoad } = useConversation(sessionId, undefined, 1000)
   const [denyingApprovalId, setDenyingApprovalId] = useState<string | null>(null)
-  
-  const displayObjects = events.map(event => 
-    eventToDisplayObject(
-      event, 
-      onApprove, 
-      onDeny, 
-      denyingApprovalId,
-      setDenyingApprovalId,
-      () => setDenyingApprovalId(null)
-    )
+
+  const displayObjects = events.map(event =>
+    eventToDisplayObject(event, onApprove, onDeny, denyingApprovalId, setDenyingApprovalId, () =>
+      setDenyingApprovalId(null),
+    ),
   )
   const nonEmptyDisplayObjects = displayObjects.filter(displayObject => displayObject !== null)
 
@@ -489,7 +476,7 @@ function ConversationContent({
                   {format(parseISO(displayObject.created_at), 'MMM d, yyyy h:mm a')}
                 </span>
               </div>
-              
+
               <div className="flex items-center gap-2">
                 {displayObject.iconComponent && (
                   <span className="text-sm text-accent">{displayObject.iconComponent}</span>

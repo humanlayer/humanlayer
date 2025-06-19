@@ -92,7 +92,7 @@ export function useSession(sessionId: string | undefined) {
     return {
       session: null,
       loading: false,
-      error: "No session ID provided",
+      error: 'No session ID provided',
     }
   }
 
