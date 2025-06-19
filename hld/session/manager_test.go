@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	claudecode "github.com/humanlayer/humanlayer/claudecode-go"
 	"github.com/humanlayer/humanlayer/hld/bus"
 	"github.com/humanlayer/humanlayer/hld/store"
 	"go.uber.org/mock/gomock"
@@ -391,4 +392,74 @@ func containsStr(s, substr string) bool {
 		}
 	}
 	return false
+}
+
+func TestInterruptSession(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockStore := store.NewMockConversationStore(ctrl)
+	manager, _ := NewManager(nil, mockStore)
+
+	// Test interrupting non-existent session
+	err := manager.InterruptSession(context.Background(), "not-found")
+	if err == nil {
+		t.Error("Expected error for non-existent session")
+	}
+	if err.Error() != "session not found or not active" {
+		t.Errorf("Expected 'session not found or not active' error, got: %v", err)
+	}
+
+	// Test interrupting session
+	sessionID := "test-interrupt"
+	dbSession := &store.Session{
+		ID:        sessionID,
+		RunID:     "run-interrupt",
+		Status:    store.SessionStatusRunning,
+		Query:     "test query",
+		CreatedAt: time.Now(),
+	}
+
+	// Expect status update
+	mockStore.EXPECT().
+		UpdateSession(gomock.Any(), sessionID, gomock.Any()).
+		DoAndReturn(func(ctx context.Context, id string, update store.SessionUpdate) error {
+			if *update.Status != string(StatusFailed) {
+				t.Errorf("Expected status %s, got %s", StatusFailed, *update.Status)
+			}
+			if *update.ErrorMessage != "Session interrupted by user" {
+				t.Errorf("Expected error message 'Session interrupted by user', got %s", *update.ErrorMessage)
+			}
+			if update.CompletedAt == nil {
+				t.Error("Expected CompletedAt to be set")
+			}
+			return nil
+		})
+
+	// Create mock Claude session
+	mockClaudeSession := &mockClaudeSession{
+		events: make(chan claudecode.StreamEvent),
+		result: nil,
+		err:    nil,
+	}
+
+	// Store active process
+	manager.mu.Lock()
+	manager.activeProcesses[sessionID] = mockClaudeSession
+	manager.mu.Unlock()
+
+	// Interrupt session
+	err = manager.InterruptSession(context.Background(), sessionID)
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+
+	// Verify session was removed from active processes
+	manager.mu.Lock()
+	_, exists := manager.activeProcesses[sessionID]
+	manager.mu.Unlock()
+
+	if exists {
+		t.Error("Expected session to be removed from active processes")
+	}
 }

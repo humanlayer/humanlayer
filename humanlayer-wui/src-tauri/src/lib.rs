@@ -222,6 +222,22 @@ async fn subscribe_to_events(
     }
 }
 
+#[tauri::command]
+async fn interrupt_session(
+    state: State<'_, AppState>,
+    session_id: String,
+) -> std::result::Result<(), String> {
+    let client_guard = state.client.lock().await;
+
+    match &*client_guard {
+        Some(client) => client
+            .interrupt_session(&session_id)
+            .await
+            .map_err(|e| e.to_string()),
+        None => Err("Not connected to daemon".to_string()),
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Initialize tracing
@@ -245,6 +261,7 @@ pub fn run() {
             deny_function_call,
             respond_to_human_contact,
             subscribe_to_events,
+            interrupt_session,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

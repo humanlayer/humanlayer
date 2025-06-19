@@ -6,6 +6,7 @@
 
 set -e  # Exit on any error
 
+
 # Function to generate a unique worktree name
 generate_unique_name() {
     local adjectives=("swift" "bright" "clever" "smooth" "quick" "clean" "sharp" "neat" "cool" "fast")

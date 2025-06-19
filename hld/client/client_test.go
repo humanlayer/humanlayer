@@ -248,3 +248,40 @@ func TestConnect_WithRetries(t *testing.T) {
 	assert.Nil(t, client)
 	assert.Contains(t, err.Error(), "failed to connect to daemon after 3 attempts")
 }
+
+func TestClient_InterruptSession(t *testing.T) {
+	server, socketPath := newMockRPCServer(t)
+	defer server.stop()
+
+	server.setHandler("interruptSession", func(params json.RawMessage) (interface{}, error) {
+		var req struct {
+			SessionID string `json:"session_id"`
+		}
+		if err := json.Unmarshal(params, &req); err != nil {
+			return nil, err
+		}
+
+		// Simple validation
+		if req.SessionID == "" {
+			return nil, fmt.Errorf("session_id required")
+		}
+
+		return struct{}{}, nil
+	})
+
+	server.start()
+	time.Sleep(10 * time.Millisecond)
+
+	c, err := New(socketPath)
+	require.NoError(t, err)
+	defer func() { _ = c.Close() }()
+
+	// Test successful interrupt
+	err = c.InterruptSession("test-123")
+	assert.NoError(t, err)
+
+	// Test missing session ID
+	err = c.InterruptSession("")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "session_id required")
+}

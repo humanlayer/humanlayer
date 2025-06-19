@@ -274,6 +274,14 @@ func (s *Session) Kill() error {
 	return nil
 }
 
+// Interrupt sends a SIGINT signal to the session process
+func (s *Session) Interrupt() error {
+	if s.cmd.Process != nil {
+		return s.cmd.Process.Signal(syscall.SIGINT)
+	}
+	return nil
+}
+
 // parseStreamingJSON reads and parses streaming JSON output
 func (s *Session) parseStreamingJSON(stdout, stderr io.Reader) {
 	scanner := bufio.NewScanner(stdout)

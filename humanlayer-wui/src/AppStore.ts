@@ -12,6 +12,7 @@ interface StoreState {
   setFocusedSession: (session: SessionInfo | null) => void
   focusNextSession: () => void
   focusPreviousSession: () => void
+  interruptSession: (sessionId: string) => Promise<void>
 }
 
 export const useStore = create<StoreState>(set => ({
@@ -67,4 +68,12 @@ export const useStore = create<StoreState>(set => ({
       // Focus the previous session
       return { focusedSession: sessions[currentIndex - 1] }
     }),
+  interruptSession: async (sessionId: string) => {
+    try {
+      await daemonClient.interruptSession(sessionId)
+      // The session status will be updated via the subscription
+    } catch (error) {
+      console.error('Failed to interrupt session:', error)
+    }
+  },
 }))

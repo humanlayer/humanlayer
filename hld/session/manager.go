@@ -779,3 +779,51 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 		Config:    config,
 	}, nil
 }
+
+// InterruptSession interrupts a running session
+func (m *Manager) InterruptSession(ctx context.Context, sessionID string) error {
+	m.mu.Lock()
+	claudeSession, exists := m.activeProcesses[sessionID]
+	m.mu.Unlock()
+
+	if !exists {
+		return fmt.Errorf("session not found or not active")
+	}
+
+	// Interrupt the Claude session
+	if err := claudeSession.Interrupt(); err != nil {
+		return fmt.Errorf("failed to interrupt Claude session: %w", err)
+	}
+
+	// Update database with interrupted status
+	status := string(StatusFailed)
+	errorMsg := "Session interrupted by user"
+	now := time.Now()
+	update := store.SessionUpdate{
+		Status:         &status,
+		ErrorMessage:   &errorMsg,
+		CompletedAt:    &now,
+		LastActivityAt: &now,
+	}
+	if err := m.store.UpdateSession(ctx, sessionID, update); err != nil {
+		slog.Error("failed to update session status after interrupt",
+			"session_id", sessionID,
+			"error", err)
+		// Continue anyway since the session was interrupted
+	}
+
+	// Publish status change event
+	if m.eventBus != nil {
+		m.eventBus.Publish(bus.Event{
+			Type: bus.EventSessionStatusChanged,
+			Data: map[string]interface{}{
+				"session_id": sessionID,
+				"old_status": string(StatusRunning),
+				"new_status": string(StatusFailed),
+				"error":      errorMsg,
+			},
+		})
+	}
+
+	return nil
+}

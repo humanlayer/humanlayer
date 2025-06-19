@@ -19,6 +19,7 @@ import { useHotkeys } from 'react-hotkeys-hook'
 import { useConversation } from '@/hooks/useConversation'
 import { Skeleton } from '../ui/skeleton'
 import { Suspense, useEffect, useRef, useState } from 'react'
+import { useStore } from '@/AppStore'
 import { Bot, MessageCircleDashed, UserCheck, Wrench } from 'lucide-react'
 import { getStatusTextClass } from '@/utils/component-utils'
 import { daemonClient } from '@/lib/daemon/client'
@@ -506,6 +507,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [focusedEventId, setFocusedEventId] = useState<number | null>(null)
   const [expandedEventId, setExpandedEventId] = useState<number | null>(null)
   const [isWideView, setIsWideView] = useState(false)
+  const interruptSession = useStore(state => state.interruptSession)
 
   // Get events for sidebar access
   const { events } = useConversation(session.id)
@@ -553,6 +555,13 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       setFocusedEventId(null)
     } else {
       onClose()
+    }
+  })
+
+  // Ctrl+X to interrupt session
+  useHotkeys('ctrl+x', () => {
+    if (session.status === 'running' || session.status === 'starting') {
+      interruptSession(session.id)
     }
   })
 

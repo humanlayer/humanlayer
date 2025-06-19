@@ -18,6 +18,9 @@ type Client interface {
 	// ListSessions lists all active sessions
 	ListSessions() (*rpc.ListSessionsResponse, error)
 
+	// InterruptSession interrupts a running session
+	InterruptSession(sessionID string) error
+
 	// ContinueSession continues an existing completed session with a new query
 	ContinueSession(req rpc.ContinueSessionRequest) (*rpc.ContinueSessionResponse, error)
 

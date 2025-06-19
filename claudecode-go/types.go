@@ -3,6 +3,7 @@ package claudecode
 import (
 	"os/exec"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -146,6 +147,7 @@ type Session struct {
 	mu  sync.RWMutex
 	err error
 }
+
 
 // SetError safely sets the error
 func (s *Session) SetError(err error) {
