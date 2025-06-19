@@ -135,12 +135,21 @@ func (c *Client) GetPendingFunctionCalls(ctx context.Context) ([]FunctionCall, e
 	}
 	defer resp.Body.Close()
 
-	var functionCalls []FunctionCall
-	if err := json.NewDecoder(resp.Body).Decode(&functionCalls); err != nil {
+	// The API returns a paginated response with this structure:
+	// {"items": [...], "total": N, "limit": 100, "offset": 0, "has_more": false}
+	var paginatedResponse struct {
+		Items   []FunctionCall `json:"items"`
+		Total   int            `json:"total"`
+		Limit   int            `json:"limit"`
+		Offset  int            `json:"offset"`
+		HasMore bool           `json:"has_more"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&paginatedResponse); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	return functionCalls, nil
+	return paginatedResponse.Items, nil
 }
 
 // GetPendingHumanContacts fetches all pending human contact requests
@@ -151,12 +160,21 @@ func (c *Client) GetPendingHumanContacts(ctx context.Context) ([]HumanContact, e
 	}
 	defer resp.Body.Close()
 
-	var humanContacts []HumanContact
-	if err := json.NewDecoder(resp.Body).Decode(&humanContacts); err != nil {
+	// The API returns a paginated response with this structure:
+	// {"items": [...], "total": N, "limit": 100, "offset": 0, "has_more": false}
+	var paginatedResponse struct {
+		Items   []HumanContact `json:"items"`
+		Total   int            `json:"total"`
+		Limit   int            `json:"limit"`
+		Offset  int            `json:"offset"`
+		HasMore bool           `json:"has_more"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&paginatedResponse); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	return humanContacts, nil
+	return paginatedResponse.Items, nil
 }
 
 // RespondToFunctionCall responds to a function call approval request

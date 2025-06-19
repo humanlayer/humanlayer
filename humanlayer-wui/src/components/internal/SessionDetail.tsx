@@ -1,15 +1,27 @@
 import { createStarryNight } from '@wooorm/starry-night'
+import jsonGrammar from '@wooorm/starry-night/source.json'
 import textMd from '@wooorm/starry-night/text.md'
 import { toJsxRuntime } from 'hast-util-to-jsx-runtime'
 import { Fragment, jsx, jsxs } from 'react/jsx-runtime'
+import { format, parseISO } from 'date-fns'
+import React from 'react'
 
-import { ConversationEvent, ConversationEventType, SessionInfo } from '@/lib/daemon/types'
+import {
+  ConversationEvent,
+  ConversationEventType,
+  SessionInfo,
+  ApprovalStatus,
+} from '@/lib/daemon/types'
 import { Card, CardContent } from '../ui/card'
+import { Button } from '../ui/button'
+import { Input } from '../ui/input'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { useConversation } from '@/hooks/useConversation'
 import { Skeleton } from '../ui/skeleton'
 import { Suspense, useEffect, useRef, useState } from 'react'
-import { Bot, MessageCircleDashed, Wrench } from 'lucide-react'
+import { Bot, MessageCircleDashed, UserCheck, Wrench } from 'lucide-react'
+import { getStatusTextClass } from '@/utils/component-utils'
+import { daemonClient } from '@/lib/daemon/client'
 
 /* I, Sundeep, don't know how I feel about what's going on here. */
 let starryNight: any | null = null
@@ -19,8 +31,25 @@ interface SessionDetailProps {
   onClose: () => void
 }
 
+function starryNightJson(json: string) {
+  try {
+    const formatted = JSON.stringify(JSON.parse(json), null, 2)
+    const tree = starryNight?.highlight(formatted, 'source.json')
+    return tree ? toJsxRuntime(tree, { Fragment, jsx, jsxs }) : <span>{json}</span>
+  } catch {
+    return null
+  }
+}
+
 /* This will almost certainly become something else over time, but for the moment while we get a feel for the data, this is okay */
-function eventToDisplayObject(event: ConversationEvent) {
+function eventToDisplayObject(
+  event: ConversationEvent,
+  onApprove?: (approvalId: string) => void,
+  onDeny?: (approvalId: string, reason: string) => void,
+  denyingApprovalId?: string | null,
+  onStartDeny?: (approvalId: string) => void,
+  onCancelDeny?: () => void,
+) {
   let subject = <span>Unknown Subject</span>
   let body = null
   let iconComponent = null
@@ -114,6 +143,65 @@ function eventToDisplayObject(event: ConversationEvent) {
     }
   }
 
+  if (event.approval_status) {
+    const approvalStatusToColor = {
+      [ApprovalStatus.Pending]: 'text-[var(--terminal-warning)]',
+      [ApprovalStatus.Approved]: 'text-[var(--terminal-success)]',
+      [ApprovalStatus.Denied]: 'text-[var(--terminal-error)]',
+      [ApprovalStatus.Resolved]: 'text-[var(--terminal-success)]',
+    }
+    iconComponent = <UserCheck className="w-4 h-4" />
+    subject = (
+      <span>
+        <span className={`font-bold ${approvalStatusToColor[event.approval_status]}`}>
+          Approval ({event.approval_status})
+        </span>
+        <div className="font-mono text-sm text-muted-foreground">
+          Assistant would like to use <span className="font-bold">{event.tool_name}</span>
+        </div>
+        <div className="mt-4">{starryNightJson(event.tool_input_json!)}</div>
+      </span>
+    )
+
+    // Add approve/deny buttons for pending approvals
+    if (event.approval_status === ApprovalStatus.Pending && event.approval_id && onApprove && onDeny) {
+      const isDenying = denyingApprovalId === event.approval_id
+
+      body = (
+        <div className="mt-4 flex gap-2 justify-end">
+          {!isDenying ? (
+            <>
+              <Button
+                className="cursor-pointer"
+                size="sm"
+                variant="default"
+                onClick={e => {
+                  e.stopPropagation()
+                  onApprove(event.approval_id!)
+                }}
+              >
+                Approve
+              </Button>
+              <Button
+                className="cursor-pointer"
+                size="sm"
+                variant="destructive"
+                onClick={e => {
+                  e.stopPropagation()
+                  onStartDeny?.(event.approval_id!)
+                }}
+              >
+                Deny
+              </Button>
+            </>
+          ) : (
+            <DenyForm approvalId={event.approval_id!} onDeny={onDeny} onCancel={onCancelDeny} />
+          )}
+        </div>
+      )
+    }
+  }
+
   if (event.event_type === ConversationEventType.Message) {
     const subjectText = event.content?.split('\n')[0] || ''
     const bodyText = event.content?.split('\n').slice(1).join('\n') || ''
@@ -144,6 +232,7 @@ function eventToDisplayObject(event: ConversationEvent) {
     isCompleted: event.is_completed,
     iconComponent,
     body,
+    created_at: event.created_at,
   }
 }
 
@@ -169,7 +258,9 @@ function EventMetaInfo({ event }: { event: ConversationEvent }) {
         </div>
         <div>
           <span className="font-medium text-muted-foreground">Created:</span>
-          <span className="ml-2 font-mono text-xs">{new Date(event.created_at).toLocaleString()}</span>
+          <span className="ml-2 font-mono text-xs">
+            {format(parseISO(event.created_at), 'MMM d, yyyy h:mm a')}
+          </span>
         </div>
         <div>
           <span className="font-medium text-muted-foreground">Completed:</span>
@@ -216,6 +307,50 @@ function EventMetaInfo({ event }: { event: ConversationEvent }) {
   )
 }
 
+function DenyForm({
+  approvalId,
+  onDeny,
+  onCancel,
+}: {
+  approvalId: string
+  onDeny?: (approvalId: string, reason: string) => void
+  onCancel?: () => void
+}) {
+  const [reason, setReason] = useState('')
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (reason.trim() && onDeny) {
+      onDeny(approvalId, reason.trim())
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="flex gap-2 items-center">
+      <Input
+        type="text"
+        placeholder="Reason for denial..."
+        value={reason}
+        onChange={e => setReason(e.target.value)}
+        className="flex-1"
+        autoFocus
+      />
+      <Button
+        className="cursor-pointer"
+        type="submit"
+        size="sm"
+        variant="destructive"
+        disabled={!reason.trim()}
+      >
+        Deny
+      </Button>
+      <Button className="cursor-pointer" type="button" size="sm" variant="outline" onClick={onCancel}>
+        Cancel
+      </Button>
+    </form>
+  )
+}
+
 function ConversationContent({
   sessionId,
   focusedEventId,
@@ -223,6 +358,8 @@ function ConversationContent({
   expandedEventId,
   setExpandedEventId,
   isWideView,
+  onApprove,
+  onDeny,
 }: {
   sessionId: string
   focusedEventId: number | null
@@ -230,10 +367,18 @@ function ConversationContent({
   expandedEventId: number | null
   setExpandedEventId: (id: number | null) => void
   isWideView: boolean
+  onApprove?: (approvalId: string) => void
+  onDeny?: (approvalId: string, reason: string) => void
 }) {
   // const { formattedEvents, loading, error } = useFormattedConversation(sessionId)
   const { events, loading, error, isInitialLoad } = useConversation(sessionId, undefined, 1000)
-  const displayObjects = events.map(eventToDisplayObject)
+  const [denyingApprovalId, setDenyingApprovalId] = useState<string | null>(null)
+
+  const displayObjects = events.map(event =>
+    eventToDisplayObject(event, onApprove, onDeny, denyingApprovalId, setDenyingApprovalId, () =>
+      setDenyingApprovalId(null),
+    ),
+  )
   const nonEmptyDisplayObjects = displayObjects.filter(displayObject => displayObject !== null)
 
   // Navigation handlers
@@ -277,7 +422,7 @@ function ConversationContent({
     }
 
     if (!starryNight) {
-      createStarryNight([textMd]).then(sn => (starryNight = sn))
+      createStarryNight([textMd, jsonGrammar]).then(sn => (starryNight = sn))
     }
   }, [loading, events])
 
@@ -321,10 +466,17 @@ function ConversationContent({
               onClick={() =>
                 setExpandedEventId(expandedEventId === displayObject.id ? null : displayObject.id)
               }
-              className={`py-3 px-2 cursor-pointer ${
+              className={`pt-2 pb-4 px-2 cursor-pointer ${
                 index !== nonEmptyDisplayObjects.length - 1 ? 'border-b' : ''
               } ${focusedEventId === displayObject.id ? '!bg-accent/20 -mx-2 px-4 rounded' : ''}`}
             >
+              {/* Timestamp at top */}
+              <div className="flex justify-end mb-2">
+                <span className="text-xs text-muted-foreground/60">
+                  {format(parseISO(displayObject.created_at), 'MMM d, yyyy h:mm a')}
+                </span>
+              </div>
+
               <div className="flex items-center gap-2">
                 {displayObject.iconComponent && (
                   <span className="text-sm text-accent">{displayObject.iconComponent}</span>
@@ -357,6 +509,23 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
 
   // Get events for sidebar access
   const { events } = useConversation(session.id)
+
+  // Approval handlers
+  const handleApprove = async (approvalId: string) => {
+    try {
+      await daemonClient.approveFunctionCall(approvalId)
+    } catch (error) {
+      console.error('Failed to approve:', error)
+    }
+  }
+
+  const handleDeny = async (approvalId: string, reason: string) => {
+    try {
+      await daemonClient.denyFunctionCall(approvalId, reason)
+    } catch (error) {
+      console.error('Failed to deny:', error)
+    }
+  }
 
   // Screen width detection for responsive layout
   useEffect(() => {
@@ -392,9 +561,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       <hgroup className="flex flex-col gap-1">
         <h2 className="text-lg font-medium text-foreground font-mono">{session.query} </h2>
         <small
-          className={`font-mono text-xs uppercase tracking-wider ${
-            session.status === 'running' ? 'text-green-600 font-bold' : 'text-muted-foreground'
-          }`}
+          className={`font-mono text-xs uppercase tracking-wider ${getStatusTextClass(session.status)}`}
         >
           {`${session.status}${session.model ? `/ ${session.model}` : ''}`}
         </small>
@@ -418,16 +585,18 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                 expandedEventId={expandedEventId}
                 setExpandedEventId={setExpandedEventId}
                 isWideView={isWideView}
+                onApprove={handleApprove}
+                onDeny={handleDeny}
               />
             </Suspense>
           </CardContent>
         </Card>
 
         {/* Sidebar for wide view */}
-        {isWideView && focusedEventId && (
+        {isWideView && expandedEventId && (
           <Card className="w-[40%]">
             <CardContent>
-              <EventMetaInfo event={events.find(e => e.id === focusedEventId)!} />
+              <EventMetaInfo event={events.find(e => e.id === expandedEventId)!} />
             </CardContent>
           </Card>
         )}
