@@ -82,6 +82,8 @@ pub struct InterruptSessionRequest {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct InterruptSessionResponse {
     pub success: bool,
+    pub session_id: String,
+    pub status: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

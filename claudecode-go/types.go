@@ -3,7 +3,6 @@ package claudecode
 import (
 	"os/exec"
 	"sync"
-	"syscall"
 	"time"
 )
 

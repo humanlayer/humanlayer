@@ -782,22 +782,26 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 
 // InterruptSession interrupts a running session
 func (m *Manager) InterruptSession(ctx context.Context, sessionID string) error {
+	// Hold lock to ensure session reference remains valid during interrupt
 	m.mu.Lock()
 	claudeSession, exists := m.activeProcesses[sessionID]
-	m.mu.Unlock()
-
 	if !exists {
+		m.mu.Unlock()
 		return fmt.Errorf("session not found or not active")
 	}
+
+	// Keep the session in activeProcesses during interrupt to prevent race conditions
+	// It will be cleaned up in the monitorSession goroutine after interrupt completes
+	m.mu.Unlock()
 
 	// Interrupt the Claude session
 	if err := claudeSession.Interrupt(); err != nil {
 		return fmt.Errorf("failed to interrupt Claude session: %w", err)
 	}
 
-	// Update database with interrupted status
-	status := string(StatusFailed)
-	errorMsg := "Session interrupted by user"
+	// Update database to show session is completing after interrupt
+	status := string(StatusCompleting)
+	errorMsg := "Session interrupt requested, shutting down gracefully"
 	now := time.Now()
 	update := store.SessionUpdate{
 		Status:         &status,
@@ -819,8 +823,7 @@ func (m *Manager) InterruptSession(ctx context.Context, sessionID string) error 
 			Data: map[string]interface{}{
 				"session_id": sessionID,
 				"old_status": string(StatusRunning),
-				"new_status": string(StatusFailed),
-				"error":      errorMsg,
+				"new_status": string(StatusCompleting),
 			},
 		})
 	}
