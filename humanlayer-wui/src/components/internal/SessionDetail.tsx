@@ -611,9 +611,10 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     }
   })
 
-  // R key to show response input (only for completed sessions)
-  useHotkeys('r', () => {
-    if (session.status === 'completed' && !showResponseInput) {
+  // R key to show response input (only for non-running sessions)
+  useHotkeys('r', event => {
+    if (session.status !== 'running' && session.status !== 'starting' && !showResponseInput) {
+      event.preventDefault()
       setShowResponseInput(true)
     }
   })
@@ -679,61 +680,79 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         )}
       </div>
 
-      {/* Response input for completed sessions */}
-      {session.status === 'completed' && (
-        <Card>
-          <CardContent>
-            {!showResponseInput ? (
-              <div className="flex items-center justify-between py-2">
-                <span className="text-sm text-muted-foreground">
-                  Continue this conversation with a new message
-                </span>
-                <Button size="sm" variant="outline" onClick={() => setShowResponseInput(true)}>
-                  Continue Session <kbd className="ml-2 px-1 py-0.5 text-xs bg-muted rounded">R</kbd>
+      {/* Response input - always show but disable for running sessions */}
+      <Card>
+        <CardContent>
+          {!showResponseInput ? (
+            <div className="flex items-center justify-between py-2">
+              <span className="text-sm text-muted-foreground">
+                {session.status === 'running' || session.status === 'starting'
+                  ? 'Session is currently running'
+                  : 'Continue this conversation with a new message'}
+              </span>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowResponseInput(true)}
+                disabled={session.status === 'running' || session.status === 'starting'}
+              >
+                {session.status === 'running' || session.status === 'starting' ? (
+                  'Running'
+                ) : (
+                  <>
+                    Continue Session <kbd className="ml-2 px-1 py-0.5 text-xs bg-muted rounded">R</kbd>
+                  </>
+                )}
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium">Continue conversation:</span>
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  placeholder={
+                    session.status === 'running' || session.status === 'starting'
+                      ? 'Session is currently running...'
+                      : 'Enter your message to continue the conversation...'
+                  }
+                  value={responseInput}
+                  onChange={e => setResponseInput(e.target.value)}
+                  onKeyDown={handleResponseInputKeyDown}
+                  autoFocus
+                  disabled={
+                    isResponding || session.status === 'running' || session.status === 'starting'
+                  }
+                  className="flex-1"
+                />
+                <Button
+                  onClick={handleContinueSession}
+                  disabled={
+                    !responseInput.trim() ||
+                    isResponding ||
+                    session.status === 'running' ||
+                    session.status === 'starting'
+                  }
+                  size="sm"
+                >
+                  {isResponding ? 'Starting...' : 'Send'}
                 </Button>
               </div>
-            ) : (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">Continue conversation:</span>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => {
-                      setShowResponseInput(false)
-                      setResponseInput('')
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Enter your message to continue the conversation..."
-                    value={responseInput}
-                    onChange={e => setResponseInput(e.target.value)}
-                    onKeyDown={handleResponseInputKeyDown}
-                    autoFocus
-                    disabled={isResponding}
-                    className="flex-1"
-                  />
-                  <Button
-                    onClick={handleContinueSession}
-                    disabled={!responseInput.trim() || isResponding}
-                    size="sm"
-                  >
-                    {isResponding ? 'Starting...' : 'Send'}
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Press <kbd className="px-1 py-0.5 bg-muted rounded">Enter</kbd> to send,
-                  <kbd className="px-1 py-0.5 bg-muted rounded ml-1">Escape</kbd> to cancel
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
+              <p className="text-xs text-muted-foreground">
+                {session.status === 'running' || session.status === 'starting' ? (
+                  'Wait for the session to complete before continuing'
+                ) : (
+                  <>
+                    Press <kbd className="px-1 py-0.5 bg-muted rounded">Enter</kbd> to send,
+                    <kbd className="px-1 py-0.5 bg-muted rounded ml-1">Escape</kbd> to cancel
+                  </>
+                )}
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </section>
   )
 }
