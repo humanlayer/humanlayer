@@ -155,7 +155,9 @@ async fn handle_subscription(
                                         debug!("Subscription {} received heartbeat", id);
                                     } else {
                                         // It's an event notification
+                                        info!("Subscription {} received event: {}", id, line);
                                         if let Ok(notification) = serde_json::from_value::<EventNotification>(msg) {
+                                            info!("Subscription {} forwarding event to frontend: type={:?}", id, notification.event.event_type);
                                             if event_tx.send(notification).await.is_err() {
                                                 info!("Subscription {} receiver dropped", id);
                                                 break;

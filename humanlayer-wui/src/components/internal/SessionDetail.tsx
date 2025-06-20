@@ -611,9 +611,9 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     }
   })
 
-  // R key to show response input (only for non-running sessions)
+  // R key to show response input (only for completed sessions)
   useHotkeys('r', event => {
-    if (session.status !== 'running' && session.status !== 'starting' && !showResponseInput) {
+    if (session.status === 'completed' && !showResponseInput) {
       event.preventDefault()
       setShowResponseInput(true)
     }
@@ -680,28 +680,32 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         )}
       </div>
 
-      {/* Response input - always show but disable for running sessions */}
+      {/* Response input - always show but disable for non-completed sessions */}
       <Card>
         <CardContent>
           {!showResponseInput ? (
             <div className="flex items-center justify-between py-2">
               <span className="text-sm text-muted-foreground">
-                {session.status === 'running' || session.status === 'starting'
-                  ? 'Session is currently running'
-                  : 'Continue this conversation with a new message'}
+                {session.status === 'completed'
+                  ? 'Continue this conversation with a new message'
+                  : session.status === 'running' || session.status === 'starting'
+                    ? 'Session is currently running'
+                    : 'Session must be completed to continue'}
               </span>
               <Button
                 size="sm"
                 variant="outline"
                 onClick={() => setShowResponseInput(true)}
-                disabled={session.status === 'running' || session.status === 'starting'}
+                disabled={session.status !== 'completed'}
               >
                 {session.status === 'running' || session.status === 'starting' ? (
                   'Running'
-                ) : (
+                ) : session.status === 'completed' ? (
                   <>
                     Continue Session <kbd className="ml-2 px-1 py-0.5 text-xs bg-muted rounded">R</kbd>
                   </>
+                ) : (
+                  'Not Available'
                 )}
               </Button>
             </div>
@@ -713,40 +717,33 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               <div className="flex gap-2">
                 <Input
                   placeholder={
-                    session.status === 'running' || session.status === 'starting'
-                      ? 'Session is currently running...'
-                      : 'Enter your message to continue the conversation...'
+                    session.status === 'completed'
+                      ? 'Enter your message to continue the conversation...'
+                      : 'Session must be completed to continue...'
                   }
                   value={responseInput}
                   onChange={e => setResponseInput(e.target.value)}
                   onKeyDown={handleResponseInputKeyDown}
                   autoFocus
-                  disabled={
-                    isResponding || session.status === 'running' || session.status === 'starting'
-                  }
+                  disabled={isResponding || session.status !== 'completed'}
                   className="flex-1"
                 />
                 <Button
                   onClick={handleContinueSession}
-                  disabled={
-                    !responseInput.trim() ||
-                    isResponding ||
-                    session.status === 'running' ||
-                    session.status === 'starting'
-                  }
+                  disabled={!responseInput.trim() || isResponding || session.status !== 'completed'}
                   size="sm"
                 >
                   {isResponding ? 'Starting...' : 'Send'}
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                {session.status === 'running' || session.status === 'starting' ? (
-                  'Wait for the session to complete before continuing'
-                ) : (
+                {session.status === 'completed' ? (
                   <>
                     Press <kbd className="px-1 py-0.5 bg-muted rounded">Enter</kbd> to send,
                     <kbd className="px-1 py-0.5 bg-muted rounded ml-1">Escape</kbd> to cancel
                   </>
+                ) : (
+                  'Wait for the session to complete before continuing'
                 )}
               </p>
             </div>
