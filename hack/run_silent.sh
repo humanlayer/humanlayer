@@ -19,7 +19,7 @@ run_silent() {
     local description="$1"
     local command="$2"
 
-    if [[ "$VERBOSE" == "1" ]]; then
+    if [ "$VERBOSE" = "1" ]; then
         echo "  → Running: $command"
         eval "$command"
         return $?
@@ -45,7 +45,7 @@ run_with_quiet() {
     local description="$1"
     local command="$2"
 
-    if [[ "$VERBOSE" == "1" ]]; then
+    if [ "$VERBOSE" = "1" ]; then
         echo "  → Running: $command"
         eval "$command"
         return $?
@@ -71,7 +71,7 @@ run_silent_with_test_count() {
     local command="$2"
     local test_type="${3:-pytest}"  # Default to pytest
 
-    if [[ "$VERBOSE" == "1" ]]; then
+    if [ "$VERBOSE" = "1" ]; then
         echo "  → Running: $command"
         eval "$command"
         return $?
@@ -86,7 +86,7 @@ run_silent_with_test_count() {
             pytest)
                 # Look for pytest summary line like "45 passed in 2.3s"
                 test_count=$(grep -E "[0-9]+ passed" "$tmp_file" | grep -oE "^[0-9]+ passed" | awk '{print $1}' | tail -1)
-                if [[ -n "$test_count" ]]; then
+                if [ -n "$test_count" ]; then
                     local duration=$(grep -E "[0-9]+ passed" "$tmp_file" | grep -oE "in [0-9.]+s" | tail -1)
                     printf "  ${GREEN}✓${NC} %s (%s tests%s)\n" "$description" "$test_count" "${duration:+, $duration}"
                 else
@@ -96,7 +96,7 @@ run_silent_with_test_count() {
             jest)
                 # For jest with --json output
                 test_count=$(jq -r '.numTotalTests // empty' "$tmp_file" 2>/dev/null)
-                if [[ -n "$test_count" ]]; then
+                if [ -n "$test_count" ]; then
                     printf "  ${GREEN}✓${NC} %s (%s tests)\n" "$description" "$test_count"
                 else
                     printf "  ${GREEN}✓${NC} %s\n" "$description"
@@ -105,7 +105,7 @@ run_silent_with_test_count() {
             go)
                 # For go test -json output
                 test_count=$(grep -c '"Action":"pass"' "$tmp_file" 2>/dev/null || true)
-                if [[ "$test_count" -gt 0 ]]; then
+                if [ "$test_count" -gt 0 ]; then
                     printf "  ${GREEN}✓${NC} %s (%s tests)\n" "$description" "$test_count"
                 else
                     printf "  ${GREEN}✓${NC} %s\n" "$description"
@@ -114,7 +114,7 @@ run_silent_with_test_count() {
             vitest)
                 # Look for vitest summary
                 test_count=$(grep -E "Test Files.*passed" "$tmp_file" | grep -oE "[0-9]+ passed" | awk '{print $1}' | head -1)
-                if [[ -n "$test_count" ]]; then
+                if [ -n "$test_count" ]; then
                     printf "  ${GREEN}✓${NC} %s (%s test files)\n" "$description" "$test_count"
                 else
                     printf "  ${GREEN}✓${NC} %s\n" "$description"

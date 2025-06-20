@@ -57,9 +57,9 @@ test-py: ## Test the code with pytest
 .PHONY: test-ts
 test-ts: ## Test the code with jest
 	@. ./hack/run_silent.sh && print_header "humanlayer-ts" "TypeScript tests"
-	@. ./hack/run_silent.sh && run_silent_with_test_count "Jest passed" "npm --silent -C humanlayer-ts run test -- --json --outputFile=test-results.json" "jest"
+	@. ./hack/run_silent.sh && run_silent "Jest passed" "npm --silent -C humanlayer-ts run test"
 	@. ./hack/run_silent.sh && print_header "humanlayer-ts-vercel-ai-sdk" "TypeScript tests"
-	@. ./hack/run_silent.sh && run_silent_with_test_count "Jest passed" "npm --silent -C humanlayer-ts-vercel-ai-sdk run test -- --json --outputFile=test-results.json" "jest"
+	@. ./hack/run_silent.sh && run_silent "Jest passed" "npm --silent -C humanlayer-ts-vercel-ai-sdk run test"
 
 .PHONY: test-hlyr
 test-hlyr: ## Test hlyr CLI tool
