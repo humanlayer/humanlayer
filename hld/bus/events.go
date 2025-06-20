@@ -116,7 +116,7 @@ func (eb *eventBus) Publish(event Event) {
 			}
 		}
 	}
-	
+
 	slog.Debug("event publish complete",
 		"event_type", event.Type,
 		"total_subscribers", len(eb.subscribers),

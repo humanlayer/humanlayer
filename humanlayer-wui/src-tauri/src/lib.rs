@@ -205,7 +205,7 @@ async fn subscribe_to_events(
         request.session_id,
         request.run_id
     );
-    
+
     let client_guard = state.client.lock().await;
 
     match &*client_guard {

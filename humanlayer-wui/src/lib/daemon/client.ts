@@ -74,7 +74,7 @@ export class DaemonClient {
 
     // Listen for daemon events and forward to handlers
     const unlisten = await listen<EventNotification>('daemon-event', event => {
-      console.log('subscribeToEvents()', event);
+      console.log('subscribeToEvents()', event)
       try {
         handlers.onEvent?.(event.payload)
       } catch (error) {

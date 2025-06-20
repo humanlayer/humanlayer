@@ -119,7 +119,7 @@ export function useSession(sessionId: string | undefined) {
 
     const subscribe = async () => {
       try {
-        console.log('useSession: Subscribing to events for session:', sessionId);
+        console.log('useSession: Subscribing to events for session:', sessionId)
         unsubscribe = await daemonClient.subscribeToEvents(
           {
             event_types: ['session_status_changed'],
@@ -127,7 +127,7 @@ export function useSession(sessionId: string | undefined) {
           },
           {
             onEvent: event => {
-              console.log('useSession.onEvent() - received event:', event);
+              console.log('useSession.onEvent() - received event:', event)
 
               if (!isActive) return
 
