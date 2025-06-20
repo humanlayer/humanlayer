@@ -152,24 +152,19 @@ func TestContinueSession_ValidatesParentStatus(t *testing.T) {
 		expectedError string
 	}{
 		{
-			name:          "running session",
-			parentStatus:  store.SessionStatusRunning,
-			expectedError: "cannot continue session with status running (must be completed)",
-		},
-		{
 			name:          "failed session",
 			parentStatus:  store.SessionStatusFailed,
-			expectedError: "cannot continue session with status failed (must be completed)",
+			expectedError: "cannot continue session with status failed (must be completed or running)",
 		},
 		{
 			name:          "starting session",
 			parentStatus:  store.SessionStatusStarting,
-			expectedError: "cannot continue session with status starting (must be completed)",
+			expectedError: "cannot continue session with status starting (must be completed or running)",
 		},
 		{
 			name:          "waiting input session",
 			parentStatus:  store.SessionStatusWaitingInput,
-			expectedError: "cannot continue session with status waiting_input (must be completed)",
+			expectedError: "cannot continue session with status waiting_input (must be completed or running)",
 		},
 	}
 
@@ -191,7 +186,7 @@ func TestContinueSession_ValidatesParentStatus(t *testing.T) {
 			}
 			_, err := manager.ContinueSession(context.Background(), req)
 			if err == nil {
-				t.Error("Expected error for non-completed parent session")
+				t.Error("Expected error for invalid parent session status")
 			}
 			if err.Error() != tc.expectedError {
 				t.Errorf("Expected error '%s', got: %v", tc.expectedError, err)
@@ -420,4 +415,70 @@ func TestInterruptSession(t *testing.T) {
 	if err.Error() != "session not found or not active" {
 		t.Errorf("Expected 'session not found or not active' error, got: %v", err)
 	}
+}
+
+func TestContinueSession_InterruptsRunningSession(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockStore := store.NewMockConversationStore(ctrl)
+	manager, _ := NewManager(nil, mockStore)
+
+	t.Run("running session without claude_session_id", func(t *testing.T) {
+		// Create a running parent session without claude_session_id (orphaned state)
+		runningParentSession := &store.Session{
+			ID:              "parent-orphaned",
+			RunID:           "run-orphaned",
+			ClaudeSessionID: "", // Missing - can't be resumed
+			Status:          store.SessionStatusRunning,
+			Query:           "original query",
+			CreatedAt:       time.Now(),
+		}
+
+		mockStore.EXPECT().GetSession(gomock.Any(), "parent-orphaned").Return(runningParentSession, nil)
+
+		req := ContinueSessionConfig{
+			ParentSessionID: "parent-orphaned",
+			Query:           "continue orphaned session",
+		}
+
+		_, err := manager.ContinueSession(context.Background(), req)
+
+		// Should fail with claude_session_id validation error, not interrupt error
+		if err == nil {
+			t.Error("Expected error for orphaned running session")
+		}
+		if err.Error() != "parent session missing claude_session_id (cannot resume)" {
+			t.Errorf("Expected claude_session_id validation error, got: %v", err)
+		}
+	})
+
+	t.Run("running session with claude_session_id but no active process", func(t *testing.T) {
+		// Create a running parent session with claude_session_id but no active process
+		runningParentSession := &store.Session{
+			ID:              "parent-running",
+			RunID:           "run-parent",
+			ClaudeSessionID: "claude-parent", // Has session ID
+			Status:          store.SessionStatusRunning,
+			Query:           "original query",
+			CreatedAt:       time.Now(),
+		}
+
+		mockStore.EXPECT().GetSession(gomock.Any(), "parent-running").Return(runningParentSession, nil)
+
+		req := ContinueSessionConfig{
+			ParentSessionID: "parent-running",
+			Query:           "continue running session",
+		}
+
+		_, err := manager.ContinueSession(context.Background(), req)
+
+		// Should fail when trying to interrupt because no active process exists
+		if err == nil {
+			t.Error("Expected error trying to interrupt non-existent Claude process")
+		}
+		if err.Error() != "failed to interrupt running session: session not found or not active" {
+			t.Errorf("Expected interrupt error, got: %v", err)
+		}
+	})
 }

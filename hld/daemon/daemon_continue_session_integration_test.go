@@ -116,14 +116,14 @@ func TestIntegrationContinueSession(t *testing.T) {
 		return nil, fmt.Errorf("no result in response")
 	}
 
-	t.Run("ContinueSession_RequiresCompletedParent", func(t *testing.T) {
-		// Create a parent session that's still running
-		parentSessionID := "parent-running"
+	t.Run("ContinueSession_RequiresCompletedOrRunningParent", func(t *testing.T) {
+		// Create a parent session that's failed (should be rejected)
+		parentSessionID := "parent-failed"
 		parentSession := &store.Session{
 			ID:              parentSessionID,
 			RunID:           "run-parent",
 			ClaudeSessionID: "claude-parent",
-			Status:          store.SessionStatusRunning, // Not completed
+			Status:          store.SessionStatusFailed, // Neither completed nor running
 			Query:           "original query",
 			CreatedAt:       time.Now(),
 			LastActivityAt:  time.Now(),
@@ -134,7 +134,7 @@ func TestIntegrationContinueSession(t *testing.T) {
 			t.Fatalf("Failed to create parent session: %v", err)
 		}
 
-		// Try to continue the running session
+		// Try to continue the failed session
 		req := rpc.ContinueSessionRequest{
 			SessionID: parentSessionID,
 			Query:     "continue this",
@@ -142,9 +142,9 @@ func TestIntegrationContinueSession(t *testing.T) {
 
 		_, err := sendRPC(t, "continueSession", req)
 		if err == nil {
-			t.Error("Expected error when continuing running session")
+			t.Error("Expected error when continuing failed session")
 		}
-		if err.Error() != "cannot continue session with status running (must be completed)" {
+		if err.Error() != "cannot continue session with status failed (must be completed or running)" {
 			t.Errorf("Unexpected error: %v", err)
 		}
 	})
