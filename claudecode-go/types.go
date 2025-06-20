@@ -147,7 +147,6 @@ type Session struct {
 	err error
 }
 
-
 // SetError safely sets the error
 func (s *Session) SetError(err error) {
 	s.mu.Lock()

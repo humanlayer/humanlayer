@@ -124,7 +124,7 @@ impl DaemonClientTrait for DaemonClient {
     async fn launch_session(&self, req: LaunchSessionRequest) -> Result<LaunchSessionResponse> {
         self.send_rpc_request("launchSession", Some(req)).await
     }
-    
+
 
     async fn list_sessions(&self) -> Result<ListSessionsResponse> {
         self.send_rpc_request("listSessions", None::<()>).await

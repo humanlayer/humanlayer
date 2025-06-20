@@ -125,7 +125,7 @@ func (m *Manager) LaunchSession(ctx context.Context, config claudecode.SessionCo
 
 	// Publish status change event
 	if m.eventBus != nil {
-		m.eventBus.Publish(bus.Event{
+		event := bus.Event{
 			Type: bus.EventSessionStatusChanged,
 			Data: map[string]interface{}{
 				"session_id": sessionID,
@@ -133,7 +133,14 @@ func (m *Manager) LaunchSession(ctx context.Context, config claudecode.SessionCo
 				"old_status": string(StatusStarting),
 				"new_status": string(StatusRunning),
 			},
-		})
+		}
+		slog.Info("publishing session status changed event",
+			"session_id", sessionID,
+			"run_id", runID,
+			"event_type", event.Type,
+			"event_data", event.Data,
+		)
+		m.eventBus.Publish(event)
 	}
 
 	// Monitor session lifecycle in background
@@ -243,7 +250,7 @@ func (m *Manager) monitorSession(ctx context.Context, sessionID, runID string, c
 
 		// Publish status change event
 		if m.eventBus != nil {
-			m.eventBus.Publish(bus.Event{
+			event := bus.Event{
 				Type: bus.EventSessionStatusChanged,
 				Data: map[string]interface{}{
 					"session_id": sessionID,
@@ -251,7 +258,14 @@ func (m *Manager) monitorSession(ctx context.Context, sessionID, runID string, c
 					"old_status": string(StatusRunning),
 					"new_status": string(StatusCompleted),
 				},
-			})
+			}
+			slog.Info("publishing session completion event",
+				"session_id", sessionID,
+				"run_id", runID,
+				"event_type", event.Type,
+				"event_data", event.Data,
+			)
+			m.eventBus.Publish(event)
 		}
 	}
 
