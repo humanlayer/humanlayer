@@ -97,11 +97,16 @@ func (eb *eventBus) Publish(event Event) {
 		"subscriber_count", len(eb.subscribers),
 	)
 
+	matchedCount := 0
 	for _, sub := range eb.subscribers {
 		if eb.matchesFilter(event, sub.Filter) {
+			matchedCount++
 			select {
 			case sub.Channel <- event:
-				// Event sent successfully
+				slog.Debug("event sent to subscriber",
+					"subscriber_id", sub.ID,
+					"event_type", event.Type,
+				)
 			default:
 				// Channel is full, drop the event
 				slog.Warn("dropping event for slow subscriber",
@@ -111,6 +116,12 @@ func (eb *eventBus) Publish(event Event) {
 			}
 		}
 	}
+
+	slog.Debug("event publish complete",
+		"event_type", event.Type,
+		"total_subscribers", len(eb.subscribers),
+		"matched_subscribers", matchedCount,
+	)
 }
 
 // matchesFilter checks if an event matches a subscriber's filter
@@ -125,28 +136,45 @@ func (eb *eventBus) matchesFilter(event Event, filter EventFilter) bool {
 			}
 		}
 		if !matched {
+			slog.Debug("event type mismatch",
+				"event_type", event.Type,
+				"filter_types", filter.Types,
+			)
 			return false
 		}
 	}
 
 	// Check session ID filter
 	if filter.SessionID != "" {
-		if sessionID, ok := event.Data["session_id"].(string); ok {
-			if sessionID != filter.SessionID {
-				return false
-			}
+		sessionID, sessionIDExists := event.Data["session_id"].(string)
+		slog.Debug("checking session ID filter",
+			"filter_session_id", filter.SessionID,
+			"event_session_id", sessionID,
+			"session_id_exists", sessionIDExists,
+			"event_data", event.Data,
+		)
+		if !sessionIDExists || sessionID != filter.SessionID {
+			return false
 		}
 	}
 
 	// Check run ID filter
 	if filter.RunID != "" {
-		if runID, ok := event.Data["run_id"].(string); ok {
-			if runID != filter.RunID {
-				return false
-			}
+		runID, runIDExists := event.Data["run_id"].(string)
+		slog.Debug("checking run ID filter",
+			"filter_run_id", filter.RunID,
+			"event_run_id", runID,
+			"run_id_exists", runIDExists,
+		)
+		if !runIDExists || runID != filter.RunID {
+			return false
 		}
 	}
 
+	slog.Debug("event matches filter",
+		"event_type", event.Type,
+		"filter", filter,
+	)
 	return true
 }
 
