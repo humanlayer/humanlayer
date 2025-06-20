@@ -150,51 +150,36 @@ async fn handle_subscription(
                             // Handle event notifications
                             if let Ok(msg) = serde_json::from_str::<Value>(&line) {
                                 info!("Subscription {} received message: {}", id, line);
-                                
-                                // Check if it's a heartbeat
-                                if let Some(msg_type) = msg.get("type") {
-                                    if msg_type == "heartbeat" {
-                                        debug!("Subscription {} received heartbeat", id);
-                                    } else {
-                                        // It's an event notification
-                                        info!("Subscription {} attempting to parse event notification", id);
-                                        if let Ok(notification) = serde_json::from_value::<EventNotification>(msg.clone()) {
-                                            info!(
-                                                "Subscription {} parsed event - type: {:?}, data: {:?}",
-                                                id,
-                                                notification.event.event_type,
-                                                notification.event.data
-                                            );
-                                            if event_tx.send(notification).await.is_err() {
-                                                info!("Subscription {} receiver dropped", id);
-                                                break;
-                                            } else {
-                                                info!("Subscription {} event sent to channel successfully", id);
-                                            }
-                                        } else {
-                                            warn!("Subscription {} failed to parse event notification: {}", id, line);
+
+                                // Try to parse as EventNotification directly (wrapped in result)
+                                if let Some(result) = msg.get("result") {
+                                    // Check if it's a heartbeat first
+                                    if let Some(msg_type) = result.get("type") {
+                                        if msg_type == "heartbeat" {
+                                            debug!("Subscription {} received heartbeat", id);
+                                            // Skip heartbeats, don't try to parse as events
+                                            line.clear();
+                                            continue;
                                         }
                                     }
-                                } else {
-                                    // Try to parse as EventNotification directly (wrapped in result)
-                                    if let Some(result) = msg.get("result") {
-                                        info!("Subscription {} found result field, parsing event", id);
-                                        if let Ok(notification) = serde_json::from_value::<EventNotification>(result.clone()) {
-                                            info!(
-                                                "Subscription {} parsed event from result - type: {:?}, data: {:?}",
-                                                id,
-                                                notification.event.event_type,
-                                                notification.event.data
-                                            );
-                                            if event_tx.send(notification).await.is_err() {
-                                                info!("Subscription {} receiver dropped", id);
-                                                break;
-                                            } else {
-                                                info!("Subscription {} event sent to channel successfully", id);
-                                            }
+
+                                    // Try to parse as event notification
+                                    info!("Subscription {} attempting to parse event from result", id);
+                                    if let Ok(notification) = serde_json::from_value::<EventNotification>(result.clone()) {
+                                        info!(
+                                            "Subscription {} parsed event - type: {:?}, data: {:?}",
+                                            id,
+                                            notification.event.event_type,
+                                            notification.event.data
+                                        );
+                                        if event_tx.send(notification).await.is_err() {
+                                            info!("Subscription {} receiver dropped", id);
+                                            break;
                                         } else {
-                                            warn!("Subscription {} failed to parse result as event: {:?}", id, result);
+                                            info!("Subscription {} event sent to channel successfully", id);
                                         }
+                                    } else {
+                                        warn!("Subscription {} failed to parse result as event: {:?}", id, result);
                                     }
                                 }
                             }
