@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e  # Exit immediately if any command fails
 
 # Helper functions for running commands with clean output
 # Used by Makefile to reduce verbosity while preserving error information
