@@ -820,8 +820,8 @@ func (sm *sessionModel) buildSessionDetailContent() string {
 		if sess.Result.NumTurns > 0 {
 			content.WriteString(labelStyle.Render("Turns:") + valueStyle.Render(fmt.Sprintf("%d", sess.Result.NumTurns)) + "\n")
 		}
-		if sess.Result.TotalCost > 0 {
-			content.WriteString(labelStyle.Render("Cost:") + valueStyle.Render(fmt.Sprintf("$%.4f", sess.Result.TotalCost)) + "\n")
+		if sess.Result.CostUSD > 0 {
+			content.WriteString(labelStyle.Render("Cost:") + valueStyle.Render(fmt.Sprintf("$%.4f", sess.Result.CostUSD)) + "\n")
 		}
 	}
 

@@ -1,8 +1,11 @@
 package claudecode_test
 
 import (
+	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -234,4 +237,258 @@ func TestClient_WorkingDirectoryHandling(t *testing.T) {
 				tt.workingDir, tt.expectedToContain)
 		})
 	}
+}
+
+func TestClaudeCodeSchemaCompatibility(t *testing.T) {
+	if os.Getenv("ANTHROPIC_API_KEY") == "" {
+		t.Skip("ANTHROPIC_API_KEY not set")
+	}
+
+	client, err := claudecode.NewClient()
+	if err != nil {
+		t.Skip("claude binary not found in PATH")
+	}
+
+	t.Run("StreamJSON_SchemaValidation", func(t *testing.T) {
+		config := claudecode.SessionConfig{
+			Query:        "Count to 2, then say 'done'",
+			OutputFormat: claudecode.OutputStreamJSON,
+			Model:        claudecode.ModelSonnet,
+		}
+
+		session, err := client.Launch(config)
+		if err != nil {
+			t.Fatalf("failed to launch session: %v", err)
+		}
+
+		var systemEvent *claudecode.StreamEvent
+		var messageEvents []*claudecode.StreamEvent
+		var resultEvent *claudecode.StreamEvent
+
+		// Collect all events
+		for event := range session.Events {
+			switch event.Type {
+			case "system":
+				if event.Subtype == "init" {
+					eventCopy := event // Create a copy to avoid pointer to loop variable
+					systemEvent = &eventCopy
+				}
+			case "assistant", "user":
+				eventCopy := event // Create a copy to avoid pointer to loop variable
+				messageEvents = append(messageEvents, &eventCopy)
+			case "result":
+				eventCopy := event // Create a copy to avoid pointer to loop variable
+				resultEvent = &eventCopy
+			}
+		}
+
+		result, err := session.Wait()
+		if err != nil {
+			t.Fatalf("session failed: %v", err)
+		}
+
+		// Validate system init event structure
+		if systemEvent == nil {
+			t.Fatal("expected system init event")
+		}
+		if systemEvent.SessionID == "" {
+			t.Error("system event missing session_id")
+		}
+		if systemEvent.Tools == nil {
+			t.Error("system event tools array should not be nil")
+		}
+		if len(systemEvent.Tools) == 0 {
+			t.Error("system event should have tools available")
+		}
+		if systemEvent.MCPServers == nil {
+			t.Error("system event mcp_servers array should not be nil")
+		}
+
+		// Validate message events have proper structure
+		if len(messageEvents) == 0 {
+			t.Fatal("expected at least one message event")
+		}
+		for i, event := range messageEvents {
+			if event.Message == nil {
+				t.Errorf("message event %d missing message field", i)
+				continue
+			}
+			// Only validate ID and Usage for assistant messages
+			if event.Type == "assistant" {
+				if event.Message.ID == "" {
+					t.Errorf("assistant message event %d missing message.id", i)
+				}
+				if event.Message.Usage == nil {
+					t.Errorf("assistant message event %d missing message.usage", i)
+				} else {
+					// Validate usage fields for assistant messages
+					if event.Message.Usage.InputTokens <= 0 {
+						t.Errorf("assistant message event %d usage.input_tokens should be positive, got %d", i, event.Message.Usage.InputTokens)
+					}
+					if event.Message.Usage.OutputTokens <= 0 {
+						t.Errorf("assistant message event %d usage.output_tokens should be positive, got %d", i, event.Message.Usage.OutputTokens)
+					}
+				}
+			}
+
+			// Validate common fields for all message types
+			if event.Message.Role == "" {
+				t.Errorf("message event %d missing message.role", i)
+			}
+			if len(event.Message.Content) == 0 {
+				t.Errorf("message event %d missing message.content", i)
+			}
+		}
+
+		// Validate result event structure (most critical for catching schema changes)
+		if resultEvent == nil {
+			t.Fatal("expected result event")
+		}
+		if resultEvent.Type != "result" {
+			t.Errorf("expected result.type='result', got %q", resultEvent.Type)
+		}
+		if resultEvent.Subtype != "success" {
+			t.Errorf("expected result.subtype='success', got %q", resultEvent.Subtype)
+		}
+		if resultEvent.SessionID == "" {
+			t.Error("result event missing session_id")
+		}
+		if resultEvent.CostUSD <= 0 {
+			t.Error("result event should have positive total_cost_usd")
+		}
+		if resultEvent.DurationMS <= 0 {
+			t.Error("result event should have positive duration_ms")
+		}
+		if resultEvent.NumTurns <= 0 {
+			t.Error("result event should have positive num_turns")
+		}
+		if resultEvent.Usage == nil {
+			t.Error("result event missing usage field")
+		} else {
+			// Validate cumulative usage in result
+			if resultEvent.Usage.InputTokens <= 0 {
+				t.Error("result usage.input_tokens should be positive")
+			}
+			if resultEvent.Usage.OutputTokens <= 0 {
+				t.Error("result usage.output_tokens should be positive")
+			}
+			// Note: ServiceTier can be empty in result usage
+			if resultEvent.Usage.ServerToolUse == nil {
+				t.Error("result usage missing server_tool_use")
+			} else {
+				// web_search_requests should be 0 for this simple test
+				if resultEvent.Usage.ServerToolUse.WebSearchRequests != 0 {
+					t.Errorf("expected 0 web_search_requests, got %d", resultEvent.Usage.ServerToolUse.WebSearchRequests)
+				}
+			}
+		}
+
+		// Validate final Result object matches result event
+		if result.CostUSD != resultEvent.CostUSD {
+			t.Errorf("Result.CostUSD mismatch: final=%f, event=%f", result.CostUSD, resultEvent.CostUSD)
+		}
+		if result.DurationMS != resultEvent.DurationMS {
+			t.Errorf("Result.DurationMS mismatch: final=%d, event=%d", result.DurationMS, resultEvent.DurationMS)
+		}
+		if result.NumTurns != resultEvent.NumTurns {
+			t.Errorf("Result.NumTurns mismatch: final=%d, event=%d", result.NumTurns, resultEvent.NumTurns)
+		}
+		if result.SessionID != resultEvent.SessionID {
+			t.Errorf("Result.SessionID mismatch: final=%s, event=%s", result.SessionID, resultEvent.SessionID)
+		}
+		if result.Usage == nil {
+			t.Error("Result.Usage should not be nil")
+		}
+	})
+
+	t.Run("JSON_SchemaValidation", func(t *testing.T) {
+		config := claudecode.SessionConfig{
+			Query:        "Say: hello",
+			OutputFormat: claudecode.OutputJSON,
+			Model:        claudecode.ModelSonnet,
+		}
+
+		result, err := client.LaunchAndWait(config)
+		if err != nil {
+			t.Fatalf("failed to launch and wait: %v", err)
+		}
+
+		// Validate all expected fields are present and valid
+		if result.Type != "result" {
+			t.Errorf("expected Type='result', got %q", result.Type)
+		}
+		if result.Subtype != "success" {
+			t.Errorf("expected Subtype='success', got %q", result.Subtype)
+		}
+		if result.SessionID == "" {
+			t.Error("SessionID should not be empty")
+		}
+		if result.CostUSD <= 0 {
+			t.Error("CostUSD should be positive")
+		}
+		if result.DurationMS <= 0 {
+			t.Error("DurationMS should be positive")
+		}
+		if result.NumTurns <= 0 {
+			t.Error("NumTurns should be positive")
+		}
+		if result.Result == "" {
+			t.Error("Result content should not be empty")
+		}
+		if result.IsError {
+			t.Error("IsError should be false for successful session")
+		}
+		if result.Error != "" {
+			t.Errorf("Error should be empty for successful session, got: %s", result.Error)
+		}
+
+		// Validate Usage field (critical - this is new)
+		if result.Usage == nil {
+			t.Fatal("Result.Usage should not be nil")
+		}
+		if result.Usage.InputTokens <= 0 {
+			t.Error("Usage.InputTokens should be positive")
+		}
+		if result.Usage.OutputTokens <= 0 {
+			t.Error("Usage.OutputTokens should be positive")
+		}
+		// Note: ServiceTier can be empty
+		if result.Usage.ServerToolUse == nil {
+			t.Error("Usage.ServerToolUse should not be nil")
+		}
+
+		t.Logf("Schema validation passed - Claude Code output format is compatible")
+		t.Logf("Cost: $%.6f, Tokens: %d in + %d out, Service: %s",
+			result.CostUSD, result.Usage.InputTokens, result.Usage.OutputTokens, result.Usage.ServiceTier)
+	})
+
+	t.Run("StrictSchemaValidation_NoExtraFields", func(t *testing.T) {
+		// This test ensures Claude Code doesn't add unexpected fields
+		// by comparing raw JSON output with our struct unmarshaling
+
+		config := claudecode.SessionConfig{
+			Query:        "Say: test",
+			OutputFormat: claudecode.OutputJSON,
+			Model:        claudecode.ModelSonnet,
+		}
+
+		// Get raw JSON output directly from Claude Code
+		cmd := exec.Command("claude", "-p", config.Query, "--output-format", "json", "--model", string(config.Model))
+		output, err := cmd.Output()
+		if err != nil {
+			t.Fatalf("claude command failed: %v", err)
+		}
+
+		// Test strict unmarshaling into our Result struct
+		var result claudecode.Result
+		decoder := json.NewDecoder(strings.NewReader(string(output)))
+		decoder.DisallowUnknownFields() // This will fail if Claude Code adds new fields
+
+		if err := decoder.Decode(&result); err != nil {
+			t.Errorf("Strict JSON unmarshaling failed - Claude Code may have added new fields: %v", err)
+			t.Logf("Raw output: %s", string(output))
+		} else {
+			t.Logf("Strict schema validation passed - no unexpected fields in Claude Code output")
+		}
+	})
 }

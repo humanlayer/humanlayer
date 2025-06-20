@@ -124,7 +124,7 @@ impl DaemonClientTrait for DaemonClient {
     async fn launch_session(&self, req: LaunchSessionRequest) -> Result<LaunchSessionResponse> {
         self.send_rpc_request("launchSession", Some(req)).await
     }
-    
+
 
     async fn list_sessions(&self) -> Result<ListSessionsResponse> {
         self.send_rpc_request("listSessions", None::<()>).await
@@ -262,7 +262,15 @@ impl DaemonClientTrait for DaemonClient {
         let req = InterruptSessionRequest {
             session_id: session_id.to_string(),
         };
-        self.send_rpc_request("interruptSession", Some(req)).await
+        let response: InterruptSessionResponse = self.send_rpc_request("interruptSession", Some(req)).await?;
+
+        if !response.success {
+            return Err(Error::Session(
+                format!("Failed to interrupt session {}", session_id)
+            ));
+        }
+
+        Ok(())
     }
 }
 

@@ -98,3 +98,15 @@ type ContinueSessionResponse struct {
 	ClaudeSessionID string `json:"claude_session_id"` // The new Claude session ID (unique for each resume)
 	ParentSessionID string `json:"parent_session_id"` // The parent session ID
 }
+
+// InterruptSessionRequest is the request for interrupting a session
+type InterruptSessionRequest struct {
+	SessionID string `json:"session_id"`
+}
+
+// InterruptSessionResponse is the response for interrupting a session
+type InterruptSessionResponse struct {
+	Success   bool   `json:"success"`
+	SessionID string `json:"session_id"`
+	Status    string `json:"status"`
+}

@@ -139,6 +139,7 @@ const (
 	SessionStatusCompleted    = "completed"
 	SessionStatusFailed       = "failed"
 	SessionStatusWaitingInput = "waiting_input"
+	SessionStatusCompleting   = "completing" // Session received interrupt signal and is shutting down
 )
 
 // Helper functions for converting between store types and Claude types

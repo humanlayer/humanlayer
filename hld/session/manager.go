@@ -329,7 +329,6 @@ func (m *Manager) GetSessionInfo(sessionID string) (*Info, error) {
 
 		if dbSession.CostUSD != nil {
 			result.CostUSD = *dbSession.CostUSD
-			result.TotalCost = *dbSession.CostUSD // Both fields should have same value
 		}
 		if dbSession.NumTurns != nil {
 			result.NumTurns = *dbSession.NumTurns
@@ -391,7 +390,6 @@ func (m *Manager) ListSessions() []Info {
 
 			if dbSession.CostUSD != nil {
 				result.CostUSD = *dbSession.CostUSD
-				result.TotalCost = *dbSession.CostUSD // Both fields should have same value
 			}
 			if dbSession.NumTurns != nil {
 				result.NumTurns = *dbSession.NumTurns
@@ -624,14 +622,48 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 		return nil, fmt.Errorf("failed to get parent session: %w", err)
 	}
 
-	// Validate parent session status
-	if parentSession.Status != store.SessionStatusCompleted {
-		return nil, fmt.Errorf("cannot continue session with status %s (must be completed)", parentSession.Status)
+	// Validate parent session status - allow completed or running sessions
+	if parentSession.Status != store.SessionStatusCompleted && parentSession.Status != store.SessionStatusRunning {
+		return nil, fmt.Errorf("cannot continue session with status %s (must be completed or running)", parentSession.Status)
 	}
 
-	// Validate parent session has claude_session_id
+	// Validate parent session has claude_session_id (needed for resume)
 	if parentSession.ClaudeSessionID == "" {
 		return nil, fmt.Errorf("parent session missing claude_session_id (cannot resume)")
+	}
+
+	// If session is running, interrupt it and wait for completion
+	if parentSession.Status == store.SessionStatusRunning {
+		slog.Info("interrupting running session before resume",
+			"parent_session_id", req.ParentSessionID)
+
+		if err := m.InterruptSession(ctx, req.ParentSessionID); err != nil {
+			return nil, fmt.Errorf("failed to interrupt running session: %w", err)
+		}
+
+		// Wait for the interrupted session to complete gracefully
+		m.mu.RLock()
+		claudeSession, exists := m.activeProcesses[req.ParentSessionID]
+		m.mu.RUnlock()
+
+		if exists {
+			_, err := claudeSession.Wait()
+			if err != nil {
+				slog.Debug("interrupted session exited",
+					"parent_session_id", req.ParentSessionID,
+					"error", err)
+			}
+		}
+
+		// Re-fetch parent session to get updated completed status
+		parentSession, err = m.store.GetSession(ctx, req.ParentSessionID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to re-fetch parent session after interrupt: %w", err)
+		}
+
+		slog.Info("session interrupted and completed, proceeding with resume",
+			"parent_session_id", req.ParentSessionID,
+			"final_status", parentSession.Status)
 	}
 
 	// Build config for resumed session
@@ -782,22 +814,26 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 
 // InterruptSession interrupts a running session
 func (m *Manager) InterruptSession(ctx context.Context, sessionID string) error {
+	// Hold lock to ensure session reference remains valid during interrupt
 	m.mu.Lock()
 	claudeSession, exists := m.activeProcesses[sessionID]
-	m.mu.Unlock()
-
 	if !exists {
+		m.mu.Unlock()
 		return fmt.Errorf("session not found or not active")
 	}
+
+	// Keep the session in activeProcesses during interrupt to prevent race conditions
+	// It will be cleaned up in the monitorSession goroutine after interrupt completes
+	m.mu.Unlock()
 
 	// Interrupt the Claude session
 	if err := claudeSession.Interrupt(); err != nil {
 		return fmt.Errorf("failed to interrupt Claude session: %w", err)
 	}
 
-	// Update database with interrupted status
-	status := string(StatusFailed)
-	errorMsg := "Session interrupted by user"
+	// Update database to show session is completing after interrupt
+	status := string(StatusCompleting)
+	errorMsg := "Session interrupt requested, shutting down gracefully"
 	now := time.Now()
 	update := store.SessionUpdate{
 		Status:         &status,
@@ -819,8 +855,7 @@ func (m *Manager) InterruptSession(ctx context.Context, sessionID string) error 
 			Data: map[string]interface{}{
 				"session_id": sessionID,
 				"old_status": string(StatusRunning),
-				"new_status": string(StatusFailed),
-				"error":      errorMsg,
+				"new_status": string(StatusCompleting),
 			},
 		})
 	}

@@ -329,8 +329,8 @@ func (s *Session) parseStreamingJSON(stdout, stderr io.Reader) {
 				DurationAPI: event.DurationAPI,
 				NumTurns:    event.NumTurns,
 				Result:      event.Result,
-				TotalCost:   event.TotalCost,
 				SessionID:   event.SessionID,
+				Usage:       event.Usage,
 				Error:       event.Error,
 			}
 		}

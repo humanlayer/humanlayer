@@ -3,7 +3,6 @@ package claudecode
 import (
 	"os/exec"
 	"sync"
-	"syscall"
 	"time"
 )
 
@@ -68,14 +67,20 @@ type StreamEvent struct {
 	Tools      []string    `json:"tools,omitempty"`
 	MCPServers []MCPStatus `json:"mcp_servers,omitempty"`
 
+	// System event fields (when type="system" and subtype="init")
+	CWD            string `json:"cwd,omitempty"`
+	Model          string `json:"model,omitempty"`
+	PermissionMode string `json:"permissionMode,omitempty"`
+	APIKeySource   string `json:"apiKeySource,omitempty"`
+
 	// Result event fields (when type="result")
-	CostUSD     float64 `json:"cost_usd,omitempty"`
+	CostUSD     float64 `json:"total_cost_usd,omitempty"`
 	IsError     bool    `json:"is_error,omitempty"`
 	DurationMS  int     `json:"duration_ms,omitempty"`
 	DurationAPI int     `json:"duration_api_ms,omitempty"`
 	NumTurns    int     `json:"num_turns,omitempty"`
 	Result      string  `json:"result,omitempty"`
-	TotalCost   float64 `json:"total_cost,omitempty"`
+	Usage       *Usage  `json:"usage,omitempty"`
 	Error       string  `json:"error,omitempty"`
 }
 
@@ -106,26 +111,33 @@ type Content struct {
 	Content   string                 `json:"content,omitempty"`
 }
 
+// ServerToolUse tracks server-side tool usage
+type ServerToolUse struct {
+	WebSearchRequests int `json:"web_search_requests,omitempty"`
+}
+
 // Usage tracks token usage
 type Usage struct {
-	InputTokens              int `json:"input_tokens"`
-	OutputTokens             int `json:"output_tokens"`
-	CacheCreationInputTokens int `json:"cache_creation_input_tokens,omitempty"`
-	CacheReadInputTokens     int `json:"cache_read_input_tokens,omitempty"`
+	InputTokens              int            `json:"input_tokens"`
+	OutputTokens             int            `json:"output_tokens"`
+	CacheCreationInputTokens int            `json:"cache_creation_input_tokens,omitempty"`
+	CacheReadInputTokens     int            `json:"cache_read_input_tokens,omitempty"`
+	ServiceTier              string         `json:"service_tier,omitempty"`
+	ServerToolUse            *ServerToolUse `json:"server_tool_use,omitempty"`
 }
 
 // Result represents the final result of a Claude session
 type Result struct {
 	Type        string  `json:"type"`
 	Subtype     string  `json:"subtype"`
-	CostUSD     float64 `json:"cost_usd"`
+	CostUSD     float64 `json:"total_cost_usd"`
 	IsError     bool    `json:"is_error"`
 	DurationMS  int     `json:"duration_ms"`
 	DurationAPI int     `json:"duration_api_ms"`
 	NumTurns    int     `json:"num_turns"`
 	Result      string  `json:"result"`
-	TotalCost   float64 `json:"total_cost"`
 	SessionID   string  `json:"session_id"`
+	Usage       *Usage  `json:"usage,omitempty"`
 	Error       string  `json:"error,omitempty"`
 }
 
@@ -147,7 +159,6 @@ type Session struct {
 	mu  sync.RWMutex
 	err error
 }
-
 
 // SetError safely sets the error
 func (s *Session) SetError(err error) {

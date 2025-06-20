@@ -6,6 +6,7 @@ export enum SessionStatus {
   Completed = 'completed',
   Failed = 'failed',
   WaitingInput = 'waiting_input',
+  Completing = 'completing',
 }
 
 export enum ApprovalType {
@@ -286,4 +287,14 @@ export interface SubscribeRequest {
 // Daemon client API
 export interface GetSessionStateResponse {
   session: SessionState
+}
+
+export interface InterruptSessionRequest {
+  session_id: string
+}
+
+export interface InterruptSessionResponse {
+  success: boolean
+  session_id: string
+  status: string
 }

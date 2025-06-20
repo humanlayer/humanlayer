@@ -86,10 +86,6 @@ func TestSessionManager_ResultPopulation(t *testing.T) {
 		t.Errorf("Expected Result.CostUSD %f, got %f", costUSD, result.CostUSD)
 	}
 
-	if result.TotalCost != costUSD {
-		t.Errorf("Expected Result.TotalCost %f, got %f", costUSD, result.TotalCost)
-	}
-
 	if result.DurationMS != durationMS {
 		t.Errorf("Expected Result.DurationMS %d, got %d", durationMS, result.DurationMS)
 	}
