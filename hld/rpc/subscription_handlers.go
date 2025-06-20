@@ -103,6 +103,9 @@ func (h *SubscriptionHandlers) SubscribeConn(ctx context.Context, conn net.Conn,
 		"event_types", req.EventTypes,
 		"session_id", req.SessionID,
 		"run_id", req.RunID,
+		"filter_has_session_id", req.SessionID != "",
+		"filter_has_run_id", req.RunID != "",
+		"filter_has_event_types", len(req.EventTypes) > 0,
 	)
 
 	// Send initial success response
@@ -177,9 +180,11 @@ func (h *SubscriptionHandlers) SubscribeConn(ctx context.Context, conn net.Conn,
 				return fmt.Errorf("failed to send event notification: %w", err)
 			}
 
-			slog.Debug("sent event notification",
+			/* Don't actually commit this, this should be a debug log */
+			slog.Info("sent event notification to subscriber",
 				"subscription_id", sub.ID,
 				"event_type", event.Type,
+				"event_data", event.Data,
 			)
 
 		case <-time.After(30 * time.Second):
