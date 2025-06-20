@@ -38,7 +38,7 @@ check-claudecode-go:
 
 .PHONY: check-header
 check-header:
-	@bash -n ./hack/run_silent.sh || (echo "❌ Shell script syntax error in hack/run_silent.sh" && exit 1)
+	@sh -n ./hack/run_silent.sh || (echo "❌ Shell script syntax error in hack/run_silent.sh" && exit 1)
 	@. ./hack/run_silent.sh && print_main_header "Running Checks"
 
 # Summary removed - tracking doesn't work across sub-makes
@@ -79,7 +79,7 @@ test-claudecode-go: ## Test claudecode-go
 
 .PHONY: test-header
 test-header:
-	@bash -n ./hack/run_silent.sh || (echo "❌ Shell script syntax error in hack/run_silent.sh" && exit 1)
+	@sh -n ./hack/run_silent.sh || (echo "❌ Shell script syntax error in hack/run_silent.sh" && exit 1)
 	@. ./hack/run_silent.sh && print_main_header "Running Tests"
 
 .PHONY: test
