@@ -114,6 +114,34 @@
   --terminal-error: #ff0000;
 }
 
+/* Framer Dark - Inspired by Framer's dark theme */
+[data-theme='framer-dark'] {
+  --terminal-bg: #181818;
+  --terminal-bg-alt: #2f3439;
+  --terminal-fg: #eeeeee;
+  --terminal-fg-dim: #999999;
+  --terminal-accent: #fd5799;
+  --terminal-accent-alt: #20bcfc;
+  --terminal-border: #333333;
+  --terminal-success: #32ccdc;
+  --terminal-warning: #fecb6e;
+  --terminal-error: #fd886b;
+}
+
+/* Framer Light - Light counterpart to Framer Dark */
+[data-theme='framer-light'] {
+  --terminal-bg: #ffffff;
+  --terminal-bg-alt: #f8f9fa;
+  --terminal-fg: #333333;
+  --terminal-fg-dim: #666666;
+  --terminal-accent: #0066cc;
+  --terminal-accent-alt: #006bb3;
+  --terminal-border: #e0e0e0;
+  --terminal-success: #22a06b;
+  --terminal-warning: #cc7722;
+  --terminal-error: #dc3545;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
