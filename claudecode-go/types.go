@@ -68,7 +68,7 @@ type StreamEvent struct {
 	MCPServers []MCPStatus `json:"mcp_servers,omitempty"`
 
 	// Result event fields (when type="result")
-	CostUSD     float64 `json:"cost_usd,omitempty"`
+	CostUSD     float64 `json:"total_cost_usd,omitempty"`
 	IsError     bool    `json:"is_error,omitempty"`
 	DurationMS  int     `json:"duration_ms,omitempty"`
 	DurationAPI int     `json:"duration_api_ms,omitempty"`
@@ -117,7 +117,7 @@ type Usage struct {
 type Result struct {
 	Type        string  `json:"type"`
 	Subtype     string  `json:"subtype"`
-	CostUSD     float64 `json:"cost_usd"`
+	CostUSD     float64 `json:"total_cost_usd"`
 	IsError     bool    `json:"is_error"`
 	DurationMS  int     `json:"duration_ms"`
 	DurationAPI int     `json:"duration_api_ms"`
@@ -146,7 +146,6 @@ type Session struct {
 	mu  sync.RWMutex
 	err error
 }
-
 
 // SetError safely sets the error
 func (s *Session) SetError(err error) {
