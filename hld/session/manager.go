@@ -329,7 +329,6 @@ func (m *Manager) GetSessionInfo(sessionID string) (*Info, error) {
 
 		if dbSession.CostUSD != nil {
 			result.CostUSD = *dbSession.CostUSD
-			result.TotalCost = *dbSession.CostUSD // Both fields should have same value
 		}
 		if dbSession.NumTurns != nil {
 			result.NumTurns = *dbSession.NumTurns
@@ -391,7 +390,6 @@ func (m *Manager) ListSessions() []Info {
 
 			if dbSession.CostUSD != nil {
 				result.CostUSD = *dbSession.CostUSD
-				result.TotalCost = *dbSession.CostUSD // Both fields should have same value
 			}
 			if dbSession.NumTurns != nil {
 				result.NumTurns = *dbSession.NumTurns
