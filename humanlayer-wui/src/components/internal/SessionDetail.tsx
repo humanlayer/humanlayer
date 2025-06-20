@@ -23,6 +23,7 @@ import { useStore } from '@/AppStore'
 import { Bot, MessageCircleDashed, UserCheck, Wrench } from 'lucide-react'
 import { getStatusTextClass } from '@/utils/component-utils'
 import { daemonClient } from '@/lib/daemon/client'
+import { useNavigate } from 'react-router-dom'
 
 /* I, Sundeep, don't know how I feel about what's going on here. */
 let starryNight: any | null = null
@@ -507,7 +508,11 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [focusedEventId, setFocusedEventId] = useState<number | null>(null)
   const [expandedEventId, setExpandedEventId] = useState<number | null>(null)
   const [isWideView, setIsWideView] = useState(false)
+  const [showResponseInput, setShowResponseInput] = useState(false)
+  const [responseInput, setResponseInput] = useState('')
+  const [isResponding, setIsResponding] = useState(false)
   const interruptSession = useStore(state => state.interruptSession)
+  const navigate = useNavigate()
 
   // Get events for sidebar access
   const { events } = useConversation(session.id)
@@ -526,6 +531,47 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       await daemonClient.denyFunctionCall(approvalId, reason)
     } catch (error) {
       console.error('Failed to deny:', error)
+    }
+  }
+
+  // Continue session functionality
+  const handleContinueSession = async () => {
+    if (!responseInput.trim() || isResponding) return
+
+    try {
+      setIsResponding(true)
+      const response = await daemonClient.continueSession({
+        session_id: session.id,
+        query: responseInput.trim(),
+      })
+
+      // Navigate to the new child session
+      navigate(`/sessions/${response.session_id}`)
+
+      // Reset form state
+      setResponseInput('')
+      setShowResponseInput(false)
+    } catch (error) {
+      console.error('Failed to continue session:', error)
+    } finally {
+      setIsResponding(false)
+    }
+  }
+
+  const handleResponseInputKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleContinueSession()
+    } else if (e.key === 'Escape') {
+      setShowResponseInput(false)
+      setResponseInput('')
+    }
+  }
+
+  // Navigate to parent session
+  const handleNavigateToParent = () => {
+    if (session.parent_session_id) {
+      navigate(`/sessions/${session.parent_session_id}`)
     }
   }
 
@@ -565,15 +611,37 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     }
   })
 
+  // R key to show response input (only for completed sessions)
+  useHotkeys('r', () => {
+    if (session.status === 'completed' && !showResponseInput) {
+      setShowResponseInput(true)
+    }
+  })
+
+  // P key to navigate to parent session
+  useHotkeys('p', () => {
+    if (session.parent_session_id) {
+      handleNavigateToParent()
+    }
+  })
+
   return (
     <section className="flex flex-col gap-4">
       <hgroup className="flex flex-col gap-1">
-        <h2 className="text-lg font-medium text-foreground font-mono">{session.query} </h2>
+        <h2 className="text-lg font-medium text-foreground font-mono">
+          {session.query}{' '}
+          {session.parent_session_id && <span className="text-muted-foreground">[continued]</span>}
+        </h2>
         <small
           className={`font-mono text-xs uppercase tracking-wider ${getStatusTextClass(session.status)}`}
         >
           {`${session.status}${session.model ? `/ ${session.model}` : ''}`}
         </small>
+        {session.parent_session_id && (
+          <small className="text-xs text-muted-foreground">
+            Press <kbd className="px-1 py-0.5 text-xs bg-muted rounded">P</kbd> to view parent session
+          </small>
+        )}
       </hgroup>
       <div className={`flex gap-4 ${isWideView ? 'flex-row' : 'flex-col'}`}>
         <Card className={isWideView ? 'flex-1' : 'w-full'}>
@@ -610,6 +678,62 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
           </Card>
         )}
       </div>
+
+      {/* Response input for completed sessions */}
+      {session.status === 'completed' && (
+        <Card>
+          <CardContent>
+            {!showResponseInput ? (
+              <div className="flex items-center justify-between py-2">
+                <span className="text-sm text-muted-foreground">
+                  Continue this conversation with a new message
+                </span>
+                <Button size="sm" variant="outline" onClick={() => setShowResponseInput(true)}>
+                  Continue Session <kbd className="ml-2 px-1 py-0.5 text-xs bg-muted rounded">R</kbd>
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium">Continue conversation:</span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setShowResponseInput(false)
+                      setResponseInput('')
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Enter your message to continue the conversation..."
+                    value={responseInput}
+                    onChange={e => setResponseInput(e.target.value)}
+                    onKeyDown={handleResponseInputKeyDown}
+                    autoFocus
+                    disabled={isResponding}
+                    className="flex-1"
+                  />
+                  <Button
+                    onClick={handleContinueSession}
+                    disabled={!responseInput.trim() || isResponding}
+                    size="sm"
+                  >
+                    {isResponding ? 'Starting...' : 'Send'}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Press <kbd className="px-1 py-0.5 bg-muted rounded">Enter</kbd> to send,
+                  <kbd className="px-1 py-0.5 bg-muted rounded ml-1">Escape</kbd> to cancel
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </section>
   )
 }
