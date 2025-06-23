@@ -178,3 +178,6 @@ cython_debug/
 .Trashes
 
 .idea/
+
+# HumanLayer thoughts directory
+/thoughts/

@@ -14,6 +14,13 @@ export type ConfigFile = {
   app_base_url?: string
   daemon_socket?: string
   run_id?: string
+  thoughts?: {
+    thoughtsRepo: string
+    reposDir: string
+    globalDir: string
+    user: string
+    repoMappings: Record<string, string>
+  }
 }
 
 export type ConfigSource = 'flag' | 'env' | 'config' | 'default' | 'none'
@@ -99,7 +106,7 @@ const CONFIG_SCHEMA: ConfigSchema = {
 }
 
 export class ConfigResolver {
-  private configFile: ConfigFile
+  public configFile: ConfigFile
   private configFilePath: string
 
   constructor(options: { configFile?: string } = {}) {
@@ -230,7 +237,8 @@ export class ConfigResolver {
 }
 
 export function loadConfigFile(configFile?: string): ConfigFile {
-  return new ConfigResolver({ configFile }).configFile
+  const resolver = new ConfigResolver({ configFile })
+  return resolver.loadConfigFile(configFile)
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
