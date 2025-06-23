@@ -7,8 +7,6 @@ export function SessionDetailPage() {
   const navigate = useNavigate()
   const { session } = useSession(sessionId)
 
-  console.log('session', session)
-
   const handleClose = () => {
     navigate('/')
   }
