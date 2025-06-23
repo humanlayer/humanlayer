@@ -285,11 +285,6 @@ func (h *SessionHandlers) HandleContinueSession(ctx context.Context, params json
 	}, nil
 }
 
-// InterruptSessionRequest is the request for interrupting a session
-type InterruptSessionRequest struct {
-	SessionID string `json:"session_id"`
-}
-
 // HandleInterruptSession handles the InterruptSession RPC method
 func (h *SessionHandlers) HandleInterruptSession(ctx context.Context, params json.RawMessage) (interface{}, error) {
 	var req InterruptSessionRequest
@@ -318,7 +313,11 @@ func (h *SessionHandlers) HandleInterruptSession(ctx context.Context, params jso
 		return nil, fmt.Errorf("failed to interrupt session: %w", err)
 	}
 
-	return struct{}{}, nil
+	return &InterruptSessionResponse{
+		Success:   true,
+		SessionID: req.SessionID,
+		Status:    "completing",
+	}, nil
 }
 
 // Register registers all session handlers with the RPC server

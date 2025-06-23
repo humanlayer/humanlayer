@@ -34,3 +34,6 @@ yarn-error.log*
 
 .contentlayer
 .env
+
+# test files from our make commands
+test-results.json
