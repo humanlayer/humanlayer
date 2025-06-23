@@ -629,7 +629,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     }
   })
 
-  const isLongQuery = session.query.length > 100
+  const isLongQuery = session.query.length > 50
 
   return (
     <section className="flex flex-col gap-4">
@@ -638,7 +638,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
           <Collapsible open={isQueryExpanded} onOpenChange={setIsQueryExpanded}>
             <CollapsibleTrigger className="flex items-center gap-2 text-left w-full">
               <h2 className="text-lg font-medium text-foreground font-mono">
-                {truncate(session.query, 100)}{' '}
+                {truncate(session.query, 50)}{' '}
                 {session.parent_session_id && (
                   <span className="text-muted-foreground">[continued]</span>
                 )}
@@ -666,6 +666,11 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         >
           {`${session.status}${session.model ? `/ ${session.model}` : ''}`}
         </small>
+        {session.working_dir && (
+          <small className="font-mono text-xs text-muted-foreground">
+            {session.working_dir}
+          </small>
+        )}
         {session.parent_session_id && (
           <small className="text-xs text-muted-foreground">
             Press <kbd className="px-1 py-0.5 text-xs bg-muted rounded">P</kbd> to view parent session
