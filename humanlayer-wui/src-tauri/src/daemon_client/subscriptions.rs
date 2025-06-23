@@ -149,7 +149,7 @@ async fn handle_subscription(
                         } else {
                             // Handle event notifications
                             if let Ok(msg) = serde_json::from_str::<Value>(&line) {
-                                info!("Subscription {} received message: {}", id, line);
+                                debug!("Subscription {} received message: {}", id, line);
 
                                 // Try to parse as EventNotification directly (wrapped in result)
                                 if let Some(result) = msg.get("result") {
