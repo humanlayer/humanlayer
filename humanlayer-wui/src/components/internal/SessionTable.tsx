@@ -10,11 +10,12 @@ import {
 } from '../ui/table'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 import { useHotkeys, useHotkeysContext } from 'react-hotkeys-hook'
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { CircleOff, ChevronDown, ChevronRight } from 'lucide-react'
 import { getStatusTextClass } from '@/utils/component-utils'
 import { truncate, formatTimestamp, formatAbsoluteTimestamp } from '@/utils/formatting'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible'
+import { Input } from '../ui/input'
 
 interface SessionTableProps {
   sessions: SessionInfo[]
@@ -24,6 +25,7 @@ interface SessionTableProps {
   handleFocusPreviousSession?: () => void
   handleActivateSession?: (session: SessionInfo) => void
   focusedSession: SessionInfo | null
+  handleRenameSession?: (sessionId: string, newTitle: string) => void
 }
 
 export const SessionTableHotkeysScope = 'session-table'
@@ -36,9 +38,12 @@ export default function SessionTable({
   handleFocusPreviousSession,
   handleActivateSession,
   focusedSession,
+  handleRenameSession,
 }: SessionTableProps) {
   const { enableScope, disableScope } = useHotkeysContext()
   const [expandedQueryId, setExpandedQueryId] = useState<string | null>(null)
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null)
+  const [editingTitle, setEditingTitle] = useState('')
 
   useEffect(() => {
     enableScope(SessionTableHotkeysScope)
@@ -58,6 +63,39 @@ export default function SessionTable({
     },
     { scopes: SessionTableHotkeysScope },
   )
+  useHotkeys(
+    'n',
+    () => {
+      if (focusedSession && !editingSessionId) {
+        setEditingSessionId(focusedSession.id)
+        setEditingTitle(focusedSession.query)
+      }
+    },
+    { scopes: SessionTableHotkeysScope },
+  )
+
+  const handleSaveRename = (sessionId: string) => {
+    if (editingTitle.trim() && handleRenameSession) {
+      handleRenameSession(sessionId, editingTitle.trim())
+    }
+    setEditingSessionId(null)
+    setEditingTitle('')
+  }
+
+  const handleCancelRename = () => {
+    setEditingSessionId(null)
+    setEditingTitle('')
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent, sessionId: string) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      handleSaveRename(sessionId)
+    } else if (e.key === 'Escape') {
+      e.preventDefault()
+      handleCancelRename()
+    }
+  }
 
   return (
     <Table>
@@ -81,8 +119,18 @@ export default function SessionTable({
             className={`cursor-pointer ${focusedSession?.id === session.id ? '!bg-accent/20' : ''}`}
           >
             <TableCell className={getStatusTextClass(session.status)}>{session.status}</TableCell>
-            <TableCell>
-              {session.query.length > 50 ? (
+            <TableCell title={session.query}>
+              {editingSessionId === session.id ? (
+                <Input
+                  value={editingTitle}
+                  onChange={e => setEditingTitle(e.target.value)}
+                  onKeyDown={e => handleKeyDown(e, session.id)}
+                  onBlur={() => handleSaveRename(session.id)}
+                  autoFocus
+                  className="w-full"
+                  onClick={e => e.stopPropagation()}
+                />
+              ) : session.query.length > 50 ? (
                 <Collapsible
                   open={expandedQueryId === session.id}
                   onOpenChange={open => setExpandedQueryId(open ? session.id : null)}

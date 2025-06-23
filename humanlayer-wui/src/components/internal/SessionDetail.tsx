@@ -4,7 +4,9 @@ import textMd from '@wooorm/starry-night/text.md'
 import { toJsxRuntime } from 'hast-util-to-jsx-runtime'
 import { Fragment, jsx, jsxs } from 'react/jsx-runtime'
 import { format, parseISO } from 'date-fns'
-import React from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
+import { useHotkeys } from 'react-hotkeys-hook'
+import { useNavigate } from 'react-router-dom'
 
 import {
   ConversationEvent,
@@ -16,15 +18,12 @@ import { Card, CardContent } from '../ui/card'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible'
-import { useHotkeys } from 'react-hotkeys-hook'
 import { useConversation } from '@/hooks/useConversation'
 import { Skeleton } from '../ui/skeleton'
-import { Suspense, useEffect, useRef, useState } from 'react'
 import { useStore } from '@/AppStore'
 import { Bot, MessageCircleDashed, UserCheck, Wrench, ChevronDown, ChevronRight } from 'lucide-react'
 import { getStatusTextClass } from '@/utils/component-utils'
 import { daemonClient } from '@/lib/daemon/client'
-import { useNavigate } from 'react-router-dom'
 import { truncate } from '@/utils/formatting'
 
 /* I, Sundeep, don't know how I feel about what's going on here. */
@@ -33,6 +32,7 @@ let starryNight: any | null = null
 interface SessionDetailProps {
   session: SessionInfo
   onClose: () => void
+  onRenameSession?: (sessionId: string, newTitle: string) => void
 }
 
 function starryNightJson(json: string) {
@@ -184,7 +184,7 @@ function eventToDisplayObject(
                   onApprove(event.approval_id!)
                 }}
               >
-                Approve
+                Approve <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">A</kbd>
               </Button>
               <Button
                 className="cursor-pointer"
@@ -195,7 +195,7 @@ function eventToDisplayObject(
                   onStartDeny?.(event.approval_id!)
                 }}
               >
-                Deny
+                Deny <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">D</kbd>
               </Button>
             </>
           ) : (
@@ -506,7 +506,7 @@ function ConversationContent({
   )
 }
 
-function SessionDetail({ session, onClose }: SessionDetailProps) {
+function SessionDetail({ session, onClose, onRenameSession }: SessionDetailProps) {
   const [focusedEventId, setFocusedEventId] = useState<number | null>(null)
   const [expandedEventId, setExpandedEventId] = useState<number | null>(null)
   const [isWideView, setIsWideView] = useState(false)
@@ -514,6 +514,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [responseInput, setResponseInput] = useState('')
   const [isResponding, setIsResponding] = useState(false)
   const [isQueryExpanded, setIsQueryExpanded] = useState(false)
+  const [isEditingTitle, setIsEditingTitle] = useState(false)
+  const [editingTitle, setEditingTitle] = useState('')
   const interruptSession = useStore(state => state.interruptSession)
   const navigate = useNavigate()
 
@@ -629,12 +631,79 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     }
   })
 
+  // A key to approve focused event that has pending approval
+  useHotkeys('a', () => {
+    if (focusedEventId) {
+      const focusedEvent = events.find(e => e.id === focusedEventId)
+      if (focusedEvent?.approval_status === 'pending' && focusedEvent.approval_id) {
+        handleApprove(focusedEvent.approval_id)
+      }
+    }
+  })
+
+  // D key to deny focused event that has pending approval
+  useHotkeys('d', () => {
+    if (focusedEventId) {
+      const focusedEvent = events.find(e => e.id === focusedEventId)
+      if (focusedEvent?.approval_status === 'pending' && focusedEvent.approval_id) {
+        // For now, deny with a default reason - could be enhanced to show input
+        handleDeny(focusedEvent.approval_id, 'Denied via hotkey')
+      }
+    }
+  })
+
+  // N key to rename session title
+  useHotkeys('n', () => {
+    if (!isEditingTitle && onRenameSession) {
+      setIsEditingTitle(true)
+      setEditingTitle(session.query)
+    }
+  })
+
+  const handleSaveRename = () => {
+    if (editingTitle.trim() && onRenameSession) {
+      onRenameSession(session.id, editingTitle.trim())
+    }
+    setIsEditingTitle(false)
+    setEditingTitle('')
+  }
+
+  const handleCancelRename = () => {
+    setIsEditingTitle(false)
+    setEditingTitle('')
+  }
+
+  const handleTitleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      handleSaveRename()
+    } else if (e.key === 'Escape') {
+      e.preventDefault()
+      handleCancelRename()
+    }
+  }
+
   const isLongQuery = session.query.length > 50
 
   return (
     <section className="flex flex-col gap-4">
       <hgroup className="flex flex-col gap-1">
-        {isLongQuery ? (
+        {isEditingTitle ? (
+          <div className="flex gap-2 items-center">
+            <Input
+              value={editingTitle}
+              onChange={e => setEditingTitle(e.target.value)}
+              onKeyDown={handleTitleKeyDown}
+              onBlur={handleSaveRename}
+              autoFocus
+              className="text-lg font-medium text-foreground font-mono flex-1"
+            />
+            <small className="text-xs text-muted-foreground">
+              Press <kbd className="px-1 py-0.5 bg-muted rounded">Enter</kbd> to save,{' '}
+              <kbd className="px-1 py-0.5 bg-muted rounded">Escape</kbd> to cancel
+            </small>
+          </div>
+        ) : isLongQuery ? (
           <Collapsible open={isQueryExpanded} onOpenChange={setIsQueryExpanded}>
             <CollapsibleTrigger className="flex items-center gap-2 text-left w-full">
               <h2 className="text-lg font-medium text-foreground font-mono">
@@ -656,10 +725,17 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
             </CollapsibleContent>
           </Collapsible>
         ) : (
-          <h2 className="text-lg font-medium text-foreground font-mono">
-            {session.query}{' '}
-            {session.parent_session_id && <span className="text-muted-foreground">[continued]</span>}
-          </h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-medium text-foreground font-mono">
+              {session.query}{' '}
+              {session.parent_session_id && <span className="text-muted-foreground">[continued]</span>}
+            </h2>
+            {onRenameSession && (
+              <small className="text-xs text-muted-foreground">
+                Press <kbd className="px-1 py-0.5 bg-muted rounded">N</kbd> to rename
+              </small>
+            )}
+          </div>
         )}
         <small
           className={`font-mono text-xs uppercase tracking-wider ${getStatusTextClass(session.status)}`}
