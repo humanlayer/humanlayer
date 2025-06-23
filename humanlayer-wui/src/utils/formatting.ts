@@ -16,6 +16,10 @@ export function truncate(text: string, maxLength: number): string {
 
 export function formatTimestamp(date: Date | string): string {
   const d = typeof date === 'string' ? new Date(date) : date
+
+  // Handle invalid dates
+  if (isNaN(d.getTime())) return 'Invalid date'
+
   const now = new Date()
   const diffMs = now.getTime() - d.getTime()
   const diffMins = Math.floor(diffMs / 60000)
@@ -31,6 +35,22 @@ export function formatTimestamp(date: Date | string): string {
 
   // For older dates, show actual date
   return d.toLocaleDateString()
+}
+
+export function formatAbsoluteTimestamp(date: Date | string): string {
+  const d = typeof date === 'string' ? new Date(date) : date
+
+  // Handle invalid dates
+  if (isNaN(d.getTime())) return 'Invalid date'
+
+  return d.toLocaleString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  })
 }
 
 export function formatDuration(startTime: Date | string, endTime?: Date | string): string {

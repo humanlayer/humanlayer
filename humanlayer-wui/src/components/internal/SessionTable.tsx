@@ -8,11 +8,12 @@ import {
   TableHeader,
   TableRow,
 } from '../ui/table'
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 import { useHotkeys, useHotkeysContext } from 'react-hotkeys-hook'
 import { useEffect, useState } from 'react'
 import { CircleOff, ChevronDown, ChevronRight } from 'lucide-react'
 import { getStatusTextClass } from '@/utils/component-utils'
-import { truncate } from '@/utils/formatting'
+import { truncate, formatTimestamp, formatAbsoluteTimestamp } from '@/utils/formatting'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible'
 
 interface SessionTableProps {
@@ -103,8 +104,22 @@ export default function SessionTable({
               )}
             </TableCell>
             <TableCell>{session.model || <CircleOff className="w-4 h-4" />}</TableCell>
-            <TableCell>{session.start_time}</TableCell>
-            <TableCell>{session.last_activity_at}</TableCell>
+            <TableCell>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="cursor-help">{formatTimestamp(session.start_time)}</span>
+                </TooltipTrigger>
+                <TooltipContent>{formatAbsoluteTimestamp(session.start_time)}</TooltipContent>
+              </Tooltip>
+            </TableCell>
+            <TableCell>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="cursor-help">{formatTimestamp(session.last_activity_at)}</span>
+                </TooltipTrigger>
+                <TooltipContent>{formatAbsoluteTimestamp(session.last_activity_at)}</TooltipContent>
+              </Tooltip>
+            </TableCell>
           </TableRow>
         ))}
       </TableBody>
