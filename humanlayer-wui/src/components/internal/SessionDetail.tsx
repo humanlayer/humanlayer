@@ -667,9 +667,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
           {`${session.status}${session.model ? `/ ${session.model}` : ''}`}
         </small>
         {session.working_dir && (
-          <small className="font-mono text-xs text-muted-foreground">
-            {session.working_dir}
-          </small>
+          <small className="font-mono text-xs text-muted-foreground">{session.working_dir}</small>
         )}
         {session.parent_session_id && (
           <small className="text-xs text-muted-foreground">
