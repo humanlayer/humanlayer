@@ -148,7 +148,7 @@ Thoughts configuration is stored in your HumanLayer config file:
   "thoughts": {
     "thoughtsRepo": "~/thoughts",
     "reposDir": "repos",
-    "globalDir": "global", 
+    "globalDir": "global",
     "user": "alice",
     "repoMappings": {
       "/Users/alice/projects/app": "app_thoughts",
