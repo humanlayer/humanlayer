@@ -652,8 +652,8 @@ function SessionDetail({ session, onClose, onRenameSession }: SessionDetailProps
     }
   })
 
-  // N key to rename session title
-  useHotkeys('n', () => {
+  // F2 key to rename session title (like file rename in most file managers)
+  useHotkeys('f2', () => {
     if (!isEditingTitle && onRenameSession) {
       setIsEditingTitle(true)
       setEditingTitle(session.query)
@@ -732,7 +732,7 @@ function SessionDetail({ session, onClose, onRenameSession }: SessionDetailProps
             </h2>
             {onRenameSession && (
               <small className="text-xs text-muted-foreground">
-                Press <kbd className="px-1 py-0.5 bg-muted rounded">N</kbd> to rename
+                Press <kbd className="px-1 py-0.5 bg-muted rounded">F2</kbd> to rename
               </small>
             )}
           </div>

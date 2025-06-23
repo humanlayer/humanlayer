@@ -64,7 +64,7 @@ export default function SessionTable({
     { scopes: SessionTableHotkeysScope },
   )
   useHotkeys(
-    'n',
+    'f2',
     () => {
       if (focusedSession && !editingSessionId) {
         setEditingSessionId(focusedSession.id)
