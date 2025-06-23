@@ -256,6 +256,9 @@ func (c *Client) LaunchAndWait(config SessionConfig) (*Result, error) {
 }
 
 // Wait blocks until the session completes and returns the result
+// TODO: Add context support to allow cancellation/timeout. This would help prevent
+// indefinite blocking when waiting for interrupted sessions or hanging processes.
+// Consider adding WaitContext(ctx context.Context) method or updating Wait() signature.
 func (s *Session) Wait() (*Result, error) {
 	<-s.done
 
