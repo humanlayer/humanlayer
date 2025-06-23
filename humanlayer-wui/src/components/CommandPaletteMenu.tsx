@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { useSessionLauncher } from '@/hooks/useSessionLauncher'
 import { useStore } from '@/AppStore'
 import { fuzzySearch, highlightMatches, type FuzzyMatch } from '@/lib/fuzzy-search'
 import { cn } from '@/lib/utils'
+import { SessionStatus } from '@/lib/daemon/types'
 
 interface MenuOption {
   id: string
@@ -21,6 +22,35 @@ export default function CommandPaletteMenu() {
   // Get sessions from the main app store
   const sessions = useStore(state => state.sessions)
 
+  // Parse status filter from search query
+  const { statusFilter, searchText } = useMemo(() => {
+    // Check if query contains "status:" pattern
+    const statusMatch = searchQuery.match(/status:(\S+)/i)
+    
+    if (!statusMatch) {
+      return { statusFilter: null, searchText: searchQuery }
+    }
+
+    const statusValue = statusMatch[1]
+    
+    // Find matching SessionStatus enum value (case-insensitive)
+    const matchingStatus = Object.entries(SessionStatus).find(
+      ([_, value]) => value.toLowerCase() === statusValue.toLowerCase()
+    )
+    
+    if (!matchingStatus) {
+      return { statusFilter: null, searchText: searchQuery }
+    }
+
+    // Remove the status filter from search text
+    const searchTextWithoutFilter = searchQuery.replace(statusMatch[0], '').trim()
+    
+    return { 
+      statusFilter: matchingStatus[1] as SessionStatus,
+      searchText: searchTextWithoutFilter
+    }
+  }, [searchQuery])
+
   // Build base menu options
   const baseOptions: MenuOption[] = [
     {
@@ -35,18 +65,24 @@ export default function CommandPaletteMenu() {
   // Search mode: All sessions (for fuzzy search) but limit display to 5
   const sessionOptions: MenuOption[] =
     mode === 'search'
-      ? sessions.map(session => ({
-          id: `open-${session.id}`,
-          label: `${session.query.slice(0, 40)}${session.query.length > 40 ? '...' : ''}`,
-          description: `${session.status} • ${session.model || 'Unknown model'}`,
-          action: () => openSessionById(session.id),
-        }))
+      ? sessions
+          // Apply status filter first if present
+          .filter(session => {
+            if (!statusFilter) return true
+            return session.status === statusFilter
+          })
+          .map(session => ({
+            id: `open-${session.id}`,
+            label: `${session.query.slice(0, 40)}${session.query.length > 40 ? '...' : ''}`,
+            description: `${session.status} • ${session.model || 'Unknown model'}`,
+            action: () => openSessionById(session.id),
+          }))
       : [] // No sessions in command mode
 
-  // Apply fuzzy search if in search mode and there's a query
+  // Apply fuzzy search on the search text (without status filter)
   const filteredSessions =
-    searchQuery && mode === 'search'
-      ? fuzzySearch(sessionOptions, searchQuery, {
+    searchText && mode === 'search'
+      ? fuzzySearch(sessionOptions, searchText, {
           keys: ['label', 'description'],
           threshold: 0.1,
           includeMatches: true,
@@ -61,7 +97,7 @@ export default function CommandPaletteMenu() {
 
   // Keyboard navigation
   useHotkeys(
-    'up',
+    'up, k',
     () => {
       setSelectedMenuIndex(selectedMenuIndex > 0 ? selectedMenuIndex - 1 : menuOptions.length - 1)
     },
@@ -69,7 +105,7 @@ export default function CommandPaletteMenu() {
   )
 
   useHotkeys(
-    'down',
+    'down, j',
     () => {
       setSelectedMenuIndex(selectedMenuIndex < menuOptions.length - 1 ? selectedMenuIndex + 1 : 0)
     },
@@ -96,7 +132,7 @@ export default function CommandPaletteMenu() {
   // Render highlighted text for search results
   const renderHighlightedText = (text: string, matches: FuzzyMatch['matches'], targetKey?: string) => {
     const match = matches.find(m => m.key === targetKey)
-    if (match && match.indices && searchQuery) {
+    if (match && match.indices && searchText) {
       const segments = highlightMatches(text, match.indices)
       return (
         <>
@@ -153,13 +189,18 @@ export default function CommandPaletteMenu() {
       {mode === 'search' && (
         <div className="text-xs text-muted-foreground">
           {menuOptions.length} of {filteredSessions.length} sessions
+          {statusFilter && (
+            <span className="ml-2 px-2 py-0.5 bg-accent/50 text-accent-foreground rounded">
+              status: {statusFilter.toLowerCase()}
+            </span>
+          )}
         </div>
       )}
 
       {menuOptions.map((option, index) => {
         // Find the corresponding match data for highlighting
         const matchData =
-          mode === 'search' && searchQuery
+          mode === 'search' && searchText
             ? filteredSessions.find(result => result.item.id === option.id)
             : null
 
@@ -205,7 +246,7 @@ export default function CommandPaletteMenu() {
 
       <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t border-border/30">
         <div className="flex items-center space-x-3">
-          <span>↑↓ Navigate</span>
+          <span>↑↓ j/k Navigate</span>
           <span>↵ Select</span>
         </div>
         <span>ESC Close</span>
