@@ -103,7 +103,7 @@ export default function SessionTable({
       <TableHeader>
         <TableRow>
           <TableHead>Status</TableHead>
-          <TableHead>Query</TableHead>
+          <TableHead>Session Name</TableHead>
           <TableHead>Model</TableHead>
           <TableHead>Started</TableHead>
           <TableHead>Last Activity</TableHead>
