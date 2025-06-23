@@ -30,11 +30,11 @@ Based on codebase analysis, existing hotkey system uses `react-hotkeys-hook`:
 - **Implementation**: Add hotkeys (e.g., `A` for approve, `D` for deny) to event navigation
 
 ### 2. Session Rename Hotkey (rename.md)
-- **Files**: 
+- **Files**:
   - `humanlayer-wui/src/components/internal/SessionTable.tsx` (table rows)
   - `humanlayer-wui/src/components/internal/SessionDetail.tsx` (detail view)
 - **Task**: Add global `R` hotkey (or different key) for session renaming
-- **Implementation**: 
+- **Implementation**:
   - Create inline editing for session title/query
   - May require daemon API changes for persisting custom names
   - Replace current query display with editable field

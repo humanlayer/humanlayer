@@ -23,7 +23,7 @@ Based on codebase analysis:
 ## Your Specific Work
 
 ### 1. Relative Time Display (localtime.md)
-- **Files**: 
+- **Files**:
   - `humanlayer-wui/src/components/internal/SessionTable.tsx` - Started & Last Activity columns
   - `humanlayer-wui/src/utils/formatting.ts` - Enhance timestamp utilities
 - **Task**: Convert all timestamps to relative format ("5m ago", "2h ago", "3d ago")
