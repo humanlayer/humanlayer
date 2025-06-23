@@ -9,6 +9,7 @@ import { configShowCommand } from './commands/configShow.js'
 import { pingCommand } from './commands/ping.js'
 import { launchCommand } from './commands/launch.js'
 import { alertCommand } from './commands/alert.js'
+import { thoughtsCommand } from './commands/thoughts.js'
 import { startDefaultMCPServer, startClaudeApprovalsMCPServer } from './mcp.js'
 import {
   getDefaultConfigPath,
@@ -63,7 +64,7 @@ async function authenticate(printSelectedProject: boolean = false) {
 
 program.name('humanlayer').description('HumanLayer, but on your command-line.').version('0.7.0')
 
-const UNPROTECTED_COMMANDS = ['config', 'login']
+const UNPROTECTED_COMMANDS = ['config', 'login', 'thoughts']
 
 program.hook('preAction', async (thisCmd, actionCmd) => {
   // Get the full command path by traversing up the command hierarchy
@@ -195,6 +196,9 @@ mcpCommand
     const args = ['@modelcontextprotocol/inspector', 'node', 'dist/index.js', 'mcp', command]
     spawn('npx', args, { stdio: 'inherit', cwd: process.cwd() })
   })
+
+// Add thoughts command
+thoughtsCommand(program)
 
 // Handle unknown commands
 program.on('command:*', operands => {
