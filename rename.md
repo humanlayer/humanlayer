@@ -1,1 +1,0 @@
-i want a global hotkey "rename" that will rename the current session, can be called on a session row or while a session is focused - it will create an editable text cell where i can replace the session title (which is currently populated from the prompt - may need daemon changes)
