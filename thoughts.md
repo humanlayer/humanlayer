@@ -1,0 +1,1 @@
+If the input prompt to a humanlayer launch command on the CLI is really long, it can look really bad in the WebUI. And so we need to truncate those and find a better way to display the expanded version in the session drill down view. Maybe just truncate it to the first 50 characters. I don't know, try something and we'll hack on it.

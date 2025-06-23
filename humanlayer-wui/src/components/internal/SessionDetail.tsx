@@ -15,15 +15,17 @@ import {
 import { Card, CardContent } from '../ui/card'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { useConversation } from '@/hooks/useConversation'
 import { Skeleton } from '../ui/skeleton'
 import { Suspense, useEffect, useRef, useState } from 'react'
 import { useStore } from '@/AppStore'
-import { Bot, MessageCircleDashed, UserCheck, Wrench } from 'lucide-react'
+import { Bot, MessageCircleDashed, UserCheck, Wrench, ChevronDown, ChevronRight } from 'lucide-react'
 import { getStatusTextClass } from '@/utils/component-utils'
 import { daemonClient } from '@/lib/daemon/client'
 import { useNavigate } from 'react-router-dom'
+import { truncate } from '@/utils/formatting'
 
 /* I, Sundeep, don't know how I feel about what's going on here. */
 let starryNight: any | null = null
@@ -511,6 +513,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [showResponseInput, setShowResponseInput] = useState(false)
   const [responseInput, setResponseInput] = useState('')
   const [isResponding, setIsResponding] = useState(false)
+  const [isQueryExpanded, setIsQueryExpanded] = useState(false)
   const interruptSession = useStore(state => state.interruptSession)
   const navigate = useNavigate()
 
@@ -626,13 +629,38 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     }
   })
 
+  const isLongQuery = session.query.length > 100
+
   return (
     <section className="flex flex-col gap-4">
       <hgroup className="flex flex-col gap-1">
-        <h2 className="text-lg font-medium text-foreground font-mono">
-          {session.query}{' '}
-          {session.parent_session_id && <span className="text-muted-foreground">[continued]</span>}
-        </h2>
+        {isLongQuery ? (
+          <Collapsible open={isQueryExpanded} onOpenChange={setIsQueryExpanded}>
+            <CollapsibleTrigger className="flex items-center gap-2 text-left w-full">
+              <h2 className="text-lg font-medium text-foreground font-mono">
+                {truncate(session.query, 100)}{' '}
+                {session.parent_session_id && (
+                  <span className="text-muted-foreground">[continued]</span>
+                )}
+              </h2>
+              {isQueryExpanded ? (
+                <ChevronDown className="w-4 h-4 text-muted-foreground" />
+              ) : (
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              )}
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="mt-2 p-3 bg-muted/20 rounded-md">
+                <p className="text-sm font-mono text-foreground whitespace-pre-wrap">{session.query}</p>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        ) : (
+          <h2 className="text-lg font-medium text-foreground font-mono">
+            {session.query}{' '}
+            {session.parent_session_id && <span className="text-muted-foreground">[continued]</span>}
+          </h2>
+        )}
         <small
           className={`font-mono text-xs uppercase tracking-wider ${getStatusTextClass(session.status)}`}
         >
