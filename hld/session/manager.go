@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"os"
 	"sync"
 	"time"
 
@@ -76,6 +77,17 @@ func (m *Manager) LaunchSession(ctx context.Context, config claudecode.SessionCo
 		}
 	} else {
 		slog.Debug("no MCP config provided")
+	}
+
+	// Capture current working directory if not specified
+	if config.WorkingDir == "" {
+		cwd, err := os.Getwd()
+		if err != nil {
+			slog.Warn("failed to get current working directory", "error", err)
+		} else {
+			config.WorkingDir = cwd
+			slog.Debug("No working directory provided, falling back to cwd of daemon", "working_dir", cwd)
+		}
 	}
 
 	// Create session record directly in database
@@ -644,6 +656,11 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 	// Validate parent session has claude_session_id (needed for resume)
 	if parentSession.ClaudeSessionID == "" {
 		return nil, fmt.Errorf("parent session missing claude_session_id (cannot resume)")
+	}
+
+	// Validate parent session has working directory (needed for resume)
+	if parentSession.WorkingDir == "" {
+		return nil, fmt.Errorf("parent session missing working_dir (cannot resume session without working directory)")
 	}
 
 	// If session is running, interrupt it and wait for completion

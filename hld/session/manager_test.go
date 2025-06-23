@@ -209,6 +209,7 @@ func TestContinueSession_ValidatesClaudeSessionID(t *testing.T) {
 		ClaudeSessionID: "", // Empty
 		Status:          store.SessionStatusCompleted,
 		Query:           "original query",
+		WorkingDir:      "/tmp",
 		CreatedAt:       time.Now(),
 	}
 	mockStore.EXPECT().GetSession(gomock.Any(), "parent-1").Return(parentSession, nil)
@@ -222,6 +223,38 @@ func TestContinueSession_ValidatesClaudeSessionID(t *testing.T) {
 		t.Error("Expected error for parent without claude_session_id")
 	}
 	if err.Error() != "parent session missing claude_session_id (cannot resume)" {
+		t.Errorf("Unexpected error: %v", err)
+	}
+}
+
+func TestContinueSession_ValidatesWorkingDirectory(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockStore := store.NewMockConversationStore(ctrl)
+	manager, _ := NewManager(nil, mockStore)
+
+	// Parent without working directory
+	parentSession := &store.Session{
+		ID:              "parent-1",
+		RunID:           "run-1",
+		ClaudeSessionID: "claude-1",
+		Status:          store.SessionStatusCompleted,
+		Query:           "original query",
+		WorkingDir:      "", // Empty
+		CreatedAt:       time.Now(),
+	}
+	mockStore.EXPECT().GetSession(gomock.Any(), "parent-1").Return(parentSession, nil)
+
+	req := ContinueSessionConfig{
+		ParentSessionID: "parent-1",
+		Query:           "continue this",
+	}
+	_, err := manager.ContinueSession(context.Background(), req)
+	if err == nil {
+		t.Error("Expected error for parent without working_dir")
+	}
+	if err.Error() != "parent session missing working_dir (cannot resume session without working directory)" {
 		t.Errorf("Unexpected error: %v", err)
 	}
 }
@@ -310,6 +343,7 @@ func TestContinueSession_HandlesOptionalOverrides(t *testing.T) {
 		ClaudeSessionID: "claude-1",
 		Status:          store.SessionStatusCompleted,
 		Query:           "original query",
+		WorkingDir:      "/tmp",
 		CreatedAt:       time.Now(),
 	}
 	mockStore.EXPECT().GetSession(gomock.Any(), "parent-1").Return(parentSession, nil)
@@ -461,6 +495,7 @@ func TestContinueSession_InterruptsRunningSession(t *testing.T) {
 			ClaudeSessionID: "claude-parent", // Has session ID
 			Status:          store.SessionStatusRunning,
 			Query:           "original query",
+			WorkingDir:      "/tmp",
 			CreatedAt:       time.Now(),
 		}
 
