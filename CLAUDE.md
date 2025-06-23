@@ -105,3 +105,9 @@ In quiet mode:
 - Reduces 500+ lines to ~50 lines for successful runs
 
 The quiet system uses `hack/run_silent.sh` which provides helper functions for child Makefiles.
+
+# Handy Docs
+
+If you're working on a feature specific to a given section of the codebase, you may want to check out these relevant docs first:
+
+* [humanlayer-wui](https://github.com/humanlayer-ai/humanlayer/blob/main/humanlayer-wui/README.md)

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"os"
 	"sync"
 	"time"
 
@@ -78,6 +79,17 @@ func (m *Manager) LaunchSession(ctx context.Context, config claudecode.SessionCo
 		slog.Debug("no MCP config provided")
 	}
 
+	// Capture current working directory if not specified
+	if config.WorkingDir == "" {
+		cwd, err := os.Getwd()
+		if err != nil {
+			slog.Warn("failed to get current working directory", "error", err)
+		} else {
+			config.WorkingDir = cwd
+			slog.Debug("No working directory provided, falling back to cwd of daemon", "working_dir", cwd)
+		}
+	}
+
 	// Create session record directly in database
 	startTime := time.Now()
 
@@ -125,7 +137,7 @@ func (m *Manager) LaunchSession(ctx context.Context, config claudecode.SessionCo
 
 	// Publish status change event
 	if m.eventBus != nil {
-		m.eventBus.Publish(bus.Event{
+		event := bus.Event{
 			Type: bus.EventSessionStatusChanged,
 			Data: map[string]interface{}{
 				"session_id": sessionID,
@@ -133,7 +145,14 @@ func (m *Manager) LaunchSession(ctx context.Context, config claudecode.SessionCo
 				"old_status": string(StatusStarting),
 				"new_status": string(StatusRunning),
 			},
-		})
+		}
+		slog.Info("publishing session status changed event",
+			"session_id", sessionID,
+			"run_id", runID,
+			"event_type", event.Type,
+			"event_data", event.Data,
+		)
+		m.eventBus.Publish(event)
 	}
 
 	// Monitor session lifecycle in background
@@ -243,7 +262,7 @@ func (m *Manager) monitorSession(ctx context.Context, sessionID, runID string, c
 
 		// Publish status change event
 		if m.eventBus != nil {
-			m.eventBus.Publish(bus.Event{
+			event := bus.Event{
 				Type: bus.EventSessionStatusChanged,
 				Data: map[string]interface{}{
 					"session_id": sessionID,
@@ -251,7 +270,14 @@ func (m *Manager) monitorSession(ctx context.Context, sessionID, runID string, c
 					"old_status": string(StatusRunning),
 					"new_status": string(StatusCompleted),
 				},
-			})
+			}
+			slog.Info("publishing session completion event",
+				"session_id", sessionID,
+				"run_id", runID,
+				"event_type", event.Type,
+				"event_data", event.Data,
+			)
+			m.eventBus.Publish(event)
 		}
 	}
 
@@ -630,6 +656,11 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 	// Validate parent session has claude_session_id (needed for resume)
 	if parentSession.ClaudeSessionID == "" {
 		return nil, fmt.Errorf("parent session missing claude_session_id (cannot resume)")
+	}
+
+	// Validate parent session has working directory (needed for resume)
+	if parentSession.WorkingDir == "" {
+		return nil, fmt.Errorf("parent session missing working_dir (cannot resume session without working directory)")
 	}
 
 	// If session is running, interrupt it and wait for completion

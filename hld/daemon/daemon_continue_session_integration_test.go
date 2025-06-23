@@ -125,6 +125,7 @@ func TestIntegrationContinueSession(t *testing.T) {
 			ClaudeSessionID: "claude-parent",
 			Status:          store.SessionStatusFailed, // Neither completed nor running
 			Query:           "original query",
+			WorkingDir:      "/tmp",
 			CreatedAt:       time.Now(),
 			LastActivityAt:  time.Now(),
 		}
@@ -158,6 +159,7 @@ func TestIntegrationContinueSession(t *testing.T) {
 			ClaudeSessionID: "", // Missing
 			Status:          store.SessionStatusCompleted,
 			Query:           "original query",
+			WorkingDir:      "/tmp",
 			CreatedAt:       time.Now(),
 			LastActivityAt:  time.Now(),
 			CompletedAt:     &time.Time{},
@@ -194,7 +196,7 @@ func TestIntegrationContinueSession(t *testing.T) {
 			Status:          store.SessionStatusCompleted,
 			Query:           "original query",
 			Model:           "claude-3-opus",
-			WorkingDir:      "", // Empty working dir to avoid chdir errors in tests
+			WorkingDir:      "/tmp", // Use /tmp as a valid working directory for tests
 			CreatedAt:       time.Now(),
 			LastActivityAt:  time.Now(),
 			CompletedAt:     &time.Time{},
@@ -299,6 +301,7 @@ func TestIntegrationContinueSession(t *testing.T) {
 			ClaudeSessionID: "claude-mcp",
 			Status:          store.SessionStatusCompleted,
 			Query:           "original",
+			WorkingDir:      "/tmp",
 			CreatedAt:       time.Now(),
 			LastActivityAt:  time.Now(),
 			CompletedAt:     &time.Time{},
@@ -353,6 +356,7 @@ func TestIntegrationContinueSession(t *testing.T) {
 			ClaudeSessionID: "claude-gp",
 			Status:          store.SessionStatusCompleted,
 			Query:           "grandparent query",
+			WorkingDir:      "/tmp",
 			CreatedAt:       time.Now(),
 			LastActivityAt:  time.Now(),
 			CompletedAt:     &time.Time{},
@@ -392,6 +396,7 @@ func TestIntegrationContinueSession(t *testing.T) {
 			ParentSessionID: grandparentID,
 			Status:          store.SessionStatusCompleted,
 			Query:           "parent query",
+			WorkingDir:      "/tmp",
 			CreatedAt:       time.Now(),
 			LastActivityAt:  time.Now(),
 			CompletedAt:     &time.Time{},
@@ -431,6 +436,7 @@ func TestIntegrationContinueSession(t *testing.T) {
 			ParentSessionID: parentID,
 			Status:          store.SessionStatusCompleted,
 			Query:           "child query",
+			WorkingDir:      "/tmp",
 			CreatedAt:       time.Now(),
 			LastActivityAt:  time.Now(),
 			CompletedAt:     &time.Time{},

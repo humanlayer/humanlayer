@@ -198,27 +198,53 @@ async fn subscribe_to_events(
     app: tauri::AppHandle,
     request: daemon_client::SubscribeRequest,
 ) -> std::result::Result<String, String> {
+    tracing::info!("subscribe_to_events: Starting subscription request");
+    tracing::info!(
+        "subscribe_to_events: Request params - event_types: {:?}, session_id: {:?}, run_id: {:?}",
+        request.event_types,
+        request.session_id,
+        request.run_id
+    );
+
     let client_guard = state.client.lock().await;
 
     match &*client_guard {
         Some(client) => {
+            tracing::info!("subscribe_to_events: Client found, attempting to subscribe");
             match client.subscribe(request).await {
                 Ok(mut receiver) => {
+                    tracing::info!("subscribe_to_events: Subscription created successfully, spawning event forwarder");
                     // Spawn a task to forward events to the frontend
                     tokio::spawn(async move {
+                        tracing::info!("subscribe_to_events: Event forwarder task started");
                         while let Some(event) = receiver.recv().await {
+                            tracing::info!(
+                                "subscribe_to_events: Received event from daemon - type: {:?}, data: {:?}",
+                                event.event.event_type,
+                                event.event.data
+                            );
                             // Emit the event to the frontend
                             if let Err(e) = app.emit("daemon-event", event) {
                                 error!("Failed to emit event: {}", e);
+                            } else {
+                                tracing::info!("subscribe_to_events: Event emitted to frontend successfully");
                             }
                         }
+                        tracing::warn!("subscribe_to_events: Event receiver channel closed");
                     });
+                    tracing::info!("subscribe_to_events: Subscription setup completed successfully");
                     Ok("Subscription created".to_string())
                 }
-                Err(e) => Err(e.to_string()),
+                Err(e) => {
+                    tracing::error!("subscribe_to_events: Failed to create subscription - {}", e);
+                    Err(e.to_string())
+                }
             }
         }
-        None => Err("Not connected to daemon".to_string()),
+        None => {
+            tracing::error!("subscribe_to_events: No daemon client connected");
+            Err("Not connected to daemon".to_string())
+        }
     }
 }
 

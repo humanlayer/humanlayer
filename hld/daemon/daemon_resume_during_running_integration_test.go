@@ -126,6 +126,7 @@ func TestIntegrationResumeDuringRunning(t *testing.T) {
 			ClaudeSessionID: "claude-mock-parent",
 			Status:          store.SessionStatusRunning, // Mock running state
 			Query:           "original mock query",
+			WorkingDir:      "/tmp",
 			CreatedAt:       time.Now(),
 			LastActivityAt:  time.Now(),
 		}
@@ -164,7 +165,7 @@ func TestIntegrationResumeDuringRunning(t *testing.T) {
 			Status:          store.SessionStatusCompleted,
 			Query:           "original completed query",
 			Model:           "claude-3-opus",
-			WorkingDir:      "", // Empty working dir to avoid chdir errors in tests
+			WorkingDir:      "/tmp", // Use /tmp as a valid working directory for tests
 			CreatedAt:       time.Now(),
 			LastActivityAt:  time.Now(),
 			CompletedAt:     &time.Time{},
@@ -249,6 +250,7 @@ func TestIntegrationResumeDuringRunning(t *testing.T) {
 					ClaudeSessionID: fmt.Sprintf("claude-%d", i),
 					Status:          tc.status,
 					Query:           fmt.Sprintf("test query %d", i),
+					WorkingDir:      "/tmp",
 					CreatedAt:       time.Now(),
 					LastActivityAt:  time.Now(),
 				}
