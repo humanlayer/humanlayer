@@ -38,7 +38,12 @@ function prompt(question: string): Promise<string> {
   })
 }
 
-function checkExistingSetup(config?: ThoughtsConfig | null): { exists: boolean; isValid: boolean; isOldStructure?: boolean; message?: string } {
+function checkExistingSetup(config?: ThoughtsConfig | null): {
+  exists: boolean
+  isValid: boolean
+  isOldStructure?: boolean
+  message?: string
+} {
   const thoughtsDir = path.join(process.cwd(), 'thoughts')
 
   if (!fs.existsSync(thoughtsDir)) {
@@ -55,12 +60,21 @@ function checkExistingSetup(config?: ThoughtsConfig | null): { exists: boolean; 
   const hasOldLocal = fs.existsSync(localPath) && fs.lstatSync(localPath).isSymbolicLink()
 
   if (hasOldLocal) {
-    return { exists: true, isValid: false, isOldStructure: true, message: 'thoughts directory uses old structure (needs upgrade)' }
+    return {
+      exists: true,
+      isValid: false,
+      isOldStructure: true,
+      message: 'thoughts directory uses old structure (needs upgrade)',
+    }
   }
 
   // Need config to check for user-specific symlinks
   if (!config) {
-    return { exists: true, isValid: false, message: 'thoughts directory exists but configuration is missing' }
+    return {
+      exists: true,
+      isValid: false,
+      message: 'thoughts directory exists but configuration is missing',
+    }
   }
 
   // Check for expected symlinks in new structure
@@ -73,7 +87,11 @@ function checkExistingSetup(config?: ThoughtsConfig | null): { exists: boolean; 
   const hasGlobal = fs.existsSync(globalPath) && fs.lstatSync(globalPath).isSymbolicLink()
 
   if (!hasUser || !hasShared || !hasGlobal) {
-    return { exists: true, isValid: false, message: 'thoughts directory exists but symlinks are missing or broken' }
+    return {
+      exists: true,
+      isValid: false,
+      message: 'thoughts directory exists but symlinks are missing or broken',
+    }
   }
 
   return { exists: true, isValid: true }
@@ -87,6 +105,7 @@ async function selectFromList(message: string, options: string[]): Promise<numbe
     console.log(`  [${idx + 1}] ${opt}`)
   })
 
+  // eslint-disable-next-line no-constant-condition
   while (true) {
     const answer = await prompt('Select option: ')
     const num = parseInt(answer)
@@ -97,7 +116,12 @@ async function selectFromList(message: string, options: string[]): Promise<numbe
   }
 }
 
-function generateClaudeMd(thoughtsRepo: string, reposDir: string, repoName: string, user: string): string {
+function generateClaudeMd(
+  thoughtsRepo: string,
+  reposDir: string,
+  repoName: string,
+  user: string,
+): string {
   const reposPath = path.join(thoughtsRepo, reposDir, repoName).replace(os.homedir(), '~')
   const globalPath = path.join(thoughtsRepo, 'global').replace(os.homedir(), '~')
 
@@ -177,11 +201,17 @@ fi
 `
 
   // Backup existing hooks if they exist
-  if (fs.existsSync(preCommitPath) && !fs.readFileSync(preCommitPath, 'utf8').includes('HumanLayer thoughts')) {
+  if (
+    fs.existsSync(preCommitPath) &&
+    !fs.readFileSync(preCommitPath, 'utf8').includes('HumanLayer thoughts')
+  ) {
     fs.renameSync(preCommitPath, `${preCommitPath}.old`)
   }
 
-  if (fs.existsSync(postCommitPath) && !fs.readFileSync(postCommitPath, 'utf8').includes('HumanLayer thoughts')) {
+  if (
+    fs.existsSync(postCommitPath) &&
+    !fs.readFileSync(postCommitPath, 'utf8').includes('HumanLayer thoughts')
+  ) {
     fs.renameSync(postCommitPath, `${postCommitPath}.old`)
   }
 
@@ -208,14 +238,12 @@ export async function thoughtsInitCommand(options: InitOptions): Promise<void> {
 
     // Load or create global config first
     let config = loadThoughtsConfig(options)
-    let isNewConfig = false
 
     // If no config exists, we need to set it up first
     if (!config) {
-      isNewConfig = true
       console.log(chalk.blue('=== Initial Thoughts Setup ==='))
       console.log('')
-      console.log('First, let\'s configure your global thoughts system.')
+      console.log("First, let's configure your global thoughts system.")
       console.log('')
 
       // Get thoughts repository location
@@ -245,7 +273,9 @@ export async function thoughtsInitCommand(options: InitOptions): Promise<void> {
         const userInput = await prompt(`Your username [${defaultUser}]: `)
         user = userInput || defaultUser
         if (user.toLowerCase() === 'global') {
-          console.log(chalk.red('Username cannot be "global" as it\'s reserved for cross-project thoughts.'))
+          console.log(
+            chalk.red('Username cannot be "global" as it\'s reserved for cross-project thoughts.'),
+          )
           user = ''
         }
       }
@@ -340,40 +370,61 @@ export async function thoughtsInitCommand(options: InitOptions): Promise<void> {
       console.log('')
       console.log(`Setting up thoughts for: ${chalk.cyan(currentRepo)}`)
       console.log('')
-      console.log(chalk.gray(`This will create a subdirectory in ${config.thoughtsRepo}/${config.reposDir}/`))
+      console.log(
+        chalk.gray(`This will create a subdirectory in ${config.thoughtsRepo}/${config.reposDir}/`),
+      )
       console.log(chalk.gray('to store thoughts specific to this repository.'))
       console.log('')
 
       if (existingRepos.length > 0) {
         console.log('Select or create a thoughts directory for this repository:')
-        const options = [...existingRepos.map(repo => `Use existing: ${repo}`), '→ Create new directory']
+        const options = [
+          ...existingRepos.map(repo => `Use existing: ${repo}`),
+          '→ Create new directory',
+        ]
         const selection = await selectFromList('', options)
 
         if (selection === options.length - 1) {
           // Create new
           const defaultName = getRepoNameFromPath(currentRepo)
           console.log('')
-          console.log(chalk.gray(`This name will be used for the directory: ${config.thoughtsRepo}/${config.reposDir}/[name]`))
-          const nameInput = await prompt(`Directory name for this project's thoughts [${defaultName}]: `)
+          console.log(
+            chalk.gray(
+              `This name will be used for the directory: ${config.thoughtsRepo}/${config.reposDir}/[name]`,
+            ),
+          )
+          const nameInput = await prompt(
+            `Directory name for this project's thoughts [${defaultName}]: `,
+          )
           mappedName = nameInput || defaultName
 
           // Sanitize the name
           mappedName = mappedName.replace(/[^a-zA-Z0-9_-]/g, '_')
-          console.log(chalk.green(`✓ Will create: ${config.thoughtsRepo}/${config.reposDir}/${mappedName}`))
+          console.log(
+            chalk.green(`✓ Will create: ${config.thoughtsRepo}/${config.reposDir}/${mappedName}`),
+          )
         } else {
           mappedName = existingRepos[selection]
-          console.log(chalk.green(`✓ Will use existing: ${config.thoughtsRepo}/${config.reposDir}/${mappedName}`))
+          console.log(
+            chalk.green(`✓ Will use existing: ${config.thoughtsRepo}/${config.reposDir}/${mappedName}`),
+          )
         }
       } else {
         // No existing repos, just create new
         const defaultName = getRepoNameFromPath(currentRepo)
-        console.log(chalk.gray(`This name will be used for the directory: ${config.thoughtsRepo}/${config.reposDir}/[name]`))
+        console.log(
+          chalk.gray(
+            `This name will be used for the directory: ${config.thoughtsRepo}/${config.reposDir}/[name]`,
+          ),
+        )
         const nameInput = await prompt(`Directory name for this project's thoughts [${defaultName}]: `)
         mappedName = nameInput || defaultName
 
         // Sanitize the name
         mappedName = mappedName.replace(/[^a-zA-Z0-9_-]/g, '_')
-        console.log(chalk.green(`✓ Will create: ${config.thoughtsRepo}/${config.reposDir}/${mappedName}`))
+        console.log(
+          chalk.green(`✓ Will create: ${config.thoughtsRepo}/${config.reposDir}/${mappedName}`),
+        )
       }
 
       console.log('')
@@ -384,7 +435,13 @@ export async function thoughtsInitCommand(options: InitOptions): Promise<void> {
     }
 
     // Create directory structure
-    createThoughtsDirectoryStructure(config.thoughtsRepo, config.reposDir, config.globalDir, mappedName, config.user)
+    createThoughtsDirectoryStructure(
+      config.thoughtsRepo,
+      config.reposDir,
+      config.globalDir,
+      mappedName,
+      config.user,
+    )
 
     // Create thoughts directory in current repo
     const thoughtsDir = path.join(currentRepo, 'thoughts')
@@ -410,7 +467,7 @@ export async function thoughtsInitCommand(options: InitOptions): Promise<void> {
       config.thoughtsRepo,
       config.reposDir,
       mappedName,
-      config.user
+      config.user,
     )
 
     if (otherUsers.length > 0) {
@@ -445,9 +502,15 @@ export async function thoughtsInitCommand(options: InitOptions): Promise<void> {
     console.log('Repository structure created:')
     console.log(`  ${chalk.cyan(currentRepo)}/`)
     console.log(`    └── thoughts/`)
-    console.log(`         ├── ${config.user}/     ${chalk.gray(`→ ${config.thoughtsRepo}/${config.reposDir}/${mappedName}/${config.user}/`)}`)
-    console.log(`         ├── shared/      ${chalk.gray(`→ ${config.thoughtsRepo}/${config.reposDir}/${mappedName}/shared/`)}`)
-    console.log(`         └── global/      ${chalk.gray(`→ ${config.thoughtsRepo}/${config.globalDir}/`)}`)
+    console.log(
+      `         ├── ${config.user}/     ${chalk.gray(`→ ${config.thoughtsRepo}/${config.reposDir}/${mappedName}/${config.user}/`)}`,
+    )
+    console.log(
+      `         ├── shared/      ${chalk.gray(`→ ${config.thoughtsRepo}/${config.reposDir}/${mappedName}/shared/`)}`,
+    )
+    console.log(
+      `         └── global/      ${chalk.gray(`→ ${config.thoughtsRepo}/${config.globalDir}/`)}`,
+    )
     console.log(`             ├── ${config.user}/     ${chalk.gray('(your cross-repo notes)')}`)
     console.log(`             └── shared/  ${chalk.gray('(team cross-repo notes)')}`)
     console.log('')
@@ -457,10 +520,11 @@ export async function thoughtsInitCommand(options: InitOptions): Promise<void> {
     console.log(`  ${chalk.green('✓')} Added to .gitignore`)
     console.log('')
     console.log('Next steps:')
-    console.log(`  1. Create markdown files in ${chalk.cyan(`thoughts/${config.user}/`)} for your notes`)
+    console.log(
+      `  1. Create markdown files in ${chalk.cyan(`thoughts/${config.user}/`)} for your notes`,
+    )
     console.log(`  2. Your thoughts will sync automatically when you commit code`)
     console.log(`  3. Run ${chalk.cyan('humanlayer thoughts status')} to check sync status`)
-
   } catch (error) {
     console.error(chalk.red(`Error during thoughts init: ${error}`))
     process.exit(1)

@@ -5,6 +5,7 @@ The HumanLayer Thoughts system helps developers manage their notes, architecture
 ## Overview
 
 The thoughts system provides:
+
 - 📝 **Separate storage** - Keep thoughts in a dedicated git repository
 - 🔗 **Seamless integration** - Access thoughts as if they're part of your code repo
 - 🚫 **Accident prevention** - Never accidentally commit private thoughts to code repos
@@ -88,6 +89,7 @@ Options:
 ```
 
 **What it does:**
+
 1. Creates thoughts configuration if needed
 2. Maps your repository to a thoughts directory
 3. Sets up symlinks for easy access
@@ -120,6 +122,7 @@ Options:
 ```
 
 Shows:
+
 - Current configuration
 - Repository mappings
 - Git status of thoughts repo
@@ -163,6 +166,7 @@ Thoughts configuration is stored in your HumanLayer config file:
 ### What to Put in Thoughts
 
 **Repository-specific thoughts (`thoughts/alice/`):**
+
 - Architecture decisions specific to this project
 - TODO lists and planning notes
 - Investigation results and debugging notes
@@ -170,6 +174,7 @@ Thoughts configuration is stored in your HumanLayer config file:
 - Meeting notes about this project
 
 **Global thoughts (`thoughts/global/alice/`):**
+
 - Company coding standards
 - Personal development notes
 - Cross-project patterns and utilities

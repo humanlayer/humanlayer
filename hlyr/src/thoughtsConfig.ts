@@ -2,11 +2,11 @@ import fs from 'fs'
 import path from 'path'
 import os from 'os'
 import { execSync } from 'child_process'
-import { ConfigResolver, resolveFullConfig, saveConfigFile, ResolvedConfig } from './config.js'
+import { ConfigResolver, saveConfigFile } from './config.js'
 
 export interface ThoughtsConfig {
   thoughtsRepo: string
-  reposDir: string  // Directory name within thoughtsRepo (e.g., "repos")
+  reposDir: string // Directory name within thoughtsRepo (e.g., "repos")
   globalDir: string // Directory name within thoughtsRepo (e.g., "global")
   user: string
   repoMappings: Record<string, string>
@@ -17,7 +17,10 @@ export function loadThoughtsConfig(options: Record<string, unknown> = {}): Thoug
   return resolver.configFile.thoughts || null
 }
 
-export function saveThoughtsConfig(thoughtsConfig: ThoughtsConfig, options: Record<string, unknown> = {}): void {
+export function saveThoughtsConfig(
+  thoughtsConfig: ThoughtsConfig,
+  options: Record<string, unknown> = {},
+): void {
   const resolver = new ConfigResolver(options)
   resolver.configFile.thoughts = thoughtsConfig
   saveConfigFile(resolver.configFile, options.configFile as string | undefined)
@@ -34,7 +37,11 @@ export function expandPath(filePath: string): string {
   return path.resolve(filePath)
 }
 
-export function ensureThoughtsRepoExists(thoughtsRepo: string, reposDir: string, globalDir: string): void {
+export function ensureThoughtsRepoExists(
+  thoughtsRepo: string,
+  reposDir: string,
+  globalDir: string,
+): void {
   const expandedRepo = expandPath(thoughtsRepo)
 
   // Create thoughts repo if it doesn't exist
@@ -103,7 +110,13 @@ export function getRepoNameFromPath(repoPath: string): string {
   return parts[parts.length - 1] || 'unnamed_repo'
 }
 
-export function createThoughtsDirectoryStructure(thoughtsRepo: string, reposDir: string, globalDir: string, repoName: string, user: string): void {
+export function createThoughtsDirectoryStructure(
+  thoughtsRepo: string,
+  reposDir: string,
+  globalDir: string,
+  repoName: string,
+  user: string,
+): void {
   // Create repo-specific directories
   const repoThoughtsPath = getRepoThoughtsPath(thoughtsRepo, reposDir, repoName)
   const repoUserPath = path.join(repoThoughtsPath, user)
@@ -147,7 +160,13 @@ This directory contains thoughts and notes that apply across all repositories.
   }
 }
 
-export function updateSymlinksForNewUsers(currentRepoPath: string, thoughtsRepo: string, reposDir: string, repoName: string, currentUser: string): string[] {
+export function updateSymlinksForNewUsers(
+  currentRepoPath: string,
+  thoughtsRepo: string,
+  reposDir: string,
+  repoName: string,
+  currentUser: string,
+): string[] {
   const thoughtsDir = path.join(currentRepoPath, 'thoughts')
   const repoThoughtsPath = getRepoThoughtsPath(thoughtsRepo, reposDir, repoName)
   const addedSymlinks: string[] = []
@@ -172,7 +191,7 @@ export function updateSymlinksForNewUsers(currentRepoPath: string, thoughtsRepo:
       try {
         fs.symlinkSync(targetPath, symlinkPath, 'dir')
         addedSymlinks.push(userName)
-      } catch (error) {
+      } catch {
         // Ignore errors - might be permission issues
       }
     }

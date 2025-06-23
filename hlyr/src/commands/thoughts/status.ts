@@ -2,18 +2,14 @@ import fs from 'fs'
 import path from 'path'
 import { execSync } from 'child_process'
 import chalk from 'chalk'
-import {
-  loadThoughtsConfig,
-  getCurrentRepoPath,
-  expandPath,
-} from '../../thoughtsConfig.js'
+import { loadThoughtsConfig, getCurrentRepoPath, expandPath } from '../../thoughtsConfig.js'
 
 function getGitStatus(repoPath: string): string {
   try {
     return execSync('git status -sb', {
       cwd: repoPath,
       encoding: 'utf8',
-      stdio: 'pipe'
+      stdio: 'pipe',
     }).trim()
   } catch {
     return 'Not a git repository'
@@ -25,7 +21,7 @@ function getUncommittedChanges(repoPath: string): string[] {
     const output = execSync('git status --porcelain', {
       cwd: repoPath,
       encoding: 'utf8',
-      stdio: 'pipe'
+      stdio: 'pipe',
     })
 
     return output
@@ -54,7 +50,7 @@ function getLastCommit(repoPath: string): string {
     return execSync('git log -1 --pretty=format:"%h %s (%cr)"', {
       cwd: repoPath,
       encoding: 'utf8',
-      stdio: 'pipe'
+      stdio: 'pipe',
     }).trim()
   } catch {
     return 'No commits yet'
@@ -76,7 +72,7 @@ function getRemoteStatus(repoPath: string): string {
     const status = execSync('git status -sb', {
       cwd: repoPath,
       encoding: 'utf8',
-      stdio: 'pipe'
+      stdio: 'pipe',
     })
 
     if (status.includes('ahead')) {
@@ -159,7 +155,6 @@ export async function thoughtsStatusCommand(options: StatusOptions): Promise<voi
     } else {
       console.log(chalk.green('✓ No uncommitted changes'))
     }
-
   } catch (error) {
     console.error(chalk.red(`Error checking thoughts status: ${error}`))
     process.exit(1)

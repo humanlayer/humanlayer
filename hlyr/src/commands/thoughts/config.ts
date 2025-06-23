@@ -1,8 +1,6 @@
 import { spawn } from 'child_process'
 import chalk from 'chalk'
-import {
-  loadThoughtsConfig,
-} from '../../thoughtsConfig.js'
+import { loadThoughtsConfig } from '../../thoughtsConfig.js'
 import { getDefaultConfigPath } from '../../config.js'
 
 interface ConfigOptions {
@@ -64,7 +62,6 @@ export async function thoughtsConfigCommand(options: ConfigOptions): Promise<voi
 
     console.log('')
     console.log(chalk.gray('To edit configuration, run: humanlayer thoughts config --edit'))
-
   } catch (error) {
     console.error(chalk.red(`Error showing thoughts config: ${error}`))
     process.exit(1)

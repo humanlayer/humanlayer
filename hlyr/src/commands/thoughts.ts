@@ -5,9 +5,7 @@ import { thoughtsStatusCommand } from './thoughts/status.js'
 import { thoughtsConfigCommand } from './thoughts/config.js'
 
 export function thoughtsCommand(program: Command): void {
-  const thoughts = program
-    .command('thoughts')
-    .description('Manage developer thoughts and notes')
+  const thoughts = program.command('thoughts').description('Manage developer thoughts and notes')
 
   thoughts
     .command('init')

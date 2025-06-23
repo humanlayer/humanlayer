@@ -1,6 +1,6 @@
 import fs from 'fs'
 import path from 'path'
-import { execSync } from 'child_process'
+import { execSync, execFileSync } from 'child_process'
 import chalk from 'chalk'
 import {
   loadThoughtsConfig,
@@ -19,7 +19,7 @@ function checkGitStatus(repoPath: string): boolean {
     const status = execSync('git status --porcelain', {
       cwd: repoPath,
       encoding: 'utf8',
-      stdio: 'pipe'
+      stdio: 'pipe',
     })
     return status.trim().length > 0
   } catch {
@@ -44,7 +44,7 @@ function syncThoughts(thoughtsRepo: string, message: string): void {
 
     // Commit changes
     const commitMessage = message || `Sync thoughts - ${new Date().toISOString()}`
-    execSync(`git commit -m "${commitMessage}"`, { cwd: expandedRepo, stdio: 'pipe' })
+    execFileSync('git', ['commit', '-m', commitMessage], { cwd: expandedRepo, stdio: 'pipe' })
 
     console.log(chalk.green('✅ Thoughts synchronized'))
 
@@ -57,7 +57,7 @@ function syncThoughts(thoughtsRepo: string, message: string): void {
       try {
         execSync('git push', { cwd: expandedRepo, stdio: 'pipe' })
         console.log(chalk.green('✅ Pushed to remote'))
-      } catch (error) {
+      } catch {
         console.log(chalk.yellow('⚠️  Could not push to remote. You may need to push manually.'))
       }
     } catch {
@@ -99,7 +99,7 @@ export async function thoughtsSyncCommand(options: SyncOptions): Promise<void> {
         config.thoughtsRepo,
         config.reposDir,
         mappedName,
-        config.user
+        config.user,
       )
 
       if (newUsers.length > 0) {
@@ -110,7 +110,6 @@ export async function thoughtsSyncCommand(options: SyncOptions): Promise<void> {
     // Sync the thoughts repository
     console.log(chalk.blue('Syncing thoughts...'))
     syncThoughts(config.thoughtsRepo, options.message || '')
-
   } catch (error) {
     console.error(chalk.red(`Error during thoughts sync: ${error}`))
     process.exit(1)
