@@ -32,7 +32,6 @@ let starryNight: any | null = null
 interface SessionDetailProps {
   session: SessionInfo
   onClose: () => void
-  onRenameSession?: (sessionId: string, newTitle: string) => void
 }
 
 function starryNightJson(json: string) {
@@ -506,7 +505,7 @@ function ConversationContent({
   )
 }
 
-function SessionDetail({ session, onClose, onRenameSession }: SessionDetailProps) {
+function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [focusedEventId, setFocusedEventId] = useState<number | null>(null)
   const [expandedEventId, setExpandedEventId] = useState<number | null>(null)
   const [isWideView, setIsWideView] = useState(false)
@@ -514,8 +513,6 @@ function SessionDetail({ session, onClose, onRenameSession }: SessionDetailProps
   const [responseInput, setResponseInput] = useState('')
   const [isResponding, setIsResponding] = useState(false)
   const [isQueryExpanded, setIsQueryExpanded] = useState(false)
-  const [isEditingTitle, setIsEditingTitle] = useState(false)
-  const [editingTitle, setEditingTitle] = useState('')
   const interruptSession = useStore(state => state.interruptSession)
   const navigate = useNavigate()
 
@@ -652,58 +649,13 @@ function SessionDetail({ session, onClose, onRenameSession }: SessionDetailProps
     }
   })
 
-  // N key to rename session title
-  useHotkeys('n', () => {
-    if (!isEditingTitle && onRenameSession) {
-      setIsEditingTitle(true)
-      setEditingTitle(session.query)
-    }
-  })
-
-  const handleSaveRename = () => {
-    if (editingTitle.trim() && onRenameSession) {
-      onRenameSession(session.id, editingTitle.trim())
-    }
-    setIsEditingTitle(false)
-    setEditingTitle('')
-  }
-
-  const handleCancelRename = () => {
-    setIsEditingTitle(false)
-    setEditingTitle('')
-  }
-
-  const handleTitleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      handleSaveRename()
-    } else if (e.key === 'Escape') {
-      e.preventDefault()
-      handleCancelRename()
-    }
-  }
 
   const isLongQuery = session.query.length > 50
 
   return (
     <section className="flex flex-col gap-4">
       <hgroup className="flex flex-col gap-1">
-        {isEditingTitle ? (
-          <div className="flex gap-2 items-center">
-            <Input
-              value={editingTitle}
-              onChange={e => setEditingTitle(e.target.value)}
-              onKeyDown={handleTitleKeyDown}
-              onBlur={handleSaveRename}
-              autoFocus
-              className="text-lg font-medium text-foreground font-mono flex-1"
-            />
-            <small className="text-xs text-muted-foreground">
-              Press <kbd className="px-1 py-0.5 bg-muted rounded">Enter</kbd> to save,{' '}
-              <kbd className="px-1 py-0.5 bg-muted rounded">Escape</kbd> to cancel
-            </small>
-          </div>
-        ) : isLongQuery ? (
+        {isLongQuery ? (
           <Collapsible open={isQueryExpanded} onOpenChange={setIsQueryExpanded}>
             <CollapsibleTrigger className="flex items-center gap-2 text-left w-full">
               <h2 className="text-lg font-medium text-foreground font-mono">
@@ -725,17 +677,10 @@ function SessionDetail({ session, onClose, onRenameSession }: SessionDetailProps
             </CollapsibleContent>
           </Collapsible>
         ) : (
-          <div className="flex items-center gap-2">
-            <h2 className="text-lg font-medium text-foreground font-mono">
-              {session.query}{' '}
-              {session.parent_session_id && <span className="text-muted-foreground">[continued]</span>}
-            </h2>
-            {onRenameSession && (
-              <small className="text-xs text-muted-foreground">
-                Press <kbd className="px-1 py-0.5 bg-muted rounded">N</kbd> to rename
-              </small>
-            )}
-          </div>
+          <h2 className="text-lg font-medium text-foreground font-mono">
+            {session.query}{' '}
+            {session.parent_session_id && <span className="text-muted-foreground">[continued]</span>}
+          </h2>
         )}
         <small
           className={`font-mono text-xs uppercase tracking-wider ${getStatusTextClass(session.status)}`}

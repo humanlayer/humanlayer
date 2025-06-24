@@ -14,13 +14,6 @@ export function SessionTablePage() {
     navigate(`/sessions/${session.id}`)
   }
 
-  const handleRenameSession = (sessionId: string, newTitle: string) => {
-    // TODO: This will be implemented when daemon API is ready
-    console.log('Rename session:', sessionId, 'to:', newTitle)
-    // For now, just log the rename attempt
-    // When daemon agent completes, this will call the updateSession API
-  }
-
   return (
     <SessionTable
       sessions={sessions}
@@ -30,7 +23,6 @@ export function SessionTablePage() {
       focusedSession={focusedSession}
       handleFocusNextSession={focusNextSession}
       handleFocusPreviousSession={focusPreviousSession}
-      handleRenameSession={handleRenameSession}
     />
   )
 }

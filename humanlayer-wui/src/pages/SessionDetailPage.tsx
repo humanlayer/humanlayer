@@ -11,13 +11,6 @@ export function SessionDetailPage() {
     navigate('/')
   }
 
-  const handleRenameSession = (sessionId: string, newTitle: string) => {
-    // TODO: This will be implemented when daemon API is ready
-    console.log('Rename session:', sessionId, 'to:', newTitle)
-    // For now, just log the rename attempt
-    // When daemon agent completes, this will call the updateSession API
-  }
-
   if (!session) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -34,5 +27,5 @@ export function SessionDetailPage() {
     )
   }
 
-  return <SessionDetail session={session} onClose={handleClose} onRenameSession={handleRenameSession} />
+  return <SessionDetail session={session} onClose={handleClose} />
 }
