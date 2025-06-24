@@ -8,6 +8,8 @@ export type Theme =
   | 'high-contrast'
   | 'framer-dark'
   | 'framer-light'
+  | 'gruvbox-dark'
+  | 'gruvbox-light'
 
 interface ThemeContextType {
   theme: Theme

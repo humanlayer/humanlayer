@@ -142,6 +142,34 @@
   --terminal-error: #dc3545;
 }
 
+/* Gruvbox Dark - Material palette, medium contrast */
+[data-theme='gruvbox-dark'] {
+  --terminal-bg: #282828;
+  --terminal-bg-alt: #32302f;
+  --terminal-fg: #d4be98;
+  --terminal-fg-dim: #928374;
+  --terminal-accent: #a9b665;
+  --terminal-accent-alt: #89b482;
+  --terminal-border: #504945;
+  --terminal-success: #a9b665;
+  --terminal-warning: #d8a657;
+  --terminal-error: #ea6962;
+}
+
+/* Gruvbox Light - Material palette, medium contrast */
+[data-theme='gruvbox-light'] {
+  --terminal-bg: #fbf1c7;
+  --terminal-bg-alt: #f2e5bc;
+  --terminal-fg: #654735;
+  --terminal-fg-dim: #928374;
+  --terminal-accent: #6c782e;
+  --terminal-accent-alt: #4c7a5d;
+  --terminal-border: #d5c4a1;
+  --terminal-success: #6c782e;
+  --terminal-warning: #b47109;
+  --terminal-error: #c14a4a;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
