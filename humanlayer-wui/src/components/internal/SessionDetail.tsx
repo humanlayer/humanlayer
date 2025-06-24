@@ -417,16 +417,29 @@ function ConversationContent({
   useHotkeys('k', focusPreviousEvent)
 
   const containerRef = useRef<HTMLDivElement>(null)
+  const hasAutoScrolledRef = useRef(false)
 
   useEffect(() => {
-    if (!loading && containerRef.current) {
+    // Only auto-scroll once on initial load when events first appear
+    if (!loading && containerRef.current && events.length > 0 && !hasAutoScrolledRef.current) {
       containerRef.current.scrollTop = containerRef.current.scrollHeight
+      hasAutoScrolledRef.current = true
     }
 
     if (!starryNight) {
       createStarryNight([textMd, jsonGrammar]).then(sn => (starryNight = sn))
     }
   }, [loading, events])
+
+  // Scroll focused event into view
+  useEffect(() => {
+    if (focusedEventId && containerRef.current) {
+      const focusedElement = containerRef.current.querySelector(`[data-event-id="${focusedEventId}"]`)
+      if (focusedElement) {
+        focusedElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      }
+    }
+  }, [focusedEventId])
 
   if (error) {
     return <div className="text-destructive">Error loading conversation: {error}</div>
@@ -463,6 +476,7 @@ function ConversationContent({
         {nonEmptyDisplayObjects.map((displayObject, index) => (
           <div key={displayObject.id}>
             <div
+              data-event-id={displayObject.id}
               onMouseEnter={() => setFocusedEventId(displayObject.id)}
               onMouseLeave={() => setFocusedEventId(null)}
               onClick={() =>
