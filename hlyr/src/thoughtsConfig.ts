@@ -61,8 +61,10 @@ export function ensureThoughtsRepoExists(
     fs.mkdirSync(expandedGlobal, { recursive: true })
   }
 
-  // Check if we're in a git repo
-  const isGitRepo = fs.existsSync(path.join(expandedRepo, '.git'))
+  // Check if we're in a git repo (handle both .git directory and .git file for worktrees)
+  const gitPath = path.join(expandedRepo, '.git')
+  const isGitRepo =
+    fs.existsSync(gitPath) && (fs.statSync(gitPath).isDirectory() || fs.statSync(gitPath).isFile())
 
   if (!isGitRepo) {
     // Initialize as git repo

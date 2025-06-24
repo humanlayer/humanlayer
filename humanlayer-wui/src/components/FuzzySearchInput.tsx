@@ -136,6 +136,7 @@ export default function FuzzySearchInput<T>({
   return (
     <div className="relative">
       <input
+        spellCheck={false}
         ref={inputRef}
         type="text"
         value={value}

@@ -23,13 +23,13 @@ export function formatTimestamp(date: Date | string): string {
 
   // Use date-fns for relative time formatting
   const distance = formatDistanceToNow(d, { addSuffix: true })
-  
+
   // For dates older than 7 days, show actual date
   const daysDiff = Math.floor((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24))
   if (daysDiff > 7) {
     return format(d, 'MMM d, yyyy')
   }
-  
+
   return distance
 }
 
@@ -42,11 +42,11 @@ export function formatAbsoluteTimestamp(date: Date | string): string {
 export function formatDuration(startTime: Date | string, endTime?: Date | string): string {
   const start = parseDate(startTime)
   const end = endTime ? parseDate(endTime) : new Date()
-  
+
   if (!isValid(start) || !isValid(end)) return 'Invalid duration'
-  
+
   const duration = intervalToDuration({ start, end })
-  
+
   if (duration.hours && duration.hours > 0) {
     return `${duration.hours}h ${duration.minutes || 0}m`
   }

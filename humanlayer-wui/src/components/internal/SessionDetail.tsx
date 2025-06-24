@@ -3,13 +3,14 @@ import jsonGrammar from '@wooorm/starry-night/source.json'
 import textMd from '@wooorm/starry-night/text.md'
 import { toJsxRuntime } from 'hast-util-to-jsx-runtime'
 import { Fragment, jsx, jsxs } from 'react/jsx-runtime'
-import { Suspense, useEffect, useRef, useState } from 'react'
+import React, { Suspense, useEffect, useRef, useState } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { useNavigate } from 'react-router-dom'
 
 import {
   ConversationEvent,
   ConversationEventType,
+  ConversationRole,
   SessionInfo,
   ApprovalStatus,
 } from '@/lib/daemon/types'
@@ -20,10 +21,22 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/colla
 import { useConversation } from '@/hooks/useConversation'
 import { Skeleton } from '../ui/skeleton'
 import { useStore } from '@/AppStore'
-import { Bot, MessageCircleDashed, UserCheck, Wrench, ChevronDown, ChevronRight } from 'lucide-react'
+import {
+  Bot,
+  CheckCircle,
+  CircleDashed,
+  Hourglass,
+  MessageCircleDashed,
+  UserCheck,
+  Wrench,
+  ChevronDown,
+  ChevronRight,
+  User,
+} from 'lucide-react'
 import { getStatusTextClass } from '@/utils/component-utils'
 import { daemonClient } from '@/lib/daemon/client'
 import { truncate, formatAbsoluteTimestamp } from '@/utils/formatting'
+import { CommandToken } from './CommandToken'
 
 /* I, Sundeep, don't know how I feel about what's going on here. */
 let starryNight: any | null = null
@@ -51,10 +64,12 @@ function eventToDisplayObject(
   denyingApprovalId?: string | null,
   onStartDeny?: (approvalId: string) => void,
   onCancelDeny?: () => void,
+  approvingApprovalId?: string | null,
 ) {
   let subject = <span>Unknown Subject</span>
   let body = null
   let iconComponent = null
+  const iconClasses = 'w-4 h-4 align-middle relative top-[1px]'
 
   // For the moment, don't display tool results.
   if (event.event_type === ConversationEventType.ToolResult) {
@@ -62,7 +77,7 @@ function eventToDisplayObject(
   }
 
   if (event.event_type === ConversationEventType.ToolCall) {
-    iconComponent = <Wrench className="w-4 h-4" />
+    iconComponent = <Wrench className={iconClasses} />
 
     // Claude Code converts "LS" to "List"
     if (event.tool_name === 'LS') {
@@ -81,6 +96,31 @@ function eventToDisplayObject(
         <span>
           <span className="font-bold">{event.tool_name} </span>
           <span className="font-mono text-sm text-muted-foreground">{toolInput.file_path}</span>
+        </span>
+      )
+    }
+
+    if (event.tool_name === 'Glob') {
+      const toolInput = JSON.parse(event.tool_input_json!)
+      subject = (
+        <span>
+          <span className="font-bold">{event.tool_name} </span>
+          <span className="font-mono text-sm text-muted-foreground">
+            <span className="font-bold">{toolInput.pattern}</span> against{' '}
+            <span className="font-bold">{toolInput.path}</span>
+          </span>
+        </span>
+      )
+    }
+
+    if (event.tool_name === 'Bash') {
+      const toolInput = JSON.parse(event.tool_input_json!)
+      subject = (
+        <span>
+          <span className="font-bold">{event.tool_name} </span>
+          <span className="font-mono text-sm text-muted-foreground">
+            <CommandToken>{toolInput.command}</CommandToken>
+          </span>
         </span>
       )
     }
@@ -152,7 +192,7 @@ function eventToDisplayObject(
       [ApprovalStatus.Denied]: 'text-[var(--terminal-error)]',
       [ApprovalStatus.Resolved]: 'text-[var(--terminal-success)]',
     }
-    iconComponent = <UserCheck className="w-4 h-4" />
+    iconComponent = <UserCheck className={iconClasses} />
     subject = (
       <span>
         <span className={`font-bold ${approvalStatusToColor[event.approval_status]}`}>
@@ -168,6 +208,7 @@ function eventToDisplayObject(
     // Add approve/deny buttons for pending approvals
     if (event.approval_status === ApprovalStatus.Pending && event.approval_id && onApprove && onDeny) {
       const isDenying = denyingApprovalId === event.approval_id
+      const isApproving = approvingApprovalId === event.approval_id
 
       body = (
         <div className="mt-4 flex gap-2 justify-end">
@@ -176,25 +217,29 @@ function eventToDisplayObject(
               <Button
                 className="cursor-pointer"
                 size="sm"
-                variant="default"
+                variant={isApproving ? 'outline' : 'default'}
                 onClick={e => {
                   e.stopPropagation()
                   onApprove(event.approval_id!)
                 }}
+                disabled={isApproving}
               >
-                Approve <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">A</kbd>
+                {isApproving ? 'Approving...' : 'Approve'}{' '}
+                <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">A</kbd>
               </Button>
-              <Button
-                className="cursor-pointer"
-                size="sm"
-                variant="destructive"
-                onClick={e => {
-                  e.stopPropagation()
-                  onStartDeny?.(event.approval_id!)
-                }}
-              >
-                Deny <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">D</kbd>
-              </Button>
+              {!isApproving && (
+                <Button
+                  className="cursor-pointer"
+                  size="sm"
+                  variant="destructive"
+                  onClick={e => {
+                    e.stopPropagation()
+                    onStartDeny?.(event.approval_id!)
+                  }}
+                >
+                  Deny <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">D</kbd>
+                </Button>
+              )}
             </>
           ) : (
             <DenyForm approvalId={event.approval_id!} onDeny={onDeny} onCancel={onCancelDeny} />
@@ -224,7 +269,11 @@ function eventToDisplayObject(
   }
 
   if (event.role === 'assistant') {
-    iconComponent = <Bot className="w-4 h-4" />
+    iconComponent = <Bot className={iconClasses} />
+  }
+
+  if (event.role === 'user') {
+    iconComponent = <User className={iconClasses} />
   }
 
   return {
@@ -236,6 +285,62 @@ function eventToDisplayObject(
     body,
     created_at: event.created_at,
   }
+}
+
+function TodoWidget({ event }: { event: ConversationEvent }) {
+  // console.log('todo event', event)
+  const toolInput = JSON.parse(event.tool_input_json!)
+  const priorityGrouped = Object.groupBy(toolInput.todos, (todo: any) => todo.priority)
+  const todos = toolInput.todos
+  const completedCount = todos.filter((todo: any) => todo.status === 'completed').length
+  const pendingCount = todos.filter((todo: any) => todo.status === 'pending').length
+  const displayOrder = ['high', 'medium', 'low']
+  const iconClasses = 'w-3 h-3 align-middle relative top-[1px]'
+  const statusToIcon = {
+    in_progress: <Hourglass className={iconClasses + ' text-[var(--terminal-warning)]'} />,
+    pending: <CircleDashed className={iconClasses + ' text-[var(--terminal-fg-dim)]'} />,
+    completed: <CheckCircle className={iconClasses + ' text-[var(--terminal-success)]'} />,
+  }
+
+  // console.log(todos);
+
+  // console.log('event id', event.id)
+  // console.log('completedCount', completedCount)
+  // console.log('pendingCount', pendingCount)
+
+  // console.log('priorityGrouped', priorityGrouped)
+
+  return (
+    <div>
+      <hgroup className="flex flex-col gap-1 my-2">
+        <h2 className="text-md font-bold text-muted-foreground">TODOs</h2>
+        <small>
+          {completedCount} completed, {pendingCount} pending
+        </small>
+      </hgroup>
+      {displayOrder.map(priority => {
+        const todosInPriority = priorityGrouped[priority] || []
+        // Only render the priority section if there are todos in it
+        if (todosInPriority.length === 0) return null
+
+        return (
+          <div key={priority} className="flex flex-col gap-1 mb-2">
+            <h3 className="font-medium text-sm">{priority}</h3>
+            <ul className="text-sm">
+              {todosInPriority.map((todo: any) => (
+                <li key={todo.id} className="flex gap-2 items-start">
+                  <span className="flex-shrink-0 mt-1">
+                    {statusToIcon[todo.status as keyof typeof statusToIcon]}
+                  </span>
+                  <span className="whitespace-pre-line font-mono">{todo.content}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )
+      })}
+    </div>
+  )
 }
 
 function EventMetaInfo({ event }: { event: ConversationEvent }) {
@@ -260,9 +365,7 @@ function EventMetaInfo({ event }: { event: ConversationEvent }) {
         </div>
         <div>
           <span className="font-medium text-muted-foreground">Created:</span>
-          <span className="ml-2 font-mono text-xs">
-            {formatAbsoluteTimestamp(event.created_at)}
-          </span>
+          <span className="ml-2 font-mono text-xs">{formatAbsoluteTimestamp(event.created_at)}</span>
         </div>
         <div>
           <span className="font-medium text-muted-foreground">Completed:</span>
@@ -319,11 +422,17 @@ function DenyForm({
   onCancel?: () => void
 }) {
   const [reason, setReason] = useState('')
+  const [isDenying, setIsDenying] = useState(false)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (reason.trim() && onDeny) {
-      onDeny(approvalId, reason.trim())
+    if (reason.trim() && onDeny && !isDenying) {
+      try {
+        setIsDenying(true)
+        onDeny(approvalId, reason.trim())
+      } finally {
+        setIsDenying(false)
+      }
     }
   }
 
@@ -342,11 +451,18 @@ function DenyForm({
         type="submit"
         size="sm"
         variant="destructive"
-        disabled={!reason.trim()}
+        disabled={!reason.trim() || isDenying}
       >
-        Deny
+        {isDenying ? 'Denying...' : 'Deny'}
       </Button>
-      <Button className="cursor-pointer" type="button" size="sm" variant="outline" onClick={onCancel}>
+      <Button
+        className="cursor-pointer"
+        type="button"
+        size="sm"
+        variant="outline"
+        onClick={onCancel}
+        disabled={isDenying}
+      >
         Cancel
       </Button>
     </form>
@@ -363,6 +479,7 @@ function ConversationContent({
   isWideView,
   onApprove,
   onDeny,
+  approvingApprovalId,
 }: {
   sessionId: string
   session: SessionInfo
@@ -373,11 +490,12 @@ function ConversationContent({
   isWideView: boolean
   onApprove?: (approvalId: string) => void
   onDeny?: (approvalId: string, reason: string) => void
+  approvingApprovalId?: string | null
 }) {
   const { events, loading, error, isInitialLoad } = useConversation(sessionId, undefined, 1000)
   const [denyingApprovalId, setDenyingApprovalId] = useState<string | null>(null)
 
-  // Create synthetic first user message event from session.query 
+  // Create synthetic first user message event from session.query
   const firstUserMessageEvent: ConversationEvent = {
     id: -1, // Use negative ID to avoid conflicts
     session_id: session.id,
@@ -385,7 +503,7 @@ function ConversationContent({
     sequence: 0,
     event_type: ConversationEventType.Message,
     created_at: session.start_time,
-    role: 'user',
+    role: ConversationRole.User,
     content: session.query,
     is_completed: true,
   }
@@ -394,8 +512,14 @@ function ConversationContent({
   const eventsWithFirstMessage = [firstUserMessageEvent, ...events]
 
   const displayObjects = eventsWithFirstMessage.map(event =>
-    eventToDisplayObject(event, onApprove, onDeny, denyingApprovalId, setDenyingApprovalId, () =>
-      setDenyingApprovalId(null),
+    eventToDisplayObject(
+      event,
+      onApprove,
+      onDeny,
+      denyingApprovalId,
+      setDenyingApprovalId,
+      () => setDenyingApprovalId(null),
+      approvingApprovalId,
     ),
   )
   const nonEmptyDisplayObjects = displayObjects.filter(displayObject => displayObject !== null)
@@ -434,16 +558,29 @@ function ConversationContent({
   useHotkeys('k', focusPreviousEvent)
 
   const containerRef = useRef<HTMLDivElement>(null)
+  const hasAutoScrolledRef = useRef(false)
 
   useEffect(() => {
-    if (!loading && containerRef.current) {
+    // Only auto-scroll once on initial load when events first appear
+    if (!loading && containerRef.current && events.length > 0 && !hasAutoScrolledRef.current) {
       containerRef.current.scrollTop = containerRef.current.scrollHeight
+      hasAutoScrolledRef.current = true
     }
 
     if (!starryNight) {
       createStarryNight([textMd, jsonGrammar]).then(sn => (starryNight = sn))
     }
   }, [loading, events])
+
+  // Scroll focused event into view
+  useEffect(() => {
+    if (focusedEventId && containerRef.current) {
+      const focusedElement = containerRef.current.querySelector(`[data-event-id="${focusedEventId}"]`)
+      if (focusedElement) {
+        focusedElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      }
+    }
+  }, [focusedEventId])
 
   if (error) {
     return <div className="text-destructive">Error loading conversation: {error}</div>
@@ -466,26 +603,27 @@ function ConversationContent({
         <div className="text-muted-foreground mb-2">
           <MessageCircleDashed className="w-12 h-12 mx-auto" />
         </div>
-        <h3 className="text-lg font-medium text-foreground">No conversation yet</h3>
+        <h3 className="text-lg font-medium text-foreground">No conversation just yet</h3>
         <p className="mt-1 text-sm text-muted-foreground">
-          The conversation will appear here once it starts.
+          The conversation will appear here once the bot engines begin to fire up.
         </p>
       </div>
     )
   }
 
   return (
-    <div ref={containerRef} className="max-h-[calc(100vh-375px)] overflow-y-auto">
+    <div ref={containerRef} className="max-h-[calc(100vh-475px)] overflow-y-auto">
       <div>
         {nonEmptyDisplayObjects.map((displayObject, index) => (
           <div key={displayObject.id}>
             <div
+              data-event-id={displayObject.id}
               onMouseEnter={() => setFocusedEventId(displayObject.id)}
               onMouseLeave={() => setFocusedEventId(null)}
               onClick={() =>
                 setExpandedEventId(expandedEventId === displayObject.id ? null : displayObject.id)
               }
-              className={`pt-2 pb-4 px-2 cursor-pointer ${
+              className={`pt-2 pb-8 px-2 cursor-pointer ${
                 index !== nonEmptyDisplayObjects.length - 1 ? 'border-b' : ''
               } ${focusedEventId === displayObject.id ? '!bg-accent/20 -mx-2 px-4 rounded' : ''}`}
             >
@@ -496,14 +634,15 @@ function ConversationContent({
                 </span>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-baseline gap-2">
                 {displayObject.iconComponent && (
-                  <span className="text-sm text-accent">{displayObject.iconComponent}</span>
+                  <span className="text-sm text-accent align-middle relative top-[1px]">
+                    {displayObject.iconComponent}
+                  </span>
                 )}
-
-                <span className="whitespace-pre-wrap text-accent">{displayObject.subject}</span>
-                {/* <span className="font-medium">{displayObject.role}</span> */}
-                {/* <span className="text-sm text-muted-foreground">{displayObject.timestamp.toLocaleTimeString()}</span> */}
+                <span className="whitespace-pre-wrap text-accent max-w-[90%]">
+                  {displayObject.subject}
+                </span>
               </div>
               {displayObject.body && (
                 <p className="whitespace-pre-wrap text-foreground">{displayObject.body}</p>
@@ -529,18 +668,27 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [responseInput, setResponseInput] = useState('')
   const [isResponding, setIsResponding] = useState(false)
   const [isQueryExpanded, setIsQueryExpanded] = useState(false)
+  const [approvingApprovalId, setApprovingApprovalId] = useState<string | null>(null)
   const interruptSession = useStore(state => state.interruptSession)
   const navigate = useNavigate()
+  const isRunning = session.status === 'running'
 
   // Get events for sidebar access
   const { events } = useConversation(session.id)
 
+  const lastTodo = events
+    ?.toReversed()
+    .find(e => e.event_type === 'tool_call' && e.tool_name === 'TodoWrite')
+
   // Approval handlers
   const handleApprove = async (approvalId: string) => {
     try {
+      setApprovingApprovalId(approvalId)
       await daemonClient.approveFunctionCall(approvalId)
     } catch (error) {
       console.error('Failed to approve:', error)
+    } finally {
+      setApprovingApprovalId(null)
     }
   }
 
@@ -665,7 +813,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     }
   })
 
-
   const isLongQuery = session.query.length > 50
 
   return (
@@ -713,6 +860,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         )}
       </hgroup>
       <div className={`flex gap-4 ${isWideView ? 'flex-row' : 'flex-col'}`}>
+        {/* Conversation content and Loading */}
         <Card className={isWideView ? 'flex-1' : 'w-full'}>
           <CardContent>
             <Suspense
@@ -726,6 +874,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
             >
               <ConversationContent
                 sessionId={session.id}
+                session={session}
                 focusedEventId={focusedEventId}
                 setFocusedEventId={setFocusedEventId}
                 expandedEventId={expandedEventId}
@@ -733,16 +882,36 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                 isWideView={isWideView}
                 onApprove={handleApprove}
                 onDeny={handleDeny}
+                approvingApprovalId={approvingApprovalId}
               />
+              {isRunning && (
+                <div className="flex flex-col gap-2 mt-4 border-t pt-4">
+                  <h2 className="text-sm font-medium text-muted-foreground">
+                    robot magic is happening
+                  </h2>
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-1/4" />
+                    <Skeleton className="h-4 w-1/5" />
+                  </div>
+                </div>
+              )}
             </Suspense>
           </CardContent>
         </Card>
 
         {/* Sidebar for wide view */}
-        {isWideView && expandedEventId && (
+        {/* {isWideView && expandedEventId && (
           <Card className="w-[40%]">
             <CardContent>
               <EventMetaInfo event={events.find(e => e.id === expandedEventId)!} />
+            </CardContent>
+          </Card>
+        )} */}
+
+        {lastTodo && (
+          <Card className="w-[20%]">
+            <CardContent>
+              <TodoWidget event={lastTodo} />
             </CardContent>
           </Card>
         )}
