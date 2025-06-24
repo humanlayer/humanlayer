@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Generated Tauri config for local development
+src-tauri/tauri.conf.local.json

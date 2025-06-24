@@ -2,14 +2,16 @@ import { useEffect, useState } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { useSessionLauncher } from '@/hooks/useSessionLauncher'
 import { useStore } from '@/AppStore'
-import { fuzzySearch, highlightMatches, type FuzzyMatch } from '@/lib/fuzzy-search'
+import { highlightMatches, type FuzzyMatch } from '@/lib/fuzzy-search'
 import { cn } from '@/lib/utils'
+import { useSessionFilter } from '@/hooks/useSessionFilter'
 
 interface MenuOption {
   id: string
   label: string
   description?: string
   action: () => void
+  sessionId?: string
 }
 
 export default function CommandPaletteMenu() {
@@ -20,6 +22,13 @@ export default function CommandPaletteMenu() {
 
   // Get sessions from the main app store
   const sessions = useStore(state => state.sessions)
+
+  // Use the shared session filter hook
+  const { filteredSessions, statusFilter, searchText, matchedSessions } = useSessionFilter({
+    sessions,
+    query: searchQuery,
+    searchFields: ['query', 'model'], // Search in both query and model fields for the modal
+  })
 
   // Build base menu options
   const baseOptions: MenuOption[] = [
@@ -32,36 +41,27 @@ export default function CommandPaletteMenu() {
   ]
 
   // Command mode: Only Create Session
-  // Search mode: All sessions (for fuzzy search) but limit display to 5
+  // Search mode: Use filtered sessions but limit display to 5
   const sessionOptions: MenuOption[] =
     mode === 'search'
-      ? sessions.map(session => ({
+      ? filteredSessions.slice(0, 5).map(session => ({
           id: `open-${session.id}`,
           label: `${session.query.slice(0, 40)}${session.query.length > 40 ? '...' : ''}`,
           description: `${session.status} • ${session.model || 'Unknown model'}`,
           action: () => openSessionById(session.id),
+          sessionId: session.id, // Store for match lookup
         }))
       : [] // No sessions in command mode
-
-  // Apply fuzzy search if in search mode and there's a query
-  const filteredSessions =
-    searchQuery && mode === 'search'
-      ? fuzzySearch(sessionOptions, searchQuery, {
-          keys: ['label', 'description'],
-          threshold: 0.1,
-          includeMatches: true,
-        })
-      : sessionOptions.map(session => ({ item: session, matches: [], score: 1, indices: [] }))
 
   // Combine options based on mode
   const menuOptions: MenuOption[] =
     mode === 'command'
       ? baseOptions // Command: Only Create Session
-      : filteredSessions.slice(0, 5).map(result => result.item) // Search: Only sessions (no Create Session), limit to 5
+      : sessionOptions // Search: Only sessions (no Create Session), already limited to 5
 
   // Keyboard navigation
   useHotkeys(
-    'up',
+    'up, k',
     () => {
       setSelectedMenuIndex(selectedMenuIndex > 0 ? selectedMenuIndex - 1 : menuOptions.length - 1)
     },
@@ -69,7 +69,7 @@ export default function CommandPaletteMenu() {
   )
 
   useHotkeys(
-    'down',
+    'down, j',
     () => {
       setSelectedMenuIndex(selectedMenuIndex < menuOptions.length - 1 ? selectedMenuIndex + 1 : 0)
     },
@@ -96,7 +96,7 @@ export default function CommandPaletteMenu() {
   // Render highlighted text for search results
   const renderHighlightedText = (text: string, matches: FuzzyMatch['matches'], targetKey?: string) => {
     const match = matches.find(m => m.key === targetKey)
-    if (match && match.indices && searchQuery) {
+    if (match && match.indices && searchText) {
       const segments = highlightMatches(text, match.indices)
       return (
         <>
@@ -153,14 +153,22 @@ export default function CommandPaletteMenu() {
       {mode === 'search' && (
         <div className="text-xs text-muted-foreground">
           {menuOptions.length} of {filteredSessions.length} sessions
+          {statusFilter && (
+            <span
+              className="ml-2 px-2 py-0.5 text-accent-foreground rounded"
+              style={{ backgroundColor: 'var(--terminal-accent)' }}
+            >
+              status: {statusFilter.toLowerCase()}
+            </span>
+          )}
         </div>
       )}
 
       {menuOptions.map((option, index) => {
         // Find the corresponding match data for highlighting
         const matchData =
-          mode === 'search' && searchQuery
-            ? filteredSessions.find(result => result.item.id === option.id)
+          mode === 'search' && searchText && option.sessionId
+            ? matchedSessions.get(option.sessionId)
             : null
 
         return (
@@ -205,7 +213,7 @@ export default function CommandPaletteMenu() {
 
       <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t border-border/30">
         <div className="flex items-center space-x-3">
-          <span>↑↓ Navigate</span>
+          <span>↑↓ j/k Navigate</span>
           <span>↵ Select</span>
         </div>
         <span>ESC Close</span>

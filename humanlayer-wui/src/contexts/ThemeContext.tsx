@@ -1,6 +1,15 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 
-export type Theme = 'solarized-dark' | 'solarized-light' | 'cappuccino' | 'catppuccin' | 'high-contrast'
+export type Theme =
+  | 'solarized-dark'
+  | 'solarized-light'
+  | 'cappuccino'
+  | 'catppuccin'
+  | 'high-contrast'
+  | 'framer-dark'
+  | 'framer-light'
+  | 'gruvbox-dark'
+  | 'gruvbox-light'
 
 interface ThemeContextType {
   theme: Theme

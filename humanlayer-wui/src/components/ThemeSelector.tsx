@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useTheme, type Theme } from '@/contexts/ThemeContext'
-import { Moon, Sun, Coffee, Cat, ScanEye } from 'lucide-react'
+import { Moon, Sun, Coffee, Cat, ScanEye, Framer, Box } from 'lucide-react'
 import { useHotkeys, useHotkeysContext } from 'react-hotkeys-hook'
 import { SessionTableHotkeysScope } from './internal/SessionTable'
 
@@ -10,6 +10,10 @@ const themes: { value: Theme; label: string; icon: React.ComponentType<{ classNa
   { value: 'cappuccino', label: 'Cappuccino', icon: Coffee },
   { value: 'catppuccin', label: 'Catppuccin', icon: Cat },
   { value: 'high-contrast', label: 'High Contrast', icon: ScanEye },
+  { value: 'framer-dark', label: 'Framer Dark', icon: Framer },
+  { value: 'framer-light', label: 'Framer Light', icon: Framer },
+  { value: 'gruvbox-dark', label: 'Gruvbox Dark', icon: Box },
+  { value: 'gruvbox-light', label: 'Gruvbox Light', icon: Box },
 ]
 
 export const ThemeSelectorHotkeysScope = 'theme-selector'
