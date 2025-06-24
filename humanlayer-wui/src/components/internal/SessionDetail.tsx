@@ -20,10 +20,19 @@ import { useConversation } from '@/hooks/useConversation'
 import { Skeleton } from '../ui/skeleton'
 import { Suspense, useEffect, useRef, useState } from 'react'
 import { useStore } from '@/AppStore'
-import { Bot, MessageCircleDashed, UserCheck, Wrench } from 'lucide-react'
+import {
+  Bot,
+  CheckCircle,
+  CircleDashed,
+  Hourglass,
+  MessageCircleDashed,
+  UserCheck,
+  Wrench,
+} from 'lucide-react'
 import { getStatusTextClass } from '@/utils/component-utils'
 import { daemonClient } from '@/lib/daemon/client'
 import { useNavigate } from 'react-router-dom'
+import { CommandToken } from './CommandToken'
 
 /* I, Sundeep, don't know how I feel about what's going on here. */
 let starryNight: any | null = null
@@ -55,6 +64,7 @@ function eventToDisplayObject(
   let subject = <span>Unknown Subject</span>
   let body = null
   let iconComponent = null
+  const iconClasses = 'w-4 h-4 align-middle relative top-[1px]'
 
   // For the moment, don't display tool results.
   if (event.event_type === ConversationEventType.ToolResult) {
@@ -62,7 +72,7 @@ function eventToDisplayObject(
   }
 
   if (event.event_type === ConversationEventType.ToolCall) {
-    iconComponent = <Wrench className="w-4 h-4" />
+    iconComponent = <Wrench className={iconClasses} />
 
     // Claude Code converts "LS" to "List"
     if (event.tool_name === 'LS') {
@@ -81,6 +91,31 @@ function eventToDisplayObject(
         <span>
           <span className="font-bold">{event.tool_name} </span>
           <span className="font-mono text-sm text-muted-foreground">{toolInput.file_path}</span>
+        </span>
+      )
+    }
+
+    if (event.tool_name === 'Glob') {
+      const toolInput = JSON.parse(event.tool_input_json!)
+      subject = (
+        <span>
+          <span className="font-bold">{event.tool_name} </span>
+          <span className="font-mono text-sm text-muted-foreground">
+            <span className="font-bold">{toolInput.pattern}</span> against{' '}
+            <span className="font-bold">{toolInput.path}</span>
+          </span>
+        </span>
+      )
+    }
+
+    if (event.tool_name === 'Bash') {
+      const toolInput = JSON.parse(event.tool_input_json!)
+      subject = (
+        <span>
+          <span className="font-bold">{event.tool_name} </span>
+          <span className="font-mono text-sm text-muted-foreground">
+            <CommandToken>{toolInput.command}</CommandToken>
+          </span>
         </span>
       )
     }
@@ -152,7 +187,7 @@ function eventToDisplayObject(
       [ApprovalStatus.Denied]: 'text-[var(--terminal-error)]',
       [ApprovalStatus.Resolved]: 'text-[var(--terminal-success)]',
     }
-    iconComponent = <UserCheck className="w-4 h-4" />
+    iconComponent = <UserCheck className={iconClasses} />
     subject = (
       <span>
         <span className={`font-bold ${approvalStatusToColor[event.approval_status]}`}>
@@ -224,7 +259,7 @@ function eventToDisplayObject(
   }
 
   if (event.role === 'assistant') {
-    iconComponent = <Bot className="w-4 h-4" />
+    iconComponent = <Bot className={iconClasses} />
   }
 
   return {
@@ -236,6 +271,53 @@ function eventToDisplayObject(
     body,
     created_at: event.created_at,
   }
+}
+
+function TodoWidget({ event }: { event: ConversationEvent }) {
+  // console.log('todo event', event)
+  const toolInput = JSON.parse(event.tool_input_json!)
+  const priorityGrouped = Object.groupBy(toolInput.todos, (todo: any) => todo.priority)
+  const todos = toolInput.todos
+  const completedCount = todos.filter((todo: any) => todo.status === 'completed').length
+  const pendingCount = todos.filter((todo: any) => todo.status === 'pending').length
+  const displayOrder = ['high', 'medium', 'low']
+  const statusToIcon = {
+    in_progress: <Hourglass className="w-4 h-4 text-[var(--terminal-warning)]" />,
+    pending: <CircleDashed className="w-4 h-4 text-[var(--terminal-fg-dim)]" />,
+    completed: <CheckCircle className="w-4 h-4 text-[var(--terminal-success)]" />,
+  }
+
+  // console.log(todos);
+
+  // console.log('event id', event.id)
+  // console.log('completedCount', completedCount)
+  // console.log('pendingCount', pendingCount)
+
+  // console.log('priorityGrouped', priorityGrouped)
+
+  return (
+    <div>
+      <hgroup className="flex flex-col gap-1 my-2">
+        <h2>TODOs</h2>
+        <small>
+          {completedCount} completed, {pendingCount} pending
+        </small>
+      </hgroup>
+      {displayOrder.map(priority => (
+        <div key={priority} className="flex flex-col gap-1 mb-2">
+          <h3 className="font-bold text-sm">{priority}</h3>
+          <ul className="text-sm">
+            {priorityGrouped[priority] &&
+              priorityGrouped[priority].map((todo: any) => (
+                <li key={todo.id} className="inline-flex gap-2 items-center">
+                  {statusToIcon[todo.status as keyof typeof statusToIcon]} {todo.content}
+                </li>
+              ))}
+          </ul>
+        </div>
+      ))}
+    </div>
+  )
 }
 
 function EventMetaInfo({ event }: { event: ConversationEvent }) {
@@ -376,6 +458,8 @@ function ConversationContent({
   const { events, loading, error, isInitialLoad } = useConversation(sessionId, undefined, 1000)
   const [denyingApprovalId, setDenyingApprovalId] = useState<string | null>(null)
 
+  // console.log('events', events)
+
   const displayObjects = events.map(event =>
     eventToDisplayObject(event, onApprove, onDeny, denyingApprovalId, setDenyingApprovalId, () =>
       setDenyingApprovalId(null),
@@ -462,16 +546,16 @@ function ConversationContent({
         <div className="text-muted-foreground mb-2">
           <MessageCircleDashed className="w-12 h-12 mx-auto" />
         </div>
-        <h3 className="text-lg font-medium text-foreground">No conversation yet</h3>
+        <h3 className="text-lg font-medium text-foreground">No conversation just yet</h3>
         <p className="mt-1 text-sm text-muted-foreground">
-          The conversation will appear here once it starts.
+          The conversation will appear here once the bot engines begin to fire up.
         </p>
       </div>
     )
   }
 
   return (
-    <div ref={containerRef} className="max-h-[calc(100vh-375px)] overflow-y-auto">
+    <div ref={containerRef} className="max-h-[calc(100vh-475px)] overflow-y-auto">
       <div>
         {nonEmptyDisplayObjects.map((displayObject, index) => (
           <div key={displayObject.id}>
@@ -493,14 +577,15 @@ function ConversationContent({
                 </span>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-baseline gap-2">
                 {displayObject.iconComponent && (
-                  <span className="text-sm text-accent">{displayObject.iconComponent}</span>
+                  <span className="text-sm text-accent align-middle relative top-[1px]">
+                    {displayObject.iconComponent}
+                  </span>
                 )}
-
-                <span className="whitespace-pre-wrap text-accent">{displayObject.subject}</span>
-                {/* <span className="font-medium">{displayObject.role}</span> */}
-                {/* <span className="text-sm text-muted-foreground">{displayObject.timestamp.toLocaleTimeString()}</span> */}
+                <span className="whitespace-pre-wrap text-accent max-w-[90%]">
+                  {displayObject.subject}
+                </span>
               </div>
               {displayObject.body && (
                 <p className="whitespace-pre-wrap text-foreground">{displayObject.body}</p>
@@ -527,9 +612,14 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [isResponding, setIsResponding] = useState(false)
   const interruptSession = useStore(state => state.interruptSession)
   const navigate = useNavigate()
+  const isRunning = session.status === 'running'
 
   // Get events for sidebar access
   const { events } = useConversation(session.id)
+
+  const lastTodo = events
+    ?.toReversed()
+    .find(e => e.event_type === 'tool_call' && e.tool_name === 'TodoWrite')
 
   // Approval handlers
   const handleApprove = async (approvalId: string) => {
@@ -659,6 +749,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         )}
       </hgroup>
       <div className={`flex gap-4 ${isWideView ? 'flex-row' : 'flex-col'}`}>
+        {/* Conversation content and Loading */}
         <Card className={isWideView ? 'flex-1' : 'w-full'}>
           <CardContent>
             <Suspense
@@ -680,15 +771,34 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                 onApprove={handleApprove}
                 onDeny={handleDeny}
               />
+              {isRunning && (
+                <div className="flex flex-col gap-2 mt-4 border-t pt-4">
+                  <h2 className="text-sm font-medium text-muted-foreground">
+                    robot magic is happening
+                  </h2>
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-1/4" />
+                    <Skeleton className="h-4 w-1/5" />
+                  </div>
+                </div>
+              )}
             </Suspense>
           </CardContent>
         </Card>
 
         {/* Sidebar for wide view */}
-        {isWideView && expandedEventId && (
+        {/* {isWideView && expandedEventId && (
           <Card className="w-[40%]">
             <CardContent>
               <EventMetaInfo event={events.find(e => e.id === expandedEventId)!} />
+            </CardContent>
+          </Card>
+        )} */}
+
+        {lastTodo && (
+          <Card className="w-[20%]">
+            <CardContent>
+              <TodoWidget event={lastTodo} />
             </CardContent>
           </Card>
         )}
