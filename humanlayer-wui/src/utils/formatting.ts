@@ -1,74 +1,59 @@
+import { format, formatDistanceToNow, parseISO, isValid, intervalToDuration } from 'date-fns'
+
 // UI formatting utilities
 
 export function truncate(text: string, maxLength: number): string {
-  // Replace whitespace with single spaces
   const cleaned = text.replace(/[\n\r\t]+/g, ' ').trim()
-
-  if (cleaned.length <= maxLength) {
-    return cleaned
-  }
-
-  if (maxLength > 3) {
-    return cleaned.substring(0, maxLength - 3) + '...'
-  }
+  if (cleaned.length <= maxLength) return cleaned
+  if (maxLength > 3) return cleaned.substring(0, maxLength - 3) + '...'
   return cleaned.substring(0, maxLength)
 }
 
+// Standard date parsing - handles both Date objects and ISO strings
+function parseDate(date: Date | string): Date {
+  if (typeof date === 'string') {
+    return parseISO(date)
+  }
+  return date
+}
+
 export function formatTimestamp(date: Date | string): string {
-  const d = typeof date === 'string' ? new Date(date) : date
+  const d = parseDate(date)
+  if (!isValid(d)) return 'Invalid date'
 
-  // Handle invalid dates
-  if (isNaN(d.getTime())) return 'Invalid date'
-
-  const now = new Date()
-  const diffMs = now.getTime() - d.getTime()
-  const diffMins = Math.floor(diffMs / 60000)
-
-  if (diffMins < 1) return 'just now'
-  if (diffMins < 60) return `${diffMins}m ago`
-
-  const diffHours = Math.floor(diffMins / 60)
-  if (diffHours < 24) return `${diffHours}h ago`
-
-  const diffDays = Math.floor(diffHours / 24)
-  if (diffDays < 7) return `${diffDays}d ago`
-
-  // For older dates, show actual date
-  return d.toLocaleDateString()
+  // Use date-fns for relative time formatting
+  const distance = formatDistanceToNow(d, { addSuffix: true })
+  
+  // For dates older than 7 days, show actual date
+  const daysDiff = Math.floor((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24))
+  if (daysDiff > 7) {
+    return format(d, 'MMM d, yyyy')
+  }
+  
+  return distance
 }
 
 export function formatAbsoluteTimestamp(date: Date | string): string {
-  const d = typeof date === 'string' ? new Date(date) : date
-
-  // Handle invalid dates
-  if (isNaN(d.getTime())) return 'Invalid date'
-
-  return d.toLocaleString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-  })
+  const d = parseDate(date)
+  if (!isValid(d)) return 'Invalid date'
+  return format(d, 'MMMM d, yyyy h:mm a')
 }
 
 export function formatDuration(startTime: Date | string, endTime?: Date | string): string {
-  const start = typeof startTime === 'string' ? new Date(startTime) : startTime
-  const end = endTime ? (typeof endTime === 'string' ? new Date(endTime) : endTime) : new Date()
-
-  const diffMs = end.getTime() - start.getTime()
-  const seconds = Math.floor(diffMs / 1000)
-  const minutes = Math.floor(seconds / 60)
-  const hours = Math.floor(minutes / 60)
-
-  if (hours > 0) {
-    return `${hours}h ${minutes % 60}m`
+  const start = parseDate(startTime)
+  const end = endTime ? parseDate(endTime) : new Date()
+  
+  if (!isValid(start) || !isValid(end)) return 'Invalid duration'
+  
+  const duration = intervalToDuration({ start, end })
+  
+  if (duration.hours && duration.hours > 0) {
+    return `${duration.hours}h ${duration.minutes || 0}m`
   }
-  if (minutes > 0) {
-    return `${minutes}m ${seconds % 60}s`
+  if (duration.minutes && duration.minutes > 0) {
+    return `${duration.minutes}m ${duration.seconds || 0}s`
   }
-  return `${seconds}s`
+  return `${duration.seconds || 0}s`
 }
 
 export function formatParameters(params: Record<string, any>, maxLength: number = 100): string {

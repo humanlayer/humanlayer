@@ -3,7 +3,6 @@ import jsonGrammar from '@wooorm/starry-night/source.json'
 import textMd from '@wooorm/starry-night/text.md'
 import { toJsxRuntime } from 'hast-util-to-jsx-runtime'
 import { Fragment, jsx, jsxs } from 'react/jsx-runtime'
-import { format, parseISO } from 'date-fns'
 import { Suspense, useEffect, useRef, useState } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { useNavigate } from 'react-router-dom'
@@ -24,7 +23,7 @@ import { useStore } from '@/AppStore'
 import { Bot, MessageCircleDashed, UserCheck, Wrench, ChevronDown, ChevronRight } from 'lucide-react'
 import { getStatusTextClass } from '@/utils/component-utils'
 import { daemonClient } from '@/lib/daemon/client'
-import { truncate } from '@/utils/formatting'
+import { truncate, formatAbsoluteTimestamp } from '@/utils/formatting'
 
 /* I, Sundeep, don't know how I feel about what's going on here. */
 let starryNight: any | null = null
@@ -262,7 +261,7 @@ function EventMetaInfo({ event }: { event: ConversationEvent }) {
         <div>
           <span className="font-medium text-muted-foreground">Created:</span>
           <span className="ml-2 font-mono text-xs">
-            {format(parseISO(event.created_at), 'MMM d, yyyy h:mm a')}
+            {formatAbsoluteTimestamp(event.created_at)}
           </span>
         </div>
         <div>
@@ -356,6 +355,7 @@ function DenyForm({
 
 function ConversationContent({
   sessionId,
+  session,
   focusedEventId,
   setFocusedEventId,
   expandedEventId,
@@ -365,6 +365,7 @@ function ConversationContent({
   onDeny,
 }: {
   sessionId: string
+  session: SessionInfo
   focusedEventId: number | null
   setFocusedEventId: (id: number | null) => void
   expandedEventId: number | null
@@ -373,11 +374,26 @@ function ConversationContent({
   onApprove?: (approvalId: string) => void
   onDeny?: (approvalId: string, reason: string) => void
 }) {
-  // const { formattedEvents, loading, error } = useFormattedConversation(sessionId)
   const { events, loading, error, isInitialLoad } = useConversation(sessionId, undefined, 1000)
   const [denyingApprovalId, setDenyingApprovalId] = useState<string | null>(null)
 
-  const displayObjects = events.map(event =>
+  // Create synthetic first user message event from session.query 
+  const firstUserMessageEvent: ConversationEvent = {
+    id: -1, // Use negative ID to avoid conflicts
+    session_id: session.id,
+    claude_session_id: session.claude_session_id || '',
+    sequence: 0,
+    event_type: ConversationEventType.Message,
+    created_at: session.start_time,
+    role: 'user',
+    content: session.query,
+    is_completed: true,
+  }
+
+  // Inject the first user message at the beginning of the events list
+  const eventsWithFirstMessage = [firstUserMessageEvent, ...events]
+
+  const displayObjects = eventsWithFirstMessage.map(event =>
     eventToDisplayObject(event, onApprove, onDeny, denyingApprovalId, setDenyingApprovalId, () =>
       setDenyingApprovalId(null),
     ),
@@ -476,7 +492,7 @@ function ConversationContent({
               {/* Timestamp at top */}
               <div className="flex justify-end mb-2">
                 <span className="text-xs text-muted-foreground/60">
-                  {format(parseISO(displayObject.created_at), 'MMM d, yyyy h:mm a')}
+                  {formatAbsoluteTimestamp(displayObject.created_at)}
                 </span>
               </div>
 
