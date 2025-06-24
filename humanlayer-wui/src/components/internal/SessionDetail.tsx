@@ -5,6 +5,7 @@ import { toJsxRuntime } from 'hast-util-to-jsx-runtime'
 import { Fragment, jsx, jsxs } from 'react/jsx-runtime'
 import { format, parseISO } from 'date-fns'
 import React from 'react'
+import ReactDiffViewer from 'react-diff-viewer-continued'
 
 import {
   ConversationEvent,
@@ -24,8 +25,11 @@ import {
   Bot,
   CheckCircle,
   CircleDashed,
+  FilePenLine,
   Hourglass,
   MessageCircleDashed,
+  SquareSplitHorizontal,
+  SquareSplitVertical,
   UserCheck,
   Wrench,
 } from 'lucide-react'
@@ -40,6 +44,24 @@ let starryNight: any | null = null
 interface SessionDetailProps {
   session: SessionInfo
   onClose: () => void
+}
+
+function DiffViewToggle({ isSplitView, onToggle }: { isSplitView: boolean; onToggle: () => void }) {
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      onClick={onToggle}
+      className="h-8 w-8 p-0 cursor-pointer"
+      title={isSplitView ? 'Switch to inline view' : 'Switch to split view'}
+    >
+      {isSplitView ? (
+        <SquareSplitVertical className="h-4 w-4" />
+      ) : (
+        <SquareSplitHorizontal className="h-4 w-4" />
+      )}
+    </Button>
+  )
 }
 
 function starryNightJson(json: string) {
@@ -61,6 +83,8 @@ function eventToDisplayObject(
   onStartDeny?: (approvalId: string) => void,
   onCancelDeny?: () => void,
   approvingApprovalId?: string | null,
+  isSplitView?: boolean,
+  onToggleSplitView?: () => void,
 ) {
   let subject = <span>Unknown Subject</span>
   let body = null
@@ -72,6 +96,7 @@ function eventToDisplayObject(
     return null
   }
 
+  // Tool Calls
   if (event.event_type === ConversationEventType.ToolCall) {
     iconComponent = <Wrench className={iconClasses} />
 
@@ -152,7 +177,7 @@ function eventToDisplayObject(
       subject = (
         <span>
           <span className="font-bold">{event.tool_name} </span>
-          <span className="font-mono text-sm text-muted-foreground">Edit to {toolInput.file_path}</span>
+          <span className="font-mono text-sm text-muted-foreground">to {toolInput.file_path}</span>
         </span>
       )
     }
@@ -179,8 +204,23 @@ function eventToDisplayObject(
         </span>
       )
     }
+
+    if (event.tool_name === 'Write') {
+      iconComponent = <FilePenLine className={iconClasses} />
+      const toolInput = JSON.parse(event.tool_input_json!)
+      subject = (
+        <span>
+          <div className="mb-2">
+            <span className="font-bold mr-2">{event.tool_name}</span>
+            <small className="text-xs text-muted-foreground">{toolInput.file_path}</small>
+          </div>
+          <div className="font-mono text-sm text-muted-foreground">{toolInput.content}</div>
+        </span>
+      )
+    }
   }
 
+  // Approvals
   if (event.approval_status) {
     const approvalStatusToColor = {
       [ApprovalStatus.Pending]: 'text-[var(--terminal-warning)]',
@@ -189,6 +229,90 @@ function eventToDisplayObject(
       [ApprovalStatus.Resolved]: 'text-[var(--terminal-success)]',
     }
     iconComponent = <UserCheck className={iconClasses} />
+    let previewFile = null
+
+    // In a pending state for a Write tool call, let's display the file contents a little differently
+    if (event.tool_name === 'Write' && event.approval_status === ApprovalStatus.Pending) {
+      const toolInput = JSON.parse(event.tool_input_json!)
+      previewFile = (
+        <div className="border border-dashed border-muted-foreground rounded p-2 mt-4">
+          <div className="mb-2">
+            <span className="font-bold mr-2">Write</span>
+            <span className="font-mono text-sm text-muted-foreground">
+              to <span className="font-bold">{toolInput.file_path}</span>
+            </span>
+          </div>
+          <div className="font-mono text-sm text-muted-foreground">{toolInput.content}</div>
+        </div>
+      )
+    }
+
+    if (event.tool_name === 'Edit' && event.approval_status === ApprovalStatus.Pending) {
+      const toolInput = JSON.parse(event.tool_input_json!)
+      previewFile = (
+        <div className="border border-dashed border-muted-foreground rounded p-4 mt-4">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <span className="font-bold mr-2">Edit</span>
+              <span className="font-mono text-sm text-muted-foreground">
+                to <span className="font-bold">{toolInput.file_path}</span>
+              </span>
+            </div>
+            <DiffViewToggle 
+              isSplitView={isSplitView ?? true} 
+              onToggle={onToggleSplitView ?? (() => {})} 
+            />
+          </div>
+          <ReactDiffViewer
+            oldValue={toolInput.old_string}
+            newValue={toolInput.new_string}
+            splitView={isSplitView ?? true}
+            // For the moment hiding, as line numbers can be confusing
+            // when not passing the entire file contents.
+            hideLineNumbers={true}
+          />
+        </div>
+      )
+    }
+
+    if (event.tool_name === 'MultiEdit' && event.approval_status === ApprovalStatus.Pending) {
+      const toolInput = JSON.parse(event.tool_input_json!)
+      previewFile = (
+        <div className="border border-dashed border-muted-foreground rounded p-4 mt-4">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <span className="font-bold mr-2">MultiEdit</span>
+              <span className="font-mono text-sm text-muted-foreground">
+                {toolInput.edits.length} edit{toolInput.edits.length === 1 ? '' : 's'} to{' '}
+                <span className="font-bold">{toolInput.file_path}</span>
+              </span>
+            </div>
+            <DiffViewToggle 
+              isSplitView={isSplitView ?? true} 
+              onToggle={onToggleSplitView ?? (() => {})} 
+            />
+          </div>
+          {toolInput.edits.map((edit: any, index: number) => (
+            <div key={index} className="mb-4 last:mb-0">
+              {toolInput.edits.length > 1 && (
+                <div className="mb-2 text-sm font-medium text-muted-foreground">
+                  Edit {index + 1} of {toolInput.edits.length}
+                </div>
+              )}
+              <ReactDiffViewer
+                oldValue={edit.old_string}
+                newValue={edit.new_string}
+                splitView={isSplitView ?? true}
+                // For the moment hiding, as line numbers can be confusing
+                // when not passing the entire file contents.
+                hideLineNumbers={true}
+              />
+            </div>
+          ))}
+        </div>
+      )
+    }
+
     subject = (
       <span>
         <span className={`font-bold ${approvalStatusToColor[event.approval_status]}`}>
@@ -197,7 +321,8 @@ function eventToDisplayObject(
         <div className="font-mono text-sm text-muted-foreground">
           Assistant would like to use <span className="font-bold">{event.tool_name}</span>
         </div>
-        <div className="mt-4">{starryNightJson(event.tool_input_json!)}</div>
+        {!previewFile && <div className="mt-4">{starryNightJson(event.tool_input_json!)}</div>}
+        {previewFile}
       </span>
     )
 
@@ -279,7 +404,6 @@ function eventToDisplayObject(
 }
 
 function TodoWidget({ event }: { event: ConversationEvent }) {
-  // console.log('todo event', event)
   const toolInput = JSON.parse(event.tool_input_json!)
   const priorityGrouped = Object.groupBy(toolInput.todos, (todo: any) => todo.priority)
   const todos = toolInput.todos
@@ -292,14 +416,6 @@ function TodoWidget({ event }: { event: ConversationEvent }) {
     pending: <CircleDashed className={iconClasses + ' text-[var(--terminal-fg-dim)]'} />,
     completed: <CheckCircle className={iconClasses + ' text-[var(--terminal-success)]'} />,
   }
-
-  // console.log(todos);
-
-  // console.log('event id', event.id)
-  // console.log('completedCount', completedCount)
-  // console.log('pendingCount', pendingCount)
-
-  // console.log('priorityGrouped', priorityGrouped)
 
   return (
     <div>
@@ -472,6 +588,8 @@ function ConversationContent({
   onApprove,
   onDeny,
   approvingApprovalId,
+  isSplitView,
+  onToggleSplitView,
 }: {
   sessionId: string
   focusedEventId: number | null
@@ -482,6 +600,8 @@ function ConversationContent({
   onApprove?: (approvalId: string) => void
   onDeny?: (approvalId: string, reason: string) => void
   approvingApprovalId?: string | null
+  isSplitView?: boolean
+  onToggleSplitView?: () => void
 }) {
   // const { formattedEvents, loading, error } = useFormattedConversation(sessionId)
   const { events, loading, error, isInitialLoad } = useConversation(sessionId, undefined, 1000)
@@ -498,6 +618,8 @@ function ConversationContent({
       setDenyingApprovalId,
       () => setDenyingApprovalId(null),
       approvingApprovalId,
+      isSplitView,
+      onToggleSplitView,
     ),
   )
   const nonEmptyDisplayObjects = displayObjects.filter(displayObject => displayObject !== null)
@@ -646,6 +768,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [responseInput, setResponseInput] = useState('')
   const [isResponding, setIsResponding] = useState(false)
   const [approvingApprovalId, setApprovingApprovalId] = useState<string | null>(null)
+  const [isSplitView, setIsSplitView] = useState(true)
   const interruptSession = useStore(state => state.interruptSession)
   const navigate = useNavigate()
   const isRunning = session.status === 'running'
@@ -810,6 +933,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                 onApprove={handleApprove}
                 onDeny={handleDeny}
                 approvingApprovalId={approvingApprovalId}
+                isSplitView={isSplitView}
+                onToggleSplitView={() => setIsSplitView(!isSplitView)}
               />
               {isRunning && (
                 <div className="flex flex-col gap-2 mt-4 border-t pt-4">
