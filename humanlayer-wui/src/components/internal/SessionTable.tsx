@@ -9,7 +9,7 @@ import {
   TableRow,
 } from '../ui/table'
 import { useHotkeys, useHotkeysContext } from 'react-hotkeys-hook'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { CircleOff } from 'lucide-react'
 import { getStatusTextClass } from '@/utils/component-utils'
 import { highlightMatches } from '@/lib/fuzzy-search'
@@ -40,6 +40,7 @@ export default function SessionTable({
   matchedSessions,
 }: SessionTableProps) {
   const { enableScope, disableScope } = useHotkeysContext()
+  const tableRef = useRef<HTMLTableElement>(null)
 
   // Helper to render highlighted text
   const renderHighlightedText = (text: string, sessionId: string) => {
@@ -74,6 +75,16 @@ export default function SessionTable({
     }
   }, [])
 
+  // Scroll focused session into view
+  useEffect(() => {
+    if (focusedSession && tableRef.current) {
+      const focusedRow = tableRef.current.querySelector(`[data-session-id="${focusedSession.id}"]`)
+      if (focusedRow) {
+        focusedRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      }
+    }
+  }, [focusedSession])
+
   useHotkeys('j', () => handleFocusNextSession?.(), { scopes: SessionTableHotkeysScope })
   useHotkeys('k', () => handleFocusPreviousSession?.(), { scopes: SessionTableHotkeysScope })
   useHotkeys(
@@ -88,37 +99,36 @@ export default function SessionTable({
 
   return (
     <>
-      <Table>
-        <TableCaption>A list of your recent sessions.</TableCaption>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Status</TableHead>
-            <TableHead>Query</TableHead>
-            <TableHead>Model</TableHead>
-            <TableHead>Started</TableHead>
-            <TableHead>Last Activity</TableHead>
+    <Table ref={tableRef}>
+      <TableCaption>A list of your recent sessions.</TableCaption>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Status</TableHead>
+          <TableHead>Query</TableHead>
+          <TableHead>Model</TableHead>
+          <TableHead>Started</TableHead>
+          <TableHead>Last Activity</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {sessions.map(session => (
+          <TableRow
+            key={session.id}
+            data-session-id={session.id}
+            onMouseEnter={() => handleFocusSession?.(session)}
+            onMouseLeave={() => handleBlurSession?.()}
+            onClick={() => handleActivateSession?.(session)}
+            className={`cursor-pointer ${focusedSession?.id === session.id ? '!bg-accent/20' : ''}`}
+          >
+            <TableCell className={getStatusTextClass(session.status)}>{session.status}</TableCell>
+            <TableCell className="max-w-xs truncate">{session.query}</TableCell>
+            <TableCell>{session.model || <CircleOff className="w-4 h-4" />}</TableCell>
+            <TableCell>{session.start_time}</TableCell>
+            <TableCell>{session.last_activity_at}</TableCell>
           </TableRow>
-        </TableHeader>
-        <TableBody>
-          {sessions.map(session => (
-            <TableRow
-              key={session.id}
-              onMouseEnter={() => handleFocusSession?.(session)}
-              onMouseLeave={() => handleBlurSession?.()}
-              onClick={() => handleActivateSession?.(session)}
-              className={`cursor-pointer ${focusedSession?.id === session.id ? '!bg-accent/20' : ''}`}
-            >
-              <TableCell className={getStatusTextClass(session.status)}>{session.status}</TableCell>
-              <TableCell className="max-w-xs truncate">
-                {renderHighlightedText(session.query, session.id)}
-              </TableCell>
-              <TableCell>{session.model || <CircleOff className="w-4 h-4" />}</TableCell>
-              <TableCell>{session.start_time}</TableCell>
-              <TableCell>{session.last_activity_at}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+        ))}
+      </TableBody>
+    </Table>
       {sessions.length === 0 && (
         <div className="text-center py-8 text-muted-foreground">
           <p className="text-sm">No sessions found</p>
