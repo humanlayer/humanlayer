@@ -29,7 +29,7 @@ export function SessionLauncher({ isOpen, onClose }: SessionLauncherProps) {
 
   // Additional escape key handler for input field
   const handleKeyDown = (e: KeyboardEvent) => {
-    if (e.key === 'Escape') {
+    if (e.key === 'Escape' && isOpen) {
       onClose()
     }
   }
@@ -75,7 +75,7 @@ export function SessionLauncher({ isOpen, onClose }: SessionLauncherProps) {
                 {view === 'menu'
                   ? mode === 'command'
                     ? 'Command Palette'
-                    : 'Search Sessions'
+                    : 'Jump to Session'
                   : 'Create Session'}
               </h2>
               <div className="flex items-center space-x-2">

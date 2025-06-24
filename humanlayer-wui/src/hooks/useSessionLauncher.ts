@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import { daemonClient } from '@/lib/daemon'
 import type { LaunchSessionRequest } from '@/lib/daemon/types'
+import { useHotkeysContext } from 'react-hotkeys-hook'
+import { SessionTableHotkeysScope } from '@/components/internal/SessionTable'
 
 interface SessionConfig {
   query: string
@@ -156,6 +158,8 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
 
 // Helper hook for global hotkey management
 export function useSessionLauncherHotkeys() {
+  const { activeScopes } = useHotkeysContext()
+
   const { open, close, isOpen, gPrefixMode, setGPrefixMode, createNewSession } = useSessionLauncher()
 
   // Helper to check if user is actively typing in a text input
@@ -196,7 +200,13 @@ export function useSessionLauncherHotkeys() {
       }
 
       // / - Search sessions and approvals (only when not typing)
-      if (e.key === '/' && !e.metaKey && !e.ctrlKey && !isTypingInInput()) {
+      if (
+        e.key === '/' &&
+        !e.metaKey &&
+        !e.ctrlKey &&
+        !isTypingInInput() &&
+        !activeScopes.includes(SessionTableHotkeysScope)
+      ) {
         e.preventDefault()
         open('search')
         return
