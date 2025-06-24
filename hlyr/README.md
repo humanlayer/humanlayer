@@ -7,6 +7,7 @@ A unified CLI tool that provides:
 - Direct human contact from terminal or scripts
 - MCP (Model Context Protocol) server functionality
 - Integration with Claude Code SDK for approval workflows
+- Thoughts management system for developer notes and documentation
 
 ## Quickstart
 
@@ -183,6 +184,39 @@ humanlayer mcp <subcommand>
 - `claude_approvals` - Start the Claude approvals MCP server for permission requests
 - `wrapper` - Wrap an existing MCP server with human approval functionality (not implemented yet)
 - `inspector [command]` - Run MCP inspector for debugging MCP servers (defaults to 'serve')
+
+### `thoughts`
+
+Manage developer thoughts and notes separately from code repositories.
+
+```bash
+humanlayer thoughts <subcommand>
+```
+
+**Subcommands:**
+
+- `init` - Initialize thoughts for the current repository
+- `sync` - Manually sync thoughts and update searchable index
+- `status` - Check the status of your thoughts setup
+- `config` - View or edit thoughts configuration
+
+**Examples:**
+
+```bash
+# Initialize thoughts for a new project
+humanlayer thoughts init
+
+# Sync thoughts after making changes
+humanlayer thoughts sync -m "Updated architecture notes"
+
+# Check status
+humanlayer thoughts status
+
+# View configuration
+humanlayer thoughts config --json
+```
+
+The thoughts system keeps your notes separate from code while making them easily accessible to AI assistants. See the [Thoughts documentation](./THOUGHTS.md) for detailed information.
 
 ## Use Cases
 
