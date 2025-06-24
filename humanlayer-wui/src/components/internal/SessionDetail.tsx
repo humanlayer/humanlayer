@@ -6,6 +6,7 @@ import { Fragment, jsx, jsxs } from 'react/jsx-runtime'
 import { format, parseISO } from 'date-fns'
 import React from 'react'
 import ReactDiffViewer from 'react-diff-viewer-continued'
+import keyBy from 'lodash.keyby'
 
 import {
   ConversationEvent,
@@ -27,6 +28,7 @@ import {
   CircleDashed,
   FilePenLine,
   Hourglass,
+  MessageCircle,
   MessageCircleDashed,
   SquareSplitHorizontal,
   SquareSplitVertical,
@@ -85,16 +87,19 @@ function eventToDisplayObject(
   approvingApprovalId?: string | null,
   isSplitView?: boolean,
   onToggleSplitView?: () => void,
+  toolResult?: ConversationEvent,
 ) {
   let subject = <span>Unknown Subject</span>
   let body = null
   let iconComponent = null
+  let toolResultContent = null
   const iconClasses = 'w-4 h-4 align-middle relative top-[1px]'
 
-  // For the moment, don't display tool results.
-  if (event.event_type === ConversationEventType.ToolResult) {
-    return null
-  }
+  // // For the moment, don't display tool results.
+  // if (event.event_type === ConversationEventType.ToolResult) {
+  //   return null
+  // }
+  // console.log('toolResult', toolResult)
 
   // Tool Calls
   if (event.event_type === ConversationEventType.ToolCall) {
@@ -258,9 +263,9 @@ function eventToDisplayObject(
                 to <span className="font-bold">{toolInput.file_path}</span>
               </span>
             </div>
-            <DiffViewToggle 
-              isSplitView={isSplitView ?? true} 
-              onToggle={onToggleSplitView ?? (() => {})} 
+            <DiffViewToggle
+              isSplitView={isSplitView ?? true}
+              onToggle={onToggleSplitView ?? (() => {})}
             />
           </div>
           <ReactDiffViewer
@@ -287,9 +292,9 @@ function eventToDisplayObject(
                 <span className="font-bold">{toolInput.file_path}</span>
               </span>
             </div>
-            <DiffViewToggle 
-              isSplitView={isSplitView ?? true} 
-              onToggle={onToggleSplitView ?? (() => {})} 
+            <DiffViewToggle
+              isSplitView={isSplitView ?? true}
+              onToggle={onToggleSplitView ?? (() => {})}
             />
           </div>
           {toolInput.edits.map((edit: any, index: number) => (
@@ -392,6 +397,18 @@ function eventToDisplayObject(
     iconComponent = <Bot className={iconClasses} />
   }
 
+  // For the moment, controlling tightly when we display tool result content.
+  if (toolResult && event.approval_status === ApprovalStatus.Denied) {
+    toolResultContent = (
+      <div className="font-mono text-sm text-muted-foreground gap-1">
+        <span className="font-bold inline-flex items-center mr-2">
+          <MessageCircle className="w-3 h-3" /> Denial Comment:
+        </span>
+        <span>{toolResult.tool_result_content}</span>
+      </div>
+    )
+  }
+
   return {
     id: event.id,
     role: event.role,
@@ -400,6 +417,7 @@ function eventToDisplayObject(
     iconComponent,
     body,
     created_at: event.created_at,
+    toolResultContent,
   }
 }
 
@@ -606,22 +624,26 @@ function ConversationContent({
   // const { formattedEvents, loading, error } = useFormattedConversation(sessionId)
   const { events, loading, error, isInitialLoad } = useConversation(sessionId, undefined, 1000)
   const [denyingApprovalId, setDenyingApprovalId] = useState<string | null>(null)
+  const [focusSource, setFocusSource] = useState<'mouse' | 'keyboard' | null>(null)
+  const toolResults = events.filter(event => event.event_type === ConversationEventType.ToolResult)
+  const toolResultsByKey = keyBy(toolResults, 'tool_result_for_id')
 
-  // console.log('events', events)
-
-  const displayObjects = events.map(event =>
-    eventToDisplayObject(
-      event,
-      onApprove,
-      onDeny,
-      denyingApprovalId,
-      setDenyingApprovalId,
-      () => setDenyingApprovalId(null),
-      approvingApprovalId,
-      isSplitView,
-      onToggleSplitView,
-    ),
-  )
+  const displayObjects = events
+    .filter(event => event.event_type !== ConversationEventType.ToolResult)
+    .map(event =>
+      eventToDisplayObject(
+        event,
+        onApprove,
+        onDeny,
+        denyingApprovalId,
+        setDenyingApprovalId,
+        () => setDenyingApprovalId(null),
+        approvingApprovalId,
+        isSplitView,
+        onToggleSplitView,
+        event.tool_id ? toolResultsByKey[event.tool_id] : undefined,
+      ),
+    )
   const nonEmptyDisplayObjects = displayObjects.filter(displayObject => displayObject !== null)
 
   // Navigation handlers
@@ -637,6 +659,7 @@ function ConversationContent({
     } else {
       setFocusedEventId(nonEmptyDisplayObjects[currentIndex + 1].id)
     }
+    setFocusSource('keyboard')
   }
 
   const focusPreviousEvent = () => {
@@ -651,6 +674,7 @@ function ConversationContent({
     } else {
       setFocusedEventId(nonEmptyDisplayObjects[currentIndex - 1].id)
     }
+    setFocusSource('keyboard')
   }
 
   // Keyboard navigation
@@ -672,15 +696,15 @@ function ConversationContent({
     }
   }, [loading, events])
 
-  // Scroll focused event into view
+  // Scroll focused event into view (only for keyboard navigation)
   useEffect(() => {
-    if (focusedEventId && containerRef.current) {
+    if (focusedEventId && containerRef.current && focusSource === 'keyboard') {
       const focusedElement = containerRef.current.querySelector(`[data-event-id="${focusedEventId}"]`)
       if (focusedElement) {
         focusedElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
       }
     }
-  }, [focusedEventId])
+  }, [focusedEventId, focusSource])
 
   if (error) {
     return <div className="text-destructive">Error loading conversation: {error}</div>
@@ -718,7 +742,10 @@ function ConversationContent({
           <div key={displayObject.id}>
             <div
               data-event-id={displayObject.id}
-              onMouseEnter={() => setFocusedEventId(displayObject.id)}
+              onMouseEnter={() => {
+                setFocusedEventId(displayObject.id)
+                setFocusSource('mouse')
+              }}
               onMouseLeave={() => setFocusedEventId(null)}
               onClick={() =>
                 setExpandedEventId(expandedEventId === displayObject.id ? null : displayObject.id)
@@ -743,6 +770,11 @@ function ConversationContent({
                 <span className="whitespace-pre-wrap text-accent max-w-[90%]">
                   {displayObject.subject}
                 </span>
+                {displayObject.toolResultContent && (
+                  <p className="whitespace-pre-wrap text-foreground">
+                    {displayObject.toolResultContent}
+                  </p>
+                )}
               </div>
               {displayObject.body && (
                 <p className="whitespace-pre-wrap text-foreground">{displayObject.body}</p>
