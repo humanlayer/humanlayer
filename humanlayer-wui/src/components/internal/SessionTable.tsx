@@ -10,11 +10,10 @@ import {
 } from '../ui/table'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 import { useHotkeys, useHotkeysContext } from 'react-hotkeys-hook'
-import { useEffect, useState, useRef } from 'react'
-import { CircleOff, ChevronDown, ChevronRight } from 'lucide-react'
+import { useEffect, useRef } from 'react'
+import { CircleOff } from 'lucide-react'
 import { getStatusTextClass } from '@/utils/component-utils'
 import { truncate, formatTimestamp, formatAbsoluteTimestamp } from '@/utils/formatting'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible'
 import { highlightMatches } from '@/lib/fuzzy-search'
 
 interface SessionTableProps {
@@ -43,7 +42,6 @@ export default function SessionTable({
   matchedSessions,
 }: SessionTableProps) {
   const { enableScope, disableScope } = useHotkeysContext()
-  const [expandedQueryId, setExpandedQueryId] = useState<string | null>(null)
   const tableRef = useRef<HTMLTableElement>(null)
 
   // Helper to render highlighted text
@@ -126,28 +124,7 @@ export default function SessionTable({
             >
               <TableCell className={getStatusTextClass(session.status)}>{session.status}</TableCell>
               <TableCell>
-                {session.query.length > 50 ? (
-                  <Collapsible
-                    open={expandedQueryId === session.id}
-                    onOpenChange={open => setExpandedQueryId(open ? session.id : null)}
-                  >
-                    <CollapsibleTrigger className="flex items-center gap-1 text-left">
-                      <span>{renderHighlightedText(truncate(session.query, 50), session.id)}</span>
-                      {expandedQueryId === session.id ? (
-                        <ChevronDown className="w-3 h-3 text-muted-foreground" />
-                      ) : (
-                        <ChevronRight className="w-3 h-3 text-muted-foreground" />
-                      )}
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <div className="mt-1 text-sm text-foreground">
-                        {renderHighlightedText(session.query, session.id)}
-                      </div>
-                    </CollapsibleContent>
-                  </Collapsible>
-                ) : (
-                  <span>{renderHighlightedText(session.query, session.id)}</span>
-                )}
+                <span>{renderHighlightedText(truncate(session.query, 50), session.id)}</span>
               </TableCell>
               <TableCell>{session.model || <CircleOff className="w-4 h-4" />}</TableCell>
               <TableCell>
