@@ -137,6 +137,21 @@ It is managed by the HumanLayer thoughts system and should not be committed to t
 - \`global/\` → Cross-repository thoughts (symlink to ${globalPath})
   - \`${user}/\` - Your personal notes that apply across all repositories
   - \`shared/\` - Team-shared notes that apply across all repositories
+- \`searchable/\` → Read-only hard links for searching (auto-generated)
+
+## Searching in Thoughts
+
+The \`searchable/\` directory contains read-only hard links to all thoughts files accessible in this repository. This allows search tools to find content without following symlinks.
+
+**IMPORTANT**: 
+- Files found in \`thoughts/searchable/\` are read-only copies
+- To edit any file, use the original path (e.g., edit \`thoughts/${user}/todo.md\`, not \`thoughts/searchable/${user}/todo.md\`)
+- The \`searchable/\` directory is automatically updated when you run \`humanlayer thoughts sync\`
+
+This design ensures that:
+1. Search tools can find all your thoughts content easily
+2. The symlink structure remains intact for git operations
+3. You can't accidentally edit the wrong copy of a file
 
 ## Usage
 
@@ -446,6 +461,20 @@ export async function thoughtsInitCommand(options: InitOptions): Promise<void> {
     // Create thoughts directory in current repo
     const thoughtsDir = path.join(currentRepo, 'thoughts')
     if (fs.existsSync(thoughtsDir)) {
+      // Handle searchable directories specially if they exist (might have read-only permissions)
+      const searchableDir = path.join(thoughtsDir, 'searchable')
+      const oldSearchDir = path.join(thoughtsDir, '.search')
+      
+      for (const dir of [searchableDir, oldSearchDir]) {
+        if (fs.existsSync(dir)) {
+          try {
+            // Reset permissions so we can delete it
+            execSync(`chmod -R 755 "${dir}"`, { stdio: 'pipe' })
+          } catch {
+            // Ignore chmod errors
+          }
+        }
+      }
       fs.rmSync(thoughtsDir, { recursive: true, force: true })
     }
     fs.mkdirSync(thoughtsDir)
@@ -481,20 +510,6 @@ export async function thoughtsInitCommand(options: InitOptions): Promise<void> {
     // Setup git hooks
     setupGitHooks(currentRepo)
 
-    // Add thoughts to .gitignore if not already there
-    const gitignorePath = path.join(currentRepo, '.gitignore')
-    let gitignoreContent = ''
-
-    if (fs.existsSync(gitignorePath)) {
-      gitignoreContent = fs.readFileSync(gitignorePath, 'utf8')
-    }
-
-    if (!gitignoreContent.includes('/thoughts/') && !gitignoreContent.includes('thoughts/')) {
-      gitignoreContent += '\n# HumanLayer thoughts directory (root level only)\n/thoughts/\n'
-      fs.writeFileSync(gitignorePath, gitignoreContent)
-      console.log(chalk.green('✅ Added /thoughts/ to .gitignore'))
-    }
-
     console.log(chalk.green('✅ Thoughts setup complete!'))
     console.log('')
     console.log(chalk.blue('=== Summary ==='))
@@ -517,14 +532,16 @@ export async function thoughtsInitCommand(options: InitOptions): Promise<void> {
     console.log('Protection enabled:')
     console.log(`  ${chalk.green('✓')} Pre-commit hook: Prevents committing thoughts/`)
     console.log(`  ${chalk.green('✓')} Post-commit hook: Auto-syncs thoughts after commits`)
-    console.log(`  ${chalk.green('✓')} Added to .gitignore`)
     console.log('')
     console.log('Next steps:')
     console.log(
-      `  1. Create markdown files in ${chalk.cyan(`thoughts/${config.user}/`)} for your notes`,
+      `  1. Run ${chalk.cyan('humanlayer thoughts sync')} to create the searchable index`,
     )
-    console.log(`  2. Your thoughts will sync automatically when you commit code`)
-    console.log(`  3. Run ${chalk.cyan('humanlayer thoughts status')} to check sync status`)
+    console.log(
+      `  2. Create markdown files in ${chalk.cyan(`thoughts/${config.user}/`)} for your notes`,
+    )
+    console.log(`  3. Your thoughts will sync automatically when you commit code`)
+    console.log(`  4. Run ${chalk.cyan('humanlayer thoughts status')} to check sync status`)
   } catch (error) {
     console.error(chalk.red(`Error during thoughts init: ${error}`))
     process.exit(1)

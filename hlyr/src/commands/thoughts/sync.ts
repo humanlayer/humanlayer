@@ -70,6 +70,111 @@ function syncThoughts(thoughtsRepo: string, message: string): void {
   }
 }
 
+function createSearchDirectory(thoughtsDir: string): void {
+  const searchDir = path.join(thoughtsDir, 'searchable')
+  const oldSearchDir = path.join(thoughtsDir, '.search')
+  
+  // Remove old .search directory if it exists
+  if (fs.existsSync(oldSearchDir)) {
+    try {
+      execSync(`chmod -R 755 "${oldSearchDir}"`, { stdio: 'pipe' })
+    } catch {
+      // Ignore chmod errors
+    }
+    fs.rmSync(oldSearchDir, { recursive: true, force: true })
+  }
+  
+  // Remove existing searchable directory if it exists
+  if (fs.existsSync(searchDir)) {
+    try {
+      // Reset permissions so we can delete it
+      execSync(`chmod -R 755 "${searchDir}"`, { stdio: 'pipe' })
+    } catch {
+      // Ignore chmod errors
+    }
+    fs.rmSync(searchDir, { recursive: true, force: true })
+  }
+  
+  // Create new .search directory
+  fs.mkdirSync(searchDir, { recursive: true })
+  
+  // Function to recursively find all files through symlinks
+  function findFilesFollowingSymlinks(dir: string, baseDir: string = dir, visited: Set<string> = new Set()): string[] {
+    const files: string[] = []
+    
+    // Resolve symlinks to avoid cycles
+    const realPath = fs.realpathSync(dir)
+    if (visited.has(realPath)) {
+      return files
+    }
+    visited.add(realPath)
+    
+    const entries = fs.readdirSync(dir, { withFileTypes: true })
+    
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name)
+      if (entry.isDirectory() && !entry.name.startsWith('.')) {
+        files.push(...findFilesFollowingSymlinks(fullPath, baseDir, visited))
+      } else if (entry.isSymbolicLink() && !entry.name.startsWith('.')) {
+        try {
+          const stat = fs.statSync(fullPath)
+          if (stat.isDirectory()) {
+            files.push(...findFilesFollowingSymlinks(fullPath, baseDir, visited))
+          } else if (stat.isFile() && path.basename(fullPath) !== 'CLAUDE.md') {
+            files.push(path.relative(baseDir, fullPath))
+          }
+        } catch {
+          // Ignore broken symlinks
+        }
+      } else if (entry.isFile() && !entry.name.startsWith('.') && entry.name !== 'CLAUDE.md') {
+        files.push(path.relative(baseDir, fullPath))
+      }
+    }
+    
+    return files
+  }
+  
+  // Get all files accessible through the thoughts directory (following symlinks)
+  const allFiles = findFilesFollowingSymlinks(thoughtsDir)
+  
+  // Create hard links in .search directory
+  let linkedCount = 0
+  for (const relPath of allFiles) {
+    const sourcePath = path.join(thoughtsDir, relPath)
+    const targetPath = path.join(searchDir, relPath)
+    
+    // Create directory structure
+    const targetDir = path.dirname(targetPath)
+    if (!fs.existsSync(targetDir)) {
+      fs.mkdirSync(targetDir, { recursive: true })
+    }
+    
+    try {
+      // Resolve symlink to get the real file path
+      const realSourcePath = fs.realpathSync(sourcePath)
+      // Create hard link to the real file
+      fs.linkSync(realSourcePath, targetPath)
+      linkedCount++
+    } catch (error) {
+      // Silently skip files we can't link (e.g., different filesystems)
+    }
+  }
+  
+  // Make .search directory read-only
+  try {
+    // First set directories to be readable and traversable
+    execSync(`find "${searchDir}" -type d -exec chmod 755 {} +`, { stdio: 'pipe' })
+    // Then set files to be read-only
+    execSync(`find "${searchDir}" -type f -exec chmod 444 {} +`, { stdio: 'pipe' })
+    // Finally make directories read-only but still traversable
+    execSync(`find "${searchDir}" -type d -exec chmod 555 {} +`, { stdio: 'pipe' })
+  } catch {
+    // Ignore chmod errors on systems that don't support it
+  }
+  
+  console.log(chalk.gray(`Created ${linkedCount} hard links in searchable directory`))
+}
+
 export async function thoughtsSyncCommand(options: SyncOptions): Promise<void> {
   try {
     // Check if thoughts are configured
@@ -106,6 +211,10 @@ export async function thoughtsSyncCommand(options: SyncOptions): Promise<void> {
         console.log(chalk.green(`✓ Added symlinks for new users: ${newUsers.join(', ')}`))
       }
     }
+
+    // Create .search directory with hard links
+    console.log(chalk.blue('Creating searchable index...'))
+    createSearchDirectory(thoughtsDir)
 
     // Sync the thoughts repository
     console.log(chalk.blue('Syncing thoughts...'))
