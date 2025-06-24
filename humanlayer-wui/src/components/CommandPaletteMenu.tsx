@@ -154,7 +154,10 @@ export default function CommandPaletteMenu() {
         <div className="text-xs text-muted-foreground">
           {menuOptions.length} of {filteredSessions.length} sessions
           {statusFilter && (
-            <span className="ml-2 px-2 py-0.5 text-accent-foreground rounded" style={{ backgroundColor: 'var(--terminal-accent)' }}>
+            <span
+              className="ml-2 px-2 py-0.5 text-accent-foreground rounded"
+              style={{ backgroundColor: 'var(--terminal-accent)' }}
+            >
               status: {statusFilter.toLowerCase()}
             </span>
           )}

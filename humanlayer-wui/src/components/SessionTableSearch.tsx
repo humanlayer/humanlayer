@@ -82,7 +82,10 @@ export function SessionTableSearch({
       </div>
 
       {statusFilter && (
-        <span className="px-2 py-1 text-xs text-accent-foreground rounded whitespace-nowrap" style={{ backgroundColor: 'var(--terminal-accent)' }}>
+        <span
+          className="px-2 py-1 text-xs text-accent-foreground rounded whitespace-nowrap"
+          style={{ backgroundColor: 'var(--terminal-accent)' }}
+        >
           status: {statusFilter.toLowerCase()}
         </span>
       )}
