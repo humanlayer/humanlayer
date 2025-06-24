@@ -1,16 +1,17 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { useSessionLauncher } from '@/hooks/useSessionLauncher'
 import { useStore } from '@/AppStore'
-import { fuzzySearch, highlightMatches, type FuzzyMatch } from '@/lib/fuzzy-search'
+import { highlightMatches, type FuzzyMatch } from '@/lib/fuzzy-search'
 import { cn } from '@/lib/utils'
-import { SessionStatus } from '@/lib/daemon/types'
+import { useSessionFilter } from '@/hooks/useSessionFilter'
 
 interface MenuOption {
   id: string
   label: string
   description?: string
   action: () => void
+  sessionId?: string
 }
 
 export default function CommandPaletteMenu() {
@@ -22,34 +23,12 @@ export default function CommandPaletteMenu() {
   // Get sessions from the main app store
   const sessions = useStore(state => state.sessions)
 
-  // Parse status filter from search query
-  const { statusFilter, searchText } = useMemo(() => {
-    // Check if query contains "status:" pattern
-    const statusMatch = searchQuery.match(/status:(\S+)/i)
-    
-    if (!statusMatch) {
-      return { statusFilter: null, searchText: searchQuery }
-    }
-
-    const statusValue = statusMatch[1]
-    
-    // Find matching SessionStatus enum value (case-insensitive)
-    const matchingStatus = Object.entries(SessionStatus).find(
-      ([_, value]) => value.toLowerCase() === statusValue.toLowerCase()
-    )
-    
-    if (!matchingStatus) {
-      return { statusFilter: null, searchText: searchQuery }
-    }
-
-    // Remove the status filter from search text
-    const searchTextWithoutFilter = searchQuery.replace(statusMatch[0], '').trim()
-    
-    return { 
-      statusFilter: matchingStatus[1] as SessionStatus,
-      searchText: searchTextWithoutFilter
-    }
-  }, [searchQuery])
+  // Use the shared session filter hook
+  const { filteredSessions, statusFilter, searchText, matchedSessions } = useSessionFilter({
+    sessions,
+    query: searchQuery,
+    searchFields: ['query', 'model'], // Search in both query and model fields for the modal
+  })
 
   // Build base menu options
   const baseOptions: MenuOption[] = [
@@ -62,38 +41,23 @@ export default function CommandPaletteMenu() {
   ]
 
   // Command mode: Only Create Session
-  // Search mode: All sessions (for fuzzy search) but limit display to 5
+  // Search mode: Use filtered sessions but limit display to 5
   const sessionOptions: MenuOption[] =
     mode === 'search'
-      ? sessions
-          // Apply status filter first if present
-          .filter(session => {
-            if (!statusFilter) return true
-            return session.status === statusFilter
-          })
-          .map(session => ({
-            id: `open-${session.id}`,
-            label: `${session.query.slice(0, 40)}${session.query.length > 40 ? '...' : ''}`,
-            description: `${session.status} • ${session.model || 'Unknown model'}`,
-            action: () => openSessionById(session.id),
-          }))
+      ? filteredSessions.slice(0, 5).map(session => ({
+          id: `open-${session.id}`,
+          label: `${session.query.slice(0, 40)}${session.query.length > 40 ? '...' : ''}`,
+          description: `${session.status} • ${session.model || 'Unknown model'}`,
+          action: () => openSessionById(session.id),
+          sessionId: session.id, // Store for match lookup
+        }))
       : [] // No sessions in command mode
-
-  // Apply fuzzy search on the search text (without status filter)
-  const filteredSessions =
-    searchText && mode === 'search'
-      ? fuzzySearch(sessionOptions, searchText, {
-          keys: ['label', 'description'],
-          threshold: 0.1,
-          includeMatches: true,
-        })
-      : sessionOptions.map(session => ({ item: session, matches: [], score: 1, indices: [] }))
 
   // Combine options based on mode
   const menuOptions: MenuOption[] =
     mode === 'command'
       ? baseOptions // Command: Only Create Session
-      : filteredSessions.slice(0, 5).map(result => result.item) // Search: Only sessions (no Create Session), limit to 5
+      : sessionOptions // Search: Only sessions (no Create Session), already limited to 5
 
   // Keyboard navigation
   useHotkeys(
@@ -190,7 +154,7 @@ export default function CommandPaletteMenu() {
         <div className="text-xs text-muted-foreground">
           {menuOptions.length} of {filteredSessions.length} sessions
           {statusFilter && (
-            <span className="ml-2 px-2 py-0.5 bg-accent/50 text-accent-foreground rounded">
+            <span className="ml-2 px-2 py-0.5 text-accent-foreground rounded" style={{ backgroundColor: 'var(--terminal-accent)' }}>
               status: {statusFilter.toLowerCase()}
             </span>
           )}
@@ -200,8 +164,8 @@ export default function CommandPaletteMenu() {
       {menuOptions.map((option, index) => {
         // Find the corresponding match data for highlighting
         const matchData =
-          mode === 'search' && searchText
-            ? filteredSessions.find(result => result.item.id === option.id)
+          mode === 'search' && searchText && option.sessionId
+            ? matchedSessions.get(option.sessionId)
             : null
 
         return (

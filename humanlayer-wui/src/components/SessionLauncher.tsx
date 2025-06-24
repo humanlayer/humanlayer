@@ -29,7 +29,7 @@ export function SessionLauncher({ isOpen, onClose }: SessionLauncherProps) {
 
   // Additional escape key handler for input field
   const handleKeyDown = (e: KeyboardEvent) => {
-    if (e.key === 'Escape') {
+    if (e.key === 'Escape' && isOpen) {
       onClose()
     }
   }
