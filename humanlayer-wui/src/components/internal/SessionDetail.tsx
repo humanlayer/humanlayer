@@ -60,6 +60,7 @@ function eventToDisplayObject(
   denyingApprovalId?: string | null,
   onStartDeny?: (approvalId: string) => void,
   onCancelDeny?: () => void,
+  approvingApprovalId?: string | null,
 ) {
   let subject = <span>Unknown Subject</span>
   let body = null
@@ -203,6 +204,7 @@ function eventToDisplayObject(
     // Add approve/deny buttons for pending approvals
     if (event.approval_status === ApprovalStatus.Pending && event.approval_id && onApprove && onDeny) {
       const isDenying = denyingApprovalId === event.approval_id
+      const isApproving = approvingApprovalId === event.approval_id
 
       body = (
         <div className="mt-4 flex gap-2 justify-end">
@@ -211,25 +213,28 @@ function eventToDisplayObject(
               <Button
                 className="cursor-pointer"
                 size="sm"
-                variant="default"
+                variant={isApproving ? 'outline' : 'default'}
                 onClick={e => {
                   e.stopPropagation()
                   onApprove(event.approval_id!)
                 }}
+                disabled={isApproving}
               >
-                Approve
+                {isApproving ? 'Approving...' : 'Approve'}
               </Button>
-              <Button
-                className="cursor-pointer"
-                size="sm"
-                variant="destructive"
-                onClick={e => {
-                  e.stopPropagation()
-                  onStartDeny?.(event.approval_id!)
-                }}
-              >
-                Deny
-              </Button>
+              {!isApproving && (
+                <Button
+                  className="cursor-pointer"
+                  size="sm"
+                  variant="destructive"
+                  onClick={e => {
+                    e.stopPropagation()
+                    onStartDeny?.(event.approval_id!)
+                  }}
+                >
+                  Deny
+                </Button>
+              )}
             </>
           ) : (
             <DenyForm approvalId={event.approval_id!} onDeny={onDeny} onCancel={onCancelDeny} />
@@ -410,11 +415,17 @@ function DenyForm({
   onCancel?: () => void
 }) {
   const [reason, setReason] = useState('')
+  const [isDenying, setIsDenying] = useState(false)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (reason.trim() && onDeny) {
-      onDeny(approvalId, reason.trim())
+    if (reason.trim() && onDeny && !isDenying) {
+      try {
+        setIsDenying(true)
+        onDeny(approvalId, reason.trim())
+      } finally {
+        setIsDenying(false)
+      }
     }
   }
 
@@ -433,11 +444,18 @@ function DenyForm({
         type="submit"
         size="sm"
         variant="destructive"
-        disabled={!reason.trim()}
+        disabled={!reason.trim() || isDenying}
       >
-        Deny
+        {isDenying ? 'Denying...' : 'Deny'}
       </Button>
-      <Button className="cursor-pointer" type="button" size="sm" variant="outline" onClick={onCancel}>
+      <Button
+        className="cursor-pointer"
+        type="button"
+        size="sm"
+        variant="outline"
+        onClick={onCancel}
+        disabled={isDenying}
+      >
         Cancel
       </Button>
     </form>
@@ -453,6 +471,7 @@ function ConversationContent({
   isWideView,
   onApprove,
   onDeny,
+  approvingApprovalId,
 }: {
   sessionId: string
   focusedEventId: number | null
@@ -462,6 +481,7 @@ function ConversationContent({
   isWideView: boolean
   onApprove?: (approvalId: string) => void
   onDeny?: (approvalId: string, reason: string) => void
+  approvingApprovalId?: string | null
 }) {
   // const { formattedEvents, loading, error } = useFormattedConversation(sessionId)
   const { events, loading, error, isInitialLoad } = useConversation(sessionId, undefined, 1000)
@@ -470,8 +490,14 @@ function ConversationContent({
   // console.log('events', events)
 
   const displayObjects = events.map(event =>
-    eventToDisplayObject(event, onApprove, onDeny, denyingApprovalId, setDenyingApprovalId, () =>
-      setDenyingApprovalId(null),
+    eventToDisplayObject(
+      event,
+      onApprove,
+      onDeny,
+      denyingApprovalId,
+      setDenyingApprovalId,
+      () => setDenyingApprovalId(null),
+      approvingApprovalId,
     ),
   )
   const nonEmptyDisplayObjects = displayObjects.filter(displayObject => displayObject !== null)
@@ -619,6 +645,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [showResponseInput, setShowResponseInput] = useState(false)
   const [responseInput, setResponseInput] = useState('')
   const [isResponding, setIsResponding] = useState(false)
+  const [approvingApprovalId, setApprovingApprovalId] = useState<string | null>(null)
   const interruptSession = useStore(state => state.interruptSession)
   const navigate = useNavigate()
   const isRunning = session.status === 'running'
@@ -633,9 +660,12 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   // Approval handlers
   const handleApprove = async (approvalId: string) => {
     try {
+      setApprovingApprovalId(approvalId)
       await daemonClient.approveFunctionCall(approvalId)
     } catch (error) {
       console.error('Failed to approve:', error)
+    } finally {
+      setApprovingApprovalId(null)
     }
   }
 
@@ -779,6 +809,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                 isWideView={isWideView}
                 onApprove={handleApprove}
                 onDeny={handleDeny}
+                approvingApprovalId={approvingApprovalId}
               />
               {isRunning && (
                 <div className="flex flex-col gap-2 mt-4 border-t pt-4">
