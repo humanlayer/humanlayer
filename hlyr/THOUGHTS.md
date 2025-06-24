@@ -47,7 +47,7 @@ your-project/
 │   │   └── shared/       # Team cross-repo notes
 │   ├── searchable/       # Hard links for AI search (auto-generated)
 │   │   ├── alice/        # Hard links to alice's files
-│   │   ├── shared/       # Hard links to shared files  
+│   │   ├── shared/       # Hard links to shared files
 │   │   └── global/       # Hard links to global files
 │   └── CLAUDE.md         # Auto-generated context for AI
 └── .gitignore

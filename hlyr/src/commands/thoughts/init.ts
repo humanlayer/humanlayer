@@ -143,7 +143,7 @@ It is managed by the HumanLayer thoughts system and should not be committed to t
 
 The \`searchable/\` directory contains read-only hard links to all thoughts files accessible in this repository. This allows search tools to find content without following symlinks.
 
-**IMPORTANT**: 
+**IMPORTANT**:
 - Files found in \`thoughts/searchable/\` are read-only copies
 - To edit any file, use the original path (e.g., edit \`thoughts/${user}/todo.md\`, not \`thoughts/searchable/${user}/todo.md\`)
 - The \`searchable/\` directory is automatically updated when you run \`humanlayer thoughts sync\`
@@ -464,7 +464,7 @@ export async function thoughtsInitCommand(options: InitOptions): Promise<void> {
       // Handle searchable directories specially if they exist (might have read-only permissions)
       const searchableDir = path.join(thoughtsDir, 'searchable')
       const oldSearchDir = path.join(thoughtsDir, '.search')
-      
+
       for (const dir of [searchableDir, oldSearchDir]) {
         if (fs.existsSync(dir)) {
           try {
@@ -534,9 +534,7 @@ export async function thoughtsInitCommand(options: InitOptions): Promise<void> {
     console.log(`  ${chalk.green('✓')} Post-commit hook: Auto-syncs thoughts after commits`)
     console.log('')
     console.log('Next steps:')
-    console.log(
-      `  1. Run ${chalk.cyan('humanlayer thoughts sync')} to create the searchable index`,
-    )
+    console.log(`  1. Run ${chalk.cyan('humanlayer thoughts sync')} to create the searchable index`)
     console.log(
       `  2. Create markdown files in ${chalk.cyan(`thoughts/${config.user}/`)} for your notes`,
     )
