@@ -121,7 +121,9 @@ export default function SessionTable({
               className={`cursor-pointer ${focusedSession?.id === session.id ? '!bg-accent/20' : ''}`}
             >
               <TableCell className={getStatusTextClass(session.status)}>{session.status}</TableCell>
-              <TableCell className="max-w-xs truncate">{session.query}</TableCell>
+              <TableCell className="max-w-xs truncate">
+                {renderHighlightedText(session.query, session.id)}
+              </TableCell>
               <TableCell>{session.model || <CircleOff className="w-4 h-4" />}</TableCell>
               <TableCell>{session.start_time}</TableCell>
               <TableCell>{session.last_activity_at}</TableCell>
