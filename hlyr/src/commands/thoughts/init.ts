@@ -178,7 +178,30 @@ These files will be automatically synchronized with your thoughts repository whe
 }
 
 function setupGitHooks(repoPath: string): void {
-  const hooksDir = path.join(repoPath, '.git', 'hooks')
+  // Use git rev-parse to find the common git directory for hooks (handles worktrees)
+  // In worktrees, hooks are stored in the common git directory, not the worktree-specific one
+  let gitCommonDir: string
+  try {
+    gitCommonDir = execSync('git rev-parse --git-common-dir', {
+      cwd: repoPath,
+      encoding: 'utf8',
+      stdio: 'pipe',
+    }).trim()
+
+    // If the path is relative, make it absolute
+    if (!path.isAbsolute(gitCommonDir)) {
+      gitCommonDir = path.join(repoPath, gitCommonDir)
+    }
+  } catch (error) {
+    throw new Error(`Failed to find git common directory: ${error}`)
+  }
+
+  const hooksDir = path.join(gitCommonDir, 'hooks')
+
+  // Ensure hooks directory exists (might not exist in some setups)
+  if (!fs.existsSync(hooksDir)) {
+    fs.mkdirSync(hooksDir, { recursive: true })
+  }
 
   // Pre-commit hook
   const preCommitPath = path.join(hooksDir, 'pre-commit')
