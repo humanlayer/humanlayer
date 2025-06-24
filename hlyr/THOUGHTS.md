@@ -45,8 +45,12 @@ your-project/
 │   ├── global/           # → ~/thoughts/global
 │   │   ├── alice/        # Your cross-repo notes
 │   │   └── shared/       # Team cross-repo notes
+│   ├── searchable/       # Hard links for AI search (auto-generated)
+│   │   ├── alice/        # Hard links to alice's files
+│   │   ├── shared/       # Hard links to shared files  
+│   │   └── global/       # Hard links to global files
 │   └── CLAUDE.md         # Auto-generated context for AI
-└── .gitignore            # Updated to exclude thoughts/
+└── .gitignore
 ```
 
 Your central thoughts repository:
@@ -70,9 +74,18 @@ Your central thoughts repository:
 The system automatically syncs your thoughts when you commit code:
 
 1. **Pre-commit hook** - Prevents thoughts/ from being committed to your code repo
-2. **Post-commit hook** - Syncs thoughts changes to your thoughts repository
+2. **Post-commit hook** - Syncs thoughts changes to your thoughts repository and updates the searchable directory
 
 This means you can work naturally - edit thoughts alongside code, and they'll be kept in sync automatically.
+
+### Searchable Directory
+
+The `thoughts/searchable/` directory contains read-only hard links to all thoughts files. This allows AI tools to search your thoughts content without needing to follow symlinks. The searchable directory:
+
+- Is automatically updated when you run `humanlayer thoughts sync`
+- Contains hard links (not copies) to preserve disk space
+- Is read-only to prevent accidental edits
+- Should not be edited directly - always edit the original files
 
 ## Commands
 
@@ -245,7 +258,7 @@ humanlayer thoughts init
 
 ### CI/CD Integration
 
-The thoughts directory is automatically ignored by git, so it won't affect CI/CD pipelines. The symlinks are also excluded, ensuring clean builds.
+The thoughts directory is protected by a pre-commit hook that prevents accidental commits to your code repository. This ensures clean CI/CD pipelines while keeping thoughts accessible for searching and development.
 
 ## Privacy & Security
 
@@ -274,6 +287,12 @@ A: Currently all projects share the same thoughts repo, but use different subdir
 
 **Q: Why can't I use "global" as my username?**
 A: "global" is reserved for cross-project thoughts. This ensures the directory structure remains clear.
+
+**Q: Why do I need a searchable directory?**
+A: Many search tools don't follow symlinks by default. The searchable directory contains hard links to all your thoughts files, making them easily searchable by AI assistants and other tools.
+
+**Q: Can I edit files in the searchable directory?**
+A: No, files in searchable/ are read-only. Always edit the original files (e.g., edit thoughts/alice/todo.md, not thoughts/searchable/alice/todo.md).
 
 ## Contributing
 
