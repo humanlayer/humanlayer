@@ -99,36 +99,36 @@ export default function SessionTable({
 
   return (
     <>
-    <Table ref={tableRef}>
-      <TableCaption>A list of your recent sessions.</TableCaption>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Status</TableHead>
-          <TableHead>Query</TableHead>
-          <TableHead>Model</TableHead>
-          <TableHead>Started</TableHead>
-          <TableHead>Last Activity</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {sessions.map(session => (
-          <TableRow
-            key={session.id}
-            data-session-id={session.id}
-            onMouseEnter={() => handleFocusSession?.(session)}
-            onMouseLeave={() => handleBlurSession?.()}
-            onClick={() => handleActivateSession?.(session)}
-            className={`cursor-pointer ${focusedSession?.id === session.id ? '!bg-accent/20' : ''}`}
-          >
-            <TableCell className={getStatusTextClass(session.status)}>{session.status}</TableCell>
-            <TableCell className="max-w-xs truncate">{session.query}</TableCell>
-            <TableCell>{session.model || <CircleOff className="w-4 h-4" />}</TableCell>
-            <TableCell>{session.start_time}</TableCell>
-            <TableCell>{session.last_activity_at}</TableCell>
+      <Table ref={tableRef}>
+        <TableCaption>A list of your recent sessions.</TableCaption>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Status</TableHead>
+            <TableHead>Query</TableHead>
+            <TableHead>Model</TableHead>
+            <TableHead>Started</TableHead>
+            <TableHead>Last Activity</TableHead>
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {sessions.map(session => (
+            <TableRow
+              key={session.id}
+              data-session-id={session.id}
+              onMouseEnter={() => handleFocusSession?.(session)}
+              onMouseLeave={() => handleBlurSession?.()}
+              onClick={() => handleActivateSession?.(session)}
+              className={`cursor-pointer ${focusedSession?.id === session.id ? '!bg-accent/20' : ''}`}
+            >
+              <TableCell className={getStatusTextClass(session.status)}>{session.status}</TableCell>
+              <TableCell className="max-w-xs truncate">{session.query}</TableCell>
+              <TableCell>{session.model || <CircleOff className="w-4 h-4" />}</TableCell>
+              <TableCell>{session.start_time}</TableCell>
+              <TableCell>{session.last_activity_at}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
       {sessions.length === 0 && (
         <div className="text-center py-8 text-muted-foreground">
           <p className="text-sm">No sessions found</p>
