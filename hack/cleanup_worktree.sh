@@ -20,7 +20,7 @@ NC='\033[0m' # No Color
 # Function to list worktrees
 list_worktrees() {
     echo -e "${YELLOW}Available worktrees:${NC}"
-    git worktree list | grep -E "^\$WORKTREE_BASE_DIR" || {
+    git worktree list | grep -E "^${WORKTREE_BASE_DIR}" || {
         echo "No worktrees found in $WORKTREE_BASE_DIR"
         return 1
     }

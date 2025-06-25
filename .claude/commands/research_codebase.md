@@ -155,7 +155,7 @@ Then wait for the user's research query.
 8. **Handle follow-up questions:**
    - If the user has follow-up questions, append to the same research document
    - Update the frontmatter fields `last_updated` and `last_updated_by` to reflect the update
-   - Add `last_update: "Added follow-up research for [brief description]"` to frontmatter
+   - Add `last_updated_note: "Added follow-up research for [brief description]"` to frontmatter
    - Add a new section: `## Follow-up Research [timestamp]`
    - Spawn new sub-agents as needed for additional investigation
    - Continue updating the document and syncing
