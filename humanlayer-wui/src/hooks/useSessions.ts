@@ -117,8 +117,13 @@ export function useSession(sessionId: string | undefined) {
     let unlisten: (() => void) | null = null
     let subscriptionId: string | null = null
     let isActive = true
+    let isSubscribing = false
 
     const subscribe = async () => {
+      // Prevent multiple simultaneous subscriptions
+      if (isSubscribing || !isActive) return
+      isSubscribing = true
+
       try {
         console.log('useSession: Subscribing to events for session:', sessionId)
         const subscription = await daemonClient.subscribeToEvents(
@@ -153,11 +158,22 @@ export function useSession(sessionId: string | undefined) {
           },
         )
         
-        unlisten = subscription.unlisten
-        subscriptionId = subscription.subscriptionId
-        console.log('useSession: Subscription created', { sessionId, subscriptionId })
+        // Only set these if we're still active (component hasn't unmounted)
+        if (isActive) {
+          unlisten = subscription.unlisten
+          subscriptionId = subscription.subscriptionId
+          console.log('useSession: Subscription created', { sessionId, subscriptionId })
+        } else {
+          // Component unmounted while subscribing, clean up immediately
+          subscription.unlisten()
+          await daemonClient.unsubscribeFromEvents(subscription.subscriptionId).catch(error => {
+            console.error('Failed to unsubscribe from events:', error)
+          })
+        }
       } catch (err) {
         console.error('Failed to subscribe to session events:', err)
+      } finally {
+        isSubscribing = false
       }
     }
 
