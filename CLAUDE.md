@@ -44,6 +44,7 @@ Claude Code → MCP Protocol → hlyr → JSON-RPC → hld → HumanLayer Cloud 
 ## Development Commands
 
 ### Quick Actions
+- `make setup` - Resolve dependencies and installation issues across the monorepo
 - `make check-test` - Run all checks and tests
 - `make check` - Run linting and type checking
 - `make test` - Run all test suites
@@ -79,6 +80,19 @@ Claude Code → MCP Protocol → hlyr → JSON-RPC → hld → HumanLayer Cloud 
 - Standard Go idioms
 - Context-first API design
 - Generate mocks with `make mocks` when needed
+
+## Development Conventions
+
+### TODO Annotations
+
+We use a priority-based TODO annotation system throughout the codebase:
+
+- `TODO(0)`: Critical - never merge
+- `TODO(1)`: High - architectural flaws, major bugs
+- `TODO(2)`: Medium - minor bugs, missing features
+- `TODO(3)`: Low - polish, tests, documentation
+- `TODO(4)`: Questions/investigations needed
+- `PERF`: Performance optimization opportunities
 
 ## Additional Resources
 - Check `examples/` for integration patterns
