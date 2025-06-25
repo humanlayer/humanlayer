@@ -225,6 +225,7 @@ class NotificationService {
     const toastOptions: ExternalToast = {
       description: options.body,
       duration: options.duration ?? 5000, // Default 5 seconds if undefined
+      closeButton: true, // Always show close button for better UX
     }
 
     // Add primary action if provided
