@@ -25,7 +25,8 @@ pub trait DaemonClientTrait: Send + Sync {
     async fn approve_function_call(&self, call_id: &str, comment: Option<&str>) -> Result<()>;
     async fn deny_function_call(&self, call_id: &str, reason: &str) -> Result<()>;
     async fn respond_to_human_contact(&self, call_id: &str, response: &str) -> Result<()>;
-    async fn subscribe(&self, req: SubscribeRequest) -> Result<tokio::sync::mpsc::Receiver<EventNotification>>;
+    async fn subscribe(&self, req: SubscribeRequest) -> Result<(u64, tokio::sync::mpsc::Receiver<EventNotification>)>;
+    async fn unsubscribe(&self, subscription_id: u64) -> Result<()>;
     async fn interrupt_session(&self, session_id: &str) -> Result<()>;
 }
 
@@ -244,7 +245,7 @@ impl DaemonClientTrait for DaemonClient {
         Ok(())
     }
 
-    async fn subscribe(&self, req: SubscribeRequest) -> Result<tokio::sync::mpsc::Receiver<EventNotification>> {
+    async fn subscribe(&self, req: SubscribeRequest) -> Result<(u64, tokio::sync::mpsc::Receiver<EventNotification>)> {
         let connection = self.connection.read().await;
         let sub_stream = connection.create_subscription_connection().await?;
 
@@ -255,7 +256,12 @@ impl DaemonClientTrait for DaemonClient {
             req,
         ).await?;
 
-        Ok(receiver)
+        Ok((id, receiver))
+    }
+
+    async fn unsubscribe(&self, subscription_id: u64) -> Result<()> {
+        self.subscription_manager.cancel_subscription(subscription_id).await;
+        Ok(())
     }
 
     async fn interrupt_session(&self, session_id: &str) -> Result<()> {

@@ -299,7 +299,7 @@ function eventToDisplayObject(
             />
           </div>
           {toolInput.edits.map((edit: any, index: number) => (
-            <div key={index} className="mb-4 last:mb-0">
+            <div key={index} className="mb-8 last:mb-0">
               {toolInput.edits.length > 1 && (
                 <div className="mb-2 text-sm font-medium text-muted-foreground">
                   Edit {index + 1} of {toolInput.edits.length}

@@ -112,7 +112,7 @@ export function useApprovalsWithSubscription(sessionId?: string): UseApprovalsRe
 
     const subscribe = async () => {
       try {
-        unsubscribe = await daemonClient.subscribeToEvents(
+        const { unlisten } = await daemonClient.subscribeToEvents(
           {
             event_types: ['new_approval', 'approval_resolved', 'session_status_changed'],
             session_id: sessionId,
@@ -138,6 +138,7 @@ export function useApprovalsWithSubscription(sessionId?: string): UseApprovalsRe
             },
           },
         )
+        unsubscribe = unlisten
       } catch (err) {
         console.error('Failed to subscribe to events:', err)
         // Fall back to polling on subscription failure

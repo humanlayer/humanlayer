@@ -20,7 +20,7 @@ export function useSessionSubscriptions(connected: boolean = true) {
 
     const subscribe = async () => {
       try {
-        unsubscribe = await daemonClient.subscribeToEvents(
+        const subscription = await daemonClient.subscribeToEvents(
           {
             event_types: ['session_status_changed', 'approval_requested', 'approval_resolved'],
           },
@@ -64,6 +64,7 @@ export function useSessionSubscriptions(connected: boolean = true) {
           },
         )
 
+        unsubscribe = subscription.unlisten
         isSubscribedRef.current = true
         console.log('Subscribed to session events')
       } catch (err) {

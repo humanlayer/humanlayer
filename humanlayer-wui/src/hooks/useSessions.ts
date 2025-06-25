@@ -114,15 +114,21 @@ export function useSession(sessionId: string | undefined) {
     fetchSession()
 
     // Subscribe to session updates
-    let unsubscribe: (() => void) | null = null
+    let unlisten: (() => void) | null = null
+    let subscriptionId: string | null = null
     let isActive = true
+    let isSubscribing = false
 
     const subscribe = async () => {
+      // Prevent multiple simultaneous subscriptions
+      if (isSubscribing || !isActive) return
+      isSubscribing = true
+
       try {
         console.log('useSession: Subscribing to events for session:', sessionId)
-        unsubscribe = await daemonClient.subscribeToEvents(
+        const subscription = await daemonClient.subscribeToEvents(
           {
-            event_types: ['session_status_changed'],
+            event_types: ['session_status_changed', 'new_approval'],
             session_id: sessionId,
           },
           {
@@ -131,8 +137,13 @@ export function useSession(sessionId: string | undefined) {
 
               if (!isActive) return
 
-              if (event.event.type === 'session_status_changed') {
-                // Refresh session details when status changes
+              console.log('useSession.onEvent() - event.event.type:', event.event.type)
+
+              if (
+                event.event.type === 'session_status_changed' ||
+                event.event.type === 'new_approval'
+              ) {
+                // Refresh session details when status changes or new approvals arrive
                 fetchSession()
               }
             },
@@ -151,8 +162,23 @@ export function useSession(sessionId: string | undefined) {
             },
           },
         )
+
+        // Only set these if we're still active (component hasn't unmounted)
+        if (isActive) {
+          unlisten = subscription.unlisten
+          subscriptionId = subscription.subscriptionId
+          console.log('useSession: Subscription created', { sessionId, subscriptionId })
+        } else {
+          // Component unmounted while subscribing, clean up immediately
+          subscription.unlisten()
+          await daemonClient.unsubscribeFromEvents(subscription.subscriptionId).catch(error => {
+            console.error('Failed to unsubscribe from events:', error)
+          })
+        }
       } catch (err) {
         console.error('Failed to subscribe to session events:', err)
+      } finally {
+        isSubscribing = false
       }
     }
 
@@ -160,7 +186,17 @@ export function useSession(sessionId: string | undefined) {
 
     return () => {
       isActive = false
-      unsubscribe?.()
+      console.log('useSession: Cleanup - unsubscribing from events', { sessionId, subscriptionId })
+
+      // First stop listening to events
+      unlisten?.()
+
+      // Then unsubscribe from the backend to close the connection
+      if (subscriptionId) {
+        daemonClient.unsubscribeFromEvents(subscriptionId).catch(error => {
+          console.error('Failed to unsubscribe from events:', error)
+        })
+      }
     }
   }, [fetchSession, sessionId])
 
