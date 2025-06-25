@@ -224,7 +224,7 @@ class NotificationService {
   private showInAppNotification(options: NotificationOptions) {
     const toastOptions: ExternalToast = {
       description: options.body,
-      duration: options.duration ?? 10000, // Default 10 seconds if undefined
+      duration: options.duration ?? 5000, // Default 5 seconds if undefined
     }
 
     // Add primary action if provided
@@ -293,7 +293,7 @@ class NotificationService {
 
     return this.notify({
       type: 'approval_required',
-      title: 'Approval Requested',
+      title: `Approval Requested (${sessionId.slice(0, 8)})`,
       body,
       metadata: {
         sessionId,

@@ -66,6 +66,51 @@ export function useSessionEventsWithNotifications(connected: boolean) {
           console.error('Failed to fetch session details for notification:', error)
         }
       }
+
+      // Check if session just completed
+      if (previousStatus !== SessionStatus.Completed && newStatus === SessionStatus.Completed) {
+        try {
+          const sessionResponse = await daemonClient.getSessionState(data.session_id)
+          const session = sessionResponse.session
+
+          await notificationService.notify({
+            type: 'session_completed',
+            title: `Session Completed (${data.session_id.slice(0, 8)})`,
+            body: `Completed: ${session.query}`,
+            metadata: {
+              sessionId: data.session_id,
+              model: session.model,
+            },
+            // Don't make this sticky - let it auto-dismiss
+            duration: undefined,
+          })
+        } catch (error) {
+          console.error('Failed to show completion notification:', error)
+        }
+      }
+
+      // Check if session just failed
+      if (previousStatus !== SessionStatus.Failed && newStatus === SessionStatus.Failed) {
+        try {
+          const sessionResponse = await daemonClient.getSessionState(data.session_id)
+          const session = sessionResponse.session
+
+          await notificationService.notify({
+            type: 'session_failed',
+            title: `Session Failed (${data.session_id.slice(0, 8)})`,
+            body: session.error_message || `Failed: ${session.query}`,
+            metadata: {
+              sessionId: data.session_id,
+              model: session.model,
+            },
+            // Don't make this sticky - let it auto-dismiss
+            duration: undefined,
+            priority: 'high',
+          })
+        } catch (error) {
+          console.error('Failed to show failure notification:', error)
+        }
+      }
     },
     [updateSession, clearNotificationsForSession, isItemNotified, addNotifiedItem],
   )
