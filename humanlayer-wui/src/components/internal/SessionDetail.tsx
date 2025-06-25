@@ -6,6 +6,8 @@ import { Fragment, jsx, jsxs } from 'react/jsx-runtime'
 import React, { Suspense, useEffect, useRef, useState } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { useNavigate } from 'react-router-dom'
+import ReactDiffViewer from 'react-diff-viewer-continued'
+import keyBy from 'lodash.keyby'
 
 import {
   ConversationEvent,
@@ -24,11 +26,15 @@ import {
   Bot,
   CheckCircle,
   CircleDashed,
+  FilePenLine,
   Hourglass,
+  MessageCircle,
   MessageCircleDashed,
+  SquareSplitHorizontal,
+  SquareSplitVertical,
   UserCheck,
-  Wrench,
   User,
+  Wrench,
 } from 'lucide-react'
 import { getStatusTextClass } from '@/utils/component-utils'
 import { daemonClient } from '@/lib/daemon/client'
@@ -41,6 +47,24 @@ let starryNight: any | null = null
 interface SessionDetailProps {
   session: SessionInfo
   onClose: () => void
+}
+
+function DiffViewToggle({ isSplitView, onToggle }: { isSplitView: boolean; onToggle: () => void }) {
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      onClick={onToggle}
+      className="h-8 w-8 p-0 cursor-pointer"
+      title={isSplitView ? 'Switch to inline view' : 'Switch to split view'}
+    >
+      {isSplitView ? (
+        <SquareSplitVertical className="h-4 w-4" />
+      ) : (
+        <SquareSplitHorizontal className="h-4 w-4" />
+      )}
+    </Button>
+  )
 }
 
 function starryNightJson(json: string) {
@@ -62,17 +86,23 @@ function eventToDisplayObject(
   onStartDeny?: (approvalId: string) => void,
   onCancelDeny?: () => void,
   approvingApprovalId?: string | null,
+  isSplitView?: boolean,
+  onToggleSplitView?: () => void,
+  toolResult?: ConversationEvent,
 ) {
   let subject = <span>Unknown Subject</span>
   let body = null
   let iconComponent = null
+  let toolResultContent = null
   const iconClasses = 'w-4 h-4 align-middle relative top-[1px]'
 
-  // For the moment, don't display tool results.
-  if (event.event_type === ConversationEventType.ToolResult) {
-    return null
-  }
+  // // For the moment, don't display tool results.
+  // if (event.event_type === ConversationEventType.ToolResult) {
+  //   return null
+  // }
+  // console.log('toolResult', toolResult)
 
+  // Tool Calls
   if (event.event_type === ConversationEventType.ToolCall) {
     iconComponent = <Wrench className={iconClasses} />
 
@@ -153,7 +183,7 @@ function eventToDisplayObject(
       subject = (
         <span>
           <span className="font-bold">{event.tool_name} </span>
-          <span className="font-mono text-sm text-muted-foreground">Edit to {toolInput.file_path}</span>
+          <span className="font-mono text-sm text-muted-foreground">to {toolInput.file_path}</span>
         </span>
       )
     }
@@ -180,8 +210,23 @@ function eventToDisplayObject(
         </span>
       )
     }
+
+    if (event.tool_name === 'Write') {
+      iconComponent = <FilePenLine className={iconClasses} />
+      const toolInput = JSON.parse(event.tool_input_json!)
+      subject = (
+        <span>
+          <div className="mb-2">
+            <span className="font-bold mr-2">{event.tool_name}</span>
+            <small className="text-xs text-muted-foreground">{toolInput.file_path}</small>
+          </div>
+          <div className="font-mono text-sm text-muted-foreground">{toolInput.content}</div>
+        </span>
+      )
+    }
   }
 
+  // Approvals
   if (event.approval_status) {
     const approvalStatusToColor = {
       [ApprovalStatus.Pending]: 'text-[var(--terminal-warning)]',
@@ -190,6 +235,90 @@ function eventToDisplayObject(
       [ApprovalStatus.Resolved]: 'text-[var(--terminal-success)]',
     }
     iconComponent = <UserCheck className={iconClasses} />
+    let previewFile = null
+
+    // In a pending state for a Write tool call, let's display the file contents a little differently
+    if (event.tool_name === 'Write' && event.approval_status === ApprovalStatus.Pending) {
+      const toolInput = JSON.parse(event.tool_input_json!)
+      previewFile = (
+        <div className="border border-dashed border-muted-foreground rounded p-2 mt-4">
+          <div className="mb-2">
+            <span className="font-bold mr-2">Write</span>
+            <span className="font-mono text-sm text-muted-foreground">
+              to <span className="font-bold">{toolInput.file_path}</span>
+            </span>
+          </div>
+          <div className="font-mono text-sm text-muted-foreground">{toolInput.content}</div>
+        </div>
+      )
+    }
+
+    if (event.tool_name === 'Edit' && event.approval_status === ApprovalStatus.Pending) {
+      const toolInput = JSON.parse(event.tool_input_json!)
+      previewFile = (
+        <div className="border border-dashed border-muted-foreground rounded p-4 mt-4">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <span className="font-bold mr-2">Edit</span>
+              <span className="font-mono text-sm text-muted-foreground">
+                to <span className="font-bold">{toolInput.file_path}</span>
+              </span>
+            </div>
+            <DiffViewToggle
+              isSplitView={isSplitView ?? true}
+              onToggle={onToggleSplitView ?? (() => {})}
+            />
+          </div>
+          <ReactDiffViewer
+            oldValue={toolInput.old_string}
+            newValue={toolInput.new_string}
+            splitView={isSplitView ?? true}
+            // For the moment hiding, as line numbers can be confusing
+            // when not passing the entire file contents.
+            hideLineNumbers={true}
+          />
+        </div>
+      )
+    }
+
+    if (event.tool_name === 'MultiEdit' && event.approval_status === ApprovalStatus.Pending) {
+      const toolInput = JSON.parse(event.tool_input_json!)
+      previewFile = (
+        <div className="border border-dashed border-muted-foreground rounded p-4 mt-4">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <span className="font-bold mr-2">MultiEdit</span>
+              <span className="font-mono text-sm text-muted-foreground">
+                {toolInput.edits.length} edit{toolInput.edits.length === 1 ? '' : 's'} to{' '}
+                <span className="font-bold">{toolInput.file_path}</span>
+              </span>
+            </div>
+            <DiffViewToggle
+              isSplitView={isSplitView ?? true}
+              onToggle={onToggleSplitView ?? (() => {})}
+            />
+          </div>
+          {toolInput.edits.map((edit: any, index: number) => (
+            <div key={index} className="mb-4 last:mb-0">
+              {toolInput.edits.length > 1 && (
+                <div className="mb-2 text-sm font-medium text-muted-foreground">
+                  Edit {index + 1} of {toolInput.edits.length}
+                </div>
+              )}
+              <ReactDiffViewer
+                oldValue={edit.old_string}
+                newValue={edit.new_string}
+                splitView={isSplitView ?? true}
+                // For the moment hiding, as line numbers can be confusing
+                // when not passing the entire file contents.
+                hideLineNumbers={true}
+              />
+            </div>
+          ))}
+        </div>
+      )
+    }
+
     subject = (
       <span>
         <span className={`font-bold ${approvalStatusToColor[event.approval_status]}`}>
@@ -198,7 +327,8 @@ function eventToDisplayObject(
         <div className="font-mono text-sm text-muted-foreground">
           Assistant would like to use <span className="font-bold">{event.tool_name}</span>
         </div>
-        <div className="mt-4">{starryNightJson(event.tool_input_json!)}</div>
+        {!previewFile && <div className="mt-4">{starryNightJson(event.tool_input_json!)}</div>}
+        {previewFile}
       </span>
     )
 
@@ -273,6 +403,18 @@ function eventToDisplayObject(
     iconComponent = <User className={iconClasses} />
   }
 
+  // For the moment, controlling tightly when we display tool result content.
+  if (toolResult && event.approval_status === ApprovalStatus.Denied) {
+    toolResultContent = (
+      <div className="font-mono text-sm text-muted-foreground gap-1">
+        <span className="font-bold inline-flex items-center mr-2">
+          <MessageCircle className="w-3 h-3" /> Denial Comment:
+        </span>
+        <span>{toolResult.tool_result_content}</span>
+      </div>
+    )
+  }
+
   return {
     id: event.id,
     role: event.role,
@@ -281,11 +423,11 @@ function eventToDisplayObject(
     iconComponent,
     body,
     created_at: event.created_at,
+    toolResultContent,
   }
 }
 
 function TodoWidget({ event }: { event: ConversationEvent }) {
-  // console.log('todo event', event)
   const toolInput = JSON.parse(event.tool_input_json!)
   const priorityGrouped = Object.groupBy(toolInput.todos, (todo: any) => todo.priority)
   const todos = toolInput.todos
@@ -298,14 +440,6 @@ function TodoWidget({ event }: { event: ConversationEvent }) {
     pending: <CircleDashed className={iconClasses + ' text-[var(--terminal-fg-dim)]'} />,
     completed: <CheckCircle className={iconClasses + ' text-[var(--terminal-success)]'} />,
   }
-
-  // console.log(todos);
-
-  // console.log('event id', event.id)
-  // console.log('completedCount', completedCount)
-  // console.log('pendingCount', pendingCount)
-
-  // console.log('priorityGrouped', priorityGrouped)
 
   return (
     <div>
@@ -477,6 +611,8 @@ function ConversationContent({
   onApprove,
   onDeny,
   approvingApprovalId,
+  isSplitView,
+  onToggleSplitView,
 }: {
   sessionId: string
   session: SessionInfo
@@ -488,9 +624,14 @@ function ConversationContent({
   onApprove?: (approvalId: string) => void
   onDeny?: (approvalId: string, reason: string) => void
   approvingApprovalId?: string | null
+  isSplitView?: boolean
+  onToggleSplitView?: () => void
 }) {
   const { events, loading, error, isInitialLoad } = useConversation(sessionId, undefined, 1000)
   const [denyingApprovalId, setDenyingApprovalId] = useState<string | null>(null)
+  const [focusSource, setFocusSource] = useState<'mouse' | 'keyboard' | null>(null)
+  const toolResults = events.filter(event => event.event_type === ConversationEventType.ToolResult)
+  const toolResultsByKey = keyBy(toolResults, 'tool_result_for_id')
 
   // Create synthetic first user message event from session.query
   const firstUserMessageEvent: ConversationEvent = {
@@ -508,17 +649,22 @@ function ConversationContent({
   // Inject the first user message at the beginning of the events list
   const eventsWithFirstMessage = [firstUserMessageEvent, ...events]
 
-  const displayObjects = eventsWithFirstMessage.map(event =>
-    eventToDisplayObject(
-      event,
-      onApprove,
-      onDeny,
-      denyingApprovalId,
-      setDenyingApprovalId,
-      () => setDenyingApprovalId(null),
-      approvingApprovalId,
-    ),
-  )
+  const displayObjects = eventsWithFirstMessage
+    .filter(event => event.event_type !== ConversationEventType.ToolResult)
+    .map(event =>
+      eventToDisplayObject(
+        event,
+        onApprove,
+        onDeny,
+        denyingApprovalId,
+        setDenyingApprovalId,
+        () => setDenyingApprovalId(null),
+        approvingApprovalId,
+        isSplitView,
+        onToggleSplitView,
+        event.tool_id ? toolResultsByKey[event.tool_id] : undefined,
+      ),
+    )
   const nonEmptyDisplayObjects = displayObjects.filter(displayObject => displayObject !== null)
 
   // Navigation handlers
@@ -534,6 +680,7 @@ function ConversationContent({
     } else {
       setFocusedEventId(nonEmptyDisplayObjects[currentIndex + 1].id)
     }
+    setFocusSource('keyboard')
   }
 
   const focusPreviousEvent = () => {
@@ -548,6 +695,7 @@ function ConversationContent({
     } else {
       setFocusedEventId(nonEmptyDisplayObjects[currentIndex - 1].id)
     }
+    setFocusSource('keyboard')
   }
 
   // Keyboard navigation
@@ -569,15 +717,15 @@ function ConversationContent({
     }
   }, [loading, events])
 
-  // Scroll focused event into view
+  // Scroll focused event into view (only for keyboard navigation)
   useEffect(() => {
-    if (focusedEventId && containerRef.current) {
+    if (focusedEventId && containerRef.current && focusSource === 'keyboard') {
       const focusedElement = containerRef.current.querySelector(`[data-event-id="${focusedEventId}"]`)
       if (focusedElement) {
         focusedElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
       }
     }
-  }, [focusedEventId])
+  }, [focusedEventId, focusSource])
 
   if (error) {
     return <div className="text-destructive">Error loading conversation: {error}</div>
@@ -615,7 +763,10 @@ function ConversationContent({
           <div key={displayObject.id}>
             <div
               data-event-id={displayObject.id}
-              onMouseEnter={() => setFocusedEventId(displayObject.id)}
+              onMouseEnter={() => {
+                setFocusedEventId(displayObject.id)
+                setFocusSource('mouse')
+              }}
               onMouseLeave={() => setFocusedEventId(null)}
               onClick={() =>
                 setExpandedEventId(expandedEventId === displayObject.id ? null : displayObject.id)
@@ -641,6 +792,9 @@ function ConversationContent({
                   {displayObject.subject}
                 </span>
               </div>
+              {displayObject.toolResultContent && (
+                <p className="whitespace-pre-wrap text-foreground">{displayObject.toolResultContent}</p>
+              )}
               {displayObject.body && (
                 <p className="whitespace-pre-wrap text-foreground">{displayObject.body}</p>
               )}
@@ -665,6 +819,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [responseInput, setResponseInput] = useState('')
   const [isResponding, setIsResponding] = useState(false)
   const [approvingApprovalId, setApprovingApprovalId] = useState<string | null>(null)
+  const [isSplitView, setIsSplitView] = useState(true)
   const interruptSession = useStore(state => state.interruptSession)
   const navigate = useNavigate()
   const isRunning = session.status === 'running'
@@ -854,6 +1009,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                 onApprove={handleApprove}
                 onDeny={handleDeny}
                 approvingApprovalId={approvingApprovalId}
+                isSplitView={isSplitView}
+                onToggleSplitView={() => setIsSplitView(!isSplitView)}
               />
               {isRunning && (
                 <div className="flex flex-col gap-2 mt-4 border-t pt-4">
