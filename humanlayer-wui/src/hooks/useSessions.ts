@@ -139,7 +139,10 @@ export function useSession(sessionId: string | undefined) {
 
               console.log('useSession.onEvent() - event.event.type:', event.event.type)
 
-              if (event.event.type === 'session_status_changed' || event.event.type === 'new_approval') {
+              if (
+                event.event.type === 'session_status_changed' ||
+                event.event.type === 'new_approval'
+              ) {
                 // Refresh session details when status changes or new approvals arrive
                 fetchSession()
               }
@@ -159,7 +162,7 @@ export function useSession(sessionId: string | undefined) {
             },
           },
         )
-        
+
         // Only set these if we're still active (component hasn't unmounted)
         if (isActive) {
           unlisten = subscription.unlisten
@@ -184,10 +187,10 @@ export function useSession(sessionId: string | undefined) {
     return () => {
       isActive = false
       console.log('useSession: Cleanup - unsubscribing from events', { sessionId, subscriptionId })
-      
+
       // First stop listening to events
       unlisten?.()
-      
+
       // Then unsubscribe from the backend to close the connection
       if (subscriptionId) {
         daemonClient.unsubscribeFromEvents(subscriptionId).catch(error => {

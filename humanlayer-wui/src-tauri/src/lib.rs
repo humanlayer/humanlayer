@@ -255,14 +255,14 @@ async fn unsubscribe_from_events(
     subscription_id: String,
 ) -> std::result::Result<(), String> {
     tracing::info!("unsubscribe_from_events: Unsubscribing from subscription {}", subscription_id);
-    
+
     let client_guard = state.client.lock().await;
-    
+
     match &*client_guard {
         Some(client) => {
             // Parse the subscription ID
             let id = subscription_id.parse::<u64>().map_err(|e| format!("Invalid subscription ID: {}", e))?;
-            
+
             client.unsubscribe(id).await.map_err(|e| e.to_string())?;
             tracing::info!("unsubscribe_from_events: Successfully unsubscribed from subscription {}", id);
             Ok(())
