@@ -197,6 +197,7 @@ func (m *DefaultManager) ApproveFunctionCall(ctx context.Context, callID string,
 					if m.EventBus != nil {
 						m.EventBus.Publish(bus.Event{
 							Type: bus.EventSessionStatusChanged,
+                                                          // TODO(4): Can this be a static type later on? Why isn't it currently? Is this because of JSON RPC or a go thing?
 							Data: map[string]interface{}{
 								"session_id": session.ID,
 								"run_id":     fc.RunID,
