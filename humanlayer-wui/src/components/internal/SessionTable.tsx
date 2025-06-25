@@ -13,7 +13,7 @@ import { useHotkeys, useHotkeysContext } from 'react-hotkeys-hook'
 import { useEffect, useRef } from 'react'
 import { CircleOff } from 'lucide-react'
 import { getStatusTextClass } from '@/utils/component-utils'
-import { truncate, formatTimestamp, formatAbsoluteTimestamp } from '@/utils/formatting'
+import { formatTimestamp, formatAbsoluteTimestamp } from '@/utils/formatting'
 import { highlightMatches } from '@/lib/fuzzy-search'
 
 interface SessionTableProps {
@@ -51,11 +51,11 @@ export default function SessionTable({
     const matchData = matchedSessions.get(sessionId)
     if (!matchData) return text
 
-    // Find matches for the query field
-    const queryMatch = matchData.matches?.find((m: any) => m.key === 'query')
-    if (!queryMatch || !queryMatch.indices) return text
+    // Find matches for the summary field
+    const summaryMatch = matchData.matches?.find((m: any) => m.key === 'summary')
+    if (!summaryMatch || !summaryMatch.indices) return text
 
-    const segments = highlightMatches(text, queryMatch.indices)
+    const segments = highlightMatches(text, summaryMatch.indices)
     return (
       <>
         {segments.map((segment, i) => (
@@ -101,12 +101,13 @@ export default function SessionTable({
 
   return (
     <>
+      {/* TODO(2): Fix ref warning - Table component needs forwardRef */}
       <Table ref={tableRef}>
         <TableCaption>A list of your recent sessions.</TableCaption>
         <TableHeader>
           <TableRow>
             <TableHead>Status</TableHead>
-            <TableHead>Query</TableHead>
+            <TableHead>Summary</TableHead>
             <TableHead>Model</TableHead>
             <TableHead>Started</TableHead>
             <TableHead>Last Activity</TableHead>
@@ -124,7 +125,7 @@ export default function SessionTable({
             >
               <TableCell className={getStatusTextClass(session.status)}>{session.status}</TableCell>
               <TableCell>
-                <span>{renderHighlightedText(truncate(session.query, 50), session.id)}</span>
+                <span>{renderHighlightedText(session.summary, session.id)}</span>
               </TableCell>
               <TableCell>{session.model || <CircleOff className="w-4 h-4" />}</TableCell>
               <TableCell>

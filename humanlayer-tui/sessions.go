@@ -666,8 +666,12 @@ func (sm *sessionModel) renderListView(m *model) string {
 			}
 		}
 
-		// Query preview (truncated to fit remaining space)
-		queryPreview := truncate(sess.Query, 39)
+		// Summary preview
+		summaryPreview := sess.Summary
+		// Fallback to truncated query if summary is empty
+		if summaryPreview == "" {
+			summaryPreview = truncate(sess.Query, 39)
+		}
 
 		// Build the row with properly aligned columns
 		row := centerText(statusIcon, 8) +
@@ -676,7 +680,7 @@ func (sm *sessionModel) renderListView(m *model) string {
 			leftPadText(workingDir, 20) +
 			centerText(modelName, 9) +
 			centerText(turnCount, 6) +
-			queryPreview
+			summaryPreview
 
 		// Apply styling
 		itemStyle := lipgloss.NewStyle().Padding(0, 1)
@@ -774,16 +778,6 @@ func (sm *sessionModel) buildSessionDetailContent() string {
 	}
 
 	content.WriteString("\n")
-
-	// Query
-	queryStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("252")).
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("237")).
-		Padding(1, 2)
-
-	content.WriteString(labelStyle.Render("Query:") + "\n")
-	content.WriteString(queryStyle.Render(sess.Query) + "\n\n")
 
 	// Approvals for this session
 	if len(sm.sessionApprovals) > 0 {

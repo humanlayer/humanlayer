@@ -61,7 +61,7 @@ function enrichFunctionCall(
     createdAt: fc.status?.requested_at ? new Date(fc.status.requested_at) : new Date(),
     // Session context
     sessionId: session?.id,
-    sessionQuery: session ? truncate(session.query, 50) : undefined,
+    sessionQuery: session ? session.summary || truncate(session.query, 50) : undefined,
     sessionModel: session?.model || 'default',
   }
 }
@@ -85,7 +85,7 @@ function enrichHumanContact(
     createdAt: hc.status?.requested_at ? new Date(hc.status.requested_at) : new Date(),
     // Session context
     sessionId: session?.id,
-    sessionQuery: session ? truncate(session.query, 50) : undefined,
+    sessionQuery: session ? session.summary || truncate(session.query, 50) : undefined,
     sessionModel: session?.model || 'default',
   }
 }

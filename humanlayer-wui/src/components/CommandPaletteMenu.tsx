@@ -27,7 +27,7 @@ export default function CommandPaletteMenu() {
   const { filteredSessions, statusFilter, searchText, matchedSessions } = useSessionFilter({
     sessions,
     query: searchQuery,
-    searchFields: ['query', 'model'], // Search in both query and model fields for the modal
+    searchFields: ['summary', 'model'], // Search in both summary and model fields for the modal
   })
 
   // Build base menu options
@@ -46,7 +46,8 @@ export default function CommandPaletteMenu() {
     mode === 'search'
       ? filteredSessions.slice(0, 5).map(session => ({
           id: `open-${session.id}`,
-          label: `${session.query.slice(0, 40)}${session.query.length > 40 ? '...' : ''}`,
+          label:
+            session.summary || `${session.query.slice(0, 40)}${session.query.length > 40 ? '...' : ''}`,
           description: `${session.status} • ${session.model || 'Unknown model'}`,
           action: () => openSessionById(session.id),
           sessionId: session.id, // Store for match lookup
