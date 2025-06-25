@@ -177,7 +177,8 @@ These files will be automatically synchronized with your thoughts repository whe
 `
 }
 
-function setupGitHooks(repoPath: string): void {
+function setupGitHooks(repoPath: string): { updated: string[] } {
+  const updated: string[] = []
   // Use git rev-parse to find the common git directory for hooks (handles worktrees)
   // In worktrees, hooks are stored in the common git directory, not the worktree-specific one
   let gitCommonDir: string
@@ -203,10 +204,14 @@ function setupGitHooks(repoPath: string): void {
     fs.mkdirSync(hooksDir, { recursive: true })
   }
 
+  // Hook version for update detection
+  const HOOK_VERSION = '2' // Increment when hooks need updating
+
   // Pre-commit hook
   const preCommitPath = path.join(hooksDir, 'pre-commit')
   const preCommitContent = `#!/bin/bash
 # HumanLayer thoughts protection - prevent committing thoughts directory
+# Version: ${HOOK_VERSION}
 
 if git diff --cached --name-only | grep -q "^thoughts/"; then
     echo "❌ Cannot commit thoughts/ to code repository"
@@ -225,11 +230,19 @@ fi
   const postCommitPath = path.join(hooksDir, 'post-commit')
   const postCommitContent = `#!/bin/bash
 # HumanLayer thoughts auto-sync
+# Version: ${HOOK_VERSION}
+
+# Check if we're in a worktree
+if [ -f .git ]; then
+    # Skip auto-sync in worktrees to avoid repository boundary confusion
+    # See: https://linear.app/humanlayer/issue/ENG-1455
+    exit 0
+fi
 
 # Get the commit message
 COMMIT_MSG=$(git log -1 --pretty=%B)
 
-# Auto-sync thoughts after each commit
+# Auto-sync thoughts after each commit (only in non-worktree repos)
 humanlayer thoughts sync --message "Auto-sync with commit: $COMMIT_MSG" >/dev/null 2>&1 &
 
 # Call any existing post-commit hook
@@ -238,28 +251,61 @@ if [ -f "${postCommitPath}.old" ]; then
 fi
 `
 
-  // Backup existing hooks if they exist
-  if (
-    fs.existsSync(preCommitPath) &&
-    !fs.readFileSync(preCommitPath, 'utf8').includes('HumanLayer thoughts')
-  ) {
-    fs.renameSync(preCommitPath, `${preCommitPath}.old`)
+  // Helper to check if hook needs updating
+  const hookNeedsUpdate = (hookPath: string): boolean => {
+    if (!fs.existsSync(hookPath)) return true
+    const content = fs.readFileSync(hookPath, 'utf8')
+    if (!content.includes('HumanLayer thoughts')) return false // Not our hook
+
+    // Check version
+    const versionMatch = content.match(/# Version: (\d+)/)
+    if (!versionMatch) return true // Old hook without version
+
+    const currentVersion = parseInt(versionMatch[1])
+    return currentVersion < parseInt(HOOK_VERSION)
   }
 
-  if (
-    fs.existsSync(postCommitPath) &&
-    !fs.readFileSync(postCommitPath, 'utf8').includes('HumanLayer thoughts')
-  ) {
-    fs.renameSync(postCommitPath, `${postCommitPath}.old`)
+  // Backup existing hooks if they exist and aren't ours (or need updating)
+  if (fs.existsSync(preCommitPath)) {
+    const content = fs.readFileSync(preCommitPath, 'utf8')
+    if (!content.includes('HumanLayer thoughts') || hookNeedsUpdate(preCommitPath)) {
+      // Only backup non-HumanLayer hooks to prevent recursion
+      if (!content.includes('HumanLayer thoughts')) {
+        fs.renameSync(preCommitPath, `${preCommitPath}.old`)
+      } else {
+        // For outdated HumanLayer hooks, just remove them
+        fs.unlinkSync(preCommitPath)
+      }
+    }
   }
 
-  // Write new hooks
-  fs.writeFileSync(preCommitPath, preCommitContent)
-  fs.writeFileSync(postCommitPath, postCommitContent)
+  if (fs.existsSync(postCommitPath)) {
+    const content = fs.readFileSync(postCommitPath, 'utf8')
+    if (!content.includes('HumanLayer thoughts') || hookNeedsUpdate(postCommitPath)) {
+      // Only backup non-HumanLayer hooks to prevent recursion
+      if (!content.includes('HumanLayer thoughts')) {
+        fs.renameSync(postCommitPath, `${postCommitPath}.old`)
+      } else {
+        // For outdated HumanLayer hooks, just remove them
+        fs.unlinkSync(postCommitPath)
+      }
+    }
+  }
 
-  // Make hooks executable
-  fs.chmodSync(preCommitPath, '755')
-  fs.chmodSync(postCommitPath, '755')
+  // Write new hooks only if needed
+  if (!fs.existsSync(preCommitPath) || hookNeedsUpdate(preCommitPath)) {
+    fs.writeFileSync(preCommitPath, preCommitContent)
+    fs.chmodSync(preCommitPath, '755')
+    updated.push('pre-commit')
+  }
+
+  if (!fs.existsSync(postCommitPath) || hookNeedsUpdate(postCommitPath)) {
+    fs.writeFileSync(postCommitPath, postCommitContent)
+    fs.chmodSync(postCommitPath, '755')
+    updated.push('post-commit')
+  }
+
+  return { updated }
 }
 
 export async function thoughtsInitCommand(options: InitOptions): Promise<void> {
@@ -531,7 +577,10 @@ export async function thoughtsInitCommand(options: InitOptions): Promise<void> {
     fs.writeFileSync(path.join(thoughtsDir, 'CLAUDE.md'), claudeMd)
 
     // Setup git hooks
-    setupGitHooks(currentRepo)
+    const hookResult = setupGitHooks(currentRepo)
+    if (hookResult.updated.length > 0) {
+      console.log(chalk.yellow(`✓ Updated git hooks: ${hookResult.updated.join(', ')}`))
+    }
 
     console.log(chalk.green('✅ Thoughts setup complete!'))
     console.log('')
