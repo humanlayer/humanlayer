@@ -13,9 +13,16 @@ interface StoreState {
   focusNextSession: () => void
   focusPreviousSession: () => void
   interruptSession: (sessionId: string) => Promise<void>
+
+  /* Notifications */
+  notifiedItems: Set<string> // Set of unique notification IDs
+  addNotifiedItem: (notificationId: string) => void
+  removeNotifiedItem: (notificationId: string) => void
+  isItemNotified: (notificationId: string) => boolean
+  clearNotificationsForSession: (sessionId: string) => void
 }
 
-export const useStore = create<StoreState>(set => ({
+export const useStore = create<StoreState>((set, get) => ({
   sessions: [],
   focusedSession: null,
   initSessions: (sessions: SessionInfo[]) => set({ sessions }),
@@ -76,4 +83,31 @@ export const useStore = create<StoreState>(set => ({
       console.error('Failed to interrupt session:', error)
     }
   },
+
+  // Notification management
+  notifiedItems: new Set<string>(),
+  addNotifiedItem: (notificationId: string) =>
+    set(state => ({
+      notifiedItems: new Set(state.notifiedItems).add(notificationId),
+    })),
+  removeNotifiedItem: (notificationId: string) =>
+    set(state => {
+      const newSet = new Set(state.notifiedItems)
+      newSet.delete(notificationId)
+      return { notifiedItems: newSet }
+    }),
+  isItemNotified: (notificationId: string) => {
+    return get().notifiedItems.has(notificationId)
+  },
+  clearNotificationsForSession: (sessionId: string) =>
+    set(state => {
+      const newSet = new Set<string>()
+      // Keep notifications that don't belong to this session
+      state.notifiedItems.forEach(id => {
+        if (!id.includes(sessionId)) {
+          newSet.add(id)
+        }
+      })
+      return { notifiedItems: newSet }
+    }),
 }))
