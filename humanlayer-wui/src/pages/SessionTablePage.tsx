@@ -43,7 +43,7 @@ export function SessionTablePage() {
   const { filteredSessions, statusFilter, searchText, matchedSessions } = useSessionFilter({
     sessions,
     query: searchQuery,
-    searchFields: ['query'], // Only search in query field for the table
+    searchFields: ['summary'], // Only search in summary field for the table
   })
 
   const handleActivateSession = (session: any) => {

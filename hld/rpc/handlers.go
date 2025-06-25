@@ -208,6 +208,7 @@ func (h *SessionHandlers) HandleGetSessionState(ctx context.Context, params json
 		ParentSessionID: session.ParentSessionID,
 		Status:          session.Status,
 		Query:           session.Query,
+		Summary:         session.Summary,
 		Model:           session.Model,
 		WorkingDir:      session.WorkingDir,
 		CreatedAt:       session.CreatedAt.Format(time.RFC3339),

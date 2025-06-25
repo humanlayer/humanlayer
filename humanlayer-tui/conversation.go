@@ -534,12 +534,6 @@ func (cm *conversationModel) renderConversationContent() string {
 
 	var content strings.Builder
 
-	// Show initial query
-	if cm.session.Query != "" {
-		content.WriteString(cm.renderUserMessage(cm.session.Query))
-		content.WriteString("\n\n")
-	}
-
 	// Render all events
 	for i, event := range cm.events {
 		content.WriteString(cm.renderEvent(&event))

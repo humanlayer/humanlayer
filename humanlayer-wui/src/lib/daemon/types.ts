@@ -77,6 +77,7 @@ export interface SessionInfo {
   last_activity_at: string
   error?: string
   query: string
+  summary: string
   model?: string
   working_dir?: string
   result?: any
@@ -89,6 +90,7 @@ export interface SessionState {
   parent_session_id?: string
   status: string // Protocol returns string, not enum
   query: string
+  summary: string
   model?: string
   working_dir?: string
   created_at: string

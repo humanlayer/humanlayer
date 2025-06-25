@@ -23,6 +23,7 @@ type Manager struct {
 	eventBus           bus.EventBus
 	store              store.ConversationStore
 	approvalReconciler ApprovalReconciler
+	pendingQueries     sync.Map // map[sessionID]query - stores queries waiting for Claude session ID
 }
 
 // Compile-time check that Manager implements SessionManager
@@ -95,6 +96,7 @@ func (m *Manager) LaunchSession(ctx context.Context, config claudecode.SessionCo
 
 	// Store session in database
 	dbSession := store.NewSessionFromConfig(sessionID, runID, config)
+	dbSession.Summary = CalculateSummary(config.Query)
 	if err := m.store.CreateSession(ctx, dbSession); err != nil {
 		return nil, fmt.Errorf("failed to store session in database: %w", err)
 	}
@@ -154,6 +156,9 @@ func (m *Manager) LaunchSession(ctx context.Context, config claudecode.SessionCo
 		)
 		m.eventBus.Publish(event)
 	}
+
+	// Store query for injection after Claude session ID is captured
+	m.pendingQueries.Store(sessionID, config.Query)
 
 	// Monitor session lifecycle in background
 	go m.monitorSession(ctx, sessionID, runID, claudeSession, startTime, config)
@@ -217,6 +222,18 @@ func (m *Manager) monitorSession(ctx context.Context, sessionID, runID string, c
 			}
 			if err := m.store.UpdateSession(ctx, sessionID, update); err != nil {
 				slog.Error("failed to update session in database", "error", err)
+			}
+
+			// Inject the pending query now that we have Claude session ID
+			if queryVal, ok := m.pendingQueries.LoadAndDelete(sessionID); ok {
+				if query, ok := queryVal.(string); ok && query != "" {
+					if err := m.injectQueryAsFirstEvent(ctx, sessionID, claudeSessionID, query); err != nil {
+						slog.Error("failed to inject query as first event",
+							"sessionID", sessionID,
+							"claudeSessionID", claudeSessionID,
+							"error", err)
+					}
+				}
 			}
 		}
 
@@ -290,6 +307,9 @@ func (m *Manager) monitorSession(ctx context.Context, sessionID, runID string, c
 	m.mu.Lock()
 	delete(m.activeProcesses, sessionID)
 	m.mu.Unlock()
+
+	// Clean up any pending queries that weren't injected
+	m.pendingQueries.Delete(sessionID)
 }
 
 // updateSessionStatus updates the status of a session in the database
@@ -310,6 +330,9 @@ func (m *Manager) updateSessionStatus(ctx context.Context, sessionID string, sta
 		m.mu.Lock()
 		delete(m.activeProcesses, sessionID)
 		m.mu.Unlock()
+
+		// Clean up any pending queries
+		m.pendingQueries.Delete(sessionID)
 	}
 	if err := m.store.UpdateSession(ctx, sessionID, update); err != nil {
 		slog.Error("failed to update session status in database", "error", err)
@@ -331,11 +354,13 @@ func (m *Manager) GetSessionInfo(sessionID string) (*Info, error) {
 		ID:              dbSession.ID,
 		RunID:           dbSession.RunID,
 		ClaudeSessionID: dbSession.ClaudeSessionID,
+		ParentSessionID: dbSession.ParentSessionID,
 		Status:          Status(dbSession.Status),
 		StartTime:       dbSession.CreatedAt,
 		LastActivityAt:  dbSession.LastActivityAt,
 		Error:           dbSession.ErrorMessage,
 		Query:           dbSession.Query,
+		Summary:         dbSession.Summary,
 		Model:           dbSession.Model,
 		WorkingDir:      dbSession.WorkingDir,
 	}
@@ -395,6 +420,7 @@ func (m *Manager) ListSessions() []Info {
 			LastActivityAt:  dbSession.LastActivityAt,
 			Error:           dbSession.ErrorMessage,
 			Query:           dbSession.Query,
+			Summary:         dbSession.Summary,
 			Model:           dbSession.Model,
 			WorkingDir:      dbSession.WorkingDir,
 		}
@@ -741,6 +767,7 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 	// Store session in database with parent reference
 	dbSession := store.NewSessionFromConfig(sessionID, runID, config)
 	dbSession.ParentSessionID = req.ParentSessionID
+	dbSession.Summary = CalculateSummary(req.Query)
 	// Explicitly ensure inherited values are stored (in case NewSessionFromConfig didn't capture them)
 	if dbSession.Model == "" && parentSession.Model != "" {
 		dbSession.Model = parentSession.Model
@@ -808,6 +835,9 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 			},
 		})
 	}
+
+	// Store query for injection after Claude session ID is captured
+	m.pendingQueries.Store(sessionID, req.Query)
 
 	// Monitor session lifecycle in background
 	go m.monitorSession(ctx, sessionID, runID, claudeSession, time.Now(), config)
@@ -892,4 +922,24 @@ func (m *Manager) InterruptSession(ctx context.Context, sessionID string) error 
 	}
 
 	return nil
+}
+
+// injectQueryAsFirstEvent adds the user's query as the first conversation event
+func (m *Manager) injectQueryAsFirstEvent(ctx context.Context, sessionID, claudeSessionID, query string) error {
+	// Check if we already have a user message as the first event (deduplication)
+	events, err := m.store.GetConversation(ctx, claudeSessionID)
+	if err == nil && len(events) > 0 && events[0].Role == "user" {
+		return nil // Query already injected
+	}
+
+	event := &store.ConversationEvent{
+		SessionID:       sessionID,
+		ClaudeSessionID: claudeSessionID,
+		Sequence:        1, // Start at 1, not 0 (matches existing pattern)
+		EventType:       store.EventTypeMessage,
+		CreatedAt:       time.Now(),
+		Role:            "user",
+		Content:         query,
+	}
+	return m.store.AddConversationEvent(ctx, event)
 }

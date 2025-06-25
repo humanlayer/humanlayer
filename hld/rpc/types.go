@@ -61,6 +61,7 @@ type SessionState struct {
 	ParentSessionID string  `json:"parent_session_id,omitempty"`
 	Status          string  `json:"status"` // starting, running, completed, failed, waiting_input
 	Query           string  `json:"query"`
+	Summary         string  `json:"summary"`
 	Model           string  `json:"model,omitempty"`
 	WorkingDir      string  `json:"working_dir,omitempty"`
 	CreatedAt       string  `json:"created_at"`

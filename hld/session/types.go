@@ -47,6 +47,7 @@ type Info struct {
 	LastActivityAt  time.Time          `json:"last_activity_at"`
 	Error           string             `json:"error,omitempty"`
 	Query           string             `json:"query"`
+	Summary         string             `json:"summary"`
 	Model           string             `json:"model,omitempty"`
 	WorkingDir      string             `json:"working_dir,omitempty"`
 	Result          *claudecode.Result `json:"result,omitempty"`
