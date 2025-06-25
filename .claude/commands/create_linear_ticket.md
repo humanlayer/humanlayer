@@ -34,7 +34,7 @@ Then wait for the user's input.
    - Look for any existing Linear tickets mentioned
 
 4. **Get Linear workspace context:**
-   - Get current user: `mcp__linear__get_user` 
+   - Get current user: `mcp__linear__get_user`
    - List teams: `mcp__linear__list_teams`
    - If multiple teams, ask user to select one
    - List projects for selected team: `mcp__linear__list_projects`
@@ -61,7 +61,7 @@ Then wait for the user's input.
    ## References
    - Source: `thoughts/[path/to/document.md]`
    - Related code: [any file:line references]
-   
+
    ---
    Based on the document, this seems to be at the stage of: [ideation/planning/ready to implement]
    ```
@@ -107,9 +107,9 @@ Then wait for the user's input.
 
 ### From verbose thoughts:
 ```
-"I've been thinking about how our resumed sessions don't inherit permissions properly. 
-This is causing issues where users have to re-specify everything. We should probably 
-store all the config in the database and then pull it when resuming. Maybe we need 
+"I've been thinking about how our resumed sessions don't inherit permissions properly.
+This is causing issues where users have to re-specify everything. We should probably
+store all the config in the database and then pull it when resuming. Maybe we need
 new columns for permission_prompt_tool and allowed_tools..."
 ```
 
@@ -118,12 +118,12 @@ new columns for permission_prompt_tool and allowed_tools..."
 Title: Fix resumed sessions to inherit all configuration from parent
 
 Description:
-Currently, resumed sessions only inherit Model and WorkingDir from parent sessions, 
-causing all other configuration to be lost. Users must re-specify permissions and 
+Currently, resumed sessions only inherit Model and WorkingDir from parent sessions,
+causing all other configuration to be lost. Users must re-specify permissions and
 settings when resuming.
 
 ## Solution
-Store all session configuration in the database and automatically inherit it when 
+Store all session configuration in the database and automatically inherit it when
 resuming sessions, with support for explicit overrides.
 ```
 
