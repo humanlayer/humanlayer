@@ -192,6 +192,19 @@ func (m *DefaultManager) ApproveFunctionCall(ctx context.Context, callID string,
 					slog.Info("updated session status back to running after approval",
 						"session_id", session.ID,
 						"approval_id", callID)
+					
+					// Publish session status change event
+					if m.EventBus != nil {
+						m.EventBus.Publish(bus.Event{
+							Type: bus.EventSessionStatusChanged,
+							Data: map[string]interface{}{
+								"session_id": session.ID,
+								"run_id":     fc.RunID,
+								"old_status": string(store.SessionStatusWaitingInput),
+								"new_status": string(store.SessionStatusRunning),
+							},
+						})
+					}
 				}
 			}
 		}
@@ -264,6 +277,19 @@ func (m *DefaultManager) DenyFunctionCall(ctx context.Context, callID string, re
 					slog.Info("updated session status back to running after denial",
 						"session_id", session.ID,
 						"approval_id", callID)
+					
+					// Publish session status change event
+					if m.EventBus != nil {
+						m.EventBus.Publish(bus.Event{
+							Type: bus.EventSessionStatusChanged,
+							Data: map[string]interface{}{
+								"session_id": session.ID,
+								"run_id":     fc.RunID,
+								"old_status": string(store.SessionStatusWaitingInput),
+								"new_status": string(store.SessionStatusRunning),
+							},
+						})
+					}
 				}
 			}
 		}

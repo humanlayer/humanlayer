@@ -128,7 +128,7 @@ export function useSession(sessionId: string | undefined) {
         console.log('useSession: Subscribing to events for session:', sessionId)
         const subscription = await daemonClient.subscribeToEvents(
           {
-            event_types: ['session_status_changed'],
+            event_types: ['session_status_changed', 'new_approval'],
             session_id: sessionId,
           },
           {
@@ -137,8 +137,10 @@ export function useSession(sessionId: string | undefined) {
 
               if (!isActive) return
 
-              if (event.event.type === 'session_status_changed') {
-                // Refresh session details when status changes
+              console.log('useSession.onEvent() - event.event.type:', event.event.type)
+
+              if (event.event.type === 'session_status_changed' || event.event.type === 'new_approval') {
+                // Refresh session details when status changes or new approvals arrive
                 fetchSession()
               }
             },

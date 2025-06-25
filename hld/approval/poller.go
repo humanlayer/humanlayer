@@ -198,6 +198,19 @@ func (p *Poller) reconcileFunctionCalls(ctx context.Context, functionCalls []hum
 						}
 						if err := p.conversationStore.UpdateSession(ctx, session.ID, update); err != nil {
 							slog.Error("failed to update session status", "error", err)
+						} else {
+							// Publish session status change event
+							if p.eventBus != nil {
+								p.eventBus.Publish(bus.Event{
+									Type: bus.EventSessionStatusChanged,
+									Data: map[string]interface{}{
+										"session_id": session.ID,
+										"run_id":     cached.RunID,
+										"old_status": string(store.SessionStatusWaitingInput),
+										"new_status": string(store.SessionStatusRunning),
+									},
+								})
+							}
 						}
 					}
 				}
@@ -467,6 +480,19 @@ func (p *Poller) correlateApproval(ctx context.Context, fc humanlayer.FunctionCa
 						"session_id", session.ID,
 						"error", err)
 				}
+
+				// Publish session status change event
+				if p.eventBus != nil {
+					p.eventBus.Publish(bus.Event{
+						Type: bus.EventSessionStatusChanged,
+						Data: map[string]interface{}{
+							"session_id": session.ID,
+							"run_id":     fc.RunID,
+							"old_status": string(store.SessionStatusRunning),
+							"new_status": string(store.SessionStatusWaitingInput),
+						},
+					})
+				}
 				return
 			}
 		}
@@ -518,5 +544,18 @@ func (p *Poller) correlateApproval(ctx context.Context, fc humanlayer.FunctionCa
 		slog.Error("failed to update session status to waiting_input",
 			"session_id", session.ID,
 			"error", err)
+	}
+
+	// Publish session status change event
+	if p.eventBus != nil {
+		p.eventBus.Publish(bus.Event{
+			Type: bus.EventSessionStatusChanged,
+			Data: map[string]interface{}{
+				"session_id": session.ID,
+				"run_id":     fc.RunID,
+				"old_status": string(store.SessionStatusRunning),
+				"new_status": string(store.SessionStatusWaitingInput),
+			},
+		})
 	}
 }
