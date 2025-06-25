@@ -26,16 +26,16 @@ export function useSessionSubscriptions(
   }, [handlers])
 
   useEffect(() => {
-    console.log('useSubscriptions effect running', { 
-      connected, 
-      isSubscribed: isSubscribedRef.current 
+    console.log('useSubscriptions effect running', {
+      connected,
+      isSubscribed: isSubscribedRef.current,
     })
-    
+
     if (!connected) {
       console.log('Not connected, skipping subscription')
       return
     }
-    
+
     if (isSubscribedRef.current) {
       console.log('Already subscribed, skipping')
       return
@@ -47,18 +47,18 @@ export function useSessionSubscriptions(
     const subscribe = async () => {
       // Small delay to avoid race conditions during hot reload
       await new Promise(resolve => setTimeout(resolve, 100))
-      
+
       // Double-check we're still active after the delay
       if (!isActive) {
         console.log('Component unmounted during subscription setup')
         return
       }
-      
+
       try {
         console.log('Creating new subscription...')
         // Mark as subscribed immediately to prevent duplicate subscriptions
         isSubscribedRef.current = true
-        
+
         const subscription = await daemonClient.subscribeToEvents(
           {
             event_types: ['session_status_changed', 'new_approval', 'approval_resolved'],
@@ -118,7 +118,7 @@ export function useSessionSubscriptions(
       isActive = false
       // Reset the ref immediately to allow re-subscription
       isSubscribedRef.current = false
-      
+
       // Call unsubscribe if it exists
       if (unsubscribe) {
         console.log('Calling unsubscribe function')

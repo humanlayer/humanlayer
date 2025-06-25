@@ -35,7 +35,6 @@ export interface NotificationOptions {
 
 class NotificationService {
   private appFocused: boolean = true
-  private focusListenersAttached: boolean = false
   private focusHandler: (() => void) | null = null
   private blurHandler: (() => void) | null = null
   private unlistenFocus: (() => void) | null = null
@@ -76,7 +75,6 @@ class NotificationService {
       window.addEventListener('focus', this.focusHandler)
       window.addEventListener('blur', this.blurHandler)
 
-      this.focusListenersAttached = true
       console.log('NotificationService: Focus listeners attached')
     } catch (error) {
       console.error('Failed to attach Tauri focus listeners, using standard events only:', error)
@@ -94,8 +92,6 @@ class NotificationService {
 
       window.addEventListener('focus', this.focusHandler)
       window.addEventListener('blur', this.blurHandler)
-
-      this.focusListenersAttached = true
     }
   }
 
@@ -127,8 +123,6 @@ class NotificationService {
       window.removeEventListener('blur', this.blurHandler)
       this.blurHandler = null
     }
-
-    this.focusListenersAttached = false
   }
 
   /**
