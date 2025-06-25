@@ -114,13 +114,14 @@ export function useSession(sessionId: string | undefined) {
     fetchSession()
 
     // Subscribe to session updates
-    let unsubscribe: (() => void) | null = null
+    let unlisten: (() => void) | null = null
+    let subscriptionId: string | null = null
     let isActive = true
 
     const subscribe = async () => {
       try {
         console.log('useSession: Subscribing to events for session:', sessionId)
-        unsubscribe = await daemonClient.subscribeToEvents(
+        const subscription = await daemonClient.subscribeToEvents(
           {
             event_types: ['session_status_changed'],
             session_id: sessionId,
@@ -151,6 +152,10 @@ export function useSession(sessionId: string | undefined) {
             },
           },
         )
+        
+        unlisten = subscription.unlisten
+        subscriptionId = subscription.subscriptionId
+        console.log('useSession: Subscription created', { sessionId, subscriptionId })
       } catch (err) {
         console.error('Failed to subscribe to session events:', err)
       }
@@ -160,7 +165,17 @@ export function useSession(sessionId: string | undefined) {
 
     return () => {
       isActive = false
-      unsubscribe?.()
+      console.log('useSession: Cleanup - unsubscribing from events', { sessionId, subscriptionId })
+      
+      // First stop listening to events
+      unlisten?.()
+      
+      // Then unsubscribe from the backend to close the connection
+      if (subscriptionId) {
+        daemonClient.unsubscribeFromEvents(subscriptionId).catch(error => {
+          console.error('Failed to unsubscribe from events:', error)
+        })
+      }
     }
   }, [fetchSession, sessionId])
 

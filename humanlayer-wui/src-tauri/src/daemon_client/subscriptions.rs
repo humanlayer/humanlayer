@@ -196,7 +196,9 @@ async fn handle_subscription(
 
             // Handle cancellation
             _ = cancel_rx.recv() => {
-                info!("Subscription {} cancelled", id);
+                info!("Subscription {} cancelled, closing connection", id);
+                // Explicitly shutdown the stream to ensure the Go daemon detects closure
+                let _ = stream.shutdown().await;
                 break;
             }
 

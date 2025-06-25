@@ -298,7 +298,7 @@ function eventToDisplayObject(
             />
           </div>
           {toolInput.edits.map((edit: any, index: number) => (
-            <div key={index} className="mb-4 last:mb-0">
+            <div key={index} className="mb-8 last:mb-0">
               {toolInput.edits.length > 1 && (
                 <div className="mb-2 text-sm font-medium text-muted-foreground">
                   Edit {index + 1} of {toolInput.edits.length}
@@ -621,7 +621,6 @@ function ConversationContent({
   isSplitView?: boolean
   onToggleSplitView?: () => void
 }) {
-  // const { formattedEvents, loading, error } = useFormattedConversation(sessionId)
   const { events, loading, error, isInitialLoad } = useConversation(sessionId, undefined, 1000)
   const [denyingApprovalId, setDenyingApprovalId] = useState<string | null>(null)
   const [focusSource, setFocusSource] = useState<'mouse' | 'keyboard' | null>(null)

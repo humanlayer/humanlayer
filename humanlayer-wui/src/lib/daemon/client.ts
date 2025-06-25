@@ -69,8 +69,8 @@ export class DaemonClient {
 
       onError?: (error: Error) => void
     } = {},
-  ): Promise<() => void> {
-    await invoke('subscribe_to_events', { request })
+  ): Promise<{ unlisten: () => void; subscriptionId: string }> {
+    const subscriptionId = await invoke<string>('subscribe_to_events', { request })
 
     // Listen for daemon events and forward to handlers
     const unlisten = await listen<EventNotification>('daemon-event', event => {
@@ -82,7 +82,11 @@ export class DaemonClient {
       }
     })
 
-    return unlisten
+    return { unlisten, subscriptionId }
+  }
+
+  async unsubscribeFromEvents(subscriptionId: string): Promise<void> {
+    await invoke('unsubscribe_from_events', { subscriptionId })
   }
 
   async interruptSession(sessionId: string): Promise<void> {
