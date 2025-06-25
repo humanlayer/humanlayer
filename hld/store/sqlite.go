@@ -69,6 +69,7 @@ func (s *SQLiteStore) initSchema() error {
 
 		-- Launch configuration
 		query TEXT NOT NULL,
+		summary TEXT,
 		model TEXT,
 		working_dir TEXT,
 		max_turns INTEGER,

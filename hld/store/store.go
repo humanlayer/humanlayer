@@ -47,6 +47,7 @@ type Session struct {
 	ClaudeSessionID    string
 	ParentSessionID    string
 	Query              string
+	Summary            string
 	Model              string
 	WorkingDir         string
 	MaxTurns           int
@@ -67,6 +68,7 @@ type Session struct {
 // SessionUpdate contains fields that can be updated
 type SessionUpdate struct {
 	ClaudeSessionID *string
+	Summary         *string
 	Status          *string
 	LastActivityAt  *time.Time
 	CompletedAt     *time.Time
