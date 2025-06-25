@@ -186,14 +186,14 @@ func (s *SQLiteStore) CreateSession(ctx context.Context, session *Session) error
 	query := `
 		INSERT INTO sessions (
 			id, run_id, claude_session_id, parent_session_id,
-			query, model, working_dir, max_turns, system_prompt, custom_instructions,
+			query, summary, model, working_dir, max_turns, system_prompt, custom_instructions,
 			status, created_at, last_activity_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	_, err := s.db.ExecContext(ctx, query,
 		session.ID, session.RunID, session.ClaudeSessionID, session.ParentSessionID,
-		session.Query, session.Model, session.WorkingDir, session.MaxTurns,
+		session.Query, session.Summary, session.Model, session.WorkingDir, session.MaxTurns,
 		session.SystemPrompt, session.CustomInstructions,
 		session.Status, session.CreatedAt, session.LastActivityAt,
 	)
@@ -249,6 +249,10 @@ func (s *SQLiteStore) UpdateSession(ctx context.Context, sessionID string, updat
 		setParts = append(setParts, "error_message = ?")
 		args = append(args, *updates.ErrorMessage)
 	}
+	if updates.Summary != nil {
+		setParts = append(setParts, "summary = ?")
+		args = append(args, *updates.Summary)
+	}
 
 	if len(setParts) == 0 {
 		return fmt.Errorf("no fields to update")
@@ -280,14 +284,14 @@ func (s *SQLiteStore) UpdateSession(ctx context.Context, sessionID string, updat
 func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Session, error) {
 	query := `
 		SELECT id, run_id, claude_session_id, parent_session_id,
-			query, model, working_dir, max_turns, system_prompt, custom_instructions,
+			query, summary, model, working_dir, max_turns, system_prompt, custom_instructions,
 			status, created_at, last_activity_at, completed_at,
 			cost_usd, total_tokens, duration_ms, num_turns, result_content, error_message
 		FROM sessions WHERE id = ?
 	`
 
 	var session Session
-	var claudeSessionID, parentSessionID, model, workingDir, systemPrompt, customInstructions sql.NullString
+	var claudeSessionID, parentSessionID, summary, model, workingDir, systemPrompt, customInstructions sql.NullString
 	var completedAt sql.NullTime
 	var costUSD sql.NullFloat64
 	var totalTokens, durationMS, numTurns sql.NullInt64
@@ -295,7 +299,7 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 
 	err := s.db.QueryRowContext(ctx, query, sessionID).Scan(
 		&session.ID, &session.RunID, &claudeSessionID, &parentSessionID,
-		&session.Query, &model, &workingDir, &session.MaxTurns,
+		&session.Query, &summary, &model, &workingDir, &session.MaxTurns,
 		&systemPrompt, &customInstructions,
 		&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
 		&costUSD, &totalTokens, &durationMS, &numTurns, &resultContent, &errorMessage,
@@ -310,6 +314,7 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 	// Handle nullable fields
 	session.ClaudeSessionID = claudeSessionID.String
 	session.ParentSessionID = parentSessionID.String
+	session.Summary = summary.String
 	session.Model = model.String
 	session.WorkingDir = workingDir.String
 	session.SystemPrompt = systemPrompt.String
@@ -342,7 +347,7 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Session, error) {
 	query := `
 		SELECT id, run_id, claude_session_id, parent_session_id,
-			query, model, working_dir, max_turns, system_prompt, custom_instructions,
+			query, summary, model, working_dir, max_turns, system_prompt, custom_instructions,
 			status, created_at, last_activity_at, completed_at,
 			cost_usd, total_tokens, duration_ms, num_turns, result_content, error_message
 		FROM sessions
@@ -350,7 +355,7 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 	`
 
 	var session Session
-	var claudeSessionID, parentSessionID, model, workingDir, systemPrompt, customInstructions sql.NullString
+	var claudeSessionID, parentSessionID, summary, model, workingDir, systemPrompt, customInstructions sql.NullString
 	var completedAt sql.NullTime
 	var costUSD sql.NullFloat64
 	var totalTokens, durationMS, numTurns sql.NullInt64
@@ -358,7 +363,7 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 
 	err := s.db.QueryRowContext(ctx, query, runID).Scan(
 		&session.ID, &session.RunID, &claudeSessionID, &parentSessionID,
-		&session.Query, &model, &workingDir, &session.MaxTurns,
+		&session.Query, &summary, &model, &workingDir, &session.MaxTurns,
 		&systemPrompt, &customInstructions,
 		&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
 		&costUSD, &totalTokens, &durationMS, &numTurns, &resultContent, &errorMessage,
@@ -373,6 +378,7 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 	// Convert nullable fields
 	session.ClaudeSessionID = claudeSessionID.String
 	session.ParentSessionID = parentSessionID.String
+	session.Summary = summary.String
 	session.Model = model.String
 	session.WorkingDir = workingDir.String
 	session.SystemPrompt = systemPrompt.String
@@ -405,7 +411,7 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 	query := `
 		SELECT id, run_id, claude_session_id, parent_session_id,
-			query, model, working_dir, max_turns, system_prompt, custom_instructions,
+			query, summary, model, working_dir, max_turns, system_prompt, custom_instructions,
 			status, created_at, last_activity_at, completed_at,
 			cost_usd, total_tokens, duration_ms, num_turns, result_content, error_message
 		FROM sessions
@@ -421,7 +427,7 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 	var sessions []*Session
 	for rows.Next() {
 		var session Session
-		var claudeSessionID, parentSessionID, model, workingDir, systemPrompt, customInstructions sql.NullString
+		var claudeSessionID, parentSessionID, summary, model, workingDir, systemPrompt, customInstructions sql.NullString
 		var completedAt sql.NullTime
 		var costUSD sql.NullFloat64
 		var totalTokens, durationMS, numTurns sql.NullInt64
@@ -429,7 +435,7 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 
 		err := rows.Scan(
 			&session.ID, &session.RunID, &claudeSessionID, &parentSessionID,
-			&session.Query, &model, &workingDir, &session.MaxTurns,
+			&session.Query, &summary, &model, &workingDir, &session.MaxTurns,
 			&systemPrompt, &customInstructions,
 			&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
 			&costUSD, &totalTokens, &durationMS, &numTurns, &resultContent, &errorMessage,
@@ -441,6 +447,7 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 		// Handle nullable fields
 		session.ClaudeSessionID = claudeSessionID.String
 		session.ParentSessionID = parentSessionID.String
+		session.Summary = summary.String
 		session.Model = model.String
 		session.WorkingDir = workingDir.String
 		session.SystemPrompt = systemPrompt.String
