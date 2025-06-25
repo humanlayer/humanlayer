@@ -7,17 +7,9 @@ import (
 
 // CalculateSummary generates a summary from a query using the same logic as the WebUI
 func CalculateSummary(query string) string {
-	// Replace whitespace with single spaces and trim
-	cleaned := strings.ReplaceAll(query, "\n", " ")
-	cleaned = strings.ReplaceAll(cleaned, "\r", " ")
-	cleaned = strings.ReplaceAll(cleaned, "\t", " ")
-
-	// Collapse multiple spaces into single spaces
-	for strings.Contains(cleaned, "  ") {
-		cleaned = strings.ReplaceAll(cleaned, "  ", " ")
-	}
-
-	cleaned = strings.TrimSpace(cleaned)
+	// Use strings.Fields to split on all whitespace and filter empty strings in one pass
+	// Then join with single spaces to normalize whitespace
+	cleaned := strings.Join(strings.Fields(query), " ")
 
 	const maxLength = 50
 	// Use rune count for proper Unicode handling
