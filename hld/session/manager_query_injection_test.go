@@ -20,7 +20,7 @@ func TestQueryInjection(t *testing.T) {
 	t.Run("Query is injected AFTER Claude session ID is available", func(t *testing.T) {
 		// Create mock store
 		mockStore := store.NewMockConversationStore(ctrl)
-		
+
 		// Create manager
 		manager, err := NewManager(nil, mockStore)
 		require.NoError(t, err)
@@ -100,7 +100,7 @@ func TestQueryInjection(t *testing.T) {
 
 		// First call - simulate existing user message
 		existingEvent := &store.ConversationEvent{
-			Role: "user",
+			Role:    "user",
 			Content: "Some existing user message",
 		}
 		mockStore.EXPECT().
@@ -119,7 +119,7 @@ func TestQueryInjection(t *testing.T) {
 		require.NoError(t, err)
 
 		sessionID := "test-session-id"
-		
+
 		// Store query
 		manager.pendingQueries.Store(sessionID, "Test query")
 
@@ -211,13 +211,13 @@ func TestQueryInjectionRaceCondition(t *testing.T) {
 	for i := 0; i < numSessions; i++ {
 		go func(sessionNum int) {
 			defer wg.Done()
-			
+
 			sessionID := fmt.Sprintf("session-%d", sessionNum)
 			claudeSessionID := fmt.Sprintf("claude-session-%d", sessionNum)
-			
+
 			// Simulate some processing time
 			time.Sleep(time.Millisecond * time.Duration(sessionNum))
-			
+
 			// Load and inject query
 			if queryVal, ok := manager.pendingQueries.LoadAndDelete(sessionID); ok {
 				if query, ok := queryVal.(string); ok && query != "" {
@@ -242,13 +242,3 @@ func TestQueryInjectionRaceCondition(t *testing.T) {
 // is implicitly tested when those methods create sessions with the Summary field populated.
 // Following the established pattern in this codebase, we don't mock claudecode.Client
 // for unit tests, so we can't fully test LaunchSession here.
-
-// Helper function to simulate monitorSession behavior for testing
-func simulateClaudeSessionIDCapture(manager *Manager, sessionID, claudeSessionID, query string) {
-	// This simulates what happens in monitorSession when Claude session ID is captured
-	if queryVal, ok := manager.pendingQueries.LoadAndDelete(sessionID); ok {
-		if q, ok := queryVal.(string); ok && q != "" {
-			_ = manager.injectQueryAsFirstEvent(context.Background(), sessionID, claudeSessionID, q)
-		}
-	}
-}
