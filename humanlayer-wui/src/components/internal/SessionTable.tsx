@@ -8,10 +8,12 @@ import {
   TableHeader,
   TableRow,
 } from '../ui/table'
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 import { useHotkeys, useHotkeysContext } from 'react-hotkeys-hook'
 import { useEffect, useRef } from 'react'
 import { CircleOff } from 'lucide-react'
 import { getStatusTextClass } from '@/utils/component-utils'
+import { truncate, formatTimestamp, formatAbsoluteTimestamp } from '@/utils/formatting'
 import { highlightMatches } from '@/lib/fuzzy-search'
 
 interface SessionTableProps {
@@ -121,12 +123,26 @@ export default function SessionTable({
               className={`cursor-pointer ${focusedSession?.id === session.id ? '!bg-accent/20' : ''}`}
             >
               <TableCell className={getStatusTextClass(session.status)}>{session.status}</TableCell>
-              <TableCell className="max-w-xs truncate">
-                {renderHighlightedText(session.query, session.id)}
+              <TableCell>
+                <span>{renderHighlightedText(truncate(session.query, 50), session.id)}</span>
               </TableCell>
               <TableCell>{session.model || <CircleOff className="w-4 h-4" />}</TableCell>
-              <TableCell>{session.start_time}</TableCell>
-              <TableCell>{session.last_activity_at}</TableCell>
+              <TableCell>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="cursor-help">{formatTimestamp(session.start_time)}</span>
+                  </TooltipTrigger>
+                  <TooltipContent>{formatAbsoluteTimestamp(session.start_time)}</TooltipContent>
+                </Tooltip>
+              </TableCell>
+              <TableCell>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="cursor-help">{formatTimestamp(session.last_activity_at)}</span>
+                  </TooltipTrigger>
+                  <TooltipContent>{formatAbsoluteTimestamp(session.last_activity_at)}</TooltipContent>
+                </Tooltip>
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>

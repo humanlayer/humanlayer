@@ -169,7 +169,6 @@
   --terminal-warning: #b47109;
   --terminal-error: #c14a4a;
 }
-
 @layer base {
   * {
     @apply border-border outline-ring/50;

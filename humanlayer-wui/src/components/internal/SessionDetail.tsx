@@ -3,24 +3,24 @@ import jsonGrammar from '@wooorm/starry-night/source.json'
 import textMd from '@wooorm/starry-night/text.md'
 import { toJsxRuntime } from 'hast-util-to-jsx-runtime'
 import { Fragment, jsx, jsxs } from 'react/jsx-runtime'
-import { format, parseISO } from 'date-fns'
-import React from 'react'
+import React, { Suspense, useEffect, useRef, useState } from 'react'
+import { useHotkeys } from 'react-hotkeys-hook'
+import { useNavigate } from 'react-router-dom'
 import ReactDiffViewer from 'react-diff-viewer-continued'
 import keyBy from 'lodash.keyby'
 
 import {
   ConversationEvent,
   ConversationEventType,
+  ConversationRole,
   SessionInfo,
   ApprovalStatus,
 } from '@/lib/daemon/types'
 import { Card, CardContent } from '../ui/card'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
-import { useHotkeys } from 'react-hotkeys-hook'
 import { useConversation } from '@/hooks/useConversation'
 import { Skeleton } from '../ui/skeleton'
-import { Suspense, useEffect, useRef, useState } from 'react'
 import { useStore } from '@/AppStore'
 import {
   Bot,
@@ -33,11 +33,12 @@ import {
   SquareSplitHorizontal,
   SquareSplitVertical,
   UserCheck,
+  User,
   Wrench,
 } from 'lucide-react'
 import { getStatusTextClass } from '@/utils/component-utils'
 import { daemonClient } from '@/lib/daemon/client'
-import { useNavigate } from 'react-router-dom'
+import { truncate, formatAbsoluteTimestamp } from '@/utils/formatting'
 import { CommandToken } from './CommandToken'
 
 /* I, Sundeep, don't know how I feel about what's going on here. */
@@ -350,7 +351,8 @@ function eventToDisplayObject(
                 }}
                 disabled={isApproving}
               >
-                {isApproving ? 'Approving...' : 'Approve'}
+                {isApproving ? 'Approving...' : 'Approve'}{' '}
+                <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">A</kbd>
               </Button>
               {!isApproving && (
                 <Button
@@ -362,7 +364,7 @@ function eventToDisplayObject(
                     onStartDeny?.(event.approval_id!)
                   }}
                 >
-                  Deny
+                  Deny <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">D</kbd>
                 </Button>
               )}
             </>
@@ -395,6 +397,10 @@ function eventToDisplayObject(
 
   if (event.role === 'assistant') {
     iconComponent = <Bot className={iconClasses} />
+  }
+
+  if (event.role === 'user') {
+    iconComponent = <User className={iconClasses} />
   }
 
   // For the moment, controlling tightly when we display tool result content.
@@ -490,9 +496,7 @@ function EventMetaInfo({ event }: { event: ConversationEvent }) {
         </div>
         <div>
           <span className="font-medium text-muted-foreground">Created:</span>
-          <span className="ml-2 font-mono text-xs">
-            {format(parseISO(event.created_at), 'MMM d, yyyy h:mm a')}
-          </span>
+          <span className="ml-2 font-mono text-xs">{formatAbsoluteTimestamp(event.created_at)}</span>
         </div>
         <div>
           <span className="font-medium text-muted-foreground">Completed:</span>
@@ -598,6 +602,7 @@ function DenyForm({
 
 function ConversationContent({
   sessionId,
+  session,
   focusedEventId,
   setFocusedEventId,
   expandedEventId,
@@ -610,6 +615,7 @@ function ConversationContent({
   onToggleSplitView,
 }: {
   sessionId: string
+  session: SessionInfo
   focusedEventId: number | null
   setFocusedEventId: (id: number | null) => void
   expandedEventId: number | null
@@ -621,14 +627,29 @@ function ConversationContent({
   isSplitView?: boolean
   onToggleSplitView?: () => void
 }) {
-  // const { formattedEvents, loading, error } = useFormattedConversation(sessionId)
   const { events, loading, error, isInitialLoad } = useConversation(sessionId, undefined, 1000)
   const [denyingApprovalId, setDenyingApprovalId] = useState<string | null>(null)
   const [focusSource, setFocusSource] = useState<'mouse' | 'keyboard' | null>(null)
   const toolResults = events.filter(event => event.event_type === ConversationEventType.ToolResult)
   const toolResultsByKey = keyBy(toolResults, 'tool_result_for_id')
 
-  const displayObjects = events
+  // Create synthetic first user message event from session.query
+  const firstUserMessageEvent: ConversationEvent = {
+    id: -1, // Use negative ID to avoid conflicts
+    session_id: session.id,
+    claude_session_id: session.claude_session_id || '',
+    sequence: 0,
+    event_type: ConversationEventType.Message,
+    created_at: session.start_time,
+    role: ConversationRole.User,
+    content: session.query,
+    is_completed: true,
+  }
+
+  // Inject the first user message at the beginning of the events list
+  const eventsWithFirstMessage = [firstUserMessageEvent, ...events]
+
+  const displayObjects = eventsWithFirstMessage
     .filter(event => event.event_type !== ConversationEventType.ToolResult)
     .map(event =>
       eventToDisplayObject(
@@ -757,7 +778,7 @@ function ConversationContent({
               {/* Timestamp at top */}
               <div className="flex justify-end mb-2">
                 <span className="text-xs text-muted-foreground/60">
-                  {format(parseISO(displayObject.created_at), 'MMM d, yyyy h:mm a')}
+                  {formatAbsoluteTimestamp(displayObject.created_at)}
                 </span>
               </div>
 
@@ -770,12 +791,10 @@ function ConversationContent({
                 <span className="whitespace-pre-wrap text-accent max-w-[90%]">
                   {displayObject.subject}
                 </span>
-                {displayObject.toolResultContent && (
-                  <p className="whitespace-pre-wrap text-foreground">
-                    {displayObject.toolResultContent}
-                  </p>
-                )}
               </div>
+              {displayObject.toolResultContent && (
+                <p className="whitespace-pre-wrap text-foreground">{displayObject.toolResultContent}</p>
+              )}
               {displayObject.body && (
                 <p className="whitespace-pre-wrap text-foreground">{displayObject.body}</p>
               )}
@@ -924,11 +943,32 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     }
   })
 
+  // A key to approve focused event that has pending approval
+  useHotkeys('a', () => {
+    if (focusedEventId) {
+      const focusedEvent = events.find(e => e.id === focusedEventId)
+      if (focusedEvent?.approval_status === 'pending' && focusedEvent.approval_id) {
+        handleApprove(focusedEvent.approval_id)
+      }
+    }
+  })
+
+  // D key to deny focused event that has pending approval
+  useHotkeys('d', () => {
+    if (focusedEventId) {
+      const focusedEvent = events.find(e => e.id === focusedEventId)
+      if (focusedEvent?.approval_status === 'pending' && focusedEvent.approval_id) {
+        // For now, deny with a default reason - could be enhanced to show input
+        handleDeny(focusedEvent.approval_id, 'Denied via hotkey')
+      }
+    }
+  })
+
   return (
     <section className="flex flex-col gap-4">
       <hgroup className="flex flex-col gap-1">
         <h2 className="text-lg font-medium text-foreground font-mono">
-          {session.query}{' '}
+          {truncate(session.query, 50)}{' '}
           {session.parent_session_id && <span className="text-muted-foreground">[continued]</span>}
         </h2>
         <small
@@ -936,6 +976,9 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         >
           {`${session.status}${session.model ? `/ ${session.model}` : ''}`}
         </small>
+        {session.working_dir && (
+          <small className="font-mono text-xs text-muted-foreground">{session.working_dir}</small>
+        )}
         {session.parent_session_id && (
           <small className="text-xs text-muted-foreground">
             Press <kbd className="px-1 py-0.5 text-xs bg-muted rounded">P</kbd> to view parent session
@@ -957,6 +1000,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
             >
               <ConversationContent
                 sessionId={session.id}
+                session={session}
                 focusedEventId={focusedEventId}
                 setFocusedEventId={setFocusedEventId}
                 expandedEventId={expandedEventId}
