@@ -205,7 +205,7 @@ function setupGitHooks(repoPath: string): { updated: string[] } {
   }
 
   // Hook version for update detection
-  const HOOK_VERSION = '2' // Increment when hooks need updating
+  const HOOK_VERSION = '3' // Increment when hooks need updating - v3 fixes recursive backup issue
 
   // Pre-commit hook
   const preCommitPath = path.join(hooksDir, 'pre-commit')
