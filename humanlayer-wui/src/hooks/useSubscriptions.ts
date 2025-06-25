@@ -3,13 +3,13 @@ import { daemonClient } from '@/lib/daemon'
 import type {
   EventNotification,
   SessionStatusChangedEventData,
-  ApprovalRequestedEventData,
+  NewApprovalEventData,
   ApprovalResolvedEventData,
 } from '@/lib/daemon/types'
 
 export interface SessionSubscriptionHandlers {
   onSessionStatusChanged?: (data: SessionStatusChangedEventData, timestamp: string) => void
-  onApprovalRequested?: (data: ApprovalRequestedEventData) => void
+  onNewApproval?: (data: NewApprovalEventData) => void
   onApprovalResolved?: (data: ApprovalResolvedEventData) => void
 }
 
@@ -18,6 +18,12 @@ export function useSessionSubscriptions(
   handlers: SessionSubscriptionHandlers = {},
 ) {
   const isSubscribedRef = useRef(false)
+  const handlersRef = useRef(handlers)
+
+  // Keep handlers ref up to date
+  useEffect(() => {
+    handlersRef.current = handlers
+  }, [handlers])
 
   useEffect(() => {
     if (!connected || isSubscribedRef.current) return
@@ -29,7 +35,7 @@ export function useSessionSubscriptions(
       try {
         const subscription = await daemonClient.subscribeToEvents(
           {
-            event_types: ['session_status_changed', 'approval_requested', 'approval_resolved'],
+            event_types: ['session_status_changed', 'new_approval', 'approval_resolved'],
           },
           {
             onEvent: (event: EventNotification) => {
@@ -41,15 +47,15 @@ export function useSessionSubscriptions(
                   console.log('Session status changed:', data)
 
                   // Call handler if provided
-                  handlers.onSessionStatusChanged?.(data, event.event.timestamp)
+                  handlersRef.current.onSessionStatusChanged?.(data, event.event.timestamp)
                   break
                 }
-                case 'approval_requested': {
-                  const data = event.event.data as ApprovalRequestedEventData
-                  console.log('Approval requested:', data)
+                case 'new_approval': {
+                  const data = event.event.data as NewApprovalEventData
+                  console.log('New approval:', data, event)
 
                   // Call handler if provided
-                  handlers.onApprovalRequested?.(data)
+                  handlersRef.current.onNewApproval?.(data)
                   break
                 }
                 case 'approval_resolved': {
@@ -57,7 +63,7 @@ export function useSessionSubscriptions(
                   console.log('Approval resolved:', data)
 
                   // Call handler if provided
-                  handlers.onApprovalResolved?.(data)
+                  handlersRef.current.onApprovalResolved?.(data)
                   break
                 }
               }
@@ -81,9 +87,10 @@ export function useSessionSubscriptions(
     subscribe()
 
     return () => {
+      console.log('Unsubscribing from session events')
       isActive = false
       isSubscribedRef.current = false
       unsubscribe?.()
     }
-  }, [connected, handlers])
+  }, [connected]) // Only re-subscribe when connection status changes
 }

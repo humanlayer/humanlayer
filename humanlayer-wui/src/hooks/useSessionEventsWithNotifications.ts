@@ -6,7 +6,7 @@ import { useSessionSubscriptions } from './useSubscriptions'
 import {
   SessionStatus,
   type SessionStatusChangedEventData,
-  type ApprovalRequestedEventData,
+  type NewApprovalEventData,
 } from '@/lib/daemon/types'
 
 /**
@@ -20,6 +20,7 @@ export function useSessionEventsWithNotifications(connected: boolean) {
 
   const handleSessionStatusChanged = useCallback(
     async (data: SessionStatusChangedEventData, timestamp: string) => {
+      console.log('handleSessionStatusChanged()', data)
       const previousStatus = previousStatusesRef.current.get(data.session_id)
       const newStatus = data.new_status as SessionStatus
 
@@ -69,8 +70,9 @@ export function useSessionEventsWithNotifications(connected: boolean) {
     [updateSession, clearNotificationsForSession, isItemNotified, addNotifiedItem],
   )
 
-  const handleApprovalRequested = useCallback(
-    async (data: ApprovalRequestedEventData) => {
+  const handleNewApproval = useCallback(
+    async (data: NewApprovalEventData) => {
+      console.log('handleNewApproval()', data)
       // Refresh sessions to get latest approval counts
       refreshSessions()
 
@@ -128,10 +130,10 @@ export function useSessionEventsWithNotifications(connected: boolean) {
   const handlers = useMemo(
     () => ({
       onSessionStatusChanged: handleSessionStatusChanged,
-      onApprovalRequested: handleApprovalRequested,
+      onNewApproval: handleNewApproval,
       onApprovalResolved: handleApprovalResolved,
     }),
-    [handleSessionStatusChanged, handleApprovalRequested, handleApprovalResolved],
+    [handleSessionStatusChanged, handleNewApproval, handleApprovalResolved],
   )
 
   // Use the subscription hook with our handlers

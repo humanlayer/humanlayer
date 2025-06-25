@@ -199,9 +199,12 @@ export interface EventNotification {
 }
 
 // Event-specific data types
-export interface ApprovalRequestedEventData {
+export interface NewApprovalEventData {
   approval: PendingApproval
 }
+
+// Alias for backwards compatibility (to be removed)
+export type ApprovalRequestedEventData = NewApprovalEventData
 
 export interface ApprovalResolvedEventData {
   call_id: string

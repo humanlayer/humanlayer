@@ -4,6 +4,7 @@ import {
   isPermissionGranted,
   requestPermission,
 } from '@tauri-apps/plugin-notification'
+import { getCurrentWindow } from '@tauri-apps/api/window'
 
 // Types for generic notification system
 export type NotificationType =
@@ -35,25 +36,107 @@ export interface NotificationOptions {
 class NotificationService {
   private appFocused: boolean = true
   private focusListenersAttached: boolean = false
+  private focusHandler: (() => void) | null = null
+  private blurHandler: (() => void) | null = null
+  private unlistenFocus: (() => void) | null = null
+  private unlistenBlur: (() => void) | null = null
 
   constructor() {
+    console.log('NotificationService: Constructor called')
     this.attachFocusListeners()
   }
 
-  private attachFocusListeners() {
-    if (this.focusListenersAttached) return
+  private async attachFocusListeners() {
+    console.log('NotificationService: Attaching focus listeners')
 
-    // Track app focus state using window focus/blur events
-    // In Tauri with WebKit, these reliably indicate if the app window is active
-    window.addEventListener('focus', () => {
-      this.appFocused = true
+    // Clean up any existing listeners first
+    await this.detachFocusListeners()
+
+    try {
+      // Try Tauri window events first
+      const appWindow = getCurrentWindow()
+
+      // Listen for focus events
+      this.unlistenFocus = await appWindow.onFocusChanged(event => {
+        console.log('Tauri window focus changed:', event)
+        this.appFocused = event.payload
+      })
+
+      // Also use standard window events as fallback
+      this.focusHandler = () => {
+        console.log('window focused (standard event)')
+        this.appFocused = true
+      }
+
+      this.blurHandler = () => {
+        console.log('window blurred (standard event)')
+        this.appFocused = false
+      }
+
+      window.addEventListener('focus', this.focusHandler)
+      window.addEventListener('blur', this.blurHandler)
+
+      this.focusListenersAttached = true
+      console.log('NotificationService: Focus listeners attached')
+    } catch (error) {
+      console.error('Failed to attach Tauri focus listeners, using standard events only:', error)
+
+      // Fallback to standard events only
+      this.focusHandler = () => {
+        console.log('window focused')
+        this.appFocused = true
+      }
+
+      this.blurHandler = () => {
+        console.log('window blurred')
+        this.appFocused = false
+      }
+
+      window.addEventListener('focus', this.focusHandler)
+      window.addEventListener('blur', this.blurHandler)
+
+      this.focusListenersAttached = true
+    }
+  }
+
+  private async detachFocusListeners() {
+    console.log('NotificationService: Detaching focus listeners', {
+      hasFocusHandler: !!this.focusHandler,
+      hasBlurHandler: !!this.blurHandler,
+      hasUnlistenFocus: !!this.unlistenFocus,
     })
 
-    window.addEventListener('blur', () => {
-      this.appFocused = false
-    })
+    // Remove Tauri listeners
+    if (this.unlistenFocus) {
+      this.unlistenFocus()
+      this.unlistenFocus = null
+    }
 
-    this.focusListenersAttached = true
+    if (this.unlistenBlur) {
+      this.unlistenBlur()
+      this.unlistenBlur = null
+    }
+
+    // Remove standard listeners
+    if (this.focusHandler) {
+      window.removeEventListener('focus', this.focusHandler)
+      this.focusHandler = null
+    }
+
+    if (this.blurHandler) {
+      window.removeEventListener('blur', this.blurHandler)
+      this.blurHandler = null
+    }
+
+    this.focusListenersAttached = false
+  }
+
+  /**
+   * Clean up resources (useful for hot module replacement)
+   */
+  cleanup() {
+    console.log('NotificationService: Cleanup called')
+    this.detachFocusListeners()
   }
 
   /**
@@ -120,6 +203,12 @@ class NotificationService {
     // Generate unique ID for this notification
     const notificationId = this.generateNotificationId(options.type, options.metadata)
 
+    console.log('NotificationService.notify:', {
+      appFocused: this.appFocused,
+      notificationType: options.type,
+      sessionId: options.metadata.sessionId,
+    })
+
     if (this.appFocused) {
       this.showInAppNotification(options)
     } else {
@@ -164,9 +253,11 @@ class NotificationService {
    * Show OS-level notification using Tauri plugin
    */
   private async showOSNotification(options: NotificationOptions) {
+    console.log('NotificationService.showOSNotification called:', options.title)
     try {
       // Check if we have permission
       let permissionGranted = await isPermissionGranted()
+      console.log('OS notification permission granted:', permissionGranted)
 
       // Request permission if not granted
       if (!permissionGranted) {
@@ -243,5 +334,25 @@ class NotificationService {
   }
 }
 
-// Export singleton instance
-export const notificationService = new NotificationService()
+// Export singleton instance with HMR support
+let notificationService: NotificationService
+
+// Clean up previous instance on hot reload
+if (import.meta.hot) {
+  console.log('NotificationService: HMR detected, checking for previous instance')
+  if ((import.meta as any).hot.data.notificationService) {
+    console.log('NotificationService: Cleaning up previous instance')
+    ;(import.meta as any).hot.data.notificationService.cleanup()
+  }
+}
+
+console.log('NotificationService: Creating new instance')
+notificationService = new NotificationService()
+
+// Store instance for cleanup on next hot reload
+if (import.meta.hot) {
+  console.log('NotificationService: Storing instance for future cleanup')
+  ;(import.meta as any).hot.data.notificationService = notificationService
+}
+
+export { notificationService }
