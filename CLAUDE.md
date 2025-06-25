@@ -44,6 +44,7 @@ Claude Code → MCP Protocol → hlyr → JSON-RPC → hld → HumanLayer Cloud 
 ## Development Commands
 
 ### Quick Actions
+- `make setup` - Resolve dependencies and installation issues across the monorepo
 - `make check-test` - Run all checks and tests
 - `make check` - Run linting and type checking
 - `make test` - Run all test suites
