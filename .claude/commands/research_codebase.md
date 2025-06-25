@@ -94,47 +94,47 @@ Then wait for the user's research query.
      last_updated: [Current date in YYYY-MM-DD format]
      last_updated_by: [Researcher name]
      ---
-     
+
      # Research: [User's Question/Topic]
-     
+
      **Date**: [Current date and time with timezone from step 4]
      **Researcher**: [Researcher name from thoughts status]
      **Git Commit**: [Current commit hash from step 4]
      **Branch**: [Current branch name from step 4]
      **Repository**: [Repository name]
-     
+
      ## Research Question
      [Original user query]
-     
+
      ## Summary
      [High-level findings answering the user's question]
-     
+
      ## Detailed Findings
-     
+
      ### [Component/Area 1]
      - Finding with reference ([file.ext:line](link))
      - Connection to other components
      - Implementation details
-     
+
      ### [Component/Area 2]
      ...
-     
+
      ## Code References
      - `path/to/file.py:123` - Description of what's there
      - `another/file.ts:45-67` - Description of the code block
-     
+
      ## Architecture Insights
      [Patterns, conventions, and design decisions discovered]
-     
+
      ## Historical Context (from thoughts/)
      [Relevant insights from thoughts/ directory with references]
      - `thoughts/shared/something.md` - Historical decision about X
      - `thoughts/local/notes.md` - Past exploration of Y
      Note: Paths exclude "searchable/" even if found there
-     
+
      ## Related Research
      [Links to other research documents in thoughts/shared/research/]
-     
+
      ## Open Questions
      [Any areas that need further investigation]
      ```
@@ -164,7 +164,7 @@ Then wait for the user's research query.
 - Always use parallel Task agents to maximize efficiency and minimize context usage
 - Always run fresh codebase research - never rely solely on existing research documents
 - The thoughts/ directory provides historical context to supplement live findings
-- Focus on finding concrete file paths and line numbers for developer reference  
+- Focus on finding concrete file paths and line numbers for developer reference
 - Research documents should be self-contained with all necessary context
 - Each sub-agent prompt should be specific and focused on read-only operations
 - Consider cross-component connections and architectural patterns

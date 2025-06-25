@@ -64,7 +64,7 @@ You are tasked with generating a comprehensive pull request description followin
 ## Important notes:
 - This command works across different repositories - always read the local template
 - Be thorough but concise - descriptions should be scannable
-- Focus on the "why" as much as the "what"  
+- Focus on the "why" as much as the "what"
 - Include any breaking changes or migration notes prominently
 - If the PR touches multiple components, organize the description accordingly
 - Always attempt to run verification commands when possible

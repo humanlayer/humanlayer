@@ -30,7 +30,7 @@ list_worktrees() {
 cleanup_worktree() {
     local worktree_name="$1"
     local worktree_path="$WORKTREE_BASE_DIR/${REPO_BASE_NAME}_${worktree_name}"
-    
+
     # Check if worktree exists
     if ! git worktree list | grep -q "$worktree_path"; then
         echo -e "${RED}Error: Worktree not found at $worktree_path${NC}"
@@ -38,13 +38,13 @@ cleanup_worktree() {
         list_worktrees
         exit 1
     fi
-    
+
     echo -e "${YELLOW}Cleaning up worktree: $worktree_path${NC}"
-    
+
     # Step 1: Handle thoughts directory if it exists
     if [ -d "$worktree_path/thoughts" ]; then
         echo "Found thoughts directory, cleaning up..."
-        
+
         # Reset permissions on searchable directory if it exists
         if [ -d "$worktree_path/thoughts/searchable" ]; then
             echo "Resetting permissions on thoughts/searchable..."
@@ -52,7 +52,7 @@ cleanup_worktree() {
                 echo -e "${YELLOW}Warning: Could not reset all permissions, but continuing...${NC}"
             }
         fi
-        
+
         # Remove the entire thoughts directory
         echo "Removing thoughts directory..."
         rm -rf "$worktree_path/thoughts" || {
@@ -61,7 +61,7 @@ cleanup_worktree() {
             exit 1
         }
     fi
-    
+
     # Step 2: Remove the worktree
     echo "Removing git worktree..."
     if git worktree remove --force "$worktree_path"; then
@@ -75,7 +75,7 @@ cleanup_worktree() {
         echo "  git worktree prune"
         exit 1
     fi
-    
+
     # Step 3: Delete the branch (optional, with confirmation)
     echo ""
     read -p "Delete the branch '$worktree_name'? (y/N) " -n 1 -r
@@ -89,11 +89,11 @@ cleanup_worktree() {
     else
         echo "Branch kept: $worktree_name"
     fi
-    
+
     # Step 4: Prune worktree references
     echo "Pruning worktree references..."
     git worktree prune
-    
+
     echo ""
     echo -e "${GREEN}✓ Cleanup complete!${NC}"
 }
