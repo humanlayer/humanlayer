@@ -110,6 +110,7 @@ pub struct SessionInfo {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
     pub query: String,
+    pub summary: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub model: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -148,6 +149,7 @@ pub struct SessionState {
     pub parent_session_id: Option<String>,
     pub status: String,
     pub query: String,
+    pub summary: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub model: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
