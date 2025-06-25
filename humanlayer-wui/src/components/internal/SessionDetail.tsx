@@ -12,7 +12,6 @@ import keyBy from 'lodash.keyby'
 import {
   ConversationEvent,
   ConversationEventType,
-  ConversationRole,
   SessionInfo,
   ApprovalStatus,
 } from '@/lib/daemon/types'
@@ -602,7 +601,6 @@ function DenyForm({
 
 function ConversationContent({
   sessionId,
-  session,
   focusedEventId,
   setFocusedEventId,
   expandedEventId,
@@ -615,7 +613,6 @@ function ConversationContent({
   onToggleSplitView,
 }: {
   sessionId: string
-  session: SessionInfo
   focusedEventId: number | null
   setFocusedEventId: (id: number | null) => void
   expandedEventId: number | null
@@ -633,23 +630,7 @@ function ConversationContent({
   const toolResults = events.filter(event => event.event_type === ConversationEventType.ToolResult)
   const toolResultsByKey = keyBy(toolResults, 'tool_result_for_id')
 
-  // Create synthetic first user message event from session.query
-  const firstUserMessageEvent: ConversationEvent = {
-    id: -1, // Use negative ID to avoid conflicts
-    session_id: session.id,
-    claude_session_id: session.claude_session_id || '',
-    sequence: 0,
-    event_type: ConversationEventType.Message,
-    created_at: session.start_time,
-    role: ConversationRole.User,
-    content: session.query,
-    is_completed: true,
-  }
-
-  // Inject the first user message at the beginning of the events list
-  const eventsWithFirstMessage = [firstUserMessageEvent, ...events]
-
-  const displayObjects = eventsWithFirstMessage
+  const displayObjects = events
     .filter(event => event.event_type !== ConversationEventType.ToolResult)
     .map(event =>
       eventToDisplayObject(
@@ -968,7 +949,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     <section className="flex flex-col gap-4">
       <hgroup className="flex flex-col gap-1">
         <h2 className="text-lg font-medium text-foreground font-mono">
-          {truncate(session.query, 50)}{' '}
+          {session.summary || truncate(session.query, 50)}{' '}
           {session.parent_session_id && <span className="text-muted-foreground">[continued]</span>}
         </h2>
         <small
@@ -1000,7 +981,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
             >
               <ConversationContent
                 sessionId={session.id}
-                session={session}
                 focusedEventId={focusedEventId}
                 setFocusedEventId={setFocusedEventId}
                 expandedEventId={expandedEventId}
