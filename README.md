@@ -229,6 +229,19 @@ Shouts out to [@erquhart](https://github.com/erquhart) for this one
 <img width="360" src="https://github.com/user-attachments/assets/849a7149-daff-43a7-8ca9-427ccd0ae77c" />
 </div>
 
+## Development Conventions
+
+### TODO Annotations
+
+We use a priority-based TODO annotation system throughout the codebase:
+
+- `TODO(0)`: Critical - never merge
+- `TODO(1)`: High - architectural flaws, major bugs
+- `TODO(2)`: Medium - minor bugs, missing features
+- `TODO(3)`: Low - polish, tests, documentation
+- `TODO(4)`: Questions/investigations needed
+- `PERF`: Performance optimization opportunities
+
 ## License
 
 The HumanLayer SDK in this repo is licensed under the Apache 2 License.
