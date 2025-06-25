@@ -157,15 +157,8 @@ class NotificationService {
    * Check if user should be notified based on current context
    */
   private shouldNotify(options: NotificationOptions): boolean {
-    // Check if user is viewing the relevant session
-    if (options.metadata.sessionId && this.isViewingSession(options.metadata.sessionId)) {
-      console.log(
-        `Skipping notification: User is already viewing session ${options.metadata.sessionId}`,
-      )
-      return false
-    }
-
-    // Future: Add more context-aware checks here
+    // We'll check session viewing status later based on focus state
+    // For now, always return true to allow the notify method to decide
     return true
   }
 
@@ -197,16 +190,29 @@ class NotificationService {
     // Generate unique ID for this notification
     const notificationId = this.generateNotificationId(options.type, options.metadata)
 
+    const isViewingSession = options.metadata.sessionId
+      ? this.isViewingSession(options.metadata.sessionId)
+      : false
+
     console.log('NotificationService.notify:', {
       appFocused: this.appFocused,
       notificationType: options.type,
       sessionId: options.metadata.sessionId,
+      isViewingSession,
     })
 
-    if (this.appFocused) {
-      this.showInAppNotification(options)
-    } else {
+    // If app is blurred, always show OS notification
+    if (!this.appFocused) {
       await this.showOSNotification(options)
+    }
+    // If app is focused but user is viewing the session, skip in-app notification
+    else if (isViewingSession) {
+      console.log(`Skipping in-app notification: User is viewing session ${options.metadata.sessionId}`)
+      return null
+    }
+    // Otherwise show in-app notification
+    else {
+      this.showInAppNotification(options)
     }
 
     return notificationId
