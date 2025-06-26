@@ -724,17 +724,64 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 	}
 
 	// Build config for resumed session
-	// Start with minimal required fields
+	// Start by inheriting ALL configuration from parent session
 	config := claudecode.SessionConfig{
-		Query:        req.Query,
-		SessionID:    parentSession.ClaudeSessionID, // This triggers --resume flag
-		OutputFormat: claudecode.OutputStreamJSON,   // Always use streaming JSON
-		// Inherit Model and WorkingDir from parent session for database storage
-		Model:      claudecode.Model(parentSession.Model),
-		WorkingDir: parentSession.WorkingDir,
+		Query:                req.Query,
+		SessionID:            parentSession.ClaudeSessionID, // This triggers --resume flag
+		OutputFormat:         claudecode.OutputStreamJSON,   // Always use streaming JSON
+		Model:                claudecode.Model(parentSession.Model),
+		WorkingDir:           parentSession.WorkingDir,
+		SystemPrompt:         parentSession.SystemPrompt,
+		AppendSystemPrompt:   parentSession.AppendSystemPrompt,
+		CustomInstructions:   parentSession.CustomInstructions,
+		PermissionPromptTool: parentSession.PermissionPromptTool,
+		// MaxTurns intentionally NOT inherited - let it default or be specified
 	}
 
-	// Apply optional overrides
+	// Deserialize JSON arrays for tools
+	if parentSession.AllowedTools != "" {
+		var allowedTools []string
+		if err := json.Unmarshal([]byte(parentSession.AllowedTools), &allowedTools); err == nil {
+			config.AllowedTools = allowedTools
+		}
+	}
+	if parentSession.DisallowedTools != "" {
+		var disallowedTools []string
+		if err := json.Unmarshal([]byte(parentSession.DisallowedTools), &disallowedTools); err == nil {
+			config.DisallowedTools = disallowedTools
+		}
+	}
+
+	// Retrieve and inherit MCP configuration from parent session
+	mcpServers, err := m.store.GetMCPServers(ctx, req.ParentSessionID)
+	if err == nil && len(mcpServers) > 0 {
+		config.MCPConfig = &claudecode.MCPConfig{
+			MCPServers: make(map[string]claudecode.MCPServer),
+		}
+		for _, server := range mcpServers {
+			var args []string
+			var env map[string]string
+			if err := json.Unmarshal([]byte(server.ArgsJSON), &args); err != nil {
+				slog.Warn("failed to unmarshal MCP server args", "error", err, "server", server.Name)
+				args = []string{}
+			}
+			if err := json.Unmarshal([]byte(server.EnvJSON), &env); err != nil {
+				slog.Warn("failed to unmarshal MCP server env", "error", err, "server", server.Name)
+				env = map[string]string{}
+			}
+
+			config.MCPConfig.MCPServers[server.Name] = claudecode.MCPServer{
+				Command: server.Command,
+				Args:    args,
+				Env:     env,
+			}
+		}
+		slog.Debug("inherited MCP servers from parent session",
+			"parent_session_id", req.ParentSessionID,
+			"mcp_server_count", len(mcpServers))
+	}
+
+	// Apply optional overrides (only if explicitly provided)
 	if req.SystemPrompt != "" {
 		config.SystemPrompt = req.SystemPrompt
 	}

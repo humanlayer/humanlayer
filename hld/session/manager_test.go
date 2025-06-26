@@ -279,6 +279,9 @@ func TestContinueSession_CreatesNewSessionWithParentReference(t *testing.T) {
 	}
 	mockStore.EXPECT().GetSession(gomock.Any(), "parent-1").Return(parentSession, nil)
 
+	// Expect GetMCPServers call (even if it returns empty)
+	mockStore.EXPECT().GetMCPServers(gomock.Any(), "parent-1").Return([]store.MCPServer{}, nil)
+
 	// Expect session creation with parent reference
 	mockStore.EXPECT().CreateSession(gomock.Any(), gomock.Any()).DoAndReturn(
 		func(ctx interface{}, session *store.Session) error {
@@ -298,6 +301,9 @@ func TestContinueSession_CreatesNewSessionWithParentReference(t *testing.T) {
 			}
 			return nil
 		})
+
+	// Expect MCP servers to be stored (may or may not be called)
+	mockStore.EXPECT().StoreMCPServers(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 	// Expect status update to running (we can't test the full flow without mocking Claude client)
 	// May be called twice if Claude fails to launch in background
@@ -348,6 +354,9 @@ func TestContinueSession_HandlesOptionalOverrides(t *testing.T) {
 	}
 	mockStore.EXPECT().GetSession(gomock.Any(), "parent-1").Return(parentSession, nil)
 
+	// Expect GetMCPServers call (even if it returns empty)
+	mockStore.EXPECT().GetMCPServers(gomock.Any(), "parent-1").Return([]store.MCPServer{}, nil)
+
 	// Test with various overrides
 	req := ContinueSessionConfig{
 		ParentSessionID:      "parent-1",
@@ -376,6 +385,9 @@ func TestContinueSession_HandlesOptionalOverrides(t *testing.T) {
 			}
 			return nil
 		})
+
+	// Expect MCP servers to be stored (if MCPConfig override is provided)
+	mockStore.EXPECT().StoreMCPServers(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 	// Expect status update
 	// May be called twice if Claude fails to launch in background

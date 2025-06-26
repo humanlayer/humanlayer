@@ -231,13 +231,17 @@ func TestIntegrationContinueSession(t *testing.T) {
 			}
 		}
 
-		// Continue the session
+		// Continue the session with some overrides
 		req := rpc.ContinueSessionRequest{
-			SessionID:          parentSessionID,
-			Query:              "follow up question",
-			SystemPrompt:       "You are helpful",
-			CustomInstructions: "Be concise",
-			MaxTurns:           3,
+			SessionID:            parentSessionID,
+			Query:                "follow up question",
+			SystemPrompt:         "You are helpful",
+			AppendSystemPrompt:   "Always be polite",
+			CustomInstructions:   "Be concise",
+			PermissionPromptTool: "hlyr",
+			AllowedTools:         []string{"read", "write"},
+			DisallowedTools:      []string{"delete"},
+			MaxTurns:             3,
 		}
 
 		result, err := sendRPC(t, "continueSession", req)
@@ -284,9 +288,32 @@ func TestIntegrationContinueSession(t *testing.T) {
 		if newSession.SystemPrompt != "You are helpful" {
 			t.Errorf("Expected system prompt override, got %s", newSession.SystemPrompt)
 		}
+		if newSession.AppendSystemPrompt != "Always be polite" {
+			t.Errorf("Expected append system prompt, got %s", newSession.AppendSystemPrompt)
+		}
 		if newSession.CustomInstructions != "Be concise" {
 			t.Errorf("Expected custom instructions override, got %s", newSession.CustomInstructions)
 		}
+		if newSession.PermissionPromptTool != "hlyr" {
+			t.Errorf("Expected permission prompt tool, got %s", newSession.PermissionPromptTool)
+		}
+
+		// Check allowed tools
+		var allowedTools []string
+		if err := json.Unmarshal([]byte(newSession.AllowedTools), &allowedTools); err == nil {
+			if len(allowedTools) != 2 || allowedTools[0] != "read" || allowedTools[1] != "write" {
+				t.Errorf("Expected allowed tools [read, write], got %v", allowedTools)
+			}
+		}
+
+		// Check disallowed tools
+		var disallowedTools []string
+		if err := json.Unmarshal([]byte(newSession.DisallowedTools), &disallowedTools); err == nil {
+			if len(disallowedTools) != 1 || disallowedTools[0] != "delete" {
+				t.Errorf("Expected disallowed tools [delete], got %v", disallowedTools)
+			}
+		}
+
 		if newSession.MaxTurns != 3 {
 			t.Errorf("Expected max turns 3, got %d", newSession.MaxTurns)
 		}
