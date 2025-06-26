@@ -53,6 +53,12 @@ func NewSQLiteStore(dbPath string) (*SQLiteStore, error) {
 		return nil, fmt.Errorf("failed to initialize schema: %w", err)
 	}
 
+	// Apply migrations (this must be called AFTER initSchema for both new and existing databases)
+	if err := store.applyMigrations(); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("failed to apply migrations: %w", err)
+	}
+
 	slog.Info("SQLite store initialized", "path", dbPath)
 	return store, nil
 }
@@ -74,7 +80,11 @@ func (s *SQLiteStore) initSchema() error {
 		working_dir TEXT,
 		max_turns INTEGER,
 		system_prompt TEXT,
+		append_system_prompt TEXT,
 		custom_instructions TEXT,
+		permission_prompt_tool TEXT,
+		allowed_tools TEXT,
+		disallowed_tools TEXT,
 
 		-- Runtime status
 		status TEXT NOT NULL DEFAULT 'starting',
@@ -169,6 +179,7 @@ func (s *SQLiteStore) initSchema() error {
 	}
 
 	// Record initial schema version
+	// For new databases, we start at version 3 since the schema includes all fields
 	_, err := s.db.Exec(`
 		INSERT OR IGNORE INTO schema_version (version, description)
 		VALUES (1, 'Initial schema with conversation events')
@@ -177,8 +188,12 @@ func (s *SQLiteStore) initSchema() error {
 		return err
 	}
 
-	// Apply migrations
-	return s.applyMigrations()
+	// Mark new databases as having all migrations applied
+	_, err = s.db.Exec(`
+		INSERT OR IGNORE INTO schema_version (version, description)
+		VALUES (3, 'Initial schema includes all permission and tool fields')
+	`)
+	return err
 }
 
 // applyMigrations applies any pending database migrations
@@ -190,9 +205,12 @@ func (s *SQLiteStore) applyMigrations() error {
 		return fmt.Errorf("failed to get current schema version: %w", err)
 	}
 
-	// Migration 2: Add missing permission and tool fields
-	if currentVersion < 2 {
-		slog.Info("Applying migration 2: Add permission and tool fields")
+	// Migration 2: Added constraint to ensure only resumable sessions can be parent sessions
+	// (This migration already exists in production databases)
+
+	// Migration 3: Add missing permission and tool fields
+	if currentVersion < 3 {
+		slog.Info("Applying migration 3: Add permission and tool fields")
 
 		_, err := s.db.Exec(`
 			-- Add missing columns to sessions table
@@ -202,19 +220,19 @@ func (s *SQLiteStore) applyMigrations() error {
 			ALTER TABLE sessions ADD COLUMN disallowed_tools TEXT;
 		`)
 		if err != nil {
-			return fmt.Errorf("failed to apply migration 2: %w", err)
+			return fmt.Errorf("failed to apply migration 3: %w", err)
 		}
 
 		// Record migration
 		_, err = s.db.Exec(`
 			INSERT INTO schema_version (version, description)
-			VALUES (2, 'Add permission_prompt_tool, append_system_prompt, allowed_tools, disallowed_tools fields')
+			VALUES (3, 'Add permission_prompt_tool, append_system_prompt, allowed_tools, disallowed_tools fields')
 		`)
 		if err != nil {
-			return fmt.Errorf("failed to record migration 2: %w", err)
+			return fmt.Errorf("failed to record migration 3: %w", err)
 		}
 
-		slog.Info("Migration 2 applied successfully")
+		slog.Info("Migration 3 applied successfully")
 	}
 
 	return nil
