@@ -154,15 +154,6 @@ class NotificationService {
   }
 
   /**
-   * Check if user should be notified based on current context
-   */
-  private shouldNotify(options: NotificationOptions): boolean {
-    // We'll check session viewing status later based on focus state
-    // For now, always return true to allow the notify method to decide
-    return true
-  }
-
-  /**
    * Check if user is currently viewing a specific session
    */
   private isViewingSession(sessionId: string): boolean {
@@ -182,11 +173,6 @@ class NotificationService {
    * Main entry point for notifications
    */
   async notify(options: NotificationOptions): Promise<string | null> {
-    // Check if we should show this notification
-    if (!this.shouldNotify(options)) {
-      return null
-    }
-
     // Generate unique ID for this notification
     const notificationId = this.generateNotificationId(options.type, options.metadata)
 
