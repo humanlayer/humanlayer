@@ -1020,6 +1020,7 @@ func (s *SQLiteStore) GetMCPServers(ctx context.Context, sessionID string) ([]MC
 		SELECT id, session_id, name, command, args_json, env_json
 		FROM mcp_servers
 		WHERE session_id = ?
+		ORDER BY id
 	`
 
 	rows, err := s.db.QueryContext(ctx, query, sessionID)
