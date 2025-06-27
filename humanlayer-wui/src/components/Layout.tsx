@@ -7,7 +7,8 @@ import { SessionLauncher } from '@/components/SessionLauncher'
 import { Breadcrumbs } from '@/components/Breadcrumbs'
 import { useSessionLauncher, useSessionLauncherHotkeys } from '@/hooks/useSessionLauncher'
 import { useStore } from '@/AppStore'
-import { useSessionSubscriptions } from '@/hooks/useSubscriptions'
+import { useSessionEventsWithNotifications } from '@/hooks/useSessionEventsWithNotifications'
+import { Toaster } from 'sonner'
 import '@/App.css'
 
 export function Layout() {
@@ -20,8 +21,8 @@ export function Layout() {
   const { isOpen, close } = useSessionLauncher()
   const { handleKeyDown } = useSessionLauncherHotkeys()
 
-  // Set up real-time subscriptions when connected
-  useSessionSubscriptions(connected)
+  // Set up real-time subscriptions with notification handling
+  useSessionEventsWithNotifications(connected)
 
   // Connect to daemon on mount
   useEffect(() => {
@@ -216,6 +217,9 @@ export function Layout() {
 
       {/* Session Launcher */}
       <SessionLauncher isOpen={isOpen} onClose={close} />
+
+      {/* Notifications */}
+      <Toaster position="bottom-right" richColors />
     </div>
   )
 }
