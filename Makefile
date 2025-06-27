@@ -66,8 +66,8 @@ test-hlyr: ## Test hlyr CLI tool
 	@$(MAKE) -C hlyr test VERBOSE=$(VERBOSE)
 
 .PHONY: test-hld
-test-hld: ## Test hld daemon (unit tests only)
-	@$(MAKE) -C hld test-unit VERBOSE=$(VERBOSE)
+test-hld: ## Test hld daemon (unit and integration tests)
+	@$(MAKE) -C hld test VERBOSE=$(VERBOSE)
 
 .PHONY: test-hld-integration
 test-hld-integration: ## Test hld daemon (including integration tests)

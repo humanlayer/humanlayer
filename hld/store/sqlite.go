@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	claudecode "github.com/humanlayer/humanlayer/claudecode-go"
@@ -53,6 +54,12 @@ func NewSQLiteStore(dbPath string) (*SQLiteStore, error) {
 		return nil, fmt.Errorf("failed to initialize schema: %w", err)
 	}
 
+	// Apply migrations (this must be called AFTER initSchema for both new and existing databases)
+	if err := store.applyMigrations(); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("failed to apply migrations: %w", err)
+	}
+
 	slog.Info("SQLite store initialized", "path", dbPath)
 	return store, nil
 }
@@ -74,7 +81,11 @@ func (s *SQLiteStore) initSchema() error {
 		working_dir TEXT,
 		max_turns INTEGER,
 		system_prompt TEXT,
+		append_system_prompt TEXT,
 		custom_instructions TEXT,
+		permission_prompt_tool TEXT,
+		allowed_tools TEXT,
+		disallowed_tools TEXT,
 
 		-- Runtime status
 		status TEXT NOT NULL DEFAULT 'starting',
@@ -168,12 +179,64 @@ func (s *SQLiteStore) initSchema() error {
 		return fmt.Errorf("failed to create schema: %w", err)
 	}
 
-	// Record schema version
+	// Record initial schema version
+	// For new databases, we start at version 3 since the schema includes all fields
 	_, err := s.db.Exec(`
 		INSERT OR IGNORE INTO schema_version (version, description)
 		VALUES (1, 'Initial schema with conversation events')
 	`)
+	if err != nil {
+		return err
+	}
+
+	// Mark new databases as having all migrations applied
+	_, err = s.db.Exec(`
+		INSERT OR IGNORE INTO schema_version (version, description)
+		VALUES (3, 'Initial schema includes all permission and tool fields')
+	`)
 	return err
+}
+
+// applyMigrations applies any pending database migrations
+func (s *SQLiteStore) applyMigrations() error {
+	// Get current schema version
+	var currentVersion int
+	err := s.db.QueryRow("SELECT MAX(version) FROM schema_version").Scan(&currentVersion)
+	if err != nil {
+		return fmt.Errorf("failed to get current schema version: %w", err)
+	}
+
+	// Migration 2: Added constraint to ensure only resumable sessions can be parent sessions
+	// (This migration already exists in production databases)
+
+	// Migration 3: Add missing permission and tool fields
+	if currentVersion < 3 {
+		slog.Info("Applying migration 3: Add permission and tool fields")
+
+		_, err := s.db.Exec(`
+			-- Add missing columns to sessions table
+			ALTER TABLE sessions ADD COLUMN permission_prompt_tool TEXT;
+			ALTER TABLE sessions ADD COLUMN append_system_prompt TEXT;
+			ALTER TABLE sessions ADD COLUMN allowed_tools TEXT;
+			ALTER TABLE sessions ADD COLUMN disallowed_tools TEXT;
+		`)
+		if err != nil {
+			return fmt.Errorf("failed to apply migration 3: %w", err)
+		}
+
+		// Record migration
+		_, err = s.db.Exec(`
+			INSERT INTO schema_version (version, description)
+			VALUES (3, 'Add permission_prompt_tool, append_system_prompt, allowed_tools, disallowed_tools fields')
+		`)
+		if err != nil {
+			return fmt.Errorf("failed to record migration 3: %w", err)
+		}
+
+		slog.Info("Migration 3 applied successfully")
+	}
+
+	return nil
 }
 
 // Close closes the database connection
@@ -186,15 +249,17 @@ func (s *SQLiteStore) CreateSession(ctx context.Context, session *Session) error
 	query := `
 		INSERT INTO sessions (
 			id, run_id, claude_session_id, parent_session_id,
-			query, summary, model, working_dir, max_turns, system_prompt, custom_instructions,
+			query, summary, model, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
+			permission_prompt_tool, allowed_tools, disallowed_tools,
 			status, created_at, last_activity_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	_, err := s.db.ExecContext(ctx, query,
 		session.ID, session.RunID, session.ClaudeSessionID, session.ParentSessionID,
 		session.Query, session.Summary, session.Model, session.WorkingDir, session.MaxTurns,
-		session.SystemPrompt, session.CustomInstructions,
+		session.SystemPrompt, session.AppendSystemPrompt, session.CustomInstructions,
+		session.PermissionPromptTool, session.AllowedTools, session.DisallowedTools,
 		session.Status, session.CreatedAt, session.LastActivityAt,
 	)
 	if err != nil {
@@ -284,14 +349,16 @@ func (s *SQLiteStore) UpdateSession(ctx context.Context, sessionID string, updat
 func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Session, error) {
 	query := `
 		SELECT id, run_id, claude_session_id, parent_session_id,
-			query, summary, model, working_dir, max_turns, system_prompt, custom_instructions,
+			query, summary, model, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
+			permission_prompt_tool, allowed_tools, disallowed_tools,
 			status, created_at, last_activity_at, completed_at,
 			cost_usd, total_tokens, duration_ms, num_turns, result_content, error_message
 		FROM sessions WHERE id = ?
 	`
 
 	var session Session
-	var claudeSessionID, parentSessionID, summary, model, workingDir, systemPrompt, customInstructions sql.NullString
+	var claudeSessionID, parentSessionID, summary, model, workingDir, systemPrompt, appendSystemPrompt, customInstructions sql.NullString
+	var permissionPromptTool, allowedTools, disallowedTools sql.NullString
 	var completedAt sql.NullTime
 	var costUSD sql.NullFloat64
 	var totalTokens, durationMS, numTurns sql.NullInt64
@@ -300,7 +367,8 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 	err := s.db.QueryRowContext(ctx, query, sessionID).Scan(
 		&session.ID, &session.RunID, &claudeSessionID, &parentSessionID,
 		&session.Query, &summary, &model, &workingDir, &session.MaxTurns,
-		&systemPrompt, &customInstructions,
+		&systemPrompt, &appendSystemPrompt, &customInstructions,
+		&permissionPromptTool, &allowedTools, &disallowedTools,
 		&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
 		&costUSD, &totalTokens, &durationMS, &numTurns, &resultContent, &errorMessage,
 	)
@@ -318,7 +386,11 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 	session.Model = model.String
 	session.WorkingDir = workingDir.String
 	session.SystemPrompt = systemPrompt.String
+	session.AppendSystemPrompt = appendSystemPrompt.String
 	session.CustomInstructions = customInstructions.String
+	session.PermissionPromptTool = permissionPromptTool.String
+	session.AllowedTools = allowedTools.String
+	session.DisallowedTools = disallowedTools.String
 	session.ResultContent = resultContent.String
 	session.ErrorMessage = errorMessage.String
 	if completedAt.Valid {
@@ -347,7 +419,8 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Session, error) {
 	query := `
 		SELECT id, run_id, claude_session_id, parent_session_id,
-			query, summary, model, working_dir, max_turns, system_prompt, custom_instructions,
+			query, summary, model, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
+			permission_prompt_tool, allowed_tools, disallowed_tools,
 			status, created_at, last_activity_at, completed_at,
 			cost_usd, total_tokens, duration_ms, num_turns, result_content, error_message
 		FROM sessions
@@ -355,7 +428,8 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 	`
 
 	var session Session
-	var claudeSessionID, parentSessionID, summary, model, workingDir, systemPrompt, customInstructions sql.NullString
+	var claudeSessionID, parentSessionID, summary, model, workingDir, systemPrompt, appendSystemPrompt, customInstructions sql.NullString
+	var permissionPromptTool, allowedTools, disallowedTools sql.NullString
 	var completedAt sql.NullTime
 	var costUSD sql.NullFloat64
 	var totalTokens, durationMS, numTurns sql.NullInt64
@@ -364,7 +438,8 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 	err := s.db.QueryRowContext(ctx, query, runID).Scan(
 		&session.ID, &session.RunID, &claudeSessionID, &parentSessionID,
 		&session.Query, &summary, &model, &workingDir, &session.MaxTurns,
-		&systemPrompt, &customInstructions,
+		&systemPrompt, &appendSystemPrompt, &customInstructions,
+		&permissionPromptTool, &allowedTools, &disallowedTools,
 		&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
 		&costUSD, &totalTokens, &durationMS, &numTurns, &resultContent, &errorMessage,
 	)
@@ -382,7 +457,11 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 	session.Model = model.String
 	session.WorkingDir = workingDir.String
 	session.SystemPrompt = systemPrompt.String
+	session.AppendSystemPrompt = appendSystemPrompt.String
 	session.CustomInstructions = customInstructions.String
+	session.PermissionPromptTool = permissionPromptTool.String
+	session.AllowedTools = allowedTools.String
+	session.DisallowedTools = disallowedTools.String
 	session.ResultContent = resultContent.String
 	session.ErrorMessage = errorMessage.String
 	if completedAt.Valid {
@@ -411,7 +490,8 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 	query := `
 		SELECT id, run_id, claude_session_id, parent_session_id,
-			query, summary, model, working_dir, max_turns, system_prompt, custom_instructions,
+			query, summary, model, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
+			permission_prompt_tool, allowed_tools, disallowed_tools,
 			status, created_at, last_activity_at, completed_at,
 			cost_usd, total_tokens, duration_ms, num_turns, result_content, error_message
 		FROM sessions
@@ -427,7 +507,8 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 	var sessions []*Session
 	for rows.Next() {
 		var session Session
-		var claudeSessionID, parentSessionID, summary, model, workingDir, systemPrompt, customInstructions sql.NullString
+		var claudeSessionID, parentSessionID, summary, model, workingDir, systemPrompt, appendSystemPrompt, customInstructions sql.NullString
+		var permissionPromptTool, allowedTools, disallowedTools sql.NullString
 		var completedAt sql.NullTime
 		var costUSD sql.NullFloat64
 		var totalTokens, durationMS, numTurns sql.NullInt64
@@ -436,7 +517,8 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 		err := rows.Scan(
 			&session.ID, &session.RunID, &claudeSessionID, &parentSessionID,
 			&session.Query, &summary, &model, &workingDir, &session.MaxTurns,
-			&systemPrompt, &customInstructions,
+			&systemPrompt, &appendSystemPrompt, &customInstructions,
+			&permissionPromptTool, &allowedTools, &disallowedTools,
 			&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
 			&costUSD, &totalTokens, &durationMS, &numTurns, &resultContent, &errorMessage,
 		)
@@ -451,7 +533,11 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 		session.Model = model.String
 		session.WorkingDir = workingDir.String
 		session.SystemPrompt = systemPrompt.String
+		session.AppendSystemPrompt = appendSystemPrompt.String
 		session.CustomInstructions = customInstructions.String
+		session.PermissionPromptTool = permissionPromptTool.String
+		session.AllowedTools = allowedTools.String
+		session.DisallowedTools = disallowedTools.String
 		session.ResultContent = resultContent.String
 		session.ErrorMessage = errorMessage.String
 		if completedAt.Valid {
@@ -573,6 +659,7 @@ func (s *SQLiteStore) GetSessionConversation(ctx context.Context, sessionID stri
 	// Walk up the parent chain to get all related claude session IDs
 	claudeSessionIDs := []string{}
 	currentID := sessionID
+	isFirstSession := true
 
 	for currentID != "" {
 		var claudeSessionID sql.NullString
@@ -584,10 +671,16 @@ func (s *SQLiteStore) GetSessionConversation(ctx context.Context, sessionID stri
 		).Scan(&claudeSessionID, &parentID)
 		if err != nil {
 			if err == sql.ErrNoRows {
-				break // Session not found, stop walking
+				// If the requested session doesn't exist, return error
+				if isFirstSession {
+					return nil, fmt.Errorf("session not found: %s", sessionID)
+				}
+				// Otherwise, parent not found, just stop walking
+				break
 			}
 			return nil, fmt.Errorf("failed to get session: %w", err)
 		}
+		isFirstSession = false
 
 		// Add claude session ID if present (in reverse order for chronological events)
 		if claudeSessionID.Valid && claudeSessionID.String != "" {
@@ -892,6 +985,21 @@ func (s *SQLiteStore) CorrelateApprovalByToolID(ctx context.Context, sessionID s
 
 // UpdateApprovalStatus updates the status of an approval
 func (s *SQLiteStore) UpdateApprovalStatus(ctx context.Context, approvalID string, status string) error {
+	// Special handling for resolved status - don't overwrite approved/denied
+	if status == ApprovalStatusResolved {
+		query := `
+			UPDATE conversation_events
+			SET approval_status = ?
+			WHERE approval_id = ? AND approval_status = ?
+		`
+		_, err := s.db.ExecContext(ctx, query, status, approvalID, ApprovalStatusPending)
+		if err != nil {
+			return fmt.Errorf("failed to update approval status: %w", err)
+		}
+		return nil
+	}
+
+	// For approved/denied, always update
 	query := `
 		UPDATE conversation_events
 		SET approval_status = ?
@@ -935,6 +1043,7 @@ func (s *SQLiteStore) GetMCPServers(ctx context.Context, sessionID string) ([]MC
 		SELECT id, session_id, name, command, args_json, env_json
 		FROM mcp_servers
 		WHERE session_id = ?
+		ORDER BY id
 	`
 
 	rows, err := s.db.QueryContext(ctx, query, sessionID)
@@ -975,8 +1084,17 @@ func (s *SQLiteStore) StoreRawEvent(ctx context.Context, sessionID string, event
 
 // Helper function to convert MCP config to store format
 func MCPServersFromConfig(sessionID string, config map[string]claudecode.MCPServer) ([]MCPServer, error) {
+	// First, collect all server names and sort them for deterministic ordering
+	names := make([]string, 0, len(config))
+	for name := range config {
+		names = append(names, name)
+	}
+	// Sort names to ensure consistent ordering
+	sort.Strings(names)
+
 	servers := make([]MCPServer, 0, len(config))
-	for name, server := range config {
+	for _, name := range names {
+		server := config[name]
 		argsJSON, err := json.Marshal(server.Args)
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal args: %w", err)

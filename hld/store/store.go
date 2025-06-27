@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	claudecode "github.com/humanlayer/humanlayer/claudecode-go"
@@ -42,27 +43,31 @@ type ConversationStore interface {
 
 // Session represents a Claude Code session
 type Session struct {
-	ID                 string
-	RunID              string
-	ClaudeSessionID    string
-	ParentSessionID    string
-	Query              string
-	Summary            string
-	Model              string
-	WorkingDir         string
-	MaxTurns           int
-	SystemPrompt       string
-	CustomInstructions string
-	Status             string
-	CreatedAt          time.Time
-	LastActivityAt     time.Time
-	CompletedAt        *time.Time
-	CostUSD            *float64
-	TotalTokens        *int
-	DurationMS         *int
-	NumTurns           *int
-	ResultContent      string
-	ErrorMessage       string
+	ID                   string
+	RunID                string
+	ClaudeSessionID      string
+	ParentSessionID      string
+	Query                string
+	Summary              string
+	Model                string
+	WorkingDir           string
+	MaxTurns             int
+	SystemPrompt         string
+	AppendSystemPrompt   string // NEW: Append to system prompt
+	CustomInstructions   string
+	PermissionPromptTool string // NEW: MCP tool for permission prompts
+	AllowedTools         string // NEW: JSON array of allowed tools
+	DisallowedTools      string // NEW: JSON array of disallowed tools
+	Status               string
+	CreatedAt            time.Time
+	LastActivityAt       time.Time
+	CompletedAt          *time.Time
+	CostUSD              *float64
+	TotalTokens          *int
+	DurationMS           *int
+	NumTurns             *int
+	ResultContent        string
+	ErrorMessage         string
 }
 
 // SessionUpdate contains fields that can be updated
@@ -148,17 +153,25 @@ const (
 
 // NewSessionFromConfig creates a Session from Claude SessionConfig
 func NewSessionFromConfig(id, runID string, config claudecode.SessionConfig) *Session {
+	// Convert slices to JSON for storage
+	allowedToolsJSON, _ := json.Marshal(config.AllowedTools)
+	disallowedToolsJSON, _ := json.Marshal(config.DisallowedTools)
+
 	return &Session{
-		ID:                 id,
-		RunID:              runID,
-		Query:              config.Query,
-		Model:              string(config.Model),
-		WorkingDir:         config.WorkingDir,
-		MaxTurns:           config.MaxTurns,
-		SystemPrompt:       config.SystemPrompt,
-		CustomInstructions: config.CustomInstructions,
-		Status:             SessionStatusStarting,
-		CreatedAt:          time.Now(),
-		LastActivityAt:     time.Now(),
+		ID:                   id,
+		RunID:                runID,
+		Query:                config.Query,
+		Model:                string(config.Model),
+		WorkingDir:           config.WorkingDir,
+		MaxTurns:             config.MaxTurns,
+		SystemPrompt:         config.SystemPrompt,
+		AppendSystemPrompt:   config.AppendSystemPrompt,
+		CustomInstructions:   config.CustomInstructions,
+		PermissionPromptTool: config.PermissionPromptTool,
+		AllowedTools:         string(allowedToolsJSON),
+		DisallowedTools:      string(disallowedToolsJSON),
+		Status:               SessionStatusStarting,
+		CreatedAt:            time.Now(),
+		LastActivityAt:       time.Now(),
 	}
 }

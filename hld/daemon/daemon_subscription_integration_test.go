@@ -18,6 +18,10 @@ func TestDaemonSubscriptionIntegration(t *testing.T) {
 	socketPath := testutil.CreateTestSocket(t)
 	t.Setenv("HUMANLAYER_SOCKET_PATH", socketPath)
 	t.Setenv("HUMANLAYER_LOG_LEVEL", "error")
+	// Explicitly disable API key to prevent approval polling
+	t.Setenv("HUMANLAYER_API_KEY", "")
+	// Use in-memory database for tests
+	t.Setenv("HUMANLAYER_DATABASE_PATH", ":memory:")
 
 	// Create and start daemon
 	daemon, err := New()
@@ -131,6 +135,14 @@ func TestDaemonSubscriptionIntegration(t *testing.T) {
 			t.Fatalf("Client 2 failed to subscribe: %v", err)
 		}
 
+		// Clear any initial events from approval poller
+		select {
+		case <-eventChan1:
+			// Discard any initial events
+		case <-time.After(50 * time.Millisecond):
+			// No initial events, continue
+		}
+
 		// Publish different events
 		daemon.eventBus.Publish(bus.Event{
 			Type: bus.EventNewApproval,
@@ -166,6 +178,16 @@ func TestDaemonSubscriptionIntegration(t *testing.T) {
 		select {
 		case notification, ok := <-eventChan1:
 			if ok && notification.Event.Type != "" {
+				// Check if this is an approval poller event (has count/total/type fields)
+				data := notification.Event.Data
+				if _, hasCount := data["count"]; hasCount {
+					if _, hasTotal := data["total"]; hasTotal {
+						if _, hasType := data["type"]; hasType {
+							// This is an approval poller event, ignore it
+							break
+						}
+					}
+				}
 				t.Errorf("Client 1 unexpectedly received event - Type: %q, Data: %+v", notification.Event.Type, notification.Event.Data)
 			}
 			// If channel is closed (!ok) or empty event, that's fine during cleanup

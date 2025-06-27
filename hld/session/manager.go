@@ -197,54 +197,83 @@ func (m *Manager) LaunchSession(ctx context.Context, config claudecode.SessionCo
 func (m *Manager) monitorSession(ctx context.Context, sessionID, runID string, claudeSession *claudecode.Session, startTime time.Time, config claudecode.SessionConfig) {
 	// Get the session ID from the Claude session once available
 	var claudeSessionID string
-	for event := range claudeSession.Events {
-		// Store raw event for debugging
-		eventJSON, err := json.Marshal(event)
-		if err != nil {
-			slog.Error("failed to marshal event", "error", err)
-		} else {
-			if err := m.store.StoreRawEvent(ctx, sessionID, string(eventJSON)); err != nil {
-				slog.Debug("failed to store raw event", "error", err)
-			}
-		}
 
-		// Capture Claude session ID
-		if event.SessionID != "" && claudeSessionID == "" {
-			claudeSessionID = event.SessionID
-			// Note: Claude session ID captured for resume capability
-			slog.Debug("captured Claude session ID",
-				"session_id", sessionID,
-				"claude_session_id", claudeSessionID)
-
-			// Update database
-			update := store.SessionUpdate{
-				ClaudeSessionID: &claudeSessionID,
-			}
-			if err := m.store.UpdateSession(ctx, sessionID, update); err != nil {
-				slog.Error("failed to update session in database", "error", err)
+eventLoop:
+	for {
+		select {
+		case <-ctx.Done():
+			// Context cancelled, stop processing
+			slog.Debug("monitorSession context cancelled, stopping event processing",
+				"session_id", sessionID)
+			return
+		case event, ok := <-claudeSession.Events:
+			if !ok {
+				// Channel closed, exit loop
+				break eventLoop
 			}
 
-			// Inject the pending query now that we have Claude session ID
-			if queryVal, ok := m.pendingQueries.LoadAndDelete(sessionID); ok {
-				if query, ok := queryVal.(string); ok && query != "" {
-					if err := m.injectQueryAsFirstEvent(ctx, sessionID, claudeSessionID, query); err != nil {
-						slog.Error("failed to inject query as first event",
-							"sessionID", sessionID,
-							"claudeSessionID", claudeSessionID,
-							"error", err)
+			// Check context before each database operation
+			if ctx.Err() != nil {
+				slog.Debug("context cancelled during event processing",
+					"session_id", sessionID)
+				return
+			}
+
+			// Store raw event for debugging
+			eventJSON, err := json.Marshal(event)
+			if err != nil {
+				slog.Error("failed to marshal event", "error", err)
+			} else {
+				if err := m.store.StoreRawEvent(ctx, sessionID, string(eventJSON)); err != nil {
+					slog.Debug("failed to store raw event", "error", err)
+				}
+			}
+
+			// Capture Claude session ID
+			if event.SessionID != "" && claudeSessionID == "" {
+				claudeSessionID = event.SessionID
+				// Note: Claude session ID captured for resume capability
+				slog.Debug("captured Claude session ID",
+					"session_id", sessionID,
+					"claude_session_id", claudeSessionID)
+
+				// Update database
+				update := store.SessionUpdate{
+					ClaudeSessionID: &claudeSessionID,
+				}
+				if err := m.store.UpdateSession(ctx, sessionID, update); err != nil {
+					slog.Error("failed to update session in database", "error", err)
+				}
+
+				// Inject the pending query now that we have Claude session ID
+				if queryVal, ok := m.pendingQueries.LoadAndDelete(sessionID); ok {
+					if query, ok := queryVal.(string); ok && query != "" {
+						if err := m.injectQueryAsFirstEvent(ctx, sessionID, claudeSessionID, query); err != nil {
+							slog.Error("failed to inject query as first event",
+								"sessionID", sessionID,
+								"claudeSessionID", claudeSessionID,
+								"error", err)
+						}
 					}
 				}
 			}
-		}
 
-		// Process and store event
-		if err := m.processStreamEvent(ctx, sessionID, claudeSessionID, event); err != nil {
-			slog.Error("failed to process stream event", "error", err)
+			// Process and store event
+			if err := m.processStreamEvent(ctx, sessionID, claudeSessionID, event); err != nil {
+				slog.Error("failed to process stream event", "error", err)
+			}
 		}
 	}
 
 	// Wait for session to complete
 	result, err := claudeSession.Wait()
+
+	// Check if context was cancelled before updating database
+	if ctx.Err() != nil {
+		slog.Debug("context cancelled, skipping final session updates",
+			"session_id", sessionID)
+		return
+	}
 
 	endTime := time.Now()
 	if err != nil {
@@ -724,17 +753,64 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 	}
 
 	// Build config for resumed session
-	// Start with minimal required fields
+	// Start by inheriting ALL configuration from parent session
 	config := claudecode.SessionConfig{
-		Query:        req.Query,
-		SessionID:    parentSession.ClaudeSessionID, // This triggers --resume flag
-		OutputFormat: claudecode.OutputStreamJSON,   // Always use streaming JSON
-		// Inherit Model and WorkingDir from parent session for database storage
-		Model:      claudecode.Model(parentSession.Model),
-		WorkingDir: parentSession.WorkingDir,
+		Query:                req.Query,
+		SessionID:            parentSession.ClaudeSessionID, // This triggers --resume flag
+		OutputFormat:         claudecode.OutputStreamJSON,   // Always use streaming JSON
+		Model:                claudecode.Model(parentSession.Model),
+		WorkingDir:           parentSession.WorkingDir,
+		SystemPrompt:         parentSession.SystemPrompt,
+		AppendSystemPrompt:   parentSession.AppendSystemPrompt,
+		CustomInstructions:   parentSession.CustomInstructions,
+		PermissionPromptTool: parentSession.PermissionPromptTool,
+		// MaxTurns intentionally NOT inherited - let it default or be specified
 	}
 
-	// Apply optional overrides
+	// Deserialize JSON arrays for tools
+	if parentSession.AllowedTools != "" {
+		var allowedTools []string
+		if err := json.Unmarshal([]byte(parentSession.AllowedTools), &allowedTools); err == nil {
+			config.AllowedTools = allowedTools
+		}
+	}
+	if parentSession.DisallowedTools != "" {
+		var disallowedTools []string
+		if err := json.Unmarshal([]byte(parentSession.DisallowedTools), &disallowedTools); err == nil {
+			config.DisallowedTools = disallowedTools
+		}
+	}
+
+	// Retrieve and inherit MCP configuration from parent session
+	mcpServers, err := m.store.GetMCPServers(ctx, req.ParentSessionID)
+	if err == nil && len(mcpServers) > 0 {
+		config.MCPConfig = &claudecode.MCPConfig{
+			MCPServers: make(map[string]claudecode.MCPServer),
+		}
+		for _, server := range mcpServers {
+			var args []string
+			var env map[string]string
+			if err := json.Unmarshal([]byte(server.ArgsJSON), &args); err != nil {
+				slog.Warn("failed to unmarshal MCP server args", "error", err, "server", server.Name)
+				args = []string{}
+			}
+			if err := json.Unmarshal([]byte(server.EnvJSON), &env); err != nil {
+				slog.Warn("failed to unmarshal MCP server env", "error", err, "server", server.Name)
+				env = map[string]string{}
+			}
+
+			config.MCPConfig.MCPServers[server.Name] = claudecode.MCPServer{
+				Command: server.Command,
+				Args:    args,
+				Env:     env,
+			}
+		}
+		slog.Debug("inherited MCP servers from parent session",
+			"parent_session_id", req.ParentSessionID,
+			"mcp_server_count", len(mcpServers))
+	}
+
+	// Apply optional overrides (only if explicitly provided)
 	if req.SystemPrompt != "" {
 		config.SystemPrompt = req.SystemPrompt
 	}

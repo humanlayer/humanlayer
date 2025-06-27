@@ -4,11 +4,13 @@
 package daemon
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
 	"net"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -24,6 +26,23 @@ func TestSessionLaunchIntegration(t *testing.T) {
 	// Set environment for test
 	os.Setenv("HUMANLAYER_DAEMON_SOCKET", socketPath)
 	defer os.Unsetenv("HUMANLAYER_DAEMON_SOCKET")
+	// Disable API key to prevent approval manager issues in tests
+	os.Setenv("HUMANLAYER_API_KEY", "")
+	defer os.Unsetenv("HUMANLAYER_API_KEY")
+	// Use a temporary config directory to avoid loading user's config
+	tempDir := t.TempDir()
+	os.Setenv("XDG_CONFIG_HOME", tempDir)
+	defer os.Unsetenv("XDG_CONFIG_HOME")
+
+	// Create an empty config file to override any existing config
+	configDir := filepath.Join(tempDir, "humanlayer")
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		t.Fatalf("Failed to create config dir: %v", err)
+	}
+	configFile := filepath.Join(configDir, "humanlayer.json")
+	if err := os.WriteFile(configFile, []byte(`{}`), 0644); err != nil {
+		t.Fatalf("Failed to create empty config file: %v", err)
+	}
 
 	// Create and start daemon
 	daemon, err := New()
@@ -57,15 +76,14 @@ func TestSessionLaunchIntegration(t *testing.T) {
 		t.Fatalf("Daemon socket not ready after 5 seconds: %v", err)
 	}
 
-	// Connect to daemon
-	conn, err := net.Dial("unix", socketPath)
-	if err != nil {
-		t.Fatalf("Failed to connect to daemon: %v", err)
-	}
-	defer conn.Close()
-
 	// Test launching a session
 	t.Run("LaunchSession", func(t *testing.T) {
+		// Connect to daemon
+		conn, err := net.Dial("unix", socketPath)
+		if err != nil {
+			t.Fatalf("Failed to connect to daemon: %v", err)
+		}
+		defer conn.Close()
 		// Check if claude binary exists
 		if _, err := os.Stat("/usr/bin/claude"); os.IsNotExist(err) {
 			t.Skip("Claude binary not found, skipping launch test")
@@ -98,14 +116,17 @@ func TestSessionLaunchIntegration(t *testing.T) {
 		}
 
 		// Read response
-		buf := make([]byte, 4096)
-		n, err := conn.Read(buf)
-		if err != nil {
-			t.Fatalf("Failed to read response: %v", err)
+		scanner := bufio.NewScanner(conn)
+		scanner.Buffer(make([]byte, 1024*1024), 1024*1024) // 1MB buffer for large responses
+		if !scanner.Scan() {
+			if err := scanner.Err(); err != nil {
+				t.Fatalf("Scanner error: %v", err)
+			}
+			t.Fatal("Failed to read response")
 		}
 
 		var resp map[string]interface{}
-		if err := json.Unmarshal(buf[:n], &resp); err != nil {
+		if err := json.Unmarshal(scanner.Bytes(), &resp); err != nil {
 			t.Fatalf("Failed to parse response: %v", err)
 		}
 
@@ -140,6 +161,12 @@ func TestSessionLaunchIntegration(t *testing.T) {
 
 	// Test listing sessions
 	t.Run("ListSessions", func(t *testing.T) {
+		// Connect to daemon
+		conn, err := net.Dial("unix", socketPath)
+		if err != nil {
+			t.Fatalf("Failed to connect to daemon: %v", err)
+		}
+		defer conn.Close()
 		// Send ListSessions request
 		reqData, _ := json.Marshal(map[string]interface{}{
 			"jsonrpc": "2.0",
@@ -153,14 +180,17 @@ func TestSessionLaunchIntegration(t *testing.T) {
 		}
 
 		// Read response
-		buf := make([]byte, 4096)
-		n, err := conn.Read(buf)
-		if err != nil {
-			t.Fatalf("Failed to read response: %v", err)
+		scanner := bufio.NewScanner(conn)
+		scanner.Buffer(make([]byte, 1024*1024), 1024*1024) // 1MB buffer for large responses
+		if !scanner.Scan() {
+			if err := scanner.Err(); err != nil {
+				t.Fatalf("Scanner error: %v", err)
+			}
+			t.Fatal("Failed to read response")
 		}
 
 		var resp map[string]interface{}
-		if err := json.Unmarshal(buf[:n], &resp); err != nil {
+		if err := json.Unmarshal(scanner.Bytes(), &resp); err != nil {
 			t.Fatalf("Failed to parse response: %v", err)
 		}
 
@@ -218,6 +248,23 @@ func TestConcurrentSessions(t *testing.T) {
 	// Set environment for test
 	os.Setenv("HUMANLAYER_DAEMON_SOCKET", socketPath)
 	defer os.Unsetenv("HUMANLAYER_DAEMON_SOCKET")
+	// Disable API key to prevent approval manager issues in tests
+	os.Setenv("HUMANLAYER_API_KEY", "")
+	defer os.Unsetenv("HUMANLAYER_API_KEY")
+	// Use a temporary config directory to avoid loading user's config
+	tempDir := t.TempDir()
+	os.Setenv("XDG_CONFIG_HOME", tempDir)
+	defer os.Unsetenv("XDG_CONFIG_HOME")
+
+	// Create an empty config file to override any existing config
+	configDir := filepath.Join(tempDir, "humanlayer")
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		t.Fatalf("Failed to create config dir: %v", err)
+	}
+	configFile := filepath.Join(configDir, "humanlayer.json")
+	if err := os.WriteFile(configFile, []byte(`{}`), 0644); err != nil {
+		t.Fatalf("Failed to create empty config file: %v", err)
+	}
 
 	// Create and start daemon
 	daemon, err := New()
@@ -280,15 +327,19 @@ func TestConcurrentSessions(t *testing.T) {
 			}
 
 			// Read response
-			buf := make([]byte, 4096)
-			n, err := conn.Read(buf)
-			if err != nil {
-				results <- fmt.Errorf("session %d: failed to read: %w", sessionNum, err)
+			scanner := bufio.NewScanner(conn)
+			scanner.Buffer(make([]byte, 1024*1024), 1024*1024) // 1MB buffer
+			if !scanner.Scan() {
+				if err := scanner.Err(); err != nil {
+					results <- fmt.Errorf("session %d: scanner error: %w", sessionNum, err)
+				} else {
+					results <- fmt.Errorf("session %d: failed to read response", sessionNum)
+				}
 				return
 			}
 
 			var resp map[string]interface{}
-			if err := json.Unmarshal(buf[:n], &resp); err != nil {
+			if err := json.Unmarshal(scanner.Bytes(), &resp); err != nil {
 				results <- fmt.Errorf("session %d: failed to parse: %w", sessionNum, err)
 				return
 			}
@@ -332,14 +383,17 @@ func TestConcurrentSessions(t *testing.T) {
 		t.Fatalf("Failed to send list request: %v", err)
 	}
 
-	buf := make([]byte, 8192)
-	n, err := conn.Read(buf)
-	if err != nil {
-		t.Fatalf("Failed to read list response: %v", err)
+	scanner := bufio.NewScanner(conn)
+	scanner.Buffer(make([]byte, 1024*1024), 1024*1024) // 1MB buffer for large responses
+	if !scanner.Scan() {
+		if err := scanner.Err(); err != nil {
+			t.Fatalf("Failed to read list response: %v", err)
+		}
+		t.Fatal("Failed to read list response: no data")
 	}
 
 	var resp map[string]interface{}
-	if err := json.Unmarshal(buf[:n], &resp); err != nil {
+	if err := json.Unmarshal(scanner.Bytes(), &resp); err != nil {
 		t.Fatalf("Failed to parse list response: %v", err)
 	}
 
