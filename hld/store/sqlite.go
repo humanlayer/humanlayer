@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	claudecode "github.com/humanlayer/humanlayer/claudecode-go"
@@ -1061,8 +1062,17 @@ func (s *SQLiteStore) StoreRawEvent(ctx context.Context, sessionID string, event
 
 // Helper function to convert MCP config to store format
 func MCPServersFromConfig(sessionID string, config map[string]claudecode.MCPServer) ([]MCPServer, error) {
+	// First, collect all server names and sort them for deterministic ordering
+	names := make([]string, 0, len(config))
+	for name := range config {
+		names = append(names, name)
+	}
+	// Sort names to ensure consistent ordering
+	sort.Strings(names)
+
 	servers := make([]MCPServer, 0, len(config))
-	for name, server := range config {
+	for _, name := range names {
+		server := config[name]
 		argsJSON, err := json.Marshal(server.Args)
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal args: %w", err)
