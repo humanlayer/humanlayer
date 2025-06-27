@@ -5,13 +5,32 @@ build:
 	go build -o hld ./cmd/hld
 
 # Run all tests
-test: test-unit test-integration
+test:
+	@if [ -n "$$VERBOSE" ]; then \
+		$(MAKE) test-unit test-integration; \
+	else \
+		$(MAKE) test-quiet; \
+	fi
+
+# Run all tests with quiet output
+test-quiet:
+	@. ../hack/run_silent.sh && print_header "hld" "Daemon tests"
+	@$(MAKE) test-unit-quiet
+	@$(MAKE) test-integration-quiet
 
 # Base test-unit target overridden below
 
 # Run integration tests (requires build tag)
 test-integration: build
-	CGO_LDFLAGS="-Wl,-w" go test -v -tags=integration -run Integration ./daemon/...
+	@if [ -n "$$VERBOSE" ]; then \
+		CGO_LDFLAGS="-Wl,-w" go test -v -tags=integration -run Integration ./daemon/...; \
+	else \
+		$(MAKE) test-integration-quiet; \
+	fi
+
+# Run integration tests with quiet output
+test-integration-quiet: build
+	@. ../hack/run_silent.sh && run_silent_with_test_count "Integration tests passed" "CGO_LDFLAGS=\"-Wl,-w\" go test -json -tags=integration -run Integration ./daemon/..." "go"
 
 # Run tests with race detection
 test-race:
