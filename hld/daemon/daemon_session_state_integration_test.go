@@ -33,14 +33,14 @@ func TestSessionStateTransitionsIntegration(t *testing.T) {
 	// access the same database (in-memory databases are unique per connection)
 	tempDir := t.TempDir()
 	dbPath := filepath.Join(tempDir, "test.db")
-	
+
 	// Create the store
 	testStore, err := store.NewSQLiteStore(dbPath)
 	if err != nil {
 		t.Fatalf("failed to create test store: %v", err)
 	}
 	defer testStore.Close()
-	
+
 	// Set environment variables to ensure consistent test behavior
 	t.Setenv("HUMANLAYER_DATABASE_PATH", dbPath)
 	t.Setenv("HUMANLAYER_API_KEY", "test-key")
