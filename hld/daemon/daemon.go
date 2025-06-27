@@ -134,12 +134,17 @@ func (d *Daemon) Run(ctx context.Context) error {
 		return fmt.Errorf("failed to set socket permissions: %w", err)
 	}
 
+	// Track if listener was already closed
+	listenerClosed := &struct{ closed bool }{}
+
 	// Ensure cleanup on exit
 	defer func() {
-		if err := listener.Close(); err != nil {
-			slog.Warn("failed to close listener", "error", err)
+		if !listenerClosed.closed {
+			if err := listener.Close(); err != nil {
+				slog.Warn("failed to close listener", "error", err)
+			}
 		}
-		if err := os.Remove(d.socketPath); err != nil {
+		if err := os.Remove(d.socketPath); err != nil && !os.IsNotExist(err) {
 			slog.Warn("failed to remove socket file", "path", d.socketPath, "error", err)
 		}
 		if d.store != nil {
@@ -196,6 +201,7 @@ func (d *Daemon) Run(ctx context.Context) error {
 	if err := listener.Close(); err != nil {
 		slog.Warn("error closing listener during shutdown", "error", err)
 	}
+	listenerClosed.closed = true
 
 	return nil
 }

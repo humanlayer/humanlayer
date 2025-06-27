@@ -193,7 +193,9 @@ func TestGetConversationIntegration(t *testing.T) {
 		// because it needs to look up the claude_session_id first
 		_, err := daemonClient.GetConversation("nonexistent-session")
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to get conversation")
+		if err != nil {
+			assert.Contains(t, err.Error(), "failed to get conversation")
+		}
 	})
 
 	t.Run("GetSessionState for nonexistent session", func(t *testing.T) {

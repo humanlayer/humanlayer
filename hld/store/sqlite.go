@@ -659,6 +659,7 @@ func (s *SQLiteStore) GetSessionConversation(ctx context.Context, sessionID stri
 	// Walk up the parent chain to get all related claude session IDs
 	claudeSessionIDs := []string{}
 	currentID := sessionID
+	isFirstSession := true
 
 	for currentID != "" {
 		var claudeSessionID sql.NullString
@@ -670,10 +671,16 @@ func (s *SQLiteStore) GetSessionConversation(ctx context.Context, sessionID stri
 		).Scan(&claudeSessionID, &parentID)
 		if err != nil {
 			if err == sql.ErrNoRows {
-				break // Session not found, stop walking
+				// If the requested session doesn't exist, return error
+				if isFirstSession {
+					return nil, fmt.Errorf("session not found: %s", sessionID)
+				}
+				// Otherwise, parent not found, just stop walking
+				break
 			}
 			return nil, fmt.Errorf("failed to get session: %w", err)
 		}
+		isFirstSession = false
 
 		// Add claude session ID if present (in reverse order for chronological events)
 		if claudeSessionID.Valid && claudeSessionID.String != "" {
@@ -978,6 +985,21 @@ func (s *SQLiteStore) CorrelateApprovalByToolID(ctx context.Context, sessionID s
 
 // UpdateApprovalStatus updates the status of an approval
 func (s *SQLiteStore) UpdateApprovalStatus(ctx context.Context, approvalID string, status string) error {
+	// Special handling for resolved status - don't overwrite approved/denied
+	if status == ApprovalStatusResolved {
+		query := `
+			UPDATE conversation_events
+			SET approval_status = ?
+			WHERE approval_id = ? AND approval_status = ?
+		`
+		_, err := s.db.ExecContext(ctx, query, status, approvalID, ApprovalStatusPending)
+		if err != nil {
+			return fmt.Errorf("failed to update approval status: %w", err)
+		}
+		return nil
+	}
+
+	// For approved/denied, always update
 	query := `
 		UPDATE conversation_events
 		SET approval_status = ?

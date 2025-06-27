@@ -436,10 +436,10 @@ func TestGetSessionConversationWithParentChain(t *testing.T) {
 	})
 
 	t.Run("GetSessionConversation_NonExistentSession", func(t *testing.T) {
-		// Should return empty events for non-existent session
-		events, err := store.GetSessionConversation(ctx, "does-not-exist")
-		require.NoError(t, err)
-		require.Len(t, events, 0)
+		// Should return error for non-existent session
+		_, err := store.GetSessionConversation(ctx, "does-not-exist")
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "session not found: does-not-exist")
 	})
 
 	t.Run("GetSessionConversation_NoParent", func(t *testing.T) {
