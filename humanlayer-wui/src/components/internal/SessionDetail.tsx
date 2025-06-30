@@ -797,14 +797,18 @@ function getSessionStatusText(status: string): string {
   if (status === 'completed') {
     return 'Continue this conversation with a new message'
   } else if (status === 'running' || status === 'starting') {
-    return 'Session is currently running'
+    return 'Claude is working - you can interrupt with a new message'
   }
   return 'Session must be completed to continue'
 }
 
 function getSessionButtonText(status: string): React.ReactNode {
   if (status === 'running' || status === 'starting') {
-    return 'Running'
+    return (
+      <>
+        Interrupt & Reply <kbd className="ml-2 px-1 py-0.5 text-xs bg-muted rounded">R</kbd>
+      </>
+    )
   } else if (status === 'completed') {
     return (
       <>
@@ -889,19 +893,23 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
 
     try {
       setIsResponding(true)
+      // Keep the message visible while sending
+      const messageToSend = responseInput.trim()
+
       const response = await daemonClient.continueSession({
         session_id: session.id,
-        query: responseInput.trim(),
+        query: messageToSend,
       })
 
-      // Navigate to the new child session
+      // Always navigate to the new session - the backend handles queuing
       navigate(`/sessions/${response.session_id}`)
 
-      // Reset form state
+      // Reset form state only after success
       setResponseInput('')
       setShowResponseInput(false)
     } catch (error) {
       console.error('Failed to continue session:', error)
+      // On error, keep the message so user can retry
     } finally {
       setIsResponding(false)
     }
@@ -960,9 +968,9 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     }
   })
 
-  // R key to show response input (only for completed sessions)
+  // R key to show response input (for completed, running, or starting sessions)
   useHotkeys('r', event => {
-    if (session.status === 'completed' && !showResponseInput) {
+    if (session.status !== 'failed' && !showResponseInput) {
       event.preventDefault()
       setShowResponseInput(true)
     }
@@ -1106,17 +1114,21 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                   onKeyDown={handleResponseInputKeyDown}
                   autoFocus
                   disabled={isResponding || session.status === 'failed'}
-                  className="flex-1"
+                  className={`flex-1 ${isResponding ? 'opacity-50' : ''}`}
                 />
                 <Button
                   onClick={handleContinueSession}
                   disabled={!responseInput.trim() || isResponding || session.status === 'failed'}
                   size="sm"
                 >
-                  {isResponding ? 'Starting...' : 'Send'}
+                  {isResponding ? 'Interrupting...' : 'Send'}
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground">{getHelpText(session.status)}</p>
+              <p className="text-xs text-muted-foreground">
+                {isResponding
+                  ? 'Waiting for Claude to accept the interrupt...'
+                  : getHelpText(session.status)}
+              </p>
             </div>
           )}
         </CardContent>
