@@ -207,7 +207,7 @@ func (s *SQLiteStore) applyMigrations() error {
 		// Check if columns already exist (they might be in the schema for new databases)
 		var columnCount int
 		err = s.db.QueryRow(`
-			SELECT COUNT(*) FROM pragma_table_info('sessions') 
+			SELECT COUNT(*) FROM pragma_table_info('sessions')
 			WHERE name IN ('permission_prompt_tool', 'append_system_prompt', 'allowed_tools', 'disallowed_tools')
 		`).Scan(&columnCount)
 		if err != nil {
