@@ -792,6 +792,57 @@ function ConversationContent({
   )
 }
 
+// Helper functions for session status text
+function getSessionStatusText(status: string): string {
+  if (status === 'completed') {
+    return 'Continue this conversation with a new message'
+  } else if (status === 'running' || status === 'starting') {
+    return 'Session is currently running'
+  }
+  return 'Session must be completed to continue'
+}
+
+function getSessionButtonText(status: string): React.ReactNode {
+  if (status === 'running' || status === 'starting') {
+    return 'Running'
+  } else if (status === 'completed') {
+    return (
+      <>
+        Continue Session <kbd className="ml-2 px-1 py-0.5 text-xs bg-muted rounded">R</kbd>
+      </>
+    )
+  }
+  return 'Not Available'
+}
+
+function getInputPlaceholder(status: string): string {
+  if (status === 'failed') {
+    return 'Session failed - cannot continue...'
+  } else if (status === 'running' || status === 'starting') {
+    return 'Enter message to interrupt...'
+  }
+  return 'Enter your message to continue the conversation...'
+}
+
+function getHelpText(status: string): React.ReactNode {
+  if (status === 'failed') {
+    return 'Session failed - cannot continue'
+  } else if (status === 'running' || status === 'starting') {
+    return (
+      <>
+        Press <kbd className="px-1 py-0.5 bg-muted rounded">Enter</kbd> to interrupt and send,
+        <kbd className="px-1 py-0.5 bg-muted rounded ml-1">Escape</kbd> to cancel
+      </>
+    )
+  }
+  return (
+    <>
+      Press <kbd className="px-1 py-0.5 bg-muted rounded">Enter</kbd> to send,
+      <kbd className="px-1 py-0.5 bg-muted rounded ml-1">Escape</kbd> to cancel
+    </>
+  )
+}
+
 function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [focusedEventId, setFocusedEventId] = useState<number | null>(null)
   const [expandedEventId, setExpandedEventId] = useState<number | null>(null)
@@ -1031,11 +1082,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
           {!showResponseInput ? (
             <div className="flex items-center justify-between py-2">
               <span className="text-sm text-muted-foreground">
-                {session.status === 'completed'
-                  ? 'Continue this conversation with a new message'
-                  : session.status === 'running' || session.status === 'starting'
-                    ? 'Session is currently running'
-                    : 'Session must be completed to continue'}
+                {getSessionStatusText(session.status)}
               </span>
               <Button
                 size="sm"
@@ -1043,15 +1090,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                 onClick={() => setShowResponseInput(true)}
                 disabled={session.status === 'failed'}
               >
-                {session.status === 'running' || session.status === 'starting' ? (
-                  'Running'
-                ) : session.status === 'completed' ? (
-                  <>
-                    Continue Session <kbd className="ml-2 px-1 py-0.5 text-xs bg-muted rounded">R</kbd>
-                  </>
-                ) : (
-                  'Not Available'
-                )}
+                {getSessionButtonText(session.status)}
               </Button>
             </div>
           ) : (
@@ -1061,13 +1100,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               </div>
               <div className="flex gap-2">
                 <Input
-                  placeholder={
-                    session.status === 'failed'
-                      ? 'Session failed - cannot continue...'
-                      : session.status === 'running' || session.status === 'starting'
-                        ? 'Enter message (will interrupt current response)...'
-                        : 'Enter your message to continue the conversation...'
-                  }
+                  placeholder={getInputPlaceholder(session.status)}
                   value={responseInput}
                   onChange={e => setResponseInput(e.target.value)}
                   onKeyDown={handleResponseInputKeyDown}
@@ -1083,22 +1116,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                   {isResponding ? 'Starting...' : 'Send'}
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground">
-                {session.status === 'failed' ? (
-                  'Session failed - cannot continue'
-                ) : session.status === 'running' || session.status === 'starting' ? (
-                  <>
-                    Press <kbd className="px-1 py-0.5 bg-muted rounded">Enter</kbd> to interrupt and
-                    send,
-                    <kbd className="px-1 py-0.5 bg-muted rounded ml-1">Escape</kbd> to cancel
-                  </>
-                ) : (
-                  <>
-                    Press <kbd className="px-1 py-0.5 bg-muted rounded">Enter</kbd> to send,
-                    <kbd className="px-1 py-0.5 bg-muted rounded ml-1">Escape</kbd> to cancel
-                  </>
-                )}
-              </p>
+              <p className="text-xs text-muted-foreground">{getHelpText(session.status)}</p>
             </div>
           )}
         </CardContent>
