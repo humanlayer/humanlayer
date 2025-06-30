@@ -2,7 +2,7 @@ import dotenv from 'dotenv'
 import fs from 'fs'
 import path from 'path'
 import chalk from 'chalk'
-import { ContactChannel } from 'humanlayer'
+import { ContactChannel } from '@humanlayer/sdk'
 
 // Load environment variables
 dotenv.config()
