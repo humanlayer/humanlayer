@@ -1041,7 +1041,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                 size="sm"
                 variant="outline"
                 onClick={() => setShowResponseInput(true)}
-                disabled={session.status !== 'completed'}
+                disabled={session.status === 'failed'}
               >
                 {session.status === 'running' || session.status === 'starting' ? (
                   'Running'
@@ -1062,33 +1062,40 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               <div className="flex gap-2">
                 <Input
                   placeholder={
-                    session.status === 'completed'
-                      ? 'Enter your message to continue the conversation...'
-                      : 'Session must be completed to continue...'
+                    session.status === 'failed'
+                      ? 'Session failed - cannot continue...'
+                      : session.status === 'running' || session.status === 'starting'
+                      ? 'Enter message (will interrupt current response)...'
+                      : 'Enter your message to continue the conversation...'
                   }
                   value={responseInput}
                   onChange={e => setResponseInput(e.target.value)}
                   onKeyDown={handleResponseInputKeyDown}
                   autoFocus
-                  disabled={isResponding || session.status !== 'completed'}
+                  disabled={isResponding || session.status === 'failed'}
                   className="flex-1"
                 />
                 <Button
                   onClick={handleContinueSession}
-                  disabled={!responseInput.trim() || isResponding || session.status !== 'completed'}
+                  disabled={!responseInput.trim() || isResponding || session.status === 'failed'}
                   size="sm"
                 >
                   {isResponding ? 'Starting...' : 'Send'}
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                {session.status === 'completed' ? (
+                {session.status === 'failed' ? (
+                  'Session failed - cannot continue'
+                ) : session.status === 'running' || session.status === 'starting' ? (
+                  <>
+                    Press <kbd className="px-1 py-0.5 bg-muted rounded">Enter</kbd> to interrupt and send,
+                    <kbd className="px-1 py-0.5 bg-muted rounded ml-1">Escape</kbd> to cancel
+                  </>
+                ) : (
                   <>
                     Press <kbd className="px-1 py-0.5 bg-muted rounded">Enter</kbd> to send,
                     <kbd className="px-1 py-0.5 bg-muted rounded ml-1">Escape</kbd> to cancel
                   </>
-                ) : (
-                  'Wait for the session to complete before continuing'
                 )}
               </p>
             </div>
