@@ -1033,18 +1033,24 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               <span className="text-sm text-muted-foreground">
                 {session.status === 'completed'
                   ? 'Continue this conversation with a new message'
-                  : session.status === 'running' || session.status === 'starting'
-                    ? 'Session is currently running'
+                  : session.status === 'running'
+                    ? 'Session is running - sending a message will interrupt it'
+                  : session.status === 'starting'
+                    ? 'Session is starting...'
                     : 'Session must be completed to continue'}
               </span>
               <Button
                 size="sm"
                 variant="outline"
                 onClick={() => setShowResponseInput(true)}
-                disabled={session.status !== 'completed'}
+                disabled={session.status !== 'completed' && session.status !== 'running'}
               >
-                {session.status === 'running' || session.status === 'starting' ? (
-                  'Running'
+                {session.status === 'running' ? (
+                  <>
+                    Interrupt & Continue <kbd className="ml-2 px-1 py-0.5 text-xs bg-muted rounded">R</kbd>
+                  </>
+                ) : session.status === 'starting' ? (
+                  'Starting...'
                 ) : session.status === 'completed' ? (
                   <>
                     Continue Session <kbd className="ml-2 px-1 py-0.5 text-xs bg-muted rounded">R</kbd>
@@ -1064,18 +1070,20 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                   placeholder={
                     session.status === 'completed'
                       ? 'Enter your message to continue the conversation...'
-                      : 'Session must be completed to continue...'
+                      : session.status === 'running'
+                        ? 'Enter your message to interrupt and continue...'
+                        : 'Session must be completed to continue...'
                   }
                   value={responseInput}
                   onChange={e => setResponseInput(e.target.value)}
                   onKeyDown={handleResponseInputKeyDown}
                   autoFocus
-                  disabled={isResponding || session.status !== 'completed'}
+                  disabled={isResponding || (session.status !== 'completed' && session.status !== 'running')}
                   className="flex-1"
                 />
                 <Button
                   onClick={handleContinueSession}
-                  disabled={!responseInput.trim() || isResponding || session.status !== 'completed'}
+                  disabled={!responseInput.trim() || isResponding || (session.status !== 'completed' && session.status !== 'running')}
                   size="sm"
                 >
                   {isResponding ? 'Starting...' : 'Send'}
@@ -1085,6 +1093,11 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                 {session.status === 'completed' ? (
                   <>
                     Press <kbd className="px-1 py-0.5 bg-muted rounded">Enter</kbd> to send,
+                    <kbd className="px-1 py-0.5 bg-muted rounded ml-1">Escape</kbd> to cancel
+                  </>
+                ) : session.status === 'running' ? (
+                  <>
+                    Press <kbd className="px-1 py-0.5 bg-muted rounded">Enter</kbd> to interrupt and continue,
                     <kbd className="px-1 py-0.5 bg-muted rounded ml-1">Escape</kbd> to cancel
                   </>
                 ) : (
