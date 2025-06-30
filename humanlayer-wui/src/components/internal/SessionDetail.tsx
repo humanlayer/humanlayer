@@ -1065,8 +1065,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                     session.status === 'failed'
                       ? 'Session failed - cannot continue...'
                       : session.status === 'running' || session.status === 'starting'
-                      ? 'Enter message (will interrupt current response)...'
-                      : 'Enter your message to continue the conversation...'
+                        ? 'Enter message (will interrupt current response)...'
+                        : 'Enter your message to continue the conversation...'
                   }
                   value={responseInput}
                   onChange={e => setResponseInput(e.target.value)}
@@ -1088,7 +1088,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                   'Session failed - cannot continue'
                 ) : session.status === 'running' || session.status === 'starting' ? (
                   <>
-                    Press <kbd className="px-1 py-0.5 bg-muted rounded">Enter</kbd> to interrupt and send,
+                    Press <kbd className="px-1 py-0.5 bg-muted rounded">Enter</kbd> to interrupt and
+                    send,
                     <kbd className="px-1 py-0.5 bg-muted rounded ml-1">Escape</kbd> to cancel
                   </>
                 ) : (
