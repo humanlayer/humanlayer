@@ -173,6 +173,189 @@ class HumanLayer(BaseModel):
 
         return HumanLayerWrapper(decorator)
 
+    def wrap_tool(
+        self,
+        tool: Any,
+        contact_channel: ContactChannel | None = None,
+        reject_options: list[ResponseOption] | None = None,
+    ) -> Any:
+        """
+        Wrap an existing framework tool (LangChain BaseTool, CrewAI tool, etc.) with approval.
+        
+        This method detects the tool type and creates a dynamic wrapper class that preserves
+        the original tool's interface while adding HumanLayer approval to its execution method.
+        
+        Args:
+            tool: The tool object to wrap (e.g., LangChain BaseTool, CrewAI tool)
+            contact_channel: Optional contact channel for approval notifications
+            reject_options: Optional list of custom rejection options
+            
+        Returns:
+            A wrapped tool instance that maintains the original tool's interface
+            
+        Example:
+            # LangChain example
+            tools = SomeToolKit().get_tools()
+            safe_tools = [hl.wrap_tool(tool) for tool in tools if 'create' in tool.name]
+            
+            # CrewAI example  
+            from crewai_tools import SomeTool
+            tool = SomeTool()
+            safe_tool = hl.wrap_tool(tool)
+        """
+        if reject_options:
+            names = [opt.name for opt in reject_options]
+            if len(names) != len(set(names)):
+                raise HumanLayerException("reject_options must have unique names")
+
+        # Detect tool type and create appropriate wrapper
+        if self._is_langchain_tool(tool):
+            return self._wrap_langchain_tool(tool, contact_channel, reject_options)
+        elif self._is_crewai_tool(tool):
+            return self._wrap_crewai_tool(tool, contact_channel, reject_options)
+        else:
+            # Fallback: try to wrap any object with a callable method
+            return self._wrap_generic_tool(tool, contact_channel, reject_options)
+
+    def _is_langchain_tool(self, tool: Any) -> bool:
+        """Check if tool is a LangChain BaseTool by duck typing."""
+        return (
+            hasattr(tool, '_run') and 
+            hasattr(tool, 'name') and 
+            hasattr(tool, 'description') and
+            callable(getattr(tool, '_run', None))
+        )
+
+    def _is_crewai_tool(self, tool: Any) -> bool:
+        """Check if tool is a CrewAI tool by duck typing."""
+        return (
+            hasattr(tool, '_run') and
+            hasattr(tool, 'name') and 
+            hasattr(tool, 'description') and
+            callable(getattr(tool, '_run', None)) and
+            # CrewAI tools often have these additional attributes
+            (hasattr(tool, 'args_schema') or hasattr(tool, 'func'))
+        )
+
+    def _wrap_langchain_tool(
+        self,
+        tool: Any,
+        contact_channel: ContactChannel | None = None,
+        reject_options: list[ResponseOption] | None = None,
+    ) -> Any:
+        """Create a wrapped LangChain tool with approval on _run method."""
+        original_run = tool._run
+        
+        # Get the approval wrapper for the _run method
+        if self.approval_method is ApprovalMethod.CLI:
+            wrapped_run = self._approve_cli(original_run)
+        else:
+            wrapped_run = self._approve_with_backend(
+                fn=original_run,
+                contact_channel=contact_channel,
+                reject_options=reject_options,
+            )
+        
+        # Create a dynamic wrapper class that inherits from the original tool's class
+        class WrappedLangChainTool(tool.__class__):
+            def _run(self, *args, **kwargs):
+                return wrapped_run(*args, **kwargs)
+                
+            # Preserve async _run if it exists
+            async def _arun(self, *args, **kwargs):
+                if hasattr(tool, '_arun'):
+                    # For async, we'd need async approval logic
+                    # For now, fall back to sync approval
+                    return wrapped_run(*args, **kwargs)
+                else:
+                    raise NotImplementedError("This tool does not support async execution")
+        
+        # Create an instance of the wrapper class, copying all attributes from original
+        wrapped_tool = WrappedLangChainTool.__new__(WrappedLangChainTool)
+        wrapped_tool.__dict__.update(tool.__dict__)
+        
+        return wrapped_tool
+
+    def _wrap_crewai_tool(
+        self,
+        tool: Any,
+        contact_channel: ContactChannel | None = None,
+        reject_options: list[ResponseOption] | None = None,
+    ) -> Any:
+        """Create a wrapped CrewAI tool with approval on _run method."""
+        original_run = tool._run
+        
+        # Get the approval wrapper for the _run method
+        if self.approval_method is ApprovalMethod.CLI:
+            wrapped_run = self._approve_cli(original_run)
+        else:
+            wrapped_run = self._approve_with_backend(
+                fn=original_run,
+                contact_channel=contact_channel,
+                reject_options=reject_options,
+            )
+        
+        # Create a dynamic wrapper class that inherits from the original tool's class
+        class WrappedCrewAITool(tool.__class__):
+            def _run(self, *args, **kwargs):
+                return wrapped_run(*args, **kwargs)
+        
+        # Create an instance of the wrapper class, copying all attributes from original
+        wrapped_tool = WrappedCrewAITool.__new__(WrappedCrewAITool)
+        wrapped_tool.__dict__.update(tool.__dict__)
+        
+        return wrapped_tool
+
+    def _wrap_generic_tool(
+        self,
+        tool: Any,
+        contact_channel: ContactChannel | None = None,
+        reject_options: list[ResponseOption] | None = None,
+    ) -> Any:
+        """
+        Generic tool wrapper for tools that don't match LangChain or CrewAI patterns.
+        
+        This attempts to find and wrap common execution method names.
+        """
+        # Common method names to try wrapping
+        method_names = ['_run', 'run', 'execute', '__call__']
+        
+        wrapped_methods = {}
+        for method_name in method_names:
+            if hasattr(tool, method_name) and callable(getattr(tool, method_name)):
+                original_method = getattr(tool, method_name)
+                
+                # Get the approval wrapper
+                if self.approval_method is ApprovalMethod.CLI:
+                    wrapped_method = self._approve_cli(original_method)
+                else:
+                    wrapped_method = self._approve_with_backend(
+                        fn=original_method,
+                        contact_channel=contact_channel,
+                        reject_options=reject_options,
+                    )
+                wrapped_methods[method_name] = wrapped_method
+        
+        if not wrapped_methods:
+            raise HumanLayerException(
+                f"Could not find any wrappable methods on tool of type {type(tool).__name__}. "
+                f"Looked for: {', '.join(method_names)}"
+            )
+        
+        # Create a dynamic wrapper class
+        class WrappedGenericTool(tool.__class__):
+            pass
+        
+        # Add wrapped methods to the class
+        for method_name, wrapped_method in wrapped_methods.items():
+            setattr(WrappedGenericTool, method_name, wrapped_method)
+        
+        # Create an instance of the wrapper class, copying all attributes from original
+        wrapped_tool = WrappedGenericTool.__new__(WrappedGenericTool)
+        wrapped_tool.__dict__.update(tool.__dict__)
+        
+        return wrapped_tool
+
     def _approve_cli(self, fn: Callable[[T], R]) -> Callable[[T], R | str]:
         """
         NOTE we convert a callable[[T], R] to a Callable [[T], R | str]
