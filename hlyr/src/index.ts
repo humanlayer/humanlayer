@@ -69,7 +69,10 @@ async function authenticate(printSelectedProject: boolean = false) {
   }
 }
 
-program.name('humanlayer').description('HumanLayer, but on your command-line.').version(packageJson.version)
+program
+  .name('humanlayer')
+  .description('HumanLayer, but on your command-line.')
+  .version(packageJson.version)
 
 const UNPROTECTED_COMMANDS = ['config', 'login', 'thoughts']
 
