@@ -178,3 +178,5 @@ cython_debug/
 .Trashes
 
 .idea/
+
+hlyr/blah.txt

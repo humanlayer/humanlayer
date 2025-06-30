@@ -179,20 +179,11 @@ func (s *SQLiteStore) initSchema() error {
 		return fmt.Errorf("failed to create schema: %w", err)
 	}
 
-	// Record initial schema version
-	// For new databases, we start at version 3 since the schema includes all fields
+	// Record initial schema version for new databases only
+	// Migration system will handle upgrading existing databases
 	_, err := s.db.Exec(`
 		INSERT OR IGNORE INTO schema_version (version, description)
 		VALUES (1, 'Initial schema with conversation events')
-	`)
-	if err != nil {
-		return err
-	}
-
-	// Mark new databases as having all migrations applied
-	_, err = s.db.Exec(`
-		INSERT OR IGNORE INTO schema_version (version, description)
-		VALUES (3, 'Initial schema includes all permission and tool fields')
 	`)
 	return err
 }
@@ -213,15 +204,46 @@ func (s *SQLiteStore) applyMigrations() error {
 	if currentVersion < 3 {
 		slog.Info("Applying migration 3: Add permission and tool fields")
 
-		_, err := s.db.Exec(`
-			-- Add missing columns to sessions table
-			ALTER TABLE sessions ADD COLUMN permission_prompt_tool TEXT;
-			ALTER TABLE sessions ADD COLUMN append_system_prompt TEXT;
-			ALTER TABLE sessions ADD COLUMN allowed_tools TEXT;
-			ALTER TABLE sessions ADD COLUMN disallowed_tools TEXT;
-		`)
+		// Check if columns already exist (they might be in the schema for new databases)
+		var columnCount int
+		err = s.db.QueryRow(`
+			SELECT COUNT(*) FROM pragma_table_info('sessions')
+			WHERE name IN ('permission_prompt_tool', 'append_system_prompt', 'allowed_tools', 'disallowed_tools')
+		`).Scan(&columnCount)
 		if err != nil {
-			return fmt.Errorf("failed to apply migration 3: %w", err)
+			return fmt.Errorf("failed to check existing columns: %w", err)
+		}
+
+		// Only add columns if they don't exist
+		if columnCount < 4 {
+			// SQLite requires separate ALTER TABLE statements
+			alterations := []struct {
+				column string
+				sql    string
+			}{
+				{"permission_prompt_tool", "ALTER TABLE sessions ADD COLUMN permission_prompt_tool TEXT"},
+				{"append_system_prompt", "ALTER TABLE sessions ADD COLUMN append_system_prompt TEXT"},
+				{"allowed_tools", "ALTER TABLE sessions ADD COLUMN allowed_tools TEXT"},
+				{"disallowed_tools", "ALTER TABLE sessions ADD COLUMN disallowed_tools TEXT"},
+			}
+
+			for _, alt := range alterations {
+				// Check if this specific column exists
+				var exists int
+				err = s.db.QueryRow(`
+					SELECT COUNT(*) FROM pragma_table_info('sessions') WHERE name = ?
+				`, alt.column).Scan(&exists)
+				if err != nil {
+					return fmt.Errorf("failed to check column %s: %w", alt.column, err)
+				}
+
+				if exists == 0 {
+					_, err := s.db.Exec(alt.sql)
+					if err != nil {
+						return fmt.Errorf("failed to add column %s: %w", alt.column, err)
+					}
+				}
+			}
 		}
 
 		// Record migration
