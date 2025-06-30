@@ -2,6 +2,9 @@
 
 import { Command } from 'commander'
 import { spawn } from 'child_process'
+import { readFileSync } from 'fs'
+import { fileURLToPath } from 'url'
+import { dirname, join } from 'path'
 import { loginCommand } from './commands/login.js'
 import { tuiCommand } from './commands/tui.js'
 import { contactHumanCommand } from './commands/contactHuman.js'
@@ -19,6 +22,10 @@ import {
 } from './config.js'
 import { getProject } from './hlClient.js'
 import chalk from 'chalk'
+
+// Read version from package.json
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const packageJson = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf-8'))
 
 function showAbbreviatedConfig() {
   const configWithSources = resolveConfigWithSources({})
@@ -62,7 +69,7 @@ async function authenticate(printSelectedProject: boolean = false) {
   }
 }
 
-program.name('humanlayer').description('HumanLayer, but on your command-line.').version('0.7.0')
+program.name('humanlayer').description('HumanLayer, but on your command-line.').version(packageJson.version)
 
 const UNPROTECTED_COMMANDS = ['config', 'login', 'thoughts']
 
