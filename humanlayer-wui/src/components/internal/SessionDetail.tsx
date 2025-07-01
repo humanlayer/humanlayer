@@ -778,7 +778,6 @@ function ConversationContent({
     if (denyingApprovalId && containerRef.current) {
       // Find the event that contains this approval
       const event = events.find(e => e.approval_id === denyingApprovalId)
-      console.log('event', event)
       if (event && !event.approval_status) {
         const eventElement = containerRef.current.querySelector(`[data-event-id="${event.id}"]`)
         if (eventElement && !isElementInView(eventElement, containerRef.current)) {
