@@ -14,6 +14,7 @@ import {
   ConversationEventType,
   SessionInfo,
   ApprovalStatus,
+  SessionStatus,
 } from '@/lib/daemon/types'
 import { Card, CardContent } from '../ui/card'
 import { Button } from '../ui/button'
@@ -34,6 +35,7 @@ import {
   UserCheck,
   User,
   Wrench,
+  ChevronDown,
 } from 'lucide-react'
 import { getStatusTextClass } from '@/utils/component-utils'
 import { daemonClient } from '@/lib/daemon/client'
@@ -342,7 +344,7 @@ function eventToDisplayObject(
           {!isDenying ? (
             <>
               <Button
-                className="cursor-pointer"
+                className={`cursor-pointer`}
                 size="sm"
                 variant={isApproving ? 'outline' : 'default'}
                 onClick={e => {
@@ -410,11 +412,13 @@ function eventToDisplayObject(
   // For the moment, controlling tightly when we display tool result content.
   if (toolResult && event.approval_status === ApprovalStatus.Denied) {
     toolResultContent = (
-      <div className="font-mono text-sm text-muted-foreground gap-1">
-        <span className="font-bold inline-flex items-center mr-2">
-          <MessageCircle className="w-3 h-3" /> Denial Comment:
-        </span>
-        <span>{toolResult.tool_result_content}</span>
+      <div className="flex justify-end">
+        <div className="font-mono text-sm text-muted-foreground gap-1">
+          <span className="font-bold inline-flex items-center mr-2">
+            <MessageCircle className="w-3 h-3" /> Denial Comment:
+          </span>
+          <span>{toolResult.tool_result_content}</span>
+        </div>
       </div>
     )
   }
@@ -575,6 +579,9 @@ function DenyForm({
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
       e.preventDefault()
       handleSubmit(e as any)
+    } else if (e.key === 'Escape' && onCancel) {
+      e.preventDefault()
+      onCancel()
     }
   }
 
@@ -582,7 +589,7 @@ function DenyForm({
     <form onSubmit={handleSubmit} className="flex gap-2 items-center">
       <Input
         type="text"
-        placeholder="Reason for denial... (⌘+Enter to submit)"
+        placeholder="Reason for denial... (Enter to submit)"
         value={reason}
         onChange={e => setReason(e.target.value)}
         onKeyDown={handleKeyDown}
@@ -596,7 +603,10 @@ function DenyForm({
         variant="destructive"
         disabled={!reason.trim() || isDenying}
       >
-        {isDenying ? 'Denying...' : 'Deny'}
+        {isDenying ? 'Denying...' : 'Deny'}{' '}
+        {reason.trim() && !isDenying && (
+          <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">⏎</kbd>
+        )}
       </Button>
       <Button
         className="cursor-pointer"
@@ -606,7 +616,7 @@ function DenyForm({
         onClick={onCancel}
         disabled={isDenying}
       >
-        Cancel
+        Cancel <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">Esc</kbd>
       </Button>
     </form>
   )
@@ -682,12 +692,17 @@ function ConversationContent({
       ? nonEmptyDisplayObjects.findIndex(obj => obj.id === focusedEventId)
       : -1
 
-    if (currentIndex === -1 || currentIndex === nonEmptyDisplayObjects.length - 1) {
+    // If nothing focused, focus first item
+    if (currentIndex === -1) {
       setFocusedEventId(nonEmptyDisplayObjects[0].id)
-    } else {
-      setFocusedEventId(nonEmptyDisplayObjects[currentIndex + 1].id)
+      setFocusSource?.('keyboard')
     }
-    setFocusSource?.('keyboard')
+    // If not at the end, move to next
+    else if (currentIndex < nonEmptyDisplayObjects.length - 1) {
+      setFocusedEventId(nonEmptyDisplayObjects[currentIndex + 1].id)
+      setFocusSource?.('keyboard')
+    }
+    // If at the end, do nothing
   }
 
   const focusPreviousEvent = () => {
@@ -697,12 +712,17 @@ function ConversationContent({
       ? nonEmptyDisplayObjects.findIndex(obj => obj.id === focusedEventId)
       : -1
 
-    if (currentIndex === -1 || currentIndex === 0) {
+    // If nothing focused, focus last item
+    if (currentIndex === -1) {
       setFocusedEventId(nonEmptyDisplayObjects[nonEmptyDisplayObjects.length - 1].id)
-    } else {
-      setFocusedEventId(nonEmptyDisplayObjects[currentIndex - 1].id)
+      setFocusSource?.('keyboard')
     }
-    setFocusSource?.('keyboard')
+    // If not at the beginning, move to previous
+    else if (currentIndex > 0) {
+      setFocusedEventId(nonEmptyDisplayObjects[currentIndex - 1].id)
+      setFocusSource?.('keyboard')
+    }
+    // If at the beginning, do nothing
   }
 
   // Keyboard navigation
@@ -710,19 +730,30 @@ function ConversationContent({
   useHotkeys('k', focusPreviousEvent)
 
   const containerRef = useRef<HTMLDivElement>(null)
-  const hasAutoScrolledRef = useRef(false)
+  const previousEventCountRef = useRef(0)
 
   useEffect(() => {
-    // Only auto-scroll once on initial load when events first appear
-    if (!loading && containerRef.current && events.length > 0 && !hasAutoScrolledRef.current) {
-      containerRef.current.scrollTop = containerRef.current.scrollHeight
-      hasAutoScrolledRef.current = true
+    if (!loading && containerRef.current && nonEmptyDisplayObjects.length > 0) {
+      const hasNewEvents = nonEmptyDisplayObjects.length > previousEventCountRef.current
+
+      // Auto-scroll if we have new display events
+      if (hasNewEvents) {
+        console.log('triggering auto scroll after new events')
+        // Small delay to ensure DOM is updated
+        setTimeout(() => {
+          if (containerRef.current) {
+            containerRef.current.scrollTop = containerRef.current.scrollHeight
+          }
+        }, 50)
+      }
+
+      previousEventCountRef.current = nonEmptyDisplayObjects.length
     }
 
     if (!starryNight) {
       createStarryNight([textMd, jsonGrammar]).then(sn => (starryNight = sn))
     }
-  }, [loading, events])
+  }, [loading, nonEmptyDisplayObjects.length])
 
   // Helper function to check if element is in viewport
   const isElementInView = (element: Element, container: Element) => {
@@ -747,11 +778,13 @@ function ConversationContent({
     if (denyingApprovalId && containerRef.current) {
       // Find the event that contains this approval
       const event = events.find(e => e.approval_id === denyingApprovalId)
-      if (event) {
+      console.log('event', event)
+      if (event && !event.approval_status) {
         const eventElement = containerRef.current.querySelector(`[data-event-id="${event.id}"]`)
         if (eventElement && !isElementInView(eventElement, containerRef.current)) {
           // Scroll the deny form into view
           setTimeout(() => {
+            console.log('scrolling to deny form')
             eventElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
           }, 100) // Small delay to ensure form is rendered
         }
@@ -868,6 +901,9 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
 
   // Get events for sidebar access
   const { events } = useConversation(session.id)
+
+  // Check if there are pending approvals out of view
+  const [hasPendingApprovalsOutOfView, setHasPendingApprovalsOutOfView] = useState(false)
 
   // Helper function to check if element is in viewport
   const isElementInView = (elementId: number) => {
@@ -1057,6 +1093,23 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     }
   })
 
+  // Check if there are pending approvals out of view when in waiting_input status
+  useEffect(() => {
+    if (session.status === SessionStatus.WaitingInput) {
+      const hasPendingApproval = events.some(e => e.approval_status === ApprovalStatus.Pending)
+      if (hasPendingApproval) {
+        const pendingEvent = events.find(e => e.approval_status === ApprovalStatus.Pending)
+        if (pendingEvent) {
+          setHasPendingApprovalsOutOfView(!isElementInView(pendingEvent.id))
+        }
+      } else {
+        setHasPendingApprovalsOutOfView(false)
+      }
+    } else {
+      setHasPendingApprovalsOutOfView(false)
+    }
+  }, [session.status, events])
+
   return (
     <section className="flex flex-col gap-4">
       <hgroup className="flex flex-col gap-1">
@@ -1080,7 +1133,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       </hgroup>
       <div className={`flex gap-4 ${isWideView ? 'flex-row' : 'flex-col'}`}>
         {/* Conversation content and Loading */}
-        <Card className={isWideView ? 'flex-1' : 'w-full'}>
+        <Card className={`${isWideView ? 'flex-1' : 'w-full'} relative`}>
           <CardContent>
             <Suspense
               fallback={
@@ -1123,6 +1176,26 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                 </div>
               )}
             </Suspense>
+
+            {/* Status bar for pending approvals */}
+            <div
+              className={`absolute bottom-0 left-0 right-0 p-4 cursor-pointer transition-all duration-300 ease-in-out ${
+                hasPendingApprovalsOutOfView
+                  ? 'opacity-100 translate-y-0'
+                  : 'opacity-0 translate-y-full pointer-events-none'
+              }`}
+              onClick={() => {
+                const container = document.querySelector('[data-conversation-container]')
+                if (container) {
+                  container.scrollTop = container.scrollHeight
+                }
+              }}
+            >
+              <div className="flex items-center justify-center gap-2 font-mono text-xs uppercase tracking-wider text-muted-foreground bg-background/60 backdrop-blur-sm border-t border-border/50 py-2 shadow-sm hover:bg-background/80 transition-colors">
+                <span>Pending Approval</span>
+                <ChevronDown className="w-3 h-3 animate-bounce" />
+              </div>
+            </div>
           </CardContent>
         </Card>
 
