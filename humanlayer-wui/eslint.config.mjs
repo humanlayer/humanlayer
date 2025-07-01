@@ -40,6 +40,7 @@ export default [
   {
     files: ['*.config.{ts,js}', '.prettierrc.js'],
     languageOptions: {
+      parser: tseslint.parser,
       globals: {
         ...globals.node,
       },
