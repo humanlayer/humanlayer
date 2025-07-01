@@ -609,8 +609,13 @@ function ConversationContent({
   onApprove,
   onDeny,
   approvingApprovalId,
+  denyingApprovalId,
+  setDenyingApprovalId,
+  onCancelDeny,
   isSplitView,
   onToggleSplitView,
+  focusSource,
+  setFocusSource,
 }: {
   sessionId: string
   focusedEventId: number | null
@@ -621,12 +626,15 @@ function ConversationContent({
   onApprove?: (approvalId: string) => void
   onDeny?: (approvalId: string, reason: string) => void
   approvingApprovalId?: string | null
+  denyingApprovalId?: string | null
+  setDenyingApprovalId?: (id: string | null) => void
+  onCancelDeny?: () => void
   isSplitView?: boolean
   onToggleSplitView?: () => void
+  focusSource?: 'mouse' | 'keyboard' | null
+  setFocusSource?: (source: 'mouse' | 'keyboard' | null) => void
 }) {
   const { events, loading, error, isInitialLoad } = useConversation(sessionId, undefined, 1000)
-  const [denyingApprovalId, setDenyingApprovalId] = useState<string | null>(null)
-  const [focusSource, setFocusSource] = useState<'mouse' | 'keyboard' | null>(null)
   const toolResults = events.filter(event => event.event_type === ConversationEventType.ToolResult)
   const toolResultsByKey = keyBy(toolResults, 'tool_result_for_id')
 
@@ -639,7 +647,7 @@ function ConversationContent({
         onDeny,
         denyingApprovalId,
         setDenyingApprovalId,
-        () => setDenyingApprovalId(null),
+        onCancelDeny,
         approvingApprovalId,
         isSplitView,
         onToggleSplitView,
@@ -661,7 +669,7 @@ function ConversationContent({
     } else {
       setFocusedEventId(nonEmptyDisplayObjects[currentIndex + 1].id)
     }
-    setFocusSource('keyboard')
+    setFocusSource?.('keyboard')
   }
 
   const focusPreviousEvent = () => {
@@ -676,7 +684,7 @@ function ConversationContent({
     } else {
       setFocusedEventId(nonEmptyDisplayObjects[currentIndex - 1].id)
     }
-    setFocusSource('keyboard')
+    setFocusSource?.('keyboard')
   }
 
   // Keyboard navigation
@@ -698,15 +706,40 @@ function ConversationContent({
     }
   }, [loading, events])
 
+  // Helper function to check if element is in viewport
+  const isElementInView = (element: Element, container: Element) => {
+    const elementRect = element.getBoundingClientRect()
+    const containerRect = container.getBoundingClientRect()
+
+    return elementRect.top >= containerRect.top && elementRect.bottom <= containerRect.bottom
+  }
+
   // Scroll focused event into view (only for keyboard navigation)
   useEffect(() => {
     if (focusedEventId && containerRef.current && focusSource === 'keyboard') {
       const focusedElement = containerRef.current.querySelector(`[data-event-id="${focusedEventId}"]`)
-      if (focusedElement) {
+      if (focusedElement && !isElementInView(focusedElement, containerRef.current)) {
         focusedElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
       }
     }
   }, [focusedEventId, focusSource])
+
+  // Scroll deny form into view when opened
+  useEffect(() => {
+    if (denyingApprovalId && containerRef.current) {
+      // Find the event that contains this approval
+      const event = events.find(e => e.approval_id === denyingApprovalId)
+      if (event) {
+        const eventElement = containerRef.current.querySelector(`[data-event-id="${event.id}"]`)
+        if (eventElement && !isElementInView(eventElement, containerRef.current)) {
+          // Scroll the deny form into view
+          setTimeout(() => {
+            eventElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+          }, 100) // Small delay to ensure form is rendered
+        }
+      }
+    }
+  }, [denyingApprovalId, events])
 
   if (error) {
     return <div className="text-destructive">Error loading conversation: {error}</div>
@@ -746,7 +779,7 @@ function ConversationContent({
               data-event-id={displayObject.id}
               onMouseEnter={() => {
                 setFocusedEventId(displayObject.id)
-                setFocusSource('mouse')
+                setFocusSource?.('mouse')
               }}
               onMouseLeave={() => setFocusedEventId(null)}
               onClick={() =>
@@ -800,6 +833,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [responseInput, setResponseInput] = useState('')
   const [isResponding, setIsResponding] = useState(false)
   const [approvingApprovalId, setApprovingApprovalId] = useState<string | null>(null)
+  const [denyingApprovalId, setDenyingApprovalId] = useState<string | null>(null)
+  const [focusSource, setFocusSource] = useState<'mouse' | 'keyboard' | null>(null)
   const [isSplitView, setIsSplitView] = useState(true)
   const interruptSession = useStore(state => state.interruptSession)
   const navigate = useNavigate()
@@ -827,6 +862,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const handleDeny = async (approvalId: string, reason: string) => {
     try {
       await daemonClient.denyFunctionCall(approvalId, reason)
+      setDenyingApprovalId(null)
     } catch (error) {
       console.error('Failed to deny:', error)
     }
@@ -926,22 +962,41 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
 
   // A key to approve focused event that has pending approval
   useHotkeys('a', () => {
-    if (focusedEventId) {
-      const focusedEvent = events.find(e => e.id === focusedEventId)
-      if (focusedEvent?.approval_status === 'pending' && focusedEvent.approval_id) {
-        handleApprove(focusedEvent.approval_id)
-      }
+    // Find any pending approval event
+    const pendingApprovalEvent = events.find(e => e.approval_status === 'pending' && e.approval_id)
+
+    if (!pendingApprovalEvent) return
+
+    // If no event is focused, or a different event is focused, focus this pending approval
+    if (!focusedEventId || focusedEventId !== pendingApprovalEvent.id) {
+      setFocusedEventId(pendingApprovalEvent.id)
+      setFocusSource?.('keyboard')
+      return
+    }
+
+    // If the pending approval is already focused, approve it
+    if (focusedEventId === pendingApprovalEvent.id) {
+      handleApprove(pendingApprovalEvent.approval_id!)
     }
   })
 
   // D key to deny focused event that has pending approval
   useHotkeys('d', () => {
-    if (focusedEventId) {
-      const focusedEvent = events.find(e => e.id === focusedEventId)
-      if (focusedEvent?.approval_status === 'pending' && focusedEvent.approval_id) {
-        // For now, deny with a default reason - could be enhanced to show input
-        handleDeny(focusedEvent.approval_id, 'Denied via hotkey')
-      }
+    // Find any pending approval event
+    const pendingApprovalEvent = events.find(e => e.approval_status === 'pending' && e.approval_id)
+
+    if (!pendingApprovalEvent) return
+
+    // If no event is focused, or a different event is focused, focus this pending approval
+    if (!focusedEventId || focusedEventId !== pendingApprovalEvent.id) {
+      setFocusedEventId(pendingApprovalEvent.id)
+      setFocusSource?.('keyboard')
+      return
+    }
+
+    // If the pending approval is already focused, show the deny form
+    if (focusedEventId === pendingApprovalEvent.id) {
+      setDenyingApprovalId(pendingApprovalEvent.approval_id!)
     }
   })
 
@@ -989,8 +1044,13 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                 onApprove={handleApprove}
                 onDeny={handleDeny}
                 approvingApprovalId={approvingApprovalId}
+                denyingApprovalId={denyingApprovalId}
+                setDenyingApprovalId={setDenyingApprovalId}
+                onCancelDeny={() => setDenyingApprovalId(null)}
                 isSplitView={isSplitView}
                 onToggleSplitView={() => setIsSplitView(!isSplitView)}
+                focusSource={focusSource}
+                setFocusSource={setFocusSource}
               />
               {isRunning && (
                 <div className="flex flex-col gap-2 mt-4 border-t pt-4">
