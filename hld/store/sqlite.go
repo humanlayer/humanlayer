@@ -283,7 +283,7 @@ func (s *SQLiteStore) applyMigrations() error {
 	// Migration 4: Add approvals table for local approvals
 	if currentVersion < 4 {
 		slog.Info("Applying migration 4: Add approvals table for local approvals")
-		
+
 		// Create the approvals table
 		_, err = s.db.Exec(`
 			CREATE TABLE IF NOT EXISTS approvals (
@@ -293,14 +293,14 @@ func (s *SQLiteStore) applyMigrations() error {
 				status TEXT NOT NULL CHECK (status IN ('pending', 'approved', 'denied')),
 				created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 				responded_at DATETIME,
-				
+
 				-- Tool approval fields
 				tool_name TEXT NOT NULL,
 				tool_input TEXT NOT NULL, -- JSON
-				
+
 				-- Response fields
 				comment TEXT, -- For denial reasons or approval notes
-				
+
 				FOREIGN KEY (session_id) REFERENCES sessions(id)
 			);
 			CREATE INDEX IF NOT EXISTS idx_approvals_pending ON approvals(status) WHERE status = 'pending';
@@ -310,7 +310,7 @@ func (s *SQLiteStore) applyMigrations() error {
 		if err != nil {
 			return fmt.Errorf("failed to create approvals table: %w", err)
 		}
-		
+
 		// Record migration
 		_, err = s.db.Exec(`
 			INSERT INTO schema_version (version, description)
@@ -319,7 +319,7 @@ func (s *SQLiteStore) applyMigrations() error {
 		if err != nil {
 			return fmt.Errorf("failed to record migration 4: %w", err)
 		}
-		
+
 		slog.Info("Migration 4 applied successfully")
 	}
 
