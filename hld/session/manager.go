@@ -277,7 +277,17 @@ eventLoop:
 
 	endTime := time.Now()
 	if err != nil {
-		m.updateSessionStatus(ctx, sessionID, StatusFailed, err.Error())
+		// Check if this was an intentional interrupt
+		session, dbErr := m.store.GetSession(ctx, sessionID)
+		if dbErr == nil && session != nil && session.Status == string(StatusCompleting) {
+			// This was an interrupted session, not a failure
+			// Let it transition to completed naturally
+			slog.Debug("session was interrupted, not marking as failed",
+				"session_id", sessionID,
+				"status", session.Status)
+		} else {
+			m.updateSessionStatus(ctx, sessionID, StatusFailed, err.Error())
+		}
 	} else if result != nil && result.IsError {
 		m.updateSessionStatus(ctx, sessionID, StatusFailed, result.Error)
 	} else {
