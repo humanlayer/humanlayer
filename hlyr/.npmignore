@@ -1,0 +1,22 @@
+# Test files and directories
+hack/
+test-local-approvals.ts
+test-*.ts
+test_local_approvals.md
+
+# Test configs
+mcp-config.json
+test-mcp-logging.sh
+
+# Source files (only dist is published)
+src/
+tsconfig.json
+.eslintrc.json
+.prettierrc
+
+# Development files
+*.log
+.DS_Store
+node_modules/
+coverage/
+.vscode/

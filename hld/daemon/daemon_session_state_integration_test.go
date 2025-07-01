@@ -4,7 +4,8 @@ package daemon
 
 import (
 	"context"
-	"fmt"
+	"encoding/json"
+	"net"
 	"path/filepath"
 	"testing"
 	"time"
@@ -14,57 +15,30 @@ import (
 	"github.com/humanlayer/humanlayer/hld/client"
 	"github.com/humanlayer/humanlayer/hld/config"
 	"github.com/humanlayer/humanlayer/hld/internal/testutil"
+	"github.com/humanlayer/humanlayer/hld/rpc"
 	"github.com/humanlayer/humanlayer/hld/session"
 	"github.com/humanlayer/humanlayer/hld/store"
-	humanlayer "github.com/humanlayer/humanlayer/humanlayer-go"
 )
 
-// TestSessionStateTransitionsIntegration tests the full flow of session state changes
-// when approvals are created and resolved
-func TestSessionStateTransitionsIntegration(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
-	}
+func TestDaemonSessionStateIntegration(t *testing.T) {
+	// This test verifies that session state transitions work correctly with local approvals
 
-	// Create temporary socket path for test
-	socketPath := testutil.SocketPath(t, "session-state")
+	// Create test socket
+	socketPath := testutil.SocketPath(t, "test")
 
-	// Use a temporary database file instead of :memory: to ensure all connections
-	// access the same database (in-memory databases are unique per connection)
-	tempDir := t.TempDir()
-	dbPath := filepath.Join(tempDir, "test.db")
-
-	// Create the store
+	// Create test database
+	dbPath := filepath.Join(t.TempDir(), "test.db")
 	testStore, err := store.NewSQLiteStore(dbPath)
 	if err != nil {
-		t.Fatalf("failed to create test store: %v", err)
+		t.Fatalf("failed to create store: %v", err)
 	}
 	defer testStore.Close()
-
-	// Set environment variables to ensure consistent test behavior
-	t.Setenv("HUMANLAYER_DATABASE_PATH", dbPath)
-	t.Setenv("HUMANLAYER_API_KEY", "test-key")
 
 	// Create event bus
 	eventBus := bus.NewEventBus()
 
-	// Create mock API client
-	mockClient := &mockSessionStateAPIClient{
-		functionCalls: make(map[string]*humanlayer.FunctionCall),
-	}
-
-	// Create real approval components
-	approvalStore := approval.NewMemoryStore()
-	poller := approval.NewPoller(mockClient, approvalStore, testStore, 50*time.Millisecond, eventBus)
-
-	// Create approval manager
-	approvalManager := &approval.DefaultManager{
-		Client:            mockClient,
-		Store:             approvalStore,
-		Poller:            poller,
-		EventBus:          eventBus,
-		ConversationStore: testStore,
-	}
+	// Create local approval manager
+	approvalManager := approval.NewManager(testStore, eventBus)
 
 	// Create session manager
 	sessionManager, err := session.NewManager(eventBus, testStore)
@@ -125,36 +99,43 @@ func TestSessionStateTransitionsIntegration(t *testing.T) {
 			t.Fatalf("failed to create session: %v", err)
 		}
 
-		// 2. Add a tool call that needs approval
-		toolCall := &store.ConversationEvent{
-			SessionID:       sessionID,
+		// 2. Add a tool call event that would need approval
+		toolCallEvent := &store.ConversationEvent{
+			SessionID:       sessionID, // Use the actual session ID from sessions table
 			ClaudeSessionID: claudeSessionID,
-			Sequence:        1,
 			EventType:       store.EventTypeToolCall,
-			ToolID:          "tool-001",
 			ToolName:        "dangerous_function",
+			ToolID:          "tool-call-123",
 			ToolInputJSON:   `{"action": "delete_all"}`,
+			ApprovalStatus:  "", // No approval yet
+			ApprovalID:      "",
 			CreatedAt:       time.Now(),
 		}
-		if err := testStore.AddConversationEvent(ctx, toolCall); err != nil {
+		if err := testStore.AddConversationEvent(ctx, toolCallEvent); err != nil {
 			t.Fatalf("failed to add tool call: %v", err)
 		}
 
-		// 3. Simulate an approval coming from HumanLayer API
-		approvalID := "approval-001"
-		mockClient.AddFunctionCall(humanlayer.FunctionCall{
-			CallID: approvalID,
-			RunID:  runID,
-			Spec: humanlayer.FunctionCallSpec{
-				Fn: "dangerous_function",
-				Kwargs: map[string]interface{}{
-					"action": "delete_all",
-				},
-			},
-		})
+		// 3. Create an approval via RPC (simulating MCP creating approval)
+		// We need to use the rpcClient directly for this test
+		conn, err := net.Dial("unix", socketPath)
+		if err != nil {
+			t.Fatalf("failed to connect to daemon: %v", err)
+		}
+		defer conn.Close()
 
-		// 4. Wait for poller to pick up the approval and correlate it
-		time.Sleep(150 * time.Millisecond)
+		rpcClient := &rpcClient{conn: conn}
+		var createResp rpc.CreateApprovalResponse
+		if err := rpcClient.call("createApproval", rpc.CreateApprovalRequest{
+			RunID:     runID,
+			ToolName:  "dangerous_function",
+			ToolInput: json.RawMessage(`{"action": "delete_all"}`),
+		}, &createResp); err != nil {
+			t.Fatalf("failed to create approval: %v", err)
+		}
+		approvalID := createResp.ApprovalID
+
+		// 4. Give time for event bus to propagate and correlation to happen
+		time.Sleep(100 * time.Millisecond)
 
 		// 5. Check that session status changed to waiting_input
 		updatedSession, err := testStore.GetSession(ctx, sessionID)
@@ -165,7 +146,16 @@ func TestSessionStateTransitionsIntegration(t *testing.T) {
 			t.Errorf("expected session status to be waiting_input, got %s", updatedSession.Status)
 		}
 
-		// 6. Check that approval was correlated
+		// 6. Check that approval was created in database
+		approval, err := testStore.GetApproval(ctx, approvalID)
+		if err != nil {
+			t.Fatalf("failed to get approval: %v", err)
+		}
+		if approval.Status != store.ApprovalStatusLocalPending {
+			t.Errorf("expected approval status to be pending, got %s", approval.Status)
+		}
+
+		// 7. Check that approval was correlated with tool call
 		conversation, err := testStore.GetConversation(ctx, claudeSessionID)
 		if err != nil {
 			t.Fatalf("failed to get conversation: %v", err)
@@ -189,15 +179,15 @@ func TestSessionStateTransitionsIntegration(t *testing.T) {
 			t.Errorf("expected approval ID to be %s, got %s", approvalID, correlatedEvent.ApprovalID)
 		}
 
-		// 7. Approve the function call via client
-		if err := c.SendDecision(approvalID, "function_call", "approve", "Approved for testing"); err != nil {
+		// 8. Approve the function call via client
+		if err := c.SendDecision(approvalID, "approve", "Approved for testing"); err != nil {
 			t.Fatalf("failed to send approval: %v", err)
 		}
 
 		// Give time for status update
 		time.Sleep(100 * time.Millisecond)
 
-		// 8. Check that session status changed back to running
+		// 9. Check that session status changed back to running
 		finalSession, err := testStore.GetSession(ctx, sessionID)
 		if err != nil {
 			t.Fatalf("failed to get final session: %v", err)
@@ -206,7 +196,16 @@ func TestSessionStateTransitionsIntegration(t *testing.T) {
 			t.Errorf("expected session status to be running after approval, got %s", finalSession.Status)
 		}
 
-		// 9. Check that approval status was updated
+		// 10. Check that approval status was updated
+		finalApproval, err := testStore.GetApproval(ctx, approvalID)
+		if err != nil {
+			t.Fatalf("failed to get final approval: %v", err)
+		}
+		if finalApproval.Status != store.ApprovalStatusLocalApproved {
+			t.Errorf("expected approval status to be approved, got %s", finalApproval.Status)
+		}
+
+		// 11. Check that approval status was updated in conversation
 		finalConversation, err := testStore.GetConversation(ctx, claudeSessionID)
 		if err != nil {
 			t.Fatalf("failed to get final conversation: %v", err)
@@ -238,61 +237,4 @@ func TestSessionStateTransitionsIntegration(t *testing.T) {
 	case <-time.After(2 * time.Second):
 		t.Error("daemon did not shut down in time")
 	}
-}
-
-// Mock API client for session state testing
-type mockSessionStateAPIClient struct {
-	functionCalls map[string]*humanlayer.FunctionCall
-}
-
-func (m *mockSessionStateAPIClient) AddFunctionCall(fc humanlayer.FunctionCall) {
-	m.functionCalls[fc.CallID] = &fc
-}
-
-func (m *mockSessionStateAPIClient) GetPendingFunctionCalls(ctx context.Context) ([]humanlayer.FunctionCall, error) {
-	var result []humanlayer.FunctionCall
-	for _, fc := range m.functionCalls {
-		if fc.Status == nil || fc.Status.RespondedAt == nil {
-			result = append(result, *fc)
-		}
-	}
-	return result, nil
-}
-
-func (m *mockSessionStateAPIClient) GetPendingHumanContacts(ctx context.Context) ([]humanlayer.HumanContact, error) {
-	return []humanlayer.HumanContact{}, nil
-}
-
-func (m *mockSessionStateAPIClient) ApproveFunctionCall(ctx context.Context, callID string, comment string) error {
-	if fc, ok := m.functionCalls[callID]; ok {
-		if fc.Status == nil {
-			fc.Status = &humanlayer.FunctionCallStatus{}
-		}
-		now := humanlayer.CustomTime{Time: time.Now()}
-		fc.Status.RespondedAt = &now
-		approved := true
-		fc.Status.Approved = &approved
-		fc.Status.Comment = comment
-		return nil
-	}
-	return fmt.Errorf("function call not found: %s", callID)
-}
-
-func (m *mockSessionStateAPIClient) DenyFunctionCall(ctx context.Context, callID string, reason string) error {
-	if fc, ok := m.functionCalls[callID]; ok {
-		if fc.Status == nil {
-			fc.Status = &humanlayer.FunctionCallStatus{}
-		}
-		now := humanlayer.CustomTime{Time: time.Now()}
-		fc.Status.RespondedAt = &now
-		approved := false
-		fc.Status.Approved = &approved
-		fc.Status.Comment = reason
-		return nil
-	}
-	return fmt.Errorf("function call not found: %s", callID)
-}
-
-func (m *mockSessionStateAPIClient) RespondToHumanContact(ctx context.Context, callID string, response string) error {
-	return fmt.Errorf("not implemented")
 }

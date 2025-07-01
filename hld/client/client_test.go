@@ -10,10 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/humanlayer/humanlayer/hld/approval"
 	"github.com/humanlayer/humanlayer/hld/internal/testutil"
 	"github.com/humanlayer/humanlayer/hld/rpc"
-	humanlayer "github.com/humanlayer/humanlayer/humanlayer-go"
+	"github.com/humanlayer/humanlayer/hld/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -143,30 +142,25 @@ func TestClient_FetchApprovals(t *testing.T) {
 	server, socketPath := newMockRPCServer(t)
 	defer server.stop()
 
-	// Create test approvals that match what the TUI expects
-	testApprovals := []approval.PendingApproval{
+	// Create test approvals with new local format
+	testApprovals := []*store.Approval{
 		{
-			Type: "function_call",
-			FunctionCall: &humanlayer.FunctionCall{
-				CallID: "fc-123",
-				Spec: humanlayer.FunctionCallSpec{
-					Fn: "test_function",
-					Kwargs: map[string]interface{}{
-						"arg": "value",
-					},
-				},
-				RunID: "run-123",
-			},
+			ID:        "local-123",
+			RunID:     "run-123",
+			SessionID: "session-123",
+			Status:    store.ApprovalStatusLocalPending,
+			CreatedAt: time.Now(),
+			ToolName:  "test_function",
+			ToolInput: json.RawMessage(`{"arg": "value"}`),
 		},
 		{
-			Type: "human_contact",
-			HumanContact: &humanlayer.HumanContact{
-				CallID: "hc-456",
-				Spec: humanlayer.HumanContactSpec{
-					Msg: "Need help with something",
-				},
-				RunID: "run-456",
-			},
+			ID:        "local-456",
+			RunID:     "run-456",
+			SessionID: "session-456",
+			Status:    store.ApprovalStatusLocalPending,
+			CreatedAt: time.Now(),
+			ToolName:  "another_function",
+			ToolInput: json.RawMessage(`{"msg": "test message"}`),
 		},
 	}
 
@@ -187,15 +181,15 @@ func TestClient_FetchApprovals(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, approvals, 2)
 
-	// Verify function call
-	assert.Equal(t, "function_call", approvals[0].Type)
-	assert.NotNil(t, approvals[0].FunctionCall)
-	assert.Equal(t, "fc-123", approvals[0].FunctionCall.CallID)
+	// Verify first approval
+	assert.Equal(t, "local-123", approvals[0].ID)
+	assert.Equal(t, "test_function", approvals[0].ToolName)
+	assert.Equal(t, store.ApprovalStatusLocalPending, approvals[0].Status)
 
-	// Verify human contact
-	assert.Equal(t, "human_contact", approvals[1].Type)
-	assert.NotNil(t, approvals[1].HumanContact)
-	assert.Equal(t, "hc-456", approvals[1].HumanContact.CallID)
+	// Verify second approval
+	assert.Equal(t, "local-456", approvals[1].ID)
+	assert.Equal(t, "another_function", approvals[1].ToolName)
+	assert.Equal(t, store.ApprovalStatusLocalPending, approvals[1].Status)
 }
 
 func TestClient_SendDecision(t *testing.T) {
@@ -227,15 +221,18 @@ func TestClient_SendDecision(t *testing.T) {
 	defer func() { _ = c.Close() }()
 
 	// Test approve
-	err = c.SendDecision("test-123", "function_call", "approve", "looks good")
+	err = c.SendDecision("test-123", "approve", "looks good")
 	assert.NoError(t, err)
 
 	// Test deny
-	err = c.SendDecision("test-456", "function_call", "deny", "too risky")
+	err = c.SendDecision("test-456", "deny", "too risky")
 	assert.NoError(t, err)
 
-	// Test respond
-	err = c.SendDecision("test-789", "human_contact", "respond", "here is my response")
+	// Test the convenience methods
+	err = c.ApproveToolCall("test-789", "approved")
+	assert.NoError(t, err)
+
+	err = c.DenyToolCall("test-890", "not allowed")
 	assert.NoError(t, err)
 }
 

@@ -7,20 +7,62 @@ import (
 
 	"github.com/humanlayer/humanlayer/hld/approval"
 	"github.com/humanlayer/humanlayer/hld/session"
+	"github.com/humanlayer/humanlayer/hld/store"
 )
 
-// ApprovalHandlers provides RPC handlers for approval management
+// ApprovalHandlers provides RPC handlers for local approval management
 type ApprovalHandlers struct {
 	approvals approval.Manager
 	sessions  session.SessionManager
 }
 
-// NewApprovalHandlers creates new approval RPC handlers
+// NewApprovalHandlers creates new local approval RPC handlers
 func NewApprovalHandlers(approvals approval.Manager, sessions session.SessionManager) *ApprovalHandlers {
 	return &ApprovalHandlers{
 		approvals: approvals,
 		sessions:  sessions,
 	}
+}
+
+// CreateApprovalRequest is the request for creating a local approval
+type CreateApprovalRequest struct {
+	RunID     string          `json:"run_id"`
+	ToolName  string          `json:"tool_name"`
+	ToolInput json.RawMessage `json:"tool_input"`
+}
+
+// CreateApprovalResponse is the response for creating a local approval
+type CreateApprovalResponse struct {
+	ApprovalID string `json:"approval_id"`
+}
+
+// HandleCreateApproval handles the CreateApproval RPC method
+func (h *ApprovalHandlers) HandleCreateApproval(ctx context.Context, params json.RawMessage) (interface{}, error) {
+	var req CreateApprovalRequest
+	if err := json.Unmarshal(params, &req); err != nil {
+		return nil, fmt.Errorf("invalid request: %w", err)
+	}
+
+	// Validate required fields
+	if req.RunID == "" {
+		return nil, fmt.Errorf("run_id is required")
+	}
+	if req.ToolName == "" {
+		return nil, fmt.Errorf("tool_name is required")
+	}
+	if req.ToolInput == nil {
+		return nil, fmt.Errorf("tool_input is required")
+	}
+
+	// Create the approval
+	approvalID, err := h.approvals.CreateApproval(ctx, req.RunID, req.ToolName, req.ToolInput)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create approval: %w", err)
+	}
+
+	return &CreateApprovalResponse{
+		ApprovalID: approvalID,
+	}, nil
 }
 
 // FetchApprovalsRequest is the request for fetching approvals
@@ -30,16 +72,11 @@ type FetchApprovalsRequest struct {
 
 // FetchApprovalsResponse is the response for fetching approvals
 type FetchApprovalsResponse struct {
-	Approvals []approval.PendingApproval `json:"approvals"`
+	Approvals []*store.Approval `json:"approvals"`
 }
 
 // HandleFetchApprovals handles the FetchApprovals RPC method
 func (h *ApprovalHandlers) HandleFetchApprovals(ctx context.Context, params json.RawMessage) (interface{}, error) {
-	// Check if approval manager is configured
-	if h.approvals == nil {
-		return nil, fmt.Errorf("approval features not available: no API key configured")
-	}
-
 	var req FetchApprovalsRequest
 	if params != nil {
 		if err := json.Unmarshal(params, &req); err != nil {
@@ -47,27 +84,17 @@ func (h *ApprovalHandlers) HandleFetchApprovals(ctx context.Context, params json
 		}
 	}
 
-	var approvals []approval.PendingApproval
-	var err error
+	// If no session ID provided, return empty list
+	if req.SessionID == "" {
+		return &FetchApprovalsResponse{
+			Approvals: []*store.Approval{},
+		}, nil
+	}
 
-	if req.SessionID != "" {
-		// Get the session to find its run_id
-		sessionInfo, err := h.sessions.GetSessionInfo(req.SessionID)
-		if err != nil {
-			return nil, fmt.Errorf("session not found: %w", err)
-		}
-
-		// Get approvals by run_id
-		approvals, err = h.approvals.GetPendingApprovalsByRunID(sessionInfo.RunID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to fetch approvals: %w", err)
-		}
-	} else {
-		// Get all pending approvals
-		approvals, err = h.approvals.GetPendingApprovals("")
-		if err != nil {
-			return nil, fmt.Errorf("failed to fetch approvals: %w", err)
-		}
+	// Get approvals for the session
+	approvals, err := h.approvals.GetPendingApprovals(ctx, req.SessionID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch approvals: %w", err)
 	}
 
 	return &FetchApprovalsResponse{
@@ -77,9 +104,9 @@ func (h *ApprovalHandlers) HandleFetchApprovals(ctx context.Context, params json
 
 // SendDecisionRequest is the request for sending a decision
 type SendDecisionRequest struct {
-	CallID   string `json:"call_id"`
-	Type     string `json:"type"`     // "function_call" or "human_contact"
-	Decision string `json:"decision"` // "approve", "deny", or "respond"
+	CallID   string `json:"call_id"`  // Actually approval ID, but keeping name for compatibility
+	Type     string `json:"type"`     // Ignored for local approvals
+	Decision string `json:"decision"` // "approve" or "deny"
 	Comment  string `json:"comment,omitempty"`
 }
 
@@ -91,11 +118,6 @@ type SendDecisionResponse struct {
 
 // HandleSendDecision handles the SendDecision RPC method
 func (h *ApprovalHandlers) HandleSendDecision(ctx context.Context, params json.RawMessage) (interface{}, error) {
-	// Check if approval manager is configured
-	if h.approvals == nil {
-		return nil, fmt.Errorf("approval features not available: no API key configured")
-	}
-
 	var req SendDecisionRequest
 	if err := json.Unmarshal(params, &req); err != nil {
 		return nil, fmt.Errorf("invalid request: %w", err)
@@ -105,38 +127,30 @@ func (h *ApprovalHandlers) HandleSendDecision(ctx context.Context, params json.R
 	if req.CallID == "" {
 		return nil, fmt.Errorf("call_id is required")
 	}
-	if req.Type == "" {
-		return nil, fmt.Errorf("type is required")
-	}
 	if req.Decision == "" {
 		return nil, fmt.Errorf("decision is required")
 	}
 
+	// Check if this is a human contact type (no longer supported)
+	if req.Type == "human_contact" {
+		return &SendDecisionResponse{
+			Success: false,
+			Error:   "human contact approvals are no longer supported",
+		}, nil
+	}
+
 	var err error
 
-	switch req.Type {
-	case "function_call":
-		switch req.Decision {
-		case "approve":
-			err = h.approvals.ApproveFunctionCall(ctx, req.CallID, req.Comment)
-		case "deny":
-			if req.Comment == "" {
-				return nil, fmt.Errorf("comment is required for denial")
-			}
-			err = h.approvals.DenyFunctionCall(ctx, req.CallID, req.Comment)
-		default:
-			return nil, fmt.Errorf("invalid decision for function_call: %s", req.Decision)
-		}
-	case "human_contact":
-		if req.Decision != "respond" {
-			return nil, fmt.Errorf("invalid decision for human_contact: %s", req.Decision)
-		}
+	switch req.Decision {
+	case "approve":
+		err = h.approvals.ApproveToolCall(ctx, req.CallID, req.Comment)
+	case "deny":
 		if req.Comment == "" {
-			return nil, fmt.Errorf("comment is required for human contact response")
+			return nil, fmt.Errorf("comment is required for denial")
 		}
-		err = h.approvals.RespondToHumanContact(ctx, req.CallID, req.Comment)
+		err = h.approvals.DenyToolCall(ctx, req.CallID, req.Comment)
 	default:
-		return nil, fmt.Errorf("invalid type: %s", req.Type)
+		return nil, fmt.Errorf("invalid decision: %s (must be 'approve' or 'deny')", req.Decision)
 	}
 
 	if err != nil {
@@ -151,8 +165,43 @@ func (h *ApprovalHandlers) HandleSendDecision(ctx context.Context, params json.R
 	}, nil
 }
 
-// Register registers all approval handlers with the RPC server
+// GetApprovalRequest is the request for getting a specific approval
+type GetApprovalRequest struct {
+	ApprovalID string `json:"approval_id"`
+}
+
+// GetApprovalResponse is the response for getting a specific approval
+type GetApprovalResponse struct {
+	Approval *store.Approval `json:"approval"`
+}
+
+// HandleGetApproval handles the GetApproval RPC method
+func (h *ApprovalHandlers) HandleGetApproval(ctx context.Context, params json.RawMessage) (interface{}, error) {
+	var req GetApprovalRequest
+	if err := json.Unmarshal(params, &req); err != nil {
+		return nil, fmt.Errorf("invalid request: %w", err)
+	}
+
+	// Validate required fields
+	if req.ApprovalID == "" {
+		return nil, fmt.Errorf("approval_id is required")
+	}
+
+	// Get the approval
+	approval, err := h.approvals.GetApproval(ctx, req.ApprovalID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get approval: %w", err)
+	}
+
+	return &GetApprovalResponse{
+		Approval: approval,
+	}, nil
+}
+
+// Register registers all local approval handlers with the RPC server
 func (h *ApprovalHandlers) Register(server *Server) {
+	server.Register("createApproval", h.HandleCreateApproval)
 	server.Register("fetchApprovals", h.HandleFetchApprovals)
+	server.Register("getApproval", h.HandleGetApproval)
 	server.Register("sendDecision", h.HandleSendDecision)
 }

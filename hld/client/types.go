@@ -3,8 +3,8 @@ package client
 import (
 	"time"
 
-	"github.com/humanlayer/humanlayer/hld/approval"
 	"github.com/humanlayer/humanlayer/hld/rpc"
+	"github.com/humanlayer/humanlayer/hld/store"
 )
 
 // Client defines the interface for communicating with the HumanLayer daemon
@@ -25,17 +25,14 @@ type Client interface {
 	ContinueSession(req rpc.ContinueSessionRequest) (*rpc.ContinueSessionResponse, error)
 
 	// FetchApprovals fetches pending approvals from the daemon
-	FetchApprovals(sessionID string) ([]approval.PendingApproval, error)
+	FetchApprovals(sessionID string) ([]*store.Approval, error)
 
-	// SendDecision sends a decision (approve/deny/respond) for an approval
-	SendDecision(callID, approvalType, decision, comment string) error
+	// SendDecision sends a decision (approve/deny) for an approval
+	SendDecision(approvalID, decision, comment string) error
 
-	// Type-safe approval methods for function calls
-	ApproveFunctionCall(callID, comment string) error
-	DenyFunctionCall(callID, reason string) error
-
-	// Type-safe approval methods for human contacts
-	RespondToHumanContact(callID, response string) error
+	// Type-safe approval methods
+	ApproveToolCall(approvalID, comment string) error
+	DenyToolCall(approvalID, reason string) error
 
 	// GetConversation fetches the conversation history for a session
 	GetConversation(sessionID string) (*rpc.GetConversationResponse, error)

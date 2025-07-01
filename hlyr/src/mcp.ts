@@ -8,6 +8,8 @@ import {
 } from '@modelcontextprotocol/sdk/types.js'
 import { humanlayer } from '@humanlayer/sdk'
 import { resolveFullConfig } from './config.js'
+import { DaemonClient } from './daemonClient.js'
+import { logger } from './mcpLogger.js'
 
 function validateAuth(): void {
   const config = resolveFullConfig({})
@@ -95,13 +97,16 @@ export async function startDefaultMCPServer() {
 /**
  * Start the Claude approvals MCP server that provides request_permission functionality
  * Returns responses in the format required by Claude Code SDK
+ *
+ * This now uses local approvals through the daemon instead of HumanLayer API
  */
 export async function startClaudeApprovalsMCPServer() {
-  validateAuth()
+  // No auth validation needed - uses local daemon
+  logger.info('Starting Claude approvals MCP server')
 
   const server = new Server(
     {
-      name: 'humanlayer-claude-approvals',
+      name: 'humanlayer-claude-local-approvals',
       version: '1.0.0',
     },
     {
@@ -111,16 +116,8 @@ export async function startClaudeApprovalsMCPServer() {
     },
   )
 
-  const resolvedConfig = resolveFullConfig({})
-
-  const hl = humanlayer({
-    apiKey: resolvedConfig.api_key,
-    ...(resolvedConfig.api_base_url && { apiBaseUrl: resolvedConfig.api_base_url }),
-    ...(resolvedConfig.run_id && { runId: resolvedConfig.run_id }),
-    ...(Object.keys(resolvedConfig.contact_channel).length > 0 && {
-      contactChannel: resolvedConfig.contact_channel,
-    }),
-  })
+  // Create daemon client
+  const daemonClient = new DaemonClient()
 
   server.setRequestHandler(ListToolsRequestSchema, async () => {
     return {
@@ -142,56 +139,114 @@ export async function startClaudeApprovalsMCPServer() {
   })
 
   server.setRequestHandler(CallToolRequestSchema, async request => {
-    /**
-     * example input
-     * {
-     *  "tool_name": "Write",
-     *  "input": {
-     *    "file_name": "hello.txt"
-     *    "content": "Hello, how are you?"
-     *  }
-     * }
-     */
+    logger.debug('Received tool call request', { name: request.params.name })
+
     if (request.params.name === 'request_permission') {
       const toolName: string | undefined = request.params.arguments?.tool_name
 
       if (!toolName) {
+        logger.error('Invalid tool name in request_permission', request.params.arguments)
         throw new McpError(ErrorCode.InvalidRequest, 'Invalid tool name requesting permissions')
       }
 
       const input: Record<string, unknown> = request.params.arguments?.input || {}
 
-      const approvalResult = await hl.fetchHumanApproval({
-        spec: {
-          fn: toolName,
-          kwargs: input,
-        },
-      })
+      // Get run ID from environment (set by Claude Code)
+      const runId = process.env.HUMANLAYER_RUN_ID
+      if (!runId) {
+        logger.error('HUMANLAYER_RUN_ID not set in environment')
+        throw new McpError(ErrorCode.InternalError, 'HUMANLAYER_RUN_ID not set')
+      }
 
-      if (!approvalResult.approved) {
+      logger.info('Processing approval request', { runId, toolName })
+
+      try {
+        // Connect to daemon
+        logger.debug('Connecting to daemon...')
+        await daemonClient.connect()
+        logger.debug('Connected to daemon')
+
+        // Create approval request
+        logger.debug('Creating approval request...', { runId, toolName })
+        const createResponse = await daemonClient.createApproval(runId, toolName, input)
+        const approvalId = createResponse.approval_id
+        logger.info('Created approval', { approvalId })
+
+        // Poll for approval status
+        let approved = false
+        let comment = ''
+        let polling = true
+
+        while (polling) {
+          try {
+            // Get the specific approval by ID
+            logger.debug('Fetching approval status...', { approvalId })
+            const approval = (await daemonClient.getApproval(approvalId)) as {
+              id: string
+              status: string
+              comment?: string
+            }
+
+            logger.debug('Approval status', { status: approval.status })
+
+            if (approval.status !== 'pending') {
+              // Approval has been resolved
+              approved = approval.status === 'approved'
+              comment = approval.comment || ''
+              polling = false
+              logger.info('Approval resolved', {
+                approvalId,
+                status: approval.status,
+                approved,
+              })
+            } else {
+              // Still pending, wait and poll again
+              logger.debug('Approval still pending, polling again...')
+              await new Promise(resolve => setTimeout(resolve, 1000))
+            }
+          } catch (error) {
+            logger.error('Failed to get approval status', { error, approvalId })
+            // Re-throw the error since this is a critical failure
+            throw new McpError(ErrorCode.InternalError, 'Failed to get approval status')
+          }
+        }
+
+        if (!approved) {
+          logger.info('Approval denied', { approvalId, comment })
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({
+                  behavior: 'deny',
+                  message: comment || 'Request denied by human reviewer',
+                }),
+              },
+            ],
+          }
+        }
+
+        logger.info('Approval granted', { approvalId })
         return {
           content: [
             {
               type: 'text',
               text: JSON.stringify({
-                behavior: 'deny',
-                message: approvalResult.comment || 'Request denied by human reviewer',
+                behavior: 'allow',
+                updatedInput: input,
               }),
             },
           ],
         }
-      }
-
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify({
-              behavior: 'allow',
-              updatedInput: input,
-            }),
-          },
-        ],
+      } catch (error) {
+        logger.error('Failed to process approval', error)
+        throw new McpError(
+          ErrorCode.InternalError,
+          `Failed to process approval: ${error instanceof Error ? error.message : String(error)}`,
+        )
+      } finally {
+        logger.debug('Closing daemon connection')
+        daemonClient.close()
       }
     }
 
@@ -199,5 +254,12 @@ export async function startClaudeApprovalsMCPServer() {
   })
 
   const transport = new StdioServerTransport()
-  await server.connect(transport)
+
+  try {
+    await server.connect(transport)
+    logger.info('MCP server connected and ready')
+  } catch (error) {
+    logger.error('Failed to start MCP server', error)
+    throw error
+  }
 }
