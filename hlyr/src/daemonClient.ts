@@ -40,18 +40,48 @@ interface Event {
   type: 'new_approval' | 'approval_resolved' | 'session_status_changed'
   timestamp: string
   data: {
-    type?: 'function_call' | 'human_contact'
-    count?: number
+    // Common fields
     session_id?: string
     run_id?: string
+
+    // new_approval event fields
+    approval_id?: string
+    tool_name?: string
+
+    // approval_resolved event fields
+    approved?: boolean
+    response_text?: string
+
+    // session_status_changed event fields
+    old_status?: string
+    new_status?: string
+    parent_session_id?: string
+
+    // Legacy fields (may not be used)
+    type?: 'function_call' | 'human_contact'
+    count?: number
     function_name?: string
     message?: string
+
+    // Allow other fields
     [key: string]: string | number | boolean | undefined
   }
 }
 
 interface EventNotification {
   event: Event
+}
+
+export interface Approval {
+  id: string
+  run_id: string
+  session_id: string
+  status: 'pending' | 'approved' | 'denied'
+  created_at: string
+  responded_at?: string
+  tool_name: string
+  tool_input: unknown
+  comment?: string
 }
 
 interface LaunchSessionRequest {
@@ -328,9 +358,14 @@ export class DaemonClient extends EventEmitter {
     })
   }
 
-  async fetchApprovals(sessionId: string): Promise<unknown[]> {
-    const resp = await this.call<{ approvals: unknown[] }>('fetchApprovals', { session_id: sessionId })
+  async fetchApprovals(sessionId: string): Promise<Approval[]> {
+    const resp = await this.call<{ approvals: Approval[] }>('fetchApprovals', { session_id: sessionId })
     return resp.approvals
+  }
+
+  async getApproval(approvalId: string): Promise<Approval> {
+    const resp = await this.call<{ approval: Approval }>('getApproval', { approval_id: approvalId })
+    return resp.approval
   }
 
   async sendDecision(approvalId: string, decision: string, comment: string): Promise<void> {
