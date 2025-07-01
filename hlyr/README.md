@@ -245,6 +245,10 @@ npm test
 npm run dev
 ```
 
+### Testing Local Approvals
+
+For testing the local MCP approvals system without HumanLayer API access, see [test_local_approvals.md](./test_local_approvals.md).
+
 ## License
 
 Apache-2.0
