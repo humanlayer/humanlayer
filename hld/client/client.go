@@ -8,8 +8,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/humanlayer/humanlayer/hld/approval"
 	"github.com/humanlayer/humanlayer/hld/rpc"
+	"github.com/humanlayer/humanlayer/hld/store"
 )
 
 // client provides a JSON-RPC 2.0 client for communicating with the HumanLayer daemon
@@ -266,7 +266,7 @@ func (c *client) ContinueSession(req rpc.ContinueSessionRequest) (*rpc.ContinueS
 }
 
 // FetchApprovals fetches pending approvals from the daemon
-func (c *client) FetchApprovals(sessionID string) ([]approval.PendingApproval, error) {
+func (c *client) FetchApprovals(sessionID string) ([]*store.Approval, error) {
 	req := rpc.FetchApprovalsRequest{
 		SessionID: sessionID,
 	}
@@ -277,11 +277,11 @@ func (c *client) FetchApprovals(sessionID string) ([]approval.PendingApproval, e
 	return resp.Approvals, nil
 }
 
-// SendDecision sends a decision (approve/deny/respond) for an approval
-func (c *client) SendDecision(callID, approvalType, decision, comment string) error {
+// SendDecision sends a decision (approve/deny) for an approval
+func (c *client) SendDecision(approvalID, decision, comment string) error {
 	req := rpc.SendDecisionRequest{
-		CallID:   callID,
-		Type:     approvalType,
+		CallID:   approvalID,      // Using CallID for backward compatibility
+		Type:     "function_call", // Always function_call for local approvals
 		Decision: decision,
 		Comment:  comment,
 	}
@@ -295,25 +295,17 @@ func (c *client) SendDecision(callID, approvalType, decision, comment string) er
 	return nil
 }
 
-// ApproveFunctionCall approves a function call with an optional comment
-func (c *client) ApproveFunctionCall(callID, comment string) error {
-	return c.SendDecision(callID, string(rpc.ApprovalTypeFunctionCall), string(rpc.DecisionApprove), comment)
+// ApproveToolCall approves a tool call with an optional comment
+func (c *client) ApproveToolCall(approvalID, comment string) error {
+	return c.SendDecision(approvalID, "approve", comment)
 }
 
-// DenyFunctionCall denies a function call with a required reason
-func (c *client) DenyFunctionCall(callID, reason string) error {
+// DenyToolCall denies a tool call with a required reason
+func (c *client) DenyToolCall(approvalID, reason string) error {
 	if reason == "" {
-		return fmt.Errorf("reason is required when denying a function call")
+		return fmt.Errorf("reason is required when denying a tool call")
 	}
-	return c.SendDecision(callID, string(rpc.ApprovalTypeFunctionCall), string(rpc.DecisionDeny), reason)
-}
-
-// RespondToHumanContact responds to a human contact request
-func (c *client) RespondToHumanContact(callID, response string) error {
-	if response == "" {
-		return fmt.Errorf("response is required for human contact")
-	}
-	return c.SendDecision(callID, string(rpc.ApprovalTypeHumanContact), string(rpc.DecisionRespond), response)
+	return c.SendDecision(approvalID, "deny", reason)
 }
 
 // GetConversation fetches the conversation history for a session

@@ -86,28 +86,10 @@ func New() (*Daemon, error) {
 		return nil, fmt.Errorf("failed to create session manager: %w", err)
 	}
 
-	// Create approval manager if API key is configured
-	var approvalManager approval.Manager
-	if cfg.APIKey != "" {
-		slog.Info("creating approval manager", "api_base_url", cfg.APIBaseURL)
-		approvalCfg := approval.Config{
-			APIKey:  cfg.APIKey,
-			BaseURL: cfg.APIBaseURL,
-			// Use defaults for now, could add to daemon config later
-		}
-		approvalManager, err = approval.NewManager(approvalCfg, eventBus, conversationStore)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create approval manager: %w", err)
-		}
-		slog.Debug("approval manager created successfully")
-	} else {
-		slog.Warn("no API key configured, approval features disabled")
-	}
-
-	// Set approval reconciler on session manager if approval manager exists
-	if approvalManager != nil {
-		sessionManager.SetApprovalReconciler(approvalManager)
-	}
+	// Always create local approval manager
+	slog.Info("creating local approval manager")
+	approvalManager := approval.NewManager(conversationStore, eventBus)
+	slog.Debug("local approval manager created successfully")
 
 	return &Daemon{
 		config:     cfg,
@@ -172,22 +154,9 @@ func (d *Daemon) Run(ctx context.Context) error {
 	sessionHandlers := rpc.NewSessionHandlers(d.sessions, d.store)
 	sessionHandlers.Register(d.rpcServer)
 
-	// Always register approval handlers (even without API key)
+	// Register local approval handlers
 	approvalHandlers := rpc.NewApprovalHandlers(d.approvals, d.sessions)
 	approvalHandlers.Register(d.rpcServer)
-
-	// Start approval polling if approval manager is available
-	if d.approvals != nil {
-		if err := d.approvals.Start(ctx); err != nil {
-			_ = listener.Close()
-			return fmt.Errorf("failed to start approval poller: %w", err)
-		}
-		defer d.approvals.Stop()
-
-		slog.Info("approval polling started")
-	} else {
-		slog.Warn("approval manager not configured (no API key)")
-	}
 
 	slog.Info("daemon started", "socket", d.socketPath)
 

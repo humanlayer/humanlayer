@@ -1,9 +1,9 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
-	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	claudecode "github.com/humanlayer/humanlayer/claudecode-go"
@@ -131,14 +131,18 @@ func fetchRequests(daemonClient client.Client) tea.Cmd {
 
 		// Convert approvals to our Request type
 		for _, approval := range approvals {
-			if approval.Type == "function_call" && approval.FunctionCall != nil {
-				fc := approval.FunctionCall
-				// Build a message from the function name and kwargs
-				message := fmt.Sprintf("Call %s", fc.Spec.Fn)
-				if len(fc.Spec.Kwargs) > 0 {
+			// For local approvals, we always have tool calls
+			// Build a message from the tool name and input
+			message := fmt.Sprintf("Call %s", approval.ToolName)
+
+			// Parse tool input to extract parameters
+			var toolParams map[string]interface{}
+			if len(approval.ToolInput) > 0 {
+				// Try to parse as JSON to get parameters
+				if err := json.Unmarshal(approval.ToolInput, &toolParams); err == nil && len(toolParams) > 0 {
 					// Add first few parameters to message
 					params := []string{}
-					for k, v := range fc.Spec.Kwargs {
+					for k, v := range toolParams {
 						params = append(params, fmt.Sprintf("%s=%v", k, v))
 						if len(params) >= 2 {
 							break
@@ -146,62 +150,30 @@ func fetchRequests(daemonClient client.Client) tea.Cmd {
 					}
 					message += fmt.Sprintf(" with %s", strings.Join(params, ", "))
 				}
-
-				createdAt := time.Now() // Default to now if not available
-				if fc.Status != nil && fc.Status.RequestedAt != nil {
-					createdAt = fc.Status.RequestedAt.Time
-				}
-
-				req := Request{
-					ID:         fc.CallID,
-					CallID:     fc.CallID,
-					RunID:      fc.RunID,
-					Type:       ApprovalRequest,
-					Message:    message,
-					Tool:       fc.Spec.Fn,
-					Parameters: fc.Spec.Kwargs,
-					CreatedAt:  createdAt,
-				}
-
-				// Enrich with session info if available
-				if sess, ok := sessionsByRunID[fc.RunID]; ok {
-					req.SessionID = sess.ID
-					req.SessionQuery = truncate(sess.Query, 50)
-					req.SessionModel = sess.Model
-					if req.SessionModel == "" {
-						req.SessionModel = "default"
-					}
-				}
-
-				allRequests = append(allRequests, req)
-			} else if approval.Type == "human_contact" && approval.HumanContact != nil {
-				hc := approval.HumanContact
-				createdAt := time.Now() // Default to now if not available
-				if hc.Status != nil && hc.Status.RequestedAt != nil {
-					createdAt = hc.Status.RequestedAt.Time
-				}
-
-				req := Request{
-					ID:        hc.CallID,
-					CallID:    hc.CallID,
-					RunID:     hc.RunID,
-					Type:      HumanContactRequest,
-					Message:   hc.Spec.Msg,
-					CreatedAt: createdAt,
-				}
-
-				// Enrich with session info if available
-				if sess, ok := sessionsByRunID[hc.RunID]; ok {
-					req.SessionID = sess.ID
-					req.SessionQuery = truncate(sess.Query, 50)
-					req.SessionModel = sess.Model
-					if req.SessionModel == "" {
-						req.SessionModel = "default"
-					}
-				}
-
-				allRequests = append(allRequests, req)
 			}
+
+			req := Request{
+				ID:         approval.ID,
+				CallID:     approval.ID, // Use approval ID as call ID
+				RunID:      approval.RunID,
+				Type:       ApprovalRequest,
+				Message:    message,
+				Tool:       approval.ToolName,
+				Parameters: toolParams,
+				CreatedAt:  approval.CreatedAt,
+			}
+
+			// Enrich with session info if available
+			if sess, ok := sessionsByRunID[approval.RunID]; ok {
+				req.SessionID = sess.ID
+				req.SessionQuery = truncate(sess.Query, 50)
+				req.SessionModel = sess.Model
+				if req.SessionModel == "" {
+					req.SessionModel = "default"
+				}
+			}
+
+			allRequests = append(allRequests, req)
 		}
 
 		return fetchRequestsMsg{requests: allRequests}
@@ -247,14 +219,17 @@ func fetchSessionApprovals(daemonClient client.Client, sessionID string) tea.Cmd
 		// Convert to Request type
 		var requests []Request
 		for _, approval := range approvals {
-			if approval.Type == "function_call" && approval.FunctionCall != nil {
-				fc := approval.FunctionCall
-				message := fmt.Sprintf("Call %s", fc.Spec.Fn)
+			// For local approvals, we always have tool calls
+			message := fmt.Sprintf("Call %s", approval.ToolName)
 
-				// Add parameters to message
-				if len(fc.Spec.Kwargs) > 0 {
+			// Parse tool input to extract parameters
+			var toolParams map[string]interface{}
+			if len(approval.ToolInput) > 0 {
+				// Try to parse as JSON to get parameters
+				if err := json.Unmarshal(approval.ToolInput, &toolParams); err == nil && len(toolParams) > 0 {
+					// Add first few parameters to message
 					params := []string{}
-					for k, v := range fc.Spec.Kwargs {
+					for k, v := range toolParams {
 						params = append(params, fmt.Sprintf("%s=%v", k, v))
 						if len(params) >= 2 {
 							break
@@ -262,62 +237,30 @@ func fetchSessionApprovals(daemonClient client.Client, sessionID string) tea.Cmd
 					}
 					message += fmt.Sprintf(" with %s", strings.Join(params, ", "))
 				}
-
-				createdAt := time.Now()
-				if fc.Status != nil && fc.Status.RequestedAt != nil {
-					createdAt = fc.Status.RequestedAt.Time
-				}
-
-				req := Request{
-					ID:         fc.CallID,
-					CallID:     fc.CallID,
-					RunID:      fc.RunID,
-					Type:       ApprovalRequest,
-					Message:    message,
-					Tool:       fc.Spec.Fn,
-					Parameters: fc.Spec.Kwargs,
-					CreatedAt:  createdAt,
-				}
-
-				// Add session info if available
-				if sessionInfo != nil {
-					req.SessionID = sessionInfo.ID
-					req.SessionQuery = truncate(sessionInfo.Query, 50)
-					req.SessionModel = sessionInfo.Model
-					if req.SessionModel == "" {
-						req.SessionModel = "default"
-					}
-				}
-
-				requests = append(requests, req)
-			} else if approval.Type == "human_contact" && approval.HumanContact != nil {
-				hc := approval.HumanContact
-				createdAt := time.Now()
-				if hc.Status != nil && hc.Status.RequestedAt != nil {
-					createdAt = hc.Status.RequestedAt.Time
-				}
-
-				req := Request{
-					ID:        hc.CallID,
-					CallID:    hc.CallID,
-					RunID:     hc.RunID,
-					Type:      HumanContactRequest,
-					Message:   hc.Spec.Msg,
-					CreatedAt: createdAt,
-				}
-
-				// Add session info if available
-				if sessionInfo != nil {
-					req.SessionID = sessionInfo.ID
-					req.SessionQuery = truncate(sessionInfo.Query, 50)
-					req.SessionModel = sessionInfo.Model
-					if req.SessionModel == "" {
-						req.SessionModel = "default"
-					}
-				}
-
-				requests = append(requests, req)
 			}
+
+			req := Request{
+				ID:         approval.ID,
+				CallID:     approval.ID, // Use approval ID as call ID
+				RunID:      approval.RunID,
+				Type:       ApprovalRequest,
+				Message:    message,
+				Tool:       approval.ToolName,
+				Parameters: toolParams,
+				CreatedAt:  approval.CreatedAt,
+			}
+
+			// Add session info if available
+			if sessionInfo != nil {
+				req.SessionID = sessionInfo.ID
+				req.SessionQuery = truncate(sessionInfo.Query, 50)
+				req.SessionModel = sessionInfo.Model
+				if req.SessionModel == "" {
+					req.SessionModel = "default"
+				}
+			}
+
+			requests = append(requests, req)
 		}
 
 		return fetchSessionApprovalsMsg{approvals: requests}
@@ -386,9 +329,9 @@ func sendApproval(daemonClient client.Client, callID string, approved bool, comm
 	return func() tea.Msg {
 		var err error
 		if approved {
-			err = daemonClient.ApproveFunctionCall(callID, comment)
+			err = daemonClient.ApproveToolCall(callID, comment)
 		} else {
-			err = daemonClient.DenyFunctionCall(callID, comment)
+			err = daemonClient.DenyToolCall(callID, comment)
 		}
 
 		if err != nil {
@@ -401,7 +344,8 @@ func sendApproval(daemonClient client.Client, callID string, approved bool, comm
 
 func sendHumanResponse(daemonClient client.Client, requestID string, response string) tea.Cmd {
 	return func() tea.Msg {
-		err := daemonClient.RespondToHumanContact(requestID, response)
+		// Human contact is no longer supported in local approvals
+		err := fmt.Errorf("human contact approvals are no longer supported")
 		if err != nil {
 			return humanResponseSentMsg{err: err}
 		}

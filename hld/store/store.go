@@ -24,6 +24,7 @@ type ConversationStore interface {
 
 	// Tool call operations
 	GetPendingToolCall(ctx context.Context, sessionID string, toolName string) (*ConversationEvent, error)
+	GetUncorrelatedPendingToolCall(ctx context.Context, sessionID string, toolName string) (*ConversationEvent, error)
 	GetPendingToolCalls(ctx context.Context, sessionID string) ([]*ConversationEvent, error)
 	MarkToolCallCompleted(ctx context.Context, toolID string, sessionID string) error
 	CorrelateApproval(ctx context.Context, sessionID string, toolName string, approvalID string) error
@@ -36,6 +37,12 @@ type ConversationStore interface {
 
 	// Raw event storage (for debugging)
 	StoreRawEvent(ctx context.Context, sessionID string, eventJSON string) error
+
+	// Approval operations for local approvals
+	CreateApproval(ctx context.Context, approval *Approval) error
+	GetApproval(ctx context.Context, id string) (*Approval, error)
+	GetPendingApprovals(ctx context.Context, sessionID string) ([]*Approval, error)
+	UpdateApprovalResponse(ctx context.Context, id string, status ApprovalStatus, comment string) error
 
 	// Database lifecycle
 	Close() error
@@ -121,6 +128,44 @@ type MCPServer struct {
 	Command   string
 	ArgsJSON  string // JSON array
 	EnvJSON   string // JSON object
+}
+
+// ApprovalStatus represents the status of an approval
+type ApprovalStatus string
+
+// Valid approval statuses
+const (
+	ApprovalStatusLocalPending  ApprovalStatus = "pending"
+	ApprovalStatusLocalApproved ApprovalStatus = "approved"
+	ApprovalStatusLocalDenied   ApprovalStatus = "denied"
+)
+
+// String returns the string representation of the status
+func (s ApprovalStatus) String() string {
+	return string(s)
+}
+
+// IsValid checks if the status is valid
+func (s ApprovalStatus) IsValid() bool {
+	switch s {
+	case ApprovalStatusLocalPending, ApprovalStatusLocalApproved, ApprovalStatusLocalDenied:
+		return true
+	default:
+		return false
+	}
+}
+
+// Approval represents a local approval request
+type Approval struct {
+	ID          string          `json:"id"`
+	RunID       string          `json:"run_id"`
+	SessionID   string          `json:"session_id"`
+	Status      ApprovalStatus  `json:"status"`
+	CreatedAt   time.Time       `json:"created_at"`
+	RespondedAt *time.Time      `json:"responded_at,omitempty"`
+	ToolName    string          `json:"tool_name"`
+	ToolInput   json.RawMessage `json:"tool_input"`
+	Comment     string          `json:"comment,omitempty"`
 }
 
 // EventType constants

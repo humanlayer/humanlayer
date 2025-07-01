@@ -316,15 +316,27 @@ export class DaemonClient extends EventEmitter {
     return this.call<{ sessions: unknown[] }>('listSessions')
   }
 
+  async createApproval(
+    runId: string,
+    toolName: string,
+    toolInput: unknown,
+  ): Promise<{ approval_id: string }> {
+    return this.call<{ approval_id: string }>('createApproval', {
+      run_id: runId,
+      tool_name: toolName,
+      tool_input: toolInput,
+    })
+  }
+
   async fetchApprovals(sessionId: string): Promise<unknown[]> {
     const resp = await this.call<{ approvals: unknown[] }>('fetchApprovals', { session_id: sessionId })
     return resp.approvals
   }
 
-  async sendDecision(callId: string, type: string, decision: string, comment: string): Promise<void> {
+  async sendDecision(approvalId: string, decision: string, comment: string): Promise<void> {
     const resp = await this.call<{ success: boolean; error?: string }>('sendDecision', {
-      call_id: callId,
-      type,
+      call_id: approvalId, // Using call_id for backward compatibility
+      type: 'function_call', // Always function_call for local approvals
       decision,
       comment,
     })

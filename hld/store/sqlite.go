@@ -173,6 +173,28 @@ func (s *SQLiteStore) initSchema() error {
 		applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		description TEXT
 	);
+
+	-- Approvals table for local approvals
+	CREATE TABLE IF NOT EXISTS approvals (
+		id TEXT PRIMARY KEY,
+		run_id TEXT NOT NULL,
+		session_id TEXT NOT NULL,
+		status TEXT NOT NULL CHECK (status IN ('pending', 'approved', 'denied')),
+		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		responded_at DATETIME,
+
+		-- Tool approval fields
+		tool_name TEXT NOT NULL,
+		tool_input TEXT NOT NULL, -- JSON
+
+		-- Response fields
+		comment TEXT, -- For denial reasons or approval notes
+
+		FOREIGN KEY (session_id) REFERENCES sessions(id)
+	);
+	CREATE INDEX IF NOT EXISTS idx_approvals_pending ON approvals(status) WHERE status = 'pending';
+	CREATE INDEX IF NOT EXISTS idx_approvals_session ON approvals(session_id);
+	CREATE INDEX IF NOT EXISTS idx_approvals_run_id ON approvals(run_id);
 	`
 
 	if _, err := s.db.Exec(schema); err != nil {
@@ -1101,6 +1123,154 @@ func (s *SQLiteStore) StoreRawEvent(ctx context.Context, sessionID string, event
 	if err != nil {
 		return fmt.Errorf("failed to store raw event: %w", err)
 	}
+	return nil
+}
+
+// CreateApproval creates a new approval
+func (s *SQLiteStore) CreateApproval(ctx context.Context, approval *Approval) error {
+	// Validate status
+	if !approval.Status.IsValid() {
+		return fmt.Errorf("invalid approval status: %s", approval.Status)
+	}
+
+	query := `
+		INSERT INTO approvals (
+			id, run_id, session_id, status, created_at,
+			tool_name, tool_input
+		) VALUES (?, ?, ?, ?, ?, ?, ?)
+	`
+
+	_, err := s.db.ExecContext(ctx, query,
+		approval.ID, approval.RunID, approval.SessionID, approval.Status.String(), approval.CreatedAt,
+		approval.ToolName, string(approval.ToolInput),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create approval: %w", err)
+	}
+	return nil
+}
+
+// GetApproval retrieves an approval by ID
+func (s *SQLiteStore) GetApproval(ctx context.Context, id string) (*Approval, error) {
+	query := `
+		SELECT id, run_id, session_id, status, created_at, responded_at,
+			tool_name, tool_input, comment
+		FROM approvals WHERE id = ?
+	`
+
+	var approval Approval
+	var respondedAt sql.NullTime
+	var comment sql.NullString
+	var statusStr string
+	var toolInputStr string
+
+	err := s.db.QueryRowContext(ctx, query, id).Scan(
+		&approval.ID, &approval.RunID, &approval.SessionID, &statusStr,
+		&approval.CreatedAt, &respondedAt,
+		&approval.ToolName, &toolInputStr, &comment,
+	)
+	if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("approval not found: %s", id)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get approval: %w", err)
+	}
+
+	// Convert status string to ApprovalStatus
+	approval.Status = ApprovalStatus(statusStr)
+	if !approval.Status.IsValid() {
+		return nil, fmt.Errorf("invalid approval status in database: %s", statusStr)
+	}
+
+	// Handle nullable fields
+	if respondedAt.Valid {
+		approval.RespondedAt = &respondedAt.Time
+	}
+	approval.Comment = comment.String
+	approval.ToolInput = json.RawMessage(toolInputStr)
+
+	return &approval, nil
+}
+
+// GetPendingApprovals retrieves all pending approvals for a session
+func (s *SQLiteStore) GetPendingApprovals(ctx context.Context, sessionID string) ([]*Approval, error) {
+	query := `
+		SELECT id, run_id, session_id, status, created_at, responded_at,
+			tool_name, tool_input, comment
+		FROM approvals
+		WHERE session_id = ? AND status = ?
+		ORDER BY created_at ASC
+	`
+
+	rows, err := s.db.QueryContext(ctx, query, sessionID, ApprovalStatusLocalPending.String())
+	if err != nil {
+		return nil, fmt.Errorf("failed to get pending approvals: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var approvals []*Approval
+	for rows.Next() {
+		var approval Approval
+		var respondedAt sql.NullTime
+		var comment sql.NullString
+		var statusStr string
+		var toolInputStr string
+
+		err := rows.Scan(
+			&approval.ID, &approval.RunID, &approval.SessionID, &statusStr,
+			&approval.CreatedAt, &respondedAt,
+			&approval.ToolName, &toolInputStr, &comment,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan approval: %w", err)
+		}
+
+		// Convert status string to ApprovalStatus
+		approval.Status = ApprovalStatus(statusStr)
+		if !approval.Status.IsValid() {
+			return nil, fmt.Errorf("invalid approval status in database: %s", statusStr)
+		}
+
+		// Handle nullable fields
+		if respondedAt.Valid {
+			approval.RespondedAt = &respondedAt.Time
+		}
+		approval.Comment = comment.String
+		approval.ToolInput = json.RawMessage(toolInputStr)
+
+		approvals = append(approvals, &approval)
+	}
+
+	return approvals, nil
+}
+
+// UpdateApprovalResponse updates the status and comment of an approval
+func (s *SQLiteStore) UpdateApprovalResponse(ctx context.Context, id string, status ApprovalStatus, comment string) error {
+	// Validate status
+	if !status.IsValid() {
+		return fmt.Errorf("invalid approval status: %s", status)
+	}
+
+	query := `
+		UPDATE approvals
+		SET status = ?, comment = ?, responded_at = CURRENT_TIMESTAMP
+		WHERE id = ?
+	`
+
+	result, err := s.db.ExecContext(ctx, query, status.String(), comment, id)
+	if err != nil {
+		return fmt.Errorf("failed to update approval response: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("approval not found: %s", id)
+	}
+
 	return nil
 }
 

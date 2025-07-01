@@ -7,117 +7,21 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
-	"sync"
 	"testing"
 	"time"
 
 	"github.com/humanlayer/humanlayer/hld/approval"
+	"github.com/humanlayer/humanlayer/hld/bus"
 	"github.com/humanlayer/humanlayer/hld/config"
 	"github.com/humanlayer/humanlayer/hld/internal/testutil"
 	"github.com/humanlayer/humanlayer/hld/rpc"
 	"github.com/humanlayer/humanlayer/hld/session"
 	"github.com/humanlayer/humanlayer/hld/store"
-	humanlayer "github.com/humanlayer/humanlayer/humanlayer-go"
 )
-
-// mockAPIClient is a test implementation of the HumanLayer API client
-// This simulates a backend API for integration testing
-type mockAPIClient struct {
-	functionCalls []humanlayer.FunctionCall
-	humanContacts []humanlayer.HumanContact
-	decisions     map[string]string // call_id -> decision
-	mu            sync.Mutex
-}
-
-func newMockAPIClient() *mockAPIClient {
-	return &mockAPIClient{
-		decisions: make(map[string]string),
-	}
-}
-
-func (m *mockAPIClient) GetPendingFunctionCalls(ctx context.Context) ([]humanlayer.FunctionCall, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	// Return only function calls that haven't been decided
-	var pending []humanlayer.FunctionCall
-	for _, fc := range m.functionCalls {
-		if _, decided := m.decisions[fc.CallID]; !decided {
-			pending = append(pending, fc)
-		}
-	}
-	return pending, nil
-}
-
-func (m *mockAPIClient) GetPendingHumanContacts(ctx context.Context) ([]humanlayer.HumanContact, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	// Return only contacts that haven't been decided
-	var pending []humanlayer.HumanContact
-	for _, hc := range m.humanContacts {
-		if _, decided := m.decisions[hc.CallID]; !decided {
-			pending = append(pending, hc)
-		}
-	}
-	return pending, nil
-}
-
-func (m *mockAPIClient) ApproveFunctionCall(ctx context.Context, callID string, comment string) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.decisions[callID] = "approved"
-	return nil
-}
-
-func (m *mockAPIClient) DenyFunctionCall(ctx context.Context, callID string, reason string) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.decisions[callID] = "denied"
-	return nil
-}
-
-func (m *mockAPIClient) RespondToHumanContact(ctx context.Context, callID string, response string) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.decisions[callID] = "responded"
-	return nil
-}
 
 func TestDaemonApprovalIntegration(t *testing.T) {
 	// Create test socket path
 	socketPath := testutil.SocketPath(t, "daemon-approval-test")
-
-	// Create mock API client with test data
-	mockClient := newMockAPIClient()
-	mockClient.functionCalls = []humanlayer.FunctionCall{
-		{
-			CallID: "fc-1",
-			RunID:  "test-run-1",
-			Spec: humanlayer.FunctionCallSpec{
-				Fn: "dangerous_function",
-				Kwargs: map[string]interface{}{
-					"action": "delete_all",
-				},
-			},
-		},
-		{
-			CallID: "fc-2",
-			RunID:  "test-run-2",
-			Spec: humanlayer.FunctionCallSpec{
-				Fn: "safe_function",
-			},
-		},
-	}
-	mockClient.humanContacts = []humanlayer.HumanContact{
-		{
-			CallID: "hc-1",
-			RunID:  "test-run-1",
-			Spec: humanlayer.HumanContactSpec{
-				Msg: "Need human help",
-			},
-		},
-	}
 
 	// Create a minimal in-memory store for testing
 	testStore, err := store.NewSQLiteStore(":memory:")
@@ -126,16 +30,16 @@ func TestDaemonApprovalIntegration(t *testing.T) {
 	}
 	defer testStore.Close()
 
-	// Create real approval components for integration testing
-	approvalStore := approval.NewMemoryStore()
-	poller := approval.NewPoller(mockClient, approvalStore, testStore, 50*time.Millisecond, nil)
+	// Create event bus for the approval manager
+	eventBus := bus.NewEventBus()
 
-	// We need to manually construct the manager with our test client
-	approvalManager := &approval.DefaultManager{
-		Client:            mockClient,
-		Store:             approvalStore,
-		Poller:            poller,
-		ConversationStore: testStore,
+	// Create local approval manager
+	approvalManager := approval.NewManager(testStore, eventBus)
+
+	// Create session manager
+	sessionManager, err := session.NewManager(eventBus, testStore)
+	if err != nil {
+		t.Fatalf("failed to create session manager: %v", err)
 	}
 
 	// Create test daemon with approval manager
@@ -146,15 +50,10 @@ func TestDaemonApprovalIntegration(t *testing.T) {
 		},
 		socketPath: socketPath,
 		approvals:  approvalManager,
+		sessions:   sessionManager,
+		eventBus:   eventBus,
+		store:      testStore,
 	}
-
-	// Create session manager (we don't need real sessions for this test)
-
-	sessionManager, err := session.NewManager(nil, testStore)
-	if err != nil {
-		t.Fatalf("failed to create session manager: %v", err)
-	}
-	d.sessions = sessionManager
 
 	// Start daemon
 	ctx, cancel := context.WithCancel(context.Background())
@@ -178,82 +77,158 @@ func TestDaemonApprovalIntegration(t *testing.T) {
 	// Create RPC client
 	client := &rpcClient{conn: conn}
 
-	// Wait for poller to fetch initial data
-	time.Sleep(100 * time.Millisecond)
+	// Test scenario: Create local approvals and test RPC operations
 
-	// Test 1: Fetch all approvals
+	// First, create test sessions and approvals in the database
+	ctx2 := context.Background()
+
+	// Create test sessions
+	session1 := &store.Session{
+		ID:             "test-session-1",
+		RunID:          "test-run-1",
+		Query:          "Test query 1",
+		Status:         store.SessionStatusRunning,
+		CreatedAt:      time.Now(),
+		LastActivityAt: time.Now(),
+	}
+	if err := testStore.CreateSession(ctx2, session1); err != nil {
+		t.Fatalf("failed to create session 1: %v", err)
+	}
+
+	session2 := &store.Session{
+		ID:             "test-session-2",
+		RunID:          "test-run-2",
+		Query:          "Test query 2",
+		Status:         store.SessionStatusRunning,
+		CreatedAt:      time.Now(),
+		LastActivityAt: time.Now(),
+	}
+	if err := testStore.CreateSession(ctx2, session2); err != nil {
+		t.Fatalf("failed to create session 2: %v", err)
+	}
+
+	// Create approvals via the RPC interface
+	var createResp rpc.CreateApprovalResponse
+
+	// Approval 1
+	err = client.call("createApproval", rpc.CreateApprovalRequest{
+		RunID:     "test-run-1",
+		ToolName:  "dangerous_function",
+		ToolInput: json.RawMessage(`{"action": "delete_all"}`),
+	}, &createResp)
+	if err != nil {
+		t.Fatalf("failed to create approval 1: %v", err)
+	}
+	approval1ID := createResp.ApprovalID
+
+	// Approval 2
+	err = client.call("createApproval", rpc.CreateApprovalRequest{
+		RunID:     "test-run-2",
+		ToolName:  "safe_function",
+		ToolInput: json.RawMessage(`{"action": "read_only"}`),
+	}, &createResp)
+	if err != nil {
+		t.Fatalf("failed to create approval 2: %v", err)
+	}
+	approval2ID := createResp.ApprovalID
+
+	// Test 1: Fetch all approvals (should be empty without session filter)
 	var fetchResp rpc.FetchApprovalsResponse
 	err = client.call("fetchApprovals", rpc.FetchApprovalsRequest{}, &fetchResp)
 	if err != nil {
 		t.Fatalf("failed to fetch approvals: %v", err)
 	}
 
-	if len(fetchResp.Approvals) != 3 {
-		t.Errorf("expected 3 approvals, got %d", len(fetchResp.Approvals))
+	if len(fetchResp.Approvals) != 0 {
+		t.Errorf("expected 0 approvals without session filter, got %d", len(fetchResp.Approvals))
 	}
 
-	// Test 2: Approve a function call
+	// Test 2: Fetch approvals for session 1
+	err = client.call("fetchApprovals", rpc.FetchApprovalsRequest{
+		SessionID: "test-session-1",
+	}, &fetchResp)
+	if err != nil {
+		t.Fatalf("failed to fetch approvals for session 1: %v", err)
+	}
+
+	if len(fetchResp.Approvals) != 1 {
+		t.Errorf("expected 1 approval for session 1, got %d", len(fetchResp.Approvals))
+	}
+
+	// Test 3: Approve a function call
 	var decisionResp rpc.SendDecisionResponse
 	err = client.call("sendDecision", rpc.SendDecisionRequest{
-		CallID:   "fc-1",
+		CallID:   approval1ID,
 		Type:     "function_call",
 		Decision: "approve",
 		Comment:  "Looks good",
 	}, &decisionResp)
 	if err != nil {
-		t.Fatalf("failed to send decision: %v", err)
+		t.Fatalf("failed to send approval decision: %v", err)
 	}
 
 	if !decisionResp.Success {
 		t.Errorf("expected success, got error: %s", decisionResp.Error)
 	}
 
-	// Verify the decision was recorded
-	if mockClient.decisions["fc-1"] != "approved" {
-		t.Errorf("expected fc-1 to be approved, got %s", mockClient.decisions["fc-1"])
-	}
-
-	// Test 3: Deny a function call
+	// Test 4: Deny a function call
 	err = client.call("sendDecision", rpc.SendDecisionRequest{
-		CallID:   "fc-2",
+		CallID:   approval2ID,
 		Type:     "function_call",
 		Decision: "deny",
 		Comment:  "Too risky",
 	}, &decisionResp)
 	if err != nil {
-		t.Fatalf("failed to send decision: %v", err)
+		t.Fatalf("failed to send deny decision: %v", err)
 	}
 
 	if !decisionResp.Success {
 		t.Errorf("expected success, got error: %s", decisionResp.Error)
 	}
-
-	// Test 4: Respond to human contact
-	err = client.call("sendDecision", rpc.SendDecisionRequest{
-		CallID:   "hc-1",
-		Type:     "human_contact",
-		Decision: "respond",
-		Comment:  "Here's the help you need",
-	}, &decisionResp)
-	if err != nil {
-		t.Fatalf("failed to send decision: %v", err)
-	}
-
-	if !decisionResp.Success {
-		t.Errorf("expected success, got error: %s", decisionResp.Error)
-	}
-
-	// Wait for next poll cycle
-	time.Sleep(100 * time.Millisecond)
 
 	// Test 5: Verify approvals are no longer pending
-	err = client.call("fetchApprovals", rpc.FetchApprovalsRequest{}, &fetchResp)
+	err = client.call("fetchApprovals", rpc.FetchApprovalsRequest{
+		SessionID: "test-session-1",
+	}, &fetchResp)
 	if err != nil {
 		t.Fatalf("failed to fetch approvals: %v", err)
 	}
 
 	if len(fetchResp.Approvals) != 0 {
-		t.Errorf("expected 0 pending approvals after decisions, got %d", len(fetchResp.Approvals))
+		t.Errorf("expected 0 pending approvals for session 1 after approval, got %d", len(fetchResp.Approvals))
+	}
+
+	// Test 6: Try to approve non-existent approval
+	err = client.call("sendDecision", rpc.SendDecisionRequest{
+		CallID:   "non-existent",
+		Type:     "function_call",
+		Decision: "approve",
+		Comment:  "Should fail",
+	}, &decisionResp)
+	if err != nil {
+		t.Fatalf("failed to send decision: %v", err)
+	}
+
+	if decisionResp.Success {
+		t.Error("expected failure for non-existent approval")
+	}
+
+	// Test 7: Human contact is no longer supported
+	err = client.call("sendDecision", rpc.SendDecisionRequest{
+		CallID:   "some-id",
+		Type:     "human_contact",
+		Decision: "respond",
+		Comment:  "Should fail",
+	}, &decisionResp)
+	if err != nil {
+		t.Fatalf("failed to send decision: %v", err)
+	}
+
+	if decisionResp.Success {
+		t.Error("expected failure for human contact type")
+	}
+	if decisionResp.Error != "human contact approvals are no longer supported" {
+		t.Errorf("expected specific error for human contact, got: %s", decisionResp.Error)
 	}
 
 	// Shutdown daemon
