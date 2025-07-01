@@ -165,9 +165,43 @@ func (h *ApprovalHandlers) HandleSendDecision(ctx context.Context, params json.R
 	}, nil
 }
 
+// GetApprovalRequest is the request for getting a specific approval
+type GetApprovalRequest struct {
+	ApprovalID string `json:"approval_id"`
+}
+
+// GetApprovalResponse is the response for getting a specific approval
+type GetApprovalResponse struct {
+	Approval *store.Approval `json:"approval"`
+}
+
+// HandleGetApproval handles the GetApproval RPC method
+func (h *ApprovalHandlers) HandleGetApproval(ctx context.Context, params json.RawMessage) (interface{}, error) {
+	var req GetApprovalRequest
+	if err := json.Unmarshal(params, &req); err != nil {
+		return nil, fmt.Errorf("invalid request: %w", err)
+	}
+
+	// Validate required fields
+	if req.ApprovalID == "" {
+		return nil, fmt.Errorf("approval_id is required")
+	}
+
+	// Get the approval
+	approval, err := h.approvals.GetApproval(ctx, req.ApprovalID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get approval: %w", err)
+	}
+
+	return &GetApprovalResponse{
+		Approval: approval,
+	}, nil
+}
+
 // Register registers all local approval handlers with the RPC server
 func (h *ApprovalHandlers) Register(server *Server) {
 	server.Register("createApproval", h.HandleCreateApproval)
 	server.Register("fetchApprovals", h.HandleFetchApprovals)
+	server.Register("getApproval", h.HandleGetApproval)
 	server.Register("sendDecision", h.HandleSendDecision)
 }

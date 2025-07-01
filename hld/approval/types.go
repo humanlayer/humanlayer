@@ -14,6 +14,7 @@ type Manager interface {
 
 	// Retrieval methods
 	GetPendingApprovals(ctx context.Context, sessionID string) ([]*store.Approval, error)
+	GetApproval(ctx context.Context, id string) (*store.Approval, error)
 
 	// Decision methods
 	ApproveToolCall(ctx context.Context, id string, comment string) error

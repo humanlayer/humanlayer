@@ -89,6 +89,15 @@ func (m *manager) GetPendingApprovals(ctx context.Context, sessionID string) ([]
 	return approvals, nil
 }
 
+// GetApproval retrieves a specific approval by ID
+func (m *manager) GetApproval(ctx context.Context, id string) (*store.Approval, error) {
+	approval, err := m.store.GetApproval(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get approval: %w", err)
+	}
+	return approval, nil
+}
+
 // ApproveToolCall approves a tool call
 func (m *manager) ApproveToolCall(ctx context.Context, id string, comment string) error {
 	// Get the approval first
