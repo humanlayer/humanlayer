@@ -438,13 +438,13 @@ Options:
 Examples:
   # Run automated test
   bun test-local-approvals.ts --test
-  
+
   # Interactive mode (default - will request to write to blah.txt)
   bun test-local-approvals.ts
-  
+
   # Interactive mode with custom query
   bun test-local-approvals.ts -q "Help me analyze this codebase"
-  
+
   # Interactive mode without triggering approval
   bun test-local-approvals.ts -q "Hello, how are you?"
 
