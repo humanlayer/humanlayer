@@ -2,7 +2,7 @@
 
 ## IMPORTANT: This project is archived
 
-The HumanLayer TUI (Terminal User Interface) is **archived** and no longer actively developed. 
+The HumanLayer TUI (Terminal User Interface) is **archived** and no longer actively developed.
 
 ### Key Points:
 - **No new features** will be added to the TUI
