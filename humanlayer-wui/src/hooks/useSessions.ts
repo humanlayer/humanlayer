@@ -22,7 +22,7 @@ export function useSessions(): UseSessionsReturn {
       setLoading(true)
       setError(null)
 
-      const response = await daemonClient.listSessions()
+      const response = await daemonClient.getSessionLeaves()
 
       // Transform to UI-friendly format
       const summaries: SessionSummary[] = response.sessions.map(session => ({
