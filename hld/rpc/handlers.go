@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"time"
 
 	claudecode "github.com/humanlayer/humanlayer/claudecode-go"
@@ -124,6 +125,59 @@ func (h *SessionHandlers) HandleListSessions(ctx context.Context, params json.Ra
 
 	return &ListSessionsResponse{
 		Sessions: sessions,
+	}, nil
+}
+
+// GetSessionLeavesRequest is the request for getting session leaves
+type GetSessionLeavesRequest struct {
+	// Empty for now - could add filters later
+}
+
+// GetSessionLeavesResponse is the response for getting session leaves
+type GetSessionLeavesResponse struct {
+	Sessions []session.Info `json:"sessions"`
+}
+
+// HandleGetSessionLeaves handles the GetSessionLeaves RPC method
+func (h *SessionHandlers) HandleGetSessionLeaves(ctx context.Context, params json.RawMessage) (interface{}, error) {
+	// Parse request (even though it's empty for now)
+	var req GetSessionLeavesRequest
+	if params != nil {
+		if err := json.Unmarshal(params, &req); err != nil {
+			return nil, fmt.Errorf("invalid request: %w", err)
+		}
+	}
+
+	// Get all sessions from the manager
+	allSessions := h.manager.ListSessions()
+
+	// Build parent-to-children map
+	childrenMap := make(map[string][]string)
+
+	for _, session := range allSessions {
+		if session.ParentSessionID != "" {
+			childrenMap[session.ParentSessionID] = append(childrenMap[session.ParentSessionID], session.ID)
+		}
+	}
+
+	// Identify leaf sessions (sessions with no children)
+	leaves := make([]session.Info, 0) // Initialize to empty slice, not nil
+	for _, session := range allSessions {
+		children := childrenMap[session.ID]
+
+		// Include only if session has no children (is a leaf node)
+		if len(children) == 0 {
+			leaves = append(leaves, session)
+		}
+	}
+
+	// Sort by last activity (newest first)
+	sort.Slice(leaves, func(i, j int) bool {
+		return leaves[i].LastActivityAt.After(leaves[j].LastActivityAt)
+	})
+
+	return &GetSessionLeavesResponse{
+		Sessions: leaves,
 	}, nil
 }
 
@@ -325,6 +379,7 @@ func (h *SessionHandlers) HandleInterruptSession(ctx context.Context, params jso
 func (h *SessionHandlers) Register(server *Server) {
 	server.Register("launchSession", h.HandleLaunchSession)
 	server.Register("listSessions", h.HandleListSessions)
+	server.Register("getSessionLeaves", h.HandleGetSessionLeaves)
 	server.Register("getConversation", h.HandleGetConversation)
 	server.Register("getSessionState", h.HandleGetSessionState)
 	server.Register("continueSession", h.HandleContinueSession)

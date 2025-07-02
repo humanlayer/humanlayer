@@ -2,22 +2,17 @@ package store
 
 import (
 	"context"
-	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
 	claudecode "github.com/humanlayer/humanlayer/claudecode-go"
+	"github.com/humanlayer/humanlayer/hld/internal/testutil"
 	"github.com/stretchr/testify/require"
 )
 
 func TestSQLiteStore(t *testing.T) {
 	// Create temp database
-	tmpDir, err := os.MkdirTemp("", "hld-test-*")
-	require.NoError(t, err)
-	defer func() { _ = os.RemoveAll(tmpDir) }()
-
-	dbPath := filepath.Join(tmpDir, "test.db")
+	dbPath := testutil.DatabasePath(t, "sqlite")
 	store, err := NewSQLiteStore(dbPath)
 	require.NoError(t, err)
 	defer func() { _ = store.Close() }()
@@ -265,11 +260,7 @@ func TestSQLiteStore(t *testing.T) {
 
 func TestGetSessionConversationWithParentChain(t *testing.T) {
 	// Create temp database
-	tmpDir, err := os.MkdirTemp("", "hld-test-parent-*")
-	require.NoError(t, err)
-	defer func() { _ = os.RemoveAll(tmpDir) }()
-
-	dbPath := filepath.Join(tmpDir, "test.db")
+	dbPath := testutil.DatabasePath(t, "sqlite-parent")
 	store, err := NewSQLiteStore(dbPath)
 	require.NoError(t, err)
 	defer func() { _ = store.Close() }()

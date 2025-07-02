@@ -38,7 +38,7 @@ export const useStore = create<StoreState>((set, get) => ({
     })),
   refreshSessions: async () => {
     try {
-      const response = await daemonClient.listSessions()
+      const response = await daemonClient.getSessionLeaves()
       set({ sessions: response.sessions })
     } catch (error) {
       console.error('Failed to refresh sessions:', error)

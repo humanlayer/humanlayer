@@ -73,6 +73,21 @@ async fn list_sessions(
 }
 
 #[tauri::command]
+async fn get_session_leaves(
+    state: State<'_, AppState>,
+) -> std::result::Result<daemon_client::GetSessionLeavesResponse, String> {
+    let client_guard = state.client.lock().await;
+
+    match &*client_guard {
+        Some(client) => client
+            .get_session_leaves()
+            .await
+            .map_err(|e| e.to_string()),
+        None => Err("Not connected to daemon".to_string()),
+    }
+}
+
+#[tauri::command]
 async fn get_session_state(
     state: State<'_, AppState>,
     session_id: String,
@@ -306,6 +321,7 @@ pub fn run() {
             daemon_health,
             launch_session,
             list_sessions,
+            get_session_leaves,
             get_session_state,
             continue_session,
             get_conversation,
