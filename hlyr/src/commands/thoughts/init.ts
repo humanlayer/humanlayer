@@ -22,6 +22,7 @@ import {
 interface InitOptions {
   force?: boolean
   configFile?: string
+  directory?: string
 }
 
 function prompt(question: string): Promise<string> {
@@ -137,21 +138,21 @@ It is managed by the HumanLayer thoughts system and should not be committed to t
 - \`global/\` → Cross-repository thoughts (symlink to ${globalPath})
   - \`${user}/\` - Your personal notes that apply across all repositories
   - \`shared/\` - Team-shared notes that apply across all repositories
-- \`searchable/\` → Read-only hard links for searching (auto-generated)
+- \`searchable/\` → Hard links for searching (auto-generated)
 
 ## Searching in Thoughts
 
-The \`searchable/\` directory contains read-only hard links to all thoughts files accessible in this repository. This allows search tools to find content without following symlinks.
+The \`searchable/\` directory contains hard links to all thoughts files accessible in this repository. This allows search tools to find content without following symlinks.
 
 **IMPORTANT**:
-- Files found in \`thoughts/searchable/\` are read-only copies
-- To edit any file, use the original path (e.g., edit \`thoughts/${user}/todo.md\`, not \`thoughts/searchable/${user}/todo.md\`)
+- Files in \`thoughts/searchable/\` are hard links to the original files (editing either updates both)
+- For clarity and consistency, always reference files by their canonical path (e.g., \`thoughts/${user}/todo.md\`, not \`thoughts/searchable/${user}/todo.md\`)
 - The \`searchable/\` directory is automatically updated when you run \`humanlayer thoughts sync\`
 
 This design ensures that:
 1. Search tools can find all your thoughts content easily
 2. The symlink structure remains intact for git operations
-3. You can't accidentally edit the wrong copy of a file
+3. Files remain editable while maintaining consistent path references
 
 ## Usage
 
@@ -450,28 +451,79 @@ export async function thoughtsInitCommand(options: InitOptions): Promise<void> {
     let mappedName = config.repoMappings[currentRepo]
 
     if (!mappedName) {
-      console.log(chalk.blue('=== Repository Setup ==='))
-      console.log('')
-      console.log(`Setting up thoughts for: ${chalk.cyan(currentRepo)}`)
-      console.log('')
-      console.log(
-        chalk.gray(`This will create a subdirectory in ${config.thoughtsRepo}/${config.reposDir}/`),
-      )
-      console.log(chalk.gray('to store thoughts specific to this repository.'))
-      console.log('')
+      if (options.directory) {
+        // Non-interactive mode with --directory option
+        const sanitizedDir = options.directory.replace(/[^a-zA-Z0-9_-]/g, '_')
 
-      if (existingRepos.length > 0) {
-        console.log('Select or create a thoughts directory for this repository:')
-        const options = [
-          ...existingRepos.map(repo => `Use existing: ${repo}`),
-          '→ Create new directory',
-        ]
-        const selection = await selectFromList('', options)
+        if (!existingRepos.includes(sanitizedDir)) {
+          console.error(
+            chalk.red(`Error: Directory "${sanitizedDir}" not found in existing thoughts directories.`),
+          )
+          console.error(
+            chalk.red(
+              'For non-interactive mode, you must use a directory that has already been mapped.',
+            ),
+          )
+          console.error('')
+          console.error(chalk.yellow('Existing directories:'))
+          existingRepos.forEach(repo => console.error(chalk.gray(`  - ${repo}`)))
+          process.exit(1)
+        }
 
-        if (selection === options.length - 1) {
-          // Create new
+        mappedName = sanitizedDir
+        console.log(
+          chalk.green(`✓ Using existing: ${config.thoughtsRepo}/${config.reposDir}/${mappedName}`),
+        )
+      } else {
+        // Interactive mode
+        console.log(chalk.blue('=== Repository Setup ==='))
+        console.log('')
+        console.log(`Setting up thoughts for: ${chalk.cyan(currentRepo)}`)
+        console.log('')
+        console.log(
+          chalk.gray(`This will create a subdirectory in ${config.thoughtsRepo}/${config.reposDir}/`),
+        )
+        console.log(chalk.gray('to store thoughts specific to this repository.'))
+        console.log('')
+
+        if (existingRepos.length > 0) {
+          console.log('Select or create a thoughts directory for this repository:')
+          const options = [
+            ...existingRepos.map(repo => `Use existing: ${repo}`),
+            '→ Create new directory',
+          ]
+          const selection = await selectFromList('', options)
+
+          if (selection === options.length - 1) {
+            // Create new
+            const defaultName = getRepoNameFromPath(currentRepo)
+            console.log('')
+            console.log(
+              chalk.gray(
+                `This name will be used for the directory: ${config.thoughtsRepo}/${config.reposDir}/[name]`,
+              ),
+            )
+            const nameInput = await prompt(
+              `Directory name for this project's thoughts [${defaultName}]: `,
+            )
+            mappedName = nameInput || defaultName
+
+            // Sanitize the name
+            mappedName = mappedName.replace(/[^a-zA-Z0-9_-]/g, '_')
+            console.log(
+              chalk.green(`✓ Will create: ${config.thoughtsRepo}/${config.reposDir}/${mappedName}`),
+            )
+          } else {
+            mappedName = existingRepos[selection]
+            console.log(
+              chalk.green(
+                `✓ Will use existing: ${config.thoughtsRepo}/${config.reposDir}/${mappedName}`,
+              ),
+            )
+          }
+        } else {
+          // No existing repos, just create new
           const defaultName = getRepoNameFromPath(currentRepo)
-          console.log('')
           console.log(
             chalk.gray(
               `This name will be used for the directory: ${config.thoughtsRepo}/${config.reposDir}/[name]`,
@@ -487,28 +539,7 @@ export async function thoughtsInitCommand(options: InitOptions): Promise<void> {
           console.log(
             chalk.green(`✓ Will create: ${config.thoughtsRepo}/${config.reposDir}/${mappedName}`),
           )
-        } else {
-          mappedName = existingRepos[selection]
-          console.log(
-            chalk.green(`✓ Will use existing: ${config.thoughtsRepo}/${config.reposDir}/${mappedName}`),
-          )
         }
-      } else {
-        // No existing repos, just create new
-        const defaultName = getRepoNameFromPath(currentRepo)
-        console.log(
-          chalk.gray(
-            `This name will be used for the directory: ${config.thoughtsRepo}/${config.reposDir}/[name]`,
-          ),
-        )
-        const nameInput = await prompt(`Directory name for this project's thoughts [${defaultName}]: `)
-        mappedName = nameInput || defaultName
-
-        // Sanitize the name
-        mappedName = mappedName.replace(/[^a-zA-Z0-9_-]/g, '_')
-        console.log(
-          chalk.green(`✓ Will create: ${config.thoughtsRepo}/${config.reposDir}/${mappedName}`),
-        )
       }
 
       console.log('')

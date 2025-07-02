@@ -164,18 +164,6 @@ function createSearchDirectory(thoughtsDir: string): void {
     }
   }
 
-  // Make .search directory read-only
-  try {
-    // First set directories to be readable and traversable
-    execSync(`find "${searchDir}" -type d -exec chmod 755 {} +`, { stdio: 'pipe' })
-    // Then set files to be read-only
-    execSync(`find "${searchDir}" -type f -exec chmod 444 {} +`, { stdio: 'pipe' })
-    // Finally make directories read-only but still traversable
-    execSync(`find "${searchDir}" -type d -exec chmod 555 {} +`, { stdio: 'pipe' })
-  } catch {
-    // Ignore chmod errors on systems that don't support it
-  }
-
   console.log(chalk.gray(`Created ${linkedCount} hard links in searchable directory`))
 }
 
