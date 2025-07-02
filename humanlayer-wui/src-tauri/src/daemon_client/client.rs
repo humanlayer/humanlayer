@@ -17,6 +17,7 @@ pub trait DaemonClientTrait: Send + Sync {
     async fn health(&self) -> Result<HealthCheckResponse>;
     async fn launch_session(&self, req: LaunchSessionRequest) -> Result<LaunchSessionResponse>;
     async fn list_sessions(&self) -> Result<ListSessionsResponse>;
+    async fn get_session_leaves(&self) -> Result<GetSessionLeavesResponse>;
     async fn continue_session(&self, req: ContinueSessionRequest) -> Result<ContinueSessionResponse>;
     async fn get_session_state(&self, session_id: &str) -> Result<GetSessionStateResponse>;
     async fn get_conversation(&self, session_id: Option<&str>, claude_session_id: Option<&str>) -> Result<GetConversationResponse>;
@@ -129,6 +130,10 @@ impl DaemonClientTrait for DaemonClient {
 
     async fn list_sessions(&self) -> Result<ListSessionsResponse> {
         self.send_rpc_request("listSessions", None::<()>).await
+    }
+
+    async fn get_session_leaves(&self) -> Result<GetSessionLeavesResponse> {
+        self.send_rpc_request("getSessionLeaves", None::<()>).await
     }
 
     async fn continue_session(&self, req: ContinueSessionRequest) -> Result<ContinueSessionResponse> {

@@ -5,6 +5,7 @@ import type {
   LaunchSessionRequest,
   LaunchSessionResponse,
   ListSessionsResponse,
+  GetSessionLeavesResponse,
   GetSessionStateResponse,
   ContinueSessionRequest,
   ContinueSessionResponse,
@@ -29,6 +30,10 @@ export class DaemonClient {
 
   async listSessions(): Promise<ListSessionsResponse> {
     return await invoke('list_sessions')
+  }
+
+  async getSessionLeaves(): Promise<GetSessionLeavesResponse> {
+    return await invoke('get_session_leaves')
   }
 
   async getSessionState(sessionId: string): Promise<GetSessionStateResponse> {

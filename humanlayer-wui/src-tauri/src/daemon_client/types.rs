@@ -95,6 +95,14 @@ pub struct ListSessionsResponse {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct GetSessionLeavesRequest {}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct GetSessionLeavesResponse {
+    pub sessions: Vec<SessionInfo>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct SessionInfo {
     pub id: String,
     pub run_id: String,

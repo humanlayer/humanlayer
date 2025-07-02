@@ -18,6 +18,9 @@ type Client interface {
 	// ListSessions lists all active sessions
 	ListSessions() (*rpc.ListSessionsResponse, error)
 
+	// GetSessionLeaves gets only the leaf sessions (sessions with no children)
+	GetSessionLeaves() (*rpc.GetSessionLeavesResponse, error)
+
 	// InterruptSession interrupts a running session
 	InterruptSession(sessionID string) error
 
