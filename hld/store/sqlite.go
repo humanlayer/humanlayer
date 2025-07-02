@@ -104,6 +104,7 @@ func (s *SQLiteStore) initSchema() error {
 	CREATE INDEX IF NOT EXISTS idx_sessions_claude ON sessions(claude_session_id);
 	CREATE INDEX IF NOT EXISTS idx_sessions_status ON sessions(status);
 	CREATE INDEX IF NOT EXISTS idx_sessions_run_id ON sessions(run_id);
+	CREATE INDEX IF NOT EXISTS idx_sessions_parent ON sessions(parent_session_id);
 
 	-- Single conversation events table
 	CREATE TABLE IF NOT EXISTS conversation_events (
@@ -321,6 +322,30 @@ func (s *SQLiteStore) applyMigrations() error {
 		}
 
 		slog.Info("Migration 4 applied successfully")
+	}
+
+	// Migration 5: Add index on parent_session_id for efficient tree queries
+	if currentVersion < 5 {
+		slog.Info("Applying migration 5: Add index on parent_session_id")
+
+		// Create index on parent_session_id for efficient child queries
+		_, err = s.db.Exec(`
+			CREATE INDEX IF NOT EXISTS idx_sessions_parent ON sessions(parent_session_id)
+		`)
+		if err != nil {
+			return fmt.Errorf("failed to create parent_session_id index: %w", err)
+		}
+
+		// Record migration
+		_, err = s.db.Exec(`
+			INSERT INTO schema_version (version, description)
+			VALUES (5, 'Add index on parent_session_id for efficient tree queries')
+		`)
+		if err != nil {
+			return fmt.Errorf("failed to record migration 5: %w", err)
+		}
+
+		slog.Info("Migration 5 applied successfully")
 	}
 
 	return nil

@@ -22,6 +22,7 @@ import (
 // TestSessionLaunchIntegration tests launching a session through the daemon
 func TestSessionLaunchIntegration(t *testing.T) {
 	socketPath := testutil.SocketPath(t, "session")
+	_ = testutil.DatabasePath(t, "session") // This sets HUMANLAYER_DATABASE_PATH
 
 	// Set environment for test
 	os.Setenv("HUMANLAYER_DAEMON_SOCKET", socketPath)
@@ -227,6 +228,79 @@ func TestSessionLaunchIntegration(t *testing.T) {
 		}
 	})
 
+	// Test GetSessionLeaves - should return same sessions as listSessions for now since no hierarchy
+	t.Run("GetSessionLeaves", func(t *testing.T) {
+		// Connect to daemon
+		conn, err := net.Dial("unix", socketPath)
+		if err != nil {
+			t.Fatalf("Failed to connect to daemon: %v", err)
+		}
+		defer conn.Close()
+
+		// Send GetSessionLeaves request
+		reqData, _ := json.Marshal(map[string]interface{}{
+			"jsonrpc": "2.0",
+			"method":  "getSessionLeaves",
+			"params":  map[string]interface{}{},
+			"id":      3,
+		})
+
+		if _, err := conn.Write(append(reqData, '\n')); err != nil {
+			t.Fatalf("Failed to send request: %v", err)
+		}
+
+		// Read response
+		scanner := bufio.NewScanner(conn)
+		scanner.Buffer(make([]byte, 1024*1024), 1024*1024) // 1MB buffer for large responses
+		if !scanner.Scan() {
+			if err := scanner.Err(); err != nil {
+				t.Fatalf("Scanner error: %v", err)
+			}
+			t.Fatal("Failed to read response")
+		}
+
+		var resp map[string]interface{}
+		if err := json.Unmarshal(scanner.Bytes(), &resp); err != nil {
+			t.Fatalf("Failed to parse response: %v", err)
+		}
+
+		// Check for error
+		if errObj, ok := resp["error"]; ok {
+			t.Fatalf("GetSessionLeaves failed: %v", errObj)
+		}
+
+		// Check result
+		result, ok := resp["result"].(map[string]interface{})
+		if !ok {
+			t.Fatalf("Invalid result type: %T", resp["result"])
+		}
+
+		sessions, ok := result["sessions"].([]interface{})
+		if !ok {
+			t.Fatalf("Invalid sessions type: %T", result["sessions"])
+		}
+
+		t.Logf("Found %d leaf sessions", len(sessions))
+
+		// Verify each session has expected fields
+		for i, sess := range sessions {
+			session := sess.(map[string]interface{})
+			if _, ok := session["id"]; !ok {
+				t.Errorf("Session %d missing id field", i)
+			}
+			if _, ok := session["run_id"]; !ok {
+				t.Errorf("Session %d missing run_id field", i)
+			}
+			if _, ok := session["status"]; !ok {
+				t.Errorf("Session %d missing status field", i)
+			}
+			// Check that parent_session_id field exists (even if empty)
+			if _, ok := session["parent_session_id"]; !ok {
+				t.Errorf("Session %d missing parent_session_id field", i)
+			}
+		}
+	})
+
 	// Shutdown daemon
 	cancel()
 
@@ -244,6 +318,7 @@ func TestSessionLaunchIntegration(t *testing.T) {
 // TestConcurrentSessions tests launching multiple sessions concurrently
 func TestConcurrentSessions(t *testing.T) {
 	socketPath := testutil.SocketPath(t, "concurrent")
+	_ = testutil.DatabasePath(t, "concurrent") // This sets HUMANLAYER_DATABASE_PATH
 
 	// Set environment for test
 	os.Setenv("HUMANLAYER_DAEMON_SOCKET", socketPath)

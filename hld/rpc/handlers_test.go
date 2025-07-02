@@ -239,6 +239,250 @@ func TestHandleGetSessionState(t *testing.T) {
 	})
 }
 
+func TestHandleGetSessionLeaves(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockManager := session.NewMockSessionManager(ctrl)
+	mockStore := store.NewMockConversationStore(ctrl)
+
+	handlers := NewSessionHandlers(mockManager, mockStore)
+
+	t.Run("empty sessions list", func(t *testing.T) {
+		// Mock empty sessions
+		mockManager.EXPECT().
+			ListSessions().
+			Return([]session.Info{})
+
+		result, err := handlers.HandleGetSessionLeaves(context.Background(), nil)
+		require.NoError(t, err)
+
+		resp, ok := result.(*GetSessionLeavesResponse)
+		require.True(t, ok)
+		assert.Empty(t, resp.Sessions)
+	})
+
+	t.Run("single session with no parent or children", func(t *testing.T) {
+		// Single session is always a leaf
+		sessions := []session.Info{
+			{
+				ID:              "sess-1",
+				RunID:           "run-1",
+				ClaudeSessionID: "claude-1",
+				ParentSessionID: "",
+				Status:          session.StatusCompleted,
+				StartTime:       time.Now().Add(-time.Hour),
+				LastActivityAt:  time.Now().Add(-30 * time.Minute),
+				Query:           "Test query",
+				Summary:         "Test summary",
+			},
+		}
+
+		mockManager.EXPECT().
+			ListSessions().
+			Return(sessions)
+
+		result, err := handlers.HandleGetSessionLeaves(context.Background(), nil)
+		require.NoError(t, err)
+
+		resp, ok := result.(*GetSessionLeavesResponse)
+		require.True(t, ok)
+		assert.Len(t, resp.Sessions, 1)
+		assert.Equal(t, "sess-1", resp.Sessions[0].ID)
+	})
+
+	t.Run("linear chain of sessions", func(t *testing.T) {
+		// A->B->C, should return only C
+		now := time.Now()
+		sessions := []session.Info{
+			{
+				ID:              "sess-1",
+				ParentSessionID: "",
+				LastActivityAt:  now.Add(-3 * time.Hour),
+			},
+			{
+				ID:              "sess-2",
+				ParentSessionID: "sess-1",
+				LastActivityAt:  now.Add(-2 * time.Hour),
+			},
+			{
+				ID:              "sess-3",
+				ParentSessionID: "sess-2",
+				LastActivityAt:  now.Add(-1 * time.Hour),
+			},
+		}
+
+		mockManager.EXPECT().
+			ListSessions().
+			Return(sessions)
+
+		result, err := handlers.HandleGetSessionLeaves(context.Background(), nil)
+		require.NoError(t, err)
+
+		resp, ok := result.(*GetSessionLeavesResponse)
+		require.True(t, ok)
+		assert.Len(t, resp.Sessions, 1)
+		assert.Equal(t, "sess-3", resp.Sessions[0].ID)
+	})
+
+	t.Run("multiple independent sessions", func(t *testing.T) {
+		// Three independent sessions, all are leaves
+		now := time.Now()
+		sessions := []session.Info{
+			{
+				ID:              "sess-1",
+				ParentSessionID: "",
+				LastActivityAt:  now.Add(-3 * time.Hour),
+			},
+			{
+				ID:              "sess-2",
+				ParentSessionID: "",
+				LastActivityAt:  now.Add(-1 * time.Hour),
+			},
+			{
+				ID:              "sess-3",
+				ParentSessionID: "",
+				LastActivityAt:  now.Add(-2 * time.Hour),
+			},
+		}
+
+		mockManager.EXPECT().
+			ListSessions().
+			Return(sessions)
+
+		result, err := handlers.HandleGetSessionLeaves(context.Background(), nil)
+		require.NoError(t, err)
+
+		resp, ok := result.(*GetSessionLeavesResponse)
+		require.True(t, ok)
+		assert.Len(t, resp.Sessions, 3)
+		// Should be sorted by last activity (newest first)
+		assert.Equal(t, "sess-2", resp.Sessions[0].ID)
+		assert.Equal(t, "sess-3", resp.Sessions[1].ID)
+		assert.Equal(t, "sess-1", resp.Sessions[2].ID)
+	})
+
+	t.Run("session with multiple children (fork)", func(t *testing.T) {
+		// A has two children B and C, should return B and C
+		now := time.Now()
+		sessions := []session.Info{
+			{
+				ID:              "sess-1",
+				ParentSessionID: "",
+				LastActivityAt:  now.Add(-3 * time.Hour),
+			},
+			{
+				ID:              "sess-2",
+				ParentSessionID: "sess-1",
+				LastActivityAt:  now.Add(-2 * time.Hour),
+			},
+			{
+				ID:              "sess-3",
+				ParentSessionID: "sess-1",
+				LastActivityAt:  now.Add(-1 * time.Hour),
+			},
+		}
+
+		mockManager.EXPECT().
+			ListSessions().
+			Return(sessions)
+
+		result, err := handlers.HandleGetSessionLeaves(context.Background(), nil)
+		require.NoError(t, err)
+
+		resp, ok := result.(*GetSessionLeavesResponse)
+		require.True(t, ok)
+		assert.Len(t, resp.Sessions, 2)
+		// Should be sorted by last activity (newest first)
+		assert.Equal(t, "sess-3", resp.Sessions[0].ID)
+		assert.Equal(t, "sess-2", resp.Sessions[1].ID)
+	})
+
+	t.Run("deep tree structure", func(t *testing.T) {
+		// Complex tree:
+		//       A
+		//      / \
+		//     B   C
+		//    /     \
+		//   D       E
+		//            \
+		//             F
+		// Should return D and F
+		now := time.Now()
+		sessions := []session.Info{
+			{
+				ID:              "sess-A",
+				ParentSessionID: "",
+				LastActivityAt:  now.Add(-6 * time.Hour),
+			},
+			{
+				ID:              "sess-B",
+				ParentSessionID: "sess-A",
+				LastActivityAt:  now.Add(-5 * time.Hour),
+			},
+			{
+				ID:              "sess-C",
+				ParentSessionID: "sess-A",
+				LastActivityAt:  now.Add(-4 * time.Hour),
+			},
+			{
+				ID:              "sess-D",
+				ParentSessionID: "sess-B",
+				LastActivityAt:  now.Add(-3 * time.Hour),
+			},
+			{
+				ID:              "sess-E",
+				ParentSessionID: "sess-C",
+				LastActivityAt:  now.Add(-2 * time.Hour),
+			},
+			{
+				ID:              "sess-F",
+				ParentSessionID: "sess-E",
+				LastActivityAt:  now.Add(-1 * time.Hour),
+			},
+		}
+
+		mockManager.EXPECT().
+			ListSessions().
+			Return(sessions)
+
+		result, err := handlers.HandleGetSessionLeaves(context.Background(), nil)
+		require.NoError(t, err)
+
+		resp, ok := result.(*GetSessionLeavesResponse)
+		require.True(t, ok)
+		assert.Len(t, resp.Sessions, 2)
+		// Should be sorted by last activity (newest first)
+		assert.Equal(t, "sess-F", resp.Sessions[0].ID)
+		assert.Equal(t, "sess-D", resp.Sessions[1].ID)
+	})
+
+	t.Run("with request parameters", func(t *testing.T) {
+		// Test that request parameters are properly parsed (even though empty for now)
+		sessions := []session.Info{
+			{
+				ID:              "sess-1",
+				ParentSessionID: "",
+				LastActivityAt:  time.Now(),
+			},
+		}
+
+		mockManager.EXPECT().
+			ListSessions().
+			Return(sessions)
+
+		req := GetSessionLeavesRequest{}
+		reqJSON, _ := json.Marshal(req)
+
+		result, err := handlers.HandleGetSessionLeaves(context.Background(), reqJSON)
+		require.NoError(t, err)
+
+		resp, ok := result.(*GetSessionLeavesResponse)
+		require.True(t, ok)
+		assert.Len(t, resp.Sessions, 1)
+	})
+}
+
 func TestHandleInterruptSession(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
