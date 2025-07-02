@@ -7,19 +7,18 @@ import (
 	"context"
 	"database/sql"
 	"os"
-	"path/filepath"
 	"sync"
 	"testing"
 	"time"
 
 	claudecode "github.com/humanlayer/humanlayer/claudecode-go"
+	"github.com/humanlayer/humanlayer/hld/internal/testutil"
 )
 
 // TestSQLiteStoreIntegration tests the SQLite store with real database operations
 func TestSQLiteStoreIntegration(t *testing.T) {
 	// Create temporary database
-	tmpDir := t.TempDir()
-	dbPath := filepath.Join(tmpDir, "test.db")
+	dbPath := testutil.DatabasePath(t, "sqlite-integration")
 
 	// Create store
 	store, err := NewSQLiteStore(dbPath)
@@ -565,8 +564,7 @@ func TestSQLiteStoreIntegration(t *testing.T) {
 
 // TestSQLiteStorePersistence verifies data persists across store instances
 func TestSQLiteStorePersistence(t *testing.T) {
-	tmpDir := t.TempDir()
-	dbPath := filepath.Join(tmpDir, "persist.db")
+	dbPath := testutil.DatabasePath(t, "sqlite-persist")
 	ctx := context.Background()
 
 	// Create first store instance
@@ -641,8 +639,7 @@ func TestSQLiteStorePersistence(t *testing.T) {
 
 // TestSQLiteStoreWithMockSession tests store integration with mock claude sessions
 func TestSQLiteStoreWithMockSession(t *testing.T) {
-	tmpDir := t.TempDir()
-	dbPath := filepath.Join(tmpDir, "mock_session.db")
+	dbPath := testutil.DatabasePath(t, "sqlite-mock")
 	ctx := context.Background()
 
 	store, err := NewSQLiteStore(dbPath)
