@@ -45,21 +45,48 @@ cleanup_worktree() {
     if [ -d "$worktree_path/thoughts" ]; then
         echo "Found thoughts directory, cleaning up..."
 
-        # Reset permissions on searchable directory if it exists
-        if [ -d "$worktree_path/thoughts/searchable" ]; then
-            echo "Resetting permissions on thoughts/searchable..."
-            chmod -R 755 "$worktree_path/thoughts/searchable" 2>/dev/null || {
-                echo -e "${YELLOW}Warning: Could not reset all permissions, but continuing...${NC}"
+        # Try to use humanlayer uninit command first
+        if command -v humanlayer >/dev/null 2>&1; then
+            echo "Running humanlayer thoughts uninit..."
+            (cd "$worktree_path" && humanlayer thoughts uninit --force) || {
+                echo -e "${YELLOW}Warning: humanlayer uninit failed, falling back to manual cleanup${NC}"
+
+                # Fallback: Reset permissions on searchable directory if it exists
+                if [ -d "$worktree_path/thoughts/searchable" ]; then
+                    echo "Resetting permissions on thoughts/searchable..."
+                    chmod -R 755 "$worktree_path/thoughts/searchable" 2>/dev/null || {
+                        echo -e "${YELLOW}Warning: Could not reset all permissions, but continuing...${NC}"
+                    }
+                fi
+
+                # Remove the entire thoughts directory
+                echo "Removing thoughts directory..."
+                rm -rf "$worktree_path/thoughts" || {
+                    echo -e "${RED}Error: Could not remove thoughts directory${NC}"
+                    echo "You may need to manually run: sudo rm -rf $worktree_path/thoughts"
+                    exit 1
+                }
+            }
+        else
+            # No humanlayer command available, do manual cleanup
+            echo "humanlayer command not found, using manual cleanup..."
+
+            # Reset permissions on searchable directory if it exists
+            if [ -d "$worktree_path/thoughts/searchable" ]; then
+                echo "Resetting permissions on thoughts/searchable..."
+                chmod -R 755 "$worktree_path/thoughts/searchable" 2>/dev/null || {
+                    echo -e "${YELLOW}Warning: Could not reset all permissions, but continuing...${NC}"
+                }
+            fi
+
+            # Remove the entire thoughts directory
+            echo "Removing thoughts directory..."
+            rm -rf "$worktree_path/thoughts" || {
+                echo -e "${RED}Error: Could not remove thoughts directory${NC}"
+                echo "You may need to manually run: sudo rm -rf $worktree_path/thoughts"
+                exit 1
             }
         fi
-
-        # Remove the entire thoughts directory
-        echo "Removing thoughts directory..."
-        rm -rf "$worktree_path/thoughts" || {
-            echo -e "${RED}Error: Could not remove thoughts directory${NC}"
-            echo "You may need to manually run: sudo rm -rf $worktree_path/thoughts"
-            exit 1
-        }
     fi
 
     # Step 2: Remove the worktree
