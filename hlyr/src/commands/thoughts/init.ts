@@ -25,6 +25,10 @@ interface InitOptions {
   directory?: string
 }
 
+function sanitizeDirectoryName(name: string): string {
+  return name.replace(/[^a-zA-Z0-9_-]/g, '_')
+}
+
 function prompt(question: string): Promise<string> {
   const rl = readline.createInterface({
     input: process.stdin,
@@ -453,19 +457,18 @@ export async function thoughtsInitCommand(options: InitOptions): Promise<void> {
     if (!mappedName) {
       if (options.directory) {
         // Non-interactive mode with --directory option
-        const sanitizedDir = options.directory.replace(/[^a-zA-Z0-9_-]/g, '_')
+        const sanitizedDir = sanitizeDirectoryName(options.directory)
 
         if (!existingRepos.includes(sanitizedDir)) {
           console.error(
-            chalk.red(`Error: Directory "${sanitizedDir}" not found in existing thoughts directories.`),
+            chalk.red(`Error: Directory "${sanitizedDir}" not found in thoughts repository.`),
           )
           console.error(
-            chalk.red(
-              'For non-interactive mode, you must use a directory that has already been mapped.',
-            ),
+            chalk.red('In non-interactive mode (--directory), you must specify a directory'),
           )
+          console.error(chalk.red('name that already exists in the thoughts repository.'))
           console.error('')
-          console.error(chalk.yellow('Existing directories:'))
+          console.error(chalk.yellow('Available directories:'))
           existingRepos.forEach(repo => console.error(chalk.gray(`  - ${repo}`)))
           process.exit(1)
         }
@@ -509,7 +512,7 @@ export async function thoughtsInitCommand(options: InitOptions): Promise<void> {
             mappedName = nameInput || defaultName
 
             // Sanitize the name
-            mappedName = mappedName.replace(/[^a-zA-Z0-9_-]/g, '_')
+            mappedName = sanitizeDirectoryName(mappedName)
             console.log(
               chalk.green(`✓ Will create: ${config.thoughtsRepo}/${config.reposDir}/${mappedName}`),
             )
@@ -535,7 +538,7 @@ export async function thoughtsInitCommand(options: InitOptions): Promise<void> {
           mappedName = nameInput || defaultName
 
           // Sanitize the name
-          mappedName = mappedName.replace(/[^a-zA-Z0-9_-]/g, '_')
+          mappedName = sanitizeDirectoryName(mappedName)
           console.log(
             chalk.green(`✓ Will create: ${config.thoughtsRepo}/${config.reposDir}/${mappedName}`),
           )
