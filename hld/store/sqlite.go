@@ -348,6 +348,53 @@ func (s *SQLiteStore) applyMigrations() error {
 		slog.Info("Migration 5 applied successfully")
 	}
 
+	// Migration 6: Add parent_tool_use_id for sub-task tracking
+	if currentVersion < 6 {
+		slog.Info("Applying migration 6: Add parent_tool_use_id for sub-task tracking")
+
+		// Check if column already exists (it might be in the schema for new databases)
+		var columnExists int
+		err = s.db.QueryRow(`
+			SELECT COUNT(*) FROM pragma_table_info('conversation_events')
+			WHERE name = 'parent_tool_use_id'
+		`).Scan(&columnExists)
+		if err != nil {
+			return fmt.Errorf("failed to check parent_tool_use_id column: %w", err)
+		}
+
+		// Only add column if it doesn't exist
+		if columnExists == 0 {
+			_, err = s.db.Exec(`
+				ALTER TABLE conversation_events
+				ADD COLUMN parent_tool_use_id TEXT
+			`)
+			if err != nil {
+				return fmt.Errorf("failed to add parent_tool_use_id column: %w", err)
+			}
+		}
+
+		// Create index for efficient parent queries
+		_, err = s.db.Exec(`
+			CREATE INDEX IF NOT EXISTS idx_conversation_parent_tool
+			ON conversation_events(parent_tool_use_id)
+			WHERE parent_tool_use_id IS NOT NULL
+		`)
+		if err != nil {
+			return fmt.Errorf("failed to create parent_tool_use_id index: %w", err)
+		}
+
+		// Record migration
+		_, err = s.db.Exec(`
+			INSERT INTO schema_version (version, description)
+			VALUES (6, 'Add parent_tool_use_id for sub-task tracking')
+		`)
+		if err != nil {
+			return fmt.Errorf("failed to record migration 6: %w", err)
+		}
+
+		slog.Info("Migration 6 applied successfully")
+	}
+
 	return nil
 }
 
@@ -702,16 +749,16 @@ func (s *SQLiteStore) AddConversationEvent(ctx context.Context, event *Conversat
 		INSERT INTO conversation_events (
 			session_id, claude_session_id, sequence, event_type,
 			role, content,
-			tool_id, tool_name, tool_input_json,
+			tool_id, tool_name, tool_input_json, parent_tool_use_id,
 			tool_result_for_id, tool_result_content,
 			is_completed, approval_status, approval_id
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	result, err := tx.ExecContext(ctx, query,
 		event.SessionID, event.ClaudeSessionID, event.Sequence, event.EventType,
 		event.Role, event.Content,
-		event.ToolID, event.ToolName, event.ToolInputJSON,
+		event.ToolID, event.ToolName, event.ToolInputJSON, event.ParentToolUseID,
 		event.ToolResultForID, event.ToolResultContent,
 		event.IsCompleted, event.ApprovalStatus, event.ApprovalID,
 	)
@@ -732,7 +779,7 @@ func (s *SQLiteStore) GetConversation(ctx context.Context, claudeSessionID strin
 	query := `
 		SELECT id, session_id, claude_session_id, sequence, event_type, created_at,
 			role, content,
-			tool_id, tool_name, tool_input_json,
+			tool_id, tool_name, tool_input_json, parent_tool_use_id,
 			tool_result_for_id, tool_result_content,
 			is_completed, approval_status, approval_id
 		FROM conversation_events
@@ -753,7 +800,7 @@ func (s *SQLiteStore) GetConversation(ctx context.Context, claudeSessionID strin
 			&event.ID, &event.SessionID, &event.ClaudeSessionID,
 			&event.Sequence, &event.EventType, &event.CreatedAt,
 			&event.Role, &event.Content,
-			&event.ToolID, &event.ToolName, &event.ToolInputJSON,
+			&event.ToolID, &event.ToolName, &event.ToolInputJSON, &event.ParentToolUseID,
 			&event.ToolResultForID, &event.ToolResultContent,
 			&event.IsCompleted, &event.ApprovalStatus, &event.ApprovalID,
 		)
@@ -831,7 +878,7 @@ func (s *SQLiteStore) GetSessionConversation(ctx context.Context, sessionID stri
 	query := fmt.Sprintf(`
 		SELECT id, session_id, claude_session_id, sequence, event_type, created_at,
 			role, content,
-			tool_id, tool_name, tool_input_json,
+			tool_id, tool_name, tool_input_json, parent_tool_use_id,
 			tool_result_for_id, tool_result_content,
 			is_completed, approval_status, approval_id
 		FROM conversation_events
@@ -854,7 +901,7 @@ func (s *SQLiteStore) GetSessionConversation(ctx context.Context, sessionID stri
 			&event.ID, &event.SessionID, &event.ClaudeSessionID,
 			&event.Sequence, &event.EventType, &event.CreatedAt,
 			&event.Role, &event.Content,
-			&event.ToolID, &event.ToolName, &event.ToolInputJSON,
+			&event.ToolID, &event.ToolName, &event.ToolInputJSON, &event.ParentToolUseID,
 			&event.ToolResultForID, &event.ToolResultContent,
 			&event.IsCompleted, &event.ApprovalStatus, &event.ApprovalID,
 		)

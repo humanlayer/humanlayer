@@ -106,9 +106,10 @@ type ConversationEvent struct {
 	Content string
 
 	// Tool call fields
-	ToolID        string
-	ToolName      string
-	ToolInputJSON string
+	ToolID          string
+	ToolName        string
+	ToolInputJSON   string
+	ParentToolUseID string
 
 	// Tool result fields
 	ToolResultForID   string

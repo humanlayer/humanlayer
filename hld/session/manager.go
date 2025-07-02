@@ -605,6 +605,7 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 						ToolID:          content.ID,
 						ToolName:        content.Name,
 						ToolInputJSON:   string(inputJSON),
+						ParentToolUseID: event.ParentToolUseID, // Capture from event level
 						// We don't know yet if this needs approval - that comes from HumanLayer API
 					}
 					if err := m.store.AddConversationEvent(ctx, convEvent); err != nil {
@@ -625,13 +626,14 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 						m.eventBus.Publish(bus.Event{
 							Type: bus.EventConversationUpdated,
 							Data: map[string]interface{}{
-								"session_id":        sessionID,
-								"claude_session_id": claudeSessionID,
-								"event_type":        "tool_call",
-								"tool_id":           content.ID,
-								"tool_name":         content.Name,
-								"tool_input":        toolInput,
-								"content_type":      "tool_use",
+								"session_id":         sessionID,
+								"claude_session_id":  claudeSessionID,
+								"event_type":         "tool_call",
+								"tool_id":            content.ID,
+								"tool_name":          content.Name,
+								"tool_input":         toolInput,
+								"parent_tool_use_id": event.ParentToolUseID,
+								"content_type":       "tool_use",
 							},
 						})
 					}

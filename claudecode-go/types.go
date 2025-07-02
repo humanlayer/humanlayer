@@ -67,6 +67,9 @@ type StreamEvent struct {
 	Tools      []string    `json:"tools,omitempty"`
 	MCPServers []MCPStatus `json:"mcp_servers,omitempty"`
 
+	// Parent tracking for sub-tasks
+	ParentToolUseID string `json:"parent_tool_use_id,omitempty"`
+
 	// System event fields (when type="system" and subtype="init")
 	CWD            string `json:"cwd,omitempty"`
 	Model          string `json:"model,omitempty"`
