@@ -29,9 +29,10 @@ type ConversationEvent struct {
 	Content string `json:"content,omitempty"`
 
 	// Tool call fields
-	ToolID        string `json:"tool_id,omitempty"`
-	ToolName      string `json:"tool_name,omitempty"`
-	ToolInputJSON string `json:"tool_input_json,omitempty"`
+	ToolID          string `json:"tool_id,omitempty"`
+	ToolName        string `json:"tool_name,omitempty"`
+	ToolInputJSON   string `json:"tool_input_json,omitempty"`
+	ParentToolUseID string `json:"parent_tool_use_id,omitempty"`
 
 	// Tool result fields
 	ToolResultForID   string `json:"tool_result_for_id,omitempty"`

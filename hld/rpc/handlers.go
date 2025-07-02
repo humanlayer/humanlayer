@@ -223,6 +223,7 @@ func (h *SessionHandlers) HandleGetConversation(ctx context.Context, params json
 			ToolID:            event.ToolID,
 			ToolName:          event.ToolName,
 			ToolInputJSON:     event.ToolInputJSON,
+			ParentToolUseID:   event.ParentToolUseID,
 			ToolResultForID:   event.ToolResultForID,
 			ToolResultContent: event.ToolResultContent,
 			IsCompleted:       event.IsCompleted,
