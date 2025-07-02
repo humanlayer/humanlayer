@@ -1,5 +1,6 @@
 import { Command } from 'commander'
 import { thoughtsInitCommand } from './thoughts/init.js'
+import { thoughtsUninitCommand } from './thoughts/uninit.js'
 import { thoughtsSyncCommand } from './thoughts/sync.js'
 import { thoughtsStatusCommand } from './thoughts/status.js'
 import { thoughtsConfigCommand } from './thoughts/config.js'
@@ -12,7 +13,15 @@ export function thoughtsCommand(program: Command): void {
     .description('Initialize thoughts for current repository')
     .option('--force', 'Force reconfiguration even if already set up')
     .option('--config-file <path>', 'Path to config file')
+    .option('--directory <name>', 'Specify the repository directory name (skips interactive prompt)')
     .action(thoughtsInitCommand)
+
+  thoughts
+    .command('uninit')
+    .description('Remove thoughts setup from current repository')
+    .option('--force', 'Force removal even if not in configuration')
+    .option('--config-file <path>', 'Path to config file')
+    .action(thoughtsUninitCommand)
 
   thoughts
     .command('sync')
