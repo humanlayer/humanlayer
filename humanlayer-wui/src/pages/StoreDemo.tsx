@@ -12,6 +12,12 @@ interface CounterStore {
   reset: () => void
 }
 
+// Animation step for demo sequences
+interface AnimationStep {
+  state: Partial<CounterStore>
+  delay: number // milliseconds to wait before applying this state
+}
+
 // Store factory that creates a counter store
 function createCounterStore(isDemo: boolean = false): StoreApi<CounterStore> {
   return create<CounterStore>((set) => ({
@@ -37,15 +43,18 @@ function createCounterStore(isDemo: boolean = false): StoreApi<CounterStore> {
   }))
 }
 
-// Demo animator that updates the store automatically
+// Demo animator that plays through a sequence of states
 class DemoAnimator {
   private store: StoreApi<CounterStore>
+  private sequence: AnimationStep[]
+  private currentIndex: number = 0
   private timeoutId: NodeJS.Timeout | null = null
   private isRunning: boolean = false
   private unsubscribe: (() => void) | null = null
   
-  constructor(store: StoreApi<CounterStore>) {
+  constructor(store: StoreApi<CounterStore>, sequence: AnimationStep[]) {
     this.store = store
+    this.sequence = sequence
     
     // Subscribe to store changes for logging/debugging
     this.unsubscribe = store.subscribe(
@@ -58,7 +67,8 @@ class DemoAnimator {
   
   start() {
     this.isRunning = true
-    this.scheduleNext()
+    this.currentIndex = 0
+    this.playNext()
   }
   
   stop() {
@@ -74,27 +84,38 @@ class DemoAnimator {
     }
   }
   
-  private scheduleNext() {
-    if (!this.isRunning) return
+  private playNext() {
+    if (!this.isRunning || this.currentIndex >= this.sequence.length) {
+      // Loop back to start
+      if (this.isRunning) {
+        this.currentIndex = 0
+        this.playNext()
+      }
+      return
+    }
     
-    // Random delay between 1-10 seconds
-    const delay = Math.floor(Math.random() * 9000) + 1000
+    const step = this.sequence[this.currentIndex]
     
     this.timeoutId = setTimeout(() => {
-      // Directly update the store state
-      this.store.setState(state => ({ count: state.count + 1 }))
+      // Apply the state from the sequence
+      this.store.setState(step.state as CounterStore)
       
-      // Schedule next update
-      this.scheduleNext()
-    }, delay)
+      // Move to next step
+      this.currentIndex++
+      this.playNext()
+    }, step.delay)
   }
 }
 
-// Context for real store
-const RealStoreContext = createContext<StoreApi<CounterStore> | null>(null)
+// Single context for counter store (no need to specify if it's demo or real)
+const CounterStoreContext = createContext<StoreApi<CounterStore> | null>(null)
 
-// Context for demo store
-const DemoStoreContext = createContext<StoreApi<CounterStore> | null>(null)
+// Hook to use the counter store
+function useCounterStore<T>(selector: (state: CounterStore) => T): T {
+  const store = useContext(CounterStoreContext)
+  if (!store) throw new Error('useCounterStore must be used within a CounterStoreProvider')
+  return useStore(store, selector)
+}
 
 // Provider for real store
 function RealStoreProvider({ children }: { children: React.ReactNode }) {
@@ -116,16 +137,21 @@ function RealStoreProvider({ children }: { children: React.ReactNode }) {
   }, [realStore])
   
   return (
-    <RealStoreContext.Provider value={realStore}>
+    <CounterStoreContext.Provider value={realStore}>
       {children}
-    </RealStoreContext.Provider>
+    </CounterStoreContext.Provider>
   )
 }
 
-// Provider for demo store
-function DemoStoreProvider({ children }: { children: React.ReactNode }) {
+// Provider for demo store with animation sequence
+interface DemoStoreProviderProps {
+  children: React.ReactNode
+  sequence: AnimationStep[]
+}
+
+function DemoStoreProvider({ children, sequence }: DemoStoreProviderProps) {
   const [demoStore] = useState(() => createCounterStore(true))
-  const [animator] = useState(() => new DemoAnimator(demoStore))
+  const [animator] = useState(() => new DemoAnimator(demoStore, sequence))
   
   useEffect(() => {
     // Start animation
@@ -138,57 +164,25 @@ function DemoStoreProvider({ children }: { children: React.ReactNode }) {
   }, [animator, demoStore])
   
   return (
-    <DemoStoreContext.Provider value={demoStore}>
+    <CounterStoreContext.Provider value={demoStore}>
       {children}
-    </DemoStoreContext.Provider>
+    </CounterStoreContext.Provider>
   )
 }
 
-// Hook to use the real store
-function useRealStore<T>(selector: (state: CounterStore) => T): T {
-  const store = useContext(RealStoreContext)
-  if (!store) throw new Error('useRealStore must be used within RealStoreProvider')
-  return useStore(store, selector)
-}
-
-// Hook to use the demo store
-function useDemoStore<T>(selector: (state: CounterStore) => T): T {
-  const store = useContext(DemoStoreContext)
-  if (!store) throw new Error('useDemoStore must be used within DemoStoreProvider')
-  return useStore(store, selector)
-}
-
-// Counter component that can use either store
-function Counter({ mode }: { mode: 'real' | 'demo' }) {
-  const count = mode === 'real' 
-    ? useRealStore(state => state.count)
-    : useDemoStore(state => state.count)
-    
-  const increment = mode === 'real'
-    ? useRealStore(state => state.increment)
-    : useDemoStore(state => state.increment)
-    
-  const decrement = mode === 'real'
-    ? useRealStore(state => state.decrement)
-    : useDemoStore(state => state.decrement)
-    
-  const reset = mode === 'real'
-    ? useRealStore(state => state.reset)
-    : useDemoStore(state => state.reset)
+// Counter component - doesn't know or care if it's real or demo!
+function Counter() {
+  const count = useCounterStore(state => state.count)
+  const increment = useCounterStore(state => state.increment)
+  const decrement = useCounterStore(state => state.decrement)
+  const reset = useCounterStore(state => state.reset)
   
   return (
     <Card className="w-[400px]">
       <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          Counter
-          <Badge variant={mode === 'real' ? 'default' : 'secondary'}>
-            {mode === 'real' ? 'Real Store' : 'Demo Store'}
-          </Badge>
-        </CardTitle>
+        <CardTitle>Counter</CardTitle>
         <CardDescription>
-          {mode === 'real' 
-            ? 'Interactive counter with manual controls' 
-            : 'Auto-incrementing counter (random 1-10s intervals)'}
+          Click the buttons to interact
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -197,90 +191,147 @@ function Counter({ mode }: { mode: 'real' | 'demo' }) {
             <div className="text-6xl font-bold tabular-nums">{count}</div>
           </div>
           
-          {mode === 'real' && (
-            <div className="flex gap-2 justify-center">
-              <Button onClick={decrement} variant="outline" size="sm">
-                -
-              </Button>
-              <Button onClick={increment} variant="outline" size="sm">
-                +
-              </Button>
-              <Button onClick={reset} variant="outline" size="sm">
-                Reset
-              </Button>
-            </div>
-          )}
-          
-          {mode === 'demo' && (
-            <div className="text-center text-sm text-muted-foreground">
-              Watching for updates...
-            </div>
-          )}
+          <div className="flex gap-2 justify-center">
+            <Button onClick={decrement} variant="outline" size="sm">
+              -
+            </Button>
+            <Button onClick={increment} variant="outline" size="sm">
+              +
+            </Button>
+            <Button onClick={reset} variant="outline" size="sm">
+              Reset
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>
   )
 }
 
+// Wrapper to show demo vs real labeling (for demo purposes only)
+function LabeledCounter({ label, variant }: { label: string; variant: 'default' | 'secondary' }) {
+  return (
+    <div className="space-y-2">
+      <Badge variant={variant} className="text-sm">
+        {label}
+      </Badge>
+      <Counter />
+    </div>
+  )
+}
+
+// Example demo sequences
+const simpleCountingSequence: AnimationStep[] = [
+  { state: { count: 0 }, delay: 1000 },
+  { state: { count: 1 }, delay: 2000 },
+  { state: { count: 2 }, delay: 1500 },
+  { state: { count: 3 }, delay: 3000 },
+  { state: { count: 4 }, delay: 1000 },
+  { state: { count: 5 }, delay: 2500 },
+  { state: { count: 0 }, delay: 4000 }, // Reset after pause
+]
+
+const randomSequence: AnimationStep[] = [
+  { state: { count: 0 }, delay: 1000 },
+  { state: { count: 7 }, delay: 2000 },
+  { state: { count: 3 }, delay: 1500 },
+  { state: { count: 11 }, delay: 2200 },
+  { state: { count: 8 }, delay: 1800 },
+  { state: { count: 15 }, delay: 3000 },
+  { state: { count: 2 }, delay: 1200 },
+  { state: { count: 0 }, delay: 3500 },
+]
+
 // Main demo page
 export default function StoreDemo() {
+  const [sequenceType, setSequenceType] = useState<'simple' | 'random'>('simple')
+  const sequence = sequenceType === 'simple' ? simpleCountingSequence : randomSequence
+  
   return (
     <div className="container mx-auto p-8">
       <div className="max-w-4xl mx-auto space-y-8">
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-bold">Zustand Store Demo</h1>
           <p className="text-muted-foreground">
-            Demonstrating real vs demo store implementations using Zustand with React Context pattern
+            The Counter component doesn't know if it's using a real or demo store
           </p>
+        </div>
+        
+        <div className="flex justify-center gap-4">
+          <Button
+            onClick={() => setSequenceType('simple')}
+            variant={sequenceType === 'simple' ? 'default' : 'outline'}
+            size="sm"
+          >
+            Simple Sequence
+          </Button>
+          <Button
+            onClick={() => setSequenceType('random')}
+            variant={sequenceType === 'random' ? 'default' : 'outline'}
+            size="sm"
+          >
+            Random Sequence
+          </Button>
         </div>
         
         <div className="grid gap-8 md:grid-cols-2 justify-items-center">
           <RealStoreProvider>
-            <Counter mode="real" />
+            <LabeledCounter label="Real Store (Interactive)" variant="default" />
           </RealStoreProvider>
           
-          <DemoStoreProvider>
-            <Counter mode="demo" />
+          <DemoStoreProvider sequence={sequence} key={sequenceType}>
+            <LabeledCounter label="Demo Store (Automated)" variant="secondary" />
           </DemoStoreProvider>
         </div>
         
+        <Card>
+          <CardHeader>
+            <CardTitle>Animation Sequence</CardTitle>
+            <CardDescription>
+              Current sequence: {sequenceType === 'simple' ? 'Simple counting' : 'Random jumps'}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <pre className="text-xs bg-muted p-3 rounded overflow-x-auto">
+              {JSON.stringify(sequence, null, 2)}
+            </pre>
+          </CardContent>
+        </Card>
+        
         <Card className="mt-8">
           <CardHeader>
-            <CardTitle>How It Works</CardTitle>
+            <CardTitle>Key Architecture Points</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 text-sm">
             <div>
-              <h3 className="font-semibold mb-1">Real Store:</h3>
+              <h3 className="font-semibold mb-1">Component Design:</h3>
               <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                <li>Created in React state within RealStoreProvider</li>
-                <li>User interactions directly update the store state</li>
-                <li>Actions modify state using set() function</li>
-                <li>Each instance is independent and non-global</li>
+                <li>The Counter component has no knowledge of demo vs real mode</li>
+                <li>It simply uses the store provided by its parent context</li>
+                <li>All components should be written this way - pure consumers of store state</li>
+                <li>The provider determines behavior, not the component</li>
               </ul>
             </div>
             
             <div>
-              <h3 className="font-semibold mb-1">Demo Store:</h3>
+              <h3 className="font-semibold mb-1">Demo Store Features:</h3>
               <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                <li>Created in React state within DemoStoreProvider</li>
-                <li>Same store interface but actions are no-ops in demo mode</li>
-                <li>DemoAnimator class controls state updates externally</li>
-                <li>Uses store.setState() to update from outside React</li>
-                <li>Random intervals between 1-10 seconds for realistic feel</li>
-                <li>Proper cleanup on unmount - stops animator and resets state</li>
+                <li>Accepts a JSON sequence of states and delays</li>
+                <li>Plays through the sequence automatically</li>
+                <li>Loops back to start when sequence completes</li>
+                <li>Can load sequences from JSON files for marketing demos</li>
+                <li>Easily create different scenarios for different pages</li>
               </ul>
             </div>
             
             <div>
-              <h3 className="font-semibold mb-1">Key Implementation Details:</h3>
+              <h3 className="font-semibold mb-1">Benefits:</h3>
               <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                <li>Both stores use React Context + useState pattern</li>
-                <li>No global store instances - everything is scoped to providers</li>
-                <li>Same store factory function for both</li>
-                <li>Components remain identical regardless of store type</li>
-                <li>Animator properly cleans up timeouts on unmount</li>
-                <li>Subscriptions demonstrate external state monitoring</li>
-                <li>Console logging shows state updates for both stores</li>
+                <li>Components remain pure and testable</li>
+                <li>Demo sequences are data, not code</li>
+                <li>Marketing team can modify sequences without coding</li>
+                <li>Same components work in app and marketing site</li>
+                <li>Easy to A/B test different animation sequences</li>
               </ul>
             </div>
           </CardContent>
