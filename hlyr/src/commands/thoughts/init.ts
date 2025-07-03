@@ -1,7 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
-import { execSync, execFileSync } from 'child_process'
+import { execSync } from 'child_process'
 import chalk from 'chalk'
 import readline from 'readline'
 import {
@@ -611,7 +611,7 @@ export async function thoughtsInitCommand(options: InitOptions): Promise<void> {
       execSync('git remote get-url origin', { cwd: expandedRepo, stdio: 'pipe' })
       // Remote exists, try to pull
       try {
-        execFileSync('git', ['pull', '--rebase'], {
+        execSync('git pull --rebase', {
           stdio: 'pipe',
           cwd: expandedRepo,
         })

@@ -49,7 +49,7 @@ function syncThoughts(thoughtsRepo: string, message: string): void {
 
     // Pull latest changes after committing (to avoid conflicts with staged changes)
     try {
-      execFileSync('git', ['pull', '--rebase'], {
+      execSync('git pull --rebase', {
         stdio: 'pipe',
         cwd: expandedRepo,
       })
