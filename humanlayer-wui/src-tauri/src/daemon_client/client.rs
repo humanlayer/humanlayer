@@ -20,13 +20,26 @@ pub trait DaemonClientTrait: Send + Sync {
     async fn get_session_leaves(&self) -> Result<GetSessionLeavesResponse>;
     async fn continue_session(&self, req: ContinueSessionRequest) -> Result<ContinueSessionResponse>;
     async fn get_session_state(&self, session_id: &str) -> Result<GetSessionStateResponse>;
-    async fn get_conversation(&self, session_id: Option<&str>, claude_session_id: Option<&str>) -> Result<GetConversationResponse>;
+    async fn get_conversation(
+        &self,
+        session_id: Option<&str>,
+        claude_session_id: Option<&str>,
+    ) -> Result<GetConversationResponse>;
     async fn fetch_approvals(&self, session_id: Option<&str>) -> Result<FetchApprovalsResponse>;
-    async fn send_decision(&self, call_id: &str, approval_type: ApprovalType, decision: Decision, comment: Option<&str>) -> Result<SendDecisionResponse>;
+    async fn send_decision(
+        &self,
+        call_id: &str,
+        approval_type: ApprovalType,
+        decision: Decision,
+        comment: Option<&str>,
+    ) -> Result<SendDecisionResponse>;
     async fn approve_function_call(&self, call_id: &str, comment: Option<&str>) -> Result<()>;
     async fn deny_function_call(&self, call_id: &str, reason: &str) -> Result<()>;
     async fn respond_to_human_contact(&self, call_id: &str, response: &str) -> Result<()>;
-    async fn subscribe(&self, req: SubscribeRequest) -> Result<(u64, tokio::sync::mpsc::Receiver<EventNotification>)>;
+    async fn subscribe(
+        &self,
+        req: SubscribeRequest,
+    ) -> Result<(u64, tokio::sync::mpsc::Receiver<EventNotification>)>;
     async fn unsubscribe(&self, subscription_id: u64) -> Result<()>;
     async fn interrupt_session(&self, session_id: &str) -> Result<()>;
 }
@@ -127,7 +140,6 @@ impl DaemonClientTrait for DaemonClient {
         self.send_rpc_request("launchSession", Some(req)).await
     }
 
-
     async fn list_sessions(&self) -> Result<ListSessionsResponse> {
         self.send_rpc_request("listSessions", None::<()>).await
     }
@@ -200,12 +212,19 @@ impl DaemonClientTrait for DaemonClient {
 
     async fn approve_function_call(&self, call_id: &str, comment: Option<&str>) -> Result<()> {
         let response = self
-            .send_decision(call_id, ApprovalType::FunctionCall, Decision::Approve, comment)
+            .send_decision(
+                call_id,
+                ApprovalType::FunctionCall,
+                Decision::Approve,
+                comment,
+            )
             .await?;
 
         if !response.success {
             return Err(Error::Approval(
-                response.error.unwrap_or_else(|| "Unknown error".to_string()),
+                response
+                    .error
+                    .unwrap_or_else(|| "Unknown error".to_string()),
             ));
         }
 
@@ -224,7 +243,9 @@ impl DaemonClientTrait for DaemonClient {
 
         if !response.success {
             return Err(Error::Approval(
-                response.error.unwrap_or_else(|| "Unknown error".to_string()),
+                response
+                    .error
+                    .unwrap_or_else(|| "Unknown error".to_string()),
             ));
         }
 
@@ -250,22 +271,26 @@ impl DaemonClientTrait for DaemonClient {
         Ok(())
     }
 
-    async fn subscribe(&self, req: SubscribeRequest) -> Result<(u64, tokio::sync::mpsc::Receiver<EventNotification>)> {
+    async fn subscribe(
+        &self,
+        req: SubscribeRequest,
+    ) -> Result<(u64, tokio::sync::mpsc::Receiver<EventNotification>)> {
         let connection = self.connection.read().await;
         let sub_stream = connection.create_subscription_connection().await?;
 
         let id = self.request_id.fetch_add(1, Ordering::SeqCst);
-        let receiver = self.subscription_manager.create_subscription(
-            id,
-            sub_stream,
-            req,
-        ).await?;
+        let receiver = self
+            .subscription_manager
+            .create_subscription(id, sub_stream, req)
+            .await?;
 
         Ok((id, receiver))
     }
 
     async fn unsubscribe(&self, subscription_id: u64) -> Result<()> {
-        self.subscription_manager.cancel_subscription(subscription_id).await;
+        self.subscription_manager
+            .cancel_subscription(subscription_id)
+            .await;
         Ok(())
     }
 
@@ -273,12 +298,14 @@ impl DaemonClientTrait for DaemonClient {
         let req = InterruptSessionRequest {
             session_id: session_id.to_string(),
         };
-        let response: InterruptSessionResponse = self.send_rpc_request("interruptSession", Some(req)).await?;
+        let response: InterruptSessionResponse =
+            self.send_rpc_request("interruptSession", Some(req)).await?;
 
         if !response.success {
-            return Err(Error::Session(
-                format!("Failed to interrupt session {}", session_id)
-            ));
+            return Err(Error::Session(format!(
+                "Failed to interrupt session {}",
+                session_id
+            )));
         }
 
         Ok(())

@@ -148,23 +148,34 @@ export function highlightMatches(
 
   const result: Array<{ text: string; highlighted: boolean }> = []
   let lastIndex = 0
+  let i = 0
 
-  for (const index of indices) {
+  while (i < indices.length) {
+    const startIndex = indices[i]
+
     // Add non-highlighted text before this match
-    if (index > lastIndex) {
+    if (startIndex > lastIndex) {
       result.push({
-        text: text.slice(lastIndex, index),
+        text: text.slice(lastIndex, startIndex),
         highlighted: false,
       })
     }
 
-    // Add highlighted character
+    // Find consecutive indices
+    let endIndex = startIndex
+    while (i < indices.length - 1 && indices[i + 1] === indices[i] + 1) {
+      i++
+      endIndex = indices[i]
+    }
+
+    // Add highlighted text (consecutive characters)
     result.push({
-      text: text[index],
+      text: text.slice(startIndex, endIndex + 1),
       highlighted: true,
     })
 
-    lastIndex = index + 1
+    lastIndex = endIndex + 1
+    i++
   }
 
   // Add remaining non-highlighted text

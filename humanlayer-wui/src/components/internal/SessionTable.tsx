@@ -15,6 +15,7 @@ import { CircleOff } from 'lucide-react'
 import { getStatusTextClass } from '@/utils/component-utils'
 import { formatTimestamp, formatAbsoluteTimestamp } from '@/utils/formatting'
 import { highlightMatches } from '@/lib/fuzzy-search'
+import { useSessionLauncher } from '@/hooks/useSessionLauncher'
 
 interface SessionTableProps {
   sessions: SessionInfo[]
@@ -41,6 +42,7 @@ export default function SessionTable({
   searchText,
   matchedSessions,
 }: SessionTableProps) {
+  const { isOpen: isSessionLauncherOpen } = useSessionLauncher()
   const { enableScope, disableScope } = useHotkeysContext()
   const tableRef = useRef<HTMLTableElement>(null)
 
@@ -87,8 +89,14 @@ export default function SessionTable({
     }
   }, [focusedSession])
 
-  useHotkeys('j', () => handleFocusNextSession?.(), { scopes: SessionTableHotkeysScope })
-  useHotkeys('k', () => handleFocusPreviousSession?.(), { scopes: SessionTableHotkeysScope })
+  useHotkeys('j', () => handleFocusNextSession?.(), {
+    scopes: SessionTableHotkeysScope,
+    enabled: !isSessionLauncherOpen,
+  })
+  useHotkeys('k', () => handleFocusPreviousSession?.(), {
+    scopes: SessionTableHotkeysScope,
+    enabled: !isSessionLauncherOpen,
+  })
   useHotkeys(
     'enter',
     () => {
@@ -96,7 +104,7 @@ export default function SessionTable({
         handleActivateSession?.(focusedSession)
       }
     },
-    { scopes: SessionTableHotkeysScope },
+    { scopes: SessionTableHotkeysScope, enabled: !isSessionLauncherOpen },
   )
 
   return (

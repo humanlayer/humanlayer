@@ -3,6 +3,8 @@ import { daemonClient } from '@/lib/daemon'
 import type { LaunchSessionRequest } from '@/lib/daemon/types'
 import { useHotkeysContext } from 'react-hotkeys-hook'
 import { SessionTableHotkeysScope } from '@/components/internal/SessionTable'
+import { exists } from '@tauri-apps/plugin-fs'
+import { homeDir } from '@tauri-apps/api/path'
 
 interface SessionConfig {
   query: string
@@ -55,7 +57,8 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
       error: undefined,
     }),
 
-  close: () =>
+  close: () => {
+    console.log('close')
     set({
       isOpen: false,
       view: 'menu',
@@ -64,7 +67,8 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
       selectedMenuIndex: 0,
       error: undefined,
       gPrefixMode: false,
-    }),
+    })
+  },
 
   setQuery: query =>
     set(state => ({
@@ -87,6 +91,28 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
     if (!query.trim()) {
       set({ error: 'Please enter a query to launch a session' })
       return
+    }
+
+    // Validate working directory if provided
+    if (config.workingDir) {
+      try {
+        // Expand ~ to home directory
+        let pathToCheck = config.workingDir
+        if (pathToCheck.startsWith('~')) {
+          const home = await homeDir()
+          pathToCheck = pathToCheck.replace(/^~(?=$|\/|\\)/, home)
+        }
+
+        // Check if the path exists
+        const pathExists = await exists(pathToCheck)
+        if (!pathExists) {
+          set({ error: `Directory does not exist: ${config.workingDir}` })
+          return
+        }
+      } catch (err) {
+        set({ error: `Error checking directory: ${err}` })
+        return
+      }
     }
 
     try {
