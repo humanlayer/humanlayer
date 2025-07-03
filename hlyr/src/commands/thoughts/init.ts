@@ -606,6 +606,23 @@ export async function thoughtsInitCommand(options: InitOptions): Promise<void> {
       console.log(chalk.green(`✓ Added symlinks for other users: ${otherUsers.join(', ')}`))
     }
 
+    // Pull latest thoughts if remote exists
+    try {
+      execSync('git remote get-url origin', { cwd: expandedRepo, stdio: 'pipe' })
+      // Remote exists, try to pull
+      try {
+        execSync('git pull --rebase', {
+          stdio: 'pipe',
+          cwd: expandedRepo,
+        })
+        console.log(chalk.green('✓ Pulled latest thoughts from remote'))
+      } catch (error) {
+        console.warn(chalk.yellow('Warning: Could not pull latest thoughts:'), error.message)
+      }
+    } catch {
+      // No remote configured, skip pull
+    }
+
     // Generate CLAUDE.md
     const claudeMd = generateClaudeMd(config.thoughtsRepo, config.reposDir, mappedName, config.user)
     fs.writeFileSync(path.join(thoughtsDir, 'CLAUDE.md'), claudeMd)
