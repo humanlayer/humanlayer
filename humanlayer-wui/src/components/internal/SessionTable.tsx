@@ -89,8 +89,14 @@ export default function SessionTable({
     }
   }, [focusedSession])
 
-  useHotkeys('j', () => handleFocusNextSession?.(), { scopes: SessionTableHotkeysScope, enabled: !isSessionLauncherOpen })
-  useHotkeys('k', () => handleFocusPreviousSession?.(), { scopes: SessionTableHotkeysScope, enabled: !isSessionLauncherOpen })
+  useHotkeys('j', () => handleFocusNextSession?.(), {
+    scopes: SessionTableHotkeysScope,
+    enabled: !isSessionLauncherOpen,
+  })
+  useHotkeys('k', () => handleFocusPreviousSession?.(), {
+    scopes: SessionTableHotkeysScope,
+    enabled: !isSessionLauncherOpen,
+  })
   useHotkeys(
     'enter',
     () => {

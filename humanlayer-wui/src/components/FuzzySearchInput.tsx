@@ -1,5 +1,5 @@
 import { homeDir } from '@tauri-apps/api/path'
-import { DirEntry, readDir, exists } from '@tauri-apps/plugin-fs'
+import { DirEntry, readDir } from '@tauri-apps/plugin-fs'
 import React, { useState, useRef } from 'react'
 import { cn } from '@/lib/utils'
 import { fuzzySearch, highlightMatches, type FuzzyMatch } from '@/lib/fuzzy-search'
@@ -20,7 +20,7 @@ export function SearchInput({
   value: externalValue,
   onChange: externalOnChange,
   onSubmit,
-  placeholder = "Type a directory path..."
+  placeholder = 'Type a directory path...',
 }: SearchInputProps = {}) {
   // Use internal state if not controlled
   const [internalValue, setInternalValue] = useState('')
