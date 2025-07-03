@@ -6,6 +6,7 @@ import { SessionTableSearch } from '@/components/SessionTableSearch'
 import { useSessionFilter } from '@/hooks/useSessionFilter'
 import { SessionStatus } from '@/lib/daemon/types'
 import { useHotkeys } from 'react-hotkeys-hook'
+import { useSessionLauncher } from '@/hooks'
 
 // Status values to cycle through with Tab
 const STATUS_CYCLE = [
@@ -19,6 +20,7 @@ const STATUS_CYCLE = [
 ]
 
 export function SessionTablePage() {
+  const { isOpen: isSessionLauncherOpen } = useSessionLauncher()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const tableRef = useRef<HTMLDivElement>(null)
@@ -95,7 +97,7 @@ export function SessionTablePage() {
       const nextIndex = (currentStatusIndex + 1) % STATUS_CYCLE.length
       setSearchQuery(STATUS_CYCLE[nextIndex])
     },
-    { enableOnFormTags: false, scopes: SessionTableHotkeysScope },
+    { enableOnFormTags: false, scopes: SessionTableHotkeysScope, enabled: !isSessionLauncherOpen },
   )
 
   // Handle Shift+Tab to cycle backwards through status filters
@@ -110,7 +112,7 @@ export function SessionTablePage() {
       const prevIndex = currentStatusIndex <= 0 ? STATUS_CYCLE.length - 1 : currentStatusIndex - 1
       setSearchQuery(STATUS_CYCLE[prevIndex])
     },
-    { enableOnFormTags: false, scopes: SessionTableHotkeysScope },
+    { enableOnFormTags: false, scopes: SessionTableHotkeysScope, enabled: !isSessionLauncherOpen },
   )
 
   return (
