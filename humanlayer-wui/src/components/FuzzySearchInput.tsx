@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react'
 import { cn } from '@/lib/utils'
 import { fuzzySearch, highlightMatches, type FuzzyMatch } from '@/lib/fuzzy-search'
 import { Input } from './ui/input'
-import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
+import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from './ui/popover'
 import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from './ui/command'
 import { FileWarning } from 'lucide-react'
 import { useHotkeys } from 'react-hotkeys-hook'
@@ -37,9 +37,12 @@ export function SearchInput() {
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [isInvalidPath, setIsInvalidPath] = useState(false)
   const [isFocused, setIsFocused] = useState(false)
-  const [directoryPreview, setDirectoryPreview] = useState<{ selected: boolean; path: DirEntry; matches?: FuzzyMatch['matches'] }[]>([])
+  const [directoryPreview, setDirectoryPreview] = useState<
+    { selected: boolean; path: DirEntry; matches?: FuzzyMatch['matches'] }[]
+  >([])
   const [lastValidPath, setLastValidPath] = useState('')
   const [allDirectories, setAllDirectories] = useState<DirEntry[]>([])
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const Hotkeys = {
     ARROW_UP: 'arrowup',
@@ -52,13 +55,15 @@ export function SearchInput() {
   useHotkeys(
     Object.values(Hotkeys).join(','),
     (ev, handler) => {
+      const selectedDir = directoryPreview.find(item => item.selected)
+
       switch (handler.keys?.join('')) {
         case Hotkeys.ARROW_UP:
           if (directoryPreview.length > 0) {
             const currentIndex = directoryPreview.findIndex(item => item.selected)
             const newIndex = (currentIndex - 1 + directoryPreview.length) % directoryPreview.length
-            setDirectoryPreview(prev => 
-              prev.map((item, idx) => ({ ...item, selected: idx === newIndex }))
+            setDirectoryPreview(prev =>
+              prev.map((item, idx) => ({ ...item, selected: idx === newIndex })),
             )
           }
           break
@@ -66,19 +71,19 @@ export function SearchInput() {
           if (directoryPreview.length > 0) {
             const currentIndex = directoryPreview.findIndex(item => item.selected)
             const newIndex = (currentIndex + 1) % directoryPreview.length
-            setDirectoryPreview(prev => 
-              prev.map((item, idx) => ({ ...item, selected: idx === newIndex }))
+            setDirectoryPreview(prev =>
+              prev.map((item, idx) => ({ ...item, selected: idx === newIndex })),
             )
           }
           break
         case Hotkeys.ENTER:
         case Hotkeys.TAB:
-          const selectedDir = directoryPreview.find(item => item.selected)
+          ev.preventDefault()
           if (selectedDir) {
             // Parse current path to get base directory
             const lastSlashIdx = searchValue.lastIndexOf('/')
             const basePath = lastSlashIdx === -1 ? '' : searchValue.substring(0, lastSlashIdx + 1)
-            
+
             // Replace the partial text with the selected directory
             const newPath = basePath + selectedDir.path.name
             setSearchValue(newPath)
@@ -142,7 +147,7 @@ export function SearchInput() {
 
     // Filter directories based on search term
     let dirObjs: Array<{ selected: boolean; path: DirEntry; matches?: FuzzyMatch['matches'] }> = []
-    
+
     if (searchTerm) {
       // Use fuzzy search to filter and rank directories
       const searchResults = fuzzySearch(entries, searchTerm, {
@@ -151,7 +156,7 @@ export function SearchInput() {
         minMatchCharLength: 1,
         includeMatches: true,
       })
-      
+
       dirObjs = searchResults.map((result, idx) => ({
         selected: idx === 0,
         path: result.item,
@@ -164,22 +169,26 @@ export function SearchInput() {
         path: dir,
       }))
     }
-    
+
     setDirectoryPreview(dirObjs)
   }
 
   return (
-    <div className="flex flex-col items-start">
-      <Input
-        spellCheck={false}
-        onChange={onChange}
-        value={searchValue}
-        onFocus={() => setIsFocused(true)}
-        onBlur={() => setIsFocused(false)}
-      />
-      <Popover open={dropdownOpen && isFocused} defaultOpen={false}>
-        <PopoverTrigger></PopoverTrigger>
-        <PopoverContent onOpenAutoFocus={e => e.preventDefault()}>
+    <div className="">
+      <Popover open={dropdownOpen && isFocused} defaultOpen={false} modal={true}>
+      {/* <Popover open={true} defaultOpen={false} modal={true}> */}
+        <PopoverAnchor>
+          <Input
+            ref={inputRef}
+            spellCheck={false}
+            onChange={onChange}
+            value={searchValue}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+          />
+        </PopoverAnchor>
+
+        <PopoverContent onOpenAutoFocus={e => e.preventDefault()} side="bottom" align="start">
           <Command>
             <CommandList>
               <CommandEmpty className="py-2">
@@ -200,27 +209,44 @@ export function SearchInput() {
                 <CommandGroup>
                   {directoryPreview.map(item => {
                     const nameMatch = item.matches?.find(m => m.key === 'name')
-                    const highlighted = nameMatch && item.path.name
-                      ? highlightMatches(item.path.name, nameMatch.indices)
-                      : null
+                    const highlighted =
+                      nameMatch && item.path.name
+                        ? highlightMatches(item.path.name, nameMatch.indices)
+                        : null
 
                     return (
-                      <CommandItem 
+                      <CommandItem
                         key={item.path.name}
-                        className={cn(item.selected && "!bg-accent/20")}
+                        className={cn(item.selected && '!bg-accent/20')}
+                        onSelect={() => {
+                          // Parse current path to get base directory
+                          const lastSlashIdx = searchValue.lastIndexOf('/')
+                          const basePath =
+                            lastSlashIdx === -1 ? '' : searchValue.substring(0, lastSlashIdx + 1)
+
+                          // Replace the partial text with the selected directory
+                          const newPath = basePath + item.path.name
+                          setSearchValue(newPath)
+                          setDropdownOpen(false)
+
+                          // Keep focus on the input using ref
+                          inputRef.current?.focus()
+                        }}
                       >
-                        {highlighted ? (
-                          highlighted.map((segment, i) => (
-                            <span
-                              key={i}
-                              className={segment.highlighted ? 'bg-yellow-200 dark:bg-yellow-900/50 font-medium' : ''}
-                            >
-                              {segment.text}
-                            </span>
-                          ))
-                        ) : (
-                          item.path.name
-                        )}
+                        {highlighted
+                          ? highlighted.map((segment, i) => (
+                              <span
+                                key={i}
+                                className={
+                                  segment.highlighted
+                                    ? 'bg-yellow-200 dark:bg-yellow-900/50 font-medium'
+                                    : ''
+                                }
+                              >
+                                {segment.text}
+                              </span>
+                            ))
+                          : item.path.name}
                       </CommandItem>
                     )
                   })}
@@ -291,6 +317,7 @@ export default function FuzzySearchInput<T extends { value: string; label: strin
           setSelectedIndex(prev => (prev - 1 + searchResults.length) % searchResults.length)
           break
         case 'Enter':
+          e.stopPropagation()
           e.preventDefault()
           if (searchResults[selectedIndex] && onSelect) {
             onSelect(searchResults[selectedIndex].item)
@@ -298,12 +325,12 @@ export default function FuzzySearchInput<T extends { value: string; label: strin
           }
           break
         case 'Escape':
-          console.log('ignoring for the moment');
-          break;
-          // e.preventDefault()
-          // setIsOpen(false)
-          // inputRef.current?.blur()
-          // break
+          console.log('ignoring for the moment')
+          break
+        // e.preventDefault()
+        // setIsOpen(false)
+        // inputRef.current?.blur()
+        // break
       }
     }
 
