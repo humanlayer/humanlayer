@@ -1,7 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
-import { execSync } from 'child_process'
+import { execSync, execFileSync } from 'child_process'
 import chalk from 'chalk'
 import readline from 'readline'
 import {
@@ -604,6 +604,23 @@ export async function thoughtsInitCommand(options: InitOptions): Promise<void> {
 
     if (otherUsers.length > 0) {
       console.log(chalk.green(`✓ Added symlinks for other users: ${otherUsers.join(', ')}`))
+    }
+
+    // Pull latest thoughts if remote exists
+    try {
+      execSync('git remote get-url origin', { cwd: expandedRepo, stdio: 'pipe' })
+      // Remote exists, try to pull
+      try {
+        execFileSync('git', ['pull', '--rebase'], {
+          stdio: 'pipe',
+          cwd: expandedRepo,
+        })
+        console.log(chalk.green('✓ Pulled latest thoughts from remote'))
+      } catch (error) {
+        console.warn(chalk.yellow('Warning: Could not pull latest thoughts:'), error.message)
+      }
+    } catch {
+      // No remote configured, skip pull
     }
 
     // Generate CLAUDE.md

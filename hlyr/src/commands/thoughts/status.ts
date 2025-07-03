@@ -80,7 +80,32 @@ function getRemoteStatus(repoPath: string): string {
       return chalk.yellow(`${ahead} commits ahead of remote`)
     } else if (status.includes('behind')) {
       const behind = status.match(/behind (\d+)/)?.[1] || '?'
-      return chalk.yellow(`${behind} commits behind remote`)
+
+      // Try to automatically pull if we're behind
+      try {
+        execSync('git pull --rebase', {
+          stdio: 'pipe',
+          cwd: repoPath,
+        })
+        console.log(chalk.green('✓ Automatically pulled latest changes'))
+
+        // Re-check status after pull
+        const newStatus = execSync('git status -sb', {
+          encoding: 'utf8',
+          cwd: repoPath,
+          stdio: 'pipe',
+        })
+
+        if (newStatus.includes('behind')) {
+          const newBehind = newStatus.match(/behind (\d+)/)?.[1] || '?'
+          return chalk.yellow(`${newBehind} commits behind remote (after pull)`)
+        } else {
+          return chalk.green('Up to date with remote (after pull)')
+        }
+      } catch {
+        // Silent fail - status is read-only operation
+        return chalk.yellow(`${behind} commits behind remote`)
+      }
     } else {
       return chalk.green('Up to date with remote')
     }

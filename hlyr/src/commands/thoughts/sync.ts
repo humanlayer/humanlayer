@@ -34,21 +34,42 @@ function syncThoughts(thoughtsRepo: string, message: string): void {
     // Stage all changes
     execSync('git add -A', { cwd: expandedRepo, stdio: 'pipe' })
 
+    // Pull latest changes before committing
+    try {
+      execFileSync('git', ['pull', '--rebase'], {
+        stdio: 'pipe',
+        cwd: expandedRepo,
+      })
+    } catch (error) {
+      const errorStr = error.toString()
+      if (errorStr.includes('CONFLICT') || errorStr.includes('rebase')) {
+        console.error(chalk.red('Error: Merge conflict detected in thoughts repository'))
+        console.error(chalk.red('Please resolve conflicts manually in:'), expandedRepo)
+        console.error(
+          chalk.red('Then run "git rebase --continue" and "humanlayer thoughts sync" again'),
+        )
+        process.exit(1)
+      } else {
+        // If pull fails for other reasons, show warning but continue
+        // This handles cases like no upstream, network issues, etc.
+        console.warn(chalk.yellow('Warning: Could not pull latest changes:'), error.message)
+      }
+    }
+
     // Check if there are changes to commit
     const hasChanges = checkGitStatus(expandedRepo)
 
-    if (!hasChanges) {
-      console.log(chalk.gray('No changes to sync'))
-      return
+    if (hasChanges) {
+      // Commit changes
+      const commitMessage = message || `Sync thoughts - ${new Date().toISOString()}`
+      execFileSync('git', ['commit', '-m', commitMessage], { cwd: expandedRepo, stdio: 'pipe' })
+
+      console.log(chalk.green('✅ Thoughts synchronized'))
+    } else {
+      console.log(chalk.gray('No changes to commit'))
     }
 
-    // Commit changes
-    const commitMessage = message || `Sync thoughts - ${new Date().toISOString()}`
-    execFileSync('git', ['commit', '-m', commitMessage], { cwd: expandedRepo, stdio: 'pipe' })
-
-    console.log(chalk.green('✅ Thoughts synchronized'))
-
-    // Check if remote exists
+    // Check if remote exists and push any unpushed commits
     try {
       execSync('git remote get-url origin', { cwd: expandedRepo, stdio: 'pipe' })
 
