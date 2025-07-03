@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useStore } from '@/AppStore'
-import SessionTable from '@/components/internal/SessionTable'
+import SessionTable, { SessionTableHotkeysScope } from '@/components/internal/SessionTable'
 import { SessionTableSearch } from '@/components/SessionTableSearch'
 import { useSessionFilter } from '@/hooks/useSessionFilter'
 import { SessionStatus } from '@/lib/daemon/types'
@@ -95,7 +95,7 @@ export function SessionTablePage() {
       const nextIndex = (currentStatusIndex + 1) % STATUS_CYCLE.length
       setSearchQuery(STATUS_CYCLE[nextIndex])
     },
-    { enableOnFormTags: false },
+    { enableOnFormTags: false, scopes: SessionTableHotkeysScope },
   )
 
   // Handle Shift+Tab to cycle backwards through status filters
@@ -110,7 +110,7 @@ export function SessionTablePage() {
       const prevIndex = currentStatusIndex <= 0 ? STATUS_CYCLE.length - 1 : currentStatusIndex - 1
       setSearchQuery(STATUS_CYCLE[prevIndex])
     },
-    { enableOnFormTags: false },
+    { enableOnFormTags: false, scopes: SessionTableHotkeysScope },
   )
 
   return (

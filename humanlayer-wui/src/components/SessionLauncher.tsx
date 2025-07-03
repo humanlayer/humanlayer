@@ -11,13 +11,15 @@ interface SessionLauncherProps {
   onClose: () => void
 }
 
+const SessionLauncherScope = 'session-launcher'
+
 export function SessionLauncher({ isOpen, onClose }: SessionLauncherProps) {
   const modalRef = useRef<HTMLDivElement>(null)
   const { query, setQuery, config, setConfig, launchSession, isLaunching, error, mode, view, setView } =
     useSessionLauncher()
 
   // Escape key to close - enable even when input is focused
-  useHotkeys('escape', onClose, { enabled: isOpen, enableOnFormTags: false })
+  useHotkeys('escape', onClose, { enabled: isOpen, enableOnFormTags: false, scopes: SessionLauncherScope })
 
   // Focus management
   useEffect(() => {

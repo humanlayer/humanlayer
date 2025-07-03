@@ -37,7 +37,7 @@ export function SearchInput() {
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [isInvalidPath, setIsInvalidPath] = useState(false)
   const [isFocused, setIsFocused] = useState(false)
-  const [directoryPreview, setDirectoryPreview] = useState<{ selected: boolean; path: DirEntry }[]>([])
+  const [directoryPreview, setDirectoryPreview] = useState<{ selected: boolean; path: DirEntry; matches?: FuzzyMatch['matches'] }[]>([])
   const [lastValidPath, setLastValidPath] = useState('')
   const [allDirectories, setAllDirectories] = useState<DirEntry[]>([])
 
@@ -45,6 +45,7 @@ export function SearchInput() {
     ARROW_UP: 'arrowup',
     ARROW_DOWN: 'arrowdown',
     ENTER: 'enter',
+    TAB: 'tab',
     ESCAPE: 'escape',
   }
 
@@ -71,6 +72,7 @@ export function SearchInput() {
           }
           break
         case Hotkeys.ENTER:
+        case Hotkeys.TAB:
           const selectedDir = directoryPreview.find(item => item.selected)
           if (selectedDir) {
             const newPath = searchValue.endsWith('/') 
@@ -102,22 +104,65 @@ export function SearchInput() {
       searchPath = searchPath.replace(/^~(?=$|\/|\\)/, home)
     }
 
+    // Parse the path to separate directory and search term
+    const lastSlashIdx = searchPath.lastIndexOf('/')
+    const basePath = lastSlashIdx === -1 ? '' : searchPath.substring(0, lastSlashIdx + 1)
+    const searchTerm = lastSlashIdx === -1 ? searchPath : searchPath.substring(lastSlashIdx + 1)
+
+    // Try to read the base directory
     let entries: DirEntry[] = []
-    try {
-      entries = await readDir(searchPath)
-      setIsInvalidPath(false)
-      const dirs = entries.filter(entry => entry.isDirectory)
-      const dirObjs = dirs.map(dir => ({
-        selected: false,
+    let shouldReadDir = false
+
+    // Only read directory if the base path has changed
+    if (basePath !== lastValidPath) {
+      shouldReadDir = true
+    }
+
+    if (shouldReadDir) {
+      try {
+        const pathToRead = basePath || '.'
+        entries = await readDir(pathToRead)
+        const dirs = entries.filter(entry => entry.isDirectory)
+        setAllDirectories(dirs)
+        setLastValidPath(basePath)
+        setIsInvalidPath(false)
+      } catch (err) {
+        console.log('Error reading directory:', err)
+        // Keep showing last valid directories
+        entries = allDirectories
+        setIsInvalidPath(true)
+      }
+    } else {
+      // Use cached directories
+      entries = allDirectories
+    }
+
+    // Filter directories based on search term
+    let dirObjs: Array<{ selected: boolean; path: DirEntry; matches?: FuzzyMatch['matches'] }> = []
+    
+    if (searchTerm) {
+      // Use fuzzy search to filter and rank directories
+      const searchResults = fuzzySearch(entries, searchTerm, {
+        keys: ['name'],
+        threshold: 0.01,
+        minMatchCharLength: 1,
+        includeMatches: true,
+      })
+      
+      dirObjs = searchResults.map((result, idx) => ({
+        selected: idx === 0,
+        path: result.item,
+        matches: result.matches,
+      }))
+    } else {
+      // Show all directories if no search term
+      dirObjs = entries.map((dir, idx) => ({
+        selected: idx === 0,
         path: dir,
       }))
-      dirObjs[0].selected = true
-      setDirectoryPreview(dirObjs)
-    } catch (err) {
-      console.log(err)
-      setDirectoryPreview([])
-      setIsInvalidPath(true)
     }
+    
+    setDirectoryPreview(dirObjs)
   }
 
   return (
@@ -150,14 +195,32 @@ export function SearchInput() {
               </CommandEmpty>
               {directoryPreview.length > 0 && (
                 <CommandGroup>
-                  {directoryPreview.map(item => (
-                    <CommandItem 
-                      key={item.path.name}
-                      className={cn(item.selected && "bg-accent")}
-                    >
-                      {item.path.name}
-                    </CommandItem>
-                  ))}
+                  {directoryPreview.map(item => {
+                    const nameMatch = item.matches?.find(m => m.key === 'name')
+                    const highlighted = nameMatch && item.path.name
+                      ? highlightMatches(item.path.name, nameMatch.indices)
+                      : null
+
+                    return (
+                      <CommandItem 
+                        key={item.path.name}
+                        className={cn(item.selected && "!bg-accent/20")}
+                      >
+                        {highlighted ? (
+                          highlighted.map((segment, i) => (
+                            <span
+                              key={i}
+                              className={segment.highlighted ? 'bg-yellow-200 dark:bg-yellow-900/50 font-medium' : ''}
+                            >
+                              {segment.text}
+                            </span>
+                          ))
+                        ) : (
+                          item.path.name
+                        )}
+                      </CommandItem>
+                    )
+                  })}
                 </CommandGroup>
               )}
             </CommandList>
