@@ -13,6 +13,7 @@ import { pingCommand } from './commands/ping.js'
 import { launchCommand } from './commands/launch.js'
 import { alertCommand } from './commands/alert.js'
 import { thoughtsCommand } from './commands/thoughts.js'
+import { joinWaitlistCommand } from './commands/joinWaitlist.js'
 import { startDefaultMCPServer, startClaudeApprovalsMCPServer } from './mcp.js'
 import {
   getDefaultConfigPath,
@@ -74,7 +75,7 @@ program
   .description('HumanLayer, but on your command-line.')
   .version(packageJson.version)
 
-const UNPROTECTED_COMMANDS = ['config', 'login', 'thoughts']
+const UNPROTECTED_COMMANDS = ['config', 'login', 'thoughts', 'join-waitlist']
 
 program.hook('preAction', async (thisCmd, actionCmd) => {
   // Get the full command path by traversing up the command hierarchy
@@ -209,6 +210,13 @@ mcpCommand
 
 // Add thoughts command
 thoughtsCommand(program)
+
+// Add join-waitlist command
+program
+  .command('join-waitlist')
+  .description('Join the HumanLayer Code early access waitlist')
+  .requiredOption('--email <email>', 'Your email address')
+  .action(joinWaitlistCommand)
 
 // Handle unknown commands
 program.on('command:*', operands => {
