@@ -40,12 +40,12 @@ Then wait for the user's input.
 3. **Present your understanding and ask clarifying questions**:
    ```
    Based on [ticket/description], I understand we need to [summary].
-   
+
    Before I start planning, I have some questions:
    - [Specific technical question]
    - [Scope clarification]
    - [Design decision that needs input]
-   
+
    Also, are there any:
    - Existing patterns I should follow?
    - Performance requirements?
@@ -100,19 +100,19 @@ After getting initial clarifications:
 4. **Present findings and design options**:
    ```
    Based on my research, here's what I found:
-   
+
    **Current State:**
    - [Key discovery about existing code]
    - [Pattern or convention to follow]
-   
+
    **Design Options:**
    1. [Option A] - [pros/cons]
    2. [Option B] - [pros/cons]
-   
+
    **Open Questions:**
    - [Technical uncertainty]
    - [Design decision needed]
-   
+
    Which approach aligns best with your vision?
    ```
 
@@ -123,15 +123,15 @@ Once aligned on approach:
 1. **Create initial plan outline**:
    ```
    Here's my proposed plan structure:
-   
+
    ## Overview
    [1-2 sentence summary]
-   
+
    ## Implementation Phases:
    1. [Phase name] - [what it accomplishes]
    2. [Phase name] - [what it accomplishes]
    3. [Phase name] - [what it accomplishes]
-   
+
    Does this phasing make sense? Should I adjust the order or granularity?
    ```
 
@@ -246,7 +246,7 @@ After structure approval:
    ```
    I've created the initial implementation plan at:
    `thoughts/shared/plans/[filename].md`
-   
+
    Please review it and let me know:
    - Are the phases properly scoped?
    - Are the success criteria specific enough?
@@ -305,7 +305,7 @@ After structure approval:
 
 2. **Manual Verification** (requires human testing):
    - UI/UX functionality
-   - Performance under real conditions  
+   - Performance under real conditions
    - Edge cases that are hard to automate
    - User acceptance criteria
 
