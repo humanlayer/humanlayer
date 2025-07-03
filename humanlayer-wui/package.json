@@ -43,7 +43,6 @@
     "sonner": "^2.0.5",
     "tailwind-merge": "^3.3.1",
     "tailwindcss": "^4.1.10",
-    "ts-key-enum": "^3.0.13",
     "zustand": "^5.0.5"
   },
   "devDependencies": {
