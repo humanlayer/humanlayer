@@ -124,7 +124,7 @@ When referencing thoughts documents, always provide GitHub links using the `link
    - Any additional context to add?
    - Should we include more/less implementation detail?
    - Do you want to assign it to yourself?
-   
+
    Note: Ticket will be created in "Triage" status by default.
 
 7. **Create the Linear ticket:**
@@ -251,7 +251,7 @@ When moving tickets through the workflow:
    - id: [ticket ID]
    - stateId: [new status ID]
    ```
-   
+
    Consider adding a comment explaining the status change.
 
 ## Important Notes

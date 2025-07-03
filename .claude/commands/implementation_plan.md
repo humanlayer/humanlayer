@@ -43,7 +43,7 @@ Then wait for the user's input.
 
 2. **Spawn initial research tasks to gather context**:
    Before asking the user any questions, spawn these parallel research tasks:
-   
+
    ```
    Task 1 - Find relevant files:
    Research what files and directories are relevant to [the ticket/task].
@@ -55,7 +55,7 @@ Then wait for the user's input.
    Use tools: Grep, Glob, LS
    Return: List of specific file paths to read and which directories contain the relevant code
    ```
-   
+
    ```
    Task 2 - Understand current implementation:
    Research how [the feature/component] currently works.
@@ -81,18 +81,18 @@ Then wait for the user's input.
 5. **Present informed understanding and focused questions**:
    ```
    Based on the ticket and my research of the codebase, I understand we need to [accurate summary].
-   
+
    I've found that:
    - [Current implementation detail with file:line reference]
    - [Relevant pattern or constraint discovered]
    - [Potential complexity or edge case identified]
-   
+
    Questions that my research couldn't answer:
    - [Specific technical question that requires human judgment]
    - [Business logic clarification]
    - [Design preference that affects implementation]
    ```
-   
+
    Only ask questions that you genuinely cannot answer through code investigation.
 
 ### Step 2: Research & Discovery
