@@ -12,7 +12,7 @@ export async function joinWaitlistCommand(options: JoinWaitlistOptions): Promise
     process.exit(1)
   }
 
-  console.log(chalk.gray(`Joining waitlist with email: ${options.email}...`))
+  console.log(`Joining waitlist with email: ${options.email}...`)
 
   try {
     const response = await fetch('https://www.humanlayer.dev/api/waitlist', {
@@ -41,12 +41,12 @@ export async function joinWaitlistCommand(options: JoinWaitlistOptions): Promise
 
     // Success!
     console.log(chalk.green('✓ Successfully joined the HumanLayer Code waitlist!'))
-    console.log(chalk.gray(`We'll contact you at ${options.email} when we're ready to onboard you.`))
+    console.log(`We'll contact you at ${options.email} when we're ready to onboard you.`)
     console.log()
     console.log(chalk.cyan('Next steps:'))
-    console.log(chalk.gray('  • Check your email for a confirmation'))
-    console.log(chalk.gray('  • Check out https://humanlayer.dev'))
-    console.log(chalk.gray('  • Join our Discord community: https://humanlayer.dev/discord'))
+    console.log('  • Check your email for a confirmation')
+    console.log('  • Check out https://humanlayer.dev')
+    console.log('  • Join our Discord community: https://humanlayer.dev/discord')
   } catch (error) {
     console.error(chalk.red('✗ Failed to join waitlist'))
     if (error instanceof Error) {
