@@ -4,7 +4,14 @@ You are tasked with creating detailed implementation plans through an interactiv
 
 ## Initial Response
 
-When this command is invoked, respond with:
+When this command is invoked:
+
+1. **Check if parameters were provided**:
+   - If a file path or ticket reference was provided as a parameter, skip the default message
+   - Immediately read any provided files FULLY
+   - Begin the research process
+
+2. **If no parameters provided**, respond with:
 ```
 I'll help you create a detailed implementation plan. Let me start by understanding what we're building.
 
@@ -14,6 +21,9 @@ Please provide:
 3. Links to related research or previous implementations
 
 I'll analyze this information and work with you to create a comprehensive plan.
+
+Tip: You can also invoke this command with a ticket file directly: `/implementation_plan thoughts/allison/tickets/eng_1234.md`
+For deeper analysis, try: `/implementation_plan think deeply about thoughts/allison/tickets/eng_1234.md`
 ```
 
 Then wait for the user's input.
@@ -31,34 +41,73 @@ Then wait for the user's input.
    - **CRITICAL**: DO NOT spawn sub-tasks before reading these files yourself in the main context
    - **NEVER** read files partially - if a file is mentioned, read it completely
 
-2. **Analyze and question the requirements**:
-   - What problem are we solving?
-   - What are the constraints?
-   - What assumptions are being made?
-   - What's in scope vs out of scope?
-
-3. **Present your understanding and ask clarifying questions**:
+2. **Spawn initial research tasks to gather context**:
+   Before asking the user any questions, spawn these parallel research tasks:
+   
    ```
-   Based on [ticket/description], I understand we need to [summary].
-
-   Before I start planning, I have some questions:
-   - [Specific technical question]
-   - [Scope clarification]
-   - [Design decision that needs input]
-
-   Also, are there any:
-   - Existing patterns I should follow?
-   - Performance requirements?
-   - Migration considerations?
+   Task 1 - Find relevant files:
+   Research what files and directories are relevant to [the ticket/task].
+   1. Based on the ticket description, identify the main components involved
+   2. Find all relevant source files, configs, and tests
+   3. Look for similar features or patterns in the codebase
+   4. Identify the specific directories to focus on (e.g., if WUI is mentioned, focus on humanlayer-wui/)
+   5. Return a comprehensive list of files that need to be examined
+   Use tools: Grep, Glob, LS
+   Return: List of specific file paths to read and which directories contain the relevant code
    ```
+   
+   ```
+   Task 2 - Understand current implementation:
+   Research how [the feature/component] currently works.
+   1. Find the main implementation files in [specific directory if known]
+   2. Trace the data flow and key functions
+   3. Identify APIs, state management, and communication patterns
+   4. Look for any existing bugs or TODOs related to this area
+   5. Find relevant tests that show expected behavior
+   Return: Detailed explanation of current implementation with file:line references
+   ```
+
+3. **Read all files identified by research tasks**:
+   - After research tasks complete, read ALL files they identified as relevant
+   - Read them FULLY into the main context
+   - This ensures you have complete understanding before proceeding
+
+4. **Analyze and verify understanding**:
+   - Cross-reference the ticket requirements with actual code
+   - Identify any discrepancies or misunderstandings
+   - Note assumptions that need verification
+   - Determine true scope based on codebase reality
+
+5. **Present informed understanding and focused questions**:
+   ```
+   Based on the ticket and my research of the codebase, I understand we need to [accurate summary].
+   
+   I've found that:
+   - [Current implementation detail with file:line reference]
+   - [Relevant pattern or constraint discovered]
+   - [Potential complexity or edge case identified]
+   
+   Questions that my research couldn't answer:
+   - [Specific technical question that requires human judgment]
+   - [Business logic clarification]
+   - [Design preference that affects implementation]
+   ```
+   
+   Only ask questions that you genuinely cannot answer through code investigation.
 
 ### Step 2: Research & Discovery
 
 After getting initial clarifications:
 
-1. **Create a research todo list** using TodoWrite to track exploration tasks
+1. **If the user corrects any misunderstanding**:
+   - DO NOT just accept the correction
+   - Spawn new research tasks to verify the correct information
+   - Read the specific files/directories they mention
+   - Only proceed once you've verified the facts yourself
 
-2. **Spawn parallel sub-tasks for comprehensive research**:
+2. **Create a research todo list** using TodoWrite to track exploration tasks
+
+3. **Spawn parallel sub-tasks for comprehensive research**:
    - Create multiple Task agents to research different aspects concurrently
    - Each sub-task should focus on a specific area or component
    - Write detailed prompts for each sub-agent following these guidelines:
@@ -228,11 +277,6 @@ After structure approval:
 
 [If applicable, how to handle existing data/systems]
 
-## Open Questions
-
-- [ ] [Unresolved question that doesn't block implementation]
-- [ ] [Design decision that can be made during implementation]
-
 ## References
 
 - Original ticket: `thoughts/allison/tickets/eng_XXXX.md`
@@ -292,6 +336,13 @@ After structure approval:
    - Use TodoWrite to track planning tasks
    - Update todos as you complete research
    - Mark planning tasks complete when done
+
+6. **No Open Questions in Final Plan**:
+   - If you encounter open questions during planning, STOP
+   - Research or ask for clarification immediately
+   - Do NOT write the plan with unresolved questions
+   - The implementation plan must be complete and actionable
+   - Every decision must be made before finalizing the plan
 
 ## Success Criteria Guidelines
 
@@ -359,9 +410,18 @@ When spawning research sub-tasks:
    - Which directories to focus on
    - What information to extract
    - Expected output format
-4. **Specify read-only tools** to use
-5. **Request specific file:line references** in responses
-6. **Wait for all tasks to complete** before synthesizing
+4. **Be EXTREMELY specific about directories**:
+   - If the ticket mentions "WUI", specify `humanlayer-wui/` directory
+   - If it mentions "daemon", specify `hld/` directory
+   - Never use generic terms like "UI" when you mean "WUI"
+   - Include the full path context in your prompts
+5. **Specify read-only tools** to use
+6. **Request specific file:line references** in responses
+7. **Wait for all tasks to complete** before synthesizing
+8. **Verify sub-task results**:
+   - If a sub-task returns unexpected results, spawn follow-up tasks
+   - Cross-check findings against the actual codebase
+   - Don't accept results that seem incorrect
 
 Example of spawning multiple tasks:
 ```python
