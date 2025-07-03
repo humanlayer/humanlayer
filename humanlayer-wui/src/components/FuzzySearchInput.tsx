@@ -1,5 +1,5 @@
 import { homeDir } from '@tauri-apps/api/path'
-import { DirEntry, readDir } from '@tauri-apps/plugin-fs'
+import { DirEntry, readDir, exists } from '@tauri-apps/plugin-fs'
 import React, { useState, useRef } from 'react'
 import { cn } from '@/lib/utils'
 import { fuzzySearch, highlightMatches, type FuzzyMatch } from '@/lib/fuzzy-search'
@@ -16,9 +16,9 @@ interface SearchInputProps {
   placeholder?: string
 }
 
-export function SearchInput({ 
-  value: externalValue, 
-  onChange: externalOnChange, 
+export function SearchInput({
+  value: externalValue,
+  onChange: externalOnChange,
   onSubmit,
   placeholder = "Type a directory path..."
 }: SearchInputProps = {}) {
@@ -32,7 +32,7 @@ export function SearchInput({
       setInternalValue(val)
     }
   }
-  
+
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [isInvalidPath, setIsInvalidPath] = useState(false)
   const [isFocused, setIsFocused] = useState(false)
@@ -284,5 +284,3 @@ export function SearchInput({
     </div>
   )
 }
-
-

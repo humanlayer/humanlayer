@@ -45,6 +45,11 @@ export default function CommandInput({
       e.preventDefault()
       onSubmit()
     }
+
+    if (e.key === 'Escape') {
+      const el = document.getElementById('this-is-another-input-ref-hack')
+      el?.blur()
+    }
   }
 
   const updateConfig = (updates: Partial<SessionConfig>) => {
@@ -58,6 +63,7 @@ export default function CommandInput({
       {/* Main query input */}
       <div className="relative">
         <Input
+          id="this-is-another-input-ref-hack"
           ref={inputRef}
           type="text"
           value={value}

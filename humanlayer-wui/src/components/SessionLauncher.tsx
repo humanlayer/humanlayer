@@ -11,38 +11,19 @@ interface SessionLauncherProps {
   onClose: () => void
 }
 
-const SessionLauncherScope = 'session-launcher'
-
 export function SessionLauncher({ isOpen, onClose }: SessionLauncherProps) {
   const modalRef = useRef<HTMLDivElement>(null)
   const { query, setQuery, config, setConfig, launchSession, isLaunching, error, mode, view, setView } =
     useSessionLauncher()
 
-  // Escape key to close - enable even when input is focused
-  useHotkeys('escape', onClose, { enabled: isOpen, enableOnFormTags: false, scopes: SessionLauncherScope })
+  useHotkeys('escape', onClose, { enabled: isOpen, enableOnFormTags: false,  })
 
-  // Focus management
   useEffect(() => {
     if (isOpen && view === 'input' && modalRef.current) {
       const input = modalRef.current.querySelector('input')
       input?.focus()
     }
   }, [isOpen, view])
-
-  // Additional escape key handler for input field
-  const handleKeyDown = (e: KeyboardEvent) => {
-    if (e.key === 'Escape' && isOpen) {
-      console.log('Sundeep disabled this temporarily because why?')
-      // onClose()
-    }
-  }
-
-  useEffect(() => {
-    if (isOpen) {
-      document.addEventListener('keydown', handleKeyDown)
-      return () => document.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [isOpen])
 
   // Click outside to close
   const handleOverlayClick = (e: React.MouseEvent) => {

@@ -152,7 +152,7 @@ export function highlightMatches(
 
   while (i < indices.length) {
     const startIndex = indices[i]
-    
+
     // Add non-highlighted text before this match
     if (startIndex > lastIndex) {
       result.push({
