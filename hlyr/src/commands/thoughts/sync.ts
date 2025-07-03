@@ -34,7 +34,20 @@ function syncThoughts(thoughtsRepo: string, message: string): void {
     // Stage all changes
     execSync('git add -A', { cwd: expandedRepo, stdio: 'pipe' })
 
-    // Pull latest changes before committing
+    // Check if there are changes to commit
+    const hasChanges = checkGitStatus(expandedRepo)
+
+    if (hasChanges) {
+      // Commit changes
+      const commitMessage = message || `Sync thoughts - ${new Date().toISOString()}`
+      execFileSync('git', ['commit', '-m', commitMessage], { cwd: expandedRepo, stdio: 'pipe' })
+
+      console.log(chalk.green('✅ Thoughts synchronized'))
+    } else {
+      console.log(chalk.gray('No changes to commit'))
+    }
+
+    // Pull latest changes after committing (to avoid conflicts with staged changes)
     try {
       execFileSync('git', ['pull', '--rebase'], {
         stdio: 'pipe',
@@ -54,19 +67,6 @@ function syncThoughts(thoughtsRepo: string, message: string): void {
         // This handles cases like no upstream, network issues, etc.
         console.warn(chalk.yellow('Warning: Could not pull latest changes:'), error.message)
       }
-    }
-
-    // Check if there are changes to commit
-    const hasChanges = checkGitStatus(expandedRepo)
-
-    if (hasChanges) {
-      // Commit changes
-      const commitMessage = message || `Sync thoughts - ${new Date().toISOString()}`
-      execFileSync('git', ['commit', '-m', commitMessage], { cwd: expandedRepo, stdio: 'pipe' })
-
-      console.log(chalk.green('✅ Thoughts synchronized'))
-    } else {
-      console.log(chalk.gray('No changes to commit'))
     }
 
     // Check if remote exists and push any unpushed commits
