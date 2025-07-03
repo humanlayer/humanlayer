@@ -1,10 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Button } from './ui/button'
 import { cn } from '@/lib/utils'
-import FuzzySearchInput, { SearchInput } from './FuzzySearchInput'
+import { SearchInput } from './FuzzySearchInput'
 import { Input } from './ui/input'
-import { ComboboxDemo } from './internal/FolderSearchInput'
-import { AutoComplete } from './internal/Autocomplete'
 
 interface SessionConfig {
   query: string
@@ -35,40 +33,6 @@ export default function CommandInput({
   const inputRef = useRef<HTMLInputElement>(null)
   const [isFocused, setIsFocused] = useState(false)
   const [showAdvanced, setShowAdvanced] = useState(false)
-  
-  // Demo states for AutoComplete
-  const [selectedValue, setSelectedValue] = useState('')
-  const [searchValue, setSearchValue] = useState('')
-  
-  // Demo data - common directories
-  const demoItems = [
-    { value: '~/Documents', label: 'Documents' },
-    { value: '~/Downloads', label: 'Downloads' },
-    { value: '~/Desktop', label: 'Desktop' },
-    { value: '~/Pictures', label: 'Pictures' },
-    { value: '~/Music', label: 'Music' },
-    { value: '~/Videos', label: 'Videos' },
-    { value: '~/Projects', label: 'Projects' },
-    { value: '~/Development', label: 'Development' },
-    { value: '~/Applications', label: 'Applications' },
-    { value: '~/Library', label: 'Library' },
-  ].filter(item => 
-    item.label.toLowerCase().includes(searchValue.toLowerCase()) ||
-    item.value.toLowerCase().includes(searchValue.toLowerCase())
-  )
-
-  // Common directory suggestions for fuzzy search
-  const commonDirectories = [
-    '~/',
-    '~/Desktop',
-    '~/Documents',
-    '~/Downloads',
-    '~/Projects',
-    '/usr/local',
-    '/opt',
-    '/tmp',
-    './',
-  ]
 
   useEffect(() => {
     if (inputRef.current) {
@@ -128,41 +92,12 @@ export default function CommandInput({
       {/* Working Directory Field with Fuzzy Search */}
       <div className="space-y-2">
         <label className="text-sm font-medium text-foreground">Working Directory</label>
-        <SearchInput />
-        {/* <FuzzySearchInput
-          items={commonDirectories}
+        <SearchInput
           value={config.workingDir}
-          onChange={value => updateConfig({ workingDir: value })}
-          onSelect={directory => updateConfig({ workingDir: directory })}
+          onChange={value => onConfigChange?.({ ...config, workingDir: value })}
+          onSubmit={onSubmit}
           placeholder="/path/to/directory or leave empty for current directory"
-          maxResults={6}
-          emptyMessage="Type a directory path..."
-          renderItem={item => (
-            <div className="flex items-center space-x-2">
-              <span className="text-blue-500">📁</span>
-              <span className="font-mono">{item}</span>
-            </div>
-          )}
-        /> */}
-
-        {/* <ComboboxDemo /> */}
-        
-        {/* Testing AutoComplete component */}
-        {/* <div className="space-y-2">
-          <label className="text-sm text-muted-foreground">AutoComplete Demo (Testing in Dialog)</label>
-          <AutoComplete
-            selectedValue={selectedValue}
-            onSelectedValueChange={setSelectedValue}
-            searchValue={searchValue}
-            onSearchValueChange={setSearchValue}
-            items={demoItems}
-            placeholder="Type to search directories..."
-            emptyMessage="No directories found."
-          />
-          <div className="text-xs text-muted-foreground">
-            Selected: {selectedValue || 'none'} | Search: {searchValue || 'empty'}
-          </div>
-        </div> */}
+        />
       </div>
 
       {/* Advanced Options Toggle */}

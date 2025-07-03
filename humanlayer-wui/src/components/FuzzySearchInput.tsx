@@ -1,39 +1,38 @@
 import { homeDir } from '@tauri-apps/api/path'
 import { DirEntry, readDir } from '@tauri-apps/plugin-fs'
-import React, { useState, useRef, useEffect, useMemo } from 'react'
+import React, { useState, useRef } from 'react'
 import { cn } from '@/lib/utils'
 import { fuzzySearch, highlightMatches, type FuzzyMatch } from '@/lib/fuzzy-search'
 import { Input } from './ui/input'
-import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from './ui/popover'
+import { Popover, PopoverAnchor, PopoverContent } from './ui/popover'
 import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from './ui/command'
-import { FileWarning } from 'lucide-react'
+import { ArrowDownUp, FileWarning } from 'lucide-react'
 import { useHotkeys } from 'react-hotkeys-hook'
 
-interface FuzzySearchInputProps<T> {
-  items: T[]
-  value: string
-  onChange: (value: string) => void
-  onSelect?: (item: T) => void
+interface SearchInputProps {
+  value?: string
+  onChange?: (value: string) => void
+  onSubmit?: () => void
   placeholder?: string
-  searchKeys?: string[]
-  renderItem?: (item: T, matches: FuzzyMatch['matches']) => React.ReactNode
-  className?: string
-  maxResults?: number
-  emptyMessage?: string
-  disabled?: boolean
 }
 
-/* Running list of bugs with this thing
-
- - [ ] - When hitting "ESC" while in input, entire dialog is closed as opposed to exiting focus of input first
- - [ ] - Selected state in dropdown, when nothing selected, select something
- - [ ] - Dropdown should be width of input
- - [ ] - Have tab do what enter does too
-
-*/
-
-export function SearchInput() {
-  const [searchValue, setSearchValue] = useState('')
+export function SearchInput({ 
+  value: externalValue, 
+  onChange: externalOnChange, 
+  onSubmit,
+  placeholder = "Type a directory path..."
+}: SearchInputProps = {}) {
+  // Use internal state if not controlled
+  const [internalValue, setInternalValue] = useState('')
+  const searchValue = externalValue !== undefined ? externalValue : internalValue
+  const setSearchValue = (val: string) => {
+    if (externalValue !== undefined && externalOnChange) {
+      externalOnChange(val)
+    } else {
+      setInternalValue(val)
+    }
+  }
+  
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [isInvalidPath, setIsInvalidPath] = useState(false)
   const [isFocused, setIsFocused] = useState(false)
@@ -55,8 +54,6 @@ export function SearchInput() {
   useHotkeys(
     Object.values(Hotkeys).join(','),
     (ev, handler) => {
-      const selectedDir = directoryPreview.find(item => item.selected)
-
       switch (handler.keys?.join('')) {
         case Hotkeys.ARROW_UP:
           if (directoryPreview.length > 0) {
@@ -77,9 +74,10 @@ export function SearchInput() {
           }
           break
         case Hotkeys.ENTER:
-        case Hotkeys.TAB:
+        case Hotkeys.TAB: {
           ev.preventDefault()
-          if (selectedDir) {
+          const selectedDir = directoryPreview.find(item => item.selected)
+          if (selectedDir && dropdownOpen) {
             // Parse current path to get base directory
             const lastSlashIdx = searchValue.lastIndexOf('/')
             const basePath = lastSlashIdx === -1 ? '' : searchValue.substring(0, lastSlashIdx + 1)
@@ -88,20 +86,25 @@ export function SearchInput() {
             const newPath = basePath + selectedDir.path.name
             setSearchValue(newPath)
             setDropdownOpen(false)
+          } else if (handler.keys?.join('') === Hotkeys.ENTER && !dropdownOpen && onSubmit) {
+            // Submit form if dropdown is closed and Enter is pressed
+            onSubmit()
           }
           break
-        case Hotkeys.ESCAPE:
-          console.log('escape')
+        }
+        case Hotkeys.ESCAPE: {
           ev.stopPropagation()
+          const el = document.getElementById('search-input-hack-use-a-ref')
           setDropdownOpen(false)
+          el?.blur()
           break
+        }
       }
     },
     { enabled: isFocused, enableOnFormTags: true },
   )
 
   const onChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    console.log('onChange', e.target.value)
     setDropdownOpen(e.target.value.length > 0)
     setSearchValue(e.target.value)
 
@@ -134,8 +137,7 @@ export function SearchInput() {
         setAllDirectories(dirs)
         setLastValidPath(basePath)
         setIsInvalidPath(false)
-      } catch (err) {
-        console.log('Error reading directory:', err)
+      } catch {
         // Keep showing last valid directories
         entries = allDirectories
         setIsInvalidPath(true)
@@ -176,19 +178,27 @@ export function SearchInput() {
   return (
     <div className="">
       <Popover open={dropdownOpen && isFocused} defaultOpen={false} modal={true}>
-      {/* <Popover open={true} defaultOpen={false} modal={true}> */}
         <PopoverAnchor>
           <Input
+            id="search-input-hack-use-a-ref"
+            className="mt-2"
             ref={inputRef}
             spellCheck={false}
             onChange={onChange}
             value={searchValue}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
+            placeholder={placeholder}
           />
         </PopoverAnchor>
 
-        <PopoverContent onOpenAutoFocus={e => e.preventDefault()} side="bottom" align="start">
+        <PopoverContent
+          onOpenAutoFocus={e => e.preventDefault()}
+          side="bottom"
+          align="start"
+          avoidCollisions={false}
+          className="w-[var(--radix-popover-trigger-width)]"
+        >
           <Command>
             <CommandList>
               <CommandEmpty className="py-2">
@@ -233,26 +243,41 @@ export function SearchInput() {
                           inputRef.current?.focus()
                         }}
                       >
-                        {highlighted
-                          ? highlighted.map((segment, i) => (
-                              <span
-                                key={i}
-                                className={
-                                  segment.highlighted
-                                    ? 'bg-yellow-200 dark:bg-yellow-900/50 font-medium'
-                                    : ''
-                                }
-                              >
-                                {segment.text}
-                              </span>
-                            ))
-                          : item.path.name}
+                        <div>
+                          {highlighted
+                            ? highlighted.map((segment, i) => (
+                                <span
+                                  key={i}
+                                  className={
+                                    segment.highlighted
+                                      ? 'bg-yellow-200 dark:bg-yellow-900/50 font-medium'
+                                      : ''
+                                  }
+                                >
+                                  {segment.text}
+                                </span>
+                              ))
+                            : item.path.name}
+                        </div>
                       </CommandItem>
                     )
                   })}
                 </CommandGroup>
               )}
             </CommandList>
+            {directoryPreview.length > 0 && (
+              <div className="px-4 pt-2 text-xs text-muted-foreground bg-muted/30 border-t border-border/50 flex justify-end gap-4">
+                <span className="flex items-center gap-1">
+                  <ArrowDownUp className="w-3 h-3" /> Navigate
+                </span>
+                <span className="flex items-center gap-1">
+                  <kbd>↵</kbd> Select
+                </span>
+                <span className="flex items-center gap-1">
+                  <kbd>ESC</kbd> Close
+                </span>
+              </div>
+            )}
           </Command>
         </PopoverContent>
       </Popover>
@@ -260,219 +285,4 @@ export function SearchInput() {
   )
 }
 
-export default function FuzzySearchInput<T extends { value: string; label: string }[]>({
-  items,
-  value,
-  onChange,
-  onSelect,
-  placeholder = 'Search...',
-  searchKeys = [],
-  renderItem,
-  className,
-  maxResults = 10,
-  emptyMessage = 'No results found',
-  disabled = false,
-}: FuzzySearchInputProps<T>) {
-  const [isOpen, setIsOpen] = useState(false)
-  const [selectedIndex, setSelectedIndex] = useState(0)
-  const inputRef = useRef<HTMLInputElement>(null)
-  const listRef = useRef<HTMLDivElement>(null)
 
-  // Perform fuzzy search
-  const searchResults = useMemo(() => {
-    if (!value.trim()) return []
-
-    const results = fuzzySearch(items, value, {
-      keys: searchKeys,
-      threshold: 0.1,
-      includeMatches: true,
-    })
-
-    return results.slice(0, maxResults)
-  }, [items, value, searchKeys, maxResults])
-
-  // Reset selection when results change
-  useEffect(() => {
-    setSelectedIndex(0)
-  }, [searchResults])
-
-  // Open dropdown when typing
-  useEffect(() => {
-    setIsOpen(value.length > 0 && searchResults.length > 0)
-  }, [value, searchResults.length])
-
-  // Keyboard navigation
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      console.log('handleKeyDown', e.key)
-      if (!isOpen || !searchResults.length) return
-
-      switch (e.key) {
-        case 'ArrowDown':
-          e.preventDefault()
-          setSelectedIndex(prev => (prev + 1) % searchResults.length)
-          break
-        case 'ArrowUp':
-          e.preventDefault()
-          setSelectedIndex(prev => (prev - 1 + searchResults.length) % searchResults.length)
-          break
-        case 'Enter':
-          e.stopPropagation()
-          e.preventDefault()
-          if (searchResults[selectedIndex] && onSelect) {
-            onSelect(searchResults[selectedIndex].item)
-            setIsOpen(false)
-          }
-          break
-        case 'Escape':
-          console.log('ignoring for the moment')
-          break
-        // e.preventDefault()
-        // setIsOpen(false)
-        // inputRef.current?.blur()
-        // break
-      }
-    }
-
-    if (isOpen) {
-      document.addEventListener('keydown', handleKeyDown)
-      return () => document.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [isOpen, searchResults, selectedIndex, onSelect])
-
-  // Scroll selected item into view
-  useEffect(() => {
-    if (listRef.current && isOpen) {
-      const selectedElement = listRef.current.children[selectedIndex] as HTMLElement
-      selectedElement?.scrollIntoView({ block: 'nearest' })
-    }
-  }, [selectedIndex, isOpen])
-
-  const handleItemClick = (item: T, index: number) => {
-    setSelectedIndex(index)
-    if (onSelect) {
-      onSelect(item)
-      setIsOpen(false)
-    }
-  }
-
-  const defaultRenderItem = (item: T, matches: FuzzyMatch['matches']) => {
-    const text = String(item)
-    const match = matches[0]
-
-    if (match && match.indices) {
-      const segments = highlightMatches(text, match.indices)
-      return defaultRenderHighlight(segments)
-    }
-
-    return <span>{text}</span>
-  }
-
-  const defaultRenderHighlight = (segments: Array<{ text: string; highlighted: boolean }>) => (
-    <>
-      {segments.map((segment, i) => (
-        <span
-          key={i}
-          className={segment.highlighted ? 'bg-yellow-200 dark:bg-yellow-900/50 font-medium' : ''}
-        >
-          {segment.text}
-        </span>
-      ))}
-    </>
-  )
-
-  console.log('searchResults', searchResults)
-
-  return (
-    <div className="relative">
-      <input
-        spellCheck={false}
-        ref={inputRef}
-        type="text"
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        onFocus={() => value && searchResults.length > 0 && setIsOpen(true)}
-        placeholder={placeholder}
-        disabled={disabled}
-        className={cn(
-          'w-full h-10 px-3 py-2 text-sm',
-          'font-mono',
-          'bg-background border rounded-md',
-          'transition-all duration-200',
-          'placeholder:text-muted-foreground/60',
-          'disabled:opacity-50 disabled:cursor-not-allowed',
-          'border-border hover:border-primary/50 focus:border-primary focus:ring-2 focus:ring-primary/20',
-          className,
-        )}
-        autoComplete="off"
-      />
-
-      {isOpen && (
-        <>
-          {/* Backdrop */}
-          <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
-
-          {/* Results dropdown */}
-          <div
-            ref={listRef}
-            className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-md shadow-lg z-20 max-h-60 overflow-y-auto"
-          >
-            {/* {searchResults.length > 0 ? (
-              searchResults.map((result, index) => (
-                <div
-                  key={index}
-                  className={cn(
-                    'px-3 py-2 cursor-pointer transition-colors text-sm',
-                    'border-b border-border/50 last:border-b-0',
-                    index === selectedIndex
-                      ? 'bg-primary text-primary-foreground'
-                      : 'hover:bg-muted/50',
-                  )}
-                  onClick={() => handleItemClick(result.item, index)}
-                  onMouseEnter={() => setSelectedIndex(index)}
-                >
-                  {renderItem
-                    ? renderItem(result.item, result.matches)
-                    : defaultRenderItem(result.item, result.matches)}
-                </div>
-              ))
-            ) : (
-              <div className="px-3 py-2 text-sm text-muted-foreground text-center">{emptyMessage}</div>
-            )} */}
-
-            {/* Footer with navigation hints */}
-            {/* {searchResults.length > 0 && (
-              <div className="px-3 py-1 text-xs text-muted-foreground bg-muted/30 border-t border-border/50 flex items-center justify-between">
-                <span>↑↓ Navigate</span>
-                <span>↵ Select • ESC Close</span>
-              </div>
-            )} */}
-          </div>
-        </>
-      )}
-
-      {/* Start ShadCN Version */}
-
-      <div className="relative mt-100">
-        {/* <AutoComplete
-          // selectedValue={}
-          // onSelectedValueChange={}
-          searchValue={value}
-          // onSearchValueChange={}
-          items={searchResults.map(i => ({ value: i.item, label: i.item }))}
-          // isLoading={isLoading}
-          emptyMessage={emptyMessage}
-          placeholder={placeholder}
-          selectedValue={value}
-          onSelectedValueChange={onChange}
-          onSearchValueChange={onChange}
-          isLoading={false}
-        /> */}
-
-        {/* <SearchInput /> */}
-      </div>
-
-      {/* End ShadCN Version */}
-    </div>
-  )
-}
