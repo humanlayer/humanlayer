@@ -75,9 +75,12 @@ export function SearchInput() {
         case Hotkeys.TAB:
           const selectedDir = directoryPreview.find(item => item.selected)
           if (selectedDir) {
-            const newPath = searchValue.endsWith('/') 
-              ? searchValue + selectedDir.path.name 
-              : searchValue + '/' + selectedDir.path.name
+            // Parse current path to get base directory
+            const lastSlashIdx = searchValue.lastIndexOf('/')
+            const basePath = lastSlashIdx === -1 ? '' : searchValue.substring(0, lastSlashIdx + 1)
+            
+            // Replace the partial text with the selected directory
+            const newPath = basePath + selectedDir.path.name
             setSearchValue(newPath)
             setDropdownOpen(false)
           }
