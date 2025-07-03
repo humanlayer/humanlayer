@@ -1,0 +1,49 @@
+graph TB
+    subgraph "Local Environment"
+        Browser[Browser]
+        WUI[Web UI]
+        LocalGit[Local Git Repo]
+    end
+    
+    subgraph "HL Cloud"
+        CloudAPI[HL Cloud API]
+        EventStore[Event Storage]
+        FreestyleGit[Freestyle Git]
+    end
+    
+    subgraph "VM Instance"
+        App[App]
+        Daemon[HL Daemon]
+        Claude[Claude Code]
+        VMGit[VM Git Repo]
+    end
+    
+    %% Job flow
+    WUI -->|Push Jobs| CloudAPI
+    CloudAPI -->|Commands| Daemon
+    
+    %% Event streaming
+    Daemon -->|Stream Events| CloudAPI
+    CloudAPI -->|Stream Events| WUI
+    CloudAPI --> EventStore
+    
+    %% Git flow
+    LocalGit -->|Push Code| FreestyleGit
+    FreestyleGit -->|Clone/Pull| VMGit
+    
+    %% VM Internal Communication
+    Daemon <-->|stdio| Claude
+    Claude -->|File Changes| VMGit
+    Claude -->|Spawn/Control| App
+    App -->|Logs/Status| Claude
+    
+    %% Port forwarding
+    App -.->|Port 3000| Browser
+
+    %% VM Git Repo
+    VMGit -->|Push Code??| GitHub
+    
+    style WUI fill:#e1f5fe
+    style CloudAPI fill:#f3e5f5
+    style Daemon fill:#e8f5e8
+    style Claude fill:#fff3e0

@@ -29,14 +29,13 @@ async fn connect_daemon(state: State<'_, AppState>) -> std::result::Result<Strin
 }
 
 #[tauri::command]
-async fn daemon_health(state: State<'_, AppState>) -> std::result::Result<daemon_client::HealthCheckResponse, String> {
+async fn daemon_health(
+    state: State<'_, AppState>,
+) -> std::result::Result<daemon_client::HealthCheckResponse, String> {
     let client_guard = state.client.lock().await;
 
     match &*client_guard {
-        Some(client) => client
-            .health()
-            .await
-            .map_err(|e| e.to_string()),
+        Some(client) => client.health().await.map_err(|e| e.to_string()),
         None => Err("Not connected to daemon".to_string()),
     }
 }
@@ -64,10 +63,7 @@ async fn list_sessions(
     let client_guard = state.client.lock().await;
 
     match &*client_guard {
-        Some(client) => client
-            .list_sessions()
-            .await
-            .map_err(|e| e.to_string()),
+        Some(client) => client.list_sessions().await.map_err(|e| e.to_string()),
         None => Err("Not connected to daemon".to_string()),
     }
 }
@@ -129,10 +125,7 @@ async fn get_conversation(
 
     match &*client_guard {
         Some(client) => client
-            .get_conversation(
-                session_id.as_deref(),
-                claude_session_id.as_deref(),
-            )
+            .get_conversation(session_id.as_deref(), claude_session_id.as_deref())
             .await
             .map_err(|e| e.to_string()),
         None => Err("Not connected to daemon".to_string()),
@@ -231,7 +224,10 @@ async fn subscribe_to_events(
                     tracing::info!("subscribe_to_events: Subscription created successfully with ID {}, spawning event forwarder", subscription_id);
                     // Spawn a task to forward events to the frontend
                     tokio::spawn(async move {
-                        tracing::info!("subscribe_to_events: Event forwarder task started for subscription {}", subscription_id);
+                        tracing::info!(
+                            "subscribe_to_events: Event forwarder task started for subscription {}",
+                            subscription_id
+                        );
                         while let Some(event) = receiver.recv().await {
                             tracing::info!(
                                 "subscribe_to_events: Subscription {} received event - type: {:?}, data: {:?}",
@@ -241,14 +237,20 @@ async fn subscribe_to_events(
                             );
                             // Emit the event to the frontend
                             if let Err(e) = app.emit("daemon-event", event) {
-                                error!("Failed to emit event for subscription {}: {}", subscription_id, e);
+                                error!(
+                                    "Failed to emit event for subscription {}: {}",
+                                    subscription_id, e
+                                );
                             } else {
                                 tracing::info!("subscribe_to_events: Event emitted to frontend successfully for subscription {}", subscription_id);
                             }
                         }
                         tracing::warn!("subscribe_to_events: Event receiver channel closed for subscription {}", subscription_id);
                     });
-                    tracing::info!("subscribe_to_events: Subscription {} setup completed successfully", subscription_id);
+                    tracing::info!(
+                        "subscribe_to_events: Subscription {} setup completed successfully",
+                        subscription_id
+                    );
                     Ok(subscription_id.to_string())
                 }
                 Err(e) => {
@@ -269,17 +271,25 @@ async fn unsubscribe_from_events(
     state: State<'_, AppState>,
     subscription_id: String,
 ) -> std::result::Result<(), String> {
-    tracing::info!("unsubscribe_from_events: Unsubscribing from subscription {}", subscription_id);
+    tracing::info!(
+        "unsubscribe_from_events: Unsubscribing from subscription {}",
+        subscription_id
+    );
 
     let client_guard = state.client.lock().await;
 
     match &*client_guard {
         Some(client) => {
             // Parse the subscription ID
-            let id = subscription_id.parse::<u64>().map_err(|e| format!("Invalid subscription ID: {}", e))?;
+            let id = subscription_id
+                .parse::<u64>()
+                .map_err(|e| format!("Invalid subscription ID: {}", e))?;
 
             client.unsubscribe(id).await.map_err(|e| e.to_string())?;
-            tracing::info!("unsubscribe_from_events: Successfully unsubscribed from subscription {}", id);
+            tracing::info!(
+                "unsubscribe_from_events: Successfully unsubscribed from subscription {}",
+                id
+            );
             Ok(())
         }
         None => {
@@ -311,6 +321,7 @@ pub fn run() {
     tracing_subscriber::fmt::init();
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
         .manage(AppState {

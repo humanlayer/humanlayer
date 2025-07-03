@@ -1,0 +1,3 @@
+- read() has no tool response in the WUI, e.g. read 100 lines
+- Glob() shows Unknown Subject
+- git diffs are kinda ugly

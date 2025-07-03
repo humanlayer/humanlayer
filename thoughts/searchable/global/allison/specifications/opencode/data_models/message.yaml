@@ -1,0 +1,400 @@
+---
+component: Message
+version: "1.0.0"
+category: Core Data Model
+description: Message structures and conversation components
+---
+
+# Message Data Model
+
+## Overview
+The Message entity represents individual exchanges in conversations, supporting rich content types, tool invocations, and metadata tracking.
+
+## Entity: Message.Info
+
+### Purpose
+- Store individual conversation exchanges
+- Track message content and metadata
+- Support rich media and tool interactions
+- Enable streaming and partial updates
+
+### Schema Definition
+```typescript
+interface MessageInfo {
+  id: string;                           // Prefixed identifier (msg_*)
+  role: "user" | "assistant";          // Message source
+  parts: MessagePart[];                // Content components
+  metadata: MessageMetadata;           // Associated metadata
+}
+```
+
+### Field Details
+
+#### Message ID
+- **Type**: `string`
+- **Format**: `msg_<timestamp_hex><random_base62>`
+- **Ordering**: Ascending timestamp for chronological order
+- **Uniqueness**: Globally unique within session scope
+
+#### Role Classification
+- **user**: Human-generated messages
+- **assistant**: AI-generated responses
+- **Constraints**: Enum validation enforced by Zod schema
+
+#### Content Parts System
+Array of discriminated union types supporting multiple content formats:
+
+### Message Parts Schema
+
+#### TextPart
+```typescript
+interface TextPart {
+  type: "text";
+  text: string;                        // Plain text content
+}
+```
+
+#### ReasoningPart  
+```typescript
+interface ReasoningPart {
+  type: "reasoning";
+  text: string;                        // AI reasoning content
+  providerMetadata?: Record<string, any>; // Provider-specific data
+}
+```
+
+#### ToolInvocationPart
+```typescript
+interface ToolInvocationPart {
+  type: "tool-invocation";
+  toolInvocation: ToolInvocation;      // Tool execution details
+}
+```
+
+#### SourceUrlPart
+```typescript
+interface SourceUrlPart {
+  type: "source-url";
+  sourceId: string;                    // Source identifier
+  url: string;                         // Referenced URL
+  title?: string;                      // Optional title
+  providerMetadata?: Record<string, any>;
+}
+```
+
+#### FilePart
+```typescript
+interface FilePart {
+  type: "file";
+  mediaType: string;                   // MIME type
+  filename?: string;                   // Optional filename
+  url: string;                         // File location/data URL
+}
+```
+
+#### StepStartPart
+```typescript
+interface StepStartPart {
+  type: "step-start";                  // Multi-step reasoning marker
+}
+```
+
+### Tool Invocation States
+
+#### ToolCall (Active Call)
+```typescript
+interface ToolCall {
+  state: "call";
+  step?: number;                       // Multi-step context
+  toolCallId: string;                  // Unique call identifier
+  toolName: string;                    // Tool being invoked
+  args: Required<unknown>;             // Tool parameters
+}
+```
+
+#### ToolPartialCall (Streaming)
+```typescript
+interface ToolPartialCall {
+  state: "partial-call";
+  step?: number;
+  toolCallId: string;
+  toolName: string;
+  args: Required<unknown>;             // Partially received args
+}
+```
+
+#### ToolResult (Completed)
+```typescript
+interface ToolResult {
+  state: "result";
+  step?: number;
+  toolCallId: string;
+  toolName: string;
+  args: Required<unknown>;
+  result: string;                      // Tool execution result
+}
+```
+
+### Message Metadata Schema
+
+```typescript
+interface MessageMetadata {
+  time: {
+    created: number;                   // Unix timestamp
+    completed?: number;                // Completion timestamp
+  };
+  error?: ErrorInfo;                   // Execution errors
+  sessionID: string;                   // Parent session reference
+  tool: Record<string, ToolExecutionMetadata>; // Tool execution tracking
+  assistant?: AssistantMetadata;       // AI-specific metadata
+}
+```
+
+#### Assistant Metadata
+```typescript
+interface AssistantMetadata {
+  system: string[];                    // System prompts used
+  modelID: string;                     // Model identifier
+  providerID: string;                  // Provider identifier
+  path: {
+    cwd: string;                       // Working directory
+    root: string;                      // Project root
+  };
+  cost: number;                        // Computed cost
+  summary?: boolean;                   // Summary message flag
+  tokens: {
+    input: number;                     // Input token count
+    output: number;                    // Output token count
+    reasoning: number;                 // Reasoning token count
+    cache: {
+      read: number;                    // Cache read tokens
+      write: number;                   // Cache write tokens
+    };
+  };
+}
+```
+
+#### Tool Execution Metadata
+```typescript
+interface ToolExecutionMetadata {
+  title: string;                       // Human-readable title
+  time: {
+    start: number;                     // Execution start time
+    end: number;                       // Execution end time
+  };
+  error?: boolean;                     // Error flag
+  message?: string;                    // Error message
+  [key: string]: any;                  // Additional metadata
+}
+```
+
+### Storage Strategy
+
+#### Primary Storage
+- **Location**: `storage/session/message/<sessionID>/<messageID>.json`
+- **Format**: JSON serialization of MessageInfo
+- **Atomicity**: Temporary file writes with rename
+
+#### Caching Strategy
+- **In-Memory**: Per-session message arrays
+- **Loading**: Lazy loading with glob patterns
+- **Sorting**: Chronological ordering by message ID
+
+### State Management
+
+#### Message Streaming
+1. Create initial message with empty parts
+2. Stream parts as they arrive from AI
+3. Update existing parts for streaming content
+4. Emit part update events for UI synchronization
+
+#### Tool Execution Flow
+1. Create ToolPartialCall during streaming
+2. Update to ToolCall when args complete
+3. Execute tool with timeout and abort signal
+4. Update to ToolResult with execution outcome
+5. Track execution metadata for debugging
+
+### Validation Rules
+
+#### Message Creation
+- Valid role enumeration
+- Non-empty parts array for completed messages
+- Valid sessionID reference
+- Unique message ID within session
+
+#### Part Validation
+- Discriminated union type validation
+- Required fields per part type
+- MIME type validation for file parts
+- URL format validation for source parts
+
+#### Tool Invocation Validation
+- Valid tool name registration
+- Schema validation for tool arguments
+- State transition rules enforced
+- Timeout handling for long-running tools
+
+### Business Rules
+
+#### Content Processing
+- **Text Streaming**: Incremental text updates during AI generation
+- **Tool Chaining**: Support multiple tool calls per message
+- **Error Recovery**: Graceful handling of partial failures
+- **Reasoning Display**: Separate reasoning from main content
+
+#### Cost Calculation
+- **Token-based**: Input/output token costs from model provider
+- **Cache Optimization**: Separate pricing for cache read/write
+- **Provider Variance**: Different cost models per provider
+
+#### Auto-Completion
+- **Timeout Handling**: Incomplete tool calls marked as aborted
+- **Error States**: Failed tool executions include error details
+- **Recovery**: Partial messages saved for debugging
+
+### Data Flow
+
+#### User Message Creation
+1. Generate ascending message ID
+2. Create MessageInfo with user role
+3. Add text parts from user input
+4. Store with session metadata
+5. Emit message.updated event
+
+#### Assistant Response Generation
+1. Create assistant message with metadata
+2. Stream text parts as AI generates content
+3. Handle tool invocations during streaming
+4. Update token counts and costs
+5. Mark completion time when finished
+
+#### Tool Execution Process
+1. Parse tool call from AI stream
+2. Create ToolInvocationPart with partial state
+3. Execute tool with context and abort signal
+4. Update part with result or error
+5. Continue AI generation with tool result
+
+### Serialization Formats
+
+#### JSON Storage Format
+```json
+{
+  "id": "msg_01h2k3...",
+  "role": "assistant",
+  "parts": [
+    {
+      "type": "text",
+      "text": "I'll help you with that."
+    },
+    {
+      "type": "tool-invocation",
+      "toolInvocation": {
+        "state": "result",
+        "toolCallId": "call_123",
+        "toolName": "read_file",
+        "args": { "path": "src/main.ts" },
+        "result": "// File contents..."
+      }
+    }
+  ],
+  "metadata": {
+    "time": {
+      "created": 1705315800000,
+      "completed": 1705315830000
+    },
+    "sessionID": "ses_01h2k3...",
+    "tool": {
+      "call_123": {
+        "title": "Reading file",
+        "time": { "start": 1705315810000, "end": 1705315815000 }
+      }
+    },
+    "assistant": {
+      "system": ["You are a helpful assistant"],
+      "modelID": "claude-3-5-sonnet-20241022",
+      "providerID": "anthropic",
+      "path": { "cwd": "/project", "root": "/project" },
+      "cost": 0.0025,
+      "tokens": {
+        "input": 1250,
+        "output": 850,
+        "reasoning": 0,
+        "cache": { "read": 500, "write": 0 }
+      }
+    }
+  }
+}
+```
+
+#### Event Payload Formats
+```json
+{
+  "type": "message.updated",
+  "properties": {
+    "info": { /* MessageInfo */ }
+  }
+}
+```
+
+```json
+{
+  "type": "message.part.updated", 
+  "properties": {
+    "part": { /* MessagePart */ },
+    "sessionID": "ses_01h2k3...",
+    "messageID": "msg_01h2k4..."
+  }
+}
+```
+
+### Relationships
+
+#### Message → Session
+- **Type**: Many-to-one
+- **Foreign Key**: metadata.sessionID
+- **Constraint**: Session must exist
+
+#### Message → Tool Executions
+- **Type**: One-to-many
+- **Storage**: Embedded in metadata.tool
+- **Lifecycle**: Tied to message lifecycle
+
+### Error Handling
+
+#### Known Error Types
+- `OutputLengthError`: AI response exceeded limits
+- `Provider.AuthError`: Authentication failures
+- `NamedError.Unknown`: Unexpected errors
+
+#### Recovery Strategies
+- **Partial Messages**: Save incomplete messages for debugging
+- **Tool Failures**: Mark failed tools, continue processing
+- **Streaming Errors**: Preserve successful parts
+
+#### Error Metadata
+```typescript
+interface ErrorInfo {
+  name: string;                        // Error type name
+  message: string;                     // Error description
+  [key: string]: any;                  // Additional error data
+}
+```
+
+### Performance Considerations
+
+#### Streaming Optimization
+- **Incremental Updates**: Only changed parts trigger events
+- **Batched Writes**: Multiple updates batched for storage
+- **Memory Management**: Large messages spilled to disk
+
+#### Tool Execution
+- **Parallel Execution**: Multiple tools can run concurrently
+- **Timeout Management**: Configurable timeouts per tool
+- **Resource Limits**: Memory and CPU constraints enforced
+
+#### Storage Efficiency
+- **Compression**: Large content compressed in storage
+- **Indexing**: Fast lookups by session and timestamp
+- **Cleanup**: Automatic cleanup of old message data

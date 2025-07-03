@@ -1,6 +1,13 @@
+import { homeDir } from '@tauri-apps/api/path'
+import { DirEntry, readDir } from '@tauri-apps/plugin-fs'
 import React, { useState, useRef, useEffect, useMemo } from 'react'
 import { cn } from '@/lib/utils'
 import { fuzzySearch, highlightMatches, type FuzzyMatch } from '@/lib/fuzzy-search'
+import { Input } from './ui/input'
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
+import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from './ui/command'
+import { FileWarning } from 'lucide-react'
+import { useHotkeys } from 'react-hotkeys-hook'
 
 interface FuzzySearchInputProps<T> {
   items: T[]
@@ -16,7 +23,123 @@ interface FuzzySearchInputProps<T> {
   disabled?: boolean
 }
 
-export default function FuzzySearchInput<T>({
+/* Running list of bugs with this thing
+
+ - [ ] - When hitting "ESC" while in input, entire dialog is closed as opposed to exiting focus of input first
+ - [ ] - Selected state in dropdown, when nothing selected, select something
+ - [ ] - Dropdown should be width of input
+
+*/
+
+export function SearchInput() {
+  const [searchValue, setSearchValue] = useState('')
+  const [dropdownOpen, setDropdownOpen] = useState(false)
+  const [isInvalidPath, setIsInvalidPath] = useState(false)
+  const [isFocused, setIsFocused] = useState(false)
+  const [directoryPreview, setDirectoryPreview] = useState<{ selected: boolean; path: DirEntry }[]>([])
+
+  const Hotkeys = {
+    ARROW_UP: 'arrowup',
+    ARROW_DOWN: 'arrowdown',
+    ENTER: 'enter',
+    ESCAPE: 'escape',
+  }
+
+  useHotkeys(
+    Object.values(Hotkeys).join(','),
+    (_, handler) => {
+      switch (handler.keys?.join('')) {
+        case Hotkeys.ARROW_UP:
+          console.log('ArrowUp')
+          break
+        case Hotkeys.ARROW_DOWN:
+          console.log('ArrowDown')
+          break
+        case Hotkeys.ENTER:
+          console.log('Enter')
+          break
+        case Hotkeys.ESCAPE:
+          console.log('Escape')
+          break
+      }
+    },
+    { enabled: isFocused, enableOnFormTags: true },
+  )
+
+  const onChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('onChange', e.target.value)
+    setDropdownOpen(e.target.value.length > 0)
+    setSearchValue(e.target.value)
+
+    let searchPath = e.target.value
+
+    if (searchPath.startsWith('~')) {
+      const home = await homeDir()
+      searchPath = searchPath.replace(/^~(?=$|\/|\\)/, home)
+    }
+
+    let entries: DirEntry[] = []
+    try {
+      entries = await readDir(searchPath)
+      setIsInvalidPath(false)
+      const dirs = entries.filter(entry => entry.isDirectory)
+      const dirObjs = dirs.map(dir => ({
+        selected: false,
+        path: dir,
+      }))
+      dirObjs[0].selected = true
+      setDirectoryPreview(dirObjs)
+    } catch (err) {
+      console.log(err)
+      setDirectoryPreview([])
+      setIsInvalidPath(true)
+    }
+  }
+
+  return (
+    <div className="flex flex-col items-start">
+      <Input
+        spellCheck={false}
+        onChange={onChange}
+        value={searchValue}
+        onFocus={() => setIsFocused(true)}
+        onBlur={() => setIsFocused(false)}
+      />
+      <Popover open={dropdownOpen && isFocused} defaultOpen={false}>
+        <PopoverTrigger></PopoverTrigger>
+        <PopoverContent onOpenAutoFocus={e => e.preventDefault()}>
+          <Command>
+            <CommandList>
+              <CommandEmpty className="py-2">
+                {isInvalidPath && (
+                  <span className="flex items-center">
+                    <FileWarning className="w-4 h-4 mr-2" />
+                    <span>...</span>
+                  </span>
+                )}
+                {!isInvalidPath && (
+                  <span className="flex items-center">
+                    <FileWarning className="w-4 h-4 mr-2" />
+                    No results found
+                  </span>
+                )}
+              </CommandEmpty>
+              {directoryPreview.length > 0 && (
+                <CommandGroup>
+                  {directoryPreview.map(item => (
+                    <CommandItem key={item.path.name}>{item.path.name}</CommandItem>
+                  ))}
+                </CommandGroup>
+              )}
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    </div>
+  )
+}
+
+export default function FuzzySearchInput<T extends { value: string; label: string }[]>({
   items,
   value,
   onChange,
@@ -60,6 +183,7 @@ export default function FuzzySearchInput<T>({
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      console.log('handleKeyDown', e.key)
       if (!isOpen || !searchResults.length) return
 
       switch (e.key) {
@@ -133,6 +257,8 @@ export default function FuzzySearchInput<T>({
     </>
   )
 
+  console.log('searchResults', searchResults)
+
   return (
     <div className="relative">
       <input
@@ -167,7 +293,7 @@ export default function FuzzySearchInput<T>({
             ref={listRef}
             className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-md shadow-lg z-20 max-h-60 overflow-y-auto"
           >
-            {searchResults.length > 0 ? (
+            {/* {searchResults.length > 0 ? (
               searchResults.map((result, index) => (
                 <div
                   key={index}
@@ -188,18 +314,41 @@ export default function FuzzySearchInput<T>({
               ))
             ) : (
               <div className="px-3 py-2 text-sm text-muted-foreground text-center">{emptyMessage}</div>
-            )}
+            )} */}
 
             {/* Footer with navigation hints */}
-            {searchResults.length > 0 && (
+            {/* {searchResults.length > 0 && (
               <div className="px-3 py-1 text-xs text-muted-foreground bg-muted/30 border-t border-border/50 flex items-center justify-between">
                 <span>↑↓ Navigate</span>
                 <span>↵ Select • ESC Close</span>
               </div>
-            )}
+            )} */}
           </div>
         </>
       )}
+
+      {/* Start ShadCN Version */}
+
+      <div className="relative mt-100">
+        {/* <AutoComplete
+          // selectedValue={}
+          // onSelectedValueChange={}
+          searchValue={value}
+          // onSearchValueChange={}
+          items={searchResults.map(i => ({ value: i.item, label: i.item }))}
+          // isLoading={isLoading}
+          emptyMessage={emptyMessage}
+          placeholder={placeholder}
+          selectedValue={value}
+          onSelectedValueChange={onChange}
+          onSearchValueChange={onChange}
+          isLoading={false}
+        /> */}
+
+        {/* <SearchInput /> */}
+      </div>
+
+      {/* End ShadCN Version */}
     </div>
   )
 }

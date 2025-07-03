@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Button } from './ui/button'
 import { cn } from '@/lib/utils'
-import FuzzySearchInput from './FuzzySearchInput'
+import FuzzySearchInput, { SearchInput } from './FuzzySearchInput'
+import { Input } from './ui/input'
 
 interface SessionConfig {
   query: string
@@ -69,7 +70,7 @@ export default function CommandInput({
     <div className="space-y-4">
       {/* Main query input */}
       <div className="relative">
-        <input
+        <Input
           ref={inputRef}
           type="text"
           value={value}
@@ -104,7 +105,8 @@ export default function CommandInput({
       {/* Working Directory Field with Fuzzy Search */}
       <div className="space-y-2">
         <label className="text-sm font-medium text-foreground">Working Directory</label>
-        <FuzzySearchInput
+        <SearchInput />
+        {/* <FuzzySearchInput
           items={commonDirectories}
           value={config.workingDir}
           onChange={value => updateConfig({ workingDir: value })}
@@ -118,7 +120,7 @@ export default function CommandInput({
               <span className="font-mono">{item}</span>
             </div>
           )}
-        />
+        /> */}
       </div>
 
       {/* Advanced Options Toggle */}

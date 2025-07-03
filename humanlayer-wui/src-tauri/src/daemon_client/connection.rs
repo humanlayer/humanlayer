@@ -127,13 +127,11 @@ impl Connection {
     /// Check if the connection is still alive
     pub async fn is_alive(&self) -> bool {
         // Try to get a lock with a timeout
-        let stream_guard = match tokio::time::timeout(
-            Duration::from_millis(100),
-            self.stream.lock()
-        ).await {
-            Ok(guard) => guard,
-            Err(_) => return false,
-        };
+        let stream_guard =
+            match tokio::time::timeout(Duration::from_millis(100), self.stream.lock()).await {
+                Ok(guard) => guard,
+                Err(_) => return false,
+            };
 
         // Check if we can peek at the stream
         match stream_guard.try_read(&mut [0u8; 0]) {

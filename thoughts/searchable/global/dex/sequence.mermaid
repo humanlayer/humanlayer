@@ -1,0 +1,53 @@
+sequenceDiagram
+    participant User
+    participant WUI as Web UI
+    participant CloudAPI as HL Cloud API
+    participant FreestyleGit as Freestyle Git
+    participant VM as VM Instance
+    participant Daemon as HL Daemon
+    participant Claude as Claude Code
+    participant App as User App
+
+    Note over User, App: Phase 1: Setup & Launch
+    User->>WUI: Select repo & task
+    WUI->>CloudAPI: Request dev server
+    CloudAPI->>FreestyleGit: Create git repo + token
+    FreestyleGit-->>CloudAPI: Return git URL & token
+    CloudAPI-->>WUI: Return git credentials
+    
+    Note over User, App: Phase 2: Code Sync
+    WUI->>WUI: Add freestyle remote
+    WUI->>FreestyleGit: Push local code
+    
+    Note over User, App: Phase 3: VM Provisioning
+    CloudAPI->>VM: Fork VM snapshot
+    VM->>Daemon: Start daemon process
+    Daemon->>CloudAPI: Connect & register
+    CloudAPI-->>WUI: Stream "launching"
+    
+    Note over User, App: Phase 4: Code Setup
+    FreestyleGit->>Daemon: Clone repo to VM
+    Daemon->>Claude: Start Claude Code via stdio
+    Claude->>Claude: Read project files
+    CloudAPI-->>WUI: Stream "ready"
+    
+    Note over User, App: Phase 5: Task Execution
+    CloudAPI->>Daemon: Send user task/command
+    Daemon->>Claude: Forward task via stdio
+    Claude->>Claude: Plan & execute work
+    Claude->>App: Spawn/control processes
+    
+    Note over User, App: Phase 6: Real-time Updates
+    loop Development Loop
+        Claude->>Daemon: Send status updates
+        App->>Claude: Send logs/errors
+        Claude->>Daemon: Forward app status
+        Daemon->>CloudAPI: Stream events
+        CloudAPI-->>WUI: Stream to user
+        WUI-->>User: Display updates
+    end
+    
+    Note over User, App: Phase 7: Access
+    User->>WUI: Click app URL
+    WUI->>App: Connect to port 3000
+    App-->>User: Serve application
