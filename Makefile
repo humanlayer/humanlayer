@@ -458,3 +458,7 @@ check-local:
 		echo "blocking push of local branch"; \
 		exit 1; \
 	fi
+
+.PHONY: wui
+wui:
+	cd humanlayer-wui && bun run tauri dev
