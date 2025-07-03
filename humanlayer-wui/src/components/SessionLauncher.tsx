@@ -17,7 +17,7 @@ export function SessionLauncher({ isOpen, onClose }: SessionLauncherProps) {
     useSessionLauncher()
 
   // Escape key to close - enable even when input is focused
-  useHotkeys('escape', onClose, { enabled: isOpen, enableOnFormTags: true })
+  useHotkeys('escape', onClose, { enabled: isOpen, enableOnFormTags: false })
 
   // Focus management
   useEffect(() => {
@@ -30,7 +30,8 @@ export function SessionLauncher({ isOpen, onClose }: SessionLauncherProps) {
   // Additional escape key handler for input field
   const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === 'Escape' && isOpen) {
-      onClose()
+      console.log('Sundeep disabled this temporarily because why?')
+      // onClose()
     }
   }
 

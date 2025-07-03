@@ -28,6 +28,7 @@ interface FuzzySearchInputProps<T> {
  - [ ] - When hitting "ESC" while in input, entire dialog is closed as opposed to exiting focus of input first
  - [ ] - Selected state in dropdown, when nothing selected, select something
  - [ ] - Dropdown should be width of input
+ - [ ] - Have tab do what enter does too
 
 */
 
@@ -37,6 +38,8 @@ export function SearchInput() {
   const [isInvalidPath, setIsInvalidPath] = useState(false)
   const [isFocused, setIsFocused] = useState(false)
   const [directoryPreview, setDirectoryPreview] = useState<{ selected: boolean; path: DirEntry }[]>([])
+  const [lastValidPath, setLastValidPath] = useState('')
+  const [allDirectories, setAllDirectories] = useState<DirEntry[]>([])
 
   const Hotkeys = {
     ARROW_UP: 'arrowup',
@@ -47,19 +50,40 @@ export function SearchInput() {
 
   useHotkeys(
     Object.values(Hotkeys).join(','),
-    (_, handler) => {
+    (ev, handler) => {
       switch (handler.keys?.join('')) {
         case Hotkeys.ARROW_UP:
-          console.log('ArrowUp')
+          if (directoryPreview.length > 0) {
+            const currentIndex = directoryPreview.findIndex(item => item.selected)
+            const newIndex = (currentIndex - 1 + directoryPreview.length) % directoryPreview.length
+            setDirectoryPreview(prev => 
+              prev.map((item, idx) => ({ ...item, selected: idx === newIndex }))
+            )
+          }
           break
         case Hotkeys.ARROW_DOWN:
-          console.log('ArrowDown')
+          if (directoryPreview.length > 0) {
+            const currentIndex = directoryPreview.findIndex(item => item.selected)
+            const newIndex = (currentIndex + 1) % directoryPreview.length
+            setDirectoryPreview(prev => 
+              prev.map((item, idx) => ({ ...item, selected: idx === newIndex }))
+            )
+          }
           break
         case Hotkeys.ENTER:
-          console.log('Enter')
+          const selectedDir = directoryPreview.find(item => item.selected)
+          if (selectedDir) {
+            const newPath = searchValue.endsWith('/') 
+              ? searchValue + selectedDir.path.name 
+              : searchValue + '/' + selectedDir.path.name
+            setSearchValue(newPath)
+            setDropdownOpen(false)
+          }
           break
         case Hotkeys.ESCAPE:
-          console.log('Escape')
+          console.log('escape')
+          ev.stopPropagation()
+          setDropdownOpen(false)
           break
       }
     },
@@ -127,7 +151,12 @@ export function SearchInput() {
               {directoryPreview.length > 0 && (
                 <CommandGroup>
                   {directoryPreview.map(item => (
-                    <CommandItem key={item.path.name}>{item.path.name}</CommandItem>
+                    <CommandItem 
+                      key={item.path.name}
+                      className={cn(item.selected && "bg-accent")}
+                    >
+                      {item.path.name}
+                    </CommandItem>
                   ))}
                 </CommandGroup>
               )}
@@ -203,10 +232,12 @@ export default function FuzzySearchInput<T extends { value: string; label: strin
           }
           break
         case 'Escape':
-          e.preventDefault()
-          setIsOpen(false)
-          inputRef.current?.blur()
-          break
+          console.log('ignoring for the moment');
+          break;
+          // e.preventDefault()
+          // setIsOpen(false)
+          // inputRef.current?.blur()
+          // break
       }
     }
 
