@@ -459,5 +459,6 @@ check-local:
 		exit 1; \
 	fi
 
+.PHONY: wui
 wui:
 	cd humanlayer-wui && bun run tauri dev
