@@ -25,13 +25,12 @@ HumanLayer WUI is a desktop/web UI for managing AI agent approvals and sessions.
 
 ## Handy Links
 
-* [Tauri LLMs.txt](https://tauri.app/llms.txt)
-* [ShadCN docs](https://ui.shadcn.com/docs/installation)
-* [Vite docs](https://vite.dev/guide/)
-* [Lucide Icons](https://lucide.dev/icons/)
-* [Tailwind](https://v2.tailwindcss.com/docs/installation)
-* [Zustand LLMs.txt](https://github.com/pmndrs/zustand/blob/main/docs/llms.txt)
-
+- [Tauri LLMs.txt](https://tauri.app/llms.txt)
+- [ShadCN docs](https://ui.shadcn.com/docs/installation)
+- [Vite docs](https://vite.dev/guide/)
+- [Lucide Icons](https://lucide.dev/icons/)
+- [Tailwind](https://v2.tailwindcss.com/docs/installation)
+- [Zustand LLMs.txt](https://github.com/pmndrs/zustand/blob/main/docs/llms.txt)
 
 ## Development
 
@@ -63,8 +62,8 @@ bun run format
 
 ## Tips and Tricks
 
-* DO prefer ShadCN components over custom components. If a ShadCN equivalent exists that we haven't added yet, go ahead and add it. (e.g. `bunx --bun shadcn@latest add accordion`)
-* DO prefer `tailwind`-based styling over other types of styling
-* DO use `zustand` for managing global state. In a number of cases we've used internal React state management, but as the application scales we'll want to push more of that state into `zustand`.
-* DO verify your changes with `bun run lint` and `bun run typecheck`. 
-* DO provide a manual list of steps for a human to test new UI changes.
+- DO prefer ShadCN components over custom components. If a ShadCN equivalent exists that we haven't added yet, go ahead and add it. (e.g. `bunx --bun shadcn@latest add accordion`)
+- DO prefer `tailwind`-based styling over other types of styling
+- DO use `zustand` for managing global state. In a number of cases we've used internal React state management, but as the application scales we'll want to push more of that state into `zustand`.
+- DO verify your changes with `bun run lint` and `bun run typecheck`.
+- DO provide a manual list of steps for a human to test new UI changes.
