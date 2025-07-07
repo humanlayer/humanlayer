@@ -36,9 +36,11 @@ import {
   User,
   Wrench,
   ChevronDown,
+  Globe,
 } from 'lucide-react'
 import { getStatusTextClass } from '@/utils/component-utils'
 import { daemonClient } from '@/lib/daemon/client'
+import { notificationService } from '@/services/NotificationService'
 import { truncate, formatAbsoluteTimestamp } from '@/utils/formatting'
 import { CommandToken } from './CommandToken'
 
@@ -92,11 +94,12 @@ function eventToDisplayObject(
   onToggleSplitView?: () => void,
   toolResult?: ConversationEvent,
 ) {
-  let subject = <span>Unknown Subject</span>
+  let subject = null
   let body = null
   let iconComponent = null
   let toolResultContent = null
-  const iconClasses = 'w-4 h-4 align-middle relative top-[1px]'
+
+  const iconClasses = `w-4 h-4 align-middle relative top-[1px] ${event.event_type === ConversationEventType.ToolCall && !event.is_completed ? 'pulse-warning' : ''}`
 
   // // For the moment, don't display tool results.
   // if (event.event_type === ConversationEventType.ToolResult) {
@@ -223,6 +226,17 @@ function eventToDisplayObject(
             <small className="text-xs text-muted-foreground">{toolInput.file_path}</small>
           </div>
           <div className="font-mono text-sm text-muted-foreground">{toolInput.content}</div>
+        </span>
+      )
+    }
+
+    if (event.tool_name === 'WebSearch') {
+      iconComponent = <Globe className={iconClasses} />
+      const toolInput = JSON.parse(event.tool_input_json!)
+      subject = (
+        <span>
+          <span className="font-bold">Web Search </span>
+          <span className="font-mono text-sm text-muted-foreground italic">"{toolInput.query}"</span>
         </span>
       )
     }
@@ -421,6 +435,11 @@ function eventToDisplayObject(
         </div>
       </div>
     )
+  }
+
+  if (subject === null) {
+    // console.warn('Unknown subject for event', event)
+    subject = <span>Uknown Subject</span>
   }
 
   return {
@@ -984,7 +1003,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       setApprovingApprovalId(approvalId)
       await daemonClient.approveFunctionCall(approvalId)
     } catch (error) {
-      console.error('Failed to approve:', error)
+      notificationService.notifyError(error, 'Failed to approve')
     } finally {
       setApprovingApprovalId(null)
     }
@@ -995,7 +1014,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       await daemonClient.denyFunctionCall(approvalId, reason)
       setDenyingApprovalId(null)
     } catch (error) {
-      console.error('Failed to deny:', error)
+      notificationService.notifyError(error, 'Failed to deny')
     }
   }
 
@@ -1023,7 +1042,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       setResponseInput('')
       setShowResponseInput(false)
     } catch (error) {
-      console.error('Failed to continue session:', error)
+      notificationService.notifyError(error, 'Failed to continue session')
       // On error, keep the message so user can retry
     } finally {
       setIsResponding(false)

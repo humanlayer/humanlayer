@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Loader2, AlertCircle, CheckCircle2, XCircle, MessageSquare } from 'lucide-react'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { notificationService } from '@/services/NotificationService'
 
 /**
  * Example approvals panel component similar to the TUI
@@ -57,8 +58,7 @@ export function ApprovalsPanel() {
     try {
       await approve(approval.callId)
     } catch (err) {
-      console.error('Failed to approve:', err)
-      alert(err instanceof Error ? err.message : 'Failed to approve')
+      notificationService.notifyError(err, 'Failed to approve')
     } finally {
       setProcessingId(null)
     }
@@ -72,8 +72,7 @@ export function ApprovalsPanel() {
     try {
       await deny(approval.callId, reason)
     } catch (err) {
-      console.error('Failed to deny:', err)
-      alert(err instanceof Error ? err.message : 'Failed to deny')
+      notificationService.notifyError(err, 'Failed to deny')
     } finally {
       setProcessingId(null)
     }
@@ -87,8 +86,7 @@ export function ApprovalsPanel() {
     try {
       await respond(approval.callId, response)
     } catch (err) {
-      console.error('Failed to respond:', err)
-      alert(err instanceof Error ? err.message : 'Failed to respond')
+      notificationService.notifyError(err, 'Failed to respond')
     } finally {
       setProcessingId(null)
     }

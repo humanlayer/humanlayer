@@ -185,4 +185,21 @@
   button {
     font-family: inherit;
   }
+
+  /* Pulsing animation for incomplete events */
+  @keyframes pulse-warning {
+    0%,
+    100% {
+      opacity: 1;
+      color: var(--terminal-accent);
+    }
+    50% {
+      opacity: 0.5;
+      color: var(--terminal-warning);
+    }
+  }
+
+  .pulse-warning {
+    animation: pulse-warning 2s ease-in-out infinite;
+  }
 }

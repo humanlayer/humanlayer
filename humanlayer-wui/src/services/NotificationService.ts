@@ -5,6 +5,7 @@ import {
   requestPermission,
 } from '@tauri-apps/plugin-notification'
 import { getCurrentWindow } from '@tauri-apps/api/window'
+import { formatError } from '@/utils/errors'
 
 // Types for generic notification system
 export type NotificationType =
@@ -13,6 +14,7 @@ export type NotificationType =
   | 'session_failed'
   | 'session_started'
   | 'system_alert'
+  | 'error'
 
 export interface NotificationAction {
   label: string
@@ -231,6 +233,9 @@ class NotificationService {
       case 'session_completed':
         toast.success(options.title, toastOptions)
         break
+      case 'error':
+        toast.error(options.title, toastOptions)
+        break
       default:
         toast(options.title, toastOptions)
     }
@@ -270,6 +275,34 @@ class NotificationService {
       // Fallback to in-app notification
       this.showInAppNotification(options)
     }
+  }
+
+  /**
+   * Convenience method for error notifications
+   */
+  async notifyError(error: unknown, context?: string): Promise<string | null> {
+    // Always log to console for debugging
+    console.error(context || 'Error:', error)
+
+    // Format the error message
+    const formattedMessage = formatError(error)
+
+    // Add context if provided
+    const body = context ? `${context}: ${formattedMessage}` : formattedMessage
+
+    // Use the existing notify method with error type
+    return this.notify({
+      type: 'error',
+      title: 'Error',
+      body,
+      metadata: {
+        error: error instanceof Error ? error.stack : String(error),
+        context: context || '',
+        timestamp: new Date().toISOString(),
+      },
+      duration: 8000, // Errors should be visible longer
+      priority: 'high',
+    })
   }
 
   /**
