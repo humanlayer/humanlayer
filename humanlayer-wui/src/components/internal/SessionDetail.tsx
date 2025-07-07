@@ -950,6 +950,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [focusSource, setFocusSource] = useState<'mouse' | 'keyboard' | null>(null)
   const [isSplitView, setIsSplitView] = useState(true)
   const interruptSession = useStore(state => state.interruptSession)
+  const refreshSessions = useStore(state => state.refreshSessions)
   const navigate = useNavigate()
   const isRunning = session.status === 'running'
 
@@ -1014,6 +1015,9 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
 
       // Always navigate to the new session - the backend handles queuing
       navigate(`/sessions/${response.session_id}`)
+
+      // Refresh the session list to ensure UI reflects current state
+      await refreshSessions()
 
       // Reset form state only after success
       setResponseInput('')
