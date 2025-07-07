@@ -3,6 +3,7 @@ import { Button } from './ui/button'
 import { cn } from '@/lib/utils'
 import { SearchInput } from './FuzzySearchInput'
 import { Input } from './ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 
 interface SessionConfig {
   query: string
@@ -123,25 +124,23 @@ export default function CommandInput({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">Model</label>
-              <select
+              <Select
                 value={config.model || ''}
-                onChange={e => updateConfig({ model: e.target.value || undefined })}
-                className={cn(
-                  'w-full h-9 px-3 text-sm',
-                  'bg-background border rounded-md',
-                  'border-border hover:border-primary/50 focus:border-primary focus:ring-2 focus:ring-primary/20',
-                )}
+                onValueChange={value => updateConfig({ model: value || undefined })}
               >
-                <option value="">Default Model</option>
-                <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet</option>
-                <option value="claude-3-opus-20240229">Claude 3 Opus</option>
-                <option value="claude-3-haiku-20240307">Claude 3 Haiku</option>
-              </select>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select a model" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="sonnet">Sonnet</SelectItem>
+                  <SelectItem value="opus">Opus</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">Max Turns</label>
-              <input
+              <Input
                 type="number"
                 value={config.maxTurns || ''}
                 onChange={e =>
