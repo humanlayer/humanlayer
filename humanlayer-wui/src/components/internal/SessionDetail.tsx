@@ -439,7 +439,7 @@ function eventToDisplayObject(
 
   if (subject === null) {
     // console.warn('Unknown subject for event', event)
-    subject = <span>Uknown Subject</span>
+    subject = <span>Unknown Subject</span>
   }
 
   return {
