@@ -13,13 +13,19 @@ Then wait for the user's research query.
 
 ## Steps to follow after receiving the research query:
 
-1. **Analyze and decompose the research question:**
+1. **Read any directly mentioned files first:**
+   - If the user mentions specific files (tickets, docs, JSON), read them FULLY first
+   - **IMPORTANT**: Use the Read tool WITHOUT limit/offset parameters to read entire files
+   - **CRITICAL**: Read these files yourself in the main context before spawning any sub-tasks
+   - This ensures you have full context before decomposing the research
+
+2. **Analyze and decompose the research question:**
    - Break down the user's query into composable research areas
    - Identify specific components, patterns, or concepts to investigate
    - Create a research plan using TodoWrite to track all subtasks
    - Consider which directories, files, or architectural patterns are relevant
 
-2. **Spawn parallel sub-agent tasks for comprehensive research:**
+3. **Spawn parallel sub-agent tasks for comprehensive research:**
    - Create multiple Task agents to research different aspects concurrently
    - Always include these parallel tasks:
      - **Codebase exploration tasks** (one for each relevant component/directory)
@@ -58,7 +64,7 @@ Then wait for the user's research query.
      Return: Relevant findings with correct file paths and key insights
      ```
 
-3. **Wait for all sub-agents to complete and synthesize findings:**
+4. **Wait for all sub-agents to complete and synthesize findings:**
    - IMPORTANT: Wait for ALL sub-agent tasks to complete before proceeding
    - Compile all sub-agent results (both codebase and thoughts findings)
    - Prioritize live codebase findings as primary source of truth
@@ -69,7 +75,7 @@ Then wait for the user's research query.
    - Highlight patterns, connections, and architectural decisions
    - Answer the user's specific questions with concrete evidence
 
-4. **Gather metadata for the research document:**
+5. **Gather metadata for the research document:**
    - Get current date and time with timezone: `date '+%Y-%m-%d %H:%M:%S %Z'`
    - Get git commit from repository root: `cd $(git rev-parse --show-toplevel) && git log -1 --format=%H`
    - Get current branch: `git branch --show-current`
@@ -78,7 +84,7 @@ Then wait for the user's research query.
    - Create timestamp-based filename using date without timezone: `date '+%Y-%m-%d_%H-%M-%S'`
    - Format: `thoughts/shared/research/YYYY-MM-DD_HH-MM-SS_topic.md`
 
-5. **Generate research document:**
+6. **Generate research document:**
    - Use the metadata gathered in step 4
    - Structure the document with YAML frontmatter followed by content:
      ```markdown
@@ -139,20 +145,20 @@ Then wait for the user's research query.
      [Any areas that need further investigation]
      ```
 
-6. **Add GitHub permalinks (if applicable):**
+7. **Add GitHub permalinks (if applicable):**
    - Check if on main branch or if commit is pushed: `git branch --show-current` and `git status`
    - If on main/master or pushed, generate GitHub permalinks:
      - Get repo info: `gh repo view --json owner,name`
      - Create permalinks: `https://github.com/{owner}/{repo}/blob/{commit}/{file}#L{line}`
    - Replace local file references with permalinks in the document
 
-7. **Sync and present findings:**
+8. **Sync and present findings:**
    - Run `humanlayer thoughts sync` to sync the thoughts directory
    - Present a concise summary of findings to the user
    - Include key file references for easy navigation
    - Ask if they have follow-up questions or need clarification
 
-8. **Handle follow-up questions:**
+9. **Handle follow-up questions:**
    - If the user has follow-up questions, append to the same research document
    - Update the frontmatter fields `last_updated` and `last_updated_by` to reflect the update
    - Add `last_updated_note: "Added follow-up research for [brief description]"` to frontmatter
@@ -173,9 +179,11 @@ Then wait for the user's research query.
 - Keep the main agent focused on synthesis, not deep file reading
 - Encourage sub-agents to find examples and usage patterns, not just definitions
 - Explore all of thoughts/ directory, not just research subdirectory
+- **File reading**: Always read mentioned files FULLY (no limit/offset) before spawning sub-tasks
 - **Critical ordering**: Follow the numbered steps exactly
-  - ALWAYS wait for all sub-agents to complete before synthesizing (step 3)
-  - ALWAYS gather metadata before writing the document (step 4 before step 5)
+  - ALWAYS read mentioned files first before spawning sub-tasks (step 1)
+  - ALWAYS wait for all sub-agents to complete before synthesizing (step 4)
+  - ALWAYS gather metadata before writing the document (step 5 before step 6)
   - NEVER write the research document with placeholder values
 - **Path handling**: The thoughts/searchable/ directory contains hard links for searching
   - Always document paths by removing ONLY "searchable/" - preserve all other subdirectories
