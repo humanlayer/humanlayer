@@ -655,11 +655,7 @@ function eventToDisplayObject(
               <span className="text-muted-foreground/50">⎿</span>
               <span>
                 {resultDisplay}
-                {isFocused && (
-                  <span className="text-xs text-muted-foreground/50 ml-2">
-                    [i] expand
-                  </span>
-                )}
+                {isFocused && <span className="text-xs text-muted-foreground/50 ml-2">[i] expand</span>}
               </span>
             </div>
           </>
@@ -909,16 +905,19 @@ function ConversationContent({
   useEffect(() => {
     if (!loading && containerRef.current && nonEmptyDisplayObjects.length > 0) {
       const hasNewEvents = nonEmptyDisplayObjects.length > previousEventCountRef.current
-      
+
       // Check if any events have changed (including tool results being added)
-      const eventsChanged = events.length !== previousEventsRef.current.length ||
+      const eventsChanged =
+        events.length !== previousEventsRef.current.length ||
         events.some((event, index) => {
           const prevEvent = previousEventsRef.current[index]
-          return !prevEvent || 
+          return (
+            !prevEvent ||
             event.id !== prevEvent.id ||
             event.tool_result_content !== prevEvent.tool_result_content
+          )
         })
-      
+
       // Auto-scroll if we have new display events or events have changed
       if (hasNewEvents || eventsChanged) {
         setTimeout(() => {
