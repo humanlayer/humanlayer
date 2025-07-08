@@ -112,7 +112,6 @@ export function ToolResultModal({
                 </span>
               )}
             </span>
-            <span className="text-xs text-muted-foreground">Esc</span>
           </DialogTitle>
         </DialogHeader>
         <div
@@ -121,6 +120,11 @@ export function ToolResultModal({
           style={{ maxHeight: 'calc(80vh - 80px)' }}
         >
           {toolResult.tool_result_content || 'No content'}
+        </div>
+        <div className="mt-2 px-4 py-2 text-xs text-muted-foreground bg-muted/30 border-t border-border/50 flex justify-end">
+          <span className="flex items-center gap-1">
+            <kbd className="font-mono">ESC</kbd> to close
+          </span>
         </div>
       </DialogContent>
     </Dialog>
