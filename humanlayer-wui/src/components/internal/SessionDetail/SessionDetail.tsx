@@ -1,110 +1,68 @@
-import React, { useState, useEffect, Component, ReactNode } from 'react'
+import { useState, useEffect } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
-import { useNavigate } from 'react-router-dom'
 
-import {
-  ConversationEvent,
-  ConversationEventType,
-  SessionInfo,
-  ApprovalStatus,
-  SessionStatus,
-} from '@/lib/daemon/types'
+import { ConversationEvent, SessionInfo, ApprovalStatus, SessionStatus } from '@/lib/daemon/types'
 import { Card, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { useConversation } from '@/hooks/useConversation'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useStore } from '@/AppStore'
 import { ChevronDown } from 'lucide-react'
 import { getStatusTextClass } from '@/utils/component-utils'
-import { daemonClient } from '@/lib/daemon/client'
-import { notificationService } from '@/services/NotificationService'
 import { truncate } from '@/utils/formatting'
 
 // Import extracted components
 import { ConversationContent } from './views/ConversationContent'
 import { ToolResultModal } from './components/ToolResultModal'
 import { TodoWidget } from './components/TodoWidget'
+import { ResponseInput } from './components/ResponseInput'
+import { ErrorBoundary } from './components/ErrorBoundary'
 
-// TODO(1): Consider moving these helper components to a separate file
-// TODO(2): Extract session status utilities to shared utils
+// Import hooks
+import { useSessionActions } from './hooks/useSessionActions'
+import { useSessionApprovals } from './hooks/useSessionApprovals'
+import { useSessionNavigation } from './hooks/useSessionNavigation'
+import { useTaskGrouping } from './hooks/useTaskGrouping'
 
 interface SessionDetailProps {
   session: SessionInfo
   onClose: () => void
 }
 
-// Helper functions for session status text
-const getSessionStatusText = (status: string): string => {
-  if (status === 'completed') return 'Continue this conversation with a new message'
-  if (status === 'running' || status === 'starting')
-    return 'Claude is working - you can interrupt with a new message'
-  return 'Session must be completed to continue'
-}
-
-const Kbd = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
-  <kbd className={`px-1 py-0.5 bg-muted rounded ${className}`}>{children}</kbd>
-)
-
-const getSessionButtonText = (status: string): React.ReactNode => {
-  if (status === 'running' || status === 'starting')
-    return (
-      <>
-        Interrupt & Reply <Kbd className="ml-2 text-xs">R</Kbd>
-      </>
-    )
-  if (status === 'completed')
-    return (
-      <>
-        Continue Session <Kbd className="ml-2 text-xs">R</Kbd>
-      </>
-    )
-  return 'Not Available'
-}
-
-const getInputPlaceholder = (status: string): string => {
-  if (status === 'failed') return 'Session failed - cannot continue...'
-  if (status === 'running' || status === 'starting') return 'Enter message to interrupt...'
-  return 'Enter your message to continue the conversation...'
-}
-
-const getHelpText = (status: string): React.ReactNode => {
-  if (status === 'failed') return 'Session failed - cannot continue'
-  if (status === 'running' || status === 'starting') {
-    return (
-      <>
-        <Kbd>Enter</Kbd> to interrupt and send, <Kbd className="ml-1">Escape</Kbd> to cancel
-      </>
-    )
-  }
-  return (
-    <>
-      <Kbd>Enter</Kbd> to send, <Kbd className="ml-1">Escape</Kbd> to cancel
-    </>
-  )
-}
-
 function SessionDetail({ session, onClose }: SessionDetailProps) {
-  const [focusedEventId, setFocusedEventId] = useState<number | null>(null)
   const [isWideView, setIsWideView] = useState(false)
   const [isCompactView, setIsCompactView] = useState(false)
-  const [showResponseInput, setShowResponseInput] = useState(false)
   const [expandedToolResult, setExpandedToolResult] = useState<ConversationEvent | null>(null)
   const [expandedToolCall, setExpandedToolCall] = useState<ConversationEvent | null>(null)
-  const [responseInput, setResponseInput] = useState('')
-  const [isResponding, setIsResponding] = useState(false)
-  const [approvingApprovalId, setApprovingApprovalId] = useState<string | null>(null)
-  const [confirmingApprovalId, setConfirmingApprovalId] = useState<string | null>(null)
-  const [denyingApprovalId, setDenyingApprovalId] = useState<string | null>(null)
-  const [focusSource, setFocusSource] = useState<'mouse' | 'keyboard' | null>(null)
   const [isSplitView, setIsSplitView] = useState(true)
-  const interruptSession = useStore(state => state.interruptSession)
-  const refreshSessions = useStore(state => state.refreshSessions)
-  const navigate = useNavigate()
   const isRunning = session.status === 'running'
 
   // Get events for sidebar access
   const { events } = useConversation(session.id)
+
+  // Use task grouping
+  const { hasSubTasks, expandedTasks, toggleTaskGroup } = useTaskGrouping(events)
+
+  // Use navigation hook
+  const navigation = useSessionNavigation({
+    events,
+    hasSubTasks,
+    expandedTasks,
+    toggleTaskGroup,
+    expandedToolResult,
+    setExpandedToolResult,
+    setExpandedToolCall,
+  })
+
+  // Use approvals hook
+  const approvals = useSessionApprovals({
+    sessionId: session.id,
+    events,
+    focusedEventId: navigation.focusedEventId,
+    setFocusedEventId: navigation.setFocusedEventId,
+    setFocusSource: navigation.setFocusSource,
+  })
+
+  // Use session actions hook
+  const actions = useSessionActions({ session, onClose })
 
   // Screen size detection for responsive layout
   useEffect(() => {
@@ -126,187 +84,22 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     ?.toReversed()
     .find(e => e.event_type === 'tool_call' && e.tool_name === 'TodoWrite')
 
-  // Approval handlers
-  const handleApprove = async (approvalId: string) => {
-    try {
-      setApprovingApprovalId(approvalId)
-      await daemonClient.approveFunctionCall(approvalId)
-    } catch (error) {
-      notificationService.notifyError(error, 'Failed to approve')
-    } finally {
-      setApprovingApprovalId(null)
-    }
-  }
-
-  const handleDeny = async (approvalId: string, reason: string) => {
-    try {
-      await daemonClient.denyFunctionCall(approvalId, reason)
-      setDenyingApprovalId(null)
-    } catch (error) {
-      notificationService.notifyError(error, 'Failed to deny')
-    }
-  }
-
-  // Continue session functionality
-  const handleContinueSession = async () => {
-    if (!responseInput.trim() || isResponding) return
-
-    try {
-      setIsResponding(true)
-      // Keep the message visible while sending
-      const messageToSend = responseInput.trim()
-
-      const response = await daemonClient.continueSession({
-        session_id: session.id,
-        query: messageToSend,
-      })
-
-      // Always navigate to the new session - the backend handles queuing
-      navigate(`/sessions/${response.session_id}`)
-
-      // Refresh the session list to ensure UI reflects current state
-      await refreshSessions()
-
-      // Reset form state only after success
-      setResponseInput('')
-      setShowResponseInput(false)
-    } catch (error) {
-      notificationService.notifyError(error, 'Failed to continue session')
-      // On error, keep the message so user can retry
-    } finally {
-      setIsResponding(false)
-    }
-  }
-
-  const handleResponseInputKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleContinueSession()
-    } else if (e.key === 'Escape') {
-      setShowResponseInput(false)
-      setResponseInput('')
-    }
-  }
-
-  // Navigate to parent session
-  const handleNavigateToParent = () => {
-    if (session.parent_session_id) {
-      navigate(`/sessions/${session.parent_session_id}`)
-    }
-  }
-
   // Clear focus on escape, then close if nothing focused
+  // This needs special handling for confirmingApprovalId
   useHotkeys('escape', () => {
-    if (confirmingApprovalId) {
-      setConfirmingApprovalId(null)
-    } else if (focusedEventId) {
-      setFocusedEventId(null)
-    } else {
+    if (approvals.confirmingApprovalId) {
+      approvals.setConfirmingApprovalId(null)
+    } else if (navigation.expandedEventId) {
+      navigation.setExpandedEventId(null)
+    } else if (navigation.focusedEventId) {
+      navigation.setFocusedEventId(null)
+    } else if (!actions.showResponseInput) {
       onClose()
     }
   })
 
-  // Ctrl+X to interrupt session
-  useHotkeys('ctrl+x', () => {
-    if (session.status === 'running' || session.status === 'starting') {
-      interruptSession(session.id)
-    }
-  })
-
-  // R key to show response input (for completed, running, or starting sessions)
-  useHotkeys('r', event => {
-    if (session.status !== 'failed' && !showResponseInput) {
-      event.preventDefault()
-      setShowResponseInput(true)
-    }
-  })
-
-  // P key to navigate to parent session
-  useHotkeys('p', () => {
-    if (session.parent_session_id) {
-      handleNavigateToParent()
-    }
-  })
-
-  // I key to expand tool result when focused on a tool call
-  useHotkeys('i', () => {
-    if (focusedEventId) {
-      const focusedEvent = events.find(e => e.id === focusedEventId)
-      if (focusedEvent?.event_type === ConversationEventType.ToolCall && focusedEvent.tool_id) {
-        const toolResult = events.find(
-          e =>
-            e.event_type === ConversationEventType.ToolResult &&
-            e.tool_result_for_id === focusedEvent.tool_id,
-        )
-        if (toolResult) {
-          setExpandedToolResult(toolResult)
-          setExpandedToolCall(focusedEvent)
-        }
-      }
-    }
-  })
-
-  // A key to approve focused event that has pending approval
-  useHotkeys('a', () => {
-    // Find any pending approval event
-    const pendingApprovalEvent = events.find(e => e.approval_status === 'pending' && e.approval_id)
-
-    if (!pendingApprovalEvent) return
-
-    // If no event is focused, or a different event is focused, focus this pending approval
-    if (!focusedEventId || focusedEventId !== pendingApprovalEvent.id) {
-      const container = document.querySelector('[data-conversation-container]')
-      const element = container?.querySelector(`[data-event-id="${pendingApprovalEvent.id}"]`)
-      let wasInView = true
-      if (container && element) {
-        const elementRect = element.getBoundingClientRect()
-        const containerRect = container.getBoundingClientRect()
-        wasInView = elementRect.top >= containerRect.top && elementRect.bottom <= containerRect.bottom
-      }
-      setFocusedEventId(pendingApprovalEvent.id)
-      setFocusSource?.('keyboard')
-      // Only set confirming state if element was out of view and we're scrolling to it
-      if (!wasInView) {
-        setConfirmingApprovalId(pendingApprovalEvent.approval_id!)
-      }
-      return
-    }
-
-    // If the pending approval is already focused
-    if (focusedEventId === pendingApprovalEvent.id) {
-      // If we're in confirming state, approve it
-      if (confirmingApprovalId === pendingApprovalEvent.approval_id) {
-        handleApprove(pendingApprovalEvent.approval_id!)
-        setConfirmingApprovalId(null)
-      } else {
-        // If not in confirming state, approve directly
-        handleApprove(pendingApprovalEvent.approval_id!)
-      }
-    }
-  })
-
-  // D key to deny focused event that has pending approval
-  useHotkeys('d', e => {
-    // Find any pending approval event
-    const pendingApprovalEvent = events.find(e => e.approval_status === 'pending' && e.approval_id)
-
-    if (!pendingApprovalEvent) return
-
-    // Prevent the 'd' from being typed in any input that might get focused
-    e.preventDefault()
-
-    // If no event is focused, or a different event is focused, focus this pending approval
-    if (!focusedEventId || focusedEventId !== pendingApprovalEvent.id) {
-      setFocusedEventId(pendingApprovalEvent.id)
-      setFocusSource?.('keyboard')
-      return
-    }
-
-    // If the pending approval is already focused, show the deny form
-    if (focusedEventId === pendingApprovalEvent.id) {
-      setDenyingApprovalId(pendingApprovalEvent.approval_id!)
-    }
-  })
+  // Note: Most hotkeys are handled by the hooks (ctrl+x, r, p, i, a, d)
+  // Only the escape key needs special handling here for confirmingApprovalId
 
   // Check if there are pending approvals out of view when in waiting_input status
   useEffect(() => {
@@ -369,20 +162,20 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
           <CardContent className={`${isCompactView ? 'px-2' : 'px-4'} flex flex-col flex-1 min-h-0`}>
             <ConversationContent
               sessionId={session.id}
-              focusedEventId={focusedEventId}
-              setFocusedEventId={setFocusedEventId}
-              onApprove={handleApprove}
-              onDeny={handleDeny}
-              approvingApprovalId={approvingApprovalId}
-              confirmingApprovalId={confirmingApprovalId}
-              denyingApprovalId={denyingApprovalId}
-              setDenyingApprovalId={setDenyingApprovalId}
-              onCancelDeny={() => setDenyingApprovalId(null)}
+              focusedEventId={navigation.focusedEventId}
+              setFocusedEventId={navigation.setFocusedEventId}
+              onApprove={approvals.handleApprove}
+              onDeny={approvals.handleDeny}
+              approvingApprovalId={approvals.approvingApprovalId}
+              confirmingApprovalId={approvals.confirmingApprovalId}
+              denyingApprovalId={approvals.denyingApprovalId}
+              setDenyingApprovalId={approvals.setDenyingApprovalId}
+              onCancelDeny={approvals.handleCancelDeny}
               isSplitView={isSplitView}
               onToggleSplitView={() => setIsSplitView(!isSplitView)}
-              focusSource={focusSource}
-              setFocusSource={setFocusSource}
-              setConfirmingApprovalId={setConfirmingApprovalId}
+              focusSource={navigation.focusSource}
+              setFocusSource={navigation.setFocusSource}
+              setConfirmingApprovalId={approvals.setConfirmingApprovalId}
               expandedToolResult={expandedToolResult}
             />
             {isRunning && (
@@ -429,52 +222,16 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       {/* Response input - always show but disable for non-completed sessions */}
       <Card className={isCompactView ? 'py-2' : 'py-4'}>
         <CardContent className={isCompactView ? 'px-2' : 'px-4'}>
-          {!showResponseInput ? (
-            <div className="flex items-center justify-between py-1">
-              <span className="text-sm text-muted-foreground">
-                {getSessionStatusText(session.status)}
-              </span>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setShowResponseInput(true)}
-                disabled={session.status === 'failed'}
-              >
-                {getSessionButtonText(session.status)}
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">Continue conversation:</span>
-              </div>
-              <div className="flex gap-2">
-                <Input
-                  placeholder={getInputPlaceholder(session.status)}
-                  value={responseInput}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                    setResponseInput(e.target.value)
-                  }
-                  onKeyDown={handleResponseInputKeyDown}
-                  autoFocus
-                  disabled={isResponding || session.status === 'failed'}
-                  className={`flex-1 ${isResponding ? 'opacity-50' : ''}`}
-                />
-                <Button
-                  onClick={handleContinueSession}
-                  disabled={!responseInput.trim() || isResponding || session.status === 'failed'}
-                  size="sm"
-                >
-                  {isResponding ? 'Interrupting...' : 'Send'}
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {isResponding
-                  ? 'Waiting for Claude to accept the interrupt...'
-                  : getHelpText(session.status)}
-              </p>
-            </div>
-          )}
+          <ResponseInput
+            session={session}
+            showResponseInput={actions.showResponseInput}
+            setShowResponseInput={actions.setShowResponseInput}
+            responseInput={actions.responseInput}
+            setResponseInput={actions.setResponseInput}
+            isResponding={actions.isResponding}
+            handleContinueSession={actions.handleContinueSession}
+            handleResponseInputKeyDown={actions.handleResponseInputKeyDown}
+          />
         </CardContent>
       </Card>
 
@@ -489,49 +246,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       />
     </section>
   )
-}
-
-// Simple error boundary component
-class ErrorBoundary extends Component<
-  { children: ReactNode },
-  { hasError: boolean; error: Error | null }
-> {
-  constructor(props: { children: ReactNode }) {
-    super(props)
-    this.state = { hasError: false, error: null }
-  }
-
-  static getDerivedStateFromError(error: Error) {
-    return { hasError: true, error }
-  }
-
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('SessionDetail Error:', error, errorInfo)
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="flex flex-col items-center justify-center p-8 space-y-4">
-          <h2 className="text-lg font-semibold text-destructive">Something went wrong</h2>
-          <p className="text-sm text-muted-foreground">
-            {this.state.error?.message || 'An unexpected error occurred'}
-          </p>
-          <Button
-            onClick={() => {
-              this.setState({ hasError: false, error: null })
-              window.location.reload()
-            }}
-            variant="outline"
-          >
-            Reload
-          </Button>
-        </div>
-      )
-    }
-
-    return this.props.children
-  }
 }
 
 // Export wrapped component
