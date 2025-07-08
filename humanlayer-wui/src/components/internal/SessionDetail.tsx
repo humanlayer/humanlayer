@@ -3,7 +3,7 @@ import jsonGrammar from '@wooorm/starry-night/source.json'
 import textMd from '@wooorm/starry-night/text.md'
 import { toJsxRuntime } from 'hast-util-to-jsx-runtime'
 import { Fragment, jsx, jsxs } from 'react/jsx-runtime'
-import React, { Suspense, useEffect, useRef, useState } from 'react'
+import React, { Suspense, useEffect, useRef, useState, Component, ReactNode } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { useNavigate } from 'react-router-dom'
 import ReactDiffViewer from 'react-diff-viewer-continued'
@@ -22,13 +22,13 @@ import { Input } from '../ui/input'
 import { useConversation } from '@/hooks/useConversation'
 import { Skeleton } from '../ui/skeleton'
 import { useStore } from '@/AppStore'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog'
 import {
   Bot,
   CheckCircle,
   CircleDashed,
   FilePenLine,
   Hourglass,
-  MessageCircle,
   MessageCircleDashed,
   SquareSplitHorizontal,
   SquareSplitVertical,
@@ -46,6 +46,213 @@ import { CommandToken } from './CommandToken'
 
 /* I, Sundeep, don't know how I feel about what's going on here. */
 let starryNight: any | null = null
+
+// Format tool result content into abbreviated display
+function formatToolResult(toolName: string, toolResult: ConversationEvent): React.ReactNode {
+  const content = toolResult.tool_result_content || ''
+
+  // Handle empty content
+  if (!content.trim()) {
+    return <span className="text-muted-foreground italic">No output</span>
+  }
+
+  // More specific error detection to avoid false positives
+  const isError =
+    // Common error patterns
+    (content.toLowerCase().includes('error:') ||
+      content.toLowerCase().includes('failed:') ||
+      content.toLowerCase().includes('failed to') ||
+      content.toLowerCase().includes('exception:') ||
+      content.toLowerCase().includes('traceback') ||
+      // Security/permission errors
+      content.toLowerCase().includes('was blocked') ||
+      content.toLowerCase().includes('permission denied') ||
+      content.toLowerCase().includes('access denied') ||
+      content.toLowerCase().includes('not allowed') ||
+      content.toLowerCase().includes('forbidden')) &&
+    // Exclude false positives
+    !content.toLowerCase().includes('no error') &&
+    !content.toLowerCase().includes('error: 0') &&
+    !content.toLowerCase().includes('error code 0')
+
+  let abbreviated: string
+
+  switch (toolName) {
+    case 'Read': {
+      // Count lines with the arrow format (e.g., "     1→content")
+      // Subtract 5 for the system reminder message appended at the end
+      const lineCount = Math.max(0, content.split('\n').length - 5)
+      abbreviated = `Read ${lineCount} lines`
+      break
+    }
+
+    case 'Bash': {
+      const lines = content.split('\n').filter(l => l.trim())
+      if (!content || lines.length === 0) {
+        abbreviated = 'Command completed'
+      } else if (lines.length === 1) {
+        abbreviated = truncate(lines[0], 80)
+      } else {
+        abbreviated = `${truncate(lines[0], 60)} ... (${lines.length} lines)`
+      }
+      break
+    }
+
+    case 'Edit': {
+      if (content.includes('has been updated')) {
+        abbreviated = 'File updated'
+      } else if (content.includes('No changes made')) {
+        abbreviated = 'No changes made'
+      } else if (isError) {
+        abbreviated = 'Edit failed'
+      } else {
+        abbreviated = 'File updated'
+      }
+      break
+    }
+
+    case 'MultiEdit': {
+      const editMatch = content.match(/Applied (\d+) edits?/)
+      if (editMatch) {
+        abbreviated = `Applied ${editMatch[1]} edits`
+      } else if (isError) {
+        abbreviated = 'MultiEdit failed'
+      } else {
+        abbreviated = 'Edits applied'
+      }
+      break
+    }
+
+    case 'Write': {
+      if (content.includes('successfully')) {
+        abbreviated = 'File written'
+      } else if (isError) {
+        abbreviated = 'Write failed'
+      } else {
+        abbreviated = 'File written'
+      }
+      break
+    }
+
+    case 'Glob': {
+      if (content === 'No files found') {
+        abbreviated = 'No files found'
+      } else {
+        const fileCount = content.split('\n').filter(l => l.trim()).length
+        abbreviated = `Found ${fileCount} files`
+      }
+      break
+    }
+
+    case 'Grep': {
+      // Extract the count from "Found X files" at the start
+      const grepCountMatch = content.match(/Found (\d+) files?/)
+      if (grepCountMatch) {
+        abbreviated = `Found ${grepCountMatch[1]} files`
+      } else if (content.includes('No matches found')) {
+        abbreviated = 'No matches found'
+      } else {
+        // Fallback: count lines
+        const fileCount = content
+          .split('\n')
+          .filter(l => l.trim() && !l.includes('(Results are truncated')).length
+        abbreviated = `Found ${fileCount} files`
+      }
+      break
+    }
+
+    case 'LS': {
+      // Count items in the tree structure (lines starting with " - ")
+      const lsItems = content.split('\n').filter(l => l.trim().startsWith('-')).length
+      abbreviated = `${lsItems} items`
+      break
+    }
+
+    case 'Task': {
+      // Task outputs are typically longer summaries
+      const firstLine = content.split('\n')[0]
+      abbreviated = truncate(firstLine, 100) || 'Task completed'
+      break
+    }
+
+    case 'TodoRead': {
+      // Extract todo count from the message
+      const todoArrayMatch = content.match(/\[([^\]]*)\]/)
+      if (todoArrayMatch) {
+        const todos = todoArrayMatch[1]
+        if (!todos) {
+          abbreviated = '0 todos'
+        } else {
+          const todoCount = todos.split('},').length
+          abbreviated = `${todoCount} todo${todoCount !== 1 ? 's' : ''}`
+        }
+      } else {
+        abbreviated = 'Todo list read'
+      }
+      break
+    }
+
+    case 'TodoWrite': {
+      abbreviated = 'Todos updated'
+      break
+    }
+
+    case 'WebFetch': {
+      if (content.includes('Failed to fetch') || isError) {
+        abbreviated = 'Fetch failed'
+      } else {
+        // Show character count
+        const charCount = content.length
+        if (charCount > 1024) {
+          abbreviated = `Fetched ${(charCount / 1024).toFixed(1)}kb`
+        } else {
+          abbreviated = `Fetched ${charCount} chars`
+        }
+      }
+      break
+    }
+
+    case 'WebSearch': {
+      // Count "Links:" occurrences to estimate result batches
+      const linkMatches = content.match(/Links: \[/g)
+      const linkCount = linkMatches ? linkMatches.length : 0
+      // Estimate ~10 results per batch
+      const estimatedResults = linkCount * 10
+      abbreviated = estimatedResults > 0 ? `Found ~${estimatedResults} results` : 'Search completed'
+      break
+    }
+
+    case 'NotebookRead': {
+      const cellMatch = content.match(/(\d+) cells?/i)
+      abbreviated = cellMatch ? `Read ${cellMatch[1]} cells` : 'Notebook read'
+      break
+    }
+
+    case 'NotebookEdit': {
+      abbreviated = 'Notebook updated'
+      break
+    }
+
+    case 'exit_plan_mode': {
+      abbreviated = 'Exited plan mode'
+      break
+    }
+
+    default: {
+      // Unknown tools: show first line or truncate
+      const defaultFirstLine = content.split('\n')[0]
+      abbreviated = truncate(defaultFirstLine, 80) || 'Completed'
+      break
+    }
+  }
+
+  // Apply error styling if needed (but not for Read tool which just shows file content)
+  if (isError && toolName !== 'Read') {
+    return <span className="text-destructive">{abbreviated}</span>
+  }
+
+  return abbreviated
+}
 
 interface SessionDetailProps {
   session: SessionInfo
@@ -93,6 +300,7 @@ function eventToDisplayObject(
   isSplitView?: boolean,
   onToggleSplitView?: () => void,
   toolResult?: ConversationEvent,
+  isFocused?: boolean,
 ) {
   let subject = null
   let body = null
@@ -100,12 +308,6 @@ function eventToDisplayObject(
   let toolResultContent = null
 
   const iconClasses = `w-4 h-4 align-middle relative top-[1px] ${event.event_type === ConversationEventType.ToolCall && !event.is_completed ? 'pulse-warning' : ''}`
-
-  // // For the moment, don't display tool results.
-  // if (event.event_type === ConversationEventType.ToolResult) {
-  //   return null
-  // }
-  // console.log('toolResult', toolResult)
 
   // Tool Calls
   if (event.event_type === ConversationEventType.ToolCall) {
@@ -338,8 +540,11 @@ function eventToDisplayObject(
     subject = (
       <span>
         <span className={`font-bold ${approvalStatusToColor[event.approval_status]}`}>
-          Approval ({event.approval_status})
+          {event.tool_name}
         </span>
+        {event.approval_status === ApprovalStatus.Pending && (
+          <span className="ml-2 text-sm text-muted-foreground">(pending)</span>
+        )}
         <div className="font-mono text-sm text-muted-foreground">
           Assistant would like to use <span className="font-bold">{event.tool_name}</span>
         </div>
@@ -397,22 +602,36 @@ function eventToDisplayObject(
   }
 
   if (event.event_type === ConversationEventType.Message) {
-    const subjectText = event.content?.split('\n')[0] || ''
-    const bodyText = event.content?.split('\n').slice(1).join('\n') || ''
+    // For assistant messages, show full content without truncation
+    if (event.role === 'assistant') {
+      const fullContent = event.content || ''
+      const contentTree = starryNight?.highlight(fullContent, 'text.md')
 
-    const subjectTree = starryNight?.highlight(subjectText, 'text.md')
-    const bodyTree = starryNight?.highlight(bodyText, 'text.md')
+      subject = contentTree ? (
+        <span>{toJsxRuntime(contentTree, { Fragment, jsx, jsxs })}</span>
+      ) : (
+        <span>{fullContent}</span>
+      )
+      body = null // Everything is in subject for assistant messages
+    } else {
+      // For user messages, keep the existing split behavior
+      const subjectText = event.content?.split('\n')[0] || ''
+      const bodyText = event.content?.split('\n').slice(1).join('\n') || ''
 
-    subject = subjectTree ? (
-      <span>{toJsxRuntime(subjectTree, { Fragment, jsx, jsxs })}</span>
-    ) : (
-      <span>{subjectText}</span>
-    )
-    body = bodyTree ? (
-      <span>{toJsxRuntime(bodyTree, { Fragment, jsx, jsxs })}</span>
-    ) : (
-      <span>{bodyText}</span>
-    )
+      const subjectTree = starryNight?.highlight(subjectText, 'text.md')
+      const bodyTree = starryNight?.highlight(bodyText, 'text.md')
+
+      subject = subjectTree ? (
+        <span>{toJsxRuntime(subjectTree, { Fragment, jsx, jsxs })}</span>
+      ) : (
+        <span>{subjectText}</span>
+      )
+      body = bodyTree ? (
+        <span>{toJsxRuntime(bodyTree, { Fragment, jsx, jsxs })}</span>
+      ) : (
+        <span>{bodyText}</span>
+      )
+    }
   }
 
   if (event.role === 'assistant') {
@@ -423,18 +642,40 @@ function eventToDisplayObject(
     iconComponent = <User className={iconClasses} />
   }
 
-  // For the moment, controlling tightly when we display tool result content.
-  if (toolResult && event.approval_status === ApprovalStatus.Denied) {
-    toolResultContent = (
-      <div className="flex justify-end">
-        <div className="font-mono text-sm text-muted-foreground gap-1">
-          <span className="font-bold inline-flex items-center mr-2">
-            <MessageCircle className="w-3 h-3" /> Denial Comment:
-          </span>
-          <span>{toolResult.tool_result_content}</span>
-        </div>
-      </div>
-    )
+  // Display tool result content for tool calls
+  if (event.event_type === ConversationEventType.ToolCall && toolResult) {
+    // For denied approvals, show the denial comment in red
+    if (event.approval_status === ApprovalStatus.Denied) {
+      subject = (
+        <>
+          {subject}
+          <div className="mt-1 text-sm font-mono flex items-start gap-1">
+            <span className="text-muted-foreground/50">⎿</span>
+            <span className="text-destructive">
+              Denied: {toolResult.tool_result_content || 'No reason provided'}
+            </span>
+          </div>
+        </>
+      )
+    } else {
+      // Normal tool result display
+      const resultDisplay = formatToolResult(event.tool_name || '', toolResult)
+      if (resultDisplay) {
+        // Append to existing subject with indentation
+        subject = (
+          <>
+            {subject}
+            <div className="mt-1 text-sm text-muted-foreground font-mono flex items-start gap-1">
+              <span className="text-muted-foreground/50">⎿</span>
+              <span>
+                {resultDisplay}
+                {isFocused && <span className="text-xs text-muted-foreground/50 ml-2">[i] expand</span>}
+              </span>
+            </div>
+          </>
+        )
+      }
+    }
   }
 
   if (subject === null) {
@@ -497,75 +738,6 @@ function TodoWidget({ event }: { event: ConversationEvent }) {
           </div>
         )
       })}
-    </div>
-  )
-}
-
-function EventMetaInfo({ event }: { event: ConversationEvent }) {
-  return (
-    <div className="bg-muted/20 rounded p-4 mt-2 text-sm">
-      <div className="grid grid-cols-2 gap-2">
-        <div>
-          <span className="font-medium text-muted-foreground">Event ID:</span>
-          <span className="ml-2 font-mono">{event.id}</span>
-        </div>
-        <div>
-          <span className="font-medium text-muted-foreground">Sequence:</span>
-          <span className="ml-2 font-mono">{event.sequence}</span>
-        </div>
-        <div>
-          <span className="font-medium text-muted-foreground">Type:</span>
-          <span className="ml-2 font-mono">{event.event_type}</span>
-        </div>
-        <div>
-          <span className="font-medium text-muted-foreground">Role:</span>
-          <span className="ml-2 font-mono">{event.role || 'N/A'}</span>
-        </div>
-        <div>
-          <span className="font-medium text-muted-foreground">Created:</span>
-          <span className="ml-2 font-mono text-xs">{formatAbsoluteTimestamp(event.created_at)}</span>
-        </div>
-        <div>
-          <span className="font-medium text-muted-foreground">Completed:</span>
-          <span className="ml-2">{event.is_completed ? '✓' : '⏳'}</span>
-        </div>
-        {event.tool_name && (
-          <>
-            <div>
-              <span className="font-medium text-muted-foreground">Tool:</span>
-              <span className="ml-2 font-mono">{event.tool_name}</span>
-            </div>
-            <div>
-              <span className="font-medium text-muted-foreground">Tool ID:</span>
-              <span className="ml-2 font-mono text-xs">{event.tool_id}</span>
-            </div>
-          </>
-        )}
-        {event.approval_status && (
-          <div>
-            <span className="font-medium text-muted-foreground">Approval:</span>
-            <span className="ml-2 font-mono">{event.approval_status}</span>
-          </div>
-        )}
-      </div>
-
-      {event.tool_input_json && (
-        <div className="mt-3">
-          <span className="font-medium text-muted-foreground">Tool Input:</span>
-          <pre className="mt-1 text-xs bg-background rounded p-2 overflow-x-auto">
-            {JSON.stringify(JSON.parse(event.tool_input_json), null, 2)}
-          </pre>
-        </div>
-      )}
-
-      {event.tool_result_content && (
-        <div className="mt-3">
-          <span className="font-medium text-muted-foreground">Tool Result:</span>
-          <pre className="mt-1 text-xs bg-background rounded p-2 overflow-x-auto max-h-32 overflow-y-auto">
-            {event.tool_result_content}
-          </pre>
-        </div>
-      )}
     </div>
   )
 }
@@ -645,9 +817,6 @@ function ConversationContent({
   sessionId,
   focusedEventId,
   setFocusedEventId,
-  expandedEventId,
-  setExpandedEventId,
-  isWideView,
   onApprove,
   onDeny,
   approvingApprovalId,
@@ -660,13 +829,11 @@ function ConversationContent({
   focusSource,
   setFocusSource,
   setConfirmingApprovalId,
+  expandedToolResult,
 }: {
   sessionId: string
   focusedEventId: number | null
   setFocusedEventId: (id: number | null) => void
-  expandedEventId: number | null
-  setExpandedEventId: (id: number | null) => void
-  isWideView: boolean
   onApprove?: (approvalId: string) => void
   onDeny?: (approvalId: string, reason: string) => void
   approvingApprovalId?: string | null
@@ -679,6 +846,7 @@ function ConversationContent({
   focusSource?: 'mouse' | 'keyboard' | null
   setFocusSource?: (source: 'mouse' | 'keyboard' | null) => void
   setConfirmingApprovalId?: (id: string | null) => void
+  expandedToolResult?: ConversationEvent | null
 }) {
   const { events, loading, error, isInitialLoad } = useConversation(sessionId, undefined, 1000)
   const toolResults = events.filter(event => event.event_type === ConversationEventType.ToolResult)
@@ -699,6 +867,7 @@ function ConversationContent({
         isSplitView,
         onToggleSplitView,
         event.tool_id ? toolResultsByKey[event.tool_id] : undefined,
+        focusedEventId === event.id,
       ),
     )
   const nonEmptyDisplayObjects = displayObjects.filter(displayObject => displayObject !== null)
@@ -744,50 +913,59 @@ function ConversationContent({
     // If at the beginning, do nothing
   }
 
-  // Keyboard navigation
-  useHotkeys('j', focusNextEvent)
-  useHotkeys('k', focusPreviousEvent)
+  // Keyboard navigation (disabled when modal is open)
+  useHotkeys('j', focusNextEvent, { enabled: !expandedToolResult })
+  useHotkeys('k', focusPreviousEvent, { enabled: !expandedToolResult })
 
   const containerRef = useRef<HTMLDivElement>(null)
   const previousEventCountRef = useRef(0)
+  const previousEventsRef = useRef<ConversationEvent[]>([])
 
   useEffect(() => {
     if (!loading && containerRef.current && nonEmptyDisplayObjects.length > 0) {
       const hasNewEvents = nonEmptyDisplayObjects.length > previousEventCountRef.current
 
-      // Auto-scroll if we have new display events
-      if (hasNewEvents) {
-        console.log('triggering auto scroll after new events')
-        // Small delay to ensure DOM is updated
+      // Check if any events have changed (including tool results being added)
+      const eventsChanged =
+        events.length !== previousEventsRef.current.length ||
+        events.some((event, index) => {
+          const prevEvent = previousEventsRef.current[index]
+          return (
+            !prevEvent ||
+            event.id !== prevEvent.id ||
+            event.tool_result_content !== prevEvent.tool_result_content
+          )
+        })
+
+      // Auto-scroll if we have new display events or events have changed
+      if (hasNewEvents || eventsChanged) {
         setTimeout(() => {
           if (containerRef.current) {
             containerRef.current.scrollTop = containerRef.current.scrollHeight
           }
         }, 50)
       }
-
       previousEventCountRef.current = nonEmptyDisplayObjects.length
+      previousEventsRef.current = [...events]
     }
 
     if (!starryNight) {
       createStarryNight([textMd, jsonGrammar]).then(sn => (starryNight = sn))
     }
-  }, [loading, nonEmptyDisplayObjects.length])
-
-  // Helper function to check if element is in viewport
-  const isElementInView = (element: Element, container: Element) => {
-    const elementRect = element.getBoundingClientRect()
-    const containerRect = container.getBoundingClientRect()
-
-    return elementRect.top >= containerRect.top && elementRect.bottom <= containerRect.bottom
-  }
+  }, [loading, nonEmptyDisplayObjects.length, events])
 
   // Scroll focused event into view (only for keyboard navigation)
   useEffect(() => {
     if (focusedEventId && containerRef.current && focusSource === 'keyboard') {
       const focusedElement = containerRef.current.querySelector(`[data-event-id="${focusedEventId}"]`)
-      if (focusedElement && !isElementInView(focusedElement, containerRef.current)) {
-        focusedElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      if (focusedElement) {
+        const elementRect = focusedElement.getBoundingClientRect()
+        const containerRect = containerRef.current.getBoundingClientRect()
+        const inView =
+          elementRect.top >= containerRect.top && elementRect.bottom <= containerRect.bottom
+        if (!inView) {
+          focusedElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+        }
       }
     }
   }, [focusedEventId, focusSource])
@@ -799,12 +977,17 @@ function ConversationContent({
       const event = events.find(e => e.approval_id === denyingApprovalId)
       if (event && !event.approval_status) {
         const eventElement = containerRef.current.querySelector(`[data-event-id="${event.id}"]`)
-        if (eventElement && !isElementInView(eventElement, containerRef.current)) {
-          // Scroll the deny form into view
-          setTimeout(() => {
-            console.log('scrolling to deny form')
-            eventElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-          }, 100) // Small delay to ensure form is rendered
+        if (eventElement) {
+          const elementRect = eventElement.getBoundingClientRect()
+          const containerRect = containerRef.current.getBoundingClientRect()
+          const inView =
+            elementRect.top >= containerRect.top && elementRect.bottom <= containerRect.bottom
+          if (!inView) {
+            // Scroll the deny form into view
+            setTimeout(() => {
+              eventElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+            }, 100) // Small delay to ensure form is rendered
+          }
         }
       }
     }
@@ -840,11 +1023,7 @@ function ConversationContent({
   }
 
   return (
-    <div
-      ref={containerRef}
-      data-conversation-container
-      className="max-h-[calc(100vh-475px)] overflow-y-auto"
-    >
+    <div ref={containerRef} data-conversation-container className="overflow-y-auto flex-1">
       <div>
         {nonEmptyDisplayObjects.map((displayObject, index) => (
           <div key={displayObject.id}>
@@ -858,15 +1037,12 @@ function ConversationContent({
                 setFocusedEventId(null)
                 setConfirmingApprovalId?.(null)
               }}
-              onClick={() =>
-                setExpandedEventId(expandedEventId === displayObject.id ? null : displayObject.id)
-              }
-              className={`pt-2 pb-8 px-2 cursor-pointer ${
+              className={`pt-1 pb-3 px-2 cursor-pointer ${
                 index !== nonEmptyDisplayObjects.length - 1 ? 'border-b' : ''
               } ${focusedEventId === displayObject.id ? '!bg-accent/20 -mx-2 px-4 rounded' : ''}`}
             >
               {/* Timestamp at top */}
-              <div className="flex justify-end mb-2">
+              <div className="flex justify-end mb-1">
                 <span className="text-xs text-muted-foreground/60">
                   {formatAbsoluteTimestamp(displayObject.created_at)}
                 </span>
@@ -889,11 +1065,6 @@ function ConversationContent({
                 <p className="whitespace-pre-wrap text-foreground">{displayObject.body}</p>
               )}
             </div>
-
-            {/* Expanded content for slim view */}
-            {!isWideView && expandedEventId === displayObject.id && (
-              <EventMetaInfo event={events.find(e => e.id === displayObject.id)!} />
-            )}
           </div>
         ))}
       </div>
@@ -902,65 +1073,62 @@ function ConversationContent({
 }
 
 // Helper functions for session status text
-function getSessionStatusText(status: string): string {
-  if (status === 'completed') {
-    return 'Continue this conversation with a new message'
-  } else if (status === 'running' || status === 'starting') {
+const getSessionStatusText = (status: string): string => {
+  if (status === 'completed') return 'Continue this conversation with a new message'
+  if (status === 'running' || status === 'starting')
     return 'Claude is working - you can interrupt with a new message'
-  }
   return 'Session must be completed to continue'
 }
 
-function getSessionButtonText(status: string): React.ReactNode {
-  if (status === 'running' || status === 'starting') {
+const Kbd = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
+  <kbd className={`px-1 py-0.5 bg-muted rounded ${className}`}>{children}</kbd>
+)
+
+const getSessionButtonText = (status: string): React.ReactNode => {
+  if (status === 'running' || status === 'starting')
     return (
       <>
-        Interrupt & Reply <kbd className="ml-2 px-1 py-0.5 text-xs bg-muted rounded">R</kbd>
+        Interrupt & Reply <Kbd className="ml-2 text-xs">R</Kbd>
       </>
     )
-  } else if (status === 'completed') {
+  if (status === 'completed')
     return (
       <>
-        Continue Session <kbd className="ml-2 px-1 py-0.5 text-xs bg-muted rounded">R</kbd>
+        Continue Session <Kbd className="ml-2 text-xs">R</Kbd>
       </>
     )
-  }
   return 'Not Available'
 }
 
-function getInputPlaceholder(status: string): string {
-  if (status === 'failed') {
-    return 'Session failed - cannot continue...'
-  } else if (status === 'running' || status === 'starting') {
-    return 'Enter message to interrupt...'
-  }
+const getInputPlaceholder = (status: string): string => {
+  if (status === 'failed') return 'Session failed - cannot continue...'
+  if (status === 'running' || status === 'starting') return 'Enter message to interrupt...'
   return 'Enter your message to continue the conversation...'
 }
 
-function getHelpText(status: string): React.ReactNode {
-  if (status === 'failed') {
-    return 'Session failed - cannot continue'
-  } else if (status === 'running' || status === 'starting') {
+const getHelpText = (status: string): React.ReactNode => {
+  if (status === 'failed') return 'Session failed - cannot continue'
+  if (status === 'running' || status === 'starting') {
     return (
       <>
-        Press <kbd className="px-1 py-0.5 bg-muted rounded">Enter</kbd> to interrupt and send,
-        <kbd className="px-1 py-0.5 bg-muted rounded ml-1">Escape</kbd> to cancel
+        <Kbd>Enter</Kbd> to interrupt and send, <Kbd className="ml-1">Escape</Kbd> to cancel
       </>
     )
   }
   return (
     <>
-      Press <kbd className="px-1 py-0.5 bg-muted rounded">Enter</kbd> to send,
-      <kbd className="px-1 py-0.5 bg-muted rounded ml-1">Escape</kbd> to cancel
+      <Kbd>Enter</Kbd> to send, <Kbd className="ml-1">Escape</Kbd> to cancel
     </>
   )
 }
 
 function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [focusedEventId, setFocusedEventId] = useState<number | null>(null)
-  const [expandedEventId, setExpandedEventId] = useState<number | null>(null)
   const [isWideView, setIsWideView] = useState(false)
+  const [isCompactView, setIsCompactView] = useState(false)
   const [showResponseInput, setShowResponseInput] = useState(false)
+  const [expandedToolResult, setExpandedToolResult] = useState<ConversationEvent | null>(null)
+  const [expandedToolCall, setExpandedToolCall] = useState<ConversationEvent | null>(null)
   const [responseInput, setResponseInput] = useState('')
   const [isResponding, setIsResponding] = useState(false)
   const [approvingApprovalId, setApprovingApprovalId] = useState<string | null>(null)
@@ -976,22 +1144,21 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   // Get events for sidebar access
   const { events } = useConversation(session.id)
 
+  // Screen size detection for responsive layout
+  useEffect(() => {
+    const checkScreenSize = () => {
+      setIsWideView(window.innerWidth >= 1024) // lg breakpoint
+      // Consider compact view for heights less than 800px
+      setIsCompactView(window.innerHeight < 800)
+    }
+
+    checkScreenSize()
+    window.addEventListener('resize', checkScreenSize)
+    return () => window.removeEventListener('resize', checkScreenSize)
+  }, [])
+
   // Check if there are pending approvals out of view
   const [hasPendingApprovalsOutOfView, setHasPendingApprovalsOutOfView] = useState(false)
-
-  // Helper function to check if element is in viewport
-  const isElementInView = (elementId: number) => {
-    const container = document.querySelector('[data-conversation-container]')
-    if (!container) return true // If no container, assume visible
-
-    const element = container.querySelector(`[data-event-id="${elementId}"]`)
-    if (!element) return false
-
-    const elementRect = element.getBoundingClientRect()
-    const containerRect = container.getBoundingClientRect()
-
-    return elementRect.top >= containerRect.top && elementRect.bottom <= containerRect.bottom
-  }
 
   const lastTodo = events
     ?.toReversed()
@@ -1066,30 +1233,10 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     }
   }
 
-  // Screen width detection for responsive layout
-  useEffect(() => {
-    const checkScreenWidth = () => {
-      setIsWideView(window.innerWidth >= 1024) // lg breakpoint
-    }
-
-    checkScreenWidth()
-    window.addEventListener('resize', checkScreenWidth)
-    return () => window.removeEventListener('resize', checkScreenWidth)
-  }, [])
-
-  // Enter key to expand/collapse focused event
-  useHotkeys('enter', () => {
-    if (focusedEventId) {
-      setExpandedEventId(expandedEventId === focusedEventId ? null : focusedEventId)
-    }
-  })
-
-  // Clear focus/expansion on escape, then close if nothing focused
+  // Clear focus on escape, then close if nothing focused
   useHotkeys('escape', () => {
     if (confirmingApprovalId) {
       setConfirmingApprovalId(null)
-    } else if (expandedEventId) {
-      setExpandedEventId(null)
     } else if (focusedEventId) {
       setFocusedEventId(null)
     } else {
@@ -1119,6 +1266,24 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     }
   })
 
+  // I key to expand tool result when focused on a tool call
+  useHotkeys('i', () => {
+    if (focusedEventId) {
+      const focusedEvent = events.find(e => e.id === focusedEventId)
+      if (focusedEvent?.event_type === ConversationEventType.ToolCall && focusedEvent.tool_id) {
+        const toolResult = events.find(
+          e =>
+            e.event_type === ConversationEventType.ToolResult &&
+            e.tool_result_for_id === focusedEvent.tool_id,
+        )
+        if (toolResult) {
+          setExpandedToolResult(toolResult)
+          setExpandedToolCall(focusedEvent)
+        }
+      }
+    }
+  })
+
   // A key to approve focused event that has pending approval
   useHotkeys('a', () => {
     // Find any pending approval event
@@ -1128,7 +1293,14 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
 
     // If no event is focused, or a different event is focused, focus this pending approval
     if (!focusedEventId || focusedEventId !== pendingApprovalEvent.id) {
-      const wasInView = isElementInView(pendingApprovalEvent.id)
+      const container = document.querySelector('[data-conversation-container]')
+      const element = container?.querySelector(`[data-event-id="${pendingApprovalEvent.id}"]`)
+      let wasInView = true
+      if (container && element) {
+        const elementRect = element.getBoundingClientRect()
+        const containerRect = container.getBoundingClientRect()
+        wasInView = elementRect.top >= containerRect.top && elementRect.bottom <= containerRect.bottom
+      }
       setFocusedEventId(pendingApprovalEvent.id)
       setFocusSource?.('keyboard')
       // Only set confirming state if element was out of view and we're scrolling to it
@@ -1177,11 +1349,16 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   // Check if there are pending approvals out of view when in waiting_input status
   useEffect(() => {
     if (session.status === SessionStatus.WaitingInput) {
-      const hasPendingApproval = events.some(e => e.approval_status === ApprovalStatus.Pending)
-      if (hasPendingApproval) {
-        const pendingEvent = events.find(e => e.approval_status === ApprovalStatus.Pending)
-        if (pendingEvent) {
-          setHasPendingApprovalsOutOfView(!isElementInView(pendingEvent.id))
+      const pendingEvent = events.find(e => e.approval_status === ApprovalStatus.Pending)
+      if (pendingEvent) {
+        const container = document.querySelector('[data-conversation-container]')
+        const element = container?.querySelector(`[data-event-id="${pendingEvent.id}"]`)
+        if (container && element) {
+          const elementRect = element.getBoundingClientRect()
+          const containerRect = container.getBoundingClientRect()
+          const inView =
+            elementRect.top >= containerRect.top && elementRect.bottom <= containerRect.bottom
+          setHasPendingApprovalsOutOfView(!inView)
         }
       } else {
         setHasPendingApprovalsOutOfView(false)
@@ -1192,30 +1369,42 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   }, [session.status, events])
 
   return (
-    <section className="flex flex-col gap-4">
-      <hgroup className="flex flex-col gap-1">
-        <h2 className="text-lg font-medium text-foreground font-mono">
-          {session.summary || truncate(session.query, 50)}{' '}
-          {session.parent_session_id && <span className="text-muted-foreground">[continued]</span>}
-        </h2>
-        <small
-          className={`font-mono text-xs uppercase tracking-wider ${getStatusTextClass(session.status)}`}
-        >
-          {`${session.status}${session.model ? `/ ${session.model}` : ''}`}
-        </small>
-        {session.working_dir && (
-          <small className="font-mono text-xs text-muted-foreground">{session.working_dir}</small>
-        )}
-        {session.parent_session_id && (
-          <small className="text-xs text-muted-foreground">
-            Press <kbd className="px-1 py-0.5 text-xs bg-muted rounded">P</kbd> to view parent session
+    <section className={`flex flex-col h-full ${isCompactView ? 'gap-2' : 'gap-4'}`}>
+      {!isCompactView && (
+        <hgroup className="flex flex-col gap-1">
+          <h2 className="text-lg font-medium text-foreground font-mono">
+            {session.summary || truncate(session.query, 50)}{' '}
+            {session.parent_session_id && <span className="text-muted-foreground">[continued]</span>}
+          </h2>
+          <small
+            className={`font-mono text-xs uppercase tracking-wider ${getStatusTextClass(session.status)}`}
+          >
+            {`${session.status}${session.model ? ` / ${session.model}` : ''}`}
           </small>
-        )}
-      </hgroup>
-      <div className={`flex gap-4 ${isWideView ? 'flex-row' : 'flex-col'}`}>
+          {session.working_dir && (
+            <small className="font-mono text-xs text-muted-foreground">{session.working_dir}</small>
+          )}
+        </hgroup>
+      )}
+      {isCompactView && (
+        <hgroup className="flex flex-col gap-0.5">
+          <h2 className="text-sm font-medium text-foreground font-mono">
+            {session.summary || truncate(session.query, 50)}{' '}
+            {session.parent_session_id && <span className="text-muted-foreground">[continued]</span>}
+          </h2>
+          <small
+            className={`font-mono text-xs uppercase tracking-wider ${getStatusTextClass(session.status)}`}
+          >
+            {`${session.status}${session.model ? ` / ${session.model}` : ''}`}
+          </small>
+        </hgroup>
+      )}
+      <div className={`flex flex-1 gap-4 ${isWideView ? 'flex-row' : 'flex-col'} min-h-0`}>
         {/* Conversation content and Loading */}
-        <Card className={`${isWideView ? 'flex-1' : 'w-full'} relative`}>
-          <CardContent>
+        <Card
+          className={`${isWideView ? 'flex-1' : 'w-full'} relative ${isCompactView ? 'py-2' : 'py-4'} flex flex-col min-h-0`}
+        >
+          <CardContent className={`${isCompactView ? 'px-2' : 'px-4'} flex flex-col flex-1 min-h-0`}>
             <Suspense
               fallback={
                 <div className="space-y-4">
@@ -1229,9 +1418,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                 sessionId={session.id}
                 focusedEventId={focusedEventId}
                 setFocusedEventId={setFocusedEventId}
-                expandedEventId={expandedEventId}
-                setExpandedEventId={setExpandedEventId}
-                isWideView={isWideView}
                 onApprove={handleApprove}
                 onDeny={handleDeny}
                 approvingApprovalId={approvingApprovalId}
@@ -1244,9 +1430,10 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                 focusSource={focusSource}
                 setFocusSource={setFocusSource}
                 setConfirmingApprovalId={setConfirmingApprovalId}
+                expandedToolResult={expandedToolResult}
               />
               {isRunning && (
-                <div className="flex flex-col gap-2 mt-4 border-t pt-4">
+                <div className="flex flex-col gap-1 mt-2 border-t pt-2">
                   <h2 className="text-sm font-medium text-muted-foreground">
                     robot magic is happening
                   </h2>
@@ -1260,7 +1447,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
 
             {/* Status bar for pending approvals */}
             <div
-              className={`absolute bottom-0 left-0 right-0 p-4 cursor-pointer transition-all duration-300 ease-in-out ${
+              className={`absolute bottom-0 left-0 right-0 p-2 cursor-pointer transition-all duration-300 ease-in-out ${
                 hasPendingApprovalsOutOfView
                   ? 'opacity-100 translate-y-0'
                   : 'opacity-0 translate-y-full pointer-events-none'
@@ -1272,7 +1459,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                 }
               }}
             >
-              <div className="flex items-center justify-center gap-2 font-mono text-xs uppercase tracking-wider text-muted-foreground bg-background/60 backdrop-blur-sm border-t border-border/50 py-2 shadow-sm hover:bg-background/80 transition-colors">
+              <div className="flex items-center justify-center gap-1 font-mono text-xs uppercase tracking-wider text-muted-foreground bg-background/60 backdrop-blur-sm border-t border-border/50 py-1 shadow-sm hover:bg-background/80 transition-colors">
                 <span>Pending Approval</span>
                 <ChevronDown className="w-3 h-3 animate-bounce" />
               </div>
@@ -1280,16 +1467,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
           </CardContent>
         </Card>
 
-        {/* Sidebar for wide view */}
-        {/* {isWideView && expandedEventId && (
-          <Card className="w-[40%]">
-            <CardContent>
-              <EventMetaInfo event={events.find(e => e.id === expandedEventId)!} />
-            </CardContent>
-          </Card>
-        )} */}
-
-        {lastTodo && (
+        {isWideView && lastTodo && (
           <Card className="w-[20%]">
             <CardContent>
               <TodoWidget event={lastTodo} />
@@ -1299,10 +1477,10 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       </div>
 
       {/* Response input - always show but disable for non-completed sessions */}
-      <Card>
-        <CardContent>
+      <Card className={isCompactView ? 'py-2' : 'py-4'}>
+        <CardContent className={isCompactView ? 'px-2' : 'px-4'}>
           {!showResponseInput ? (
-            <div className="flex items-center justify-between py-2">
+            <div className="flex items-center justify-between py-1">
               <span className="text-sm text-muted-foreground">
                 {getSessionStatusText(session.status)}
               </span>
@@ -1316,7 +1494,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               </Button>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium">Continue conversation:</span>
               </div>
@@ -1347,8 +1525,167 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
           )}
         </CardContent>
       </Card>
+
+      {/* Tool Result Expansion Modal */}
+      <ToolResultModal
+        toolCall={expandedToolCall}
+        toolResult={expandedToolResult}
+        onClose={() => {
+          setExpandedToolResult(null)
+          setExpandedToolCall(null)
+        }}
+      />
     </section>
   )
 }
 
-export default SessionDetail
+// Minimalist modal for showing full tool results
+function ToolResultModal({
+  toolCall,
+  toolResult,
+  onClose,
+}: {
+  toolCall: ConversationEvent | null
+  toolResult: ConversationEvent | null
+  onClose: () => void
+}) {
+  const contentRef = useRef<HTMLDivElement>(null)
+
+  // Handle j/k navigation - using priority to override background hotkeys
+  useHotkeys(
+    'j',
+    e => {
+      e.preventDefault()
+      e.stopPropagation()
+      if (toolResult && contentRef.current) {
+        contentRef.current.scrollTop += 100
+      }
+    },
+    { enabled: !!toolResult, enableOnFormTags: true, preventDefault: true },
+  )
+
+  useHotkeys(
+    'k',
+    e => {
+      e.preventDefault()
+      e.stopPropagation()
+      if (toolResult && contentRef.current) {
+        contentRef.current.scrollTop -= 100
+      }
+    },
+    { enabled: !!toolResult, enableOnFormTags: true, preventDefault: true },
+  )
+
+  // Handle escape to close
+  useHotkeys(
+    'escape',
+    () => {
+      if (toolResult) {
+        onClose()
+      }
+    },
+    { enabled: !!toolResult },
+  )
+
+  if (!toolResult) return null
+
+  return (
+    <Dialog open={!!toolResult} onOpenChange={open => !open && onClose()}>
+      <DialogContent className="w-[90vw] max-w-[90vw] max-h-[80vh] p-0 sm:max-w-[90vw]">
+        <DialogHeader className="px-6 py-4 border-b">
+          <DialogTitle className="font-mono text-sm flex items-center justify-between">
+            <span>
+              {toolCall?.tool_name || 'Tool Result'}
+              {toolCall?.tool_input_json && (
+                <span className="ml-2 text-xs text-muted-foreground">
+                  {(() => {
+                    try {
+                      const args = JSON.parse(toolCall.tool_input_json)
+                      // Show the most relevant argument based on tool name
+                      if (toolCall.tool_name === 'Read' && args.file_path) {
+                        return args.file_path
+                      } else if (toolCall.tool_name === 'Bash' && args.command) {
+                        return truncate(args.command, 60)
+                      } else if (toolCall.tool_name === 'Edit' && args.file_path) {
+                        return args.file_path
+                      } else if (toolCall.tool_name === 'Write' && args.file_path) {
+                        return args.file_path
+                      } else if (toolCall.tool_name === 'Grep' && args.pattern) {
+                        return args.pattern
+                      }
+                      // For other tools, show the first string value
+                      const firstValue = Object.values(args).find(v => typeof v === 'string')
+                      return firstValue ? truncate(String(firstValue), 60) : ''
+                    } catch {
+                      return ''
+                    }
+                  })()}
+                </span>
+              )}
+            </span>
+            <span className="text-xs text-muted-foreground">Esc</span>
+          </DialogTitle>
+        </DialogHeader>
+        <div
+          ref={contentRef}
+          className="overflow-y-auto px-6 py-4 font-mono text-sm whitespace-pre-wrap"
+          style={{ maxHeight: 'calc(80vh - 80px)' }}
+        >
+          {toolResult.tool_result_content || 'No content'}
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// Simple error boundary component
+class ErrorBoundary extends Component<
+  { children: ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: ReactNode }) {
+    super(props)
+    this.state = { hasError: false, error: null }
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error }
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('SessionDetail Error:', error, errorInfo)
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex flex-col items-center justify-center p-8 space-y-4">
+          <h2 className="text-lg font-semibold text-destructive">Something went wrong</h2>
+          <p className="text-sm text-muted-foreground">
+            {this.state.error?.message || 'An unexpected error occurred'}
+          </p>
+          <Button
+            onClick={() => {
+              this.setState({ hasError: false, error: null })
+              window.location.reload()
+            }}
+            variant="outline"
+          >
+            Reload
+          </Button>
+        </div>
+      )
+    }
+
+    return this.props.children
+  }
+}
+
+// Export wrapped component
+const SessionDetailWithErrorBoundary = (props: SessionDetailProps) => (
+  <ErrorBoundary>
+    <SessionDetail {...props} />
+  </ErrorBoundary>
+)
+
+export default SessionDetailWithErrorBoundary
