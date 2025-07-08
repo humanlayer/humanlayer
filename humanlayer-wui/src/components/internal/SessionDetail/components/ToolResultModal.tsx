@@ -20,7 +20,6 @@ export function ToolResultModal({
   toolResult: ConversationEvent | null
   onClose: () => void
 }) {
-
   const contentRef = useRef<HTMLDivElement>(null)
 
   // Handle j/k navigation - using priority to override background hotkeys
@@ -33,7 +32,12 @@ export function ToolResultModal({
         contentRef.current.scrollTop += 100
       }
     },
-    { enabled: !!toolResult, enableOnFormTags: true, preventDefault: true, scopes: ToolResultModalHotkeysScope },
+    {
+      enabled: !!toolResult,
+      enableOnFormTags: true,
+      preventDefault: true,
+      scopes: ToolResultModalHotkeysScope,
+    },
   )
 
   useHotkeys(
@@ -45,14 +49,18 @@ export function ToolResultModal({
         contentRef.current.scrollTop -= 100
       }
     },
-    { enabled: !!toolResult, enableOnFormTags: true, preventDefault: true, scopes: ToolResultModalHotkeysScope },
+    {
+      enabled: !!toolResult,
+      enableOnFormTags: true,
+      preventDefault: true,
+      scopes: ToolResultModalHotkeysScope,
+    },
   )
 
   // Handle escape to close
   useHotkeys(
     'escape',
-    (ev) => {
-      console.log('ToolResultModal.escape!')
+    ev => {
       ev.stopPropagation()
       if (toolResult) {
         onClose()
@@ -66,10 +74,12 @@ export function ToolResultModal({
   if (!toolResult) return null
 
   return (
-    <Dialog open={!!toolResult} onOpenChange={open => {
-      console.log('onOpenChange', open)
-      !open && onClose()
-    }}>
+    <Dialog
+      open={!!toolResult}
+      onOpenChange={open => {
+        !open && onClose()
+      }}
+    >
       <DialogContent className="w-[90vw] max-w-[90vw] max-h-[80vh] p-0 sm:max-w-[90vw]">
         <DialogHeader className="px-6 py-4 border-b">
           <DialogTitle className="font-mono text-sm flex items-center justify-between">

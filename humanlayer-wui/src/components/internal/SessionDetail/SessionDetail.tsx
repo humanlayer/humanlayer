@@ -37,7 +37,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [expandedToolCall, setExpandedToolCall] = useState<ConversationEvent | null>(null)
   const [isSplitView, setIsSplitView] = useState(true)
 
-
   const isRunning = session.status === 'running'
 
   // Get events for sidebar access
@@ -94,10 +93,10 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
 
   useHotkeys(
     'escape',
-    (ev) => {
+    ev => {
       if ((ev.target as HTMLElement)?.dataset.slot === 'dialog-close') {
         console.warn('Ignoring onClose triggered by dialog-close in SessionDetail')
-        return null;
+        return null
       }
 
       if (approvals.confirmingApprovalId) {

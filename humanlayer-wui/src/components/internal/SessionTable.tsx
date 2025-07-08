@@ -43,7 +43,7 @@ export default function SessionTable({
   matchedSessions,
 }: SessionTableProps) {
   const { isOpen: isSessionLauncherOpen } = useSessionLauncher()
-  const { activeScopes, enableScope, disableScope } = useHotkeysContext()
+  const { enableScope, disableScope } = useHotkeysContext()
   const tableRef = useRef<HTMLTableElement>(null)
 
   // Helper to render highlighted text
@@ -106,8 +106,6 @@ export default function SessionTable({
     },
     { scopes: SessionTableHotkeysScope, enabled: !isSessionLauncherOpen },
   )
-
-  console.log('active scopes', activeScopes)
 
   return (
     <>
