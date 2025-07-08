@@ -1,8 +1,7 @@
 import { createStarryNight } from '@wooorm/starry-night'
 import jsonGrammar from '@wooorm/starry-night/source.json'
 import textMd from '@wooorm/starry-night/text.md'
-import { useEffect, useRef } from 'react'
-import { useHotkeys } from 'react-hotkeys-hook'
+import { useEffect, useRef, useState } from 'react'
 import keyBy from 'lodash.keyby'
 
 import { ConversationEvent, ConversationEventType } from '@/lib/daemon/types'
@@ -11,6 +10,9 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { MessageCircleDashed } from 'lucide-react'
 import { formatAbsoluteTimestamp } from '@/utils/formatting'
 import { eventToDisplayObject } from '../eventToDisplayObject'
+import { useTaskGrouping } from '../hooks/useTaskGrouping'
+import { TaskGroup } from './TaskGroup'
+import { EventMetaInfo } from '../components/EventMetaInfo'
 
 // TODO(2): Extract keyboard navigation logic to a custom hook
 // TODO(2): Extract auto-scroll logic to a separate utility
@@ -55,9 +57,17 @@ export function ConversationContent({
   setConfirmingApprovalId?: (id: string | null) => void
   expandedToolResult?: ConversationEvent | null
 }) {
+  // expandedToolResult is used by parent to control hotkey availability
+  void expandedToolResult
+  const [expandedEventId, setExpandedEventId] = useState<number | null>(null)
+  const [isWideView] = useState(false) // This can be controlled from parent if needed
   const { events, loading, error, isInitialLoad } = useConversation(sessionId, undefined, 1000)
   const toolResults = events.filter(event => event.event_type === ConversationEventType.ToolResult)
   const toolResultsByKey = keyBy(toolResults, 'tool_result_for_id')
+
+  // Use task grouping hook
+  const { taskGroups, rootEvents, hasSubTasks, expandedTasks, toggleTaskGroup } =
+    useTaskGrouping(events)
 
   const displayObjects = events
     .filter(event => event.event_type !== ConversationEventType.ToolResult)
@@ -79,50 +89,9 @@ export function ConversationContent({
     )
   const nonEmptyDisplayObjects = displayObjects.filter(displayObject => displayObject !== null)
 
-  // Navigation handlers
-  const focusNextEvent = () => {
-    if (nonEmptyDisplayObjects.length === 0) return
+  // Note: Navigation is handled by the parent component via props
 
-    const currentIndex = focusedEventId
-      ? nonEmptyDisplayObjects.findIndex(obj => obj.id === focusedEventId)
-      : -1
-
-    // If nothing focused, focus first item
-    if (currentIndex === -1) {
-      setFocusedEventId(nonEmptyDisplayObjects[0].id)
-      setFocusSource?.('keyboard')
-    }
-    // If not at the end, move to next
-    else if (currentIndex < nonEmptyDisplayObjects.length - 1) {
-      setFocusedEventId(nonEmptyDisplayObjects[currentIndex + 1].id)
-      setFocusSource?.('keyboard')
-    }
-    // If at the end, do nothing
-  }
-
-  const focusPreviousEvent = () => {
-    if (nonEmptyDisplayObjects.length === 0) return
-
-    const currentIndex = focusedEventId
-      ? nonEmptyDisplayObjects.findIndex(obj => obj.id === focusedEventId)
-      : -1
-
-    // If nothing focused, focus last item
-    if (currentIndex === -1) {
-      setFocusedEventId(nonEmptyDisplayObjects[nonEmptyDisplayObjects.length - 1].id)
-      setFocusSource?.('keyboard')
-    }
-    // If not at the beginning, move to previous
-    else if (currentIndex > 0) {
-      setFocusedEventId(nonEmptyDisplayObjects[currentIndex - 1].id)
-      setFocusSource?.('keyboard')
-    }
-    // If at the beginning, do nothing
-  }
-
-  // Keyboard navigation (disabled when modal is open)
-  useHotkeys('j', focusNextEvent, { enabled: !expandedToolResult })
-  useHotkeys('k', focusPreviousEvent, { enabled: !expandedToolResult })
+  // Note: Keyboard navigation is handled by parent component
 
   const containerRef = useRef<HTMLDivElement>(null)
   const previousEventCountRef = useRef(0)
@@ -229,51 +198,178 @@ export function ConversationContent({
     )
   }
 
+  // Early return for no sub-tasks case (most common)
+  if (!hasSubTasks) {
+    return (
+      <div ref={containerRef} data-conversation-container className="overflow-y-auto flex-1">
+        <div>
+          {nonEmptyDisplayObjects.map((displayObject, index) => (
+            <div key={displayObject.id}>
+              <div
+                data-event-id={displayObject.id}
+                onMouseEnter={() => {
+                  setFocusedEventId(displayObject.id)
+                  setFocusSource?.('mouse')
+                }}
+                onMouseLeave={() => {
+                  setFocusedEventId(null)
+                  setConfirmingApprovalId?.(null)
+                }}
+                onClick={() =>
+                  setExpandedEventId(expandedEventId === displayObject.id ? null : displayObject.id)
+                }
+                className={`pt-1 pb-3 px-2 cursor-pointer ${
+                  index !== nonEmptyDisplayObjects.length - 1 ? 'border-b' : ''
+                } ${focusedEventId === displayObject.id ? '!bg-accent/20 -mx-2 px-4 rounded' : ''}`}
+              >
+                {/* Timestamp at top */}
+                <div className="flex justify-end mb-1">
+                  <span className="text-xs text-muted-foreground/60">
+                    {formatAbsoluteTimestamp(displayObject.created_at)}
+                  </span>
+                </div>
+
+                <div className="flex items-baseline gap-2">
+                  {displayObject.iconComponent && (
+                    <span className="text-sm text-accent align-middle relative top-[1px]">
+                      {displayObject.iconComponent}
+                    </span>
+                  )}
+                  <span className="whitespace-pre-wrap text-accent max-w-[90%]">
+                    {displayObject.subject}
+                  </span>
+                </div>
+                {displayObject.toolResultContent && (
+                  <p className="whitespace-pre-wrap text-foreground">
+                    {displayObject.toolResultContent}
+                  </p>
+                )}
+                {displayObject.body && (
+                  <p className="whitespace-pre-wrap text-foreground">{displayObject.body}</p>
+                )}
+              </div>
+
+              {/* Expanded content for slim view */}
+              {!isWideView && expandedEventId === displayObject.id && (
+                <EventMetaInfo event={events.find(e => e.id === displayObject.id)!} />
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  // Render with task groups
   return (
     <div ref={containerRef} data-conversation-container className="overflow-y-auto flex-1">
       <div>
-        {nonEmptyDisplayObjects.map((displayObject, index) => (
-          <div key={displayObject.id}>
-            <div
-              data-event-id={displayObject.id}
-              onMouseEnter={() => {
-                setFocusedEventId(displayObject.id)
-                setFocusSource?.('mouse')
-              }}
-              onMouseLeave={() => {
-                setFocusedEventId(null)
-                setConfirmingApprovalId?.(null)
-              }}
-              className={`pt-1 pb-3 px-2 cursor-pointer ${
-                index !== nonEmptyDisplayObjects.length - 1 ? 'border-b' : ''
-              } ${focusedEventId === displayObject.id ? '!bg-accent/20 -mx-2 px-4 rounded' : ''}`}
-            >
-              {/* Timestamp at top */}
-              <div className="flex justify-end mb-1">
-                <span className="text-xs text-muted-foreground/60">
-                  {formatAbsoluteTimestamp(displayObject.created_at)}
-                </span>
-              </div>
+        {rootEvents
+          .filter(event => event.event_type !== ConversationEventType.ToolResult)
+          .map((event, index) => {
+            const taskGroup = taskGroups.get(event.tool_id || '')
 
-              <div className="flex items-baseline gap-2">
-                {displayObject.iconComponent && (
-                  <span className="text-sm text-accent align-middle relative top-[1px]">
-                    {displayObject.iconComponent}
-                  </span>
-                )}
-                <span className="whitespace-pre-wrap text-accent max-w-[90%]">
-                  {displayObject.subject}
-                </span>
-              </div>
-              {displayObject.toolResultContent && (
-                <p className="whitespace-pre-wrap text-foreground">{displayObject.toolResultContent}</p>
-              )}
-              {displayObject.body && (
-                <p className="whitespace-pre-wrap text-foreground">{displayObject.body}</p>
-              )}
-            </div>
-          </div>
-        ))}
+            if (taskGroup) {
+              return (
+                <TaskGroup
+                  key={event.id}
+                  group={taskGroup}
+                  isExpanded={expandedTasks.has(event.tool_id!)}
+                  onToggle={() => toggleTaskGroup(event.tool_id!)}
+                  focusedEventId={focusedEventId}
+                  setFocusedEventId={setFocusedEventId}
+                  expandedEventId={expandedEventId}
+                  setExpandedEventId={setExpandedEventId}
+                  onApprove={onApprove}
+                  onDeny={onDeny}
+                  approvingApprovalId={approvingApprovalId}
+                  confirmingApprovalId={confirmingApprovalId}
+                  denyingApprovalId={denyingApprovalId}
+                  setDenyingApprovalId={setDenyingApprovalId}
+                  onCancelDeny={onCancelDeny}
+                  isSplitView={isSplitView}
+                  onToggleSplitView={onToggleSplitView}
+                  setFocusSource={setFocusSource}
+                  setConfirmingApprovalId={setConfirmingApprovalId}
+                  toolResultsByKey={toolResultsByKey}
+                />
+              )
+            } else {
+              const displayObject = eventToDisplayObject(
+                event,
+                onApprove,
+                onDeny,
+                denyingApprovalId,
+                setDenyingApprovalId,
+                onCancelDeny,
+                approvingApprovalId,
+                confirmingApprovalId,
+                isSplitView,
+                onToggleSplitView,
+                event.tool_id ? toolResultsByKey[event.tool_id] : undefined,
+                focusedEventId === event.id,
+              )
+
+              if (!displayObject) return null
+
+              return (
+                <div key={event.id}>
+                  <div
+                    data-event-id={displayObject.id}
+                    onMouseEnter={() => {
+                      setFocusedEventId(displayObject.id)
+                      setFocusSource?.('mouse')
+                    }}
+                    onMouseLeave={() => {
+                      setFocusedEventId(null)
+                      setConfirmingApprovalId?.(null)
+                    }}
+                    onClick={() =>
+                      setExpandedEventId(expandedEventId === displayObject.id ? null : displayObject.id)
+                    }
+                    className={`pt-1 pb-3 px-2 cursor-pointer ${
+                      index !==
+                      rootEvents.filter(e => e.event_type !== ConversationEventType.ToolResult).length -
+                        1
+                        ? 'border-b'
+                        : ''
+                    } ${focusedEventId === displayObject.id ? '!bg-accent/20 -mx-2 px-4 rounded' : ''}`}
+                  >
+                    {/* Timestamp at top */}
+                    <div className="flex justify-end mb-1">
+                      <span className="text-xs text-muted-foreground/60">
+                        {formatAbsoluteTimestamp(displayObject.created_at)}
+                      </span>
+                    </div>
+
+                    <div className="flex items-baseline gap-2">
+                      {displayObject.iconComponent && (
+                        <span className="text-sm text-accent align-middle relative top-[1px]">
+                          {displayObject.iconComponent}
+                        </span>
+                      )}
+                      <span className="whitespace-pre-wrap text-accent max-w-[90%]">
+                        {displayObject.subject}
+                      </span>
+                    </div>
+                    {displayObject.toolResultContent && (
+                      <p className="whitespace-pre-wrap text-foreground">
+                        {displayObject.toolResultContent}
+                      </p>
+                    )}
+                    {displayObject.body && (
+                      <p className="whitespace-pre-wrap text-foreground">{displayObject.body}</p>
+                    )}
+                  </div>
+
+                  {/* Expanded content for slim view */}
+                  {!isWideView && expandedEventId === displayObject.id && (
+                    <EventMetaInfo event={event} />
+                  )}
+                </div>
+              )
+            }
+          })}
       </div>
     </div>
   )
