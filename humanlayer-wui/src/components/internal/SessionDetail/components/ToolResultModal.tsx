@@ -3,9 +3,12 @@ import { useHotkeys } from 'react-hotkeys-hook'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ConversationEvent } from '@/lib/daemon/types'
 import { truncate } from '@/utils/formatting'
+import { useStealHotkeyScope } from '@/hooks/useStealHotkeyScope'
 
 // TODO(3): Add keyboard navigation hints in the UI
 // TODO(2): Consider adding copy-to-clipboard functionality for tool results
+
+const ToolResultModalHotkeysScope = 'tool-result-modal'
 
 // Minimalist modal for showing full tool results
 export function ToolResultModal({
@@ -17,6 +20,7 @@ export function ToolResultModal({
   toolResult: ConversationEvent | null
   onClose: () => void
 }) {
+
   const contentRef = useRef<HTMLDivElement>(null)
 
   // Handle j/k navigation - using priority to override background hotkeys
@@ -29,7 +33,7 @@ export function ToolResultModal({
         contentRef.current.scrollTop += 100
       }
     },
-    { enabled: !!toolResult, enableOnFormTags: true, preventDefault: true },
+    { enabled: !!toolResult, enableOnFormTags: true, preventDefault: true, scopes: ToolResultModalHotkeysScope },
   )
 
   useHotkeys(
@@ -41,24 +45,31 @@ export function ToolResultModal({
         contentRef.current.scrollTop -= 100
       }
     },
-    { enabled: !!toolResult, enableOnFormTags: true, preventDefault: true },
+    { enabled: !!toolResult, enableOnFormTags: true, preventDefault: true, scopes: ToolResultModalHotkeysScope },
   )
 
   // Handle escape to close
   useHotkeys(
     'escape',
-    () => {
+    (ev) => {
+      console.log('ToolResultModal.escape!')
+      ev.stopPropagation()
       if (toolResult) {
         onClose()
       }
     },
-    { enabled: !!toolResult },
+    { enabled: !!toolResult, scopes: ToolResultModalHotkeysScope },
   )
+
+  useStealHotkeyScope(ToolResultModalHotkeysScope)
 
   if (!toolResult) return null
 
   return (
-    <Dialog open={!!toolResult} onOpenChange={open => !open && onClose()}>
+    <Dialog open={!!toolResult} onOpenChange={open => {
+      console.log('onOpenChange', open)
+      !open && onClose()
+    }}>
       <DialogContent className="w-[90vw] max-w-[90vw] max-h-[80vh] p-0 sm:max-w-[90vw]">
         <DialogHeader className="px-6 py-4 border-b">
           <DialogTitle className="font-mono text-sm flex items-center justify-between">
