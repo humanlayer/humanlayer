@@ -247,6 +247,8 @@ pub struct ConversationEvent {
     pub approval_status: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub approval_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parent_tool_use_id: Option<String>,
 }
 
 // Approval types
