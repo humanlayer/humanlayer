@@ -9,6 +9,7 @@ import { useSessionLauncher, useSessionLauncherHotkeys } from '@/hooks/useSessio
 import { useStore } from '@/AppStore'
 import { useSessionEventsWithNotifications } from '@/hooks/useSessionEventsWithNotifications'
 import { Toaster } from 'sonner'
+import { notificationService } from '@/services/NotificationService'
 import '@/App.css'
 
 export function Layout() {
@@ -114,7 +115,7 @@ export function Layout() {
         setApprovals(response.approvals)
       }
     } catch (error) {
-      alert(`Failed to handle approval: ${error}`)
+      notificationService.notifyError(error, 'Failed to handle approval')
     }
   }
 

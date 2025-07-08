@@ -27,5 +27,9 @@ export function SessionDetailPage() {
     )
   }
 
-  return <SessionDetail session={session} onClose={handleClose} />
+  return (
+    <div className="h-full">
+      <SessionDetail session={session} onClose={handleClose} />
+    </div>
+  )
 }
