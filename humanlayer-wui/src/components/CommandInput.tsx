@@ -61,6 +61,17 @@ export default function CommandInput({
 
   return (
     <div className="space-y-4">
+      {/* Working Directory Field with Fuzzy Search */}
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-foreground">Working Directory</label>
+        <SearchInput
+          value={config.workingDir}
+          onChange={value => onConfigChange?.({ ...config, workingDir: value })}
+          onSubmit={onSubmit}
+          placeholder="/path/to/directory or leave empty for current directory"
+        />
+      </div>
+
       {/* Main query input */}
       <div className="relative">
         <Input
@@ -94,17 +105,6 @@ export default function CommandInput({
             <div className="animate-spin h-4 w-4 border-2 border-primary border-r-transparent rounded-full" />
           </div>
         )}
-      </div>
-
-      {/* Working Directory Field with Fuzzy Search */}
-      <div className="space-y-2">
-        <label className="text-sm font-medium text-foreground">Working Directory</label>
-        <SearchInput
-          value={config.workingDir}
-          onChange={value => onConfigChange?.({ ...config, workingDir: value })}
-          onSubmit={onSubmit}
-          placeholder="/path/to/directory or leave empty for current directory"
-        />
       </div>
 
       {/* Advanced Options Toggle */}
