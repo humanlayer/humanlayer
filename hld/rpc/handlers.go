@@ -267,6 +267,7 @@ func (h *SessionHandlers) HandleGetSessionSnapshots(ctx context.Context, params 
 		return nil, fmt.Errorf("failed to get snapshots: %w", err)
 	}
 
+	// TODO(3): Sort snapshots explicitly (e.g., by CreatedAt) rather than relying on store's return order
 	// Convert to response format
 	response := &GetSessionSnapshotsResponse{
 		Snapshots: make([]FileSnapshotInfo, 0, len(snapshots)),
