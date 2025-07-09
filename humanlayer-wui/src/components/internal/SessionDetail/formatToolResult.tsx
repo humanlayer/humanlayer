@@ -86,9 +86,14 @@ export function formatToolResult(toolName: string, toolResult: ConversationEvent
 
     case 'MultiEdit': {
       // Check for specific MultiEdit errors
-      if (content.includes('Found') && content.includes('matches of the string to replace, but replace_all is false')) {
+      if (
+        content.includes('Found') &&
+        content.includes('matches of the string to replace, but replace_all is false')
+      ) {
         const matchCount = content.match(/Found (\d+) matches/)
-        abbreviated = matchCount ? `Found ${matchCount[1]} matches - replace_all needed` : 'Multiple matches found'
+        abbreviated = matchCount
+          ? `Found ${matchCount[1]} matches - replace_all needed`
+          : 'Multiple matches found'
       } else if (isError) {
         // Extract specific error message if available
         if (content.toLowerCase().includes('file has not been read yet')) {
