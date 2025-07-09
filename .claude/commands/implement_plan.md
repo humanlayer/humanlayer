@@ -31,7 +31,7 @@ If you encounter a mismatch:
   Expected: [what the plan says]
   Found: [actual situation]
   Why this matters: [explanation]
-  
+
   How should I proceed?
   ```
 
@@ -39,7 +39,7 @@ If you encounter a mismatch:
 
 After implementing a phase:
 - Run the success criteria checks (usually `make check test` covers everything)
-- Fix any issues before proceeding  
+- Fix any issues before proceeding
 - Update your progress in both the plan and your todos
 - Check off completed items in the plan file itself using Edit
 
