@@ -29,11 +29,11 @@ When invoked:
    - Present the specific issue to the user:
      ```
      I've encountered an issue implementing Phase [N]:
-     
+
      Plan expects: [what the plan says]
      Actual situation: [what you found]
      Reason: [why this is a problem]
-     
+
      How should I proceed?
      ```
 
@@ -141,7 +141,7 @@ Example:
 
 **Automated** (you run these):
 - `make test`, `go test ./...`, `npm test`
-- `make build`, `go build`, `npm run build` 
+- `make build`, `go build`, `npm run build`
 - `make lint`, `golangci-lint run`, `npm run lint`
 - `npm run typecheck`, `mypy`
 

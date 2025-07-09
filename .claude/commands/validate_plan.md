@@ -18,7 +18,7 @@ When invoked:
    # Check recent commits
    git log --oneline -n 20
    git diff HEAD~N..HEAD  # Where N covers implementation commits
-   
+
    # Run comprehensive checks
    cd $(git rev-parse --show-toplevel) && make check test
    ```
@@ -41,12 +41,12 @@ If starting fresh or need more context:
    Research if migration [N] was added and schema changes match plan.
    Check: migration files, schema version, table structure
    Return: What was implemented vs what plan specified
-   
+
    Task 2 - Verify code changes:
    Find all modified files related to [feature].
    Compare actual changes to plan specifications.
    Return: File-by-file comparison of planned vs actual
-   
+
    Task 3 - Verify test coverage:
    Check if tests were added/modified as specified.
    Run test commands and capture results.
@@ -84,7 +84,7 @@ Create comprehensive validation summary:
 
 ### Implementation Status
 ✓ Phase 1: [Name] - Fully implemented
-✓ Phase 2: [Name] - Fully implemented  
+✓ Phase 2: [Name] - Fully implemented
 ⚠️ Phase 3: [Name] - Partially implemented (see issues)
 
 ### Automated Verification Results
@@ -111,7 +111,7 @@ Create comprehensive validation summary:
 1. UI functionality:
    - [ ] Verify [feature] appears correctly
    - [ ] Test error states with invalid input
-   
+
 2. Integration:
    - [ ] Confirm works with existing [component]
    - [ ] Check performance with large datasets
@@ -153,7 +153,7 @@ Always verify:
 
 Recommended workflow:
 1. `/implement_plan` - Execute the implementation
-2. `/commit` - Create atomic commits for changes  
+2. `/commit` - Create atomic commits for changes
 3. `/validate_plan` - Verify implementation correctness
 4. `/describe_pr` - Generate PR description
 
