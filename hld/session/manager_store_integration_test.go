@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 	"sync"
 	"testing"
@@ -688,6 +689,312 @@ func TestSessionManagerEventProcessing(t *testing.T) {
 
 		if pending != nil {
 			t.Error("tool call should not be pending after result")
+		}
+	})
+}
+
+func TestCaptureFileSnapshot_Integration(t *testing.T) {
+	// Create a temporary directory for test files
+	tempDir := t.TempDir()
+	
+	// Create test files
+	testFile1 := filepath.Join(tempDir, "test1.txt")
+	if err := os.WriteFile(testFile1, []byte("Content of test file 1"), 0644); err != nil {
+		t.Fatalf("failed to create test file 1: %v", err)
+	}
+	
+	testFile2 := filepath.Join(tempDir, "subdir", "test2.txt")
+	if err := os.MkdirAll(filepath.Dir(testFile2), 0755); err != nil {
+		t.Fatalf("failed to create subdirectory: %v", err)
+	}
+	if err := os.WriteFile(testFile2, []byte("Content of test file 2\nWith multiple lines\n"), 0644); err != nil {
+		t.Fatalf("failed to create test file 2: %v", err)
+	}
+	
+	// Create large file (>10MB)
+	largeFile := filepath.Join(tempDir, "large.txt")
+	largeContent := make([]byte, 11*1024*1024) // 11MB
+	for i := range largeContent {
+		largeContent[i] = byte('A' + (i % 26))
+	}
+	if err := os.WriteFile(largeFile, largeContent, 0644); err != nil {
+		t.Fatalf("failed to create large file: %v", err)
+	}
+
+	// Create test store
+	dbPath := filepath.Join(tempDir, "test.db")
+	testStore, err := store.NewSQLiteStore(dbPath)
+	if err != nil {
+		t.Fatalf("failed to create store: %v", err)
+	}
+	defer testStore.Close()
+
+	ctx := context.Background()
+	sessionID := "test-session"
+	claudeSessionID := "claude-session-1"
+
+	// Create session with working directory
+	session := &store.Session{
+		ID:              sessionID,
+		RunID:           "test-run",
+		ClaudeSessionID: claudeSessionID,
+		Query:           "Test query",
+		Model:           "sonnet",
+		Status:          store.SessionStatusRunning,
+		WorkingDir:      tempDir,
+		CreatedAt:       time.Now(),
+		LastActivityAt:  time.Now(),
+	}
+	if err := testStore.CreateSession(ctx, session); err != nil {
+		t.Fatalf("failed to create session: %v", err)
+	}
+
+	// Create manager
+	manager := &Manager{
+		store:    testStore,
+		eventBus: bus.NewEventBus(),
+	}
+
+	t.Run("CaptureFullContentFromToolResult", func(t *testing.T) {
+		// Create a Read tool call event
+		toolCall := &store.ConversationEvent{
+			SessionID:       sessionID,
+			ClaudeSessionID: claudeSessionID,
+			EventType:       store.EventTypeToolCall,
+			ToolID:          "tool-full-1",
+			ToolName:        "Read",
+			ToolInputJSON:   `{"file_path": "test1.txt"}`,
+		}
+		if err := testStore.AddConversationEvent(ctx, toolCall); err != nil {
+			t.Fatalf("failed to add tool call: %v", err)
+		}
+
+		// Simulate tool result with full content
+		toolResultContent := fmt.Sprintf(`{
+			"type": "file",
+			"file": {
+				"filePath": "test1.txt",
+				"content": "Content of test file 1",
+				"numLines": 1,
+				"startLine": 1,
+				"totalLines": 1
+			}
+		}`)
+
+		// Call captureFileSnapshot synchronously for testing
+		manager.captureFileSnapshot(ctx, sessionID, "tool-full-1", toolCall.ToolInputJSON, toolResultContent)
+
+		// Verify snapshot was created
+		snapshots, err := testStore.GetFileSnapshots(ctx, sessionID)
+		if err != nil {
+			t.Fatalf("failed to get snapshots: %v", err)
+		}
+
+		found := false
+		for _, s := range snapshots {
+			if s.ToolID == "tool-full-1" {
+				found = true
+				if s.FilePath != "test1.txt" {
+					t.Errorf("expected file path 'test1.txt', got '%s'", s.FilePath)
+				}
+				if s.Content != "Content of test file 1" {
+					t.Errorf("expected content from tool result, got '%s'", s.Content)
+				}
+				break
+			}
+		}
+
+		if !found {
+			t.Error("snapshot not found for full content capture")
+		}
+	})
+
+	t.Run("CapturePartialContentFromFilesystem", func(t *testing.T) {
+		// Create a Read tool call event
+		toolCall := &store.ConversationEvent{
+			SessionID:       sessionID,
+			ClaudeSessionID: claudeSessionID,
+			EventType:       store.EventTypeToolCall,
+			ToolID:          "tool-partial-1",
+			ToolName:        "Read",
+			ToolInputJSON:   `{"file_path": "subdir/test2.txt"}`,
+		}
+		if err := testStore.AddConversationEvent(ctx, toolCall); err != nil {
+			t.Fatalf("failed to add tool call: %v", err)
+		}
+
+		// Simulate tool result with partial content
+		toolResultContent := fmt.Sprintf(`{
+			"type": "file",
+			"file": {
+				"filePath": "subdir/test2.txt",
+				"content": "Content of test file 2",
+				"numLines": 1,
+				"startLine": 1,
+				"totalLines": 2
+			}
+		}`)
+
+		// Call captureFileSnapshot
+		manager.captureFileSnapshot(ctx, sessionID, "tool-partial-1", toolCall.ToolInputJSON, toolResultContent)
+
+		// Verify snapshot was created with full content from filesystem
+		snapshots, err := testStore.GetFileSnapshots(ctx, sessionID)
+		if err != nil {
+			t.Fatalf("failed to get snapshots: %v", err)
+		}
+
+		found := false
+		for _, s := range snapshots {
+			if s.ToolID == "tool-partial-1" {
+				found = true
+				if s.FilePath != "subdir/test2.txt" {
+					t.Errorf("expected file path 'subdir/test2.txt', got '%s'", s.FilePath)
+				}
+				// Should have read full content from filesystem
+				expectedContent := "Content of test file 2\nWith multiple lines\n"
+				if s.Content != expectedContent {
+					t.Errorf("expected full content from filesystem, got '%s'", s.Content)
+				}
+				break
+			}
+		}
+
+		if !found {
+			t.Error("snapshot not found for partial content capture")
+		}
+	})
+
+	t.Run("CaptureLargeFilePartialContent", func(t *testing.T) {
+		// Create a Read tool call event for large file
+		toolCall := &store.ConversationEvent{
+			SessionID:       sessionID,
+			ClaudeSessionID: claudeSessionID,
+			EventType:       store.EventTypeToolCall,
+			ToolID:          "tool-large-1",
+			ToolName:        "Read",
+			ToolInputJSON:   `{"file_path": "large.txt"}`,
+		}
+		if err := testStore.AddConversationEvent(ctx, toolCall); err != nil {
+			t.Fatalf("failed to add tool call: %v", err)
+		}
+
+		// Simulate tool result with partial content from large file
+		partialContent := "First 1000 chars of large file..."
+		toolResultContent := fmt.Sprintf(`{
+			"type": "file",
+			"file": {
+				"filePath": "large.txt",
+				"content": "%s",
+				"numLines": 10,
+				"startLine": 1,
+				"totalLines": 100000
+			}
+		}`, partialContent)
+
+		// Call captureFileSnapshot
+		manager.captureFileSnapshot(ctx, sessionID, "tool-large-1", toolCall.ToolInputJSON, toolResultContent)
+
+		// Verify snapshot was created with partial content (due to size limit)
+		snapshots, err := testStore.GetFileSnapshots(ctx, sessionID)
+		if err != nil {
+			t.Fatalf("failed to get snapshots: %v", err)
+		}
+
+		found := false
+		for _, s := range snapshots {
+			if s.ToolID == "tool-large-1" {
+				found = true
+				if s.FilePath != "large.txt" {
+					t.Errorf("expected file path 'large.txt', got '%s'", s.FilePath)
+				}
+				// Should use partial content from tool result due to size limit
+				if s.Content != partialContent {
+					t.Errorf("expected partial content for large file, got %d bytes", len(s.Content))
+				}
+				break
+			}
+		}
+
+		if !found {
+			t.Error("snapshot not found for large file")
+		}
+	})
+
+	t.Run("HandleNonExistentFile", func(t *testing.T) {
+		// Create a Read tool call event for non-existent file
+		toolCall := &store.ConversationEvent{
+			SessionID:       sessionID,
+			ClaudeSessionID: claudeSessionID,
+			EventType:       store.EventTypeToolCall,
+			ToolID:          "tool-nonexist-1",
+			ToolName:        "Read",
+			ToolInputJSON:   `{"file_path": "nonexistent.txt"}`,
+		}
+		if err := testStore.AddConversationEvent(ctx, toolCall); err != nil {
+			t.Fatalf("failed to add tool call: %v", err)
+		}
+
+		// Simulate tool result indicating file doesn't exist
+		toolResultContent := fmt.Sprintf(`{
+			"type": "file",
+			"file": {
+				"filePath": "nonexistent.txt",
+				"content": "Error: file not found",
+				"numLines": 1,
+				"startLine": 1,
+				"totalLines": 0
+			}
+		}`)
+
+		// Call captureFileSnapshot - should handle gracefully
+		manager.captureFileSnapshot(ctx, sessionID, "tool-nonexist-1", toolCall.ToolInputJSON, toolResultContent)
+
+		// Since this is a partial read (numLines != totalLines) and file doesn't exist,
+		// no snapshot should be created (error logged)
+		snapshots, err := testStore.GetFileSnapshots(ctx, sessionID)
+		if err != nil {
+			t.Fatalf("failed to get snapshots: %v", err)
+		}
+
+		for _, s := range snapshots {
+			if s.ToolID == "tool-nonexist-1" {
+				t.Error("snapshot should not be created for non-existent file")
+			}
+		}
+	})
+
+	t.Run("HandleInvalidToolInput", func(t *testing.T) {
+		// Test with invalid tool input JSON
+		manager.captureFileSnapshot(ctx, sessionID, "tool-invalid", "{invalid json}", "{}")
+		
+		// Should handle gracefully without creating snapshot
+		snapshots, err := testStore.GetFileSnapshots(ctx, sessionID)
+		if err != nil {
+			t.Fatalf("failed to get snapshots: %v", err)
+		}
+
+		for _, s := range snapshots {
+			if s.ToolID == "tool-invalid" {
+				t.Error("snapshot should not be created for invalid input")
+			}
+		}
+	})
+
+	t.Run("HandleMissingFilePath", func(t *testing.T) {
+		// Test with missing file_path in tool input
+		manager.captureFileSnapshot(ctx, sessionID, "tool-nopath", `{"other_param": "value"}`, "{}")
+		
+		// Should handle gracefully without creating snapshot
+		snapshots, err := testStore.GetFileSnapshots(ctx, sessionID)
+		if err != nil {
+			t.Fatalf("failed to get snapshots: %v", err)
+		}
+
+		for _, s := range snapshots {
+			if s.ToolID == "tool-nopath" {
+				t.Error("snapshot should not be created without file_path")
+			}
 		}
 	})
 }
