@@ -113,7 +113,8 @@ export function ConversationContent({
         })
 
       // Auto-scroll if we have new display events or events have changed
-      if (hasNewEvents || eventsChanged) {
+      // _and_ we're not focused on a row
+      if ((hasNewEvents || eventsChanged) && !focusedEventId) {
         setTimeout(() => {
           if (containerRef.current) {
             containerRef.current.scrollTop = containerRef.current.scrollHeight
@@ -336,7 +337,7 @@ export function ConversationContent({
                         1
                         ? 'border-b'
                         : ''
-                    } ${focusedEventId === displayObject.id ? '!bg-accent/20 -mx-2 px-4 rounded' : ''}`}
+                    } ${focusedEventId === displayObject.id ? '!bg-accent/20 rounded' : ''}`}
                   >
                     {/* Timestamp at top */}
                     <div className="absolute top-2 right-4">
