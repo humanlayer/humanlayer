@@ -8,6 +8,8 @@ import { SessionTableSearch } from '@/components/SessionTableSearch'
 import { useSessionFilter } from '@/hooks/useSessionFilter'
 import { SessionInfo, SessionStatus } from '@/lib/daemon/types'
 import { ThemeSelector } from '@/components/ThemeSelector'
+import { SessionLauncher } from '@/components/SessionLauncher'
+import { createDemoAppStore, DemoAppAnimator, AppAnimationStep } from '@/stores/demoAppStore'
 
 // Mock session data for demo
 const mockSessions: SessionInfo[] = [
@@ -76,151 +78,55 @@ const mockSessions: SessionInfo[] = [
   },
 ]
 
-// Store interface for managing sessions
-interface SessionStore {
-  sessions: SessionInfo[]
-  focusedSession: SessionInfo | null
-  setFocusedSession: (session: SessionInfo | null) => void
-  setSessions: (sessions: SessionInfo[]) => void
-  addSession: (session: SessionInfo) => void
-  updateSession: (id: string, updates: Partial<SessionInfo>) => void
-}
 
-// Animation step for demo sequences
-interface AnimationStep {
-  state: Partial<SessionStore>
-  delay: number
-}
+// Context for demo app store
+const DemoAppStoreContext = createContext<StoreApi<any> | null>(null)
 
-// Store factory that creates a session store
-function createSessionStore(isDemo: boolean = false): StoreApi<SessionStore> {
-  return create<SessionStore>((set, get) => ({
-    sessions: [],
-    focusedSession: null,
-    setFocusedSession: (session: SessionInfo | null) => {
-      if (!isDemo) {
-        set({ focusedSession: session })
-      }
-    },
-    setSessions: (sessions: SessionInfo[]) => {
-      if (!isDemo) {
-        set({ sessions })
-      }
-    },
-    addSession: (session: SessionInfo) => {
-      if (!isDemo) {
-        set(state => ({ sessions: [...state.sessions, session] }))
-      }
-    },
-    updateSession: (id: string, updates: Partial<SessionInfo>) => {
-      if (!isDemo) {
-        set(state => ({
-          sessions: state.sessions.map(session =>
-            session.id === id ? { ...session, ...updates } : session
-          ),
-        }))
-      }
-    },
-  }))
-}
-
-// Demo animator for session sequences
-class SessionDemoAnimator {
-  private store: StoreApi<SessionStore>
-  private sequence: AnimationStep[]
-  private currentIndex: number = 0
-  private timeoutId: NodeJS.Timeout | null = null
-  private isRunning: boolean = false
-  private unsubscribe: (() => void) | null = null
-
-  constructor(store: StoreApi<SessionStore>, sequence: AnimationStep[]) {
-    this.store = store
-    this.sequence = sequence
-
-    this.unsubscribe = store.subscribe(
-      state => state.sessions.length,
-      count => {
-        console.log('[Session Demo Store] Sessions updated, count:', count)
-      },
-    )
-  }
-
-  start() {
-    this.isRunning = true
-    this.currentIndex = 0
-    this.playNext()
-  }
-
-  stop() {
-    this.isRunning = false
-    if (this.timeoutId) {
-      clearTimeout(this.timeoutId)
-      this.timeoutId = null
-    }
-    if (this.unsubscribe) {
-      this.unsubscribe()
-      this.unsubscribe = null
-    }
-  }
-
-  private playNext() {
-    if (!this.isRunning || this.currentIndex >= this.sequence.length) {
-      if (this.isRunning) {
-        this.currentIndex = 0
-        this.playNext()
-      }
-      return
-    }
-
-    const step = this.sequence[this.currentIndex]
-
-    this.timeoutId = setTimeout(() => {
-      this.store.setState(step.state as SessionStore)
-      this.currentIndex++
-      this.playNext()
-    }, step.delay)
-  }
-}
-
-// Context for session store
-const SessionStoreContext = createContext<StoreApi<SessionStore> | null>(null)
-
-// Hook to use the session store
-function useSessionStore<T>(selector: (state: SessionStore) => T): T {
-  const store = useContext(SessionStoreContext)
-  if (!store) throw new Error('useSessionStore must be used within a SessionStoreProvider')
+// Hook to use the demo app store
+function useDemoAppStore<T>(selector: (state: any) => T): T {
+  const store = useContext(DemoAppStoreContext)
+  if (!store) throw new Error('useDemoAppStore must be used within a DemoAppStoreProvider')
   return useStore(store, selector)
 }
 
-
-// Provider for demo store with animation sequence
-interface DemoSessionStoreProviderProps {
+// Provider for demo app store with animation sequence
+interface DemoAppStoreProviderProps {
   children: React.ReactNode
-  sequence: AnimationStep[]
+  sequence: AppAnimationStep[]
 }
 
-function DemoSessionStoreProvider({ children, sequence }: DemoSessionStoreProviderProps) {
-  const [demoStore] = useState(() => createSessionStore(true))
-  const [animator] = useState(() => new SessionDemoAnimator(demoStore, sequence))
+function DemoAppStoreProvider({ children, sequence }: DemoAppStoreProviderProps) {
+  const [demoStore] = useState(() => createDemoAppStore(true))
+  const [animator] = useState(() => new DemoAppAnimator(demoStore, sequence))
 
   useEffect(() => {
+    // Initialize with basic app state
+    demoStore.setState({
+      sessions: [],
+      focusedSession: null,
+      launcherOpen: false,
+      connected: true,
+      status: 'Connected! Daemon @ v1.0.0',
+      theme: 'solarized-dark'
+    })
+
     animator.start()
 
     return () => {
       animator.stop()
-      demoStore.setState({ sessions: [], focusedSession: null })
     }
-  }, [animator, demoStore])
+  }, [animator, demoStore, sequence])
 
-  return <SessionStoreContext.Provider value={demoStore}>{children}</SessionStoreContext.Provider>
+  return <DemoAppStoreContext.Provider value={demoStore}>{children}</DemoAppStoreContext.Provider>
 }
 
 // Session table component wrapper
 function SessionTableWrapper() {
-  const [searchQuery, setSearchQuery] = useState('')
-  const sessions = useSessionStore(state => state.sessions)
-  const focusedSession = useSessionStore(state => state.focusedSession)
-  const setFocusedSession = useSessionStore(state => state.setFocusedSession)
+  const searchQuery = useDemoAppStore(state => state.searchQuery)
+  const setSearchQuery = useDemoAppStore(state => state.setSearchQuery)
+  const sessions = useDemoAppStore(state => state.sessions)
+  const focusedSession = useDemoAppStore(state => state.focusedSession)
+  const setFocusedSession = useDemoAppStore(state => state.setFocusedSession)
 
   const { filteredSessions, statusFilter, searchText, matchedSessions } = useSessionFilter({
     sessions,
@@ -235,7 +141,7 @@ function SessionTableWrapper() {
 
   const focusNextSession = () => {
     if (filteredSessions.length === 0) return
-    
+
     const currentIndex = focusedSession
       ? filteredSessions.findIndex(s => s.id === focusedSession.id)
       : -1
@@ -249,7 +155,7 @@ function SessionTableWrapper() {
 
   const focusPreviousSession = () => {
     if (filteredSessions.length === 0) return
-    
+
     const currentIndex = focusedSession
       ? filteredSessions.findIndex(s => s.id === focusedSession.id)
       : -1
@@ -269,7 +175,7 @@ function SessionTableWrapper() {
         statusFilter={statusFilter}
         placeholder="Search sessions or filter by status:..."
       />
-      
+
       <div className="max-h-96 overflow-y-auto">
         <SessionTable
           sessions={filteredSessions}
@@ -287,8 +193,16 @@ function SessionTableWrapper() {
   )
 }
 
-// Labeled wrapper for demo vs real
-function LabeledSessionTable({ label, variant }: { label: string; variant: 'default' | 'secondary' }) {
+// Launcher wrapper that uses demo store
+function LauncherWrapper() {
+  const isOpen = useDemoAppStore(state => state.launcherOpen)
+  const setOpen = useDemoAppStore(state => state.setLauncherOpen)
+
+  return <SessionLauncher isOpen={isOpen} onClose={() => setOpen(false)} />
+}
+
+// Complete app wrapper with session table and launcher
+function DemoAppWrapper({ label, variant }: { label: string; variant: 'default' | 'secondary' }) {
   return (
     <div className="space-y-2">
       <Badge variant={variant} className="text-sm">
@@ -299,53 +213,151 @@ function LabeledSessionTable({ label, variant }: { label: string; variant: 'defa
           <SessionTableWrapper />
         </CardContent>
       </Card>
+      <LauncherWrapper />
     </div>
   )
 }
 
-// Demo sequences
-const basicSessionSequence: AnimationStep[] = [
-  { state: { sessions: mockSessions.slice(0, 1) }, delay: 1000 },
-  { state: { sessions: mockSessions.slice(0, 2) }, delay: 2000 },
-  { state: { sessions: mockSessions.slice(0, 3) }, delay: 1500 },
-  { state: { sessions: mockSessions.slice(0, 4) }, delay: 2000 },
-  { state: { sessions: mockSessions }, delay: 1000 },
-  { state: { sessions: [] }, delay: 3000 },
+// Comprehensive demo sequences with launcher and full app state
+const launcherWorkflowSequence: AppAnimationStep[] = [
+  {
+    state: { sessions: [] },
+    delay: 1000,
+    description: "Start with empty sessions"
+  },
+  {
+    state: { launcherOpen: true, launcherView: 'menu' },
+    delay: 2000,
+    description: "Open launcher command palette"
+  },
+  {
+    state: { launcherView: 'input', launcherQuery: '' },
+    delay: 1500,
+    description: "Switch to input view"
+  },
+  {
+    state: { launcherQuery: 'Help me debug this React component' },
+    delay: 2000,
+    description: "Type in query"
+  },
+  {
+    state: { launcherIsLaunching: true },
+    delay: 1000,
+    description: "Start launching session"
+  },
+  {
+    state: {
+      launcherOpen: false,
+      launcherIsLaunching: false,
+      launcherQuery: '',
+      sessions: [mockSessions[0]]
+    },
+    delay: 2000,
+    description: "Session created, launcher closed"
+  },
+  {
+    state: { sessions: mockSessions.slice(0, 2) },
+    delay: 2000,
+    description: "Add another session"
+  },
+  {
+    state: {
+      sessions: mockSessions.slice(0, 2).map(s =>
+        s.id === 'session-1' ? { ...s, status: SessionStatus.Completed } : s
+      )
+    },
+    delay: 2000,
+    description: "Complete first session"
+  },
+  {
+    state: { sessions: [] },
+    delay: 3000,
+    description: "Reset for loop"
+  },
 ]
 
-const statusChangeSequence: AnimationStep[] = [
-  { state: { sessions: mockSessions }, delay: 1000 },
-  { 
-    state: { 
-      sessions: mockSessions.map(s => 
+const themeShowcaseSequence: AppAnimationStep[] = [
+  {
+    state: { sessions: mockSessions, theme: 'solarized-dark' },
+    delay: 1000,
+    description: "Start with solarized dark"
+  },
+  {
+    state: { theme: 'solarized-light' },
+    delay: 2000,
+    description: "Switch to solarized light"
+  },
+  {
+    state: { theme: 'catppuccin' },
+    delay: 2000,
+    description: "Switch to catppuccin"
+  },
+  {
+    state: { theme: 'framer-dark' },
+    delay: 2000,
+    description: "Switch to framer dark"
+  },
+  {
+    state: { theme: 'gruvbox-dark' },
+    delay: 2000,
+    description: "Switch to gruvbox dark"
+  },
+  {
+    state: { theme: 'solarized-dark' },
+    delay: 3000,
+    description: "Reset to solarized dark"
+  },
+]
+
+const statusWorkflowSequence: AppAnimationStep[] = [
+  {
+    state: { sessions: mockSessions },
+    delay: 1000,
+    description: "Show all sessions"
+  },
+  {
+    state: {
+      sessions: mockSessions.map(s =>
         s.id === 'session-1' ? { ...s, status: SessionStatus.WaitingInput } : s
-      ) 
-    }, 
-    delay: 2000 
+      )
+    },
+    delay: 2000,
+    description: "Session 1 waiting for input"
   },
-  { 
-    state: { 
-      sessions: mockSessions.map(s => 
+  {
+    state: {
+      sessions: mockSessions.map(s =>
         s.id === 'session-1' ? { ...s, status: SessionStatus.Completed } : s
-      ) 
-    }, 
-    delay: 2000 
+      )
+    },
+    delay: 2000,
+    description: "Session 1 completed"
   },
-  { 
-    state: { 
-      sessions: mockSessions.map(s => 
+  {
+    state: {
+      sessions: mockSessions.map(s =>
         s.id === 'session-2' ? { ...s, status: SessionStatus.Running } : s
-      ) 
-    }, 
-    delay: 1500 
+      )
+    },
+    delay: 1500,
+    description: "Session 2 now running"
   },
-  { state: { sessions: mockSessions }, delay: 3000 },
+  {
+    state: { sessions: mockSessions },
+    delay: 3000,
+    description: "Reset status changes"
+  },
 ]
 
 // Main demo page
 export default function WuiDemo() {
-  const [sequenceType, setSequenceType] = useState<'basic' | 'status'>('basic')
-  const sequence = sequenceType === 'basic' ? basicSessionSequence : statusChangeSequence
+  const [sequenceType, setSequenceType] = useState<'launcher' | 'status' | 'themes'>('launcher')
+
+  const sequence = sequenceType === 'launcher'
+    ? launcherWorkflowSequence
+    : sequenceType === 'status'
+    ? statusWorkflowSequence
+    : themeShowcaseSequence
 
   return (
     <div className="container mx-auto p-8">
@@ -359,11 +371,11 @@ export default function WuiDemo() {
 
         <div className="flex justify-center items-center gap-4">
           <Button
-            onClick={() => setSequenceType('basic')}
-            variant={sequenceType === 'basic' ? 'default' : 'outline'}
+            onClick={() => setSequenceType('launcher')}
+            variant={sequenceType === 'launcher' ? 'default' : 'outline'}
             size="sm"
           >
-            Basic Sequence
+            Launcher Workflow
           </Button>
           <Button
             onClick={() => setSequenceType('status')}
@@ -371,6 +383,13 @@ export default function WuiDemo() {
             size="sm"
           >
             Status Changes
+          </Button>
+          <Button
+            onClick={() => setSequenceType('themes')}
+            variant={sequenceType === 'themes' ? 'default' : 'outline'}
+            size="sm"
+          >
+            Theme Showcase
           </Button>
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Theme:</span>
@@ -380,9 +399,9 @@ export default function WuiDemo() {
 
         <div className="flex justify-center">
           <div className="w-full max-w-4xl">
-            <DemoSessionStoreProvider sequence={sequence} key={sequenceType}>
-              <LabeledSessionTable label="Demo Session Table (Animated)" variant="secondary" />
-            </DemoSessionStoreProvider>
+            <DemoAppStoreProvider sequence={sequence} key={sequenceType}>
+              <DemoAppWrapper label="Complete WUI Demo with Launcher" variant="secondary" />
+            </DemoAppStoreProvider>
           </div>
         </div>
 
@@ -390,7 +409,13 @@ export default function WuiDemo() {
           <CardHeader>
             <CardTitle>Animation Sequence</CardTitle>
             <CardDescription>
-              Current sequence: {sequenceType === 'basic' ? 'Basic session loading' : 'Status changes'}
+              Current sequence: {
+                sequenceType === 'launcher'
+                  ? 'Complete launcher workflow with session creation'
+                  : sequenceType === 'status'
+                  ? 'Session status transitions'
+                  : 'Theme switching demonstration'
+              }
             </CardDescription>
           </CardHeader>
           <CardContent>

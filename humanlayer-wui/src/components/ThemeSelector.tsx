@@ -43,7 +43,7 @@ export function ThemeSelector() {
       const dropdownHeight = themes.length * 32 + 8 // Approximate height (32px per item + padding)
       const spaceAbove = buttonRect.top
       const spaceBelow = window.innerHeight - buttonRect.bottom
-      
+
       // Position above if there's enough space, otherwise below
       setPositionAbove(spaceAbove >= dropdownHeight && spaceAbove > spaceBelow)
     }

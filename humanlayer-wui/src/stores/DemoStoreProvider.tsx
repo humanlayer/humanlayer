@@ -9,10 +9,10 @@ interface DemoStoreProviderProps {
   autoStart?: boolean
 }
 
-export function DemoStoreProvider({ 
-  children, 
-  sequence, 
-  autoStart = true 
+export function DemoStoreProvider({
+  children,
+  sequence,
+  autoStart = true
 }: DemoStoreProviderProps) {
   const [store] = useState(() => createDemoAppStore())
   const [animator] = useState(() => new DemoAnimator(store, sequence))

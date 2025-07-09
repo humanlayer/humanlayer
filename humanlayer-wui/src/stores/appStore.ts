@@ -7,16 +7,16 @@ export interface AppState {
   sessions: SessionInfo[]
   focusedSession: SessionInfo | null
   activeSessionId: string | null
-  
+
   /* Approvals */
   approvals: UnifiedApprovalRequest[]
-  
+
   /* UI State */
   isLoading: boolean
-  
+
   /* Notifications */
   notifiedItems: Set<string>
-  
+
   /* Actions */
   initSessions: (sessions: SessionInfo[]) => void
   updateSession: (sessionId: string, updates: Partial<SessionInfo>) => void
@@ -25,17 +25,17 @@ export interface AppState {
   focusNextSession: () => void
   focusPreviousSession: () => void
   interruptSession: (sessionId: string) => Promise<void>
-  
+
   /* Approval Actions */
   setApprovals: (approvals: UnifiedApprovalRequest[]) => void
   updateApproval: (approvalId: string, updates: Partial<UnifiedApprovalRequest>) => void
-  
+
   /* Notification Actions */
   addNotifiedItem: (notificationId: string) => void
   removeNotifiedItem: (notificationId: string) => void
   isItemNotified: (notificationId: string) => boolean
   clearNotificationsForSession: (sessionId: string) => void
-  
+
   /* UI Actions */
   setLoading: (isLoading: boolean) => void
   setActiveSessionId: (sessionId: string | null) => void
@@ -51,7 +51,7 @@ export function createRealAppStore(): StoreApi<AppState> {
     approvals: [],
     isLoading: false,
     notifiedItems: new Set<string>(),
-    
+
     // Session Actions
     initSessions: (sessions: SessionInfo[]) => set({ sessions }),
     updateSession: (sessionId: string, updates: Partial<SessionInfo>) =>
@@ -111,7 +111,7 @@ export function createRealAppStore(): StoreApi<AppState> {
         console.error('Failed to interrupt session:', error)
       }
     },
-    
+
     // Approval Actions
     setApprovals: (approvals: UnifiedApprovalRequest[]) => set({ approvals }),
     updateApproval: (approvalId: string, updates: Partial<UnifiedApprovalRequest>) =>
@@ -120,7 +120,7 @@ export function createRealAppStore(): StoreApi<AppState> {
           approval.id === approvalId ? { ...approval, ...updates } : approval,
         ),
       })),
-    
+
     // Notification Actions
     addNotifiedItem: (notificationId: string) =>
       set(state => ({
@@ -146,7 +146,7 @@ export function createRealAppStore(): StoreApi<AppState> {
         })
         return { notifiedItems: newSet }
       }),
-    
+
     // UI Actions
     setLoading: (isLoading: boolean) => set({ isLoading }),
     setActiveSessionId: (sessionId: string | null) => set({ activeSessionId: sessionId }),
@@ -163,7 +163,7 @@ export function createDemoAppStore(): StoreApi<AppState> {
     approvals: [],
     isLoading: false,
     notifiedItems: new Set<string>(),
-    
+
     // No-op actions
     initSessions: () => {},
     updateSession: () => {},
@@ -172,17 +172,17 @@ export function createDemoAppStore(): StoreApi<AppState> {
     focusNextSession: () => {},
     focusPreviousSession: () => {},
     interruptSession: async () => {},
-    
+
     // No-op approval actions
     setApprovals: () => {},
     updateApproval: () => {},
-    
+
     // No-op notification actions
     addNotifiedItem: () => {},
     removeNotifiedItem: () => {},
     isItemNotified: () => false,
     clearNotificationsForSession: () => {},
-    
+
     // No-op UI actions
     setLoading: () => {},
     setActiveSessionId: () => {},
