@@ -38,12 +38,14 @@ interface LauncherState {
   reset: () => void
 }
 
+const LAST_WORKING_DIR_KEY = 'humanlayer-last-working-dir'
+
 export const useSessionLauncher = create<LauncherState>((set, get) => ({
   isOpen: false,
   mode: 'command',
   view: 'menu',
   query: '',
-  config: { query: '', workingDir: '' },
+  config: { query: '', workingDir: localStorage.getItem(LAST_WORKING_DIR_KEY) || '' },
   isLaunching: false,
   gPrefixMode: false,
   selectedMenuIndex: 0,
@@ -62,7 +64,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
       isOpen: false,
       view: 'menu',
       query: '',
-      config: { query: '', workingDir: '' },
+      config: { query: '', workingDir: localStorage.getItem(LAST_WORKING_DIR_KEY) || '' },
       selectedMenuIndex: 0,
       error: undefined,
       gPrefixMode: false,
@@ -138,6 +140,11 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
 
       const response = await daemonClient.launchSession(request)
 
+      // Save the working directory to localStorage for next time
+      if (config.workingDir) {
+        localStorage.setItem(LAST_WORKING_DIR_KEY, config.workingDir)
+      }
+
       // Navigate to new session (will be handled by parent component)
       window.location.hash = `#/sessions/${response.session_id}`
 
@@ -158,7 +165,12 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
 
   createNewSession: () => {
     // Switch to input mode for session creation
-    set({ view: 'input', query: '', error: undefined })
+    set({
+      view: 'input',
+      query: '',
+      config: { query: '', workingDir: localStorage.getItem(LAST_WORKING_DIR_KEY) || '' },
+      error: undefined,
+    })
   },
 
   openSessionById: (sessionId: string) => {
@@ -173,7 +185,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
       mode: 'command',
       view: 'menu',
       query: '',
-      config: { query: '', workingDir: '' },
+      config: { query: '', workingDir: localStorage.getItem(LAST_WORKING_DIR_KEY) || '' },
       selectedMenuIndex: 0,
       isLaunching: false,
       error: undefined,
