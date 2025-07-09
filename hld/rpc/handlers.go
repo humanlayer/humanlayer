@@ -2,7 +2,9 @@ package rpc
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 	"time"
@@ -237,6 +239,51 @@ func (h *SessionHandlers) HandleGetConversation(ctx context.Context, params json
 	}, nil
 }
 
+// HandleGetSessionSnapshots retrieves all file snapshots for a session
+func (h *SessionHandlers) HandleGetSessionSnapshots(ctx context.Context, params json.RawMessage) (interface{}, error) {
+	// Parse request
+	var req GetSessionSnapshotsRequest
+	if err := json.Unmarshal(params, &req); err != nil {
+		return nil, fmt.Errorf("invalid request: %w", err)
+	}
+
+	// Validate required fields
+	if req.SessionID == "" {
+		return nil, fmt.Errorf("session_id is required")
+	}
+
+	// Verify session exists
+	_, err := h.store.GetSession(ctx, req.SessionID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("session not found")
+		}
+		return nil, fmt.Errorf("failed to get session: %w", err)
+	}
+
+	// Get snapshots from store
+	snapshots, err := h.store.GetFileSnapshots(ctx, req.SessionID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get snapshots: %w", err)
+	}
+
+	// Convert to response format
+	response := &GetSessionSnapshotsResponse{
+		Snapshots: make([]FileSnapshotInfo, 0, len(snapshots)),
+	}
+
+	for _, snapshot := range snapshots {
+		response.Snapshots = append(response.Snapshots, FileSnapshotInfo{
+			ToolID:    snapshot.ToolID,
+			FilePath:  snapshot.FilePath,
+			Content:   snapshot.Content,
+			CreatedAt: snapshot.CreatedAt.Format(time.RFC3339),
+		})
+	}
+
+	return response, nil
+}
+
 // HandleGetSessionState handles the GetSessionState RPC method
 func (h *SessionHandlers) HandleGetSessionState(ctx context.Context, params json.RawMessage) (interface{}, error) {
 	var req GetSessionStateRequest
@@ -385,4 +432,5 @@ func (h *SessionHandlers) Register(server *Server) {
 	server.Register("getSessionState", h.HandleGetSessionState)
 	server.Register("continueSession", h.HandleContinueSession)
 	server.Register("interruptSession", h.HandleInterruptSession)
+	server.Register("getSessionSnapshots", h.HandleGetSessionSnapshots)
 }
