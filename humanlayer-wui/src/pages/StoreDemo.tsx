@@ -20,7 +20,7 @@ interface AnimationStep {
 
 // Store factory that creates a counter store
 function createCounterStore(isDemo: boolean = false): StoreApi<CounterStore> {
-  return create<CounterStore>((set) => ({
+  return create<CounterStore>(set => ({
     count: 0,
     increment: () => {
       if (!isDemo) {
@@ -51,26 +51,26 @@ class DemoAnimator {
   private timeoutId: NodeJS.Timeout | null = null
   private isRunning: boolean = false
   private unsubscribe: (() => void) | null = null
-  
+
   constructor(store: StoreApi<CounterStore>, sequence: AnimationStep[]) {
     this.store = store
     this.sequence = sequence
-    
+
     // Subscribe to store changes for logging/debugging
     this.unsubscribe = store.subscribe(
-      (state) => state.count,
-      (count) => {
+      state => state.count,
+      count => {
         console.log('[Demo Store] Count updated to:', count)
-      }
+      },
     )
   }
-  
+
   start() {
     this.isRunning = true
     this.currentIndex = 0
     this.playNext()
   }
-  
+
   stop() {
     this.isRunning = false
     if (this.timeoutId) {
@@ -83,7 +83,7 @@ class DemoAnimator {
       this.unsubscribe = null
     }
   }
-  
+
   private playNext() {
     if (!this.isRunning || this.currentIndex >= this.sequence.length) {
       // Loop back to start
@@ -93,13 +93,13 @@ class DemoAnimator {
       }
       return
     }
-    
+
     const step = this.sequence[this.currentIndex]
-    
+
     this.timeoutId = setTimeout(() => {
       // Apply the state from the sequence
       this.store.setState(step.state as CounterStore)
-      
+
       // Move to next step
       this.currentIndex++
       this.playNext()
@@ -120,27 +120,23 @@ function useCounterStore<T>(selector: (state: CounterStore) => T): T {
 // Provider for real store
 function RealStoreProvider({ children }: { children: React.ReactNode }) {
   const [realStore] = useState(() => createCounterStore(false))
-  
+
   useEffect(() => {
     // Optional: Subscribe to real store for logging
     const unsubscribe = realStore.subscribe(
-      (state) => state.count,
-      (count) => {
+      state => state.count,
+      count => {
         console.log('[Real Store] Count updated to:', count)
-      }
+      },
     )
-    
+
     return () => {
       unsubscribe()
       realStore.setState({ count: 0 })
     }
   }, [realStore])
-  
-  return (
-    <CounterStoreContext.Provider value={realStore}>
-      {children}
-    </CounterStoreContext.Provider>
-  )
+
+  return <CounterStoreContext.Provider value={realStore}>{children}</CounterStoreContext.Provider>
 }
 
 // Provider for demo store with animation sequence
@@ -152,22 +148,18 @@ interface DemoStoreProviderProps {
 function DemoStoreProvider({ children, sequence }: DemoStoreProviderProps) {
   const [demoStore] = useState(() => createCounterStore(true))
   const [animator] = useState(() => new DemoAnimator(demoStore, sequence))
-  
+
   useEffect(() => {
     // Start animation
     animator.start()
-    
+
     return () => {
       animator.stop()
       demoStore.setState({ count: 0 })
     }
   }, [animator, demoStore])
-  
-  return (
-    <CounterStoreContext.Provider value={demoStore}>
-      {children}
-    </CounterStoreContext.Provider>
-  )
+
+  return <CounterStoreContext.Provider value={demoStore}>{children}</CounterStoreContext.Provider>
 }
 
 // Counter component - doesn't know or care if it's real or demo!
@@ -176,21 +168,19 @@ function Counter() {
   const increment = useCounterStore(state => state.increment)
   const decrement = useCounterStore(state => state.decrement)
   const reset = useCounterStore(state => state.reset)
-  
+
   return (
     <Card className="w-[400px]">
       <CardHeader>
         <CardTitle>Counter</CardTitle>
-        <CardDescription>
-          Click the buttons to interact
-        </CardDescription>
+        <CardDescription>Click the buttons to interact</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
           <div className="text-center">
             <div className="text-6xl font-bold tabular-nums">{count}</div>
           </div>
-          
+
           <div className="flex gap-2 justify-center">
             <Button onClick={decrement} variant="outline" size="sm">
               -
@@ -246,7 +236,7 @@ const randomSequence: AnimationStep[] = [
 export default function StoreDemo() {
   const [sequenceType, setSequenceType] = useState<'simple' | 'random'>('simple')
   const sequence = sequenceType === 'simple' ? simpleCountingSequence : randomSequence
-  
+
   return (
     <div className="container mx-auto p-8">
       <div className="max-w-4xl mx-auto space-y-8">
@@ -256,7 +246,7 @@ export default function StoreDemo() {
             The Counter component doesn't know if it's using a real or demo store
           </p>
         </div>
-        
+
         <div className="flex justify-center gap-4">
           <Button
             onClick={() => setSequenceType('simple')}
@@ -273,17 +263,17 @@ export default function StoreDemo() {
             Random Sequence
           </Button>
         </div>
-        
+
         <div className="grid gap-8 md:grid-cols-2 justify-items-center">
           <RealStoreProvider>
             <LabeledCounter label="Real Store (Interactive)" variant="default" />
           </RealStoreProvider>
-          
+
           <DemoStoreProvider sequence={sequence} key={sequenceType}>
             <LabeledCounter label="Demo Store (Automated)" variant="secondary" />
           </DemoStoreProvider>
         </div>
-        
+
         <Card>
           <CardHeader>
             <CardTitle>Animation Sequence</CardTitle>
@@ -297,7 +287,7 @@ export default function StoreDemo() {
             </pre>
           </CardContent>
         </Card>
-        
+
         <Card className="mt-8">
           <CardHeader>
             <CardTitle>Key Architecture Points</CardTitle>
@@ -312,7 +302,7 @@ export default function StoreDemo() {
                 <li>The provider determines behavior, not the component</li>
               </ul>
             </div>
-            
+
             <div>
               <h3 className="font-semibold mb-1">Demo Store Features:</h3>
               <ul className="list-disc list-inside space-y-1 text-muted-foreground">
@@ -323,7 +313,7 @@ export default function StoreDemo() {
                 <li>Easily create different scenarios for different pages</li>
               </ul>
             </div>
-            
+
             <div>
               <h3 className="font-semibold mb-1">Benefits:</h3>
               <ul className="list-disc list-inside space-y-1 text-muted-foreground">
