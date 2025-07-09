@@ -35,7 +35,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [isCompactView, setIsCompactView] = useState(false)
   const [expandedToolResult, setExpandedToolResult] = useState<ConversationEvent | null>(null)
   const [expandedToolCall, setExpandedToolCall] = useState<ConversationEvent | null>(null)
-  const [isSplitView, setIsSplitView] = useState(true)
+  const [isSplitView, setIsSplitView] = useState(false)
 
   const isRunning = session.status === 'running'
 
@@ -119,23 +119,49 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
 
   // Check if there are pending approvals out of view when in waiting_input status
   useEffect(() => {
-    if (session.status === SessionStatus.WaitingInput) {
-      const pendingEvent = events.find(e => e.approval_status === ApprovalStatus.Pending)
-      if (pendingEvent) {
-        const container = document.querySelector('[data-conversation-container]')
-        const element = container?.querySelector(`[data-event-id="${pendingEvent.id}"]`)
-        if (container && element) {
-          const elementRect = element.getBoundingClientRect()
-          const containerRect = container.getBoundingClientRect()
-          const inView =
-            elementRect.top >= containerRect.top && elementRect.bottom <= containerRect.bottom
-          setHasPendingApprovalsOutOfView(!inView)
+    const checkPendingApprovalVisibility = () => {
+      if (session.status === SessionStatus.WaitingInput) {
+        const pendingEvent = events.find(e => e.approval_status === ApprovalStatus.Pending)
+        if (pendingEvent) {
+          const container = document.querySelector('[data-conversation-container]')
+          const element = container?.querySelector(`[data-event-id="${pendingEvent.id}"]`)
+          if (container && element) {
+            // Check if the approve/deny buttons are visible
+            // Look for buttons containing the approval keyboard shortcuts
+            const buttons = element.querySelectorAll('button')
+            let approveButton = null
+            buttons.forEach(btn => {
+              if (btn.textContent?.includes('Approve') && btn.querySelector('kbd')) {
+                approveButton = btn
+              }
+            })
+
+            const targetElement = approveButton || element
+            const elementRect = targetElement.getBoundingClientRect()
+            const containerRect = container.getBoundingClientRect()
+
+            // Consider the buttons in view if they're at least partially visible
+            const inView =
+              elementRect.top < containerRect.bottom && elementRect.bottom > containerRect.top
+
+            setHasPendingApprovalsOutOfView(!inView)
+          }
+        } else {
+          setHasPendingApprovalsOutOfView(false)
         }
       } else {
         setHasPendingApprovalsOutOfView(false)
       }
-    } else {
-      setHasPendingApprovalsOutOfView(false)
+    }
+
+    // Initial check
+    checkPendingApprovalVisibility()
+
+    // Add scroll listener
+    const container = document.querySelector('[data-conversation-container]')
+    if (container) {
+      container.addEventListener('scroll', checkPendingApprovalVisibility)
+      return () => container.removeEventListener('scroll', checkPendingApprovalVisibility)
     }
   }, [session.status, events])
 
