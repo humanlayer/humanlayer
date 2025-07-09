@@ -29,7 +29,14 @@ export function formatToolResult(toolName: string, toolResult: ConversationEvent
       content.toLowerCase().includes('permission denied') ||
       content.toLowerCase().includes('access denied') ||
       content.toLowerCase().includes('not allowed') ||
-      content.toLowerCase().includes('forbidden')) &&
+      content.toLowerCase().includes('forbidden') ||
+      // File operation errors
+      content.toLowerCase().includes('file has not been read yet') ||
+      content.toLowerCase().includes('read it first') ||
+      content.toLowerCase().includes('file not found') ||
+      content.toLowerCase().includes('no such file') ||
+      // MultiEdit specific errors
+      content.includes('matches of the string to replace, but replace_all is false')) &&
     // Exclude false positives
     !content.toLowerCase().includes('no error') &&
     !content.toLowerCase().includes('error: 0') &&
@@ -59,36 +66,65 @@ export function formatToolResult(toolName: string, toolResult: ConversationEvent
     }
 
     case 'Edit': {
-      if (content.includes('has been updated')) {
+      if (isError) {
+        // Extract specific error message if available
+        if (content.toLowerCase().includes('file has not been read yet')) {
+          abbreviated = 'File not read yet'
+        } else {
+          abbreviated = 'Edit failed'
+        }
+      } else if (content.includes('has been updated')) {
         abbreviated = 'File updated'
       } else if (content.includes('No changes made')) {
         abbreviated = 'No changes made'
-      } else if (isError) {
-        abbreviated = 'Edit failed'
       } else {
+        // Only assume success if we didn't detect an error
         abbreviated = 'File updated'
       }
       break
     }
 
     case 'MultiEdit': {
-      const editMatch = content.match(/Applied (\d+) edits?/)
-      if (editMatch) {
-        abbreviated = `Applied ${editMatch[1]} edits`
+      // Check for specific MultiEdit errors
+      if (
+        content.includes('Found') &&
+        content.includes('matches of the string to replace, but replace_all is false')
+      ) {
+        const matchCount = content.match(/Found (\d+) matches/)
+        abbreviated = matchCount
+          ? `Found ${matchCount[1]} matches - replace_all needed`
+          : 'Multiple matches found'
       } else if (isError) {
-        abbreviated = 'MultiEdit failed'
+        // Extract specific error message if available
+        if (content.toLowerCase().includes('file has not been read yet')) {
+          abbreviated = 'File not read yet'
+        } else {
+          abbreviated = 'MultiEdit failed'
+        }
       } else {
-        abbreviated = 'Edits applied'
+        const editMatch = content.match(/Applied (\d+) edits?/)
+        if (editMatch) {
+          abbreviated = `Applied ${editMatch[1]} edits`
+        } else {
+          // Only assume success if we didn't detect an error
+          abbreviated = 'Edits applied'
+        }
       }
       break
     }
 
     case 'Write': {
-      if (content.includes('successfully')) {
+      if (isError) {
+        // Extract specific error message if available
+        if (content.toLowerCase().includes('file has not been read yet')) {
+          abbreviated = 'File not read yet'
+        } else {
+          abbreviated = 'Write failed'
+        }
+      } else if (content.includes('successfully')) {
         abbreviated = 'File written'
-      } else if (isError) {
-        abbreviated = 'Write failed'
       } else {
+        // Only assume success if we didn't detect an error
         abbreviated = 'File written'
       }
       break
@@ -208,6 +244,11 @@ export function formatToolResult(toolName: string, toolResult: ConversationEvent
 
   // Apply error styling if needed (but not for Read tool which just shows file content)
   if (isError && toolName !== 'Read') {
+    return <span className="text-destructive">{abbreviated}</span>
+  }
+
+  // Also apply error styling for specific MultiEdit errors
+  if (toolName === 'MultiEdit' && abbreviated.includes('replace_all needed')) {
     return <span className="text-destructive">{abbreviated}</span>
   }
 
