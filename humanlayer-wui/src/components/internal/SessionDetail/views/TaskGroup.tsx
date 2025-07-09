@@ -53,11 +53,11 @@ export function TaskGroup({
   const isCompleted = parentTask.is_completed
 
   return (
-    <div className="mb-4">
+    <div className="p-4 TaskGroup">
       {/* Task Header with Preview */}
       <div
         data-event-id={parentTask.id}
-        className={`flex items-start gap-2 py-2 px-3 rounded-md cursor-pointer hover:bg-muted/10 transition-colors ${
+        className={`flex items-start gap-2 rounded-md cursor-pointer hover:bg-muted/10 transition-colors ${
           focusedEventId === parentTask.id ? '!bg-accent/20' : ''
         }`}
         onClick={onToggle}
@@ -157,7 +157,7 @@ export function TaskGroup({
 
       {/* Expanded Sub-task Events */}
       {isExpanded && (
-        <div className="ml-6 mt-2 pl-4 border-l-2 border-border/50">
+        <div className="ml-6 mt-2 pl-4 border-l-2 border-border/50 TaskGroupExpanded">
           {group.subTaskEvents.map(subEvent => {
             const displayObject = eventToDisplayObject(
               subEvent,
@@ -177,7 +177,7 @@ export function TaskGroup({
             if (!displayObject) return null
 
             return (
-              <div key={subEvent.id} className="mb-2">
+              <div key={subEvent.id} className="relative mb-2">
                 <div
                   data-event-id={displayObject.id}
                   onMouseEnter={() => {
@@ -195,7 +195,7 @@ export function TaskGroup({
                     focusedEventId === displayObject.id ? '!bg-accent/20 -mx-2 px-4 rounded' : ''
                   }`}
                 >
-                  <div className="flex justify-end mb-2">
+                  <div className="absolute top-2 right-4">
                     <span className="text-xs text-muted-foreground/60">
                       {formatAbsoluteTimestamp(displayObject.created_at)}
                     </span>
