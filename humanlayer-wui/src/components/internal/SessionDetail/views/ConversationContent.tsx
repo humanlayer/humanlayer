@@ -365,9 +365,7 @@ export function ConversationContent({
                     )}
                   </div>
 
-                  {expandedEventId === displayObject.id && (
-                    <EventMetaInfo event={event} />
-                  )}
+                  {expandedEventId === displayObject.id && <EventMetaInfo event={event} />}
                 </div>
               )
             }

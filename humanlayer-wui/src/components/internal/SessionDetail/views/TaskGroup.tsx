@@ -54,7 +54,6 @@ export function TaskGroup({
 
   return (
     <div className="p-4 TaskGroup">
-
       {/* Task Header with Preview */}
       <div
         data-event-id={parentTask.id}
