@@ -75,9 +75,9 @@ export function SearchInput({
           break
         case Hotkeys.ENTER:
         case Hotkeys.TAB: {
-          ev.preventDefault()
           const selectedDir = directoryPreview.find(item => item.selected)
           if (selectedDir && dropdownOpen) {
+            ev.preventDefault()
             // Parse current path to get base directory
             const lastSlashIdx = searchValue.lastIndexOf('/')
             const basePath = lastSlashIdx === -1 ? '' : searchValue.substring(0, lastSlashIdx + 1)
@@ -87,9 +87,11 @@ export function SearchInput({
             setSearchValue(newPath)
             setDropdownOpen(false)
           } else if (handler.keys?.join('') === Hotkeys.ENTER && !dropdownOpen && onSubmit) {
+            ev.preventDefault()
             // Submit form if dropdown is closed and Enter is pressed
             onSubmit()
           }
+          // For TAB when dropdown is closed, allow default behavior (move to next field)
           break
         }
         case Hotkeys.ESCAPE: {
