@@ -68,19 +68,25 @@ export function SearchInput({
             // Find current selection across both lists
             const recentSelectedIdx = recentPreview.findIndex(item => item.selected)
             const dirSelectedIdx = directoryPreview.findIndex(item => item.selected)
-            const currentIndex = recentSelectedIdx !== -1 ? recentSelectedIdx : recentPreview.length + dirSelectedIdx
-            
+            const currentIndex =
+              recentSelectedIdx !== -1 ? recentSelectedIdx : recentPreview.length + dirSelectedIdx
+
             const direction = handler.keys?.join('') === Hotkeys.ARROW_UP ? -1 : 1
             const newIndex = (currentIndex + direction + totalItems) % totalItems
-            
+
             // Update selections
             if (newIndex < recentPreview.length) {
-              setRecentPreview(prev => prev.map((item, idx) => ({ ...item, selected: idx === newIndex })))
+              setRecentPreview(prev =>
+                prev.map((item, idx) => ({ ...item, selected: idx === newIndex })),
+              )
               setDirectoryPreview(prev => prev.map(item => ({ ...item, selected: false })))
             } else {
               setRecentPreview(prev => prev.map(item => ({ ...item, selected: false })))
-              setDirectoryPreview(prev => 
-                prev.map((item, idx) => ({ ...item, selected: idx === newIndex - recentPreview.length }))
+              setDirectoryPreview(prev =>
+                prev.map((item, idx) => ({
+                  ...item,
+                  selected: idx === newIndex - recentPreview.length,
+                })),
               )
             }
           }
@@ -90,10 +96,10 @@ export function SearchInput({
         case Hotkeys.TAB: {
           const selectedRecent = recentPreview.find(item => item.selected)
           const selectedDir = directoryPreview.find(item => item.selected)
-          
+
           if ((selectedRecent || selectedDir) && dropdownOpen) {
             ev.preventDefault()
-            
+
             if (selectedRecent) {
               setSearchValue(selectedRecent.path)
             } else if (selectedDir) {
@@ -191,10 +197,10 @@ export function SearchInput({
     }
 
     setDirectoryPreview(dirObjs)
-    
+
     // Filter recent directories based on search value
     let recentObjs: Array<{ selected: boolean; path: string; matches?: FuzzyMatch['matches'] }> = []
-    
+
     if (recentDirectories.length > 0) {
       if (searchPath) {
         // Use fuzzy search on the full path
@@ -205,23 +211,23 @@ export function SearchInput({
             keys: ['path'],
             threshold: 0.3,
             includeMatches: true,
-          }
+          },
         )
-        
-        recentObjs = recentSearchResults.map((result) => ({
+
+        recentObjs = recentSearchResults.map(result => ({
           selected: false,
           path: result.item.path,
           matches: result.matches,
         }))
       } else {
         // Show all recent directories when no search term
-        recentObjs = recentDirectories.slice(0, 10).map((recent) => ({
+        recentObjs = recentDirectories.slice(0, 10).map(recent => ({
           selected: false,
           path: recent.path,
         }))
       }
     }
-    
+
     // Set initial selection
     if (recentObjs.length > 0) {
       recentObjs[0].selected = true
@@ -229,7 +235,7 @@ export function SearchInput({
     } else if (dirObjs.length > 0 && recentObjs.length === 0) {
       dirObjs[0].selected = true
     }
-    
+
     setRecentPreview(recentObjs)
     setDirectoryPreview(dirObjs)
   }
@@ -301,7 +307,9 @@ export function SearchInput({
                               ? highlighted.map((segment, i) => (
                                   <span
                                     key={i}
-                                    className={cn(segment.highlighted && 'bg-yellow-300 dark:bg-yellow-600')}
+                                    className={cn(
+                                      segment.highlighted && 'bg-yellow-300 dark:bg-yellow-600',
+                                    )}
                                   >
                                     {segment.text}
                                   </span>
