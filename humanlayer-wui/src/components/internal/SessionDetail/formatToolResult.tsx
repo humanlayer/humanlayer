@@ -241,7 +241,7 @@ export function formatToolResult(toolName: string, toolResult: ConversationEvent
   if (isError && toolName !== 'Read') {
     return <span className="text-destructive">{abbreviated}</span>
   }
-  
+
   // Also apply error styling for specific MultiEdit errors
   if (toolName === 'MultiEdit' && abbreviated.includes('replace_all needed')) {
     return <span className="text-destructive">{abbreviated}</span>
