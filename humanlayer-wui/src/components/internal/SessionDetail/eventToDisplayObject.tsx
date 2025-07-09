@@ -3,7 +3,6 @@ import jsonGrammar from '@wooorm/starry-night/source.json'
 import textMd from '@wooorm/starry-night/text.md'
 import { toJsxRuntime } from 'hast-util-to-jsx-runtime'
 import { Fragment, jsx, jsxs } from 'react/jsx-runtime'
-import ReactDiffViewer from 'react-diff-viewer-continued'
 
 import { ConversationEvent, ConversationEventType, ApprovalStatus } from '@/lib/daemon/types'
 import { Button } from '@/components/ui/button'
@@ -12,6 +11,7 @@ import { CommandToken } from '@/components/internal/CommandToken'
 import { formatToolResult } from './formatToolResult'
 import { DiffViewToggle } from './components/DiffViewToggle'
 import { DenyForm } from './components/DenyForm'
+import { CustomDiffViewer } from './components/CustomDiffViewer'
 
 // TODO(2): Break this monster function into smaller, focused display components
 // TODO(2): Extract tool-specific rendering logic
@@ -201,84 +201,114 @@ export function eventToDisplayObject(
     iconComponent = <UserCheck className={iconClasses} />
     let previewFile = null
 
-    // In a pending state for a Write tool call, let's display the file contents a little differently
-    if (event.tool_name === 'Write' && event.approval_status === ApprovalStatus.Pending) {
+    // Get border class based on approval status
+    const getBorderClass = () => {
+      switch (event.approval_status) {
+        case ApprovalStatus.Pending:
+          return 'border-dashed border-muted-foreground'
+        case ApprovalStatus.Approved:
+        case ApprovalStatus.Resolved:
+          return 'border-solid border-[var(--terminal-success)]'
+        case ApprovalStatus.Denied:
+          return 'border-solid border-[var(--terminal-error)]'
+        default:
+          return 'border-dashed border-muted-foreground'
+      }
+    }
+
+    // For Write tool calls, display the file contents in a nice format
+    if (event.tool_name === 'Write') {
       const toolInput = JSON.parse(event.tool_input_json!)
       previewFile = (
-        <div className="border border-dashed border-muted-foreground rounded p-2 mt-4">
-          <div className="mb-2">
-            <span className="font-bold mr-2">Write</span>
-            <span className="font-mono text-sm text-muted-foreground">
-              to <span className="font-bold">{toolInput.file_path}</span>
-            </span>
-          </div>
+        <div className={`border ${getBorderClass()} rounded p-2 mt-4`}>
+          {event.approval_status && (
+            <div className="mb-2">
+              <span className="font-mono text-sm text-muted-foreground">
+                <span className="font-bold">{toolInput.file_path}</span>
+              </span>
+            </div>
+          )}
+          {!event.approval_status && (
+            <div className="mb-2">
+              <span className="font-bold mr-2">Write</span>
+              <span className="font-mono text-sm text-muted-foreground">
+                to <span className="font-bold">{toolInput.file_path}</span>
+              </span>
+            </div>
+          )}
           <div className="font-mono text-sm text-muted-foreground">{toolInput.content}</div>
         </div>
       )
     }
 
-    if (event.tool_name === 'Edit' && event.approval_status === ApprovalStatus.Pending) {
+    if (event.tool_name === 'Edit') {
       const toolInput = JSON.parse(event.tool_input_json!)
       previewFile = (
-        <div className="border border-dashed border-muted-foreground rounded p-4 mt-4">
+        <div className={`border ${getBorderClass()} rounded p-4 mt-4`}>
           <div className="mb-4 flex items-center justify-between">
             <div>
-              <span className="font-bold mr-2">Edit</span>
-              <span className="font-mono text-sm text-muted-foreground">
-                to <span className="font-bold">{toolInput.file_path}</span>
-              </span>
+              {event.approval_status ? (
+                <span className="font-mono text-sm text-muted-foreground">
+                  <span className="font-bold">{toolInput.file_path}</span>
+                </span>
+              ) : (
+                <>
+                  <span className="font-bold mr-2">Edit</span>
+                  <span className="font-mono text-sm text-muted-foreground">
+                    to <span className="font-bold">{toolInput.file_path}</span>
+                  </span>
+                </>
+              )}
             </div>
-            <DiffViewToggle
-              isSplitView={isSplitView ?? true}
-              onToggle={onToggleSplitView ?? (() => {})}
-            />
+            {event.approval_status === ApprovalStatus.Pending && (
+              <DiffViewToggle
+                isSplitView={isSplitView ?? false}
+                onToggle={onToggleSplitView ?? (() => {})}
+              />
+            )}
           </div>
-          <ReactDiffViewer
-            oldValue={toolInput.old_string}
-            newValue={toolInput.new_string}
-            splitView={isSplitView ?? true}
-            // For the moment hiding, as line numbers can be confusing
-            // when not passing the entire file contents.
-            hideLineNumbers={true}
+          <CustomDiffViewer
+            edits={[{ oldValue: toolInput.old_string, newValue: toolInput.new_string }]}
+            splitView={isSplitView ?? false}
           />
         </div>
       )
     }
 
-    if (event.tool_name === 'MultiEdit' && event.approval_status === ApprovalStatus.Pending) {
+    if (event.tool_name === 'MultiEdit') {
       const toolInput = JSON.parse(event.tool_input_json!)
+      const allEdits = toolInput.edits.map((e: any) => ({
+        oldValue: e.old_string,
+        newValue: e.new_string,
+      }))
+
       previewFile = (
-        <div className="border border-dashed border-muted-foreground rounded p-4 mt-4">
+        <div className={`border ${getBorderClass()} rounded p-4 mt-4`}>
           <div className="mb-4 flex items-center justify-between">
             <div>
-              <span className="font-bold mr-2">MultiEdit</span>
-              <span className="font-mono text-sm text-muted-foreground">
-                {toolInput.edits.length} edit{toolInput.edits.length === 1 ? '' : 's'} to{' '}
-                <span className="font-bold">{toolInput.file_path}</span>
-              </span>
-            </div>
-            <DiffViewToggle
-              isSplitView={isSplitView ?? true}
-              onToggle={onToggleSplitView ?? (() => {})}
-            />
-          </div>
-          {toolInput.edits.map((edit: any, index: number) => (
-            <div key={index} className="mb-8 last:mb-0">
-              {toolInput.edits.length > 1 && (
-                <div className="mb-2 text-sm font-medium text-muted-foreground">
-                  Edit {index + 1} of {toolInput.edits.length}
-                </div>
+              {event.approval_status ? (
+                <span className="font-mono text-sm text-muted-foreground">
+                  {toolInput.edits.length} edit{toolInput.edits.length === 1 ? '' : 's'} to{' '}
+                  <span className="font-bold">{toolInput.file_path}</span>
+                </span>
+              ) : (
+                <>
+                  <span className="font-bold mr-2">MultiEdit</span>
+                  <span className="font-mono text-sm text-muted-foreground">
+                    {toolInput.edits.length} edit{toolInput.edits.length === 1 ? '' : 's'} to{' '}
+                    <span className="font-bold">{toolInput.file_path}</span>
+                  </span>
+                </>
               )}
-              <ReactDiffViewer
-                oldValue={edit.old_string}
-                newValue={edit.new_string}
-                splitView={isSplitView ?? true}
-                // For the moment hiding, as line numbers can be confusing
-                // when not passing the entire file contents.
-                hideLineNumbers={true}
-              />
             </div>
-          ))}
+            {event.approval_status === ApprovalStatus.Pending && (
+              <DiffViewToggle
+                isSplitView={isSplitView ?? false}
+                onToggle={onToggleSplitView ?? (() => {})}
+              />
+            )}
+          </div>
+          <CustomDiffViewer edits={allEdits} splitView={isSplitView ?? false} />
         </div>
       )
     }
@@ -289,11 +319,8 @@ export function eventToDisplayObject(
           {event.tool_name}
         </span>
         {event.approval_status === ApprovalStatus.Pending && (
-          <span className="ml-2 text-sm text-muted-foreground">(pending)</span>
+          <span className="ml-2 text-sm text-muted-foreground">(needs approval)</span>
         )}
-        <div className="font-mono text-sm text-muted-foreground">
-          Assistant would like to use <span className="font-bold">{event.tool_name}</span>
-        </div>
         {!previewFile && <div className="mt-4">{starryNightJson(event.tool_input_json!)}</div>}
         {previewFile}
       </span>
