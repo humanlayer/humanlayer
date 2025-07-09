@@ -84,3 +84,15 @@ type SessionManager interface {
 	// InterruptSession interrupts a running session
 	InterruptSession(ctx context.Context, sessionID string) error
 }
+
+// ReadToolResult represents the JSON structure of a Read tool result
+type ReadToolResult struct {
+	Type string `json:"type"`
+	File struct {
+		FilePath   string `json:"filePath"`
+		Content    string `json:"content"`
+		NumLines   int    `json:"numLines"`
+		StartLine  int    `json:"startLine"`
+		TotalLines int    `json:"totalLines"`
+	} `json:"file"`
+}

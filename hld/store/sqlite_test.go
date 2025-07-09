@@ -453,3 +453,206 @@ func TestGetSessionConversationWithParentChain(t *testing.T) {
 		require.Equal(t, "Goroutines are lightweight threads...", events[3].Content)
 	})
 }
+
+func TestGetToolCallByID(t *testing.T) {
+	// Create temp database
+	dbPath := testutil.DatabasePath(t, "sqlite-toolcall")
+	store, err := NewSQLiteStore(dbPath)
+	require.NoError(t, err)
+	defer func() { _ = store.Close() }()
+
+	ctx := context.Background()
+
+	// Create a session
+	session := &Session{
+		ID:              "test-session",
+		RunID:           "test-run",
+		ClaudeSessionID: "claude-session-1",
+		Query:           "Test query",
+		Model:           "sonnet",
+		Status:          SessionStatusRunning,
+		CreatedAt:       time.Now(),
+		LastActivityAt:  time.Now(),
+	}
+	require.NoError(t, store.CreateSession(ctx, session))
+
+	// Add a tool call event
+	toolCall := &ConversationEvent{
+		SessionID:       session.ID,
+		ClaudeSessionID: session.ClaudeSessionID,
+		EventType:       EventTypeToolCall,
+		ToolID:          "tool-123",
+		ToolName:        "Read",
+		ToolInputJSON:   `{"file_path": "test.txt"}`,
+		ParentToolUseID: "",
+	}
+	require.NoError(t, store.AddConversationEvent(ctx, toolCall))
+
+	// Add another tool call with different ID
+	toolCall2 := &ConversationEvent{
+		SessionID:       session.ID,
+		ClaudeSessionID: session.ClaudeSessionID,
+		EventType:       EventTypeToolCall,
+		ToolID:          "tool-456",
+		ToolName:        "Write",
+		ToolInputJSON:   `{"file_path": "output.txt"}`,
+	}
+	require.NoError(t, store.AddConversationEvent(ctx, toolCall2))
+
+	t.Run("GetExistingToolCall", func(t *testing.T) {
+		result, err := store.GetToolCallByID(ctx, "tool-123")
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		require.Equal(t, "tool-123", result.ToolID)
+		require.Equal(t, "Read", result.ToolName)
+		require.Equal(t, `{"file_path": "test.txt"}`, result.ToolInputJSON)
+	})
+
+	t.Run("GetNonExistentToolCall", func(t *testing.T) {
+		result, err := store.GetToolCallByID(ctx, "non-existent")
+		require.NoError(t, err)
+		require.Nil(t, result)
+	})
+
+	t.Run("GetCorrectToolCall", func(t *testing.T) {
+		// Ensure we get the right tool call when multiple exist
+		result, err := store.GetToolCallByID(ctx, "tool-456")
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		require.Equal(t, "tool-456", result.ToolID)
+		require.Equal(t, "Write", result.ToolName)
+	})
+}
+
+func TestFileSnapshots(t *testing.T) {
+	// Create temp database
+	dbPath := testutil.DatabasePath(t, "sqlite-snapshots")
+	store, err := NewSQLiteStore(dbPath)
+	require.NoError(t, err)
+	defer func() { _ = store.Close() }()
+
+	ctx := context.Background()
+
+	// Create a session
+	session := &Session{
+		ID:             "test-session",
+		RunID:          "test-run",
+		Query:          "Test query",
+		Model:          "sonnet",
+		Status:         SessionStatusRunning,
+		CreatedAt:      time.Now(),
+		LastActivityAt: time.Now(),
+	}
+	require.NoError(t, store.CreateSession(ctx, session))
+
+	t.Run("CreateAndGetSnapshots", func(t *testing.T) {
+		// Create snapshots
+		snapshot1 := &FileSnapshot{
+			ToolID:    "tool-1",
+			SessionID: session.ID,
+			FilePath:  "src/main.go",
+			Content:   "package main\n\nfunc main() {}\n",
+		}
+		require.NoError(t, store.CreateFileSnapshot(ctx, snapshot1))
+
+		// Small delay to ensure different timestamps
+		time.Sleep(10 * time.Millisecond)
+
+		snapshot2 := &FileSnapshot{
+			ToolID:    "tool-2",
+			SessionID: session.ID,
+			FilePath:  "src/utils.go",
+			Content:   "package utils\n\nfunc Helper() {}\n",
+		}
+		require.NoError(t, store.CreateFileSnapshot(ctx, snapshot2))
+
+		// Get snapshots for session
+		snapshots, err := store.GetFileSnapshots(ctx, session.ID)
+		require.NoError(t, err)
+		require.Len(t, snapshots, 2)
+
+		// Find snapshots by file path (order may vary due to timestamp precision)
+		var mainSnapshot, utilsSnapshot FileSnapshot
+		for _, s := range snapshots {
+			switch s.FilePath {
+			case "src/main.go":
+				mainSnapshot = s
+			case "src/utils.go":
+				utilsSnapshot = s
+			}
+		}
+		
+		// Verify content
+		require.Equal(t, "package main\n\nfunc main() {}\n", mainSnapshot.Content)
+		require.Equal(t, "package utils\n\nfunc Helper() {}\n", utilsSnapshot.Content)
+		
+		// Verify other fields
+		require.Equal(t, "tool-1", mainSnapshot.ToolID)
+		require.Equal(t, "tool-2", utilsSnapshot.ToolID)
+		require.NotZero(t, mainSnapshot.ID)
+		require.NotZero(t, utilsSnapshot.ID)
+		require.NotZero(t, mainSnapshot.CreatedAt)
+		require.NotZero(t, utilsSnapshot.CreatedAt)
+	})
+
+	t.Run("GetSnapshotsForNonExistentSession", func(t *testing.T) {
+		snapshots, err := store.GetFileSnapshots(ctx, "non-existent-session")
+		require.NoError(t, err)
+		require.Empty(t, snapshots)
+	})
+
+	t.Run("CreateSnapshotWithLargeContent", func(t *testing.T) {
+		// Test with larger content (simulate a real file)
+		largeContent := ""
+		for i := 0; i < 1000; i++ {
+			largeContent += "// This is line " + string(rune(i)) + " of a large file\n"
+		}
+		
+		snapshot := &FileSnapshot{
+			ToolID:    "tool-large",
+			SessionID: session.ID,
+			FilePath:  "large_file.txt",
+			Content:   largeContent,
+		}
+		require.NoError(t, store.CreateFileSnapshot(ctx, snapshot))
+		
+		// Verify it was stored correctly
+		snapshots, err := store.GetFileSnapshots(ctx, session.ID)
+		require.NoError(t, err)
+		
+		var found bool
+		for _, s := range snapshots {
+			if s.FilePath == "large_file.txt" {
+				found = true
+				require.Equal(t, largeContent, s.Content)
+				break
+			}
+		}
+		require.True(t, found, "Large file snapshot not found")
+	})
+
+	t.Run("CreateSnapshotWithSpecialCharacters", func(t *testing.T) {
+		// Test with special characters in path and content
+		snapshot := &FileSnapshot{
+			ToolID:    "tool-special",
+			SessionID: session.ID,
+			FilePath:  "path/with spaces/and-special_chars!.txt",
+			Content:   "Content with 'quotes' and \"double quotes\" and\nnewlines\nand\ttabs",
+		}
+		require.NoError(t, store.CreateFileSnapshot(ctx, snapshot))
+		
+		snapshots, err := store.GetFileSnapshots(ctx, session.ID)
+		require.NoError(t, err)
+		
+		var found bool
+		for _, s := range snapshots {
+			if s.ToolID == "tool-special" {
+				found = true
+				require.Equal(t, snapshot.FilePath, s.FilePath)
+				require.Equal(t, snapshot.Content, s.Content)
+				break
+			}
+		}
+		require.True(t, found, "Special character snapshot not found")
+	})
+}

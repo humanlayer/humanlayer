@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -652,6 +653,11 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 						return err
 					}
 
+					// Asynchronously capture file snapshot for Read tool results
+					if toolCall, err := m.store.GetToolCallByID(ctx, content.ToolUseID); err == nil && toolCall != nil && toolCall.ToolName == "Read" {
+						go m.captureFileSnapshot(ctx, sessionID, content.ToolUseID, toolCall.ToolInputJSON, content.Content)
+					}
+
 					// Update session activity timestamp for tool results
 					m.updateSessionActivity(ctx, sessionID)
 
@@ -705,6 +711,82 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 	}
 
 	return nil
+}
+
+// captureFileSnapshot captures full file content for Read tool results
+func (m *Manager) captureFileSnapshot(ctx context.Context, sessionID, toolID, toolInputJSON, toolResultContent string) {
+	// Parse tool input to get file path
+	var input map[string]interface{}
+	if err := json.Unmarshal([]byte(toolInputJSON), &input); err != nil {
+		slog.Error("failed to parse Read tool input", "error", err)
+		return
+	}
+	
+	filePath, ok := input["file_path"].(string)
+	if !ok {
+		slog.Error("Read tool input missing file_path")
+		return
+	}
+	
+	// Parse tool result
+	var result ReadToolResult
+	if err := json.Unmarshal([]byte(toolResultContent), &result); err != nil {
+		slog.Error("failed to parse Read tool result", "error", err)
+		return
+	}
+	
+	var content string
+	
+	// If we have full content from tool result, use it directly
+	if result.File.NumLines == result.File.TotalLines {
+		content = result.File.Content
+		slog.Debug("using full content from Read tool result", "path", filePath)
+	} else {
+		// Need to read full file from filesystem
+		// Get session to access working directory
+		session, err := m.store.GetSession(ctx, sessionID)
+		if err != nil {
+			slog.Error("failed to get session for snapshot", "error", err)
+			return
+		}
+		
+		// Construct full path for reading (but still store relative path)
+		fullPath := filepath.Join(session.WorkingDir, filePath)
+		
+		// Read file with size limit (10MB)
+		const maxFileSize = 10 * 1024 * 1024
+		fileInfo, err := os.Stat(fullPath)
+		if err != nil {
+			slog.Error("failed to stat file for snapshot", "path", fullPath, "error", err)
+			return
+		}
+		
+		if fileInfo.Size() > maxFileSize {
+			slog.Warn("file too large for snapshot, using partial content", "path", fullPath, "size", fileInfo.Size())
+			// Store partial content from tool result as fallback
+			content = result.File.Content
+		} else {
+			fileBytes, err := os.ReadFile(fullPath)
+			if err != nil {
+				slog.Error("failed to read file for snapshot", "path", fullPath, "error", err)
+				return
+			}
+			content = string(fileBytes)
+			slog.Debug("read full file content from filesystem", "path", fullPath)
+		}
+	}
+	
+	// Store snapshot with relative path from tool call
+	snapshot := &store.FileSnapshot{
+		ToolID:    toolID,
+		SessionID: sessionID,
+		FilePath:  filePath,  // Store exactly as provided in tool call
+		Content:   content,
+	}
+	
+	if err := m.store.CreateFileSnapshot(ctx, snapshot); err != nil {
+		slog.Error("failed to store file snapshot", "error", err)
+	}
 }
 
 // ContinueSession resumes an existing completed session with a new query and optional config overrides
