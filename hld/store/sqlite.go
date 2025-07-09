@@ -395,6 +395,42 @@ func (s *SQLiteStore) applyMigrations() error {
 		slog.Info("Migration 6 applied successfully")
 	}
 
+	// Migration 7: Add file_snapshots table for Read operation tracking
+	if currentVersion < 7 {
+		slog.Info("Applying migration 7: Add file_snapshots table")
+
+		_, err = s.db.Exec(`
+			CREATE TABLE IF NOT EXISTS file_snapshots (
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				tool_id TEXT NOT NULL,
+				session_id TEXT NOT NULL,
+				file_path TEXT NOT NULL, -- Relative path from tool call
+				content TEXT NOT NULL,
+				created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+				FOREIGN KEY (session_id) REFERENCES sessions(id)
+			);
+			CREATE INDEX IF NOT EXISTS idx_snapshots_session_path
+				ON file_snapshots(session_id, file_path);
+			CREATE INDEX IF NOT EXISTS idx_snapshots_tool
+				ON file_snapshots(tool_id);
+		`)
+		if err != nil {
+			return fmt.Errorf("failed to create file_snapshots table: %w", err)
+		}
+
+		// Record migration
+		_, err = s.db.Exec(`
+			INSERT INTO schema_version (version, description)
+			VALUES (7, 'Add file_snapshots table for Read operation tracking')
+		`)
+		if err != nil {
+			return fmt.Errorf("failed to record migration 7: %w", err)
+		}
+
+		slog.Info("Migration 7 applied successfully")
+	}
+
 	return nil
 }
 
@@ -1030,6 +1066,39 @@ func (s *SQLiteStore) GetPendingToolCalls(ctx context.Context, sessionID string)
 	return events, nil
 }
 
+// GetToolCallByID retrieves a specific tool call by its ID
+func (s *SQLiteStore) GetToolCallByID(ctx context.Context, toolID string) (*ConversationEvent, error) {
+	query := `
+		SELECT id, session_id, claude_session_id, sequence, event_type, created_at,
+			role, content,
+			tool_id, tool_name, tool_input_json, parent_tool_use_id,
+			tool_result_for_id, tool_result_content,
+			is_completed, approval_status, approval_id
+		FROM conversation_events
+		WHERE tool_id = ?
+		  AND event_type = 'tool_call'
+		LIMIT 1
+	`
+
+	event := &ConversationEvent{}
+	err := s.db.QueryRowContext(ctx, query, toolID).Scan(
+		&event.ID, &event.SessionID, &event.ClaudeSessionID,
+		&event.Sequence, &event.EventType, &event.CreatedAt,
+		&event.Role, &event.Content,
+		&event.ToolID, &event.ToolName, &event.ToolInputJSON, &event.ParentToolUseID,
+		&event.ToolResultForID, &event.ToolResultContent,
+		&event.IsCompleted, &event.ApprovalStatus, &event.ApprovalID,
+	)
+	if err == sql.ErrNoRows {
+		return nil, nil // Tool call not found
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get tool call by ID: %w", err)
+	}
+
+	return event, nil
+}
+
 // MarkToolCallCompleted marks a tool call as completed when its result is received
 func (s *SQLiteStore) MarkToolCallCompleted(ctx context.Context, toolID string, sessionID string) error {
 	query := `
@@ -1421,4 +1490,39 @@ func MCPServersFromConfig(sessionID string, config map[string]claudecode.MCPServ
 		})
 	}
 	return servers, nil
+}
+
+// CreateFileSnapshot stores a new file snapshot
+func (s *SQLiteStore) CreateFileSnapshot(ctx context.Context, snapshot *FileSnapshot) error {
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO file_snapshots (
+			tool_id, session_id, file_path, content
+		) VALUES (?, ?, ?, ?)
+	`, snapshot.ToolID, snapshot.SessionID, snapshot.FilePath, snapshot.Content)
+	return err
+}
+
+// GetFileSnapshots retrieves all snapshots for a session
+func (s *SQLiteStore) GetFileSnapshots(ctx context.Context, sessionID string) ([]FileSnapshot, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT id, tool_id, session_id, file_path, content, created_at
+		FROM file_snapshots
+		WHERE session_id = ?
+		ORDER BY created_at DESC
+	`, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	var snapshots []FileSnapshot
+	for rows.Next() {
+		var s FileSnapshot
+		if err := rows.Scan(&s.ID, &s.ToolID, &s.SessionID, &s.FilePath,
+			&s.Content, &s.CreatedAt); err != nil {
+			return nil, err
+		}
+		snapshots = append(snapshots, s)
+	}
+	return snapshots, rows.Err()
 }

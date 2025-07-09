@@ -26,6 +26,7 @@ type ConversationStore interface {
 	GetPendingToolCall(ctx context.Context, sessionID string, toolName string) (*ConversationEvent, error)
 	GetUncorrelatedPendingToolCall(ctx context.Context, sessionID string, toolName string) (*ConversationEvent, error)
 	GetPendingToolCalls(ctx context.Context, sessionID string) ([]*ConversationEvent, error)
+	GetToolCallByID(ctx context.Context, toolID string) (*ConversationEvent, error)
 	MarkToolCallCompleted(ctx context.Context, toolID string, sessionID string) error
 	CorrelateApproval(ctx context.Context, sessionID string, toolName string, approvalID string) error
 	CorrelateApprovalByToolID(ctx context.Context, sessionID string, toolID string, approvalID string) error
@@ -43,6 +44,10 @@ type ConversationStore interface {
 	GetApproval(ctx context.Context, id string) (*Approval, error)
 	GetPendingApprovals(ctx context.Context, sessionID string) ([]*Approval, error)
 	UpdateApprovalResponse(ctx context.Context, id string, status ApprovalStatus, comment string) error
+
+	// File snapshot operations
+	CreateFileSnapshot(ctx context.Context, snapshot *FileSnapshot) error
+	GetFileSnapshots(ctx context.Context, sessionID string) ([]FileSnapshot, error)
 
 	// Database lifecycle
 	Close() error
@@ -119,6 +124,16 @@ type ConversationEvent struct {
 	IsCompleted    bool   // TRUE when tool result received
 	ApprovalStatus string // NULL, 'pending', 'approved', 'denied'
 	ApprovalID     string // HumanLayer approval ID when correlated
+}
+
+// FileSnapshot represents a snapshot of file content at Read time
+type FileSnapshot struct {
+	ID        int64
+	ToolID    string
+	SessionID string
+	FilePath  string // Relative path from tool call
+	Content   string
+	CreatedAt time.Time
 }
 
 // MCPServer represents an MCP server configuration
