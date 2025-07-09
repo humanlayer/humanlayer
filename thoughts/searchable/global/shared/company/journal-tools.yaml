@@ -1,0 +1,466 @@
+_frontmatter:
+  last_updated: 2025-07-02
+  last_updated_by: dex
+  last_update: added auditlog frontmatter
+entries:
+- timestamp: '2025-07-02T19:08:38.748479'
+  tool: gmail
+  action: send_email
+  summary: dex sending lite udpate
+  user: dex
+  details:
+    list: lite
+    recipient: Varun Pant
+    emails:
+    - varun.pant09@gmail.com
+    file: /Users/dex/go/src/github.com/humanlayer/thoughts/tools/gmail/../../global/shared/company/communications/2025-07-02-lite-investor-update.html
+    status: sent
+    subject: Humanlayer June Update
+- timestamp: '2025-07-02T19:08:36.808185'
+  tool: gmail
+  action: send_email
+  summary: dex sending lite udpate
+  user: dex
+  details:
+    list: lite
+    recipient: Michael Attner
+    emails:
+    - attner.michael@gmail.com
+    file: /Users/dex/go/src/github.com/humanlayer/thoughts/tools/gmail/../../global/shared/company/communications/2025-07-02-lite-investor-update.html
+    status: sent
+    subject: Humanlayer June Update
+- timestamp: '2025-07-02T19:08:31.553318'
+  tool: gmail
+  action: send_email
+  summary: dex sending lite udpate
+  user: dex
+  details:
+    list: lite
+    recipient: Nick Elledge
+    emails:
+    - nelledge@alumni.gsb.stanford.edu
+    file: /Users/dex/go/src/github.com/humanlayer/thoughts/tools/gmail/../../global/shared/company/communications/2025-07-02-lite-investor-update.html
+    status: sent
+    subject: Humanlayer June Update
+- timestamp: '2025-07-02T19:08:29.754149'
+  tool: gmail
+  action: send_email
+  summary: dex sending lite udpate
+  user: dex
+  details:
+    list: lite
+    recipient: Daniel Hsu
+    emails:
+    - Suechou1080@gmail.com
+    file: /Users/dex/go/src/github.com/humanlayer/thoughts/tools/gmail/../../global/shared/company/communications/2025-07-02-lite-investor-update.html
+    status: sent
+    subject: Humanlayer June Update
+- timestamp: '2025-07-02T19:08:28.372592'
+  tool: gmail
+  action: send_email
+  summary: dex sending lite udpate
+  user: dex
+  details:
+    list: lite
+    recipient: Cyrus Nourouzi
+    emails:
+    - knouroozi@gmail.com
+    file: /Users/dex/go/src/github.com/humanlayer/thoughts/tools/gmail/../../global/shared/company/communications/2025-07-02-lite-investor-update.html
+    status: sent
+    subject: Humanlayer June Update
+- timestamp: '2025-07-02T19:08:27.188059'
+  tool: gmail
+  action: send_email
+  summary: dex sending lite udpate
+  user: dex
+  details:
+    list: lite
+    recipient: Brian Li
+    emails:
+    - brian.li.101@gmail.com
+    file: /Users/dex/go/src/github.com/humanlayer/thoughts/tools/gmail/../../global/shared/company/communications/2025-07-02-lite-investor-update.html
+    status: sent
+    subject: Humanlayer June Update
+- timestamp: '2025-07-02T19:08:25.877014'
+  tool: gmail
+  action: send_email
+  summary: dex sending lite udpate
+  user: dex
+  details:
+    list: lite
+    recipient: Adam Hemmert
+    emails:
+    - ahemmert@gmail.com
+    file: /Users/dex/go/src/github.com/humanlayer/thoughts/tools/gmail/../../global/shared/company/communications/2025-07-02-lite-investor-update.html
+    status: sent
+    subject: Humanlayer June Update
+- timestamp: '2025-07-02T19:08:24.207228'
+  tool: gmail
+  action: send_email
+  summary: dex sending lite udpate
+  user: dex
+  details:
+    list: lite
+    recipient: Kirthi Banothu
+    emails:
+    - kirthi@0advc.com
+    - xiaoyu@0advc.com
+    file: /Users/dex/go/src/github.com/humanlayer/thoughts/tools/gmail/../../global/shared/company/communications/2025-07-02-lite-investor-update.html
+    status: sent
+    subject: Humanlayer June Update
+- timestamp: '2025-07-02T19:08:19.101443'
+  tool: gmail
+  action: send_email
+  summary: dex sending lite udpate
+  user: dex
+  details:
+    list: lite
+    recipient: Stefan Lederer
+    emails:
+    - stefan.a.lederer@gmail.com
+    file: /Users/dex/go/src/github.com/humanlayer/thoughts/tools/gmail/../../global/shared/company/communications/2025-07-02-lite-investor-update.html
+    status: sent
+    subject: Humanlayer June Update
+- timestamp: '2025-07-02T19:08:17.276456'
+  tool: gmail
+  action: send_email
+  summary: dex sending lite udpate
+  user: dex
+  details:
+    list: lite
+    recipient: Jack Manley
+    emails:
+    - jcmanley13@gmail.com
+    file: /Users/dex/go/src/github.com/humanlayer/thoughts/tools/gmail/../../global/shared/company/communications/2025-07-02-lite-investor-update.html
+    status: sent
+    subject: Humanlayer June Update
+- timestamp: '2025-07-02T19:08:16.138294'
+  tool: gmail
+  action: send_email
+  summary: dex sending lite udpate
+  user: dex
+  details:
+    list: lite
+    recipient: Minghan Yau
+    emails:
+    - ming.yau@gmail.com
+    file: /Users/dex/go/src/github.com/humanlayer/thoughts/tools/gmail/../../global/shared/company/communications/2025-07-02-lite-investor-update.html
+    status: sent
+    subject: Humanlayer June Update
+- timestamp: '2025-07-02T19:08:14.047471'
+  tool: gmail
+  action: send_email
+  summary: dex sending lite udpate
+  user: dex
+  details:
+    list: lite
+    recipient: Ilan Man
+    emails:
+    - ilan.man@gmail.com
+    file: /Users/dex/go/src/github.com/humanlayer/thoughts/tools/gmail/../../global/shared/company/communications/2025-07-02-lite-investor-update.html
+    status: sent
+    subject: Humanlayer June Update
+- timestamp: '2025-07-02T19:08:12.621954'
+  tool: gmail
+  action: send_email
+  summary: dex sending lite udpate
+  user: dex
+  details:
+    list: lite
+    recipient: Matt Lenhard
+    emails:
+    - mclenhard@gmail.com
+    file: /Users/dex/go/src/github.com/humanlayer/thoughts/tools/gmail/../../global/shared/company/communications/2025-07-02-lite-investor-update.html
+    status: sent
+    subject: Humanlayer June Update
+- timestamp: '2025-07-02T19:08:11.434212'
+  tool: gmail
+  action: send_email
+  summary: dex sending lite udpate
+  user: dex
+  details:
+    list: lite
+    recipient: Mike Hinckley
+    emails:
+    - michael.a.hinckley@gmail.com
+    file: /Users/dex/go/src/github.com/humanlayer/thoughts/tools/gmail/../../global/shared/company/communications/2025-07-02-lite-investor-update.html
+    status: sent
+    subject: Humanlayer June Update
+- timestamp: '2025-07-02T19:08:08.576974'
+  tool: gmail
+  action: send_email
+  summary: dex sending lite udpate
+  user: dex
+  details:
+    list: lite
+    recipient: Stefan Theard
+    emails:
+    - smtheard@gmail.com
+    file: /Users/dex/go/src/github.com/humanlayer/thoughts/tools/gmail/../../global/shared/company/communications/2025-07-02-lite-investor-update.html
+    status: sent
+    subject: Humanlayer June Update
+- timestamp: '2025-07-02T19:07:10.527603'
+  tool: gmail
+  action: send_email
+  summary: dex sending full udpate
+  user: dex
+  details:
+    list: full
+    recipient: Guillermo Rauch
+    emails:
+    - rauchg@vercel.com
+    file: /Users/dex/go/src/github.com/humanlayer/thoughts/tools/gmail/../../global/shared/company/communications/2025-07-02-full-investor-update.html
+    status: sent
+    subject: Humanlayer June Update
+- timestamp: '2025-07-02T19:07:08.659122'
+  tool: gmail
+  action: send_email
+  summary: dex sending full udpate
+  user: dex
+  details:
+    list: full
+    recipient: Vaibhav Gupta
+    emails:
+    - vaibhavtheory+invest@gmail.com
+    file: /Users/dex/go/src/github.com/humanlayer/thoughts/tools/gmail/../../global/shared/company/communications/2025-07-02-full-investor-update.html
+    status: sent
+    subject: Humanlayer June Update
+- timestamp: '2025-07-02T19:07:07.434532'
+  tool: gmail
+  action: send_email
+  summary: dex sending full udpate
+  user: dex
+  details:
+    list: full
+    recipient: Jay Reno
+    emails:
+    - jayjreno@gmail.com
+    file: /Users/dex/go/src/github.com/humanlayer/thoughts/tools/gmail/../../global/shared/company/communications/2025-07-02-full-investor-update.html
+    status: sent
+    subject: Humanlayer June Update
+- timestamp: '2025-07-02T19:07:06.267485'
+  tool: gmail
+  action: send_email
+  summary: dex sending full udpate
+  user: dex
+  details:
+    list: full
+    recipient: Chris Smoak
+    emails:
+    - chris.smoak@gmail.com
+    file: /Users/dex/go/src/github.com/humanlayer/thoughts/tools/gmail/../../global/shared/company/communications/2025-07-02-full-investor-update.html
+    status: sent
+    subject: Humanlayer June Update
+- timestamp: '2025-07-02T19:07:05.050426'
+  tool: gmail
+  action: send_email
+  summary: dex sending full udpate
+  user: dex
+  details:
+    list: full
+    recipient: Eric Woersching
+    emails:
+    - updates@mtv.vc
+    file: /Users/dex/go/src/github.com/humanlayer/thoughts/tools/gmail/../../global/shared/company/communications/2025-07-02-full-investor-update.html
+    status: sent
+    subject: Humanlayer June Update
+- timestamp: '2025-07-02T19:07:03.724751'
+  tool: gmail
+  action: send_email
+  summary: dex sending full udpate
+  user: dex
+  details:
+    list: full
+    recipient: Richard Aberman
+    emails:
+    - richard-aberman-backoffice@angellist.com
+    file: /Users/dex/go/src/github.com/humanlayer/thoughts/tools/gmail/../../global/shared/company/communications/2025-07-02-full-investor-update.html
+    status: sent
+    subject: Humanlayer June Update
+- timestamp: '2025-07-02T19:07:02.693400'
+  tool: gmail
+  action: send_email
+  summary: dex sending full udpate
+  user: dex
+  details:
+    list: full
+    recipient: JJ Fliegelman
+    emails:
+    - jj-backoffice@angellist.com
+    file: /Users/dex/go/src/github.com/humanlayer/thoughts/tools/gmail/../../global/shared/company/communications/2025-07-02-full-investor-update.html
+    status: sent
+    subject: Humanlayer June Update
+- timestamp: '2025-07-02T19:07:01.688305'
+  tool: gmail
+  action: send_email
+  summary: dex sending full udpate
+  user: dex
+  details:
+    list: full
+    recipient: Benjamin Bryant
+    emails:
+    - benjaminhbryant@gmail.com
+    file: /Users/dex/go/src/github.com/humanlayer/thoughts/tools/gmail/../../global/shared/company/communications/2025-07-02-full-investor-update.html
+    status: sent
+    subject: Humanlayer June Update
+- timestamp: '2025-07-02T19:06:58.816708'
+  tool: gmail
+  action: send_email
+  summary: dex sending full udpate
+  user: dex
+  details:
+    list: full
+    recipient: Jeff Heitzman
+    emails:
+    - jeff@multimodal.ventures
+    - niraj@multimodal.ventures
+    file: /Users/dex/go/src/github.com/humanlayer/thoughts/tools/gmail/../../global/shared/company/communications/2025-07-02-full-investor-update.html
+    status: sent
+    subject: Humanlayer June Update
+- timestamp: '2025-07-02T19:06:56.871005'
+  tool: gmail
+  action: send_email
+  summary: dex sending full udpate
+  user: dex
+  details:
+    list: full
+    recipient: Dalton Caldwell and Andrew Miklas
+    emails:
+    - dalton@ycombinator.com
+    - andrew@ycombinator.com
+    file: /Users/dex/go/src/github.com/humanlayer/thoughts/tools/gmail/../../global/shared/company/communications/2025-07-02-full-investor-update.html
+    status: sent
+    subject: Humanlayer June Update
+- timestamp: '2025-07-02T19:06:54.668453'
+  tool: gmail
+  action: send_email
+  summary: dex sending full udpate
+  user: dex
+  details:
+    list: full
+    recipient: Tim Suzman
+    emails:
+    - updates@pioneerfund.vc
+    file: /Users/dex/go/src/github.com/humanlayer/thoughts/tools/gmail/../../global/shared/company/communications/2025-07-02-full-investor-update.html
+    status: sent
+    subject: Humanlayer June Update
+- timestamp: '2025-07-02T19:06:52.925348'
+  tool: gmail
+  action: send_email
+  summary: dex sending full udpate
+  user: dex
+  details:
+    list: full
+    recipient: Alexander Dean
+    emails:
+    - alex@bigendian.vc
+    file: /Users/dex/go/src/github.com/humanlayer/thoughts/tools/gmail/../../global/shared/company/communications/2025-07-02-full-investor-update.html
+    status: sent
+    subject: Humanlayer June Update
+- timestamp: '2025-07-02T19:06:50.608202'
+  tool: gmail
+  action: send_email
+  summary: dex sending full udpate
+  user: dex
+  details:
+    list: full
+    recipient: Aaron Brager
+    emails:
+    - aaron@aaronbrager.com
+    file: /Users/dex/go/src/github.com/humanlayer/thoughts/tools/gmail/../../global/shared/company/communications/2025-07-02-full-investor-update.html
+    status: sent
+    subject: Humanlayer June Update
+- timestamp: '2025-07-02T19:06:48.567954'
+  tool: gmail
+  action: send_email
+  summary: dex sending full udpate
+  user: dex
+  details:
+    list: full
+    recipient: Taylor Murphy
+    emails:
+    - taylor@arch.dev
+    file: /Users/dex/go/src/github.com/humanlayer/thoughts/tools/gmail/../../global/shared/company/communications/2025-07-02-full-investor-update.html
+    status: sent
+    subject: Humanlayer June Update
+- timestamp: '2025-07-02T19:06:46.339073'
+  tool: gmail
+  action: send_email
+  summary: dex sending full udpate
+  user: dex
+  details:
+    list: full
+    recipient: Grant Miller and Marc Campbell
+    emails:
+    - grant@replicated.com
+    - marc@replicated.com
+    file: /Users/dex/go/src/github.com/humanlayer/thoughts/tools/gmail/../../global/shared/company/communications/2025-07-02-full-investor-update.html
+    status: sent
+    subject: Humanlayer June Update
+- timestamp: '2025-07-02T19:06:43.173960'
+  tool: gmail
+  action: send_email
+  summary: dex sending full udpate
+  user: dex
+  details:
+    list: full
+    recipient: Farooq Abbasi
+    emails:
+    - farooq@prefaceventures.com
+    file: /Users/dex/go/src/github.com/humanlayer/thoughts/tools/gmail/../../global/shared/company/communications/2025-07-02-full-investor-update.html
+    status: sent
+    subject: Humanlayer June Update
+- timestamp: '2025-07-02T19:06:31.808126'
+  tool: gmail
+  action: send_email
+  summary: dex sending full udpate
+  user: dex
+  details:
+    list: full
+    recipient: Aaron Rankin
+    emails:
+    - aaron@rankin.ventures
+    file: /Users/dex/go/src/github.com/humanlayer/thoughts/tools/gmail/../../global/shared/company/communications/2025-07-02-full-investor-update.html
+    status: sent
+    subject: Humanlayer June Update
+- timestamp: '2025-07-02T19:05:40.786386'
+  tool: gmail
+  action: send_email
+  summary: dex sending internal
+  user: dex
+  details:
+    list: internal
+    recipient: Internal Team
+    emails:
+    - austin@humanlayer.dev
+    - allison@humanlayer.dev
+    - sundeep@humanlayer.dev
+    file: /Users/dex/go/src/github.com/humanlayer/thoughts/tools/gmail/../../global/shared/company/communications/2025-07-02-internal-investor-update.html
+    status: sent
+    subject: Humanlayer June Update
+- timestamp: '2025-07-02T19:02:07.191082'
+  tool: gmail
+  action: send_email
+  summary: dex testing
+  user: dex
+  details:
+    list: test
+    recipient: Test
+    emails:
+    - dexter+test@humanlayer.dev
+    file: /Users/dex/go/src/github.com/humanlayer/thoughts/tools/gmail/../../global/shared/company/communications/2025-07-02-test-investor-update.html
+    status: sent
+    subject: Humanlayer June Update
+- timestamp: '2025-07-02T19:00:45.800538'
+  tool: gmail
+  action: send_email
+  summary: dex testing
+  user: dex
+  details:
+    list: test
+    recipient: Test
+    emails:
+    - dexter+test@humanlayer.dev
+    file: /Users/dex/go/src/github.com/humanlayer/thoughts/tools/gmail/../../global/shared/company/communications/2025-07-02-test-investor-update.html
+    status: sent
+    subject: Humanlayer June Update

@@ -1,0 +1,36 @@
+# Example: Minimal Weekly Update Workflow
+
+name: Weekly Update
+on:
+  schedule:
+    - cron: '0 23 * * 5'  # Fridays 1pm PST
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      
+    steps:
+      - uses: actions/checkout@v4
+      
+      # todo - change this to use the anthropic claude code official actions
+      - name: Weekly Update
+        run: |
+          # Use Claude to run the weekly update SOP
+          claude -p "Follow the weekly update SOP in sops/weekly-update.md"
+        env:
+          # Claude needs this
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          
+          # Tools need these
+          STRIPE_API_KEY: ${{ secrets.STRIPE_API_KEY }}
+          MERCURY_API_KEY: ${{ secrets.MERCURY_API_KEY }}
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+      
+      - name: Commit changes
+        run: |
+          git add metrics/README.md weekly-updates.md journal.md
+          git commit -m "Weekly update $(date +%Y-%m-%d)" || echo "No changes"
+          git push

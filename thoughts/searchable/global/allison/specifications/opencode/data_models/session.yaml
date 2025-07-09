@@ -1,0 +1,227 @@
+---
+component: Session
+version: "1.0.0"
+category: Core Data Model
+description: Session management and conversation tracking
+---
+
+# Session Data Model
+
+## Overview
+The Session entity represents a conversation thread between users and AI assistants, managing state, history, and metadata throughout the interaction lifecycle.
+
+## Entity: Session.Info
+
+### Purpose
+- Track individual conversation sessions
+- Manage conversation lifecycle and state
+- Support session hierarchy (parent-child relationships)
+- Enable session sharing and synchronization
+
+### Schema Definition
+```typescript
+interface SessionInfo {
+  id: string;                    // Prefixed identifier (ses_*)
+  parentID?: string;             // Optional parent session reference
+  share?: {
+    url: string;                 // Public sharing URL
+  };
+  title: string;                 // Human-readable session title
+  version: string;               // OpenCode version that created session
+  time: {
+    created: number;             // Unix timestamp
+    updated: number;             // Unix timestamp
+  };
+}
+```
+
+### Field Details
+
+#### ID Generation
+- **Type**: `string`
+- **Format**: `ses_<timestamp_hex><random_base62>`
+- **Constraints**: 
+  - Must start with "ses_" prefix
+  - Monotonic ascending for message ordering
+  - Globally unique within storage scope
+
+#### Parent-Child Relationships
+- **Type**: `string | undefined`
+- **Purpose**: Support branching conversations
+- **Constraints**: Must reference valid session ID
+- **Cascading**: Child sessions deleted when parent is removed
+
+#### Sharing Mechanism
+- **Type**: `{ url: string } | undefined`
+- **Storage**: Separate `session/share/<id>` storage entry
+- **Sync**: Auto-syncs with external API when enabled
+- **Security**: Uses secret-based authentication
+
+#### Title Generation
+- **Default**: "New Session - <ISO datetime>" or "Child session - <ISO datetime>"
+- **Auto-generation**: AI-generated titles using first exchange
+- **Length**: No explicit limits, but optimized for UI display
+
+### Storage Strategy
+
+#### Primary Storage
+- **Location**: `storage/session/info/<sessionID>.json`
+- **Format**: JSON serialization of SessionInfo
+- **Persistence**: File-based with atomic writes
+
+#### Share Storage
+- **Location**: `storage/session/share/<sessionID>.json`
+- **Format**: `{ secret: string, url: string }`
+- **Security**: File permissions 0o600
+
+#### Message Storage
+- **Location**: `storage/session/message/<sessionID>/<messageID>.json`
+- **Relationship**: One-to-many with Message entities
+- **Cleanup**: Cascade delete on session removal
+
+### State Management
+
+#### In-Memory State
+```typescript
+{
+  sessions: Map<string, SessionInfo>;     // Session cache
+  messages: Map<string, MessageInfo[]>;  // Message cache per session
+  pending: Map<string, AbortController>; // Active session operations
+}
+```
+
+#### Lifecycle Events
+- **session.updated**: Session metadata changed
+- **session.deleted**: Session removed
+- **session.error**: Session-level error occurred
+
+### Business Rules
+
+#### Auto-Summarization
+- **Trigger**: Token count exceeds 90% of model context limit
+- **Process**: Generate summary using AI, mark as summary message
+- **Filtering**: Only messages after last summary included in context
+
+#### Concurrent Access
+- **Locking**: Session-level locks prevent concurrent modifications
+- **Abort**: Pending operations cancelled on new requests
+- **Error Handling**: `BusyError` thrown for concurrent access
+
+#### Auto-Sharing
+- **Condition**: Non-child sessions when `autoshare` enabled
+- **Process**: Async share creation after session creation
+- **Sync**: Real-time synchronization with external API
+
+### Validation Rules
+
+#### Session Creation
+- Unique ID generation enforced
+- Parent ID must exist if specified
+- Version must match current installation
+
+#### Session Updates
+- Immutable ID and creation time
+- Updated timestamp auto-managed
+- Share URL immutable once set
+
+#### Session Deletion
+- Cascade delete all messages
+- Cascade delete all child sessions
+- Cleanup sharing resources
+
+### Data Flow
+
+#### Session Creation
+1. Generate unique descending ID
+2. Create SessionInfo with defaults
+3. Write to storage atomically
+4. Trigger auto-share if enabled
+5. Emit session.updated event
+
+#### Message Addition
+1. Validate session exists
+2. Create message with session reference
+3. Update session.time.updated
+4. Trigger summarization if needed
+5. Sync with share if enabled
+
+#### Session Sharing
+1. Create share via external API
+2. Store share secret locally
+3. Update session with share URL
+4. Sync all session data to share
+5. Enable real-time sync for updates
+
+### Serialization Formats
+
+#### JSON Storage Format
+```json
+{
+  "id": "ses_01h2k3...",
+  "title": "New Session - 2024-01-15T10:30:00.000Z",
+  "version": "1.0.0",
+  "time": {
+    "created": 1705315800000,
+    "updated": 1705316400000
+  },
+  "share": {
+    "url": "https://share.opencode.ai/ses_01h2k3..."
+  }
+}
+```
+
+#### Event Payload Format
+```json
+{
+  "type": "session.updated",
+  "properties": {
+    "info": { /* SessionInfo */ }
+  }
+}
+```
+
+### Relationships
+
+#### Session → Messages
+- **Type**: One-to-many
+- **Foreign Key**: Message.metadata.sessionID
+- **Cascade**: Delete messages when session deleted
+
+#### Session → Session (Parent-Child)
+- **Type**: One-to-many
+- **Foreign Key**: Session.parentID
+- **Cascade**: Delete children when parent deleted
+
+#### Session → Share
+- **Type**: One-to-one optional
+- **Storage**: Separate storage namespace
+- **Sync**: Bidirectional with external API
+
+### Error Handling
+
+#### Known Error Types
+- `BusyError`: Session locked for concurrent access
+- `JsonError`: Configuration file parsing failed
+- `InvalidError`: Schema validation failed
+
+#### Recovery Strategies
+- **Corrupted Data**: Skip corrupted sessions, log errors
+- **Missing Parent**: Orphan sessions treated as root sessions
+- **Share Sync Failure**: Local session remains functional
+
+### Performance Considerations
+
+#### Memory Management
+- Session cache with lazy loading
+- Message cache per session
+- Automatic cleanup on session deletion
+
+#### Storage Optimization
+- Atomic writes with temporary files
+- Batch operations for multiple updates
+- Efficient listing with glob patterns
+
+#### Network Efficiency
+- Debounced share synchronization
+- Queue-based sync with retry logic
+- Compression for large session data

@@ -6,14 +6,16 @@ import { fuzzySearch, highlightMatches, type FuzzyMatch } from '@/lib/fuzzy-sear
 import { Input } from './ui/input'
 import { Popover, PopoverAnchor, PopoverContent } from './ui/popover'
 import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from './ui/command'
-import { ArrowDownUp, FileWarning } from 'lucide-react'
+import { ArrowDownUp, FileWarning, Clock } from 'lucide-react'
 import { useHotkeys } from 'react-hotkeys-hook'
+import type { RecentPath } from '@/lib/daemon'
 
 interface SearchInputProps {
   value?: string
   onChange?: (value: string) => void
   onSubmit?: () => void
   placeholder?: string
+  recentDirectories?: RecentPath[]
 }
 
 export function SearchInput({
@@ -21,6 +23,7 @@ export function SearchInput({
   onChange: externalOnChange,
   onSubmit,
   placeholder = 'Type a directory path...',
+  recentDirectories = [],
 }: SearchInputProps = {}) {
   // Use internal state if not controlled
   const [internalValue, setInternalValue] = useState('')
@@ -39,6 +42,9 @@ export function SearchInput({
   const [directoryPreview, setDirectoryPreview] = useState<
     { selected: boolean; path: DirEntry; matches?: FuzzyMatch['matches'] }[]
   >([])
+  const [recentPreview, setRecentPreview] = useState<
+    { selected: boolean; path: string; matches?: FuzzyMatch['matches'] }[]
+  >([])
   const [lastValidPath, setLastValidPath] = useState('')
   const [allDirectories, setAllDirectories] = useState<DirEntry[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
@@ -56,42 +62,52 @@ export function SearchInput({
     (ev, handler) => {
       switch (handler.keys?.join('')) {
         case Hotkeys.ARROW_UP:
-          if (directoryPreview.length > 0) {
-            const currentIndex = directoryPreview.findIndex(item => item.selected)
-            const newIndex = (currentIndex - 1 + directoryPreview.length) % directoryPreview.length
-            setDirectoryPreview(prev =>
-              prev.map((item, idx) => ({ ...item, selected: idx === newIndex })),
-            )
+        case Hotkeys.ARROW_DOWN: {
+          const totalItems = recentPreview.length + directoryPreview.length
+          if (totalItems > 0) {
+            // Find current selection across both lists
+            const recentSelectedIdx = recentPreview.findIndex(item => item.selected)
+            const dirSelectedIdx = directoryPreview.findIndex(item => item.selected)
+            const currentIndex = recentSelectedIdx !== -1 ? recentSelectedIdx : recentPreview.length + dirSelectedIdx
+            
+            const direction = handler.keys?.join('') === Hotkeys.ARROW_UP ? -1 : 1
+            const newIndex = (currentIndex + direction + totalItems) % totalItems
+            
+            // Update selections
+            if (newIndex < recentPreview.length) {
+              setRecentPreview(prev => prev.map((item, idx) => ({ ...item, selected: idx === newIndex })))
+              setDirectoryPreview(prev => prev.map(item => ({ ...item, selected: false })))
+            } else {
+              setRecentPreview(prev => prev.map(item => ({ ...item, selected: false })))
+              setDirectoryPreview(prev => 
+                prev.map((item, idx) => ({ ...item, selected: idx === newIndex - recentPreview.length }))
+              )
+            }
           }
           break
-        case Hotkeys.ARROW_DOWN:
-          if (directoryPreview.length > 0) {
-            const currentIndex = directoryPreview.findIndex(item => item.selected)
-            const newIndex = (currentIndex + 1) % directoryPreview.length
-            setDirectoryPreview(prev =>
-              prev.map((item, idx) => ({ ...item, selected: idx === newIndex })),
-            )
-          }
-          break
+        }
         case Hotkeys.ENTER:
         case Hotkeys.TAB: {
+          const selectedRecent = recentPreview.find(item => item.selected)
           const selectedDir = directoryPreview.find(item => item.selected)
-          if (selectedDir && dropdownOpen) {
+          
+          if ((selectedRecent || selectedDir) && dropdownOpen) {
             ev.preventDefault()
-            // Parse current path to get base directory
-            const lastSlashIdx = searchValue.lastIndexOf('/')
-            const basePath = lastSlashIdx === -1 ? '' : searchValue.substring(0, lastSlashIdx + 1)
-
-            // Replace the partial text with the selected directory
-            const newPath = basePath + selectedDir.path.name
-            setSearchValue(newPath)
+            
+            if (selectedRecent) {
+              setSearchValue(selectedRecent.path)
+            } else if (selectedDir) {
+              // Parse current path to get base directory
+              const lastSlashIdx = searchValue.lastIndexOf('/')
+              const basePath = lastSlashIdx === -1 ? '' : searchValue.substring(0, lastSlashIdx + 1)
+              const newPath = basePath + selectedDir.path.name
+              setSearchValue(newPath)
+            }
             setDropdownOpen(false)
           } else if (handler.keys?.join('') === Hotkeys.ENTER && !dropdownOpen && onSubmit) {
             ev.preventDefault()
-            // Submit form if dropdown is closed and Enter is pressed
             onSubmit()
           }
-          // For TAB when dropdown is closed, allow default behavior (move to next field)
           break
         }
         case Hotkeys.ESCAPE: {
@@ -175,6 +191,47 @@ export function SearchInput({
     }
 
     setDirectoryPreview(dirObjs)
+    
+    // Filter recent directories based on search value
+    let recentObjs: Array<{ selected: boolean; path: string; matches?: FuzzyMatch['matches'] }> = []
+    
+    if (recentDirectories.length > 0) {
+      if (searchPath) {
+        // Use fuzzy search on the full path
+        const recentSearchResults = fuzzySearch(
+          recentDirectories.map(r => ({ path: r.path })),
+          searchPath,
+          {
+            keys: ['path'],
+            threshold: 0.3,
+            includeMatches: true,
+          }
+        )
+        
+        recentObjs = recentSearchResults.map((result) => ({
+          selected: false,
+          path: result.item.path,
+          matches: result.matches,
+        }))
+      } else {
+        // Show all recent directories when no search term
+        recentObjs = recentDirectories.slice(0, 10).map((recent) => ({
+          selected: false,
+          path: recent.path,
+        }))
+      }
+    }
+    
+    // Set initial selection
+    if (recentObjs.length > 0) {
+      recentObjs[0].selected = true
+      dirObjs = dirObjs.map(d => ({ ...d, selected: false }))
+    } else if (dirObjs.length > 0 && recentObjs.length === 0) {
+      dirObjs[0].selected = true
+    }
+    
+    setRecentPreview(recentObjs)
+    setDirectoryPreview(dirObjs)
   }
 
   return (
@@ -203,22 +260,62 @@ export function SearchInput({
         >
           <Command>
             <CommandList>
-              <CommandEmpty className="py-2">
-                {isInvalidPath && (
-                  <span className="flex items-center">
-                    <FileWarning className="w-4 h-4 mr-2" />
-                    <span>...</span>
-                  </span>
-                )}
-                {!isInvalidPath && (
-                  <span className="flex items-center">
-                    <FileWarning className="w-4 h-4 mr-2" />
-                    No results found
-                  </span>
-                )}
-              </CommandEmpty>
+              {recentPreview.length === 0 && directoryPreview.length === 0 && (
+                <CommandEmpty className="py-2">
+                  {isInvalidPath && (
+                    <span className="flex items-center">
+                      <FileWarning className="w-4 h-4 mr-2" />
+                      <span>...</span>
+                    </span>
+                  )}
+                  {!isInvalidPath && (
+                    <span className="flex items-center">
+                      <FileWarning className="w-4 h-4 mr-2" />
+                      No results found
+                    </span>
+                  )}
+                </CommandEmpty>
+              )}
+              {recentPreview.length > 0 && (
+                <CommandGroup heading="Recent Directories">
+                  {recentPreview.map((item, idx) => {
+                    const pathMatch = item.matches?.find(m => m.key === 'path')
+                    const highlighted = pathMatch
+                      ? highlightMatches(item.path, pathMatch.indices)
+                      : null
+
+                    return (
+                      <CommandItem
+                        key={`recent-${idx}`}
+                        className={cn(item.selected && '!bg-accent/20')}
+                        onSelect={() => {
+                          setSearchValue(item.path)
+                          setDropdownOpen(false)
+                          inputRef.current?.focus()
+                        }}
+                      >
+                        <div className="flex items-center space-x-2 w-full">
+                          <Clock className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                          <span className="flex-1 truncate">
+                            {highlighted
+                              ? highlighted.map((segment, i) => (
+                                  <span
+                                    key={i}
+                                    className={cn(segment.highlighted && 'bg-yellow-300 dark:bg-yellow-600')}
+                                  >
+                                    {segment.text}
+                                  </span>
+                                ))
+                              : item.path}
+                          </span>
+                        </div>
+                      </CommandItem>
+                    )
+                  })}
+                </CommandGroup>
+              )}
               {directoryPreview.length > 0 && (
-                <CommandGroup>
+                <CommandGroup heading="Paths">
                   {directoryPreview.map(item => {
                     const nameMatch = item.matches?.find(m => m.key === 'name')
                     const highlighted =

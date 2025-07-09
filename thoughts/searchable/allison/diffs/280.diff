@@ -1,0 +1,661 @@
+diff --git a/hld/session/manager.go b/hld/session/manager.go
+index decba90..82f3af9 100644
+--- a/hld/session/manager.go
++++ b/hld/session/manager.go
+@@ -6,6 +6,7 @@ import (
+ 	"fmt"
+ 	"log/slog"
+ 	"os"
++	"path/filepath"
+ 	"sync"
+ 	"time"
+ 
+@@ -652,6 +653,11 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
+ 						return err
+ 					}
+ 
++					// Asynchronously capture file snapshot for Read tool results
++					if toolCall, err := m.store.GetToolCallByID(ctx, content.ToolUseID); err == nil && toolCall != nil && toolCall.ToolName == "Read" {
++						go m.captureFileSnapshot(ctx, sessionID, content.ToolUseID, toolCall.ToolInputJSON, content.Content)
++					}
++
+ 					// Update session activity timestamp for tool results
+ 					m.updateSessionActivity(ctx, sessionID)
+ 
+@@ -707,6 +713,82 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
+ 	return nil
+ }
+ 
++// captureFileSnapshot captures full file content for Read tool results
++func (m *Manager) captureFileSnapshot(ctx context.Context, sessionID, toolID, toolInputJSON, toolResultContent string) {
++	// Parse tool input to get file path
++	var input map[string]interface{}
++	if err := json.Unmarshal([]byte(toolInputJSON), &input); err != nil {
++		slog.Error("failed to parse Read tool input", "error", err)
++		return
++	}
++	
++	filePath, ok := input["file_path"].(string)
++	if !ok {
++		slog.Error("Read tool input missing file_path")
++		return
++	}
++	
++	// Parse tool result
++	var result ReadToolResult
++	if err := json.Unmarshal([]byte(toolResultContent), &result); err != nil {
++		slog.Error("failed to parse Read tool result", "error", err)
++		return
++	}
++	
++	var content string
++	
++	// If we have full content from tool result, use it directly
++	if result.File.NumLines == result.File.TotalLines {
++		content = result.File.Content
++		slog.Debug("using full content from Read tool result", "path", filePath)
++	} else {
++		// Need to read full file from filesystem
++		// Get session to access working directory
++		session, err := m.store.GetSession(ctx, sessionID)
++		if err != nil {
++			slog.Error("failed to get session for snapshot", "error", err)
++			return
++		}
++		
++		// Construct full path for reading (but still store relative path)
++		fullPath := filepath.Join(session.WorkingDir, filePath)
++		
++		// Read file with size limit (10MB)
++		const maxFileSize = 10 * 1024 * 1024
++		fileInfo, err := os.Stat(fullPath)
++		if err != nil {
++			slog.Error("failed to stat file for snapshot", "path", fullPath, "error", err)
++			return
++		}
++		
++		if fileInfo.Size() > maxFileSize {
++			slog.Warn("file too large for snapshot, using partial content", "path", fullPath, "size", fileInfo.Size())
++			// Store partial content from tool result as fallback
++			content = result.File.Content
++		} else {
++			fileBytes, err := os.ReadFile(fullPath)
++			if err != nil {
++				slog.Error("failed to read file for snapshot", "path", fullPath, "error", err)
++				return
++			}
++			content = string(fileBytes)
++			slog.Debug("read full file content from filesystem", "path", fullPath)
++		}
++	}
++	
++	// Store snapshot with relative path from tool call
++	snapshot := &store.FileSnapshot{
++		ToolID:    toolID,
++		SessionID: sessionID,
++		FilePath:  filePath,  // Store exactly as provided in tool call
++		Content:   content,
++	}
++	
++	if err := m.store.CreateFileSnapshot(ctx, snapshot); err != nil {
++		slog.Error("failed to store file snapshot", "error", err)
++	}
++}
++
+ // ContinueSession resumes an existing completed session with a new query and optional config overrides
+ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig) (*Session, error) {
+ 	// Get parent session from database
+diff --git a/hld/session/types.go b/hld/session/types.go
+index aec4e73..a349084 100644
+--- a/hld/session/types.go
++++ b/hld/session/types.go
+@@ -84,3 +84,15 @@ type SessionManager interface {
+ 	// InterruptSession interrupts a running session
+ 	InterruptSession(ctx context.Context, sessionID string) error
+ }
++
++// ReadToolResult represents the JSON structure of a Read tool result
++type ReadToolResult struct {
++	Type string `json:"type"`
++	File struct {
++		FilePath   string `json:"filePath"`
++		Content    string `json:"content"`
++		NumLines   int    `json:"numLines"`
++		StartLine  int    `json:"startLine"`
++		TotalLines int    `json:"totalLines"`
++	} `json:"file"`
++}
+diff --git a/hld/session/types_test.go b/hld/session/types_test.go
+new file mode 100644
+index 0000000..171e2e8
+--- /dev/null
++++ b/hld/session/types_test.go
+@@ -0,0 +1,150 @@
++package session
++
++import (
++	"encoding/json"
++	"testing"
++
++	"github.com/stretchr/testify/require"
++)
++
++func TestReadToolResult(t *testing.T) {
++	t.Run("ParseCompleteReadResult", func(t *testing.T) {
++		// Test parsing a complete Read tool result
++		resultJSON := `{
++			"type": "file",
++			"file": {
++				"filePath": "src/main.go",
++				"content": "package main\n\nfunc main() {\n\tprintln(\"Hello\")\n}",
++				"numLines": 5,
++				"startLine": 1,
++				"totalLines": 5
++			}
++		}`
++
++		var result ReadToolResult
++		err := json.Unmarshal([]byte(resultJSON), &result)
++		require.NoError(t, err)
++
++		require.Equal(t, "file", result.Type)
++		require.Equal(t, "src/main.go", result.File.FilePath)
++		require.Equal(t, "package main\n\nfunc main() {\n\tprintln(\"Hello\")\n}", result.File.Content)
++		require.Equal(t, 5, result.File.NumLines)
++		require.Equal(t, 1, result.File.StartLine)
++		require.Equal(t, 5, result.File.TotalLines)
++	})
++
++	t.Run("ParsePartialReadResult", func(t *testing.T) {
++		// Test parsing a partial Read tool result
++		resultJSON := `{
++			"type": "file",
++			"file": {
++				"filePath": "large_file.txt",
++				"content": "Line 100\nLine 101\nLine 102",
++				"numLines": 3,
++				"startLine": 100,
++				"totalLines": 1000
++			}
++		}`
++
++		var result ReadToolResult
++		err := json.Unmarshal([]byte(resultJSON), &result)
++		require.NoError(t, err)
++
++		require.Equal(t, "file", result.Type)
++		require.Equal(t, "large_file.txt", result.File.FilePath)
++		require.Equal(t, "Line 100\nLine 101\nLine 102", result.File.Content)
++		require.Equal(t, 3, result.File.NumLines)
++		require.Equal(t, 100, result.File.StartLine)
++		require.Equal(t, 1000, result.File.TotalLines)
++		
++		// Verify this is a partial read
++		require.NotEqual(t, result.File.NumLines, result.File.TotalLines)
++	})
++
++	t.Run("ParseReadResultWithSpecialCharacters", func(t *testing.T) {
++		// Test parsing with special characters in content
++		resultJSON := `{
++			"type": "file",
++			"file": {
++				"filePath": "path/with spaces/file.txt",
++				"content": "Content with \"quotes\" and 'single quotes'\nAnd\ttabs\nAnd\\backslashes",
++				"numLines": 3,
++				"startLine": 1,
++				"totalLines": 3
++			}
++		}`
++
++		var result ReadToolResult
++		err := json.Unmarshal([]byte(resultJSON), &result)
++		require.NoError(t, err)
++
++		require.Equal(t, "path/with spaces/file.txt", result.File.FilePath)
++		require.Equal(t, "Content with \"quotes\" and 'single quotes'\nAnd\ttabs\nAnd\\backslashes", result.File.Content)
++	})
++
++	t.Run("IsFullContent", func(t *testing.T) {
++		// Test identifying full vs partial content
++		testCases := []struct {
++			name     string
++			numLines int
++			total    int
++			isFull   bool
++		}{
++			{"Full content", 100, 100, true},
++			{"Partial content", 50, 100, false},
++			{"Single line full", 1, 1, true},
++			{"Empty file", 0, 0, true},
++		}
++
++		for _, tc := range testCases {
++			t.Run(tc.name, func(t *testing.T) {
++				result := ReadToolResult{
++					File: struct {
++						FilePath   string `json:"filePath"`
++						Content    string `json:"content"`
++						NumLines   int    `json:"numLines"`
++						StartLine  int    `json:"startLine"`
++						TotalLines int    `json:"totalLines"`
++					}{
++						NumLines:   tc.numLines,
++						TotalLines: tc.total,
++					},
++				}
++				
++				isFull := result.File.NumLines == result.File.TotalLines
++				require.Equal(t, tc.isFull, isFull)
++			})
++		}
++	})
++
++	t.Run("ParseInvalidJSON", func(t *testing.T) {
++		// Test parsing invalid JSON
++		invalidJSON := `{invalid json}`
++		
++		var result ReadToolResult
++		err := json.Unmarshal([]byte(invalidJSON), &result)
++		require.Error(t, err)
++	})
++
++	t.Run("ParseMissingFields", func(t *testing.T) {
++		// Test parsing with missing fields (should use zero values)
++		minimalJSON := `{
++			"type": "file",
++			"file": {
++				"filePath": "test.txt",
++				"content": "test"
++			}
++		}`
++
++		var result ReadToolResult
++		err := json.Unmarshal([]byte(minimalJSON), &result)
++		require.NoError(t, err)
++
++		require.Equal(t, "file", result.Type)
++		require.Equal(t, "test.txt", result.File.FilePath)
++		require.Equal(t, "test", result.File.Content)
++		require.Equal(t, 0, result.File.NumLines)    // Zero value
++		require.Equal(t, 0, result.File.StartLine)   // Zero value
++		require.Equal(t, 0, result.File.TotalLines)  // Zero value
++	})
++}
+\ No newline at end of file
+diff --git a/hld/store/sqlite.go b/hld/store/sqlite.go
+index f410c75..9d97960 100644
+--- a/hld/store/sqlite.go
++++ b/hld/store/sqlite.go
+@@ -395,6 +395,42 @@ func (s *SQLiteStore) applyMigrations() error {
+ 		slog.Info("Migration 6 applied successfully")
+ 	}
+ 
++	// Migration 7: Add file_snapshots table for Read operation tracking
++	if currentVersion < 7 {
++		slog.Info("Applying migration 7: Add file_snapshots table")
++		
++		_, err = s.db.Exec(`
++			CREATE TABLE IF NOT EXISTS file_snapshots (
++				id INTEGER PRIMARY KEY AUTOINCREMENT,
++				tool_id TEXT NOT NULL,
++				session_id TEXT NOT NULL,
++				file_path TEXT NOT NULL, -- Relative path from tool call
++				content TEXT NOT NULL,
++				created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
++				
++				FOREIGN KEY (session_id) REFERENCES sessions(id)
++			);
++			CREATE INDEX IF NOT EXISTS idx_snapshots_session_path 
++				ON file_snapshots(session_id, file_path);
++			CREATE INDEX IF NOT EXISTS idx_snapshots_tool 
++				ON file_snapshots(tool_id);
++		`)
++		if err != nil {
++			return fmt.Errorf("failed to create file_snapshots table: %w", err)
++		}
++		
++		// Record migration
++		_, err = s.db.Exec(`
++			INSERT INTO schema_version (version, description)
++			VALUES (7, 'Add file_snapshots table for Read operation tracking')
++		`)
++		if err != nil {
++			return fmt.Errorf("failed to record migration 7: %w", err)
++		}
++		
++		slog.Info("Migration 7 applied successfully")
++	}
++
+ 	return nil
+ }
+ 
+@@ -1030,6 +1066,39 @@ func (s *SQLiteStore) GetPendingToolCalls(ctx context.Context, sessionID string)
+ 	return events, nil
+ }
+ 
++// GetToolCallByID retrieves a specific tool call by its ID
++func (s *SQLiteStore) GetToolCallByID(ctx context.Context, toolID string) (*ConversationEvent, error) {
++	query := `
++		SELECT id, session_id, claude_session_id, sequence, event_type, created_at,
++			role, content,
++			tool_id, tool_name, tool_input_json, parent_tool_use_id,
++			tool_result_for_id, tool_result_content,
++			is_completed, approval_status, approval_id
++		FROM conversation_events
++		WHERE tool_id = ?
++		  AND event_type = 'tool_call'
++		LIMIT 1
++	`
++
++	event := &ConversationEvent{}
++	err := s.db.QueryRowContext(ctx, query, toolID).Scan(
++		&event.ID, &event.SessionID, &event.ClaudeSessionID,
++		&event.Sequence, &event.EventType, &event.CreatedAt,
++		&event.Role, &event.Content,
++		&event.ToolID, &event.ToolName, &event.ToolInputJSON, &event.ParentToolUseID,
++		&event.ToolResultForID, &event.ToolResultContent,
++		&event.IsCompleted, &event.ApprovalStatus, &event.ApprovalID,
++	)
++	if err == sql.ErrNoRows {
++		return nil, nil // Tool call not found
++	}
++	if err != nil {
++		return nil, fmt.Errorf("failed to get tool call by ID: %w", err)
++	}
++
++	return event, nil
++}
++
+ // MarkToolCallCompleted marks a tool call as completed when its result is received
+ func (s *SQLiteStore) MarkToolCallCompleted(ctx context.Context, toolID string, sessionID string) error {
+ 	query := `
+@@ -1422,3 +1491,38 @@ func MCPServersFromConfig(sessionID string, config map[string]claudecode.MCPServ
+ 	}
+ 	return servers, nil
+ }
++
++// CreateFileSnapshot stores a new file snapshot
++func (s *SQLiteStore) CreateFileSnapshot(ctx context.Context, snapshot *FileSnapshot) error {
++	_, err := s.db.ExecContext(ctx, `
++		INSERT INTO file_snapshots (
++			tool_id, session_id, file_path, content
++		) VALUES (?, ?, ?, ?)
++	`, snapshot.ToolID, snapshot.SessionID, snapshot.FilePath, snapshot.Content)
++	return err
++}
++
++// GetFileSnapshots retrieves all snapshots for a session
++func (s *SQLiteStore) GetFileSnapshots(ctx context.Context, sessionID string) ([]FileSnapshot, error) {
++	rows, err := s.db.QueryContext(ctx, `
++		SELECT id, tool_id, session_id, file_path, content, created_at
++		FROM file_snapshots
++		WHERE session_id = ?
++		ORDER BY created_at DESC
++	`, sessionID)
++	if err != nil {
++		return nil, err
++	}
++	defer rows.Close()
++	
++	var snapshots []FileSnapshot
++	for rows.Next() {
++		var s FileSnapshot
++		if err := rows.Scan(&s.ID, &s.ToolID, &s.SessionID, &s.FilePath,
++			&s.Content, &s.CreatedAt); err != nil {
++			return nil, err
++		}
++		snapshots = append(snapshots, s)
++	}
++	return snapshots, rows.Err()
++}
+diff --git a/hld/store/sqlite_test.go b/hld/store/sqlite_test.go
+index 174f0f1..ed88cbe 100644
+--- a/hld/store/sqlite_test.go
++++ b/hld/store/sqlite_test.go
+@@ -453,3 +453,206 @@ func TestGetSessionConversationWithParentChain(t *testing.T) {
+ 		require.Equal(t, "Goroutines are lightweight threads...", events[3].Content)
+ 	})
+ }
++
++func TestGetToolCallByID(t *testing.T) {
++	// Create temp database
++	dbPath := testutil.DatabasePath(t, "sqlite-toolcall")
++	store, err := NewSQLiteStore(dbPath)
++	require.NoError(t, err)
++	defer func() { _ = store.Close() }()
++
++	ctx := context.Background()
++
++	// Create a session
++	session := &Session{
++		ID:              "test-session",
++		RunID:           "test-run",
++		ClaudeSessionID: "claude-session-1",
++		Query:           "Test query",
++		Model:           "sonnet",
++		Status:          SessionStatusRunning,
++		CreatedAt:       time.Now(),
++		LastActivityAt:  time.Now(),
++	}
++	require.NoError(t, store.CreateSession(ctx, session))
++
++	// Add a tool call event
++	toolCall := &ConversationEvent{
++		SessionID:       session.ID,
++		ClaudeSessionID: session.ClaudeSessionID,
++		EventType:       EventTypeToolCall,
++		ToolID:          "tool-123",
++		ToolName:        "Read",
++		ToolInputJSON:   `{"file_path": "test.txt"}`,
++		ParentToolUseID: "",
++	}
++	require.NoError(t, store.AddConversationEvent(ctx, toolCall))
++
++	// Add another tool call with different ID
++	toolCall2 := &ConversationEvent{
++		SessionID:       session.ID,
++		ClaudeSessionID: session.ClaudeSessionID,
++		EventType:       EventTypeToolCall,
++		ToolID:          "tool-456",
++		ToolName:        "Write",
++		ToolInputJSON:   `{"file_path": "output.txt"}`,
++	}
++	require.NoError(t, store.AddConversationEvent(ctx, toolCall2))
++
++	t.Run("GetExistingToolCall", func(t *testing.T) {
++		result, err := store.GetToolCallByID(ctx, "tool-123")
++		require.NoError(t, err)
++		require.NotNil(t, result)
++		require.Equal(t, "tool-123", result.ToolID)
++		require.Equal(t, "Read", result.ToolName)
++		require.Equal(t, `{"file_path": "test.txt"}`, result.ToolInputJSON)
++	})
++
++	t.Run("GetNonExistentToolCall", func(t *testing.T) {
++		result, err := store.GetToolCallByID(ctx, "non-existent")
++		require.NoError(t, err)
++		require.Nil(t, result)
++	})
++
++	t.Run("GetCorrectToolCall", func(t *testing.T) {
++		// Ensure we get the right tool call when multiple exist
++		result, err := store.GetToolCallByID(ctx, "tool-456")
++		require.NoError(t, err)
++		require.NotNil(t, result)
++		require.Equal(t, "tool-456", result.ToolID)
++		require.Equal(t, "Write", result.ToolName)
++	})
++}
++
++func TestFileSnapshots(t *testing.T) {
++	// Create temp database
++	dbPath := testutil.DatabasePath(t, "sqlite-snapshots")
++	store, err := NewSQLiteStore(dbPath)
++	require.NoError(t, err)
++	defer func() { _ = store.Close() }()
++
++	ctx := context.Background()
++
++	// Create a session
++	session := &Session{
++		ID:             "test-session",
++		RunID:          "test-run",
++		Query:          "Test query",
++		Model:          "sonnet",
++		Status:         SessionStatusRunning,
++		CreatedAt:      time.Now(),
++		LastActivityAt: time.Now(),
++	}
++	require.NoError(t, store.CreateSession(ctx, session))
++
++	t.Run("CreateAndGetSnapshots", func(t *testing.T) {
++		// Create snapshots
++		snapshot1 := &FileSnapshot{
++			ToolID:    "tool-1",
++			SessionID: session.ID,
++			FilePath:  "src/main.go",
++			Content:   "package main\n\nfunc main() {}\n",
++		}
++		require.NoError(t, store.CreateFileSnapshot(ctx, snapshot1))
++
++		// Small delay to ensure different timestamps
++		time.Sleep(10 * time.Millisecond)
++
++		snapshot2 := &FileSnapshot{
++			ToolID:    "tool-2",
++			SessionID: session.ID,
++			FilePath:  "src/utils.go",
++			Content:   "package utils\n\nfunc Helper() {}\n",
++		}
++		require.NoError(t, store.CreateFileSnapshot(ctx, snapshot2))
++
++		// Get snapshots for session
++		snapshots, err := store.GetFileSnapshots(ctx, session.ID)
++		require.NoError(t, err)
++		require.Len(t, snapshots, 2)
++
++		// Find snapshots by file path (order may vary due to timestamp precision)
++		var mainSnapshot, utilsSnapshot FileSnapshot
++		for _, s := range snapshots {
++			switch s.FilePath {
++			case "src/main.go":
++				mainSnapshot = s
++			case "src/utils.go":
++				utilsSnapshot = s
++			}
++		}
++		
++		// Verify content
++		require.Equal(t, "package main\n\nfunc main() {}\n", mainSnapshot.Content)
++		require.Equal(t, "package utils\n\nfunc Helper() {}\n", utilsSnapshot.Content)
++		
++		// Verify other fields
++		require.Equal(t, "tool-1", mainSnapshot.ToolID)
++		require.Equal(t, "tool-2", utilsSnapshot.ToolID)
++		require.NotZero(t, mainSnapshot.ID)
++		require.NotZero(t, utilsSnapshot.ID)
++		require.NotZero(t, mainSnapshot.CreatedAt)
++		require.NotZero(t, utilsSnapshot.CreatedAt)
++	})
++
++	t.Run("GetSnapshotsForNonExistentSession", func(t *testing.T) {
++		snapshots, err := store.GetFileSnapshots(ctx, "non-existent-session")
++		require.NoError(t, err)
++		require.Empty(t, snapshots)
++	})
++
++	t.Run("CreateSnapshotWithLargeContent", func(t *testing.T) {
++		// Test with larger content (simulate a real file)
++		largeContent := ""
++		for i := 0; i < 1000; i++ {
++			largeContent += "// This is line " + string(rune(i)) + " of a large file\n"
++		}
++		
++		snapshot := &FileSnapshot{
++			ToolID:    "tool-large",
++			SessionID: session.ID,
++			FilePath:  "large_file.txt",
++			Content:   largeContent,
++		}
++		require.NoError(t, store.CreateFileSnapshot(ctx, snapshot))
++		
++		// Verify it was stored correctly
++		snapshots, err := store.GetFileSnapshots(ctx, session.ID)
++		require.NoError(t, err)
++		
++		var found bool
++		for _, s := range snapshots {
++			if s.FilePath == "large_file.txt" {
++				found = true
++				require.Equal(t, largeContent, s.Content)
++				break
++			}
++		}
++		require.True(t, found, "Large file snapshot not found")
++	})
++
++	t.Run("CreateSnapshotWithSpecialCharacters", func(t *testing.T) {
++		// Test with special characters in path and content
++		snapshot := &FileSnapshot{
++			ToolID:    "tool-special",
++			SessionID: session.ID,
++			FilePath:  "path/with spaces/and-special_chars!.txt",
++			Content:   "Content with 'quotes' and \"double quotes\" and\nnewlines\nand\ttabs",
++		}
++		require.NoError(t, store.CreateFileSnapshot(ctx, snapshot))
++		
++		snapshots, err := store.GetFileSnapshots(ctx, session.ID)
++		require.NoError(t, err)
++		
++		var found bool
++		for _, s := range snapshots {
++			if s.ToolID == "tool-special" {
++				found = true
++				require.Equal(t, snapshot.FilePath, s.FilePath)
++				require.Equal(t, snapshot.Content, s.Content)
++				break
++			}
++		}
++		require.True(t, found, "Special character snapshot not found")
++	})
++}
+diff --git a/hld/store/store.go b/hld/store/store.go
+index 980d4c4..946d26c 100644
+--- a/hld/store/store.go
++++ b/hld/store/store.go
+@@ -26,6 +26,7 @@ type ConversationStore interface {
+ 	GetPendingToolCall(ctx context.Context, sessionID string, toolName string) (*ConversationEvent, error)
+ 	GetUncorrelatedPendingToolCall(ctx context.Context, sessionID string, toolName string) (*ConversationEvent, error)
+ 	GetPendingToolCalls(ctx context.Context, sessionID string) ([]*ConversationEvent, error)
++	GetToolCallByID(ctx context.Context, toolID string) (*ConversationEvent, error)
+ 	MarkToolCallCompleted(ctx context.Context, toolID string, sessionID string) error
+ 	CorrelateApproval(ctx context.Context, sessionID string, toolName string, approvalID string) error
+ 	CorrelateApprovalByToolID(ctx context.Context, sessionID string, toolID string, approvalID string) error
+@@ -44,6 +45,10 @@ type ConversationStore interface {
+ 	GetPendingApprovals(ctx context.Context, sessionID string) ([]*Approval, error)
+ 	UpdateApprovalResponse(ctx context.Context, id string, status ApprovalStatus, comment string) error
+ 
++	// File snapshot operations
++	CreateFileSnapshot(ctx context.Context, snapshot *FileSnapshot) error
++	GetFileSnapshots(ctx context.Context, sessionID string) ([]FileSnapshot, error)
++
+ 	// Database lifecycle
+ 	Close() error
+ }
+@@ -121,6 +126,16 @@ type ConversationEvent struct {
+ 	ApprovalID     string // HumanLayer approval ID when correlated
+ }
+ 
++// FileSnapshot represents a snapshot of file content at Read time
++type FileSnapshot struct {
++	ID        int64
++	ToolID    string
++	SessionID string
++	FilePath  string    // Relative path from tool call
++	Content   string
++	CreatedAt time.Time
++}
++
+ // MCPServer represents an MCP server configuration
+ type MCPServer struct {
+ 	ID        int64

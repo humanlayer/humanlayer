@@ -1,0 +1,160 @@
+---
+summary: GitHub Actions workflow for daily priorities and standup preparation
+last_updated: 2025-06-26
+last_updated_by: dex
+last_update: Created daily priorities automation workflow
+---
+
+# Daily Priorities Automation Workflow
+
+name: Daily Priorities Check
+on:
+  schedule:
+    # Every weekday at 8am PST (4pm UTC)
+    - cron: '0 16 * * 1-5'
+    # Pre-standup check at 8:15am PST (4:15pm UTC)
+    - cron: '15 16 * * 1-5'
+  workflow_dispatch:
+    inputs:
+      include_triage:
+        description: 'Include triage queue analysis'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+jobs:
+  check-priorities:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up Claude Code
+        run: |
+          # Install Claude Code if not available
+          which claude || curl -fsSL https://claude.ai/install.sh | sh
+      
+      - name: Run Daily Priorities Check
+        run: |
+          claude -p "Execute the daily priorities SOP following the right-to-left kanban principle:
+          
+          1. Check Blocked Work:
+             - Run linear-integration blocked to find all blocked tickets
+             - Identify who is blocking and for how long
+             - Create priority list sorted by blockage duration
+          
+          2. Analyze Kanban Board:
+             - Run linear-integration kanban to get board state
+             - Apply right-to-left prioritization
+             - Identify bottlenecks in the workflow
+             - Check WIP limits and over-capacity warnings
+          
+          3. Triage Queue Review (if requested):
+             - Run linear-integration triage to get queue items
+             - Format for standup discussion
+             - Flag items older than 2 days
+          
+          4. Generate Priority Report:
+             - Create a markdown summary of:
+               - High priority blocks needing immediate attention
+               - Right-most work items to complete first
+               - Team members who need to unblock others
+               - Recommended actions for the day
+             - Save to daily-priorities-$(date +%Y-%m-%d).md
+          
+          5. Standup Preparation (if 8:15am run):
+             - Format triage items for quick review
+             - List in-progress work by team member
+             - Highlight any critical issues
+          
+          Focus on unblocking others first, then completing right-most work."
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+      
+      - name: Post to Slack (Optional)
+        if: success() && env.SLACK_WEBHOOK_URL != ''
+        run: |
+          # Extract key priorities from the generated report
+          PRIORITIES=$(head -20 daily-priorities-*.md | grep -E "^[0-9]+\.|^-" || echo "No critical blocks found")
+          
+          # Post to Slack
+          curl -X POST ${{ secrets.SLACK_WEBHOOK_URL }} \
+            -H 'Content-type: application/json' \
+            -d @- << EOF
+          {
+            "text": "Daily Priorities - $(date +%Y-%m-%d)",
+            "blocks": [
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "*Daily Priorities Check Complete*\n$PRIORITIES"
+                }
+              },
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "Full report: daily-priorities-$(date +%Y-%m-%d).md"
+                }
+              }
+            ]
+          }
+          EOF
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      
+      - name: Create Issue for Critical Blocks
+        if: success()
+        run: |
+          # Check if there are critical blocks (blocked > 3 days)
+          if grep -q "Blocked for: [3-9] days" daily-priorities-*.md; then
+            gh issue create \
+              --title "Critical Blocks - $(date +%Y-%m-%d)" \
+              --body "There are tickets blocked for 3+ days requiring immediate attention.
+              
+              See daily-priorities-$(date +%Y-%m-%d).md for details." \
+              --label "priority:high,blocked"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+## Minimal Permissions Required
+
+This workflow requires:
+
+### Repository Permissions
+- **Contents**: write (to save priority reports)
+- **Issues**: write (to create issues for critical blocks)
+
+### Secrets Required
+1. **ANTHROPIC_API_KEY** - For Claude Code
+2. **LINEAR_API_KEY** - For Linear ticket data
+3. **SLACK_WEBHOOK_URL** (optional) - For Slack notifications
+
+### File Access
+- **Read**: All repository files
+- **Write**: `daily-priorities-*.md` files
+
+## Integration with Daily Standup
+
+When run at 8:15am PST, this workflow prepares data for the 8:30am daily standup by:
+1. Formatting the triage queue for quick review
+2. Highlighting critical blocks
+3. Organizing work by team member
+4. Providing a clear agenda for the standup
+
+## Output Files
+
+Creates daily priority reports:
+- `daily-priorities-2025-06-26.md` - Contains full analysis and recommendations
+
+These files can be referenced during standup and throughout the day for priority alignment.

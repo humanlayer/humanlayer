@@ -1,0 +1,2 @@
+- finish sops for weekly/monthly/public
+- wiggum loop to improve tooling!

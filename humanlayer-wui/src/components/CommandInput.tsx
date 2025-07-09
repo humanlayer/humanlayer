@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils'
 import { SearchInput } from './FuzzySearchInput'
 import { Input } from './ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
+import { useRecentPaths } from '@/hooks/useRecentPaths'
 
 interface SessionConfig {
   query: string
@@ -34,6 +35,7 @@ export default function CommandInput({
   const inputRef = useRef<HTMLInputElement>(null)
   const [isFocused, setIsFocused] = useState(false)
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const { paths: recentPaths } = useRecentPaths()
 
   useEffect(() => {
     if (inputRef.current) {
@@ -69,6 +71,7 @@ export default function CommandInput({
           onChange={value => onConfigChange?.({ ...config, workingDir: value })}
           onSubmit={onSubmit}
           placeholder="/path/to/directory or leave empty for current directory"
+          recentDirectories={recentPaths}
         />
       </div>
 
