@@ -1,154 +1,64 @@
 # Implement Plan
 
-You are tasked with implementing approved technical plans from `thoughts/shared/plans/`. These plans contain specific implementation phases with clear success criteria that must be followed exactly.
+You are tasked with implementing an approved technical plan from `thoughts/shared/plans/`. These plans contain phases with specific changes and success criteria.
 
-## Initial Setup
+## Getting Started
 
-When invoked:
-1. If no plan path provided, ask for one
-2. If plan path provided, immediately:
-   - Read the plan file COMPLETELY
-   - Check for any existing checkmarks (- [x]) indicating resumed work
-   - Read the original ticket referenced in the plan
-   - Read ALL files mentioned in the plan
-   - Create a comprehensive todo list tracking each phase and success criteria
-   - **If you have no questions, begin implementation immediately**
+When given a plan path:
+- Read the plan completely and check for any existing checkmarks (- [x])
+- Read the original ticket and all files mentioned in the plan
+- Think deeply about how the pieces fit together
+- Create a todo list to track your progress
+- Start implementing if you understand what needs to be done
 
-## Core Implementation Process
+If no plan path provided, ask for one.
 
-### For Each Phase:
+## Implementation Philosophy
 
-1. **Follow the plan exactly**:
-   - Implement code changes precisely as specified
-   - Use exact formatting, imports, and structure shown
-   - Apply changes in the order listed
-   - Follow existing patterns in the codebase
+Plans are carefully designed, but reality can be messy. Your job is to:
+- Follow the plan's intent while adapting to what you find
+- Implement each phase fully before moving to the next
+- Verify your work makes sense in the broader codebase context
+- Update checkboxes in the plan as you complete sections
 
-2. **If you encounter issues**:
-   - STOP and think deeply about why the plan can't be followed
-   - Present the specific issue to the user:
-     ```
-     I've encountered an issue implementing Phase [N]:
+When things don't match the plan exactly, think about why and communicate clearly. The plan is your guide, but your judgment matters too.
 
-     Plan expects: [what the plan says]
-     Actual situation: [what you found]
-     Reason: [why this is a problem]
+If you encounter a mismatch:
+- STOP and think deeply about why the plan can't be followed
+- Present the issue clearly:
+  ```
+  Issue in Phase [N]:
+  Expected: [what the plan says]
+  Found: [actual situation]
+  Why this matters: [explanation]
+  
+  How should I proceed?
+  ```
 
-     How should I proceed?
-     ```
+## Verification Approach
 
-3. **Run automated verification**:
-   - Execute all commands under "Automated Verification"
-   - Fix any failures before proceeding
-   - Update todo items as completed
-   - **Check off completed boxes in the plan file** using Edit:
-     ```
-     - [ ] Test passes → - [x] Test passes
-     ```
+After implementing a phase:
+- Run the success criteria checks (usually `make check test` covers everything)
+- Fix any issues before proceeding  
+- Update your progress in both the plan and your todos
+- Check off completed items in the plan file itself using Edit
 
-4. **Note manual verification**:
-   - List what requires manual testing
-   - Mark as "pending user verification"
+Don't let verification interrupt your flow - batch it at natural stopping points.
 
-### Using Sub-Tasks
+## If You Get Stuck
 
-Spawn sub-tasks when you need to:
-- Research unfamiliar code patterns
-- Debug test failures
-- Find related implementations
-- Investigate unexpected behavior
+When something isn't working as expected:
+- First, make sure you've read and understood all the relevant code
+- Consider if the codebase has evolved since the plan was written
+- Present the mismatch clearly and ask for guidance
 
-Example sub-task:
-```
-Task: Debug failing test in Phase 2
-1. Investigate why [test command] is failing
-2. Check if related tests pass
-3. Look for similar test patterns in the codebase
-4. Return root cause and suggested fix
-```
+Use sub-tasks sparingly - mainly for targeted debugging or exploring unfamiliar territory.
 
-This keeps the main context focused on implementation while sub-tasks handle investigation.
+## Resuming Work
 
-## Important Guidelines
+If the plan has existing checkmarks:
+- Trust that completed work is done
+- Pick up from the first unchecked item
+- Verify previous work only if something seems off
 
-1. **Start immediately if ready** - Don't ask unnecessary questions
-2. **Follow existing patterns** - Match the codebase style and conventions
-3. **Complete phases sequentially** - Never skip ahead
-4. **Verify success criteria** - Both automated and manual
-5. **Document deviations** - If you must deviate, explain why clearly
-
-## Phase Completion
-
-After each phase:
-1. Update checkboxes in the plan file for completed items
-2. Show status:
-```
-Phase [N] complete:
-✓ Code changes applied
-✓ Automated tests: [passed/failed]
-⚠️ Manual verification needed: [list]
-
-[If all pass]: Proceeding to Phase [N+1]
-[If any fail]: Debugging [issue]...
-```
-
-## Final Verification
-
-When all phases complete:
-```
-Implementation complete. Results:
-
-Automated: [list of passed checks]
-Manual needed: [list with verification steps]
-Files modified: [list of changed files]
-```
-
-## Multi-Context Plans
-
-For large plans that exceed context:
-
-1. **Create checkpoint** after major phases:
-   - Ensure all completed checkboxes are saved in the plan
-   - Leave a clear status:
-   ```
-   Checkpoint: Phases 1-3 complete (checkboxes updated in plan)
-   Next: Phase 4 - [description]
-   Resume: /implement_plan [plan]
-   ```
-
-2. **When resuming**:
-   - Verify previous phases completed
-   - Continue from specified phase
-
-## Resuming from Checked Progress
-
-If you see checkmarks (- [x]) already in the plan's success criteria:
-- This means the implementation was previously started
-- Skip any phases/criteria already marked complete
-- Continue from the first unchecked item
-- Verify completed work is actually in place before proceeding
-
-Example:
-```
-### Success Criteria:
-#### Automated Verification:
-- [x] Migration applies cleanly: `make migrate`  ← Already done
-- [x] Unit tests pass: `go test ./store`         ← Already done
-- [ ] Type checking passes: `npm run typecheck`  ← Start here
-```
-
-## Common Success Criteria
-
-**Automated** (you run these):
-- `make test`, `go test ./...`, `npm test`
-- `make build`, `go build`, `npm run build`
-- `make lint`, `golangci-lint run`, `npm run lint`
-- `npm run typecheck`, `mypy`
-
-**Manual** (user verifies):
-- UI functionality
-- Performance metrics
-- User experience
-- Integration behavior
-
-Remember: The plan is carefully designed. Follow it exactly unless you encounter a genuine blocker, then think and communicate clearly about the issue.
+Remember: You're implementing a solution, not just checking boxes. Keep the end goal in mind and maintain forward momentum.
