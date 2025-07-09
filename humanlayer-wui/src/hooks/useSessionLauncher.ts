@@ -58,7 +58,6 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
     }),
 
   close: () => {
-    console.log('close')
     set({
       isOpen: false,
       view: 'menu',

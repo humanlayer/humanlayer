@@ -3,9 +3,12 @@ import { useHotkeys } from 'react-hotkeys-hook'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ConversationEvent } from '@/lib/daemon/types'
 import { truncate } from '@/utils/formatting'
+import { useStealHotkeyScope } from '@/hooks/useStealHotkeyScope'
 
 // TODO(3): Add keyboard navigation hints in the UI
 // TODO(2): Consider adding copy-to-clipboard functionality for tool results
+
+const ToolResultModalHotkeysScope = 'tool-result-modal'
 
 // Minimalist modal for showing full tool results
 export function ToolResultModal({
@@ -29,7 +32,12 @@ export function ToolResultModal({
         contentRef.current.scrollTop += 100
       }
     },
-    { enabled: !!toolResult, enableOnFormTags: true, preventDefault: true },
+    {
+      enabled: !!toolResult,
+      enableOnFormTags: true,
+      preventDefault: true,
+      scopes: ToolResultModalHotkeysScope,
+    },
   )
 
   useHotkeys(
@@ -41,24 +49,37 @@ export function ToolResultModal({
         contentRef.current.scrollTop -= 100
       }
     },
-    { enabled: !!toolResult, enableOnFormTags: true, preventDefault: true },
+    {
+      enabled: !!toolResult,
+      enableOnFormTags: true,
+      preventDefault: true,
+      scopes: ToolResultModalHotkeysScope,
+    },
   )
 
   // Handle escape to close
   useHotkeys(
     'escape',
-    () => {
+    ev => {
+      ev.stopPropagation()
       if (toolResult) {
         onClose()
       }
     },
-    { enabled: !!toolResult },
+    { enabled: !!toolResult, scopes: ToolResultModalHotkeysScope },
   )
+
+  useStealHotkeyScope(ToolResultModalHotkeysScope)
 
   if (!toolResult) return null
 
   return (
-    <Dialog open={!!toolResult} onOpenChange={open => !open && onClose()}>
+    <Dialog
+      open={!!toolResult}
+      onOpenChange={open => {
+        !open && onClose()
+      }}
+    >
       <DialogContent className="w-[90vw] max-w-[90vw] max-h-[80vh] p-0 sm:max-w-[90vw]">
         <DialogHeader className="px-6 py-4 border-b">
           <DialogTitle className="font-mono text-sm flex items-center justify-between">
@@ -91,7 +112,6 @@ export function ToolResultModal({
                 </span>
               )}
             </span>
-            <span className="text-xs text-muted-foreground">Esc</span>
           </DialogTitle>
         </DialogHeader>
         <div
@@ -100,6 +120,11 @@ export function ToolResultModal({
           style={{ maxHeight: 'calc(80vh - 80px)' }}
         >
           {toolResult.tool_result_content || 'No content'}
+        </div>
+        <div className="mt-2 px-4 py-2 text-xs text-muted-foreground bg-muted/30 border-t border-border/50 flex justify-end">
+          <span className="flex items-center gap-1">
+            <kbd className="font-mono">ESC</kbd> to close
+          </span>
         </div>
       </DialogContent>
     </Dialog>

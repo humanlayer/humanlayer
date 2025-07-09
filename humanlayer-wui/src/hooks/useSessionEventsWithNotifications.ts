@@ -117,7 +117,6 @@ export function useSessionEventsWithNotifications(connected: boolean) {
 
   const handleNewApproval = useCallback(
     async (data: NewApprovalEventData) => {
-      console.log('handleNewApproval()', data)
       // Refresh sessions to get latest approval counts
       refreshSessions()
 

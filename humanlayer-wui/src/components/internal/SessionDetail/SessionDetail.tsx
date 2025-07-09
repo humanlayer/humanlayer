@@ -21,11 +21,14 @@ import { useSessionActions } from './hooks/useSessionActions'
 import { useSessionApprovals } from './hooks/useSessionApprovals'
 import { useSessionNavigation } from './hooks/useSessionNavigation'
 import { useTaskGrouping } from './hooks/useTaskGrouping'
+import { useStealHotkeyScope } from '@/hooks/useStealHotkeyScope'
 
 interface SessionDetailProps {
   session: SessionInfo
   onClose: () => void
 }
+
+const SessionDetailHotkeysScope = 'session-detail'
 
 function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [isWideView, setIsWideView] = useState(false)
@@ -33,6 +36,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [expandedToolResult, setExpandedToolResult] = useState<ConversationEvent | null>(null)
   const [expandedToolCall, setExpandedToolCall] = useState<ConversationEvent | null>(null)
   const [isSplitView, setIsSplitView] = useState(true)
+
   const isRunning = session.status === 'running'
 
   // Get events for sidebar access
@@ -86,17 +90,29 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
 
   // Clear focus on escape, then close if nothing focused
   // This needs special handling for confirmingApprovalId
-  useHotkeys('escape', () => {
-    if (approvals.confirmingApprovalId) {
-      approvals.setConfirmingApprovalId(null)
-    } else if (navigation.expandedEventId) {
-      navigation.setExpandedEventId(null)
-    } else if (navigation.focusedEventId) {
-      navigation.setFocusedEventId(null)
-    } else if (!actions.showResponseInput) {
-      onClose()
-    }
-  })
+
+  useHotkeys(
+    'escape',
+    ev => {
+      if ((ev.target as HTMLElement)?.dataset.slot === 'dialog-close') {
+        console.warn('Ignoring onClose triggered by dialog-close in SessionDetail')
+        return null
+      }
+
+      if (approvals.confirmingApprovalId) {
+        approvals.setConfirmingApprovalId(null)
+      } else if (navigation.expandedEventId) {
+        navigation.setExpandedEventId(null)
+      } else if (navigation.focusedEventId) {
+        navigation.setFocusedEventId(null)
+      } else if (!actions.showResponseInput) {
+        onClose()
+      }
+    },
+    { scopes: SessionDetailHotkeysScope },
+  )
+
+  useStealHotkeyScope(SessionDetailHotkeysScope)
 
   // Note: Most hotkeys are handled by the hooks (ctrl+x, r, p, i, a, d)
   // Only the escape key needs special handling here for confirmingApprovalId
@@ -236,14 +252,16 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       </Card>
 
       {/* Tool Result Expansion Modal */}
-      <ToolResultModal
-        toolCall={expandedToolCall}
-        toolResult={expandedToolResult}
-        onClose={() => {
-          setExpandedToolResult(null)
-          setExpandedToolCall(null)
-        }}
-      />
+      {expandedToolResult && (
+        <ToolResultModal
+          toolCall={expandedToolCall}
+          toolResult={expandedToolResult}
+          onClose={() => {
+            setExpandedToolResult(null)
+            setExpandedToolCall(null)
+          }}
+        />
+      )}
     </section>
   )
 }

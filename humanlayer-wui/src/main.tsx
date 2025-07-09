@@ -8,7 +8,7 @@ import { HotkeysProvider } from 'react-hotkeys-hook'
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
     <ThemeProvider>
-      <HotkeysProvider>
+      <HotkeysProvider initiallyActiveScopes={['none']}>
         <RouterProvider router={router} />
       </HotkeysProvider>
     </ThemeProvider>
