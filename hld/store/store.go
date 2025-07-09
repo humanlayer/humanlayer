@@ -131,7 +131,7 @@ type FileSnapshot struct {
 	ID        int64
 	ToolID    string
 	SessionID string
-	FilePath  string    // Relative path from tool call
+	FilePath  string // Relative path from tool call
 	Content   string
 	CreatedAt time.Time
 }

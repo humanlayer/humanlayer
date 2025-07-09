@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -721,38 +722,55 @@ func (m *Manager) captureFileSnapshot(ctx context.Context, sessionID, toolID, to
 		slog.Error("failed to parse Read tool input", "error", err)
 		return
 	}
-	
+
 	filePath, ok := input["file_path"].(string)
 	if !ok {
 		slog.Error("Read tool input missing file_path")
 		return
 	}
-	
-	// Parse tool result
-	var result ReadToolResult
-	if err := json.Unmarshal([]byte(toolResultContent), &result); err != nil {
-		slog.Error("failed to parse Read tool result", "error", err)
-		return
-	}
-	
+
+	// Read tool returns plain text with line numbers, not JSON
+	// Check if this is a partial read by looking for limit/offset in input
+	_, hasLimit := input["limit"]
+	_, hasOffset := input["offset"]
+	isPartialRead := hasLimit || hasOffset
+
 	var content string
-	
-	// If we have full content from tool result, use it directly
-	if result.File.NumLines == result.File.TotalLines {
-		content = result.File.Content
+
+	// If it's a full read (no limit/offset), we can use the tool result content directly
+	if !isPartialRead {
+		// Parse the line-numbered format from Read tool
+		content = parseReadToolContent(toolResultContent)
 		slog.Debug("using full content from Read tool result", "path", filePath)
 	} else {
-		// Need to read full file from filesystem
+		// Partial read - need to read full file from filesystem
 		// Get session to access working directory
 		session, err := m.store.GetSession(ctx, sessionID)
 		if err != nil {
 			slog.Error("failed to get session for snapshot", "error", err)
 			return
 		}
-		
-		// Construct full path for reading (but still store relative path)
-		fullPath := filepath.Join(session.WorkingDir, filePath)
-		
+
+		// Construct full path for reading
+		var fullPath string
+		if filepath.IsAbs(filePath) {
+			// Path is already absolute
+			fullPath = filePath
+		} else {
+			// Path is relative, join with working directory
+			fullPath = filepath.Join(session.WorkingDir, filePath)
+
+			// Verify the constructed path exists
+			if _, err := os.Stat(fullPath); err != nil {
+				slog.Error("constructed file path does not exist",
+					"working_dir", session.WorkingDir,
+					"file_path", filePath,
+					"full_path", fullPath,
+					"error", err)
+				return
+			}
+		}
+
 		// Read file with size limit (10MB)
 		const maxFileSize = 10 * 1024 * 1024
 		fileInfo, err := os.Stat(fullPath)
@@ -760,11 +778,11 @@ func (m *Manager) captureFileSnapshot(ctx context.Context, sessionID, toolID, to
 			slog.Error("failed to stat file for snapshot", "path", fullPath, "error", err)
 			return
 		}
-		
+
 		if fileInfo.Size() > maxFileSize {
 			slog.Warn("file too large for snapshot, using partial content", "path", fullPath, "size", fileInfo.Size())
 			// Store partial content from tool result as fallback
-			content = result.File.Content
+			content = parseReadToolContent(toolResultContent)
 		} else {
 			fileBytes, err := os.ReadFile(fullPath)
 			if err != nil {
@@ -775,18 +793,34 @@ func (m *Manager) captureFileSnapshot(ctx context.Context, sessionID, toolID, to
 			slog.Debug("read full file content from filesystem", "path", fullPath)
 		}
 	}
-	
+
 	// Store snapshot with relative path from tool call
 	snapshot := &store.FileSnapshot{
 		ToolID:    toolID,
 		SessionID: sessionID,
-		FilePath:  filePath,  // Store exactly as provided in tool call
+		FilePath:  filePath, // Store exactly as provided in tool call
 		Content:   content,
 	}
-	
+
 	if err := m.store.CreateFileSnapshot(ctx, snapshot); err != nil {
 		slog.Error("failed to store file snapshot", "error", err)
 	}
+}
+
+// parseReadToolContent extracts content from Read tool's line-numbered format
+func parseReadToolContent(toolResult string) string {
+	lines := strings.Split(toolResult, "\n")
+	var contentLines []string
+
+	for _, line := range lines {
+		// Find the arrow separator "→"
+		if idx := strings.Index(line, "→"); idx > 0 {
+			// Extract content after the arrow (UTF-8 aware)
+			contentLines = append(contentLines, line[idx+len("→"):])
+		}
+	}
+
+	return strings.Join(contentLines, "\n")
 }
 
 // ContinueSession resumes an existing completed session with a new query and optional config overrides

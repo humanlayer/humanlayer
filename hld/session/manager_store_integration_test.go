@@ -696,13 +696,13 @@ func TestSessionManagerEventProcessing(t *testing.T) {
 func TestCaptureFileSnapshot_Integration(t *testing.T) {
 	// Create a temporary directory for test files
 	tempDir := t.TempDir()
-	
+
 	// Create test files
 	testFile1 := filepath.Join(tempDir, "test1.txt")
 	if err := os.WriteFile(testFile1, []byte("Content of test file 1"), 0644); err != nil {
 		t.Fatalf("failed to create test file 1: %v", err)
 	}
-	
+
 	testFile2 := filepath.Join(tempDir, "subdir", "test2.txt")
 	if err := os.MkdirAll(filepath.Dir(testFile2), 0755); err != nil {
 		t.Fatalf("failed to create subdirectory: %v", err)
@@ -710,7 +710,7 @@ func TestCaptureFileSnapshot_Integration(t *testing.T) {
 	if err := os.WriteFile(testFile2, []byte("Content of test file 2\nWith multiple lines\n"), 0644); err != nil {
 		t.Fatalf("failed to create test file 2: %v", err)
 	}
-	
+
 	// Create large file (>10MB)
 	largeFile := filepath.Join(tempDir, "large.txt")
 	largeContent := make([]byte, 11*1024*1024) // 11MB
@@ -967,7 +967,7 @@ func TestCaptureFileSnapshot_Integration(t *testing.T) {
 	t.Run("HandleInvalidToolInput", func(t *testing.T) {
 		// Test with invalid tool input JSON
 		manager.captureFileSnapshot(ctx, sessionID, "tool-invalid", "{invalid json}", "{}")
-		
+
 		// Should handle gracefully without creating snapshot
 		snapshots, err := testStore.GetFileSnapshots(ctx, sessionID)
 		if err != nil {
@@ -984,7 +984,7 @@ func TestCaptureFileSnapshot_Integration(t *testing.T) {
 	t.Run("HandleMissingFilePath", func(t *testing.T) {
 		// Test with missing file_path in tool input
 		manager.captureFileSnapshot(ctx, sessionID, "tool-nopath", `{"other_param": "value"}`, "{}")
-		
+
 		// Should handle gracefully without creating snapshot
 		snapshots, err := testStore.GetFileSnapshots(ctx, sessionID)
 		if err != nil {

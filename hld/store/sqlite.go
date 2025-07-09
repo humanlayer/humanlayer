@@ -398,7 +398,7 @@ func (s *SQLiteStore) applyMigrations() error {
 	// Migration 7: Add file_snapshots table for Read operation tracking
 	if currentVersion < 7 {
 		slog.Info("Applying migration 7: Add file_snapshots table")
-		
+
 		_, err = s.db.Exec(`
 			CREATE TABLE IF NOT EXISTS file_snapshots (
 				id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -407,18 +407,18 @@ func (s *SQLiteStore) applyMigrations() error {
 				file_path TEXT NOT NULL, -- Relative path from tool call
 				content TEXT NOT NULL,
 				created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-				
+
 				FOREIGN KEY (session_id) REFERENCES sessions(id)
 			);
-			CREATE INDEX IF NOT EXISTS idx_snapshots_session_path 
+			CREATE INDEX IF NOT EXISTS idx_snapshots_session_path
 				ON file_snapshots(session_id, file_path);
-			CREATE INDEX IF NOT EXISTS idx_snapshots_tool 
+			CREATE INDEX IF NOT EXISTS idx_snapshots_tool
 				ON file_snapshots(tool_id);
 		`)
 		if err != nil {
 			return fmt.Errorf("failed to create file_snapshots table: %w", err)
 		}
-		
+
 		// Record migration
 		_, err = s.db.Exec(`
 			INSERT INTO schema_version (version, description)
@@ -427,7 +427,7 @@ func (s *SQLiteStore) applyMigrations() error {
 		if err != nil {
 			return fmt.Errorf("failed to record migration 7: %w", err)
 		}
-		
+
 		slog.Info("Migration 7 applied successfully")
 	}
 
@@ -1513,8 +1513,8 @@ func (s *SQLiteStore) GetFileSnapshots(ctx context.Context, sessionID string) ([
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	
+	defer func() { _ = rows.Close() }()
+
 	var snapshots []FileSnapshot
 	for rows.Next() {
 		var s FileSnapshot

@@ -56,7 +56,7 @@ func TestReadToolResult(t *testing.T) {
 		require.Equal(t, 3, result.File.NumLines)
 		require.Equal(t, 100, result.File.StartLine)
 		require.Equal(t, 1000, result.File.TotalLines)
-		
+
 		// Verify this is a partial read
 		require.NotEqual(t, result.File.NumLines, result.File.TotalLines)
 	})
@@ -110,7 +110,7 @@ func TestReadToolResult(t *testing.T) {
 						TotalLines: tc.total,
 					},
 				}
-				
+
 				isFull := result.File.NumLines == result.File.TotalLines
 				require.Equal(t, tc.isFull, isFull)
 			})
@@ -120,7 +120,7 @@ func TestReadToolResult(t *testing.T) {
 	t.Run("ParseInvalidJSON", func(t *testing.T) {
 		// Test parsing invalid JSON
 		invalidJSON := `{invalid json}`
-		
+
 		var result ReadToolResult
 		err := json.Unmarshal([]byte(invalidJSON), &result)
 		require.Error(t, err)
@@ -143,8 +143,8 @@ func TestReadToolResult(t *testing.T) {
 		require.Equal(t, "file", result.Type)
 		require.Equal(t, "test.txt", result.File.FilePath)
 		require.Equal(t, "test", result.File.Content)
-		require.Equal(t, 0, result.File.NumLines)    // Zero value
-		require.Equal(t, 0, result.File.StartLine)   // Zero value
-		require.Equal(t, 0, result.File.TotalLines)  // Zero value
+		require.Equal(t, 0, result.File.NumLines)   // Zero value
+		require.Equal(t, 0, result.File.StartLine)  // Zero value
+		require.Equal(t, 0, result.File.TotalLines) // Zero value
 	})
 }

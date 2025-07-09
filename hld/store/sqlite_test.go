@@ -581,11 +581,11 @@ func TestFileSnapshots(t *testing.T) {
 				utilsSnapshot = s
 			}
 		}
-		
+
 		// Verify content
 		require.Equal(t, "package main\n\nfunc main() {}\n", mainSnapshot.Content)
 		require.Equal(t, "package utils\n\nfunc Helper() {}\n", utilsSnapshot.Content)
-		
+
 		// Verify other fields
 		require.Equal(t, "tool-1", mainSnapshot.ToolID)
 		require.Equal(t, "tool-2", utilsSnapshot.ToolID)
@@ -607,7 +607,7 @@ func TestFileSnapshots(t *testing.T) {
 		for i := 0; i < 1000; i++ {
 			largeContent += "// This is line " + string(rune(i)) + " of a large file\n"
 		}
-		
+
 		snapshot := &FileSnapshot{
 			ToolID:    "tool-large",
 			SessionID: session.ID,
@@ -615,11 +615,11 @@ func TestFileSnapshots(t *testing.T) {
 			Content:   largeContent,
 		}
 		require.NoError(t, store.CreateFileSnapshot(ctx, snapshot))
-		
+
 		// Verify it was stored correctly
 		snapshots, err := store.GetFileSnapshots(ctx, session.ID)
 		require.NoError(t, err)
-		
+
 		var found bool
 		for _, s := range snapshots {
 			if s.FilePath == "large_file.txt" {
@@ -640,10 +640,10 @@ func TestFileSnapshots(t *testing.T) {
 			Content:   "Content with 'quotes' and \"double quotes\" and\nnewlines\nand\ttabs",
 		}
 		require.NoError(t, store.CreateFileSnapshot(ctx, snapshot))
-		
+
 		snapshots, err := store.GetFileSnapshots(ctx, session.ID)
 		require.NoError(t, err)
-		
+
 		var found bool
 		for _, s := range snapshots {
 			if s.ToolID == "tool-special" {
