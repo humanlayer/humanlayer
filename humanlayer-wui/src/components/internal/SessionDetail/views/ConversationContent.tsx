@@ -60,7 +60,6 @@ export function ConversationContent({
   // expandedToolResult is used by parent to control hotkey availability
   void expandedToolResult
   const [expandedEventId, setExpandedEventId] = useState<number | null>(null)
-  const [isWideView] = useState(false) // This can be controlled from parent if needed
   const { events, loading, error, isInitialLoad } = useConversation(sessionId, undefined, 1000)
   const toolResults = events.filter(event => event.event_type === ConversationEventType.ToolResult)
   const toolResultsByKey = keyBy(toolResults, 'tool_result_for_id')
@@ -218,17 +217,18 @@ export function ConversationContent({
                 onClick={() =>
                   setExpandedEventId(expandedEventId === displayObject.id ? null : displayObject.id)
                 }
-                className={`pt-1 pb-3 px-2 cursor-pointer ${
+                className={`relative p-4 cursor-pointer NoSubTasksConversationContent ${
                   index !== nonEmptyDisplayObjects.length - 1 ? 'border-b' : ''
-                } ${focusedEventId === displayObject.id ? '!bg-accent/20 -mx-2 px-4 rounded' : ''}`}
+                } ${focusedEventId === displayObject.id ? '!bg-accent/20' : ''}`}
               >
-                {/* Timestamp at top */}
-                <div className="flex justify-end mb-1">
-                  <span className="text-xs text-muted-foreground/60">
+                {/* Timestamp */}
+                <span className="absolute top-2 right-4">
+                  <span className="text-xs text-muted-foreground/60 uppercase tracking-wider">
                     {formatAbsoluteTimestamp(displayObject.created_at)}
                   </span>
-                </div>
+                </span>
 
+                {/* Icon */}
                 <div className="flex items-baseline gap-2">
                   {displayObject.iconComponent && (
                     <span className="text-sm text-accent align-middle relative top-[1px]">
@@ -239,18 +239,21 @@ export function ConversationContent({
                     {displayObject.subject}
                   </span>
                 </div>
+
+                {/* Tool Result Content */}
                 {displayObject.toolResultContent && (
                   <p className="whitespace-pre-wrap text-foreground">
                     {displayObject.toolResultContent}
                   </p>
                 )}
+
+                {/* Body */}
                 {displayObject.body && (
                   <p className="whitespace-pre-wrap text-foreground">{displayObject.body}</p>
                 )}
               </div>
 
-              {/* Expanded content for slim view */}
-              {!isWideView && expandedEventId === displayObject.id && (
+              {expandedEventId === displayObject.id && (
                 <EventMetaInfo event={events.find(e => e.id === displayObject.id)!} />
               )}
             </div>
@@ -327,7 +330,7 @@ export function ConversationContent({
                     onClick={() =>
                       setExpandedEventId(expandedEventId === displayObject.id ? null : displayObject.id)
                     }
-                    className={`pt-1 pb-3 px-2 cursor-pointer ${
+                    className={`relative p-4 cursor-pointer ${
                       index !==
                       rootEvents.filter(e => e.event_type !== ConversationEventType.ToolResult).length -
                         1
@@ -336,7 +339,7 @@ export function ConversationContent({
                     } ${focusedEventId === displayObject.id ? '!bg-accent/20 -mx-2 px-4 rounded' : ''}`}
                   >
                     {/* Timestamp at top */}
-                    <div className="flex justify-end mb-1">
+                    <div className="absolute top-2 right-4">
                       <span className="text-xs text-muted-foreground/60">
                         {formatAbsoluteTimestamp(displayObject.created_at)}
                       </span>
@@ -362,8 +365,7 @@ export function ConversationContent({
                     )}
                   </div>
 
-                  {/* Expanded content for slim view */}
-                  {!isWideView && expandedEventId === displayObject.id && (
+                  {expandedEventId === displayObject.id && (
                     <EventMetaInfo event={event} />
                   )}
                 </div>
