@@ -79,6 +79,24 @@ type GetSessionStateResponse struct {
 	Session SessionState `json:"session"`
 }
 
+// GetSessionSnapshotsRequest requests file snapshots for a session
+type GetSessionSnapshotsRequest struct {
+	SessionID string `json:"session_id"`
+}
+
+// GetSessionSnapshotsResponse contains file snapshots for the session
+type GetSessionSnapshotsResponse struct {
+	Snapshots []FileSnapshotInfo `json:"snapshots"`
+}
+
+// FileSnapshotInfo contains snapshot data for frontend display
+type FileSnapshotInfo struct {
+	ToolID    string `json:"tool_id"`
+	FilePath  string `json:"file_path"`
+	Content   string `json:"content"`
+	CreatedAt string `json:"created_at"` // ISO 8601 format
+}
+
 // ContinueSessionRequest is the request for continuing an existing session
 type ContinueSessionRequest struct {
 	SessionID            string   `json:"session_id"`                       // The session to continue (required)

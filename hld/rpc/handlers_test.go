@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"testing"
@@ -585,5 +586,164 @@ func TestHandleInterruptSession(t *testing.T) {
 		_, err := handlers.HandleInterruptSession(context.Background(), reqJSON)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to interrupt session")
+	})
+}
+
+func TestHandleGetSessionSnapshots(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockManager := session.NewMockSessionManager(ctrl)
+	mockStore := store.NewMockConversationStore(ctrl)
+
+	handlers := NewSessionHandlers(mockManager, mockStore)
+
+	t.Run("successful retrieval", func(t *testing.T) {
+		sessionID := "test-session"
+		now := time.Now()
+
+		// Mock session exists
+		mockStore.EXPECT().
+			GetSession(gomock.Any(), sessionID).
+			Return(&store.Session{
+				ID:        sessionID,
+				RunID:     "test-run",
+				Status:    store.SessionStatusRunning,
+				CreatedAt: now,
+			}, nil)
+
+		// Mock snapshots
+		snapshots := []store.FileSnapshot{
+			{
+				ID:        1,
+				ToolID:    "tool-123",
+				SessionID: sessionID,
+				FilePath:  "src/main.go",
+				Content:   "package main\n\nfunc main() {}",
+				CreatedAt: now.Add(-5 * time.Minute),
+			},
+			{
+				ID:        2,
+				ToolID:    "tool-456",
+				SessionID: sessionID,
+				FilePath:  "src/helper.go",
+				Content:   "package main\n\nfunc helper() {}",
+				CreatedAt: now.Add(-3 * time.Minute),
+			},
+		}
+
+		mockStore.EXPECT().
+			GetFileSnapshots(gomock.Any(), sessionID).
+			Return(snapshots, nil)
+
+		req := GetSessionSnapshotsRequest{
+			SessionID: sessionID,
+		}
+		reqJSON, _ := json.Marshal(req)
+
+		result, err := handlers.HandleGetSessionSnapshots(context.Background(), reqJSON)
+		require.NoError(t, err)
+
+		resp, ok := result.(*GetSessionSnapshotsResponse)
+		require.True(t, ok)
+		require.Len(t, resp.Snapshots, 2)
+
+		// Verify snapshots are returned in order
+		assert.Equal(t, "src/main.go", resp.Snapshots[0].FilePath)
+		assert.Equal(t, "src/helper.go", resp.Snapshots[1].FilePath)
+		assert.Equal(t, "tool-123", resp.Snapshots[0].ToolID)
+		assert.Equal(t, "tool-456", resp.Snapshots[1].ToolID)
+		assert.Equal(t, "package main\n\nfunc main() {}", resp.Snapshots[0].Content)
+		assert.Equal(t, "package main\n\nfunc helper() {}", resp.Snapshots[1].Content)
+
+		// Verify timestamps are in ISO 8601 format
+		_, err = time.Parse(time.RFC3339, resp.Snapshots[0].CreatedAt)
+		assert.NoError(t, err)
+		_, err = time.Parse(time.RFC3339, resp.Snapshots[1].CreatedAt)
+		assert.NoError(t, err)
+	})
+
+	t.Run("non-existent session", func(t *testing.T) {
+		sessionID := "non-existent"
+
+		mockStore.EXPECT().
+			GetSession(gomock.Any(), sessionID).
+			Return(nil, sql.ErrNoRows)
+
+		req := GetSessionSnapshotsRequest{
+			SessionID: sessionID,
+		}
+		reqJSON, _ := json.Marshal(req)
+
+		_, err := handlers.HandleGetSessionSnapshots(context.Background(), reqJSON)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "session not found")
+	})
+
+	t.Run("missing session_id", func(t *testing.T) {
+		req := GetSessionSnapshotsRequest{}
+		reqJSON, _ := json.Marshal(req)
+
+		_, err := handlers.HandleGetSessionSnapshots(context.Background(), reqJSON)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "session_id is required")
+	})
+
+	t.Run("empty snapshots", func(t *testing.T) {
+		sessionID := "empty-session"
+
+		mockStore.EXPECT().
+			GetSession(gomock.Any(), sessionID).
+			Return(&store.Session{
+				ID:     sessionID,
+				Status: store.SessionStatusCompleted,
+			}, nil)
+
+		mockStore.EXPECT().
+			GetFileSnapshots(gomock.Any(), sessionID).
+			Return([]store.FileSnapshot{}, nil)
+
+		req := GetSessionSnapshotsRequest{
+			SessionID: sessionID,
+		}
+		reqJSON, _ := json.Marshal(req)
+
+		result, err := handlers.HandleGetSessionSnapshots(context.Background(), reqJSON)
+		require.NoError(t, err)
+
+		resp, ok := result.(*GetSessionSnapshotsResponse)
+		require.True(t, ok)
+		assert.Len(t, resp.Snapshots, 0)
+		assert.NotNil(t, resp.Snapshots) // Should be empty array, not nil
+	})
+
+	t.Run("invalid JSON", func(t *testing.T) {
+		_, err := handlers.HandleGetSessionSnapshots(context.Background(), []byte(`invalid json`))
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid request")
+	})
+
+	t.Run("store error", func(t *testing.T) {
+		sessionID := "error-session"
+
+		mockStore.EXPECT().
+			GetSession(gomock.Any(), sessionID).
+			Return(&store.Session{
+				ID:     sessionID,
+				Status: store.SessionStatusRunning,
+			}, nil)
+
+		mockStore.EXPECT().
+			GetFileSnapshots(gomock.Any(), sessionID).
+			Return(nil, fmt.Errorf("database error"))
+
+		req := GetSessionSnapshotsRequest{
+			SessionID: sessionID,
+		}
+		reqJSON, _ := json.Marshal(req)
+
+		_, err := handlers.HandleGetSessionSnapshots(context.Background(), reqJSON)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to get snapshots")
 	})
 }
