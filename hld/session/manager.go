@@ -404,6 +404,7 @@ func (m *Manager) GetSessionInfo(sessionID string) (*Info, error) {
 		Summary:         dbSession.Summary,
 		Model:           dbSession.Model,
 		WorkingDir:      dbSession.WorkingDir,
+		AutoAcceptEdits: dbSession.AutoAcceptEdits,
 	}
 
 	if dbSession.CompletedAt != nil {
@@ -464,6 +465,7 @@ func (m *Manager) ListSessions() []Info {
 			Summary:         dbSession.Summary,
 			Model:           dbSession.Model,
 			WorkingDir:      dbSession.WorkingDir,
+			AutoAcceptEdits: dbSession.AutoAcceptEdits,
 		}
 
 		// Set end time if completed

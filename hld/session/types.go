@@ -51,6 +51,7 @@ type Info struct {
 	Model           string             `json:"model,omitempty"`
 	WorkingDir      string             `json:"working_dir,omitempty"`
 	Result          *claudecode.Result `json:"result,omitempty"`
+	AutoAcceptEdits bool               `json:"auto_accept_edits"`
 }
 
 // ContinueSessionConfig contains the configuration for continuing a session

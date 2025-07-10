@@ -151,7 +151,7 @@ func (d *Daemon) Run(ctx context.Context) error {
 	d.rpcServer.SetSubscriptionHandlers(subscriptionHandlers)
 
 	// Register session handlers
-	sessionHandlers := rpc.NewSessionHandlers(d.sessions, d.store)
+	sessionHandlers := rpc.NewSessionHandlers(d.sessions, d.store, d.approvals)
 	sessionHandlers.SetEventBus(d.eventBus)
 	sessionHandlers.Register(d.rpcServer)
 

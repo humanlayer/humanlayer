@@ -9,7 +9,6 @@ import { ChevronDown } from 'lucide-react'
 import { getStatusTextClass } from '@/utils/component-utils'
 import { truncate } from '@/utils/formatting'
 import { daemonClient } from '@/lib/daemon/client'
-import { toast } from 'sonner'
 import { useStore } from '@/AppStore'
 
 // Import extracted components
@@ -131,17 +130,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         })
 
         // State will be updated via event subscription
-        // Show immediate feedback via toast
-        toast.success(newState ? 'Auto-accept edits enabled' : 'Auto-accept edits disabled', {
-          description: newState
-            ? 'Edit, Write, and MultiEdit tools will be automatically approved'
-            : 'All tools require manual approval',
-          duration: 3000,
-        })
       } catch (error) {
-        toast.error('Failed to toggle auto-accept mode', {
-          description: error instanceof Error ? error.message : 'Unknown error',
-        })
+        console.error('Failed to toggle auto-accept mode:', error)
       }
     },
     {

@@ -6,10 +6,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sort"
 	"time"
 
 	claudecode "github.com/humanlayer/humanlayer/claudecode-go"
+	"github.com/humanlayer/humanlayer/hld/approval"
 	"github.com/humanlayer/humanlayer/hld/bus"
 	"github.com/humanlayer/humanlayer/hld/session"
 	"github.com/humanlayer/humanlayer/hld/store"
@@ -17,16 +19,18 @@ import (
 
 // SessionHandlers provides RPC handlers for session management
 type SessionHandlers struct {
-	manager  session.SessionManager
-	store    store.ConversationStore
-	eventBus bus.EventBus
+	manager         session.SessionManager
+	store           store.ConversationStore
+	eventBus        bus.EventBus
+	approvalManager approval.Manager
 }
 
 // NewSessionHandlers creates new session RPC handlers
-func NewSessionHandlers(manager session.SessionManager, store store.ConversationStore) *SessionHandlers {
+func NewSessionHandlers(manager session.SessionManager, store store.ConversationStore, approvalManager approval.Manager) *SessionHandlers {
 	return &SessionHandlers{
-		manager: manager,
-		store:   store,
+		manager:         manager,
+		store:           store,
+		approvalManager: approvalManager,
 	}
 }
 
@@ -461,6 +465,25 @@ func (h *SessionHandlers) HandleUpdateSessionSettings(ctx context.Context, param
 		return nil, fmt.Errorf("failed to update session: %w", err)
 	}
 
+	// If auto-accept was enabled, approve any pending edit tool approvals
+	if req.AutoAcceptEdits != nil && *req.AutoAcceptEdits && h.approvalManager != nil {
+		// Get pending approvals for the session
+		pendingApprovals, err := h.store.GetPendingApprovals(ctx, req.SessionID)
+		if err == nil && len(pendingApprovals) > 0 {
+			for _, approval := range pendingApprovals {
+				// Check if it's an edit tool
+				if isEditTool(approval.ToolName) {
+					// Auto-approve it
+					err := h.approvalManager.ApproveToolCall(ctx, approval.ID, "Auto-accepted (auto-accept mode enabled)")
+					if err != nil {
+						// Log but don't fail the whole operation
+						slog.Error("failed to auto-approve pending approval", "approval_id", approval.ID, "error", err)
+					}
+				}
+			}
+		}
+	}
+
 	// Publish event for UI updates
 	if h.eventBus != nil && req.AutoAcceptEdits != nil {
 		h.eventBus.Publish(bus.Event{
@@ -504,6 +527,11 @@ func (h *SessionHandlers) HandleGetRecentPaths(ctx context.Context, params json.
 	}
 
 	return &GetRecentPathsResponse{Paths: rpcPaths}, nil
+}
+
+// isEditTool checks if a tool name is one of the edit tools
+func isEditTool(toolName string) bool {
+	return toolName == "Edit" || toolName == "Write" || toolName == "MultiEdit"
 }
 
 // Register registers all session handlers with the RPC server

@@ -30,18 +30,6 @@ export function useSessionEventsWithNotifications(connected: boolean) {
         updateSession(data.session_id, {
           auto_accept_edits: data.auto_accept_edits,
         })
-
-        // Show notification
-        if (notificationService) {
-          notificationService.notify({
-            type: 'settings_changed',
-            title: data.auto_accept_edits ? 'Auto-accept enabled' : 'Auto-accept disabled',
-            body: data.auto_accept_edits
-              ? 'Edit, Write, and MultiEdit tools will be automatically approved'
-              : 'All tools require manual approval',
-            metadata: { sessionId: data.session_id },
-          })
-        }
         return
       }
 
