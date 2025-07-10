@@ -15,6 +15,7 @@ export type NotificationType =
   | 'session_started'
   | 'system_alert'
   | 'error'
+  | 'settings_changed'
 
 export interface NotificationAction {
   label: string

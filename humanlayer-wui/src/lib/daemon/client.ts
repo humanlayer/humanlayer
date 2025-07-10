@@ -13,6 +13,7 @@ import type {
   FetchApprovalsResponse,
   EventNotification,
   SubscribeRequest,
+  UpdateSessionSettingsResponse,
 } from './types'
 
 export class DaemonClient {
@@ -96,6 +97,16 @@ export class DaemonClient {
 
   async interruptSession(sessionId: string): Promise<void> {
     return await invoke('interrupt_session', { sessionId })
+  }
+
+  async updateSessionSettings(
+    sessionId: string,
+    settings: { autoAcceptEdits?: boolean },
+  ): Promise<UpdateSessionSettingsResponse> {
+    return await invoke('update_session_settings', {
+      sessionId,
+      autoAcceptEdits: settings.autoAcceptEdits,
+    })
   }
 }
 

@@ -152,6 +152,7 @@ func (d *Daemon) Run(ctx context.Context) error {
 
 	// Register session handlers
 	sessionHandlers := rpc.NewSessionHandlers(d.sessions, d.store)
+	sessionHandlers.SetEventBus(d.eventBus)
 	sessionHandlers.Register(d.rpcServer)
 
 	// Register local approval handlers

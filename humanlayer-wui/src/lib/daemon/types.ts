@@ -81,6 +81,7 @@ export interface SessionInfo {
   model?: string
   working_dir?: string
   result?: any
+  auto_accept_edits: boolean
 }
 
 export interface SessionState {
@@ -100,6 +101,7 @@ export interface SessionState {
   cost_usd?: number
   total_tokens?: number
   duration_ms?: number
+  auto_accept_edits?: boolean
 }
 
 export interface ListSessionsResponse {
@@ -311,4 +313,14 @@ export interface InterruptSessionResponse {
   success: boolean
   session_id: string
   status: string
+}
+
+// Session settings types
+export interface UpdateSessionSettingsRequest {
+  session_id: string
+  auto_accept_edits?: boolean
+}
+
+export interface UpdateSessionSettingsResponse {
+  success: boolean
 }

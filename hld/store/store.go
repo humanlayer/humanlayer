@@ -80,6 +80,7 @@ type Session struct {
 	NumTurns             *int
 	ResultContent        string
 	ErrorMessage         string
+	AutoAcceptEdits      bool `db:"auto_accept_edits"`
 }
 
 // SessionUpdate contains fields that can be updated
@@ -95,6 +96,7 @@ type SessionUpdate struct {
 	NumTurns        *int
 	ResultContent   *string
 	ErrorMessage    *string
+	AutoAcceptEdits *bool `db:"auto_accept_edits"`
 }
 
 // ConversationEvent represents a single event in a conversation

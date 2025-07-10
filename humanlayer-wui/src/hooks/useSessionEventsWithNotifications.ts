@@ -19,8 +19,32 @@ export function useSessionEventsWithNotifications(connected: boolean) {
   const previousStatusesRef = useRef<Map<string, SessionStatus>>(new Map())
 
   const handleSessionStatusChanged = useCallback(
-    async (data: SessionStatusChangedEventData, timestamp: string) => {
+    async (
+      data: SessionStatusChangedEventData & { event_type?: string; auto_accept_edits?: boolean },
+      timestamp: string,
+    ) => {
       console.log('handleSessionStatusChanged()', data)
+
+      // Handle settings updates
+      if (data.event_type === 'settings_updated' && data.auto_accept_edits !== undefined) {
+        updateSession(data.session_id, {
+          auto_accept_edits: data.auto_accept_edits,
+        })
+
+        // Show notification
+        if (notificationService) {
+          notificationService.notify({
+            type: 'settings_changed',
+            title: data.auto_accept_edits ? 'Auto-accept enabled' : 'Auto-accept disabled',
+            body: data.auto_accept_edits
+              ? 'Edit, Write, and MultiEdit tools will be automatically approved'
+              : 'All tools require manual approval',
+            metadata: { sessionId: data.session_id },
+          })
+        }
+        return
+      }
+
       const previousStatus = previousStatusesRef.current.get(data.session_id)
       const newStatus = data.new_status as SessionStatus
 

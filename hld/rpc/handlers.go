@@ -10,14 +10,16 @@ import (
 	"time"
 
 	claudecode "github.com/humanlayer/humanlayer/claudecode-go"
+	"github.com/humanlayer/humanlayer/hld/bus"
 	"github.com/humanlayer/humanlayer/hld/session"
 	"github.com/humanlayer/humanlayer/hld/store"
 )
 
 // SessionHandlers provides RPC handlers for session management
 type SessionHandlers struct {
-	manager session.SessionManager
-	store   store.ConversationStore
+	manager  session.SessionManager
+	store    store.ConversationStore
+	eventBus bus.EventBus
 }
 
 // NewSessionHandlers creates new session RPC handlers
@@ -26,6 +28,11 @@ func NewSessionHandlers(manager session.SessionManager, store store.Conversation
 		manager: manager,
 		store:   store,
 	}
+}
+
+// SetEventBus sets the event bus for the handlers
+func (h *SessionHandlers) SetEventBus(eventBus bus.EventBus) {
+	h.eventBus = eventBus
 }
 
 // LaunchSessionRequest is the request for launching a new session
@@ -424,6 +431,51 @@ func (h *SessionHandlers) HandleInterruptSession(ctx context.Context, params jso
 	}, nil
 }
 
+// HandleUpdateSessionSettings handles the UpdateSessionSettings RPC method
+func (h *SessionHandlers) HandleUpdateSessionSettings(ctx context.Context, params json.RawMessage) (interface{}, error) {
+	var req UpdateSessionSettingsRequest
+	if err := json.Unmarshal(params, &req); err != nil {
+		return nil, fmt.Errorf("invalid request: %w", err)
+	}
+
+	// Validate required fields
+	if req.SessionID == "" {
+		return nil, fmt.Errorf("session_id is required")
+	}
+
+	// Get current session to verify it exists
+	session, err := h.store.GetSession(ctx, req.SessionID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get session: %w", err)
+	}
+	if session == nil {
+		return nil, fmt.Errorf("session not found")
+	}
+
+	// Update session settings
+	update := store.SessionUpdate{
+		AutoAcceptEdits: req.AutoAcceptEdits,
+	}
+
+	if err := h.store.UpdateSession(ctx, req.SessionID, update); err != nil {
+		return nil, fmt.Errorf("failed to update session: %w", err)
+	}
+
+	// Publish event for UI updates
+	if h.eventBus != nil && req.AutoAcceptEdits != nil {
+		h.eventBus.Publish(bus.Event{
+			Type: bus.EventSessionStatusChanged,
+			Data: map[string]interface{}{
+				"session_id":        req.SessionID,
+				"auto_accept_edits": *req.AutoAcceptEdits,
+				"event_type":        "settings_updated",
+			},
+		})
+	}
+
+	return UpdateSessionSettingsResponse{Success: true}, nil
+}
+
 // Register registers all session handlers with the RPC server
 func (h *SessionHandlers) Register(server *Server) {
 	server.Register("launchSession", h.HandleLaunchSession)
@@ -434,4 +486,5 @@ func (h *SessionHandlers) Register(server *Server) {
 	server.Register("continueSession", h.HandleContinueSession)
 	server.Register("interruptSession", h.HandleInterruptSession)
 	server.Register("getSessionSnapshots", h.HandleGetSessionSnapshots)
+	server.Register("updateSessionSettings", h.HandleUpdateSessionSettings)
 }

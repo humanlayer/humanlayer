@@ -130,3 +130,14 @@ type InterruptSessionResponse struct {
 	SessionID string `json:"session_id"`
 	Status    string `json:"status"`
 }
+
+// UpdateSessionSettingsRequest is the request for updating session settings
+type UpdateSessionSettingsRequest struct {
+	SessionID       string `json:"session_id"`
+	AutoAcceptEdits *bool  `json:"auto_accept_edits,omitempty"`
+}
+
+// UpdateSessionSettingsResponse is the response for updating session settings
+type UpdateSessionSettingsResponse struct {
+	Success bool `json:"success"`
+}
