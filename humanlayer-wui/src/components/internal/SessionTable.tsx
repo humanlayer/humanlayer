@@ -128,6 +128,30 @@ export default function SessionTable({
     preventDefault: true,
   }, [focusedSession, toggleSessionSelection, handleFocusPreviousSession])
   
+  // Select all with meta+a (Cmd+A on Mac, Ctrl+A on Windows/Linux)
+  useHotkeys('meta+a', () => {
+    // Toggle all sessions - if all are selected, deselect all; otherwise select all
+    const allSelected = sessions.every(s => selectedSessions.has(s.id))
+    
+    sessions.forEach(session => {
+      if (allSelected) {
+        // Deselect all if all are selected
+        if (selectedSessions.has(session.id)) {
+          toggleSessionSelection(session.id)
+        }
+      } else {
+        // Select all if not all are selected
+        if (!selectedSessions.has(session.id)) {
+          toggleSessionSelection(session.id)
+        }
+      }
+    })
+  }, {
+    scopes: SessionTableHotkeysScope,
+    enabled: !isSessionLauncherOpen,
+    preventDefault: true,
+  }, [sessions, selectedSessions, toggleSessionSelection])
+  
   useHotkeys(
     'enter',
     () => {
