@@ -98,6 +98,36 @@ export default function SessionTable({
     scopes: SessionTableHotkeysScope,
     enabled: !isSessionLauncherOpen,
   })
+  
+  // Bulk selection with shift+j/k
+  useHotkeys('shift+j', () => {
+    if (focusedSession) {
+      // Toggle current session selection
+      toggleSessionSelection(focusedSession.id)
+      
+      // Move focus to next session
+      handleFocusNextSession?.()
+    }
+  }, {
+    scopes: SessionTableHotkeysScope,
+    enabled: !isSessionLauncherOpen,
+    preventDefault: true,
+  }, [focusedSession, toggleSessionSelection, handleFocusNextSession])
+  
+  useHotkeys('shift+k', () => {
+    if (focusedSession) {
+      // Toggle current session selection
+      toggleSessionSelection(focusedSession.id)
+      
+      // Move focus to previous session
+      handleFocusPreviousSession?.()
+    }
+  }, {
+    scopes: SessionTableHotkeysScope,
+    enabled: !isSessionLauncherOpen,
+    preventDefault: true,
+  }, [focusedSession, toggleSessionSelection, handleFocusPreviousSession])
+  
   useHotkeys(
     'enter',
     () => {
