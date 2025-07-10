@@ -53,6 +53,7 @@ type Info struct {
 	WorkingDir      string             `json:"working_dir,omitempty"`
 	Result          *claudecode.Result `json:"result,omitempty"`
 	AutoAcceptEdits bool               `json:"auto_accept_edits"`
+	Archived        bool               `json:"archived"`
 }
 
 // ContinueSessionConfig contains the configuration for continuing a session
@@ -114,6 +115,8 @@ func SessionToInfo(s store.Session) Info {
 		Summary:         s.Summary,
 		Model:           s.Model,
 		WorkingDir:      s.WorkingDir,
+		AutoAcceptEdits: s.AutoAcceptEdits,
+		Archived:        s.Archived,
 	}
 
 	if s.CompletedAt != nil {

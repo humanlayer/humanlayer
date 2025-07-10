@@ -660,6 +660,7 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 	var costUSD sql.NullFloat64
 	var totalTokens, durationMS, numTurns sql.NullInt64
 	var resultContent, errorMessage sql.NullString
+	var archived sql.NullBool
 
 	err := s.db.QueryRowContext(ctx, query, sessionID).Scan(
 		&session.ID, &session.RunID, &claudeSessionID, &parentSessionID,
@@ -668,7 +669,7 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 		&permissionPromptTool, &allowedTools, &disallowedTools,
 		&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
 		&costUSD, &totalTokens, &durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
-		&session.Archived,
+		&archived,
 	)
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("session not found: %s", sessionID)
@@ -709,6 +710,9 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 		turns := int(numTurns.Int64)
 		session.NumTurns = &turns
 	}
+	
+	// Handle archived field - default to false if NULL
+	session.Archived = archived.Valid && archived.Bool
 
 	return &session, nil
 }
@@ -732,6 +736,7 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 	var costUSD sql.NullFloat64
 	var totalTokens, durationMS, numTurns sql.NullInt64
 	var resultContent, errorMessage sql.NullString
+	var archived sql.NullBool
 
 	err := s.db.QueryRowContext(ctx, query, runID).Scan(
 		&session.ID, &session.RunID, &claudeSessionID, &parentSessionID,
@@ -740,7 +745,7 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 		&permissionPromptTool, &allowedTools, &disallowedTools,
 		&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
 		&costUSD, &totalTokens, &durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
-		&session.Archived,
+		&archived,
 	)
 	if err == sql.ErrNoRows {
 		return nil, nil // No session found
@@ -781,6 +786,9 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 		turns := int(numTurns.Int64)
 		session.NumTurns = &turns
 	}
+	
+	// Handle archived field - default to false if NULL
+	session.Archived = archived.Valid && archived.Bool
 
 	return &session, nil
 }
@@ -812,6 +820,7 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 		var costUSD sql.NullFloat64
 		var totalTokens, durationMS, numTurns sql.NullInt64
 		var resultContent, errorMessage sql.NullString
+		var archived sql.NullBool
 
 		err := rows.Scan(
 			&session.ID, &session.RunID, &claudeSessionID, &parentSessionID,
@@ -820,7 +829,7 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 			&permissionPromptTool, &allowedTools, &disallowedTools,
 			&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
 			&costUSD, &totalTokens, &durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
-			&session.Archived,
+			&archived,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan session: %w", err)
@@ -858,6 +867,11 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 			turns := int(numTurns.Int64)
 			session.NumTurns = &turns
 		}
+		session.ResultContent = resultContent.String
+		session.ErrorMessage = errorMessage.String
+		
+		// Handle archived field - default to false if NULL
+		session.Archived = archived.Valid && archived.Bool
 
 		sessions = append(sessions, &session)
 	}

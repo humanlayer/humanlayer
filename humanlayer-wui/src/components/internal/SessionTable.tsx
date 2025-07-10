@@ -114,9 +114,19 @@ export default function SessionTable({
     async () => {
       if (focusedSession) {
         try {
+          // Find the current session from the sessions array to get the latest archived status
+          const currentSession = sessions.find(s => s.id === focusedSession.id)
+          if (!currentSession) return
+
+          console.log('Archive hotkey pressed:', {
+            sessionId: currentSession.id,
+            archived: currentSession.archived,
+            willArchive: !currentSession.archived
+          })
+
           // If there are selected sessions, bulk archive them
           if (selectedSessions.size > 0) {
-            const isArchiving = !focusedSession.archived
+            const isArchiving = !currentSession.archived
             await bulkArchiveSessions(Array.from(selectedSessions), isArchiving)
 
             toast.success(
@@ -129,12 +139,12 @@ export default function SessionTable({
             )
           } else {
             // Single session archive
-            const isArchiving = !focusedSession.archived
-            await archiveSession(focusedSession.id, isArchiving)
+            const isArchiving = !currentSession.archived
+            await archiveSession(currentSession.id, isArchiving)
 
             // Show success notification
             toast.success(isArchiving ? 'Session archived' : 'Session unarchived', {
-              description: focusedSession.summary || 'Untitled session',
+              description: currentSession.summary || 'Untitled session',
               duration: 3000,
             })
           }
@@ -151,7 +161,7 @@ export default function SessionTable({
       preventDefault: true,
       enableOnFormTags: false,
     },
-    [focusedSession, archiveSession, selectedSessions, bulkArchiveSessions],
+    [focusedSession, sessions, archiveSession, selectedSessions, bulkArchiveSessions],
   )
 
   // Toggle selection hotkey
