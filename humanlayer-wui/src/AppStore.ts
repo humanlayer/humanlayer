@@ -49,7 +49,7 @@ export const useStore = create<StoreState>((set, get) => ({
     try {
       const { viewMode } = get()
       const response = await daemonClient.getSessionLeaves({
-        include_archived: false,
+        include_archived: viewMode === 'archived',
         archived_only: viewMode === 'archived',
       })
       set({ sessions: response.sessions })

@@ -71,12 +71,13 @@ async fn list_sessions(
 #[tauri::command]
 async fn get_session_leaves(
     state: State<'_, AppState>,
+    request: Option<daemon_client::GetSessionLeavesRequest>,
 ) -> std::result::Result<daemon_client::GetSessionLeavesResponse, String> {
     let client_guard = state.client.lock().await;
 
     match &*client_guard {
         Some(client) => client
-            .get_session_leaves()
+            .get_session_leaves(request)
             .await
             .map_err(|e| e.to_string()),
         None => Err("Not connected to daemon".to_string()),

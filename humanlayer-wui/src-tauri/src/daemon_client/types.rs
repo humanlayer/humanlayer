@@ -95,7 +95,12 @@ pub struct ListSessionsResponse {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct GetSessionLeavesRequest {}
+pub struct GetSessionLeavesRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub include_archived: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub archived_only: Option<bool>,
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GetSessionLeavesResponse {
