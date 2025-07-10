@@ -566,11 +566,12 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 
 			// Only update if model is empty and init event has a model
 			if session != nil && session.Model == "" && event.Model != "" {
-				// Extract simple model name from API format
+				// Extract simple model name from API format (case-insensitive)
 				var modelName string
-				if strings.Contains(event.Model, "opus") {
+				lowerModel := strings.ToLower(event.Model)
+				if strings.Contains(lowerModel, "opus") {
 					modelName = "opus"
-				} else if strings.Contains(event.Model, "sonnet") {
+				} else if strings.Contains(lowerModel, "sonnet") {
 					modelName = "sonnet"
 				}
 
@@ -590,6 +591,11 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 							"model", modelName,
 							"original", event.Model)
 					}
+				} else {
+					// Log when we detect a model but don't recognize the format
+					slog.Debug("unrecognized model format in init event",
+						"session_id", sessionID,
+						"model", event.Model)
 				}
 			}
 
