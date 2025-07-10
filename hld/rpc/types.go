@@ -72,6 +72,7 @@ type SessionState struct {
 	CostUSD         float64 `json:"cost_usd,omitempty"`
 	TotalTokens     int     `json:"total_tokens,omitempty"`
 	DurationMS      int     `json:"duration_ms,omitempty"`
+	AutoAcceptEdits bool    `json:"auto_accept_edits,omitempty"`
 }
 
 // GetSessionStateResponse is the response for fetching session state
