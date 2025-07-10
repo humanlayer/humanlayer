@@ -315,6 +315,22 @@ async fn interrupt_session(
     }
 }
 
+#[tauri::command]
+async fn get_recent_paths(
+    state: State<'_, AppState>,
+    limit: Option<i32>,
+) -> std::result::Result<daemon_client::GetRecentPathsResponse, String> {
+    let client_guard = state.client.lock().await;
+
+    match &*client_guard {
+        Some(client) => client
+            .get_recent_paths(limit)
+            .await
+            .map_err(|e| e.to_string()),
+        None => Err("Not connected to daemon".to_string()),
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Initialize tracing
@@ -343,6 +359,7 @@ pub fn run() {
             subscribe_to_events,
             unsubscribe_from_events,
             interrupt_session,
+            get_recent_paths,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

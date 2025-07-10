@@ -13,6 +13,7 @@ import type {
   FetchApprovalsResponse,
   EventNotification,
   SubscribeRequest,
+  GetRecentPathsResponse,
 } from './types'
 
 export class DaemonClient {
@@ -96,6 +97,10 @@ export class DaemonClient {
 
   async interruptSession(sessionId: string): Promise<void> {
     return await invoke('interrupt_session', { sessionId })
+  }
+
+  async getRecentPaths(limit?: number): Promise<GetRecentPathsResponse> {
+    return await invoke('get_recent_paths', { limit })
   }
 }
 

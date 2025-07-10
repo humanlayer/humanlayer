@@ -42,6 +42,7 @@ pub trait DaemonClientTrait: Send + Sync {
     ) -> Result<(u64, tokio::sync::mpsc::Receiver<EventNotification>)>;
     async fn unsubscribe(&self, subscription_id: u64) -> Result<()>;
     async fn interrupt_session(&self, session_id: &str) -> Result<()>;
+    async fn get_recent_paths(&self, limit: Option<i32>) -> Result<GetRecentPathsResponse>;
 }
 
 pub struct DaemonClient {
@@ -309,6 +310,11 @@ impl DaemonClientTrait for DaemonClient {
         }
 
         Ok(())
+    }
+
+    async fn get_recent_paths(&self, limit: Option<i32>) -> Result<GetRecentPathsResponse> {
+        let req = GetRecentPathsRequest { limit };
+        self.send_rpc_request("getRecentPaths", Some(req)).await
     }
 }
 

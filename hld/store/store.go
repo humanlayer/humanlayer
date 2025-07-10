@@ -48,6 +48,8 @@ type ConversationStore interface {
 	// File snapshot operations
 	CreateFileSnapshot(ctx context.Context, snapshot *FileSnapshot) error
 	GetFileSnapshots(ctx context.Context, sessionID string) ([]FileSnapshot, error)
+	// Recent paths operations
+	GetRecentWorkingDirs(ctx context.Context, limit int) ([]RecentPath, error)
 
 	// Database lifecycle
 	Close() error
@@ -191,6 +193,13 @@ const (
 	EventTypeToolResult = "tool_result"
 	EventTypeSystem     = "system"
 )
+
+// RecentPath represents a recently used working directory
+type RecentPath struct {
+	Path       string    `json:"path"`
+	LastUsed   time.Time `json:"last_used"`
+	UsageCount int       `json:"usage_count"`
+}
 
 // ApprovalStatus constants
 const (
