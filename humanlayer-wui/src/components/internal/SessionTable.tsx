@@ -127,7 +127,17 @@ export default function SessionTable({
           // If there are selected sessions, bulk archive them
           if (selectedSessions.size > 0) {
             const isArchiving = !currentSession.archived
+            
+            // Find next session to focus after bulk archive
+            const nonSelectedSessions = sessions.filter(s => !selectedSessions.has(s.id))
+            const nextFocusSession = nonSelectedSessions.length > 0 ? nonSelectedSessions[0] : null
+            
             await bulkArchiveSessions(Array.from(selectedSessions), isArchiving)
+
+            // Focus next available session
+            if (nextFocusSession && handleFocusSession) {
+              handleFocusSession(nextFocusSession)
+            }
 
             toast.success(
               isArchiving
@@ -140,7 +150,25 @@ export default function SessionTable({
           } else {
             // Single session archive
             const isArchiving = !currentSession.archived
+            
+            // Find the index of current session and determine next focus
+            const currentIndex = sessions.findIndex(s => s.id === currentSession.id)
+            let nextFocusSession = null
+            
+            if (currentIndex > 0) {
+              // Focus previous session if available
+              nextFocusSession = sessions[currentIndex - 1]
+            } else if (currentIndex < sessions.length - 1) {
+              // Focus next session if no previous
+              nextFocusSession = sessions[currentIndex + 1]
+            }
+            
             await archiveSession(currentSession.id, isArchiving)
+            
+            // Set focus to the determined session
+            if (nextFocusSession && handleFocusSession) {
+              handleFocusSession(nextFocusSession)
+            }
 
             // Show success notification
             toast.success(isArchiving ? 'Session archived' : 'Session unarchived', {
@@ -161,7 +189,7 @@ export default function SessionTable({
       preventDefault: true,
       enableOnFormTags: false,
     },
-    [focusedSession, sessions, archiveSession, selectedSessions, bulkArchiveSessions],
+    [focusedSession, sessions, archiveSession, selectedSessions, bulkArchiveSessions, handleFocusSession],
   )
 
   // Toggle selection hotkey
