@@ -3,6 +3,8 @@ import { cn } from '@/lib/utils'
 import { Input } from './ui/input'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { SessionTableHotkeysScope } from './internal/SessionTable'
+import { Badge } from './ui/badge'
+import { useStore } from '@/AppStore'
 
 interface SessionTableSearchProps {
   value: string
@@ -21,6 +23,9 @@ export function SessionTableSearch({
   statusFilter,
 }: SessionTableSearchProps) {
   const inputClassId = 'session-table-search-input'
+  const viewMode = useStore(state => state.viewMode)
+  const selectedSessions = useStore(state => state.selectedSessions)
+  const clearSelection = useStore(state => state.clearSelection)
 
   // For unknown reasons, I can't seem to detect a 'slash' character here. This is the silliest.
   // But maybe we're all the silliest and this continues a long and highly venerated tradition of silliness.
@@ -82,6 +87,18 @@ export function SessionTableSearch({
           />
         </div>
 
+        {selectedSessions.size > 0 && (
+          <Badge variant="secondary" className="text-xs cursor-pointer" onClick={clearSelection}>
+            {selectedSessions.size} selected
+          </Badge>
+        )}
+
+        {viewMode === 'archived' && (
+          <Badge variant="secondary" className="text-xs">
+            Archived Sessions
+          </Badge>
+        )}
+
         {statusFilter && (
           <span
             className="px-2 py-1 text-xs text-accent-foreground rounded whitespace-nowrap"
@@ -93,7 +110,7 @@ export function SessionTableSearch({
       </div>
 
       <div className="flex items-center gap-2 text-xs text-muted-foreground justify-end">
-        <span>cycle session status with</span>
+        <span>toggle archived view with</span>
         <kbd className="px-1 py-0.5 text-xs bg-muted rounded">TAB</kbd>
       </div>
     </div>

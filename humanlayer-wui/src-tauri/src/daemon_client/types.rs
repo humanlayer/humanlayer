@@ -501,3 +501,26 @@ pub struct RecentPath {
     pub last_used: String,
     pub usage_count: i32,
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ArchiveSessionRequest {
+    pub session_id: String,
+    pub archived: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ArchiveSessionResponse {
+    pub success: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BulkArchiveSessionsRequest {
+    pub session_ids: Vec<String>,
+    pub archived: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BulkArchiveSessionsResponse {
+    pub success: bool,
+    pub archived_count: i32,
+}

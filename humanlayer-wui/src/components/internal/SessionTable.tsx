@@ -11,12 +11,14 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 import { useHotkeys, useHotkeysContext } from 'react-hotkeys-hook'
 import { useEffect, useRef } from 'react'
-import { CircleOff } from 'lucide-react'
+import { CircleOff, Archive, CheckSquare, Square } from 'lucide-react'
 import { getStatusTextClass } from '@/utils/component-utils'
 import { formatTimestamp, formatAbsoluteTimestamp, truncatePath } from '@/utils/formatting'
 import { highlightMatches } from '@/lib/fuzzy-search'
 import { useSessionLauncher } from '@/hooks/useSessionLauncher'
 import { cn } from '@/lib/utils'
+import { useStore } from '@/AppStore'
+import { toast } from 'sonner'
 
 interface SessionTableProps {
   sessions: SessionInfo[]
@@ -46,6 +48,7 @@ export default function SessionTable({
   const { isOpen: isSessionLauncherOpen } = useSessionLauncher()
   const { enableScope, disableScope } = useHotkeysContext()
   const tableRef = useRef<HTMLTableElement>(null)
+  const { archiveSession, selectedSessions, toggleSessionSelection, bulkArchiveSessions } = useStore()
 
   // Helper to render highlighted text
   const renderHighlightedText = (text: string, sessionId: string) => {
@@ -105,6 +108,69 @@ export default function SessionTable({
     { scopes: SessionTableHotkeysScope, enabled: !isSessionLauncherOpen },
   )
 
+  // Archive/unarchive hotkey
+  useHotkeys(
+    'e',
+    async () => {
+      if (focusedSession) {
+        try {
+          // If there are selected sessions, bulk archive them
+          if (selectedSessions.size > 0) {
+            const isArchiving = !focusedSession.archived
+            await bulkArchiveSessions(Array.from(selectedSessions), isArchiving)
+
+            toast.success(
+              isArchiving
+                ? `Archived ${selectedSessions.size} sessions`
+                : `Unarchived ${selectedSessions.size} sessions`,
+              {
+                duration: 3000,
+              },
+            )
+          } else {
+            // Single session archive
+            const isArchiving = !focusedSession.archived
+            await archiveSession(focusedSession.id, isArchiving)
+
+            // Show success notification
+            toast.success(isArchiving ? 'Session archived' : 'Session unarchived', {
+              description: focusedSession.summary || 'Untitled session',
+              duration: 3000,
+            })
+          }
+        } catch (error) {
+          toast.error('Failed to archive session', {
+            description: error instanceof Error ? error.message : 'Unknown error',
+          })
+        }
+      }
+    },
+    {
+      scopes: SessionTableHotkeysScope,
+      enabled: !isSessionLauncherOpen && focusedSession !== null,
+      preventDefault: true,
+      enableOnFormTags: false,
+    },
+    [focusedSession, archiveSession, selectedSessions, bulkArchiveSessions],
+  )
+
+  // Toggle selection hotkey
+  useHotkeys(
+    'x',
+    () => {
+      if (focusedSession) {
+        toggleSessionSelection(focusedSession.id)
+      }
+    },
+    {
+      scopes: SessionTableHotkeysScope,
+      enabled: !isSessionLauncherOpen && focusedSession !== null,
+      preventDefault: true,
+      enableOnFormTags: false,
+    },
+    [focusedSession, toggleSessionSelection],
+  )
+
   return (
     <>
       {/* TODO(2): Fix ref warning - Table component needs forwardRef */}
@@ -112,6 +178,7 @@ export default function SessionTable({
         <TableCaption>A list of your recent sessions.</TableCaption>
         <TableHeader>
           <TableRow>
+            <TableHead className="w-[40px]"></TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Working Directory</TableHead>
             <TableHead>Summary</TableHead>
@@ -128,8 +195,27 @@ export default function SessionTable({
               onMouseEnter={() => handleFocusSession?.(session)}
               onMouseLeave={() => handleBlurSession?.()}
               onClick={() => handleActivateSession?.(session)}
-              className={`cursor-pointer ${focusedSession?.id === session.id ? '!bg-accent/20' : ''}`}
+              className={cn(
+                'cursor-pointer',
+                focusedSession?.id === session.id && '!bg-accent/20',
+                session.archived && 'opacity-60',
+              )}
             >
+              <TableCell
+                className="w-[40px]"
+                onClick={e => {
+                  e.stopPropagation()
+                  toggleSessionSelection(session.id)
+                }}
+              >
+                <div className="flex items-center justify-center">
+                  {selectedSessions.has(session.id) ? (
+                    <CheckSquare className="w-4 h-4 text-primary" />
+                  ) : (
+                    <Square className="w-4 h-4 text-muted-foreground" />
+                  )}
+                </div>
+              </TableCell>
               <TableCell className={getStatusTextClass(session.status)}>{session.status}</TableCell>
               <TableCell className="max-w-[200px]">
                 <Tooltip>
@@ -146,7 +232,10 @@ export default function SessionTable({
                 </Tooltip>
               </TableCell>
               <TableCell>
-                <span>{renderHighlightedText(session.summary, session.id)}</span>
+                <div className="flex items-center gap-2">
+                  <span>{renderHighlightedText(session.summary, session.id)}</span>
+                  {session.archived && <Archive className="w-4 h-4 text-muted-foreground" />}
+                </div>
               </TableCell>
               <TableCell>{session.model || <CircleOff className="w-4 h-4" />}</TableCell>
               <TableCell>

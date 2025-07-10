@@ -4,20 +4,8 @@ import { useStore } from '@/AppStore'
 import SessionTable, { SessionTableHotkeysScope } from '@/components/internal/SessionTable'
 import { SessionTableSearch } from '@/components/SessionTableSearch'
 import { useSessionFilter } from '@/hooks/useSessionFilter'
-import { SessionStatus } from '@/lib/daemon/types'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { useSessionLauncher } from '@/hooks'
-
-// Status values to cycle through with Tab
-const STATUS_CYCLE = [
-  '', // No filter
-  `status:${SessionStatus.Running}`,
-  `status:${SessionStatus.WaitingInput}`,
-  `status:${SessionStatus.Completed}`,
-  `status:${SessionStatus.Failed}`,
-  `status:${SessionStatus.Starting}`,
-  `status:${SessionStatus.Completing}`,
-]
 
 export function SessionTablePage() {
   const { isOpen: isSessionLauncherOpen } = useSessionLauncher()
@@ -31,6 +19,8 @@ export function SessionTablePage() {
   const sessions = useStore(state => state.sessions)
   const focusedSession = useStore(state => state.focusedSession)
   const setFocusedSession = useStore(state => state.setFocusedSession)
+  const viewMode = useStore(state => state.viewMode)
+  const setViewMode = useStore(state => state.setViewMode)
 
   // Update URL when search changes
   useEffect(() => {
@@ -85,32 +75,26 @@ export function SessionTablePage() {
     }
   }
 
-  // Handle Tab key to cycle through status filters
+  // Handle Tab key to toggle between normal and archived views
   useHotkeys(
     'tab',
     e => {
       e.preventDefault()
-      const currentStatusIndex = STATUS_CYCLE.findIndex(status => {
-        if (!status && !statusFilter) return true
-        return status === `status:${statusFilter}`
-      })
-      const nextIndex = (currentStatusIndex + 1) % STATUS_CYCLE.length
-      setSearchQuery(STATUS_CYCLE[nextIndex])
+      setViewMode(viewMode === 'normal' ? 'archived' : 'normal')
+      // Clear search when switching views
+      setSearchQuery('')
     },
     { enableOnFormTags: false, scopes: SessionTableHotkeysScope, enabled: !isSessionLauncherOpen },
   )
 
-  // Handle Shift+Tab to cycle backwards through status filters
+  // Handle Shift+Tab to toggle backwards (same effect for only 2 modes)
   useHotkeys(
     'shift+tab',
     e => {
       e.preventDefault()
-      const currentStatusIndex = STATUS_CYCLE.findIndex(status => {
-        if (!status && !statusFilter) return true
-        return status === `status:${statusFilter}`
-      })
-      const prevIndex = currentStatusIndex <= 0 ? STATUS_CYCLE.length - 1 : currentStatusIndex - 1
-      setSearchQuery(STATUS_CYCLE[prevIndex])
+      setViewMode(viewMode === 'normal' ? 'archived' : 'normal')
+      // Clear search when switching views
+      setSearchQuery('')
     },
     { enableOnFormTags: false, scopes: SessionTableHotkeysScope, enabled: !isSessionLauncherOpen },
   )

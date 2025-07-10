@@ -5,6 +5,7 @@ import (
 	"time"
 
 	claudecode "github.com/humanlayer/humanlayer/claudecode-go"
+	"github.com/humanlayer/humanlayer/hld/store"
 )
 
 // ApprovalReconciler interface for reconciling approvals after session restart
@@ -96,4 +97,54 @@ type ReadToolResult struct {
 		StartLine  int    `json:"startLine"`
 		TotalLines int    `json:"totalLines"`
 	} `json:"file"`
+}
+
+// SessionToInfo converts a store.Session to Info for RPC responses
+func SessionToInfo(s store.Session) Info {
+	info := Info{
+		ID:              s.ID,
+		RunID:           s.RunID,
+		ClaudeSessionID: s.ClaudeSessionID,
+		ParentSessionID: s.ParentSessionID,
+		Status:          Status(s.Status),
+		StartTime:       s.CreatedAt,
+		LastActivityAt:  s.LastActivityAt,
+		Error:           s.ErrorMessage,
+		Query:           s.Query,
+		Summary:         s.Summary,
+		Model:           s.Model,
+		WorkingDir:      s.WorkingDir,
+	}
+
+	if s.CompletedAt != nil {
+		info.EndTime = s.CompletedAt
+	}
+
+	// Populate Result field if we have result data
+	if s.ResultContent != "" || s.NumTurns != nil || s.CostUSD != nil || s.DurationMS != nil {
+		result := &claudecode.Result{
+			Type:      "result",
+			Subtype:   "session_completed",
+			Result:    s.ResultContent,
+			SessionID: s.ClaudeSessionID, // Use Claude session ID for consistency
+		}
+
+		if s.CostUSD != nil {
+			result.CostUSD = *s.CostUSD
+		}
+		if s.NumTurns != nil {
+			result.NumTurns = *s.NumTurns
+		}
+		if s.DurationMS != nil {
+			result.DurationMS = *s.DurationMS
+		}
+		if s.ErrorMessage != "" {
+			result.Error = s.ErrorMessage
+			result.IsError = true
+		}
+
+		info.Result = result
+	}
+
+	return info
 }

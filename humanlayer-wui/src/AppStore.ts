@@ -6,6 +6,8 @@ interface StoreState {
   /* Sessions */
   sessions: SessionInfo[]
   focusedSession: SessionInfo | null
+  viewMode: 'normal' | 'archived'
+  selectedSessions: Set<string> // For bulk selection
   initSessions: (sessions: SessionInfo[]) => void
   updateSession: (sessionId: string, updates: Partial<SessionInfo>) => void
   refreshSessions: () => Promise<void>
@@ -13,6 +15,11 @@ interface StoreState {
   focusNextSession: () => void
   focusPreviousSession: () => void
   interruptSession: (sessionId: string) => Promise<void>
+  archiveSession: (sessionId: string, archived: boolean) => Promise<void>
+  bulkArchiveSessions: (sessionIds: string[], archived: boolean) => Promise<void>
+  setViewMode: (mode: 'normal' | 'archived') => void
+  toggleSessionSelection: (sessionId: string) => void
+  clearSelection: () => void
 
   /* Notifications */
   notifiedItems: Set<string> // Set of unique notification IDs
@@ -25,6 +32,8 @@ interface StoreState {
 export const useStore = create<StoreState>((set, get) => ({
   sessions: [],
   focusedSession: null,
+  viewMode: 'normal',
+  selectedSessions: new Set<string>(),
   initSessions: (sessions: SessionInfo[]) => set({ sessions }),
   updateSession: (sessionId: string, updates: Partial<SessionInfo>) =>
     set(state => ({
@@ -38,7 +47,11 @@ export const useStore = create<StoreState>((set, get) => ({
     })),
   refreshSessions: async () => {
     try {
-      const response = await daemonClient.getSessionLeaves()
+      const { viewMode } = get()
+      const response = await daemonClient.getSessionLeaves({
+        include_archived: false,
+        archived_only: viewMode === 'archived',
+      })
       set({ sessions: response.sessions })
     } catch (error) {
       console.error('Failed to refresh sessions:', error)
@@ -83,6 +96,49 @@ export const useStore = create<StoreState>((set, get) => ({
       console.error('Failed to interrupt session:', error)
     }
   },
+  archiveSession: async (sessionId: string, archived: boolean) => {
+    try {
+      await daemonClient.archiveSession({ session_id: sessionId, archived })
+      // Update local state immediately for better UX
+      get().updateSession(sessionId, { archived })
+      // Refresh sessions to update the list based on current view mode
+      await get().refreshSessions()
+    } catch (error) {
+      console.error('Failed to archive session:', error)
+      throw error
+    }
+  },
+  bulkArchiveSessions: async (sessionIds: string[], archived: boolean) => {
+    try {
+      const response = await daemonClient.bulkArchiveSessions({ session_ids: sessionIds, archived })
+      if (!response.success && response.failed_sessions) {
+        console.error('Some sessions failed to archive:', response.failed_sessions)
+      }
+      // Refresh sessions to update the list
+      await get().refreshSessions()
+      // Clear selection after bulk operation
+      get().clearSelection()
+    } catch (error) {
+      console.error('Failed to bulk archive sessions:', error)
+      throw error
+    }
+  },
+  setViewMode: (mode: 'normal' | 'archived') => {
+    set({ viewMode: mode })
+    // Refresh sessions when view mode changes
+    get().refreshSessions()
+  },
+  toggleSessionSelection: (sessionId: string) =>
+    set(state => {
+      const newSet = new Set(state.selectedSessions)
+      if (newSet.has(sessionId)) {
+        newSet.delete(sessionId)
+      } else {
+        newSet.add(sessionId)
+      }
+      return { selectedSessions: newSet }
+    }),
+  clearSelection: () => set({ selectedSessions: new Set<string>() }),
 
   // Notification management
   notifiedItems: new Set<string>(),
