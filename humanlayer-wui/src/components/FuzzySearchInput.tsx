@@ -293,7 +293,11 @@ export function SearchInput({
                     return (
                       <CommandItem
                         key={`recent-${idx}`}
-                        className={cn(item.selected && '!bg-accent/20')}
+                        className={cn(
+                          item.selected && '!bg-accent/20',
+                          'data-[selected=true]:!bg-accent/20', // Apply same styling for mouse hover
+                          '[&[data-selected=true]]:text-foreground', // Override default accent-foreground
+                        )}
                         onSelect={() => {
                           setSearchValue(item.path)
                           setDropdownOpen(false)
@@ -301,15 +305,13 @@ export function SearchInput({
                         }}
                       >
                         <div className="flex items-center space-x-2 w-full">
-                          <Clock className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                          <Clock className="w-4 h-4 flex-shrink-0" />
                           <span className="flex-1 truncate">
                             {highlighted
                               ? highlighted.map((segment, i) => (
                                   <span
                                     key={i}
-                                    className={cn(
-                                      segment.highlighted && 'bg-yellow-300 dark:bg-yellow-600',
-                                    )}
+                                    className={cn(segment.highlighted && 'bg-accent/40 font-medium')}
                                   >
                                     {segment.text}
                                   </span>
@@ -334,7 +336,11 @@ export function SearchInput({
                     return (
                       <CommandItem
                         key={item.path.name}
-                        className={cn(item.selected && '!bg-accent/20')}
+                        className={cn(
+                          item.selected && '!bg-accent/20',
+                          'data-[selected=true]:!bg-accent/20', // Apply same styling for mouse hover
+                          '[&[data-selected=true]]:text-foreground', // Override default accent-foreground
+                        )}
                         onSelect={() => {
                           // Parse current path to get base directory
                           const lastSlashIdx = searchValue.lastIndexOf('/')
@@ -355,11 +361,7 @@ export function SearchInput({
                             ? highlighted.map((segment, i) => (
                                 <span
                                   key={i}
-                                  className={
-                                    segment.highlighted
-                                      ? 'bg-yellow-200 dark:bg-yellow-900/50 font-medium'
-                                      : ''
-                                  }
+                                  className={cn(segment.highlighted && 'bg-accent/40 font-medium')}
                                 >
                                   {segment.text}
                                 </span>

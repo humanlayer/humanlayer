@@ -16,6 +16,7 @@ import { getStatusTextClass } from '@/utils/component-utils'
 import { formatTimestamp, formatAbsoluteTimestamp } from '@/utils/formatting'
 import { highlightMatches } from '@/lib/fuzzy-search'
 import { useSessionLauncher } from '@/hooks/useSessionLauncher'
+import { cn } from '@/lib/utils'
 
 interface SessionTableProps {
   sessions: SessionInfo[]
@@ -61,10 +62,7 @@ export default function SessionTable({
     return (
       <>
         {segments.map((segment, i) => (
-          <span
-            key={i}
-            className={segment.highlighted ? 'bg-yellow-200/80 dark:bg-yellow-900/60 font-medium' : ''}
-          >
+          <span key={i} className={cn(segment.highlighted && 'bg-accent/40 font-medium')}>
             {segment.text}
           </span>
         ))}
