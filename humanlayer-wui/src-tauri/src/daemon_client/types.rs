@@ -470,6 +470,19 @@ impl ApprovalType {
     }
 }
 
+// Session settings types
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UpdateSessionSettingsRequest {
+    pub session_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub auto_accept_edits: Option<bool>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UpdateSessionSettingsResponse {
+    pub success: bool,
+}
+
 // Recent paths types
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GetRecentPathsRequest {

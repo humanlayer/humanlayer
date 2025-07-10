@@ -37,15 +37,24 @@ func (m *manager) CreateApproval(ctx context.Context, runID, toolName string, to
 		return "", fmt.Errorf("session not found for run_id: %s", runID)
 	}
 
+	// Check if this is an edit tool and auto-accept is enabled
+	status := store.ApprovalStatusLocalPending
+	comment := ""
+	if session.AutoAcceptEdits && isEditTool(toolName) {
+		status = store.ApprovalStatusLocalApproved
+		comment = "Auto-accepted (auto-accept mode enabled)"
+	}
+
 	// Create approval
 	approval := &store.Approval{
 		ID:        "local-" + uuid.New().String(),
 		RunID:     runID,
 		SessionID: session.ID,
-		Status:    store.ApprovalStatusLocalPending,
+		Status:    status,
 		CreatedAt: time.Now(),
 		ToolName:  toolName,
 		ToolInput: toolInput,
+		Comment:   comment,
 	}
 
 	// Store it
@@ -65,17 +74,36 @@ func (m *manager) CreateApproval(ctx context.Context, runID, toolName string, to
 	// Publish event for real-time updates
 	m.publishNewApprovalEvent(approval)
 
-	// Update session status to waiting_input
-	if err := m.updateSessionStatus(ctx, session.ID, store.SessionStatusWaitingInput); err != nil {
-		slog.Warn("failed to update session status",
-			"error", err,
-			"session_id", session.ID)
+	// Handle status-specific post-creation tasks
+	switch status {
+	case store.ApprovalStatusLocalPending:
+		// Update session status to waiting_input for pending approvals
+		if err := m.updateSessionStatus(ctx, session.ID, store.SessionStatusWaitingInput); err != nil {
+			slog.Warn("failed to update session status",
+				"error", err,
+				"session_id", session.ID)
+		}
+	case store.ApprovalStatusLocalApproved:
+		// For auto-approved, update correlation status immediately
+		if err := m.store.UpdateApprovalStatus(ctx, approval.ID, store.ApprovalStatusApproved); err != nil {
+			slog.Warn("failed to update approval status in conversation events",
+				"error", err,
+				"approval_id", approval.ID)
+		}
+		// Publish resolved event for auto-approved
+		m.publishApprovalResolvedEvent(approval, true, comment)
 	}
 
-	slog.Info("created local approval",
+	logLevel := slog.LevelInfo
+	if status == store.ApprovalStatusLocalApproved {
+		logLevel = slog.LevelDebug // Less noise for auto-approved
+	}
+	slog.Log(ctx, logLevel, "created local approval",
 		"approval_id", approval.ID,
 		"session_id", session.ID,
-		"tool_name", toolName)
+		"tool_name", toolName,
+		"status", status,
+		"auto_accepted", status == store.ApprovalStatusLocalApproved)
 
 	return approval.ID, nil
 }
@@ -231,4 +259,9 @@ func (m *manager) updateSessionStatus(ctx context.Context, sessionID, status str
 		LastActivityAt: &[]time.Time{time.Now()}[0],
 	}
 	return m.store.UpdateSession(ctx, sessionID, updates)
+}
+
+// isEditTool checks if a tool name is one of the edit tools
+func isEditTool(toolName string) bool {
+	return toolName == "Edit" || toolName == "Write" || toolName == "MultiEdit"
 }

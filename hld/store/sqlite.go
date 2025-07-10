@@ -100,7 +100,10 @@ func (s *SQLiteStore) initSchema() error {
 		duration_ms INTEGER,
 		num_turns INTEGER,
 		result_content TEXT,
-		error_message TEXT
+		error_message TEXT,
+
+		-- Session settings
+		auto_accept_edits BOOLEAN DEFAULT 0
 	);
 	CREATE INDEX IF NOT EXISTS idx_sessions_claude ON sessions(claude_session_id);
 	CREATE INDEX IF NOT EXISTS idx_sessions_status ON sessions(status);
@@ -432,6 +435,43 @@ func (s *SQLiteStore) applyMigrations() error {
 		slog.Info("Migration 7 applied successfully")
 	}
 
+	// Migration 8: Add auto_accept_edits for session-level edit auto-approval
+	if currentVersion < 8 {
+		slog.Info("Applying migration 8: Add auto_accept_edits column")
+
+		// Check if column already exists (it might be in the schema for new databases)
+		var columnExists int
+		err = s.db.QueryRow(`
+			SELECT COUNT(*) FROM pragma_table_info('sessions')
+			WHERE name = 'auto_accept_edits'
+		`).Scan(&columnExists)
+		if err != nil {
+			return fmt.Errorf("failed to check auto_accept_edits column: %w", err)
+		}
+
+		// Only add column if it doesn't exist
+		if columnExists == 0 {
+			_, err = s.db.Exec(`
+				ALTER TABLE sessions
+				ADD COLUMN auto_accept_edits BOOLEAN DEFAULT 0
+			`)
+			if err != nil {
+				return fmt.Errorf("failed to add auto_accept_edits column: %w", err)
+			}
+		}
+
+		// Record migration
+		_, err = s.db.Exec(`
+			INSERT INTO schema_version (version, description)
+			VALUES (8, 'Add auto_accept_edits for session-level edit auto-approval')
+		`)
+		if err != nil {
+			return fmt.Errorf("failed to record migration 8: %w", err)
+		}
+
+		slog.Info("Migration 8 applied successfully")
+	}
+
 	return nil
 }
 
@@ -447,8 +487,8 @@ func (s *SQLiteStore) CreateSession(ctx context.Context, session *Session) error
 			id, run_id, claude_session_id, parent_session_id,
 			query, summary, model, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
 			permission_prompt_tool, allowed_tools, disallowed_tools,
-			status, created_at, last_activity_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			status, created_at, last_activity_at, auto_accept_edits
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	_, err := s.db.ExecContext(ctx, query,
@@ -456,7 +496,7 @@ func (s *SQLiteStore) CreateSession(ctx context.Context, session *Session) error
 		session.Query, session.Summary, session.Model, session.WorkingDir, session.MaxTurns,
 		session.SystemPrompt, session.AppendSystemPrompt, session.CustomInstructions,
 		session.PermissionPromptTool, session.AllowedTools, session.DisallowedTools,
-		session.Status, session.CreatedAt, session.LastActivityAt,
+		session.Status, session.CreatedAt, session.LastActivityAt, session.AutoAcceptEdits,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create session: %w", err)
@@ -514,6 +554,10 @@ func (s *SQLiteStore) UpdateSession(ctx context.Context, sessionID string, updat
 		setParts = append(setParts, "summary = ?")
 		args = append(args, *updates.Summary)
 	}
+	if updates.AutoAcceptEdits != nil {
+		setParts = append(setParts, "auto_accept_edits = ?")
+		args = append(args, *updates.AutoAcceptEdits)
+	}
 
 	if len(setParts) == 0 {
 		return fmt.Errorf("no fields to update")
@@ -548,7 +592,7 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 			query, summary, model, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
 			permission_prompt_tool, allowed_tools, disallowed_tools,
 			status, created_at, last_activity_at, completed_at,
-			cost_usd, total_tokens, duration_ms, num_turns, result_content, error_message
+			cost_usd, total_tokens, duration_ms, num_turns, result_content, error_message, auto_accept_edits
 		FROM sessions WHERE id = ?
 	`
 
@@ -566,7 +610,7 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 		&systemPrompt, &appendSystemPrompt, &customInstructions,
 		&permissionPromptTool, &allowedTools, &disallowedTools,
 		&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
-		&costUSD, &totalTokens, &durationMS, &numTurns, &resultContent, &errorMessage,
+		&costUSD, &totalTokens, &durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
 	)
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("session not found: %s", sessionID)
@@ -618,7 +662,7 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 			query, summary, model, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
 			permission_prompt_tool, allowed_tools, disallowed_tools,
 			status, created_at, last_activity_at, completed_at,
-			cost_usd, total_tokens, duration_ms, num_turns, result_content, error_message
+			cost_usd, total_tokens, duration_ms, num_turns, result_content, error_message, auto_accept_edits
 		FROM sessions
 		WHERE run_id = ?
 	`
@@ -637,7 +681,7 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 		&systemPrompt, &appendSystemPrompt, &customInstructions,
 		&permissionPromptTool, &allowedTools, &disallowedTools,
 		&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
-		&costUSD, &totalTokens, &durationMS, &numTurns, &resultContent, &errorMessage,
+		&costUSD, &totalTokens, &durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
 	)
 	if err == sql.ErrNoRows {
 		return nil, nil // No session found
@@ -689,7 +733,7 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 			query, summary, model, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
 			permission_prompt_tool, allowed_tools, disallowed_tools,
 			status, created_at, last_activity_at, completed_at,
-			cost_usd, total_tokens, duration_ms, num_turns, result_content, error_message
+			cost_usd, total_tokens, duration_ms, num_turns, result_content, error_message, auto_accept_edits
 		FROM sessions
 		ORDER BY last_activity_at DESC
 	`
@@ -716,7 +760,7 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 			&systemPrompt, &appendSystemPrompt, &customInstructions,
 			&permissionPromptTool, &allowedTools, &disallowedTools,
 			&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
-			&costUSD, &totalTokens, &durationMS, &numTurns, &resultContent, &errorMessage,
+			&costUSD, &totalTokens, &durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan session: %w", err)

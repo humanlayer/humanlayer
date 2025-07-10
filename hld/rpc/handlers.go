@@ -6,26 +6,37 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sort"
 	"time"
 
 	claudecode "github.com/humanlayer/humanlayer/claudecode-go"
+	"github.com/humanlayer/humanlayer/hld/approval"
+	"github.com/humanlayer/humanlayer/hld/bus"
 	"github.com/humanlayer/humanlayer/hld/session"
 	"github.com/humanlayer/humanlayer/hld/store"
 )
 
 // SessionHandlers provides RPC handlers for session management
 type SessionHandlers struct {
-	manager session.SessionManager
-	store   store.ConversationStore
+	manager         session.SessionManager
+	store           store.ConversationStore
+	eventBus        bus.EventBus
+	approvalManager approval.Manager
 }
 
 // NewSessionHandlers creates new session RPC handlers
-func NewSessionHandlers(manager session.SessionManager, store store.ConversationStore) *SessionHandlers {
+func NewSessionHandlers(manager session.SessionManager, store store.ConversationStore, approvalManager approval.Manager) *SessionHandlers {
 	return &SessionHandlers{
-		manager: manager,
-		store:   store,
+		manager:         manager,
+		store:           store,
+		approvalManager: approvalManager,
 	}
+}
+
+// SetEventBus sets the event bus for the handlers
+func (h *SessionHandlers) SetEventBus(eventBus bus.EventBus) {
+	h.eventBus = eventBus
 }
 
 // LaunchSessionRequest is the request for launching a new session
@@ -317,6 +328,7 @@ func (h *SessionHandlers) HandleGetSessionState(ctx context.Context, params json
 		CreatedAt:       session.CreatedAt.Format(time.RFC3339),
 		LastActivityAt:  session.LastActivityAt.Format(time.RFC3339),
 		ErrorMessage:    session.ErrorMessage,
+		AutoAcceptEdits: session.AutoAcceptEdits,
 	}
 
 	// Set optional fields
@@ -424,6 +436,70 @@ func (h *SessionHandlers) HandleInterruptSession(ctx context.Context, params jso
 	}, nil
 }
 
+// HandleUpdateSessionSettings handles the UpdateSessionSettings RPC method
+func (h *SessionHandlers) HandleUpdateSessionSettings(ctx context.Context, params json.RawMessage) (interface{}, error) {
+	var req UpdateSessionSettingsRequest
+	if err := json.Unmarshal(params, &req); err != nil {
+		return nil, fmt.Errorf("invalid request: %w", err)
+	}
+
+	// Validate required fields
+	if req.SessionID == "" {
+		return nil, fmt.Errorf("session_id is required")
+	}
+
+	// Get current session to verify it exists
+	session, err := h.store.GetSession(ctx, req.SessionID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get session: %w", err)
+	}
+	if session == nil {
+		return nil, fmt.Errorf("session not found")
+	}
+
+	// Update session settings
+	update := store.SessionUpdate{
+		AutoAcceptEdits: req.AutoAcceptEdits,
+	}
+
+	if err := h.store.UpdateSession(ctx, req.SessionID, update); err != nil {
+		return nil, fmt.Errorf("failed to update session: %w", err)
+	}
+
+	// If auto-accept was enabled, approve any pending edit tool approvals
+	if req.AutoAcceptEdits != nil && *req.AutoAcceptEdits && h.approvalManager != nil {
+		// Get pending approvals for the session
+		pendingApprovals, err := h.store.GetPendingApprovals(ctx, req.SessionID)
+		if err == nil && len(pendingApprovals) > 0 {
+			for _, approval := range pendingApprovals {
+				// Check if it's an edit tool
+				if isEditTool(approval.ToolName) {
+					// Auto-approve it
+					err := h.approvalManager.ApproveToolCall(ctx, approval.ID, "Auto-accepted (auto-accept mode enabled)")
+					if err != nil {
+						// Log but don't fail the whole operation
+						slog.Error("failed to auto-approve pending approval", "approval_id", approval.ID, "error", err)
+					}
+				}
+			}
+		}
+	}
+
+	// Publish event for UI updates
+	if h.eventBus != nil && req.AutoAcceptEdits != nil {
+		h.eventBus.Publish(bus.Event{
+			Type: bus.EventSessionStatusChanged,
+			Data: map[string]interface{}{
+				"session_id":        req.SessionID,
+				"auto_accept_edits": *req.AutoAcceptEdits,
+				"event_type":        "settings_updated",
+			},
+		})
+	}
+
+	return UpdateSessionSettingsResponse{Success: true}, nil
+}
+
 // HandleGetRecentPaths handles the GetRecentPaths RPC method
 func (h *SessionHandlers) HandleGetRecentPaths(ctx context.Context, params json.RawMessage) (interface{}, error) {
 	var req GetRecentPathsRequest
@@ -454,6 +530,11 @@ func (h *SessionHandlers) HandleGetRecentPaths(ctx context.Context, params json.
 	return &GetRecentPathsResponse{Paths: rpcPaths}, nil
 }
 
+// isEditTool checks if a tool name is one of the edit tools
+func isEditTool(toolName string) bool {
+	return toolName == "Edit" || toolName == "Write" || toolName == "MultiEdit"
+}
+
 // Register registers all session handlers with the RPC server
 func (h *SessionHandlers) Register(server *Server) {
 	server.Register("launchSession", h.HandleLaunchSession)
@@ -464,5 +545,6 @@ func (h *SessionHandlers) Register(server *Server) {
 	server.Register("continueSession", h.HandleContinueSession)
 	server.Register("interruptSession", h.HandleInterruptSession)
 	server.Register("getSessionSnapshots", h.HandleGetSessionSnapshots)
+	server.Register("updateSessionSettings", h.HandleUpdateSessionSettings)
 	server.Register("getRecentPaths", h.HandleGetRecentPaths)
 }

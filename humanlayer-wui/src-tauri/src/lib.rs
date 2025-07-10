@@ -316,6 +316,23 @@ async fn interrupt_session(
 }
 
 #[tauri::command]
+async fn update_session_settings(
+    state: State<'_, AppState>,
+    session_id: String,
+    auto_accept_edits: Option<bool>,
+) -> std::result::Result<daemon_client::UpdateSessionSettingsResponse, String> {
+    let client_guard = state.client.lock().await;
+
+    match &*client_guard {
+        Some(client) => client
+            .update_session_settings(&session_id, auto_accept_edits)
+            .await
+            .map_err(|e| e.to_string()),
+        None => Err("Not connected to daemon".to_string()),
+    }
+}
+
+#[tauri::command]
 async fn get_recent_paths(
     state: State<'_, AppState>,
     limit: Option<i32>,
@@ -359,6 +376,7 @@ pub fn run() {
             subscribe_to_events,
             unsubscribe_from_events,
             interrupt_session,
+            update_session_settings,
             get_recent_paths,
         ])
         .run(tauri::generate_context!())

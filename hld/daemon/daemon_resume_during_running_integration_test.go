@@ -46,7 +46,8 @@ func TestIntegrationResumeDuringRunning(t *testing.T) {
 	}
 
 	// Register RPC handlers
-	sessionHandlers := rpc.NewSessionHandlers(sessionManager, sqliteStore)
+	// Pass nil for approval manager since this test doesn't test approval functionality
+	sessionHandlers := rpc.NewSessionHandlers(sessionManager, sqliteStore, nil)
 	sessionHandlers.Register(d.rpcServer)
 
 	// Start daemon

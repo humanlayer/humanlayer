@@ -404,6 +404,7 @@ func (m *Manager) GetSessionInfo(sessionID string) (*Info, error) {
 		Summary:         dbSession.Summary,
 		Model:           dbSession.Model,
 		WorkingDir:      dbSession.WorkingDir,
+		AutoAcceptEdits: dbSession.AutoAcceptEdits,
 	}
 
 	if dbSession.CompletedAt != nil {
@@ -464,6 +465,7 @@ func (m *Manager) ListSessions() []Info {
 			Summary:         dbSession.Summary,
 			Model:           dbSession.Model,
 			WorkingDir:      dbSession.WorkingDir,
+			AutoAcceptEdits: dbSession.AutoAcceptEdits,
 		}
 
 		// Set end time if completed
@@ -972,6 +974,8 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 	dbSession := store.NewSessionFromConfig(sessionID, runID, config)
 	dbSession.ParentSessionID = req.ParentSessionID
 	dbSession.Summary = CalculateSummary(req.Query)
+	// Inherit auto-accept setting from parent
+	dbSession.AutoAcceptEdits = parentSession.AutoAcceptEdits
 	// Explicitly ensure inherited values are stored (in case NewSessionFromConfig didn't capture them)
 	if dbSession.Model == "" && parentSession.Model != "" {
 		dbSession.Model = parentSession.Model

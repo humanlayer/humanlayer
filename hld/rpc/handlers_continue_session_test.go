@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/humanlayer/humanlayer/hld/approval"
 	"github.com/humanlayer/humanlayer/hld/session"
 	"github.com/humanlayer/humanlayer/hld/store"
 	"go.uber.org/mock/gomock"
@@ -16,7 +17,8 @@ func TestHandleContinueSession(t *testing.T) {
 
 	mockManager := session.NewMockSessionManager(ctrl)
 	mockStore := store.NewMockConversationStore(ctrl)
-	handlers := NewSessionHandlers(mockManager, mockStore)
+	mockApprovalManager := approval.NewMockManager(ctrl)
+	handlers := NewSessionHandlers(mockManager, mockStore, mockApprovalManager)
 
 	testCases := []struct {
 		name          string
@@ -186,7 +188,8 @@ func TestHandleContinueSession_ToolsConfiguration(t *testing.T) {
 
 	mockManager := session.NewMockSessionManager(ctrl)
 	mockStore := store.NewMockConversationStore(ctrl)
-	handlers := NewSessionHandlers(mockManager, mockStore)
+	mockApprovalManager := approval.NewMockManager(ctrl)
+	handlers := NewSessionHandlers(mockManager, mockStore, mockApprovalManager)
 
 	request := `{
 		"session_id": "parent-tools",

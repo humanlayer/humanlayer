@@ -8,6 +8,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { ChevronDown } from 'lucide-react'
 import { getStatusTextClass } from '@/utils/component-utils'
 import { truncate } from '@/utils/formatting'
+import { daemonClient } from '@/lib/daemon/client'
+import { useStore } from '@/AppStore'
 
 // Import extracted components
 import { ConversationContent } from './views/ConversationContent'
@@ -15,6 +17,7 @@ import { ToolResultModal } from './components/ToolResultModal'
 import { TodoWidget } from './components/TodoWidget'
 import { ResponseInput } from './components/ResponseInput'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { AutoAcceptIndicator } from './AutoAcceptIndicator'
 
 // Import hooks
 import { useSessionActions } from './hooks/useSessionActions'
@@ -38,6 +41,10 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [isSplitView, setIsSplitView] = useState(false)
 
   const isRunning = session.status === 'running'
+
+  // Get session from store to access auto_accept_edits
+  const sessionFromStore = useStore(state => state.sessions.find(s => s.id === session.id))
+  const autoAcceptEdits = sessionFromStore?.auto_accept_edits ?? false
 
   // Get events for sidebar access
   const { events } = useConversation(session.id)
@@ -110,6 +117,28 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       }
     },
     { scopes: SessionDetailHotkeysScope },
+  )
+
+  // Add Shift+Tab handler for auto-accept edits mode
+  useHotkeys(
+    'shift+tab',
+    async () => {
+      try {
+        const newState = !autoAcceptEdits
+        await daemonClient.updateSessionSettings(session.id, {
+          autoAcceptEdits: newState,
+        })
+
+        // State will be updated via event subscription
+      } catch (error) {
+        console.error('Failed to toggle auto-accept mode:', error)
+      }
+    },
+    {
+      scopes: [SessionDetailHotkeysScope],
+      preventDefault: true,
+    },
+    [session.id, autoAcceptEdits], // Dependencies
   )
 
   useStealHotkeyScope(SessionDetailHotkeysScope)
@@ -274,6 +303,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
             handleContinueSession={actions.handleContinueSession}
             handleResponseInputKeyDown={actions.handleResponseInputKeyDown}
           />
+          <AutoAcceptIndicator enabled={autoAcceptEdits} className="mt-2" />
         </CardContent>
       </Card>
 

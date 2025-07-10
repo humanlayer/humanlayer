@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/humanlayer/humanlayer/hld/approval"
 	"github.com/humanlayer/humanlayer/hld/session"
 	"github.com/humanlayer/humanlayer/hld/store"
 	"github.com/stretchr/testify/assert"
@@ -21,8 +22,9 @@ func TestHandleGetConversation(t *testing.T) {
 
 	mockManager := session.NewMockSessionManager(ctrl)
 	mockStore := store.NewMockConversationStore(ctrl)
+	mockApprovalManager := approval.NewMockManager(ctrl)
 
-	handlers := NewSessionHandlers(mockManager, mockStore)
+	handlers := NewSessionHandlers(mockManager, mockStore, mockApprovalManager)
 
 	t.Run("get conversation by session ID", func(t *testing.T) {
 		sessionID := "sess-123"
@@ -129,8 +131,9 @@ func TestHandleGetSessionState(t *testing.T) {
 
 	mockManager := session.NewMockSessionManager(ctrl)
 	mockStore := store.NewMockConversationStore(ctrl)
+	mockApprovalManager := approval.NewMockManager(ctrl)
 
-	handlers := NewSessionHandlers(mockManager, mockStore)
+	handlers := NewSessionHandlers(mockManager, mockStore, mockApprovalManager)
 
 	t.Run("successful get session state", func(t *testing.T) {
 		sessionID := "sess-123"
@@ -246,8 +249,9 @@ func TestHandleGetSessionLeaves(t *testing.T) {
 
 	mockManager := session.NewMockSessionManager(ctrl)
 	mockStore := store.NewMockConversationStore(ctrl)
+	mockApprovalManager := approval.NewMockManager(ctrl)
 
-	handlers := NewSessionHandlers(mockManager, mockStore)
+	handlers := NewSessionHandlers(mockManager, mockStore, mockApprovalManager)
 
 	t.Run("empty sessions list", func(t *testing.T) {
 		// Mock empty sessions
@@ -490,7 +494,8 @@ func TestHandleInterruptSession(t *testing.T) {
 
 	mockManager := session.NewMockSessionManager(ctrl)
 	mockStore := store.NewMockConversationStore(ctrl)
-	handlers := NewSessionHandlers(mockManager, mockStore)
+	mockApprovalManager := approval.NewMockManager(ctrl)
+	handlers := NewSessionHandlers(mockManager, mockStore, mockApprovalManager)
 
 	t.Run("successful interrupt", func(t *testing.T) {
 		sessionID := "test-123"
@@ -595,8 +600,9 @@ func TestHandleGetSessionSnapshots(t *testing.T) {
 
 	mockManager := session.NewMockSessionManager(ctrl)
 	mockStore := store.NewMockConversationStore(ctrl)
+	mockApprovalManager := approval.NewMockManager(ctrl)
 
-	handlers := NewSessionHandlers(mockManager, mockStore)
+	handlers := NewSessionHandlers(mockManager, mockStore, mockApprovalManager)
 
 	t.Run("successful retrieval", func(t *testing.T) {
 		sessionID := "test-session"
