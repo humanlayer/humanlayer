@@ -13,7 +13,7 @@ import { useHotkeys, useHotkeysContext } from 'react-hotkeys-hook'
 import { useEffect, useRef } from 'react'
 import { CircleOff } from 'lucide-react'
 import { getStatusTextClass } from '@/utils/component-utils'
-import { formatTimestamp, formatAbsoluteTimestamp } from '@/utils/formatting'
+import { formatTimestamp, formatAbsoluteTimestamp, truncatePath } from '@/utils/formatting'
 import { highlightMatches } from '@/lib/fuzzy-search'
 import { useSessionLauncher } from '@/hooks/useSessionLauncher'
 import { cn } from '@/lib/utils'
@@ -113,6 +113,7 @@ export default function SessionTable({
         <TableHeader>
           <TableRow>
             <TableHead>Status</TableHead>
+            <TableHead>Working Directory</TableHead>
             <TableHead>Summary</TableHead>
             <TableHead>Model</TableHead>
             <TableHead>Started</TableHead>
@@ -130,6 +131,18 @@ export default function SessionTable({
               className={`cursor-pointer ${focusedSession?.id === session.id ? '!bg-accent/20' : ''}`}
             >
               <TableCell className={getStatusTextClass(session.status)}>{session.status}</TableCell>
+              <TableCell className="max-w-[200px]">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="block truncate cursor-help text-sm">
+                      {truncatePath(session.working_dir)}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-[600px]">
+                    <span className="font-mono text-sm">{session.working_dir || 'No working directory'}</span>
+                  </TooltipContent>
+                </Tooltip>
+              </TableCell>
               <TableCell>
                 <span>{renderHighlightedText(session.summary, session.id)}</span>
               </TableCell>
