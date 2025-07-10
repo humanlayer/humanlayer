@@ -139,7 +139,9 @@ export default function SessionTable({
                     </span>
                   </TooltipTrigger>
                   <TooltipContent className="max-w-[600px]">
-                    <span className="font-mono text-sm">{session.working_dir || 'No working directory'}</span>
+                    <span className="font-mono text-sm">
+                      {session.working_dir || 'No working directory'}
+                    </span>
                   </TooltipContent>
                 </Tooltip>
               </TableCell>

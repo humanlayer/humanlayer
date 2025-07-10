@@ -82,34 +82,35 @@ export function formatParameters(params: Record<string, any>, maxLength: number 
 
 export function truncatePath(path: string | undefined, maxLength: number = 40): string {
   if (!path) return '-'
-  
+
   // If path fits, return as-is
   if (path.length <= maxLength) return path
-  
+
   // Handle home directory replacement
   const homePath = path.replace(/^\/Users\/[^/]+/, '~')
-  
+
   // If home-replaced path fits, use it
   if (homePath.length <= maxLength) return homePath
-  
+
   // Smart truncation: preserve the end of the path
   const parts = homePath.split('/')
-  
+
   // If we have path segments, try to preserve the last few
   if (parts.length > 2) {
     // Keep trying to add parts from the end until we exceed maxLength
     let result = parts[parts.length - 1]
     for (let i = parts.length - 2; i >= 0; i--) {
       const testResult = parts[i] + '/' + result
-      if (testResult.length + 3 > maxLength) { // +3 for "..."
+      if (testResult.length + 3 > maxLength) {
+        // +3 for "..."
         return '.../' + result
       }
       result = testResult
     }
     return result
   }
-  
+
   // Fallback: simple end truncation ensuring at least 30 chars visible
   const minEndChars = Math.min(30, maxLength - 3)
-  return '...' + homePath.slice(-(minEndChars))
+  return '...' + homePath.slice(-minEndChars)
 }
