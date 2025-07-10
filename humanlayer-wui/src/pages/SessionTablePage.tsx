@@ -6,9 +6,10 @@ import { SessionTableSearch } from '@/components/SessionTableSearch'
 import { useSessionFilter } from '@/hooks/useSessionFilter'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { useSessionLauncher } from '@/hooks'
+import { Inbox, Archive } from 'lucide-react'
 
 export function SessionTablePage() {
-  const { isOpen: isSessionLauncherOpen } = useSessionLauncher()
+  const { isOpen: isSessionLauncherOpen, open: openSessionLauncher } = useSessionLauncher()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const tableRef = useRef<HTMLDivElement>(null)
@@ -131,14 +132,32 @@ export function SessionTablePage() {
     },
   )
 
+  // Handle ESC to go back to normal view from archived
+  useHotkeys(
+    'escape',
+    () => {
+      if (viewMode === 'archived') {
+        setViewMode('normal')
+      }
+    },
+    { 
+      enableOnFormTags: false, 
+      scopes: SessionTableHotkeysScope, 
+      enabled: !isSessionLauncherOpen && viewMode === 'archived',
+      preventDefault: true 
+    },
+  )
+
   return (
     <div className="flex flex-col gap-4">
-      <SessionTableSearch
-        value={searchQuery}
-        onChange={setSearchQuery}
-        statusFilter={statusFilter}
-        placeholder="Search sessions or filter by status:..."
-      />
+      <div className="sticky top-0 z-10 bg-background pb-4">
+        <SessionTableSearch
+          value={searchQuery}
+          onChange={setSearchQuery}
+          statusFilter={statusFilter}
+          placeholder="Search sessions or filter by status:..."
+        />
+      </div>
 
       <div ref={tableRef} tabIndex={-1} className="focus:outline-none">
         <SessionTable
@@ -151,6 +170,34 @@ export function SessionTablePage() {
           handleFocusPreviousSession={focusPreviousSession}
           searchText={searchText}
           matchedSessions={matchedSessions}
+          emptyState={
+            viewMode === 'archived' 
+              ? {
+                  icon: Archive,
+                  title: 'No archived sessions',
+                  message: 'Sessions you archive will appear here. Press ESC or click below to go back.',
+                  action: {
+                    label: 'View all sessions',
+                    onClick: () => setViewMode('normal')
+                  }
+                }
+              : {
+                  icon: Inbox,
+                  title: 'No sessions yet',
+                  message: 'Create a new session by pressing "c" or clicking below.',
+                  action: {
+                    label: 'Create new session',
+                    onClick: () => {
+                      openSessionLauncher('command')
+                      // Trigger create new session after opening
+                      setTimeout(() => {
+                        const launcher = useSessionLauncher.getState()
+                        launcher.createNewSession()
+                      }, 100)
+                    }
+                  }
+                }
+          }
         />
       </div>
     </div>

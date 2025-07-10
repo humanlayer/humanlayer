@@ -19,6 +19,8 @@ import { useSessionLauncher } from '@/hooks/useSessionLauncher'
 import { cn } from '@/lib/utils'
 import { useStore } from '@/AppStore'
 import { toast } from 'sonner'
+import { EmptyState } from './EmptyState'
+import type { LucideIcon } from 'lucide-react'
 
 interface SessionTableProps {
   sessions: SessionInfo[]
@@ -30,6 +32,15 @@ interface SessionTableProps {
   focusedSession: SessionInfo | null
   searchText?: string
   matchedSessions?: Map<string, any>
+  emptyState?: {
+    icon?: LucideIcon
+    title: string
+    message?: string
+    action?: {
+      label: string
+      onClick: () => void
+    }
+  }
 }
 
 export const SessionTableHotkeysScope = 'session-table'
@@ -44,6 +55,7 @@ export default function SessionTable({
   focusedSession,
   searchText,
   matchedSessions,
+  emptyState,
 }: SessionTableProps) {
   const { isOpen: isSessionLauncherOpen } = useSessionLauncher()
   const { enableScope, disableScope } = useHotkeysContext()
@@ -265,22 +277,24 @@ export default function SessionTable({
 
   return (
     <>
-      {/* TODO(2): Fix ref warning - Table component needs forwardRef */}
-      <Table ref={tableRef}>
-        <TableCaption>A list of your recent sessions.</TableCaption>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[40px]"></TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Working Directory</TableHead>
-            <TableHead>Summary</TableHead>
-            <TableHead>Model</TableHead>
-            <TableHead>Started</TableHead>
-            <TableHead>Last Activity</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {sessions.map(session => (
+      {sessions.length > 0 ? (
+        <>
+          {/* TODO(2): Fix ref warning - Table component needs forwardRef */}
+          <Table ref={tableRef}>
+            <TableCaption>A list of your recent sessions.</TableCaption>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[40px]"></TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Working Directory</TableHead>
+                <TableHead>Summary</TableHead>
+                <TableHead>Model</TableHead>
+                <TableHead>Started</TableHead>
+                <TableHead>Last Activity</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sessions.map(session => (
             <TableRow
               key={session.id}
               data-session-id={session.id}
@@ -347,14 +361,19 @@ export default function SessionTable({
                 </Tooltip>
               </TableCell>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-      {sessions.length === 0 && (
-        <div className="text-center py-8 text-muted-foreground">
-          <p className="text-sm">No sessions found</p>
-          {searchText && <p className="text-xs mt-1">Try adjusting your search filters</p>}
-        </div>
+              ))}
+            </TableBody>
+          </Table>
+        </>
+      ) : (
+        emptyState ? (
+          <EmptyState {...emptyState} />
+        ) : (
+          <div className="text-center py-8 text-muted-foreground">
+            <p className="text-sm">No sessions found</p>
+            {searchText && <p className="text-xs mt-1">Try adjusting your search filters</p>}
+          </div>
+        )
       )}
     </>
   )

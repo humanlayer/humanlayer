@@ -78,7 +78,7 @@ export function SessionTableSearch({
               'w-full h-9 pl-10 pr-3 text-sm',
               'font-mono',
               'bg-background border rounded-md',
-              'transition-all duration-200',
+              'transition-all duration-300 ease-in-out',
               'placeholder:text-muted-foreground/60',
               'border-border hover:border-primary/50 focus:border-primary focus:ring-2 focus:ring-primary/20',
               'focus:outline-none',
@@ -88,20 +88,20 @@ export function SessionTableSearch({
         </div>
 
         {selectedSessions.size > 0 && (
-          <Badge variant="secondary" className="text-xs cursor-pointer" onClick={clearSelection}>
+          <Badge variant="secondary" className="text-xs cursor-pointer animate-in fade-in slide-in-from-right-1 duration-200" onClick={clearSelection}>
             {selectedSessions.size} selected
           </Badge>
         )}
 
         {viewMode === 'archived' && (
-          <Badge variant="secondary" className="text-xs">
+          <Badge variant="secondary" className="text-xs animate-in fade-in slide-in-from-right-1 duration-200">
             Archived Sessions
           </Badge>
         )}
 
         {statusFilter && (
           <span
-            className="px-2 py-1 text-xs text-accent-foreground rounded whitespace-nowrap"
+            className="px-2 py-1 text-xs text-accent-foreground rounded whitespace-nowrap animate-in fade-in slide-in-from-right-1 duration-200"
             style={{ backgroundColor: 'var(--terminal-accent)' }}
           >
             status: {statusFilter.toLowerCase()}
