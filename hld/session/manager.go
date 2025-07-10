@@ -598,33 +598,7 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 						"model", event.Model)
 				}
 			}
-
-			// Store the init event in conversation history
-			convEvent := &store.ConversationEvent{
-				SessionID:       sessionID,
-				ClaudeSessionID: claudeSessionID,
-				EventType:       store.EventTypeSystem,
-				Role:            "system",
-				Content:         fmt.Sprintf("Session initialized - Model: %s, CWD: %s", event.Model, event.CWD),
-			}
-			if err := m.store.AddConversationEvent(ctx, convEvent); err != nil {
-				return err
-			}
-
-			// Publish conversation updated event
-			if m.eventBus != nil {
-				m.eventBus.Publish(bus.Event{
-					Type: bus.EventConversationUpdated,
-					Data: map[string]interface{}{
-						"session_id":        sessionID,
-						"claude_session_id": claudeSessionID,
-						"event_type":        "system",
-						"subtype":           event.Subtype,
-						"content":           convEvent.Content,
-						"content_type":      "system",
-					},
-				})
-			}
+			// Don't store init event in conversation history - we only extract the model
 		}
 		// Other system events can be added as needed
 
