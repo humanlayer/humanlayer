@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	claudecode "github.com/humanlayer/humanlayer/claudecode-go"
 	_ "github.com/mattn/go-sqlite3"
@@ -802,6 +803,49 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 	}
 
 	return sessions, nil
+}
+
+// GetRecentWorkingDirs retrieves recently used working directories
+func (s *SQLiteStore) GetRecentWorkingDirs(ctx context.Context, limit int) ([]RecentPath, error) {
+	if limit <= 0 {
+		limit = 20 // Default to 20 recent paths
+	}
+
+	query := `
+		SELECT
+			working_dir as path,
+			datetime(MAX(last_activity_at)) as last_used,
+			COUNT(*) as usage_count
+		FROM sessions
+		WHERE working_dir IS NOT NULL
+			AND working_dir != ''
+			AND working_dir != '.'
+		GROUP BY working_dir
+		ORDER BY MAX(last_activity_at) DESC
+		LIMIT ?
+	`
+
+	rows, err := s.db.QueryContext(ctx, query, limit)
+	if err != nil {
+		return nil, fmt.Errorf("query recent paths: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var paths []RecentPath
+	for rows.Next() {
+		var p RecentPath
+		var lastUsedStr string
+		if err := rows.Scan(&p.Path, &lastUsedStr, &p.UsageCount); err != nil {
+			return nil, fmt.Errorf("scan recent path: %w", err)
+		}
+		// Parse the datetime string from SQLite
+		if t, err := time.Parse("2006-01-02 15:04:05", lastUsedStr); err == nil {
+			p.LastUsed = t
+		}
+		paths = append(paths, p)
+	}
+
+	return paths, rows.Err()
 }
 
 // AddConversationEvent adds a new conversation event

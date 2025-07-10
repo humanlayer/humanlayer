@@ -476,6 +476,36 @@ func (h *SessionHandlers) HandleUpdateSessionSettings(ctx context.Context, param
 	return UpdateSessionSettingsResponse{Success: true}, nil
 }
 
+// HandleGetRecentPaths handles the GetRecentPaths RPC method
+func (h *SessionHandlers) HandleGetRecentPaths(ctx context.Context, params json.RawMessage) (interface{}, error) {
+	var req GetRecentPathsRequest
+	if err := json.Unmarshal(params, &req); err != nil {
+		return nil, fmt.Errorf("invalid request: %w", err)
+	}
+
+	limit := req.Limit
+	if limit <= 0 {
+		limit = 20
+	}
+
+	paths, err := h.store.GetRecentWorkingDirs(ctx, limit)
+	if err != nil {
+		return nil, fmt.Errorf("get recent paths: %w", err)
+	}
+
+	// Convert store.RecentPath to RPC RecentPath with ISO 8601 timestamps
+	rpcPaths := make([]RecentPath, len(paths))
+	for i, p := range paths {
+		rpcPaths[i] = RecentPath{
+			Path:       p.Path,
+			LastUsed:   p.LastUsed.Format(time.RFC3339),
+			UsageCount: p.UsageCount,
+		}
+	}
+
+	return &GetRecentPathsResponse{Paths: rpcPaths}, nil
+}
+
 // Register registers all session handlers with the RPC server
 func (h *SessionHandlers) Register(server *Server) {
 	server.Register("launchSession", h.HandleLaunchSession)
@@ -487,4 +517,5 @@ func (h *SessionHandlers) Register(server *Server) {
 	server.Register("interruptSession", h.HandleInterruptSession)
 	server.Register("getSessionSnapshots", h.HandleGetSessionSnapshots)
 	server.Register("updateSessionSettings", h.HandleUpdateSessionSettings)
+	server.Register("getRecentPaths", h.HandleGetRecentPaths)
 }

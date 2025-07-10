@@ -102,12 +102,7 @@ export default function CommandPaletteMenu() {
       return (
         <>
           {segments.map((segment, i) => (
-            <span
-              key={i}
-              className={
-                segment.highlighted ? 'bg-yellow-200/80 dark:bg-yellow-900/60 font-medium' : ''
-              }
-            >
+            <span key={i} className={cn(segment.highlighted && 'bg-accent/40 font-medium')}>
               {segment.text}
             </span>
           ))}

@@ -47,6 +47,7 @@ pub trait DaemonClientTrait: Send + Sync {
         session_id: &str,
         auto_accept_edits: Option<bool>,
     ) -> Result<UpdateSessionSettingsResponse>;
+    async fn get_recent_paths(&self, limit: Option<i32>) -> Result<GetRecentPathsResponse>;
 }
 
 pub struct DaemonClient {
@@ -326,6 +327,11 @@ impl DaemonClientTrait for DaemonClient {
             auto_accept_edits,
         };
         self.send_rpc_request("updateSessionSettings", Some(req)).await
+    }
+
+    async fn get_recent_paths(&self, limit: Option<i32>) -> Result<GetRecentPathsResponse> {
+        let req = GetRecentPathsRequest { limit };
+        self.send_rpc_request("getRecentPaths", Some(req)).await
     }
 }
 

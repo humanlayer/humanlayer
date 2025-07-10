@@ -256,6 +256,70 @@ func TestSQLiteStore(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, sessions, 2)
 	})
+
+	t.Run("GetRecentWorkingDirs", func(t *testing.T) {
+		// Create sessions with different working directories
+		testSessions := []struct {
+			id         string
+			workingDir string
+			timestamp  time.Time
+		}{
+			{"test-recent-1", "/home/user/project1", time.Now()},
+			{"test-recent-2", "/home/user/project2", time.Now().Add(-1 * time.Hour)},
+			{"test-recent-3", "/home/user/project1", time.Now().Add(-2 * time.Hour)}, // duplicate path
+			{"test-recent-4", "/home/user/project3", time.Now().Add(-3 * time.Hour)},
+			{"test-recent-5", "", time.Now()},  // empty path, should be filtered
+			{"test-recent-6", ".", time.Now()}, // current dir, should be filtered
+		}
+
+		// Create test sessions
+		for _, ts := range testSessions {
+			session := &Session{
+				ID:             ts.id,
+				RunID:          "run-" + ts.id,
+				Query:          "Test query",
+				WorkingDir:     ts.workingDir,
+				Status:         SessionStatusCompleted,
+				CreatedAt:      ts.timestamp,
+				LastActivityAt: ts.timestamp,
+			}
+			err := store.CreateSession(ctx, session)
+			require.NoError(t, err)
+		}
+
+		// Test with default limit
+		paths, err := store.GetRecentWorkingDirs(ctx, 0)
+		require.NoError(t, err)
+		require.Len(t, paths, 3, "Should return 3 unique non-empty paths")
+
+		// Verify ordering (most recent first)
+		require.Equal(t, "/home/user/project1", paths[0].Path)
+		require.Equal(t, "/home/user/project2", paths[1].Path)
+		require.Equal(t, "/home/user/project3", paths[2].Path)
+
+		// Verify usage count
+		require.Equal(t, 2, paths[0].UsageCount, "project1 should have usage count of 2")
+		require.Equal(t, 1, paths[1].UsageCount, "project2 should have usage count of 1")
+		require.Equal(t, 1, paths[2].UsageCount, "project3 should have usage count of 1")
+
+		// Test with explicit limit
+		limitedPaths, err := store.GetRecentWorkingDirs(ctx, 2)
+		require.NoError(t, err)
+		require.Len(t, limitedPaths, 2, "Should respect the limit")
+		require.Equal(t, "/home/user/project1", limitedPaths[0].Path)
+		require.Equal(t, "/home/user/project2", limitedPaths[1].Path)
+
+		// Test with no sessions having working dirs
+		// Create a new store to test empty case
+		dbPath2 := testutil.DatabasePath(t, "sqlite-empty")
+		store2, err := NewSQLiteStore(dbPath2)
+		require.NoError(t, err)
+		defer func() { _ = store2.Close() }()
+
+		emptyPaths, err := store2.GetRecentWorkingDirs(ctx, 10)
+		require.NoError(t, err)
+		require.Empty(t, emptyPaths, "Should return empty slice when no sessions exist")
+	})
 }
 
 func TestGetSessionConversationWithParentChain(t *testing.T) {

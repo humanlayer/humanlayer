@@ -482,3 +482,22 @@ pub struct UpdateSessionSettingsRequest {
 pub struct UpdateSessionSettingsResponse {
     pub success: bool,
 }
+
+// Recent paths types
+#[derive(Debug, Serialize, Deserialize)]
+pub struct GetRecentPathsRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub limit: Option<i32>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct GetRecentPathsResponse {
+    pub paths: Vec<RecentPath>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RecentPath {
+    pub path: String,
+    pub last_used: String,
+    pub usage_count: i32,
+}

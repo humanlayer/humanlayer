@@ -300,6 +300,17 @@ export interface SubscribeRequest {
   run_id?: string
 }
 
+// Recent paths types
+export interface RecentPath {
+  path: string
+  last_used: string
+  usage_count: number
+}
+
+export interface GetRecentPathsResponse {
+  paths: RecentPath[]
+}
+
 // Daemon client API
 export interface GetSessionStateResponse {
   session: SessionState

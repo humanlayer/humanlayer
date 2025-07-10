@@ -14,6 +14,7 @@ import type {
   EventNotification,
   SubscribeRequest,
   UpdateSessionSettingsResponse,
+  GetRecentPathsResponse,
 } from './types'
 
 export class DaemonClient {
@@ -107,6 +108,10 @@ export class DaemonClient {
       sessionId,
       autoAcceptEdits: settings.autoAcceptEdits,
     })
+  }
+
+  async getRecentPaths(limit?: number): Promise<GetRecentPathsResponse> {
+    return await invoke('get_recent_paths', { limit })
   }
 }
 

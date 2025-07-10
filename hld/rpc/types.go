@@ -141,3 +141,20 @@ type UpdateSessionSettingsRequest struct {
 type UpdateSessionSettingsResponse struct {
 	Success bool `json:"success"`
 }
+
+// GetRecentPathsRequest is the request for fetching recent working directories
+type GetRecentPathsRequest struct {
+	Limit int `json:"limit,omitempty"`
+}
+
+// GetRecentPathsResponse is the response for fetching recent working directories
+type GetRecentPathsResponse struct {
+	Paths []RecentPath `json:"paths"`
+}
+
+// RecentPath represents a recently used working directory
+type RecentPath struct {
+	Path       string `json:"path"`
+	LastUsed   string `json:"last_used"` // ISO 8601 timestamp
+	UsageCount int    `json:"usage_count"`
+}

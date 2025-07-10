@@ -4,6 +4,9 @@ import { cn } from '@/lib/utils'
 import { SearchInput } from './FuzzySearchInput'
 import { Input } from './ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
+import { useRecentPaths } from '@/hooks/useRecentPaths'
+import { Textarea } from './ui/textarea'
+import { Label } from './ui/label'
 
 interface SessionConfig {
   query: string
@@ -31,13 +34,14 @@ export default function CommandInput({
   config = { query: '', workingDir: '' },
   onConfigChange,
 }: CommandInputProps) {
-  const inputRef = useRef<HTMLInputElement>(null)
-  const [isFocused, setIsFocused] = useState(false)
+  const promptRef = useRef<HTMLTextAreaElement>(null)
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const { paths: recentPaths } = useRecentPaths()
 
   useEffect(() => {
-    if (inputRef.current) {
-      inputRef.current.focus()
+    // focus on the prompt when the component mounts
+    if (promptRef.current) {
+      promptRef.current.focus()
     }
   }, [])
 
@@ -48,8 +52,7 @@ export default function CommandInput({
     }
 
     if (e.key === 'Escape') {
-      const el = document.getElementById('this-is-another-input-ref-hack')
-      el?.blur()
+      promptRef.current?.blur()
     }
   }
 
@@ -63,39 +66,29 @@ export default function CommandInput({
     <div className="space-y-4">
       {/* Working Directory Field with Fuzzy Search */}
       <div className="space-y-2">
-        <label className="text-sm font-medium text-foreground">Working Directory</label>
+        <Label>Working Directory</Label>
         <SearchInput
           value={config.workingDir}
           onChange={value => onConfigChange?.({ ...config, workingDir: value })}
           onSubmit={onSubmit}
           placeholder="/path/to/directory or leave empty for current directory"
+          recentDirectories={recentPaths}
         />
       </div>
 
       {/* Main query input */}
-      <div className="relative">
-        <Input
-          id="this-is-another-input-ref-hack"
-          ref={inputRef}
-          type="text"
+      <div className="relative space-y-2">
+        <Label htmlFor="prompt">Prompt</Label>
+        <Textarea
+          id="prompt"
+          ref={promptRef}
           value={value}
           onChange={e => onChange(e.target.value)}
           onKeyDown={handleKeyDown}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
+          // onFocus={() => setIsFocused(true)}
+          // onBlur={() => setIsFocused(false)}
           placeholder={placeholder}
           disabled={isLoading}
-          className={cn(
-            'w-full h-12 px-4 py-3 text-base',
-            'font-mono leading-relaxed',
-            'bg-background border-2 rounded-lg',
-            'transition-all duration-200',
-            'placeholder:text-muted-foreground/60',
-            'disabled:opacity-50 disabled:cursor-not-allowed',
-            isFocused
-              ? 'border-primary ring-4 ring-primary/20'
-              : 'border-border hover:border-primary/50',
-          )}
           autoComplete="off"
           spellCheck={false}
         />
