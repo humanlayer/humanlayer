@@ -529,5 +529,6 @@ pub struct BulkArchiveSessionsRequest {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BulkArchiveSessionsResponse {
     pub success: bool,
-    pub archived_count: i32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub failed_sessions: Option<Vec<String>>,
 }
