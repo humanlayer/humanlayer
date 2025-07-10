@@ -53,12 +53,21 @@ When referencing thoughts documents, always provide GitHub links using the `link
 
 ### Default Values
 - **Status**: Always create new tickets in "Triage" status
+- **Project**: For new tickets, default to "M U L T I C L A U D E" (ID: f11c8d63-9120-4393-bfae-553da0b04fd8) unless told otherwise
 - **Priority**: Default to Medium (3) for most tasks, use best judgment or ask user
   - Urgent (1): Critical blockers, security issues
   - High (2): Important features with deadlines, major bugs
   - Medium (3): Standard implementation tasks (default)
   - Low (4): Nice-to-haves, minor improvements
 - **Links**: Use the `links` parameter to attach URLs (not just markdown links in description)
+
+### Automatic Label Assignment
+Automatically apply labels based on the ticket content:
+- **hld**: For tickets about the `hld/` directory (the daemon)
+- **wui**: For tickets about `humanlayer-wui/`
+- **meta**: For tickets about `hlyr` commands, thoughts tool, or `thoughts/` directory
+
+Note: meta is mutually exclusive with hld/wui. Tickets can have both hld and wui, but not meta with either.
 
 ## Action-Specific Instructions
 
@@ -133,10 +142,11 @@ When referencing thoughts documents, always provide GitHub links using the `link
    - title: [refined title]
    - description: [final description in markdown]
    - teamId: [selected team]
-   - projectId: [if selected]
+   - projectId: [use default project from above unless user specifies]
    - priority: [selected priority number, default 3]
    - stateId: [Triage status ID]
    - assigneeId: [if requested]
+   - labelIds: [apply automatic label assignment from above]
    - links: [{url: "GitHub URL", title: "Document Title"}]
    ```
 
