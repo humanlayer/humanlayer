@@ -314,7 +314,7 @@ impl DaemonClientTrait for DaemonClient {
 
     async fn get_recent_paths(&self, limit: Option<i32>) -> Result<GetRecentPathsResponse> {
         let req = GetRecentPathsRequest { limit };
-        self.send_rpc_request("GetRecentPaths", Some(req)).await
+        self.send_rpc_request("getRecentPaths", Some(req)).await
     }
 }
 

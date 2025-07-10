@@ -464,5 +464,5 @@ func (h *SessionHandlers) Register(server *Server) {
 	server.Register("continueSession", h.HandleContinueSession)
 	server.Register("interruptSession", h.HandleInterruptSession)
 	server.Register("getSessionSnapshots", h.HandleGetSessionSnapshots)
-	server.Register("GetRecentPaths", h.HandleGetRecentPaths)
+	server.Register("getRecentPaths", h.HandleGetRecentPaths)
 }
