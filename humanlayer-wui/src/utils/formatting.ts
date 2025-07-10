@@ -87,7 +87,7 @@ export function truncatePath(path: string | undefined, maxLength: number = 40): 
   if (path.length <= maxLength) return path
 
   // Handle home directory replacement
-  const homePath = path.replace(/^\/Users\/[^/]+/, '~')
+  const homePath = path.replace(/^(\/Users|\/home)\/[^/]+/, '~')
 
   // If home-replaced path fits, use it
   if (homePath.length <= maxLength) return homePath
