@@ -108,11 +108,11 @@ export function SessionTablePage() {
         setFocusedSession(filteredSessions[0])
       }
     },
-    { 
-      enableOnFormTags: false, 
-      scopes: SessionTableHotkeysScope, 
+    {
+      enableOnFormTags: false,
+      scopes: SessionTableHotkeysScope,
       enabled: !isSessionLauncherOpen,
-      preventDefault: true 
+      preventDefault: true,
     },
   )
 
@@ -124,11 +124,11 @@ export function SessionTablePage() {
         setFocusedSession(filteredSessions[filteredSessions.length - 1])
       }
     },
-    { 
-      enableOnFormTags: false, 
-      scopes: SessionTableHotkeysScope, 
+    {
+      enableOnFormTags: false,
+      scopes: SessionTableHotkeysScope,
       enabled: !isSessionLauncherOpen,
-      preventDefault: true 
+      preventDefault: true,
     },
   )
 
@@ -140,11 +140,11 @@ export function SessionTablePage() {
         setViewMode('normal')
       }
     },
-    { 
-      enableOnFormTags: false, 
-      scopes: SessionTableHotkeysScope, 
+    {
+      enableOnFormTags: false,
+      scopes: SessionTableHotkeysScope,
       enabled: !isSessionLauncherOpen && viewMode === 'archived',
-      preventDefault: true 
+      preventDefault: true,
     },
   )
 
@@ -171,15 +171,16 @@ export function SessionTablePage() {
           searchText={searchText}
           matchedSessions={matchedSessions}
           emptyState={
-            viewMode === 'archived' 
+            viewMode === 'archived'
               ? {
                   icon: Archive,
                   title: 'No archived sessions',
-                  message: 'Sessions you archive will appear here. Press ESC or click below to go back.',
+                  message:
+                    'Sessions you archive will appear here. Press ESC or click below to go back.',
                   action: {
                     label: 'View all sessions',
-                    onClick: () => setViewMode('normal')
-                  }
+                    onClick: () => setViewMode('normal'),
+                  },
                 }
               : {
                   icon: Inbox,
@@ -194,8 +195,8 @@ export function SessionTablePage() {
                         const launcher = useSessionLauncher.getState()
                         launcher.createNewSession()
                       }, 100)
-                    }
-                  }
+                    },
+                  },
                 }
           }
         />

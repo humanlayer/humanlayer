@@ -710,7 +710,7 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 		turns := int(numTurns.Int64)
 		session.NumTurns = &turns
 	}
-	
+
 	// Handle archived field - default to false if NULL
 	session.Archived = archived.Valid && archived.Bool
 
@@ -786,7 +786,7 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 		turns := int(numTurns.Int64)
 		session.NumTurns = &turns
 	}
-	
+
 	// Handle archived field - default to false if NULL
 	session.Archived = archived.Valid && archived.Bool
 
@@ -869,7 +869,7 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 		}
 		session.ResultContent = resultContent.String
 		session.ErrorMessage = errorMessage.String
-		
+
 		// Handle archived field - default to false if NULL
 		session.Archived = archived.Valid && archived.Bool
 

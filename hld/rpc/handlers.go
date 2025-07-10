@@ -204,15 +204,6 @@ func (h *SessionHandlers) HandleGetSessionLeaves(ctx context.Context, params jso
 		return leaves[i].LastActivityAt.After(leaves[j].LastActivityAt)
 	})
 
-	// Debug logging
-	slog.Info("GetSessionLeaves returning sessions", "count", len(leaves))
-	if len(leaves) > 0 {
-		slog.Info("First session info", 
-			"id", leaves[0].ID,
-			"archived", leaves[0].Archived,
-			"hasArchivedField", true)
-	}
-
 	return &GetSessionLeavesResponse{
 		Sessions: leaves,
 	}, nil

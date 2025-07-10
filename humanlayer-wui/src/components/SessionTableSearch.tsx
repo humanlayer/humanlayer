@@ -88,13 +88,20 @@ export function SessionTableSearch({
         </div>
 
         {selectedSessions.size > 0 && (
-          <Badge variant="secondary" className="text-xs cursor-pointer animate-in fade-in slide-in-from-right-1 duration-200" onClick={clearSelection}>
+          <Badge
+            variant="secondary"
+            className="text-xs cursor-pointer animate-in fade-in slide-in-from-right-1 duration-200"
+            onClick={clearSelection}
+          >
             {selectedSessions.size} selected
           </Badge>
         )}
 
         {viewMode === 'archived' && (
-          <Badge variant="secondary" className="text-xs animate-in fade-in slide-in-from-right-1 duration-200">
+          <Badge
+            variant="secondary"
+            className="text-xs animate-in fade-in slide-in-from-right-1 duration-200"
+          >
             Archived Sessions
           </Badge>
         )}

@@ -110,60 +110,75 @@ export default function SessionTable({
     scopes: SessionTableHotkeysScope,
     enabled: !isSessionLauncherOpen,
   })
-  
+
   // Bulk selection with shift+j/k
-  useHotkeys('shift+j', () => {
-    if (focusedSession) {
-      // Toggle current session selection
-      toggleSessionSelection(focusedSession.id)
-      
-      // Move focus to next session
-      handleFocusNextSession?.()
-    }
-  }, {
-    scopes: SessionTableHotkeysScope,
-    enabled: !isSessionLauncherOpen,
-    preventDefault: true,
-  }, [focusedSession, toggleSessionSelection, handleFocusNextSession])
-  
-  useHotkeys('shift+k', () => {
-    if (focusedSession) {
-      // Toggle current session selection
-      toggleSessionSelection(focusedSession.id)
-      
-      // Move focus to previous session
-      handleFocusPreviousSession?.()
-    }
-  }, {
-    scopes: SessionTableHotkeysScope,
-    enabled: !isSessionLauncherOpen,
-    preventDefault: true,
-  }, [focusedSession, toggleSessionSelection, handleFocusPreviousSession])
-  
-  // Select all with meta+a (Cmd+A on Mac, Ctrl+A on Windows/Linux)
-  useHotkeys('meta+a', () => {
-    // Toggle all sessions - if all are selected, deselect all; otherwise select all
-    const allSelected = sessions.every(s => selectedSessions.has(s.id))
-    
-    sessions.forEach(session => {
-      if (allSelected) {
-        // Deselect all if all are selected
-        if (selectedSessions.has(session.id)) {
-          toggleSessionSelection(session.id)
-        }
-      } else {
-        // Select all if not all are selected
-        if (!selectedSessions.has(session.id)) {
-          toggleSessionSelection(session.id)
-        }
+  useHotkeys(
+    'shift+j',
+    () => {
+      if (focusedSession) {
+        // Toggle current session selection
+        toggleSessionSelection(focusedSession.id)
+
+        // Move focus to next session
+        handleFocusNextSession?.()
       }
-    })
-  }, {
-    scopes: SessionTableHotkeysScope,
-    enabled: !isSessionLauncherOpen,
-    preventDefault: true,
-  }, [sessions, selectedSessions, toggleSessionSelection])
-  
+    },
+    {
+      scopes: SessionTableHotkeysScope,
+      enabled: !isSessionLauncherOpen,
+      preventDefault: true,
+    },
+    [focusedSession, toggleSessionSelection, handleFocusNextSession],
+  )
+
+  useHotkeys(
+    'shift+k',
+    () => {
+      if (focusedSession) {
+        // Toggle current session selection
+        toggleSessionSelection(focusedSession.id)
+
+        // Move focus to previous session
+        handleFocusPreviousSession?.()
+      }
+    },
+    {
+      scopes: SessionTableHotkeysScope,
+      enabled: !isSessionLauncherOpen,
+      preventDefault: true,
+    },
+    [focusedSession, toggleSessionSelection, handleFocusPreviousSession],
+  )
+
+  // Select all with meta+a (Cmd+A on Mac, Ctrl+A on Windows/Linux)
+  useHotkeys(
+    'meta+a',
+    () => {
+      // Toggle all sessions - if all are selected, deselect all; otherwise select all
+      const allSelected = sessions.every(s => selectedSessions.has(s.id))
+
+      sessions.forEach(session => {
+        if (allSelected) {
+          // Deselect all if all are selected
+          if (selectedSessions.has(session.id)) {
+            toggleSessionSelection(session.id)
+          }
+        } else {
+          // Select all if not all are selected
+          if (!selectedSessions.has(session.id)) {
+            toggleSessionSelection(session.id)
+          }
+        }
+      })
+    },
+    {
+      scopes: SessionTableHotkeysScope,
+      enabled: !isSessionLauncherOpen,
+      preventDefault: true,
+    },
+    [sessions, selectedSessions, toggleSessionSelection],
+  )
+
   useHotkeys(
     'enter',
     () => {
@@ -187,17 +202,17 @@ export default function SessionTable({
           console.log('Archive hotkey pressed:', {
             sessionId: currentSession.id,
             archived: currentSession.archived,
-            willArchive: !currentSession.archived
+            willArchive: !currentSession.archived,
           })
 
           // If there are selected sessions, bulk archive them
           if (selectedSessions.size > 0) {
             const isArchiving = !currentSession.archived
-            
+
             // Find next session to focus after bulk archive
             const nonSelectedSessions = sessions.filter(s => !selectedSessions.has(s.id))
             const nextFocusSession = nonSelectedSessions.length > 0 ? nonSelectedSessions[0] : null
-            
+
             await bulkArchiveSessions(Array.from(selectedSessions), isArchiving)
 
             // Focus next available session
@@ -216,11 +231,11 @@ export default function SessionTable({
           } else {
             // Single session archive
             const isArchiving = !currentSession.archived
-            
+
             // Find the index of current session and determine next focus
             const currentIndex = sessions.findIndex(s => s.id === currentSession.id)
             let nextFocusSession = null
-            
+
             if (currentIndex > 0) {
               // Focus previous session if available
               nextFocusSession = sessions[currentIndex - 1]
@@ -228,9 +243,9 @@ export default function SessionTable({
               // Focus next session if no previous
               nextFocusSession = sessions[currentIndex + 1]
             }
-            
+
             await archiveSession(currentSession.id, isArchiving)
-            
+
             // Set focus to the determined session
             if (nextFocusSession && handleFocusSession) {
               handleFocusSession(nextFocusSession)
@@ -255,7 +270,14 @@ export default function SessionTable({
       preventDefault: true,
       enableOnFormTags: false,
     },
-    [focusedSession, sessions, archiveSession, selectedSessions, bulkArchiveSessions, handleFocusSession],
+    [
+      focusedSession,
+      sessions,
+      archiveSession,
+      selectedSessions,
+      bulkArchiveSessions,
+      handleFocusSession,
+    ],
   )
 
   // Toggle selection hotkey
@@ -295,85 +317,85 @@ export default function SessionTable({
             </TableHeader>
             <TableBody>
               {sessions.map(session => (
-            <TableRow
-              key={session.id}
-              data-session-id={session.id}
-              onMouseEnter={() => handleFocusSession?.(session)}
-              onMouseLeave={() => handleBlurSession?.()}
-              onClick={() => handleActivateSession?.(session)}
-              className={cn(
-                'cursor-pointer',
-                focusedSession?.id === session.id && '!bg-accent/20',
-                session.archived && 'opacity-60',
-              )}
-            >
-              <TableCell
-                className="w-[40px]"
-                onClick={e => {
-                  e.stopPropagation()
-                  toggleSessionSelection(session.id)
-                }}
-              >
-                <div className="flex items-center justify-center">
-                  {selectedSessions.has(session.id) ? (
-                    <CheckSquare className="w-4 h-4 text-primary" />
-                  ) : (
-                    <Square className="w-4 h-4 text-muted-foreground" />
+                <TableRow
+                  key={session.id}
+                  data-session-id={session.id}
+                  onMouseEnter={() => handleFocusSession?.(session)}
+                  onMouseLeave={() => handleBlurSession?.()}
+                  onClick={() => handleActivateSession?.(session)}
+                  className={cn(
+                    'cursor-pointer',
+                    focusedSession?.id === session.id && '!bg-accent/20',
+                    session.archived && 'opacity-60',
                   )}
-                </div>
-              </TableCell>
-              <TableCell className={getStatusTextClass(session.status)}>{session.status}</TableCell>
-              <TableCell className="max-w-[200px]">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="block truncate cursor-help text-sm">
-                      {truncatePath(session.working_dir)}
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-[600px]">
-                    <span className="font-mono text-sm">
-                      {session.working_dir || 'No working directory'}
-                    </span>
-                  </TooltipContent>
-                </Tooltip>
-              </TableCell>
-              <TableCell>
-                <div className="flex items-center gap-2">
-                  <span>{renderHighlightedText(session.summary, session.id)}</span>
-                  {session.archived && <Archive className="w-4 h-4 text-muted-foreground" />}
-                </div>
-              </TableCell>
-              <TableCell>{session.model || <CircleOff className="w-4 h-4" />}</TableCell>
-              <TableCell>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="cursor-help">{formatTimestamp(session.start_time)}</span>
-                  </TooltipTrigger>
-                  <TooltipContent>{formatAbsoluteTimestamp(session.start_time)}</TooltipContent>
-                </Tooltip>
-              </TableCell>
-              <TableCell>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="cursor-help">{formatTimestamp(session.last_activity_at)}</span>
-                  </TooltipTrigger>
-                  <TooltipContent>{formatAbsoluteTimestamp(session.last_activity_at)}</TooltipContent>
-                </Tooltip>
-              </TableCell>
-            </TableRow>
+                >
+                  <TableCell
+                    className="w-[40px]"
+                    onClick={e => {
+                      e.stopPropagation()
+                      toggleSessionSelection(session.id)
+                    }}
+                  >
+                    <div className="flex items-center justify-center">
+                      {selectedSessions.has(session.id) ? (
+                        <CheckSquare className="w-4 h-4 text-primary" />
+                      ) : (
+                        <Square className="w-4 h-4 text-muted-foreground" />
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className={getStatusTextClass(session.status)}>{session.status}</TableCell>
+                  <TableCell className="max-w-[200px]">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="block truncate cursor-help text-sm">
+                          {truncatePath(session.working_dir)}
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-[600px]">
+                        <span className="font-mono text-sm">
+                          {session.working_dir || 'No working directory'}
+                        </span>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <span>{renderHighlightedText(session.summary, session.id)}</span>
+                      {session.archived && <Archive className="w-4 h-4 text-muted-foreground" />}
+                    </div>
+                  </TableCell>
+                  <TableCell>{session.model || <CircleOff className="w-4 h-4" />}</TableCell>
+                  <TableCell>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="cursor-help">{formatTimestamp(session.start_time)}</span>
+                      </TooltipTrigger>
+                      <TooltipContent>{formatAbsoluteTimestamp(session.start_time)}</TooltipContent>
+                    </Tooltip>
+                  </TableCell>
+                  <TableCell>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="cursor-help">{formatTimestamp(session.last_activity_at)}</span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {formatAbsoluteTimestamp(session.last_activity_at)}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TableCell>
+                </TableRow>
               ))}
             </TableBody>
           </Table>
         </>
+      ) : emptyState ? (
+        <EmptyState {...emptyState} />
       ) : (
-        emptyState ? (
-          <EmptyState {...emptyState} />
-        ) : (
-          <div className="text-center py-8 text-muted-foreground">
-            <p className="text-sm">No sessions found</p>
-            {searchText && <p className="text-xs mt-1">Try adjusting your search filters</p>}
-          </div>
-        )
+        <div className="text-center py-8 text-muted-foreground">
+          <p className="text-sm">No sessions found</p>
+          {searchText && <p className="text-xs mt-1">Try adjusting your search filters</p>}
+        </div>
       )}
     </>
   )
