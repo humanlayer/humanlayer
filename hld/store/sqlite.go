@@ -558,6 +558,10 @@ func (s *SQLiteStore) UpdateSession(ctx context.Context, sessionID string, updat
 		setParts = append(setParts, "auto_accept_edits = ?")
 		args = append(args, *updates.AutoAcceptEdits)
 	}
+	if updates.Model != nil {
+		setParts = append(setParts, "model = ?")
+		args = append(args, *updates.Model)
+	}
 
 	if len(setParts) == 0 {
 		return fmt.Errorf("no fields to update")

@@ -528,7 +528,8 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 	switch event.Type {
 	case "system":
 		// System events (session created, tools available, etc)
-		if event.Subtype == "session_created" {
+		switch event.Subtype {
+		case "session_created":
 			// Store system event
 			convEvent := &store.ConversationEvent{
 				SessionID:       sessionID,
@@ -551,6 +552,69 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 						"event_type":        "system",
 						"subtype":           event.Subtype,
 						"content":           fmt.Sprintf("Session created with ID: %s", event.SessionID),
+						"content_type":      "system",
+					},
+				})
+			}
+		case "init":
+			// Check if we need to populate the model
+			session, err := m.store.GetSession(ctx, sessionID)
+			if err != nil {
+				slog.Error("failed to get session for model update", "error", err)
+				return nil // Non-fatal, continue processing
+			}
+
+			// Only update if model is empty and init event has a model
+			if session != nil && session.Model == "" && event.Model != "" {
+				// Extract simple model name from API format
+				var modelName string
+				if strings.Contains(event.Model, "opus") {
+					modelName = "opus"
+				} else if strings.Contains(event.Model, "sonnet") {
+					modelName = "sonnet"
+				}
+
+				// Update session with detected model
+				if modelName != "" {
+					update := store.SessionUpdate{
+						Model: &modelName,
+					}
+					if err := m.store.UpdateSession(ctx, sessionID, update); err != nil {
+						slog.Error("failed to update session model from init event",
+							"session_id", sessionID,
+							"model", modelName,
+							"error", err)
+					} else {
+						slog.Info("populated session model from init event",
+							"session_id", sessionID,
+							"model", modelName,
+							"original", event.Model)
+					}
+				}
+			}
+
+			// Store the init event in conversation history
+			convEvent := &store.ConversationEvent{
+				SessionID:       sessionID,
+				ClaudeSessionID: claudeSessionID,
+				EventType:       store.EventTypeSystem,
+				Role:            "system",
+				Content:         fmt.Sprintf("Session initialized - Model: %s, CWD: %s", event.Model, event.CWD),
+			}
+			if err := m.store.AddConversationEvent(ctx, convEvent); err != nil {
+				return err
+			}
+
+			// Publish conversation updated event
+			if m.eventBus != nil {
+				m.eventBus.Publish(bus.Event{
+					Type: bus.EventConversationUpdated,
+					Data: map[string]interface{}{
+						"session_id":        sessionID,
+						"claude_session_id": claudeSessionID,
+						"event_type":        "system",
+						"subtype":           event.Subtype,
+						"content":           convEvent.Content,
 						"content_type":      "system",
 					},
 				})
