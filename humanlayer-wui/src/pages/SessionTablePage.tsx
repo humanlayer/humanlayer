@@ -99,6 +99,38 @@ export function SessionTablePage() {
     { enableOnFormTags: false, scopes: SessionTableHotkeysScope, enabled: !isSessionLauncherOpen },
   )
 
+  // Handle 'gg' to jump to top of list (vim-style)
+  useHotkeys(
+    'g,g',
+    () => {
+      if (filteredSessions.length > 0) {
+        setFocusedSession(filteredSessions[0])
+      }
+    },
+    { 
+      enableOnFormTags: false, 
+      scopes: SessionTableHotkeysScope, 
+      enabled: !isSessionLauncherOpen,
+      preventDefault: true 
+    },
+  )
+
+  // Handle 'shift+g' to jump to bottom of list (vim-style)
+  useHotkeys(
+    'shift+g',
+    () => {
+      if (filteredSessions.length > 0) {
+        setFocusedSession(filteredSessions[filteredSessions.length - 1])
+      }
+    },
+    { 
+      enableOnFormTags: false, 
+      scopes: SessionTableHotkeysScope, 
+      enabled: !isSessionLauncherOpen,
+      preventDefault: true 
+    },
+  )
+
   return (
     <div className="flex flex-col gap-4">
       <SessionTableSearch
