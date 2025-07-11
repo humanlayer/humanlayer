@@ -24,9 +24,9 @@ interface ForkViewModalProps {
   onOpenChange: (open: boolean) => void
 }
 
-function ForkViewModalContent({ 
-  events, 
-  selectedEventIndex, 
+function ForkViewModalContent({
+  events,
+  selectedEventIndex,
   onSelectEvent,
   onClose
 }: Omit<ForkViewModalProps, 'isOpen' | 'onOpenChange'> & { onClose: () => void }) {
@@ -37,12 +37,12 @@ function ForkViewModalContent({
     .map((e, i) => ({ event: e, index: i }))
     .filter(({ event }) => event.event_type === 'message' && event.role === 'user')
     .slice(1) // Exclude first message since it can't be forked
-  
+
   // Add current option as a special index (-1)
   const allOptions = [...userMessageIndices, { event: null, index: -1 }]
-  
+
   const [localSelectedIndex, setLocalSelectedIndex] = useState(0)
-  
+
   // Sync with external selection
   useEffect(() => {
     if (selectedEventIndex === null) {
@@ -57,7 +57,7 @@ function ForkViewModalContent({
       }
     }
   }, [selectedEventIndex, userMessageIndices, allOptions.length])
-  
+
   // Navigation hotkeys
   useHotkeys('j, down', () => {
     if (localSelectedIndex < allOptions.length - 1) {
@@ -67,7 +67,7 @@ function ForkViewModalContent({
       onSelectEvent(option.index === -1 ? null : option.index)
     }
   }, { scopes: [ForkViewModalHotkeysScope] })
-  
+
   useHotkeys('k, up', () => {
     if (localSelectedIndex > 0) {
       const newIndex = localSelectedIndex - 1
@@ -76,7 +76,7 @@ function ForkViewModalContent({
       onSelectEvent(option.index === -1 ? null : option.index)
     }
   }, { scopes: [ForkViewModalHotkeysScope] })
-  
+
   // Number key navigation
   useHotkeys('1,2,3,4,5,6,7,8,9', (_, handler) => {
     const num = parseInt(handler.keys?.[0] || '0') - 1
@@ -86,7 +86,7 @@ function ForkViewModalContent({
       onSelectEvent(option.index === -1 ? null : option.index)
     }
   }, { scopes: [ForkViewModalHotkeysScope] })
-  
+
   // Enter to confirm fork
   useHotkeys('enter', (e) => {
     e.preventDefault()
@@ -95,7 +95,7 @@ function ForkViewModalContent({
       onClose()
     }
   }, { scopes: [ForkViewModalHotkeysScope], preventDefault: true })
-  
+
   // Escape to close and clear selection
   useHotkeys('escape', (e) => {
     e.preventDefault()
@@ -103,7 +103,7 @@ function ForkViewModalContent({
     onSelectEvent(null) // Clear selection first
     onClose()
   }, { scopes: [ForkViewModalHotkeysScope], preventDefault: true })
-  
+
   return (
     <>
       <DialogHeader>
@@ -112,7 +112,7 @@ function ForkViewModalContent({
             Select a message to fork from that point in the conversation
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="mt-4">
           {userMessageIndices.length === 0 ? (
             <div className="text-sm text-muted-foreground text-center py-8">
@@ -123,9 +123,9 @@ function ForkViewModalContent({
               {userMessageIndices.map(({ event, index }, position) => {
                 const isSelected = position === localSelectedIndex
                 const isActive = index === selectedEventIndex
-                const preview = event.content?.split('\n')[0]?.substring(0, 80) + 
+                const preview = event.content?.split('\n')[0]?.substring(0, 80) +
                                (event.content && event.content.length > 80 ? '...' : '')
-                
+
                 return (
                   <div
                     key={event.id}
@@ -151,7 +151,7 @@ function ForkViewModalContent({
                   </div>
                 )
               })}
-              
+
               {/* Current option */}
               <div className="border-t mt-2 pt-2">
                 <div
@@ -177,7 +177,7 @@ function ForkViewModalContent({
               </div>
             </div>
           )}
-          
+
           <div className="flex items-center justify-between text-xs text-muted-foreground mt-4 pt-4 border-t">
             <div className="flex items-center gap-4">
               <span>↑↓ j/k Navigate</span>
@@ -192,18 +192,18 @@ function ForkViewModalContent({
 }
 
 // Main component that handles the dialog
-export function ForkViewModal({ 
-  events, 
-  selectedEventIndex, 
+export function ForkViewModal({
+  events,
+  selectedEventIndex,
   onSelectEvent,
   isOpen,
-  onOpenChange 
+  onOpenChange
 }: ForkViewModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
-        <Button 
-          variant="ghost" 
+        <Button
+          variant="ghost"
           size="sm"
           className="h-8 w-8 p-0"
           title="Fork View (Meta+Y)"
@@ -211,8 +211,8 @@ export function ForkViewModal({
           <GitBranch className="h-4 w-4" />
         </Button>
       </DialogTrigger>
-      
-      <DialogContent 
+
+      <DialogContent
         className="max-w-2xl"
         showCloseButton={false}
         onOpenAutoFocus={(e) => e.preventDefault()}

@@ -63,12 +63,12 @@ export function ConversationContent({
   void expandedToolResult
   const [expandedEventId, setExpandedEventId] = useState<number | null>(null)
   const { events, loading, error, isInitialLoad } = useConversation(sessionId, undefined, 1000)
-  
+
   // Filter events based on maxEventIndex
-  const filteredEvents = maxEventIndex !== undefined 
+  const filteredEvents = maxEventIndex !== undefined
     ? events.slice(0, maxEventIndex + 1)
     : events
-  
+
   const toolResults = filteredEvents.filter(event => event.event_type === ConversationEventType.ToolResult)
   const toolResultsByKey = keyBy(toolResults, 'tool_result_for_id')
 

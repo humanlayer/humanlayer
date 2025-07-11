@@ -86,8 +86,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   }, [])
 
   // Use session actions hook
-  const actions = useSessionActions({ 
-    session, 
+  const actions = useSessionActions({
+    session,
     onClose,
     pendingForkMessage,
     onForkCommit: handleForkCommit
@@ -103,10 +103,10 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       actions.setResponseInput('')
       return
     }
-    
+
     // Set preview mode
     setPreviewEventIndex(eventIndex)
-    
+
     // Find the selected user message
     const selectedEvent = events[eventIndex]
     if (selectedEvent?.event_type === 'message' && selectedEvent?.role === 'user') {
@@ -302,20 +302,20 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
           />
         </div>
       )}
-      
+
       {/* Fork Mode Indicator */}
       {previewEventIndex !== null && (
         <div className="bg-amber-500/10 border border-amber-500/20 rounded-md px-3 py-2 mb-4 text-sm">
           <span className="text-amber-600 dark:text-amber-400">
             Fork mode: Forking conversation from message {
-              events.slice(0, previewEventIndex + 1).filter(e => 
+              events.slice(0, previewEventIndex + 1).filter(e =>
                 e.event_type === 'message' && e.role === 'user'
               ).length
             }
           </span>
         </div>
       )}
-      
+
       <div className={`flex flex-1 gap-4 ${isWideView ? 'flex-row' : 'flex-col'} min-h-0`}>
         {/* Conversation content and Loading */}
         <Card

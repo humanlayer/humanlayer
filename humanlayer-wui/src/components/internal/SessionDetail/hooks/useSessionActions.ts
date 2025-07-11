@@ -22,7 +22,7 @@ export function useSessionActions({ session, pendingForkMessage, onForkCommit }:
   const refreshSessions = useStore(state => state.refreshSessions)
   const archiveSession = useStore(state => state.archiveSession)
   const navigate = useNavigate()
-  
+
   // Update response input when fork message is selected
   useEffect(() => {
     if (pendingForkMessage) {
@@ -39,7 +39,7 @@ export function useSessionActions({ session, pendingForkMessage, onForkCommit }:
     try {
       setIsResponding(true)
       const messageToSend = responseInput.trim()
-      
+
       // Use fork session ID if available, otherwise current session
       const targetSessionId = forkFromSessionId || session.id
 
@@ -55,7 +55,7 @@ export function useSessionActions({ session, pendingForkMessage, onForkCommit }:
 
       // Clear fork state
       setForkFromSessionId(null)
-      
+
       // Notify parent of fork commit
       if (forkFromSessionId && onForkCommit) {
         onForkCommit()
