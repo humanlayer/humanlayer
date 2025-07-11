@@ -31,7 +31,7 @@ typecheck: ## Run TypeScript type checking
 
 check-quiet: ## Run all quality checks with quiet output
 	@. ../hack/run_silent.sh && print_header "humanlayer-wui" "Web UI checks"
-	@. ../hack/run_silent.sh && run_silent "Format check passed" "bun run format:check"
+	@. ../hack/run_silent.sh && run_silent "Format check passed" "bun run format:check || (bun run format > /dev/null 2>&1 && exit 1)"
 	@. ../hack/run_silent.sh && run_silent "Lint check passed" "bun run lint"
 	@. ../hack/run_silent.sh && run_silent "Type checking passed" "bun run typecheck"
 

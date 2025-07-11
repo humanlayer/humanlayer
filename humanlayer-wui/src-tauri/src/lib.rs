@@ -71,12 +71,13 @@ async fn list_sessions(
 #[tauri::command]
 async fn get_session_leaves(
     state: State<'_, AppState>,
+    request: Option<daemon_client::GetSessionLeavesRequest>,
 ) -> std::result::Result<daemon_client::GetSessionLeavesResponse, String> {
     let client_guard = state.client.lock().await;
 
     match &*client_guard {
         Some(client) => client
-            .get_session_leaves()
+            .get_session_leaves(request)
             .await
             .map_err(|e| e.to_string()),
         None => Err("Not connected to daemon".to_string()),
@@ -348,6 +349,38 @@ async fn get_recent_paths(
     }
 }
 
+#[tauri::command]
+async fn archive_session(
+    state: State<'_, AppState>,
+    request: daemon_client::ArchiveSessionRequest,
+) -> std::result::Result<daemon_client::ArchiveSessionResponse, String> {
+    let client_guard = state.client.lock().await;
+
+    match &*client_guard {
+        Some(client) => client
+            .archive_session(request)
+            .await
+            .map_err(|e| e.to_string()),
+        None => Err("Not connected to daemon".to_string()),
+    }
+}
+
+#[tauri::command]
+async fn bulk_archive_sessions(
+    state: State<'_, AppState>,
+    request: daemon_client::BulkArchiveSessionsRequest,
+) -> std::result::Result<daemon_client::BulkArchiveSessionsResponse, String> {
+    let client_guard = state.client.lock().await;
+
+    match &*client_guard {
+        Some(client) => client
+            .bulk_archive_sessions(request)
+            .await
+            .map_err(|e| e.to_string()),
+        None => Err("Not connected to daemon".to_string()),
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Initialize tracing
@@ -378,6 +411,8 @@ pub fn run() {
             interrupt_session,
             update_session_settings,
             get_recent_paths,
+            archive_session,
+            bulk_archive_sessions,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

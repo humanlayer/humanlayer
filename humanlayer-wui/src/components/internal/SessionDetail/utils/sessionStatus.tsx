@@ -11,7 +11,7 @@ export const getSessionStatusText = (status: string): string => {
   return 'Session must be completed to continue'
 }
 
-export const getSessionButtonText = (status: string): React.ReactNode => {
+export const getSessionButtonText = (status: string, archived?: boolean): React.ReactNode => {
   if (status === 'running' || status === 'starting')
     return (
       <>
@@ -21,7 +21,7 @@ export const getSessionButtonText = (status: string): React.ReactNode => {
   if (status === 'completed')
     return (
       <>
-        Continue Session <Kbd className="ml-2 text-xs">R</Kbd>
+        {archived ? 'Send & Unarchive' : 'Continue Session'} <Kbd className="ml-2 text-xs">R</Kbd>
       </>
     )
   return 'Not Available'

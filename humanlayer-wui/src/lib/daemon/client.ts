@@ -5,6 +5,7 @@ import type {
   LaunchSessionRequest,
   LaunchSessionResponse,
   ListSessionsResponse,
+  GetSessionLeavesRequest,
   GetSessionLeavesResponse,
   GetSessionStateResponse,
   ContinueSessionRequest,
@@ -15,6 +16,10 @@ import type {
   SubscribeRequest,
   UpdateSessionSettingsResponse,
   GetRecentPathsResponse,
+  ArchiveSessionRequest,
+  ArchiveSessionResponse,
+  BulkArchiveSessionsRequest,
+  BulkArchiveSessionsResponse,
 } from './types'
 
 export class DaemonClient {
@@ -34,8 +39,8 @@ export class DaemonClient {
     return await invoke('list_sessions')
   }
 
-  async getSessionLeaves(): Promise<GetSessionLeavesResponse> {
-    return await invoke('get_session_leaves')
+  async getSessionLeaves(request?: GetSessionLeavesRequest): Promise<GetSessionLeavesResponse> {
+    return await invoke('get_session_leaves', { request: request || {} })
   }
 
   async getSessionState(sessionId: string): Promise<GetSessionStateResponse> {
@@ -112,6 +117,14 @@ export class DaemonClient {
 
   async getRecentPaths(limit?: number): Promise<GetRecentPathsResponse> {
     return await invoke('get_recent_paths', { limit })
+  }
+
+  async archiveSession(request: ArchiveSessionRequest): Promise<ArchiveSessionResponse> {
+    return await invoke('archive_session', { request })
+  }
+
+  async bulkArchiveSessions(request: BulkArchiveSessionsRequest): Promise<BulkArchiveSessionsResponse> {
+    return await invoke('bulk_archive_sessions', { request })
   }
 }
 

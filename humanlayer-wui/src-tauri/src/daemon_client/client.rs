@@ -17,7 +17,7 @@ pub trait DaemonClientTrait: Send + Sync {
     async fn health(&self) -> Result<HealthCheckResponse>;
     async fn launch_session(&self, req: LaunchSessionRequest) -> Result<LaunchSessionResponse>;
     async fn list_sessions(&self) -> Result<ListSessionsResponse>;
-    async fn get_session_leaves(&self) -> Result<GetSessionLeavesResponse>;
+    async fn get_session_leaves(&self, req: Option<GetSessionLeavesRequest>) -> Result<GetSessionLeavesResponse>;
     async fn continue_session(&self, req: ContinueSessionRequest) -> Result<ContinueSessionResponse>;
     async fn get_session_state(&self, session_id: &str) -> Result<GetSessionStateResponse>;
     async fn get_conversation(
@@ -48,6 +48,8 @@ pub trait DaemonClientTrait: Send + Sync {
         auto_accept_edits: Option<bool>,
     ) -> Result<UpdateSessionSettingsResponse>;
     async fn get_recent_paths(&self, limit: Option<i32>) -> Result<GetRecentPathsResponse>;
+    async fn archive_session(&self, req: ArchiveSessionRequest) -> Result<ArchiveSessionResponse>;
+    async fn bulk_archive_sessions(&self, req: BulkArchiveSessionsRequest) -> Result<BulkArchiveSessionsResponse>;
 }
 
 pub struct DaemonClient {
@@ -150,8 +152,8 @@ impl DaemonClientTrait for DaemonClient {
         self.send_rpc_request("listSessions", None::<()>).await
     }
 
-    async fn get_session_leaves(&self) -> Result<GetSessionLeavesResponse> {
-        self.send_rpc_request("getSessionLeaves", None::<()>).await
+    async fn get_session_leaves(&self, req: Option<GetSessionLeavesRequest>) -> Result<GetSessionLeavesResponse> {
+        self.send_rpc_request("getSessionLeaves", req).await
     }
 
     async fn continue_session(&self, req: ContinueSessionRequest) -> Result<ContinueSessionResponse> {
@@ -332,6 +334,14 @@ impl DaemonClientTrait for DaemonClient {
     async fn get_recent_paths(&self, limit: Option<i32>) -> Result<GetRecentPathsResponse> {
         let req = GetRecentPathsRequest { limit };
         self.send_rpc_request("getRecentPaths", Some(req)).await
+    }
+
+    async fn archive_session(&self, req: ArchiveSessionRequest) -> Result<ArchiveSessionResponse> {
+        self.send_rpc_request("archiveSession", Some(req)).await
+    }
+
+    async fn bulk_archive_sessions(&self, req: BulkArchiveSessionsRequest) -> Result<BulkArchiveSessionsResponse> {
+        self.send_rpc_request("bulkArchiveSessions", Some(req)).await
     }
 }
 

@@ -103,7 +103,10 @@ func (s *SQLiteStore) initSchema() error {
 		error_message TEXT,
 
 		-- Session settings
-		auto_accept_edits BOOLEAN DEFAULT 0
+		auto_accept_edits BOOLEAN DEFAULT 0,
+
+		-- Archival
+		archived BOOLEAN DEFAULT FALSE
 	);
 	CREATE INDEX IF NOT EXISTS idx_sessions_claude ON sessions(claude_session_id);
 	CREATE INDEX IF NOT EXISTS idx_sessions_status ON sessions(status);
@@ -472,6 +475,52 @@ func (s *SQLiteStore) applyMigrations() error {
 		slog.Info("Migration 8 applied successfully")
 	}
 
+	// Migration 9: Add archived field to sessions table
+	if currentVersion < 9 {
+		slog.Info("Applying migration 9: Add archived field to sessions table")
+
+		// Check if column already exists
+		var columnExists int
+		err = s.db.QueryRow(`
+			SELECT COUNT(*) FROM pragma_table_info('sessions')
+			WHERE name = 'archived'
+		`).Scan(&columnExists)
+		if err != nil {
+			return fmt.Errorf("failed to check archived column: %w", err)
+		}
+
+		// Only add column if it doesn't exist
+		if columnExists == 0 {
+			_, err = s.db.Exec(`
+				ALTER TABLE sessions
+				ADD COLUMN archived BOOLEAN DEFAULT FALSE
+			`)
+			if err != nil {
+				return fmt.Errorf("failed to add archived column: %w", err)
+			}
+		}
+
+		// Add index for efficient filtering
+		_, err = s.db.Exec(`
+			CREATE INDEX IF NOT EXISTS idx_sessions_archived
+			ON sessions(archived)
+		`)
+		if err != nil {
+			return fmt.Errorf("failed to create archived index: %w", err)
+		}
+
+		// Record migration
+		_, err = s.db.Exec(`
+			INSERT INTO schema_version (version, description)
+			VALUES (9, 'Add archived field to sessions table for hiding old sessions')
+		`)
+		if err != nil {
+			return fmt.Errorf("failed to record migration 9: %w", err)
+		}
+
+		slog.Info("Migration 9 applied successfully")
+	}
+
 	return nil
 }
 
@@ -487,8 +536,8 @@ func (s *SQLiteStore) CreateSession(ctx context.Context, session *Session) error
 			id, run_id, claude_session_id, parent_session_id,
 			query, summary, model, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
 			permission_prompt_tool, allowed_tools, disallowed_tools,
-			status, created_at, last_activity_at, auto_accept_edits
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			status, created_at, last_activity_at, auto_accept_edits, archived
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	_, err := s.db.ExecContext(ctx, query,
@@ -496,7 +545,7 @@ func (s *SQLiteStore) CreateSession(ctx context.Context, session *Session) error
 		session.Query, session.Summary, session.Model, session.WorkingDir, session.MaxTurns,
 		session.SystemPrompt, session.AppendSystemPrompt, session.CustomInstructions,
 		session.PermissionPromptTool, session.AllowedTools, session.DisallowedTools,
-		session.Status, session.CreatedAt, session.LastActivityAt, session.AutoAcceptEdits,
+		session.Status, session.CreatedAt, session.LastActivityAt, session.AutoAcceptEdits, session.Archived,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create session: %w", err)
@@ -562,6 +611,10 @@ func (s *SQLiteStore) UpdateSession(ctx context.Context, sessionID string, updat
 		setParts = append(setParts, "model = ?")
 		args = append(args, *updates.Model)
 	}
+	if updates.Archived != nil {
+		setParts = append(setParts, "archived = ?")
+		args = append(args, *updates.Archived)
+	}
 
 	if len(setParts) == 0 {
 		return fmt.Errorf("no fields to update")
@@ -596,7 +649,7 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 			query, summary, model, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
 			permission_prompt_tool, allowed_tools, disallowed_tools,
 			status, created_at, last_activity_at, completed_at,
-			cost_usd, total_tokens, duration_ms, num_turns, result_content, error_message, auto_accept_edits
+			cost_usd, total_tokens, duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived
 		FROM sessions WHERE id = ?
 	`
 
@@ -607,6 +660,7 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 	var costUSD sql.NullFloat64
 	var totalTokens, durationMS, numTurns sql.NullInt64
 	var resultContent, errorMessage sql.NullString
+	var archived sql.NullBool
 
 	err := s.db.QueryRowContext(ctx, query, sessionID).Scan(
 		&session.ID, &session.RunID, &claudeSessionID, &parentSessionID,
@@ -615,6 +669,7 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 		&permissionPromptTool, &allowedTools, &disallowedTools,
 		&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
 		&costUSD, &totalTokens, &durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
+		&archived,
 	)
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("session not found: %s", sessionID)
@@ -656,6 +711,9 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 		session.NumTurns = &turns
 	}
 
+	// Handle archived field - default to false if NULL
+	session.Archived = archived.Valid && archived.Bool
+
 	return &session, nil
 }
 
@@ -666,7 +724,7 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 			query, summary, model, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
 			permission_prompt_tool, allowed_tools, disallowed_tools,
 			status, created_at, last_activity_at, completed_at,
-			cost_usd, total_tokens, duration_ms, num_turns, result_content, error_message, auto_accept_edits
+			cost_usd, total_tokens, duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived
 		FROM sessions
 		WHERE run_id = ?
 	`
@@ -678,6 +736,7 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 	var costUSD sql.NullFloat64
 	var totalTokens, durationMS, numTurns sql.NullInt64
 	var resultContent, errorMessage sql.NullString
+	var archived sql.NullBool
 
 	err := s.db.QueryRowContext(ctx, query, runID).Scan(
 		&session.ID, &session.RunID, &claudeSessionID, &parentSessionID,
@@ -686,6 +745,7 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 		&permissionPromptTool, &allowedTools, &disallowedTools,
 		&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
 		&costUSD, &totalTokens, &durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
+		&archived,
 	)
 	if err == sql.ErrNoRows {
 		return nil, nil // No session found
@@ -727,6 +787,9 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 		session.NumTurns = &turns
 	}
 
+	// Handle archived field - default to false if NULL
+	session.Archived = archived.Valid && archived.Bool
+
 	return &session, nil
 }
 
@@ -737,7 +800,7 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 			query, summary, model, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
 			permission_prompt_tool, allowed_tools, disallowed_tools,
 			status, created_at, last_activity_at, completed_at,
-			cost_usd, total_tokens, duration_ms, num_turns, result_content, error_message, auto_accept_edits
+			cost_usd, total_tokens, duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived
 		FROM sessions
 		ORDER BY last_activity_at DESC
 	`
@@ -757,6 +820,7 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 		var costUSD sql.NullFloat64
 		var totalTokens, durationMS, numTurns sql.NullInt64
 		var resultContent, errorMessage sql.NullString
+		var archived sql.NullBool
 
 		err := rows.Scan(
 			&session.ID, &session.RunID, &claudeSessionID, &parentSessionID,
@@ -765,6 +829,7 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 			&permissionPromptTool, &allowedTools, &disallowedTools,
 			&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
 			&costUSD, &totalTokens, &durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
+			&archived,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan session: %w", err)
@@ -802,6 +867,11 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 			turns := int(numTurns.Int64)
 			session.NumTurns = &turns
 		}
+		session.ResultContent = resultContent.String
+		session.ErrorMessage = errorMessage.String
+
+		// Handle archived field - default to false if NULL
+		session.Archived = archived.Valid && archived.Bool
 
 		sessions = append(sessions, &session)
 	}

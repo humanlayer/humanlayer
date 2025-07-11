@@ -82,6 +82,7 @@ export interface SessionInfo {
   working_dir?: string
   result?: any
   auto_accept_edits: boolean
+  archived?: boolean
 }
 
 export interface SessionState {
@@ -102,6 +103,7 @@ export interface SessionState {
   total_tokens?: number
   duration_ms?: number
   auto_accept_edits?: boolean
+  archived?: boolean
 }
 
 export interface ListSessionsResponse {
@@ -109,7 +111,8 @@ export interface ListSessionsResponse {
 }
 
 export interface GetSessionLeavesRequest {
-  // Empty for now - could add filters later
+  include_archived?: boolean
+  archived_only?: boolean
 }
 
 export interface GetSessionLeavesResponse {
@@ -334,4 +337,23 @@ export interface UpdateSessionSettingsRequest {
 
 export interface UpdateSessionSettingsResponse {
   success: boolean
+}
+// Archive session types
+export interface ArchiveSessionRequest {
+  session_id: string
+  archived: boolean
+}
+
+export interface ArchiveSessionResponse {
+  success: boolean
+}
+
+export interface BulkArchiveSessionsRequest {
+  session_ids: string[]
+  archived: boolean
+}
+
+export interface BulkArchiveSessionsResponse {
+  success: boolean
+  failed_sessions?: string[]
 }

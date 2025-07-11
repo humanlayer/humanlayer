@@ -83,6 +83,7 @@ type Session struct {
 	ResultContent        string
 	ErrorMessage         string
 	AutoAcceptEdits      bool `db:"auto_accept_edits"`
+	Archived             bool // New field for session archiving
 }
 
 // SessionUpdate contains fields that can be updated
@@ -100,6 +101,7 @@ type SessionUpdate struct {
 	ErrorMessage    *string
 	AutoAcceptEdits *bool `db:"auto_accept_edits"`
 	Model           *string
+	Archived        *bool // New field for updating archived status
 }
 
 // ConversationEvent represents a single event in a conversation

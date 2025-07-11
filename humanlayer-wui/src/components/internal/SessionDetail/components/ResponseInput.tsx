@@ -41,7 +41,7 @@ export function ResponseInput({
             onClick={() => setShowResponseInput(true)}
             disabled={session.status === 'failed'}
           >
-            {getSessionButtonText(session.status)}
+            {getSessionButtonText(session.status, session.archived)}
           </Button>
         </div>
       ) : (
@@ -64,7 +64,7 @@ export function ResponseInput({
               disabled={!responseInput.trim() || isResponding || session.status === 'failed'}
               size="sm"
             >
-              {isResponding ? 'Interrupting...' : 'Send'}
+              {isResponding ? 'Interrupting...' : session.archived ? 'Send & Unarchive' : 'Send'}
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">

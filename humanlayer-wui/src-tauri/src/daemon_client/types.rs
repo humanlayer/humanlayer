@@ -95,7 +95,12 @@ pub struct ListSessionsResponse {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct GetSessionLeavesRequest {}
+pub struct GetSessionLeavesRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub include_archived: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub archived_only: Option<bool>,
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GetSessionLeavesResponse {
@@ -125,6 +130,8 @@ pub struct SessionInfo {
     pub working_dir: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub result: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub archived: Option<bool>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
@@ -174,6 +181,10 @@ pub struct SessionState {
     pub total_tokens: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub duration_ms: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub auto_accept_edits: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub archived: Option<bool>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -500,4 +511,28 @@ pub struct RecentPath {
     pub path: String,
     pub last_used: String,
     pub usage_count: i32,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ArchiveSessionRequest {
+    pub session_id: String,
+    pub archived: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ArchiveSessionResponse {
+    pub success: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BulkArchiveSessionsRequest {
+    pub session_ids: Vec<String>,
+    pub archived: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BulkArchiveSessionsResponse {
+    pub success: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub failed_sessions: Option<Vec<String>>,
 }

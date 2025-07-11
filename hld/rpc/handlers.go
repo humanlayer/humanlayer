@@ -142,8 +142,10 @@ func (h *SessionHandlers) HandleListSessions(ctx context.Context, params json.Ra
 }
 
 // GetSessionLeavesRequest is the request for getting session leaves
+// TODO(3): This is gross, we should lean an alternate approach to handling filters.
 type GetSessionLeavesRequest struct {
-	// Empty for now - could add filters later
+	IncludeArchived bool `json:"include_archived,omitempty"` // Include archived sessions (default false)
+	ArchivedOnly    bool `json:"archived_only,omitempty"`    // Show only archived sessions
 }
 
 // GetSessionLeavesResponse is the response for getting session leaves
@@ -153,7 +155,7 @@ type GetSessionLeavesResponse struct {
 
 // HandleGetSessionLeaves handles the GetSessionLeaves RPC method
 func (h *SessionHandlers) HandleGetSessionLeaves(ctx context.Context, params json.RawMessage) (interface{}, error) {
-	// Parse request (even though it's empty for now)
+	// Parse request
 	var req GetSessionLeavesRequest
 	if params != nil {
 		if err := json.Unmarshal(params, &req); err != nil {
@@ -161,27 +163,40 @@ func (h *SessionHandlers) HandleGetSessionLeaves(ctx context.Context, params jso
 		}
 	}
 
-	// Get all sessions from the manager
-	allSessions := h.manager.ListSessions()
+	// Get all sessions from manager
+	sessionInfos := h.manager.ListSessions()
+
+	// Convert to match the expected type for processing
+	sessions := sessionInfos
 
 	// Build parent-to-children map
 	childrenMap := make(map[string][]string)
-
-	for _, session := range allSessions {
-		if session.ParentSessionID != "" {
-			childrenMap[session.ParentSessionID] = append(childrenMap[session.ParentSessionID], session.ID)
+	for _, s := range sessions {
+		if s.ParentSessionID != "" {
+			childrenMap[s.ParentSessionID] = append(childrenMap[s.ParentSessionID], s.ID)
 		}
 	}
 
-	// Identify leaf sessions (sessions with no children)
+	// Identify leaf sessions (sessions with no children) and apply archive filter
 	leaves := make([]session.Info, 0) // Initialize to empty slice, not nil
-	for _, session := range allSessions {
-		children := childrenMap[session.ID]
+	for _, s := range sessions {
+		children := childrenMap[s.ID]
 
 		// Include only if session has no children (is a leaf node)
-		if len(children) == 0 {
-			leaves = append(leaves, session)
+		if len(children) > 0 {
+			continue
 		}
+
+		// Apply archive filter
+		if !req.IncludeArchived && s.Archived {
+			continue // Skip archived sessions unless explicitly requested
+		}
+		if req.ArchivedOnly && !s.Archived {
+			continue // Skip non-archived sessions when only archived requested
+		}
+
+		// Already have session.Info, just append
+		leaves = append(leaves, s)
 	}
 
 	// Sort by last activity (newest first)
@@ -329,6 +344,7 @@ func (h *SessionHandlers) HandleGetSessionState(ctx context.Context, params json
 		LastActivityAt:  session.LastActivityAt.Format(time.RFC3339),
 		ErrorMessage:    session.ErrorMessage,
 		AutoAcceptEdits: session.AutoAcceptEdits,
+		Archived:        session.Archived,
 	}
 
 	// Set optional fields
@@ -535,6 +551,87 @@ func isEditTool(toolName string) bool {
 	return toolName == "Edit" || toolName == "Write" || toolName == "MultiEdit"
 }
 
+// ArchiveSessionRequest is the request for archiving/unarchiving a session
+type ArchiveSessionRequest struct {
+	SessionID string `json:"session_id"` // The session to archive/unarchive
+	Archived  bool   `json:"archived"`   // Whether to archive (true) or unarchive (false)
+}
+
+// ArchiveSessionResponse is the response for archiving/unarchiving a session
+type ArchiveSessionResponse struct {
+	Success bool `json:"success"`
+}
+
+// HandleArchiveSession handles the ArchiveSession RPC method
+func (h *SessionHandlers) HandleArchiveSession(ctx context.Context, params json.RawMessage) (interface{}, error) {
+	var req ArchiveSessionRequest
+	if err := json.Unmarshal(params, &req); err != nil {
+		return nil, fmt.Errorf("invalid request: %w", err)
+	}
+
+	// Validate required fields
+	if req.SessionID == "" {
+		return nil, fmt.Errorf("session_id is required")
+	}
+
+	// Update session in store
+	err := h.store.UpdateSession(ctx, req.SessionID, store.SessionUpdate{
+		Archived: &req.Archived,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to archive session: %w", err)
+	}
+
+	// TODO: Notify subscribers via event bus
+
+	return &ArchiveSessionResponse{Success: true}, nil
+}
+
+// BulkArchiveSessionsRequest is the request for bulk archiving/unarchiving sessions
+type BulkArchiveSessionsRequest struct {
+	SessionIDs []string `json:"session_ids"` // The sessions to archive/unarchive
+	Archived   bool     `json:"archived"`    // Whether to archive (true) or unarchive (false)
+}
+
+// BulkArchiveSessionsResponse is the response for bulk archiving/unarchiving sessions
+type BulkArchiveSessionsResponse struct {
+	Success        bool     `json:"success"`
+	FailedSessions []string `json:"failed_sessions,omitempty"` // Sessions that failed to archive
+}
+
+// HandleBulkArchiveSessions handles the BulkArchiveSessions RPC method
+func (h *SessionHandlers) HandleBulkArchiveSessions(ctx context.Context, params json.RawMessage) (interface{}, error) {
+	var req BulkArchiveSessionsRequest
+	if err := json.Unmarshal(params, &req); err != nil {
+		return nil, fmt.Errorf("invalid request: %w", err)
+	}
+
+	// Validate required fields
+	if len(req.SessionIDs) == 0 {
+		return nil, fmt.Errorf("session_ids is required and cannot be empty")
+	}
+
+	var failedSessions []string
+
+	// Update each session
+	for _, sessionID := range req.SessionIDs {
+		err := h.store.UpdateSession(ctx, sessionID, store.SessionUpdate{
+			Archived: &req.Archived,
+		})
+		if err != nil {
+			// Log the error but continue processing other sessions
+			failedSessions = append(failedSessions, sessionID)
+		}
+	}
+
+	// TODO: Notify subscribers via event bus for successful updates
+
+	return &BulkArchiveSessionsResponse{
+		Success:        len(failedSessions) == 0,
+		FailedSessions: failedSessions,
+	}, nil
+}
+
 // Register registers all session handlers with the RPC server
 func (h *SessionHandlers) Register(server *Server) {
 	server.Register("launchSession", h.HandleLaunchSession)
@@ -547,4 +644,6 @@ func (h *SessionHandlers) Register(server *Server) {
 	server.Register("getSessionSnapshots", h.HandleGetSessionSnapshots)
 	server.Register("updateSessionSettings", h.HandleUpdateSessionSettings)
 	server.Register("getRecentPaths", h.HandleGetRecentPaths)
+	server.Register("archiveSession", h.HandleArchiveSession)
+	server.Register("bulkArchiveSessions", h.HandleBulkArchiveSessions)
 }

@@ -4,23 +4,12 @@ import { useStore } from '@/AppStore'
 import SessionTable, { SessionTableHotkeysScope } from '@/components/internal/SessionTable'
 import { SessionTableSearch } from '@/components/SessionTableSearch'
 import { useSessionFilter } from '@/hooks/useSessionFilter'
-import { SessionStatus } from '@/lib/daemon/types'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { useSessionLauncher } from '@/hooks'
-
-// Status values to cycle through with Tab
-const STATUS_CYCLE = [
-  '', // No filter
-  `status:${SessionStatus.Running}`,
-  `status:${SessionStatus.WaitingInput}`,
-  `status:${SessionStatus.Completed}`,
-  `status:${SessionStatus.Failed}`,
-  `status:${SessionStatus.Starting}`,
-  `status:${SessionStatus.Completing}`,
-]
+import { Inbox, Archive } from 'lucide-react'
 
 export function SessionTablePage() {
-  const { isOpen: isSessionLauncherOpen } = useSessionLauncher()
+  const { isOpen: isSessionLauncherOpen, open: openSessionLauncher } = useSessionLauncher()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const tableRef = useRef<HTMLDivElement>(null)
@@ -31,6 +20,8 @@ export function SessionTablePage() {
   const sessions = useStore(state => state.sessions)
   const focusedSession = useStore(state => state.focusedSession)
   const setFocusedSession = useStore(state => state.setFocusedSession)
+  const viewMode = useStore(state => state.viewMode)
+  const setViewMode = useStore(state => state.setViewMode)
 
   // Update URL when search changes
   useEffect(() => {
@@ -85,44 +76,88 @@ export function SessionTablePage() {
     }
   }
 
-  // Handle Tab key to cycle through status filters
+  // Handle Tab key to toggle between normal and archived views
   useHotkeys(
     'tab',
     e => {
       e.preventDefault()
-      const currentStatusIndex = STATUS_CYCLE.findIndex(status => {
-        if (!status && !statusFilter) return true
-        return status === `status:${statusFilter}`
-      })
-      const nextIndex = (currentStatusIndex + 1) % STATUS_CYCLE.length
-      setSearchQuery(STATUS_CYCLE[nextIndex])
+      setViewMode(viewMode === 'normal' ? 'archived' : 'normal')
+      // Clear search when switching views
+      setSearchQuery('')
     },
     { enableOnFormTags: false, scopes: SessionTableHotkeysScope, enabled: !isSessionLauncherOpen },
   )
 
-  // Handle Shift+Tab to cycle backwards through status filters
+  // Handle Shift+Tab to toggle backwards (same effect for only 2 modes)
   useHotkeys(
     'shift+tab',
     e => {
       e.preventDefault()
-      const currentStatusIndex = STATUS_CYCLE.findIndex(status => {
-        if (!status && !statusFilter) return true
-        return status === `status:${statusFilter}`
-      })
-      const prevIndex = currentStatusIndex <= 0 ? STATUS_CYCLE.length - 1 : currentStatusIndex - 1
-      setSearchQuery(STATUS_CYCLE[prevIndex])
+      setViewMode(viewMode === 'normal' ? 'archived' : 'normal')
+      // Clear search when switching views
+      setSearchQuery('')
     },
     { enableOnFormTags: false, scopes: SessionTableHotkeysScope, enabled: !isSessionLauncherOpen },
   )
 
+  // Handle 'gg' to jump to top of list (vim-style)
+  useHotkeys(
+    'g,g',
+    () => {
+      if (filteredSessions.length > 0) {
+        setFocusedSession(filteredSessions[0])
+      }
+    },
+    {
+      enableOnFormTags: false,
+      scopes: SessionTableHotkeysScope,
+      enabled: !isSessionLauncherOpen,
+      preventDefault: true,
+    },
+  )
+
+  // Handle 'shift+g' to jump to bottom of list (vim-style)
+  useHotkeys(
+    'shift+g',
+    () => {
+      if (filteredSessions.length > 0) {
+        setFocusedSession(filteredSessions[filteredSessions.length - 1])
+      }
+    },
+    {
+      enableOnFormTags: false,
+      scopes: SessionTableHotkeysScope,
+      enabled: !isSessionLauncherOpen,
+      preventDefault: true,
+    },
+  )
+
+  // Handle ESC to go back to normal view from archived
+  useHotkeys(
+    'escape',
+    () => {
+      if (viewMode === 'archived') {
+        setViewMode('normal')
+      }
+    },
+    {
+      enableOnFormTags: false,
+      scopes: SessionTableHotkeysScope,
+      enabled: !isSessionLauncherOpen && viewMode === 'archived',
+      preventDefault: true,
+    },
+  )
+
   return (
     <div className="flex flex-col gap-4">
-      <SessionTableSearch
-        value={searchQuery}
-        onChange={setSearchQuery}
-        statusFilter={statusFilter}
-        placeholder="Search sessions or filter by status:..."
-      />
+      <div className="sticky top-0 z-10 bg-background pb-4">
+        <SessionTableSearch
+          value={searchQuery}
+          onChange={setSearchQuery}
+          statusFilter={statusFilter}
+          placeholder="Search sessions or filter by status:..."
+        />
+      </div>
 
       <div ref={tableRef} tabIndex={-1} className="focus:outline-none">
         <SessionTable
@@ -135,6 +170,30 @@ export function SessionTablePage() {
           handleFocusPreviousSession={focusPreviousSession}
           searchText={searchText}
           matchedSessions={matchedSessions}
+          emptyState={
+            viewMode === 'archived'
+              ? {
+                  icon: Archive,
+                  title: 'No archived sessions',
+                  message:
+                    'Sessions you archive will appear here. Press ESC or click below to go back.',
+                  action: {
+                    label: 'View all sessions',
+                    onClick: () => setViewMode('normal'),
+                  },
+                }
+              : {
+                  icon: Inbox,
+                  title: 'No sessions yet',
+                  message: 'Create a new session by pressing "c" or clicking below.',
+                  action: {
+                    label: 'Create new session',
+                    onClick: () => {
+                      openSessionLauncher('command')
+                    },
+                  },
+                }
+          }
         />
       </div>
     </div>
