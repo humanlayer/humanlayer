@@ -263,21 +263,21 @@ export const useStore = create<StoreState>((set, get) => ({
         const startIndex = Math.min(anchorIndex, targetIndex)
         const endIndex = Math.max(anchorIndex, targetIndex)
         const newSelection = new Set<string>()
-        
+
         for (let i = startIndex; i <= endIndex; i++) {
           newSelection.add(sessions[i].id)
         }
-        
+
         return { selectedSessions: newSelection }
       }
 
       // In adding mode: we need to find which sessions belong to the "current" range
       // (the range being modified by the current shift+j/k sequence) and update only those
-      
+
       // Find the extent of the current range by looking for contiguous selections around the anchor
       let rangeStart = anchorIndex
       let rangeEnd = anchorIndex
-      
+
       // Find the boundaries of the current selection range that includes the anchor
       for (let i = anchorIndex - 1; i >= 0; i--) {
         if (selectedSessions.has(sessions[i].id)) {
@@ -286,7 +286,7 @@ export const useStore = create<StoreState>((set, get) => ({
           break
         }
       }
-      
+
       for (let i = anchorIndex + 1; i < sessions.length; i++) {
         if (selectedSessions.has(sessions[i].id)) {
           rangeEnd = i
@@ -297,7 +297,7 @@ export const useStore = create<StoreState>((set, get) => ({
 
       // Create new selection preserving everything outside the current range
       const newSelection = new Set<string>()
-      
+
       // Add all selections outside the current range
       selectedSessions.forEach(id => {
         const index = sessions.findIndex(s => s.id === id)
@@ -305,11 +305,11 @@ export const useStore = create<StoreState>((set, get) => ({
           newSelection.add(id)
         }
       })
-      
+
       // Add the new range from anchor to target
       const newRangeStart = Math.min(anchorIndex, targetIndex)
       const newRangeEnd = Math.max(anchorIndex, targetIndex)
-      
+
       for (let i = newRangeStart; i <= newRangeEnd; i++) {
         newSelection.add(sessions[i].id)
       }

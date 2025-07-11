@@ -155,11 +155,17 @@ export default function SessionTable({
         // Check if we should be adding to selection BEFORE setting anchor
         // If we're starting within an existing selection, we're modifying that range, not adding
         const isStartingInSelection = selectedSessions.has(focusedSession.id)
-        const shouldAddToSelection = !selectionAnchor && selectedSessions.size > 0 && !isStartingInSelection
+        const shouldAddToSelection =
+          !selectionAnchor && selectedSessions.size > 0 && !isStartingInSelection
 
         // If no anchor is set, set it to current position
         if (!selectionAnchor) {
-          console.log('[shift+j] Setting anchor to:', focusedSession.id, 'isStartingInSelection:', isStartingInSelection)
+          console.log(
+            '[shift+j] Setting anchor to:',
+            focusedSession.id,
+            'isStartingInSelection:',
+            isStartingInSelection,
+          )
           setSelectionAnchor(focusedSession.id)
         }
 
@@ -170,7 +176,7 @@ export default function SessionTable({
 
           // Use the pre-calculated flag for new sequences, or check isAddingToSelection for continuing sequences
           const shouldAdd = shouldAddToSelection || (isAddingToSelection && !isStartingInSelection)
-          
+
           if (shouldAdd) {
             console.log('[shift+j] Adding to selection:', {
               anchor: selectionAnchor || focusedSession.id,
@@ -233,11 +239,17 @@ export default function SessionTable({
         // Check if we should be adding to selection BEFORE setting anchor
         // If we're starting within an existing selection, we're modifying that range, not adding
         const isStartingInSelection = selectedSessions.has(focusedSession.id)
-        const shouldAddToSelection = !selectionAnchor && selectedSessions.size > 0 && !isStartingInSelection
+        const shouldAddToSelection =
+          !selectionAnchor && selectedSessions.size > 0 && !isStartingInSelection
 
         // If no anchor is set, set it to current position
         if (!selectionAnchor) {
-          console.log('[shift+k] Setting anchor to:', focusedSession.id, 'isStartingInSelection:', isStartingInSelection)
+          console.log(
+            '[shift+k] Setting anchor to:',
+            focusedSession.id,
+            'isStartingInSelection:',
+            isStartingInSelection,
+          )
           setSelectionAnchor(focusedSession.id)
         }
 
@@ -246,7 +258,7 @@ export default function SessionTable({
           const prevSession = sessions[currentIndex - 1]
           const anchorId = selectionAnchor || focusedSession.id
           const anchorIndex = sessions.findIndex(s => s.id === anchorId)
-          
+
           handleFocusSession?.(prevSession)
 
           // When in adding mode AND not starting in an existing selection, we need special handling
@@ -254,18 +266,20 @@ export default function SessionTable({
             // Check if the new target would shrink the current range
             // This happens when we're moving back towards the anchor
             const prevIndex = currentIndex - 1
-            
+
             // Check if we're shrinking the selection by checking if the new range
             // would be smaller than what's currently selected in this range
             const currentRangeStart = Math.min(anchorIndex, currentIndex)
             const currentRangeEnd = Math.max(anchorIndex, currentIndex)
             const newRangeStart = Math.min(anchorIndex, prevIndex)
             const newRangeEnd = Math.max(anchorIndex, prevIndex)
-            
+
             // We're shrinking if the new range is contained within the current range
             // and is smaller
-            const isShrinking = newRangeEnd - newRangeStart < currentRangeEnd - currentRangeStart &&
-                                newRangeStart >= currentRangeStart && newRangeEnd <= currentRangeEnd
+            const isShrinking =
+              newRangeEnd - newRangeStart < currentRangeEnd - currentRangeStart &&
+              newRangeStart >= currentRangeStart &&
+              newRangeEnd <= currentRangeEnd
 
             if (isShrinking) {
               console.log('[shift+k] Updating current range (shrinking):', {
@@ -287,7 +301,7 @@ export default function SessionTable({
           } else {
             // Not in adding mode - check what to do
             const shouldAdd = shouldAddToSelection
-            
+
             if (shouldAdd) {
               console.log('[shift+k] Adding to selection (new range):', {
                 anchor: anchorId,
