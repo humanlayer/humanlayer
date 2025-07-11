@@ -188,6 +188,42 @@ export function eventToDisplayObject(
         </span>
       )
     }
+
+    // MCP tool handling
+    if (event.tool_name?.startsWith('mcp__')) {
+      // Parse the MCP tool name: mcp__service__method
+      const parts = event.tool_name.split('__')
+      const service = parts[1] || 'unknown'
+      const method = parts.slice(2).join('__') || 'unknown' // Handle methods with __ in name
+
+      const toolInput = event.tool_input_json ? JSON.parse(event.tool_input_json) : {}
+
+      subject = (
+        <span>
+          <span className="font-bold">
+            {service} - {method}{' '}
+          </span>
+          <span className="font-mono text-sm text-muted-foreground">
+            {/* Show first parameter if it's simple (string/number) */}
+            {toolInput && typeof toolInput === 'object' && Object.keys(toolInput).length > 0 && (
+              <span className="text-muted-foreground/70">
+                (
+                {Object.entries(toolInput)
+                  .slice(0, 2) // Show max 2 params
+                  .map(([key, value]) => {
+                    if (typeof value === 'string' || typeof value === 'number') {
+                      return `${key}: "${value}"`
+                    }
+                    return `${key}: ...`
+                  })
+                  .join(', ')}
+                {Object.keys(toolInput).length > 2 && ', ...'})
+              </span>
+            )}
+          </span>
+        </span>
+      )
+    }
   }
 
   // Approvals

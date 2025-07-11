@@ -235,6 +235,35 @@ export function formatToolResult(toolName: string, toolResult: ConversationEvent
     }
 
     default: {
+      // MCP tool result formatting
+      if (toolName.startsWith('mcp__')) {
+        const parts = toolName.split('__')
+        const service = parts[1] || 'unknown'
+        const method = parts.slice(2).join('__') || 'unknown'
+
+        // Generic MCP result formatting
+        if (isError) {
+          abbreviated = `${service} ${method} failed`
+        } else if (
+          content.includes('successfully') ||
+          content.includes('created') ||
+          content.includes('updated')
+        ) {
+          abbreviated = `${service} ${method} completed`
+        } else {
+          // Show first line or character count for longer responses
+          const lines = content.split('\n').filter(l => l.trim())
+          if (lines.length === 1 && lines[0].length < 80) {
+            abbreviated = lines[0]
+          } else if (content.length > 200) {
+            abbreviated = `${service} response (${(content.length / 1024).toFixed(1)}kb)`
+          } else {
+            abbreviated = `${service} ${method} completed`
+          }
+        }
+        break
+      }
+
       // Unknown tools: show first line or truncate
       const defaultFirstLine = content.split('\n')[0]
       abbreviated = truncate(defaultFirstLine, 80) || 'Completed'
