@@ -99,6 +99,7 @@ type SessionUpdate struct {
 	ResultContent   *string
 	ErrorMessage    *string
 	AutoAcceptEdits *bool `db:"auto_accept_edits"`
+	Model           *string
 }
 
 // ConversationEvent represents a single event in a conversation

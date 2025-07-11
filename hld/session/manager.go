@@ -528,7 +528,8 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 	switch event.Type {
 	case "system":
 		// System events (session created, tools available, etc)
-		if event.Subtype == "session_created" {
+		switch event.Subtype {
+		case "session_created":
 			// Store system event
 			convEvent := &store.ConversationEvent{
 				SessionID:       sessionID,
@@ -555,6 +556,49 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 					},
 				})
 			}
+		case "init":
+			// Check if we need to populate the model
+			session, err := m.store.GetSession(ctx, sessionID)
+			if err != nil {
+				slog.Error("failed to get session for model update", "error", err)
+				return nil // Non-fatal, continue processing
+			}
+
+			// Only update if model is empty and init event has a model
+			if session != nil && session.Model == "" && event.Model != "" {
+				// Extract simple model name from API format (case-insensitive)
+				var modelName string
+				lowerModel := strings.ToLower(event.Model)
+				if strings.Contains(lowerModel, "opus") {
+					modelName = "opus"
+				} else if strings.Contains(lowerModel, "sonnet") {
+					modelName = "sonnet"
+				}
+
+				// Update session with detected model
+				if modelName != "" {
+					update := store.SessionUpdate{
+						Model: &modelName,
+					}
+					if err := m.store.UpdateSession(ctx, sessionID, update); err != nil {
+						slog.Error("failed to update session model from init event",
+							"session_id", sessionID,
+							"model", modelName,
+							"error", err)
+					} else {
+						slog.Info("populated session model from init event",
+							"session_id", sessionID,
+							"model", modelName,
+							"original", event.Model)
+					}
+				} else {
+					// Log when we detect a model but don't recognize the format
+					slog.Debug("unrecognized model format in init event",
+						"session_id", sessionID,
+						"model", event.Model)
+				}
+			}
+			// Don't store init event in conversation history - we only extract the model
 		}
 		// Other system events can be added as needed
 
