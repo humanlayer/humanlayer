@@ -18,7 +18,7 @@ import { TodoWidget } from './components/TodoWidget'
 import { ResponseInput } from './components/ResponseInput'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { AutoAcceptIndicator } from './AutoAcceptIndicator'
-import { SessionHistory } from './components/SessionHistory'
+import { ForkViewModal } from './components/ForkViewModal'
 
 // Import hooks
 import { useSessionActions } from './hooks/useSessionActions'
@@ -40,7 +40,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [expandedToolResult, setExpandedToolResult] = useState<ConversationEvent | null>(null)
   const [expandedToolCall, setExpandedToolCall] = useState<ConversationEvent | null>(null)
   const [isSplitView, setIsSplitView] = useState(false)
-  const [historyOpen, setHistoryOpen] = useState(false)
+  const [forkViewOpen, setForkViewOpen] = useState(false)
   const [previewEventIndex, setPreviewEventIndex] = useState<number | null>(null)
   const [pendingForkMessage, setPendingForkMessage] = useState<ConversationEvent | null>(null)
 
@@ -65,6 +65,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     expandedToolResult,
     setExpandedToolResult,
     setExpandedToolCall,
+    disabled: forkViewOpen, // Disable navigation when fork view is open
   })
 
   // Use approvals hook
@@ -81,7 +82,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     // Reset preview state after successful fork
     setPreviewEventIndex(null)
     setPendingForkMessage(null)
-    setHistoryOpen(false)
+    setForkViewOpen(false)
   }, [])
 
   // Use session actions hook
@@ -92,12 +93,14 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     onForkCommit: handleForkCommit
   })
 
-  // Add history selection handler
-  const handleHistorySelect = useCallback((eventIndex: number) => {
-    // Don't preview if selecting current state
-    if (eventIndex === events.length - 1) {
+  // Add fork selection handler
+  const handleForkSelect = useCallback((eventIndex: number | null) => {
+    if (eventIndex === null) {
+      // Return to current state - clear everything
       setPreviewEventIndex(null)
       setPendingForkMessage(null)
+      // Also clear the response input when selecting "Current"
+      actions.setResponseInput('')
       return
     }
     
@@ -109,19 +112,10 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     if (selectedEvent?.event_type === 'message' && selectedEvent?.role === 'user') {
       setPendingForkMessage(selectedEvent)
     }
-  }, [events])
+  }, [events, actions])
 
-  // Add effect to clear preview when history closes
-  useEffect(() => {
-    if (!historyOpen) {
-      // Reset preview after a short delay for smooth animation
-      const timer = setTimeout(() => {
-        setPreviewEventIndex(null)
-        setPendingForkMessage(null)
-      }, 300)
-      return () => clearTimeout(timer)
-    }
-  }, [historyOpen])
+  // We no longer automatically clear preview when closing
+  // This allows the preview to persist after selecting with Enter
 
   // Screen size detection for responsive layout
   useEffect(() => {
@@ -152,6 +146,11 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       if ((ev.target as HTMLElement)?.dataset.slot === 'dialog-close') {
         console.warn('Ignoring onClose triggered by dialog-close in SessionDetail')
         return null
+      }
+
+      // Don't process escape if fork view is open
+      if (forkViewOpen) {
+        return
       }
 
       if (approvals.confirmingApprovalId) {
@@ -189,20 +188,11 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     [session.id, autoAcceptEdits], // Dependencies
   )
 
-  // Add hotkey to open history (Meta+Y)
+  // Add hotkey to open fork view (Meta+Y)
   useHotkeys('meta+y', (e) => {
     e.preventDefault()
-    setHistoryOpen(!historyOpen)
-  }, { enabled: !actions.responseInput, scopes: [SessionDetailHotkeysScope] })
-
-  // Add Enter key to confirm fork when history is open
-  useHotkeys('enter', () => {
-    if (historyOpen && pendingForkMessage) {
-      // Response input should already be populated
-      // Just close history to focus on editing
-      setHistoryOpen(false)
-    }
-  }, { enabled: historyOpen && !!pendingForkMessage, scopes: [SessionDetailHotkeysScope] })
+    setForkViewOpen(!forkViewOpen)
+  }, { scopes: [SessionDetailHotkeysScope] })
 
   useStealHotkeyScope(SessionDetailHotkeysScope)
 
@@ -260,55 +250,64 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   return (
     <section className={`flex flex-col h-full ${isCompactView ? 'gap-2' : 'gap-4'}`}>
       {!isCompactView && (
-        <hgroup className="flex flex-col gap-1">
-          <h2 className="text-lg font-medium text-foreground font-mono flex items-center gap-2">
-            {session.archived && <Archive className="h-4 w-4 text-muted-foreground" />}
-            <span>
-              {session.summary || truncate(session.query, 50)}{' '}
-              {session.parent_session_id && <span className="text-muted-foreground">[continued]</span>}
-            </span>
-          </h2>
-          <small
-            className={`font-mono text-xs uppercase tracking-wider ${getStatusTextClass(session.status)}`}
-          >
-            {`${session.status}${session.model ? ` / ${session.model}` : ''}`}
-          </small>
-          {session.working_dir && (
-            <small className="font-mono text-xs text-muted-foreground">{session.working_dir}</small>
-          )}
-        </hgroup>
+        <div className="flex items-start justify-between">
+          <hgroup className="flex flex-col gap-1 flex-1">
+            <h2 className="text-lg font-medium text-foreground font-mono flex items-center gap-2">
+              {session.archived && <Archive className="h-4 w-4 text-muted-foreground" />}
+              <span>
+                {session.summary || truncate(session.query, 50)}{' '}
+                {session.parent_session_id && <span className="text-muted-foreground">[continued]</span>}
+              </span>
+            </h2>
+            <small
+              className={`font-mono text-xs uppercase tracking-wider ${getStatusTextClass(session.status)}`}
+            >
+              {`${session.status}${session.model ? ` / ${session.model}` : ''}`}
+            </small>
+            {session.working_dir && (
+              <small className="font-mono text-xs text-muted-foreground">{session.working_dir}</small>
+            )}
+          </hgroup>
+          <ForkViewModal
+            events={events}
+            selectedEventIndex={previewEventIndex}
+            onSelectEvent={handleForkSelect}
+            isOpen={forkViewOpen}
+            onOpenChange={setForkViewOpen}
+          />
+        </div>
       )}
       {isCompactView && (
-        <hgroup className="flex flex-col gap-0.5">
-          <h2 className="text-sm font-medium text-foreground font-mono flex items-center gap-2">
-            {session.archived && <Archive className="h-3 w-3 text-muted-foreground" />}
-            <span>
-              {session.summary || truncate(session.query, 50)}{' '}
-              {session.parent_session_id && <span className="text-muted-foreground">[continued]</span>}
-            </span>
-          </h2>
-          <small
-            className={`font-mono text-xs uppercase tracking-wider ${getStatusTextClass(session.status)}`}
-          >
-            {`${session.status}${session.model ? ` / ${session.model}` : ''}`}
-          </small>
-        </hgroup>
+        <div className="flex items-start justify-between">
+          <hgroup className="flex flex-col gap-0.5 flex-1">
+            <h2 className="text-sm font-medium text-foreground font-mono flex items-center gap-2">
+              {session.archived && <Archive className="h-3 w-3 text-muted-foreground" />}
+              <span>
+                {session.summary || truncate(session.query, 50)}{' '}
+                {session.parent_session_id && <span className="text-muted-foreground">[continued]</span>}
+              </span>
+            </h2>
+            <small
+              className={`font-mono text-xs uppercase tracking-wider ${getStatusTextClass(session.status)}`}
+            >
+              {`${session.status}${session.model ? ` / ${session.model}` : ''}`}
+            </small>
+          </hgroup>
+          <ForkViewModal
+            events={events}
+            selectedEventIndex={previewEventIndex}
+            onSelectEvent={handleForkSelect}
+            isOpen={forkViewOpen}
+            onOpenChange={setForkViewOpen}
+          />
+        </div>
       )}
       
-      {/* Session History Component */}
-      <SessionHistory
-        events={events}
-        selectedEventIndex={previewEventIndex}
-        onSelectEvent={handleHistorySelect}
-        isOpen={historyOpen}
-        onOpenChange={setHistoryOpen}
-      />
-      
-      {/* Preview Mode Indicator */}
+      {/* Fork Mode Indicator */}
       {previewEventIndex !== null && (
         <div className="bg-amber-500/10 border border-amber-500/20 rounded-md px-3 py-2 mb-4 text-sm">
           <span className="text-amber-600 dark:text-amber-400">
-            Preview Mode: Showing conversation up to message {
+            Fork mode: Forking conversation from message {
               events.slice(0, previewEventIndex + 1).filter(e => 
                 e.event_type === 'message' && e.role === 'user'
               ).length
