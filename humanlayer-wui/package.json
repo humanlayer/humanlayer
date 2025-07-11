@@ -12,7 +12,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
-    "check": "bun run format:check && bun run lint && bun run typecheck"
+    "check": "bun run format:check && bun run lint && bun run typecheck",
+    "test": "bun test"
   },
   "dependencies": {
     "@radix-ui/react-collapsible": "^1.1.11",

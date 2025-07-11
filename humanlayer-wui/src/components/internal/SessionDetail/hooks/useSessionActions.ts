@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { useNavigate } from 'react-router-dom'
-import { SessionInfo } from '@/lib/daemon/types'
+import { SessionInfo, ViewMode } from '@/lib/daemon/types'
 import { daemonClient } from '@/lib/daemon/client'
 import { notificationService } from '@/services/NotificationService'
 import { useStore } from '@/AppStore'
@@ -19,6 +19,7 @@ export function useSessionActions({ session }: UseSessionActionsProps) {
   const interruptSession = useStore(state => state.interruptSession)
   const refreshSessions = useStore(state => state.refreshSessions)
   const archiveSession = useStore(state => state.archiveSession)
+  const setViewMode = useStore(state => state.setViewMode)
   const navigate = useNavigate()
 
   // Continue session functionality
@@ -32,6 +33,8 @@ export function useSessionActions({ session }: UseSessionActionsProps) {
       // Unarchive the session if it's archived
       if (session.archived) {
         await archiveSession(session.id, false)
+        // Switch to normal view mode when resuming an archived session
+        setViewMode(ViewMode.Normal)
       }
 
       const response = await daemonClient.continueSession({

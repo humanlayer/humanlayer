@@ -40,6 +40,11 @@ export enum ApprovalStatus {
   Resolved = 'resolved',
 }
 
+export enum ViewMode {
+  Normal = 'normal',
+  Archived = 'archived',
+}
+
 // Type definitions matching the Rust types
 export interface HealthCheckResponse {
   status: string

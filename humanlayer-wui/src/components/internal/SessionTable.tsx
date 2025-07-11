@@ -3,7 +3,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 import { useHotkeys, useHotkeysContext } from 'react-hotkeys-hook'
 import { useEffect, useRef } from 'react'
-import { CircleOff, Archive, CheckSquare, Square } from 'lucide-react'
+import { CircleOff, CheckSquare, Square } from 'lucide-react'
 import { getStatusTextClass } from '@/utils/component-utils'
 import { formatTimestamp, formatAbsoluteTimestamp, truncatePath } from '@/utils/formatting'
 import { highlightMatches } from '@/lib/fuzzy-search'
@@ -52,7 +52,19 @@ export default function SessionTable({
   const { isOpen: isSessionLauncherOpen } = useSessionLauncher()
   const { enableScope, disableScope } = useHotkeysContext()
   const tableRef = useRef<HTMLTableElement>(null)
-  const { archiveSession, selectedSessions, toggleSessionSelection, bulkArchiveSessions } = useStore()
+  const {
+    archiveSession,
+    selectedSessions,
+    toggleSessionSelection,
+    bulkArchiveSessions,
+    selectionAnchor,
+    setSelectionAnchor,
+    clearSelectionAnchor,
+    selectRange,
+    addRangeToSelection,
+    updateCurrentRange,
+    isAddingToSelection,
+  } = useStore()
 
   // Helper to render highlighted text
   const renderHighlightedText = (text: string, sessionId: string) => {
@@ -94,25 +106,101 @@ export default function SessionTable({
     }
   }, [focusedSession])
 
-  useHotkeys('j', () => handleFocusNextSession?.(), {
-    scopes: SessionTableHotkeysScope,
-    enabled: !isSessionLauncherOpen,
-  })
-  useHotkeys('k', () => handleFocusPreviousSession?.(), {
-    scopes: SessionTableHotkeysScope,
-    enabled: !isSessionLauncherOpen,
-  })
+  useHotkeys(
+    'j',
+    () => {
+      console.log('[j] Clearing anchor, current selections:', {
+        selectedSessionsSize: selectedSessions.size,
+        selectedSessionIds: Array.from(selectedSessions),
+      })
+      clearSelectionAnchor() // Clear anchor on regular navigation
+      handleFocusNextSession?.()
+    },
+    {
+      scopes: SessionTableHotkeysScope,
+      enabled: !isSessionLauncherOpen,
+    },
+    [clearSelectionAnchor, handleFocusNextSession, selectedSessions],
+  )
+
+  useHotkeys(
+    'k',
+    () => {
+      clearSelectionAnchor() // Clear anchor on regular navigation
+      handleFocusPreviousSession?.()
+    },
+    {
+      scopes: SessionTableHotkeysScope,
+      enabled: !isSessionLauncherOpen,
+    },
+    [clearSelectionAnchor, handleFocusPreviousSession],
+  )
 
   // Bulk selection with shift+j/k
   useHotkeys(
     'shift+j',
     () => {
       if (focusedSession) {
-        // Toggle current session selection
-        toggleSessionSelection(focusedSession.id)
+        const currentIndex = sessions.findIndex(s => s.id === focusedSession.id)
+
+        console.log('[shift+j] Current state:', {
+          focusedSessionId: focusedSession.id,
+          currentIndex,
+          selectionAnchor,
+          selectedSessionsSize: selectedSessions.size,
+          selectedSessionIds: Array.from(selectedSessions),
+          isAddingToSelection,
+        })
+
+        // Check if we should be adding to selection BEFORE setting anchor
+        // If we're starting within an existing selection, we're modifying that range, not adding
+        const isStartingInSelection = selectedSessions.has(focusedSession.id)
+        const shouldAddToSelection =
+          !selectionAnchor && selectedSessions.size > 0 && !isStartingInSelection
+
+        // If no anchor is set, set it to current position
+        if (!selectionAnchor) {
+          console.log(
+            '[shift+j] Setting anchor to:',
+            focusedSession.id,
+            'isStartingInSelection:',
+            isStartingInSelection,
+          )
+          setSelectionAnchor(focusedSession.id)
+        }
 
         // Move focus to next session
-        handleFocusNextSession?.()
+        if (currentIndex < sessions.length - 1) {
+          const nextSession = sessions[currentIndex + 1]
+          handleFocusSession?.(nextSession)
+
+          // Use the pre-calculated flag for new sequences, or check isAddingToSelection for continuing sequences
+          const shouldAdd = shouldAddToSelection || (isAddingToSelection && !isStartingInSelection)
+
+          if (shouldAdd) {
+            console.log('[shift+j] Adding to selection:', {
+              anchor: selectionAnchor || focusedSession.id,
+              target: nextSession.id,
+            })
+            // Continue adding to existing selections
+            addRangeToSelection(selectionAnchor || focusedSession.id, nextSession.id)
+          } else if (isStartingInSelection && selectedSessions.size > 1) {
+            // Starting in an existing selection with multiple selections
+            // Use updateCurrentRange to modify just this range
+            console.log('[shift+j] Updating current range (starting in selection):', {
+              anchor: selectionAnchor || focusedSession.id,
+              target: nextSession.id,
+            })
+            updateCurrentRange(selectionAnchor || focusedSession.id, nextSession.id)
+          } else {
+            console.log('[shift+j] Replacing selection:', {
+              anchor: selectionAnchor || focusedSession.id,
+              target: nextSession.id,
+            })
+            // Replace selections with new range
+            selectRange(selectionAnchor || focusedSession.id, nextSession.id)
+          }
+        }
       }
     },
     {
@@ -120,18 +208,123 @@ export default function SessionTable({
       enabled: !isSessionLauncherOpen,
       preventDefault: true,
     },
-    [focusedSession, toggleSessionSelection, handleFocusNextSession],
+    [
+      focusedSession,
+      sessions,
+      selectionAnchor,
+      setSelectionAnchor,
+      selectRange,
+      addRangeToSelection,
+      updateCurrentRange,
+      isAddingToSelection,
+      handleFocusSession,
+    ],
   )
 
   useHotkeys(
     'shift+k',
     () => {
       if (focusedSession) {
-        // Toggle current session selection
-        toggleSessionSelection(focusedSession.id)
+        const currentIndex = sessions.findIndex(s => s.id === focusedSession.id)
+
+        console.log('[shift+k] Current state:', {
+          focusedSessionId: focusedSession.id,
+          currentIndex,
+          selectionAnchor,
+          selectedSessionsSize: selectedSessions.size,
+          selectedSessionIds: Array.from(selectedSessions),
+          isAddingToSelection,
+        })
+
+        // Check if we should be adding to selection BEFORE setting anchor
+        // If we're starting within an existing selection, we're modifying that range, not adding
+        const isStartingInSelection = selectedSessions.has(focusedSession.id)
+        const shouldAddToSelection =
+          !selectionAnchor && selectedSessions.size > 0 && !isStartingInSelection
+
+        // If no anchor is set, set it to current position
+        if (!selectionAnchor) {
+          console.log(
+            '[shift+k] Setting anchor to:',
+            focusedSession.id,
+            'isStartingInSelection:',
+            isStartingInSelection,
+          )
+          setSelectionAnchor(focusedSession.id)
+        }
 
         // Move focus to previous session
-        handleFocusPreviousSession?.()
+        if (currentIndex > 0) {
+          const prevSession = sessions[currentIndex - 1]
+          const anchorId = selectionAnchor || focusedSession.id
+          const anchorIndex = sessions.findIndex(s => s.id === anchorId)
+
+          handleFocusSession?.(prevSession)
+
+          // When in adding mode AND not starting in an existing selection, we need special handling
+          if (isAddingToSelection && !isStartingInSelection) {
+            // Check if the new target would shrink the current range
+            // This happens when we're moving back towards the anchor
+            const prevIndex = currentIndex - 1
+
+            // Check if we're shrinking the selection by checking if the new range
+            // would be smaller than what's currently selected in this range
+            const currentRangeStart = Math.min(anchorIndex, currentIndex)
+            const currentRangeEnd = Math.max(anchorIndex, currentIndex)
+            const newRangeStart = Math.min(anchorIndex, prevIndex)
+            const newRangeEnd = Math.max(anchorIndex, prevIndex)
+
+            // We're shrinking if the new range is contained within the current range
+            // and is smaller
+            const isShrinking =
+              newRangeEnd - newRangeStart < currentRangeEnd - currentRangeStart &&
+              newRangeStart >= currentRangeStart &&
+              newRangeEnd <= currentRangeEnd
+
+            if (isShrinking) {
+              console.log('[shift+k] Updating current range (shrinking):', {
+                anchor: anchorId,
+                target: prevSession.id,
+                currentRange: `${currentRangeStart}-${currentRangeEnd}`,
+                newRange: `${newRangeStart}-${newRangeEnd}`,
+              })
+              // Use updateCurrentRange to shrink within the current selection
+              updateCurrentRange(anchorId, prevSession.id)
+            } else {
+              console.log('[shift+k] Adding to selection:', {
+                anchor: anchorId,
+                target: prevSession.id,
+              })
+              // Extending the selection
+              addRangeToSelection(anchorId, prevSession.id)
+            }
+          } else {
+            // Not in adding mode - check what to do
+            const shouldAdd = shouldAddToSelection
+
+            if (shouldAdd) {
+              console.log('[shift+k] Adding to selection (new range):', {
+                anchor: anchorId,
+                target: prevSession.id,
+              })
+              addRangeToSelection(anchorId, prevSession.id)
+            } else if (isStartingInSelection && selectedSessions.size > 1) {
+              // Starting in an existing selection with multiple selections
+              // Use updateCurrentRange to modify just this range
+              console.log('[shift+k] Updating current range (starting in selection):', {
+                anchor: anchorId,
+                target: prevSession.id,
+              })
+              updateCurrentRange(anchorId, prevSession.id)
+            } else {
+              console.log('[shift+k] Replacing selection:', {
+                anchor: anchorId,
+                target: prevSession.id,
+              })
+              selectRange(anchorId, prevSession.id)
+            }
+          }
+        }
       }
     },
     {
@@ -139,7 +332,17 @@ export default function SessionTable({
       enabled: !isSessionLauncherOpen,
       preventDefault: true,
     },
-    [focusedSession, toggleSessionSelection, handleFocusPreviousSession],
+    [
+      focusedSession,
+      sessions,
+      selectionAnchor,
+      setSelectionAnchor,
+      selectRange,
+      addRangeToSelection,
+      updateCurrentRange,
+      isAddingToSelection,
+      handleFocusSession,
+    ],
   )
 
   // Select all with meta+a (Cmd+A on Mac, Ctrl+A on Windows/Linux)
@@ -277,6 +480,7 @@ export default function SessionTable({
     'x',
     () => {
       if (focusedSession) {
+        clearSelectionAnchor() // Clear anchor when toggling individual selections
         toggleSessionSelection(focusedSession.id)
       }
     },
@@ -286,7 +490,7 @@ export default function SessionTable({
       preventDefault: true,
       enableOnFormTags: false,
     },
-    [focusedSession, toggleSessionSelection],
+    [focusedSession, toggleSessionSelection, clearSelectionAnchor],
   )
 
   return (
@@ -324,15 +528,25 @@ export default function SessionTable({
                     className="w-[40px]"
                     onClick={e => {
                       e.stopPropagation()
+                      clearSelectionAnchor() // Clear anchor when clicking to toggle
                       toggleSessionSelection(session.id)
                     }}
                   >
                     <div className="flex items-center justify-center">
-                      {selectedSessions.has(session.id) ? (
-                        <CheckSquare className="w-4 h-4 text-primary" />
-                      ) : (
-                        <Square className="w-4 h-4 text-muted-foreground" />
-                      )}
+                      <div
+                        className={cn(
+                          'transition-all duration-200 ease-in-out',
+                          focusedSession?.id === session.id || selectedSessions.size > 0
+                            ? 'opacity-100 scale-100'
+                            : 'opacity-0 scale-75',
+                        )}
+                      >
+                        {selectedSessions.has(session.id) ? (
+                          <CheckSquare className="w-4 h-4 text-primary" />
+                        ) : (
+                          <Square className="w-4 h-4 text-muted-foreground" />
+                        )}
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell className={getStatusTextClass(session.status)}>{session.status}</TableCell>
@@ -353,7 +567,6 @@ export default function SessionTable({
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <span>{renderHighlightedText(session.summary, session.id)}</span>
-                      {session.archived && <Archive className="w-4 h-4 text-muted-foreground" />}
                     </div>
                   </TableCell>
                   <TableCell>{session.model || <CircleOff className="w-4 h-4" />}</TableCell>

@@ -5,6 +5,7 @@ import { useHotkeys } from 'react-hotkeys-hook'
 import { SessionTableHotkeysScope } from './internal/SessionTable'
 import { Badge } from './ui/badge'
 import { useStore } from '@/AppStore'
+import { ViewMode } from '@/lib/daemon/types'
 
 interface SessionTableSearchProps {
   value: string
@@ -97,7 +98,7 @@ export function SessionTableSearch({
           </Badge>
         )}
 
-        {viewMode === 'archived' && (
+        {viewMode === ViewMode.Archived && (
           <Badge
             variant="secondary"
             className="text-xs animate-in fade-in slide-in-from-right-1 duration-200"
