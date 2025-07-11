@@ -11,6 +11,7 @@ interface ResponseInputProps {
   isResponding: boolean
   handleContinueSession: () => void
   handleResponseInputKeyDown: (e: React.KeyboardEvent) => void
+  isForkMode?: boolean
 }
 
 export function ResponseInput({
@@ -20,6 +21,7 @@ export function ResponseInput({
   isResponding,
   handleContinueSession,
   handleResponseInputKeyDown,
+  isForkMode,
 }: ResponseInputProps) {
   const getSendButtonText = () => {
     if (isResponding) return 'Interrupting...'
@@ -35,6 +37,19 @@ export function ResponseInput({
     return 'Send'
   }
 
+  // Get help text for fork mode
+  const getForkHelpText = (isFork: boolean): React.ReactNode => {
+    if (isFork) {
+      return (
+        <>
+          <kbd className="px-1 py-0.5 text-xs bg-muted/50 rounded">Cmd+Enter</kbd> to fork, <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">Enter</kbd> for new line, <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">Escape</kbd> to cancel fork
+        </>
+      )
+    }
+    // Regular help text
+    return getHelpText(session.status)
+  }
+
   // Only show the simple status text if session is failed
   if (session.status === SessionStatus.Failed) {
     return (
@@ -47,6 +62,9 @@ export function ResponseInput({
   // Otherwise always show the input
   return (
     <div className="space-y-2">
+      {isForkMode && (
+        <span className="text-sm font-medium">Fork from this message:</span>
+      )}
       <div className="flex gap-2">
         <Textarea
           placeholder={getInputPlaceholder(session.status)}
@@ -65,7 +83,7 @@ export function ResponseInput({
         </Button>
       </div>
       <p className="text-xs text-muted-foreground">
-        {isResponding ? 'Waiting for Claude to accept the interrupt...' : getHelpText(session.status)}
+        {isResponding ? 'Waiting for Claude to accept the interrupt...' : getForkHelpText(isForkMode || false)}
       </p>
     </div>
   )

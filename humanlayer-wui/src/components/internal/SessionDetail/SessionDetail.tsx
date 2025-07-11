@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 
 import { ConversationEvent, SessionInfo, ApprovalStatus, SessionStatus } from '@/lib/daemon/types'
@@ -18,6 +18,7 @@ import { TodoWidget } from './components/TodoWidget'
 import { ResponseInput } from './components/ResponseInput'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { AutoAcceptIndicator } from './AutoAcceptIndicator'
+import { SessionHistory } from './components/SessionHistory'
 
 // Import hooks
 import { useSessionActions } from './hooks/useSessionActions'
@@ -39,6 +40,9 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [expandedToolResult, setExpandedToolResult] = useState<ConversationEvent | null>(null)
   const [expandedToolCall, setExpandedToolCall] = useState<ConversationEvent | null>(null)
   const [isSplitView, setIsSplitView] = useState(false)
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [previewEventIndex, setPreviewEventIndex] = useState<number | null>(null)
+  const [pendingForkMessage, setPendingForkMessage] = useState<ConversationEvent | null>(null)
 
   const isRunning = session.status === 'running'
 
@@ -72,8 +76,52 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     setFocusSource: navigation.setFocusSource,
   })
 
+  // Add fork commit handler
+  const handleForkCommit = useCallback(() => {
+    // Reset preview state after successful fork
+    setPreviewEventIndex(null)
+    setPendingForkMessage(null)
+    setHistoryOpen(false)
+  }, [])
+
   // Use session actions hook
-  const actions = useSessionActions({ session, onClose })
+  const actions = useSessionActions({ 
+    session, 
+    onClose,
+    pendingForkMessage,
+    onForkCommit: handleForkCommit
+  })
+
+  // Add history selection handler
+  const handleHistorySelect = useCallback((eventIndex: number) => {
+    // Don't preview if selecting current state
+    if (eventIndex === events.length - 1) {
+      setPreviewEventIndex(null)
+      setPendingForkMessage(null)
+      return
+    }
+    
+    // Set preview mode
+    setPreviewEventIndex(eventIndex)
+    
+    // Find the selected user message
+    const selectedEvent = events[eventIndex]
+    if (selectedEvent?.event_type === 'message' && selectedEvent?.role === 'user') {
+      setPendingForkMessage(selectedEvent)
+    }
+  }, [events])
+
+  // Add effect to clear preview when history closes
+  useEffect(() => {
+    if (!historyOpen) {
+      // Reset preview after a short delay for smooth animation
+      const timer = setTimeout(() => {
+        setPreviewEventIndex(null)
+        setPendingForkMessage(null)
+      }, 300)
+      return () => clearTimeout(timer)
+    }
+  }, [historyOpen])
 
   // Screen size detection for responsive layout
   useEffect(() => {
@@ -140,6 +188,21 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     },
     [session.id, autoAcceptEdits], // Dependencies
   )
+
+  // Add hotkey to open history (Cmd+K / Ctrl+K)
+  useHotkeys('cmd+k, ctrl+k', (e) => {
+    e.preventDefault()
+    setHistoryOpen(!historyOpen)
+  }, { enabled: !actions.responseInput, scopes: [SessionDetailHotkeysScope] })
+
+  // Add Enter key to confirm fork when history is open
+  useHotkeys('enter', () => {
+    if (historyOpen && pendingForkMessage) {
+      // Response input should already be populated
+      // Just close history to focus on editing
+      setHistoryOpen(false)
+    }
+  }, { enabled: historyOpen && !!pendingForkMessage, scopes: [SessionDetailHotkeysScope] })
 
   useStealHotkeyScope(SessionDetailHotkeysScope)
 
@@ -231,6 +294,29 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
           </small>
         </hgroup>
       )}
+      
+      {/* Session History Component */}
+      <SessionHistory
+        events={events}
+        selectedEventIndex={previewEventIndex}
+        onSelectEvent={handleHistorySelect}
+        isOpen={historyOpen}
+        onOpenChange={setHistoryOpen}
+      />
+      
+      {/* Preview Mode Indicator */}
+      {previewEventIndex !== null && (
+        <div className="bg-amber-500/10 border border-amber-500/20 rounded-md px-3 py-2 mb-4 text-sm">
+          <span className="text-amber-600 dark:text-amber-400">
+            Preview Mode: Showing conversation up to message {
+              events.slice(0, previewEventIndex + 1).filter(e => 
+                e.event_type === 'message' && e.role === 'user'
+              ).length
+            }
+          </span>
+        </div>
+      )}
+      
       <div className={`flex flex-1 gap-4 ${isWideView ? 'flex-row' : 'flex-col'} min-h-0`}>
         {/* Conversation content and Loading */}
         <Card
@@ -254,6 +340,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               setFocusSource={navigation.setFocusSource}
               setConfirmingApprovalId={approvals.setConfirmingApprovalId}
               expandedToolResult={expandedToolResult}
+              maxEventIndex={previewEventIndex ?? undefined}
             />
             {isRunning && (
               <div className="flex flex-col gap-1 mt-2 border-t pt-2">
@@ -306,6 +393,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
             isResponding={actions.isResponding}
             handleContinueSession={actions.handleContinueSession}
             handleResponseInputKeyDown={actions.handleResponseInputKeyDown}
+            isForkMode={actions.isForkMode}
           />
           <AutoAcceptIndicator enabled={autoAcceptEdits} className="mt-2" />
         </CardContent>
