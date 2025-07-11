@@ -61,6 +61,8 @@ export default function SessionTable({
     setSelectionAnchor,
     clearSelectionAnchor,
     selectRange,
+    addRangeToSelection,
+    isAddingToSelection,
   } = useStore()
 
   // Helper to render highlighted text
@@ -106,6 +108,10 @@ export default function SessionTable({
   useHotkeys(
     'j',
     () => {
+      console.log('[j] Clearing anchor, current selections:', {
+        selectedSessionsSize: selectedSessions.size,
+        selectedSessionIds: Array.from(selectedSessions),
+      })
       clearSelectionAnchor() // Clear anchor on regular navigation
       handleFocusNextSession?.()
     },
@@ -113,7 +119,7 @@ export default function SessionTable({
       scopes: SessionTableHotkeysScope,
       enabled: !isSessionLauncherOpen,
     },
-    [clearSelectionAnchor, handleFocusNextSession],
+    [clearSelectionAnchor, handleFocusNextSession, selectedSessions],
   )
 
   useHotkeys(
@@ -136,8 +142,21 @@ export default function SessionTable({
       if (focusedSession) {
         const currentIndex = sessions.findIndex(s => s.id === focusedSession.id)
 
+        console.log('[shift+j] Current state:', {
+          focusedSessionId: focusedSession.id,
+          currentIndex,
+          selectionAnchor,
+          selectedSessionsSize: selectedSessions.size,
+          selectedSessionIds: Array.from(selectedSessions),
+          isAddingToSelection,
+        })
+
+        // Check if we should be adding to selection BEFORE setting anchor
+        const shouldAddToSelection = !selectionAnchor && selectedSessions.size > 0
+
         // If no anchor is set, set it to current position
         if (!selectionAnchor) {
+          console.log('[shift+j] Setting anchor to:', focusedSession.id)
           setSelectionAnchor(focusedSession.id)
         }
 
@@ -146,8 +165,24 @@ export default function SessionTable({
           const nextSession = sessions[currentIndex + 1]
           handleFocusSession?.(nextSession)
 
-          // Select range from anchor to new position
-          selectRange(selectionAnchor || focusedSession.id, nextSession.id)
+          // Use the pre-calculated flag for new sequences, or check isAddingToSelection for continuing sequences
+          const shouldAdd = shouldAddToSelection || isAddingToSelection
+          
+          if (shouldAdd) {
+            console.log('[shift+j] Adding to selection:', {
+              anchor: selectionAnchor || focusedSession.id,
+              target: nextSession.id,
+            })
+            // Continue adding to existing selections
+            addRangeToSelection(selectionAnchor || focusedSession.id, nextSession.id)
+          } else {
+            console.log('[shift+j] Replacing selection:', {
+              anchor: selectionAnchor || focusedSession.id,
+              target: nextSession.id,
+            })
+            // Replace selections with new range
+            selectRange(selectionAnchor || focusedSession.id, nextSession.id)
+          }
         }
       }
     },
@@ -156,7 +191,16 @@ export default function SessionTable({
       enabled: !isSessionLauncherOpen,
       preventDefault: true,
     },
-    [focusedSession, sessions, selectionAnchor, setSelectionAnchor, selectRange, handleFocusSession],
+    [
+      focusedSession,
+      sessions,
+      selectionAnchor,
+      setSelectionAnchor,
+      selectRange,
+      addRangeToSelection,
+      isAddingToSelection,
+      handleFocusSession,
+    ],
   )
 
   useHotkeys(
@@ -165,8 +209,21 @@ export default function SessionTable({
       if (focusedSession) {
         const currentIndex = sessions.findIndex(s => s.id === focusedSession.id)
 
+        console.log('[shift+k] Current state:', {
+          focusedSessionId: focusedSession.id,
+          currentIndex,
+          selectionAnchor,
+          selectedSessionsSize: selectedSessions.size,
+          selectedSessionIds: Array.from(selectedSessions),
+          isAddingToSelection,
+        })
+
+        // Check if we should be adding to selection BEFORE setting anchor
+        const shouldAddToSelection = !selectionAnchor && selectedSessions.size > 0
+
         // If no anchor is set, set it to current position
         if (!selectionAnchor) {
+          console.log('[shift+k] Setting anchor to:', focusedSession.id)
           setSelectionAnchor(focusedSession.id)
         }
 
@@ -175,8 +232,24 @@ export default function SessionTable({
           const prevSession = sessions[currentIndex - 1]
           handleFocusSession?.(prevSession)
 
-          // Select range from anchor to new position
-          selectRange(selectionAnchor || focusedSession.id, prevSession.id)
+          // Use the pre-calculated flag for new sequences, or check isAddingToSelection for continuing sequences
+          const shouldAdd = shouldAddToSelection || isAddingToSelection
+          
+          if (shouldAdd) {
+            console.log('[shift+k] Adding to selection:', {
+              anchor: selectionAnchor || focusedSession.id,
+              target: prevSession.id,
+            })
+            // Continue adding to existing selections
+            addRangeToSelection(selectionAnchor || focusedSession.id, prevSession.id)
+          } else {
+            console.log('[shift+k] Replacing selection:', {
+              anchor: selectionAnchor || focusedSession.id,
+              target: prevSession.id,
+            })
+            // Replace selections with new range
+            selectRange(selectionAnchor || focusedSession.id, prevSession.id)
+          }
         }
       }
     },
@@ -185,7 +258,16 @@ export default function SessionTable({
       enabled: !isSessionLauncherOpen,
       preventDefault: true,
     },
-    [focusedSession, sessions, selectionAnchor, setSelectionAnchor, selectRange, handleFocusSession],
+    [
+      focusedSession,
+      sessions,
+      selectionAnchor,
+      setSelectionAnchor,
+      selectRange,
+      addRangeToSelection,
+      isAddingToSelection,
+      handleFocusSession,
+    ],
   )
 
   // Select all with meta+a (Cmd+A on Mac, Ctrl+A on Windows/Linux)

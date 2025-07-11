@@ -10,6 +10,7 @@ interface StoreState {
   viewMode: ViewMode
   selectedSessions: Set<string> // For bulk selection
   selectionAnchor: string | null // Anchor point for range selection
+  isAddingToSelection: boolean // Track if we're adding to existing selection
   initSessions: (sessions: SessionInfo[]) => void
   updateSession: (sessionId: string, updates: Partial<SessionInfo>) => void
   refreshSessions: () => Promise<void>
@@ -25,6 +26,7 @@ interface StoreState {
   setSelectionAnchor: (sessionId: string | null) => void
   clearSelectionAnchor: () => void
   selectRange: (anchorId: string, targetId: string) => void
+  addRangeToSelection: (anchorId: string, targetId: string) => void
 
   /* Notifications */
   notifiedItems: Set<string> // Set of unique notification IDs
@@ -40,6 +42,7 @@ export const useStore = create<StoreState>((set, get) => ({
   viewMode: ViewMode.Normal,
   selectedSessions: new Set<string>(),
   selectionAnchor: null,
+  isAddingToSelection: false,
   initSessions: (sessions: SessionInfo[]) => set({ sessions }),
   updateSession: (sessionId: string, updates: Partial<SessionInfo>) =>
     set(state => ({
@@ -145,13 +148,36 @@ export const useStore = create<StoreState>((set, get) => ({
       return { selectedSessions: newSet }
     }),
   clearSelection: () => set({ selectedSessions: new Set<string>() }),
-  setSelectionAnchor: (sessionId: string | null) => set({ selectionAnchor: sessionId }),
-  clearSelectionAnchor: () => set({ selectionAnchor: null }),
+  setSelectionAnchor: (sessionId: string | null) =>
+    set(state => {
+      // If setting anchor when we have selections but no previous anchor, we're adding to selection
+      const isAddingToSelection =
+        sessionId !== null && state.selectedSessions.size > 0 && !state.selectionAnchor
+      console.log('[Store] setSelectionAnchor:', {
+        sessionId,
+        previousAnchor: state.selectionAnchor,
+        selectedSessionsSize: state.selectedSessions.size,
+        isAddingToSelection,
+      })
+      return { selectionAnchor: sessionId, isAddingToSelection }
+    }),
+  clearSelectionAnchor: () => {
+    console.log('[Store] clearSelectionAnchor')
+    set({ selectionAnchor: null, isAddingToSelection: false })
+  },
   selectRange: (anchorId: string, targetId: string) =>
     set(state => {
       const { sessions } = state
       const anchorIndex = sessions.findIndex(s => s.id === anchorId)
       const targetIndex = sessions.findIndex(s => s.id === targetId)
+
+      console.log('[Store] selectRange (REPLACE):', {
+        anchorId,
+        targetId,
+        anchorIndex,
+        targetIndex,
+        previousSelectionsSize: state.selectedSessions.size,
+      })
 
       if (anchorIndex === -1 || targetIndex === -1) {
         return state // Return unchanged if sessions not found
@@ -166,6 +192,49 @@ export const useStore = create<StoreState>((set, get) => ({
       for (let i = startIndex; i <= endIndex; i++) {
         newSelection.add(sessions[i].id)
       }
+
+      console.log('[Store] selectRange result:', {
+        newSelectionSize: newSelection.size,
+        newSelectionIds: Array.from(newSelection),
+      })
+
+      return { selectedSessions: newSelection }
+    }),
+  addRangeToSelection: (anchorId: string, targetId: string) =>
+    set(state => {
+      const { sessions, selectedSessions } = state
+      const anchorIndex = sessions.findIndex(s => s.id === anchorId)
+      const targetIndex = sessions.findIndex(s => s.id === targetId)
+
+      console.log('[Store] addRangeToSelection (ADD):', {
+        anchorId,
+        targetId,
+        anchorIndex,
+        targetIndex,
+        previousSelectionsSize: state.selectedSessions.size,
+        previousSelectionIds: Array.from(state.selectedSessions),
+      })
+
+      if (anchorIndex === -1 || targetIndex === -1) {
+        return state // Return unchanged if sessions not found
+      }
+
+      // Determine the range (handle both directions)
+      const startIndex = Math.min(anchorIndex, targetIndex)
+      const endIndex = Math.max(anchorIndex, targetIndex)
+
+      // Start with existing selections
+      const newSelection = new Set(selectedSessions)
+
+      // Add all sessions in the new range
+      for (let i = startIndex; i <= endIndex; i++) {
+        newSelection.add(sessions[i].id)
+      }
+
+      console.log('[Store] addRangeToSelection result:', {
+        newSelectionSize: newSelection.size,
+        newSelectionIds: Array.from(newSelection),
+      })
 
       return { selectedSessions: newSelection }
     }),
