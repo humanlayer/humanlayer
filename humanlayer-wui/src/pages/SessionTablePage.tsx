@@ -190,11 +190,6 @@ export function SessionTablePage() {
                     label: 'Create new session',
                     onClick: () => {
                       openSessionLauncher('command')
-                      // Trigger create new session after opening
-                      setTimeout(() => {
-                        const launcher = useSessionLauncher.getState()
-                        launcher.createNewSession()
-                      }, 100)
                     },
                   },
                 }
