@@ -67,3 +67,5 @@ bun run format
 - DO use `zustand` for managing global state. In a number of cases we've used internal React state management, but as the application scales we'll want to push more of that state into `zustand`.
 - DO verify your changes with `bun run lint` and `bun run typecheck`.
 - DO provide a manual list of steps for a human to test new UI changes.
+- You cannot stop/start/restart the WUI process - it will live reload on changes automatically.
+- The logs of the WUI process are in `~/.humanlayer/logs/wui-TIMESTAMP.log` if you need them for debugging.
