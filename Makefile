@@ -459,6 +459,16 @@ check-local:
 		exit 1; \
 	fi
 
+logfileprefix = $(shell date +%Y-%m-%d-%H-%M-%S)
+
 .PHONY: wui
 wui:
-	cd humanlayer-wui && bun run tauri dev
+	@mkdir -p ~/.humanlayer/logs
+	echo "$(logfileprefix) starting wui in $(shell pwd)" > ~/.humanlayer/logs/wui-$(logfileprefix).log
+	cd humanlayer-wui && bun run tauri dev 2>&1 | tee -a ~/.humanlayer/logs/wui-$(logfileprefix).log
+
+.PHONY: daemon
+daemon:
+	@mkdir -p ~/.humanlayer/logs
+	echo "$(logfileprefix) starting daemon in $(shell pwd)" > ~/.humanlayer/logs/daemon-$(logfileprefix).log
+	cd hlyr && npm run build && ./dist/bin/hld 2>&1 | tee -a ~/.humanlayer/logs/daemon-$(logfileprefix).log
