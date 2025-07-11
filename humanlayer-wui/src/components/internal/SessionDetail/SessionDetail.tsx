@@ -189,8 +189,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     [session.id, autoAcceptEdits], // Dependencies
   )
 
-  // Add hotkey to open history (Cmd+K / Ctrl+K)
-  useHotkeys('cmd+k, ctrl+k', (e) => {
+  // Add hotkey to open history (Meta+Y)
+  useHotkeys('meta+y', (e) => {
     e.preventDefault()
     setHistoryOpen(!historyOpen)
   }, { enabled: !actions.responseInput, scopes: [SessionDetailHotkeysScope] })
