@@ -344,6 +344,7 @@ func (h *SessionHandlers) HandleGetSessionState(ctx context.Context, params json
 		LastActivityAt:  session.LastActivityAt.Format(time.RFC3339),
 		ErrorMessage:    session.ErrorMessage,
 		AutoAcceptEdits: session.AutoAcceptEdits,
+		Archived:        session.Archived,
 	}
 
 	// Set optional fields

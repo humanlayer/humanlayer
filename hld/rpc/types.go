@@ -73,6 +73,7 @@ type SessionState struct {
 	TotalTokens     int     `json:"total_tokens,omitempty"`
 	DurationMS      int     `json:"duration_ms,omitempty"`
 	AutoAcceptEdits bool    `json:"auto_accept_edits,omitempty"`
+	Archived        bool    `json:"archived,omitempty"`
 }
 
 // GetSessionStateResponse is the response for fetching session state

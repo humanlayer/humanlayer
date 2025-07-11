@@ -5,7 +5,7 @@ import { ConversationEvent, SessionInfo, ApprovalStatus, SessionStatus } from '@
 import { Card, CardContent } from '@/components/ui/card'
 import { useConversation } from '@/hooks/useConversation'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown, Archive } from 'lucide-react'
 import { getStatusTextClass } from '@/utils/component-utils'
 import { truncate } from '@/utils/formatting'
 import { daemonClient } from '@/lib/daemon/client'
@@ -198,9 +198,12 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     <section className={`flex flex-col h-full ${isCompactView ? 'gap-2' : 'gap-4'}`}>
       {!isCompactView && (
         <hgroup className="flex flex-col gap-1">
-          <h2 className="text-lg font-medium text-foreground font-mono">
-            {session.summary || truncate(session.query, 50)}{' '}
-            {session.parent_session_id && <span className="text-muted-foreground">[continued]</span>}
+          <h2 className="text-lg font-medium text-foreground font-mono flex items-center gap-2">
+            {session.archived && <Archive className="h-4 w-4 text-muted-foreground" />}
+            <span>
+              {session.summary || truncate(session.query, 50)}{' '}
+              {session.parent_session_id && <span className="text-muted-foreground">[continued]</span>}
+            </span>
           </h2>
           <small
             className={`font-mono text-xs uppercase tracking-wider ${getStatusTextClass(session.status)}`}
@@ -214,9 +217,12 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       )}
       {isCompactView && (
         <hgroup className="flex flex-col gap-0.5">
-          <h2 className="text-sm font-medium text-foreground font-mono">
-            {session.summary || truncate(session.query, 50)}{' '}
-            {session.parent_session_id && <span className="text-muted-foreground">[continued]</span>}
+          <h2 className="text-sm font-medium text-foreground font-mono flex items-center gap-2">
+            {session.archived && <Archive className="h-3 w-3 text-muted-foreground" />}
+            <span>
+              {session.summary || truncate(session.query, 50)}{' '}
+              {session.parent_session_id && <span className="text-muted-foreground">[continued]</span>}
+            </span>
           </h2>
           <small
             className={`font-mono text-xs uppercase tracking-wider ${getStatusTextClass(session.status)}`}

@@ -181,6 +181,10 @@ pub struct SessionState {
     pub total_tokens: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub duration_ms: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub auto_accept_edits: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub archived: Option<bool>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

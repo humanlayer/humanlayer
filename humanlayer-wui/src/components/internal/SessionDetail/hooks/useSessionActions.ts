@@ -18,6 +18,7 @@ export function useSessionActions({ session }: UseSessionActionsProps) {
 
   const interruptSession = useStore(state => state.interruptSession)
   const refreshSessions = useStore(state => state.refreshSessions)
+  const archiveSession = useStore(state => state.archiveSession)
   const navigate = useNavigate()
 
   // Continue session functionality
@@ -27,6 +28,11 @@ export function useSessionActions({ session }: UseSessionActionsProps) {
     try {
       setIsResponding(true)
       const messageToSend = responseInput.trim()
+      
+      // Unarchive the session if it's archived
+      if (session.archived) {
+        await archiveSession(session.id, false)
+      }
 
       const response = await daemonClient.continueSession({
         session_id: session.id,
@@ -48,7 +54,7 @@ export function useSessionActions({ session }: UseSessionActionsProps) {
     } finally {
       setIsResponding(false)
     }
-  }, [responseInput, isResponding, session.id, navigate, refreshSessions])
+  }, [responseInput, isResponding, session.id, session.archived, navigate, refreshSessions, archiveSession])
 
   const handleResponseInputKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
