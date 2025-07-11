@@ -28,7 +28,7 @@ export function useSessionActions({ session }: UseSessionActionsProps) {
     try {
       setIsResponding(true)
       const messageToSend = responseInput.trim()
-      
+
       // Unarchive the session if it's archived
       if (session.archived) {
         await archiveSession(session.id, false)
@@ -54,7 +54,15 @@ export function useSessionActions({ session }: UseSessionActionsProps) {
     } finally {
       setIsResponding(false)
     }
-  }, [responseInput, isResponding, session.id, session.archived, navigate, refreshSessions, archiveSession])
+  }, [
+    responseInput,
+    isResponding,
+    session.id,
+    session.archived,
+    navigate,
+    refreshSessions,
+    archiveSession,
+  ])
 
   const handleResponseInputKeyDown = useCallback(
     (e: React.KeyboardEvent) => {

@@ -64,7 +64,7 @@ export function ResponseInput({
               disabled={!responseInput.trim() || isResponding || session.status === 'failed'}
               size="sm"
             >
-              {isResponding ? 'Interrupting...' : (session.archived ? 'Send & Unarchive' : 'Send')}
+              {isResponding ? 'Interrupting...' : session.archived ? 'Send & Unarchive' : 'Send'}
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">
