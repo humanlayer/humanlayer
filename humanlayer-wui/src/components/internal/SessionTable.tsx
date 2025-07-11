@@ -328,11 +328,20 @@ export default function SessionTable({
                     }}
                   >
                     <div className="flex items-center justify-center">
-                      {selectedSessions.has(session.id) ? (
-                        <CheckSquare className="w-4 h-4 text-primary" />
-                      ) : (
-                        <Square className="w-4 h-4 text-muted-foreground" />
-                      )}
+                      <div
+                        className={cn(
+                          "transition-all duration-200 ease-in-out",
+                          (focusedSession?.id === session.id || selectedSessions.size > 0)
+                            ? "opacity-100 scale-100"
+                            : "opacity-0 scale-75"
+                        )}
+                      >
+                        {selectedSessions.has(session.id) ? (
+                          <CheckSquare className="w-4 h-4 text-primary" />
+                        ) : (
+                          <Square className="w-4 h-4 text-muted-foreground" />
+                        )}
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell className={getStatusTextClass(session.status)}>{session.status}</TableCell>
