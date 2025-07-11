@@ -1,13 +1,5 @@
 import { SessionInfo } from '@/lib/daemon/types'
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '../ui/table'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 import { useHotkeys, useHotkeysContext } from 'react-hotkeys-hook'
 import { useEffect, useRef } from 'react'
@@ -303,7 +295,6 @@ export default function SessionTable({
         <>
           {/* TODO(2): Fix ref warning - Table component needs forwardRef */}
           <Table ref={tableRef}>
-            <TableCaption>A list of your recent sessions.</TableCaption>
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[40px]"></TableHead>

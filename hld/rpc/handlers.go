@@ -163,11 +163,11 @@ func (h *SessionHandlers) HandleGetSessionLeaves(ctx context.Context, params jso
 		}
 	}
 
-	// Get all sessions from store to have access to archived field
-	sessions, err := h.store.ListSessions(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get sessions: %w", err)
-	}
+	// Get all sessions from manager
+	sessionInfos := h.manager.ListSessions()
+
+	// Convert to match the expected type for processing
+	sessions := sessionInfos
 
 	// Build parent-to-children map
 	childrenMap := make(map[string][]string)
@@ -195,8 +195,8 @@ func (h *SessionHandlers) HandleGetSessionLeaves(ctx context.Context, params jso
 			continue // Skip non-archived sessions when only archived requested
 		}
 
-		// Convert to session.Info
-		leaves = append(leaves, session.SessionToInfo(*s))
+		// Already have session.Info, just append
+		leaves = append(leaves, s)
 	}
 
 	// Sort by last activity (newest first)
