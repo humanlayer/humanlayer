@@ -37,7 +37,7 @@ check-quiet: ## Run all quality checks with quiet output
 
 test-quiet: ## Run tests with quiet output
 	@. ../hack/run_silent.sh && print_header "humanlayer-wui" "Web UI tests"
-	@echo "  No tests configured yet"
+	@. ../hack/run_silent.sh && run_silent_with_test_count "Tests passed" "bun test" "bun"
 
 check: ## Run all quality checks (format + lint + typecheck)
 	@if [ -n "$$VERBOSE" ]; then \
@@ -48,7 +48,7 @@ check: ## Run all quality checks (format + lint + typecheck)
 
 test: ## Run tests
 	@if [ -n "$$VERBOSE" ]; then \
-		echo "No tests configured yet"; \
+		bun test; \
 	else \
 		$(MAKE) test-quiet; \
 	fi

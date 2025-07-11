@@ -82,8 +82,12 @@ test-header:
 	@sh -n ./hack/run_silent.sh || (echo "❌ Shell script syntax error in hack/run_silent.sh" && exit 1)
 	@. ./hack/run_silent.sh && print_main_header "Running Tests"
 
+.PHONY: test-wui
+test-wui: ## Test humanlayer-wui
+	@$(MAKE) -C humanlayer-wui test VERBOSE=$(VERBOSE)
+
 .PHONY: test
-test: test-header test-py test-ts test-hlyr test-hld test-claudecode-go
+test: test-header test-py test-ts test-hlyr test-wui test-hld test-claudecode-go
 
 .PHONY: check-test
 check-test: ## Run all checks and tests

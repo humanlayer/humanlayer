@@ -1,4 +1,5 @@
 import type { SessionInfo } from '@/lib/daemon/types'
+import { ViewMode } from '@/lib/daemon/types'
 import { create } from 'zustand'
 import { daemonClient } from '@/lib/daemon'
 
@@ -6,8 +7,9 @@ interface StoreState {
   /* Sessions */
   sessions: SessionInfo[]
   focusedSession: SessionInfo | null
-  viewMode: 'normal' | 'archived'
+  viewMode: ViewMode
   selectedSessions: Set<string> // For bulk selection
+  selectionAnchor: string | null // Anchor point for range selection
   initSessions: (sessions: SessionInfo[]) => void
   updateSession: (sessionId: string, updates: Partial<SessionInfo>) => void
   refreshSessions: () => Promise<void>
@@ -17,9 +19,12 @@ interface StoreState {
   interruptSession: (sessionId: string) => Promise<void>
   archiveSession: (sessionId: string, archived: boolean) => Promise<void>
   bulkArchiveSessions: (sessionIds: string[], archived: boolean) => Promise<void>
-  setViewMode: (mode: 'normal' | 'archived') => void
+  setViewMode: (mode: ViewMode) => void
   toggleSessionSelection: (sessionId: string) => void
   clearSelection: () => void
+  setSelectionAnchor: (sessionId: string | null) => void
+  clearSelectionAnchor: () => void
+  selectRange: (anchorId: string, targetId: string) => void
 
   /* Notifications */
   notifiedItems: Set<string> // Set of unique notification IDs
@@ -32,8 +37,9 @@ interface StoreState {
 export const useStore = create<StoreState>((set, get) => ({
   sessions: [],
   focusedSession: null,
-  viewMode: 'normal',
+  viewMode: ViewMode.Normal,
   selectedSessions: new Set<string>(),
+  selectionAnchor: null,
   initSessions: (sessions: SessionInfo[]) => set({ sessions }),
   updateSession: (sessionId: string, updates: Partial<SessionInfo>) =>
     set(state => ({
@@ -49,8 +55,8 @@ export const useStore = create<StoreState>((set, get) => ({
     try {
       const { viewMode } = get()
       const response = await daemonClient.getSessionLeaves({
-        include_archived: viewMode === 'archived',
-        archived_only: viewMode === 'archived',
+        include_archived: viewMode === ViewMode.Archived,
+        archived_only: viewMode === ViewMode.Archived,
       })
       set({ sessions: response.sessions })
     } catch (error) {
@@ -123,7 +129,7 @@ export const useStore = create<StoreState>((set, get) => ({
       throw error
     }
   },
-  setViewMode: (mode: 'normal' | 'archived') => {
+  setViewMode: (mode: ViewMode) => {
     set({ viewMode: mode })
     // Refresh sessions when view mode changes
     get().refreshSessions()
@@ -139,6 +145,30 @@ export const useStore = create<StoreState>((set, get) => ({
       return { selectedSessions: newSet }
     }),
   clearSelection: () => set({ selectedSessions: new Set<string>() }),
+  setSelectionAnchor: (sessionId: string | null) => set({ selectionAnchor: sessionId }),
+  clearSelectionAnchor: () => set({ selectionAnchor: null }),
+  selectRange: (anchorId: string, targetId: string) =>
+    set(state => {
+      const { sessions } = state
+      const anchorIndex = sessions.findIndex(s => s.id === anchorId)
+      const targetIndex = sessions.findIndex(s => s.id === targetId)
+
+      if (anchorIndex === -1 || targetIndex === -1) {
+        return state // Return unchanged if sessions not found
+      }
+
+      // Determine the range (handle both directions)
+      const startIndex = Math.min(anchorIndex, targetIndex)
+      const endIndex = Math.max(anchorIndex, targetIndex)
+
+      // Select all sessions in the range
+      const newSelection = new Set<string>()
+      for (let i = startIndex; i <= endIndex; i++) {
+        newSelection.add(sessions[i].id)
+      }
+
+      return { selectedSessions: newSelection }
+    }),
 
   // Notification management
   notifiedItems: new Set<string>(),

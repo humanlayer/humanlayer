@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useStore } from '@/AppStore'
+import { ViewMode } from '@/lib/daemon/types'
 import SessionTable, { SessionTableHotkeysScope } from '@/components/internal/SessionTable'
 import { SessionTableSearch } from '@/components/SessionTableSearch'
 import { useSessionFilter } from '@/hooks/useSessionFilter'
@@ -81,7 +82,7 @@ export function SessionTablePage() {
     'tab',
     e => {
       e.preventDefault()
-      setViewMode(viewMode === 'normal' ? 'archived' : 'normal')
+      setViewMode(viewMode === ViewMode.Normal ? ViewMode.Archived : ViewMode.Normal)
       // Clear search when switching views
       setSearchQuery('')
     },
@@ -93,7 +94,7 @@ export function SessionTablePage() {
     'shift+tab',
     e => {
       e.preventDefault()
-      setViewMode(viewMode === 'normal' ? 'archived' : 'normal')
+      setViewMode(viewMode === ViewMode.Normal ? ViewMode.Archived : ViewMode.Normal)
       // Clear search when switching views
       setSearchQuery('')
     },
@@ -136,14 +137,14 @@ export function SessionTablePage() {
   useHotkeys(
     'escape',
     () => {
-      if (viewMode === 'archived') {
-        setViewMode('normal')
+      if (viewMode === ViewMode.Archived) {
+        setViewMode(ViewMode.Normal)
       }
     },
     {
       enableOnFormTags: false,
       scopes: SessionTableHotkeysScope,
-      enabled: !isSessionLauncherOpen && viewMode === 'archived',
+      enabled: !isSessionLauncherOpen && viewMode === ViewMode.Archived,
       preventDefault: true,
     },
   )
@@ -171,7 +172,7 @@ export function SessionTablePage() {
           searchText={searchText}
           matchedSessions={matchedSessions}
           emptyState={
-            viewMode === 'archived'
+            viewMode === ViewMode.Archived
               ? {
                   icon: Archive,
                   title: 'No archived sessions',
@@ -179,7 +180,7 @@ export function SessionTablePage() {
                     'Sessions you archive will appear here. Press ESC or click below to go back.',
                   action: {
                     label: 'View all sessions',
-                    onClick: () => setViewMode('normal'),
+                    onClick: () => setViewMode(ViewMode.Normal),
                   },
                 }
               : {
