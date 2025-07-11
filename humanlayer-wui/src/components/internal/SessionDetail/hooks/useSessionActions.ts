@@ -12,7 +12,6 @@ interface UseSessionActionsProps {
 }
 
 export function useSessionActions({ session }: UseSessionActionsProps) {
-  const [showResponseInput, setShowResponseInput] = useState(false)
   const [responseInput, setResponseInput] = useState('')
   const [isResponding, setIsResponding] = useState(false)
 
@@ -47,7 +46,6 @@ export function useSessionActions({ session }: UseSessionActionsProps) {
 
       // Reset form state only after success
       setResponseInput('')
-      setShowResponseInput(false)
     } catch (error) {
       notificationService.notifyError(error, 'Failed to continue session')
       // On error, keep the message so user can retry
@@ -66,11 +64,11 @@ export function useSessionActions({ session }: UseSessionActionsProps) {
 
   const handleResponseInputKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault()
         handleContinueSession()
       } else if (e.key === 'Escape') {
-        setShowResponseInput(false)
+        // Clear the input on escape
         setResponseInput('')
       }
     },
@@ -94,13 +92,8 @@ export function useSessionActions({ session }: UseSessionActionsProps) {
     }
   })
 
-  // R key to show response input
-  useHotkeys('r', event => {
-    if (session.status !== 'failed' && !showResponseInput) {
-      event.preventDefault()
-      setShowResponseInput(true)
-    }
-  })
+  // R key - no longer needed since input is always visible
+  // Keeping the hotkey registration but making it a no-op to avoid breaking anything
 
   // P key to navigate to parent session
   useHotkeys('p', () => {
@@ -110,8 +103,6 @@ export function useSessionActions({ session }: UseSessionActionsProps) {
   })
 
   return {
-    showResponseInput,
-    setShowResponseInput,
     responseInput,
     setResponseInput,
     isResponding,
