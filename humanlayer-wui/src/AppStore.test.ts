@@ -260,6 +260,91 @@ describe('AppStore - Range Selection', () => {
     expect(state.selectedSessions.has('session-6')).toBe(true)
   })
 
+  test('should shrink selection when using shift+k within current range in adding mode', () => {
+    const store = useStore.getState()
+
+    // 1. Select first 3 items with shift+j
+    store.setFocusedSession(mockSessions[0])
+    store.setSelectionAnchor(mockSessions[0].id)
+    store.selectRange(mockSessions[0].id, mockSessions[2].id)
+
+    // 2. Navigate down with j (clears anchor)
+    store.clearSelectionAnchor()
+    store.setFocusedSession(mockSessions[5])
+
+    // 3. Add selection at position 5-7 with shift+j
+    store.setSelectionAnchor(mockSessions[5].id)
+    store.addRangeToSelection(mockSessions[5].id, mockSessions[7].id)
+
+    let state = useStore.getState()
+    expect(state.selectedSessions.size).toBe(6) // 3 + 3
+    expect(state.selectedSessions.has('session-1')).toBe(true)
+    expect(state.selectedSessions.has('session-2')).toBe(true)
+    expect(state.selectedSessions.has('session-3')).toBe(true)
+    expect(state.selectedSessions.has('session-6')).toBe(true)
+    expect(state.selectedSessions.has('session-7')).toBe(true)
+    expect(state.selectedSessions.has('session-8')).toBe(true)
+
+    // 4. Now press shift+k to shrink the current range
+    store.setFocusedSession(mockSessions[6]) // Focus moved to session-7
+    // In the UI, updateCurrentRange would be called here to shrink the selection
+    // For now, let's simulate what should happen
+    store.updateCurrentRange(mockSessions[5].id, mockSessions[6].id)
+
+    state = useStore.getState()
+    // Should still have the first 3 selections, but the second range should shrink
+    expect(state.selectedSessions.size).toBe(5) // 3 + 2
+    expect(state.selectedSessions.has('session-1')).toBe(true)
+    expect(state.selectedSessions.has('session-2')).toBe(true)
+    expect(state.selectedSessions.has('session-3')).toBe(true)
+    expect(state.selectedSessions.has('session-6')).toBe(true)
+    expect(state.selectedSessions.has('session-7')).toBe(true)
+    expect(state.selectedSessions.has('session-8')).toBe(false) // This should be removed
+  })
+
+  test('should shrink first selection range when navigating back and using shift+k', () => {
+    const store = useStore.getState()
+
+    // 1. Select first 3 items with shift+j
+    store.setFocusedSession(mockSessions[0])
+    store.setSelectionAnchor(mockSessions[0].id)
+    store.selectRange(mockSessions[0].id, mockSessions[2].id)
+
+    // 2. Navigate away and select items 5-7
+    store.clearSelectionAnchor()
+    store.setFocusedSession(mockSessions[5])
+    store.setSelectionAnchor(mockSessions[5].id)
+    store.addRangeToSelection(mockSessions[5].id, mockSessions[7].id)
+
+    let state = useStore.getState()
+    expect(state.selectedSessions.size).toBe(6) // 3 + 3
+    expect(state.selectedSessions.has('session-1')).toBe(true)
+    expect(state.selectedSessions.has('session-2')).toBe(true)
+    expect(state.selectedSessions.has('session-3')).toBe(true)
+    expect(state.selectedSessions.has('session-6')).toBe(true)
+    expect(state.selectedSessions.has('session-7')).toBe(true)
+    expect(state.selectedSessions.has('session-8')).toBe(true)
+
+    // 3. Navigate back to position 2 (which is selected)
+    store.clearSelectionAnchor()
+    store.setFocusedSession(mockSessions[2])
+
+    // 4. Press shift+k to shrink the first range
+    // This should set anchor at position 2 and use updateCurrentRange
+    store.setSelectionAnchor(mockSessions[2].id)
+    store.updateCurrentRange(mockSessions[2].id, mockSessions[1].id)
+
+    state = useStore.getState()
+    // First range should shrink from 0-2 to 1-2
+    expect(state.selectedSessions.size).toBe(5) // 2 + 3
+    expect(state.selectedSessions.has('session-1')).toBe(false) // Removed
+    expect(state.selectedSessions.has('session-2')).toBe(true)
+    expect(state.selectedSessions.has('session-3')).toBe(true)
+    expect(state.selectedSessions.has('session-6')).toBe(true)
+    expect(state.selectedSessions.has('session-7')).toBe(true)
+    expect(state.selectedSessions.has('session-8')).toBe(true)
+  })
+
   test('should handle continuous shift+j after navigation correctly', () => {
     const store = useStore.getState()
 
