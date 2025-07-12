@@ -64,8 +64,8 @@ export function ConversationContent({
   const [expandedEventId, setExpandedEventId] = useState<number | null>(null)
   const { events, loading, error, isInitialLoad } = useConversation(sessionId, undefined, 1000)
 
-  // Filter events based on maxEventIndex
-  const filteredEvents = maxEventIndex !== undefined ? events.slice(0, maxEventIndex + 1) : events
+  // Filter events based on maxEventIndex (exclude the event at maxEventIndex)
+  const filteredEvents = maxEventIndex !== undefined ? events.slice(0, maxEventIndex) : events
 
   const toolResults = filteredEvents.filter(
     event => event.event_type === ConversationEventType.ToolResult,

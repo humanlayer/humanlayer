@@ -111,7 +111,15 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       // Find the selected user message
       const selectedEvent = events[eventIndex]
       if (selectedEvent?.event_type === 'message' && selectedEvent?.role === 'user') {
-        setPendingForkMessage(selectedEvent)
+        // Find the session ID from the event before this one
+        const previousEvent = eventIndex > 0 ? events[eventIndex - 1] : null
+        const forkFromSessionId = previousEvent?.session_id || session.id
+
+        // Store both the message content and the session ID to fork from
+        setPendingForkMessage({
+          ...selectedEvent,
+          session_id: forkFromSessionId, // Override with the previous event's session ID
+        })
       }
     },
     [events, actions],
@@ -318,10 +326,10 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       {previewEventIndex !== null && (
         <div className="bg-amber-500/10 border border-amber-500/20 rounded-md px-3 py-2 mb-4 text-sm">
           <span className="text-amber-600 dark:text-amber-400">
-            Fork mode: Forking conversation from message{' '}
+            Fork mode: Forking from turn{' '}
             {
               events
-                .slice(0, previewEventIndex + 1)
+                .slice(0, previewEventIndex)
                 .filter(e => e.event_type === 'message' && e.role === 'user').length
             }
           </span>
