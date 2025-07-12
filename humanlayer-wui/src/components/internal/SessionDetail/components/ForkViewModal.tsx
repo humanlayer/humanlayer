@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { GitBranch } from 'lucide-react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import {
@@ -32,6 +32,23 @@ function ForkViewModalContent({
 }: Omit<ForkViewModalProps, 'isOpen' | 'onOpenChange'> & { onClose: () => void }) {
   // Steal hotkey scope when this component mounts
   useStealHotkeyScope(ForkViewModalHotkeysScope)
+
+  // Focus management
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    // Focus the container when modal opens
+    if (containerRef.current) {
+      containerRef.current.focus()
+    }
+
+    // Blur any active element (like the chat input)
+    const activeElement = document.activeElement as HTMLElement
+    if (activeElement && activeElement.blur) {
+      activeElement.blur()
+    }
+  }, [])
+
   // Filter to only user messages (excluding the first one)
   const userMessageIndices = events
     .map((e, i) => ({ event: e, index: i }))
@@ -69,7 +86,7 @@ function ForkViewModalContent({
         onSelectEvent(option.index === -1 ? null : option.index)
       }
     },
-    { scopes: [ForkViewModalHotkeysScope] },
+    { scopes: [ForkViewModalHotkeysScope], enableOnFormTags: true },
   )
 
   useHotkeys(
@@ -82,7 +99,7 @@ function ForkViewModalContent({
         onSelectEvent(option.index === -1 ? null : option.index)
       }
     },
-    { scopes: [ForkViewModalHotkeysScope] },
+    { scopes: [ForkViewModalHotkeysScope], enableOnFormTags: true },
   )
 
   // Number key navigation
@@ -96,7 +113,7 @@ function ForkViewModalContent({
         onSelectEvent(option.index === -1 ? null : option.index)
       }
     },
-    { scopes: [ForkViewModalHotkeysScope] },
+    { scopes: [ForkViewModalHotkeysScope], enableOnFormTags: true },
   )
 
   // Enter to confirm fork
@@ -133,7 +150,7 @@ function ForkViewModalContent({
         </DialogDescription>
       </DialogHeader>
 
-      <div className="mt-4">
+      <div ref={containerRef} className="mt-4 outline-none" tabIndex={-1}>
         {userMessageIndices.length === 0 ? (
           <div className="text-sm text-muted-foreground text-center py-8">
             No messages to fork from yet
@@ -227,7 +244,14 @@ export function ForkViewModal({
       <DialogContent
         className="max-w-2xl"
         showCloseButton={false}
-        onOpenAutoFocus={e => e.preventDefault()}
+        onOpenAutoFocus={e => {
+          // Prevent default focus behavior but let our custom focus management work
+          e.preventDefault()
+        }}
+        onInteractOutside={e => {
+          // Prevent closing when clicking outside
+          e.preventDefault()
+        }}
       >
         {isOpen && (
           <ForkViewModalContent
