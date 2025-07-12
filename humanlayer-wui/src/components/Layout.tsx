@@ -10,6 +10,7 @@ import { useStore } from '@/AppStore'
 import { useSessionEventsWithNotifications } from '@/hooks/useSessionEventsWithNotifications'
 import { Toaster } from 'sonner'
 import { notificationService } from '@/services/NotificationService'
+import { useZoom } from '@/contexts/ZoomContext'
 import '@/App.css'
 
 export function Layout() {
@@ -21,6 +22,9 @@ export function Layout() {
   // Session launcher state
   const { isOpen, close } = useSessionLauncher()
   const { handleKeyDown } = useSessionLauncherHotkeys()
+
+  // Zoom functionality
+  const { increaseZoom, decreaseZoom, resetZoom } = useZoom()
 
   // Set up real-time subscriptions with notification handling
   useSessionEventsWithNotifications(connected)
@@ -63,9 +67,31 @@ export function Layout() {
 
   // Global hotkey handler
   useEffect(() => {
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [handleKeyDown])
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // Handle zoom shortcuts
+      if (e.metaKey || e.ctrlKey) {
+        if (e.key === '=' || e.key === '+') {
+          e.preventDefault()
+          increaseZoom()
+          return
+        } else if (e.key === '-' || e.key === '_') {
+          e.preventDefault()
+          decreaseZoom()
+          return
+        } else if (e.key === '0') {
+          e.preventDefault()
+          resetZoom()
+          return
+        }
+      }
+
+      // Handle other shortcuts
+      handleKeyDown(e)
+    }
+
+    document.addEventListener('keydown', handleGlobalKeyDown)
+    return () => document.removeEventListener('keydown', handleGlobalKeyDown)
+  }, [handleKeyDown, increaseZoom, decreaseZoom, resetZoom])
 
   const connectToDaemon = async () => {
     try {
