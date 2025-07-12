@@ -112,7 +112,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         navigation.setExpandedEventId(null)
       } else if (navigation.focusedEventId) {
         navigation.setFocusedEventId(null)
-      } else if (!actions.showResponseInput) {
+      } else {
         onClose()
       }
     },
@@ -301,8 +301,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         <CardContent className={isCompactView ? 'px-2' : 'px-4'}>
           <ResponseInput
             session={session}
-            showResponseInput={actions.showResponseInput}
-            setShowResponseInput={actions.setShowResponseInput}
             responseInput={actions.responseInput}
             setResponseInput={actions.setResponseInput}
             isResponding={actions.isResponding}
