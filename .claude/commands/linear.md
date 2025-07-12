@@ -275,3 +275,30 @@ When moving tickets through the workflow:
 - Ask for clarification rather than guessing project/status
 - Remember that Linear descriptions support full markdown including code blocks
 - Always use the `links` parameter for external URLs (not just markdown links)
+
+## Commonly Used IDs
+
+### Engineering Team
+- **Team ID**: `6b3b2115-efd4-4b83-8463-8160842d2c84`
+
+### Label IDs
+- **bug**: `ff23dde3-199b-421e-904c-4b9f9b3d452c`
+- **hld**: `d28453c8-e53e-4a06-bea9-b5bbfad5f88a`
+- **meta**: `7a5abaae-f343-4f52-98b0-7987048b0cfa`
+- **wui**: `996deb94-ba0f-4375-8b01-913e81477c4b`
+
+### Workflow State IDs
+- **Triage**: `77da144d-fe13-4c3a-a53a-cfebd06c0cbe` (type: triage)
+- **Spec Needed**: `995011dd-3e36-46e5-b776-5a4628d06cc8` (type: unstarted)
+- **spec in review**: `15f56065-41ea-4d9a-ab8c-ec8e1a811a7a` (type: started)
+- **spec in progress**: `a52b4793-d1b6-4e5d-be79-b2254185eed0` (type: started)
+- **ready for dev**: `c25bae2f-856a-4718-aaa8-b469b7822f58` (type: started)
+- **in dev**: `6be18699-18d7-496e-a7c9-37d2ddefe612` (type: started)
+- **code review**: `8ca7fda1-08d4-48fb-a0cf-954246ccbe66` (type: started)
+- **Ready for Deploy**: `a3ad0b54-17bf-4ad3-b1c1-2f56c1f2515a` (type: started)
+- **Done**: `8159f431-fbc7-495f-a861-1ba12040f672` (type: completed)
+- **Backlog**: `6cf6b25a-054a-469b-9845-9bd9ab39ad76` (type: backlog)
+- **PostIts**: `a57f2ab3-c6f8-44c7-a36b-896154729338` (type: backlog)
+- **Todo**: `ddf85246-3a7c-4141-a377-09069812bbc3` (type: unstarted)
+- **Duplicate**: `2bc0e829-9853-4f76-ad34-e8732f062da2` (type: canceled)
+- **Canceled**: `14a28d0d-c6aa-4d8e-9ff2-9801d4cc7de1` (type: canceled)
