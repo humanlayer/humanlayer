@@ -28,7 +28,6 @@ export function useSessionNavigation({
 }: UseSessionNavigationProps) {
   const [focusedEventId, setFocusedEventId] = useState<number | null>(null)
   const [focusSource, setFocusSource] = useState<'mouse' | 'keyboard' | null>(null)
-  const [expandedEventId, setExpandedEventId] = useState<number | null>(null)
 
   // Helper to check if element is in viewport
   const isElementInView = useCallback((element: Element, container: Element) => {
@@ -126,23 +125,19 @@ export function useSessionNavigation({
   useHotkeys('j', focusNextEvent, { enabled: !expandedToolResult })
   useHotkeys('k', focusPreviousEvent, { enabled: !expandedToolResult })
 
-  // Enter key to expand/collapse task groups or events
+  // Enter key to expand/collapse task groups
   useHotkeys(
     'enter',
     () => {
       if (!focusedEventId) return
 
-      // Check if it's a task group
+      // Only handle task group expansion
       if (hasSubTasks) {
         const focusedEvent = events.find(e => e.id === focusedEventId)
         if (focusedEvent?.tool_name === 'Task' && focusedEvent.tool_id) {
           toggleTaskGroup(focusedEvent.tool_id)
-          return
         }
       }
-
-      // Otherwise toggle expanded state for regular events
-      setExpandedEventId(expandedEventId === focusedEventId ? null : focusedEventId)
     },
     { enabled: !expandedToolResult },
   )
@@ -186,8 +181,6 @@ export function useSessionNavigation({
     setFocusedEventId,
     focusSource,
     setFocusSource,
-    expandedEventId,
-    setExpandedEventId,
     navigableItems,
   }
 }

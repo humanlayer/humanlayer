@@ -169,6 +169,20 @@
   --terminal-warning: #b47109;
   --terminal-error: #c14a4a;
 }
+
+/* Monokai - Classic dark theme */
+[data-theme='monokai'] {
+  --terminal-bg: #272822;
+  --terminal-bg-alt: #3e3d32;
+  --terminal-fg: #f8f8f2;
+  --terminal-fg-dim: #75715e;
+  --terminal-accent: #66d9ef;
+  --terminal-accent-alt: #a6e22e;
+  --terminal-border: #75715e;
+  --terminal-success: #a6e22e;
+  --terminal-warning: #e6db74;
+  --terminal-error: #f92672;
+}
 @layer base {
   * {
     @apply border-border outline-ring/50;

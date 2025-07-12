@@ -1,9 +1,8 @@
 import { ChevronDown, CircleDashed, Wrench, FilePenLine, Bot, User, UserCheck } from 'lucide-react'
-import { ConversationEvent } from '@/lib/daemon/types'
+import { ConversationEvent, ConversationEventType } from '@/lib/daemon/types'
 import { TaskEventGroup } from '../hooks/useTaskGrouping'
 import { truncate, formatAbsoluteTimestamp } from '@/utils/formatting'
 import { eventToDisplayObject } from '../eventToDisplayObject'
-import { EventMetaInfo } from '../components/EventMetaInfo'
 
 interface TaskGroupProps {
   group: TaskEventGroup
@@ -11,8 +10,6 @@ interface TaskGroupProps {
   onToggle: () => void
   focusedEventId: number | null
   setFocusedEventId: (id: number | null) => void
-  expandedEventId: number | null
-  setExpandedEventId: (id: number | null) => void
   onApprove?: (approvalId: string) => void
   onDeny?: (approvalId: string, reason: string) => void
   approvingApprovalId?: string | null
@@ -25,6 +22,8 @@ interface TaskGroupProps {
   setFocusSource?: (source: 'mouse' | 'keyboard' | null) => void
   setConfirmingApprovalId?: (id: string | null) => void
   toolResultsByKey: Record<string, ConversationEvent>
+  setExpandedToolResult?: (event: ConversationEvent | null) => void
+  setExpandedToolCall?: (event: ConversationEvent | null) => void
 }
 
 export function TaskGroup({
@@ -33,8 +32,6 @@ export function TaskGroup({
   onToggle,
   focusedEventId,
   setFocusedEventId,
-  expandedEventId,
-  setExpandedEventId,
   onApprove,
   onDeny,
   approvingApprovalId,
@@ -47,6 +44,8 @@ export function TaskGroup({
   setFocusSource,
   setConfirmingApprovalId,
   toolResultsByKey,
+  setExpandedToolResult,
+  setExpandedToolCall,
 }: TaskGroupProps) {
   const { parentTask, toolCallCount, latestEvent, hasPendingApproval } = group
   const description = JSON.parse(parentTask.tool_input_json || '{}').description || 'Task'
@@ -188,9 +187,16 @@ export function TaskGroup({
                     setFocusedEventId(null)
                     setConfirmingApprovalId?.(null)
                   }}
-                  onClick={() =>
-                    setExpandedEventId(expandedEventId === displayObject.id ? null : displayObject.id)
-                  }
+                  onClick={() => {
+                    const event = subEvent
+                    if (event?.event_type === ConversationEventType.ToolCall && event.tool_id) {
+                      const toolResult = toolResultsByKey[event.tool_id]
+                      if (toolResult && setExpandedToolResult && setExpandedToolCall) {
+                        setExpandedToolResult(toolResult)
+                        setExpandedToolCall(event)
+                      }
+                    }
+                  }}
                   className={`py-2 px-2 cursor-pointer ${
                     focusedEventId === displayObject.id ? '!bg-accent/20 -mx-2 px-4 rounded' : ''
                   }`}
@@ -222,7 +228,6 @@ export function TaskGroup({
                 </div>
 
                 {/* Expanded content */}
-                {expandedEventId === displayObject.id && <EventMetaInfo event={subEvent} />}
               </div>
             )
           })}

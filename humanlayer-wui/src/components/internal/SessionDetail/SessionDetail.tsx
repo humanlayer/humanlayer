@@ -108,8 +108,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
 
       if (approvals.confirmingApprovalId) {
         approvals.setConfirmingApprovalId(null)
-      } else if (navigation.expandedEventId) {
-        navigation.setExpandedEventId(null)
       } else if (navigation.focusedEventId) {
         navigation.setFocusedEventId(null)
       } else if (!actions.showResponseInput) {
@@ -254,6 +252,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               setFocusSource={navigation.setFocusSource}
               setConfirmingApprovalId={approvals.setConfirmingApprovalId}
               expandedToolResult={expandedToolResult}
+              setExpandedToolResult={setExpandedToolResult}
+              setExpandedToolCall={setExpandedToolCall}
             />
             {isRunning && (
               <div className="flex flex-col gap-1 mt-2 border-t pt-2">
