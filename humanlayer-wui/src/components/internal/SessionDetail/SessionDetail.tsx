@@ -90,29 +90,32 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     session,
     onClose,
     pendingForkMessage,
-    onForkCommit: handleForkCommit
+    onForkCommit: handleForkCommit,
   })
 
   // Add fork selection handler
-  const handleForkSelect = useCallback((eventIndex: number | null) => {
-    if (eventIndex === null) {
-      // Return to current state - clear everything
-      setPreviewEventIndex(null)
-      setPendingForkMessage(null)
-      // Also clear the response input when selecting "Current"
-      actions.setResponseInput('')
-      return
-    }
+  const handleForkSelect = useCallback(
+    (eventIndex: number | null) => {
+      if (eventIndex === null) {
+        // Return to current state - clear everything
+        setPreviewEventIndex(null)
+        setPendingForkMessage(null)
+        // Also clear the response input when selecting "Current"
+        actions.setResponseInput('')
+        return
+      }
 
-    // Set preview mode
-    setPreviewEventIndex(eventIndex)
+      // Set preview mode
+      setPreviewEventIndex(eventIndex)
 
-    // Find the selected user message
-    const selectedEvent = events[eventIndex]
-    if (selectedEvent?.event_type === 'message' && selectedEvent?.role === 'user') {
-      setPendingForkMessage(selectedEvent)
-    }
-  }, [events, actions])
+      // Find the selected user message
+      const selectedEvent = events[eventIndex]
+      if (selectedEvent?.event_type === 'message' && selectedEvent?.role === 'user') {
+        setPendingForkMessage(selectedEvent)
+      }
+    },
+    [events, actions],
+  )
 
   // We no longer automatically clear preview when closing
   // This allows the preview to persist after selecting with Enter
@@ -189,10 +192,14 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   )
 
   // Add hotkey to open fork view (Meta+Y)
-  useHotkeys('meta+y', (e) => {
-    e.preventDefault()
-    setForkViewOpen(!forkViewOpen)
-  }, { scopes: [SessionDetailHotkeysScope] })
+  useHotkeys(
+    'meta+y',
+    e => {
+      e.preventDefault()
+      setForkViewOpen(!forkViewOpen)
+    },
+    { scopes: [SessionDetailHotkeysScope] },
+  )
 
   useStealHotkeyScope(SessionDetailHotkeysScope)
 
@@ -256,7 +263,9 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               {session.archived && <Archive className="h-4 w-4 text-muted-foreground" />}
               <span>
                 {session.summary || truncate(session.query, 50)}{' '}
-                {session.parent_session_id && <span className="text-muted-foreground">[continued]</span>}
+                {session.parent_session_id && (
+                  <span className="text-muted-foreground">[continued]</span>
+                )}
               </span>
             </h2>
             <small
@@ -284,7 +293,9 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               {session.archived && <Archive className="h-3 w-3 text-muted-foreground" />}
               <span>
                 {session.summary || truncate(session.query, 50)}{' '}
-                {session.parent_session_id && <span className="text-muted-foreground">[continued]</span>}
+                {session.parent_session_id && (
+                  <span className="text-muted-foreground">[continued]</span>
+                )}
               </span>
             </h2>
             <small
@@ -307,10 +318,11 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       {previewEventIndex !== null && (
         <div className="bg-amber-500/10 border border-amber-500/20 rounded-md px-3 py-2 mb-4 text-sm">
           <span className="text-amber-600 dark:text-amber-400">
-            Fork mode: Forking conversation from message {
-              events.slice(0, previewEventIndex + 1).filter(e =>
-                e.event_type === 'message' && e.role === 'user'
-              ).length
+            Fork mode: Forking conversation from message{' '}
+            {
+              events
+                .slice(0, previewEventIndex + 1)
+                .filter(e => e.event_type === 'message' && e.role === 'user').length
             }
           </span>
         </div>

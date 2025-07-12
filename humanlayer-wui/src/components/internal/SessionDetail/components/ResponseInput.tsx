@@ -42,7 +42,9 @@ export function ResponseInput({
     if (isFork) {
       return (
         <>
-          <kbd className="px-1 py-0.5 text-xs bg-muted/50 rounded">Cmd+Enter</kbd> to fork, <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">Enter</kbd> for new line, <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">Escape</kbd> to cancel fork
+          <kbd className="px-1 py-0.5 text-xs bg-muted/50 rounded">Cmd+Enter</kbd> to fork,{' '}
+          <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">Enter</kbd> for new line,{' '}
+          <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">Escape</kbd> to cancel fork
         </>
       )
     }
@@ -62,9 +64,7 @@ export function ResponseInput({
   // Otherwise always show the input
   return (
     <div className="space-y-2">
-      {isForkMode && (
-        <span className="text-sm font-medium">Fork from this message:</span>
-      )}
+      {isForkMode && <span className="text-sm font-medium">Fork from this message:</span>}
       <div className="flex gap-2">
         <Textarea
           placeholder={getInputPlaceholder(session.status)}
@@ -83,7 +83,9 @@ export function ResponseInput({
         </Button>
       </div>
       <p className="text-xs text-muted-foreground">
-        {isResponding ? 'Waiting for Claude to accept the interrupt...' : getForkHelpText(isForkMode || false)}
+        {isResponding
+          ? 'Waiting for Claude to accept the interrupt...'
+          : getForkHelpText(isForkMode || false)}
       </p>
     </div>
   )

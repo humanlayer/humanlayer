@@ -13,7 +13,11 @@ interface UseSessionActionsProps {
   onForkCommit?: () => void
 }
 
-export function useSessionActions({ session, pendingForkMessage, onForkCommit }: UseSessionActionsProps) {
+export function useSessionActions({
+  session,
+  pendingForkMessage,
+  onForkCommit,
+}: UseSessionActionsProps) {
   const [responseInput, setResponseInput] = useState('')
   const [isResponding, setIsResponding] = useState(false)
   const [forkFromSessionId, setForkFromSessionId] = useState<string | null>(null)
