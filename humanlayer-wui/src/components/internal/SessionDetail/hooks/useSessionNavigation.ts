@@ -15,6 +15,7 @@ interface UseSessionNavigationProps {
   expandedToolResult?: ConversationEvent | null
   setExpandedToolResult?: (event: ConversationEvent | null) => void
   setExpandedToolCall?: (event: ConversationEvent | null) => void
+  disabled?: boolean
 }
 
 export function useSessionNavigation({
@@ -25,6 +26,7 @@ export function useSessionNavigation({
   expandedToolResult,
   setExpandedToolResult,
   setExpandedToolCall,
+  disabled = false,
 }: UseSessionNavigationProps) {
   const [focusedEventId, setFocusedEventId] = useState<number | null>(null)
   const [focusSource, setFocusSource] = useState<'mouse' | 'keyboard' | null>(null)
@@ -123,8 +125,8 @@ export function useSessionNavigation({
   }, [focusedEventId, navigableItems])
 
   // Keyboard navigation
-  useHotkeys('j', focusNextEvent, { enabled: !expandedToolResult })
-  useHotkeys('k', focusPreviousEvent, { enabled: !expandedToolResult })
+  useHotkeys('j', focusNextEvent, { enabled: !expandedToolResult && !disabled })
+  useHotkeys('k', focusPreviousEvent, { enabled: !expandedToolResult && !disabled })
 
   // Enter key to expand/collapse task groups or events
   useHotkeys(
