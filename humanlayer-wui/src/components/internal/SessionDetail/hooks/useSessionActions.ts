@@ -1,7 +1,7 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { useNavigate } from 'react-router-dom'
-import { SessionInfo } from '@/lib/daemon/types'
+import { SessionInfo, ConversationEvent } from '@/lib/daemon/types'
 import { daemonClient } from '@/lib/daemon/client'
 import { notificationService } from '@/services/NotificationService'
 import { useStore } from '@/AppStore'
@@ -9,17 +9,32 @@ import { useStore } from '@/AppStore'
 interface UseSessionActionsProps {
   session: SessionInfo
   onClose: () => void
+  pendingForkMessage?: ConversationEvent | null
+  onForkCommit?: () => void
 }
 
-export function useSessionActions({ session }: UseSessionActionsProps) {
-  const [showResponseInput, setShowResponseInput] = useState(false)
+export function useSessionActions({
+  session,
+  pendingForkMessage,
+  onForkCommit,
+}: UseSessionActionsProps) {
   const [responseInput, setResponseInput] = useState('')
   const [isResponding, setIsResponding] = useState(false)
+  const [forkFromSessionId, setForkFromSessionId] = useState<string | null>(null)
 
   const interruptSession = useStore(state => state.interruptSession)
   const refreshSessions = useStore(state => state.refreshSessions)
   const archiveSession = useStore(state => state.archiveSession)
   const navigate = useNavigate()
+
+  // Update response input when fork message is selected
+  useEffect(() => {
+    if (pendingForkMessage) {
+      setResponseInput(pendingForkMessage.content || '')
+      // Set the session ID to fork from (the one before this message)
+      setForkFromSessionId(pendingForkMessage.session_id)
+    }
+  }, [pendingForkMessage])
 
   // Continue session functionality
   const handleContinueSession = useCallback(async () => {
@@ -29,15 +44,26 @@ export function useSessionActions({ session }: UseSessionActionsProps) {
       setIsResponding(true)
       const messageToSend = responseInput.trim()
 
+      // Use fork session ID if available, otherwise current session
+      const targetSessionId = forkFromSessionId || session.id
+
       // Unarchive the session if it's archived
       if (session.archived) {
         await archiveSession(session.id, false)
       }
 
       const response = await daemonClient.continueSession({
-        session_id: session.id,
+        session_id: targetSessionId,
         query: messageToSend,
       })
+
+      // Clear fork state
+      setForkFromSessionId(null)
+
+      // Notify parent of fork commit
+      if (forkFromSessionId && onForkCommit) {
+        onForkCommit()
+      }
 
       // Always navigate to the new session - the backend handles queuing
       navigate(`/sessions/${response.session_id}`)
@@ -47,7 +73,6 @@ export function useSessionActions({ session }: UseSessionActionsProps) {
 
       // Reset form state only after success
       setResponseInput('')
-      setShowResponseInput(false)
     } catch (error) {
       notificationService.notifyError(error, 'Failed to continue session')
       // On error, keep the message so user can retry
@@ -62,15 +87,17 @@ export function useSessionActions({ session }: UseSessionActionsProps) {
     navigate,
     refreshSessions,
     archiveSession,
+    forkFromSessionId,
+    onForkCommit,
   ])
 
   const handleResponseInputKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault()
         handleContinueSession()
       } else if (e.key === 'Escape') {
-        setShowResponseInput(false)
+        // Clear the input on escape
         setResponseInput('')
       }
     },
@@ -94,13 +121,8 @@ export function useSessionActions({ session }: UseSessionActionsProps) {
     }
   })
 
-  // R key to show response input
-  useHotkeys('r', event => {
-    if (session.status !== 'failed' && !showResponseInput) {
-      event.preventDefault()
-      setShowResponseInput(true)
-    }
-  })
+  // R key - no longer needed since input is always visible
+  // Keeping the hotkey registration but making it a no-op to avoid breaking anything
 
   // P key to navigate to parent session
   useHotkeys('p', () => {
@@ -110,13 +132,12 @@ export function useSessionActions({ session }: UseSessionActionsProps) {
   })
 
   return {
-    showResponseInput,
-    setShowResponseInput,
     responseInput,
     setResponseInput,
     isResponding,
     handleContinueSession,
     handleResponseInputKeyDown,
     handleNavigateToParent,
+    isForkMode: !!forkFromSessionId,
   }
 }

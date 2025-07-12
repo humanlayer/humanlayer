@@ -40,6 +40,7 @@ export function ConversationContent({
   expandedToolResult,
   setExpandedToolResult,
   setExpandedToolCall,
+  maxEventIndex,
 }: {
   sessionId: string
   focusedEventId: number | null
@@ -59,18 +60,25 @@ export function ConversationContent({
   expandedToolResult?: ConversationEvent | null
   setExpandedToolResult?: (event: ConversationEvent | null) => void
   setExpandedToolCall?: (event: ConversationEvent | null) => void
+  maxEventIndex?: number
 }) {
   // expandedToolResult is used by parent to control hotkey availability
   void expandedToolResult
   const { events, loading, error, isInitialLoad } = useConversation(sessionId, undefined, 1000)
-  const toolResults = events.filter(event => event.event_type === ConversationEventType.ToolResult)
+
+  // Filter events based on maxEventIndex (exclude the event at maxEventIndex)
+  const filteredEvents = maxEventIndex !== undefined ? events.slice(0, maxEventIndex) : events
+
+  const toolResults = filteredEvents.filter(
+    event => event.event_type === ConversationEventType.ToolResult,
+  )
   const toolResultsByKey = keyBy(toolResults, 'tool_result_for_id')
 
   // Use task grouping hook
   const { taskGroups, rootEvents, hasSubTasks, expandedTasks, toggleTaskGroup } =
-    useTaskGrouping(events)
+    useTaskGrouping(filteredEvents)
 
-  const displayObjects = events
+  const displayObjects = filteredEvents
     .filter(event => event.event_type !== ConversationEventType.ToolResult)
     .map(event =>
       eventToDisplayObject(
@@ -104,8 +112,8 @@ export function ConversationContent({
 
       // Check if any events have changed (including tool results being added)
       const eventsChanged =
-        events.length !== previousEventsRef.current.length ||
-        events.some((event, index) => {
+        filteredEvents.length !== previousEventsRef.current.length ||
+        filteredEvents.some((event, index) => {
           const prevEvent = previousEventsRef.current[index]
           return (
             !prevEvent ||
@@ -124,13 +132,13 @@ export function ConversationContent({
         }, 50)
       }
       previousEventCountRef.current = nonEmptyDisplayObjects.length
-      previousEventsRef.current = [...events]
+      previousEventsRef.current = [...filteredEvents]
     }
 
     if (!starryNight) {
       createStarryNight([textMd, jsonGrammar]).then(sn => (starryNight = sn))
     }
-  }, [loading, nonEmptyDisplayObjects.length, events])
+  }, [loading, nonEmptyDisplayObjects.length, filteredEvents])
 
   // Scroll focused event into view (only for keyboard navigation)
   useEffect(() => {
@@ -152,7 +160,7 @@ export function ConversationContent({
   useEffect(() => {
     if (denyingApprovalId && containerRef.current) {
       // Find the event that contains this approval
-      const event = events.find(e => e.approval_id === denyingApprovalId)
+      const event = filteredEvents.find(e => e.approval_id === denyingApprovalId)
       if (event && !event.approval_status) {
         const eventElement = containerRef.current.querySelector(`[data-event-id="${event.id}"]`)
         if (eventElement) {
@@ -169,7 +177,7 @@ export function ConversationContent({
         }
       }
     }
-  }, [denyingApprovalId, events])
+  }, [denyingApprovalId, filteredEvents])
 
   if (error) {
     return <div className="text-destructive">Error loading conversation: {error}</div>
@@ -186,7 +194,7 @@ export function ConversationContent({
   }
 
   // No events yet.
-  if (events.length === 0) {
+  if (filteredEvents.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-8 text-center">
         <div className="text-muted-foreground mb-2">
