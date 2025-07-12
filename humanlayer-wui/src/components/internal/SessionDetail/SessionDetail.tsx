@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 
 import { ConversationEvent, SessionInfo, ApprovalStatus, SessionStatus } from '@/lib/daemon/types'
@@ -18,6 +18,7 @@ import { TodoWidget } from './components/TodoWidget'
 import { ResponseInput } from './components/ResponseInput'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { AutoAcceptIndicator } from './AutoAcceptIndicator'
+import { ForkViewModal } from './components/ForkViewModal'
 
 // Import hooks
 import { useSessionActions } from './hooks/useSessionActions'
@@ -39,6 +40,9 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [expandedToolResult, setExpandedToolResult] = useState<ConversationEvent | null>(null)
   const [expandedToolCall, setExpandedToolCall] = useState<ConversationEvent | null>(null)
   const [isSplitView, setIsSplitView] = useState(false)
+  const [forkViewOpen, setForkViewOpen] = useState(false)
+  const [previewEventIndex, setPreviewEventIndex] = useState<number | null>(null)
+  const [pendingForkMessage, setPendingForkMessage] = useState<ConversationEvent | null>(null)
 
   const isRunning = session.status === 'running'
 
@@ -61,6 +65,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     expandedToolResult,
     setExpandedToolResult,
     setExpandedToolCall,
+    disabled: forkViewOpen, // Disable navigation when fork view is open
   })
 
   // Use approvals hook
@@ -72,8 +77,56 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     setFocusSource: navigation.setFocusSource,
   })
 
+  // Add fork commit handler
+  const handleForkCommit = useCallback(() => {
+    // Reset preview state after successful fork
+    setPreviewEventIndex(null)
+    setPendingForkMessage(null)
+    setForkViewOpen(false)
+  }, [])
+
   // Use session actions hook
-  const actions = useSessionActions({ session, onClose })
+  const actions = useSessionActions({
+    session,
+    onClose,
+    pendingForkMessage,
+    onForkCommit: handleForkCommit,
+  })
+
+  // Add fork selection handler
+  const handleForkSelect = useCallback(
+    (eventIndex: number | null) => {
+      if (eventIndex === null) {
+        // Return to current state - clear everything
+        setPreviewEventIndex(null)
+        setPendingForkMessage(null)
+        // Also clear the response input when selecting "Current"
+        actions.setResponseInput('')
+        return
+      }
+
+      // Set preview mode
+      setPreviewEventIndex(eventIndex)
+
+      // Find the selected user message
+      const selectedEvent = events[eventIndex]
+      if (selectedEvent?.event_type === 'message' && selectedEvent?.role === 'user') {
+        // Find the session ID from the event before this one
+        const previousEvent = eventIndex > 0 ? events[eventIndex - 1] : null
+        const forkFromSessionId = previousEvent?.session_id || session.id
+
+        // Store both the message content and the session ID to fork from
+        setPendingForkMessage({
+          ...selectedEvent,
+          session_id: forkFromSessionId, // Override with the previous event's session ID
+        })
+      }
+    },
+    [events, actions],
+  )
+
+  // We no longer automatically clear preview when closing
+  // This allows the preview to persist after selecting with Enter
 
   // Screen size detection for responsive layout
   useEffect(() => {
@@ -104,6 +157,11 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       if ((ev.target as HTMLElement)?.dataset.slot === 'dialog-close') {
         console.warn('Ignoring onClose triggered by dialog-close in SessionDetail')
         return null
+      }
+
+      // Don't process escape if fork view is open
+      if (forkViewOpen) {
+        return
       }
 
       if (approvals.confirmingApprovalId) {
@@ -139,6 +197,16 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       preventDefault: true,
     },
     [session.id, autoAcceptEdits], // Dependencies
+  )
+
+  // Add hotkey to open fork view (Meta+Y)
+  useHotkeys(
+    'meta+y',
+    e => {
+      e.preventDefault()
+      setForkViewOpen(!forkViewOpen)
+    },
+    { scopes: [SessionDetailHotkeysScope] },
   )
 
   useStealHotkeyScope(SessionDetailHotkeysScope)
@@ -197,40 +265,77 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   return (
     <section className={`flex flex-col h-full ${isCompactView ? 'gap-2' : 'gap-4'}`}>
       {!isCompactView && (
-        <hgroup className="flex flex-col gap-1">
-          <h2 className="text-lg font-medium text-foreground font-mono flex items-center gap-2">
-            {session.archived && <Archive className="h-4 w-4 text-muted-foreground" />}
-            <span>
-              {session.summary || truncate(session.query, 50)}{' '}
-              {session.parent_session_id && <span className="text-muted-foreground">[continued]</span>}
-            </span>
-          </h2>
-          <small
-            className={`font-mono text-xs uppercase tracking-wider ${getStatusTextClass(session.status)}`}
-          >
-            {`${session.status}${session.model ? ` / ${session.model}` : ''}`}
-          </small>
-          {session.working_dir && (
-            <small className="font-mono text-xs text-muted-foreground">{session.working_dir}</small>
-          )}
-        </hgroup>
+        <div className="flex items-start justify-between">
+          <hgroup className="flex flex-col gap-1 flex-1">
+            <h2 className="text-lg font-medium text-foreground font-mono flex items-center gap-2">
+              {session.archived && <Archive className="h-4 w-4 text-muted-foreground" />}
+              <span>
+                {session.summary || truncate(session.query, 50)}{' '}
+                {session.parent_session_id && (
+                  <span className="text-muted-foreground">[continued]</span>
+                )}
+              </span>
+            </h2>
+            <small
+              className={`font-mono text-xs uppercase tracking-wider ${getStatusTextClass(session.status)}`}
+            >
+              {`${session.status}${session.model ? ` / ${session.model}` : ''}`}
+            </small>
+            {session.working_dir && (
+              <small className="font-mono text-xs text-muted-foreground">{session.working_dir}</small>
+            )}
+          </hgroup>
+          <ForkViewModal
+            events={events}
+            selectedEventIndex={previewEventIndex}
+            onSelectEvent={handleForkSelect}
+            isOpen={forkViewOpen}
+            onOpenChange={setForkViewOpen}
+          />
+        </div>
       )}
       {isCompactView && (
-        <hgroup className="flex flex-col gap-0.5">
-          <h2 className="text-sm font-medium text-foreground font-mono flex items-center gap-2">
-            {session.archived && <Archive className="h-3 w-3 text-muted-foreground" />}
-            <span>
-              {session.summary || truncate(session.query, 50)}{' '}
-              {session.parent_session_id && <span className="text-muted-foreground">[continued]</span>}
-            </span>
-          </h2>
-          <small
-            className={`font-mono text-xs uppercase tracking-wider ${getStatusTextClass(session.status)}`}
-          >
-            {`${session.status}${session.model ? ` / ${session.model}` : ''}`}
-          </small>
-        </hgroup>
+        <div className="flex items-start justify-between">
+          <hgroup className="flex flex-col gap-0.5 flex-1">
+            <h2 className="text-sm font-medium text-foreground font-mono flex items-center gap-2">
+              {session.archived && <Archive className="h-3 w-3 text-muted-foreground" />}
+              <span>
+                {session.summary || truncate(session.query, 50)}{' '}
+                {session.parent_session_id && (
+                  <span className="text-muted-foreground">[continued]</span>
+                )}
+              </span>
+            </h2>
+            <small
+              className={`font-mono text-xs uppercase tracking-wider ${getStatusTextClass(session.status)}`}
+            >
+              {`${session.status}${session.model ? ` / ${session.model}` : ''}`}
+            </small>
+          </hgroup>
+          <ForkViewModal
+            events={events}
+            selectedEventIndex={previewEventIndex}
+            onSelectEvent={handleForkSelect}
+            isOpen={forkViewOpen}
+            onOpenChange={setForkViewOpen}
+          />
+        </div>
       )}
+
+      {/* Fork Mode Indicator */}
+      {previewEventIndex !== null && (
+        <div className="bg-amber-500/10 border border-amber-500/20 rounded-md px-3 py-2 mb-4 text-sm">
+          <span className="text-amber-600 dark:text-amber-400">
+            Fork mode: Forking from turn{' '}
+            {
+              events
+                .slice(0, previewEventIndex)
+                .filter(e => e.event_type === 'message' && e.role === 'user').length
+            }
+          </span>
+        </div>
+      )}
+
       <div className={`flex flex-1 gap-4 ${isWideView ? 'flex-row' : 'flex-col'} min-h-0`}>
         {/* Conversation content and Loading */}
         <Card
@@ -254,6 +359,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               setFocusSource={navigation.setFocusSource}
               setConfirmingApprovalId={approvals.setConfirmingApprovalId}
               expandedToolResult={expandedToolResult}
+              maxEventIndex={previewEventIndex ?? undefined}
             />
             {isRunning && (
               <div className="flex flex-col gap-1 mt-2 border-t pt-2">
@@ -306,6 +412,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
             isResponding={actions.isResponding}
             handleContinueSession={actions.handleContinueSession}
             handleResponseInputKeyDown={actions.handleResponseInputKeyDown}
+            isForkMode={actions.isForkMode}
           />
           <AutoAcceptIndicator enabled={autoAcceptEdits} className="mt-2" />
         </CardContent>
