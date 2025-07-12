@@ -51,7 +51,6 @@ export function ResponseInput({
     // Regular help text
     return getHelpText(session.status)
   }
-
   // Only show the simple status text if session is failed
   if (session.status === SessionStatus.Failed) {
     return (
