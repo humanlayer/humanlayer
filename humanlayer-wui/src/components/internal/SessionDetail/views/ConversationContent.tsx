@@ -221,8 +221,9 @@ export function ConversationContent({
                   const event = events.find(e => e.id === displayObject.id)
                   if (event?.event_type === ConversationEventType.ToolCall && event.tool_id) {
                     const toolResult = events.find(
-                      e => e.event_type === ConversationEventType.ToolResult &&
-                      e.tool_result_for_id === event.tool_id
+                      e =>
+                        e.event_type === ConversationEventType.ToolResult &&
+                        e.tool_result_for_id === event.tool_id,
                     )
                     if (toolResult && setExpandedToolResult && setExpandedToolCall) {
                       setExpandedToolResult(toolResult)
@@ -265,7 +266,6 @@ export function ConversationContent({
                   <p className="whitespace-pre-wrap text-foreground">{displayObject.body}</p>
                 )}
               </div>
-
             </div>
           ))}
         </div>
@@ -341,8 +341,9 @@ export function ConversationContent({
                       const event = events.find(e => e.id === displayObject.id)
                       if (event?.event_type === ConversationEventType.ToolCall && event.tool_id) {
                         const toolResult = events.find(
-                          e => e.event_type === ConversationEventType.ToolResult &&
-                          e.tool_result_for_id === event.tool_id
+                          e =>
+                            e.event_type === ConversationEventType.ToolResult &&
+                            e.tool_result_for_id === event.tool_id,
                         )
                         if (toolResult && setExpandedToolResult && setExpandedToolCall) {
                           setExpandedToolResult(toolResult)
@@ -384,7 +385,6 @@ export function ConversationContent({
                       <p className="whitespace-pre-wrap text-foreground">{displayObject.body}</p>
                     )}
                   </div>
-
                 </div>
               )
             }
