@@ -24,9 +24,9 @@ export function ToolResultModal({
   onClose: () => void
 }) {
 
-  // Handle j/k navigation - using priority to override background hotkeys
+  // Handle j/k and arrow key navigation - using priority to override background hotkeys
   useHotkeys(
-    'j',
+    'j,down',
     e => {
       e.preventDefault()
       e.stopPropagation()
@@ -47,7 +47,7 @@ export function ToolResultModal({
   )
 
   useHotkeys(
-    'k',
+    'k,up',
     e => {
       e.preventDefault()
       e.stopPropagation()
@@ -90,8 +90,8 @@ export function ToolResultModal({
         !open && onClose()
       }}
     >
-      <DialogContent className="w-[90vw] max-w-[90vw] h-[85vh] p-0 sm:max-w-[90vw]">
-        <DialogHeader className="px-4 py-3 border-b bg-background">
+      <DialogContent className="w-[90vw] max-w-[90vw] h-[85vh] p-0 sm:max-w-[90vw] flex flex-col overflow-hidden">
+        <DialogHeader className="px-4 py-3 border-b bg-background flex-none">
           <DialogTitle className="text-sm font-mono">
             <div className="flex items-center gap-2">
               {/* Add tool icon */}
@@ -109,29 +109,31 @@ export function ToolResultModal({
           </DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="flex-1">
-          <div className="px-4 py-4 space-y-4">
-            {/* Tool Input Section */}
-            {toolCall?.tool_input_json && (
+        <div className="flex-1 overflow-hidden">
+          <ScrollArea className="h-full">
+            <div className="px-4 py-4 space-y-4">
+              {/* Tool Input Section */}
+              {toolCall?.tool_input_json && (
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground mb-2">Input</h3>
+                  {renderToolInput(toolCall)}
+                </div>
+              )}
+
+              {/* Tool Result Section */}
               <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-2">Input</h3>
-                {renderToolInput(toolCall)}
+                <h3 className="text-sm font-medium text-muted-foreground mb-2">Result</h3>
+                <pre className="font-mono text-sm whitespace-pre-wrap break-words">
+                  {toolResult.tool_result_content || 'No content'}
+                </pre>
               </div>
-            )}
-
-            {/* Tool Result Section */}
-            <div>
-              <h3 className="text-sm font-medium text-muted-foreground mb-2">Result</h3>
-              <pre className="font-mono text-sm whitespace-pre-wrap break-words">
-                {toolResult.tool_result_content || 'No content'}
-              </pre>
             </div>
-          </div>
-        </ScrollArea>
+          </ScrollArea>
+        </div>
 
-        <div className="px-4 py-2 border-t bg-muted/30 flex justify-between items-center">
+        <div className="px-4 py-2 border-t bg-muted/30 flex justify-between items-center flex-none">
           <span className="text-xs text-muted-foreground">
-            <kbd>j/k</kbd> to scroll
+            <kbd>j/k</kbd> or <kbd>↓/↑</kbd> to scroll
           </span>
           <span className="text-xs text-muted-foreground">
             <kbd>ESC</kbd> to close
