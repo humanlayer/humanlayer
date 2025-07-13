@@ -150,16 +150,19 @@ export function useSessionNavigation({
     () => {
       if (focusedEventId && setExpandedToolResult && setExpandedToolCall) {
         const focusedEvent = events.find(e => e.id === focusedEventId)
-        if (focusedEvent?.event_type === ConversationEventType.ToolCall && focusedEvent.tool_id) {
-          const toolResult = events.find(
-            e =>
-              e.event_type === ConversationEventType.ToolResult &&
-              e.tool_result_for_id === focusedEvent.tool_id,
-          )
-          if (toolResult) {
-            setExpandedToolResult(toolResult)
-            setExpandedToolCall(focusedEvent)
-          }
+        if (focusedEvent?.event_type === ConversationEventType.ToolCall) {
+          // Try to find the tool result if it exists
+          const toolResult = focusedEvent.tool_id
+            ? events.find(
+                e =>
+                  e.event_type === ConversationEventType.ToolResult &&
+                  e.tool_result_for_id === focusedEvent.tool_id,
+              )
+            : null
+
+          // Show modal with or without result (for unfinished tools)
+          setExpandedToolResult(toolResult || null)
+          setExpandedToolCall(focusedEvent)
         }
       }
     },

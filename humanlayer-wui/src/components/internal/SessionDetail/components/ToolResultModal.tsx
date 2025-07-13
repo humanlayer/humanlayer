@@ -39,7 +39,7 @@ export function ToolResultModal({
       }
     },
     {
-      enabled: !!toolResult,
+      enabled: !!(toolResult || toolCall),
       enableOnFormTags: true,
       preventDefault: true,
       scopes: ToolResultModalHotkeysScope,
@@ -60,7 +60,7 @@ export function ToolResultModal({
       }
     },
     {
-      enabled: !!toolResult,
+      enabled: !!(toolResult || toolCall),
       enableOnFormTags: true,
       preventDefault: true,
       scopes: ToolResultModalHotkeysScope,
@@ -81,11 +81,12 @@ export function ToolResultModal({
 
   useStealHotkeyScope(ToolResultModalHotkeysScope)
 
-  if (!toolResult) return null
+  // Show modal if we have either a tool result or just a tool call (unfinished)
+  if (!toolResult && !toolCall) return null
 
   return (
     <Dialog
-      open={!!toolResult}
+      open={!!(toolResult || toolCall)}
       onOpenChange={open => {
         !open && onClose()
       }}
@@ -98,7 +99,12 @@ export function ToolResultModal({
               <span className="text-accent">
                 {getToolIcon(toolCall?.tool_name)}
               </span>
-              <span>{toolCall?.tool_name || 'Tool Result'}</span>
+              <span>
+                {toolCall?.tool_name || 'Tool Result'}
+                {!toolResult && toolCall && !toolCall.is_completed && (
+                  <span className="text-xs text-muted-foreground ml-2">(in progress)</span>
+                )}
+              </span>
               {/* Show primary parameter */}
               {toolCall?.tool_input_json && (
                 <span className="text-xs text-muted-foreground">
@@ -120,13 +126,15 @@ export function ToolResultModal({
                 </div>
               )}
 
-              {/* Tool Result Section */}
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-2">Result</h3>
-                <pre className="font-mono text-sm whitespace-pre-wrap break-words">
-                  {toolResult.tool_result_content || 'No content'}
-                </pre>
-              </div>
+              {/* Tool Result Section - only show if we have a result */}
+              {toolResult && (
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground mb-2">Result</h3>
+                  <pre className="font-mono text-sm whitespace-pre-wrap break-words">
+                    {toolResult.tool_result_content || 'No content'}
+                  </pre>
+                </div>
+              )}
             </div>
           </ScrollArea>
         </div>

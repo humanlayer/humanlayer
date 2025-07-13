@@ -98,10 +98,17 @@ export function eventToDisplayObject(
       const toolInput = JSON.parse(event.tool_input_json!)
       subject = (
         <span>
-          <span className="font-bold">{event.tool_name} </span>
-          <span className="font-mono text-sm text-muted-foreground">
+          <div className="flex items-baseline gap-2">
+            <span className="font-bold">{event.tool_name} </span>
+            {toolInput.description && (
+              <span className="text-sm text-muted-foreground">
+                {toolInput.description}
+              </span>
+            )}
+          </div>
+          <div className="mt-1 font-mono text-sm text-muted-foreground">
             <CommandToken>{toolInput.command}</CommandToken>
-          </span>
+          </div>
         </span>
       )
     }
@@ -227,6 +234,9 @@ export function eventToDisplayObject(
     }
   }
 
+  // Store the formatted subject before approval handling overwrites it
+  const formattedToolSubject = subject
+
   // Approvals
   if (event.approval_status) {
     const approvalStatusToColor = {
@@ -350,18 +360,36 @@ export function eventToDisplayObject(
       )
     }
 
-    subject = (
-      <span>
-        <span className={`font-bold ${approvalStatusToColor[event.approval_status]}`}>
-          {event.tool_name}
+    // If we have a formatted subject from tool-specific rendering, use it
+    if (formattedToolSubject) {
+      subject = (
+        <span>
+          <div className="flex items-baseline gap-2">
+            <span className={`${approvalStatusToColor[event.approval_status]}`}>
+              {formattedToolSubject}
+            </span>
+            {event.approval_status === ApprovalStatus.Pending && (
+              <span className="text-sm text-muted-foreground">(needs approval)</span>
+            )}
+          </div>
+          {previewFile}
         </span>
-        {event.approval_status === ApprovalStatus.Pending && (
-          <span className="ml-2 text-sm text-muted-foreground">(needs approval)</span>
-        )}
-        {!previewFile && <div className="mt-4">{starryNightJson(event.tool_input_json!)}</div>}
-        {previewFile}
-      </span>
-    )
+      )
+    } else {
+      // Fallback to original behavior for tools without special formatting
+      subject = (
+        <span>
+          <span className={`font-bold ${approvalStatusToColor[event.approval_status]}`}>
+            {event.tool_name}
+          </span>
+          {event.approval_status === ApprovalStatus.Pending && (
+            <span className="ml-2 text-sm text-muted-foreground">(needs approval)</span>
+          )}
+          {!previewFile && <div className="mt-4">{starryNightJson(event.tool_input_json!)}</div>}
+          {previewFile}
+        </span>
+      )
+    }
 
     // Add approve/deny buttons for pending approvals
     if (event.approval_status === ApprovalStatus.Pending && event.approval_id && onApprove && onDeny) {

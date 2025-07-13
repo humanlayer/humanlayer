@@ -227,14 +227,16 @@ export function ConversationContent({
                 }}
                 onClick={() => {
                   const event = events.find(e => e.id === displayObject.id)
-                  if (event?.event_type === ConversationEventType.ToolCall && event.tool_id) {
-                    const toolResult = events.find(
-                      e =>
-                        e.event_type === ConversationEventType.ToolResult &&
-                        e.tool_result_for_id === event.tool_id,
-                    )
-                    if (toolResult && setExpandedToolResult && setExpandedToolCall) {
-                      setExpandedToolResult(toolResult)
+                  if (event?.event_type === ConversationEventType.ToolCall) {
+                    const toolResult = event.tool_id
+                      ? events.find(
+                          e =>
+                            e.event_type === ConversationEventType.ToolResult &&
+                            e.tool_result_for_id === event.tool_id,
+                        )
+                      : null
+                    if (setExpandedToolResult && setExpandedToolCall) {
+                      setExpandedToolResult(toolResult || null)
                       setExpandedToolCall(event)
                     }
                   }
@@ -347,14 +349,16 @@ export function ConversationContent({
                     }}
                     onClick={() => {
                       const event = events.find(e => e.id === displayObject.id)
-                      if (event?.event_type === ConversationEventType.ToolCall && event.tool_id) {
-                        const toolResult = events.find(
-                          e =>
-                            e.event_type === ConversationEventType.ToolResult &&
-                            e.tool_result_for_id === event.tool_id,
-                        )
-                        if (toolResult && setExpandedToolResult && setExpandedToolCall) {
-                          setExpandedToolResult(toolResult)
+                      if (event?.event_type === ConversationEventType.ToolCall) {
+                        const toolResult = event.tool_id
+                          ? events.find(
+                              e =>
+                                e.event_type === ConversationEventType.ToolResult &&
+                                e.tool_result_for_id === event.tool_id,
+                            )
+                          : null
+                        if (setExpandedToolResult && setExpandedToolCall) {
+                          setExpandedToolResult(toolResult || null)
                           setExpandedToolCall(event)
                         }
                       }

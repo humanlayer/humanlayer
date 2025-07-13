@@ -189,10 +189,10 @@ export function TaskGroup({
                   }}
                   onClick={() => {
                     const event = subEvent
-                    if (event?.event_type === ConversationEventType.ToolCall && event.tool_id) {
-                      const toolResult = toolResultsByKey[event.tool_id]
-                      if (toolResult && setExpandedToolResult && setExpandedToolCall) {
-                        setExpandedToolResult(toolResult)
+                    if (event?.event_type === ConversationEventType.ToolCall) {
+                      const toolResult = event.tool_id ? toolResultsByKey[event.tool_id] : null
+                      if (setExpandedToolResult && setExpandedToolCall) {
+                        setExpandedToolResult(toolResult || null)
                         setExpandedToolCall(event)
                       }
                     }
