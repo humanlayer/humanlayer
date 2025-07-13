@@ -1,3 +1,4 @@
+import React from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ConversationEvent } from '@/lib/daemon/types'
@@ -5,6 +6,7 @@ import { truncate } from '@/utils/formatting'
 import { useStealHotkeyScope } from '@/hooks/useStealHotkeyScope'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { getToolIcon } from '../eventToDisplayObject'
+import { CustomDiffViewer } from './CustomDiffViewer'
 
 // TODO(3): Add keyboard navigation hints in the UI
 // TODO(2): Consider adding copy-to-clipboard functionality for tool results
@@ -88,9 +90,9 @@ export function ToolResultModal({
         !open && onClose()
       }}
     >
-      <DialogContent className="w-[90vw] max-w-[1200px] h-[85vh] p-0">
-        <DialogHeader className="px-6 py-4 border-b bg-background">
-          <DialogTitle className="text-base font-medium">
+      <DialogContent className="w-[90vw] max-w-[90vw] h-[85vh] p-0 sm:max-w-[90vw]">
+        <DialogHeader className="px-4 py-3 border-b bg-background">
+          <DialogTitle className="text-sm font-mono">
             <div className="flex items-center gap-2">
               {/* Add tool icon */}
               <span className="text-accent">
@@ -99,7 +101,7 @@ export function ToolResultModal({
               <span>{toolCall?.tool_name || 'Tool Result'}</span>
               {/* Show primary parameter */}
               {toolCall?.tool_input_json && (
-                <span className="text-sm text-muted-foreground">
+                <span className="text-xs text-muted-foreground">
                   {getToolPrimaryParam(toolCall)}
                 </span>
               )}
@@ -108,28 +110,26 @@ export function ToolResultModal({
         </DialogHeader>
 
         <ScrollArea className="flex-1">
-          <div className="p-6 space-y-6">
+          <div className="px-4 py-4 space-y-4">
             {/* Tool Input Section */}
             {toolCall?.tool_input_json && (
               <div>
                 <h3 className="text-sm font-medium text-muted-foreground mb-2">Input</h3>
-                <pre className="font-mono text-sm whitespace-pre-wrap bg-muted/50 rounded-md p-4 overflow-x-auto">
-                  {formatToolInput(toolCall.tool_input_json)}
-                </pre>
+                {renderToolInput(toolCall)}
               </div>
             )}
 
             {/* Tool Result Section */}
             <div>
               <h3 className="text-sm font-medium text-muted-foreground mb-2">Result</h3>
-              <pre className="font-mono text-sm whitespace-pre-wrap">
+              <pre className="font-mono text-sm whitespace-pre-wrap break-words">
                 {toolResult.tool_result_content || 'No content'}
               </pre>
             </div>
           </div>
         </ScrollArea>
 
-        <div className="px-6 py-3 border-t bg-muted/30 flex justify-between items-center">
+        <div className="px-4 py-2 border-t bg-muted/30 flex justify-between items-center">
           <span className="text-xs text-muted-foreground">
             <kbd>j/k</kbd> to scroll
           </span>
@@ -177,5 +177,112 @@ function getToolPrimaryParam(toolCall: ConversationEvent): string {
     return firstValue ? truncate(String(firstValue), 60) : ''
   } catch {
     return ''
+  }
+}
+
+function renderToolInput(toolCall: ConversationEvent): React.ReactNode {
+  if (!toolCall.tool_input_json) return null
+  
+  try {
+    const args = JSON.parse(toolCall.tool_input_json)
+    
+    // Special rendering for MCP tools
+    if (toolCall.tool_name?.startsWith('mcp__')) {
+      const parts = toolCall.tool_name.split('__')
+      const service = parts[1] || 'unknown'
+      const method = parts.slice(2).join('__') || 'unknown'
+      
+      return (
+        <div className="space-y-2">
+          <div className="font-mono text-sm">
+            <span className="text-muted-foreground">Service:</span> <span className="font-bold">{service}</span>
+          </div>
+          <div className="font-mono text-sm">
+            <span className="text-muted-foreground">Method:</span> <span className="font-bold">{method}</span>
+          </div>
+          {Object.keys(args).length > 0 && (
+            <div className="font-mono text-sm">
+              <span className="text-muted-foreground">Parameters:</span>
+              <pre className="mt-1 whitespace-pre-wrap bg-muted/50 rounded-md p-3 break-words">
+                {JSON.stringify(args, null, 2)}
+              </pre>
+            </div>
+          )}
+        </div>
+      )
+    }
+    
+    // Special rendering for Write tool
+    if (toolCall.tool_name === 'Write') {
+      return (
+        <div className="space-y-2">
+          <div className="font-mono text-sm">
+            <span className="text-muted-foreground">File:</span> <span className="font-bold">{args.file_path}</span>
+          </div>
+          <div className="font-mono text-sm">
+            <span className="text-muted-foreground">Content:</span>
+            <pre className="mt-1 whitespace-pre-wrap bg-muted/50 rounded-md p-3 break-words">
+              {args.content}
+            </pre>
+          </div>
+        </div>
+      )
+    }
+    
+    // Special rendering for Edit tool
+    if (toolCall.tool_name === 'Edit') {
+      return (
+        <div className="space-y-2">
+          <div className="font-mono text-sm">
+            <span className="text-muted-foreground">File:</span> <span className="font-bold">{args.file_path}</span>
+          </div>
+          <div className="mt-2">
+            <CustomDiffViewer
+              edits={[{ oldValue: args.old_string, newValue: args.new_string }]}
+              splitView={false}
+            />
+          </div>
+        </div>
+      )
+    }
+    
+    // Special rendering for MultiEdit tool
+    if (toolCall.tool_name === 'MultiEdit') {
+      const allEdits = args.edits.map((e: any) => ({
+        oldValue: e.old_string,
+        newValue: e.new_string,
+      }))
+      
+      return (
+        <div className="space-y-2">
+          <div className="font-mono text-sm">
+            <span className="text-muted-foreground">File:</span> <span className="font-bold">{args.file_path}</span>
+          </div>
+          <div className="font-mono text-sm mb-2">
+            <span className="text-muted-foreground">{args.edits.length} edits</span>
+          </div>
+          <div className="mt-2">
+            <CustomDiffViewer 
+              edits={allEdits} 
+              splitView={false} 
+            />
+          </div>
+        </div>
+      )
+    }
+    
+    // Default JSON rendering for other tools
+    return (
+      <pre className="font-mono text-sm whitespace-pre-wrap bg-muted/50 rounded-md p-4 break-words">
+        {formatToolInput(toolCall.tool_input_json)}
+      </pre>
+    )
+  } catch {
+    // Fallback to raw display if JSON parsing fails
+    return (
+      <pre className="font-mono text-sm whitespace-pre-wrap bg-muted/50 rounded-md p-4 break-words">
+        {toolCall.tool_input_json}
+      </pre>
+    )
   }
 }

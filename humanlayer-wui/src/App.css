@@ -358,4 +358,44 @@
   .delay-300 {
     animation-delay: 300ms;
   }
+
+  /* Bouncing animations for bars spinner */
+  @keyframes bounce-slow {
+    0%, 100% {
+      transform: scaleY(1);
+    }
+    50% {
+      transform: scaleY(1.5);
+    }
+  }
+
+  @keyframes bounce-medium {
+    0%, 100% {
+      transform: scaleY(1);
+    }
+    50% {
+      transform: scaleY(1.8);
+    }
+  }
+
+  @keyframes bounce-fast {
+    0%, 100% {
+      transform: scaleY(1);
+    }
+    50% {
+      transform: scaleY(2);
+    }
+  }
+
+  .animate-bounce-slow {
+    animation: bounce-slow 1.4s ease-in-out infinite;
+  }
+
+  .animate-bounce-medium {
+    animation: bounce-medium 1s ease-in-out infinite;
+  }
+
+  .animate-bounce-fast {
+    animation: bounce-fast 0.8s ease-in-out infinite;
+  }
 }

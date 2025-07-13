@@ -90,18 +90,49 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [previewEventIndex, setPreviewEventIndex] = useState<number | null>(null)
   const [pendingForkMessage, setPendingForkMessage] = useState<ConversationEvent | null>(null)
 
-  const isRunning = session.status === 'running'
+  const isActivelyProcessing = ['starting', 'running', 'completing'].includes(session.status)
   const responseInputRef = useRef<HTMLTextAreaElement>(null)
 
   // Get session from store to access auto_accept_edits
   const sessionFromStore = useStore(state => state.sessions.find(s => s.id === session.id))
   const autoAcceptEdits = sessionFromStore?.auto_accept_edits ?? false
 
-  // Generate random verb that changes each render
-  const randomVerb = useMemo(() => {
+  // Generate random verb that changes every 10-20 seconds
+  const [randomVerb, setRandomVerb] = useState(() => {
     const verb = ROBOT_VERBS[Math.floor(Math.random() * ROBOT_VERBS.length)]
     return verb.charAt(0).toUpperCase() + verb.slice(1)
-  }, [isRunning]) // Re-generate when isRunning changes
+  })
+
+  // Randomly choose spinner type on mount (0: fancy, 1: simple, 2: minimal, 3: bars)
+  const spinnerType = useMemo(() => Math.floor(Math.random() * 4), [])
+
+  useEffect(() => {
+    if (!isActivelyProcessing) return
+
+    const changeVerb = () => {
+      const verb = ROBOT_VERBS[Math.floor(Math.random() * ROBOT_VERBS.length)]
+      setRandomVerb(verb.charAt(0).toUpperCase() + verb.slice(1))
+    }
+
+    let intervalId: NodeJS.Timeout
+
+    // Function to schedule next change
+    const scheduleNextChange = () => {
+      const delay = 2000 + Math.random() * 18000 // 2-20 seconds
+      intervalId = setTimeout(() => {
+        changeVerb()
+        scheduleNextChange() // Schedule the next change
+      }, delay)
+    }
+
+    // Start the first scheduled change
+    scheduleNextChange()
+
+    // Cleanup
+    return () => {
+      if (intervalId) clearTimeout(intervalId)
+    }
+  }, [isActivelyProcessing])
 
   // Get events for sidebar access
   const { events } = useConversation(session.id)
@@ -437,9 +468,10 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               setExpandedToolCall={setExpandedToolCall}
               maxEventIndex={previewEventIndex ?? undefined}
             />
-            {isRunning && (
-              <div className="flex items-center gap-4 mt-6 pl-4">
-                <div className="relative w-16 h-16">
+            {isActivelyProcessing && (() => {
+              // Fancy complex spinner
+              const fancySpinner = (
+                <div className="relative w-10 h-10">
                   {/* Outermost orbiting particles */}
                   <div className="absolute inset-0 animate-spin-slow">
                     <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary/40 animate-pulse" />
@@ -470,20 +502,71 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                   {/* Center glow */}
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="relative">
-                      <div className="absolute w-3 h-3 rounded-full bg-primary/80 animate-ping" />
-                      <div className="relative w-3 h-3 rounded-full bg-primary animate-pulse-bright" />
+                      <div className="absolute w-2 h-2 rounded-full bg-primary/80 animate-ping" />
+                      <div className="relative w-2 h-2 rounded-full bg-primary animate-pulse-bright" />
                     </div>
                   </div>
                   
                   {/* Random glitch effect */}
                   <div className="absolute inset-0 rounded-full opacity-20 animate-glitch" />
                 </div>
-                
-                <p className="text-sm font-medium text-muted-foreground opacity-80 animate-fade-pulse">
-                  {randomVerb}
-                </p>
-              </div>
-            )}
+              )
+
+              // Simple minimal spinner
+              const simpleSpinner = (
+                <div className="relative w-10 h-10">
+                  {/* Single spinning ring */}
+                  <div className="absolute inset-0 rounded-full border-2 border-primary/20 border-t-primary/60 animate-spin" />
+                  
+                  {/* Pulsing center dot */}
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-2 h-2 rounded-full bg-primary/50 animate-pulse" />
+                  </div>
+                  
+                  {/* Simple gradient overlay */}
+                  <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary/10 to-transparent" />
+                </div>
+              )
+
+              // Ultra minimal spinner
+              const minimalSpinner = (
+                <div className="relative w-10 h-10">
+                  {/* Three dots rotating */}
+                  <div className="absolute inset-0 animate-spin">
+                    <div className="absolute top-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-primary/60" />
+                    <div className="absolute bottom-1 left-2 w-1.5 h-1.5 rounded-full bg-primary/40" />
+                    <div className="absolute bottom-1 right-2 w-1.5 h-1.5 rounded-full bg-primary/40" />
+                  </div>
+                </div>
+              )
+
+              // Bouncing bars spinner
+              const barsSpinner = (
+                <div className="relative w-10 h-10 flex items-center justify-center gap-1">
+                  {/* Five bouncing bars */}
+                  <div className="w-1 h-6 bg-primary/40 rounded-full animate-bounce-slow" />
+                  <div className="w-1 h-8 bg-primary/60 rounded-full animate-bounce-medium" />
+                  <div className="w-1 h-5 bg-primary/80 rounded-full animate-bounce-fast" />
+                  <div className="w-1 h-7 bg-primary/60 rounded-full animate-bounce-medium delay-150" />
+                  <div className="w-1 h-4 bg-primary/40 rounded-full animate-bounce-slow delay-300" />
+                </div>
+              )
+
+              // Select spinner based on random type
+              const spinner = spinnerType === 0 ? fancySpinner : 
+                            spinnerType === 1 ? simpleSpinner : 
+                            spinnerType === 2 ? minimalSpinner : 
+                            barsSpinner
+
+              return (
+                <div className="flex items-center gap-3 mt-4 pl-4">
+                  {spinner}
+                  <p className="text-sm font-medium text-muted-foreground opacity-80 animate-fade-pulse">
+                    {randomVerb}
+                  </p>
+                </div>
+              )
+            })()}
 
             {/* Status bar for pending approvals */}
             <div
