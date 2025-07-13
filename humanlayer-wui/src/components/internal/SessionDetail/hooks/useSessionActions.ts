@@ -96,9 +96,6 @@ export function useSessionActions({
       if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault()
         handleContinueSession()
-      } else if (e.key === 'Escape') {
-        // Clear the input on escape
-        setResponseInput('')
       }
     },
     [handleContinueSession],

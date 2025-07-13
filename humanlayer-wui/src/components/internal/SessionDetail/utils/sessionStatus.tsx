@@ -23,13 +23,13 @@ export const getHelpText = (status: string): React.ReactNode => {
   if (status === 'running' || status === 'starting') {
     return (
       <>
-        <Kbd>{sendKey}</Kbd> to interrupt and send, <Kbd className="ml-1">Escape</Kbd> to clear
+        <Kbd>{sendKey}</Kbd> to interrupt and send
       </>
     )
   }
   return (
     <>
-      <Kbd>{sendKey}</Kbd> to send, <Kbd className="ml-1">Escape</Kbd> to clear
+      <Kbd>{sendKey}</Kbd> to send
     </>
   )
 }

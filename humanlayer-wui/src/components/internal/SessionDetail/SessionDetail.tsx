@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 
 import { ConversationEvent, SessionInfo, ApprovalStatus, SessionStatus } from '@/lib/daemon/types'
@@ -45,6 +45,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [pendingForkMessage, setPendingForkMessage] = useState<ConversationEvent | null>(null)
 
   const isRunning = session.status === 'running'
+  const responseInputRef = useRef<HTMLTextAreaElement>(null)
 
   // Get session from store to access auto_accept_edits
   const sessionFromStore = useStore(state => state.sessions.find(s => s.id === session.id))
@@ -141,6 +142,20 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     return () => window.removeEventListener('resize', checkScreenSize)
   }, [])
 
+  // Auto-focus text input and scroll to bottom when session opens
+  useEffect(() => {
+    // Focus the text input
+    if (responseInputRef.current && session.status !== SessionStatus.Failed) {
+      responseInputRef.current.focus()
+    }
+
+    // Scroll to bottom of conversation
+    const container = document.querySelector('[data-conversation-container]')
+    if (container) {
+      container.scrollTop = container.scrollHeight
+    }
+  }, [session.id]) // Re-run when session changes
+
   // Check if there are pending approvals out of view
   const [hasPendingApprovalsOutOfView, setHasPendingApprovalsOutOfView] = useState(false)
 
@@ -164,6 +179,12 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         return
       }
 
+      // If the textarea is focused, blur it and stop processing
+      if (ev.target === responseInputRef.current && responseInputRef.current) {
+        responseInputRef.current.blur()
+        return
+      }
+
       if (approvals.confirmingApprovalId) {
         approvals.setConfirmingApprovalId(null)
       } else if (navigation.focusedEventId) {
@@ -172,7 +193,10 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         onClose()
       }
     },
-    { scopes: SessionDetailHotkeysScope },
+    { 
+      scopes: SessionDetailHotkeysScope,
+      enableOnFormTags: true  // Enable escape key in form elements like textarea
+    },
   )
 
   // Add Shift+Tab handler for auto-accept edits mode
@@ -406,6 +430,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       <Card className={isCompactView ? 'py-2' : 'py-4'}>
         <CardContent className={isCompactView ? 'px-2' : 'px-4'}>
           <ResponseInput
+            ref={responseInputRef}
             session={session}
             responseInput={actions.responseInput}
             setResponseInput={actions.setResponseInput}
