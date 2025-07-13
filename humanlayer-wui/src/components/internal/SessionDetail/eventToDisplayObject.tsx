@@ -7,7 +7,18 @@ import React from 'react'
 
 import { ConversationEvent, ConversationEventType, ApprovalStatus } from '@/lib/daemon/types'
 import { Button } from '@/components/ui/button'
-import { Bot, FilePenLine, UserCheck, User, Wrench, Globe, FileText, Terminal, Search, ListTodo } from 'lucide-react'
+import {
+  Bot,
+  FilePenLine,
+  UserCheck,
+  User,
+  Wrench,
+  Globe,
+  FileText,
+  Terminal,
+  Search,
+  ListTodo,
+} from 'lucide-react'
 import { CommandToken } from '@/components/internal/CommandToken'
 import { formatToolResult } from './formatToolResult'
 import { DiffViewToggle } from './components/DiffViewToggle'
@@ -101,9 +112,7 @@ export function eventToDisplayObject(
           <div className="flex items-baseline gap-2">
             <span className="font-bold">{event.tool_name} </span>
             {toolInput.description && (
-              <span className="text-sm text-muted-foreground">
-                {toolInput.description}
-              </span>
+              <span className="text-sm text-muted-foreground">{toolInput.description}</span>
             )}
           </div>
           <div className="mt-1 font-mono text-sm text-muted-foreground">
@@ -481,38 +490,48 @@ export function eventToDisplayObject(
   }
 
   // Display tool result content for tool calls
-  if (event.event_type === ConversationEventType.ToolCall && toolResult) {
-    // For denied approvals, show the denial comment in red
-    if (event.approval_status === ApprovalStatus.Denied) {
-      subject = (
-        <>
-          {subject}
-          <div className="mt-1 text-sm font-mono flex items-start gap-1">
-            <span className="text-muted-foreground/50">⎿</span>
-            <span className="text-destructive">
-              Denied: {toolResult.tool_result_content || 'No reason provided'}
-            </span>
-          </div>
-        </>
-      )
-    } else {
-      // Normal tool result display
-      const resultDisplay = formatToolResult(event.tool_name || '', toolResult)
-      if (resultDisplay) {
-        // Append to existing subject with indentation
+  if (event.event_type === ConversationEventType.ToolCall) {
+    if (toolResult) {
+      // For denied approvals, show the denial comment in red
+      if (event.approval_status === ApprovalStatus.Denied) {
         subject = (
           <>
             {subject}
-            <div className="mt-1 text-sm text-muted-foreground font-mono flex items-start gap-1">
+            <div className="mt-1 text-sm font-mono flex items-start gap-1">
               <span className="text-muted-foreground/50">⎿</span>
-              <span>
-                {resultDisplay}
-                {isFocused && <span className="text-xs text-muted-foreground/50 ml-2">[i] expand</span>}
+              <span className="text-destructive">
+                Denied: {toolResult.tool_result_content || 'No reason provided'}
               </span>
             </div>
           </>
         )
+      } else {
+        // Normal tool result display
+        const resultDisplay = formatToolResult(event.tool_name || '', toolResult)
+        if (resultDisplay) {
+          // Append to existing subject with indentation
+          subject = (
+            <>
+              {subject}
+              <div className="mt-1 text-sm text-muted-foreground font-mono flex items-start gap-1">
+                <span className="text-muted-foreground/50">⎿</span>
+                <span>
+                  {resultDisplay}
+                  {isFocused && <span className="text-xs text-muted-foreground/50 ml-2">[i] expand</span>}
+                </span>
+              </div>
+            </>
+          )
+        }
       }
+    } else if (isFocused) {
+      // For unfinished tools, just show the expand hint
+      subject = (
+        <>
+          {subject}
+          <span className="text-xs text-muted-foreground/50 ml-2">[i] expand</span>
+        </>
+      )
     }
   }
 

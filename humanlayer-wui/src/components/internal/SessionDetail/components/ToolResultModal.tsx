@@ -23,7 +23,6 @@ export function ToolResultModal({
   toolResult: ConversationEvent | null
   onClose: () => void
 }) {
-
   // Handle j/k and arrow key navigation - using priority to override background hotkeys
   useHotkeys(
     'j,down',
@@ -96,9 +95,7 @@ export function ToolResultModal({
           <DialogTitle className="text-sm font-mono">
             <div className="flex items-center gap-2">
               {/* Add tool icon */}
-              <span className="text-accent">
-                {getToolIcon(toolCall?.tool_name)}
-              </span>
+              <span className="text-accent">{getToolIcon(toolCall?.tool_name)}</span>
               <span>
                 {toolCall?.tool_name || 'Tool Result'}
                 {!toolResult && toolCall && !toolCall.is_completed && (
@@ -107,9 +104,7 @@ export function ToolResultModal({
               </span>
               {/* Show primary parameter */}
               {toolCall?.tool_input_json && (
-                <span className="text-xs text-muted-foreground">
-                  {getToolPrimaryParam(toolCall)}
-                </span>
+                <span className="text-xs text-muted-foreground">{getToolPrimaryParam(toolCall)}</span>
               )}
             </div>
           </DialogTitle>
@@ -165,10 +160,10 @@ function formatToolInput(inputJson: string | undefined): string {
 
 function getToolPrimaryParam(toolCall: ConversationEvent): string {
   if (!toolCall.tool_input_json) return ''
-  
+
   try {
     const args = JSON.parse(toolCall.tool_input_json)
-    
+
     // Show the most relevant argument based on tool name
     if (toolCall.tool_name === 'Read' && args.file_path) {
       return args.file_path
@@ -181,7 +176,7 @@ function getToolPrimaryParam(toolCall: ConversationEvent): string {
     } else if (toolCall.tool_name === 'Grep' && args.pattern) {
       return args.pattern
     }
-    
+
     // For other tools, show the first string value
     const firstValue = Object.values(args).find(v => typeof v === 'string')
     return firstValue ? truncate(String(firstValue), 60) : ''
@@ -192,23 +187,25 @@ function getToolPrimaryParam(toolCall: ConversationEvent): string {
 
 function renderToolInput(toolCall: ConversationEvent): React.ReactNode {
   if (!toolCall.tool_input_json) return null
-  
+
   try {
     const args = JSON.parse(toolCall.tool_input_json)
-    
+
     // Special rendering for MCP tools
     if (toolCall.tool_name?.startsWith('mcp__')) {
       const parts = toolCall.tool_name.split('__')
       const service = parts[1] || 'unknown'
       const method = parts.slice(2).join('__') || 'unknown'
-      
+
       return (
         <div className="space-y-2">
           <div className="font-mono text-sm">
-            <span className="text-muted-foreground">Service:</span> <span className="font-bold">{service}</span>
+            <span className="text-muted-foreground">Service:</span>{' '}
+            <span className="font-bold">{service}</span>
           </div>
           <div className="font-mono text-sm">
-            <span className="text-muted-foreground">Method:</span> <span className="font-bold">{method}</span>
+            <span className="text-muted-foreground">Method:</span>{' '}
+            <span className="font-bold">{method}</span>
           </div>
           {Object.keys(args).length > 0 && (
             <div className="font-mono text-sm">
@@ -221,13 +218,14 @@ function renderToolInput(toolCall: ConversationEvent): React.ReactNode {
         </div>
       )
     }
-    
+
     // Special rendering for Write tool
     if (toolCall.tool_name === 'Write') {
       return (
         <div className="space-y-2">
           <div className="font-mono text-sm">
-            <span className="text-muted-foreground">File:</span> <span className="font-bold">{args.file_path}</span>
+            <span className="text-muted-foreground">File:</span>{' '}
+            <span className="font-bold">{args.file_path}</span>
           </div>
           <div className="font-mono text-sm">
             <span className="text-muted-foreground">Content:</span>
@@ -238,13 +236,14 @@ function renderToolInput(toolCall: ConversationEvent): React.ReactNode {
         </div>
       )
     }
-    
+
     // Special rendering for Edit tool
     if (toolCall.tool_name === 'Edit') {
       return (
         <div className="space-y-2">
           <div className="font-mono text-sm">
-            <span className="text-muted-foreground">File:</span> <span className="font-bold">{args.file_path}</span>
+            <span className="text-muted-foreground">File:</span>{' '}
+            <span className="font-bold">{args.file_path}</span>
           </div>
           <div className="mt-2">
             <CustomDiffViewer
@@ -255,32 +254,30 @@ function renderToolInput(toolCall: ConversationEvent): React.ReactNode {
         </div>
       )
     }
-    
+
     // Special rendering for MultiEdit tool
     if (toolCall.tool_name === 'MultiEdit') {
       const allEdits = args.edits.map((e: any) => ({
         oldValue: e.old_string,
         newValue: e.new_string,
       }))
-      
+
       return (
         <div className="space-y-2">
           <div className="font-mono text-sm">
-            <span className="text-muted-foreground">File:</span> <span className="font-bold">{args.file_path}</span>
+            <span className="text-muted-foreground">File:</span>{' '}
+            <span className="font-bold">{args.file_path}</span>
           </div>
           <div className="font-mono text-sm mb-2">
             <span className="text-muted-foreground">{args.edits.length} edits</span>
           </div>
           <div className="mt-2">
-            <CustomDiffViewer 
-              edits={allEdits} 
-              splitView={false} 
-            />
+            <CustomDiffViewer edits={allEdits} splitView={false} />
           </div>
         </div>
       )
     }
-    
+
     // Default JSON rendering for other tools
     return (
       <pre className="font-mono text-sm whitespace-pre-wrap bg-muted/50 rounded-md p-4 break-words">
