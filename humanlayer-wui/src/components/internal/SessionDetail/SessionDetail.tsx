@@ -1,10 +1,9 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 
 import { ConversationEvent, SessionInfo, ApprovalStatus, SessionStatus } from '@/lib/daemon/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { useConversation } from '@/hooks/useConversation'
-import { Skeleton } from '@/components/ui/skeleton'
 import { ChevronDown, Archive } from 'lucide-react'
 import { getStatusTextClass } from '@/utils/component-utils'
 import { truncate } from '@/utils/formatting'
@@ -34,6 +33,53 @@ interface SessionDetailProps {
 
 const SessionDetailHotkeysScope = 'session-detail'
 
+const ROBOT_VERBS = [
+  'riffing',
+  'vibing',
+  'schlepping',
+  'ideating',
+  'thriving',
+  'proselytizing',
+  'photosynthesizing',
+  'prototyping',
+  'finagling',
+  'overcomplicating',
+  'clauding',
+  'generating',
+  'lamenting',
+  'quantizing',
+  'enshrining',
+  'collapsing',
+  'amplifying',
+  'inducting',
+  'capacitizing',
+  'conducting',
+  'densifying',
+  'diffusing',
+  'attending',
+  'propagating',
+  'fusing',
+  'gravitating',
+  'potentiating',
+  'radiating',
+  'reflecting',
+  'simplifying',
+  'superconducting',
+  'fixating',
+  'transisting',
+  'accelerating',
+  'transcribing',
+  'attending',
+  'adhering',
+  'connecting',
+  'sublimating',
+  'balancing',
+  'ionizing',
+  'actuating',
+  'mechanizing',
+  'harmonizing'
+]
+
 function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [isWideView, setIsWideView] = useState(false)
   const [isCompactView, setIsCompactView] = useState(false)
@@ -50,6 +96,12 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   // Get session from store to access auto_accept_edits
   const sessionFromStore = useStore(state => state.sessions.find(s => s.id === session.id))
   const autoAcceptEdits = sessionFromStore?.auto_accept_edits ?? false
+
+  // Generate random verb that changes each render
+  const randomVerb = useMemo(() => {
+    const verb = ROBOT_VERBS[Math.floor(Math.random() * ROBOT_VERBS.length)]
+    return verb.charAt(0).toUpperCase() + verb.slice(1)
+  }, [isRunning]) // Re-generate when isRunning changes
 
   // Get events for sidebar access
   const { events } = useConversation(session.id)
@@ -386,12 +438,50 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               maxEventIndex={previewEventIndex ?? undefined}
             />
             {isRunning && (
-              <div className="flex flex-col gap-1 mt-2 border-t pt-2">
-                <h2 className="text-sm font-medium text-muted-foreground">robot magic is happening</h2>
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-1/4" />
-                  <Skeleton className="h-4 w-1/5" />
+              <div className="flex items-center gap-4 mt-6 pl-4">
+                <div className="relative w-16 h-16">
+                  {/* Outermost orbiting particles */}
+                  <div className="absolute inset-0 animate-spin-slow">
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary/40 animate-pulse" />
+                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary/40 animate-pulse delay-75" />
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-1 rounded-full bg-primary/40 animate-pulse delay-150" />
+                    <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-1 rounded-full bg-primary/40 animate-pulse delay-300" />
+                  </div>
+                  
+                  {/* Outer gradient ring */}
+                  <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-primary/0 via-primary/30 to-primary/0 animate-spin" />
+                  
+                  {/* Mid rotating ring with gradient */}
+                  <div className="absolute inset-1 rounded-full">
+                    <div className="absolute inset-0 rounded-full bg-gradient-conic from-primary/10 via-primary/50 to-primary/10 animate-spin-reverse" />
+                  </div>
+                  
+                  {/* Inner wave ring */}
+                  <div className="absolute inset-2 rounded-full overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary/30 via-transparent to-primary/30 animate-wave" />
+                  </div>
+                  
+                  {/* Morphing core */}
+                  <div className="absolute inset-3 animate-morph">
+                    <div className="absolute inset-0 rounded-full bg-gradient-radial from-primary/60 to-primary/20 blur-sm" />
+                    <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary/40 to-transparent" />
+                  </div>
+                  
+                  {/* Center glow */}
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="relative">
+                      <div className="absolute w-3 h-3 rounded-full bg-primary/80 animate-ping" />
+                      <div className="relative w-3 h-3 rounded-full bg-primary animate-pulse-bright" />
+                    </div>
+                  </div>
+                  
+                  {/* Random glitch effect */}
+                  <div className="absolute inset-0 rounded-full opacity-20 animate-glitch" />
                 </div>
+                
+                <p className="text-sm font-medium text-muted-foreground opacity-80 animate-fade-pulse">
+                  {randomVerb}
+                </p>
               </div>
             )}
 

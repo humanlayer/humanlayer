@@ -3,10 +3,11 @@ import jsonGrammar from '@wooorm/starry-night/source.json'
 import textMd from '@wooorm/starry-night/text.md'
 import { toJsxRuntime } from 'hast-util-to-jsx-runtime'
 import { Fragment, jsx, jsxs } from 'react/jsx-runtime'
+import React from 'react'
 
 import { ConversationEvent, ConversationEventType, ApprovalStatus } from '@/lib/daemon/types'
 import { Button } from '@/components/ui/button'
-import { Bot, FilePenLine, UserCheck, User, Wrench, Globe } from 'lucide-react'
+import { Bot, FilePenLine, UserCheck, User, Wrench, Globe, FileText, Terminal, Search, ListTodo } from 'lucide-react'
 import { CommandToken } from '@/components/internal/CommandToken'
 import { formatToolResult } from './formatToolResult'
 import { DiffViewToggle } from './components/DiffViewToggle'
@@ -502,6 +503,37 @@ export function eventToDisplayObject(
     body,
     created_at: event.created_at,
     toolResultContent,
+  }
+}
+
+// Export icon mapping function for reuse in modal
+export function getToolIcon(toolName: string | undefined): React.ReactNode {
+  if (!toolName) return <Wrench className="w-3.5 h-3.5" />
+
+  // Handle MCP tools
+  if (toolName.startsWith('mcp__')) {
+    return <Globe className="w-3.5 h-3.5" />
+  }
+
+  // Handle regular tools
+  switch (toolName) {
+    case 'Edit':
+    case 'MultiEdit':
+      return <FilePenLine className="w-3.5 h-3.5" />
+    case 'Read':
+      return <FileText className="w-3.5 h-3.5" />
+    case 'Write':
+      return <FilePenLine className="w-3.5 h-3.5" />
+    case 'Bash':
+      return <Terminal className="w-3.5 h-3.5" />
+    case 'Grep':
+      return <Search className="w-3.5 h-3.5" />
+    case 'TodoWrite':
+      return <ListTodo className="w-3.5 h-3.5" />
+    case 'WebSearch':
+      return <Globe className="w-3.5 h-3.5" />
+    default:
+      return <Wrench className="w-3.5 h-3.5" />
   }
 }
 
