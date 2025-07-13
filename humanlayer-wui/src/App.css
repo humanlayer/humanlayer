@@ -241,7 +241,8 @@
   }
 
   @keyframes morph {
-    0%, 100% {
+    0%,
+    100% {
       border-radius: 50%;
       transform: scale(1) rotate(0deg);
     }
@@ -260,7 +261,8 @@
   }
 
   @keyframes wave {
-    0%, 100% {
+    0%,
+    100% {
       transform: translateX(-100%) translateY(-100%) rotate(0deg);
     }
     25% {
@@ -275,7 +277,8 @@
   }
 
   @keyframes pulse-bright {
-    0%, 100% {
+    0%,
+    100% {
       opacity: 1;
       transform: scale(1);
     }
@@ -286,7 +289,8 @@
   }
 
   @keyframes fade-pulse {
-    0%, 100% {
+    0%,
+    100% {
       opacity: 0.8;
     }
     50% {
@@ -295,7 +299,9 @@
   }
 
   @keyframes glitch {
-    0%, 90%, 100% {
+    0%,
+    90%,
+    100% {
       clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
       transform: translate(0);
     }
@@ -361,7 +367,8 @@
 
   /* Bouncing animations for bars spinner */
   @keyframes bounce-slow {
-    0%, 100% {
+    0%,
+    100% {
       transform: scaleY(1);
     }
     50% {
@@ -370,7 +377,8 @@
   }
 
   @keyframes bounce-medium {
-    0%, 100% {
+    0%,
+    100% {
       transform: scaleY(1);
     }
     50% {
@@ -379,7 +387,8 @@
   }
 
   @keyframes bounce-fast {
-    0%, 100% {
+    0%,
+    100% {
       transform: scaleY(1);
     }
     50% {
