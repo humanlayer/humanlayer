@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useEffect, useCallback } from 'react'
 import { daemonClient, RecentPath } from '@/lib/daemon'
-import { formatError } from '@/utils/errors'
+import { useAsyncState } from './useAsyncState'
 
 interface UseRecentPathsReturn {
   paths: RecentPath[]
@@ -10,26 +10,15 @@ interface UseRecentPathsReturn {
 }
 
 export function useRecentPaths(limit = 20): UseRecentPathsReturn {
-  const [paths, setPaths] = useState<RecentPath[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const { data: paths, loading, error, execute } = useAsyncState<RecentPath[]>([])
 
   const fetchRecentPaths = useCallback(async () => {
-    try {
-      setLoading(true)
-      setError(null)
-
+    await execute(async () => {
       const response = await daemonClient.getRecentPaths(limit)
-      setPaths(response.paths)
-    } catch (err) {
-      setError(formatError(err))
-      setPaths([])
-    } finally {
-      setLoading(false)
-    }
-  }, [limit])
+      return response.paths
+    })
+  }, [limit, execute])
 
-  // Fetch on mount and when limit changes
   useEffect(() => {
     fetchRecentPaths()
   }, [fetchRecentPaths])

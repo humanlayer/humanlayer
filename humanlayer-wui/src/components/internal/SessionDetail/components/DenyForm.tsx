@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { hasContent } from '@/utils/validation'
 
 // TODO(3): Add validation for minimum reason length
 // TODO(3): Consider adding a preset list of common denial reasons
@@ -19,7 +20,7 @@ export function DenyForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (reason.trim() && onDeny && !isDenying) {
+    if (hasContent(reason) && onDeny && !isDenying) {
       try {
         setIsDenying(true)
         onDeny(approvalId, reason.trim())
@@ -55,10 +56,10 @@ export function DenyForm({
         type="submit"
         size="sm"
         variant="destructive"
-        disabled={!reason.trim() || isDenying}
+        disabled={!hasContent(reason) || isDenying}
       >
         {isDenying ? 'Denying...' : 'Deny'}{' '}
-        {reason.trim() && !isDenying && (
+        {hasContent(reason) && !isDenying && (
           <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">⏎</kbd>
         )}
       </Button>
