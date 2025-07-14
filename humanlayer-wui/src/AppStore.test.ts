@@ -13,92 +13,62 @@ describe('AppStore - Range Selection', () => {
     store.initSessions(mockSessions)
     store.clearSelection()
     store.setFocusedSession(null)
-    store.setSelectionAnchor(null)
   })
 
-  test('should select range from anchor to current position when moving down', () => {
+  test('should select range when using selectRange', () => {
     const store = useStore.getState()
 
-    // Start at session-1
-    store.setFocusedSession(mockSessions[0])
-
-    // First shift+j should set anchor and select sessions 0 and 1
-    store.setSelectionAnchor(mockSessions[0].id)
-    store.selectRange(mockSessions[0].id, mockSessions[1].id)
-
-    // Get fresh state after updates
-    const updatedState = useStore.getState()
-    expect(updatedState.selectedSessions.size).toBe(2)
-    expect(updatedState.selectedSessions.has('session-1')).toBe(true)
-    expect(updatedState.selectedSessions.has('session-2')).toBe(true)
-
-    // Second shift+j should extend range to include session-3
+    // Select sessions 0-2
     store.selectRange(mockSessions[0].id, mockSessions[2].id)
 
-    const finalState = useStore.getState()
-    expect(finalState.selectedSessions.size).toBe(3)
-    expect(finalState.selectedSessions.has('session-1')).toBe(true)
-    expect(finalState.selectedSessions.has('session-2')).toBe(true)
-    expect(finalState.selectedSessions.has('session-3')).toBe(true)
-  })
-
-  test('should shrink range when moving back up with shift+k', () => {
-    const store = useStore.getState()
-
-    // Start with range selected from session-1 to session-3
-    store.setSelectionAnchor(mockSessions[0].id)
-    store.selectRange(mockSessions[0].id, mockSessions[2].id)
-
-    let state = useStore.getState()
-    expect(state.selectedSessions.size).toBe(3)
-
-    // shift+k should shrink range to sessions 1 and 2
-    store.selectRange(mockSessions[0].id, mockSessions[1].id)
-
-    state = useStore.getState()
-    expect(state.selectedSessions.size).toBe(2)
-    expect(state.selectedSessions.has('session-1')).toBe(true)
-    expect(state.selectedSessions.has('session-2')).toBe(true)
-    expect(state.selectedSessions.has('session-3')).toBe(false)
-  })
-
-  test('should handle range selection in reverse direction', () => {
-    const store = useStore.getState()
-
-    // Start at session-3 and select upward
-    store.setFocusedSession(mockSessions[2])
-    store.setSelectionAnchor(mockSessions[2].id)
-
-    // Select from session-3 to session-2 (upward)
-    store.selectRange(mockSessions[2].id, mockSessions[1].id)
-
-    let state = useStore.getState()
-    expect(state.selectedSessions.size).toBe(2)
-    expect(state.selectedSessions.has('session-2')).toBe(true)
-    expect(state.selectedSessions.has('session-3')).toBe(true)
-
-    // Extend to session-1
-    store.selectRange(mockSessions[2].id, mockSessions[0].id)
-
-    state = useStore.getState()
+    const state = useStore.getState()
     expect(state.selectedSessions.size).toBe(3)
     expect(state.selectedSessions.has('session-1')).toBe(true)
     expect(state.selectedSessions.has('session-2')).toBe(true)
     expect(state.selectedSessions.has('session-3')).toBe(true)
   })
 
-  test('should clear anchor when regular navigation occurs', () => {
+  test('should add range to existing selection', () => {
     const store = useStore.getState()
 
-    // Set up range selection
-    store.setSelectionAnchor(mockSessions[0].id)
-    let state = useStore.getState()
-    expect(state.selectionAnchor).toBe('session-1')
+    // First select sessions 0-1
+    store.selectRange(mockSessions[0].id, mockSessions[1].id)
 
-    // Regular navigation should clear anchor
-    store.clearSelectionAnchor()
+    let state = useStore.getState()
+    expect(state.selectedSessions.size).toBe(2)
+
+    // Add sessions 3-4 to selection
+    store.addRangeToSelection(mockSessions[3].id, mockSessions[4].id)
+
     state = useStore.getState()
-    expect(state.selectionAnchor).toBe(null)
+    expect(state.selectedSessions.size).toBe(4)
+    expect(state.selectedSessions.has('session-1')).toBe(true)
+    expect(state.selectedSessions.has('session-2')).toBe(true)
+    expect(state.selectedSessions.has('session-4')).toBe(true)
+    expect(state.selectedSessions.has('session-5')).toBe(true)
+  })
+
+  test('should update current range preserving other selections', () => {
+    const store = useStore.getState()
+
+    // Setup: Select sessions 0-2 and 5-7
+    store.selectRange(mockSessions[0].id, mockSessions[2].id)
+    store.addRangeToSelection(mockSessions[5].id, mockSessions[7].id)
+
+    let state = useStore.getState()
+    expect(state.selectedSessions.size).toBe(6)
+
+    // Update the first range from anchor 0 to target 1 (shrinking from 0-2 to 0-1)
+    store.updateCurrentRange(mockSessions[0].id, mockSessions[1].id)
+
+    state = useStore.getState()
+    expect(state.selectedSessions.size).toBe(5)
+    expect(state.selectedSessions.has('session-1')).toBe(true)
+    expect(state.selectedSessions.has('session-2')).toBe(true)
+    expect(state.selectedSessions.has('session-3')).toBe(false) // Removed
+    expect(state.selectedSessions.has('session-6')).toBe(true)
+    expect(state.selectedSessions.has('session-7')).toBe(true)
+    expect(state.selectedSessions.has('session-8')).toBe(true)
   })
 
   test('should handle edge cases with empty sessions', () => {
@@ -111,273 +81,299 @@ describe('AppStore - Range Selection', () => {
     expect(state.selectedSessions.size).toBe(0)
   })
 
-  test('should select current and next on first shift+j', () => {
+  test('should toggle individual session selection', () => {
     const store = useStore.getState()
 
-    // Start at session-1 with no selection
-    store.setFocusedSession(mockSessions[0])
-    expect(store.selectedSessions.size).toBe(0)
-
-    // First shift+j should set anchor at current position and select current + next
-    store.setSelectionAnchor(mockSessions[0].id)
-    store.selectRange(mockSessions[0].id, mockSessions[1].id)
-
-    const state = useStore.getState()
-    expect(state.selectionAnchor).toBe('session-1')
-    expect(state.selectedSessions.size).toBe(2)
-    expect(state.selectedSessions.has('session-1')).toBe(true)
-    expect(state.selectedSessions.has('session-2')).toBe(true)
-  })
-
-  test('should support multiple selection ranges', () => {
-    const store = useStore.getState()
-
-    // First range: select sessions 1-2
-    store.setSelectionAnchor(mockSessions[0].id)
-    store.selectRange(mockSessions[0].id, mockSessions[1].id)
-
+    // Toggle on
+    store.toggleSessionSelection(mockSessions[0].id)
     let state = useStore.getState()
-    expect(state.selectedSessions.size).toBe(2)
     expect(state.selectedSessions.has('session-1')).toBe(true)
-    expect(state.selectedSessions.has('session-2')).toBe(true)
 
-    // Move down with regular 'j' navigation (should clear anchor but preserve selections)
-    store.clearSelectionAnchor()
-    store.setFocusedSession(mockSessions[3])
-
-    // Second range: select session 4 (should ADD to existing selection)
-    store.setSelectionAnchor(mockSessions[3].id)
-    store.addRangeToSelection(mockSessions[3].id, mockSessions[3].id)
-
+    // Toggle off
+    store.toggleSessionSelection(mockSessions[0].id)
     state = useStore.getState()
-    expect(state.selectedSessions.size).toBe(3)
-    expect(state.selectedSessions.has('session-1')).toBe(true)
-    expect(state.selectedSessions.has('session-2')).toBe(true)
-    expect(state.selectedSessions.has('session-4')).toBe(true)
+    expect(state.selectedSessions.has('session-1')).toBe(false)
   })
 
-  test('should merge overlapping ranges', () => {
+  test('should clear all selections', () => {
     const store = useStore.getState()
 
-    // First range: select sessions 1-2
-    store.setSelectionAnchor(mockSessions[0].id)
-    store.selectRange(mockSessions[0].id, mockSessions[1].id)
-
-    // Clear anchor, move to session 2
-    store.clearSelectionAnchor()
-    store.setFocusedSession(mockSessions[1])
-
-    // Second range: select sessions 2-3 (overlaps with first range)
-    store.setSelectionAnchor(mockSessions[1].id)
-    store.addRangeToSelection(mockSessions[1].id, mockSessions[2].id)
-
-    const state = useStore.getState()
-    expect(state.selectedSessions.size).toBe(3)
-    expect(state.selectedSessions.has('session-1')).toBe(true)
-    expect(state.selectedSessions.has('session-2')).toBe(true)
-    expect(state.selectedSessions.has('session-3')).toBe(true)
-  })
-
-  test('should handle shift+j, j, j, shift+j sequence correctly', () => {
-    const store = useStore.getState()
-
-    // Start at session-1, shift+j twice to select top 3 items
-    store.setFocusedSession(mockSessions[0])
-    store.setSelectionAnchor(mockSessions[0].id)
-
-    // First shift+j: select sessions 1-2
-    store.selectRange(mockSessions[0].id, mockSessions[1].id)
-    // Second shift+j: extend to session 3
-    store.selectRange(mockSessions[0].id, mockSessions[2].id)
-
+    // Select multiple sessions
+    store.selectRange(mockSessions[0].id, mockSessions[3].id)
     let state = useStore.getState()
-    expect(state.selectedSessions.size).toBe(3)
-    expect(state.selectionAnchor).toBe('session-1')
+    expect(state.selectedSessions.size).toBe(4)
 
-    // Press 'j' twice - this should clear anchor but preserve selections
-    store.clearSelectionAnchor()
+    // Clear all
+    store.clearSelection()
     state = useStore.getState()
-    expect(state.selectionAnchor).toBe(null)
-    expect(state.selectedSessions.size).toBe(3) // selections preserved
-
-    // Move focus down two positions (simulating j, j)
-    store.setFocusedSession(mockSessions[3]) // Now at session-4
-
-    // Next shift+j should ADD to existing selections, not replace
-    store.setSelectionAnchor(mockSessions[3].id)
-    store.addRangeToSelection(mockSessions[3].id, mockSessions[3].id)
-
-    state = useStore.getState()
-    expect(state.selectedSessions.size).toBe(4) // Should have 4 items selected
-    expect(state.selectedSessions.has('session-1')).toBe(true)
-    expect(state.selectedSessions.has('session-2')).toBe(true)
-    expect(state.selectedSessions.has('session-3')).toBe(true)
-    expect(state.selectedSessions.has('session-4')).toBe(true)
+    expect(state.selectedSessions.size).toBe(0)
   })
 
-  test('should properly handle resetting selection on new shift+j sequence', () => {
+  test('should handle updateCurrentRange with non-contiguous selections', () => {
     const store = useStore.getState()
 
-    // Scenario from the bug report:
-    // 1. Start at top, shift+j twice (selects top 3)
-    store.setFocusedSession(mockSessions[0])
-    store.setSelectionAnchor(mockSessions[0].id)
-    store.selectRange(mockSessions[0].id, mockSessions[1].id)
-    store.selectRange(mockSessions[0].id, mockSessions[2].id)
+    // Select non-contiguous sessions using toggle
+    store.toggleSessionSelection(mockSessions[1].id) // session-2
+    store.toggleSessionSelection(mockSessions[2].id) // session-3
+    store.toggleSessionSelection(mockSessions[4].id) // session-5
 
     let state = useStore.getState()
     expect(state.selectedSessions.size).toBe(3)
 
-    // 2. Press j twice (moves down, clears anchor)
-    store.clearSelectionAnchor()
-    store.setFocusedSession(mockSessions[4]) // skip one, now at session-5
-
-    // Get fresh state after clearing anchor
-    state = useStore.getState()
-
-    // 3. Press shift+j - this was incorrectly REPLACING the selection
-    // The bug: even though anchor is null and we have selections,
-    // if we're at position 4 and press shift+j to select 4-5,
-    // it should ADD to existing selections, not replace
-
-    // Simulate what SessionTable does:
-    const hasSelections = state.selectedSessions.size > 0
-    const hasNoAnchor = !state.selectionAnchor
-    const startingNewRange = hasSelections && hasNoAnchor
-
-    expect(startingNewRange).toBe(true) // This should be true
-
-    // So it should use addRangeToSelection
-    store.setSelectionAnchor(mockSessions[4].id)
-    store.addRangeToSelection(mockSessions[4].id, mockSessions[5].id)
-
-    state = useStore.getState()
-    expect(state.selectedSessions.size).toBe(5) // 3 original + 2 new
-    expect(state.selectedSessions.has('session-1')).toBe(true)
-    expect(state.selectedSessions.has('session-2')).toBe(true)
-    expect(state.selectedSessions.has('session-3')).toBe(true)
-    expect(state.selectedSessions.has('session-5')).toBe(true)
-    expect(state.selectedSessions.has('session-6')).toBe(true)
-  })
-
-  test('should shrink selection when using shift+k within current range in adding mode', () => {
-    const store = useStore.getState()
-
-    // 1. Select first 3 items with shift+j
-    store.setFocusedSession(mockSessions[0])
-    store.setSelectionAnchor(mockSessions[0].id)
-    store.selectRange(mockSessions[0].id, mockSessions[2].id)
-
-    // 2. Navigate down with j (clears anchor)
-    store.clearSelectionAnchor()
-    store.setFocusedSession(mockSessions[5])
-
-    // 3. Add selection at position 5-7 with shift+j
-    store.setSelectionAnchor(mockSessions[5].id)
-    store.addRangeToSelection(mockSessions[5].id, mockSessions[7].id)
-
-    let state = useStore.getState()
-    expect(state.selectedSessions.size).toBe(6) // 3 + 3
-    expect(state.selectedSessions.has('session-1')).toBe(true)
-    expect(state.selectedSessions.has('session-2')).toBe(true)
-    expect(state.selectedSessions.has('session-3')).toBe(true)
-    expect(state.selectedSessions.has('session-6')).toBe(true)
-    expect(state.selectedSessions.has('session-7')).toBe(true)
-    expect(state.selectedSessions.has('session-8')).toBe(true)
-
-    // 4. Now press shift+k to shrink the current range
-    store.setFocusedSession(mockSessions[6]) // Focus moved to session-7
-    // In the UI, updateCurrentRange would be called here to shrink the selection
-    // For now, let's simulate what should happen
-    store.updateCurrentRange(mockSessions[5].id, mockSessions[6].id)
-
-    state = useStore.getState()
-    // Should still have the first 3 selections, but the second range should shrink
-    expect(state.selectedSessions.size).toBe(5) // 3 + 2
-    expect(state.selectedSessions.has('session-1')).toBe(true)
-    expect(state.selectedSessions.has('session-2')).toBe(true)
-    expect(state.selectedSessions.has('session-3')).toBe(true)
-    expect(state.selectedSessions.has('session-6')).toBe(true)
-    expect(state.selectedSessions.has('session-7')).toBe(true)
-    expect(state.selectedSessions.has('session-8')).toBe(false) // This should be removed
-  })
-
-  test('should shrink first selection range when navigating back and using shift+k', () => {
-    const store = useStore.getState()
-
-    // 1. Select first 3 items with shift+j
-    store.setFocusedSession(mockSessions[0])
-    store.setSelectionAnchor(mockSessions[0].id)
-    store.selectRange(mockSessions[0].id, mockSessions[2].id)
-
-    // 2. Navigate away and select items 5-7
-    store.clearSelectionAnchor()
-    store.setFocusedSession(mockSessions[5])
-    store.setSelectionAnchor(mockSessions[5].id)
-    store.addRangeToSelection(mockSessions[5].id, mockSessions[7].id)
-
-    let state = useStore.getState()
-    expect(state.selectedSessions.size).toBe(6) // 3 + 3
-    expect(state.selectedSessions.has('session-1')).toBe(true)
-    expect(state.selectedSessions.has('session-2')).toBe(true)
-    expect(state.selectedSessions.has('session-3')).toBe(true)
-    expect(state.selectedSessions.has('session-6')).toBe(true)
-    expect(state.selectedSessions.has('session-7')).toBe(true)
-    expect(state.selectedSessions.has('session-8')).toBe(true)
-
-    // 3. Navigate back to position 2 (which is selected)
-    store.clearSelectionAnchor()
-    store.setFocusedSession(mockSessions[2])
-
-    // 4. Press shift+k to shrink the first range
-    // This should set anchor at position 2 and use updateCurrentRange
-    store.setSelectionAnchor(mockSessions[2].id)
+    // updateCurrentRange from session-3 (anchor) to session-2 (target)
+    // Should find contiguous range 1-2 and update it
     store.updateCurrentRange(mockSessions[2].id, mockSessions[1].id)
 
     state = useStore.getState()
-    // First range should shrink from 0-2 to 1-2
-    expect(state.selectedSessions.size).toBe(5) // 2 + 3
-    expect(state.selectedSessions.has('session-1')).toBe(false) // Removed
+    // Should keep session-2 and session-3, but session-5 should remain
+    expect(state.selectedSessions.size).toBe(3)
     expect(state.selectedSessions.has('session-2')).toBe(true)
     expect(state.selectedSessions.has('session-3')).toBe(true)
-    expect(state.selectedSessions.has('session-6')).toBe(true)
-    expect(state.selectedSessions.has('session-7')).toBe(true)
-    expect(state.selectedSessions.has('session-8')).toBe(true)
+    expect(state.selectedSessions.has('session-5')).toBe(true)
   })
 
-  test('should handle continuous shift+j after navigation correctly', () => {
+  test('should handle pivot behavior when shrinking selection', () => {
     const store = useStore.getState()
 
-    // 1. Start at top, select first 3 with shift+j+j
-    store.setFocusedSession(mockSessions[0])
-    store.setSelectionAnchor(mockSessions[0].id)
-    store.selectRange(mockSessions[0].id, mockSessions[2].id)
-
-    // 2. Navigate down with j,j (clears anchor)
-    store.clearSelectionAnchor()
-    store.setFocusedSession(mockSessions[4])
-
-    // 3. First shift+j after navigation - should ADD
-    store.setSelectionAnchor(mockSessions[4].id)
-    store.addRangeToSelection(mockSessions[4].id, mockSessions[5].id)
+    // Select sessions 1-3
+    store.toggleSessionSelection(mockSessions[0].id)
+    store.toggleSessionSelection(mockSessions[1].id)
+    store.toggleSessionSelection(mockSessions[2].id)
 
     let state = useStore.getState()
-    expect(state.selectedSessions.size).toBe(5) // 3 + 2
+    expect(state.selectedSessions.size).toBe(3)
 
-    // 4. Second shift+j (continuous, anchor still set) - this is where the bug might be
-    // The anchor is at position 4, we're now at position 5, pressing shift+j again
-    // This SHOULD continue adding, not replace
-    store.setFocusedSession(mockSessions[5])
-
-    // The issue: with anchor still set from position 4, startingNewRange would be false
-    // So it would call selectRange(4, 6) which REPLACES the selection
-    // But we want it to continue building on the existing selection
-
-    // Since anchor is set, it will use selectRange which replaces everything
-    store.selectRange(mockSessions[4].id, mockSessions[6].id) // This replaces!
+    // Simulate shift+j from position 0: anchor at 0, target at 1
+    // This should create range 0-1, keeping only sessions 1-2
+    store.updateCurrentRange(mockSessions[0].id, mockSessions[1].id)
 
     state = useStore.getState()
-    // This is the bug - we now only have 3 items selected instead of 6
-    expect(state.selectedSessions.size).toBe(3) // Only sessions 5-7, lost 1-3
+    expect(state.selectedSessions.size).toBe(2)
+    expect(state.selectedSessions.has('session-1')).toBe(true)
+    expect(state.selectedSessions.has('session-2')).toBe(true)
+    expect(state.selectedSessions.has('session-3')).toBe(false)
+  })
+
+  test('should handle reverse pivot behavior', () => {
+    const store = useStore.getState()
+
+    // Select sessions 1-3
+    store.toggleSessionSelection(mockSessions[0].id)
+    store.toggleSessionSelection(mockSessions[1].id)
+    store.toggleSessionSelection(mockSessions[2].id)
+
+    let state = useStore.getState()
+    expect(state.selectedSessions.size).toBe(3)
+
+    // Simulate shift+k from position 2: anchor at 2, target at 1
+    // This should create range 1-2, keeping only sessions 2-3
+    store.updateCurrentRange(mockSessions[2].id, mockSessions[1].id)
+
+    state = useStore.getState()
+    expect(state.selectedSessions.size).toBe(2)
+    expect(state.selectedSessions.has('session-1')).toBe(false)
+    expect(state.selectedSessions.has('session-2')).toBe(true)
+    expect(state.selectedSessions.has('session-3')).toBe(true)
+  })
+})
+
+describe('AppStore - bulkSelect behavior', () => {
+  beforeEach(() => {
+    // Reset store state before each test
+    const store = useStore.getState()
+    store.initSessions(mockSessions)
+    store.clearSelection()
+    store.setFocusedSession(null)
+  })
+
+  test('bulkSelect function with desc should select current and next session', () => {
+    const store = useStore.getState()
+
+    // Focus on first session
+    store.setFocusedSession(mockSessions[0])
+
+    // Call the actual bulkSelect function from the store
+    store.bulkSelect(mockSessions[0].id, 'desc')
+
+    // Verify the selection was made correctly
+    const state = useStore.getState()
+    expect(state.selectedSessions.size).toBe(2)
+    expect(state.selectedSessions.has('session-1')).toBe(true)
+    expect(state.selectedSessions.has('session-2')).toBe(true)
+
+    // Verify focus moved to next session
+    expect(state.focusedSession?.id).toBe('session-2')
+  })
+
+  test('bulkSelect with desc should select current and next session', () => {
+    const store = useStore.getState()
+
+    // Focus on first session
+    store.setFocusedSession(mockSessions[0])
+
+    // Simulate bulkSelect behavior for shift+j (desc)
+    // This should select current and next session
+    store.selectRange(mockSessions[0].id, mockSessions[1].id)
+
+    const state = useStore.getState()
+    expect(state.selectedSessions.size).toBe(2)
+    expect(state.selectedSessions.has('session-1')).toBe(true)
+    expect(state.selectedSessions.has('session-2')).toBe(true)
+  })
+
+  test('bulkSelect with asc should select previous and current session', () => {
+    const store = useStore.getState()
+
+    // Focus on second session
+    store.setFocusedSession(mockSessions[1])
+
+    // Simulate bulkSelect behavior for shift+k (asc)
+    // This should select previous and current session
+    store.selectRange(mockSessions[0].id, mockSessions[1].id)
+
+    const state = useStore.getState()
+    expect(state.selectedSessions.size).toBe(2)
+    expect(state.selectedSessions.has('session-1')).toBe(true)
+    expect(state.selectedSessions.has('session-2')).toBe(true)
+  })
+
+  test('bulkSelect within existing selection should pivot (desc)', () => {
+    const store = useStore.getState()
+
+    // Pre-select sessions 1, 2, 3
+    store.toggleSessionSelection(mockSessions[0].id)
+    store.toggleSessionSelection(mockSessions[1].id)
+    store.toggleSessionSelection(mockSessions[2].id)
+
+    // Focus on first session
+    store.setFocusedSession(mockSessions[0])
+
+    // Simulate bulkSelect from within selection going down
+    // Anchor should be at top of contiguous range (session 1)
+    // Target is next position (session 2)
+    store.updateCurrentRange(mockSessions[0].id, mockSessions[1].id)
+
+    const state = useStore.getState()
+    // Should have sessions 1-2, session 3 deselected
+    expect(state.selectedSessions.size).toBe(2)
+    expect(state.selectedSessions.has('session-1')).toBe(true)
+    expect(state.selectedSessions.has('session-2')).toBe(true)
+    expect(state.selectedSessions.has('session-3')).toBe(false)
+  })
+
+  test('bulkSelect within existing selection should pivot (asc)', () => {
+    const store = useStore.getState()
+
+    // Pre-select sessions 1, 2, 3
+    store.toggleSessionSelection(mockSessions[0].id)
+    store.toggleSessionSelection(mockSessions[1].id)
+    store.toggleSessionSelection(mockSessions[2].id)
+
+    // Focus on third session
+    store.setFocusedSession(mockSessions[2])
+
+    // Simulate bulkSelect from within selection going up
+    // Anchor should be at bottom of contiguous range (session 3)
+    // Target is previous position (session 2)
+    store.updateCurrentRange(mockSessions[2].id, mockSessions[1].id)
+
+    const state = useStore.getState()
+    // Should have sessions 2-3, session 1 deselected
+    expect(state.selectedSessions.size).toBe(2)
+    expect(state.selectedSessions.has('session-1')).toBe(false)
+    expect(state.selectedSessions.has('session-2')).toBe(true)
+    expect(state.selectedSessions.has('session-3')).toBe(true)
+  })
+
+  test('bulkSelect with multiple ranges should add new range', () => {
+    const store = useStore.getState()
+
+    // Pre-select sessions 1-2
+    store.selectRange(mockSessions[0].id, mockSessions[1].id)
+
+    // Focus on session 4 (outside existing selection)
+    store.setFocusedSession(mockSessions[3])
+
+    // Simulate bulkSelect from new position
+    // Should add new range to existing selection
+    store.addRangeToSelection(mockSessions[3].id, mockSessions[4].id)
+
+    const state = useStore.getState()
+    expect(state.selectedSessions.size).toBe(4)
+    expect(state.selectedSessions.has('session-1')).toBe(true)
+    expect(state.selectedSessions.has('session-2')).toBe(true)
+    expect(state.selectedSessions.has('session-4')).toBe(true)
+    expect(state.selectedSessions.has('session-5')).toBe(true)
+  })
+
+  test('bulkSelect shift+j then shift+k should deselect only the second item', () => {
+    const store = useStore.getState()
+
+    // Start with first session focused, no selections
+    store.setFocusedSession(mockSessions[0])
+
+    // Press shift+j from session 1
+    // Should select sessions 1-2 with focus on session 2
+    console.log('TEST: Pressing shift+j from session 1')
+    store.bulkSelect(mockSessions[0].id, 'desc')
+
+    let state = useStore.getState()
+    expect(state.selectedSessions.size).toBe(2)
+    expect(state.selectedSessions.has('session-1')).toBe(true)
+    expect(state.selectedSessions.has('session-2')).toBe(true)
+    expect(state.focusedSession?.id).toBe('session-2')
+
+    // Now press shift+k from session 2
+    // Should deselect session 2, keeping only session 1 selected
+    // The anchor should be at session 1 (the start of the original range)
+    console.log('TEST: Pressing shift+k from session 2')
+    store.bulkSelect(mockSessions[1].id, 'asc')
+
+    state = useStore.getState()
+    console.log('TEST: Final state after first shift+k:', {
+      selectedSize: state.selectedSessions.size,
+      selectedIds: Array.from(state.selectedSessions),
+      focusedId: state.focusedSession?.id,
+    })
+    expect(state.selectedSessions.size).toBe(1)
+    expect(state.selectedSessions.has('session-1')).toBe(true)
+    expect(state.selectedSessions.has('session-2')).toBe(false)
+    expect(state.focusedSession?.id).toBe('session-1')
+  })
+
+  test('bulkSelect multiple shift+k should extend selection backwards', () => {
+    const store = useStore.getState()
+
+    // Start with sessions 2-3 selected, focused on 3
+    store.toggleSessionSelection(mockSessions[1].id)
+    store.toggleSessionSelection(mockSessions[2].id)
+    store.setFocusedSession(mockSessions[2])
+
+    // First shift+k from session 3
+    // Should deselect session 3, keeping only session 2
+    console.log('TEST: First shift+k from session 3')
+    store.bulkSelect(mockSessions[2].id, 'asc')
+
+    let state = useStore.getState()
+    expect(state.selectedSessions.size).toBe(1)
+    expect(state.selectedSessions.has('session-2')).toBe(true)
+    expect(state.selectedSessions.has('session-3')).toBe(false)
+    expect(state.focusedSession?.id).toBe('session-2')
+
+    // Second shift+k from session 2
+    // Should add session 1 to selection (extending backwards)
+    console.log('TEST: Second shift+k from session 2')
+    store.bulkSelect(mockSessions[1].id, 'asc')
+
+    state = useStore.getState()
+    console.log('TEST: Final state after second shift+k:', {
+      selectedSize: state.selectedSessions.size,
+      selectedIds: Array.from(state.selectedSessions),
+      focusedId: state.focusedSession?.id,
+    })
+    expect(state.selectedSessions.size).toBe(2)
+    expect(state.selectedSessions.has('session-1')).toBe(true)
+    expect(state.selectedSessions.has('session-2')).toBe(true)
+    expect(state.focusedSession?.id).toBe('session-1')
   })
 })
