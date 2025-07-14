@@ -3,7 +3,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 import { useHotkeys, useHotkeysContext } from 'react-hotkeys-hook'
 import { useEffect, useRef } from 'react'
-import { CircleOff, Archive, CheckSquare, Square } from 'lucide-react'
+import { CircleOff, CheckSquare, Square } from 'lucide-react'
 import { getStatusTextClass } from '@/utils/component-utils'
 import { formatTimestamp, formatAbsoluteTimestamp, truncatePath } from '@/utils/formatting'
 import { highlightMatches } from '@/lib/fuzzy-search'
@@ -52,7 +52,8 @@ export default function SessionTable({
   const { isOpen: isSessionLauncherOpen } = useSessionLauncher()
   const { enableScope, disableScope } = useHotkeysContext()
   const tableRef = useRef<HTMLTableElement>(null)
-  const { archiveSession, selectedSessions, toggleSessionSelection, bulkArchiveSessions } = useStore()
+  const { archiveSession, selectedSessions, toggleSessionSelection, bulkArchiveSessions, bulkSelect } =
+    useStore()
 
   // Helper to render highlighted text
   const renderHighlightedText = (text: string, sessionId: string) => {
@@ -94,25 +95,36 @@ export default function SessionTable({
     }
   }, [focusedSession])
 
-  useHotkeys('j', () => handleFocusNextSession?.(), {
-    scopes: SessionTableHotkeysScope,
-    enabled: !isSessionLauncherOpen,
-  })
-  useHotkeys('k', () => handleFocusPreviousSession?.(), {
-    scopes: SessionTableHotkeysScope,
-    enabled: !isSessionLauncherOpen,
-  })
+  useHotkeys(
+    'j',
+    () => {
+      handleFocusNextSession?.()
+    },
+    {
+      scopes: SessionTableHotkeysScope,
+      enabled: !isSessionLauncherOpen,
+    },
+    [handleFocusNextSession],
+  )
+
+  useHotkeys(
+    'k',
+    () => {
+      handleFocusPreviousSession?.()
+    },
+    {
+      scopes: SessionTableHotkeysScope,
+      enabled: !isSessionLauncherOpen,
+    },
+    [handleFocusPreviousSession],
+  )
 
   // Bulk selection with shift+j/k
   useHotkeys(
     'shift+j',
     () => {
-      if (focusedSession) {
-        // Toggle current session selection
-        toggleSessionSelection(focusedSession.id)
-
-        // Move focus to next session
-        handleFocusNextSession?.()
+      if (focusedSession && sessions.length > 0) {
+        bulkSelect(focusedSession.id, 'desc')
       }
     },
     {
@@ -120,18 +132,14 @@ export default function SessionTable({
       enabled: !isSessionLauncherOpen,
       preventDefault: true,
     },
-    [focusedSession, toggleSessionSelection, handleFocusNextSession],
+    [focusedSession, sessions, bulkSelect],
   )
 
   useHotkeys(
     'shift+k',
     () => {
-      if (focusedSession) {
-        // Toggle current session selection
-        toggleSessionSelection(focusedSession.id)
-
-        // Move focus to previous session
-        handleFocusPreviousSession?.()
+      if (focusedSession && sessions.length > 0) {
+        bulkSelect(focusedSession.id, 'asc')
       }
     },
     {
@@ -139,7 +147,7 @@ export default function SessionTable({
       enabled: !isSessionLauncherOpen,
       preventDefault: true,
     },
-    [focusedSession, toggleSessionSelection, handleFocusPreviousSession],
+    [focusedSession, sessions, bulkSelect],
   )
 
   // Select all with meta+a (Cmd+A on Mac, Ctrl+A on Windows/Linux)
@@ -328,14 +336,25 @@ export default function SessionTable({
                     }}
                   >
                     <div className="flex items-center justify-center">
-                      {selectedSessions.has(session.id) ? (
-                        <CheckSquare className="w-4 h-4 text-primary" />
-                      ) : (
-                        <Square className="w-4 h-4 text-muted-foreground" />
-                      )}
+                      <div
+                        className={cn(
+                          'transition-all duration-200 ease-in-out',
+                          focusedSession?.id === session.id || selectedSessions.size > 0
+                            ? 'opacity-100 scale-100'
+                            : 'opacity-0 scale-75',
+                        )}
+                      >
+                        {selectedSessions.has(session.id) ? (
+                          <CheckSquare className="w-4 h-4 text-primary" />
+                        ) : (
+                          <Square className="w-4 h-4 text-muted-foreground" />
+                        )}
+                      </div>
                     </div>
                   </TableCell>
-                  <TableCell className={getStatusTextClass(session.status)}>{session.status}</TableCell>
+                  <TableCell className={getStatusTextClass(session.status)}>
+                    {session.status} | {session.id}
+                  </TableCell>
                   <TableCell className="max-w-[200px]">
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -353,7 +372,6 @@ export default function SessionTable({
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <span>{renderHighlightedText(session.summary, session.id)}</span>
-                      {session.archived && <Archive className="w-4 h-4 text-muted-foreground" />}
                     </div>
                   </TableCell>
                   <TableCell>{session.model || <CircleOff className="w-4 h-4" />}</TableCell>

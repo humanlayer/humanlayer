@@ -1,4 +1,5 @@
 import type { SessionInfo } from '@/lib/daemon/types'
+import { ViewMode } from '@/lib/daemon/types'
 import { create } from 'zustand'
 import { daemonClient } from '@/lib/daemon'
 
@@ -6,7 +7,7 @@ interface StoreState {
   /* Sessions */
   sessions: SessionInfo[]
   focusedSession: SessionInfo | null
-  viewMode: 'normal' | 'archived'
+  viewMode: ViewMode
   selectedSessions: Set<string> // For bulk selection
   initSessions: (sessions: SessionInfo[]) => void
   updateSession: (sessionId: string, updates: Partial<SessionInfo>) => void
@@ -17,9 +18,13 @@ interface StoreState {
   interruptSession: (sessionId: string) => Promise<void>
   archiveSession: (sessionId: string, archived: boolean) => Promise<void>
   bulkArchiveSessions: (sessionIds: string[], archived: boolean) => Promise<void>
-  setViewMode: (mode: 'normal' | 'archived') => void
+  setViewMode: (mode: ViewMode) => void
   toggleSessionSelection: (sessionId: string) => void
   clearSelection: () => void
+  selectRange: (anchorId: string, targetId: string) => void
+  addRangeToSelection: (anchorId: string, targetId: string) => void
+  updateCurrentRange: (anchorId: string, targetId: string) => void
+  bulkSelect: (sessionId: string, direction: 'asc' | 'desc') => void
 
   /* Notifications */
   notifiedItems: Set<string> // Set of unique notification IDs
@@ -32,7 +37,7 @@ interface StoreState {
 export const useStore = create<StoreState>((set, get) => ({
   sessions: [],
   focusedSession: null,
-  viewMode: 'normal',
+  viewMode: ViewMode.Normal,
   selectedSessions: new Set<string>(),
   initSessions: (sessions: SessionInfo[]) => set({ sessions }),
   updateSession: (sessionId: string, updates: Partial<SessionInfo>) =>
@@ -49,8 +54,8 @@ export const useStore = create<StoreState>((set, get) => ({
     try {
       const { viewMode } = get()
       const response = await daemonClient.getSessionLeaves({
-        include_archived: viewMode === 'archived',
-        archived_only: viewMode === 'archived',
+        include_archived: viewMode === ViewMode.Archived,
+        archived_only: viewMode === ViewMode.Archived,
       })
       set({ sessions: response.sessions })
     } catch (error) {
@@ -123,7 +128,7 @@ export const useStore = create<StoreState>((set, get) => ({
       throw error
     }
   },
-  setViewMode: (mode: 'normal' | 'archived') => {
+  setViewMode: (mode: ViewMode) => {
     set({ viewMode: mode })
     // Refresh sessions when view mode changes
     get().refreshSessions()
@@ -139,6 +144,233 @@ export const useStore = create<StoreState>((set, get) => ({
       return { selectedSessions: newSet }
     }),
   clearSelection: () => set({ selectedSessions: new Set<string>() }),
+  selectRange: (anchorId: string, targetId: string) =>
+    set(state => {
+      const { sessions } = state
+      const anchorIndex = sessions.findIndex(s => s.id === anchorId)
+      const targetIndex = sessions.findIndex(s => s.id === targetId)
+
+      console.log('[Store] selectRange (REPLACE):', {
+        anchorId,
+        targetId,
+        anchorIndex,
+        targetIndex,
+        previousSelectionsSize: state.selectedSessions.size,
+      })
+
+      if (anchorIndex === -1 || targetIndex === -1) {
+        return state // Return unchanged if sessions not found
+      }
+
+      // Determine the range (handle both directions)
+      const startIndex = Math.min(anchorIndex, targetIndex)
+      const endIndex = Math.max(anchorIndex, targetIndex)
+
+      // Select all sessions in the range
+      const newSelection = new Set<string>()
+      for (let i = startIndex; i <= endIndex; i++) {
+        newSelection.add(sessions[i].id)
+      }
+
+      console.log('[Store] selectRange result:', {
+        newSelectionSize: newSelection.size,
+        newSelectionIds: Array.from(newSelection),
+      })
+
+      return { selectedSessions: newSelection }
+    }),
+  addRangeToSelection: (anchorId: string, targetId: string) =>
+    set(state => {
+      const { sessions, selectedSessions } = state
+      const anchorIndex = sessions.findIndex(s => s.id === anchorId)
+      const targetIndex = sessions.findIndex(s => s.id === targetId)
+
+      console.log('[Store] addRangeToSelection (ADD):', {
+        anchorId,
+        targetId,
+        anchorIndex,
+        targetIndex,
+        previousSelectionsSize: state.selectedSessions.size,
+        previousSelectionIds: Array.from(state.selectedSessions),
+      })
+
+      if (anchorIndex === -1 || targetIndex === -1) {
+        return state // Return unchanged if sessions not found
+      }
+
+      // Determine the range (handle both directions)
+      const startIndex = Math.min(anchorIndex, targetIndex)
+      const endIndex = Math.max(anchorIndex, targetIndex)
+
+      // Start with existing selections
+      const newSelection = new Set(selectedSessions)
+
+      // Add all sessions in the new range
+      for (let i = startIndex; i <= endIndex; i++) {
+        newSelection.add(sessions[i].id)
+      }
+
+      console.log('[Store] addRangeToSelection result:', {
+        newSelectionSize: newSelection.size,
+        newSelectionIds: Array.from(newSelection),
+      })
+
+      return { selectedSessions: newSelection }
+    }),
+  updateCurrentRange: (anchorId: string, targetId: string) =>
+    set(state => {
+      const { sessions, selectedSessions } = state
+      const anchorIndex = sessions.findIndex(s => s.id === anchorId)
+      const targetIndex = sessions.findIndex(s => s.id === targetId)
+
+      console.log('[Store] updateCurrentRange:', {
+        anchorId,
+        targetId,
+        anchorIndex,
+        targetIndex,
+        previousSelectionsSize: selectedSessions.size,
+      })
+
+      if (anchorIndex === -1 || targetIndex === -1) {
+        return state // Return unchanged if sessions not found
+      }
+
+      // Find which sessions belong to the "current" range
+      // (the range being modified by the current shift+j/k sequence) and update only those
+
+      // Find the extent of the current range by looking for contiguous selections around the anchor
+      let rangeStart = anchorIndex
+      let rangeEnd = anchorIndex
+
+      // Find the boundaries of the current selection range that includes the anchor
+      for (let i = anchorIndex - 1; i >= 0; i--) {
+        if (selectedSessions.has(sessions[i].id)) {
+          rangeStart = i
+        } else {
+          break
+        }
+      }
+
+      for (let i = anchorIndex + 1; i < sessions.length; i++) {
+        if (selectedSessions.has(sessions[i].id)) {
+          rangeEnd = i
+        } else {
+          break
+        }
+      }
+
+      // Create new selection preserving everything outside the current range
+      const newSelection = new Set<string>()
+
+      // Add all selections outside the current range
+      selectedSessions.forEach(id => {
+        const index = sessions.findIndex(s => s.id === id)
+        if (index !== -1 && (index < rangeStart || index > rangeEnd)) {
+          newSelection.add(id)
+        }
+      })
+
+      // Add the new range from anchor to target
+      const newRangeStart = Math.min(anchorIndex, targetIndex)
+      const newRangeEnd = Math.max(anchorIndex, targetIndex)
+
+      for (let i = newRangeStart; i <= newRangeEnd; i++) {
+        newSelection.add(sessions[i].id)
+      }
+
+      console.log('[Store] updateCurrentRange result:', {
+        newSelectionSize: newSelection.size,
+        newSelectionIds: Array.from(newSelection),
+        currentRange: `${rangeStart}-${rangeEnd}`,
+        newRange: `${newRangeStart}-${newRangeEnd}`,
+      })
+
+      return { selectedSessions: newSelection }
+    }),
+  bulkSelect: (sessionId: string, direction: 'asc' | 'desc') => {
+    const state = get()
+    const { sessions, selectedSessions } = state
+    const currentIndex = sessions.findIndex(s => s.id === sessionId)
+    if (currentIndex === -1) return
+
+    // Calculate the target index based on direction
+    const targetIndex = direction === 'desc' ? currentIndex + 1 : currentIndex - 1
+
+    // Check boundaries
+    if (targetIndex < 0 || targetIndex >= sessions.length) return
+
+    // Get the target session
+    const targetSession = sessions[targetIndex]
+
+    // Check if we're starting within an existing selection
+    const isStartingInSelection = selectedSessions.has(sessionId)
+
+    console.log(
+      `[bulkSelect] sessionId: ${sessionId}, direction: ${direction}, isStartingInSelection: ${isStartingInSelection}`,
+    )
+
+    if (isStartingInSelection && selectedSessions.size > 0) {
+      // Find the contiguous range that includes current position
+      let rangeStart = currentIndex
+      let rangeEnd = currentIndex
+
+      // Look backwards for contiguous selections
+      for (let i = currentIndex - 1; i >= 0; i--) {
+        if (selectedSessions.has(sessions[i].id)) {
+          rangeStart = i
+        } else {
+          break
+        }
+      }
+
+      // Look forwards for contiguous selections
+      for (let i = currentIndex + 1; i < sessions.length; i++) {
+        if (selectedSessions.has(sessions[i].id)) {
+          rangeEnd = i
+        } else {
+          break
+        }
+      }
+
+      // When in a contiguous selection, the anchor should be at the opposite
+      // end from where we currently are. This creates the "pivot" behavior.
+      // If we're at the start of the range, anchor is at the end
+      // If we're at the end of the range, anchor is at the start
+      // If we're in the middle, use direction to determine anchor
+      let anchorIndex: number
+
+      if (currentIndex === rangeStart) {
+        // We're at the start, so anchor at the end
+        anchorIndex = rangeEnd
+      } else if (currentIndex === rangeEnd) {
+        // We're at the end, so anchor at the start
+        anchorIndex = rangeStart
+      } else {
+        // We're in the middle, use direction-based logic
+        anchorIndex = direction === 'desc' ? rangeStart : rangeEnd
+      }
+
+      const anchorId = sessions[anchorIndex].id
+
+      console.log(
+        `[bulkSelect] Starting in selection, found range: ${rangeStart}-${rangeEnd}, anchor at ${anchorIndex}`,
+      )
+
+      // Use updateCurrentRange to modify the existing range
+      state.updateCurrentRange(anchorId, targetSession.id)
+    } else if (selectedSessions.size > 0 && !isStartingInSelection) {
+      // We have selections but starting fresh - add to existing
+      console.log('[bulkSelect] Adding new range to existing selections')
+      state.addRangeToSelection(sessionId, targetSession.id)
+    } else {
+      // No selections or replacing - create new range
+      console.log('[bulkSelect] Creating new selection range')
+      state.selectRange(sessionId, targetSession.id)
+    }
+
+    // Update focused session
+    set({ focusedSession: targetSession })
+  },
 
   // Notification management
   notifiedItems: new Set<string>(),

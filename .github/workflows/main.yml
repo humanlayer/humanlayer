@@ -116,6 +116,14 @@ jobs:
       - name: Generate Go mocks
         run: make -C hld mocks
 
+      - name: Install bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install wui deps
+        run: bun install --cwd=humanlayer-wui
+
       - name: Test
         run: make test
 
