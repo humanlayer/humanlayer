@@ -46,7 +46,7 @@ const ROBOT_VERBS = [
   'overcomplicating',
   'clauding',
   'generating',
-  'lamenting',
+  'proliferating',
   'quantizing',
   'enshrining',
   'collapsing',
