@@ -314,7 +314,6 @@ describe('AppStore - bulkSelect behavior', () => {
 
     // Press shift+j from session 1
     // Should select sessions 1-2 with focus on session 2
-    console.log('TEST: Pressing shift+j from session 1')
     store.bulkSelect(mockSessions[0].id, 'desc')
 
     let state = useStore.getState()
@@ -326,15 +325,9 @@ describe('AppStore - bulkSelect behavior', () => {
     // Now press shift+k from session 2
     // Should deselect session 2, keeping only session 1 selected
     // The anchor should be at session 1 (the start of the original range)
-    console.log('TEST: Pressing shift+k from session 2')
     store.bulkSelect(mockSessions[1].id, 'asc')
 
     state = useStore.getState()
-    console.log('TEST: Final state after first shift+k:', {
-      selectedSize: state.selectedSessions.size,
-      selectedIds: Array.from(state.selectedSessions),
-      focusedId: state.focusedSession?.id,
-    })
     expect(state.selectedSessions.size).toBe(1)
     expect(state.selectedSessions.has('session-1')).toBe(true)
     expect(state.selectedSessions.has('session-2')).toBe(false)
@@ -351,7 +344,6 @@ describe('AppStore - bulkSelect behavior', () => {
 
     // First shift+k from session 3
     // Should deselect session 3, keeping only session 2
-    console.log('TEST: First shift+k from session 3')
     store.bulkSelect(mockSessions[2].id, 'asc')
 
     let state = useStore.getState()
@@ -362,15 +354,9 @@ describe('AppStore - bulkSelect behavior', () => {
 
     // Second shift+k from session 2
     // Should add session 1 to selection (extending backwards)
-    console.log('TEST: Second shift+k from session 2')
     store.bulkSelect(mockSessions[1].id, 'asc')
 
     state = useStore.getState()
-    console.log('TEST: Final state after second shift+k:', {
-      selectedSize: state.selectedSessions.size,
-      selectedIds: Array.from(state.selectedSessions),
-      focusedId: state.focusedSession?.id,
-    })
     expect(state.selectedSessions.size).toBe(2)
     expect(state.selectedSessions.has('session-1')).toBe(true)
     expect(state.selectedSessions.has('session-2')).toBe(true)

@@ -52,16 +52,8 @@ export default function SessionTable({
   const { isOpen: isSessionLauncherOpen } = useSessionLauncher()
   const { enableScope, disableScope } = useHotkeysContext()
   const tableRef = useRef<HTMLTableElement>(null)
-  const {
-    archiveSession,
-    selectedSessions,
-    toggleSessionSelection,
-    bulkArchiveSessions,
-    selectRange,
-    addRangeToSelection,
-    updateCurrentRange,
-    bulkSelect,
-  } = useStore()
+  const { archiveSession, selectedSessions, toggleSessionSelection, bulkArchiveSessions, bulkSelect } =
+    useStore()
 
   // Helper to render highlighted text
   const renderHighlightedText = (text: string, sessionId: string) => {
@@ -132,67 +124,7 @@ export default function SessionTable({
     'shift+j',
     () => {
       if (focusedSession && sessions.length > 0) {
-        console.log('shift+j')
-
         bulkSelect(focusedSession.id, 'desc')
-        /*
-        const currentIndex = sessions.findIndex(s => s.id === focusedSession.id)
-        if (currentIndex === -1 || currentIndex >= sessions.length - 1) return
-
-        const nextSession = sessions[currentIndex + 1]
-        handleFocusSession?.(nextSession)
-
-        // Determine the anchor based on current state
-        let anchorId = focusedSession.id
-        
-        // Check if we're starting within an existing selection
-        const isStartingInSelection = selectedSessions.has(focusedSession.id)
-        
-        if (isStartingInSelection && selectedSessions.size > 0) {
-          // Find the contiguous range that includes current position
-          let rangeStart = currentIndex
-          let rangeEnd = currentIndex
-          
-          // Look backwards for contiguous selections
-          for (let i = currentIndex - 1; i >= 0; i--) {
-            if (selectedSessions.has(sessions[i].id)) {
-              rangeStart = i
-            } else {
-              break
-            }
-          }
-          
-          // Look forwards for contiguous selections
-          for (let i = currentIndex + 1; i < sessions.length; i++) {
-            if (selectedSessions.has(sessions[i].id)) {
-              rangeEnd = i
-            } else {
-              break
-            }
-          }
-          
-          // For shift+j (moving down), anchor at the top of the range
-          anchorId = sessions[rangeStart].id
-          
-          console.log('[shift+j] Starting in selection, found range:', {
-            rangeStart,
-            rangeEnd,
-            anchorIndex: rangeStart,
-            targetIndex: currentIndex + 1,
-          })
-          
-          // Use updateCurrentRange to modify the existing range
-          updateCurrentRange(anchorId, nextSession.id)
-        } else if (selectedSessions.size > 0 && !isStartingInSelection) {
-          // We have selections but starting fresh - add to existing
-          console.log('[shift+j] Adding new range to existing selections')
-          addRangeToSelection(anchorId, nextSession.id)
-        } else {
-          // No selections or replacing - create new range
-          console.log('[shift+j] Creating new selection range')
-          selectRange(anchorId, nextSession.id)
-        }
-      */
       }
     },
     {
@@ -200,82 +132,14 @@ export default function SessionTable({
       enabled: !isSessionLauncherOpen,
       preventDefault: true,
     },
-    [
-      focusedSession,
-      sessions,
-      selectedSessions,
-      selectRange,
-      addRangeToSelection,
-      updateCurrentRange,
-      handleFocusSession,
-      bulkSelect,
-    ],
+    [focusedSession, sessions, bulkSelect],
   )
 
   useHotkeys(
     'shift+k',
     () => {
       if (focusedSession && sessions.length > 0) {
-        console.log('shift+k')
         bulkSelect(focusedSession.id, 'asc')
-        /*
-        const currentIndex = sessions.findIndex(s => s.id === focusedSession.id)
-        if (currentIndex === -1 || currentIndex === 0) return
-
-        const prevSession = sessions[currentIndex - 1]
-        handleFocusSession?.(prevSession)
-
-        // Determine the anchor based on current state
-        let anchorId = focusedSession.id
-        
-        // Check if we're starting within an existing selection
-        const isStartingInSelection = selectedSessions.has(focusedSession.id)
-        
-        if (isStartingInSelection && selectedSessions.size > 0) {
-          // Find the contiguous range that includes current position
-          let rangeStart = currentIndex
-          let rangeEnd = currentIndex
-          
-          // Look backwards for contiguous selections
-          for (let i = currentIndex - 1; i >= 0; i--) {
-            if (selectedSessions.has(sessions[i].id)) {
-              rangeStart = i
-            } else {
-              break
-            }
-          }
-          
-          // Look forwards for contiguous selections
-          for (let i = currentIndex + 1; i < sessions.length; i++) {
-            if (selectedSessions.has(sessions[i].id)) {
-              rangeEnd = i
-            } else {
-              break
-            }
-          }
-          
-          // For shift+k (moving up), anchor at the bottom of the range
-          anchorId = sessions[rangeEnd].id
-          
-          console.log('[shift+k] Starting in selection, found range:', {
-            rangeStart,
-            rangeEnd,
-            anchorIndex: rangeEnd,
-            targetIndex: currentIndex - 1,
-          })
-          
-          // Use updateCurrentRange to modify the existing range
-          updateCurrentRange(anchorId, prevSession.id)
-        } else if (selectedSessions.size > 0 && !isStartingInSelection) {
-          // We have selections but starting fresh - add to existing
-          console.log('[shift+k] Adding new range to existing selections')
-          addRangeToSelection(anchorId, prevSession.id)
-        } else {
-          // No selections or replacing - create new range
-          console.log('[shift+k] Creating new selection range')
-          selectRange(anchorId, prevSession.id)
-        }
-        */
       }
     },
     {
@@ -283,16 +147,7 @@ export default function SessionTable({
       enabled: !isSessionLauncherOpen,
       preventDefault: true,
     },
-    [
-      focusedSession,
-      sessions,
-      selectedSessions,
-      selectRange,
-      addRangeToSelection,
-      updateCurrentRange,
-      handleFocusSession,
-      bulkSelect,
-    ],
+    [focusedSession, sessions, bulkSelect],
   )
 
   // Select all with meta+a (Cmd+A on Mac, Ctrl+A on Windows/Linux)
