@@ -39,7 +39,7 @@ const ROBOT_VERBS = [
   'schlepping',
   'ideating',
   'thriving',
-  'proselytizing',
+  'frolicking',
   'photosynthesizing',
   'prototyping',
   'finagling',
