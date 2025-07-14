@@ -186,11 +186,8 @@ export function eventToDisplayObject(
       const toolInput = JSON.parse(event.tool_input_json!)
       subject = (
         <span>
-          <div className="mb-2">
-            <span className="font-bold mr-2">{event.tool_name}</span>
-            <small className="text-xs text-muted-foreground">{toolInput.file_path}</small>
-          </div>
-          <div className="font-mono text-sm text-muted-foreground">{toolInput.content}</div>
+          <span className="font-bold">{event.tool_name} </span>
+          <span className="font-mono text-sm text-muted-foreground">{toolInput.file_path}</span>
         </span>
       )
     }
