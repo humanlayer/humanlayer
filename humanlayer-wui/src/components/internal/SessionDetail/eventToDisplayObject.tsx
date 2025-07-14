@@ -514,7 +514,9 @@ export function eventToDisplayObject(
                 <span className="text-muted-foreground/50">⎿</span>
                 <span>
                   {resultDisplay}
-                  {isFocused && <span className="text-xs text-muted-foreground/50 ml-2">[i] expand</span>}
+                  {isFocused && (
+                    <span className="text-xs text-muted-foreground/50 ml-2">[i] expand</span>
+                  )}
                 </span>
               </div>
             </>
