@@ -69,7 +69,7 @@ const ROBOT_VERBS = [
   'transisting',
   'accelerating',
   'transcribing',
-  'attending',
+  'receiving',
   'adhering',
   'connecting',
   'sublimating',
