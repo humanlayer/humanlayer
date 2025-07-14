@@ -255,7 +255,9 @@ export function ConversationContent({
                 {/* Icon */}
                 <div className="flex items-baseline gap-2">
                   {displayObject.iconComponent && (
-                    <span className={`text-sm ${displayObject.isThinking ? 'text-muted-foreground' : 'text-accent'} align-middle relative top-[1px]`}>
+                    <span
+                      className={`text-sm ${displayObject.isThinking ? 'text-muted-foreground' : 'text-accent'} align-middle relative top-[1px]`}
+                    >
                       {displayObject.iconComponent}
                     </span>
                   )}
@@ -380,7 +382,9 @@ export function ConversationContent({
 
                     <div className="flex items-baseline gap-2">
                       {displayObject.iconComponent && (
-                        <span className={`text-sm ${displayObject.isThinking ? 'text-muted-foreground' : 'text-accent'} align-middle relative top-[1px]`}>
+                        <span
+                          className={`text-sm ${displayObject.isThinking ? 'text-muted-foreground' : 'text-accent'} align-middle relative top-[1px]`}
+                        >
                           {displayObject.iconComponent}
                         </span>
                       )}

@@ -65,10 +65,11 @@ export function eventToDisplayObject(
   let body = null
   let iconComponent = null
   let toolResultContent = null
-  
+
   // console.log('event', event)
   // Check if this is a thinking message
-  const isThinking = event.event_type === ConversationEventType.Thinking ||
+  const isThinking =
+    event.event_type === ConversationEventType.Thinking ||
     (event.role === 'assistant' && event.content?.startsWith('<thinking>'))
 
   const iconClasses = `w-4 h-4 align-middle relative top-[1px] ${event.event_type === ConversationEventType.ToolCall && !event.is_completed ? 'pulse-warning' : ''}`
@@ -455,7 +456,7 @@ export function eventToDisplayObject(
     // Thinking messages are always from assistant
     const fullContent = event.content || ''
     const contentTree = starryNight?.highlight(fullContent, 'text.md')
-    
+
     subject = contentTree ? (
       <span className="text-muted-foreground italic">
         {toJsxRuntime(contentTree, { Fragment, jsx, jsxs })}
