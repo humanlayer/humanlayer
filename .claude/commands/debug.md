@@ -18,7 +18,7 @@ I'll investigate the logs, database, and git state to help figure out what's hap
 
 When invoked WITHOUT parameters:
 ```
-I'll help debug your current issue. 
+I'll help debug your current issue.
 
 Please describe what's going wrong:
 - What are you working on?
@@ -160,7 +160,7 @@ Would you like me to investigate something specific further?
 ## Important Notes
 
 - **Focus on manual testing scenarios** - This is for debugging during implementation
-- **Always require problem description** - Can't debug without knowing what's wrong  
+- **Always require problem description** - Can't debug without knowing what's wrong
 - **Read files completely** - No limit/offset when reading context
 - **Think like `commit` or `describe_pr`** - Understand git state and changes
 - **Guide back to user** - Some issues (browser console, MCP internals) are outside reach
