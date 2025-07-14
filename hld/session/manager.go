@@ -733,6 +733,37 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 							"error", err)
 						// Continue anyway - this is not fatal
 					}
+
+				case "thinking":
+					// Thinking message
+					convEvent := &store.ConversationEvent{
+						SessionID:       sessionID,
+						ClaudeSessionID: claudeSessionID,
+						EventType:       store.EventTypeThinking,
+						Role:            event.Message.Role,
+						Content:         content.Thinking,
+					}
+					if err := m.store.AddConversationEvent(ctx, convEvent); err != nil {
+						return err
+					}
+
+					// Update session activity timestamp for thinking messages
+					m.updateSessionActivity(ctx, sessionID)
+
+					// Publish conversation updated event
+					if m.eventBus != nil {
+						m.eventBus.Publish(bus.Event{
+							Type: bus.EventConversationUpdated,
+							Data: map[string]interface{}{
+								"session_id":        sessionID,
+								"claude_session_id": claudeSessionID,
+								"event_type":        "thinking",
+								"role":              event.Message.Role,
+								"content":           content.Thinking,
+								"content_type":      "thinking",
+							},
+						})
+					}
 				}
 			}
 		}

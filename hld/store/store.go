@@ -197,6 +197,7 @@ const (
 	EventTypeToolCall   = "tool_call"
 	EventTypeToolResult = "tool_result"
 	EventTypeSystem     = "system"
+	EventTypeThinking   = "thinking"
 )
 
 // RecentPath represents a recently used working directory

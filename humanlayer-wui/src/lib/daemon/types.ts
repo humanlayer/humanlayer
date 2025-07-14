@@ -25,6 +25,7 @@ export enum ConversationEventType {
   ToolCall = 'tool_call',
   ToolResult = 'tool_result',
   System = 'system',
+  Thinking = 'thinking',
 }
 
 export enum ConversationRole {
