@@ -15,3 +15,30 @@ For UI development, we use Radix UI components styled with Tailwind CSS. State m
 - DO use `zustand` for managing global state. In a number of cases we've used internal React state management, but as the application scales we'll want to push more of that state into `zustand`.
 - DO verify your changes with `bun run lint` and `bun run typecheck`.
 - DO provide a manual list of steps for a human to test new UI changes.
+
+## Testing
+
+We use Bun's built-in test runner for unit tests. Run tests with `bun test`.
+
+- Store tests are located in `src/AppStore.test.ts`
+- Tests are critical for complex state management logic like keyboard shortcuts and selection behavior
+- When modifying store methods, write tests FIRST to verify the expected behavior
+- Use test-driven development (TDD) for store changes: write failing tests, then implement the fix
+
+## Keyboard Shortcuts & Selection Management
+
+The WUI implements vim-style keyboard navigation with complex selection behavior:
+
+- `j/k` - Navigate down/up through sessions
+- `shift+j/shift+k` - Bulk selection with anchor-based range selection
+- `x` - Toggle individual selection
+- `e` - Archive/unarchive sessions
+
+Selection behavior is managed through the AppStore with these key methods:
+
+- `bulkSelect(sessionId, direction)` - Main entry point for shift+j/k shortcuts
+- `selectRange()` - Creates new selection ranges
+- `addRangeToSelection()` - Adds ranges to existing selections
+- `updateCurrentRange()` - Modifies existing ranges (pivot behavior)
+
+The selection system uses "stateless anchor management" - anchors are calculated dynamically based on the current position within a selection range, not stored in state. This prevents synchronization issues.
