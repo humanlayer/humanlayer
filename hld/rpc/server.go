@@ -69,7 +69,7 @@ func (s *Server) SetSubscriptionHandlers(mgr *SubscriptionHandlers) {
 func (s *Server) ServeConn(ctx context.Context, conn net.Conn) error {
 	// Use a scanner to read line-delimited JSON
 	scanner := bufio.NewScanner(conn)
-	scanner.Buffer(make([]byte, 1024*1024), 1024*1024) // 1MB buffer
+	scanner.Buffer(make([]byte, 0), 10*1024*1024) // 10MB buffer to match claudecode-go
 
 	for scanner.Scan() {
 		select {

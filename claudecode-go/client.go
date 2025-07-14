@@ -288,6 +288,9 @@ func (s *Session) Interrupt() error {
 // parseStreamingJSON reads and parses streaming JSON output
 func (s *Session) parseStreamingJSON(stdout, stderr io.Reader) {
 	scanner := bufio.NewScanner(stdout)
+	// Configure scanner to handle large JSON lines (up to 10MB)
+	// This prevents buffer overflow when Claude returns large file contents
+	scanner.Buffer(make([]byte, 0), 10*1024*1024) // 10MB max line size
 	var stderrBuf strings.Builder
 	stderrDone := make(chan struct{})
 
@@ -340,6 +343,15 @@ func (s *Session) parseStreamingJSON(stdout, stderr io.Reader) {
 
 		// Send event to channel
 		s.Events <- event
+	}
+
+	// Check for scanner errors including buffer overflow
+	if err := scanner.Err(); err != nil {
+		if err == bufio.ErrTooLong {
+			s.SetError(fmt.Errorf("JSON line exceeded buffer limit (10MB): %w", err))
+		} else {
+			s.SetError(fmt.Errorf("stream parsing failed: %w", err))
+		}
 	}
 
 	// Wait for stderr reading to complete before accessing the buffer
