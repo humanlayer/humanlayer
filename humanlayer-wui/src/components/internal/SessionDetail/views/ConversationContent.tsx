@@ -1,7 +1,7 @@
 import { createStarryNight } from '@wooorm/starry-night'
 import jsonGrammar from '@wooorm/starry-night/source.json'
 import textMd from '@wooorm/starry-night/text.md'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import keyBy from 'lodash.keyby'
 
 import { ConversationEvent, ConversationEventType } from '@/lib/daemon/types'
@@ -12,7 +12,6 @@ import { formatAbsoluteTimestamp } from '@/utils/formatting'
 import { eventToDisplayObject } from '../eventToDisplayObject'
 import { useTaskGrouping } from '../hooks/useTaskGrouping'
 import { TaskGroup } from './TaskGroup'
-import { EventMetaInfo } from '../components/EventMetaInfo'
 
 // TODO(2): Extract keyboard navigation logic to a custom hook
 // TODO(2): Extract auto-scroll logic to a separate utility
@@ -39,6 +38,8 @@ export function ConversationContent({
   setFocusSource,
   setConfirmingApprovalId,
   expandedToolResult,
+  setExpandedToolResult,
+  setExpandedToolCall,
   maxEventIndex,
 }: {
   sessionId: string
@@ -57,11 +58,12 @@ export function ConversationContent({
   setFocusSource?: (source: 'mouse' | 'keyboard' | null) => void
   setConfirmingApprovalId?: (id: string | null) => void
   expandedToolResult?: ConversationEvent | null
+  setExpandedToolResult?: (event: ConversationEvent | null) => void
+  setExpandedToolCall?: (event: ConversationEvent | null) => void
   maxEventIndex?: number
 }) {
   // expandedToolResult is used by parent to control hotkey availability
   void expandedToolResult
-  const [expandedEventId, setExpandedEventId] = useState<number | null>(null)
   const { events, loading, error, isInitialLoad } = useConversation(sessionId, undefined, 1000)
 
   // Filter events based on maxEventIndex (exclude the event at maxEventIndex)
@@ -223,9 +225,22 @@ export function ConversationContent({
                   setFocusedEventId(null)
                   setConfirmingApprovalId?.(null)
                 }}
-                onClick={() =>
-                  setExpandedEventId(expandedEventId === displayObject.id ? null : displayObject.id)
-                }
+                onClick={() => {
+                  const event = events.find(e => e.id === displayObject.id)
+                  if (event?.event_type === ConversationEventType.ToolCall) {
+                    const toolResult = event.tool_id
+                      ? events.find(
+                          e =>
+                            e.event_type === ConversationEventType.ToolResult &&
+                            e.tool_result_for_id === event.tool_id,
+                        )
+                      : null
+                    if (setExpandedToolResult && setExpandedToolCall) {
+                      setExpandedToolResult(toolResult || null)
+                      setExpandedToolCall(event)
+                    }
+                  }
+                }}
                 className={`relative p-4 cursor-pointer NoSubTasksConversationContent ${
                   index !== nonEmptyDisplayObjects.length - 1 ? 'border-b' : ''
                 } ${focusedEventId === displayObject.id ? '!bg-accent/20' : ''}`}
@@ -261,10 +276,6 @@ export function ConversationContent({
                   <p className="whitespace-pre-wrap text-foreground">{displayObject.body}</p>
                 )}
               </div>
-
-              {expandedEventId === displayObject.id && (
-                <EventMetaInfo event={filteredEvents.find(e => e.id === displayObject.id)!} />
-              )}
             </div>
           ))}
         </div>
@@ -290,8 +301,6 @@ export function ConversationContent({
                   onToggle={() => toggleTaskGroup(event.tool_id!)}
                   focusedEventId={focusedEventId}
                   setFocusedEventId={setFocusedEventId}
-                  expandedEventId={expandedEventId}
-                  setExpandedEventId={setExpandedEventId}
                   onApprove={onApprove}
                   onDeny={onDeny}
                   approvingApprovalId={approvingApprovalId}
@@ -304,6 +313,8 @@ export function ConversationContent({
                   setFocusSource={setFocusSource}
                   setConfirmingApprovalId={setConfirmingApprovalId}
                   toolResultsByKey={toolResultsByKey}
+                  setExpandedToolResult={setExpandedToolResult}
+                  setExpandedToolCall={setExpandedToolCall}
                 />
               )
             } else {
@@ -336,9 +347,22 @@ export function ConversationContent({
                       setFocusedEventId(null)
                       setConfirmingApprovalId?.(null)
                     }}
-                    onClick={() =>
-                      setExpandedEventId(expandedEventId === displayObject.id ? null : displayObject.id)
-                    }
+                    onClick={() => {
+                      const event = events.find(e => e.id === displayObject.id)
+                      if (event?.event_type === ConversationEventType.ToolCall) {
+                        const toolResult = event.tool_id
+                          ? events.find(
+                              e =>
+                                e.event_type === ConversationEventType.ToolResult &&
+                                e.tool_result_for_id === event.tool_id,
+                            )
+                          : null
+                        if (setExpandedToolResult && setExpandedToolCall) {
+                          setExpandedToolResult(toolResult || null)
+                          setExpandedToolCall(event)
+                        }
+                      }
+                    }}
                     className={`relative p-4 cursor-pointer ${
                       index !==
                       rootEvents.filter(e => e.event_type !== ConversationEventType.ToolResult).length -
@@ -373,8 +397,6 @@ export function ConversationContent({
                       <p className="whitespace-pre-wrap text-foreground">{displayObject.body}</p>
                     )}
                   </div>
-
-                  {expandedEventId === displayObject.id && <EventMetaInfo event={event} />}
                 </div>
               )
             }

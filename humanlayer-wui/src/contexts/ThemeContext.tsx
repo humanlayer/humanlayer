@@ -10,6 +10,7 @@ export type Theme =
   | 'framer-light'
   | 'gruvbox-dark'
   | 'gruvbox-light'
+  | 'monokai'
 
 interface ThemeContextType {
   theme: Theme

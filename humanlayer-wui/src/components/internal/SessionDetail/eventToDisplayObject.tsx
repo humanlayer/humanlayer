@@ -3,10 +3,22 @@ import jsonGrammar from '@wooorm/starry-night/source.json'
 import textMd from '@wooorm/starry-night/text.md'
 import { toJsxRuntime } from 'hast-util-to-jsx-runtime'
 import { Fragment, jsx, jsxs } from 'react/jsx-runtime'
+import React from 'react'
 
 import { ConversationEvent, ConversationEventType, ApprovalStatus } from '@/lib/daemon/types'
 import { Button } from '@/components/ui/button'
-import { Bot, FilePenLine, UserCheck, User, Wrench, Globe } from 'lucide-react'
+import {
+  Bot,
+  FilePenLine,
+  UserCheck,
+  User,
+  Wrench,
+  Globe,
+  FileText,
+  Terminal,
+  Search,
+  ListTodo,
+} from 'lucide-react'
 import { CommandToken } from '@/components/internal/CommandToken'
 import { formatToolResult } from './formatToolResult'
 import { DiffViewToggle } from './components/DiffViewToggle'
@@ -97,10 +109,15 @@ export function eventToDisplayObject(
       const toolInput = JSON.parse(event.tool_input_json!)
       subject = (
         <span>
-          <span className="font-bold">{event.tool_name} </span>
-          <span className="font-mono text-sm text-muted-foreground">
+          <div className="flex items-baseline gap-2">
+            <span className="font-bold">{event.tool_name} </span>
+            {toolInput.description && (
+              <span className="text-sm text-muted-foreground">{toolInput.description}</span>
+            )}
+          </div>
+          <div className="mt-1 font-mono text-sm text-muted-foreground">
             <CommandToken>{toolInput.command}</CommandToken>
-          </span>
+          </div>
         </span>
       )
     }
@@ -169,11 +186,8 @@ export function eventToDisplayObject(
       const toolInput = JSON.parse(event.tool_input_json!)
       subject = (
         <span>
-          <div className="mb-2">
-            <span className="font-bold mr-2">{event.tool_name}</span>
-            <small className="text-xs text-muted-foreground">{toolInput.file_path}</small>
-          </div>
-          <div className="font-mono text-sm text-muted-foreground">{toolInput.content}</div>
+          <span className="font-bold">{event.tool_name} </span>
+          <span className="font-mono text-sm text-muted-foreground">{toolInput.file_path}</span>
         </span>
       )
     }
@@ -225,6 +239,9 @@ export function eventToDisplayObject(
       )
     }
   }
+
+  // Store the formatted subject before approval handling overwrites it
+  const formattedToolSubject = subject
 
   // Approvals
   if (event.approval_status) {
@@ -349,18 +366,36 @@ export function eventToDisplayObject(
       )
     }
 
-    subject = (
-      <span>
-        <span className={`font-bold ${approvalStatusToColor[event.approval_status]}`}>
-          {event.tool_name}
+    // If we have a formatted subject from tool-specific rendering, use it
+    if (formattedToolSubject) {
+      subject = (
+        <span>
+          <div className="flex items-baseline gap-2">
+            <span className={`${approvalStatusToColor[event.approval_status]}`}>
+              {formattedToolSubject}
+            </span>
+            {event.approval_status === ApprovalStatus.Pending && (
+              <span className="text-sm text-muted-foreground">(needs approval)</span>
+            )}
+          </div>
+          {previewFile}
         </span>
-        {event.approval_status === ApprovalStatus.Pending && (
-          <span className="ml-2 text-sm text-muted-foreground">(needs approval)</span>
-        )}
-        {!previewFile && <div className="mt-4">{starryNightJson(event.tool_input_json!)}</div>}
-        {previewFile}
-      </span>
-    )
+      )
+    } else {
+      // Fallback to original behavior for tools without special formatting
+      subject = (
+        <span>
+          <span className={`font-bold ${approvalStatusToColor[event.approval_status]}`}>
+            {event.tool_name}
+          </span>
+          {event.approval_status === ApprovalStatus.Pending && (
+            <span className="ml-2 text-sm text-muted-foreground">(needs approval)</span>
+          )}
+          {!previewFile && <div className="mt-4">{starryNightJson(event.tool_input_json!)}</div>}
+          {previewFile}
+        </span>
+      )
+    }
 
     // Add approve/deny buttons for pending approvals
     if (event.approval_status === ApprovalStatus.Pending && event.approval_id && onApprove && onDeny) {
@@ -452,38 +487,50 @@ export function eventToDisplayObject(
   }
 
   // Display tool result content for tool calls
-  if (event.event_type === ConversationEventType.ToolCall && toolResult) {
-    // For denied approvals, show the denial comment in red
-    if (event.approval_status === ApprovalStatus.Denied) {
-      subject = (
-        <>
-          {subject}
-          <div className="mt-1 text-sm font-mono flex items-start gap-1">
-            <span className="text-muted-foreground/50">⎿</span>
-            <span className="text-destructive">
-              Denied: {toolResult.tool_result_content || 'No reason provided'}
-            </span>
-          </div>
-        </>
-      )
-    } else {
-      // Normal tool result display
-      const resultDisplay = formatToolResult(event.tool_name || '', toolResult)
-      if (resultDisplay) {
-        // Append to existing subject with indentation
+  if (event.event_type === ConversationEventType.ToolCall) {
+    if (toolResult) {
+      // For denied approvals, show the denial comment in red
+      if (event.approval_status === ApprovalStatus.Denied) {
         subject = (
           <>
             {subject}
-            <div className="mt-1 text-sm text-muted-foreground font-mono flex items-start gap-1">
+            <div className="mt-1 text-sm font-mono flex items-start gap-1">
               <span className="text-muted-foreground/50">⎿</span>
-              <span>
-                {resultDisplay}
-                {isFocused && <span className="text-xs text-muted-foreground/50 ml-2">[i] expand</span>}
+              <span className="text-destructive">
+                Denied: {toolResult.tool_result_content || 'No reason provided'}
               </span>
             </div>
           </>
         )
+      } else {
+        // Normal tool result display
+        const resultDisplay = formatToolResult(event.tool_name || '', toolResult)
+        if (resultDisplay) {
+          // Append to existing subject with indentation
+          subject = (
+            <>
+              {subject}
+              <div className="mt-1 text-sm text-muted-foreground font-mono flex items-start gap-1">
+                <span className="text-muted-foreground/50">⎿</span>
+                <span>
+                  {resultDisplay}
+                  {isFocused && (
+                    <span className="text-xs text-muted-foreground/50 ml-2">[i] expand</span>
+                  )}
+                </span>
+              </div>
+            </>
+          )
+        }
       }
+    } else if (isFocused) {
+      // For unfinished tools, just show the expand hint
+      subject = (
+        <>
+          {subject}
+          <span className="text-xs text-muted-foreground/50 ml-2">[i] expand</span>
+        </>
+      )
     }
   }
 
@@ -502,6 +549,37 @@ export function eventToDisplayObject(
     body,
     created_at: event.created_at,
     toolResultContent,
+  }
+}
+
+// Export icon mapping function for reuse in modal
+export function getToolIcon(toolName: string | undefined): React.ReactNode {
+  if (!toolName) return <Wrench className="w-3.5 h-3.5" />
+
+  // Handle MCP tools
+  if (toolName.startsWith('mcp__')) {
+    return <Globe className="w-3.5 h-3.5" />
+  }
+
+  // Handle regular tools
+  switch (toolName) {
+    case 'Edit':
+    case 'MultiEdit':
+      return <FilePenLine className="w-3.5 h-3.5" />
+    case 'Read':
+      return <FileText className="w-3.5 h-3.5" />
+    case 'Write':
+      return <FilePenLine className="w-3.5 h-3.5" />
+    case 'Bash':
+      return <Terminal className="w-3.5 h-3.5" />
+    case 'Grep':
+      return <Search className="w-3.5 h-3.5" />
+    case 'TodoWrite':
+      return <ListTodo className="w-3.5 h-3.5" />
+    case 'WebSearch':
+      return <Globe className="w-3.5 h-3.5" />
+    default:
+      return <Wrench className="w-3.5 h-3.5" />
   }
 }
 

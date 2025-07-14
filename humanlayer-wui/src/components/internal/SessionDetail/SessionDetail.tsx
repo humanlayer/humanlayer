@@ -1,10 +1,9 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 
 import { ConversationEvent, SessionInfo, ApprovalStatus, SessionStatus } from '@/lib/daemon/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { useConversation } from '@/hooks/useConversation'
-import { Skeleton } from '@/components/ui/skeleton'
 import { ChevronDown, Archive } from 'lucide-react'
 import { getStatusTextClass } from '@/utils/component-utils'
 import { truncate } from '@/utils/formatting'
@@ -34,6 +33,53 @@ interface SessionDetailProps {
 
 const SessionDetailHotkeysScope = 'session-detail'
 
+const ROBOT_VERBS = [
+  'riffing',
+  'vibing',
+  'schlepping',
+  'ideating',
+  'thriving',
+  'frolicking',
+  'photosynthesizing',
+  'prototyping',
+  'finagling',
+  'overcomplicating',
+  'clauding',
+  'generating',
+  'proliferating',
+  'quantizing',
+  'enshrining',
+  'collapsing',
+  'amplifying',
+  'inducting',
+  'capacitizing',
+  'conducting',
+  'densifying',
+  'diffusing',
+  'attending',
+  'propagating',
+  'fusing',
+  'gravitating',
+  'potentiating',
+  'radiating',
+  'reflecting',
+  'simplifying',
+  'superconducting',
+  'fixating',
+  'transisting',
+  'accelerating',
+  'transcribing',
+  'receiving',
+  'adhering',
+  'connecting',
+  'sublimating',
+  'balancing',
+  'ionizing',
+  'actuating',
+  'mechanizing',
+  'harmonizing',
+]
+
 function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [isWideView, setIsWideView] = useState(false)
   const [isCompactView, setIsCompactView] = useState(false)
@@ -44,11 +90,49 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [previewEventIndex, setPreviewEventIndex] = useState<number | null>(null)
   const [pendingForkMessage, setPendingForkMessage] = useState<ConversationEvent | null>(null)
 
-  const isRunning = session.status === 'running'
+  const isActivelyProcessing = ['starting', 'running', 'completing'].includes(session.status)
+  const responseInputRef = useRef<HTMLTextAreaElement>(null)
 
   // Get session from store to access auto_accept_edits
   const sessionFromStore = useStore(state => state.sessions.find(s => s.id === session.id))
   const autoAcceptEdits = sessionFromStore?.auto_accept_edits ?? false
+
+  // Generate random verb that changes every 10-20 seconds
+  const [randomVerb, setRandomVerb] = useState(() => {
+    const verb = ROBOT_VERBS[Math.floor(Math.random() * ROBOT_VERBS.length)]
+    return verb.charAt(0).toUpperCase() + verb.slice(1)
+  })
+
+  // Randomly choose spinner type on mount (0: fancy, 1: simple, 2: minimal, 3: bars)
+  const spinnerType = useMemo(() => Math.floor(Math.random() * 4), [])
+
+  useEffect(() => {
+    if (!isActivelyProcessing) return
+
+    const changeVerb = () => {
+      const verb = ROBOT_VERBS[Math.floor(Math.random() * ROBOT_VERBS.length)]
+      setRandomVerb(verb.charAt(0).toUpperCase() + verb.slice(1))
+    }
+
+    let intervalId: ReturnType<typeof setTimeout>
+
+    // Function to schedule next change
+    const scheduleNextChange = () => {
+      const delay = 2000 + Math.random() * 18000 // 2-20 seconds
+      intervalId = setTimeout(() => {
+        changeVerb()
+        scheduleNextChange() // Schedule the next change
+      }, delay)
+    }
+
+    // Start the first scheduled change
+    scheduleNextChange()
+
+    // Cleanup
+    return () => {
+      if (intervalId) clearTimeout(intervalId)
+    }
+  }, [isActivelyProcessing])
 
   // Get events for sidebar access
   const { events } = useConversation(session.id)
@@ -141,6 +225,20 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     return () => window.removeEventListener('resize', checkScreenSize)
   }, [])
 
+  // Auto-focus text input and scroll to bottom when session opens
+  useEffect(() => {
+    // Focus the text input
+    if (responseInputRef.current && session.status !== SessionStatus.Failed) {
+      responseInputRef.current.focus()
+    }
+
+    // Scroll to bottom of conversation
+    const container = document.querySelector('[data-conversation-container]')
+    if (container) {
+      container.scrollTop = container.scrollHeight
+    }
+  }, [session.id]) // Re-run when session changes
+
   // Check if there are pending approvals out of view
   const [hasPendingApprovalsOutOfView, setHasPendingApprovalsOutOfView] = useState(false)
 
@@ -164,17 +262,24 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         return
       }
 
+      // If the textarea is focused, blur it and stop processing
+      if (ev.target === responseInputRef.current && responseInputRef.current) {
+        responseInputRef.current.blur()
+        return
+      }
+
       if (approvals.confirmingApprovalId) {
         approvals.setConfirmingApprovalId(null)
-      } else if (navigation.expandedEventId) {
-        navigation.setExpandedEventId(null)
       } else if (navigation.focusedEventId) {
         navigation.setFocusedEventId(null)
       } else {
         onClose()
       }
     },
-    { scopes: SessionDetailHotkeysScope },
+    {
+      scopes: SessionDetailHotkeysScope,
+      enableOnFormTags: true, // Enable escape key in form elements like textarea
+    },
   )
 
   // Add Shift+Tab handler for auto-accept edits mode
@@ -359,17 +464,114 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               setFocusSource={navigation.setFocusSource}
               setConfirmingApprovalId={approvals.setConfirmingApprovalId}
               expandedToolResult={expandedToolResult}
+              setExpandedToolResult={setExpandedToolResult}
+              setExpandedToolCall={setExpandedToolCall}
               maxEventIndex={previewEventIndex ?? undefined}
             />
-            {isRunning && (
-              <div className="flex flex-col gap-1 mt-2 border-t pt-2">
-                <h2 className="text-sm font-medium text-muted-foreground">robot magic is happening</h2>
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-1/4" />
-                  <Skeleton className="h-4 w-1/5" />
-                </div>
-              </div>
-            )}
+            {isActivelyProcessing &&
+              (() => {
+                // Fancy complex spinner
+                const fancySpinner = (
+                  <div className="relative w-10 h-10">
+                    {/* Outermost orbiting particles */}
+                    <div className="absolute inset-0 animate-spin-slow">
+                      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary/40 animate-pulse" />
+                      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary/40 animate-pulse delay-75" />
+                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-1 rounded-full bg-primary/40 animate-pulse delay-150" />
+                      <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-1 rounded-full bg-primary/40 animate-pulse delay-300" />
+                    </div>
+
+                    {/* Outer gradient ring */}
+                    <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-primary/0 via-primary/30 to-primary/0 animate-spin" />
+
+                    {/* Mid rotating ring with gradient */}
+                    <div className="absolute inset-1 rounded-full">
+                      <div className="absolute inset-0 rounded-full bg-gradient-conic from-primary/10 via-primary/50 to-primary/10 animate-spin-reverse" />
+                    </div>
+
+                    {/* Inner wave ring */}
+                    <div className="absolute inset-2 rounded-full overflow-hidden">
+                      <div className="absolute inset-0 bg-gradient-to-br from-primary/30 via-transparent to-primary/30 animate-wave" />
+                    </div>
+
+                    {/* Morphing core */}
+                    <div className="absolute inset-3 animate-morph">
+                      <div className="absolute inset-0 rounded-full bg-gradient-radial from-primary/60 to-primary/20 blur-sm" />
+                      <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary/40 to-transparent" />
+                    </div>
+
+                    {/* Center glow */}
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="relative">
+                        <div className="absolute w-2 h-2 rounded-full bg-primary/80 animate-ping" />
+                        <div className="relative w-2 h-2 rounded-full bg-primary animate-pulse-bright" />
+                      </div>
+                    </div>
+
+                    {/* Random glitch effect */}
+                    <div className="absolute inset-0 rounded-full opacity-20 animate-glitch" />
+                  </div>
+                )
+
+                // Simple minimal spinner
+                const simpleSpinner = (
+                  <div className="relative w-10 h-10">
+                    {/* Single spinning ring */}
+                    <div className="absolute inset-0 rounded-full border-2 border-primary/20 border-t-primary/60 animate-spin" />
+
+                    {/* Pulsing center dot */}
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-2 h-2 rounded-full bg-primary/50 animate-pulse" />
+                    </div>
+
+                    {/* Simple gradient overlay */}
+                    <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary/10 to-transparent" />
+                  </div>
+                )
+
+                // Ultra minimal spinner
+                const minimalSpinner = (
+                  <div className="relative w-10 h-10">
+                    {/* Three dots rotating */}
+                    <div className="absolute inset-0 animate-spin">
+                      <div className="absolute top-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-primary/60" />
+                      <div className="absolute bottom-1 left-2 w-1.5 h-1.5 rounded-full bg-primary/40" />
+                      <div className="absolute bottom-1 right-2 w-1.5 h-1.5 rounded-full bg-primary/40" />
+                    </div>
+                  </div>
+                )
+
+                // Bouncing bars spinner
+                const barsSpinner = (
+                  <div className="relative w-10 h-10 flex items-center justify-center gap-1">
+                    {/* Five bouncing bars */}
+                    <div className="w-1 h-6 bg-primary/40 rounded-full animate-bounce-slow" />
+                    <div className="w-1 h-8 bg-primary/60 rounded-full animate-bounce-medium" />
+                    <div className="w-1 h-5 bg-primary/80 rounded-full animate-bounce-fast" />
+                    <div className="w-1 h-7 bg-primary/60 rounded-full animate-bounce-medium delay-150" />
+                    <div className="w-1 h-4 bg-primary/40 rounded-full animate-bounce-slow delay-300" />
+                  </div>
+                )
+
+                // Select spinner based on random type
+                const spinner =
+                  spinnerType === 0
+                    ? fancySpinner
+                    : spinnerType === 1
+                      ? simpleSpinner
+                      : spinnerType === 2
+                        ? minimalSpinner
+                        : barsSpinner
+
+                return (
+                  <div className="flex items-center gap-3 mt-4 pl-4">
+                    {spinner}
+                    <p className="text-sm font-medium text-muted-foreground opacity-80 animate-fade-pulse">
+                      {randomVerb}
+                    </p>
+                  </div>
+                )
+              })()}
 
             {/* Status bar for pending approvals */}
             <div
@@ -406,6 +608,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       <Card className={isCompactView ? 'py-2' : 'py-4'}>
         <CardContent className={isCompactView ? 'px-2' : 'px-4'}>
           <ResponseInput
+            ref={responseInputRef}
             session={session}
             responseInput={actions.responseInput}
             setResponseInput={actions.setResponseInput}

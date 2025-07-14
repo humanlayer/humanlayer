@@ -169,6 +169,20 @@
   --terminal-warning: #b47109;
   --terminal-error: #c14a4a;
 }
+
+/* Monokai - Classic dark theme */
+[data-theme='monokai'] {
+  --terminal-bg: #272822;
+  --terminal-bg-alt: #3e3d32;
+  --terminal-fg: #f8f8f2;
+  --terminal-fg-dim: #75715e;
+  --terminal-accent: #66d9ef;
+  --terminal-accent-alt: #a6e22e;
+  --terminal-border: #75715e;
+  --terminal-success: #a6e22e;
+  --terminal-warning: #e6db74;
+  --terminal-error: #f92672;
+}
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -205,5 +219,192 @@
 
   .animate-pulse-warning {
     animation: pulse-warning 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  /* Custom spinner animations */
+  @keyframes spin-reverse {
+    from {
+      transform: rotate(360deg);
+    }
+    to {
+      transform: rotate(0deg);
+    }
+  }
+
+  @keyframes spin-slow {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @keyframes morph {
+    0%,
+    100% {
+      border-radius: 50%;
+      transform: scale(1) rotate(0deg);
+    }
+    25% {
+      border-radius: 40%;
+      transform: scale(1.15) rotate(90deg);
+    }
+    50% {
+      border-radius: 30%;
+      transform: scale(0.85) rotate(180deg);
+    }
+    75% {
+      border-radius: 45%;
+      transform: scale(1.1) rotate(270deg);
+    }
+  }
+
+  @keyframes wave {
+    0%,
+    100% {
+      transform: translateX(-100%) translateY(-100%) rotate(0deg);
+    }
+    25% {
+      transform: translateX(0%) translateY(-100%) rotate(90deg);
+    }
+    50% {
+      transform: translateX(0%) translateY(0%) rotate(180deg);
+    }
+    75% {
+      transform: translateX(-100%) translateY(0%) rotate(270deg);
+    }
+  }
+
+  @keyframes pulse-bright {
+    0%,
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.8;
+      transform: scale(1.2);
+    }
+  }
+
+  @keyframes fade-pulse {
+    0%,
+    100% {
+      opacity: 0.8;
+    }
+    50% {
+      opacity: 0.4;
+    }
+  }
+
+  @keyframes glitch {
+    0%,
+    90%,
+    100% {
+      clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+      transform: translate(0);
+    }
+    93% {
+      clip-path: polygon(0 0, 100% 0, 100% 45%, 0 45%);
+      transform: translate(-2px, 2px);
+    }
+    96% {
+      clip-path: polygon(0 55%, 100% 55%, 100% 100%, 0 100%);
+      transform: translate(2px, -2px);
+    }
+  }
+
+  .animate-spin-reverse {
+    animation: spin-reverse 3s linear infinite;
+  }
+
+  .animate-spin-slow {
+    animation: spin-slow 8s linear infinite;
+  }
+
+  .animate-morph {
+    animation: morph 4s ease-in-out infinite;
+  }
+
+  .animate-wave {
+    animation: wave 6s ease-in-out infinite;
+  }
+
+  .animate-pulse-bright {
+    animation: pulse-bright 1.5s ease-in-out infinite;
+  }
+
+  .animate-fade-pulse {
+    animation: fade-pulse 2s ease-in-out infinite;
+  }
+
+  .animate-glitch {
+    animation: glitch 5s linear infinite;
+  }
+
+  /* Gradient utilities for conic and radial gradients */
+  .bg-gradient-conic {
+    background: conic-gradient(var(--tw-gradient-stops));
+  }
+
+  .bg-gradient-radial {
+    background: radial-gradient(circle, var(--tw-gradient-stops));
+  }
+
+  /* Animation delays */
+  .delay-75 {
+    animation-delay: 75ms;
+  }
+
+  .delay-150 {
+    animation-delay: 150ms;
+  }
+
+  .delay-300 {
+    animation-delay: 300ms;
+  }
+
+  /* Bouncing animations for bars spinner */
+  @keyframes bounce-slow {
+    0%,
+    100% {
+      transform: scaleY(1);
+    }
+    50% {
+      transform: scaleY(1.5);
+    }
+  }
+
+  @keyframes bounce-medium {
+    0%,
+    100% {
+      transform: scaleY(1);
+    }
+    50% {
+      transform: scaleY(1.8);
+    }
+  }
+
+  @keyframes bounce-fast {
+    0%,
+    100% {
+      transform: scaleY(1);
+    }
+    50% {
+      transform: scaleY(2);
+    }
+  }
+
+  .animate-bounce-slow {
+    animation: bounce-slow 1.4s ease-in-out infinite;
+  }
+
+  .animate-bounce-medium {
+    animation: bounce-medium 1s ease-in-out infinite;
+  }
+
+  .animate-bounce-fast {
+    animation: bounce-fast 0.8s ease-in-out infinite;
   }
 }

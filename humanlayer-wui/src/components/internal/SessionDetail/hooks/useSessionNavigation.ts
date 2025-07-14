@@ -30,7 +30,6 @@ export function useSessionNavigation({
 }: UseSessionNavigationProps) {
   const [focusedEventId, setFocusedEventId] = useState<number | null>(null)
   const [focusSource, setFocusSource] = useState<'mouse' | 'keyboard' | null>(null)
-  const [expandedEventId, setExpandedEventId] = useState<number | null>(null)
 
   // Helper to check if element is in viewport
   const isElementInView = useCallback((element: Element, container: Element) => {
@@ -100,8 +99,9 @@ export function useSessionNavigation({
       : -1
 
     if (currentIndex === -1) {
-      setFocusedEventId(navigableItems[0].id)
-      setFocusSource('keyboard')
+      // When no event is focused, j should do nothing (stay at bottom)
+      // User must press k first to start navigating from bottom
+      return
     } else if (currentIndex < navigableItems.length - 1) {
       setFocusedEventId(navigableItems[currentIndex + 1].id)
       setFocusSource('keyboard')
@@ -116,6 +116,7 @@ export function useSessionNavigation({
       : -1
 
     if (currentIndex === -1) {
+      // Start from the bottom when first pressing k
       setFocusedEventId(navigableItems[navigableItems.length - 1].id)
       setFocusSource('keyboard')
     } else if (currentIndex > 0) {
@@ -128,23 +129,19 @@ export function useSessionNavigation({
   useHotkeys('j', focusNextEvent, { enabled: !expandedToolResult && !disabled })
   useHotkeys('k', focusPreviousEvent, { enabled: !expandedToolResult && !disabled })
 
-  // Enter key to expand/collapse task groups or events
+  // Enter key to expand/collapse task groups
   useHotkeys(
     'enter',
     () => {
       if (!focusedEventId) return
 
-      // Check if it's a task group
+      // Only handle task group expansion
       if (hasSubTasks) {
         const focusedEvent = events.find(e => e.id === focusedEventId)
         if (focusedEvent?.tool_name === 'Task' && focusedEvent.tool_id) {
           toggleTaskGroup(focusedEvent.tool_id)
-          return
         }
       }
-
-      // Otherwise toggle expanded state for regular events
-      setExpandedEventId(expandedEventId === focusedEventId ? null : focusedEventId)
     },
     { enabled: !expandedToolResult },
   )
@@ -155,16 +152,19 @@ export function useSessionNavigation({
     () => {
       if (focusedEventId && setExpandedToolResult && setExpandedToolCall) {
         const focusedEvent = events.find(e => e.id === focusedEventId)
-        if (focusedEvent?.event_type === ConversationEventType.ToolCall && focusedEvent.tool_id) {
-          const toolResult = events.find(
-            e =>
-              e.event_type === ConversationEventType.ToolResult &&
-              e.tool_result_for_id === focusedEvent.tool_id,
-          )
-          if (toolResult) {
-            setExpandedToolResult(toolResult)
-            setExpandedToolCall(focusedEvent)
-          }
+        if (focusedEvent?.event_type === ConversationEventType.ToolCall) {
+          // Try to find the tool result if it exists
+          const toolResult = focusedEvent.tool_id
+            ? events.find(
+                e =>
+                  e.event_type === ConversationEventType.ToolResult &&
+                  e.tool_result_for_id === focusedEvent.tool_id,
+              )
+            : null
+
+          // Show modal with or without result (for unfinished tools)
+          setExpandedToolResult(toolResult || null)
+          setExpandedToolCall(focusedEvent)
         }
       }
     },
@@ -188,8 +188,6 @@ export function useSessionNavigation({
     setFocusedEventId,
     focusSource,
     setFocusSource,
-    expandedEventId,
-    setExpandedEventId,
     navigableItems,
   }
 }
