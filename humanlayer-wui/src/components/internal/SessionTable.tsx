@@ -3,7 +3,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 import { useHotkeys, useHotkeysContext } from 'react-hotkeys-hook'
 import { useEffect, useRef } from 'react'
-import { CircleOff, CheckSquare, Square } from 'lucide-react'
+import { CircleOff, CheckSquare, Square, FileText } from 'lucide-react'
 import { getStatusTextClass } from '@/utils/component-utils'
 import { formatTimestamp, formatAbsoluteTimestamp, truncatePath } from '@/utils/formatting'
 import { highlightMatches } from '@/lib/fuzzy-search'
@@ -401,10 +401,11 @@ export default function SessionTable({
       ) : emptyState ? (
         <EmptyState {...emptyState} />
       ) : (
-        <div className="text-center py-8 text-muted-foreground">
-          <p className="text-sm">No sessions found</p>
-          {searchText && <p className="text-xs mt-1">Try adjusting your search filters</p>}
-        </div>
+        <EmptyState
+          icon={FileText}
+          title="No sessions found"
+          message={searchText ? `No sessions matching "${searchText}"` : 'No sessions yet'}
+        />
       )}
     </>
   )
