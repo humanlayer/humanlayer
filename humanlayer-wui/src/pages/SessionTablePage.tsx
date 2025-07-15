@@ -6,7 +6,7 @@ import SessionTable, { SessionTableHotkeysScope } from '@/components/internal/Se
 import { SessionTableSearch } from '@/components/SessionTableSearch'
 import { useSessionFilter } from '@/hooks/useSessionFilter'
 import { useHotkeys } from 'react-hotkeys-hook'
-import { useSessionLauncher } from '@/hooks'
+import { useSessionLauncher, useKeyboardNavigationProtection } from '@/hooks'
 import { Inbox, Archive } from 'lucide-react'
 
 export function SessionTablePage() {
@@ -17,6 +17,12 @@ export function SessionTablePage() {
 
   // Initialize search from URL params
   const [searchQuery, setSearchQuery] = useState(() => searchParams.get('q') || '')
+
+  // Focus source tracking
+  const [, setFocusSource] = useState<'mouse' | 'keyboard' | null>(null)
+
+  // Keyboard navigation protection
+  const { shouldIgnoreMouseEvent, startKeyboardNavigation } = useKeyboardNavigationProtection()
 
   const sessions = useStore(state => state.sessions)
   const focusedSession = useStore(state => state.focusedSession)
@@ -59,6 +65,7 @@ export function SessionTablePage() {
       // Focus the next session
       setFocusedSession(filteredSessions[currentIndex + 1])
     }
+    setFocusSource('keyboard')
   }
 
   const focusPreviousSession = () => {
@@ -75,6 +82,7 @@ export function SessionTablePage() {
       // Focus the previous session
       setFocusedSession(filteredSessions[currentIndex - 1])
     }
+    setFocusSource('keyboard')
   }
 
   // Handle Tab key to toggle between normal and archived views
@@ -103,8 +111,17 @@ export function SessionTablePage() {
 
   // Handle 'gg' to jump to top of list (vim-style)
   useHotkeys(
-    'g,g',
+    'g>g',
     () => {
+      startKeyboardNavigation()
+      setFocusSource('keyboard')
+
+      // Find the main scrollable container (from Layout)
+      const container = document.querySelector('[data-main-scroll-container]')
+      if (container) {
+        container.scrollTop = 0
+      }
+      // Also focus the first session
       if (filteredSessions.length > 0) {
         setFocusedSession(filteredSessions[0])
       }
@@ -121,6 +138,15 @@ export function SessionTablePage() {
   useHotkeys(
     'shift+g',
     () => {
+      startKeyboardNavigation()
+      setFocusSource('keyboard')
+
+      // Find the main scrollable container (from Layout)
+      const container = document.querySelector('[data-main-scroll-container]')
+      if (container) {
+        container.scrollTop = container.scrollHeight
+      }
+      // Also focus the last session
       if (filteredSessions.length > 0) {
         setFocusedSession(filteredSessions[filteredSessions.length - 1])
       }
@@ -163,8 +189,18 @@ export function SessionTablePage() {
       <div ref={tableRef} tabIndex={-1} className="focus:outline-none">
         <SessionTable
           sessions={filteredSessions}
-          handleFocusSession={session => setFocusedSession(session)}
-          handleBlurSession={() => setFocusedSession(null)}
+          handleFocusSession={session => {
+            if (!shouldIgnoreMouseEvent()) {
+              setFocusedSession(session)
+              setFocusSource('mouse')
+            }
+          }}
+          handleBlurSession={() => {
+            if (!shouldIgnoreMouseEvent()) {
+              setFocusedSession(null)
+              setFocusSource(null)
+            }
+          }}
           handleActivateSession={handleActivateSession}
           focusedSession={focusedSession}
           handleFocusNextSession={focusNextSession}

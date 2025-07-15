@@ -129,7 +129,7 @@ export function Layout() {
         {connected && (
           <>
             <Breadcrumbs />
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto" data-main-scroll-container>
               <Outlet />
             </div>
 

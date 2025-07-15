@@ -42,6 +42,7 @@ export function ConversationContent({
   setExpandedToolResult,
   setExpandedToolCall,
   maxEventIndex,
+  shouldIgnoreMouseEvent,
 }: {
   sessionId: string
   focusedEventId: number | null
@@ -62,6 +63,7 @@ export function ConversationContent({
   setExpandedToolResult?: (event: ConversationEvent | null) => void
   setExpandedToolCall?: (event: ConversationEvent | null) => void
   maxEventIndex?: number
+  shouldIgnoreMouseEvent?: () => boolean
 }) {
   // expandedToolResult is used by parent to control hotkey availability
   void expandedToolResult
@@ -232,10 +234,12 @@ export function ConversationContent({
               <div
                 data-event-id={displayObject.id}
                 onMouseEnter={() => {
+                  if (shouldIgnoreMouseEvent?.()) return
                   setFocusedEventId(displayObject.id)
                   setFocusSource?.('mouse')
                 }}
                 onMouseLeave={() => {
+                  if (shouldIgnoreMouseEvent?.()) return
                   setFocusedEventId(null)
                   setConfirmingApprovalId?.(null)
                 }}
@@ -332,6 +336,7 @@ export function ConversationContent({
                   setExpandedToolResult={setExpandedToolResult}
                   setExpandedToolCall={setExpandedToolCall}
                   getSnapshot={getSnapshot}
+                  shouldIgnoreMouseEvent={shouldIgnoreMouseEvent}
                 />
               )
             } else {
@@ -358,10 +363,12 @@ export function ConversationContent({
                   <div
                     data-event-id={displayObject.id}
                     onMouseEnter={() => {
+                      if (shouldIgnoreMouseEvent?.()) return
                       setFocusedEventId(displayObject.id)
                       setFocusSource?.('mouse')
                     }}
                     onMouseLeave={() => {
+                      if (shouldIgnoreMouseEvent?.()) return
                       setFocusedEventId(null)
                       setConfirmingApprovalId?.(null)
                     }}

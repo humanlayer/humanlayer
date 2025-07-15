@@ -319,8 +319,12 @@ export default function SessionTable({
                 <TableRow
                   key={session.id}
                   data-session-id={session.id}
-                  onMouseEnter={() => handleFocusSession?.(session)}
-                  onMouseLeave={() => handleBlurSession?.()}
+                  onMouseEnter={() => {
+                    handleFocusSession?.(session)
+                  }}
+                  onMouseLeave={() => {
+                    handleBlurSession?.()
+                  }}
                   onClick={() => handleActivateSession?.(session)}
                   className={cn(
                     'cursor-pointer',
@@ -352,9 +356,7 @@ export default function SessionTable({
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className={getStatusTextClass(session.status)}>
-                    {session.status} | {session.id}
-                  </TableCell>
+                  <TableCell className={getStatusTextClass(session.status)}>{session.status}</TableCell>
                   <TableCell className="max-w-[200px]">
                     <Tooltip>
                       <TooltipTrigger asChild>

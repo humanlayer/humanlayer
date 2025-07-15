@@ -3,7 +3,7 @@ import { useHotkeys } from 'react-hotkeys-hook'
 
 import { ConversationEvent, SessionInfo, ApprovalStatus, SessionStatus } from '@/lib/daemon/types'
 import { Card, CardContent } from '@/components/ui/card'
-import { useConversation } from '@/hooks/useConversation'
+import { useConversation, useKeyboardNavigationProtection } from '@/hooks'
 import { ChevronDown, Archive } from 'lucide-react'
 import { getStatusTextClass } from '@/utils/component-utils'
 import { truncate } from '@/utils/formatting'
@@ -89,6 +89,9 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [forkViewOpen, setForkViewOpen] = useState(false)
   const [previewEventIndex, setPreviewEventIndex] = useState<number | null>(null)
   const [pendingForkMessage, setPendingForkMessage] = useState<ConversationEvent | null>(null)
+
+  // Keyboard navigation protection
+  const { shouldIgnoreMouseEvent, startKeyboardNavigation } = useKeyboardNavigationProtection()
 
   const isActivelyProcessing = ['starting', 'running', 'completing'].includes(session.status)
   const responseInputRef = useRef<HTMLTextAreaElement>(null)
@@ -314,6 +317,50 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     { scopes: [SessionDetailHotkeysScope] },
   )
 
+  // Add Shift+G hotkey to scroll to bottom
+  useHotkeys(
+    'shift+g',
+    () => {
+      startKeyboardNavigation()
+
+      const container = document.querySelector('[data-conversation-container]')
+      if (container) {
+        container.scrollTop = container.scrollHeight
+        // Focus the last event
+        if (events.length > 0) {
+          navigation.setFocusedEventId(events[events.length - 1].id)
+          navigation.setFocusSource('keyboard')
+        }
+      }
+    },
+    { scopes: [SessionDetailHotkeysScope] },
+    [events, navigation.setFocusedEventId, navigation.setFocusSource],
+  )
+
+  // Add 'gg' to jump to top of conversation (vim-style)
+  useHotkeys(
+    'g>g',
+    () => {
+      startKeyboardNavigation()
+
+      const container = document.querySelector('[data-conversation-container]')
+      if (container) {
+        container.scrollTop = 0
+        // Focus the first event
+        if (events.length > 0) {
+          navigation.setFocusedEventId(events[0].id)
+          navigation.setFocusSource('keyboard')
+        }
+      }
+    },
+    {
+      enableOnFormTags: false,
+      scopes: [SessionDetailHotkeysScope],
+      preventDefault: true,
+    },
+    [events, navigation.setFocusedEventId, navigation.setFocusSource],
+  )
+
   useStealHotkeyScope(SessionDetailHotkeysScope)
 
   // Note: Most hotkeys are handled by the hooks (ctrl+x, r, p, i, a, d)
@@ -467,6 +514,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               setExpandedToolResult={setExpandedToolResult}
               setExpandedToolCall={setExpandedToolCall}
               maxEventIndex={previewEventIndex ?? undefined}
+              shouldIgnoreMouseEvent={shouldIgnoreMouseEvent}
             />
             {isActivelyProcessing &&
               (() => {
