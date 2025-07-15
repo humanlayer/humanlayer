@@ -65,37 +65,3 @@ export function validateDecisionRequest(
 
   return { valid: true }
 }
-
-/**
- * Type guard to check if an object has required approval fields
- */
-export function isPendingApproval(obj: any): obj is {
-  type: ApprovalType
-  function_call?: any
-  human_contact?: any
-} {
-  return (
-    obj &&
-    typeof obj === 'object' &&
-    'type' in obj &&
-    isValidApprovalType(obj.type) &&
-    (obj.type === ApprovalType.FunctionCall ? 'function_call' in obj : true) &&
-    (obj.type === ApprovalType.HumanContact ? 'human_contact' in obj : true)
-  )
-}
-
-/**
- * Validate session status transitions
- */
-export function isValidStatusTransition(currentStatus: string, newStatus: string): boolean {
-  const validTransitions: Record<string, string[]> = {
-    starting: ['running', 'failed'],
-    running: ['completed', 'failed', 'waiting_input'],
-    waiting_input: ['running', 'failed'],
-    completed: [], // Terminal state
-    failed: [], // Terminal state
-  }
-
-  const allowed = validTransitions[currentStatus]
-  return allowed ? allowed.includes(newStatus) : false
-}

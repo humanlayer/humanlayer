@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { useRecentPaths } from '@/hooks/useRecentPaths'
 import { Textarea } from './ui/textarea'
 import { Label } from './ui/label'
+import { hasContent, isEmptyOrWhitespace } from '@/utils/validation'
 
 interface SessionConfig {
   query: string
@@ -154,7 +155,7 @@ export default function CommandInput({
       )}
 
       {/* Action Bar */}
-      {value.trim() && (
+      {hasContent(value) && (
         <div className="flex items-center justify-between pt-2">
           <div className="flex items-center space-x-2 text-xs text-muted-foreground">
             {config.workingDir && (
@@ -166,7 +167,7 @@ export default function CommandInput({
 
           <Button
             onClick={onSubmit}
-            disabled={!value.trim() || isLoading}
+            disabled={isEmptyOrWhitespace(value) || isLoading}
             size="sm"
             className="font-mono"
           >

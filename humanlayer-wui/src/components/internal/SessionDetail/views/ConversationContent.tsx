@@ -268,14 +268,14 @@ export function ConversationContent({
 
                 {/* Tool Result Content */}
                 {displayObject.toolResultContent && (
-                  <p className="whitespace-pre-wrap text-foreground">
+                  <div className="whitespace-pre-wrap text-foreground">
                     {displayObject.toolResultContent}
-                  </p>
+                  </div>
                 )}
 
                 {/* Body */}
                 {displayObject.body && (
-                  <p className="whitespace-pre-wrap text-foreground">{displayObject.body}</p>
+                  <div className="whitespace-pre-wrap text-foreground">{displayObject.body}</div>
                 )}
               </div>
             </div>
@@ -393,12 +393,12 @@ export function ConversationContent({
                       </span>
                     </div>
                     {displayObject.toolResultContent && (
-                      <p className="whitespace-pre-wrap text-foreground">
+                      <div className="whitespace-pre-wrap text-foreground">
                         {displayObject.toolResultContent}
-                      </p>
+                      </div>
                     )}
                     {displayObject.body && (
-                      <p className="whitespace-pre-wrap text-foreground">{displayObject.body}</p>
+                      <div className="whitespace-pre-wrap text-foreground">{displayObject.body}</div>
                     )}
                   </div>
                 </div>

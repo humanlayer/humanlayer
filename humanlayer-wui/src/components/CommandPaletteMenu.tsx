@@ -5,6 +5,8 @@ import { useStore } from '@/AppStore'
 import { highlightMatches, type FuzzyMatch } from '@/lib/fuzzy-search'
 import { cn } from '@/lib/utils'
 import { useSessionFilter } from '@/hooks/useSessionFilter'
+import { EmptyState } from './internal/EmptyState'
+import { Search } from 'lucide-react'
 
 interface MenuOption {
   id: string
@@ -204,7 +206,11 @@ export default function CommandPaletteMenu() {
       })}
 
       {menuOptions.length === 0 && mode === 'search' && (
-        <div className="text-xs text-muted-foreground text-center py-4">No sessions found</div>
+        <EmptyState
+          icon={Search}
+          title="No sessions found"
+          message={searchQuery ? `No results for "${searchQuery}"` : 'No sessions yet'}
+        />
       )}
 
       <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t border-border/30">
