@@ -7,6 +7,7 @@
     "core:default",
     "opener:default",
     "notification:default",
+    "core:webview:allow-set-webview-zoom",
     "fs:default",
     {
       "identifier": "fs:scope",
