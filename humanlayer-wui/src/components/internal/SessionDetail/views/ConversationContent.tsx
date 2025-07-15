@@ -235,7 +235,12 @@ export function ConversationContent({
                 data-event-id={displayObject.id}
                 onMouseEnter={() => {
                   if (shouldIgnoreMouseEvent?.()) return
-                  console.log('[ConversationContent] onMouseEnter:', displayObject.id, 'type:', displayObject.event_type)
+                  console.log(
+                    '[ConversationContent] onMouseEnter:',
+                    displayObject.id,
+                    'type:',
+                    displayObject.event_type,
+                  )
                   setFocusedEventId(displayObject.id)
                   setFocusSource?.('mouse')
                 }}
@@ -366,7 +371,12 @@ export function ConversationContent({
                     data-event-id={displayObject.id}
                     onMouseEnter={() => {
                       if (shouldIgnoreMouseEvent?.()) return
-                      console.log('[ConversationContent] onMouseEnter (grouped):', displayObject.id, 'type:', displayObject.event_type)
+                      console.log(
+                        '[ConversationContent] onMouseEnter (grouped):',
+                        displayObject.id,
+                        'type:',
+                        displayObject.event_type,
+                      )
                       setFocusedEventId(displayObject.id)
                       setFocusSource?.('mouse')
                     }}

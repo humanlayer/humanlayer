@@ -20,7 +20,7 @@ export function SessionTablePage() {
 
   // Focus source tracking
   const [focusSource, setFocusSource] = useState<'mouse' | 'keyboard' | null>(null)
-  
+
   // Keyboard navigation protection
   const { shouldIgnoreMouseEvent, startKeyboardNavigation } = useKeyboardNavigationProtection()
 
@@ -116,7 +116,7 @@ export function SessionTablePage() {
       console.log('[SessionTablePage] gg hotkey triggered')
       startKeyboardNavigation()
       setFocusSource('keyboard')
-      
+
       // Find the main scrollable container (from Layout)
       const container = document.querySelector('[data-main-scroll-container]')
       if (container) {
@@ -144,7 +144,7 @@ export function SessionTablePage() {
       console.log('[SessionTablePage] Shift+G hotkey triggered')
       startKeyboardNavigation()
       setFocusSource('keyboard')
-      
+
       // Find the main scrollable container (from Layout)
       const container = document.querySelector('[data-main-scroll-container]')
       if (container) {
@@ -153,7 +153,10 @@ export function SessionTablePage() {
       }
       // Also focus the last session
       if (filteredSessions.length > 0) {
-        console.log('[SessionTablePage] Setting focus to last session:', filteredSessions[filteredSessions.length - 1].id)
+        console.log(
+          '[SessionTablePage] Setting focus to last session:',
+          filteredSessions[filteredSessions.length - 1].id,
+        )
         setFocusedSession(filteredSessions[filteredSessions.length - 1])
       }
     },

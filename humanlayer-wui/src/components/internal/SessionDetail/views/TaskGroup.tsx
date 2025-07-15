@@ -66,7 +66,12 @@ export function TaskGroup({
         onClick={onToggle}
         onMouseEnter={() => {
           if (shouldIgnoreMouseEvent?.()) return
-          console.log('[TaskGroup] onMouseEnter (parent):', parentTask.id, 'tool:', parentTask.tool_name)
+          console.log(
+            '[TaskGroup] onMouseEnter (parent):',
+            parentTask.id,
+            'tool:',
+            parentTask.tool_name,
+          )
           setFocusedEventId(parentTask.id)
           setFocusSource?.('mouse')
         }}
@@ -190,7 +195,12 @@ export function TaskGroup({
                   data-event-id={displayObject.id}
                   onMouseEnter={() => {
                     if (shouldIgnoreMouseEvent?.()) return
-                    console.log('[TaskGroup] onMouseEnter (subtask):', displayObject.id, 'type:', displayObject.event_type)
+                    console.log(
+                      '[TaskGroup] onMouseEnter (subtask):',
+                      displayObject.id,
+                      'type:',
+                      displayObject.event_type,
+                    )
                     setFocusedEventId(displayObject.id)
                     setFocusSource?.('mouse')
                   }}

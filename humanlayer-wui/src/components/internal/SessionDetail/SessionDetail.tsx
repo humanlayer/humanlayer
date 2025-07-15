@@ -323,7 +323,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     () => {
       console.log('[SessionDetail] Shift+G hotkey triggered')
       startKeyboardNavigation()
-      
+
       const container = document.querySelector('[data-conversation-container]')
       if (container) {
         console.log('[SessionDetail] Scrolling to bottom')
@@ -346,7 +346,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     () => {
       console.log('[SessionDetail] gg hotkey triggered')
       startKeyboardNavigation()
-      
+
       const container = document.querySelector('[data-conversation-container]')
       if (container) {
         console.log('[SessionDetail] Scrolling to top')
