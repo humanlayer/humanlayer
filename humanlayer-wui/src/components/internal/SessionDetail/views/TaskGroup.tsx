@@ -1,5 +1,5 @@
 import { ChevronDown, CircleDashed, Wrench, FilePenLine, Bot, User, UserCheck } from 'lucide-react'
-import { ConversationEvent, ConversationEventType } from '@/lib/daemon/types'
+import { ConversationEvent, ConversationEventType, FileSnapshotInfo } from '@/lib/daemon/types'
 import { TaskEventGroup } from '../hooks/useTaskGrouping'
 import { truncate, formatAbsoluteTimestamp } from '@/utils/formatting'
 import { eventToDisplayObject } from '../eventToDisplayObject'
@@ -24,6 +24,7 @@ interface TaskGroupProps {
   toolResultsByKey: Record<string, ConversationEvent>
   setExpandedToolResult?: (event: ConversationEvent | null) => void
   setExpandedToolCall?: (event: ConversationEvent | null) => void
+  getSnapshot?: (filePath: string) => FileSnapshotInfo | undefined
 }
 
 export function TaskGroup({
@@ -46,6 +47,7 @@ export function TaskGroup({
   toolResultsByKey,
   setExpandedToolResult,
   setExpandedToolCall,
+  getSnapshot,
 }: TaskGroupProps) {
   const { parentTask, toolCallCount, latestEvent, hasPendingApproval } = group
   const description = JSON.parse(parentTask.tool_input_json || '{}').description || 'Task'
@@ -171,6 +173,7 @@ export function TaskGroup({
               onToggleSplitView,
               subEvent.tool_id ? toolResultsByKey[subEvent.tool_id] : undefined,
               focusedEventId === subEvent.id,
+              getSnapshot,
             )
 
             if (!displayObject) return null

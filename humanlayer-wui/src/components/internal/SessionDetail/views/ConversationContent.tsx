@@ -6,6 +6,7 @@ import keyBy from 'lodash.keyby'
 
 import { ConversationEvent, ConversationEventType } from '@/lib/daemon/types'
 import { useConversation } from '@/hooks/useConversation'
+import { useSessionSnapshots } from '@/hooks/useSessionSnapshots'
 import { Skeleton } from '@/components/ui/skeleton'
 import { MessageCircleDashed } from 'lucide-react'
 import { formatAbsoluteTimestamp } from '@/utils/formatting'
@@ -65,6 +66,7 @@ export function ConversationContent({
   // expandedToolResult is used by parent to control hotkey availability
   void expandedToolResult
   const { events, loading, error, isInitialLoad } = useConversation(sessionId, undefined, 1000)
+  const { getSnapshot, refetch } = useSessionSnapshots(sessionId)
 
   // Filter events based on maxEventIndex (exclude the event at maxEventIndex)
   const filteredEvents = maxEventIndex !== undefined ? events.slice(0, maxEventIndex) : events
@@ -77,6 +79,17 @@ export function ConversationContent({
   // Use task grouping hook
   const { taskGroups, rootEvents, hasSubTasks, expandedTasks, toggleTaskGroup } =
     useTaskGrouping(filteredEvents)
+
+  // Watch for new Read tool results and refetch snapshots
+  useEffect(() => {
+    const hasReadToolResults = filteredEvents.some(
+      event => event.event_type === ConversationEventType.ToolResult && event.tool_name === 'Read',
+    )
+
+    if (hasReadToolResults) {
+      refetch()
+    }
+  }, [filteredEvents, refetch])
 
   const displayObjects = filteredEvents
     .filter(event => event.event_type !== ConversationEventType.ToolResult)
@@ -94,6 +107,7 @@ export function ConversationContent({
         onToggleSplitView,
         event.tool_id ? toolResultsByKey[event.tool_id] : undefined,
         focusedEventId === event.id,
+        getSnapshot,
       ),
     )
   const nonEmptyDisplayObjects = displayObjects.filter(displayObject => displayObject !== null)
@@ -315,6 +329,7 @@ export function ConversationContent({
                   toolResultsByKey={toolResultsByKey}
                   setExpandedToolResult={setExpandedToolResult}
                   setExpandedToolCall={setExpandedToolCall}
+                  getSnapshot={getSnapshot}
                 />
               )
             } else {
@@ -331,6 +346,7 @@ export function ConversationContent({
                 onToggleSplitView,
                 event.tool_id ? toolResultsByKey[event.tool_id] : undefined,
                 focusedEventId === event.id,
+                getSnapshot,
               )
 
               if (!displayObject) return null
