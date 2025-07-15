@@ -314,6 +314,44 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     { scopes: [SessionDetailHotkeysScope] },
   )
 
+  // Add Shift+G hotkey to scroll to bottom
+  useHotkeys(
+    'shift+g',
+    () => {
+      const container = document.querySelector('[data-conversation-container]')
+      if (container) {
+        container.scrollTop = container.scrollHeight
+        // Focus the last event
+        if (events.length > 0) {
+          navigation.setFocusedEventId(events[events.length - 1].id)
+        }
+      }
+    },
+    { scopes: [SessionDetailHotkeysScope] },
+    [events, navigation.setFocusedEventId],
+  )
+
+  // Add 'gg' to jump to top of conversation (vim-style)
+  useHotkeys(
+    'g>g',
+    () => {
+      const container = document.querySelector('[data-conversation-container]')
+      if (container) {
+        container.scrollTop = 0
+        // Focus the first event
+        if (events.length > 0) {
+          navigation.setFocusedEventId(events[0].id)
+        }
+      }
+    },
+    {
+      enableOnFormTags: false,
+      scopes: [SessionDetailHotkeysScope],
+      preventDefault: true,
+    },
+    [events, navigation.setFocusedEventId],
+  )
+
   useStealHotkeyScope(SessionDetailHotkeysScope)
 
   // Note: Most hotkeys are handled by the hooks (ctrl+x, r, p, i, a, d)

@@ -103,8 +103,14 @@ export function SessionTablePage() {
 
   // Handle 'gg' to jump to top of list (vim-style)
   useHotkeys(
-    'g,g',
+    'g>g',
     () => {
+      // Find the main scrollable container (from Layout)
+      const container = document.querySelector('[data-main-scroll-container]')
+      if (container) {
+        container.scrollTop = 0
+      }
+      // Also focus the first session
       if (filteredSessions.length > 0) {
         setFocusedSession(filteredSessions[0])
       }
@@ -121,6 +127,12 @@ export function SessionTablePage() {
   useHotkeys(
     'shift+g',
     () => {
+      // Find the main scrollable container (from Layout)
+      const container = document.querySelector('[data-main-scroll-container]')
+      if (container) {
+        container.scrollTop = container.scrollHeight
+      }
+      // Also focus the last session
       if (filteredSessions.length > 0) {
         setFocusedSession(filteredSessions[filteredSessions.length - 1])
       }

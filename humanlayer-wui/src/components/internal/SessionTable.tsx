@@ -352,9 +352,7 @@ export default function SessionTable({
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className={getStatusTextClass(session.status)}>
-                    {session.status} | {session.id}
-                  </TableCell>
+                  <TableCell className={getStatusTextClass(session.status)}>{session.status}</TableCell>
                   <TableCell className="max-w-[200px]">
                     <Tooltip>
                       <TooltipTrigger asChild>
