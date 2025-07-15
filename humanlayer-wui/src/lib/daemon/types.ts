@@ -363,3 +363,19 @@ export interface BulkArchiveSessionsResponse {
   success: boolean
   failed_sessions?: string[]
 }
+
+// Snapshot types
+export interface FileSnapshotInfo {
+  tool_id: string
+  file_path: string
+  content: string
+  created_at: string // ISO 8601 format
+}
+
+export interface GetSessionSnapshotsRequest {
+  session_id: string
+}
+
+export interface GetSessionSnapshotsResponse {
+  snapshots: FileSnapshotInfo[]
+}

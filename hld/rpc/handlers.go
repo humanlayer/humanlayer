@@ -267,11 +267,15 @@ func (h *SessionHandlers) HandleGetConversation(ctx context.Context, params json
 
 // HandleGetSessionSnapshots retrieves all file snapshots for a session
 func (h *SessionHandlers) HandleGetSessionSnapshots(ctx context.Context, params json.RawMessage) (interface{}, error) {
+	slog.Info("HandleGetSessionSnapshots called", "params", string(params))
+
 	// Parse request
 	var req GetSessionSnapshotsRequest
 	if err := json.Unmarshal(params, &req); err != nil {
 		return nil, fmt.Errorf("invalid request: %w", err)
 	}
+
+	slog.Info("parsed request", "session_id", req.SessionID)
 
 	// Validate required fields
 	if req.SessionID == "" {
@@ -308,6 +312,7 @@ func (h *SessionHandlers) HandleGetSessionSnapshots(ctx context.Context, params 
 		})
 	}
 
+	slog.Info("returning snapshots", "count", len(response.Snapshots))
 	return response, nil
 }
 

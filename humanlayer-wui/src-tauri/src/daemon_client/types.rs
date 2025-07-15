@@ -536,3 +536,22 @@ pub struct BulkArchiveSessionsResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub failed_sessions: Option<Vec<String>>,
 }
+
+// Snapshot types
+#[derive(Debug, Serialize, Deserialize)]
+pub struct GetSessionSnapshotsRequest {
+    pub session_id: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct GetSessionSnapshotsResponse {
+    pub snapshots: Vec<FileSnapshotInfo>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct FileSnapshotInfo {
+    pub tool_id: String,
+    pub file_path: String,
+    pub content: String,
+    pub created_at: String,  // ISO 8601 format
+}

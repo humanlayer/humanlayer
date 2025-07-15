@@ -5,7 +5,12 @@ import { toJsxRuntime } from 'hast-util-to-jsx-runtime'
 import { Fragment, jsx, jsxs } from 'react/jsx-runtime'
 import React from 'react'
 
-import { ConversationEvent, ConversationEventType, ApprovalStatus } from '@/lib/daemon/types'
+import {
+  ConversationEvent,
+  ConversationEventType,
+  ApprovalStatus,
+  FileSnapshotInfo,
+} from '@/lib/daemon/types'
 import { Button } from '@/components/ui/button'
 import {
   Bot,
@@ -60,6 +65,7 @@ export function eventToDisplayObject(
   onToggleSplitView?: () => void,
   toolResult?: ConversationEvent,
   isFocused?: boolean,
+  getSnapshot?: (filePath: string) => FileSnapshotInfo | undefined,
 ) {
   let subject = null
   let body = null
@@ -279,30 +285,42 @@ export function eventToDisplayObject(
     // For Write tool calls, display the file contents in a nice format
     if (event.tool_name === 'Write') {
       const toolInput = JSON.parse(event.tool_input_json!)
+      const snapshot = getSnapshot?.(toolInput.file_path)
+
       previewFile = (
-        <div className={`border ${getBorderClass()} rounded p-2 mt-4`}>
-          {event.approval_status && (
-            <div className="mb-2">
+        <div className={`border ${getBorderClass()} rounded p-4 mt-4`}>
+          <div className="mb-4">
+            {event.approval_status ? (
               <span className="font-mono text-sm text-muted-foreground">
                 <span className="font-bold">{toolInput.file_path}</span>
               </span>
+            ) : (
+              <>
+                <span className="font-bold mr-2">Write</span>
+                <span className="font-mono text-sm text-muted-foreground">
+                  to <span className="font-bold">{toolInput.file_path}</span>
+                </span>
+              </>
+            )}
+          </div>
+          <CustomDiffViewer
+            fileContents={snapshot?.content || ''}
+            edits={[{ oldValue: snapshot?.content || '', newValue: toolInput.content }]}
+            splitView={false}
+          />
+          {snapshot && (
+            <div className="mt-2 text-xs text-muted-foreground">
+              Overwriting file from: {formatTimestamp(snapshot.created_at)}
             </div>
           )}
-          {!event.approval_status && (
-            <div className="mb-2">
-              <span className="font-bold mr-2">Write</span>
-              <span className="font-mono text-sm text-muted-foreground">
-                to <span className="font-bold">{toolInput.file_path}</span>
-              </span>
-            </div>
-          )}
-          <div className="font-mono text-sm text-muted-foreground">{toolInput.content}</div>
         </div>
       )
     }
 
     if (event.tool_name === 'Edit') {
       const toolInput = JSON.parse(event.tool_input_json!)
+      const snapshot = getSnapshot?.(toolInput.file_path)
+
       previewFile = (
         <div className={`border ${getBorderClass()} rounded p-4 mt-4`}>
           <div className="mb-4 flex items-center justify-between">
@@ -328,15 +346,22 @@ export function eventToDisplayObject(
             )}
           </div>
           <CustomDiffViewer
+            fileContents={snapshot?.content}
             edits={[{ oldValue: toolInput.old_string, newValue: toolInput.new_string }]}
             splitView={isSplitView ?? false}
           />
+          {snapshot && (
+            <div className="mt-2 text-xs text-muted-foreground">
+              Snapshot from: {formatTimestamp(snapshot.created_at)}
+            </div>
+          )}
         </div>
       )
     }
 
     if (event.tool_name === 'MultiEdit') {
       const toolInput = JSON.parse(event.tool_input_json!)
+      const snapshot = getSnapshot?.(toolInput.file_path)
       const allEdits = toolInput.edits.map((e: any) => ({
         oldValue: e.old_string,
         newValue: e.new_string,
@@ -368,7 +393,16 @@ export function eventToDisplayObject(
               />
             )}
           </div>
-          <CustomDiffViewer edits={allEdits} splitView={isSplitView ?? false} />
+          <CustomDiffViewer
+            fileContents={snapshot?.content}
+            edits={allEdits}
+            splitView={isSplitView ?? false}
+          />
+          {snapshot && (
+            <div className="mt-2 text-xs text-muted-foreground">
+              Snapshot from: {formatTimestamp(snapshot.created_at)}
+            </div>
+          )}
         </div>
       )
     }
@@ -608,6 +642,11 @@ export function getToolIcon(toolName: string | undefined): React.ReactNode {
     default:
       return <Wrench className="w-3.5 h-3.5" />
   }
+}
+
+// Helper function for timestamp formatting
+function formatTimestamp(isoString: string): string {
+  return new Date(isoString).toLocaleString()
 }
 
 // TODO(2): Initialize starryNight properly on module load
