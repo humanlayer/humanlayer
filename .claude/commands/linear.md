@@ -212,10 +212,10 @@ When user wants to add a comment to a ticket:
 4. **Comment structure example:**
    ```markdown
    Implemented retry logic in webhook handler to address rate limit issues.
-   
-   Key insight: The 429 responses were clustered during batch operations, 
+
+   Key insight: The 429 responses were clustered during batch operations,
    so exponential backoff alone wasn't sufficient - added request queuing.
-   
+
    Files updated:
    - `hld/webhooks/handler.go` ([GitHub](link))
    - `thoughts/shared/rate_limit_analysis.md` ([GitHub](link))
@@ -232,7 +232,7 @@ When user wants to add a comment to a ticket:
    mcp__linear__update_issue with:
    - id: [ticket ID]
    - links: [existing links + new link with proper title]
-   
+
    # Then, create the comment mentioning the link
    mcp__linear__create_comment with:
    - issueId: [ticket ID]
@@ -245,7 +245,7 @@ When user wants to add a comment to a ticket:
    mcp__linear__update_issue with:
    - id: [ticket ID]
    - links: [existing links + new link with proper title]
-   
+
    # Add a brief comment for posterity
    mcp__linear__create_comment with:
    - issueId: [ticket ID]
