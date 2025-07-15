@@ -1,0 +1,150 @@
+/* Terminal-style markdown prose */
+.prose-terminal {
+  color: var(--terminal-fg);
+  font-family: inherit; /* Keep monospace */
+  max-width: none;
+  line-height: 1.5;
+}
+
+/* Headings */
+.prose-terminal h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--terminal-accent);
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px dashed var(--terminal-border);
+}
+
+.prose-terminal h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--terminal-accent);
+  margin-top: 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.prose-terminal h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--terminal-accent-alt);
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Typography */
+.prose-terminal p {
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.prose-terminal strong {
+  color: var(--terminal-warning);
+  font-weight: 600;
+}
+
+.prose-terminal em {
+  color: var(--terminal-accent-alt);
+  font-style: italic;
+}
+
+/* Code */
+.prose-terminal code {
+  font-size: 0.875rem;
+  font-family: inherit;
+}
+
+.prose-terminal pre {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+/* Lists */
+.prose-terminal ul {
+  list-style-type: none;
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+  padding-left: 1.5rem;
+}
+
+.prose-terminal ul li {
+  position: relative;
+  padding-left: 0.5rem;
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+
+.prose-terminal ul li::before {
+  content: '▸';
+  position: absolute;
+  left: -1rem;
+  color: var(--terminal-accent);
+}
+
+.prose-terminal ol {
+  list-style-type: decimal;
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+  padding-left: 1.5rem;
+  color: var(--terminal-accent);
+}
+
+.prose-terminal ol li {
+  padding-left: 0.5rem;
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+
+.prose-terminal ol li::marker {
+  color: var(--terminal-accent);
+}
+
+/* Blockquotes */
+.prose-terminal blockquote {
+  border-left: 2px solid var(--terminal-accent);
+  padding-left: 1rem;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  color: var(--terminal-fg-dim);
+  font-style: italic;
+}
+
+/* Tables */
+.prose-terminal table {
+  width: 100%;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  border-collapse: collapse;
+}
+
+.prose-terminal th {
+  padding: 0.5rem;
+  text-align: left;
+  font-weight: 600;
+  color: var(--terminal-accent);
+  border-bottom: 1px solid var(--terminal-border);
+}
+
+.prose-terminal td {
+  padding: 0.5rem;
+  border-bottom: 1px dotted var(--terminal-border);
+}
+
+/* Horizontal rules */
+.prose-terminal hr {
+  margin-top: 1.5rem;
+  margin-bottom: 1.5rem;
+  border: none;
+  border-top: 1px dashed var(--terminal-border);
+}
+
+/* Images */
+.prose-terminal img {
+  max-width: 100%;
+  height: auto;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
