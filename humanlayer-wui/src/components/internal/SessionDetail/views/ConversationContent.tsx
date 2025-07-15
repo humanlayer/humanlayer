@@ -8,11 +8,14 @@ import { ConversationEvent, ConversationEventType } from '@/lib/daemon/types'
 import { useConversation } from '@/hooks/useConversation'
 import { useSessionSnapshots } from '@/hooks/useSessionSnapshots'
 import { Skeleton } from '@/components/ui/skeleton'
-import { MessageCircleDashed } from 'lucide-react'
-import { formatAbsoluteTimestamp } from '@/utils/formatting'
+import { MessageCircleDashed, Copy } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { formatAbsoluteTimestamp, formatTimestamp } from '@/utils/formatting'
 import { eventToDisplayObject } from '../eventToDisplayObject'
 import { useTaskGrouping } from '../hooks/useTaskGrouping'
 import { TaskGroup } from './TaskGroup'
+import { copyToClipboard } from '@/utils/clipboard'
 
 // TODO(2): Extract keyboard navigation logic to a custom hook
 // TODO(2): Extract auto-scroll logic to a separate utility
@@ -255,42 +258,78 @@ export function ConversationContent({
                     }
                   }
                 }}
-                className={`relative p-4 cursor-pointer NoSubTasksConversationContent ${
+                className={`group relative p-4 cursor-pointer NoSubTasksConversationContent ${
                   index !== nonEmptyDisplayObjects.length - 1 ? 'border-b' : ''
                 } ${focusedEventId === displayObject.id ? '!bg-accent/20' : ''}`}
               >
-                {/* Timestamp */}
-                <span className="absolute top-2 right-4">
-                  <span className="text-xs text-muted-foreground/60 uppercase tracking-wider">
-                    {formatAbsoluteTimestamp(displayObject.created_at)}
-                  </span>
-                </span>
+                {/* Main content container with flexbox */}
+                <div className="flex gap-4">
+                  {/* Left side: Icon and message content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline gap-2">
+                      {displayObject.iconComponent && (
+                        <span
+                          className={`text-sm ${displayObject.isThinking ? 'text-muted-foreground' : 'text-accent'} align-middle relative top-[1px]`}
+                        >
+                          {displayObject.iconComponent}
+                        </span>
+                      )}
+                      <span className="whitespace-pre-wrap text-foreground break-words">
+                        {displayObject.subject}
+                      </span>
+                    </div>
 
-                {/* Icon */}
-                <div className="flex items-baseline gap-2">
-                  {displayObject.iconComponent && (
-                    <span
-                      className={`text-sm ${displayObject.isThinking ? 'text-muted-foreground' : 'text-accent'} align-middle relative top-[1px]`}
-                    >
-                      {displayObject.iconComponent}
-                    </span>
-                  )}
-                  <span className="whitespace-pre-wrap text-foreground max-w-[80%]">
-                    {displayObject.subject}
-                  </span>
-                </div>
+                    {/* Tool Result Content */}
+                    {displayObject.toolResultContent && (
+                      <div className="whitespace-pre-wrap text-foreground break-words mt-2">
+                        {displayObject.toolResultContent}
+                      </div>
+                    )}
 
-                {/* Tool Result Content */}
-                {displayObject.toolResultContent && (
-                  <div className="whitespace-pre-wrap text-foreground">
-                    {displayObject.toolResultContent}
+                    {/* Body */}
+                    {displayObject.body && (
+                      <div className="whitespace-pre-wrap text-foreground break-words mt-2">
+                        {displayObject.body}
+                      </div>
+                    )}
                   </div>
-                )}
 
-                {/* Body */}
-                {displayObject.body && (
-                  <div className="whitespace-pre-wrap text-foreground">{displayObject.body}</div>
-                )}
+                  {/* Right side: Actions and timestamp */}
+                  <div className="flex items-start gap-2 shrink-0">
+                    {/* Copy button - only show for user and assistant messages */}
+                    {(() => {
+                      const event = events.find(e => e.id === displayObject.id)
+                      return event?.event_type === ConversationEventType.Message &&
+                        (event.role === 'user' || event.role === 'assistant') ? (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                          onClick={e => {
+                            e.stopPropagation()
+                            const content = event.content || ''
+                            copyToClipboard(content)
+                          }}
+                          title="Copy message (y)"
+                        >
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                      ) : null
+                    })()}
+
+                    {/* Timestamp with tooltip */}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="text-xs text-muted-foreground/60 uppercase tracking-wider cursor-help">
+                          {formatTimestamp(displayObject.created_at)}
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {formatAbsoluteTimestamp(displayObject.created_at)}
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                </div>
               </div>
             </div>
           ))}
@@ -381,7 +420,7 @@ export function ConversationContent({
                         }
                       }
                     }}
-                    className={`relative p-4 cursor-pointer ${
+                    className={`group relative p-4 cursor-pointer ${
                       index !==
                       rootEvents.filter(e => e.event_type !== ConversationEventType.ToolResult).length -
                         1
@@ -389,33 +428,70 @@ export function ConversationContent({
                         : ''
                     } ${focusedEventId === displayObject.id ? '!bg-accent/20 rounded' : ''}`}
                   >
-                    {/* Timestamp at top */}
-                    <div className="absolute top-2 right-4">
-                      <span className="text-xs text-muted-foreground/60">
-                        {formatAbsoluteTimestamp(displayObject.created_at)}
-                      </span>
-                    </div>
-
-                    <div className="flex items-baseline gap-2">
-                      {displayObject.iconComponent && (
-                        <span
-                          className={`text-sm ${displayObject.isThinking ? 'text-muted-foreground' : 'text-accent'} align-middle relative top-[1px]`}
-                        >
-                          {displayObject.iconComponent}
-                        </span>
-                      )}
-                      <span className="whitespace-pre-wrap text-foreground max-w-[90%]">
-                        {displayObject.subject}
-                      </span>
-                    </div>
-                    {displayObject.toolResultContent && (
-                      <div className="whitespace-pre-wrap text-foreground">
-                        {displayObject.toolResultContent}
+                    {/* Main content container with flexbox */}
+                    <div className="flex gap-4">
+                      {/* Left side: Icon and message content */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-baseline gap-2">
+                          {displayObject.iconComponent && (
+                            <span
+                              className={`text-sm ${displayObject.isThinking ? 'text-muted-foreground' : 'text-accent'} align-middle relative top-[1px]`}
+                            >
+                              {displayObject.iconComponent}
+                            </span>
+                          )}
+                          <span className="whitespace-pre-wrap text-foreground break-words">
+                            {displayObject.subject}
+                          </span>
+                        </div>
+                        {displayObject.toolResultContent && (
+                          <div className="whitespace-pre-wrap text-foreground break-words mt-2">
+                            {displayObject.toolResultContent}
+                          </div>
+                        )}
+                        {displayObject.body && (
+                          <div className="whitespace-pre-wrap text-foreground break-words mt-2">
+                            {displayObject.body}
+                          </div>
+                        )}
                       </div>
-                    )}
-                    {displayObject.body && (
-                      <div className="whitespace-pre-wrap text-foreground">{displayObject.body}</div>
-                    )}
+
+                      {/* Right side: Actions and timestamp */}
+                      <div className="flex items-start gap-2 shrink-0">
+                        {/* Copy button - only show for user and assistant messages */}
+                        {(() => {
+                          const currentEvent = events.find(e => e.id === displayObject.id)
+                          return currentEvent?.event_type === ConversationEventType.Message &&
+                            (currentEvent.role === 'user' || currentEvent.role === 'assistant') ? (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                              onClick={e => {
+                                e.stopPropagation()
+                                const content = currentEvent.content || ''
+                                copyToClipboard(content)
+                              }}
+                              title="Copy message (y)"
+                            >
+                              <Copy className="h-3 w-3" />
+                            </Button>
+                          ) : null
+                        })()}
+
+                        {/* Timestamp with tooltip */}
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="text-xs text-muted-foreground/60 cursor-help">
+                              {formatTimestamp(displayObject.created_at)}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {formatAbsoluteTimestamp(displayObject.created_at)}
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )

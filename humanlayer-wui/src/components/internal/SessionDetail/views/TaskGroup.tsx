@@ -1,7 +1,8 @@
 import { ChevronDown, CircleDashed, Wrench, FilePenLine, Bot, User, UserCheck } from 'lucide-react'
 import { ConversationEvent, ConversationEventType, FileSnapshotInfo } from '@/lib/daemon/types'
 import { TaskEventGroup } from '../hooks/useTaskGrouping'
-import { truncate, formatAbsoluteTimestamp } from '@/utils/formatting'
+import { truncate, formatAbsoluteTimestamp, formatTimestamp } from '@/utils/formatting'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { eventToDisplayObject } from '../eventToDisplayObject'
 
 interface TaskGroupProps {
@@ -200,34 +201,50 @@ export function TaskGroup({
                       }
                     }
                   }}
-                  className={`py-2 px-2 cursor-pointer ${
+                  className={`group py-2 px-2 cursor-pointer ${
                     focusedEventId === displayObject.id ? '!bg-accent/20 -mx-2 px-4 rounded' : ''
                   }`}
                 >
-                  <div className="absolute top-2 right-4">
-                    <span className="text-xs text-muted-foreground/60">
-                      {formatAbsoluteTimestamp(displayObject.created_at)}
-                    </span>
-                  </div>
-
-                  <div className="flex items-baseline gap-2">
-                    {displayObject.iconComponent && (
-                      <span className="text-sm text-accent align-middle relative top-[1px]">
-                        {displayObject.iconComponent}
-                      </span>
-                    )}
-                    <span className="whitespace-pre-wrap text-accent max-w-[90%]">
-                      {displayObject.subject}
-                    </span>
-                  </div>
-                  {displayObject.toolResultContent && (
-                    <div className="whitespace-pre-wrap text-foreground">
-                      {displayObject.toolResultContent}
+                  {/* Main content container with flexbox */}
+                  <div className="flex gap-4">
+                    {/* Left side: Icon and message content */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-baseline gap-2">
+                        {displayObject.iconComponent && (
+                          <span className="text-sm text-accent align-middle relative top-[1px]">
+                            {displayObject.iconComponent}
+                          </span>
+                        )}
+                        <span className="whitespace-pre-wrap text-accent break-words">
+                          {displayObject.subject}
+                        </span>
+                      </div>
+                      {displayObject.toolResultContent && (
+                        <div className="whitespace-pre-wrap text-foreground break-words mt-2">
+                          {displayObject.toolResultContent}
+                        </div>
+                      )}
+                      {displayObject.body && (
+                        <div className="whitespace-pre-wrap text-foreground break-words mt-2">
+                          {displayObject.body}
+                        </div>
+                      )}
                     </div>
-                  )}
-                  {displayObject.body && (
-                    <div className="whitespace-pre-wrap text-foreground">{displayObject.body}</div>
-                  )}
+
+                    {/* Right side: Timestamp */}
+                    <div className="shrink-0">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="text-xs text-muted-foreground/60 cursor-help">
+                            {formatTimestamp(displayObject.created_at)}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {formatAbsoluteTimestamp(displayObject.created_at)}
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Expanded content */}
