@@ -3,7 +3,7 @@ import { useHotkeys } from 'react-hotkeys-hook'
 
 import { ConversationEvent, SessionInfo, ApprovalStatus, SessionStatus } from '@/lib/daemon/types'
 import { Card, CardContent } from '@/components/ui/card'
-import { useConversation } from '@/hooks/useConversation'
+import { useConversation, useKeyboardNavigationProtection } from '@/hooks'
 import { ChevronDown, Archive } from 'lucide-react'
 import { getStatusTextClass } from '@/utils/component-utils'
 import { truncate } from '@/utils/formatting'
@@ -89,6 +89,9 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [forkViewOpen, setForkViewOpen] = useState(false)
   const [previewEventIndex, setPreviewEventIndex] = useState<number | null>(null)
   const [pendingForkMessage, setPendingForkMessage] = useState<ConversationEvent | null>(null)
+
+  // Keyboard navigation protection
+  const { shouldIgnoreMouseEvent, startKeyboardNavigation } = useKeyboardNavigationProtection()
 
   const isActivelyProcessing = ['starting', 'running', 'completing'].includes(session.status)
   const responseInputRef = useRef<HTMLTextAreaElement>(null)
@@ -319,6 +322,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     'shift+g',
     () => {
       console.log('[SessionDetail] Shift+G hotkey triggered')
+      startKeyboardNavigation()
+      
       const container = document.querySelector('[data-conversation-container]')
       if (container) {
         console.log('[SessionDetail] Scrolling to bottom')
@@ -340,6 +345,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     'g>g',
     () => {
       console.log('[SessionDetail] gg hotkey triggered')
+      startKeyboardNavigation()
+      
       const container = document.querySelector('[data-conversation-container]')
       if (container) {
         console.log('[SessionDetail] Scrolling to top')
@@ -513,6 +520,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               setExpandedToolResult={setExpandedToolResult}
               setExpandedToolCall={setExpandedToolCall}
               maxEventIndex={previewEventIndex ?? undefined}
+              shouldIgnoreMouseEvent={shouldIgnoreMouseEvent}
             />
             {isActivelyProcessing &&
               (() => {

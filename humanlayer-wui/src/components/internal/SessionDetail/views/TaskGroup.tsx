@@ -25,6 +25,7 @@ interface TaskGroupProps {
   setExpandedToolResult?: (event: ConversationEvent | null) => void
   setExpandedToolCall?: (event: ConversationEvent | null) => void
   getSnapshot?: (filePath: string) => FileSnapshotInfo | undefined
+  shouldIgnoreMouseEvent?: () => boolean
 }
 
 export function TaskGroup({
@@ -48,6 +49,7 @@ export function TaskGroup({
   setExpandedToolResult,
   setExpandedToolCall,
   getSnapshot,
+  shouldIgnoreMouseEvent,
 }: TaskGroupProps) {
   const { parentTask, toolCallCount, latestEvent, hasPendingApproval } = group
   const description = JSON.parse(parentTask.tool_input_json || '{}').description || 'Task'
@@ -63,11 +65,13 @@ export function TaskGroup({
         }`}
         onClick={onToggle}
         onMouseEnter={() => {
+          if (shouldIgnoreMouseEvent?.()) return
           console.log('[TaskGroup] onMouseEnter (parent):', parentTask.id, 'tool:', parentTask.tool_name)
           setFocusedEventId(parentTask.id)
           setFocusSource?.('mouse')
         }}
         onMouseLeave={() => {
+          if (shouldIgnoreMouseEvent?.()) return
           console.log('[TaskGroup] onMouseLeave (parent):', parentTask.id)
           setFocusedEventId(null)
         }}
@@ -185,11 +189,13 @@ export function TaskGroup({
                 <div
                   data-event-id={displayObject.id}
                   onMouseEnter={() => {
+                    if (shouldIgnoreMouseEvent?.()) return
                     console.log('[TaskGroup] onMouseEnter (subtask):', displayObject.id, 'type:', displayObject.event_type)
                     setFocusedEventId(displayObject.id)
                     setFocusSource?.('mouse')
                   }}
                   onMouseLeave={() => {
+                    if (shouldIgnoreMouseEvent?.()) return
                     console.log('[TaskGroup] onMouseLeave (subtask):', displayObject.id)
                     setFocusedEventId(null)
                     setConfirmingApprovalId?.(null)

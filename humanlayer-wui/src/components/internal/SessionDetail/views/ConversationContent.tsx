@@ -42,6 +42,7 @@ export function ConversationContent({
   setExpandedToolResult,
   setExpandedToolCall,
   maxEventIndex,
+  shouldIgnoreMouseEvent,
 }: {
   sessionId: string
   focusedEventId: number | null
@@ -62,6 +63,7 @@ export function ConversationContent({
   setExpandedToolResult?: (event: ConversationEvent | null) => void
   setExpandedToolCall?: (event: ConversationEvent | null) => void
   maxEventIndex?: number
+  shouldIgnoreMouseEvent?: () => boolean
 }) {
   // expandedToolResult is used by parent to control hotkey availability
   void expandedToolResult
@@ -232,11 +234,13 @@ export function ConversationContent({
               <div
                 data-event-id={displayObject.id}
                 onMouseEnter={() => {
+                  if (shouldIgnoreMouseEvent?.()) return
                   console.log('[ConversationContent] onMouseEnter:', displayObject.id, 'type:', displayObject.event_type)
                   setFocusedEventId(displayObject.id)
                   setFocusSource?.('mouse')
                 }}
                 onMouseLeave={() => {
+                  if (shouldIgnoreMouseEvent?.()) return
                   console.log('[ConversationContent] onMouseLeave:', displayObject.id)
                   setFocusedEventId(null)
                   setConfirmingApprovalId?.(null)
@@ -334,6 +338,7 @@ export function ConversationContent({
                   setExpandedToolResult={setExpandedToolResult}
                   setExpandedToolCall={setExpandedToolCall}
                   getSnapshot={getSnapshot}
+                  shouldIgnoreMouseEvent={shouldIgnoreMouseEvent}
                 />
               )
             } else {
@@ -360,11 +365,13 @@ export function ConversationContent({
                   <div
                     data-event-id={displayObject.id}
                     onMouseEnter={() => {
+                      if (shouldIgnoreMouseEvent?.()) return
                       console.log('[ConversationContent] onMouseEnter (grouped):', displayObject.id, 'type:', displayObject.event_type)
                       setFocusedEventId(displayObject.id)
                       setFocusSource?.('mouse')
                     }}
                     onMouseLeave={() => {
+                      if (shouldIgnoreMouseEvent?.()) return
                       console.log('[ConversationContent] onMouseLeave (grouped):', displayObject.id)
                       setFocusedEventId(null)
                       setConfirmingApprovalId?.(null)
