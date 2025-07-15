@@ -328,6 +328,9 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   useHotkeys(
     'e',
     async () => {
+      // TODO(3): The timeout clearing logic (using confirmingArchiveTimeoutRef) is duplicated in multiple places.
+      // Consider refactoring this into a helper function to reduce repetition.
+
       // Clear any existing timeout
       if (confirmingArchiveTimeoutRef.current) {
         clearTimeout(confirmingArchiveTimeoutRef.current)
