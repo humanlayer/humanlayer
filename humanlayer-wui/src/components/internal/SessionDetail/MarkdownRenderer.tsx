@@ -102,6 +102,31 @@ export const MarkdownRenderer = memo(
     }
 
     const components: Components = {
+      li({ children }) {
+        // Remove any leading whitespace/newlines from list items
+        // This fixes the issue where numbered lists have newlines between number and text
+        if (Array.isArray(children)) {
+          // Filter out pure whitespace text nodes at the beginning
+          const filteredChildren = children.filter((child, index) => {
+            if (index === 0 && typeof child === 'string' && child.trim() === '') {
+              return false
+            }
+            return true
+          })
+          return <li>{filteredChildren}</li>
+        }
+        return <li>{children}</li>
+      },
+      p({ children, ...props }) {
+        // Check if we're inside a list item
+        const isInList = (props as any).node?.parent?.tagName === 'li'
+        // Let CSS handle margins, only control display
+        return (
+          <p style={{ display: isInList ? 'inline' : 'block' }}>
+            {children}
+          </p>
+        )
+      },
       code(props) {
         const { className, children } = props as any
         // Check if it's an inline code or code block by looking at the presence of language class

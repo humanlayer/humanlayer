@@ -1,44 +1,141 @@
-/* Terminal-style markdown prose */
-.prose-terminal {
-  color: var(--terminal-fg);
-  font-family: inherit; /* Keep monospace */
-  max-width: none;
-  line-height: 1.5;
+/* Reset ALL browser defaults first */
+.prose-terminal * {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
-/* Headings */
+/* Base settings */
+.prose-terminal {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  line-height: 1.2; /* Tighter line height for more compact display */
+}
+
+/* Typography - ultra minimal spacing */
+.prose-terminal p {
+  margin-bottom: 0.5em; /* Consistent bottom margin for all paragraphs */
+}
+
+/* Last paragraph in any context should have no bottom margin */
+.prose-terminal > p:last-child,
+.prose-terminal li > p:last-child {
+  margin-bottom: 0;
+}
+
+/* Headings - minimal distinguishing space */
+.prose-terminal h1,
+.prose-terminal h2,
+.prose-terminal h3 {
+  font-weight: 600;
+  margin-bottom: 0; /* No bottom margin */
+  margin-top: 0.5em; /* Consistent top margin for all headings */
+}
+
+/* Code blocks */
+.prose-terminal pre {
+  margin-top: 0.25em;
+  margin-bottom: 0.25em;
+  padding: 0.25em;
+  font-size: 0.875rem;
+  line-height: 1.2; /* Match the tighter line height */
+}
+
+/* Lists - fix alignment and spacing */
+.prose-terminal ul,
+.prose-terminal ol {
+  margin-top: 0; /* No top margin */
+  margin-bottom: 0.5em; /* Consistent bottom margin */
+  padding-left: 1.5em; /* Reduced indent */
+}
+
+/* Last list should have no bottom margin */
+.prose-terminal > ul:last-child,
+.prose-terminal > ol:last-child {
+  margin-bottom: 0;
+}
+
+/* List items - no extra spacing */
+.prose-terminal li {
+  margin: 0;
+  padding: 0;
+  /* Tighter line height for more compact look */
+  line-height: 1.2;
+}
+
+/* Even tighter spacing between list items */
+.prose-terminal li + li {
+  margin-top: 0; /* No extra space between consecutive items */
+}
+
+/* Fix numbered list alignment */
+.prose-terminal li > p {
+  margin: 0; /* No margins on paragraphs inside lists */
+  /* Display is handled by the component override */
+}
+
+/* Display for list paragraphs is handled by component */
+
+/* Ensure list markers stay aligned */
+.prose-terminal ol > li {
+  list-style-position: outside;
+  padding-left: 0.25em; /* Minimal padding to separate from number */
+}
+
+/* Nested lists - minimal indent, no extra spacing */
+.prose-terminal li > ul,
+.prose-terminal li > ol {
+  margin-top: 0;
+  margin-bottom: 0;
+  padding-left: 1.5em; /* Slightly less indent for nested */
+}
+
+/* Remove bottom margin from last child */
+.prose-terminal > *:last-child,
+.prose-terminal li > *:last-child {
+  margin-bottom: 0;
+}
+
+/* Custom bullets for unordered lists */
+.prose-terminal ul {
+  list-style: none;
+}
+
+.prose-terminal ul > li::before {
+  content: '▸';
+  position: absolute;
+  margin-left: -1em;
+  color: var(--terminal-accent);
+}
+
+/* Keep existing theme colors for headings */
 .prose-terminal h1 {
   font-size: 1.5rem;
-  font-weight: 700;
   color: var(--terminal-accent);
-  margin-top: 1.5rem;
-  margin-bottom: 1rem;
-  padding-bottom: 0.5rem;
+  padding-bottom: 0.25rem;
   border-bottom: 1px dashed var(--terminal-border);
 }
 
+/* First heading should have no top margin */
+.prose-terminal > h1:first-child,
+.prose-terminal > h2:first-child,
+.prose-terminal > h3:first-child {
+  margin-top: 0;
+}
+
+/* Content immediately after headings already has proper spacing from element margins */
+
 .prose-terminal h2 {
   font-size: 1.25rem;
-  font-weight: 600;
   color: var(--terminal-accent);
-  margin-top: 1.25rem;
-  margin-bottom: 0.75rem;
 }
 
 .prose-terminal h3 {
   font-size: 1.125rem;
-  font-weight: 600;
   color: var(--terminal-accent-alt);
-  margin-top: 1rem;
-  margin-bottom: 0.5rem;
 }
 
-/* Typography */
-.prose-terminal p {
-  margin-top: 0.75rem;
-  margin-bottom: 0.75rem;
-}
-
+/* Typography colors */
 .prose-terminal strong {
   color: var(--terminal-warning);
   font-weight: 600;
@@ -55,47 +152,14 @@
   font-family: inherit;
 }
 
-.prose-terminal pre {
-  margin-top: 1rem;
-  margin-bottom: 1rem;
-  font-size: 0.875rem;
-  line-height: 1.5;
-}
-
-/* Lists */
-.prose-terminal ul {
-  list-style-type: none;
-  margin-top: 0.75rem;
-  margin-bottom: 0.75rem;
-  padding-left: 1.5rem;
-}
-
-.prose-terminal ul li {
-  position: relative;
-  padding-left: 0.5rem;
-  margin-top: 0.25rem;
-  margin-bottom: 0.25rem;
-}
-
-.prose-terminal ul li::before {
-  content: '▸';
-  position: absolute;
-  left: -1rem;
-  color: var(--terminal-accent);
-}
-
+/* Numbered lists */
 .prose-terminal ol {
   list-style-type: decimal;
-  margin-top: 0.75rem;
-  margin-bottom: 0.75rem;
-  padding-left: 1.5rem;
-  color: var(--terminal-accent);
+  color: inherit; /* Don't color the whole list */
 }
 
 .prose-terminal ol li {
-  padding-left: 0.5rem;
-  margin-top: 0.25rem;
-  margin-bottom: 0.25rem;
+  list-style-position: outside; /* Ensure number is outside */
 }
 
 .prose-terminal ol li::marker {
@@ -106,8 +170,7 @@
 .prose-terminal blockquote {
   border-left: 2px solid var(--terminal-accent);
   padding-left: 1rem;
-  margin-top: 1rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.5em;
   color: var(--terminal-fg-dim);
   font-style: italic;
 }
@@ -115,8 +178,7 @@
 /* Tables */
 .prose-terminal table {
   width: 100%;
-  margin-top: 1rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.5em;
   border-collapse: collapse;
 }
 
@@ -135,8 +197,8 @@
 
 /* Horizontal rules */
 .prose-terminal hr {
-  margin-top: 1.5rem;
-  margin-bottom: 1.5rem;
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
   border: none;
   border-top: 1px dashed var(--terminal-border);
 }
@@ -145,6 +207,5 @@
 .prose-terminal img {
   max-width: 100%;
   height: auto;
-  margin-top: 1rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.5em;
 }

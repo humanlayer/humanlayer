@@ -15,13 +15,13 @@ export const MessageContent = memo(
 
         {/* Tool Result Content */}
         {toolResultContent && (
-          <div className="whitespace-pre-wrap text-foreground break-words mt-2">
+          <div className="whitespace-pre-wrap text-foreground break-words">
             {toolResultContent}
           </div>
         )}
 
         {/* Body */}
-        {body && <div className="whitespace-pre-wrap text-foreground break-words mt-2">{body}</div>}
+        {body && <div className="whitespace-pre-wrap text-foreground break-words">{body}</div>}
       </div>
     )
   },
