@@ -1,7 +1,7 @@
 import pytest
 
 from humanlayer import ApprovalMethod, CloudHumanLayerBackend, HumanLayer
-from humanlayer.testing import env_var
+from humanlayer.testing import env_var, unset_env_var
 
 
 def test_no_args() -> None:
@@ -23,12 +23,13 @@ def test_cloud() -> None:
 
 
 def test_cloud_endpoint_kwarg_default() -> None:
-    hl = HumanLayer(api_key="foo")
-    assert hl.approval_method == ApprovalMethod.BACKEND
-    assert hl.backend is not None
-    assert isinstance(hl.backend, CloudHumanLayerBackend)
-    assert hl.backend.connection.api_key == "foo"
-    assert hl.backend.connection.api_base_url == "https://api.humanlayer.dev/humanlayer/v1"
+    with unset_env_var("HUMANLAYER_API_BASE"):
+        hl = HumanLayer(api_key="foo")
+        assert hl.approval_method == ApprovalMethod.BACKEND
+        assert hl.backend is not None
+        assert isinstance(hl.backend, CloudHumanLayerBackend)
+        assert hl.backend.connection.api_key == "foo"
+        assert hl.backend.connection.api_base_url == "https://api.humanlayer.dev/humanlayer/v1"
 
 
 def test_cloud_endpoint_kwarg() -> None:
@@ -40,7 +41,7 @@ def test_cloud_endpoint_kwarg() -> None:
 
 
 def test_env_var_cloud() -> None:
-    with env_var("HUMANLAYER_API_KEY", "foo"):
+    with env_var("HUMANLAYER_API_KEY", "foo"), unset_env_var("HUMANLAYER_API_BASE"):
         hl = HumanLayer()
         assert hl.approval_method == ApprovalMethod.BACKEND
         assert hl.backend is not None

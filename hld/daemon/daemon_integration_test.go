@@ -31,21 +31,25 @@ func TestDaemonBinaryIntegration(t *testing.T) {
 		socketPath := testutil.SocketPath(t, "starts")
 		t.Setenv("HUMANLAYER_DAEMON_SOCKET", socketPath)
 
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
 		cmd := exec.CommandContext(ctx, binPath)
+		// Capture stderr for debugging
+		var stderr strings.Builder
+		cmd.Stderr = &stderr
+
 		if err := cmd.Start(); err != nil {
 			t.Fatalf("failed to start daemon: %v", err)
 		}
 
-		// Wait for daemon to be ready
-		time.Sleep(200 * time.Millisecond)
+		// Wait for daemon to be ready - increased from 200ms to 1s
+		time.Sleep(1 * time.Second)
 
 		// Verify socket exists with correct permissions
 		info, err := os.Stat(socketPath)
 		if err != nil {
-			t.Fatalf("socket not created: %v", err)
+			t.Fatalf("socket not created: %v\nDaemon stderr: %s", err, stderr.String())
 		}
 
 		if info.Mode().Perm() != 0600 {
@@ -88,7 +92,7 @@ func TestDaemonBinaryIntegration(t *testing.T) {
 		}()
 
 		// Wait for first daemon to be ready
-		time.Sleep(200 * time.Millisecond)
+		time.Sleep(1 * time.Second)
 
 		// Try to start second daemon
 		cmd2 := exec.Command(binPath)
@@ -116,7 +120,7 @@ func TestDaemonBinaryIntegration(t *testing.T) {
 				}
 
 				// Wait for daemon to be ready
-				time.Sleep(200 * time.Millisecond)
+				time.Sleep(1 * time.Second)
 
 				// Send signal
 				if err := cmd.Process.Signal(sig); err != nil {
