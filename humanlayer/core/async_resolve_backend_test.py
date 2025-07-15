@@ -3,7 +3,7 @@ import pytest
 from humanlayer.core.async_approval import AsyncHumanLayer
 from humanlayer.core.async_cloud import AsyncCloudHumanLayerBackend
 from humanlayer.core.protocol import HumanLayerException
-from humanlayer.testing import env_var
+from humanlayer.testing import env_var, unset_env_var
 
 
 def test_no_args() -> None:
@@ -18,11 +18,12 @@ def test_no_args() -> None:
 
 def test_cloud_endpoint_kwarg_default() -> None:
     """Test cloud mode with default endpoint"""
-    hl = AsyncHumanLayer(api_key="foo")
-    assert hl.backend is not None
-    assert isinstance(hl.backend, AsyncCloudHumanLayerBackend)
-    assert hl.backend.connection.api_key == "foo"
-    assert hl.backend.connection.api_base_url == "https://api.humanlayer.dev/humanlayer/v1"
+    with unset_env_var("HUMANLAYER_API_BASE"):
+        hl = AsyncHumanLayer(api_key="foo")
+        assert hl.backend is not None
+        assert isinstance(hl.backend, AsyncCloudHumanLayerBackend)
+        assert hl.backend.connection.api_key == "foo"
+        assert hl.backend.connection.api_base_url == "https://api.humanlayer.dev/humanlayer/v1"
 
 
 def test_cloud_endpoint_kwarg() -> None:
@@ -35,7 +36,7 @@ def test_cloud_endpoint_kwarg() -> None:
 
 def test_env_var_cloud() -> None:
     """Test cloud mode from environment variable"""
-    with env_var("HUMANLAYER_API_KEY", "foo"):
+    with env_var("HUMANLAYER_API_KEY", "foo"), unset_env_var("HUMANLAYER_API_BASE"):
         hl = AsyncHumanLayer()
         assert hl.backend is not None
         assert isinstance(hl.backend, AsyncCloudHumanLayerBackend)

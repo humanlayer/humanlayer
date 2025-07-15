@@ -11,3 +11,15 @@ export function with_env_var(key: string, value: string, callback: () => any) {
     }
   }
 }
+
+export function without_env_var(key: string, callback: () => any) {
+  const prevValue = process.env[key]
+  delete process.env[key]
+  try {
+    callback()
+  } finally {
+    if (typeof prevValue !== 'undefined') {
+      process.env[key] = prevValue
+    }
+  }
+}

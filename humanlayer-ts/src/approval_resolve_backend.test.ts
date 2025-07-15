@@ -1,5 +1,5 @@
 import { ApprovalMethod, humanlayer, HumanLayer } from './approval'
-import { with_env_var } from '../src/testing/index'
+import { with_env_var, without_env_var } from '../src/testing/index'
 import { CloudHumanLayerBackend } from './cloud'
 
 test('no args', () => {
@@ -21,13 +21,15 @@ test('HumanLayer.cloud()', () => {
 })
 
 test('HumanLayer.cloud() with apiKey', () => {
-  const hl = HumanLayer.cloud({ apiKey: 'abc' })
-  expect(hl.approvalMethod).toBe(ApprovalMethod.backend)
-  expect(hl.backend).toBeDefined()
-  expect(hl.backend).toBeInstanceOf(CloudHumanLayerBackend)
-  const cloudBackend = <CloudHumanLayerBackend>hl.backend
-  expect(cloudBackend.connection.apiKey).toBe('abc')
-  expect(cloudBackend.connection.apiBaseURL).toBe('https://api.humanlayer.dev/humanlayer/v1')
+  without_env_var('HUMANLAYER_API_BASE', () => {
+    const hl = HumanLayer.cloud({ apiKey: 'abc' })
+    expect(hl.approvalMethod).toBe(ApprovalMethod.backend)
+    expect(hl.backend).toBeDefined()
+    expect(hl.backend).toBeInstanceOf(CloudHumanLayerBackend)
+    const cloudBackend = <CloudHumanLayerBackend>hl.backend
+    expect(cloudBackend.connection.apiKey).toBe('abc')
+    expect(cloudBackend.connection.apiBaseURL).toBe('https://api.humanlayer.dev/humanlayer/v1')
+  })
 })
 
 test('Humanlayer with api key and endpoint', () => {
@@ -41,13 +43,15 @@ test('Humanlayer with api key and endpoint', () => {
 })
 
 test('HumanLayer() with env var', () => {
-  with_env_var('HUMANLAYER_API_KEY', 'abc', () => {
-    const hl = new HumanLayer()
-    expect(hl.approvalMethod).toBe(ApprovalMethod.backend)
-    expect(hl.backend).toBeDefined()
-    expect(hl.backend).toBeInstanceOf(CloudHumanLayerBackend)
-    const cloudBackend = <CloudHumanLayerBackend>hl.backend
-    expect(cloudBackend.connection.apiKey).toBe('abc')
-    expect(cloudBackend.connection.apiBaseURL).toBe('https://api.humanlayer.dev/humanlayer/v1')
+  without_env_var('HUMANLAYER_API_BASE', () => {
+    with_env_var('HUMANLAYER_API_KEY', 'abc', () => {
+      const hl = new HumanLayer()
+      expect(hl.approvalMethod).toBe(ApprovalMethod.backend)
+      expect(hl.backend).toBeDefined()
+      expect(hl.backend).toBeInstanceOf(CloudHumanLayerBackend)
+      const cloudBackend = <CloudHumanLayerBackend>hl.backend
+      expect(cloudBackend.connection.apiKey).toBe('abc')
+      expect(cloudBackend.connection.apiBaseURL).toBe('https://api.humanlayer.dev/humanlayer/v1')
+    })
   })
 })
