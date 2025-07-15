@@ -20,6 +20,7 @@ import type {
   ArchiveSessionResponse,
   BulkArchiveSessionsRequest,
   BulkArchiveSessionsResponse,
+  GetSessionSnapshotsResponse,
 } from './types'
 
 export class DaemonClient {
@@ -125,6 +126,12 @@ export class DaemonClient {
 
   async bulkArchiveSessions(request: BulkArchiveSessionsRequest): Promise<BulkArchiveSessionsResponse> {
     return await invoke('bulk_archive_sessions', { request })
+  }
+
+  async getSessionSnapshots(sessionId: string): Promise<GetSessionSnapshotsResponse> {
+    return await invoke<GetSessionSnapshotsResponse>('get_session_snapshots', {
+      sessionId: sessionId, // Tauri expects camelCase
+    })
   }
 }
 

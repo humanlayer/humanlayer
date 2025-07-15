@@ -381,6 +381,34 @@ async fn bulk_archive_sessions(
     }
 }
 
+#[tauri::command]
+async fn get_session_snapshots(
+    state: State<'_, AppState>,
+    session_id: String,
+) -> std::result::Result<daemon_client::GetSessionSnapshotsResponse, String> {
+    tracing::info!("get_session_snapshots: Tauri command called with session_id {}", session_id);
+    let client_guard = state.client.lock().await;
+
+    match &*client_guard {
+        Some(client) => {
+            tracing::info!("get_session_snapshots: Calling daemon RPC");
+            let result = client
+                .get_session_snapshots(&session_id)
+                .await
+                .map_err(|e| e.to_string());
+            match &result {
+                Ok(response) => tracing::info!("get_session_snapshots: Got {} snapshots", response.snapshots.len()),
+                Err(e) => tracing::error!("get_session_snapshots: Error: {}", e),
+            }
+            result
+        }
+        None => {
+            tracing::error!("get_session_snapshots: Not connected to daemon");
+            Err("Not connected to daemon".to_string())
+        }
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Initialize tracing
@@ -413,6 +441,7 @@ pub fn run() {
             get_recent_paths,
             archive_session,
             bulk_archive_sessions,
+            get_session_snapshots,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
