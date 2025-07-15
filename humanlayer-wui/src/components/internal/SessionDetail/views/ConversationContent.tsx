@@ -1,6 +1,3 @@
-import { createStarryNight } from '@wooorm/starry-night'
-import jsonGrammar from '@wooorm/starry-night/source.json'
-import textMd from '@wooorm/starry-night/text.md'
 import { useEffect, useRef } from 'react'
 import keyBy from 'lodash.keyby'
 
@@ -16,14 +13,11 @@ import { eventToDisplayObject } from '../eventToDisplayObject'
 import { useTaskGrouping } from '../hooks/useTaskGrouping'
 import { TaskGroup } from './TaskGroup'
 import { copyToClipboard } from '@/utils/clipboard'
+import { MessageContent } from '../components/MessageContent'
 
 // TODO(2): Extract keyboard navigation logic to a custom hook
 // TODO(2): Extract auto-scroll logic to a separate utility
 // TODO(3): Add virtual scrolling for very long conversations
-// TODO(1): Fix the starryNight initialization duplication
-
-/* I, Sundeep, don't know how I feel about what's going on here. */
-let starryNight: any | null = null
 
 export function ConversationContent({
   sessionId,
@@ -153,10 +147,6 @@ export function ConversationContent({
       previousEventCountRef.current = nonEmptyDisplayObjects.length
       previousEventsRef.current = [...filteredEvents]
     }
-
-    if (!starryNight) {
-      createStarryNight([textMd, jsonGrammar]).then(sn => (starryNight = sn))
-    }
   }, [loading, nonEmptyDisplayObjects.length, filteredEvents])
 
   // Scroll focused event into view (only for keyboard navigation)
@@ -278,24 +268,12 @@ export function ConversationContent({
                           {displayObject.iconComponent}
                         </span>
                       )}
-                      <span className="whitespace-pre-wrap text-foreground break-words">
-                        {displayObject.subject}
-                      </span>
+                      <MessageContent
+                        subject={displayObject.subject}
+                        body={displayObject.body}
+                        toolResultContent={displayObject.toolResultContent}
+                      />
                     </div>
-
-                    {/* Tool Result Content */}
-                    {displayObject.toolResultContent && (
-                      <div className="whitespace-pre-wrap text-foreground break-words mt-2">
-                        {displayObject.toolResultContent}
-                      </div>
-                    )}
-
-                    {/* Body */}
-                    {displayObject.body && (
-                      <div className="whitespace-pre-wrap text-foreground break-words mt-2">
-                        {displayObject.body}
-                      </div>
-                    )}
                   </div>
 
                   {/* Right side: Actions and timestamp */}
@@ -447,20 +425,12 @@ export function ConversationContent({
                               {displayObject.iconComponent}
                             </span>
                           )}
-                          <span className="whitespace-pre-wrap text-foreground break-words">
-                            {displayObject.subject}
-                          </span>
+                          <MessageContent
+                            subject={displayObject.subject}
+                            body={displayObject.body}
+                            toolResultContent={displayObject.toolResultContent}
+                          />
                         </div>
-                        {displayObject.toolResultContent && (
-                          <div className="whitespace-pre-wrap text-foreground break-words mt-2">
-                            {displayObject.toolResultContent}
-                          </div>
-                        )}
-                        {displayObject.body && (
-                          <div className="whitespace-pre-wrap text-foreground break-words mt-2">
-                            {displayObject.body}
-                          </div>
-                        )}
                       </div>
 
                       {/* Right side: Actions and timestamp */}
