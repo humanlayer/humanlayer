@@ -121,11 +121,7 @@ export const MarkdownRenderer = memo(
         // Check if we're inside a list item
         const isInList = (props as any).node?.parent?.tagName === 'li'
         // Let CSS handle margins, only control display
-        return (
-          <p style={{ display: isInList ? 'inline' : 'block' }}>
-            {children}
-          </p>
-        )
+        return <p style={{ display: isInList ? 'inline' : 'block' }}>{children}</p>
       },
       code(props) {
         const { className, children } = props as any
