@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
+import { toast } from 'sonner'
 
 import { ConversationEvent, SessionInfo, ApprovalStatus, SessionStatus } from '@/lib/daemon/types'
 import { Card, CardContent } from '@/components/ui/card'
@@ -89,9 +90,11 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [forkViewOpen, setForkViewOpen] = useState(false)
   const [previewEventIndex, setPreviewEventIndex] = useState<number | null>(null)
   const [pendingForkMessage, setPendingForkMessage] = useState<ConversationEvent | null>(null)
+  const [confirmingArchive, setConfirmingArchive] = useState(false)
 
   const isActivelyProcessing = ['starting', 'running', 'completing'].includes(session.status)
   const responseInputRef = useRef<HTMLTextAreaElement>(null)
+  const confirmingArchiveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Get session from store to access auto_accept_edits
   const sessionFromStore = useStore(state => state.sessions.find(s => s.id === session.id))
@@ -239,6 +242,16 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     }
   }, [session.id]) // Re-run when session changes
 
+  // Cleanup confirmation timeout on unmount or session change
+  useEffect(() => {
+    return () => {
+      if (confirmingArchiveTimeoutRef.current) {
+        clearTimeout(confirmingArchiveTimeoutRef.current)
+        confirmingArchiveTimeoutRef.current = null
+      }
+    }
+  }, [session.id])
+
   // Check if there are pending approvals out of view
   const [hasPendingApprovalsOutOfView, setHasPendingApprovalsOutOfView] = useState(false)
 
@@ -268,7 +281,14 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         return
       }
 
-      if (approvals.confirmingApprovalId) {
+      if (confirmingArchive) {
+        setConfirmingArchive(false)
+        // Clear timeout if exists
+        if (confirmingArchiveTimeoutRef.current) {
+          clearTimeout(confirmingArchiveTimeoutRef.current)
+          confirmingArchiveTimeoutRef.current = null
+        }
+      } else if (approvals.confirmingApprovalId) {
         approvals.setConfirmingApprovalId(null)
       } else if (navigation.focusedEventId) {
         navigation.setFocusedEventId(null)
@@ -302,6 +322,71 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       preventDefault: true,
     },
     [session.id, autoAcceptEdits], // Dependencies
+  )
+
+  // Add hotkey to archive session ('e' key)
+  useHotkeys(
+    'e',
+    async () => {
+      // Clear any existing timeout
+      if (confirmingArchiveTimeoutRef.current) {
+        clearTimeout(confirmingArchiveTimeoutRef.current)
+        confirmingArchiveTimeoutRef.current = null
+      }
+
+      // Check if session is active (requires confirmation)
+      const isActiveSession = [
+        SessionStatus.Starting,
+        SessionStatus.Running,
+        SessionStatus.Completing,
+        SessionStatus.WaitingInput,
+      ].includes(session.status)
+
+      const isArchiving = !session.archived
+
+      if (isActiveSession && !confirmingArchive) {
+        // First press - show warning
+        setConfirmingArchive(true)
+        toast.warning('Press e again to archive active session', {
+          description: 'This session is still active. Press e again within 3 seconds to confirm.',
+          duration: 3000,
+        })
+
+        // Set timeout to reset confirmation state
+        confirmingArchiveTimeoutRef.current = setTimeout(() => {
+          setConfirmingArchive(false)
+          confirmingArchiveTimeoutRef.current = null
+        }, 3000)
+        return
+      }
+
+      // Either second press for active session or immediate archive for completed/failed
+      try {
+        await useStore.getState().archiveSession(session.id, isArchiving)
+        
+        // Clear confirmation state
+        setConfirmingArchive(false)
+        
+        // Show success notification matching list view behavior
+        toast.success(isArchiving ? 'Session archived' : 'Session unarchived', {
+          description: session.summary || 'Untitled session',
+          duration: 3000,
+        })
+        
+        // Navigate back to session list
+        onClose()
+      } catch (error) {
+        toast.error('Failed to archive session', {
+          description: error instanceof Error ? error.message : 'Unknown error',
+        })
+        setConfirmingArchive(false)
+      }
+    },
+    {
+      scopes: [SessionDetailHotkeysScope],
+      preventDefault: true,
+    },
+    [session.id, session.archived, session.summary, session.status, onClose, confirmingArchive]
   )
 
   // Add hotkey to open fork view (Meta+Y)
