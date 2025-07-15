@@ -255,11 +255,13 @@ export function ConversationContent({
                 {/* Icon */}
                 <div className="flex items-baseline gap-2">
                   {displayObject.iconComponent && (
-                    <span className="text-sm text-accent align-middle relative top-[1px]">
+                    <span
+                      className={`text-sm ${displayObject.isThinking ? 'text-muted-foreground' : 'text-accent'} align-middle relative top-[1px]`}
+                    >
                       {displayObject.iconComponent}
                     </span>
                   )}
-                  <span className="whitespace-pre-wrap text-accent max-w-[90%]">
+                  <span className="whitespace-pre-wrap text-foreground max-w-[80%]">
                     {displayObject.subject}
                   </span>
                 </div>
@@ -380,11 +382,13 @@ export function ConversationContent({
 
                     <div className="flex items-baseline gap-2">
                       {displayObject.iconComponent && (
-                        <span className="text-sm text-accent align-middle relative top-[1px]">
+                        <span
+                          className={`text-sm ${displayObject.isThinking ? 'text-muted-foreground' : 'text-accent'} align-middle relative top-[1px]`}
+                        >
                           {displayObject.iconComponent}
                         </span>
                       )}
-                      <span className="whitespace-pre-wrap text-accent max-w-[90%]">
+                      <span className="whitespace-pre-wrap text-foreground max-w-[90%]">
                         {displayObject.subject}
                       </span>
                     </div>

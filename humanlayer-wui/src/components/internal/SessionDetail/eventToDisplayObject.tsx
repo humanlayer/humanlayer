@@ -9,6 +9,7 @@ import { ConversationEvent, ConversationEventType, ApprovalStatus } from '@/lib/
 import { Button } from '@/components/ui/button'
 import {
   Bot,
+  Brain,
   FilePenLine,
   UserCheck,
   User,
@@ -64,6 +65,12 @@ export function eventToDisplayObject(
   let body = null
   let iconComponent = null
   let toolResultContent = null
+
+  // console.log('event', event)
+  // Check if this is a thinking message
+  const isThinking =
+    event.event_type === ConversationEventType.Thinking ||
+    (event.role === 'assistant' && event.content?.startsWith('<thinking>'))
 
   const iconClasses = `w-4 h-4 align-middle relative top-[1px] ${event.event_type === ConversationEventType.ToolCall && !event.is_completed ? 'pulse-warning' : ''}`
 
@@ -445,6 +452,21 @@ export function eventToDisplayObject(
     }
   }
 
+  if (event.event_type === ConversationEventType.Thinking) {
+    // Thinking messages are always from assistant
+    const fullContent = event.content || ''
+    const contentTree = starryNight?.highlight(fullContent, 'text.md')
+
+    subject = contentTree ? (
+      <span className="text-muted-foreground italic">
+        {toJsxRuntime(contentTree, { Fragment, jsx, jsxs })}
+      </span>
+    ) : (
+      <span className="text-muted-foreground italic">{fullContent}</span>
+    )
+    body = null // Everything is in subject for thinking messages
+  }
+
   if (event.event_type === ConversationEventType.Message) {
     // For assistant messages, show full content without truncation
     if (event.role === 'assistant') {
@@ -452,9 +474,11 @@ export function eventToDisplayObject(
       const contentTree = starryNight?.highlight(fullContent, 'text.md')
 
       subject = contentTree ? (
-        <span>{toJsxRuntime(contentTree, { Fragment, jsx, jsxs })}</span>
+        <span className={isThinking ? 'text-muted-foreground' : ''}>
+          {toJsxRuntime(contentTree, { Fragment, jsx, jsxs })}
+        </span>
       ) : (
-        <span>{fullContent}</span>
+        <span className={isThinking ? 'text-muted-foreground' : ''}>{fullContent}</span>
       )
       body = null // Everything is in subject for assistant messages
     } else {
@@ -478,7 +502,9 @@ export function eventToDisplayObject(
     }
   }
 
-  if (event.role === 'assistant') {
+  if (event.event_type === ConversationEventType.Thinking) {
+    iconComponent = <Brain className={iconClasses} />
+  } else if (event.role === 'assistant') {
     iconComponent = <Bot className={iconClasses} />
   }
 
@@ -549,6 +575,7 @@ export function eventToDisplayObject(
     body,
     created_at: event.created_at,
     toolResultContent,
+    isThinking,
   }
 }
 
