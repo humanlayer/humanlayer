@@ -66,18 +66,11 @@ export function TaskGroup({
         onClick={onToggle}
         onMouseEnter={() => {
           if (shouldIgnoreMouseEvent?.()) return
-          console.log(
-            '[TaskGroup] onMouseEnter (parent):',
-            parentTask.id,
-            'tool:',
-            parentTask.tool_name,
-          )
           setFocusedEventId(parentTask.id)
           setFocusSource?.('mouse')
         }}
         onMouseLeave={() => {
           if (shouldIgnoreMouseEvent?.()) return
-          console.log('[TaskGroup] onMouseLeave (parent):', parentTask.id)
           setFocusedEventId(null)
         }}
         onKeyDown={e => {
@@ -195,18 +188,11 @@ export function TaskGroup({
                   data-event-id={displayObject.id}
                   onMouseEnter={() => {
                     if (shouldIgnoreMouseEvent?.()) return
-                    console.log(
-                      '[TaskGroup] onMouseEnter (subtask):',
-                      displayObject.id,
-                      'type:',
-                      displayObject.event_type,
-                    )
                     setFocusedEventId(displayObject.id)
                     setFocusSource?.('mouse')
                   }}
                   onMouseLeave={() => {
                     if (shouldIgnoreMouseEvent?.()) return
-                    console.log('[TaskGroup] onMouseLeave (subtask):', displayObject.id)
                     setFocusedEventId(null)
                     setConfirmingApprovalId?.(null)
                   }}

@@ -320,11 +320,9 @@ export default function SessionTable({
                   key={session.id}
                   data-session-id={session.id}
                   onMouseEnter={() => {
-                    console.log('[SessionTable] onMouseEnter:', session.id, session.summary)
                     handleFocusSession?.(session)
                   }}
                   onMouseLeave={() => {
-                    console.log('[SessionTable] onMouseLeave:', session.id)
                     handleBlurSession?.()
                   }}
                   onClick={() => handleActivateSession?.(session)}

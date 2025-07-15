@@ -12,7 +12,6 @@ export function useKeyboardNavigationProtection(delay: number = 300) {
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const startKeyboardNavigation = useCallback(() => {
-    console.log('[KeyboardNavProtection] Starting keyboard navigation mode')
     setIsKeyboardNavigating(true)
 
     // Clear any existing timeout
@@ -22,17 +21,12 @@ export function useKeyboardNavigationProtection(delay: number = 300) {
 
     // Set a timeout to re-enable mouse events after the delay
     timeoutRef.current = setTimeout(() => {
-      console.log('[KeyboardNavProtection] Ending keyboard navigation mode')
       setIsKeyboardNavigating(false)
     }, delay)
   }, [delay])
 
   const shouldIgnoreMouseEvent = useCallback((): boolean => {
-    if (isKeyboardNavigating) {
-      console.log('[KeyboardNavProtection] Ignoring mouse event during keyboard navigation')
-      return true
-    }
-    return false
+    return isKeyboardNavigating
   }, [isKeyboardNavigating])
 
   return {

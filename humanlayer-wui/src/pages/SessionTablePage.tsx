@@ -19,7 +19,7 @@ export function SessionTablePage() {
   const [searchQuery, setSearchQuery] = useState(() => searchParams.get('q') || '')
 
   // Focus source tracking
-  const [focusSource, setFocusSource] = useState<'mouse' | 'keyboard' | null>(null)
+  const [, setFocusSource] = useState<'mouse' | 'keyboard' | null>(null)
 
   // Keyboard navigation protection
   const { shouldIgnoreMouseEvent, startKeyboardNavigation } = useKeyboardNavigationProtection()
@@ -113,19 +113,16 @@ export function SessionTablePage() {
   useHotkeys(
     'g>g',
     () => {
-      console.log('[SessionTablePage] gg hotkey triggered')
       startKeyboardNavigation()
       setFocusSource('keyboard')
 
       // Find the main scrollable container (from Layout)
       const container = document.querySelector('[data-main-scroll-container]')
       if (container) {
-        console.log('[SessionTablePage] Scrolling to top')
         container.scrollTop = 0
       }
       // Also focus the first session
       if (filteredSessions.length > 0) {
-        console.log('[SessionTablePage] Setting focus to first session:', filteredSessions[0].id)
         setFocusedSession(filteredSessions[0])
       }
     },
@@ -141,22 +138,16 @@ export function SessionTablePage() {
   useHotkeys(
     'shift+g',
     () => {
-      console.log('[SessionTablePage] Shift+G hotkey triggered')
       startKeyboardNavigation()
       setFocusSource('keyboard')
 
       // Find the main scrollable container (from Layout)
       const container = document.querySelector('[data-main-scroll-container]')
       if (container) {
-        console.log('[SessionTablePage] Scrolling to bottom')
         container.scrollTop = container.scrollHeight
       }
       // Also focus the last session
       if (filteredSessions.length > 0) {
-        console.log(
-          '[SessionTablePage] Setting focus to last session:',
-          filteredSessions[filteredSessions.length - 1].id,
-        )
         setFocusedSession(filteredSessions[filteredSessions.length - 1])
       }
     },
