@@ -15,7 +15,7 @@ If tools are available, respond based on the user's request:
 ```
 I can help you with Linear tickets. What would you like to do?
 1. Create a new ticket from a thoughts document
-2. Add a comment to a ticket (I'll use our conversation context)
+2. Add a link or comment to an existing ticket
 3. Search for tickets
 4. Update ticket status or details
 ```
@@ -189,67 +189,31 @@ Store all session configuration in the database and automatically inherit it whe
 resuming sessions, with support for explicit overrides.
 ```
 
-### 2. Adding Comments and Links to Existing Tickets
+### 2. Adding Links or Comments to Existing Tickets
 
-When user wants to add a comment to a ticket:
+When user wants to add information to an existing ticket:
 
-1. **Determine which ticket:**
-   - Use context from the current conversation to identify the relevant ticket
-   - If uncertain, use `mcp__linear__get_issue` to show ticket details and confirm with user
-   - Look for ticket references in recent work discussed
+1. **Get ticket identifier:**
+   - Ask for ticket ID (e.g., ENG-1234) or URL
+   - Use `mcp__linear__get_issue` to fetch current ticket details
 
-2. **Format comments for clarity:**
-   - Attempt to keep comments concise (~10 lines) unless more detail is needed
-   - Focus on the key insight or most useful information for a human reader
-   - Not just what was done, but what matters about it
-   - Include relevant file references with backticks and GitHub links
+2. **Determine action:**
+   - Add a link: Use `mcp__linear__update_issue` with links parameter
+   - Add a comment: Use `mcp__linear__create_comment`
+   - Update status: Use `mcp__linear__update_issue` with stateId
 
-3. **File reference formatting:**
-   - Wrap paths in backticks: `thoughts/allison/example.md`
-   - Add GitHub link after: `([View](url))`
-   - Do this for both thoughts/ and code files mentioned
-
-4. **Comment structure example:**
-   ```markdown
-   Implemented retry logic in webhook handler to address rate limit issues.
-   
-   Key insight: The 429 responses were clustered during batch operations, 
-   so exponential backoff alone wasn't sufficient - added request queuing.
-   
-   Files updated:
-   - `hld/webhooks/handler.go` ([GitHub](link))
-   - `thoughts/shared/rate_limit_analysis.md` ([GitHub](link))
+3. **For adding links:**
    ```
-
-5. **Handle links properly:**
-   - If adding a link with a comment: Update the issue with the link AND mention it in the comment
-   - If only adding a link: Still create a comment noting what link was added for posterity
-   - Always add links to the issue itself using the `links` parameter
-
-6. **For comments with links:**
-   ```
-   # First, update the issue with the link
    mcp__linear__update_issue with:
    - id: [ticket ID]
    - links: [existing links + new link with proper title]
-   
-   # Then, create the comment mentioning the link
-   mcp__linear__create_comment with:
-   - issueId: [ticket ID]
-   - body: [formatted comment with key insights and file references]
    ```
 
-7. **For links only:**
+4. **For adding comments:**
    ```
-   # Update the issue with the link
-   mcp__linear__update_issue with:
-   - id: [ticket ID]
-   - links: [existing links + new link with proper title]
-   
-   # Add a brief comment for posterity
    mcp__linear__create_comment with:
    - issueId: [ticket ID]
-   - body: "Added link: `path/to/document.md` ([View](url))"
+   - body: [markdown formatted comment]
    ```
 
 ### 3. Searching for Tickets
@@ -311,23 +275,6 @@ When moving tickets through the workflow:
 - Ask for clarification rather than guessing project/status
 - Remember that Linear descriptions support full markdown including code blocks
 - Always use the `links` parameter for external URLs (not just markdown links)
-
-## Comment Quality Guidelines
-
-When creating comments, focus on extracting the **most valuable information** for a human reader:
-
-- **Key insights over summaries**: What's the "aha" moment or critical understanding?
-- **Decisions and tradeoffs**: What approach was chosen and what it enables/prevents
-- **Blockers resolved**: What was preventing progress and how it was addressed
-- **State changes**: What's different now and what it means for next steps
-- **Surprises or discoveries**: Unexpected findings that affect the work
-
-Avoid:
-- Mechanical lists of changes without context
-- Restating what's obvious from code diffs
-- Generic summaries that don't add value
-
-Remember: The goal is to help a future reader (including yourself) quickly understand what matters about this update.
 
 ## Commonly Used IDs
 
