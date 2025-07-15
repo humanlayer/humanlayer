@@ -363,16 +363,16 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       // Either second press for active session or immediate archive for completed/failed
       try {
         await useStore.getState().archiveSession(session.id, isArchiving)
-        
+
         // Clear confirmation state
         setConfirmingArchive(false)
-        
+
         // Show success notification matching list view behavior
         toast.success(isArchiving ? 'Session archived' : 'Session unarchived', {
           description: session.summary || 'Untitled session',
           duration: 3000,
         })
-        
+
         // Navigate back to session list
         onClose()
       } catch (error) {
@@ -386,7 +386,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       scopes: [SessionDetailHotkeysScope],
       preventDefault: true,
     },
-    [session.id, session.archived, session.summary, session.status, onClose, confirmingArchive]
+    [session.id, session.archived, session.summary, session.status, onClose, confirmingArchive],
   )
 
   // Add hotkey to open fork view (Meta+Y)
