@@ -350,6 +350,10 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       if (isActiveSession && !confirmingArchive) {
         // First press - show warning
         setConfirmingArchive(true)
+        // TODO(3): Consider using a Dialog instead of toast for archive confirmation.
+        // This would improve accessibility (mouse users can click buttons) and avoid
+        // complexity around timeout management. The current toast approach works but
+        // isn't ideal for all users.
         toast.warning('Press e again to archive active session', {
           description: 'This session is still active. Press e again within 3 seconds to confirm.',
           duration: 3000,
