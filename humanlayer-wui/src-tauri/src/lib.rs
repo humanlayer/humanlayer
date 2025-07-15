@@ -386,7 +386,10 @@ async fn get_session_snapshots(
     state: State<'_, AppState>,
     session_id: String,
 ) -> std::result::Result<daemon_client::GetSessionSnapshotsResponse, String> {
-    tracing::info!("get_session_snapshots: Tauri command called with session_id {}", session_id);
+    tracing::info!(
+        "get_session_snapshots: Tauri command called with session_id {}",
+        session_id
+    );
     let client_guard = state.client.lock().await;
 
     match &*client_guard {
@@ -397,7 +400,10 @@ async fn get_session_snapshots(
                 .await
                 .map_err(|e| e.to_string());
             match &result {
-                Ok(response) => tracing::info!("get_session_snapshots: Got {} snapshots", response.snapshots.len()),
+                Ok(response) => tracing::info!(
+                    "get_session_snapshots: Got {} snapshots",
+                    response.snapshots.len()
+                ),
                 Err(e) => tracing::error!("get_session_snapshots: Error: {}", e),
             }
             result
@@ -415,6 +421,7 @@ pub fn run() {
     tracing_subscriber::fmt::init();
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())

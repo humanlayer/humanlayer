@@ -24,6 +24,7 @@ import { useSessionActions } from './hooks/useSessionActions'
 import { useSessionApprovals } from './hooks/useSessionApprovals'
 import { useSessionNavigation } from './hooks/useSessionNavigation'
 import { useTaskGrouping } from './hooks/useTaskGrouping'
+import { useSessionClipboard } from './hooks/useSessionClipboard'
 import { useStealHotkeyScope } from '@/hooks/useStealHotkeyScope'
 
 interface SessionDetailProps {
@@ -31,7 +32,7 @@ interface SessionDetailProps {
   onClose: () => void
 }
 
-const SessionDetailHotkeysScope = 'session-detail'
+export const SessionDetailHotkeysScope = 'session-detail'
 
 const ROBOT_VERBS = [
   'riffing',
@@ -163,6 +164,10 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     setFocusedEventId: navigation.setFocusedEventId,
     setFocusSource: navigation.setFocusSource,
   })
+
+  // Use clipboard hook
+  const focusedEvent = events.find(e => e.id === navigation.focusedEventId) || null
+  useSessionClipboard(focusedEvent, !expandedToolResult && !forkViewOpen)
 
   // Add fork commit handler
   const handleForkCommit = useCallback(() => {
