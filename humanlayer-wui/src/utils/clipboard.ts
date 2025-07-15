@@ -7,7 +7,7 @@ export async function copyToClipboard(text: string): Promise<boolean> {
     toast.success('Copied to clipboard')
     return true
   } catch (error) {
-    console.error('Failed to copy to clipboard:', error)
+    console.error('Failed to copy to clipboard:', error instanceof Error ? error.message : error)
     toast.error('Failed to copy to clipboard')
     return false
   }
