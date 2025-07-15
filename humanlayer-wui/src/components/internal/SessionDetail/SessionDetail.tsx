@@ -318,29 +318,37 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   useHotkeys(
     'shift+g',
     () => {
+      console.log('[SessionDetail] Shift+G hotkey triggered')
       const container = document.querySelector('[data-conversation-container]')
       if (container) {
+        console.log('[SessionDetail] Scrolling to bottom')
         container.scrollTop = container.scrollHeight
         // Focus the last event
         if (events.length > 0) {
+          console.log('[SessionDetail] Setting focus to last event:', events[events.length - 1].id)
           navigation.setFocusedEventId(events[events.length - 1].id)
+          navigation.setFocusSource('keyboard')
         }
       }
     },
     { scopes: [SessionDetailHotkeysScope] },
-    [events, navigation.setFocusedEventId],
+    [events, navigation.setFocusedEventId, navigation.setFocusSource],
   )
 
   // Add 'gg' to jump to top of conversation (vim-style)
   useHotkeys(
     'g>g',
     () => {
+      console.log('[SessionDetail] gg hotkey triggered')
       const container = document.querySelector('[data-conversation-container]')
       if (container) {
+        console.log('[SessionDetail] Scrolling to top')
         container.scrollTop = 0
         // Focus the first event
         if (events.length > 0) {
+          console.log('[SessionDetail] Setting focus to first event:', events[0].id)
           navigation.setFocusedEventId(events[0].id)
+          navigation.setFocusSource('keyboard')
         }
       }
     },
@@ -349,7 +357,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       scopes: [SessionDetailHotkeysScope],
       preventDefault: true,
     },
-    [events, navigation.setFocusedEventId],
+    [events, navigation.setFocusedEventId, navigation.setFocusSource],
   )
 
   useStealHotkeyScope(SessionDetailHotkeysScope)

@@ -319,8 +319,14 @@ export default function SessionTable({
                 <TableRow
                   key={session.id}
                   data-session-id={session.id}
-                  onMouseEnter={() => handleFocusSession?.(session)}
-                  onMouseLeave={() => handleBlurSession?.()}
+                  onMouseEnter={() => {
+                    console.log('[SessionTable] onMouseEnter:', session.id, session.summary)
+                    handleFocusSession?.(session)
+                  }}
+                  onMouseLeave={() => {
+                    console.log('[SessionTable] onMouseLeave:', session.id)
+                    handleBlurSession?.()
+                  }}
                   onClick={() => handleActivateSession?.(session)}
                   className={cn(
                     'cursor-pointer',

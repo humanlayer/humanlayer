@@ -232,10 +232,12 @@ export function ConversationContent({
               <div
                 data-event-id={displayObject.id}
                 onMouseEnter={() => {
+                  console.log('[ConversationContent] onMouseEnter:', displayObject.id, 'type:', displayObject.event_type)
                   setFocusedEventId(displayObject.id)
                   setFocusSource?.('mouse')
                 }}
                 onMouseLeave={() => {
+                  console.log('[ConversationContent] onMouseLeave:', displayObject.id)
                   setFocusedEventId(null)
                   setConfirmingApprovalId?.(null)
                 }}
@@ -358,10 +360,12 @@ export function ConversationContent({
                   <div
                     data-event-id={displayObject.id}
                     onMouseEnter={() => {
+                      console.log('[ConversationContent] onMouseEnter (grouped):', displayObject.id, 'type:', displayObject.event_type)
                       setFocusedEventId(displayObject.id)
                       setFocusSource?.('mouse')
                     }}
                     onMouseLeave={() => {
+                      console.log('[ConversationContent] onMouseLeave (grouped):', displayObject.id)
                       setFocusedEventId(null)
                       setConfirmingApprovalId?.(null)
                     }}
