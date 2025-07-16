@@ -1,6 +1,8 @@
 import { StateCreator } from 'zustand'
 import { Theme } from '@/contexts/ThemeContext'
 
+export type { Theme }
+
 export interface ThemeSlice {
   theme: Theme
   setTheme: (theme: Theme) => void

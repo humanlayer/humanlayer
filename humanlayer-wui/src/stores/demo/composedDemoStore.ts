@@ -31,7 +31,7 @@ export const createComposedDemoStore = (): StoreApi<ComposedDemoStore> => {
       }),
       {
         name: 'composed-demo-store',
-        enabled: process.env.NODE_ENV === 'development',
+        enabled: import.meta.env.DEV,
       },
     ),
   )
@@ -42,7 +42,7 @@ export class ComposedDemoAnimator {
   private store: StoreApi<ComposedDemoStore>
   private sequence: DemoAnimationStep[]
   private currentIndex: number = 0
-  private timeoutId: NodeJS.Timeout | null = null
+  private timeoutId: ReturnType<typeof setTimeout> | null = null
   private isRunning: boolean = false
 
   constructor(store: StoreApi<ComposedDemoStore>, sequence: DemoAnimationStep[]) {

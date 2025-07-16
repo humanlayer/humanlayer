@@ -1,22 +1,18 @@
 import { describe, test, expect, beforeEach, afterEach } from 'bun:test'
-import { create, StoreApi } from 'zustand'
-import { createThemeSlice, ThemeSlice } from './themeSlice'
-
-// Helper to create a test store with just the theme slice
-function createTestStore(): StoreApi<ThemeSlice> {
-  return create<ThemeSlice>()(createThemeSlice)
-}
+import { create } from 'zustand'
+import { createThemeSlice, ThemeSlice, Theme } from './themeSlice'
+import { createStoreTest, testInitialState } from '../test-utils'
 
 describe('Demo ThemeSlice', () => {
-  let store: StoreApi<ThemeSlice>
+  let store: ReturnType<typeof createStoreTest<ThemeSlice>>
   let storage: Record<string, string>
 
   beforeEach(() => {
-    store = createTestStore()
+    store = createStoreTest(() => create<ThemeSlice>()(createThemeSlice))
 
     // Mock localStorage
     storage = {}
-    global.localStorage = {
+    globalThis.localStorage = {
       getItem: (key: string) => storage[key] || null,
       setItem: (key: string, value: string) => {
         storage[key] = value
@@ -31,8 +27,8 @@ describe('Demo ThemeSlice', () => {
       key: () => null,
     }
 
-    // Mock document.documentElement.setAttribute
-    global.document = {
+    // Mock document
+    globalThis.document = {
       documentElement: {
         setAttribute: () => {},
       },
@@ -40,106 +36,59 @@ describe('Demo ThemeSlice', () => {
   })
 
   afterEach(() => {
-    // Clean up
     storage = {}
   })
 
   describe('Initial State', () => {
     test('should initialize with default theme', () => {
-      const state = store.getState()
-      expect(state.theme).toBe('solarized-dark')
+      testInitialState(store.getState(), {
+        theme: 'solarized-dark',
+      })
     })
   })
 
   describe('Theme Management', () => {
-    test('should set theme', () => {
-      store.getState().setTheme('catppuccin')
-      expect(store.getState().theme).toBe('catppuccin')
-    })
+    test('should set themes and update DOM', () => {
+      const themes: Theme[] = ['framer-dark', 'catppuccin', 'gruvbox-dark']
 
-    test('should update DOM when setting theme', () => {
-      let capturedTheme: string | null = null
-      document.documentElement.setAttribute = (attr: string, value: string) => {
-        if (attr === 'data-theme') capturedTheme = value
-      }
-
-      store.getState().setTheme('framer-dark')
-      expect(capturedTheme).toBe('framer-dark')
-    })
-
-    test('should persist theme to localStorage', () => {
-      store.getState().setTheme('gruvbox-dark')
-      expect(localStorage.getItem('wui-theme')).toBe('gruvbox-dark')
+      themes.forEach(theme => {
+        store.testSetter('setTheme', 'theme', theme)
+        expect(localStorage.getItem('wui-theme')).toBe(theme)
+      })
     })
 
     test('should cycle through themes', () => {
-      const themes = [
-        'solarized-dark',
-        'solarized-light',
-        'catppuccin',
-        'framer-dark',
-        'gruvbox-dark',
-        'high-contrast',
+      const expectedSequence = [
+        { action: 'next', expected: 'solarized-light' },
+        { action: 'next', expected: 'catppuccin' },
+        { action: 'next', expected: 'framer-dark' },
+        { action: 'next', expected: 'gruvbox-dark' },
+        { action: 'next', expected: 'high-contrast' },
+        { action: 'next', expected: 'solarized-dark' }, // wrap
+        { action: 'prev', expected: 'high-contrast' },
+        { action: 'prev', expected: 'gruvbox-dark' },
       ]
 
-      // Start at solarized-dark
-      expect(store.getState().theme).toBe('solarized-dark')
-
-      // Cycle forward through all themes
-      store.getState().cycleTheme('next')
-      expect(store.getState().theme).toBe('solarized-light')
-
-      store.getState().cycleTheme('next')
-      expect(store.getState().theme).toBe('catppuccin')
-
-      store.getState().cycleTheme('next')
-      expect(store.getState().theme).toBe('framer-dark')
-
-      store.getState().cycleTheme('next')
-      expect(store.getState().theme).toBe('gruvbox-dark')
-
-      store.getState().cycleTheme('next')
-      expect(store.getState().theme).toBe('high-contrast')
-
-      // Should wrap to beginning
-      store.getState().cycleTheme('next')
-      expect(store.getState().theme).toBe('solarized-dark')
+      expectedSequence.forEach(({ action, expected }) => {
+        store.act(s => s.cycleTheme(action as 'next' | 'prev'))
+        expect(store.getState().theme).toBe(expected as Theme)
+      })
     })
 
-    test('should cycle backwards through themes', () => {
-      // Start at solarized-dark
-      expect(store.getState().theme).toBe('solarized-dark')
-
-      // Cycle backward - should wrap to end
-      store.getState().cycleTheme('prev')
-      expect(store.getState().theme).toBe('high-contrast')
-
-      store.getState().cycleTheme('prev')
-      expect(store.getState().theme).toBe('gruvbox-dark')
-    })
-
-    test('should load theme from localStorage on init', () => {
-      // Set a theme in localStorage before creating store
+    test('should load theme from localStorage', () => {
       localStorage.setItem('wui-theme', 'catppuccin')
 
-      // Create new store
-      const newStore = createTestStore()
-
-      // Call loadThemeFromStorage after store is created
-      newStore.getState().loadThemeFromStorage()
+      const newStore = createStoreTest(() => create<ThemeSlice>()(createThemeSlice))
+      newStore.act(s => s.loadThemeFromStorage())
 
       expect(newStore.getState().theme).toBe('catppuccin')
     })
 
-    test('should fall back to default if stored theme is invalid', () => {
-      // Set invalid theme in localStorage
+    test('should handle invalid stored theme', () => {
       localStorage.setItem('wui-theme', 'invalid-theme')
 
-      // Create new store
-      const newStore = createTestStore()
-
-      // Call loadThemeFromStorage after store is created
-      newStore.getState().loadThemeFromStorage()
+      const newStore = createStoreTest(() => create<ThemeSlice>()(createThemeSlice))
+      newStore.act(s => s.loadThemeFromStorage())
 
       expect(newStore.getState().theme).toBe('solarized-dark')
     })
@@ -158,35 +107,33 @@ describe('Demo ThemeSlice', () => {
       ])
     })
 
-    test('should check if theme is dark', () => {
-      store.getState().setTheme('solarized-dark')
-      expect(store.getState().isDarkTheme()).toBe(true)
+    test('should identify dark themes', () => {
+      const darkThemeTests = [
+        { theme: 'solarized-dark', isDark: true },
+        { theme: 'solarized-light', isDark: false },
+        { theme: 'catppuccin', isDark: true },
+        { theme: 'framer-dark', isDark: true },
+        { theme: 'gruvbox-dark', isDark: true },
+        { theme: 'high-contrast', isDark: true },
+      ]
 
-      store.getState().setTheme('solarized-light')
-      expect(store.getState().isDarkTheme()).toBe(false)
-
-      store.getState().setTheme('catppuccin')
-      expect(store.getState().isDarkTheme()).toBe(true)
-
-      store.getState().setTheme('framer-dark')
-      expect(store.getState().isDarkTheme()).toBe(true)
-
-      store.getState().setTheme('gruvbox-dark')
-      expect(store.getState().isDarkTheme()).toBe(true)
-
-      store.getState().setTheme('high-contrast')
-      expect(store.getState().isDarkTheme()).toBe(true)
+      darkThemeTests.forEach(({ theme, isDark }) => {
+        store.act(s => s.setTheme(theme as Theme))
+        expect(store.getState().isDarkTheme()).toBe(isDark)
+      })
     })
 
     test('should get current theme index', () => {
-      store.getState().setTheme('solarized-dark')
-      expect(store.getState().getCurrentThemeIndex()).toBe(0)
+      const indexTests = [
+        { theme: 'solarized-dark', index: 0 },
+        { theme: 'catppuccin', index: 2 },
+        { theme: 'high-contrast', index: 5 },
+      ]
 
-      store.getState().setTheme('catppuccin')
-      expect(store.getState().getCurrentThemeIndex()).toBe(2)
-
-      store.getState().setTheme('high-contrast')
-      expect(store.getState().getCurrentThemeIndex()).toBe(5)
+      indexTests.forEach(({ theme, index }) => {
+        store.act(s => s.setTheme(theme as Theme))
+        expect(store.getState().getCurrentThemeIndex()).toBe(index)
+      })
     })
   })
 })

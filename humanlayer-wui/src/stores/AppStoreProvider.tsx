@@ -1,9 +1,10 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+import React, { createContext, useContext, useEffect, useState } from 'react'
 import { StoreApi, useStore } from 'zustand'
 import { AppState, createRealAppStore } from './appStore'
 import { useDaemonConnection } from '@/hooks/useDaemonConnection'
-import { useSubscriptions } from '@/hooks/useSubscriptions'
+import { useSessionSubscriptions } from '@/hooks/useSubscriptions'
 import { toast } from 'sonner'
+import { SessionStatus } from '@/lib/daemon/types'
 
 // Single context - components don't choose between real/demo
 export const AppStoreContext = createContext<StoreApi<AppState> | null>(null)
@@ -28,19 +29,26 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
   }, [connected, store])
 
   // Set up subscriptions for real-time updates
-  useSubscriptions({
-    onSessionUpdate: update => {
-      const { sessionId, changes } = update
-      store.getState().updateSession(sessionId, changes)
+  useSessionSubscriptions(connected, {
+    onSessionStatusChanged: data => {
+      // Handle session status changes
+      const { session_id, new_status } = data
+      store.getState().updateSession(session_id, { status: new_status as SessionStatus })
     },
-    onSessionsRefresh: sessions => {
-      store.getState().initSessions(sessions)
+    onNewApproval: data => {
+      // Handle new approvals
+      const currentApprovals = store.getState().approvals
+      store.getState().setApprovals([...currentApprovals, data.approval])
     },
-    onApprovalsUpdate: approvals => {
+    onApprovalResolved: data => {
+      // Handle resolved approvals
+      const { call_id, decision } = data
+      const approvals = store.getState().approvals.filter(a => {
+        const approvalId = a.function_call?.call_id || a.human_contact?.call_id
+        return approvalId !== call_id
+      })
       store.getState().setApprovals(approvals)
-    },
-    onError: error => {
-      toast.error(`Subscription error: ${error.message}`)
+      toast.success(`Approval ${decision === 'approve' ? 'approved' : 'rejected'}`)
     },
   })
 

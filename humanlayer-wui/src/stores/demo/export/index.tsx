@@ -5,24 +5,33 @@
  * product demonstrations and capture screenshots.
  */
 
-// Re-export core functionality from providers
-export { DemoStoreProvider, useDemoStore } from '../providers/DemoStoreProvider'
-export type { ComposedDemoStore } from '../composedDemoStore'
-
-// Export pre-built animation sequences
-export {
-  launcherWorkflowSequence,
-  statusChangesSequence,
-  themeShowcaseSequence,
+import React from 'react'
+import { DemoStoreProvider as Provider, useDemoStore } from '../providers/DemoStoreProvider'
+import {
+  launcherWorkflowSequence as launcherSeq,
+  statusChangesSequence as statusSeq,
+  themeShowcaseSequence as themeSeq,
 } from '../animations/sequences'
-
-// Export types for custom sequences
-export type { DemoAnimationStep } from '../composedDemoStore'
-
-// Export utilities for creating mock data
+import type { ComposedDemoStore as DemoStore } from '../composedDemoStore'
+import type { DemoAnimationStep as AnimationStep } from '../composedDemoStore'
 import { SessionStatus } from '@/lib/daemon/types'
 import type { SessionInfo } from '@/lib/daemon/types'
 
+// Re-export core functionality
+export { Provider as DemoStoreProvider, useDemoStore }
+export type { DemoStore as ComposedDemoStore }
+
+// Export pre-built animation sequences
+export {
+  launcherSeq as launcherWorkflowSequence,
+  statusSeq as statusChangesSequence,
+  themeSeq as themeShowcaseSequence,
+}
+
+// Export types for custom sequences
+export type { AnimationStep as DemoAnimationStep }
+
+// Export utilities
 export { SessionStatus }
 
 export function createMockSession(
@@ -49,7 +58,6 @@ export function createMockSession(
 }
 
 // Pre-configured demo wrapper component
-import React from 'react'
 
 interface QuickDemoProps {
   sequence?: 'launcher' | 'status' | 'themes'
@@ -58,34 +66,34 @@ interface QuickDemoProps {
 
 export function QuickDemo({ sequence = 'launcher', children }: QuickDemoProps) {
   const sequences = {
-    launcher: launcherWorkflowSequence,
-    status: statusChangesSequence,
-    themes: themeShowcaseSequence,
+    launcher: launcherSeq,
+    status: statusSeq,
+    themes: themeSeq,
   }
 
-  return <DemoStoreProvider sequence={sequences[sequence]}>{children}</DemoStoreProvider>
+  return <Provider sequence={sequences[sequence]}>{children}</Provider>
 }
 
 // Utility to create custom animation sequences
 interface SequenceBuilder {
-  steps: DemoAnimationStep[]
-  addStep(step: DemoAnimationStep): SequenceBuilder
+  steps: AnimationStep[]
+  addStep(step: AnimationStep): SequenceBuilder
   addDelay(ms: number): SequenceBuilder
   addSessions(sessions: SessionInfo[]): SequenceBuilder
   openLauncher(mode?: 'command' | 'search'): SequenceBuilder
   closeLauncher(): SequenceBuilder
   setTheme(theme: string): SequenceBuilder
   showApproval(id: string, title: string): SequenceBuilder
-  build(): DemoAnimationStep[]
+  build(): AnimationStep[]
 }
 
 export function createSequence(): SequenceBuilder {
-  const steps: DemoAnimationStep[] = []
+  const steps: AnimationStep[] = []
 
   const builder: SequenceBuilder = {
     steps,
 
-    addStep(step: DemoAnimationStep) {
+    addStep(step: AnimationStep) {
       steps.push(step)
       return builder
     },

@@ -10,7 +10,7 @@ export class DemoAnimator {
   private store: StoreApi<AppState>
   private sequence: AnimationStep[]
   private currentIndex: number = 0
-  private timeoutId: NodeJS.Timeout | null = null
+  private timeoutId: ReturnType<typeof setTimeout> | null = null
   private isRunning: boolean = false
   private isPaused: boolean = false
 

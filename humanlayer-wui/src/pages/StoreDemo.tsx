@@ -1,4 +1,4 @@
-import { useEffect, useState, createContext, useContext } from 'react'
+import React, { useEffect, useState, createContext, useContext } from 'react'
 import { create, StoreApi, useStore } from 'zustand'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -48,7 +48,7 @@ class DemoAnimator {
   private store: StoreApi<CounterStore>
   private sequence: AnimationStep[]
   private currentIndex: number = 0
-  private timeoutId: NodeJS.Timeout | null = null
+  private timeoutId: ReturnType<typeof setTimeout> | null = null
   private isRunning: boolean = false
   private unsubscribe: (() => void) | null = null
 
@@ -57,12 +57,9 @@ class DemoAnimator {
     this.sequence = sequence
 
     // Subscribe to store changes for logging/debugging
-    this.unsubscribe = store.subscribe(
-      state => state.count,
-      count => {
-        console.log('[Demo Store] Count updated to:', count)
-      },
-    )
+    this.unsubscribe = store.subscribe(state => {
+      console.log('[Demo Store] Count updated to:', state.count)
+    })
   }
 
   start() {
@@ -123,12 +120,9 @@ function RealStoreProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Optional: Subscribe to real store for logging
-    const unsubscribe = realStore.subscribe(
-      state => state.count,
-      count => {
-        console.log('[Real Store] Count updated to:', count)
-      },
-    )
+    const unsubscribe = realStore.subscribe(state => {
+      console.log('[Real Store] Count updated to:', state.count)
+    })
 
     return () => {
       unsubscribe()

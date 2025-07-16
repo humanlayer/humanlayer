@@ -173,8 +173,6 @@ export function createDemoAppStore(isDemo: boolean = false): StoreApi<DemoAppSta
     // Complex workflow actions
     simulateLaunchSession: query => {
       if (!isDemo) {
-        const state = get()
-
         // Start launcher sequence
         set({
           launcherOpen: true,
@@ -198,6 +196,7 @@ export function createDemoAppStore(isDemo: boolean = false): StoreApi<DemoAppSta
             summary: query.length > 50 ? query.substring(0, 50) + '...' : query,
             model: 'claude-3-5-sonnet-20241022',
             working_dir: '/demo/working/dir',
+            auto_accept_edits: false,
           }
 
           set(currentState => ({
@@ -240,7 +239,7 @@ export class DemoAppAnimator {
   private store: StoreApi<DemoAppState>
   private sequence: AppAnimationStep[]
   private currentIndex: number = 0
-  private timeoutId: NodeJS.Timeout | null = null
+  private timeoutId: ReturnType<typeof setTimeout> | null = null
   private isRunning: boolean = false
   private unsubscribe: (() => void) | null = null
 
@@ -249,16 +248,13 @@ export class DemoAppAnimator {
     this.sequence = sequence
 
     // Subscribe to store changes for logging
-    this.unsubscribe = store.subscribe(
-      state => ({
+    this.unsubscribe = store.subscribe(state => {
+      console.log('[Demo App Store] State updated:', {
         sessions: state.sessions.length,
         launcher: state.launcherOpen,
         theme: state.theme,
-      }),
-      state => {
-        console.log('[Demo App Store] State updated:', state)
-      },
-    )
+      })
+    })
   }
 
   start() {
