@@ -9,11 +9,9 @@ interface UseApprovalsReturn {
   error: string | null
   refresh: () => Promise<void>
 
-  approve: (callId: string, comment?: string) => Promise<void>
+  approve: (approvalId: string, comment?: string) => Promise<void>
 
-  deny: (callId: string, reason: string) => Promise<void>
-
-  respond: (callId: string, response: string) => Promise<void>
+  deny: (approvalId: string, reason: string) => Promise<void>
 }
 
 export function useApprovals(sessionId?: string): UseApprovalsReturn {
@@ -44,9 +42,9 @@ export function useApprovals(sessionId?: string): UseApprovalsReturn {
 
   // Approve a function call
   const approve = useCallback(
-    async (callId: string, comment?: string) => {
+    async (approvalId: string, comment?: string) => {
       try {
-        await daemonClient.approveFunctionCall(callId, comment)
+        await daemonClient.approveFunctionCall(approvalId, comment)
         // Refresh the list after approval
         await fetchApprovals()
       } catch (err) {
@@ -58,24 +56,10 @@ export function useApprovals(sessionId?: string): UseApprovalsReturn {
 
   // Deny a function call
   const deny = useCallback(
-    async (callId: string, reason: string) => {
+    async (approvalId: string, reason: string) => {
       try {
-        await daemonClient.denyFunctionCall(callId, reason)
+        await daemonClient.denyFunctionCall(approvalId, reason)
         // Refresh the list after denial
-        await fetchApprovals()
-      } catch (err) {
-        throw new Error(formatError(err))
-      }
-    },
-    [fetchApprovals],
-  )
-
-  // Respond to human contact
-  const respond = useCallback(
-    async (callId: string, response: string) => {
-      try {
-        await daemonClient.respondToHumanContact(callId, response)
-        // Refresh the list after response
         await fetchApprovals()
       } catch (err) {
         throw new Error(formatError(err))
@@ -91,7 +75,6 @@ export function useApprovals(sessionId?: string): UseApprovalsReturn {
     refresh: fetchApprovals,
     approve,
     deny,
-    respond,
   }
 }
 
