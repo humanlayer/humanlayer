@@ -9,7 +9,7 @@ import { useSessionFilter } from '@/hooks/useSessionFilter'
 import { SessionInfo, SessionStatus } from '@/lib/daemon/types'
 import { ThemeSelector } from '@/components/ThemeSelector'
 import { SessionLauncher } from '@/components/SessionLauncher'
-import { createDemoAppStore, DemoAppAnimator, AppAnimationStep } from '@/stores/demoAppStore'
+import { createDemoAppStore, DemoAppAnimator, AppAnimationStep } from '@/stores/demo/demoAppStore'
 
 // Mock session data for demo
 const mockSessions: SessionInfo[] = [
