@@ -1,11 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { daemonClient } from '@/lib/daemon'
-import { UnifiedApprovalRequest } from '@/types/ui'
-import { enrichApprovals } from '@/utils/enrichment'
+import { Approval } from '@/lib/daemon/types'
 import { formatError } from '@/utils/errors'
 
 interface UseApprovalsReturn {
-  approvals: UnifiedApprovalRequest[]
+  approvals: Approval[]
   loading: boolean
   error: string | null
   refresh: () => Promise<void>
@@ -18,7 +17,7 @@ interface UseApprovalsReturn {
 }
 
 export function useApprovals(sessionId?: string): UseApprovalsReturn {
-  const [approvals, setApprovals] = useState<UnifiedApprovalRequest[]>([])
+  const [approvals, setApprovals] = useState<Approval[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -27,16 +26,10 @@ export function useApprovals(sessionId?: string): UseApprovalsReturn {
       setLoading(true)
       setError(null)
 
-      // Fetch approvals and sessions in parallel
-      const [approvalsResponse, sessionsResponse] = await Promise.all([
-        daemonClient.fetchApprovals(sessionId),
-        daemonClient.listSessions(),
-      ])
+      // Fetch approvals
+      const approvalsResponse = await daemonClient.fetchApprovals(sessionId)
 
-      // Enrich approvals with session context
-      const enriched = enrichApprovals(approvalsResponse.approvals, sessionsResponse.sessions)
-
-      setApprovals(enriched)
+      setApprovals(approvalsResponse.approvals)
     } catch (err) {
       setError(formatError(err))
     } finally {

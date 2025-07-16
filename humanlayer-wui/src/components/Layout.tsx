@@ -96,17 +96,18 @@ export function Layout() {
 
   const handleApproval = async (approval: any, approved: boolean) => {
     try {
-      if (approval.type === 'function_call' && approval.function_call) {
-        if (approved) {
-          await daemonClient.approveFunctionCall(approval.function_call.call_id, 'Approved via UI')
-        } else {
-          await daemonClient.denyFunctionCall(approval.function_call.call_id, 'Denied via UI')
-        }
-      } else if (approval.type === 'human_contact' && approval.human_contact) {
-        const response = prompt('Enter your response:')
-        if (response) {
-          await daemonClient.respondToHumanContact(approval.human_contact.call_id, response)
-        }
+      // Handle new approval format directly
+      if (!approval || !approval.id) {
+        console.error('Invalid approval data:', approval)
+        return
+      }
+
+      const approvalId = approval.id
+
+      if (approved) {
+        await daemonClient.approveFunctionCall(approvalId, 'Approved via UI')
+      } else {
+        await daemonClient.denyFunctionCall(approvalId, 'Denied via UI')
       }
 
       // Refresh approvals
@@ -145,43 +146,27 @@ export function Layout() {
                       className="p-4 border border-border bg-secondary/20 font-mono text-sm"
                     >
                       <div className="mb-2">
-                        <span className="text-accent">Type:</span> {approval.type}
+                        <span className="text-accent">Tool:</span> {approval.tool_name}
                       </div>
-                      {approval.function_call && (
-                        <>
-                          <div className="mb-2">
-                            <span className="text-accent">Function:</span>{' '}
-                            {approval.function_call.spec.fn}
-                          </div>
-                          <div className="mb-3">
-                            <span className="text-accent">Args:</span>{' '}
-                            {JSON.stringify(approval.function_call.spec.kwargs)}
-                          </div>
-                          <div className="flex gap-2">
-                            <Button onClick={() => handleApproval(approval, true)} size="sm">
-                              Approve
-                            </Button>
-                            <Button
-                              onClick={() => handleApproval(approval, false)}
-                              variant="destructive"
-                              size="sm"
-                            >
-                              Deny
-                            </Button>
-                          </div>
-                        </>
-                      )}
-                      {approval.human_contact && (
-                        <>
-                          <div className="mb-3">
-                            <span className="text-accent">Message:</span>{' '}
-                            {approval.human_contact.spec.msg}
-                          </div>
-                          <Button onClick={() => handleApproval(approval, true)} size="sm">
-                            Respond
-                          </Button>
-                        </>
-                      )}
+                      <div className="mb-2">
+                        <span className="text-accent">Session:</span> {approval.session_id.slice(0, 8)}
+                      </div>
+                      <div className="mb-3">
+                        <span className="text-accent">Input:</span>{' '}
+                        {JSON.stringify(approval.tool_input)}
+                      </div>
+                      <div className="flex gap-2">
+                        <Button onClick={() => handleApproval(approval, true)} size="sm">
+                          Approve
+                        </Button>
+                        <Button
+                          onClick={() => handleApproval(approval, false)}
+                          variant="destructive"
+                          size="sm"
+                        >
+                          Deny
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>

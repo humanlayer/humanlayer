@@ -1,112 +1,141 @@
-import { PendingApproval, ApprovalType, FunctionCall, HumanContact, SessionInfo } from '@/lib/daemon'
-import { UnifiedApprovalRequest } from '@/types/ui'
-import { truncate, formatParameters } from './formatting'
+import { Approval } from '@/lib/daemon'
 
-// Enrich approvals with session context
-export function enrichApprovals(
-  approvals: PendingApproval[],
-  sessions: SessionInfo[],
-): UnifiedApprovalRequest[] {
-  // Create lookup map for sessions by runId
-  const sessionsByRunId = new Map<string, SessionInfo>()
-  sessions.forEach(session => {
-    sessionsByRunId.set(session.run_id, session)
-  })
-
-  return approvals.map(approval => {
-    if (approval.type === ApprovalType.FunctionCall && approval.function_call) {
-      return enrichFunctionCall(approval.function_call, sessionsByRunId)
-    } else if (approval.type === ApprovalType.HumanContact && approval.human_contact) {
-      return enrichHumanContact(approval.human_contact, sessionsByRunId)
-    }
-
-    // Fallback for unknown types
-    return {
-      id: 'unknown',
-      callId: 'unknown',
-      runId: 'unknown',
-      type: approval.type,
-      title: 'Unknown approval type',
-      description: '',
-      createdAt: new Date(),
-    }
-  })
+// Types for display data
+export interface ApprovalField {
+  label: string
+  value: string
+  truncate?: boolean
+  isPath?: boolean
 }
 
-function enrichFunctionCall(
-  fc: FunctionCall,
-  sessionsByRunId: Map<string, SessionInfo>,
-): UnifiedApprovalRequest {
-  const session = sessionsByRunId.get(fc.run_id)
-
-  // Build title
-  let title = `Call ${fc.spec.fn}`
-  if (Object.keys(fc.spec.kwargs).length > 0) {
-    const params = formatParameters(fc.spec.kwargs, 50)
-    title += ` with ${params}`
-  }
-
-  // Build description with more details
-  const description = JSON.stringify(fc.spec.kwargs, null, 2)
-
-  return {
-    id: fc.call_id,
-    callId: fc.call_id,
-    runId: fc.run_id,
-    type: ApprovalType.FunctionCall,
-    title,
-    description,
-    tool: fc.spec.fn,
-    parameters: fc.spec.kwargs,
-    createdAt: fc.status?.requested_at ? new Date(fc.status.requested_at) : new Date(),
-    // Session context
-    sessionId: session?.id,
-    sessionQuery: session ? session.summary || truncate(session.query, 50) : undefined,
-    sessionModel: session?.model || 'default',
-  }
+export interface ApprovalDisplayData {
+  type: 'function' | 'human'
+  icon: string
+  color: string
+  title: string
+  description: string
+  fields: ApprovalField[]
 }
 
-function enrichHumanContact(
-  hc: HumanContact,
-  sessionsByRunId: Map<string, SessionInfo>,
-): UnifiedApprovalRequest {
-  const session = sessionsByRunId.get(hc.run_id)
-
-  // Title is the subject or first line of message
-  const title = hc.spec.subject || truncate(hc.spec.msg, 50)
-
-  return {
-    id: hc.call_id,
-    callId: hc.call_id,
-    runId: hc.run_id,
-    type: ApprovalType.HumanContact,
-    title,
-    description: hc.spec.msg,
-    createdAt: hc.status?.requested_at ? new Date(hc.status.requested_at) : new Date(),
-    // Session context
-    sessionId: session?.id,
-    sessionQuery: session ? session.summary || truncate(session.query, 50) : undefined,
-    sessionModel: session?.model || 'default',
+export function getDisplayDataForApproval(approval: Approval): ApprovalDisplayData {
+  const baseData = {
+    type: 'function' as const,
+    icon: getFunctionIcon(approval.tool_name),
+    color: getFunctionColor(approval.tool_name),
+    title: approval.tool_name,
+    description: getToolDescription(approval.tool_name, approval.tool_input),
+    fields: extractFieldsFromToolInput(approval.tool_name, approval.tool_input),
   }
+
+  return baseData
 }
 
-// Group approvals by session for display
-export function groupApprovalsBySession(
-  approvals: UnifiedApprovalRequest[],
-): Map<string, UnifiedApprovalRequest[]> {
-  const grouped = new Map<string, UnifiedApprovalRequest[]>()
+// Add helper to extract fields from tool input
+function extractFieldsFromToolInput(toolName: string, toolInput: any): ApprovalField[] {
+  const fields: ApprovalField[] = []
 
-  approvals.forEach(approval => {
-    const key = approval.sessionId || 'no-session'
-    const list = grouped.get(key) || []
-    list.push(approval)
-    grouped.set(key, list)
-  })
+  if (!toolInput) return fields
 
-  // Sort each group by creation time (newest first)
-  grouped.forEach(list => {
-    list.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-  })
+  // Tool-specific field extraction
+  switch (toolName.toLowerCase()) {
+    case 'bash':
+      if (toolInput.command) {
+        fields.push({
+          label: 'Command',
+          value: toolInput.command,
+          truncate: true,
+        })
+      }
+      break
 
-  return grouped
+    case 'edit':
+    case 'write':
+      if (toolInput.path || toolInput.file_path) {
+        fields.push({
+          label: 'File',
+          value: toolInput.path || toolInput.file_path,
+          isPath: true,
+        })
+      }
+      break
+
+    case 'http':
+    case 'fetch':
+      if (toolInput.url) {
+        fields.push({
+          label: 'URL',
+          value: toolInput.url,
+          truncate: true,
+        })
+      }
+      if (toolInput.method) {
+        fields.push({
+          label: 'Method',
+          value: toolInput.method,
+        })
+      }
+      break
+
+    default:
+      // Generic field extraction for unknown tools
+      Object.entries(toolInput).forEach(([key, value]) => {
+        if (typeof value === 'string' || typeof value === 'number') {
+          fields.push({
+            label: key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+            value: String(value),
+            truncate: true,
+          })
+        }
+      })
+  }
+
+  return fields
+}
+
+function getFunctionIcon(toolName: string): string {
+  const iconMap: Record<string, string> = {
+    bash: '🖥️',
+    edit: '✏️',
+    write: '📝',
+    http: '🌐',
+    fetch: '🔍',
+    read: '📖',
+    list: '📋',
+  }
+
+  return iconMap[toolName.toLowerCase()] || '🔧'
+}
+
+function getFunctionColor(toolName: string): string {
+  const colorMap: Record<string, string> = {
+    bash: 'text-green-500',
+    edit: 'text-blue-500',
+    write: 'text-purple-500',
+    http: 'text-orange-500',
+    fetch: 'text-yellow-500',
+    read: 'text-cyan-500',
+    list: 'text-gray-500',
+  }
+
+  return colorMap[toolName.toLowerCase()] || 'text-gray-400'
+}
+
+function getToolDescription(toolName: string, toolInput: any): string {
+  switch (toolName.toLowerCase()) {
+    case 'bash':
+      return `Execute command: ${toolInput.command || 'unknown'}`
+    case 'edit':
+      return `Edit file: ${toolInput.path || toolInput.file_path || 'unknown'}`
+    case 'write':
+      return `Write to file: ${toolInput.path || toolInput.file_path || 'unknown'}`
+    case 'http':
+    case 'fetch':
+      return `${toolInput.method || 'GET'} request to ${toolInput.url || 'unknown'}`
+    case 'read':
+      return `Read file: ${toolInput.path || toolInput.file_path || 'unknown'}`
+    case 'list':
+      return `List directory: ${toolInput.path || toolInput.directory || '.'}`
+    default:
+      return `Execute ${toolName} with provided parameters`
+  }
 }

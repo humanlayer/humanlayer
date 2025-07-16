@@ -9,11 +9,6 @@ export enum SessionStatus {
   Completing = 'completing',
 }
 
-export enum ApprovalType {
-  FunctionCall = 'function_call',
-  HumanContact = 'human_contact',
-}
-
 export enum Decision {
   Approve = 'approve',
   Deny = 'deny',
@@ -148,62 +143,28 @@ export interface ResponseOption {
   interactive: boolean
 }
 
-// Function call types
-export interface FunctionCallSpec {
-  fn: string
-  kwargs: Record<string, any>
-  channel?: ContactChannel
-  reject_options?: ResponseOption[]
-  state?: Record<string, any>
-}
-
-export interface FunctionCallStatus {
-  requested_at?: string
+// Local approval format (as stored in daemon)
+export interface Approval {
+  id: string
+  run_id: string
+  session_id: string
+  status: ApprovalStatus
+  created_at: string
   responded_at?: string
-  approved?: boolean
+  tool_name: string
+  tool_input: any
   comment?: string
-  user_info?: Record<string, any>
-  reject_option_name?: string
 }
 
-export interface FunctionCall {
-  run_id: string
-  call_id: string
-  spec: FunctionCallSpec
-  status?: FunctionCallStatus
-}
-
-// Human contact types
-export interface HumanContactSpec {
-  msg: string
-  subject?: string
-  channel?: ContactChannel
-  response_options?: ResponseOption[]
-  state?: Record<string, any>
-}
-
-export interface HumanContactStatus {
-  requested_at?: string
-  responded_at?: string
-  response?: string
-  response_option_name?: string
-}
-
-export interface HumanContact {
-  run_id: string
-  call_id: string
-  spec: HumanContactSpec
-  status?: HumanContactStatus
-}
-
-export interface PendingApproval {
-  type: ApprovalType
-  function_call?: FunctionCall
-  human_contact?: HumanContact
+// Minimal approval event data
+export interface ApprovalEventData {
+  approval_id: string
+  session_id: string
+  tool_name: string
 }
 
 export interface FetchApprovalsResponse {
-  approvals: PendingApproval[]
+  approvals: Approval[]
 }
 
 // Event types
@@ -218,18 +179,17 @@ export interface EventNotification {
 }
 
 // Event-specific data types
-export interface NewApprovalEventData {
-  approval: PendingApproval
+export interface NewApprovalEventData extends ApprovalEventData {
+  // Uses the ApprovalEventData fields
 }
 
 // Alias for backwards compatibility (to be removed)
 export type ApprovalRequestedEventData = NewApprovalEventData
 
 export interface ApprovalResolvedEventData {
-  call_id: string
-  type: ApprovalType
+  approval_id: string // was call_id
+  session_id: string
   decision: Decision
-  comment?: string
 }
 
 export interface SessionStatusChangedEventData {
@@ -291,8 +251,7 @@ export interface ContinueSessionResponse {
 
 // Decision types
 export interface SendDecisionRequest {
-  call_id: string
-  type: ApprovalType
+  approval_id: string // was call_id
   decision: Decision
   comment?: string
 }
