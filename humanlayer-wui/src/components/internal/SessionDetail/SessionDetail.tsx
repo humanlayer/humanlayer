@@ -236,13 +236,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     return () => window.removeEventListener('resize', checkScreenSize)
   }, [])
 
-  // Auto-focus text input and scroll to bottom when session opens
+  // Scroll to bottom when session opens
   useEffect(() => {
-    // Focus the text input
-    if (responseInputRef.current && session.status !== SessionStatus.Failed) {
-      responseInputRef.current.focus()
-    }
-
     // Scroll to bottom of conversation
     const container = document.querySelector('[data-conversation-container]')
     if (container) {
@@ -456,6 +451,21 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       preventDefault: true,
     },
     [events, navigation.setFocusedEventId, navigation.setFocusSource],
+  )
+
+  // Add Enter key to focus text input
+  useHotkeys(
+    'enter',
+    () => {
+      if (responseInputRef.current && session.status !== SessionStatus.Failed) {
+        responseInputRef.current.focus()
+      }
+    },
+    {
+      scopes: SessionDetailHotkeysScope,
+      enableOnFormTags: false,
+      preventDefault: true,
+    },
   )
 
   useStealHotkeyScope(SessionDetailHotkeysScope)

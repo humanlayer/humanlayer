@@ -129,43 +129,45 @@ export function useSessionNavigation({
   useHotkeys('j', focusNextEvent, { enabled: !expandedToolResult && !disabled })
   useHotkeys('k', focusPreviousEvent, { enabled: !expandedToolResult && !disabled })
 
-  // Enter key to expand/collapse task groups
-  useHotkeys(
-    'enter',
-    () => {
-      if (!focusedEventId) return
-
-      // Only handle task group expansion
-      if (hasSubTasks) {
-        const focusedEvent = events.find(e => e.id === focusedEventId)
-        if (focusedEvent?.tool_name === 'Task' && focusedEvent.tool_id) {
-          toggleTaskGroup(focusedEvent.tool_id)
-        }
-      }
-    },
-    { enabled: !expandedToolResult },
-  )
-
-  // I key to expand tool result
+  // I key to expand task groups or inspect tool results
   useHotkeys(
     'i',
     () => {
-      if (focusedEventId && setExpandedToolResult && setExpandedToolCall) {
-        const focusedEvent = events.find(e => e.id === focusedEventId)
-        if (focusedEvent?.event_type === ConversationEventType.ToolCall) {
-          // Try to find the tool result if it exists
-          const toolResult = focusedEvent.tool_id
-            ? events.find(
-                e =>
-                  e.event_type === ConversationEventType.ToolResult &&
-                  e.tool_result_for_id === focusedEvent.tool_id,
-              )
-            : null
+      if (!focusedEventId) return
 
-          // Show modal with or without result (for unfinished tools)
-          setExpandedToolResult(toolResult || null)
-          setExpandedToolCall(focusedEvent)
+      const focusedEvent = events.find(e => e.id === focusedEventId)
+      if (!focusedEvent || focusedEvent.event_type !== ConversationEventType.ToolCall) return
+
+      // Handle task group expansion for Task events with sub-events
+      if (focusedEvent.tool_name === 'Task' && focusedEvent.tool_id && hasSubTasks) {
+        const subEventsByParent = new Map<string, ConversationEvent[]>()
+        events.forEach(event => {
+          if (event.parent_tool_use_id) {
+            const siblings = subEventsByParent.get(event.parent_tool_use_id) || []
+            siblings.push(event)
+            subEventsByParent.set(event.parent_tool_use_id, siblings)
+          }
+        })
+
+        const hasSubEvents = subEventsByParent.has(focusedEvent.tool_id)
+        if (hasSubEvents) {
+          toggleTaskGroup(focusedEvent.tool_id)
+          return
         }
+      }
+
+      // Handle tool result inspection (existing behavior)
+      if (setExpandedToolResult && setExpandedToolCall) {
+        const toolResult = focusedEvent.tool_id
+          ? events.find(
+              e =>
+                e.event_type === ConversationEventType.ToolResult &&
+                e.tool_result_for_id === focusedEvent.tool_id,
+            )
+          : null
+
+        setExpandedToolResult(toolResult || null)
+        setExpandedToolCall(focusedEvent)
       }
     },
     { enabled: !expandedToolResult },
