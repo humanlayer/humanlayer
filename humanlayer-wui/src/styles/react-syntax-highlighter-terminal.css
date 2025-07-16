@@ -1,0 +1,102 @@
+/* React Syntax Highlighter Terminal Theme
+ * Maps Prism.js token classes to terminal color variables
+ */
+
+/* Base styles */
+.rsh-code-block {
+  background: var(--terminal-bg-alt) !important;
+  color: var(--terminal-fg) !important;
+  border: 1px solid var(--terminal-border);
+  border-radius: 0;
+  overflow-x: auto;
+}
+
+.rsh-pre {
+  background: transparent !important;
+  padding: 1rem;
+  margin: 0;
+  overflow: visible;
+}
+
+/* Token mappings - Prism.js classes */
+.token.comment,
+.token.prolog,
+.token.doctype,
+.token.cdata {
+  color: var(--terminal-fg-dim);
+  font-style: italic;
+}
+
+.token.punctuation {
+  color: var(--terminal-fg);
+}
+
+.token.property,
+.token.tag,
+.token.boolean,
+.token.number,
+.token.constant,
+.token.symbol {
+  color: var(--terminal-accent);
+}
+
+.token.selector,
+.token.attr-name,
+.token.string,
+.token.char,
+.token.builtin {
+  color: var(--terminal-success);
+}
+
+.token.operator,
+.token.entity,
+.token.url,
+.language-css .token.string,
+.style .token.string {
+  color: var(--terminal-accent-alt);
+}
+
+.token.atrule,
+.token.attr-value,
+.token.keyword {
+  color: var(--terminal-warning);
+}
+
+.token.function,
+.token.class-name {
+  color: var(--terminal-accent-alt);
+}
+
+.token.regex,
+.token.important,
+.token.variable {
+  color: var(--terminal-warning);
+}
+
+.token.important,
+.token.bold {
+  font-weight: bold;
+}
+
+.token.italic {
+  font-style: italic;
+}
+
+.token.deleted {
+  color: var(--terminal-error);
+  text-decoration: line-through;
+}
+
+.token.inserted {
+  color: var(--terminal-success);
+  text-decoration: underline;
+}
+
+/* Language-specific adjustments */
+.language-bash .token.function {
+  color: var(--terminal-fg);
+}
+
+.language-json .token.property {
+  color: var(--terminal-accent);
+}

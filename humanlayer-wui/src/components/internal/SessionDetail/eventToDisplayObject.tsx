@@ -1,9 +1,5 @@
-import { createStarryNight } from '@wooorm/starry-night'
-import jsonGrammar from '@wooorm/starry-night/source.json'
-import textMd from '@wooorm/starry-night/text.md'
-import { toJsxRuntime } from 'hast-util-to-jsx-runtime'
-import { Fragment, jsx, jsxs } from 'react/jsx-runtime'
 import React from 'react'
+import { MarkdownRenderer } from './MarkdownRenderer'
 
 import {
   ConversationEvent,
@@ -34,20 +30,14 @@ import { CustomDiffViewer } from './components/CustomDiffViewer'
 // TODO(2): Break this monster function into smaller, focused display components
 // TODO(2): Extract tool-specific rendering logic
 // TODO(2): Separate approval UI logic
-// TODO(1): Fix the global starryNight variable anti-pattern
 // TODO(3): Add proper TypeScript types for display objects
 
-/* I, Sundeep, don't know how I feel about what's going on here. */
-let starryNight: any | null = null
-
-// TODO(3): This should be part of starryNight initialization
-function starryNightJson(json: string) {
+function formatJson(json: string): React.ReactNode {
   try {
     const formatted = JSON.stringify(JSON.parse(json), null, 2)
-    const tree = starryNight?.highlight(formatted, 'source.json')
-    return tree ? toJsxRuntime(tree, { Fragment, jsx, jsxs }) : <span>{json}</span>
+    return <MarkdownRenderer content={`\`\`\`json\n${formatted}\n\`\`\``} sanitize={false} />
   } catch {
-    return null
+    return <span className="text-muted-foreground">{json}</span>
   }
 }
 
@@ -432,7 +422,7 @@ export function eventToDisplayObject(
           {event.approval_status === ApprovalStatus.Pending && (
             <span className="ml-2 text-sm text-muted-foreground">(needs approval)</span>
           )}
-          {!previewFile && <div className="mt-4">{starryNightJson(event.tool_input_json!)}</div>}
+          {!previewFile && <div className="mt-4">{formatJson(event.tool_input_json!)}</div>}
           {previewFile}
         </span>
       )
@@ -489,14 +479,11 @@ export function eventToDisplayObject(
   if (event.event_type === ConversationEventType.Thinking) {
     // Thinking messages are always from assistant
     const fullContent = event.content || ''
-    const contentTree = starryNight?.highlight(fullContent, 'text.md')
 
-    subject = contentTree ? (
-      <span className="text-muted-foreground italic">
-        {toJsxRuntime(contentTree, { Fragment, jsx, jsxs })}
-      </span>
-    ) : (
-      <span className="text-muted-foreground italic">{fullContent}</span>
+    subject = (
+      <div className="text-muted-foreground italic">
+        <MarkdownRenderer content={fullContent} />
+      </div>
     )
     body = null // Everything is in subject for thinking messages
   }
@@ -505,14 +492,11 @@ export function eventToDisplayObject(
     // For assistant messages, show full content without truncation
     if (event.role === 'assistant') {
       const fullContent = event.content || ''
-      const contentTree = starryNight?.highlight(fullContent, 'text.md')
 
-      subject = contentTree ? (
-        <span className={isThinking ? 'text-muted-foreground' : ''}>
-          {toJsxRuntime(contentTree, { Fragment, jsx, jsxs })}
-        </span>
-      ) : (
-        <span className={isThinking ? 'text-muted-foreground' : ''}>{fullContent}</span>
+      subject = (
+        <div className={isThinking ? 'text-muted-foreground' : ''}>
+          <MarkdownRenderer content={fullContent} />
+        </div>
       )
       body = null // Everything is in subject for assistant messages
     } else {
@@ -520,19 +504,8 @@ export function eventToDisplayObject(
       const subjectText = event.content?.split('\n')[0] || ''
       const bodyText = event.content?.split('\n').slice(1).join('\n') || ''
 
-      const subjectTree = starryNight?.highlight(subjectText, 'text.md')
-      const bodyTree = starryNight?.highlight(bodyText, 'text.md')
-
-      subject = subjectTree ? (
-        <span>{toJsxRuntime(subjectTree, { Fragment, jsx, jsxs })}</span>
-      ) : (
-        <span>{subjectText}</span>
-      )
-      body = bodyTree ? (
-        <span>{toJsxRuntime(bodyTree, { Fragment, jsx, jsxs })}</span>
-      ) : (
-        <span>{bodyText}</span>
-      )
+      subject = <MarkdownRenderer content={subjectText} />
+      body = <MarkdownRenderer content={bodyText} />
     }
   }
 
@@ -647,9 +620,4 @@ export function getToolIcon(toolName: string | undefined): React.ReactNode {
 // Helper function for timestamp formatting
 function formatTimestamp(isoString: string): string {
   return new Date(isoString).toLocaleString()
-}
-
-// TODO(2): Initialize starryNight properly on module load
-if (!starryNight) {
-  createStarryNight([textMd, jsonGrammar]).then(sn => (starryNight = sn))
 }
