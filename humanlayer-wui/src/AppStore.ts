@@ -32,6 +32,11 @@ interface StoreState {
   removeNotifiedItem: (notificationId: string) => void
   isItemNotified: (notificationId: string) => boolean
   clearNotificationsForSession: (sessionId: string) => void
+
+  /* Navigation tracking */
+  recentNavigations: Map<string, number> // sessionId -> timestamp
+  trackNavigationFrom: (sessionId: string) => void
+  wasRecentlyNavigatedFrom: (sessionId: string, withinMs?: number) => boolean
 }
 
 export const useStore = create<StoreState>((set, get) => ({
@@ -398,4 +403,27 @@ export const useStore = create<StoreState>((set, get) => ({
       })
       return { notifiedItems: newSet }
     }),
+
+  // Navigation tracking
+  recentNavigations: new Map(),
+  trackNavigationFrom: (sessionId: string) =>
+    set(state => {
+      const newMap = new Map(state.recentNavigations)
+      newMap.set(sessionId, Date.now())
+      // Clean up old entries after 5 seconds
+      setTimeout(() => {
+        const currentMap = get().recentNavigations
+        if (currentMap.get(sessionId) === newMap.get(sessionId)) {
+          const updatedMap = new Map(currentMap)
+          updatedMap.delete(sessionId)
+          set({ recentNavigations: updatedMap })
+        }
+      }, 5000)
+      return { recentNavigations: newMap }
+    }),
+  wasRecentlyNavigatedFrom: (sessionId: string, withinMs = 3000) => {
+    const timestamp = get().recentNavigations.get(sessionId)
+    if (!timestamp) return false
+    return Date.now() - timestamp < withinMs
+  },
 }))

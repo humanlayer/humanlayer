@@ -26,6 +26,7 @@ export function useSessionActions({
   const refreshSessions = useStore(state => state.refreshSessions)
   const archiveSession = useStore(state => state.archiveSession)
   const setViewMode = useStore(state => state.setViewMode)
+  const trackNavigationFrom = useStore(state => state.trackNavigationFrom)
   const navigate = useNavigate()
 
   // Update response input when fork message is selected
@@ -69,6 +70,7 @@ export function useSessionActions({
       }
 
       // Always navigate to the new session - the backend handles queuing
+      trackNavigationFrom(session.id)
       navigate(`/sessions/${response.session_id}`)
 
       // Refresh the session list to ensure UI reflects current state
@@ -90,6 +92,7 @@ export function useSessionActions({
     navigate,
     refreshSessions,
     archiveSession,
+    trackNavigationFrom,
     forkFromSessionId,
     onForkCommit,
   ])

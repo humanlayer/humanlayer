@@ -37,7 +37,7 @@ export interface NotificationOptions {
 }
 
 class NotificationService {
-  private appFocused: boolean = true
+  private appFocused: boolean = false // Default to unfocused
   private focusHandler: (() => void) | null = null
   private blurHandler: (() => void) | null = null
   private unlistenFocus: (() => void) | null = null
@@ -48,8 +48,18 @@ class NotificationService {
     this.attachFocusListeners()
   }
 
+  private validateFocusState() {
+    // Force a focus check using document visibility
+    if (typeof document !== 'undefined') {
+      this.appFocused = document.hasFocus()
+    }
+  }
+
   private async attachFocusListeners() {
     console.log('NotificationService: Attaching focus listeners')
+
+    // Check initial focus state synchronously
+    this.validateFocusState()
 
     // Clean up any existing listeners first
     await this.detachFocusListeners()
@@ -176,6 +186,8 @@ class NotificationService {
    * Main entry point for notifications
    */
   async notify(options: NotificationOptions): Promise<string | null> {
+    this.validateFocusState() // Ensure focus state is current
+
     // Generate unique ID for this notification
     const notificationId = this.generateNotificationId(options.type, options.metadata)
 
