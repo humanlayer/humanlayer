@@ -258,9 +258,13 @@ export function ConversationContent({
                     }
                   }
                 }}
-                className={`group relative p-4 cursor-pointer NoSubTasksConversationContent ${
+                className={`group relative p-4 cursor-pointer NoSubTasksConversationContent transition-shadow duration-200 ${
                   index !== nonEmptyDisplayObjects.length - 1 ? 'border-b' : ''
-                } ${focusedEventId === displayObject.id ? '!bg-accent/20' : ''}`}
+                } ${
+                  focusedEventId === displayObject.id
+                    ? 'shadow-[inset_2px_0_0_0_var(--terminal-accent)]'
+                    : ''
+                }`}
               >
                 {/* Main content container with flexbox */}
                 <div className="flex gap-4">
@@ -411,13 +415,17 @@ export function ConversationContent({
                         }
                       }
                     }}
-                    className={`group relative p-4 cursor-pointer ${
+                    className={`group relative p-4 cursor-pointer transition-shadow duration-200 ${
                       index !==
                       rootEvents.filter(e => e.event_type !== ConversationEventType.ToolResult).length -
                         1
                         ? 'border-b'
                         : ''
-                    } ${focusedEventId === displayObject.id ? '!bg-accent/20 rounded' : ''}`}
+                    } ${
+                      focusedEventId === displayObject.id
+                        ? 'shadow-[inset_2px_0_0_0_var(--terminal-accent)]'
+                        : ''
+                    }`}
                   >
                     {/* Main content container with flexbox */}
                     <div className="flex gap-4">
