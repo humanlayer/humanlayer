@@ -28,14 +28,12 @@ pub trait DaemonClientTrait: Send + Sync {
     async fn fetch_approvals(&self, session_id: Option<&str>) -> Result<FetchApprovalsResponse>;
     async fn send_decision(
         &self,
-        call_id: &str,
-        approval_type: ApprovalType,
+        approval_id: &str,
         decision: Decision,
         comment: Option<&str>,
     ) -> Result<SendDecisionResponse>;
-    async fn approve_function_call(&self, call_id: &str, comment: Option<&str>) -> Result<()>;
-    async fn deny_function_call(&self, call_id: &str, reason: &str) -> Result<()>;
-    async fn respond_to_human_contact(&self, call_id: &str, response: &str) -> Result<()>;
+    async fn approve_function_call(&self, approval_id: &str, comment: Option<&str>) -> Result<()>;
+    async fn deny_function_call(&self, approval_id: &str, reason: &str) -> Result<()>;
     async fn subscribe(
         &self,
         req: SubscribeRequest,
@@ -195,23 +193,12 @@ impl DaemonClientTrait for DaemonClient {
 
     async fn send_decision(
         &self,
-        call_id: &str,
-        approval_type: ApprovalType,
+        approval_id: &str,
         decision: Decision,
         comment: Option<&str>,
     ) -> Result<SendDecisionResponse> {
-        // Validate decision for approval type
-        if !decision.is_valid_for_approval_type(approval_type.as_str()) {
-            return Err(Error::Approval(format!(
-                "Invalid decision '{}' for approval type '{}'",
-                decision.as_str(),
-                approval_type.as_str()
-            )));
-        }
-
         let req = SendDecisionRequest {
-            call_id: call_id.to_string(),
-            approval_type: approval_type.as_str().to_string(),
+            approval_id: approval_id.to_string(),
             decision: decision.as_str().to_string(),
             comment: comment.map(|s| s.to_string()),
         };
@@ -219,11 +206,10 @@ impl DaemonClientTrait for DaemonClient {
         self.send_rpc_request("sendDecision", Some(req)).await
     }
 
-    async fn approve_function_call(&self, call_id: &str, comment: Option<&str>) -> Result<()> {
+    async fn approve_function_call(&self, approval_id: &str, comment: Option<&str>) -> Result<()> {
         let response = self
             .send_decision(
-                call_id,
-                ApprovalType::FunctionCall,
+                approval_id,
                 Decision::Approve,
                 comment,
             )
@@ -240,11 +226,10 @@ impl DaemonClientTrait for DaemonClient {
         Ok(())
     }
 
-    async fn deny_function_call(&self, call_id: &str, reason: &str) -> Result<()> {
+    async fn deny_function_call(&self, approval_id: &str, reason: &str) -> Result<()> {
         let response = self
             .send_decision(
-                call_id,
-                ApprovalType::FunctionCall,
+                approval_id,
                 Decision::Deny,
                 Some(reason),
             )
@@ -255,25 +240,6 @@ impl DaemonClientTrait for DaemonClient {
                 response
                     .error
                     .unwrap_or_else(|| "Unknown error".to_string()),
-            ));
-        }
-
-        Ok(())
-    }
-
-    async fn respond_to_human_contact(&self, call_id: &str, response: &str) -> Result<()> {
-        let resp = self
-            .send_decision(
-                call_id,
-                ApprovalType::HumanContact,
-                Decision::Respond,
-                Some(response),
-            )
-            .await?;
-
-        if !resp.success {
-            return Err(Error::Approval(
-                resp.error.unwrap_or_else(|| "Unknown error".to_string()),
             ));
         }
 
@@ -350,21 +316,5 @@ impl DaemonClientTrait for DaemonClient {
             session_id: session_id.to_string(),
         };
         self.send_rpc_request("getSessionSnapshots", Some(req)).await
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_decision_validation() {
-        assert!(Decision::Approve.is_valid_for_approval_type("function_call"));
-        assert!(Decision::Deny.is_valid_for_approval_type("function_call"));
-        assert!(!Decision::Respond.is_valid_for_approval_type("function_call"));
-
-        assert!(Decision::Respond.is_valid_for_approval_type("human_contact"));
-        assert!(!Decision::Approve.is_valid_for_approval_type("human_contact"));
-        assert!(!Decision::Deny.is_valid_for_approval_type("human_contact"));
     }
 }

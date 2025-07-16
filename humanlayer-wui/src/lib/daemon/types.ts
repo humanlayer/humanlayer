@@ -12,7 +12,6 @@ export enum SessionStatus {
 export enum Decision {
   Approve = 'approve',
   Deny = 'deny',
-  Respond = 'respond',
 }
 
 export enum ConversationEventType {
