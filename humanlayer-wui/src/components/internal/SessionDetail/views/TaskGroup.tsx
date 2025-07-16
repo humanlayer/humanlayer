@@ -61,8 +61,8 @@ export function TaskGroup({
       {/* Task Header with Preview */}
       <div
         data-event-id={parentTask.id}
-        className={`flex items-start gap-2 rounded-md cursor-pointer hover:bg-muted/10 transition-colors ${
-          focusedEventId === parentTask.id ? '!bg-accent/20' : ''
+        className={`flex items-start gap-2 rounded-md cursor-pointer hover:bg-muted/10 transition-all duration-200 ${
+          focusedEventId === parentTask.id ? 'shadow-[inset_2px_0_0_0_var(--terminal-accent)]' : ''
         }`}
         onClick={onToggle}
         onMouseEnter={() => {
@@ -207,8 +207,10 @@ export function TaskGroup({
                       }
                     }
                   }}
-                  className={`group py-2 px-2 cursor-pointer ${
-                    focusedEventId === displayObject.id ? '!bg-accent/20 -mx-2 px-4 rounded' : ''
+                  className={`group py-2 px-2 cursor-pointer transition-shadow duration-200 ${
+                    focusedEventId === displayObject.id
+                      ? 'shadow-[inset_2px_0_0_0_var(--terminal-accent)]'
+                      : ''
                   }`}
                 >
                   {/* Main content container with flexbox */}
