@@ -4,10 +4,10 @@ import type { SessionInfo } from '@/lib/daemon/types'
 
 // Helper to create realistic session data
 function createMockSession(
-  id: string, 
-  query: string, 
+  id: string,
+  query: string,
   status: SessionStatus,
-  overrides: Partial<SessionInfo> = {}
+  overrides: Partial<SessionInfo> = {},
 ): SessionInfo {
   const now = new Date()
   return {
@@ -21,7 +21,8 @@ function createMockSession(
     summary: query,
     model: 'claude-3-5-sonnet-20241022',
     working_dir: '/home/user/project',
-    ...overrides
+    auto_accept_edits: false,
+    ...overrides,
   }
 }
 
@@ -31,168 +32,164 @@ export const launcherWorkflowSequence: DemoAnimationStep[] = [
     sessionState: { sessions: [] },
     appState: { currentRoute: '/' },
     delay: 1000,
-    description: "Start with empty session table"
+    description: 'Start with empty session table',
   },
   {
     launcherState: { isOpen: true, mode: 'command', view: 'menu' },
     delay: 1500,
-    description: "Open launcher with Cmd+K"
+    description: 'Open launcher with Cmd+K',
   },
   {
     launcherState: { view: 'input' },
     delay: 1000,
-    description: "Switch to input view"
+    description: 'Switch to input view',
   },
   {
     launcherState: { query: 'Help me debug this React component' },
     delay: 2000,
-    description: "Type query"
+    description: 'Type query',
   },
   {
     launcherState: { isLaunching: true },
     delay: 500,
-    description: "Start launching"
+    description: 'Start launching',
   },
   {
-    launcherState: { 
-      isOpen: false, 
-      isLaunching: false, 
-      query: '', 
-      view: 'menu' 
+    launcherState: {
+      isOpen: false,
+      isLaunching: false,
+      query: '',
+      view: 'menu',
     },
-    sessionState: { 
-      sessions: [
-        createMockSession('1', 'Help me debug this React component', SessionStatus.Starting)
-      ] 
+    sessionState: {
+      sessions: [createMockSession('1', 'Help me debug this React component', SessionStatus.Starting)],
     },
     delay: 1500,
-    description: "Session created successfully"
+    description: 'Session created successfully',
   },
   {
-    sessionState: { 
-      sessions: [
-        createMockSession('1', 'Help me debug this React component', SessionStatus.Running)
-      ] 
+    sessionState: {
+      sessions: [createMockSession('1', 'Help me debug this React component', SessionStatus.Running)],
     },
     delay: 2000,
-    description: "Session is now running"
+    description: 'Session is now running',
   },
   {
-    sessionState: { 
-      sessions: [
-        createMockSession('1', 'Help me debug this React component', SessionStatus.Completed)
-      ] 
+    sessionState: {
+      sessions: [createMockSession('1', 'Help me debug this React component', SessionStatus.Completed)],
     },
     delay: 3000,
-    description: "Session completed"
-  }
+    description: 'Session completed',
+  },
 ]
 
 // Status changes demonstration
 export const statusChangesSequence: DemoAnimationStep[] = [
   {
-    sessionState: { 
+    sessionState: {
       sessions: [
         createMockSession('1', 'Implement user authentication', SessionStatus.Running),
         createMockSession('2', 'Write unit tests', SessionStatus.Starting),
-        createMockSession('3', 'Refactor database schema', SessionStatus.Completed)
-      ] 
+        createMockSession('3', 'Refactor database schema', SessionStatus.Completed),
+      ],
     },
     delay: 1000,
-    description: "Multiple sessions in different states"
+    description: 'Multiple sessions in different states',
   },
   {
-    sessionState: { 
+    sessionState: {
       sessions: [
         createMockSession('1', 'Implement user authentication', SessionStatus.WaitingInput),
         createMockSession('2', 'Write unit tests', SessionStatus.Running),
-        createMockSession('3', 'Refactor database schema', SessionStatus.Completed)
-      ] 
+        createMockSession('3', 'Refactor database schema', SessionStatus.Completed),
+      ],
     },
     delay: 2000,
-    description: "First session needs approval"
+    description: 'First session needs approval',
   },
   {
     appState: {
-      approvals: [{
-        id: 'approval-1',
-        title: 'Update authentication config',
-        status: 'pending'
-      }]
+      approvals: [
+        {
+          id: 'approval-1',
+          title: 'Update authentication config',
+          status: 'pending',
+        },
+      ],
     },
     delay: 1000,
-    description: "Approval appears"
+    description: 'Approval appears',
   },
   {
-    sessionState: { 
+    sessionState: {
       sessions: [
         createMockSession('1', 'Implement user authentication', SessionStatus.Running),
         createMockSession('2', 'Write unit tests', SessionStatus.Running),
-        createMockSession('3', 'Refactor database schema', SessionStatus.Completed)
-      ] 
+        createMockSession('3', 'Refactor database schema', SessionStatus.Completed),
+      ],
     },
     appState: { approvals: [] },
     delay: 2000,
-    description: "Approval handled, session continues"
+    description: 'Approval handled, session continues',
   },
   {
-    sessionState: { 
+    sessionState: {
       sessions: [
         createMockSession('1', 'Implement user authentication', SessionStatus.Completed),
         createMockSession('2', 'Write unit tests', SessionStatus.Completed),
-        createMockSession('3', 'Refactor database schema', SessionStatus.Completed)
-      ] 
+        createMockSession('3', 'Refactor database schema', SessionStatus.Completed),
+      ],
     },
     delay: 2000,
-    description: "All sessions completed"
-  }
+    description: 'All sessions completed',
+  },
 ]
 
 // Theme showcase sequence
 export const themeShowcaseSequence: DemoAnimationStep[] = [
   {
-    sessionState: { 
+    sessionState: {
       sessions: [
         createMockSession('1', 'Build new feature', SessionStatus.Running),
         createMockSession('2', 'Fix production bug', SessionStatus.WaitingInput),
         createMockSession('3', 'Update documentation', SessionStatus.Completed),
-        createMockSession('4', 'Optimize performance', SessionStatus.Failed, { 
-          error: 'Connection timeout' 
-        })
-      ]
+        createMockSession('4', 'Optimize performance', SessionStatus.Failed, {
+          error: 'Connection timeout',
+        }),
+      ],
     },
     themeState: { theme: 'solarized-dark' },
     delay: 1000,
-    description: "Start with solarized-dark"
+    description: 'Start with solarized-dark',
   },
   {
     themeState: { theme: 'solarized-light' },
     delay: 2000,
-    description: "Switch to solarized-light"
+    description: 'Switch to solarized-light',
   },
   {
     themeState: { theme: 'catppuccin' },
     delay: 2000,
-    description: "Switch to catppuccin"
+    description: 'Switch to catppuccin',
   },
   {
     themeState: { theme: 'framer-dark' },
     delay: 2000,
-    description: "Switch to framer-dark"
+    description: 'Switch to framer-dark',
   },
   {
     themeState: { theme: 'gruvbox-dark' },
     delay: 2000,
-    description: "Switch to gruvbox-dark"
+    description: 'Switch to gruvbox-dark',
   },
   {
     themeState: { theme: 'high-contrast' },
     delay: 2000,
-    description: "Switch to high-contrast"
+    description: 'Switch to high-contrast',
   },
   {
     themeState: { theme: 'solarized-dark' },
     delay: 2000,
-    description: "Back to solarized-dark"
-  }
+    description: 'Back to solarized-dark',
+  },
 ]

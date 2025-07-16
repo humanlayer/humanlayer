@@ -13,23 +13,29 @@ describe('Demo ThemeSlice', () => {
 
   beforeEach(() => {
     store = createTestStore()
-    
+
     // Mock localStorage
     storage = {}
     global.localStorage = {
       getItem: (key: string) => storage[key] || null,
-      setItem: (key: string, value: string) => { storage[key] = value },
-      removeItem: (key: string) => { delete storage[key] },
-      clear: () => { storage = {} },
+      setItem: (key: string, value: string) => {
+        storage[key] = value
+      },
+      removeItem: (key: string) => {
+        delete storage[key]
+      },
+      clear: () => {
+        storage = {}
+      },
       length: 0,
       key: () => null,
     }
-    
+
     // Mock document.documentElement.setAttribute
     global.document = {
       documentElement: {
-        setAttribute: () => {}
-      }
+        setAttribute: () => {},
+      },
     } as any
   })
 
@@ -73,7 +79,7 @@ describe('Demo ThemeSlice', () => {
         'catppuccin',
         'framer-dark',
         'gruvbox-dark',
-        'high-contrast'
+        'high-contrast',
       ]
 
       // Start at solarized-dark
@@ -115,10 +121,10 @@ describe('Demo ThemeSlice', () => {
     test('should load theme from localStorage on init', () => {
       // Set a theme in localStorage before creating store
       localStorage.setItem('wui-theme', 'catppuccin')
-      
+
       // Create new store
       const newStore = createTestStore()
-      
+
       // Call loadThemeFromStorage after store is created
       newStore.getState().loadThemeFromStorage()
 
@@ -128,10 +134,10 @@ describe('Demo ThemeSlice', () => {
     test('should fall back to default if stored theme is invalid', () => {
       // Set invalid theme in localStorage
       localStorage.setItem('wui-theme', 'invalid-theme')
-      
+
       // Create new store
       const newStore = createTestStore()
-      
+
       // Call loadThemeFromStorage after store is created
       newStore.getState().loadThemeFromStorage()
 
@@ -148,7 +154,7 @@ describe('Demo ThemeSlice', () => {
         'catppuccin',
         'framer-dark',
         'gruvbox-dark',
-        'high-contrast'
+        'high-contrast',
       ])
     })
 

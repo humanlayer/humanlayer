@@ -125,7 +125,9 @@ export function ThemeSelector() {
       {isOpen && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
-          <div className={`absolute ${positionAbove ? 'bottom-full mb-1' : 'top-full mt-1'} right-0 min-w-28 border border-border bg-background z-20 max-h-64 overflow-y-auto`}>
+          <div
+            className={`absolute ${positionAbove ? 'bottom-full mb-1' : 'top-full mt-1'} right-0 min-w-28 border border-border bg-background z-20 max-h-64 overflow-y-auto`}
+          >
             {themes.map((themeOption, index) => (
               <button
                 key={themeOption.value}

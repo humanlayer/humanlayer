@@ -90,43 +90,43 @@ export function createDemoAppStore(isDemo: boolean = false): StoreApi<DemoAppSta
     searchQuery: '',
 
     // Basic setters
-    setSessions: (sessions) => {
+    setSessions: sessions => {
       if (!isDemo) set({ sessions })
     },
-    setFocusedSession: (session) => {
+    setFocusedSession: session => {
       if (!isDemo) set({ focusedSession: session })
     },
-    setLauncherOpen: (open) => {
+    setLauncherOpen: open => {
       if (!isDemo) set({ launcherOpen: open })
     },
-    setLauncherMode: (mode) => {
+    setLauncherMode: mode => {
       if (!isDemo) set({ launcherMode: mode })
     },
-    setLauncherView: (view) => {
+    setLauncherView: view => {
       if (!isDemo) set({ launcherView: view })
     },
-    setLauncherQuery: (query) => {
+    setLauncherQuery: query => {
       if (!isDemo) set({ launcherQuery: query })
     },
-    setLauncherIsLaunching: (loading) => {
+    setLauncherIsLaunching: loading => {
       if (!isDemo) set({ launcherIsLaunching: loading })
     },
-    setLauncherError: (error) => {
+    setLauncherError: error => {
       if (!isDemo) set({ launcherError: error })
     },
-    setLauncherSelectedMenuIndex: (index) => {
+    setLauncherSelectedMenuIndex: index => {
       if (!isDemo) set({ launcherSelectedMenuIndex: index })
     },
-    setConnected: (connected) => {
+    setConnected: connected => {
       if (!isDemo) set({ connected })
     },
-    setStatus: (status) => {
+    setStatus: status => {
       if (!isDemo) set({ status })
     },
-    setApprovals: (approvals) => {
+    setApprovals: approvals => {
       if (!isDemo) set({ approvals })
     },
-    setTheme: (theme) => {
+    setTheme: theme => {
       if (!isDemo) {
         set({ theme })
         // In real mode, also update the actual theme
@@ -134,35 +134,33 @@ export function createDemoAppStore(isDemo: boolean = false): StoreApi<DemoAppSta
         localStorage.setItem('wui-theme', theme)
       }
     },
-    setCurrentRoute: (route) => {
+    setCurrentRoute: route => {
       if (!isDemo) set({ currentRoute: route })
     },
-    setSearchQuery: (query) => {
+    setSearchQuery: query => {
       if (!isDemo) set({ searchQuery: query })
     },
 
     // Convenience actions
-    addSession: (session) => {
+    addSession: session => {
       if (!isDemo) {
         set(state => ({
-          sessions: [...state.sessions, session]
+          sessions: [...state.sessions, session],
         }))
       }
     },
     updateSession: (id, updates) => {
       if (!isDemo) {
         set(state => ({
-          sessions: state.sessions.map(s =>
-            s.id === id ? { ...s, ...updates } : s
-          )
+          sessions: state.sessions.map(s => (s.id === id ? { ...s, ...updates } : s)),
         }))
       }
     },
-    removeSession: (id) => {
+    removeSession: id => {
       if (!isDemo) {
         set(state => ({
           sessions: state.sessions.filter(s => s.id !== id),
-          focusedSession: state.focusedSession?.id === id ? null : state.focusedSession
+          focusedSession: state.focusedSession?.id === id ? null : state.focusedSession,
         }))
       }
     },
@@ -173,7 +171,7 @@ export function createDemoAppStore(isDemo: boolean = false): StoreApi<DemoAppSta
     },
 
     // Complex workflow actions
-    simulateLaunchSession: (query) => {
+    simulateLaunchSession: query => {
       if (!isDemo) {
         const state = get()
 
@@ -184,7 +182,7 @@ export function createDemoAppStore(isDemo: boolean = false): StoreApi<DemoAppSta
           launcherView: 'input',
           launcherQuery: query,
           launcherIsLaunching: true,
-          launcherError: undefined
+          launcherError: undefined,
         })
 
         // Simulate delay and create session
@@ -208,18 +206,18 @@ export function createDemoAppStore(isDemo: boolean = false): StoreApi<DemoAppSta
             launcherIsLaunching: false,
             launcherQuery: '',
             launcherView: 'menu',
-            currentRoute: `/sessions/${newSession.id}`
+            currentRoute: `/sessions/${newSession.id}`,
           }))
         }, 2000)
       }
     },
 
-    simulateSessionComplete: (sessionId) => {
+    simulateSessionComplete: sessionId => {
       if (!isDemo) {
         get().updateSession(sessionId, {
           status: SessionStatus.Completed,
           end_time: new Date().toISOString(),
-          last_activity_at: new Date().toISOString()
+          last_activity_at: new Date().toISOString(),
         })
       }
     },
@@ -230,10 +228,10 @@ export function createDemoAppStore(isDemo: boolean = false): StoreApi<DemoAppSta
           status: SessionStatus.Failed,
           end_time: new Date().toISOString(),
           last_activity_at: new Date().toISOString(),
-          error: error
+          error: error,
         })
       }
-    }
+    },
   }))
 }
 
@@ -255,11 +253,11 @@ export class DemoAppAnimator {
       state => ({
         sessions: state.sessions.length,
         launcher: state.launcherOpen,
-        theme: state.theme
+        theme: state.theme,
       }),
-      (state) => {
+      state => {
         console.log('[Demo App Store] State updated:', state)
-      }
+      },
     )
   }
 
@@ -293,7 +291,9 @@ export class DemoAppAnimator {
     const step = this.sequence[this.currentIndex]
 
     this.timeoutId = setTimeout(() => {
-      console.log(`[Demo App Animator] Step ${this.currentIndex + 1}/${this.sequence.length}: ${step.description || 'State update'}`)
+      console.log(
+        `[Demo App Animator] Step ${this.currentIndex + 1}/${this.sequence.length}: ${step.description || 'State update'}`,
+      )
 
       // Apply the state from the sequence
       this.store.setState(step.state as DemoAppState)

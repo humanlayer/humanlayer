@@ -29,24 +29,20 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
 
   // Set up subscriptions for real-time updates
   useSubscriptions({
-    onSessionUpdate: (update) => {
+    onSessionUpdate: update => {
       const { sessionId, changes } = update
       store.getState().updateSession(sessionId, changes)
     },
-    onSessionsRefresh: (sessions) => {
+    onSessionsRefresh: sessions => {
       store.getState().initSessions(sessions)
     },
-    onApprovalsUpdate: (approvals) => {
+    onApprovalsUpdate: approvals => {
       store.getState().setApprovals(approvals)
     },
-    onError: (error) => {
+    onError: error => {
       toast.error(`Subscription error: ${error.message}`)
     },
   })
 
-  return (
-    <AppStoreContext.Provider value={store}>
-      {children}
-    </AppStoreContext.Provider>
-  )
+  return <AppStoreContext.Provider value={store}>{children}</AppStoreContext.Provider>
 }

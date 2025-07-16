@@ -17,20 +17,15 @@ const AVAILABLE_THEMES: Theme[] = [
   'catppuccin',
   'framer-dark',
   'gruvbox-dark',
-  'high-contrast'
+  'high-contrast',
 ]
 
 const LIGHT_THEMES: Theme[] = ['solarized-light', 'framer-light', 'gruvbox-light']
 
-export const createThemeSlice: StateCreator<
-  ThemeSlice,
-  [],
-  [],
-  ThemeSlice
-> = (set, get) => ({
+export const createThemeSlice: StateCreator<ThemeSlice, [], [], ThemeSlice> = (set, get) => ({
   theme: 'solarized-dark',
-  
-  setTheme: (theme) => {
+
+  setTheme: theme => {
     set({ theme })
     // Update DOM for theme application
     if (typeof document !== 'undefined') {
@@ -41,26 +36,26 @@ export const createThemeSlice: StateCreator<
       localStorage.setItem('wui-theme', theme)
     }
   },
-  
-  cycleTheme: (direction) => {
+
+  cycleTheme: direction => {
     const themes = get().getAvailableThemes()
     const currentIndex = get().getCurrentThemeIndex()
-    
+
     let newIndex: number
     if (direction === 'next') {
       newIndex = (currentIndex + 1) % themes.length
     } else {
       newIndex = currentIndex === 0 ? themes.length - 1 : currentIndex - 1
     }
-    
+
     get().setTheme(themes[newIndex])
   },
-  
+
   loadThemeFromStorage: () => {
     if (typeof localStorage !== 'undefined') {
       const stored = localStorage.getItem('wui-theme') as Theme | null
       const availableThemes = get().getAvailableThemes()
-      
+
       if (stored && availableThemes.includes(stored)) {
         get().setTheme(stored)
       } else {
@@ -72,17 +67,17 @@ export const createThemeSlice: StateCreator<
       get().setTheme('solarized-dark')
     }
   },
-  
+
   getAvailableThemes: () => AVAILABLE_THEMES,
-  
+
   isDarkTheme: () => {
     const theme = get().theme
     return !LIGHT_THEMES.includes(theme)
   },
-  
+
   getCurrentThemeIndex: () => {
     const theme = get().theme
     const themes = get().getAvailableThemes()
     return themes.indexOf(theme)
-  }
+  },
 })

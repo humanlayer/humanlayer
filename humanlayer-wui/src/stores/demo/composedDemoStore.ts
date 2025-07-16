@@ -29,11 +29,11 @@ export const createComposedDemoStore = (): StoreApi<ComposedDemoStore> => {
         ...createThemeSlice(...args),
         ...createAppSlice(...args),
       }),
-      { 
+      {
         name: 'composed-demo-store',
-        enabled: process.env.NODE_ENV === 'development'
-      }
-    )
+        enabled: process.env.NODE_ENV === 'development',
+      },
+    ),
   )
 }
 
@@ -95,13 +95,15 @@ export class ComposedDemoAnimator {
     }
 
     const step = this.sequence[this.currentIndex]
-    
+
     this.timeoutId = setTimeout(() => {
-      console.log(`[Demo Animator] Step ${this.currentIndex + 1}/${this.sequence.length}: ${step.description || 'State update'}`)
-      
+      console.log(
+        `[Demo Animator] Step ${this.currentIndex + 1}/${this.sequence.length}: ${step.description || 'State update'}`,
+      )
+
       // Build the complete state update object
       const updates: any = {}
-      
+
       // Merge all state slices
       if (step.sessionState) {
         Object.assign(updates, step.sessionState)
@@ -115,15 +117,15 @@ export class ComposedDemoAnimator {
       if (step.appState) {
         Object.assign(updates, step.appState)
       }
-      
+
       // Apply the state update
       this.store.setState(updates)
-      
+
       // For theme changes, we need to call setTheme to trigger side effects
       if (step.themeState?.theme) {
         this.store.getState().setTheme(step.themeState.theme)
       }
-      
+
       this.currentIndex++
       this.playNext()
     }, step.delay)
