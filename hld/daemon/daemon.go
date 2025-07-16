@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/humanlayer/humanlayer/hld/approval"
@@ -45,6 +46,14 @@ func New() (*Daemon, error) {
 	// Validate configuration
 	if err := cfg.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid configuration: %w", err)
+	}
+
+	// Safeguard: Prevent test binaries from using production database
+	if strings.Contains(os.Args[0], "/T/") || strings.Contains(os.Args[0], "test") {
+		defaultDB := expandPath("~/.humanlayer/daemon.db")
+		if cfg.DatabasePath == defaultDB && os.Getenv("HUMANLAYER_ALLOW_TEST_PROD_DB") != "true" {
+			return nil, fmt.Errorf("test process attempting to use production database - set HUMANLAYER_DATABASE_PATH or HUMANLAYER_ALLOW_TEST_PROD_DB=true")
+		}
 	}
 
 	socketPath := cfg.SocketPath
@@ -254,4 +263,16 @@ func (d *Daemon) markOrphanedSessionsAsFailed(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// expandPath expands ~ to the user's home directory
+func expandPath(path string) string {
+	if len(path) > 0 && path[0] == '~' {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return path
+		}
+		return filepath.Join(home, path[1:])
+	}
+	return path
 }
