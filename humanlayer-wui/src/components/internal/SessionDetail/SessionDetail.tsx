@@ -157,6 +157,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     setExpandedToolResult,
     setExpandedToolCall,
     disabled: forkViewOpen, // Disable navigation when fork view is open
+    startKeyboardNavigation,
   })
 
   // Use approvals hook
@@ -622,6 +623,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               setExpandedToolCall={setExpandedToolCall}
               maxEventIndex={previewEventIndex ?? undefined}
               shouldIgnoreMouseEvent={shouldIgnoreMouseEvent}
+              expandedTasks={expandedTasks}
+              toggleTaskGroup={toggleTaskGroup}
             />
             {isActivelyProcessing &&
               (() => {

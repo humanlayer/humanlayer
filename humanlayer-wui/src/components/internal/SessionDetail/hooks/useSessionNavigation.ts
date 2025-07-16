@@ -16,6 +16,7 @@ interface UseSessionNavigationProps {
   setExpandedToolResult?: (event: ConversationEvent | null) => void
   setExpandedToolCall?: (event: ConversationEvent | null) => void
   disabled?: boolean
+  startKeyboardNavigation?: () => void
 }
 
 export function useSessionNavigation({
@@ -27,6 +28,7 @@ export function useSessionNavigation({
   setExpandedToolResult,
   setExpandedToolCall,
   disabled = false,
+  startKeyboardNavigation,
 }: UseSessionNavigationProps) {
   const [focusedEventId, setFocusedEventId] = useState<number | null>(null)
   const [focusSource, setFocusSource] = useState<'mouse' | 'keyboard' | null>(null)
@@ -103,10 +105,11 @@ export function useSessionNavigation({
       // User must press k first to start navigating from bottom
       return
     } else if (currentIndex < navigableItems.length - 1) {
+      startKeyboardNavigation?.()
       setFocusedEventId(navigableItems[currentIndex + 1].id)
       setFocusSource('keyboard')
     }
-  }, [focusedEventId, navigableItems])
+  }, [focusedEventId, navigableItems, startKeyboardNavigation])
 
   const focusPreviousEvent = useCallback(() => {
     if (navigableItems.length === 0) return
@@ -117,13 +120,15 @@ export function useSessionNavigation({
 
     if (currentIndex === -1) {
       // Start from the bottom when first pressing k
+      startKeyboardNavigation?.()
       setFocusedEventId(navigableItems[navigableItems.length - 1].id)
       setFocusSource('keyboard')
     } else if (currentIndex > 0) {
+      startKeyboardNavigation?.()
       setFocusedEventId(navigableItems[currentIndex - 1].id)
       setFocusSource('keyboard')
     }
-  }, [focusedEventId, navigableItems])
+  }, [focusedEventId, navigableItems, startKeyboardNavigation])
 
   // Keyboard navigation
   useHotkeys('j', focusNextEvent, { enabled: !expandedToolResult && !disabled })
@@ -134,6 +139,8 @@ export function useSessionNavigation({
     'i',
     () => {
       if (!focusedEventId) return
+
+      startKeyboardNavigation?.()
 
       const focusedEvent = events.find(e => e.id === focusedEventId)
       if (!focusedEvent || focusedEvent.event_type !== ConversationEventType.ToolCall) return
@@ -170,7 +177,7 @@ export function useSessionNavigation({
         setExpandedToolCall(focusedEvent)
       }
     },
-    { enabled: !expandedToolResult },
+    { enabled: !expandedToolResult && !disabled },
   )
 
   // Scroll focused element into view (only for keyboard navigation)
