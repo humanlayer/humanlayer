@@ -370,8 +370,7 @@ export class DaemonClient extends EventEmitter {
 
   async sendDecision(approvalId: string, decision: string, comment: string): Promise<void> {
     const resp = await this.call<{ success: boolean; error?: string }>('sendDecision', {
-      call_id: approvalId, // Using call_id for backward compatibility
-      type: 'function_call', // Always function_call for local approvals
+      approval_id: approvalId,
       decision,
       comment,
     })

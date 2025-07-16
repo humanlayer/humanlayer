@@ -201,10 +201,10 @@ func TestClient_SendDecision(t *testing.T) {
 		_ = json.Unmarshal(params, &req)
 
 		// Simple validation
-		if req.CallID == "" {
+		if req.ApprovalID == "" {
 			return rpc.SendDecisionResponse{
 				Success: false,
-				Error:   "call_id required",
+				Error:   "approval_id required",
 			}, nil
 		}
 
