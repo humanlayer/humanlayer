@@ -15,3 +15,5 @@ You can test RPC calls with nc:
 ```bash
 echo '{"jsonrpc":"2.0","method":"getSessionLeaves","params":{},"id":1}' | nc -U ~/.humanlayer/daemon.sock | jq '.'
 ```
+
+For testing guidelines and database isolation requirements, see TESTING.md

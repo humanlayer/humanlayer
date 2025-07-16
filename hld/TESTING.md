@@ -1,3 +1,45 @@
+# Testing Guidelines for HLD
+
+## Database Isolation
+
+All tests MUST use isolated databases to prevent corruption of user data.
+
+### Required for Integration Tests
+
+Every integration test that spawns a daemon MUST set database isolation:
+
+```go
+// Option 1: In-memory database (fastest, no persistence)
+t.Setenv("HUMANLAYER_DATABASE_PATH", ":memory:")
+
+// Option 2: testutil helper (allows persistence testing)
+_ = testutil.DatabasePath(t, "descriptive-name")
+
+// Option 3: Manual temp file (for special cases)
+dbPath := filepath.Join(t.TempDir(), "test.db")
+t.Setenv("HUMANLAYER_DATABASE_PATH", dbPath)
+```
+
+### Never Do This
+
+```go
+// BAD: No database path set - uses production!
+t.Setenv("HUMANLAYER_DAEMON_SOCKET", socketPath)
+// Missing: t.Setenv("HUMANLAYER_DATABASE_PATH", ...)
+```
+
+## Running Integration Tests
+
+```bash
+# Run all integration tests
+cd hld && go test -tags=integration ./...
+
+# Run specific integration test
+cd hld && go test -tags=integration ./daemon/daemon_integration_test.go -v
+```
+
+---
+
 # Testing HumanLayer Daemon + TUI Integration
 
 This guide covers testing the Phase 4 integration where the TUI communicates with the daemon instead of directly with the HumanLayer API.
