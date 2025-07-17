@@ -289,10 +289,9 @@ func (c *client) FetchApprovals(sessionID string) ([]*store.Approval, error) {
 // SendDecision sends a decision (approve/deny) for an approval
 func (c *client) SendDecision(approvalID, decision, comment string) error {
 	req := rpc.SendDecisionRequest{
-		CallID:   approvalID,      // Using CallID for backward compatibility
-		Type:     "function_call", // Always function_call for local approvals
-		Decision: decision,
-		Comment:  comment,
+		ApprovalID: approvalID,
+		Decision:   decision,
+		Comment:    comment,
 	}
 	var resp rpc.SendDecisionResponse
 	if err := c.call("sendDecision", req, &resp); err != nil {

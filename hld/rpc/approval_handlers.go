@@ -104,10 +104,9 @@ func (h *ApprovalHandlers) HandleFetchApprovals(ctx context.Context, params json
 
 // SendDecisionRequest is the request for sending a decision
 type SendDecisionRequest struct {
-	CallID   string `json:"call_id"`  // Actually approval ID, but keeping name for compatibility
-	Type     string `json:"type"`     // Ignored for local approvals
-	Decision string `json:"decision"` // "approve" or "deny"
-	Comment  string `json:"comment,omitempty"`
+	ApprovalID string `json:"approval_id"`
+	Decision   string `json:"decision"`
+	Comment    string `json:"comment,omitempty"`
 }
 
 // SendDecisionResponse is the response for sending a decision
@@ -124,31 +123,23 @@ func (h *ApprovalHandlers) HandleSendDecision(ctx context.Context, params json.R
 	}
 
 	// Validate required fields
-	if req.CallID == "" {
-		return nil, fmt.Errorf("call_id is required")
+	if req.ApprovalID == "" {
+		return nil, fmt.Errorf("approval_id is required")
 	}
 	if req.Decision == "" {
 		return nil, fmt.Errorf("decision is required")
-	}
-
-	// Check if this is a human contact type (no longer supported)
-	if req.Type == "human_contact" {
-		return &SendDecisionResponse{
-			Success: false,
-			Error:   "human contact approvals are no longer supported",
-		}, nil
 	}
 
 	var err error
 
 	switch req.Decision {
 	case "approve":
-		err = h.approvals.ApproveToolCall(ctx, req.CallID, req.Comment)
+		err = h.approvals.ApproveToolCall(ctx, req.ApprovalID, req.Comment)
 	case "deny":
 		if req.Comment == "" {
 			return nil, fmt.Errorf("comment is required for denial")
 		}
-		err = h.approvals.DenyToolCall(ctx, req.CallID, req.Comment)
+		err = h.approvals.DenyToolCall(ctx, req.ApprovalID, req.Comment)
 	default:
 		return nil, fmt.Errorf("invalid decision: %s (must be 'approve' or 'deny')", req.Decision)
 	}

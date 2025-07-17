@@ -152,14 +152,14 @@ async fn fetch_approvals(
 #[tauri::command]
 async fn approve_function_call(
     state: State<'_, AppState>,
-    call_id: String,
+    approval_id: String,
     comment: Option<String>,
 ) -> std::result::Result<(), String> {
     let client_guard = state.client.lock().await;
 
     match &*client_guard {
         Some(client) => client
-            .approve_function_call(&call_id, comment.as_deref())
+            .approve_function_call(&approval_id, comment.as_deref())
             .await
             .map_err(|e| e.to_string()),
         None => Err("Not connected to daemon".to_string()),
@@ -169,36 +169,20 @@ async fn approve_function_call(
 #[tauri::command]
 async fn deny_function_call(
     state: State<'_, AppState>,
-    call_id: String,
+    approval_id: String,
     reason: String,
 ) -> std::result::Result<(), String> {
     let client_guard = state.client.lock().await;
 
     match &*client_guard {
         Some(client) => client
-            .deny_function_call(&call_id, &reason)
+            .deny_function_call(&approval_id, &reason)
             .await
             .map_err(|e| e.to_string()),
         None => Err("Not connected to daemon".to_string()),
     }
 }
 
-#[tauri::command]
-async fn respond_to_human_contact(
-    state: State<'_, AppState>,
-    call_id: String,
-    response: String,
-) -> std::result::Result<(), String> {
-    let client_guard = state.client.lock().await;
-
-    match &*client_guard {
-        Some(client) => client
-            .respond_to_human_contact(&call_id, &response)
-            .await
-            .map_err(|e| e.to_string()),
-        None => Err("Not connected to daemon".to_string()),
-    }
-}
 
 // Subscribe command will be handled differently since it returns a stream
 #[tauri::command]
@@ -440,7 +424,6 @@ pub fn run() {
             fetch_approvals,
             approve_function_call,
             deny_function_call,
-            respond_to_human_contact,
             subscribe_to_events,
             unsubscribe_from_events,
             interrupt_session,

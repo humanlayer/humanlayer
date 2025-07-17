@@ -26,6 +26,7 @@ export function useSessionActions({
   const refreshSessions = useStore(state => state.refreshSessions)
   const archiveSession = useStore(state => state.archiveSession)
   const setViewMode = useStore(state => state.setViewMode)
+  const trackNavigationFrom = useStore(state => state.trackNavigationFrom)
   const navigate = useNavigate()
 
   // Update response input when fork message is selected
@@ -47,6 +48,11 @@ export function useSessionActions({
 
       // Use fork session ID if available, otherwise current session
       const targetSessionId = forkFromSessionId || session.id
+
+      // Track navigation BEFORE the continue call for interrupt cases
+      // This ensures we suppress the completion notification that happens
+      // during the interrupt phase of "interrupt & continue"
+      trackNavigationFrom(session.id)
 
       // Unarchive the session if it's archived
       if (session.archived) {
@@ -90,6 +96,7 @@ export function useSessionActions({
     navigate,
     refreshSessions,
     archiveSession,
+    trackNavigationFrom,
     forkFromSessionId,
     onForkCommit,
   ])

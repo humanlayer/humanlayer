@@ -158,10 +158,9 @@ func TestDaemonApprovalIntegration(t *testing.T) {
 	// Test 3: Approve a function call
 	var decisionResp rpc.SendDecisionResponse
 	err = client.call("sendDecision", rpc.SendDecisionRequest{
-		CallID:   approval1ID,
-		Type:     "function_call",
-		Decision: "approve",
-		Comment:  "Looks good",
+		ApprovalID: approval1ID,
+		Decision:   "approve",
+		Comment:    "Looks good",
 	}, &decisionResp)
 	if err != nil {
 		t.Fatalf("failed to send approval decision: %v", err)
@@ -173,10 +172,9 @@ func TestDaemonApprovalIntegration(t *testing.T) {
 
 	// Test 4: Deny a function call
 	err = client.call("sendDecision", rpc.SendDecisionRequest{
-		CallID:   approval2ID,
-		Type:     "function_call",
-		Decision: "deny",
-		Comment:  "Too risky",
+		ApprovalID: approval2ID,
+		Decision:   "deny",
+		Comment:    "Too risky",
 	}, &decisionResp)
 	if err != nil {
 		t.Fatalf("failed to send deny decision: %v", err)
@@ -200,10 +198,9 @@ func TestDaemonApprovalIntegration(t *testing.T) {
 
 	// Test 6: Try to approve non-existent approval
 	err = client.call("sendDecision", rpc.SendDecisionRequest{
-		CallID:   "non-existent",
-		Type:     "function_call",
-		Decision: "approve",
-		Comment:  "Should fail",
+		ApprovalID: "non-existent",
+		Decision:   "approve",
+		Comment:    "Should fail",
 	}, &decisionResp)
 	if err != nil {
 		t.Fatalf("failed to send decision: %v", err)
@@ -211,24 +208,6 @@ func TestDaemonApprovalIntegration(t *testing.T) {
 
 	if decisionResp.Success {
 		t.Error("expected failure for non-existent approval")
-	}
-
-	// Test 7: Human contact is no longer supported
-	err = client.call("sendDecision", rpc.SendDecisionRequest{
-		CallID:   "some-id",
-		Type:     "human_contact",
-		Decision: "respond",
-		Comment:  "Should fail",
-	}, &decisionResp)
-	if err != nil {
-		t.Fatalf("failed to send decision: %v", err)
-	}
-
-	if decisionResp.Success {
-		t.Error("expected failure for human contact type")
-	}
-	if decisionResp.Error != "human contact approvals are no longer supported" {
-		t.Errorf("expected specific error for human contact, got: %s", decisionResp.Error)
 	}
 
 	// Shutdown daemon

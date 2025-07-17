@@ -18,7 +18,6 @@ type ApprovalType string
 // Valid approval types
 const (
 	ApprovalTypeFunctionCall ApprovalType = "function_call"
-	ApprovalTypeHumanContact ApprovalType = "human_contact"
 )
 
 // String returns the string representation of the decision
@@ -36,8 +35,6 @@ func (d Decision) IsValidForApprovalType(approvalType ApprovalType) bool {
 	switch approvalType {
 	case ApprovalTypeFunctionCall:
 		return d == DecisionApprove || d == DecisionDeny
-	case ApprovalTypeHumanContact:
-		return d == DecisionRespond
 	default:
 		return false
 	}
@@ -56,8 +53,6 @@ func ValidDecisionsForApprovalType(approvalType ApprovalType) []Decision {
 	switch approvalType {
 	case ApprovalTypeFunctionCall:
 		return []Decision{DecisionApprove, DecisionDeny}
-	case ApprovalTypeHumanContact:
-		return []Decision{DecisionRespond}
 	default:
 		return []Decision{}
 	}
@@ -65,7 +60,7 @@ func ValidDecisionsForApprovalType(approvalType ApprovalType) []Decision {
 
 // IsValidApprovalType checks if the given string is a valid approval type
 func IsValidApprovalType(s string) bool {
-	return ApprovalType(s) == ApprovalTypeFunctionCall || ApprovalType(s) == ApprovalTypeHumanContact
+	return ApprovalType(s) == ApprovalTypeFunctionCall
 }
 
 // ParseApprovalType parses a string into an ApprovalType, returning an error if invalid

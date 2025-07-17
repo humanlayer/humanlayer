@@ -21,6 +21,8 @@ import type {
   BulkArchiveSessionsRequest,
   BulkArchiveSessionsResponse,
   GetSessionSnapshotsResponse,
+  SendDecisionRequest,
+  Decision,
 } from './types'
 
 export class DaemonClient {
@@ -63,16 +65,37 @@ export class DaemonClient {
     return await invoke('fetch_approvals', { sessionId })
   }
 
-  async approveFunctionCall(callId: string, comment?: string): Promise<void> {
-    return await invoke('approve_function_call', { callId, comment })
+  async sendDecision(request: SendDecisionRequest): Promise<void> {
+    // For now, map to the existing Tauri commands based on decision type
+    if (request.decision === 'approve') {
+      return await invoke('approve_function_call', {
+        approvalId: request.approval_id,
+        comment: request.comment,
+      })
+    } else if (request.decision === 'deny') {
+      return await invoke('deny_function_call', {
+        approvalId: request.approval_id,
+        reason: request.comment || 'Denied',
+      })
+    } else {
+      throw new Error(`Unsupported decision type: ${request.decision}`)
+    }
   }
 
-  async denyFunctionCall(callId: string, reason: string): Promise<void> {
-    return await invoke('deny_function_call', { callId, reason })
+  async approveFunctionCall(approvalId: string, comment?: string): Promise<void> {
+    return await this.sendDecision({
+      approval_id: approvalId,
+      decision: 'approve' as Decision,
+      comment,
+    })
   }
 
-  async respondToHumanContact(callId: string, response: string): Promise<void> {
-    return await invoke('respond_to_human_contact', { callId, response })
+  async denyFunctionCall(approvalId: string, reason: string): Promise<void> {
+    return await this.sendDecision({
+      approval_id: approvalId,
+      decision: 'deny' as Decision,
+      comment: reason,
+    })
   }
 
   async subscribeToEvents(

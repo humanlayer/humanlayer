@@ -32,6 +32,11 @@ interface StoreState {
   removeNotifiedItem: (notificationId: string) => void
   isItemNotified: (notificationId: string) => boolean
   clearNotificationsForSession: (sessionId: string) => void
+
+  /* Navigation tracking */
+  recentNavigations: Map<string, number> // sessionId -> timestamp
+  trackNavigationFrom: (sessionId: string) => void
+  wasRecentlyNavigatedFrom: (sessionId: string, withinMs?: number) => boolean
 }
 
 export const useStore = create<StoreState>((set, get) => ({
@@ -398,4 +403,44 @@ export const useStore = create<StoreState>((set, get) => ({
       })
       return { notifiedItems: newSet }
     }),
+
+  // Navigation tracking
+  recentNavigations: new Map(),
+  trackNavigationFrom: (sessionId: string) =>
+    set(state => {
+      const newMap = new Map(state.recentNavigations)
+      const timestamp = Date.now()
+      newMap.set(sessionId, timestamp)
+      console.log(
+        `Tracking navigation from session ${sessionId} at ${new Date(timestamp).toISOString()}`,
+      )
+
+      // Clean up old entries after 5 seconds
+      setTimeout(() => {
+        const currentMap = get().recentNavigations
+        if (currentMap.get(sessionId) === newMap.get(sessionId)) {
+          const updatedMap = new Map(currentMap)
+          updatedMap.delete(sessionId)
+          set({ recentNavigations: updatedMap })
+          console.log(`Removed navigation tracking for session ${sessionId} after timeout`)
+        }
+      }, 5000)
+      return { recentNavigations: newMap }
+    }),
+  wasRecentlyNavigatedFrom: (sessionId: string, withinMs = 3000) => {
+    const timestamp = get().recentNavigations.get(sessionId)
+    const now = Date.now()
+
+    if (!timestamp) {
+      console.log(`No navigation tracking found for session ${sessionId}`)
+      return false
+    }
+
+    const elapsed = now - timestamp
+    const wasRecent = elapsed < withinMs
+    console.log(
+      `Checking navigation for session ${sessionId}: elapsed ${elapsed}ms, within ${withinMs}ms window: ${wasRecent}`,
+    )
+    return wasRecent
+  },
 }))

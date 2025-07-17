@@ -1,11 +1,8 @@
-import { ApprovalType } from '@/lib/daemon'
-
 // Unified approval request type for UI display
 export interface UnifiedApprovalRequest {
   id: string
-  callId: string
   runId: string
-  type: ApprovalType
+  type: 'function'
   title: string // Formatted title for display
   description: string // Formatted description
   tool?: string // Function name for function calls

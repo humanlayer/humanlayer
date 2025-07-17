@@ -271,126 +271,28 @@ pub struct FetchApprovalsRequest {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FetchApprovalsResponse {
-    pub approvals: Vec<PendingApproval>,
+    pub approvals: Vec<Approval>,
 }
 
+// Local approval format (as stored in daemon)
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct PendingApproval {
-    #[serde(rename = "type")]
-    pub approval_type: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub function_call: Option<FunctionCall>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub human_contact: Option<HumanContact>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct FunctionCall {
+pub struct Approval {
+    pub id: String,
     pub run_id: String,
-    pub call_id: String,
-    pub spec: FunctionCallSpec,
+    pub session_id: String,
+    pub status: String,
+    pub created_at: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub status: Option<FunctionCallStatus>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct FunctionCallSpec {
-    #[serde(rename = "fn")]
-    pub fn_name: String,
-    pub kwargs: HashMap<String, Value>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub channel: Option<ContactChannel>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub reject_options: Option<Vec<ResponseOption>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub state: Option<HashMap<String, Value>>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct FunctionCallStatus {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub requested_at: Option<DateTime<Utc>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub responded_at: Option<DateTime<Utc>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub approved: Option<bool>,
+    pub responded_at: Option<String>,
+    pub tool_name: String,
+    pub tool_input: Value,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub comment: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub user_info: Option<HashMap<String, Value>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub reject_option_name: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct HumanContact {
-    pub run_id: String,
-    pub call_id: String,
-    pub spec: HumanContactSpec,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub status: Option<HumanContactStatus>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct HumanContactSpec {
-    pub msg: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub subject: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub channel: Option<ContactChannel>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub response_options: Option<Vec<ResponseOption>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub state: Option<HashMap<String, Value>>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct HumanContactStatus {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub requested_at: Option<DateTime<Utc>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub responded_at: Option<DateTime<Utc>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub response: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub response_option_name: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ResponseOption {
-    pub name: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub title: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub prompt_fill: Option<String>,
-    pub interactive: bool,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ContactChannel {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub slack: Option<SlackChannel>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub email: Option<EmailChannel>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct SlackChannel {
-    pub channel_or_user_id: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct EmailChannel {
-    pub address: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SendDecisionRequest {
-    pub call_id: String,
-    #[serde(rename = "type")]
-    pub approval_type: String,
+    pub approval_id: String,
     pub decision: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub comment: Option<String>,
@@ -445,7 +347,6 @@ pub struct Heartbeat {
 pub enum Decision {
     Approve,
     Deny,
-    Respond,
 }
 
 impl Decision {
@@ -453,33 +354,10 @@ impl Decision {
         match self {
             Decision::Approve => "approve",
             Decision::Deny => "deny",
-            Decision::Respond => "respond",
-        }
-    }
-
-    pub fn is_valid_for_approval_type(&self, approval_type: &str) -> bool {
-        match approval_type {
-            "function_call" => matches!(self, Decision::Approve | Decision::Deny),
-            "human_contact" => matches!(self, Decision::Respond),
-            _ => false,
         }
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ApprovalType {
-    FunctionCall,
-    HumanContact,
-}
-
-impl ApprovalType {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            ApprovalType::FunctionCall => "function_call",
-            ApprovalType::HumanContact => "human_contact",
-        }
-    }
-}
 
 // Session settings types
 #[derive(Debug, Serialize, Deserialize)]

@@ -278,13 +278,12 @@ Note: Either `session_id` or `claude_session_id` is required.
 {
   "approvals": [
     {
-      "type": "function_call|human_contact",
-      "function_call": {
-        // HumanLayer FunctionCall object (when type is function_call)
-      },
-      "human_contact": {
-        // HumanLayer HumanContact object (when type is human_contact)
-      }
+      "id": "local-xxx",
+      "session_id": "session-xxx",
+      "tool_name": "bash",
+      "tool_input": {"command": "ls -la"},
+      "status": "pending",
+      "created_at": "2025-07-15T12:00:00Z"
     }
   ]
 }
@@ -298,17 +297,16 @@ Note: Either `session_id` or `claude_session_id` is required.
 
 ```json
 {
-  "call_id": "string (required)",
-  "type": "function_call|human_contact (required)",
-  "decision": "approve|deny|respond (required)",
-  "comment": "string (optional/required based on decision)"
+  "approval_id": "string (required)",
+  "decision": "approve|deny (required)",
+  "comment": "string (optional/required for deny)"
 }
 ```
 
 Decision rules:
 
-- For `function_call` type: `approve` or `deny` (deny requires comment)
-- For `human_contact` type: `respond` (requires comment)
+- `approve`: Approves the tool call
+- `deny`: Denies the tool call (requires comment)
 
 **Response**:
 

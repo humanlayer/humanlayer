@@ -3,11 +3,7 @@ import { useStore } from '@/AppStore'
 import { notificationService } from '@/services/NotificationService'
 import { daemonClient } from '@/lib/daemon'
 import { useSessionSubscriptions } from './useSubscriptions'
-import {
-  SessionStatus,
-  type SessionStatusChangedEventData,
-  type NewApprovalEventData,
-} from '@/lib/daemon/types'
+import { SessionStatus, type SessionStatusChangedEventData } from '@/lib/daemon/types'
 
 /**
  * Hook that subscribes to session events and handles notifications
@@ -16,6 +12,7 @@ export function useSessionEventsWithNotifications(connected: boolean) {
   const updateSession = useStore(state => state.updateSession)
   const refreshSessions = useStore(state => state.refreshSessions)
   const { addNotifiedItem, isItemNotified, clearNotificationsForSession } = useStore()
+  const wasRecentlyNavigatedFrom = useStore(state => state.wasRecentlyNavigatedFrom)
   const previousStatusesRef = useRef<Map<string, SessionStatus>>(new Map())
 
   const handleSessionStatusChanged = useCallback(
@@ -81,6 +78,17 @@ export function useSessionEventsWithNotifications(connected: boolean) {
 
       // Check if session just completed
       if (previousStatus !== SessionStatus.Completed && newStatus === SessionStatus.Completed) {
+        console.log(
+          `Session ${data.session_id} completed. Previous status: ${previousStatus}, checking navigation tracking...`,
+        )
+
+        if (wasRecentlyNavigatedFrom(data.session_id)) {
+          console.log(
+            `Suppressing completion notification for recently navigated session ${data.session_id}`,
+          )
+          return
+        }
+
         try {
           const sessionResponse = await daemonClient.getSessionState(data.session_id)
           const session = sessionResponse.session
@@ -124,54 +132,59 @@ export function useSessionEventsWithNotifications(connected: boolean) {
         }
       }
     },
-    [updateSession, clearNotificationsForSession, isItemNotified, addNotifiedItem],
+    [
+      updateSession,
+      clearNotificationsForSession,
+      isItemNotified,
+      addNotifiedItem,
+      wasRecentlyNavigatedFrom,
+    ],
   )
 
   const handleNewApproval = useCallback(
-    async (data: NewApprovalEventData) => {
+    async (data: any) => {
+      console.log('New approval event data:', data)
+
       // Refresh sessions to get latest approval counts
       refreshSessions()
 
-      // Check if we have approval details
-      if (data.approval) {
-        const approval = data.approval
-        let approvalId: string | undefined
-        let sessionId: string | undefined
+      // Handle new minimal structure
+      const approvalId = data.approval_id
+      const sessionId = data.session_id
+      const toolName = data.tool_name
 
-        if (approval.function_call) {
-          approvalId = approval.function_call.call_id
-          sessionId = approval.function_call.run_id
-        } else if (approval.human_contact) {
-          approvalId = approval.human_contact.call_id
-          sessionId = approval.human_contact.run_id
-        }
+      if (!approvalId || !sessionId) {
+        console.error('Invalid approval event data:', data)
+        return
+      }
 
-        if (approvalId && sessionId) {
-          const notificationId = notificationService.generateNotificationId('approval_required', {
-            sessionId,
-            approvalId,
-          })
+      const notificationId = `approval_required:${sessionId}:${approvalId}`
 
-          if (!isItemNotified(notificationId)) {
-            try {
-              const sessionResponse = await daemonClient.getSessionState(sessionId)
-              const session = sessionResponse.session
+      if (isItemNotified(notificationId)) {
+        return
+      }
 
-              const sentNotificationId = await notificationService.notifyApprovalRequired(
-                sessionId,
-                approvalId,
-                session.query,
-                session.model,
-              )
+      try {
+        const sessionState = await daemonClient.getSessionState(sessionId)
+        const model = sessionState.session?.model || 'AI Agent'
 
-              if (sentNotificationId) {
-                addNotifiedItem(sentNotificationId)
-              }
-            } catch (error) {
-              console.error('Failed to fetch session details for approval notification:', error)
-            }
-          }
-        }
+        await notificationService.notifyApprovalRequired(
+          sessionId,
+          approvalId,
+          `${toolName} approval required`,
+          model,
+        )
+        addNotifiedItem(notificationId)
+      } catch (error) {
+        console.error(`Failed to get session state for ${sessionId}:`, error)
+        // Still show notification with limited info
+        await notificationService.notifyApprovalRequired(
+          sessionId,
+          approvalId,
+          `${toolName} approval required`,
+          'AI Agent',
+        )
+        addNotifiedItem(notificationId)
       }
     },
     [refreshSessions, isItemNotified, addNotifiedItem],
