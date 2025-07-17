@@ -409,7 +409,12 @@ export const useStore = create<StoreState>((set, get) => ({
   trackNavigationFrom: (sessionId: string) =>
     set(state => {
       const newMap = new Map(state.recentNavigations)
-      newMap.set(sessionId, Date.now())
+      const timestamp = Date.now()
+      newMap.set(sessionId, timestamp)
+      console.log(
+        `Tracking navigation from session ${sessionId} at ${new Date(timestamp).toISOString()}`,
+      )
+
       // Clean up old entries after 5 seconds
       setTimeout(() => {
         const currentMap = get().recentNavigations
@@ -417,13 +422,25 @@ export const useStore = create<StoreState>((set, get) => ({
           const updatedMap = new Map(currentMap)
           updatedMap.delete(sessionId)
           set({ recentNavigations: updatedMap })
+          console.log(`Removed navigation tracking for session ${sessionId} after timeout`)
         }
       }, 5000)
       return { recentNavigations: newMap }
     }),
   wasRecentlyNavigatedFrom: (sessionId: string, withinMs = 3000) => {
     const timestamp = get().recentNavigations.get(sessionId)
-    if (!timestamp) return false
-    return Date.now() - timestamp < withinMs
+    const now = Date.now()
+
+    if (!timestamp) {
+      console.log(`No navigation tracking found for session ${sessionId}`)
+      return false
+    }
+
+    const elapsed = now - timestamp
+    const wasRecent = elapsed < withinMs
+    console.log(
+      `Checking navigation for session ${sessionId}: elapsed ${elapsed}ms, within ${withinMs}ms window: ${wasRecent}`,
+    )
+    return wasRecent
   },
 }))

@@ -49,6 +49,11 @@ export function useSessionActions({
       // Use fork session ID if available, otherwise current session
       const targetSessionId = forkFromSessionId || session.id
 
+      // Track navigation BEFORE the continue call for interrupt cases
+      // This ensures we suppress the completion notification that happens
+      // during the interrupt phase of "interrupt & continue"
+      trackNavigationFrom(session.id)
+
       // Unarchive the session if it's archived
       if (session.archived) {
         await archiveSession(session.id, false)
@@ -70,7 +75,6 @@ export function useSessionActions({
       }
 
       // Always navigate to the new session - the backend handles queuing
-      trackNavigationFrom(session.id)
       navigate(`/sessions/${response.session_id}`)
 
       // Refresh the session list to ensure UI reflects current state

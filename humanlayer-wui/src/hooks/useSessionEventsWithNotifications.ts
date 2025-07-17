@@ -78,6 +78,10 @@ export function useSessionEventsWithNotifications(connected: boolean) {
 
       // Check if session just completed
       if (previousStatus !== SessionStatus.Completed && newStatus === SessionStatus.Completed) {
+        console.log(
+          `Session ${data.session_id} completed. Previous status: ${previousStatus}, checking navigation tracking...`,
+        )
+
         if (wasRecentlyNavigatedFrom(data.session_id)) {
           console.log(
             `Suppressing completion notification for recently navigated session ${data.session_id}`,
