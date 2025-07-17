@@ -1,6 +1,8 @@
 .PHONY: setup
 setup: ## Set up the repository with all dependencies and builds
 	hack/setup_repo.sh
+thoughts:
+	humanlayer thoughts init --directory humanlayer
 
 .PHONY: worktree
 worktree: ## Create a new worktree for development work (use hack/create_worktree.sh branch_name for specific names)

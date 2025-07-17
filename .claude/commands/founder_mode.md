@@ -12,4 +12,4 @@ assuming you just made a commit, here are the next steps:
 6. git cherry-pick 'COMMITHASH'
 7. git push -u origin 'BRANCHNAME'
 8. gh pr create --fill
-9. read '.claude/commands/pull_request.md' and follow the instructions
+9. read '.claude/commands/describe_pr.md' and follow the instructions
