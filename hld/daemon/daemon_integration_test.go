@@ -30,6 +30,7 @@ func TestDaemonBinaryIntegration(t *testing.T) {
 	t.Run("daemon_starts", func(t *testing.T) {
 		socketPath := testutil.SocketPath(t, "starts")
 		t.Setenv("HUMANLAYER_DAEMON_SOCKET", socketPath)
+		_ = testutil.DatabasePath(t, "daemon-starts")
 
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
@@ -77,6 +78,7 @@ func TestDaemonBinaryIntegration(t *testing.T) {
 	t.Run("refuses_double_start", func(t *testing.T) {
 		socketPath := testutil.SocketPath(t, "starts")
 		t.Setenv("HUMANLAYER_DAEMON_SOCKET", socketPath)
+		_ = testutil.DatabasePath(t, "double-start")
 
 		// Start first daemon
 		ctx1, cancel1 := context.WithTimeout(context.Background(), 2*time.Second)
@@ -113,6 +115,7 @@ func TestDaemonBinaryIntegration(t *testing.T) {
 			t.Run(sig.String(), func(t *testing.T) {
 				socketPath := testutil.SocketPath(t, sig.String())
 				t.Setenv("HUMANLAYER_DAEMON_SOCKET", socketPath)
+				_ = testutil.DatabasePath(t, "graceful-"+sig.String())
 
 				cmd := exec.Command(binPath)
 				if err := cmd.Start(); err != nil {

@@ -40,6 +40,8 @@ export function ConversationContent({
   setExpandedToolCall,
   maxEventIndex,
   shouldIgnoreMouseEvent,
+  expandedTasks,
+  toggleTaskGroup,
 }: {
   sessionId: string
   focusedEventId: number | null
@@ -61,6 +63,8 @@ export function ConversationContent({
   setExpandedToolCall?: (event: ConversationEvent | null) => void
   maxEventIndex?: number
   shouldIgnoreMouseEvent?: () => boolean
+  expandedTasks?: Set<string>
+  toggleTaskGroup?: (taskId: string) => void
 }) {
   // expandedToolResult is used by parent to control hotkey availability
   void expandedToolResult
@@ -75,9 +79,11 @@ export function ConversationContent({
   )
   const toolResultsByKey = keyBy(toolResults, 'tool_result_for_id')
 
-  // Use task grouping hook
-  const { taskGroups, rootEvents, hasSubTasks, expandedTasks, toggleTaskGroup } =
-    useTaskGrouping(filteredEvents)
+  // Use task grouping hook - use props if provided, otherwise use local hook
+  const localTaskGrouping = useTaskGrouping(filteredEvents)
+  const { taskGroups, rootEvents, hasSubTasks } = localTaskGrouping
+  const actualExpandedTasks = expandedTasks ?? localTaskGrouping.expandedTasks
+  const actualToggleTaskGroup = toggleTaskGroup ?? localTaskGrouping.toggleTaskGroup
 
   // Watch for new Read tool results and refetch snapshots
   useEffect(() => {
@@ -252,9 +258,13 @@ export function ConversationContent({
                     }
                   }
                 }}
-                className={`group relative p-4 cursor-pointer NoSubTasksConversationContent ${
+                className={`group relative p-4 cursor-pointer NoSubTasksConversationContent transition-shadow duration-200 ${
                   index !== nonEmptyDisplayObjects.length - 1 ? 'border-b' : ''
-                } ${focusedEventId === displayObject.id ? '!bg-accent/20' : ''}`}
+                } ${
+                  focusedEventId === displayObject.id
+                    ? 'shadow-[inset_2px_0_0_0_var(--terminal-accent)]'
+                    : ''
+                }`}
               >
                 {/* Main content container with flexbox */}
                 <div className="flex gap-4">
@@ -334,8 +344,8 @@ export function ConversationContent({
                 <TaskGroup
                   key={event.id}
                   group={taskGroup}
-                  isExpanded={expandedTasks.has(event.tool_id!)}
-                  onToggle={() => toggleTaskGroup(event.tool_id!)}
+                  isExpanded={actualExpandedTasks.has(event.tool_id!)}
+                  onToggle={() => actualToggleTaskGroup(event.tool_id!)}
                   focusedEventId={focusedEventId}
                   setFocusedEventId={setFocusedEventId}
                   onApprove={onApprove}
@@ -405,13 +415,17 @@ export function ConversationContent({
                         }
                       }
                     }}
-                    className={`group relative p-4 cursor-pointer ${
+                    className={`group relative p-4 cursor-pointer transition-shadow duration-200 ${
                       index !==
                       rootEvents.filter(e => e.event_type !== ConversationEventType.ToolResult).length -
                         1
                         ? 'border-b'
                         : ''
-                    } ${focusedEventId === displayObject.id ? '!bg-accent/20 rounded' : ''}`}
+                    } ${
+                      focusedEventId === displayObject.id
+                        ? 'shadow-[inset_2px_0_0_0_var(--terminal-accent)]'
+                        : ''
+                    }`}
                   >
                     {/* Main content container with flexbox */}
                     <div className="flex gap-4">

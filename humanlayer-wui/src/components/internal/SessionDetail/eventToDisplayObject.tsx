@@ -548,7 +548,9 @@ export function eventToDisplayObject(
                 <span>
                   {resultDisplay}
                   {isFocused && (
-                    <span className="text-xs text-muted-foreground/50 ml-2">[i] expand</span>
+                    <span className="text-xs text-muted-foreground/50 ml-2">
+                      <kbd className="px-1 py-0.5 text-xs bg-muted/50 rounded">i</kbd> expand
+                    </span>
                   )}
                 </span>
               </div>
@@ -556,14 +558,6 @@ export function eventToDisplayObject(
           )
         }
       }
-    } else if (isFocused) {
-      // For unfinished tools, just show the expand hint
-      subject = (
-        <>
-          {subject}
-          <span className="text-xs text-muted-foreground/50 ml-2">[i] expand</span>
-        </>
-      )
     }
   }
 
