@@ -111,6 +111,7 @@ func TestDaemonRefusesDoubleStart(t *testing.T) {
 
 	// Override config loading for test
 	t.Setenv("HUMANLAYER_DAEMON_SOCKET", socketPath)
+	t.Setenv("HUMANLAYER_DATABASE_PATH", ":memory:")
 
 	// Start first daemon
 	d1, err := New()
