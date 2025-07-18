@@ -21,6 +21,9 @@ func TestDaemonLifecycle(t *testing.T) {
 	// Override the default socket path for testing
 	d := &Daemon{
 		socketPath: socketPath,
+		config: &config.Config{
+			SocketPath: socketPath,
+		},
 	}
 
 	// Start daemon in background
@@ -152,6 +155,9 @@ func TestDaemonConcurrentConnections(t *testing.T) {
 
 	d := &Daemon{
 		socketPath: socketPath,
+		config: &config.Config{
+			SocketPath: socketPath,
+		},
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())

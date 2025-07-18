@@ -97,10 +97,10 @@ func (c *Client) buildArgs(config SessionConfig) ([]string, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal MCP config: %w", err)
 		}
-		
+
 		// Log MCP config for debugging
 		log.Printf("MCP config JSON: %s", string(mcpJSON))
-		
+
 		// Create a temp file for MCP config
 		tmpFile, err := os.CreateTemp("", "mcp-config-*.json")
 		if err != nil {
@@ -112,7 +112,7 @@ func (c *Client) buildArgs(config SessionConfig) ([]string, error) {
 			return nil, fmt.Errorf("failed to write MCP config: %w", err)
 		}
 		_ = tmpFile.Close()
-		
+
 		log.Printf("MCP config written to: %s", tmpFile.Name())
 
 		args = append(args, "--mcp-config", tmpFile.Name())

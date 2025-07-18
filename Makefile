@@ -24,7 +24,7 @@ check-ts:
 check-hlyr:
 	@$(MAKE) -C hlyr check VERBOSE=$(VERBOSE)
 
-check-wui:
+check-wui: clean-wui-release
 	@$(MAKE) -C humanlayer-wui check VERBOSE=$(VERBOSE)
 
 check-tui:
@@ -81,6 +81,10 @@ test-claudecode-go: ## Test claudecode-go
 test-header:
 	@sh -n ./hack/run_silent.sh || (echo "❌ Shell script syntax error in hack/run_silent.sh" && exit 1)
 	@. ./hack/run_silent.sh && print_main_header "Running Tests"
+
+.PHONY: clean-wui-release
+clean-wui-release: ## clean WUI release
+	rm -rf humanlayer-wui/src-tauri/target/release/
 
 .PHONY: test-wui
 test-wui: ## Test humanlayer-wui
@@ -466,16 +470,10 @@ check-local:
 logfileprefix = $(shell date +%Y-%m-%d-%H-%M-%S)
 
 .PHONY: wui
-wui:
-	@mkdir -p ~/.humanlayer/logs
-	echo "$(logfileprefix) starting wui in $(shell pwd)" > ~/.humanlayer/logs/wui-$(logfileprefix).log
-	cd humanlayer-wui && bun run tauri dev 2>&1 | tee -a ~/.humanlayer/logs/wui-$(logfileprefix).log
+wui: wui-dev
 
 .PHONY: daemon
-daemon:
-	@mkdir -p ~/.humanlayer/logs
-	echo "$(logfileprefix) starting daemon in $(shell pwd)" > ~/.humanlayer/logs/daemon-$(logfileprefix).log
-	cd hlyr && npm run build && ./dist/bin/hld 2>&1 | tee -a ~/.humanlayer/logs/daemon-$(logfileprefix).log
+daemon: daemon-dev
 
 # Build nightly daemon binary
 .PHONY: daemon-nightly-build

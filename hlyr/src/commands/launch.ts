@@ -39,7 +39,7 @@ export const launchCommand = async (query: string, options: LaunchOptions = {}) 
       const scriptPath = new URL(import.meta.url).pathname
       const projectRoot = scriptPath.split('/hlyr/')[0] + '/hlyr'
       const localHlyrPath = `${projectRoot}/dist/index.js`
-      
+
       const mcpConfig =
         options.approvals !== false
           ? {

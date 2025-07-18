@@ -4,7 +4,26 @@ This guide covers development workflows and tools for the HumanLayer repository.
 
 ## Parallel Development Environments
 
-The HumanLayer development setup supports running parallel daemon/WUI instances to prevent development work from disrupting active Claude sessions. You can run a stable "nightly" environment for regular work alongside a "dev" environment for testing changes.
+> **Why parallel environments?** When developing daemon (hld) or WUI features, restarting the daemon breaks active Claude sessions. This feature lets you maintain a stable "nightly" environment for regular work while testing changes in an isolated "dev" environment.
+
+### How It Works
+
+```
+┌─────────────────────┐     ┌─────────────────────┐
+│   Nightly (Stable)  │     │   Dev (Testing)     │
+├─────────────────────┤     ├─────────────────────┤
+│ daemon.sock         │     │ daemon-dev.sock     │
+│ daemon.db           │     │ daemon-{timestamp}.db│
+│ Production WUI      │     │ Dev WUI             │
+└─────────────────────┘     └─────────────────────┘
+         │                           │
+         └──── Your Work ────────────┘
+```
+
+The development setup provides complete isolation between environments, allowing you to:
+- Keep Claude sessions running in "nightly" while developing in "dev"
+- Test breaking changes without fear
+- Maintain different database states for testing
 
 ### Quick Start
 
@@ -45,7 +64,9 @@ make wui-nightly          # Build, install, and open nightly WUI
 ```bash
 make daemon-dev-build     # Build dev daemon binary
 make daemon-dev          # Build and run dev daemon with fresh DB copy
+make daemon              # Alias for make daemon-dev
 make wui-dev            # Run WUI in dev mode connected to dev daemon
+make wui                # Alias for make wui-dev
 make copy-db-to-dev     # Manually copy production DB to timestamped dev DB
 make cleanup-dev        # Clean up dev DBs and logs older than 10 days
 ```
@@ -57,10 +78,7 @@ make dev-status         # Show current dev environment status
 
 ### Claude Code Integration
 
-**Note**: The `hlyr` package was updated on July 18th and needs to be reinstalled to use the latest flow:
-```bash
-cd hlyr && npm i -g .
-```
+MCP servers launched by Claude Code sessions automatically connect to the correct daemon instance. The daemon passes the `HUMANLAYER_DAEMON_SOCKET` environment variable to MCP servers, ensuring they connect to the same daemon that launched them.
 
 The `npx humanlayer launch` command supports custom daemon sockets through multiple methods:
 
@@ -84,69 +102,81 @@ Add to your `humanlayer.json`:
 
 ### Typical Development Workflow
 
-1. **Start your nightly environment** (once per day):
+1. **Morning setup - Start your stable environment**:
    ```bash
-   make daemon-nightly
-   make wui-nightly
+   make daemon-nightly  # Runs in background
+   make wui-nightly     # Opens installed WUI
    ```
+   This is your "production" environment for regular Claude work.
 
-2. **Work on a feature branch**:
+2. **Development time - Work on daemon/WUI features**:
    ```bash
    git checkout -b feature/my-feature
-   # Make your changes
+   # Make your changes to hld/ or humanlayer-wui/
    ```
 
-3. **Test your changes** without disrupting nightly:
+3. **Testing - Use dev environment without disrupting your work**:
    ```bash
-   # Terminal 1: Start dev daemon
+   # Terminal 1: Start dev daemon (auto-copies current DB)
    make daemon-dev
-   
-   # Terminal 2: Test with Claude Code
+
+   # Terminal 2: Test with Claude Code using dev daemon
    npx humanlayer launch "test my feature" --daemon-socket ~/.humanlayer/daemon-dev.sock
-   
-   # Or use dev WUI
+
+   # Or test with dev WUI
    make wui-dev
    ```
+   Your nightly Claude sessions remain unaffected!
 
-4. **Clean up old dev artifacts** (weekly):
+4. **Maintenance - Clean up old dev artifacts** (weekly):
    ```bash
-   make cleanup-dev
+   make cleanup-dev  # Removes DBs and logs >10 days old
    ```
 
-### Key Features
+### Key Benefits
 
-- **Isolated Databases**: Each dev daemon run gets a fresh copy of your production database
-- **Separate Sockets**: Dev and nightly daemons use different Unix sockets
-- **Version Identification**: Dev daemon shows version as "dev" in WUI
-- **Automatic Logging**: All daemon runs are logged with timestamps
-- **No Cross-Contamination**: Changes in dev environment don't affect your stable nightly setup
+- **Zero Disruption**: Keep working in nightly while testing in dev
+- **Fresh State**: Each `make daemon-dev` starts with a clean database copy
+- **Clear Separation**: Different sockets prevent accidental cross-connections
+- **Easy Identification**: Dev daemon shows "dev" version in WUI
+- **Automatic Cleanup**: Old dev databases cleaned up with one command
 
 ### Environment Variables
 
 Both daemon and WUI respect these environment variables:
 
 - `HUMANLAYER_DAEMON_SOCKET`: Path to daemon socket (default: `~/.humanlayer/daemon.sock`)
+  - This variable is automatically passed to MCP servers launched by Claude Code sessions
 - `HUMANLAYER_DATABASE_PATH`: Path to SQLite database (daemon only)
 - `HUMANLAYER_DAEMON_VERSION_OVERRIDE`: Custom version string (daemon only)
 
 ### Troubleshooting
 
-**Both daemons won't start**: Check if old processes are running:
+**Q: Both daemons won't start**
+Check for existing processes:
 ```bash
 ps aux | grep hld | grep -v grep
+# Kill if needed: kill <PID>
 ```
 
-**WUI can't connect**: Verify the socket path matches between WUI and daemon:
+**Q: WUI shows "connection failed"**
+Verify socket paths match:
 ```bash
-# Check which sockets exist
 ls -la ~/.humanlayer/*.sock
+# Should see daemon.sock and/or daemon-dev.sock
 ```
 
-**Database issues**: Each dev daemon run creates a new timestamped database:
+**Q: Want to use a specific dev database**
 ```bash
-# List all dev databases
+# List available dev databases
 ls -la ~/.humanlayer/dev/
+# Run daemon with specific DB
+HUMANLAYER_DATABASE_PATH=~/.humanlayer/dev/daemon-20240717-143022.db make daemon-dev
 ```
+
+**Q: How do I know which environment I'm in?**
+- Check WUI title bar: shows "dev" for dev daemon
+- Check daemon logs: `tail -f ~/.humanlayer/logs/daemon-*.log`
 
 ## Other Development Commands
 

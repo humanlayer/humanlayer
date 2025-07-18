@@ -2,10 +2,12 @@ package session
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
 
+	claudecode "github.com/humanlayer/humanlayer/claudecode-go"
 	"github.com/humanlayer/humanlayer/hld/bus"
 	"github.com/humanlayer/humanlayer/hld/store"
 	"go.uber.org/mock/gomock"
@@ -224,6 +226,70 @@ func TestContinueSession_ValidatesClaudeSessionID(t *testing.T) {
 	}
 	if err.Error() != "parent session missing claude_session_id (cannot resume)" {
 		t.Errorf("Unexpected error: %v", err)
+	}
+}
+
+func TestLaunchSession_SetsMCPEnvironment(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockStore := store.NewMockConversationStore(ctrl)
+	testSocketPath := "/test/daemon.sock"
+	manager, _ := NewManager(nil, mockStore, testSocketPath)
+
+	// Store the session config that gets passed to CreateSession
+	mockStore.EXPECT().CreateSession(gomock.Any(), gomock.Any()).Return(nil)
+
+	// Store the MCP servers that get passed to StoreMCPServers
+	var capturedMCPServers []store.MCPServer
+	mockStore.EXPECT().StoreMCPServers(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(ctx context.Context, sessionID string, servers []store.MCPServer) error {
+			capturedMCPServers = servers
+			return nil
+		})
+
+	// Update session to running
+	mockStore.EXPECT().UpdateSession(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+
+	// Launch session with MCP config
+	config := claudecode.SessionConfig{
+		Query: "test query",
+		MCPConfig: &claudecode.MCPConfig{
+			MCPServers: map[string]claudecode.MCPServer{
+				"test-server": {
+					Command: "test-cmd",
+					Args:    []string{"arg1", "arg2"},
+				},
+			},
+		},
+	}
+
+	_, err := manager.LaunchSession(context.Background(), config)
+	if err != nil {
+		t.Fatalf("Failed to launch session: %v", err)
+	}
+
+	// Verify MCP servers have the correct environment variables
+	if len(capturedMCPServers) != 1 {
+		t.Fatalf("Expected 1 MCP server, got %d", len(capturedMCPServers))
+	}
+
+	server := capturedMCPServers[0]
+
+	// Parse the environment JSON
+	var env map[string]string
+	if err := json.Unmarshal([]byte(server.EnvJSON), &env); err != nil {
+		t.Fatalf("Failed to unmarshal env JSON: %v", err)
+	}
+
+	// Check HUMANLAYER_RUN_ID is set
+	if env["HUMANLAYER_RUN_ID"] == "" {
+		t.Error("HUMANLAYER_RUN_ID not set in MCP server environment")
+	}
+
+	// Check HUMANLAYER_DAEMON_SOCKET is set to our test socket path
+	if env["HUMANLAYER_DAEMON_SOCKET"] != testSocketPath {
+		t.Errorf("Expected HUMANLAYER_DAEMON_SOCKET to be %s, got %s", testSocketPath, env["HUMANLAYER_DAEMON_SOCKET"])
 	}
 }
 

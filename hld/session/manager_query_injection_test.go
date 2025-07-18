@@ -22,7 +22,7 @@ func TestQueryInjection(t *testing.T) {
 		mockStore := store.NewMockConversationStore(ctrl)
 
 		// Create manager
-		manager, err := NewManager(nil, mockStore)
+		manager, err := NewManager(nil, mockStore, "")
 		require.NoError(t, err)
 
 		// Test data
@@ -67,7 +67,7 @@ func TestQueryInjection(t *testing.T) {
 
 	t.Run("Query appears as sequence=1 (first event)", func(t *testing.T) {
 		mockStore := store.NewMockConversationStore(ctrl)
-		manager, err := NewManager(nil, mockStore)
+		manager, err := NewManager(nil, mockStore, "")
 		require.NoError(t, err)
 
 		sessionID := "test-session-id"
@@ -91,7 +91,7 @@ func TestQueryInjection(t *testing.T) {
 
 	t.Run("Deduplication - query not injected twice if retried", func(t *testing.T) {
 		mockStore := store.NewMockConversationStore(ctrl)
-		manager, err := NewManager(nil, mockStore)
+		manager, err := NewManager(nil, mockStore, "")
 		require.NoError(t, err)
 
 		sessionID := "test-session-id"
@@ -115,7 +115,7 @@ func TestQueryInjection(t *testing.T) {
 
 	t.Run("Cleanup - pending queries are cleaned up on error", func(t *testing.T) {
 		mockStore := store.NewMockConversationStore(ctrl)
-		manager, err := NewManager(nil, mockStore)
+		manager, err := NewManager(nil, mockStore, "")
 		require.NoError(t, err)
 
 		sessionID := "test-session-id"
@@ -138,7 +138,7 @@ func TestQueryInjection(t *testing.T) {
 
 	t.Run("Query injection works with empty/whitespace queries", func(t *testing.T) {
 		mockStore := store.NewMockConversationStore(ctrl)
-		manager, err := NewManager(nil, mockStore)
+		manager, err := NewManager(nil, mockStore, "")
 		require.NoError(t, err)
 
 		testCases := []struct {
@@ -174,7 +174,7 @@ func TestQueryInjectionRaceCondition(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockStore := store.NewMockConversationStore(ctrl)
-	manager, err := NewManager(nil, mockStore)
+	manager, err := NewManager(nil, mockStore, "")
 	require.NoError(t, err)
 
 	// Test that query injection is thread-safe
