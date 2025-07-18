@@ -478,7 +478,7 @@ export function eventToDisplayObject(
 
   if (event.event_type === ConversationEventType.Thinking) {
     // Thinking messages are always from assistant
-    const fullContent = event.content || ''
+    const fullContent = (event.content || '').trim()
 
     subject = (
       <div className="text-muted-foreground italic">
