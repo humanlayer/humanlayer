@@ -2,7 +2,12 @@ import React, { forwardRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { SessionInfo, SessionStatus } from '@/lib/daemon/types'
-import { getSessionStatusText, getInputPlaceholder, getHelpText, getForkInputPlaceholder } from '../utils/sessionStatus'
+import {
+  getSessionStatusText,
+  getInputPlaceholder,
+  getHelpText,
+  getForkInputPlaceholder,
+} from '../utils/sessionStatus'
 import { GitBranch } from 'lucide-react'
 
 interface ResponseInputProps {
@@ -64,12 +69,7 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
         <div className="flex items-center justify-between py-1">
           <span className="text-sm text-muted-foreground">{getSessionStatusText(session.status)}</span>
           {onOpenForkView && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onOpenForkView}
-              className="h-8 gap-2"
-            >
+            <Button variant="ghost" size="sm" onClick={onOpenForkView} className="h-8 gap-2">
               <GitBranch className="h-4 w-4" />
               Fork from previous
             </Button>
@@ -85,7 +85,9 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
         <div className="flex gap-2">
           <Textarea
             ref={ref}
-            placeholder={isForkMode ? getForkInputPlaceholder(session.status) : getInputPlaceholder(session.status)}
+            placeholder={
+              isForkMode ? getForkInputPlaceholder(session.status) : getInputPlaceholder(session.status)
+            }
             value={responseInput}
             onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setResponseInput(e.target.value)}
             onKeyDown={handleResponseInputKeyDown}

@@ -59,7 +59,7 @@ function ForkViewModalContent({
 
   // Add current option as a special index (-1) only if session is not failed
   const showCurrentOption = sessionStatus !== SessionStatus.Failed
-  const allOptions = showCurrentOption 
+  const allOptions = showCurrentOption
     ? [...userMessageIndices, { event: null, index: -1 }]
     : userMessageIndices
 
