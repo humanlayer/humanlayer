@@ -2,7 +2,13 @@ import React, { forwardRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { SessionInfo, SessionStatus } from '@/lib/daemon/types'
-import { getSessionStatusText, getInputPlaceholder, getHelpText } from '../utils/sessionStatus'
+import {
+  getSessionStatusText,
+  getInputPlaceholder,
+  getHelpText,
+  getForkInputPlaceholder,
+} from '../utils/sessionStatus'
+import { GitBranch } from 'lucide-react'
 
 interface ResponseInputProps {
   session: SessionInfo
@@ -12,6 +18,7 @@ interface ResponseInputProps {
   handleContinueSession: () => void
   handleResponseInputKeyDown: (e: React.KeyboardEvent) => void
   isForkMode?: boolean
+  onOpenForkView?: () => void
 }
 
 export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>(
@@ -24,6 +31,7 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
       handleContinueSession,
       handleResponseInputKeyDown,
       isForkMode,
+      onOpenForkView,
     },
     ref,
   ) => {
@@ -55,11 +63,17 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
       // Regular help text
       return getHelpText(session.status)
     }
-    // Only show the simple status text if session is failed
-    if (session.status === SessionStatus.Failed) {
+    // Only show the simple status text if session is failed AND not in fork mode
+    if (session.status === SessionStatus.Failed && !isForkMode) {
       return (
         <div className="flex items-center justify-between py-1">
           <span className="text-sm text-muted-foreground">{getSessionStatusText(session.status)}</span>
+          {onOpenForkView && (
+            <Button variant="ghost" size="sm" onClick={onOpenForkView} className="h-8 gap-2">
+              <GitBranch className="h-4 w-4" />
+              Fork from previous
+            </Button>
+          )}
         </div>
       )
     }
@@ -71,7 +85,9 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
         <div className="flex gap-2">
           <Textarea
             ref={ref}
-            placeholder={getInputPlaceholder(session.status)}
+            placeholder={
+              isForkMode ? getForkInputPlaceholder(session.status) : getInputPlaceholder(session.status)
+            }
             value={responseInput}
             onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setResponseInput(e.target.value)}
             onKeyDown={handleResponseInputKeyDown}

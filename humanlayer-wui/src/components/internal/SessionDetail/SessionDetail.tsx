@@ -551,6 +551,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
             onSelectEvent={handleForkSelect}
             isOpen={forkViewOpen}
             onOpenChange={setForkViewOpen}
+            sessionStatus={session.status}
           />
         </div>
       )}
@@ -578,6 +579,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
             onSelectEvent={handleForkSelect}
             isOpen={forkViewOpen}
             onOpenChange={setForkViewOpen}
+            sessionStatus={session.status}
           />
         </div>
       )}
@@ -774,6 +776,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
             handleContinueSession={actions.handleContinueSession}
             handleResponseInputKeyDown={actions.handleResponseInputKeyDown}
             isForkMode={actions.isForkMode}
+            onOpenForkView={() => setForkViewOpen(true)}
           />
           <AutoAcceptIndicator enabled={autoAcceptEdits} className="mt-2" />
         </CardContent>
