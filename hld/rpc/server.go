@@ -18,6 +18,7 @@ type Server struct {
 	connHandlers    map[string]ConnHandlerFunc
 	subscriptionMgr *SubscriptionHandlers
 	mu              sync.RWMutex
+	versionOverride string
 }
 
 // HandlerFunc is a function that handles an RPC method
@@ -31,6 +32,20 @@ func NewServer() *Server {
 	s := &Server{
 		handlers:     make(map[string]HandlerFunc),
 		connHandlers: make(map[string]ConnHandlerFunc),
+	}
+
+	// Register built-in handlers
+	s.registerBuiltinHandlers()
+
+	return s
+}
+
+// NewServerWithVersionOverride creates a new RPC server with a custom version string
+func NewServerWithVersionOverride(versionOverride string) *Server {
+	s := &Server{
+		handlers:        make(map[string]HandlerFunc),
+		connHandlers:    make(map[string]ConnHandlerFunc),
+		versionOverride: versionOverride,
 	}
 
 	// Register built-in handlers
@@ -233,8 +248,12 @@ func (s *Server) sendResponse(conn net.Conn, resp *Response) error {
 
 // handleHealthCheck handles the health check RPC method
 func (s *Server) handleHealthCheck(ctx context.Context, params json.RawMessage) (interface{}, error) {
+	version := Version
+	if s.versionOverride != "" {
+		version = s.versionOverride
+	}
 	return &HealthCheckResponse{
 		Status:  "ok",
-		Version: Version,
+		Version: version,
 	}, nil
 }

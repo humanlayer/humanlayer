@@ -22,7 +22,7 @@ func TestContinueSessionInheritance(t *testing.T) {
 	}
 	defer func() { _ = sqliteStore.Close() }()
 
-	manager, err := NewManager(eventBus, sqliteStore)
+	manager, err := NewManager(eventBus, sqliteStore, "")
 	if err != nil {
 		t.Fatalf("Failed to create manager: %v", err)
 	}

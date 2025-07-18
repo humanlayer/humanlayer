@@ -89,7 +89,7 @@ func New() (*Daemon, error) {
 	}
 
 	// Create session manager with store and config
-	sessionManager, err := session.NewManager(eventBus, conversationStore)
+	sessionManager, err := session.NewManager(eventBus, conversationStore, cfg.SocketPath)
 	if err != nil {
 		_ = conversationStore.Close()
 		return nil, fmt.Errorf("failed to create session manager: %w", err)
@@ -147,7 +147,11 @@ func (d *Daemon) Run(ctx context.Context) error {
 	}()
 
 	// Create and start RPC server
-	d.rpcServer = rpc.NewServer()
+	if d.config.VersionOverride != "" {
+		d.rpcServer = rpc.NewServerWithVersionOverride(d.config.VersionOverride)
+	} else {
+		d.rpcServer = rpc.NewServer()
+	}
 
 	// Mark orphaned sessions as failed (from previous daemon run)
 	if err := d.markOrphanedSessionsAsFailed(ctx); err != nil {

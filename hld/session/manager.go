@@ -26,13 +26,14 @@ type Manager struct {
 	store              store.ConversationStore
 	approvalReconciler ApprovalReconciler
 	pendingQueries     sync.Map // map[sessionID]query - stores queries waiting for Claude session ID
+	socketPath         string   // Daemon socket path for MCP servers
 }
 
 // Compile-time check that Manager implements SessionManager
 var _ SessionManager = (*Manager)(nil)
 
 // NewManager creates a new session manager with required store
-func NewManager(eventBus bus.EventBus, store store.ConversationStore) (*Manager, error) {
+func NewManager(eventBus bus.EventBus, store store.ConversationStore, socketPath string) (*Manager, error) {
 	if store == nil {
 		return nil, fmt.Errorf("store is required")
 	}
@@ -47,6 +48,7 @@ func NewManager(eventBus bus.EventBus, store store.ConversationStore) (*Manager,
 		client:          client,
 		eventBus:        eventBus,
 		store:           store,
+		socketPath:      socketPath,
 	}, nil
 }
 
@@ -63,7 +65,7 @@ func (m *Manager) LaunchSession(ctx context.Context, config claudecode.SessionCo
 	sessionID := uuid.New().String()
 	runID := uuid.New().String()
 
-	// Add HUMANLAYER_RUN_ID to MCP server environment
+	// Add HUMANLAYER_RUN_ID and HUMANLAYER_DAEMON_SOCKET to MCP server environment
 	if config.MCPConfig != nil {
 		slog.Debug("configuring MCP servers", "count", len(config.MCPConfig.MCPServers))
 		for name, server := range config.MCPConfig.MCPServers {
@@ -71,12 +73,17 @@ func (m *Manager) LaunchSession(ctx context.Context, config claudecode.SessionCo
 				server.Env = make(map[string]string)
 			}
 			server.Env["HUMANLAYER_RUN_ID"] = runID
+			// Add daemon socket path so MCP servers connect to the correct daemon
+			if m.socketPath != "" {
+				server.Env["HUMANLAYER_DAEMON_SOCKET"] = m.socketPath
+			}
 			config.MCPConfig.MCPServers[name] = server
 			slog.Debug("configured MCP server",
 				"name", name,
 				"command", server.Command,
 				"args", server.Args,
-				"run_id", runID)
+				"run_id", runID,
+				"socket_path", m.socketPath)
 		}
 	} else {
 		slog.Debug("no MCP config provided")
@@ -115,9 +122,29 @@ func (m *Manager) LaunchSession(ctx context.Context, config claudecode.SessionCo
 
 	// No longer storing full session in memory
 
+	// Log final configuration before launching
+	var mcpServersDetail string
+	if config.MCPConfig != nil {
+		for name, server := range config.MCPConfig.MCPServers {
+			mcpServersDetail += fmt.Sprintf("[%s: cmd=%s args=%v env=%v] ", name, server.Command, server.Args, server.Env)
+		}
+	}
+	slog.Info("launching Claude session with configuration",
+		"session_id", sessionID,
+		"run_id", runID,
+		"query", config.Query,
+		"working_dir", config.WorkingDir,
+		"permission_prompt_tool", config.PermissionPromptTool,
+		"mcp_servers", len(config.MCPConfig.MCPServers),
+		"mcp_servers_detail", mcpServersDetail)
+
 	// Launch Claude session
 	claudeSession, err := m.client.Launch(config)
 	if err != nil {
+		slog.Error("failed to launch Claude session",
+			"session_id", sessionID,
+			"error", err,
+			"config", fmt.Sprintf("%+v", config))
 		m.updateSessionStatus(ctx, sessionID, StatusFailed, err.Error())
 		return nil, fmt.Errorf("failed to launch Claude session: %w", err)
 	}
@@ -1065,13 +1092,17 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 		return nil, fmt.Errorf("failed to store session in database: %w", err)
 	}
 
-	// Add run_id to MCP server environments
+	// Add run_id and daemon socket to MCP server environments
 	if config.MCPConfig != nil {
 		for name, server := range config.MCPConfig.MCPServers {
 			if server.Env == nil {
 				server.Env = make(map[string]string)
 			}
 			server.Env["HUMANLAYER_RUN_ID"] = runID
+			// Add daemon socket path so MCP servers connect to the correct daemon
+			if m.socketPath != "" {
+				server.Env["HUMANLAYER_DAEMON_SOCKET"] = m.socketPath
+			}
 			config.MCPConfig.MCPServers[name] = server
 		}
 

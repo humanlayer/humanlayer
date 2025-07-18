@@ -1,4 +1,5 @@
 use crate::daemon_client::error::{Error, Result};
+use std::env;
 use std::path::PathBuf;
 use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
@@ -103,6 +104,12 @@ impl Connection {
 
     /// Get the default socket path
     fn default_socket_path() -> PathBuf {
+        // Check environment variable first, matching daemon's behavior
+        if let Ok(socket_path) = env::var("HUMANLAYER_DAEMON_SOCKET") {
+            return PathBuf::from(socket_path);
+        }
+
+        // Fall back to default
         let home = dirs::home_dir().expect("Could not find home directory");
         home.join(DEFAULT_SOCKET_PATH)
     }

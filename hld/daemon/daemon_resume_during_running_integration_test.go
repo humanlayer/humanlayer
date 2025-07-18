@@ -30,7 +30,7 @@ func TestIntegrationResumeDuringRunning(t *testing.T) {
 	}
 	defer func() { _ = sqliteStore.Close() }()
 
-	sessionManager, err := session.NewManager(eventBus, sqliteStore)
+	sessionManager, err := session.NewManager(eventBus, sqliteStore, "")
 	if err != nil {
 		t.Fatalf("Failed to create session manager: %v", err)
 	}

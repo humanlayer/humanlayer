@@ -75,7 +75,7 @@ program
   .description('HumanLayer, but on your command-line.')
   .version(packageJson.version)
 
-const UNPROTECTED_COMMANDS = ['config', 'login', 'thoughts', 'join-waitlist']
+const UNPROTECTED_COMMANDS = ['config', 'login', 'thoughts', 'join-waitlist', 'launch', 'mcp']
 
 program.hook('preAction', async (thisCmd, actionCmd) => {
   // Get the full command path by traversing up the command hierarchy

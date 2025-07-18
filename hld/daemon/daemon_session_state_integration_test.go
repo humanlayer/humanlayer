@@ -41,7 +41,7 @@ func TestDaemonSessionStateIntegration(t *testing.T) {
 	approvalManager := approval.NewManager(testStore, eventBus)
 
 	// Create session manager
-	sessionManager, err := session.NewManager(eventBus, testStore)
+	sessionManager, err := session.NewManager(eventBus, testStore, "")
 	if err != nil {
 		t.Fatalf("failed to create session manager: %v", err)
 	}

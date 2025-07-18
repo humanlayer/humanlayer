@@ -2,10 +2,12 @@ package session
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
 
+	claudecode "github.com/humanlayer/humanlayer/claudecode-go"
 	"github.com/humanlayer/humanlayer/hld/bus"
 	"github.com/humanlayer/humanlayer/hld/store"
 	"go.uber.org/mock/gomock"
@@ -19,7 +21,7 @@ func TestNewManager(t *testing.T) {
 	mockStore := store.NewMockConversationStore(ctrl)
 
 	var eventBus bus.EventBus = nil // no bus for this test
-	manager, err := NewManager(eventBus, mockStore)
+	manager, err := NewManager(eventBus, mockStore, "")
 
 	if err != nil {
 		t.Fatalf("Failed to create manager: %v", err)
@@ -34,7 +36,7 @@ func TestNewManager(t *testing.T) {
 
 func TestNewManager_RequiresStore(t *testing.T) {
 	var eventBus bus.EventBus = nil
-	_, err := NewManager(eventBus, nil)
+	_, err := NewManager(eventBus, nil, "")
 
 	if err == nil {
 		t.Fatal("Expected error when store is nil")
@@ -50,7 +52,7 @@ func TestListSessions(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockStore := store.NewMockConversationStore(ctrl)
-	manager, _ := NewManager(nil, mockStore)
+	manager, _ := NewManager(nil, mockStore, "")
 
 	// Test empty list
 	mockStore.EXPECT().ListSessions(gomock.Any()).Return([]*store.Session{}, nil)
@@ -83,7 +85,7 @@ func TestGetSessionInfo(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockStore := store.NewMockConversationStore(ctrl)
-	manager, _ := NewManager(nil, mockStore)
+	manager, _ := NewManager(nil, mockStore, "")
 
 	// Test not found
 	mockStore.EXPECT().GetSession(gomock.Any(), "not-found").Return(nil, fmt.Errorf("not found"))
@@ -121,7 +123,7 @@ func TestContinueSession_ValidatesParentExists(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockStore := store.NewMockConversationStore(ctrl)
-	manager, _ := NewManager(nil, mockStore)
+	manager, _ := NewManager(nil, mockStore, "")
 
 	// Test parent not found
 	mockStore.EXPECT().GetSession(gomock.Any(), "not-found").Return(nil, fmt.Errorf("session not found"))
@@ -144,7 +146,7 @@ func TestContinueSession_ValidatesParentStatus(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockStore := store.NewMockConversationStore(ctrl)
-	manager, _ := NewManager(nil, mockStore)
+	manager, _ := NewManager(nil, mockStore, "")
 
 	testCases := []struct {
 		name          string
@@ -200,7 +202,7 @@ func TestContinueSession_ValidatesClaudeSessionID(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockStore := store.NewMockConversationStore(ctrl)
-	manager, _ := NewManager(nil, mockStore)
+	manager, _ := NewManager(nil, mockStore, "")
 
 	// Parent without claude_session_id
 	parentSession := &store.Session{
@@ -227,12 +229,76 @@ func TestContinueSession_ValidatesClaudeSessionID(t *testing.T) {
 	}
 }
 
+func TestLaunchSession_SetsMCPEnvironment(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockStore := store.NewMockConversationStore(ctrl)
+	testSocketPath := "/test/daemon.sock"
+	manager, _ := NewManager(nil, mockStore, testSocketPath)
+
+	// Store the session config that gets passed to CreateSession
+	mockStore.EXPECT().CreateSession(gomock.Any(), gomock.Any()).Return(nil)
+
+	// Store the MCP servers that get passed to StoreMCPServers
+	var capturedMCPServers []store.MCPServer
+	mockStore.EXPECT().StoreMCPServers(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(ctx context.Context, sessionID string, servers []store.MCPServer) error {
+			capturedMCPServers = servers
+			return nil
+		})
+
+	// Update session to running
+	mockStore.EXPECT().UpdateSession(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+
+	// Launch session with MCP config
+	config := claudecode.SessionConfig{
+		Query: "test query",
+		MCPConfig: &claudecode.MCPConfig{
+			MCPServers: map[string]claudecode.MCPServer{
+				"test-server": {
+					Command: "test-cmd",
+					Args:    []string{"arg1", "arg2"},
+				},
+			},
+		},
+	}
+
+	_, err := manager.LaunchSession(context.Background(), config)
+	if err != nil {
+		t.Fatalf("Failed to launch session: %v", err)
+	}
+
+	// Verify MCP servers have the correct environment variables
+	if len(capturedMCPServers) != 1 {
+		t.Fatalf("Expected 1 MCP server, got %d", len(capturedMCPServers))
+	}
+
+	server := capturedMCPServers[0]
+
+	// Parse the environment JSON
+	var env map[string]string
+	if err := json.Unmarshal([]byte(server.EnvJSON), &env); err != nil {
+		t.Fatalf("Failed to unmarshal env JSON: %v", err)
+	}
+
+	// Check HUMANLAYER_RUN_ID is set
+	if env["HUMANLAYER_RUN_ID"] == "" {
+		t.Error("HUMANLAYER_RUN_ID not set in MCP server environment")
+	}
+
+	// Check HUMANLAYER_DAEMON_SOCKET is set to our test socket path
+	if env["HUMANLAYER_DAEMON_SOCKET"] != testSocketPath {
+		t.Errorf("Expected HUMANLAYER_DAEMON_SOCKET to be %s, got %s", testSocketPath, env["HUMANLAYER_DAEMON_SOCKET"])
+	}
+}
+
 func TestContinueSession_ValidatesWorkingDirectory(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	mockStore := store.NewMockConversationStore(ctrl)
-	manager, _ := NewManager(nil, mockStore)
+	manager, _ := NewManager(nil, mockStore, "")
 
 	// Parent without working directory
 	parentSession := &store.Session{
@@ -264,7 +330,7 @@ func TestContinueSession_CreatesNewSessionWithParentReference(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockStore := store.NewMockConversationStore(ctrl)
-	manager, _ := NewManager(nil, mockStore)
+	manager, _ := NewManager(nil, mockStore, "")
 
 	// Mock parent session
 	parentSession := &store.Session{
@@ -340,7 +406,7 @@ func TestContinueSession_HandlesOptionalOverrides(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockStore := store.NewMockConversationStore(ctrl)
-	manager, _ := NewManager(nil, mockStore)
+	manager, _ := NewManager(nil, mockStore, "")
 
 	// Mock parent session
 	parentSession := &store.Session{
@@ -439,7 +505,7 @@ func TestInterruptSession(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockStore := store.NewMockConversationStore(ctrl)
-	manager, _ := NewManager(nil, mockStore)
+	manager, _ := NewManager(nil, mockStore, "")
 
 	// Test interrupting non-existent session
 	err := manager.InterruptSession(context.Background(), "not-found")
@@ -468,7 +534,7 @@ func TestContinueSession_InterruptsRunningSession(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockStore := store.NewMockConversationStore(ctrl)
-	manager, _ := NewManager(nil, mockStore)
+	manager, _ := NewManager(nil, mockStore, "")
 
 	t.Run("running session without claude_session_id", func(t *testing.T) {
 		// Create a running parent session without claude_session_id (orphaned state)
