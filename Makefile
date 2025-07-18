@@ -491,7 +491,7 @@ daemon-nightly: daemon-nightly-build
 # Build and install nightly WUI
 .PHONY: wui-nightly-build
 wui-nightly-build:
-	cd humanlayer-wui && bun run tauri build -- --bundles app
+	cd humanlayer-wui && bun run tauri build --bundles app
 	@echo "Build complete. Installing to ~/Applications..."
 	cp -r humanlayer-wui/src-tauri/target/release/bundle/macos/humanlayer-wui.app ~/Applications/
 	@echo "Installed WUI nightly to ~/Applications/humanlayer-wui.app"
