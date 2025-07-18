@@ -476,3 +476,96 @@ daemon:
 	@mkdir -p ~/.humanlayer/logs
 	echo "$(logfileprefix) starting daemon in $(shell pwd)" > ~/.humanlayer/logs/daemon-$(logfileprefix).log
 	cd hlyr && npm run build && ./dist/bin/hld 2>&1 | tee -a ~/.humanlayer/logs/daemon-$(logfileprefix).log
+
+# Build nightly daemon binary
+.PHONY: daemon-nightly-build
+daemon-nightly-build:
+	cd hld && go build -o hld-nightly ./cmd/hld
+	@echo "Built nightly daemon binary: hld/hld-nightly"
+
+# Run nightly daemon
+.PHONY: daemon-nightly
+daemon-nightly: daemon-nightly-build
+	@mkdir -p ~/.humanlayer/logs
+	echo "$$(date +%Y-%m-%d-%H-%M-%S) starting nightly daemon in $$(pwd)" > ~/.humanlayer/logs/daemon-nightly-$$(date +%Y-%m-%d-%H-%M-%S).log
+	cd hld && ./hld-nightly 2>&1 | tee -a ~/.humanlayer/logs/daemon-nightly-$$(date +%Y-%m-%d-%H-%M-%S).log
+
+# Build and install nightly WUI
+.PHONY: wui-nightly-build
+wui-nightly-build:
+	cd humanlayer-wui && bun run tauri build
+	@echo "Build complete. Installing to ~/Applications..."
+	cp -r humanlayer-wui/src-tauri/target/release/bundle/macos/humanlayer-wui.app ~/Applications/
+	@echo "Installed WUI nightly to ~/Applications/humanlayer-wui.app"
+
+# Open nightly WUI
+.PHONY: wui-nightly
+wui-nightly: wui-nightly-build
+	@echo "Opening WUI nightly..."
+	open ~/Applications/humanlayer-wui.app
+
+# Copy production database to timestamped dev database
+.PHONY: copy-db-to-dev
+copy-db-to-dev:
+	@mkdir -p ~/.humanlayer/dev
+	$(eval TIMESTAMP := $(shell date +%Y-%m-%d-%H-%M-%S))
+	$(eval DEV_DB := ~/.humanlayer/dev/daemon-$(TIMESTAMP).db)
+	@if [ -f ~/.humanlayer/daemon.db ]; then \
+		cp ~/.humanlayer/daemon.db $(DEV_DB); \
+		echo "Copied production database to: $(DEV_DB)" >&2; \
+		echo "$(DEV_DB)"; \
+	else \
+		echo "Error: Production database not found at ~/.humanlayer/daemon.db" >&2; \
+		exit 1; \
+	fi
+
+# Clean up dev databases and logs older than 10 days
+.PHONY: cleanup-dev
+cleanup-dev:
+	@echo "Cleaning up dev artifacts older than 10 days..."
+	@# Clean old dev databases
+	@if [ -d ~/.humanlayer/dev ]; then \
+		find ~/.humanlayer/dev -name "daemon-*.db" -type f -mtime +10 -delete -print | sed 's/^/Deleted database: /'; \
+	fi
+	@# Clean old dev logs
+	@if [ -d ~/.humanlayer/logs ]; then \
+		find ~/.humanlayer/logs -name "*-dev-*.log" -type f -mtime +10 -delete -print | sed 's/^/Deleted log: /'; \
+	fi
+	@echo "Cleanup complete."
+
+# Build dev daemon binary
+.PHONY: daemon-dev-build
+daemon-dev-build:
+	cd hld && go build -o hld-dev ./cmd/hld
+	@echo "Built dev daemon binary: hld/hld-dev"
+
+# Run dev daemon with fresh database copy
+.PHONY: daemon-dev
+daemon-dev: daemon-dev-build
+	@mkdir -p ~/.humanlayer/logs
+	$(eval TIMESTAMP := $(shell date +%Y-%m-%d-%H-%M-%S))
+	$(eval DEV_DB := $(shell make -s copy-db-to-dev))
+	@echo "Starting dev daemon with database: $(DEV_DB)"
+	echo "$(TIMESTAMP) starting dev daemon in $$(pwd)" > ~/.humanlayer/logs/daemon-dev-$(TIMESTAMP).log
+	cd hld && HUMANLAYER_DATABASE_PATH=$(DEV_DB) HUMANLAYER_DAEMON_SOCKET=~/.humanlayer/daemon-dev.sock HUMANLAYER_DAEMON_VERSION_OVERRIDE=dev ./hld-dev 2>&1 | tee -a ~/.humanlayer/logs/daemon-dev-$(TIMESTAMP).log
+
+# Run dev WUI with custom socket
+.PHONY: wui-dev
+wui-dev:
+	@mkdir -p ~/.humanlayer/logs
+	$(eval TIMESTAMP := $(shell date +%Y-%m-%d-%H-%M-%S))
+	echo "$(TIMESTAMP) starting dev wui in $$(pwd)" > ~/.humanlayer/logs/wui-dev-$(TIMESTAMP).log
+	cd humanlayer-wui && HUMANLAYER_DAEMON_SOCKET=~/.humanlayer/daemon-dev.sock bun run tauri dev 2>&1 | tee -a ~/.humanlayer/logs/wui-dev-$(TIMESTAMP).log
+
+# Show current dev environment setup
+.PHONY: dev-status
+dev-status:
+	@echo "=== Development Environment Status ==="
+	@echo "Dev Socket: ~/.humanlayer/daemon-dev.sock"
+	@echo "Nightly Socket: ~/.humanlayer/daemon.sock"
+	@echo ""
+	@echo "Dev Databases:"
+	@ls -la ~/.humanlayer/dev/*.db 2>/dev/null || echo "  No dev databases found"
+	@echo ""
+	@echo "Active daemons:"
+	@ps aux | grep -E "hld(-dev|-nightly)?$$" | grep -v grep || echo "  No daemons running"

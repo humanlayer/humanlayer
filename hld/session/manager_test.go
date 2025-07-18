@@ -19,7 +19,7 @@ func TestNewManager(t *testing.T) {
 	mockStore := store.NewMockConversationStore(ctrl)
 
 	var eventBus bus.EventBus = nil // no bus for this test
-	manager, err := NewManager(eventBus, mockStore)
+	manager, err := NewManager(eventBus, mockStore, "")
 
 	if err != nil {
 		t.Fatalf("Failed to create manager: %v", err)
@@ -34,7 +34,7 @@ func TestNewManager(t *testing.T) {
 
 func TestNewManager_RequiresStore(t *testing.T) {
 	var eventBus bus.EventBus = nil
-	_, err := NewManager(eventBus, nil)
+	_, err := NewManager(eventBus, nil, "")
 
 	if err == nil {
 		t.Fatal("Expected error when store is nil")
@@ -50,7 +50,7 @@ func TestListSessions(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockStore := store.NewMockConversationStore(ctrl)
-	manager, _ := NewManager(nil, mockStore)
+	manager, _ := NewManager(nil, mockStore, "")
 
 	// Test empty list
 	mockStore.EXPECT().ListSessions(gomock.Any()).Return([]*store.Session{}, nil)
@@ -83,7 +83,7 @@ func TestGetSessionInfo(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockStore := store.NewMockConversationStore(ctrl)
-	manager, _ := NewManager(nil, mockStore)
+	manager, _ := NewManager(nil, mockStore, "")
 
 	// Test not found
 	mockStore.EXPECT().GetSession(gomock.Any(), "not-found").Return(nil, fmt.Errorf("not found"))
@@ -121,7 +121,7 @@ func TestContinueSession_ValidatesParentExists(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockStore := store.NewMockConversationStore(ctrl)
-	manager, _ := NewManager(nil, mockStore)
+	manager, _ := NewManager(nil, mockStore, "")
 
 	// Test parent not found
 	mockStore.EXPECT().GetSession(gomock.Any(), "not-found").Return(nil, fmt.Errorf("session not found"))
@@ -144,7 +144,7 @@ func TestContinueSession_ValidatesParentStatus(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockStore := store.NewMockConversationStore(ctrl)
-	manager, _ := NewManager(nil, mockStore)
+	manager, _ := NewManager(nil, mockStore, "")
 
 	testCases := []struct {
 		name          string
@@ -200,7 +200,7 @@ func TestContinueSession_ValidatesClaudeSessionID(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockStore := store.NewMockConversationStore(ctrl)
-	manager, _ := NewManager(nil, mockStore)
+	manager, _ := NewManager(nil, mockStore, "")
 
 	// Parent without claude_session_id
 	parentSession := &store.Session{
@@ -232,7 +232,7 @@ func TestContinueSession_ValidatesWorkingDirectory(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockStore := store.NewMockConversationStore(ctrl)
-	manager, _ := NewManager(nil, mockStore)
+	manager, _ := NewManager(nil, mockStore, "")
 
 	// Parent without working directory
 	parentSession := &store.Session{
@@ -264,7 +264,7 @@ func TestContinueSession_CreatesNewSessionWithParentReference(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockStore := store.NewMockConversationStore(ctrl)
-	manager, _ := NewManager(nil, mockStore)
+	manager, _ := NewManager(nil, mockStore, "")
 
 	// Mock parent session
 	parentSession := &store.Session{
@@ -340,7 +340,7 @@ func TestContinueSession_HandlesOptionalOverrides(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockStore := store.NewMockConversationStore(ctrl)
-	manager, _ := NewManager(nil, mockStore)
+	manager, _ := NewManager(nil, mockStore, "")
 
 	// Mock parent session
 	parentSession := &store.Session{
@@ -439,7 +439,7 @@ func TestInterruptSession(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockStore := store.NewMockConversationStore(ctrl)
-	manager, _ := NewManager(nil, mockStore)
+	manager, _ := NewManager(nil, mockStore, "")
 
 	// Test interrupting non-existent session
 	err := manager.InterruptSession(context.Background(), "not-found")
@@ -468,7 +468,7 @@ func TestContinueSession_InterruptsRunningSession(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockStore := store.NewMockConversationStore(ctrl)
-	manager, _ := NewManager(nil, mockStore)
+	manager, _ := NewManager(nil, mockStore, "")
 
 	t.Run("running session without claude_session_id", func(t *testing.T) {
 		// Create a running parent session without claude_session_id (orphaned state)

@@ -22,6 +22,9 @@ type Config struct {
 
 	// Logging configuration
 	LogLevel string `mapstructure:"log_level"`
+
+	// Version override for display purposes (e.g., "dev" for development instances)
+	VersionOverride string `mapstructure:"version_override"`
 }
 
 // Load loads configuration with priority: flags > env vars > config file > defaults
@@ -47,6 +50,7 @@ func Load() (*Config, error) {
 	_ = v.BindEnv("api_key", "HUMANLAYER_API_KEY")
 	_ = v.BindEnv("api_base_url", "HUMANLAYER_API_BASE_URL", "HUMANLAYER_API_BASE")
 	_ = v.BindEnv("log_level", "HUMANLAYER_LOG_LEVEL")
+	_ = v.BindEnv("version_override", "HUMANLAYER_DAEMON_VERSION_OVERRIDE")
 
 	// Set defaults
 	v.SetDefault("socket_path", "~/.humanlayer/daemon.sock")

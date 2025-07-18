@@ -180,3 +180,5 @@ cython_debug/
 .idea/
 
 hlyr/blah.txt
+hld/hld-dev
+hld/hld-nightly

@@ -116,8 +116,11 @@ export async function startClaudeApprovalsMCPServer() {
     },
   )
 
-  // Create daemon client
-  const daemonClient = new DaemonClient()
+  // Create daemon client with socket path from environment or config
+  // The daemon sets HUMANLAYER_DAEMON_SOCKET for MCP servers it launches
+  const socketPath = process.env.HUMANLAYER_DAEMON_SOCKET || config.daemon_socket
+  logger.info('Creating daemon client', { socketPath })
+  const daemonClient = new DaemonClient(socketPath)
 
   server.setRequestHandler(ListToolsRequestSchema, async () => {
     return {
