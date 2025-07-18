@@ -35,18 +35,13 @@ export const launchCommand = async (query: string, options: LaunchOptions = {}) 
 
     try {
       // Build MCP config (approvals enabled by default unless explicitly disabled)
-      // For development, use the local built version directly
-      const scriptPath = new URL(import.meta.url).pathname
-      const projectRoot = scriptPath.split('/hlyr/')[0] + '/hlyr'
-      const localHlyrPath = `${projectRoot}/dist/index.js`
-
       const mcpConfig =
         options.approvals !== false
           ? {
               mcpServers: {
                 approvals: {
-                  command: 'node',
-                  args: [localHlyrPath, 'mcp', 'claude_approvals'],
+                  command: 'npx',
+                  args: ['humanlayer', 'mcp', 'claude_approvals'],
                 },
               },
             }
