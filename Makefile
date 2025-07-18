@@ -26,7 +26,7 @@ check-ts:
 check-hlyr:
 	@$(MAKE) -C hlyr check VERBOSE=$(VERBOSE)
 
-check-wui: clean-wui-release
+check-wui:
 	@$(MAKE) -C humanlayer-wui check VERBOSE=$(VERBOSE)
 
 check-tui:
