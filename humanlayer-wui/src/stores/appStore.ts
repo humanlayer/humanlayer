@@ -1,4 +1,4 @@
-import type { SessionInfo, PendingApproval } from '@/lib/daemon/types'
+import type { SessionInfo, Approval } from '@/lib/daemon/types'
 import { create, StoreApi } from 'zustand'
 import { daemonClient } from '@/lib/daemon'
 
@@ -9,7 +9,7 @@ export interface AppState {
   activeSessionId: string | null
 
   /* Approvals */
-  approvals: PendingApproval[]
+  approvals: Approval[]
 
   /* UI State */
   isLoading: boolean
@@ -27,8 +27,8 @@ export interface AppState {
   interruptSession: (sessionId: string) => Promise<void>
 
   /* Approval Actions */
-  setApprovals: (approvals: PendingApproval[]) => void
-  updateApproval: (approvalId: string, updates: Partial<PendingApproval>) => void
+  setApprovals: (approvals: Approval[]) => void
+  updateApproval: (approvalId: string, updates: Partial<Approval>) => void
 
   /* Notification Actions */
   addNotifiedItem: (notificationId: string) => void
@@ -113,13 +113,12 @@ export function createRealAppStore(): StoreApi<AppState> {
     },
 
     // Approval Actions
-    setApprovals: (approvals: PendingApproval[]) => set({ approvals }),
-    updateApproval: (approvalId: string, updates: Partial<PendingApproval>) =>
+    setApprovals: (approvals: Approval[]) => set({ approvals }),
+    updateApproval: (approvalId: string, updates: Partial<Approval>) =>
       set(state => ({
-        approvals: state.approvals.map(approval => {
-          const currentId = approval.function_call?.call_id || approval.human_contact?.call_id
-          return currentId === approvalId ? { ...approval, ...updates } : approval
-        }),
+        approvals: state.approvals.map(approval =>
+          approval.id === approvalId ? { ...approval, ...updates } : approval,
+        ),
       })),
 
     // Notification Actions

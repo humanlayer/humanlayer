@@ -36,16 +36,15 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       store.getState().updateSession(session_id, { status: new_status as SessionStatus })
     },
     onNewApproval: data => {
-      // Handle new approvals
-      const currentApprovals = store.getState().approvals
-      store.getState().setApprovals([...currentApprovals, data.approval])
+      // Handle new approvals - for now just log since we need to fetch full approval data
+      console.log('New approval event:', data)
+      // TODO: Fetch full approval data from daemon using data.approval_id
     },
     onApprovalResolved: data => {
       // Handle resolved approvals
-      const { call_id, decision } = data
+      const { approval_id, decision } = data
       const approvals = store.getState().approvals.filter(a => {
-        const approvalId = a.function_call?.call_id || a.human_contact?.call_id
-        return approvalId !== call_id
+        return a.id !== approval_id
       })
       store.getState().setApprovals(approvals)
       toast.success(`Approval ${decision === 'approve' ? 'approved' : 'rejected'}`)
