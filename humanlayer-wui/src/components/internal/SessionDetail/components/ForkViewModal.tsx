@@ -10,7 +10,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { ConversationEvent } from '@/lib/daemon/types'
+import { ConversationEvent, SessionStatus } from '@/lib/daemon/types'
 import { cn } from '@/lib/utils'
 import { useStealHotkeyScope } from '@/hooks/useStealHotkeyScope'
 
@@ -22,6 +22,7 @@ interface ForkViewModalProps {
   onSelectEvent: (index: number | null) => void
   isOpen: boolean
   onOpenChange: (open: boolean) => void
+  sessionStatus?: SessionStatus
 }
 
 function ForkViewModalContent({
@@ -29,6 +30,7 @@ function ForkViewModalContent({
   selectedEventIndex,
   onSelectEvent,
   onClose,
+  sessionStatus,
 }: Omit<ForkViewModalProps, 'isOpen' | 'onOpenChange'> & { onClose: () => void }) {
   // Steal hotkey scope when this component mounts
   useStealHotkeyScope(ForkViewModalHotkeysScope)
@@ -55,8 +57,11 @@ function ForkViewModalContent({
     .filter(({ event }) => event.event_type === 'message' && event.role === 'user')
     .slice(1) // Exclude first message since it can't be forked
 
-  // Add current option as a special index (-1)
-  const allOptions = [...userMessageIndices, { event: null, index: -1 }]
+  // Add current option as a special index (-1) only if session is not failed
+  const showCurrentOption = sessionStatus !== SessionStatus.Failed
+  const allOptions = showCurrentOption 
+    ? [...userMessageIndices, { event: null, index: -1 }]
+    : userMessageIndices
 
   const [localSelectedIndex, setLocalSelectedIndex] = useState(0)
 
@@ -188,27 +193,29 @@ function ForkViewModalContent({
               )
             })}
 
-            {/* Current option */}
-            <div className="border-t mt-2 pt-2">
-              <div
-                className={cn(
-                  'px-4 py-3 rounded-md cursor-pointer transition-all text-sm',
-                  selectedEventIndex === null
-                    ? 'bg-accent text-accent-foreground ring-2 ring-primary'
-                    : 'hover:bg-accent/50',
-                )}
-                onClick={() => {
-                  onSelectEvent(null)
-                  setLocalSelectedIndex(allOptions.length - 1)
-                }}
-                onMouseEnter={() => setLocalSelectedIndex(allOptions.length - 1)}
-              >
-                <div className="flex items-start gap-3">
-                  <span className="text-xs font-mono text-muted-foreground mt-0.5">•</span>
-                  <span className="flex-1 font-medium">Current (latest state)</span>
+            {/* Current option - only show if session is not failed */}
+            {showCurrentOption && (
+              <div className="border-t mt-2 pt-2">
+                <div
+                  className={cn(
+                    'px-4 py-3 rounded-md cursor-pointer transition-all text-sm',
+                    selectedEventIndex === null
+                      ? 'bg-accent text-accent-foreground ring-2 ring-primary'
+                      : 'hover:bg-accent/50',
+                  )}
+                  onClick={() => {
+                    onSelectEvent(null)
+                    setLocalSelectedIndex(allOptions.length - 1)
+                  }}
+                  onMouseEnter={() => setLocalSelectedIndex(allOptions.length - 1)}
+                >
+                  <div className="flex items-start gap-3">
+                    <span className="text-xs font-mono text-muted-foreground mt-0.5">•</span>
+                    <span className="flex-1 font-medium">Current (latest state)</span>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         )}
 
@@ -232,6 +239,7 @@ export function ForkViewModal({
   onSelectEvent,
   isOpen,
   onOpenChange,
+  sessionStatus,
 }: ForkViewModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -259,6 +267,7 @@ export function ForkViewModal({
             selectedEventIndex={selectedEventIndex}
             onSelectEvent={onSelectEvent}
             onClose={() => onOpenChange(false)}
+            sessionStatus={sessionStatus}
           />
         )}
       </DialogContent>

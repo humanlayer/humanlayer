@@ -33,3 +33,12 @@ export const getHelpText = (status: string): React.ReactNode => {
     </>
   )
 }
+
+// Add a new function for fork-specific placeholders
+export const getForkInputPlaceholder = (status: string): string => {
+  if (status === 'failed') {
+    return 'Edit this message to fork from selected point...'
+  }
+  // Fall back to regular placeholder for other statuses
+  return getInputPlaceholder(status)
+}
