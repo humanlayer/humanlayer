@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useTheme, type Theme } from '@/contexts/ThemeContext'
 import { Moon, Sun, Coffee, Cat, ScanEye, Framer, Box, Palette } from 'lucide-react'
 import { useHotkeys, useHotkeysContext } from 'react-hotkeys-hook'
@@ -23,8 +23,10 @@ export function ThemeSelector() {
   const { theme, setTheme } = useTheme()
   const [isOpen, setIsOpen] = useState(false)
   const [selectedIndex, setSelectedIndex] = useState(0)
+  const [positionAbove, setPositionAbove] = useState(true)
   const currentTheme = themes.find(t => t.value === theme)
   const { enableScope, disableScope } = useHotkeysContext()
+  const buttonRef = useRef<HTMLButtonElement>(null)
 
   // Update selected index when theme changes or dropdown opens
   useEffect(() => {
@@ -33,6 +35,19 @@ export function ThemeSelector() {
       setSelectedIndex(currentIndex)
     }
   }, [theme, isOpen])
+
+  // Calculate dropdown position when it opens
+  useEffect(() => {
+    if (isOpen && buttonRef.current) {
+      const buttonRect = buttonRef.current.getBoundingClientRect()
+      const dropdownHeight = themes.length * 32 + 8 // Approximate height (32px per item + padding)
+      const spaceAbove = buttonRect.top
+      const spaceBelow = window.innerHeight - buttonRect.bottom
+
+      // Position above if there's enough space, otherwise below
+      setPositionAbove(spaceAbove >= dropdownHeight && spaceAbove > spaceBelow)
+    }
+  }, [isOpen])
 
   // manage hotkey scopes when this componetn is opened/closed
   useEffect(() => {
@@ -99,6 +114,7 @@ export function ThemeSelector() {
   return (
     <div className="relative">
       <button
+        ref={buttonRef}
         onClick={() => setIsOpen(!isOpen)}
         className="px-1.5 py-0.5 text-xs font-mono border border-border bg-background text-foreground hover:bg-accent/10 transition-colors"
         title={`Theme: ${currentTheme?.label || 'Unknown'}`}
@@ -109,7 +125,9 @@ export function ThemeSelector() {
       {isOpen && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
-          <div className="absolute bottom-full right-0 mb-1 min-w-28 border border-border bg-background z-20">
+          <div
+            className={`absolute ${positionAbove ? 'bottom-full mb-1' : 'top-full mt-1'} right-0 min-w-28 border border-border bg-background z-20 max-h-64 overflow-y-auto`}
+          >
             {themes.map((themeOption, index) => (
               <button
                 key={themeOption.value}
