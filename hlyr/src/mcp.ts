@@ -103,6 +103,10 @@ export async function startDefaultMCPServer() {
 export async function startClaudeApprovalsMCPServer() {
   // No auth validation needed - uses local daemon
   logger.info('Starting Claude approvals MCP server')
+  logger.info('Environment variables', {
+    HUMANLAYER_DAEMON_SOCKET: process.env.HUMANLAYER_DAEMON_SOCKET,
+    HUMANLAYER_RUN_ID: process.env.HUMANLAYER_RUN_ID,
+  })
 
   const server = new Server(
     {
@@ -118,27 +122,29 @@ export async function startClaudeApprovalsMCPServer() {
 
   // Create daemon client with socket path from environment or config
   // The daemon sets HUMANLAYER_DAEMON_SOCKET for MCP servers it launches
-  const socketPath = process.env.HUMANLAYER_DAEMON_SOCKET || config.daemon_socket
+  const resolvedConfig = resolveFullConfig({})
+  const socketPath = process.env.HUMANLAYER_DAEMON_SOCKET || resolvedConfig.daemon_socket
   logger.info('Creating daemon client', { socketPath })
   const daemonClient = new DaemonClient(socketPath)
 
   server.setRequestHandler(ListToolsRequestSchema, async () => {
-    return {
-      tools: [
-        {
-          name: 'request_permission',
-          description: 'Request permission to perform an action',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              tool_name: { type: 'string' },
-              input: { type: 'object' },
-            },
-            required: ['tool_name', 'input'],
+    logger.info('ListTools request received')
+    const tools = [
+      {
+        name: 'request_permission',
+        description: 'Request permission to perform an action',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            tool_name: { type: 'string' },
+            input: { type: 'object' },
           },
+          required: ['tool_name', 'input'],
         },
-      ],
-    }
+      },
+    ]
+    logger.info('Returning tools', { tools })
+    return { tools }
   })
 
   server.setRequestHandler(CallToolRequestSchema, async request => {

@@ -120,13 +120,11 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
       set({ isLaunching: true, error: undefined })
 
       // Build MCP config (approvals enabled by default)
-      // Use local development version of hlyr instead of npx to avoid version conflicts
-      const hlyrPath = '/Users/dex/wt/humanlayer/eng-1666/hlyr/dist/index.js'
       const mcpConfig = {
         mcpServers: {
           approvals: {
-            command: 'node',
-            args: [hlyrPath, 'mcp', 'claude_approvals'],
+            command: 'npx',
+            args: ['humanlayer', 'mcp', 'claude_approvals'],
           },
         },
       }
