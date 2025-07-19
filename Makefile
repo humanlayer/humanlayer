@@ -547,7 +547,10 @@ daemon-dev: daemon-dev-build
 	$(eval DEV_DB := $(shell make -s copy-db-to-dev))
 	@echo "Starting dev daemon with database: $(DEV_DB)"
 	echo "$(TIMESTAMP) starting dev daemon in $$(pwd)" > ~/.humanlayer/logs/daemon-dev-$(TIMESTAMP).log
-	cd hld && HUMANLAYER_DATABASE_PATH=$(DEV_DB) HUMANLAYER_DAEMON_SOCKET=~/.humanlayer/daemon-dev.sock HUMANLAYER_DAEMON_VERSION_OVERRIDE=dev ./hld-dev 2>&1 | tee -a ~/.humanlayer/logs/daemon-dev-$(TIMESTAMP).log
+	cd hld && HUMANLAYER_DATABASE_PATH=$(DEV_DB) \
+		HUMANLAYER_DAEMON_SOCKET=~/.humanlayer/daemon-dev.sock \
+		HUMANLAYER_DAEMON_VERSION_OVERRIDE=$$(git branch --show-current) \
+		./hld-dev 2>&1 | tee -a ~/.humanlayer/logs/daemon-dev-$(TIMESTAMP).log
 
 # Run dev WUI with custom socket
 .PHONY: wui-dev
