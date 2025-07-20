@@ -76,13 +76,8 @@ Then wait for the user's research query.
    - Answer the user's specific questions with concrete evidence
 
 5. **Gather metadata for the research document:**
-   - Get current date and time with timezone: `date '+%Y-%m-%d %H:%M:%S %Z'`
-   - Get git commit from repository root: `cd $(git rev-parse --show-toplevel) && git log -1 --format=%H`
-   - Get current branch: `git branch --show-current`
-   - Get researcher name from thoughts system: Parse `humanlayer thoughts status` output for "User: " line
-   - Get repository name: `basename $(git rev-parse --show-toplevel)`
-   - Create timestamp-based filename using date without timezone: `date '+%Y-%m-%d_%H-%M-%S'`
-   - Format: `thoughts/shared/research/YYYY-MM-DD_HH-MM-SS_topic.md`
+   - Run the `hack/spec_metadata.sh` script to generate all relevant metadata
+   - Filename: `thoughts/shared/research/YYYY-MM-DD_HH-MM-SS_topic.md`
 
 6. **Generate research document:**
    - Use the metadata gathered in step 4
