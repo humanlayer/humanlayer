@@ -8,7 +8,14 @@ It uses a database at ~/.humanlayer/daemon.db - you can access it with sqlite3 t
 sqlite3 ~/.humanlayer/daemon.db "SELECT * FROM sessions ORDER BY created_at DESC LIMIT 5;"
 ```
 
-You cannot run this process, you cannot restart it. If you make changes, you must ask the user to rebuild it.
+before running any sqlite3 commands, first fetch the schema, e.g. for `sessions`:
+
+```bash
+sqlite3 ~/.humanlayer/daemon.db ".schema sessions"
+```
+
+
+You cannot run the daemon process yourself, you cannot restart it. If you make changes, you must ask the user to rebuild it.
 
 You can test RPC calls with nc:
 

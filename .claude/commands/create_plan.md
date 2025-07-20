@@ -22,8 +22,8 @@ Please provide:
 
 I'll analyze this information and work with you to create a comprehensive plan.
 
-Tip: You can also invoke this command with a ticket file directly: `/implementation_plan thoughts/allison/tickets/eng_1234.md`
-For deeper analysis, try: `/implementation_plan think deeply about thoughts/allison/tickets/eng_1234.md`
+Tip: You can also invoke this command with a ticket file directly: `/create_plan thoughts/allison/tickets/eng_1234.md`
+For deeper analysis, try: `/create_plan think deeply about thoughts/allison/tickets/eng_1234.md`
 ```
 
 Then wait for the user's input.
