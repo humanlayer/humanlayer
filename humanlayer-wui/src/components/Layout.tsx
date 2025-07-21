@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { Outlet } from 'react-router-dom'
-import { useHotkeys } from 'react-hotkeys-hook'
 import { daemonClient } from '@/lib/daemon'
 import { Button } from '@/components/ui/button'
 import { ThemeSelector } from '@/components/ThemeSelector'
@@ -10,6 +9,7 @@ import { Breadcrumbs } from '@/components/Breadcrumbs'
 import { useSessionLauncher, useSessionLauncherHotkeys } from '@/hooks/useSessionLauncher'
 import { useStore } from '@/AppStore'
 import { useSessionEventsWithNotifications } from '@/hooks/useSessionEventsWithNotifications'
+import { useRegisteredHotkey } from '@/hooks/useRegisteredHotkey'
 import { Toaster } from 'sonner'
 import { notificationService } from '@/services/NotificationService'
 import { useTheme } from '@/contexts/ThemeContext'
@@ -39,8 +39,8 @@ export function Layout() {
   useSessionEventsWithNotifications(connected)
 
   // Global hotkey for toggling hotkey panel
-  useHotkeys(
-    '?',
+  useRegisteredHotkey(
+    'SHOW_HELP',
     () => {
       setHotkeyPanelOpen(!isHotkeyPanelOpen)
     },

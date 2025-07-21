@@ -1,4 +1,5 @@
 import * as DialogPrimitive from '@radix-ui/react-dialog'
+import { useMemo } from 'react'
 import {
   Command,
   CommandEmpty,
@@ -9,67 +10,40 @@ import {
 } from '@/components/ui/command'
 import { cn } from '@/lib/utils'
 import { X } from 'lucide-react'
+import { getHotkeysByCategory, type HotkeyCategory } from '@/config/hotkeys'
 
 interface HotkeyPanelProps {
   open: boolean
   onOpenChange: (open: boolean) => void
 }
 
-// Temporary hardcoded hotkey data
-const hotkeyData = [
-  // Global
-  { category: 'Global', key: '?', description: 'Toggle keyboard shortcuts' },
-  { category: 'Global', key: '⌘+K', description: 'Open command palette' },
-  { category: 'Global', key: '/', description: 'Search sessions' },
-  { category: 'Global', key: 'C', description: 'Create new session' },
-  { category: 'Global', key: 'G', description: 'Navigation prefix (G+S for sessions)' },
-  { category: 'Global', key: 'Ctrl+T', description: 'Toggle theme selector' },
-
-  // Session List
-  { category: 'Session List', key: 'J', description: 'Move down' },
-  { category: 'Session List', key: 'K', description: 'Move up' },
-  { category: 'Session List', key: 'G,G', description: 'Jump to top' },
-  { category: 'Session List', key: 'Shift+G', description: 'Jump to bottom' },
-  { category: 'Session List', key: '⌘+A', description: 'Select all' },
-  { category: 'Session List', key: 'X', description: 'Toggle selection' },
-  { category: 'Session List', key: 'Shift+J', description: 'Select downward' },
-  { category: 'Session List', key: 'Shift+K', description: 'Select upward' },
-  { category: 'Session List', key: 'Enter', description: 'Open session' },
-  { category: 'Session List', key: 'E', description: 'Archive/unarchive' },
-  { category: 'Session List', key: 'Tab', description: 'Toggle normal/archived view' },
-  { category: 'Session List', key: 'Escape', description: 'Exit archived view' },
-
-  // Session Detail
-  { category: 'Session Detail', key: 'Escape', description: 'Close detail view' },
-  { category: 'Session Detail', key: 'J', description: 'Next event' },
-  { category: 'Session Detail', key: 'K', description: 'Previous event' },
-  { category: 'Session Detail', key: 'G,G', description: 'Scroll to top' },
-  { category: 'Session Detail', key: 'Shift+G', description: 'Scroll to bottom' },
-  { category: 'Session Detail', key: 'I', description: 'Inspect/expand' },
-  { category: 'Session Detail', key: 'A', description: 'Approve' },
-  { category: 'Session Detail', key: 'D', description: 'Deny' },
-  { category: 'Session Detail', key: 'E', description: 'Archive session' },
-  { category: 'Session Detail', key: 'Ctrl+X', description: 'Interrupt session' },
-  { category: 'Session Detail', key: 'P', description: 'Go to parent session' },
-  { category: 'Session Detail', key: '⌘+Y', description: 'Toggle fork view' },
-  { category: 'Session Detail', key: 'Shift+Tab', description: 'Toggle auto-accept edits' },
-  { category: 'Session Detail', key: 'Enter', description: 'Focus response input' },
-  { category: 'Session Detail', key: '⌘+Enter', description: 'Submit response' },
-]
-
-// Group hotkeys by category
-const groupedHotkeys = hotkeyData.reduce(
-  (acc, hotkey) => {
-    if (!acc[hotkey.category]) {
-      acc[hotkey.category] = []
-    }
-    acc[hotkey.category].push(hotkey)
-    return acc
-  },
-  {} as Record<string, typeof hotkeyData>,
-)
+// Category display names
+const CATEGORY_NAMES: Record<HotkeyCategory, string> = {
+  global: 'Global',
+  session_list: 'Session List',
+  session_detail: 'Session Detail',
+}
 
 export function HotkeyPanel({ open, onOpenChange }: HotkeyPanelProps) {
+  // Get hotkeys from registry only
+  const groupedHotkeys = useMemo(() => {
+    const categories: HotkeyCategory[] = ['global', 'session_list', 'session_detail']
+    const groups: Record<string, Array<{ key: string; description: string }>> = {}
+
+    // Add registry hotkeys only
+    categories.forEach(category => {
+      const registryHotkeys = getHotkeysByCategory(category)
+      if (registryHotkeys.length > 0) {
+        groups[CATEGORY_NAMES[category]] = registryHotkeys.map(hk => ({
+          key: hk.key,
+          description: hk.description,
+        }))
+      }
+    })
+
+    return groups
+  }, [])
+
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
@@ -110,14 +84,14 @@ export function HotkeyPanel({ open, onOpenChange }: HotkeyPanelProps) {
                       <CommandItem
                         key={`${category}-${index}`}
                         value={`${hotkey.description} ${hotkey.key} ${category}`}
-                        className="flex items-center justify-between py-3"
+                        className="flex items-center justify-between py-3 data-[selected=true]:bg-transparent"
                       >
-                        <span className="text-sm text-muted-foreground">{hotkey.description}</span>
+                        <span className="text-sm text-foreground">{hotkey.description}</span>
                         <kbd
                           className={cn(
                             'pointer-events-none inline-flex h-5 select-none items-center gap-1',
                             'rounded border bg-muted px-1.5 font-mono text-[10px] font-medium',
-                            'text-muted-foreground',
+                            'text-foreground',
                           )}
                         >
                           {hotkey.key}
