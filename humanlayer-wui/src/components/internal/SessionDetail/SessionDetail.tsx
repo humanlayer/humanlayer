@@ -110,8 +110,11 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     return verb.charAt(0).toUpperCase() + verb.slice(1)
   })
 
-  // Randomly choose spinner type on mount (0: fancy, 1: simple, 2: minimal, 3: bars)
-  const spinnerType = useMemo(() => Math.floor(Math.random() * 4), [])
+  // Randomly choose spinner type on mount (0: fancy, 1: simple, 2: bars)
+  const spinnerType = useMemo(() => {
+    const types = [0, 1, 3] // Excluding 2 (minimal)
+    return types[Math.floor(Math.random() * types.length)]
+  }, [])
 
   useEffect(() => {
     if (!isActivelyProcessing) return

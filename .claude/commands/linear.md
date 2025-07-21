@@ -180,6 +180,8 @@ new columns for permission_prompt_tool and allowed_tools..."
 Title: Fix resumed sessions to inherit all configuration from parent
 
 Description:
+
+## Problem to solve
 Currently, resumed sessions only inherit Model and WorkingDir from parent sessions,
 causing all other configuration to be lost. Users must re-specify permissions and
 settings when resuming.
@@ -303,6 +305,7 @@ When moving tickets through the workflow:
 ## Important Notes
 
 - Keep tickets concise but complete - aim for scannable content
+- All tickets should include a clear "problem to solve" - if the user asks for a ticket and only gives implementation details, you MUST ask "To write a good ticket, please explain the problem you're trying to solve from a user perspective"
 - Focus on the "what" and "why", include "how" only if well-defined
 - Always preserve links to source material using the `links` parameter
 - Don't create tickets from early-stage brainstorming unless requested
@@ -311,6 +314,7 @@ When moving tickets through the workflow:
 - Ask for clarification rather than guessing project/status
 - Remember that Linear descriptions support full markdown including code blocks
 - Always use the `links` parameter for external URLs (not just markdown links)
+- remember - you must get a "Problem to solve"!
 
 ## Comment Quality Guidelines
 

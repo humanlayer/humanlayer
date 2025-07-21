@@ -29,6 +29,7 @@ Then wait for the user's research query.
    - Create multiple Task agents to research different aspects concurrently
    - Always include these parallel tasks:
      - **Codebase exploration tasks** (one for each relevant component/directory)
+     - **Web Research tasks** (to confirm best practices and ground codebase context in alternative approaches)
      - **Thoughts directory exploration task** (to find historical context and insights)
    - Each codebase sub-agent should focus on a specific directory, component, or question
    - Write detailed prompts for each sub-agent following these guidelines:
@@ -45,8 +46,21 @@ Then wait for the user's research query.
      3. Look for connections to [related components]
      4. Find examples of usage in [relevant areas]
      5. Note any patterns or conventions used
+     6. Use only READ-ONLY tools (Read, Grep, Glob, LS)
      Return: File paths, line numbers, and concise explanations of findings
      ```
+   - Example web sub-agent prompt:
+     ```
+     Research [specific component/pattern] using WebSearch and/or WebFetch:
+     1. Find all pages related to [topic]
+     2. Identify how [concept] could be implemented (include page:quotation references
+     3. Look for connections to [related components]
+     4. Find examples of usage in [relevant areas]
+     5. Note any patterns or conventions used
+     6. Use only WEB TOOLS (WebFetch, WebSearch) and READ-ONLY tools (Read, Grep, Glob, LS)
+     Return: web pages, exact quotations, and concise explanations of findings
+     ```
+
    - Thoughts directory sub-agent prompt:
      ```
      Explore the thoughts/ directory for context related to [topic]:
@@ -76,13 +90,8 @@ Then wait for the user's research query.
    - Answer the user's specific questions with concrete evidence
 
 5. **Gather metadata for the research document:**
-   - Get current date and time with timezone: `date '+%Y-%m-%d %H:%M:%S %Z'`
-   - Get git commit from repository root: `cd $(git rev-parse --show-toplevel) && git log -1 --format=%H`
-   - Get current branch: `git branch --show-current`
-   - Get researcher name from thoughts system: Parse `humanlayer thoughts status` output for "User: " line
-   - Get repository name: `basename $(git rev-parse --show-toplevel)`
-   - Create timestamp-based filename using date without timezone: `date '+%Y-%m-%d_%H-%M-%S'`
-   - Format: `thoughts/shared/research/YYYY-MM-DD_HH-MM-SS_topic.md`
+   - Run the `hack/spec_metadata.sh` script to generate all relevant metadata
+   - Filename: `thoughts/shared/research/YYYY-MM-DD_HH-MM-SS_topic.md`
 
 6. **Generate research document:**
    - Use the metadata gathered in step 4
