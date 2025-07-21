@@ -65,6 +65,8 @@ jobs:
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@1.83.0
+        with:
+          components: rustfmt,clippy
 
       - name: Cache and install Tauri system dependencies
         if: runner.os == 'Linux'
