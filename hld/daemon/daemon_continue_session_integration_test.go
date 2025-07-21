@@ -674,7 +674,7 @@ func TestIntegrationContinueSession(t *testing.T) {
 		}
 
 		if parentSession.Title != originalTitle {
-			t.Errorf("Parent title changed unexpectedly: got %q, want %q", 
+			t.Errorf("Parent title changed unexpectedly: got %q, want %q",
 				parentSession.Title, originalTitle)
 		}
 	})

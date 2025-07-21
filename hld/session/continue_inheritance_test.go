@@ -683,7 +683,7 @@ func TestContinueSessionInheritance(t *testing.T) {
 	t.Run("MultipleContinuations", func(t *testing.T) {
 		// Test that titles are inherited through multiple generations
 		// grandparent -> parent -> child
-		
+
 		// Create grandparent
 		grandparentID := "grandparent-title"
 		grandparentTitle := "Original Family Task"
