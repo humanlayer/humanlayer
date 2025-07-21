@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useTheme, type Theme } from '@/contexts/ThemeContext'
 import { Moon, Sun, Coffee, Cat, ScanEye, Framer, Box, Palette } from 'lucide-react'
 import { useHotkeys, useHotkeysContext } from 'react-hotkeys-hook'
+import { useRegisteredHotkey } from '@/hooks/useRegisteredHotkey'
 import { SessionTableHotkeysScope } from './internal/SessionTable'
 
 const themes: { value: Theme; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
@@ -61,8 +62,8 @@ export function ThemeSelector() {
   }, [isOpen])
 
   // Hotkey to toggle dropdown
-  useHotkeys(
-    'ctrl+t',
+  useRegisteredHotkey(
+    'TOGGLE_THEME',
     () => {
       setIsOpen(prev => !prev)
     },

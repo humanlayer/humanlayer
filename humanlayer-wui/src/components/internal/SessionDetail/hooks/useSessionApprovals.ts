@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
-import { useHotkeys } from 'react-hotkeys-hook'
+import { useRegisteredHotkey } from '@/hooks/useRegisteredHotkey'
 import { ConversationEvent, ApprovalStatus } from '@/lib/daemon/types'
 import { daemonClient } from '@/lib/daemon/client'
 import { notificationService } from '@/services/NotificationService'
@@ -69,8 +69,8 @@ export function useSessionApprovals({
   }, [])
 
   // A key to approve focused event that has pending approval
-  useHotkeys(
-    'a',
+  useRegisteredHotkey(
+    'APPROVE_REQUEST',
     () => {
       // Find any pending approval event
       const pendingApprovalEvent = events.find(
@@ -104,20 +104,22 @@ export function useSessionApprovals({
         }
       }
     },
-    [
-      events,
-      focusedEventId,
-      confirmingApprovalId,
-      handleApprove,
-      isElementInView,
-      setFocusedEventId,
-      setFocusSource,
-    ],
+    {
+      dependencies: [
+        events,
+        focusedEventId,
+        confirmingApprovalId,
+        handleApprove,
+        isElementInView,
+        setFocusedEventId,
+        setFocusSource,
+      ],
+    },
   )
 
   // D key to deny focused event that has pending approval
-  useHotkeys(
-    'd',
+  useRegisteredHotkey(
+    'DENY_REQUEST',
     e => {
       // Find any pending approval event
       const pendingApprovalEvent = events.find(
@@ -141,7 +143,9 @@ export function useSessionApprovals({
         handleStartDeny(pendingApprovalEvent.approval_id!)
       }
     },
-    [events, focusedEventId, handleStartDeny, setFocusedEventId, setFocusSource],
+    {
+      dependencies: [events, focusedEventId, handleStartDeny, setFocusedEventId, setFocusSource],
+    },
   )
 
   // Scroll deny form into view when opened

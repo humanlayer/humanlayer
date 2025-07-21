@@ -1,4 +1,4 @@
-import { useHotkeys } from 'react-hotkeys-hook'
+import { useRegisteredHotkey } from '@/hooks/useRegisteredHotkey'
 import { ConversationEvent, ConversationEventType } from '@/lib/daemon/types'
 import { copyToClipboard } from '@/utils/clipboard'
 import { SessionDetailHotkeysScope } from '../SessionDetail'
@@ -10,8 +10,8 @@ export function useSessionClipboard(focusedEvent: ConversationEvent | null, enab
     return event.content || null
   }
 
-  useHotkeys(
-    'y',
+  useRegisteredHotkey(
+    'COPY_MESSAGE_CONTENT',
     () => {
       if (!focusedEvent) return
 

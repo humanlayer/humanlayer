@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react'
-import { useHotkeys } from 'react-hotkeys-hook'
+import { useRegisteredHotkey } from '@/hooks/useRegisteredHotkey'
 import { useNavigate } from 'react-router-dom'
 import { SessionInfo, ConversationEvent, ViewMode } from '@/lib/daemon/types'
 import { daemonClient } from '@/lib/daemon/client'
@@ -122,7 +122,7 @@ export function useSessionActions({
   // Note: Escape key is handled in SessionDetail to manage confirmingApprovalId state
 
   // Ctrl+X to interrupt session
-  useHotkeys('ctrl+x', () => {
+  useRegisteredHotkey('INTERRUPT_SESSION', () => {
     if (session.status === 'running' || session.status === 'starting') {
       interruptSession(session.id)
     }
@@ -132,7 +132,7 @@ export function useSessionActions({
   // Keeping the hotkey registration but making it a no-op to avoid breaking anything
 
   // P key to navigate to parent session
-  useHotkeys('p', () => {
+  useRegisteredHotkey('NAVIGATE_TO_PARENT', () => {
     if (session.parent_session_id) {
       handleNavigateToParent()
     }

@@ -5,7 +5,7 @@ import { ViewMode } from '@/lib/daemon/types'
 import SessionTable, { SessionTableHotkeysScope } from '@/components/internal/SessionTable'
 import { SessionTableSearch } from '@/components/SessionTableSearch'
 import { useSessionFilter } from '@/hooks/useSessionFilter'
-import { useHotkeys } from 'react-hotkeys-hook'
+import { useRegisteredHotkey } from '@/hooks/useRegisteredHotkey'
 import { useSessionLauncher, useKeyboardNavigationProtection } from '@/hooks'
 import { Inbox, Archive } from 'lucide-react'
 
@@ -86,8 +86,8 @@ export function SessionTablePage() {
   }
 
   // Handle Tab key to toggle between normal and archived views
-  useHotkeys(
-    'tab',
+  useRegisteredHotkey(
+    'TOGGLE_ARCHIVED_VIEW',
     e => {
       e.preventDefault()
       setViewMode(viewMode === ViewMode.Normal ? ViewMode.Archived : ViewMode.Normal)
@@ -98,8 +98,8 @@ export function SessionTablePage() {
   )
 
   // Handle Shift+Tab to toggle backwards (same effect for only 2 modes)
-  useHotkeys(
-    'shift+tab',
+  useRegisteredHotkey(
+    'TOGGLE_ARCHIVED_VIEW_BACK',
     e => {
       e.preventDefault()
       setViewMode(viewMode === ViewMode.Normal ? ViewMode.Archived : ViewMode.Normal)
@@ -110,8 +110,8 @@ export function SessionTablePage() {
   )
 
   // Handle 'gg' to jump to top of list (vim-style)
-  useHotkeys(
-    'g>g',
+  useRegisteredHotkey(
+    'JUMP_TO_TOP',
     () => {
       startKeyboardNavigation()
       setFocusSource('keyboard')
@@ -135,8 +135,8 @@ export function SessionTablePage() {
   )
 
   // Handle 'shift+g' to jump to bottom of list (vim-style)
-  useHotkeys(
-    'shift+g',
+  useRegisteredHotkey(
+    'JUMP_TO_BOTTOM',
     () => {
       startKeyboardNavigation()
       setFocusSource('keyboard')
@@ -160,8 +160,8 @@ export function SessionTablePage() {
   )
 
   // Handle ESC to go back to normal view from archived
-  useHotkeys(
-    'escape',
+  useRegisteredHotkey(
+    'EXIT_ARCHIVED_VIEW',
     () => {
       if (viewMode === ViewMode.Archived) {
         setViewMode(ViewMode.Normal)

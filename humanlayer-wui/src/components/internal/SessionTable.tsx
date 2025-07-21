@@ -1,7 +1,8 @@
 import { SessionInfo } from '@/lib/daemon/types'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
-import { useHotkeys, useHotkeysContext } from 'react-hotkeys-hook'
+import { useHotkeysContext } from 'react-hotkeys-hook'
+import { useRegisteredHotkey } from '@/hooks/useRegisteredHotkey'
 import { useEffect, useRef, useState } from 'react'
 import { CircleOff, CheckSquare, Square, FileText, Pencil } from 'lucide-react'
 import { getStatusTextClass } from '@/utils/component-utils'
@@ -131,33 +132,33 @@ export default function SessionTable({
     }
   }, [focusedSession])
 
-  useHotkeys(
-    'j',
+  useRegisteredHotkey(
+    'NAVIGATE_DOWN',
     () => {
       handleFocusNextSession?.()
     },
     {
       scopes: SessionTableHotkeysScope,
       enabled: !isSessionLauncherOpen,
+      dependencies: [handleFocusNextSession],
     },
-    [handleFocusNextSession],
   )
 
-  useHotkeys(
-    'k',
+  useRegisteredHotkey(
+    'NAVIGATE_UP',
     () => {
       handleFocusPreviousSession?.()
     },
     {
       scopes: SessionTableHotkeysScope,
       enabled: !isSessionLauncherOpen,
+      dependencies: [handleFocusPreviousSession],
     },
-    [handleFocusPreviousSession],
   )
 
   // Bulk selection with shift+j/k
-  useHotkeys(
-    'shift+j',
+  useRegisteredHotkey(
+    'BULK_SELECT_DOWN',
     () => {
       if (focusedSession && sessions.length > 0) {
         bulkSelect(focusedSession.id, 'desc')
@@ -167,12 +168,12 @@ export default function SessionTable({
       scopes: SessionTableHotkeysScope,
       enabled: !isSessionLauncherOpen,
       preventDefault: true,
+      dependencies: [focusedSession, sessions, bulkSelect],
     },
-    [focusedSession, sessions, bulkSelect],
   )
 
-  useHotkeys(
-    'shift+k',
+  useRegisteredHotkey(
+    'BULK_SELECT_UP',
     () => {
       if (focusedSession && sessions.length > 0) {
         bulkSelect(focusedSession.id, 'asc')
@@ -182,13 +183,13 @@ export default function SessionTable({
       scopes: SessionTableHotkeysScope,
       enabled: !isSessionLauncherOpen,
       preventDefault: true,
+      dependencies: [focusedSession, sessions, bulkSelect],
     },
-    [focusedSession, sessions, bulkSelect],
   )
 
   // Select all with meta+a (Cmd+A on Mac, Ctrl+A on Windows/Linux)
-  useHotkeys(
-    'meta+a',
+  useRegisteredHotkey(
+    'SELECT_ALL',
     () => {
       // Toggle all sessions - if all are selected, deselect all; otherwise select all
       const allSelected = sessions.every(s => selectedSessions.has(s.id))
@@ -211,12 +212,12 @@ export default function SessionTable({
       scopes: SessionTableHotkeysScope,
       enabled: !isSessionLauncherOpen,
       preventDefault: true,
+      dependencies: [sessions, selectedSessions, toggleSessionSelection],
     },
-    [sessions, selectedSessions, toggleSessionSelection],
   )
 
-  useHotkeys(
-    'enter',
+  useRegisteredHotkey(
+    'OPEN_SESSION',
     () => {
       if (focusedSession) {
         handleActivateSession?.(focusedSession)
@@ -226,8 +227,8 @@ export default function SessionTable({
   )
 
   // Archive/unarchive hotkey
-  useHotkeys(
-    'e',
+  useRegisteredHotkey(
+    'ARCHIVE_SESSION',
     async () => {
       if (focusedSession) {
         try {
@@ -305,20 +306,20 @@ export default function SessionTable({
       enabled: !isSessionLauncherOpen && focusedSession !== null,
       preventDefault: true,
       enableOnFormTags: false,
+      dependencies: [
+        focusedSession,
+        sessions,
+        archiveSession,
+        selectedSessions,
+        bulkArchiveSessions,
+        handleFocusSession,
+      ],
     },
-    [
-      focusedSession,
-      sessions,
-      archiveSession,
-      selectedSessions,
-      bulkArchiveSessions,
-      handleFocusSession,
-    ],
   )
 
   // Toggle selection hotkey
-  useHotkeys(
-    'x',
+  useRegisteredHotkey(
+    'TOGGLE_SELECTION',
     () => {
       if (focusedSession) {
         toggleSessionSelection(focusedSession.id)
@@ -329,8 +330,8 @@ export default function SessionTable({
       enabled: !isSessionLauncherOpen && focusedSession !== null,
       preventDefault: true,
       enableOnFormTags: false,
+      dependencies: [focusedSession, toggleSessionSelection],
     },
-    [focusedSession, toggleSessionSelection],
   )
 
   return (

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
-import { useHotkeys } from 'react-hotkeys-hook'
+import { useRegisteredHotkey } from '@/hooks/useRegisteredHotkey'
 import { toast } from 'sonner'
 
 import { ConversationEvent, SessionInfo, ApprovalStatus, SessionStatus } from '@/lib/daemon/types'
@@ -302,8 +302,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   // Clear focus on escape, then close if nothing focused
   // This needs special handling for confirmingApprovalId
 
-  useHotkeys(
-    'escape',
+  useRegisteredHotkey(
+    'CLOSE_MODAL',
     ev => {
       if ((ev.target as HTMLElement)?.dataset.slot === 'dialog-close') {
         console.warn('Ignoring onClose triggered by dialog-close in SessionDetail')
@@ -343,8 +343,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   )
 
   // Add Shift+Tab handler for auto-accept edits mode
-  useHotkeys(
-    'shift+tab',
+  useRegisteredHotkey(
+    'AUTO_ACCEPT_EDITS',
     async () => {
       try {
         const newState = !autoAcceptEdits
@@ -360,13 +360,13 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     {
       scopes: [SessionDetailHotkeysScope],
       preventDefault: true,
+      dependencies: [session.id, autoAcceptEdits],
     },
-    [session.id, autoAcceptEdits], // Dependencies
   )
 
   // Add hotkey to archive session ('e' key)
-  useHotkeys(
-    'e',
+  useRegisteredHotkey(
+    'ARCHIVE_SESSION_DETAIL',
     async () => {
       // TODO(3): The timeout clearing logic (using confirmingArchiveTimeoutRef) is duplicated in multiple places.
       // Consider refactoring this into a helper function to reduce repetition.
@@ -432,13 +432,13 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     {
       scopes: [SessionDetailHotkeysScope],
       preventDefault: true,
+      dependencies: [session.id, session.archived, session.summary, session.status, onClose, confirmingArchive],
     },
-    [session.id, session.archived, session.summary, session.status, onClose, confirmingArchive],
   )
 
   // Add hotkey to open fork view (Meta+Y)
-  useHotkeys(
-    'meta+y',
+  useRegisteredHotkey(
+    'OPEN_FORK_VIEW_MODAL',
     e => {
       e.preventDefault()
       setForkViewOpen(!forkViewOpen)
@@ -447,8 +447,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   )
 
   // Add Shift+G hotkey to scroll to bottom
-  useHotkeys(
-    'shift+g',
+  useRegisteredHotkey(
+    'JUMP_TO_BOTTOM_DETAIL',
     () => {
       startKeyboardNavigation()
 
@@ -462,13 +462,15 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         }
       }
     },
-    { scopes: [SessionDetailHotkeysScope] },
-    [events, navigation.setFocusedEventId, navigation.setFocusSource],
+    { 
+      scopes: [SessionDetailHotkeysScope],
+      dependencies: [events, navigation.setFocusedEventId, navigation.setFocusSource],
+    },
   )
 
   // Add 'gg' to jump to top of conversation (vim-style)
-  useHotkeys(
-    'g>g',
+  useRegisteredHotkey(
+    'JUMP_TO_TOP_DETAIL',
     () => {
       startKeyboardNavigation()
 
@@ -486,13 +488,13 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       enableOnFormTags: false,
       scopes: [SessionDetailHotkeysScope],
       preventDefault: true,
+      dependencies: [events, navigation.setFocusedEventId, navigation.setFocusSource],
     },
-    [events, navigation.setFocusedEventId, navigation.setFocusSource],
   )
 
   // Add Enter key to focus text input
-  useHotkeys(
-    'enter',
+  useRegisteredHotkey(
+    'FOCUS_INPUT',
     () => {
       if (responseInputRef.current && session.status !== SessionStatus.Failed) {
         responseInputRef.current.focus()

@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
-import { useHotkeys } from 'react-hotkeys-hook'
+import { useRegisteredHotkey } from '@/hooks/useRegisteredHotkey'
 import { ConversationEvent, ConversationEventType } from '@/lib/daemon/types'
 
 interface NavigableItem {
@@ -131,12 +131,12 @@ export function useSessionNavigation({
   }, [focusedEventId, navigableItems, startKeyboardNavigation])
 
   // Keyboard navigation
-  useHotkeys('j', focusNextEvent, { enabled: !expandedToolResult && !disabled })
-  useHotkeys('k', focusPreviousEvent, { enabled: !expandedToolResult && !disabled })
+  useRegisteredHotkey('NAVIGATE_NEXT_EVENT', focusNextEvent, { enabled: !expandedToolResult && !disabled })
+  useRegisteredHotkey('NAVIGATE_PREVIOUS_EVENT', focusPreviousEvent, { enabled: !expandedToolResult && !disabled })
 
   // I key to expand task groups or inspect tool results
-  useHotkeys(
-    'i',
+  useRegisteredHotkey(
+    'INSPECT_TOOL_RESULT',
     () => {
       if (!focusedEventId) return
 

@@ -6,10 +6,11 @@ import { ThemeSelector } from '@/components/ThemeSelector'
 import { SessionLauncher } from '@/components/SessionLauncher'
 import { HotkeyPanel } from '@/components/HotkeyPanel'
 import { Breadcrumbs } from '@/components/Breadcrumbs'
-import { useSessionLauncher, useSessionLauncherHotkeys } from '@/hooks/useSessionLauncher'
+import { useSessionLauncher } from '@/hooks/useSessionLauncher'
 import { useStore } from '@/AppStore'
 import { useSessionEventsWithNotifications } from '@/hooks/useSessionEventsWithNotifications'
 import { useRegisteredHotkey } from '@/hooks/useRegisteredHotkey'
+import { useGlobalHotkeys } from '@/hooks/useGlobalHotkeys'
 import { Toaster } from 'sonner'
 import { notificationService } from '@/services/NotificationService'
 import { useTheme } from '@/contexts/ThemeContext'
@@ -28,7 +29,6 @@ export function Layout() {
 
   // Session launcher state
   const { isOpen, close } = useSessionLauncher()
-  const { handleKeyDown } = useSessionLauncherHotkeys()
 
   // Secret hotkey for launch theme
   useHotkeys('mod+shift+y', () => {
@@ -38,10 +38,15 @@ export function Layout() {
   // Set up real-time subscriptions with notification handling
   useSessionEventsWithNotifications(connected)
 
+  // Set up global hotkeys
+  useGlobalHotkeys()
+
   // Global hotkey for toggling hotkey panel
   useRegisteredHotkey(
     'SHOW_HELP',
-    () => {
+    (e) => {
+      e.preventDefault()
+      e.stopPropagation()
       setHotkeyPanelOpen(!isHotkeyPanelOpen)
     },
     {
@@ -85,11 +90,6 @@ export function Layout() {
     return () => window.removeEventListener('session-created', handleSessionCreated)
   }, [connected])
 
-  // Global hotkey handler
-  useEffect(() => {
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [handleKeyDown])
 
   const connectToDaemon = async () => {
     try {
