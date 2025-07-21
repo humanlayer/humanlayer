@@ -1,8 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useRef, useEffect } from 'react'
 import { Button } from './ui/button'
-import { cn } from '@/lib/utils'
 import { SearchInput } from './FuzzySearchInput'
-import { Input } from './ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 import { useRecentPaths } from '@/hooks/useRecentPaths'
 import { Textarea } from './ui/textarea'
@@ -36,7 +34,6 @@ export default function CommandInput({
   onConfigChange,
 }: CommandInputProps) {
   const promptRef = useRef<HTMLTextAreaElement>(null)
-  const [showAdvanced, setShowAdvanced] = useState(false)
   const { paths: recentPaths } = useRecentPaths()
 
   useEffect(() => {
@@ -47,7 +44,7 @@ export default function CommandInput({
   }, [])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey && !showAdvanced) {
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       onSubmit()
     }
@@ -101,70 +98,26 @@ export default function CommandInput({
         )}
       </div>
 
-      {/* Advanced Options Toggle */}
-      <div className="flex items-center justify-between">
-        <button
-          type="button"
-          onClick={() => setShowAdvanced(!showAdvanced)}
-          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+      {/* Model Selection */}
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-foreground">Model</label>
+        <Select
+          value={config.model || ''}
+          onValueChange={value => updateConfig({ model: value || undefined })}
         >
-          {showAdvanced ? '← Hide' : 'Advanced Options →'}
-        </button>
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="System Default" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="sonnet">Sonnet</SelectItem>
+            <SelectItem value="opus">Opus</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
-
-      {/* Advanced Options */}
-      {showAdvanced && (
-        <div className="space-y-3 p-4 border rounded-lg bg-muted/30">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Model</label>
-              <Select
-                value={config.model || ''}
-                onValueChange={value => updateConfig({ model: value || undefined })}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select a model" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="sonnet">Sonnet</SelectItem>
-                  <SelectItem value="opus">Opus</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Max Turns</label>
-              <Input
-                type="number"
-                value={config.maxTurns || ''}
-                onChange={e =>
-                  updateConfig({ maxTurns: e.target.value ? parseInt(e.target.value) : undefined })
-                }
-                placeholder="Default"
-                min="1"
-                max="100"
-                className={cn(
-                  'w-full h-9 px-3 text-sm',
-                  'bg-background border rounded-md',
-                  'border-border hover:border-primary/50 focus:border-primary focus:ring-2 focus:ring-primary/20',
-                )}
-              />
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Action Bar */}
       {hasContent(value) && (
-        <div className="flex items-center justify-between pt-2">
-          <div className="flex items-center space-x-2 text-xs text-muted-foreground">
-            {config.workingDir && (
-              <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded font-mono text-xs">
-                {config.workingDir}
-              </span>
-            )}
-          </div>
-
+        <div className="flex items-center justify-end pt-2">
           <Button
             onClick={onSubmit}
             disabled={isEmptyOrWhitespace(value) || isLoading}
