@@ -23,8 +23,6 @@ pub enum Error {
     #[error("Invalid response: {0}")]
     InvalidResponse(String),
 
-    #[error("Subscription error: {0}")]
-    Subscription(String),
 
     #[error("Session error: {0}")]
     Session(String),

@@ -63,6 +63,7 @@ type SessionState struct {
 	Status          string  `json:"status"` // starting, running, completed, failed, waiting_input
 	Query           string  `json:"query"`
 	Summary         string  `json:"summary"`
+	Title           string  `json:"title"`
 	Model           string  `json:"model,omitempty"`
 	WorkingDir      string  `json:"working_dir,omitempty"`
 	CreatedAt       string  `json:"created_at"`
@@ -159,4 +160,15 @@ type RecentPath struct {
 	Path       string `json:"path"`
 	LastUsed   string `json:"last_used"` // ISO 8601 timestamp
 	UsageCount int    `json:"usage_count"`
+}
+
+// UpdateSessionTitleRequest is the request for updating session title
+type UpdateSessionTitleRequest struct {
+	SessionID string `json:"session_id"`
+	Title     string `json:"title"`
+}
+
+// UpdateSessionTitleResponse is the response for updating session title
+type UpdateSessionTitleResponse struct {
+	Success bool `json:"success"`
 }

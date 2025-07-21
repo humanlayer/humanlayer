@@ -521,6 +521,42 @@ func (s *SQLiteStore) applyMigrations() error {
 		slog.Info("Migration 9 applied successfully")
 	}
 
+	// Migration 10: Add title column to sessions table
+	if currentVersion < 10 {
+		slog.Info("Applying migration 10: Add title column to sessions table")
+
+		// Check if column already exists for idempotency
+		var columnExists int
+		err = s.db.QueryRow(`
+			SELECT COUNT(*) FROM pragma_table_info('sessions')
+			WHERE name = 'title'
+		`).Scan(&columnExists)
+		if err != nil {
+			return fmt.Errorf("checking for title column: %w", err)
+		}
+
+		if columnExists == 0 {
+			_, err = s.db.Exec(`
+				ALTER TABLE sessions
+				ADD COLUMN title TEXT DEFAULT ''
+			`)
+			if err != nil {
+				return fmt.Errorf("adding title column: %w", err)
+			}
+		}
+
+		// Record migration
+		_, err = s.db.Exec(`
+			INSERT INTO schema_version (version, description)
+			VALUES (10, 'Add title column to sessions table')
+		`)
+		if err != nil {
+			return fmt.Errorf("recording migration 10: %w", err)
+		}
+
+		slog.Info("Migration 10 applied successfully")
+	}
+
 	return nil
 }
 
@@ -534,15 +570,15 @@ func (s *SQLiteStore) CreateSession(ctx context.Context, session *Session) error
 	query := `
 		INSERT INTO sessions (
 			id, run_id, claude_session_id, parent_session_id,
-			query, summary, model, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
+			query, summary, title, model, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
 			permission_prompt_tool, allowed_tools, disallowed_tools,
 			status, created_at, last_activity_at, auto_accept_edits, archived
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	_, err := s.db.ExecContext(ctx, query,
 		session.ID, session.RunID, session.ClaudeSessionID, session.ParentSessionID,
-		session.Query, session.Summary, session.Model, session.WorkingDir, session.MaxTurns,
+		session.Query, session.Summary, session.Title, session.Model, session.WorkingDir, session.MaxTurns,
 		session.SystemPrompt, session.AppendSystemPrompt, session.CustomInstructions,
 		session.PermissionPromptTool, session.AllowedTools, session.DisallowedTools,
 		session.Status, session.CreatedAt, session.LastActivityAt, session.AutoAcceptEdits, session.Archived,
@@ -603,6 +639,10 @@ func (s *SQLiteStore) UpdateSession(ctx context.Context, sessionID string, updat
 		setParts = append(setParts, "summary = ?")
 		args = append(args, *updates.Summary)
 	}
+	if updates.Title != nil {
+		setParts = append(setParts, "title = ?")
+		args = append(args, *updates.Title)
+	}
 	if updates.AutoAcceptEdits != nil {
 		setParts = append(setParts, "auto_accept_edits = ?")
 		args = append(args, *updates.AutoAcceptEdits)
@@ -646,7 +686,7 @@ func (s *SQLiteStore) UpdateSession(ctx context.Context, sessionID string, updat
 func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Session, error) {
 	query := `
 		SELECT id, run_id, claude_session_id, parent_session_id,
-			query, summary, model, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
+			query, summary, title, model, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
 			permission_prompt_tool, allowed_tools, disallowed_tools,
 			status, created_at, last_activity_at, completed_at,
 			cost_usd, total_tokens, duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived
@@ -654,7 +694,7 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 	`
 
 	var session Session
-	var claudeSessionID, parentSessionID, summary, model, workingDir, systemPrompt, appendSystemPrompt, customInstructions sql.NullString
+	var claudeSessionID, parentSessionID, summary, title, model, workingDir, systemPrompt, appendSystemPrompt, customInstructions sql.NullString
 	var permissionPromptTool, allowedTools, disallowedTools sql.NullString
 	var completedAt sql.NullTime
 	var costUSD sql.NullFloat64
@@ -664,7 +704,7 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 
 	err := s.db.QueryRowContext(ctx, query, sessionID).Scan(
 		&session.ID, &session.RunID, &claudeSessionID, &parentSessionID,
-		&session.Query, &summary, &model, &workingDir, &session.MaxTurns,
+		&session.Query, &summary, &title, &model, &workingDir, &session.MaxTurns,
 		&systemPrompt, &appendSystemPrompt, &customInstructions,
 		&permissionPromptTool, &allowedTools, &disallowedTools,
 		&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
@@ -682,6 +722,7 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 	session.ClaudeSessionID = claudeSessionID.String
 	session.ParentSessionID = parentSessionID.String
 	session.Summary = summary.String
+	session.Title = title.String
 	session.Model = model.String
 	session.WorkingDir = workingDir.String
 	session.SystemPrompt = systemPrompt.String
@@ -721,7 +762,7 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Session, error) {
 	query := `
 		SELECT id, run_id, claude_session_id, parent_session_id,
-			query, summary, model, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
+			query, summary, title, model, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
 			permission_prompt_tool, allowed_tools, disallowed_tools,
 			status, created_at, last_activity_at, completed_at,
 			cost_usd, total_tokens, duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived
@@ -730,7 +771,7 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 	`
 
 	var session Session
-	var claudeSessionID, parentSessionID, summary, model, workingDir, systemPrompt, appendSystemPrompt, customInstructions sql.NullString
+	var claudeSessionID, parentSessionID, summary, title, model, workingDir, systemPrompt, appendSystemPrompt, customInstructions sql.NullString
 	var permissionPromptTool, allowedTools, disallowedTools sql.NullString
 	var completedAt sql.NullTime
 	var costUSD sql.NullFloat64
@@ -740,7 +781,7 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 
 	err := s.db.QueryRowContext(ctx, query, runID).Scan(
 		&session.ID, &session.RunID, &claudeSessionID, &parentSessionID,
-		&session.Query, &summary, &model, &workingDir, &session.MaxTurns,
+		&session.Query, &summary, &title, &model, &workingDir, &session.MaxTurns,
 		&systemPrompt, &appendSystemPrompt, &customInstructions,
 		&permissionPromptTool, &allowedTools, &disallowedTools,
 		&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
@@ -758,6 +799,7 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 	session.ClaudeSessionID = claudeSessionID.String
 	session.ParentSessionID = parentSessionID.String
 	session.Summary = summary.String
+	session.Title = title.String
 	session.Model = model.String
 	session.WorkingDir = workingDir.String
 	session.SystemPrompt = systemPrompt.String
@@ -797,7 +839,7 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 	query := `
 		SELECT id, run_id, claude_session_id, parent_session_id,
-			query, summary, model, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
+			query, summary, title, model, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
 			permission_prompt_tool, allowed_tools, disallowed_tools,
 			status, created_at, last_activity_at, completed_at,
 			cost_usd, total_tokens, duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived
@@ -814,7 +856,7 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 	var sessions []*Session
 	for rows.Next() {
 		var session Session
-		var claudeSessionID, parentSessionID, summary, model, workingDir, systemPrompt, appendSystemPrompt, customInstructions sql.NullString
+		var claudeSessionID, parentSessionID, summary, title, model, workingDir, systemPrompt, appendSystemPrompt, customInstructions sql.NullString
 		var permissionPromptTool, allowedTools, disallowedTools sql.NullString
 		var completedAt sql.NullTime
 		var costUSD sql.NullFloat64
@@ -824,7 +866,7 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 
 		err := rows.Scan(
 			&session.ID, &session.RunID, &claudeSessionID, &parentSessionID,
-			&session.Query, &summary, &model, &workingDir, &session.MaxTurns,
+			&session.Query, &summary, &title, &model, &workingDir, &session.MaxTurns,
 			&systemPrompt, &appendSystemPrompt, &customInstructions,
 			&permissionPromptTool, &allowedTools, &disallowedTools,
 			&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
@@ -839,6 +881,7 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 		session.ClaudeSessionID = claudeSessionID.String
 		session.ParentSessionID = parentSessionID.String
 		session.Summary = summary.String
+		session.Title = title.String
 		session.Model = model.String
 		session.WorkingDir = workingDir.String
 		session.SystemPrompt = systemPrompt.String

@@ -63,6 +63,7 @@ type Session struct {
 	ParentSessionID      string
 	Query                string
 	Summary              string
+	Title                string // New field for user-editable title
 	Model                string
 	WorkingDir           string
 	MaxTurns             int
@@ -90,6 +91,7 @@ type Session struct {
 type SessionUpdate struct {
 	ClaudeSessionID *string
 	Summary         *string
+	Title           *string // New field for updating title
 	Status          *string
 	LastActivityAt  *time.Time
 	CompletedAt     *time.Time

@@ -78,6 +78,7 @@ export interface SessionInfo {
   error?: string
   query: string
   summary: string
+  title?: string
   model?: string
   working_dir?: string
   result?: any
@@ -93,6 +94,7 @@ export interface SessionState {
   status: string // Protocol returns string, not enum
   query: string
   summary: string
+  title?: string
   model?: string
   working_dir?: string
   created_at: string
@@ -336,4 +338,14 @@ export interface GetSessionSnapshotsRequest {
 
 export interface GetSessionSnapshotsResponse {
   snapshots: FileSnapshotInfo[]
+}
+
+// Update session title types
+export interface UpdateSessionTitleRequest {
+  session_id: string
+  title: string
+}
+
+export interface UpdateSessionTitleResponse {
+  success: boolean
 }

@@ -3,7 +3,7 @@ import { useStore } from '@/AppStore'
 import { notificationService } from '@/services/NotificationService'
 import { daemonClient } from '@/lib/daemon'
 import { useSessionSubscriptions } from './useSubscriptions'
-import { SessionStatus, type SessionStatusChangedEventData } from '@/lib/daemon/types'
+import { SessionStatus, type SessionStatusChangedEventData, type SessionInfo } from '@/lib/daemon/types'
 
 /**
  * Hook that subscribes to session events and handles notifications
@@ -33,22 +33,31 @@ export function useSessionEventsWithNotifications(connected: boolean) {
       const previousStatus = previousStatusesRef.current.get(data.session_id)
       const newStatus = data.new_status as SessionStatus
 
-      // Update the session status immediately
-      updateSession(data.session_id, {
-        status: newStatus,
+      // Update the session - only include status if it's actually provided
+      const updates: Partial<SessionInfo> = {
         last_activity_at: timestamp,
-      })
+      }
 
-      // Store the new status
-      previousStatusesRef.current.set(data.session_id, newStatus)
+      // TODO(3) - Consider exiting early when `data.new_status` is undefined
+      if (data.new_status !== undefined) {
+        updates.status = newStatus
+        // Store the new status
+        previousStatusesRef.current.set(data.session_id, newStatus)
+      }
+
+      updateSession(data.session_id, updates)
 
       // Clear notifications if session is no longer waiting_input
-      if (newStatus !== SessionStatus.WaitingInput) {
+      if (data.new_status !== undefined && newStatus !== SessionStatus.WaitingInput) {
         clearNotificationsForSession(data.session_id)
       }
 
       // Check if session just entered waiting_input status
-      if (previousStatus !== SessionStatus.WaitingInput && newStatus === SessionStatus.WaitingInput) {
+      if (
+        data.new_status !== undefined &&
+        previousStatus !== SessionStatus.WaitingInput &&
+        newStatus === SessionStatus.WaitingInput
+      ) {
         try {
           const sessionResponse = await daemonClient.getSessionState(data.session_id)
           const session = sessionResponse.session
@@ -77,7 +86,11 @@ export function useSessionEventsWithNotifications(connected: boolean) {
       }
 
       // Check if session just completed
-      if (previousStatus !== SessionStatus.Completed && newStatus === SessionStatus.Completed) {
+      if (
+        data.new_status !== undefined &&
+        previousStatus !== SessionStatus.Completed &&
+        newStatus === SessionStatus.Completed
+      ) {
         console.log(
           `Session ${data.session_id} completed. Previous status: ${previousStatus}, checking navigation tracking...`,
         )
@@ -110,7 +123,11 @@ export function useSessionEventsWithNotifications(connected: boolean) {
       }
 
       // Check if session just failed
-      if (previousStatus !== SessionStatus.Failed && newStatus === SessionStatus.Failed) {
+      if (
+        data.new_status !== undefined &&
+        previousStatus !== SessionStatus.Failed &&
+        newStatus === SessionStatus.Failed
+      ) {
         try {
           const sessionResponse = await daemonClient.getSessionState(data.session_id)
           const session = sessionResponse.session

@@ -49,6 +49,7 @@ type Info struct {
 	Error           string             `json:"error,omitempty"`
 	Query           string             `json:"query"`
 	Summary         string             `json:"summary"`
+	Title           string             `json:"title"`
 	Model           string             `json:"model,omitempty"`
 	WorkingDir      string             `json:"working_dir,omitempty"`
 	Result          *claudecode.Result `json:"result,omitempty"`
@@ -113,6 +114,7 @@ func SessionToInfo(s store.Session) Info {
 		Error:           s.ErrorMessage,
 		Query:           s.Query,
 		Summary:         s.Summary,
+		Title:           s.Title,
 		Model:           s.Model,
 		WorkingDir:      s.WorkingDir,
 		AutoAcceptEdits: s.AutoAcceptEdits,

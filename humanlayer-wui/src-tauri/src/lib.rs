@@ -399,6 +399,23 @@ async fn get_session_snapshots(
     }
 }
 
+#[tauri::command]
+async fn update_session_title(
+    state: State<'_, AppState>,
+    session_id: String,
+    title: String,
+) -> std::result::Result<(), String> {
+    let client_guard = state.client.lock().await;
+
+    match &*client_guard {
+        Some(client) => client
+            .update_session_title(&session_id, &title)
+            .await
+            .map_err(|e| e.to_string()),
+        None => Err("Not connected to daemon".to_string()),
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Initialize tracing
@@ -432,6 +449,7 @@ pub fn run() {
             archive_session,
             bulk_archive_sessions,
             get_session_snapshots,
+            update_session_title,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

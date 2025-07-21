@@ -343,6 +343,7 @@ func (h *SessionHandlers) HandleGetSessionState(ctx context.Context, params json
 		Status:          session.Status,
 		Query:           session.Query,
 		Summary:         session.Summary,
+		Title:           session.Title,
 		Model:           session.Model,
 		WorkingDir:      session.WorkingDir,
 		CreatedAt:       session.CreatedAt.Format(time.RFC3339),
@@ -551,6 +552,43 @@ func (h *SessionHandlers) HandleGetRecentPaths(ctx context.Context, params json.
 	return &GetRecentPathsResponse{Paths: rpcPaths}, nil
 }
 
+// HandleUpdateSessionTitle handles the UpdateSessionTitle RPC method
+func (h *SessionHandlers) HandleUpdateSessionTitle(ctx context.Context, params json.RawMessage) (interface{}, error) {
+	var req UpdateSessionTitleRequest
+	if err := json.Unmarshal(params, &req); err != nil {
+		return nil, fmt.Errorf("invalid request: %w", err)
+	}
+
+	// Validate required fields
+	if req.SessionID == "" {
+		return nil, fmt.Errorf("session_id is required")
+	}
+
+	// Update session title
+	update := store.SessionUpdate{
+		Title: &req.Title,
+	}
+
+	if err := h.store.UpdateSession(ctx, req.SessionID, update); err != nil {
+		return nil, fmt.Errorf("failed to update session: %w", err)
+	}
+
+	// Publish event for UI updates
+	if h.eventBus != nil {
+		h.eventBus.Publish(bus.Event{
+			Type: bus.EventSessionStatusChanged,
+			Data: map[string]interface{}{
+				"session_id": req.SessionID,
+				"title":      req.Title,
+			},
+		})
+	}
+
+	return &UpdateSessionTitleResponse{
+		Success: true,
+	}, nil
+}
+
 // isEditTool checks if a tool name is one of the edit tools
 func isEditTool(toolName string) bool {
 	return toolName == "Edit" || toolName == "Write" || toolName == "MultiEdit"
@@ -648,6 +686,7 @@ func (h *SessionHandlers) Register(server *Server) {
 	server.Register("interruptSession", h.HandleInterruptSession)
 	server.Register("getSessionSnapshots", h.HandleGetSessionSnapshots)
 	server.Register("updateSessionSettings", h.HandleUpdateSessionSettings)
+	server.Register("updateSessionTitle", h.HandleUpdateSessionTitle)
 	server.Register("getRecentPaths", h.HandleGetRecentPaths)
 	server.Register("archiveSession", h.HandleArchiveSession)
 	server.Register("bulkArchiveSessions", h.HandleBulkArchiveSessions)

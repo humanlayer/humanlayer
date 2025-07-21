@@ -2,8 +2,8 @@ import { SessionInfo } from '@/lib/daemon/types'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 import { useHotkeys, useHotkeysContext } from 'react-hotkeys-hook'
-import { useEffect, useRef } from 'react'
-import { CircleOff, CheckSquare, Square, FileText } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { CircleOff, CheckSquare, Square, FileText, Pencil } from 'lucide-react'
 import { getStatusTextClass } from '@/utils/component-utils'
 import { formatTimestamp, formatAbsoluteTimestamp, truncatePath } from '@/utils/formatting'
 import { highlightMatches } from '@/lib/fuzzy-search'
@@ -13,6 +13,9 @@ import { useStore } from '@/AppStore'
 import { toast } from 'sonner'
 import { EmptyState } from './EmptyState'
 import type { LucideIcon } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { daemonClient } from '@/lib/daemon/client'
 
 interface SessionTableProps {
   sessions: SessionInfo[]
@@ -54,6 +57,40 @@ export default function SessionTable({
   const tableRef = useRef<HTMLTableElement>(null)
   const { archiveSession, selectedSessions, toggleSessionSelection, bulkArchiveSessions, bulkSelect } =
     useStore()
+
+  // State for inline editing
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null)
+  const [editValue, setEditValue] = useState('')
+  const [hoveredSessionId, setHoveredSessionId] = useState<string | null>(null)
+
+  // Helper functions for inline editing
+  const startEdit = (sessionId: string, currentTitle: string, currentSummary: string) => {
+    setEditingSessionId(sessionId)
+    setEditValue(currentTitle || currentSummary || '')
+  }
+
+  const saveEdit = async () => {
+    if (!editingSessionId) return
+
+    try {
+      await daemonClient.updateSessionTitle(editingSessionId, editValue)
+
+      // Update the session in the store
+      useStore.getState().updateSession(editingSessionId, { title: editValue })
+
+      setEditingSessionId(null)
+      setEditValue('')
+    } catch (error) {
+      toast.error('Failed to update session title', {
+        description: error instanceof Error ? error.message : 'Unknown error',
+      })
+    }
+  }
+
+  const cancelEdit = () => {
+    setEditingSessionId(null)
+    setEditValue('')
+  }
 
   // Helper to render highlighted text
   const renderHighlightedText = (text: string, sessionId: string) => {
@@ -321,9 +358,11 @@ export default function SessionTable({
                   data-session-id={session.id}
                   onMouseEnter={() => {
                     handleFocusSession?.(session)
+                    setHoveredSessionId(session.id)
                   }}
                   onMouseLeave={() => {
                     handleBlurSession?.()
+                    setHoveredSessionId(null)
                   }}
                   onClick={() => handleActivateSession?.(session)}
                   className={cn(
@@ -373,9 +412,67 @@ export default function SessionTable({
                     </Tooltip>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-2">
-                      <span>{renderHighlightedText(session.summary, session.id)}</span>
-                    </div>
+                    {editingSessionId === session.id ? (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          value={editValue}
+                          onChange={e => setEditValue(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault()
+                              saveEdit()
+                            } else if (e.key === 'Escape') {
+                              e.preventDefault()
+                              cancelEdit()
+                            }
+                          }}
+                          onClick={e => e.stopPropagation()}
+                          className="h-7 text-sm"
+                          autoFocus
+                        />
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={e => {
+                            e.stopPropagation()
+                            saveEdit()
+                          }}
+                          className="h-7 px-2"
+                        >
+                          Save
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={e => {
+                            e.stopPropagation()
+                            cancelEdit()
+                          }}
+                          className="h-7 px-2"
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 group">
+                        <span>
+                          {renderHighlightedText(session.title || session.summary || '', session.id)}
+                        </span>
+                        {hoveredSessionId === session.id && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={e => {
+                              e.stopPropagation()
+                              startEdit(session.id, session.title || '', session.summary || '')
+                            }}
+                            className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell>{session.model || <CircleOff className="w-4 h-4" />}</TableCell>
                   <TableCell>
