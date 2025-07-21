@@ -38,6 +38,7 @@ export function useSessionEventsWithNotifications(connected: boolean) {
         last_activity_at: timestamp,
       }
 
+      // TODO(3) - Consider exiting early when `data.new_status` is undefined
       if (data.new_status !== undefined) {
         updates.status = newStatus
         // Store the new status
