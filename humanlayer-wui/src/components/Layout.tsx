@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
 import { Outlet } from 'react-router-dom'
+import { useHotkeys } from 'react-hotkeys-hook'
 import { daemonClient } from '@/lib/daemon'
 import { Button } from '@/components/ui/button'
 import { ThemeSelector } from '@/components/ThemeSelector'
 import { SessionLauncher } from '@/components/SessionLauncher'
+import { HotkeyPanel } from '@/components/HotkeyPanel'
 import { Breadcrumbs } from '@/components/Breadcrumbs'
 import { useSessionLauncher, useSessionLauncherHotkeys } from '@/hooks/useSessionLauncher'
 import { useStore } from '@/AppStore'
@@ -21,6 +23,9 @@ export function Layout() {
   const [connected, setConnected] = useState(false)
   const { setTheme } = useTheme()
 
+  // Hotkey panel state from store
+  const { isHotkeyPanelOpen, setHotkeyPanelOpen } = useStore()
+
   // Session launcher state
   const { isOpen, close } = useSessionLauncher()
   const { handleKeyDown } = useSessionLauncherHotkeys()
@@ -32,6 +37,17 @@ export function Layout() {
 
   // Set up real-time subscriptions with notification handling
   useSessionEventsWithNotifications(connected)
+
+  // Global hotkey for toggling hotkey panel
+  useHotkeys(
+    '?',
+    () => {
+      setHotkeyPanelOpen(!isHotkeyPanelOpen)
+    },
+    {
+      useKey: true,
+    },
+  )
 
   // Connect to daemon on mount
   useEffect(() => {
@@ -211,6 +227,9 @@ export function Layout() {
 
       {/* Session Launcher */}
       <SessionLauncher isOpen={isOpen} onClose={close} />
+
+      {/* Hotkey Panel */}
+      <HotkeyPanel open={isHotkeyPanelOpen} onOpenChange={setHotkeyPanelOpen} />
 
       {/* Notifications */}
       <Toaster position="bottom-right" richColors />
