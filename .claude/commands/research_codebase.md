@@ -29,8 +29,9 @@ Then wait for the user's research query.
    - Create multiple Task agents to research different aspects concurrently
    - Always include these parallel tasks:
      - **Codebase exploration tasks** (one for each relevant component/directory)
-     - **Web Research tasks** (to confirm best practices and ground codebase context in alternative approaches)
      - **Thoughts directory exploration task** (to find historical context and insights)
+   - Optionally include if it makes sense for the task:
+     - **Web Research tasks** (only if the user prompts you to search the web or if external context would be valuable for the specific research question)
    - Each codebase sub-agent should focus on a specific directory, component, or question
    - Write detailed prompts for each sub-agent following these guidelines:
      - Instruct them to use READ-ONLY tools (Read, Grep, Glob, LS)
