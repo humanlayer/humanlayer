@@ -564,7 +564,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               {session.archived && <Archive className="h-4 w-4 text-muted-foreground" />}
               {isEditingTitle ? (
                 <div className="flex items-center gap-2 flex-1">
-                  <Input aria-label="Edit session title"
+                  <Input
+                    aria-label="Edit session title"
                     value={editValue}
                     onChange={e => setEditValue(e.target.value)}
                     onKeyDown={e => {
