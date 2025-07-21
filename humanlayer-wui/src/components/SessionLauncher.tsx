@@ -95,13 +95,7 @@ export function SessionLauncher({ isOpen, onClose }: SessionLauncherProps) {
                   </div>
                 )}
 
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <div className="flex items-center space-x-4">
-                    <span>Characters: {query.length}</span>
-                    {query.startsWith('/') && (
-                      <span className="text-blue-500">Working directory detected</span>
-                    )}
-                  </div>
+                <div className="flex items-center justify-end text-xs text-muted-foreground">
                   <div className="flex items-center space-x-2">
                     <span>↵ Launch</span>
                     <span>⌘K Close</span>
