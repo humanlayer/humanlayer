@@ -5,7 +5,7 @@ import { useHotkeys, useHotkeysContext } from 'react-hotkeys-hook'
 import { useEffect, useRef, useState } from 'react'
 import { CircleOff, CheckSquare, Square, FileText, Pencil } from 'lucide-react'
 import { getStatusTextClass } from '@/utils/component-utils'
-import { formatTimestamp, formatAbsoluteTimestamp, truncatePath } from '@/utils/formatting'
+import { formatTimestamp, formatAbsoluteTimestamp } from '@/utils/formatting'
 import { highlightMatches } from '@/lib/fuzzy-search'
 import { useSessionLauncher } from '@/hooks/useSessionLauncher'
 import { cn } from '@/lib/utils'
@@ -61,7 +61,6 @@ export default function SessionTable({
   // State for inline editing
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
-  const [hoveredSessionId, setHoveredSessionId] = useState<string | null>(null)
 
   // Helper functions for inline editing
   const startEdit = (sessionId: string, currentTitle: string, currentSummary: string) => {
@@ -358,11 +357,9 @@ export default function SessionTable({
                   data-session-id={session.id}
                   onMouseEnter={() => {
                     handleFocusSession?.(session)
-                    setHoveredSessionId(session.id)
                   }}
                   onMouseLeave={() => {
                     handleBlurSession?.()
-                    setHoveredSessionId(null)
                   }}
                   onClick={() => handleActivateSession?.(session)}
                   className={cn(
@@ -400,8 +397,11 @@ export default function SessionTable({
                   <TableCell className="max-w-[200px]">
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <span className="block truncate cursor-help text-sm">
-                          {truncatePath(session.working_dir)}
+                        <span
+                          className="block truncate cursor-help text-sm"
+                          style={{ direction: 'rtl', textAlign: 'left' }}
+                        >
+                          {session.working_dir || '-'}
                         </span>
                       </TooltipTrigger>
                       <TooltipContent className="max-w-[600px]">
@@ -458,19 +458,17 @@ export default function SessionTable({
                         <span>
                           {renderHighlightedText(session.title || session.summary || '', session.id)}
                         </span>
-                        {hoveredSessionId === session.id && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={e => {
-                              e.stopPropagation()
-                              startEdit(session.id, session.title || '', session.summary || '')
-                            }}
-                            className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <Pencil className="h-3 w-3" />
-                          </Button>
-                        )}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={e => {
+                            e.stopPropagation()
+                            startEdit(session.id, session.title || '', session.summary || '')
+                          }}
+                          className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </Button>
                       </div>
                     )}
                   </TableCell>

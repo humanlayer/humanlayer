@@ -5,7 +5,7 @@ import { ConversationEvent, ConversationEventType } from '@/lib/daemon/types'
 import { useConversation } from '@/hooks/useConversation'
 import { useSessionSnapshots } from '@/hooks/useSessionSnapshots'
 import { Skeleton } from '@/components/ui/skeleton'
-import { MessageCircleDashed, Copy } from 'lucide-react'
+import { Copy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { formatAbsoluteTimestamp, formatTimestamp } from '@/utils/formatting'
@@ -208,25 +208,19 @@ export function ConversationContent({
     )
   }
 
-  // No events yet.
+  // No events yet - return null so only the loader shows
   if (filteredEvents.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-8 text-center">
-        <div className="text-muted-foreground mb-2">
-          <MessageCircleDashed className="w-12 h-12 mx-auto" />
-        </div>
-        <h3 className="text-lg font-medium text-foreground">No conversation just yet</h3>
-        <p className="mt-1 text-sm text-muted-foreground">
-          The conversation will appear here once the bot engines begin to fire up.
-        </p>
-      </div>
-    )
+    return null
   }
 
   // Early return for no sub-tasks case (most common)
   if (!hasSubTasks) {
     return (
-      <div ref={containerRef} data-conversation-container className="overflow-y-auto flex-1">
+      <div
+        ref={containerRef}
+        data-conversation-container
+        className="overflow-y-auto flex-1 flex flex-col justify-end"
+      >
         <div>
           {nonEmptyDisplayObjects.map((displayObject, index) => (
             <div key={displayObject.id}>
@@ -332,7 +326,11 @@ export function ConversationContent({
 
   // Render with task groups
   return (
-    <div ref={containerRef} data-conversation-container className="overflow-y-auto flex-1">
+    <div
+      ref={containerRef}
+      data-conversation-container
+      className="overflow-y-auto flex-1 flex flex-col justify-end"
+    >
       <div>
         {rootEvents
           .filter(event => event.event_type !== ConversationEventType.ToolResult)
