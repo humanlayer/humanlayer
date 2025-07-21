@@ -31,7 +31,7 @@ Then wait for the user's research query.
      - **Codebase exploration tasks** (one for each relevant component/directory)
      - **Thoughts directory exploration task** (to find historical context and insights)
    - Optionally include if it makes sense for the task:
-     - **Web Research tasks** (only if the user prompts you to search the web or if external context would be valuable for the specific research question)
+     - **Web Research tasks** (only if the user explicitly asks you to search the web)
    - Each codebase sub-agent should focus on a specific directory, component, or question
    - Write detailed prompts for each sub-agent following these guidelines:
      - Instruct them to use READ-ONLY tools (Read, Grep, Glob, LS)
@@ -50,7 +50,7 @@ Then wait for the user's research query.
      6. Use only READ-ONLY tools (Read, Grep, Glob, LS)
      Return: File paths, line numbers, and concise explanations of findings
      ```
-   - Example web sub-agent prompt:
+   - Example web sub-agent prompt (only create if user explicitly asks for web search):
      ```
      Research [specific component/pattern] using WebSearch and/or WebFetch:
      1. Find all pages related to [topic]
