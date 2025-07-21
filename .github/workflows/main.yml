@@ -64,7 +64,7 @@ jobs:
         run: go install go.uber.org/mock/mockgen@latest
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@1.83.0
 
       - name: Cache and install Tauri system dependencies
         if: runner.os == 'Linux'
