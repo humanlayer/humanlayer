@@ -3,6 +3,7 @@ package session
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
@@ -45,6 +46,7 @@ func TestContinueSessionInheritance(t *testing.T) {
 			PermissionPromptTool: "hlyr",
 			AllowedTools:         `["tool1", "tool2"]`,
 			DisallowedTools:      `["tool3"]`,
+			Title:                "Test Session Title",
 			CreatedAt:            time.Now(),
 			LastActivityAt:       time.Now(),
 			CompletedAt:          &time.Time{},
@@ -143,9 +145,122 @@ func TestContinueSessionInheritance(t *testing.T) {
 			}
 		}
 
+		// Verify title was inherited
+		if childSession.Title != parentSession.Title {
+			t.Errorf("Title not inherited: got %s, want %s", childSession.Title, parentSession.Title)
+		}
+
 		// MaxTurns should NOT be inherited (as per spec)
 		if childSession.MaxTurns == parentSession.MaxTurns {
 			t.Error("MaxTurns should not be inherited")
+		}
+	})
+
+	t.Run("InheritsTitle", func(t *testing.T) {
+		// Create parent session with title
+		parentSessionID := "parent-with-title"
+		parentSession := &store.Session{
+			ID:              parentSessionID,
+			RunID:           "run-title",
+			ClaudeSessionID: "claude-title",
+			Status:          store.SessionStatusCompleted,
+			Query:           "original query",
+			Title:           "My Important Task",
+			Model:           "claude-3-opus-20240229",
+			WorkingDir:      "/tmp/test",
+			CreatedAt:       time.Now(),
+			LastActivityAt:  time.Now(),
+			CompletedAt:     &time.Time{},
+		}
+
+		if err := sqliteStore.CreateSession(ctx, parentSession); err != nil {
+			t.Fatalf("Failed to create parent session: %v", err)
+		}
+
+		// Continue session
+		req := ContinueSessionConfig{
+			ParentSessionID: parentSessionID,
+			Query:           "continue working",
+		}
+
+		_, _ = manager.ContinueSession(ctx, req)
+		// Expected to fail due to missing Claude binary
+
+		// Find the child session
+		sessions, err := sqliteStore.ListSessions(ctx)
+		if err != nil {
+			t.Fatalf("Failed to list sessions: %v", err)
+		}
+
+		var childSession *store.Session
+		for _, s := range sessions {
+			if s.ParentSessionID == parentSessionID {
+				childSession = s
+				break
+			}
+		}
+
+		if childSession == nil {
+			t.Fatal("Child session not found")
+		}
+
+		// Verify title was inherited
+		if childSession.Title != parentSession.Title {
+			t.Errorf("Title not inherited: got %q, want %q", childSession.Title, parentSession.Title)
+		}
+	})
+
+	t.Run("InheritsEmptyTitle", func(t *testing.T) {
+		// Create parent session with empty title
+		parentSessionID := "parent-empty-title"
+		parentSession := &store.Session{
+			ID:              parentSessionID,
+			RunID:           "run-empty-title",
+			ClaudeSessionID: "claude-empty-title",
+			Status:          store.SessionStatusCompleted,
+			Query:           "original query",
+			Title:           "", // Empty title
+			Model:           "claude-3-opus-20240229",
+			WorkingDir:      "/tmp/test",
+			CreatedAt:       time.Now(),
+			LastActivityAt:  time.Now(),
+			CompletedAt:     &time.Time{},
+		}
+
+		if err := sqliteStore.CreateSession(ctx, parentSession); err != nil {
+			t.Fatalf("Failed to create parent session: %v", err)
+		}
+
+		// Continue session
+		req := ContinueSessionConfig{
+			ParentSessionID: parentSessionID,
+			Query:           "continue working",
+		}
+
+		_, _ = manager.ContinueSession(ctx, req)
+		// Expected to fail due to missing Claude binary
+
+		// Find the child session
+		sessions, err := sqliteStore.ListSessions(ctx)
+		if err != nil {
+			t.Fatalf("Failed to list sessions: %v", err)
+		}
+
+		var childSession *store.Session
+		for _, s := range sessions {
+			if s.ParentSessionID == parentSessionID {
+				childSession = s
+				break
+			}
+		}
+
+		if childSession == nil {
+			t.Fatal("Child session not found")
+		}
+
+		// Verify empty title was inherited (should be empty)
+		if childSession.Title != "" {
+			t.Errorf("Empty title not inherited correctly: got %q, want empty string", childSession.Title)
 		}
 	})
 
@@ -466,6 +581,193 @@ func TestContinueSessionInheritance(t *testing.T) {
 		}
 		if server.Command != "override-cmd" {
 			t.Errorf("MCP server command not overridden: got %s", server.Command)
+		}
+	})
+
+	t.Run("TitleInheritanceEdgeCases", func(t *testing.T) {
+		tests := []struct {
+			name        string
+			parentTitle string
+			expectTitle string
+			description string
+		}{
+			{
+				name:        "whitespace_only_title",
+				parentTitle: "   ",
+				expectTitle: "   ",
+				description: "Whitespace-only titles should be preserved as-is",
+			},
+			{
+				name:        "unicode_emoji_title",
+				parentTitle: "Deploy 🚀 Production 🔥",
+				expectTitle: "Deploy 🚀 Production 🔥",
+				description: "Unicode characters and emojis should be preserved",
+			},
+			{
+				name:        "very_long_title",
+				parentTitle: strings.Repeat("a", 1000),
+				expectTitle: strings.Repeat("a", 1000),
+				description: "Long titles should be inherited without truncation",
+			},
+			{
+				name:        "title_with_special_chars",
+				parentTitle: "Task: Deploy \"v1.2.3\" -> Production (HIGH PRIORITY)",
+				expectTitle: "Task: Deploy \"v1.2.3\" -> Production (HIGH PRIORITY)",
+				description: "Special characters should be preserved",
+			},
+			{
+				name:        "multiline_title",
+				parentTitle: "Line 1\nLine 2\nLine 3",
+				expectTitle: "Line 1\nLine 2\nLine 3",
+				description: "Multiline titles should be preserved",
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				// Create parent session with specific title
+				parentSessionID := "parent-" + tt.name
+				parentSession := &store.Session{
+					ID:              parentSessionID,
+					RunID:           "run-" + tt.name,
+					ClaudeSessionID: "claude-" + tt.name,
+					Status:          store.SessionStatusCompleted,
+					Query:           "test query",
+					Title:           tt.parentTitle,
+					Model:           "claude-3-opus-20240229",
+					WorkingDir:      "/tmp/test",
+					CreatedAt:       time.Now(),
+					LastActivityAt:  time.Now(),
+					CompletedAt:     &time.Time{},
+				}
+
+				if err := sqliteStore.CreateSession(ctx, parentSession); err != nil {
+					t.Fatalf("Failed to create parent session: %v", err)
+				}
+
+				// Continue session
+				req := ContinueSessionConfig{
+					ParentSessionID: parentSessionID,
+					Query:           "continue",
+				}
+
+				_, _ = manager.ContinueSession(ctx, req)
+				// Expected to fail due to missing Claude binary
+
+				// Find the child session
+				sessions, err := sqliteStore.ListSessions(ctx)
+				if err != nil {
+					t.Fatalf("Failed to list sessions: %v", err)
+				}
+
+				var childSession *store.Session
+				for _, s := range sessions {
+					if s.ParentSessionID == parentSessionID {
+						childSession = s
+						break
+					}
+				}
+
+				if childSession == nil {
+					t.Fatal("Child session not found")
+				}
+
+				// Verify title was inherited correctly
+				if childSession.Title != tt.expectTitle {
+					t.Errorf("%s: got title %q, want %q", tt.description, childSession.Title, tt.expectTitle)
+				}
+			})
+		}
+	})
+
+	t.Run("MultipleContinuations", func(t *testing.T) {
+		// Test that titles are inherited through multiple generations
+		// grandparent -> parent -> child
+
+		// Create grandparent
+		grandparentID := "grandparent-title"
+		grandparentTitle := "Original Family Task"
+		grandparent := &store.Session{
+			ID:              grandparentID,
+			RunID:           "run-gp",
+			ClaudeSessionID: "claude-gp",
+			Status:          store.SessionStatusCompleted,
+			Query:           "start task",
+			Title:           grandparentTitle,
+			Model:           "claude-3-opus-20240229",
+			WorkingDir:      "/tmp/test",
+			CreatedAt:       time.Now(),
+			LastActivityAt:  time.Now(),
+			CompletedAt:     &time.Time{},
+		}
+
+		if err := sqliteStore.CreateSession(ctx, grandparent); err != nil {
+			t.Fatalf("Failed to create grandparent session: %v", err)
+		}
+
+		// Continue to create parent
+		parentReq := ContinueSessionConfig{
+			ParentSessionID: grandparentID,
+			Query:           "continue to parent",
+		}
+		_, _ = manager.ContinueSession(ctx, parentReq)
+
+		// Find parent session
+		var parentSession *store.Session
+		sessions, _ := sqliteStore.ListSessions(ctx)
+		for _, s := range sessions {
+			if s.ParentSessionID == grandparentID {
+				parentSession = s
+				break
+			}
+		}
+
+		if parentSession == nil {
+			t.Fatal("Parent session not found")
+		}
+
+		// Verify parent inherited title
+		if parentSession.Title != grandparentTitle {
+			t.Errorf("Parent didn't inherit title: got %q, want %q", parentSession.Title, grandparentTitle)
+		}
+
+		// Mark parent as completed for next continuation
+		completedStatus := store.SessionStatusCompleted
+		claudeID := "claude-parent"
+		now := time.Now()
+		update := store.SessionUpdate{
+			Status:          &completedStatus,
+			ClaudeSessionID: &claudeID,
+			CompletedAt:     &now,
+		}
+		if err := sqliteStore.UpdateSession(ctx, parentSession.ID, update); err != nil {
+			t.Fatalf("Failed to update parent session: %v", err)
+		}
+
+		// Continue to create child
+		childReq := ContinueSessionConfig{
+			ParentSessionID: parentSession.ID,
+			Query:           "continue to child",
+		}
+		_, _ = manager.ContinueSession(ctx, childReq)
+
+		// Find child session
+		var childSession *store.Session
+		sessions, _ = sqliteStore.ListSessions(ctx)
+		for _, s := range sessions {
+			if s.ParentSessionID == parentSession.ID {
+				childSession = s
+				break
+			}
+		}
+
+		if childSession == nil {
+			t.Fatal("Child session not found")
+		}
+
+		// Verify child inherited the same original title
+		if childSession.Title != grandparentTitle {
+			t.Errorf("Child didn't inherit grandparent title: got %q, want %q", childSession.Title, grandparentTitle)
 		}
 	})
 }
