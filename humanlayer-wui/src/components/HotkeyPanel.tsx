@@ -40,7 +40,6 @@ export function HotkeyPanel({ open, onOpenChange }: HotkeyPanelProps) {
         }))
       }
     })
-
     return groups
   }, [])
 
@@ -75,13 +74,13 @@ export function HotkeyPanel({ open, onOpenChange }: HotkeyPanelProps) {
 
             {/* Command component for filtering */}
             <Command className="flex-1 overflow-hidden">
-              <CommandInput placeholder="Search shortcuts..." className="h-11" />
-              <CommandList>
+              <CommandInput placeholder="Search shortcuts..." className="h-11" autoFocus />
+              <CommandList className="max-h-none">
                 <CommandEmpty>No shortcuts found.</CommandEmpty>
                 {Object.entries(groupedHotkeys).map(([category, hotkeys]) => (
                   <CommandGroup key={category} heading={category}>
-                    {hotkeys.map((hotkey, index) => (
-                      <CommandItem
+                      {hotkeys.map((hotkey, index) => (
+                        <CommandItem
                         key={`${category}-${index}`}
                         value={`${hotkey.description} ${hotkey.key} ${category}`}
                         className="flex items-center justify-between py-3 data-[selected=true]:bg-transparent"
