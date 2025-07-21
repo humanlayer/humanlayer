@@ -11,6 +11,7 @@ export type Theme =
   | 'gruvbox-dark'
   | 'gruvbox-light'
   | 'monokai'
+  | 'launch'
 
 interface ThemeContextType {
   theme: Theme

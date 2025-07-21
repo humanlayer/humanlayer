@@ -184,6 +184,20 @@
   --terminal-warning: #e6db74;
   --terminal-error: #f92672;
 }
+
+/* Y Combinator - Hacker News inspired theme */
+[data-theme='launch'] {
+  --terminal-bg: #f6f6ef;
+  --terminal-bg-alt: #ffffff;
+  --terminal-fg: #000000;
+  --terminal-fg-dim: #828282;
+  --terminal-accent: #ff6600;
+  --terminal-accent-alt: #458cc9;
+  --terminal-border: #828282;
+  --terminal-success: #458cc9;
+  --terminal-warning: #ff6600;
+  --terminal-error: #222222;
+}
 @layer base {
   * {
     @apply border-border outline-ring/50;

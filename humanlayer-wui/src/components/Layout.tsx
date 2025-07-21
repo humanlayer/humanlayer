@@ -10,6 +10,8 @@ import { useStore } from '@/AppStore'
 import { useSessionEventsWithNotifications } from '@/hooks/useSessionEventsWithNotifications'
 import { Toaster } from 'sonner'
 import { notificationService } from '@/services/NotificationService'
+import { useTheme } from '@/contexts/ThemeContext'
+import { useHotkeys } from 'react-hotkeys-hook'
 import '@/App.css'
 
 export function Layout() {
@@ -17,10 +19,16 @@ export function Layout() {
   const [approvals, setApprovals] = useState<any[]>([])
   const [activeSessionId] = useState<string | null>(null)
   const [connected, setConnected] = useState(false)
+  const { setTheme } = useTheme()
 
   // Session launcher state
   const { isOpen, close } = useSessionLauncher()
   const { handleKeyDown } = useSessionLauncherHotkeys()
+
+  // Secret hotkey for launch theme
+  useHotkeys('mod+shift+y', () => {
+    setTheme('launch')
+  })
 
   // Set up real-time subscriptions with notification handling
   useSessionEventsWithNotifications(connected)
