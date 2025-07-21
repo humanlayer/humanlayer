@@ -49,6 +49,7 @@ pub trait DaemonClientTrait: Send + Sync {
     async fn archive_session(&self, req: ArchiveSessionRequest) -> Result<ArchiveSessionResponse>;
     async fn bulk_archive_sessions(&self, req: BulkArchiveSessionsRequest) -> Result<BulkArchiveSessionsResponse>;
     async fn get_session_snapshots(&self, session_id: &str) -> Result<GetSessionSnapshotsResponse>;
+    async fn update_session_title(&self, session_id: &str, title: &str) -> Result<()>;
 }
 
 pub struct DaemonClient {
@@ -58,17 +59,6 @@ pub struct DaemonClient {
 }
 
 impl DaemonClient {
-    /// Create a new daemon client
-    pub async fn new(socket_path: Option<PathBuf>) -> Result<Self> {
-        let connection = Connection::new(socket_path).await?;
-        let subscription_manager = Arc::new(SubscriptionManager::new());
-
-        Ok(DaemonClient {
-            connection: Arc::new(RwLock::new(connection)),
-            subscription_manager,
-            request_id: AtomicU64::new(1),
-        })
-    }
 
     /// Connect with retries
     pub async fn connect_with_retries(
@@ -122,18 +112,6 @@ impl DaemonClient {
         } else {
             Err(Error::InvalidResponse("No result in response".to_string()))
         }
-    }
-
-    /// Check if the client is connected
-    pub async fn is_connected(&self) -> bool {
-        let connection = self.connection.read().await;
-        connection.is_alive().await
-    }
-
-    /// Reconnect to the daemon
-    pub async fn reconnect(&self) -> Result<()> {
-        let mut connection = self.connection.write().await;
-        connection.reconnect().await
     }
 }
 
@@ -316,5 +294,22 @@ impl DaemonClientTrait for DaemonClient {
             session_id: session_id.to_string(),
         };
         self.send_rpc_request("getSessionSnapshots", Some(req)).await
+    }
+
+    async fn update_session_title(&self, session_id: &str, title: &str) -> Result<()> {
+        let req = UpdateSessionTitleRequest {
+            session_id: session_id.to_string(),
+            title: title.to_string(),
+        };
+        let response: UpdateSessionTitleResponse = self.send_rpc_request("updateSessionTitle", Some(req)).await?;
+
+        if !response.success {
+            return Err(Error::Session(format!(
+                "Failed to update title for session {}",
+                session_id
+            )));
+        }
+
+        Ok(())
     }
 }

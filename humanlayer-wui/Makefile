@@ -1,6 +1,6 @@
 # HumanLayer WUI Makefile
 
-.PHONY: help install dev build lint format format-check typecheck test check clean
+.PHONY: help install dev build lint format format-check typecheck test check clean rust-check rust-clippy
 
 help: ## Show this help message
 	@echo "Available commands:"
@@ -27,6 +27,12 @@ format-check: ## Check code formatting
 typecheck: ## Run TypeScript type checking
 	bun run typecheck
 
+rust-check: ## Run Rust compilation check
+	cd src-tauri && cargo check
+
+rust-clippy: ## Run Rust linter (clippy)
+	cd src-tauri && cargo clippy -- -D warnings
+
 # Placeholder for future test command
 
 check-quiet: ## Run all quality checks with quiet output
@@ -34,14 +40,16 @@ check-quiet: ## Run all quality checks with quiet output
 	@. ../hack/run_silent.sh && run_silent "Format check passed" "bun run format:check || (bun run format > /dev/null 2>&1 && exit 1)"
 	@. ../hack/run_silent.sh && run_silent "Lint check passed" "bun run lint"
 	@. ../hack/run_silent.sh && run_silent "Type checking passed" "bun run typecheck"
+	@. ../hack/run_silent.sh && run_silent "Rust check passed" "cd src-tauri && cargo check"
+	@. ../hack/run_silent.sh && run_silent "Rust clippy passed" "cd src-tauri && cargo clippy -- -D warnings"
 
 test-quiet: ## Run tests with quiet output
 	@. ../hack/run_silent.sh && print_header "humanlayer-wui" "Web UI tests"
 	@. ../hack/run_silent.sh && run_silent_with_test_count "Tests passed" "bun test" "bun"
 
-check: ## Run all quality checks (format + lint + typecheck)
+check: ## Run all quality checks (format + lint + typecheck + rust)
 	@if [ -n "$$VERBOSE" ]; then \
-		$(MAKE) format-check lint typecheck; \
+		$(MAKE) format-check lint typecheck rust-check rust-clippy; \
 	else \
 		$(MAKE) check-quiet; \
 	fi

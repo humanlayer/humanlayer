@@ -1,7 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::HashMap;
 
 // JSON-RPC types
 #[derive(Debug, Serialize, Deserialize)]
@@ -124,6 +123,7 @@ pub struct SessionInfo {
     pub error: Option<String>,
     pub query: String,
     pub summary: String,
+    pub title: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub model: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -165,6 +165,7 @@ pub struct SessionState {
     pub status: String,
     pub query: String,
     pub summary: String,
+    pub title: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub model: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -432,4 +433,16 @@ pub struct FileSnapshotInfo {
     pub file_path: String,
     pub content: String,
     pub created_at: String,  // ISO 8601 format
+}
+
+// Update session title types
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UpdateSessionTitleRequest {
+    pub session_id: String,
+    pub title: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UpdateSessionTitleResponse {
+    pub success: bool,
 }

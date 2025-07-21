@@ -79,14 +79,6 @@ impl SubscriptionManager {
         }
     }
 
-    /// Cancel all active subscriptions
-    pub async fn cancel_all(&self) {
-        let mut subs = self.active_subscriptions.lock().await;
-        for (id, cancel_tx) in subs.drain() {
-            let _ = cancel_tx.send(()).await;
-            info!("Cancelled subscription {}", id);
-        }
-    }
 }
 
 async fn handle_subscription(

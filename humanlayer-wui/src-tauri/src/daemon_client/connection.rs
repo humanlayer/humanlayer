@@ -18,17 +18,6 @@ pub struct Connection {
 }
 
 impl Connection {
-    /// Create a new connection to the daemon
-    pub async fn new(socket_path: Option<PathBuf>) -> Result<Self> {
-        let path = socket_path.unwrap_or_else(Self::default_socket_path);
-        let stream = Self::connect_to_socket(&path).await?;
-
-        Ok(Connection {
-            stream: Mutex::new(stream),
-            socket_path: path,
-        })
-    }
-
     /// Connect with retries
     pub async fn connect_with_retries(
         socket_path: Option<PathBuf>,
@@ -76,8 +65,8 @@ impl Connection {
         stream
             .write_all(message_with_newline.as_bytes())
             .await
-            .map_err(|e| Error::Socket(e))?;
-        stream.flush().await.map_err(|e| Error::Socket(e))?;
+            .map_err(Error::Socket)?;
+        stream.flush().await.map_err(Error::Socket)?;
 
         // Read the response
         let mut reader = BufReader::new(&mut *stream);
@@ -131,31 +120,6 @@ impl Connection {
         }
     }
 
-    /// Check if the connection is still alive
-    pub async fn is_alive(&self) -> bool {
-        // Try to get a lock with a timeout
-        let stream_guard =
-            match tokio::time::timeout(Duration::from_millis(100), self.stream.lock()).await {
-                Ok(guard) => guard,
-                Err(_) => return false,
-            };
-
-        // Check if we can peek at the stream
-        match stream_guard.try_read(&mut [0u8; 0]) {
-            Ok(_) => true,
-            Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => true,
-            Err(_) => false,
-        }
-    }
-
-    /// Reconnect to the daemon
-    pub async fn reconnect(&mut self) -> Result<()> {
-        let new_stream = Self::connect_to_socket(&self.socket_path).await?;
-        let mut stream = self.stream.lock().await;
-        *stream = new_stream;
-        info!("Reconnected to daemon");
-        Ok(())
-    }
 }
 
 #[cfg(test)]

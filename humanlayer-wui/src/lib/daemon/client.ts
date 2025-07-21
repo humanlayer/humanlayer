@@ -156,6 +156,13 @@ export class DaemonClient {
       sessionId: sessionId, // Tauri expects camelCase
     })
   }
+
+  async updateSessionTitle(sessionId: string, title: string): Promise<void> {
+    await invoke('update_session_title', {
+      sessionId,
+      title,
+    })
+  }
 }
 
 // Export a singleton instance
