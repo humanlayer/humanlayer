@@ -1082,6 +1082,8 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 	dbSession.Summary = CalculateSummary(req.Query)
 	// Inherit auto-accept setting from parent
 	dbSession.AutoAcceptEdits = parentSession.AutoAcceptEdits
+	// Inherit title from parent session
+	dbSession.Title = parentSession.Title
 	// Explicitly ensure inherited values are stored (in case NewSessionFromConfig didn't capture them)
 	if dbSession.Model == "" && parentSession.Model != "" {
 		dbSession.Model = parentSession.Model

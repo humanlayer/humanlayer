@@ -533,6 +533,151 @@ func TestIntegrationContinueSession(t *testing.T) {
 			}
 		}
 	})
+
+	t.Run("ContinueSession_InheritsTitle", func(t *testing.T) {
+		// Create parent session with title
+		parentSessionID := "parent-title-test"
+		parentTitle := "Production Deployment Task"
+		parentSession := &store.Session{
+			ID:              parentSessionID,
+			RunID:           "run-title",
+			ClaudeSessionID: "claude-title",
+			Status:          store.SessionStatusCompleted,
+			Query:           "deploy to production",
+			Title:           parentTitle,
+			WorkingDir:      "/tmp",
+			CreatedAt:       time.Now(),
+			LastActivityAt:  time.Now(),
+			CompletedAt:     &time.Time{},
+		}
+
+		// Insert parent session
+		if err := d.store.CreateSession(ctx, parentSession); err != nil {
+			t.Fatalf("Failed to create parent session: %v", err)
+		}
+
+		// Continue the session
+		req := rpc.ContinueSessionRequest{
+			SessionID: parentSessionID,
+			Query:     "check deployment status",
+		}
+
+		_, err := sendRPC(t, "continueSession", req)
+		if err != nil {
+			// Expected - Claude binary might not exist
+			if !containsError(err, "failed to launch resumed Claude session") {
+				t.Errorf("Unexpected error: %v", err)
+			}
+		}
+
+		// Get all sessions to find the child
+		sessions, err := d.store.ListSessions(ctx)
+		if err != nil {
+			t.Fatalf("Failed to list sessions: %v", err)
+		}
+
+		// Find the child session
+		var childSession *store.Session
+		for _, s := range sessions {
+			if s.ParentSessionID == parentSessionID {
+				childSession = s
+				break
+			}
+		}
+
+		if childSession == nil {
+			t.Fatal("Child session not found")
+		}
+
+		// Verify title was inherited
+		if childSession.Title != parentTitle {
+			t.Errorf("Title not inherited: got %q, want %q", childSession.Title, parentTitle)
+		}
+	})
+
+	t.Run("ContinueSession_TitlePersistsAfterUpdate", func(t *testing.T) {
+		// Create parent session with title
+		parentSessionID := "parent-title-update"
+		originalTitle := "Original Task"
+		parentSession := &store.Session{
+			ID:              parentSessionID,
+			RunID:           "run-update",
+			ClaudeSessionID: "claude-update",
+			Status:          store.SessionStatusCompleted,
+			Query:           "original task",
+			Title:           originalTitle,
+			WorkingDir:      "/tmp",
+			CreatedAt:       time.Now(),
+			LastActivityAt:  time.Now(),
+			CompletedAt:     &time.Time{},
+		}
+
+		if err := d.store.CreateSession(ctx, parentSession); err != nil {
+			t.Fatalf("Failed to create parent session: %v", err)
+		}
+
+		// Continue the session
+		req := rpc.ContinueSessionRequest{
+			SessionID: parentSessionID,
+			Query:     "continue task",
+		}
+
+		_, err := sendRPC(t, "continueSession", req)
+		if err != nil && !containsError(err, "failed to launch resumed Claude session") {
+			t.Errorf("Unexpected error: %v", err)
+		}
+
+		// Find the child session
+		sessions, err := d.store.ListSessions(ctx)
+		if err != nil {
+			t.Fatalf("Failed to list sessions: %v", err)
+		}
+
+		var childSession *store.Session
+		for _, s := range sessions {
+			if s.ParentSessionID == parentSessionID {
+				childSession = s
+				break
+			}
+		}
+
+		if childSession == nil {
+			t.Fatal("Child session not found")
+		}
+
+		// Update the child session's title
+		updatedTitle := "Updated Task Title"
+		updateReq := rpc.UpdateSessionTitleRequest{
+			SessionID: childSession.ID,
+			Title:     updatedTitle,
+		}
+
+		_, err = sendRPC(t, "updateSessionTitle", updateReq)
+		if err != nil {
+			t.Fatalf("Failed to update session title: %v", err)
+		}
+
+		// Verify the child's title was updated
+		childSession, err = d.store.GetSession(ctx, childSession.ID)
+		if err != nil {
+			t.Fatalf("Failed to get updated child session: %v", err)
+		}
+
+		if childSession.Title != updatedTitle {
+			t.Errorf("Child title not updated: got %q, want %q", childSession.Title, updatedTitle)
+		}
+
+		// Verify parent title remains unchanged
+		parentSession, err = d.store.GetSession(ctx, parentSessionID)
+		if err != nil {
+			t.Fatalf("Failed to get parent session: %v", err)
+		}
+
+		if parentSession.Title != originalTitle {
+			t.Errorf("Parent title changed unexpectedly: got %q, want %q", 
+				parentSession.Title, originalTitle)
+		}
+	})
 }
 
 func containsError(err error, substr string) bool {
