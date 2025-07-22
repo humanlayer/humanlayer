@@ -43,13 +43,19 @@ export default function CommandInput({
     }
   }, [])
 
+  // const handleSearchEsc = (e: React.KeyboardEvent) => {
+
+  // }
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    console.log('handleKeyDown', e.key)
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       onSubmit()
     }
 
     if (e.key === 'Escape') {
+      console.log('escape')
       promptRef.current?.blur()
     }
   }
@@ -83,8 +89,6 @@ export default function CommandInput({
           value={value}
           onChange={e => onChange(e.target.value)}
           onKeyDown={handleKeyDown}
-          // onFocus={() => setIsFocused(true)}
-          // onBlur={() => setIsFocused(false)}
           placeholder={placeholder}
           disabled={isLoading}
           autoComplete="off"

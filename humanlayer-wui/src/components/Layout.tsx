@@ -13,7 +13,6 @@ import { useSessionEventsWithNotifications } from '@/hooks/useSessionEventsWithN
 import { Toaster } from 'sonner'
 import { notificationService } from '@/services/NotificationService'
 import { useTheme } from '@/contexts/ThemeContext'
-import { useHotkeys } from 'react-hotkeys-hook'
 import '@/App.css'
 
 export function Layout() {
@@ -46,6 +45,7 @@ export function Layout() {
     },
     {
       useKey: true,
+      preventDefault: true,
     },
   )
 

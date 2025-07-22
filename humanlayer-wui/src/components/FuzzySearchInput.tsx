@@ -117,6 +117,7 @@ export function SearchInput({
           break
         }
         case Hotkeys.ESCAPE: {
+          console.log('escape')
           ev.stopPropagation()
           const el = document.getElementById('search-input-hack-use-a-ref')
           setDropdownOpen(false)

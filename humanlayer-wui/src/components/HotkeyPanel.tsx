@@ -92,7 +92,7 @@ export function HotkeyPanel({ open, onOpenChange }: HotkeyPanelProps) {
           <div className="flex h-full flex-col">
             {/* Header */}
             <div className="flex items-center justify-between border-b px-4 py-3">
-              <h2 className="text-lg font-semibold">Keyboard Shortcuts</h2>
+              <DialogPrimitive.Title>Keyboard Shortcuts</DialogPrimitive.Title>
               <DialogPrimitive.Close className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
                 <X className="h-4 w-4" />
                 <span className="sr-only">Close</span>
@@ -101,18 +101,18 @@ export function HotkeyPanel({ open, onOpenChange }: HotkeyPanelProps) {
 
             {/* Command component for filtering */}
             <Command className="flex-1 overflow-hidden">
-              <CommandInput placeholder="Search shortcuts..." className="h-11" />
-              <CommandList>
+              <CommandInput placeholder="Search shortcuts..." className="h-11" autoFocus />
+              <CommandList className="max-h-none">
                 <CommandEmpty>No shortcuts found.</CommandEmpty>
                 {Object.entries(groupedHotkeys).map(([category, hotkeys]) => (
-                  <CommandGroup key={category} heading={category}>
+                  <CommandGroup key={category} heading={category} className="py-3">
                     {hotkeys.map((hotkey, index) => (
                       <CommandItem
                         key={`${category}-${index}`}
                         value={`${hotkey.description} ${hotkey.key} ${category}`}
-                        className="flex items-center justify-between py-3"
+                        className="flex items-center justify-between"
                       >
-                        <span className="text-sm text-muted-foreground">{hotkey.description}</span>
+                        <span className="text-sm">{hotkey.description}</span>
                         <kbd
                           className={cn(
                             'pointer-events-none inline-flex h-5 select-none items-center gap-1',
