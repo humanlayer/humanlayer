@@ -185,7 +185,7 @@ func (d *Daemon) Run(ctx context.Context) error {
 	if d.httpServer != nil {
 		httpCtx, httpCancel := context.WithCancel(ctx)
 		defer httpCancel()
-		
+
 		go func() {
 			if err := d.httpServer.Start(httpCtx); err != nil {
 				slog.Error("HTTP server error", "error", err)

@@ -20,12 +20,12 @@ import (
 
 // HTTPServer manages the REST API server
 type HTTPServer struct {
-	config          *config.Config
-	router          *gin.Engine
-	sessionHandlers *handlers.SessionHandlers
+	config           *config.Config
+	router           *gin.Engine
+	sessionHandlers  *handlers.SessionHandlers
 	approvalHandlers *handlers.ApprovalHandlers
-	sseHandler      *handlers.SSEHandler
-	server          *http.Server
+	sseHandler       *handlers.SSEHandler
+	server           *http.Server
 }
 
 // NewHTTPServer creates a new HTTP server instance
@@ -40,12 +40,12 @@ func NewHTTPServer(
 	gin.SetMode(gin.ReleaseMode)
 
 	router := gin.New()
-	
+
 	// Add middleware
 	router.Use(gin.Recovery())
 	router.Use(handlers.RequestIDMiddleware())
 	router.Use(handlers.CompressionMiddleware())
-	
+
 	// Add CORS middleware for browser clients
 	router.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"*"}, // TODO: Configure allowed origins
@@ -74,15 +74,18 @@ func NewHTTPServer(
 func (s *HTTPServer) Start(ctx context.Context) error {
 	// Create server implementation combining all handlers
 	serverImpl := handlers.NewServerImpl(s.sessionHandlers, s.approvalHandlers, s.sseHandler)
-	
+
 	// Create strict handler with middleware
 	strictHandler := api.NewStrictHandler(serverImpl, nil)
-	
-	// Register OpenAPI handlers
-	api.RegisterHandlers(s.router, strictHandler)
-	
+
+	// Create API v1 route group
+	v1 := s.router.Group("/api/v1")
+
+	// Register OpenAPI handlers under the v1 group
+	api.RegisterHandlers(v1, strictHandler)
+
 	// Register SSE endpoint directly (not part of strict interface)
-	s.router.GET("/api/v1/events", s.sseHandler.StreamEvents)
+	v1.GET("/events", s.sseHandler.StreamEvents)
 
 	// Create HTTP server
 	addr := fmt.Sprintf("%s:%d", s.config.HTTPHost, s.config.HTTPPort)
@@ -113,6 +116,6 @@ func (s *HTTPServer) Shutdown() error {
 	slog.Info("Shutting down HTTP server")
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	
+
 	return s.server.Shutdown(ctx)
 }

@@ -41,7 +41,10 @@ func CompressionMiddleware() gin.HandlerFunc {
 		// Wrap the response writer
 		gz := gzip.NewWriter(c.Writer)
 		defer func() {
-			gz.Close()
+			if err := gz.Close(); err != nil {
+				// Log error but don't fail the request
+				_ = c.Error(err)
+			}
 			c.Header("Content-Length", "")
 		}()
 

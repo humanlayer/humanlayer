@@ -25,7 +25,7 @@ type Config struct {
 
 	// Version override for display purposes (e.g., "dev" for development instances)
 	VersionOverride string `mapstructure:"version_override"`
-	
+
 	// HTTP Server configuration
 	HTTPPort int    `mapstructure:"http_port"`
 	HTTPHost string `mapstructure:"http_host"`

@@ -76,7 +76,10 @@ func TestCompressionMiddleware(t *testing.T) {
 		// Verify the response is actually gzipped
 		reader, err := gzip.NewReader(w.Body)
 		require.NoError(t, err)
-		defer reader.Close()
+		defer func() {
+			err := reader.Close()
+			require.NoError(t, err)
+		}()
 
 		decompressed, err := io.ReadAll(reader)
 		require.NoError(t, err)

@@ -52,7 +52,7 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '500':
           $ref: '#/components/responses/InternalError'
-    
+
     get:
       operationId: listSessions
       summary: List sessions
@@ -110,7 +110,7 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
-    
+
     patch:
       operationId: updateSession
       summary: Update session settings
@@ -324,7 +324,7 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '500':
           $ref: '#/components/responses/InternalError'
-    
+
     get:
       operationId: listApprovals
       summary: List approval requests
@@ -408,7 +408,7 @@ paths:
       description: |
         Subscribe to real-time events using Server-Sent Events (SSE).
         This endpoint streams events as they occur in the system.
-        
+
         **Note**: This endpoint uses Server-Sent Events which is not natively
         supported by OpenAPI 3.1. Client code generation will not work for
         this endpoint. Manual SSE client implementation is required using:
@@ -448,14 +448,14 @@ paths:
                 description: |
                   Server-Sent Events stream. Each event follows the format:
                   data: {"type": "event_type", "timestamp": "ISO8601", "data": {...}}
-                  
+
                   Keepalive messages are sent every 30 seconds:
                   : keepalive
               example: |
                 data: {"type":"new_approval","timestamp":"2024-01-01T12:00:00Z","data":{"approval_id":"appr_123","session_id":"sess_456","tool_name":"execute_command"}}
-                
+
                 : keepalive
-                
+
                 data: {"type":"session_status_changed","timestamp":"2024-01-01T12:00:01Z","data":{"session_id":"sess_456","old_status":"running","new_status":"completed"}}
 
 components:
@@ -468,7 +468,7 @@ components:
       schema:
         type: string
       example: sess_abcdef123456
-    
+
     approvalId:
       name: id
       in: path
@@ -708,8 +708,7 @@ components:
           type: string
           description: Append to system prompt
         mcp_config:
-          type: string
-          description: JSON string of MCP configuration
+          $ref: '#/components/schemas/MCPConfig'
         permission_prompt_tool:
           type: string
           description: MCP tool for permissions
