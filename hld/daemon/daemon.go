@@ -29,6 +29,7 @@ type Daemon struct {
 	socketPath string
 	listener   net.Listener
 	rpcServer  *rpc.Server
+	httpServer *HTTPServer
 	sessions   session.SessionManager
 	approvals  approval.Manager
 	eventBus   bus.EventBus
@@ -100,6 +101,13 @@ func New() (*Daemon, error) {
 	approvalManager := approval.NewManager(conversationStore, eventBus)
 	slog.Debug("local approval manager created successfully")
 
+	// Create HTTP server if enabled
+	var httpServer *HTTPServer
+	if cfg.HTTPPort > 0 {
+		slog.Info("creating HTTP server", "port", cfg.HTTPPort)
+		httpServer = NewHTTPServer(cfg, sessionManager, approvalManager, conversationStore, eventBus)
+	}
+
 	return &Daemon{
 		config:     cfg,
 		socketPath: socketPath,
@@ -107,6 +115,7 @@ func New() (*Daemon, error) {
 		approvals:  approvalManager,
 		eventBus:   eventBus,
 		store:      conversationStore,
+		httpServer: httpServer,
 	}, nil
 }
 
@@ -172,7 +181,19 @@ func (d *Daemon) Run(ctx context.Context) error {
 	approvalHandlers := rpc.NewApprovalHandlers(d.approvals, d.sessions)
 	approvalHandlers.Register(d.rpcServer)
 
-	slog.Info("daemon started", "socket", d.socketPath)
+	// Start HTTP server if enabled
+	if d.httpServer != nil {
+		httpCtx, httpCancel := context.WithCancel(ctx)
+		defer httpCancel()
+		
+		go func() {
+			if err := d.httpServer.Start(httpCtx); err != nil {
+				slog.Error("HTTP server error", "error", err)
+			}
+		}()
+	}
+
+	slog.Info("daemon started", "socket", d.socketPath, "http_enabled", d.httpServer != nil)
 
 	// Accept connections until context is cancelled
 	go d.acceptConnections(ctx)

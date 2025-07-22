@@ -1,0 +1,1245 @@
+openapi: 3.1.0
+info:
+  title: HumanLayer Daemon REST API
+  version: 1.0.0
+  description: |
+    REST API for HumanLayer daemon operations, providing session management,
+    approval workflows, and real-time event streaming capabilities.
+  contact:
+    name: HumanLayer Support
+    url: https://humanlayer.dev
+servers:
+  - url: http://localhost:7777/api/v1
+    description: Local daemon server
+
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      summary: Health check
+      description: Check if the daemon is running and healthy
+      tags:
+        - System
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /sessions:
+    post:
+      operationId: createSession
+      summary: Launch a new session
+      description: Create and start a new Claude Code session
+      tags:
+        - Sessions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSessionRequest'
+      responses:
+        '201':
+          description: Session created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateSessionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    
+    get:
+      operationId: listSessions
+      summary: List sessions
+      description: |
+        List all sessions with optional filtering. By default returns only leaf sessions
+        (sessions with no children). Set leafOnly=false to get all sessions.
+      tags:
+        - Sessions
+      parameters:
+        - name: leafOnly
+          in: query
+          description: Return only leaf sessions (no children)
+          schema:
+            type: boolean
+            default: true
+        - name: includeArchived
+          in: query
+          description: Include archived sessions in results
+          schema:
+            type: boolean
+            default: false
+        - name: archivedOnly
+          in: query
+          description: Return only archived sessions
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: List of sessions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionsResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /sessions/{id}:
+    get:
+      operationId: getSession
+      summary: Get session details
+      description: Get detailed information about a specific session
+      tags:
+        - Sessions
+      parameters:
+        - $ref: '#/components/parameters/sessionId'
+      responses:
+        '200':
+          description: Session details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    
+    patch:
+      operationId: updateSession
+      summary: Update session settings
+      description: |
+        Update session settings such as auto-accept mode or archived status.
+        Only specified fields will be updated.
+      tags:
+        - Sessions
+      parameters:
+        - $ref: '#/components/parameters/sessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSessionRequest'
+      responses:
+        '200':
+          description: Session updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /sessions/{id}/continue:
+    post:
+      operationId: continueSession
+      summary: Continue or fork a session
+      description: |
+        Create a new session that continues from an existing session,
+        inheriting its conversation history.
+      tags:
+        - Sessions
+      parameters:
+        - $ref: '#/components/parameters/sessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContinueSessionRequest'
+      responses:
+        '201':
+          description: New session created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContinueSessionResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /sessions/{id}/interrupt:
+    post:
+      operationId: interruptSession
+      summary: Interrupt a running session
+      description: |
+        Send an interrupt signal to a running session, causing it to
+        complete gracefully.
+      tags:
+        - Sessions
+      parameters:
+        - $ref: '#/components/parameters/sessionId'
+      responses:
+        '200':
+          description: Session interrupted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InterruptSessionResponse'
+        '400':
+          description: Session not in running state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /sessions/{id}/messages:
+    get:
+      operationId: getSessionMessages
+      summary: Get conversation messages
+      description: |
+        Retrieve the full conversation history for a session, including
+        messages, tool calls, and tool results.
+      tags:
+        - Sessions
+      parameters:
+        - $ref: '#/components/parameters/sessionId'
+      responses:
+        '200':
+          description: Conversation messages
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversationResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /sessions/{id}/snapshots:
+    get:
+      operationId: getSessionSnapshots
+      summary: Get file snapshots
+      description: |
+        Retrieve file snapshots captured during the session, showing
+        the state of files at specific points in time.
+      tags:
+        - Sessions
+      parameters:
+        - $ref: '#/components/parameters/sessionId'
+      responses:
+        '200':
+          description: File snapshots
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SnapshotsResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /sessions/archive:
+    post:
+      operationId: bulkArchiveSessions
+      summary: Bulk archive/unarchive sessions
+      description: Archive or unarchive multiple sessions in a single operation
+      tags:
+        - Sessions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkArchiveRequest'
+      responses:
+        '200':
+          description: Bulk operation completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkArchiveResponse'
+        '207':
+          description: Partial success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkArchiveResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /recent-paths:
+    get:
+      operationId: getRecentPaths
+      summary: Get recent working directories
+      description: Retrieve recently used working directories for quick access
+      tags:
+        - Sessions
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum number of paths to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Recent paths
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecentPathsResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /approvals:
+    post:
+      operationId: createApproval
+      summary: Create approval request
+      description: Create a new approval request for human review
+      tags:
+        - Approvals
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateApprovalRequest'
+      responses:
+        '201':
+          description: Approval created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateApprovalResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    
+    get:
+      operationId: listApprovals
+      summary: List approval requests
+      description: List approval requests with optional session filtering
+      tags:
+        - Approvals
+      parameters:
+        - name: sessionId
+          in: query
+          description: Filter by session ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of approvals
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApprovalsResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /approvals/{id}:
+    get:
+      operationId: getApproval
+      summary: Get approval details
+      description: Get detailed information about a specific approval request
+      tags:
+        - Approvals
+      parameters:
+        - $ref: '#/components/parameters/approvalId'
+      responses:
+        '200':
+          description: Approval details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApprovalResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /approvals/{id}/decide:
+    post:
+      operationId: decideApproval
+      summary: Decide on approval request
+      description: Approve or deny an approval request
+      tags:
+        - Approvals
+      parameters:
+        - $ref: '#/components/parameters/approvalId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DecideApprovalRequest'
+      responses:
+        '200':
+          description: Decision recorded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DecideApprovalResponse'
+        '400':
+          description: Invalid decision or approval already decided
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /stream/events:
+    get:
+      operationId: streamEvents
+      summary: Server-Sent Events stream
+      description: |
+        Subscribe to real-time events using Server-Sent Events (SSE).
+        This endpoint streams events as they occur in the system.
+        
+        **Note**: This endpoint uses Server-Sent Events which is not natively
+        supported by OpenAPI 3.1. Client code generation will not work for
+        this endpoint. Manual SSE client implementation is required using:
+        - JavaScript/TypeScript: Native EventSource API
+        - Go: r3labs/sse or similar SSE client library
+        - Other languages: Language-specific SSE client libraries
+      tags:
+        - Events
+      x-sse: true
+      parameters:
+        - name: eventTypes
+          in: query
+          description: Filter by event types
+          style: form
+          explode: true
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/EventType'
+        - name: sessionId
+          in: query
+          description: Filter events by session ID
+          schema:
+            type: string
+        - name: runId
+          in: query
+          description: Filter events by run ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: SSE event stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: |
+                  Server-Sent Events stream. Each event follows the format:
+                  data: {"type": "event_type", "timestamp": "ISO8601", "data": {...}}
+                  
+                  Keepalive messages are sent every 30 seconds:
+                  : keepalive
+              example: |
+                data: {"type":"new_approval","timestamp":"2024-01-01T12:00:00Z","data":{"approval_id":"appr_123","session_id":"sess_456","tool_name":"execute_command"}}
+                
+                : keepalive
+                
+                data: {"type":"session_status_changed","timestamp":"2024-01-01T12:00:01Z","data":{"session_id":"sess_456","old_status":"running","new_status":"completed"}}
+
+components:
+  parameters:
+    sessionId:
+      name: id
+      in: path
+      required: true
+      description: Session ID
+      schema:
+        type: string
+      example: sess_abcdef123456
+    
+    approvalId:
+      name: id
+      in: path
+      required: true
+      description: Approval ID
+      schema:
+        type: string
+      example: appr_xyz789
+
+  schemas:
+    # Health Response
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - version
+      properties:
+        status:
+          type: string
+          enum: [ok]
+          example: ok
+        version:
+          type: string
+          example: "0.1.0"
+
+    # Session Types
+    Session:
+      type: object
+      required:
+        - id
+        - run_id
+        - status
+        - query
+        - created_at
+        - last_activity_at
+      properties:
+        id:
+          type: string
+          description: Unique session identifier
+          example: sess_abcdef123456
+        run_id:
+          type: string
+          description: Unique run identifier
+          example: run_xyz789
+        claude_session_id:
+          type: string
+          description: Claude's internal session ID
+          example: claude_sess_123
+        parent_session_id:
+          type: string
+          description: Parent session ID if this is a forked session
+          example: sess_parent123
+        status:
+          $ref: '#/components/schemas/SessionStatus'
+        query:
+          type: string
+          description: Initial query that started the session
+          example: "Help me refactor this code"
+        summary:
+          type: string
+          description: AI-generated summary of the session
+          example: "Refactored authentication module"
+        model:
+          type: string
+          description: Model used for this session
+          example: sonnet
+        working_dir:
+          type: string
+          description: Working directory for the session
+          example: /home/user/project
+        created_at:
+          type: string
+          format: date-time
+          description: Session creation timestamp
+        last_activity_at:
+          type: string
+          format: date-time
+          description: Last activity timestamp
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Session completion timestamp
+        error_message:
+          type: string
+          description: Error message if session failed
+        cost_usd:
+          type: number
+          format: float
+          nullable: true
+          description: Total cost in USD
+          example: 0.05
+        total_tokens:
+          type: integer
+          nullable: true
+          description: Total tokens used
+          example: 1500
+        duration_ms:
+          type: integer
+          nullable: true
+          description: Session duration in milliseconds
+          example: 45000
+        auto_accept_edits:
+          type: boolean
+          description: Whether edit tools are auto-accepted
+          default: false
+        archived:
+          type: boolean
+          description: Whether session is archived
+          default: false
+
+    SessionStatus:
+      type: string
+      enum:
+        - starting
+        - running
+        - completed
+        - failed
+        - completing
+        - waiting_input
+      description: Current status of the session
+
+    CreateSessionRequest:
+      type: object
+      required:
+        - query
+      properties:
+        query:
+          type: string
+          description: Initial query for Claude
+          example: "Help me write a Python script to process CSV files"
+        model:
+          type: string
+          enum: [opus, sonnet]
+          description: Model to use for the session
+        mcp_config:
+          $ref: '#/components/schemas/MCPConfig'
+        permission_prompt_tool:
+          type: string
+          description: MCP tool for permission prompts
+        working_dir:
+          type: string
+          description: Working directory for the session
+          example: /home/user/project
+        max_turns:
+          type: integer
+          minimum: 1
+          description: Maximum conversation turns
+          example: 10
+        system_prompt:
+          type: string
+          description: Override system prompt
+        append_system_prompt:
+          type: string
+          description: Text to append to system prompt
+        allowed_tools:
+          type: array
+          items:
+            type: string
+          description: Whitelist of allowed tools
+          example: ["read_file", "write_file"]
+        disallowed_tools:
+          type: array
+          items:
+            type: string
+          description: Blacklist of disallowed tools
+          example: ["execute_command"]
+        custom_instructions:
+          type: string
+          description: Custom instructions for Claude
+        verbose:
+          type: boolean
+          description: Enable verbose output
+          default: false
+
+    CreateSessionResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          required:
+            - session_id
+            - run_id
+          properties:
+            session_id:
+              type: string
+              description: Created session ID
+              example: sess_new123
+            run_id:
+              type: string
+              description: Created run ID
+              example: run_new456
+
+    SessionResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/Session'
+
+    SessionsResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Session'
+
+    UpdateSessionRequest:
+      type: object
+      properties:
+        auto_accept_edits:
+          type: boolean
+          description: Enable/disable auto-accept for edit tools
+        archived:
+          type: boolean
+          description: Archive/unarchive the session
+
+    ContinueSessionRequest:
+      type: object
+      required:
+        - query
+      properties:
+        query:
+          type: string
+          description: New query to continue with
+          example: "Now add error handling to the script"
+        system_prompt:
+          type: string
+          description: Override system prompt
+        append_system_prompt:
+          type: string
+          description: Append to system prompt
+        mcp_config:
+          type: string
+          description: JSON string of MCP configuration
+        permission_prompt_tool:
+          type: string
+          description: MCP tool for permissions
+        allowed_tools:
+          type: array
+          items:
+            type: string
+          description: Allowed tools list
+        disallowed_tools:
+          type: array
+          items:
+            type: string
+          description: Disallowed tools list
+        custom_instructions:
+          type: string
+          description: Custom instructions
+        max_turns:
+          type: integer
+          minimum: 1
+          description: Max conversation turns
+
+    ContinueSessionResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          required:
+            - session_id
+            - run_id
+            - claude_session_id
+            - parent_session_id
+          properties:
+            session_id:
+              type: string
+              example: sess_child123
+            run_id:
+              type: string
+              example: run_child456
+            claude_session_id:
+              type: string
+              example: claude_sess_child
+            parent_session_id:
+              type: string
+              example: sess_parent123
+
+    InterruptSessionResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          required:
+            - success
+            - session_id
+            - status
+          properties:
+            success:
+              type: boolean
+              example: true
+            session_id:
+              type: string
+              example: sess_abc123
+            status:
+              type: string
+              enum: [completing]
+              example: completing
+
+    # Conversation Types
+    ConversationEvent:
+      type: object
+      required:
+        - id
+        - session_id
+        - sequence
+        - event_type
+        - created_at
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1234
+        session_id:
+          type: string
+          example: sess_abc123
+        claude_session_id:
+          type: string
+          example: claude_sess_123
+        sequence:
+          type: integer
+          description: Sequence number in conversation
+          example: 5
+        event_type:
+          type: string
+          enum: [message, tool_call, tool_result, system, thinking]
+          description: Type of conversation event
+        created_at:
+          type: string
+          format: date-time
+        role:
+          type: string
+          enum: [user, assistant, system]
+          description: Message role (for message events)
+        content:
+          type: string
+          description: Message content
+        tool_id:
+          type: string
+          description: Tool invocation ID (for tool events)
+        tool_name:
+          type: string
+          description: Tool name (for tool_call events)
+        tool_input_json:
+          type: string
+          description: JSON string of tool input (for tool_call events)
+        parent_tool_use_id:
+          type: string
+          description: Parent tool use ID for nested calls
+        tool_result_for_id:
+          type: string
+          description: Tool call ID this result is for
+        tool_result_content:
+          type: string
+          description: Tool result content
+        is_completed:
+          type: boolean
+          description: Whether tool call has received result
+          default: false
+        approval_status:
+          type: string
+          enum: [pending, approved, denied, resolved]
+          nullable: true
+          description: Approval status for tool calls
+        approval_id:
+          type: string
+          nullable: true
+          description: Associated approval ID
+
+    ConversationResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConversationEvent'
+
+    # Snapshot Types
+    FileSnapshot:
+      type: object
+      required:
+        - tool_id
+        - file_path
+        - content
+        - created_at
+      properties:
+        tool_id:
+          type: string
+          description: Tool invocation that created snapshot
+          example: tool_use_123
+        file_path:
+          type: string
+          description: Path to the file
+          example: /home/user/project/main.py
+        content:
+          type: string
+          description: File content at snapshot time
+        created_at:
+          type: string
+          format: date-time
+
+    SnapshotsResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/FileSnapshot'
+
+    # Bulk Operations
+    BulkArchiveRequest:
+      type: object
+      required:
+        - session_ids
+        - archived
+      properties:
+        session_ids:
+          type: array
+          items:
+            type: string
+          minItems: 1
+          description: Sessions to archive/unarchive
+          example: ["sess_123", "sess_456"]
+        archived:
+          type: boolean
+          description: True to archive, false to unarchive
+
+    BulkArchiveResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          required:
+            - success
+          properties:
+            success:
+              type: boolean
+              example: true
+            failed_sessions:
+              type: array
+              items:
+                type: string
+              description: Sessions that failed to update
+              example: ["sess_789"]
+
+    # Path Types
+    RecentPath:
+      type: object
+      required:
+        - path
+        - last_used
+        - usage_count
+      properties:
+        path:
+          type: string
+          description: Directory path
+          example: /home/user/projects/myapp
+        last_used:
+          type: string
+          format: date-time
+          description: Last time this path was used
+        usage_count:
+          type: integer
+          description: Number of times used
+          example: 15
+
+    RecentPathsResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecentPath'
+
+    # Approval Types
+    Approval:
+      type: object
+      required:
+        - id
+        - run_id
+        - session_id
+        - status
+        - created_at
+        - tool_name
+        - tool_input
+      properties:
+        id:
+          type: string
+          description: Unique approval identifier
+          example: appr_abc123
+        run_id:
+          type: string
+          description: Associated run ID
+          example: run_xyz789
+        session_id:
+          type: string
+          description: Associated session ID
+          example: sess_def456
+        status:
+          $ref: '#/components/schemas/ApprovalStatus'
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        responded_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Response timestamp
+        tool_name:
+          type: string
+          description: Tool requesting approval
+          example: execute_command
+        tool_input:
+          type: object
+          description: Tool input parameters
+          additionalProperties: true
+          example:
+            command: "rm -rf /tmp/test"
+        comment:
+          type: string
+          description: Approver's comment
+          example: "Approved with caution"
+
+    ApprovalStatus:
+      type: string
+      enum:
+        - pending
+        - approved
+        - denied
+      description: Current status of the approval
+
+    CreateApprovalRequest:
+      type: object
+      required:
+        - run_id
+        - tool_name
+        - tool_input
+      properties:
+        run_id:
+          type: string
+          description: Run ID for the approval
+          example: run_xyz789
+        tool_name:
+          type: string
+          description: Name of the tool requesting approval
+          example: execute_command
+        tool_input:
+          type: object
+          description: Tool input parameters
+          additionalProperties: true
+
+    CreateApprovalResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          required:
+            - approval_id
+          properties:
+            approval_id:
+              type: string
+              description: Created approval ID
+              example: appr_new123
+
+    ApprovalResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/Approval'
+
+    ApprovalsResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Approval'
+
+    DecideApprovalRequest:
+      type: object
+      required:
+        - decision
+      properties:
+        decision:
+          type: string
+          enum: [approve, deny]
+          description: Approval decision
+        comment:
+          type: string
+          description: Optional comment (required for deny)
+          example: "Looks safe to proceed"
+
+    DecideApprovalResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          required:
+            - success
+          properties:
+            success:
+              type: boolean
+              example: true
+            error:
+              type: string
+              description: Error message if failed
+
+    # MCP Types
+    MCPConfig:
+      type: object
+      properties:
+        mcpServers:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/MCPServer'
+          description: Map of server name to configuration
+          example:
+            filesystem:
+              command: mcp-server-filesystem
+              args: ["--read-only"]
+
+    MCPServer:
+      type: object
+      required:
+        - command
+      properties:
+        command:
+          type: string
+          description: Command to execute
+          example: mcp-server-filesystem
+        args:
+          type: array
+          items:
+            type: string
+          description: Command arguments
+          example: ["--read-only", "/home/user"]
+        env:
+          type: object
+          additionalProperties:
+            type: string
+          description: Environment variables
+          example:
+            DEBUG: "true"
+
+    # Event Types
+    EventType:
+      type: string
+      enum:
+        - new_approval
+        - approval_resolved
+        - session_status_changed
+        - conversation_updated
+      description: Type of system event
+
+    Event:
+      type: object
+      required:
+        - type
+        - timestamp
+        - data
+      properties:
+        type:
+          $ref: '#/components/schemas/EventType'
+        timestamp:
+          type: string
+          format: date-time
+          description: Event timestamp
+        data:
+          type: object
+          additionalProperties: true
+          description: Event-specific data
+
+    # Error Types
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorDetail'
+
+    ErrorDetail:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          description: Error code (e.g., HLD-101)
+          example: HLD-102
+        message:
+          type: string
+          description: Human-readable error message
+          example: Session not found
+        details:
+          type: object
+          additionalProperties: true
+          description: Additional error context
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: HLD-301
+              message: Missing required field 'query'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: HLD-102
+              message: Session not found
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: HLD-401
+              message: Internal server error
+              details:
+                trace_id: "abc123"
+
+tags:
+  - name: System
+    description: System health and status endpoints
+  - name: Sessions
+    description: Session lifecycle management
+  - name: Approvals
+    description: Human-in-the-loop approval workflows
+  - name: Events
+    description: Real-time event streaming

@@ -1,4 +1,4 @@
-.PHONY: build test test-unit test-integration test-race clean mocks check fmt vet lint
+.PHONY: build test test-unit test-integration test-race clean mocks generate check fmt vet lint
 
 # Build the daemon binary
 build:
@@ -65,6 +65,14 @@ mocks:
 	mockgen -source=client/types.go -destination=client/mock_client.go -package=client Client,Factory
 	mockgen -source=bus/types.go -destination=bus/mock_bus.go -package=bus EventBus
 	mockgen -source=store/store.go -destination=store/mock_store.go -package=store ConversationStore
+
+# Generate server code from OpenAPI spec
+generate:
+	@echo "Generating server code from OpenAPI spec..."
+	@cd api && go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest \
+		-config config.yaml \
+		openapi.yaml
+	@echo "Code generation complete"
 
 # Format code
 fmt:
