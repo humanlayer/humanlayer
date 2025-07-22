@@ -17,6 +17,6 @@ think deeply about the implementation
 2b. copy `.claude/settings.local.json` to the worktree directory
 2c. run `make -C ~/wt/humanlayer/ENG-XXXX setup` to install dependencies
 2d. run `make -C ~/wt/humanlayer/ENG-XXXX thoughts` to setup thoughts
-2e. launch implementation session: `npx humanlayer launch --model opus -w ~/wt/humanlayer/ENG-XXXX "/implement_plan and when you are done implementing and all tests pass, read ./claude/commands/commit.md and create a commit, then read ./claude/commands/describe_pr.md and create a PR, then move the ticket to 'code review' status and add a comment to the Linear ticket with the PR link"`
+2e. launch implementation session: `npx humanlayer launch --model opus -w ~/wt/humanlayer/ENG-XXXX "/implement_plan and when you are done implementing and all tests pass, read ./claude/commands/commit.md and create a commit, then read ./claude/commands/describe_pr.md and create a PR, then add a comment to the Linear ticket with the PR link"`
 
 think deeply, use TodoWrite to track your tasks. When fetching from linear, get the top 10 items by priority but only work on ONE item - specifically the highest priority SMALL or XS sized issue.
