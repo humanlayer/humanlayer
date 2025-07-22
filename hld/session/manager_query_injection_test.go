@@ -56,8 +56,9 @@ func TestQueryInjection(t *testing.T) {
 		assert.True(t, ok)
 		assert.Equal(t, query, queryVal)
 
-		// Call injectQueryAsFirstEvent
-		err = manager.injectQueryAsFirstEvent(context.Background(), sessionID, claudeSessionID, query)
+		// Call InjectQueryAsFirstEvent using QueryInjector
+		queryInjector := NewQueryInjector(mockStore, &manager.pendingQueries)
+		err = queryInjector.InjectQueryAsFirstEvent(context.Background(), sessionID, claudeSessionID, query)
 		assert.NoError(t, err)
 
 		// Verify query was removed from pendingQueries
@@ -85,7 +86,8 @@ func TestQueryInjection(t *testing.T) {
 				return nil
 			})
 
-		err = manager.injectQueryAsFirstEvent(context.Background(), sessionID, claudeSessionID, query)
+		queryInjector := NewQueryInjector(mockStore, &manager.pendingQueries)
+		err = queryInjector.InjectQueryAsFirstEvent(context.Background(), sessionID, claudeSessionID, query)
 		assert.NoError(t, err)
 	})
 
@@ -109,7 +111,8 @@ func TestQueryInjection(t *testing.T) {
 
 		// AddConversationEvent should NOT be called due to deduplication
 
-		err = manager.injectQueryAsFirstEvent(context.Background(), sessionID, claudeSessionID, query)
+		queryInjector := NewQueryInjector(mockStore, &manager.pendingQueries)
+		err = queryInjector.InjectQueryAsFirstEvent(context.Background(), sessionID, claudeSessionID, query)
 		assert.NoError(t, err)
 	})
 
@@ -128,8 +131,10 @@ func TestQueryInjection(t *testing.T) {
 			UpdateSession(gomock.Any(), sessionID, gomock.Any()).
 			Return(nil)
 
-		// Simulate session failure
-		manager.updateSessionStatus(context.Background(), sessionID, StatusFailed, "Test error")
+		// Simulate session failure using LifecycleManager
+		lifecycleManager := NewLifecycleManager(mockStore, nil, manager.activeProcesses, &manager.mu, &manager.pendingQueries)
+		err = lifecycleManager.UpdateSessionStatus(context.Background(), sessionID, StatusFailed, "Test error")
+		assert.NoError(t, err)
 
 		// Verify query was cleaned up
 		_, exists := manager.pendingQueries.Load(sessionID)
@@ -221,7 +226,8 @@ func TestQueryInjectionRaceCondition(t *testing.T) {
 			// Load and inject query
 			if queryVal, ok := manager.pendingQueries.LoadAndDelete(sessionID); ok {
 				if query, ok := queryVal.(string); ok && query != "" {
-					err := manager.injectQueryAsFirstEvent(context.Background(), sessionID, claudeSessionID, query)
+					queryInjector := NewQueryInjector(mockStore, &manager.pendingQueries)
+					err := queryInjector.InjectQueryAsFirstEvent(context.Background(), sessionID, claudeSessionID, query)
 					assert.NoError(t, err)
 				}
 			}

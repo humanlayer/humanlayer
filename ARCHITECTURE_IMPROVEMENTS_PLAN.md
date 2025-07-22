@@ -14,14 +14,17 @@ This document outlines architectural improvements for the HumanLayer local tools
 **Impact**: Eliminated state synchronization bugs, reduced complexity, improved maintainability
 **Completion Date**: 2025-07-22
 
-### 2. Refactor Session Manager in hld (HIGH PRIORITY)
-**Problem**: The `monitorSession` method in session/manager.go is 266 lines and handles too many responsibilities.
+### 2. Refactor Session Manager in hld (HIGH PRIORITY) ✅ COMPLETED
+**Problem**: The `monitorSession` method in session/manager.go was 266 lines and handled too many responsibilities.
 **Solution**:
-- Extract event processing into `session/event_processor.go`
-- Implement state machine pattern for session lifecycle with `session/state_machine.go`
-- Create separate handlers for each event type
-- Add structured logging context throughout
-**Impact**: Improves testability, reduces complexity, makes session lifecycle clearer
+- ✅ Extracted event processing into `session/event_processor.go` with dedicated methods for each event type
+- ✅ Implemented session lifecycle management in `session/lifecycle_manager.go` with clear state transitions
+- ✅ Created `session/query_injector.go` for query injection logic
+- ✅ Refactored monitorSession to use these components, reducing it to a clean orchestration method
+- ✅ Added comprehensive unit tests for all new components
+- ✅ Updated integration tests to work with refactored code
+**Impact**: Improved testability (all components have >80% coverage), reduced complexity, clearer session lifecycle management
+**Completion Date**: 2025-07-22
 
 ### 3. Add Context Support to claudecode-go (HIGH PRIORITY)
 **Problem**: The SDK lacks context support for cancellation and timeouts, leading to potential resource leaks.

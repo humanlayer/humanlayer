@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 
@@ -154,40 +152,16 @@ func (m *Manager) LaunchSession(ctx context.Context, config claudecode.SessionCo
 	m.activeProcesses[sessionID] = claudeSession
 	m.mu.Unlock()
 
-	// Update database with running status
-	statusRunning := string(StatusRunning)
-	now := time.Now()
-	update := store.SessionUpdate{
-		Status:         &statusRunning,
-		LastActivityAt: &now,
-	}
-	if err := m.store.UpdateSession(ctx, sessionID, update); err != nil {
-		slog.Error("failed to update session status to running", "error", err)
+	// Transition to running status
+	lifecycleManager := NewLifecycleManager(m.store, m.eventBus, m.activeProcesses, &m.mu, &m.pendingQueries)
+	if err := lifecycleManager.TransitionToRunning(ctx, sessionID, runID); err != nil {
+		slog.Error("failed to transition to running status", "error", err)
 		// Continue anyway
 	}
 
-	// Publish status change event
-	if m.eventBus != nil {
-		event := bus.Event{
-			Type: bus.EventSessionStatusChanged,
-			Data: map[string]interface{}{
-				"session_id": sessionID,
-				"run_id":     runID,
-				"old_status": string(StatusStarting),
-				"new_status": string(StatusRunning),
-			},
-		}
-		slog.Info("publishing session status changed event",
-			"session_id", sessionID,
-			"run_id", runID,
-			"event_type", event.Type,
-			"event_data", event.Data,
-		)
-		m.eventBus.Publish(event)
-	}
-
 	// Store query for injection after Claude session ID is captured
-	m.pendingQueries.Store(sessionID, config.Query)
+	queryInjector := NewQueryInjector(m.store, &m.pendingQueries)
+	queryInjector.StorePendingQuery(sessionID, config.Query)
 
 	// Monitor session lifecycle in background
 	go m.monitorSession(ctx, sessionID, runID, claudeSession, startTime, config)
@@ -224,9 +198,15 @@ func (m *Manager) LaunchSession(ctx context.Context, config claudecode.SessionCo
 
 // monitorSession tracks the lifecycle of a Claude session
 func (m *Manager) monitorSession(ctx context.Context, sessionID, runID string, claudeSession *claudecode.Session, startTime time.Time, config claudecode.SessionConfig) {
+	// Create component instances
+	eventProcessor := NewEventProcessor(m.store, m.eventBus)
+	lifecycleManager := NewLifecycleManager(m.store, m.eventBus, m.activeProcesses, &m.mu, &m.pendingQueries)
+	queryInjector := NewQueryInjector(m.store, &m.pendingQueries)
+
 	// Get the session ID from the Claude session once available
 	var claudeSessionID string
 
+	// Process events from Claude session
 eventLoop:
 	for {
 		select {
@@ -275,20 +255,16 @@ eventLoop:
 				}
 
 				// Inject the pending query now that we have Claude session ID
-				if queryVal, ok := m.pendingQueries.LoadAndDelete(sessionID); ok {
-					if query, ok := queryVal.(string); ok && query != "" {
-						if err := m.injectQueryAsFirstEvent(ctx, sessionID, claudeSessionID, query); err != nil {
-							slog.Error("failed to inject query as first event",
-								"sessionID", sessionID,
-								"claudeSessionID", claudeSessionID,
-								"error", err)
-						}
-					}
+				if err := queryInjector.InjectPendingQuery(ctx, sessionID, claudeSessionID); err != nil {
+					slog.Error("failed to inject pending query",
+						"sessionID", sessionID,
+						"claudeSessionID", claudeSessionID,
+						"error", err)
 				}
 			}
 
 			// Process and store event
-			if err := m.processStreamEvent(ctx, sessionID, claudeSessionID, event); err != nil {
+			if err := eventProcessor.ProcessStreamEvent(ctx, sessionID, claudeSessionID, event); err != nil {
 				slog.Error("failed to process stream event", "error", err)
 			}
 		}
@@ -304,110 +280,29 @@ eventLoop:
 		return
 	}
 
-	endTime := time.Now()
+	// Handle session completion or error
 	if err != nil {
-		// Check if this was an intentional interrupt
-		session, dbErr := m.store.GetSession(ctx, sessionID)
-		if dbErr == nil && session != nil && session.Status == string(StatusCompleting) {
-			// This was an interrupted session, not a failure
-			// Let it transition to completed naturally
-			slog.Debug("session was interrupted, not marking as failed",
-				"session_id", sessionID,
-				"status", session.Status)
-		} else {
-			m.updateSessionStatus(ctx, sessionID, StatusFailed, err.Error())
+		if err := lifecycleManager.HandleSessionError(ctx, sessionID, err); err != nil {
+			slog.Error("failed to handle session error", "error", err)
 		}
 	} else if result != nil && result.IsError {
-		m.updateSessionStatus(ctx, sessionID, StatusFailed, result.Error)
+		if err := lifecycleManager.HandleSessionResultError(ctx, sessionID, result); err != nil {
+			slog.Error("failed to handle session result error", "error", err)
+		}
 	} else {
-		// No longer updating in-memory session
-
-		// Update database with completion status
-		statusCompleted := string(StatusCompleted)
-		update := store.SessionUpdate{
-			Status:      &statusCompleted,
-			CompletedAt: &endTime,
-		}
-		if result != nil {
-			if result.CostUSD > 0 {
-				update.CostUSD = &result.CostUSD
-			}
-			duration := int(endTime.Sub(startTime).Milliseconds())
-			update.DurationMS = &duration
-			if result.NumTurns > 0 {
-				update.NumTurns = &result.NumTurns
-			}
-			if result.Result != "" {
-				update.ResultContent = &result.Result
-			}
-		}
-		if err := m.store.UpdateSession(ctx, sessionID, update); err != nil {
-			slog.Error("failed to update session completion in database", "error", err)
-		}
-
-		// Publish status change event
-		if m.eventBus != nil {
-			event := bus.Event{
-				Type: bus.EventSessionStatusChanged,
-				Data: map[string]interface{}{
-					"session_id": sessionID,
-					"run_id":     runID,
-					"old_status": string(StatusRunning),
-					"new_status": string(StatusCompleted),
-				},
-			}
-			slog.Info("publishing session completion event",
-				"session_id", sessionID,
-				"run_id", runID,
-				"event_type", event.Type,
-				"event_data", event.Data,
-			)
-			m.eventBus.Publish(event)
+		if err := lifecycleManager.CompleteSession(ctx, sessionID, runID, result, startTime); err != nil {
+			slog.Error("failed to complete session", "error", err)
 		}
 	}
-
-	slog.Info("session completed",
-		"session_id", sessionID,
-		"status", StatusCompleted,
-		"duration", endTime.Sub(startTime))
-
-	// Clean up active process
-	m.mu.Lock()
-	delete(m.activeProcesses, sessionID)
-	m.mu.Unlock()
-
-	// Clean up any pending queries that weren't injected
-	m.pendingQueries.Delete(sessionID)
 }
 
-// updateSessionStatus updates the status of a session in the database
+// updateSessionStatus is now handled by LifecycleManager
+// This method is kept for backward compatibility
 func (m *Manager) updateSessionStatus(ctx context.Context, sessionID string, status Status, errorMsg string) {
-	// Update database
-	dbStatus := string(status)
-	update := store.SessionUpdate{
-		Status: &dbStatus,
+	lifecycleManager := NewLifecycleManager(m.store, m.eventBus, m.activeProcesses, &m.mu, &m.pendingQueries)
+	if err := lifecycleManager.UpdateSessionStatus(ctx, sessionID, status, errorMsg); err != nil {
+		slog.Error("failed to update session status", "error", err)
 	}
-	if errorMsg != "" {
-		update.ErrorMessage = &errorMsg
-	}
-	if status == StatusCompleted || status == StatusFailed {
-		now := time.Now()
-		update.CompletedAt = &now
-
-		// Clean up active process if exists
-		m.mu.Lock()
-		delete(m.activeProcesses, sessionID)
-		m.mu.Unlock()
-
-		// Clean up any pending queries
-		m.pendingQueries.Delete(sessionID)
-	}
-	if err := m.store.UpdateSession(ctx, sessionID, update); err != nil {
-		slog.Error("failed to update session status in database", "error", err)
-	}
-
-	// Note: We can't publish status change events without knowing the old status
-	// This would require a database read. For now, we'll skip the event.
 }
 
 // GetSessionInfo returns session info from the database by ID
@@ -535,400 +430,6 @@ func (m *Manager) ListSessions() []Info {
 	}
 
 	return infos
-}
-
-// updateSessionActivity updates the last_activity_at timestamp for a session
-func (m *Manager) updateSessionActivity(ctx context.Context, sessionID string) {
-	now := time.Now()
-	if err := m.store.UpdateSession(ctx, sessionID, store.SessionUpdate{
-		LastActivityAt: &now,
-	}); err != nil {
-		slog.Warn("failed to update session activity timestamp",
-			"session_id", sessionID,
-			"error", err)
-	}
-}
-
-// processStreamEvent processes a streaming event and stores it in the database
-func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, claudeSessionID string, event claudecode.StreamEvent) error {
-	// Skip events without claude session ID
-	if claudeSessionID == "" {
-		return nil
-	}
-
-	switch event.Type {
-	case "system":
-		// System events (session created, tools available, etc)
-		switch event.Subtype {
-		case "session_created":
-			// Store system event
-			convEvent := &store.ConversationEvent{
-				SessionID:       sessionID,
-				ClaudeSessionID: claudeSessionID,
-				EventType:       store.EventTypeSystem,
-				Role:            "system",
-				Content:         fmt.Sprintf("Session created with ID: %s", event.SessionID),
-			}
-			if err := m.store.AddConversationEvent(ctx, convEvent); err != nil {
-				return err
-			}
-
-			// Publish conversation updated event
-			if m.eventBus != nil {
-				m.eventBus.Publish(bus.Event{
-					Type: bus.EventConversationUpdated,
-					Data: map[string]interface{}{
-						"session_id":        sessionID,
-						"claude_session_id": claudeSessionID,
-						"event_type":        "system",
-						"subtype":           event.Subtype,
-						"content":           fmt.Sprintf("Session created with ID: %s", event.SessionID),
-						"content_type":      "system",
-					},
-				})
-			}
-		case "init":
-			// Check if we need to populate the model
-			session, err := m.store.GetSession(ctx, sessionID)
-			if err != nil {
-				slog.Error("failed to get session for model update", "error", err)
-				return nil // Non-fatal, continue processing
-			}
-
-			// Only update if model is empty and init event has a model
-			if session != nil && session.Model == "" && event.Model != "" {
-				// Extract simple model name from API format (case-insensitive)
-				var modelName string
-				lowerModel := strings.ToLower(event.Model)
-				if strings.Contains(lowerModel, "opus") {
-					modelName = "opus"
-				} else if strings.Contains(lowerModel, "sonnet") {
-					modelName = "sonnet"
-				}
-
-				// Update session with detected model
-				if modelName != "" {
-					update := store.SessionUpdate{
-						Model: &modelName,
-					}
-					if err := m.store.UpdateSession(ctx, sessionID, update); err != nil {
-						slog.Error("failed to update session model from init event",
-							"session_id", sessionID,
-							"model", modelName,
-							"error", err)
-					} else {
-						slog.Info("populated session model from init event",
-							"session_id", sessionID,
-							"model", modelName,
-							"original", event.Model)
-					}
-				} else {
-					// Log when we detect a model but don't recognize the format
-					slog.Debug("unrecognized model format in init event",
-						"session_id", sessionID,
-						"model", event.Model)
-				}
-			}
-			// Don't store init event in conversation history - we only extract the model
-		}
-		// Other system events can be added as needed
-
-	case "assistant", "user":
-		// Messages contain the actual content
-		if event.Message != nil {
-			// Process each content block
-			for _, content := range event.Message.Content {
-				switch content.Type {
-				case "text":
-					// Text message
-					convEvent := &store.ConversationEvent{
-						SessionID:       sessionID,
-						ClaudeSessionID: claudeSessionID,
-						EventType:       store.EventTypeMessage,
-						Role:            event.Message.Role,
-						Content:         content.Text,
-					}
-					if err := m.store.AddConversationEvent(ctx, convEvent); err != nil {
-						return err
-					}
-
-					// Update session activity timestamp for text messages
-					m.updateSessionActivity(ctx, sessionID)
-
-					// Publish conversation updated event
-					if m.eventBus != nil {
-						m.eventBus.Publish(bus.Event{
-							Type: bus.EventConversationUpdated,
-							Data: map[string]interface{}{
-								"session_id":        sessionID,
-								"claude_session_id": claudeSessionID,
-								"event_type":        "message",
-								"role":              event.Message.Role,
-								"content":           content.Text,
-								"content_type":      "text",
-							},
-						})
-					}
-
-				case "tool_use":
-					// Tool call
-					inputJSON, err := json.Marshal(content.Input)
-					if err != nil {
-						return fmt.Errorf("failed to marshal tool input: %w", err)
-					}
-
-					convEvent := &store.ConversationEvent{
-						SessionID:       sessionID,
-						ClaudeSessionID: claudeSessionID,
-						EventType:       store.EventTypeToolCall,
-						ToolID:          content.ID,
-						ToolName:        content.Name,
-						ToolInputJSON:   string(inputJSON),
-						ParentToolUseID: event.ParentToolUseID, // Capture from event level
-						// We don't know yet if this needs approval - that comes from HumanLayer API
-					}
-					if err := m.store.AddConversationEvent(ctx, convEvent); err != nil {
-						return err
-					}
-
-					// Update session activity timestamp for tool calls
-					m.updateSessionActivity(ctx, sessionID)
-
-					// Publish conversation updated event
-					if m.eventBus != nil {
-						// Parse tool input for event data
-						var toolInput map[string]interface{}
-						if err := json.Unmarshal([]byte(string(inputJSON)), &toolInput); err != nil {
-							toolInput = nil // Don't include invalid JSON
-						}
-
-						m.eventBus.Publish(bus.Event{
-							Type: bus.EventConversationUpdated,
-							Data: map[string]interface{}{
-								"session_id":         sessionID,
-								"claude_session_id":  claudeSessionID,
-								"event_type":         "tool_call",
-								"tool_id":            content.ID,
-								"tool_name":          content.Name,
-								"tool_input":         toolInput,
-								"parent_tool_use_id": event.ParentToolUseID,
-								"content_type":       "tool_use",
-							},
-						})
-					}
-
-				case "tool_result":
-					// Tool result (in user message)
-					convEvent := &store.ConversationEvent{
-						SessionID:         sessionID,
-						ClaudeSessionID:   claudeSessionID,
-						EventType:         store.EventTypeToolResult,
-						Role:              "user",
-						ToolResultForID:   content.ToolUseID,
-						ToolResultContent: content.Content,
-					}
-					if err := m.store.AddConversationEvent(ctx, convEvent); err != nil {
-						return err
-					}
-
-					// Asynchronously capture file snapshot for Read tool results
-					if toolCall, err := m.store.GetToolCallByID(ctx, content.ToolUseID); err == nil && toolCall != nil && toolCall.ToolName == "Read" {
-						go m.captureFileSnapshot(ctx, sessionID, content.ToolUseID, toolCall.ToolInputJSON, content.Content)
-					}
-
-					// Update session activity timestamp for tool results
-					m.updateSessionActivity(ctx, sessionID)
-
-					// Publish conversation updated event
-					if m.eventBus != nil {
-						m.eventBus.Publish(bus.Event{
-							Type: bus.EventConversationUpdated,
-							Data: map[string]interface{}{
-								"session_id":          sessionID,
-								"claude_session_id":   claudeSessionID,
-								"event_type":          "tool_result",
-								"tool_result_for_id":  content.ToolUseID,
-								"tool_result_content": content.Content,
-								"content_type":        "tool_result",
-							},
-						})
-					}
-
-					// Mark the corresponding tool call as completed
-					if err := m.store.MarkToolCallCompleted(ctx, content.ToolUseID, sessionID); err != nil {
-						slog.Error("failed to mark tool call as completed",
-							"tool_id", content.ToolUseID,
-							"session_id", sessionID,
-							"error", err)
-						// Continue anyway - this is not fatal
-					}
-
-				case "thinking":
-					// Thinking message
-					convEvent := &store.ConversationEvent{
-						SessionID:       sessionID,
-						ClaudeSessionID: claudeSessionID,
-						EventType:       store.EventTypeThinking,
-						Role:            event.Message.Role,
-						Content:         content.Thinking,
-					}
-					if err := m.store.AddConversationEvent(ctx, convEvent); err != nil {
-						return err
-					}
-
-					// Update session activity timestamp for thinking messages
-					m.updateSessionActivity(ctx, sessionID)
-
-					// Publish conversation updated event
-					if m.eventBus != nil {
-						m.eventBus.Publish(bus.Event{
-							Type: bus.EventConversationUpdated,
-							Data: map[string]interface{}{
-								"session_id":        sessionID,
-								"claude_session_id": claudeSessionID,
-								"event_type":        "thinking",
-								"role":              event.Message.Role,
-								"content":           content.Thinking,
-								"content_type":      "thinking",
-							},
-						})
-					}
-				}
-			}
-		}
-
-	case "result":
-		// Session completion
-		status := store.SessionStatusCompleted
-		if event.IsError {
-			status = store.SessionStatusFailed
-		}
-
-		now := time.Now()
-		update := store.SessionUpdate{
-			Status:         &status,
-			CompletedAt:    &now,
-			LastActivityAt: &now,
-			CostUSD:        &event.CostUSD,
-			DurationMS:     &event.DurationMS,
-		}
-		if event.Error != "" {
-			update.ErrorMessage = &event.Error
-		}
-
-		return m.store.UpdateSession(ctx, sessionID, update)
-	}
-
-	return nil
-}
-
-// captureFileSnapshot captures full file content for Read tool results
-func (m *Manager) captureFileSnapshot(ctx context.Context, sessionID, toolID, toolInputJSON, toolResultContent string) {
-	// Parse tool input to get file path
-	var input map[string]interface{}
-	if err := json.Unmarshal([]byte(toolInputJSON), &input); err != nil {
-		slog.Error("failed to parse Read tool input", "error", err)
-		return
-	}
-
-	filePath, ok := input["file_path"].(string)
-	if !ok {
-		slog.Error("Read tool input missing file_path")
-		return
-	}
-
-	// Read tool returns plain text with line numbers, not JSON
-	// Check if this is a partial read by looking for limit/offset in input
-	_, hasLimit := input["limit"]
-	_, hasOffset := input["offset"]
-	isPartialRead := hasLimit || hasOffset
-
-	var content string
-
-	// If it's a full read (no limit/offset), we can use the tool result content directly
-	if !isPartialRead {
-		// Parse the line-numbered format from Read tool
-		content = parseReadToolContent(toolResultContent)
-		slog.Debug("using full content from Read tool result", "path", filePath)
-	} else {
-		// Partial read - need to read full file from filesystem
-		// Get session to access working directory
-		session, err := m.store.GetSession(ctx, sessionID)
-		if err != nil {
-			slog.Error("failed to get session for snapshot", "error", err)
-			return
-		}
-
-		// Construct full path for reading
-		var fullPath string
-		if filepath.IsAbs(filePath) {
-			// Path is already absolute
-			fullPath = filePath
-		} else {
-			// Path is relative, join with working directory
-			fullPath = filepath.Join(session.WorkingDir, filePath)
-
-			// Verify the constructed path exists
-			if _, err := os.Stat(fullPath); err != nil {
-				slog.Error("constructed file path does not exist",
-					"working_dir", session.WorkingDir,
-					"file_path", filePath,
-					"full_path", fullPath,
-					"error", err)
-				return
-			}
-		}
-
-		// Read file with size limit (10MB)
-		const maxFileSize = 10 * 1024 * 1024
-		fileInfo, err := os.Stat(fullPath)
-		if err != nil {
-			slog.Error("failed to stat file for snapshot", "path", fullPath, "error", err)
-			return
-		}
-
-		if fileInfo.Size() > maxFileSize {
-			slog.Warn("file too large for snapshot, using partial content", "path", fullPath, "size", fileInfo.Size())
-			// Store partial content from tool result as fallback
-			content = parseReadToolContent(toolResultContent)
-		} else {
-			fileBytes, err := os.ReadFile(fullPath)
-			if err != nil {
-				slog.Error("failed to read file for snapshot", "path", fullPath, "error", err)
-				return
-			}
-			content = string(fileBytes)
-			slog.Debug("read full file content from filesystem", "path", fullPath)
-		}
-	}
-
-	// Store snapshot with relative path from tool call
-	snapshot := &store.FileSnapshot{
-		ToolID:    toolID,
-		SessionID: sessionID,
-		FilePath:  filePath, // Store exactly as provided in tool call
-		Content:   content,
-	}
-
-	if err := m.store.CreateFileSnapshot(ctx, snapshot); err != nil {
-		slog.Error("failed to store file snapshot", "error", err)
-	}
-}
-
-// parseReadToolContent extracts content from Read tool's line-numbered format
-func parseReadToolContent(toolResult string) string {
-	lines := strings.Split(toolResult, "\n")
-	var contentLines []string
-
-	for _, line := range lines {
-		// Find the arrow separator "→"
-		if idx := strings.Index(line, "→"); idx > 0 {
-			// Extract content after the arrow (UTF-8 aware)
-			contentLines = append(contentLines, line[idx+len("→"):])
-		}
-	}
-
-	return strings.Join(contentLines, "\n")
 }
 
 // ContinueSession resumes an existing completed session with a new query and optional config overrides
@@ -1212,54 +713,14 @@ func (m *Manager) InterruptSession(ctx context.Context, sessionID string) error 
 		return fmt.Errorf("failed to interrupt Claude session: %w", err)
 	}
 
-	// Update database to show session is completing after interrupt
-	status := string(StatusCompleting)
-	errorMsg := "Session interrupt requested, shutting down gracefully"
-	now := time.Now()
-	update := store.SessionUpdate{
-		Status:         &status,
-		ErrorMessage:   &errorMsg,
-		CompletedAt:    &now,
-		LastActivityAt: &now,
-	}
-	if err := m.store.UpdateSession(ctx, sessionID, update); err != nil {
-		slog.Error("failed to update session status after interrupt",
+	// Transition to completing status
+	lifecycleManager := NewLifecycleManager(m.store, m.eventBus, m.activeProcesses, &m.mu, &m.pendingQueries)
+	if err := lifecycleManager.TransitionToCompleting(ctx, sessionID); err != nil {
+		slog.Error("failed to transition to completing status after interrupt",
 			"session_id", sessionID,
 			"error", err)
 		// Continue anyway since the session was interrupted
 	}
 
-	// Publish status change event
-	if m.eventBus != nil {
-		m.eventBus.Publish(bus.Event{
-			Type: bus.EventSessionStatusChanged,
-			Data: map[string]interface{}{
-				"session_id": sessionID,
-				"old_status": string(StatusRunning),
-				"new_status": string(StatusCompleting),
-			},
-		})
-	}
-
 	return nil
-}
-
-// injectQueryAsFirstEvent adds the user's query as the first conversation event
-func (m *Manager) injectQueryAsFirstEvent(ctx context.Context, sessionID, claudeSessionID, query string) error {
-	// Check if we already have a user message as the first event (deduplication)
-	events, err := m.store.GetConversation(ctx, claudeSessionID)
-	if err == nil && len(events) > 0 && events[0].Role == "user" {
-		return nil // Query already injected
-	}
-
-	event := &store.ConversationEvent{
-		SessionID:       sessionID,
-		ClaudeSessionID: claudeSessionID,
-		Sequence:        1, // Start at 1, not 0 (matches existing pattern)
-		EventType:       store.EventTypeMessage,
-		CreatedAt:       time.Now(),
-		Role:            "user",
-		Content:         query,
-	}
-	return m.store.AddConversationEvent(ctx, event)
 }

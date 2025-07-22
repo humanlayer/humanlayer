@@ -249,7 +249,8 @@ func TestSessionManagerWithStore(t *testing.T) {
 				}
 
 				// Process event
-				manager.processStreamEvent(ctx, sessionID, claudeSessionID, event)
+				eventProcessor := NewEventProcessor(manager.store, manager.eventBus)
+				eventProcessor.ProcessStreamEvent(ctx, sessionID, claudeSessionID, event)
 			}
 
 			// Clean up active process
@@ -537,7 +538,8 @@ func TestSessionManagerEventProcessing(t *testing.T) {
 			},
 		}
 
-		err := manager.processStreamEvent(ctx, sessionID, claudeSessionID, event)
+		eventProcessor := NewEventProcessor(manager.store, manager.eventBus)
+		err := eventProcessor.ProcessStreamEvent(ctx, sessionID, claudeSessionID, event)
 		if err != nil {
 			t.Fatalf("failed to process complex tool use: %v", err)
 		}
@@ -607,7 +609,8 @@ func TestSessionManagerEventProcessing(t *testing.T) {
 			},
 		}
 
-		err := manager.processStreamEvent(ctx, sessionID, claudeSessionID, event)
+		eventProcessor := NewEventProcessor(manager.store, manager.eventBus)
+		err := eventProcessor.ProcessStreamEvent(ctx, sessionID, claudeSessionID, event)
 		if err != nil {
 			t.Fatalf("failed to process multiple content blocks: %v", err)
 		}
@@ -656,7 +659,8 @@ func TestSessionManagerEventProcessing(t *testing.T) {
 			},
 		}
 
-		err := manager.processStreamEvent(ctx, sessionID, claudeSessionID, toolCallEvent)
+		eventProcessor := NewEventProcessor(manager.store, manager.eventBus)
+		err := eventProcessor.ProcessStreamEvent(ctx, sessionID, claudeSessionID, toolCallEvent)
 		if err != nil {
 			t.Fatalf("failed to process tool call: %v", err)
 		}
@@ -676,7 +680,8 @@ func TestSessionManagerEventProcessing(t *testing.T) {
 			},
 		}
 
-		err = manager.processStreamEvent(ctx, sessionID, claudeSessionID, toolResultEvent)
+		eventProcessor2 := NewEventProcessor(manager.store, manager.eventBus)
+		err = eventProcessor2.ProcessStreamEvent(ctx, sessionID, claudeSessionID, toolResultEvent)
 		if err != nil {
 			t.Fatalf("failed to process tool result: %v", err)
 		}
@@ -769,20 +774,12 @@ func TestCaptureFileSnapshot_Integration(t *testing.T) {
 			t.Fatalf("failed to add tool call: %v", err)
 		}
 
-		// Simulate tool result with full content
-		toolResultContent := fmt.Sprintf(`{
-			"type": "file",
-			"file": {
-				"filePath": "test1.txt",
-				"content": "Content of test file 1",
-				"numLines": 1,
-				"startLine": 1,
-				"totalLines": 1
-			}
-		}`)
+		// Simulate tool result with full content (in line-numbered format)
+		toolResultContent := `     1→Content of test file 1`
 
 		// Call captureFileSnapshot synchronously for testing
-		manager.captureFileSnapshot(ctx, sessionID, "tool-full-1", toolCall.ToolInputJSON, toolResultContent)
+		eventProcessor := NewEventProcessor(manager.store, manager.eventBus)
+		eventProcessor.captureFileSnapshot(ctx, sessionID, "tool-full-1", toolCall.ToolInputJSON, toolResultContent)
 
 		// Verify snapshot was created
 		snapshots, err := testStore.GetFileSnapshots(ctx, sessionID)
@@ -810,33 +807,25 @@ func TestCaptureFileSnapshot_Integration(t *testing.T) {
 	})
 
 	t.Run("CapturePartialContentFromFilesystem", func(t *testing.T) {
-		// Create a Read tool call event
+		// Create a Read tool call event with limit to simulate partial read
 		toolCall := &store.ConversationEvent{
 			SessionID:       sessionID,
 			ClaudeSessionID: claudeSessionID,
 			EventType:       store.EventTypeToolCall,
 			ToolID:          "tool-partial-1",
 			ToolName:        "Read",
-			ToolInputJSON:   `{"file_path": "subdir/test2.txt"}`,
+			ToolInputJSON:   `{"file_path": "subdir/test2.txt", "limit": 1}`,
 		}
 		if err := testStore.AddConversationEvent(ctx, toolCall); err != nil {
 			t.Fatalf("failed to add tool call: %v", err)
 		}
 
-		// Simulate tool result with partial content
-		toolResultContent := fmt.Sprintf(`{
-			"type": "file",
-			"file": {
-				"filePath": "subdir/test2.txt",
-				"content": "Content of test file 2",
-				"numLines": 1,
-				"startLine": 1,
-				"totalLines": 2
-			}
-		}`)
+		// Simulate tool result with partial content (in line-numbered format)
+		toolResultContent := `     1→Content of test file 2`
 
 		// Call captureFileSnapshot
-		manager.captureFileSnapshot(ctx, sessionID, "tool-partial-1", toolCall.ToolInputJSON, toolResultContent)
+		eventProcessor := NewEventProcessor(manager.store, manager.eventBus)
+		eventProcessor.captureFileSnapshot(ctx, sessionID, "tool-partial-1", toolCall.ToolInputJSON, toolResultContent)
 
 		// Verify snapshot was created with full content from filesystem
 		snapshots, err := testStore.GetFileSnapshots(ctx, sessionID)
@@ -866,14 +855,14 @@ func TestCaptureFileSnapshot_Integration(t *testing.T) {
 	})
 
 	t.Run("CaptureLargeFilePartialContent", func(t *testing.T) {
-		// Create a Read tool call event for large file
+		// Create a Read tool call event for large file with limit (partial read)
 		toolCall := &store.ConversationEvent{
 			SessionID:       sessionID,
 			ClaudeSessionID: claudeSessionID,
 			EventType:       store.EventTypeToolCall,
 			ToolID:          "tool-large-1",
 			ToolName:        "Read",
-			ToolInputJSON:   `{"file_path": "large.txt"}`,
+			ToolInputJSON:   `{"file_path": "large.txt", "limit": 10}`,
 		}
 		if err := testStore.AddConversationEvent(ctx, toolCall); err != nil {
 			t.Fatalf("failed to add tool call: %v", err)
@@ -881,19 +870,11 @@ func TestCaptureFileSnapshot_Integration(t *testing.T) {
 
 		// Simulate tool result with partial content from large file
 		partialContent := "First 1000 chars of large file..."
-		toolResultContent := fmt.Sprintf(`{
-			"type": "file",
-			"file": {
-				"filePath": "large.txt",
-				"content": "%s",
-				"numLines": 10,
-				"startLine": 1,
-				"totalLines": 100000
-			}
-		}`, partialContent)
+		toolResultContent := fmt.Sprintf(`     1→%s`, partialContent)
 
 		// Call captureFileSnapshot
-		manager.captureFileSnapshot(ctx, sessionID, "tool-large-1", toolCall.ToolInputJSON, toolResultContent)
+		eventProcessor := NewEventProcessor(manager.store, manager.eventBus)
+		eventProcessor.captureFileSnapshot(ctx, sessionID, "tool-large-1", toolCall.ToolInputJSON, toolResultContent)
 
 		// Verify snapshot was created with partial content (due to size limit)
 		snapshots, err := testStore.GetFileSnapshots(ctx, sessionID)
@@ -922,33 +903,25 @@ func TestCaptureFileSnapshot_Integration(t *testing.T) {
 	})
 
 	t.Run("HandleNonExistentFile", func(t *testing.T) {
-		// Create a Read tool call event for non-existent file
+		// Create a Read tool call event for non-existent file with limit (to trigger filesystem read)
 		toolCall := &store.ConversationEvent{
 			SessionID:       sessionID,
 			ClaudeSessionID: claudeSessionID,
 			EventType:       store.EventTypeToolCall,
 			ToolID:          "tool-nonexist-1",
 			ToolName:        "Read",
-			ToolInputJSON:   `{"file_path": "nonexistent.txt"}`,
+			ToolInputJSON:   `{"file_path": "nonexistent.txt", "limit": 10}`,
 		}
 		if err := testStore.AddConversationEvent(ctx, toolCall); err != nil {
 			t.Fatalf("failed to add tool call: %v", err)
 		}
 
-		// Simulate tool result indicating file doesn't exist
-		toolResultContent := fmt.Sprintf(`{
-			"type": "file",
-			"file": {
-				"filePath": "nonexistent.txt",
-				"content": "Error: file not found",
-				"numLines": 1,
-				"startLine": 1,
-				"totalLines": 0
-			}
-		}`)
+		// Simulate tool result indicating file doesn't exist (in line-numbered format)
+		toolResultContent := `     1→Error: file not found`
 
 		// Call captureFileSnapshot - should handle gracefully
-		manager.captureFileSnapshot(ctx, sessionID, "tool-nonexist-1", toolCall.ToolInputJSON, toolResultContent)
+		eventProcessor := NewEventProcessor(manager.store, manager.eventBus)
+		eventProcessor.captureFileSnapshot(ctx, sessionID, "tool-nonexist-1", toolCall.ToolInputJSON, toolResultContent)
 
 		// Since this is a partial read (numLines != totalLines) and file doesn't exist,
 		// no snapshot should be created (error logged)
@@ -966,7 +939,8 @@ func TestCaptureFileSnapshot_Integration(t *testing.T) {
 
 	t.Run("HandleInvalidToolInput", func(t *testing.T) {
 		// Test with invalid tool input JSON
-		manager.captureFileSnapshot(ctx, sessionID, "tool-invalid", "{invalid json}", "{}")
+		eventProcessor := NewEventProcessor(manager.store, manager.eventBus)
+		eventProcessor.captureFileSnapshot(ctx, sessionID, "tool-invalid", "{invalid json}", "{}")
 
 		// Should handle gracefully without creating snapshot
 		snapshots, err := testStore.GetFileSnapshots(ctx, sessionID)
@@ -983,7 +957,8 @@ func TestCaptureFileSnapshot_Integration(t *testing.T) {
 
 	t.Run("HandleMissingFilePath", func(t *testing.T) {
 		// Test with missing file_path in tool input
-		manager.captureFileSnapshot(ctx, sessionID, "tool-nopath", `{"other_param": "value"}`, "{}")
+		eventProcessor := NewEventProcessor(manager.store, manager.eventBus)
+		eventProcessor.captureFileSnapshot(ctx, sessionID, "tool-nopath", `{"other_param": "value"}`, "{}")
 
 		// Should handle gracefully without creating snapshot
 		snapshots, err := testStore.GetFileSnapshots(ctx, sessionID)
