@@ -146,11 +146,16 @@ func (h *SessionHandlers) HandleListSessions(ctx context.Context, params json.Ra
 type GetSessionLeavesRequest struct {
 	IncludeArchived bool `json:"include_archived,omitempty"` // Include archived sessions (default false)
 	ArchivedOnly    bool `json:"archived_only,omitempty"`    // Show only archived sessions
+	Limit           int  `json:"limit,omitempty"`            // Maximum number of sessions to return (default: no limit)
+	Offset          int  `json:"offset,omitempty"`           // Number of sessions to skip (for pagination)
 }
 
 // GetSessionLeavesResponse is the response for getting session leaves
 type GetSessionLeavesResponse struct {
-	Sessions []session.Info `json:"sessions"`
+	Sessions   []session.Info `json:"sessions"`
+	TotalCount int            `json:"total_count"`           // Total number of sessions (before pagination)
+	HasMore    bool           `json:"has_more"`              // Whether there are more sessions to fetch
+	NextOffset int            `json:"next_offset,omitempty"` // Offset for the next page (if has_more is true)
 }
 
 // HandleGetSessionLeaves handles the GetSessionLeaves RPC method
@@ -204,8 +209,30 @@ func (h *SessionHandlers) HandleGetSessionLeaves(ctx context.Context, params jso
 		return leaves[i].LastActivityAt.After(leaves[j].LastActivityAt)
 	})
 
+	// Apply pagination
+	totalCount := len(leaves)
+
+	// Apply offset
+	if req.Offset > 0 && req.Offset < len(leaves) {
+		leaves = leaves[req.Offset:]
+	} else if req.Offset >= len(leaves) {
+		leaves = []session.Info{} // Return empty slice if offset is beyond total
+	}
+
+	// Apply limit
+	hasMore := false
+	nextOffset := 0
+	if req.Limit > 0 && len(leaves) > req.Limit {
+		leaves = leaves[:req.Limit]
+		hasMore = true
+		nextOffset = req.Offset + req.Limit
+	}
+
 	return &GetSessionLeavesResponse{
-		Sessions: leaves,
+		Sessions:   leaves,
+		TotalCount: totalCount,
+		HasMore:    hasMore,
+		NextOffset: nextOffset,
 	}, nil
 }
 

@@ -136,10 +136,15 @@ export interface ListSessionsResponse {
 export interface GetSessionLeavesRequest {
   include_archived?: boolean
   archived_only?: boolean
+  limit?: number
+  offset?: number
 }
 
 export interface GetSessionLeavesResponse {
   sessions: SessionInfo[]
+  total_count: number
+  has_more: boolean
+  next_offset?: number
 }
 
 // Contact channel types

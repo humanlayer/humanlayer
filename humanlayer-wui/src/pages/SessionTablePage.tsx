@@ -3,7 +3,10 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useStore } from '@/stores/appStore'
 import { ViewMode } from '@/lib/daemon/types'
 import SessionTable, { SessionTableHotkeysScope } from '@/components/internal/SessionTable'
+import VirtualizedSessionTable from '@/components/internal/VirtualizedSessionTable'
+import InfiniteScrollSessionTable from '@/components/internal/InfiniteScrollSessionTable'
 import { SessionTableSearch } from '@/components/SessionTableSearch'
+import { usePaginatedSessions } from '@/hooks/usePaginatedSessions'
 import { useSessionFilter } from '@/hooks/useSessionFilter'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { useSessionLauncher, useKeyboardNavigationProtection } from '@/hooks'
@@ -30,6 +33,13 @@ export function SessionTablePage() {
   const viewMode = useStore(state => state.viewMode)
   const setViewMode = useStore(state => state.setViewMode)
 
+  // Use paginated sessions for very large lists (over 500 sessions)
+  const shouldUsePagination = sessions.length > 500
+  const paginatedSessions = usePaginatedSessions({
+    viewMode,
+    pageSize: 100,
+  })
+
   // Update URL when search changes
   useEffect(() => {
     if (searchQuery) {
@@ -41,7 +51,7 @@ export function SessionTablePage() {
 
   // Use the shared session filter hook
   const { filteredSessions, statusFilter, searchText, matchedSessions } = useSessionFilter({
-    sessions,
+    sessions: shouldUsePagination ? paginatedSessions.sessions : sessions,
     query: searchQuery,
     searchFields: ['summary'], // Only search in summary field for the table
   })
@@ -187,51 +197,150 @@ export function SessionTablePage() {
       </div>
 
       <div ref={tableRef} tabIndex={-1} className="focus:outline-none">
-        <SessionTable
-          sessions={filteredSessions}
-          handleFocusSession={session => {
-            if (!shouldIgnoreMouseEvent()) {
-              setFocusedSession(session)
-              setFocusSource('mouse')
-            }
-          }}
-          handleBlurSession={() => {
-            if (!shouldIgnoreMouseEvent()) {
-              setFocusedSession(null)
-              setFocusSource(null)
-            }
-          }}
-          handleActivateSession={handleActivateSession}
-          focusedSession={focusedSession}
-          handleFocusNextSession={focusNextSession}
-          handleFocusPreviousSession={focusPreviousSession}
-          searchText={searchText}
-          matchedSessions={matchedSessions}
-          emptyState={
-            viewMode === ViewMode.Archived
-              ? {
-                  icon: Archive,
-                  title: 'No archived sessions',
-                  message:
-                    'Sessions you archive will appear here. Press ESC or click below to go back.',
-                  action: {
-                    label: 'View all sessions',
-                    onClick: () => setViewMode(ViewMode.Normal),
-                  },
-                }
-              : {
-                  icon: Inbox,
-                  title: 'No sessions yet',
-                  message: 'Create a new session by pressing "c" or clicking below.',
-                  action: {
-                    label: 'Create new session',
-                    onClick: () => {
-                      openSessionLauncher('command')
+        {/* Use infinite scroll table for very large lists with server pagination */}
+        {shouldUsePagination ? (
+          <InfiniteScrollSessionTable
+            sessions={filteredSessions}
+            handleFocusSession={session => {
+              if (!shouldIgnoreMouseEvent()) {
+                setFocusedSession(session)
+                setFocusSource('mouse')
+              }
+            }}
+            handleBlurSession={() => {
+              if (!shouldIgnoreMouseEvent()) {
+                setFocusedSession(null)
+                setFocusSource(null)
+              }
+            }}
+            handleActivateSession={handleActivateSession}
+            focusedSession={focusedSession}
+            handleFocusNextSession={focusNextSession}
+            handleFocusPreviousSession={focusPreviousSession}
+            searchText={searchText}
+            matchedSessions={matchedSessions}
+            loading={paginatedSessions.loading}
+            loadingMore={paginatedSessions.loadingMore}
+            hasMore={paginatedSessions.hasMore}
+            onLoadMore={paginatedSessions.loadMore}
+            emptyState={
+              viewMode === ViewMode.Archived
+                ? {
+                    icon: Archive,
+                    title: 'No archived sessions',
+                    message:
+                      'Sessions you archive will appear here. Press ESC or click below to go back.',
+                    action: {
+                      label: 'View all sessions',
+                      onClick: () => setViewMode(ViewMode.Normal),
                     },
-                  },
-                }
-          }
-        />
+                  }
+                : {
+                    icon: Inbox,
+                    title: 'No sessions yet',
+                    message: 'Create a new session by pressing "c" or clicking below.',
+                    action: {
+                      label: 'Create new session',
+                      onClick: () => {
+                        openSessionLauncher('command')
+                      },
+                    },
+                  }
+            }
+          />
+        ) : filteredSessions.length > 100 ? (
+          <VirtualizedSessionTable
+            sessions={filteredSessions}
+            handleFocusSession={session => {
+              if (!shouldIgnoreMouseEvent()) {
+                setFocusedSession(session)
+                setFocusSource('mouse')
+              }
+            }}
+            handleBlurSession={() => {
+              if (!shouldIgnoreMouseEvent()) {
+                setFocusedSession(null)
+                setFocusSource(null)
+              }
+            }}
+            handleActivateSession={handleActivateSession}
+            focusedSession={focusedSession}
+            handleFocusNextSession={focusNextSession}
+            handleFocusPreviousSession={focusPreviousSession}
+            searchText={searchText}
+            matchedSessions={matchedSessions}
+            emptyState={
+              viewMode === ViewMode.Archived
+                ? {
+                    icon: Archive,
+                    title: 'No archived sessions',
+                    message:
+                      'Sessions you archive will appear here. Press ESC or click below to go back.',
+                    action: {
+                      label: 'View all sessions',
+                      onClick: () => setViewMode(ViewMode.Normal),
+                    },
+                  }
+                : {
+                    icon: Inbox,
+                    title: 'No sessions yet',
+                    message: 'Create a new session by pressing "c" or clicking below.',
+                    action: {
+                      label: 'Create new session',
+                      onClick: () => {
+                        openSessionLauncher('command')
+                      },
+                    },
+                  }
+            }
+          />
+        ) : (
+          <SessionTable
+            sessions={filteredSessions}
+            handleFocusSession={session => {
+              if (!shouldIgnoreMouseEvent()) {
+                setFocusedSession(session)
+                setFocusSource('mouse')
+              }
+            }}
+            handleBlurSession={() => {
+              if (!shouldIgnoreMouseEvent()) {
+                setFocusedSession(null)
+                setFocusSource(null)
+              }
+            }}
+            handleActivateSession={handleActivateSession}
+            focusedSession={focusedSession}
+            handleFocusNextSession={focusNextSession}
+            handleFocusPreviousSession={focusPreviousSession}
+            searchText={searchText}
+            matchedSessions={matchedSessions}
+            emptyState={
+              viewMode === ViewMode.Archived
+                ? {
+                    icon: Archive,
+                    title: 'No archived sessions',
+                    message:
+                      'Sessions you archive will appear here. Press ESC or click below to go back.',
+                    action: {
+                      label: 'View all sessions',
+                      onClick: () => setViewMode(ViewMode.Normal),
+                    },
+                  }
+                : {
+                    icon: Inbox,
+                    title: 'No sessions yet',
+                    message: 'Create a new session by pressing "c" or clicking below.',
+                    action: {
+                      label: 'Create new session',
+                      onClick: () => {
+                        openSessionLauncher('command')
+                      },
+                    },
+                  }
+            }
+          />
+        )}
       </div>
     </div>
   )
