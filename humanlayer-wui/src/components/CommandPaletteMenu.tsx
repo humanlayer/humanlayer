@@ -67,7 +67,6 @@ export default function CommandPaletteMenu() {
   useHotkeys(
     'up, k',
     () => {
-      console.log('up')
       setSelectedMenuIndex(selectedMenuIndex > 0 ? selectedMenuIndex - 1 : menuOptions.length - 1)
     },
     { enabled: true },
