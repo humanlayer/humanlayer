@@ -241,8 +241,16 @@ export function loadConfigFile(configFile?: string): ConfigFile {
   return resolver.loadConfigFile(configFile)
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function buildContactChannel(options: any, config: ConfigFile) {
+interface ContactChannelOptions {
+  slackChannel?: string
+  slackBotToken?: string
+  slackContext?: string
+  slackThreadTs?: string
+  slackBlocks?: boolean
+  email?: string
+}
+
+export function buildContactChannel(options: ContactChannelOptions, config: ConfigFile) {
   // Priority: CLI flags > env vars > config file
 
   const channel = config.channel || {}

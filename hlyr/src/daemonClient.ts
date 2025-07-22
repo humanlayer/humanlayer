@@ -2,106 +2,29 @@ import { connect, Socket } from 'net'
 import { EventEmitter } from 'events'
 import { homedir } from 'os'
 import { join } from 'path'
+import type {
+  JSONRPCRequest,
+  JSONRPCResponse,
+  SubscribeRequest,
+  SubscribeResponse,
+  Event,
+  Approval,
+  LaunchSessionRequest,
+  LaunchSessionResponse,
+  CreateApprovalRequest,
+  UpdateApprovalRequest,
+  HealthResponse,
+  RPCMethods,
+  ToolInput,
+  Session,
+} from './types/rpc'
+import { validateSession, validateApproval, validateEvent, validateArray } from './types/validation'
 
-interface JsonRpcRequest {
-  jsonrpc: '2.0'
-  method: string
-  params?: SubscribeRequest | LaunchSessionRequest | Record<string, unknown>
-  id: number
-}
-
-interface JsonRpcResponse {
-  jsonrpc: '2.0'
-  result?:
-    | SubscribeResponse
-    | EventNotification
-    | LaunchSessionResponse
-    | { type: 'heartbeat'; message: string }
-    | unknown
-  error?: {
-    code: number
-    message: string
-  }
-  id?: number | string | null
-}
-
-interface SubscribeRequest {
-  event_types?: string[]
-  session_id?: string
-  run_id?: string
-}
-
-interface SubscribeResponse {
-  subscription_id: string
-  message: string
-}
-
-interface Event {
-  type: 'new_approval' | 'approval_resolved' | 'session_status_changed'
-  timestamp: string
-  data: {
-    // Common fields
-    session_id?: string
-    run_id?: string
-
-    // new_approval event fields
-    approval_id?: string
-    tool_name?: string
-
-    // approval_resolved event fields
-    approved?: boolean
-    response_text?: string
-
-    // session_status_changed event fields
-    old_status?: string
-    new_status?: string
-    parent_session_id?: string
-
-    // Legacy fields (may not be used)
-    type?: 'function_call' | 'human_contact'
-    count?: number
-    function_name?: string
-    message?: string
-
-    // Allow other fields
-    [key: string]: string | number | boolean | undefined
-  }
-}
+// Re-export types for backward compatibility
+export type { Approval } from './types/rpc'
 
 interface EventNotification {
   event: Event
-}
-
-export interface Approval {
-  id: string
-  run_id: string
-  session_id: string
-  status: 'pending' | 'approved' | 'denied'
-  created_at: string
-  responded_at?: string
-  tool_name: string
-  tool_input: unknown
-  comment?: string
-}
-
-interface LaunchSessionRequest {
-  query: string
-  model?: string
-  mcp_config?: unknown
-  permission_prompt_tool?: string
-  working_dir?: string
-  max_turns?: number
-  system_prompt?: string
-  append_system_prompt?: string
-  allowed_tools?: string[]
-  disallowed_tools?: string[]
-  custom_instructions?: string
-  verbose?: boolean
-}
-
-interface LaunchSessionResponse {
-  session_id: string
-  run_id: string
 }
 
 export class DaemonClient extends EventEmitter {
@@ -137,7 +60,7 @@ export class DaemonClient extends EventEmitter {
     // Create a new connection for subscription
     const subConn = await this.createSubscriptionConnection()
 
-    const req: JsonRpcRequest = {
+    const req: JSONRPCRequest = {
       jsonrpc: '2.0',
       method: 'Subscribe',
       params: request,
@@ -198,8 +121,14 @@ export class DaemonClient extends EventEmitter {
             // Check if it's an event notification
             if (response.result && typeof response.result === 'object' && 'event' in response.result) {
               const notification = response.result as EventNotification
-              if (notification.event && notification.event.type) {
-                subscriptionEmitter.emit('event', notification.event)
+              if (notification.event) {
+                try {
+                  const validatedEvent = validateEvent(notification.event)
+                  subscriptionEmitter.emit('event', validatedEvent)
+                } catch (err) {
+                  // Log validation error but don't crash
+                  console.error('Event validation failed:', err)
+                }
               }
             }
           } catch {
@@ -248,14 +177,22 @@ export class DaemonClient extends EventEmitter {
     })
   }
 
-  // Call sends an RPC request and waits for the response (like the Go client)
-  private async call<T = unknown>(method: string, params?: unknown): Promise<T> {
+  // Type-safe call method using the RPCMethods interface
+  private async call<K extends keyof RPCMethods>(
+    method: K,
+    params?: RPCMethods[K]['request'],
+  ): Promise<RPCMethods[K]['response']> {
+    return this._call(method, params) as Promise<RPCMethods[K]['response']>
+  }
+
+  // Internal call method for methods not yet in RPCMethods
+  private async _call<T = unknown>(method: string, params?: unknown): Promise<T> {
     if (!this.conn) {
       throw new Error('Not connected to daemon')
     }
 
     const id = ++this.requestId
-    const req: JsonRpcRequest = {
+    const req: JSONRPCRequest = {
       jsonrpc: '2.0',
       method,
       params,
@@ -283,7 +220,7 @@ export class DaemonClient extends EventEmitter {
         for (const line of lines) {
           if (line.trim()) {
             try {
-              const response: JsonRpcResponse = JSON.parse(line)
+              const response: JSONRPCResponse = JSON.parse(line)
 
               // Check if this is our response
               if (response.id === id) {
@@ -330,8 +267,8 @@ export class DaemonClient extends EventEmitter {
 
   // Public methods matching the Go client interface
 
-  async health(): Promise<{ status: string }> {
-    const resp = await this.call<{ status: string }>('health')
+  async health(): Promise<HealthResponse> {
+    const resp = await this.call('health', {})
     if (resp.status !== 'ok') {
       throw new Error(`Daemon unhealthy: ${resp.status}`)
     }
@@ -339,44 +276,49 @@ export class DaemonClient extends EventEmitter {
   }
 
   async launchSession(req: LaunchSessionRequest): Promise<LaunchSessionResponse> {
-    return this.call<LaunchSessionResponse>('launchSession', req)
+    return this.call('launchSession', req)
   }
 
-  async listSessions(): Promise<{ sessions: unknown[] }> {
-    return this.call<{ sessions: unknown[] }>('listSessions')
+  async listSessions(): Promise<{ sessions: Session[] }> {
+    const resp = await this.call('listSessions', {})
+    // Validate the sessions
+    const validatedSessions = validateArray(resp.sessions, validateSession)
+    return { sessions: validatedSessions }
   }
 
   async createApproval(
     runId: string,
     toolName: string,
-    toolInput: unknown,
+    toolInput: ToolInput,
   ): Promise<{ approval_id: string }> {
-    return this.call<{ approval_id: string }>('createApproval', {
-      run_id: runId,
+    const req: CreateApprovalRequest = {
       tool_name: toolName,
       tool_input: toolInput,
-    })
+    }
+    const resp = await this.call('createApproval', req)
+    return { approval_id: resp.id }
   }
 
   async fetchApprovals(sessionId: string): Promise<Approval[]> {
-    const resp = await this.call<{ approvals: Approval[] }>('fetchApprovals', { session_id: sessionId })
-    return resp.approvals
+    const resp = await this.call('listApprovals', {})
+    // Validate and filter by session ID
+    const validatedApprovals = validateArray(resp.approvals, validateApproval)
+    return validatedApprovals.filter(a => a.session_id === sessionId)
   }
 
   async getApproval(approvalId: string): Promise<Approval> {
-    const resp = await this.call<{ approval: Approval }>('getApproval', { approval_id: approvalId })
-    return resp.approval
+    const resp = await this.call('getApproval', { id: approvalId })
+    return validateApproval(resp)
   }
 
   async sendDecision(approvalId: string, decision: string, comment: string): Promise<void> {
-    const resp = await this.call<{ success: boolean; error?: string }>('sendDecision', {
-      approval_id: approvalId,
-      decision,
-      comment,
-    })
-    if (!resp.success) {
-      throw new Error(`Decision failed: ${resp.error}`)
+    const approved = decision === 'approve'
+    const req: UpdateApprovalRequest = {
+      id: approvalId,
+      approved,
+      response_text: comment,
     }
+    await this.call('updateApproval', req)
   }
 
   close() {

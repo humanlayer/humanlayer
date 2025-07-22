@@ -10,6 +10,7 @@ import { humanlayer } from '@humanlayer/sdk'
 import { resolveFullConfig } from './config.js'
 import { DaemonClient } from './daemonClient.js'
 import { logger } from './mcpLogger.js'
+import type { ToolInput } from './types/rpc.js'
 
 function validateAuth(): void {
   const config = resolveFullConfig({})
@@ -158,7 +159,7 @@ export async function startClaudeApprovalsMCPServer() {
         throw new McpError(ErrorCode.InvalidRequest, 'Invalid tool name requesting permissions')
       }
 
-      const input: Record<string, unknown> = request.params.arguments?.input || {}
+      const input: ToolInput = request.params.arguments?.input || {}
 
       // Get run ID from environment (set by Claude Code)
       const runId = process.env.HUMANLAYER_RUN_ID
@@ -190,22 +191,20 @@ export async function startClaudeApprovalsMCPServer() {
           try {
             // Get the specific approval by ID
             logger.debug('Fetching approval status...', { approvalId })
-            const approval = (await daemonClient.getApproval(approvalId)) as {
-              id: string
-              status: string
-              comment?: string
-            }
+            const approval = await daemonClient.getApproval(approvalId)
 
-            logger.debug('Approval status', { status: approval.status })
+            logger.debug('Approval status', {
+              approved: approval.approved,
+              resolved_at: approval.resolved_at,
+            })
 
-            if (approval.status !== 'pending') {
+            if (approval.resolved_at) {
               // Approval has been resolved
-              approved = approval.status === 'approved'
-              comment = approval.comment || ''
+              approved = approval.approved === true
+              comment = approval.response_text || ''
               polling = false
               logger.info('Approval resolved', {
                 approvalId,
-                status: approval.status,
                 approved,
               })
             } else {

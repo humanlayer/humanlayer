@@ -39,7 +39,7 @@ done
 
 # Execute based on query
 case "$query" in
-  "sleep "*) 
+  "sleep "*)
     eval "$query"
     if [ "$output_format" = "json" ]; then
       echo '{"type":"result","subtype":"success","session_id":"test-session","total_cost_usd":0.001,"duration_ms":100,"num_turns":1,"result":"slept","usage":{"input_tokens":10,"output_tokens":20}}'
@@ -48,7 +48,7 @@ case "$query" in
     fi
     ;;
   "echo "*) eval "$query" ;;
-  "stream") 
+  "stream")
     echo '{"type":"system","subtype":"init","session_id":"test-session","tools":[],"mcp_servers":[]}'
     sleep 0.1
     echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"streaming..."}]}}'
@@ -63,7 +63,7 @@ case "$query" in
     exit 1
     ;;
   "quick") echo "quick response" ;;
-  *) echo "unknown query: $query" ;;
+  *) echo "unknown query: $query" >&2; exit 1 ;;
 esac
 `
 	if _, err := tmpFile.WriteString(script); err != nil {
