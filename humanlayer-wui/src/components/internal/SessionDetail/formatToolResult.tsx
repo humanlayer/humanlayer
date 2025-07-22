@@ -24,6 +24,10 @@ export function formatToolResult(toolName: string, toolResult: ConversationEvent
     const successPattern =
       "has been updated. Here's the result of running `cat -n` on a snippet of the edited file:"
     isError = !content.includes(successPattern)
+  } else if (toolName === 'Write') {
+    // For Write tool, check for success pattern
+    const successPattern = 'File created successfully'
+    isError = !content.includes(successPattern)
   } else {
     // For other tools, use existing keyword detection
     const lowerContent = content.toLowerCase()
