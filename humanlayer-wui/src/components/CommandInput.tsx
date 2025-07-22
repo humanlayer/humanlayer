@@ -43,19 +43,13 @@ export default function CommandInput({
     }
   }, [])
 
-  // const handleSearchEsc = (e: React.KeyboardEvent) => {
-
-  // }
-
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    console.log('handleKeyDown', e.key)
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       onSubmit()
     }
 
     if (e.key === 'Escape') {
-      console.log('escape')
       promptRef.current?.blur()
     }
   }
