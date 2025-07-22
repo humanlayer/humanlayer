@@ -20,3 +20,8 @@ think deeply about the implementation
 2e. launch implementation session: `npx humanlayer launch --model opus -w ~/wt/humanlayer/ENG-XXXX "/implement_plan and when you are done implementing and all tests pass, read ./claude/commands/commit.md and create a commit, then read ./claude/commands/describe_pr.md and create a PR, then move the ticket to 'code review' status and add a comment to the Linear ticket with the PR link"`
 
 think deeply, use TodoWrite to track your tasks. When fetching from linear, get the top 10 items by priority but only work on ONE item - specifically the highest priority SMALL or XS sized issue.
+
+## Linear User IDs
+- Allison: b157f9e4-8faf-4e7e-a598-dae6dec8a584
+- Dex: 16765c85-2286-4c0f-ab49-0d4d79222ef5
+- Sundeep: 0062104d-9351-44f5-b64c-d0b59acb516b
