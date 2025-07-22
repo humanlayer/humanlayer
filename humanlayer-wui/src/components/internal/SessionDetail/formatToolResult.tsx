@@ -17,30 +17,52 @@ export function formatToolResult(toolName: string, toolResult: ConversationEvent
 
   // More specific error detection to avoid false positives
   // TODO(2): Extract error detection logic into a separate utility
-  const isError =
-    // Common error patterns
-    (content.toLowerCase().includes('error:') ||
-      content.toLowerCase().includes('failed:') ||
-      content.toLowerCase().includes('failed to') ||
-      content.toLowerCase().includes('exception:') ||
-      content.toLowerCase().includes('traceback') ||
-      // Security/permission errors
-      content.toLowerCase().includes('was blocked') ||
-      content.toLowerCase().includes('permission denied') ||
-      content.toLowerCase().includes('access denied') ||
-      content.toLowerCase().includes('not allowed') ||
-      content.toLowerCase().includes('forbidden') ||
-      // File operation errors
-      content.toLowerCase().includes('file has not been read yet') ||
-      content.toLowerCase().includes('read it first') ||
-      content.toLowerCase().includes('file not found') ||
-      content.toLowerCase().includes('no such file') ||
-      // MultiEdit specific errors
-      content.includes('matches of the string to replace, but replace_all is false')) &&
+  let isError = false
+
+  if (toolName === 'Edit') {
+    // For Edit tool, check for success pattern
+    const successPattern =
+      "has been updated. Here's the result of running `cat -n` on a snippet of the edited file:"
+    isError = !content.includes(successPattern)
+  } else if (toolName === 'Write') {
+    // For Write tool, check for success pattern
+    const successPattern = 'File created successfully'
+    isError = !content.includes(successPattern)
+  } else {
+    // For other tools, use existing keyword detection
+    const lowerContent = content.toLowerCase()
+
+    // Check for error patterns
+    const hasErrorKeyword =
+      lowerContent.includes('error:') ||
+      lowerContent.includes('failed:') ||
+      lowerContent.includes('failed to') ||
+      lowerContent.includes('exception:') ||
+      lowerContent.includes('traceback') ||
+      lowerContent.includes('was blocked') ||
+      lowerContent.includes('permission denied') ||
+      lowerContent.includes('access denied') ||
+      lowerContent.includes('not allowed') ||
+      lowerContent.includes('forbidden') ||
+      lowerContent.includes('file has not been read yet') ||
+      lowerContent.includes('read it first') ||
+      lowerContent.includes('file not found') ||
+      lowerContent.includes('no such file') ||
+      (lowerContent.includes('matches of the string to replace') &&
+        lowerContent.includes('but replace_all is false'))
+
     // Exclude false positives
-    !content.toLowerCase().includes('no error') &&
-    !content.toLowerCase().includes('error: 0') &&
-    !content.toLowerCase().includes('error code 0')
+    const isFalsePositive =
+      lowerContent.includes('no error') ||
+      lowerContent.includes('error: 0') ||
+      lowerContent.includes('error code 0') ||
+      lowerContent.includes('error code: 0') ||
+      lowerContent.includes('(0 errors') ||
+      lowerContent.includes('0 errors)') ||
+      lowerContent.includes('0 error(s)')
+
+    isError = hasErrorKeyword && !isFalsePositive
+  }
 
   let abbreviated: string
 
