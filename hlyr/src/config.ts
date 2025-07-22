@@ -1,36 +1,33 @@
-import dotenv from 'dotenv'
-import fs from 'fs'
-import path from 'path'
-import chalk from 'chalk'
-import { ContactChannel } from '@humanlayer/sdk'
+/**
+ * Configuration System v2 Wrapper
+ *
+ * This file maintains backward compatibility while delegating to the new
+ * high-performance configuration system in configV2.ts
+ *
+ * Key improvements in v2:
+ * - Singleton pattern eliminates repeated file reads
+ * - In-memory caching of parsed configurations
+ * - Configuration validation at load time
+ * - Better error messages
+ * - Consistent path expansion
+ *
+ * @deprecated Use configV2.ts directly for new code
+ */
 
-// Load environment variables
-dotenv.config()
+import {
+  ConfigFile as ConfigFileV2,
+  ConfigValue as ConfigValueV2,
+  ConfigManager,
+  ContactChannel,
+} from './configV2.js'
 
-export type ConfigFile = {
-  channel: ContactChannel
-  api_key?: string
-  api_base_url?: string
-  app_base_url?: string
-  daemon_socket?: string
-  run_id?: string
-  thoughts?: {
-    thoughtsRepo: string
-    reposDir: string
-    globalDir: string
-    user: string
-    repoMappings: Record<string, string>
-  }
-}
+// Re-export types for backward compatibility
+export type ConfigFile = ConfigFileV2
+export type ConfigSource = ConfigValueV2<unknown>['source']
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface ConfigValue<T = string> extends ConfigValueV2<T> {}
 
-export type ConfigSource = 'flag' | 'env' | 'config' | 'default' | 'none'
-
-export interface ConfigValue<T = string> {
-  value: T
-  source: ConfigSource
-  sourceName?: string // Specific env var name or file path
-}
-
+// Legacy ConfigSchema interface - not used in v2 but kept for compatibility
 export interface ConfigSchema {
   api_key: {
     envVar: 'HUMANLAYER_API_KEY'
@@ -69,178 +66,95 @@ export interface ConfigSchema {
   }
 }
 
-const CONFIG_SCHEMA: ConfigSchema = {
-  api_key: {
-    envVar: 'HUMANLAYER_API_KEY',
-    configKey: 'api_key',
-    flagKey: 'apiKey',
-    required: true,
-  },
-  api_base_url: {
-    envVar: 'HUMANLAYER_API_BASE',
-    configKey: 'api_base_url',
-    flagKey: 'apiBase',
-    defaultValue: 'https://api.humanlayer.dev/humanlayer/v1',
-    required: true,
-  },
-  app_base_url: {
-    envVar: 'HUMANLAYER_APP_URL',
-    configKey: 'app_base_url',
-    flagKey: 'appBase',
-    defaultValue: 'https://app.humanlayer.dev',
-    required: true,
-  },
-  daemon_socket: {
-    envVar: 'HUMANLAYER_DAEMON_SOCKET',
-    configKey: 'daemon_socket',
-    flagKey: 'daemonSocket',
-    defaultValue: '~/.humanlayer/daemon.sock',
-    required: true,
-  },
-  run_id: {
-    envVar: 'HUMANLAYER_RUN_ID',
-    configKey: 'run_id',
-    flagKey: 'runId',
-    required: false,
-  },
-}
-
+/**
+ * Legacy ConfigResolver class - maintained for backward compatibility
+ *
+ * @deprecated Use ConfigManager from configV2.ts instead
+ */
 export class ConfigResolver {
   public configFile: ConfigFile
-  private configFilePath: string
+  private manager: ConfigManager
+  private options: Record<string, unknown>
 
   constructor(options: { configFile?: string } = {}) {
-    this.configFile = this.loadConfigFile(options.configFile)
-    this.configFilePath = this.getConfigFilePath(options.configFile)
+    this.manager = ConfigManager.getInstance()
+    this.options = options
+
+    // Load config through v2 system and extract the file content
+    const resolved = this.manager.resolve(options)
+    this.configFile = {
+      channel: resolved.contact_channel || {},
+      api_key: resolved.api_key,
+      api_base_url: resolved.api_base_url,
+      app_base_url: resolved.app_base_url,
+      daemon_socket: resolved.daemon_socket,
+      run_id: resolved.run_id,
+      thoughts: resolved.thoughts,
+    }
   }
 
-  private loadConfigFile(configFile?: string): ConfigFile {
-    if (configFile) {
-      const configContent = fs.readFileSync(configFile, 'utf8')
-      return JSON.parse(configContent)
+  /**
+   * @deprecated Internal method - use ConfigManager directly
+   */
+  loadConfigFile(configFile?: string): ConfigFile {
+    const resolved = this.manager.resolve({ ...this.options, configFile })
+    return {
+      channel: resolved.contact_channel || {},
+      api_key: resolved.api_key,
+      api_base_url: resolved.api_base_url,
+      app_base_url: resolved.app_base_url,
+      daemon_socket: resolved.daemon_socket,
+      run_id: resolved.run_id,
+      thoughts: resolved.thoughts,
     }
-
-    // these do not merge today
-    const configPaths = ['humanlayer.json', getDefaultConfigPath()]
-
-    for (const configPath of configPaths) {
-      try {
-        if (fs.existsSync(configPath)) {
-          const configContent = fs.readFileSync(configPath, 'utf8')
-          return JSON.parse(configContent)
-        }
-      } catch (error) {
-        console.error(chalk.yellow(`Warning: Could not parse config file ${configPath}: ${error}`))
-      }
-    }
-
-    return { channel: {} }
   }
 
-  private getConfigFilePath(configFile?: string): string {
-    if (configFile) return configFile
-
-    const configPaths = ['humanlayer.json', getDefaultConfigPath()]
-    for (const configPath of configPaths) {
-      try {
-        if (fs.existsSync(configPath)) {
-          return configPath
-        }
-      } catch {
-        // Continue to next path
-      }
-    }
-    return getDefaultConfigPath() // fallback
-  }
-
+  /**
+   * @deprecated Use ConfigManager.resolveWithSources instead
+   */
   resolveValue<K extends keyof ConfigSchema>(
     key: K,
     options: Record<string, unknown> = {},
   ): ConfigValue<string | undefined> {
-    const schema = CONFIG_SCHEMA[key]
-
-    // Check flag
-    if (options[schema.flagKey]) {
-      return {
-        value: options[schema.flagKey],
-        source: 'flag',
-        sourceName: 'flag',
-      }
-    }
-
-    // Check environment
-    const envValue = process.env[schema.envVar]
-    if (envValue) {
-      return {
-        value: envValue,
-        source: 'env',
-        sourceName: schema.envVar,
-      }
-    }
-
-    // Check config file
-    const configValue = this.configFile[schema.configKey]
-    if (configValue) {
-      return {
-        value: configValue,
-        source: 'config',
-        sourceName: this.configFilePath,
-      }
-    }
-
-    // Use default
-    if (schema.defaultValue) {
-      return {
-        value: schema.defaultValue,
-        source: 'default',
-        sourceName: 'default',
-      }
-    }
-
-    // Not set
-    return {
-      value: undefined,
-      source: 'none',
-      sourceName: 'none',
-    }
+    const sources = this.manager.resolveWithSources({ ...this.options, ...options })
+    const mappedKey = key as keyof typeof sources
+    return sources[mappedKey] || { value: undefined, source: 'none' }
   }
 
+  /**
+   * @deprecated Use ConfigManager.resolveWithSources instead
+   */
   resolveAll(options: Record<string, unknown> = {}) {
-    const api_key = this.resolveValue('api_key', options)
-    const api_base_url = this.resolveValue('api_base_url', options)
-    const app_base_url = this.resolveValue('app_base_url', options)
-    const daemon_socket = this.resolveValue('daemon_socket', options)
-    const run_id = this.resolveValue('run_id', options)
-
-    return {
-      api_key,
-      api_base_url,
-      app_base_url,
-      daemon_socket,
-      run_id,
-      contact_channel: buildContactChannel(options, this.configFile),
-    }
+    return this.manager.resolveWithSources({ ...this.options, ...options })
   }
 
-  // Legacy compatibility
+  /**
+   * @deprecated Use ConfigManager.resolve instead
+   */
   resolveFullConfig(options: Record<string, unknown> = {}) {
-    const resolved = this.resolveAll(options)
-    return {
-      api_key: resolved.api_key.value,
-      api_base_url: resolved.api_base_url.value!,
-      app_base_url: resolved.app_base_url.value!,
-      daemon_socket: resolved.daemon_socket.value!,
-      run_id: resolved.run_id.value,
-      contact_channel: resolved.contact_channel,
-    }
+    return this.manager.resolve({ ...this.options, ...options })
   }
 }
 
+/**
+ * @deprecated Use ConfigManager.getInstance().resolve() instead
+ */
 export function loadConfigFile(configFile?: string): ConfigFile {
-  const resolver = new ConfigResolver({ configFile })
-  return resolver.loadConfigFile(configFile)
+  const config = ConfigManager.getInstance().resolve({ configFile })
+  return {
+    channel: config.contact_channel || {},
+    api_key: config.api_key,
+    api_base_url: config.api_base_url,
+    app_base_url: config.app_base_url,
+    daemon_socket: config.daemon_socket,
+    run_id: config.run_id,
+    thoughts: config.thoughts,
+  }
 }
 
+/**
+ * @deprecated Contact channel resolution is now handled internally by ConfigManager
+ */
 interface ContactChannelOptions {
   slackChannel?: string
   slackBotToken?: string
@@ -248,86 +162,35 @@ interface ContactChannelOptions {
   slackThreadTs?: string
   slackBlocks?: boolean
   email?: string
+  emailAddress?: string
+  emailContext?: string
 }
 
-export function buildContactChannel(options: ContactChannelOptions, config: ConfigFile) {
-  // Priority: CLI flags > env vars > config file
-
-  const channel = config.channel || {}
-
-  const slackChannelId =
-    options.slackChannel ||
-    process.env.HUMANLAYER_SLACK_CHANNEL ||
-    channel.slack?.channel_or_user_id ||
-    ''
-
-  const slackBotToken =
-    options.slackBotToken || process.env.HUMANLAYER_SLACK_BOT_TOKEN || channel.slack?.bot_token
-
-  const slackContext =
-    options.slackContext ||
-    process.env.HUMANLAYER_SLACK_CONTEXT ||
-    channel.slack?.context_about_channel_or_user
-
-  const slackThreadTs =
-    options.slackThreadTs || process.env.HUMANLAYER_SLACK_THREAD_TS || channel.slack?.thread_ts
-
-  const slackBlocks =
-    options.slackBlocks !== undefined
-      ? options.slackBlocks
-      : process.env.HUMANLAYER_SLACK_BLOCKS === 'true' ||
-        channel.slack?.experimental_slack_blocks ||
-        true
-
-  const emailAddress =
-    options.emailAddress || process.env.HUMANLAYER_EMAIL_ADDRESS || channel.email?.address
-
-  const emailContext =
-    options.emailContext || process.env.HUMANLAYER_EMAIL_CONTEXT || channel.email?.context_about_user
-
-  const contactChannel: ContactChannel = {}
-
-  if (slackChannelId || slackBotToken) {
-    contactChannel.slack = {
-      channel_or_user_id: slackChannelId,
-      experimental_slack_blocks: slackBlocks,
-    }
-
-    if (slackBotToken) contactChannel.slack.bot_token = slackBotToken
-    if (slackContext) contactChannel.slack.context_about_channel_or_user = slackContext
-    if (slackThreadTs) contactChannel.slack.thread_ts = slackThreadTs
-  }
-
-  if (emailAddress) {
-    contactChannel.email = {
-      address: emailAddress,
-    }
-
-    if (emailContext) contactChannel.email.context_about_user = emailContext
-  }
-
-  return contactChannel
+/**
+ * @deprecated Use ConfigManager.resolve().contact_channel instead
+ */
+export function buildContactChannel(
+  options: ContactChannelOptions,
+  _config: ConfigFile,
+): ContactChannel {
+  // Delegate to v2 system which handles all the resolution logic
+  const resolved = ConfigManager.getInstance().resolve(options)
+  return resolved.contact_channel
 }
 
+/**
+ * @deprecated Use ConfigManager.getInstance().saveConfig() instead
+ */
 export function saveConfigFile(config: ConfigFile, configFile?: string): void {
-  const configPath = configFile || getDefaultConfigPath()
-
-  console.log(chalk.yellow(`Writing config to ${configPath}`))
-
-  // Create directory if it doesn't exist
-  const configDir = path.dirname(configPath)
-  fs.mkdirSync(configDir, { recursive: true })
-
-  fs.writeFileSync(configPath, JSON.stringify(config, null, 2))
-
-  console.log(chalk.green('Config saved successfully'))
+  ConfigManager.getInstance().saveConfig(config, configFile)
 }
 
-export function getDefaultConfigPath(): string {
-  const xdgConfigHome = process.env.XDG_CONFIG_HOME || path.join(process.env.HOME || '', '.config')
-  return path.join(xdgConfigHome, 'humanlayer', 'humanlayer.json')
-}
+/**
+ * @deprecated Import from configV2.js instead
+ */
+export { getDefaultConfigPath } from './configV2.js'
 
+// Re-export types from v2
 export type ResolvedConfig = {
   api_key?: string
   api_base_url: string
@@ -343,38 +206,10 @@ export type ConfigWithSources = {
   app_base_url: ConfigValue<string>
   daemon_socket: ConfigValue<string>
   run_id?: ConfigValue<string | undefined>
-  contact_channel: ContactChannel
+  contact_channel: ConfigValue<ContactChannel>
 }
 
-// Legacy compatibility functions
-export function resolveConfigWithSources(options: Record<string, unknown> = {}): ConfigWithSources {
-  const resolver = new ConfigResolver(options)
-  const resolved = resolver.resolveAll(options)
-
-  return {
-    api_key: resolved.api_key,
-    api_base_url: resolved.api_base_url as ConfigValue<string>,
-    app_base_url: resolved.app_base_url as ConfigValue<string>,
-    daemon_socket: resolved.daemon_socket as ConfigValue<string>,
-    run_id: resolved.run_id,
-    contact_channel: resolved.contact_channel,
-  }
-}
-
-export function resolveFullConfig(options: Record<string, unknown> = {}): ResolvedConfig {
-  const resolver = new ConfigResolver(options)
-  return resolver.resolveFullConfig(options)
-}
-
-// Utility function for masking sensitive values consistently
-export function maskSensitiveValue(value: string | undefined): string {
-  if (!value) {
-    return '<not set>'
-  }
-
-  if (value.length <= 6) {
-    return value + '...'
-  }
-
-  return value.substring(0, 6) + '...'
-}
+/**
+ * @deprecated Import from configV2.js instead
+ */
+export { resolveConfigWithSources, resolveFullConfig, maskSensitiveValue } from './configV2.js'

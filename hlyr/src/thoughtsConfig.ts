@@ -2,7 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import os from 'os'
 import { execSync } from 'child_process'
-import { ConfigResolver, saveConfigFile } from './config.js'
+import { ConfigManager, saveConfigFile } from './configV2.js'
 
 export interface ThoughtsConfig {
   thoughtsRepo: string
@@ -13,17 +13,25 @@ export interface ThoughtsConfig {
 }
 
 export function loadThoughtsConfig(options: Record<string, unknown> = {}): ThoughtsConfig | null {
-  const resolver = new ConfigResolver(options)
-  return resolver.configFile.thoughts || null
+  const config = ConfigManager.getInstance().resolve(options)
+  return config.thoughts || null
 }
 
 export function saveThoughtsConfig(
   thoughtsConfig: ThoughtsConfig,
   options: Record<string, unknown> = {},
 ): void {
-  const resolver = new ConfigResolver(options)
-  resolver.configFile.thoughts = thoughtsConfig
-  saveConfigFile(resolver.configFile, options.configFile as string | undefined)
+  const config = ConfigManager.getInstance().resolve(options)
+  const updatedConfig = {
+    channel: config.contact_channel || {},
+    api_key: config.api_key,
+    api_base_url: config.api_base_url,
+    app_base_url: config.app_base_url,
+    daemon_socket: config.daemon_socket,
+    run_id: config.run_id,
+    thoughts: thoughtsConfig,
+  }
+  saveConfigFile(updatedConfig, options.configFile as string | undefined)
 }
 
 export function getDefaultThoughtsRepo(): string {
