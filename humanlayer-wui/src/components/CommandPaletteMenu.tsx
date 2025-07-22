@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { useSessionLauncher } from '@/hooks/useSessionLauncher'
-import { useStore } from '@/AppStore'
+import { useStore } from '@/stores/appStore'
 import { highlightMatches, type FuzzyMatch } from '@/lib/fuzzy-search'
 import { cn } from '@/lib/utils'
 import { useSessionFilter } from '@/hooks/useSessionFilter'

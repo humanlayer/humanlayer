@@ -9,7 +9,7 @@ import { ChevronDown, Archive, Pencil } from 'lucide-react'
 import { getStatusTextClass } from '@/utils/component-utils'
 import { truncate } from '@/utils/formatting'
 import { daemonClient } from '@/lib/daemon/client'
-import { useStore } from '@/AppStore'
+import { useStore } from '@/stores/appStore'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 

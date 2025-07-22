@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { SessionInfo, ConversationEvent, ViewMode } from '@/lib/daemon/types'
 import { daemonClient } from '@/lib/daemon/client'
 import { notificationService } from '@/services/NotificationService'
-import { useStore } from '@/AppStore'
+import { useStore } from '@/stores/appStore'
 
 interface UseSessionActionsProps {
   session: SessionInfo

@@ -1,5 +1,5 @@
 import { useRef, useCallback, useMemo } from 'react'
-import { useStore } from '@/AppStore'
+import { useStore } from '@/stores/appStore'
 import { notificationService } from '@/services/NotificationService'
 import { daemonClient } from '@/lib/daemon'
 import { useSessionSubscriptions } from './useSubscriptions'

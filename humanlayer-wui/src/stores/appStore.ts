@@ -1,6 +1,6 @@
 import type { SessionInfo, Approval } from '@/lib/daemon/types'
 import { ViewMode } from '@/lib/daemon/types'
-import { create, StoreApi } from 'zustand'
+import { create, StoreApi, useStore as useZustandStore } from 'zustand'
 import { daemonClient } from '@/lib/daemon'
 
 export interface AppState {
@@ -539,3 +539,27 @@ export function createDemoAppStore(): StoreApi<AppState> {
     setActiveSessionId: () => {},
   }))
 }
+
+// Create the singleton store instance
+const appStore = createRealAppStore()
+
+// Export hook for backwards compatibility
+export const useStore = ((selector?: (state: AppState) => any) => {
+  if (!selector) {
+    // When called without selector, return the entire state
+    return useZustandStore(appStore)
+  }
+  // When called with selector, return the selected value
+  return useZustandStore(appStore, selector)
+}) as {
+  <T>(selector: (state: AppState) => T): T
+  (): AppState
+  getState: typeof appStore.getState
+  setState: typeof appStore.setState
+  subscribe: typeof appStore.subscribe
+}
+
+// Add the store methods to the hook
+useStore.getState = appStore.getState
+useStore.setState = appStore.setState
+useStore.subscribe = appStore.subscribe

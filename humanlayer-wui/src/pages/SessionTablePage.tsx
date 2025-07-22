@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useStore } from '@/AppStore'
+import { useStore } from '@/stores/appStore'
 import { ViewMode } from '@/lib/daemon/types'
 import SessionTable, { SessionTableHotkeysScope } from '@/components/internal/SessionTable'
 import { SessionTableSearch } from '@/components/SessionTableSearch'

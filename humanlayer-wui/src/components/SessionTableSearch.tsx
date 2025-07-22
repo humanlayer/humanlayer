@@ -4,7 +4,7 @@ import { Input } from './ui/input'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { SessionTableHotkeysScope } from './internal/SessionTable'
 import { Badge } from './ui/badge'
-import { useStore } from '@/AppStore'
+import { useStore } from '@/stores/appStore'
 import { ViewMode } from '@/lib/daemon/types'
 
 interface SessionTableSearchProps {
