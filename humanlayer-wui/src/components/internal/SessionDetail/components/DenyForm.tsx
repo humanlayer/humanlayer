@@ -33,7 +33,7 @@ export function DenyForm({
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
       e.preventDefault()
-      handleSubmit(e as any)
+      handleSubmit(e as React.FormEvent)
     } else if (e.key === 'Escape' && onCancel) {
       e.preventDefault()
       onCancel()

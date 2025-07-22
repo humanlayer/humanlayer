@@ -2,6 +2,7 @@ import { describe, test, expect, beforeEach } from 'bun:test'
 import { create } from 'zustand'
 import { createAppSlice, AppSlice } from './appSlice'
 import { createStoreTest, testInitialState, mockFactory } from '../test-utils'
+import { Approval, ApprovalStatus } from '@/lib/daemon/types'
 
 describe('Demo AppSlice', () => {
   let store: ReturnType<typeof createStoreTest<AppSlice>>
@@ -52,7 +53,19 @@ describe('Demo AppSlice', () => {
       store.testSetter('setApprovals', 'approvals', mockApprovals)
 
       // Add single approval
-      const newApproval = { id: '4', title: 'New Approval', status: 'pending' }
+      const newApproval: Approval = {
+        id: '4',
+        run_id: 'run-4',
+        session_id: 'session-4',
+        status: ApprovalStatus.Pending,
+        created_at: new Date().toISOString(),
+        tool_name: 'Edit',
+        tool_input: {
+          file_path: '/test/file.ts',
+          old_string: 'old',
+          new_string: 'new',
+        },
+      }
       store.act(s => s.addApproval(newApproval))
       expect(store.getState().approvals).toHaveLength(4)
       expect(store.getState().approvals.some(a => a.id === newApproval.id)).toBe(true)
@@ -102,7 +115,17 @@ describe('Demo AppSlice', () => {
       store.act(s => {
         s.setConnected(false)
         s.setStatus('Error')
-        s.setApprovals([{ id: '1', title: 'Test', status: 'pending' }])
+        s.setApprovals([
+          {
+            id: '1',
+            run_id: 'run-1',
+            session_id: 'session-1',
+            status: ApprovalStatus.Pending,
+            created_at: new Date().toISOString(),
+            tool_name: 'Bash',
+            tool_input: { command: 'test', description: 'Test' },
+          },
+        ])
         s.setCurrentRoute('/sessions')
       })
 

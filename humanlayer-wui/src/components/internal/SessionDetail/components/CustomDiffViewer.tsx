@@ -1,5 +1,19 @@
 import React, { Fragment } from 'react'
 
+// Diff entry types
+interface DiffEntry {
+  type: 'equal' | 'add' | 'remove' | 'replace'
+  oldLine?: string
+  newLine?: string
+  oldIndex?: number
+  newIndex?: number
+}
+
+interface TokenDiffEntry {
+  text: string
+  type: 'equal' | 'add' | 'remove'
+}
+
 // --- Minimal diff utilities (no third-party libraries) ---
 function computeLineDiff(oldStr: string, newStr: string) {
   // Returns an array of { type: 'equal'|'add'|'remove'|'replace', oldLine?: string, newLine?: string, oldIndex?: number, newIndex?: number }
@@ -24,7 +38,7 @@ function computeLineDiff(oldStr: string, newStr: string) {
   // Backtrack to get diff
   let i = 0,
     j = 0
-  const diff: any[] = []
+  const diff: DiffEntry[] = []
   while (i < n && j < m) {
     if (oldLines[i] === newLines[j]) {
       diff.push({ type: 'equal', oldLine: oldLines[i], newLine: newLines[j], oldIndex: i, newIndex: j })
@@ -47,7 +61,7 @@ function computeLineDiff(oldStr: string, newStr: string) {
     j++
   }
   // Post-process: merge adjacent add/remove into replace
-  const merged: any[] = []
+  const merged: DiffEntry[] = []
   let k = 0
   while (k < diff.length) {
     if (diff[k].type === 'remove' && k + 1 < diff.length && diff[k + 1].type === 'add') {
@@ -113,7 +127,7 @@ function computeWordDiff(oldLine: string, newLine: string) {
   }
   let i = 0,
     j = 0
-  const result: any[] = []
+  const result: TokenDiffEntry[] = []
   while (i < n && j < m) {
     if (a[i] === b[j]) {
       result.push({ text: a[i], type: 'equal' })

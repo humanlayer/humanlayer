@@ -29,7 +29,10 @@ export interface NotificationOptions {
   metadata: {
     sessionId?: string
     approvalId?: string
-    [key: string]: any
+    error?: string
+    context?: string
+    timestamp?: string
+    model?: string
   }
   actions?: NotificationAction[]
   duration?: number | null
@@ -149,7 +152,7 @@ class NotificationService {
   /**
    * Generate a unique notification ID based on type and metadata
    */
-  generateNotificationId(type: NotificationType, metadata: Record<string, any>): string {
+  generateNotificationId(type: NotificationType, metadata: NotificationOptions['metadata']): string {
     const parts: string[] = [type]
 
     // Add relevant metadata to create unique ID

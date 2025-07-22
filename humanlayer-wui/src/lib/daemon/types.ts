@@ -1,3 +1,6 @@
+// Import tool types
+import { ToolInputMap } from './toolTypes'
+
 // Enums
 
 export enum SessionStatus {
@@ -41,6 +44,24 @@ export enum ViewMode {
 }
 
 // Type definitions matching the Rust types
+
+// MCP config type
+export interface McpConfig {
+  mcpServers: {
+    [key: string]: {
+      command: string
+      args: string[]
+    }
+  }
+}
+
+// Session result type
+export interface SessionResult {
+  success: boolean
+  output?: string
+  error?: string
+  exit_code?: number
+}
 export interface HealthCheckResponse {
   status: string
   version: string
@@ -49,7 +70,7 @@ export interface HealthCheckResponse {
 export interface LaunchSessionRequest {
   query: string
   model?: string
-  mcp_config?: any
+  mcp_config?: McpConfig
   permission_prompt_tool?: string
   working_dir?: string
   max_turns?: number
@@ -81,7 +102,7 @@ export interface SessionInfo {
   title?: string
   model?: string
   working_dir?: string
-  result?: any
+  result?: SessionResult
   auto_accept_edits: boolean
   archived?: boolean
 }
@@ -145,15 +166,15 @@ export interface ResponseOption {
 }
 
 // Local approval format (as stored in daemon)
-export interface Approval {
+export interface Approval<T extends keyof ToolInputMap = keyof ToolInputMap> {
   id: string
   run_id: string
   session_id: string
   status: ApprovalStatus
   created_at: string
   responded_at?: string
-  tool_name: string
-  tool_input: any
+  tool_name: T
+  tool_input: ToolInputMap[T]
   comment?: string
 }
 
@@ -168,36 +189,24 @@ export interface FetchApprovalsResponse {
   approvals: Approval[]
 }
 
-// Event types
+// Re-export event types from eventTypes.ts
+export * from './eventTypes'
+
+// Legacy Event type (deprecated - use DaemonEvent instead)
 export interface Event {
   type: string
   timestamp: string
   data: any
 }
 
+// Legacy EventNotification (deprecated - use DaemonEventNotification instead)
 export interface EventNotification {
   event: Event
 }
 
-// Event-specific data types
-export interface NewApprovalEventData extends ApprovalEventData {
-  // Uses the ApprovalEventData fields
-}
-
-// Alias for backwards compatibility (to be removed)
-export type ApprovalRequestedEventData = NewApprovalEventData
-
-export interface ApprovalResolvedEventData {
-  approval_id: string // was call_id
-  session_id: string
-  decision: Decision
-}
-
-export interface SessionStatusChangedEventData {
-  session_id: string
-  old_status: string
-  new_status: string
-}
+// Legacy event data types - these are now defined in eventTypes.ts
+// Keeping ApprovalRequestedEventData alias for backwards compatibility
+export type ApprovalRequestedEventData = ApprovalEventData
 
 // Conversation types
 export interface ConversationEvent {

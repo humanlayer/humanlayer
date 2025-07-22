@@ -3,10 +3,10 @@
  * Provides fast, intuitive search with highlighting and scoring
  */
 
-export interface FuzzyMatch {
+export interface FuzzyMatch<T = any> {
   score: number
   indices: number[]
-  item: any
+  item: T
   matches: Array<{ indices: number[]; key?: string }>
 }
 
@@ -72,11 +72,11 @@ function fuzzyMatchString(pattern: string, text: string): { score: number; indic
 /**
  * Search through an array of items with fuzzy matching
  */
-export function fuzzySearch<T>(
+export function fuzzySearch<T = any>(
   items: T[],
   pattern: string,
   options: FuzzySearchOptions = {},
-): FuzzyMatch[] {
+): FuzzyMatch<T>[] {
   const { keys = [], threshold = 0.1, minMatchCharLength = 1 } = options
 
   if (!pattern || pattern.length < minMatchCharLength) {
@@ -88,7 +88,7 @@ export function fuzzySearch<T>(
     }))
   }
 
-  const results: FuzzyMatch[] = []
+  const results: FuzzyMatch<T>[] = []
 
   for (const item of items) {
     let bestScore = 0
@@ -192,7 +192,7 @@ export function highlightMatches(
 /**
  * Directory-specific fuzzy search with path intelligence
  */
-export function fuzzySearchDirectories(directories: string[], pattern: string): FuzzyMatch[] {
+export function fuzzySearchDirectories(directories: string[], pattern: string): FuzzyMatch<string>[] {
   // Enhance pattern matching for directory paths
   const enhancedPattern = pattern.replace(
     /^~/,

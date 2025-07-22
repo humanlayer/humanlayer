@@ -1,4 +1,5 @@
 import { StateCreator } from 'zustand'
+import type { Approval } from '@/lib/daemon/types'
 
 export interface AppSlice {
   // Connection state
@@ -6,7 +7,7 @@ export interface AppSlice {
   status: string
 
   // Approvals (simplified for demo)
-  approvals: any[]
+  approvals: Approval[]
 
   // Routing
   currentRoute: string
@@ -14,11 +15,11 @@ export interface AppSlice {
   // Actions
   setConnected: (connected: boolean) => void
   setStatus: (status: string) => void
-  setApprovals: (approvals: any[]) => void
+  setApprovals: (approvals: Approval[]) => void
   setCurrentRoute: (route: string) => void
 
   // Approval actions
-  addApproval: (approval: any) => void
+  addApproval: (approval: Approval) => void
   removeApproval: (id: string) => void
   clearApprovals: () => void
   getApprovalCount: () => number

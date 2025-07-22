@@ -1,5 +1,5 @@
 import { create, StoreApi } from 'zustand'
-import { SessionInfo, SessionStatus } from '@/lib/daemon/types'
+import { SessionInfo, SessionStatus, Approval } from '@/lib/daemon/types'
 import { Theme } from '@/contexts/ThemeContext'
 
 // Comprehensive app state for demo animations
@@ -22,7 +22,7 @@ interface DemoAppState {
   status: string
 
   // Approvals state
-  approvals: any[]
+  approvals: Approval[]
 
   // Theme
   theme: Theme
@@ -45,7 +45,7 @@ interface DemoAppState {
   setLauncherSelectedMenuIndex: (index: number) => void
   setConnected: (connected: boolean) => void
   setStatus: (status: string) => void
-  setApprovals: (approvals: any[]) => void
+  setApprovals: (approvals: Approval[]) => void
   setTheme: (theme: Theme) => void
   setCurrentRoute: (route: string) => void
   setSearchQuery: (query: string) => void

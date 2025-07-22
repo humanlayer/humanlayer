@@ -7,6 +7,13 @@ import {
   ApprovalStatus,
   FileSnapshotInfo,
 } from '@/lib/daemon/types'
+
+interface TodoItem {
+  id: string
+  content: string
+  priority: 'high' | 'medium' | 'low'
+  status: 'in_progress' | 'pending' | 'completed'
+}
 import { Button } from '@/components/ui/button'
 import {
   Bot,
@@ -138,8 +145,8 @@ export function eventToDisplayObject(
     if (event.tool_name === 'TodoWrite') {
       const toolInput = JSON.parse(event.tool_input_json!)
       const todos = toolInput.todos
-      const completedCount = todos.filter((todo: any) => todo.status === 'completed').length
-      const pendingCount = todos.filter((todo: any) => todo.status === 'pending').length
+      const completedCount = todos.filter((todo: TodoItem) => todo.status === 'completed').length
+      const pendingCount = todos.filter((todo: TodoItem) => todo.status === 'pending').length
 
       subject = (
         <span>
@@ -352,7 +359,7 @@ export function eventToDisplayObject(
     if (event.tool_name === 'MultiEdit') {
       const toolInput = JSON.parse(event.tool_input_json!)
       const snapshot = getSnapshot?.(toolInput.file_path)
-      const allEdits = toolInput.edits.map((e: any) => ({
+      const allEdits = toolInput.edits.map((e: { old_string: string; new_string: string }) => ({
         oldValue: e.old_string,
         newValue: e.new_string,
       }))

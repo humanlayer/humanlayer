@@ -1,5 +1,5 @@
 import { DemoAnimationStep } from '../composedDemoStore'
-import { SessionStatus } from '@/lib/daemon/types'
+import { SessionStatus, ApprovalStatus } from '@/lib/daemon/types'
 import type { SessionInfo } from '@/lib/daemon/types'
 
 // Helper to create realistic session data
@@ -112,8 +112,16 @@ export const statusChangesSequence: DemoAnimationStep[] = [
       approvals: [
         {
           id: 'approval-1',
-          title: 'Update authentication config',
-          status: 'pending',
+          run_id: 'run-approval-1',
+          session_id: 'session-1',
+          status: ApprovalStatus.Pending,
+          created_at: new Date().toISOString(),
+          tool_name: 'Edit' as const,
+          tool_input: {
+            file_path: '/config/auth.json',
+            old_string: 'enabled: false',
+            new_string: 'enabled: true',
+          },
         },
       ],
     },

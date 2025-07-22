@@ -141,13 +141,13 @@ if hlderrors.IsCancelled(err) {
 ```go
 var sessionErr *hlderrors.SessionError
 if errors.As(err, &sessionErr) {
-    fmt.Printf("Session %s failed during %s operation\n", 
+    fmt.Printf("Session %s failed during %s operation\n",
         sessionErr.SessionID, sessionErr.Operation)
 }
 
 var validationErr *hlderrors.ValidationError
 if errors.As(err, &validationErr) {
-    fmt.Printf("Validation failed for field %s: %s\n", 
+    fmt.Printf("Validation failed for field %s: %s\n",
         validationErr.Field, validationErr.Message)
 }
 ```
@@ -226,7 +226,7 @@ If you're updating existing code to use the new error system:
    ```go
    // Old
    if err.Error() == "session not found" {
-   
+
    // New
    if errors.Is(err, hlderrors.ErrSessionNotFound) {
    ```
@@ -235,7 +235,7 @@ If you're updating existing code to use the new error system:
    ```go
    // Old
    return fmt.Errorf("failed to get session: %w", err)
-   
+
    // New
    return hlderrors.NewSessionError("get", sessionID, err)
    ```
@@ -249,7 +249,7 @@ If you're updating existing code to use the new error system:
            Message: err.Error(),
        },
    }
-   
+
    // New
    return wrapError(id, err)
    ```

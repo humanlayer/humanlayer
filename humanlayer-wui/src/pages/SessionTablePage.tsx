@@ -46,7 +46,7 @@ export function SessionTablePage() {
     searchFields: ['summary'], // Only search in summary field for the table
   })
 
-  const handleActivateSession = (session: any) => {
+  const handleActivateSession = (session: { id: string }) => {
     navigate(`/sessions/${session.id}`)
   }
 

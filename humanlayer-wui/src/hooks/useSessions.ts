@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { daemonClient, LaunchSessionRequest } from '@/lib/daemon'
 import { SessionSummary } from '@/types/ui'
+import { SessionInfo, SessionStatus } from '@/lib/daemon/types'
 import { formatError } from '@/utils/errors'
 
 interface UseSessionsReturn {
@@ -84,7 +85,7 @@ export function useSessions(): UseSessionsReturn {
 
 // Hook for a single session with details
 export function useSession(sessionId: string | undefined) {
-  const [session, setSession] = useState<any>(null)
+  const [session, setSession] = useState<SessionInfo | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -102,7 +103,27 @@ export function useSession(sessionId: string | undefined) {
       setError(null)
 
       const response = await daemonClient.getSessionState(sessionId)
-      setSession(response.session)
+      // Convert SessionState to SessionInfo
+      const sessionInfo: SessionInfo = {
+        id: response.session.id,
+        run_id: response.session.run_id,
+        claude_session_id: response.session.claude_session_id,
+        parent_session_id: response.session.parent_session_id,
+        status: response.session.status as SessionStatus,
+        start_time: response.session.created_at,
+        end_time: response.session.completed_at,
+        last_activity_at: response.session.last_activity_at,
+        error: response.session.error_message,
+        query: response.session.query,
+        summary: response.session.summary,
+        title: response.session.title,
+        model: response.session.model,
+        working_dir: response.session.working_dir,
+        result: undefined, // SessionState doesn't have result
+        auto_accept_edits: response.session.auto_accept_edits || false,
+        archived: response.session.archived,
+      }
+      setSession(sessionInfo)
     } catch (err) {
       setError(formatError(err))
     } finally {

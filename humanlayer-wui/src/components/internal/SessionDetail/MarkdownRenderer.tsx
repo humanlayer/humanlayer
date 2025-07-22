@@ -124,12 +124,13 @@ export const MarkdownRenderer = memo(
         },
         p({ children, ...props }) {
           // Check if we're inside a list item
-          const isInList = (props as any).node?.parent?.tagName === 'li'
+          const isInList =
+            (props as { node?: { parent?: { tagName?: string } } }).node?.parent?.tagName === 'li'
           // Let CSS handle margins, only control display
           return <p style={{ display: isInList ? 'inline' : 'block' }}>{children}</p>
         },
         code(props) {
-          const { className, children } = props as any
+          const { className, children } = props as { className?: string; children?: React.ReactNode }
           // Check if it's an inline code or code block by looking at the presence of language class
           const match = /language-(\w+)/.exec(className || '')
           const codeString = String(children).replace(/\n$/, '')

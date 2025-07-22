@@ -257,7 +257,7 @@ function renderToolInput(toolCall: ConversationEvent): React.ReactNode {
 
     // Special rendering for MultiEdit tool
     if (toolCall.tool_name === 'MultiEdit') {
-      const allEdits = args.edits.map((e: any) => ({
+      const allEdits = args.edits.map((e: { old_string: string; new_string: string }) => ({
         oldValue: e.old_string,
         newValue: e.new_string,
       }))

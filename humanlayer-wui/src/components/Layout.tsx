@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Outlet } from 'react-router-dom'
 import { daemonClient } from '@/lib/daemon'
+import type { Approval } from '@/lib/daemon/types'
 import { Button } from '@/components/ui/button'
 import { ThemeSelector } from '@/components/ThemeSelector'
 import { SessionLauncher } from '@/components/SessionLauncher'
@@ -16,7 +17,7 @@ import '@/App.css'
 
 export function Layout() {
   const [status, setStatus] = useState('')
-  const [approvals, setApprovals] = useState<any[]>([])
+  const [approvals, setApprovals] = useState<Approval[]>([])
   const [activeSessionId] = useState<string | null>(null)
   const [connected, setConnected] = useState(false)
   const { setTheme } = useTheme()
@@ -102,7 +103,7 @@ export function Layout() {
     }
   }
 
-  const handleApproval = async (approval: any, approved: boolean) => {
+  const handleApproval = async (approval: Approval, approved: boolean) => {
     try {
       // Handle new approval format directly
       if (!approval || !approval.id) {

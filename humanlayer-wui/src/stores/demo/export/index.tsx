@@ -14,7 +14,7 @@ import {
 } from '../animations/sequences'
 import type { ComposedDemoStore as DemoStore } from '../composedDemoStore'
 import type { DemoAnimationStep as AnimationStep } from '../composedDemoStore'
-import { SessionStatus } from '@/lib/daemon/types'
+import { SessionStatus, ApprovalStatus } from '@/lib/daemon/types'
 import type { SessionInfo } from '@/lib/daemon/types'
 
 // Re-export core functionality
@@ -83,7 +83,7 @@ interface SequenceBuilder {
   openLauncher(mode?: 'command' | 'search'): SequenceBuilder
   closeLauncher(): SequenceBuilder
   setTheme(theme: string): SequenceBuilder
-  showApproval(id: string, title: string): SequenceBuilder
+  showApproval(id: string, toolName: string, toolInput: any): SequenceBuilder
   build(): AnimationStep[]
 }
 
@@ -141,19 +141,23 @@ export function createSequence(): SequenceBuilder {
       return builder
     },
 
-    showApproval(id: string, title: string) {
+    showApproval(id: string, toolName: string, toolInput: any) {
       steps.push({
         appState: {
           approvals: [
             {
               id,
-              title,
-              status: 'pending',
+              run_id: `run-${id}`,
+              session_id: `session-${id}`,
+              status: ApprovalStatus.Pending,
+              created_at: new Date().toISOString(),
+              tool_name: toolName as any,
+              tool_input: toolInput,
             },
           ],
         },
         delay: 2000,
-        description: `Show approval: ${title}`,
+        description: `Show approval for ${toolName}`,
       })
       return builder
     },
@@ -178,7 +182,10 @@ export const exampleCustomSequence = createSequence()
   ])
   .closeLauncher()
   .addDelay(3000)
-  .showApproval('approval-1', 'Deploy to production?')
+  .showApproval('approval-1', 'Bash', {
+    command: 'deploy --production',
+    description: 'Deploy to production',
+  })
   .addDelay(3000)
   .setTheme('framer-dark')
   .build()

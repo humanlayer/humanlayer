@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeEach } from 'bun:test'
 import { createRealAppStore, AppState } from './appStore'
-import type { SessionInfo } from '@/lib/daemon/types'
+import type { SessionInfo, Approval } from '@/lib/daemon/types'
 import { ViewMode, ApprovalStatus } from '@/lib/daemon/types'
 import { createMockSessions } from '../test-utils'
 import { StoreApi } from 'zustand'
@@ -538,12 +538,32 @@ describe('AppStore - Approval Management', () => {
 
   test('should set approvals', () => {
     const state = store.getState()
-    const mockApprovals = [
-      { id: 'approval-1', status: 'pending' },
-      { id: 'approval-2', status: 'pending' },
+    const mockApprovals: Approval[] = [
+      {
+        id: 'approval-1',
+        run_id: 'run-1',
+        session_id: 'session-1',
+        status: ApprovalStatus.Pending,
+        created_at: new Date().toISOString(),
+        tool_name: 'Bash',
+        tool_input: { command: 'echo test1', description: 'Test command 1' },
+      },
+      {
+        id: 'approval-2',
+        run_id: 'run-2',
+        session_id: 'session-2',
+        status: ApprovalStatus.Pending,
+        created_at: new Date().toISOString(),
+        tool_name: 'Edit',
+        tool_input: {
+          file_path: '/test.txt',
+          old_string: 'old',
+          new_string: 'new',
+        },
+      },
     ]
 
-    state.setApprovals(mockApprovals as any)
+    state.setApprovals(mockApprovals)
 
     const currentState = store.getState()
     expect(currentState.approvals).toHaveLength(2)
@@ -552,12 +572,32 @@ describe('AppStore - Approval Management', () => {
 
   test('should update approval', () => {
     const state = store.getState()
-    const mockApprovals = [
-      { id: 'approval-1', status: 'pending' },
-      { id: 'approval-2', status: 'pending' },
+    const mockApprovals: Approval[] = [
+      {
+        id: 'approval-1',
+        run_id: 'run-1',
+        session_id: 'session-1',
+        status: ApprovalStatus.Pending,
+        created_at: new Date().toISOString(),
+        tool_name: 'Bash',
+        tool_input: { command: 'echo test1', description: 'Test command 1' },
+      },
+      {
+        id: 'approval-2',
+        run_id: 'run-2',
+        session_id: 'session-2',
+        status: ApprovalStatus.Pending,
+        created_at: new Date().toISOString(),
+        tool_name: 'Edit',
+        tool_input: {
+          file_path: '/test.txt',
+          old_string: 'old',
+          new_string: 'new',
+        },
+      },
     ]
 
-    state.setApprovals(mockApprovals as any)
+    state.setApprovals(mockApprovals)
     state.updateApproval('approval-1', { status: ApprovalStatus.Approved })
 
     const currentState = store.getState()

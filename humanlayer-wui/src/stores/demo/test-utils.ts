@@ -1,5 +1,6 @@
 import { StoreApi } from 'zustand'
 import { expect } from 'bun:test'
+import { ApprovalStatus, Approval } from '@/lib/daemon/types'
 
 /**
  * Enhanced store test wrapper with common utilities
@@ -81,11 +82,18 @@ export function createNavigationTests(
  * Mock data factories
  */
 export const mockFactory = {
-  approvals: (count = 3) =>
+  approvals: (count = 3): Approval[] =>
     Array.from({ length: count }, (_, i) => ({
       id: `${i + 1}`,
-      title: `Approval ${i + 1}`,
-      status: 'pending',
+      run_id: `run-${i + 1}`,
+      session_id: `session-${i + 1}`,
+      status: ApprovalStatus.Pending,
+      created_at: new Date().toISOString(),
+      tool_name: 'Bash' as const,
+      tool_input: {
+        command: `echo "Test command ${i + 1}"`,
+        description: `Test command ${i + 1}`,
+      },
     })),
 
   sessions: (count = 3) =>

@@ -99,7 +99,7 @@ export default function SessionTable({
     if (!matchData) return text
 
     // Find matches for the summary field
-    const summaryMatch = matchData.matches?.find((m: any) => m.key === 'summary')
+    const summaryMatch = matchData.matches?.find((m: { key?: string }) => m.key === 'summary')
     if (!summaryMatch || !summaryMatch.indices) return text
 
     const segments = highlightMatches(text, summaryMatch.indices)

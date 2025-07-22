@@ -8,7 +8,7 @@ export function formatError(error: unknown): string {
   if (error instanceof Error) {
     message = error.message
   } else if (typeof error === 'object' && 'message' in error) {
-    message = String((error as any).message)
+    message = String((error as { message?: unknown }).message)
   } else {
     message = String(error)
   }

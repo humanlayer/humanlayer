@@ -1,4 +1,5 @@
 import { Approval } from '@/lib/daemon'
+import type { AnyToolInput } from '@/lib/daemon/toolTypes'
 
 // Types for display data
 export interface ApprovalField {
@@ -31,18 +32,19 @@ export function getDisplayDataForApproval(approval: Approval): ApprovalDisplayDa
 }
 
 // Add helper to extract fields from tool input
-function extractFieldsFromToolInput(toolName: string, toolInput: any): ApprovalField[] {
+function extractFieldsFromToolInput(toolName: string, toolInput: AnyToolInput): ApprovalField[] {
   const fields: ApprovalField[] = []
 
   if (!toolInput) return fields
 
   // Tool-specific field extraction
+  const input = toolInput as any // Type assertion for legacy compatibility
   switch (toolName.toLowerCase()) {
     case 'bash':
-      if (toolInput.command) {
+      if (input.command) {
         fields.push({
           label: 'Command',
-          value: toolInput.command,
+          value: input.command,
           truncate: true,
         })
       }
@@ -50,10 +52,10 @@ function extractFieldsFromToolInput(toolName: string, toolInput: any): ApprovalF
 
     case 'edit':
     case 'write':
-      if (toolInput.path || toolInput.file_path) {
+      if (input.path || input.file_path) {
         fields.push({
           label: 'File',
-          value: toolInput.path || toolInput.file_path,
+          value: input.path || input.file_path,
           isPath: true,
         })
       }
@@ -61,24 +63,24 @@ function extractFieldsFromToolInput(toolName: string, toolInput: any): ApprovalF
 
     case 'http':
     case 'fetch':
-      if (toolInput.url) {
+      if (input.url) {
         fields.push({
           label: 'URL',
-          value: toolInput.url,
+          value: input.url,
           truncate: true,
         })
       }
-      if (toolInput.method) {
+      if (input.method) {
         fields.push({
           label: 'Method',
-          value: toolInput.method,
+          value: input.method,
         })
       }
       break
 
     default:
       // Generic field extraction for unknown tools
-      Object.entries(toolInput).forEach(([key, value]) => {
+      Object.entries(input).forEach(([key, value]) => {
         if (typeof value === 'string' || typeof value === 'number') {
           fields.push({
             label: key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
@@ -120,21 +122,22 @@ function getFunctionColor(toolName: string): string {
   return colorMap[toolName.toLowerCase()] || 'text-gray-400'
 }
 
-function getToolDescription(toolName: string, toolInput: any): string {
+function getToolDescription(toolName: string, toolInput: AnyToolInput): string {
+  const input = toolInput as any // Type assertion for legacy compatibility
   switch (toolName.toLowerCase()) {
     case 'bash':
-      return `Execute command: ${toolInput.command || 'unknown'}`
+      return `Execute command: ${input.command || 'unknown'}`
     case 'edit':
-      return `Edit file: ${toolInput.path || toolInput.file_path || 'unknown'}`
+      return `Edit file: ${input.path || input.file_path || 'unknown'}`
     case 'write':
-      return `Write to file: ${toolInput.path || toolInput.file_path || 'unknown'}`
+      return `Write to file: ${input.path || input.file_path || 'unknown'}`
     case 'http':
     case 'fetch':
-      return `${toolInput.method || 'GET'} request to ${toolInput.url || 'unknown'}`
+      return `${input.method || 'GET'} request to ${input.url || 'unknown'}`
     case 'read':
-      return `Read file: ${toolInput.path || toolInput.file_path || 'unknown'}`
+      return `Read file: ${input.path || input.file_path || 'unknown'}`
     case 'list':
-      return `List directory: ${toolInput.path || toolInput.directory || '.'}`
+      return `List directory: ${input.path || input.directory || '.'}`
     default:
       return `Execute ${toolName} with provided parameters`
   }

@@ -56,7 +56,7 @@ export function formatDuration(startTime: Date | string, endTime?: Date | string
   return `${duration.seconds || 0}s`
 }
 
-export function formatParameters(params: Record<string, any>, maxLength: number = 100): string {
+export function formatParameters(params: Record<string, unknown>, maxLength: number = 100): string {
   const entries = Object.entries(params)
   if (entries.length === 0) return ''
 

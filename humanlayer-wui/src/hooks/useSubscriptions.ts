@@ -1,10 +1,16 @@
 import { useEffect, useRef } from 'react'
 import { daemonClient } from '@/lib/daemon'
+import {
+  isNewApprovalEvent,
+  isApprovalResolvedEvent,
+  isSessionStatusChangedEvent,
+} from '@/lib/daemon/types'
 import type {
-  EventNotification,
   SessionStatusChangedEventData,
   NewApprovalEventData,
   ApprovalResolvedEventData,
+  EventNotification,
+  DaemonEvent,
 } from '@/lib/daemon/types'
 
 export interface SessionSubscriptionHandlers {
@@ -64,34 +70,25 @@ export function useSessionSubscriptions(
             event_types: ['session_status_changed', 'new_approval', 'approval_resolved'],
           },
           {
-            onEvent: (event: EventNotification) => {
+            onEvent: (notification: EventNotification) => {
               if (!isActive) return
 
-              switch (event.event.type) {
-                case 'session_status_changed': {
-                  const data = event.event.data as SessionStatusChangedEventData
-                  console.log('Session status changed:', data)
+              const { event } = notification
+              // Cast legacy Event to DaemonEvent for type guards
+              const daemonEvent = event as unknown as DaemonEvent
 
-                  // Call handler if provided
-                  handlersRef.current.onSessionStatusChanged?.(data, event.event.timestamp)
-                  break
-                }
-                case 'new_approval': {
-                  const data = event.event.data as NewApprovalEventData
-                  console.log('New approval:', data, event)
-
-                  // Call handler if provided
-                  handlersRef.current.onNewApproval?.(data)
-                  break
-                }
-                case 'approval_resolved': {
-                  const data = event.event.data as ApprovalResolvedEventData
-                  console.log('Approval resolved:', data)
-
-                  // Call handler if provided
-                  handlersRef.current.onApprovalResolved?.(data)
-                  break
-                }
+              if (isSessionStatusChangedEvent(daemonEvent)) {
+                console.log('Session status changed:', daemonEvent.data)
+                // Call handler if provided
+                handlersRef.current.onSessionStatusChanged?.(daemonEvent.data, daemonEvent.timestamp)
+              } else if (isNewApprovalEvent(daemonEvent)) {
+                console.log('New approval:', daemonEvent.data, notification)
+                // Call handler if provided
+                handlersRef.current.onNewApproval?.(daemonEvent.data)
+              } else if (isApprovalResolvedEvent(daemonEvent)) {
+                console.log('Approval resolved:', daemonEvent.data)
+                // Call handler if provided
+                handlersRef.current.onApprovalResolved?.(daemonEvent.data)
               }
             },
             onError: (error: Error) => {

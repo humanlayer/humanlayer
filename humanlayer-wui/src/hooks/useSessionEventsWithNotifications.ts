@@ -3,7 +3,12 @@ import { useStore } from '@/stores/appStore'
 import { notificationService } from '@/services/NotificationService'
 import { daemonClient } from '@/lib/daemon'
 import { useSessionSubscriptions } from './useSubscriptions'
-import { SessionStatus, type SessionStatusChangedEventData, type SessionInfo } from '@/lib/daemon/types'
+import {
+  SessionStatus,
+  type SessionStatusChangedEventData,
+  type SessionInfo,
+  type NewApprovalEventData,
+} from '@/lib/daemon/types'
 
 /**
  * Hook that subscribes to session events and handles notifications
@@ -159,7 +164,7 @@ export function useSessionEventsWithNotifications(connected: boolean) {
   )
 
   const handleNewApproval = useCallback(
-    async (data: any) => {
+    async (data: NewApprovalEventData) => {
       console.log('New approval event data:', data)
 
       // Refresh sessions to get latest approval counts
