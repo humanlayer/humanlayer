@@ -1,6 +1,7 @@
 package claudecode
 
 import (
+	"context"
 	"os/exec"
 	"sync"
 	"time"
@@ -56,6 +57,7 @@ type SessionConfig struct {
 	DisallowedTools      []string
 	CustomInstructions   string
 	Verbose              bool
+	Timeout              time.Duration // Timeout for the session (0 means no timeout)
 }
 
 // StreamEvent represents a single event from the streaming JSON output
@@ -155,9 +157,10 @@ type Session struct {
 	Events chan StreamEvent
 
 	// Process management
-	cmd    *exec.Cmd
-	done   chan struct{}
-	result *Result
+	cmd        *exec.Cmd
+	done       chan struct{}
+	result     *Result
+	cancelFunc context.CancelFunc // Internal cancellation function
 
 	// Thread-safe error handling
 	mu  sync.RWMutex

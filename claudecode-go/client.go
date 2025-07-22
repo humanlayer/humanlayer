@@ -2,6 +2,7 @@ package claudecode
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -203,12 +204,16 @@ func (c *Client) Launch(config SessionConfig) (*Session, error) {
 		return nil, fmt.Errorf("failed to start claude: %w", err)
 	}
 
+	// Create internal context for managing the session lifecycle
+	ctx, cancel := context.WithCancel(context.Background())
+
 	session := &Session{
-		Config:    config,
-		StartTime: time.Now(),
-		cmd:       cmd,
-		done:      make(chan struct{}),
-		Events:    make(chan StreamEvent, 100),
+		Config:     config,
+		StartTime:  time.Now(),
+		cmd:        cmd,
+		done:       make(chan struct{}),
+		Events:     make(chan StreamEvent, 100),
+		cancelFunc: cancel,
 	}
 
 	// Create a channel to signal parsing completion
@@ -219,19 +224,19 @@ func (c *Client) Launch(config SessionConfig) (*Session, error) {
 	case OutputStreamJSON:
 		// Start goroutine to parse streaming JSON
 		go func() {
-			session.parseStreamingJSON(stdout, stderr)
+			session.parseStreamingJSON(ctx, stdout, stderr)
 			close(parseDone)
 		}()
 	case OutputJSON:
 		// Start goroutine to parse single JSON result
 		go func() {
-			session.parseSingleJSON(stdout, stderr)
+			session.parseSingleJSON(ctx, stdout, stderr)
 			close(parseDone)
 		}()
 	default:
 		// Text output - just capture the result
 		go func() {
-			session.parseTextOutput(stdout, stderr)
+			session.parseTextOutput(ctx, stdout, stderr)
 			close(parseDone)
 		}()
 	}
@@ -240,6 +245,9 @@ func (c *Client) Launch(config SessionConfig) (*Session, error) {
 	go func() {
 		// Wait for the command to exit
 		session.SetError(cmd.Wait())
+
+		// Cancel the internal context to signal parsing goroutines to stop
+		cancel()
 
 		// IMPORTANT: Wait for parsing to complete before signaling done.
 		// This ensures that all output has been read and processed before
@@ -260,25 +268,108 @@ func (c *Client) LaunchAndWait(config SessionConfig) (*Result, error) {
 		return nil, err
 	}
 
+	// If a timeout is configured, use context with timeout
+	if config.Timeout > 0 {
+		ctx, cancel := context.WithTimeout(context.Background(), config.Timeout)
+		defer cancel()
+		return session.WaitContext(ctx)
+	}
+
 	return session.Wait()
 }
 
-// Wait blocks until the session completes and returns the result
-// TODO: Add context support to allow cancellation/timeout. This would help prevent
-// indefinite blocking when waiting for interrupted sessions or hanging processes.
-// Consider adding WaitContext(ctx context.Context) method or updating Wait() signature.
-func (s *Session) Wait() (*Result, error) {
-	<-s.done
-
-	if err := s.Error(); err != nil && s.result == nil {
-		return nil, fmt.Errorf("claude process failed: %w", err)
+// LaunchAndWaitContext starts a Claude session and waits for it to complete with context support.
+// This method allows for external context control, enabling cancellation or timeout from the caller.
+// Unlike LaunchAndWait, this ignores the Timeout field in SessionConfig in favor of the provided context.
+func (c *Client) LaunchAndWaitContext(ctx context.Context, config SessionConfig) (*Result, error) {
+	session, err := c.Launch(config)
+	if err != nil {
+		return nil, err
 	}
 
-	return s.result, nil
+	return session.WaitContext(ctx)
+}
+
+// WaitContext blocks until the session completes or the context is cancelled.
+// If the context is cancelled or times out, it kills the process and returns an appropriate error.
+// The error message will indicate whether the cancellation was due to timeout (if Timeout was set
+// in SessionConfig) or explicit cancellation.
+// This method ensures proper cleanup of resources including closing the Events channel if streaming.
+func (s *Session) WaitContext(ctx context.Context) (*Result, error) {
+	// Create a channel to signal when we should cleanup
+	cleanup := make(chan struct{})
+	defer close(cleanup)
+
+	// Start a goroutine to handle context cancellation
+	go func() {
+		select {
+		case <-ctx.Done():
+			// Context was cancelled - kill the process
+			if err := s.Kill(); err != nil {
+				// Log the error but don't fail - the process might already be dead
+				log.Printf("Failed to kill process on context cancellation: %v", err)
+			}
+			// Close the Events channel if it's still open
+			select {
+			case _, ok := <-s.Events:
+				if ok {
+					close(s.Events)
+				}
+			default:
+			}
+		case <-cleanup:
+			// Normal completion - nothing to do
+			return
+		case <-s.done:
+			// Process completed normally - nothing to do
+			return
+		}
+	}()
+
+	// Wait for either the process to complete or context cancellation
+	select {
+	case <-ctx.Done():
+		// Context was cancelled
+		// Wait a bit for the process to die after being killed
+		killTimeout := time.NewTimer(5 * time.Second)
+		defer killTimeout.Stop()
+
+		select {
+		case <-s.done:
+			// Process died successfully
+		case <-killTimeout.C:
+			// Process didn't die in time, but we'll return anyway
+			log.Printf("Process did not terminate within 5 seconds after kill signal")
+		}
+
+		// Determine the specific context error
+		if ctx.Err() == context.DeadlineExceeded {
+			return nil, fmt.Errorf("session timed out after %v", s.Config.Timeout)
+		}
+		return nil, fmt.Errorf("session cancelled: %w", ctx.Err())
+
+	case <-s.done:
+		// Process completed normally
+		if err := s.Error(); err != nil && s.result == nil {
+			return nil, fmt.Errorf("claude process failed: %w", err)
+		}
+		return s.result, nil
+	}
+}
+
+// Wait blocks until the session completes and returns the result
+// This method maintains backward compatibility by calling WaitContext with a background context
+func (s *Session) Wait() (*Result, error) {
+	return s.WaitContext(context.Background())
 }
 
 // Kill terminates the session
 func (s *Session) Kill() error {
+	// Cancel the internal context first to stop parsing goroutines
+	if s.cancelFunc != nil {
+		s.cancelFunc()
+	}
+
 	if s.cmd.Process != nil {
 		return s.cmd.Process.Kill()
 	}
@@ -294,7 +385,7 @@ func (s *Session) Interrupt() error {
 }
 
 // parseStreamingJSON reads and parses streaming JSON output
-func (s *Session) parseStreamingJSON(stdout, stderr io.Reader) {
+func (s *Session) parseStreamingJSON(ctx context.Context, stdout, stderr io.Reader) {
 	scanner := bufio.NewScanner(stdout)
 	// Configure scanner to handle large JSON lines (up to 10MB)
 	// This prevents buffer overflow when Claude returns large file contents
@@ -302,20 +393,32 @@ func (s *Session) parseStreamingJSON(stdout, stderr io.Reader) {
 	var stderrBuf strings.Builder
 	stderrDone := make(chan struct{})
 
-	// Capture stderr in background
+	// Capture stderr in background with context awareness
 	go func() {
 		defer close(stderrDone)
 		buf := make([]byte, 1024)
 		for {
-			n, err := stderr.Read(buf)
-			if err != nil {
-				break
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				// Set a short read deadline to check context periodically
+				n, err := stderr.Read(buf)
+				if err != nil {
+					return
+				}
+				stderrBuf.Write(buf[:n])
 			}
-			stderrBuf.Write(buf[:n])
 		}
 	}()
 
 	for scanner.Scan() {
+		// Check if context is cancelled
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
 		line := scanner.Text()
 		if line == "" {
 			continue
@@ -349,8 +452,13 @@ func (s *Session) parseStreamingJSON(stdout, stderr io.Reader) {
 			}
 		}
 
-		// Send event to channel
-		s.Events <- event
+		// Send event to channel, unless context is cancelled
+		select {
+		case <-ctx.Done():
+			return
+		case s.Events <- event:
+			// Event sent successfully
+		}
 	}
 
 	// Check for scanner errors including buffer overflow
@@ -375,7 +483,7 @@ func (s *Session) parseStreamingJSON(stdout, stderr io.Reader) {
 }
 
 // parseSingleJSON reads and parses single JSON result
-func (s *Session) parseSingleJSON(stdout, stderr io.Reader) {
+func (s *Session) parseSingleJSON(ctx context.Context, stdout, stderr io.Reader) {
 	defer func() {
 		if r := recover(); r != nil {
 			s.SetError(fmt.Errorf("panic in parseSingleJSON: %v", r))
@@ -384,16 +492,46 @@ func (s *Session) parseSingleJSON(stdout, stderr io.Reader) {
 
 	var stdoutBuf, stderrBuf strings.Builder
 
-	// Read all stdout - ignore expected pipe closure
-	if _, err := io.Copy(&stdoutBuf, stdout); err != nil && !isClosedPipeError(err) {
-		s.SetError(fmt.Errorf("failed to read stdout: %w", err))
-		return
+	// Create channels for concurrent reading
+	type readResult struct {
+		n   int64
+		err error
 	}
+	stdoutChan := make(chan readResult, 1)
+	stderrChan := make(chan readResult, 1)
 
-	// Read all stderr - ignore expected pipe closure
-	if _, err := io.Copy(&stderrBuf, stderr); err != nil && !isClosedPipeError(err) {
-		s.SetError(fmt.Errorf("failed to read stderr: %w", err))
-		return
+	// Read stdout in background
+	go func() {
+		n, err := io.Copy(&stdoutBuf, stdout)
+		stdoutChan <- readResult{n, err}
+	}()
+
+	// Read stderr in background
+	go func() {
+		n, err := io.Copy(&stderrBuf, stderr)
+		stderrChan <- readResult{n, err}
+	}()
+
+	// Wait for both reads to complete or context cancellation
+	stdoutDone := false
+	stderrDone := false
+	for !stdoutDone || !stderrDone {
+		select {
+		case <-ctx.Done():
+			return
+		case result := <-stdoutChan:
+			if result.err != nil && !isClosedPipeError(result.err) {
+				s.SetError(fmt.Errorf("failed to read stdout: %w", result.err))
+				return
+			}
+			stdoutDone = true
+		case result := <-stderrChan:
+			if result.err != nil && !isClosedPipeError(result.err) {
+				s.SetError(fmt.Errorf("failed to read stderr: %w", result.err))
+				return
+			}
+			stderrDone = true
+		}
 	}
 
 	// Parse JSON result
@@ -421,19 +559,49 @@ func (s *Session) parseSingleJSON(stdout, stderr io.Reader) {
 }
 
 // parseTextOutput reads text output
-func (s *Session) parseTextOutput(stdout, stderr io.Reader) {
+func (s *Session) parseTextOutput(ctx context.Context, stdout, stderr io.Reader) {
 	var stdoutBuf, stderrBuf strings.Builder
 
-	// Read all stdout - ignore expected pipe closure
-	if _, err := io.Copy(&stdoutBuf, stdout); err != nil && !isClosedPipeError(err) {
-		s.SetError(fmt.Errorf("failed to read stdout: %w", err))
-		return
+	// Create channels for concurrent reading
+	type readResult struct {
+		n   int64
+		err error
 	}
+	stdoutChan := make(chan readResult, 1)
+	stderrChan := make(chan readResult, 1)
 
-	// Read all stderr - ignore expected pipe closure
-	if _, err := io.Copy(&stderrBuf, stderr); err != nil && !isClosedPipeError(err) {
-		s.SetError(fmt.Errorf("failed to read stderr: %w", err))
-		return
+	// Read stdout in background
+	go func() {
+		n, err := io.Copy(&stdoutBuf, stdout)
+		stdoutChan <- readResult{n, err}
+	}()
+
+	// Read stderr in background
+	go func() {
+		n, err := io.Copy(&stderrBuf, stderr)
+		stderrChan <- readResult{n, err}
+	}()
+
+	// Wait for both reads to complete or context cancellation
+	stdoutDone := false
+	stderrDone := false
+	for !stdoutDone || !stderrDone {
+		select {
+		case <-ctx.Done():
+			return
+		case result := <-stdoutChan:
+			if result.err != nil && !isClosedPipeError(result.err) {
+				s.SetError(fmt.Errorf("failed to read stdout: %w", result.err))
+				return
+			}
+			stdoutDone = true
+		case result := <-stderrChan:
+			if result.err != nil && !isClosedPipeError(result.err) {
+				s.SetError(fmt.Errorf("failed to read stderr: %w", result.err))
+				return
+			}
+			stderrDone = true
+		}
 	}
 
 	// Create a simple result with text output
