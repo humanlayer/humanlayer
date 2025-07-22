@@ -237,8 +237,10 @@ export function useSessionLauncherHotkeys() {
       }
 
       // / - Search sessions and approvals (only when not typing)
+      // Note: Check !e.shiftKey to allow shift+/ (?) to be handled by other hotkeys
       if (
         e.key === '/' &&
+        !e.shiftKey &&
         !e.metaKey &&
         !e.ctrlKey &&
         !isTypingInInput() &&

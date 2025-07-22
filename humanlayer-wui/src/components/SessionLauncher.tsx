@@ -16,7 +16,10 @@ export function SessionLauncher({ isOpen, onClose }: SessionLauncherProps) {
   const { query, setQuery, config, setConfig, launchSession, isLaunching, error, mode, view, setView } =
     useSessionLauncher()
 
-  useHotkeys('escape', onClose, { enabled: isOpen, enableOnFormTags: false })
+  useHotkeys('escape', onClose, {
+    enabled: isOpen,
+    enableOnFormTags: false,
+  })
 
   useEffect(() => {
     if (isOpen && view === 'input' && modalRef.current) {
