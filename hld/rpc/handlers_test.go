@@ -115,13 +115,13 @@ func TestHandleGetConversation(t *testing.T) {
 
 		_, err := handlers.HandleGetConversation(context.Background(), reqJSON)
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "either session_id or claude_session_id is required")
+		assert.Contains(t, err.Error(), "validation error: field 'session_id/claude_session_id': at least one identifier required")
 	})
 
 	t.Run("invalid JSON", func(t *testing.T) {
 		_, err := handlers.HandleGetConversation(context.Background(), []byte(`invalid json`))
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "invalid request")
+		assert.Contains(t, err.Error(), "validation error: field 'params': invalid JSON")
 	})
 }
 
@@ -222,7 +222,7 @@ func TestHandleGetSessionState(t *testing.T) {
 
 		_, err := handlers.HandleGetSessionState(context.Background(), reqJSON)
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "session_id is required")
+		assert.Contains(t, err.Error(), "validation error: field 'session_id': required field")
 	})
 
 	t.Run("session not found", func(t *testing.T) {
@@ -239,7 +239,7 @@ func TestHandleGetSessionState(t *testing.T) {
 
 		_, err := handlers.HandleGetSessionState(context.Background(), reqJSON)
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to get session")
+		assert.Contains(t, err.Error(), "store error [get_session] table=sessions")
 	})
 }
 
@@ -529,7 +529,7 @@ func TestHandleInterruptSession(t *testing.T) {
 
 		_, err := handlers.HandleInterruptSession(context.Background(), reqJSON)
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "session_id is required")
+		assert.Contains(t, err.Error(), "validation error: field 'session_id': required field")
 	})
 
 	t.Run("session not found", func(t *testing.T) {
@@ -546,7 +546,7 @@ func TestHandleInterruptSession(t *testing.T) {
 
 		_, err := handlers.HandleInterruptSession(context.Background(), reqJSON)
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to get session")
+		assert.Contains(t, err.Error(), "store error [get_session] table=sessions")
 	})
 
 	t.Run("session not running", func(t *testing.T) {
@@ -566,7 +566,7 @@ func TestHandleInterruptSession(t *testing.T) {
 
 		_, err := handlers.HandleInterruptSession(context.Background(), reqJSON)
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "cannot interrupt session with status completed")
+		assert.Contains(t, err.Error(), "session error [interrupt] session_id=completed-123 state=completed: invalid session state")
 	})
 
 	t.Run("interrupt fails", func(t *testing.T) {
@@ -590,7 +590,7 @@ func TestHandleInterruptSession(t *testing.T) {
 
 		_, err := handlers.HandleInterruptSession(context.Background(), reqJSON)
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to interrupt session")
+		assert.Contains(t, err.Error(), "session error [interrupt] session_id=fail-123: interrupt failed")
 	})
 }
 
@@ -692,7 +692,7 @@ func TestHandleGetSessionSnapshots(t *testing.T) {
 
 		_, err := handlers.HandleGetSessionSnapshots(context.Background(), reqJSON)
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "session_id is required")
+		assert.Contains(t, err.Error(), "validation error: field 'session_id': required field")
 	})
 
 	t.Run("empty snapshots", func(t *testing.T) {
@@ -726,7 +726,7 @@ func TestHandleGetSessionSnapshots(t *testing.T) {
 	t.Run("invalid JSON", func(t *testing.T) {
 		_, err := handlers.HandleGetSessionSnapshots(context.Background(), []byte(`invalid json`))
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "invalid request")
+		assert.Contains(t, err.Error(), "validation error: field 'params': invalid JSON")
 	})
 
 	t.Run("store error", func(t *testing.T) {
@@ -750,6 +750,6 @@ func TestHandleGetSessionSnapshots(t *testing.T) {
 
 		_, err := handlers.HandleGetSessionSnapshots(context.Background(), reqJSON)
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to get snapshots")
+		assert.Contains(t, err.Error(), "store error [get_file_snapshots] table=file_snapshots")
 	})
 }

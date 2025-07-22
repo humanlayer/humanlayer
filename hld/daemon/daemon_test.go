@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/humanlayer/humanlayer/hld/config"
+	hlderrors "github.com/humanlayer/humanlayer/hld/errors"
 	"github.com/humanlayer/humanlayer/hld/internal/testutil"
 	"github.com/humanlayer/humanlayer/hld/rpc"
 )
@@ -140,7 +141,7 @@ func TestDaemonRefusesDoubleStart(t *testing.T) {
 		t.Fatal("expected error when creating second daemon, but succeeded")
 	}
 
-	if !errors.Is(err, ErrDaemonAlreadyRunning) {
+	if !errors.Is(err, hlderrors.ErrDaemonAlreadyRunning) {
 		t.Errorf("expected ErrDaemonAlreadyRunning, got: %v", err)
 	}
 

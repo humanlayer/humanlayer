@@ -3,12 +3,12 @@ package approval
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/humanlayer/humanlayer/hld/bus"
+	hlderrors "github.com/humanlayer/humanlayer/hld/errors"
 	"github.com/humanlayer/humanlayer/hld/store"
 )
 
@@ -31,10 +31,10 @@ func (m *manager) CreateApproval(ctx context.Context, runID, toolName string, to
 	// Look up session by run_id
 	session, err := m.store.GetSessionByRunID(ctx, runID)
 	if err != nil {
-		return "", fmt.Errorf("failed to get session by run_id: %w", err)
+		return "", hlderrors.NewSessionError("get_session_by_run_id", "", err)
 	}
 	if session == nil {
-		return "", fmt.Errorf("session not found for run_id: %s", runID)
+		return "", hlderrors.NewSessionError("get_session_by_run_id", "", hlderrors.ErrSessionNotFound)
 	}
 
 	// Check if this is an edit tool and auto-accept is enabled
@@ -59,7 +59,7 @@ func (m *manager) CreateApproval(ctx context.Context, runID, toolName string, to
 
 	// Store it
 	if err := m.store.CreateApproval(ctx, approval); err != nil {
-		return "", fmt.Errorf("failed to store approval: %w", err)
+		return "", hlderrors.NewApprovalError("create_approval", approval.ID, err)
 	}
 
 	// Try to correlate with the most recent uncorrelated tool call
@@ -112,7 +112,7 @@ func (m *manager) CreateApproval(ctx context.Context, runID, toolName string, to
 func (m *manager) GetPendingApprovals(ctx context.Context, sessionID string) ([]*store.Approval, error) {
 	approvals, err := m.store.GetPendingApprovals(ctx, sessionID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get pending approvals: %w", err)
+		return nil, hlderrors.NewSessionError("get_pending_approvals", sessionID, err)
 	}
 	return approvals, nil
 }
@@ -121,7 +121,10 @@ func (m *manager) GetPendingApprovals(ctx context.Context, sessionID string) ([]
 func (m *manager) GetApproval(ctx context.Context, id string) (*store.Approval, error) {
 	approval, err := m.store.GetApproval(ctx, id)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get approval: %w", err)
+		return nil, hlderrors.NewApprovalError("get_approval", id, err)
+	}
+	if approval == nil {
+		return nil, hlderrors.NewApprovalError("get_approval", id, hlderrors.ErrApprovalNotFound)
 	}
 	return approval, nil
 }
@@ -131,12 +134,20 @@ func (m *manager) ApproveToolCall(ctx context.Context, id string, comment string
 	// Get the approval first
 	approval, err := m.store.GetApproval(ctx, id)
 	if err != nil {
-		return fmt.Errorf("failed to get approval: %w", err)
+		return hlderrors.NewApprovalError("approve_tool_call", id, err)
+	}
+	if approval == nil {
+		return hlderrors.NewApprovalError("approve_tool_call", id, hlderrors.ErrApprovalNotFound)
+	}
+
+	// Check if already resolved
+	if approval.Status == store.ApprovalStatusLocalApproved || approval.Status == store.ApprovalStatusLocalDenied {
+		return hlderrors.NewApprovalError("approve_tool_call", id, hlderrors.ErrApprovalAlreadyResolved)
 	}
 
 	// Update approval status
 	if err := m.store.UpdateApprovalResponse(ctx, id, store.ApprovalStatusLocalApproved, comment); err != nil {
-		return fmt.Errorf("failed to update approval: %w", err)
+		return hlderrors.NewApprovalError("update_approval_response", id, err)
 	}
 
 	// Update correlation status in conversation events
@@ -168,12 +179,20 @@ func (m *manager) DenyToolCall(ctx context.Context, id string, reason string) er
 	// Get the approval first
 	approval, err := m.store.GetApproval(ctx, id)
 	if err != nil {
-		return fmt.Errorf("failed to get approval: %w", err)
+		return hlderrors.NewApprovalError("deny_tool_call", id, err)
+	}
+	if approval == nil {
+		return hlderrors.NewApprovalError("deny_tool_call", id, hlderrors.ErrApprovalNotFound)
+	}
+
+	// Check if already resolved
+	if approval.Status == store.ApprovalStatusLocalApproved || approval.Status == store.ApprovalStatusLocalDenied {
+		return hlderrors.NewApprovalError("deny_tool_call", id, hlderrors.ErrApprovalAlreadyResolved)
 	}
 
 	// Update approval status
 	if err := m.store.UpdateApprovalResponse(ctx, id, store.ApprovalStatusLocalDenied, reason); err != nil {
-		return fmt.Errorf("failed to update approval: %w", err)
+		return hlderrors.NewApprovalError("update_approval_response", id, err)
 	}
 
 	// Update correlation status in conversation events
@@ -205,15 +224,15 @@ func (m *manager) correlateApproval(ctx context.Context, approval *store.Approva
 	// Find the most recent uncorrelated pending tool call
 	toolCall, err := m.store.GetUncorrelatedPendingToolCall(ctx, approval.SessionID, approval.ToolName)
 	if err != nil {
-		return fmt.Errorf("failed to find pending tool call: %w", err)
+		return hlderrors.NewApprovalError("get_uncorrelated_tool_call", approval.ID, err)
 	}
 	if toolCall == nil {
-		return fmt.Errorf("no matching tool call found")
+		return hlderrors.NewApprovalError("correlate_approval", approval.ID, hlderrors.ErrNoMatchingToolCall)
 	}
 
 	// Correlate by tool ID
 	if err := m.store.CorrelateApprovalByToolID(ctx, approval.SessionID, toolCall.ToolID, approval.ID); err != nil {
-		return fmt.Errorf("failed to correlate approval: %w", err)
+		return hlderrors.NewApprovalError("correlate_by_tool_id", approval.ID, err)
 	}
 
 	return nil

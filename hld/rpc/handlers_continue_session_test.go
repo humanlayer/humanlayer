@@ -123,7 +123,7 @@ func TestHandleContinueSession(t *testing.T) {
 			setupMocks: func() {
 				// No mocks needed - validation fails early
 			},
-			expectedError: "session_id is required",
+			expectedError: "validation error: field 'session_id': required field",
 		},
 		{
 			name:    "missing query",
@@ -131,7 +131,7 @@ func TestHandleContinueSession(t *testing.T) {
 			setupMocks: func() {
 				// No mocks needed - validation fails early
 			},
-			expectedError: "query is required",
+			expectedError: "validation error: field 'query': required field",
 		},
 		{
 			name:    "invalid MCP config JSON",
@@ -139,7 +139,7 @@ func TestHandleContinueSession(t *testing.T) {
 			setupMocks: func() {
 				// No mocks needed - validation fails early
 			},
-			expectedError: "invalid mcp_config JSON",
+			expectedError: "validation error: field 'mcp_config': invalid JSON",
 		},
 		{
 			name:    "invalid JSON request",
@@ -147,7 +147,7 @@ func TestHandleContinueSession(t *testing.T) {
 			setupMocks: func() {
 				// No mocks needed - parsing fails
 			},
-			expectedError: "invalid request:",
+			expectedError: "validation error: field 'params': invalid JSON",
 		},
 	}
 

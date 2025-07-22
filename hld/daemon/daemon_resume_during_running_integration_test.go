@@ -149,9 +149,10 @@ func TestIntegrationResumeDuringRunning(t *testing.T) {
 			t.Error("Expected error when trying to interrupt non-existent Claude process")
 		}
 
-		// Verify it's the expected error about not finding active process
-		if !strings.Contains(err.Error(), "session not found or not active") {
-			t.Errorf("Expected 'session not found or not active' error, got: %v", err)
+		// Verify it's the expected error about invalid state
+		// The new error handling returns "Invalid state transition" for invalid session states
+		if !strings.Contains(err.Error(), "Invalid state transition") {
+			t.Errorf("Expected 'Invalid state transition' error, got: %v", err)
 		}
 	})
 
@@ -226,19 +227,19 @@ func TestIntegrationResumeDuringRunning(t *testing.T) {
 				name:          "running session (no active process)",
 				status:        store.SessionStatusRunning,
 				shouldSucceed: false, // Fails due to no active process, not validation
-				expectedError: "session not found or not active",
+				expectedError: "Invalid state transition",
 			},
 			{
 				name:          "failed session",
 				status:        store.SessionStatusFailed,
 				shouldSucceed: false,
-				expectedError: "cannot continue session with status failed (must be completed or running)",
+				expectedError: "Invalid state transition",
 			},
 			{
 				name:          "starting session",
 				status:        store.SessionStatusStarting,
 				shouldSucceed: false,
-				expectedError: "cannot continue session with status starting (must be completed or running)",
+				expectedError: "Invalid state transition",
 			},
 		}
 

@@ -42,8 +42,8 @@ func TestNewManager_RequiresStore(t *testing.T) {
 		t.Fatal("Expected error when store is nil")
 	}
 
-	if err.Error() != "store is required" {
-		t.Errorf("Expected 'store is required' error, got: %v", err)
+	if err.Error() != "validation error: field 'store': store is required" {
+		t.Errorf("Expected 'validation error: field 'store': store is required' error, got: %v", err)
 	}
 }
 
@@ -136,7 +136,7 @@ func TestContinueSession_ValidatesParentExists(t *testing.T) {
 	if err == nil {
 		t.Error("Expected error for non-existent parent session")
 	}
-	if err.Error() != "failed to get parent session: session not found" {
+	if err.Error() != "session error [get_parent_session] session_id=not-found: session not found" {
 		t.Errorf("Unexpected error: %v", err)
 	}
 }
@@ -156,17 +156,17 @@ func TestContinueSession_ValidatesParentStatus(t *testing.T) {
 		{
 			name:          "failed session",
 			parentStatus:  store.SessionStatusFailed,
-			expectedError: "cannot continue session with status failed (must be completed or running)",
+			expectedError: "session error [continue_session] session_id=parent-1 state=failed: invalid session state",
 		},
 		{
 			name:          "starting session",
 			parentStatus:  store.SessionStatusStarting,
-			expectedError: "cannot continue session with status starting (must be completed or running)",
+			expectedError: "session error [continue_session] session_id=parent-1 state=starting: invalid session state",
 		},
 		{
 			name:          "waiting input session",
 			parentStatus:  store.SessionStatusWaitingInput,
-			expectedError: "cannot continue session with status waiting_input (must be completed or running)",
+			expectedError: "session error [continue_session] session_id=parent-1 state=waiting_input: invalid session state",
 		},
 	}
 
@@ -224,7 +224,7 @@ func TestContinueSession_ValidatesClaudeSessionID(t *testing.T) {
 	if err == nil {
 		t.Error("Expected error for parent without claude_session_id")
 	}
-	if err.Error() != "parent session missing claude_session_id (cannot resume)" {
+	if err.Error() != "validation error: field 'claude_session_id': parent session missing claude_session_id (cannot resume)" {
 		t.Errorf("Unexpected error: %v", err)
 	}
 }
@@ -320,7 +320,7 @@ func TestContinueSession_ValidatesWorkingDirectory(t *testing.T) {
 	if err == nil {
 		t.Error("Expected error for parent without working_dir")
 	}
-	if err.Error() != "parent session missing working_dir (cannot resume session without working directory)" {
+	if err.Error() != "validation error: field 'working_dir': parent session missing working_dir (cannot resume session without working directory)" {
 		t.Errorf("Unexpected error: %v", err)
 	}
 }
@@ -387,7 +387,7 @@ func TestContinueSession_CreatesNewSessionWithParentReference(t *testing.T) {
 	// Either way, our mock expectations should have been met (session created with parent)
 	if err != nil {
 		// Expected - Claude binary might not exist in test environment
-		if !containsError(err, "failed to launch resumed Claude session") {
+		if !containsError(err, "failed to start claude") && !containsError(err, "chdir") {
 			t.Errorf("Unexpected error: %v", err)
 		}
 	} else {
@@ -512,8 +512,8 @@ func TestInterruptSession(t *testing.T) {
 	if err == nil {
 		t.Error("Expected error for non-existent session")
 	}
-	if err.Error() != "session not found or not active" {
-		t.Errorf("Expected 'session not found or not active' error, got: %v", err)
+	if err.Error() != "session not active" {
+		t.Errorf("Expected 'session not active' error, got: %v", err)
 	}
 
 	// Test interrupting session - just test the session lookup logic
@@ -524,8 +524,8 @@ func TestInterruptSession(t *testing.T) {
 	if err == nil {
 		t.Error("Expected error for non-existent session")
 	}
-	if err.Error() != "session not found or not active" {
-		t.Errorf("Expected 'session not found or not active' error, got: %v", err)
+	if err.Error() != "session not active" {
+		t.Errorf("Expected 'session not active' error, got: %v", err)
 	}
 }
 
@@ -560,7 +560,7 @@ func TestContinueSession_InterruptsRunningSession(t *testing.T) {
 		if err == nil {
 			t.Error("Expected error for orphaned running session")
 		}
-		if err.Error() != "parent session missing claude_session_id (cannot resume)" {
+		if err.Error() != "validation error: field 'claude_session_id': parent session missing claude_session_id (cannot resume)" {
 			t.Errorf("Expected claude_session_id validation error, got: %v", err)
 		}
 	})
@@ -590,7 +590,7 @@ func TestContinueSession_InterruptsRunningSession(t *testing.T) {
 		if err == nil {
 			t.Error("Expected error trying to interrupt non-existent Claude process")
 		}
-		if err.Error() != "failed to interrupt running session: session not found or not active" {
+		if err.Error() != "session error [interrupt_session] session_id=parent-running: session not active" {
 			t.Errorf("Expected interrupt error, got: %v", err)
 		}
 	})

@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log/slog"
 	"sort"
 	"time"
@@ -13,6 +12,7 @@ import (
 	claudecode "github.com/humanlayer/humanlayer/claudecode-go"
 	"github.com/humanlayer/humanlayer/hld/approval"
 	"github.com/humanlayer/humanlayer/hld/bus"
+	hlderrors "github.com/humanlayer/humanlayer/hld/errors"
 	"github.com/humanlayer/humanlayer/hld/session"
 	"github.com/humanlayer/humanlayer/hld/store"
 )
@@ -65,12 +65,12 @@ type LaunchSessionResponse struct {
 func (h *SessionHandlers) HandleLaunchSession(ctx context.Context, params json.RawMessage) (interface{}, error) {
 	var req LaunchSessionRequest
 	if err := json.Unmarshal(params, &req); err != nil {
-		return nil, fmt.Errorf("invalid request: %w", err)
+		return nil, hlderrors.NewValidationError("params", "invalid JSON")
 	}
 
-	// Validate required fields
-	if req.Query == "" {
-		return nil, fmt.Errorf("query is required")
+	// Validate request
+	if err := validateLaunchRequest(&req); err != nil {
+		return nil, err
 	}
 
 	// Build session config
@@ -104,7 +104,7 @@ func (h *SessionHandlers) HandleLaunchSession(ctx context.Context, params json.R
 	// Launch session
 	session, err := h.manager.LaunchSession(ctx, config)
 	if err != nil {
-		return nil, err
+		return nil, hlderrors.NewSessionError("launch", "", err)
 	}
 
 	return &LaunchSessionResponse{
@@ -129,7 +129,7 @@ func (h *SessionHandlers) HandleListSessions(ctx context.Context, params json.Ra
 	var req ListSessionsRequest
 	if params != nil {
 		if err := json.Unmarshal(params, &req); err != nil {
-			return nil, fmt.Errorf("invalid request: %w", err)
+			return nil, hlderrors.NewValidationError("params", "invalid JSON")
 		}
 	}
 
@@ -159,7 +159,7 @@ func (h *SessionHandlers) HandleGetSessionLeaves(ctx context.Context, params jso
 	var req GetSessionLeavesRequest
 	if params != nil {
 		if err := json.Unmarshal(params, &req); err != nil {
-			return nil, fmt.Errorf("invalid request: %w", err)
+			return nil, hlderrors.NewValidationError("params", "invalid JSON")
 		}
 	}
 
@@ -213,12 +213,12 @@ func (h *SessionHandlers) HandleGetSessionLeaves(ctx context.Context, params jso
 func (h *SessionHandlers) HandleGetConversation(ctx context.Context, params json.RawMessage) (interface{}, error) {
 	var req GetConversationRequest
 	if err := json.Unmarshal(params, &req); err != nil {
-		return nil, fmt.Errorf("invalid request: %w", err)
+		return nil, hlderrors.NewValidationError("params", "invalid JSON")
 	}
 
 	// Validate that either SessionID or ClaudeSessionID is provided
 	if req.SessionID == "" && req.ClaudeSessionID == "" {
-		return nil, fmt.Errorf("either session_id or claude_session_id is required")
+		return nil, hlderrors.NewValidationError("session_id/claude_session_id", "at least one identifier required")
 	}
 
 	var events []*store.ConversationEvent
@@ -233,7 +233,10 @@ func (h *SessionHandlers) HandleGetConversation(ctx context.Context, params json
 	}
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to get conversation: %w", err)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, hlderrors.ErrSessionNotFound
+		}
+		return nil, hlderrors.NewStoreError("get_conversation", "conversation_events", err)
 	}
 
 	// Convert store events to RPC events
@@ -272,29 +275,29 @@ func (h *SessionHandlers) HandleGetSessionSnapshots(ctx context.Context, params 
 	// Parse request
 	var req GetSessionSnapshotsRequest
 	if err := json.Unmarshal(params, &req); err != nil {
-		return nil, fmt.Errorf("invalid request: %w", err)
+		return nil, hlderrors.NewValidationError("params", "invalid JSON")
 	}
 
 	slog.Info("parsed request", "session_id", req.SessionID)
 
 	// Validate required fields
 	if req.SessionID == "" {
-		return nil, fmt.Errorf("session_id is required")
+		return nil, hlderrors.NewValidationError("session_id", "required field")
 	}
 
 	// Verify session exists
 	_, err := h.store.GetSession(ctx, req.SessionID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, fmt.Errorf("session not found")
+			return nil, hlderrors.ErrSessionNotFound
 		}
-		return nil, fmt.Errorf("failed to get session: %w", err)
+		return nil, hlderrors.NewStoreError("get_session", "sessions", err)
 	}
 
 	// Get snapshots from store
 	snapshots, err := h.store.GetFileSnapshots(ctx, req.SessionID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get snapshots: %w", err)
+		return nil, hlderrors.NewStoreError("get_file_snapshots", "file_snapshots", err)
 	}
 
 	// TODO(3): Sort snapshots explicitly (e.g., by CreatedAt) rather than relying on store's return order
@@ -320,18 +323,21 @@ func (h *SessionHandlers) HandleGetSessionSnapshots(ctx context.Context, params 
 func (h *SessionHandlers) HandleGetSessionState(ctx context.Context, params json.RawMessage) (interface{}, error) {
 	var req GetSessionStateRequest
 	if err := json.Unmarshal(params, &req); err != nil {
-		return nil, fmt.Errorf("invalid request: %w", err)
+		return nil, hlderrors.NewValidationError("params", "invalid JSON")
 	}
 
 	// Validate required fields
 	if req.SessionID == "" {
-		return nil, fmt.Errorf("session_id is required")
+		return nil, hlderrors.NewValidationError("session_id", "required field")
 	}
 
 	// Get session from store
 	session, err := h.store.GetSession(ctx, req.SessionID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get session: %w", err)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, hlderrors.ErrSessionNotFound
+		}
+		return nil, hlderrors.NewStoreError("get_session", "sessions", err)
 	}
 
 	// Convert to RPC session state
@@ -376,15 +382,12 @@ func (h *SessionHandlers) HandleGetSessionState(ctx context.Context, params json
 func (h *SessionHandlers) HandleContinueSession(ctx context.Context, params json.RawMessage) (interface{}, error) {
 	var req ContinueSessionRequest
 	if err := json.Unmarshal(params, &req); err != nil {
-		return nil, fmt.Errorf("invalid request: %w", err)
+		return nil, hlderrors.NewValidationError("params", "invalid JSON")
 	}
 
-	// Validate required fields
-	if req.SessionID == "" {
-		return nil, fmt.Errorf("session_id is required")
-	}
-	if req.Query == "" {
-		return nil, fmt.Errorf("query is required")
+	// Validate request
+	if err := validateContinueRequest(&req); err != nil {
+		return nil, err
 	}
 
 	// Build session config for manager
@@ -404,7 +407,7 @@ func (h *SessionHandlers) HandleContinueSession(ctx context.Context, params json
 	if req.MCPConfig != "" {
 		var mcpConfig claudecode.MCPConfig
 		if err := json.Unmarshal([]byte(req.MCPConfig), &mcpConfig); err != nil {
-			return nil, fmt.Errorf("invalid mcp_config JSON: %w", err)
+			return nil, hlderrors.NewValidationError("mcp_config", "invalid JSON")
 		}
 		config.MCPConfig = &mcpConfig
 	}
@@ -412,7 +415,7 @@ func (h *SessionHandlers) HandleContinueSession(ctx context.Context, params json
 	// Continue session
 	session, err := h.manager.ContinueSession(ctx, config)
 	if err != nil {
-		return nil, err
+		return nil, hlderrors.NewSessionError("continue", req.SessionID, err)
 	}
 
 	return &ContinueSessionResponse{
@@ -427,28 +430,36 @@ func (h *SessionHandlers) HandleContinueSession(ctx context.Context, params json
 func (h *SessionHandlers) HandleInterruptSession(ctx context.Context, params json.RawMessage) (interface{}, error) {
 	var req InterruptSessionRequest
 	if err := json.Unmarshal(params, &req); err != nil {
-		return nil, fmt.Errorf("invalid request: %w", err)
+		return nil, hlderrors.NewValidationError("params", "invalid JSON")
 	}
 
 	// Validate required fields
 	if req.SessionID == "" {
-		return nil, fmt.Errorf("session_id is required")
+		return nil, hlderrors.NewValidationError("session_id", "required field")
 	}
 
 	// Get session from store
 	session, err := h.store.GetSession(ctx, req.SessionID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get session: %w", err)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, hlderrors.ErrSessionNotFound
+		}
+		return nil, hlderrors.NewStoreError("get_session", "sessions", err)
 	}
 
 	// Validate session is running
 	if session.Status != store.SessionStatusRunning {
-		return nil, fmt.Errorf("cannot interrupt session with status %s (must be running)", session.Status)
+		return nil, &hlderrors.SessionError{
+			SessionID: req.SessionID,
+			State:     string(session.Status),
+			Operation: "interrupt",
+			Err:       hlderrors.ErrInvalidSessionState,
+		}
 	}
 
 	// Interrupt session
 	if err := h.manager.InterruptSession(ctx, req.SessionID); err != nil {
-		return nil, fmt.Errorf("failed to interrupt session: %w", err)
+		return nil, hlderrors.NewSessionError("interrupt", req.SessionID, err)
 	}
 
 	return &InterruptSessionResponse{
@@ -462,21 +473,24 @@ func (h *SessionHandlers) HandleInterruptSession(ctx context.Context, params jso
 func (h *SessionHandlers) HandleUpdateSessionSettings(ctx context.Context, params json.RawMessage) (interface{}, error) {
 	var req UpdateSessionSettingsRequest
 	if err := json.Unmarshal(params, &req); err != nil {
-		return nil, fmt.Errorf("invalid request: %w", err)
+		return nil, hlderrors.NewValidationError("params", "invalid JSON")
 	}
 
 	// Validate required fields
 	if req.SessionID == "" {
-		return nil, fmt.Errorf("session_id is required")
+		return nil, hlderrors.NewValidationError("session_id", "required field")
 	}
 
 	// Get current session to verify it exists
 	session, err := h.store.GetSession(ctx, req.SessionID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get session: %w", err)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, hlderrors.ErrSessionNotFound
+		}
+		return nil, hlderrors.NewStoreError("get_session", "sessions", err)
 	}
 	if session == nil {
-		return nil, fmt.Errorf("session not found")
+		return nil, hlderrors.ErrSessionNotFound
 	}
 
 	// Update session settings
@@ -485,7 +499,7 @@ func (h *SessionHandlers) HandleUpdateSessionSettings(ctx context.Context, param
 	}
 
 	if err := h.store.UpdateSession(ctx, req.SessionID, update); err != nil {
-		return nil, fmt.Errorf("failed to update session: %w", err)
+		return nil, hlderrors.NewStoreError("update_session", "sessions", err)
 	}
 
 	// If auto-accept was enabled, approve any pending edit tool approvals
@@ -526,7 +540,7 @@ func (h *SessionHandlers) HandleUpdateSessionSettings(ctx context.Context, param
 func (h *SessionHandlers) HandleGetRecentPaths(ctx context.Context, params json.RawMessage) (interface{}, error) {
 	var req GetRecentPathsRequest
 	if err := json.Unmarshal(params, &req); err != nil {
-		return nil, fmt.Errorf("invalid request: %w", err)
+		return nil, hlderrors.NewValidationError("params", "invalid JSON")
 	}
 
 	limit := req.Limit
@@ -536,7 +550,7 @@ func (h *SessionHandlers) HandleGetRecentPaths(ctx context.Context, params json.
 
 	paths, err := h.store.GetRecentWorkingDirs(ctx, limit)
 	if err != nil {
-		return nil, fmt.Errorf("get recent paths: %w", err)
+		return nil, hlderrors.NewStoreError("get_recent_working_dirs", "sessions", err)
 	}
 
 	// Convert store.RecentPath to RPC RecentPath with ISO 8601 timestamps
@@ -556,12 +570,12 @@ func (h *SessionHandlers) HandleGetRecentPaths(ctx context.Context, params json.
 func (h *SessionHandlers) HandleUpdateSessionTitle(ctx context.Context, params json.RawMessage) (interface{}, error) {
 	var req UpdateSessionTitleRequest
 	if err := json.Unmarshal(params, &req); err != nil {
-		return nil, fmt.Errorf("invalid request: %w", err)
+		return nil, hlderrors.NewValidationError("params", "invalid JSON")
 	}
 
 	// Validate required fields
 	if req.SessionID == "" {
-		return nil, fmt.Errorf("session_id is required")
+		return nil, hlderrors.NewValidationError("session_id", "required field")
 	}
 
 	// Update session title
@@ -570,7 +584,7 @@ func (h *SessionHandlers) HandleUpdateSessionTitle(ctx context.Context, params j
 	}
 
 	if err := h.store.UpdateSession(ctx, req.SessionID, update); err != nil {
-		return nil, fmt.Errorf("failed to update session: %w", err)
+		return nil, hlderrors.NewStoreError("update_session", "sessions", err)
 	}
 
 	// Publish event for UI updates
@@ -609,12 +623,12 @@ type ArchiveSessionResponse struct {
 func (h *SessionHandlers) HandleArchiveSession(ctx context.Context, params json.RawMessage) (interface{}, error) {
 	var req ArchiveSessionRequest
 	if err := json.Unmarshal(params, &req); err != nil {
-		return nil, fmt.Errorf("invalid request: %w", err)
+		return nil, hlderrors.NewValidationError("params", "invalid JSON")
 	}
 
 	// Validate required fields
 	if req.SessionID == "" {
-		return nil, fmt.Errorf("session_id is required")
+		return nil, hlderrors.NewValidationError("session_id", "required field")
 	}
 
 	// Update session in store
@@ -622,7 +636,10 @@ func (h *SessionHandlers) HandleArchiveSession(ctx context.Context, params json.
 		Archived: &req.Archived,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to archive session: %w", err)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, hlderrors.ErrSessionNotFound
+		}
+		return nil, hlderrors.NewStoreError("update_session", "sessions", err)
 	}
 
 	// TODO: Notify subscribers via event bus
@@ -646,12 +663,12 @@ type BulkArchiveSessionsResponse struct {
 func (h *SessionHandlers) HandleBulkArchiveSessions(ctx context.Context, params json.RawMessage) (interface{}, error) {
 	var req BulkArchiveSessionsRequest
 	if err := json.Unmarshal(params, &req); err != nil {
-		return nil, fmt.Errorf("invalid request: %w", err)
+		return nil, hlderrors.NewValidationError("params", "invalid JSON")
 	}
 
 	// Validate required fields
 	if len(req.SessionIDs) == 0 {
-		return nil, fmt.Errorf("session_ids is required and cannot be empty")
+		return nil, hlderrors.NewValidationError("session_ids", "required field (cannot be empty)")
 	}
 
 	var failedSessions []string

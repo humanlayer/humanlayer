@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	claudecode "github.com/humanlayer/humanlayer/claudecode-go"
 	"github.com/humanlayer/humanlayer/hld/bus"
+	hlderrors "github.com/humanlayer/humanlayer/hld/errors"
 	"github.com/humanlayer/humanlayer/hld/store"
 )
 
@@ -33,7 +34,7 @@ var _ SessionManager = (*Manager)(nil)
 // NewManager creates a new session manager with required store
 func NewManager(eventBus bus.EventBus, store store.ConversationStore, socketPath string) (*Manager, error) {
 	if store == nil {
-		return nil, fmt.Errorf("store is required")
+		return nil, hlderrors.NewValidationError("store", "store is required")
 	}
 
 	client, err := claudecode.NewClient()
@@ -105,7 +106,7 @@ func (m *Manager) LaunchSession(ctx context.Context, config claudecode.SessionCo
 	dbSession := store.NewSessionFromConfig(sessionID, runID, config)
 	dbSession.Summary = CalculateSummary(config.Query)
 	if err := m.store.CreateSession(ctx, dbSession); err != nil {
-		return nil, fmt.Errorf("failed to store session in database: %w", err)
+		return nil, hlderrors.NewSessionError("create_session", sessionID, err)
 	}
 
 	// Store MCP servers if configured
@@ -122,7 +123,9 @@ func (m *Manager) LaunchSession(ctx context.Context, config claudecode.SessionCo
 
 	// Log final configuration before launching
 	var mcpServersDetail string
+	var mcpServersCount int
 	if config.MCPConfig != nil {
+		mcpServersCount = len(config.MCPConfig.MCPServers)
 		for name, server := range config.MCPConfig.MCPServers {
 			mcpServersDetail += fmt.Sprintf("[%s: cmd=%s args=%v env=%v] ", name, server.Command, server.Args, server.Env)
 		}
@@ -133,7 +136,7 @@ func (m *Manager) LaunchSession(ctx context.Context, config claudecode.SessionCo
 		"query", config.Query,
 		"working_dir", config.WorkingDir,
 		"permission_prompt_tool", config.PermissionPromptTool,
-		"mcp_servers", len(config.MCPConfig.MCPServers),
+		"mcp_servers", mcpServersCount,
 		"mcp_servers_detail", mcpServersDetail)
 
 	// Launch Claude session
@@ -144,7 +147,7 @@ func (m *Manager) LaunchSession(ctx context.Context, config claudecode.SessionCo
 			"error", err,
 			"config", fmt.Sprintf("%+v", config))
 		m.updateSessionStatus(ctx, sessionID, StatusFailed, err.Error())
-		return nil, fmt.Errorf("failed to launch Claude session: %w", err)
+		return nil, hlderrors.NewSessionError("launch_session", sessionID, err)
 	}
 
 	// Store active Claude process
@@ -310,7 +313,10 @@ func (m *Manager) GetSessionInfo(sessionID string) (*Info, error) {
 	ctx := context.Background()
 	dbSession, err := m.store.GetSession(ctx, sessionID)
 	if err != nil {
-		return nil, fmt.Errorf("session not found: %w", err)
+		if hlderrors.IsNotFound(err) {
+			return nil, hlderrors.ErrSessionNotFound
+		}
+		return nil, hlderrors.NewSessionError("get_session", sessionID, err)
 	}
 
 	info := &Info{
@@ -437,22 +443,30 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 	// Get parent session from database
 	parentSession, err := m.store.GetSession(ctx, req.ParentSessionID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get parent session: %w", err)
+		if hlderrors.IsNotFound(err) {
+			return nil, hlderrors.ErrSessionNotFound
+		}
+		return nil, hlderrors.NewSessionError("get_parent_session", req.ParentSessionID, err)
 	}
 
 	// Validate parent session status - allow completed or running sessions
 	if parentSession.Status != store.SessionStatusCompleted && parentSession.Status != store.SessionStatusRunning {
-		return nil, fmt.Errorf("cannot continue session with status %s (must be completed or running)", parentSession.Status)
+		return nil, &hlderrors.SessionError{
+			SessionID: req.ParentSessionID,
+			Operation: "continue_session",
+			State:     parentSession.Status,
+			Err:       hlderrors.ErrInvalidSessionState,
+		}
 	}
 
 	// Validate parent session has claude_session_id (needed for resume)
 	if parentSession.ClaudeSessionID == "" {
-		return nil, fmt.Errorf("parent session missing claude_session_id (cannot resume)")
+		return nil, hlderrors.NewValidationError("claude_session_id", "parent session missing claude_session_id (cannot resume)")
 	}
 
 	// Validate parent session has working directory (needed for resume)
 	if parentSession.WorkingDir == "" {
-		return nil, fmt.Errorf("parent session missing working_dir (cannot resume session without working directory)")
+		return nil, hlderrors.NewValidationError("working_dir", "parent session missing working_dir (cannot resume session without working directory)")
 	}
 
 	// If session is running, interrupt it and wait for completion
@@ -461,7 +475,7 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 			"parent_session_id", req.ParentSessionID)
 
 		if err := m.InterruptSession(ctx, req.ParentSessionID); err != nil {
-			return nil, fmt.Errorf("failed to interrupt running session: %w", err)
+			return nil, hlderrors.NewSessionError("interrupt_session", req.ParentSessionID, err)
 		}
 
 		// Wait for the interrupted session to complete gracefully
@@ -481,7 +495,7 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 		// Re-fetch parent session to get updated completed status
 		parentSession, err = m.store.GetSession(ctx, req.ParentSessionID)
 		if err != nil {
-			return nil, fmt.Errorf("failed to re-fetch parent session after interrupt: %w", err)
+			return nil, hlderrors.NewSessionError("get_parent_session_after_interrupt", req.ParentSessionID, err)
 		}
 
 		slog.Info("session interrupted and completed, proceeding with resume",
@@ -594,7 +608,7 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 	}
 	// Note: ClaudeSessionID will be captured from streaming events (will be different from parent)
 	if err := m.store.CreateSession(ctx, dbSession); err != nil {
-		return nil, fmt.Errorf("failed to store session in database: %w", err)
+		return nil, hlderrors.NewSessionError("create_continuation_session", sessionID, err)
 	}
 
 	// Add run_id and daemon socket to MCP server environments
@@ -624,7 +638,7 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 	claudeSession, err := m.client.Launch(config)
 	if err != nil {
 		m.updateSessionStatus(ctx, sessionID, StatusFailed, err.Error())
-		return nil, fmt.Errorf("failed to launch resumed Claude session: %w", err)
+		return nil, hlderrors.NewSessionError("launch_resumed_session", sessionID, err)
 	}
 
 	// Store active Claude process
@@ -701,7 +715,7 @@ func (m *Manager) InterruptSession(ctx context.Context, sessionID string) error 
 	claudeSession, exists := m.activeProcesses[sessionID]
 	if !exists {
 		m.mu.Unlock()
-		return fmt.Errorf("session not found or not active")
+		return hlderrors.ErrSessionNotActive
 	}
 
 	// Keep the session in activeProcesses during interrupt to prevent race conditions
@@ -710,7 +724,7 @@ func (m *Manager) InterruptSession(ctx context.Context, sessionID string) error 
 
 	// Interrupt the Claude session
 	if err := claudeSession.Interrupt(); err != nil {
-		return fmt.Errorf("failed to interrupt Claude session: %w", err)
+		return hlderrors.NewSessionError("interrupt_claude_session", sessionID, err)
 	}
 
 	// Transition to completing status

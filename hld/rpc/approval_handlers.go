@@ -3,9 +3,9 @@ package rpc
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 
 	"github.com/humanlayer/humanlayer/hld/approval"
+	hlderrors "github.com/humanlayer/humanlayer/hld/errors"
 	"github.com/humanlayer/humanlayer/hld/session"
 	"github.com/humanlayer/humanlayer/hld/store"
 )
@@ -40,24 +40,24 @@ type CreateApprovalResponse struct {
 func (h *ApprovalHandlers) HandleCreateApproval(ctx context.Context, params json.RawMessage) (interface{}, error) {
 	var req CreateApprovalRequest
 	if err := json.Unmarshal(params, &req); err != nil {
-		return nil, fmt.Errorf("invalid request: %w", err)
+		return nil, hlderrors.NewValidationError("params", "invalid JSON")
 	}
 
 	// Validate required fields
 	if req.RunID == "" {
-		return nil, fmt.Errorf("run_id is required")
+		return nil, hlderrors.NewValidationError("run_id", "required field")
 	}
 	if req.ToolName == "" {
-		return nil, fmt.Errorf("tool_name is required")
+		return nil, hlderrors.NewValidationError("tool_name", "required field")
 	}
 	if req.ToolInput == nil {
-		return nil, fmt.Errorf("tool_input is required")
+		return nil, hlderrors.NewValidationError("tool_input", "required field")
 	}
 
 	// Create the approval
 	approvalID, err := h.approvals.CreateApproval(ctx, req.RunID, req.ToolName, req.ToolInput)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create approval: %w", err)
+		return nil, hlderrors.NewApprovalError("create", "", err)
 	}
 
 	return &CreateApprovalResponse{
@@ -80,7 +80,7 @@ func (h *ApprovalHandlers) HandleFetchApprovals(ctx context.Context, params json
 	var req FetchApprovalsRequest
 	if params != nil {
 		if err := json.Unmarshal(params, &req); err != nil {
-			return nil, fmt.Errorf("invalid request: %w", err)
+			return nil, hlderrors.NewValidationError("params", "invalid JSON")
 		}
 	}
 
@@ -94,7 +94,7 @@ func (h *ApprovalHandlers) HandleFetchApprovals(ctx context.Context, params json
 	// Get approvals for the session
 	approvals, err := h.approvals.GetPendingApprovals(ctx, req.SessionID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch approvals: %w", err)
+		return nil, hlderrors.NewStoreError("get_pending_approvals", "approvals", err)
 	}
 
 	return &FetchApprovalsResponse{
@@ -119,15 +119,15 @@ type SendDecisionResponse struct {
 func (h *ApprovalHandlers) HandleSendDecision(ctx context.Context, params json.RawMessage) (interface{}, error) {
 	var req SendDecisionRequest
 	if err := json.Unmarshal(params, &req); err != nil {
-		return nil, fmt.Errorf("invalid request: %w", err)
+		return nil, hlderrors.NewValidationError("params", "invalid JSON")
 	}
 
 	// Validate required fields
 	if req.ApprovalID == "" {
-		return nil, fmt.Errorf("approval_id is required")
+		return nil, hlderrors.NewValidationError("approval_id", "required field")
 	}
 	if req.Decision == "" {
-		return nil, fmt.Errorf("decision is required")
+		return nil, hlderrors.NewValidationError("decision", "required field")
 	}
 
 	var err error
@@ -137,11 +137,15 @@ func (h *ApprovalHandlers) HandleSendDecision(ctx context.Context, params json.R
 		err = h.approvals.ApproveToolCall(ctx, req.ApprovalID, req.Comment)
 	case "deny":
 		if req.Comment == "" {
-			return nil, fmt.Errorf("comment is required for denial")
+			return nil, hlderrors.NewValidationError("comment", "required for denial")
 		}
 		err = h.approvals.DenyToolCall(ctx, req.ApprovalID, req.Comment)
 	default:
-		return nil, fmt.Errorf("invalid decision: %s (must be 'approve' or 'deny')", req.Decision)
+		return nil, &hlderrors.ValidationError{
+			Field:   "decision",
+			Value:   req.Decision,
+			Message: "must be 'approve' or 'deny'",
+		}
 	}
 
 	if err != nil {
@@ -170,18 +174,18 @@ type GetApprovalResponse struct {
 func (h *ApprovalHandlers) HandleGetApproval(ctx context.Context, params json.RawMessage) (interface{}, error) {
 	var req GetApprovalRequest
 	if err := json.Unmarshal(params, &req); err != nil {
-		return nil, fmt.Errorf("invalid request: %w", err)
+		return nil, hlderrors.NewValidationError("params", "invalid JSON")
 	}
 
 	// Validate required fields
 	if req.ApprovalID == "" {
-		return nil, fmt.Errorf("approval_id is required")
+		return nil, hlderrors.NewValidationError("approval_id", "required field")
 	}
 
 	// Get the approval
 	approval, err := h.approvals.GetApproval(ctx, req.ApprovalID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get approval: %w", err)
+		return nil, hlderrors.NewApprovalError("get", req.ApprovalID, err)
 	}
 
 	return &GetApprovalResponse{

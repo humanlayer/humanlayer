@@ -13,6 +13,7 @@ import (
 	"github.com/humanlayer/humanlayer/hld/approval"
 	"github.com/humanlayer/humanlayer/hld/bus"
 	"github.com/humanlayer/humanlayer/hld/config"
+	hlderrors "github.com/humanlayer/humanlayer/hld/errors"
 	"github.com/humanlayer/humanlayer/hld/rpc"
 	"github.com/humanlayer/humanlayer/hld/session"
 	"github.com/humanlayer/humanlayer/hld/store"
@@ -52,7 +53,7 @@ func New() (*Daemon, error) {
 	if strings.Contains(os.Args[0], "/T/") || strings.Contains(os.Args[0], "test") {
 		defaultDB := expandPath("~/.humanlayer/daemon.db")
 		if cfg.DatabasePath == defaultDB && os.Getenv("HUMANLAYER_ALLOW_TEST_PROD_DB") != "true" {
-			return nil, fmt.Errorf("test process attempting to use production database - set HUMANLAYER_DATABASE_PATH or HUMANLAYER_ALLOW_TEST_PROD_DB=true")
+			return nil, hlderrors.NewValidationError("database_path", "test process attempting to use production database - set HUMANLAYER_DATABASE_PATH or HUMANLAYER_ALLOW_TEST_PROD_DB=true")
 		}
 	}
 
@@ -70,7 +71,7 @@ func New() (*Daemon, error) {
 		conn, err := net.Dial("unix", socketPath)
 		if err == nil {
 			_ = conn.Close()
-			return nil, fmt.Errorf("%w at %s", ErrDaemonAlreadyRunning, socketPath)
+			return nil, fmt.Errorf("%w at %s", hlderrors.ErrDaemonAlreadyRunning, socketPath)
 		}
 		// Socket exists but can't connect, remove stale socket
 		slog.Info("removing stale socket file", "path", socketPath)
@@ -85,7 +86,7 @@ func New() (*Daemon, error) {
 	// Initialize SQLite store
 	conversationStore, err := store.NewSQLiteStore(cfg.DatabasePath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create SQLite store: %w", err)
+		return nil, hlderrors.NewStoreError("create", "sqlite", err)
 	}
 
 	// Create session manager with store and config
@@ -233,7 +234,7 @@ func (d *Daemon) markOrphanedSessionsAsFailed(ctx context.Context) error {
 	// Get all sessions from the database
 	sessions, err := d.store.ListSessions(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to list sessions: %w", err)
+		return hlderrors.NewStoreError("list", "sessions", err)
 	}
 
 	orphanedCount := 0
@@ -252,9 +253,10 @@ func (d *Daemon) markOrphanedSessionsAsFailed(ctx context.Context) error {
 			}
 
 			if err := d.store.UpdateSession(ctx, session.ID, update); err != nil {
+				storeErr := hlderrors.NewStoreError("update", "sessions", err)
 				slog.Error("failed to mark orphaned session as failed",
 					"session_id", session.ID,
-					"error", err)
+					"error", storeErr)
 				// Continue with other sessions
 			} else {
 				orphanedCount++

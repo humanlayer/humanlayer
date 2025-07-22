@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/humanlayer/humanlayer/hld/bus"
+	hlderrors "github.com/humanlayer/humanlayer/hld/errors"
 )
 
 // SubscriptionHandlers provides RPC handlers for event subscriptions
@@ -51,13 +52,13 @@ func (h *SubscriptionHandlers) HandleSubscribe(ctx context.Context, params json.
 	var req SubscribeRequest
 	if params != nil {
 		if err := json.Unmarshal(params, &req); err != nil {
-			return nil, fmt.Errorf("invalid request: %w", err)
+			return nil, hlderrors.NewValidationError("params", "invalid JSON")
 		}
 	}
 
 	// This is a special handler that needs access to the connection
 	// We'll need to modify how this works to support long-polling
-	return nil, fmt.Errorf("subscribe method requires special handling - use SubscribeConn instead")
+	return nil, hlderrors.ErrInvalidRequest
 }
 
 // SubscribeConn handles a subscription connection with long-polling

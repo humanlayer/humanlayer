@@ -216,11 +216,8 @@ func (s *Server) handleRequest(ctx context.Context, data []byte) *Response {
 	if err != nil {
 		return &Response{
 			JSONRPC: "2.0",
-			Error: &Error{
-				Code:    InternalError,
-				Message: err.Error(),
-			},
-			ID: req.ID,
+			Error:   mapErrorToRPCError(err),
+			ID:      req.ID,
 		}
 	}
 

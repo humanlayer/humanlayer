@@ -146,8 +146,9 @@ func TestIntegrationContinueSession(t *testing.T) {
 		if err == nil {
 			t.Error("Expected error when continuing failed session")
 		}
-		if err.Error() != "cannot continue session with status failed (must be completed or running)" {
-			t.Errorf("Unexpected error: %v", err)
+		// The new error handling returns "Invalid state transition" for invalid session states
+		if !strings.Contains(err.Error(), "Invalid state transition") {
+			t.Errorf("Expected 'Invalid state transition' error, got: %v", err)
 		}
 	})
 
@@ -181,8 +182,9 @@ func TestIntegrationContinueSession(t *testing.T) {
 		if err == nil {
 			t.Error("Expected error when continuing session without claude_session_id")
 		}
-		if err.Error() != "parent session missing claude_session_id (cannot resume)" {
-			t.Errorf("Unexpected error: %v", err)
+		// The new error handling returns "Validation failed" for validation errors
+		if !strings.Contains(err.Error(), "Validation failed") {
+			t.Errorf("Expected 'Validation failed' error, got: %v", err)
 		}
 	})
 

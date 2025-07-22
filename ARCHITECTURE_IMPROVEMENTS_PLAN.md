@@ -53,14 +53,18 @@ This document outlines architectural improvements for the HumanLayer local tools
 **Impact**: Type errors are now caught at compile time, better IDE support, runtime validation prevents invalid data
 **Completion Date**: 2025-07-22
 
-### 5. Implement Consistent Error Handling in hld
+### 5. Implement Consistent Error Handling in hld (HIGH PRIORITY) ✅ COMPLETED
 **Problem**: Inconsistent error wrapping and missing error types make debugging difficult.
 **Solution**:
-- Create domain-specific error types in `errors/` package
-- Implement consistent error wrapping with `fmt.Errorf("context: %w", err)`
-- Add error codes for RPC responses
-- Create error documentation for API consumers
-**Impact**: Better error messages for users, easier debugging, improved API documentation
+- ✅ Created domain-specific error types in `errors/` package with sentinel errors and structured types
+- ✅ Implemented consistent error wrapping with typed errors (SessionError, ApprovalError, StoreError, ValidationError)
+- ✅ Added error codes for RPC responses with proper mapping (-32001 to -32005 for domain errors)
+- ✅ Created comprehensive error documentation for API consumers in errors/README.md
+- ✅ Updated all packages (rpc, store, session, approval, daemon) to use new error handling
+- ✅ Added helper functions for error checking (IsNotFound, IsAlreadyExists, etc.)
+- ✅ All tests updated and passing
+**Impact**: Consistent error messages, type-safe error checking, better debugging context, clear API documentation
+**Completion Date**: 2025-07-22
 
 ### 6. Fix Type Safety Issues in WUI
 **Problem**: Several components use `any` types for approvals and events.
@@ -72,25 +76,6 @@ This document outlines architectural improvements for the HumanLayer local tools
 **Impact**: Reduces runtime errors, improves developer experience
 
 ## Priority 3: Performance and Scalability
-
-### 7. Optimize Database Queries in hld
-**Problem**: Potential N+1 queries in session hierarchy traversal and missing indices.
-**Solution**:
-- Add database indices for frequently queried fields (session_id, parent_id, status)
-- Implement query batching for session hierarchy traversal
-- Add connection pooling to SQLite
-- Use prepared statements for common queries
-- Add query performance logging
-**Impact**: Faster response times, reduced database load, better scalability
-
-### 8. Implement Event Bus Improvements in hld
-**Problem**: Event bus could bottleneck under high load with unbuffered channels.
-**Solution**:
-- Add buffered channels for event publishing
-- Implement event batching for high-frequency updates
-- Add metrics for event queue depth
-- Consider using a proper message queue (e.g., NATS) for larger deployments
-**Impact**: Better performance under load, prevents event loss
 
 ### 9. Add List Virtualization to WUI
 **Problem**: Large session lists could cause performance issues.
