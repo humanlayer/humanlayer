@@ -6,6 +6,7 @@ This SDK provides a TypeScript/JavaScript client for the HumanLayer Daemon (HLD)
 
 - ✅ Full REST API coverage (sessions, approvals, system endpoints)
 - ✅ Server-Sent Events (SSE) support for real-time updates
+- ✅ Works in both Node.js and browser environments
 - ✅ TypeScript types generated from OpenAPI specification
 - ✅ Automatic reconnection for SSE streams
 - ✅ Docker-based code generation (no Java required)
@@ -87,3 +88,13 @@ If the OpenAPI spec changes:
 bun run generate
 bun run build
 ```
+
+## Go SDK
+
+For Go applications, use the internal client package directly instead of a standalone SDK:
+
+```go
+import "github.com/humanlayer/humanlayer/hld/client"
+```
+
+The Go client provides the same functionality as the TypeScript SDK and is used by internal components like the TUI.

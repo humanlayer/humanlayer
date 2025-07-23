@@ -12,10 +12,11 @@
     "check": "bun run typecheck && bun test"
   },
   "dependencies": {
-    "@microsoft/fetch-event-source": "^2.0.1"
+    "eventsource": "^4.0.0"
   },
   "devDependencies": {
     "@openapitools/openapi-generator-cli": "^2.7.0",
+    "@types/eventsource": "^1.1.15",
     "@types/node": "^20.0.0",
     "@types/node-fetch": "^2.6.12",
     "typescript": "^5.0.0"

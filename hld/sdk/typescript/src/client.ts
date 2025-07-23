@@ -1,10 +1,8 @@
-import { fetchEventSource } from '@microsoft/fetch-event-source';
-import { 
+import {
     Configuration,
     SessionsApi,
     ApprovalsApi,
     CreateSessionRequest,
-    CreateSessionResponseData,
     Session,
     Approval
 } from './generated';
@@ -22,31 +20,34 @@ export interface SSEEventHandlers {
     onDisconnect?: () => void;
 }
 
-class RetriableError extends Error {}
-class FatalError extends Error {}
+// Unified interface for both browser EventSource and polyfill
+interface EventSourceLike {
+    close(): void;
+    readyState: number;
+}
 
 export class HLDClient {
     private sessionsApi: SessionsApi;
     private approvalsApi: ApprovalsApi;
     private baseUrl: string;
     private headers?: Record<string, string>;
-    private sseControllers: Map<string, AbortController> = new Map();
+    private sseConnections: Map<string, EventSourceLike> = new Map();
 
     constructor(options: HLDClientOptions = {}) {
         this.baseUrl = options.baseUrl || `http://127.0.0.1:${options.port || 7777}/api/v1`;
         this.headers = options.headers;
-        
+
         const config = new Configuration({
             basePath: this.baseUrl,
             headers: this.headers
         });
-        
+
         this.sessionsApi = new SessionsApi(config);
         this.approvalsApi = new ApprovalsApi(config);
     }
 
     // Session Management
-    async createSession(request: CreateSessionRequest): Promise<CreateSessionResponseData> {
+    async createSession(request: CreateSessionRequest): Promise<{ sessionId: string; runId: string }> {
         const response = await this.sessionsApi.createSession({ createSessionRequest: request });
         return response.data;
     }
@@ -68,13 +69,13 @@ export class HLDClient {
     }
 
     async decideApproval(id: string, decision: 'approve' | 'deny', comment?: string): Promise<void> {
-        await this.approvalsApi.decideApproval({ 
+        await this.approvalsApi.decideApproval({
             id,
             decideApprovalRequest: { decision, comment }
         });
     }
 
-    // Server-Sent Events using @microsoft/fetch-event-source
+    // Server-Sent Events using eventsource polyfill
     async subscribeToEvents(
         params: {
             eventTypes?: string[];
@@ -83,9 +84,7 @@ export class HLDClient {
         },
         handlers: SSEEventHandlers
     ): Promise<() => void> {
-        const controller = new AbortController();
         const subscriptionId = Math.random().toString(36);
-        this.sseControllers.set(subscriptionId, controller);
 
         const queryParams = new URLSearchParams();
         if (params.eventTypes) {
@@ -96,71 +95,71 @@ export class HLDClient {
 
         const url = `${this.baseUrl}/stream/events${queryParams.toString() ? '?' + queryParams : ''}`;
 
-        // Start SSE connection with @microsoft/fetch-event-source
-        fetchEventSource(url, {
-            method: 'GET',
-            headers: this.headers,
-            signal: controller.signal,
-            
-            async onopen(response) {
-                if (response.ok && response.headers.get('content-type') === 'text/event-stream') {
-                    handlers.onConnect?.();
-                    return;
-                }
-                
-                if (response.status >= 400 && response.status < 500 && response.status !== 429) {
-                    throw new FatalError(`Client error: ${response.status}`);
-                }
-                
-                throw new RetriableError(`Server error: ${response.status}`);
-            },
-            
-            onmessage(event) {
-                try {
-                    const data = JSON.parse(event.data);
-                    handlers.onMessage?.(data);
-                } catch (e) {
-                    handlers.onError?.(new Error(`Failed to parse event: ${e}`));
-                }
-            },
-            
-            onclose() {
+        // Create EventSource with polyfill support
+        let eventSource: EventSourceLike & {
+            onopen?: ((this: any, ev: Event) => any) | null;
+            onmessage?: ((this: any, ev: MessageEvent) => any) | null;
+            onerror?: ((this: any, ev: Event) => any) | null;
+        };
+
+        if (typeof globalThis !== 'undefined' && globalThis.EventSource) {
+            // Browser environment - EventSource doesn't support headers
+            eventSource = new globalThis.EventSource(url);
+            if (this.headers) {
+                console.warn('Headers are not supported in browser EventSource API');
+            }
+        } else {
+            // Node.js environment with polyfill - supports headers
+            // Dynamic import to avoid bundling in browser
+            const { EventSource: EventSourcePolyfill } = require('eventsource');
+            eventSource = new EventSourcePolyfill(url, {
+                headers: this.headers,
+                withCredentials: false
+            });
+        }
+
+        this.sseConnections.set(subscriptionId, eventSource);
+
+        // Set up event handlers
+        eventSource.onopen = () => {
+            handlers.onConnect?.();
+        };
+
+        eventSource.onmessage = (event: MessageEvent) => {
+            try {
+                const data = JSON.parse(event.data);
+                handlers.onMessage?.(data);
+            } catch (e) {
+                handlers.onError?.(new Error(`Failed to parse event: ${e}`));
+            }
+        };
+
+        eventSource.onerror = (event: Event) => {
+            // EventSource will automatically reconnect on non-fatal errors
+            // Check if the connection is closed (readyState === 2)
+            if (eventSource.readyState === 2) { // CLOSED state
                 handlers.onDisconnect?.();
-                // Automatically reconnect
-                throw new RetriableError('Connection closed');
-            },
-            
-            onerror(err) {
-                if (err instanceof FatalError) {
-                    handlers.onError?.(err);
-                    throw err; // Stop retry
-                }
-                
-                if (err instanceof RetriableError) {
-                    // Return retry delay in milliseconds
-                    return 1000;
-                }
-                
-                handlers.onError?.(err);
-                throw err;
+                handlers.onError?.(new Error('Connection closed'));
+
+                // Clean up the connection
+                this.sseConnections.delete(subscriptionId);
+            } else {
+                // Connection error but will retry
+                handlers.onError?.(new Error('Connection error, retrying...'));
             }
-        }).catch(err => {
-            // Final error after all retries
-            if (!(err instanceof Error && err.message === 'AbortError')) {
-                handlers.onError?.(err);
-            }
-        });
+        };
 
         // Return unsubscribe function
         return () => {
-            controller.abort();
-            this.sseControllers.delete(subscriptionId);
+            eventSource.close();
+            this.sseConnections.delete(subscriptionId);
+            handlers.onDisconnect?.();
         };
     }
 
     // Clean up all SSE connections
     disconnect(): void {
-        this.sseControllers.forEach(controller => controller.abort());
-        this.sseControllers.clear();
+        this.sseConnections.forEach(eventSource => eventSource.close());
+        this.sseConnections.clear();
     }
 }
