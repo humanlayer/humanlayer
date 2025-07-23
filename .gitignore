@@ -1,6 +1,7 @@
 docs/source
 **/.env
 humanlayer-tui/humanlayer-tui
+claude_output.jsonl
 
 # From https://raw.githubusercontent.com/github/gitignore/main/Python.gitignore
 
