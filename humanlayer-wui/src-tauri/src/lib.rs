@@ -268,7 +268,7 @@ async fn unsubscribe_from_events(
             // Parse the subscription ID
             let id = subscription_id
                 .parse::<u64>()
-                .map_err(|e| format!("Invalid subscription ID: {}", e))?;
+                .map_err(|e| format!("Invalid subscription ID: {e}"))?;
 
             client.unsubscribe(id).await.map_err(|e| e.to_string())?;
             tracing::info!(
