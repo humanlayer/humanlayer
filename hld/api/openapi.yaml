@@ -417,6 +417,7 @@ paths:
         - Other languages: Language-specific SSE client libraries
       tags:
         - Events
+        - sse-manual
       x-sse: true
       parameters:
         - name: eventTypes

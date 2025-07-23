@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"github.com/humanlayer/humanlayer/hld/api"
 )
 
@@ -21,9 +20,5 @@ func NewServerImpl(sessions *SessionHandlers, approvals *ApprovalHandlers, sse *
 	}
 }
 
-// StreamEvents implements the SSE endpoint for StrictServerInterface
-func (s *ServerImpl) StreamEvents(ctx context.Context, req api.StreamEventsRequestObject) (api.StreamEventsResponseObject, error) {
-	// This is handled directly by the gin handler, not through strict interface
-	// Return a custom response that indicates SSE handling
-	return nil, nil
-}
+// StreamEvents is handled directly by SSEHandler.StreamEvents, not through StrictServerInterface
+// The endpoint is excluded from code generation using the 'sse-manual' tag

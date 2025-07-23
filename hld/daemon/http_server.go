@@ -84,9 +84,6 @@ func (s *HTTPServer) Start(ctx context.Context) error {
 	// Register OpenAPI handlers under the v1 group
 	api.RegisterHandlers(v1, strictHandler)
 
-	// Register SSE endpoint directly (not part of strict interface)
-	v1.GET("/stream/events", s.sseHandler.StreamEvents)
-
 	// Create HTTP server
 	addr := fmt.Sprintf("%s:%d", s.config.HTTPHost, s.config.HTTPPort)
 	s.server = &http.Server{
