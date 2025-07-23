@@ -185,7 +185,7 @@
   --terminal-error: #f92672;
 }
 
-/* Y Combinator - Hacker News inspired theme */
+/* Launch theme */
 [data-theme='launch'] {
   --terminal-bg: #f6f6ef;
   --terminal-bg-alt: #ffffff;
@@ -196,7 +196,7 @@
   --terminal-border: #828282;
   --terminal-success: #458cc9;
   --terminal-warning: #ff6600;
-  --terminal-error: #222222;
+  --terminal-error: #cc5200;
 }
 @layer base {
   * {
