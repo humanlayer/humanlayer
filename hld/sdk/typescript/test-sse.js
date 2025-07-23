@@ -7,13 +7,13 @@ const { HLDClient } = require('./dist/index.js');
 
 async function testSSE() {
     console.log('Testing HLD SDK SSE functionality...\n');
-    
+
     const client = new HLDClient({
         port: 7777  // Default HLD REST API port
     });
-    
+
     console.log('Subscribing to all events...');
-    
+
     try {
         const unsubscribe = await client.subscribeToEvents(
             {
@@ -34,9 +34,9 @@ async function testSSE() {
                 }
             }
         );
-        
+
         console.log('\nListening for events... Press Ctrl+C to stop\n');
-        
+
         // Keep the process running
         process.on('SIGINT', () => {
             console.log('\nStopping SSE test...');
@@ -44,7 +44,7 @@ async function testSSE() {
             client.disconnect();
             process.exit(0);
         });
-        
+
     } catch (error) {
         console.error('Failed to connect:', error);
         process.exit(1);
