@@ -2,7 +2,6 @@ package handlers_test
 
 import (
 	"bytes"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http/httptest"
@@ -277,7 +276,7 @@ func TestApprovalHandlers_GetApproval(t *testing.T) {
 	t.Run("approval not found", func(t *testing.T) {
 		mockApprovalManager.EXPECT().
 			GetApproval(gomock.Any(), "appr-999").
-			Return(nil, sql.ErrNoRows)
+			Return(nil, &store.NotFoundError{Type: "approval", ID: "appr-999"})
 
 		w := makeRequest(t, router, "GET", "/api/v1/approvals/appr-999", nil)
 
@@ -379,7 +378,7 @@ func TestApprovalHandlers_DecideApproval(t *testing.T) {
 			mockSetup: func() {
 				mockApprovalManager.EXPECT().
 					ApproveToolCall(gomock.Any(), "appr-999", "").
-					Return(fmt.Errorf("approval not found"))
+					Return(&store.NotFoundError{Type: "approval", ID: "appr-999"})
 			},
 			expectedStatus: 404,
 			expectedError: &api.ErrorDetail{
@@ -396,12 +395,12 @@ func TestApprovalHandlers_DecideApproval(t *testing.T) {
 			mockSetup: func() {
 				mockApprovalManager.EXPECT().
 					ApproveToolCall(gomock.Any(), "appr-111", "").
-					Return(fmt.Errorf("approval already decided"))
+					Return(&store.AlreadyDecidedError{ID: "appr-111", Status: "approved"})
 			},
 			expectedStatus: 400,
 			expectedError: &api.ErrorDetail{
 				Code:    "HLD-3002",
-				Message: "approval already decided",
+				Message: "approval appr-111 already decided with status: approved",
 			},
 		},
 		{

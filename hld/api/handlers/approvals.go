@@ -10,7 +10,6 @@ import (
 	"github.com/humanlayer/humanlayer/hld/approval"
 	"github.com/humanlayer/humanlayer/hld/session"
 	"github.com/humanlayer/humanlayer/hld/store"
-	"strings"
 )
 
 type ApprovalHandlers struct {
@@ -103,7 +102,7 @@ func (h *ApprovalHandlers) ListApprovals(ctx context.Context, req api.ListApprov
 func (h *ApprovalHandlers) GetApproval(ctx context.Context, req api.GetApprovalRequestObject) (api.GetApprovalResponseObject, error) {
 	approval, err := h.approvalManager.GetApproval(ctx, string(req.Id))
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, sql.ErrNoRows) || errors.Is(err, store.ErrNotFound) {
 			return api.GetApproval404JSONResponse{
 				NotFoundJSONResponse: api.NotFoundJSONResponse{
 					Error: api.ErrorDetail{
@@ -162,7 +161,7 @@ func (h *ApprovalHandlers) DecideApproval(ctx context.Context, req api.DecideApp
 	}
 
 	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
+		if errors.Is(err, store.ErrNotFound) {
 			return api.DecideApproval404JSONResponse{
 				NotFoundJSONResponse: api.NotFoundJSONResponse{
 					Error: api.ErrorDetail{
@@ -172,7 +171,7 @@ func (h *ApprovalHandlers) DecideApproval(ctx context.Context, req api.DecideApp
 				},
 			}, nil
 		}
-		if strings.Contains(err.Error(), "already") {
+		if errors.Is(err, store.ErrAlreadyDecided) {
 			return api.DecideApproval400JSONResponse{
 				Error: api.ErrorDetail{
 					Code:    "HLD-3002",
