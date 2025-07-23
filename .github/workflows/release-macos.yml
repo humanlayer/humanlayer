@@ -1,0 +1,108 @@
+name: Build macOS Release Artifacts
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: 'Version tag for the release (e.g., v0.1.0)'
+        required: true
+        type: string
+  push:
+    branches:
+      - add-macos-release-workflow  # TEMPORARY - Remove before merging to main
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'hld/go.mod'
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install WUI dependencies
+        working-directory: humanlayer-wui
+        run: bun install
+
+      - name: Build Tauri app (including DMG)
+        working-directory: humanlayer-wui
+        run: bun run tauri build
+
+      - name: Build daemon for macOS ARM
+        working-directory: hld
+        run: GOOS=darwin GOARCH=arm64 go build -o hld-darwin-arm64 ./cmd/hld
+
+      - name: Create install instructions
+        run: |
+          cat > INSTALL.md << 'EOF'
+          # HumanLayer macOS Installation Instructions
+
+          ## Prerequisites
+          - macOS (Apple Silicon/M-series)
+          - Node.js installed
+
+          ## Installation Steps
+
+          1. **Install the WUI Application**
+             - Open the downloaded `humanlayer-wui_*.dmg` file
+             - Drag the HumanLayer WUI app to your Applications folder
+             - Close the DMG window
+
+          2. **Install the Daemon**
+             - Download `hld-darwin-arm64`
+             - Make it executable: `chmod +x hld-darwin-arm64`
+             - Move to your PATH: `sudo mv hld-darwin-arm64 /usr/local/bin/hld`
+             - Verify installation: `hld --version`
+
+          3. **Install the CLI**
+             ```bash
+             npm install -g humanlayer@0.10.0
+             ```
+
+          4. **Start Using HumanLayer**
+             - Run the daemon: `hld`
+             - Launch the WUI from Applications
+             - Use the CLI: `humanlayer --help`
+
+          ## Troubleshooting
+
+          If macOS blocks the daemon from running:
+          1. Go to System Settings > Privacy & Security
+          2. Look for the blocked app message
+          3. Click "Allow Anyway"
+
+          For more help, visit: https://docs.humanlayer.dev
+          EOF
+
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: humanlayer-wui-macos-dmg
+          path: humanlayer-wui/src-tauri/target/release/bundle/dmg/*.dmg
+          if-no-files-found: error
+
+      - name: Upload daemon artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hld-darwin-arm64
+          path: hld/hld-darwin-arm64
+          if-no-files-found: error
+
+      - name: Upload install instructions
+        uses: actions/upload-artifact@v4
+        with:
+          name: INSTALL
+          path: INSTALL.md
+          if-no-files-found: error
