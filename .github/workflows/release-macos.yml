@@ -39,6 +39,8 @@ jobs:
       - name: Build Tauri app (including DMG)
         working-directory: humanlayer-wui
         run: bun run tauri build
+        env:
+          APPLE_SIGNING_IDENTITY: "-"  # Ad-hoc signing to prevent "damaged" error
 
       - name: Build daemon for macOS ARM
         working-directory: hld
@@ -59,6 +61,8 @@ jobs:
              - Open the downloaded `humanlayer-wui_*.dmg` file
              - Drag the HumanLayer WUI app to your Applications folder
              - Close the DMG window
+             - **Important**: For first launch, right-click the app and select "Open"
+               (This is required for unsigned apps on macOS)
 
           2. **Install the Daemon**
              - Download `hld-darwin-arm64`
@@ -76,9 +80,23 @@ jobs:
              - Launch the WUI from Applications
              - Use the CLI: `humanlayer --help`
 
+          ## Security Notice
+
+          This build is ad-hoc signed but not notarized with Apple. On first launch:
+          - You'll see a security warning - this is normal
+          - Click "Cancel" on the warning dialog
+          - Right-click the app and choose "Open"
+          - Click "Open" in the security dialog
+
           ## Troubleshooting
 
-          If macOS blocks the daemon from running:
+          **If you see "app is damaged and can't be opened":**
+          Run this command in Terminal:
+          ```bash
+          xattr -cr /Applications/humanlayer-wui.app
+          ```
+
+          **If macOS blocks the daemon from running:**
           1. Go to System Settings > Privacy & Security
           2. Look for the blocked app message
           3. Click "Allow Anyway"

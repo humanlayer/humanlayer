@@ -92,3 +92,18 @@ When the npm package version changes:
 - **Missing DMG**: Check Tauri build logs for errors
 - **Missing daemon**: Verify Go cross-compilation settings
 - **Wrong architecture**: Ensure `GOARCH=arm64` is set
+
+### macOS Security Issues
+
+The workflow uses ad-hoc signing to prevent "damaged app" errors on Apple Silicon. However, users will still see security warnings.
+
+**For "app is damaged" errors:**
+
+- The workflow should prevent this with ad-hoc signing
+- If it still occurs, users can run: `xattr -cr /Applications/humanlayer-wui.app`
+
+**For security warnings:**
+
+- This is expected for unsigned apps
+- Users must right-click and select "Open" for first launch
+- Or approve in System Settings > Privacy & Security
