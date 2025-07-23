@@ -363,9 +363,11 @@ export default function SessionTable({
                   }}
                   onClick={() => handleActivateSession?.(session)}
                   className={cn(
-                    'cursor-pointer transition-shadow duration-200',
-                    focusedSession?.id === session.id &&
+                    'cursor-pointer transition-all duration-200',
+                    focusedSession?.id === session.id && [
                       'shadow-[inset_2px_0_0_0_var(--terminal-accent)]',
+                      'bg-accent/10',
+                    ],
                     session.archived && 'opacity-60',
                   )}
                 >
