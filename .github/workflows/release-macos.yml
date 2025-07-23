@@ -106,3 +106,71 @@ jobs:
           name: INSTALL
           path: INSTALL.md
           if-no-files-found: error
+
+      # Create GitHub Release with artifacts
+      - name: Create Release
+        if: github.event_name == 'workflow_dispatch'
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.event.inputs.release_version }}
+          release_name: HumanLayer ${{ github.event.inputs.release_version }} - macOS Release
+          body: |
+            ## HumanLayer ${{ github.event.inputs.release_version }} - macOS Release
+
+            This release includes:
+            - HumanLayer WUI (Desktop Application) - DMG installer
+            - HumanLayer Daemon (hld) - ARM64 binary
+            - Installation instructions
+
+            ### Installation
+            Please download all three files below and follow the instructions in `INSTALL.md`.
+
+            ### Requirements
+            - macOS (Apple Silicon/M-series)
+            - Node.js for the CLI component
+          draft: true
+          prerelease: false
+
+      - name: Find DMG file
+        if: github.event_name == 'workflow_dispatch'
+        id: find_dmg
+        run: |
+          DMG_PATH=$(find humanlayer-wui/src-tauri/target/release/bundle/dmg -name "*.dmg" | head -1)
+          echo "dmg_path=$DMG_PATH" >> $GITHUB_OUTPUT
+          echo "dmg_name=$(basename $DMG_PATH)" >> $GITHUB_OUTPUT
+
+      - name: Upload Release Asset - DMG
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ${{ steps.find_dmg.outputs.dmg_path }}
+          asset_name: ${{ steps.find_dmg.outputs.dmg_name }}
+          asset_content_type: application/x-apple-diskimage
+
+      - name: Upload Release Asset - Daemon
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: hld/hld-darwin-arm64
+          asset_name: hld-darwin-arm64
+          asset_content_type: application/octet-stream
+
+      - name: Upload Release Asset - Install Instructions
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: INSTALL.md
+          asset_name: INSTALL.md
+          asset_content_type: text/markdown

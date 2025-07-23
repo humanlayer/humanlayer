@@ -40,27 +40,35 @@ The `push:` trigger in the workflow file is temporary and must be removed before
 2. Build typically takes 10-15 minutes
 3. Check each step for any errors
 
-## Downloading Artifacts
+## Workflow Results
 
 After successful completion:
 
-1. Scroll to the "Artifacts" section at the bottom
-2. Download all three artifacts:
+### For Push Triggers (Testing Only)
+
+1. Artifacts are uploaded to GitHub Actions
+2. Download from the "Artifacts" section at the bottom of the workflow run
+3. Three artifacts available:
    - `humanlayer-wui-macos-dmg` - The WUI application installer
    - `hld-darwin-arm64` - The daemon binary
    - `INSTALL` - Installation instructions
 
-## Creating a GitHub Release (Optional)
+### For Manual Triggers (workflow_dispatch)
 
-To create a formal release:
+1. A draft GitHub Release is automatically created
+2. All artifacts are attached to the release
+3. Release includes pre-formatted description and installation instructions
+4. Go to [Releases page](../../releases) to review and publish the draft
+
+## Publishing the Release
+
+When triggered via `workflow_dispatch`:
 
 1. Go to [Releases page](../../releases)
-2. Click "Draft a new release"
-3. Choose a tag: Enter the same version (e.g., `v0.1.0`)
-4. Release title: `HumanLayer v0.1.0 - macOS Release`
-5. Attach the three downloaded artifacts
-6. Add release notes
-7. Publish release
+2. Find the draft release with your version tag
+3. Review the auto-generated release notes
+4. Edit if needed (add changelog, known issues, etc.)
+5. Click "Publish release" to make it public
 
 ## Updating for New npm Versions
 
