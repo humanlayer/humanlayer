@@ -7,9 +7,6 @@ on:
         description: 'Version tag for the release (e.g., v0.1.0)'
         required: true
         type: string
-  push:
-    branches:
-      - add-macos-release-workflow  # TEMPORARY - Remove before merging to main
 
 jobs:
   build-macos:
