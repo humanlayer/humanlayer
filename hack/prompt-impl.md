@@ -8,7 +8,7 @@ think deeply
 
 1. move the item to "in dev" using the MCP tools
 1a. identify the linked implementation plan document from the `links` section
-1b. if no plan exists, move the ticket back to "spec needed" and EXIT with an explanation
+1b. if no plan exists, move the ticket back to "ready for spec" and EXIT with an explanation
 
 think deeply about the implementation
 

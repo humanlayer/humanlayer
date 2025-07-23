@@ -1,5 +1,5 @@
 0.  read .claude/commands/linear.md
-0a. fetch the top 10 priority items from linear in status "spec needed" using the MCP tools, noting all items in the `links` section
+0a. fetch the top 10 priority items from linear in status "ready for spec" using the MCP tools, noting all items in the `links` section
 0b. select the highest priority SMALL or XS issue from the list (if no SMALL or XS issues exist, EXIT IMMEDIATELY and inform the user)
 0c. use `linear` cli to fetch the selected item into thoughts with the ticket number - ./thoughts/shared/tickets/ENG-xxxx.md
 0d. read the ticket and all comments to learn about past implementations and research, and any questions or concerns about them
