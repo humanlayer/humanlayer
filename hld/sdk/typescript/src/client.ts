@@ -2,6 +2,7 @@ import {
     Configuration,
     SessionsApi,
     ApprovalsApi,
+    SystemApi,
     CreateSessionRequest,
     Session,
     Approval
@@ -73,6 +74,74 @@ export class HLDClient {
             id,
             decideApprovalRequest: { decision, comment }
         });
+    }
+
+    // Session continuation
+    async continueSession(id: string, query: string): Promise<{ sessionId: string; runId: string }> {
+        const response = await this.sessionsApi.continueSession({
+            id,
+            continueSessionRequest: { query }
+        });
+        return response.data;
+    }
+
+    // Session interruption
+    async interruptSession(id: string): Promise<void> {
+        await this.sessionsApi.interruptSession({ id });
+    }
+
+    // Session archival
+    async archiveSessions(sessionIds: string[], archived: boolean = true): Promise<{ archived: string[] }> {
+        const response = await this.sessionsApi.bulkArchiveSessions({
+            bulkArchiveRequest: { sessionIds, archived }
+        });
+        // The response contains 'success' and optional 'failedSessions'
+        // For the test plan, we'll return a simplified response
+        return { archived: sessionIds.filter(id => !response.data.failedSessions?.includes(id)) };
+    }
+
+    // Update session settings
+    async updateSession(id: string, updates: { auto_accept_edits?: boolean }): Promise<void> {
+        await this.sessionsApi.updateSession({
+            id,
+            updateSessionRequest: {
+                autoAcceptEdits: updates.auto_accept_edits
+            }
+        });
+    }
+
+    // Get session messages
+    async getSessionMessages(id: string): Promise<any[]> {
+        const response = await this.sessionsApi.getSessionMessages({ id });
+        return response.data;
+    }
+
+    // Get session snapshots
+    async getSessionSnapshots(id: string): Promise<any[]> {
+        const response = await this.sessionsApi.getSessionSnapshots({ id });
+        return response.data;
+    }
+
+    // Get recent paths
+    async getRecentPaths(): Promise<any[]> {
+        const response = await this.sessionsApi.getRecentPaths({});
+        return response.data;
+    }
+
+    // Get approval by ID
+    async getApproval(id: string): Promise<Approval> {
+        const response = await this.approvalsApi.getApproval({ id });
+        return response.data;
+    }
+
+    // Health check
+    async health(): Promise<{ status: string; version: string }> {
+        const systemApi = new SystemApi(new Configuration({
+            basePath: this.baseUrl,
+            headers: this.headers
+        }));
+        const response = await systemApi.getHealth();
+        return response;
     }
 
     // Server-Sent Events using eventsource polyfill
