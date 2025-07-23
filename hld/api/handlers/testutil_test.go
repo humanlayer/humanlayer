@@ -13,10 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TODO(1): Remove nolint directive once handler tests are implemented
 // setupTestRouter creates a test Gin router with the given handlers
-//
-//nolint:unused // Will be used in handler tests
 func setupTestRouter(t *testing.T, sessionHandlers *handlers.SessionHandlers, approvalHandlers *handlers.ApprovalHandlers, sseHandler *handlers.SSEHandler) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 
@@ -28,8 +25,10 @@ func setupTestRouter(t *testing.T, sessionHandlers *handlers.SessionHandlers, ap
 	// Create strict handler
 	strictHandler := api.NewStrictHandler(serverImpl, nil)
 
-	// Register handlers using generated code
-	api.RegisterHandlers(router, strictHandler)
+	// Register handlers using generated code with base URL
+	api.RegisterHandlersWithOptions(router, strictHandler, api.GinServerOptions{
+		BaseURL: "/api/v1",
+	})
 
 	// Register SSE endpoint
 	if sseHandler != nil {
@@ -39,10 +38,7 @@ func setupTestRouter(t *testing.T, sessionHandlers *handlers.SessionHandlers, ap
 	return router
 }
 
-// TODO(1): Remove nolint directive once handler tests are implemented
 // makeRequest is a helper to make HTTP requests in tests
-//
-//nolint:unused // Will be used in handler tests
 func makeRequest(t *testing.T, router *gin.Engine, method, path string, body interface{}) *httptest.ResponseRecorder {
 	var reqBody []byte
 	if body != nil {
@@ -63,10 +59,7 @@ func makeRequest(t *testing.T, router *gin.Engine, method, path string, body int
 	return w
 }
 
-// TODO(1): Remove nolint directive once handler tests are implemented
 // assertErrorResponse validates error response format
-//
-//nolint:unused // Will be used in handler tests
 func assertErrorResponse(t *testing.T, w *httptest.ResponseRecorder, expectedCode string, expectedMessageContains string) {
 	var errResp struct {
 		Error api.ErrorDetail `json:"error"`
@@ -79,10 +72,7 @@ func assertErrorResponse(t *testing.T, w *httptest.ResponseRecorder, expectedCod
 	assert.Contains(t, errResp.Error.Message, expectedMessageContains)
 }
 
-// TODO(1): Remove nolint directive once handler tests are implemented
 // assertJSONResponse validates successful JSON response
-//
-//nolint:unused // Will be used in handler tests
 func assertJSONResponse(t *testing.T, w *httptest.ResponseRecorder, statusCode int, v interface{}) {
 	assert.Equal(t, statusCode, w.Code)
 	assert.Equal(t, "application/json", w.Header().Get("Content-Type"))

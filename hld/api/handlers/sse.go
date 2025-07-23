@@ -57,6 +57,13 @@ func (h *SSEHandler) StreamEvents(c *gin.Context) {
 		filter.RunID = runID
 	}
 
+	// Check if response writer supports flushing
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "SSE not supported", http.StatusInternalServerError)
+		return
+	}
+
 	// Subscribe to events
 	subscriber := h.eventBus.Subscribe(r.Context(), filter)
 	defer h.eventBus.Unsubscribe(subscriber.ID)
@@ -64,12 +71,6 @@ func (h *SSEHandler) StreamEvents(c *gin.Context) {
 	// Create ticker for keepalive
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
-
-	flusher, ok := w.(http.Flusher)
-	if !ok {
-		http.Error(w, "SSE not supported", http.StatusInternalServerError)
-		return
-	}
 
 	for {
 		select {
