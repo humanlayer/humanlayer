@@ -75,6 +75,10 @@ test-hld: ## Test hld daemon (unit and integration tests)
 test-hld-integration: ## Test hld daemon (including integration tests)
 	@$(MAKE) -C hld test
 
+.PHONY: e2e-test
+e2e-test: ## Run end-to-end REST API tests
+	@$(MAKE) -C hld e2e-test
+
 .PHONY: test-claudecode-go
 test-claudecode-go: ## Test claudecode-go
 	@$(MAKE) -C claudecode-go test VERBOSE=$(VERBOSE)
