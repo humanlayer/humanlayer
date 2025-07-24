@@ -29,22 +29,22 @@ export async function createTestEnvironment(): Promise<TestEnvironment> {
     const timestamp = Date.now();
     const random = Math.random().toString(36).substring(7);
     const testDir = path.join(os.tmpdir(), `hld-e2e-${timestamp}-${random}`);
-    
+
     // Create directory structure
     await fs.mkdir(path.join(testDir, 'workspace'), { recursive: true });
     await fs.mkdir(path.join(testDir, 'data'), { recursive: true });
     await fs.mkdir(path.join(testDir, 'logs'), { recursive: true });
-    
+
     // Create test file
     await fs.writeFile(
         path.join(testDir, 'workspace', 'example.txt'),
         'The sun sets slowly\nColors paint the evening sky\nDay becomes the night\n'
     );
-    
+
     // Short socket path for macOS
     const socketPath = `/tmp/hld-${process.pid}-e2e.sock`;
     const httpPort = await getFreePort();
-    
+
     const env: TestEnvironment = {
         testDir,
         socketPath,
@@ -59,26 +59,26 @@ export async function createTestEnvironment(): Promise<TestEnvironment> {
                     env.daemon.kill('SIGKILL');
                 }
             }
-            
+
             // Remove socket
             try {
                 await fs.unlink(socketPath);
             } catch {}
-            
+
             // Remove test directory unless debugging
             if (!process.env.KEEP_TEST_ARTIFACTS) {
                 await fs.rm(testDir, { recursive: true, force: true });
             }
         }
     };
-    
+
     return env;
 }
 
 // Spawn daemon with test configuration
 export async function spawnDaemon(env: TestEnvironment): Promise<void> {
     const daemonPath = path.join(__dirname, '..', 'hld');
-    
+
     env.daemon = spawn(daemonPath, [], {
         env: {
             ...process.env,
@@ -91,12 +91,12 @@ export async function spawnDaemon(env: TestEnvironment): Promise<void> {
         },
         stdio: ['ignore', 'pipe', 'pipe']
     });
-    
+
     // Log daemon output
     const logFile = await fs.open(path.join(env.testDir, 'logs', 'daemon.log'), 'w');
     env.daemon.stdout?.pipe(logFile.createWriteStream());
     env.daemon.stderr?.pipe(logFile.createWriteStream());
-    
+
     // Wait for daemon to be ready
     await waitForDaemon(env.httpPort);
 }
@@ -118,7 +118,7 @@ async function waitForDaemon(port: number, timeout: number = 5000): Promise<void
 export class EventCollector {
     private events: any[] = [];
     private waiters: Map<string, { resolve: (event: any) => void; type: string; predicate?: (event: any) => boolean }> = new Map();
-    
+
     addEvent(event: any) {
         this.events.push(event);
         // Check waiters
@@ -129,34 +129,34 @@ export class EventCollector {
             }
         }
     }
-    
+
     async waitForEvent(
         type: string,
         predicate?: (event: any) => boolean,
         timeout: number = 30000
     ): Promise<any> {
         // Check existing events
-        const existing = this.events.find(e => 
+        const existing = this.events.find(e =>
             e.type === type && (!predicate || predicate(e))
         );
         if (existing) return existing;
-        
+
         // Wait for future event
         return new Promise((resolve, reject) => {
             const id = `${type}:${Date.now()}:${Math.random()}`;
             this.waiters.set(id, { resolve, type, predicate });
-            
+
             setTimeout(() => {
                 this.waiters.delete(id);
                 reject(new Error(`Timeout waiting for ${type} event`));
             }, timeout);
         });
     }
-    
+
     getEvents(): any[] {
         return [...this.events];
     }
-    
+
     clear() {
         this.events = [];
     }
@@ -218,14 +218,14 @@ export function setLogLevel(level: LogLevel) {
 
 export function log(message: string, data?: any, level: LogLevel = LogLevel.VERBOSE) {
     if (currentLogLevel < level) return;
-    
+
     if (currentLogLevel >= LogLevel.VERBOSE) {
         const timestamp = new Date().toISOString();
         console.log(`[${timestamp}] ${message}`);
     } else {
         console.log(message);
     }
-    
+
     if (data && currentLogLevel >= LogLevel.DEBUG) {
         console.log(JSON.stringify(data, null, 2));
     }
