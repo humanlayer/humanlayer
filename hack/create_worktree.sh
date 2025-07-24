@@ -27,8 +27,8 @@ REPO_BASE_NAME=$(basename "$(pwd)")
 
 # Construct paths
 WORKTREE_DIR_NAME="${REPO_BASE_NAME}_${WORKTREE_NAME}"
-WORKTREES_BASE="$HOME/.humanlayer/worktrees"
-WORKTREE_PATH="${WORKTREES_BASE}/${WORKTREE_DIR_NAME}"
+WORKTREES_BASE="$HOME/wt"
+WORKTREE_PATH="${WORKTREES_BASE}/humanlayer/${WORKTREE_DIR_NAME}"
 
 echo "🌳 Creating worktree: ${WORKTREE_NAME}"
 echo "📁 Location: ${WORKTREE_PATH}"
