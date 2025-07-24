@@ -137,7 +137,7 @@ export function Layout() {
       // Refresh approvals
       if (activeSessionId) {
         const response = await daemonClient.fetchApprovals(activeSessionId)
-        setApprovals(response.approvals)
+        setApprovals(response)
       }
     } catch (error) {
       notificationService.notifyError(error, 'Failed to handle approval')

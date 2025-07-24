@@ -244,11 +244,11 @@ export function TaskGroup({
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <span className="text-xs text-muted-foreground/60 cursor-help">
-                            {formatTimestamp(displayObject.created_at)}
+                            {displayObject.created_at ? formatTimestamp(displayObject.created_at) : ''}
                           </span>
                         </TooltipTrigger>
                         <TooltipContent>
-                          {formatAbsoluteTimestamp(displayObject.created_at)}
+                          {displayObject.created_at ? formatAbsoluteTimestamp(displayObject.created_at) : 'Unknown time'}
                         </TooltipContent>
                       </Tooltip>
                     </div>
