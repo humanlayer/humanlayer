@@ -9,13 +9,24 @@ import type {
   HealthResponse,
 } from '@humanlayer/hld-sdk'
 
-// Import enums as values (not type-only) since they're used as both types and values
-import { SessionStatus, ApprovalStatus } from '@humanlayer/hld-sdk'
-// EventType is exported as a const object in the SDK, import it separately
-import type { EventType } from '@humanlayer/hld-sdk'
+// Import everything we need from the SDK
+import { 
+  SessionStatus as SDKSessionStatus,
+  ApprovalStatus as SDKApprovalStatus,
+} from '@humanlayer/hld-sdk'
+import type { 
+  EventType,
+  SessionStatus as SessionStatusType,
+  ApprovalStatus as ApprovalStatusType,
+} from '@humanlayer/hld-sdk'
 
 // Re-export SDK types for convenience
-export { Event, SessionStatus, ApprovalStatus }
+export { Event } from '@humanlayer/hld-sdk'
+// Re-export the const objects and their types
+export const SessionStatus = SDKSessionStatus
+export const ApprovalStatus = SDKApprovalStatus
+export type SessionStatus = SessionStatusType
+export type ApprovalStatus = ApprovalStatusType
 export type { EventType }
 
 // Map to legacy types for backward compatibility
