@@ -1559,7 +1559,7 @@ func (s *SQLiteStore) GetApproval(ctx context.Context, id string) (*Approval, er
 		&approval.ToolName, &toolInputStr, &comment,
 	)
 	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("approval not found: %s", id)
+		return nil, &NotFoundError{Type: "approval", ID: id}
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to get approval: %w", err)
@@ -1640,13 +1640,24 @@ func (s *SQLiteStore) UpdateApprovalResponse(ctx context.Context, id string, sta
 		return fmt.Errorf("invalid approval status: %s", status)
 	}
 
+	// Check current status first
+	approval, err := s.GetApproval(ctx, id)
+	if err != nil {
+		return err // This already returns proper error types
+	}
+
+	// Check if already decided
+	if approval.Status != ApprovalStatusLocalPending {
+		return &AlreadyDecidedError{ID: id, Status: approval.Status.String()}
+	}
+
 	query := `
 		UPDATE approvals
 		SET status = ?, comment = ?, responded_at = CURRENT_TIMESTAMP
-		WHERE id = ?
+		WHERE id = ? AND status = ?
 	`
 
-	result, err := s.db.ExecContext(ctx, query, status.String(), comment, id)
+	result, err := s.db.ExecContext(ctx, query, status.String(), comment, id, ApprovalStatusLocalPending.String())
 	if err != nil {
 		return fmt.Errorf("failed to update approval response: %w", err)
 	}
@@ -1657,7 +1668,8 @@ func (s *SQLiteStore) UpdateApprovalResponse(ctx context.Context, id string, sta
 	}
 
 	if rowsAffected == 0 {
-		return fmt.Errorf("approval not found: %s", id)
+		// This shouldn't happen since we checked above, but just in case
+		return &NotFoundError{Type: "approval", ID: id}
 	}
 
 	return nil

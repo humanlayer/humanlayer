@@ -1,0 +1,131 @@
+name: Build macOS Release Artifacts
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: 'Version tag for the release (e.g., v0.1.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write  # Needed to create releases
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'hld/go.mod'
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install WUI dependencies
+        working-directory: humanlayer-wui
+        run: bun install
+
+      - name: Build Tauri app (including DMG)
+        working-directory: humanlayer-wui
+        run: bun run tauri build
+        env:
+          APPLE_SIGNING_IDENTITY: "-"  # Ad-hoc signing to prevent "damaged" error
+
+      - name: Build daemon for macOS ARM
+        working-directory: hld
+        run: GOOS=darwin GOARCH=arm64 go build -o hld-darwin-arm64 ./cmd/hld
+
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: humanlayer-wui-macos-dmg
+          path: humanlayer-wui/src-tauri/target/release/bundle/dmg/*.dmg
+          if-no-files-found: error
+
+      - name: Upload daemon artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hld-darwin-arm64
+          path: hld/hld-darwin-arm64
+          if-no-files-found: error
+
+      # Create GitHub Release with artifacts
+      - name: Create Release
+        if: github.event_name == 'workflow_dispatch'
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.release_version }}
+          name: HumanLayer ${{ github.event.inputs.release_version }} - macOS Release
+          body: |
+            ## HumanLayer ${{ github.event.inputs.release_version }} - macOS Release
+
+            This release includes:
+            - **HumanLayer WUI** - Desktop application (DMG installer)
+            - **HumanLayer Daemon (hld)** - Command-line daemon (ARM64 binary)
+
+            ### 🔐 macOS Security Notice
+
+            **Important**: This app is not notarized with Apple. You'll need to approve it in System Settings on first launch:
+
+            1. Open the downloaded DMG and drag the app to Applications
+            2. Try to open the app (it will be blocked)
+            3. Click "Done" on the error dialog
+            4. Go to **System Settings > Privacy & Security**
+            5. Find the warning about "humanlayer-wui" and click **"Open Anyway"**
+            6. Open the app again - it will now work
+
+            ### Installation Instructions
+
+            #### 1. Install the WUI Application
+            - Download and open `humanlayer-wui_*.dmg`
+            - Drag the HumanLayer WUI app to your Applications folder
+            - Follow the security steps above for first launch
+
+            #### 2. Install the Daemon
+            ```bash
+            # Download hld-darwin-arm64 from the assets below, then:
+            chmod +x hld-darwin-arm64
+            sudo mv hld-darwin-arm64 /usr/local/bin/hld
+            hld --version
+            ```
+
+            #### 3. Install the CLI
+            ```bash
+            npm install -g humanlayer@0.10.0
+            ```
+
+            #### 4. Start Using HumanLayer
+            - Run the daemon: `hld`
+            - Launch the WUI from Applications
+            - Use the CLI: `humanlayer --help`
+
+            ### Requirements
+            - macOS (Apple Silicon/M-series)
+            - Node.js installed
+
+            ### Troubleshooting
+
+            If you see "app is damaged and can't be opened":
+            ```bash
+            xattr -cr /Applications/humanlayer-wui.app
+            ```
+
+            For more help, visit [docs.humanlayer.dev](https://docs.humanlayer.dev)
+          draft: true
+          prerelease: false
+
+          files: |
+            humanlayer-wui/src-tauri/target/release/bundle/dmg/*.dmg
+            hld/hld-darwin-arm64

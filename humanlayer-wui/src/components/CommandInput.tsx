@@ -83,8 +83,6 @@ export default function CommandInput({
           value={value}
           onChange={e => onChange(e.target.value)}
           onKeyDown={handleKeyDown}
-          // onFocus={() => setIsFocused(true)}
-          // onBlur={() => setIsFocused(false)}
           placeholder={placeholder}
           disabled={isLoading}
           autoComplete="off"

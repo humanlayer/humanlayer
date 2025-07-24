@@ -25,6 +25,10 @@ type Config struct {
 
 	// Version override for display purposes (e.g., "dev" for development instances)
 	VersionOverride string `mapstructure:"version_override"`
+
+	// HTTP Server configuration
+	HTTPPort int    `mapstructure:"http_port"`
+	HTTPHost string `mapstructure:"http_host"`
 }
 
 // Load loads configuration with priority: flags > env vars > config file > defaults
@@ -51,12 +55,16 @@ func Load() (*Config, error) {
 	_ = v.BindEnv("api_base_url", "HUMANLAYER_API_BASE_URL", "HUMANLAYER_API_BASE")
 	_ = v.BindEnv("log_level", "HUMANLAYER_LOG_LEVEL")
 	_ = v.BindEnv("version_override", "HUMANLAYER_DAEMON_VERSION_OVERRIDE")
+	_ = v.BindEnv("http_port", "HUMANLAYER_DAEMON_HTTP_PORT")
+	_ = v.BindEnv("http_host", "HUMANLAYER_DAEMON_HTTP_HOST")
 
 	// Set defaults
 	v.SetDefault("socket_path", "~/.humanlayer/daemon.sock")
 	v.SetDefault("database_path", "~/.humanlayer/daemon.db")
 	v.SetDefault("api_base_url", "https://api.humanlayer.dev/humanlayer/v1")
 	v.SetDefault("log_level", "info")
+	v.SetDefault("http_port", 0) // 0 means HTTP server disabled by default
+	v.SetDefault("http_host", "127.0.0.1")
 
 	// Read config file (ignore if not found)
 	if err := v.ReadInConfig(); err != nil {

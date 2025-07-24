@@ -33,6 +33,9 @@ rust-check: ## Run Rust compilation check
 rust-clippy: ## Run Rust linter (clippy)
 	cd src-tauri && cargo clippy -- -D warnings
 
+rust-clippy-fix: ## Run clippy fix
+	cd src-tauri && cargo clippy --fix --allow-dirty
+
 # Placeholder for future test command
 
 check-quiet: ## Run all quality checks with quiet output
