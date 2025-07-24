@@ -876,8 +876,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         </Card>
 
         {isWideView && lastTodo && (
-          <Card className="w-[20%]">
-            <CardContent>
+          <Card className="w-[20%] flex flex-col min-h-0">
+            <CardContent className="flex flex-col flex-1 min-h-0 overflow-hidden">
               <TodoWidget event={lastTodo} />
             </CardContent>
           </Card>
