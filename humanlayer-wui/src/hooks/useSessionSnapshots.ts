@@ -22,7 +22,7 @@ export function useSessionSnapshots(sessionId: string | undefined) {
 
       // Build cache indexed by file path
       const cache: SnapshotCache = {}
-      response.snapshots.forEach(snapshot => {
+      response.forEach(snapshot => {
         // Keep most recent snapshot per file
         if (
           !cache[snapshot.file_path] ||

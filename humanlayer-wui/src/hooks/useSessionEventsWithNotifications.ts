@@ -135,7 +135,7 @@ export function useSessionEventsWithNotifications(connected: boolean) {
           await notificationService.notify({
             type: 'session_failed',
             title: `Session Failed (${data.session_id.slice(0, 8)})`,
-            body: session.error_message || `Failed: ${session.query}`,
+            body: session.error || `Failed: ${session.query}`,
             metadata: {
               sessionId: data.session_id,
               model: session.model,

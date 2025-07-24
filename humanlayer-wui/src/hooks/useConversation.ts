@@ -36,8 +36,8 @@ export function useConversation(
       setLoading(true)
       setError(null)
 
-      const response = await daemonClient.getConversation(sessionId, claudeSessionId)
-      setEvents(response.events)
+      const response = await daemonClient.getConversation({ session_id: sessionId, claude_session_id: claudeSessionId })
+      setEvents(response)
       setErrorCount(0)
       setIsInitialLoad(false)
     } catch (err) {

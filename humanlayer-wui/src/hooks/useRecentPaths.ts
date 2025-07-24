@@ -15,7 +15,7 @@ export function useRecentPaths(limit = 20): UseRecentPathsReturn {
   const fetchRecentPaths = useCallback(async () => {
     await execute(async () => {
       const response = await daemonClient.getRecentPaths(limit)
-      return response.paths
+      return response
     })
   }, [limit, execute])
 
