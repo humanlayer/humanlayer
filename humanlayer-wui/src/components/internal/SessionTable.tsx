@@ -127,7 +127,7 @@ export default function SessionTable({
     if (focusedSession && tableRef.current) {
       const focusedRow = tableRef.current.querySelector(`[data-session-id="${focusedSession.id}"]`)
       if (focusedRow) {
-        focusedRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+        focusedRow.scrollIntoView({ behavior: 'auto', block: 'nearest' })
       }
     }
   }, [focusedSession])
@@ -365,8 +365,10 @@ export default function SessionTable({
                   onClick={() => handleActivateSession?.(session)}
                   className={cn(
                     'cursor-pointer transition-shadow duration-200',
-                    focusedSession?.id === session.id &&
+                    focusedSession?.id === session.id && [
                       'shadow-[inset_2px_0_0_0_var(--terminal-accent)]',
+                      'bg-accent/10',
+                    ],
                     session.archived && 'opacity-60',
                   )}
                 >
