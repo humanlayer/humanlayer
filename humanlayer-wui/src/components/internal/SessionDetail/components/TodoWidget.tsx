@@ -3,15 +3,12 @@ import { CheckCircle, CircleDashed, Hourglass } from 'lucide-react'
 
 // TODO(2): Consider extracting priority and status constants to shared types
 // TODO(3): Add animations for status changes
-// TODO(3): Add collapsible sections for each priority level
 
 export function TodoWidget({ event }: { event: ConversationEvent }) {
   const toolInput = JSON.parse(event.tool_input_json!)
-  const priorityGrouped = Object.groupBy(toolInput.todos, (todo: any) => todo.priority)
   const todos = toolInput.todos
   const completedCount = todos.filter((todo: any) => todo.status === 'completed').length
   const pendingCount = todos.filter((todo: any) => todo.status === 'pending').length
-  const displayOrder = ['high', 'medium', 'low']
   const iconClasses = 'w-3 h-3 align-middle relative top-[1px]'
   const statusToIcon = {
     in_progress: <Hourglass className={iconClasses + ' text-[var(--terminal-warning)]'} />,
@@ -20,34 +17,26 @@ export function TodoWidget({ event }: { event: ConversationEvent }) {
   }
 
   return (
-    <div>
-      <hgroup className="flex flex-col gap-1 my-2">
+    <div className="flex flex-col h-full">
+      <hgroup className="flex flex-col gap-1 mb-2 flex-shrink-0">
         <h2 className="text-md font-bold text-muted-foreground">TODOs</h2>
         <small>
           {completedCount} completed, {pendingCount} pending
         </small>
       </hgroup>
-      {displayOrder.map(priority => {
-        const todosInPriority = priorityGrouped[priority] || []
-        // Only render the priority section if there are todos in it
-        if (todosInPriority.length === 0) return null
-
-        return (
-          <div key={priority} className="flex flex-col gap-1 mb-2">
-            <h3 className="font-medium text-sm">{priority}</h3>
-            <ul className="text-sm">
-              {todosInPriority.map((todo: any) => (
-                <li key={todo.id} className="flex gap-2 items-start">
-                  <span className="flex-shrink-0 mt-1">
-                    {statusToIcon[todo.status as keyof typeof statusToIcon]}
-                  </span>
-                  <span className="whitespace-pre-line font-mono">{todo.content}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )
-      })}
+      <div className="flex-1 overflow-y-auto min-h-0 pr-1">
+        <ul className="text-sm space-y-2">
+          {todos.map((todo: any, index: number) => (
+            <li key={todo.id ?? index} className="flex gap-2 items-start">
+              <span className="flex-shrink-0 mt-0.5">
+                {statusToIcon[todo.status as keyof typeof statusToIcon]}
+              </span>
+              <span className="whitespace-pre-line font-mono break-words">{todo.content}</span>
+            </li>
+          ))}
+        </ul>
+        {todos.length === 0 && <div className="text-muted-foreground text-sm">No tasks yet</div>}
+      </div>
     </div>
   )
 }
