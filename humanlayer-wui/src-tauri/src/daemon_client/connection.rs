@@ -61,7 +61,7 @@ impl Connection {
         let mut stream = self.stream.lock().await;
 
         // Send the message with newline
-        let message_with_newline = format!("{}\n", message);
+        let message_with_newline = format!("{message}\n");
         stream
             .write_all(message_with_newline.as_bytes())
             .await
@@ -108,8 +108,7 @@ impl Connection {
         // Check if socket exists
         if !path.exists() {
             return Err(Error::Connection(format!(
-                "Socket not found at {:?}. Is the daemon running?",
-                path
+                "Socket not found at {path:?}. Is the daemon running?"
             )));
         }
 

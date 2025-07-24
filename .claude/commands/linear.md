@@ -34,12 +34,15 @@ Then wait for the user's input.
 The team follows a specific workflow to ensure alignment before code implementation:
 
 1. **Triage** → All new tickets start here for initial review
-2. **Spec Needed** → Ticket needs an implementation plan/spec
-3. **Spec in Review** → Spec is written and under discussion
-4. **Ready for Dev** → Spec approved, ready for implementation
-5. **In Dev** → Active development
-6. **Code Review** → PR submitted
-7. **Done** → Completed
+2. **Research Needed** → Ticket requires investigation before spec can be written
+3. **Research in Progress** → Active research/investigation underway
+4. **Ready for Spec** → Research complete, ticket needs an implementation plan/spec
+5. **Spec in Progress** → Actively writing the implementation plan
+6. **Spec in Review** → Spec is written and under discussion
+7. **Ready for Dev** → Spec approved, ready for implementation
+8. **In Dev** → Active development
+9. **Code Review** → PR submitted
+10. **Done** → Completed
 
 **Key principle**: Review and alignment happen at the spec stage (not PR stage) to move faster and avoid rework.
 
@@ -288,8 +291,11 @@ When moving tickets through the workflow:
    - Show current status in workflow
 
 2. **Suggest next status:**
-   - Triage → Spec Needed (needs implementation plan)
-   - Spec Needed → Spec in Review (plan written)
+   - Triage → Research Needed (requires investigation) OR Ready for Spec (if clear enough)
+   - Research Needed → Research in Progress (starting research)
+   - Research in Progress → Ready for Spec (research complete)
+   - Ready for Spec → Spec in Progress (starting to write plan)
+   - Spec in Progress → Spec in Review (plan written)
    - Spec in Review → Ready for Dev (plan approved)
    - Ready for Dev → In Dev (work started)
 
@@ -304,6 +310,7 @@ When moving tickets through the workflow:
 
 ## Important Notes
 
+- Tag users in descriptions and comments using `@[name](ID)` format, e.g., `@[dex](16765c85-2286-4c0f-ab49-0d4d79222ef5)`
 - Keep tickets concise but complete - aim for scannable content
 - All tickets should include a clear "problem to solve" - if the user asks for a ticket and only gives implementation details, you MUST ask "To write a good ticket, please explain the problem you're trying to solve from a user perspective"
 - Focus on the "what" and "why", include "how" only if well-defined
@@ -346,12 +353,14 @@ Remember: The goal is to help a future reader (including yourself) quickly under
 
 ### Workflow State IDs
 - **Triage**: `77da144d-fe13-4c3a-a53a-cfebd06c0cbe` (type: triage)
-- **Spec Needed**: `995011dd-3e36-46e5-b776-5a4628d06cc8` (type: unstarted)
-- **spec in review**: `15f56065-41ea-4d9a-ab8c-ec8e1a811a7a` (type: started)
-- **spec in progress**: `a52b4793-d1b6-4e5d-be79-b2254185eed0` (type: started)
-- **ready for dev**: `c25bae2f-856a-4718-aaa8-b469b7822f58` (type: started)
-- **in dev**: `6be18699-18d7-496e-a7c9-37d2ddefe612` (type: started)
-- **code review**: `8ca7fda1-08d4-48fb-a0cf-954246ccbe66` (type: started)
+- **Research Needed**: `d0b89672-8189-45d6-b705-50afd6c94a91` (type: unstarted)
+- **Research in Progress**: `c41c5a23-ce25-471f-b70a-eff1dca60ffd` (type: unstarted)
+- **Ready for Spec**: `995011dd-3e36-46e5-b776-5a4628d06cc8` (type: unstarted)
+- **Spec in Progress**: `a52b4793-d1b6-4e5d-be79-b2254185eed0` (type: started)
+- **Spec in Review**: `15f56065-41ea-4d9a-ab8c-ec8e1a811a7a` (type: started)
+- **Ready for Dev**: `c25bae2f-856a-4718-aaa8-b469b7822f58` (type: started)
+- **In Dev**: `6be18699-18d7-496e-a7c9-37d2ddefe612` (type: started)
+- **Code Review**: `8ca7fda1-08d4-48fb-a0cf-954246ccbe66` (type: started)
 - **Ready for Deploy**: `a3ad0b54-17bf-4ad3-b1c1-2f56c1f2515a` (type: started)
 - **Done**: `8159f431-fbc7-495f-a861-1ba12040f672` (type: completed)
 - **Backlog**: `6cf6b25a-054a-469b-9845-9bd9ab39ad76` (type: backlog)
@@ -359,3 +368,10 @@ Remember: The goal is to help a future reader (including yourself) quickly under
 - **Todo**: `ddf85246-3a7c-4141-a377-09069812bbc3` (type: unstarted)
 - **Duplicate**: `2bc0e829-9853-4f76-ad34-e8732f062da2` (type: canceled)
 - **Canceled**: `14a28d0d-c6aa-4d8e-9ff2-9801d4cc7de1` (type: canceled)
+
+
+## Linear User IDs
+
+- allison: b157f9e4-8faf-4e7e-a598-dae6dec8a584
+- dex: 16765c85-2286-4c0f-ab49-0d4d79222ef5
+- sundeep: 0062104d-9351-44f5-b64c-d0b59acb516b

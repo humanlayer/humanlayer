@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { useConversation, useKeyboardNavigationProtection } from '@/hooks'
 import { ChevronDown, Archive, Pencil } from 'lucide-react'
 import { getStatusTextClass } from '@/utils/component-utils'
+import { renderSessionStatus } from '@/utils/sessionStatus'
 import { truncate } from '@/utils/formatting'
 import { daemonClient } from '@/lib/daemon/client'
 import { useStore } from '@/AppStore'
@@ -612,7 +613,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
             <small
               className={`font-mono text-xs uppercase tracking-wider ${getStatusTextClass(session.status)}`}
             >
-              {`${session.status}${session.model ? ` / ${session.model}` : ''}`}
+              {`${renderSessionStatus(session).toUpperCase()}${session.model ? ` / ${session.model}` : ''}`}
             </small>
             {session.working_dir && (
               <small className="font-mono text-xs text-muted-foreground">{session.working_dir}</small>
@@ -689,7 +690,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
             <small
               className={`font-mono text-xs uppercase tracking-wider ${getStatusTextClass(session.status)}`}
             >
-              {`${session.status}${session.model ? ` / ${session.model}` : ''}`}
+              {`${renderSessionStatus(session).toUpperCase()}${session.model ? ` / ${session.model}` : ''}`}
             </small>
           </hgroup>
           <ForkViewModal
@@ -875,8 +876,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         </Card>
 
         {isWideView && lastTodo && (
-          <Card className="w-[20%]">
-            <CardContent>
+          <Card className="w-[20%] flex flex-col min-h-0">
+            <CardContent className="flex flex-col flex-1 min-h-0 overflow-hidden">
               <TodoWidget event={lastTodo} />
             </CardContent>
           </Card>

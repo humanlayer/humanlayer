@@ -37,6 +37,10 @@ interface StoreState {
   recentNavigations: Map<string, number> // sessionId -> timestamp
   trackNavigationFrom: (sessionId: string) => void
   wasRecentlyNavigatedFrom: (sessionId: string, withinMs?: number) => boolean
+
+  /* UI State */
+  isHotkeyPanelOpen: boolean
+  setHotkeyPanelOpen: (open: boolean) => void
 }
 
 export const useStore = create<StoreState>((set, get) => ({
@@ -443,4 +447,8 @@ export const useStore = create<StoreState>((set, get) => ({
     )
     return wasRecent
   },
+
+  // UI State
+  isHotkeyPanelOpen: false,
+  setHotkeyPanelOpen: (open: boolean) => set({ isHotkeyPanelOpen: open }),
 }))

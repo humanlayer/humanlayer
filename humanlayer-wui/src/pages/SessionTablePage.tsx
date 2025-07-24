@@ -54,6 +54,8 @@ export function SessionTablePage() {
   const focusNextSession = () => {
     if (filteredSessions.length === 0) return
 
+    startKeyboardNavigation()
+
     const currentIndex = focusedSession
       ? filteredSessions.findIndex(s => s.id === focusedSession.id)
       : -1
@@ -70,6 +72,8 @@ export function SessionTablePage() {
 
   const focusPreviousSession = () => {
     if (filteredSessions.length === 0) return
+
+    startKeyboardNavigation()
 
     const currentIndex = focusedSession
       ? filteredSessions.findIndex(s => s.id === focusedSession.id)

@@ -91,7 +91,7 @@ async fn handle_subscription(
 ) -> Result<()> {
     // Send the subscription request
     stream
-        .write_all(format!("{}\n", request_str).as_bytes())
+        .write_all(format!("{request_str}\n").as_bytes())
         .await?;
     stream.flush().await?;
 

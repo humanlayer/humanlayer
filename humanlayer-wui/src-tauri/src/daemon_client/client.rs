@@ -108,7 +108,7 @@ impl DaemonClient {
 
         if let Some(result) = response.result {
             serde_json::from_value(result)
-                .map_err(|e| Error::InvalidResponse(format!("Failed to parse result: {}", e)))
+                .map_err(|e| Error::InvalidResponse(format!("Failed to parse result: {e}")))
         } else {
             Err(Error::InvalidResponse("No result in response".to_string()))
         }
@@ -256,8 +256,7 @@ impl DaemonClientTrait for DaemonClient {
 
         if !response.success {
             return Err(Error::Session(format!(
-                "Failed to interrupt session {}",
-                session_id
+                "Failed to interrupt session {session_id}"
             )));
         }
 
@@ -305,8 +304,7 @@ impl DaemonClientTrait for DaemonClient {
 
         if !response.success {
             return Err(Error::Session(format!(
-                "Failed to update title for session {}",
-                session_id
+                "Failed to update title for session {session_id}"
             )));
         }
 

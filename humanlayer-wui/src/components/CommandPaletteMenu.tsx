@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { useSessionLauncher } from '@/hooks/useSessionLauncher'
 import { useStore } from '@/AppStore'
@@ -21,6 +21,7 @@ export default function CommandPaletteMenu() {
     useSessionLauncher()
 
   const [searchQuery, setSearchQuery] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
 
   // Get sessions from the main app store
   const sessions = useStore(state => state.sessions)
@@ -119,6 +120,7 @@ export default function CommandPaletteMenu() {
       {/* Search input for search mode */}
       {mode === 'search' && (
         <input
+          ref={inputRef}
           type="text"
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}

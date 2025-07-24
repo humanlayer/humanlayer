@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
 import { Outlet } from 'react-router-dom'
+import { useHotkeys } from 'react-hotkeys-hook'
 import { daemonClient } from '@/lib/daemon'
 import { Button } from '@/components/ui/button'
 import { ThemeSelector } from '@/components/ThemeSelector'
 import { SessionLauncher } from '@/components/SessionLauncher'
+import { HotkeyPanel } from '@/components/HotkeyPanel'
 import { Breadcrumbs } from '@/components/Breadcrumbs'
 import { useSessionLauncher, useSessionLauncherHotkeys } from '@/hooks/useSessionLauncher'
 import { useStore } from '@/AppStore'
@@ -11,7 +13,6 @@ import { useSessionEventsWithNotifications } from '@/hooks/useSessionEventsWithN
 import { Toaster } from 'sonner'
 import { notificationService } from '@/services/NotificationService'
 import { useTheme } from '@/contexts/ThemeContext'
-import { useHotkeys } from 'react-hotkeys-hook'
 import '@/App.css'
 
 export function Layout() {
@@ -20,6 +21,9 @@ export function Layout() {
   const [activeSessionId] = useState<string | null>(null)
   const [connected, setConnected] = useState(false)
   const { setTheme } = useTheme()
+
+  // Hotkey panel state from store
+  const { isHotkeyPanelOpen, setHotkeyPanelOpen } = useStore()
 
   // Session launcher state
   const { isOpen, close } = useSessionLauncher()
@@ -32,6 +36,18 @@ export function Layout() {
 
   // Set up real-time subscriptions with notification handling
   useSessionEventsWithNotifications(connected)
+
+  // Global hotkey for toggling hotkey panel
+  useHotkeys(
+    '?',
+    () => {
+      setHotkeyPanelOpen(!isHotkeyPanelOpen)
+    },
+    {
+      useKey: true,
+      preventDefault: true,
+    },
+  )
 
   // Connect to daemon on mount
   useEffect(() => {
@@ -211,6 +227,9 @@ export function Layout() {
 
       {/* Session Launcher */}
       <SessionLauncher isOpen={isOpen} onClose={close} />
+
+      {/* Hotkey Panel */}
+      <HotkeyPanel open={isHotkeyPanelOpen} onOpenChange={setHotkeyPanelOpen} />
 
       {/* Notifications */}
       <Toaster position="bottom-right" richColors />

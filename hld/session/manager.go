@@ -124,7 +124,9 @@ func (m *Manager) LaunchSession(ctx context.Context, config claudecode.SessionCo
 
 	// Log final configuration before launching
 	var mcpServersDetail string
+	var mcpServerCount int
 	if config.MCPConfig != nil {
+		mcpServerCount = len(config.MCPConfig.MCPServers)
 		for name, server := range config.MCPConfig.MCPServers {
 			mcpServersDetail += fmt.Sprintf("[%s: cmd=%s args=%v env=%v] ", name, server.Command, server.Args, server.Env)
 		}
@@ -135,7 +137,7 @@ func (m *Manager) LaunchSession(ctx context.Context, config claudecode.SessionCo
 		"query", config.Query,
 		"working_dir", config.WorkingDir,
 		"permission_prompt_tool", config.PermissionPromptTool,
-		"mcp_servers", len(config.MCPConfig.MCPServers),
+		"mcp_servers", mcpServerCount,
 		"mcp_servers_detail", mcpServersDetail)
 
 	// Launch Claude session
