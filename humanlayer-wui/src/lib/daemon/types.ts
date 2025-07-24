@@ -1,29 +1,28 @@
 // Import types from the SDK instead of redefining them
 import type {
-  Session,
-  Approval,
-  SessionStatus,
-  ApprovalStatus,
+  Session as SDKSession,
+  Approval as SDKApproval,
   Event,
-  EventType,
   CreateSessionRequest,
   ConversationEvent as SDKConversationEvent,
   FileSnapshot,
   HealthResponse,
-} from '@humanlayer/hld-sdk';
+} from '@humanlayer/hld-sdk'
 
-// Re-export SDK types for convenience (as both type and value for enums)
-export { Event, EventType };
-export { SessionStatus, ApprovalStatus } from '@humanlayer/hld-sdk';
+// Import enums as values (not type-only) since they're used as both types and values
+import { SessionStatus, ApprovalStatus, EventType } from '@humanlayer/hld-sdk'
+
+// Re-export SDK types for convenience
+export { Event, SessionStatus, ApprovalStatus, EventType }
 
 // Map to legacy types for backward compatibility
-export type Session = LegacySession; // Components expect snake_case
-export type Approval = LegacyApproval; // Components expect snake_case
+export type Session = LegacySession // Components expect snake_case
+export type Approval = LegacyApproval // Components expect snake_case
 
 // Map SDK types to existing interfaces for backward compatibility
-export type ConversationEvent = LegacyConversationEvent; // Components expect snake_case
-export type SessionSnapshot = FileSnapshot;
-export type HealthCheckResponse = HealthResponse;
+export type ConversationEvent = LegacyConversationEvent // Components expect snake_case
+export type SessionSnapshot = FileSnapshotInfo // Components expect snake_case
+export type HealthCheckResponse = HealthResponse
 
 // Define client-specific types not in SDK
 export interface LaunchSessionParams extends CreateSessionRequest {
@@ -31,140 +30,163 @@ export interface LaunchSessionParams extends CreateSessionRequest {
 }
 
 export interface SessionState {
-  session: LegacySession;
-  pending_approvals: LegacyApproval[];
+  session: LegacySession
+  pending_approvals: LegacyApproval[]
 }
 
 export interface SubscribeOptions {
-  event_types?: EventType[];
-  session_id?: string;
-  run_id?: string;
-  onEvent: (event: Event) => void;
+  event_types?: EventType[]
+  session_id?: string
+  run_id?: string
+  onEvent: (event: Event) => void
 }
 
 export interface SubscriptionHandle {
-  unsubscribe: () => void;
+  unsubscribe: () => void
 }
 
 // Legacy type mappings for gradual migration
 // TODO: These legacy interfaces exist to maintain backward compatibility with the existing
 // codebase that expects snake_case properties. The SDK uses camelCase (TypeScript convention)
 // but the UI was built expecting snake_case from the original JSON-RPC API.
-// 
+//
 // Future refactor: Update all UI code to use camelCase properties directly from the SDK types,
 // then remove these legacy interfaces and the transform functions in http-client.ts
 export interface LegacySession {
   // Snake_case properties for backward compatibility
-  id: string;
-  run_id: string;
-  query: string;
-  status: SessionStatus;
-  created_at: string;
-  updated_at: string;
-  summary: string;
-  parent_session_id?: string;
-  claude_session_id?: string;
-  auto_accept_edits: boolean;
-  archived: boolean;
+  id: string
+  run_id: string
+  query: string
+  status: SessionStatus
+  created_at: string
+  updated_at: string
+  summary: string
+  parent_session_id?: string
+  claude_session_id?: string
+  auto_accept_edits: boolean
+  archived: boolean
   // Additional legacy fields
-  start_time: string;
-  last_activity_at: string;
-  end_time?: string;
-  error?: string;
-  working_dir?: string;
-  title?: string;
-  model?: string;
-  provider?: string;
-  temperature?: number;
-  max_tokens?: number;
-  stop_sequences?: string[];
-  top_p?: number;
-  top_k?: number;
-  metadata?: any;
-  cost_usd?: number;
-  input_tokens?: number;
-  output_tokens?: number;
-  total_tokens?: number;
+  start_time: string
+  last_activity_at: string
+  end_time?: string
+  error?: string
+  working_dir?: string
+  title?: string
+  model?: string
+  provider?: string
+  temperature?: number
+  max_tokens?: number
+  stop_sequences?: string[]
+  top_p?: number
+  top_k?: number
+  metadata?: any
+  cost_usd?: number
+  input_tokens?: number
+  output_tokens?: number
+  total_tokens?: number
 }
 
 export interface LegacyApproval {
   // Snake_case properties for backward compatibility
-  id: string;
-  session_id: string;
-  run_id: string;
-  status: ApprovalStatus;
-  tool_name: string;
-  tool_input?: any;
-  tool_parameters?: any;
-  created_at: string;
-  responded_at?: string;
-  resolved_at?: string;
-  comment?: string;
+  id: string
+  session_id: string
+  run_id: string
+  status: ApprovalStatus
+  tool_name: string
+  tool_input?: any
+  tool_parameters?: any
+  created_at: string
+  responded_at?: string
+  resolved_at?: string
+  comment?: string
   resolution?: {
-    decision: string;
-    comment?: string;
-    resolved_by?: string;
-  };
+    decision: string
+    comment?: string
+    resolved_by?: string
+  }
 }
 
 export interface LegacyConversationEvent {
   // Snake_case properties for backward compatibility
-  id?: number;
-  session_id?: string;
-  claude_session_id?: string;
-  sequence?: number;
-  event_type: ConversationEventType;
-  created_at?: string;
-  role?: ConversationRole;
-  content?: string;
-  tool_id?: string;
-  tool_name?: string;
-  tool_input_json?: string;
-  tool_result_for_id?: string;
-  tool_result_content?: string;
-  is_completed?: boolean;
-  approval_status?: ApprovalStatus | null;
-  approval_id?: string;
-  parent_tool_use_id?: string;
+  id?: number
+  session_id?: string
+  claude_session_id?: string
+  sequence?: number
+  event_type: ConversationEventType
+  created_at?: string
+  role?: ConversationRole
+  content?: string
+  tool_id?: string
+  tool_name?: string
+  tool_input_json?: string
+  tool_result_for_id?: string
+  tool_result_content?: string
+  is_completed?: boolean
+  approval_status?: ApprovalStatus | null
+  approval_id?: string
+  parent_tool_use_id?: string
   // For compatibility with SDK format
-  type?: string;
-  data?: any;
-  timestamp?: string;
+  type?: string
+  data?: any
+  timestamp?: string
 }
 
 // Client interface using legacy types for backward compatibility
 export interface DaemonClient {
-  connect(): Promise<void>;
-  disconnect(): Promise<void>;
-  health(): Promise<HealthCheckResponse>;
-  
+  connect(): Promise<void>
+  disconnect(): Promise<void>
+  health(): Promise<HealthCheckResponse>
+
   // Session methods (returning legacy types)
-  launchSession(params: LaunchSessionParams): Promise<LegacySession>;
-  listSessions(): Promise<LegacySession[]>;
-  getSessionLeaves(request?: { include_archived?: boolean; archived_only?: boolean }): Promise<{ sessions: LegacySession[] }>;
-  getSessionState(sessionId: string): Promise<SessionState>;
-  continueSession(sessionId: string, message: string): Promise<{ success: boolean; new_session_id?: string }>;
-  interruptSession(sessionId: string): Promise<{ success: boolean }>;
-  updateSessionSettings(sessionId: string, settings: { auto_accept_edits?: boolean }): Promise<{ success: boolean }>;
-  archiveSession(sessionIdOrRequest: string | { session_id: string; archived: boolean }): Promise<{ success: boolean }>;
-  bulkArchiveSessions(sessionIdsOrRequest: string[] | { session_ids: string[]; archived: boolean }): Promise<{ success: boolean; archived_count: number }>;
-  updateSessionTitle(sessionId: string, title: string): Promise<{ success: boolean }>;
-  
+  launchSession(params: LaunchSessionParams | LaunchSessionRequest): Promise<LegacySession>
+  listSessions(): Promise<LegacySession[]>
+  getSessionLeaves(request?: {
+    include_archived?: boolean
+    archived_only?: boolean
+  }): Promise<{ sessions: LegacySession[] }>
+  getSessionState(sessionId: string): Promise<SessionState>
+  continueSession(
+    sessionId: string,
+    message: string,
+  ): Promise<{ success: boolean; new_session_id?: string }>
+  interruptSession(sessionId: string): Promise<{ success: boolean }>
+  updateSessionSettings(
+    sessionId: string,
+    settings: { auto_accept_edits?: boolean },
+  ): Promise<{ success: boolean }>
+  archiveSession(
+    sessionIdOrRequest: string | { session_id: string; archived: boolean },
+  ): Promise<{ success: boolean }>
+  bulkArchiveSessions(
+    sessionIdsOrRequest: string[] | { session_ids: string[]; archived: boolean },
+  ): Promise<{ success: boolean; archived_count: number }>
+  updateSessionTitle(sessionId: string, title: string): Promise<{ success: boolean }>
+
   // Conversation methods (returning legacy types)
-  getConversation(params: { session_id?: string; claude_session_id?: string }): Promise<LegacyConversationEvent[]>;
-  getSessionSnapshots(sessionId: string): Promise<SessionSnapshot[]>;
-  
+  getConversation(params: {
+    session_id?: string
+    claude_session_id?: string
+  }): Promise<LegacyConversationEvent[]>
+  getSessionSnapshots(sessionId: string): Promise<SessionSnapshot[]>
+
   // Approval methods (returning legacy types)
-  fetchApprovals(sessionId?: string): Promise<LegacyApproval[]>;
-  sendDecision(approvalId: string, decision: 'approve' | 'deny', comment?: string): Promise<{ success: boolean; error?: string }>;
-  approveFunctionCall(approvalId: string, comment?: string): Promise<{ success: boolean; error?: string }>;
-  denyFunctionCall(approvalId: string, comment?: string): Promise<{ success: boolean; error?: string }>;
-  
+  fetchApprovals(sessionId?: string): Promise<LegacyApproval[]>
+  sendDecision(
+    approvalId: string,
+    decision: 'approve' | 'deny',
+    comment?: string,
+  ): Promise<{ success: boolean; error?: string }>
+  approveFunctionCall(
+    approvalId: string,
+    comment?: string,
+  ): Promise<{ success: boolean; error?: string }>
+  denyFunctionCall(approvalId: string, comment?: string): Promise<{ success: boolean; error?: string }>
+
   // Event subscription
-  subscribeToEvents(options: SubscribeOptions): SubscriptionHandle;
-  
+  subscribeToEvents(options: SubscribeOptions): SubscriptionHandle
+
   // Utility methods
-  getRecentPaths(limit?: number): Promise<string[]>;
+  getRecentPaths(limit?: number): Promise<string[]>
 }
 
 // Legacy enums and types for backward compatibility (to be gradually removed)
