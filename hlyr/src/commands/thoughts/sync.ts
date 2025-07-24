@@ -55,7 +55,12 @@ function syncThoughts(thoughtsRepo: string, message: string): void {
       })
     } catch (error) {
       const errorStr = error.toString()
-      if (errorStr.includes('CONFLICT') || errorStr.includes('rebase')) {
+      if (
+        errorStr.includes('CONFLICT (') ||
+        errorStr.includes('Automatic merge failed') ||
+        errorStr.includes('Patch failed at') ||
+        errorStr.includes('When you have resolved this problem, run "git rebase --continue"')
+      ) {
         console.error(chalk.red('Error: Merge conflict detected in thoughts repository'))
         console.error(chalk.red('Please resolve conflicts manually in:'), expandedRepo)
         console.error(
