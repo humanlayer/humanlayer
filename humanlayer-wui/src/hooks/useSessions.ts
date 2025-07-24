@@ -75,7 +75,7 @@ export function useSessions(): UseSessionsReturn {
     launchSession: async (request: LaunchSessionRequest) => {
       const response = await launchSession(request)
       return {
-        sessionId: response.session_id,
+        sessionId: response.id,
         runId: response.run_id,
       }
     },
@@ -126,54 +126,33 @@ export function useSession(sessionId: string | undefined) {
 
       try {
         console.log('useSession: Subscribing to events for session:', sessionId)
-        const subscription = await daemonClient.subscribeToEvents(
-          {
-            event_types: ['session_status_changed', 'new_approval'],
-            session_id: sessionId,
-          },
-          {
-            onEvent: event => {
-              console.log('useSession.onEvent() - received event:', event)
+        const subscription = daemonClient.subscribeToEvents({
+          event_types: ['session_status_changed', 'new_approval'],
+          session_id: sessionId,
+          onEvent: event => {
+            console.log('useSession.onEvent() - received event:', event)
 
-              if (!isActive) return
+            if (!isActive) return
 
-              console.log('useSession.onEvent() - event.event.type:', event.event.type)
+            console.log('useSession.onEvent() - event.type:', event.type)
 
-              if (
-                event.event.type === 'session_status_changed' ||
-                event.event.type === 'new_approval'
-              ) {
-                // Refresh session details when status changes or new approvals arrive
-                fetchSession()
-              }
-            },
-            onError: error => {
-              console.error('Session subscription error:', error)
-              // Fall back to polling for running sessions
-              if (isActive && (session?.status === 'running' || session?.status === 'starting')) {
-                const interval = setInterval(() => {
-                  if (isActive) {
-                    fetchSession()
-                  }
-                }, 3000)
-
-                setTimeout(() => clearInterval(interval), 30000) // Stop polling after 30s
-              }
-            },
-          },
-        )
+            if (
+              event.type === 'session_status_changed' ||
+              event.type === 'new_approval'
+            ) {
+              // Refresh session details when status changes or new approvals arrive
+              fetchSession()
+            }
+          }
+        })
 
         // Only set these if we're still active (component hasn't unmounted)
         if (isActive) {
-          unlisten = subscription.unlisten
-          subscriptionId = subscription.subscriptionId
-          console.log('useSession: Subscription created', { sessionId, subscriptionId })
+          unlisten = subscription.unsubscribe
+          console.log('useSession: Subscription created', { sessionId })
         } else {
           // Component unmounted while subscribing, clean up immediately
-          subscription.unlisten()
-          await daemonClient.unsubscribeFromEvents(subscription.subscriptionId).catch(error => {
-            console.error('Failed to unsubscribe from events:', error)
-          })
+          subscription.unsubscribe()
         }
       } catch (err) {
         console.error('Failed to subscribe to session events:', err)
@@ -193,9 +172,7 @@ export function useSession(sessionId: string | undefined) {
 
       // Then unsubscribe from the backend to close the connection
       if (subscriptionId) {
-        daemonClient.unsubscribeFromEvents(subscriptionId).catch(error => {
-          console.error('Failed to unsubscribe from events:', error)
-        })
+        // unsubscribe is handled by the unlisten function
       }
     }
   }, [fetchSession, sessionId])

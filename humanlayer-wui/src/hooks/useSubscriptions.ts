@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { daemonClient } from '@/lib/daemon'
 import type {
-  EventNotification,
+  Event,
   SessionStatusChangedEventData,
   NewApprovalEventData,
   ApprovalResolvedEventData,
@@ -59,25 +59,22 @@ export function useSessionSubscriptions(
         // Mark as subscribed immediately to prevent duplicate subscriptions
         isSubscribedRef.current = true
 
-        const subscription = await daemonClient.subscribeToEvents(
-          {
-            event_types: ['session_status_changed', 'new_approval', 'approval_resolved'],
-          },
-          {
-            onEvent: (event: EventNotification) => {
-              if (!isActive) return
+        const subscription = daemonClient.subscribeToEvents({
+          event_types: ['session_status_changed', 'new_approval', 'approval_resolved'],
+          onEvent: (event: Event) => {
+            if (!isActive) return
 
-              switch (event.event.type) {
+            switch (event.type) {
                 case 'session_status_changed': {
-                  const data = event.event.data as SessionStatusChangedEventData
+                  const data = event.data as SessionStatusChangedEventData
                   console.log('Session status changed:', data)
 
                   // Call handler if provided
-                  handlersRef.current.onSessionStatusChanged?.(data, event.event.timestamp)
+                  handlersRef.current.onSessionStatusChanged?.(data, event.timestamp)
                   break
                 }
                 case 'new_approval': {
-                  const data = event.event.data as NewApprovalEventData
+                  const data = event.data as NewApprovalEventData
                   console.log('New approval:', data, event)
 
                   // Call handler if provided
@@ -85,7 +82,7 @@ export function useSessionSubscriptions(
                   break
                 }
                 case 'approval_resolved': {
-                  const data = event.event.data as ApprovalResolvedEventData
+                  const data = event.data as ApprovalResolvedEventData
                   console.log('Approval resolved:', data)
 
                   // Call handler if provided
@@ -93,15 +90,10 @@ export function useSessionSubscriptions(
                   break
                 }
               }
-            },
-            onError: (error: Error) => {
-              console.error('Subscription error:', error)
-              // Handler should deal with fallback behavior
-            },
-          },
-        )
+          }
+        })
 
-        unsubscribe = subscription.unlisten
+        unsubscribe = subscription.unsubscribe
         console.log('Subscription created successfully')
       } catch (err) {
         console.error('Failed to subscribe to events:', err)
