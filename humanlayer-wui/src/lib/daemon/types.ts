@@ -10,10 +10,13 @@ import type {
 } from '@humanlayer/hld-sdk'
 
 // Import enums as values (not type-only) since they're used as both types and values
-import { SessionStatus, ApprovalStatus, EventType } from '@humanlayer/hld-sdk'
+import { SessionStatus, ApprovalStatus } from '@humanlayer/hld-sdk'
+// EventType is exported as a const object in the SDK, import it separately
+import type { EventType } from '@humanlayer/hld-sdk'
 
 // Re-export SDK types for convenience
-export { Event, SessionStatus, ApprovalStatus, EventType }
+export { Event, SessionStatus, ApprovalStatus }
+export type { EventType }
 
 // Map to legacy types for backward compatibility
 export type Session = LegacySession // Components expect snake_case
