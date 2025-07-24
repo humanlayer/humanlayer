@@ -350,7 +350,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       try {
         const newState = !autoAcceptEdits
         await daemonClient.updateSessionSettings(session.id, {
-          autoAcceptEdits: newState,
+          auto_accept_edits: newState,
         })
 
         // State will be updated via event subscription
@@ -379,12 +379,12 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       }
 
       // Check if session is active (requires confirmation)
-      const isActiveSession = [
+      const isActiveSession = ([
         SessionStatus.Starting,
         SessionStatus.Running,
         SessionStatus.Completing,
         SessionStatus.WaitingInput,
-      ].includes(session.status)
+      ] as SessionStatus[]).includes(session.status)
 
       const isArchiving = !session.archived
 

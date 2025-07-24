@@ -125,8 +125,8 @@ export const useStore = create<StoreState>((set, get) => ({
   bulkArchiveSessions: async (sessionIds: string[], archived: boolean) => {
     try {
       const response = await daemonClient.bulkArchiveSessions({ session_ids: sessionIds, archived })
-      if (!response.success && response.failed_sessions) {
-        console.error('Some sessions failed to archive:', response.failed_sessions)
+      if (!response.success) {
+        console.error('Failed to archive sessions')
       }
       // Refresh sessions to update the list
       await get().refreshSessions()
