@@ -16,6 +16,7 @@ import type { LucideIcon } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { daemonClient } from '@/lib/daemon/client'
+import { renderSessionStatus } from '@/utils/sessionStatus'
 
 interface SessionTableProps {
   sessions: SessionInfo[]
@@ -393,7 +394,9 @@ export default function SessionTable({
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className={getStatusTextClass(session.status)}>{session.status}</TableCell>
+                  <TableCell className={getStatusTextClass(session.status)}>
+                    {renderSessionStatus(session)}
+                  </TableCell>
                   <TableCell className="max-w-[200px]">
                     <Tooltip>
                       <TooltipTrigger asChild>
