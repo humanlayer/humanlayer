@@ -126,7 +126,7 @@ export default function SessionTable({
     if (focusedSession && tableRef.current) {
       const focusedRow = tableRef.current.querySelector(`[data-session-id="${focusedSession.id}"]`)
       if (focusedRow) {
-        focusedRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+        focusedRow.scrollIntoView({ behavior: 'auto', block: 'nearest' })
       }
     }
   }, [focusedSession])
