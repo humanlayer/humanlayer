@@ -386,6 +386,8 @@ export class HTTPDaemonClient implements IDaemonClient {
 
   // Utility Methods
 
+  // Note, limit not being used just yet, post REST client implementation
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async getRecentPaths(_limit?: number): Promise<string[]> {
     await this.ensureConnected()
     // SDK client doesn't support limit parameter yet
