@@ -43,6 +43,9 @@ func NewHTTPServer(
 
 	// Add middleware
 	router.Use(gin.Recovery())
+	router.Use(gin.LoggerWithConfig(gin.LoggerConfig{
+		SkipPaths: []string{"/api/v1/health"}, // Skip health check logs
+	}))
 	router.Use(handlers.RequestIDMiddleware())
 	router.Use(handlers.CompressionMiddleware())
 

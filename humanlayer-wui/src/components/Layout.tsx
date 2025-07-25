@@ -10,7 +10,7 @@ import { Breadcrumbs } from '@/components/Breadcrumbs'
 import { useSessionLauncher, useSessionLauncherHotkeys } from '@/hooks/useSessionLauncher'
 import { useDaemonConnection } from '@/hooks/useDaemonConnection'
 import { useStore } from '@/AppStore'
-import { useSessionEventsWithNotifications } from '@/hooks/useSessionEventsWithNotifications'
+import { useSessionSubscriptions } from '@/hooks/useSubscriptions'
 import { Toaster } from 'sonner'
 import { notificationService } from '@/services/NotificationService'
 import { useTheme } from '@/contexts/ThemeContext'
@@ -36,8 +36,49 @@ export function Layout() {
     setTheme('launch')
   })
 
-  // Set up real-time subscriptions with notification handling
-  useSessionEventsWithNotifications(connected)
+  // Get store actions
+  const updateSessionStatus = useStore(state => state.updateSessionStatus)
+  const updateActiveSessionConversation = useStore(state => state.updateActiveSessionConversation)
+  const activeSessionDetail = useStore(state => state.activeSessionDetail)
+  
+  // Set up single SSE subscription for all events
+  useSessionSubscriptions(connected, {
+    onSessionStatusChanged: async (data, timestamp) => {
+      const { session_id, new_status } = data
+      
+      // Update session in the list
+      updateSessionStatus(session_id, new_status)
+      
+      // If this is the active session detail, refresh its data
+      if (activeSessionDetail?.session.id === session_id) {
+        try {
+          const conversationResponse = await daemonClient.getConversation({ session_id })
+          updateActiveSessionConversation(conversationResponse)
+        } catch (error) {
+          console.error('Failed to refresh active session conversation:', error)
+        }
+      }
+    },
+    onNewApproval: async data => {
+      console.log('New approval event:', data)
+      
+      // If this approval is for the active session detail, refresh conversation
+      if (activeSessionDetail?.session.id === data.session_id) {
+        try {
+          const conversationResponse = await daemonClient.getConversation({ session_id: data.session_id })
+          updateActiveSessionConversation(conversationResponse)
+        } catch (error) {
+          console.error('Failed to refresh active session conversation:', error)
+        }
+      }
+    },
+    onApprovalResolved: async data => {
+      console.log('Approval resolved:', data)
+      
+      // Refresh conversation if needed - the approval resolution might affect the active session
+      // We can't easily determine which session the approval belonged to without looking it up
+    },
+  })
 
   // Global hotkey for toggling hotkey panel
   useHotkeys(

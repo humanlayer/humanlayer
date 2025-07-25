@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { daemonClient, ConversationEvent } from '@/lib/daemon'
 import { formatError } from '@/utils/errors'
+import { useStore } from '@/AppStore'
 
 interface UseConversationReturn {
   events: ConversationEvent[]
@@ -15,11 +16,18 @@ export function useConversation(
   claudeSessionId?: string,
   pollInterval: number = 1000,
 ): UseConversationReturn {
-  const [events, setEvents] = useState<ConversationEvent[]>([])
-  const [loading, setLoading] = useState(true)
+  const activeSessionDetail = useStore(state => state.activeSessionDetail)
+  const updateActiveSessionConversation = useStore(state => state.updateActiveSessionConversation)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [errorCount, setErrorCount] = useState(0)
   const [isInitialLoad, setIsInitialLoad] = useState(true)
+  
+  // Add abort controller for request cancellation
+  const abortControllerRef = useRef<AbortController | null>(null)
+
+  // Get events from store if this is the active session
+  const events = (activeSessionDetail?.session.id === sessionId ? activeSessionDetail.conversation : []) as ConversationEvent[]
 
   const fetchConversation = useCallback(async () => {
     if (errorCount > 3) {
@@ -32,27 +40,52 @@ export function useConversation(
       return
     }
 
+    // Cancel any in-flight request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+    }
+
+    // Create new abort controller for this request
+    abortControllerRef.current = new AbortController()
+
     try {
       setLoading(true)
       setError(null)
 
-      const response = await daemonClient.getConversation({ session_id: sessionId, claude_session_id: claudeSessionId })
-      setEvents(response)
+      const response = await daemonClient.getConversation(
+        { session_id: sessionId, claude_session_id: claudeSessionId },
+        { signal: abortControllerRef.current.signal }
+      )
+      
+      // Update the store if this is the active session
+      if (activeSessionDetail?.session.id === sessionId) {
+        updateActiveSessionConversation(response)
+      }
+      
       setErrorCount(0)
       setIsInitialLoad(false)
-    } catch (err) {
+    } catch (err: any) {
+      // Ignore abort errors
+      if (err.name === 'AbortError') {
+        return
+      }
       setError(formatError(err))
       setErrorCount(prev => prev + 1)
     } finally {
       setLoading(false)
     }
-  }, [sessionId, claudeSessionId, errorCount])
+  }, [sessionId, claudeSessionId, errorCount, activeSessionDetail, updateActiveSessionConversation])
 
   // Store the latest fetchConversation function in a ref
   const fetchConversationRef = useRef(fetchConversation)
   fetchConversationRef.current = fetchConversation
 
   useEffect(() => {
+    // Only poll if this is the active session
+    if (activeSessionDetail?.session.id !== sessionId) {
+      return
+    }
+
     // Initial fetch
     fetchConversationRef.current()
 
@@ -62,8 +95,12 @@ export function useConversation(
 
     return () => {
       clearInterval(interval)
+      // Cancel any pending request on unmount
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
     }
-  }, []) // Empty dependency array - only runs once on mount
+  }, [sessionId, activeSessionDetail?.session.id, pollInterval])
 
   return {
     events,

@@ -7,6 +7,10 @@ export interface AppState {
   sessions: SessionInfo[]
   focusedSession: SessionInfo | null
   activeSessionId: string | null
+  activeSessionDetail: {
+    session: SessionInfo
+    conversation: any[] // ConversationEvent[] from useConversation
+  } | null
 
   /* Approvals */
   approvals: Approval[]
@@ -20,14 +24,23 @@ export interface AppState {
   /* Actions */
   initSessions: (sessions: SessionInfo[]) => void
   updateSession: (sessionId: string, updates: Partial<SessionInfo>) => void
+  updateSessionStatus: (sessionId: string, status: string) => void
   refreshSessions: () => Promise<void>
   setFocusedSession: (session: SessionInfo | null) => void
   focusNextSession: () => void
   focusPreviousSession: () => void
   interruptSession: (sessionId: string) => Promise<void>
 
+  /* Active Session Detail Actions */
+  setActiveSessionDetail: (sessionId: string, session: SessionInfo, conversation: any[]) => void
+  updateActiveSessionDetail: (updates: Partial<SessionInfo>) => void
+  updateActiveSessionConversation: (conversation: any[]) => void
+  clearActiveSessionDetail: () => void
+  fetchActiveSessionDetail: (sessionId: string) => Promise<void>
+
   /* Approval Actions */
   setApprovals: (approvals: Approval[]) => void
+  addApproval: (approval: Approval) => void
   updateApproval: (approvalId: string, updates: Partial<Approval>) => void
 
   /* Notification Actions */
@@ -48,6 +61,7 @@ export function createRealAppStore(): StoreApi<AppState> {
     sessions: [],
     focusedSession: null,
     activeSessionId: null,
+    activeSessionDetail: null,
     approvals: [],
     isLoading: false,
     notifiedItems: new Set<string>(),
@@ -63,6 +77,32 @@ export function createRealAppStore(): StoreApi<AppState> {
           state.focusedSession?.id === sessionId
             ? { ...state.focusedSession, ...updates }
             : state.focusedSession,
+        // Also update activeSessionDetail if it matches
+        activeSessionDetail:
+          state.activeSessionDetail?.session.id === sessionId
+            ? {
+                ...state.activeSessionDetail,
+                session: { ...state.activeSessionDetail.session, ...updates }
+              }
+            : state.activeSessionDetail,
+      })),
+    updateSessionStatus: (sessionId: string, status: string) =>
+      set(state => ({
+        sessions: state.sessions.map(session =>
+          session.id === sessionId ? { ...session, status } : session,
+        ),
+        focusedSession:
+          state.focusedSession?.id === sessionId
+            ? { ...state.focusedSession, status }
+            : state.focusedSession,
+        // Also update activeSessionDetail if it matches
+        activeSessionDetail:
+          state.activeSessionDetail?.session.id === sessionId
+            ? {
+                ...state.activeSessionDetail,
+                session: { ...state.activeSessionDetail.session, status }
+              }
+            : state.activeSessionDetail,
       })),
     refreshSessions: async () => {
       try {
@@ -112,8 +152,58 @@ export function createRealAppStore(): StoreApi<AppState> {
       }
     },
 
+    // Active Session Detail Actions
+    setActiveSessionDetail: (sessionId: string, session: SessionInfo, conversation: any[]) =>
+      set({ 
+        activeSessionDetail: { session, conversation },
+        activeSessionId: sessionId 
+      }),
+    updateActiveSessionDetail: (updates: Partial<SessionInfo>) =>
+      set(state => ({
+        activeSessionDetail: state.activeSessionDetail
+          ? {
+              ...state.activeSessionDetail,
+              session: { ...state.activeSessionDetail.session, ...updates }
+            }
+          : null,
+      })),
+    updateActiveSessionConversation: (conversation: any[]) =>
+      set(state => ({
+        activeSessionDetail: state.activeSessionDetail
+          ? {
+              ...state.activeSessionDetail,
+              conversation
+            }
+          : null,
+      })),
+    clearActiveSessionDetail: () =>
+      set({ activeSessionDetail: null, activeSessionId: null }),
+    fetchActiveSessionDetail: async (sessionId: string) => {
+      try {
+        const [sessionResponse, messagesResponse] = await Promise.all([
+          daemonClient.getSessionState(sessionId),
+          daemonClient.getSessionMessages(sessionId)
+        ])
+        
+        set({ 
+          activeSessionDetail: { 
+            session: sessionResponse.session, 
+            conversation: messagesResponse 
+          },
+          activeSessionId: sessionId
+        })
+      } catch (error) {
+        console.error('Failed to fetch session detail:', error)
+        throw error
+      }
+    },
+
     // Approval Actions
     setApprovals: (approvals: Approval[]) => set({ approvals }),
+    addApproval: (approval: Approval) =>
+      set(state => ({
+        approvals: [...state.approvals, approval],
+      })),
     updateApproval: (approvalId: string, updates: Partial<Approval>) =>
       set(state => ({
         approvals: state.approvals.map(approval =>
@@ -160,6 +250,7 @@ export function createDemoAppStore(): StoreApi<AppState> {
     sessions: [],
     focusedSession: null,
     activeSessionId: null,
+    activeSessionDetail: null,
     approvals: [],
     isLoading: false,
     notifiedItems: new Set<string>(),
@@ -167,14 +258,23 @@ export function createDemoAppStore(): StoreApi<AppState> {
     // No-op actions
     initSessions: () => {},
     updateSession: () => {},
+    updateSessionStatus: () => {},
     refreshSessions: async () => {},
     setFocusedSession: () => {},
     focusNextSession: () => {},
     focusPreviousSession: () => {},
     interruptSession: async () => {},
 
+    // No-op active session detail actions
+    setActiveSessionDetail: () => {},
+    updateActiveSessionDetail: () => {},
+    updateActiveSessionConversation: () => {},
+    clearActiveSessionDetail: () => {},
+    fetchActiveSessionDetail: async () => {},
+
     // No-op approval actions
     setApprovals: () => {},
+    addApproval: () => {},
     updateApproval: () => {},
 
     // No-op notification actions

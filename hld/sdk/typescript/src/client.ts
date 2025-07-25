@@ -113,8 +113,8 @@ export class HLDClient {
     }
 
     // Get session messages
-    async getSessionMessages(id: string): Promise<any[]> {
-        const response = await this.sessionsApi.getSessionMessages({ id });
+    async getSessionMessages(id: string, initOverrides?: RequestInit): Promise<any[]> {
+        const response = await this.sessionsApi.getSessionMessages({ id }, initOverrides);
         return response.data;
     }
 

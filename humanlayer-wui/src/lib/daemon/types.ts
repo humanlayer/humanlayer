@@ -165,10 +165,13 @@ export interface DaemonClient {
   updateSessionTitle(sessionId: string, title: string): Promise<{ success: boolean }>
 
   // Conversation methods (returning legacy types)
-  getConversation(params: {
-    session_id?: string
-    claude_session_id?: string
-  }): Promise<LegacyConversationEvent[]>
+  getConversation(
+    params: {
+      session_id?: string
+      claude_session_id?: string
+    },
+    options?: RequestInit,
+  ): Promise<LegacyConversationEvent[]>
   getSessionSnapshots(sessionId: string): Promise<SessionSnapshot[]>
 
   // Approval methods (returning legacy types)

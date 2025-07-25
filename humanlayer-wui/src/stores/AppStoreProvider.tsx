@@ -30,24 +30,76 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
 
   // Set up subscriptions for real-time updates
   useSessionSubscriptions(connected, {
-    onSessionStatusChanged: data => {
+    onSessionStatusChanged: async (data, timestamp) => {
       // Handle session status changes
       const { session_id, new_status } = data
-      store.getState().updateSession(session_id, { status: new_status as SessionStatus })
+      const state = store.getState()
+      
+      // Update session in the list
+      state.updateSessionStatus(session_id, new_status as SessionStatus)
+      
+      // If this is the active session detail, refresh its data
+      if (state.activeSessionDetail?.session.id === session_id) {
+        try {
+          // Fetch fresh conversation data when status changes
+          const messagesResponse = await daemonClient.getSessionMessages(session_id)
+          state.updateActiveSessionConversation(messagesResponse)
+        } catch (error) {
+          console.error('Failed to refresh active session conversation:', error)
+        }
+      }
     },
-    onNewApproval: data => {
-      // Handle new approvals - for now just log since we need to fetch full approval data
+    onNewApproval: async data => {
+      const state = store.getState()
+      
+      // Handle new approvals
       console.log('New approval event:', data)
-      // TODO: Fetch full approval data from daemon using data.approval_id
+      
+      // Add the approval to the store
+      if (data.approval_id && data.session_id) {
+        // For now, create a minimal approval object
+        // TODO: Fetch full approval data from daemon
+        const approval = {
+          id: data.approval_id,
+          session_id: data.session_id,
+          tool_name: data.tool_name || 'Unknown Tool',
+          status: 'pending' as const,
+          created_at: new Date().toISOString(),
+        }
+        state.addApproval(approval as any)
+      }
+      
+      // If this approval is for the active session detail, refresh conversation
+      if (state.activeSessionDetail?.session.id === data.session_id) {
+        try {
+          const messagesResponse = await daemonClient.getSessionMessages(data.session_id)
+          state.updateActiveSessionConversation(messagesResponse)
+        } catch (error) {
+          console.error('Failed to refresh active session conversation:', error)
+        }
+      }
     },
-    onApprovalResolved: data => {
+    onApprovalResolved: async data => {
+      const state = store.getState()
+      
       // Handle resolved approvals
       const { approval_id, decision } = data
-      const approvals = store.getState().approvals.filter(a => {
+      const approvals = state.approvals.filter(a => {
         return a.id !== approval_id
       })
-      store.getState().setApprovals(approvals)
+      state.setApprovals(approvals)
       toast.success(`Approval ${decision === 'approve' ? 'approved' : 'rejected'}`)
+      
+      // If this approval was in the active session, refresh conversation
+      const resolvedApproval = state.approvals.find(a => a.id === approval_id)
+      if (resolvedApproval && state.activeSessionDetail?.session.id === resolvedApproval.session_id) {
+        try {
+          const messagesResponse = await daemonClient.getSessionMessages(resolvedApproval.session_id)
+          state.updateActiveSessionConversation(messagesResponse)
+        } catch (error) {
+          console.error('Failed to refresh active session conversation:', error)
+        }
+      }
     },
   })
 
