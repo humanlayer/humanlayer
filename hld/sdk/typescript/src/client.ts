@@ -5,7 +5,9 @@ import {
     SystemApi,
     CreateSessionRequest,
     Session,
-    Approval
+    Approval,
+    CreateSessionResponse,
+    CreateSessionResponseData
 } from './generated';
 
 export interface HLDClientOptions {
@@ -48,7 +50,7 @@ export class HLDClient {
     }
 
     // Session Management
-    async createSession(request: CreateSessionRequest): Promise<{ sessionId: string; runId: string }> {
+    async createSession(request: CreateSessionRequest): Promise<CreateSessionResponseData> {
         const response = await this.sessionsApi.createSession({ createSessionRequest: request });
         return response.data;
     }

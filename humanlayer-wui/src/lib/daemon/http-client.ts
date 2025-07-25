@@ -1,4 +1,4 @@
-import { HLDClient } from '@humanlayer/hld-sdk'
+import { CreateSessionResponseData, HLDClient } from '@humanlayer/hld-sdk'
 import { getDaemonUrl, getDefaultHeaders } from './http-config'
 import type {
   DaemonClient as IDaemonClient,
@@ -102,7 +102,7 @@ export class HTTPDaemonClient implements IDaemonClient {
 
   // Session Management Methods
 
-  async launchSession(params: LaunchSessionParams | LaunchSessionRequest): Promise<LegacySession> {
+  async launchSession(params: LaunchSessionParams | LaunchSessionRequest): Promise<CreateSessionResponseData> {
     await this.ensureConnected()
     
     // Map model names to SDK enum values
@@ -126,7 +126,8 @@ export class HTTPDaemonClient implements IDaemonClient {
       ...(params as any).template && { template: (params as any).template },
       ...(params as any).instructions && { instructions: (params as any).instructions },
     })
-    return this.transformSession(response)
+    return response
+    // return this.transformSession(response)
   }
 
   async listSessions(): Promise<LegacySession[]> {
@@ -391,7 +392,7 @@ export class HTTPDaemonClient implements IDaemonClient {
   private transformSession(apiSession: any): LegacySession {
     // Transform SDK response (camelCase) to legacy format (snake_case)
     return {
-      id: apiSession.id,
+      id: apiSession.id || apiSession.session_id,
       run_id: apiSession.runId || apiSession.run_id,
       query: apiSession.query,
       status: apiSession.status,
