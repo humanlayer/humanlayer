@@ -47,8 +47,10 @@ export function useSessionNavigation({
     if (!hasSubTasks) {
       // Simple case: just regular events
       events
-        .filter(event => event.event_type !== ConversationEventType.ToolResult)
-        .forEach(event => items.push({ id: event.id, type: 'event' }))
+        .filter(
+          event => event.event_type !== ConversationEventType.ToolResult && event.id !== undefined,
+        )
+        .forEach(event => items.push({ id: event.id!, type: 'event' }))
     } else {
       // Complex case: handle task groups
       const rootEvents = events.filter(e => !e.parent_tool_use_id)
@@ -63,26 +65,28 @@ export function useSessionNavigation({
       })
 
       rootEvents
-        .filter(event => event.event_type !== ConversationEventType.ToolResult)
+        .filter(
+          event => event.event_type !== ConversationEventType.ToolResult && event.id !== undefined,
+        )
         .forEach(event => {
           // Check if this is a task group
           const isTaskGroup =
             event.tool_name === 'Task' && event.tool_id && subEventsByParent.has(event.tool_id)
 
           if (isTaskGroup) {
-            items.push({ id: event.id, type: 'taskgroup' })
+            items.push({ id: event.id!, type: 'taskgroup' })
 
             // If expanded, add sub-events
             if (expandedTasks.has(event.tool_id!)) {
               const subEvents = subEventsByParent.get(event.tool_id!) || []
               subEvents
-                .filter(e => e.event_type !== ConversationEventType.ToolResult)
+                .filter(e => e.event_type !== ConversationEventType.ToolResult && e.id !== undefined)
                 .forEach(subEvent => {
-                  items.push({ id: subEvent.id, type: 'subevent' })
+                  items.push({ id: subEvent.id!, type: 'subevent' })
                 })
             }
           } else {
-            items.push({ id: event.id, type: 'event' })
+            items.push({ id: event.id!, type: 'event' })
           }
         })
     }

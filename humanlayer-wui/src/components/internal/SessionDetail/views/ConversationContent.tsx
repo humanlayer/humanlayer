@@ -228,8 +228,10 @@ export function ConversationContent({
                 data-event-id={displayObject.id}
                 onMouseEnter={() => {
                   if (shouldIgnoreMouseEvent?.()) return
-                  setFocusedEventId(displayObject.id)
-                  setFocusSource?.('mouse')
+                  if (displayObject.id !== undefined) {
+                    setFocusedEventId(displayObject.id)
+                    setFocusSource?.('mouse')
+                  }
                 }}
                 onMouseLeave={() => {
                   if (shouldIgnoreMouseEvent?.()) return
@@ -391,8 +393,10 @@ export function ConversationContent({
                     data-event-id={displayObject.id}
                     onMouseEnter={() => {
                       if (shouldIgnoreMouseEvent?.()) return
-                      setFocusedEventId(displayObject.id)
-                      setFocusSource?.('mouse')
+                      if (displayObject.id !== undefined) {
+                        setFocusedEventId(displayObject.id)
+                        setFocusSource?.('mouse')
+                      }
                     }}
                     onMouseLeave={() => {
                       if (shouldIgnoreMouseEvent?.()) return

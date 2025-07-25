@@ -242,7 +242,7 @@ export class HTTPDaemonClient implements IDaemonClient {
 
   // remove ignore once we've implemented this again
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async updateSessionTitle(sessionId: string, title: string): Promise<{ success: boolean }> {
+  async updateSessionTitle(sessionId: string, _title: string): Promise<{ success: boolean }> {
     await this.ensureConnected()
     // TODO: Add updateSessionTitle to the SDK
     // Temporary workaround: use updateSession with custom metadata
@@ -386,7 +386,7 @@ export class HTTPDaemonClient implements IDaemonClient {
 
   // Utility Methods
 
-  async getRecentPaths(limit?: number): Promise<string[]> {
+  async getRecentPaths(_limit?: number): Promise<string[]> {
     await this.ensureConnected()
     // SDK client doesn't support limit parameter yet
     const response = await this.client!.getRecentPaths()
