@@ -1,17 +1,11 @@
-// Import types from the SDK instead of redefining them
-import type {
-  Session as SDKSession,
-  Approval as SDKApproval,
-  Event,
-  CreateSessionRequest,
-  ConversationEvent as SDKConversationEvent,
-  FileSnapshot,
-  HealthResponse,
-} from '@humanlayer/hld-sdk'
-
-// Import types and values from the SDK (now ESM)
 import { SessionStatus, ApprovalStatus } from '@humanlayer/hld-sdk'
-import type { Event, EventType } from '@humanlayer/hld-sdk'
+import type {
+  CreateSessionRequest,
+  CreateSessionResponseData,
+  HealthResponse,
+  Event,
+  EventType,
+} from '@humanlayer/hld-sdk'
 
 // Re-export SDK types and values
 export { SessionStatus, ApprovalStatus }
@@ -140,7 +134,7 @@ export interface DaemonClient {
   health(): Promise<HealthCheckResponse>
 
   // Session methods (returning legacy types)
-  launchSession(params: LaunchSessionParams | LaunchSessionRequest): Promise<LegacySession>
+  launchSession(params: LaunchSessionParams | LaunchSessionRequest): Promise<CreateSessionResponseData>
   listSessions(): Promise<LegacySession[]>
   getSessionLeaves(request?: {
     include_archived?: boolean

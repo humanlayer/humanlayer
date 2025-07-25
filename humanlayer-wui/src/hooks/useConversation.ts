@@ -28,7 +28,7 @@ export function useConversation(
 
   // Get events from store if this is the active session
   const events = (
-    activeSessionDetail?.session.id === sessionId ? activeSessionDetail.conversation : []
+    activeSessionDetail?.session.id === sessionId ? activeSessionDetail?.conversation : []
   ) as ConversationEvent[]
 
   const fetchConversation = useCallback(async () => {
@@ -134,43 +134,45 @@ export function useFormattedConversation(
 ): UseConversationReturn & { formattedEvents: FormattedMessage[] } {
   const base = useConversation(sessionId, claudeSessionId)
 
-  const formattedEvents: FormattedMessage[] = base.events.map(event => {
-    let content = event.content || ''
-    let type: FormattedMessage['type'] = 'message'
+  const formattedEvents: FormattedMessage[] = base.events
+    .filter(event => event.id !== undefined)
+    .map(event => {
+      let content = event.content || ''
+      let type: FormattedMessage['type'] = 'message'
 
-    if (event.event_type === 'tool_call') {
-      type = 'tool_call'
-      content = `Calling ${event.tool_name || 'tool'}`
-      if (event.tool_input_json) {
-        try {
-          const input = JSON.parse(event.tool_input_json)
-          content += `: ${JSON.stringify(input, null, 2)}`
-        } catch {
-          content += `: ${event.tool_input_json}`
+      if (event.event_type === 'tool_call') {
+        type = 'tool_call'
+        content = `Calling ${event.tool_name || 'tool'}`
+        if (event.tool_input_json) {
+          try {
+            const input = JSON.parse(event.tool_input_json)
+            content += `: ${JSON.stringify(input, null, 2)}`
+          } catch {
+            content += `: ${event.tool_input_json}`
+          }
         }
+      } else if (event.event_type === 'tool_result') {
+        type = 'tool_result'
+        content = event.tool_result_content || 'Tool completed'
+      } else if (event.approval_status) {
+        type = 'approval'
+        content = `Approval ${event.approval_status}`
       }
-    } else if (event.event_type === 'tool_result') {
-      type = 'tool_result'
-      content = event.tool_result_content || 'Tool completed'
-    } else if (event.approval_status) {
-      type = 'approval'
-      content = `Approval ${event.approval_status}`
-    }
 
-    return {
-      id: event.id,
-      type,
-      role: event.role,
-      content,
-      timestamp: new Date(event.created_at),
-      metadata: {
-        toolName: event.tool_name,
-        toolId: event.tool_id,
-        approvalStatus: event.approval_status || undefined,
-        approvalId: event.approval_id,
-      },
-    }
-  })
+      return {
+        id: event.id!,
+        type,
+        role: event.role,
+        content,
+        timestamp: new Date(event.created_at || new Date()),
+        metadata: {
+          toolName: event.tool_name,
+          toolId: event.tool_id,
+          approvalStatus: event.approval_status || undefined,
+          approvalId: event.approval_id,
+        },
+      }
+    })
 
   return {
     ...base,

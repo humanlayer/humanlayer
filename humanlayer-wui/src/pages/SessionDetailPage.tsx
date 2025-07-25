@@ -57,10 +57,15 @@ export function SessionDetailPage() {
     ? activeSessionDetail.session
     : {
         id: sessionId || '',
+        run_id: '',
         query: '',
         status: 'unknown' as any,
         model: '',
         created_at: new Date().toISOString(),
+        start_time: new Date().toISOString(),
+        last_activity_at: new Date().toISOString(),
+        summary: '',
+        auto_accept_edits: false,
       }
 
   return (

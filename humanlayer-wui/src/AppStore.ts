@@ -491,7 +491,7 @@ export const useStore = create<StoreState>((set, get) => ({
   },
 
   // Active Session Detail Actions
-  setActiveSessionDetail: (sessionId: string, session: SessionInfo, conversation: any[]) =>
+  setActiveSessionDetail: (_sessionId: string, session: SessionInfo, conversation: any[]) =>
     set({ activeSessionDetail: { session, conversation, loading: false, error: null } }),
   updateActiveSessionDetail: (updates: Partial<SessionInfo>) =>
     set(state => ({
