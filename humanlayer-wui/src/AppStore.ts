@@ -15,7 +15,7 @@ interface StoreState {
     loading: boolean
     error: string | null
   } | null
-  
+
   initSessions: (sessions: SessionInfo[]) => void
   updateSession: (sessionId: string, updates: Partial<SessionInfo>) => void
   updateSessionStatus: (sessionId: string, status: string) => void
@@ -33,7 +33,7 @@ interface StoreState {
   addRangeToSelection: (anchorId: string, targetId: string) => void
   updateCurrentRange: (anchorId: string, targetId: string) => void
   bulkSelect: (sessionId: string, direction: 'asc' | 'desc') => void
-  
+
   /* Active Session Detail Actions */
   setActiveSessionDetail: (sessionId: string, session: SessionInfo, conversation: any[]) => void
   updateActiveSessionDetail: (updates: Partial<SessionInfo>) => void
@@ -79,7 +79,7 @@ export const useStore = create<StoreState>((set, get) => ({
         state.activeSessionDetail?.session.id === sessionId
           ? {
               ...state.activeSessionDetail,
-              session: { ...state.activeSessionDetail.session, ...updates }
+              session: { ...state.activeSessionDetail.session, ...updates },
             }
           : state.activeSessionDetail,
     })),
@@ -97,7 +97,7 @@ export const useStore = create<StoreState>((set, get) => ({
         state.activeSessionDetail?.session.id === sessionId
           ? {
               ...state.activeSessionDetail,
-              session: { ...state.activeSessionDetail.session, status: status as any }
+              session: { ...state.activeSessionDetail.session, status: status as any },
             }
           : state.activeSessionDetail,
     })),
@@ -498,7 +498,7 @@ export const useStore = create<StoreState>((set, get) => ({
       activeSessionDetail: state.activeSessionDetail
         ? {
             ...state.activeSessionDetail,
-            session: { ...state.activeSessionDetail.session, ...updates }
+            session: { ...state.activeSessionDetail.session, ...updates },
           }
         : null,
     })),
@@ -507,12 +507,11 @@ export const useStore = create<StoreState>((set, get) => ({
       activeSessionDetail: state.activeSessionDetail
         ? {
             ...state.activeSessionDetail,
-            conversation
+            conversation,
           }
         : null,
     })),
-  clearActiveSessionDetail: () =>
-    set({ activeSessionDetail: null }),
+  clearActiveSessionDetail: () => set({ activeSessionDetail: null }),
   fetchActiveSessionDetail: async (sessionId: string) => {
     // Set loading state
     set({
@@ -520,35 +519,35 @@ export const useStore = create<StoreState>((set, get) => ({
         session: {} as SessionInfo, // Temporary placeholder
         conversation: [],
         loading: true,
-        error: null
-      }
+        error: null,
+      },
     })
-    
+
     try {
       const [sessionResponse, conversationResponse] = await Promise.all([
         daemonClient.getSessionState(sessionId),
-        daemonClient.getConversation({ session_id: sessionId })
+        daemonClient.getConversation({ session_id: sessionId }),
       ])
-      
-      set({ 
-        activeSessionDetail: { 
-          session: sessionResponse.session, 
+
+      set({
+        activeSessionDetail: {
+          session: sessionResponse.session,
           conversation: conversationResponse,
           loading: false,
-          error: null
-        }
+          error: null,
+        },
       })
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to fetch session detail'
       console.error('Failed to fetch session detail:', error)
-      
+
       set({
         activeSessionDetail: {
           session: {} as SessionInfo,
           conversation: [],
           loading: false,
-          error: errorMessage
-        }
+          error: errorMessage,
+        },
       })
     }
   },

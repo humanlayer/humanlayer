@@ -311,7 +311,9 @@ export function ConversationContent({
                         </span>
                       </TooltipTrigger>
                       <TooltipContent>
-                        {displayObject.created_at ? formatAbsoluteTimestamp(displayObject.created_at) : 'Unknown time'}
+                        {displayObject.created_at
+                          ? formatAbsoluteTimestamp(displayObject.created_at)
+                          : 'Unknown time'}
                       </TooltipContent>
                     </Tooltip>
                   </div>
@@ -472,11 +474,15 @@ export function ConversationContent({
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <span className="text-xs text-muted-foreground/60 cursor-help">
-                              {displayObject.created_at ? formatTimestamp(displayObject.created_at) : ''}
+                              {displayObject.created_at
+                                ? formatTimestamp(displayObject.created_at)
+                                : ''}
                             </span>
                           </TooltipTrigger>
                           <TooltipContent>
-                            {displayObject.created_at ? formatAbsoluteTimestamp(displayObject.created_at) : 'Unknown time'}
+                            {displayObject.created_at
+                              ? formatAbsoluteTimestamp(displayObject.created_at)
+                              : 'Unknown time'}
                           </TooltipContent>
                         </Tooltip>
                       </div>

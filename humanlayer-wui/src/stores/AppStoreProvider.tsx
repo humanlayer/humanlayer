@@ -34,10 +34,10 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       // Handle session status changes
       const { session_id, new_status } = data
       const state = store.getState()
-      
+
       // Update session in the list
       state.updateSessionStatus(session_id, new_status as SessionStatus)
-      
+
       // If this is the active session detail, refresh its data
       if (state.activeSessionDetail?.session.id === session_id) {
         try {
@@ -51,10 +51,10 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
     },
     onNewApproval: async data => {
       const state = store.getState()
-      
+
       // Handle new approvals
       console.log('New approval event:', data)
-      
+
       // Add the approval to the store
       if (data.approval_id && data.session_id) {
         // For now, create a minimal approval object
@@ -68,7 +68,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         }
         state.addApproval(approval as any)
       }
-      
+
       // If this approval is for the active session detail, refresh conversation
       if (state.activeSessionDetail?.session.id === data.session_id) {
         try {
@@ -81,7 +81,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
     },
     onApprovalResolved: async data => {
       const state = store.getState()
-      
+
       // Handle resolved approvals
       const { approval_id, decision } = data
       const approvals = state.approvals.filter(a => {
@@ -89,7 +89,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       })
       state.setApprovals(approvals)
       toast.success(`Approval ${decision === 'approve' ? 'approved' : 'rejected'}`)
-      
+
       // If this approval was in the active session, refresh conversation
       const resolvedApproval = state.approvals.find(a => a.id === approval_id)
       if (resolvedApproval && state.activeSessionDetail?.session.id === resolvedApproval.session_id) {

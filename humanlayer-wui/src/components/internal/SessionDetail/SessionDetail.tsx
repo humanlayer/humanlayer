@@ -379,12 +379,14 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       }
 
       // Check if session is active (requires confirmation)
-      const isActiveSession = ([
-        SessionStatus.Starting,
-        SessionStatus.Running,
-        SessionStatus.Completing,
-        SessionStatus.WaitingInput,
-      ] as SessionStatus[]).includes(session.status)
+      const isActiveSession = (
+        [
+          SessionStatus.Starting,
+          SessionStatus.Running,
+          SessionStatus.Completing,
+          SessionStatus.WaitingInput,
+        ] as SessionStatus[]
+      ).includes(session.status)
 
       const isArchiving = !session.archived
 

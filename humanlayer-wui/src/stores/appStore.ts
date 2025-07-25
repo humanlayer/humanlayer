@@ -82,7 +82,7 @@ export function createRealAppStore(): StoreApi<AppState> {
           state.activeSessionDetail?.session.id === sessionId
             ? {
                 ...state.activeSessionDetail,
-                session: { ...state.activeSessionDetail.session, ...updates }
+                session: { ...state.activeSessionDetail.session, ...updates },
               }
             : state.activeSessionDetail,
       })),
@@ -100,7 +100,7 @@ export function createRealAppStore(): StoreApi<AppState> {
           state.activeSessionDetail?.session.id === sessionId
             ? {
                 ...state.activeSessionDetail,
-                session: { ...state.activeSessionDetail.session, status }
+                session: { ...state.activeSessionDetail.session, status },
               }
             : state.activeSessionDetail,
       })),
@@ -154,16 +154,16 @@ export function createRealAppStore(): StoreApi<AppState> {
 
     // Active Session Detail Actions
     setActiveSessionDetail: (sessionId: string, session: SessionInfo, conversation: any[]) =>
-      set({ 
+      set({
         activeSessionDetail: { session, conversation },
-        activeSessionId: sessionId 
+        activeSessionId: sessionId,
       }),
     updateActiveSessionDetail: (updates: Partial<SessionInfo>) =>
       set(state => ({
         activeSessionDetail: state.activeSessionDetail
           ? {
               ...state.activeSessionDetail,
-              session: { ...state.activeSessionDetail.session, ...updates }
+              session: { ...state.activeSessionDetail.session, ...updates },
             }
           : null,
       })),
@@ -172,25 +172,24 @@ export function createRealAppStore(): StoreApi<AppState> {
         activeSessionDetail: state.activeSessionDetail
           ? {
               ...state.activeSessionDetail,
-              conversation
+              conversation,
             }
           : null,
       })),
-    clearActiveSessionDetail: () =>
-      set({ activeSessionDetail: null, activeSessionId: null }),
+    clearActiveSessionDetail: () => set({ activeSessionDetail: null, activeSessionId: null }),
     fetchActiveSessionDetail: async (sessionId: string) => {
       try {
         const [sessionResponse, messagesResponse] = await Promise.all([
           daemonClient.getSessionState(sessionId),
-          daemonClient.getSessionMessages(sessionId)
+          daemonClient.getSessionMessages(sessionId),
         ])
-        
-        set({ 
-          activeSessionDetail: { 
-            session: sessionResponse.session, 
-            conversation: messagesResponse 
+
+        set({
+          activeSessionDetail: {
+            session: sessionResponse.session,
+            conversation: messagesResponse,
           },
-          activeSessionId: sessionId
+          activeSessionId: sessionId,
         })
       } catch (error) {
         console.error('Failed to fetch session detail:', error)

@@ -23,7 +23,9 @@ export function EventMetaInfo({ event }: { event: ConversationEvent }) {
         </div>
         <div>
           <span className="font-medium text-muted-foreground">Created:</span>
-          <span className="ml-2 font-mono text-xs">{event.created_at ? formatAbsoluteTimestamp(event.created_at) : 'Unknown'}</span>
+          <span className="ml-2 font-mono text-xs">
+            {event.created_at ? formatAbsoluteTimestamp(event.created_at) : 'Unknown'}
+          </span>
         </div>
         <div>
           <span className="font-medium text-muted-foreground">Completed:</span>

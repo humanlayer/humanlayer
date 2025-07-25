@@ -6,7 +6,7 @@ import { useStore } from '@/AppStore'
 export function SessionDetailPage() {
   const { sessionId } = useParams<{ sessionId: string }>()
   const navigate = useNavigate()
-  
+
   const activeSessionDetail = useStore(state => state.activeSessionDetail)
   const fetchActiveSessionDetail = useStore(state => state.fetchActiveSessionDetail)
   const clearActiveSessionDetail = useStore(state => state.clearActiveSessionDetail)
@@ -15,7 +15,7 @@ export function SessionDetailPage() {
     if (sessionId) {
       fetchActiveSessionDetail(sessionId)
     }
-    
+
     return () => {
       clearActiveSessionDetail()
     }
@@ -42,9 +42,7 @@ export function SessionDetailPage() {
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
           <h2 className="text-lg font-semibold mb-2">Session not found</h2>
-          <p className="text-muted-foreground mb-4">
-            {activeSessionDetail.error}
-          </p>
+          <p className="text-muted-foreground mb-4">{activeSessionDetail.error}</p>
           <button onClick={handleClose} className="text-primary hover:underline">
             ← Back to Sessions
           </button>
@@ -55,9 +53,15 @@ export function SessionDetailPage() {
 
   // Render SessionDetail even during loading so it can show its skeleton UI
   // Pass a minimal session object if still loading
-  const session = activeSessionDetail?.session?.id 
-    ? activeSessionDetail.session 
-    : { id: sessionId || '', query: '', status: 'unknown' as any, model: '', created_at: new Date().toISOString() }
+  const session = activeSessionDetail?.session?.id
+    ? activeSessionDetail.session
+    : {
+        id: sessionId || '',
+        query: '',
+        status: 'unknown' as any,
+        model: '',
+        created_at: new Date().toISOString(),
+      }
 
   return (
     <div className="h-full">
