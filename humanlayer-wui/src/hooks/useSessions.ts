@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { daemonClient, LaunchSessionRequest } from '@/lib/daemon'
 import { SessionSummary } from '@/types/ui'
 import { formatError } from '@/utils/errors'
+import { useStore } from '@/AppStore'
 
 interface UseSessionsReturn {
   sessions: SessionSummary[]
@@ -82,11 +83,28 @@ export function useSessions(): UseSessionsReturn {
   }
 }
 
-// Hook for a single session with details
+// Hook for a single session with details - now reads from Zustand store
 export function useSession(sessionId: string | undefined) {
-  const [session, setSession] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const activeSessionDetail = useStore(state => state.activeSessionDetail)
+  const fetchActiveSessionDetail = useStore(state => state.fetchActiveSessionDetail)
+  const clearActiveSessionDetail = useStore(state => state.clearActiveSessionDetail)
+
+  const fetchSession = useCallback(async () => {
+    if (!sessionId) return
+    await fetchActiveSessionDetail(sessionId)
+  }, [sessionId, fetchActiveSessionDetail])
+
+  useEffect(() => {
+    // Fetch session details when sessionId changes
+    if (sessionId) {
+      fetchSession()
+    }
+
+    // Clear active session detail when component unmounts
+    return () => {
+      clearActiveSessionDetail()
+    }
+  }, [sessionId])
 
   if (!sessionId) {
     return {
@@ -96,91 +114,10 @@ export function useSession(sessionId: string | undefined) {
     }
   }
 
-  const fetchSession = useCallback(async () => {
-    try {
-      setLoading(true)
-      setError(null)
-
-      const response = await daemonClient.getSessionState(sessionId)
-      setSession(response.session)
-    } catch (err) {
-      setError(formatError(err))
-    } finally {
-      setLoading(false)
-    }
-  }, [sessionId])
-
-  useEffect(() => {
-    fetchSession()
-
-    // Subscribe to session updates
-    let unlisten: (() => void) | null = null
-    let subscriptionId: string | null = null
-    let isActive = true
-    let isSubscribing = false
-
-    const subscribe = async () => {
-      // Prevent multiple simultaneous subscriptions
-      if (isSubscribing || !isActive) return
-      isSubscribing = true
-
-      try {
-        console.log('useSession: Subscribing to events for session:', sessionId)
-        const subscription = daemonClient.subscribeToEvents({
-          event_types: ['session_status_changed', 'new_approval'],
-          session_id: sessionId,
-          onEvent: event => {
-            console.log('useSession.onEvent() - received event:', event)
-
-            if (!isActive) return
-
-            console.log('useSession.onEvent() - event.type:', event.type)
-
-            if (
-              event.type === 'session_status_changed' ||
-              event.type === 'new_approval'
-            ) {
-              // Refresh session details when status changes or new approvals arrive
-              fetchSession()
-            }
-          }
-        })
-
-        // Only set these if we're still active (component hasn't unmounted)
-        if (isActive) {
-          unlisten = subscription.unsubscribe
-          console.log('useSession: Subscription created', { sessionId })
-        } else {
-          // Component unmounted while subscribing, clean up immediately
-          subscription.unsubscribe()
-        }
-      } catch (err) {
-        console.error('Failed to subscribe to session events:', err)
-      } finally {
-        isSubscribing = false
-      }
-    }
-
-    subscribe()
-
-    return () => {
-      isActive = false
-      console.log('useSession: Cleanup - unsubscribing from events', { sessionId, subscriptionId })
-
-      // First stop listening to events
-      unlisten?.()
-
-      // Then unsubscribe from the backend to close the connection
-      if (subscriptionId) {
-        // unsubscribe is handled by the unlisten function
-      }
-    }
-  }, [fetchSession, sessionId])
-
   return {
-    session,
-    loading,
-    error,
+    session: activeSessionDetail?.session || null,
+    loading: activeSessionDetail?.loading || false,
+    error: activeSessionDetail?.error || null,
     refresh: fetchSession,
   }
 }

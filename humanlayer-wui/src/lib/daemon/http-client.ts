@@ -254,15 +254,18 @@ export class HTTPDaemonClient implements IDaemonClient {
 
   // Conversation & Content Methods
 
-  async getConversation(params: {
-    session_id?: string
-    claude_session_id?: string
-  }): Promise<LegacyConversationEvent[]> {
+  async getConversation(
+    params: {
+      session_id?: string
+      claude_session_id?: string
+    },
+    options?: RequestInit,
+  ): Promise<LegacyConversationEvent[]> {
     await this.ensureConnected()
     if (!params.session_id) {
       throw new Error('session_id is required')
     }
-    const messages = await this.client!.getSessionMessages(params.session_id)
+    const messages = await this.client!.getSessionMessages(params.session_id, options)
     return messages.map(m => this.transformMessage(m))
   }
 
