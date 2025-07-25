@@ -1,0 +1,14 @@
+{
+  "name": "@humanlayer/hld-tests",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test:e2e": "bun test-rest-api.ts",
+    "test:e2e:verbose": "VERBOSE=true bun test-rest-api.ts --verbose",
+    "test:e2e:manual": "bun test-rest-api.ts --pause-on-approval"
+  },
+  "dependencies": {
+    "@types/node": "^20.0.0",
+    "bun": "latest"
+  }
+}

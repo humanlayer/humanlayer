@@ -2,7 +2,11 @@
 
 # Build the daemon binary
 build:
-	go build -o hld ./cmd/hld
+	@if [ -n "$$VERBOSE" ]; then \
+		go build -o hld ./cmd/hld; \
+	else \
+		. ../hack/run_silent.sh && run_silent "Building hld daemon..." "go build -o hld ./cmd/hld"; \
+	fi
 
 # Run all tests
 test:
@@ -57,6 +61,44 @@ status:
 	else \
 		echo "Daemon is not running"; \
 	fi
+
+# E2E test targets
+.PHONY: e2e-test e2e-test-verbose e2e-test-manual
+
+# Run REST API e2e tests
+e2e-test: build
+	@if [ -n "$$VERBOSE" ]; then \
+		$(MAKE) -C ../hlyr build && \
+		cd sdk/typescript && bun install && bun run build && \
+		cd ../e2e && bun install && bun run test:e2e:verbose; \
+	else \
+		$(MAKE) e2e-test-quiet; \
+	fi
+
+# Run e2e tests with quiet output
+e2e-test-quiet:
+	@. ../hack/run_silent.sh && run_silent "Building hlyr MCP server..." "$(MAKE) -s -C ../hlyr build"
+	@. ../hack/run_silent.sh && run_silent "Building TypeScript SDK..." "cd sdk/typescript && bun install --silent && bun run build"
+	@. ../hack/run_silent.sh && run_silent "Installing test dependencies..." "cd e2e && bun install --silent"
+	@cd e2e && bun run test:e2e
+
+# Run with verbose output
+e2e-test-verbose: build
+	@$(MAKE) -C ../hlyr build
+	@cd sdk/typescript && bun install && bun run build
+	@cd e2e && bun install && bun run test:e2e:verbose
+
+# Run with manual approval mode
+e2e-test-manual: build
+	@. ../hack/run_silent.sh && run_silent "Building hlyr MCP server..." "$(MAKE) -s -C ../hlyr build"
+	@. ../hack/run_silent.sh && run_silent "Building TypeScript SDK..." "cd sdk/typescript && bun install --silent && bun run build"
+	@. ../hack/run_silent.sh && run_silent "Installing test dependencies..." "cd e2e && bun install --silent"
+	@cd e2e && bun run test:e2e:manual
+
+# Run specific test phase
+e2e-test-phase: build
+	@cd sdk/typescript && bun install && bun run build
+	@cd e2e && bun install && bun run test-rest-api.ts --phase=$(PHASE)
 
 # Generate mocks
 mocks:
