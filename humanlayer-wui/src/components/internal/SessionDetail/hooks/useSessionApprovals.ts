@@ -74,10 +74,10 @@ export function useSessionApprovals({
     () => {
       // Find any pending approval event
       const pendingApprovalEvent = events.find(
-        e => e.approval_status === ApprovalStatus.Pending && e.approval_id,
+        e => e.approval_status === ApprovalStatus.Pending && e.approval_id && e.id !== undefined,
       )
 
-      if (!pendingApprovalEvent) return
+      if (!pendingApprovalEvent || pendingApprovalEvent.id === undefined) return
 
       // If no event is focused, or a different event is focused, focus this pending approval
       if (!focusedEventId || focusedEventId !== pendingApprovalEvent.id) {
@@ -121,10 +121,10 @@ export function useSessionApprovals({
     e => {
       // Find any pending approval event
       const pendingApprovalEvent = events.find(
-        e => e.approval_status === ApprovalStatus.Pending && e.approval_id,
+        e => e.approval_status === ApprovalStatus.Pending && e.approval_id && e.id !== undefined,
       )
 
-      if (!pendingApprovalEvent) return
+      if (!pendingApprovalEvent || pendingApprovalEvent.id === undefined) return
 
       // Prevent the 'd' from being typed in any input that might get focused
       e.preventDefault()
@@ -150,7 +150,7 @@ export function useSessionApprovals({
       const container = document.querySelector('[data-conversation-container]')
       // Find the event that contains this approval
       const event = events.find(e => e.approval_id === denyingApprovalId)
-      if (container && event && !event.approval_status) {
+      if (container && event && !event.approval_status && event.id !== undefined) {
         const eventElement = container.querySelector(`[data-event-id="${event.id}"]`)
         if (eventElement && !isElementInView(event.id)) {
           // Scroll the deny form into view

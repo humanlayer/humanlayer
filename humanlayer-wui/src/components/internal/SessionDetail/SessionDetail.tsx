@@ -460,8 +460,11 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         container.scrollTop = container.scrollHeight
         // Focus the last event
         if (events.length > 0) {
-          navigation.setFocusedEventId(events[events.length - 1].id)
-          navigation.setFocusSource('keyboard')
+          const lastEvent = events[events.length - 1]
+          if (lastEvent.id !== undefined) {
+            navigation.setFocusedEventId(lastEvent.id)
+            navigation.setFocusSource('keyboard')
+          }
         }
       }
     },
@@ -480,8 +483,11 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         container.scrollTop = 0
         // Focus the first event
         if (events.length > 0) {
-          navigation.setFocusedEventId(events[0].id)
-          navigation.setFocusSource('keyboard')
+          const firstEvent = events[0]
+          if (firstEvent.id !== undefined) {
+            navigation.setFocusedEventId(firstEvent.id)
+            navigation.setFocusSource('keyboard')
+          }
         }
       }
     },

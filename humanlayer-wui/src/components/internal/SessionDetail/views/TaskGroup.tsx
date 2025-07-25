@@ -67,8 +67,10 @@ export function TaskGroup({
         onClick={onToggle}
         onMouseEnter={() => {
           if (shouldIgnoreMouseEvent?.()) return
-          setFocusedEventId(parentTask.id)
-          setFocusSource?.('mouse')
+          if (parentTask.id !== undefined) {
+            setFocusedEventId(parentTask.id)
+            setFocusSource?.('mouse')
+          }
         }}
         onMouseLeave={() => {
           if (shouldIgnoreMouseEvent?.()) return
@@ -189,8 +191,10 @@ export function TaskGroup({
                   data-event-id={displayObject.id}
                   onMouseEnter={() => {
                     if (shouldIgnoreMouseEvent?.()) return
-                    setFocusedEventId(displayObject.id)
-                    setFocusSource?.('mouse')
+                    if (displayObject.id !== undefined) {
+                      setFocusedEventId(displayObject.id)
+                      setFocusSource?.('mouse')
+                    }
                   }}
                   onMouseLeave={() => {
                     if (shouldIgnoreMouseEvent?.()) return
