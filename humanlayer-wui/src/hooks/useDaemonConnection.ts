@@ -54,6 +54,7 @@ export function useDaemonConnection(): UseDaemonConnectionReturn {
     if (!connected) return
 
     const interval = setInterval(checkHealth, 30000) // Every 30 seconds
+    
     return () => clearInterval(interval)
   }, [connected, checkHealth])
 
