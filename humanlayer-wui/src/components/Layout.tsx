@@ -8,6 +8,7 @@ import { SessionLauncher } from '@/components/SessionLauncher'
 import { HotkeyPanel } from '@/components/HotkeyPanel'
 import { Breadcrumbs } from '@/components/Breadcrumbs'
 import { useSessionLauncher, useSessionLauncherHotkeys } from '@/hooks/useSessionLauncher'
+import { useDaemonConnection } from '@/hooks/useDaemonConnection'
 import { useStore } from '@/AppStore'
 import { useSessionEventsWithNotifications } from '@/hooks/useSessionEventsWithNotifications'
 import { Toaster } from 'sonner'
@@ -16,11 +17,12 @@ import { useTheme } from '@/contexts/ThemeContext'
 import '@/App.css'
 
 export function Layout() {
-  const [status, setStatus] = useState('')
   const [approvals, setApprovals] = useState<any[]>([])
   const [activeSessionId] = useState<string | null>(null)
-  const [connected, setConnected] = useState(false)
   const { setTheme } = useTheme()
+  
+  // Use the daemon connection hook for all connection management
+  const { connected, connecting, error, version, connect } = useDaemonConnection()
 
   // Hotkey panel state from store
   const { isHotkeyPanelOpen, setHotkeyPanelOpen } = useStore()
@@ -49,12 +51,7 @@ export function Layout() {
     },
   )
 
-  // Connect to daemon on mount
-  useEffect(() => {
-    connectToDaemon()
-  }, [])
-
-  // Load sessions initially when connected
+  // Load sessions when connected
   useEffect(() => {
     if (connected) {
       loadSessions()
@@ -91,24 +88,6 @@ export function Layout() {
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [handleKeyDown])
 
-  const connectToDaemon = async () => {
-    try {
-      setStatus('Connecting to daemon...')
-      await daemonClient.connect()
-      setStatus('Connected!')
-      setConnected(true)
-
-      // Check health
-      const health = await daemonClient.health()
-      setStatus(`Connected! Daemon @ ${health.version}`)
-
-      // Load sessions
-      await loadSessions()
-    } catch (error) {
-      setStatus(`Failed to connect: ${error}`)
-      setConnected(false)
-    }
-  }
 
   const loadSessions = async () => {
     try {
@@ -206,8 +185,8 @@ export function Layout() {
           <div className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
             humanlayer
           </div>
-          {!connected && (
-            <Button onClick={connectToDaemon} variant="ghost" size="sm">
+          {!connected && !connecting && (
+            <Button onClick={connect} variant="ghost" size="sm">
               Retry Connection
             </Button>
           )}
@@ -215,7 +194,11 @@ export function Layout() {
         <div className="flex items-center gap-3">
           <ThemeSelector />
           <div className="flex items-center gap-2 font-mono text-xs">
-            <span className="uppercase tracking-wider">{status}</span>
+            <span className="uppercase tracking-wider">
+              {connecting && 'CONNECTING...'}
+              {connected && version && `CONNECTED @ ${version}`}
+              {!connecting && !connected && 'DISCONNECTED'}
+            </span>
             <span
               className={`w-1.5 h-1.5 rounded-full ${
                 connected ? 'bg-[--terminal-success]' : 'bg-[--terminal-error]'
