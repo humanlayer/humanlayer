@@ -70,7 +70,7 @@ export function useSessionSubscriptions(
                 console.log('Session status changed:', data)
 
                 // Call handler if provided
-                handlersRef.current.onSessionStatusChanged?.(data, event.timestamp)
+                handlersRef.current.onSessionStatusChanged?.(data, event.timestamp.toISOString())
                 break
               }
               case 'new_approval': {

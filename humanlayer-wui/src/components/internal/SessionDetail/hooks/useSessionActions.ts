@@ -34,7 +34,7 @@ export function useSessionActions({
     if (pendingForkMessage) {
       setResponseInput(pendingForkMessage.content || '')
       // Set the session ID to fork from (the one before this message)
-      setForkFromSessionId(pendingForkMessage.session_id)
+      setForkFromSessionId(pendingForkMessage.session_id || null)
     }
   }, [pendingForkMessage])
 

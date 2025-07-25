@@ -47,7 +47,7 @@ export class HTTPDaemonClient implements IDaemonClient {
         this.connected = true
         this.connectionPromise = undefined
         return
-      } catch (error) {
+      } catch {
         this.retryCount++
         if (this.retryCount >= this.maxRetries) {
           this.connectionPromise = undefined
@@ -95,7 +95,7 @@ export class HTTPDaemonClient implements IDaemonClient {
     await this.ensureConnected()
     const response = await this.client!.health()
     return {
-      status: response.status,
+      status: response.status as 'ok',
       version: response.version || 'unknown',
     }
   }
@@ -119,11 +119,15 @@ export class HTTPDaemonClient implements IDaemonClient {
 
     const response = await this.client!.createSession({
       query: params.query,
-      workingDir: params.workingDir || (params as any).working_dir,
+      workingDir:
+        'workingDir' in params ? params.workingDir : (params as LaunchSessionRequest).working_dir,
       model: model,
-      mcpConfig: params.mcpConfig || (params as any).mcp_config,
-      permissionPromptTool: params.permissionPromptTool || (params as any).permission_prompt_tool,
-      autoAcceptEdits: params.autoAcceptEdits || (params as any).auto_accept_edits,
+      mcpConfig: 'mcpConfig' in params ? params.mcpConfig : (params as LaunchSessionRequest).mcp_config,
+      permissionPromptTool:
+        'permissionPromptTool' in params
+          ? params.permissionPromptTool
+          : (params as LaunchSessionRequest).permission_prompt_tool,
+      autoAcceptEdits: 'autoAcceptEdits' in params ? params.autoAcceptEdits : undefined,
       // Additional fields that might be in legacy format
       ...((params as any).template && { template: (params as any).template }),
       ...((params as any).instructions && { instructions: (params as any).instructions }),
@@ -236,6 +240,8 @@ export class HTTPDaemonClient implements IDaemonClient {
     }
   }
 
+  // remove ignore once we've implemented this again
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async updateSessionTitle(sessionId: string, title: string): Promise<{ success: boolean }> {
     await this.ensureConnected()
     // TODO: Add updateSessionTitle to the SDK
@@ -382,7 +388,8 @@ export class HTTPDaemonClient implements IDaemonClient {
 
   async getRecentPaths(limit?: number): Promise<string[]> {
     await this.ensureConnected()
-    const response = await this.client!.getRecentPaths(limit)
+    // SDK client doesn't support limit parameter yet
+    const response = await this.client!.getRecentPaths()
     return response
   }
 

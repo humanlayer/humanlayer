@@ -22,7 +22,7 @@ export function Layout() {
   const { setTheme } = useTheme()
 
   // Use the daemon connection hook for all connection management
-  const { connected, connecting, error, version, connect } = useDaemonConnection()
+  const { connected, connecting, version, connect } = useDaemonConnection()
 
   // Hotkey panel state from store
   const { isHotkeyPanelOpen, setHotkeyPanelOpen } = useStore()
@@ -43,7 +43,7 @@ export function Layout() {
 
   // Set up single SSE subscription for all events
   useSessionSubscriptions(connected, {
-    onSessionStatusChanged: async (data, timestamp) => {
+    onSessionStatusChanged: async data => {
       const { session_id, new_status } = data
 
       // Update session in the list

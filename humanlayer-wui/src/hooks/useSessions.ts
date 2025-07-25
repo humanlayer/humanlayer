@@ -76,8 +76,8 @@ export function useSessions(): UseSessionsReturn {
     launchSession: async (request: LaunchSessionRequest) => {
       const response = await launchSession(request)
       return {
-        sessionId: response.id,
-        runId: response.run_id,
+        sessionId: response.sessionId,
+        runId: response.runId,
       }
     },
   }

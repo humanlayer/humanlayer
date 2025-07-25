@@ -1,4 +1,5 @@
 import type { SessionInfo, Approval } from '@/lib/daemon/types'
+import { SessionStatus } from '@/lib/daemon/types'
 import { create, StoreApi } from 'zustand'
 import { daemonClient } from '@/lib/daemon'
 
@@ -89,18 +90,18 @@ export function createRealAppStore(): StoreApi<AppState> {
     updateSessionStatus: (sessionId: string, status: string) =>
       set(state => ({
         sessions: state.sessions.map(session =>
-          session.id === sessionId ? { ...session, status } : session,
+          session.id === sessionId ? { ...session, status: status as SessionStatus } : session,
         ),
         focusedSession:
           state.focusedSession?.id === sessionId
-            ? { ...state.focusedSession, status }
+            ? { ...state.focusedSession, status: status as SessionStatus }
             : state.focusedSession,
         // Also update activeSessionDetail if it matches
         activeSessionDetail:
           state.activeSessionDetail?.session.id === sessionId
             ? {
                 ...state.activeSessionDetail,
-                session: { ...state.activeSessionDetail.session, status },
+                session: { ...state.activeSessionDetail.session, status: status as SessionStatus },
               }
             : state.activeSessionDetail,
       })),
@@ -181,7 +182,7 @@ export function createRealAppStore(): StoreApi<AppState> {
       try {
         const [sessionResponse, messagesResponse] = await Promise.all([
           daemonClient.getSessionState(sessionId),
-          daemonClient.getSessionMessages(sessionId),
+          daemonClient.getConversation({ session_id: sessionId }),
         ])
 
         set({
