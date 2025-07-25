@@ -34,7 +34,7 @@ export function useSessionActions({
     if (pendingForkMessage) {
       setResponseInput(pendingForkMessage.content || '')
       // Set the session ID to fork from (the one before this message)
-      setForkFromSessionId(pendingForkMessage.session_id)
+      setForkFromSessionId(pendingForkMessage.session_id || null)
     }
   }, [pendingForkMessage])
 
@@ -61,10 +61,7 @@ export function useSessionActions({
         setViewMode(ViewMode.Normal)
       }
 
-      const response = await daemonClient.continueSession({
-        session_id: targetSessionId,
-        query: messageToSend,
-      })
+      const response = await daemonClient.continueSession(targetSessionId, messageToSend)
 
       // Clear fork state
       setForkFromSessionId(null)
@@ -75,7 +72,7 @@ export function useSessionActions({
       }
 
       // Always navigate to the new session - the backend handles queuing
-      navigate(`/sessions/${response.session_id}`)
+      navigate(`/sessions/${response.new_session_id || session.id}`)
 
       // Refresh the session list to ensure UI reflects current state
       await refreshSessions()

@@ -67,8 +67,10 @@ export function TaskGroup({
         onClick={onToggle}
         onMouseEnter={() => {
           if (shouldIgnoreMouseEvent?.()) return
-          setFocusedEventId(parentTask.id)
-          setFocusSource?.('mouse')
+          if (parentTask.id !== undefined) {
+            setFocusedEventId(parentTask.id)
+            setFocusSource?.('mouse')
+          }
         }}
         onMouseLeave={() => {
           if (shouldIgnoreMouseEvent?.()) return
@@ -189,8 +191,10 @@ export function TaskGroup({
                   data-event-id={displayObject.id}
                   onMouseEnter={() => {
                     if (shouldIgnoreMouseEvent?.()) return
-                    setFocusedEventId(displayObject.id)
-                    setFocusSource?.('mouse')
+                    if (displayObject.id !== undefined) {
+                      setFocusedEventId(displayObject.id)
+                      setFocusSource?.('mouse')
+                    }
                   }}
                   onMouseLeave={() => {
                     if (shouldIgnoreMouseEvent?.()) return
@@ -244,11 +248,13 @@ export function TaskGroup({
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <span className="text-xs text-muted-foreground/60 cursor-help">
-                            {formatTimestamp(displayObject.created_at)}
+                            {displayObject.created_at ? formatTimestamp(displayObject.created_at) : ''}
                           </span>
                         </TooltipTrigger>
                         <TooltipContent>
-                          {formatAbsoluteTimestamp(displayObject.created_at)}
+                          {displayObject.created_at
+                            ? formatAbsoluteTimestamp(displayObject.created_at)
+                            : 'Unknown time'}
                         </TooltipContent>
                       </Tooltip>
                     </div>

@@ -146,7 +146,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
       }
 
       // Navigate to new session (will be handled by parent component)
-      window.location.hash = `#/sessions/${response.session_id}`
+      window.location.hash = `#/sessions/${response.sessionId}`
 
       // Close launcher
       get().close()

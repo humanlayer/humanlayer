@@ -350,7 +350,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       try {
         const newState = !autoAcceptEdits
         await daemonClient.updateSessionSettings(session.id, {
-          autoAcceptEdits: newState,
+          auto_accept_edits: newState,
         })
 
         // State will be updated via event subscription
@@ -379,12 +379,14 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       }
 
       // Check if session is active (requires confirmation)
-      const isActiveSession = [
-        SessionStatus.Starting,
-        SessionStatus.Running,
-        SessionStatus.Completing,
-        SessionStatus.WaitingInput,
-      ].includes(session.status)
+      const isActiveSession = (
+        [
+          SessionStatus.Starting,
+          SessionStatus.Running,
+          SessionStatus.Completing,
+          SessionStatus.WaitingInput,
+        ] as SessionStatus[]
+      ).includes(session.status)
 
       const isArchiving = !session.archived
 
@@ -458,8 +460,11 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         container.scrollTop = container.scrollHeight
         // Focus the last event
         if (events.length > 0) {
-          navigation.setFocusedEventId(events[events.length - 1].id)
-          navigation.setFocusSource('keyboard')
+          const lastEvent = events[events.length - 1]
+          if (lastEvent.id !== undefined) {
+            navigation.setFocusedEventId(lastEvent.id)
+            navigation.setFocusSource('keyboard')
+          }
         }
       }
     },
@@ -478,8 +483,11 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         container.scrollTop = 0
         // Focus the first event
         if (events.length > 0) {
-          navigation.setFocusedEventId(events[0].id)
-          navigation.setFocusSource('keyboard')
+          const firstEvent = events[0]
+          if (firstEvent.id !== undefined) {
+            navigation.setFocusedEventId(firstEvent.id)
+            navigation.setFocusSource('keyboard')
+          }
         }
       }
     },

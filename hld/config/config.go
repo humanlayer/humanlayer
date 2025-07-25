@@ -63,7 +63,7 @@ func Load() (*Config, error) {
 	v.SetDefault("database_path", "~/.humanlayer/daemon.db")
 	v.SetDefault("api_base_url", "https://api.humanlayer.dev/humanlayer/v1")
 	v.SetDefault("log_level", "info")
-	v.SetDefault("http_port", 0) // 0 means HTTP server disabled by default
+	v.SetDefault("http_port", 7777) // Changed from 0 to 7777
 	v.SetDefault("http_host", "127.0.0.1")
 
 	// Read config file (ignore if not found)

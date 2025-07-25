@@ -252,7 +252,6 @@ export function eventToDisplayObject(
       [ApprovalStatus.Pending]: 'text-[var(--terminal-warning)]',
       [ApprovalStatus.Approved]: 'text-[var(--terminal-success)]',
       [ApprovalStatus.Denied]: 'text-[var(--terminal-error)]',
-      [ApprovalStatus.Resolved]: 'text-[var(--terminal-success)]',
     }
     iconComponent = <UserCheck className={iconClasses} />
     let previewFile = null
@@ -263,7 +262,6 @@ export function eventToDisplayObject(
         case ApprovalStatus.Pending:
           return 'border-dashed border-muted-foreground'
         case ApprovalStatus.Approved:
-        case ApprovalStatus.Resolved:
           return 'border-solid border-[var(--terminal-success)]'
         case ApprovalStatus.Denied:
           return 'border-solid border-[var(--terminal-error)]'

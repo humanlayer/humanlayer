@@ -9,8 +9,16 @@ interface StoreState {
   focusedSession: SessionInfo | null
   viewMode: ViewMode
   selectedSessions: Set<string> // For bulk selection
+  activeSessionDetail: {
+    session: SessionInfo
+    conversation: any[] // ConversationEvent[] from useConversation
+    loading: boolean
+    error: string | null
+  } | null
+
   initSessions: (sessions: SessionInfo[]) => void
   updateSession: (sessionId: string, updates: Partial<SessionInfo>) => void
+  updateSessionStatus: (sessionId: string, status: string) => void
   refreshSessions: () => Promise<void>
   setFocusedSession: (session: SessionInfo | null) => void
   focusNextSession: () => void
@@ -25,6 +33,13 @@ interface StoreState {
   addRangeToSelection: (anchorId: string, targetId: string) => void
   updateCurrentRange: (anchorId: string, targetId: string) => void
   bulkSelect: (sessionId: string, direction: 'asc' | 'desc') => void
+
+  /* Active Session Detail Actions */
+  setActiveSessionDetail: (sessionId: string, session: SessionInfo, conversation: any[]) => void
+  updateActiveSessionDetail: (updates: Partial<SessionInfo>) => void
+  updateActiveSessionConversation: (conversation: any[]) => void
+  clearActiveSessionDetail: () => void
+  fetchActiveSessionDetail: (sessionId: string) => Promise<void>
 
   /* Notifications */
   notifiedItems: Set<string> // Set of unique notification IDs
@@ -48,6 +63,7 @@ export const useStore = create<StoreState>((set, get) => ({
   focusedSession: null,
   viewMode: ViewMode.Normal,
   selectedSessions: new Set<string>(),
+  activeSessionDetail: null,
   initSessions: (sessions: SessionInfo[]) => set({ sessions }),
   updateSession: (sessionId: string, updates: Partial<SessionInfo>) =>
     set(state => ({
@@ -58,6 +74,32 @@ export const useStore = create<StoreState>((set, get) => ({
         state.focusedSession?.id === sessionId
           ? { ...state.focusedSession, ...updates }
           : state.focusedSession,
+      // Also update activeSessionDetail if it matches
+      activeSessionDetail:
+        state.activeSessionDetail?.session.id === sessionId
+          ? {
+              ...state.activeSessionDetail,
+              session: { ...state.activeSessionDetail.session, ...updates },
+            }
+          : state.activeSessionDetail,
+    })),
+  updateSessionStatus: (sessionId: string, status: string) =>
+    set(state => ({
+      sessions: state.sessions.map(session =>
+        session.id === sessionId ? { ...session, status: status as any } : session,
+      ),
+      focusedSession:
+        state.focusedSession?.id === sessionId
+          ? { ...state.focusedSession, status: status as any }
+          : state.focusedSession,
+      // Also update activeSessionDetail if it matches
+      activeSessionDetail:
+        state.activeSessionDetail?.session.id === sessionId
+          ? {
+              ...state.activeSessionDetail,
+              session: { ...state.activeSessionDetail.session, status: status as any },
+            }
+          : state.activeSessionDetail,
     })),
   refreshSessions: async () => {
     try {
@@ -125,8 +167,8 @@ export const useStore = create<StoreState>((set, get) => ({
   bulkArchiveSessions: async (sessionIds: string[], archived: boolean) => {
     try {
       const response = await daemonClient.bulkArchiveSessions({ session_ids: sessionIds, archived })
-      if (!response.success && response.failed_sessions) {
-        console.error('Some sessions failed to archive:', response.failed_sessions)
+      if (!response.success) {
+        console.error('Failed to archive sessions')
       }
       // Refresh sessions to update the list
       await get().refreshSessions()
@@ -446,6 +488,68 @@ export const useStore = create<StoreState>((set, get) => ({
       `Checking navigation for session ${sessionId}: elapsed ${elapsed}ms, within ${withinMs}ms window: ${wasRecent}`,
     )
     return wasRecent
+  },
+
+  // Active Session Detail Actions
+  setActiveSessionDetail: (_sessionId: string, session: SessionInfo, conversation: any[]) =>
+    set({ activeSessionDetail: { session, conversation, loading: false, error: null } }),
+  updateActiveSessionDetail: (updates: Partial<SessionInfo>) =>
+    set(state => ({
+      activeSessionDetail: state.activeSessionDetail
+        ? {
+            ...state.activeSessionDetail,
+            session: { ...state.activeSessionDetail.session, ...updates },
+          }
+        : null,
+    })),
+  updateActiveSessionConversation: (conversation: any[]) =>
+    set(state => ({
+      activeSessionDetail: state.activeSessionDetail
+        ? {
+            ...state.activeSessionDetail,
+            conversation,
+          }
+        : null,
+    })),
+  clearActiveSessionDetail: () => set({ activeSessionDetail: null }),
+  fetchActiveSessionDetail: async (sessionId: string) => {
+    // Set loading state
+    set({
+      activeSessionDetail: {
+        session: {} as SessionInfo, // Temporary placeholder
+        conversation: [],
+        loading: true,
+        error: null,
+      },
+    })
+
+    try {
+      const [sessionResponse, conversationResponse] = await Promise.all([
+        daemonClient.getSessionState(sessionId),
+        daemonClient.getConversation({ session_id: sessionId }),
+      ])
+
+      set({
+        activeSessionDetail: {
+          session: sessionResponse.session,
+          conversation: conversationResponse,
+          loading: false,
+          error: null,
+        },
+      })
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch session detail'
+      console.error('Failed to fetch session detail:', error)
+
+      set({
+        activeSessionDetail: {
+          session: {} as SessionInfo,
+          conversation: [],
+          loading: false,
+          error: errorMessage,
+        },
+      })
+    }
   },
 
   // UI State
