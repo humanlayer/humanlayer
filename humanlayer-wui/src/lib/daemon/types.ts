@@ -9,25 +9,13 @@ import type {
   HealthResponse,
 } from '@humanlayer/hld-sdk'
 
-// Import everything we need from the SDK
-import { 
-  SessionStatus as SDKSessionStatus,
-  ApprovalStatus as SDKApprovalStatus,
-} from '@humanlayer/hld-sdk'
-import type { 
-  EventType,
-  SessionStatus as SessionStatusType,
-  ApprovalStatus as ApprovalStatusType,
-} from '@humanlayer/hld-sdk'
+// Import types and values from the SDK (now ESM)
+import { SessionStatus, ApprovalStatus } from '@humanlayer/hld-sdk'
+import type { Event, EventType } from '@humanlayer/hld-sdk'
 
-// Re-export SDK types for convenience
-export { Event } from '@humanlayer/hld-sdk'
-// Re-export the const objects and their types
-export const SessionStatus = SDKSessionStatus
-export const ApprovalStatus = SDKApprovalStatus
-export type SessionStatus = SessionStatusType
-export type ApprovalStatus = ApprovalStatusType
-export type { EventType }
+// Re-export SDK types and values
+export { SessionStatus, ApprovalStatus }
+export type { Event, EventType }
 
 // Map to legacy types for backward compatibility
 export type Session = LegacySession // Components expect snake_case
