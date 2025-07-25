@@ -65,32 +65,32 @@ export function useSessionSubscriptions(
             if (!isActive) return
 
             switch (event.type) {
-                case 'session_status_changed': {
-                  const data = event.data as SessionStatusChangedEventData
-                  console.log('Session status changed:', data)
+              case 'session_status_changed': {
+                const data = event.data as SessionStatusChangedEventData
+                console.log('Session status changed:', data)
 
-                  // Call handler if provided
-                  handlersRef.current.onSessionStatusChanged?.(data, event.timestamp)
-                  break
-                }
-                case 'new_approval': {
-                  const data = event.data as NewApprovalEventData
-                  console.log('New approval:', data, event)
-
-                  // Call handler if provided
-                  handlersRef.current.onNewApproval?.(data)
-                  break
-                }
-                case 'approval_resolved': {
-                  const data = event.data as ApprovalResolvedEventData
-                  console.log('Approval resolved:', data)
-
-                  // Call handler if provided
-                  handlersRef.current.onApprovalResolved?.(data)
-                  break
-                }
+                // Call handler if provided
+                handlersRef.current.onSessionStatusChanged?.(data, event.timestamp)
+                break
               }
-          }
+              case 'new_approval': {
+                const data = event.data as NewApprovalEventData
+                console.log('New approval:', data, event)
+
+                // Call handler if provided
+                handlersRef.current.onNewApproval?.(data)
+                break
+              }
+              case 'approval_resolved': {
+                const data = event.data as ApprovalResolvedEventData
+                console.log('Approval resolved:', data)
+
+                // Call handler if provided
+                handlersRef.current.onApprovalResolved?.(data)
+                break
+              }
+            }
+          },
         })
 
         unsubscribe = subscription.unsubscribe

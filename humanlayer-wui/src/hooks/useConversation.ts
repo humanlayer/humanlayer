@@ -22,12 +22,14 @@ export function useConversation(
   const [error, setError] = useState<string | null>(null)
   const [errorCount, setErrorCount] = useState(0)
   const [isInitialLoad, setIsInitialLoad] = useState(true)
-  
+
   // Add abort controller for request cancellation
   const abortControllerRef = useRef<AbortController | null>(null)
 
   // Get events from store if this is the active session
-  const events = (activeSessionDetail?.session.id === sessionId ? activeSessionDetail.conversation : []) as ConversationEvent[]
+  const events = (
+    activeSessionDetail?.session.id === sessionId ? activeSessionDetail.conversation : []
+  ) as ConversationEvent[]
 
   const fetchConversation = useCallback(async () => {
     if (errorCount > 3) {
@@ -54,14 +56,14 @@ export function useConversation(
 
       const response = await daemonClient.getConversation(
         { session_id: sessionId, claude_session_id: claudeSessionId },
-        { signal: abortControllerRef.current.signal }
+        { signal: abortControllerRef.current.signal },
       )
-      
+
       // Update the store if this is the active session
       if (activeSessionDetail?.session.id === sessionId) {
         updateActiveSessionConversation(response)
       }
-      
+
       setErrorCount(0)
       setIsInitialLoad(false)
     } catch (err: any) {

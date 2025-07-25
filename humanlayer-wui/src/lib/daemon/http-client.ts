@@ -102,9 +102,11 @@ export class HTTPDaemonClient implements IDaemonClient {
 
   // Session Management Methods
 
-  async launchSession(params: LaunchSessionParams | LaunchSessionRequest): Promise<CreateSessionResponseData> {
+  async launchSession(
+    params: LaunchSessionParams | LaunchSessionRequest,
+  ): Promise<CreateSessionResponseData> {
     await this.ensureConnected()
-    
+
     // Map model names to SDK enum values
     let model: 'opus' | 'sonnet' | undefined = undefined
     if (params.model) {
@@ -114,7 +116,7 @@ export class HTTPDaemonClient implements IDaemonClient {
         model = 'opus'
       }
     }
-    
+
     const response = await this.client!.createSession({
       query: params.query,
       workingDir: params.workingDir || (params as any).working_dir,
@@ -123,8 +125,8 @@ export class HTTPDaemonClient implements IDaemonClient {
       permissionPromptTool: params.permissionPromptTool || (params as any).permission_prompt_tool,
       autoAcceptEdits: params.autoAcceptEdits || (params as any).auto_accept_edits,
       // Additional fields that might be in legacy format
-      ...(params as any).template && { template: (params as any).template },
-      ...(params as any).instructions && { instructions: (params as any).instructions },
+      ...((params as any).template && { template: (params as any).template }),
+      ...((params as any).instructions && { instructions: (params as any).instructions }),
     })
     return response
     // return this.transformSession(response)
@@ -406,7 +408,10 @@ export class HTTPDaemonClient implements IDaemonClient {
       updated_at:
         apiSession.lastActivityAt instanceof Date
           ? apiSession.lastActivityAt.toISOString()
-          : apiSession.lastActivityAt || apiSession.updated_at || apiSession.createdAt || apiSession.created_at,
+          : apiSession.lastActivityAt ||
+            apiSession.updated_at ||
+            apiSession.createdAt ||
+            apiSession.created_at,
       summary: apiSession.summary || '',
       parent_session_id: apiSession.parentSessionId || apiSession.parent_session_id,
       claude_session_id: apiSession.claudeSessionId || apiSession.claude_session_id,
@@ -432,7 +437,10 @@ export class HTTPDaemonClient implements IDaemonClient {
       last_activity_at:
         apiSession.lastActivityAt instanceof Date
           ? apiSession.lastActivityAt.toISOString()
-          : apiSession.lastActivityAt || apiSession.last_activity_at || apiSession.updatedAt || apiSession.updated_at,
+          : apiSession.lastActivityAt ||
+            apiSession.last_activity_at ||
+            apiSession.updatedAt ||
+            apiSession.updated_at,
       end_time: apiSession.completedAt
         ? apiSession.completedAt instanceof Date
           ? apiSession.completedAt.toISOString()
@@ -458,16 +466,18 @@ export class HTTPDaemonClient implements IDaemonClient {
         apiApproval.createdAt instanceof Date
           ? apiApproval.createdAt.toISOString()
           : apiApproval.createdAt || apiApproval.created_at,
-      responded_at: apiApproval.resolvedAt || apiApproval.resolved_at
-        ? (apiApproval.resolvedAt || apiApproval.resolved_at) instanceof Date
-          ? (apiApproval.resolvedAt || apiApproval.resolved_at).toISOString()
-          : apiApproval.resolvedAt || apiApproval.resolved_at
-        : apiApproval.responded_at,
-      resolved_at: apiApproval.resolvedAt || apiApproval.resolved_at
-        ? (apiApproval.resolvedAt || apiApproval.resolved_at) instanceof Date
-          ? (apiApproval.resolvedAt || apiApproval.resolved_at).toISOString()
-          : apiApproval.resolvedAt || apiApproval.resolved_at
-        : undefined,
+      responded_at:
+        apiApproval.resolvedAt || apiApproval.resolved_at
+          ? (apiApproval.resolvedAt || apiApproval.resolved_at) instanceof Date
+            ? (apiApproval.resolvedAt || apiApproval.resolved_at).toISOString()
+            : apiApproval.resolvedAt || apiApproval.resolved_at
+          : apiApproval.responded_at,
+      resolved_at:
+        apiApproval.resolvedAt || apiApproval.resolved_at
+          ? (apiApproval.resolvedAt || apiApproval.resolved_at) instanceof Date
+            ? (apiApproval.resolvedAt || apiApproval.resolved_at).toISOString()
+            : apiApproval.resolvedAt || apiApproval.resolved_at
+          : undefined,
       comment: apiApproval.resolution?.comment || apiApproval.comment,
       resolution: apiApproval.resolution
         ? {

@@ -248,7 +248,9 @@ export function TaskGroup({
                           </span>
                         </TooltipTrigger>
                         <TooltipContent>
-                          {displayObject.created_at ? formatAbsoluteTimestamp(displayObject.created_at) : 'Unknown time'}
+                          {displayObject.created_at
+                            ? formatAbsoluteTimestamp(displayObject.created_at)
+                            : 'Unknown time'}
                         </TooltipContent>
                       </Tooltip>
                     </div>

@@ -20,7 +20,7 @@ export function Layout() {
   const [approvals, setApprovals] = useState<any[]>([])
   const [activeSessionId] = useState<string | null>(null)
   const { setTheme } = useTheme()
-  
+
   // Use the daemon connection hook for all connection management
   const { connected, connecting, error, version, connect } = useDaemonConnection()
 
@@ -40,15 +40,15 @@ export function Layout() {
   const updateSessionStatus = useStore(state => state.updateSessionStatus)
   const updateActiveSessionConversation = useStore(state => state.updateActiveSessionConversation)
   const activeSessionDetail = useStore(state => state.activeSessionDetail)
-  
+
   // Set up single SSE subscription for all events
   useSessionSubscriptions(connected, {
     onSessionStatusChanged: async (data, timestamp) => {
       const { session_id, new_status } = data
-      
+
       // Update session in the list
       updateSessionStatus(session_id, new_status)
-      
+
       // If this is the active session detail, refresh its data
       if (activeSessionDetail?.session.id === session_id) {
         try {
@@ -61,11 +61,13 @@ export function Layout() {
     },
     onNewApproval: async data => {
       console.log('New approval event:', data)
-      
+
       // If this approval is for the active session detail, refresh conversation
       if (activeSessionDetail?.session.id === data.session_id) {
         try {
-          const conversationResponse = await daemonClient.getConversation({ session_id: data.session_id })
+          const conversationResponse = await daemonClient.getConversation({
+            session_id: data.session_id,
+          })
           updateActiveSessionConversation(conversationResponse)
         } catch (error) {
           console.error('Failed to refresh active session conversation:', error)
@@ -74,7 +76,7 @@ export function Layout() {
     },
     onApprovalResolved: async data => {
       console.log('Approval resolved:', data)
-      
+
       // Refresh conversation if needed - the approval resolution might affect the active session
       // We can't easily determine which session the approval belonged to without looking it up
     },
@@ -128,7 +130,6 @@ export function Layout() {
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [handleKeyDown])
-
 
   const loadSessions = async () => {
     try {

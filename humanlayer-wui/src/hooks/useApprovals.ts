@@ -92,20 +92,20 @@ export function useApprovalsWithSubscription(sessionId?: string): UseApprovalsRe
           event_types: ['new_approval', 'approval_resolved', 'session_status_changed'],
           session_id: sessionId,
           onEvent: event => {
-              if (!isSubscribed) return
+            if (!isSubscribed) return
 
-              // Handle different event types
-              switch (event.type) {
-                case 'new_approval':
-                case 'approval_resolved':
-                  // Refresh approvals when relevant events occur
-                  base.refresh()
-                  break
-                case 'session_status_changed':
-                  // Could update session status if needed
-                  break
-              }
+            // Handle different event types
+            switch (event.type) {
+              case 'new_approval':
+              case 'approval_resolved':
+                // Refresh approvals when relevant events occur
+                base.refresh()
+                break
+              case 'session_status_changed':
+                // Could update session status if needed
+                break
             }
+          },
         })
         unsubscribe = handle.unsubscribe
       } catch (err) {
