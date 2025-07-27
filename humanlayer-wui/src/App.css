@@ -198,6 +198,20 @@
   --terminal-warning: #ff6600;
   --terminal-error: #cc5200;
 }
+
+/* Rosé Pine - Soho vibes */
+[data-theme='rose-pine'] {
+  --terminal-bg: #191724;
+  --terminal-bg-alt: #1f1d2e;
+  --terminal-fg: #e0def4;
+  --terminal-fg-dim: #908caa;
+  --terminal-accent: #c4a7e7;
+  --terminal-accent-alt: #ebbcba;
+  --terminal-border: #6e6a86;
+  --terminal-success: #9ccfd8;
+  --terminal-warning: #f6c177;
+  --terminal-error: #eb6f92;
+}
 @layer base {
   * {
     @apply border-border outline-ring/50;
