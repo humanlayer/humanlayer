@@ -13,6 +13,9 @@ import { useSessionEventsWithNotifications } from '@/hooks/useSessionEventsWithN
 import { Toaster } from 'sonner'
 import { notificationService } from '@/services/NotificationService'
 import { useTheme } from '@/contexts/ThemeContext'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { MessageCircle } from 'lucide-react'
+import { openUrl } from '@tauri-apps/plugin-opener'
 import '@/App.css'
 
 export function Layout() {
@@ -48,6 +51,17 @@ export function Layout() {
       preventDefault: true,
     },
   )
+
+  // Global hotkey for feedback
+  useHotkeys('mod+shift+f', async () => {
+    try {
+      await openUrl(
+        'https://github.com/humanlayer/humanlayer/issues/new?title=Feedback%20on%20CodeLayer&body=%23%23%23%20Problem%20to%20solve%20%2F%20Expected%20Behavior%0A%0A%0A%23%23%23%20Proposed%20solution',
+      )
+    } catch (error) {
+      console.error('Failed to open feedback URL:', error)
+    }
+  })
 
   // Connect to daemon on mount
   useEffect(() => {
@@ -213,6 +227,21 @@ export function Layout() {
           )}
         </div>
         <div className="flex items-center gap-3">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <a
+                href="https://github.com/humanlayer/humanlayer/issues/new?title=Feedback%20on%20CodeLayer&body=%23%23%23%20Problem%20to%20solve%20%2F%20Expected%20Behavior%0A%0A%0A%23%23%23%20Proposed%20solution"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-mono border border-border bg-background text-foreground hover:bg-accent/10 transition-colors"
+              >
+                <MessageCircle className="w-3 h-3" />
+              </a>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Submit feedback (⌘⇧F)</p>
+            </TooltipContent>
+          </Tooltip>
           <ThemeSelector />
           <div className="flex items-center gap-2 font-mono text-xs">
             <span className="uppercase tracking-wider">{status}</span>
