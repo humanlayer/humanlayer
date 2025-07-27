@@ -83,7 +83,7 @@ swiftc /tmp/round_corners.swift -o /tmp/round_corners
 create_rounded_icon() {
     local size=$1
     local output=$2
-    
+
     echo "Creating $output ($size x $size)..."
     /tmp/round_corners "$SOURCE_ICON" "$output" "$size"
 }

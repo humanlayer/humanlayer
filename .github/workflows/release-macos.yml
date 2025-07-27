@@ -24,7 +24,7 @@ jobs:
           else
             echo "release_version=${{ github.event.inputs.release_version }}" >> $GITHUB_OUTPUT
           fi
-          
+
       - name: Checkout code
         uses: actions/checkout@v4
 
