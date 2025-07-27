@@ -3,19 +3,26 @@ repos:
     rev: "v4.4.0"
     hooks:
       - id: check-case-conflict
+        exclude: ^hack/
       - id: check-merge-conflict
+        exclude: ^hack/
       - id: check-toml
+        exclude: ^hack/
       - id: check-yaml
+        exclude: ^hack/
       - id: end-of-file-fixer
+        exclude: ^hack/
       - id: trailing-whitespace
+        exclude: ^hack/
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: "v0.1.6"
     hooks:
       - id: ruff
         args: [--exit-non-zero-on-fix]
-        exclude: ^examples/
+        exclude: ^(examples/|hack/)
       - id: ruff-format
+        exclude: ^hack/
 
 # Prettier disabled for now, no longer supported and breaking
 # - repo: https://github.com/pre-commit/mirrors-prettier

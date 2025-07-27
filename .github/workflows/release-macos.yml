@@ -88,28 +88,18 @@ jobs:
 
             ### Installation Instructions
 
-            #### 1. Install the WUI Application
-            - Download and open `humanlayer-wui_*.dmg`
-            - Drag the HumanLayer WUI app to your Applications folder
-            - Follow the security steps above for first launch
-
-            #### 2. Install the Daemon
-            ```bash
-            # Download hld-darwin-arm64 from the assets below, then:
-            chmod +x hld-darwin-arm64
-            sudo mv hld-darwin-arm64 /usr/local/bin/hld
-            hld --version
-            ```
-
-            #### 3. Install the CLI
-            ```bash
-            npm install -g humanlayer@0.10.0
-            ```
-
-            #### 4. Start Using HumanLayer
-            - Run the daemon: `hld`
-            - Launch the WUI from Applications
-            - Use the CLI: `humanlayer --help`
+            - Install the CLI: `npm install -g humanlayer@0.11.0`
+            - Download daemon binary (hld-darwin-arm64)
+            - Run it in a terminal e.g. `chmod +x /Users/me/Downloads/hld-darwin-arm64 && /Users/me/Downloads/hld-darwin-arm64`
+            - Dismiss the security modal
+            - Go to System Settings > Privacy & Security and allow
+            - Run it again
+            - Download WUI (humanlayer-wui_*.dmg)
+            - Copy to Applications
+            - Open it
+            - Dismiss security modal
+            - Go to System Settings > Privacy & Security and allow
+            - Open WUI again
 
             ### Requirements
             - macOS (Apple Silicon/M-series)
