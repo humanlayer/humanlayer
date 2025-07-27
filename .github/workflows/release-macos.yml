@@ -4,8 +4,8 @@ on:
   workflow_dispatch:
     inputs:
       release_version:
-        description: 'Version tag for the release (e.g., v0.1.0)'
-        required: true
+        description: 'Version tag for the release (defaults to YYYYMMDD)'
+        required: false
         type: string
 
 permissions:
@@ -16,6 +16,15 @@ jobs:
     runs-on: macos-latest
 
     steps:
+      - name: Set release version
+        id: version
+        run: |
+          if [ -z "${{ github.event.inputs.release_version }}" ]; then
+            echo "release_version=$(date +%Y%m%d)" >> $GITHUB_OUTPUT
+          else
+            echo "release_version=${{ github.event.inputs.release_version }}" >> $GITHUB_OUTPUT
+          fi
+
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -66,10 +75,10 @@ jobs:
         id: create_release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.event.inputs.release_version }}
-          name: HumanLayer ${{ github.event.inputs.release_version }} - macOS Release
+          tag_name: ${{ steps.version.outputs.release_version }}
+          name: HumanLayer ${{ steps.version.outputs.release_version }} - macOS Release
           body: |
-            ## HumanLayer ${{ github.event.inputs.release_version }} - macOS Release
+            ## HumanLayer ${{ steps.version.outputs.release_version }} - macOS Release
 
             This release includes:
             - **HumanLayer WUI** - Desktop application (DMG installer)
