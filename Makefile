@@ -495,14 +495,14 @@ daemon-nightly: daemon-nightly-build
 wui-nightly-build:
 	cd humanlayer-wui && bun run tauri build --bundles app
 	@echo "Build complete. Installing to ~/Applications..."
-	cp -r humanlayer-wui/src-tauri/target/release/bundle/macos/humanlayer-wui.app ~/Applications/
-	@echo "Installed WUI nightly to ~/Applications/humanlayer-wui.app"
+	cp -r humanlayer-wui/src-tauri/target/release/bundle/macos/CodeLayer.app ~/Applications/
+	@echo "Installed WUI nightly to ~/Applications/CodeLayer.app"
 
 # Open nightly WUI
 .PHONY: wui-nightly
 wui-nightly: wui-nightly-build
 	@echo "Opening WUI nightly..."
-	open ~/Applications/humanlayer-wui.app
+	open ~/Applications/CodeLayer.app
 
 # Copy production database to timestamped dev database
 .PHONY: copy-db-to-dev
