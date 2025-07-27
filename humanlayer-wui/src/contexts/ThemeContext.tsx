@@ -13,6 +13,8 @@ export type Theme =
   | 'monokai'
   | 'launch'
   | 'rose-pine'
+  | 'rose-pine-dawn'
+  | 'rose-pine-moon'
 
 interface ThemeContextType {
   theme: Theme
