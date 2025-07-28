@@ -382,7 +382,7 @@ export class HTTPDaemonClient implements IDaemonClient {
     await this.ensureConnected()
     // SDK client doesn't support limit parameter yet
     const response = await this.client!.getRecentPaths()
-    return response  // SDK now properly returns RecentPath[]
+    return response // SDK now properly returns RecentPath[]
   }
 
   // Private Helper Methods
