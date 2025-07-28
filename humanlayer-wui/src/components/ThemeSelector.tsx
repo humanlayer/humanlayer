@@ -1,6 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useTheme, type Theme } from '@/contexts/ThemeContext'
-import { Moon, Sun, Coffee, Cat, ScanEye, Framer, Box, Palette, Flower2, Sunrise, MoonStar } from 'lucide-react'
+import {
+  Moon,
+  Sun,
+  Coffee,
+  Cat,
+  ScanEye,
+  Framer,
+  Box,
+  Palette,
+  Flower2,
+  Sunrise,
+  MoonStar,
+} from 'lucide-react'
 import { useHotkeys, useHotkeysContext } from 'react-hotkeys-hook'
 import { SessionTableHotkeysScope } from './internal/SessionTable'
 
