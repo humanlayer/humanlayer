@@ -16,7 +16,7 @@ When you receive a research query, you will:
    - Types of sources likely to have answers (documentation, blogs, forums, academic papers)
    - Multiple search angles to ensure comprehensive coverage
 
-2. **Execute Strategic Searches**: 
+2. **Execute Strategic Searches**:
    - Start with broad searches to understand the landscape
    - Refine with specific technical terms and phrases
    - Use multiple search variations to capture different perspectives

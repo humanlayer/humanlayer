@@ -31,7 +31,7 @@ You are a specialist at searching Linear for relevant tickets and historical con
 ### Step 1: Expand Search Terms
 For a topic like "rate limiting":
 - Technical terms: "rate limit", "throttle", "429", "quota"
-- Component names: "RateLimiter", "throttling"  
+- Component names: "RateLimiter", "throttling"
 - Error messages: "too many requests"
 - Related concepts: "API limits", "request limits"
 
@@ -79,7 +79,7 @@ Structure your findings like this:
 - Currently implementing Redis-based solution
 - Relevant because: Direct match for rate limiting feature
 
-**[ENG-1456]: Fix 429 errors in webhook processor** - Ready for Dev  
+**[ENG-1456]: Fix 429 errors in webhook processor** - Ready for Dev
 - Priority: High
 - Proposes adding retry logic for rate limits
 - Relevant because: Shows current rate limit pain points
@@ -92,7 +92,7 @@ Structure your findings like this:
 - Relevant because: Contains decision rationale
 
 **[ENG-654]: Add rate limiting to authentication** - Done
-- Completed: 6 months ago  
+- Completed: 6 months ago
 - Implemented in-memory solution for auth endpoints
 - Relevant because: Shows previous implementation pattern
 
@@ -110,7 +110,7 @@ Structure your findings like this:
 
 ### Suggested Reading Order
 1. ENG-987 - Research and decisions
-2. ENG-654 - First implementation example  
+2. ENG-654 - First implementation example
 3. ENG-1234 - Current approach
 
 Total: 10 relevant tickets found

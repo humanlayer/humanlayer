@@ -121,7 +121,7 @@ Structure your analysis like this:
    - Rationale: Battle-tested, works across multiple instances
    - Trade-off: Chose external dependency over in-memory simplicity
 
-### Technical Specifications  
+### Technical Specifications
 - Anonymous users: 100 requests/minute
 - Authenticated users: 1000 requests/minute
 - Algorithm: Sliding window

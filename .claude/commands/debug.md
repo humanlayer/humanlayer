@@ -48,7 +48,7 @@ Once you understand the problem:
    - Provide clear context about the issue
    - Include any relevant file paths or component names
    - Mention specific timeframes if relevant
-   
+
    Example invocation:
    - "The user is getting a 500 error when clicking approve in the WUI"
    - "Sessions aren't resuming properly - started after recent changes"

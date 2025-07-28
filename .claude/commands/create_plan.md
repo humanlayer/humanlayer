@@ -43,12 +43,12 @@ Then wait for the user's input.
 
 2. **Spawn initial research tasks to gather context**:
    Before asking the user any questions, use specialized agents to research in parallel:
-   
+
    - Use the **codebase-locator** agent to find all files related to the ticket/task
    - Use the **codebase-analyzer** agent to understand how the current implementation works
    - If relevant, use the **thoughts-locator** agent to find any existing thoughts documents about this feature
    - If a Linear ticket is mentioned, use the **linear-ticket-reader** agent to get full details
-   
+
    These agents will:
    - Find relevant source files, configs, and tests
    - Identify the specific directories to focus on (e.g., if WUI is mentioned, they'll focus on humanlayer-wui/)
@@ -98,19 +98,19 @@ After getting initial clarifications:
 3. **Spawn parallel sub-tasks for comprehensive research**:
    - Create multiple Task agents to research different aspects concurrently
    - Use the right agent for each type of research:
-   
+
    **For deeper investigation:**
    - **codebase-locator** - To find more specific files (e.g., "find all files that handle [specific component]")
    - **codebase-analyzer** - To understand implementation details (e.g., "analyze how [system] works")
    - **codebase-pattern-finder** - To find similar features we can model after
-   
+
    **For historical context:**
    - **thoughts-locator** - To find any research, plans, or decisions about this area
    - **thoughts-analyzer** - To extract key insights from the most relevant documents
-   
+
    **For related tickets:**
    - **linear-searcher** - To find similar issues or past implementations
-   
+
    Each agent knows how to:
    - Find the right files and code patterns
    - Identify conventions and patterns to follow

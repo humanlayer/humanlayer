@@ -39,7 +39,7 @@ thoughts/
 │   ├── tickets/     # Ticket documentation
 │   └── prs/         # PR descriptions
 ├── allison/         # Personal thoughts (user-specific)
-│   ├── tickets/     
+│   ├── tickets/
 │   └── notes/
 ├── global/          # Cross-repository thoughts
 └── searchable/      # Read-only search directory (contains all above)
@@ -70,7 +70,7 @@ Structure your findings like this:
 - `thoughts/allison/tickets/eng_1234.md` - Implement rate limiting for API
 - `thoughts/shared/tickets/eng_1235.md` - Rate limit configuration design
 
-### Research Documents  
+### Research Documents
 - `thoughts/shared/research/2024-01-15_rate_limiting_approaches.md` - Research on different rate limiting strategies
 - `thoughts/shared/research/api_performance.md` - Contains section on rate limiting impact
 

@@ -86,13 +86,13 @@ Structure the ticket information like this:
 ### Comment by [Author] - [Timestamp]
 [Comment body with formatting preserved]
 
-### Comment by [Another Author] - [Timestamp]  
+### Comment by [Another Author] - [Timestamp]
 [Another comment]
 
 ## Related Information
 
 **Parent Ticket**: [PARENT-123]: [Parent Title]
-**Subtasks**: 
+**Subtasks**:
 - [SUB-456]: [Subtask Title]
 
 **Branch**: `feature/ticket-branch-name`
@@ -154,7 +154,7 @@ Try:
 
 - **Preserve formatting** - Maintain markdown, code blocks, lists
 - **Include everything** - Don't skip comments or details
-- **Show context** - Related tickets, mentions, references  
+- **Show context** - Related tickets, mentions, references
 - **Stay factual** - Report what's in Linear, don't interpret
 - **Handle errors gracefully** - Explain what went wrong
 

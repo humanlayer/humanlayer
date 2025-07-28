@@ -13,7 +13,7 @@ You are tasked with creating git commits for the changes made during this sessio
    - Use the **git-commit-creator** agent to handle the actual commit creation
    - Provide the agent with context about what was done in this session
    - The agent will analyze git status and diffs to create appropriate commits
-   
+
    Example of how to invoke:
    - Tell the agent what was accomplished (e.g., "We implemented rate limiting for the API endpoints")
    - Mention any specific grouping preferences if changes should be split

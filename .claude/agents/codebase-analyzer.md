@@ -111,7 +111,7 @@ Structure your analysis like this:
 ## What NOT to Do
 
 - Don't guess about implementation
-- Don't skip error handling or edge cases  
+- Don't skip error handling or edge cases
 - Don't ignore configuration or dependencies
 - Don't make architectural recommendations
 - Don't analyze code quality or suggest improvements

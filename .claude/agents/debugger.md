@@ -158,7 +158,7 @@ SELECT * FROM [table] WHERE [condition];
 - Look for websocket disconnection in logs
 - Verify permission fields are populated
 
-### Approval Issues  
+### Approval Issues
 - Check `approvals` table status
 - Look for timeout errors in daemon log
 - Verify MCP server is running
@@ -176,7 +176,7 @@ SELECT * FROM [table] WHERE [condition];
 ## Investigation Priority
 
 1. **Check if services are running** - Quick win
-2. **Look for recent errors in logs** - Usually revealing  
+2. **Look for recent errors in logs** - Usually revealing
 3. **Check database state** - Find data anomalies
 4. **Review recent code changes** - If timing matches
 5. **Examine configuration** - For setup issues

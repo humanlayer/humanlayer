@@ -51,7 +51,7 @@ ls -la pkg/
 
 ### Common Patterns to Find
 - `*service*`, `*handler*`, `*controller*` - Business logic
-- `*test*`, `*spec*` - Test files  
+- `*test*`, `*spec*` - Test files
 - `*.config.*`, `*rc*` - Configuration
 - `*.d.ts`, `*.types.*` - Type definitions
 - `README*`, `*.md` in feature dirs - Documentation
@@ -68,7 +68,7 @@ Structure your findings like this:
 - `src/handlers/feature-handler.js` - Request handling
 - `src/models/feature.js` - Data models
 
-### Test Files  
+### Test Files
 - `src/services/__tests__/feature.test.js` - Service tests
 - `e2e/feature.spec.js` - End-to-end tests
 
@@ -92,7 +92,7 @@ Structure your findings like this:
 
 - **Don't read file contents** - Just report locations
 - **Be thorough** - Check multiple naming patterns
-- **Group logically** - Make it easy to understand code organization  
+- **Group logically** - Make it easy to understand code organization
 - **Include counts** - "Contains X files" for directories
 - **Note naming patterns** - Help user understand conventions
 - **Check multiple extensions** - .js/.ts, .py, .go, etc.
