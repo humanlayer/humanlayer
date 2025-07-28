@@ -5,7 +5,9 @@ import {
     SystemApi,
     CreateSessionRequest,
     Session,
-    Approval
+    Approval,
+    CreateSessionResponse,
+    CreateSessionResponseData
 } from './generated';
 
 export interface HLDClientOptions {
@@ -48,7 +50,7 @@ export class HLDClient {
     }
 
     // Session Management
-    async createSession(request: CreateSessionRequest): Promise<{ sessionId: string; runId: string }> {
+    async createSession(request: CreateSessionRequest): Promise<CreateSessionResponseData> {
         const response = await this.sessionsApi.createSession({ createSessionRequest: request });
         return response.data;
     }
@@ -101,18 +103,19 @@ export class HLDClient {
     }
 
     // Update session settings
-    async updateSession(id: string, updates: { auto_accept_edits?: boolean }): Promise<void> {
+    async updateSession(id: string, updates: { auto_accept_edits?: boolean, title?: string }): Promise<void> {
         await this.sessionsApi.updateSession({
             id,
             updateSessionRequest: {
-                autoAcceptEdits: updates.auto_accept_edits
+                autoAcceptEdits: updates.auto_accept_edits,
+                title: updates.title
             }
         });
     }
 
     // Get session messages
-    async getSessionMessages(id: string): Promise<any[]> {
-        const response = await this.sessionsApi.getSessionMessages({ id });
+    async getSessionMessages(id: string, initOverrides?: RequestInit): Promise<any[]> {
+        const response = await this.sessionsApi.getSessionMessages({ id }, initOverrides);
         return response.data;
     }
 

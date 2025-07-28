@@ -253,6 +253,11 @@ func (h *SessionHandlers) UpdateSession(ctx context.Context, req api.UpdateSessi
 		update.Archived = req.Body.Archived
 	}
 
+	// Update title if specified
+	if req.Body.Title != nil {
+		update.Title = req.Body.Title
+	}
+
 	err := h.store.UpdateSession(ctx, string(req.Id), update)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

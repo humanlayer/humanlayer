@@ -27,7 +27,7 @@ export function useApprovals(sessionId?: string): UseApprovalsReturn {
       // Fetch approvals
       const approvalsResponse = await daemonClient.fetchApprovals(sessionId)
 
-      setApprovals(approvalsResponse.approvals)
+      setApprovals(approvalsResponse)
     } catch (err) {
       setError(formatError(err))
     } finally {
@@ -88,33 +88,26 @@ export function useApprovalsWithSubscription(sessionId?: string): UseApprovalsRe
 
     const subscribe = async () => {
       try {
-        const { unlisten } = await daemonClient.subscribeToEvents(
-          {
-            event_types: ['new_approval', 'approval_resolved', 'session_status_changed'],
-            session_id: sessionId,
-          },
-          {
-            onEvent: event => {
-              if (!isSubscribed) return
+        const handle = daemonClient.subscribeToEvents({
+          event_types: ['new_approval', 'approval_resolved', 'session_status_changed'],
+          session_id: sessionId,
+          onEvent: event => {
+            if (!isSubscribed) return
 
-              // Handle different event types
-              switch (event.event.type) {
-                case 'new_approval':
-                case 'approval_resolved':
-                  // Refresh approvals when relevant events occur
-                  base.refresh()
-                  break
-                case 'session_status_changed':
-                  // Could update session status if needed
-                  break
-              }
-            },
-            onError: error => {
-              console.error('Subscription error:', error)
-            },
+            // Handle different event types
+            switch (event.type) {
+              case 'new_approval':
+              case 'approval_resolved':
+                // Refresh approvals when relevant events occur
+                base.refresh()
+                break
+              case 'session_status_changed':
+                // Could update session status if needed
+                break
+            }
           },
-        )
-        unsubscribe = unlisten
+        })
+        unsubscribe = handle.unsubscribe
       } catch (err) {
         console.error('Failed to subscribe to events:', err)
         // Fall back to polling on subscription failure

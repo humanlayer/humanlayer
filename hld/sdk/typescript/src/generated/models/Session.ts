@@ -70,6 +70,12 @@ export interface Session {
      */
     summary?: string;
     /**
+     * User-editable session title
+     * @type {string}
+     * @memberof Session
+     */
+    title?: string;
+    /**
      * Model used for this session
      * @type {string}
      * @memberof Session
@@ -169,6 +175,7 @@ export function SessionFromJSONTyped(json: any, ignoreDiscriminator: boolean): S
         'status': SessionStatusFromJSON(json['status']),
         'query': json['query'],
         'summary': json['summary'] == null ? undefined : json['summary'],
+        'title': json['title'] == null ? undefined : json['title'],
         'model': json['model'] == null ? undefined : json['model'],
         'workingDir': json['working_dir'] == null ? undefined : json['working_dir'],
         'createdAt': (new Date(json['created_at'])),
@@ -201,6 +208,7 @@ export function SessionToJSONTyped(value?: Session | null, ignoreDiscriminator: 
         'status': SessionStatusToJSON(value['status']),
         'query': value['query'],
         'summary': value['summary'],
+        'title': value['title'],
         'model': value['model'],
         'working_dir': value['workingDir'],
         'created_at': ((value['createdAt']).toISOString()),

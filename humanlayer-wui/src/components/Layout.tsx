@@ -8,19 +8,21 @@ import { SessionLauncher } from '@/components/SessionLauncher'
 import { HotkeyPanel } from '@/components/HotkeyPanel'
 import { Breadcrumbs } from '@/components/Breadcrumbs'
 import { useSessionLauncher, useSessionLauncherHotkeys } from '@/hooks/useSessionLauncher'
+import { useDaemonConnection } from '@/hooks/useDaemonConnection'
 import { useStore } from '@/AppStore'
-import { useSessionEventsWithNotifications } from '@/hooks/useSessionEventsWithNotifications'
+import { useSessionSubscriptions } from '@/hooks/useSubscriptions'
 import { Toaster } from 'sonner'
 import { notificationService } from '@/services/NotificationService'
 import { useTheme } from '@/contexts/ThemeContext'
 import '@/App.css'
 
 export function Layout() {
-  const [status, setStatus] = useState('')
   const [approvals, setApprovals] = useState<any[]>([])
   const [activeSessionId] = useState<string | null>(null)
-  const [connected, setConnected] = useState(false)
   const { setTheme } = useTheme()
+
+  // Use the daemon connection hook for all connection management
+  const { connected, connecting, version, connect } = useDaemonConnection()
 
   // Hotkey panel state from store
   const { isHotkeyPanelOpen, setHotkeyPanelOpen } = useStore()
@@ -34,8 +36,51 @@ export function Layout() {
     setTheme('launch')
   })
 
-  // Set up real-time subscriptions with notification handling
-  useSessionEventsWithNotifications(connected)
+  // Get store actions
+  const updateSessionStatus = useStore(state => state.updateSessionStatus)
+  const updateActiveSessionConversation = useStore(state => state.updateActiveSessionConversation)
+  const activeSessionDetail = useStore(state => state.activeSessionDetail)
+
+  // Set up single SSE subscription for all events
+  useSessionSubscriptions(connected, {
+    onSessionStatusChanged: async data => {
+      const { session_id, new_status } = data
+
+      // Update session in the list
+      updateSessionStatus(session_id, new_status)
+
+      // If this is the active session detail, refresh its data
+      if (activeSessionDetail?.session.id === session_id) {
+        try {
+          const conversationResponse = await daemonClient.getConversation({ session_id })
+          updateActiveSessionConversation(conversationResponse)
+        } catch (error) {
+          console.error('Failed to refresh active session conversation:', error)
+        }
+      }
+    },
+    onNewApproval: async data => {
+      console.log('New approval event:', data)
+
+      // If this approval is for the active session detail, refresh conversation
+      if (activeSessionDetail?.session.id === data.session_id) {
+        try {
+          const conversationResponse = await daemonClient.getConversation({
+            session_id: data.session_id,
+          })
+          updateActiveSessionConversation(conversationResponse)
+        } catch (error) {
+          console.error('Failed to refresh active session conversation:', error)
+        }
+      }
+    },
+    onApprovalResolved: async data => {
+      console.log('Approval resolved:', data)
+
+      // Refresh conversation if needed - the approval resolution might affect the active session
+      // We can't easily determine which session the approval belonged to without looking it up
+    },
+  })
 
   // Global hotkey for toggling hotkey panel
   useHotkeys(
@@ -49,12 +94,7 @@ export function Layout() {
     },
   )
 
-  // Connect to daemon on mount
-  useEffect(() => {
-    connectToDaemon()
-  }, [])
-
-  // Load sessions initially when connected
+  // Load sessions when connected
   useEffect(() => {
     if (connected) {
       loadSessions()
@@ -91,25 +131,6 @@ export function Layout() {
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [handleKeyDown])
 
-  const connectToDaemon = async () => {
-    try {
-      setStatus('Connecting to daemon...')
-      await daemonClient.connect()
-      setStatus('Connected!')
-      setConnected(true)
-
-      // Check health
-      const health = await daemonClient.health()
-      setStatus(`Connected! Daemon @ ${health.version}`)
-
-      // Load sessions
-      await loadSessions()
-    } catch (error) {
-      setStatus(`Failed to connect: ${error}`)
-      setConnected(false)
-    }
-  }
-
   const loadSessions = async () => {
     try {
       await useStore.getState().refreshSessions()
@@ -137,7 +158,7 @@ export function Layout() {
       // Refresh approvals
       if (activeSessionId) {
         const response = await daemonClient.fetchApprovals(activeSessionId)
-        setApprovals(response.approvals)
+        setApprovals(response)
       }
     } catch (error) {
       notificationService.notifyError(error, 'Failed to handle approval')
@@ -206,8 +227,8 @@ export function Layout() {
           <div className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
             humanlayer
           </div>
-          {!connected && (
-            <Button onClick={connectToDaemon} variant="ghost" size="sm">
+          {!connected && !connecting && (
+            <Button onClick={connect} variant="ghost" size="sm">
               Retry Connection
             </Button>
           )}
@@ -215,7 +236,11 @@ export function Layout() {
         <div className="flex items-center gap-3">
           <ThemeSelector />
           <div className="flex items-center gap-2 font-mono text-xs">
-            <span className="uppercase tracking-wider">{status}</span>
+            <span className="uppercase tracking-wider">
+              {connecting && 'CONNECTING...'}
+              {connected && version && `CONNECTED @ ${version}`}
+              {!connecting && !connected && 'DISCONNECTED'}
+            </span>
             <span
               className={`w-1.5 h-1.5 rounded-full ${
                 connected ? 'bg-[--terminal-success]' : 'bg-[--terminal-error]'
