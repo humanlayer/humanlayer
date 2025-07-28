@@ -232,13 +232,13 @@ func TestIntegrationResumeDuringRunning(t *testing.T) {
 				name:          "failed session",
 				status:        store.SessionStatusFailed,
 				shouldSucceed: false,
-				expectedError: "cannot continue session with status failed (must be completed or running)",
+				expectedError: "cannot continue session with status failed (must be completed, interrupted, or running)",
 			},
 			{
 				name:          "starting session",
 				status:        store.SessionStatusStarting,
 				shouldSucceed: false,
-				expectedError: "cannot continue session with status starting (must be completed or running)",
+				expectedError: "cannot continue session with status starting (must be completed, interrupted, or running)",
 			},
 		}
 

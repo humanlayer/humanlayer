@@ -307,18 +307,37 @@ eventLoop:
 	}
 
 	endTime := time.Now()
-	if err != nil {
-		// Check if this was an intentional interrupt
-		session, dbErr := m.store.GetSession(ctx, sessionID)
-		if dbErr == nil && session != nil && session.Status == string(StatusCompleting) {
-			// This was an interrupted session, not a failure
-			// Let it transition to completed naturally
-			slog.Debug("session was interrupted, not marking as failed",
-				"session_id", sessionID,
-				"status", session.Status)
-		} else {
-			m.updateSessionStatus(ctx, sessionID, StatusFailed, err.Error())
+
+	// First check if this was an intentional interrupt (regardless of error)
+	session, dbErr := m.store.GetSession(ctx, sessionID)
+	if dbErr == nil && session != nil && session.Status == string(StatusInterrupting) {
+		// This was an interrupted session, mark as interrupted (not failed or completed)
+		slog.Debug("session was interrupted, marking as interrupted",
+			"session_id", sessionID,
+			"status", session.Status)
+		interruptedStatus := string(StatusInterrupted)
+		now := time.Now()
+		update := store.SessionUpdate{
+			Status:      &interruptedStatus,
+			CompletedAt: &now,
 		}
+		if err := m.store.UpdateSession(ctx, sessionID, update); err != nil {
+			slog.Error("failed to update session to interrupted status", "error", err)
+		}
+		// Publish status change event
+		if m.eventBus != nil {
+			m.eventBus.Publish(bus.Event{
+				Type: bus.EventSessionStatusChanged,
+				Data: map[string]interface{}{
+					"session_id": sessionID,
+					"run_id":     runID,
+					"old_status": string(StatusInterrupting),
+					"new_status": string(StatusInterrupted),
+				},
+			})
+		}
+	} else if err != nil {
+		m.updateSessionStatus(ctx, sessionID, StatusFailed, err.Error())
 	} else if result != nil && result.IsError {
 		m.updateSessionStatus(ctx, sessionID, StatusFailed, result.Error)
 	} else {
@@ -941,9 +960,11 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 		return nil, fmt.Errorf("failed to get parent session: %w", err)
 	}
 
-	// Validate parent session status - allow completed or running sessions
-	if parentSession.Status != store.SessionStatusCompleted && parentSession.Status != store.SessionStatusRunning {
-		return nil, fmt.Errorf("cannot continue session with status %s (must be completed or running)", parentSession.Status)
+	// Validate parent session status - allow completed, interrupted, or running sessions
+	if parentSession.Status != store.SessionStatusCompleted &&
+		parentSession.Status != store.SessionStatusInterrupted &&
+		parentSession.Status != store.SessionStatusRunning {
+		return nil, fmt.Errorf("cannot continue session with status %s (must be completed, interrupted, or running)", parentSession.Status)
 	}
 
 	// Validate parent session has claude_session_id (needed for resume)
@@ -1214,15 +1235,13 @@ func (m *Manager) InterruptSession(ctx context.Context, sessionID string) error 
 		return fmt.Errorf("failed to interrupt Claude session: %w", err)
 	}
 
-	// Update database to show session is completing after interrupt
-	status := string(StatusCompleting)
-	errorMsg := "Session interrupt requested, shutting down gracefully"
+	// Update database to show session is interrupting after interrupt
+	status := string(StatusInterrupting)
 	now := time.Now()
 	update := store.SessionUpdate{
 		Status:         &status,
-		ErrorMessage:   &errorMsg,
-		CompletedAt:    &now,
 		LastActivityAt: &now,
+		// Don't set CompletedAt or ErrorMessage - session is still shutting down
 	}
 	if err := m.store.UpdateSession(ctx, sessionID, update); err != nil {
 		slog.Error("failed to update session status after interrupt",
@@ -1238,7 +1257,7 @@ func (m *Manager) InterruptSession(ctx context.Context, sessionID string) error 
 			Data: map[string]interface{}{
 				"session_id": sessionID,
 				"old_status": string(StatusRunning),
-				"new_status": string(StatusCompleting),
+				"new_status": string(StatusInterrupting),
 			},
 		})
 	}

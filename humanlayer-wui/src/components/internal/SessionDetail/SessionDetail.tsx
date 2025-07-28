@@ -382,7 +382,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       const isActiveSession = [
         SessionStatus.Starting,
         SessionStatus.Running,
-        SessionStatus.Completing,
+        SessionStatus.Interrupting,
         SessionStatus.WaitingInput,
       ].includes(session.status)
 

@@ -6,7 +6,8 @@ export enum SessionStatus {
   Completed = 'completed',
   Failed = 'failed',
   WaitingInput = 'waiting_input',
-  Completing = 'completing',
+  Interrupting = 'interrupting',
+  Interrupted = 'interrupted',
 }
 
 export enum Decision {
