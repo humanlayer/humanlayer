@@ -1,4 +1,4 @@
-import { CreateSessionResponseData, HLDClient } from '@humanlayer/hld-sdk'
+import { CreateSessionResponseData, HLDClient, RecentPath as SDKRecentPath } from '@humanlayer/hld-sdk'
 import { getDaemonUrl, getDefaultHeaders } from './http-config'
 import type {
   DaemonClient as IDaemonClient,
@@ -378,11 +378,11 @@ export class HTTPDaemonClient implements IDaemonClient {
 
   // Note, limit not being used just yet, post REST client implementation
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async getRecentPaths(_limit?: number): Promise<string[]> {
+  async getRecentPaths(_limit?: number): Promise<SDKRecentPath[]> {
     await this.ensureConnected()
     // SDK client doesn't support limit parameter yet
     const response = await this.client!.getRecentPaths()
-    return response
+    return response // SDK now properly returns RecentPath[]
   }
 
   // Private Helper Methods

@@ -44,7 +44,7 @@ export interface InterruptSessionResponseData {
  * @export
  */
 export const InterruptSessionResponseDataStatusEnum = {
-    Completing: 'completing'
+    Interrupting: 'interrupting'
 } as const;
 export type InterruptSessionResponseDataStatusEnum = typeof InterruptSessionResponseDataStatusEnum[keyof typeof InterruptSessionResponseDataStatusEnum];
 

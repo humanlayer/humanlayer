@@ -17,11 +17,12 @@ type ApprovalReconciler interface {
 type Status string
 
 const (
-	StatusStarting   Status = "starting"
-	StatusRunning    Status = "running"
-	StatusCompleted  Status = "completed"
-	StatusFailed     Status = "failed"
-	StatusCompleting Status = "completing" // Session received interrupt signal and is shutting down
+	StatusStarting     Status = "starting"
+	StatusRunning      Status = "running"
+	StatusCompleted    Status = "completed"
+	StatusFailed       Status = "failed"
+	StatusInterrupting Status = "interrupting" // Session received interrupt signal and is shutting down
+	StatusInterrupted  Status = "interrupted"  // Session was interrupted but can be resumed
 )
 
 // Session represents a Claude Code session managed by the daemon
