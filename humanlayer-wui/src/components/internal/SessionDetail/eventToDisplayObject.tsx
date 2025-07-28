@@ -195,6 +195,34 @@ export function eventToDisplayObject(
       )
     }
 
+    if (event.tool_name === 'NotebookRead') {
+      const toolInput = JSON.parse(event.tool_input_json!)
+      subject = (
+        <span>
+          <span className="font-bold">{event.tool_name} </span>
+          <span className="font-mono text-sm text-muted-foreground">{toolInput.notebook_path}</span>
+          {toolInput.cell_id && (
+            <span className="text-muted-foreground"> (cell: {toolInput.cell_id})</span>
+          )}
+        </span>
+      )
+    }
+
+    if (event.tool_name === 'NotebookEdit') {
+      const toolInput = JSON.parse(event.tool_input_json!)
+      const action = toolInput.edit_mode || 'replace'
+      subject = (
+        <span>
+          <span className="font-bold">{event.tool_name} </span>
+          <span className="text-muted-foreground">{action} cell in </span>
+          <span className="font-mono text-sm text-muted-foreground">{toolInput.notebook_path}</span>
+          {toolInput.cell_id && (
+            <span className="text-muted-foreground"> (cell: {toolInput.cell_id})</span>
+          )}
+        </span>
+      )
+    }
+
     if (event.tool_name === 'WebSearch') {
       iconComponent = <Globe className={iconClasses} />
       const toolInput = JSON.parse(event.tool_input_json!)
@@ -389,6 +417,35 @@ export function eventToDisplayObject(
           {snapshot && (
             <div className="mt-2 text-xs text-muted-foreground">
               Snapshot from: {formatTimestamp(snapshot.created_at)}
+            </div>
+          )}
+        </div>
+      )
+    }
+
+    if (event.tool_name === 'NotebookEdit') {
+      const toolInput = JSON.parse(event.tool_input_json!)
+      const action = toolInput.edit_mode || 'replace'
+
+      previewFile = (
+        <div className={`border ${getBorderClass()} rounded p-4 mt-4`}>
+          <div className="flex items-center gap-2 mb-2">
+            <FileText className="w-4 h-4" />
+            <span className="font-medium text-sm">Notebook Cell {action}</span>
+          </div>
+          <div className="font-mono text-xs text-muted-foreground mb-2">{toolInput.notebook_path}</div>
+          {toolInput.cell_id && (
+            <div className="text-xs text-muted-foreground mb-2">Cell ID: {toolInput.cell_id}</div>
+          )}
+          {toolInput.cell_type && (
+            <div className="text-xs text-muted-foreground mb-2">Cell Type: {toolInput.cell_type}</div>
+          )}
+          {action !== 'delete' && (
+            <div className="mt-3">
+              <div className="text-xs text-muted-foreground mb-1">New Content:</div>
+              <pre className="bg-muted/50 p-2 rounded text-xs overflow-x-auto">
+                <code>{toolInput.new_source}</code>
+              </pre>
             </div>
           )}
         </div>
@@ -604,6 +661,9 @@ export function getToolIcon(toolName: string | undefined): React.ReactNode {
       return <ListTodo className="w-3.5 h-3.5" />
     case 'WebSearch':
       return <Globe className="w-3.5 h-3.5" />
+    case 'NotebookRead':
+    case 'NotebookEdit':
+      return <FileText className="w-3.5 h-3.5" />
     default:
       return <Wrench className="w-3.5 h-3.5" />
   }
