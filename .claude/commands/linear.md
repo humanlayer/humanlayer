@@ -34,17 +34,19 @@ Then wait for the user's input.
 The team follows a specific workflow to ensure alignment before code implementation:
 
 1. **Triage** → All new tickets start here for initial review
-2. **Research Needed** → Ticket requires investigation before spec can be written
-3. **Research in Progress** → Active research/investigation underway
-4. **Ready for Spec** → Research complete, ticket needs an implementation plan/spec
-5. **Spec in Progress** → Actively writing the implementation plan
-6. **Spec in Review** → Spec is written and under discussion
-7. **Ready for Dev** → Spec approved, ready for implementation
-8. **In Dev** → Active development
-9. **Code Review** → PR submitted
-10. **Done** → Completed
+2. **Spec Needed** → More detail is needed - problem to solve and solution outline necessary
+3. **Research Needed** → Ticket requires investigation before plan can be written
+4. **Research in Progress** → Active research/investigation underway
+5. **Research in Review** → Research findings under review (optional step)
+6. **Ready for Plan** → Research complete, ticket needs an implementation plan
+7. **Plan in Progress** → Actively writing the implementation plan
+8. **Plan in Review** → Plan is written and under discussion
+9. **Ready for Dev** → Plan approved, ready for implementation
+10. **In Dev** → Active development
+11. **Code Review** → PR submitted
+12. **Done** → Completed
 
-**Key principle**: Review and alignment happen at the spec stage (not PR stage) to move faster and avoid rework.
+**Key principle**: Review and alignment happen at the plan stage (not PR stage) to move faster and avoid rework.
 
 ## Important Conventions
 
@@ -291,12 +293,14 @@ When moving tickets through the workflow:
    - Show current status in workflow
 
 2. **Suggest next status:**
-   - Triage → Research Needed (requires investigation) OR Ready for Spec (if clear enough)
+   - Triage → Spec Needed (lacks detail/problem statement)
+   - Spec Needed → Research Needed (once problem/solution outlined)
    - Research Needed → Research in Progress (starting research)
-   - Research in Progress → Ready for Spec (research complete)
-   - Ready for Spec → Spec in Progress (starting to write plan)
-   - Spec in Progress → Spec in Review (plan written)
-   - Spec in Review → Ready for Dev (plan approved)
+   - Research in Progress → Research in Review (optional, can skip to Ready for Plan)
+   - Research in Review → Ready for Plan (research approved)
+   - Ready for Plan → Plan in Progress (starting to write plan)
+   - Plan in Progress → Plan in Review (plan written)
+   - Plan in Review → Ready for Dev (plan approved)
    - Ready for Dev → In Dev (work started)
 
 3. **Update with context:**
@@ -353,14 +357,16 @@ Remember: The goal is to help a future reader (including yourself) quickly under
 
 ### Workflow State IDs
 - **Triage**: `77da144d-fe13-4c3a-a53a-cfebd06c0cbe` (type: triage)
-- **Research Needed**: `d0b89672-8189-45d6-b705-50afd6c94a91` (type: unstarted)
-- **Research in Progress**: `c41c5a23-ce25-471f-b70a-eff1dca60ffd` (type: unstarted)
-- **Ready for Spec**: `995011dd-3e36-46e5-b776-5a4628d06cc8` (type: unstarted)
-- **Spec in Progress**: `a52b4793-d1b6-4e5d-be79-b2254185eed0` (type: started)
-- **Spec in Review**: `15f56065-41ea-4d9a-ab8c-ec8e1a811a7a` (type: started)
-- **Ready for Dev**: `c25bae2f-856a-4718-aaa8-b469b7822f58` (type: started)
-- **In Dev**: `6be18699-18d7-496e-a7c9-37d2ddefe612` (type: started)
-- **Code Review**: `8ca7fda1-08d4-48fb-a0cf-954246ccbe66` (type: started)
+- **spec needed**: `274beb99-bff8-4d7b-85cf-04d18affbc82` (type: unstarted)
+- **research needed**: `d0b89672-8189-45d6-b705-50afd6c94a91` (type: unstarted)
+- **research in progress**: `c41c5a23-ce25-471f-b70a-eff1dca60ffd` (type: unstarted)
+- **research in review**: `1a9363a7-3fae-42ee-a6c8-1fc714656f09` (type: unstarted)
+- **ready for plan**: `995011dd-3e36-46e5-b776-5a4628d06cc8` (type: unstarted)
+- **plan in progress**: `a52b4793-d1b6-4e5d-be79-b2254185eed0` (type: started)
+- **plan in review**: `15f56065-41ea-4d9a-ab8c-ec8e1a811a7a` (type: started)
+- **ready for dev**: `c25bae2f-856a-4718-aaa8-b469b7822f58` (type: started)
+- **in dev**: `6be18699-18d7-496e-a7c9-37d2ddefe612` (type: started)
+- **code review**: `8ca7fda1-08d4-48fb-a0cf-954246ccbe66` (type: started)
 - **Ready for Deploy**: `a3ad0b54-17bf-4ad3-b1c1-2f56c1f2515a` (type: started)
 - **Done**: `8159f431-fbc7-495f-a861-1ba12040f672` (type: completed)
 - **Backlog**: `6cf6b25a-054a-469b-9845-9bd9ab39ad76` (type: backlog)
