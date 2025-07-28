@@ -4,22 +4,27 @@ You cannot run this process, you cannot restart it. If you make changes, you mus
 
 The logs are in ~/.humanlayer/logs/daemon-*.log
 
-It uses a database at ~/.humanlayer/*.db - you can access it with sqlite3 to inspect progress and debug things, e.g.
+It uses a database at ~/.humanlayer/*.db - you can access it with sqlite3 to inspect progress and debug things.
 
+For production/nightly daemon:
 ```bash
 sqlite3 ~/.humanlayer/daemon.db "SELECT * FROM sessions ORDER BY created_at DESC LIMIT 5;"
 ```
 
-for development builds, you will likely want to get the path of a dev clone of the prod db:
-
+For development daemon (persistent database):
 ```bash
-sqlite3 ~/.humanlayer/daemon-2025-07-20-12-32-10.db "SELECT * FROM sessions ORDER BY created_at DESC LIMIT 5;"
+sqlite3 ~/.humanlayer/daemon-dev.db "SELECT * FROM sessions ORDER BY created_at DESC LIMIT 5;"
 ```
 
-you can check the schema for a dev database with:
-
+To clone nightly database to dev for testing:
 ```bash
-sqlite3 ~/.humanlayer/daemon-YYYY-MM-DD-HH-MM-SS.db ".schema"
+make clone-nightly-db-to-dev-db  # Backs up existing dev db and copies nightly to dev
+```
+
+You can check the schema with:
+```bash
+sqlite3 ~/.humanlayer/daemon.db ".schema"
+sqlite3 ~/.humanlayer/daemon-dev.db ".schema"
 ```
 
 

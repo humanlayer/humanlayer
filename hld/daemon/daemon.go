@@ -245,7 +245,8 @@ func (d *Daemon) handleConnection(ctx context.Context, conn net.Conn) {
 }
 
 // markOrphanedSessionsAsFailed marks any sessions that were running or waiting
-// when the daemon restarted as failed
+// when the daemon restarted as failed. Sessions with status interrupting, interrupted,
+// completed, or failed are left as-is.
 func (d *Daemon) markOrphanedSessionsAsFailed(ctx context.Context) error {
 	if d.store == nil {
 		return nil
@@ -259,7 +260,9 @@ func (d *Daemon) markOrphanedSessionsAsFailed(ctx context.Context) error {
 
 	orphanedCount := 0
 	for _, session := range sessions {
-		// Mark running or waiting sessions as failed
+		// Mark only truly orphaned sessions as failed (running, waiting_input, starting).
+		// Sessions with status interrupting, interrupted, completed, or failed are left as-is
+		// to allow interrupted sessions to be resumed after daemon restart.
 		if session.Status == store.SessionStatusRunning ||
 			session.Status == store.SessionStatusWaitingInput ||
 			session.Status == store.SessionStatusStarting {
