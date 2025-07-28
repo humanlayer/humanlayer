@@ -3,5 +3,5 @@
 export * from './ApprovalsApi';
 export * from './EventsApi';
 export * from './SessionsApi';
-// export * from './SseManualApi'; // Excluded to avoid duplicate StreamEventsRequest export
+export { SseManualApi } from './SseManualApi';
 export * from './SystemApi';

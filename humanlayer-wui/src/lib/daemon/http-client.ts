@@ -242,22 +242,12 @@ export class HTTPDaemonClient implements IDaemonClient {
 
   // remove ignore once we've implemented this again
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async updateSessionTitle(sessionId: string, _title: string): Promise<{ success: boolean }> {
+  async updateSessionTitle(sessionId: string, title: string): Promise<{ success: boolean }> {
     await this.ensureConnected()
-    // TODO: Add updateSessionTitle to the SDK
-    // Temporary workaround: use updateSession with custom metadata
-    try {
-      await this.client!.updateSession(sessionId, {
-        // Store title in metadata until SDK supports it directly
-        auto_accept_edits: undefined,
-      })
-      // For now, title update is not supported
-      console.warn('updateSessionTitle not yet supported in SDK')
-      return { success: true }
-    } catch (error) {
-      console.warn('updateSessionTitle failed:', error)
-      return { success: false }
-    }
+    await this.client!.updateSession(sessionId, {
+      title: title,
+    })
+    return { success: true }
   }
 
   // Conversation & Content Methods

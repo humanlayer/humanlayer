@@ -103,11 +103,12 @@ export class HLDClient {
     }
 
     // Update session settings
-    async updateSession(id: string, updates: { auto_accept_edits?: boolean }): Promise<void> {
+    async updateSession(id: string, updates: { auto_accept_edits?: boolean, title?: string }): Promise<void> {
         await this.sessionsApi.updateSession({
             id,
             updateSessionRequest: {
-                autoAcceptEdits: updates.auto_accept_edits
+                autoAcceptEdits: updates.auto_accept_edits,
+                title: updates.title
             }
         });
     }
