@@ -5,11 +5,13 @@ import type {
   HealthResponse,
   Event,
   EventType,
+  RecentPath as SDKRecentPath,
 } from '@humanlayer/hld-sdk'
 
 // Re-export SDK types and values
 export { SessionStatus, ApprovalStatus }
 export type { Event, EventType }
+export type RecentPath = SDKRecentPath
 
 // Map to legacy types for backward compatibility
 export type Session = LegacySession // Components expect snake_case
@@ -185,7 +187,7 @@ export interface DaemonClient {
   subscribeToEvents(options: SubscribeOptions): SubscriptionHandle
 
   // Utility methods
-  getRecentPaths(limit?: number): Promise<string[]>
+  getRecentPaths(limit?: number): Promise<RecentPath[]>
 }
 
 // Legacy enums and types for backward compatibility (to be gradually removed)
@@ -371,12 +373,12 @@ export interface SubscribeRequest {
   run_id?: string
 }
 
-// Recent paths types
-export interface RecentPath {
-  path: string
-  last_used: string
-  usage_count: number
-}
+// Recent paths types (legacy interface - replaced by SDK type)
+// export interface RecentPath {
+//   path: string
+//   last_used: string
+//   usage_count: number
+// }
 
 export interface GetRecentPathsResponse {
   paths: RecentPath[]

@@ -416,7 +416,6 @@ paths:
         - Go: r3labs/sse or similar SSE client library
         - Other languages: Language-specific SSE client libraries
       tags:
-        - Events
         - sse-manual
       x-sse: true
       parameters:
@@ -592,7 +591,8 @@ components:
         - running
         - completed
         - failed
-        - completing
+        - interrupting
+        - interrupted
         - waiting_input
       description: Current status of the session
 
@@ -785,8 +785,8 @@ components:
               example: sess_abc123
             status:
               type: string
-              enum: [completing]
-              example: completing
+              enum: [interrupting]
+              example: interrupting
 
     # Conversation Types
     ConversationEvent:

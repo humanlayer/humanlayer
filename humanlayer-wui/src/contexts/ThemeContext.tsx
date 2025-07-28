@@ -26,7 +26,7 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined)
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {
     const stored = localStorage.getItem('wui-theme')
-    return (stored as Theme) || 'solarized-dark'
+    return (stored as Theme) || 'catppuccin'
   })
 
   useEffect(() => {

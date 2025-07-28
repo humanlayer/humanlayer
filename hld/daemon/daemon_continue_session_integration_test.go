@@ -146,7 +146,7 @@ func TestIntegrationContinueSession(t *testing.T) {
 		if err == nil {
 			t.Error("Expected error when continuing failed session")
 		}
-		if err.Error() != "cannot continue session with status failed (must be completed or running)" {
+		if err.Error() != "cannot continue session with status failed (must be completed, interrupted, or running)" {
 			t.Errorf("Unexpected error: %v", err)
 		}
 	})

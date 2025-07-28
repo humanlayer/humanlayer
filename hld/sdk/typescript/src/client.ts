@@ -7,7 +7,9 @@ import {
     Session,
     Approval,
     CreateSessionResponse,
-    CreateSessionResponseData
+    CreateSessionResponseData,
+    EventFromJSON,
+    RecentPath
 } from './generated';
 
 export interface HLDClientOptions {
@@ -126,9 +128,10 @@ export class HLDClient {
     }
 
     // Get recent paths
-    async getRecentPaths(): Promise<any[]> {
+    async getRecentPaths(): Promise<RecentPath[]> {
         const response = await this.sessionsApi.getRecentPaths({});
-        return response.data;
+        // Extract the data array from the response wrapper
+        return response.data || [];
     }
 
     // Get approval by ID
@@ -200,7 +203,9 @@ export class HLDClient {
         eventSource.onmessage = (event: MessageEvent) => {
             try {
                 const data = JSON.parse(event.data);
-                handlers.onMessage?.(data);
+                // Use the generated converter to transform the event
+                const typedEvent = EventFromJSON(data);
+                handlers.onMessage?.(typedEvent);
             } catch (e) {
                 handlers.onError?.(new Error(`Failed to parse event: ${e}`));
             }

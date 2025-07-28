@@ -383,7 +383,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         [
           SessionStatus.Starting,
           SessionStatus.Running,
-          SessionStatus.Completing,
+          SessionStatus.Interrupting,
           SessionStatus.WaitingInput,
         ] as SessionStatus[]
       ).includes(session.status)

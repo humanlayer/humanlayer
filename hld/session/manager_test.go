@@ -156,17 +156,17 @@ func TestContinueSession_ValidatesParentStatus(t *testing.T) {
 		{
 			name:          "failed session",
 			parentStatus:  store.SessionStatusFailed,
-			expectedError: "cannot continue session with status failed (must be completed or running)",
+			expectedError: "cannot continue session with status failed (must be completed, interrupted, or running)",
 		},
 		{
 			name:          "starting session",
 			parentStatus:  store.SessionStatusStarting,
-			expectedError: "cannot continue session with status starting (must be completed or running)",
+			expectedError: "cannot continue session with status starting (must be completed, interrupted, or running)",
 		},
 		{
 			name:          "waiting input session",
 			parentStatus:  store.SessionStatusWaitingInput,
-			expectedError: "cannot continue session with status waiting_input (must be completed or running)",
+			expectedError: "cannot continue session with status waiting_input (must be completed, interrupted, or running)",
 		},
 	}
 

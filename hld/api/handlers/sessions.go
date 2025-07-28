@@ -438,7 +438,7 @@ func (h *SessionHandlers) InterruptSession(ctx context.Context, req api.Interrup
 	resp := api.InterruptSessionResponse{}
 	resp.Data.Success = true
 	resp.Data.SessionId = string(req.Id)
-	resp.Data.Status = api.InterruptSessionResponseDataStatusCompleting
+	resp.Data.Status = api.InterruptSessionResponseDataStatusInterrupting
 	return api.InterruptSession200JSONResponse(resp), nil
 }
 
