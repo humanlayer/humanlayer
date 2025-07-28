@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "humanlayer-wui",
+  "productName": "CodeLayer",
   "version": "0.1.0",
   "identifier": "dev.humanlayer.wui",
   "build": {
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "humanlayer-wui",
+        "title": "CodeLayer",
         "width": 800,
         "height": 600,
         "zoomHotkeysEnabled": true

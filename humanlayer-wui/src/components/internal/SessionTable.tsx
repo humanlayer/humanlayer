@@ -16,6 +16,7 @@ import type { LucideIcon } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { daemonClient } from '@/lib/daemon/client'
+import { renderSessionStatus } from '@/utils/sessionStatus'
 
 interface SessionTableProps {
   sessions: SessionInfo[]
@@ -126,7 +127,7 @@ export default function SessionTable({
     if (focusedSession && tableRef.current) {
       const focusedRow = tableRef.current.querySelector(`[data-session-id="${focusedSession.id}"]`)
       if (focusedRow) {
-        focusedRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+        focusedRow.scrollIntoView({ behavior: 'auto', block: 'nearest' })
       }
     }
   }, [focusedSession])
@@ -364,8 +365,10 @@ export default function SessionTable({
                   onClick={() => handleActivateSession?.(session)}
                   className={cn(
                     'cursor-pointer transition-shadow duration-200',
-                    focusedSession?.id === session.id &&
+                    focusedSession?.id === session.id && [
                       'shadow-[inset_2px_0_0_0_var(--terminal-accent)]',
+                      'bg-accent/10',
+                    ],
                     session.archived && 'opacity-60',
                   )}
                 >
@@ -393,7 +396,9 @@ export default function SessionTable({
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className={getStatusTextClass(session.status)}>{session.status}</TableCell>
+                  <TableCell className={getStatusTextClass(session.status)}>
+                    {renderSessionStatus(session)}
+                  </TableCell>
                   <TableCell className="max-w-[200px]">
                     <Tooltip>
                       <TooltipTrigger asChild>

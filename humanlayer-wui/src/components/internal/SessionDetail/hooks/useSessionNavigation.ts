@@ -131,8 +131,8 @@ export function useSessionNavigation({
   }, [focusedEventId, navigableItems, startKeyboardNavigation])
 
   // Keyboard navigation
-  useHotkeys('j', focusNextEvent, { enabled: !expandedToolResult && !disabled })
-  useHotkeys('k', focusPreviousEvent, { enabled: !expandedToolResult && !disabled })
+  useHotkeys('j, ArrowDown', focusNextEvent, { enabled: !expandedToolResult && !disabled })
+  useHotkeys('k, ArrowUp', focusPreviousEvent, { enabled: !expandedToolResult && !disabled })
 
   // I key to expand task groups or inspect tool results
   useHotkeys(
