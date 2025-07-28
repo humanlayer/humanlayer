@@ -65,18 +65,18 @@ export function eventToDisplayObject(
   // console.log('event', event)
   // Check if this is a thinking message
   const isThinking =
-    event.event_type === ConversationEventType.Thinking ||
+    event.eventType === ConversationEventType.Thinking ||
     (event.role === 'assistant' && event.content?.startsWith('<thinking>'))
 
-  const iconClasses = `w-4 h-4 align-middle relative top-[1px] ${event.event_type === ConversationEventType.ToolCall && !event.is_completed ? 'pulse-warning' : ''}`
+  const iconClasses = `w-4 h-4 align-middle relative top-[1px] ${event.eventType === ConversationEventType.ToolCall && !event.isCompleted ? 'pulse-warning' : ''}`
 
   // Tool Calls
-  if (event.event_type === ConversationEventType.ToolCall) {
+  if (event.eventType === ConversationEventType.ToolCall) {
     iconComponent = <Wrench className={iconClasses} />
 
     // Claude Code converts "LS" to "List"
-    if (event.tool_name === 'LS') {
-      const toolInput = JSON.parse(event.tool_input_json!)
+    if (event.toolName === 'LS') {
+      const toolInput = JSON.parse(event.toolInputJson!)
       subject = (
         <span>
           <span className="font-bold">List </span>
@@ -85,21 +85,21 @@ export function eventToDisplayObject(
       )
     }
 
-    if (event.tool_name === 'Read') {
-      const toolInput = JSON.parse(event.tool_input_json!)
+    if (event.toolName === 'Read') {
+      const toolInput = JSON.parse(event.toolInputJson!)
       subject = (
         <span>
-          <span className="font-bold">{event.tool_name} </span>
+          <span className="font-bold">{event.toolName} </span>
           <span className="font-mono text-sm text-muted-foreground">{toolInput.file_path}</span>
         </span>
       )
     }
 
-    if (event.tool_name === 'Glob') {
-      const toolInput = JSON.parse(event.tool_input_json!)
+    if (event.toolName === 'Glob') {
+      const toolInput = JSON.parse(event.toolInputJson!)
       subject = (
         <span>
-          <span className="font-bold">{event.tool_name} </span>
+          <span className="font-bold">{event.toolName} </span>
           <span className="font-mono text-sm text-muted-foreground">
             <span className="font-bold">{toolInput.pattern}</span> against{' '}
             <span className="font-bold">{toolInput.path}</span>
@@ -108,12 +108,12 @@ export function eventToDisplayObject(
       )
     }
 
-    if (event.tool_name === 'Bash') {
-      const toolInput = JSON.parse(event.tool_input_json!)
+    if (event.toolName === 'Bash') {
+      const toolInput = JSON.parse(event.toolInputJson!)
       subject = (
         <span>
           <div className="flex items-baseline gap-2">
-            <span className="font-bold">{event.tool_name} </span>
+            <span className="font-bold">{event.toolName} </span>
             {toolInput.description && (
               <span className="text-sm text-muted-foreground">{toolInput.description}</span>
             )}
@@ -125,18 +125,18 @@ export function eventToDisplayObject(
       )
     }
 
-    if (event.tool_name === 'Task') {
-      const toolInput = JSON.parse(event.tool_input_json!)
+    if (event.toolName === 'Task') {
+      const toolInput = JSON.parse(event.toolInputJson!)
       subject = (
         <span>
-          <span className="font-bold">{event.tool_name} </span>
+          <span className="font-bold">{event.toolName} </span>
           <span className="font-mono text-sm text-muted-foreground">{toolInput.description}</span>
         </span>
       )
     }
 
-    if (event.tool_name === 'TodoWrite') {
-      const toolInput = JSON.parse(event.tool_input_json!)
+    if (event.toolName === 'TodoWrite') {
+      const toolInput = JSON.parse(event.toolInputJson!)
       const todos = toolInput.todos
       const completedCount = todos.filter((todo: any) => todo.status === 'completed').length
       const pendingCount = todos.filter((todo: any) => todo.status === 'pending').length
@@ -151,21 +151,21 @@ export function eventToDisplayObject(
       )
     }
 
-    if (event.tool_name === 'Edit') {
-      const toolInput = JSON.parse(event.tool_input_json!)
+    if (event.toolName === 'Edit') {
+      const toolInput = JSON.parse(event.toolInputJson!)
       subject = (
         <span>
-          <span className="font-bold">{event.tool_name} </span>
+          <span className="font-bold">{event.toolName} </span>
           <span className="font-mono text-sm text-muted-foreground">to {toolInput.file_path}</span>
         </span>
       )
     }
 
-    if (event.tool_name === 'MultiEdit') {
-      const toolInput = JSON.parse(event.tool_input_json!)
+    if (event.toolName === 'MultiEdit') {
+      const toolInput = JSON.parse(event.toolInputJson!)
       subject = (
         <span>
-          <span className="font-bold">{event.tool_name} </span>
+          <span className="font-bold">{event.toolName} </span>
           <span className="font-mono text-sm text-muted-foreground">
             {toolInput.edits.length} edit{toolInput.edits.length === 1 ? '' : 's'} to{' '}
             {toolInput.file_path}
@@ -174,30 +174,30 @@ export function eventToDisplayObject(
       )
     }
 
-    if (event.tool_name === 'Grep') {
-      const toolInput = JSON.parse(event.tool_input_json!)
+    if (event.toolName === 'Grep') {
+      const toolInput = JSON.parse(event.toolInputJson!)
       subject = (
         <span>
-          <span className="font-bold">{event.tool_name} </span>
+          <span className="font-bold">{event.toolName} </span>
           <span className="font-mono text-sm text-muted-foreground">{toolInput.pattern}</span>
         </span>
       )
     }
 
-    if (event.tool_name === 'Write') {
+    if (event.toolName === 'Write') {
       iconComponent = <FilePenLine className={iconClasses} />
-      const toolInput = JSON.parse(event.tool_input_json!)
+      const toolInput = JSON.parse(event.toolInputJson!)
       subject = (
         <span>
-          <span className="font-bold">{event.tool_name} </span>
+          <span className="font-bold">{event.toolName} </span>
           <span className="font-mono text-sm text-muted-foreground">{toolInput.file_path}</span>
         </span>
       )
     }
 
-    if (event.tool_name === 'WebSearch') {
+    if (event.toolName === 'WebSearch') {
       iconComponent = <Globe className={iconClasses} />
-      const toolInput = JSON.parse(event.tool_input_json!)
+      const toolInput = JSON.parse(event.toolInputJson!)
       subject = (
         <span>
           <span className="font-bold">Web Search </span>
@@ -207,13 +207,13 @@ export function eventToDisplayObject(
     }
 
     // MCP tool handling
-    if (event.tool_name?.startsWith('mcp__')) {
+    if (event.toolName?.startsWith('mcp__')) {
       // Parse the MCP tool name: mcp__service__method
-      const parts = event.tool_name.split('__')
+      const parts = event.toolName.split('__')
       const service = parts[1] || 'unknown'
       const method = parts.slice(2).join('__') || 'unknown' // Handle methods with __ in name
 
-      const toolInput = event.tool_input_json ? JSON.parse(event.tool_input_json) : {}
+      const toolInput = event.toolInputJson ? JSON.parse(event.toolInputJson) : {}
 
       subject = (
         <span>
@@ -247,18 +247,19 @@ export function eventToDisplayObject(
   const formattedToolSubject = subject
 
   // Approvals
-  if (event.approval_status) {
-    const approvalStatusToColor = {
+  if (event.approvalStatus) {
+    const approvalStatusToColor: Record<string, string> = {
       [ApprovalStatus.Pending]: 'text-[var(--terminal-warning)]',
       [ApprovalStatus.Approved]: 'text-[var(--terminal-success)]',
       [ApprovalStatus.Denied]: 'text-[var(--terminal-error)]',
+      resolved: 'text-[var(--terminal-success)]', // Add resolved status
     }
     iconComponent = <UserCheck className={iconClasses} />
     let previewFile = null
 
     // Get border class based on approval status
     const getBorderClass = () => {
-      switch (event.approval_status) {
+      switch (event.approvalStatus) {
         case ApprovalStatus.Pending:
           return 'border-dashed border-muted-foreground'
         case ApprovalStatus.Approved:
@@ -271,14 +272,14 @@ export function eventToDisplayObject(
     }
 
     // For Write tool calls, display the file contents in a nice format
-    if (event.tool_name === 'Write') {
-      const toolInput = JSON.parse(event.tool_input_json!)
+    if (event.toolName === 'Write') {
+      const toolInput = JSON.parse(event.toolInputJson!)
       const snapshot = getSnapshot?.(toolInput.file_path)
 
       previewFile = (
         <div className={`border ${getBorderClass()} rounded p-4 mt-4`}>
           <div className="mb-4">
-            {event.approval_status ? (
+            {event.approvalStatus ? (
               <span className="font-mono text-sm text-muted-foreground">
                 <span className="font-bold">{toolInput.file_path}</span>
               </span>
@@ -305,15 +306,15 @@ export function eventToDisplayObject(
       )
     }
 
-    if (event.tool_name === 'Edit') {
-      const toolInput = JSON.parse(event.tool_input_json!)
+    if (event.toolName === 'Edit') {
+      const toolInput = JSON.parse(event.toolInputJson!)
       const snapshot = getSnapshot?.(toolInput.file_path)
 
       previewFile = (
         <div className={`border ${getBorderClass()} rounded p-4 mt-4`}>
           <div className="mb-4 flex items-center justify-between">
             <div>
-              {event.approval_status ? (
+              {event.approvalStatus ? (
                 <span className="font-mono text-sm text-muted-foreground">
                   <span className="font-bold">{toolInput.file_path}</span>
                 </span>
@@ -326,7 +327,7 @@ export function eventToDisplayObject(
                 </>
               )}
             </div>
-            {event.approval_status === ApprovalStatus.Pending && (
+            {event.approvalStatus === ApprovalStatus.Pending && (
               <DiffViewToggle
                 isSplitView={isSplitView ?? false}
                 onToggle={onToggleSplitView ?? (() => {})}
@@ -347,8 +348,8 @@ export function eventToDisplayObject(
       )
     }
 
-    if (event.tool_name === 'MultiEdit') {
-      const toolInput = JSON.parse(event.tool_input_json!)
+    if (event.toolName === 'MultiEdit') {
+      const toolInput = JSON.parse(event.toolInputJson!)
       const snapshot = getSnapshot?.(toolInput.file_path)
       const allEdits = toolInput.edits.map((e: any) => ({
         oldValue: e.old_string,
@@ -359,7 +360,7 @@ export function eventToDisplayObject(
         <div className={`border ${getBorderClass()} rounded p-4 mt-4`}>
           <div className="mb-4 flex items-center justify-between">
             <div>
-              {event.approval_status ? (
+              {event.approvalStatus ? (
                 <span className="font-mono text-sm text-muted-foreground">
                   {toolInput.edits.length} edit{toolInput.edits.length === 1 ? '' : 's'} to{' '}
                   <span className="font-bold">{toolInput.file_path}</span>
@@ -374,7 +375,7 @@ export function eventToDisplayObject(
                 </>
               )}
             </div>
-            {event.approval_status === ApprovalStatus.Pending && (
+            {event.approvalStatus === ApprovalStatus.Pending && (
               <DiffViewToggle
                 isSplitView={isSplitView ?? false}
                 onToggle={onToggleSplitView ?? (() => {})}
@@ -400,10 +401,10 @@ export function eventToDisplayObject(
       subject = (
         <span>
           <div className="flex items-baseline gap-2">
-            <span className={`${approvalStatusToColor[event.approval_status]}`}>
+            <span className={`${approvalStatusToColor[event.approvalStatus]}`}>
               {formattedToolSubject}
             </span>
-            {event.approval_status === ApprovalStatus.Pending && (
+            {event.approvalStatus === ApprovalStatus.Pending && (
               <span className="text-sm text-muted-foreground">(needs approval)</span>
             )}
           </div>
@@ -414,22 +415,22 @@ export function eventToDisplayObject(
       // Fallback to original behavior for tools without special formatting
       subject = (
         <span>
-          <span className={`font-bold ${approvalStatusToColor[event.approval_status]}`}>
-            {event.tool_name}
+          <span className={`font-bold ${approvalStatusToColor[event.approvalStatus]}`}>
+            {event.toolName}
           </span>
-          {event.approval_status === ApprovalStatus.Pending && (
+          {event.approvalStatus === ApprovalStatus.Pending && (
             <span className="ml-2 text-sm text-muted-foreground">(needs approval)</span>
           )}
-          {!previewFile && <div className="mt-4">{formatJson(event.tool_input_json!)}</div>}
+          {!previewFile && <div className="mt-4">{formatJson(event.toolInputJson!)}</div>}
           {previewFile}
         </span>
       )
     }
 
     // Add approve/deny buttons for pending approvals
-    if (event.approval_status === ApprovalStatus.Pending && event.approval_id && onApprove && onDeny) {
-      const isDenying = denyingApprovalId === event.approval_id
-      const isApproving = approvingApprovalId === event.approval_id
+    if (event.approvalStatus === ApprovalStatus.Pending && event.approvalId && onApprove && onDeny) {
+      const isDenying = denyingApprovalId === event.approvalId
+      const isApproving = approvingApprovalId === event.approvalId
 
       body = (
         <div className="mt-4 flex gap-2 justify-end">
@@ -441,13 +442,13 @@ export function eventToDisplayObject(
                 variant={isApproving ? 'outline' : 'default'}
                 onClick={e => {
                   e.stopPropagation()
-                  onApprove(event.approval_id!)
+                  onApprove(event.approvalId!)
                 }}
                 disabled={isApproving}
               >
                 {isApproving
                   ? 'Approving...'
-                  : confirmingApprovalId === event.approval_id
+                  : confirmingApprovalId === event.approvalId
                     ? 'Approve?'
                     : 'Approve'}{' '}
                 <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">A</kbd>
@@ -459,7 +460,7 @@ export function eventToDisplayObject(
                   variant="destructive"
                   onClick={e => {
                     e.stopPropagation()
-                    onStartDeny?.(event.approval_id!)
+                    onStartDeny?.(event.approvalId!)
                   }}
                 >
                   Deny <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">D</kbd>
@@ -467,14 +468,14 @@ export function eventToDisplayObject(
               )}
             </>
           ) : (
-            <DenyForm approvalId={event.approval_id!} onDeny={onDeny} onCancel={onCancelDeny} />
+            <DenyForm approvalId={event.approvalId!} onDeny={onDeny} onCancel={onCancelDeny} />
           )}
         </div>
       )
     }
   }
 
-  if (event.event_type === ConversationEventType.Thinking) {
+  if (event.eventType === ConversationEventType.Thinking) {
     // Thinking messages are always from assistant
     const fullContent = (event.content || '').trim()
 
@@ -486,7 +487,7 @@ export function eventToDisplayObject(
     body = null // Everything is in subject for thinking messages
   }
 
-  if (event.event_type === ConversationEventType.Message) {
+  if (event.eventType === ConversationEventType.Message) {
     // For assistant messages, show full content without truncation
     if (event.role === 'assistant') {
       const fullContent = event.content || ''
@@ -507,7 +508,7 @@ export function eventToDisplayObject(
     }
   }
 
-  if (event.event_type === ConversationEventType.Thinking) {
+  if (event.eventType === ConversationEventType.Thinking) {
     iconComponent = <Brain className={iconClasses} />
   } else if (event.role === 'assistant') {
     iconComponent = <Bot className={iconClasses} />
@@ -518,24 +519,24 @@ export function eventToDisplayObject(
   }
 
   // Display tool result content for tool calls
-  if (event.event_type === ConversationEventType.ToolCall) {
+  if (event.eventType === ConversationEventType.ToolCall) {
     if (toolResult) {
       // For denied approvals, show the denial comment in red
-      if (event.approval_status === ApprovalStatus.Denied) {
+      if (event.approvalStatus === ApprovalStatus.Denied) {
         subject = (
           <>
             {subject}
             <div className="mt-1 text-sm font-mono flex items-start gap-1">
               <span className="text-muted-foreground/50">⎿</span>
               <span className="text-destructive">
-                Denied: {toolResult.tool_result_content || 'No reason provided'}
+                Denied: {toolResult.toolResultContent || 'No reason provided'}
               </span>
             </div>
           </>
         )
       } else {
         // Normal tool result display
-        const resultDisplay = formatToolResult(event.tool_name || '', toolResult)
+        const resultDisplay = formatToolResult(event.toolName || '', toolResult)
         if (resultDisplay) {
           // Append to existing subject with indentation
           subject = (
@@ -569,10 +570,10 @@ export function eventToDisplayObject(
     id: event.id,
     role: event.role,
     subject,
-    isCompleted: event.is_completed,
+    isCompleted: event.isCompleted,
     iconComponent,
     body,
-    created_at: event.created_at,
+    created_at: event.createdAt,
     toolResultContent,
     isThinking,
   }

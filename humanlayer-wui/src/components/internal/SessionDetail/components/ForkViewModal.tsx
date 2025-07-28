@@ -54,7 +54,7 @@ function ForkViewModalContent({
   // Filter to only user messages (excluding the first one)
   const userMessageIndices = events
     .map((e, i) => ({ event: e, index: i }))
-    .filter(({ event }) => event.event_type === 'message' && event.role === 'user')
+    .filter(({ event }) => event.eventType === 'message' && event.role === 'user')
     .slice(1) // Exclude first message since it can't be forked
 
   // Add current option as a special index (-1) only if session is not failed

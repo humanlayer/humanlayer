@@ -8,7 +8,7 @@ import { truncate } from '@/utils/formatting'
 
 // Format tool result content into abbreviated display
 export function formatToolResult(toolName: string, toolResult: ConversationEvent): React.ReactNode {
-  const content = toolResult.tool_result_content || ''
+  const content = toolResult.toolResultContent || ''
 
   // Handle empty content
   if (!content.trim()) {
@@ -76,7 +76,7 @@ export function formatToolResult(toolName: string, toolResult: ConversationEvent
     }
 
     case 'Bash': {
-      const lines = content.split('\n').filter(l => l.trim())
+      const lines = content.split('\n').filter((l: string) => l.trim())
       if (!content || lines.length === 0) {
         abbreviated = 'Command completed'
       } else if (lines.length === 1) {
@@ -156,7 +156,7 @@ export function formatToolResult(toolName: string, toolResult: ConversationEvent
       if (content === 'No files found') {
         abbreviated = 'No files found'
       } else {
-        const fileCount = content.split('\n').filter(l => l.trim()).length
+        const fileCount = content.split('\n').filter((l: string) => l.trim()).length
         abbreviated = `Found ${fileCount} files`
       }
       break
@@ -173,7 +173,7 @@ export function formatToolResult(toolName: string, toolResult: ConversationEvent
         // Fallback: count lines
         const fileCount = content
           .split('\n')
-          .filter(l => l.trim() && !l.includes('(Results are truncated')).length
+          .filter((l: string) => l.trim() && !l.includes('(Results are truncated')).length
         abbreviated = `Found ${fileCount} files`
       }
       break
@@ -181,7 +181,7 @@ export function formatToolResult(toolName: string, toolResult: ConversationEvent
 
     case 'LS': {
       // Count items in the tree structure (lines starting with " - ")
-      const lsItems = content.split('\n').filter(l => l.trim().startsWith('-')).length
+      const lsItems = content.split('\n').filter((l: string) => l.trim().startsWith('-')).length
       abbreviated = `${lsItems} items`
       break
     }
@@ -274,7 +274,7 @@ export function formatToolResult(toolName: string, toolResult: ConversationEvent
           abbreviated = `${service} ${method} completed`
         } else {
           // Show first line or character count for longer responses
-          const lines = content.split('\n').filter(l => l.trim())
+          const lines = content.split('\n').filter((l: string) => l.trim())
           if (lines.length === 1 && lines[0].length < 80) {
             abbreviated = lines[0]
           } else if (content.length > 200) {

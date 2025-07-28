@@ -5,7 +5,7 @@ import { SessionDetailHotkeysScope } from '../SessionDetail'
 
 export function useSessionClipboard(focusedEvent: ConversationEvent | null, enabled: boolean = true) {
   const getMessageContent = (event: ConversationEvent): string | null => {
-    if (event.event_type !== ConversationEventType.Message) return null
+    if (event.eventType !== ConversationEventType.Message) return null
     if (event.role !== 'user' && event.role !== 'assistant') return null
     return event.content || null
   }

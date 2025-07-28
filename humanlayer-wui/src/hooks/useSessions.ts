@@ -28,12 +28,12 @@ export function useSessions(): UseSessionsReturn {
       // Transform to UI-friendly format
       const summaries: SessionSummary[] = response.sessions.map(session => ({
         id: session.id,
-        runId: session.run_id,
+        runId: session.runId,
         status: session.status,
         query: session.query,
         model: session.model || 'default',
-        startTime: new Date(session.start_time),
-        endTime: session.end_time ? new Date(session.end_time) : undefined,
+        startTime: new Date(session.createdAt),
+        endTime: session.completedAt ? new Date(session.completedAt) : undefined,
         hasApprovals: false, // Will be enriched later if needed
       }))
 

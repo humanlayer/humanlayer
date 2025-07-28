@@ -1,4 +1,4 @@
-import { SessionInfo } from '@/lib/daemon/types'
+import { Session } from '@/lib/daemon/types'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 import { useHotkeys, useHotkeysContext } from 'react-hotkeys-hook'
@@ -19,13 +19,13 @@ import { daemonClient } from '@/lib/daemon/client'
 import { renderSessionStatus } from '@/utils/sessionStatus'
 
 interface SessionTableProps {
-  sessions: SessionInfo[]
-  handleFocusSession?: (session: SessionInfo) => void
+  sessions: Session[]
+  handleFocusSession?: (session: Session) => void
   handleBlurSession?: () => void
   handleFocusNextSession?: () => void
   handleFocusPreviousSession?: () => void
-  handleActivateSession?: (session: SessionInfo) => void
-  focusedSession: SessionInfo | null
+  handleActivateSession?: (session: Session) => void
+  focusedSession: Session | null
   searchText?: string
   matchedSessions?: Map<string, any>
   emptyState?: {
@@ -406,12 +406,12 @@ export default function SessionTable({
                           className="block truncate cursor-help text-sm"
                           style={{ direction: 'rtl', textAlign: 'left' }}
                         >
-                          {session.working_dir || '-'}
+                          {session.workingDir || '-'}
                         </span>
                       </TooltipTrigger>
                       <TooltipContent className="max-w-[600px]">
                         <span className="font-mono text-sm">
-                          {session.working_dir || 'No working directory'}
+                          {session.workingDir || 'No working directory'}
                         </span>
                       </TooltipContent>
                     </Tooltip>
@@ -481,19 +481,17 @@ export default function SessionTable({
                   <TableCell>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <span className="cursor-help">{formatTimestamp(session.start_time)}</span>
+                        <span className="cursor-help">{formatTimestamp(session.createdAt)}</span>
                       </TooltipTrigger>
-                      <TooltipContent>{formatAbsoluteTimestamp(session.start_time)}</TooltipContent>
+                      <TooltipContent>{formatAbsoluteTimestamp(session.createdAt)}</TooltipContent>
                     </Tooltip>
                   </TableCell>
                   <TableCell>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <span className="cursor-help">{formatTimestamp(session.last_activity_at)}</span>
+                        <span className="cursor-help">{formatTimestamp(session.lastActivityAt)}</span>
                       </TooltipTrigger>
-                      <TooltipContent>
-                        {formatAbsoluteTimestamp(session.last_activity_at)}
-                      </TooltipContent>
+                      <TooltipContent>{formatAbsoluteTimestamp(session.lastActivityAt)}</TooltipContent>
                     </Tooltip>
                   </TableCell>
                 </TableRow>

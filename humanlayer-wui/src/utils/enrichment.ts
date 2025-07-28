@@ -20,11 +20,11 @@ export interface ApprovalDisplayData {
 export function getDisplayDataForApproval(approval: Approval): ApprovalDisplayData {
   const baseData = {
     type: 'function' as const,
-    icon: getFunctionIcon(approval.tool_name),
-    color: getFunctionColor(approval.tool_name),
-    title: approval.tool_name,
-    description: getToolDescription(approval.tool_name, approval.tool_input),
-    fields: extractFieldsFromToolInput(approval.tool_name, approval.tool_input),
+    icon: getFunctionIcon(approval.toolName),
+    color: getFunctionColor(approval.toolName),
+    title: approval.toolName,
+    description: getToolDescription(approval.toolName, approval.toolInput),
+    fields: extractFieldsFromToolInput(approval.toolName, approval.toolInput),
   }
 
   return baseData

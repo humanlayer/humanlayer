@@ -75,9 +75,9 @@ export function ConversationContent({
   const filteredEvents = maxEventIndex !== undefined ? events.slice(0, maxEventIndex) : events
 
   const toolResults = filteredEvents.filter(
-    event => event.event_type === ConversationEventType.ToolResult,
+    event => event.eventType === ConversationEventType.ToolResult,
   )
-  const toolResultsByKey = keyBy(toolResults, 'tool_result_for_id')
+  const toolResultsByKey = keyBy(toolResults, 'toolResultForId')
 
   // Use task grouping hook - use props if provided, otherwise use local hook
   const localTaskGrouping = useTaskGrouping(filteredEvents)
@@ -88,7 +88,7 @@ export function ConversationContent({
   // Watch for new Read tool results and refetch snapshots
   useEffect(() => {
     const hasReadToolResults = filteredEvents.some(
-      event => event.event_type === ConversationEventType.ToolResult && event.tool_name === 'Read',
+      event => event.eventType === ConversationEventType.ToolResult && event.toolName === 'Read',
     )
 
     if (hasReadToolResults) {
@@ -97,7 +97,7 @@ export function ConversationContent({
   }, [filteredEvents, refetch])
 
   const displayObjects = filteredEvents
-    .filter(event => event.event_type !== ConversationEventType.ToolResult)
+    .filter(event => event.eventType !== ConversationEventType.ToolResult)
     .map(event =>
       eventToDisplayObject(
         event,
@@ -110,7 +110,7 @@ export function ConversationContent({
         confirmingApprovalId,
         isSplitView,
         onToggleSplitView,
-        event.tool_id ? toolResultsByKey[event.tool_id] : undefined,
+        event.toolId ? toolResultsByKey[event.toolId] : undefined,
         focusedEventId === event.id,
         getSnapshot,
       ),
@@ -137,7 +137,7 @@ export function ConversationContent({
           return (
             !prevEvent ||
             event.id !== prevEvent.id ||
-            event.tool_result_content !== prevEvent.tool_result_content
+            event.toolResultContent !== prevEvent.toolResultContent
           )
         })
 
@@ -175,8 +175,8 @@ export function ConversationContent({
   useEffect(() => {
     if (denyingApprovalId && containerRef.current) {
       // Find the event that contains this approval
-      const event = filteredEvents.find(e => e.approval_id === denyingApprovalId)
-      if (event && !event.approval_status) {
+      const event = filteredEvents.find(e => e.approvalId === denyingApprovalId)
+      if (event && !event.approvalStatus) {
         const eventElement = containerRef.current.querySelector(`[data-event-id="${event.id}"]`)
         if (eventElement) {
           const elementRect = eventElement.getBoundingClientRect()
@@ -240,12 +240,12 @@ export function ConversationContent({
                 }}
                 onClick={() => {
                   const event = events.find(e => e.id === displayObject.id)
-                  if (event?.event_type === ConversationEventType.ToolCall) {
-                    const toolResult = event.tool_id
+                  if (event?.eventType === ConversationEventType.ToolCall) {
+                    const toolResult = event.toolId
                       ? events.find(
                           e =>
-                            e.event_type === ConversationEventType.ToolResult &&
-                            e.tool_result_for_id === event.tool_id,
+                            e.eventType === ConversationEventType.ToolResult &&
+                            e.toolResultForId === event.toolId,
                         )
                       : null
                     if (setExpandedToolResult && setExpandedToolCall) {
@@ -287,7 +287,7 @@ export function ConversationContent({
                     {/* Copy button - only show for user and assistant messages */}
                     {(() => {
                       const event = events.find(e => e.id === displayObject.id)
-                      return event?.event_type === ConversationEventType.Message &&
+                      return event?.eventType === ConversationEventType.Message &&
                         (event.role === 'user' || event.role === 'assistant') ? (
                         <Button
                           variant="ghost"
@@ -337,17 +337,17 @@ export function ConversationContent({
     >
       <div>
         {rootEvents
-          .filter(event => event.event_type !== ConversationEventType.ToolResult)
+          .filter(event => event.eventType !== ConversationEventType.ToolResult)
           .map((event, index) => {
-            const taskGroup = taskGroups.get(event.tool_id || '')
+            const taskGroup = taskGroups.get(event.toolId || '')
 
             if (taskGroup) {
               return (
                 <TaskGroup
                   key={event.id}
                   group={taskGroup}
-                  isExpanded={actualExpandedTasks.has(event.tool_id!)}
-                  onToggle={() => actualToggleTaskGroup(event.tool_id!)}
+                  isExpanded={actualExpandedTasks.has(event.toolId!)}
+                  onToggle={() => actualToggleTaskGroup(event.toolId!)}
                   focusedEventId={focusedEventId}
                   setFocusedEventId={setFocusedEventId}
                   onApprove={onApprove}
@@ -380,7 +380,7 @@ export function ConversationContent({
                 confirmingApprovalId,
                 isSplitView,
                 onToggleSplitView,
-                event.tool_id ? toolResultsByKey[event.tool_id] : undefined,
+                event.toolId ? toolResultsByKey[event.toolId] : undefined,
                 focusedEventId === event.id,
                 getSnapshot,
               )
@@ -405,12 +405,12 @@ export function ConversationContent({
                     }}
                     onClick={() => {
                       const event = events.find(e => e.id === displayObject.id)
-                      if (event?.event_type === ConversationEventType.ToolCall) {
-                        const toolResult = event.tool_id
+                      if (event?.eventType === ConversationEventType.ToolCall) {
+                        const toolResult = event.toolId
                           ? events.find(
                               e =>
-                                e.event_type === ConversationEventType.ToolResult &&
-                                e.tool_result_for_id === event.tool_id,
+                                e.eventType === ConversationEventType.ToolResult &&
+                                e.toolResultForId === event.toolId,
                             )
                           : null
                         if (setExpandedToolResult && setExpandedToolCall) {
@@ -421,7 +421,7 @@ export function ConversationContent({
                     }}
                     className={`group relative p-4 cursor-pointer transition-shadow duration-200 ${
                       index !==
-                      rootEvents.filter(e => e.event_type !== ConversationEventType.ToolResult).length -
+                      rootEvents.filter(e => e.eventType !== ConversationEventType.ToolResult).length -
                         1
                         ? 'border-b'
                         : ''
@@ -456,7 +456,7 @@ export function ConversationContent({
                         {/* Copy button - only show for user and assistant messages */}
                         {(() => {
                           const currentEvent = events.find(e => e.id === displayObject.id)
-                          return currentEvent?.event_type === ConversationEventType.Message &&
+                          return currentEvent?.eventType === ConversationEventType.Message &&
                             (currentEvent.role === 'user' || currentEvent.role === 'assistant') ? (
                             <Button
                               variant="ghost"
