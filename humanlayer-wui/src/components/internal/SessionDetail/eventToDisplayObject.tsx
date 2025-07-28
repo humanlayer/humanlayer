@@ -535,7 +535,7 @@ export function eventToDisplayObject(
         )
       } else {
         // Normal tool result display
-        const resultDisplay = formatToolResult(event.tool_name || '', toolResult)
+        const resultDisplay = formatToolResult(event.tool_name || '', toolResult, event)
         if (resultDisplay) {
           // Append to existing subject with indentation
           subject = (
