@@ -407,6 +407,42 @@ func TestSessionHandlers_UpdateSession(t *testing.T) {
 		assert.True(t, *resp.Data.Archived)
 	})
 
+	t.Run("update session title", func(t *testing.T) {
+		mockStore.EXPECT().
+			UpdateSession(gomock.Any(), "sess-789", store.SessionUpdate{
+				Title: stringPtr("Updated Task Title"),
+			}).
+			Return(nil)
+
+		mockStore.EXPECT().
+			GetSession(gomock.Any(), "sess-789").
+			Return(&store.Session{
+				ID:              "sess-789",
+				RunID:           "run-abc",
+				Status:          "running",
+				Query:           "Test query",
+				Title:           "Updated Task Title",
+				CreatedAt:       time.Now().Add(-10 * time.Minute),
+				LastActivityAt:  time.Now(),
+				AutoAcceptEdits: false,
+				Archived:        false,
+			}, nil)
+
+		updateReq := api.UpdateSessionRequest{
+			Title: stringPtr("Updated Task Title"),
+		}
+		w := makeRequest(t, router, "PATCH", "/api/v1/sessions/sess-789", updateReq)
+
+		var resp struct {
+			Data api.Session `json:"data"`
+		}
+		assertJSONResponse(t, w, 200, &resp)
+
+		assert.Equal(t, "sess-789", resp.Data.Id)
+		assert.NotNil(t, resp.Data.Title)
+		assert.Equal(t, "Updated Task Title", *resp.Data.Title)
+	})
+
 	t.Run("session not found", func(t *testing.T) {
 		mockStore.EXPECT().
 			UpdateSession(gomock.Any(), "sess-999", gomock.Any()).

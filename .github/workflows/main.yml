@@ -49,6 +49,9 @@ jobs:
       - name: Install ts deps
         run: npm -C humanlayer-ts install && npm -C hlyr install && npm -C humanlayer-ts-vercel-ai-sdk install
 
+      - name: Build hld SDK
+        run: cd hld/sdk/typescript && bun install && bun run build
+
       - name: Install wui deps
         run: bun install --cwd=humanlayer-wui
 
@@ -142,6 +145,9 @@ jobs:
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
+
+      - name: Build hld SDK
+        run: cd hld/sdk/typescript && bun install && bun run build
 
       - name: Install wui deps
         run: bun install --cwd=humanlayer-wui

@@ -34,6 +34,9 @@ func (m *Mapper) SessionToAPI(s store.Session) api.Session {
 	if s.Summary != "" {
 		session.Summary = &s.Summary
 	}
+	if s.Title != "" {
+		session.Title = &s.Title
+	}
 	if s.Model != "" {
 		session.Model = &s.Model
 	}
