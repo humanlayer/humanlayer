@@ -454,7 +454,7 @@ func (h *SessionHandlers) HandleInterruptSession(ctx context.Context, params jso
 	return &InterruptSessionResponse{
 		Success:   true,
 		SessionID: req.SessionID,
-		Status:    "completing",
+		Status:    "interrupting",
 	}, nil
 }
 

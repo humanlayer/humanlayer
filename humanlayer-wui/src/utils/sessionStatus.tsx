@@ -1,4 +1,9 @@
 export const renderSessionStatus = (session: { status: string; archived?: boolean }): string => {
+  // Always show interrupted status as-is
+  if (session.status === 'interrupted') {
+    return 'interrupted'
+  }
+
   // If session is completed but not archived, show "waiting_for_input"
   if (session.status === 'completed' && !session.archived) {
     return 'waiting_for_input'

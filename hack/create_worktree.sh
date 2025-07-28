@@ -1,8 +1,9 @@
 #!/bin/bash
 
 # create_worktree.sh - Create a new worktree for development work
-# Usage: ./create_worktree.sh [worktree_name]
+# Usage: ./create_worktree.sh [worktree_name] [base_branch]
 # If no name provided, generates a unique human-readable one
+# If no base branch provided, uses current branch
 
 set -e  # Exit on any error
 
@@ -21,6 +22,9 @@ generate_unique_name() {
 
 # Get worktree name from parameter or generate one
 WORKTREE_NAME=${1:-$(generate_unique_name)}
+
+# Get base branch from second parameter or use current branch
+BASE_BRANCH=${2:-$(git branch --show-current)}
 
 # Get base directory name (should be 'humanlayer')
 REPO_BASE_NAME=$(basename "$(pwd)")
@@ -46,9 +50,8 @@ if [ -d "$WORKTREE_PATH" ]; then
     exit 1
 fi
 
-# Get current branch
-CURRENT_BRANCH=$(git branch --show-current)
-echo "🔀 Creating from branch: ${CURRENT_BRANCH}"
+# Display base branch info
+echo "🔀 Creating from branch: ${BASE_BRANCH}"
 
 # Create worktree (creates branch if it doesn't exist)
 if git show-ref --verify --quiet "refs/heads/${WORKTREE_NAME}"; then
@@ -56,7 +59,7 @@ if git show-ref --verify --quiet "refs/heads/${WORKTREE_NAME}"; then
     git worktree add "$WORKTREE_PATH" "$WORKTREE_NAME"
 else
     echo "🆕 Creating new branch: ${WORKTREE_NAME}"
-    git worktree add -b "$WORKTREE_NAME" "$WORKTREE_PATH" "$CURRENT_BRANCH"
+    git worktree add -b "$WORKTREE_NAME" "$WORKTREE_PATH" "$BASE_BRANCH"
 fi
 
 # Copy .claude directory if it exists
