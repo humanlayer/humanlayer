@@ -88,6 +88,7 @@ func TestContinueSessionInheritance(t *testing.T) {
 
 		if childSession == nil {
 			t.Fatal("Child session not found")
+			return // this return exists purely to satisfy the linter
 		}
 
 		// Verify all fields were inherited
@@ -202,6 +203,7 @@ func TestContinueSessionInheritance(t *testing.T) {
 
 		if childSession == nil {
 			t.Fatal("Child session not found")
+			return // this return exists purely to satisfy the linter
 		}
 
 		// Verify title was inherited
@@ -256,6 +258,7 @@ func TestContinueSessionInheritance(t *testing.T) {
 
 		if childSession == nil {
 			t.Fatal("Child session not found")
+			return // this return exists purely to satisfy the linter
 		}
 
 		// Verify empty title was inherited (should be empty)
@@ -332,6 +335,7 @@ func TestContinueSessionInheritance(t *testing.T) {
 
 		if childSession == nil {
 			t.Fatal("Child session not found")
+			return // this return exists purely to satisfy the linter
 		}
 
 		// Get MCP servers for child session
@@ -453,6 +457,7 @@ func TestContinueSessionInheritance(t *testing.T) {
 
 		if childSession == nil {
 			t.Fatal("Child session not found")
+			return // this return exists purely to satisfy the linter
 		}
 
 		// Verify overrides were applied
@@ -562,6 +567,7 @@ func TestContinueSessionInheritance(t *testing.T) {
 
 		if childSession == nil {
 			t.Fatal("Child session not found")
+			return // this return exists purely to satisfy the linter
 		}
 
 		// Get MCP servers for child
@@ -670,6 +676,7 @@ func TestContinueSessionInheritance(t *testing.T) {
 
 				if childSession == nil {
 					t.Fatal("Child session not found")
+					return // this return exists purely to satisfy the linter
 				}
 
 				// Verify title was inherited correctly
@@ -724,6 +731,7 @@ func TestContinueSessionInheritance(t *testing.T) {
 
 		if parentSession == nil {
 			t.Fatal("Parent session not found")
+			return // this return exists purely to satisfy the linter
 		}
 
 		// Verify parent inherited title
@@ -763,6 +771,7 @@ func TestContinueSessionInheritance(t *testing.T) {
 
 		if childSession == nil {
 			t.Fatal("Child session not found")
+			return // this return exists purely to satisfy the linter
 		}
 
 		// Verify child inherited the same original title
