@@ -587,6 +587,7 @@ func TestIntegrationContinueSession(t *testing.T) {
 
 		if childSession == nil {
 			t.Fatal("Child session not found")
+			return // this return exists purely to satisfy the linter
 		}
 
 		// Verify title was inherited
@@ -643,6 +644,7 @@ func TestIntegrationContinueSession(t *testing.T) {
 
 		if childSession == nil {
 			t.Fatal("Child session not found")
+			return // this return exists purely to satisfy the linter
 		}
 
 		// Update the child session's title

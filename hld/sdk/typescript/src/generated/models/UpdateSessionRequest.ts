@@ -31,6 +31,12 @@ export interface UpdateSessionRequest {
      * @memberof UpdateSessionRequest
      */
     archived?: boolean;
+    /**
+     * Update session title
+     * @type {string}
+     * @memberof UpdateSessionRequest
+     */
+    title?: string;
 }
 
 /**
@@ -52,6 +58,7 @@ export function UpdateSessionRequestFromJSONTyped(json: any, ignoreDiscriminator
 
         'autoAcceptEdits': json['auto_accept_edits'] == null ? undefined : json['auto_accept_edits'],
         'archived': json['archived'] == null ? undefined : json['archived'],
+        'title': json['title'] == null ? undefined : json['title'],
     };
 }
 
@@ -68,5 +75,6 @@ export function UpdateSessionRequestToJSONTyped(value?: UpdateSessionRequest | n
 
         'auto_accept_edits': value['autoAcceptEdits'],
         'archived': value['archived'],
+        'title': value['title'],
     };
 }

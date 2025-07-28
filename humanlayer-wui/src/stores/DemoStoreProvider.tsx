@@ -1,7 +1,10 @@
-import React, { useEffect, useState } from 'react'
-import { createDemoAppStore } from './appStore'
-import { AppStoreContext } from './AppStoreProvider'
+import React, { createContext, useEffect, useState } from 'react'
+import { StoreApi } from 'zustand'
+import { createDemoAppStore, AppState } from './appStore'
 import { DemoAnimator, AnimationStep } from './DemoAnimator'
+
+// Create the context locally since AppStoreProvider was unused
+export const AppStoreContext = createContext<StoreApi<AppState> | null>(null)
 
 interface DemoStoreProviderProps {
   children: React.ReactNode

@@ -532,6 +532,10 @@ components:
           type: string
           description: AI-generated summary of the session
           example: "Refactored authentication module"
+        title:
+          type: string
+          description: User-editable session title
+          example: "My Important Task"
         model:
           type: string
           description: Model used for this session
@@ -692,6 +696,10 @@ components:
         archived:
           type: boolean
           description: Archive/unarchive the session
+        title:
+          type: string
+          description: Update session title
+          example: "Updated Task Name"
 
     ContinueSessionRequest:
       type: object

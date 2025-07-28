@@ -43,6 +43,9 @@ func NewHTTPServer(
 
 	// Add middleware
 	router.Use(gin.Recovery())
+	router.Use(gin.LoggerWithConfig(gin.LoggerConfig{
+		SkipPaths: []string{"/api/v1/health"}, // Skip health check logs
+	}))
 	router.Use(handlers.RequestIDMiddleware())
 	router.Use(handlers.CompressionMiddleware())
 
@@ -50,7 +53,7 @@ func NewHTTPServer(
 	router.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"*"}, // TODO: Configure allowed origins
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Client", "X-Client-Version"},
 		ExposeHeaders:    []string{"X-Request-ID"},
 		AllowCredentials: false,
 		MaxAge:           12 * time.Hour,
