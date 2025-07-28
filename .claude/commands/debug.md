@@ -32,16 +32,19 @@ I can investigate logs, database state, and recent changes to help identify the 
 
 You have access to these key locations and tools:
 
-**Logs** (automatically created by `make daemon` and `make wui`):
-- Daemon logs: `~/.humanlayer/logs/daemon-YYYY-MM-DD-HH-MM-SS.log`
+**Logs** (automatically created by `make daemon`, `make daemon-dev` and `make wui`):
+- Nightly daemon logs: `~/.humanlayer/logs/daemon-nightly-YYYY-MM-DD-HH-MM-SS.log`
+- Dev daemon logs: `~/.humanlayer/logs/daemon-dev-YYYY-MM-DD-HH-MM-SS.log`
 - WUI logs: `~/.humanlayer/logs/wui-YYYY-MM-DD-HH-MM-SS.log`
 - MCP logs: `~/.humanlayer/logs/mcp-claude-approvals-*.log`
 - First line shows: `[timestamp] starting [service] in [directory]`
 
 **Database**:
-- Location: `~/.humanlayer/daemon.db`
+- Nightly/production: `~/.humanlayer/daemon.db`
+- Development (persistent): `~/.humanlayer/daemon-dev.db`
 - SQLite database with sessions, events, approvals, etc.
 - Can query directly with `sqlite3`
+- Clone nightly to dev: `make clone-nightly-db-to-dev-db`
 
 **Git State**:
 - Check current branch, recent commits, uncommitted changes
@@ -86,7 +89,9 @@ Return: Key errors/warnings with timestamps
 ```
 Task 2 - Database State:
 Check the current database state:
-1. Connect to database: sqlite3 ~/.humanlayer/daemon.db
+1. Determine which database to check:
+   - If using nightly: sqlite3 ~/.humanlayer/daemon.db
+   - If using dev: sqlite3 ~/.humanlayer/daemon-dev.db
 2. Check schema: .tables and .schema for relevant tables
 3. Query recent data:
    - SELECT * FROM sessions ORDER BY created_at DESC LIMIT 5;
@@ -170,15 +175,24 @@ Would you like me to investigate something specific further?
 
 **Find Latest Logs**:
 ```bash
-ls -t ~/.humanlayer/logs/daemon-*.log | head -1
+# Nightly daemon
+ls -t ~/.humanlayer/logs/daemon-nightly-*.log | head -1
+# Dev daemon
+ls -t ~/.humanlayer/logs/daemon-dev-*.log | head -1
+# WUI
 ls -t ~/.humanlayer/logs/wui-*.log | head -1
 ```
 
 **Database Queries**:
 ```bash
+# For nightly/production daemon
 sqlite3 ~/.humanlayer/daemon.db ".tables"
 sqlite3 ~/.humanlayer/daemon.db ".schema sessions"
 sqlite3 ~/.humanlayer/daemon.db "SELECT * FROM sessions ORDER BY created_at DESC LIMIT 5;"
+
+# For dev daemon
+sqlite3 ~/.humanlayer/daemon-dev.db ".tables"
+sqlite3 ~/.humanlayer/daemon-dev.db "SELECT * FROM sessions ORDER BY created_at DESC LIMIT 5;"
 ```
 
 **Service Check**:

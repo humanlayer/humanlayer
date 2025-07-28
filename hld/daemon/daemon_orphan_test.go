@@ -36,6 +36,14 @@ func TestDaemon_MarkOrphanedSessions(t *testing.T) {
 			ID:     "sess-already-failed",
 			Status: store.SessionStatusFailed, // Should NOT be updated
 		},
+		{
+			ID:     "sess-interrupting",
+			Status: store.SessionStatusInterrupting, // Should NOT be marked as failed
+		},
+		{
+			ID:     "sess-interrupted",
+			Status: store.SessionStatusInterrupted, // Should NOT be marked as failed
+		},
 	}
 
 	// Expect ListSessions to be called
