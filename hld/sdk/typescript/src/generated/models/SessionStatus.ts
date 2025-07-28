@@ -22,7 +22,8 @@ export const SessionStatus = {
     Running: 'running',
     Completed: 'completed',
     Failed: 'failed',
-    Completing: 'completing',
+    Interrupting: 'interrupting',
+    Interrupted: 'interrupted',
     WaitingInput: 'waiting_input'
 } as const;
 export type SessionStatus = typeof SessionStatus[keyof typeof SessionStatus];
