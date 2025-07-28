@@ -1,26 +1,26 @@
-import type { SessionInfo } from '@/lib/daemon/types'
+import type { Session } from '@/lib/daemon/types'
 import { ViewMode } from '@/lib/daemon/types'
 import { create } from 'zustand'
 import { daemonClient } from '@/lib/daemon'
 
 interface StoreState {
   /* Sessions */
-  sessions: SessionInfo[]
-  focusedSession: SessionInfo | null
+  sessions: Session[]
+  focusedSession: Session | null
   viewMode: ViewMode
   selectedSessions: Set<string> // For bulk selection
   activeSessionDetail: {
-    session: SessionInfo
+    session: Session
     conversation: any[] // ConversationEvent[] from useConversation
     loading: boolean
     error: string | null
   } | null
 
-  initSessions: (sessions: SessionInfo[]) => void
-  updateSession: (sessionId: string, updates: Partial<SessionInfo>) => void
+  initSessions: (sessions: Session[]) => void
+  updateSession: (sessionId: string, updates: Partial<Session>) => void
   updateSessionStatus: (sessionId: string, status: string) => void
   refreshSessions: () => Promise<void>
-  setFocusedSession: (session: SessionInfo | null) => void
+  setFocusedSession: (session: Session | null) => void
   focusNextSession: () => void
   focusPreviousSession: () => void
   interruptSession: (sessionId: string) => Promise<void>
@@ -35,8 +35,8 @@ interface StoreState {
   bulkSelect: (sessionId: string, direction: 'asc' | 'desc') => void
 
   /* Active Session Detail Actions */
-  setActiveSessionDetail: (sessionId: string, session: SessionInfo, conversation: any[]) => void
-  updateActiveSessionDetail: (updates: Partial<SessionInfo>) => void
+  setActiveSessionDetail: (sessionId: string, session: Session, conversation: any[]) => void
+  updateActiveSessionDetail: (updates: Partial<Session>) => void
   updateActiveSessionConversation: (conversation: any[]) => void
   clearActiveSessionDetail: () => void
   fetchActiveSessionDetail: (sessionId: string) => Promise<void>
@@ -64,8 +64,8 @@ export const useStore = create<StoreState>((set, get) => ({
   viewMode: ViewMode.Normal,
   selectedSessions: new Set<string>(),
   activeSessionDetail: null,
-  initSessions: (sessions: SessionInfo[]) => set({ sessions }),
-  updateSession: (sessionId: string, updates: Partial<SessionInfo>) =>
+  initSessions: (sessions: Session[]) => set({ sessions }),
+  updateSession: (sessionId: string, updates: Partial<Session>) =>
     set(state => ({
       sessions: state.sessions.map(session =>
         session.id === sessionId ? { ...session, ...updates } : session,
@@ -113,7 +113,7 @@ export const useStore = create<StoreState>((set, get) => ({
       console.error('Failed to refresh sessions:', error)
     }
   },
-  setFocusedSession: (session: SessionInfo | null) => set({ focusedSession: session }),
+  setFocusedSession: (session: Session | null) => set({ focusedSession: session }),
   focusNextSession: () =>
     set(state => {
       const { sessions, focusedSession } = state
@@ -491,9 +491,9 @@ export const useStore = create<StoreState>((set, get) => ({
   },
 
   // Active Session Detail Actions
-  setActiveSessionDetail: (_sessionId: string, session: SessionInfo, conversation: any[]) =>
+  setActiveSessionDetail: (_sessionId: string, session: Session, conversation: any[]) =>
     set({ activeSessionDetail: { session, conversation, loading: false, error: null } }),
-  updateActiveSessionDetail: (updates: Partial<SessionInfo>) =>
+  updateActiveSessionDetail: (updates: Partial<Session>) =>
     set(state => ({
       activeSessionDetail: state.activeSessionDetail
         ? {
@@ -516,7 +516,7 @@ export const useStore = create<StoreState>((set, get) => ({
     // Set loading state
     set({
       activeSessionDetail: {
-        session: {} as SessionInfo, // Temporary placeholder
+        session: {} as Session, // Temporary placeholder
         conversation: [],
         loading: true,
         error: null,
@@ -543,7 +543,7 @@ export const useStore = create<StoreState>((set, get) => ({
 
       set({
         activeSessionDetail: {
-          session: {} as SessionInfo,
+          session: {} as Session,
           conversation: [],
           loading: false,
           error: errorMessage,

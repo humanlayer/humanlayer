@@ -1,13 +1,13 @@
 import React, { useState, useCallback, useEffect } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { useNavigate } from 'react-router-dom'
-import { SessionInfo, ConversationEvent, ViewMode } from '@/lib/daemon/types'
+import { Session, ConversationEvent, ViewMode } from '@/lib/daemon/types'
 import { daemonClient } from '@/lib/daemon/client'
 import { notificationService } from '@/services/NotificationService'
 import { useStore } from '@/AppStore'
 
 interface UseSessionActionsProps {
-  session: SessionInfo
+  session: Session
   onClose: () => void
   pendingForkMessage?: ConversationEvent | null
   onForkCommit?: () => void
@@ -34,7 +34,7 @@ export function useSessionActions({
     if (pendingForkMessage) {
       setResponseInput(pendingForkMessage.content || '')
       // Set the session ID to fork from (the one before this message)
-      setForkFromSessionId(pendingForkMessage.session_id || null)
+      setForkFromSessionId(pendingForkMessage.sessionId || null)
     }
   }, [pendingForkMessage])
 
@@ -110,10 +110,10 @@ export function useSessionActions({
 
   // Navigate to parent session
   const handleNavigateToParent = useCallback(() => {
-    if (session.parent_session_id) {
-      navigate(`/sessions/${session.parent_session_id}`)
+    if (session.parentSessionId) {
+      navigate(`/sessions/${session.parentSessionId}`)
     }
-  }, [session.parent_session_id, navigate])
+  }, [session.parentSessionId, navigate])
 
   // Keyboard shortcuts
   // Note: Escape key is handled in SessionDetail to manage confirmingApprovalId state
@@ -130,7 +130,7 @@ export function useSessionActions({
 
   // P key to navigate to parent session
   useHotkeys('p', () => {
-    if (session.parent_session_id) {
+    if (session.parentSessionId) {
       handleNavigateToParent()
     }
   })

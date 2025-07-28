@@ -53,8 +53,8 @@ export function TaskGroup({
   shouldIgnoreMouseEvent,
 }: TaskGroupProps) {
   const { parentTask, toolCallCount, latestEvent, hasPendingApproval } = group
-  const description = JSON.parse(parentTask.tool_input_json || '{}').description || 'Task'
-  const isCompleted = parentTask.is_completed
+  const description = JSON.parse(parentTask.toolInputJson || '{}').description || 'Task'
+  const isCompleted = parentTask.isCompleted
 
   return (
     <div className="p-4 TaskGroup">
@@ -111,18 +111,18 @@ export function TaskGroup({
                   let previewText = ''
                   let icon = null
 
-                  if (latestEvent.tool_name) {
-                    previewText = `${latestEvent.tool_name}`
+                  if (latestEvent.toolName) {
+                    previewText = `${latestEvent.toolName}`
                     try {
-                      const toolInput = JSON.parse(latestEvent.tool_input_json || '{}')
-                      if (latestEvent.tool_name === 'Write' && toolInput.file_path) {
+                      const toolInput = JSON.parse(latestEvent.toolInputJson || '{}')
+                      if (latestEvent.toolName === 'Write' && toolInput.file_path) {
                         previewText = `Write to ${toolInput.file_path}`
                         icon = <FilePenLine className="w-3 h-3" />
-                      } else if (latestEvent.tool_name === 'Read' && toolInput.file_path) {
+                      } else if (latestEvent.toolName === 'Read' && toolInput.file_path) {
                         previewText = `Read ${toolInput.file_path}`
-                      } else if (latestEvent.tool_name === 'Bash' && toolInput.command) {
+                      } else if (latestEvent.toolName === 'Bash' && toolInput.command) {
                         previewText = `$ ${truncate(toolInput.command, 50)}`
-                      } else if (latestEvent.tool_name === 'Task' && toolInput.description) {
+                      } else if (latestEvent.toolName === 'Task' && toolInput.description) {
                         previewText = truncate(toolInput.description, 80)
                       }
                     } catch {
@@ -136,8 +136,8 @@ export function TaskGroup({
                     } else if (latestEvent.role === 'user') {
                       icon = <User className="w-3 h-3" />
                     }
-                  } else if (latestEvent.approval_status) {
-                    previewText = `Approval (${latestEvent.approval_status})`
+                  } else if (latestEvent.approvalStatus) {
+                    previewText = `Approval (${latestEvent.approvalStatus})`
                     icon = <UserCheck className="w-3 h-3" />
                   }
 
@@ -178,7 +178,7 @@ export function TaskGroup({
               confirmingApprovalId,
               isSplitView,
               onToggleSplitView,
-              subEvent.tool_id ? toolResultsByKey[subEvent.tool_id] : undefined,
+              subEvent.toolId ? toolResultsByKey[subEvent.toolId] : undefined,
               focusedEventId === subEvent.id,
               getSnapshot,
             )
@@ -203,8 +203,8 @@ export function TaskGroup({
                   }}
                   onClick={() => {
                     const event = subEvent
-                    if (event?.event_type === ConversationEventType.ToolCall) {
-                      const toolResult = event.tool_id ? toolResultsByKey[event.tool_id] : null
+                    if (event?.eventType === ConversationEventType.ToolCall) {
+                      const toolResult = event.toolId ? toolResultsByKey[event.toolId] : null
                       if (setExpandedToolResult && setExpandedToolCall) {
                         setExpandedToolResult(toolResult || null)
                         setExpandedToolCall(event)

@@ -47,40 +47,36 @@ export function useSessionNavigation({
     if (!hasSubTasks) {
       // Simple case: just regular events
       events
-        .filter(
-          event => event.event_type !== ConversationEventType.ToolResult && event.id !== undefined,
-        )
+        .filter(event => event.eventType !== ConversationEventType.ToolResult && event.id !== undefined)
         .forEach(event => items.push({ id: event.id!, type: 'event' }))
     } else {
       // Complex case: handle task groups
-      const rootEvents = events.filter(e => !e.parent_tool_use_id)
+      const rootEvents = events.filter(e => !e.parentToolUseId)
       const subEventsByParent = new Map<string, ConversationEvent[]>()
 
       events.forEach(event => {
-        if (event.parent_tool_use_id) {
-          const siblings = subEventsByParent.get(event.parent_tool_use_id) || []
+        if (event.parentToolUseId) {
+          const siblings = subEventsByParent.get(event.parentToolUseId) || []
           siblings.push(event)
-          subEventsByParent.set(event.parent_tool_use_id, siblings)
+          subEventsByParent.set(event.parentToolUseId, siblings)
         }
       })
 
       rootEvents
-        .filter(
-          event => event.event_type !== ConversationEventType.ToolResult && event.id !== undefined,
-        )
+        .filter(event => event.eventType !== ConversationEventType.ToolResult && event.id !== undefined)
         .forEach(event => {
           // Check if this is a task group
           const isTaskGroup =
-            event.tool_name === 'Task' && event.tool_id && subEventsByParent.has(event.tool_id)
+            event.toolName === 'Task' && event.toolId && subEventsByParent.has(event.toolId)
 
           if (isTaskGroup) {
             items.push({ id: event.id!, type: 'taskgroup' })
 
             // If expanded, add sub-events
-            if (expandedTasks.has(event.tool_id!)) {
-              const subEvents = subEventsByParent.get(event.tool_id!) || []
+            if (expandedTasks.has(event.toolId!)) {
+              const subEvents = subEventsByParent.get(event.toolId!) || []
               subEvents
-                .filter(e => e.event_type !== ConversationEventType.ToolResult && e.id !== undefined)
+                .filter(e => e.eventType !== ConversationEventType.ToolResult && e.id !== undefined)
                 .forEach(subEvent => {
                   items.push({ id: subEvent.id!, type: 'subevent' })
                 })
@@ -147,33 +143,33 @@ export function useSessionNavigation({
       startKeyboardNavigation?.()
 
       const focusedEvent = events.find(e => e.id === focusedEventId)
-      if (!focusedEvent || focusedEvent.event_type !== ConversationEventType.ToolCall) return
+      if (!focusedEvent || focusedEvent.eventType !== ConversationEventType.ToolCall) return
 
       // Handle task group expansion for Task events with sub-events
-      if (focusedEvent.tool_name === 'Task' && focusedEvent.tool_id && hasSubTasks) {
+      if (focusedEvent.toolName === 'Task' && focusedEvent.toolId && hasSubTasks) {
         const subEventsByParent = new Map<string, ConversationEvent[]>()
         events.forEach(event => {
-          if (event.parent_tool_use_id) {
-            const siblings = subEventsByParent.get(event.parent_tool_use_id) || []
+          if (event.parentToolUseId) {
+            const siblings = subEventsByParent.get(event.parentToolUseId) || []
             siblings.push(event)
-            subEventsByParent.set(event.parent_tool_use_id, siblings)
+            subEventsByParent.set(event.parentToolUseId, siblings)
           }
         })
 
-        const hasSubEvents = subEventsByParent.has(focusedEvent.tool_id)
+        const hasSubEvents = subEventsByParent.has(focusedEvent.toolId)
         if (hasSubEvents) {
-          toggleTaskGroup(focusedEvent.tool_id)
+          toggleTaskGroup(focusedEvent.toolId)
           return
         }
       }
 
       // Handle tool result inspection (existing behavior)
       if (setExpandedToolResult && setExpandedToolCall) {
-        const toolResult = focusedEvent.tool_id
+        const toolResult = focusedEvent.toolId
           ? events.find(
               e =>
-                e.event_type === ConversationEventType.ToolResult &&
-                e.tool_result_for_id === focusedEvent.tool_id,
+                e.eventType === ConversationEventType.ToolResult &&
+                e.toolResultForId === focusedEvent.toolId,
             )
           : null
 

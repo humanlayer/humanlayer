@@ -95,15 +95,15 @@ export function ToolResultModal({
           <DialogTitle className="text-sm font-mono">
             <div className="flex items-center gap-2">
               {/* Add tool icon */}
-              <span className="text-accent">{getToolIcon(toolCall?.tool_name)}</span>
+              <span className="text-accent">{getToolIcon(toolCall?.toolName)}</span>
               <span>
-                {toolCall?.tool_name || 'Tool Result'}
-                {!toolResult && toolCall && !toolCall.is_completed && (
+                {toolCall?.toolName || 'Tool Result'}
+                {!toolResult && toolCall && !toolCall.isCompleted && (
                   <span className="text-xs text-muted-foreground ml-2">(in progress)</span>
                 )}
               </span>
               {/* Show primary parameter */}
-              {toolCall?.tool_input_json && (
+              {toolCall?.toolInputJson && (
                 <span className="text-xs text-muted-foreground">{getToolPrimaryParam(toolCall)}</span>
               )}
             </div>
@@ -114,7 +114,7 @@ export function ToolResultModal({
           <ScrollArea className="h-full">
             <div className="px-4 py-4 space-y-4">
               {/* Tool Input Section */}
-              {toolCall?.tool_input_json && (
+              {toolCall?.toolInputJson && (
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground mb-2">Input</h3>
                   {renderToolInput(toolCall)}
@@ -126,7 +126,7 @@ export function ToolResultModal({
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground mb-2">Result</h3>
                   <pre className="font-mono text-sm whitespace-pre-wrap break-words">
-                    {toolResult.tool_result_content || 'No content'}
+                    {toolResult.toolResultContent || 'No content'}
                   </pre>
                 </div>
               )}
@@ -159,21 +159,21 @@ function formatToolInput(inputJson: string | undefined): string {
 }
 
 function getToolPrimaryParam(toolCall: ConversationEvent): string {
-  if (!toolCall.tool_input_json) return ''
+  if (!toolCall.toolInputJson) return ''
 
   try {
-    const args = JSON.parse(toolCall.tool_input_json)
+    const args = JSON.parse(toolCall.toolInputJson)
 
     // Show the most relevant argument based on tool name
-    if (toolCall.tool_name === 'Read' && args.file_path) {
+    if (toolCall.toolName === 'Read' && args.file_path) {
       return args.file_path
-    } else if (toolCall.tool_name === 'Bash' && args.command) {
+    } else if (toolCall.toolName === 'Bash' && args.command) {
       return truncate(args.command, 60)
-    } else if (toolCall.tool_name === 'Edit' && args.file_path) {
+    } else if (toolCall.toolName === 'Edit' && args.file_path) {
       return args.file_path
-    } else if (toolCall.tool_name === 'Write' && args.file_path) {
+    } else if (toolCall.toolName === 'Write' && args.file_path) {
       return args.file_path
-    } else if (toolCall.tool_name === 'Grep' && args.pattern) {
+    } else if (toolCall.toolName === 'Grep' && args.pattern) {
       return args.pattern
     }
 
@@ -186,14 +186,14 @@ function getToolPrimaryParam(toolCall: ConversationEvent): string {
 }
 
 function renderToolInput(toolCall: ConversationEvent): React.ReactNode {
-  if (!toolCall.tool_input_json) return null
+  if (!toolCall.toolInputJson) return null
 
   try {
-    const args = JSON.parse(toolCall.tool_input_json)
+    const args = JSON.parse(toolCall.toolInputJson)
 
     // Special rendering for MCP tools
-    if (toolCall.tool_name?.startsWith('mcp__')) {
-      const parts = toolCall.tool_name.split('__')
+    if (toolCall.toolName?.startsWith('mcp__')) {
+      const parts = toolCall.toolName.split('__')
       const service = parts[1] || 'unknown'
       const method = parts.slice(2).join('__') || 'unknown'
 
@@ -220,7 +220,7 @@ function renderToolInput(toolCall: ConversationEvent): React.ReactNode {
     }
 
     // Special rendering for Write tool
-    if (toolCall.tool_name === 'Write') {
+    if (toolCall.toolName === 'Write') {
       return (
         <div className="space-y-2">
           <div className="font-mono text-sm">
@@ -238,7 +238,7 @@ function renderToolInput(toolCall: ConversationEvent): React.ReactNode {
     }
 
     // Special rendering for Edit tool
-    if (toolCall.tool_name === 'Edit') {
+    if (toolCall.toolName === 'Edit') {
       return (
         <div className="space-y-2">
           <div className="font-mono text-sm">
@@ -256,7 +256,7 @@ function renderToolInput(toolCall: ConversationEvent): React.ReactNode {
     }
 
     // Special rendering for MultiEdit tool
-    if (toolCall.tool_name === 'MultiEdit') {
+    if (toolCall.toolName === 'MultiEdit') {
       const allEdits = args.edits.map((e: any) => ({
         oldValue: e.old_string,
         newValue: e.new_string,
@@ -281,14 +281,14 @@ function renderToolInput(toolCall: ConversationEvent): React.ReactNode {
     // Default JSON rendering for other tools
     return (
       <pre className="font-mono text-sm whitespace-pre-wrap bg-muted/50 rounded-md p-4 break-words">
-        {formatToolInput(toolCall.tool_input_json)}
+        {formatToolInput(toolCall.toolInputJson)}
       </pre>
     )
   } catch {
     // Fallback to raw display if JSON parsing fails
     return (
       <pre className="font-mono text-sm whitespace-pre-wrap bg-muted/50 rounded-md p-4 break-words">
-        {toolCall.tool_input_json}
+        {toolCall.toolInputJson}
       </pre>
     )
   }

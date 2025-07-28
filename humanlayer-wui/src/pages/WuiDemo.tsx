@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import SessionTable from '@/components/internal/SessionTable'
 import { SessionTableSearch } from '@/components/SessionTableSearch'
 import { useSessionFilter } from '@/hooks/useSessionFilter'
-import { SessionInfo } from '@/lib/daemon/types'
+import { Session } from '@/lib/daemon/types'
 import { ThemeSelector } from '@/components/ThemeSelector'
 import { SessionLauncher } from '@/components/SessionLauncher'
 import { DemoStoreProvider, useDemoStore } from '@/stores/demo/providers/DemoStoreProvider'
@@ -31,7 +31,7 @@ function SessionTableWrapper() {
     searchFields: ['summary'],
   })
 
-  const handleActivateSession = (session: SessionInfo) => {
+  const handleActivateSession = (session: Session) => {
     console.log('Activating session:', session.id)
     // In demo mode, this would navigate to session detail
   }

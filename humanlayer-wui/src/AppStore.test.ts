@@ -1,10 +1,10 @@
 import { describe, test, expect, beforeEach } from 'bun:test'
 import { useStore } from './AppStore'
-import type { SessionInfo } from '@/lib/daemon/types'
+import type { Session } from '@/lib/daemon/types'
 import { createMockSessions } from './test-utils'
 
 // Mock sessions for testing
-const mockSessions: SessionInfo[] = createMockSessions(8)
+const mockSessions: Session[] = createMockSessions(8)
 
 describe('AppStore - Range Selection', () => {
   beforeEach(() => {

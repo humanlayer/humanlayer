@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { toast } from 'sonner'
 
-import { ConversationEvent, SessionInfo, ApprovalStatus, SessionStatus } from '@/lib/daemon/types'
+import { ConversationEvent, Session, ApprovalStatus, SessionStatus } from '@/lib/daemon/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { useConversation, useKeyboardNavigationProtection } from '@/hooks'
 import { ChevronDown, Archive, Pencil } from 'lucide-react'
@@ -32,7 +32,7 @@ import { useSessionClipboard } from './hooks/useSessionClipboard'
 import { useStealHotkeyScope } from '@/hooks/useStealHotkeyScope'
 
 interface SessionDetailProps {
-  session: SessionInfo
+  session: Session
   onClose: () => void
 }
 
@@ -136,7 +136,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
 
   // Get session from store to access auto_accept_edits
   const sessionFromStore = useStore(state => state.sessions.find(s => s.id === session.id))
-  const autoAcceptEdits = sessionFromStore?.auto_accept_edits ?? false
+  const autoAcceptEdits = sessionFromStore?.autoAcceptEdits ?? false
 
   // Generate random verb that changes every 10-20 seconds
   const [randomVerb, setRandomVerb] = useState(() => {
@@ -243,15 +243,15 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
 
       // Find the selected user message
       const selectedEvent = events[eventIndex]
-      if (selectedEvent?.event_type === 'message' && selectedEvent?.role === 'user') {
+      if (selectedEvent?.eventType === 'message' && selectedEvent?.role === 'user') {
         // Find the session ID from the event before this one
         const previousEvent = eventIndex > 0 ? events[eventIndex - 1] : null
-        const forkFromSessionId = previousEvent?.session_id || session.id
+        const forkFromSessionId = previousEvent?.sessionId || session.id
 
         // Store both the message content and the session ID to fork from
         setPendingForkMessage({
           ...selectedEvent,
-          session_id: forkFromSessionId, // Override with the previous event's session ID
+          sessionId: forkFromSessionId, // Override with the previous event's session ID
         })
       }
     },
@@ -298,7 +298,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
 
   const lastTodo = events
     ?.toReversed()
-    .find(e => e.event_type === 'tool_call' && e.tool_name === 'TodoWrite')
+    .find(e => e.eventType === 'tool_call' && e.toolName === 'TodoWrite')
 
   // Clear focus on escape, then close if nothing focused
   // This needs special handling for confirmingApprovalId
@@ -523,7 +523,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   useEffect(() => {
     const checkPendingApprovalVisibility = () => {
       if (session.status === SessionStatus.WaitingInput) {
-        const pendingEvent = events.find(e => e.approval_status === ApprovalStatus.Pending)
+        const pendingEvent = events.find(e => e.approvalStatus === ApprovalStatus.Pending)
         if (pendingEvent) {
           const container = document.querySelector('[data-conversation-container]')
           const element = container?.querySelector(`[data-event-id="${pendingEvent.id}"]`)
@@ -603,7 +603,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                 <>
                   <span>
                     {session.title || session.summary || truncate(session.query, 50)}{' '}
-                    {session.parent_session_id && (
+                    {session.parentSessionId && (
                       <span className="text-muted-foreground">[continued]</span>
                     )}
                   </span>
@@ -629,8 +629,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                 </span>
               )}
             </small>
-            {session.working_dir && (
-              <small className="font-mono text-xs text-muted-foreground">{session.working_dir}</small>
+            {session.workingDir && (
+              <small className="font-mono text-xs text-muted-foreground">{session.workingDir}</small>
             )}
           </hgroup>
           <ForkViewModal
@@ -686,7 +686,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                 <>
                   <span>
                     {session.title || session.summary || truncate(session.query, 50)}{' '}
-                    {session.parent_session_id && (
+                    {session.parentSessionId && (
                       <span className="text-muted-foreground">[continued]</span>
                     )}
                   </span>
@@ -732,7 +732,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
             {
               events
                 .slice(0, previewEventIndex)
-                .filter(e => e.event_type === 'message' && e.role === 'user').length
+                .filter(e => e.eventType === 'message' && e.role === 'user').length
             }
           </span>
         </div>

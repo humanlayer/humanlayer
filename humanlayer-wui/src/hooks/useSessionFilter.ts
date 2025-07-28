@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { SessionStatus, SessionInfo } from '@/lib/daemon/types'
+import { SessionStatus, Session } from '@/lib/daemon/types'
 import { fuzzySearch } from '@/lib/fuzzy-search'
 
 interface ParsedFilter {
@@ -36,13 +36,13 @@ export function parseStatusFilter(query: string): ParsedFilter {
 }
 
 interface UseSessionFilterOptions {
-  sessions: SessionInfo[]
+  sessions: Session[]
   query: string
   searchFields?: string[]
 }
 
 interface UseSessionFilterResult {
-  filteredSessions: SessionInfo[]
+  filteredSessions: Session[]
   statusFilter: SessionStatus | null
   searchText: string
   matchedSessions: Map<string, any> // session id -> fuzzy match data

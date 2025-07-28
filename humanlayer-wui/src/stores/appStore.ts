@@ -1,15 +1,15 @@
-import type { SessionInfo, Approval } from '@/lib/daemon/types'
+import type { Session, Approval } from '@/lib/daemon/types'
 import { SessionStatus } from '@/lib/daemon/types'
 import { create, StoreApi } from 'zustand'
 import { daemonClient } from '@/lib/daemon'
 
 export interface AppState {
   /* Sessions */
-  sessions: SessionInfo[]
-  focusedSession: SessionInfo | null
+  sessions: Session[]
+  focusedSession: Session | null
   activeSessionId: string | null
   activeSessionDetail: {
-    session: SessionInfo
+    session: Session
     conversation: any[] // ConversationEvent[] from useConversation
   } | null
 
@@ -23,18 +23,18 @@ export interface AppState {
   notifiedItems: Set<string>
 
   /* Actions */
-  initSessions: (sessions: SessionInfo[]) => void
-  updateSession: (sessionId: string, updates: Partial<SessionInfo>) => void
+  initSessions: (sessions: Session[]) => void
+  updateSession: (sessionId: string, updates: Partial<Session>) => void
   updateSessionStatus: (sessionId: string, status: string) => void
   refreshSessions: () => Promise<void>
-  setFocusedSession: (session: SessionInfo | null) => void
+  setFocusedSession: (session: Session | null) => void
   focusNextSession: () => void
   focusPreviousSession: () => void
   interruptSession: (sessionId: string) => Promise<void>
 
   /* Active Session Detail Actions */
-  setActiveSessionDetail: (sessionId: string, session: SessionInfo, conversation: any[]) => void
-  updateActiveSessionDetail: (updates: Partial<SessionInfo>) => void
+  setActiveSessionDetail: (sessionId: string, session: Session, conversation: any[]) => void
+  updateActiveSessionDetail: (updates: Partial<Session>) => void
   updateActiveSessionConversation: (conversation: any[]) => void
   clearActiveSessionDetail: () => void
   fetchActiveSessionDetail: (sessionId: string) => Promise<void>
@@ -68,8 +68,8 @@ export function createRealAppStore(): StoreApi<AppState> {
     notifiedItems: new Set<string>(),
 
     // Session Actions
-    initSessions: (sessions: SessionInfo[]) => set({ sessions }),
-    updateSession: (sessionId: string, updates: Partial<SessionInfo>) =>
+    initSessions: (sessions: Session[]) => set({ sessions }),
+    updateSession: (sessionId: string, updates: Partial<Session>) =>
       set(state => ({
         sessions: state.sessions.map(session =>
           session.id === sessionId ? { ...session, ...updates } : session,
@@ -113,7 +113,7 @@ export function createRealAppStore(): StoreApi<AppState> {
         console.error('Failed to refresh sessions:', error)
       }
     },
-    setFocusedSession: (session: SessionInfo | null) => set({ focusedSession: session }),
+    setFocusedSession: (session: Session | null) => set({ focusedSession: session }),
     focusNextSession: () =>
       set(state => {
         const { sessions, focusedSession } = state
@@ -154,12 +154,12 @@ export function createRealAppStore(): StoreApi<AppState> {
     },
 
     // Active Session Detail Actions
-    setActiveSessionDetail: (sessionId: string, session: SessionInfo, conversation: any[]) =>
+    setActiveSessionDetail: (sessionId: string, session: Session, conversation: any[]) =>
       set({
         activeSessionDetail: { session, conversation },
         activeSessionId: sessionId,
       }),
-    updateActiveSessionDetail: (updates: Partial<SessionInfo>) =>
+    updateActiveSessionDetail: (updates: Partial<Session>) =>
       set(state => ({
         activeSessionDetail: state.activeSessionDetail
           ? {

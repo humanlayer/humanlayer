@@ -7,12 +7,17 @@ import { truncate } from '@/utils/formatting'
 // TODO(3): Extract magic numbers to constants (e.g., truncate lengths, line limits)
 
 // Format tool result content into abbreviated display
+<<<<<<< HEAD
 export function formatToolResult(
   toolName: string,
   toolResult: ConversationEvent,
   toolCall?: ConversationEvent,
 ): React.ReactNode {
   const content = toolResult.tool_result_content || ''
+=======
+export function formatToolResult(toolName: string, toolResult: ConversationEvent): React.ReactNode {
+  const content = toolResult.toolResultContent || ''
+>>>>>>> b99ff02 (Remove legacy types and transformation logic in daemon client)
 
   // Handle empty content
   if (!content.trim()) {
@@ -92,7 +97,7 @@ export function formatToolResult(
     }
 
     case 'Bash': {
-      const lines = content.split('\n').filter(l => l.trim())
+      const lines = content.split('\n').filter((l: string) => l.trim())
       if (!content || lines.length === 0) {
         abbreviated = 'Command completed'
       } else if (lines.length === 1) {
@@ -172,7 +177,7 @@ export function formatToolResult(
       if (content === 'No files found') {
         abbreviated = 'No files found'
       } else {
-        const fileCount = content.split('\n').filter(l => l.trim()).length
+        const fileCount = content.split('\n').filter((l: string) => l.trim()).length
         abbreviated = `Found ${fileCount} files`
       }
       break
@@ -208,6 +213,7 @@ export function formatToolResult(
         // Fallback: count based on mode
         const lineCount = content
           .split('\n')
+<<<<<<< HEAD
           .filter(l => l.trim() && !l.includes('(Results are truncated')).length
 
         if (mode === 'content') {
@@ -230,13 +236,17 @@ export function formatToolResult(
           // files_with_matches mode (default)
           abbreviated = `Found ${lineCount} files`
         }
+=======
+          .filter((l: string) => l.trim() && !l.includes('(Results are truncated')).length
+        abbreviated = `Found ${fileCount} files`
+>>>>>>> b99ff02 (Remove legacy types and transformation logic in daemon client)
       }
       break
     }
 
     case 'LS': {
       // Count items in the tree structure (lines starting with " - ")
-      const lsItems = content.split('\n').filter(l => l.trim().startsWith('-')).length
+      const lsItems = content.split('\n').filter((l: string) => l.trim().startsWith('-')).length
       abbreviated = `${lsItems} items`
       break
     }
@@ -329,7 +339,7 @@ export function formatToolResult(
           abbreviated = `${service} ${method} completed`
         } else {
           // Show first line or character count for longer responses
-          const lines = content.split('\n').filter(l => l.trim())
+          const lines = content.split('\n').filter((l: string) => l.trim())
           if (lines.length === 1 && lines[0].length < 80) {
             abbreviated = lines[0]
           } else if (content.length > 200) {

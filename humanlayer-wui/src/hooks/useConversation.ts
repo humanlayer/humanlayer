@@ -140,23 +140,23 @@ export function useFormattedConversation(
       let content = event.content || ''
       let type: FormattedMessage['type'] = 'message'
 
-      if (event.event_type === 'tool_call') {
+      if (event.eventType === 'tool_call') {
         type = 'tool_call'
-        content = `Calling ${event.tool_name || 'tool'}`
-        if (event.tool_input_json) {
+        content = `Calling ${event.toolName || 'tool'}`
+        if (event.toolInputJson) {
           try {
-            const input = JSON.parse(event.tool_input_json)
+            const input = JSON.parse(event.toolInputJson)
             content += `: ${JSON.stringify(input, null, 2)}`
           } catch {
-            content += `: ${event.tool_input_json}`
+            content += `: ${event.toolInputJson}`
           }
         }
-      } else if (event.event_type === 'tool_result') {
+      } else if (event.eventType === 'tool_result') {
         type = 'tool_result'
-        content = event.tool_result_content || 'Tool completed'
-      } else if (event.approval_status) {
+        content = event.toolResultContent || 'Tool completed'
+      } else if (event.approvalStatus) {
         type = 'approval'
-        content = `Approval ${event.approval_status}`
+        content = `Approval ${event.approvalStatus}`
       }
 
       return {
@@ -164,12 +164,12 @@ export function useFormattedConversation(
         type,
         role: event.role,
         content,
-        timestamp: new Date(event.created_at || new Date()),
+        timestamp: new Date(event.createdAt || new Date()),
         metadata: {
-          toolName: event.tool_name,
-          toolId: event.tool_id,
-          approvalStatus: event.approval_status || undefined,
-          approvalId: event.approval_id,
+          toolName: event.toolName,
+          toolId: event.toolId,
+          approvalStatus: event.approvalStatus || undefined,
+          approvalId: event.approvalId,
         },
       }
     })

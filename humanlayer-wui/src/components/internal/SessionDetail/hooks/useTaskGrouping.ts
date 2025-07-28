@@ -16,8 +16,8 @@ function buildTaskGroups(events: ConversationEvent[]): {
   rootEvents: ConversationEvent[]
   hasSubTasks: boolean
 } {
-  // Quick check: if no events have parent_tool_use_id, skip building
-  const hasSubTasks = events.some(e => e.parent_tool_use_id)
+  // Quick check: if no events have parentToolUseId, skip building
+  const hasSubTasks = events.some(e => e.parentToolUseId)
   if (!hasSubTasks) {
     return {
       taskGroups: new Map(),
@@ -32,10 +32,10 @@ function buildTaskGroups(events: ConversationEvent[]): {
 
   // Single pass to categorize events
   events.forEach(event => {
-    if (event.parent_tool_use_id) {
-      const siblings = eventsByParent.get(event.parent_tool_use_id) || []
+    if (event.parentToolUseId) {
+      const siblings = eventsByParent.get(event.parentToolUseId) || []
       siblings.push(event)
-      eventsByParent.set(event.parent_tool_use_id, siblings)
+      eventsByParent.set(event.parentToolUseId, siblings)
     } else {
       rootEvents.push(event)
     }
@@ -43,19 +43,19 @@ function buildTaskGroups(events: ConversationEvent[]): {
 
   // Build task groups for parent Tasks
   rootEvents.forEach(event => {
-    if (event.tool_name === 'Task' && event.tool_id && eventsByParent.has(event.tool_id)) {
-      const subEvents = eventsByParent.get(event.tool_id)!
+    if (event.toolName === 'Task' && event.toolId && eventsByParent.has(event.toolId)) {
+      const subEvents = eventsByParent.get(event.toolId)!
 
       // Calculate preview data
-      const toolCalls = subEvents.filter(e => e.event_type === ConversationEventType.ToolCall)
+      const toolCalls = subEvents.filter(e => e.eventType === ConversationEventType.ToolCall)
       const latestEvent = subEvents[subEvents.length - 1]
 
-      taskGroups.set(event.tool_id, {
+      taskGroups.set(event.toolId, {
         parentTask: event,
         subTaskEvents: subEvents,
         toolCallCount: toolCalls.length,
         latestEvent: latestEvent || null,
-        hasPendingApproval: subEvents.some(e => e.approval_status === ApprovalStatus.Pending),
+        hasPendingApproval: subEvents.some(e => e.approvalStatus === ApprovalStatus.Pending),
       })
     }
   })

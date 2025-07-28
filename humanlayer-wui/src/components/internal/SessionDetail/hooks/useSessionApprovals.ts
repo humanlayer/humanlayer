@@ -74,7 +74,7 @@ export function useSessionApprovals({
     () => {
       // Find any pending approval event
       const pendingApprovalEvent = events.find(
-        e => e.approval_status === ApprovalStatus.Pending && e.approval_id && e.id !== undefined,
+        e => e.approvalStatus === ApprovalStatus.Pending && e.approvalId && e.id !== undefined,
       )
 
       if (!pendingApprovalEvent || pendingApprovalEvent.id === undefined) return
@@ -87,7 +87,7 @@ export function useSessionApprovals({
 
         // Only set confirming state if element was out of view and we're scrolling to it
         if (!wasInView) {
-          setConfirmingApprovalId(pendingApprovalEvent.approval_id!)
+          setConfirmingApprovalId(pendingApprovalEvent.approvalId!)
         }
         return
       }
@@ -95,12 +95,12 @@ export function useSessionApprovals({
       // If the pending approval is already focused
       if (focusedEventId === pendingApprovalEvent.id) {
         // If we're in confirming state, approve it
-        if (confirmingApprovalId === pendingApprovalEvent.approval_id) {
-          handleApprove(pendingApprovalEvent.approval_id!)
+        if (confirmingApprovalId === pendingApprovalEvent.approvalId) {
+          handleApprove(pendingApprovalEvent.approvalId!)
           setConfirmingApprovalId(null)
         } else {
           // If not in confirming state, approve directly
-          handleApprove(pendingApprovalEvent.approval_id!)
+          handleApprove(pendingApprovalEvent.approvalId!)
         }
       }
     },
@@ -121,7 +121,7 @@ export function useSessionApprovals({
     e => {
       // Find any pending approval event
       const pendingApprovalEvent = events.find(
-        e => e.approval_status === ApprovalStatus.Pending && e.approval_id && e.id !== undefined,
+        e => e.approvalStatus === ApprovalStatus.Pending && e.approvalId && e.id !== undefined,
       )
 
       if (!pendingApprovalEvent || pendingApprovalEvent.id === undefined) return
@@ -138,7 +138,7 @@ export function useSessionApprovals({
 
       // If the pending approval is already focused, show the deny form
       if (focusedEventId === pendingApprovalEvent.id) {
-        handleStartDeny(pendingApprovalEvent.approval_id!)
+        handleStartDeny(pendingApprovalEvent.approvalId!)
       }
     },
     [events, focusedEventId, handleStartDeny, setFocusedEventId, setFocusSource],
@@ -149,8 +149,8 @@ export function useSessionApprovals({
     if (denyingApprovalId) {
       const container = document.querySelector('[data-conversation-container]')
       // Find the event that contains this approval
-      const event = events.find(e => e.approval_id === denyingApprovalId)
-      if (container && event && !event.approval_status && event.id !== undefined) {
+      const event = events.find(e => e.approvalId === denyingApprovalId)
+      if (container && event && !event.approvalStatus && event.id !== undefined) {
         const eventElement = container.querySelector(`[data-event-id="${event.id}"]`)
         if (eventElement && !isElementInView(event.id)) {
           // Scroll the deny form into view
