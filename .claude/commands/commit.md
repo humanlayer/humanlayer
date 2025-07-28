@@ -4,37 +4,35 @@ You are tasked with creating git commits for the changes made during this sessio
 
 ## Process:
 
-1. **Think about what changed:**
-   - Review the conversation history and understand what was accomplished
-   - Run `git status` to see current changes
-   - Run `git diff` to understand the modifications
-   - Consider whether changes should be one commit or multiple logical commits
+1. **Understand what was accomplished:**
+   - Review the conversation history to understand what changes were made
+   - Note the purpose and context of the changes
+   - Consider if changes should be one commit or multiple logical commits
 
-2. **Plan your commit(s):**
-   - Identify which files belong together
-   - Draft clear, descriptive commit messages
-   - Use imperative mood in commit messages
-   - Focus on why the changes were made, not just what
+2. **Delegate to the git-commit-creator agent:**
+   - Use the **git-commit-creator** agent to handle the actual commit creation
+   - Provide the agent with context about what was done in this session
+   - The agent will analyze git status and diffs to create appropriate commits
+   
+   Example of how to invoke:
+   - Tell the agent what was accomplished (e.g., "We implemented rate limiting for the API endpoints")
+   - Mention any specific grouping preferences if changes should be split
+   - The agent will handle all the git operations and present a plan
 
-3. **Present your plan to the user:**
-   - List the files you plan to add for each commit
-   - Show the commit message(s) you'll use
-   - Ask: "I plan to create [N] commit(s) with these changes. Shall I proceed?"
+3. **Review the agent's plan:**
+   - The agent will present which files it plans to commit and proposed messages
+   - You can relay any user feedback or adjustments back to the agent
+   - Once approved, the agent will execute the commits
 
-4. **Execute upon confirmation:**
-   - Use `git add` with specific files (never use `-A` or `.`)
-   - Create commits with your planned messages
-   - Show the result with `git log --oneline -n [number]`
+## Important Notes:
 
-## Important:
-- **NEVER add co-author information or Claude attribution**
-- Commits should be authored solely by the user
-- Do not include any "Generated with Claude" messages
-- Do not add "Co-Authored-By" lines
-- Write commit messages as if the user wrote them
+- The git-commit-creator agent is specialized for this task
+- It will never add co-author information or Claude attribution
+- It knows to write commit messages as if the user wrote them
+- You provide the context, the agent handles the git mechanics
 
 ## Remember:
-- You have the full context of what was done in this session
-- Group related changes together
-- Keep commits focused and atomic when possible
-- The user trusts your judgment - they asked you to commit
+
+- You have the full conversation context that the agent lacks
+- Be clear about what was accomplished when invoking the agent
+- The agent will handle staging files, creating commits, and showing results

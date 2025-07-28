@@ -42,30 +42,18 @@ Then wait for the user's input.
    - **NEVER** read files partially - if a file is mentioned, read it completely
 
 2. **Spawn initial research tasks to gather context**:
-   Before asking the user any questions, spawn these parallel research tasks:
-
-   ```
-   Task 1 - Find relevant files:
-   Research what files and directories are relevant to [the ticket/task].
-   1. Based on the ticket description, identify the main components involved
-   2. Find all relevant source files, configs, and tests
-   3. Look for similar features or patterns in the codebase
-   4. Identify the specific directories to focus on (e.g., if WUI is mentioned, focus on humanlayer-wui/)
-   5. Return a comprehensive list of files that need to be examined
-   Use tools: Grep, Glob, LS
-   Return: List of specific file paths to read and which directories contain the relevant code
-   ```
-
-   ```
-   Task 2 - Understand current implementation:
-   Research how [the feature/component] currently works.
-   1. Find the main implementation files in [specific directory if known]
-   2. Trace the data flow and key functions
-   3. Identify APIs, state management, and communication patterns
-   4. Look for any existing bugs or TODOs related to this area
-   5. Find relevant tests that show expected behavior
-   Return: Detailed explanation of current implementation with file:line references
-   ```
+   Before asking the user any questions, use specialized agents to research in parallel:
+   
+   - Use the **codebase-locator** agent to find all files related to the ticket/task
+   - Use the **codebase-analyzer** agent to understand how the current implementation works
+   - If relevant, use the **thoughts-locator** agent to find any existing thoughts documents about this feature
+   - If a Linear ticket is mentioned, use the **linear-ticket-reader** agent to get full details
+   
+   These agents will:
+   - Find relevant source files, configs, and tests
+   - Identify the specific directories to focus on (e.g., if WUI is mentioned, they'll focus on humanlayer-wui/)
+   - Trace data flow and key functions
+   - Return detailed explanations with file:line references
 
 3. **Read all files identified by research tasks**:
    - After research tasks complete, read ALL files they identified as relevant
@@ -109,40 +97,26 @@ After getting initial clarifications:
 
 3. **Spawn parallel sub-tasks for comprehensive research**:
    - Create multiple Task agents to research different aspects concurrently
-   - Each sub-task should focus on a specific area or component
-   - Write detailed prompts for each sub-agent following these guidelines:
-
-   **Example sub-task prompts**:
-   ```
-   Task 1 - Research existing [component] implementation:
-   1. Find all files related to [component] in [directory]
-   2. Identify the current implementation pattern (include file:line references)
-   3. Look for similar features that we can model after
-   4. Find any utility functions or helpers we should reuse
-   5. Note any conventions or patterns that must be followed
-   Use read-only tools: Read, Grep, Glob, LS
-   Return: Specific file paths, line numbers, and code patterns found
-   ```
-
-   ```
-   Task 2 - Investigate [related system]:
-   1. Search for how [system] currently works
-   2. Find the data model and schema definitions
-   3. Identify API endpoints or RPC methods
-   4. Look for existing tests that show usage patterns
-   5. Note any performance considerations or limitations
-   Return: Technical details with file:line references
-   ```
-
-   ```
-   Task 3 - Research dependencies and integration points:
-   1. Find where [feature] would need to integrate
-   2. Check for any existing interfaces we need to implement
-   3. Look for configuration or feature flags
-   4. Identify potential breaking changes
-   5. Find related documentation or comments
-   Return: Integration requirements and constraints
-   ```
+   - Use the right agent for each type of research:
+   
+   **For deeper investigation:**
+   - **codebase-locator** - To find more specific files (e.g., "find all files that handle [specific component]")
+   - **codebase-analyzer** - To understand implementation details (e.g., "analyze how [system] works")
+   - **codebase-pattern-finder** - To find similar features we can model after
+   
+   **For historical context:**
+   - **thoughts-locator** - To find any research, plans, or decisions about this area
+   - **thoughts-analyzer** - To extract key insights from the most relevant documents
+   
+   **For related tickets:**
+   - **linear-searcher** - To find similar issues or past implementations
+   
+   Each agent knows how to:
+   - Find the right files and code patterns
+   - Identify conventions and patterns to follow
+   - Look for integration points and dependencies
+   - Return specific file:line references
+   - Find tests and examples
 
 3. **Wait for ALL sub-tasks to complete** before proceeding
 

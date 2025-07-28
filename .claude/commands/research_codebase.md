@@ -27,57 +27,30 @@ Then wait for the user's research query.
 
 3. **Spawn parallel sub-agent tasks for comprehensive research:**
    - Create multiple Task agents to research different aspects concurrently
-   - Always include these parallel tasks:
-     - **Codebase exploration tasks** (one for each relevant component/directory)
-     - **Thoughts directory exploration task** (to find historical context and insights)
-   - Optionally include if it makes sense for the task:
-     - **Web Research tasks** (only if the user explicitly asks you to search the web)
-   - Each codebase sub-agent should focus on a specific directory, component, or question
-   - Write detailed prompts for each sub-agent following these guidelines:
-     - Instruct them to use READ-ONLY tools (Read, Grep, Glob, LS)
-     - Ask for specific file paths and line numbers
-     - Request they identify connections between components
-     - Have them note architectural patterns and conventions
-     - Ask them to find examples of usage or implementation
-   - Example codebase sub-agent prompt:
-     ```
-     Research [specific component/pattern] in [directory/module]:
-     1. Find all files related to [topic]
-     2. Identify how [concept] is implemented (include file:line references)
-     3. Look for connections to [related components]
-     4. Find examples of usage in [relevant areas]
-     5. Note any patterns or conventions used
-     6. Use only READ-ONLY tools (Read, Grep, Glob, LS)
-     Return: File paths, line numbers, and concise explanations of findings
-     ```
-   - Example web sub-agent prompt (only create if user explicitly asks for web search):
-     ```
-     Research [specific component/pattern] using WebSearch and/or WebFetch:
-     1. Find all pages related to [topic]
-     2. Identify how [concept] could be implemented (include page:quotation references
-     3. Look for connections to [related components]
-     4. Find examples of usage in [relevant areas]
-     5. Note any patterns or conventions used
-     6. Use only WEB TOOLS (WebFetch, WebSearch) and READ-ONLY tools (Read, Grep, Glob, LS)
-     Return: web pages, exact quotations, and concise explanations of findings
-     ```
-
-   - Thoughts directory sub-agent prompt:
-     ```
-     Explore the thoughts/ directory for context related to [topic]:
-     1. Search for any relevant information in thoughts/ (including shared/, local/, etc.)
-     2. Look for design decisions, past research, PR descriptions, or implementation notes
-     3. Find any historical context about [specific components/patterns]
-     4. Note any architectural decisions or trade-offs discussed
-     Remember: This information is historical context, not current truth
-     IMPORTANT: If you find files in thoughts/searchable/, report the actual path by removing only "searchable/"
-     Examples:
-     - thoughts/searchable/allison/notes.md → thoughts/allison/notes.md
-     - thoughts/searchable/shared/research/file.md → thoughts/shared/research/file.md
-     - thoughts/searchable/allison/old_stuff/notes.md → thoughts/allison/old_stuff/notes.md
-     DO NOT change the subdirectory structure - only remove "searchable/" from the path
-     Return: Relevant findings with correct file paths and key insights
-     ```
+   - We now have specialized agents that know how to do specific research tasks:
+   
+   **For codebase research:**
+   - Use the **codebase-locator** agent to find WHERE files and components live
+   - Use the **codebase-analyzer** agent to understand HOW specific code works
+   - Use the **codebase-pattern-finder** agent if you need examples of similar implementations
+   
+   **For thoughts directory:**
+   - Use the **thoughts-locator** agent to discover what documents exist about the topic
+   - Use the **thoughts-analyzer** agent to extract key insights from specific documents (only the most relevant ones)
+   
+   **For web research (only if user explicitly asks):**
+   - Use the **web-search-researcher** agent for external documentation and resources
+   
+   **For Linear tickets (if relevant):**
+   - Use the **linear-ticket-reader** agent to get full details of a specific ticket
+   - Use the **linear-searcher** agent to find related tickets or historical context
+   
+   The key is to use these agents intelligently:
+   - Start with locator agents to find what exists
+   - Then use analyzer agents on the most promising findings
+   - Run multiple agents in parallel when they're searching for different things
+   - Each agent knows its job - just tell it what you're looking for
+   - Don't write detailed prompts about HOW to search - the agents already know
 
 4. **Wait for all sub-agents to complete and synthesize findings:**
    - IMPORTANT: Wait for ALL sub-agent tasks to complete before proceeding
