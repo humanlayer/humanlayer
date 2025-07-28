@@ -1,18 +1,18 @@
 import { StateCreator } from 'zustand'
-import { SessionInfo } from '@/lib/daemon/types'
+import { Session } from '@/lib/daemon/types'
 
 export interface SessionSlice {
   // State
-  sessions: SessionInfo[]
-  focusedSession: SessionInfo | null
+  sessions: Session[]
+  focusedSession: Session | null
   searchQuery: string
 
   // Actions
-  setSessions: (sessions: SessionInfo[]) => void
-  setFocusedSession: (session: SessionInfo | null) => void
+  setSessions: (sessions: Session[]) => void
+  setFocusedSession: (session: Session | null) => void
   setSearchQuery: (query: string) => void
-  addSession: (session: SessionInfo) => void
-  updateSession: (id: string, updates: Partial<SessionInfo>) => void
+  addSession: (session: Session) => void
+  updateSession: (id: string, updates: Partial<Session>) => void
   removeSession: (id: string) => void
   clearSessions: () => void
 
@@ -21,7 +21,7 @@ export interface SessionSlice {
   focusPreviousSession: () => void
 
   // Utility actions
-  findSessionById: (id: string) => SessionInfo | undefined
+  findSessionById: (id: string) => Session | undefined
   getSessionCount: () => number
   hasSession: (id: string) => boolean
 }
