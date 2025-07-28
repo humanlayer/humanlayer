@@ -20,11 +20,12 @@ export const getInputPlaceholder = (status: string): string => {
 
 export const getHelpText = (status: string): React.ReactNode => {
   if (status === 'failed') return 'Session failed - cannot continue'
-  const sendKey = navigator.platform.includes('Mac') ? '⌘+Enter' : 'Ctrl+Enter'
+  const isMac = navigator.platform.includes('Mac')
+  const sendKey = isMac ? '⌘+Enter' : 'Ctrl+Enter'
   if (status === 'running' || status === 'starting') {
     return (
       <>
-        <Kbd>{sendKey}</Kbd> to interrupt and send
+        <Kbd>Ctrl+X</Kbd> to interrupt • <Kbd>{sendKey}</Kbd> to interrupt and send
       </>
     )
   }
