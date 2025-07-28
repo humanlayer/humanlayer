@@ -346,10 +346,6 @@ func sendHumanResponse(daemonClient client.Client, requestID string, response st
 	return func() tea.Msg {
 		// Human contact is no longer supported in local approvals
 		err := fmt.Errorf("human contact approvals are no longer supported")
-		if err != nil {
-			return humanResponseSentMsg{err: err}
-		}
-
-		return humanResponseSentMsg{requestID: requestID}
+		return humanResponseSentMsg{err: err}
 	}
 }
