@@ -19,7 +19,7 @@ import (
 
 // Manager handles the lifecycle of Claude Code sessions
 type Manager struct {
-	activeProcesses    map[string]*claudecode.Session // Maps session ID to active Claude process
+	activeProcesses    map[string]ClaudeSession // Maps session ID to active Claude process
 	mu                 sync.RWMutex
 	client             *claudecode.Client
 	eventBus           bus.EventBus
@@ -44,7 +44,7 @@ func NewManager(eventBus bus.EventBus, store store.ConversationStore, socketPath
 	}
 
 	return &Manager{
-		activeProcesses: make(map[string]*claudecode.Session),
+		activeProcesses: make(map[string]ClaudeSession),
 		client:          client,
 		eventBus:        eventBus,
 		store:           store,
@@ -151,9 +151,12 @@ func (m *Manager) LaunchSession(ctx context.Context, config claudecode.SessionCo
 		return nil, fmt.Errorf("failed to launch Claude session: %w", err)
 	}
 
+	// Wrap the session for storage
+	wrappedSession := NewClaudeSessionWrapper(claudeSession)
+
 	// Store active Claude process
 	m.mu.Lock()
-	m.activeProcesses[sessionID] = claudeSession
+	m.activeProcesses[sessionID] = wrappedSession
 	m.mu.Unlock()
 
 	// Update database with running status
@@ -192,7 +195,7 @@ func (m *Manager) LaunchSession(ctx context.Context, config claudecode.SessionCo
 	m.pendingQueries.Store(sessionID, config.Query)
 
 	// Monitor session lifecycle in background
-	go m.monitorSession(ctx, sessionID, runID, claudeSession, startTime, config)
+	go m.monitorSession(ctx, sessionID, runID, wrappedSession, startTime, config)
 
 	// Reconcile any existing approvals for this run_id
 	if m.approvalReconciler != nil {
@@ -225,7 +228,7 @@ func (m *Manager) LaunchSession(ctx context.Context, config claudecode.SessionCo
 }
 
 // monitorSession tracks the lifecycle of a Claude session
-func (m *Manager) monitorSession(ctx context.Context, sessionID, runID string, claudeSession *claudecode.Session, startTime time.Time, config claudecode.SessionConfig) {
+func (m *Manager) monitorSession(ctx context.Context, sessionID, runID string, claudeSession ClaudeSession, startTime time.Time, config claudecode.SessionConfig) {
 	// Get the session ID from the Claude session once available
 	var claudeSessionID string
 
@@ -237,7 +240,7 @@ eventLoop:
 			slog.Debug("monitorSession context cancelled, stopping event processing",
 				"session_id", sessionID)
 			return
-		case event, ok := <-claudeSession.Events:
+		case event, ok := <-claudeSession.GetEvents():
 			if !ok {
 				// Channel closed, exit loop
 				break eventLoop
@@ -1149,9 +1152,12 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 		return nil, fmt.Errorf("failed to launch resumed Claude session: %w", err)
 	}
 
+	// Wrap the session for storage
+	wrappedSession := NewClaudeSessionWrapper(claudeSession)
+
 	// Store active Claude process
 	m.mu.Lock()
-	m.activeProcesses[sessionID] = claudeSession
+	m.activeProcesses[sessionID] = wrappedSession
 	m.mu.Unlock()
 
 	// Update database with running status
@@ -1183,7 +1189,7 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 	m.pendingQueries.Store(sessionID, req.Query)
 
 	// Monitor session lifecycle in background
-	go m.monitorSession(ctx, sessionID, runID, claudeSession, time.Now(), config)
+	go m.monitorSession(ctx, sessionID, runID, wrappedSession, time.Now(), config)
 
 	// Reconcile any existing approvals for this run_id (same run_id is reused for continuations)
 	if m.approvalReconciler != nil {
@@ -1287,11 +1293,9 @@ func (m *Manager) injectQueryAsFirstEvent(ctx context.Context, sessionID, claude
 
 // StopAllSessions gracefully stops all active sessions with a timeout
 func (m *Manager) StopAllSessions(timeout time.Duration) error {
-	// TODO(1): Write unit tests for StopAllSessions, including race condition tests similar to other daemon tests
-	
 	m.mu.RLock()
 	// Get snapshot of active sessions and their current status
-	activeSessionsToStop := make(map[string]*claudecode.Session)
+	activeSessionsToStop := make(map[string]ClaudeSession)
 	for id, session := range m.activeProcesses {
 		// Get session info to check status
 		info, err := m.GetSessionInfo(id)
@@ -1301,13 +1305,13 @@ func (m *Manager) StopAllSessions(timeout time.Duration) error {
 			activeSessionsToStop[id] = session
 			continue
 		}
-		
+
 		// Only interrupt sessions that are actually running or waiting for input
 		if info.Status == StatusRunning || info.Status == StatusWaitingInput || info.Status == StatusStarting {
 			activeSessionsToStop[id] = session
 		} else {
-			slog.Debug("skipping session with non-running status", 
-				"session_id", id, 
+			slog.Debug("skipping session with non-running status",
+				"session_id", id,
 				"status", info.Status)
 		}
 	}
@@ -1328,7 +1332,7 @@ func (m *Manager) StopAllSessions(timeout time.Duration) error {
 		wg.Add(1)
 		go func(id string) {
 			defer wg.Done()
-			slog.Info("sending interrupt to session", 
+			slog.Info("sending interrupt to session",
 				"session_id", id)
 			if err := m.InterruptSession(context.Background(), id); err != nil {
 				errors <- fmt.Errorf("session %s: %w", id, err)
@@ -1340,10 +1344,9 @@ func (m *Manager) StopAllSessions(timeout time.Duration) error {
 	wg.Wait()
 	close(errors)
 
-	// Collect any errors
-	var errs []error
+	// Log any errors from interrupt attempts
 	for err := range errors {
-		errs = append(errs, err)
+		slog.Error("failed to interrupt session", "error", err)
 	}
 
 	// Wait for sessions to complete with timeout
@@ -1361,7 +1364,7 @@ func (m *Manager) StopAllSessions(timeout time.Duration) error {
 			remaining := len(m.activeProcesses)
 			m.mu.RUnlock()
 			if remaining > 0 {
-				slog.Warn("timeout waiting for sessions to stop", 
+				slog.Warn("timeout waiting for sessions to stop",
 					"remaining", remaining,
 					"timeout", timeout,
 					"elapsed", time.Since(startTime))
@@ -1389,9 +1392,10 @@ func (m *Manager) forceKillRemaining() {
 
 	for id, session := range m.activeProcesses {
 		slog.Warn("force killing session", "session_id", id)
-		// Force kill through claudecode.Session
-		// Currently we just send another interrupt, but ideally we'd have a Kill() method
-		// TODO(2): Investigate if claudecode.Session needs a Kill() method for force termination
-		session.Interrupt()
+		if err := session.Kill(); err != nil {
+			slog.Error("failed to force kill session",
+				"session_id", id,
+				"error", err)
+		}
 	}
 }

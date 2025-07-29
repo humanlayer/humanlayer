@@ -21,8 +21,9 @@ const (
 	StatusRunning      Status = "running"
 	StatusCompleted    Status = "completed"
 	StatusFailed       Status = "failed"
-	StatusInterrupting Status = "interrupting" // Session received interrupt signal and is shutting down
-	StatusInterrupted  Status = "interrupted"  // Session was interrupted but can be resumed
+	StatusInterrupting Status = "interrupting"  // Session received interrupt signal and is shutting down
+	StatusInterrupted  Status = "interrupted"   // Session was interrupted but can be resumed
+	StatusWaitingInput Status = "waiting_input" // Session is waiting for tool approval input
 )
 
 // Session represents a Claude Code session managed by the daemon
@@ -88,6 +89,9 @@ type SessionManager interface {
 
 	// InterruptSession interrupts a running session
 	InterruptSession(ctx context.Context, sessionID string) error
+
+	// StopAllSessions gracefully stops all active sessions with a timeout
+	StopAllSessions(timeout time.Duration) error
 }
 
 // ReadToolResult represents the JSON structure of a Read tool result

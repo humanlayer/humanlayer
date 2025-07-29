@@ -618,9 +618,18 @@ func TestStopAllSessions_FiltersSessionsByStatus(t *testing.T) {
 	manager, _ := NewManager(nil, mockStore, "")
 
 	// Create mock Claude sessions
-	mockClaudeSession1 := &claudecode.Session{}
-	mockClaudeSession2 := &claudecode.Session{}
-	mockClaudeSession3 := &claudecode.Session{}
+	mockClaudeSession1 := NewMockClaudeSession(ctrl)
+	mockClaudeSession2 := NewMockClaudeSession(ctrl)
+	mockClaudeSession3 := NewMockClaudeSession(ctrl)
+
+	// Set up expectations for the running session (should be interrupted)
+	mockClaudeSession1.EXPECT().Interrupt().Return(nil).Times(1)
+
+	// Set up expectations for the waiting session (should be interrupted)
+	mockClaudeSession3.EXPECT().Interrupt().Return(nil).Times(1)
+
+	// Add Kill() expectations for sessions that might timeout
+	mockClaudeSession2.EXPECT().Kill().Return(nil).MaxTimes(1) // Completed session might be force killed
 
 	// Manually populate activeProcesses for testing
 	manager.activeProcesses["session-running"] = mockClaudeSession1
@@ -642,15 +651,34 @@ func TestStopAllSessions_FiltersSessionsByStatus(t *testing.T) {
 	}, nil)
 
 	// Expect update calls only for running and waiting sessions
-	mockStore.EXPECT().UpdateSession(gomock.Any(), "session-running", gomock.Any()).Return(nil)
-	mockStore.EXPECT().UpdateSession(gomock.Any(), "session-waiting", gomock.Any()).Return(nil)
+	mockStore.EXPECT().UpdateSession(gomock.Any(), "session-running", gomock.Any()).DoAndReturn(
+		func(ctx context.Context, id string, update store.SessionUpdate) error {
+			// Simulate session cleanup after interrupt
+			go func() {
+				time.Sleep(50 * time.Millisecond)
+				manager.mu.Lock()
+				delete(manager.activeProcesses, id)
+				manager.mu.Unlock()
+			}()
+			return nil
+		})
+	mockStore.EXPECT().UpdateSession(gomock.Any(), "session-waiting", gomock.Any()).DoAndReturn(
+		func(ctx context.Context, id string, update store.SessionUpdate) error {
+			// Simulate session cleanup after interrupt
+			go func() {
+				time.Sleep(50 * time.Millisecond)
+				manager.mu.Lock()
+				delete(manager.activeProcesses, id)
+				manager.mu.Unlock()
+			}()
+			return nil
+		})
 
 	// The function should only try to interrupt running and waiting sessions
-	// We can't fully test interrupt without mocking Claude sessions, but we can verify filtering
-	err := manager.StopAllSessions(100 * time.Millisecond)
-	
-	// Should timeout because we can't actually interrupt mock sessions
-	if err == nil || err != context.DeadlineExceeded {
+	err := manager.StopAllSessions(500 * time.Millisecond)
+
+	// Should timeout because completed session remains in activeProcesses
+	if err != context.DeadlineExceeded {
 		t.Errorf("Expected timeout error, got: %v", err)
 	}
 }
@@ -663,18 +691,32 @@ func TestStopAllSessions_HandlesInterruptErrors(t *testing.T) {
 	manager, _ := NewManager(nil, mockStore, "")
 
 	// Create a session that will fail to get info
-	mockClaudeSession := &claudecode.Session{}
+	mockClaudeSession := NewMockClaudeSession(ctrl)
+	mockClaudeSession.EXPECT().Interrupt().Return(nil).Times(1)
 	manager.activeProcesses["session-error"] = mockClaudeSession
 
 	// Mock GetSessionInfo to return error
 	mockStore.EXPECT().GetSession(gomock.Any(), "session-error").Return(nil, fmt.Errorf("database error"))
 
+	// Mock UpdateSession for interrupt
+	mockStore.EXPECT().UpdateSession(gomock.Any(), "session-error", gomock.Any()).DoAndReturn(
+		func(ctx context.Context, id string, update store.SessionUpdate) error {
+			// Simulate session cleanup after interrupt
+			go func() {
+				time.Sleep(50 * time.Millisecond)
+				manager.mu.Lock()
+				delete(manager.activeProcesses, id)
+				manager.mu.Unlock()
+			}()
+			return nil
+		})
+
 	// The session should still be attempted to be interrupted despite GetSessionInfo error
-	err := manager.StopAllSessions(100 * time.Millisecond)
-	
-	// Should timeout
-	if err == nil || err != context.DeadlineExceeded {
-		t.Errorf("Expected timeout error, got: %v", err)
+	err := manager.StopAllSessions(500 * time.Millisecond)
+
+	// Should succeed since we simulate cleanup
+	if err != nil {
+		t.Errorf("Expected success, got error: %v", err)
 	}
 }
 
@@ -700,7 +742,10 @@ func TestStopAllSessions_TimeoutBehavior(t *testing.T) {
 	manager, _ := NewManager(nil, mockStore, "")
 
 	// Add a mock session that won't be removed
-	mockClaudeSession := &claudecode.Session{}
+	mockClaudeSession := NewMockClaudeSession(ctrl)
+	// Set up expectations for forced kill since it won't stop gracefully
+	mockClaudeSession.EXPECT().Interrupt().Return(nil).Times(1)
+	mockClaudeSession.EXPECT().Kill().Return(nil).Times(1)
 	manager.activeProcesses["stuck-session"] = mockClaudeSession
 
 	// Mock GetSessionInfo
@@ -739,21 +784,44 @@ func TestStopAllSessions_RaceConditions(t *testing.T) {
 	// Add multiple sessions
 	for i := 0; i < 10; i++ {
 		sessionID := fmt.Sprintf("session-%d", i)
-		manager.activeProcesses[sessionID] = &claudecode.Session{}
-		
+		mockSession := NewMockClaudeSession(ctrl)
+		mockSession.EXPECT().Interrupt().Return(nil).Times(1)
+		mockSession.EXPECT().Kill().Return(nil).MaxTimes(1) // Might be force killed if timeout
+		manager.activeProcesses[sessionID] = mockSession
+
 		// Mock GetSessionInfo for each session
 		mockStore.EXPECT().GetSession(gomock.Any(), sessionID).Return(&store.Session{
 			ID:     sessionID,
 			Status: store.SessionStatusRunning,
 		}, nil).AnyTimes()
-		
+
 		// Mock UpdateSession for each session
-		mockStore.EXPECT().UpdateSession(gomock.Any(), sessionID, gomock.Any()).Return(nil).AnyTimes()
+		mockStore.EXPECT().UpdateSession(gomock.Any(), sessionID, gomock.Any()).DoAndReturn(
+			func(ctx context.Context, id string, update store.SessionUpdate) error {
+				// Simulate session cleanup after interrupt
+				go func() {
+					time.Sleep(50 * time.Millisecond)
+					manager.mu.Lock()
+					delete(manager.activeProcesses, id)
+					manager.mu.Unlock()
+				}()
+				return nil
+			}).AnyTimes()
+	}
+	
+	// Also prepare mocks for new sessions that might be added during the test
+	for i := 0; i < 5; i++ {
+		newSessionID := fmt.Sprintf("new-session-%d", i)
+		mockStore.EXPECT().GetSession(gomock.Any(), newSessionID).Return(&store.Session{
+			ID:     newSessionID,
+			Status: store.SessionStatusRunning,
+		}, nil).AnyTimes()
+		mockStore.EXPECT().UpdateSession(gomock.Any(), newSessionID, gomock.Any()).Return(nil).AnyTimes()
 	}
 
 	// Start multiple goroutines to simulate concurrent operations
 	done := make(chan bool)
-	
+
 	// Goroutine 1: Call StopAllSessions
 	go func() {
 		_ = manager.StopAllSessions(100 * time.Millisecond)
@@ -764,11 +832,15 @@ func TestStopAllSessions_RaceConditions(t *testing.T) {
 	go func() {
 		for i := 0; i < 5; i++ {
 			manager.mu.Lock()
-			manager.activeProcesses[fmt.Sprintf("new-session-%d", i)] = &claudecode.Session{}
+			newSessionID := fmt.Sprintf("new-session-%d", i)
+			mockNewSession := NewMockClaudeSession(ctrl)
+			mockNewSession.EXPECT().Interrupt().Return(nil).MaxTimes(1)
+			mockNewSession.EXPECT().Kill().Return(nil).MaxTimes(1) // Might be force killed
+			manager.activeProcesses[newSessionID] = mockNewSession
 			manager.mu.Unlock()
-			
+
 			time.Sleep(10 * time.Millisecond)
-			
+
 			manager.mu.Lock()
 			delete(manager.activeProcesses, fmt.Sprintf("session-%d", i))
 			manager.mu.Unlock()
@@ -807,12 +879,12 @@ func TestStopAllSessions_ForceKillBehavior(t *testing.T) {
 	manager, _ := NewManager(nil, mockStore, "")
 
 	// Track interrupt calls on mock Claude session
-	interruptCalled := 0
-	mockClaudeSession := &claudecode.Session{
-		// We'd need to mock the Interrupt method, but since we can't modify
-		// the external claudecode.Session type, we'll just verify the behavior
-	}
-	
+	mockClaudeSession := NewMockClaudeSession(ctrl)
+	// Session should be interrupted multiple times as we retry
+	mockClaudeSession.EXPECT().Interrupt().Return(nil).MinTimes(1)
+	// Eventually it should be force killed
+	mockClaudeSession.EXPECT().Kill().Return(nil).Times(1)
+
 	manager.activeProcesses["stubborn-session"] = mockClaudeSession
 
 	// Mock GetSessionInfo
@@ -822,11 +894,7 @@ func TestStopAllSessions_ForceKillBehavior(t *testing.T) {
 	}, nil)
 
 	// Mock UpdateSession for interrupt
-	mockStore.EXPECT().UpdateSession(gomock.Any(), "stubborn-session", gomock.Any()).DoAndReturn(
-		func(ctx context.Context, sessionID string, update store.SessionUpdate) error {
-			interruptCalled++
-			return nil
-		})
+	mockStore.EXPECT().UpdateSession(gomock.Any(), "stubborn-session", gomock.Any()).Return(nil)
 
 	// Call with short timeout to trigger force kill
 	err := manager.StopAllSessions(50 * time.Millisecond)
@@ -836,8 +904,4 @@ func TestStopAllSessions_ForceKillBehavior(t *testing.T) {
 		t.Errorf("Expected timeout error, got: %v", err)
 	}
 
-	// Verify interrupt was called at least once
-	if interruptCalled == 0 {
-		t.Error("Expected InterruptSession to be called")
-	}
 }
