@@ -41,6 +41,9 @@ jobs:
         with:
           bun-version: latest
 
+      - name: Run repository setup
+        run: make setup
+
       - name: Install WUI dependencies
         working-directory: humanlayer-wui
         run: bun install
