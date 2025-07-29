@@ -622,6 +622,12 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               className={`font-mono text-xs uppercase tracking-wider ${getStatusTextClass(session.status)}`}
             >
               {`${renderSessionStatus(session).toUpperCase()}${session.model ? ` / ${session.model}` : ''}`}
+              {(session.status === 'running' || session.status === 'starting') && (
+                <span className="ml-2 text-muted-foreground text-xs font-normal lowercase">
+                  (<kbd className="px-1 py-0.5 text-xs bg-muted/50 rounded normal-case">Ctrl+X</kbd> to
+                  interrupt)
+                </span>
+              )}
             </small>
             {session.working_dir && (
               <small className="font-mono text-xs text-muted-foreground">{session.working_dir}</small>
@@ -699,6 +705,12 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               className={`font-mono text-xs uppercase tracking-wider ${getStatusTextClass(session.status)}`}
             >
               {`${renderSessionStatus(session).toUpperCase()}${session.model ? ` / ${session.model}` : ''}`}
+              {(session.status === 'running' || session.status === 'starting') && (
+                <span className="ml-2 text-muted-foreground text-xs font-normal lowercase">
+                  (<kbd className="px-1 py-0.5 text-xs bg-muted/50 rounded normal-case">Ctrl+X</kbd> to
+                  interrupt)
+                </span>
+              )}
             </small>
           </hgroup>
           <ForkViewModal
