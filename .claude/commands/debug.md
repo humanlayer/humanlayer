@@ -42,7 +42,7 @@ I can investigate logs, database state, and recent changes to help identify the 
 
 ### Step 2: Delegate to Debugger Agent
 
-Once you understand the problem:
+Once you understand the problem, think deeply about the symptoms and potential root causes:
 
 1. **Use the debugger agent** for investigation:
    - Provide clear context about the issue

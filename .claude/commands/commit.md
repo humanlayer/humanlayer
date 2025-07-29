@@ -9,6 +9,8 @@ You are tasked with creating git commits for the changes made during this sessio
    - Note the purpose and context of the changes
    - Consider if changes should be one commit or multiple logical commits
 
+   Take a moment to think deeply about all the changes made during this session, their relationships, and how they should be logically grouped before proceeding.
+
 2. **Delegate to the git-commit-creator agent:**
    - Use the **git-commit-creator** agent to handle the actual commit creation
    - Provide the agent with context about what was done in this session

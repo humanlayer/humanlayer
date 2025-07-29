@@ -60,10 +60,11 @@ mcp__linear__list_issues(
 ```
 
 ### Step 3: Analyze Results
-- Group similar issues
-- Identify patterns
-- Note solutions that worked
-- Find unresolved problems
+Now, think deeply about the connections and patterns in the search results:
+- Group similar issues by theme or root cause
+- Identify patterns in solutions or approaches
+- Note which solutions worked and which didn't
+- Find unresolved problems that keep recurring
 
 ## Output Format
 

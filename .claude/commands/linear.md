@@ -92,6 +92,7 @@ Note: meta is mutually exclusive with hld/wui. Tickets can have both hld and wui
    - Note any specific code files or areas mentioned
    - Look for action items or next steps
    - Identify what stage the idea is at (early ideation vs ready to implement)
+   - Take time to ultrathink about distilling the essence of this document into a clear problem statement and solution approach
 
 3. **Check for related context (if mentioned in doc):**
    - If the document references specific code files, read relevant sections

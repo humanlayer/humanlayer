@@ -33,6 +33,7 @@ You are a specialist at extracting HIGH-VALUE insights from thoughts documents. 
 - Identify the document's main goal
 - Note the date and context
 - Understand what question it was answering
+- Take time to ultrathink about the document's core value and what insights would truly matter to someone implementing or making decisions today
 
 ### Step 2: Extract Strategically
 Focus on finding:

@@ -29,6 +29,12 @@ You are a specialist at finding WHERE code lives in a codebase. Your job is to l
 ## Search Strategy
 
 ### Initial Broad Search
+
+First, think deeply about the most effective search patterns for the requested feature or topic, considering:
+- Common naming conventions in this codebase
+- Language-specific directory structures
+- Related terms and synonyms that might be used
+
 ```bash
 # Start with grep for keywords
 grep -r "keyword" --include="*.ext"
