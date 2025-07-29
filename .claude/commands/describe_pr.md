@@ -26,7 +26,7 @@ You are tasked with generating a comprehensive pull request description followin
    - Review the base branch: `gh pr view {number} --json baseRefName`
    - Get PR metadata: `gh pr view {number} --json url,title,number,state`
 
-5. **Analyze the changes thoroughly:**
+5. **Analyze the changes thoroughly:** (ultrathink about the code changes, their architectural implications, and potential impacts)
    - Read through the entire diff carefully
    - For context, read any files that are referenced but not shown in the diff
    - Understand the purpose and impact of each change

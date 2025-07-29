@@ -21,6 +21,7 @@ Then wait for the user's research query.
 
 2. **Analyze and decompose the research question:**
    - Break down the user's query into composable research areas
+   - Take time to ultrathink about the underlying patterns, connections, and architectural implications the user might be seeking
    - Identify specific components, patterns, or concepts to investigate
    - Create a research plan using TodoWrite to track all subtasks
    - Consider which directories, files, or architectural patterns are relevant

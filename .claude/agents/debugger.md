@@ -127,6 +127,8 @@ SELECT * FROM [table] WHERE [condition];
 - Potentially related: [description]
 
 ### Root Cause Analysis
+Now think deeply about all the findings above to identify the true root cause. Consider how the symptoms connect, what changed recently, and whether there might be cascading effects from a single failure point.
+
 [Clear explanation of why this is happening]
 
 ### Affected Components
