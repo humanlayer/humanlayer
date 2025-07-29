@@ -5,7 +5,7 @@ import { CheckCircle, CircleDashed, Hourglass } from 'lucide-react'
 // TODO(3): Add animations for status changes
 
 export function TodoWidget({ event }: { event: ConversationEvent }) {
-  const toolInput = JSON.parse(event.tool_input_json!)
+  const toolInput = JSON.parse(event.toolInputJson!)
   const todos = toolInput.todos
   const completedCount = todos.filter((todo: any) => todo.status === 'completed').length
   const pendingCount = todos.filter((todo: any) => todo.status === 'pending').length

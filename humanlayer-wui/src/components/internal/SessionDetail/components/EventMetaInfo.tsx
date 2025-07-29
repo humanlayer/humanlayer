@@ -15,7 +15,7 @@ export function EventMetaInfo({ event }: { event: ConversationEvent }) {
         </div>
         <div>
           <span className="font-medium text-muted-foreground">Type:</span>
-          <span className="ml-2 font-mono">{event.event_type}</span>
+          <span className="ml-2 font-mono">{event.eventType}</span>
         </div>
         <div>
           <span className="font-medium text-muted-foreground">Role:</span>
@@ -24,47 +24,47 @@ export function EventMetaInfo({ event }: { event: ConversationEvent }) {
         <div>
           <span className="font-medium text-muted-foreground">Created:</span>
           <span className="ml-2 font-mono text-xs">
-            {event.created_at ? formatAbsoluteTimestamp(event.created_at) : 'Unknown'}
+            {event.createdAt ? formatAbsoluteTimestamp(event.createdAt) : 'Unknown'}
           </span>
         </div>
         <div>
           <span className="font-medium text-muted-foreground">Completed:</span>
-          <span className="ml-2">{event.is_completed ? '✓' : '⏳'}</span>
+          <span className="ml-2">{event.isCompleted ? '✓' : '⏳'}</span>
         </div>
-        {event.tool_name && (
+        {event.toolName && (
           <>
             <div>
               <span className="font-medium text-muted-foreground">Tool:</span>
-              <span className="ml-2 font-mono">{event.tool_name}</span>
+              <span className="ml-2 font-mono">{event.toolName}</span>
             </div>
             <div>
               <span className="font-medium text-muted-foreground">Tool ID:</span>
-              <span className="ml-2 font-mono text-xs">{event.tool_id}</span>
+              <span className="ml-2 font-mono text-xs">{event.toolId}</span>
             </div>
           </>
         )}
-        {event.approval_status && (
+        {event.approvalStatus && (
           <div>
             <span className="font-medium text-muted-foreground">Approval:</span>
-            <span className="ml-2 font-mono">{event.approval_status}</span>
+            <span className="ml-2 font-mono">{event.approvalStatus}</span>
           </div>
         )}
       </div>
 
-      {event.tool_input_json && (
+      {event.toolInputJson && (
         <div className="mt-3">
           <span className="font-medium text-muted-foreground">Tool Input:</span>
           <pre className="mt-1 text-xs bg-background rounded p-2 overflow-x-auto">
-            {JSON.stringify(JSON.parse(event.tool_input_json), null, 2)}
+            {JSON.stringify(JSON.parse(event.toolInputJson), null, 2)}
           </pre>
         </div>
       )}
 
-      {event.tool_result_content && (
+      {event.toolResultContent && (
         <div className="mt-3">
           <span className="font-medium text-muted-foreground">Tool Result:</span>
           <pre className="mt-1 text-xs bg-background rounded p-2 overflow-x-auto max-h-32 overflow-y-auto">
-            {event.tool_result_content}
+            {event.toolResultContent}
           </pre>
         </div>
       )}

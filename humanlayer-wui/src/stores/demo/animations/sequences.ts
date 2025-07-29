@@ -1,27 +1,27 @@
 import { DemoAnimationStep } from '../composedDemoStore'
 import { SessionStatus } from '@/lib/daemon/types'
-import type { SessionInfo } from '@/lib/daemon/types'
+import type { Session } from '@/lib/daemon/types'
 
 // Helper to create realistic session data
 function createMockSession(
   id: string,
   query: string,
   status: SessionStatus,
-  overrides: Partial<SessionInfo> = {},
-): SessionInfo {
+  overrides: Partial<Session> = {},
+): Session {
   const now = new Date()
   return {
     id,
-    run_id: `run-${id}`,
-    claude_session_id: status !== SessionStatus.Starting ? `claude-${id}` : undefined,
+    runId: `run-${id}`,
+    claudeSessionId: status !== SessionStatus.Starting ? `claude-${id}` : undefined,
     status,
-    start_time: now.toISOString(),
-    last_activity_at: now.toISOString(),
+    createdAt: now,
+    lastActivityAt: now,
     query,
     summary: query,
     model: 'claude-3-5-sonnet-20241022',
-    working_dir: '/home/user/project',
-    auto_accept_edits: false,
+    workingDir: '/home/user/project',
+    autoAcceptEdits: false,
     ...overrides,
   }
 }
@@ -153,9 +153,7 @@ export const themeShowcaseSequence: DemoAnimationStep[] = [
         createMockSession('1', 'Build new feature', SessionStatus.Running),
         createMockSession('2', 'Fix production bug', SessionStatus.WaitingInput),
         createMockSession('3', 'Update documentation', SessionStatus.Completed),
-        createMockSession('4', 'Optimize performance', SessionStatus.Failed, {
-          error: 'Connection timeout',
-        }),
+        createMockSession('4', 'Optimize performance', SessionStatus.Failed),
       ],
     },
     themeState: { theme: 'solarized-dark' },

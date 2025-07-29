@@ -205,14 +205,13 @@ export function Layout() {
                       className="p-4 border border-border bg-secondary/20 font-mono text-sm"
                     >
                       <div className="mb-2">
-                        <span className="text-accent">Tool:</span> {approval.tool_name}
+                        <span className="text-accent">Tool:</span> {approval.toolName}
                       </div>
                       <div className="mb-2">
-                        <span className="text-accent">Session:</span> {approval.session_id.slice(0, 8)}
+                        <span className="text-accent">Session:</span> {approval.sessionId.slice(0, 8)}
                       </div>
                       <div className="mb-3">
-                        <span className="text-accent">Input:</span>{' '}
-                        {JSON.stringify(approval.tool_input)}
+                        <span className="text-accent">Input:</span> {JSON.stringify(approval.toolInput)}
                       </div>
                       <div className="flex gap-2">
                         <Button onClick={() => handleApproval(approval, true)} size="sm">

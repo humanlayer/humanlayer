@@ -12,7 +12,7 @@ export function formatToolResult(
   toolResult: ConversationEvent,
   toolCall?: ConversationEvent,
 ): React.ReactNode {
-  const content = toolResult.tool_result_content || ''
+  const content = toolResult.toolResultContent || ''
 
   // Handle empty content
   if (!content.trim()) {
@@ -92,7 +92,7 @@ export function formatToolResult(
     }
 
     case 'Bash': {
-      const lines = content.split('\n').filter(l => l.trim())
+      const lines = content.split('\n').filter((l: string) => l.trim())
       if (!content || lines.length === 0) {
         abbreviated = 'Command completed'
       } else if (lines.length === 1) {
@@ -172,7 +172,7 @@ export function formatToolResult(
       if (content === 'No files found') {
         abbreviated = 'No files found'
       } else {
-        const fileCount = content.split('\n').filter(l => l.trim()).length
+        const fileCount = content.split('\n').filter((l: string) => l.trim()).length
         abbreviated = `Found ${fileCount} files`
       }
       break
@@ -181,9 +181,9 @@ export function formatToolResult(
     case 'Grep': {
       // Try to get the grep mode from the tool call parameters
       let mode = 'files_with_matches' // default
-      if (toolCall?.tool_input_json) {
+      if (toolCall?.toolInputJson) {
         try {
-          const params = JSON.parse(toolCall.tool_input_json)
+          const params = JSON.parse(toolCall.toolInputJson)
           mode = params.output_mode || mode
         } catch {
           // Fall back to default if parsing fails
@@ -236,7 +236,7 @@ export function formatToolResult(
 
     case 'LS': {
       // Count items in the tree structure (lines starting with " - ")
-      const lsItems = content.split('\n').filter(l => l.trim().startsWith('-')).length
+      const lsItems = content.split('\n').filter((l: string) => l.trim().startsWith('-')).length
       abbreviated = `${lsItems} items`
       break
     }
@@ -329,7 +329,7 @@ export function formatToolResult(
           abbreviated = `${service} ${method} completed`
         } else {
           // Show first line or character count for longer responses
-          const lines = content.split('\n').filter(l => l.trim())
+          const lines = content.split('\n').filter((l: string) => l.trim())
           if (lines.length === 1 && lines[0].length < 80) {
             abbreviated = lines[0]
           } else if (content.length > 200) {

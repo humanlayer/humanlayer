@@ -15,7 +15,7 @@ import {
 import type { ComposedDemoStore as DemoStore } from '../composedDemoStore'
 import type { DemoAnimationStep as AnimationStep } from '../composedDemoStore'
 import { SessionStatus } from '@/lib/daemon/types'
-import type { SessionInfo } from '@/lib/daemon/types'
+import type { Session } from '@/lib/daemon/types'
 
 // Re-export core functionality
 export { Provider as DemoStoreProvider, useDemoStore }
@@ -38,21 +38,21 @@ export function createMockSession(
   id: string,
   query: string,
   status: SessionStatus = SessionStatus.Running,
-  overrides: Partial<SessionInfo> = {},
-): SessionInfo {
+  overrides: Partial<Session> = {},
+): Session {
   const now = new Date()
   return {
     id,
-    run_id: `run-${id}`,
-    claude_session_id: status !== SessionStatus.Starting ? `claude-${id}` : undefined,
+    runId: `run-${id}`,
+    claudeSessionId: status !== SessionStatus.Starting ? `claude-${id}` : undefined,
     status,
-    start_time: now.toISOString(),
-    last_activity_at: now.toISOString(),
+    createdAt: now,
+    lastActivityAt: now,
     query,
     summary: query,
     model: 'claude-3-5-sonnet-20241022',
-    working_dir: '/home/user/project',
-    auto_accept_edits: false,
+    workingDir: '/home/user/project',
+    autoAcceptEdits: false,
     ...overrides,
   }
 }
@@ -79,7 +79,7 @@ interface SequenceBuilder {
   steps: AnimationStep[]
   addStep(step: AnimationStep): SequenceBuilder
   addDelay(ms: number): SequenceBuilder
-  addSessions(sessions: SessionInfo[]): SequenceBuilder
+  addSessions(sessions: Session[]): SequenceBuilder
   openLauncher(mode?: 'command' | 'search'): SequenceBuilder
   closeLauncher(): SequenceBuilder
   setTheme(theme: string): SequenceBuilder
@@ -105,7 +105,7 @@ export function createSequence(): SequenceBuilder {
       return builder
     },
 
-    addSessions(sessions: SessionInfo[]) {
+    addSessions(sessions: Session[]) {
       steps.push({
         sessionState: { sessions },
         delay: 2000,

@@ -1,7 +1,7 @@
 import React, { forwardRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { SessionInfo, SessionStatus } from '@/lib/daemon/types'
+import { Session, SessionStatus } from '@/lib/daemon/types'
 import {
   getSessionStatusText,
   getInputPlaceholder,
@@ -11,7 +11,7 @@ import {
 import { GitBranch } from 'lucide-react'
 
 interface ResponseInputProps {
-  session: SessionInfo
+  session: Session
   responseInput: string
   setResponseInput: (input: string) => void
   isResponding: boolean

@@ -1,12 +1,12 @@
 import { create, StoreApi } from 'zustand'
-import { SessionInfo, SessionStatus } from '@/lib/daemon/types'
+import { Session, SessionStatus } from '@/lib/daemon/types'
 import { Theme } from '@/contexts/ThemeContext'
 
 // Comprehensive app state for demo animations
 interface DemoAppState {
   // Session data
-  sessions: SessionInfo[]
-  focusedSession: SessionInfo | null
+  sessions: Session[]
+  focusedSession: Session | null
 
   // Launcher state
   launcherOpen: boolean
@@ -34,8 +34,8 @@ interface DemoAppState {
   searchQuery: string
 
   // Actions for demo control
-  setSessions: (sessions: SessionInfo[]) => void
-  setFocusedSession: (session: SessionInfo | null) => void
+  setSessions: (sessions: Session[]) => void
+  setFocusedSession: (session: Session | null) => void
   setLauncherOpen: (open: boolean) => void
   setLauncherMode: (mode: 'command' | 'search') => void
   setLauncherView: (view: 'menu' | 'input') => void
@@ -51,8 +51,8 @@ interface DemoAppState {
   setSearchQuery: (query: string) => void
 
   // Convenience actions
-  addSession: (session: SessionInfo) => void
-  updateSession: (id: string, updates: Partial<SessionInfo>) => void
+  addSession: (session: Session) => void
+  updateSession: (id: string, updates: Partial<Session>) => void
   removeSession: (id: string) => void
   clearSessions: () => void
 
@@ -185,18 +185,18 @@ export function createDemoAppStore(isDemo: boolean = false): StoreApi<DemoAppSta
 
         // Simulate delay and create session
         setTimeout(() => {
-          const newSession: SessionInfo = {
+          const newSession: Session = {
             id: `session-${Date.now()}`,
-            run_id: `run-${Date.now()}`,
-            claude_session_id: `claude-${Date.now()}`,
+            runId: `run-${Date.now()}`,
+            claudeSessionId: `claude-${Date.now()}`,
             status: SessionStatus.Starting,
-            start_time: new Date().toISOString(),
-            last_activity_at: new Date().toISOString(),
+            createdAt: new Date(),
+            lastActivityAt: new Date(),
             query: query,
             summary: query.length > 50 ? query.substring(0, 50) + '...' : query,
             model: 'claude-3-5-sonnet-20241022',
-            working_dir: '/demo/working/dir',
-            auto_accept_edits: false,
+            workingDir: '/demo/working/dir',
+            autoAcceptEdits: false,
           }
 
           set(currentState => ({
@@ -215,8 +215,8 @@ export function createDemoAppStore(isDemo: boolean = false): StoreApi<DemoAppSta
       if (!isDemo) {
         get().updateSession(sessionId, {
           status: SessionStatus.Completed,
-          end_time: new Date().toISOString(),
-          last_activity_at: new Date().toISOString(),
+          completedAt: new Date(),
+          lastActivityAt: new Date(),
         })
       }
     },
@@ -225,9 +225,9 @@ export function createDemoAppStore(isDemo: boolean = false): StoreApi<DemoAppSta
       if (!isDemo) {
         get().updateSession(sessionId, {
           status: SessionStatus.Failed,
-          end_time: new Date().toISOString(),
-          last_activity_at: new Date().toISOString(),
-          error: error,
+          completedAt: new Date(),
+          lastActivityAt: new Date(),
+          errorMessage: error,
         })
       }
     },
