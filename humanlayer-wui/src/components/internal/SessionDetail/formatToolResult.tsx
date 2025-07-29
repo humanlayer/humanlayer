@@ -7,7 +7,11 @@ import { truncate } from '@/utils/formatting'
 // TODO(3): Extract magic numbers to constants (e.g., truncate lengths, line limits)
 
 // Format tool result content into abbreviated display
-export function formatToolResult(toolName: string, toolResult: ConversationEvent): React.ReactNode {
+export function formatToolResult(
+  toolName: string,
+  toolResult: ConversationEvent,
+  toolCall?: ConversationEvent,
+): React.ReactNode {
   const content = toolResult.tool_result_content || ''
 
   // Handle empty content
@@ -28,6 +32,18 @@ export function formatToolResult(toolName: string, toolResult: ConversationEvent
     // For Write tool, check for success pattern
     const successPattern = 'File created successfully'
     isError = !content.includes(successPattern)
+  } else if (toolName === 'Grep') {
+    // For Grep tool, only mark as error if it's a real grep error
+    // The grep tool is built-in and rarely fails
+    const lowerContent = content.toLowerCase()
+
+    // Only check for actual grep command errors (not content containing "error")
+    const hasGrepError =
+      lowerContent.startsWith('grep:') || // Real grep errors start with "grep:"
+      lowerContent.includes('invalid regex') ||
+      lowerContent.includes('invalid regular expression')
+
+    isError = hasGrepError
   } else {
     // For other tools, use existing keyword detection
     const lowerContent = content.toLowerCase()
@@ -163,18 +179,57 @@ export function formatToolResult(toolName: string, toolResult: ConversationEvent
     }
 
     case 'Grep': {
-      // Extract the count from "Found X files" at the start
-      const grepCountMatch = content.match(/Found (\d+) files?/)
+      // Try to get the grep mode from the tool call parameters
+      let mode = 'files_with_matches' // default
+      if (toolCall?.tool_input_json) {
+        try {
+          const params = JSON.parse(toolCall.tool_input_json)
+          mode = params.output_mode || mode
+        } catch {
+          // Fall back to default if parsing fails
+        }
+      }
+
+      // Extract count from Claude's output if available
+      const grepCountMatch = content.match(
+        /Found (\d+) (?:total )?(files?|lines?|matches?|occurrences?)/,
+      )
       if (grepCountMatch) {
-        abbreviated = `Found ${grepCountMatch[1]} files`
+        // Check if there's also file count info (e.g., "across 11 files")
+        const fileCountMatch = content.match(/across (\d+) files/)
+        if (fileCountMatch && grepCountMatch[2].includes('occurrence')) {
+          abbreviated = `Found ${grepCountMatch[1]} ${grepCountMatch[2]} in ${fileCountMatch[1]} files`
+        } else {
+          abbreviated = `Found ${grepCountMatch[1]} ${grepCountMatch[2]}`
+        }
       } else if (content.includes('No matches found')) {
         abbreviated = 'No matches found'
       } else {
-        // Fallback: count lines
-        const fileCount = content
+        // Fallback: count based on mode
+        const lineCount = content
           .split('\n')
           .filter(l => l.trim() && !l.includes('(Results are truncated')).length
-        abbreviated = `Found ${fileCount} files`
+
+        if (mode === 'content') {
+          abbreviated = `Found ${lineCount} lines`
+        } else if (mode === 'count') {
+          // For count mode, parse file:count format (e.g., "/path/file.go:14")
+          const lines = content.split('\n').filter(l => l.trim())
+          const counts = lines
+            .map(l => parseInt(l.match(/:(\d+)$/)?.[1] || '0'))
+            .filter(n => !isNaN(n) && n > 0)
+          const total = counts.reduce((sum, n) => sum + n, 0)
+
+          // Count unique files
+          const uniqueFiles = new Set(
+            lines.filter(l => l.includes(':')).map(l => l.substring(0, l.lastIndexOf(':'))),
+          ).size
+
+          abbreviated = `Found ${total} matches in ${uniqueFiles} files`
+        } else {
+          // files_with_matches mode (default)
+          abbreviated = `Found ${lineCount} files`
+        }
       }
       break
     }
