@@ -523,6 +523,26 @@ copy-db-to-dev:
 		exit 1; \
 	fi
 
+# Clone nightly database to dev database (with backup)
+.PHONY: clone-nightly-db-to-dev-db
+clone-nightly-db-to-dev-db:
+	@mkdir -p ~/.humanlayer/dev
+	$(eval TIMESTAMP := $(shell date +%Y-%m-%d-%H-%M-%S))
+	@# Backup existing dev database if it exists
+	@if [ -f ~/.humanlayer/daemon-dev.db ]; then \
+		echo "Backing up existing dev database..."; \
+		cp ~/.humanlayer/daemon-dev.db ~/.humanlayer/dev/daemon-dev-backup-$(TIMESTAMP).db; \
+		echo "Backed up to: ~/.humanlayer/dev/daemon-dev-backup-$(TIMESTAMP).db"; \
+	fi
+	@# Copy nightly database to dev
+	@if [ -f ~/.humanlayer/daemon.db ]; then \
+		cp ~/.humanlayer/daemon.db ~/.humanlayer/daemon-dev.db; \
+		echo "Cloned nightly database to: ~/.humanlayer/daemon-dev.db"; \
+	else \
+		echo "Error: Nightly database not found at ~/.humanlayer/daemon.db"; \
+		exit 1; \
+	fi
+
 # Clean up dev databases and logs older than 10 days
 .PHONY: cleanup-dev
 cleanup-dev:
@@ -543,15 +563,14 @@ daemon-dev-build:
 	cd hld && go build -o hld-dev ./cmd/hld
 	@echo "Built dev daemon binary: hld/hld-dev"
 
-# Run dev daemon with fresh database copy
+# Run dev daemon with persistent dev database
 .PHONY: daemon-dev
 daemon-dev: daemon-dev-build
 	@mkdir -p ~/.humanlayer/logs
 	$(eval TIMESTAMP := $(shell date +%Y-%m-%d-%H-%M-%S))
-	$(eval DEV_DB := $(shell make -s copy-db-to-dev))
-	@echo "Starting dev daemon with database: $(DEV_DB)"
+	@echo "Starting dev daemon with database: ~/.humanlayer/daemon-dev.db"
 	echo "$(TIMESTAMP) starting dev daemon in $$(pwd)" > ~/.humanlayer/logs/daemon-dev-$(TIMESTAMP).log
-	cd hld && HUMANLAYER_DATABASE_PATH=$(DEV_DB) \
+	cd hld && HUMANLAYER_DATABASE_PATH=~/.humanlayer/daemon-dev.db \
 		HUMANLAYER_DAEMON_SOCKET=~/.humanlayer/daemon-dev.sock \
 		HUMANLAYER_DAEMON_VERSION_OVERRIDE=$$(git branch --show-current) \
 		./hld-dev 2>&1 | tee -a ~/.humanlayer/logs/daemon-dev-$(TIMESTAMP).log
