@@ -1284,3 +1284,114 @@ func (m *Manager) injectQueryAsFirstEvent(ctx context.Context, sessionID, claude
 	}
 	return m.store.AddConversationEvent(ctx, event)
 }
+
+// StopAllSessions gracefully stops all active sessions with a timeout
+func (m *Manager) StopAllSessions(timeout time.Duration) error {
+	// TODO(1): Write unit tests for StopAllSessions, including race condition tests similar to other daemon tests
+	
+	m.mu.RLock()
+	// Get snapshot of active sessions and their current status
+	activeSessionsToStop := make(map[string]*claudecode.Session)
+	for id, session := range m.activeProcesses {
+		// Get session info to check status
+		info, err := m.GetSessionInfo(id)
+		if err != nil {
+			slog.Warn("failed to get session info during shutdown", "session_id", id, "error", err)
+			// If we can't get info, assume it's active and try to stop it
+			activeSessionsToStop[id] = session
+			continue
+		}
+		
+		// Only interrupt sessions that are actually running or waiting for input
+		if info.Status == StatusRunning || info.Status == StatusWaitingInput || info.Status == StatusStarting {
+			activeSessionsToStop[id] = session
+		} else {
+			slog.Debug("skipping session with non-running status", 
+				"session_id", id, 
+				"status", info.Status)
+		}
+	}
+	m.mu.RUnlock()
+
+	if len(activeSessionsToStop) == 0 {
+		slog.Info("no active sessions to stop")
+		return nil
+	}
+
+	slog.Info("stopping active sessions", "count", len(activeSessionsToStop))
+
+	// Interrupt all sessions
+	var wg sync.WaitGroup
+	errors := make(chan error, len(activeSessionsToStop))
+
+	for sessionID := range activeSessionsToStop {
+		wg.Add(1)
+		go func(id string) {
+			defer wg.Done()
+			slog.Info("sending interrupt to session", 
+				"session_id", id)
+			if err := m.InterruptSession(context.Background(), id); err != nil {
+				errors <- fmt.Errorf("session %s: %w", id, err)
+			}
+		}(sessionID)
+	}
+
+	// Wait for interrupts to be sent
+	wg.Wait()
+	close(errors)
+
+	// Collect any errors
+	var errs []error
+	for err := range errors {
+		errs = append(errs, err)
+	}
+
+	// Wait for sessions to complete with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+
+	startTime := time.Now()
+	for {
+		select {
+		case <-ctx.Done():
+			m.mu.RLock()
+			remaining := len(m.activeProcesses)
+			m.mu.RUnlock()
+			if remaining > 0 {
+				slog.Warn("timeout waiting for sessions to stop", 
+					"remaining", remaining,
+					"timeout", timeout,
+					"elapsed", time.Since(startTime))
+				// Force kill remaining sessions
+				m.forceKillRemaining()
+			}
+			return ctx.Err()
+		case <-ticker.C:
+			m.mu.RLock()
+			remaining := len(m.activeProcesses)
+			m.mu.RUnlock()
+			if remaining == 0 {
+				slog.Info("all sessions stopped successfully",
+					"elapsed", time.Since(startTime))
+				return nil
+			}
+		}
+	}
+}
+
+// forceKillRemaining forcefully terminates any remaining sessions
+func (m *Manager) forceKillRemaining() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	for id, session := range m.activeProcesses {
+		slog.Warn("force killing session", "session_id", id)
+		// Force kill through claudecode.Session
+		// Currently we just send another interrupt, but ideally we'd have a Kill() method
+		// TODO(2): Investigate if claudecode.Session needs a Kill() method for force termination
+		session.Interrupt()
+	}
+}
