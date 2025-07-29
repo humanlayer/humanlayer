@@ -424,8 +424,8 @@ export function eventToDisplayObject(
       )
     }
 
-    if (event.tool_name === 'NotebookEdit') {
-      const toolInput = JSON.parse(event.tool_input_json!)
+    if (event.toolName === 'NotebookEdit') {
+      const toolInput = JSON.parse(event.toolInputJson!)
       const action = toolInput.edit_mode || 'replace'
 
       previewFile = (

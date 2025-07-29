@@ -7,17 +7,12 @@ import { truncate } from '@/utils/formatting'
 // TODO(3): Extract magic numbers to constants (e.g., truncate lengths, line limits)
 
 // Format tool result content into abbreviated display
-<<<<<<< HEAD
 export function formatToolResult(
   toolName: string,
   toolResult: ConversationEvent,
   toolCall?: ConversationEvent,
 ): React.ReactNode {
-  const content = toolResult.tool_result_content || ''
-=======
-export function formatToolResult(toolName: string, toolResult: ConversationEvent): React.ReactNode {
   const content = toolResult.toolResultContent || ''
->>>>>>> b99ff02 (Remove legacy types and transformation logic in daemon client)
 
   // Handle empty content
   if (!content.trim()) {
@@ -186,9 +181,9 @@ export function formatToolResult(toolName: string, toolResult: ConversationEvent
     case 'Grep': {
       // Try to get the grep mode from the tool call parameters
       let mode = 'files_with_matches' // default
-      if (toolCall?.tool_input_json) {
+      if (toolCall?.toolInputJson) {
         try {
-          const params = JSON.parse(toolCall.tool_input_json)
+          const params = JSON.parse(toolCall.toolInputJson)
           mode = params.output_mode || mode
         } catch {
           // Fall back to default if parsing fails
@@ -213,7 +208,6 @@ export function formatToolResult(toolName: string, toolResult: ConversationEvent
         // Fallback: count based on mode
         const lineCount = content
           .split('\n')
-<<<<<<< HEAD
           .filter(l => l.trim() && !l.includes('(Results are truncated')).length
 
         if (mode === 'content') {
@@ -236,10 +230,6 @@ export function formatToolResult(toolName: string, toolResult: ConversationEvent
           // files_with_matches mode (default)
           abbreviated = `Found ${lineCount} files`
         }
-=======
-          .filter((l: string) => l.trim() && !l.includes('(Results are truncated')).length
-        abbreviated = `Found ${fileCount} files`
->>>>>>> b99ff02 (Remove legacy types and transformation logic in daemon client)
       }
       break
     }
