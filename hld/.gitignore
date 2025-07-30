@@ -26,3 +26,6 @@ approval/mock_approval.go
 client/mock_client.go
 bus/mock_bus.go
 store/mock_store.go
+
+# git ignore the built binary for specific platforms.
+./hld-darwin-arm64
