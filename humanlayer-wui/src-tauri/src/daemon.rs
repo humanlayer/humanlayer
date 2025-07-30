@@ -162,7 +162,7 @@ impl DaemonManager {
 
         // Get the PID before we do anything else
         let pid = child.id();
-        tracing::info!("Daemon spawned with PID: {}", pid);
+        log::info!("[Tauri] Daemon spawned with PID: {pid}");
 
         // If in dev mode, spawn a task to read stderr
         if is_dev {
@@ -178,15 +178,15 @@ impl DaemonManager {
                                 let cleaned_line = remove_timestamp(&line);
 
                                 match level {
-                                    LogLevel::Error => tracing::error!("[Daemon] {}: {}", branch_id_clone, cleaned_line),
-                                    LogLevel::Warn => tracing::warn!("[Daemon] {}: {}", branch_id_clone, cleaned_line),
-                                    LogLevel::Info => tracing::info!("[Daemon] {}: {}", branch_id_clone, cleaned_line),
-                                    LogLevel::Debug => tracing::debug!("[Daemon] {}: {}", branch_id_clone, cleaned_line),
-                                    LogLevel::Trace => tracing::trace!("[Daemon] {}: {}", branch_id_clone, cleaned_line),
+                                    LogLevel::Error => log::error!("[Daemon] {branch_id_clone}: {cleaned_line}"),
+                                    LogLevel::Warn => log::warn!("[Daemon] {branch_id_clone}: {cleaned_line}"),
+                                    LogLevel::Info => log::info!("[Daemon] {branch_id_clone}: {cleaned_line}"),
+                                    LogLevel::Debug => log::debug!("[Daemon] {branch_id_clone}: {cleaned_line}"),
+                                    LogLevel::Trace => log::trace!("[Daemon] {branch_id_clone}: {cleaned_line}"),
                                 }
                             }
                             Err(e) => {
-                                tracing::error!("Error reading daemon stderr: {}", e);
+                                log::error!("[Tauri] Error reading daemon stderr: {e}");
                                 break;
                             }
                         }
@@ -215,7 +215,7 @@ impl DaemonManager {
         }
 
         let port = actual_port.ok_or("Daemon failed to report port")?;
-        tracing::info!("Got port {} from daemon stdout", port);
+        log::info!("[Tauri] Got port {port} from daemon stdout");
 
         // Now spawn a task to keep reading stdout to prevent SIGPIPE
         let branch_id_for_stdout = branch_id.clone();
@@ -224,24 +224,24 @@ impl DaemonManager {
             for line in reader.lines() {
                 match line {
                     Ok(line) => {
-                        tracing::trace!("[Daemon stdout] {}: {}", branch_id_for_stdout, line);
+                        log::trace!("[Tauri] Daemon stdout {branch_id_for_stdout}: {line}");
                     }
                     Err(e) => {
-                        tracing::debug!("Daemon stdout closed for {}: {}", branch_id_for_stdout, e);
+                        log::debug!("[Tauri] Daemon stdout closed for {branch_id_for_stdout}: {e}");
                         break;
                     }
                 }
             }
-            tracing::debug!("Stdout reader task finished for {}", branch_id_for_stdout);
+            log::debug!("[Tauri] Stdout reader task finished for {branch_id_for_stdout}");
         });
 
         // Check if process is still alive after reading port
         match child.try_wait() {
-            Ok(None) => tracing::info!("Daemon process still running after port read"),
+            Ok(None) => log::info!("[Tauri] Daemon process still running after port read"),
             Ok(Some(status)) => {
                 return Err(format!("Daemon process exited immediately after starting! Status: {status:?}"));
             }
-            Err(e) => tracing::error!("Error checking daemon status: {}", e),
+            Err(e) => log::error!("[Tauri] Error checking daemon status: {e}"),
         }
 
         let daemon_info = DaemonInfo {
@@ -261,9 +261,9 @@ impl DaemonManager {
         *self.info.lock().unwrap() = Some(daemon_info.clone());
 
         // Wait for daemon to be ready
-        tracing::info!("Waiting for daemon to be ready on port {}", port);
+        log::info!("[Tauri] Waiting for daemon to be ready on port {port}");
         wait_for_daemon(port).await?;
-        tracing::info!("Daemon is ready and responding to health checks");
+        log::info!("[Tauri] Daemon is ready and responding to health checks");
 
         // Spawn a task to monitor the daemon process
         let process_arc = self.process.clone();
@@ -279,11 +279,8 @@ impl DaemonManager {
                     match child.try_wait() {
                         Ok(Some(status)) => {
                             // Process has exited
-                            tracing::error!(
-                                "Daemon process exited unexpectedly! Branch: {}, Port: {}, Exit status: {:?}, Time since last check: {:?}",
-                                branch_id_clone,
-                                port_for_monitor,
-                                status,
+                            log::error!(
+                                "[Tauri] Daemon process exited unexpectedly! Branch: {branch_id_clone}, Port: {port_for_monitor}, Exit status: {status:?}, Time since last check: {:?}",
                                 last_check.elapsed()
                             );
                             // Clear the process
@@ -295,7 +292,7 @@ impl DaemonManager {
                             last_check = std::time::Instant::now();
                         }
                         Err(e) => {
-                            tracing::error!("Error checking daemon process status: {}", e);
+                            log::error!("[Tauri] Error checking daemon process status: {e}");
                             break;
                         }
                     }

@@ -118,9 +118,6 @@ async fn is_daemon_running(daemon_manager: State<'_, DaemonManager>) -> Result<b
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // Initialize tracing
-    tracing_subscriber::fmt::init();
-
     tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_opener::init())
@@ -128,6 +125,27 @@ pub fn run() {
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_store::Builder::new().build())
+        .plugin(
+            tauri_plugin_log::Builder::new()
+                .targets([
+                    tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::LogDir {
+                        file_name: None
+                    }),
+                    // Stdout only in dev mode
+                    #[cfg(debug_assertions)]
+                    tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout),
+                    // Always include webview for frontend integration
+                    tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Webview),
+                ])
+                .level(if cfg!(debug_assertions) {
+                    log::LevelFilter::Debug
+                } else {
+                    log::LevelFilter::Info
+                })
+                .max_file_size(50_000_000) // 50MB before rotation
+                .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepAll)
+                .build()
+        )
         .setup(|app| {
             let daemon_manager = DaemonManager::new();
             app.manage(daemon_manager.clone());
@@ -152,31 +170,27 @@ pub fn run() {
                         .await
                     {
                         Ok(info) => {
-                            tracing::info!("Daemon started automatically on port {}", info.port);
+                            log::info!("[Tauri] Daemon started automatically on port {}", info.port);
                         }
                         Err(e) => {
                             // Log error but don't interrupt user experience
-                            tracing::error!("Failed to auto-start daemon: {}", e);
+                            log::error!("[Tauri] Failed to auto-start daemon: {e}");
 
                             // Common edge cases that shouldn't interrupt the user
                             if e.contains("port") || e.contains("already in use") {
-                                tracing::info!("Port conflict detected, user can connect manually");
+                                log::info!("[Tauri] Port conflict detected, user can connect manually");
                             } else if e.contains("binary not found")
                                 || e.contains("daemon not found")
                             {
-                                tracing::warn!(
-                                    "Daemon binary missing, this is expected in some dev scenarios"
-                                );
+                                log::warn!("[Tauri] Daemon binary not found: {e}");
                             } else if e.contains("permission") {
-                                tracing::error!(
-                                    "Permission issue starting daemon, user intervention required"
-                                );
+                                log::error!("[Tauri] Permission denied starting daemon: {e}");
                             }
                         }
                     }
                 });
             } else {
-                tracing::info!("Daemon auto-launch disabled by environment variable");
+                log::info!("[Tauri] Daemon auto-launch disabled by environment variable");
             }
 
             Ok(())

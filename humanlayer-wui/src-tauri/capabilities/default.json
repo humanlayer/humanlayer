@@ -22,6 +22,7 @@
     "shell:allow-spawn",
     "shell:allow-execute",
     "shell:allow-kill",
-    "store:default"
+    "store:default",
+    "log:default"
   ]
 }
