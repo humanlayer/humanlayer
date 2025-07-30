@@ -101,12 +101,9 @@ func New() (*Daemon, error) {
 	approvalManager := approval.NewManager(conversationStore, eventBus)
 	slog.Debug("local approval manager created successfully")
 
-	// Create HTTP server if enabled
-	var httpServer *HTTPServer
-	if cfg.HTTPPort > 0 {
-		slog.Info("creating HTTP server", "port", cfg.HTTPPort)
-		httpServer = NewHTTPServer(cfg, sessionManager, approvalManager, conversationStore, eventBus)
-	}
+	// Create HTTP server (always enabled, port 0 means dynamic allocation)
+	slog.Info("creating HTTP server", "port", cfg.HTTPPort)
+	httpServer := NewHTTPServer(cfg, sessionManager, approvalManager, conversationStore, eventBus)
 
 	return &Daemon{
 		config:     cfg,
