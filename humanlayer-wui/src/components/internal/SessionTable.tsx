@@ -404,7 +404,7 @@ export default function SessionTable({
                       <TooltipTrigger asChild>
                         <span
                           className="block truncate cursor-help text-sm"
-                          style={{ direction: 'rtl', textAlign: 'left' }}
+                          style={{ textAlign: 'left' }}
                         >
                           {session.workingDir || '-'}
                         </span>
