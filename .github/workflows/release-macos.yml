@@ -97,7 +97,7 @@ jobs:
             - Run it again `~/Downloads/hld-darwin-arm64`
             - Download CodeLayer (CodeLayer.dmg)
             - Copy the app to Applications
-            - Open CodeLayer with your prefered app launcher
+            - Open CodeLayer with your preferred app launcher
             - Dismiss security modal
             - Go to System Settings > Privacy & Security and allow
             - Open CodeLayer again
