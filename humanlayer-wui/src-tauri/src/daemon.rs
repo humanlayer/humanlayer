@@ -30,22 +30,22 @@ impl DaemonManager {
             info: Arc::new(Mutex::new(None)),
         }
     }
-    
+
     pub fn start_daemon(
-        &self, 
+        &self,
         app_handle: &AppHandle,
         is_dev: bool,
         branch_override: Option<String>
     ) -> Result<DaemonInfo, String> {
         let mut process = self.process.lock().unwrap();
-        
+
         // Check if already running
         if process.is_some() {
             if let Some(info) = self.info.lock().unwrap().as_ref() {
                 return Ok(info.clone());
             }
         }
-        
+
         // Check if daemon is already running on a specific port
         if let Ok(port_str) = env::var("HUMANLAYER_DAEMON_HTTP_PORT") {
             if let Ok(port) = port_str.parse::<u16>() {
@@ -64,7 +64,7 @@ impl DaemonManager {
                 }
             }
         }
-        
+
         // Determine branch identifier
         let branch_id = if is_dev {
             branch_override.or_else(get_git_branch)
@@ -72,17 +72,17 @@ impl DaemonManager {
         } else {
             "production".to_string()
         };
-        
+
         // Extract ticket ID if present (e.g., "eng-1234" from "eng-1234-some-feature")
         let branch_id = extract_ticket_id(&branch_id).unwrap_or(branch_id);
-        
+
         // Set up paths
         let home_dir = dirs::home_dir()
             .ok_or("Failed to get home directory")?;
         let humanlayer_dir = home_dir.join(".humanlayer");
         fs::create_dir_all(&humanlayer_dir)
             .map_err(|e| format!("Failed to create .humanlayer directory: {e}"))?;
-        
+
         // Database path
         let database_path = if is_dev {
             // Copy dev database if it doesn't exist
@@ -98,44 +98,44 @@ impl DaemonManager {
         } else {
             humanlayer_dir.join("daemon.db")
         };
-        
+
         // Socket path
         let socket_path = if is_dev {
             humanlayer_dir.join(format!("daemon-{branch_id}.sock"))
         } else {
             humanlayer_dir.join("daemon.sock")
         };
-        
+
         // Get daemon binary path (macOS only)
         let daemon_path = get_daemon_path(app_handle, is_dev)?;
-        
+
         // Build environment with port 0 for dynamic allocation
         let mut env_vars = env::vars().collect::<Vec<_>>();
         env_vars.push(("HUMANLAYER_DATABASE_PATH".to_string(), database_path.to_str().unwrap().to_string()));
         env_vars.push(("HUMANLAYER_DAEMON_SOCKET".to_string(), socket_path.to_str().unwrap().to_string()));
         env_vars.push(("HUMANLAYER_DAEMON_HTTP_PORT".to_string(), "0".to_string()));
         env_vars.push(("HUMANLAYER_DAEMON_HTTP_HOST".to_string(), "127.0.0.1".to_string()));
-        
+
         if is_dev {
             env_vars.push(("HUMANLAYER_DAEMON_VERSION_OVERRIDE".to_string(), branch_id.clone()));
         }
-        
+
         // Start daemon with stdout capture
         let mut cmd = Command::new(&daemon_path);
         cmd.envs(env_vars)
            .stdout(Stdio::piped())
            .stderr(Stdio::inherit()); // Let stderr go to console for debugging
-        
+
         let mut child = cmd.spawn()
             .map_err(|e| format!("Failed to start daemon: {e}"))?;
-        
+
         // Parse stdout to get the actual port
         let stdout = child.stdout.take()
             .ok_or("Failed to capture daemon stdout")?;
-        
+
         let reader = BufReader::new(stdout);
         let mut actual_port = None;
-        
+
         for line in reader.lines().map_while(Result::ok) {
             if line.starts_with("HTTP_PORT=") {
                 actual_port = line.replace("HTTP_PORT=", "")
@@ -144,9 +144,9 @@ impl DaemonManager {
                 break;
             }
         }
-        
+
         let port = actual_port.ok_or("Daemon failed to report port")?;
-        
+
         let daemon_info = DaemonInfo {
             port,
             pid: child.id(),
@@ -155,39 +155,39 @@ impl DaemonManager {
             branch_id: branch_id.clone(),
             is_running: true,
         };
-        
+
         *process = Some(child);
         *self.info.lock().unwrap() = Some(daemon_info.clone());
-        
+
         // Wait for daemon to be ready
         wait_for_daemon(port)?;
-        
+
         Ok(daemon_info)
     }
-    
+
     pub fn stop_daemon(&self) -> Result<(), String> {
         let mut process = self.process.lock().unwrap();
-        
+
         if let Some(mut child) = process.take() {
             child.kill()
                 .map_err(|e| format!("Failed to stop daemon: {e}"))?;
-            
+
             // Wait for process to exit
             let _ = child.wait();
-            
+
             // Update store to mark daemon as not running
             if let Some(info) = self.info.lock().unwrap().as_mut() {
                 info.is_running = false;
             }
         }
-        
+
         Ok(())
     }
-    
+
     pub fn get_info(&self) -> Option<DaemonInfo> {
         self.info.lock().unwrap().clone()
     }
-    
+
     pub fn is_running(&self) -> bool {
         let mut process = self.process.lock().unwrap();
         if let Some(child) = process.as_mut() {
@@ -211,7 +211,7 @@ fn get_daemon_path(app_handle: &AppHandle, is_dev: bool) -> Result<PathBuf, Stri
             .ok_or("Failed to get parent directory")?
             .join("hld")
             .join("hld-dev");
-        
+
         if dev_path.exists() {
             Ok(dev_path)
         } else {
@@ -222,7 +222,7 @@ fn get_daemon_path(app_handle: &AppHandle, is_dev: bool) -> Result<PathBuf, Stri
         let resource_dir = app_handle.path()
             .resource_dir()
             .map_err(|e| format!("Failed to get resource directory: {e}"))?;
-        
+
         Ok(resource_dir.join("bin").join("hld"))
     }
 }
@@ -261,14 +261,14 @@ fn check_daemon_health(port: u16) -> Result<(), String> {
 fn wait_for_daemon(port: u16) -> Result<(), String> {
     let start = std::time::Instant::now();
     let timeout = std::time::Duration::from_secs(10);
-    
+
     while start.elapsed() < timeout {
         if check_daemon_health(port).is_ok() {
             return Ok(());
         }
-        
+
         std::thread::sleep(std::time::Duration::from_millis(500));
     }
-    
+
     Err("Daemon failed to start within 10 seconds".to_string())
 }
