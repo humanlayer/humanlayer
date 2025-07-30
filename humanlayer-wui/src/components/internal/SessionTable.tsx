@@ -118,7 +118,7 @@ export default function SessionTable({
   const handleRowClick = (session: Session) => {
     if (selectedSessions.size > 0) {
       toggleSessionSelection(session.id)
-      return null;
+      return null
     }
     handleActivateSession?.(session)
   }
@@ -240,7 +240,7 @@ export default function SessionTable({
     async () => {
       try {
         // Find the current session from the sessions array to get the latest archived status
-        const currentSession = sessions.find(s => s.id === focusedSession.id)
+        const currentSession = sessions.find(s => s.id === focusedSession?.id)
         if (!currentSession) return
 
         console.log('Archive hotkey pressed:', {

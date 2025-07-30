@@ -7,9 +7,9 @@ import {
   getInputPlaceholder,
   getHelpText,
   getForkInputPlaceholder,
-} from '../utils/sessionStatus'
+} from '@/components/internal/SessionDetail/utils/sessionStatus'
 import { GitBranch } from 'lucide-react'
-import { ResponseInputLocalStorageKey } from '../hooks/useSessionActions'
+import { ResponseInputLocalStorageKey } from '@/components/internal/SessionDetail/hooks/useSessionActions'
 
 interface ResponseInputProps {
   session: Session

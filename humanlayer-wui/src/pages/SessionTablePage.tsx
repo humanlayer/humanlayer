@@ -171,7 +171,7 @@ export function SessionTablePage() {
     () => {
       if (selectedSessions.size > 0) {
         clearSelection()
-        return null;
+        return null
       }
 
       if (viewMode === ViewMode.Archived) {
