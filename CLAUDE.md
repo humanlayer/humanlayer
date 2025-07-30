@@ -30,8 +30,7 @@ This is a monorepo containing two distinct but interconnected project groups:
 ### Components
 - `hld/` - Go daemon that coordinates approvals and manages Claude Code sessions
 - `hlyr/` - TypeScript CLI with MCP (Model Context Protocol) server for Claude integration
-- `humanlayer-tui/` - Terminal UI (Go + Bubble Tea) for managing approvals
-- `humanlayer-wui/` - Desktop/Web UI (Tauri + React) for graphical approval management
+- `humanlayer-wui/` - CodeLayer - Desktop/Web UI (Tauri + React) for graphical approval management
 - `claudecode-go/` - Go SDK for programmatically launching Claude Code sessions
 
 ### Architecture Flow

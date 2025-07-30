@@ -56,7 +56,7 @@ bun hack/test-local-approvals.ts -q "Hello, how are you?"
 While running in interactive mode:
 
 - Approval requests will be highlighted in the console
-- Use TUI (`npx humanlayer tui`) or WUI to approve/deny
+- Use CodeLayer UI to approve/deny
 - Press Ctrl+C to stop monitoring
 
 ## What the Test Does

@@ -321,7 +321,6 @@ async function runInteractiveMode(query?: string) {
         log('info', `Approval ID: ${event.data.approval_id}`)
         log('info', `Tool: ${event.data.tool_name || 'N/A'}`)
         log('info', '\nYou can approve/deny this in:')
-        log('info', '  - TUI: npx humanlayer tui')
         log('info', '  - WUI: Open the desktop app')
         log('info', `  - Session URL: #/sessions/${session.session_id}\n`)
       } else if (event.type === 'approval_resolved') {
@@ -342,7 +341,6 @@ async function runInteractiveMode(query?: string) {
     log('info', `Session ID: ${session.session_id}`)
     log('info', `Run ID: ${session.run_id}`)
     log('info', '\n🛠️  Manage approvals:')
-    log('info', '  TUI: npx humanlayer tui')
     log('info', '  WUI: Open the HumanLayer desktop app')
     log('info', '\n📊 Monitoring MCP logs...')
     log('info', 'Press Ctrl+C to stop monitoring\n')

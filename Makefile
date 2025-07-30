@@ -29,9 +29,6 @@ check-hlyr:
 check-wui:
 	@$(MAKE) -C humanlayer-wui check VERBOSE=$(VERBOSE)
 
-check-tui:
-	@$(MAKE) -C humanlayer-tui check VERBOSE=$(VERBOSE)
-
 check-hld:
 	@$(MAKE) -C hld check VERBOSE=$(VERBOSE)
 
@@ -46,7 +43,7 @@ check-header:
 # Summary removed - tracking doesn't work across sub-makes
 
 .PHONY: check
-check: check-header check-py check-ts check-hlyr check-wui check-tui check-hld check-claudecode-go
+check: check-header check-py check-ts check-hlyr check-wui check-hld check-claudecode-go
 
 typecheck: ## just the typechecks
 	@. ./hack/run_silent.sh && run_silent "Static type checking: mypy" "uv run mypy"

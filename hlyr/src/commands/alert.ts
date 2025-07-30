@@ -183,8 +183,7 @@ export async function alertCommand(options: AlertOptions = {}): Promise<void> {
     console.error(chalk.red(`Error: ${error}`))
 
     // Check if daemon is running
-    console.error(chalk.gray('\nMake sure the HumanLayer daemon is running:'))
-    console.error(chalk.gray('  npx humanlayer tui'))
+    console.error(chalk.gray('\nMake sure the HumanLayer daemon is running'))
 
     process.exit(1)
   }
