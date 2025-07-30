@@ -25,6 +25,8 @@ export function SessionTablePage() {
   const { shouldIgnoreMouseEvent, startKeyboardNavigation } = useKeyboardNavigationProtection()
 
   const sessions = useStore(state => state.sessions)
+  const selectedSessions = useStore(state => state.selectedSessions)
+  const clearSelection = useStore(state => state.clearSelection)
   const focusedSession = useStore(state => state.focusedSession)
   const setFocusedSession = useStore(state => state.setFocusedSession)
   const viewMode = useStore(state => state.viewMode)
@@ -167,6 +169,11 @@ export function SessionTablePage() {
   useHotkeys(
     'escape',
     () => {
+      if (selectedSessions.size > 0) {
+        clearSelection()
+        return null;
+      }
+
       if (viewMode === ViewMode.Archived) {
         setViewMode(ViewMode.Normal)
       }
@@ -174,9 +181,10 @@ export function SessionTablePage() {
     {
       enableOnFormTags: false,
       scopes: SessionTableHotkeysScope,
-      enabled: !isSessionLauncherOpen && viewMode === ViewMode.Archived,
+      enabled: !isSessionLauncherOpen,
       preventDefault: true,
     },
+    [selectedSessions],
   )
 
   return (
