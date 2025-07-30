@@ -191,9 +191,7 @@ export function TaskGroup({
               <div
                 key={subEvent.id}
                 className={`relative pl-4 transition-all duration-200 border-l-2 ${
-                  focusedEventId === displayObject.id
-                    ? 'border-[var(--terminal-accent)]'
-                    : ''
+                  focusedEventId === displayObject.id ? 'border-[var(--terminal-accent)]' : ''
                 }`}
               >
                 <div

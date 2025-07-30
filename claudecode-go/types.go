@@ -119,7 +119,7 @@ func (c *ContentField) UnmarshalJSON(data []byte) error {
 		c.Value = str
 		return nil
 	}
-	
+
 	// If that fails, try array format
 	var arr []struct {
 		Type string `json:"type"`
@@ -136,7 +136,7 @@ func (c *ContentField) UnmarshalJSON(data []byte) error {
 		c.Value = strings.Join(texts, "\n")
 		return nil
 	}
-	
+
 	return fmt.Errorf("content field is neither string nor array format")
 }
 
