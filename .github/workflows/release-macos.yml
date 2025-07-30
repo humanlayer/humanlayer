@@ -31,10 +31,17 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: humanlayer-wui/src-tauri
+
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version-file: 'hld/go.mod'
+          cache-dependency-path: |
+            **/go.sum
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2

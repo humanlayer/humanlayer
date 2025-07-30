@@ -15,7 +15,7 @@ jobs:
       - name: Check out
         uses: actions/checkout@v4
 
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: ~/.cache/pre-commit
           key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
@@ -58,18 +58,34 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: stable
+          cache-dependency-path: |
+            **/go.sum
+
+      - name: Cache Go tools
+        uses: actions/cache@v4
+        id: go-tools-cache
+        with:
+          path: ~/go/bin
+          key: go-tools-${{ runner.os }}-golangci-1.61-mockgen-0.5
+          restore-keys: |
+            go-tools-${{ runner.os }}-
 
       # TODO: Update this, let's just pull the binary?
-      - name: Install golangci-lint
-        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-
-      - name: Install mockgen
-        run: go install go.uber.org/mock/mockgen@latest
+      - name: Install Go tools
+        if: steps.go-tools-cache.outputs.cache-hit != 'true'
+        run: |
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.61.0
+          go install go.uber.org/mock/mockgen@v0.5.0
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@1.83.0
         with:
           components: rustfmt,clippy
+
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: humanlayer-wui/src-tauri
 
       - name: Cache and install Tauri system dependencies
         if: runner.os == 'Linux'
@@ -121,12 +137,27 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: stable
+          cache-dependency-path: |
+            **/go.sum
+
+      - name: Cache Go tools
+        uses: actions/cache@v4
+        id: go-tools-cache-tests
+        with:
+          path: ~/go/bin
+          key: go-tools-${{ runner.os }}-mockgen-0.5
 
       - name: Install mockgen
-        run: go install go.uber.org/mock/mockgen@latest
+        if: steps.go-tools-cache-tests.outputs.cache-hit != 'true'
+        run: go install go.uber.org/mock/mockgen@v0.5.0
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: humanlayer-wui/src-tauri
 
       - name: Cache and install Tauri system dependencies
         if: runner.os == 'Linux'
