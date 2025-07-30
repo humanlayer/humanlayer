@@ -15,7 +15,7 @@ import { Toaster } from 'sonner'
 import { notificationService } from '@/services/NotificationService'
 import { useTheme } from '@/contexts/ThemeContext'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { MessageCircle } from 'lucide-react'
+import { MessageCircle, Bug } from 'lucide-react'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { DebugPanel } from '@/components/DebugPanel'
 import '@/App.css'
@@ -24,6 +24,7 @@ export function Layout() {
   const [approvals, setApprovals] = useState<any[]>([])
   const [activeSessionId] = useState<string | null>(null)
   const { setTheme } = useTheme()
+  const [isDebugPanelOpen, setIsDebugPanelOpen] = useState(false)
 
   // Use the daemon connection hook for all connection management
   const { connected, connecting, version, connect } = useDaemonConnection()
@@ -241,6 +242,21 @@ export function Layout() {
               <p>Submit feedback (⌘⇧F)</p>
             </TooltipContent>
           </Tooltip>
+          {import.meta.env.DEV && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => setIsDebugPanelOpen(true)}
+                  className="px-1.5 py-0.5 text-xs font-mono border border-border bg-background text-foreground hover:bg-accent/10 transition-colors"
+                >
+                  <Bug className="w-3 h-3" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Debug Panel (Dev Only)</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
           <ThemeSelector />
           <div className="flex items-center gap-2 font-mono text-xs">
             <span className="uppercase tracking-wider">
@@ -267,7 +283,7 @@ export function Layout() {
       <Toaster position="bottom-right" richColors />
 
       {/* Debug Panel */}
-      <DebugPanel />
+      <DebugPanel open={isDebugPanelOpen} onOpenChange={setIsDebugPanelOpen} />
     </div>
   )
 }

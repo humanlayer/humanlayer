@@ -8,14 +8,18 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Loader2, RefreshCw, Link, Settings, Server } from 'lucide-react'
+import { Loader2, RefreshCw, Link, Server } from 'lucide-react'
 import { useDaemonConnection } from '@/hooks/useDaemonConnection'
 
-export function DebugPanel() {
+interface DebugPanelProps {
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+}
+
+export function DebugPanel({ open, onOpenChange }: DebugPanelProps) {
   const { connected, reconnect } = useDaemonConnection()
   const [isRestarting, setIsRestarting] = useState(false)
   const [restartError, setRestartError] = useState<string | null>(null)
@@ -100,16 +104,7 @@ export function DebugPanel() {
   }
 
   return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="fixed bottom-4 left-4 opacity-50 hover:opacity-100"
-        >
-          <Settings className="h-4 w-4" />
-        </Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Debug Panel</DialogTitle>
@@ -124,7 +119,7 @@ export function DebugPanel() {
               <div className="flex items-center justify-between">
                 <span className="text-sm">Connection</span>
                 <span
-                  className={`text-sm font-medium ${connected ? 'text-green-600' : 'text-red-600'}`}
+                  className={`text-sm font-medium ${connected ? 'text-[var(--terminal-success)]' : 'text-[var(--terminal-error)]'}`}
                 >
                   {connected ? 'Connected' : 'Disconnected'}
                 </span>
