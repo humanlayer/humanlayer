@@ -329,274 +329,291 @@ export const CustomDiffViewer = ({
   }
 
   // Case 2: Full fileContents provided. Show context and line numbers.
-  let before = fileContents
-  let after = fileContents
+  try {
+    let before = fileContents
+    let after = fileContents
 
-  // Apply all edits in order to produce the 'after' state
-  for (let i = 0; i < edits.length; i++) {
-    const edit = edits[i]
-    const idx = after.indexOf(edit.oldValue)
-    if (idx === -1) {
+    // Apply all edits in order to produce the 'after' state
+    for (let i = 0; i < edits.length; i++) {
+      const edit = edits[i]
+      const idx = after.indexOf(edit.oldValue)
+      if (idx === -1) {
+        throw new Error(`The string to change for edit ${i + 1} was not found in the file`)
+      }
+      // Replace only the first occurrence
+      after = after.slice(0, idx) + edit.newValue + after.slice(idx + edit.oldValue.length)
+    }
+
+    // Compute the diff between before and after
+    const diff = computeLineDiff(before, after)
+    // Find changed line indices for context
+    const changedIndices = diff
+      .map((d, i) => (d.type !== 'equal' ? i : null))
+      .filter(i => i !== null) as number[]
+    // Compute context windows (line indices in the diff array)
+    const contextSet = new Set<number>()
+    changedIndices.forEach(idx => {
+      for (let d = -2; d <= 2; d++) {
+        if (idx + d >= 0 && idx + d < diff.length) contextSet.add(idx + d)
+      }
+    })
+    // Build a map from oldIndex/newIndex to diff index for quick lookup
+    const oldIdxToDiffIdx = new Map<number, number>()
+    const newIdxToDiffIdx = new Map<number, number>()
+    diff.forEach((d, i) => {
+      if (d.oldIndex !== undefined) oldIdxToDiffIdx.set(d.oldIndex, i)
+      if (d.newIndex !== undefined) newIdxToDiffIdx.set(d.newIndex, i)
+    })
+    const oldLines = before.split('\n')
+    const newLines = after.split('\n')
+
+    if (splitView) {
       return (
-        <div className="p-4 bg-[var(--terminal-error)]/10 text-foreground font-mono rounded">
-          Error: The string to change for edit {i + 1} was not found in the file. Diff cannot be
-          displayed.
+        <div className="relative">
+          <div className="flex flex-row text-xs font-mono">
+            {/* Left: old file with context */}
+            <div className="w-1/2 pr-2 border-r border-border">
+              {Array.from(
+                new Set(diff.map(d => d.oldIndex).filter(idx => idx !== undefined && idx >= 0)),
+              )
+                .sort((a, b) => (a as number) - (b as number))
+                .map(idx => {
+                  if (typeof idx !== 'number') return null
+                  const diffIdx = oldIdxToDiffIdx.get(idx)
+                  if (diffIdx === undefined || !contextSet.has(diffIdx)) {
+                    return null
+                  }
+
+                  const d = diff[diffIdx]
+                  const lineNumber = idx + 1
+
+                  if (d.type === 'replace') {
+                    return (
+                      <div key={idx} className="flex items-start">
+                        <span className="w-8 text-right text-muted-foreground/60 select-none pr-2">
+                          {lineNumber}
+                        </span>
+                        <span className="flex-1 bg-[var(--terminal-error)]/10 text-foreground px-2 whitespace-pre-wrap">
+                          {computeWordDiff(d.oldLine || '', d.newLine || '').map((c, j) => {
+                            if (c.type === 'add') return null
+                            return c.type === 'remove' ? (
+                              <span key={j} className="bg-[var(--terminal-error)]/40">
+                                {c.text}
+                              </span>
+                            ) : (
+                              <span key={j}>{c.text}</span>
+                            )
+                          })}
+                        </span>
+                      </div>
+                    )
+                  }
+                  if (d.type === 'remove') {
+                    return (
+                      <div key={idx} className="flex items-start">
+                        <span className="w-8 text-right text-muted-foreground/60 select-none pr-2">
+                          {lineNumber}
+                        </span>
+                        <span className="flex-1 bg-[var(--terminal-error)]/10 text-foreground px-2 whitespace-pre-wrap">
+                          {d.oldLine}
+                        </span>
+                      </div>
+                    )
+                  }
+                  // This is an 'equal' line within the context
+                  return (
+                    <div key={idx} className="flex items-start">
+                      <span className="w-8 text-right text-muted-foreground/40 select-none pr-2">
+                        {lineNumber}
+                      </span>
+                      <span className="flex-1 bg-transparent text-muted-foreground px-2 whitespace-pre-wrap">
+                        {oldLines[idx]}
+                      </span>
+                    </div>
+                  )
+                })}
+            </div>
+            {/* Right: new file with context */}
+            <div className="w-1/2 pl-2">
+              {Array.from(
+                new Set(diff.map(d => d.newIndex).filter(idx => idx !== undefined && idx >= 0)),
+              )
+                .sort((a, b) => (a as number) - (b as number))
+                .map(idx => {
+                  if (typeof idx !== 'number') return null
+                  const diffIdx = newIdxToDiffIdx.get(idx)
+                  if (diffIdx === undefined || !contextSet.has(diffIdx)) {
+                    return null
+                  }
+
+                  const d = diff[diffIdx]
+                  const lineNumber = idx + 1
+
+                  if (d.type === 'replace') {
+                    return (
+                      <div key={idx} className="flex items-start">
+                        <span className="w-8 text-right text-muted-foreground/60 select-none pr-2">
+                          {lineNumber}
+                        </span>
+                        <span className="flex-1 bg-[var(--terminal-success)]/10 text-foreground px-2 whitespace-pre-wrap">
+                          {computeWordDiff(d.oldLine || '', d.newLine || '').map((c, j) => {
+                            if (c.type === 'remove') return null
+                            return c.type === 'add' ? (
+                              <span key={j} className="bg-[var(--terminal-success)]/40">
+                                {c.text}
+                              </span>
+                            ) : (
+                              <span key={j}>{c.text}</span>
+                            )
+                          })}
+                        </span>
+                      </div>
+                    )
+                  }
+                  if (d.type === 'add') {
+                    return (
+                      <div key={idx} className="flex items-start">
+                        <span className="w-8 text-right text-muted-foreground/60 select-none pr-2">
+                          {lineNumber}
+                        </span>
+                        <span className="flex-1 bg-[var(--terminal-success)]/10 text-foreground px-2 whitespace-pre-wrap">
+                          {d.newLine}
+                        </span>
+                      </div>
+                    )
+                  }
+                  // This is an 'equal' line within the context
+                  return (
+                    <div key={idx} className="flex items-start">
+                      <span className="w-8 text-right text-muted-foreground/40 select-none pr-2">
+                        {lineNumber}
+                      </span>
+                      <span className="flex-1 bg-transparent text-muted-foreground px-2 whitespace-pre-wrap">
+                        {newLines[idx]}
+                      </span>
+                    </div>
+                  )
+                })}
+            </div>
+          </div>
         </div>
       )
     }
-    // Replace only the first occurrence
-    after = after.slice(0, idx) + edit.newValue + after.slice(idx + edit.oldValue.length)
-  }
 
-  // Compute the diff between before and after
-  const diff = computeLineDiff(before, after)
-  // Find changed line indices for context
-  const changedIndices = diff
-    .map((d, i) => (d.type !== 'equal' ? i : null))
-    .filter(i => i !== null) as number[]
-  // Compute context windows (line indices in the diff array)
-  const contextSet = new Set<number>()
-  changedIndices.forEach(idx => {
-    for (let d = -2; d <= 2; d++) {
-      if (idx + d >= 0 && idx + d < diff.length) contextSet.add(idx + d)
-    }
-  })
-  // Build a map from oldIndex/newIndex to diff index for quick lookup
-  const oldIdxToDiffIdx = new Map<number, number>()
-  const newIdxToDiffIdx = new Map<number, number>()
-  diff.forEach((d, i) => {
-    if (d.oldIndex !== undefined) oldIdxToDiffIdx.set(d.oldIndex, i)
-    if (d.newIndex !== undefined) newIdxToDiffIdx.set(d.newIndex, i)
-  })
-  const oldLines = before.split('\n')
-  const newLines = after.split('\n')
-
-  if (splitView) {
+    // --- Unified View ---
     return (
       <div className="relative">
-        <div className="flex flex-row text-xs font-mono">
-          {/* Left: old file with context */}
-          <div className="w-1/2 pr-2 border-r border-border">
-            {Array.from(new Set(diff.map(d => d.oldIndex).filter(idx => idx !== undefined && idx >= 0)))
-              .sort((a, b) => (a as number) - (b as number))
-              .map(idx => {
-                if (typeof idx !== 'number') return null
-                const diffIdx = oldIdxToDiffIdx.get(idx)
-                if (diffIdx === undefined || !contextSet.has(diffIdx)) {
-                  return null
-                }
+        <div className="text-xs font-mono whitespace-pre-wrap">
+          {diff.map((d, i) => {
+            if (!contextSet.has(i)) return null
 
-                const d = diff[diffIdx]
-                const lineNumber = idx + 1
-
-                if (d.type === 'replace') {
-                  return (
-                    <div key={idx} className="flex items-start">
-                      <span className="w-8 text-right text-muted-foreground/60 select-none pr-2">
-                        {lineNumber}
-                      </span>
-                      <span className="flex-1 bg-[var(--terminal-error)]/10 text-foreground px-2 whitespace-pre-wrap">
-                        {computeWordDiff(d.oldLine || '', d.newLine || '').map((c, j) => {
-                          if (c.type === 'add') return null
-                          return c.type === 'remove' ? (
-                            <span key={j} className="bg-[var(--terminal-error)]/40">
-                              {c.text}
-                            </span>
-                          ) : (
-                            <span key={j}>{c.text}</span>
-                          )
-                        })}
-                      </span>
-                    </div>
-                  )
-                }
-                if (d.type === 'remove') {
-                  return (
-                    <div key={idx} className="flex items-start">
-                      <span className="w-8 text-right text-muted-foreground/60 select-none pr-2">
-                        {lineNumber}
-                      </span>
-                      <span className="flex-1 bg-[var(--terminal-error)]/10 text-foreground px-2 whitespace-pre-wrap">
-                        {d.oldLine}
-                      </span>
-                    </div>
-                  )
-                }
-                // This is an 'equal' line within the context
-                return (
-                  <div key={idx} className="flex items-start">
-                    <span className="w-8 text-right text-muted-foreground/40 select-none pr-2">
-                      {lineNumber}
+            if (d.type === 'replace') {
+              const oldLineNumber = d.oldIndex! + 1
+              const newLineNumber = d.newIndex! + 1
+              return (
+                <Fragment key={`rep-${i}`}>
+                  <div className="flex items-start bg-[var(--terminal-error)]/10 text-foreground">
+                    <span className="w-8 text-right text-muted-foreground/60 select-none pr-2">
+                      {oldLineNumber}
                     </span>
-                    <span className="flex-1 bg-transparent text-muted-foreground px-2 whitespace-pre-wrap">
-                      {oldLines[idx]}
+                    <span className="w-4 select-none text-foreground">-</span>
+                    <span>
+                      {computeWordDiff(d.oldLine || '', d.newLine || '').map((c, j) => {
+                        if (c.type === 'add') return null
+                        return c.type === 'remove' ? (
+                          <span key={j} className="bg-[var(--terminal-error)]/40">
+                            {c.text}
+                          </span>
+                        ) : (
+                          <span key={j}>{c.text}</span>
+                        )
+                      })}
                     </span>
                   </div>
-                )
-              })}
-          </div>
-          {/* Right: new file with context */}
-          <div className="w-1/2 pl-2">
-            {Array.from(new Set(diff.map(d => d.newIndex).filter(idx => idx !== undefined && idx >= 0)))
-              .sort((a, b) => (a as number) - (b as number))
-              .map(idx => {
-                if (typeof idx !== 'number') return null
-                const diffIdx = newIdxToDiffIdx.get(idx)
-                if (diffIdx === undefined || !contextSet.has(diffIdx)) {
-                  return null
-                }
-
-                const d = diff[diffIdx]
-                const lineNumber = idx + 1
-
-                if (d.type === 'replace') {
-                  return (
-                    <div key={idx} className="flex items-start">
-                      <span className="w-8 text-right text-muted-foreground/60 select-none pr-2">
-                        {lineNumber}
-                      </span>
-                      <span className="flex-1 bg-[var(--terminal-success)]/10 text-foreground px-2 whitespace-pre-wrap">
-                        {computeWordDiff(d.oldLine || '', d.newLine || '').map((c, j) => {
-                          if (c.type === 'remove') return null
-                          return c.type === 'add' ? (
-                            <span key={j} className="bg-[var(--terminal-success)]/40">
-                              {c.text}
-                            </span>
-                          ) : (
-                            <span key={j}>{c.text}</span>
-                          )
-                        })}
-                      </span>
-                    </div>
-                  )
-                }
-                if (d.type === 'add') {
-                  return (
-                    <div key={idx} className="flex items-start">
-                      <span className="w-8 text-right text-muted-foreground/60 select-none pr-2">
-                        {lineNumber}
-                      </span>
-                      <span className="flex-1 bg-[var(--terminal-success)]/10 text-foreground px-2 whitespace-pre-wrap">
-                        {d.newLine}
-                      </span>
-                    </div>
-                  )
-                }
-                // This is an 'equal' line within the context
-                return (
-                  <div key={idx} className="flex items-start">
-                    <span className="w-8 text-right text-muted-foreground/40 select-none pr-2">
-                      {lineNumber}
+                  <div className="flex items-start bg-[var(--terminal-success)]/10 text-foreground">
+                    <span className="w-8 text-right text-muted-foreground/60 select-none pr-2">
+                      {newLineNumber}
                     </span>
-                    <span className="flex-1 bg-transparent text-muted-foreground px-2 whitespace-pre-wrap">
-                      {newLines[idx]}
+                    <span className="w-4 select-none text-foreground">+</span>
+                    <span>
+                      {computeWordDiff(d.oldLine || '', d.newLine || '').map((c, j) => {
+                        if (c.type === 'remove') return null
+                        return c.type === 'add' ? (
+                          <span key={j} className="bg-[var(--terminal-success)]/40">
+                            {c.text}
+                          </span>
+                        ) : (
+                          <span key={j}>{c.text}</span>
+                        )
+                      })}
                     </span>
                   </div>
-                )
-              })}
-          </div>
-        </div>
-      </div>
-    )
-  }
+                </Fragment>
+              )
+            }
 
-  // --- Unified View ---
-  return (
-    <div className="relative">
-      <div className="text-xs font-mono whitespace-pre-wrap">
-        {diff.map((d, i) => {
-          if (!contextSet.has(i)) return null
-
-          if (d.type === 'replace') {
-            const oldLineNumber = d.oldIndex! + 1
-            const newLineNumber = d.newIndex! + 1
-            return (
-              <Fragment key={`rep-${i}`}>
-                <div className="flex items-start bg-[var(--terminal-error)]/10 text-foreground">
+            if (d.type === 'add') {
+              const lineNumber = d.newIndex! + 1
+              return (
+                <div
+                  key={`add-${i}`}
+                  className="flex items-start bg-[var(--terminal-success)]/10 text-foreground"
+                >
                   <span className="w-8 text-right text-muted-foreground/60 select-none pr-2">
-                    {oldLineNumber}
-                  </span>
-                  <span className="w-4 select-none text-foreground">-</span>
-                  <span>
-                    {computeWordDiff(d.oldLine || '', d.newLine || '').map((c, j) => {
-                      if (c.type === 'add') return null
-                      return c.type === 'remove' ? (
-                        <span key={j} className="bg-[var(--terminal-error)]/40">
-                          {c.text}
-                        </span>
-                      ) : (
-                        <span key={j}>{c.text}</span>
-                      )
-                    })}
-                  </span>
-                </div>
-                <div className="flex items-start bg-[var(--terminal-success)]/10 text-foreground">
-                  <span className="w-8 text-right text-muted-foreground/60 select-none pr-2">
-                    {newLineNumber}
+                    {lineNumber}
                   </span>
                   <span className="w-4 select-none text-foreground">+</span>
-                  <span>
-                    {computeWordDiff(d.oldLine || '', d.newLine || '').map((c, j) => {
-                      if (c.type === 'remove') return null
-                      return c.type === 'add' ? (
-                        <span key={j} className="bg-[var(--terminal-success)]/40">
-                          {c.text}
-                        </span>
-                      ) : (
-                        <span key={j}>{c.text}</span>
-                      )
-                    })}
-                  </span>
+                  <span>{d.newLine}</span>
                 </div>
-              </Fragment>
-            )
-          }
+              )
+            }
 
-          if (d.type === 'add') {
-            const lineNumber = d.newIndex! + 1
-            return (
-              <div
-                key={`add-${i}`}
-                className="flex items-start bg-[var(--terminal-success)]/10 text-foreground"
-              >
-                <span className="w-8 text-right text-muted-foreground/60 select-none pr-2">
-                  {lineNumber}
-                </span>
-                <span className="w-4 select-none text-foreground">+</span>
-                <span>{d.newLine}</span>
-              </div>
-            )
-          }
+            if (d.type === 'remove') {
+              const lineNumber = d.oldIndex! + 1
+              return (
+                <div
+                  key={`rem-${i}`}
+                  className="flex items-start bg-[var(--terminal-error)]/10 text-foreground"
+                >
+                  <span className="w-8 text-right text-muted-foreground/60 select-none pr-2">
+                    {lineNumber}
+                  </span>
+                  <span className="w-4 select-none text-foreground">-</span>
+                  <span>{d.oldLine}</span>
+                </div>
+              )
+            }
 
-          if (d.type === 'remove') {
+            // Equal
             const lineNumber = d.oldIndex! + 1
             return (
-              <div
-                key={`rem-${i}`}
-                className="flex items-start bg-[var(--terminal-error)]/10 text-foreground"
-              >
-                <span className="w-8 text-right text-muted-foreground/60 select-none pr-2">
+              <div key={`eq-${i}`} className="flex items-start bg-transparent text-muted-foreground">
+                <span className="w-8 text-right text-muted-foreground/40 select-none pr-2">
                   {lineNumber}
                 </span>
-                <span className="w-4 select-none text-foreground">-</span>
+                <span className="w-4 select-none"> </span>
                 <span>{d.oldLine}</span>
               </div>
             )
-          }
-
-          // Equal
-          const lineNumber = d.oldIndex! + 1
-          return (
-            <div key={`eq-${i}`} className="flex items-start bg-transparent text-muted-foreground">
-              <span className="w-8 text-right text-muted-foreground/40 select-none pr-2">
-                {lineNumber}
-              </span>
-              <span className="w-4 select-none"> </span>
-              <span>{d.oldLine}</span>
-            </div>
-          )
-        })}
+          })}
+        </div>
       </div>
-    </div>
-  )
+    )
+  } catch (error) {
+    // Log detailed context for debugging
+    console.warn('Snapshot-based diff rendering failed, falling back to simple diff:', {
+      error: error instanceof Error ? error.message : String(error),
+      editsCount: edits.length,
+      fileContentLength: fileContents?.length,
+      firstEditPreview: edits[0]
+        ? {
+            oldValue: edits[0].oldValue.substring(0, 50) + '...',
+            newValue: edits[0].newValue.substring(0, 50) + '...',
+          }
+        : null,
+    })
+
+    // Recursively call self with undefined fileContents to trigger non-snapshot mode
+    return <CustomDiffViewer fileContents={undefined} edits={edits} splitView={splitView} />
+  }
 }
