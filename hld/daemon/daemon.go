@@ -23,6 +23,20 @@ const (
 	SocketPermissions = 0600
 )
 
+// getShutdownTimeout returns the timeout for graceful session shutdown
+func getShutdownTimeout() time.Duration {
+	if timeoutStr := os.Getenv("HUMANLAYER_HLD_SHUTDOWN_TIMEOUT"); timeoutStr != "" {
+		if timeout, err := time.ParseDuration(timeoutStr); err == nil {
+			slog.Info("using custom shutdown timeout", "timeout", timeout)
+			return timeout
+		} else {
+			slog.Warn("invalid HUMANLAYER_HLD_SHUTDOWN_TIMEOUT, using default",
+				"value", timeoutStr, "error", err)
+		}
+	}
+	return 5 * time.Second // default per ENG-1699 requirements
+}
+
 // Daemon coordinates all daemon functionality
 type Daemon struct {
 	config     *config.Config
@@ -200,12 +214,30 @@ func (d *Daemon) Run(ctx context.Context) error {
 
 	// Wait for shutdown signal
 	<-ctx.Done()
+	slog.Info("shutdown signal received, stopping sessions")
 
-	// Close listener to stop accepting new connections
+	// Stop accepting new connections immediately
 	if err := listener.Close(); err != nil {
 		slog.Warn("error closing listener during shutdown", "error", err)
 	}
 	listenerClosed.closed = true
+
+	// Gracefully stop all active sessions with configurable timeout
+	if d.sessions != nil {
+		shutdownTimeout := getShutdownTimeout()
+		slog.Info("stopping sessions with timeout", "timeout", shutdownTimeout)
+
+		if err := d.sessions.StopAllSessions(shutdownTimeout); err != nil {
+			slog.Error("error stopping sessions", "error", err)
+		}
+	}
+
+	// Stop HTTP server if running
+	if d.httpServer != nil {
+		if err := d.httpServer.Shutdown(); err != nil {
+			slog.Error("error shutting down HTTP server", "error", err)
+		}
+	}
 
 	return nil
 }

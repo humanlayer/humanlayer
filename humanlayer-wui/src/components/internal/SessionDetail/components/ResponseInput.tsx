@@ -7,8 +7,9 @@ import {
   getInputPlaceholder,
   getHelpText,
   getForkInputPlaceholder,
-} from '../utils/sessionStatus'
+} from '@/components/internal/SessionDetail/utils/sessionStatus'
 import { GitBranch } from 'lucide-react'
+import { ResponseInputLocalStorageKey } from '@/components/internal/SessionDetail/hooks/useSessionActions'
 
 interface ResponseInputProps {
   session: Session
@@ -89,7 +90,10 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
               isForkMode ? getForkInputPlaceholder(session.status) : getInputPlaceholder(session.status)
             }
             value={responseInput}
-            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setResponseInput(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
+              setResponseInput(e.target.value)
+              localStorage.setItem(`${ResponseInputLocalStorageKey}.${session.id}`, e.target.value)
+            }}
             onKeyDown={handleResponseInputKeyDown}
             disabled={isResponding}
             className={`flex-1 min-h-[2.5rem] ${isResponding ? 'opacity-50' : ''}`}

@@ -19,7 +19,7 @@ import (
 
 // Manager handles the lifecycle of Claude Code sessions
 type Manager struct {
-	activeProcesses    map[string]*claudecode.Session // Maps session ID to active Claude process
+	activeProcesses    map[string]ClaudeSession // Maps session ID to active Claude process
 	mu                 sync.RWMutex
 	client             *claudecode.Client
 	eventBus           bus.EventBus
@@ -44,7 +44,7 @@ func NewManager(eventBus bus.EventBus, store store.ConversationStore, socketPath
 	}
 
 	return &Manager{
-		activeProcesses: make(map[string]*claudecode.Session),
+		activeProcesses: make(map[string]ClaudeSession),
 		client:          client,
 		eventBus:        eventBus,
 		store:           store,
@@ -151,9 +151,12 @@ func (m *Manager) LaunchSession(ctx context.Context, config claudecode.SessionCo
 		return nil, fmt.Errorf("failed to launch Claude session: %w", err)
 	}
 
+	// Wrap the session for storage
+	wrappedSession := NewClaudeSessionWrapper(claudeSession)
+
 	// Store active Claude process
 	m.mu.Lock()
-	m.activeProcesses[sessionID] = claudeSession
+	m.activeProcesses[sessionID] = wrappedSession
 	m.mu.Unlock()
 
 	// Update database with running status
@@ -192,7 +195,7 @@ func (m *Manager) LaunchSession(ctx context.Context, config claudecode.SessionCo
 	m.pendingQueries.Store(sessionID, config.Query)
 
 	// Monitor session lifecycle in background
-	go m.monitorSession(ctx, sessionID, runID, claudeSession, startTime, config)
+	go m.monitorSession(ctx, sessionID, runID, wrappedSession, startTime, config)
 
 	// Reconcile any existing approvals for this run_id
 	if m.approvalReconciler != nil {
@@ -225,7 +228,7 @@ func (m *Manager) LaunchSession(ctx context.Context, config claudecode.SessionCo
 }
 
 // monitorSession tracks the lifecycle of a Claude session
-func (m *Manager) monitorSession(ctx context.Context, sessionID, runID string, claudeSession *claudecode.Session, startTime time.Time, config claudecode.SessionConfig) {
+func (m *Manager) monitorSession(ctx context.Context, sessionID, runID string, claudeSession ClaudeSession, startTime time.Time, config claudecode.SessionConfig) {
 	// Get the session ID from the Claude session once available
 	var claudeSessionID string
 
@@ -237,7 +240,7 @@ eventLoop:
 			slog.Debug("monitorSession context cancelled, stopping event processing",
 				"session_id", sessionID)
 			return
-		case event, ok := <-claudeSession.Events:
+		case event, ok := <-claudeSession.GetEvents():
 			if !ok {
 				// Channel closed, exit loop
 				break eventLoop
@@ -746,7 +749,7 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 						EventType:         store.EventTypeToolResult,
 						Role:              "user",
 						ToolResultForID:   content.ToolUseID,
-						ToolResultContent: content.Content,
+						ToolResultContent: content.Content.Value,
 					}
 					if err := m.store.AddConversationEvent(ctx, convEvent); err != nil {
 						return err
@@ -754,7 +757,7 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 
 					// Asynchronously capture file snapshot for Read tool results
 					if toolCall, err := m.store.GetToolCallByID(ctx, content.ToolUseID); err == nil && toolCall != nil && toolCall.ToolName == "Read" {
-						go m.captureFileSnapshot(ctx, sessionID, content.ToolUseID, toolCall.ToolInputJSON, content.Content)
+						go m.captureFileSnapshot(ctx, sessionID, content.ToolUseID, toolCall.ToolInputJSON, content.Content.Value)
 					}
 
 					// Update session activity timestamp for tool results
@@ -769,7 +772,7 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 								"claude_session_id":   claudeSessionID,
 								"event_type":          "tool_result",
 								"tool_result_for_id":  content.ToolUseID,
-								"tool_result_content": content.Content,
+								"tool_result_content": content.Content.Value,
 								"content_type":        "tool_result",
 							},
 						})
@@ -1149,9 +1152,12 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 		return nil, fmt.Errorf("failed to launch resumed Claude session: %w", err)
 	}
 
+	// Wrap the session for storage
+	wrappedSession := NewClaudeSessionWrapper(claudeSession)
+
 	// Store active Claude process
 	m.mu.Lock()
-	m.activeProcesses[sessionID] = claudeSession
+	m.activeProcesses[sessionID] = wrappedSession
 	m.mu.Unlock()
 
 	// Update database with running status
@@ -1183,7 +1189,7 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 	m.pendingQueries.Store(sessionID, req.Query)
 
 	// Monitor session lifecycle in background
-	go m.monitorSession(ctx, sessionID, runID, claudeSession, time.Now(), config)
+	go m.monitorSession(ctx, sessionID, runID, wrappedSession, time.Now(), config)
 
 	// Reconcile any existing approvals for this run_id (same run_id is reused for continuations)
 	if m.approvalReconciler != nil {
@@ -1283,4 +1289,113 @@ func (m *Manager) injectQueryAsFirstEvent(ctx context.Context, sessionID, claude
 		Content:         query,
 	}
 	return m.store.AddConversationEvent(ctx, event)
+}
+
+// StopAllSessions gracefully stops all active sessions with a timeout
+func (m *Manager) StopAllSessions(timeout time.Duration) error {
+	m.mu.RLock()
+	// Get snapshot of active sessions and their current status
+	activeSessionsToStop := make(map[string]ClaudeSession)
+	for id, session := range m.activeProcesses {
+		// Get session info to check status
+		info, err := m.GetSessionInfo(id)
+		if err != nil {
+			slog.Warn("failed to get session info during shutdown", "session_id", id, "error", err)
+			// If we can't get info, assume it's active and try to stop it
+			activeSessionsToStop[id] = session
+			continue
+		}
+
+		// Only interrupt sessions that are actually running or waiting for input
+		if info.Status == StatusRunning || info.Status == StatusWaitingInput || info.Status == StatusStarting {
+			activeSessionsToStop[id] = session
+		} else {
+			slog.Debug("skipping session with non-running status",
+				"session_id", id,
+				"status", info.Status)
+		}
+	}
+	m.mu.RUnlock()
+
+	if len(activeSessionsToStop) == 0 {
+		slog.Info("no active sessions to stop")
+		return nil
+	}
+
+	slog.Info("stopping active sessions", "count", len(activeSessionsToStop))
+
+	// Interrupt all sessions
+	var wg sync.WaitGroup
+	errors := make(chan error, len(activeSessionsToStop))
+
+	for sessionID := range activeSessionsToStop {
+		wg.Add(1)
+		go func(id string) {
+			defer wg.Done()
+			slog.Info("sending interrupt to session",
+				"session_id", id)
+			if err := m.InterruptSession(context.Background(), id); err != nil {
+				errors <- fmt.Errorf("session %s: %w", id, err)
+			}
+		}(sessionID)
+	}
+
+	// Wait for interrupts to be sent
+	wg.Wait()
+	close(errors)
+
+	// Log any errors from interrupt attempts
+	for err := range errors {
+		slog.Error("failed to interrupt session", "error", err)
+	}
+
+	// Wait for sessions to complete with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+
+	startTime := time.Now()
+	for {
+		select {
+		case <-ctx.Done():
+			m.mu.RLock()
+			remaining := len(m.activeProcesses)
+			m.mu.RUnlock()
+			if remaining > 0 {
+				slog.Warn("timeout waiting for sessions to stop",
+					"remaining", remaining,
+					"timeout", timeout,
+					"elapsed", time.Since(startTime))
+				// Force kill remaining sessions
+				m.forceKillRemaining()
+			}
+			return ctx.Err()
+		case <-ticker.C:
+			m.mu.RLock()
+			remaining := len(m.activeProcesses)
+			m.mu.RUnlock()
+			if remaining == 0 {
+				slog.Info("all sessions stopped successfully",
+					"elapsed", time.Since(startTime))
+				return nil
+			}
+		}
+	}
+}
+
+// forceKillRemaining forcefully terminates any remaining sessions
+func (m *Manager) forceKillRemaining() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	for id, session := range m.activeProcesses {
+		slog.Warn("force killing session", "session_id", id)
+		if err := session.Kill(); err != nil {
+			slog.Error("failed to force kill session",
+				"session_id", id,
+				"error", err)
+		}
+	}
 }

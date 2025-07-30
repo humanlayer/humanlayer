@@ -13,9 +13,8 @@
   ],
   "scripts": {
     "build": "tsup src/index.ts --format esm --target es2020 --clean && npm run build-go",
-    "build-go": "npm run build-daemon && npm run build-tui",
+    "build-go": "npm run build-daemon",
     "build-daemon": "cd ../hld && go build -o hld ./cmd/hld && mkdir -p ../hlyr/dist/bin && cp hld ../hlyr/dist/bin/",
-    "build-tui": "cd ../humanlayer-tui && go build -o humanlayer-tui . && mkdir -p ../hlyr/dist/bin && cp humanlayer-tui ../hlyr/dist/bin/",
     "build:watch": "tsup src/index.ts --format esm --target es2020 --watch",
     "dev": "npm run build && ./dist/index.js",
     "lint": "eslint . --ext .ts",

@@ -131,7 +131,7 @@ func (c *mockClaudeClient) CreateSession(config claudecode.SessionConfig) (*clau
 					{
 						Type:      "tool_result",
 						ToolUseID: "toolu_01ABC123",
-						Content:   "File created successfully",
+						Content:   claudecode.ContentField{Value: "File created successfully"},
 					},
 				},
 			},
@@ -670,7 +670,7 @@ func TestSessionManagerEventProcessing(t *testing.T) {
 					{
 						Type:      "tool_result",
 						ToolUseID: "toolu_corr_test",
-						Content:   "Tool executed successfully",
+						Content:   claudecode.ContentField{Value: "Tool executed successfully"},
 					},
 				},
 			},

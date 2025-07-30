@@ -24,6 +24,14 @@ run_silent() {
 
 echo "🔧 Setting up HumanLayer repository..."
 
+# Install mockgen if not already installed
+if ! command -v mockgen &> /dev/null; then
+    echo "📦 Installing mockgen..."
+    run_silent "mockgen installation" go install go.uber.org/mock/mockgen@latest
+else
+    echo "✓ mockgen already installed"
+fi
+
 # Repository-specific setup commands
 echo "📦 Generating HLD mocks..."
 run_silent "HLD mock generation" make -C hld mocks

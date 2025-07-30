@@ -29,9 +29,6 @@ check-hlyr:
 check-wui:
 	@$(MAKE) -C humanlayer-wui check VERBOSE=$(VERBOSE)
 
-check-tui:
-	@$(MAKE) -C humanlayer-tui check VERBOSE=$(VERBOSE)
-
 check-hld:
 	@$(MAKE) -C hld check VERBOSE=$(VERBOSE)
 
@@ -46,7 +43,7 @@ check-header:
 # Summary removed - tracking doesn't work across sub-makes
 
 .PHONY: check
-check: check-header check-py check-ts check-hlyr check-wui check-tui check-hld check-claudecode-go
+check: check-header check-py check-ts check-hlyr check-wui check-hld check-claudecode-go
 
 typecheck: ## just the typechecks
 	@. ./hack/run_silent.sh && run_silent "Static type checking: mypy" "uv run mypy"
@@ -491,8 +488,9 @@ daemon-nightly-build:
 .PHONY: daemon-nightly
 daemon-nightly: daemon-nightly-build
 	@mkdir -p ~/.humanlayer/logs
-	echo "$$(date +%Y-%m-%d-%H-%M-%S) starting nightly daemon in $$(pwd)" > ~/.humanlayer/logs/daemon-nightly-$$(date +%Y-%m-%d-%H-%M-%S).log
-	cd hld && ./hld-nightly 2>&1 | tee -a ~/.humanlayer/logs/daemon-nightly-$$(date +%Y-%m-%d-%H-%M-%S).log
+	$(eval TIMESTAMP := $(shell date +%Y-%m-%d-%H-%M-%S))
+	echo "$(TIMESTAMP) starting nightly daemon in $$(pwd)" > ~/.humanlayer/logs/daemon-nightly-$(TIMESTAMP).log
+	cd hld && ./run-with-logging.sh ~/.humanlayer/logs/daemon-nightly-$(TIMESTAMP).log ./hld-nightly
 
 # Build and install nightly WUI
 .PHONY: wui-nightly-build
@@ -573,7 +571,7 @@ daemon-dev: daemon-dev-build
 	cd hld && HUMANLAYER_DATABASE_PATH=~/.humanlayer/daemon-dev.db \
 		HUMANLAYER_DAEMON_SOCKET=~/.humanlayer/daemon-dev.sock \
 		HUMANLAYER_DAEMON_VERSION_OVERRIDE=$$(git branch --show-current) \
-		./hld-dev 2>&1 | tee -a ~/.humanlayer/logs/daemon-dev-$(TIMESTAMP).log
+		./run-with-logging.sh ~/.humanlayer/logs/daemon-dev-$(TIMESTAMP).log ./hld-dev
 
 # Run dev WUI with custom socket
 .PHONY: wui-dev

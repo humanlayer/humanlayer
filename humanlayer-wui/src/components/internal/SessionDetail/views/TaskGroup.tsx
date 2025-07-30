@@ -57,13 +57,15 @@ export function TaskGroup({
   const isCompleted = parentTask.isCompleted
 
   return (
-    <div className="p-4 TaskGroup">
+    <div
+      className={`p-4 TaskGroup cursor-pointer transition-all duration-200 ${
+        focusedEventId === parentTask.id ? 'shadow-[inset_2px_0_0_0_var(--terminal-accent)]' : ''
+      }`}
+    >
       {/* Task Header with Preview */}
       <div
         data-event-id={parentTask.id}
-        className={`flex items-start gap-2 rounded-md cursor-pointer hover:bg-muted/10 transition-all duration-200 ${
-          focusedEventId === parentTask.id ? 'shadow-[inset_2px_0_0_0_var(--terminal-accent)]' : ''
-        }`}
+        className={`flex items-start gap-2 rounded-md cursor-pointer hover:bg-muted/10 transition-all duration-200 `}
         onClick={onToggle}
         onMouseEnter={() => {
           if (shouldIgnoreMouseEvent?.()) return
@@ -165,7 +167,7 @@ export function TaskGroup({
 
       {/* Expanded Sub-task Events */}
       {isExpanded && (
-        <div className="ml-6 mt-2 pl-4 border-l-2 border-border/50 TaskGroupExpanded">
+        <div className="ml-6 mt-2 TaskGroupExpanded">
           {group.subTaskEvents.map(subEvent => {
             const displayObject = eventToDisplayObject(
               subEvent,
@@ -186,7 +188,12 @@ export function TaskGroup({
             if (!displayObject) return null
 
             return (
-              <div key={subEvent.id} className="relative mb-2">
+              <div
+                key={subEvent.id}
+                className={`relative pl-4 transition-all duration-200 border-l-2 ${
+                  focusedEventId === displayObject.id ? 'border-[var(--terminal-accent)]' : ''
+                }`}
+              >
                 <div
                   data-event-id={displayObject.id}
                   onMouseEnter={() => {
@@ -211,11 +218,7 @@ export function TaskGroup({
                       }
                     }
                   }}
-                  className={`group py-2 px-2 cursor-pointer transition-shadow duration-200 ${
-                    focusedEventId === displayObject.id
-                      ? 'shadow-[inset_2px_0_0_0_var(--terminal-accent)]'
-                      : ''
-                  }`}
+                  className={`group py-2 px-2 cursor-pointer`}
                 >
                   {/* Main content container with flexbox */}
                   <div className="flex gap-4">
