@@ -329,6 +329,14 @@ func TestContinueSession_CreatesNewSessionWithParentReference(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
+	// Create a context that gets cancelled when test finishes
+	ctx, cancel := context.WithCancel(context.Background())
+	defer func() {
+		cancel()
+		// Give goroutines a moment to clean up
+		time.Sleep(50 * time.Millisecond)
+	}()
+
 	mockStore := store.NewMockConversationStore(ctrl)
 	manager, _ := NewManager(nil, mockStore, "")
 
@@ -381,7 +389,7 @@ func TestContinueSession_CreatesNewSessionWithParentReference(t *testing.T) {
 	}
 
 	// Try to continue session - this tests our logic, not Claude launch
-	session, err := manager.ContinueSession(context.Background(), req)
+	session, err := manager.ContinueSession(ctx, req)
 
 	// If Claude binary exists, it might succeed; if not, it will fail
 	// Either way, our mock expectations should have been met (session created with parent)
@@ -404,6 +412,14 @@ func TestContinueSession_CreatesNewSessionWithParentReference(t *testing.T) {
 func TestContinueSession_HandlesOptionalOverrides(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
+
+	// Create a context that gets cancelled when test finishes
+	ctx, cancel := context.WithCancel(context.Background())
+	defer func() {
+		cancel()
+		// Give goroutines a moment to clean up
+		time.Sleep(50 * time.Millisecond)
+	}()
 
 	mockStore := store.NewMockConversationStore(ctrl)
 	manager, _ := NewManager(nil, mockStore, "")
@@ -459,7 +475,7 @@ func TestContinueSession_HandlesOptionalOverrides(t *testing.T) {
 	// May be called twice if Claude fails to launch in background
 	mockStore.EXPECT().UpdateSession(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
-	session, err := manager.ContinueSession(context.Background(), req)
+	session, err := manager.ContinueSession(ctx, req)
 
 	// Test passes if our mock expectations were met (session created with overrides)
 	// Whether Claude actually launches depends on the environment
