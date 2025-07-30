@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -383,14 +384,13 @@ func TestSSEHandler_ConnectionHandling(t *testing.T) {
 			}
 		}
 
-		subscriberIndex := 0
+		var subscriberIndex int32
 		mockEventBus.EXPECT().
 			Subscribe(gomock.Any(), gomock.Any()).
 			Times(numClients).
 			DoAndReturn(func(ctx context.Context, filter bus.EventFilter) *bus.Subscriber {
-				sub := subscribers[subscriberIndex]
-				subscriberIndex++
-				return sub
+				idx := atomic.AddInt32(&subscriberIndex, 1) - 1
+				return subscribers[idx]
 			})
 
 		// Expect Unsubscribe for each subscriber
