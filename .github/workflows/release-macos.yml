@@ -84,47 +84,28 @@ jobs:
             ## HumanLayer ${{ steps.version.outputs.release_version }} - macOS Release
 
             This release includes:
-            - **HumanLayer WUI** - Desktop application (DMG installer)
+            - **CodeLayer** - Desktop application (DMG installer)
             - **HumanLayer Daemon (hld)** - Command-line daemon (ARM64 binary)
-
-            ### 🔐 macOS Security Notice
-
-            **Important**: This app is not notarized with Apple. You'll need to approve it in System Settings on first launch:
-
-            1. Open the downloaded DMG and drag the app to Applications
-            2. Try to open the app (it will be blocked)
-            3. Click "Done" on the error dialog
-            4. Go to **System Settings > Privacy & Security**
-            5. Find the warning about "humanlayer-wui" and click **"Open Anyway"**
-            6. Open the app again - it will now work
 
             ### Installation Instructions
 
             - Install the CLI: `npm install -g humanlayer@0.11.0`
             - Download daemon binary (hld-darwin-arm64)
-            - Run it in a terminal e.g. `chmod +x /Users/me/Downloads/hld-darwin-arm64 && /Users/me/Downloads/hld-darwin-arm64`
+            - Run it in a terminal e.g. `chmod +x ~/Downloads/hld-darwin-arm64 && ~/Downloads/hld-darwin-arm64`
             - Dismiss the security modal
-            - Go to System Settings > Privacy & Security and allow
-            - Run it again
-            - Download WUI (humanlayer-wui_*.dmg)
-            - Copy to Applications
-            - Open it
+            - Go to System Settings > Privacy & Security and scroll to the bottom, find the "allow" button and click it
+            - Run it again `~/Downloads/hld-darwin-arm64`
+            - Download CodeLayer (CodeLayer.dmg)
+            - Copy the app to Applications
+            - Open CodeLayer with your preferred app launcher
             - Dismiss security modal
             - Go to System Settings > Privacy & Security and allow
-            - Open WUI again
+            - Open CodeLayer again
 
             ### Requirements
             - macOS (Apple Silicon/M-series)
             - Node.js installed
 
-            ### Troubleshooting
-
-            If you see "app is damaged and can't be opened":
-            ```bash
-            xattr -cr /Applications/humanlayer-wui.app
-            ```
-
-            For more help, visit [docs.humanlayer.dev](https://docs.humanlayer.dev)
           draft: true
           prerelease: false
 
