@@ -13,12 +13,16 @@ interface UseSessionActionsProps {
   onForkCommit?: () => void
 }
 
+export const ResponseInputLocalStorageKey = 'response-input'
+
 export function useSessionActions({
   session,
   pendingForkMessage,
   onForkCommit,
 }: UseSessionActionsProps) {
-  const [responseInput, setResponseInput] = useState('')
+  const [responseInput, setResponseInput] = useState(
+    localStorage.getItem(`${ResponseInputLocalStorageKey}.${session.id}`) || '',
+  )
   const [isResponding, setIsResponding] = useState(false)
   const [forkFromSessionId, setForkFromSessionId] = useState<string | null>(null)
 
@@ -79,6 +83,7 @@ export function useSessionActions({
 
       // Reset form state only after success
       setResponseInput('')
+      localStorage.removeItem(`${ResponseInputLocalStorageKey}.${session.id}`)
     } catch (error) {
       notificationService.notifyError(error, 'Failed to continue session')
       // On error, keep the message so user can retry
