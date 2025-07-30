@@ -808,7 +808,7 @@ func TestStopAllSessions_RaceConditions(t *testing.T) {
 				return nil
 			}).AnyTimes()
 	}
-	
+
 	// Also prepare mocks for new sessions that might be added during the test
 	for i := 0; i < 5; i++ {
 		newSessionID := fmt.Sprintf("new-session-%d", i)
