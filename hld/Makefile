@@ -121,6 +121,7 @@ e2e-test-phase: build
 # Generate mocks
 mocks:
 	mockgen -source=session/types.go -destination=session/mock_session.go -package=session SessionManager
+	mockgen -source=session/claudecode_wrapper.go -destination=session/mock_claudecode.go -package=session ClaudeSession
 	mockgen -source=approval/types.go -destination=approval/mock_approval.go -package=approval Manager
 	mockgen -source=client/types.go -destination=client/mock_client.go -package=client Client,Factory
 	mockgen -source=bus/types.go -destination=bus/mock_bus.go -package=bus EventBus
