@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { daemonClient } from '@/lib/daemon'
+import { logger } from '@/lib/logging'
 import type {
   Event,
   SessionStatusChangedEventData,
@@ -26,18 +27,18 @@ export function useSessionSubscriptions(
   }, [handlers])
 
   useEffect(() => {
-    console.log('useSubscriptions effect running', {
+    logger.log('useSubscriptions effect running', {
       connected,
       isSubscribed: isSubscribedRef.current,
     })
 
     if (!connected) {
-      console.log('Not connected, skipping subscription')
+      logger.log('Not connected, skipping subscription')
       return
     }
 
     if (isSubscribedRef.current) {
-      console.log('Already subscribed, skipping')
+      logger.log('Already subscribed, skipping')
       return
     }
 
@@ -50,12 +51,12 @@ export function useSessionSubscriptions(
 
       // Double-check we're still active after the delay
       if (!isActive) {
-        console.log('Component unmounted during subscription setup')
+        logger.log('Component unmounted during subscription setup')
         return
       }
 
       try {
-        console.log('Creating new subscription...')
+        logger.log('Creating new subscription...')
         // Mark as subscribed immediately to prevent duplicate subscriptions
         isSubscribedRef.current = true
 
@@ -91,9 +92,9 @@ export function useSessionSubscriptions(
         })
 
         unsubscribe = subscription.unsubscribe
-        console.log('Subscription created successfully')
+        logger.log('Subscription created successfully')
       } catch (err) {
-        console.error('Failed to subscribe to events:', err)
+        logger.error('Failed to subscribe to events:', err)
         // Reset on error to allow retry
         isSubscribedRef.current = false
         // Handler should deal with fallback behavior
@@ -103,17 +104,17 @@ export function useSessionSubscriptions(
     subscribe()
 
     return () => {
-      console.log('Cleanup: Unsubscribing from session events')
+      logger.log('Cleanup: Unsubscribing from session events')
       isActive = false
       // Reset the ref immediately to allow re-subscription
       isSubscribedRef.current = false
 
       // Call unsubscribe if it exists
       if (unsubscribe) {
-        console.log('Calling unsubscribe function')
+        logger.log('Calling unsubscribe function')
         unsubscribe()
       } else {
-        console.log('No unsubscribe function available')
+        logger.log('No unsubscribe function available')
       }
     }
   }, [connected]) // Only re-subscribe when connection status changes

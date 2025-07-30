@@ -1,5 +1,6 @@
 import React, { Component, ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
+import { logger } from '@/lib/logging'
 
 interface ErrorBoundaryProps {
   children: ReactNode
@@ -21,7 +22,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('SessionDetail Error:', error, errorInfo)
+    logger.error('SessionDetail Error:', error, errorInfo)
   }
 
   render() {

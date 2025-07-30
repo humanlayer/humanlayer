@@ -2,6 +2,7 @@ import type { Session, SessionStatus } from '@/lib/daemon/types'
 import { ViewMode } from '@/lib/daemon/types'
 import { create } from 'zustand'
 import { daemonClient } from '@/lib/daemon'
+import { logger } from '@/lib/logging'
 
 interface StoreState {
   /* Sessions */
@@ -111,7 +112,7 @@ export const useStore = create<StoreState>((set, get) => ({
       })
       set({ sessions: response.sessions })
     } catch (error) {
-      console.error('Failed to refresh sessions:', error)
+      logger.error('Failed to refresh sessions:', error)
     }
   },
   refreshActiveSessionConversation: async (sessionId: string) => {
@@ -124,7 +125,7 @@ export const useStore = create<StoreState>((set, get) => ({
         const conversationResponse = await daemonClient.getConversation({ session_id: sessionId })
         updateActiveSessionConversation(conversationResponse)
       } catch (error) {
-        console.error('Failed to refresh active session conversation:', error)
+        logger.error('Failed to refresh active session conversation:', error)
       }
     }
   },
@@ -164,7 +165,7 @@ export const useStore = create<StoreState>((set, get) => ({
       await daemonClient.interruptSession(sessionId)
       // The session status will be updated via the subscription
     } catch (error) {
-      console.error('Failed to interrupt session:', error)
+      logger.error('Failed to interrupt session:', error)
     }
   },
   archiveSession: async (sessionId: string, archived: boolean) => {
@@ -175,7 +176,7 @@ export const useStore = create<StoreState>((set, get) => ({
       // Refresh sessions to update the list based on current view mode
       await get().refreshSessions()
     } catch (error) {
-      console.error('Failed to archive session:', error)
+      logger.error('Failed to archive session:', error)
       throw error
     }
   },
@@ -183,14 +184,14 @@ export const useStore = create<StoreState>((set, get) => ({
     try {
       const response = await daemonClient.bulkArchiveSessions({ session_ids: sessionIds, archived })
       if (!response.success) {
-        console.error('Failed to archive sessions')
+        logger.error('Failed to archive sessions')
       }
       // Refresh sessions to update the list
       await get().refreshSessions()
       // Clear selection after bulk operation
       get().clearSelection()
     } catch (error) {
-      console.error('Failed to bulk archive sessions:', error)
+      logger.error('Failed to bulk archive sessions:', error)
       throw error
     }
   },
@@ -216,7 +217,7 @@ export const useStore = create<StoreState>((set, get) => ({
       const anchorIndex = sessions.findIndex(s => s.id === anchorId)
       const targetIndex = sessions.findIndex(s => s.id === targetId)
 
-      console.log('[Store] selectRange (REPLACE):', {
+      logger.log('[Store] selectRange (REPLACE):', {
         anchorId,
         targetId,
         anchorIndex,
@@ -238,7 +239,7 @@ export const useStore = create<StoreState>((set, get) => ({
         newSelection.add(sessions[i].id)
       }
 
-      console.log('[Store] selectRange result:', {
+      logger.log('[Store] selectRange result:', {
         newSelectionSize: newSelection.size,
         newSelectionIds: Array.from(newSelection),
       })
@@ -251,7 +252,7 @@ export const useStore = create<StoreState>((set, get) => ({
       const anchorIndex = sessions.findIndex(s => s.id === anchorId)
       const targetIndex = sessions.findIndex(s => s.id === targetId)
 
-      console.log('[Store] addRangeToSelection (ADD):', {
+      logger.log('[Store] addRangeToSelection (ADD):', {
         anchorId,
         targetId,
         anchorIndex,
@@ -276,7 +277,7 @@ export const useStore = create<StoreState>((set, get) => ({
         newSelection.add(sessions[i].id)
       }
 
-      console.log('[Store] addRangeToSelection result:', {
+      logger.log('[Store] addRangeToSelection result:', {
         newSelectionSize: newSelection.size,
         newSelectionIds: Array.from(newSelection),
       })
@@ -289,7 +290,7 @@ export const useStore = create<StoreState>((set, get) => ({
       const anchorIndex = sessions.findIndex(s => s.id === anchorId)
       const targetIndex = sessions.findIndex(s => s.id === targetId)
 
-      console.log('[Store] updateCurrentRange:', {
+      logger.log('[Store] updateCurrentRange:', {
         anchorId,
         targetId,
         anchorIndex,
@@ -344,7 +345,7 @@ export const useStore = create<StoreState>((set, get) => ({
         newSelection.add(sessions[i].id)
       }
 
-      console.log('[Store] updateCurrentRange result:', {
+      logger.log('[Store] updateCurrentRange result:', {
         newSelectionSize: newSelection.size,
         newSelectionIds: Array.from(newSelection),
         currentRange: `${rangeStart}-${rangeEnd}`,
@@ -371,7 +372,7 @@ export const useStore = create<StoreState>((set, get) => ({
     // Check if we're starting within an existing selection
     const isStartingInSelection = selectedSessions.has(sessionId)
 
-    console.log(
+    logger.log(
       `[bulkSelect] sessionId: ${sessionId}, direction: ${direction}, isStartingInSelection: ${isStartingInSelection}`,
     )
 
@@ -418,7 +419,7 @@ export const useStore = create<StoreState>((set, get) => ({
 
       const anchorId = sessions[anchorIndex].id
 
-      console.log(
+      logger.log(
         `[bulkSelect] Starting in selection, found range: ${rangeStart}-${rangeEnd}, anchor at ${anchorIndex}`,
       )
 
@@ -426,11 +427,11 @@ export const useStore = create<StoreState>((set, get) => ({
       state.updateCurrentRange(anchorId, targetSession.id)
     } else if (selectedSessions.size > 0 && !isStartingInSelection) {
       // We have selections but starting fresh - add to existing
-      console.log('[bulkSelect] Adding new range to existing selections')
+      logger.log('[bulkSelect] Adding new range to existing selections')
       state.addRangeToSelection(sessionId, targetSession.id)
     } else {
       // No selections or replacing - create new range
-      console.log('[bulkSelect] Creating new selection range')
+      logger.log('[bulkSelect] Creating new selection range')
       state.selectRange(sessionId, targetSession.id)
     }
 
@@ -472,7 +473,7 @@ export const useStore = create<StoreState>((set, get) => ({
       const newMap = new Map(state.recentNavigations)
       const timestamp = Date.now()
       newMap.set(sessionId, timestamp)
-      console.log(
+      logger.log(
         `Tracking navigation from session ${sessionId} at ${new Date(timestamp).toISOString()}`,
       )
 
@@ -483,7 +484,7 @@ export const useStore = create<StoreState>((set, get) => ({
           const updatedMap = new Map(currentMap)
           updatedMap.delete(sessionId)
           set({ recentNavigations: updatedMap })
-          console.log(`Removed navigation tracking for session ${sessionId} after timeout`)
+          logger.log(`Removed navigation tracking for session ${sessionId} after timeout`)
         }
       }, 5000)
       return { recentNavigations: newMap }
@@ -493,13 +494,13 @@ export const useStore = create<StoreState>((set, get) => ({
     const now = Date.now()
 
     if (!timestamp) {
-      console.log(`No navigation tracking found for session ${sessionId}`)
+      logger.log(`No navigation tracking found for session ${sessionId}`)
       return false
     }
 
     const elapsed = now - timestamp
     const wasRecent = elapsed < withinMs
-    console.log(
+    logger.log(
       `Checking navigation for session ${sessionId}: elapsed ${elapsed}ms, within ${withinMs}ms window: ${wasRecent}`,
     )
     return wasRecent
@@ -554,7 +555,7 @@ export const useStore = create<StoreState>((set, get) => ({
       })
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to fetch session detail'
-      console.error('Failed to fetch session detail:', error)
+      logger.error('Failed to fetch session detail:', error)
 
       set({
         activeSessionDetail: {

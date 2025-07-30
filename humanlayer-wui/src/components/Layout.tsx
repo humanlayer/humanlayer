@@ -18,7 +18,9 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { MessageCircle, Bug } from 'lucide-react'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { DebugPanel } from '@/components/DebugPanel'
+import { notifyLogLocation } from '@/lib/log-notification'
 import '@/App.css'
+import { logger } from '@/lib/logging'
 
 export function Layout() {
   const [approvals, setApprovals] = useState<any[]>([])
@@ -48,18 +50,18 @@ export function Layout() {
   // Set up single SSE subscription for all events
   useSessionSubscriptions(connected, {
     onSessionStatusChanged: async data => {
-      console.log('useSessionSubscriptions.onSessionStatusChanged', data)
+      logger.log('useSessionSubscriptions.onSessionStatusChanged', data)
       const { session_id, new_status } = data
       updateSessionStatus(session_id, new_status as SessionStatus)
       await refreshActiveSessionConversation(session_id)
     },
     onNewApproval: async data => {
-      console.log('useSessionSubscriptions.onNewApproval', data)
+      logger.log('useSessionSubscriptions.onNewApproval', data)
       updateSessionStatus(data.session_id, SessionStatus.WaitingInput)
       await refreshActiveSessionConversation(data.session_id)
     },
     onApprovalResolved: async data => {
-      console.log('useSessionSubscriptions.onApprovalResolved', data)
+      logger.log('useSessionSubscriptions.onApprovalResolved', data)
       updateSessionStatus(data.session_id, SessionStatus.Running)
       await refreshActiveSessionConversation(data.session_id)
     },
@@ -84,7 +86,7 @@ export function Layout() {
         'https://github.com/humanlayer/humanlayer/issues/new?title=Feedback%20on%20CodeLayer&body=%23%23%23%20Problem%20to%20solve%20%2F%20Expected%20Behavior%0A%0A%0A%23%23%23%20Proposed%20solution',
       )
     } catch (error) {
-      console.error('Failed to open feedback URL:', error)
+      logger.error('Failed to open feedback URL:', error)
     }
   })
 
@@ -125,11 +127,18 @@ export function Layout() {
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [handleKeyDown])
 
+  // Notify about log location on startup (production only)
+  useEffect(() => {
+    if (!import.meta.env.DEV) {
+      notifyLogLocation()
+    }
+  }, [])
+
   const loadSessions = async () => {
     try {
       await useStore.getState().refreshSessions()
     } catch (error) {
-      console.error('Failed to load sessions:', error)
+      logger.error('Failed to load sessions:', error)
     }
   }
 
@@ -137,7 +146,7 @@ export function Layout() {
     try {
       // Handle new approval format directly
       if (!approval || !approval.id) {
-        console.error('Invalid approval data:', approval)
+        logger.error('Invalid approval data:', approval)
         return
       }
 

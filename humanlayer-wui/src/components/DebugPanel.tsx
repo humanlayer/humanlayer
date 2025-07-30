@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Loader2, RefreshCw, Link, Server } from 'lucide-react'
 import { useDaemonConnection } from '@/hooks/useDaemonConnection'
+import { logger } from '@/lib/logging'
 
 interface DebugPanelProps {
   open?: boolean
@@ -48,7 +49,7 @@ export function DebugPanel({ open, onOpenChange }: DebugPanelProps) {
         setExternalDaemonUrl((window as any).__HUMANLAYER_DAEMON_URL || null)
       }
     } catch (error) {
-      console.error('Failed to load daemon info:', error)
+      logger.error('Failed to load daemon info:', error)
     }
   }
 

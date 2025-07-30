@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
+import { logger } from '@/lib/logging'
 
 export interface DaemonInfo {
   port: number
@@ -46,7 +47,7 @@ class DaemonService {
     try {
       return await invoke<DaemonInfo | null>('get_daemon_info', { isDev })
     } catch (error) {
-      console.error('Failed to get daemon info:', error)
+      logger.error('Failed to get daemon info:', error)
       return null
     }
   }
@@ -55,7 +56,7 @@ class DaemonService {
     try {
       return await invoke<boolean>('is_daemon_running')
     } catch (error) {
-      console.error('Failed to check daemon status:', error)
+      logger.error('Failed to check daemon status:', error)
       return false
     }
   }
@@ -64,7 +65,7 @@ class DaemonService {
     try {
       return await invoke<DaemonConfig[]>('get_stored_configs')
     } catch (error) {
-      console.error('Failed to get stored configs:', error)
+      logger.error('Failed to get stored configs:', error)
       return []
     }
   }

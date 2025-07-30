@@ -30,6 +30,7 @@ import { useSessionNavigation } from './hooks/useSessionNavigation'
 import { useTaskGrouping } from './hooks/useTaskGrouping'
 import { useSessionClipboard } from './hooks/useSessionClipboard'
 import { useStealHotkeyScope } from '@/hooks/useStealHotkeyScope'
+import { logger } from '@/lib/logging'
 
 interface SessionDetailProps {
   session: Session
@@ -307,7 +308,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     'escape',
     ev => {
       if ((ev.target as HTMLElement)?.dataset.slot === 'dialog-close') {
-        console.warn('Ignoring onClose triggered by dialog-close in SessionDetail')
+        logger.warn('Ignoring onClose triggered by dialog-close in SessionDetail')
         return null
       }
 
@@ -355,7 +356,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
 
         // State will be updated via event subscription
       } catch (error) {
-        console.error('Failed to toggle auto-accept mode:', error)
+        logger.error('Failed to toggle auto-accept mode:', error)
       }
     },
     {

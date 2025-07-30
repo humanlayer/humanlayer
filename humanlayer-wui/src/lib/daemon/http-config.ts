@@ -1,4 +1,5 @@
 import { daemonService } from '@/services/daemon-service'
+import { logger } from '@/lib/logging'
 
 // Get daemon URL from environment or managed daemon
 export async function getDaemonUrl(): Promise<string> {
@@ -19,7 +20,7 @@ export async function getDaemonUrl(): Promise<string> {
       return `http://localhost:${daemonInfo.port}`
     }
   } catch (error) {
-    console.warn('Failed to get managed daemon info:', error)
+    logger.warn('Failed to get managed daemon info:', error)
   }
 
   // Check for port override

@@ -7,6 +7,7 @@ import {
   ConversationEvent,
 } from '@humanlayer/hld-sdk'
 import { getDaemonUrl, getDefaultHeaders } from './http-config'
+import { logger } from '@/lib/logging'
 import type {
   DaemonClient as IDaemonClient,
   LaunchSessionParams,
@@ -359,10 +360,10 @@ export class HTTPDaemonClient implements IDaemonClient {
               })
             },
             onError: error => {
-              console.error('Event subscription error:', error)
+              logger.error('Event subscription error:', error)
               // Attempt reconnection
               if (!this.connected) {
-                this.connect().catch(console.error)
+                this.connect().catch(logger.error)
               }
             },
             onDisconnect: () => {
@@ -375,7 +376,7 @@ export class HTTPDaemonClient implements IDaemonClient {
         this.subscriptions.set(subscriptionId, unsubscribe)
       })
       .catch(error => {
-        console.error('Failed to start event subscription:', error)
+        logger.error('Failed to start event subscription:', error)
       })
 
     // Return handle for unsubscribing

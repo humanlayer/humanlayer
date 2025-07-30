@@ -5,6 +5,7 @@ import { useHotkeysContext } from 'react-hotkeys-hook'
 import { SessionTableHotkeysScope } from '@/components/internal/SessionTable'
 import { exists } from '@tauri-apps/plugin-fs'
 import { homeDir } from '@tauri-apps/api/path'
+import { logger } from '@/lib/logging'
 
 interface SessionConfig {
   query: string
@@ -264,7 +265,7 @@ export function useSessionLauncherHotkeys() {
         e.preventDefault()
         setGPrefixMode(false)
         // TODO: Navigate to approvals view
-        console.log('Navigate to approvals (Phase 2)')
+        logger.log('Navigate to approvals (Phase 2)')
         return
       }
 
