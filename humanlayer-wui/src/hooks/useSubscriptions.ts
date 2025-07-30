@@ -67,7 +67,6 @@ export function useSessionSubscriptions(
             switch (event.type) {
               case 'session_status_changed': {
                 const data = event.data as SessionStatusChangedEventData
-                console.log('Session status changed:', data)
 
                 // Call handler if provided
                 handlersRef.current.onSessionStatusChanged?.(data, event.timestamp.toISOString())
@@ -75,7 +74,6 @@ export function useSessionSubscriptions(
               }
               case 'new_approval': {
                 const data = event.data as NewApprovalEventData
-                console.log('New approval:', data, event)
 
                 // Call handler if provided
                 handlersRef.current.onNewApproval?.(data)
@@ -83,7 +81,6 @@ export function useSessionSubscriptions(
               }
               case 'approval_resolved': {
                 const data = event.data as ApprovalResolvedEventData
-                console.log('Approval resolved:', data)
 
                 // Call handler if provided
                 handlersRef.current.onApprovalResolved?.(data)

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Outlet } from 'react-router-dom'
 import { useHotkeys } from 'react-hotkeys-hook'
-import { daemonClient } from '@/lib/daemon'
+import { daemonClient, SessionStatus } from '@/lib/daemon'
 import { Button } from '@/components/ui/button'
 import { ThemeSelector } from '@/components/ThemeSelector'
 import { SessionLauncher } from '@/components/SessionLauncher'
@@ -41,47 +41,25 @@ export function Layout() {
 
   // Get store actions
   const updateSessionStatus = useStore(state => state.updateSessionStatus)
-  const updateActiveSessionConversation = useStore(state => state.updateActiveSessionConversation)
-  const activeSessionDetail = useStore(state => state.activeSessionDetail)
+  const refreshActiveSessionConversation = useStore(state => state.refreshActiveSessionConversation)
 
   // Set up single SSE subscription for all events
   useSessionSubscriptions(connected, {
     onSessionStatusChanged: async data => {
+      console.log('useSessionSubscriptions.onSessionStatusChanged', data)
       const { session_id, new_status } = data
-
-      // Update session in the list
-      updateSessionStatus(session_id, new_status)
-
-      // If this is the active session detail, refresh its data
-      if (activeSessionDetail?.session.id === session_id) {
-        try {
-          const conversationResponse = await daemonClient.getConversation({ session_id })
-          updateActiveSessionConversation(conversationResponse)
-        } catch (error) {
-          console.error('Failed to refresh active session conversation:', error)
-        }
-      }
+      updateSessionStatus(session_id, new_status as SessionStatus)
+      await refreshActiveSessionConversation(session_id)
     },
     onNewApproval: async data => {
-      console.log('New approval event:', data)
-
-      // If this approval is for the active session detail, refresh conversation
-      if (activeSessionDetail?.session.id === data.session_id) {
-        try {
-          const conversationResponse = await daemonClient.getConversation({
-            session_id: data.session_id,
-          })
-          updateActiveSessionConversation(conversationResponse)
-        } catch (error) {
-          console.error('Failed to refresh active session conversation:', error)
-        }
-      }
+      console.log('useSessionSubscriptions.onNewApproval', data)
+      updateSessionStatus(data.session_id, SessionStatus.WaitingInput)
+      await refreshActiveSessionConversation(data.session_id)
     },
     onApprovalResolved: async data => {
-      console.log('Approval resolved:', data)
-
-      // Refresh conversation if needed - the approval resolution might affect the active session
-      // We can't easily determine which session the approval belonged to without looking it up
+      console.log('useSessionSubscriptions.onApprovalResolved', data)
+      updateSessionStatus(data.session_id, SessionStatus.Running)
+      await refreshActiveSessionConversation(data.session_id)
     },
   })
 

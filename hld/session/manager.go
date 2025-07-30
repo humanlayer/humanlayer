@@ -746,7 +746,7 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 						EventType:         store.EventTypeToolResult,
 						Role:              "user",
 						ToolResultForID:   content.ToolUseID,
-						ToolResultContent: content.Content,
+						ToolResultContent: content.Content.Value,
 					}
 					if err := m.store.AddConversationEvent(ctx, convEvent); err != nil {
 						return err
@@ -754,7 +754,7 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 
 					// Asynchronously capture file snapshot for Read tool results
 					if toolCall, err := m.store.GetToolCallByID(ctx, content.ToolUseID); err == nil && toolCall != nil && toolCall.ToolName == "Read" {
-						go m.captureFileSnapshot(ctx, sessionID, content.ToolUseID, toolCall.ToolInputJSON, content.Content)
+						go m.captureFileSnapshot(ctx, sessionID, content.ToolUseID, toolCall.ToolInputJSON, content.Content.Value)
 					}
 
 					// Update session activity timestamp for tool results
@@ -769,7 +769,7 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 								"claude_session_id":   claudeSessionID,
 								"event_type":          "tool_result",
 								"tool_result_for_id":  content.ToolUseID,
-								"tool_result_content": content.Content,
+								"tool_result_content": content.Content.Value,
 								"content_type":        "tool_result",
 							},
 						})

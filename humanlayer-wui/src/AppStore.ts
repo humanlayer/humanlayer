@@ -1,4 +1,4 @@
-import type { Session } from '@/lib/daemon/types'
+import type { Session, SessionStatus } from '@/lib/daemon/types'
 import { ViewMode } from '@/lib/daemon/types'
 import { create } from 'zustand'
 import { daemonClient } from '@/lib/daemon'
@@ -18,7 +18,7 @@ interface StoreState {
 
   initSessions: (sessions: Session[]) => void
   updateSession: (sessionId: string, updates: Partial<Session>) => void
-  updateSessionStatus: (sessionId: string, status: string) => void
+  updateSessionStatus: (sessionId: string, status: SessionStatus) => void
   refreshSessions: () => Promise<void>
   setFocusedSession: (session: Session | null) => void
   focusNextSession: () => void
@@ -33,6 +33,7 @@ interface StoreState {
   addRangeToSelection: (anchorId: string, targetId: string) => void
   updateCurrentRange: (anchorId: string, targetId: string) => void
   bulkSelect: (sessionId: string, direction: 'asc' | 'desc') => void
+  refreshActiveSessionConversation: (sessionId: string) => Promise<void>
 
   /* Active Session Detail Actions */
   setActiveSessionDetail: (sessionId: string, session: Session, conversation: any[]) => void
@@ -111,6 +112,20 @@ export const useStore = create<StoreState>((set, get) => ({
       set({ sessions: response.sessions })
     } catch (error) {
       console.error('Failed to refresh sessions:', error)
+    }
+  },
+  refreshActiveSessionConversation: async (sessionId: string) => {
+    // const response = await daemonClient.getConversation({ session_id: sessionId })
+    // set({ activeSessionDetail: { ...get().activeSessionDetail, conversation: response } })
+    const { activeSessionDetail, updateActiveSessionConversation } = get()
+
+    if (activeSessionDetail?.session.id === sessionId) {
+      try {
+        const conversationResponse = await daemonClient.getConversation({ session_id: sessionId })
+        updateActiveSessionConversation(conversationResponse)
+      } catch (error) {
+        console.error('Failed to refresh active session conversation:', error)
+      }
     }
   },
   setFocusedSession: (session: Session | null) => set({ focusedSession: session }),

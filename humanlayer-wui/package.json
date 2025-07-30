@@ -55,6 +55,7 @@
   "devDependencies": {
     "@eslint/js": "^9.29.0",
     "@tauri-apps/cli": "^2",
+    "@types/bun": "^1.2.19",
     "@types/dompurify": "^3.0.0",
     "@types/lodash.keyby": "^4.6.9",
     "@types/node": "^24.0.1",
