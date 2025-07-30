@@ -156,8 +156,6 @@ check-quiet:
 	@. ../hack/run_silent.sh && run_with_quiet "Format check passed" "go fmt ./..."
 	@. ../hack/run_silent.sh && run_with_quiet "Vet check passed" "go vet ./..."
 	@. ../hack/run_silent.sh && run_with_quiet "Lint check passed" "golangci-lint run ./..."
-	@. ../hack/run_silent.sh && run_silent_with_test_count "Unit tests passed" "CGO_LDFLAGS=\"-Wl,-w\" go test -json ./..." "go"
-	@. ../hack/run_silent.sh && run_silent_with_test_count "Unit tests with race detection passed" "CGO_LDFLAGS=\"-Wl,-w\" go test -json -race ./..." "go"
 
 # Run unit tests with quiet output
 test-unit-quiet:
@@ -170,7 +168,7 @@ test-unit-race-quiet:
 # Run all checks
 check:
 	@if [ -n "$$VERBOSE" ]; then \
-		$(MAKE) fmt vet lint test-unit test-unit-race; \
+		$(MAKE) fmt vet lint; \
 	else \
 		$(MAKE) check-quiet; \
 	fi
