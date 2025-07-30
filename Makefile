@@ -617,9 +617,9 @@ wui-dev:
 	echo "$(TIMESTAMP) starting dev wui in $$(pwd)" > ~/.humanlayer/logs/wui-dev-$(TIMESTAMP).log
 	cd humanlayer-wui && HUMANLAYER_DAEMON_SOCKET=~/.humanlayer/daemon-dev.sock bun run tauri dev 2>&1 | tee -a ~/.humanlayer/logs/wui-dev-$(TIMESTAMP).log
 
-# Alias for wui-dev
+# Alias for wui-dev that ensures daemon is built first
 .PHONY: codelayer-dev
-codelayer-dev: wui-dev
+codelayer-dev: daemon-dev-build wui-dev
 
 # Show current dev environment setup
 .PHONY: dev-status
