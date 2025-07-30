@@ -49,6 +49,10 @@ Claude Code → MCP Protocol → hlyr → JSON-RPC → hld → HumanLayer Cloud 
 - `make check` - Run linting and type checking
 - `make test` - Run all test suites
 
+### GitHub Workflows
+- **Trigger macOS nightly build**: `gh workflow run "Build macOS Release Artifacts" --repo humanlayer/humanlayer`
+- Workflow definitions are located in `.github/workflows/`
+
 ### Python Development
 - Uses `uv` exclusively - never use pip directly
 - Tests are co-located with source as `*_test.py` files
