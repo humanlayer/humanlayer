@@ -131,17 +131,59 @@ impl DaemonManager {
                 "HUMANLAYER_DAEMON_VERSION_OVERRIDE".to_string(),
                 branch_id.clone(),
             ));
+            // Enable debug logging for daemon in dev mode
+            env_vars.push((
+                "HUMANLAYER_DEBUG".to_string(),
+                "true".to_string(),
+            ));
+            env_vars.push((
+                "GIN_MODE".to_string(),
+                "debug".to_string(),
+            ));
         }
 
-        // Start daemon with stdout capture
+        // Start daemon with stdout capture and stderr logging
         let mut cmd = Command::new(&daemon_path);
-        cmd.envs(env_vars)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::inherit()); // Let stderr go to console for debugging
+        
+        // In dev mode, capture stderr to see what's happening
+        if is_dev {
+            cmd.envs(env_vars)
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped());
+        } else {
+            cmd.envs(env_vars)
+                .stdout(Stdio::piped())
+                .stderr(Stdio::inherit());
+        }
 
         let mut child = cmd
             .spawn()
             .map_err(|e| format!("Failed to start daemon: {e}"))?;
+        
+        // Get the PID before we do anything else
+        let pid = child.id();
+        tracing::info!("Daemon spawned with PID: {}", pid);
+        
+        // If in dev mode, spawn a task to read stderr
+        if is_dev {
+            if let Some(stderr) = child.stderr.take() {
+                let branch_id_clone = branch_id.clone();
+                tokio::spawn(async move {
+                    let reader = BufReader::new(stderr);
+                    for line in reader.lines() {
+                        match line {
+                            Ok(line) => {
+                                tracing::error!("[Daemon stderr] {}: {}", branch_id_clone, line);
+                            }
+                            Err(e) => {
+                                tracing::error!("Error reading daemon stderr: {}", e);
+                                break;
+                            }
+                        }
+                    }
+                });
+            }
+        }
 
         // Parse stdout to get the actual port
         let stdout = child
@@ -149,21 +191,52 @@ impl DaemonManager {
             .take()
             .ok_or("Failed to capture daemon stdout")?;
 
-        let reader = BufReader::new(stdout);
+        let mut reader = BufReader::new(stdout);
         let mut actual_port = None;
+        let mut first_line = String::new();
 
-        for line in reader.lines().map_while(Result::ok) {
-            if line.starts_with("HTTP_PORT=") {
-                actual_port = line.replace("HTTP_PORT=", "").parse::<u16>().ok();
-                break;
-            }
+        // Read the first line synchronously to get the port
+        reader
+            .read_line(&mut first_line)
+            .map_err(|e| format!("Failed to read daemon stdout: {}", e))?;
+        
+        if first_line.starts_with("HTTP_PORT=") {
+            actual_port = first_line.trim().replace("HTTP_PORT=", "").parse::<u16>().ok();
         }
 
         let port = actual_port.ok_or("Daemon failed to report port")?;
+        tracing::info!("Got port {} from daemon stdout", port);
+
+        // Now spawn a task to keep reading stdout to prevent SIGPIPE
+        let branch_id_for_stdout = branch_id.clone();
+        tokio::spawn(async move {
+            // Continue reading the rest of stdout
+            for line in reader.lines() {
+                match line {
+                    Ok(line) => {
+                        tracing::trace!("[Daemon stdout] {}: {}", branch_id_for_stdout, line);
+                    }
+                    Err(e) => {
+                        tracing::debug!("Daemon stdout closed for {}: {}", branch_id_for_stdout, e);
+                        break;
+                    }
+                }
+            }
+            tracing::debug!("Stdout reader task finished for {}", branch_id_for_stdout);
+        });
+        
+        // Check if process is still alive after reading port
+        match child.try_wait() {
+            Ok(None) => tracing::info!("Daemon process still running after port read"),
+            Ok(Some(status)) => {
+                return Err(format!("Daemon process exited immediately after starting! Status: {:?}", status));
+            }
+            Err(e) => tracing::error!("Error checking daemon status: {}", e),
+        }
 
         let daemon_info = DaemonInfo {
             port,
-            pid: child.id(),
+            pid,
             database_path: database_path.to_str().unwrap().to_string(),
             socket_path: socket_path.to_str().unwrap().to_string(),
             branch_id: branch_id.clone(),
@@ -178,7 +251,50 @@ impl DaemonManager {
         *self.info.lock().unwrap() = Some(daemon_info.clone());
 
         // Wait for daemon to be ready
+        tracing::info!("Waiting for daemon to be ready on port {}", port);
         wait_for_daemon(port).await?;
+        tracing::info!("Daemon is ready and responding to health checks");
+
+        // Spawn a task to monitor the daemon process
+        let process_arc = self.process.clone();
+        let branch_id_clone = branch_id.clone();
+        let port_for_monitor = port;
+        tokio::spawn(async move {
+            let mut last_check = std::time::Instant::now();
+            loop {
+                tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+                
+                let mut process_guard = process_arc.lock().unwrap();
+                if let Some(child) = process_guard.as_mut() {
+                    match child.try_wait() {
+                        Ok(Some(status)) => {
+                            // Process has exited
+                            tracing::error!(
+                                "Daemon process exited unexpectedly! Branch: {}, Port: {}, Exit status: {:?}, Time since last check: {:?}",
+                                branch_id_clone,
+                                port_for_monitor,
+                                status,
+                                last_check.elapsed()
+                            );
+                            // Clear the process
+                            *process_guard = None;
+                            break;
+                        }
+                        Ok(None) => {
+                            // Still running
+                            last_check = std::time::Instant::now();
+                        }
+                        Err(e) => {
+                            tracing::error!("Error checking daemon process status: {}", e);
+                            break;
+                        }
+                    }
+                } else {
+                    // No process to monitor
+                    break;
+                }
+            }
+        });
 
         Ok(daemon_info)
     }
