@@ -41,6 +41,9 @@ jobs:
         with:
           bun-version: latest
 
+      - name: Install mockgen
+        run: go install go.uber.org/mock/mockgen@latest
+
       - name: Run repository setup
         run: make setup
 
