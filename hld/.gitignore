@@ -28,4 +28,4 @@ bus/mock_bus.go
 store/mock_store.go
 
 # git ignore the built binary for specific platforms.
-./hld-darwin-arm64
+hld-darwin-arm64
