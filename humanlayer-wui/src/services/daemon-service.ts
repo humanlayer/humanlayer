@@ -42,9 +42,9 @@ class DaemonService {
     }
   }
 
-  async getDaemonInfo(): Promise<DaemonInfo | null> {
+  async getDaemonInfo(isDev: boolean = import.meta.env.DEV): Promise<DaemonInfo | null> {
     try {
-      return await invoke<DaemonInfo | null>('get_daemon_info')
+      return await invoke<DaemonInfo | null>('get_daemon_info', { isDev })
     } catch (error) {
       console.error('Failed to get daemon info:', error)
       return null

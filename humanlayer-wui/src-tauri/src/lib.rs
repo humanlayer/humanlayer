@@ -1,10 +1,10 @@
 mod daemon;
 
-use daemon::{DaemonManager, DaemonInfo};
-use tauri::{Manager, State};
-use tauri_plugin_store::StoreExt;
+use daemon::{DaemonInfo, DaemonManager};
 use std::env;
 use std::path::PathBuf;
+use tauri::{Manager, State};
+use tauri_plugin_store::StoreExt;
 
 // Helper to get store path based on dev mode and branch
 fn get_store_path(is_dev: bool, branch_id: Option<&str>) -> PathBuf {
@@ -30,15 +30,19 @@ async fn start_daemon(
     is_dev: bool,
     branch_override: Option<String>,
 ) -> Result<DaemonInfo, String> {
-    let info = daemon_manager.start_daemon(&app_handle, is_dev, branch_override)?;
+    let info = daemon_manager
+        .start_daemon(&app_handle, is_dev, branch_override)
+        .await?;
 
     // Save to store using branch-specific path in dev mode
     let store_path = get_store_path(is_dev, Some(&info.branch_id));
-    let store = app_handle.store(&store_path)
+    let store = app_handle
+        .store(&store_path)
         .map_err(|e| format!("Failed to access store: {e}"))?;
 
     store.set("current_daemon", serde_json::to_value(&info).unwrap());
-    store.save()
+    store
+        .save()
         .map_err(|e| format!("Failed to save store: {e}"))?;
 
     Ok(info)
@@ -58,15 +62,22 @@ async fn stop_daemon(
         daemon_manager.stop_daemon()?;
 
         // Update store to mark as not running
-        let store = app_handle.store(&store_path)
+        let store = app_handle
+            .store(&store_path)
             .map_err(|e| format!("Failed to access store: {e}"))?;
 
         // Get the stored daemon info and update is_running
-        if let Some(mut stored_info) = store.get("current_daemon")
-            .and_then(|v| serde_json::from_value::<DaemonInfo>(v).ok()) {
+        if let Some(mut stored_info) = store
+            .get("current_daemon")
+            .and_then(|v| serde_json::from_value::<DaemonInfo>(v).ok())
+        {
             stored_info.is_running = false;
-            store.set("current_daemon", serde_json::to_value(&stored_info).unwrap());
-            store.save()
+            store.set(
+                "current_daemon",
+                serde_json::to_value(&stored_info).unwrap(),
+            );
+            store
+                .save()
                 .map_err(|e| format!("Failed to save store: {e}"))?;
         }
     } else {
@@ -89,10 +100,12 @@ async fn get_daemon_info(
 
     // Otherwise check store for last known daemon
     let store_path = get_store_path(is_dev, None);
-    let store = app_handle.store(&store_path)
+    let store = app_handle
+        .store(&store_path)
         .map_err(|e| format!("Failed to access store: {e}"))?;
 
-    let stored_info = store.get("current_daemon")
+    let stored_info = store
+        .get("current_daemon")
         .and_then(|v| serde_json::from_value::<DaemonInfo>(v).ok());
 
     Ok(stored_info)
@@ -102,7 +115,6 @@ async fn get_daemon_info(
 async fn is_daemon_running(daemon_manager: State<'_, DaemonManager>) -> Result<bool, String> {
     Ok(daemon_manager.is_running())
 }
-
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -135,7 +147,10 @@ pub fn run() {
                     tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
 
                     // Try to start daemon, but don't show errors in UI
-                    match daemon_manager.start_daemon(&app_handle_clone, is_dev, None) {
+                    match daemon_manager
+                        .start_daemon(&app_handle_clone, is_dev, None)
+                        .await
+                    {
                         Ok(info) => {
                             tracing::info!("Daemon started automatically on port {}", info.port);
                         }
@@ -146,10 +161,16 @@ pub fn run() {
                             // Common edge cases that shouldn't interrupt the user
                             if e.contains("port") || e.contains("already in use") {
                                 tracing::info!("Port conflict detected, user can connect manually");
-                            } else if e.contains("binary not found") || e.contains("daemon not found") {
-                                tracing::warn!("Daemon binary missing, this is expected in some dev scenarios");
+                            } else if e.contains("binary not found")
+                                || e.contains("daemon not found")
+                            {
+                                tracing::warn!(
+                                    "Daemon binary missing, this is expected in some dev scenarios"
+                                );
                             } else if e.contains("permission") {
-                                tracing::error!("Permission issue starting daemon, user intervention required");
+                                tracing::error!(
+                                    "Permission issue starting daemon, user intervention required"
+                                );
                             }
                         }
                     }
@@ -171,10 +192,15 @@ pub fn run() {
 
                     if let Ok(store) = window.app_handle().store(&store_path) {
                         // Update store to mark daemon as not running
-                        if let Some(mut stored_info) = store.get("current_daemon")
-                            .and_then(|v| serde_json::from_value::<DaemonInfo>(v).ok()) {
+                        if let Some(mut stored_info) = store
+                            .get("current_daemon")
+                            .and_then(|v| serde_json::from_value::<DaemonInfo>(v).ok())
+                        {
                             stored_info.is_running = false;
-                            store.set("current_daemon", serde_json::to_value(&stored_info).unwrap());
+                            store.set(
+                                "current_daemon",
+                                serde_json::to_value(&stored_info).unwrap(),
+                            );
                             let _ = store.save();
                         }
                     }

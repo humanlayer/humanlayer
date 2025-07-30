@@ -1,11 +1,11 @@
-use std::process::{Child, Command, Stdio};
-use std::sync::{Arc, Mutex};
+use serde::{Deserialize, Serialize};
 use std::env;
-use std::path::PathBuf;
 use std::fs;
 use std::io::{BufRead, BufReader};
+use std::path::PathBuf;
+use std::process::{Child, Command, Stdio};
+use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Manager};
-use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DaemonInfo {
@@ -31,18 +31,19 @@ impl DaemonManager {
         }
     }
 
-    pub fn start_daemon(
+    pub async fn start_daemon(
         &self,
         app_handle: &AppHandle,
         is_dev: bool,
-        branch_override: Option<String>
+        branch_override: Option<String>,
     ) -> Result<DaemonInfo, String> {
-        let mut process = self.process.lock().unwrap();
-
         // Check if already running
-        if process.is_some() {
-            if let Some(info) = self.info.lock().unwrap().as_ref() {
-                return Ok(info.clone());
+        {
+            let process = self.process.lock().unwrap();
+            if process.is_some() {
+                if let Some(info) = self.info.lock().unwrap().as_ref() {
+                    return Ok(info.clone());
+                }
             }
         }
 
@@ -50,7 +51,7 @@ impl DaemonManager {
         if let Ok(port_str) = env::var("HUMANLAYER_DAEMON_HTTP_PORT") {
             if let Ok(port) = port_str.parse::<u16>() {
                 // Try to connect to existing daemon
-                if check_daemon_health(port).is_ok() {
+                if check_daemon_health(port).await.is_ok() {
                     let info = DaemonInfo {
                         port,
                         pid: 0, // Unknown PID for external daemon
@@ -67,7 +68,8 @@ impl DaemonManager {
 
         // Determine branch identifier
         let branch_id = if is_dev {
-            branch_override.or_else(get_git_branch)
+            branch_override
+                .or_else(get_git_branch)
                 .unwrap_or_else(|| "dev".to_string())
         } else {
             "production".to_string()
@@ -77,8 +79,7 @@ impl DaemonManager {
         let branch_id = extract_ticket_id(&branch_id).unwrap_or(branch_id);
 
         // Set up paths
-        let home_dir = dirs::home_dir()
-            .ok_or("Failed to get home directory")?;
+        let home_dir = dirs::home_dir().ok_or("Failed to get home directory")?;
         let humanlayer_dir = home_dir.join(".humanlayer");
         fs::create_dir_all(&humanlayer_dir)
             .map_err(|e| format!("Failed to create .humanlayer directory: {e}"))?;
@@ -111,26 +112,41 @@ impl DaemonManager {
 
         // Build environment with port 0 for dynamic allocation
         let mut env_vars = env::vars().collect::<Vec<_>>();
-        env_vars.push(("HUMANLAYER_DATABASE_PATH".to_string(), database_path.to_str().unwrap().to_string()));
-        env_vars.push(("HUMANLAYER_DAEMON_SOCKET".to_string(), socket_path.to_str().unwrap().to_string()));
+        env_vars.push((
+            "HUMANLAYER_DATABASE_PATH".to_string(),
+            database_path.to_str().unwrap().to_string(),
+        ));
+        env_vars.push((
+            "HUMANLAYER_DAEMON_SOCKET".to_string(),
+            socket_path.to_str().unwrap().to_string(),
+        ));
         env_vars.push(("HUMANLAYER_DAEMON_HTTP_PORT".to_string(), "0".to_string()));
-        env_vars.push(("HUMANLAYER_DAEMON_HTTP_HOST".to_string(), "127.0.0.1".to_string()));
+        env_vars.push((
+            "HUMANLAYER_DAEMON_HTTP_HOST".to_string(),
+            "localhost".to_string(),
+        ));
 
         if is_dev {
-            env_vars.push(("HUMANLAYER_DAEMON_VERSION_OVERRIDE".to_string(), branch_id.clone()));
+            env_vars.push((
+                "HUMANLAYER_DAEMON_VERSION_OVERRIDE".to_string(),
+                branch_id.clone(),
+            ));
         }
 
         // Start daemon with stdout capture
         let mut cmd = Command::new(&daemon_path);
         cmd.envs(env_vars)
-           .stdout(Stdio::piped())
-           .stderr(Stdio::inherit()); // Let stderr go to console for debugging
+            .stdout(Stdio::piped())
+            .stderr(Stdio::inherit()); // Let stderr go to console for debugging
 
-        let mut child = cmd.spawn()
+        let mut child = cmd
+            .spawn()
             .map_err(|e| format!("Failed to start daemon: {e}"))?;
 
         // Parse stdout to get the actual port
-        let stdout = child.stdout.take()
+        let stdout = child
+            .stdout
+            .take()
             .ok_or("Failed to capture daemon stdout")?;
 
         let reader = BufReader::new(stdout);
@@ -138,9 +154,7 @@ impl DaemonManager {
 
         for line in reader.lines().map_while(Result::ok) {
             if line.starts_with("HTTP_PORT=") {
-                actual_port = line.replace("HTTP_PORT=", "")
-                    .parse::<u16>()
-                    .ok();
+                actual_port = line.replace("HTTP_PORT=", "").parse::<u16>().ok();
                 break;
             }
         }
@@ -156,11 +170,15 @@ impl DaemonManager {
             is_running: true,
         };
 
-        *process = Some(child);
+        // Store the process and info before awaiting
+        {
+            let mut process = self.process.lock().unwrap();
+            *process = Some(child);
+        }
         *self.info.lock().unwrap() = Some(daemon_info.clone());
 
         // Wait for daemon to be ready
-        wait_for_daemon(port)?;
+        wait_for_daemon(port).await?;
 
         Ok(daemon_info)
     }
@@ -169,7 +187,8 @@ impl DaemonManager {
         let mut process = self.process.lock().unwrap();
 
         if let Some(mut child) = process.take() {
-            child.kill()
+            child
+                .kill()
                 .map_err(|e| format!("Failed to stop daemon: {e}"))?;
 
             // Wait for process to exit
@@ -193,8 +212,8 @@ impl DaemonManager {
         if let Some(child) = process.as_mut() {
             // Check if process is still alive
             match child.try_wait() {
-                Ok(None) => true,  // Still running
-                _ => false,        // Exited or error
+                Ok(None) => true, // Still running
+                _ => false,       // Exited or error
             }
         } else {
             false
@@ -205,21 +224,37 @@ impl DaemonManager {
 fn get_daemon_path(app_handle: &AppHandle, is_dev: bool) -> Result<PathBuf, String> {
     if is_dev {
         // In dev mode, look for hld-dev in the project
-        let dev_path = env::current_dir()
-            .map_err(|e| format!("Failed to get current directory: {e}"))?
-            .parent()  // Go up from humanlayer-wui to humanlayer
-            .ok_or("Failed to get parent directory")?
-            .join("hld")
-            .join("hld-dev");
+        let current =
+            env::current_dir().map_err(|e| format!("Failed to get current directory: {e}"))?;
+
+        // Handle both running from src-tauri and from humanlayer-wui
+        let dev_path = if current.ends_with("src-tauri") {
+            current
+                .parent() // humanlayer-wui
+                .and_then(|p| p.parent()) // humanlayer root
+                .ok_or("Failed to get parent directory")?
+                .join("hld")
+                .join("hld-dev")
+        } else {
+            current
+                .parent() // Go up from humanlayer-wui to humanlayer
+                .ok_or("Failed to get parent directory")?
+                .join("hld")
+                .join("hld-dev")
+        };
 
         if dev_path.exists() {
             Ok(dev_path)
         } else {
-            Err("Development daemon not found. Run 'make daemon-dev-build' first.".to_string())
+            Err(format!(
+                "Development daemon not found at {:?}. Run 'make daemon-dev-build' first.",
+                dev_path
+            ))
         }
     } else {
         // In production, use bundled binary
-        let resource_dir = app_handle.path()
+        let resource_dir = app_handle
+            .path()
             .resource_dir()
             .map_err(|e| format!("Failed to get resource directory: {e}"))?;
 
@@ -234,7 +269,8 @@ fn get_git_branch() -> Option<String> {
         .ok()
         .and_then(|output| {
             if output.status.success() {
-                String::from_utf8(output.stdout).ok()
+                String::from_utf8(output.stdout)
+                    .ok()
                     .map(|s| s.trim().to_string())
             } else {
                 None
@@ -250,24 +286,29 @@ fn extract_ticket_id(branch: &str) -> Option<String> {
         .map(|m| m.as_str().to_string())
 }
 
-fn check_daemon_health(port: u16) -> Result<(), String> {
-    match reqwest::blocking::get(format!("http://127.0.0.1:{port}/api/v1/health")) {
+async fn check_daemon_health(port: u16) -> Result<(), String> {
+    let client = reqwest::Client::new();
+    match client
+        .get(format!("http://localhost:{port}/api/v1/health"))
+        .send()
+        .await
+    {
         Ok(response) if response.status().is_success() => Ok(()),
         Ok(_) => Err("Daemon health check failed".to_string()),
         Err(e) => Err(format!("Failed to connect to daemon: {e}")),
     }
 }
 
-fn wait_for_daemon(port: u16) -> Result<(), String> {
+async fn wait_for_daemon(port: u16) -> Result<(), String> {
     let start = std::time::Instant::now();
     let timeout = std::time::Duration::from_secs(10);
 
     while start.elapsed() < timeout {
-        if check_daemon_health(port).is_ok() {
+        if check_daemon_health(port).await.is_ok() {
             return Ok(());
         }
 
-        std::thread::sleep(std::time::Duration::from_millis(500));
+        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
     }
 
     Err("Daemon failed to start within 10 seconds".to_string())

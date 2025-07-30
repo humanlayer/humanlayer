@@ -2,7 +2,12 @@ import { daemonService } from '@/services/daemon-service'
 
 // Get daemon URL from environment or managed daemon
 export async function getDaemonUrl(): Promise<string> {
-  // Check for explicit URL first
+  // Check for custom URL from debug panel first
+  if ((window as any).__HUMANLAYER_DAEMON_URL) {
+    return (window as any).__HUMANLAYER_DAEMON_URL
+  }
+
+  // Check for explicit URL from environment
   if (import.meta.env.VITE_HUMANLAYER_DAEMON_URL) {
     return import.meta.env.VITE_HUMANLAYER_DAEMON_URL
   }
@@ -11,7 +16,7 @@ export async function getDaemonUrl(): Promise<string> {
   try {
     const daemonInfo = await daemonService.getDaemonInfo()
     if (daemonInfo && daemonInfo.port) {
-      return `http://127.0.0.1:${daemonInfo.port}`
+      return `http://localhost:${daemonInfo.port}`
     }
   } catch (error) {
     console.warn('Failed to get managed daemon info:', error)
