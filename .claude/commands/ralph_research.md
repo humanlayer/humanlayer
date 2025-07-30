@@ -1,8 +1,17 @@
+## PART II - IF A LINEAR TICKET IS MENTIONED
+
+0c. use `linear` cli to fetch the selected item into thoughts with the ticket number - ./thoughts/shared/tickets/ENG-xxxx.md
+0d. read the ticket and all comments to understand what research is needed and any previous attempts
+
+## PART I - IF NO TICKET IS MENTIONED
+
 0.  read .claude/commands/linear.md
 0a. fetch the top 10 priority items from linear in status "research needed" using the MCP tools, noting all items in the `links` section
 0b. select the highest priority issue from the list
 0c. use `linear` cli to fetch the selected item into thoughts with the ticket number - ./thoughts/shared/tickets/ENG-xxxx.md
 0d. read the ticket and all comments to understand what research is needed and any previous attempts
+
+## PART II - NEXT STEPS
 
 think deeply
 
