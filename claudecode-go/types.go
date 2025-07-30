@@ -1,7 +1,10 @@
 package claudecode
 
 import (
+	"encoding/json"
+	"fmt"
 	"os/exec"
+	"strings"
 	"sync"
 	"time"
 )
@@ -103,6 +106,45 @@ type Message struct {
 	Usage   *Usage    `json:"usage,omitempty"`
 }
 
+// ContentField handles both string and array content formats
+type ContentField struct {
+	Value string
+}
+
+// UnmarshalJSON implements custom unmarshaling to handle both string and array formats
+func (c *ContentField) UnmarshalJSON(data []byte) error {
+	// First try to unmarshal as string
+	var str string
+	if err := json.Unmarshal(data, &str); err == nil {
+		c.Value = str
+		return nil
+	}
+	
+	// If that fails, try array format
+	var arr []struct {
+		Type string `json:"type"`
+		Text string `json:"text"`
+	}
+	if err := json.Unmarshal(data, &arr); err == nil {
+		// Concatenate all text elements
+		var texts []string
+		for _, item := range arr {
+			if item.Type == "text" && item.Text != "" {
+				texts = append(texts, item.Text)
+			}
+		}
+		c.Value = strings.Join(texts, "\n")
+		return nil
+	}
+	
+	return fmt.Errorf("content field is neither string nor array format")
+}
+
+// MarshalJSON implements custom marshaling to always output as string
+func (c ContentField) MarshalJSON() ([]byte, error) {
+	return json.Marshal(c.Value)
+}
+
 // Content can be text or tool use
 type Content struct {
 	Type      string                 `json:"type"`
@@ -112,7 +154,7 @@ type Content struct {
 	Name      string                 `json:"name,omitempty"`
 	Input     map[string]interface{} `json:"input,omitempty"`
 	ToolUseID string                 `json:"tool_use_id,omitempty"`
-	Content   string                 `json:"content,omitempty"`
+	Content   ContentField           `json:"content,omitempty"`
 }
 
 // ServerToolUse tracks server-side tool usage

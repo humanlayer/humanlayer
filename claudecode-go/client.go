@@ -324,6 +324,7 @@ func (s *Session) parseStreamingJSON(stdout, stderr io.Reader) {
 		var event StreamEvent
 		if err := json.Unmarshal([]byte(line), &event); err != nil {
 			// Log parse error but continue
+			log.Printf("WARNING: Failed to unmarshal event, dropping it: %v\nRaw data: %s", err, line)
 			continue
 		}
 
