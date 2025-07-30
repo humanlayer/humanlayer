@@ -1,4 +1,4 @@
-.PHONY: build test test-unit test-integration test-race clean mocks generate check fmt vet lint
+.PHONY: build test test-unit test-unit-race test-unit-quiet test-unit-race-quiet test-integration test-integration-race test-integration-quiet test-integration-race-quiet test-quiet clean mocks generate check fmt vet lint
 
 # Build the daemon binary
 build:
@@ -11,7 +11,7 @@ build:
 # Run all tests
 test:
 	@if [ -n "$$VERBOSE" ]; then \
-		$(MAKE) test-unit test-integration; \
+		$(MAKE) test-unit test-unit-race test-integration test-integration-race; \
 	else \
 		$(MAKE) test-quiet; \
 	fi
@@ -20,7 +20,9 @@ test:
 test-quiet:
 	@. ../hack/run_silent.sh && print_header "hld" "Daemon tests"
 	@$(MAKE) test-unit-quiet
+	@-$(MAKE) test-unit-race-quiet
 	@$(MAKE) test-integration-quiet
+	@-$(MAKE) test-integration-race-quiet
 
 # Base test-unit target overridden below
 
@@ -36,9 +38,25 @@ test-integration: build
 test-integration-quiet: build
 	@. ../hack/run_silent.sh && run_silent_with_test_count "Integration tests passed" "CGO_LDFLAGS=\"-Wl,-w\" go test -json -tags=integration -run Integration ./daemon/..." "go"
 
-# Run tests with race detection
-test-race:
-	CGO_LDFLAGS="-Wl,-w" go test -race ./...
+# Run integration tests with race detection
+test-integration-race:
+	@if [ -n "$$VERBOSE" ]; then \
+		CGO_LDFLAGS="-Wl,-w" go test -v -race -tags=integration -run Integration ./daemon/...; \
+	else \
+		$(MAKE) test-integration-race-quiet; \
+	fi
+
+# Run integration tests with race detection and quiet output
+test-integration-race-quiet: build
+	@. ../hack/run_silent.sh && run_silent_with_test_count "Integration tests with race detection passed" "CGO_LDFLAGS=\"-Wl,-w\" go test -json -race -tags=integration -run Integration ./daemon/..." "go"
+
+# Run unit tests with race detection
+test-unit-race:
+	@if [ -n "$$VERBOSE" ]; then \
+		CGO_LDFLAGS="-Wl,-w" go test -v -race ./...; \
+	else \
+		$(MAKE) test-unit-race-quiet; \
+	fi
 
 # Clean build artifacts
 clean:
@@ -139,16 +157,20 @@ check-quiet:
 	@. ../hack/run_silent.sh && run_with_quiet "Vet check passed" "go vet ./..."
 	@. ../hack/run_silent.sh && run_with_quiet "Lint check passed" "golangci-lint run ./..."
 	@. ../hack/run_silent.sh && run_silent_with_test_count "Unit tests passed" "CGO_LDFLAGS=\"-Wl,-w\" go test -json ./..." "go"
+	@-. ../hack/run_silent.sh && run_silent_with_test_count "Unit tests with race detection passed" "CGO_LDFLAGS=\"-Wl,-w\" go test -json -race ./..." "go"
 
 # Run unit tests with quiet output
 test-unit-quiet:
-	@. ../hack/run_silent.sh && print_header "hld" "Daemon tests"
 	@. ../hack/run_silent.sh && run_silent_with_test_count "Unit tests passed" "CGO_LDFLAGS=\"-Wl,-w\" go test -json ./..." "go"
+
+# Run unit tests with race detection and quiet output
+test-unit-race-quiet:
+	@. ../hack/run_silent.sh && run_silent_with_test_count "Unit tests with race detection passed" "CGO_LDFLAGS=\"-Wl,-w\" go test -json -race ./..." "go"
 
 # Run all checks
 check:
 	@if [ -n "$$VERBOSE" ]; then \
-		$(MAKE) fmt vet lint test-unit; \
+		$(MAKE) fmt vet lint test-unit test-unit-race; \
 	else \
 		$(MAKE) check-quiet; \
 	fi
@@ -156,7 +178,7 @@ check:
 # Override test-unit to support quiet mode
 test-unit:
 	@if [ -n "$$VERBOSE" ]; then \
-		CGO_LDFLAGS="-Wl,-w" go test -v -race ./...; \
+		CGO_LDFLAGS="-Wl,-w" go test -v ./...; \
 	else \
 		$(MAKE) test-unit-quiet; \
 	fi
