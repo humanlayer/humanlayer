@@ -144,7 +144,7 @@ impl DaemonManager {
 
         // Start daemon with stdout capture and stderr logging
         let mut cmd = Command::new(&daemon_path);
-        
+
         // In dev mode, capture stderr to see what's happening
         if is_dev {
             cmd.envs(env_vars)
@@ -159,11 +159,11 @@ impl DaemonManager {
         let mut child = cmd
             .spawn()
             .map_err(|e| format!("Failed to start daemon: {e}"))?;
-        
+
         // Get the PID before we do anything else
         let pid = child.id();
         tracing::info!("Daemon spawned with PID: {}", pid);
-        
+
         // If in dev mode, spawn a task to read stderr
         if is_dev {
             if let Some(stderr) = child.stderr.take() {
@@ -173,7 +173,17 @@ impl DaemonManager {
                     for line in reader.lines() {
                         match line {
                             Ok(line) => {
-                                tracing::error!("[Daemon stderr] {}: {}", branch_id_clone, line);
+                                // Parse slog format to extract level
+                                let level = extract_log_level(&line);
+                                let cleaned_line = remove_timestamp(&line);
+
+                                match level {
+                                    LogLevel::Error => tracing::error!("[Daemon] {}: {}", branch_id_clone, cleaned_line),
+                                    LogLevel::Warn => tracing::warn!("[Daemon] {}: {}", branch_id_clone, cleaned_line),
+                                    LogLevel::Info => tracing::info!("[Daemon] {}: {}", branch_id_clone, cleaned_line),
+                                    LogLevel::Debug => tracing::debug!("[Daemon] {}: {}", branch_id_clone, cleaned_line),
+                                    LogLevel::Trace => tracing::trace!("[Daemon] {}: {}", branch_id_clone, cleaned_line),
+                                }
                             }
                             Err(e) => {
                                 tracing::error!("Error reading daemon stderr: {}", e);
@@ -198,8 +208,8 @@ impl DaemonManager {
         // Read the first line synchronously to get the port
         reader
             .read_line(&mut first_line)
-            .map_err(|e| format!("Failed to read daemon stdout: {}", e))?;
-        
+            .map_err(|e| format!("Failed to read daemon stdout: {e}"))?;
+
         if first_line.starts_with("HTTP_PORT=") {
             actual_port = first_line.trim().replace("HTTP_PORT=", "").parse::<u16>().ok();
         }
@@ -224,12 +234,12 @@ impl DaemonManager {
             }
             tracing::debug!("Stdout reader task finished for {}", branch_id_for_stdout);
         });
-        
+
         // Check if process is still alive after reading port
         match child.try_wait() {
             Ok(None) => tracing::info!("Daemon process still running after port read"),
             Ok(Some(status)) => {
-                return Err(format!("Daemon process exited immediately after starting! Status: {:?}", status));
+                return Err(format!("Daemon process exited immediately after starting! Status: {status:?}"));
             }
             Err(e) => tracing::error!("Error checking daemon status: {}", e),
         }
@@ -263,7 +273,7 @@ impl DaemonManager {
             let mut last_check = std::time::Instant::now();
             loop {
                 tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-                
+
                 let mut process_guard = process_arc.lock().unwrap();
                 if let Some(child) = process_guard.as_mut() {
                     match child.try_wait() {
@@ -363,8 +373,7 @@ fn get_daemon_path(app_handle: &AppHandle, is_dev: bool) -> Result<PathBuf, Stri
             Ok(dev_path)
         } else {
             Err(format!(
-                "Development daemon not found at {:?}. Run 'make daemon-dev-build' first.",
-                dev_path
+                "Development daemon not found at {dev_path:?}. Run 'make daemon-dev-build' first."
             ))
         }
     } else {
@@ -428,4 +437,52 @@ async fn wait_for_daemon(port: u16) -> Result<(), String> {
     }
 
     Err("Daemon failed to start within 10 seconds".to_string())
+}
+
+#[derive(Debug)]
+enum LogLevel {
+    Error,
+    Warn,
+    Info,
+    Debug,
+    Trace,
+}
+
+fn extract_log_level(line: &str) -> LogLevel {
+    // slog format includes level like: "2024-01-30T10:15:30Z INFO message"
+    // or sometimes: "INFO[0001] message" for other loggers
+
+    if line.contains(" ERROR ") || line.contains("ERROR[") {
+        LogLevel::Error
+    } else if line.contains(" WARN ") || line.contains("WARN[") {
+        LogLevel::Warn
+    } else if line.contains(" INFO ") || line.contains("INFO[") {
+        LogLevel::Info
+    } else if line.contains(" DEBUG ") || line.contains("DEBUG[") {
+        LogLevel::Debug
+    } else if line.contains(" TRACE ") || line.contains("TRACE[") {
+        LogLevel::Trace
+    } else {
+        // Default to info for unparseable lines
+        LogLevel::Info
+    }
+}
+
+fn remove_timestamp(line: &str) -> &str {
+    // Remove slog timestamp to avoid double timestamps
+    // Format: "2024-01-30T10:15:30Z LEVEL message"
+    if let Some(idx) = line.find(" INFO ") {
+        &line[idx + 6..]
+    } else if let Some(idx) = line.find(" ERROR ") {
+        &line[idx + 7..]
+    } else if let Some(idx) = line.find(" WARN ") {
+        &line[idx + 6..]
+    } else if let Some(idx) = line.find(" DEBUG ") {
+        &line[idx + 7..]
+    } else if let Some(idx) = line.find(" TRACE ") {
+        &line[idx + 7..]
+    } else {
+        // Return original if no timestamp found
+        line
+    }
 }
