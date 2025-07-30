@@ -1,6 +1,6 @@
 ---
 name: thoughts-locator
-description: Discovers relevant documents in thoughts/ directory. Returns categorized lists of thought documents organized by type (tickets, research, plans, etc.) without deep content analysis. Handles searchable/ directory path transformations automatically. <example>Context: User needs to find past research on a topic.user: "Find any thoughts about rate limiting implementation"assistant: "I'll use the thoughts-locator agent to find relevant thought documents"<commentary>Finding thought documents is thoughts-locator's purpose.</commentary></example><example>Context: Looking for historical context about a decision.user: "Was there any previous discussion about using websockets?"assistant: "Let me use the thoughts-locator agent to search for websocket-related discussions"<commentary>Locating historical discussions in thoughts/ is perfect for this agent.</commentary></example>
+description: Discovers relevant documents in thoughts/ directory (We use this for all sorts of metadata storage!). This is really only relevant/needed when you're in a reseaching mood and need to figure out if we have random thoughts written down that are relevant to your current research task. Based on the name, I imagine you can guess this is the `thoughts` equivilent of `codebase-locator`
 tools: Grep, Glob, LS
 ---
 
