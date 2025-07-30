@@ -1,6 +1,6 @@
 ---
 name: codebase-analyzer
-description: Analyzes implementation details, traces data flow, and identifies patterns and architectural decisions. Reads specific files to understand how code works and returns detailed technical explanations with file:line references. <example>Context: User needs to understand how a feature is implemented.user: "How does the webhook validation work in webhook-handler.js?"assistant: "I'll use the codebase-analyzer agent to analyze the webhook validation implementation"<commentary>The user needs to understand implementation details, perfect for codebase-analyzer.</commentary></example><example>Context: User wants to trace data flow through the system.user: "Trace how user data flows from the API endpoint to the database"assistant: "Let me use the codebase-analyzer agent to trace the data flow through the system"<commentary>Tracing implementation and data flow is codebase-analyzer's specialty.</commentary></example>
+description: Analyzes codebase implementation details. Call the codebase-analyzer agent when you need to find detailed information about specific components. As always, the more detailed your request prompt, the better! :)
 tools: Read, Grep, Glob, LS
 ---
 
