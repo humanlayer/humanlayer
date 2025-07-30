@@ -4,7 +4,7 @@ cask "codelayer" do
 
   url "https://github.com/humanlayer/humanlayer/releases/download/v#{version}/HumanLayer-#{version}-darwin-arm64.dmg",
       verified: "github.com/humanlayer/humanlayer/"
-  
+
   name "CodeLayer"
   desc "Desktop application for managing AI agent approvals and sessions"
   homepage "https://humanlayer.dev/"

@@ -71,7 +71,7 @@ If `humanlayer` command is not found after installation:
    # For zsh (default on macOS):
    echo 'export PATH="/usr/local/bin:$PATH"' >> ~/.zshrc
    source ~/.zshrc
-   
+
    # For bash:
    echo 'export PATH="/usr/local/bin:$PATH"' >> ~/.bash_profile
    source ~/.bash_profile
