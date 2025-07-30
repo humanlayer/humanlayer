@@ -17,6 +17,7 @@ import { useTheme } from '@/contexts/ThemeContext'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { MessageCircle } from 'lucide-react'
 import { openUrl } from '@tauri-apps/plugin-opener'
+import { DebugPanel } from '@/components/DebugPanel'
 import '@/App.css'
 
 export function Layout() {
@@ -264,6 +265,9 @@ export function Layout() {
 
       {/* Notifications */}
       <Toaster position="bottom-right" richColors />
+
+      {/* Debug Panel */}
+      <DebugPanel />
     </div>
   )
 }

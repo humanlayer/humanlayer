@@ -61,7 +61,8 @@ export class HTTPDaemonClient implements IDaemonClient {
   }
 
   private async doConnect(): Promise<void> {
-    const baseUrl = getDaemonUrl()
+    // getDaemonUrl now checks for managed daemon port dynamically
+    const baseUrl = await getDaemonUrl()
 
     this.client = new HLDClient({
       baseUrl: `${baseUrl}/api/v1`,
@@ -82,6 +83,16 @@ export class HTTPDaemonClient implements IDaemonClient {
     }
   }
 
+  async reconnect(): Promise<void> {
+    // Disconnect first if connected
+    if (this.connected || this.connectionPromise) {
+      await this.disconnect()
+    }
+
+    // Now connect to the potentially new URL
+    return this.connect()
+  }
+
   async disconnect(): Promise<void> {
     // Unsubscribe all event streams
     for (const unsubscribe of this.subscriptions.values()) {
@@ -91,6 +102,8 @@ export class HTTPDaemonClient implements IDaemonClient {
 
     this.connected = false
     this.client = undefined
+    this.connectionPromise = undefined
+    this.retryCount = 0
   }
 
   async health(): Promise<HealthCheckResponse> {
