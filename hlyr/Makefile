@@ -1,6 +1,6 @@
 # HumanLayer CLI (hlyr) Makefile
 
-.PHONY: help install dev build build-go build-daemon build-tui lint format format-check test test-watch check check-quiet clean
+.PHONY: help install dev build build-go build-daemon lint format format-check test test-watch check check-quiet clean
 
 help: ## Show this help message
 	@echo "Available commands:"
@@ -20,9 +20,6 @@ build-go: ## Build Go binaries (daemon and TUI)
 
 build-daemon: ## Build the daemon binary
 	npm run build-daemon
-
-build-tui: ## Build the TUI binary
-	npm run build-tui
 
 lint: ## Run ESLint
 	npm run lint

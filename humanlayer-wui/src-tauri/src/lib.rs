@@ -156,12 +156,12 @@ async fn is_daemon_running(daemon_manager: State<'_, DaemonManager>) -> Result<b
 #[tauri::command]
 async fn get_log_directory() -> Result<String, String> {
     let is_dev = cfg!(debug_assertions);
-    
+
     if is_dev {
         // Dev mode: return branch-based folder
         let branch_id = get_branch_id(is_dev, None);
         let home = dirs::home_dir().ok_or("Failed to get home directory")?;
-        let log_dir = home.join(".humanlayer").join("logs").join(format!("wui-{}", branch_id));
+        let log_dir = home.join(".humanlayer").join("logs").join(format!("wui-{branch_id}"));
         Ok(log_dir.to_string_lossy().to_string())
     } else {
         // Production: use tauri API to get platform-specific log directory
@@ -183,19 +183,19 @@ pub fn run() {
         .plugin({
             let is_dev = cfg!(debug_assertions);
             let branch_id = get_branch_id(is_dev, None);
-            
+
             // Determine log directory based on dev/prod mode
             let log_targets = if is_dev {
                 // Dev mode: use branch-based folder in ~/.humanlayer/logs/
                 let home = dirs::home_dir().expect("Failed to get home directory");
-                let log_dir = home.join(".humanlayer").join("logs").join(format!("wui-{}", branch_id));
-                
+                let log_dir = home.join(".humanlayer").join("logs").join(format!("wui-{branch_id}"));
+
                 // Create the directory if it doesn't exist
                 std::fs::create_dir_all(&log_dir).ok();
-                
+
                 // Store the log directory path in app state for frontend access
                 println!("[WUI] Logs will be written to: {}", log_dir.display());
-                
+
                 vec![
                     tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Folder {
                         path: log_dir,
@@ -213,7 +213,7 @@ pub fn run() {
                     tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Webview),
                 ]
             };
-            
+
             tauri_plugin_log::Builder::new()
                 .targets(log_targets)
                 .level(if is_dev {

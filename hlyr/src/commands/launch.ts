@@ -60,7 +60,7 @@ export const launchCommand = async (query: string, options: LaunchOptions = {}) 
       console.log('\nSession launched successfully!')
       console.log('Session ID:', result.session_id)
       console.log('Run ID:', result.run_id)
-      console.log('\nYou can now use "npx humanlayer tui" to manage approvals for this session.')
+      console.log('\nYou can now use CodeLayer manage this session.')
     } finally {
       // Close the client connection
       client.close()

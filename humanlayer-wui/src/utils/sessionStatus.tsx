@@ -6,7 +6,7 @@ export const renderSessionStatus = (session: { status: string; archived?: boolea
 
   // If session is completed but not archived, show "waiting_for_input"
   if (session.status === 'completed' && !session.archived) {
-    return 'waiting_for_input'
+    return 'ready_for_input'
   }
 
   // If session is waiting_input, show "needs_approval"

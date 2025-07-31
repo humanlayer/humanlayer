@@ -37,16 +37,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Set up signal handling for graceful shutdown
-	ctx, cancel := context.WithCancel(context.Background())
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-
-	go func() {
-		sig := <-sigChan
-		slog.Info("received signal, shutting down", "signal", sig)
-		cancel()
-	}()
+	// Set up signal handling with modern pattern
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
 
 	// Run the daemon
 	if err := d.Run(ctx); err != nil {
@@ -54,5 +47,8 @@ func main() {
 		os.Exit(1)
 	}
 
+	// After first signal, allow force quit on second signal
+	stop()
+	slog.Info("shutting down gracefully, press Ctrl+C again to force")
 	slog.Info("daemon shutdown complete")
 }

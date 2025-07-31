@@ -1,4 +1,14 @@
-import { error, warn, info, debug, trace } from '@tauri-apps/plugin-log'
+// Detect if we're in a test environment (no window object)
+const isTestEnvironment = typeof window === 'undefined'
+
+// Lazy load Tauri logging to avoid import errors in tests
+let tauriLog: any = null
+const getTauriLog = async () => {
+  if (!tauriLog && !isTestEnvironment) {
+    tauriLog = await import('@tauri-apps/plugin-log')
+  }
+  return tauriLog
+}
 
 // Create a logging service that preserves console functionality
 // while also sending to Tauri's log plugin
@@ -7,7 +17,14 @@ export const logger = {
     const fullMessage = [message, ...args]
       .map(arg => (typeof arg === 'object' ? JSON.stringify(arg) : String(arg)))
       .join(' ')
-    info(`[Console] ${fullMessage}`)
+
+    // In test environment, preserve original arguments
+    if (isTestEnvironment) {
+      console.log(message, ...args)
+      return
+    }
+
+    getTauriLog().then(log => log?.info?.(`[Console] ${fullMessage}`))
     // Also log to browser console in dev mode
     if (import.meta.env.DEV) {
       console.log(message, ...args)
@@ -18,7 +35,14 @@ export const logger = {
     const fullMessage = [message, ...args]
       .map(arg => (typeof arg === 'object' ? JSON.stringify(arg) : String(arg)))
       .join(' ')
-    error(`[Console] ${fullMessage}`)
+
+    if (isTestEnvironment) {
+      // In tests, preserve original arguments for test assertions
+      console.error(message, ...args)
+      return
+    }
+
+    getTauriLog().then(log => log?.error?.(`[Console] ${fullMessage}`))
     if (import.meta.env.DEV) {
       console.error(message, ...args)
     }
@@ -28,7 +52,13 @@ export const logger = {
     const fullMessage = [message, ...args]
       .map(arg => (typeof arg === 'object' ? JSON.stringify(arg) : String(arg)))
       .join(' ')
-    warn(`[Console] ${fullMessage}`)
+
+    if (isTestEnvironment) {
+      console.warn(message, ...args)
+      return
+    }
+
+    getTauriLog().then(log => log?.warn?.(`[Console] ${fullMessage}`))
     if (import.meta.env.DEV) {
       console.warn(message, ...args)
     }
@@ -38,7 +68,13 @@ export const logger = {
     const fullMessage = [message, ...args]
       .map(arg => (typeof arg === 'object' ? JSON.stringify(arg) : String(arg)))
       .join(' ')
-    debug(`[Console] ${fullMessage}`)
+
+    if (isTestEnvironment) {
+      console.debug(message, ...args)
+      return
+    }
+
+    getTauriLog().then(log => log?.debug?.(`[Console] ${fullMessage}`))
     if (import.meta.env.DEV) {
       console.debug(message, ...args)
     }
@@ -48,7 +84,13 @@ export const logger = {
     const fullMessage = [message, ...args]
       .map(arg => (typeof arg === 'object' ? JSON.stringify(arg) : String(arg)))
       .join(' ')
-    trace(`[Console] ${fullMessage}`)
+
+    if (isTestEnvironment) {
+      console.trace(message, ...args)
+      return
+    }
+
+    getTauriLog().then(log => log?.trace?.(`[Console] ${fullMessage}`))
     if (import.meta.env.DEV) {
       console.trace(message, ...args)
     }

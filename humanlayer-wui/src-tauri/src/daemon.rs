@@ -136,11 +136,11 @@ impl DaemonManager {
 
         // Start daemon with stdout capture and stderr logging
         let mut cmd = Command::new(&daemon_path);
-        
+
         // Log the full command being executed for debugging
         log::info!("[Tauri] Executing daemon at path: {daemon_path:?}");
-        log::info!("[Tauri] Daemon environment: database_path={}, socket_path={}, port=0, branch_id={branch_id}", 
-                   database_path.display(), 
+        log::info!("[Tauri] Daemon environment: database_path={}, socket_path={}, port=0, branch_id={branch_id}",
+                   database_path.display(),
                    socket_path.display());
 
         // Always capture stderr for better debugging, even in production

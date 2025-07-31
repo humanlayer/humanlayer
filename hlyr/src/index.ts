@@ -6,7 +6,6 @@ import { readFileSync } from 'fs'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import { loginCommand } from './commands/login.js'
-import { tuiCommand } from './commands/tui.js'
 import { contactHumanCommand } from './commands/contactHuman.js'
 import { configShowCommand } from './commands/configShow.js'
 import { pingCommand } from './commands/ping.js'
@@ -104,13 +103,6 @@ program
   .option('--app-base <url>', 'App base URL')
   .option('--config-file <path>', 'Path to config file')
   .action(loginCommand)
-
-program
-  .command('tui')
-  .description('Run the HumanLayer Terminal UI')
-  .option('--daemon-socket <path>', 'Path to daemon socket')
-  .option('--config-file <path>', 'Path to config file')
-  .action(tuiCommand)
 
 program
   .command('launch <query>')
@@ -223,11 +215,6 @@ program.on('command:*', operands => {
   console.error(`Unknown command: ${operands[0]}`)
   console.error('Run "humanlayer --help" for available commands')
   process.exit(1)
-})
-
-// Set up default action when no command is provided
-program.action(() => {
-  tuiCommand()
 })
 
 // Override the default error handling
