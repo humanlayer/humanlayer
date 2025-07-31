@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react'
 import { Outlet } from 'react-router-dom'
 import { useHotkeys } from 'react-hotkeys-hook'
 import {
+  ApprovalResolvedEventData,
   daemonClient,
+  NewApprovalEventData,
   SessionSettingsChangedEventData,
   SessionStatus,
   SessionStatusChangedEventData,
@@ -54,6 +56,8 @@ export function Layout() {
   const refreshActiveSessionConversation = useStore(state => state.refreshActiveSessionConversation)
   const clearNotificationsForSession = useStore(state => state.clearNotificationsForSession)
   const wasRecentlyNavigatedFrom = useStore(state => state.wasRecentlyNavigatedFrom)
+  const addNotifiedItem = useStore(state => state.addNotifiedItem)
+  const isItemNotified = useStore(state => state.isItemNotified)
 
   // Set up single SSE subscription for all events
   useSessionSubscriptions(connected, {
@@ -62,6 +66,8 @@ export function Layout() {
       const { session_id, new_status: nextStatus } = data
       const targetSession = useStore.getState().sessions.find(s => s.id === session_id)
       const previousStatus = targetSession?.status
+      const sessionResponse = await daemonClient.getSessionState(data.session_id)
+      const session = sessionResponse.session
 
       if (!nextStatus) {
         logger.warn('useSessionSubscriptions.onSessionStatusChanged: nextStatus is undefined', data)
@@ -90,9 +96,6 @@ export function Layout() {
         }
 
         try {
-          const sessionResponse = await daemonClient.getSessionState(data.session_id)
-          const session = sessionResponse.session
-
           let notificationOptions: NotificationOptions = {
             type: 'session_completed',
             title: `Session Completed (${data.session_id.slice(0, 8)})`,
@@ -122,12 +125,47 @@ export function Layout() {
 
       await refreshActiveSessionConversation(session_id)
     },
-    onNewApproval: async data => {
+    onNewApproval: async (data: NewApprovalEventData) => {
       logger.log('useSessionSubscriptions.onNewApproval', data)
-      updateSessionStatus(data.session_id, SessionStatus.WaitingInput)
-      await refreshActiveSessionConversation(data.session_id)
+      const { approval_id: approvalId, session_id: sessionId, tool_name: toolName } = data
+
+      if (!approvalId || !sessionId) {
+        logger.error('Invalid approval event data:', data)
+        return
+      }
+
+      const notificationId = `approval_required:${sessionId}:${approvalId}`
+      if (isItemNotified(notificationId)) {
+        return
+      }
+
+      try {
+        const sessionState = await daemonClient.getSessionState(sessionId)
+        const model = sessionState.session?.model || 'AI Agent'
+
+        await notificationService.notifyApprovalRequired(
+          sessionId,
+          approvalId,
+          `${toolName} approval required`,
+          model,
+        )
+        addNotifiedItem(notificationId)
+      } catch (error) {
+        logger.error(`Failed to get session state for ${sessionId}:`, error)
+        // Still show notification with limited info
+        await notificationService.notifyApprovalRequired(
+          sessionId,
+          approvalId,
+          `${toolName} approval required`,
+          'AI Agent',
+        )
+        addNotifiedItem(notificationId)
+      }
+
+      updateSessionStatus(sessionId, SessionStatus.WaitingInput)
+      await refreshActiveSessionConversation(sessionId)
     },
-    onApprovalResolved: async data => {
+    onApprovalResolved: async (data: ApprovalResolvedEventData) => {
       logger.log('useSessionSubscriptions.onApprovalResolved', data)
       updateSessionStatus(data.session_id, SessionStatus.Running)
       await refreshActiveSessionConversation(data.session_id)
