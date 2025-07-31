@@ -1,4 +1,4 @@
-## PART II - IF A LINEAR TICKET IS MENTIONED
+## PART I - IF A LINEAR TICKET IS MENTIONED
 
 0c. use `linear` cli to fetch the selected item into thoughts with the ticket number - ./thoughts/shared/tickets/ENG-xxxx.md
 0d. read the ticket and all comments to understand what research is needed and any previous attempts
