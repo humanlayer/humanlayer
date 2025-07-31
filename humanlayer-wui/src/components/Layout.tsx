@@ -139,6 +139,18 @@ export function Layout() {
         return
       }
 
+      // Wait a brief moment to see if an approval_resolved event follows immediately
+      // This handles auto-approved cases where both events fire in quick succession
+      await new Promise(resolve => setTimeout(resolve, 100))
+
+      // Check if this approval was already resolved (auto-approved)
+      // by checking if the session is still in waiting_input status
+      const currentSession = useStore.getState().sessions.find(s => s.id === sessionId)
+      if (currentSession && currentSession.status !== SessionStatus.WaitingInput) {
+        console.log('Skipping notification for auto-approved item', { sessionId, approvalId })
+        return
+      }
+
       try {
         const sessionState = await daemonClient.getSessionState(sessionId)
         const model = sessionState.session?.model || 'AI Agent'
