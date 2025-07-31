@@ -58,11 +58,13 @@ export function Layout() {
   const wasRecentlyNavigatedFrom = useStore(state => state.wasRecentlyNavigatedFrom)
   const addNotifiedItem = useStore(state => state.addNotifiedItem)
   const isItemNotified = useStore(state => state.isItemNotified)
+  const addRecentResolvedApprovalToCache = useStore(state => state.addRecentResolvedApprovalToCache)
+  const isRecentResolvedApproval = useStore(state => state.isRecentResolvedApproval)
 
   // Set up single SSE subscription for all events
   useSessionSubscriptions(connected, {
     onSessionStatusChanged: async (data: SessionStatusChangedEventData) => {
-      logger.log('useSessionSubscriptions.onSessionStatusChanged', data)
+      logger.log('useSessionSubscriptions.onSessionStatusChanged', Date.now(), data)
       const { session_id, new_status: nextStatus } = data
       const targetSession = useStore.getState().sessions.find(s => s.id === session_id)
       const previousStatus = targetSession?.status
@@ -126,7 +128,7 @@ export function Layout() {
       await refreshActiveSessionConversation(session_id)
     },
     onNewApproval: async (data: NewApprovalEventData) => {
-      logger.log('useSessionSubscriptions.onNewApproval', data)
+      logger.log('useSessionSubscriptions.onNewApproval', Date.now(), data)
       const { approval_id: approvalId, session_id: sessionId, tool_name: toolName } = data
 
       if (!approvalId || !sessionId) {
@@ -143,10 +145,8 @@ export function Layout() {
       // This handles auto-approved cases where both events fire in quick succession
       await new Promise(resolve => setTimeout(resolve, 100))
 
-      // Check if this approval was already resolved (auto-approved)
-      // by checking if the session is still in waiting_input status
-      const currentSession = useStore.getState().sessions.find(s => s.id === sessionId)
-      if (currentSession && currentSession.status !== SessionStatus.WaitingInput) {
+      // // Check if this approval was already resolved (auto-approved)
+      if (isRecentResolvedApproval(approvalId)) {
         console.log('Skipping notification for auto-approved item', { sessionId, approvalId })
         return
       }
@@ -178,7 +178,8 @@ export function Layout() {
       await refreshActiveSessionConversation(sessionId)
     },
     onApprovalResolved: async (data: ApprovalResolvedEventData) => {
-      logger.log('useSessionSubscriptions.onApprovalResolved', data)
+      logger.log('useSessionSubscriptions.onApprovalResolved', Date.now(), data)
+      addRecentResolvedApprovalToCache(data.approval_id)
       updateSessionStatus(data.session_id, SessionStatus.Running)
       await refreshActiveSessionConversation(data.session_id)
     },
