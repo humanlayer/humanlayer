@@ -150,6 +150,14 @@ publish-ts: build-ts
 .PHONY: build-and-publish
 build-and-publish: build publish ## Build and publish.
 
+.PHONY: generate-sdks
+generate-sdks: ## Regenerate all SDKs from OpenAPI specs
+	@echo "Regenerating TypeScript SDK from OpenAPI spec..."
+	@$(MAKE) -C hld generate-sdks
+	@echo "Updating SDK in humanlayer-wui..."
+	@$(MAKE) -C humanlayer-wui install
+	@echo "SDK regeneration complete!"
+
 .PHONY: help
 help:
 	grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'

@@ -510,11 +510,10 @@ func (h *SessionHandlers) HandleUpdateSessionSettings(ctx context.Context, param
 	// Publish event for UI updates
 	if h.eventBus != nil && req.AutoAcceptEdits != nil {
 		h.eventBus.Publish(bus.Event{
-			Type: bus.EventSessionStatusChanged,
+			Type: bus.EventSessionSettingsChanged,
 			Data: map[string]interface{}{
 				"session_id":        req.SessionID,
 				"auto_accept_edits": *req.AutoAcceptEdits,
-				"event_type":        "settings_updated",
 			},
 		})
 	}

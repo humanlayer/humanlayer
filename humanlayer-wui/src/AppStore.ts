@@ -27,6 +27,7 @@ interface StoreState {
   interruptSession: (sessionId: string) => Promise<void>
   archiveSession: (sessionId: string, archived: boolean) => Promise<void>
   bulkArchiveSessions: (sessionIds: string[], archived: boolean) => Promise<void>
+  bulkSetAutoAcceptEdits: (sessionIds: string[], autoAcceptEdits: boolean) => Promise<void>
   setViewMode: (mode: ViewMode) => void
   toggleSessionSelection: (sessionId: string) => void
   clearSelection: () => void
@@ -49,6 +50,10 @@ interface StoreState {
   removeNotifiedItem: (notificationId: string) => void
   isItemNotified: (notificationId: string) => boolean
   clearNotificationsForSession: (sessionId: string) => void
+
+  recentResolvedApprovalsCache: Set<string>
+  addRecentResolvedApprovalToCache: (approvalId: string) => void
+  isRecentResolvedApproval: (approvalId: string) => boolean
 
   /* Navigation tracking */
   recentNavigations: Map<string, number> // sessionId -> timestamp
@@ -192,6 +197,33 @@ export const useStore = create<StoreState>((set, get) => ({
       get().clearSelection()
     } catch (error) {
       logger.error('Failed to bulk archive sessions:', error)
+      throw error
+    }
+  },
+  bulkSetAutoAcceptEdits: async (sessionIds: string[], autoAcceptEdits: boolean) => {
+    try {
+      const results = await Promise.allSettled(
+        sessionIds.map(sessionId =>
+          daemonClient.updateSessionSettings(sessionId, { auto_accept_edits: autoAcceptEdits }),
+        ),
+      )
+
+      // Check if any failed
+      const failedCount = results.filter(r => r.status === 'rejected').length
+      if (failedCount > 0) {
+        console.error(`Failed to update ${failedCount} sessions`)
+        throw new Error(`Failed to update ${failedCount} sessions`)
+      }
+
+      // Update local state for all successful sessions
+      sessionIds.forEach(sessionId => {
+        get().updateSession(sessionId, { autoAcceptEdits })
+      })
+
+      // Clear selection after bulk operation
+      get().clearSelection()
+    } catch (error) {
+      console.error('Failed to bulk update auto-accept settings:', error)
       throw error
     }
   },
@@ -465,6 +497,21 @@ export const useStore = create<StoreState>((set, get) => ({
       })
       return { notifiedItems: newSet }
     }),
+
+  recentResolvedApprovalsCache: new Set<string>(),
+  addRecentResolvedApprovalToCache: (approvalId: string) =>
+    set(state => {
+      const newSet = new Set(state.recentResolvedApprovalsCache)
+      newSet.add(approvalId)
+
+      // Limit to 50 items by converting to array, slicing, and converting back to Set
+      const limitedSet = new Set(Array.from(newSet).slice(-50))
+
+      return { recentResolvedApprovalsCache: limitedSet }
+    }),
+  isRecentResolvedApproval: (approvalId: string) => {
+    return get().recentResolvedApprovalsCache.has(approvalId)
+  },
 
   // Navigation tracking
   recentNavigations: new Map(),

@@ -348,13 +348,16 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   useHotkeys(
     'shift+tab',
     async () => {
+      console.log('shift+tab setAutoAcceptEdits', autoAcceptEdits)
       try {
         const newState = !autoAcceptEdits
-        await daemonClient.updateSessionSettings(session.id, {
+        const updatedSession = await daemonClient.updateSessionSettings(session.id, {
           auto_accept_edits: newState,
         })
 
-        // State will be updated via event subscription
+        if (updatedSession.success) {
+          useStore.getState().updateSession(session.id, { autoAcceptEdits: newState })
+        }
       } catch (error) {
         logger.error('Failed to toggle auto-accept mode:', error)
       }

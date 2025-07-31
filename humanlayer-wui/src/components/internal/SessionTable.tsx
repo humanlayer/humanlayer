@@ -1,4 +1,4 @@
-import { Session } from '@/lib/daemon/types'
+import { Session, SessionStatus } from '@/lib/daemon/types'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 import { useHotkeys, useHotkeysContext } from 'react-hotkeys-hook'
@@ -241,18 +241,32 @@ export default function SessionTable({
     async () => {
       try {
         // Find the current session from the sessions array to get the latest archived status
-        const currentSession = sessions.find(s => s.id === focusedSession?.id)
-        if (!currentSession) return
-
         logger.log('Archive hotkey pressed:', {
-          sessionId: currentSession.id,
-          archived: currentSession.archived,
-          willArchive: !currentSession.archived,
+          currentSession: sessions.find(s => s.id === focusedSession?.id),
+          selectedSessions,
         })
 
         // If there are selected sessions, bulk archive them
         if (selectedSessions.size > 0) {
-          const isArchiving = !currentSession.archived
+          logger.log('selectedSessions', selectedSessions)
+
+          // Convert selectedSessions Set to array and get the sessions
+          const selectedSessionObjects = Array.from(selectedSessions)
+            .map(sessionId => sessions.find(s => s.id === sessionId))
+            .filter(Boolean)
+
+          // Check if all selected sessions have the same archived status
+          const archivedStatuses = selectedSessionObjects.map(s => s?.archived)
+          const allSameStatus = archivedStatuses.every(status => status === archivedStatuses[0])
+
+          if (!allSameStatus) {
+            toast.warning(
+              'Cannot bulk change archived status for archived and unarchived sessions at the same time (deselect one or the other)',
+            )
+            return
+          }
+
+          const isArchiving = !archivedStatuses[0] // If all are unarchived, we're archiving
 
           // Find next session to focus after bulk archive
           const nonSelectedSessions = sessions.filter(s => !selectedSessions.has(s.id))
@@ -275,6 +289,11 @@ export default function SessionTable({
           )
         } else {
           // Single session archive
+          const currentSession = sessions.find(s => s.id === focusedSession?.id)
+          if (!currentSession) {
+            logger.log('No current session found')
+            return
+          }
           const isArchiving = !currentSession.archived
 
           // Find the index of current session and determine next focus
@@ -404,6 +423,11 @@ export default function SessionTable({
                     </div>
                   </TableCell>
                   <TableCell className={getStatusTextClass(session.status)}>
+                    {session.status === SessionStatus.Running && session.autoAcceptEdits && (
+                      <span className="align-text-top text-[var(--terminal-warning)] text-base leading-none animate-pulse-warning">
+                        {'⏵⏵ '}
+                      </span>
+                    )}
                     {renderSessionStatus(session)}
                   </TableCell>
                   <TableCell className="max-w-[200px]">

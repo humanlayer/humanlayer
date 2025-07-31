@@ -258,7 +258,7 @@ func (h *SessionHandlers) UpdateSession(ctx context.Context, req api.UpdateSessi
 		update.Title = req.Body.Title
 	}
 
-	err := h.store.UpdateSession(ctx, string(req.Id), update)
+	err := h.manager.UpdateSessionSettings(ctx, string(req.Id), update)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return api.UpdateSession404JSONResponse{

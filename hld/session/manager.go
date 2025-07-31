@@ -1399,3 +1399,26 @@ func (m *Manager) forceKillRemaining() {
 		}
 	}
 }
+
+// UpdateSessionSettings updates session settings and publishes appropriate events
+func (m *Manager) UpdateSessionSettings(ctx context.Context, sessionID string, updates store.SessionUpdate) error {
+	// First update the store
+	if err := m.store.UpdateSession(ctx, sessionID, updates); err != nil {
+		return err
+	}
+
+	// If auto-accept edits was updated, publish the settings changed event
+	if updates.AutoAcceptEdits != nil {
+		if m.eventBus != nil {
+			m.eventBus.Publish(bus.Event{
+				Type: bus.EventSessionSettingsChanged,
+				Data: map[string]interface{}{
+					"session_id":        sessionID,
+					"auto_accept_edits": *updates.AutoAcceptEdits,
+				},
+			})
+		}
+	}
+
+	return nil
+}
