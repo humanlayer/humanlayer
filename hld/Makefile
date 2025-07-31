@@ -135,6 +135,18 @@ generate:
 		openapi.yaml
 	@echo "Code generation complete"
 
+# Generate TypeScript SDK from OpenAPI spec
+generate-sdk-ts:
+	@echo "Generating TypeScript SDK from OpenAPI spec..."
+	@cd sdk/typescript && bun run generate
+	@echo "Building TypeScript SDK..."
+	@cd sdk/typescript && bun run build
+	@echo "TypeScript SDK generation complete"
+
+# Generate all SDKs
+generate-sdks: generate-sdk-ts
+	@echo "All SDK generation complete"
+
 # Format code
 fmt:
 	go fmt ./...

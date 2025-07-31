@@ -1,7 +1,12 @@
 import { useState, useEffect } from 'react'
 import { Outlet } from 'react-router-dom'
 import { useHotkeys } from 'react-hotkeys-hook'
-import { daemonClient, SessionStatus } from '@/lib/daemon'
+import {
+  daemonClient,
+  SessionSettingsChangedEventData,
+  SessionStatus,
+  SessionStatusChangedEventData,
+} from '@/lib/daemon'
 import { Button } from '@/components/ui/button'
 import { ThemeSelector } from '@/components/ThemeSelector'
 import { SessionLauncher } from '@/components/SessionLauncher'
@@ -12,7 +17,7 @@ import { useDaemonConnection } from '@/hooks/useDaemonConnection'
 import { useStore } from '@/AppStore'
 import { useSessionSubscriptions } from '@/hooks/useSubscriptions'
 import { Toaster } from 'sonner'
-import { notificationService } from '@/services/NotificationService'
+import { notificationService, type NotificationOptions } from '@/services/NotificationService'
 import { useTheme } from '@/contexts/ThemeContext'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { MessageCircle, Bug } from 'lucide-react'
@@ -44,15 +49,77 @@ export function Layout() {
   })
 
   // Get store actions
+  const updateSession = useStore(state => state.updateSession)
   const updateSessionStatus = useStore(state => state.updateSessionStatus)
   const refreshActiveSessionConversation = useStore(state => state.refreshActiveSessionConversation)
+  const clearNotificationsForSession = useStore(state => state.clearNotificationsForSession)
+  const wasRecentlyNavigatedFrom = useStore(state => state.wasRecentlyNavigatedFrom)
 
   // Set up single SSE subscription for all events
   useSessionSubscriptions(connected, {
-    onSessionStatusChanged: async data => {
+    onSessionStatusChanged: async (data: SessionStatusChangedEventData) => {
       logger.log('useSessionSubscriptions.onSessionStatusChanged', data)
-      const { session_id, new_status } = data
-      updateSessionStatus(session_id, new_status as SessionStatus)
+      const { session_id, new_status: nextStatus } = data
+      const targetSession = useStore.getState().sessions.find(s => s.id === session_id)
+      const previousStatus = targetSession?.status
+
+      if (!nextStatus) {
+        logger.warn('useSessionSubscriptions.onSessionStatusChanged: nextStatus is undefined', data)
+        return
+      }
+
+      // Clear notifications if session is no longer waiting_input
+      if (nextStatus !== undefined && nextStatus !== SessionStatus.WaitingInput) {
+        clearNotificationsForSession(session_id)
+      }
+
+      // Completed or Failed, but not in series
+      if (
+        (previousStatus !== SessionStatus.Completed && nextStatus === SessionStatus.Completed) ||
+        (previousStatus !== SessionStatus.Failed && nextStatus === SessionStatus.Failed)
+      ) {
+        logger.log(
+          `Session ${data.session_id} completed. Previous status: ${previousStatus}, checking navigation tracking...`,
+        )
+
+        if (wasRecentlyNavigatedFrom(data.session_id)) {
+          logger.log(
+            `Suppressing completion notification for recently navigated session ${data.session_id}`,
+          )
+          return
+        }
+
+        try {
+          const sessionResponse = await daemonClient.getSessionState(data.session_id)
+          const session = sessionResponse.session
+
+          let notificationOptions: NotificationOptions = {
+            type: 'session_completed',
+            title: `Session Completed (${data.session_id.slice(0, 8)})`,
+            body: `Completed: ${session.query}`,
+            metadata: {
+              sessionId: data.session_id,
+              model: session.model,
+            },
+            // Don't make this sticky - let it auto-dismiss
+            duration: undefined,
+          }
+
+          if (nextStatus === SessionStatus.Failed) {
+            notificationOptions.type = 'session_failed'
+            notificationOptions.title = `Session Failed (${data.session_id.slice(0, 8)})`
+            notificationOptions.body = session.errorMessage || `Failed: ${session.query}`
+            notificationOptions.priority = 'high'
+          }
+
+          await notificationService.notify(notificationOptions)
+        } catch (error) {
+          logger.error('Failed to show completion notification:', error)
+        }
+      }
+
+      updateSessionStatus(session_id, nextStatus)
+
       await refreshActiveSessionConversation(session_id)
     },
     onNewApproval: async data => {
@@ -64,6 +131,13 @@ export function Layout() {
       logger.log('useSessionSubscriptions.onApprovalResolved', data)
       updateSessionStatus(data.session_id, SessionStatus.Running)
       await refreshActiveSessionConversation(data.session_id)
+    },
+    // CODEREVIEW: Why did this previously exist? Sundeep wants to talk about this do not merge.
+    onSessionSettingsChanged: async (data: SessionSettingsChangedEventData) => {
+      // Placeholder handler - to be implemented based on requirements
+      logger.log('useSessionSubscriptions.onSessionSettingsChanged', data)
+      const { session_id, auto_accept_edits } = data
+      updateSession(session_id, { autoAcceptEdits: auto_accept_edits })
     },
   })
 

@@ -6,12 +6,14 @@ import type {
   SessionStatusChangedEventData,
   NewApprovalEventData,
   ApprovalResolvedEventData,
+  SessionSettingsChangedEventData,
 } from '@/lib/daemon/types'
 
 export interface SessionSubscriptionHandlers {
   onSessionStatusChanged?: (data: SessionStatusChangedEventData, timestamp: string) => void
   onNewApproval?: (data: NewApprovalEventData) => void
   onApprovalResolved?: (data: ApprovalResolvedEventData) => void
+  onSessionSettingsChanged?: (data: SessionSettingsChangedEventData) => void
 }
 
 export function useSessionSubscriptions(
@@ -61,7 +63,7 @@ export function useSessionSubscriptions(
         isSubscribedRef.current = true
 
         const subscription = daemonClient.subscribeToEvents({
-          event_types: ['session_status_changed', 'new_approval', 'approval_resolved'],
+          event_types: ['session_status_changed', 'new_approval', 'approval_resolved', 'session_settings_changed'],
           onEvent: (event: Event) => {
             if (!isActive) return
 
@@ -85,6 +87,13 @@ export function useSessionSubscriptions(
 
                 // Call handler if provided
                 handlersRef.current.onApprovalResolved?.(data)
+                break
+              }
+              case 'session_settings_changed': {
+                const data = event.data as SessionSettingsChangedEventData
+
+                // Call handler if provided
+                handlersRef.current.onSessionSettingsChanged?.(data)
                 break
               }
             }
