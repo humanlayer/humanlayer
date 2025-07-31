@@ -500,6 +500,39 @@ wui-nightly-build:
 	cp -r humanlayer-wui/src-tauri/target/release/bundle/macos/CodeLayer.app ~/Applications/
 	@echo "Installed WUI nightly to ~/Applications/CodeLayer.app"
 
+# Build humanlayer binary for bundling
+.PHONY: humanlayer-build
+humanlayer-build:
+	@echo "Building humanlayer CLI binary..."
+	cd hlyr && bun install && bun run build
+	@echo "humanlayer binary built at hlyr/dist/index.js"
+
+# Build humanlayer standalone binary (requires bun)
+.PHONY: humanlayer-binary-darwin-arm64
+humanlayer-binary-darwin-arm64: humanlayer-build
+	@echo "Creating standalone humanlayer binary for macOS ARM64..."
+	cd hlyr && bun build ./dist/index.js --compile --target=bun-darwin-arm64 --outfile=humanlayer-darwin-arm64
+	chmod +x hlyr/humanlayer-darwin-arm64
+	@echo "Standalone binary created at hlyr/humanlayer-darwin-arm64"
+
+# Build CodeLayer with bundled daemon and humanlayer
+.PHONY: codelayer-bundle
+codelayer-bundle:
+	@echo "Building daemon for bundling..."
+	cd hld && GOOS=darwin GOARCH=arm64 go build -o hld-darwin-arm64 ./cmd/hld
+	@echo "Building humanlayer for bundling..."
+	cd hlyr && bun install && bun run build
+	cd hlyr && bun build ./dist/index.js --compile --target=bun-darwin-arm64 --outfile=humanlayer-darwin-arm64
+	@echo "Copying binaries to CodeLayer resources..."
+	mkdir -p humanlayer-wui/src-tauri/bin
+	cp hld/hld-darwin-arm64 humanlayer-wui/src-tauri/bin/hld
+	cp hlyr/humanlayer-darwin-arm64 humanlayer-wui/src-tauri/bin/humanlayer
+	chmod +x humanlayer-wui/src-tauri/bin/hld
+	chmod +x humanlayer-wui/src-tauri/bin/humanlayer
+	@echo "Building CodeLayer with bundled binaries..."
+	cd humanlayer-wui && bun run tauri build
+	@echo "Build complete!"
+
 # Open nightly WUI
 .PHONY: wui-nightly
 wui-nightly: wui-nightly-build
@@ -570,6 +603,7 @@ daemon-dev: daemon-dev-build
 	echo "$(TIMESTAMP) starting dev daemon in $$(pwd)" > ~/.humanlayer/logs/daemon-dev-$(TIMESTAMP).log
 	cd hld && HUMANLAYER_DATABASE_PATH=~/.humanlayer/daemon-dev.db \
 		HUMANLAYER_DAEMON_SOCKET=~/.humanlayer/daemon-dev.sock \
+		HUMANLAYER_DAEMON_HTTP_PORT=0 \
 		HUMANLAYER_DAEMON_VERSION_OVERRIDE=$$(git branch --show-current) \
 		./run-with-logging.sh ~/.humanlayer/logs/daemon-dev-$(TIMESTAMP).log ./hld-dev
 
@@ -580,6 +614,10 @@ wui-dev:
 	$(eval TIMESTAMP := $(shell date +%Y-%m-%d-%H-%M-%S))
 	echo "$(TIMESTAMP) starting dev wui in $$(pwd)" > ~/.humanlayer/logs/wui-dev-$(TIMESTAMP).log
 	cd humanlayer-wui && HUMANLAYER_DAEMON_SOCKET=~/.humanlayer/daemon-dev.sock bun run tauri dev 2>&1 | tee -a ~/.humanlayer/logs/wui-dev-$(TIMESTAMP).log
+
+# Alias for wui-dev that ensures daemon is built first
+.PHONY: codelayer-dev
+codelayer-dev: daemon-dev-build wui-dev
 
 # Show current dev environment setup
 .PHONY: dev-status
