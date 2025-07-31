@@ -251,16 +251,18 @@ export default function SessionTable({
           logger.log('selectedSessions', selectedSessions)
 
           // Convert selectedSessions Set to array and get the sessions
-          const selectedSessionObjects = Array.from(selectedSessions).map(sessionId =>
-            sessions.find(s => s.id === sessionId)
-          ).filter(Boolean)
+          const selectedSessionObjects = Array.from(selectedSessions)
+            .map(sessionId => sessions.find(s => s.id === sessionId))
+            .filter(Boolean)
 
           // Check if all selected sessions have the same archived status
           const archivedStatuses = selectedSessionObjects.map(s => s?.archived)
           const allSameStatus = archivedStatuses.every(status => status === archivedStatuses[0])
 
           if (!allSameStatus) {
-            toast.warning('Cannot bulk change archived status for archived and unarchived sessions at the same time (deselect one or the other)')
+            toast.warning(
+              'Cannot bulk change archived status for archived and unarchived sessions at the same time (deselect one or the other)',
+            )
             return
           }
 

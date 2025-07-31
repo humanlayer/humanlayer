@@ -108,10 +108,10 @@ export function SessionTablePage() {
     'shift+tab',
     async e => {
       e.preventDefault()
-      
+
       // Find sessions to apply auto-accept to
       let sessionsToUpdate: string[] = []
-      
+
       if (selectedSessions.size > 0) {
         // If sessions are selected, use those
         sessionsToUpdate = Array.from(selectedSessions)
@@ -119,27 +119,30 @@ export function SessionTablePage() {
         // Otherwise, use the focused session
         sessionsToUpdate = [focusedSession.id]
       }
-      
+
       if (sessionsToUpdate.length === 0) return
-      
+
       try {
         // Get the sessions to check their status
-        const sessionsData = sessionsToUpdate.map(id => sessions.find(s => s.id === id)).filter(Boolean) as any[]
-        
+        const sessionsData = sessionsToUpdate
+          .map(id => sessions.find(s => s.id === id))
+          .filter(Boolean) as any[]
+
         // Check if all selected sessions have the same auto-accept status
         const autoAcceptStatuses = sessionsData.map(s => s.autoAcceptEdits)
         const allSameStatus = autoAcceptStatuses.every(status => status === autoAcceptStatuses[0])
-        
+
         // Toggle the auto-accept status (if all true, turn off; otherwise turn on)
         const newAutoAcceptStatus = allSameStatus ? !autoAcceptStatuses[0] : true
-        
+
         // Call the bulk update method
         await useStore.getState().bulkSetAutoAcceptEdits(sessionsToUpdate, newAutoAcceptStatus)
-        
+
         // Show success notification
         const action = newAutoAcceptStatus ? 'enabled' : 'disabled'
-        const sessionText = sessionsToUpdate.length === 1 ? 'session' : `${sessionsToUpdate.length} sessions`
-        
+        const sessionText =
+          sessionsToUpdate.length === 1 ? 'session' : `${sessionsToUpdate.length} sessions`
+
         // Use toast from sonner
         const { toast } = await import('sonner')
         toast.success(`Auto-accept edits ${action} for ${sessionText}`, {

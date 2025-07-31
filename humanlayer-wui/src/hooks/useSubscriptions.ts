@@ -63,7 +63,12 @@ export function useSessionSubscriptions(
         isSubscribedRef.current = true
 
         const subscription = daemonClient.subscribeToEvents({
-          event_types: ['session_status_changed', 'new_approval', 'approval_resolved', 'session_settings_changed'],
+          event_types: [
+            'session_status_changed',
+            'new_approval',
+            'approval_resolved',
+            'session_settings_changed',
+          ],
           onEvent: (event: Event) => {
             if (!isActive) return
 

@@ -15,6 +15,7 @@ Logs include output from the WUI backend, daemon stderr (prefixed with [Daemon])
 The WUI communicates with the daemon via JSON-RPC over a Unix socket at ~/.humanlayer/daemon.sock. All session and approval data comes from the daemon - the WUI is purely a presentation layer.
 
 To regenerate TypeScript types from the hld-sdk after OpenAPI spec changes:
+
 - Run `make generate-sdks` from the root directory
 
 For UI development, we use Radix UI components styled with Tailwind CSS. State management is handled by Zustand. The codebase follows React best practices with TypeScript for type safety.

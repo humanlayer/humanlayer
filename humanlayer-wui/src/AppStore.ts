@@ -204,22 +204,22 @@ export const useStore = create<StoreState>((set, get) => ({
     try {
       const results = await Promise.allSettled(
         sessionIds.map(sessionId =>
-          daemonClient.updateSessionSettings(sessionId, { auto_accept_edits: autoAcceptEdits })
-        )
+          daemonClient.updateSessionSettings(sessionId, { auto_accept_edits: autoAcceptEdits }),
+        ),
       )
-      
+
       // Check if any failed
       const failedCount = results.filter(r => r.status === 'rejected').length
       if (failedCount > 0) {
         console.error(`Failed to update ${failedCount} sessions`)
         throw new Error(`Failed to update ${failedCount} sessions`)
       }
-      
+
       // Update local state for all successful sessions
       sessionIds.forEach(sessionId => {
         get().updateSession(sessionId, { autoAcceptEdits })
       })
-      
+
       // Clear selection after bulk operation
       get().clearSelection()
     } catch (error) {
@@ -503,10 +503,10 @@ export const useStore = create<StoreState>((set, get) => ({
     set(state => {
       const newSet = new Set(state.recentResolvedApprovalsCache)
       newSet.add(approvalId)
-      
+
       // Limit to 50 items by converting to array, slicing, and converting back to Set
       const limitedSet = new Set(Array.from(newSet).slice(-50))
-      
+
       return { recentResolvedApprovalsCache: limitedSet }
     }),
   isRecentResolvedApproval: (approvalId: string) => {
