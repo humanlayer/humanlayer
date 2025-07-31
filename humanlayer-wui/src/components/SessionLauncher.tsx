@@ -86,7 +86,7 @@ export function SessionLauncher({ isOpen, onClose }: SessionLauncherProps) {
                   value={query}
                   onChange={setQuery}
                   onSubmit={handleSubmit}
-                  placeholder="Enter your prompt to start a session..."
+                  placeholder="Ask an agent..."
                   isLoading={isLaunching}
                   config={config}
                   onConfigChange={setConfig}
