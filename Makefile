@@ -612,10 +612,7 @@ daemon-dev: daemon-dev-build
 # Run dev WUI with custom socket
 .PHONY: wui-dev
 wui-dev:
-	@mkdir -p ~/.humanlayer/logs
-	$(eval TIMESTAMP := $(shell date +%Y-%m-%d-%H-%M-%S))
-	echo "$(TIMESTAMP) starting dev wui in $$(pwd)" > ~/.humanlayer/logs/wui-dev-$(TIMESTAMP).log
-	cd humanlayer-wui && HUMANLAYER_DAEMON_SOCKET=~/.humanlayer/daemon-dev.sock bun run tauri dev 2>&1 | tee -a ~/.humanlayer/logs/wui-dev-$(TIMESTAMP).log
+	cd humanlayer-wui && HUMANLAYER_DAEMON_SOCKET=~/.humanlayer/daemon-dev.sock bun run tauri dev
 
 # Alias for wui-dev that ensures daemon is built first
 .PHONY: codelayer-dev
