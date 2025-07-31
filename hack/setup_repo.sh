@@ -50,6 +50,11 @@ run_silent "hld-sdk build" sh -c "cd hld/sdk/typescript && bun run build"
 echo "📦 Installing WUI dependencies..."
 run_silent "humanlayer-wui bun install" bun install --cwd=humanlayer-wui
 
+echo "🔧 Creating placeholder binaries for Tauri..."
+mkdir -p humanlayer-wui/src-tauri/bin
+touch humanlayer-wui/src-tauri/bin/hld
+touch humanlayer-wui/src-tauri/bin/humanlayer
+
 echo "🏗️  Building hlyr (requires mocks and npm dependencies)..."
 run_silent "hlyr build" npm run build -C hlyr
 
