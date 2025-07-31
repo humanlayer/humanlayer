@@ -2,9 +2,6 @@
 
 import { Command } from 'commander'
 import { spawn } from 'child_process'
-import { readFileSync } from 'fs'
-import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
 import { loginCommand } from './commands/login.js'
 import { contactHumanCommand } from './commands/contactHuman.js'
 import { configShowCommand } from './commands/configShow.js'
@@ -23,9 +20,8 @@ import {
 import { getProject } from './hlClient.js'
 import chalk from 'chalk'
 
-// Read version from package.json
-const __dirname = dirname(fileURLToPath(import.meta.url))
-const packageJson = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf-8'))
+// Version is injected at build time by tsup
+const VERSION = process.env.PACKAGE_VERSION || '0.11.0'
 
 function showAbbreviatedConfig() {
   const configWithSources = resolveConfigWithSources({})
@@ -69,10 +65,7 @@ async function authenticate(printSelectedProject: boolean = false) {
   }
 }
 
-program
-  .name('humanlayer')
-  .description('HumanLayer, but on your command-line.')
-  .version(packageJson.version)
+program.name('humanlayer').description('HumanLayer, but on your command-line.').version(VERSION)
 
 const UNPROTECTED_COMMANDS = ['config', 'login', 'thoughts', 'join-waitlist', 'launch', 'mcp']
 
