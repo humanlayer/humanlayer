@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - dexter/eng-1758-cache-rust-and-go-compilationdependency-downloads-in-github
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
 

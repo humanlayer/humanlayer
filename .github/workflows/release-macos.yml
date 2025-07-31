@@ -48,6 +48,13 @@ jobs:
         with:
           bun-version: latest
 
+      - name: Cache Go tools
+        uses: actions/cache@v4
+        id: go-tools-cache-release
+        with:
+          path: ~/go/bin
+          key: go-tools-${{ runner.os }}-mockgen-0.5
+
       - name: Run repository setup
         run: make setup
 
