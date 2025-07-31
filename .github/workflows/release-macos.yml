@@ -31,15 +31,29 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: humanlayer-wui/src-tauri
+
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version-file: 'hld/go.mod'
+          cache-dependency-path: |
+            **/go.sum
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
+
+      - name: Cache Go tools
+        uses: actions/cache@v4
+        id: go-tools-cache-release
+        with:
+          path: ~/go/bin
+          key: go-tools-${{ runner.os }}-mockgen-0.5
 
       - name: Run repository setup
         run: make setup
