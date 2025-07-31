@@ -44,7 +44,7 @@ export default function CommandInput({
   }, [])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
       e.preventDefault()
       onSubmit()
     }
@@ -52,6 +52,10 @@ export default function CommandInput({
     if (e.key === 'Escape') {
       promptRef.current?.blur()
     }
+  }
+
+  const getPlatformKey = () => {
+    return navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'
   }
 
   const updateConfig = (updates: Partial<SessionConfig>) => {
@@ -88,6 +92,10 @@ export default function CommandInput({
           autoComplete="off"
           spellCheck={false}
         />
+        <p className="text-xs text-muted-foreground mt-1">
+          <kbd className="px-1 py-0.5 bg-muted/50 rounded">{getPlatformKey()}+Enter</kbd> to launch
+          session, <kbd className="ml-1 px-1 py-0.5 bg-muted/50 rounded">Enter</kbd> for new line
+        </p>
 
         {isLoading && (
           <div className="absolute right-3 top-1/2 -translate-y-1/2">

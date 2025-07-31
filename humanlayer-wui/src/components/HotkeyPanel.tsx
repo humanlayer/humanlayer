@@ -24,6 +24,7 @@ const hotkeyData = [
   { category: 'Global', key: 'C', description: 'Create new session' },
   { category: 'Global', key: 'G', description: 'Navigation prefix (G+S for sessions)' },
   { category: 'Global', key: 'Ctrl+T', description: 'Toggle theme selector' },
+  { category: 'Global', key: '⌘+Enter', description: 'Submit text input' },
 
   // Session List
   { category: 'Session List', key: 'J', description: 'Move down' },

@@ -4,6 +4,7 @@ import { SessionSlice, createSessionSlice } from './slices/sessionSlice'
 import { LauncherSlice, createLauncherSlice } from './slices/launcherSlice'
 import { ThemeSlice, createThemeSlice } from './slices/themeSlice'
 import { AppSlice, createAppSlice } from './slices/appSlice'
+import { logger } from '@/lib/logging'
 
 // Combined store type that includes all slices
 export type ComposedDemoStore = SessionSlice & LauncherSlice & ThemeSlice & AppSlice
@@ -97,7 +98,7 @@ export class ComposedDemoAnimator {
     const step = this.sequence[this.currentIndex]
 
     this.timeoutId = setTimeout(() => {
-      console.log(
+      logger.log(
         `[Demo Animator] Step ${this.currentIndex + 1}/${this.sequence.length}: ${step.description || 'State update'}`,
       )
 

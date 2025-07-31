@@ -1,7 +1,14 @@
 import { useState, useEffect } from 'react'
 import { Outlet } from 'react-router-dom'
 import { useHotkeys } from 'react-hotkeys-hook'
-import { daemonClient, SessionStatus } from '@/lib/daemon'
+import {
+  ApprovalResolvedEventData,
+  daemonClient,
+  NewApprovalEventData,
+  SessionSettingsChangedEventData,
+  SessionStatus,
+  SessionStatusChangedEventData,
+} from '@/lib/daemon'
 import { Button } from '@/components/ui/button'
 import { ThemeSelector } from '@/components/ThemeSelector'
 import { SessionLauncher } from '@/components/SessionLauncher'
@@ -12,17 +19,21 @@ import { useDaemonConnection } from '@/hooks/useDaemonConnection'
 import { useStore } from '@/AppStore'
 import { useSessionSubscriptions } from '@/hooks/useSubscriptions'
 import { Toaster } from 'sonner'
-import { notificationService } from '@/services/NotificationService'
+import { notificationService, type NotificationOptions } from '@/services/NotificationService'
 import { useTheme } from '@/contexts/ThemeContext'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { MessageCircle } from 'lucide-react'
+import { MessageCircle, Bug } from 'lucide-react'
 import { openUrl } from '@tauri-apps/plugin-opener'
+import { DebugPanel } from '@/components/DebugPanel'
+import { notifyLogLocation } from '@/lib/log-notification'
 import '@/App.css'
+import { logger } from '@/lib/logging'
 
 export function Layout() {
   const [approvals, setApprovals] = useState<any[]>([])
   const [activeSessionId] = useState<string | null>(null)
   const { setTheme } = useTheme()
+  const [isDebugPanelOpen, setIsDebugPanelOpen] = useState(false)
 
   // Use the daemon connection hook for all connection management
   const { connected, connecting, version, connect } = useDaemonConnection()
@@ -40,26 +51,144 @@ export function Layout() {
   })
 
   // Get store actions
+  const updateSession = useStore(state => state.updateSession)
   const updateSessionStatus = useStore(state => state.updateSessionStatus)
   const refreshActiveSessionConversation = useStore(state => state.refreshActiveSessionConversation)
+  const clearNotificationsForSession = useStore(state => state.clearNotificationsForSession)
+  const wasRecentlyNavigatedFrom = useStore(state => state.wasRecentlyNavigatedFrom)
+  const addNotifiedItem = useStore(state => state.addNotifiedItem)
+  const isItemNotified = useStore(state => state.isItemNotified)
+  const addRecentResolvedApprovalToCache = useStore(state => state.addRecentResolvedApprovalToCache)
+  const isRecentResolvedApproval = useStore(state => state.isRecentResolvedApproval)
 
   // Set up single SSE subscription for all events
   useSessionSubscriptions(connected, {
-    onSessionStatusChanged: async data => {
-      console.log('useSessionSubscriptions.onSessionStatusChanged', data)
-      const { session_id, new_status } = data
-      updateSessionStatus(session_id, new_status as SessionStatus)
+    onSessionStatusChanged: async (data: SessionStatusChangedEventData) => {
+      logger.log('useSessionSubscriptions.onSessionStatusChanged', Date.now(), data)
+      const { session_id, new_status: nextStatus } = data
+      const targetSession = useStore.getState().sessions.find(s => s.id === session_id)
+      const previousStatus = targetSession?.status
+      const sessionResponse = await daemonClient.getSessionState(data.session_id)
+      const session = sessionResponse.session
+
+      if (!nextStatus) {
+        logger.warn('useSessionSubscriptions.onSessionStatusChanged: nextStatus is undefined', data)
+        return
+      }
+
+      // Clear notifications if session is no longer waiting_input
+      if (nextStatus !== undefined && nextStatus !== SessionStatus.WaitingInput) {
+        clearNotificationsForSession(session_id)
+      }
+
+      // Completed or Failed, but not in series
+      if (
+        (previousStatus !== SessionStatus.Completed && nextStatus === SessionStatus.Completed) ||
+        (previousStatus !== SessionStatus.Failed && nextStatus === SessionStatus.Failed)
+      ) {
+        logger.log(
+          `Session ${data.session_id} completed. Previous status: ${previousStatus}, checking navigation tracking...`,
+        )
+
+        if (wasRecentlyNavigatedFrom(data.session_id)) {
+          logger.log(
+            `Suppressing completion notification for recently navigated session ${data.session_id}`,
+          )
+          return
+        }
+
+        try {
+          let notificationOptions: NotificationOptions = {
+            type: 'session_completed',
+            title: `Session Completed (${data.session_id.slice(0, 8)})`,
+            body: `Completed: ${session.query}`,
+            metadata: {
+              sessionId: data.session_id,
+              model: session.model,
+            },
+            // Don't make this sticky - let it auto-dismiss
+            duration: undefined,
+          }
+
+          if (nextStatus === SessionStatus.Failed) {
+            notificationOptions.type = 'session_failed'
+            notificationOptions.title = `Session Failed (${data.session_id.slice(0, 8)})`
+            notificationOptions.body = session.errorMessage || `Failed: ${session.query}`
+            notificationOptions.priority = 'high'
+          }
+
+          await notificationService.notify(notificationOptions)
+        } catch (error) {
+          logger.error('Failed to show completion notification:', error)
+        }
+      }
+
+      updateSessionStatus(session_id, nextStatus)
+
       await refreshActiveSessionConversation(session_id)
     },
-    onNewApproval: async data => {
-      console.log('useSessionSubscriptions.onNewApproval', data)
-      updateSessionStatus(data.session_id, SessionStatus.WaitingInput)
-      await refreshActiveSessionConversation(data.session_id)
+    onNewApproval: async (data: NewApprovalEventData) => {
+      logger.log('useSessionSubscriptions.onNewApproval', Date.now(), data)
+      const { approval_id: approvalId, session_id: sessionId, tool_name: toolName } = data
+
+      if (!approvalId || !sessionId) {
+        logger.error('Invalid approval event data:', data)
+        return
+      }
+
+      const notificationId = `approval_required:${sessionId}:${approvalId}`
+      if (isItemNotified(notificationId)) {
+        return
+      }
+
+      // Wait a brief moment to see if an approval_resolved event follows immediately
+      // This handles auto-approved cases where both events fire in quick succession
+      await new Promise(resolve => setTimeout(resolve, 100))
+
+      // // Check if this approval was already resolved (auto-approved)
+      if (isRecentResolvedApproval(approvalId)) {
+        console.log('Skipping notification for auto-approved item', { sessionId, approvalId })
+        return
+      }
+
+      try {
+        const sessionState = await daemonClient.getSessionState(sessionId)
+        const model = sessionState.session?.model || 'AI Agent'
+
+        await notificationService.notifyApprovalRequired(
+          sessionId,
+          approvalId,
+          `${toolName} approval required`,
+          model,
+        )
+        addNotifiedItem(notificationId)
+      } catch (error) {
+        logger.error(`Failed to get session state for ${sessionId}:`, error)
+        // Still show notification with limited info
+        await notificationService.notifyApprovalRequired(
+          sessionId,
+          approvalId,
+          `${toolName} approval required`,
+          'AI Agent',
+        )
+        addNotifiedItem(notificationId)
+      }
+
+      updateSessionStatus(sessionId, SessionStatus.WaitingInput)
+      await refreshActiveSessionConversation(sessionId)
     },
-    onApprovalResolved: async data => {
-      console.log('useSessionSubscriptions.onApprovalResolved', data)
+    onApprovalResolved: async (data: ApprovalResolvedEventData) => {
+      logger.log('useSessionSubscriptions.onApprovalResolved', Date.now(), data)
+      addRecentResolvedApprovalToCache(data.approval_id)
       updateSessionStatus(data.session_id, SessionStatus.Running)
       await refreshActiveSessionConversation(data.session_id)
+    },
+    // CODEREVIEW: Why did this previously exist? Sundeep wants to talk about this do not merge.
+    onSessionSettingsChanged: async (data: SessionSettingsChangedEventData) => {
+      // Placeholder handler - to be implemented based on requirements
+      logger.log('useSessionSubscriptions.onSessionSettingsChanged', data)
+      const { session_id, auto_accept_edits } = data
+      updateSession(session_id, { autoAcceptEdits: auto_accept_edits })
     },
   })
 
@@ -82,7 +211,7 @@ export function Layout() {
         'https://github.com/humanlayer/humanlayer/issues/new?title=Feedback%20on%20CodeLayer&body=%23%23%23%20Problem%20to%20solve%20%2F%20Expected%20Behavior%0A%0A%0A%23%23%23%20Proposed%20solution',
       )
     } catch (error) {
-      console.error('Failed to open feedback URL:', error)
+      logger.error('Failed to open feedback URL:', error)
     }
   })
 
@@ -123,11 +252,18 @@ export function Layout() {
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [handleKeyDown])
 
+  // Notify about log location on startup (production only)
+  useEffect(() => {
+    if (!import.meta.env.DEV) {
+      notifyLogLocation()
+    }
+  }, [])
+
   const loadSessions = async () => {
     try {
       await useStore.getState().refreshSessions()
     } catch (error) {
-      console.error('Failed to load sessions:', error)
+      logger.error('Failed to load sessions:', error)
     }
   }
 
@@ -135,7 +271,7 @@ export function Layout() {
     try {
       // Handle new approval format directly
       if (!approval || !approval.id) {
-        console.error('Invalid approval data:', approval)
+        logger.error('Invalid approval data:', approval)
         return
       }
 
@@ -240,6 +376,21 @@ export function Layout() {
               <p>Submit feedback (⌘⇧F)</p>
             </TooltipContent>
           </Tooltip>
+          {import.meta.env.DEV && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => setIsDebugPanelOpen(true)}
+                  className="px-1.5 py-0.5 text-xs font-mono border border-border bg-background text-foreground hover:bg-accent/10 transition-colors"
+                >
+                  <Bug className="w-3 h-3" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Debug Panel (Dev Only)</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
           <ThemeSelector />
           <div className="flex items-center gap-2 font-mono text-xs">
             <span className="uppercase tracking-wider">
@@ -264,6 +415,9 @@ export function Layout() {
 
       {/* Notifications */}
       <Toaster position="bottom-right" richColors />
+
+      {/* Debug Panel */}
+      <DebugPanel open={isDebugPanelOpen} onOpenChange={setIsDebugPanelOpen} />
     </div>
   )
 }

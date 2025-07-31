@@ -178,6 +178,10 @@ After structure approval:
 
 [What exists now, what's missing, key constraints discovered]
 
+## Desired End State
+
+[A Specification of the desired end state after this plan is complete, and how to verify it]
+
 ### Key Discoveries:
 - [Important finding with file:line reference]
 - [Pattern to follow]

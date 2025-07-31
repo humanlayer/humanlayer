@@ -6,6 +6,7 @@ import {
 } from '@tauri-apps/plugin-notification'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { formatError } from '@/utils/errors'
+import { logger } from '@/lib/logging'
 
 // Types for generic notification system
 export type NotificationType =
@@ -44,7 +45,7 @@ class NotificationService {
   private unlistenBlur: (() => void) | null = null
 
   constructor() {
-    console.log('NotificationService: Constructor called')
+    logger.log('NotificationService: Constructor called')
     this.attachFocusListeners()
   }
 
@@ -56,7 +57,7 @@ class NotificationService {
   }
 
   private async attachFocusListeners() {
-    console.log('NotificationService: Attaching focus listeners')
+    logger.log('NotificationService: Attaching focus listeners')
 
     // Check initial focus state synchronously
     this.validateFocusState()
@@ -70,36 +71,36 @@ class NotificationService {
 
       // Listen for focus events
       this.unlistenFocus = await appWindow.onFocusChanged(event => {
-        console.log('Tauri window focus changed:', event)
+        logger.log('Tauri window focus changed:', event)
         this.appFocused = event.payload
       })
 
       // Also use standard window events as fallback
       this.focusHandler = () => {
-        console.log('window focused (standard event)')
+        logger.log('window focused (standard event)')
         this.appFocused = true
       }
 
       this.blurHandler = () => {
-        console.log('window blurred (standard event)')
+        logger.log('window blurred (standard event)')
         this.appFocused = false
       }
 
       window.addEventListener('focus', this.focusHandler)
       window.addEventListener('blur', this.blurHandler)
 
-      console.log('NotificationService: Focus listeners attached')
+      logger.log('NotificationService: Focus listeners attached')
     } catch (error) {
-      console.error('Failed to attach Tauri focus listeners, using standard events only:', error)
+      logger.error('Failed to attach Tauri focus listeners, using standard events only:', error)
 
       // Fallback to standard events only
       this.focusHandler = () => {
-        console.log('window focused')
+        logger.log('window focused')
         this.appFocused = true
       }
 
       this.blurHandler = () => {
-        console.log('window blurred')
+        logger.log('window blurred')
         this.appFocused = false
       }
 
@@ -109,7 +110,7 @@ class NotificationService {
   }
 
   private async detachFocusListeners() {
-    console.log('NotificationService: Detaching focus listeners', {
+    logger.log('NotificationService: Detaching focus listeners', {
       hasFocusHandler: !!this.focusHandler,
       hasBlurHandler: !!this.blurHandler,
       hasUnlistenFocus: !!this.unlistenFocus,
@@ -142,7 +143,7 @@ class NotificationService {
    * Clean up resources (useful for hot module replacement)
    */
   cleanup() {
-    console.log('NotificationService: Cleanup called')
+    logger.log('NotificationService: Cleanup called')
     this.detachFocusListeners()
   }
 
@@ -195,7 +196,7 @@ class NotificationService {
       ? this.isViewingSession(options.metadata.sessionId)
       : false
 
-    console.log('NotificationService.notify:', {
+    logger.log('NotificationService.notify:', {
       appFocused: this.appFocused,
       notificationType: options.type,
       sessionId: options.metadata.sessionId,
@@ -208,7 +209,7 @@ class NotificationService {
     }
     // If app is focused but user is viewing the session, skip in-app notification
     else if (isViewingSession) {
-      console.log(`Skipping in-app notification: User is viewing session ${options.metadata.sessionId}`)
+      logger.log(`Skipping in-app notification: User is viewing session ${options.metadata.sessionId}`)
       return null
     }
     // Otherwise show in-app notification
@@ -258,11 +259,11 @@ class NotificationService {
    * Show OS-level notification using Tauri plugin
    */
   private async showOSNotification(options: NotificationOptions) {
-    console.log('NotificationService.showOSNotification called:', options.title)
+    logger.log('NotificationService.showOSNotification called:', options.title)
     try {
       // Check if we have permission
       let permissionGranted = await isPermissionGranted()
-      console.log('OS notification permission granted:', permissionGranted)
+      logger.log('OS notification permission granted:', permissionGranted)
 
       // Request permission if not granted
       if (!permissionGranted) {
@@ -271,7 +272,7 @@ class NotificationService {
       }
 
       if (!permissionGranted) {
-        console.warn('Notification permission not granted, falling back to in-app notification')
+        logger.warn('Notification permission not granted, falling back to in-app notification')
         this.showInAppNotification(options)
         return
       }
@@ -284,7 +285,7 @@ class NotificationService {
         // but at least the notification will bring attention to the app
       })
     } catch (error) {
-      console.error('Failed to show OS notification:', error)
+      logger.error('Failed to show OS notification:', error)
       // Fallback to in-app notification
       this.showInAppNotification(options)
     }
@@ -295,7 +296,7 @@ class NotificationService {
    */
   async notifyError(error: unknown, context?: string): Promise<string | null> {
     // Always log to console for debugging
-    console.error(context || 'Error:', error)
+    logger.error(context || 'Error:', error)
 
     // Format the error message
     const formattedMessage = formatError(error)
@@ -372,19 +373,19 @@ let notificationService: NotificationService
 
 // Clean up previous instance on hot reload
 if (import.meta.hot) {
-  console.log('NotificationService: HMR detected, checking for previous instance')
+  logger.log('NotificationService: HMR detected, checking for previous instance')
   if ((import.meta as any).hot.data.notificationService) {
-    console.log('NotificationService: Cleaning up previous instance')
+    logger.log('NotificationService: Cleaning up previous instance')
     ;(import.meta as any).hot.data.notificationService.cleanup()
   }
 }
 
-console.log('NotificationService: Creating new instance')
+logger.log('NotificationService: Creating new instance')
 notificationService = new NotificationService()
 
 // Store instance for cleanup on next hot reload
 if (import.meta.hot) {
-  console.log('NotificationService: Storing instance for future cleanup')
+  logger.log('NotificationService: Storing instance for future cleanup')
   ;(import.meta as any).hot.data.notificationService = notificationService
 }
 

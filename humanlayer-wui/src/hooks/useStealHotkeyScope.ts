@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useHotkeysContext } from 'react-hotkeys-hook'
+import { logger } from '@/lib/logging'
 
 export function useStealHotkeyScope(targetScope: string) {
   const { activeScopes, enableScope, disableScope } = useHotkeysContext()
@@ -7,16 +8,16 @@ export function useStealHotkeyScope(targetScope: string) {
 
   useEffect(() => {
     initialScopesRef.current = activeScopes
-    console.log('disabling scopes (storing initial)', activeScopes)
+    logger.log('disabling scopes (storing initial)', activeScopes)
     activeScopes.forEach(scope => disableScope(scope))
-    console.log('activating target scope', targetScope)
+    logger.log('activating target scope', targetScope)
     enableScope(targetScope)
 
     return () => {
-      console.log('disabling target scope', targetScope)
+      logger.log('disabling target scope', targetScope)
       disableScope(targetScope)
 
-      console.log('enabling scopes', initialScopesRef.current)
+      logger.log('enabling scopes', initialScopesRef.current)
       initialScopesRef.current.forEach(scope => enableScope(scope))
     }
   }, [])

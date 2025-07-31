@@ -17,6 +17,8 @@ const (
 	EventSessionStatusChanged EventType = "session_status_changed"
 	// EventConversationUpdated indicates new conversation content has been added to a session
 	EventConversationUpdated EventType = "conversation_updated"
+	// EventSessionSettingsChanged indicates session settings have been updated
+	EventSessionSettingsChanged EventType = "session_settings_changed"
 )
 
 // Event represents an event in the system

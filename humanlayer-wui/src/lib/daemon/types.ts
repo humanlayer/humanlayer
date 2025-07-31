@@ -48,6 +48,7 @@ export interface SubscriptionHandle {
 // Client interface using legacy types for backward compatibility
 export interface DaemonClient {
   connect(): Promise<void>
+  reconnect(): Promise<void>
   disconnect(): Promise<void>
   health(): Promise<HealthCheckResponse>
 
@@ -215,8 +216,13 @@ export interface ApprovalResolvedEventData {
 
 export interface SessionStatusChangedEventData {
   session_id: string
-  old_status: string
-  new_status: string
+  old_status: SessionStatus
+  new_status: SessionStatus
+}
+
+export interface SessionSettingsChangedEventData {
+  session_id: string
+  auto_accept_edits: boolean
 }
 
 // Conversation types

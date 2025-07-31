@@ -1,4 +1,5 @@
 import React from 'react'
+import { logger } from '@/lib/logging'
 
 interface Props {
   children: React.ReactNode
@@ -21,7 +22,7 @@ export class MarkdownErrorBoundary extends React.Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('Markdown rendering error:', error, errorInfo)
+    logger.error('Markdown rendering error:', error, errorInfo)
   }
 
   render() {

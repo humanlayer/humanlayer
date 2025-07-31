@@ -1,4 +1,5 @@
 import React, { Fragment } from 'react'
+import { logger } from '@/lib/logging'
 
 // --- Minimal diff utilities (no third-party libraries) ---
 function computeLineDiff(oldStr: string, newStr: string) {
@@ -601,7 +602,7 @@ export const CustomDiffViewer = ({
     )
   } catch (error) {
     // Log detailed context for debugging
-    console.warn('Snapshot-based diff rendering failed, falling back to simple diff:', {
+    logger.warn('Snapshot-based diff rendering failed, falling back to simple diff:', {
       error: error instanceof Error ? error.message : String(error),
       editsCount: edits.length,
       fileContentLength: fileContents?.length,

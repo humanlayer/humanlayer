@@ -30,6 +30,7 @@ import { useSessionNavigation } from './hooks/useSessionNavigation'
 import { useTaskGrouping } from './hooks/useTaskGrouping'
 import { useSessionClipboard } from './hooks/useSessionClipboard'
 import { useStealHotkeyScope } from '@/hooks/useStealHotkeyScope'
+import { logger } from '@/lib/logging'
 
 interface SessionDetailProps {
   session: Session
@@ -307,7 +308,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     'escape',
     ev => {
       if ((ev.target as HTMLElement)?.dataset.slot === 'dialog-close') {
-        console.warn('Ignoring onClose triggered by dialog-close in SessionDetail')
+        logger.warn('Ignoring onClose triggered by dialog-close in SessionDetail')
         return null
       }
 
@@ -347,15 +348,18 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   useHotkeys(
     'shift+tab',
     async () => {
+      console.log('shift+tab setAutoAcceptEdits', autoAcceptEdits)
       try {
         const newState = !autoAcceptEdits
-        await daemonClient.updateSessionSettings(session.id, {
+        const updatedSession = await daemonClient.updateSessionSettings(session.id, {
           auto_accept_edits: newState,
         })
 
-        // State will be updated via event subscription
+        if (updatedSession.success) {
+          useStore.getState().updateSession(session.id, { autoAcceptEdits: newState })
+        }
       } catch (error) {
-        console.error('Failed to toggle auto-accept mode:', error)
+        logger.error('Failed to toggle auto-accept mode:', error)
       }
     },
     {

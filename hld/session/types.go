@@ -92,6 +92,9 @@ type SessionManager interface {
 
 	// StopAllSessions gracefully stops all active sessions with a timeout
 	StopAllSessions(timeout time.Duration) error
+
+	// UpdateSessionSettings updates session settings and publishes events
+	UpdateSessionSettings(ctx context.Context, sessionID string, updates store.SessionUpdate) error
 }
 
 // ReadToolResult represents the JSON structure of a Read tool result

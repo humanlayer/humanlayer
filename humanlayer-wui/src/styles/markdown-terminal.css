@@ -102,7 +102,7 @@
 }
 
 .prose-terminal ul > li::before {
-  content: '▸';
+  content: '•';
   position: absolute;
   margin-left: -1em;
   color: var(--terminal-accent);

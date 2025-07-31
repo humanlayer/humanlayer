@@ -1158,6 +1158,7 @@ components:
         - approval_resolved
         - session_status_changed
         - conversation_updated
+        - session_settings_changed
       description: Type of system event
 
     Event:
