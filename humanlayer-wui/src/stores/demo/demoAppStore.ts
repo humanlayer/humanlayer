@@ -1,6 +1,7 @@
 import { create, StoreApi } from 'zustand'
 import { Session, SessionStatus } from '@/lib/daemon/types'
 import { Theme } from '@/contexts/ThemeContext'
+import { logger } from '@/lib/logging'
 
 // Comprehensive app state for demo animations
 interface DemoAppState {
@@ -249,7 +250,7 @@ export class DemoAppAnimator {
 
     // Subscribe to store changes for logging
     this.unsubscribe = store.subscribe(state => {
-      console.log('[Demo App Store] State updated:', {
+      logger.log('[Demo App Store] State updated:', {
         sessions: state.sessions.length,
         launcher: state.launcherOpen,
         theme: state.theme,
@@ -287,7 +288,7 @@ export class DemoAppAnimator {
     const step = this.sequence[this.currentIndex]
 
     this.timeoutId = setTimeout(() => {
-      console.log(
+      logger.log(
         `[Demo App Animator] Step ${this.currentIndex + 1}/${this.sequence.length}: ${step.description || 'State update'}`,
       )
 

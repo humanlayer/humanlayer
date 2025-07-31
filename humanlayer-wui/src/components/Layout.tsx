@@ -15,14 +15,18 @@ import { Toaster } from 'sonner'
 import { notificationService } from '@/services/NotificationService'
 import { useTheme } from '@/contexts/ThemeContext'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { MessageCircle } from 'lucide-react'
+import { MessageCircle, Bug } from 'lucide-react'
 import { openUrl } from '@tauri-apps/plugin-opener'
+import { DebugPanel } from '@/components/DebugPanel'
+import { notifyLogLocation } from '@/lib/log-notification'
 import '@/App.css'
+import { logger } from '@/lib/logging'
 
 export function Layout() {
   const [approvals, setApprovals] = useState<any[]>([])
   const [activeSessionId] = useState<string | null>(null)
   const { setTheme } = useTheme()
+  const [isDebugPanelOpen, setIsDebugPanelOpen] = useState(false)
 
   // Use the daemon connection hook for all connection management
   const { connected, connecting, version, connect } = useDaemonConnection()
@@ -46,18 +50,18 @@ export function Layout() {
   // Set up single SSE subscription for all events
   useSessionSubscriptions(connected, {
     onSessionStatusChanged: async data => {
-      console.log('useSessionSubscriptions.onSessionStatusChanged', data)
+      logger.log('useSessionSubscriptions.onSessionStatusChanged', data)
       const { session_id, new_status } = data
       updateSessionStatus(session_id, new_status as SessionStatus)
       await refreshActiveSessionConversation(session_id)
     },
     onNewApproval: async data => {
-      console.log('useSessionSubscriptions.onNewApproval', data)
+      logger.log('useSessionSubscriptions.onNewApproval', data)
       updateSessionStatus(data.session_id, SessionStatus.WaitingInput)
       await refreshActiveSessionConversation(data.session_id)
     },
     onApprovalResolved: async data => {
-      console.log('useSessionSubscriptions.onApprovalResolved', data)
+      logger.log('useSessionSubscriptions.onApprovalResolved', data)
       updateSessionStatus(data.session_id, SessionStatus.Running)
       await refreshActiveSessionConversation(data.session_id)
     },
@@ -82,7 +86,7 @@ export function Layout() {
         'https://github.com/humanlayer/humanlayer/issues/new?title=Feedback%20on%20CodeLayer&body=%23%23%23%20Problem%20to%20solve%20%2F%20Expected%20Behavior%0A%0A%0A%23%23%23%20Proposed%20solution',
       )
     } catch (error) {
-      console.error('Failed to open feedback URL:', error)
+      logger.error('Failed to open feedback URL:', error)
     }
   })
 
@@ -123,11 +127,18 @@ export function Layout() {
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [handleKeyDown])
 
+  // Notify about log location on startup (production only)
+  useEffect(() => {
+    if (!import.meta.env.DEV) {
+      notifyLogLocation()
+    }
+  }, [])
+
   const loadSessions = async () => {
     try {
       await useStore.getState().refreshSessions()
     } catch (error) {
-      console.error('Failed to load sessions:', error)
+      logger.error('Failed to load sessions:', error)
     }
   }
 
@@ -135,7 +146,7 @@ export function Layout() {
     try {
       // Handle new approval format directly
       if (!approval || !approval.id) {
-        console.error('Invalid approval data:', approval)
+        logger.error('Invalid approval data:', approval)
         return
       }
 
@@ -240,6 +251,21 @@ export function Layout() {
               <p>Submit feedback (⌘⇧F)</p>
             </TooltipContent>
           </Tooltip>
+          {import.meta.env.DEV && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => setIsDebugPanelOpen(true)}
+                  className="px-1.5 py-0.5 text-xs font-mono border border-border bg-background text-foreground hover:bg-accent/10 transition-colors"
+                >
+                  <Bug className="w-3 h-3" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Debug Panel (Dev Only)</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
           <ThemeSelector />
           <div className="flex items-center gap-2 font-mono text-xs">
             <span className="uppercase tracking-wider">
@@ -264,6 +290,9 @@ export function Layout() {
 
       {/* Notifications */}
       <Toaster position="bottom-right" richColors />
+
+      {/* Debug Panel */}
+      <DebugPanel open={isDebugPanelOpen} onOpenChange={setIsDebugPanelOpen} />
     </div>
   )
 }

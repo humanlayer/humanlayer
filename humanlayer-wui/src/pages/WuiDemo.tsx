@@ -9,6 +9,7 @@ import { Session } from '@/lib/daemon/types'
 import { ThemeSelector } from '@/components/ThemeSelector'
 import { SessionLauncher } from '@/components/SessionLauncher'
 import { DemoStoreProvider, useDemoStore } from '@/stores/demo/providers/DemoStoreProvider'
+import { logger } from '@/lib/logging'
 import {
   launcherWorkflowSequence,
   statusChangesSequence,
@@ -32,7 +33,7 @@ function SessionTableWrapper() {
   })
 
   const handleActivateSession = (session: Session) => {
-    console.log('Activating session:', session.id)
+    logger.log('Activating session:', session.id)
     // In demo mode, this would navigate to session detail
   }
 

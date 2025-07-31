@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"time"
 
@@ -90,17 +91,35 @@ func (s *HTTPServer) Start(ctx context.Context) error {
 	// Register SSE endpoint directly (not part of strict interface)
 	v1.GET("/stream/events", s.sseHandler.StreamEvents)
 
-	// Create HTTP server
+	// Create listener first to handle port 0
 	addr := fmt.Sprintf("%s:%d", s.config.HTTPHost, s.config.HTTPPort)
+	listener, err := net.Listen("tcp", addr)
+	if err != nil {
+		return fmt.Errorf("failed to listen on %s: %w", addr, err)
+	}
+
+	// Get actual port after binding
+	actualAddr := listener.Addr().(*net.TCPAddr)
+	actualPort := actualAddr.Port
+
+	// If port 0 was used, output actual port to stdout
+	if s.config.HTTPPort == 0 {
+		fmt.Printf("HTTP_PORT=%d\n", actualPort)
+	}
+
+	slog.Info("Starting HTTP server",
+		"configured_port", s.config.HTTPPort,
+		"actual_address", actualAddr.String())
+
+	// Create HTTP server
 	s.server = &http.Server{
-		Addr:    addr,
 		Handler: s.router,
 	}
 
 	// Start server in goroutine
 	go func() {
-		slog.Info("Starting HTTP server", "address", addr)
-		if err := s.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		// Use the existing listener
+		if err := s.server.Serve(listener); err != nil && err != http.ErrServerClosed {
 			slog.Error("HTTP server error", "error", err)
 		}
 	}()

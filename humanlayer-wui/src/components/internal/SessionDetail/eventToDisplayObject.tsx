@@ -62,7 +62,7 @@ export function eventToDisplayObject(
   let iconComponent = null
   let toolResultContent = null
 
-  // console.log('event', event)
+  // logger.log('event', event)
   // Check if this is a thinking message
   const isThinking =
     event.eventType === ConversationEventType.Thinking ||
@@ -618,7 +618,7 @@ export function eventToDisplayObject(
   }
 
   if (subject === null) {
-    // console.warn('Unknown subject for event', event)
+    // logger.warn('Unknown subject for event', event)
     subject = <span>Unknown Subject</span>
   }
 

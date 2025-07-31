@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { daemonClient } from '@/lib/daemon'
 import { formatError } from '@/utils/errors'
+import { daemonService } from '@/services/daemon-service'
 
 interface UseDaemonConnectionReturn {
   connected: boolean
@@ -8,6 +9,7 @@ interface UseDaemonConnectionReturn {
   error: string | null
   version: string | null
   connect: () => Promise<void>
+  reconnect: () => Promise<void>
   checkHealth: () => Promise<void>
 }
 
@@ -16,6 +18,7 @@ export function useDaemonConnection(): UseDaemonConnectionReturn {
   const [connecting, setConnecting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [version, setVersion] = useState<string | null>(null)
+  const retryCount = useRef(0)
 
   const checkHealth = useCallback(async () => {
     try {
@@ -31,11 +34,47 @@ export function useDaemonConnection(): UseDaemonConnectionReturn {
   }, [])
 
   const connect = useCallback(async () => {
+    if (connecting) return
+
+    setConnecting(true)
+    setError(null)
+
+    try {
+      await daemonClient.connect()
+      const health = await daemonClient.health()
+
+      setConnected(true)
+      setVersion(health.version)
+      retryCount.current = 0
+    } catch (err: any) {
+      setConnected(false)
+
+      // Check if this is first failure and we have a managed daemon
+      if (retryCount.current === 0) {
+        const isManaged = await daemonService.isDaemonRunning()
+        if (!isManaged) {
+          // Let DaemonManager handle it
+          setError(formatError(err))
+        } else {
+          // Managed daemon might be starting, retry
+          retryCount.current++
+          setTimeout(() => connect(), 2000)
+        }
+      } else {
+        setError(formatError(err))
+      }
+    } finally {
+      setConnecting(false)
+    }
+  }, [])
+
+  const reconnect = useCallback(async () => {
     try {
       setConnecting(true)
       setError(null)
+      setConnected(false)
 
-      await daemonClient.connect()
+      await daemonClient.reconnect()
       await checkHealth()
     } catch (err) {
       setError(formatError(err))
@@ -64,6 +103,7 @@ export function useDaemonConnection(): UseDaemonConnectionReturn {
     error,
     version,
     connect,
+    reconnect,
     checkHealth,
   }
 }
