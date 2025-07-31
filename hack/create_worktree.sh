@@ -29,9 +29,14 @@ BASE_BRANCH=${2:-$(git branch --show-current)}
 # Get base directory name (should be 'humanlayer')
 REPO_BASE_NAME=$(basename "$(pwd)")
 
-# Construct paths
-WORKTREE_DIR_NAME="${REPO_BASE_NAME}_${WORKTREE_NAME}"
-WORKTREES_BASE="$HOME/.humanlayer/worktrees"
+if [ ! -z "$HUMANLAYER_WORKTREE_OVERRIDE_BASE" ]; then
+    WORKTREE_DIR_NAME="${WORKTREE_NAME}"
+    WORKTREES_BASE="${HUMANLAYER_WORKTREE_OVERRIDE_BASE}/${REPO_BASE_NAME}"
+else
+    WORKTREE_DIR_NAME="${REPO_BASE_NAME}_${WORKTREE_NAME}"
+    WORKTREES_BASE="$HOME/.humanlayer/worktrees"
+fi
+
 WORKTREE_PATH="${WORKTREES_BASE}/${WORKTREE_DIR_NAME}"
 
 echo "🌳 Creating worktree: ${WORKTREE_NAME}"
