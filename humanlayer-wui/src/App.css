@@ -198,6 +198,48 @@
   --terminal-warning: #ff6600;
   --terminal-error: #cc5200;
 }
+
+/* Rosé Pine - Soho vibes */
+[data-theme='rose-pine'] {
+  --terminal-bg: #191724;
+  --terminal-bg-alt: #1f1d2e;
+  --terminal-fg: #e0def4;
+  --terminal-fg-dim: #908caa;
+  --terminal-accent: #c4a7e7;
+  --terminal-accent-alt: #ebbcba;
+  --terminal-border: #6e6a86;
+  --terminal-success: #9ccfd8;
+  --terminal-warning: #f6c177;
+  --terminal-error: #eb6f92;
+}
+
+/* Rosé Pine Dawn - Light theme with warm tones */
+[data-theme='rose-pine-dawn'] {
+  --terminal-bg: #faf4ed;
+  --terminal-bg-alt: #fffaf3;
+  --terminal-fg: #575279;
+  --terminal-fg-dim: #797593;
+  --terminal-accent: #907aa9;
+  --terminal-accent-alt: #d7827e;
+  --terminal-border: #cecacd;
+  --terminal-success: #56949f;
+  --terminal-warning: #ea9d34;
+  --terminal-error: #b4637a;
+}
+
+/* Rosé Pine Moon - Softer dark theme */
+[data-theme='rose-pine-moon'] {
+  --terminal-bg: #232136;
+  --terminal-bg-alt: #2a273f;
+  --terminal-fg: #e0def4;
+  --terminal-fg-dim: #908caa;
+  --terminal-accent: #c4a7e7;
+  --terminal-accent-alt: #ebbcba;
+  --terminal-border: #6e6a86;
+  --terminal-success: #9ccfd8;
+  --terminal-warning: #f6c177;
+  --terminal-error: #eb6f92;
+}
 @layer base {
   * {
     @apply border-border outline-ring/50;
