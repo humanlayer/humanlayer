@@ -1,3 +1,4 @@
+use crate::get_branch_id;
 use serde::{Deserialize, Serialize};
 use std::env;
 use std::fs;
@@ -66,17 +67,8 @@ impl DaemonManager {
             }
         }
 
-        // Determine branch identifier
-        let branch_id = if is_dev {
-            branch_override
-                .or_else(get_git_branch)
-                .unwrap_or_else(|| "dev".to_string())
-        } else {
-            "production".to_string()
-        };
-
-        // Extract ticket ID if present (e.g., "eng-1234" from "eng-1234-some-feature")
-        let branch_id = extract_ticket_id(&branch_id).unwrap_or(branch_id);
+        // Determine branch identifier using shared function
+        let branch_id = get_branch_id(is_dev, branch_override);
 
         // Set up paths
         let home_dir = dirs::home_dir().ok_or("Failed to get home directory")?;
@@ -144,17 +136,17 @@ impl DaemonManager {
 
         // Start daemon with stdout capture and stderr logging
         let mut cmd = Command::new(&daemon_path);
+        
+        // Log the full command being executed for debugging
+        log::info!("[Tauri] Executing daemon at path: {daemon_path:?}");
+        log::info!("[Tauri] Daemon environment: database_path={}, socket_path={}, port=0, branch_id={branch_id}", 
+                   database_path.display(), 
+                   socket_path.display());
 
-        // In dev mode, capture stderr to see what's happening
-        if is_dev {
-            cmd.envs(env_vars)
-                .stdout(Stdio::piped())
-                .stderr(Stdio::piped());
-        } else {
-            cmd.envs(env_vars)
-                .stdout(Stdio::piped())
-                .stderr(Stdio::inherit());
-        }
+        // Always capture stderr for better debugging, even in production
+        cmd.envs(env_vars)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
 
         let mut child = cmd
             .spawn()
@@ -164,16 +156,27 @@ impl DaemonManager {
         let pid = child.id();
         log::info!("[Tauri] Daemon spawned with PID: {pid}");
 
-        // If in dev mode, spawn a task to read stderr
-        if is_dev {
-            if let Some(stderr) = child.stderr.take() {
-                let branch_id_clone = branch_id.clone();
-                tokio::spawn(async move {
-                    let reader = BufReader::new(stderr);
-                    for line in reader.lines() {
-                        match line {
-                            Ok(line) => {
-                                // Parse slog format to extract level
+        // Always spawn a task to read stderr for debugging
+        if let Some(stderr) = child.stderr.take() {
+            let branch_id_clone = branch_id.clone();
+            let is_prod = !is_dev;
+            tokio::spawn(async move {
+                let reader = BufReader::new(stderr);
+                for line in reader.lines() {
+                    match line {
+                        Ok(line) => {
+                            // In production, always log at info level or higher for visibility
+                            if is_prod {
+                                // Check if it's an error or warning
+                                if line.contains("ERROR") || line.contains("error") || line.contains("Error") {
+                                    log::error!("[Daemon] {branch_id_clone}: {line}");
+                                } else if line.contains("WARN") || line.contains("warn") || line.contains("Warning") {
+                                    log::warn!("[Daemon] {branch_id_clone}: {line}");
+                                } else {
+                                    log::info!("[Daemon] {branch_id_clone}: {line}");
+                                }
+                            } else {
+                                // Dev mode: parse log levels as before
                                 let level = extract_log_level(&line);
                                 let cleaned_line = remove_timestamp(&line);
 
@@ -185,14 +188,15 @@ impl DaemonManager {
                                     LogLevel::Trace => log::trace!("[Daemon] {branch_id_clone}: {cleaned_line}"),
                                 }
                             }
-                            Err(e) => {
-                                log::error!("[Tauri] Error reading daemon stderr: {e}");
-                                break;
-                            }
+                        }
+                        Err(e) => {
+                            log::error!("[Tauri] Error reading daemon stderr: {e}");
+                            break;
                         }
                     }
-                });
-            }
+                }
+                log::info!("[Tauri] Daemon stderr reader finished for {branch_id_clone}");
+            });
         }
 
         // Parse stdout to get the actual port
@@ -206,15 +210,40 @@ impl DaemonManager {
         let mut first_line = String::new();
 
         // Read the first line synchronously to get the port
-        reader
-            .read_line(&mut first_line)
-            .map_err(|e| format!("Failed to read daemon stdout: {e}"))?;
-
-        if first_line.starts_with("HTTP_PORT=") {
-            actual_port = first_line.trim().replace("HTTP_PORT=", "").parse::<u16>().ok();
+        log::info!("[Tauri] Waiting for daemon to report port on stdout...");
+        match reader.read_line(&mut first_line) {
+            Ok(0) => {
+                log::error!("[Tauri] Daemon stdout closed immediately (0 bytes read)");
+                return Err("Daemon stdout closed before reporting port".to_string());
+            }
+            Ok(n) => {
+                log::info!("[Tauri] Read {n} bytes from daemon stdout: {first_line:?}");
+            }
+            Err(e) => {
+                log::error!("[Tauri] Failed to read daemon stdout: {e}");
+                return Err(format!("Failed to read daemon stdout: {e}"));
+            }
         }
 
-        let port = actual_port.ok_or("Daemon failed to report port")?;
+        if first_line.starts_with("HTTP_PORT=") {
+            let port_str = first_line.trim().replace("HTTP_PORT=", "");
+            log::info!("[Tauri] Attempting to parse port from: {port_str:?}");
+            match port_str.parse::<u16>() {
+                Ok(p) => {
+                    actual_port = Some(p);
+                    log::info!("[Tauri] Successfully parsed port: {p}");
+                }
+                Err(e) => {
+                    log::error!("[Tauri] Failed to parse port from {port_str:?}: {e}");
+                }
+            }
+        } else {
+            log::error!("[Tauri] First line from daemon stdout doesn't start with HTTP_PORT=: {first_line:?}");
+        }
+
+        let port = actual_port.ok_or_else(|| {
+            format!("Daemon failed to report port. First line was: {first_line:?}")
+        })?;
         log::info!("[Tauri] Got port {port} from daemon stdout");
 
         // Now spawn a task to keep reading stdout to prevent SIGPIPE
@@ -384,29 +413,6 @@ fn get_daemon_path(app_handle: &AppHandle, is_dev: bool) -> Result<PathBuf, Stri
     }
 }
 
-fn get_git_branch() -> Option<String> {
-    Command::new("git")
-        .args(["branch", "--show-current"])
-        .output()
-        .ok()
-        .and_then(|output| {
-            if output.status.success() {
-                String::from_utf8(output.stdout)
-                    .ok()
-                    .map(|s| s.trim().to_string())
-            } else {
-                None
-            }
-        })
-}
-
-fn extract_ticket_id(branch: &str) -> Option<String> {
-    // Extract patterns like "eng-1234" from branch names
-    let re = regex::Regex::new(r"(eng-\d+)").ok()?;
-    re.captures(branch)
-        .and_then(|cap| cap.get(1))
-        .map(|m| m.as_str().to_string())
-}
 
 async fn check_daemon_health(port: u16) -> Result<(), String> {
     let client = reqwest::Client::new();

@@ -3,8 +3,45 @@ mod daemon;
 use daemon::{DaemonInfo, DaemonManager};
 use std::env;
 use std::path::PathBuf;
+use std::process::Command;
 use tauri::{Manager, State};
 use tauri_plugin_store::StoreExt;
+
+// Branch detection utilities
+pub fn get_git_branch() -> Option<String> {
+    Command::new("git")
+        .args(["branch", "--show-current"])
+        .output()
+        .ok()
+        .and_then(|output| {
+            if output.status.success() {
+                String::from_utf8(output.stdout)
+                    .ok()
+                    .map(|s| s.trim().to_string())
+            } else {
+                None
+            }
+        })
+}
+
+pub fn extract_ticket_id(branch: &str) -> Option<String> {
+    // Extract patterns like "eng-1234" from branch names
+    let re = regex::Regex::new(r"(eng-\d+)").ok()?;
+    re.captures(branch)
+        .and_then(|cap| cap.get(1))
+        .map(|m| m.as_str().to_string())
+}
+
+pub fn get_branch_id(is_dev: bool, branch_override: Option<String>) -> String {
+    if is_dev {
+        let branch = branch_override
+            .or_else(get_git_branch)
+            .unwrap_or_else(|| "dev".to_string());
+        extract_ticket_id(&branch).unwrap_or(branch)
+    } else {
+        "production".to_string()
+    }
+}
 
 // Helper to get store path based on dev mode and branch
 fn get_store_path(is_dev: bool, branch_id: Option<&str>) -> PathBuf {
@@ -116,6 +153,24 @@ async fn is_daemon_running(daemon_manager: State<'_, DaemonManager>) -> Result<b
     Ok(daemon_manager.is_running())
 }
 
+#[tauri::command]
+async fn get_log_directory() -> Result<String, String> {
+    let is_dev = cfg!(debug_assertions);
+    
+    if is_dev {
+        // Dev mode: return branch-based folder
+        let branch_id = get_branch_id(is_dev, None);
+        let home = dirs::home_dir().ok_or("Failed to get home directory")?;
+        let log_dir = home.join(".humanlayer").join("logs").join(format!("wui-{}", branch_id));
+        Ok(log_dir.to_string_lossy().to_string())
+    } else {
+        // Production: use tauri API to get platform-specific log directory
+        // This will be handled by the frontend using appLogDir()
+        Err("Use appLogDir() for production".to_string())
+    }
+}
+
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -125,19 +180,43 @@ pub fn run() {
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_store::Builder::new().build())
-        .plugin(
-            tauri_plugin_log::Builder::new()
-                .targets([
-                    tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::LogDir {
-                        file_name: None
+        .plugin({
+            let is_dev = cfg!(debug_assertions);
+            let branch_id = get_branch_id(is_dev, None);
+            
+            // Determine log directory based on dev/prod mode
+            let log_targets = if is_dev {
+                // Dev mode: use branch-based folder in ~/.humanlayer/logs/
+                let home = dirs::home_dir().expect("Failed to get home directory");
+                let log_dir = home.join(".humanlayer").join("logs").join(format!("wui-{}", branch_id));
+                
+                // Create the directory if it doesn't exist
+                std::fs::create_dir_all(&log_dir).ok();
+                
+                // Store the log directory path in app state for frontend access
+                println!("[WUI] Logs will be written to: {}", log_dir.display());
+                
+                vec![
+                    tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Folder {
+                        path: log_dir,
+                        file_name: Some("codelayer.log".into()),
                     }),
-                    // Stdout only in dev mode
-                    #[cfg(debug_assertions)]
                     tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout),
-                    // Always include webview for frontend integration
                     tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Webview),
-                ])
-                .level(if cfg!(debug_assertions) {
+                ]
+            } else {
+                // Production: use default platform-specific log directory
+                vec![
+                    tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::LogDir {
+                        file_name: None,
+                    }),
+                    tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Webview),
+                ]
+            };
+            
+            tauri_plugin_log::Builder::new()
+                .targets(log_targets)
+                .level(if is_dev {
                     log::LevelFilter::Debug
                 } else {
                     log::LevelFilter::Info
@@ -145,10 +224,11 @@ pub fn run() {
                 .max_file_size(50_000_000) // 50MB before rotation
                 .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepAll)
                 .build()
-        )
+        })
         .setup(|app| {
             let daemon_manager = DaemonManager::new();
             app.manage(daemon_manager.clone());
+
 
             // Check if auto-launch is disabled
             let should_autolaunch = env::var("HUMANLAYER_WUI_AUTOLAUNCH_DAEMON")
@@ -175,17 +255,6 @@ pub fn run() {
                         Err(e) => {
                             // Log error but don't interrupt user experience
                             log::error!("[Tauri] Failed to auto-start daemon: {e}");
-
-                            // Common edge cases that shouldn't interrupt the user
-                            if e.contains("port") || e.contains("already in use") {
-                                log::info!("[Tauri] Port conflict detected, user can connect manually");
-                            } else if e.contains("binary not found")
-                                || e.contains("daemon not found")
-                            {
-                                log::warn!("[Tauri] Daemon binary not found: {e}");
-                            } else if e.contains("permission") {
-                                log::error!("[Tauri] Permission denied starting daemon: {e}");
-                            }
                         }
                     }
                 });
@@ -229,6 +298,7 @@ pub fn run() {
             stop_daemon,
             get_daemon_info,
             is_daemon_running,
+            get_log_directory,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

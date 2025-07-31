@@ -1,10 +1,19 @@
 import { appLogDir } from '@tauri-apps/api/path'
+import { invoke } from '@tauri-apps/api/core'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { logger } from './logging'
 
 export async function notifyLogLocation() {
   try {
-    const logDir = await appLogDir()
+    let logDir: string
+    
+    // Try to get custom log directory first (dev mode)
+    try {
+      logDir = await invoke<string>('get_log_directory')
+    } catch {
+      // Fall back to default app log directory (production)
+      logDir = await appLogDir()
+    }
 
     // Log to console (visible in dev mode)
     console.log(
@@ -24,7 +33,16 @@ export async function notifyLogLocation() {
 
 export async function openLogDirectory() {
   try {
-    const logDir = await appLogDir()
+    let logDir: string
+    
+    // Try to get custom log directory first (dev mode)
+    try {
+      logDir = await invoke<string>('get_log_directory')
+    } catch {
+      // Fall back to default app log directory (production)
+      logDir = await appLogDir()
+    }
+    
     await openUrl(logDir)
   } catch (error) {
     logger.error('Failed to open log directory:', error)
