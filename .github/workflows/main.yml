@@ -24,8 +24,14 @@ jobs:
         with:
           node-version: 22
 
-      - name: Install Claude Code CLI
-        run: npm install -g @anthropic-ai/claude-code
+      - name: Install bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
 
       - name: Install uv
         uses: astral-sh/setup-uv@v4
@@ -37,34 +43,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version-file: "pyproject.toml"
-
-      - name: Install the project
-        run: uv sync --all-extras --dev
-
-      - name: Install bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - name: Install ts deps
-        run: npm -C humanlayer-ts install && npm -C hlyr install && npm -C humanlayer-ts-vercel-ai-sdk install
-
-      - name: Build hld SDK
-        run: cd hld/sdk/typescript && bun install && bun run build
-
-      - name: Install wui deps
-        run: bun install --cwd=humanlayer-wui
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version: stable
-
-      # TODO: Update this, let's just pull the binary?
-      - name: Install golangci-lint
-        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-
-      - name: Install mockgen
-        run: go install go.uber.org/mock/mockgen@latest
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@1.83.0
@@ -78,11 +56,29 @@ jobs:
           packages: libwebkit2gtk-4.1-dev build-essential curl wget file libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
           version: 1.0
 
-      - name: Build CLI
-        run: npm -C hlyr run build
+      - name: Cache Go tools
+        uses: actions/cache@v3
+        with:
+          path: ~/go/bin
+          key: go-tools-${{ runner.os }}-${{ hashFiles('**/go.mod') }}
+          restore-keys: |
+            go-tools-${{ runner.os }}-
 
-      - name: Generate Go mocks
-        run: make -C hld mocks
+      - name: Cache Rust tools
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: rust-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Run repository setup
+        run: make setup-ci
+        env:
+          CI: true
 
       - name: Run checks
         run: make check
@@ -100,11 +96,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: "npm"
-          cache-dependency-path: humanlayer-ts/package-lock.json
 
-      - name: Install Claude Code CLI
-        run: npm install -g @anthropic-ai/claude-code
+      - name: Install bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
 
       - name: Install uv
         uses: astral-sh/setup-uv@v4
@@ -114,16 +114,6 @@ jobs:
 
       - name: Set up Python ${{ matrix.python-version }}
         run: uv python install ${{ matrix.python-version }}
-
-      - name: Install ts deps
-        run: npm -C humanlayer-ts install && npm -C hlyr install && npm -C humanlayer-ts-vercel-ai-sdk install
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version: stable
-
-      - name: Install mockgen
-        run: go install go.uber.org/mock/mockgen@latest
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -135,22 +125,29 @@ jobs:
           packages: libwebkit2gtk-4.1-dev build-essential curl wget file libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
           version: 1.0
 
-      - name: Build CLI
-        run: npm -C hlyr run build
-
-      - name: Generate Go mocks
-        run: make -C hld mocks
-
-      - name: Install bun
-        uses: oven-sh/setup-bun@v2
+      - name: Cache Go tools
+        uses: actions/cache@v3
         with:
-          bun-version: latest
+          path: ~/go/bin
+          key: go-tools-${{ runner.os }}-${{ hashFiles('**/go.mod') }}
+          restore-keys: |
+            go-tools-${{ runner.os }}-
 
-      - name: Build hld SDK
-        run: cd hld/sdk/typescript && bun install && bun run build
+      - name: Cache Rust tools
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: rust-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Install wui deps
-        run: bun install --cwd=humanlayer-wui
+      - name: Run repository setup
+        run: make setup-ci
+        env:
+          CI: true
 
       - name: Test
         run: make test

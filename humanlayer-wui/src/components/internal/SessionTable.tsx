@@ -17,6 +17,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { daemonClient } from '@/lib/daemon/client'
 import { renderSessionStatus } from '@/utils/sessionStatus'
+import { logger } from '@/lib/logging'
 
 interface SessionTableProps {
   sessions: Session[]
@@ -243,7 +244,7 @@ export default function SessionTable({
         const currentSession = sessions.find(s => s.id === focusedSession?.id)
         if (!currentSession) return
 
-        console.log('Archive hotkey pressed:', {
+        logger.log('Archive hotkey pressed:', {
           sessionId: currentSession.id,
           archived: currentSession.archived,
           willArchive: !currentSession.archived,

@@ -2,6 +2,7 @@ import type { Session, Approval } from '@/lib/daemon/types'
 import { SessionStatus } from '@/lib/daemon/types'
 import { create, StoreApi } from 'zustand'
 import { daemonClient } from '@/lib/daemon'
+import { logger } from '@/lib/logging'
 
 export interface AppState {
   /* Sessions */
@@ -110,7 +111,7 @@ export function createRealAppStore(): StoreApi<AppState> {
         const response = await daemonClient.getSessionLeaves()
         set({ sessions: response.sessions })
       } catch (error) {
-        console.error('Failed to refresh sessions:', error)
+        logger.error('Failed to refresh sessions:', error)
       }
     },
     setFocusedSession: (session: Session | null) => set({ focusedSession: session }),
@@ -149,7 +150,7 @@ export function createRealAppStore(): StoreApi<AppState> {
         await daemonClient.interruptSession(sessionId)
         // The session status will be updated via the subscription
       } catch (error) {
-        console.error('Failed to interrupt session:', error)
+        logger.error('Failed to interrupt session:', error)
       }
     },
 
@@ -193,7 +194,7 @@ export function createRealAppStore(): StoreApi<AppState> {
           activeSessionId: sessionId,
         })
       } catch (error) {
-        console.error('Failed to fetch session detail:', error)
+        logger.error('Failed to fetch session detail:', error)
         throw error
       }
     },

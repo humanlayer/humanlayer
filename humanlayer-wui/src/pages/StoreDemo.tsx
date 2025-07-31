@@ -3,6 +3,7 @@ import { create, StoreApi, useStore } from 'zustand'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { logger } from '@/lib/logging'
 
 // Define the store interface
 interface CounterStore {
@@ -58,7 +59,7 @@ class DemoAnimator {
 
     // Subscribe to store changes for logging/debugging
     this.unsubscribe = store.subscribe(state => {
-      console.log('[Demo Store] Count updated to:', state.count)
+      logger.log('[Demo Store] Count updated to:', state.count)
     })
   }
 
@@ -121,7 +122,7 @@ function RealStoreProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Optional: Subscribe to real store for logging
     const unsubscribe = realStore.subscribe(state => {
-      console.log('[Real Store] Count updated to:', state.count)
+      logger.log('[Real Store] Count updated to:', state.count)
     })
 
     return () => {

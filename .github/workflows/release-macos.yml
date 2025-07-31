@@ -48,15 +48,31 @@ jobs:
         working-directory: humanlayer-wui
         run: bun install
 
+      - name: Build daemon for macOS ARM
+        working-directory: hld
+        run: GOOS=darwin GOARCH=arm64 go build -o hld-darwin-arm64 ./cmd/hld
+
+      - name: Build humanlayer CLI for macOS ARM
+        working-directory: hlyr
+        run: |
+          bun install
+          bun run build
+          bun build ./dist/index.js --compile --target=bun-darwin-arm64 --outfile=humanlayer-darwin-arm64
+          chmod +x humanlayer-darwin-arm64
+
+      - name: Copy binaries to Tauri resources
+        run: |
+          mkdir -p humanlayer-wui/src-tauri/bin
+          cp hld/hld-darwin-arm64 humanlayer-wui/src-tauri/bin/hld
+          cp hlyr/humanlayer-darwin-arm64 humanlayer-wui/src-tauri/bin/humanlayer
+          chmod +x humanlayer-wui/src-tauri/bin/hld
+          chmod +x humanlayer-wui/src-tauri/bin/humanlayer
+
       - name: Build Tauri app (including DMG)
         working-directory: humanlayer-wui
         run: bun run tauri build
         env:
           APPLE_SIGNING_IDENTITY: "-"  # Ad-hoc signing to prevent "damaged" error
-
-      - name: Build daemon for macOS ARM
-        working-directory: hld
-        run: GOOS=darwin GOARCH=arm64 go build -o hld-darwin-arm64 ./cmd/hld
 
       - name: Upload DMG artifact
         uses: actions/upload-artifact@v4

@@ -48,6 +48,7 @@ export interface SubscriptionHandle {
 // Client interface using legacy types for backward compatibility
 export interface DaemonClient {
   connect(): Promise<void>
+  reconnect(): Promise<void>
   disconnect(): Promise<void>
   health(): Promise<HealthCheckResponse>
 

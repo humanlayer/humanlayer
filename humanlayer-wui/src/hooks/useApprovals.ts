@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { daemonClient } from '@/lib/daemon'
 import { Approval } from '@/lib/daemon/types'
 import { formatError } from '@/utils/errors'
+import { logger } from '@/lib/logging'
 
 interface UseApprovalsReturn {
   approvals: Approval[]
@@ -109,7 +110,7 @@ export function useApprovalsWithSubscription(sessionId?: string): UseApprovalsRe
         })
         unsubscribe = handle.unsubscribe
       } catch (err) {
-        console.error('Failed to subscribe to events:', err)
+        logger.error('Failed to subscribe to events:', err)
         // Fall back to polling on subscription failure
         const interval = setInterval(() => {
           if (isSubscribed) {

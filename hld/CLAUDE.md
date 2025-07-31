@@ -2,7 +2,11 @@ This is the humanlayer Daemon (HLD) that powers the WUI (humanlayer-wui)
 
 You cannot run this process, you cannot restart it. If you make changes, you must ask the user to rebuild it.
 
-The logs are in ~/.humanlayer/logs/daemon-*.log
+The daemon logs are in ~/.humanlayer/logs/daemon-*.log (timestamped files created by the Makefile when running with `make daemon-dev` or `make daemon-nightly`)
+
+WUI logs (which include daemon stderr output) are in:
+- Development: `~/.humanlayer/logs/wui-{branch}/codelayer.log`
+- Production: Platform-specific log directories
 
 It uses a database at ~/.humanlayer/*.db - you can access it with sqlite3 to inspect progress and debug things.
 
