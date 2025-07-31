@@ -6,7 +6,7 @@ import { logger } from './logging'
 export async function notifyLogLocation() {
   try {
     let logDir: string
-    
+
     // Try to get custom log directory first (dev mode)
     try {
       logDir = await invoke<string>('get_log_directory')
@@ -34,7 +34,7 @@ export async function notifyLogLocation() {
 export async function openLogDirectory() {
   try {
     let logDir: string
-    
+
     // Try to get custom log directory first (dev mode)
     try {
       logDir = await invoke<string>('get_log_directory')
@@ -42,7 +42,7 @@ export async function openLogDirectory() {
       // Fall back to default app log directory (production)
       logDir = await appLogDir()
     }
-    
+
     await openUrl(logDir)
   } catch (error) {
     logger.error('Failed to open log directory:', error)

@@ -244,11 +244,11 @@ export default function SessionTable({
         const currentSession = sessions.find(s => s.id === focusedSession?.id)
         if (!currentSession) return
 
-          logger.log('Archive hotkey pressed:', {
-            sessionId: currentSession.id,
-            archived: currentSession.archived,
-            willArchive: !currentSession.archived,
-          })
+        logger.log('Archive hotkey pressed:', {
+          sessionId: currentSession.id,
+          archived: currentSession.archived,
+          willArchive: !currentSession.archived,
+        })
 
         // If there are selected sessions, bulk archive them
         if (selectedSessions.size > 0) {

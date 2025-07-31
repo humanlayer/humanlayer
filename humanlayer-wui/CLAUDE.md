@@ -3,6 +3,7 @@ This is the HumanLayer Web UI (WUI) - a desktop application for managing AI agen
 The WUI connects to the HumanLayer daemon (hld) to provide a graphical interface for monitoring Claude Code sessions and responding to approval requests. It's built with Tauri for desktop packaging and React for the interface.
 
 When the WUI is running, logs are written to:
+
 - Development: `~/.humanlayer/logs/wui-{branch-id}/codelayer.log` (e.g., `wui-eng-1784/codelayer.log`)
 - Production: Platform-specific directories:
   - macOS: `~/Library/Logs/dev.humanlayer.wui/`
