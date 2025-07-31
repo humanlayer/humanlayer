@@ -62,16 +62,14 @@ echo "📦 Installing NPM dependencies..."
     wait
 )
 
-echo "📦 Installing Bun dependencies..."
-# Install bun dependencies in parallel
-(
-    run_silent "hld-sdk bun install" "bun install --cwd=hld/sdk/typescript" &
-    run_silent "humanlayer-wui bun install" "bun install --cwd=humanlayer-wui" &
-    wait
-)
+echo "📦 Installing HLD SDK dependencies..."
+run_silent "hld-sdk bun install" "bun install --cwd=hld/sdk/typescript"
 
 echo "🏗️  Building HLD TypeScript SDK..."
 run_silent "hld-sdk build" "sh -c 'cd hld/sdk/typescript && bun run build'"
+
+echo "📦 Installing WUI dependencies..."
+run_silent "humanlayer-wui bun install" "bun install --cwd=humanlayer-wui"
 
 # Install Python dependencies if uv is available
 if command -v uv &> /dev/null; then
