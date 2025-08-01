@@ -372,6 +372,34 @@
     }
   }
 
+  @keyframes slide-in-up {
+    0% {
+      visibility: visible;
+      transform: translate3d(0, 100%, 0);
+    }
+    100% {
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  @keyframes slide-out-down {
+    0% {
+      visibility: visible;
+      transform: translate3d(0, 0, 0);
+    }
+    100% {
+      transform: translate3d(0, 100%, 0);
+    }
+  }
+
+  .animate-slide-in-up {
+    animation: slide-in-up 1s ease-in-out 0.25s 1;
+  }
+
+  .animate-slide-out-down {
+    animation: slide-out-down 1s ease-in-out 0.25s 1;
+  }
+
   .animate-spin-reverse {
     animation: spin-reverse 3s linear infinite;
   }
