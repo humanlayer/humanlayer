@@ -1,10 +1,13 @@
 name: Build macOS Release Artifacts
 
 on:
+  schedule:
+    # Run daily at 7am PT (3pm UTC during standard time, 2pm UTC during daylight saving)
+    - cron: '0 14 * * *'
   workflow_dispatch:
     inputs:
       release_version:
-        description: 'Version tag for the release (defaults to YYYYMMDD)'
+        description: 'Version tag for the release (defaults to YYYYMMDD_HHmmss for manual, YYYYMMDD-nightly for cron)'
         required: false
         type: string
 
@@ -19,9 +22,14 @@ jobs:
       - name: Set release version
         id: version
         run: |
-          if [ -z "${{ github.event.inputs.release_version }}" ]; then
-            echo "release_version=$(date +%Y%m%d)" >> $GITHUB_OUTPUT
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            # For cron/scheduled runs, use YYYYMMDD-nightly format
+            echo "release_version=$(date +%Y%m%d)-nightly" >> $GITHUB_OUTPUT
+          elif [ -z "${{ github.event.inputs.release_version }}" ]; then
+            # For manual runs without specified version, use YYYYMMDD_HHmmss
+            echo "release_version=$(date +%Y%m%d_%H%M%S)" >> $GITHUB_OUTPUT
           else
+            # Use the provided version
             echo "release_version=${{ github.event.inputs.release_version }}" >> $GITHUB_OUTPUT
           fi
 
@@ -81,50 +89,72 @@ jobs:
           path: humanlayer-wui/src-tauri/target/release/bundle/dmg/*.dmg
           if-no-files-found: error
 
-      - name: Upload daemon artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: hld-darwin-arm64
-          path: hld/hld-darwin-arm64
-          if-no-files-found: error
-
       # Create GitHub Release with artifacts
       - name: Create Release
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
         id: create_release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.release_version }}
-          name: HumanLayer ${{ steps.version.outputs.release_version }} - macOS Release
+          name: codelayer-${{ steps.version.outputs.release_version }}
           body: |
-            ## HumanLayer ${{ steps.version.outputs.release_version }} - macOS Release
+            ## codelayer-${{ steps.version.outputs.release_version }}
 
             This release includes:
-            - **CodeLayer** - Desktop application (DMG installer)
-            - **HumanLayer Daemon (hld)** - Command-line daemon (ARM64 binary)
+
+            * **CodeLayer** - Desktop application (DMG installer)
+
+            ### Notes
+
+            * If you have a previous install, you will need to clean up / remove / stop previous bits (your sessions will persist!)
+            * if your `claude` cli is not in a very-default location like `/usr/local/bin`, you will need to launch with `open /Applications/CodeLayer.app` rather than launching from Spotlight/Finder/Raycast/etc
 
             ### Installation Instructions
 
-            - Install the CLI: `npm install -g humanlayer@0.11.0`
-            - Download daemon binary (hld-darwin-arm64)
-            - Run it in a terminal e.g. `chmod +x ~/Downloads/hld-darwin-arm64 && ~/Downloads/hld-darwin-arm64`
-            - Dismiss the security modal
-            - Go to System Settings > Privacy & Security and scroll to the bottom, find the "allow" button and click it
-            - Run it again `~/Downloads/hld-darwin-arm64`
-            - Download CodeLayer (CodeLayer.dmg)
-            - Copy the app to Applications
-            - Open CodeLayer with your preferred app launcher
-            - Dismiss security modal
-            - Go to System Settings > Privacy & Security and allow
-            - Open CodeLayer again
+            #### First: Cleanup
+
+            This installation is managed as a brew cask, if you have previously set up CodeLayer manually with a separate `hld-darwin-arm64` process, you'll want to clean things up:
+
+            * Stop all running sessions
+              * for running sessions, ctrl+x
+              * for sessions awaiting approval, approve or deny, then ctrl+x
+              * sessions that have a final assistant message and are in completed/interrupted state are safe to leave as is
+              * (right now this is necessary to preserve sessions - the latest CodeLayer includes clean shutdown/recovery for sessions)
+            * Stop any running `hld-darwin-arm64` process
+            * Remove any existing humanlayer cli (something like `rm $(which humanlayer)`)
+            * Quit + remove any existing `CodeLayer.app` - `rm -r /Applications/CodeLayer.app`
+            * Install with brew cask and the `--no-quarantine` flag - This disables macOS gatekeeper - make sure you know what you're doing!
+
+            ```
+            brew install --cask --no-quarantine humanlayer/humanlayer/codelayer
+            ```
+
+            or if you prefer tapping directly you can do
+
+            ```
+            brew tap humanlayer/humanlayer
+            brew install --cask --no-quarantine codelayer
+            ```
+
+            Then, you can run it with
+
+            ```
+            open /Applications/CodeLayer.app
+            ```
 
             ### Requirements
-            - macOS (Apple Silicon/M-series)
-            - Node.js installed
 
-          draft: true
+            * macOS (Apple Silicon/M-series)
+
+            ### Troubleshooting / Known Issues
+
+            * If install fails, ensure you've cleaned up all previous artifacts. `brew reinstall` is worth a shot as well.
+            * Logs can be found at `~/Library/Logs/dev.humanlayer.wui/CodeLayer.log`
+            * If daemon fails due to already running, you can `pkill hld` and reopen CodeLayer to try again
+            * If opening from spotlight/alfred/raycast/finder fails, try `open /Applications/CodeLayer.app` to push your PATH into CodeLayer so it can better find your `claude` CLI
+
+          draft: false
           prerelease: false
 
           files: |
             humanlayer-wui/src-tauri/target/release/bundle/dmg/*.dmg
-            hld/hld-darwin-arm64
