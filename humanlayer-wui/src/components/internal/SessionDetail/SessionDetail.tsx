@@ -87,8 +87,7 @@ const ROBOT_VERBS = [
 ]
 
 function OmniSpinner({ randomVerb, spinnerType }: { randomVerb: string; spinnerType: number }) {
-
-  spinnerType = 3;
+  spinnerType = 3
   // Select spinner based on random type
   const FancySpinner = (
     <div className="relative w-2 h-2">
@@ -174,9 +173,7 @@ function OmniSpinner({ randomVerb, spinnerType }: { randomVerb: string; spinnerT
   return (
     <div className="flex items-center gap-3 ">
       {spinners[spinnerType]}
-      <p className="text-muted-foreground opacity-80 animate-fade-pulse">
-        {randomVerb}
-      </p>
+      <p className="text-muted-foreground opacity-80 animate-fade-pulse">{randomVerb}</p>
     </div>
   )
 }
@@ -666,7 +663,9 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
 
   if (isActivelyProcessing) {
     const cardLoadingLowerPadding = 'pb-12'
-    cardVerticalPadding = isCompactView ? `pt-2 ${cardLoadingLowerPadding}` : `pt-4 ${cardLoadingLowerPadding}`
+    cardVerticalPadding = isCompactView
+      ? `pt-2 ${cardLoadingLowerPadding}`
+      : `pt-4 ${cardLoadingLowerPadding}`
   }
 
   return (
@@ -879,12 +878,33 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
             </div> */}
           </CardContent>
           {isActivelyProcessing && (
-            <div className={`absolute bottom-0 left-0 px-3 py-1.5 border-t border-border bg-secondary/30 w-full font-mono text-sm uppercase tracking-wider text-muted-foreground transition-all duration-300 ease-out ${
+            <div
+              className={`absolute bottom-0 left-0 px-3 py-1.5 border-t border-border bg-secondary/30 w-full font-mono text-sm uppercase tracking-wider text-muted-foreground transition-all duration-300 ease-out ${
                 isActivelyProcessing ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'
-              }`}>
+              }`}
+            >
               <OmniSpinner randomVerb={randomVerb} spinnerType={spinnerType} />
             </div>
           )}
+          {/* Status bar for pending approvals */}
+          <div
+            className={`absolute bottom-0 left-0 right-0 p-2 cursor-pointer transition-all duration-300 ease-in-out ${
+              hasPendingApprovalsOutOfView
+                ? 'opacity-100 translate-y-0'
+                : 'opacity-0 translate-y-full pointer-events-none'
+            }`}
+            onClick={() => {
+              const container = document.querySelector('[data-conversation-container]')
+              if (container) {
+                container.scrollTop = container.scrollHeight
+              }
+            }}
+          >
+            <div className="flex items-center justify-center gap-1 font-mono text-xs uppercase tracking-wider text-muted-foreground bg-background/60 backdrop-blur-sm border-t border-border/50 py-1 shadow-sm hover:bg-background/80 transition-colors">
+              <span>Pending Approval</span>
+              <ChevronDown className="w-3 h-3 animate-bounce" />
+            </div>
+          </div>
         </Card>
 
         {isWideView && lastTodo && (

@@ -23,16 +23,16 @@ const KeyboardShortcut = React.forwardRef<HTMLSpanElement, KeyboardShortcutProps
           // Size variants
           size === 'sm' && 'px-1.5 py-0.5 text-xs min-w-[1.25rem] h-5',
           size === 'md' && 'px-2 py-1 text-sm min-w-[1.5rem] h-6',
-          className
+          className,
         )}
         {...props}
       >
         {children}
       </span>
     )
-  }
+  },
 )
 
 KeyboardShortcut.displayName = 'KeyboardShortcut'
 
-export { KeyboardShortcut } 
+export { KeyboardShortcut }

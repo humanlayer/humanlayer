@@ -1,8 +1,12 @@
 import React from 'react'
 
-export const Kbd = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
-  <kbd className={`px-1 py-0.5 bg-muted rounded ${className}`}>{children}</kbd>
-)
+export const Kbd = ({
+  children,
+  className = '',
+}: {
+  children: React.ReactNode
+  className?: string
+}) => <kbd className={`px-1 py-0.5 bg-muted rounded ${className}`}>{children}</kbd>
 
 export const getSessionStatusText = (status: string): string => {
   if (status === 'completed') return 'Continue this conversation with a new message'
