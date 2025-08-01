@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Outlet } from 'react-router-dom'
+import { Outlet, useLocation } from 'react-router-dom'
 import { useHotkeys } from 'react-hotkeys-hook'
 import {
   ApprovalResolvedEventData,
@@ -28,12 +28,14 @@ import { DebugPanel } from '@/components/DebugPanel'
 import { notifyLogLocation } from '@/lib/log-notification'
 import '@/App.css'
 import { logger } from '@/lib/logging'
+import { KeyboardShortcut } from '@/components/HotkeyPanel'
 
 export function Layout() {
   const [approvals, setApprovals] = useState<any[]>([])
   const [activeSessionId] = useState<string | null>(null)
   const { setTheme } = useTheme()
   const [isDebugPanelOpen, setIsDebugPanelOpen] = useState(false)
+  const location = useLocation()
 
   // Use the daemon connection hook for all connection management
   const { connected, connecting, version, connect } = useDaemonConnection()
@@ -60,6 +62,7 @@ export function Layout() {
   const isItemNotified = useStore(state => state.isItemNotified)
   const addRecentResolvedApprovalToCache = useStore(state => state.addRecentResolvedApprovalToCache)
   const isRecentResolvedApproval = useStore(state => state.isRecentResolvedApproval)
+  const setActiveSessionDetail = useStore(state => state.setActiveSessionDetail)
 
   // Set up single SSE subscription for all events
   useSessionSubscriptions(connected, {
@@ -259,6 +262,14 @@ export function Layout() {
     }
   }, [])
 
+  useEffect(() => {
+    if (location.state?.continuationSession) {
+      const session = location.state.continuationSession.session
+      const conversation = location.state.continuationConversation || []
+      setActiveSessionDetail(session.id, session, conversation)
+    }
+  }, [location.state?.continuationSession])
+
   const loadSessions = async () => {
     try {
       await useStore.getState().refreshSessions()
@@ -367,13 +378,15 @@ export function Layout() {
                 href="https://github.com/humanlayer/humanlayer/issues/new?title=Feedback%20on%20CodeLayer&body=%23%23%23%20Problem%20to%20solve%20%2F%20Expected%20Behavior%0A%0A%0A%23%23%23%20Proposed%20solution"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-mono border border-border bg-background text-foreground hover:bg-accent/10 transition-colors"
+                className="inline-flex items-center justify-center px-1.5 py-0.5 text-sm font-mono border border-border bg-background text-foreground hover:bg-accent/10 transition-colors"
               >
                 <MessageCircle className="w-3 h-3" />
               </a>
             </TooltipTrigger>
             <TooltipContent>
-              <p>Submit feedback (⌘⇧F)</p>
+              <p className="flex items-center gap-1">
+                Submit feedback <KeyboardShortcut keyString="⌘+⇧+F" />
+              </p>
             </TooltipContent>
           </Tooltip>
           {import.meta.env.DEV && (

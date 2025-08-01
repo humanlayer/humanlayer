@@ -31,6 +31,7 @@ export function useSessionActions({
   const archiveSession = useStore(state => state.archiveSession)
   const setViewMode = useStore(state => state.setViewMode)
   const trackNavigationFrom = useStore(state => state.trackNavigationFrom)
+  const updateActiveSessionDetail = useStore(state => state.updateActiveSessionDetail)
   const navigate = useNavigate()
 
   // Update response input when fork message is selected
@@ -44,6 +45,7 @@ export function useSessionActions({
 
   // Continue session functionality
   const handleContinueSession = useCallback(async () => {
+    const sessionConversation = useStore.getState().activeSessionDetail?.conversation
     if (!responseInput.trim() || isResponding) return
 
     try {
@@ -67,6 +69,14 @@ export function useSessionActions({
 
       const response = await daemonClient.continueSession(targetSessionId, messageToSend)
 
+      if (!response.new_session_id) {
+        throw new Error('No new session ID returned from continueSession')
+      }
+
+      const nextSession = await daemonClient.getSessionState(response.new_session_id)
+
+      updateActiveSessionDetail(nextSession.session)
+
       // Clear fork state
       setForkFromSessionId(null)
 
@@ -76,7 +86,12 @@ export function useSessionActions({
       }
 
       // Always navigate to the new session - the backend handles queuing
-      navigate(`/sessions/${response.new_session_id || session.id}`)
+      navigate(`/sessions/${response.new_session_id || session.id}`, {
+        state: {
+          continuationSession: nextSession,
+          continuationConversation: sessionConversation,
+        },
+      })
 
       // Refresh the session list to ensure UI reflects current state
       await refreshSessions()
