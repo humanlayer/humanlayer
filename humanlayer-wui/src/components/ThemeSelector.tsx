@@ -16,6 +16,7 @@ import {
 import { useHotkeys, useHotkeysContext } from 'react-hotkeys-hook'
 import { SessionTableHotkeysScope } from './internal/SessionTable'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { KeyboardShortcut } from './HotkeyPanel'
 
 const themes: { value: Theme; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { value: 'solarized-dark', label: 'Solarized Dark', icon: Moon },
@@ -140,7 +141,9 @@ export function ThemeSelector() {
           </button>
         </TooltipTrigger>
         <TooltipContent>
-          <p>Theme: {currentTheme?.label || 'Unknown'} (Ctrl+T)</p>
+          <p className="flex items-center gap-1">
+            Theme: {currentTheme?.label || 'Unknown'} <KeyboardShortcut keyString="Ctrl+T" />
+          </p>
         </TooltipContent>
       </Tooltip>
 

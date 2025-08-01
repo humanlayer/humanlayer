@@ -1,6 +1,6 @@
 import React from 'react'
 
-const Kbd = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
+export const Kbd = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
   <kbd className={`px-1 py-0.5 bg-muted rounded ${className}`}>{children}</kbd>
 )
 
