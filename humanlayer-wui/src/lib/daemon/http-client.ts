@@ -166,7 +166,8 @@ export class HTTPDaemonClient implements IDaemonClient {
     // The SDK's listSessions with leafOnly=true is equivalent
     const response = await this.client!.listSessions({
       leafOnly: true,
-      includeArchived: request?.include_archived || request?.archived_only,
+      includeArchived: request?.include_archived,
+      archivedOnly: request?.archived_only,
     })
     return {
       sessions: response,

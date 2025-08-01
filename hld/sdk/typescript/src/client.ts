@@ -9,7 +9,8 @@ import {
     CreateSessionResponse,
     CreateSessionResponseData,
     EventFromJSON,
-    RecentPath
+    RecentPath,
+    ListSessionsRequest
 } from './generated';
 
 export interface HLDClientOptions {
@@ -57,7 +58,7 @@ export class HLDClient {
         return response.data;
     }
 
-    async listSessions(params?: { leafOnly?: boolean; includeArchived?: boolean }): Promise<Session[]> {
+    async listSessions(params?: ListSessionsRequest): Promise<Session[]> {
         const response = await this.sessionsApi.listSessions(params);
         return response.data;
     }
