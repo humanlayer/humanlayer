@@ -87,7 +87,6 @@ const ROBOT_VERBS = [
 ]
 
 function OmniSpinner({ randomVerb, spinnerType }: { randomVerb: string; spinnerType: number }) {
-  spinnerType = 3
   // Select spinner based on random type
   const FancySpinner = (
     <div className="relative w-2 h-2">
@@ -869,13 +868,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               expandedTasks={expandedTasks}
               toggleTaskGroup={toggleTaskGroup}
             />
-            {/* <div
-              className={`border border-terminal-accent/20 absolute bottom-4 left-8 backdrop-blur-xs rounded-2xl p-4 transition-all duration-300 ease-out ${
-                isActivelyProcessing ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'
-              }`}
-            >
-              <OmniSpinner randomVerb={randomVerb} spinnerType={spinnerType} />
-            </div> */}
           </CardContent>
           {isActivelyProcessing && (
             <div
