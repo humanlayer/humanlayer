@@ -435,9 +435,17 @@ export default function SessionTable({
                       <TooltipTrigger asChild>
                         <span
                           className="block truncate cursor-help text-sm"
-                          style={{ textAlign: 'left' }}
+                          style={{
+                            direction: 'rtl',
+                            textAlign: 'left',
+                            overflow: 'hidden',
+                            whiteSpace: 'nowrap',
+                            textOverflow: 'ellipsis',
+                          }}
                         >
-                          {session.workingDir || '-'}
+                          <bdo dir="ltr" style={{ unicodeBidi: 'bidi-override' }}>
+                            {session.workingDir || '-'}
+                          </bdo>
                         </span>
                       </TooltipTrigger>
                       <TooltipContent className="max-w-[600px]">
