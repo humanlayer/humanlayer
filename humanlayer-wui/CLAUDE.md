@@ -29,6 +29,7 @@ For UI development, we use Radix UI components styled with Tailwind CSS. State m
 - DO provide a manual list of steps for a human to test new UI changes.
 
 ## Guidelines
+
 - In React 19, ref is now available as a standard prop for functional components, eliminating the need to wrap components with forwardRef.
 - forwardRef is now depricated, NEVER use it. use ref instead.
 
