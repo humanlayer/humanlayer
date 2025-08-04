@@ -34,11 +34,19 @@ export default function CommandInput({
   onConfigChange,
 }: CommandInputProps) {
   const promptRef = useRef<HTMLTextAreaElement>(null)
+  const directoryRef = useRef<HTMLInputElement>(null)
   const { paths: recentPaths } = useRecentPaths()
 
   useEffect(() => {
-    // focus on the prompt when the component mounts
-    if (promptRef.current) {
+    // Focus on directory field if it has the default value, otherwise focus on prompt
+    if (config.workingDir === '~/') {
+      // Focus on directory field when it has the default value
+      const directoryInput = directoryRef.current?.querySelector('input')
+      if (directoryInput) {
+        directoryInput.focus()
+      }
+    } else if (promptRef.current) {
+      // Focus on prompt field for normal usage
       promptRef.current.focus()
     }
   }, [])
@@ -70,6 +78,7 @@ export default function CommandInput({
       <div className="space-y-2">
         <Label>Working Directory</Label>
         <SearchInput
+          ref={directoryRef}
           value={config.workingDir}
           onChange={value => onConfigChange?.({ ...config, workingDir: value })}
           onSubmit={onSubmit}

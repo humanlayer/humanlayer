@@ -28,6 +28,11 @@ For UI development, we use Radix UI components styled with Tailwind CSS. State m
 - DO verify your changes with `bun run lint` and `bun run typecheck`.
 - DO provide a manual list of steps for a human to test new UI changes.
 
+## Guidelines
+
+- In React 19, ref is now available as a standard prop for functional components, eliminating the need to wrap components with forwardRef.
+- forwardRef is now depricated, NEVER use it. use ref instead.
+
 ## Testing
 
 We use Bun's built-in test runner for unit tests. Run tests with `bun test`.

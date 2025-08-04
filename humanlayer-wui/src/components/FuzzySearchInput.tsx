@@ -16,6 +16,7 @@ interface SearchInputProps {
   onSubmit?: () => void
   placeholder?: string
   recentDirectories?: RecentPath[]
+  ref?: React.RefObject<HTMLDivElement>
 }
 
 export function SearchInput({
@@ -24,6 +25,7 @@ export function SearchInput({
   onSubmit,
   placeholder = 'Type a directory path...',
   recentDirectories = [],
+  ref,
 }: SearchInputProps = {}) {
   // Use internal state if not controlled
   const [internalValue, setInternalValue] = useState('')
@@ -241,7 +243,7 @@ export function SearchInput({
   }
 
   return (
-    <div className="">
+    <div ref={ref} className="">
       <Popover open={dropdownOpen && isFocused} defaultOpen={false} modal={true}>
         <PopoverAnchor>
           <Input
