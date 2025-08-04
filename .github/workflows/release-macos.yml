@@ -82,7 +82,14 @@ jobs:
 
       - name: Build Tauri app (including DMG)
         working-directory: humanlayer-wui
-        run: bun run tauri build
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            # Use nightly config for scheduled builds
+            bun run tauri build --config src-tauri/tauri.nightly.conf.json
+          else
+            # Regular build for manual runs
+            bun run tauri build
+          fi
         env:
           APPLE_SIGNING_IDENTITY: "-"  # Ad-hoc signing to prevent "damaged" error
 
