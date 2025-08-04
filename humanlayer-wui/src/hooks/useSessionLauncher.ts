@@ -41,12 +41,18 @@ interface LauncherState {
 
 const LAST_WORKING_DIR_KEY = 'humanlayer-last-working-dir'
 
+// Helper function to get default working directory
+const getDefaultWorkingDir = (): string => {
+  const stored = localStorage.getItem(LAST_WORKING_DIR_KEY)
+  return stored || '~/' // Default to home directory on first launch
+}
+
 export const useSessionLauncher = create<LauncherState>((set, get) => ({
   isOpen: false,
   mode: 'command',
   view: 'menu',
   query: '',
-  config: { query: '', workingDir: localStorage.getItem(LAST_WORKING_DIR_KEY) || '' },
+  config: { query: '', workingDir: getDefaultWorkingDir() },
   isLaunching: false,
   gPrefixMode: false,
   selectedMenuIndex: 0,
@@ -65,7 +71,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
       isOpen: false,
       view: 'menu',
       query: '',
-      config: { query: '', workingDir: localStorage.getItem(LAST_WORKING_DIR_KEY) || '' },
+      config: { query: '', workingDir: getDefaultWorkingDir() },
       selectedMenuIndex: 0,
       error: undefined,
       gPrefixMode: false,
@@ -169,7 +175,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
     set({
       view: 'input',
       query: '',
-      config: { query: '', workingDir: localStorage.getItem(LAST_WORKING_DIR_KEY) || '' },
+      config: { query: '', workingDir: getDefaultWorkingDir() },
       error: undefined,
     })
   },
@@ -186,7 +192,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
       mode: 'command',
       view: 'menu',
       query: '',
-      config: { query: '', workingDir: localStorage.getItem(LAST_WORKING_DIR_KEY) || '' },
+      config: { query: '', workingDir: getDefaultWorkingDir() },
       selectedMenuIndex: 0,
       isLaunching: false,
       error: undefined,
