@@ -60,7 +60,7 @@ jobs:
         working-directory: hld
         run: |
           BUILD_VERSION="${{ steps.version.outputs.release_version }}"
-          
+
           if [ "${{ github.event_name }}" = "schedule" ]; then
             # Nightly build with custom defaults
             LDFLAGS="-X github.com/humanlayer/humanlayer/hld/internal/version.BuildVersion=${BUILD_VERSION}"
@@ -71,7 +71,7 @@ jobs:
             # Regular build with version only
             LDFLAGS="-X github.com/humanlayer/humanlayer/hld/internal/version.BuildVersion=${BUILD_VERSION}"
           fi
-          
+
           GOOS=darwin GOARCH=arm64 go build -ldflags "${LDFLAGS}" -o hld-darwin-arm64 ./cmd/hld
 
       - name: Build humanlayer CLI for macOS ARM
@@ -96,7 +96,7 @@ jobs:
         run: |
           # Backup original icons
           mv icons icons-original
-          
+
           # Use nightly icons
           cp -r icons-nightly icons
 
@@ -189,3 +189,80 @@ jobs:
 
           files: |
             humanlayer-wui/src-tauri/target/release/bundle/dmg/*.dmg
+
+      # Update nightly cask for scheduled builds
+      - name: Prepare cask update
+        if: github.event_name == 'schedule'
+        id: prepare
+        run: |
+          # Get the DMG filename
+          DMG_FILE=$(ls humanlayer-wui/src-tauri/target/release/bundle/dmg/*.dmg | head -1)
+          echo "dmg_file=${DMG_FILE}" >> $GITHUB_OUTPUT
+
+          # Calculate SHA256
+          SHA256=$(shasum -a 256 "${DMG_FILE}" | cut -f1 -d' ')
+          echo "sha256=${SHA256}" >> $GITHUB_OUTPUT
+
+          # Get release tag
+          RELEASE_TAG="${{ steps.version.outputs.release_version }}"
+          echo "release_tag=${RELEASE_TAG}" >> $GITHUB_OUTPUT
+
+          # Construct DMG URL
+          DMG_FILENAME=$(basename "${DMG_FILE}")
+          DMG_URL="https://github.com/humanlayer/humanlayer/releases/download/${RELEASE_TAG}/${DMG_FILENAME}"
+          echo "dmg_url=${DMG_URL}" >> $GITHUB_OUTPUT
+
+      - name: Checkout homebrew tap
+        if: github.event_name == 'schedule'
+        uses: actions/checkout@v4
+        with:
+          repository: humanlayer/homebrew-humanlayer
+          token: ${{ secrets.GITHUB_TOKEN }}
+          path: homebrew-tap
+
+      - name: Update nightly cask
+        if: github.event_name == 'schedule'
+        working-directory: homebrew-tap
+        run: |
+          # Update the cask file
+          cat > Casks/codelayer-nightly.rb << 'EOF'
+          cask "codelayer-nightly" do
+            version "${{ steps.prepare.outputs.release_tag }}"
+            sha256 "${{ steps.prepare.outputs.sha256 }}"
+
+            url "${{ steps.prepare.outputs.dmg_url }}",
+                verified: "github.com/humanlayer/humanlayer/"
+
+            name "CodeLayer Nightly"
+            desc "Nightly build of CodeLayer - Desktop application for managing AI agent approvals"
+            homepage "https://humanlayer.dev/"
+
+            # No conflicts - can install alongside stable
+
+            app "CodeLayer-Nightly.app"
+
+            binary "#{appdir}/CodeLayer-Nightly.app/Contents/Resources/bin/humanlayer", target: "humanlayer-nightly"
+            binary "#{appdir}/CodeLayer-Nightly.app/Contents/Resources/bin/hld", target: "hld-nightly"
+
+            zap trash: [
+              "~/Library/Application Support/CodeLayer-Nightly",
+              "~/Library/Preferences/dev.humanlayer.wui.nightly.plist",
+              "~/Library/Saved Application State/dev.humanlayer.wui.nightly.savedState",
+              "~/.humanlayer/codelayer-nightly*.json",
+              "~/.humanlayer/daemon-nightly*.db",
+              "~/.humanlayer/daemon-nightly*.sock",
+              "~/Library/Logs/dev.humanlayer.wui.nightly/",
+            ]
+          end
+          EOF
+
+      - name: Commit and push cask update
+        if: github.event_name == 'schedule'
+        working-directory: homebrew-tap
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add Casks/codelayer-nightly.rb
+          git commit -m "Update codelayer-nightly to ${{ steps.prepare.outputs.release_tag }}"
+          git push
