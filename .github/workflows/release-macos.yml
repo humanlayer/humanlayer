@@ -58,7 +58,11 @@ jobs:
 
       - name: Build daemon for macOS ARM
         working-directory: hld
-        run: GOOS=darwin GOARCH=arm64 go build -o hld-darwin-arm64 ./cmd/hld
+        run: |
+          BUILD_VERSION="${{ steps.version.outputs.release_version }}"
+          GOOS=darwin GOARCH=arm64 go build \
+            -ldflags "-X github.com/humanlayer/humanlayer/hld/internal/version.BuildVersion=${BUILD_VERSION}" \
+            -o hld-darwin-arm64 ./cmd/hld
 
       - name: Build humanlayer CLI for macOS ARM
         working-directory: hlyr
