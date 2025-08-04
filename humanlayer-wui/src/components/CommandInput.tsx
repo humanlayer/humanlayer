@@ -34,14 +34,22 @@ export default function CommandInput({
   onConfigChange,
 }: CommandInputProps) {
   const promptRef = useRef<HTMLTextAreaElement>(null)
+  const directoryRef = useRef<HTMLInputElement>(null)
   const { paths: recentPaths } = useRecentPaths()
 
   useEffect(() => {
-    // focus on the prompt when the component mounts
-    if (promptRef.current) {
-      promptRef.current.focus()
+    // Focus on directory input if it's empty or default (~/)
+    // Focus on prompt if directory has a user-provided value
+    if (config.workingDir === '' || config.workingDir === '~/') {
+      if (directoryRef.current) {
+        directoryRef.current.focus()
+      }
+    } else {
+      if (promptRef.current) {
+        promptRef.current.focus()
+      }
     }
-  }, [])
+  }, [config.workingDir])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
@@ -70,6 +78,7 @@ export default function CommandInput({
       <div className="space-y-2">
         <Label>Working Directory</Label>
         <SearchInput
+          ref={directoryRef}
           value={config.workingDir}
           onChange={value => onConfigChange?.({ ...config, workingDir: value })}
           onSubmit={onSubmit}

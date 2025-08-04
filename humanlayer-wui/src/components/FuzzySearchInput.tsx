@@ -18,13 +18,13 @@ interface SearchInputProps {
   recentDirectories?: RecentPath[]
 }
 
-export function SearchInput({
+export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(({
   value: externalValue,
   onChange: externalOnChange,
   onSubmit,
   placeholder = 'Type a directory path...',
   recentDirectories = [],
-}: SearchInputProps = {}) {
+}, ref) => {
   // Use internal state if not controlled
   const [internalValue, setInternalValue] = useState('')
   const searchValue = externalValue !== undefined ? externalValue : internalValue
@@ -48,6 +48,7 @@ export function SearchInput({
   const [lastValidPath, setLastValidPath] = useState('')
   const [allDirectories, setAllDirectories] = useState<DirEntry[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
+  const actualRef = ref || inputRef
 
   const Hotkeys = {
     ARROW_UP: 'arrowup',
@@ -247,7 +248,7 @@ export function SearchInput({
           <Input
             id="search-input-hack-use-a-ref"
             className="mt-2"
-            ref={inputRef}
+            ref={actualRef}
             spellCheck={false}
             onChange={onChange}
             value={searchValue}
@@ -392,4 +393,6 @@ export function SearchInput({
       </Popover>
     </div>
   )
-}
+})
+
+SearchInput.displayName = 'SearchInput'
