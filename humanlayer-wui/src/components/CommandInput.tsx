@@ -40,7 +40,6 @@ export default function CommandInput({
   useEffect(() => {
     // Focus on directory input if it's empty or default (~/)
     // Focus on prompt if directory has a user-provided value
-    // Only run on initial mount, not on every keystroke
     if (config.workingDir === '' || config.workingDir === '~/') {
       if (directoryRef.current) {
         directoryRef.current.focus()
@@ -50,7 +49,7 @@ export default function CommandInput({
         promptRef.current.focus()
       }
     }
-  }, []) // Remove config.workingDir dependency to prevent focus jumping on typing
+  }, [])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
