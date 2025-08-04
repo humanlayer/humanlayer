@@ -1,0 +1,36 @@
+#!/bin/bash
+set -e
+
+# Determine the real path of this script even when symlinked
+SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || 
+               greadlink -f "${BASH_SOURCE[0]}" 2>/dev/null || 
+               realpath "${BASH_SOURCE[0]}" 2>/dev/null ||
+               echo "${BASH_SOURCE[0]}")"
+SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" &> /dev/null && pwd)"
+CLI_PATH="$SCRIPT_DIR/linear-cli.ts"
+
+# Detect available JavaScript runtime
+if command -v bun >/dev/null 2>&1; then
+  exec bun "$CLI_PATH" "$@"
+elif command -v npx >/dev/null 2>&1; then
+  # Try to use ts-node through npx
+  exec npx ts-node "$CLI_PATH" "$@"
+elif command -v tsx >/dev/null 2>&1; then
+  # Try tsx (faster alternative to ts-node)
+  exec tsx "$CLI_PATH" "$@"
+elif command -v node >/dev/null 2>&1; then
+  # Check if ts-node is installed globally
+  if command -v ts-node >/dev/null 2>&1; then
+    exec ts-node "$CLI_PATH" "$@"
+  else
+    echo "Error: This script requires ts-node, tsx, or bun to run."
+    echo "Install one of them with:"
+    echo "  npm install -g ts-node"
+    echo "  npm install -g tsx"
+    echo "  curl -fsSL https://bun.sh/install | bash"
+    exit 1
+  fi
+else
+  echo "Error: No suitable JavaScript runtime found (bun, node+ts-node, or node+tsx)"
+  exit 1
+fi
