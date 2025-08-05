@@ -9,6 +9,7 @@ import (
 	"github.com/humanlayer/humanlayer/hld/api"
 	"github.com/humanlayer/humanlayer/hld/api/mapper"
 	"github.com/humanlayer/humanlayer/hld/approval"
+	"github.com/humanlayer/humanlayer/hld/internal/version"
 	"github.com/humanlayer/humanlayer/hld/session"
 	"github.com/humanlayer/humanlayer/hld/store"
 	"sort"
@@ -28,7 +29,7 @@ func NewSessionHandlers(manager session.SessionManager, store store.Conversation
 		store:           store,
 		approvalManager: approvalManager,
 		mapper:          &mapper.Mapper{},
-		version:         "0.1.0", // TODO: Get from build info
+		version:         version.GetVersion(), // TODO(4): Add support for full point releases
 	}
 }
 
