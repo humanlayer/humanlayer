@@ -10,8 +10,8 @@ on:
         description: 'Version tag for the release (defaults to YYYYMMDD_HHmmss for manual, YYYYMMDD-nightly for cron)'
         required: false
         type: string
-      test_nightly:
-        description: 'Test nightly build behavior (simulates scheduled run)'
+      release_nightly:
+        description: 'Build and release a nightly build'
         required: false
         type: boolean
         default: false
@@ -27,7 +27,7 @@ jobs:
       - name: Set release version
         id: version
         run: |
-          if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ github.event.inputs.test_nightly }}" = "true" ]; then
+          if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ github.event.inputs.release_nightly }}" = "true" ]; then
             # For cron/scheduled runs or test mode, use YYYYMMDD-nightly format
             echo "release_version=$(date +%Y%m%d)-nightly-test" >> $GITHUB_OUTPUT
           elif [ -z "${{ github.event.inputs.release_version }}" ]; then
@@ -66,7 +66,7 @@ jobs:
         run: |
           BUILD_VERSION="${{ steps.version.outputs.release_version }}"
 
-          if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ github.event.inputs.test_nightly }}" = "true" ]; then
+          if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ github.event.inputs.release_nightly }}" = "true" ]; then
             # Nightly build with custom defaults
             LDFLAGS="-X github.com/humanlayer/humanlayer/hld/internal/version.BuildVersion=${BUILD_VERSION}"
             LDFLAGS="${LDFLAGS} -X github.com/humanlayer/humanlayer/hld/config.DefaultDatabasePath=~/.humanlayer/daemon-nightly.db"
@@ -96,7 +96,7 @@ jobs:
           chmod +x humanlayer-wui/src-tauri/bin/humanlayer
 
       - name: Use nightly icons for scheduled build
-        if: github.event_name == 'schedule' || github.event.inputs.test_nightly == 'true'
+        if: github.event_name == 'schedule' || github.event.inputs.release_nightly == 'true'
         working-directory: humanlayer-wui/src-tauri
         run: |
           # Backup original icons
@@ -108,7 +108,7 @@ jobs:
       - name: Build Tauri app (including DMG)
         working-directory: humanlayer-wui
         run: |
-          if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ github.event.inputs.test_nightly }}" = "true" ]; then
+          if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ github.event.inputs.release_nightly }}" = "true" ]; then
             # Use nightly config for scheduled builds
             bun run tauri build --config src-tauri/tauri.nightly.conf.json
           else
@@ -197,7 +197,7 @@ jobs:
 
       # Update nightly cask for scheduled builds
       - name: Prepare cask update
-        if: github.event_name == 'schedule' || github.event.inputs.test_nightly == 'true'
+        if: github.event_name == 'schedule' || github.event.inputs.release_nightly == 'true'
         id: prepare
         run: |
           # Get the DMG filename
@@ -218,7 +218,7 @@ jobs:
           echo "dmg_url=${DMG_URL}" >> $GITHUB_OUTPUT
 
       - name: Checkout homebrew tap
-        if: github.event_name == 'schedule' || github.event.inputs.test_nightly == 'true'
+        if: github.event_name == 'schedule' || github.event.inputs.release_nightly == 'true'
         uses: actions/checkout@v4
         with:
           repository: humanlayer/homebrew-humanlayer
@@ -226,7 +226,7 @@ jobs:
           path: homebrew-tap
 
       - name: Update nightly cask
-        if: github.event_name == 'schedule' || github.event.inputs.test_nightly == 'true'
+        if: github.event_name == 'schedule' || github.event.inputs.release_nightly == 'true'
         working-directory: homebrew-tap
         run: |
           # Update the cask file
@@ -262,7 +262,7 @@ jobs:
           EOF
 
       - name: Commit and push cask update
-        if: github.event_name == 'schedule' || github.event.inputs.test_nightly == 'true'
+        if: github.event_name == 'schedule' || github.event.inputs.release_nightly == 'true'
         working-directory: homebrew-tap
         run: |
           git config user.name "github-actions[bot]"
