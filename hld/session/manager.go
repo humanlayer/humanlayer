@@ -60,15 +60,18 @@ func (m *Manager) SetApprovalReconciler(reconciler ApprovalReconciler) {
 }
 
 // LaunchSession starts a new Claude Code session
-func (m *Manager) LaunchSession(ctx context.Context, config claudecode.SessionConfig) (*Session, error) {
+func (m *Manager) LaunchSession(ctx context.Context, config LaunchSessionConfig) (*Session, error) {
 	// Generate unique IDs
 	sessionID := uuid.New().String()
 	runID := uuid.New().String()
 
+	// Extract the Claude config (without daemon-level settings)
+	claudeConfig := config.SessionConfig
+
 	// Add HUMANLAYER_RUN_ID and HUMANLAYER_DAEMON_SOCKET to MCP server environment
-	if config.MCPConfig != nil {
-		slog.Debug("configuring MCP servers", "count", len(config.MCPConfig.MCPServers))
-		for name, server := range config.MCPConfig.MCPServers {
+	if claudeConfig.MCPConfig != nil {
+		slog.Debug("configuring MCP servers", "count", len(claudeConfig.MCPConfig.MCPServers))
+		for name, server := range claudeConfig.MCPConfig.MCPServers {
 			if server.Env == nil {
 				server.Env = make(map[string]string)
 			}
@@ -77,7 +80,7 @@ func (m *Manager) LaunchSession(ctx context.Context, config claudecode.SessionCo
 			if m.socketPath != "" {
 				server.Env["HUMANLAYER_DAEMON_SOCKET"] = m.socketPath
 			}
-			config.MCPConfig.MCPServers[name] = server
+			claudeConfig.MCPConfig.MCPServers[name] = server
 			slog.Debug("configured MCP server",
 				"name", name,
 				"command", server.Command,
@@ -90,12 +93,12 @@ func (m *Manager) LaunchSession(ctx context.Context, config claudecode.SessionCo
 	}
 
 	// Capture current working directory if not specified
-	if config.WorkingDir == "" {
+	if claudeConfig.WorkingDir == "" {
 		cwd, err := os.Getwd()
 		if err != nil {
 			slog.Warn("failed to get current working directory", "error", err)
 		} else {
-			config.WorkingDir = cwd
+			claudeConfig.WorkingDir = cwd
 			slog.Debug("No working directory provided, falling back to cwd of daemon", "working_dir", cwd)
 		}
 	}
@@ -104,15 +107,26 @@ func (m *Manager) LaunchSession(ctx context.Context, config claudecode.SessionCo
 	startTime := time.Now()
 
 	// Store session in database
-	dbSession := store.NewSessionFromConfig(sessionID, runID, config)
-	dbSession.Summary = CalculateSummary(config.Query)
+	dbSession := store.NewSessionFromConfig(sessionID, runID, claudeConfig)
+	dbSession.Summary = CalculateSummary(claudeConfig.Query)
+
+	// Handle dangerously skip permissions from config
+	if config.DangerouslySkipPermissions {
+		dbSession.DangerouslySkipPermissions = true
+		// Only set expiry if timeout is provided
+		if config.DangerouslySkipPermissionsTimeout != nil && *config.DangerouslySkipPermissionsTimeout > 0 {
+			expiresAt := time.Now().Add(time.Duration(*config.DangerouslySkipPermissionsTimeout) * time.Millisecond)
+			dbSession.DangerouslySkipPermissionsExpiresAt = &expiresAt
+		}
+	}
+
 	if err := m.store.CreateSession(ctx, dbSession); err != nil {
 		return nil, fmt.Errorf("failed to store session in database: %w", err)
 	}
 
 	// Store MCP servers if configured
-	if config.MCPConfig != nil && len(config.MCPConfig.MCPServers) > 0 {
-		servers, err := store.MCPServersFromConfig(sessionID, config.MCPConfig.MCPServers)
+	if claudeConfig.MCPConfig != nil && len(claudeConfig.MCPConfig.MCPServers) > 0 {
+		servers, err := store.MCPServersFromConfig(sessionID, claudeConfig.MCPConfig.MCPServers)
 		if err != nil {
 			slog.Error("failed to convert MCP servers", "error", err)
 		} else if err := m.store.StoreMCPServers(ctx, sessionID, servers); err != nil {
@@ -125,28 +139,28 @@ func (m *Manager) LaunchSession(ctx context.Context, config claudecode.SessionCo
 	// Log final configuration before launching
 	var mcpServersDetail string
 	var mcpServerCount int
-	if config.MCPConfig != nil {
-		mcpServerCount = len(config.MCPConfig.MCPServers)
-		for name, server := range config.MCPConfig.MCPServers {
+	if claudeConfig.MCPConfig != nil {
+		mcpServerCount = len(claudeConfig.MCPConfig.MCPServers)
+		for name, server := range claudeConfig.MCPConfig.MCPServers {
 			mcpServersDetail += fmt.Sprintf("[%s: cmd=%s args=%v env=%v] ", name, server.Command, server.Args, server.Env)
 		}
 	}
 	slog.Info("launching Claude session with configuration",
 		"session_id", sessionID,
 		"run_id", runID,
-		"query", config.Query,
-		"working_dir", config.WorkingDir,
-		"permission_prompt_tool", config.PermissionPromptTool,
+		"query", claudeConfig.Query,
+		"working_dir", claudeConfig.WorkingDir,
+		"permission_prompt_tool", claudeConfig.PermissionPromptTool,
 		"mcp_servers", mcpServerCount,
 		"mcp_servers_detail", mcpServersDetail)
 
-	// Launch Claude session
-	claudeSession, err := m.client.Launch(config)
+	// Launch Claude session (without daemon-level settings)
+	claudeSession, err := m.client.Launch(claudeConfig)
 	if err != nil {
 		slog.Error("failed to launch Claude session",
 			"session_id", sessionID,
 			"error", err,
-			"config", fmt.Sprintf("%+v", config))
+			"config", fmt.Sprintf("%+v", claudeConfig))
 		m.updateSessionStatus(ctx, sessionID, StatusFailed, err.Error())
 		return nil, fmt.Errorf("failed to launch Claude session: %w", err)
 	}
@@ -192,10 +206,10 @@ func (m *Manager) LaunchSession(ctx context.Context, config claudecode.SessionCo
 	}
 
 	// Store query for injection after Claude session ID is captured
-	m.pendingQueries.Store(sessionID, config.Query)
+	m.pendingQueries.Store(sessionID, claudeConfig.Query)
 
 	// Monitor session lifecycle in background
-	go m.monitorSession(ctx, sessionID, runID, wrappedSession, startTime, config)
+	go m.monitorSession(ctx, sessionID, runID, wrappedSession, startTime, claudeConfig)
 
 	// Reconcile any existing approvals for this run_id
 	if m.approvalReconciler != nil {
@@ -214,8 +228,8 @@ func (m *Manager) LaunchSession(ctx context.Context, config claudecode.SessionCo
 	slog.Info("launched Claude session",
 		"session_id", sessionID,
 		"run_id", runID,
-		"query", config.Query,
-		"permission_prompt_tool", config.PermissionPromptTool)
+		"query", claudeConfig.Query,
+		"permission_prompt_tool", claudeConfig.PermissionPromptTool)
 
 	// Return minimal session info for launch response
 	return &Session{
@@ -223,7 +237,7 @@ func (m *Manager) LaunchSession(ctx context.Context, config claudecode.SessionCo
 		RunID:     runID,
 		Status:    StatusRunning,
 		StartTime: startTime,
-		Config:    config,
+		Config:    claudeConfig,
 	}, nil
 }
 
@@ -506,21 +520,23 @@ func (m *Manager) ListSessions() []Info {
 	infos := make([]Info, 0, len(dbSessions))
 	for _, dbSession := range dbSessions {
 		info := Info{
-			ID:              dbSession.ID,
-			RunID:           dbSession.RunID,
-			ClaudeSessionID: dbSession.ClaudeSessionID,
-			ParentSessionID: dbSession.ParentSessionID,
-			Status:          Status(dbSession.Status),
-			StartTime:       dbSession.CreatedAt,
-			LastActivityAt:  dbSession.LastActivityAt,
-			Error:           dbSession.ErrorMessage,
-			Query:           dbSession.Query,
-			Summary:         dbSession.Summary,
-			Title:           dbSession.Title,
-			Model:           dbSession.Model,
-			WorkingDir:      dbSession.WorkingDir,
-			AutoAcceptEdits: dbSession.AutoAcceptEdits,
-			Archived:        dbSession.Archived,
+			ID:                                  dbSession.ID,
+			RunID:                               dbSession.RunID,
+			ClaudeSessionID:                     dbSession.ClaudeSessionID,
+			ParentSessionID:                     dbSession.ParentSessionID,
+			Status:                              Status(dbSession.Status),
+			StartTime:                           dbSession.CreatedAt,
+			LastActivityAt:                      dbSession.LastActivityAt,
+			Error:                               dbSession.ErrorMessage,
+			Query:                               dbSession.Query,
+			Summary:                             dbSession.Summary,
+			Title:                               dbSession.Title,
+			Model:                               dbSession.Model,
+			WorkingDir:                          dbSession.WorkingDir,
+			AutoAcceptEdits:                     dbSession.AutoAcceptEdits,
+			Archived:                            dbSession.Archived,
+			DangerouslySkipPermissions:          dbSession.DangerouslySkipPermissions,
+			DangerouslySkipPermissionsExpiresAt: dbSession.DangerouslySkipPermissionsExpiresAt,
 		}
 
 		// Set end time if completed
@@ -1108,6 +1124,16 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 	dbSession.Summary = CalculateSummary(req.Query)
 	// Inherit auto-accept setting from parent
 	dbSession.AutoAcceptEdits = parentSession.AutoAcceptEdits
+	// Inherit dangerously skip permissions from parent
+	dbSession.DangerouslySkipPermissions = parentSession.DangerouslySkipPermissions
+	dbSession.DangerouslySkipPermissionsExpiresAt = parentSession.DangerouslySkipPermissionsExpiresAt
+
+	// Check if dangerously skip permissions has expired on the parent
+	if dbSession.DangerouslySkipPermissions && dbSession.DangerouslySkipPermissionsExpiresAt != nil && time.Now().After(*dbSession.DangerouslySkipPermissionsExpiresAt) {
+		dbSession.DangerouslySkipPermissions = false
+		dbSession.DangerouslySkipPermissionsExpiresAt = nil
+	}
+
 	// Inherit title from parent session
 	dbSession.Title = parentSession.Title
 	// Explicitly ensure inherited values are stored (in case NewSessionFromConfig didn't capture them)

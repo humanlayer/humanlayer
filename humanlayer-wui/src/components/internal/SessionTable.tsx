@@ -3,7 +3,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 import { useHotkeys, useHotkeysContext } from 'react-hotkeys-hook'
 import { useEffect, useRef, useState } from 'react'
-import { CircleOff, CheckSquare, Square, FileText, Pencil } from 'lucide-react'
+import { CircleOff, CheckSquare, Square, FileText, Pencil, ShieldOff } from 'lucide-react'
 import { getStatusTextClass } from '@/utils/component-utils'
 import { formatTimestamp, formatAbsoluteTimestamp } from '@/utils/formatting'
 import { highlightMatches } from '@/lib/fuzzy-search'
@@ -423,10 +423,21 @@ export default function SessionTable({
                     </div>
                   </TableCell>
                   <TableCell className={getStatusTextClass(session.status)}>
-                    {session.status === SessionStatus.Running && session.autoAcceptEdits && (
-                      <span className="align-text-top text-[var(--terminal-warning)] text-base leading-none animate-pulse-warning">
-                        {'⏵⏵ '}
-                      </span>
+                    {session.status !== SessionStatus.Failed && (
+                      <>
+                        {session.dangerously_skip_permissions ? (
+                          <>
+                            <ShieldOff
+                              className="inline-block w-4 h-4 text-[var(--terminal-error)] animate-pulse-error align-text-bottom"
+                              strokeWidth={3}
+                            />{' '}
+                          </>
+                        ) : session.autoAcceptEdits ? (
+                          <span className="align-text-top text-[var(--terminal-warning)] text-base leading-none animate-pulse-warning">
+                            {'⏵⏵ '}
+                          </span>
+                        ) : null}
+                      </>
                     )}
                     {renderSessionStatus(session)}
                   </TableCell>

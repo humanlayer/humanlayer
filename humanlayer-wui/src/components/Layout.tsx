@@ -28,6 +28,7 @@ import { DebugPanel } from '@/components/DebugPanel'
 import { notifyLogLocation } from '@/lib/log-notification'
 import '@/App.css'
 import { logger } from '@/lib/logging'
+import { YoloModeMonitor } from '@/components/YoloModeMonitor'
 import { KeyboardShortcut } from '@/components/HotkeyPanel'
 
 export function Layout() {
@@ -188,10 +189,46 @@ export function Layout() {
     },
     // CODEREVIEW: Why did this previously exist? Sundeep wants to talk about this do not merge.
     onSessionSettingsChanged: async (data: SessionSettingsChangedEventData) => {
-      // Placeholder handler - to be implemented based on requirements
       logger.log('useSessionSubscriptions.onSessionSettingsChanged', data)
-      const { session_id, auto_accept_edits } = data
-      updateSession(session_id, { autoAcceptEdits: auto_accept_edits })
+      const updates: Record<string, any> = {}
+
+      if (data.auto_accept_edits !== undefined) {
+        updates.autoAcceptEdits = data.auto_accept_edits
+      }
+
+      if (data.dangerously_skip_permissions !== undefined) {
+        updates.dangerously_skip_permissions = data.dangerously_skip_permissions
+
+        // Calculate expiry time if timeout provided
+        if (data.dangerously_skip_permissions && data.dangerously_skip_permissions_timeout_ms) {
+          const expiresAt = new Date(Date.now() + data.dangerously_skip_permissions_timeout_ms)
+          updates.dangerously_skip_permissions_expires_at = expiresAt.toISOString()
+        } else if (!data.dangerously_skip_permissions) {
+          updates.dangerously_skip_permissions_expires_at = undefined
+        }
+      }
+
+      updateSession(data.session_id, updates)
+
+      // Show notification
+      if (notificationService) {
+        const title = data.dangerously_skip_permissions
+          ? 'Bypassing permissions enabled'
+          : data.auto_accept_edits
+            ? 'Auto-accept edits enabled'
+            : 'Auto-accept disabled'
+
+        notificationService.notify({
+          type: 'settings_changed',
+          title,
+          body: data.dangerously_skip_permissions
+            ? 'ALL tools will be automatically approved'
+            : data.auto_accept_edits
+              ? 'Edit, Write, and MultiEdit tools will be automatically approved'
+              : 'All tools require manual approval',
+          metadata: { sessionId: data.session_id },
+        })
+      }
     },
   })
 
@@ -431,6 +468,9 @@ export function Layout() {
 
       {/* Debug Panel */}
       <DebugPanel open={isDebugPanelOpen} onOpenChange={setIsDebugPanelOpen} />
+
+      {/* Global Yolo Mode Monitor */}
+      <YoloModeMonitor />
     </div>
   )
 }

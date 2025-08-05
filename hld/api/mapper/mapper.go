@@ -57,6 +57,10 @@ func (m *Mapper) SessionToAPI(s store.Session) api.Session {
 		session.DurationMs = s.DurationMS
 	}
 	session.AutoAcceptEdits = &s.AutoAcceptEdits
+	session.DangerouslySkipPermissions = &s.DangerouslySkipPermissions
+	if s.DangerouslySkipPermissionsExpiresAt != nil {
+		session.DangerouslySkipPermissionsExpiresAt = s.DangerouslySkipPermissionsExpiresAt
+	}
 	session.Archived = &s.Archived
 
 	return session

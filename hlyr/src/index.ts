@@ -104,6 +104,14 @@ program
   .option('-w, --working-dir <path>', 'Working directory for the session')
   .option('--max-turns <number>', 'Maximum number of turns', parseInt)
   .option('--no-approvals', 'Disable HumanLayer approvals for high-stakes operations')
+  .option(
+    '--dangerously-skip-permissions',
+    'Enable dangerously skip permissions (auto-accept ALL tools)',
+  )
+  .option(
+    '--dangerously-skip-permissions-timeout <minutes>',
+    'Dangerously skip permissions timeout in minutes',
+  )
   .option('--daemon-socket <path>', 'Path to daemon socket')
   .option('--config-file <path>', 'Path to config file')
   .action(launchCommand)

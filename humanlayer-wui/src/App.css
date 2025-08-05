@@ -278,6 +278,23 @@
     animation: pulse-warning 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 
+  /* Pulsing animation for yolo mode */
+  @keyframes pulse-error {
+    0%,
+    100% {
+      opacity: 1;
+      color: var(--terminal-error);
+    }
+    50% {
+      opacity: 0.5;
+      color: var(--terminal-error);
+    }
+  }
+
+  .animate-pulse-error {
+    animation: pulse-error 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
   /* Custom spinner animations */
   @keyframes spin-reverse {
     from {

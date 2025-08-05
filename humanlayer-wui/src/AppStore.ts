@@ -110,12 +110,29 @@ export const useStore = create<StoreState>((set, get) => ({
     })),
   refreshSessions: async () => {
     try {
-      const { viewMode } = get()
+      const { viewMode, sessions: currentSessions } = get()
       const response = await daemonClient.getSessionLeaves({
         include_archived: viewMode === ViewMode.Archived,
         archived_only: viewMode === ViewMode.Archived,
       })
-      set({ sessions: response.sessions })
+
+      // Preserve local runtime state (yolo mode) when refreshing
+      const updatedSessions = response.sessions.map(newSession => {
+        const existingSession = currentSessions.find(s => s.id === newSession.id)
+        if (existingSession) {
+          // Preserve yolo mode state from existing session
+          return {
+            ...newSession,
+            dangerously_skip_permissions: existingSession.dangerously_skip_permissions,
+            dangerously_skip_permissions_expires_at:
+              existingSession.dangerously_skip_permissions_expires_at,
+            autoAcceptEdits: existingSession.autoAcceptEdits,
+          }
+        }
+        return newSession
+      })
+
+      set({ sessions: updatedSessions })
     } catch (error) {
       logger.error('Failed to refresh sessions:', error)
     }

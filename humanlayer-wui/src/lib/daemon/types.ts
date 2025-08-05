@@ -6,7 +6,7 @@ import type {
   Event,
   EventType,
   RecentPath as SDKRecentPath,
-  Session,
+  Session as SDKSession,
   Approval,
   ConversationEvent,
 } from '@humanlayer/hld-sdk'
@@ -17,7 +17,14 @@ export type { Event, EventType }
 export type RecentPath = SDKRecentPath
 
 // Export SDK types directly
-export type { Session, Approval } from '@humanlayer/hld-sdk'
+export type { Approval } from '@humanlayer/hld-sdk'
+
+// Extend Session type to include new fields until SDK is regenerated
+export interface Session
+  extends Omit<SDKSession, 'dangerously_skip_permissions' | 'dangerously_skip_permissions_expires_at'> {
+  dangerously_skip_permissions: boolean
+  dangerously_skip_permissions_expires_at?: string // ISO timestamp
+}
 
 // Export SDK ConversationEvent type directly
 export type { ConversationEvent } from '@humanlayer/hld-sdk'
@@ -67,7 +74,11 @@ export interface DaemonClient {
   interruptSession(sessionId: string): Promise<{ success: boolean }>
   updateSessionSettings(
     sessionId: string,
-    settings: { auto_accept_edits?: boolean },
+    settings: {
+      auto_accept_edits?: boolean
+      dangerously_skip_permissions?: boolean
+      dangerously_skip_permissions_timeout_ms?: number
+    },
   ): Promise<{ success: boolean }>
   archiveSession(
     sessionIdOrRequest: string | { session_id: string; archived: boolean },
@@ -146,6 +157,8 @@ export interface LaunchSessionRequest {
   disallowed_tools?: string[]
   custom_instructions?: string
   verbose?: boolean
+  dangerously_skip_permissions?: boolean
+  dangerously_skip_permissions_timeout?: number
 }
 
 export interface LaunchSessionResponse {
@@ -222,7 +235,10 @@ export interface SessionStatusChangedEventData {
 
 export interface SessionSettingsChangedEventData {
   session_id: string
-  auto_accept_edits: boolean
+  event_type?: string
+  auto_accept_edits?: boolean
+  dangerously_skip_permissions?: boolean
+  dangerously_skip_permissions_timeout_ms?: number
 }
 
 // Conversation types
@@ -305,6 +321,8 @@ export interface InterruptSessionResponse {
 export interface UpdateSessionSettingsRequest {
   session_id: string
   auto_accept_edits?: boolean
+  dangerously_skip_permissions?: boolean
+  dangerously_skip_permissions_timeout_ms?: number
 }
 
 export interface UpdateSessionSettingsResponse {
@@ -354,4 +372,22 @@ export interface UpdateSessionTitleRequest {
 
 export interface UpdateSessionTitleResponse {
   success: boolean
+}
+
+// Helper function to transform SDK Session to our extended Session type
+export function transformSDKSession(sdkSession: SDKSession): Session {
+  const result = {
+    ...sdkSession,
+    dangerously_skip_permissions: sdkSession.dangerouslySkipPermissions ?? false,
+    dangerously_skip_permissions_expires_at:
+      sdkSession.dangerouslySkipPermissionsExpiresAt?.toISOString(),
+  }
+  console.log('transformSDKSession:', {
+    id: sdkSession.id,
+    dangerouslySkipPermissions: sdkSession.dangerouslySkipPermissions,
+    dangerouslySkipPermissionsExpiresAt: sdkSession.dangerouslySkipPermissionsExpiresAt,
+    result_dsp: result.dangerously_skip_permissions,
+    result_dspe: result.dangerously_skip_permissions_expires_at,
+  })
+  return result
 }

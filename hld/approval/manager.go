@@ -37,10 +37,30 @@ func (m *manager) CreateApproval(ctx context.Context, runID, toolName string, to
 		return "", fmt.Errorf("session not found for run_id: %s", runID)
 	}
 
-	// Check if this is an edit tool and auto-accept is enabled
+	// Check if auto-accept is enabled (either mode)
 	status := store.ApprovalStatusLocalPending
 	comment := ""
-	if session.AutoAcceptEdits && isEditTool(toolName) {
+
+	// Check dangerously skip permissions first (overrides edit mode)
+	if session.DangerouslySkipPermissions {
+		// Check if it has an expiry and if it's expired
+		if session.DangerouslySkipPermissionsExpiresAt != nil && time.Now().After(*session.DangerouslySkipPermissionsExpiresAt) {
+			// Expired - disable it
+			update := store.SessionUpdate{
+				DangerouslySkipPermissions:          &[]bool{false}[0],
+				DangerouslySkipPermissionsExpiresAt: &[]*time.Time{nil}[0],
+			}
+			if err := m.store.UpdateSession(ctx, session.ID, update); err != nil {
+				slog.Error("failed to disable expired dangerously skip permissions", "session_id", session.ID, "error", err)
+			}
+			// Continue with normal approval
+		} else {
+			// Dangerously skip permissions is active (no expiry or not expired)
+			status = store.ApprovalStatusLocalApproved
+			comment = "Auto-accepted (bypassing permissions)"
+		}
+	} else if session.AutoAcceptEdits && isEditTool(toolName) {
+		// Regular auto-accept edits mode
 		status = store.ApprovalStatusLocalApproved
 		comment = "Auto-accepted (auto-accept mode enabled)"
 	}
