@@ -20,7 +20,7 @@ import { useSessionLauncher, useSessionLauncherHotkeys } from '@/hooks/useSessio
 import { useDaemonConnection } from '@/hooks/useDaemonConnection'
 import { useStore } from '@/AppStore'
 import { useSessionSubscriptions } from '@/hooks/useSubscriptions'
-import { Toaster } from 'sonner'
+import { Toaster, toast } from 'sonner'
 import { notificationService, type NotificationOptions } from '@/services/NotificationService'
 import { useTheme } from '@/contexts/ThemeContext'
 import { formatMcpToolName, getSessionNotificationText } from '@/utils/formatting'
@@ -48,7 +48,7 @@ export function Layout() {
   const { connected, connecting, version, connect } = useDaemonConnection()
 
   // Hotkey panel state from store
-  const { isHotkeyPanelOpen, setHotkeyPanelOpen } = useStore()
+  const { isHotkeyPanelOpen, setHotkeyPanelOpen, isComposeMode, setComposeMode } = useStore()
 
   // Session launcher state
   const { isOpen, close } = useSessionLauncher()
@@ -71,6 +71,12 @@ export function Layout() {
       enableOnFormTags: true,
     },
   )
+  // Compose mode toggle hotkey
+  useHotkeys('mod+shift+c', () => {
+    const newMode = !isComposeMode
+    setComposeMode(newMode)
+    toast.success(newMode ? 'Compose mode enabled' : 'Compose mode disabled')
+  })
 
   // Get store actions
   const updateSession = useStore(state => state.updateSession)

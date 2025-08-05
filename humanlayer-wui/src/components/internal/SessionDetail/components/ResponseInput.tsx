@@ -1,4 +1,4 @@
-import React, { forwardRef, useCallback, useEffect, useState } from 'react'
+import React, { forwardRef, useCallback, useEffect, useState, useRef, useImperativeHandle } from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Session, SessionStatus } from '@/lib/daemon/types'
@@ -10,6 +10,8 @@ import {
 import { ResponseInputLocalStorageKey } from '@/components/internal/SessionDetail/hooks/useSessionActions'
 import { StatusBar } from './StatusBar'
 import { useHotkeys } from 'react-hotkeys-hook'
+import { TiptapEditor } from './TiptapEditor'
+import { useStore } from '@/AppStore'
 
 interface ResponseInputProps {
   session: Session
@@ -54,6 +56,9 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
   ) => {
     const [youSure, setYouSure] = useState(false)
 
+    const isComposeMode = useStore(state => state.isComposeMode)
+    const tiptapRef = useRef<{ focus: () => void }>(null)
+    const textareaRef = useRef<HTMLTextAreaElement>(null)
     const getSendButtonText = () => {
       if (isResponding) return 'Interrupting...'
       if (isDenying) return youSure ? 'Deny?' : 'Deny'
@@ -79,6 +84,34 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
       } else {
         handleContinueSession()
       }
+      // Regular help text
+      return getHelpText(session.status)
+    }
+
+    // Forward ref handling for both textarea and TipTap editor
+    useImperativeHandle(ref, () => textareaRef.current!, [isComposeMode])
+
+    // Focus effect for compose mode switching
+    useEffect(() => {
+      if (isComposeMode && tiptapRef.current) {
+        tiptapRef.current.focus()
+      } else if (!isComposeMode && textareaRef.current) {
+        textareaRef.current.focus()
+      }
+    }, [isComposeMode])
+    // Only show the simple status text if session is failed AND not in fork mode
+    if (session.status === SessionStatus.Failed && !isForkMode) {
+      return (
+        <div className="flex items-center justify-between py-1">
+          <span className="text-sm text-muted-foreground">{getSessionStatusText(session.status)}</span>
+          {onOpenForkView && (
+            <Button variant="ghost" size="sm" onClick={onOpenForkView} className="h-8 gap-2">
+              <GitBranch className="h-4 w-4" />
+              Fork from previous
+            </Button>
+          )}
+        </div>
+      )
     }
 
     const handleResponseInputKeyDown = useCallback(
@@ -167,6 +200,37 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
             disabled={isResponding}
             className={`flex-1 min-h-[2.5rem] ${isResponding ? 'opacity-50' : ''} ${textareaOutlineClass}`}
           />
+          {isComposeMode ? (
+            <TiptapEditor
+              ref={tiptapRef}
+              value={responseInput}
+              onChange={(value: string) => {
+                setResponseInput(value)
+                localStorage.setItem(`${ResponseInputLocalStorageKey}.${session.id}`, value)
+              }}
+              onKeyDown={handleResponseInputKeyDown}
+              disabled={isResponding}
+              placeholder={
+                isForkMode ? getForkInputPlaceholder(session.status) : getInputPlaceholder(session.status)
+              }
+              className={`flex-1 ${isResponding ? 'opacity-50' : ''}`}
+            />
+          ) : (
+            <Textarea
+              ref={textareaRef}
+              placeholder={
+                isForkMode ? getForkInputPlaceholder(session.status) : getInputPlaceholder(session.status)
+              }
+              value={responseInput}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
+                setResponseInput(e.target.value)
+                localStorage.setItem(`${ResponseInputLocalStorageKey}.${session.id}`, e.target.value)
+              }}
+              onKeyDown={handleResponseInputKeyDown}
+              disabled={isResponding}
+              className={`flex-1 min-h-[2.5rem] ${isResponding ? 'opacity-50' : ''}`}
+            />
+          )}
           <Button
             onClick={handleSubmit}
             disabled={isDisabled}

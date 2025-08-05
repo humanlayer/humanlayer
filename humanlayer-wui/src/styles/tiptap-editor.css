@@ -1,0 +1,168 @@
+/* TipTap Editor Styles */
+.tiptap-wrapper {
+  width: 100%;
+}
+
+.tiptap-editor {
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0.5rem 0.75rem;
+  font-family: inherit;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  background-color: var(--background);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.tiptap-editor:focus {
+  border-color: var(--ring);
+}
+
+.tiptap-editor[contenteditable='false'] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Placeholder */
+.tiptap-editor p.is-empty::before {
+  content: attr(data-placeholder);
+  color: var(--muted-foreground);
+  pointer-events: none;
+  height: 0;
+  float: left;
+}
+
+/* Basic typography */
+.tiptap-editor p {
+  margin: 0;
+}
+
+.tiptap-editor p + p {
+  margin-top: 0.5em;
+}
+
+/* Markdown syntax highlighting styles */
+.markdown-syntax {
+  opacity: 0.5;
+  color: var(--muted-foreground);
+}
+
+.markdown-syntax-bold {
+  color: var(--terminal-brightBlue);
+}
+
+.markdown-syntax-italic {
+  color: var(--terminal-brightGreen);
+}
+
+.markdown-syntax-strike {
+  color: var(--terminal-brightRed);
+}
+
+.markdown-syntax-code {
+  color: var(--terminal-brightYellow);
+}
+
+/* Markdown content styles */
+.markdown-bold {
+  font-weight: 700;
+}
+
+.markdown-italic {
+  font-style: italic;
+}
+
+.markdown-strike {
+  text-decoration: line-through;
+}
+
+.markdown-code {
+  font-family: 'SF Mono', Monaco, 'Cascadia Mono', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  background-color: var(--muted);
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  font-size: 0.875em;
+}
+
+/* Code block styles */
+.tiptap-editor pre {
+  background-color: var(--terminal-background, #000000);
+  color: var(--terminal-foreground, #ffffff);
+  font-family: 'SF Mono', Monaco, 'Cascadia Mono', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  padding: 1rem;
+  border-radius: 0.375rem;
+  overflow-x: auto;
+  margin: 0.5rem 0;
+}
+
+.tiptap-editor pre code {
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  font-size: inherit;
+}
+
+/* Syntax highlighting theme - Terminal colors */
+.hljs-comment,
+.hljs-quote {
+  color: var(--terminal-brightBlack);
+}
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-addition {
+  color: var(--terminal-brightGreen);
+}
+
+.hljs-number,
+.hljs-string,
+.hljs-meta .hljs-string,
+.hljs-literal,
+.hljs-doctag,
+.hljs-regexp {
+  color: var(--terminal-brightRed);
+}
+
+.hljs-title,
+.hljs-section,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class {
+  color: var(--terminal-brightBlue);
+}
+
+.hljs-attribute,
+.hljs-attr,
+.hljs-variable,
+.hljs-template-variable,
+.hljs-class .hljs-title,
+.hljs-type {
+  color: var(--terminal-brightYellow);
+}
+
+.hljs-symbol,
+.hljs-bullet,
+.hljs-subst,
+.hljs-meta,
+.hljs-link {
+  color: var(--terminal-brightMagenta);
+}
+
+.hljs-built_in,
+.hljs-deletion {
+  color: var(--terminal-brightCyan);
+}
+
+.hljs-emphasis {
+  font-style: italic;
+}
+
+.hljs-strong {
+  font-weight: bold;
+}
