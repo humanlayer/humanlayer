@@ -107,6 +107,24 @@ export const MarkdownRenderer = memo(
 
     const components: Components = React.useMemo(
       () => ({
+        h1({ children }) {
+          return <h1># {children}</h1>
+        },
+        h2({ children }) {
+          return <h2>## {children}</h2>
+        },
+        h3({ children }) {
+          return <h3>### {children}</h3>
+        },
+        h4({ children }) {
+          return <h4>#### {children}</h4>
+        },
+        h5({ children }) {
+          return <h5>##### {children}</h5>
+        },
+        h6({ children }) {
+          return <h6>###### {children}</h6>
+        },
         li({ children }) {
           // Remove any leading whitespace/newlines from list items
           // This fixes the issue where numbered lists have newlines between number and text

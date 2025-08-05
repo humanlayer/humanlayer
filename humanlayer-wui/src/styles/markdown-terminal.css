@@ -26,7 +26,10 @@
 /* Headings - minimal distinguishing space */
 .prose-terminal h1,
 .prose-terminal h2,
-.prose-terminal h3 {
+.prose-terminal h3,
+.prose-terminal h4,
+.prose-terminal h5,
+.prose-terminal h6 {
   font-weight: 600;
   margin-bottom: 0; /* No bottom margin */
   margin-top: 0.5em; /* Consistent top margin for all headings */
@@ -110,7 +113,7 @@
 
 /* Keep existing theme colors for headings */
 .prose-terminal h1 {
-  font-size: 1.5rem;
+  font-size: 0.875rem; /* Same as base text */
   color: var(--terminal-accent);
   padding-bottom: 0.25rem;
   border-bottom: 1px dashed var(--terminal-border);
@@ -119,19 +122,29 @@
 /* First heading should have no top margin */
 .prose-terminal > h1:first-child,
 .prose-terminal > h2:first-child,
-.prose-terminal > h3:first-child {
+.prose-terminal > h3:first-child,
+.prose-terminal > h4:first-child,
+.prose-terminal > h5:first-child,
+.prose-terminal > h6:first-child {
   margin-top: 0;
 }
 
 /* Content immediately after headings already has proper spacing from element margins */
 
 .prose-terminal h2 {
-  font-size: 1.25rem;
+  font-size: 0.875rem; /* Same as base text */
   color: var(--terminal-accent);
 }
 
 .prose-terminal h3 {
-  font-size: 1.125rem;
+  font-size: 0.875rem; /* Same as base text */
+  color: var(--terminal-accent-alt);
+}
+
+.prose-terminal h4,
+.prose-terminal h5,
+.prose-terminal h6 {
+  font-size: 0.875rem; /* Same as base text */
   color: var(--terminal-accent-alt);
 }
 
