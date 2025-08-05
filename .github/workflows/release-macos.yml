@@ -222,7 +222,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: humanlayer/homebrew-humanlayer
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.HUMANLAYER_HOMEBREW_CASK_WRITE_GITHUB_PAT }}
           path: homebrew-tap
 
       - name: Update nightly cask
