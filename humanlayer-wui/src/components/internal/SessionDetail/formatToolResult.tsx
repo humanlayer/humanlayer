@@ -1,6 +1,6 @@
 import React from 'react'
 import { ConversationEvent } from '@/lib/daemon/types'
-import { truncate } from '@/utils/formatting'
+import { truncate, parseMcpToolName } from '@/utils/formatting'
 
 // TODO(2): Consider creating tool-specific formatters in separate files
 // TODO(2): Add unit tests for each tool formatter
@@ -314,9 +314,7 @@ export function formatToolResult(
     default: {
       // MCP tool result formatting
       if (toolName.startsWith('mcp__')) {
-        const parts = toolName.split('__')
-        const service = parts[1] || 'unknown'
-        const method = parts.slice(2).join('__') || 'unknown'
+        const { service, method } = parseMcpToolName(toolName)
 
         // Generic MCP result formatting
         if (isError) {
