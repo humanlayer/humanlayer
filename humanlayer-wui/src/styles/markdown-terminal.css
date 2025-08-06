@@ -115,8 +115,6 @@
 .prose-terminal h1 {
   font-size: 0.875rem; /* Same as base text */
   color: var(--terminal-accent);
-  padding-bottom: 0.25rem;
-  border-bottom: 1px solid var(--terminal-border);
 }
 
 /* First heading should have no top margin */
