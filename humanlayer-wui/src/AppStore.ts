@@ -4,12 +4,21 @@ import { create } from 'zustand'
 import { daemonClient } from '@/lib/daemon'
 import { logger } from '@/lib/logging'
 
+// Track pending updates for optimistic UI
+interface PendingUpdate {
+  updates: Partial<Session>
+  timestamp: number
+  retryCount?: number
+}
+
 interface StoreState {
   /* Sessions */
   sessions: Session[]
   focusedSession: Session | null
   viewMode: ViewMode
   selectedSessions: Set<string> // For bulk selection
+  pendingUpdates: Map<string, PendingUpdate> // Track in-flight updates
+  isRefreshing: boolean // Prevent concurrent refresh/updates
   activeSessionDetail: {
     session: Session
     conversation: any[] // ConversationEvent[] from useConversation
@@ -19,6 +28,7 @@ interface StoreState {
 
   initSessions: (sessions: Session[]) => void
   updateSession: (sessionId: string, updates: Partial<Session>) => void
+  updateSessionOptimistic: (sessionId: string, updates: Partial<Session>) => Promise<void>
   updateSessionStatus: (sessionId: string, status: SessionStatus) => void
   refreshSessions: () => Promise<void>
   setFocusedSession: (session: Session | null) => void
@@ -70,6 +80,8 @@ export const useStore = create<StoreState>((set, get) => ({
   focusedSession: null,
   viewMode: ViewMode.Normal,
   selectedSessions: new Set<string>(),
+  pendingUpdates: new Map<string, PendingUpdate>(),
+  isRefreshing: false,
   activeSessionDetail: null,
   initSessions: (sessions: Session[]) => set({ sessions }),
   updateSession: (sessionId: string, updates: Partial<Session>) =>
@@ -90,6 +102,97 @@ export const useStore = create<StoreState>((set, get) => ({
             }
           : state.activeSessionDetail,
     })),
+  updateSessionOptimistic: async (sessionId: string, updates: Partial<Session>) => {
+    const timestamp = Date.now()
+
+    // Capture original session state before applying optimistic update
+    const originalSession = get().sessions.find(s => s.id === sessionId)
+    if (!originalSession) {
+      logger.error(`Session ${sessionId} not found`)
+      throw new Error(`Session ${sessionId} not found`)
+    }
+
+    // Apply optimistic update immediately
+    set(state => ({
+      sessions: state.sessions.map(session =>
+        session.id === sessionId ? { ...session, ...updates } : session,
+      ),
+      pendingUpdates: new Map(state.pendingUpdates).set(sessionId, {
+        updates,
+        timestamp,
+      }),
+      focusedSession:
+        state.focusedSession?.id === sessionId
+          ? { ...state.focusedSession, ...updates }
+          : state.focusedSession,
+      activeSessionDetail:
+        state.activeSessionDetail?.session.id === sessionId
+          ? {
+              ...state.activeSessionDetail,
+              session: { ...state.activeSessionDetail.session, ...updates },
+            }
+          : state.activeSessionDetail,
+    }))
+
+    try {
+      // Send to server - map to the fields the API expects
+      const apiUpdates: any = {}
+      if (updates.autoAcceptEdits !== undefined) {
+        apiUpdates.auto_accept_edits = updates.autoAcceptEdits
+      }
+      if (updates.dangerouslySkipPermissions !== undefined) {
+        apiUpdates.dangerously_skip_permissions = updates.dangerouslySkipPermissions
+      }
+      if (updates.dangerouslySkipPermissionsExpiresAt !== undefined) {
+        // Convert Date to milliseconds for API
+        const expiresAt = updates.dangerouslySkipPermissionsExpiresAt
+        if (expiresAt) {
+          const now = Date.now()
+          const expiry = new Date(expiresAt).getTime()
+          apiUpdates.dangerously_skip_permissions_timeout_ms = expiry - now
+        } else {
+          apiUpdates.dangerously_skip_permissions_timeout_ms = undefined
+        }
+      }
+
+      await daemonClient.updateSessionSettings(sessionId, apiUpdates)
+
+      // Remove from pending on success
+      set(state => {
+        const pending = new Map(state.pendingUpdates)
+        pending.delete(sessionId)
+        return { pendingUpdates: pending }
+      })
+    } catch (error) {
+      logger.error('Failed to update session settings:', error)
+
+      // Revert optimistic update on failure
+      set(state => ({
+        sessions: state.sessions.map(session => {
+          if (session.id === sessionId) {
+            // Revert to original session state
+            return originalSession
+          }
+          return session
+        }),
+        pendingUpdates: (() => {
+          const pending = new Map(state.pendingUpdates)
+          pending.delete(sessionId)
+          return pending
+        })(),
+        focusedSession: state.focusedSession?.id === sessionId ? originalSession : state.focusedSession,
+        activeSessionDetail:
+          state.activeSessionDetail?.session.id === sessionId
+            ? {
+                ...state.activeSessionDetail,
+                session: originalSession,
+              }
+            : state.activeSessionDetail,
+      }))
+
+      throw error // Re-throw for caller to handle
+    }
+  },
   updateSessionStatus: (sessionId: string, status: string) =>
     set(state => ({
       sessions: state.sessions.map(session =>
@@ -109,31 +212,56 @@ export const useStore = create<StoreState>((set, get) => ({
           : state.activeSessionDetail,
     })),
   refreshSessions: async () => {
+    // Prevent concurrent refreshes
+    const state = get()
+    if (state.isRefreshing) {
+      logger.debug('Refresh already in progress, skipping')
+      return
+    }
+
+    set({ isRefreshing: true })
+
     try {
-      const { viewMode, sessions: currentSessions } = get()
+      const { viewMode, pendingUpdates } = get()
       const response = await daemonClient.getSessionLeaves({
         include_archived: viewMode === ViewMode.Archived,
         archived_only: viewMode === ViewMode.Archived,
       })
 
-      // Preserve local runtime state (yolo mode) when refreshing
-      const updatedSessions = response.sessions.map(newSession => {
-        const existingSession = currentSessions.find(s => s.id === newSession.id)
-        if (existingSession) {
-          // Preserve yolo mode state from existing session
-          return {
-            ...newSession,
-            dangerouslySkipPermissions: existingSession.dangerouslySkipPermissions,
-            dangerouslySkipPermissionsExpiresAt: existingSession.dangerouslySkipPermissionsExpiresAt,
-            autoAcceptEdits: existingSession.autoAcceptEdits,
-          }
+      // Server is source of truth, but preserve unresolved pending updates
+      const updatedSessions = response.sessions.map(serverSession => {
+        const pending = pendingUpdates.get(serverSession.id)
+
+        // Only preserve pending updates that are recent (< 2 seconds old)
+        if (pending && pending.timestamp > Date.now() - 2000) {
+          logger.debug(`Preserving pending updates for session ${serverSession.id}`)
+          return validateSessionState({
+            ...serverSession,
+            ...pending.updates,
+          })
         }
-        return newSession
+
+        // Otherwise, use server data as-is (with validation)
+        return validateSessionState(serverSession)
       })
 
-      set({ sessions: updatedSessions })
+      // Clean up old pending updates
+      const cleanedPending = new Map<string, PendingUpdate>()
+      pendingUpdates.forEach((update, sessionId) => {
+        // Keep updates less than 2 seconds old
+        if (update.timestamp > Date.now() - 2000) {
+          cleanedPending.set(sessionId, update)
+        }
+      })
+
+      set({
+        sessions: updatedSessions,
+        pendingUpdates: cleanedPending,
+        isRefreshing: false,
+      })
     } catch (error) {
       logger.error('Failed to refresh sessions:', error)
+      set({ isRefreshing: false })
     }
   },
   refreshActiveSessionConversation: async (sessionId: string) => {
@@ -635,3 +763,43 @@ export const useStore = create<StoreState>((set, get) => ({
   isHotkeyPanelOpen: false,
   setHotkeyPanelOpen: (open: boolean) => set({ isHotkeyPanelOpen: open }),
 }))
+
+// Helper function to validate and clean up session state
+export const validateSessionState = (session: Session): Session => {
+  // Check if yolo mode should be disabled due to expiry
+  if (session.dangerouslySkipPermissions && session.dangerouslySkipPermissionsExpiresAt) {
+    const now = Date.now()
+    const expiry = new Date(session.dangerouslySkipPermissionsExpiresAt).getTime()
+
+    if (expiry <= now) {
+      // Expired - disable yolo mode
+      logger.debug(`Session ${session.id} yolo mode expired, cleaning up`)
+      return {
+        ...session,
+        dangerouslySkipPermissions: false,
+        dangerouslySkipPermissionsExpiresAt: undefined,
+      }
+    }
+  }
+
+  return session
+}
+
+// Run validation periodically to clean up expired states
+if (typeof window !== 'undefined') {
+  setInterval(() => {
+    const state = useStore.getState()
+    const validatedSessions = state.sessions.map(validateSessionState)
+
+    // Only update if something changed
+    const hasChanges = validatedSessions.some(
+      (validated, index) =>
+        validated.dangerouslySkipPermissions !== state.sessions[index].dangerouslySkipPermissions,
+    )
+
+    if (hasChanges) {
+      logger.debug('Cleaning up expired session states')
+      useStore.setState({ sessions: validatedSessions })
+    }
+  }, 5000) // Check every 5 seconds
+}

@@ -232,7 +232,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   // Get session from store to access auto_accept_edits and dangerouslySkipPermissions
   // Always prioritize store values as they are the source of truth for runtime state
   const sessionFromStore = useStore(state => state.sessions.find(s => s.id === session.id))
-  const updateSession = useStore(state => state.updateSession)
+  const updateSessionOptimistic = useStore(state => state.updateSessionOptimistic)
 
   // Use store values if available, otherwise fall back to session prop
   // Store values take precedence because they reflect real-time updates
@@ -488,15 +488,10 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       logger.log('shift+tab setAutoAcceptEdits', autoAcceptEdits)
       try {
         const newState = !autoAcceptEdits
-        const updatedSession = await daemonClient.updateSessionSettings(session.id, {
-          auto_accept_edits: newState,
-        })
-
-        if (updatedSession.success) {
-          useStore.getState().updateSession(session.id, { autoAcceptEdits: newState })
-        }
+        await updateSessionOptimistic(session.id, { autoAcceptEdits: newState })
       } catch (error) {
         logger.error('Failed to toggle auto-accept mode:', error)
+        toast.error('Failed to toggle auto-accept mode')
       }
     },
     {
@@ -514,26 +509,13 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       if (dangerouslySkipPermissions) {
         // Disable bypassing permissions
         try {
-          // Immediately update the store for instant UI feedback
-          updateSession(session.id, {
+          await updateSessionOptimistic(session.id, {
             dangerouslySkipPermissions: false,
             dangerouslySkipPermissionsExpiresAt: undefined,
-          })
-
-          await daemonClient.updateSessionSettings(session.id, {
-            dangerously_skip_permissions: false,
-            dangerously_skip_permissions_timeout_ms: undefined,
           })
         } catch (error) {
           logger.error('Failed to disable bypassing permissions', { error })
           toast.error('Failed to disable bypassing permissions')
-          // Revert the optimistic update
-          updateSession(session.id, {
-            dangerouslySkipPermissions: true,
-            dangerouslySkipPermissionsExpiresAt: dangerouslySkipPermissionsExpiresAt
-              ? new Date(dangerouslySkipPermissionsExpiresAt)
-              : undefined,
-          })
         }
       } else {
         // Show confirmation dialog
@@ -556,25 +538,13 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         ? new Date(Date.now() + timeoutMinutes * 60 * 1000).toISOString()
         : undefined
 
-      updateSession(session.id, {
+      await updateSessionOptimistic(session.id, {
         dangerouslySkipPermissions: true,
         dangerouslySkipPermissionsExpiresAt: expiresAt ? new Date(expiresAt) : undefined,
-      })
-
-      await daemonClient.updateSessionSettings(session.id, {
-        dangerously_skip_permissions: true,
-        dangerously_skip_permissions_timeout_ms: timeoutMinutes
-          ? timeoutMinutes * 60 * 1000
-          : undefined,
       })
     } catch (error) {
       logger.error('Failed to enable bypassing permissions', { error })
       toast.error('Failed to enable bypassing permissions')
-      // Revert the optimistic update
-      updateSession(session.id, {
-        dangerouslySkipPermissions: false,
-        dangerouslySkipPermissionsExpiresAt: undefined,
-      })
     }
   }
 

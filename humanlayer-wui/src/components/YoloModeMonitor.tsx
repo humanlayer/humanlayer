@@ -1,6 +1,5 @@
 import { useEffect } from 'react'
 import { useStore } from '@/AppStore'
-import { daemonClient } from '@/lib/daemon'
 import { notificationService } from '@/services/NotificationService'
 import { useLocation } from 'react-router-dom'
 import { logger } from '@/lib/logging'
@@ -10,7 +9,7 @@ import { logger } from '@/lib/logging'
  * regardless of which session is currently being viewed.
  */
 export const YoloModeMonitor = () => {
-  const { sessions, updateSession } = useStore()
+  const { sessions, updateSessionOptimistic } = useStore()
   const location = useLocation()
 
   useEffect(() => {
@@ -27,16 +26,10 @@ export const YoloModeMonitor = () => {
 
           if (remaining <= 0) {
             try {
-              // Update local state immediately
-              updateSession(session.id, {
+              // Use optimistic update to disable yolo mode
+              await updateSessionOptimistic(session.id, {
                 dangerouslySkipPermissions: false,
                 dangerouslySkipPermissionsExpiresAt: undefined,
-              })
-
-              // Update backend
-              await daemonClient.updateSessionSettings(session.id, {
-                dangerously_skip_permissions: false,
-                dangerously_skip_permissions_timeout_ms: undefined,
               })
 
               // Only show notification if not currently viewing this session
@@ -82,7 +75,7 @@ export const YoloModeMonitor = () => {
       intervals.forEach(interval => clearInterval(interval))
       intervals.clear()
     }
-  }, [sessions, updateSession, location.pathname])
+  }, [sessions, updateSessionOptimistic, location.pathname])
 
   // This component doesn't render anything
   return null

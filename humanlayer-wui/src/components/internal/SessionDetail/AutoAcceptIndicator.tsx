@@ -3,7 +3,6 @@ import { cn } from '@/lib/utils'
 import { ShieldOff } from 'lucide-react'
 import { toast } from 'sonner'
 import { useStore } from '@/AppStore'
-import { daemonClient } from '@/lib/daemon'
 import { logger } from '@/lib/logging'
 
 interface SessionModeIndicatorProps {
@@ -22,7 +21,7 @@ export const SessionModeIndicator: FC<SessionModeIndicatorProps> = ({
   className,
 }) => {
   const [timeRemaining, setTimeRemaining] = useState<string>('')
-  const { updateSession } = useStore()
+  const { updateSessionOptimistic } = useStore()
 
   useEffect(() => {
     if (!dangerouslySkipPermissions || !dangerouslySkipPermissionsExpiresAt) return
@@ -35,16 +34,9 @@ export const SessionModeIndicator: FC<SessionModeIndicatorProps> = ({
       if (remaining === 0) {
         // Timer expired - disable yolo mode
         try {
-          // Update local state immediately
-          updateSession(sessionId, {
+          await updateSessionOptimistic(sessionId, {
             dangerouslySkipPermissions: false,
             dangerouslySkipPermissionsExpiresAt: undefined,
-          })
-
-          // Update backend
-          await daemonClient.updateSessionSettings(sessionId, {
-            dangerously_skip_permissions: false,
-            dangerously_skip_permissions_timeout_ms: undefined,
           })
 
           // Show notification
@@ -66,7 +58,12 @@ export const SessionModeIndicator: FC<SessionModeIndicatorProps> = ({
     updateTimer()
     const interval = setInterval(updateTimer, 1000)
     return () => clearInterval(interval)
-  }, [dangerouslySkipPermissions, dangerouslySkipPermissionsExpiresAt, sessionId, updateSession])
+  }, [
+    dangerouslySkipPermissions,
+    dangerouslySkipPermissionsExpiresAt,
+    sessionId,
+    updateSessionOptimistic,
+  ])
 
   // Show nothing if neither mode is active
   if (!autoAcceptEdits && !dangerouslySkipPermissions) return null
