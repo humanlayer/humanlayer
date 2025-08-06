@@ -124,8 +124,7 @@ export const useStore = create<StoreState>((set, get) => ({
           return {
             ...newSession,
             dangerouslySkipPermissions: existingSession.dangerouslySkipPermissions,
-            dangerouslySkipPermissionsExpiresAt:
-              existingSession.dangerouslySkipPermissionsExpiresAt,
+            dangerouslySkipPermissionsExpiresAt: existingSession.dangerouslySkipPermissionsExpiresAt,
             autoAcceptEdits: existingSession.autoAcceptEdits,
           }
         }

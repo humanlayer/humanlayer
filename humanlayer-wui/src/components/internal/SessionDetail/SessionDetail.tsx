@@ -261,8 +261,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         ? {
             id: sessionFromStore.id,
             dangerouslySkipPermissions: sessionFromStore.dangerouslySkipPermissions,
-            dangerouslySkipPermissionsExpiresAt:
-              sessionFromStore.dangerouslySkipPermissionsExpiresAt,
+            dangerouslySkipPermissionsExpiresAt: sessionFromStore.dangerouslySkipPermissionsExpiresAt,
           }
         : 'not found',
       sessionProp: {
@@ -531,7 +530,9 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
           // Revert the optimistic update
           updateSession(session.id, {
             dangerouslySkipPermissions: true,
-            dangerouslySkipPermissionsExpiresAt: dangerouslySkipPermissionsExpiresAt ? new Date(dangerouslySkipPermissionsExpiresAt) : undefined,
+            dangerouslySkipPermissionsExpiresAt: dangerouslySkipPermissionsExpiresAt
+              ? new Date(dangerouslySkipPermissionsExpiresAt)
+              : undefined,
           })
         }
       } else {
