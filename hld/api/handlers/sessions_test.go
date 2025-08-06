@@ -47,7 +47,7 @@ func TestSessionHandlers_CreateSession(t *testing.T) {
 			mockSetup: func() {
 				mockManager.EXPECT().
 					LaunchSession(gomock.Any(), gomock.Any()).
-					DoAndReturn(func(ctx context.Context, config claudecode.SessionConfig) (*session.Session, error) {
+					DoAndReturn(func(ctx context.Context, config session.LaunchSessionConfig) (*session.Session, error) {
 						// Validate the config passed to LaunchSession
 						assert.Equal(t, "Help me write tests", config.Query)
 						assert.Equal(t, claudecode.Model("sonnet"), config.Model)
@@ -101,7 +101,7 @@ func TestSessionHandlers_CreateSession(t *testing.T) {
 			mockSetup: func() {
 				mockManager.EXPECT().
 					LaunchSession(gomock.Any(), gomock.Any()).
-					DoAndReturn(func(ctx context.Context, config claudecode.SessionConfig) (*session.Session, error) {
+					DoAndReturn(func(ctx context.Context, config session.LaunchSessionConfig) (*session.Session, error) {
 						// Verify MCP config was properly converted
 						require.NotNil(t, config.MCPConfig)
 						assert.Len(t, config.MCPConfig.MCPServers, 1)
