@@ -114,3 +114,26 @@ export function truncatePath(path: string | undefined, maxLength: number = 40): 
   const minEndChars = Math.min(30, maxLength - 3)
   return '...' + homePath.slice(-minEndChars)
 }
+
+/**
+ * Parse MCP tool name format: mcp__service__method
+ * @param toolName - Raw MCP tool name (e.g., 'mcp__linear__create_comment')
+ * @returns Parsed service and method names
+ */
+export function parseMcpToolName(toolName: string): { service: string; method: string } {
+  const parts = toolName.split('__')
+  return {
+    service: parts[1] || 'unknown',
+    method: parts.slice(2).join('__') || 'unknown', // Handle methods with __ in name
+  }
+}
+
+/**
+ * Format MCP tool name for display
+ * @param toolName - Raw MCP tool name (e.g., 'mcp__linear__create_comment')
+ * @returns Formatted display name (e.g., 'linear - create comment')
+ */
+export function formatMcpToolName(toolName: string): string {
+  const { service, method } = parseMcpToolName(toolName)
+  return `${service} - ${method.replace(/_/g, ' ')}`
+}

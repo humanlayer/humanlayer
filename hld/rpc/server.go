@@ -7,10 +7,9 @@ import (
 	"fmt"
 	"net"
 	"sync"
-)
 
-// Version of the daemon
-const Version = "0.1.0"
+	"github.com/humanlayer/humanlayer/hld/internal/version"
+)
 
 // Server handles JSON-RPC requests
 type Server struct {
@@ -248,12 +247,12 @@ func (s *Server) sendResponse(conn net.Conn, resp *Response) error {
 
 // handleHealthCheck handles the health check RPC method
 func (s *Server) handleHealthCheck(ctx context.Context, params json.RawMessage) (interface{}, error) {
-	version := Version
+	ver := version.GetVersion()
 	if s.versionOverride != "" {
-		version = s.versionOverride
+		ver = s.versionOverride
 	}
 	return &HealthCheckResponse{
 		Status:  "ok",
-		Version: version,
+		Version: ver,
 	}, nil
 }

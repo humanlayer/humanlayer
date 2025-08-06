@@ -433,11 +433,20 @@ export default function SessionTable({
                   <TableCell className="max-w-[200px]">
                     <Tooltip>
                       <TooltipTrigger asChild>
+                        {/* Sets direction RTL with ellipsis at the start, and uses an inner <bdo> LTR override to keep the entire path (slashes/tilde) in logical order*/}
                         <span
                           className="block truncate cursor-help text-sm"
-                          style={{ textAlign: 'left' }}
+                          style={{
+                            direction: 'rtl',
+                            textAlign: 'left',
+                            overflow: 'hidden',
+                            whiteSpace: 'nowrap',
+                            textOverflow: 'ellipsis',
+                          }}
                         >
-                          {session.workingDir || '-'}
+                          <bdo dir="ltr" style={{ unicodeBidi: 'bidi-override' }}>
+                            {session.workingDir || '-'}
+                          </bdo>
                         </span>
                       </TooltipTrigger>
                       <TooltipContent className="max-w-[600px]">

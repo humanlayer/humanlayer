@@ -12,6 +12,7 @@ import (
 
 	"github.com/humanlayer/humanlayer/hld/config"
 	"github.com/humanlayer/humanlayer/hld/internal/testutil"
+	"github.com/humanlayer/humanlayer/hld/internal/version"
 	"github.com/humanlayer/humanlayer/hld/rpc"
 )
 
@@ -86,8 +87,8 @@ func TestDaemonLifecycle(t *testing.T) {
 		t.Errorf("expected status ok, got %v", result["status"])
 	}
 
-	if result["version"] != rpc.Version {
-		t.Errorf("expected version %s, got %v", rpc.Version, result["version"])
+	if result["version"] != version.GetVersion() {
+		t.Errorf("expected version %s, got %v", version.GetVersion(), result["version"])
 	}
 
 	// Test 5: Graceful shutdown
@@ -324,8 +325,8 @@ func TestIntegrationRPCRoundTrip(t *testing.T) {
 		t.Errorf("expected status 'ok', got %v", resultMap["status"])
 	}
 
-	if resultMap["version"] != rpc.Version {
-		t.Errorf("expected version %s, got %v", rpc.Version, resultMap["version"])
+	if resultMap["version"] != version.GetVersion() {
+		t.Errorf("expected version %s, got %v", version.GetVersion(), resultMap["version"])
 	}
 
 	t.Logf("Integration test passed: daemon responded with status=%s, version=%s",
