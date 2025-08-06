@@ -229,7 +229,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const responseInputRef = useRef<HTMLTextAreaElement>(null)
   const confirmingArchiveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Get session from store to access auto_accept_edits and dangerously_skip_permissions
+  // Get session from store to access auto_accept_edits and dangerouslySkipPermissions
   // Always prioritize store values as they are the source of truth for runtime state
   const sessionFromStore = useStore(state => state.sessions.find(s => s.id === session.id))
   const updateSession = useStore(state => state.updateSession)
@@ -242,14 +242,14 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       : (session.autoAcceptEdits ?? false)
 
   const dangerouslySkipPermissions =
-    sessionFromStore?.dangerously_skip_permissions !== undefined
-      ? sessionFromStore.dangerously_skip_permissions
-      : (session.dangerously_skip_permissions ?? false)
+    sessionFromStore?.dangerouslySkipPermissions !== undefined
+      ? sessionFromStore.dangerouslySkipPermissions
+      : (session.dangerouslySkipPermissions ?? false)
 
   const dangerouslySkipPermissionsExpiresAt =
-    sessionFromStore?.dangerously_skip_permissions_expires_at !== undefined
-      ? sessionFromStore.dangerously_skip_permissions_expires_at
-      : session.dangerously_skip_permissions_expires_at
+    sessionFromStore?.dangerouslySkipPermissionsExpiresAt !== undefined
+      ? sessionFromStore.dangerouslySkipPermissionsExpiresAt?.toISOString()
+      : session.dangerouslySkipPermissionsExpiresAt?.toISOString()
 
   // Debug logging
   useEffect(() => {
@@ -260,21 +260,21 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       sessionFromStore: sessionFromStore
         ? {
             id: sessionFromStore.id,
-            dangerously_skip_permissions: sessionFromStore.dangerously_skip_permissions,
-            dangerously_skip_permissions_expires_at:
-              sessionFromStore.dangerously_skip_permissions_expires_at,
+            dangerouslySkipPermissions: sessionFromStore.dangerouslySkipPermissions,
+            dangerouslySkipPermissionsExpiresAt:
+              sessionFromStore.dangerouslySkipPermissionsExpiresAt,
           }
         : 'not found',
       sessionProp: {
-        dangerously_skip_permissions: session.dangerously_skip_permissions,
-        dangerously_skip_permissions_expires_at: session.dangerously_skip_permissions_expires_at,
+        dangerouslySkipPermissions: session.dangerouslySkipPermissions,
+        dangerouslySkipPermissionsExpiresAt: session.dangerouslySkipPermissionsExpiresAt,
       },
     })
   }, [
     session.id,
     dangerouslySkipPermissions,
     dangerouslySkipPermissionsExpiresAt,
-    sessionFromStore?.dangerously_skip_permissions,
+    sessionFromStore?.dangerouslySkipPermissions,
   ])
 
   // Generate random verb that changes every 10-20 seconds
@@ -507,19 +507,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     [session.id, autoAcceptEdits], // Dependencies
   )
 
-  // Test hotkey to verify hotkeys are working
-  useHotkeys(
-    'shift+?',
-    () => {
-      logger.log('Test hotkey pressed - hotkeys are working!')
-      toast.success('Hotkeys are working!')
-    },
-    {
-      scopes: [SessionDetailHotkeysScope],
-      preventDefault: true,
-    },
-  )
-
   // Add Option+Y handler for dangerously skip permissions mode
   useHotkeys(
     'alt+y',
@@ -530,8 +517,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         try {
           // Immediately update the store for instant UI feedback
           updateSession(session.id, {
-            dangerously_skip_permissions: false,
-            dangerously_skip_permissions_expires_at: undefined,
+            dangerouslySkipPermissions: false,
+            dangerouslySkipPermissionsExpiresAt: undefined,
           })
 
           await daemonClient.updateSessionSettings(session.id, {
@@ -543,8 +530,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
           toast.error('Failed to disable bypassing permissions')
           // Revert the optimistic update
           updateSession(session.id, {
-            dangerously_skip_permissions: true,
-            dangerously_skip_permissions_expires_at: dangerouslySkipPermissionsExpiresAt,
+            dangerouslySkipPermissions: true,
+            dangerouslySkipPermissionsExpiresAt: dangerouslySkipPermissionsExpiresAt ? new Date(dangerouslySkipPermissionsExpiresAt) : undefined,
           })
         }
       } else {
@@ -569,8 +556,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         : undefined
 
       updateSession(session.id, {
-        dangerously_skip_permissions: true,
-        dangerously_skip_permissions_expires_at: expiresAt,
+        dangerouslySkipPermissions: true,
+        dangerouslySkipPermissionsExpiresAt: expiresAt ? new Date(expiresAt) : undefined,
       })
 
       await daemonClient.updateSessionSettings(session.id, {
@@ -584,8 +571,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       toast.error('Failed to enable bypassing permissions')
       // Revert the optimistic update
       updateSession(session.id, {
-        dangerously_skip_permissions: false,
-        dangerously_skip_permissions_expires_at: undefined,
+        dangerouslySkipPermissions: false,
+        dangerouslySkipPermissionsExpiresAt: undefined,
       })
     }
   }

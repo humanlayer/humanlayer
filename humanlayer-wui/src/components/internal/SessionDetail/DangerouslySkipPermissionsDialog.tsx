@@ -1,4 +1,4 @@
-import { FC, useState } from 'react'
+import { FC, useState, useRef } from 'react'
 import * as React from 'react'
 import {
   Dialog,
@@ -27,6 +27,7 @@ export const DangerouslySkipPermissionsDialog: FC<DangerouslySkipPermissionsDial
 }) => {
   const [timeoutMinutes, setTimeoutMinutes] = useState<number | ''>(15)
   const [useTimeout, setUseTimeout] = useState(true)
+  const timeoutInputRef = useRef<HTMLInputElement>(null)
 
   // Reset to default when dialog opens
   React.useEffect(() => {
@@ -76,10 +77,10 @@ export const DangerouslySkipPermissionsDialog: FC<DangerouslySkipPermissionsDial
                 setUseTimeout(checked)
                 if (checked) {
                   setTimeout(() => {
-                    const input = document.getElementById('timeout') as HTMLInputElement
-                    if (input) {
-                      input.focus()
-                      input.setSelectionRange(input.value.length, input.value.length)
+                    if (timeoutInputRef.current) {
+                      timeoutInputRef.current.focus()
+                      const value = timeoutInputRef.current.value
+                      timeoutInputRef.current.setSelectionRange(value.length, value.length)
                     }
                   }, 0)
                 }
@@ -89,6 +90,7 @@ export const DangerouslySkipPermissionsDialog: FC<DangerouslySkipPermissionsDial
             {useTimeout ? (
               <>
                 <Input
+                  ref={timeoutInputRef}
                   id="timeout"
                   type="number"
                   min="1"
