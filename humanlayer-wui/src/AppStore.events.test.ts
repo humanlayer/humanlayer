@@ -17,12 +17,13 @@ mock.module('@/lib/daemon', () => ({
 
 describe('AppStore - Event Handling', () => {
   let originalConsoleError: typeof console.error
-  let consoleErrorSpy: ReturnType<typeof spyOn>
+  let consoleErrorMock: ReturnType<typeof mock>
 
   beforeEach(() => {
-    // Spy on console.error to verify error handling
+    // Save original console.error and replace with mock
     originalConsoleError = console.error
-    consoleErrorSpy = spyOn(console, 'error')
+    consoleErrorMock = mock(() => {})
+    console.error = consoleErrorMock
 
     // Reset store
     const store = useStore.getState()
@@ -35,6 +36,7 @@ describe('AppStore - Event Handling', () => {
   })
 
   afterEach(() => {
+    // Restore original console.error
     console.error = originalConsoleError
   })
 
@@ -153,7 +155,7 @@ describe('AppStore - Event Handling', () => {
       await store.refreshActiveSessionConversation('test-session-1')
 
       // Verify error was logged
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect(consoleErrorMock).toHaveBeenCalledWith(
         'Failed to refresh active session conversation:',
         expect.any(Error),
       )
