@@ -425,7 +425,7 @@ export default function SessionTable({
                   <TableCell className={getStatusTextClass(session.status)}>
                     {session.status !== SessionStatus.Failed && (
                       <>
-                        {session.dangerously_skip_permissions ? (
+                        {session.dangerouslySkipPermissions ? (
                           <>
                             <ShieldOff
                               className="inline-block w-4 h-4 text-[var(--terminal-error)] animate-pulse-error align-text-bottom"

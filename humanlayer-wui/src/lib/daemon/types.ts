@@ -19,12 +19,8 @@ export type RecentPath = SDKRecentPath
 // Export SDK types directly
 export type { Approval } from '@humanlayer/hld-sdk'
 
-// Extend Session type to include new fields until SDK is regenerated
-export interface Session
-  extends Omit<SDKSession, 'dangerously_skip_permissions' | 'dangerously_skip_permissions_expires_at'> {
-  dangerously_skip_permissions: boolean
-  dangerously_skip_permissions_expires_at?: string // ISO timestamp
-}
+// Use SDK Session type directly with camelCase naming
+export type Session = SDKSession
 
 // Export SDK ConversationEvent type directly
 export type { ConversationEvent } from '@humanlayer/hld-sdk'
@@ -374,20 +370,11 @@ export interface UpdateSessionTitleResponse {
   success: boolean
 }
 
-// Helper function to transform SDK Session to our extended Session type
+// Helper function to ensure SDK Session has proper defaults
 export function transformSDKSession(sdkSession: SDKSession): Session {
-  const result = {
+  // SDK Session already has the correct camelCase fields, just ensure defaults
+  return {
     ...sdkSession,
-    dangerously_skip_permissions: sdkSession.dangerouslySkipPermissions ?? false,
-    dangerously_skip_permissions_expires_at:
-      sdkSession.dangerouslySkipPermissionsExpiresAt?.toISOString(),
+    dangerouslySkipPermissions: sdkSession.dangerouslySkipPermissions ?? false,
   }
-  console.log('transformSDKSession:', {
-    id: sdkSession.id,
-    dangerouslySkipPermissions: sdkSession.dangerouslySkipPermissions,
-    dangerouslySkipPermissionsExpiresAt: sdkSession.dangerouslySkipPermissionsExpiresAt,
-    result_dsp: result.dangerously_skip_permissions,
-    result_dspe: result.dangerously_skip_permissions_expires_at,
-  })
-  return result
 }

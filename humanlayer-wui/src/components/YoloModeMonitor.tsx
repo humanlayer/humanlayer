@@ -19,18 +19,18 @@ export const YoloModeMonitor = () => {
 
     // Set up monitoring for each session with active yolo mode
     sessions.forEach(session => {
-      if (session.dangerously_skip_permissions && session.dangerously_skip_permissions_expires_at) {
+      if (session.dangerouslySkipPermissions && session.dangerouslySkipPermissionsExpiresAt) {
         const checkExpiration = async () => {
           const now = new Date().getTime()
-          const expiry = new Date(session.dangerously_skip_permissions_expires_at!).getTime()
+          const expiry = new Date(session.dangerouslySkipPermissionsExpiresAt!).getTime()
           const remaining = expiry - now
 
           if (remaining <= 0) {
             try {
               // Update local state immediately
               updateSession(session.id, {
-                dangerously_skip_permissions: false,
-                dangerously_skip_permissions_expires_at: undefined,
+                dangerouslySkipPermissions: false,
+                dangerouslySkipPermissionsExpiresAt: undefined,
               })
 
               // Update backend

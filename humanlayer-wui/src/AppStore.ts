@@ -123,9 +123,9 @@ export const useStore = create<StoreState>((set, get) => ({
           // Preserve yolo mode state from existing session
           return {
             ...newSession,
-            dangerously_skip_permissions: existingSession.dangerously_skip_permissions,
-            dangerously_skip_permissions_expires_at:
-              existingSession.dangerously_skip_permissions_expires_at,
+            dangerouslySkipPermissions: existingSession.dangerouslySkipPermissions,
+            dangerouslySkipPermissionsExpiresAt:
+              existingSession.dangerouslySkipPermissionsExpiresAt,
             autoAcceptEdits: existingSession.autoAcceptEdits,
           }
         }

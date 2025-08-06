@@ -197,14 +197,14 @@ export function Layout() {
       }
 
       if (data.dangerously_skip_permissions !== undefined) {
-        updates.dangerously_skip_permissions = data.dangerously_skip_permissions
+        updates.dangerouslySkipPermissions = data.dangerously_skip_permissions
 
         // Calculate expiry time if timeout provided
         if (data.dangerously_skip_permissions && data.dangerously_skip_permissions_timeout_ms) {
           const expiresAt = new Date(Date.now() + data.dangerously_skip_permissions_timeout_ms)
-          updates.dangerously_skip_permissions_expires_at = expiresAt.toISOString()
+          updates.dangerouslySkipPermissionsExpiresAt = expiresAt
         } else if (!data.dangerously_skip_permissions) {
-          updates.dangerously_skip_permissions_expires_at = undefined
+          updates.dangerouslySkipPermissionsExpiresAt = undefined
         }
       }
 

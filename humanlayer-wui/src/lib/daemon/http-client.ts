@@ -224,7 +224,7 @@ export class HTTPDaemonClient implements IDaemonClient {
   ): Promise<{ success: boolean }> {
     await this.ensureConnected()
 
-    // The SDK client expects snake_case properties
+    // The SDK client expects camelCase for some fields but the method signature uses snake_case
     const payload: any = {}
     if (settings.auto_accept_edits !== undefined) {
       payload.auto_accept_edits = settings.auto_accept_edits

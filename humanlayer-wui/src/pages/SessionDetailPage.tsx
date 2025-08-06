@@ -68,8 +68,8 @@ export function SessionDetailPage() {
         lastActivityAt: new Date(),
         summary: '',
         autoAcceptEdits: false,
-        dangerously_skip_permissions: false,
-        dangerously_skip_permissions_expires_at: undefined,
+        dangerouslySkipPermissions: false,
+        dangerouslySkipPermissionsExpiresAt: undefined,
       }
 
   return (
