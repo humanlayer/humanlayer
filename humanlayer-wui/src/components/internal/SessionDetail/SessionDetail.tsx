@@ -86,6 +86,97 @@ const ROBOT_VERBS = [
   'harmonizing',
 ]
 
+function OmniSpinner({ randomVerb, spinnerType }: { randomVerb: string; spinnerType: number }) {
+  // Select spinner based on random type
+  const FancySpinner = (
+    <div className="relative w-2 h-2">
+      {/* Outermost orbiting particles */}
+      <div className="absolute inset-0 animate-spin-slow">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary/40 animate-pulse" />
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary/40 animate-pulse delay-75" />
+        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-1 rounded-full bg-primary/40 animate-pulse delay-150" />
+        <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-1 rounded-full bg-primary/40 animate-pulse delay-300" />
+      </div>
+
+      {/* Outer gradient ring */}
+      <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-primary/0 via-primary/30 to-primary/0 animate-spin" />
+
+      {/* Mid rotating ring with gradient */}
+      <div className="absolute inset-1 rounded-full">
+        <div className="absolute inset-0 rounded-full bg-gradient-conic from-primary/10 via-primary/50 to-primary/10 animate-spin-reverse" />
+      </div>
+
+      {/* Inner wave ring */}
+      <div className="absolute inset-2 rounded-full overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/30 via-transparent to-primary/30 animate-wave" />
+      </div>
+
+      {/* Morphing core */}
+      <div className="absolute inset-3 animate-morph">
+        <div className="absolute inset-0 rounded-full bg-gradient-radial from-primary/60 to-primary/20 blur-sm" />
+        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary/40 to-transparent" />
+      </div>
+
+      {/* Center glow */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="relative">
+          <div className="absolute w-2 h-2 rounded-full bg-primary/80 animate-ping" />
+          <div className="relative w-2 h-2 rounded-full bg-primary animate-pulse-bright" />
+        </div>
+      </div>
+
+      {/* Random glitch effect */}
+      <div className="absolute inset-0 rounded-full opacity-20 animate-glitch" />
+    </div>
+  )
+
+  const SimpleSpinner = (
+    <div className="relative w-2 h-2">
+      {/* Single spinning ring */}
+      <div className="absolute inset-0 rounded-full border-2 border-primary/20 border-t-primary/60 animate-spin" />
+
+      {/* Pulsing center dot */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="w-2 h-2 rounded-full bg-primary/50 animate-pulse" />
+      </div>
+
+      {/* Simple gradient overlay */}
+      <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary/10 to-transparent" />
+    </div>
+  )
+
+  const MinimalSpinner = (
+    <div className="relative w-10 h-10">
+      {/* Three dots rotating */}
+      <div className="absolute inset-0 animate-spin">
+        <div className="absolute top-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-primary/60" />
+        <div className="absolute bottom-1 left-2 w-1.5 h-1.5 rounded-full bg-primary/40" />
+        <div className="absolute bottom-1 right-2 w-1.5 h-1.5 rounded-full bg-primary/40" />
+      </div>
+    </div>
+  )
+
+  const BarsSpinner = (
+    <div className="relative w-10 h-2 flex items-center justify-center gap-1">
+      {/* Five bouncing bars */}
+      <div className="w-1 h-2 bg-primary/40 rounded-full animate-bounce-slow" />
+      <div className="w-1 h-3 bg-primary/60 rounded-full animate-bounce-medium" />
+      <div className="w-1 h-2 bg-primary/80 rounded-full animate-bounce-fast" />
+      <div className="w-1 h-1 bg-primary/60 rounded-full animate-bounce-medium delay-150" />
+      <div className="w-1 h-2 bg-primary/40 rounded-full animate-bounce-slow delay-300" />
+    </div>
+  )
+
+  const spinners = [FancySpinner, SimpleSpinner, MinimalSpinner, BarsSpinner]
+
+  return (
+    <div className="flex items-center gap-3 ">
+      {spinners[spinnerType]}
+      <p className="text-muted-foreground opacity-80 animate-fade-pulse">{randomVerb}</p>
+    </div>
+  )
+}
+
 function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [isWideView, setIsWideView] = useState(false)
   const [isCompactView, setIsCompactView] = useState(false)
@@ -132,6 +223,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const { shouldIgnoreMouseEvent, startKeyboardNavigation } = useKeyboardNavigationProtection()
 
   const isActivelyProcessing = ['starting', 'running', 'completing'].includes(session.status)
+  // const isActivelyProcessing = true
   const responseInputRef = useRef<HTMLTextAreaElement>(null)
   const confirmingArchiveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -566,6 +658,15 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     }
   }, [session.status, events])
 
+  let cardVerticalPadding = isCompactView ? 'py-2' : 'py-4'
+
+  if (isActivelyProcessing) {
+    const cardLoadingLowerPadding = 'pb-12'
+    cardVerticalPadding = isCompactView
+      ? `pt-2 ${cardLoadingLowerPadding}`
+      : `pt-4 ${cardLoadingLowerPadding}`
+  }
+
   return (
     <section className={`flex flex-col h-full ${isCompactView ? 'gap-2' : 'gap-4'}`}>
       {!isCompactView && (
@@ -740,7 +841,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       <div className={`flex flex-1 gap-4 ${isWideView ? 'flex-row' : 'flex-col'} min-h-0`}>
         {/* Conversation content and Loading */}
         <Card
-          className={`${isWideView ? 'flex-1' : 'w-full'} relative ${isCompactView ? 'py-2' : 'py-4'} flex flex-col min-h-0`}
+          className={`Conversation-Card ${isWideView ? 'flex-1' : 'w-full'} relative ${cardVerticalPadding} flex flex-col min-h-0`}
         >
           <CardContent className={`${isCompactView ? 'px-2' : 'px-4'} flex flex-col flex-1 min-h-0`}>
             <ConversationContent
@@ -767,131 +868,35 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               expandedTasks={expandedTasks}
               toggleTaskGroup={toggleTaskGroup}
             />
-            {isActivelyProcessing &&
-              (() => {
-                // Fancy complex spinner
-                const fancySpinner = (
-                  <div className="relative w-10 h-10">
-                    {/* Outermost orbiting particles */}
-                    <div className="absolute inset-0 animate-spin-slow">
-                      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary/40 animate-pulse" />
-                      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary/40 animate-pulse delay-75" />
-                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-1 rounded-full bg-primary/40 animate-pulse delay-150" />
-                      <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-1 rounded-full bg-primary/40 animate-pulse delay-300" />
-                    </div>
-
-                    {/* Outer gradient ring */}
-                    <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-primary/0 via-primary/30 to-primary/0 animate-spin" />
-
-                    {/* Mid rotating ring with gradient */}
-                    <div className="absolute inset-1 rounded-full">
-                      <div className="absolute inset-0 rounded-full bg-gradient-conic from-primary/10 via-primary/50 to-primary/10 animate-spin-reverse" />
-                    </div>
-
-                    {/* Inner wave ring */}
-                    <div className="absolute inset-2 rounded-full overflow-hidden">
-                      <div className="absolute inset-0 bg-gradient-to-br from-primary/30 via-transparent to-primary/30 animate-wave" />
-                    </div>
-
-                    {/* Morphing core */}
-                    <div className="absolute inset-3 animate-morph">
-                      <div className="absolute inset-0 rounded-full bg-gradient-radial from-primary/60 to-primary/20 blur-sm" />
-                      <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary/40 to-transparent" />
-                    </div>
-
-                    {/* Center glow */}
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="relative">
-                        <div className="absolute w-2 h-2 rounded-full bg-primary/80 animate-ping" />
-                        <div className="relative w-2 h-2 rounded-full bg-primary animate-pulse-bright" />
-                      </div>
-                    </div>
-
-                    {/* Random glitch effect */}
-                    <div className="absolute inset-0 rounded-full opacity-20 animate-glitch" />
-                  </div>
-                )
-
-                // Simple minimal spinner
-                const simpleSpinner = (
-                  <div className="relative w-10 h-10">
-                    {/* Single spinning ring */}
-                    <div className="absolute inset-0 rounded-full border-2 border-primary/20 border-t-primary/60 animate-spin" />
-
-                    {/* Pulsing center dot */}
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-2 h-2 rounded-full bg-primary/50 animate-pulse" />
-                    </div>
-
-                    {/* Simple gradient overlay */}
-                    <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary/10 to-transparent" />
-                  </div>
-                )
-
-                // Ultra minimal spinner
-                const minimalSpinner = (
-                  <div className="relative w-10 h-10">
-                    {/* Three dots rotating */}
-                    <div className="absolute inset-0 animate-spin">
-                      <div className="absolute top-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-primary/60" />
-                      <div className="absolute bottom-1 left-2 w-1.5 h-1.5 rounded-full bg-primary/40" />
-                      <div className="absolute bottom-1 right-2 w-1.5 h-1.5 rounded-full bg-primary/40" />
-                    </div>
-                  </div>
-                )
-
-                // Bouncing bars spinner
-                const barsSpinner = (
-                  <div className="relative w-10 h-10 flex items-center justify-center gap-1">
-                    {/* Five bouncing bars */}
-                    <div className="w-1 h-6 bg-primary/40 rounded-full animate-bounce-slow" />
-                    <div className="w-1 h-8 bg-primary/60 rounded-full animate-bounce-medium" />
-                    <div className="w-1 h-5 bg-primary/80 rounded-full animate-bounce-fast" />
-                    <div className="w-1 h-7 bg-primary/60 rounded-full animate-bounce-medium delay-150" />
-                    <div className="w-1 h-4 bg-primary/40 rounded-full animate-bounce-slow delay-300" />
-                  </div>
-                )
-
-                // Select spinner based on random type
-                const spinner =
-                  spinnerType === 0
-                    ? fancySpinner
-                    : spinnerType === 1
-                      ? simpleSpinner
-                      : spinnerType === 2
-                        ? minimalSpinner
-                        : barsSpinner
-
-                return (
-                  <div className="flex items-center gap-3 mt-4 pl-4">
-                    {spinner}
-                    <p className="text-sm font-medium text-muted-foreground opacity-80 animate-fade-pulse">
-                      {randomVerb}
-                    </p>
-                  </div>
-                )
-              })()}
-
-            {/* Status bar for pending approvals */}
-            <div
-              className={`absolute bottom-0 left-0 right-0 p-2 cursor-pointer transition-all duration-300 ease-in-out ${
-                hasPendingApprovalsOutOfView
-                  ? 'opacity-100 translate-y-0'
-                  : 'opacity-0 translate-y-full pointer-events-none'
-              }`}
-              onClick={() => {
-                const container = document.querySelector('[data-conversation-container]')
-                if (container) {
-                  container.scrollTop = container.scrollHeight
-                }
-              }}
-            >
-              <div className="flex items-center justify-center gap-1 font-mono text-xs uppercase tracking-wider text-muted-foreground bg-background/60 backdrop-blur-sm border-t border-border/50 py-1 shadow-sm hover:bg-background/80 transition-colors">
-                <span>Pending Approval</span>
-                <ChevronDown className="w-3 h-3 animate-bounce" />
-              </div>
-            </div>
           </CardContent>
+          {isActivelyProcessing && (
+            <div
+              className={`absolute bottom-0 left-0 px-3 py-1.5 border-t border-border bg-secondary/30 w-full font-mono text-sm uppercase tracking-wider text-muted-foreground transition-all duration-300 ease-out ${
+                isActivelyProcessing ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'
+              }`}
+            >
+              <OmniSpinner randomVerb={randomVerb} spinnerType={spinnerType} />
+            </div>
+          )}
+          {/* Status bar for pending approvals */}
+          <div
+            className={`absolute bottom-0 left-0 right-0 p-2 cursor-pointer transition-all duration-300 ease-in-out ${
+              hasPendingApprovalsOutOfView
+                ? 'opacity-100 translate-y-0'
+                : 'opacity-0 translate-y-full pointer-events-none'
+            }`}
+            onClick={() => {
+              const container = document.querySelector('[data-conversation-container]')
+              if (container) {
+                container.scrollTop = container.scrollHeight
+              }
+            }}
+          >
+            <div className="flex items-center justify-center gap-1 font-mono text-xs uppercase tracking-wider text-muted-foreground bg-background/60 backdrop-blur-sm border-t border-border/50 py-1 shadow-sm hover:bg-background/80 transition-colors">
+              <span>Pending Approval</span>
+              <ChevronDown className="w-3 h-3 animate-bounce" />
+            </div>
+          </div>
         </Card>
 
         {isWideView && lastTodo && (

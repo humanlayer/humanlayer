@@ -219,7 +219,7 @@ export function ConversationContent({
       <div
         ref={containerRef}
         data-conversation-container
-        className="overflow-y-auto flex-1 flex flex-col justify-end"
+        className="overflow-y-auto flex-1 flex flex-col"
       >
         <div>
           {nonEmptyDisplayObjects.map((displayObject, index) => (
@@ -333,7 +333,7 @@ export function ConversationContent({
     <div
       ref={containerRef}
       data-conversation-container
-      className="overflow-y-auto flex-1 flex flex-col justify-end"
+      className="overflow-y-auto flex-1 flex flex-col"
     >
       <div>
         {rootEvents

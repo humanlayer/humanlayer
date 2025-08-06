@@ -70,6 +70,20 @@ const groupedHotkeys = hotkeyData.reduce(
   {} as Record<string, typeof hotkeyData>,
 )
 
+export const KeyboardShortcut = ({ keyString }: { keyString: string }) => {
+  return (
+    <kbd
+      className={cn(
+        'pointer-events-none inline-flex h-5 select-none items-center gap-1',
+        'rounded border bg-muted px-1.5 font-mono text-sm font-medium',
+        'text-muted-foreground',
+      )}
+    >
+      {keyString}
+    </kbd>
+  )
+}
+
 export function HotkeyPanel({ open, onOpenChange }: HotkeyPanelProps) {
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
@@ -114,15 +128,7 @@ export function HotkeyPanel({ open, onOpenChange }: HotkeyPanelProps) {
                         className="flex items-center justify-between"
                       >
                         <span className="text-sm">{hotkey.description}</span>
-                        <kbd
-                          className={cn(
-                            'pointer-events-none inline-flex h-5 select-none items-center gap-1',
-                            'rounded border bg-muted px-1.5 font-mono text-[10px] font-medium',
-                            'text-muted-foreground',
-                          )}
-                        >
-                          {hotkey.key}
-                        </kbd>
+                        <KeyboardShortcut keyString={hotkey.key} />
                       </CommandItem>
                     ))}
                   </CommandGroup>

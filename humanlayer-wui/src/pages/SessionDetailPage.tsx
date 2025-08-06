@@ -53,7 +53,7 @@ export function SessionDetailPage() {
 
   // Render SessionDetail even during loading so it can show its skeleton UI
   // Pass a minimal session object if still loading
-  const session = activeSessionDetail?.session?.id
+  let session = activeSessionDetail?.session?.id
     ? activeSessionDetail.session
     : {
         id: sessionId || '',
