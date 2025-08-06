@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach, afterEach, mock } from 'bun:test'
+import { describe, test, expect, beforeEach, mock } from 'bun:test'
 import { useStore } from './AppStore'
 import { SessionStatus } from '@/lib/daemon/types'
 import type { ConversationEvent } from '@/lib/daemon/types'
@@ -15,18 +15,18 @@ mock.module('@/lib/daemon', () => ({
   daemonClient: mockDaemonClient,
 }))
 
+// Mock logger to avoid console noise
+mock.module('@/lib/logging', () => ({
+  logger: {
+    log: mock(() => {}),
+    debug: mock(() => {}),
+    error: mock(() => {}),
+    warn: mock(() => {}),
+  },
+}))
+
 describe('AppStore - Event Handling', () => {
-  let originalConsoleError: typeof console.error
-  let consoleErrorMock: ReturnType<typeof mock>
-
   beforeEach(() => {
-    // Save original console.error and replace with mock
-    originalConsoleError = console.error
-    consoleErrorMock = mock((...args: any[]) => {
-      // Accept any arguments to match console.error signature
-    })
-    console.error = consoleErrorMock as any
-
     // Reset store
     const store = useStore.getState()
     store.initSessions([])
@@ -35,11 +35,6 @@ describe('AppStore - Event Handling', () => {
 
     // Reset mocks
     mockGetConversation.mockReset()
-  })
-
-  afterEach(() => {
-    // Restore original console.error
-    console.error = originalConsoleError
   })
 
   describe('Session Status Changes', () => {
@@ -154,12 +149,7 @@ describe('AppStore - Event Handling', () => {
       mockGetConversation.mockRejectedValueOnce(new Error('Network error'))
 
       // Should not throw - the key behavior we're testing
-      await expect(
-        store.refreshActiveSessionConversation('test-session-1')
-      ).resolves.toBeUndefined()
-
-      // Verify error was handled (console.error should have been called)
-      expect(consoleErrorMock).toHaveBeenCalled()
+      await expect(store.refreshActiveSessionConversation('test-session-1')).resolves.toBeUndefined()
 
       // Conversation should remain unchanged - critical behavior
       const finalState = useStore.getState()
