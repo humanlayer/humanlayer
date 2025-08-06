@@ -2,7 +2,7 @@ import React from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ConversationEvent } from '@/lib/daemon/types'
-import { truncate } from '@/utils/formatting'
+import { truncate, parseMcpToolName } from '@/utils/formatting'
 import { useStealHotkeyScope } from '@/hooks/useStealHotkeyScope'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { getToolIcon } from '../eventToDisplayObject'
@@ -193,9 +193,7 @@ function renderToolInput(toolCall: ConversationEvent): React.ReactNode {
 
     // Special rendering for MCP tools
     if (toolCall.toolName?.startsWith('mcp__')) {
-      const parts = toolCall.toolName.split('__')
-      const service = parts[1] || 'unknown'
-      const method = parts.slice(2).join('__') || 'unknown'
+      const { service, method } = parseMcpToolName(toolCall.toolName)
 
       return (
         <div className="space-y-2">

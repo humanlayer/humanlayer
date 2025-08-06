@@ -21,6 +21,7 @@ import { useSessionSubscriptions } from '@/hooks/useSubscriptions'
 import { Toaster } from 'sonner'
 import { notificationService, type NotificationOptions } from '@/services/NotificationService'
 import { useTheme } from '@/contexts/ThemeContext'
+import { formatMcpToolName } from '@/utils/formatting'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { MessageCircle, Bug } from 'lucide-react'
 import { openUrl } from '@tauri-apps/plugin-opener'
@@ -154,6 +155,9 @@ export function Layout() {
         return
       }
 
+      // Format tool name if it's an MCP tool
+      const displayToolName = toolName.startsWith('mcp__') ? formatMcpToolName(toolName) : toolName
+
       try {
         const sessionState = await daemonClient.getSessionState(sessionId)
         const model = sessionState.session?.model || 'AI Agent'
@@ -161,7 +165,7 @@ export function Layout() {
         await notificationService.notifyApprovalRequired(
           sessionId,
           approvalId,
-          `${toolName} approval required`,
+          `${displayToolName} approval required`,
           model,
         )
         addNotifiedItem(notificationId)
@@ -171,7 +175,7 @@ export function Layout() {
         await notificationService.notifyApprovalRequired(
           sessionId,
           approvalId,
-          `${toolName} approval required`,
+          `${displayToolName} approval required`,
           'AI Agent',
         )
         addNotifiedItem(notificationId)
