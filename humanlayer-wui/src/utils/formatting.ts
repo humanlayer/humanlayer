@@ -137,3 +137,18 @@ export function formatMcpToolName(toolName: string): string {
   const { service, method } = parseMcpToolName(toolName)
   return `${service} - ${method.replace(/_/g, ' ')}`
 }
+
+/**
+ * Get formatted session text for notifications
+ * Prioritizes human-readable title/summary over raw query and truncates to maxLength
+ * @param session - Session object with optional title, summary, and query fields
+ * @param maxLength - Maximum length of the returned text (default: 40)
+ * @returns Formatted session text truncated to maxLength
+ */
+export function getSessionNotificationText(
+  session: { title?: string; summary?: string; query: string },
+  maxLength: number = 40
+): string {
+  const text = session.title || session.summary || session.query
+  return text.slice(0, maxLength)
+}
