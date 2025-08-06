@@ -4,6 +4,7 @@ import { ShieldOff } from 'lucide-react'
 import { toast } from 'sonner'
 import { useStore } from '@/AppStore'
 import { daemonClient } from '@/lib/daemon'
+import { logger } from '@/lib/logging'
 
 interface SessionModeIndicatorProps {
   sessionId: string
@@ -52,7 +53,7 @@ export const SessionModeIndicator: FC<SessionModeIndicatorProps> = ({
             duration: 5000,
           })
         } catch (error) {
-          console.error('Failed to disable expired yolo mode:', error)
+          logger.error('Failed to disable expired yolo mode:', error)
         }
         return
       }

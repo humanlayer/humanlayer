@@ -3,6 +3,7 @@ import { useStore } from '@/AppStore'
 import { daemonClient } from '@/lib/daemon'
 import { notificationService } from '@/services/NotificationService'
 import { useLocation } from 'react-router-dom'
+import { logger } from '@/lib/logging'
 /**
  * Global monitor for yolo mode (bypassing permissions) timers.
  * Watches all sessions and automatically disables yolo mode when timers expire,
@@ -62,7 +63,7 @@ export const YoloModeMonitor = () => {
                 intervals.delete(session.id)
               }
             } catch (error) {
-              console.error(`Failed to disable expired yolo mode for session ${session.id}:`, error)
+              logger.error(`Failed to disable expired yolo mode for session ${session.id}:`, error)
             }
           }
         }

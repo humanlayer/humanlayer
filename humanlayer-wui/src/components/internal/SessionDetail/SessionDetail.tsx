@@ -486,7 +486,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   useHotkeys(
     'shift+tab',
     async () => {
-      console.log('shift+tab setAutoAcceptEdits', autoAcceptEdits)
+      logger.log('shift+tab setAutoAcceptEdits', autoAcceptEdits)
       try {
         const newState = !autoAcceptEdits
         const updatedSession = await daemonClient.updateSessionSettings(session.id, {
