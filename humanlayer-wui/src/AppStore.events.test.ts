@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach, afterEach, spyOn, mock } from 'bun:test'
+import { describe, test, expect, beforeEach, afterEach, mock } from 'bun:test'
 import { useStore } from './AppStore'
 import { SessionStatus } from '@/lib/daemon/types'
 import type { ConversationEvent } from '@/lib/daemon/types'
