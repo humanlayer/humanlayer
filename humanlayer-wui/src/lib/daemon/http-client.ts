@@ -170,7 +170,7 @@ export class HTTPDaemonClient implements IDaemonClient {
       includeArchived: request?.include_archived,
       archivedOnly: request?.archived_only,
     })
-    console.log(
+    logger.debug(
       'getSessionLeaves raw response sample:',
       response[0]
         ? {
