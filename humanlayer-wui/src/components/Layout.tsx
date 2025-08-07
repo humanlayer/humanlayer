@@ -190,6 +190,15 @@ export function Layout() {
     // CODEREVIEW: Why did this previously exist? Sundeep wants to talk about this do not merge.
     onSessionSettingsChanged: async (data: SessionSettingsChangedEventData) => {
       logger.log('useSessionSubscriptions.onSessionSettingsChanged', data)
+
+      // Check if this is an expiry event from the server
+      if (data.reason === 'expired' && data.dangerously_skip_permissions === false) {
+        logger.debug('Server disabled expired permissions', {
+          sessionId: data.session_id,
+          expiredAt: data.expired_at,
+        })
+      }
+
       const updates: Record<string, any> = {}
 
       if (data.auto_accept_edits !== undefined) {

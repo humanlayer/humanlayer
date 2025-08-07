@@ -16,6 +16,8 @@ type ConversationStore interface {
 	GetSession(ctx context.Context, sessionID string) (*Session, error)
 	GetSessionByRunID(ctx context.Context, runID string) (*Session, error)
 	ListSessions(ctx context.Context) ([]*Session, error)
+	// GetExpiredDangerousPermissionsSessions returns sessions where dangerous permissions have expired
+	GetExpiredDangerousPermissionsSessions(ctx context.Context) ([]*Session, error)
 
 	// Conversation operations
 	AddConversationEvent(ctx context.Context, event *ConversationEvent) error

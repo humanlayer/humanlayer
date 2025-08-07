@@ -37,17 +37,29 @@ func getShutdownTimeout() time.Duration {
 	return 5 * time.Second // default per ENG-1699 requirements
 }
 
+// getPermissionMonitorInterval returns the interval for permission expiry checks
+func getPermissionMonitorInterval() time.Duration {
+	if intervalStr := os.Getenv("HLD_PERMISSION_MONITOR_INTERVAL"); intervalStr != "" {
+		if interval, err := time.ParseDuration(intervalStr); err == nil {
+			return interval
+		}
+		slog.Warn("invalid HLD_PERMISSION_MONITOR_INTERVAL, using default", "value", intervalStr)
+	}
+	return 30 * time.Second
+}
+
 // Daemon coordinates all daemon functionality
 type Daemon struct {
-	config     *config.Config
-	socketPath string
-	listener   net.Listener
-	rpcServer  *rpc.Server
-	httpServer *HTTPServer
-	sessions   session.SessionManager
-	approvals  approval.Manager
-	eventBus   bus.EventBus
-	store      store.ConversationStore
+	config            *config.Config
+	socketPath        string
+	listener          net.Listener
+	rpcServer         *rpc.Server
+	httpServer        *HTTPServer
+	sessions          session.SessionManager
+	approvals         approval.Manager
+	eventBus          bus.EventBus
+	store             store.ConversationStore
+	permissionMonitor *session.PermissionMonitor
 }
 
 // New creates a new daemon instance
@@ -178,6 +190,16 @@ func (d *Daemon) Run(ctx context.Context) error {
 		slog.Warn("failed to mark orphaned sessions as failed", "error", err)
 		// Don't fail startup for this
 	}
+
+	// Create and start permission monitor
+	permissionMonitor := session.NewPermissionMonitor(d.store, d.eventBus, getPermissionMonitorInterval())
+	d.permissionMonitor = permissionMonitor
+
+	// Start permission monitor in background
+	go func() {
+		permissionMonitor.Start(ctx)
+	}()
+	slog.Info("started permission expiry monitor")
 
 	// Register subscription handlers
 	subscriptionHandlers := rpc.NewSubscriptionHandlers(d.eventBus)

@@ -235,6 +235,8 @@ export interface SessionSettingsChangedEventData {
   auto_accept_edits?: boolean
   dangerously_skip_permissions?: boolean
   dangerously_skip_permissions_timeout_ms?: number
+  reason?: string // For permission expiry: "expired"
+  expired_at?: string // Timestamp when the permissions expired
 }
 
 // Conversation types

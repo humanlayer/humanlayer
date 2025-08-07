@@ -18,6 +18,8 @@ const (
 	// EventConversationUpdated indicates new conversation content has been added to a session
 	EventConversationUpdated EventType = "conversation_updated"
 	// EventSessionSettingsChanged indicates session settings have been updated
+	// Data includes: session_id, run_id, changed settings, and optional "reason" field
+	// For permission expiry: reason="expired", expired_at=timestamp
 	EventSessionSettingsChanged EventType = "session_settings_changed"
 )
 

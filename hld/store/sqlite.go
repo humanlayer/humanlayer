@@ -1014,6 +1014,109 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 	return sessions, nil
 }
 
+// GetExpiredDangerousPermissionsSessions returns sessions where dangerous permissions have expired
+func (s *SQLiteStore) GetExpiredDangerousPermissionsSessions(ctx context.Context) ([]*Session, error) {
+	now := time.Now()
+	query := `
+		SELECT id, run_id, claude_session_id, parent_session_id,
+			query, summary, title, model, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
+			permission_prompt_tool, allowed_tools, disallowed_tools,
+			status, created_at, last_activity_at, completed_at,
+			cost_usd, total_tokens, duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived,
+			dangerously_skip_permissions, dangerously_skip_permissions_expires_at
+		FROM sessions
+		WHERE dangerously_skip_permissions = 1
+			AND dangerously_skip_permissions_expires_at IS NOT NULL
+			AND dangerously_skip_permissions_expires_at < ?
+			AND status IN ('running', 'waiting_input', 'starting')
+		ORDER BY dangerously_skip_permissions_expires_at ASC
+	`
+
+	rows, err := s.db.QueryContext(ctx, query, now)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query expired dangerous permissions sessions: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var sessions []*Session
+	for rows.Next() {
+		var session Session
+		var claudeSessionID, parentSessionID, summary, title, model, workingDir, systemPrompt, appendSystemPrompt, customInstructions sql.NullString
+		var permissionPromptTool, allowedTools, disallowedTools sql.NullString
+		var completedAt sql.NullTime
+		var costUSD sql.NullFloat64
+		var totalTokens, durationMS, numTurns sql.NullInt64
+		var resultContent, errorMessage sql.NullString
+		var archived sql.NullBool
+		var dangerouslySkipPermissionsExpiresAt sql.NullTime
+
+		err := rows.Scan(
+			&session.ID, &session.RunID, &claudeSessionID, &parentSessionID,
+			&session.Query, &summary, &title, &model, &workingDir, &session.MaxTurns,
+			&systemPrompt, &appendSystemPrompt, &customInstructions,
+			&permissionPromptTool, &allowedTools, &disallowedTools,
+			&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
+			&costUSD, &totalTokens, &durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
+			&archived, &session.DangerouslySkipPermissions, &dangerouslySkipPermissionsExpiresAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan session: %w", err)
+		}
+
+		// Handle nullable fields
+		session.ClaudeSessionID = claudeSessionID.String
+		session.ParentSessionID = parentSessionID.String
+		session.Summary = summary.String
+		session.Title = title.String
+		session.Model = model.String
+		session.WorkingDir = workingDir.String
+		session.SystemPrompt = systemPrompt.String
+		session.AppendSystemPrompt = appendSystemPrompt.String
+		session.CustomInstructions = customInstructions.String
+		session.PermissionPromptTool = permissionPromptTool.String
+		session.AllowedTools = allowedTools.String
+		session.DisallowedTools = disallowedTools.String
+		session.ResultContent = resultContent.String
+		session.ErrorMessage = errorMessage.String
+		if completedAt.Valid {
+			session.CompletedAt = &completedAt.Time
+		}
+		if costUSD.Valid {
+			session.CostUSD = &costUSD.Float64
+		}
+		if totalTokens.Valid {
+			tokens := int(totalTokens.Int64)
+			session.TotalTokens = &tokens
+		}
+		if durationMS.Valid {
+			duration := int(durationMS.Int64)
+			session.DurationMS = &duration
+		}
+		if numTurns.Valid {
+			turns := int(numTurns.Int64)
+			session.NumTurns = &turns
+		}
+		session.ResultContent = resultContent.String
+		session.ErrorMessage = errorMessage.String
+
+		// Handle archived field - default to false if NULL
+		session.Archived = archived.Valid && archived.Bool
+
+		// Handle dangerously skip permissions expires at
+		if dangerouslySkipPermissionsExpiresAt.Valid {
+			session.DangerouslySkipPermissionsExpiresAt = &dangerouslySkipPermissionsExpiresAt.Time
+		}
+
+		sessions = append(sessions, &session)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating rows: %w", err)
+	}
+
+	return sessions, nil
+}
+
 // GetRecentWorkingDirs retrieves recently used working directories
 func (s *SQLiteStore) GetRecentWorkingDirs(ctx context.Context, limit int) ([]RecentPath, error) {
 	if limit <= 0 {
