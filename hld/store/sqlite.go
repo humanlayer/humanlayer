@@ -1743,3 +1743,24 @@ func (s *SQLiteStore) GetFileSnapshots(ctx context.Context, sessionID string) ([
 	}
 	return snapshots, rows.Err()
 }
+
+// GetSessionCount returns the total number of sessions
+func (s *SQLiteStore) GetSessionCount(ctx context.Context) (int, error) {
+	var count int
+	err := s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM sessions").Scan(&count)
+	return count, err
+}
+
+// GetApprovalCount returns the total number of approvals
+func (s *SQLiteStore) GetApprovalCount(ctx context.Context) (int, error) {
+	var count int
+	err := s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM approvals").Scan(&count)
+	return count, err
+}
+
+// GetEventCount returns the total number of conversation events
+func (s *SQLiteStore) GetEventCount(ctx context.Context) (int, error) {
+	var count int
+	err := s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM conversation_events").Scan(&count)
+	return count, err
+}
