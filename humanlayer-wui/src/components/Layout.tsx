@@ -103,7 +103,7 @@ export function Layout() {
 
         try {
           const sessionText = getSessionNotificationText(session)
-          
+
           let notificationOptions: NotificationOptions = {
             type: 'session_completed',
             title: `Session Completed (${data.session_id.slice(0, 8)})`,

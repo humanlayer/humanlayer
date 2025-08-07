@@ -147,7 +147,7 @@ export function formatMcpToolName(toolName: string): string {
  */
 export function getSessionNotificationText(
   session: { title?: string; summary?: string; query: string },
-  maxLength: number = 40
+  maxLength: number = 40,
 ): string {
   const text = session.title || session.summary || session.query
   return text.slice(0, maxLength)
