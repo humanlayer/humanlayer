@@ -5,10 +5,13 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"os"
+	"time"
 	claudecode "github.com/humanlayer/humanlayer/claudecode-go"
 	"github.com/humanlayer/humanlayer/hld/api"
 	"github.com/humanlayer/humanlayer/hld/api/mapper"
 	"github.com/humanlayer/humanlayer/hld/approval"
+	"github.com/humanlayer/humanlayer/hld/config"
 	"github.com/humanlayer/humanlayer/hld/internal/version"
 	"github.com/humanlayer/humanlayer/hld/session"
 	"github.com/humanlayer/humanlayer/hld/store"
@@ -23,6 +26,7 @@ type SessionHandlers struct {
 	approvalManager approval.Manager
 	mapper          *mapper.Mapper
 	version         string
+	config          *config.Config
 }
 
 func NewSessionHandlers(manager session.SessionManager, store store.ConversationStore, approvalManager approval.Manager) *SessionHandlers {
@@ -32,6 +36,17 @@ func NewSessionHandlers(manager session.SessionManager, store store.Conversation
 		approvalManager: approvalManager,
 		mapper:          &mapper.Mapper{},
 		version:         version.GetVersion(), // TODO(4): Add support for full point releases
+	}
+}
+
+func NewSessionHandlersWithConfig(manager session.SessionManager, store store.ConversationStore, approvalManager approval.Manager, cfg *config.Config) *SessionHandlers {
+	return &SessionHandlers{
+		manager:         manager,
+		store:           store,
+		approvalManager: approvalManager,
+		mapper:          &mapper.Mapper{},
+		version:         version.GetVersion(),
+		config:          cfg,
 	}
 }
 
@@ -629,4 +644,57 @@ func (h *SessionHandlers) GetHealth(ctx context.Context, req api.GetHealthReques
 		Status:  api.Ok,
 		Version: h.version,
 	}, nil
+}
+
+// GetDatabaseInfo returns information about the daemon's database
+func (h *SessionHandlers) GetDatabaseInfo(ctx context.Context, req api.GetDatabaseInfoRequestObject) (api.GetDatabaseInfoResponseObject, error) {
+	stats := make(map[string]int64)
+	var size int64
+	var lastModified *time.Time
+	
+	// Get database path from config if available
+	dbPath := ""
+	if h.config != nil {
+		dbPath = h.config.DatabasePath
+	}
+	
+	// Get file stats if path is available and not in-memory
+	if dbPath != "" && dbPath != ":memory:" {
+		if fileInfo, err := os.Stat(dbPath); err == nil {
+			size = fileInfo.Size()
+			modTime := fileInfo.ModTime()
+			lastModified = &modTime
+		}
+	}
+	
+	// Get table counts from the store
+	if sqliteStore, ok := h.store.(*store.SQLiteStore); ok {
+		// Get session count
+		if count, err := sqliteStore.GetSessionCount(ctx); err == nil {
+			stats["sessions"] = int64(count)
+		}
+		
+		// Get approval count
+		if count, err := sqliteStore.GetApprovalCount(ctx); err == nil {
+			stats["approvals"] = int64(count)
+		}
+		
+		// Get event count
+		if count, err := sqliteStore.GetEventCount(ctx); err == nil {
+			stats["events"] = int64(count)
+		}
+	}
+	
+	response := api.GetDatabaseInfo200JSONResponse{
+		Path:       dbPath,
+		Size:       size,
+		TableCount: 5, // We have 5 tables: sessions, conversation_events, approvals, mcp_servers, schema_version
+		Stats:      stats,
+	}
+	
+	if lastModified != nil {
+		response.LastModified = lastModified
+	}
+	
+	return response, nil
 }
