@@ -57,7 +57,7 @@ func (m *manager) CreateApproval(ctx context.Context, runID, toolName string, to
 		} else {
 			// Dangerously skip permissions is active (no expiry or not expired)
 			status = store.ApprovalStatusLocalApproved
-			comment = "Auto-accepted (bypassing permissions)"
+			comment = "Auto-accepted (dangerous skip permissions enabled)"
 		}
 	} else if session.AutoAcceptEdits && isEditTool(toolName) {
 		// Regular auto-accept edits mode

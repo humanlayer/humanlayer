@@ -766,14 +766,14 @@ export const useStore = create<StoreState>((set, get) => ({
 
 // Helper function to validate and clean up session state
 export const validateSessionState = (session: Session): Session => {
-  // Check if yolo mode should be disabled due to expiry
+  // Check if dangerous skip permissions should be disabled due to expiry
   if (session.dangerouslySkipPermissions && session.dangerouslySkipPermissionsExpiresAt) {
     const now = Date.now()
     const expiry = new Date(session.dangerouslySkipPermissionsExpiresAt).getTime()
 
     if (expiry <= now) {
-      // Expired - disable yolo mode
-      logger.debug(`Session ${session.id} yolo mode expired, cleaning up`)
+      // Expired - disable dangerous skip permissions
+      logger.debug(`Session ${session.id} dangerous skip permissions expired, cleaning up`)
       return {
         ...session,
         dangerouslySkipPermissions: false,

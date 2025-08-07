@@ -32,7 +32,7 @@ export const SessionModeIndicator: FC<SessionModeIndicatorProps> = ({
       const remaining = Math.max(0, expiry - now)
 
       if (remaining === 0) {
-        // Timer expired - disable yolo mode
+        // Timer expired - disable dangerous skip permissions
         try {
           await updateSessionOptimistic(sessionId, {
             dangerouslySkipPermissions: false,
@@ -40,12 +40,12 @@ export const SessionModeIndicator: FC<SessionModeIndicatorProps> = ({
           })
 
           // Show notification
-          toast.info('Bypassing permissions expired', {
+          toast.info('Dangerous skip permissions expired', {
             description: 'Manual approval required for all tools',
             duration: 5000,
           })
         } catch (error) {
-          logger.error('Failed to disable expired yolo mode:', error)
+          logger.error('Failed to disable expired dangerous skip permissions:', error)
         }
         return
       }
@@ -68,7 +68,7 @@ export const SessionModeIndicator: FC<SessionModeIndicatorProps> = ({
   // Show nothing if neither mode is active
   if (!autoAcceptEdits && !dangerouslySkipPermissions) return null
 
-  // Yolo mode takes precedence in display
+  // Dangerous skip permissions takes precedence in display
   if (dangerouslySkipPermissions) {
     return (
       <div

@@ -188,7 +188,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [previewEventIndex, setPreviewEventIndex] = useState<number | null>(null)
   const [pendingForkMessage, setPendingForkMessage] = useState<ConversationEvent | null>(null)
   const [confirmingArchive, setConfirmingArchive] = useState(false)
-  const [bypassingPermissionsDialogOpen, setBypassingPermissionsDialogOpen] = useState(false)
+  const [dangerousSkipPermissionsDialogOpen, setDangerousSkipPermissionsDialogOpen] = useState(false)
 
   // State for inline title editing
   const [isEditingTitle, setIsEditingTitle] = useState(false)
@@ -507,20 +507,20 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     async () => {
       logger.log('Option+Y pressed', { dangerouslySkipPermissions, sessionId: session.id })
       if (dangerouslySkipPermissions) {
-        // Disable bypassing permissions
+        // Disable dangerous skip permissions
         try {
           await updateSessionOptimistic(session.id, {
             dangerouslySkipPermissions: false,
             dangerouslySkipPermissionsExpiresAt: undefined,
           })
         } catch (error) {
-          logger.error('Failed to disable bypassing permissions', { error })
-          toast.error('Failed to disable bypassing permissions')
+          logger.error('Failed to disable dangerous skip permissions', { error })
+          toast.error('Failed to disable dangerous skip permissions')
         }
       } else {
         // Show confirmation dialog
-        logger.log('Opening bypassing permissions dialog')
-        setBypassingPermissionsDialogOpen(true)
+        logger.log('Opening dangerous skip permissions dialog')
+        setDangerousSkipPermissionsDialogOpen(true)
       }
     },
     {
@@ -531,7 +531,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   )
 
   // Handle dialog confirmation
-  const handleBypassingPermissionsConfirm = async (timeoutMinutes: number | null) => {
+  const handleDangerousSkipPermissionsConfirm = async (timeoutMinutes: number | null) => {
     try {
       // Immediately update the store for instant UI feedback
       const expiresAt = timeoutMinutes
@@ -543,8 +543,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         dangerouslySkipPermissionsExpiresAt: expiresAt ? new Date(expiresAt) : undefined,
       })
     } catch (error) {
-      logger.error('Failed to enable bypassing permissions', { error })
-      toast.error('Failed to enable bypassing permissions')
+      logger.error('Failed to enable dangerous skip permissions', { error })
+      toast.error('Failed to enable dangerous skip permissions')
     }
   }
 
@@ -1010,7 +1010,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
             isForkMode={actions.isForkMode}
             onOpenForkView={() => setForkViewOpen(true)}
           />
-          {/* Session mode indicator - shows either yolo mode or auto-accept */}
+          {/* Session mode indicator - shows either dangerous skip permissions or auto-accept */}
           <SessionModeIndicator
             sessionId={session.id}
             autoAcceptEdits={autoAcceptEdits}
@@ -1035,9 +1035,9 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
 
       {/* Dangerously Skip Permissions Dialog */}
       <DangerouslySkipPermissionsDialog
-        open={bypassingPermissionsDialogOpen}
-        onOpenChange={setBypassingPermissionsDialogOpen}
-        onConfirm={handleBypassingPermissionsConfirm}
+        open={dangerousSkipPermissionsDialogOpen}
+        onOpenChange={setDangerousSkipPermissionsDialogOpen}
+        onConfirm={handleDangerousSkipPermissionsConfirm}
       />
     </section>
   )

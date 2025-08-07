@@ -37,7 +37,7 @@ func getShutdownTimeout() time.Duration {
 	return 5 * time.Second // default per ENG-1699 requirements
 }
 
-// getPermissionMonitorInterval returns the interval for permission expiry checks
+// getPermissionMonitorInterval returns the interval for dangerous skip permissions expiry checks
 func getPermissionMonitorInterval() time.Duration {
 	if intervalStr := os.Getenv("HLD_PERMISSION_MONITOR_INTERVAL"); intervalStr != "" {
 		if interval, err := time.ParseDuration(intervalStr); err == nil {
@@ -191,15 +191,15 @@ func (d *Daemon) Run(ctx context.Context) error {
 		// Don't fail startup for this
 	}
 
-	// Create and start permission monitor
+	// Create and start dangerous skip permissions monitor
 	permissionMonitor := session.NewPermissionMonitor(d.store, d.eventBus, getPermissionMonitorInterval())
 	d.permissionMonitor = permissionMonitor
 
-	// Start permission monitor in background
+	// Start dangerous skip permissions monitor in background
 	go func() {
 		permissionMonitor.Start(ctx)
 	}()
-	slog.Info("started permission expiry monitor")
+	slog.Info("started dangerous skip permissions expiry monitor")
 
 	// Register subscription handlers
 	subscriptionHandlers := rpc.NewSubscriptionHandlers(d.eventBus)

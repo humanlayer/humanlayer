@@ -6,6 +6,7 @@ import {
   daemonClient,
   NewApprovalEventData,
   SessionSettingsChangedEventData,
+  SessionSettingsChangeReason,
   SessionStatus,
   SessionStatusChangedEventData,
 } from '@/lib/daemon'
@@ -28,7 +29,7 @@ import { DebugPanel } from '@/components/DebugPanel'
 import { notifyLogLocation } from '@/lib/log-notification'
 import '@/App.css'
 import { logger } from '@/lib/logging'
-import { YoloModeMonitor } from '@/components/YoloModeMonitor'
+import { DangerousSkipPermissionsMonitor } from '@/components/DangerousSkipPermissionsMonitor'
 import { KeyboardShortcut } from '@/components/HotkeyPanel'
 
 export function Layout() {
@@ -192,8 +193,11 @@ export function Layout() {
       logger.log('useSessionSubscriptions.onSessionSettingsChanged', data)
 
       // Check if this is an expiry event from the server
-      if (data.reason === 'expired' && data.dangerously_skip_permissions === false) {
-        logger.debug('Server disabled expired permissions', {
+      if (
+        data.reason === SessionSettingsChangeReason.EXPIRED &&
+        data.dangerously_skip_permissions === false
+      ) {
+        logger.debug('Server disabled expired dangerous skip permissions', {
           sessionId: data.session_id,
           expiredAt: data.expired_at,
         })
@@ -478,8 +482,8 @@ export function Layout() {
       {/* Debug Panel */}
       <DebugPanel open={isDebugPanelOpen} onOpenChange={setIsDebugPanelOpen} />
 
-      {/* Global Yolo Mode Monitor */}
-      <YoloModeMonitor />
+      {/* Global Dangerous Skip Permissions Monitor */}
+      <DangerousSkipPermissionsMonitor />
     </div>
   )
 }

@@ -523,7 +523,7 @@ func (h *SessionHandlers) HandleUpdateSessionSettings(ctx context.Context, param
 		// Check which mode is being enabled
 		if req.DangerouslySkipPermissions != nil && *req.DangerouslySkipPermissions {
 			shouldAutoApprove = true
-			autoApproveComment = "Auto-accepted (bypassing permissions)"
+			autoApproveComment = "Auto-accepted (dangerous skip permissions enabled)"
 		} else if req.AutoAcceptEdits != nil && *req.AutoAcceptEdits {
 			shouldAutoApprove = true
 			autoApproveComment = "Auto-accepted (auto-accept mode enabled)"

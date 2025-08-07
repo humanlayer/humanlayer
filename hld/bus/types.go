@@ -19,8 +19,16 @@ const (
 	EventConversationUpdated EventType = "conversation_updated"
 	// EventSessionSettingsChanged indicates session settings have been updated
 	// Data includes: session_id, run_id, changed settings, and optional "reason" field
-	// For permission expiry: reason="expired", expired_at=timestamp
+	// For dangerous skip permissions expiry: reason="expired", expired_at=timestamp
 	EventSessionSettingsChanged EventType = "session_settings_changed"
+)
+
+// SessionSettingsChangeReason represents reasons for session settings changes
+type SessionSettingsChangeReason string
+
+const (
+	// SessionSettingsChangeReasonExpired indicates dangerous skip permissions expired due to timeout
+	SessionSettingsChangeReasonExpired SessionSettingsChangeReason = "expired"
 )
 
 // Event represents an event in the system

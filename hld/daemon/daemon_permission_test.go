@@ -24,7 +24,7 @@ func TestDaemon_PermissionExpiryMonitor(t *testing.T) {
 	// Create monitor with short interval for testing
 	monitor := session.NewPermissionMonitor(tempStore, eventBus, 100*time.Millisecond)
 
-	// Create a session with expired permissions
+	// Create a session with expired dangerous skip permissions
 	expiredTime := time.Now().Add(-1 * time.Minute)
 	session := &store.Session{
 		ID:                                  "test-session",
@@ -61,8 +61,8 @@ func TestDaemon_PermissionExpiryMonitor(t *testing.T) {
 		if event.Data["session_id"] != "test-session" {
 			t.Errorf("wrong session_id in event")
 		}
-		if event.Data["reason"] != "expired" {
-			t.Errorf("expected reason=expired")
+		if event.Data["reason"] != string(bus.SessionSettingsChangeReasonExpired) {
+			t.Errorf("expected reason=%s, got %v", bus.SessionSettingsChangeReasonExpired, event.Data["reason"])
 		}
 	case <-ctx.Done():
 		t.Fatal("timeout waiting for expiry event")
@@ -172,7 +172,7 @@ func TestDaemon_PermissionMonitorWithMultipleSessions(t *testing.T) {
 		t.Fatal(err)
 	}
 	if expiredSession.DangerouslySkipPermissions {
-		t.Error("expired session should have permissions disabled")
+		t.Error("expired session should have dangerous skip permissions disabled")
 	}
 
 	// Active session should still have permissions

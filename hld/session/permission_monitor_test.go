@@ -11,7 +11,7 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-func TestPermissionMonitor_DisableExpiredPermissions(t *testing.T) {
+func TestPermissionMonitor_DisableExpiredDangerouslySkipPermissions(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -59,7 +59,7 @@ func TestPermissionMonitor_DisableExpiredPermissions(t *testing.T) {
 	})
 
 	// Run the check
-	monitor.checkAndDisableExpiredPermissions(context.Background())
+	monitor.checkAndDisableExpiredDangerouslySkipPermissions(context.Background())
 
 	// Verify event was published
 	select {
@@ -74,8 +74,8 @@ func TestPermissionMonitor_DisableExpiredPermissions(t *testing.T) {
 		if data["dangerously_skip_permissions"] != false {
 			t.Errorf("expected dangerously_skip_permissions false, got %v", data["dangerously_skip_permissions"])
 		}
-		if data["reason"] != "expired" {
-			t.Errorf("expected reason expired, got %v", data["reason"])
+		if data["reason"] != string(bus.SessionSettingsChangeReasonExpired) {
+			t.Errorf("expected reason %s, got %v", bus.SessionSettingsChangeReasonExpired, data["reason"])
 		}
 	case <-ctx.Done():
 		t.Fatal("timeout waiting for event")
@@ -109,7 +109,7 @@ func TestPermissionMonitor_ContinuesOnError(t *testing.T) {
 		Return(nil)
 
 	// Should continue despite first error
-	monitor.checkAndDisableExpiredPermissions(context.Background())
+	monitor.checkAndDisableExpiredDangerouslySkipPermissions(context.Background())
 }
 
 func TestPermissionMonitor_HandlesEmptyResults(t *testing.T) {
@@ -126,7 +126,7 @@ func TestPermissionMonitor_HandlesEmptyResults(t *testing.T) {
 
 	// Should not call UpdateSession
 	// Test passes if no panic and no UpdateSession calls
-	monitor.checkAndDisableExpiredPermissions(context.Background())
+	monitor.checkAndDisableExpiredDangerouslySkipPermissions(context.Background())
 }
 
 func TestPermissionMonitor_HandlesQueryError(t *testing.T) {
@@ -142,7 +142,7 @@ func TestPermissionMonitor_HandlesQueryError(t *testing.T) {
 		Return(nil, fmt.Errorf("database connection error"))
 
 	// Should handle error gracefully without panicking
-	monitor.checkAndDisableExpiredPermissions(context.Background())
+	monitor.checkAndDisableExpiredDangerouslySkipPermissions(context.Background())
 }
 
 func TestPermissionMonitor_DefaultInterval(t *testing.T) {

@@ -265,13 +265,13 @@ describe('AppStore - State Synchronization', () => {
   })
 
   describe('state validation', () => {
-    test('should clean up expired yolo mode during refresh', async () => {
+    test('should clean up expired dangerous skip permissions during refresh', async () => {
       // Mock Date.now() for this test
       const originalDateNow = Date.now
       const now = new Date('2024-01-01T12:00:00Z').getTime()
       Date.now = () => now
 
-      // Create session with expired yolo mode
+      // Create session with expired dangerous skip permissions
       const expiredSession = createMockSession({
         id: 'test-1',
         dangerouslySkipPermissions: true,
@@ -292,13 +292,13 @@ describe('AppStore - State Synchronization', () => {
       Date.now = originalDateNow
     })
 
-    test('should preserve valid yolo mode during refresh', async () => {
+    test('should preserve valid dangerous skip permissions during refresh', async () => {
       // Mock Date.now() for this test
       const originalDateNow = Date.now
       const now = new Date('2024-01-01T12:00:00Z').getTime()
       Date.now = () => now
 
-      // Create session with valid yolo mode
+      // Create session with valid dangerous skip permissions
       const validSession = createMockSession({
         id: 'test-1',
         dangerouslySkipPermissions: true,
@@ -354,7 +354,7 @@ describe('AppStore - State Synchronization', () => {
       expect(useStore.getState().sessions[0].autoAcceptEdits).toBe(true)
     })
 
-    test('should handle yolo mode expiry during refresh', async () => {
+    test('should handle dangerous skip permissions expiry during refresh', async () => {
       // Mock Date constructor and Date.now for this test
       const originalDateNow = Date.now
 
@@ -369,12 +369,12 @@ describe('AppStore - State Synchronization', () => {
       })
       useStore.setState({ sessions: [session] })
 
-      // Advance time so yolo mode expires
+      // Advance time so dangerous skip permissions expires
       Date.now = () => new Date('2024-01-01T12:00:10Z').getTime()
 
       // Server still returns old data
       mockGetSessionLeaves.mockResolvedValueOnce({
-        sessions: [session] as any, // Still has yolo mode enabled
+        sessions: [session] as any, // Still has dangerous skip permissions enabled
       })
 
       await useStore.getState().refreshSessions()

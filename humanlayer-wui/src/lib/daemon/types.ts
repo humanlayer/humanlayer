@@ -229,14 +229,22 @@ export interface SessionStatusChangedEventData {
   new_status: SessionStatus
 }
 
+// Constants for session settings change reasons
+export const SessionSettingsChangeReason = {
+  EXPIRED: 'expired', // Dangerous skip permissions expired due to timeout
+} as const
+
+export type SessionSettingsChangeReasonType =
+  (typeof SessionSettingsChangeReason)[keyof typeof SessionSettingsChangeReason]
+
 export interface SessionSettingsChangedEventData {
   session_id: string
   event_type?: string
   auto_accept_edits?: boolean
   dangerously_skip_permissions?: boolean
   dangerously_skip_permissions_timeout_ms?: number
-  reason?: string // For permission expiry: "expired"
-  expired_at?: string // Timestamp when the permissions expired
+  reason?: SessionSettingsChangeReasonType
+  expired_at?: string // Timestamp when the dangerous skip permissions expired
 }
 
 // Conversation types

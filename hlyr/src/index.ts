@@ -106,7 +106,7 @@ program
   .option('--no-approvals', 'Disable HumanLayer approvals for high-stakes operations')
   .option(
     '--dangerously-skip-permissions',
-    'Enable dangerously skip permissions (auto-accept ALL tools)',
+    'Enable dangerous skip permissions mode (bypasses all approval requirements)',
   )
   .option(
     '--dangerously-skip-permissions-timeout <minutes>',

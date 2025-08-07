@@ -1034,7 +1034,7 @@ func (s *SQLiteStore) GetExpiredDangerousPermissionsSessions(ctx context.Context
 
 	rows, err := s.db.QueryContext(ctx, query, now)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query expired dangerous permissions sessions: %w", err)
+		return nil, fmt.Errorf("failed to query expired dangerous skip permissions sessions: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
 

@@ -10,14 +10,14 @@ import (
 	"github.com/humanlayer/humanlayer/hld/store"
 )
 
-// PermissionMonitor handles periodic cleanup of expired dangerous permissions
+// PermissionMonitor handles periodic cleanup of expired dangerous skip permissions
 type PermissionMonitor struct {
 	store    store.ConversationStore
 	eventBus bus.EventBus
 	interval time.Duration
 }
 
-// NewPermissionMonitor creates a new permission monitor
+// NewPermissionMonitor creates a new dangerous skip permissions monitor
 func NewPermissionMonitor(store store.ConversationStore, eventBus bus.EventBus, interval time.Duration) *PermissionMonitor {
 	if interval <= 0 {
 		interval = 30 * time.Second
@@ -29,28 +29,28 @@ func NewPermissionMonitor(store store.ConversationStore, eventBus bus.EventBus, 
 	}
 }
 
-// Start begins monitoring for expired permissions
+// Start begins monitoring for expired dangerous skip permissions
 func (pm *PermissionMonitor) Start(ctx context.Context) {
-	slog.Info("starting permission expiry monitor", "interval", pm.interval)
+	slog.Info("starting dangerous skip permissions expiry monitor", "interval", pm.interval)
 
 	ticker := time.NewTicker(pm.interval)
 	defer ticker.Stop()
 
 	// Do an initial check immediately
-	pm.checkAndDisableExpiredPermissions(ctx)
+	pm.checkAndDisableExpiredDangerouslySkipPermissions(ctx)
 
 	for {
 		select {
 		case <-ctx.Done():
-			slog.Info("permission monitor shutting down")
+			slog.Info("dangerous skip permissions monitor shutting down")
 			return
 		case <-ticker.C:
-			pm.checkAndDisableExpiredPermissions(ctx)
+			pm.checkAndDisableExpiredDangerouslySkipPermissions(ctx)
 		}
 	}
 }
 
-func (pm *PermissionMonitor) checkAndDisableExpiredPermissions(ctx context.Context) {
+func (pm *PermissionMonitor) checkAndDisableExpiredDangerouslySkipPermissions(ctx context.Context) {
 	// Guard against nil store (can happen during shutdown)
 	if pm.store == nil {
 		return
@@ -58,7 +58,7 @@ func (pm *PermissionMonitor) checkAndDisableExpiredPermissions(ctx context.Conte
 
 	sessions, err := pm.store.GetExpiredDangerousPermissionsSessions(ctx)
 	if err != nil {
-		slog.Error("failed to query expired permission sessions", "error", err)
+		slog.Error("failed to query expired dangerous skip permissions sessions", "error", err)
 		return
 	}
 
@@ -66,11 +66,11 @@ func (pm *PermissionMonitor) checkAndDisableExpiredPermissions(ctx context.Conte
 		return
 	}
 
-	slog.Info("found sessions with expired dangerous permissions", "count", len(sessions))
+	slog.Info("found sessions with expired dangerous skip permissions", "count", len(sessions))
 
 	for _, session := range sessions {
-		if err := pm.disablePermissionsForSession(ctx, session); err != nil {
-			slog.Error("failed to disable expired permissions",
+		if err := pm.disableDangerouslySkipPermissions(ctx, session); err != nil {
+			slog.Error("failed to disable expired dangerous skip permissions",
 				"session_id", session.ID,
 				"expires_at", session.DangerouslySkipPermissionsExpiresAt,
 				"error", err)
@@ -79,7 +79,7 @@ func (pm *PermissionMonitor) checkAndDisableExpiredPermissions(ctx context.Conte
 	}
 }
 
-func (pm *PermissionMonitor) disablePermissionsForSession(ctx context.Context, session *store.Session) error {
+func (pm *PermissionMonitor) disableDangerouslySkipPermissions(ctx context.Context, session *store.Session) error {
 	// Update the session in the database
 	dangerouslySkipPermissions := false
 	var nilTime *time.Time
@@ -102,14 +102,14 @@ func (pm *PermissionMonitor) disablePermissionsForSession(ctx context.Context, s
 				"session_id":                   session.ID,
 				"run_id":                       session.RunID,
 				"dangerously_skip_permissions": false,
-				"reason":                       "expired",
+				"reason":                       string(bus.SessionSettingsChangeReasonExpired),
 				"expired_at":                   session.DangerouslySkipPermissionsExpiresAt,
 			},
 		}
 		pm.eventBus.Publish(event)
 	}
 
-	slog.Info("disabled expired dangerous permissions",
+	slog.Info("disabled expired dangerous skip permissions",
 		"session_id", session.ID,
 		"expired_at", session.DangerouslySkipPermissionsExpiresAt)
 

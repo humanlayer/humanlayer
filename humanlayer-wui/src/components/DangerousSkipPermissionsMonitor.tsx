@@ -4,11 +4,11 @@ import { notificationService } from '@/services/NotificationService'
 import { useLocation } from 'react-router-dom'
 import { logger } from '@/lib/logging'
 /**
- * Global monitor for yolo mode (bypassing permissions) timers.
- * Watches all sessions and automatically disables yolo mode when timers expire,
+ * Global monitor for dangerous skip permissions timers.
+ * Watches all sessions and automatically disables dangerous skip permissions when timers expire,
  * regardless of which session is currently being viewed.
  */
-export const YoloModeMonitor = () => {
+export const DangerousSkipPermissionsMonitor = () => {
   const { sessions, updateSessionOptimistic } = useStore()
   const location = useLocation()
 
@@ -16,7 +16,7 @@ export const YoloModeMonitor = () => {
     // Track intervals for each session
     const intervals = new Map<string, ReturnType<typeof setInterval>>()
 
-    // Set up monitoring for each session with active yolo mode
+    // Set up monitoring for each session with active dangerous skip permissions
     sessions.forEach(session => {
       if (session.dangerouslySkipPermissions && session.dangerouslySkipPermissionsExpiresAt) {
         const checkExpiration = async () => {
@@ -26,7 +26,7 @@ export const YoloModeMonitor = () => {
 
           if (remaining <= 0) {
             try {
-              // Use optimistic update to disable yolo mode
+              // Use optimistic update to disable dangerous skip permissions
               await updateSessionOptimistic(session.id, {
                 dangerouslySkipPermissions: false,
                 dangerouslySkipPermissionsExpiresAt: undefined,
@@ -38,11 +38,11 @@ export const YoloModeMonitor = () => {
                 // Show notification using NotificationService
                 await notificationService.notify({
                   type: 'settings_changed',
-                  title: 'Bypassing permissions expired',
+                  title: 'Dangerous skip permissions expired',
                   body: `Session: ${session.title || session.summary || 'Untitled'}`,
                   metadata: {
                     sessionId: session.id,
-                    action: 'bypassing_permissions_expired',
+                    action: 'dangerous_skip_permissions_expired',
                   },
                   duration: 5000,
                   priority: 'normal',
@@ -56,7 +56,10 @@ export const YoloModeMonitor = () => {
                 intervals.delete(session.id)
               }
             } catch (error) {
-              logger.error(`Failed to disable expired yolo mode for session ${session.id}:`, error)
+              logger.error(
+                `Failed to disable expired dangerous skip permissions for session ${session.id}:`,
+                error,
+              )
             }
           }
         }
