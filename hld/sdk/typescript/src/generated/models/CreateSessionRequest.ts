@@ -94,6 +94,18 @@ export interface CreateSessionRequest {
      */
     customInstructions?: string;
     /**
+     * Launch session with dangerously skip permissions enabled
+     * @type {boolean}
+     * @memberof CreateSessionRequest
+     */
+    dangerouslySkipPermissions?: boolean;
+    /**
+     * Optional default timeout in milliseconds for dangerously skip permissions
+     * @type {number}
+     * @memberof CreateSessionRequest
+     */
+    dangerouslySkipPermissionsTimeout?: number;
+    /**
      * Enable verbose output
      * @type {boolean}
      * @memberof CreateSessionRequest
@@ -141,6 +153,8 @@ export function CreateSessionRequestFromJSONTyped(json: any, ignoreDiscriminator
         'allowedTools': json['allowed_tools'] == null ? undefined : json['allowed_tools'],
         'disallowedTools': json['disallowed_tools'] == null ? undefined : json['disallowed_tools'],
         'customInstructions': json['custom_instructions'] == null ? undefined : json['custom_instructions'],
+        'dangerouslySkipPermissions': json['dangerously_skip_permissions'] == null ? undefined : json['dangerously_skip_permissions'],
+        'dangerouslySkipPermissionsTimeout': json['dangerously_skip_permissions_timeout'] == null ? undefined : json['dangerously_skip_permissions_timeout'],
         'verbose': json['verbose'] == null ? undefined : json['verbose'],
     };
 }
@@ -167,6 +181,8 @@ export function CreateSessionRequestToJSONTyped(value?: CreateSessionRequest | n
         'allowed_tools': value['allowedTools'],
         'disallowed_tools': value['disallowedTools'],
         'custom_instructions': value['customInstructions'],
+        'dangerously_skip_permissions': value['dangerouslySkipPermissions'],
+        'dangerously_skip_permissions_timeout': value['dangerouslySkipPermissionsTimeout'],
         'verbose': value['verbose'],
     };
 }

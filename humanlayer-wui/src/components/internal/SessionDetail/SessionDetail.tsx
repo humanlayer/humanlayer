@@ -20,8 +20,9 @@ import { ToolResultModal } from './components/ToolResultModal'
 import { TodoWidget } from './components/TodoWidget'
 import { ResponseInput } from './components/ResponseInput'
 import { ErrorBoundary } from './components/ErrorBoundary'
-import { AutoAcceptIndicator } from './AutoAcceptIndicator'
+import { SessionModeIndicator } from './AutoAcceptIndicator'
 import { ForkViewModal } from './components/ForkViewModal'
+import { DangerouslySkipPermissionsDialog } from './DangerouslySkipPermissionsDialog'
 
 // Import hooks
 import { useSessionActions } from './hooks/useSessionActions'
@@ -187,6 +188,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [previewEventIndex, setPreviewEventIndex] = useState<number | null>(null)
   const [pendingForkMessage, setPendingForkMessage] = useState<ConversationEvent | null>(null)
   const [confirmingArchive, setConfirmingArchive] = useState(false)
+  const [dangerousSkipPermissionsDialogOpen, setDangerousSkipPermissionsDialogOpen] = useState(false)
 
   // State for inline title editing
   const [isEditingTitle, setIsEditingTitle] = useState(false)
@@ -227,9 +229,52 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const responseInputRef = useRef<HTMLTextAreaElement>(null)
   const confirmingArchiveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Get session from store to access auto_accept_edits
+  // Get session from store to access auto_accept_edits and dangerouslySkipPermissions
+  // Always prioritize store values as they are the source of truth for runtime state
   const sessionFromStore = useStore(state => state.sessions.find(s => s.id === session.id))
-  const autoAcceptEdits = sessionFromStore?.autoAcceptEdits ?? false
+  const updateSessionOptimistic = useStore(state => state.updateSessionOptimistic)
+
+  // Use store values if available, otherwise fall back to session prop
+  // Store values take precedence because they reflect real-time updates
+  const autoAcceptEdits =
+    sessionFromStore?.autoAcceptEdits !== undefined
+      ? sessionFromStore.autoAcceptEdits
+      : (session.autoAcceptEdits ?? false)
+
+  const dangerouslySkipPermissions =
+    sessionFromStore?.dangerouslySkipPermissions !== undefined
+      ? sessionFromStore.dangerouslySkipPermissions
+      : (session.dangerouslySkipPermissions ?? false)
+
+  const dangerouslySkipPermissionsExpiresAt =
+    sessionFromStore?.dangerouslySkipPermissionsExpiresAt !== undefined
+      ? sessionFromStore.dangerouslySkipPermissionsExpiresAt?.toISOString()
+      : session.dangerouslySkipPermissionsExpiresAt?.toISOString()
+
+  // Debug logging
+  useEffect(() => {
+    logger.log('Session permissions state', {
+      sessionId: session.id,
+      dangerouslySkipPermissions,
+      dangerouslySkipPermissionsExpiresAt,
+      sessionFromStore: sessionFromStore
+        ? {
+            id: sessionFromStore.id,
+            dangerouslySkipPermissions: sessionFromStore.dangerouslySkipPermissions,
+            dangerouslySkipPermissionsExpiresAt: sessionFromStore.dangerouslySkipPermissionsExpiresAt,
+          }
+        : 'not found',
+      sessionProp: {
+        dangerouslySkipPermissions: session.dangerouslySkipPermissions,
+        dangerouslySkipPermissionsExpiresAt: session.dangerouslySkipPermissionsExpiresAt,
+      },
+    })
+  }, [
+    session.id,
+    dangerouslySkipPermissions,
+    dangerouslySkipPermissionsExpiresAt,
+    sessionFromStore?.dangerouslySkipPermissions,
+  ])
 
   // Generate random verb that changes every 10-20 seconds
   const [randomVerb, setRandomVerb] = useState(() => {
@@ -440,18 +485,13 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   useHotkeys(
     'shift+tab',
     async () => {
-      console.log('shift+tab setAutoAcceptEdits', autoAcceptEdits)
+      logger.log('shift+tab setAutoAcceptEdits', autoAcceptEdits)
       try {
         const newState = !autoAcceptEdits
-        const updatedSession = await daemonClient.updateSessionSettings(session.id, {
-          auto_accept_edits: newState,
-        })
-
-        if (updatedSession.success) {
-          useStore.getState().updateSession(session.id, { autoAcceptEdits: newState })
-        }
+        await updateSessionOptimistic(session.id, { autoAcceptEdits: newState })
       } catch (error) {
         logger.error('Failed to toggle auto-accept mode:', error)
+        toast.error('Failed to toggle auto-accept mode')
       }
     },
     {
@@ -460,6 +500,53 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     },
     [session.id, autoAcceptEdits], // Dependencies
   )
+
+  // Add Option+Y handler for dangerously skip permissions mode
+  useHotkeys(
+    'alt+y',
+    async () => {
+      logger.log('Option+Y pressed', { dangerouslySkipPermissions, sessionId: session.id })
+      if (dangerouslySkipPermissions) {
+        // Disable dangerous skip permissions
+        try {
+          await updateSessionOptimistic(session.id, {
+            dangerouslySkipPermissions: false,
+            dangerouslySkipPermissionsExpiresAt: undefined,
+          })
+        } catch (error) {
+          logger.error('Failed to disable dangerous skip permissions', { error })
+          toast.error('Failed to disable dangerous skip permissions')
+        }
+      } else {
+        // Show confirmation dialog
+        logger.log('Opening dangerous skip permissions dialog')
+        setDangerousSkipPermissionsDialogOpen(true)
+      }
+    },
+    {
+      scopes: [SessionDetailHotkeysScope],
+      preventDefault: true,
+    },
+    [session.id, dangerouslySkipPermissions],
+  )
+
+  // Handle dialog confirmation
+  const handleDangerousSkipPermissionsConfirm = async (timeoutMinutes: number | null) => {
+    try {
+      // Immediately update the store for instant UI feedback
+      const expiresAt = timeoutMinutes
+        ? new Date(Date.now() + timeoutMinutes * 60 * 1000).toISOString()
+        : undefined
+
+      await updateSessionOptimistic(session.id, {
+        dangerouslySkipPermissions: true,
+        dangerouslySkipPermissionsExpiresAt: expiresAt ? new Date(expiresAt) : undefined,
+      })
+    } catch (error) {
+      logger.error('Failed to enable dangerous skip permissions', { error })
+      toast.error('Failed to enable dangerous skip permissions')
+    }
+  }
 
   // Add hotkey to archive session ('e' key)
   useHotkeys(
@@ -743,6 +830,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
           />
         </div>
       )}
+
       {isCompactView && (
         <div className="flex items-start justify-between">
           <hgroup className="flex flex-col gap-0.5 flex-1">
@@ -922,7 +1010,14 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
             isForkMode={actions.isForkMode}
             onOpenForkView={() => setForkViewOpen(true)}
           />
-          <AutoAcceptIndicator enabled={autoAcceptEdits} className="mt-2" />
+          {/* Session mode indicator - shows either dangerous skip permissions or auto-accept */}
+          <SessionModeIndicator
+            sessionId={session.id}
+            autoAcceptEdits={autoAcceptEdits}
+            dangerouslySkipPermissions={dangerouslySkipPermissions}
+            dangerouslySkipPermissionsExpiresAt={dangerouslySkipPermissionsExpiresAt}
+            className="mt-2"
+          />
         </CardContent>
       </Card>
 
@@ -937,6 +1032,13 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
           }}
         />
       )}
+
+      {/* Dangerously Skip Permissions Dialog */}
+      <DangerouslySkipPermissionsDialog
+        open={dangerousSkipPermissionsDialogOpen}
+        onOpenChange={setDangerousSkipPermissionsDialogOpen}
+        onConfirm={handleDangerousSkipPermissionsConfirm}
+      />
     </section>
   )
 }

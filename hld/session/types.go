@@ -40,23 +40,33 @@ type Session struct {
 
 // Info provides a JSON-safe view of the session
 type Info struct {
-	ID              string             `json:"id"`
-	RunID           string             `json:"run_id"`
-	ClaudeSessionID string             `json:"claude_session_id,omitempty"`
-	ParentSessionID string             `json:"parent_session_id,omitempty"`
-	Status          Status             `json:"status"`
-	StartTime       time.Time          `json:"start_time"`
-	EndTime         *time.Time         `json:"end_time,omitempty"`
-	LastActivityAt  time.Time          `json:"last_activity_at"`
-	Error           string             `json:"error,omitempty"`
-	Query           string             `json:"query"`
-	Summary         string             `json:"summary"`
-	Title           string             `json:"title"`
-	Model           string             `json:"model,omitempty"`
-	WorkingDir      string             `json:"working_dir,omitempty"`
-	Result          *claudecode.Result `json:"result,omitempty"`
-	AutoAcceptEdits bool               `json:"auto_accept_edits"`
-	Archived        bool               `json:"archived"`
+	ID                                  string             `json:"id"`
+	RunID                               string             `json:"run_id"`
+	ClaudeSessionID                     string             `json:"claude_session_id,omitempty"`
+	ParentSessionID                     string             `json:"parent_session_id,omitempty"`
+	Status                              Status             `json:"status"`
+	StartTime                           time.Time          `json:"start_time"`
+	EndTime                             *time.Time         `json:"end_time,omitempty"`
+	LastActivityAt                      time.Time          `json:"last_activity_at"`
+	Error                               string             `json:"error,omitempty"`
+	Query                               string             `json:"query"`
+	Summary                             string             `json:"summary"`
+	Title                               string             `json:"title"`
+	Model                               string             `json:"model,omitempty"`
+	WorkingDir                          string             `json:"working_dir,omitempty"`
+	Result                              *claudecode.Result `json:"result,omitempty"`
+	AutoAcceptEdits                     bool               `json:"auto_accept_edits"`
+	DangerouslySkipPermissions          bool               `json:"dangerously_skip_permissions"`
+	DangerouslySkipPermissionsExpiresAt *time.Time         `json:"dangerously_skip_permissions_expires_at,omitempty"`
+	Archived                            bool               `json:"archived"`
+}
+
+// LaunchSessionConfig contains the configuration for launching a new session
+type LaunchSessionConfig struct {
+	claudecode.SessionConfig
+	// Daemon-level settings that don't get passed to Claude Code
+	DangerouslySkipPermissions        bool   // Whether to auto-approve all tools
+	DangerouslySkipPermissionsTimeout *int64 // Optional timeout in milliseconds
 }
 
 // ContinueSessionConfig contains the configuration for continuing a session
@@ -76,7 +86,7 @@ type ContinueSessionConfig struct {
 // SessionManager defines the interface for managing Claude Code sessions
 type SessionManager interface {
 	// LaunchSession starts a new Claude Code session
-	LaunchSession(ctx context.Context, config claudecode.SessionConfig) (*Session, error)
+	LaunchSession(ctx context.Context, config LaunchSessionConfig) (*Session, error)
 
 	// ContinueSession resumes an existing completed session with a new query and optional config overrides
 	ContinueSession(ctx context.Context, req ContinueSessionConfig) (*Session, error)
@@ -112,21 +122,23 @@ type ReadToolResult struct {
 // SessionToInfo converts a store.Session to Info for RPC responses
 func SessionToInfo(s store.Session) Info {
 	info := Info{
-		ID:              s.ID,
-		RunID:           s.RunID,
-		ClaudeSessionID: s.ClaudeSessionID,
-		ParentSessionID: s.ParentSessionID,
-		Status:          Status(s.Status),
-		StartTime:       s.CreatedAt,
-		LastActivityAt:  s.LastActivityAt,
-		Error:           s.ErrorMessage,
-		Query:           s.Query,
-		Summary:         s.Summary,
-		Title:           s.Title,
-		Model:           s.Model,
-		WorkingDir:      s.WorkingDir,
-		AutoAcceptEdits: s.AutoAcceptEdits,
-		Archived:        s.Archived,
+		ID:                                  s.ID,
+		RunID:                               s.RunID,
+		ClaudeSessionID:                     s.ClaudeSessionID,
+		ParentSessionID:                     s.ParentSessionID,
+		Status:                              Status(s.Status),
+		StartTime:                           s.CreatedAt,
+		LastActivityAt:                      s.LastActivityAt,
+		Error:                               s.ErrorMessage,
+		Query:                               s.Query,
+		Summary:                             s.Summary,
+		Title:                               s.Title,
+		Model:                               s.Model,
+		WorkingDir:                          s.WorkingDir,
+		AutoAcceptEdits:                     s.AutoAcceptEdits,
+		DangerouslySkipPermissions:          s.DangerouslySkipPermissions,
+		DangerouslySkipPermissionsExpiresAt: s.DangerouslySkipPermissionsExpiresAt,
+		Archived:                            s.Archived,
 	}
 
 	if s.CompletedAt != nil {

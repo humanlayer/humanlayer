@@ -26,6 +26,18 @@ export interface UpdateSessionRequest {
      */
     autoAcceptEdits?: boolean;
     /**
+     * Enable or disable dangerously skip permissions mode
+     * @type {boolean}
+     * @memberof UpdateSessionRequest
+     */
+    dangerouslySkipPermissions?: boolean;
+    /**
+     * Optional timeout in milliseconds for dangerously skip permissions mode
+     * @type {number}
+     * @memberof UpdateSessionRequest
+     */
+    dangerouslySkipPermissionsTimeoutMs?: number;
+    /**
      * Archive/unarchive the session
      * @type {boolean}
      * @memberof UpdateSessionRequest
@@ -57,6 +69,8 @@ export function UpdateSessionRequestFromJSONTyped(json: any, ignoreDiscriminator
     return {
 
         'autoAcceptEdits': json['auto_accept_edits'] == null ? undefined : json['auto_accept_edits'],
+        'dangerouslySkipPermissions': json['dangerously_skip_permissions'] == null ? undefined : json['dangerously_skip_permissions'],
+        'dangerouslySkipPermissionsTimeoutMs': json['dangerously_skip_permissions_timeout_ms'] == null ? undefined : json['dangerously_skip_permissions_timeout_ms'],
         'archived': json['archived'] == null ? undefined : json['archived'],
         'title': json['title'] == null ? undefined : json['title'],
     };
@@ -74,6 +88,8 @@ export function UpdateSessionRequestToJSONTyped(value?: UpdateSessionRequest | n
     return {
 
         'auto_accept_edits': value['autoAcceptEdits'],
+        'dangerously_skip_permissions': value['dangerouslySkipPermissions'],
+        'dangerously_skip_permissions_timeout_ms': value['dangerouslySkipPermissionsTimeoutMs'],
         'archived': value['archived'],
         'title': value['title'],
     };

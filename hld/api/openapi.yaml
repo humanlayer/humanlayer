@@ -579,6 +579,15 @@ components:
           type: boolean
           description: Whether edit tools are auto-accepted
           default: false
+        dangerously_skip_permissions:
+          type: boolean
+          description: When true, all tool calls are automatically approved without user consent
+          default: false
+        dangerously_skip_permissions_expires_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: ISO timestamp when dangerously skip permissions mode expires (optional)
         archived:
           type: boolean
           description: Whether session is archived
@@ -644,6 +653,16 @@ components:
         custom_instructions:
           type: string
           description: Custom instructions for Claude
+        dangerously_skip_permissions:
+          type: boolean
+          description: Launch session with dangerously skip permissions enabled
+          default: false
+        dangerously_skip_permissions_timeout:
+          type: integer
+          format: int64
+          nullable: true
+          description: Optional default timeout in milliseconds for dangerously skip permissions
+          default: 900000  # 15 minutes default, but nullable
         verbose:
           type: boolean
           description: Enable verbose output
@@ -693,6 +712,14 @@ components:
         auto_accept_edits:
           type: boolean
           description: Enable/disable auto-accept for edit tools
+        dangerously_skip_permissions:
+          type: boolean
+          description: Enable or disable dangerously skip permissions mode
+        dangerously_skip_permissions_timeout_ms:
+          type: integer
+          format: int64
+          nullable: true
+          description: Optional timeout in milliseconds for dangerously skip permissions mode
         archived:
           type: boolean
           description: Archive/unarchive the session

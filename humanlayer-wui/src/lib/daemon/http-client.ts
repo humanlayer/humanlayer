@@ -2,7 +2,6 @@ import {
   CreateSessionResponseData,
   HLDClient,
   RecentPath as SDKRecentPath,
-  Session,
   Approval,
   ConversationEvent,
 } from '@humanlayer/hld-sdk'
@@ -17,7 +16,9 @@ import type {
   SubscriptionHandle,
   SessionSnapshot,
   HealthCheckResponse,
+  Session,
 } from './types'
+import { transformSDKSession } from './types'
 
 export class HTTPDaemonClient implements IDaemonClient {
   private client?: HLDClient
@@ -155,7 +156,7 @@ export class HTTPDaemonClient implements IDaemonClient {
   async listSessions(): Promise<Session[]> {
     await this.ensureConnected()
     const response = await this.client!.listSessions({ leafOnly: true })
-    return response
+    return response.map(transformSDKSession)
   }
 
   async getSessionLeaves(request?: {
@@ -168,8 +169,18 @@ export class HTTPDaemonClient implements IDaemonClient {
       leafOnly: true,
       includeArchived: request?.include_archived,
     })
+    logger.debug(
+      'getSessionLeaves raw response sample:',
+      response[0]
+        ? {
+            id: response[0].id,
+            dangerouslySkipPermissions: response[0].dangerouslySkipPermissions,
+            dangerouslySkipPermissionsExpiresAt: response[0].dangerouslySkipPermissionsExpiresAt,
+          }
+        : 'no sessions',
+    )
     return {
-      sessions: response,
+      sessions: response.map(transformSDKSession),
     }
   }
 
@@ -179,7 +190,7 @@ export class HTTPDaemonClient implements IDaemonClient {
 
     // Transform to expected SessionState format
     return {
-      session: session,
+      session: transformSDKSession(session),
       pendingApprovals: [], // Will be populated if needed
     }
   }
@@ -204,13 +215,35 @@ export class HTTPDaemonClient implements IDaemonClient {
 
   async updateSessionSettings(
     sessionId: string,
-    settings: { auto_accept_edits?: boolean },
+    settings: {
+      auto_accept_edits?: boolean
+      dangerously_skip_permissions?: boolean
+      dangerously_skip_permissions_timeout_ms?: number
+    },
   ): Promise<{ success: boolean }> {
     await this.ensureConnected()
-    await this.client!.updateSession(sessionId, {
-      auto_accept_edits: settings.auto_accept_edits,
-    })
-    return { success: true }
+
+    // The SDK client expects camelCase for some fields but the method signature uses snake_case
+    const payload: any = {}
+    if (settings.auto_accept_edits !== undefined) {
+      payload.auto_accept_edits = settings.auto_accept_edits
+    }
+    if (settings.dangerously_skip_permissions !== undefined) {
+      payload.dangerouslySkipPermissions = settings.dangerously_skip_permissions
+    }
+    if (settings.dangerously_skip_permissions_timeout_ms !== undefined) {
+      payload.dangerouslySkipPermissionsTimeoutMs = settings.dangerously_skip_permissions_timeout_ms
+    }
+
+    logger.log('Sending updateSession request', { sessionId, payload })
+
+    try {
+      await this.client!.updateSession(sessionId, payload)
+      return { success: true }
+    } catch (error) {
+      logger.error('updateSession failed', { error, sessionId, payload })
+      throw error
+    }
   }
 
   async archiveSession(

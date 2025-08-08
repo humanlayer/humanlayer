@@ -198,6 +198,8 @@ export function createDemoAppStore(isDemo: boolean = false): StoreApi<DemoAppSta
             model: 'claude-3-5-sonnet-20241022',
             workingDir: '/demo/working/dir',
             autoAcceptEdits: false,
+            dangerouslySkipPermissions: false,
+            dangerouslySkipPermissionsExpiresAt: undefined,
           }
 
           set(currentState => ({

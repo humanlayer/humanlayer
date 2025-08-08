@@ -12,7 +12,9 @@ import (
 	"github.com/humanlayer/humanlayer/hld/internal/version"
 	"github.com/humanlayer/humanlayer/hld/session"
 	"github.com/humanlayer/humanlayer/hld/store"
+	"log/slog"
 	"sort"
+	"time"
 )
 
 type SessionHandlers struct {
@@ -35,10 +37,13 @@ func NewSessionHandlers(manager session.SessionManager, store store.Conversation
 
 // CreateSession implements POST /sessions
 func (h *SessionHandlers) CreateSession(ctx context.Context, req api.CreateSessionRequestObject) (api.CreateSessionResponseObject, error) {
-	config := claudecode.SessionConfig{
-		Query:        req.Body.Query,
-		MCPConfig:    h.mapper.MCPConfigFromAPI(req.Body.McpConfig),
-		OutputFormat: claudecode.OutputStreamJSON, // Always use streaming JSON for monitoring
+	// Build launch config with embedded Claude config
+	config := session.LaunchSessionConfig{
+		SessionConfig: claudecode.SessionConfig{
+			Query:        req.Body.Query,
+			MCPConfig:    h.mapper.MCPConfigFromAPI(req.Body.McpConfig),
+			OutputFormat: claudecode.OutputStreamJSON, // Always use streaming JSON for monitoring
+		},
 	}
 
 	// Handle optional fields
@@ -172,22 +177,24 @@ func (h *SessionHandlers) ListSessions(ctx context.Context, req api.ListSessions
 	for i, info := range filtered {
 		// Convert Info to store.Session for mapper
 		storeSession := store.Session{
-			ID:              info.ID,
-			RunID:           info.RunID,
-			ClaudeSessionID: info.ClaudeSessionID,
-			ParentSessionID: info.ParentSessionID,
-			Status:          string(info.Status),
-			Query:           info.Query,
-			Summary:         info.Summary,
-			Title:           info.Title,
-			Model:           info.Model,
-			WorkingDir:      info.WorkingDir,
-			CreatedAt:       info.StartTime,
-			LastActivityAt:  info.LastActivityAt,
-			CompletedAt:     info.EndTime,
-			ErrorMessage:    info.Error,
-			AutoAcceptEdits: info.AutoAcceptEdits,
-			Archived:        info.Archived,
+			ID:                                  info.ID,
+			RunID:                               info.RunID,
+			ClaudeSessionID:                     info.ClaudeSessionID,
+			ParentSessionID:                     info.ParentSessionID,
+			Status:                              string(info.Status),
+			Query:                               info.Query,
+			Summary:                             info.Summary,
+			Title:                               info.Title,
+			Model:                               info.Model,
+			WorkingDir:                          info.WorkingDir,
+			CreatedAt:                           info.StartTime,
+			LastActivityAt:                      info.LastActivityAt,
+			CompletedAt:                         info.EndTime,
+			ErrorMessage:                        info.Error,
+			AutoAcceptEdits:                     info.AutoAcceptEdits,
+			DangerouslySkipPermissions:          info.DangerouslySkipPermissions,
+			DangerouslySkipPermissionsExpiresAt: info.DangerouslySkipPermissionsExpiresAt,
+			Archived:                            info.Archived,
 		}
 
 		// Copy result data if available
@@ -242,6 +249,9 @@ func (h *SessionHandlers) GetSession(ctx context.Context, req api.GetSessionRequ
 
 // UpdateSession updates session settings (auto-accept, archived status)
 func (h *SessionHandlers) UpdateSession(ctx context.Context, req api.UpdateSessionRequestObject) (api.UpdateSessionResponseObject, error) {
+	// Debug log incoming request
+	slog.Info("UpdateSession called", "sessionId", req.Id, "body", req.Body)
+
 	update := store.SessionUpdate{}
 
 	// Update auto-accept if specified
@@ -259,8 +269,30 @@ func (h *SessionHandlers) UpdateSession(ctx context.Context, req api.UpdateSessi
 		update.Title = req.Body.Title
 	}
 
+	// Update dangerously skip permissions if specified
+	if req.Body.DangerouslySkipPermissions != nil {
+		update.DangerouslySkipPermissions = req.Body.DangerouslySkipPermissions
+	}
+
+	// Update dangerously skip permissions timeout if specified
+	if req.Body.DangerouslySkipPermissionsTimeoutMs != nil {
+		timeoutMs := *req.Body.DangerouslySkipPermissionsTimeoutMs
+		if timeoutMs > 0 {
+			// Convert milliseconds to time.Time
+			expiresAt := time.Now().Add(time.Duration(timeoutMs) * time.Millisecond)
+			expiresAtPtr := &expiresAt
+			update.DangerouslySkipPermissionsExpiresAt = &expiresAtPtr
+		} else {
+			// Clear the expiration if timeout is 0
+			var nilTime *time.Time
+			update.DangerouslySkipPermissionsExpiresAt = &nilTime
+		}
+	}
+
 	err := h.manager.UpdateSessionSettings(ctx, string(req.Id), update)
 	if err != nil {
+		// Log the actual error for debugging
+		slog.Error("UpdateSession error", "error", err, "sessionId", req.Id, "update", update)
 		if errors.Is(err, sql.ErrNoRows) {
 			return api.UpdateSession404JSONResponse{
 				NotFoundJSONResponse: api.NotFoundJSONResponse{

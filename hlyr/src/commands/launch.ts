@@ -11,6 +11,8 @@ interface LaunchOptions {
   daemonSocket?: string
   configFile?: string
   approvals?: boolean
+  dangerouslySkipPermissions?: boolean
+  dangerouslySkipPermissionsTimeout?: string
 }
 
 export const launchCommand = async (query: string, options: LaunchOptions = {}) => {
@@ -29,6 +31,13 @@ export const launchCommand = async (query: string, options: LaunchOptions = {}) 
     if (options.model) console.log('Model:', options.model)
     console.log('Working directory:', options.workingDir || process.cwd())
     console.log('Approvals enabled:', options.approvals !== false)
+
+    if (options.dangerouslySkipPermissions) {
+      console.log('⚠️  Dangerously skip permissions enabled - ALL tools will be auto-approved')
+      if (options.dangerouslySkipPermissionsTimeout) {
+        console.log(`   Auto-disabling after ${options.dangerouslySkipPermissionsTimeout} minutes`)
+      }
+    }
 
     // Connect to daemon
     const client = await connectWithRetry(socketPath, 3, 1000)
@@ -55,6 +64,10 @@ export const launchCommand = async (query: string, options: LaunchOptions = {}) 
         max_turns: options.maxTurns,
         mcp_config: mcpConfig,
         permission_prompt_tool: mcpConfig ? 'mcp__approvals__request_permission' : undefined,
+        dangerously_skip_permissions: options.dangerouslySkipPermissions,
+        dangerously_skip_permissions_timeout: options.dangerouslySkipPermissionsTimeout
+          ? parseInt(options.dangerouslySkipPermissionsTimeout) * 60 * 1000
+          : undefined,
       })
 
       console.log('\nSession launched successfully!')

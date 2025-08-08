@@ -136,6 +136,18 @@ export interface Session {
      */
     autoAcceptEdits?: boolean;
     /**
+     * When true, all tool calls are automatically approved without user consent
+     * @type {boolean}
+     * @memberof Session
+     */
+    dangerouslySkipPermissions?: boolean;
+    /**
+     * ISO timestamp when dangerously skip permissions mode expires (optional)
+     * @type {Date}
+     * @memberof Session
+     */
+    dangerouslySkipPermissionsExpiresAt?: Date;
+    /**
      * Whether session is archived
      * @type {boolean}
      * @memberof Session
@@ -186,6 +198,8 @@ export function SessionFromJSONTyped(json: any, ignoreDiscriminator: boolean): S
         'totalTokens': json['total_tokens'] == null ? undefined : json['total_tokens'],
         'durationMs': json['duration_ms'] == null ? undefined : json['duration_ms'],
         'autoAcceptEdits': json['auto_accept_edits'] == null ? undefined : json['auto_accept_edits'],
+        'dangerouslySkipPermissions': json['dangerously_skip_permissions'] == null ? undefined : json['dangerously_skip_permissions'],
+        'dangerouslySkipPermissionsExpiresAt': json['dangerously_skip_permissions_expires_at'] == null ? undefined : (new Date(json['dangerously_skip_permissions_expires_at'])),
         'archived': json['archived'] == null ? undefined : json['archived'],
     };
 }
@@ -219,6 +233,8 @@ export function SessionToJSONTyped(value?: Session | null, ignoreDiscriminator: 
         'total_tokens': value['totalTokens'],
         'duration_ms': value['durationMs'],
         'auto_accept_edits': value['autoAcceptEdits'],
+        'dangerously_skip_permissions': value['dangerouslySkipPermissions'],
+        'dangerously_skip_permissions_expires_at': value['dangerouslySkipPermissionsExpiresAt'] == null ? undefined : ((value['dangerouslySkipPermissionsExpiresAt']).toISOString()),
         'archived': value['archived'],
     };
 }

@@ -56,25 +56,27 @@ type GetSessionStateRequest struct {
 
 // SessionState represents the current state of a session
 type SessionState struct {
-	ID              string  `json:"id"`
-	RunID           string  `json:"run_id"`
-	ClaudeSessionID string  `json:"claude_session_id,omitempty"`
-	ParentSessionID string  `json:"parent_session_id,omitempty"`
-	Status          string  `json:"status"` // starting, running, completed, failed, waiting_input
-	Query           string  `json:"query"`
-	Summary         string  `json:"summary"`
-	Title           string  `json:"title"`
-	Model           string  `json:"model,omitempty"`
-	WorkingDir      string  `json:"working_dir,omitempty"`
-	CreatedAt       string  `json:"created_at"`
-	LastActivityAt  string  `json:"last_activity_at"`
-	CompletedAt     string  `json:"completed_at,omitempty"`
-	ErrorMessage    string  `json:"error_message,omitempty"`
-	CostUSD         float64 `json:"cost_usd,omitempty"`
-	TotalTokens     int     `json:"total_tokens,omitempty"`
-	DurationMS      int     `json:"duration_ms,omitempty"`
-	AutoAcceptEdits bool    `json:"auto_accept_edits,omitempty"`
-	Archived        bool    `json:"archived,omitempty"`
+	ID                                  string  `json:"id"`
+	RunID                               string  `json:"run_id"`
+	ClaudeSessionID                     string  `json:"claude_session_id,omitempty"`
+	ParentSessionID                     string  `json:"parent_session_id,omitempty"`
+	Status                              string  `json:"status"` // starting, running, completed, failed, waiting_input
+	Query                               string  `json:"query"`
+	Summary                             string  `json:"summary"`
+	Title                               string  `json:"title"`
+	Model                               string  `json:"model,omitempty"`
+	WorkingDir                          string  `json:"working_dir,omitempty"`
+	CreatedAt                           string  `json:"created_at"`
+	LastActivityAt                      string  `json:"last_activity_at"`
+	CompletedAt                         string  `json:"completed_at,omitempty"`
+	ErrorMessage                        string  `json:"error_message,omitempty"`
+	CostUSD                             float64 `json:"cost_usd,omitempty"`
+	TotalTokens                         int     `json:"total_tokens,omitempty"`
+	DurationMS                          int     `json:"duration_ms,omitempty"`
+	AutoAcceptEdits                     bool    `json:"auto_accept_edits"`
+	DangerouslySkipPermissions          bool    `json:"dangerously_skip_permissions"`
+	DangerouslySkipPermissionsExpiresAt string  `json:"dangerously_skip_permissions_expires_at,omitempty"`
+	Archived                            bool    `json:"archived"`
 }
 
 // GetSessionStateResponse is the response for fetching session state
@@ -136,8 +138,10 @@ type InterruptSessionResponse struct {
 
 // UpdateSessionSettingsRequest is the request for updating session settings
 type UpdateSessionSettingsRequest struct {
-	SessionID       string `json:"session_id"`
-	AutoAcceptEdits *bool  `json:"auto_accept_edits,omitempty"`
+	SessionID                           string `json:"session_id"`
+	AutoAcceptEdits                     *bool  `json:"auto_accept_edits,omitempty"`
+	DangerouslySkipPermissions          *bool  `json:"dangerously_skip_permissions,omitempty"`
+	DangerouslySkipPermissionsTimeoutMs *int64 `json:"dangerously_skip_permissions_timeout_ms,omitempty"`
 }
 
 // UpdateSessionSettingsResponse is the response for updating session settings

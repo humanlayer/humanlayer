@@ -104,6 +104,8 @@ func (s *SQLiteStore) initSchema() error {
 
 		-- Session settings
 		auto_accept_edits BOOLEAN DEFAULT 0,
+		dangerously_skip_permissions BOOLEAN DEFAULT 0,
+		dangerously_skip_permissions_expires_at TIMESTAMP,
 
 		-- Archival
 		archived BOOLEAN DEFAULT FALSE
@@ -557,6 +559,61 @@ func (s *SQLiteStore) applyMigrations() error {
 		slog.Info("Migration 10 applied successfully")
 	}
 
+	// Migration 11: Add dangerously skip permissions with timeout support
+	if currentVersion < 11 {
+		slog.Info("Applying migration 11: Add dangerously skip permissions columns")
+
+		// Check if columns already exist
+		var skipPermissionsExists, expiryExists int
+		err = s.db.QueryRow(`
+			SELECT COUNT(*) FROM pragma_table_info('sessions')
+			WHERE name = 'dangerously_skip_permissions'
+		`).Scan(&skipPermissionsExists)
+		if err != nil {
+			return fmt.Errorf("failed to check dangerously_skip_permissions column: %w", err)
+		}
+
+		err = s.db.QueryRow(`
+			SELECT COUNT(*) FROM pragma_table_info('sessions')
+			WHERE name = 'dangerously_skip_permissions_expires_at'
+		`).Scan(&expiryExists)
+		if err != nil {
+			return fmt.Errorf("failed to check dangerously_skip_permissions_expires_at column: %w", err)
+		}
+
+		// Add columns if they don't exist
+		if skipPermissionsExists == 0 {
+			_, err = s.db.Exec(`
+				ALTER TABLE sessions
+				ADD COLUMN dangerously_skip_permissions BOOLEAN DEFAULT 0
+			`)
+			if err != nil {
+				return fmt.Errorf("failed to add dangerously_skip_permissions column: %w", err)
+			}
+		}
+
+		if expiryExists == 0 {
+			_, err = s.db.Exec(`
+				ALTER TABLE sessions
+				ADD COLUMN dangerously_skip_permissions_expires_at TIMESTAMP
+			`)
+			if err != nil {
+				return fmt.Errorf("failed to add dangerously_skip_permissions_expires_at column: %w", err)
+			}
+		}
+
+		// Record migration
+		_, err = s.db.Exec(`
+			INSERT INTO schema_version (version, description)
+			VALUES (11, 'Add dangerously skip permissions with timeout support')
+		`)
+		if err != nil {
+			return fmt.Errorf("failed to record migration 11: %w", err)
+		}
+
+		slog.Info("Migration 11 applied successfully")
+	}
+
 	return nil
 }
 
@@ -572,8 +629,8 @@ func (s *SQLiteStore) CreateSession(ctx context.Context, session *Session) error
 			id, run_id, claude_session_id, parent_session_id,
 			query, summary, title, model, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
 			permission_prompt_tool, allowed_tools, disallowed_tools,
-			status, created_at, last_activity_at, auto_accept_edits, archived
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			status, created_at, last_activity_at, auto_accept_edits, archived, dangerously_skip_permissions, dangerously_skip_permissions_expires_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	_, err := s.db.ExecContext(ctx, query,
@@ -582,6 +639,7 @@ func (s *SQLiteStore) CreateSession(ctx context.Context, session *Session) error
 		session.SystemPrompt, session.AppendSystemPrompt, session.CustomInstructions,
 		session.PermissionPromptTool, session.AllowedTools, session.DisallowedTools,
 		session.Status, session.CreatedAt, session.LastActivityAt, session.AutoAcceptEdits, session.Archived,
+		session.DangerouslySkipPermissions, session.DangerouslySkipPermissionsExpiresAt,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create session: %w", err)
@@ -647,6 +705,18 @@ func (s *SQLiteStore) UpdateSession(ctx context.Context, sessionID string, updat
 		setParts = append(setParts, "auto_accept_edits = ?")
 		args = append(args, *updates.AutoAcceptEdits)
 	}
+	if updates.DangerouslySkipPermissions != nil {
+		setParts = append(setParts, "dangerously_skip_permissions = ?")
+		args = append(args, *updates.DangerouslySkipPermissions)
+	}
+	if updates.DangerouslySkipPermissionsExpiresAt != nil {
+		setParts = append(setParts, "dangerously_skip_permissions_expires_at = ?")
+		if *updates.DangerouslySkipPermissionsExpiresAt != nil {
+			args = append(args, **updates.DangerouslySkipPermissionsExpiresAt)
+		} else {
+			args = append(args, nil)
+		}
+	}
 	if updates.Model != nil {
 		setParts = append(setParts, "model = ?")
 		args = append(args, *updates.Model)
@@ -657,7 +727,8 @@ func (s *SQLiteStore) UpdateSession(ctx context.Context, sessionID string, updat
 	}
 
 	if len(setParts) == 0 {
-		return fmt.Errorf("no fields to update")
+		// No fields to update is OK - this is a no-op
+		return nil
 	}
 
 	query += " " + strings.Join(setParts, ", ")
@@ -689,7 +760,8 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 			query, summary, title, model, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
 			permission_prompt_tool, allowed_tools, disallowed_tools,
 			status, created_at, last_activity_at, completed_at,
-			cost_usd, total_tokens, duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived
+			cost_usd, total_tokens, duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived,
+			dangerously_skip_permissions, dangerously_skip_permissions_expires_at
 		FROM sessions WHERE id = ?
 	`
 
@@ -701,6 +773,7 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 	var totalTokens, durationMS, numTurns sql.NullInt64
 	var resultContent, errorMessage sql.NullString
 	var archived sql.NullBool
+	var dangerouslySkipPermissionsExpiresAt sql.NullTime
 
 	err := s.db.QueryRowContext(ctx, query, sessionID).Scan(
 		&session.ID, &session.RunID, &claudeSessionID, &parentSessionID,
@@ -709,7 +782,7 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 		&permissionPromptTool, &allowedTools, &disallowedTools,
 		&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
 		&costUSD, &totalTokens, &durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
-		&archived,
+		&archived, &session.DangerouslySkipPermissions, &dangerouslySkipPermissionsExpiresAt,
 	)
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("session not found: %s", sessionID)
@@ -755,6 +828,11 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 	// Handle archived field - default to false if NULL
 	session.Archived = archived.Valid && archived.Bool
 
+	// Handle dangerously skip permissions expires at
+	if dangerouslySkipPermissionsExpiresAt.Valid {
+		session.DangerouslySkipPermissionsExpiresAt = &dangerouslySkipPermissionsExpiresAt.Time
+	}
+
 	return &session, nil
 }
 
@@ -765,7 +843,8 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 			query, summary, title, model, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
 			permission_prompt_tool, allowed_tools, disallowed_tools,
 			status, created_at, last_activity_at, completed_at,
-			cost_usd, total_tokens, duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived
+			cost_usd, total_tokens, duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived,
+			dangerously_skip_permissions, dangerously_skip_permissions_expires_at
 		FROM sessions
 		WHERE run_id = ?
 	`
@@ -778,6 +857,7 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 	var totalTokens, durationMS, numTurns sql.NullInt64
 	var resultContent, errorMessage sql.NullString
 	var archived sql.NullBool
+	var dangerouslySkipPermissionsExpiresAt sql.NullTime
 
 	err := s.db.QueryRowContext(ctx, query, runID).Scan(
 		&session.ID, &session.RunID, &claudeSessionID, &parentSessionID,
@@ -786,7 +866,7 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 		&permissionPromptTool, &allowedTools, &disallowedTools,
 		&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
 		&costUSD, &totalTokens, &durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
-		&archived,
+		&archived, &session.DangerouslySkipPermissions, &dangerouslySkipPermissionsExpiresAt,
 	)
 	if err == sql.ErrNoRows {
 		return nil, nil // No session found
@@ -832,6 +912,11 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 	// Handle archived field - default to false if NULL
 	session.Archived = archived.Valid && archived.Bool
 
+	// Handle dangerously skip permissions expires at
+	if dangerouslySkipPermissionsExpiresAt.Valid {
+		session.DangerouslySkipPermissionsExpiresAt = &dangerouslySkipPermissionsExpiresAt.Time
+	}
+
 	return &session, nil
 }
 
@@ -842,7 +927,8 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 			query, summary, title, model, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
 			permission_prompt_tool, allowed_tools, disallowed_tools,
 			status, created_at, last_activity_at, completed_at,
-			cost_usd, total_tokens, duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived
+			cost_usd, total_tokens, duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived,
+			dangerously_skip_permissions, dangerously_skip_permissions_expires_at
 		FROM sessions
 		ORDER BY last_activity_at DESC
 	`
@@ -863,6 +949,7 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 		var totalTokens, durationMS, numTurns sql.NullInt64
 		var resultContent, errorMessage sql.NullString
 		var archived sql.NullBool
+		var dangerouslySkipPermissionsExpiresAt sql.NullTime
 
 		err := rows.Scan(
 			&session.ID, &session.RunID, &claudeSessionID, &parentSessionID,
@@ -871,7 +958,7 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 			&permissionPromptTool, &allowedTools, &disallowedTools,
 			&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
 			&costUSD, &totalTokens, &durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
-			&archived,
+			&archived, &session.DangerouslySkipPermissions, &dangerouslySkipPermissionsExpiresAt,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan session: %w", err)
@@ -916,7 +1003,115 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 		// Handle archived field - default to false if NULL
 		session.Archived = archived.Valid && archived.Bool
 
+		// Handle dangerously skip permissions expires at
+		if dangerouslySkipPermissionsExpiresAt.Valid {
+			session.DangerouslySkipPermissionsExpiresAt = &dangerouslySkipPermissionsExpiresAt.Time
+		}
+
 		sessions = append(sessions, &session)
+	}
+
+	return sessions, nil
+}
+
+// GetExpiredDangerousPermissionsSessions returns sessions where dangerous permissions have expired
+func (s *SQLiteStore) GetExpiredDangerousPermissionsSessions(ctx context.Context) ([]*Session, error) {
+	now := time.Now()
+	query := `
+		SELECT id, run_id, claude_session_id, parent_session_id,
+			query, summary, title, model, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
+			permission_prompt_tool, allowed_tools, disallowed_tools,
+			status, created_at, last_activity_at, completed_at,
+			cost_usd, total_tokens, duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived,
+			dangerously_skip_permissions, dangerously_skip_permissions_expires_at
+		FROM sessions
+		WHERE dangerously_skip_permissions = 1
+			AND dangerously_skip_permissions_expires_at IS NOT NULL
+			AND dangerously_skip_permissions_expires_at < ?
+			AND status IN ('running', 'waiting_input', 'starting')
+		ORDER BY dangerously_skip_permissions_expires_at ASC
+	`
+
+	rows, err := s.db.QueryContext(ctx, query, now)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query expired dangerous skip permissions sessions: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var sessions []*Session
+	for rows.Next() {
+		var session Session
+		var claudeSessionID, parentSessionID, summary, title, model, workingDir, systemPrompt, appendSystemPrompt, customInstructions sql.NullString
+		var permissionPromptTool, allowedTools, disallowedTools sql.NullString
+		var completedAt sql.NullTime
+		var costUSD sql.NullFloat64
+		var totalTokens, durationMS, numTurns sql.NullInt64
+		var resultContent, errorMessage sql.NullString
+		var archived sql.NullBool
+		var dangerouslySkipPermissionsExpiresAt sql.NullTime
+
+		err := rows.Scan(
+			&session.ID, &session.RunID, &claudeSessionID, &parentSessionID,
+			&session.Query, &summary, &title, &model, &workingDir, &session.MaxTurns,
+			&systemPrompt, &appendSystemPrompt, &customInstructions,
+			&permissionPromptTool, &allowedTools, &disallowedTools,
+			&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
+			&costUSD, &totalTokens, &durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
+			&archived, &session.DangerouslySkipPermissions, &dangerouslySkipPermissionsExpiresAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan session: %w", err)
+		}
+
+		// Handle nullable fields
+		session.ClaudeSessionID = claudeSessionID.String
+		session.ParentSessionID = parentSessionID.String
+		session.Summary = summary.String
+		session.Title = title.String
+		session.Model = model.String
+		session.WorkingDir = workingDir.String
+		session.SystemPrompt = systemPrompt.String
+		session.AppendSystemPrompt = appendSystemPrompt.String
+		session.CustomInstructions = customInstructions.String
+		session.PermissionPromptTool = permissionPromptTool.String
+		session.AllowedTools = allowedTools.String
+		session.DisallowedTools = disallowedTools.String
+		session.ResultContent = resultContent.String
+		session.ErrorMessage = errorMessage.String
+		if completedAt.Valid {
+			session.CompletedAt = &completedAt.Time
+		}
+		if costUSD.Valid {
+			session.CostUSD = &costUSD.Float64
+		}
+		if totalTokens.Valid {
+			tokens := int(totalTokens.Int64)
+			session.TotalTokens = &tokens
+		}
+		if durationMS.Valid {
+			duration := int(durationMS.Int64)
+			session.DurationMS = &duration
+		}
+		if numTurns.Valid {
+			turns := int(numTurns.Int64)
+			session.NumTurns = &turns
+		}
+		session.ResultContent = resultContent.String
+		session.ErrorMessage = errorMessage.String
+
+		// Handle archived field - default to false if NULL
+		session.Archived = archived.Valid && archived.Bool
+
+		// Handle dangerously skip permissions expires at
+		if dangerouslySkipPermissionsExpiresAt.Valid {
+			session.DangerouslySkipPermissionsExpiresAt = &dangerouslySkipPermissionsExpiresAt.Time
+		}
+
+		sessions = append(sessions, &session)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating rows: %w", err)
 	}
 
 	return sessions, nil

@@ -252,13 +252,15 @@ func TestLaunchSession_SetsMCPEnvironment(t *testing.T) {
 	mockStore.EXPECT().UpdateSession(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 	// Launch session with MCP config
-	config := claudecode.SessionConfig{
-		Query: "test query",
-		MCPConfig: &claudecode.MCPConfig{
-			MCPServers: map[string]claudecode.MCPServer{
-				"test-server": {
-					Command: "test-cmd",
-					Args:    []string{"arg1", "arg2"},
+	config := LaunchSessionConfig{
+		SessionConfig: claudecode.SessionConfig{
+			Query: "test query",
+			MCPConfig: &claudecode.MCPConfig{
+				MCPServers: map[string]claudecode.MCPServer{
+					"test-server": {
+						Command: "test-cmd",
+						Args:    []string{"arg1", "arg2"},
+					},
 				},
 			},
 		},

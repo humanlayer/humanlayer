@@ -16,6 +16,8 @@ type ConversationStore interface {
 	GetSession(ctx context.Context, sessionID string) (*Session, error)
 	GetSessionByRunID(ctx context.Context, runID string) (*Session, error)
 	ListSessions(ctx context.Context) ([]*Session, error)
+	// GetExpiredDangerousPermissionsSessions returns sessions where dangerous permissions have expired
+	GetExpiredDangerousPermissionsSessions(ctx context.Context) ([]*Session, error)
 
 	// Conversation operations
 	AddConversationEvent(ctx context.Context, event *ConversationEvent) error
@@ -57,53 +59,57 @@ type ConversationStore interface {
 
 // Session represents a Claude Code session
 type Session struct {
-	ID                   string
-	RunID                string
-	ClaudeSessionID      string
-	ParentSessionID      string
-	Query                string
-	Summary              string
-	Title                string // New field for user-editable title
-	Model                string
-	WorkingDir           string
-	MaxTurns             int
-	SystemPrompt         string
-	AppendSystemPrompt   string // NEW: Append to system prompt
-	CustomInstructions   string
-	PermissionPromptTool string // NEW: MCP tool for permission prompts
-	AllowedTools         string // NEW: JSON array of allowed tools
-	DisallowedTools      string // NEW: JSON array of disallowed tools
-	Status               string
-	CreatedAt            time.Time
-	LastActivityAt       time.Time
-	CompletedAt          *time.Time
-	CostUSD              *float64
-	TotalTokens          *int
-	DurationMS           *int
-	NumTurns             *int
-	ResultContent        string
-	ErrorMessage         string
-	AutoAcceptEdits      bool `db:"auto_accept_edits"`
-	Archived             bool // New field for session archiving
+	ID                                  string
+	RunID                               string
+	ClaudeSessionID                     string
+	ParentSessionID                     string
+	Query                               string
+	Summary                             string
+	Title                               string // New field for user-editable title
+	Model                               string
+	WorkingDir                          string
+	MaxTurns                            int
+	SystemPrompt                        string
+	AppendSystemPrompt                  string // NEW: Append to system prompt
+	CustomInstructions                  string
+	PermissionPromptTool                string // NEW: MCP tool for permission prompts
+	AllowedTools                        string // NEW: JSON array of allowed tools
+	DisallowedTools                     string // NEW: JSON array of disallowed tools
+	Status                              string
+	CreatedAt                           time.Time
+	LastActivityAt                      time.Time
+	CompletedAt                         *time.Time
+	CostUSD                             *float64
+	TotalTokens                         *int
+	DurationMS                          *int
+	NumTurns                            *int
+	ResultContent                       string
+	ErrorMessage                        string
+	AutoAcceptEdits                     bool       `db:"auto_accept_edits"`
+	DangerouslySkipPermissions          bool       `db:"dangerously_skip_permissions"`
+	DangerouslySkipPermissionsExpiresAt *time.Time `db:"dangerously_skip_permissions_expires_at"`
+	Archived                            bool       // New field for session archiving
 }
 
 // SessionUpdate contains fields that can be updated
 type SessionUpdate struct {
-	ClaudeSessionID *string
-	Summary         *string
-	Title           *string // New field for updating title
-	Status          *string
-	LastActivityAt  *time.Time
-	CompletedAt     *time.Time
-	CostUSD         *float64
-	TotalTokens     *int
-	DurationMS      *int
-	NumTurns        *int
-	ResultContent   *string
-	ErrorMessage    *string
-	AutoAcceptEdits *bool `db:"auto_accept_edits"`
-	Model           *string
-	Archived        *bool // New field for updating archived status
+	ClaudeSessionID                     *string
+	Summary                             *string
+	Title                               *string // New field for updating title
+	Status                              *string
+	LastActivityAt                      *time.Time
+	CompletedAt                         *time.Time
+	CostUSD                             *float64
+	TotalTokens                         *int
+	DurationMS                          *int
+	NumTurns                            *int
+	ResultContent                       *string
+	ErrorMessage                        *string
+	AutoAcceptEdits                     *bool       `db:"auto_accept_edits"`
+	DangerouslySkipPermissions          *bool       `db:"dangerously_skip_permissions"`
+	DangerouslySkipPermissionsExpiresAt **time.Time `db:"dangerously_skip_permissions_expires_at"`
+	Model                               *string
+	Archived                            *bool // New field for updating archived status
 }
 
 // ConversationEvent represents a single event in a conversation

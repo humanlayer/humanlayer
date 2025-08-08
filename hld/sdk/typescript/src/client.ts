@@ -106,13 +106,30 @@ export class HLDClient {
     }
 
     // Update session settings
-    async updateSession(id: string, updates: { auto_accept_edits?: boolean, title?: string }): Promise<void> {
+    async updateSession(id: string, updates: {
+        auto_accept_edits?: boolean,
+        title?: string,
+        dangerouslySkipPermissions?: boolean,
+        dangerouslySkipPermissionsTimeoutMs?: number
+    }): Promise<void> {
+        // Build request with only defined fields to avoid sending undefined values
+        const updateSessionRequest: any = {};
+        if (updates.auto_accept_edits !== undefined) {
+            updateSessionRequest.autoAcceptEdits = updates.auto_accept_edits;
+        }
+        if (updates.title !== undefined) {
+            updateSessionRequest.title = updates.title;
+        }
+        if (updates.dangerouslySkipPermissions !== undefined) {
+            updateSessionRequest.dangerouslySkipPermissions = updates.dangerouslySkipPermissions;
+        }
+        if (updates.dangerouslySkipPermissionsTimeoutMs !== undefined) {
+            updateSessionRequest.dangerouslySkipPermissionsTimeoutMs = updates.dangerouslySkipPermissionsTimeoutMs;
+        }
+
         await this.sessionsApi.updateSession({
             id,
-            updateSessionRequest: {
-                autoAcceptEdits: updates.auto_accept_edits,
-                title: updates.title
-            }
+            updateSessionRequest
         });
     }
 
