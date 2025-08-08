@@ -360,6 +360,23 @@ export default function SessionTable({
     [focusedSession, toggleSessionSelection],
   )
 
+  // Rename session hotkey
+  useHotkeys(
+    'meta+r',
+    () => {
+      if (focusedSession) {
+        startEdit(focusedSession.id, focusedSession.title || '', focusedSession.summary || '')
+      }
+    },
+    {
+      scopes: SessionTableHotkeysScope,
+      enabled: !isSessionLauncherOpen && focusedSession !== null && editingSessionId === null,
+      preventDefault: true,
+      enableOnFormTags: false,
+    },
+    [focusedSession, startEdit, editingSessionId],
+  )
+
   return (
     <>
       {sessions.length > 0 ? (
