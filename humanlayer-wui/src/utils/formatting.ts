@@ -150,5 +150,5 @@ export function getSessionNotificationText(
   maxLength: number = 40,
 ): string {
   const text = session.title || session.summary || session.query
-  return text.slice(0, maxLength)
+  return text.trim().slice(0, maxLength)
 }
