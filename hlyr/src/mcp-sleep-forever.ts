@@ -6,12 +6,7 @@
  * Usage: npx tsx mcp-sleep-forever.ts
  */
 
-import { createServer } from '@connectrpc/connect'
-import { ConnectRouter } from '@connectrpc/connect'
-import { ConnectTransportOptions } from '@connectrpc/connect-node'
-import { fastifyConnectPlugin } from '@connectrpc/connect-fastify'
-import fastify from 'fastify'
-import { readFileSync, appendFileSync } from 'fs'
+import { appendFileSync } from 'fs'
 import { homedir } from 'os'
 import { join } from 'path'
 
@@ -23,7 +18,7 @@ function log(message: string) {
   const logEntry = `[${timestamp}] ${message}\n`
   try {
     appendFileSync(LOG_FILE, logEntry)
-  } catch (error) {
+  } catch {
     // Ignore logging errors
   }
 }
@@ -32,17 +27,17 @@ function log(message: string) {
 interface MCPRequest {
   jsonrpc: string
   method: string
-  params?: any
+  params?: Record<string, unknown>
   id?: number | string
 }
 
 interface MCPResponse {
   jsonrpc: string
-  result?: any
+  result?: unknown
   error?: {
     code: number
     message: string
-    data?: any
+    data?: unknown
   }
   id?: number | string
 }
@@ -167,7 +162,7 @@ async function main() {
           const response = await handleRequest(request)
           process.stdout.write(JSON.stringify(response) + '\n')
         } catch (error) {
-          log(`Error processing request: ${error}`)
+          log(`Error processing request: ${error instanceof Error ? error.message : String(error)}`)
           const errorResponse: MCPResponse = {
             jsonrpc: '2.0',
             error: {
@@ -202,6 +197,6 @@ async function main() {
 
 // Start the server
 main().catch(error => {
-  log(`Fatal error: ${error}`)
+  log(`Fatal error: ${error instanceof Error ? error.message : String(error)}`)
   process.exit(1)
 })
