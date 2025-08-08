@@ -605,6 +605,21 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     },
   )
 
+  // Rename session hotkey
+  useHotkeys(
+    'meta+r',
+    () => {
+      startEditTitle()
+    },
+    {
+      scopes: SessionDetailHotkeysScope,
+      enabled: !isEditingTitle,
+      preventDefault: true,
+      enableOnFormTags: false,
+    },
+    [startEditTitle, isEditingTitle],
+  )
+
   useStealHotkeyScope(SessionDetailHotkeysScope)
 
   // Note: Most hotkeys are handled by the hooks (ctrl+x, r, p, i, a, d)
