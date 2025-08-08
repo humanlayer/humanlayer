@@ -43,6 +43,7 @@ export function useSessionApprovals({
   const handleApprove = useCallback(async (approvalId: string) => {
     try {
       setApprovingApprovalId(approvalId)
+      console.log('firing off approval for ', approvalId)
       await daemonClient.approveFunctionCall(approvalId)
     } catch (error) {
       notificationService.notifyError(error, 'Failed to approve')

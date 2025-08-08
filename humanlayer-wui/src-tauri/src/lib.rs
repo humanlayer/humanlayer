@@ -199,7 +199,8 @@ pub fn run() {
                 vec![
                     tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Folder {
                         path: log_dir,
-                        file_name: Some("codelayer.log".into()),
+                        // Note, `.log` extension automatically added
+                        file_name: Some("codelayer".into()),
                     }),
                     tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout),
                     tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Webview),

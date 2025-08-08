@@ -262,6 +262,11 @@ export class DaemonClient extends EventEmitter {
       id,
     }
 
+    // Log the raw RPC request being sent
+    if (method === 'createApproval' || method === 'getApproval') {
+      console.log(`[DaemonClient.call] Sending RPC request: ${method}`, JSON.stringify(req))
+    }
+
     // Send request
     await new Promise<void>((resolve, reject) => {
       this.conn!.write(JSON.stringify(req) + '\n', err => {
@@ -351,11 +356,21 @@ export class DaemonClient extends EventEmitter {
     toolName: string,
     toolInput: unknown,
   ): Promise<{ approval_id: string }> {
-    return this.call<{ approval_id: string }>('createApproval', {
+    const params = {
       run_id: runId,
       tool_name: toolName,
       tool_input: toolInput,
-    })
+    }
+    
+    // Log what we're sending to the daemon
+    console.log('[DaemonClient] Sending createApproval to daemon:', JSON.stringify(params))
+    
+    const result = await this.call<{ approval_id: string }>('createApproval', params)
+    
+    // Log what we received back
+    console.log('[DaemonClient] Received approval_id from daemon:', result.approval_id)
+    
+    return result
   }
 
   async fetchApprovals(sessionId: string): Promise<Approval[]> {
@@ -364,8 +379,16 @@ export class DaemonClient extends EventEmitter {
   }
 
   async getApproval(approvalId: string): Promise<Approval> {
-    const resp = await this.call<{ approval: Approval }>('getApproval', { approval_id: approvalId })
-    return resp.approval
+    console.log('[DaemonClient] Fetching approval from daemon:', approvalId)
+    
+    try {
+      const resp = await this.call<{ approval: Approval }>('getApproval', { approval_id: approvalId })
+      console.log('[DaemonClient] Successfully fetched approval:', JSON.stringify(resp.approval))
+      return resp.approval
+    } catch (error) {
+      console.error('[DaemonClient] Failed to fetch approval:', approvalId, 'Error:', error)
+      throw error
+    }
   }
 
   async sendDecision(approvalId: string, decision: string, comment: string): Promise<void> {

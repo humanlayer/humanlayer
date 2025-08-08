@@ -1,5 +1,5 @@
-// Detect if we're in a test environment (no window object)
-const isTestEnvironment = typeof window === 'undefined'
+// Detect if we're in a test environment (no window object) | Sometimes the webkit devtools don't cut it, this allows opening in a browser.
+const isTestEnvironment = typeof window === 'undefined' || window.navigator.userAgent.toLowerCase().indexOf('chrome') !== -1
 
 // Lazy load Tauri logging to avoid import errors in tests
 let tauriLog: any = null

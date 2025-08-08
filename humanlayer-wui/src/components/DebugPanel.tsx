@@ -16,6 +16,7 @@ import { useDaemonConnection } from '@/hooks/useDaemonConnection'
 import { logger } from '@/lib/logging'
 import { daemonClient } from '@/lib/daemon'
 import type { DatabaseInfo } from '@/lib/daemon/types'
+import { toast } from 'sonner'
 
 interface DebugPanelProps {
   open?: boolean
@@ -69,7 +70,7 @@ export function DebugPanel({ open, onOpenChange }: DebugPanelProps) {
       if (type === 'external') {
         setExternalDaemonUrl((window as any).__HUMANLAYER_DAEMON_URL || null)
       }
-      
+
       // Fetch database info if connected
       if (connected) {
         try {
@@ -260,33 +261,26 @@ export function DebugPanel({ open, onOpenChange }: DebugPanelProps) {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-4 sm:grid-cols-1">
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-muted-foreground">Path</span>
                       <div className="flex items-center gap-1">
-                        <span className="text-xs font-mono truncate max-w-[200px]" title={databaseInfo.path}>
+                        <span className="text-xs font-mono" title={databaseInfo.path}>
                           {databaseInfo.path}
                         </span>
                         <Button
                           variant="ghost"
                           size="sm"
                           className="h-6 w-6 p-0"
-                          onClick={() => copyToClipboard(databaseInfo.path)}
+                          onClick={() => {
+                            copyToClipboard(databaseInfo.path)
+                            toast.success('Copied to clipboard')
+                          }}
                         >
                           <Copy className="h-3 w-3" />
                         </Button>
                       </div>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Size</span>
-                      <span className="text-sm font-medium">{formatBytes(databaseInfo.size)}</span>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Tables</span>
-                      <span className="text-sm font-medium">{databaseInfo.table_count}</span>
                     </div>
 
                     {databaseInfo.last_modified && (
@@ -297,6 +291,16 @@ export function DebugPanel({ open, onOpenChange }: DebugPanelProps) {
                         </span>
                       </div>
                     )}
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Size</span>
+                      <span className="text-sm font-medium">{formatBytes(databaseInfo.size)}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Tables</span>
+                      <span className="text-sm font-medium">{databaseInfo.table_count}</span>
+                    </div>
                   </div>
 
                   <div className="space-y-2">

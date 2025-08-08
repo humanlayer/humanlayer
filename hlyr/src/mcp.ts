@@ -148,7 +148,13 @@ export async function startClaudeApprovalsMCPServer() {
   })
 
   server.setRequestHandler(CallToolRequestSchema, async request => {
-    logger.debug('Received tool call request', { name: request.params.name })
+    // Log the complete request from Claude to see if there's any ID we're missing
+    logger.error('process.env', process.env)
+    logger.error('Full tool call request from Claude', {
+      name: request.params.name,
+      arguments: request.params.arguments,
+      fullRequest: JSON.stringify(request),
+    })
 
     if (request.params.name === 'request_permission') {
       const toolName: string | undefined = request.params.arguments?.tool_name
@@ -167,7 +173,11 @@ export async function startClaudeApprovalsMCPServer() {
         throw new McpError(ErrorCode.InternalError, 'HUMANLAYER_RUN_ID not set')
       }
 
-      logger.info('Processing approval request', { runId, toolName })
+      logger.info('Processing approval request', { 
+        runId, 
+        toolName,
+        toolInput: JSON.stringify(input),
+      })
 
       try {
         // Connect to daemon
@@ -175,8 +185,12 @@ export async function startClaudeApprovalsMCPServer() {
         await daemonClient.connect()
         logger.debug('Connected to daemon')
 
-        // Create approval request
-        logger.debug('Creating approval request...', { runId, toolName })
+        // Create approval request with full input logging
+        logger.debug('Creating approval request with full payload', { 
+          runId, 
+          toolName,
+          toolInput: JSON.stringify(input),
+        })
         const createResponse = await daemonClient.createApproval(runId, toolName, input)
         const approvalId = createResponse.approval_id
         logger.info('Created approval', { approvalId })

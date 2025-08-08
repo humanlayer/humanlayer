@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 
 	"github.com/humanlayer/humanlayer/hld/approval"
 	"github.com/humanlayer/humanlayer/hld/session"
@@ -38,10 +39,20 @@ type CreateApprovalResponse struct {
 
 // HandleCreateApproval handles the CreateApproval RPC method
 func (h *ApprovalHandlers) HandleCreateApproval(ctx context.Context, params json.RawMessage) (interface{}, error) {
+	// Log the raw incoming payload for debugging
+	slog.Debug("received createApproval RPC request",
+		"raw_params", string(params))
+	
 	var req CreateApprovalRequest
 	if err := json.Unmarshal(params, &req); err != nil {
 		return nil, fmt.Errorf("invalid request: %w", err)
 	}
+
+	// Log the parsed request with full details
+	slog.Debug("parsed createApproval request",
+		"run_id", req.RunID,
+		"tool_name", req.ToolName,
+		"tool_input", string(req.ToolInput))
 
 	// Validate required fields
 	if req.RunID == "" {

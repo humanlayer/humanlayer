@@ -101,7 +101,9 @@ func (m *manager) CreateApproval(ctx context.Context, runID, toolName string, to
 	slog.Log(ctx, logLevel, "created local approval",
 		"approval_id", approval.ID,
 		"session_id", session.ID,
+		"run_id", runID,
 		"tool_name", toolName,
+		"tool_input", string(toolInput),
 		"status", status,
 		"auto_accepted", status == store.ApprovalStatusLocalApproved)
 
