@@ -56,6 +56,7 @@ const hotkeyData = [
   { category: 'Session Detail', key: 'Shift+Tab', description: 'Toggle auto-accept edits' },
   { category: 'Session Detail', key: 'Enter', description: 'Focus response input' },
   { category: 'Session Detail', key: '⌘+Enter', description: 'Submit response' },
+  { category: 'Session Detail', key: '⌥+Y', description: 'Toggle bypass permissions' },
 ]
 
 // Group hotkeys by category
