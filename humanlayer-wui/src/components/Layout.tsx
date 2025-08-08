@@ -22,7 +22,7 @@ import { useSessionSubscriptions } from '@/hooks/useSubscriptions'
 import { Toaster } from 'sonner'
 import { notificationService, type NotificationOptions } from '@/services/NotificationService'
 import { useTheme } from '@/contexts/ThemeContext'
-import { formatMcpToolName } from '@/utils/formatting'
+import { formatMcpToolName, getSessionNotificationText } from '@/utils/formatting'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { MessageCircle, Bug } from 'lucide-react'
 import { openUrl } from '@tauri-apps/plugin-opener'
@@ -104,10 +104,12 @@ export function Layout() {
         }
 
         try {
+          const sessionText = getSessionNotificationText(session)
+
           let notificationOptions: NotificationOptions = {
             type: 'session_completed',
             title: `Session Completed (${data.session_id.slice(0, 8)})`,
-            body: `Completed: ${session.query}`,
+            body: `Completed: ${sessionText}`,
             metadata: {
               sessionId: data.session_id,
               model: session.model,
@@ -119,7 +121,7 @@ export function Layout() {
           if (nextStatus === SessionStatus.Failed) {
             notificationOptions.type = 'session_failed'
             notificationOptions.title = `Session Failed (${data.session_id.slice(0, 8)})`
-            notificationOptions.body = session.errorMessage || `Failed: ${session.query}`
+            notificationOptions.body = session.errorMessage || `Failed: ${sessionText}`
             notificationOptions.priority = 'high'
           }
 
