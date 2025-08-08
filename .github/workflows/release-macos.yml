@@ -104,43 +104,15 @@ jobs:
 
             * **CodeLayer** - Desktop application (DMG installer)
 
-            ### Notes
-
-            * If you have a previous install, you will need to clean up / remove / stop previous bits (your sessions will persist!)
-            * if your `claude` cli is not in a very-default location like `/usr/local/bin`, you will need to launch with `open /Applications/CodeLayer.app` rather than launching from Spotlight/Finder/Raycast/etc
-
-            ### Installation Instructions
-
-            #### First: Cleanup
-
-            This installation is managed as a brew cask, if you have previously set up CodeLayer manually with a separate `hld-darwin-arm64` process, you'll want to clean things up:
-
-            * Stop all running sessions
-              * for running sessions, ctrl+x
-              * for sessions awaiting approval, approve or deny, then ctrl+x
-              * sessions that have a final assistant message and are in completed/interrupted state are safe to leave as is
-              * (right now this is necessary to preserve sessions - the latest CodeLayer includes clean shutdown/recovery for sessions)
-            * Stop any running `hld-darwin-arm64` process
-            * Remove any existing humanlayer cli (something like `rm $(which humanlayer)`)
-            * Quit + remove any existing `CodeLayer.app` - `rm -r /Applications/CodeLayer.app`
-            * Install with brew cask and the `--no-quarantine` flag - This disables macOS gatekeeper - make sure you know what you're doing!
+            ### tl;dr
 
             ```
-            brew install --cask --no-quarantine humanlayer/humanlayer/codelayer
+            brew install --cask --no-quarantine humanlayer/humanlayer/codelayer${{ contains(steps.version.outputs.release_version, 'nightly') && '-nightly' || '' }}
+            # kill any existing hld process and open CodeLayer with current shell PATH so it can find your `claude` CLI
+            pkill hld; open /Applications/CodeLayer${{ contains(steps.version.outputs.release_version, 'nightly') && '-Nightly' || '' }}.app
             ```
 
-            or if you prefer tapping directly you can do
-
-            ```
-            brew tap humanlayer/humanlayer
-            brew install --cask --no-quarantine codelayer
-            ```
-
-            Then, you can run it with
-
-            ```
-            open /Applications/CodeLayer.app
-            ```
+            * if your `claude` cli is not in a very-default location like `/usr/local/bin`, you will need to launch with `open /Applications/CodeLayer${{ contains(steps.version.outputs.release_version, 'nightly') && '-Nightly' || '' }}.app` rather than launching from Spotlight/Finder/Raycast/etc
 
             ### Requirements
 
@@ -149,12 +121,12 @@ jobs:
             ### Troubleshooting / Known Issues
 
             * If install fails, ensure you've cleaned up all previous artifacts. `brew reinstall` is worth a shot as well.
-            * Logs can be found at `~/Library/Logs/dev.humanlayer.wui/CodeLayer.log`
+            * Logs can be found at `~/Library/Logs/dev.humanlayer.wui${{ contains(steps.version.outputs.release_version, 'nightly') && '.nightly' || '' }}/CodeLayer.log`
             * If daemon fails due to already running, you can `pkill hld` and reopen CodeLayer to try again
-            * If opening from spotlight/alfred/raycast/finder fails, try `open /Applications/CodeLayer.app` to push your PATH into CodeLayer so it can better find your `claude` CLI
+            * If opening from spotlight/alfred/raycast/finder fails, try `pkill hld; open /Applications/CodeLayer${{ contains(steps.version.outputs.release_version, 'nightly') && '-Nightly' || '' }}.app` to push your PATH into CodeLayer so it can better find your `claude` CLI
 
           draft: false
-          prerelease: false
+          prerelease: ${{ contains(steps.version.outputs.release_version, 'nightly') }}
 
           files: |
             humanlayer-wui/src-tauri/target/release/bundle/dmg/*.dmg
