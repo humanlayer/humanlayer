@@ -26,16 +26,19 @@ export const getHelpText = (status: string): React.ReactNode => {
   if (status === 'failed') return 'Session failed - cannot continue'
   const isMac = navigator.platform.includes('Mac')
   const sendKey = isMac ? '⌘+Enter' : 'Ctrl+Enter'
+  const skipKey = isMac ? 'Option+Y' : 'Alt+Y'
   if (status === 'running' || status === 'starting') {
     return (
       <>
-        <Kbd>Ctrl+X</Kbd> to interrupt • <Kbd>{sendKey}</Kbd> to interrupt and send
+        <Kbd>Ctrl+X</Kbd> to interrupt / <Kbd>{sendKey}</Kbd> to interrupt and send /{' '}
+        <Kbd>{skipKey}</Kbd> to bypass permissions / <Kbd>Shift+Tab</Kbd> for auto-accept edits
       </>
     )
   }
   return (
     <>
-      <Kbd>{sendKey}</Kbd> to send
+      <Kbd>{sendKey}</Kbd> to send / <Kbd>{skipKey}</Kbd> to bypass permissions / <Kbd>Shift+Tab</Kbd>{' '}
+      for auto-accept edits
     </>
   )
 }
