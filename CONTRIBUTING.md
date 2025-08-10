@@ -12,8 +12,7 @@ If you're looking to contribute, please:
 
 ```
 make setup
-make daemon-dev-build
-make wui
+make codelayer-dev
 ```
 
 When the Web UI launches in dev mode, you'll need to launch a managed daemon with it - click the 🐞 icon in the bottom right and launch a managed daemon.
