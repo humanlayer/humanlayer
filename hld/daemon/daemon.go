@@ -204,6 +204,9 @@ func (d *Daemon) Run(ctx context.Context) error {
 		}()
 	}
 
+	// Start approval reconciliation task
+	go d.runApprovalReconciliation(ctx)
+
 	slog.Info("daemon started", "socket", d.socketPath, "http_enabled", d.httpServer != nil)
 
 	// Accept connections until context is cancelled
@@ -271,6 +274,76 @@ func (d *Daemon) handleConnection(ctx context.Context, conn net.Conn) {
 	}
 
 	slog.Debug("client disconnected", "remote", conn.RemoteAddr())
+}
+
+// runApprovalReconciliation periodically checks for orphaned approvals and attempts to correlate them
+func (d *Daemon) runApprovalReconciliation(ctx context.Context) {
+	ticker := time.NewTicker(5 * time.Minute)
+	defer ticker.Stop()
+	
+	// Run once immediately on startup
+	if err := d.reconcileOrphanedApprovals(ctx); err != nil {
+		slog.Error("failed to reconcile orphaned approvals on startup", "error", err)
+	}
+	
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			// Check context before reconciling to avoid running during shutdown
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				if err := d.reconcileOrphanedApprovals(ctx); err != nil {
+					slog.Error("failed to reconcile orphaned approvals", "error", err)
+				}
+			}
+		}
+	}
+}
+
+// reconcileOrphanedApprovals attempts to correlate orphaned approvals with tool calls
+func (d *Daemon) reconcileOrphanedApprovals(ctx context.Context) error {
+	// Check if store is nil before trying to use it
+	if d.store == nil {
+		return fmt.Errorf("store not initialized")
+	}
+	
+	orphaned, err := d.store.GetOrphanedApprovals(ctx, 1*time.Minute)
+	if err != nil {
+		return fmt.Errorf("failed to get orphaned approvals: %w", err)
+	}
+	
+	if len(orphaned) == 0 {
+		return nil
+	}
+	
+	slog.Info("found orphaned approvals", "count", len(orphaned))
+	
+	for _, approval := range orphaned {
+		// Try to correlate one more time
+		toolCall, err := d.store.GetUncorrelatedPendingToolCall(ctx, approval.SessionID, approval.ToolName)
+		if err != nil {
+			slog.Error("failed to find tool call for orphaned approval", 
+				"approval_id", approval.ID, "error", err)
+			continue
+		}
+		
+		if toolCall != nil {
+			if err := d.store.CorrelateApprovalByToolID(ctx, approval.SessionID, toolCall.ToolID, approval.ID); err != nil {
+				slog.Error("failed to correlate orphaned approval",
+					"approval_id", approval.ID, "error", err)
+			} else {
+				slog.Info("successfully correlated orphaned approval",
+					"approval_id", approval.ID,
+					"tool_id", toolCall.ToolID)
+			}
+		}
+	}
+	
+	return nil
 }
 
 // markOrphanedSessionsAsFailed marks any sessions that were running or waiting

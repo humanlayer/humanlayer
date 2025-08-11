@@ -1633,6 +1633,66 @@ func (s *SQLiteStore) GetPendingApprovals(ctx context.Context, sessionID string)
 	return approvals, nil
 }
 
+// GetOrphanedApprovals retrieves approvals that are not correlated with any tool call
+func (s *SQLiteStore) GetOrphanedApprovals(ctx context.Context, olderThan time.Duration) ([]*Approval, error) {
+	cutoff := time.Now().Add(-olderThan)
+	
+	query := `
+		SELECT id, run_id, session_id, status, created_at, responded_at,
+			tool_name, tool_input, comment
+		FROM approvals
+		WHERE status = ?
+		  AND created_at < ?
+		  AND NOT EXISTS (
+			SELECT 1 FROM conversation_events ce
+			WHERE ce.approval_id = approvals.id
+		  )
+		ORDER BY created_at DESC
+		LIMIT 100
+	`
+	
+	rows, err := s.db.QueryContext(ctx, query, ApprovalStatusLocalPending.String(), cutoff)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query orphaned approvals: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	
+	var approvals []*Approval
+	for rows.Next() {
+		var approval Approval
+		var respondedAt sql.NullTime
+		var comment sql.NullString
+		var statusStr string
+		var toolInputStr string
+		
+		err := rows.Scan(
+			&approval.ID, &approval.RunID, &approval.SessionID, &statusStr,
+			&approval.CreatedAt, &respondedAt,
+			&approval.ToolName, &toolInputStr, &comment,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan approval: %w", err)
+		}
+		
+		// Convert status string to ApprovalStatus
+		approval.Status = ApprovalStatus(statusStr)
+		if !approval.Status.IsValid() {
+			return nil, fmt.Errorf("invalid approval status in database: %s", statusStr)
+		}
+		
+		// Handle nullable fields
+		if respondedAt.Valid {
+			approval.RespondedAt = &respondedAt.Time
+		}
+		approval.Comment = comment.String
+		approval.ToolInput = json.RawMessage(toolInputStr)
+		
+		approvals = append(approvals, &approval)
+	}
+	
+	return approvals, rows.Err()
+}
+
 // UpdateApprovalResponse updates the status and comment of an approval
 func (s *SQLiteStore) UpdateApprovalResponse(ctx context.Context, id string, status ApprovalStatus, comment string) error {
 	// Validate status

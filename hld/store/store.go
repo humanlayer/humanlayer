@@ -43,6 +43,7 @@ type ConversationStore interface {
 	CreateApproval(ctx context.Context, approval *Approval) error
 	GetApproval(ctx context.Context, id string) (*Approval, error)
 	GetPendingApprovals(ctx context.Context, sessionID string) ([]*Approval, error)
+	GetOrphanedApprovals(ctx context.Context, olderThan time.Duration) ([]*Approval, error)
 	UpdateApprovalResponse(ctx context.Context, id string, status ApprovalStatus, comment string) error
 
 	// File snapshot operations

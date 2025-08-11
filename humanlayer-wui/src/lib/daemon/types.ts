@@ -53,6 +53,14 @@ export interface DatabaseInfo {
   last_modified?: string
 }
 
+export interface ApprovalMetrics {
+  total_pending: number
+  orphaned_count: number
+  correlated_count: number
+  checked_at: string
+  mcp_failures?: number
+}
+
 // Client interface using legacy types for backward compatibility
 export interface DaemonClient {
   connect(): Promise<void>
@@ -114,6 +122,7 @@ export interface DaemonClient {
   // Utility methods
   getRecentPaths(limit?: number): Promise<RecentPath[]>
   getDatabaseInfo(): Promise<DatabaseInfo>
+  getApprovalMetrics(): Promise<ApprovalMetrics>
 }
 
 // Legacy enums and types for backward compatibility (to be gradually removed)

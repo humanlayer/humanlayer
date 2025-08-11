@@ -20,6 +20,12 @@ func TestManager_CreateApproval(t *testing.T) {
 	mockStore := store.NewMockConversationStore(ctrl)
 	mockEventBus := bus.NewMockEventBus(ctrl)
 
+	// Expect subscription to tool call events
+	mockSubscriber := &bus.Subscriber{
+		Channel: make(chan bus.Event, 1),
+	}
+	mockEventBus.EXPECT().Subscribe(gomock.Any(), gomock.Any()).Return(mockSubscriber)
+
 	manager := NewManager(mockStore, mockEventBus)
 
 	ctx := context.Background()
@@ -47,7 +53,8 @@ func TestManager_CreateApproval(t *testing.T) {
 	})
 
 	// Mock correlation attempt - it's ok if it fails
-	mockStore.EXPECT().GetUncorrelatedPendingToolCall(ctx, sessionID, toolName).Return(nil, nil)
+	// Allow up to 4 calls (1 initial + 3 retries)
+	mockStore.EXPECT().GetUncorrelatedPendingToolCall(ctx, sessionID, toolName).Return(nil, nil).Times(4)
 
 	// Mock event publishing
 	mockEventBus.EXPECT().Publish(gomock.Any()).Do(func(event bus.Event) {
@@ -73,6 +80,12 @@ func TestManager_CreateApproval_SessionNotFound(t *testing.T) {
 	mockStore := store.NewMockConversationStore(ctrl)
 	mockEventBus := bus.NewMockEventBus(ctrl)
 
+	// Expect subscription to tool call events
+	mockSubscriber := &bus.Subscriber{
+		Channel: make(chan bus.Event, 1),
+	}
+	mockEventBus.EXPECT().Subscribe(gomock.Any(), gomock.Any()).Return(mockSubscriber)
+
 	manager := NewManager(mockStore, mockEventBus)
 
 	ctx := context.Background()
@@ -95,6 +108,12 @@ func TestManager_GetPendingApprovals(t *testing.T) {
 
 	mockStore := store.NewMockConversationStore(ctrl)
 	mockEventBus := bus.NewMockEventBus(ctrl)
+
+	// Expect subscription to tool call events
+	mockSubscriber := &bus.Subscriber{
+		Channel: make(chan bus.Event, 1),
+	}
+	mockEventBus.EXPECT().Subscribe(gomock.Any(), gomock.Any()).Return(mockSubscriber)
 
 	manager := NewManager(mockStore, mockEventBus)
 
@@ -129,6 +148,12 @@ func TestManager_ApproveToolCall(t *testing.T) {
 
 	mockStore := store.NewMockConversationStore(ctrl)
 	mockEventBus := bus.NewMockEventBus(ctrl)
+
+	// Expect subscription to tool call events
+	mockSubscriber := &bus.Subscriber{
+		Channel: make(chan bus.Event, 1),
+	}
+	mockEventBus.EXPECT().Subscribe(gomock.Any(), gomock.Any()).Return(mockSubscriber)
 
 	manager := NewManager(mockStore, mockEventBus)
 
@@ -176,6 +201,12 @@ func TestManager_DenyToolCall(t *testing.T) {
 	mockStore := store.NewMockConversationStore(ctrl)
 	mockEventBus := bus.NewMockEventBus(ctrl)
 
+	// Expect subscription to tool call events
+	mockSubscriber := &bus.Subscriber{
+		Channel: make(chan bus.Event, 1),
+	}
+	mockEventBus.EXPECT().Subscribe(gomock.Any(), gomock.Any()).Return(mockSubscriber)
+
 	manager := NewManager(mockStore, mockEventBus)
 
 	ctx := context.Background()
@@ -222,6 +253,12 @@ func TestManager_CorrelateApproval(t *testing.T) {
 	mockStore := store.NewMockConversationStore(ctrl)
 	mockEventBus := bus.NewMockEventBus(ctrl)
 
+	// Expect subscription to tool call events
+	mockSubscriber := &bus.Subscriber{
+		Channel: make(chan bus.Event, 1),
+	}
+	mockEventBus.EXPECT().Subscribe(gomock.Any(), gomock.Any()).Return(mockSubscriber)
+
 	manager := NewManager(mockStore, mockEventBus)
 
 	ctx := context.Background()
@@ -239,13 +276,13 @@ func TestManager_CorrelateApproval(t *testing.T) {
 	// Mock creating approval
 	mockStore.EXPECT().CreateApproval(ctx, gomock.Any()).Return(nil)
 
-	// Mock successful correlation
+	// Mock successful correlation (may be called once since it succeeds)
 	pendingToolCall := &store.ConversationEvent{
 		ID:       123,
 		ToolID:   "tool-123",
 		ToolName: toolName,
 	}
-	mockStore.EXPECT().GetUncorrelatedPendingToolCall(ctx, sessionID, toolName).Return(pendingToolCall, nil)
+	mockStore.EXPECT().GetUncorrelatedPendingToolCall(ctx, sessionID, toolName).Return(pendingToolCall, nil).Times(1)
 
 	// Mock correlating by tool ID
 	mockStore.EXPECT().CorrelateApprovalByToolID(ctx, sessionID, "tool-123", gomock.Any()).Return(nil)

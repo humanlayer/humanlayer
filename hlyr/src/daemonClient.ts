@@ -319,6 +319,35 @@ export class DaemonClient extends EventEmitter {
 
       this.conn!.on('data', dataHandler)
 
+      // Add error handler for connection errors
+      const errorHandler = (error: Error) => {
+        // Clear the timeout
+        if (timeout) {
+          clearTimeout(timeout)
+          timeout = undefined
+        }
+
+        // Remove listeners
+        if (this.conn) {
+          this.conn.removeListener('data', dataHandler)
+          this.conn.removeListener('error', errorHandler)
+        }
+
+        // Classify the error type
+        let errorMessage = error.message
+        if (error.message.includes('EPIPE')) {
+          errorMessage = `Connection broken (EPIPE): ${error.message}`
+        } else if (error.message.includes('ECONNRESET')) {
+          errorMessage = `Connection reset: ${error.message}`
+        } else if (error.message.includes('ECONNREFUSED')) {
+          errorMessage = `Daemon not running: ${error.message}`
+        }
+
+        reject(new Error(`RPC error: ${errorMessage}`))
+      }
+
+      this.conn!.once('error', errorHandler)
+
       // Set a timeout
       timeout = setTimeout(() => {
         // Clear the timeout reference
@@ -327,6 +356,7 @@ export class DaemonClient extends EventEmitter {
         // Only try to remove listener if connection still exists
         if (this.conn) {
           this.conn.removeListener('data', dataHandler)
+          this.conn.removeListener('error', errorHandler)
         }
         reject(new Error('RPC call timeout'))
       }, 30000)
@@ -361,15 +391,15 @@ export class DaemonClient extends EventEmitter {
       tool_name: toolName,
       tool_input: toolInput,
     }
-    
+
     // Log what we're sending to the daemon
     console.log('[DaemonClient] Sending createApproval to daemon:', JSON.stringify(params))
-    
+
     const result = await this.call<{ approval_id: string }>('createApproval', params)
-    
+
     // Log what we received back
     console.log('[DaemonClient] Received approval_id from daemon:', result.approval_id)
-    
+
     return result
   }
 
@@ -380,7 +410,7 @@ export class DaemonClient extends EventEmitter {
 
   async getApproval(approvalId: string): Promise<Approval> {
     console.log('[DaemonClient] Fetching approval from daemon:', approvalId)
-    
+
     try {
       const resp = await this.call<{ approval: Approval }>('getApproval', { approval_id: approvalId })
       console.log('[DaemonClient] Successfully fetched approval:', JSON.stringify(resp.approval))
@@ -399,6 +429,19 @@ export class DaemonClient extends EventEmitter {
     })
     if (!resp.success) {
       throw new Error(`Decision failed: ${resp.error}`)
+    }
+  }
+
+  async reportMCPFailure(approvalId: string, failureType: string, details: unknown): Promise<void> {
+    try {
+      await this.call<{ success: boolean }>('reportMCPFailure', {
+        approval_id: approvalId,
+        failure_type: failureType,
+        details,
+      })
+    } catch (error) {
+      // Best effort - don't throw if reporting fails
+      console.error('[DaemonClient] Failed to report MCP failure:', error)
     }
   }
 

@@ -200,10 +200,47 @@ func (h *ApprovalHandlers) HandleGetApproval(ctx context.Context, params json.Ra
 	}, nil
 }
 
+// ReportMCPFailureRequest is the request for reporting MCP polling failures
+type ReportMCPFailureRequest struct {
+	ApprovalID   string                 `json:"approval_id"`
+	FailureType  string                 `json:"failure_type"`
+	Details      map[string]interface{} `json:"details,omitempty"`
+}
+
+// ReportMCPFailureResponse is the response for reporting MCP failures
+type ReportMCPFailureResponse struct {
+	Success bool `json:"success"`
+}
+
+// HandleReportMCPFailure handles MCP failure reports
+func (h *ApprovalHandlers) HandleReportMCPFailure(ctx context.Context, params json.RawMessage) (interface{}, error) {
+	var req ReportMCPFailureRequest
+	if err := json.Unmarshal(params, &req); err != nil {
+		return nil, fmt.Errorf("invalid request: %w", err)
+	}
+	
+	// Log the MCP failure for monitoring
+	slog.Warn("MCP failure reported",
+		"approval_id", req.ApprovalID,
+		"failure_type", req.FailureType,
+		"details", req.Details)
+	
+	// In a production system, you'd want to:
+	// 1. Store this in the database
+	// 2. Update metrics counters
+	// 3. Potentially trigger alerts
+	// For now, we just log it
+	
+	return ReportMCPFailureResponse{
+		Success: true,
+	}, nil
+}
+
 // Register registers all local approval handlers with the RPC server
 func (h *ApprovalHandlers) Register(server *Server) {
 	server.Register("createApproval", h.HandleCreateApproval)
 	server.Register("fetchApprovals", h.HandleFetchApprovals)
 	server.Register("getApproval", h.HandleGetApproval)
 	server.Register("sendDecision", h.HandleSendDecision)
+	server.Register("reportMCPFailure", h.HandleReportMCPFailure)
 }

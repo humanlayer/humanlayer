@@ -15,50 +15,50 @@ const initialCards: DemoCard[] = [
     id: '1',
     title: 'First Card',
     description: 'This is the top card',
-    content: 'Click the "Dismiss Card" button below to remove this card and see the next one in the stack.'
+    content: 'Click this card to dismiss it and see the next one in the stack.'
   },
   {
     id: '2',
     title: 'Second Card',
     description: 'This card was behind the first',
-    content: 'When you dismissed the first card, this one animated to the front. Notice how the button only appears on the front card.'
+    content: 'When you dismissed the first card, this one animated to the front.',
   },
   {
     id: '3',
     title: 'Third Card',
     description: 'Previously at the bottom of the visible stack',
-    content: 'This card scaled and moved up when the cards above were dismissed.'
+    content: 'This card scaled and moved up when the cards above were dismissed.',
   },
   {
     id: '4',
     title: 'Fourth Card',
     description: 'Was hidden, now visible',
-    content: 'This card became visible when there was room in the stack.'
+    content: 'This card became visible when there was room in the stack.',
   },
   {
     id: '5',
     title: 'Fifth Card',
     description: 'Another hidden card',
-    content: 'Cards beyond the visible limit fade in as space becomes available.'
+    content: 'Cards beyond the visible limit fade in as space becomes available.',
   },
   {
     id: '6',
     title: 'Sixth Card',
     description: 'Even more content',
-    content: 'The stack can handle any number of cards efficiently.'
+    content: 'The stack can handle any number of cards efficiently.',
   },
   {
     id: '7',
     title: 'Seventh Card',
     description: 'Lucky number seven',
-    content: 'Keep clicking to see how smooth the animations are!'
+    content: 'Keep clicking to see how smooth the animations are!',
   },
   {
     id: '8',
     title: 'Final Card',
     description: 'The last card in the demo',
-    content: 'You\'ve reached the end of the stack. Click "Reset Stack" to start over.'
-  }
+    content: 'You\'ve reached the end of the stack. Click "Reset Stack" to start over.',
+  },
 ]
 
 export default function StackedCardsDemo() {
@@ -80,34 +80,24 @@ export default function StackedCardsDemo() {
       id: `new-${Date.now()}`,
       title: `New Card #${cards.length + 1}`,
       description: 'Dynamically added card',
-      content: 'This card was added to the bottom of the stack.'
+      content: 'This card was added to the bottom of the stack.',
     }
     setCards(prev => [...prev, newCard])
   }
 
   const stackedCards = cards.map(card => ({
     id: card.id,
-    content: ({ onDismiss, isFront }: { onDismiss?: () => void; isFront: boolean }) => (
+    content: (
       <>
         <CardHeader>
           <CardTitle>{card.title}</CardTitle>
           <CardDescription>{card.description}</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent>
           <p className="text-sm">{card.content}</p>
-          {isFront && onDismiss && (
-            <Button 
-              onClick={onDismiss}
-              variant="outline"
-              size="sm"
-              className="w-full"
-            >
-              Dismiss Card
-            </Button>
-          )}
         </CardContent>
       </>
-    )
+    ),
   }))
 
   return (
@@ -116,8 +106,8 @@ export default function StackedCardsDemo() {
         <div className="space-y-2">
           <h1 className="text-3xl font-bold">Stacked Cards Demo</h1>
           <p className="text-muted-foreground">
-            A demo of the stacked cards component inspired by Sonner's toast stacking.
-            Click the dismiss button on the top card to remove it from the stack.
+            A demo of the stacked cards component inspired by Sonner's toast stacking. Click on the top
+            card to dismiss it.
           </p>
         </div>
 
@@ -133,13 +123,13 @@ export default function StackedCardsDemo() {
           </div>
         </div>
 
-        <div className="relative h-[500px] flex items-end justify-center">
-          <div className="w-full max-w-md relative" style={{ minHeight: '350px', paddingBottom: '100px' }}>
-            <StackedCards 
+        <div className="relative h-[400px] flex items-end justify-center">
+          <div className="w-full max-w-md relative" style={{ minHeight: '200px' }}>
+            <StackedCards
               cards={stackedCards}
               onDismiss={handleDismiss}
               visibleCards={3}
-              gap={40}
+              gap={20}
               className="h-full"
             />
           </div>

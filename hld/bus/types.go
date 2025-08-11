@@ -19,6 +19,8 @@ const (
 	EventConversationUpdated EventType = "conversation_updated"
 	// EventSessionSettingsChanged indicates session settings have been updated
 	EventSessionSettingsChanged EventType = "session_settings_changed"
+	// EventToolCallStored indicates a tool call has been stored in conversation events
+	EventToolCallStored EventType = "tool_call_stored"
 )
 
 // Event represents an event in the system

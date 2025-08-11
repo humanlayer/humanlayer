@@ -715,6 +715,18 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 						return err
 					}
 
+					// Publish event for correlation with approvals
+					if m.eventBus != nil && convEvent.EventType == store.EventTypeToolCall {
+						m.eventBus.Publish(bus.Event{
+							Type: bus.EventToolCallStored,
+							Data: map[string]interface{}{
+								"session_id": sessionID,
+								"tool_name":  content.Name,
+								"tool_id":    content.ID,
+							},
+						})
+					}
+
 					// Update session activity timestamp for tool calls
 					m.updateSessionActivity(ctx, sessionID)
 

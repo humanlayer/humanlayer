@@ -3,12 +3,12 @@ import { cn } from '@/lib/utils'
 import { Card } from '@/components/ui/card'
 
 const VISIBLE_CARDS = 3
-const GAP = 40
+const GAP = 14
 const TIME_BEFORE_UNMOUNT = 200
 
 interface CardItem {
   id: string
-  content: React.ReactNode | ((props: { onDismiss?: () => void; isFront: boolean }) => React.ReactNode)
+  content: React.ReactNode
 }
 
 interface StackedCardsProps {
@@ -33,6 +33,11 @@ export function StackedCards({
     () => cards.filter(card => !removedCards.has(card.id)),
     [cards, removedCards]
   )
+
+  // Initialize mounted cards immediately
+  const initialMountedCards = React.useMemo(() => {
+    return new Set(cards.map(card => card.id))
+  }, [cards])
 
   const dismissCard = React.useCallback((cardId: string) => {
     setRemovedCards(prev => new Set(prev).add(cardId))
@@ -60,6 +65,9 @@ export function StackedCards({
     }
   }, [activeCards, mountedCards])
 
+  // Use initial mounted cards if no cards are currently mounted
+  const effectiveMountedCards = mountedCards.size > 0 ? mountedCards : initialMountedCards
+
   return (
     <div 
       className={cn(
@@ -80,7 +88,7 @@ export function StackedCards({
           gap={gap}
           onDismiss={() => dismissCard(card.id)}
           isRemoved={removedCards.has(card.id)}
-          isMounted={mountedCards.has(card.id)}
+          isMounted={effectiveMountedCards.has(card.id)}
           totalCards={activeCards.length}
         />
       ))}
@@ -126,8 +134,7 @@ function StackedCard({
 
   const scale = React.useMemo(() => {
     if (isFront) return 1
-    // Smaller scale reduction so cards are more visible
-    return 1 - (toastsBefore * 0.015)
+    return 1 - (toastsBefore * 0.03)
   }, [isFront, toastsBefore])
 
   const yTransform = React.useMemo(() => {
@@ -141,7 +148,6 @@ function StackedCard({
       return 100
     }
     // Stack cards behind with negative offset to show them peeking
-    // The negative value moves cards up behind the front card
     return -(toastsBefore * gap)
   }, [isRemoved, isFront, isMounted, toastsBefore, gap])
 
@@ -174,15 +180,14 @@ function StackedCard({
     >
       <Card 
         className={cn(
-          'select-none',
+          'cursor-pointer select-none',
           'shadow-lg',
           isFront && 'hover:shadow-xl',
-          !isFront && 'opacity-95'
+          !isFront && 'opacity-90'
         )}
+        onClick={isFront ? onDismiss : undefined}
       >
-        {typeof card.content === 'function' 
-          ? card.content({ onDismiss: isFront ? onDismiss : undefined, isFront })
-          : card.content}
+        {card.content}
       </Card>
     </div>
   )

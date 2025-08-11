@@ -12,18 +12,42 @@ import (
 	"github.com/humanlayer/humanlayer/hld/store"
 )
 
+const (
+	maxCorrelationRetries = 3
+	correlationRetryDelay = 50 * time.Millisecond
+)
+
 // manager manages approvals locally without HumanLayer API
 type manager struct {
-	store    store.ConversationStore
-	eventBus bus.EventBus
+	store           store.ConversationStore
+	eventBus        bus.EventBus
+	eventSub        *bus.Subscriber
+	correlationChan chan correlationRequest
+}
+
+type correlationRequest struct {
+	sessionID string
+	toolName  string
+	toolID    string
 }
 
 // NewManager creates a new local approval manager
 func NewManager(store store.ConversationStore, eventBus bus.EventBus) Manager {
-	return &manager{
-		store:    store,
-		eventBus: eventBus,
+	m := &manager{
+		store:           store,
+		eventBus:        eventBus,
+		correlationChan: make(chan correlationRequest, 100),
 	}
+	
+	if eventBus != nil {
+		ctx := context.Background()
+		m.eventSub = eventBus.Subscribe(ctx, bus.EventFilter{
+			Types: []bus.EventType{bus.EventToolCallStored},
+		})
+		go m.processCorrelationEvents()
+	}
+	
+	return m
 }
 
 // CreateApproval creates a new local approval
@@ -68,7 +92,14 @@ func (m *manager) CreateApproval(ctx context.Context, runID, toolName string, to
 		slog.Warn("failed to correlate approval with tool call",
 			"error", err,
 			"approval_id", approval.ID,
-			"session_id", session.ID)
+			"session_id", approval.SessionID,
+			"tool_name", approval.ToolName,
+			"retries", maxCorrelationRetries)
+	} else {
+		slog.Debug("successfully correlated approval",
+			"approval_id", approval.ID,
+			"session_id", approval.SessionID,
+			"tool_name", approval.ToolName)
 	}
 
 	// Publish event for real-time updates
@@ -204,21 +235,38 @@ func (m *manager) DenyToolCall(ctx context.Context, id string, reason string) er
 
 // correlateApproval tries to correlate an approval with a tool call
 func (m *manager) correlateApproval(ctx context.Context, approval *store.Approval) error {
-	// Find the most recent uncorrelated pending tool call
-	toolCall, err := m.store.GetUncorrelatedPendingToolCall(ctx, approval.SessionID, approval.ToolName)
-	if err != nil {
-		return fmt.Errorf("failed to find pending tool call: %w", err)
+	var lastErr error
+	delay := correlationRetryDelay
+	
+	for i := 0; i <= maxCorrelationRetries; i++ {
+		// Find the most recent uncorrelated pending tool call
+		toolCall, err := m.store.GetUncorrelatedPendingToolCall(ctx, approval.SessionID, approval.ToolName)
+		if err != nil {
+			return fmt.Errorf("failed to find pending tool call: %w", err)
+		}
+		
+		if toolCall != nil {
+			// Correlate by tool ID
+			if err := m.store.CorrelateApprovalByToolID(ctx, approval.SessionID, toolCall.ToolID, approval.ID); err != nil {
+				return fmt.Errorf("failed to correlate approval: %w", err)
+			}
+			return nil // Success
+		}
+		
+		lastErr = fmt.Errorf("no matching tool call found")
+		
+		// Don't sleep on the last iteration
+		if i < maxCorrelationRetries {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(delay):
+				delay *= 2 // Exponential backoff
+			}
+		}
 	}
-	if toolCall == nil {
-		return fmt.Errorf("no matching tool call found")
-	}
-
-	// Correlate by tool ID
-	if err := m.store.CorrelateApprovalByToolID(ctx, approval.SessionID, toolCall.ToolID, approval.ID); err != nil {
-		return fmt.Errorf("failed to correlate approval: %w", err)
-	}
-
-	return nil
+	
+	return lastErr
 }
 
 // publishNewApprovalEvent publishes an event when a new approval is created
@@ -266,4 +314,68 @@ func (m *manager) updateSessionStatus(ctx context.Context, sessionID, status str
 // isEditTool checks if a tool name is one of the edit tools
 func isEditTool(toolName string) bool {
 	return toolName == "Edit" || toolName == "Write" || toolName == "MultiEdit"
+}
+
+// processCorrelationEvents processes tool call stored events and attempts correlation
+func (m *manager) processCorrelationEvents() {
+	if m.eventSub == nil {
+		return
+	}
+	
+	for event := range m.eventSub.Channel {
+		if event.Type == bus.EventToolCallStored {
+			sessionID, _ := event.Data["session_id"].(string)
+			toolName, _ := event.Data["tool_name"].(string)
+			toolID, _ := event.Data["tool_id"].(string)
+			
+			select {
+			case m.correlationChan <- correlationRequest{
+				sessionID: sessionID,
+				toolName:  toolName,
+				toolID:    toolID,
+			}:
+				// Request queued
+			default:
+				slog.Warn("correlation channel full, dropping event")
+			}
+			
+			// Immediately attempt correlation for this event
+			go m.attemptPendingCorrelations(context.Background(), correlationRequest{
+				sessionID: sessionID,
+				toolName:  toolName,
+				toolID:    toolID,
+			})
+		}
+	}
+}
+
+// attemptPendingCorrelations attempts to correlate pending approvals with a tool call
+func (m *manager) attemptPendingCorrelations(ctx context.Context, req correlationRequest) {
+	// Find any uncorrelated approvals for this tool
+	approvals, err := m.store.GetPendingApprovals(ctx, req.sessionID)
+	if err != nil {
+		slog.Error("failed to get pending approvals", "error", err)
+		return
+	}
+	
+	for _, approval := range approvals {
+		// Check if this approval matches the tool call
+		// We attempt correlation for all matching approvals - the store will handle
+		// checking if it's already correlated
+		if approval.ToolName == req.toolName {
+			if err := m.store.CorrelateApprovalByToolID(ctx, req.sessionID, req.toolID, approval.ID); err != nil {
+				// This is expected if the approval is already correlated
+				slog.Debug("correlation attempt via event", 
+					"error", err,
+					"approval_id", approval.ID,
+					"tool_id", req.toolID)
+			} else {
+				slog.Info("correlated approval via event",
+					"approval_id", approval.ID,
+					"tool_id", req.toolID,
+					"session_id", req.sessionID,
+					"tool_name", req.toolName)
+			}
+		}
+	}
 }

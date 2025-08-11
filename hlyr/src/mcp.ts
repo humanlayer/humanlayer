@@ -11,6 +11,9 @@ import { resolveFullConfig } from './config.js'
 import { DaemonClient } from './daemonClient.js'
 import { logger } from './mcpLogger.js'
 
+const MAX_POLLING_ERRORS = 3
+const POLLING_RETRY_DELAY = 1000
+
 function validateAuth(): void {
   const config = resolveFullConfig({})
 
@@ -173,38 +176,41 @@ export async function startClaudeApprovalsMCPServer() {
         throw new McpError(ErrorCode.InternalError, 'HUMANLAYER_RUN_ID not set')
       }
 
-      logger.info('Processing approval request', { 
-        runId, 
+      logger.info('Processing approval request', {
+        runId,
         toolName,
         toolInput: JSON.stringify(input),
       })
 
+      let currentDaemonClient = daemonClient
+
       try {
         // Connect to daemon
         logger.debug('Connecting to daemon...')
-        await daemonClient.connect()
+        await currentDaemonClient.connect()
         logger.debug('Connected to daemon')
 
         // Create approval request with full input logging
-        logger.debug('Creating approval request with full payload', { 
-          runId, 
+        logger.debug('Creating approval request with full payload', {
+          runId,
           toolName,
           toolInput: JSON.stringify(input),
         })
-        const createResponse = await daemonClient.createApproval(runId, toolName, input)
+        const createResponse = await currentDaemonClient.createApproval(runId, toolName, input)
         const approvalId = createResponse.approval_id
         logger.info('Created approval', { approvalId })
 
-        // Poll for approval status
+        // Poll for approval status with reconnection resilience
         let approved = false
         let comment = ''
         let polling = true
+        let errorCount = 0
 
         while (polling) {
           try {
             // Get the specific approval by ID
             logger.debug('Fetching approval status...', { approvalId })
-            const approval = (await daemonClient.getApproval(approvalId)) as {
+            const approval = (await currentDaemonClient.getApproval(approvalId)) as {
               id: string
               status: string
               comment?: string
@@ -227,10 +233,49 @@ export async function startClaudeApprovalsMCPServer() {
               logger.debug('Approval still pending, polling again...')
               await new Promise(resolve => setTimeout(resolve, 1000))
             }
+
+            // Reset error count on successful poll
+            errorCount = 0
           } catch (error) {
-            logger.error('Failed to get approval status', { error, approvalId })
-            // Re-throw the error since this is a critical failure
-            throw new McpError(ErrorCode.InternalError, 'Failed to get approval status')
+            errorCount++
+            logger.error(`Polling error (attempt ${errorCount}/${MAX_POLLING_ERRORS}):`, {
+              error,
+              approvalId,
+            })
+
+            if (errorCount >= MAX_POLLING_ERRORS) {
+              // Notify daemon about MCP polling failure before throwing
+              try {
+                await currentDaemonClient.reportMCPFailure?.(approvalId, 'polling_failed', {
+                  error: error instanceof Error ? error.message : String(error),
+                  attempts: errorCount,
+                })
+              } catch (reportError) {
+                logger.error('Failed to report MCP failure to daemon:', reportError)
+              }
+
+              throw new McpError(
+                ErrorCode.InternalError,
+                `Failed to poll approval status after ${MAX_POLLING_ERRORS} attempts: ${error instanceof Error ? error.message : String(error)}`,
+              )
+            }
+
+            // Try to reconnect if we got a connection error
+            const errorMessage = error instanceof Error ? error.message : String(error)
+            if (errorMessage.includes('EPIPE') || errorMessage.includes('ECONNRESET')) {
+              try {
+                logger.info('Connection error detected, attempting to reconnect...')
+                await currentDaemonClient.close()
+                currentDaemonClient = new DaemonClient(socketPath)
+                await currentDaemonClient.connect()
+                logger.info('Successfully reconnected to daemon')
+              } catch (reconnectError) {
+                logger.error('Failed to reconnect:', reconnectError)
+              }
+            }
+
+            // Wait before retrying
+            await new Promise(resolve => setTimeout(resolve, POLLING_RETRY_DELAY))
           }
         }
 
@@ -269,7 +314,7 @@ export async function startClaudeApprovalsMCPServer() {
         )
       } finally {
         logger.debug('Closing daemon connection')
-        daemonClient.close()
+        currentDaemonClient.close()
       }
     }
 

@@ -420,6 +420,24 @@ export class HTTPDaemonClient implements IDaemonClient {
     return data
   }
 
+  async getApprovalMetrics(): Promise<import('./types').ApprovalMetrics> {
+    await this.ensureConnected()
+    
+    // Use REST API endpoint
+    const baseUrl = await getDaemonUrl()
+    const response = await fetch(`${baseUrl}/api/v1/metrics/approvals`, {
+      method: 'GET',
+      headers: getDefaultHeaders(),
+    })
+
+    if (!response.ok) {
+      throw new Error(`Failed to get approval metrics: ${response.statusText}`)
+    }
+
+    const data = await response.json()
+    return data
+  }
+
   // Private Helper Methods
 
   private async ensureConnected(): Promise<void> {
