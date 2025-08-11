@@ -75,7 +75,7 @@ jobs:
         id: go-tools-cache
         with:
           path: ~/go/bin
-          key: go-tools-${{ runner.os }}-golangci-1.61-mockgen-0.5
+          key: go-tools-${{ runner.os }}-golangci-2.1.6-mockgen-0.5
           restore-keys: |
             go-tools-${{ runner.os }}-
 
@@ -83,7 +83,7 @@ jobs:
       - name: Install Go tools
         if: steps.go-tools-cache.outputs.cache-hit != 'true'
         run: |
-          go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.61.0
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@v2.1.6
           go install go.uber.org/mock/mockgen@v0.5.0
 
       - name: Install Rust
