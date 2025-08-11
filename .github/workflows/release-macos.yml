@@ -47,9 +47,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/go/pkg/mod
-          key: go-mod-${{ runner.os }}-go${{ steps.setup-go.outputs.go-version }}-${{ hashFiles('**/go.sum') }}
+          key: go-mod-v2-${{ runner.os }}-go${{ steps.setup-go.outputs.go-version }}-${{ hashFiles('**/go.sum') }}
           restore-keys: |
-            go-mod-${{ runner.os }}-go${{ steps.setup-go.outputs.go-version }}-
+            go-mod-v2-${{ runner.os }}-go${{ steps.setup-go.outputs.go-version }}-
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
