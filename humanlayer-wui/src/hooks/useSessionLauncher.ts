@@ -39,6 +39,11 @@ interface LauncherState {
   reset: () => void
 }
 
+const isViewingSessionDetail = (): boolean => {
+  const hash = window.location.hash
+  return /^#\/sessions\/[^/]+$/.test(hash)
+}
+
 const LAST_WORKING_DIR_KEY = 'humanlayer-last-working-dir'
 
 // Helper function to get default working directory
@@ -199,6 +204,9 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
       gPrefixMode: false,
     }),
 }))
+
+// Export helper function
+export { isViewingSessionDetail }
 
 // Helper hook for global hotkey management
 export function useSessionLauncherHotkeys() {

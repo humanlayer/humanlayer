@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
-import { useSessionLauncher } from '@/hooks/useSessionLauncher'
+import { useSessionLauncher, isViewingSessionDetail } from '@/hooks/useSessionLauncher'
 import { useStore } from '@/AppStore'
 import { highlightMatches, type FuzzyMatch } from '@/lib/fuzzy-search'
 import { cn } from '@/lib/utils'
@@ -17,7 +17,7 @@ interface MenuOption {
 }
 
 export default function CommandPaletteMenu() {
-  const { createNewSession, openSessionById, selectedMenuIndex, setSelectedMenuIndex, mode } =
+  const { createNewSession, openSessionById, selectedMenuIndex, setSelectedMenuIndex, mode, close } =
     useSessionLauncher()
 
   const [searchQuery, setSearchQuery] = useState('')
@@ -33,6 +33,9 @@ export default function CommandPaletteMenu() {
     searchFields: ['summary', 'model'], // Search in both summary and model fields for the modal
   })
 
+  // Check if we're viewing a session detail
+  const isSessionDetail = isViewingSessionDetail()
+
   // Build base menu options
   const baseOptions: MenuOption[] = [
     {
@@ -41,6 +44,19 @@ export default function CommandPaletteMenu() {
       description: 'Start a new session with AI assistance',
       action: createNewSession,
     },
+    ...(isSessionDetail
+      ? [
+          {
+            id: 'toggle-brainrot',
+            label: 'Brainrot Mode',
+            description: 'Classic DVD screensaver with tool names',
+            action: () => {
+              window.dispatchEvent(new CustomEvent('toggle-brainrot-mode'))
+              close()
+            },
+          },
+        ]
+      : []),
   ]
 
   // Command mode: Only Create Session
@@ -57,10 +73,19 @@ export default function CommandPaletteMenu() {
         }))
       : [] // No sessions in command mode
 
+  // Filter options based on search query in command mode
+  const filteredBaseOptions = searchQuery
+    ? baseOptions.filter(
+        option =>
+          option.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          option.description?.toLowerCase().includes(searchQuery.toLowerCase()),
+      )
+    : baseOptions
+
   // Combine options based on mode
   const menuOptions: MenuOption[] =
     mode === 'command'
-      ? baseOptions // Command: Only Create Session
+      ? filteredBaseOptions // Command: Filtered base options
       : sessionOptions // Search: Only sessions (no Create Session), already limited to 5
 
   // Keyboard navigation
@@ -117,8 +142,8 @@ export default function CommandPaletteMenu() {
 
   return (
     <div className="space-y-2">
-      {/* Search input for search mode */}
-      {mode === 'search' && (
+      {/* Search input for both modes */}
+      {(mode === 'search' || mode === 'command') && (
         <input
           ref={inputRef}
           type="text"
@@ -135,7 +160,7 @@ export default function CommandPaletteMenu() {
               menuOptions[selectedMenuIndex].action()
             }
           }}
-          placeholder="Search sessions..."
+          placeholder={mode === 'search' ? 'Search sessions...' : 'Search commands...'}
           className={cn(
             'w-full h-9 px-3 py-2 text-sm',
             'font-mono',
