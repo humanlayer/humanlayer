@@ -694,7 +694,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
 
   // Rename session hotkey
   useHotkeys(
-    'meta+r',
+    'shift+r',
     () => {
       startEditTitle()
     },
