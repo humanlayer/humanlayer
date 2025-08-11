@@ -38,15 +38,30 @@ jobs:
 
       - name: Setup Go
         uses: actions/setup-go@v5
+        id: setup-go
         with:
           go-version-file: 'hld/go.mod'
-          cache-dependency-path: |
-            **/go.sum
+          cache: false
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: ~/go/pkg/mod
+          key: go-mod-${{ runner.os }}-go${{ steps.setup-go.outputs.go-version }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            go-mod-${{ runner.os }}-go${{ steps.setup-go.outputs.go-version }}-
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
+
+      - name: Cache Go tools
+        uses: actions/cache@v4
+        id: go-tools-cache-release
+        with:
+          path: ~/go/bin
+          key: go-tools-${{ runner.os }}-mockgen-0.5
 
       - name: Run repository setup
         run: make setup
