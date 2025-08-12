@@ -8,6 +8,16 @@ If you're looking to contribute, please:
 - send a pull request.
 - we appreciate your input!
 
+## Running CodeLayer
+
+```
+make setup
+make codelayer-dev
+```
+
+When the Web UI launches in dev mode, you'll need to launch a managed daemon with it - click the 🐞 icon in the bottom right and launch a managed daemon.
+
+
 ## Running Tests
 
 Before submitting a pull request, please run the tests and linter:

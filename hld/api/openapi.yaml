@@ -28,6 +28,21 @@ paths:
               schema:
                 $ref: '#/components/schemas/HealthResponse'
 
+  /database-info:
+    get:
+      operationId: getDatabaseInfo
+      summary: Get database information
+      description: Get information about the daemon's SQLite database including path, size, and statistics
+      tags:
+        - System
+      responses:
+        '200':
+          description: Database information retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatabaseInfoResponse'
+
   /sessions:
     post:
       operationId: createSession
@@ -494,6 +509,44 @@ components:
           type: string
           example: "0.1.0"
 
+    # Database Info Response
+    DatabaseInfoResponse:
+      type: object
+      required:
+        - path
+        - size
+        - table_count
+        - stats
+      properties:
+        path:
+          type: string
+          description: Path to the SQLite database file
+          example: "/home/user/.humanlayer/daemon.db"
+        size:
+          type: integer
+          format: int64
+          description: Size of the database file in bytes
+          example: 1048576
+        table_count:
+          type: integer
+          description: Number of tables in the database
+          example: 5
+        stats:
+          type: object
+          description: Database statistics
+          additionalProperties:
+            type: integer
+            format: int64
+          example:
+            sessions: 42
+            approvals: 15
+            events: 237
+        last_modified:
+          type: string
+          format: date-time
+          description: Last modification time of the database file
+          example: "2024-01-15T10:30:00Z"
+
     # Session Types
     Session:
       type: object
@@ -539,6 +592,10 @@ components:
           type: string
           description: Model used for this session
           example: sonnet
+        model_id:
+          type: string
+          description: Full model identifier
+          example: claude-opus-4-1-20250805
         working_dir:
           type: string
           description: Working directory for the session

@@ -53,6 +53,7 @@ type Info struct {
 	Summary                             string             `json:"summary"`
 	Title                               string             `json:"title"`
 	Model                               string             `json:"model,omitempty"`
+	ModelID                             string             `json:"model_id,omitempty"`
 	WorkingDir                          string             `json:"working_dir,omitempty"`
 	Result                              *claudecode.Result `json:"result,omitempty"`
 	AutoAcceptEdits                     bool               `json:"auto_accept_edits"`

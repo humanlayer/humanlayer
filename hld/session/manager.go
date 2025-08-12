@@ -469,6 +469,7 @@ func (m *Manager) GetSessionInfo(sessionID string) (*Info, error) {
 		Summary:         dbSession.Summary,
 		Title:           dbSession.Title,
 		Model:           dbSession.Model,
+		ModelID:         dbSession.ModelID,
 		WorkingDir:      dbSession.WorkingDir,
 		AutoAcceptEdits: dbSession.AutoAcceptEdits,
 		Archived:        dbSession.Archived,
@@ -532,6 +533,7 @@ func (m *Manager) ListSessions() []Info {
 			Summary:                             dbSession.Summary,
 			Title:                               dbSession.Title,
 			Model:                               dbSession.Model,
+			ModelID:                             dbSession.ModelID,
 			WorkingDir:                          dbSession.WorkingDir,
 			AutoAcceptEdits:                     dbSession.AutoAcceptEdits,
 			Archived:                            dbSession.Archived,
@@ -637,6 +639,9 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 
 			// Only update if model is empty and init event has a model
 			if session != nil && session.Model == "" && event.Model != "" {
+				// Store the full model ID
+				modelID := event.Model
+
 				// Extract simple model name from API format (case-insensitive)
 				var modelName string
 				lowerModel := strings.ToLower(event.Model)
@@ -646,27 +651,39 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 					modelName = "sonnet"
 				}
 
-				// Update session with detected model
+				// Update session with both model ID and simplified name
 				if modelName != "" {
 					update := store.SessionUpdate{
-						Model: &modelName,
+						Model:   &modelName,
+						ModelID: &modelID,
 					}
 					if err := m.store.UpdateSession(ctx, sessionID, update); err != nil {
 						slog.Error("failed to update session model from init event",
 							"session_id", sessionID,
 							"model", modelName,
+							"model_id", modelID,
 							"error", err)
 					} else {
 						slog.Info("populated session model from init event",
 							"session_id", sessionID,
 							"model", modelName,
-							"original", event.Model)
+							"model_id", modelID)
 					}
 				} else {
-					// Log when we detect a model but don't recognize the format
-					slog.Debug("unrecognized model format in init event",
-						"session_id", sessionID,
-						"model", event.Model)
+					// Still store the model ID even if we don't recognize the format
+					update := store.SessionUpdate{
+						ModelID: &modelID,
+					}
+					if err := m.store.UpdateSession(ctx, sessionID, update); err != nil {
+						slog.Error("failed to update session model_id from init event",
+							"session_id", sessionID,
+							"model_id", modelID,
+							"error", err)
+					} else {
+						slog.Debug("stored unrecognized model format in init event",
+							"session_id", sessionID,
+							"model_id", modelID)
+					}
 				}
 			}
 			// Don't store init event in conversation history - we only extract the model

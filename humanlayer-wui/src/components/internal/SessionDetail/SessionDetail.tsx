@@ -79,7 +79,6 @@ const ROBOT_VERBS = [
   'transcribing',
   'receiving',
   'adhering',
-  'connecting',
   'sublimating',
   'balancing',
   'ionizing',
@@ -735,6 +734,21 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       enableOnFormTags: false,
       preventDefault: true,
     },
+  )
+
+  // Rename session hotkey
+  useHotkeys(
+    'shift+r',
+    () => {
+      startEditTitle()
+    },
+    {
+      scopes: SessionDetailHotkeysScope,
+      enabled: !isEditingTitle,
+      preventDefault: true,
+      enableOnFormTags: false,
+    },
+    [startEditTitle, isEditingTitle],
   )
 
   useStealHotkeyScope(SessionDetailHotkeysScope)

@@ -67,6 +67,7 @@ type Session struct {
 	Summary                             string
 	Title                               string // New field for user-editable title
 	Model                               string
+	ModelID                             string // Full model identifier (e.g., "claude-opus-4-1-20250805")
 	WorkingDir                          string
 	MaxTurns                            int
 	SystemPrompt                        string
@@ -117,7 +118,8 @@ type SessionUpdate struct {
 	DangerouslySkipPermissions          *bool       `db:"dangerously_skip_permissions"`
 	DangerouslySkipPermissionsExpiresAt **time.Time `db:"dangerously_skip_permissions_expires_at"`
 	Model                               *string
-	Archived                            *bool // New field for updating archived status
+	ModelID                             *string // Full model identifier
+	Archived                            *bool   // New field for updating archived status
 }
 
 // ConversationEvent represents a single event in a conversation
