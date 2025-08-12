@@ -5,7 +5,7 @@ import { AlertCircle } from 'lucide-react'
 
 // Threshold percentages for visual warnings
 const TOKEN_USAGE_THRESHOLDS = {
-  WARNING: 60,  // Show warning color at 60%
+  WARNING: 60, // Show warning color at 60%
   CRITICAL: 90, // Show error color at 90%
 }
 
@@ -22,7 +22,6 @@ interface TokenUsageBadgeProps {
 export function TokenUsageBadge({
   effectiveContextTokens,
   contextLimit,
-  model,
   className,
 }: TokenUsageBadgeProps) {
   // Don't show if no token data (but allow 0 as a valid value)

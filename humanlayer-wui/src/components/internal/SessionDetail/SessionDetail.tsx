@@ -234,18 +234,19 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   // Always prioritize store values as they are the source of truth for runtime state
   const sessionFromStore = useStore(state => state.sessions.find(s => s.id === session.id))
   const updateSessionOptimistic = useStore(state => state.updateSessionOptimistic)
-  
+
   // Get parent session's token data to display when current session doesn't have its own yet
-  const parentSession = useStore(state => 
-    session.parentSessionId ? state.sessions.find(s => s.id === session.parentSessionId) : null
+  const parentSession = useStore(state =>
+    session.parentSessionId ? state.sessions.find(s => s.id === session.parentSessionId) : null,
   )
-  
+
   // Fetch parent session if it's not in the store
   const [parentSessionData, setParentSessionData] = useState<Session | null>(null)
   useEffect(() => {
     if (session.parentSessionId && !parentSession) {
       // Parent session not in store, fetch it directly
-      daemonClient.getSessionState(session.parentSessionId)
+      daemonClient
+        .getSessionState(session.parentSessionId)
         .then(response => {
           console.log('[TokenDebug] Fetched parent session:', response.session)
           setParentSessionData(response.session)
@@ -258,7 +259,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       setParentSessionData(parentSession)
     }
   }, [session.parentSessionId, parentSession])
-  
+
   // Debug logging for token data
   useEffect(() => {
     console.log('[TokenDebug] Session token state:', {
@@ -269,9 +270,14 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       fallbackTokens: session.effectiveContextTokens ?? parentSessionData?.effectiveContextTokens,
       sessionFromStore: sessionFromStore?.effectiveContextTokens,
       parentFromStore: parentSession,
-      parentFetched: parentSessionData
+      parentFetched: parentSessionData,
     })
-  }, [session.id, session.effectiveContextTokens, parentSessionData?.effectiveContextTokens, sessionFromStore?.effectiveContextTokens])
+  }, [
+    session.id,
+    session.effectiveContextTokens,
+    parentSessionData?.effectiveContextTokens,
+    sessionFromStore?.effectiveContextTokens,
+  ])
 
   // Use store values if available, otherwise fall back to session prop
   // Store values take precedence because they reflect real-time updates
@@ -857,7 +863,9 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                 )}
               </small>
               <TokenUsageBadge
-                effectiveContextTokens={session.effectiveContextTokens ?? parentSessionData?.effectiveContextTokens}
+                effectiveContextTokens={
+                  session.effectiveContextTokens ?? parentSessionData?.effectiveContextTokens
+                }
                 contextLimit={session.contextLimit ?? parentSessionData?.contextLimit}
                 model={session.model ?? parentSessionData?.model}
               />
@@ -948,7 +956,9 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                 )}
               </small>
               <TokenUsageBadge
-                effectiveContextTokens={session.effectiveContextTokens ?? parentSessionData?.effectiveContextTokens}
+                effectiveContextTokens={
+                  session.effectiveContextTokens ?? parentSessionData?.effectiveContextTokens
+                }
                 contextLimit={session.contextLimit ?? parentSessionData?.contextLimit}
                 model={session.model ?? parentSessionData?.model}
                 className="text-[10px]"

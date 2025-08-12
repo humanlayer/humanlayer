@@ -54,7 +54,7 @@ func (m *Mapper) SessionToAPI(s store.Session) api.Session {
 	if s.DurationMS != nil && *s.DurationMS > 0 {
 		session.DurationMs = s.DurationMS
 	}
-	
+
 	// Map token fields
 	if s.InputTokens != nil {
 		session.InputTokens = s.InputTokens
@@ -71,11 +71,11 @@ func (m *Mapper) SessionToAPI(s store.Session) api.Session {
 	if s.EffectiveContextTokens != nil {
 		session.EffectiveContextTokens = s.EffectiveContextTokens
 	}
-	
+
 	// Always set context limit based on model
 	contextLimit := rpc.GetModelContextLimit(s.Model)
 	session.ContextLimit = &contextLimit
-	
+
 	session.AutoAcceptEdits = &s.AutoAcceptEdits
 	session.DangerouslySkipPermissions = &s.DangerouslySkipPermissions
 	if s.DangerouslySkipPermissionsExpiresAt != nil {
