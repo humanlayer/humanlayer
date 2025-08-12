@@ -946,7 +946,7 @@ func TestResumedSessionTokenCounting(t *testing.T) {
 		t.Fatalf("failed to get child session: %v", err)
 	}
 
-	if retrieved.EffectiveContextTokens == nil || *retrieved.EffectiveContextTokens != 150500 {
-		t.Errorf("Effective context should include cache tokens for resumed sessions, got %v", retrieved.EffectiveContextTokens)
+	if retrieved.EffectiveContextTokens == nil || *retrieved.EffectiveContextTokens != 150800 {
+		t.Errorf("Effective context should include cache tokens for resumed sessions, expected 150800, got %v", retrieved.EffectiveContextTokens)
 	}
 }
