@@ -216,11 +216,6 @@ func (h *SessionHandlers) ListSessions(ctx context.Context, req api.ListSessions
 		if info.Result != nil {
 			storeSession.CostUSD = &info.Result.CostUSD
 			storeSession.DurationMS = &info.Result.DurationMS
-			// Calculate total tokens from usage if available
-			if info.Result.Usage != nil {
-				totalTokens := info.Result.Usage.InputTokens + info.Result.Usage.OutputTokens
-				storeSession.TotalTokens = &totalTokens
-			}
 		}
 
 		sessions[i] = h.mapper.SessionToAPI(storeSession)

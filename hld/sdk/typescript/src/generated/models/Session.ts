@@ -118,11 +118,41 @@ export interface Session {
      */
     costUsd?: number;
     /**
-     * Total tokens used
+     * Number of input tokens
      * @type {number}
      * @memberof Session
      */
-    totalTokens?: number;
+    inputTokens?: number;
+    /**
+     * Number of output tokens
+     * @type {number}
+     * @memberof Session
+     */
+    outputTokens?: number;
+    /**
+     * Number of cache creation input tokens
+     * @type {number}
+     * @memberof Session
+     */
+    cacheCreationInputTokens?: number;
+    /**
+     * Number of cache read input tokens
+     * @type {number}
+     * @memberof Session
+     */
+    cacheReadInputTokens?: number;
+    /**
+     * Total tokens counting toward context window limit
+     * @type {number}
+     * @memberof Session
+     */
+    effectiveContextTokens?: number;
+    /**
+     * Context window limit for the model
+     * @type {number}
+     * @memberof Session
+     */
+    contextLimit?: number;
     /**
      * Session duration in milliseconds
      * @type {number}
@@ -195,7 +225,12 @@ export function SessionFromJSONTyped(json: any, ignoreDiscriminator: boolean): S
         'completedAt': json['completed_at'] == null ? undefined : (new Date(json['completed_at'])),
         'errorMessage': json['error_message'] == null ? undefined : json['error_message'],
         'costUsd': json['cost_usd'] == null ? undefined : json['cost_usd'],
-        'totalTokens': json['total_tokens'] == null ? undefined : json['total_tokens'],
+        'inputTokens': json['input_tokens'] == null ? undefined : json['input_tokens'],
+        'outputTokens': json['output_tokens'] == null ? undefined : json['output_tokens'],
+        'cacheCreationInputTokens': json['cache_creation_input_tokens'] == null ? undefined : json['cache_creation_input_tokens'],
+        'cacheReadInputTokens': json['cache_read_input_tokens'] == null ? undefined : json['cache_read_input_tokens'],
+        'effectiveContextTokens': json['effective_context_tokens'] == null ? undefined : json['effective_context_tokens'],
+        'contextLimit': json['context_limit'] == null ? undefined : json['context_limit'],
         'durationMs': json['duration_ms'] == null ? undefined : json['duration_ms'],
         'autoAcceptEdits': json['auto_accept_edits'] == null ? undefined : json['auto_accept_edits'],
         'dangerouslySkipPermissions': json['dangerously_skip_permissions'] == null ? undefined : json['dangerously_skip_permissions'],
@@ -230,7 +265,12 @@ export function SessionToJSONTyped(value?: Session | null, ignoreDiscriminator: 
         'completed_at': value['completedAt'] == null ? undefined : ((value['completedAt']).toISOString()),
         'error_message': value['errorMessage'],
         'cost_usd': value['costUsd'],
-        'total_tokens': value['totalTokens'],
+        'input_tokens': value['inputTokens'],
+        'output_tokens': value['outputTokens'],
+        'cache_creation_input_tokens': value['cacheCreationInputTokens'],
+        'cache_read_input_tokens': value['cacheReadInputTokens'],
+        'effective_context_tokens': value['effectiveContextTokens'],
+        'context_limit': value['contextLimit'],
         'duration_ms': value['durationMs'],
         'auto_accept_edits': value['autoAcceptEdits'],
         'dangerously_skip_permissions': value['dangerouslySkipPermissions'],

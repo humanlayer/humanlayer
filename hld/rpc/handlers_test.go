@@ -140,7 +140,6 @@ func TestHandleGetSessionState(t *testing.T) {
 		now := time.Now()
 		completedAt := now.Add(10 * time.Minute)
 		costUSD := 0.05
-		totalTokens := 1500
 		durationMS := 600000
 
 		dbSession := &store.Session{
@@ -155,7 +154,6 @@ func TestHandleGetSessionState(t *testing.T) {
 			LastActivityAt:  completedAt,
 			CompletedAt:     &completedAt,
 			CostUSD:         &costUSD,
-			TotalTokens:     &totalTokens,
 			DurationMS:      &durationMS,
 			ErrorMessage:    "",
 		}
@@ -179,7 +177,6 @@ func TestHandleGetSessionState(t *testing.T) {
 		assert.Equal(t, "claude-789", resp.Session.ClaudeSessionID)
 		assert.Equal(t, store.SessionStatusCompleted, resp.Session.Status)
 		assert.Equal(t, 0.05, resp.Session.CostUSD)
-		assert.Equal(t, 1500, resp.Session.TotalTokens)
 		assert.Equal(t, 600000, resp.Session.DurationMS)
 		assert.NotEmpty(t, resp.Session.CompletedAt)
 	})

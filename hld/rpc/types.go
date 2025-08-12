@@ -72,7 +72,12 @@ type SessionState struct {
 	CompletedAt                         string  `json:"completed_at,omitempty"`
 	ErrorMessage                        string  `json:"error_message,omitempty"`
 	CostUSD                             float64 `json:"cost_usd,omitempty"`
-	TotalTokens                         int     `json:"total_tokens,omitempty"`
+	InputTokens                         int     `json:"input_tokens,omitempty"`
+	OutputTokens                        int     `json:"output_tokens,omitempty"`
+	CacheCreationInputTokens            int     `json:"cache_creation_input_tokens,omitempty"`
+	CacheReadInputTokens                int     `json:"cache_read_input_tokens,omitempty"`
+	EffectiveContextTokens              int     `json:"effective_context_tokens,omitempty"`
+	ContextLimit                        int     `json:"context_limit,omitempty"`
 	DurationMS                          int     `json:"duration_ms,omitempty"`
 	AutoAcceptEdits                     bool    `json:"auto_accept_edits"`
 	DangerouslySkipPermissions          bool    `json:"dangerously_skip_permissions"`

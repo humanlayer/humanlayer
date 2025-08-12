@@ -622,11 +622,36 @@ components:
           nullable: true
           description: Total cost in USD
           example: 0.05
-        total_tokens:
+        input_tokens:
           type: integer
           nullable: true
-          description: Total tokens used
-          example: 1500
+          description: Number of input tokens
+          example: 1000
+        output_tokens:
+          type: integer
+          nullable: true
+          description: Number of output tokens
+          example: 500
+        cache_creation_input_tokens:
+          type: integer
+          nullable: true
+          description: Number of cache creation input tokens
+          example: 100
+        cache_read_input_tokens:
+          type: integer
+          nullable: true
+          description: Number of cache read input tokens
+          example: 50000
+        effective_context_tokens:
+          type: integer
+          nullable: true
+          description: Total tokens counting toward context window limit
+          example: 51100
+        context_limit:
+          type: integer
+          nullable: true
+          description: Context window limit for the model
+          example: 168000
         duration_ms:
           type: integer
           nullable: true

@@ -81,7 +81,11 @@ type Session struct {
 	LastActivityAt                      time.Time
 	CompletedAt                         *time.Time
 	CostUSD                             *float64
-	TotalTokens                         *int
+	InputTokens                         *int `db:"input_tokens"`
+	OutputTokens                        *int `db:"output_tokens"`
+	CacheCreationInputTokens            *int `db:"cache_creation_input_tokens"`
+	CacheReadInputTokens                *int `db:"cache_read_input_tokens"`
+	EffectiveContextTokens              *int `db:"effective_context_tokens"`
 	DurationMS                          *int
 	NumTurns                            *int
 	ResultContent                       string
@@ -101,7 +105,11 @@ type SessionUpdate struct {
 	LastActivityAt                      *time.Time
 	CompletedAt                         *time.Time
 	CostUSD                             *float64
-	TotalTokens                         *int
+	InputTokens                         *int
+	OutputTokens                        *int
+	CacheCreationInputTokens            *int
+	CacheReadInputTokens                *int
+	EffectiveContextTokens              *int
 	DurationMS                          *int
 	NumTurns                            *int
 	ResultContent                       *string
