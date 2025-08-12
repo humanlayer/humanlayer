@@ -521,14 +521,18 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     'alt+y',
     async () => {
       // Check if any modal scopes are active
-      const modalScopes = ['tool-result-modal', 'fork-view-modal', 'dangerously-skip-permissions-dialog']
+      const modalScopes = [
+        'tool-result-modal',
+        'fork-view-modal',
+        'dangerously-skip-permissions-dialog',
+      ]
       const hasModalOpen = activeScopes.some(scope => modalScopes.includes(scope))
-      
+
       // Don't trigger if other modals are open
       if (hasModalOpen || dangerousSkipPermissionsDialogOpen) {
         return
       }
-      
+
       if (dangerouslySkipPermissions) {
         // Disable dangerous skip permissions
         try {
@@ -644,16 +648,16 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     'meta+y',
     e => {
       e.preventDefault()
-      
+
       // Check if any modal scopes are active
       const modalScopes = ['tool-result-modal', 'dangerously-skip-permissions-dialog']
       const hasModalOpen = activeScopes.some(scope => modalScopes.includes(scope))
-      
+
       // Don't trigger if other modals are open
       if (hasModalOpen) {
         return
       }
-      
+
       setForkViewOpen(!forkViewOpen)
     },
     {

@@ -43,13 +43,13 @@ const DangerouslySkipPermissionsDialogContent: FC<{
     ev => {
       ev.preventDefault()
       ev.stopPropagation()
-      
+
       // If the timeout input is focused, blur it instead of closing
       if (timeoutInputRef.current && document.activeElement === timeoutInputRef.current) {
         timeoutInputRef.current.blur()
         return
       }
-      
+
       onOpenChange(false)
     },
     {
