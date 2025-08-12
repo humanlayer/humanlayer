@@ -676,6 +676,30 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 	case "assistant", "user":
 		// Messages contain the actual content
 		if event.Message != nil {
+			// Process usage data from assistant messages
+			if event.Message.Role == "assistant" && event.Message.Usage != nil {
+				usage := event.Message.Usage
+				// Compute effective context tokens (what's actually in the context window)
+				// This includes ALL tokens that count toward the context limit
+				effective := usage.InputTokens + usage.OutputTokens + usage.CacheReadInputTokens + usage.CacheCreationInputTokens
+
+				now := time.Now()
+				update := store.SessionUpdate{
+					InputTokens:              &usage.InputTokens,
+					OutputTokens:             &usage.OutputTokens,
+					CacheCreationInputTokens: &usage.CacheCreationInputTokens,
+					CacheReadInputTokens:     &usage.CacheReadInputTokens,
+					EffectiveContextTokens:   &effective,
+					LastActivityAt:           &now,
+				}
+
+				if err := m.store.UpdateSession(ctx, sessionID, update); err != nil {
+					slog.Error("failed to update token usage",
+						"session_id", sessionID,
+						"error", err)
+				}
+			}
+
 			// Process each content block
 			for _, content := range event.Message.Content {
 				switch content.Type {
@@ -852,6 +876,20 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 			CostUSD:        &event.CostUSD,
 			DurationMS:     &event.DurationMS,
 		}
+
+		// Process usage data from result event
+		if event.Usage != nil {
+			usage := event.Usage
+			// Compute effective context tokens (what's actually in the context window)
+			effective := usage.InputTokens + usage.OutputTokens + usage.CacheReadInputTokens + usage.CacheCreationInputTokens
+
+			update.InputTokens = &usage.InputTokens
+			update.OutputTokens = &usage.OutputTokens
+			update.CacheCreationInputTokens = &usage.CacheCreationInputTokens
+			update.CacheReadInputTokens = &usage.CacheReadInputTokens
+			update.EffectiveContextTokens = &effective
+		}
+
 		if event.Error != "" {
 			update.ErrorMessage = &event.Error
 		}

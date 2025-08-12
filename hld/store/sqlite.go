@@ -96,7 +96,6 @@ func (s *SQLiteStore) initSchema() error {
 
 		-- Results
 		cost_usd REAL,
-		total_tokens INTEGER,
 		duration_ms INTEGER,
 		num_turns INTEGER,
 		result_content TEXT,
@@ -614,6 +613,53 @@ func (s *SQLiteStore) applyMigrations() error {
 		slog.Info("Migration 11 applied successfully")
 	}
 
+	// Migration 12: Add detailed token tracking fields
+	if currentVersion < 12 {
+		slog.Info("Applying migration 12: Add detailed token tracking fields")
+
+		// Check if columns already exist
+		columnChecks := []string{
+			"input_tokens",
+			"output_tokens",
+			"cache_creation_input_tokens",
+			"cache_read_input_tokens",
+			"effective_context_tokens",
+		}
+
+		for _, column := range columnChecks {
+			var columnExists int
+			err = s.db.QueryRow(`
+				SELECT COUNT(*) FROM pragma_table_info('sessions')
+				WHERE name = ?
+			`, column).Scan(&columnExists)
+			if err != nil {
+				return fmt.Errorf("failed to check %s column: %w", column, err)
+			}
+
+			// Only add column if it doesn't exist
+			if columnExists == 0 {
+				_, err = s.db.Exec(fmt.Sprintf(`
+					ALTER TABLE sessions
+					ADD COLUMN %s INTEGER
+				`, column))
+				if err != nil {
+					return fmt.Errorf("failed to add %s column: %w", column, err)
+				}
+			}
+		}
+
+		// Record migration
+		_, err = s.db.Exec(`
+			INSERT INTO schema_version (version, description)
+			VALUES (12, 'Add detailed token tracking fields (input, output, cache, effective context)')
+		`)
+		if err != nil {
+			return fmt.Errorf("failed to record migration 12: %w", err)
+		}
+
+		slog.Info("Migration 12 applied successfully")
+	}
+
 	return nil
 }
 
@@ -673,9 +719,25 @@ func (s *SQLiteStore) UpdateSession(ctx context.Context, sessionID string, updat
 		setParts = append(setParts, "cost_usd = ?")
 		args = append(args, *updates.CostUSD)
 	}
-	if updates.TotalTokens != nil {
-		setParts = append(setParts, "total_tokens = ?")
-		args = append(args, *updates.TotalTokens)
+	if updates.InputTokens != nil {
+		setParts = append(setParts, "input_tokens = ?")
+		args = append(args, *updates.InputTokens)
+	}
+	if updates.OutputTokens != nil {
+		setParts = append(setParts, "output_tokens = ?")
+		args = append(args, *updates.OutputTokens)
+	}
+	if updates.CacheCreationInputTokens != nil {
+		setParts = append(setParts, "cache_creation_input_tokens = ?")
+		args = append(args, *updates.CacheCreationInputTokens)
+	}
+	if updates.CacheReadInputTokens != nil {
+		setParts = append(setParts, "cache_read_input_tokens = ?")
+		args = append(args, *updates.CacheReadInputTokens)
+	}
+	if updates.EffectiveContextTokens != nil {
+		setParts = append(setParts, "effective_context_tokens = ?")
+		args = append(args, *updates.EffectiveContextTokens)
 	}
 	if updates.DurationMS != nil {
 		setParts = append(setParts, "duration_ms = ?")
@@ -760,7 +822,8 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 			query, summary, title, model, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
 			permission_prompt_tool, allowed_tools, disallowed_tools,
 			status, created_at, last_activity_at, completed_at,
-			cost_usd, total_tokens, duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived,
+			cost_usd, input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens, effective_context_tokens,
+			duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived,
 			dangerously_skip_permissions, dangerously_skip_permissions_expires_at
 		FROM sessions WHERE id = ?
 	`
@@ -770,7 +833,8 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 	var permissionPromptTool, allowedTools, disallowedTools sql.NullString
 	var completedAt sql.NullTime
 	var costUSD sql.NullFloat64
-	var totalTokens, durationMS, numTurns sql.NullInt64
+	var inputTokens, outputTokens, cacheCreationInputTokens, cacheReadInputTokens, effectiveContextTokens sql.NullInt64
+	var durationMS, numTurns sql.NullInt64
 	var resultContent, errorMessage sql.NullString
 	var archived sql.NullBool
 	var dangerouslySkipPermissionsExpiresAt sql.NullTime
@@ -781,7 +845,8 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 		&systemPrompt, &appendSystemPrompt, &customInstructions,
 		&permissionPromptTool, &allowedTools, &disallowedTools,
 		&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
-		&costUSD, &totalTokens, &durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
+		&costUSD, &inputTokens, &outputTokens, &cacheCreationInputTokens, &cacheReadInputTokens, &effectiveContextTokens,
+		&durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
 		&archived, &session.DangerouslySkipPermissions, &dangerouslySkipPermissionsExpiresAt,
 	)
 	if err == sql.ErrNoRows {
@@ -812,9 +877,25 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 	if costUSD.Valid {
 		session.CostUSD = &costUSD.Float64
 	}
-	if totalTokens.Valid {
-		tokens := int(totalTokens.Int64)
-		session.TotalTokens = &tokens
+	if inputTokens.Valid {
+		tokens := int(inputTokens.Int64)
+		session.InputTokens = &tokens
+	}
+	if outputTokens.Valid {
+		tokens := int(outputTokens.Int64)
+		session.OutputTokens = &tokens
+	}
+	if cacheCreationInputTokens.Valid {
+		tokens := int(cacheCreationInputTokens.Int64)
+		session.CacheCreationInputTokens = &tokens
+	}
+	if cacheReadInputTokens.Valid {
+		tokens := int(cacheReadInputTokens.Int64)
+		session.CacheReadInputTokens = &tokens
+	}
+	if effectiveContextTokens.Valid {
+		tokens := int(effectiveContextTokens.Int64)
+		session.EffectiveContextTokens = &tokens
 	}
 	if durationMS.Valid {
 		duration := int(durationMS.Int64)
@@ -843,7 +924,8 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 			query, summary, title, model, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
 			permission_prompt_tool, allowed_tools, disallowed_tools,
 			status, created_at, last_activity_at, completed_at,
-			cost_usd, total_tokens, duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived,
+			cost_usd, input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens, effective_context_tokens,
+			duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived,
 			dangerously_skip_permissions, dangerously_skip_permissions_expires_at
 		FROM sessions
 		WHERE run_id = ?
@@ -854,7 +936,8 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 	var permissionPromptTool, allowedTools, disallowedTools sql.NullString
 	var completedAt sql.NullTime
 	var costUSD sql.NullFloat64
-	var totalTokens, durationMS, numTurns sql.NullInt64
+	var inputTokens, outputTokens, cacheCreationInputTokens, cacheReadInputTokens, effectiveContextTokens sql.NullInt64
+	var durationMS, numTurns sql.NullInt64
 	var resultContent, errorMessage sql.NullString
 	var archived sql.NullBool
 	var dangerouslySkipPermissionsExpiresAt sql.NullTime
@@ -865,7 +948,8 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 		&systemPrompt, &appendSystemPrompt, &customInstructions,
 		&permissionPromptTool, &allowedTools, &disallowedTools,
 		&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
-		&costUSD, &totalTokens, &durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
+		&costUSD, &inputTokens, &outputTokens, &cacheCreationInputTokens, &cacheReadInputTokens, &effectiveContextTokens,
+		&durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
 		&archived, &session.DangerouslySkipPermissions, &dangerouslySkipPermissionsExpiresAt,
 	)
 	if err == sql.ErrNoRows {
@@ -896,9 +980,25 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 	if costUSD.Valid {
 		session.CostUSD = &costUSD.Float64
 	}
-	if totalTokens.Valid {
-		tokens := int(totalTokens.Int64)
-		session.TotalTokens = &tokens
+	if inputTokens.Valid {
+		tokens := int(inputTokens.Int64)
+		session.InputTokens = &tokens
+	}
+	if outputTokens.Valid {
+		tokens := int(outputTokens.Int64)
+		session.OutputTokens = &tokens
+	}
+	if cacheCreationInputTokens.Valid {
+		tokens := int(cacheCreationInputTokens.Int64)
+		session.CacheCreationInputTokens = &tokens
+	}
+	if cacheReadInputTokens.Valid {
+		tokens := int(cacheReadInputTokens.Int64)
+		session.CacheReadInputTokens = &tokens
+	}
+	if effectiveContextTokens.Valid {
+		tokens := int(effectiveContextTokens.Int64)
+		session.EffectiveContextTokens = &tokens
 	}
 	if durationMS.Valid {
 		duration := int(durationMS.Int64)
@@ -927,7 +1027,8 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 			query, summary, title, model, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
 			permission_prompt_tool, allowed_tools, disallowed_tools,
 			status, created_at, last_activity_at, completed_at,
-			cost_usd, total_tokens, duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived,
+			cost_usd, input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens, effective_context_tokens,
+		duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived,
 			dangerously_skip_permissions, dangerously_skip_permissions_expires_at
 		FROM sessions
 		ORDER BY last_activity_at DESC
@@ -946,7 +1047,8 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 		var permissionPromptTool, allowedTools, disallowedTools sql.NullString
 		var completedAt sql.NullTime
 		var costUSD sql.NullFloat64
-		var totalTokens, durationMS, numTurns sql.NullInt64
+		var inputTokens, outputTokens, cacheCreationInputTokens, cacheReadInputTokens, effectiveContextTokens sql.NullInt64
+		var durationMS, numTurns sql.NullInt64
 		var resultContent, errorMessage sql.NullString
 		var archived sql.NullBool
 		var dangerouslySkipPermissionsExpiresAt sql.NullTime
@@ -957,7 +1059,8 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 			&systemPrompt, &appendSystemPrompt, &customInstructions,
 			&permissionPromptTool, &allowedTools, &disallowedTools,
 			&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
-			&costUSD, &totalTokens, &durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
+			&costUSD, &inputTokens, &outputTokens, &cacheCreationInputTokens, &cacheReadInputTokens, &effectiveContextTokens,
+			&durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
 			&archived, &session.DangerouslySkipPermissions, &dangerouslySkipPermissionsExpiresAt,
 		)
 		if err != nil {
@@ -985,9 +1088,25 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 		if costUSD.Valid {
 			session.CostUSD = &costUSD.Float64
 		}
-		if totalTokens.Valid {
-			tokens := int(totalTokens.Int64)
-			session.TotalTokens = &tokens
+		if inputTokens.Valid {
+			tokens := int(inputTokens.Int64)
+			session.InputTokens = &tokens
+		}
+		if outputTokens.Valid {
+			tokens := int(outputTokens.Int64)
+			session.OutputTokens = &tokens
+		}
+		if cacheCreationInputTokens.Valid {
+			tokens := int(cacheCreationInputTokens.Int64)
+			session.CacheCreationInputTokens = &tokens
+		}
+		if cacheReadInputTokens.Valid {
+			tokens := int(cacheReadInputTokens.Int64)
+			session.CacheReadInputTokens = &tokens
+		}
+		if effectiveContextTokens.Valid {
+			tokens := int(effectiveContextTokens.Int64)
+			session.EffectiveContextTokens = &tokens
 		}
 		if durationMS.Valid {
 			duration := int(durationMS.Int64)
@@ -1022,7 +1141,8 @@ func (s *SQLiteStore) GetExpiredDangerousPermissionsSessions(ctx context.Context
 			query, summary, title, model, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
 			permission_prompt_tool, allowed_tools, disallowed_tools,
 			status, created_at, last_activity_at, completed_at,
-			cost_usd, total_tokens, duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived,
+			cost_usd, input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens, effective_context_tokens,
+		duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived,
 			dangerously_skip_permissions, dangerously_skip_permissions_expires_at
 		FROM sessions
 		WHERE dangerously_skip_permissions = 1
@@ -1045,7 +1165,8 @@ func (s *SQLiteStore) GetExpiredDangerousPermissionsSessions(ctx context.Context
 		var permissionPromptTool, allowedTools, disallowedTools sql.NullString
 		var completedAt sql.NullTime
 		var costUSD sql.NullFloat64
-		var totalTokens, durationMS, numTurns sql.NullInt64
+		var inputTokens, outputTokens, cacheCreationInputTokens, cacheReadInputTokens, effectiveContextTokens sql.NullInt64
+		var durationMS, numTurns sql.NullInt64
 		var resultContent, errorMessage sql.NullString
 		var archived sql.NullBool
 		var dangerouslySkipPermissionsExpiresAt sql.NullTime
@@ -1056,7 +1177,8 @@ func (s *SQLiteStore) GetExpiredDangerousPermissionsSessions(ctx context.Context
 			&systemPrompt, &appendSystemPrompt, &customInstructions,
 			&permissionPromptTool, &allowedTools, &disallowedTools,
 			&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
-			&costUSD, &totalTokens, &durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
+			&costUSD, &inputTokens, &outputTokens, &cacheCreationInputTokens, &cacheReadInputTokens, &effectiveContextTokens,
+			&durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
 			&archived, &session.DangerouslySkipPermissions, &dangerouslySkipPermissionsExpiresAt,
 		)
 		if err != nil {
@@ -1084,9 +1206,25 @@ func (s *SQLiteStore) GetExpiredDangerousPermissionsSessions(ctx context.Context
 		if costUSD.Valid {
 			session.CostUSD = &costUSD.Float64
 		}
-		if totalTokens.Valid {
-			tokens := int(totalTokens.Int64)
-			session.TotalTokens = &tokens
+		if inputTokens.Valid {
+			tokens := int(inputTokens.Int64)
+			session.InputTokens = &tokens
+		}
+		if outputTokens.Valid {
+			tokens := int(outputTokens.Int64)
+			session.OutputTokens = &tokens
+		}
+		if cacheCreationInputTokens.Valid {
+			tokens := int(cacheCreationInputTokens.Int64)
+			session.CacheCreationInputTokens = &tokens
+		}
+		if cacheReadInputTokens.Valid {
+			tokens := int(cacheReadInputTokens.Int64)
+			session.CacheReadInputTokens = &tokens
+		}
+		if effectiveContextTokens.Valid {
+			tokens := int(effectiveContextTokens.Int64)
+			session.EffectiveContextTokens = &tokens
 		}
 		if durationMS.Valid {
 			duration := int(durationMS.Int64)
