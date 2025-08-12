@@ -78,7 +78,6 @@ const ROBOT_VERBS = [
   'transcribing',
   'receiving',
   'adhering',
-  'connecting',
   'sublimating',
   'balancing',
   'ionizing',
