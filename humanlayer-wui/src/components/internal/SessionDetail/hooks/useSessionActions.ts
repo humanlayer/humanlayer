@@ -5,6 +5,7 @@ import { Session, ConversationEvent, ViewMode } from '@/lib/daemon/types'
 import { daemonClient } from '@/lib/daemon/client'
 import { notificationService } from '@/services/NotificationService'
 import { useStore } from '@/AppStore'
+import { SessionDetailHotkeysScope } from '../SessionDetail'
 
 interface UseSessionActionsProps {
   session: Session
@@ -139,21 +140,29 @@ export function useSessionActions({
   // Note: Escape key is handled in SessionDetail to manage confirmingApprovalId state
 
   // Ctrl+X to interrupt session
-  useHotkeys('ctrl+x', () => {
-    if (session.status === 'running' || session.status === 'starting') {
-      interruptSession(session.id)
-    }
-  })
+  useHotkeys(
+    'ctrl+x',
+    () => {
+      if (session.status === 'running' || session.status === 'starting') {
+        interruptSession(session.id)
+      }
+    },
+    { scopes: SessionDetailHotkeysScope },
+  )
 
   // R key - no longer needed since input is always visible
   // Keeping the hotkey registration but making it a no-op to avoid breaking anything
 
   // P key to navigate to parent session
-  useHotkeys('p', () => {
-    if (session.parentSessionId) {
-      handleNavigateToParent()
-    }
-  })
+  useHotkeys(
+    'p',
+    () => {
+      if (session.parentSessionId) {
+        handleNavigateToParent()
+      }
+    },
+    { scopes: SessionDetailHotkeysScope },
+  )
 
   return {
     responseInput,

@@ -5,6 +5,9 @@ import { cn } from '@/lib/utils'
 import CommandInput from './CommandInput'
 import CommandPaletteMenu from './CommandPaletteMenu'
 import { useSessionLauncher } from '@/hooks/useSessionLauncher'
+import { useStealHotkeyScope } from '@/hooks/useStealHotkeyScope'
+
+const SessionLauncherHotkeysScope = 'session-launcher'
 
 interface SessionLauncherProps {
   isOpen: boolean
@@ -16,10 +19,22 @@ export function SessionLauncher({ isOpen, onClose }: SessionLauncherProps) {
   const { query, setQuery, config, setConfig, launchSession, isLaunching, error, mode, view, setView } =
     useSessionLauncher()
 
-  useHotkeys('escape', onClose, {
-    enabled: isOpen,
-    enableOnFormTags: false,
-  })
+  useHotkeys(
+    'escape',
+    e => {
+      e.preventDefault()
+      e.stopPropagation()
+      onClose()
+    },
+    {
+      enabled: isOpen,
+      enableOnFormTags: false,
+      scopes: SessionLauncherHotkeysScope,
+    },
+  )
+
+  // Only steal scope when actually open
+  useStealHotkeyScope(SessionLauncherHotkeysScope, isOpen)
 
   useEffect(() => {
     if (isOpen && view === 'input' && modalRef.current) {

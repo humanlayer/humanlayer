@@ -3,6 +3,7 @@ import { useHotkeys } from 'react-hotkeys-hook'
 import { ConversationEvent, ApprovalStatus } from '@/lib/daemon/types'
 import { daemonClient } from '@/lib/daemon/client'
 import { notificationService } from '@/services/NotificationService'
+import { SessionDetailHotkeysScope } from '../SessionDetail'
 
 interface UseSessionApprovalsProps {
   sessionId: string
@@ -104,6 +105,9 @@ export function useSessionApprovals({
         }
       }
     },
+    {
+      scopes: SessionDetailHotkeysScope,
+    },
     [
       events,
       focusedEventId,
@@ -140,6 +144,9 @@ export function useSessionApprovals({
       if (focusedEventId === pendingApprovalEvent.id) {
         handleStartDeny(pendingApprovalEvent.approvalId!)
       }
+    },
+    {
+      scopes: SessionDetailHotkeysScope,
     },
     [events, focusedEventId, handleStartDeny, setFocusedEventId, setFocusSource],
   )
