@@ -5,8 +5,11 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
+	"sort"
 	"time"
+
 	claudecode "github.com/humanlayer/humanlayer/claudecode-go"
 	"github.com/humanlayer/humanlayer/hld/api"
 	"github.com/humanlayer/humanlayer/hld/api/mapper"
@@ -15,9 +18,6 @@ import (
 	"github.com/humanlayer/humanlayer/hld/internal/version"
 	"github.com/humanlayer/humanlayer/hld/session"
 	"github.com/humanlayer/humanlayer/hld/store"
-	"log/slog"
-	"sort"
-	"time"
 )
 
 type SessionHandlers struct {
@@ -651,13 +651,13 @@ func (h *SessionHandlers) GetDatabaseInfo(ctx context.Context, req api.GetDataba
 	stats := make(map[string]int64)
 	var size int64
 	var lastModified *time.Time
-	
+
 	// Get database path from config if available
 	dbPath := ""
 	if h.config != nil {
 		dbPath = h.config.DatabasePath
 	}
-	
+
 	// Get file stats if path is available and not in-memory
 	if dbPath != "" && dbPath != ":memory:" {
 		if fileInfo, err := os.Stat(dbPath); err == nil {
@@ -666,35 +666,35 @@ func (h *SessionHandlers) GetDatabaseInfo(ctx context.Context, req api.GetDataba
 			lastModified = &modTime
 		}
 	}
-	
+
 	// Get table counts from the store
 	if sqliteStore, ok := h.store.(*store.SQLiteStore); ok {
 		// Get session count
 		if count, err := sqliteStore.GetSessionCount(ctx); err == nil {
 			stats["sessions"] = int64(count)
 		}
-		
+
 		// Get approval count
 		if count, err := sqliteStore.GetApprovalCount(ctx); err == nil {
 			stats["approvals"] = int64(count)
 		}
-		
+
 		// Get event count
 		if count, err := sqliteStore.GetEventCount(ctx); err == nil {
 			stats["events"] = int64(count)
 		}
 	}
-	
+
 	response := api.GetDatabaseInfo200JSONResponse{
 		Path:       dbPath,
 		Size:       size,
 		TableCount: 5, // We have 5 tables: sessions, conversation_events, approvals, mcp_servers, schema_version
 		Stats:      stats,
 	}
-	
+
 	if lastModified != nil {
 		response.LastModified = lastModified
 	}
-	
+
 	return response, nil
 }
