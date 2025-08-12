@@ -33,13 +33,12 @@ I can investigate logs, database state, and recent changes to help identify the 
 You have access to these key locations and tools:
 
 **Logs** (automatically created by `make daemon` and `make wui`):
-- Daemon logs: `~/.humanlayer/logs/daemon-YYYY-MM-DD-HH-MM-SS.log`
-- WUI logs: `~/.humanlayer/logs/wui-YYYY-MM-DD-HH-MM-SS.log`
 - MCP logs: `~/.humanlayer/logs/mcp-claude-approvals-*.log`
+- Combined WUI/Daemon logs: `~/.humanlayer/logs/wui-${BRANCH_NAME}/codelayer.log`
 - First line shows: `[timestamp] starting [service] in [directory]`
 
 **Database**:
-- Location: `~/.humanlayer/daemon.db`
+- Location: `~/.humanlayer/daemon-{BRANCH_NAME}.db`
 - SQLite database with sessions, events, approvals, etc.
 - Can query directly with `sqlite3`
 
