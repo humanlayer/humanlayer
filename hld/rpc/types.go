@@ -65,6 +65,7 @@ type SessionState struct {
 	Summary                             string  `json:"summary"`
 	Title                               string  `json:"title"`
 	Model                               string  `json:"model,omitempty"`
+	ModelID                             string  `json:"model_id,omitempty"`
 	WorkingDir                          string  `json:"working_dir,omitempty"`
 	CreatedAt                           string  `json:"created_at"`
 	LastActivityAt                      string  `json:"last_activity_at"`

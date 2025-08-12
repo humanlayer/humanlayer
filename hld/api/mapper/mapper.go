@@ -40,6 +40,9 @@ func (m *Mapper) SessionToAPI(s store.Session) api.Session {
 	if s.Model != "" {
 		session.Model = &s.Model
 	}
+	if s.ModelID != "" {
+		session.ModelId = &s.ModelID
+	}
 	if s.WorkingDir != "" {
 		session.WorkingDir = &s.WorkingDir
 	}

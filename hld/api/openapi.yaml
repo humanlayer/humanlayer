@@ -539,6 +539,10 @@ components:
           type: string
           description: Model used for this session
           example: sonnet
+        model_id:
+          type: string
+          description: Full model identifier
+          example: claude-opus-4-1-20250805
         working_dir:
           type: string
           description: Working directory for the session
