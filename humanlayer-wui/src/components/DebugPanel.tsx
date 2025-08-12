@@ -11,11 +11,11 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Loader2, RefreshCw, Link, Server, Database, Copy, AlertCircle, CheckCircle } from 'lucide-react'
+import { Loader2, RefreshCw, Link, Server, Database, Copy } from 'lucide-react'
 import { useDaemonConnection } from '@/hooks/useDaemonConnection'
 import { logger } from '@/lib/logging'
 import { daemonClient } from '@/lib/daemon'
-import type { DatabaseInfo, ApprovalMetrics } from '@/lib/daemon/types'
+import type { DatabaseInfo } from '@/lib/daemon/types'
 import { toast } from 'sonner'
 
 interface DebugPanelProps {
@@ -33,7 +33,6 @@ export function DebugPanel({ open, onOpenChange }: DebugPanelProps) {
   const [externalDaemonUrl, setExternalDaemonUrl] = useState<string | null>(null)
   const [daemonInfo, setDaemonInfo] = useState<DaemonInfo | null>(null)
   const [databaseInfo, setDatabaseInfo] = useState<DatabaseInfo | null>(null)
-  const [approvalMetrics, setApprovalMetrics] = useState<ApprovalMetrics | null>(null)
 
   // Only show in dev mode
   if (!import.meta.env.DEV) {
@@ -81,15 +80,6 @@ export function DebugPanel({ open, onOpenChange }: DebugPanelProps) {
         } catch (error) {
           logger.error('Failed to load database info:', error)
           setDatabaseInfo(null)
-        }
-        
-        // Fetch approval metrics
-        try {
-          const metrics = await daemonClient.getApprovalMetrics()
-          setApprovalMetrics(metrics)
-        } catch (error) {
-          logger.error('Failed to load approval metrics:', error)
-          setApprovalMetrics(null)
         }
       }
     } catch (error) {
@@ -336,98 +326,6 @@ export function DebugPanel({ open, onOpenChange }: DebugPanelProps) {
                         )}
                       </>
                     )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {approvalMetrics && (
-            <Card className="md:col-span-2">
-              <CardHeader>
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4" />
-                  Approval Metrics
-                </CardTitle>
-                <CardDescription className="text-xs">
-                  Real-time approval correlation health status
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Total Pending</span>
-                      <span className="text-sm font-medium">{approvalMetrics.total_pending}</span>
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Correlated</span>
-                      <div className="flex items-center gap-2">
-                        {approvalMetrics.correlated_count > 0 && (
-                          <CheckCircle className="h-3 w-3 text-[var(--terminal-success)]" />
-                        )}
-                        <span className="text-sm font-medium">{approvalMetrics.correlated_count}</span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Orphaned</span>
-                      <div className="flex items-center gap-2">
-                        {approvalMetrics.orphaned_count > 0 && (
-                          <AlertCircle className="h-3 w-3 text-[var(--terminal-warning)]" />
-                        )}
-                        <span className={`text-sm font-medium ${
-                          approvalMetrics.orphaned_count > 0 ? 'text-[var(--terminal-warning)]' : ''
-                        }`}>
-                          {approvalMetrics.orphaned_count}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    {approvalMetrics.mcp_failures !== undefined && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">MCP Failures</span>
-                        <div className="flex items-center gap-2">
-                          {approvalMetrics.mcp_failures > 0 && (
-                            <AlertCircle className="h-3 w-3 text-[var(--terminal-error)]" />
-                          )}
-                          <span className={`text-sm font-medium ${
-                            approvalMetrics.mcp_failures > 0 ? 'text-[var(--terminal-error)]' : ''
-                          }`}>
-                            {approvalMetrics.mcp_failures}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Last Check</span>
-                      <span className="text-xs font-mono">
-                        {new Date(approvalMetrics.checked_at).toLocaleTimeString()}
-                      </span>
-                    </div>
-
-                    <Button
-                      onClick={async () => {
-                        try {
-                          const metrics = await daemonClient.getApprovalMetrics()
-                          setApprovalMetrics(metrics)
-                          toast.success('Metrics refreshed')
-                        } catch (error) {
-                          logger.error('Failed to refresh metrics:', error)
-                          toast.error('Failed to refresh metrics')
-                        }
-                      }}
-                      size="sm"
-                      variant="outline"
-                      className="w-full"
-                    >
-                      <RefreshCw className="mr-2 h-3 w-3" />
-                      Refresh
-                    </Button>
                   </div>
                 </div>
               </CardContent>

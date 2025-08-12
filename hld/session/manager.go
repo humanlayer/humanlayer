@@ -641,7 +641,7 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 			if session != nil && session.Model == "" && event.Model != "" {
 				// Store the full model ID
 				modelID := event.Model
-				
+
 				// Extract simple model name from API format (case-insensitive)
 				var modelName string
 				lowerModel := strings.ToLower(event.Model)

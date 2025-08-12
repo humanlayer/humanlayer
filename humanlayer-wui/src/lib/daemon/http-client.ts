@@ -437,7 +437,7 @@ export class HTTPDaemonClient implements IDaemonClient {
 
   async getDatabaseInfo(): Promise<import('./types').DatabaseInfo> {
     await this.ensureConnected()
-    
+
     // Use REST API endpoint
     const baseUrl = await getDaemonUrl()
     const response = await fetch(`${baseUrl}/api/v1/database-info`, {

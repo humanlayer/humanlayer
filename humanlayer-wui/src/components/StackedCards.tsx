@@ -19,33 +19,36 @@ interface StackedCardsProps {
   visibleCards?: number
 }
 
-export function StackedCards({ 
-  cards, 
+export function StackedCards({
+  cards,
   onDismiss,
   className,
   gap = GAP,
-  visibleCards = VISIBLE_CARDS
+  visibleCards = VISIBLE_CARDS,
 }: StackedCardsProps) {
   const [removedCards, setRemovedCards] = React.useState<Set<string>>(new Set())
   const [mountedCards, setMountedCards] = React.useState<Set<string>>(new Set())
 
   const activeCards = React.useMemo(
     () => cards.filter(card => !removedCards.has(card.id)),
-    [cards, removedCards]
+    [cards, removedCards],
   )
 
-  const dismissCard = React.useCallback((cardId: string) => {
-    setRemovedCards(prev => new Set(prev).add(cardId))
-    
-    setTimeout(() => {
-      onDismiss?.(cardId)
-      setRemovedCards(prev => {
-        const next = new Set(prev)
-        next.delete(cardId)
-        return next
-      })
-    }, TIME_BEFORE_UNMOUNT)
-  }, [onDismiss])
+  const dismissCard = React.useCallback(
+    (cardId: string) => {
+      setRemovedCards(prev => new Set(prev).add(cardId))
+
+      setTimeout(() => {
+        onDismiss?.(cardId)
+        setRemovedCards(prev => {
+          const next = new Set(prev)
+          next.delete(cardId)
+          return next
+        })
+      }, TIME_BEFORE_UNMOUNT)
+    },
+    [onDismiss],
+  )
 
   React.useEffect(() => {
     // Mount all cards that aren't already mounted
@@ -61,15 +64,14 @@ export function StackedCards({
   }, [activeCards, mountedCards])
 
   return (
-    <div 
-      className={cn(
-        'relative',
-        className
-      )}
-      style={{
-        '--gap': `${gap}px`,
-        '--visible-cards': visibleCards
-      } as React.CSSProperties}
+    <div
+      className={cn('relative', className)}
+      style={
+        {
+          '--gap': `${gap}px`,
+          '--visible-cards': visibleCards,
+        } as React.CSSProperties
+      }
     >
       {activeCards.map((card, index) => (
         <StackedCard
@@ -107,11 +109,11 @@ function StackedCard({
   onDismiss,
   isRemoved,
   isMounted,
-  totalCards
+  totalCards,
 }: StackedCardProps) {
   const cardRef = React.useRef<HTMLDivElement>(null)
   const [cardHeight, setCardHeight] = React.useState<number | null>(null)
-  
+
   const isFront = index === 0
   const isVisible = index < visibleCards
   const toastsBefore = Math.min(index, visibleCards - 1)
@@ -126,7 +128,7 @@ function StackedCard({
 
   const scale = React.useMemo(() => {
     if (isFront) return 1
-    return 1 - (toastsBefore * 0.03)
+    return 1 - toastsBefore * 0.03
   }, [isFront, toastsBefore])
 
   const yTransform = React.useMemo(() => {
@@ -156,26 +158,27 @@ function StackedCard({
       className={cn(
         'absolute bottom-0 left-0 right-0 transition-all duration-400',
         'outline-none touch-none',
-        !isVisible && 'pointer-events-none'
+        !isVisible && 'pointer-events-none',
       )}
       style={{
         transform: `translateY(${yTransform}px) scale(${scale})`,
         opacity,
         zIndex: totalCards - index,
         transformOrigin: 'center bottom',
-        transition: 'transform 400ms cubic-bezier(0.32, 0.72, 0, 1), opacity 400ms cubic-bezier(0.32, 0.72, 0, 1)',
+        transition:
+          'transform 400ms cubic-bezier(0.32, 0.72, 0, 1), opacity 400ms cubic-bezier(0.32, 0.72, 0, 1)',
       }}
       data-front={isFront}
       data-visible={isVisible}
       data-mounted={isMounted}
       data-removed={isRemoved}
     >
-      <Card 
+      <Card
         className={cn(
           'cursor-pointer select-none',
           'shadow-lg',
           isFront && 'hover:shadow-xl',
-          !isFront && 'opacity-90'
+          !isFront && 'opacity-90',
         )}
         onClick={isFront ? onDismiss : undefined}
       >
