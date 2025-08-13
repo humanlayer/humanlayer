@@ -189,6 +189,7 @@ func (s *SQLiteStore) initSchema() error {
 		id TEXT PRIMARY KEY,
 		run_id TEXT NOT NULL,
 		session_id TEXT NOT NULL,
+		tool_use_id TEXT, -- For direct correlation with tool calls
 		status TEXT NOT NULL CHECK (status IN ('pending', 'approved', 'denied')),
 		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		responded_at DATETIME,
@@ -205,6 +206,7 @@ func (s *SQLiteStore) initSchema() error {
 	CREATE INDEX IF NOT EXISTS idx_approvals_pending ON approvals(status) WHERE status = 'pending';
 	CREATE INDEX IF NOT EXISTS idx_approvals_session ON approvals(session_id);
 	CREATE INDEX IF NOT EXISTS idx_approvals_run_id ON approvals(run_id);
+	CREATE INDEX IF NOT EXISTS idx_approvals_tool_use_id ON approvals(tool_use_id) WHERE tool_use_id IS NOT NULL;
 	`
 
 	if _, err := s.db.Exec(schema); err != nil {
@@ -612,6 +614,75 @@ func (s *SQLiteStore) applyMigrations() error {
 		}
 
 		slog.Info("Migration 11 applied successfully")
+	}
+
+	// Migration 12: Add tool_use_id column to approvals table
+	if currentVersion < 12 {
+		slog.Info("Applying migration 12: Add tool_use_id column to approvals table")
+
+		// Check if column already exists for idempotency
+		var columnExists int
+		err = s.db.QueryRow(`
+			SELECT COUNT(*) FROM pragma_table_info('approvals')
+			WHERE name = 'tool_use_id'
+		`).Scan(&columnExists)
+		if err != nil {
+			return fmt.Errorf("failed to check tool_use_id column: %w", err)
+		}
+
+		// Only add column if it doesn't exist
+		if columnExists == 0 {
+			_, err = s.db.Exec(`
+				ALTER TABLE approvals
+				ADD COLUMN tool_use_id TEXT
+			`)
+			if err != nil {
+				return fmt.Errorf("failed to add tool_use_id column: %w", err)
+			}
+		}
+
+		// Create index for efficient lookups
+		_, err = s.db.Exec(`
+			CREATE INDEX IF NOT EXISTS idx_approvals_tool_use_id
+			ON approvals(tool_use_id)
+			WHERE tool_use_id IS NOT NULL
+		`)
+		if err != nil {
+			return fmt.Errorf("failed to create tool_use_id index: %w", err)
+		}
+
+		// Update existing approvals to populate tool_use_id from correlated events
+		_, err = s.db.Exec(`
+			UPDATE approvals
+			SET tool_use_id = (
+				SELECT ce.tool_id
+				FROM conversation_events ce
+				WHERE ce.approval_id = approvals.id
+				AND ce.tool_id IS NOT NULL
+				LIMIT 1
+			)
+			WHERE EXISTS (
+				SELECT 1
+				FROM conversation_events ce
+				WHERE ce.approval_id = approvals.id
+				AND ce.tool_id IS NOT NULL
+			)
+		`)
+		if err != nil {
+			slog.Warn("Failed to populate tool_use_id for existing approvals (non-critical)", "error", err)
+			// This is non-critical as existing approvals may not have correlation
+		}
+
+		// Record migration
+		_, err = s.db.Exec(`
+			INSERT INTO schema_version (version, description)
+			VALUES (12, 'Add tool_use_id column to approvals table for direct correlation')
+		`)
+		if err != nil {
+			return fmt.Errorf("failed to record migration 12: %w", err)
+		}
+
+		slog.Info("Migration 12 applied successfully")
 	}
 
 	return nil
@@ -1719,13 +1790,13 @@ func (s *SQLiteStore) CreateApproval(ctx context.Context, approval *Approval) er
 
 	query := `
 		INSERT INTO approvals (
-			id, run_id, session_id, status, created_at,
+			id, run_id, session_id, tool_use_id, status, created_at,
 			tool_name, tool_input
-		) VALUES (?, ?, ?, ?, ?, ?, ?)
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	_, err := s.db.ExecContext(ctx, query,
-		approval.ID, approval.RunID, approval.SessionID, approval.Status.String(), approval.CreatedAt,
+		approval.ID, approval.RunID, approval.SessionID, approval.ToolUseID, approval.Status.String(), approval.CreatedAt,
 		approval.ToolName, string(approval.ToolInput),
 	)
 	if err != nil {
@@ -1737,19 +1808,20 @@ func (s *SQLiteStore) CreateApproval(ctx context.Context, approval *Approval) er
 // GetApproval retrieves an approval by ID
 func (s *SQLiteStore) GetApproval(ctx context.Context, id string) (*Approval, error) {
 	query := `
-		SELECT id, run_id, session_id, status, created_at, responded_at,
+		SELECT id, run_id, session_id, tool_use_id, status, created_at, responded_at,
 			tool_name, tool_input, comment
 		FROM approvals WHERE id = ?
 	`
 
 	var approval Approval
+	var toolUseID sql.NullString
 	var respondedAt sql.NullTime
 	var comment sql.NullString
 	var statusStr string
 	var toolInputStr string
 
 	err := s.db.QueryRowContext(ctx, query, id).Scan(
-		&approval.ID, &approval.RunID, &approval.SessionID, &statusStr,
+		&approval.ID, &approval.RunID, &approval.SessionID, &toolUseID, &statusStr,
 		&approval.CreatedAt, &respondedAt,
 		&approval.ToolName, &toolInputStr, &comment,
 	)
@@ -1767,6 +1839,9 @@ func (s *SQLiteStore) GetApproval(ctx context.Context, id string) (*Approval, er
 	}
 
 	// Handle nullable fields
+	if toolUseID.Valid {
+		approval.ToolUseID = &toolUseID.String
+	}
 	if respondedAt.Valid {
 		approval.RespondedAt = &respondedAt.Time
 	}
@@ -1779,7 +1854,7 @@ func (s *SQLiteStore) GetApproval(ctx context.Context, id string) (*Approval, er
 // GetPendingApprovals retrieves all pending approvals for a session
 func (s *SQLiteStore) GetPendingApprovals(ctx context.Context, sessionID string) ([]*Approval, error) {
 	query := `
-		SELECT id, run_id, session_id, status, created_at, responded_at,
+		SELECT id, run_id, session_id, tool_use_id, status, created_at, responded_at,
 			tool_name, tool_input, comment
 		FROM approvals
 		WHERE session_id = ? AND status = ?
@@ -1795,13 +1870,14 @@ func (s *SQLiteStore) GetPendingApprovals(ctx context.Context, sessionID string)
 	var approvals []*Approval
 	for rows.Next() {
 		var approval Approval
+		var toolUseID sql.NullString
 		var respondedAt sql.NullTime
 		var comment sql.NullString
 		var statusStr string
 		var toolInputStr string
 
 		err := rows.Scan(
-			&approval.ID, &approval.RunID, &approval.SessionID, &statusStr,
+			&approval.ID, &approval.RunID, &approval.SessionID, &toolUseID, &statusStr,
 			&approval.CreatedAt, &respondedAt,
 			&approval.ToolName, &toolInputStr, &comment,
 		)
@@ -1816,6 +1892,9 @@ func (s *SQLiteStore) GetPendingApprovals(ctx context.Context, sessionID string)
 		}
 
 		// Handle nullable fields
+		if toolUseID.Valid {
+			approval.ToolUseID = &toolUseID.String
+		}
 		if respondedAt.Valid {
 			approval.RespondedAt = &respondedAt.Time
 		}
