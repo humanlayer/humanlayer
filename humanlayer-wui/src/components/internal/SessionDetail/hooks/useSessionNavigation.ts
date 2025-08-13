@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { ConversationEvent, ConversationEventType } from '@/lib/daemon/types'
+import { SessionDetailHotkeysScope } from '../SessionDetail'
 
 interface NavigableItem {
   id: number
@@ -131,8 +132,14 @@ export function useSessionNavigation({
   }, [focusedEventId, navigableItems, startKeyboardNavigation])
 
   // Keyboard navigation
-  useHotkeys('j, ArrowDown', focusNextEvent, { enabled: !expandedToolResult && !disabled })
-  useHotkeys('k, ArrowUp', focusPreviousEvent, { enabled: !expandedToolResult && !disabled })
+  useHotkeys('j, ArrowDown', focusNextEvent, {
+    enabled: !expandedToolResult && !disabled,
+    scopes: SessionDetailHotkeysScope,
+  })
+  useHotkeys('k, ArrowUp', focusPreviousEvent, {
+    enabled: !expandedToolResult && !disabled,
+    scopes: SessionDetailHotkeysScope,
+  })
 
   // I key to expand task groups or inspect tool results
   useHotkeys(
@@ -173,11 +180,13 @@ export function useSessionNavigation({
             )
           : null
 
+        // Clear focus when opening modal to prevent double escape handling
+        setFocusedEventId(null)
         setExpandedToolResult(toolResult || null)
         setExpandedToolCall(focusedEvent)
       }
     },
-    { enabled: !expandedToolResult && !disabled },
+    { enabled: !expandedToolResult && !disabled, scopes: SessionDetailHotkeysScope },
   )
 
   // Scroll focused element into view (only for keyboard navigation)
