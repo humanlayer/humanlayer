@@ -256,6 +256,7 @@ func NewSessionFromConfig(id, runID string, config claudecode.SessionConfig) *Se
 		ID:                   id,
 		RunID:                runID,
 		Query:                config.Query,
+		Title:                config.Title,
 		Model:                string(config.Model),
 		WorkingDir:           config.WorkingDir,
 		MaxTurns:             config.MaxTurns,

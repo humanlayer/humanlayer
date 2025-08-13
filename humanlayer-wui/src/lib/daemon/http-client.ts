@@ -136,6 +136,7 @@ export class HTTPDaemonClient implements IDaemonClient {
 
     const response = await this.client!.createSession({
       query: params.query,
+      title: 'title' in params ? params.title : undefined,
       workingDir:
         'workingDir' in params ? params.workingDir : (params as LaunchSessionRequest).working_dir,
       model: model,

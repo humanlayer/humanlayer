@@ -34,6 +34,12 @@ export interface CreateSessionRequest {
      */
     query: string;
     /**
+     * Optional title for the session
+     * @type {string}
+     * @memberof CreateSessionRequest
+     */
+    title?: string;
+    /**
      * Model to use for the session
      * @type {string}
      * @memberof CreateSessionRequest
@@ -143,6 +149,7 @@ export function CreateSessionRequestFromJSONTyped(json: any, ignoreDiscriminator
     return {
 
         'query': json['query'],
+        'title': json['title'] == null ? undefined : json['title'],
         'model': json['model'] == null ? undefined : json['model'],
         'mcpConfig': json['mcp_config'] == null ? undefined : MCPConfigFromJSON(json['mcp_config']),
         'permissionPromptTool': json['permission_prompt_tool'] == null ? undefined : json['permission_prompt_tool'],
@@ -171,6 +178,7 @@ export function CreateSessionRequestToJSONTyped(value?: CreateSessionRequest | n
     return {
 
         'query': value['query'],
+        'title': value['title'],
         'model': value['model'],
         'mcp_config': MCPConfigToJSON(value['mcpConfig']),
         'permission_prompt_tool': value['permissionPromptTool'],

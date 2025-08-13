@@ -151,6 +151,7 @@ export enum ViewMode {
 // Legacy request/response types (for gradual migration)
 export interface LaunchSessionRequest {
   query: string
+  title?: string
   model?: string
   mcp_config?: any
   permission_prompt_tool?: string
