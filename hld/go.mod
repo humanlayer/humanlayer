@@ -15,6 +15,7 @@ require (
 	github.com/humanlayer/humanlayer/claudecode-go v0.0.0-00010101000000-000000000000
 	github.com/mattn/go-sqlite3 v1.14.28
 	github.com/oapi-codegen/runtime v1.1.2
+	github.com/r3labs/sse/v2 v2.10.0
 	github.com/spf13/viper v1.20.1
 	github.com/stretchr/testify v1.10.0
 	go.uber.org/mock v0.5.2
@@ -50,7 +51,6 @@ require (
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
 	github.com/perimeterx/marshmallow v1.1.5 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/r3labs/sse/v2 v2.10.0 // indirect
 	github.com/sagikazarmark/locafero v0.7.0 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
 	github.com/spf13/afero v1.12.0 // indirect

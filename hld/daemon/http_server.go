@@ -15,6 +15,7 @@ import (
 	"github.com/humanlayer/humanlayer/hld/approval"
 	"github.com/humanlayer/humanlayer/hld/bus"
 	"github.com/humanlayer/humanlayer/hld/config"
+	"github.com/humanlayer/humanlayer/hld/mcp"
 	"github.com/humanlayer/humanlayer/hld/session"
 	"github.com/humanlayer/humanlayer/hld/store"
 )
@@ -90,6 +91,12 @@ func (s *HTTPServer) Start(ctx context.Context) error {
 
 	// Register SSE endpoint directly (not part of strict interface)
 	v1.GET("/stream/events", s.sseHandler.StreamEvents)
+
+	// MCP endpoint (Phase 1: stub implementation)
+	mcpStub := mcp.NewStubMCPHandler()
+	v1.Any("/mcp", func(c *gin.Context) {
+		mcpStub.ServeHTTP(c.Writer, c.Request)
+	})
 
 	// Create listener first to handle port 0
 	addr := fmt.Sprintf("%s:%d", s.config.HTTPHost, s.config.HTTPPort)
