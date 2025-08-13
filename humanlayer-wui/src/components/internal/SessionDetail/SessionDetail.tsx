@@ -23,6 +23,7 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 import { SessionModeIndicator } from './AutoAcceptIndicator'
 import { ForkViewModal } from './components/ForkViewModal'
 import { DangerouslySkipPermissionsDialog } from './DangerouslySkipPermissionsDialog'
+import { TokenUsageBadge } from './components/TokenUsageBadge'
 
 // Import hooks
 import { useSessionActions } from './hooks/useSessionActions'
@@ -78,7 +79,6 @@ const ROBOT_VERBS = [
   'transcribing',
   'receiving',
   'adhering',
-  'connecting',
   'sublimating',
   'balancing',
   'ionizing',
@@ -234,6 +234,50 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   // Always prioritize store values as they are the source of truth for runtime state
   const sessionFromStore = useStore(state => state.sessions.find(s => s.id === session.id))
   const updateSessionOptimistic = useStore(state => state.updateSessionOptimistic)
+
+  // Get parent session's token data to display when current session doesn't have its own yet
+  const parentSession = useStore(state =>
+    session.parentSessionId ? state.sessions.find(s => s.id === session.parentSessionId) : null,
+  )
+
+  // Fetch parent session if it's not in the store
+  const [parentSessionData, setParentSessionData] = useState<Session | null>(null)
+  useEffect(() => {
+    if (session.parentSessionId && !parentSession) {
+      // Parent session not in store, fetch it directly
+      daemonClient
+        .getSessionState(session.parentSessionId)
+        .then(response => {
+          console.log('[TokenDebug] Fetched parent session:', response.session)
+          setParentSessionData(response.session)
+        })
+        .catch(error => {
+          console.error('[TokenDebug] Failed to fetch parent session:', error)
+        })
+    } else if (parentSession) {
+      // Parent session is in store, use it
+      setParentSessionData(parentSession)
+    }
+  }, [session.parentSessionId, parentSession])
+
+  // Debug logging for token data
+  useEffect(() => {
+    console.log('[TokenDebug] Session token state:', {
+      sessionId: session.id,
+      parentSessionId: session.parentSessionId,
+      sessionTokens: session.effectiveContextTokens,
+      parentTokens: parentSessionData?.effectiveContextTokens,
+      fallbackTokens: session.effectiveContextTokens ?? parentSessionData?.effectiveContextTokens,
+      sessionFromStore: sessionFromStore?.effectiveContextTokens,
+      parentFromStore: parentSession,
+      parentFetched: parentSessionData,
+    })
+  }, [
+    session.id,
+    session.effectiveContextTokens,
+    parentSessionData?.effectiveContextTokens,
+    sessionFromStore?.effectiveContextTokens,
+  ])
 
   // Use store values if available, otherwise fall back to session prop
   // Store values take precedence because they reflect real-time updates
@@ -732,6 +776,21 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     },
   )
 
+  // Rename session hotkey
+  useHotkeys(
+    'shift+r',
+    () => {
+      startEditTitle()
+    },
+    {
+      scopes: SessionDetailHotkeysScope,
+      enabled: !isEditingTitle,
+      preventDefault: true,
+      enableOnFormTags: false,
+    },
+    [startEditTitle, isEditingTitle],
+  )
+
   // Don't steal scope here - SessionDetail is the base layer
   // Only modals opening on top should steal scope
 
@@ -846,17 +905,26 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                 </>
               )}
             </h2>
-            <small
-              className={`font-mono text-xs uppercase tracking-wider ${getStatusTextClass(session.status)}`}
-            >
-              {`${renderSessionStatus(session).toUpperCase()}${session.model ? ` / ${session.model}` : ''}`}
-              {(session.status === 'running' || session.status === 'starting') && (
-                <span className="ml-2 text-muted-foreground text-xs font-normal lowercase">
-                  (<kbd className="px-1 py-0.5 text-xs bg-muted/50 rounded normal-case">Ctrl+X</kbd> to
-                  interrupt)
-                </span>
-              )}
-            </small>
+            <div className="flex items-center gap-2">
+              <small
+                className={`font-mono text-xs uppercase tracking-wider ${getStatusTextClass(session.status)}`}
+              >
+                {`${renderSessionStatus(session).toUpperCase()}${session.model ? ` / ${session.model}` : ''}`}
+                {(session.status === 'running' || session.status === 'starting') && (
+                  <span className="ml-2 text-muted-foreground text-xs font-normal lowercase">
+                    (<kbd className="px-1 py-0.5 text-xs bg-muted/50 rounded normal-case">Ctrl+X</kbd>{' '}
+                    to interrupt)
+                  </span>
+                )}
+              </small>
+              <TokenUsageBadge
+                effectiveContextTokens={
+                  session.effectiveContextTokens ?? parentSessionData?.effectiveContextTokens
+                }
+                contextLimit={session.contextLimit ?? parentSessionData?.contextLimit}
+                model={session.model ?? parentSessionData?.model}
+              />
+            </div>
             {session.workingDir && (
               <small className="font-mono text-xs text-muted-foreground">{session.workingDir}</small>
             )}
@@ -930,17 +998,27 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                 </>
               )}
             </h2>
-            <small
-              className={`font-mono text-xs uppercase tracking-wider ${getStatusTextClass(session.status)}`}
-            >
-              {`${renderSessionStatus(session).toUpperCase()}${session.model ? ` / ${session.model}` : ''}`}
-              {(session.status === 'running' || session.status === 'starting') && (
-                <span className="ml-2 text-muted-foreground text-xs font-normal lowercase">
-                  (<kbd className="px-1 py-0.5 text-xs bg-muted/50 rounded normal-case">Ctrl+X</kbd> to
-                  interrupt)
-                </span>
-              )}
-            </small>
+            <div className="flex items-center gap-2">
+              <small
+                className={`font-mono text-xs uppercase tracking-wider ${getStatusTextClass(session.status)}`}
+              >
+                {`${renderSessionStatus(session).toUpperCase()}${session.model ? ` / ${session.model}` : ''}`}
+                {(session.status === 'running' || session.status === 'starting') && (
+                  <span className="ml-2 text-muted-foreground text-xs font-normal lowercase">
+                    (<kbd className="px-1 py-0.5 text-xs bg-muted/50 rounded normal-case">Ctrl+X</kbd>{' '}
+                    to interrupt)
+                  </span>
+                )}
+              </small>
+              <TokenUsageBadge
+                effectiveContextTokens={
+                  session.effectiveContextTokens ?? parentSessionData?.effectiveContextTokens
+                }
+                contextLimit={session.contextLimit ?? parentSessionData?.contextLimit}
+                model={session.model ?? parentSessionData?.model}
+                className="text-[10px]"
+              />
+            </div>
           </hgroup>
           <ForkViewModal
             events={events}

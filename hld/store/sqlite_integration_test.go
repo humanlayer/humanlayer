@@ -776,13 +776,11 @@ func TestSQLiteStoreWithMockSession(t *testing.T) {
 	completedStatus := SessionStatusCompleted
 	completedAt := time.Now()
 	costUSD := 0.0025
-	totalTokens := 1234
 	durationMS := 5678
 	err = store.UpdateSession(ctx, sessionID, SessionUpdate{
 		Status:      &completedStatus,
 		CompletedAt: &completedAt,
 		CostUSD:     &costUSD,
-		TotalTokens: &totalTokens,
 		DurationMS:  &durationMS,
 	})
 	if err != nil {
@@ -811,7 +809,144 @@ func TestSQLiteStoreWithMockSession(t *testing.T) {
 	if finalSession.CostUSD == nil || *finalSession.CostUSD != costUSD {
 		t.Error("cost not properly stored")
 	}
-	if finalSession.TotalTokens == nil || *finalSession.TotalTokens != totalTokens {
-		t.Error("tokens not properly stored")
+}
+
+// TestSessionTokenTracking tests that token fields can be updated and retrieved
+func TestSessionTokenTracking(t *testing.T) {
+	// Test that token fields can be updated and retrieved
+	ctx := context.Background()
+	dbPath := testutil.DatabasePath(t, "sqlite-token-tracking")
+
+	store, err := NewSQLiteStore(dbPath)
+	if err != nil {
+		t.Fatalf("failed to create store: %v", err)
+	}
+	defer store.Close()
+
+	// Create session
+	session := &Session{
+		ID:             "test-session",
+		RunID:          "test-run",
+		Status:         SessionStatusRunning,
+		Query:          "test query",
+		Model:          "claude-3-opus-20240229",
+		CreatedAt:      time.Now(),
+		LastActivityAt: time.Now(),
+	}
+	err = store.CreateSession(ctx, session)
+	if err != nil {
+		t.Fatalf("failed to create session: %v", err)
+	}
+
+	// Update with token data
+	inputTokens := 1000
+	outputTokens := 500
+	cacheReadTokens := 50000 // Simulating resumed session with cache
+	cacheCreationTokens := 5000
+	effectiveContext := inputTokens + outputTokens + cacheReadTokens + cacheCreationTokens
+
+	update := SessionUpdate{
+		InputTokens:              &inputTokens,
+		OutputTokens:             &outputTokens,
+		CacheReadInputTokens:     &cacheReadTokens,
+		CacheCreationInputTokens: &cacheCreationTokens,
+		EffectiveContextTokens:   &effectiveContext,
+	}
+
+	err = store.UpdateSession(ctx, session.ID, update)
+	if err != nil {
+		t.Fatalf("failed to update session: %v", err)
+	}
+
+	// Retrieve and verify
+	retrieved, err := store.GetSession(ctx, session.ID)
+	if err != nil {
+		t.Fatalf("failed to get session: %v", err)
+	}
+
+	if retrieved.InputTokens == nil || *retrieved.InputTokens != inputTokens {
+		t.Errorf("expected InputTokens %d, got %v", inputTokens, retrieved.InputTokens)
+	}
+	if retrieved.OutputTokens == nil || *retrieved.OutputTokens != outputTokens {
+		t.Errorf("expected OutputTokens %d, got %v", outputTokens, retrieved.OutputTokens)
+	}
+	if retrieved.CacheReadInputTokens == nil || *retrieved.CacheReadInputTokens != cacheReadTokens {
+		t.Errorf("expected CacheReadInputTokens %d, got %v", cacheReadTokens, retrieved.CacheReadInputTokens)
+	}
+	if retrieved.EffectiveContextTokens == nil || *retrieved.EffectiveContextTokens != effectiveContext {
+		t.Errorf("expected EffectiveContextTokens %d, got %v", effectiveContext, retrieved.EffectiveContextTokens)
+	}
+}
+
+// TestResumedSessionTokenCounting tests that resumed sessions correctly count cache tokens in effective context
+func TestResumedSessionTokenCounting(t *testing.T) {
+	// Test that resumed sessions correctly count cache tokens in effective context
+	ctx := context.Background()
+	dbPath := testutil.DatabasePath(t, "sqlite-resumed-token")
+
+	store, err := NewSQLiteStore(dbPath)
+	if err != nil {
+		t.Fatalf("failed to create store: %v", err)
+	}
+	defer store.Close()
+
+	// Create parent session
+	parentSession := &Session{
+		ID:             "parent-session",
+		RunID:          "parent-run",
+		Status:         SessionStatusCompleted,
+		Query:          "initial query",
+		Model:          "claude-3-opus-20240229",
+		CreatedAt:      time.Now(),
+		LastActivityAt: time.Now(),
+	}
+	err = store.CreateSession(ctx, parentSession)
+	if err != nil {
+		t.Fatalf("failed to create parent session: %v", err)
+	}
+
+	// Create resumed session (child)
+	childSession := &Session{
+		ID:              "child-session",
+		RunID:           "child-run",
+		ParentSessionID: parentSession.ID,
+		Status:          SessionStatusRunning,
+		Query:           "continued query",
+		Model:           "claude-3-opus-20240229",
+		CreatedAt:       time.Now(),
+		LastActivityAt:  time.Now(),
+	}
+	err = store.CreateSession(ctx, childSession)
+	if err != nil {
+		t.Fatalf("failed to create child session: %v", err)
+	}
+
+	// Simulate token data from resumed session
+	// In resumed sessions, most context comes from cache_read_input_tokens
+	inputTokens := 500                                               // New prompt
+	outputTokens := 300                                              // Response
+	cacheReadTokens := 150000                                        // Previous context loaded from cache
+	effectiveContext := inputTokens + outputTokens + cacheReadTokens // This is what fills the context window
+
+	update := SessionUpdate{
+		InputTokens:            &inputTokens,
+		OutputTokens:           &outputTokens,
+		CacheReadInputTokens:   &cacheReadTokens,
+		EffectiveContextTokens: &effectiveContext,
+	}
+
+	err = store.UpdateSession(ctx, childSession.ID, update)
+	if err != nil {
+		t.Fatalf("failed to update child session: %v", err)
+	}
+
+	// Verify effective context includes cache tokens
+	retrieved, err := store.GetSession(ctx, childSession.ID)
+	if err != nil {
+		t.Fatalf("failed to get child session: %v", err)
+	}
+
+	if retrieved.EffectiveContextTokens == nil || *retrieved.EffectiveContextTokens != 150800 {
+		t.Errorf("Effective context should include cache tokens for resumed sessions, expected 150800, got %v", retrieved.EffectiveContextTokens)
 	}
 }

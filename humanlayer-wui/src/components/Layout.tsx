@@ -131,7 +131,17 @@ export function Layout() {
         }
       }
 
-      updateSessionStatus(session_id, nextStatus)
+      // Update the full session data, not just the status
+      // This ensures token counts and other fields are preserved
+      if (session) {
+        updateSession(session_id, {
+          ...session,
+          status: nextStatus,
+        })
+      } else {
+        // Fallback to just updating status if we couldn't fetch the session
+        updateSessionStatus(session_id, nextStatus)
+      }
 
       await refreshActiveSessionConversation(session_id)
     },
