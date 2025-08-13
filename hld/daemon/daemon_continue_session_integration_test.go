@@ -117,14 +117,14 @@ func TestIntegrationContinueSession(t *testing.T) {
 		return nil, fmt.Errorf("no result in response")
 	}
 
-	t.Run("ContinueSession_RequiresCompletedOrRunningParent", func(t *testing.T) {
-		// Create a parent session that's failed (should be rejected)
-		parentSessionID := "parent-failed"
+	t.Run("ContinueSession_AllowsFailedSessionWithClaudeID", func(t *testing.T) {
+		// Create a parent session that's failed with valid claude_session_id (should be allowed)
+		parentSessionID := "parent-failed-valid"
 		parentSession := &store.Session{
 			ID:              parentSessionID,
 			RunID:           "run-parent",
 			ClaudeSessionID: "claude-parent",
-			Status:          store.SessionStatusFailed, // Neither completed nor running
+			Status:          store.SessionStatusFailed,
 			Query:           "original query",
 			WorkingDir:      "/tmp",
 			CreatedAt:       time.Now(),
@@ -136,7 +136,44 @@ func TestIntegrationContinueSession(t *testing.T) {
 			t.Fatalf("Failed to create parent session: %v", err)
 		}
 
-		// Try to continue the failed session
+		// Try to continue the failed session - should now succeed (or fail with Claude launch error)
+		req := rpc.ContinueSessionRequest{
+			SessionID: parentSessionID,
+			Query:     "continue this",
+		}
+
+		_, err := sendRPC(t, "continueSession", req)
+		if err != nil {
+			// Expected - Claude binary might not exist in test environment
+			expectedErr1 := "failed to continue session: failed to launch resumed Claude session: failed to start claude: exec: \"claude\": executable file not found in $PATH"
+			expectedErr2 := "failed to continue session: failed to launch resumed Claude session: failed to start claude: chdir"
+			if err.Error() != expectedErr1 && !strings.Contains(err.Error(), expectedErr2) {
+				t.Errorf("Unexpected error: %v", err)
+			}
+			// Even if Claude fails to launch, the session should have been created
+		}
+	})
+
+	t.Run("ContinueSession_RejectsFailedSessionWithoutClaudeID", func(t *testing.T) {
+		// Create a parent session that's failed WITHOUT claude_session_id (should still be rejected)
+		parentSessionID := "parent-failed-no-claude"
+		parentSession := &store.Session{
+			ID:              parentSessionID,
+			RunID:           "run-parent-no-claude",
+			ClaudeSessionID: "", // Missing claude_session_id
+			Status:          store.SessionStatusFailed,
+			Query:           "original query",
+			WorkingDir:      "/tmp",
+			CreatedAt:       time.Now(),
+			LastActivityAt:  time.Now(),
+		}
+
+		// Insert parent session directly into database
+		if err := d.store.CreateSession(ctx, parentSession); err != nil {
+			t.Fatalf("Failed to create parent session: %v", err)
+		}
+
+		// Try to continue the failed session without claude_session_id
 		req := rpc.ContinueSessionRequest{
 			SessionID: parentSessionID,
 			Query:     "continue this",
@@ -144,9 +181,43 @@ func TestIntegrationContinueSession(t *testing.T) {
 
 		_, err := sendRPC(t, "continueSession", req)
 		if err == nil {
-			t.Error("Expected error when continuing failed session")
+			t.Error("Expected error when continuing failed session without claude_session_id")
 		}
-		if err.Error() != "cannot continue session with status failed (must be completed, interrupted, or running)" {
+		if err.Error() != "parent session missing claude_session_id (cannot resume)" {
+			t.Errorf("Unexpected error: %v", err)
+		}
+	})
+
+	t.Run("ContinueSession_RejectsInvalidStatus", func(t *testing.T) {
+		// Create a parent session with an invalid status (e.g., starting)
+		parentSessionID := "parent-invalid-status"
+		parentSession := &store.Session{
+			ID:              parentSessionID,
+			RunID:           "run-invalid",
+			ClaudeSessionID: "claude-invalid",
+			Status:          store.SessionStatusStarting, // Invalid status for continuation
+			Query:           "original query",
+			WorkingDir:      "/tmp",
+			CreatedAt:       time.Now(),
+			LastActivityAt:  time.Now(),
+		}
+
+		// Insert parent session
+		if err := d.store.CreateSession(ctx, parentSession); err != nil {
+			t.Fatalf("Failed to create parent session: %v", err)
+		}
+
+		// Try to continue with invalid status
+		req := rpc.ContinueSessionRequest{
+			SessionID: parentSessionID,
+			Query:     "continue this",
+		}
+
+		_, err := sendRPC(t, "continueSession", req)
+		if err == nil {
+			t.Error("Expected error when continuing session with invalid status")
+		}
+		if err.Error() != "cannot continue session with status starting (must be completed, interrupted, running, or failed)" {
 			t.Errorf("Unexpected error: %v", err)
 		}
 	})

@@ -69,7 +69,7 @@ func (c *Client) buildArgs(config SessionConfig) ([]string, error) {
 	args := []string{}
 
 	// Always use print mode for SDK
-	args = append(args, "--print", config.Query)
+	args = append(args, "--print")
 
 	// Session management
 	if config.SessionID != "" {
@@ -148,6 +148,11 @@ func (c *Client) buildArgs(config SessionConfig) ([]string, error) {
 	// Verbose
 	if config.Verbose {
 		args = append(args, "--verbose")
+	}
+
+	// Query must be passed as a positional argument at the end
+	if config.Query != "" {
+		args = append(args, config.Query)
 	}
 
 	return args, nil

@@ -10,7 +10,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { ConversationEvent, SessionStatus } from '@/lib/daemon/types'
+import { ConversationEvent } from '@/lib/daemon/types'
 import { cn } from '@/lib/utils'
 import { useStealHotkeyScope } from '@/hooks/useStealHotkeyScope'
 
@@ -22,7 +22,6 @@ interface ForkViewModalProps {
   onSelectEvent: (index: number | null) => void
   isOpen: boolean
   onOpenChange: (open: boolean) => void
-  sessionStatus?: SessionStatus
 }
 
 function ForkViewModalContent({
@@ -30,7 +29,6 @@ function ForkViewModalContent({
   selectedEventIndex,
   onSelectEvent,
   onClose,
-  sessionStatus,
 }: Omit<ForkViewModalProps, 'isOpen' | 'onOpenChange'> & { onClose: () => void }) {
   // Steal hotkey scope when this component mounts
   useStealHotkeyScope(ForkViewModalHotkeysScope)
@@ -57,8 +55,8 @@ function ForkViewModalContent({
     .filter(({ event }) => event.eventType === 'message' && event.role === 'user')
     .slice(1) // Exclude first message since it can't be forked
 
-  // Add current option as a special index (-1) only if session is not failed
-  const showCurrentOption = sessionStatus !== SessionStatus.Failed
+  // Add current option as a special index (-1) for all sessions
+  const showCurrentOption = true
   const allOptions = showCurrentOption
     ? [...userMessageIndices, { event: null, index: -1 }]
     : userMessageIndices
@@ -193,7 +191,7 @@ function ForkViewModalContent({
               )
             })}
 
-            {/* Current option - only show if session is not failed */}
+            {/* Current option */}
             {showCurrentOption && (
               <div className="border-t mt-2 pt-2">
                 <div
@@ -239,7 +237,6 @@ export function ForkViewModal({
   onSelectEvent,
   isOpen,
   onOpenChange,
-  sessionStatus,
 }: ForkViewModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -267,7 +264,6 @@ export function ForkViewModal({
             selectedEventIndex={selectedEventIndex}
             onSelectEvent={onSelectEvent}
             onClose={() => onOpenChange(false)}
-            sessionStatus={sessionStatus}
           />
         )}
       </DialogContent>

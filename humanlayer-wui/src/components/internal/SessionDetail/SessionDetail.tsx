@@ -725,7 +725,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   useHotkeys(
     'enter',
     () => {
-      if (responseInputRef.current && session.status !== SessionStatus.Failed) {
+      if (responseInputRef.current) {
         responseInputRef.current.focus()
       }
     },
@@ -894,7 +894,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
             onSelectEvent={handleForkSelect}
             isOpen={forkViewOpen}
             onOpenChange={setForkViewOpen}
-            sessionStatus={session.status}
           />
         </div>
       )}
@@ -985,7 +984,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
             onSelectEvent={handleForkSelect}
             isOpen={forkViewOpen}
             onOpenChange={setForkViewOpen}
-            sessionStatus={session.status}
           />
         </div>
       )}
@@ -1086,7 +1084,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
             handleContinueSession={actions.handleContinueSession}
             handleResponseInputKeyDown={actions.handleResponseInputKeyDown}
             isForkMode={actions.isForkMode}
-            onOpenForkView={() => setForkViewOpen(true)}
           />
           {/* Session mode indicator - shows either dangerous skip permissions or auto-accept */}
           <SessionModeIndicator
