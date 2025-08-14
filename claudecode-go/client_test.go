@@ -492,3 +492,41 @@ func TestClaudeCodeSchemaCompatibility(t *testing.T) {
 		}
 	})
 }
+
+func TestStreamEventWithPermissionDenials(t *testing.T) {
+	// Simulate Claude API response with permission denials
+	jsonData := `{
+		"type": "result",
+		"subtype": "completion",
+		"session_id": "test-session",
+		"total_cost_usd": 0.05,
+		"is_error": false,
+		"result": "Successfully created PR #430",
+		"permission_denials": [{
+			"tool_name": "Bash",
+			"tool_use_id": "toolu_01M6qJZgpwjmzg14TBS5Mwhm",
+			"tool_input": {"command": "git fetch origin main"}
+		}]
+	}`
+
+	var event claudecode.StreamEvent
+	err := json.Unmarshal([]byte(jsonData), &event)
+	if err != nil {
+		t.Fatalf("Failed to unmarshal event with permission denials: %v", err)
+	}
+
+	// Verify permission denials were parsed
+	if event.PermissionDenials == nil || len(event.PermissionDenials.Denials) != 1 {
+		t.Error("Permission denials not properly parsed")
+	}
+
+	// Verify session is not marked as error despite denials
+	if event.IsError {
+		t.Error("Event marked as error when it should be successful with denials")
+	}
+
+	// Verify denial details
+	if event.PermissionDenials.Denials[0].ToolName != "Bash" {
+		t.Errorf("Expected tool name 'Bash', got %s", event.PermissionDenials.Denials[0].ToolName)
+	}
+}
