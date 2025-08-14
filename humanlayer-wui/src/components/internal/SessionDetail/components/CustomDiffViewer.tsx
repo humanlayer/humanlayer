@@ -1,5 +1,5 @@
 import React, { Fragment } from 'react'
-import { logger } from '@/lib/logging'
+// import { logger } from '@/lib/logging' // Commented out - used for debugging snapshot diff failures
 
 // --- Minimal diff utilities (no third-party libraries) ---
 function computeLineDiff(oldStr: string, newStr: string) {
@@ -600,7 +600,7 @@ export const CustomDiffViewer = ({
         </div>
       </div>
     )
-  } catch (error) {
+  } catch (_error) {
     // Log detailed context for debugging
     // Commented out (not deleted) for future debugging if needed
     // logger.warn('Snapshot-based diff rendering failed, falling back to simple diff:', {
