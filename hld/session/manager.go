@@ -1298,18 +1298,17 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 
 	// Add run_id and daemon socket to MCP server environments
 	// For HTTP servers, inject session ID header
+
 	if config.MCPConfig != nil {
 		for name, server := range config.MCPConfig.MCPServers {
 			// Check if this is an HTTP MCP server
 			if server.Type == "http" {
-				// For HTTP servers, inject session ID header if not already set
+				// For HTTP servers, always set session ID header to child session ID
 				if server.Headers == nil {
 					server.Headers = make(map[string]string)
 				}
-				// Only inject if not already set (allow override)
-				if _, exists := server.Headers["X-Session-ID"]; !exists {
-					server.Headers["X-Session-ID"] = sessionID
-				}
+				// Always set X-Session-ID to the new child session ID (replaces inherited parent ID)
+				server.Headers["X-Session-ID"] = sessionID
 			} else {
 				// For stdio servers, add environment variables
 				if server.Env == nil {

@@ -779,4 +779,123 @@ func TestContinueSessionInheritance(t *testing.T) {
 			t.Errorf("Child didn't inherit grandparent title: got %q, want %q", childSession.Title, grandparentTitle)
 		}
 	})
+
+	t.Run("HTTPMCPServerUpdatesXSessionIDHeader", func(t *testing.T) {
+		// This test verifies that when continuing a session with HTTP MCP servers,
+		// the X-Session-ID header is updated to the child session ID, not inherited
+		// from the parent session ID.
+
+		// Create parent session
+		parentSessionID := "parent-http-mcp"
+		parentSession := &store.Session{
+			ID:              parentSessionID,
+			RunID:           "run-http-mcp",
+			ClaudeSessionID: "claude-http-mcp",
+			Status:          store.SessionStatusCompleted,
+			Query:           "http mcp query",
+			Model:           "claude-3-opus-20240229",
+			WorkingDir:      "/tmp/test",
+			CreatedAt:       time.Now(),
+			LastActivityAt:  time.Now(),
+			CompletedAt:     &time.Time{},
+		}
+
+		if err := sqliteStore.CreateSession(ctx, parentSession); err != nil {
+			t.Fatalf("Failed to create parent session: %v", err)
+		}
+
+		// Store HTTP MCP server with X-Session-ID header for parent
+		// For HTTP servers: Command="http", ArgsJSON=["URL"], EnvJSON=headers
+		parentMCPServers := []store.MCPServer{
+			{
+				SessionID: parentSessionID,
+				Name:      "http-test-server",
+				Command:   "http",                                                                    // Indicates HTTP type
+				ArgsJSON:  `["http://localhost:8080/mcp"]`,                                           // URL as single-element array
+				EnvJSON:   `{"X-Session-ID": "parent-http-mcp", "Authorization": "Bearer token123"}`, // Headers
+			},
+		}
+		if err := sqliteStore.StoreMCPServers(ctx, parentSessionID, parentMCPServers); err != nil {
+			t.Fatalf("Failed to store MCP servers: %v", err)
+		}
+
+		// Continue session
+		req := ContinueSessionConfig{
+			ParentSessionID: parentSessionID,
+			Query:           "continue http mcp",
+		}
+
+		_, _ = manager.ContinueSession(ctx, req)
+		// Expected to fail due to missing Claude binary
+
+		// Find the child session
+		sessions, err := sqliteStore.ListSessions(ctx)
+		if err != nil {
+			t.Fatalf("Failed to list sessions: %v", err)
+		}
+
+		var childSession *store.Session
+		for _, s := range sessions {
+			if s.ParentSessionID == parentSessionID {
+				childSession = s
+				break
+			}
+		}
+
+		if childSession == nil {
+			t.Fatal("Child session not found")
+			return
+		}
+
+		// Get MCP servers for child session
+		childMCPServers, err := sqliteStore.GetMCPServers(ctx, childSession.ID)
+		if err != nil {
+			t.Fatalf("Failed to get child MCP servers: %v", err)
+		}
+
+		// Should have inherited the MCP server
+		if len(childMCPServers) != 1 {
+			t.Fatalf("Expected 1 MCP server, got %d", len(childMCPServers))
+		}
+
+		childMCPServer := childMCPServers[0]
+
+		// Verify basic inheritance
+		if childMCPServer.Name != "http-test-server" {
+			t.Errorf("MCP server name not inherited: got %s, want http-test-server", childMCPServer.Name)
+		}
+		if childMCPServer.Command != "http" {
+			t.Errorf("MCP server type not inherited: got %s, want http", childMCPServer.Command)
+		}
+
+		// Verify URL was inherited (stored in ArgsJSON)
+		var childArgs []string
+		if err := json.Unmarshal([]byte(childMCPServer.ArgsJSON), &childArgs); err != nil {
+			t.Fatalf("Failed to unmarshal child args: %v", err)
+		}
+		if len(childArgs) != 1 || childArgs[0] != "http://localhost:8080/mcp" {
+			t.Errorf("MCP server URL not inherited: got %v, want [http://localhost:8080/mcp]", childArgs)
+		}
+
+		// Parse headers (stored in EnvJSON) and verify X-Session-ID was updated
+		var childHeaders map[string]string
+		if err := json.Unmarshal([]byte(childMCPServer.EnvJSON), &childHeaders); err != nil {
+			t.Fatalf("Failed to unmarshal child headers: %v", err)
+		}
+
+		// CRITICAL: X-Session-ID should be the CHILD session ID, not the parent's
+		if xSessionID, ok := childHeaders["X-Session-ID"]; !ok {
+			t.Error("X-Session-ID header missing in child MCP server")
+		} else if xSessionID != childSession.ID {
+			t.Errorf("X-Session-ID not updated to child session ID: got %s, want %s", xSessionID, childSession.ID)
+			t.Log("This is the bug! X-Session-ID should be replaced with the child session ID")
+		}
+
+		// Other headers should be preserved
+		if auth, ok := childHeaders["Authorization"]; !ok {
+			t.Error("Authorization header not inherited")
+		} else if auth != "Bearer token123" {
+			t.Errorf("Authorization header value changed: got %s, want Bearer token123", auth)
+		}
+	})
 }
