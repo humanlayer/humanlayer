@@ -657,10 +657,10 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 				m.eventBus.Publish(bus.Event{
 					Type: bus.EventSessionStatusChanged,
 					Data: map[string]interface{}{
-						"session_id":  sessionID,
-						"new_status":  currentStatus,  // Required by UI handler
-						"old_status":  currentStatus,  // Status isn't changing, just tokens
-						"reason":      "token_update",
+						"session_id": sessionID,
+						"new_status": currentStatus, // Required by UI handler
+						"old_status": currentStatus, // Status isn't changing, just tokens
+						"reason":     "token_update",
 					},
 				})
 			}
