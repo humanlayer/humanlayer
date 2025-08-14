@@ -602,17 +602,18 @@ export const CustomDiffViewer = ({
     )
   } catch (error) {
     // Log detailed context for debugging
-    logger.warn('Snapshot-based diff rendering failed, falling back to simple diff:', {
-      error: error instanceof Error ? error.message : String(error),
-      editsCount: edits.length,
-      fileContentLength: fileContents?.length,
-      firstEditPreview: edits[0]
-        ? {
-            oldValue: edits[0].oldValue.substring(0, 50) + '...',
-            newValue: edits[0].newValue.substring(0, 50) + '...',
-          }
-        : null,
-    })
+    // Commented out (not deleted) for future debugging if needed
+    // logger.warn('Snapshot-based diff rendering failed, falling back to simple diff:', {
+    //   error: error instanceof Error ? error.message : String(error),
+    //   editsCount: edits.length,
+    //   fileContentLength: fileContents?.length,
+    //   firstEditPreview: edits[0]
+    //     ? {
+    //         oldValue: edits[0].oldValue.substring(0, 50) + '...',
+    //         newValue: edits[0].newValue.substring(0, 50) + '...',
+    //       }
+    //     : null,
+    // })
 
     // Recursively call self with undefined fileContents to trigger non-snapshot mode
     return <CustomDiffViewer fileContents={undefined} edits={edits} splitView={splitView} />
