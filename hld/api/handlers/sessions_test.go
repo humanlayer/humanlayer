@@ -89,7 +89,7 @@ func TestSessionHandlers_CreateSession(t *testing.T) {
 				McpConfig: &api.MCPConfig{
 					McpServers: &map[string]api.MCPServer{
 						"test-server": {
-							Command: "node",
+							Command: stringPtr("node"),
 							Args:    &[]string{"server.js"},
 							Env: &map[string]string{
 								"DEBUG": "true",

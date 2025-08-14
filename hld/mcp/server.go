@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"sync"
-	"time"
 
 	"github.com/humanlayer/humanlayer/hld/approval"
 	"github.com/humanlayer/humanlayer/hld/bus"
@@ -193,8 +192,10 @@ func (s *MCPServer) handleRequestApproval(ctx context.Context, request mcp.CallT
 			},
 		}, nil
 
-	case <-time.After(5 * time.Minute):
-		return nil, fmt.Errorf("approval timeout")
+	// For the moment, we don't timeout approvals, but in the future
+	// may choose to add a timeout or determine otherwise for resumed sessions
+	// case <-time.After(5 * time.Minute):
+	// 	return nil, fmt.Errorf("approval timeout")
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
