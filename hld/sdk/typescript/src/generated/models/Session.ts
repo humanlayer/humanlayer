@@ -82,6 +82,12 @@ export interface Session {
      */
     model?: string;
     /**
+     * Full model identifier
+     * @type {string}
+     * @memberof Session
+     */
+    modelId?: string;
+    /**
      * Working directory for the session
      * @type {string}
      * @memberof Session
@@ -219,6 +225,7 @@ export function SessionFromJSONTyped(json: any, ignoreDiscriminator: boolean): S
         'summary': json['summary'] == null ? undefined : json['summary'],
         'title': json['title'] == null ? undefined : json['title'],
         'model': json['model'] == null ? undefined : json['model'],
+        'modelId': json['model_id'] == null ? undefined : json['model_id'],
         'workingDir': json['working_dir'] == null ? undefined : json['working_dir'],
         'createdAt': (new Date(json['created_at'])),
         'lastActivityAt': (new Date(json['last_activity_at'])),
@@ -259,6 +266,7 @@ export function SessionToJSONTyped(value?: Session | null, ignoreDiscriminator: 
         'summary': value['summary'],
         'title': value['title'],
         'model': value['model'],
+        'model_id': value['modelId'],
         'working_dir': value['workingDir'],
         'created_at': ((value['createdAt']).toISOString()),
         'last_activity_at': ((value['lastActivityAt']).toISOString()),

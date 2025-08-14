@@ -43,6 +43,9 @@ type SessionConfig struct {
 	// Required
 	Query string
 
+	// Optional title for the session
+	Title string
+
 	// Session management
 	SessionID string // If set, resumes this session
 

@@ -71,6 +71,9 @@ func (c *Client) buildArgs(config SessionConfig) ([]string, error) {
 	// Always use print mode for SDK
 	args = append(args, "--print", config.Query)
 
+	// Title is stored in our database but not passed to Claude CLI
+	// (Claude doesn't support --title flag)
+
 	// Session management
 	if config.SessionID != "" {
 		args = append(args, "--resume", config.SessionID)

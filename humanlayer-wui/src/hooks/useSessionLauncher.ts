@@ -8,7 +8,7 @@ import { homeDir } from '@tauri-apps/api/path'
 import { logger } from '@/lib/logging'
 
 interface SessionConfig {
-  query: string
+  title?: string
   workingDir: string
   model?: string
   maxTurns?: number
@@ -58,7 +58,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
   mode: 'command',
   view: 'menu',
   query: getSavedQuery(),
-  config: { query: getSavedQuery(), workingDir: getDefaultWorkingDir() },
+  config: { workingDir: getDefaultWorkingDir() },
   isLaunching: false,
   gPrefixMode: false,
   selectedMenuIndex: 0,
@@ -78,7 +78,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
       isOpen: false,
       view: 'menu',
       query: savedQuery,
-      config: { query: savedQuery, workingDir: getDefaultWorkingDir() },
+      config: { workingDir: getDefaultWorkingDir() },
       selectedMenuIndex: 0,
       error: undefined,
       gPrefixMode: false,
@@ -88,11 +88,10 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
   setQuery: query => {
     // Save to localStorage on every change
     localStorage.setItem(SESSION_LAUNCHER_QUERY_KEY, query)
-    return set(state => ({
+    return set({
       query,
-      config: { ...state.config, query },
       error: undefined,
-    }))
+    })
   },
 
   setConfig: config => set({ config, error: undefined }),
@@ -148,6 +147,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
 
       const request: LaunchSessionRequest = {
         query: query.trim(),
+        title: config.title || undefined,
         working_dir: config.workingDir || undefined,
         model: config.model || undefined,
         max_turns: config.maxTurns || undefined,
@@ -189,7 +189,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
     set({
       view: 'input',
       query: savedQuery,
-      config: { query: savedQuery, workingDir: getDefaultWorkingDir() },
+      config: { workingDir: getDefaultWorkingDir() },
       error: undefined,
     })
   },
@@ -207,7 +207,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
       mode: 'command',
       view: 'menu',
       query: savedQuery,
-      config: { query: savedQuery, workingDir: getDefaultWorkingDir() },
+      config: { workingDir: getDefaultWorkingDir() },
       selectedMenuIndex: 0,
       isLaunching: false,
       error: undefined,
