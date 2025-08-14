@@ -33,7 +33,7 @@ type MCPServer struct {
 	Command string            `json:"command,omitempty"`
 	Args    []string          `json:"args,omitempty"`
 	Env     map[string]string `json:"env,omitempty"`
-	
+
 	// For HTTP servers
 	Type    string            `json:"type,omitempty"`    // "http" for HTTP servers
 	URL     string            `json:"url,omitempty"`     // The HTTP endpoint URL
