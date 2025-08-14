@@ -6,7 +6,7 @@ import { logger } from '@/lib/logging'
 function debugLogSnapshotFailure(
   error: unknown,
   edits: { oldValue: string; newValue: string }[],
-  fileContents?: string
+  fileContents?: string,
 ) {
   logger.warn('Snapshot-based diff rendering failed, falling back to simple diff:', {
     error: error instanceof Error ? error.message : String(error),
