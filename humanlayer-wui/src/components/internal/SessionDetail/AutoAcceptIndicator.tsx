@@ -40,7 +40,7 @@ export const SessionModeIndicator: FC<SessionModeIndicatorProps> = ({
           })
 
           // Show notification
-          toast.info('Dangerous skip permissions expired', {
+          toast.info('Bypass permissions expired', {
             description: 'Manual approval required for all tools',
             duration: 5000,
           })
