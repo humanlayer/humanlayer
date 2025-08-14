@@ -40,6 +40,7 @@ interface LauncherState {
 }
 
 const LAST_WORKING_DIR_KEY = 'humanlayer-last-working-dir'
+const SESSION_LAUNCHER_QUERY_KEY = 'session-launcher-query'
 
 // Helper function to get default working directory
 const getDefaultWorkingDir = (): string => {
@@ -47,12 +48,17 @@ const getDefaultWorkingDir = (): string => {
   return stored || '~/' // Default to home directory on first launch
 }
 
+// Helper function to get saved query
+const getSavedQuery = (): string => {
+  return localStorage.getItem(SESSION_LAUNCHER_QUERY_KEY) || ''
+}
+
 export const useSessionLauncher = create<LauncherState>((set, get) => ({
   isOpen: false,
   mode: 'command',
   view: 'menu',
-  query: '',
-  config: { query: '', workingDir: getDefaultWorkingDir() },
+  query: getSavedQuery(),
+  config: { query: getSavedQuery(), workingDir: getDefaultWorkingDir() },
   isLaunching: false,
   gPrefixMode: false,
   selectedMenuIndex: 0,
@@ -67,23 +73,27 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
     }),
 
   close: () => {
+    const savedQuery = getSavedQuery()
     set({
       isOpen: false,
       view: 'menu',
-      query: '',
-      config: { query: '', workingDir: getDefaultWorkingDir() },
+      query: savedQuery,
+      config: { query: savedQuery, workingDir: getDefaultWorkingDir() },
       selectedMenuIndex: 0,
       error: undefined,
       gPrefixMode: false,
     })
   },
 
-  setQuery: query =>
-    set(state => ({
+  setQuery: query => {
+    // Save to localStorage on every change
+    localStorage.setItem(SESSION_LAUNCHER_QUERY_KEY, query)
+    return set(state => ({
       query,
       config: { ...state.config, query },
       error: undefined,
-    })),
+    }))
+  },
 
   setConfig: config => set({ config, error: undefined }),
 
@@ -152,6 +162,9 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
         localStorage.setItem(LAST_WORKING_DIR_KEY, config.workingDir)
       }
 
+      // Clear the saved query after successful launch
+      localStorage.removeItem(SESSION_LAUNCHER_QUERY_KEY)
+
       // Navigate to new session (will be handled by parent component)
       window.location.hash = `#/sessions/${response.sessionId}`
 
@@ -171,11 +184,12 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
   },
 
   createNewSession: () => {
+    const savedQuery = getSavedQuery()
     // Switch to input mode for session creation
     set({
       view: 'input',
-      query: '',
-      config: { query: '', workingDir: getDefaultWorkingDir() },
+      query: savedQuery,
+      config: { query: savedQuery, workingDir: getDefaultWorkingDir() },
       error: undefined,
     })
   },
@@ -186,18 +200,20 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
     get().close()
   },
 
-  reset: () =>
-    set({
+  reset: () => {
+    const savedQuery = getSavedQuery()
+    return set({
       isOpen: false,
       mode: 'command',
       view: 'menu',
-      query: '',
-      config: { query: '', workingDir: getDefaultWorkingDir() },
+      query: savedQuery,
+      config: { query: savedQuery, workingDir: getDefaultWorkingDir() },
       selectedMenuIndex: 0,
       isLaunching: false,
       error: undefined,
       gPrefixMode: false,
-    }),
+    })
+  },
 }))
 
 // Helper hook for global hotkey management
