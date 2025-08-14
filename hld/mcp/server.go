@@ -9,6 +9,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/humanlayer/humanlayer/hld/approval"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 )
@@ -23,17 +24,19 @@ const (
 
 // MCPServer wraps the mark3labs MCP server
 type MCPServer struct {
-	mcpServer   *server.MCPServer
-	httpServer  *server.StreamableHTTPServer
-	autoDenyAll bool
+	mcpServer       *server.MCPServer
+	httpServer      *server.StreamableHTTPServer
+	approvalManager approval.Manager
+	autoDenyAll     bool
 }
 
 // NewMCPServer creates the full MCP server implementation
-func NewMCPServer() *MCPServer {
+func NewMCPServer(approvalManager approval.Manager) *MCPServer {
 	autoDeny := os.Getenv("MCP_AUTO_DENY_ALL") == "true"
 
 	s := &MCPServer{
-		autoDenyAll: autoDeny,
+		approvalManager: approvalManager,
+		autoDenyAll:     autoDeny,
 	}
 
 	// Create MCP server
@@ -74,8 +77,7 @@ func NewMCPServer() *MCPServer {
 
 func (s *MCPServer) handleRequestApproval(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	toolName := request.GetString("tool_name", "")
-	// input will be used in Phase 4
-	_ = request.GetArguments()["input"]
+	input := request.GetArguments()["input"]
 	toolUseID := request.GetString("tool_use_id", "")
 
 	slog.Info("MCP approval requested",
@@ -83,12 +85,10 @@ func (s *MCPServer) handleRequestApproval(ctx context.Context, request mcp.CallT
 		"tool_use_id", toolUseID,
 		"auto_deny", s.autoDenyAll)
 
-	// For Phase 3, just handle auto-deny
-	// Full approval creation will come in Phase 4
+	// Auto-deny takes precedence
 	if s.autoDenyAll {
 		slog.Info("Auto-denying approval", "tool_use_id", toolUseID)
 
-		// Marshal the response properly
 		responseData := map[string]interface{}{
 			"behavior": "deny",
 			"message":  "Auto-denied for testing",
@@ -105,11 +105,51 @@ func (s *MCPServer) handleRequestApproval(ctx context.Context, request mcp.CallT
 		}, nil
 	}
 
-	// For now, just timeout after 5 seconds when not auto-denying
-	// This simulates waiting for approval without actually creating one
+	// Get session_id from context
+	sessionID, _ := ctx.Value(sessionIDKey).(string)
+	if sessionID == "" {
+		return nil, fmt.Errorf("missing session_id in context")
+	}
+
+	// Marshal input to JSON
+	inputJSON, err := json.Marshal(input)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal input: %w", err)
+	}
+
+	// Create approval with tool_use_id
+	approval, err := s.approvalManager.CreateApprovalWithToolUseID(ctx, sessionID, toolName, inputJSON, toolUseID)
+	if err != nil {
+		slog.Error("Failed to create approval", "error", err)
+		return nil, fmt.Errorf("failed to create approval: %w", err)
+	}
+
+	slog.Info("Created approval", "approval_id", approval.ID, "status", approval.Status)
+
+	// Check if the approval was auto-approved
+	if approval.Status == "approved" {
+		// Return allow behavior for auto-approved
+		responseData := map[string]interface{}{
+			"behavior":     "allow",
+			"updatedInput": input,
+		}
+		responseJSON, _ := json.Marshal(responseData)
+
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				mcp.TextContent{
+					Type: "text",
+					Text: string(responseJSON),
+				},
+			},
+		}, nil
+	}
+
+	// For now, just timeout waiting for approval
+	// Event-driven approval will come in Phase 5
 	select {
-	case <-time.After(5 * time.Second):
-		return nil, fmt.Errorf("approval timeout (stub behavior)")
+	case <-time.After(30 * time.Second):
+		return nil, fmt.Errorf("approval timeout")
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}

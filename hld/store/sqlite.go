@@ -1970,13 +1970,13 @@ func (s *SQLiteStore) CreateApproval(ctx context.Context, approval *Approval) er
 	query := `
 		INSERT INTO approvals (
 			id, run_id, session_id, tool_use_id, status, created_at,
-			tool_name, tool_input
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+			tool_name, tool_input, comment
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	_, err := s.db.ExecContext(ctx, query,
 		approval.ID, approval.RunID, approval.SessionID, approval.ToolUseID, approval.Status.String(), approval.CreatedAt,
-		approval.ToolName, string(approval.ToolInput),
+		approval.ToolName, string(approval.ToolInput), approval.Comment,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create approval: %w", err)
