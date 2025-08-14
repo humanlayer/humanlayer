@@ -336,17 +336,18 @@ func (s *Session) parseStreamingJSON(stdout, stderr io.Reader) {
 		// Store result if this is the final message
 		if event.Type == "result" {
 			s.result = &Result{
-				Type:        event.Type,
-				Subtype:     event.Subtype,
-				CostUSD:     event.CostUSD,
-				IsError:     event.IsError,
-				DurationMS:  event.DurationMS,
-				DurationAPI: event.DurationAPI,
-				NumTurns:    event.NumTurns,
-				Result:      event.Result,
-				SessionID:   event.SessionID,
-				Usage:       event.Usage,
-				Error:       event.Error,
+				Type:              event.Type,
+				Subtype:           event.Subtype,
+				CostUSD:           event.CostUSD,
+				IsError:           event.IsError,
+				DurationMS:        event.DurationMS,
+				DurationAPI:       event.DurationAPI,
+				NumTurns:          event.NumTurns,
+				Result:            event.Result,
+				SessionID:         event.SessionID,
+				Usage:             event.Usage,
+				Error:             event.Error,
+				PermissionDenials: event.PermissionDenials,
 			}
 		}
 
