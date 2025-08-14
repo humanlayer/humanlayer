@@ -9,11 +9,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestMigration12_ToolUseID(t *testing.T) {
+func TestMigration14_ToolUseID(t *testing.T) {
 	// Create an in-memory database for testing
 	s, err := store.NewSQLiteStore(":memory:")
 	require.NoError(t, err)
-	defer s.Close()
+	defer func() { _ = s.Close() }()
 
 	// First create a session to satisfy foreign key constraint
 	session := &store.Session{
