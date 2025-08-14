@@ -112,8 +112,8 @@ func TestMCPStubEndpoint(t *testing.T) {
 
 		serverInfo, ok := res["serverInfo"].(map[string]interface{})
 		require.True(t, ok, "serverInfo should be a map")
-		assert.Equal(t, "humanlayer-daemon-stub", serverInfo["name"])
-		assert.Equal(t, "0.0.1", serverInfo["version"])
+		assert.Equal(t, "humanlayer-daemon", serverInfo["name"])
+		assert.Equal(t, "1.0.0", serverInfo["version"])
 	})
 
 	t.Run("ToolsList", func(t *testing.T) {
@@ -152,7 +152,7 @@ func TestMCPStubEndpoint(t *testing.T) {
 
 		tool := tools[0].(map[string]interface{})
 		assert.Equal(t, "request_approval", tool["name"])
-		assert.Contains(t, tool["description"], "stub")
+		assert.Contains(t, tool["description"], "Request permission to execute a tool")
 	})
 
 	t.Run("UnknownMethod", func(t *testing.T) {

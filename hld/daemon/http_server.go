@@ -92,10 +92,10 @@ func (s *HTTPServer) Start(ctx context.Context) error {
 	// Register SSE endpoint directly (not part of strict interface)
 	v1.GET("/stream/events", s.sseHandler.StreamEvents)
 
-	// MCP endpoint (Phase 1: stub implementation)
-	mcpStub := mcp.NewStubMCPHandler()
+	// MCP endpoint (Phase 3: full MCP server implementation)
+	mcpServer := mcp.NewMCPServer()
 	v1.Any("/mcp", func(c *gin.Context) {
-		mcpStub.ServeHTTP(c.Writer, c.Request)
+		mcpServer.ServeHTTP(c.Writer, c.Request)
 	})
 
 	// Create listener first to handle port 0
