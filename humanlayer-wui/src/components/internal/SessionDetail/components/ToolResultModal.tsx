@@ -71,27 +71,47 @@ export function ToolResultModal({
   useHotkeys(
     'escape',
     ev => {
+      ev.preventDefault()
       ev.stopPropagation()
-      if (toolResult) {
+      if (toolResult || toolCall) {
         onClose()
       }
     },
-    { enabled: !!toolResult, scopes: ToolResultModalHotkeysScope },
+    {
+      enabled: !!(toolResult || toolCall),
+      scopes: ToolResultModalHotkeysScope,
+      preventDefault: true,
+    },
   )
 
-  useStealHotkeyScope(ToolResultModalHotkeysScope)
+  const isOpen = !!(toolResult || toolCall)
+  useStealHotkeyScope(ToolResultModalHotkeysScope, isOpen)
 
   // Show modal if we have either a tool result or just a tool call (unfinished)
-  if (!toolResult && !toolCall) return null
+  if (!isOpen) return null
 
   return (
     <Dialog
       open={!!(toolResult || toolCall)}
       onOpenChange={open => {
-        !open && onClose()
+        // Only close if Dialog is being closed by something other than escape
+        // Our custom escape handler will handle the escape key
+        if (!open) {
+          onClose()
+        }
       }}
     >
-      <DialogContent className="w-[90vw] max-w-[90vw] h-[85vh] p-0 sm:max-w-[90vw] flex flex-col overflow-hidden">
+      <DialogContent
+        className="w-[90vw] max-w-[90vw] h-[85vh] p-0 sm:max-w-[90vw] flex flex-col overflow-hidden"
+        onEscapeKeyDown={e => {
+          // Prevent the default Dialog escape handling
+          e.preventDefault()
+        }}
+        onPointerDownOutside={e => {
+          // Prevent closing when clicking outside
+          e.preventDefault()
+        }}
+      >
         <DialogHeader className="px-4 py-3 border-b bg-background flex-none">
           <DialogTitle className="text-sm font-mono">
             <div className="flex items-center gap-2">

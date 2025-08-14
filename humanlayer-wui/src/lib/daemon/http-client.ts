@@ -169,6 +169,7 @@ export class HTTPDaemonClient implements IDaemonClient {
     const response = await this.client!.listSessions({
       leafOnly: true,
       includeArchived: request?.include_archived,
+      archivedOnly: request?.archived_only,
     })
     logger.debug(
       'getSessionLeaves raw response sample:',

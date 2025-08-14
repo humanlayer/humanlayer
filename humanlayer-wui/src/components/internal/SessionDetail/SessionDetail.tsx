@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
-import { useHotkeys } from 'react-hotkeys-hook'
+import { useHotkeys, useHotkeysContext } from 'react-hotkeys-hook'
 import { toast } from 'sonner'
 
 import { ConversationEvent, Session, ApprovalStatus, SessionStatus } from '@/lib/daemon/types'
@@ -31,7 +31,6 @@ import { useSessionApprovals } from './hooks/useSessionApprovals'
 import { useSessionNavigation } from './hooks/useSessionNavigation'
 import { useTaskGrouping } from './hooks/useTaskGrouping'
 import { useSessionClipboard } from './hooks/useSessionClipboard'
-import { useStealHotkeyScope } from '@/hooks/useStealHotkeyScope'
 import { logger } from '@/lib/logging'
 
 interface SessionDetailProps {
@@ -39,6 +38,7 @@ interface SessionDetailProps {
   onClose: () => void
 }
 
+// SessionDetail uses its own scope so it can be properly disabled when modals are open
 export const SessionDetailHotkeysScope = 'session-detail'
 
 const ROBOT_VERBS = [
@@ -179,6 +179,7 @@ function OmniSpinner({ randomVerb, spinnerType }: { randomVerb: string; spinnerT
 }
 
 function SessionDetail({ session, onClose }: SessionDetailProps) {
+  const { enableScope, disableScope } = useHotkeysContext()
   const [isWideView, setIsWideView] = useState(false)
   const [isCompactView, setIsCompactView] = useState(false)
   const [expandedToolResult, setExpandedToolResult] = useState<ConversationEvent | null>(null)
@@ -294,6 +295,14 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     sessionFromStore?.dangerouslySkipPermissionsExpiresAt !== undefined
       ? sessionFromStore.dangerouslySkipPermissionsExpiresAt?.toISOString()
       : session.dangerouslySkipPermissionsExpiresAt?.toISOString()
+
+  // Enable SessionDetail scope when mounted
+  useEffect(() => {
+    enableScope(SessionDetailHotkeysScope)
+    return () => {
+      disableScope(SessionDetailHotkeysScope)
+    }
+  }, [enableScope, disableScope])
 
   // Debug logging
   useEffect(() => {
@@ -498,6 +507,11 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         return
       }
 
+      // Don't process escape if dangerous skip permissions dialog is open
+      if (dangerousSkipPermissionsDialogOpen) {
+        return
+      }
+
       // If the textarea is focused, blur it and stop processing
       if (ev.target === responseInputRef.current && responseInputRef.current) {
         responseInputRef.current.blur()
@@ -520,8 +534,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       }
     },
     {
-      scopes: SessionDetailHotkeysScope,
       enableOnFormTags: true, // Enable escape key in form elements like textarea
+      scopes: SessionDetailHotkeysScope,
     },
   )
 
@@ -539,18 +553,36 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       }
     },
     {
-      scopes: [SessionDetailHotkeysScope],
       preventDefault: true,
+      scopes: SessionDetailHotkeysScope,
     },
     [session.id, autoAcceptEdits], // Dependencies
   )
 
   // Add Option+Y handler for dangerously skip permissions mode
+  const { activeScopes } = useHotkeysContext()
   useHotkeys(
     'alt+y',
     async () => {
-      logger.log('Option+Y pressed', { dangerouslySkipPermissions, sessionId: session.id })
-      if (dangerouslySkipPermissions) {
+      // Check if any modal scopes are active
+      const modalScopes = [
+        'tool-result-modal',
+        'fork-view-modal',
+        'dangerously-skip-permissions-dialog',
+      ]
+      const hasModalOpen = activeScopes.some(scope => modalScopes.includes(scope))
+
+      // Don't trigger if other modals are open
+      if (hasModalOpen || dangerousSkipPermissionsDialogOpen) {
+        return
+      }
+
+      // Get the current value from the store directly to avoid stale closure
+      const currentSessionFromStore = useStore.getState().sessions.find(s => s.id === session.id)
+      const currentDangerouslySkipPermissions =
+        currentSessionFromStore?.dangerouslySkipPermissions ?? false
+
+      if (currentDangerouslySkipPermissions) {
         // Disable dangerous skip permissions
         try {
           await updateSessionOptimistic(session.id, {
@@ -563,15 +595,14 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         }
       } else {
         // Show confirmation dialog
-        logger.log('Opening dangerous skip permissions dialog')
         setDangerousSkipPermissionsDialogOpen(true)
       }
     },
     {
-      scopes: [SessionDetailHotkeysScope],
       preventDefault: true,
+      scopes: SessionDetailHotkeysScope,
     },
-    [session.id, dangerouslySkipPermissions],
+    [session.id], // Remove dangerouslySkipPermissions from deps since we get it fresh each time
   )
 
   // Handle dialog confirmation
@@ -655,8 +686,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       }
     },
     {
-      scopes: [SessionDetailHotkeysScope],
       preventDefault: true,
+      scopes: SessionDetailHotkeysScope,
     },
     [session.id, session.archived, session.summary, session.status, onClose, confirmingArchive],
   )
@@ -666,9 +697,21 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     'meta+y',
     e => {
       e.preventDefault()
+
+      // Check if any modal scopes are active
+      const modalScopes = ['tool-result-modal', 'dangerously-skip-permissions-dialog']
+      const hasModalOpen = activeScopes.some(scope => modalScopes.includes(scope))
+
+      // Don't trigger if other modals are open
+      if (hasModalOpen) {
+        return
+      }
+
       setForkViewOpen(!forkViewOpen)
     },
-    { scopes: [SessionDetailHotkeysScope] },
+    {
+      scopes: SessionDetailHotkeysScope,
+    },
   )
 
   // Add Shift+G hotkey to scroll to bottom
@@ -690,7 +733,9 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         }
       }
     },
-    { scopes: [SessionDetailHotkeysScope] },
+    {
+      scopes: SessionDetailHotkeysScope,
+    },
     [events, navigation.setFocusedEventId, navigation.setFocusSource],
   )
 
@@ -715,8 +760,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     },
     {
       enableOnFormTags: false,
-      scopes: [SessionDetailHotkeysScope],
       preventDefault: true,
+      scopes: SessionDetailHotkeysScope,
     },
     [events, navigation.setFocusedEventId, navigation.setFocusSource],
   )
@@ -730,9 +775,9 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       }
     },
     {
-      scopes: SessionDetailHotkeysScope,
       enableOnFormTags: false,
       preventDefault: true,
+      scopes: SessionDetailHotkeysScope,
     },
   )
 
@@ -751,7 +796,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     [startEditTitle, isEditingTitle],
   )
 
-  useStealHotkeyScope(SessionDetailHotkeysScope)
+  // Don't steal scope here - SessionDetail is the base layer
+  // Only modals opening on top should steal scope
 
   // Note: Most hotkeys are handled by the hooks (ctrl+x, r, p, i, a, d)
   // Only the escape key needs special handling here for confirmingApprovalId

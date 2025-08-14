@@ -40,6 +40,7 @@ interface LauncherState {
 }
 
 const LAST_WORKING_DIR_KEY = 'humanlayer-last-working-dir'
+const SESSION_LAUNCHER_QUERY_KEY = 'session-launcher-query'
 
 // Helper function to get default working directory
 const getDefaultWorkingDir = (): string => {
@@ -47,11 +48,16 @@ const getDefaultWorkingDir = (): string => {
   return stored || '~/' // Default to home directory on first launch
 }
 
+// Helper function to get saved query
+const getSavedQuery = (): string => {
+  return localStorage.getItem(SESSION_LAUNCHER_QUERY_KEY) || ''
+}
+
 export const useSessionLauncher = create<LauncherState>((set, get) => ({
   isOpen: false,
   mode: 'command',
   view: 'menu',
-  query: '',
+  query: getSavedQuery(),
   config: { workingDir: getDefaultWorkingDir() },
   isLaunching: false,
   gPrefixMode: false,
@@ -67,10 +73,11 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
     }),
 
   close: () => {
+    const savedQuery = getSavedQuery()
     set({
       isOpen: false,
       view: 'menu',
-      query: '',
+      query: savedQuery,
       config: { workingDir: getDefaultWorkingDir() },
       selectedMenuIndex: 0,
       error: undefined,
@@ -78,11 +85,14 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
     })
   },
 
-  setQuery: query =>
-    set({
+  setQuery: query => {
+    // Save to localStorage on every change
+    localStorage.setItem(SESSION_LAUNCHER_QUERY_KEY, query)
+    return set({
       query,
       error: undefined,
-    }),
+    })
+  },
 
   setConfig: config => set({ config, error: undefined }),
 
@@ -152,6 +162,9 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
         localStorage.setItem(LAST_WORKING_DIR_KEY, config.workingDir)
       }
 
+      // Clear the saved query after successful launch
+      localStorage.removeItem(SESSION_LAUNCHER_QUERY_KEY)
+
       // Navigate to new session (will be handled by parent component)
       window.location.hash = `#/sessions/${response.sessionId}`
 
@@ -171,10 +184,11 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
   },
 
   createNewSession: () => {
+    const savedQuery = getSavedQuery()
     // Switch to input mode for session creation
     set({
       view: 'input',
-      query: '',
+      query: savedQuery,
       config: { workingDir: getDefaultWorkingDir() },
       error: undefined,
     })
@@ -186,18 +200,20 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
     get().close()
   },
 
-  reset: () =>
-    set({
+  reset: () => {
+    const savedQuery = getSavedQuery()
+    return set({
       isOpen: false,
       mode: 'command',
       view: 'menu',
-      query: '',
+      query: savedQuery,
       config: { workingDir: getDefaultWorkingDir() },
       selectedMenuIndex: 0,
       isLaunching: false,
       error: undefined,
       gPrefixMode: false,
-    }),
+    })
+  },
 }))
 
 // Helper hook for global hotkey management
@@ -219,6 +235,19 @@ export function useSessionLauncherHotkeys() {
     )
   }
 
+  // Check if a modal scope is active (indicating a modal is open)
+  const isModalScopeActive = () => {
+    // Only check for specific modals that should block global hotkeys
+    // Don't include all modals - for example, we want 'c' to work in SessionDetail
+    return activeScopes.some(
+      scope =>
+        scope === 'tool-result-modal' || // Tool result modal (opened with 'i')
+        scope === 'session-launcher' || // Session launcher itself
+        scope === 'fork-view-modal' || // Fork view modal
+        scope === 'dangerously-skip-permissions-dialog', // Permissions dialog
+    )
+  }
+
   return {
     handleKeyDown: (e: KeyboardEvent) => {
       // Cmd+K - Global command palette (shows menu)
@@ -233,14 +262,17 @@ export function useSessionLauncherHotkeys() {
       }
 
       // C - Create new session directly (bypasses command palette)
+      // Don't trigger if a modal is already open
       if (e.key === 'c' && !e.metaKey && !e.ctrlKey && !isTypingInInput()) {
-        e.preventDefault()
-        // Open launcher if not already open
-        if (!isOpen) {
-          open('command')
+        if (!isModalScopeActive()) {
+          e.preventDefault()
+          // Open launcher if not already open
+          if (!isOpen) {
+            open('command')
+          }
+          createNewSession()
+          return
         }
-        createNewSession()
-        return
       }
 
       // / - Search sessions and approvals (only when not typing)
@@ -251,7 +283,8 @@ export function useSessionLauncherHotkeys() {
         !e.metaKey &&
         !e.ctrlKey &&
         !isTypingInInput() &&
-        !activeScopes.includes(SessionTableHotkeysScope)
+        !activeScopes.includes(SessionTableHotkeysScope) &&
+        !isModalScopeActive()
       ) {
         e.preventDefault()
         open('search')
@@ -259,7 +292,7 @@ export function useSessionLauncherHotkeys() {
       }
 
       // G prefix navigation (prepare for Phase 2)
-      if (e.key === 'g' && !e.metaKey && !e.ctrlKey && !isTypingInInput()) {
+      if (e.key === 'g' && !e.metaKey && !e.ctrlKey && !isTypingInInput() && !isModalScopeActive()) {
         e.preventDefault()
         setGPrefixMode(true)
         setTimeout(() => setGPrefixMode(false), 2000)

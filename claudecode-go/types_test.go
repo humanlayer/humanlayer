@@ -207,3 +207,117 @@ func TestContentStructWithContentField(t *testing.T) {
 		})
 	}
 }
+
+func TestPermissionDenialsUnmarshal(t *testing.T) {
+	tests := []struct {
+		name          string
+		input         string
+		expectDenials []PermissionDenial
+		expectError   bool
+	}{
+		{
+			name: "object array format",
+			input: `[{
+				"tool_name": "Bash",
+				"tool_use_id": "toolu_01M6qJZgpwjmzg14TBS5Mwhm",
+				"tool_input": {"command": "git fetch origin main"}
+			}]`,
+			expectDenials: []PermissionDenial{{
+				ToolName:  "Bash",
+				ToolUseID: "toolu_01M6qJZgpwjmzg14TBS5Mwhm",
+				ToolInput: map[string]interface{}{"command": "git fetch origin main"},
+			}},
+			expectError: false,
+		},
+		{
+			name: "multiple denials",
+			input: `[
+				{"tool_name": "Bash", "tool_use_id": "tool_1", "tool_input": {"command": "rm -rf /"}},
+				{"tool_name": "Write", "tool_use_id": "tool_2", "tool_input": {"path": "/etc/passwd"}}
+			]`,
+			expectDenials: []PermissionDenial{
+				{ToolName: "Bash", ToolUseID: "tool_1", ToolInput: map[string]interface{}{"command": "rm -rf /"}},
+				{ToolName: "Write", ToolUseID: "tool_2", ToolInput: map[string]interface{}{"path": "/etc/passwd"}},
+			},
+			expectError: false,
+		},
+		{
+			name:          "legacy string array format",
+			input:         `["Bash", "Write", "Delete"]`,
+			expectDenials: []PermissionDenial{{ToolName: "Bash"}, {ToolName: "Write"}, {ToolName: "Delete"}},
+			expectError:   false,
+		},
+		{
+			name:          "empty array",
+			input:         `[]`,
+			expectDenials: []PermissionDenial{},
+			expectError:   false,
+		},
+		{
+			name:          "null value",
+			input:         `null`,
+			expectDenials: nil,
+			expectError:   false,
+		},
+		{
+			name:        "invalid format - plain object",
+			input:       `{"tool_name": "Bash"}`,
+			expectError: true,
+		},
+		{
+			name:        "invalid format - number",
+			input:       `123`,
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var p PermissionDenials
+			err := json.Unmarshal([]byte(tt.input), &p)
+
+			if (err != nil) != tt.expectError {
+				t.Errorf("PermissionDenials.UnmarshalJSON() error = %v, expectError %v", err, tt.expectError)
+				return
+			}
+
+			if !tt.expectError {
+				if len(p.Denials) != len(tt.expectDenials) {
+					t.Errorf("PermissionDenials.UnmarshalJSON() got %d denials, want %d", len(p.Denials), len(tt.expectDenials))
+					return
+				}
+
+				for i, denial := range p.Denials {
+					if denial.ToolName != tt.expectDenials[i].ToolName {
+						t.Errorf("Denial[%d].ToolName = %v, want %v", i, denial.ToolName, tt.expectDenials[i].ToolName)
+					}
+					if denial.ToolUseID != tt.expectDenials[i].ToolUseID {
+						t.Errorf("Denial[%d].ToolUseID = %v, want %v", i, denial.ToolUseID, tt.expectDenials[i].ToolUseID)
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestPermissionDenialsToStrings(t *testing.T) {
+	p := PermissionDenials{
+		Denials: []PermissionDenial{
+			{ToolName: "Bash"},
+			{ToolName: "Write"},
+		},
+	}
+
+	strings := p.ToStrings()
+	expected := []string{"Bash", "Write"}
+
+	if len(strings) != len(expected) {
+		t.Errorf("ToStrings() returned %d items, want %d", len(strings), len(expected))
+	}
+
+	for i, s := range strings {
+		if s != expected[i] {
+			t.Errorf("ToStrings()[%d] = %v, want %v", i, s, expected[i])
+		}
+	}
+}

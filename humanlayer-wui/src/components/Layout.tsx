@@ -66,6 +66,7 @@ export function Layout() {
   const addRecentResolvedApprovalToCache = useStore(state => state.addRecentResolvedApprovalToCache)
   const isRecentResolvedApproval = useStore(state => state.isRecentResolvedApproval)
   const setActiveSessionDetail = useStore(state => state.setActiveSessionDetail)
+  const updateActiveSessionDetail = useStore(state => state.updateActiveSessionDetail)
 
   // Set up single SSE subscription for all events
   useSessionSubscriptions(connected, {
@@ -76,6 +77,16 @@ export function Layout() {
       const previousStatus = targetSession?.status
       const sessionResponse = await daemonClient.getSessionState(data.session_id)
       const session = sessionResponse.session
+
+      // Always update the session in the sessions list
+      // Use updateSession (not updateSessionOptimistic) since this is data FROM the server
+      useStore.getState().updateSession(session_id, session)
+
+      // Update active session detail if this is the currently viewed session
+      const activeSessionId = useStore.getState().activeSessionDetail?.session?.id
+      if (activeSessionId === session_id) {
+        updateActiveSessionDetail(session)
+      }
 
       if (!nextStatus) {
         logger.warn('useSessionSubscriptions.onSessionStatusChanged: nextStatus is undefined', data)
