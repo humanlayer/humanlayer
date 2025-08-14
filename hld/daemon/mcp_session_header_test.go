@@ -161,9 +161,9 @@ func TestMCPHeaderTransmission(t *testing.T) {
 				"type": "http",
 				"url":  fmt.Sprintf("%s/mcp", baseURL),
 				"headers": map[string]string{
-					"X-Session-ID":     testSessionID,
-					"X-Custom-Header":  "custom-value",
-					"Authorization":    "Bearer test-token",
+					"X-Session-ID":    testSessionID,
+					"X-Custom-Header": "custom-value",
+					"Authorization":   "Bearer test-token",
 				},
 			},
 		},

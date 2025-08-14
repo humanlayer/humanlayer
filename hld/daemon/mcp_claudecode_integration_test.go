@@ -109,7 +109,7 @@ func TestMCPClaudeCodeSessionIDCorrelation(t *testing.T) {
 	os.Setenv("HUMANLAYER_DAEMON_SOCKET", socketPath)
 	os.Setenv("HUMANLAYER_DAEMON_HTTP_PORT", fmt.Sprintf("%d", httpPort))
 	os.Setenv("HUMANLAYER_DAEMON_HTTP_HOST", "127.0.0.1")
-	os.Setenv("HUMANLAYER_API_KEY", "") // Disable cloud API
+	os.Setenv("HUMANLAYER_API_KEY", "")    // Disable cloud API
 	os.Setenv("MCP_AUTO_DENY_ALL", "true") // Auto-deny for predictable responses
 
 	// Create isolated config
