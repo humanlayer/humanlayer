@@ -260,6 +260,11 @@ export function ForkViewModal({
           // Prevent closing when clicking outside
           e.preventDefault()
         }}
+        onEscapeKeyDown={e => {
+          // Prevent the default Dialog escape handling
+          // Our custom escape handler in ForkViewModalContent will handle it
+          e.preventDefault()
+        }}
       >
         {isOpen && (
           <ForkViewModalContent

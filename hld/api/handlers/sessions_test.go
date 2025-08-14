@@ -286,7 +286,6 @@ func TestSessionHandlers_GetSession(t *testing.T) {
 			Model:           "claude-3-sonnet",
 			WorkingDir:      "/home/user/project",
 			CostUSD:         floatPtr(0.05),
-			TotalTokens:     intPtr(1500),
 			DurationMS:      intPtr(45000),
 			AutoAcceptEdits: true,
 			Archived:        false,

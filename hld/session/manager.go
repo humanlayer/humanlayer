@@ -277,9 +277,25 @@ eventLoop:
 				}
 			}
 
-			// Capture Claude session ID
-			if event.SessionID != "" && claudeSessionID == "" {
-				claudeSessionID = event.SessionID
+			// Capture Claude session ID from either top-level or message session_id
+			if claudeSessionID == "" {
+				if event.SessionID != "" {
+					claudeSessionID = event.SessionID
+				} else if event.Message != nil && event.Message.ID != "" {
+					// For assistant/user messages, we can use the message itself as proof of session
+					// The actual claude session ID might be in the raw JSON
+					if eventJSON, err := json.Marshal(event); err == nil {
+						var rawEvent map[string]interface{}
+						if err := json.Unmarshal(eventJSON, &rawEvent); err == nil {
+							if sid, ok := rawEvent["session_id"].(string); ok && sid != "" {
+								claudeSessionID = sid
+							}
+						}
+					}
+				}
+			}
+
+			if claudeSessionID != "" {
 				// Note: Claude session ID captured for resume capability
 				slog.Debug("captured Claude session ID",
 					"session_id", sessionID,
@@ -469,6 +485,7 @@ func (m *Manager) GetSessionInfo(sessionID string) (*Info, error) {
 		Summary:         dbSession.Summary,
 		Title:           dbSession.Title,
 		Model:           dbSession.Model,
+		ModelID:         dbSession.ModelID,
 		WorkingDir:      dbSession.WorkingDir,
 		AutoAcceptEdits: dbSession.AutoAcceptEdits,
 		Archived:        dbSession.Archived,
@@ -532,6 +549,7 @@ func (m *Manager) ListSessions() []Info {
 			Summary:                             dbSession.Summary,
 			Title:                               dbSession.Title,
 			Model:                               dbSession.Model,
+			ModelID:                             dbSession.ModelID,
 			WorkingDir:                          dbSession.WorkingDir,
 			AutoAcceptEdits:                     dbSession.AutoAcceptEdits,
 			Archived:                            dbSession.Archived,
@@ -591,7 +609,65 @@ func (m *Manager) updateSessionActivity(ctx context.Context, sessionID string) {
 
 // processStreamEvent processes a streaming event and stores it in the database
 func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, claudeSessionID string, event claudecode.StreamEvent) error {
-	// Skip events without claude session ID
+	// Log the entire raw event JSON for debugging
+	if eventJSON, err := json.Marshal(event); err == nil {
+		slog.Debug("processing API event",
+			"session_id", sessionID,
+			"event_type", event.Type,
+			"raw_event_json", string(eventJSON))
+	}
+
+	// Process token updates from assistant messages even without claudeSessionID
+	if event.Type == "assistant" && event.Message != nil && event.Message.Role == "assistant" && event.Message.Usage != nil {
+		usage := event.Message.Usage
+		// Compute effective context tokens (what's actually in the context window)
+		// This includes ALL tokens that count toward the context limit
+		effective := usage.InputTokens + usage.OutputTokens + usage.CacheReadInputTokens + usage.CacheCreationInputTokens
+
+		now := time.Now()
+		update := store.SessionUpdate{
+			InputTokens:              &usage.InputTokens,
+			OutputTokens:             &usage.OutputTokens,
+			CacheCreationInputTokens: &usage.CacheCreationInputTokens,
+			CacheReadInputTokens:     &usage.CacheReadInputTokens,
+			EffectiveContextTokens:   &effective,
+			LastActivityAt:           &now,
+		}
+
+		if err := m.store.UpdateSession(ctx, sessionID, update); err != nil {
+			slog.Error("failed to update token usage",
+				"session_id", sessionID,
+				"error", err)
+		} else {
+			// Publish event to notify UI about token update
+			// The UI needs "new_status" field even though we're not changing status
+			if m.eventBus != nil {
+				// Get current session to include current status
+				session, _ := m.store.GetSession(ctx, sessionID)
+				currentStatus := "running"
+				if session != nil && session.Status != "" {
+					currentStatus = session.Status
+				}
+
+				slog.Debug("Publishing token update event",
+					"session_id", sessionID,
+					"status", currentStatus,
+					"effective_tokens", effective)
+
+				m.eventBus.Publish(bus.Event{
+					Type: bus.EventSessionStatusChanged,
+					Data: map[string]interface{}{
+						"session_id":  sessionID,
+						"new_status":  currentStatus,  // Required by UI handler
+						"old_status":  currentStatus,  // Status isn't changing, just tokens
+						"reason":      "token_update",
+					},
+				})
+			}
+		}
+	}
+
+	// Skip remaining event processing without claude session ID
 	if claudeSessionID == "" {
 		return nil
 	}
@@ -637,6 +713,9 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 
 			// Only update if model is empty and init event has a model
 			if session != nil && session.Model == "" && event.Model != "" {
+				// Store the full model ID
+				modelID := event.Model
+
 				// Extract simple model name from API format (case-insensitive)
 				var modelName string
 				lowerModel := strings.ToLower(event.Model)
@@ -646,27 +725,39 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 					modelName = "sonnet"
 				}
 
-				// Update session with detected model
+				// Update session with both model ID and simplified name
 				if modelName != "" {
 					update := store.SessionUpdate{
-						Model: &modelName,
+						Model:   &modelName,
+						ModelID: &modelID,
 					}
 					if err := m.store.UpdateSession(ctx, sessionID, update); err != nil {
 						slog.Error("failed to update session model from init event",
 							"session_id", sessionID,
 							"model", modelName,
+							"model_id", modelID,
 							"error", err)
 					} else {
 						slog.Info("populated session model from init event",
 							"session_id", sessionID,
 							"model", modelName,
-							"original", event.Model)
+							"model_id", modelID)
 					}
 				} else {
-					// Log when we detect a model but don't recognize the format
-					slog.Debug("unrecognized model format in init event",
-						"session_id", sessionID,
-						"model", event.Model)
+					// Still store the model ID even if we don't recognize the format
+					update := store.SessionUpdate{
+						ModelID: &modelID,
+					}
+					if err := m.store.UpdateSession(ctx, sessionID, update); err != nil {
+						slog.Error("failed to update session model_id from init event",
+							"session_id", sessionID,
+							"model_id", modelID,
+							"error", err)
+					} else {
+						slog.Debug("stored unrecognized model format in init event",
+							"session_id", sessionID,
+							"model_id", modelID)
+					}
 				}
 			}
 			// Don't store init event in conversation history - we only extract the model
@@ -676,6 +767,7 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 	case "assistant", "user":
 		// Messages contain the actual content
 		if event.Message != nil {
+			// Token usage is already processed at the top of this function
 			// Process each content block
 			for _, content := range event.Message.Content {
 				switch content.Type {
@@ -852,6 +944,19 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 			CostUSD:        &event.CostUSD,
 			DurationMS:     &event.DurationMS,
 		}
+
+		// Process usage data from result event
+		if event.Usage != nil {
+			usage := event.Usage
+			// Skip updating token counts from result events - they appear to accumulate incorrectly
+			// Result events show cumulative cache reads across the entire session (bug)
+			// We only trust token counts from individual assistant messages
+			slog.Debug("Skipping result event token update due to API bug",
+				"session_id", sessionID,
+				"cache_read_tokens", usage.CacheReadInputTokens,
+				"reason", "result events report cumulative cache reads")
+		}
+
 		if event.Error != "" {
 			update.ErrorMessage = &event.Error
 		}

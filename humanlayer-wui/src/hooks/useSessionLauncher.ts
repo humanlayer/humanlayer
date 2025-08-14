@@ -227,6 +227,19 @@ export function useSessionLauncherHotkeys() {
     )
   }
 
+  // Check if a modal scope is active (indicating a modal is open)
+  const isModalScopeActive = () => {
+    // Only check for specific modals that should block global hotkeys
+    // Don't include all modals - for example, we want 'c' to work in SessionDetail
+    return activeScopes.some(
+      scope =>
+        scope === 'tool-result-modal' || // Tool result modal (opened with 'i')
+        scope === 'session-launcher' || // Session launcher itself
+        scope === 'fork-view-modal' || // Fork view modal
+        scope === 'dangerously-skip-permissions-dialog', // Permissions dialog
+    )
+  }
+
   return {
     handleKeyDown: (e: KeyboardEvent) => {
       // Cmd+K - Global command palette (shows menu)
@@ -241,14 +254,17 @@ export function useSessionLauncherHotkeys() {
       }
 
       // C - Create new session directly (bypasses command palette)
+      // Don't trigger if a modal is already open
       if (e.key === 'c' && !e.metaKey && !e.ctrlKey && !isTypingInInput()) {
-        e.preventDefault()
-        // Open launcher if not already open
-        if (!isOpen) {
-          open('command')
+        if (!isModalScopeActive()) {
+          e.preventDefault()
+          // Open launcher if not already open
+          if (!isOpen) {
+            open('command')
+          }
+          createNewSession()
+          return
         }
-        createNewSession()
-        return
       }
 
       // / - Search sessions and approvals (only when not typing)
@@ -259,7 +275,8 @@ export function useSessionLauncherHotkeys() {
         !e.metaKey &&
         !e.ctrlKey &&
         !isTypingInInput() &&
-        !activeScopes.includes(SessionTableHotkeysScope)
+        !activeScopes.includes(SessionTableHotkeysScope) &&
+        !isModalScopeActive()
       ) {
         e.preventDefault()
         open('search')
@@ -267,7 +284,7 @@ export function useSessionLauncherHotkeys() {
       }
 
       // G prefix navigation (prepare for Phase 2)
-      if (e.key === 'g' && !e.metaKey && !e.ctrlKey && !isTypingInInput()) {
+      if (e.key === 'g' && !e.metaKey && !e.ctrlKey && !isTypingInInput() && !isModalScopeActive()) {
         e.preventDefault()
         setGPrefixMode(true)
         setTimeout(() => setGPrefixMode(false), 2000)

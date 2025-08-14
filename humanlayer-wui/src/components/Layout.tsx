@@ -67,6 +67,7 @@ export function Layout() {
   const addRecentResolvedApprovalToCache = useStore(state => state.addRecentResolvedApprovalToCache)
   const isRecentResolvedApproval = useStore(state => state.isRecentResolvedApproval)
   const setActiveSessionDetail = useStore(state => state.setActiveSessionDetail)
+  const updateActiveSessionDetail = useStore(state => state.updateActiveSessionDetail)
 
   // Set up single SSE subscription for all events
   useSessionSubscriptions(connected, {
@@ -77,6 +78,15 @@ export function Layout() {
       const previousStatus = targetSession?.status
       const sessionResponse = await daemonClient.getSessionState(data.session_id)
       const session = sessionResponse.session
+
+      // Always update the session in the sessions list
+      useStore.getState().updateSessionOptimistic(session_id, session)
+
+      // Update active session detail if this is the currently viewed session
+      const activeSessionId = useStore.getState().activeSessionDetail?.session?.id
+      if (activeSessionId === session_id) {
+        updateActiveSessionDetail(session)
+      }
 
       if (!nextStatus) {
         logger.warn('useSessionSubscriptions.onSessionStatusChanged: nextStatus is undefined', data)
@@ -132,7 +142,17 @@ export function Layout() {
         }
       }
 
-      updateSessionStatus(session_id, nextStatus)
+      // Update the full session data, not just the status
+      // This ensures token counts and other fields are preserved
+      if (session) {
+        updateSession(session_id, {
+          ...session,
+          status: nextStatus,
+        })
+      } else {
+        // Fallback to just updating status if we couldn't fetch the session
+        updateSessionStatus(session_id, nextStatus)
+      }
 
       await refreshActiveSessionConversation(session_id)
     },

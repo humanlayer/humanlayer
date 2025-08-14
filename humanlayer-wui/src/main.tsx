@@ -13,7 +13,7 @@ attachConsole().catch(console.error)
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
     <ThemeProvider>
-      <HotkeysProvider initiallyActiveScopes={['none']}>
+      <HotkeysProvider>
         <RouterProvider router={router} />
       </HotkeysProvider>
     </ThemeProvider>

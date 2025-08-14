@@ -26,7 +26,7 @@ export const getHelpText = (status: string): React.ReactNode => {
   if (status === 'failed') return 'Session failed - cannot continue'
   const isMac = navigator.platform.includes('Mac')
   const sendKey = isMac ? '⌘+Enter' : 'Ctrl+Enter'
-  const skipKey = isMac ? 'Option+Y' : 'Alt+Y'
+  const skipKey = isMac ? '⌥+Y' : 'Alt+Y'
   if (status === 'running' || status === 'starting') {
     return (
       <>
