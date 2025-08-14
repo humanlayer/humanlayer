@@ -79,7 +79,8 @@ export function Layout() {
       const session = sessionResponse.session
 
       // Always update the session in the sessions list
-      useStore.getState().updateSessionOptimistic(session_id, session)
+      // Use updateSession (not updateSessionOptimistic) since this is data FROM the server
+      useStore.getState().updateSession(session_id, session)
 
       // Update active session detail if this is the currently viewed session
       const activeSessionId = useStore.getState().activeSessionDetail?.session?.id

@@ -577,7 +577,12 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         return
       }
 
-      if (dangerouslySkipPermissions) {
+      // Get the current value from the store directly to avoid stale closure
+      const currentSessionFromStore = useStore.getState().sessions.find(s => s.id === session.id)
+      const currentDangerouslySkipPermissions =
+        currentSessionFromStore?.dangerouslySkipPermissions ?? false
+
+      if (currentDangerouslySkipPermissions) {
         // Disable dangerous skip permissions
         try {
           await updateSessionOptimistic(session.id, {
@@ -597,7 +602,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       preventDefault: true,
       scopes: SessionDetailHotkeysScope,
     },
-    [session.id, dangerouslySkipPermissions],
+    [session.id], // Remove dangerouslySkipPermissions from deps since we get it fresh each time
   )
 
   // Handle dialog confirmation
