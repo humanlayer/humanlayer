@@ -75,9 +75,7 @@ jobs:
         id: go-tools-cache
         with:
           path: ~/go/bin
-          key: go-tools-${{ runner.os }}-golangci-2.1.6-mockgen-0.5.2
-          restore-keys: |
-            go-tools-${{ runner.os }}-
+          key: go-tools-v2-${{ runner.os }}-golangci-2.1.6-mockgen-0.5.2
 
       # TODO: Update this, let's just pull the binary?
       - name: Install Go tools
@@ -162,7 +160,7 @@ jobs:
         id: go-tools-cache-tests
         with:
           path: ~/go/bin
-          key: go-tools-${{ runner.os }}-mockgen-0.5.2
+          key: go-tools-v2-${{ runner.os }}-mockgen-0.5.2
 
       - name: Install mockgen
         if: steps.go-tools-cache-tests.outputs.cache-hit != 'true'
