@@ -74,12 +74,18 @@ export function DvdScreensaver() {
     return () => window.removeEventListener('toggle-brainrot-mode', handleToggle)
   }, [activeSessionDetail?.session?.id])
 
-  // Disable when leaving session detail
+  // Disable when leaving session detail page
   useEffect(() => {
-    if (!isViewingSessionDetail()) {
-      setIsEnabled(false)
+    const checkLocation = () => {
+      if (!isViewingSessionDetail()) {
+        setIsEnabled(false)
+      }
     }
-  }, [activeSessionDetail])
+
+    // Check on hash change (navigation)
+    window.addEventListener('hashchange', checkLocation)
+    return () => window.removeEventListener('hashchange', checkLocation)
+  }, [])
 
   // Animation loop
   useEffect(() => {
