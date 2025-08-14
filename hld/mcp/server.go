@@ -7,9 +7,11 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/humanlayer/humanlayer/hld/approval"
+	"github.com/humanlayer/humanlayer/hld/bus"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 )
@@ -22,20 +24,29 @@ const (
 	sessionIDKey contextKey = "session_id"
 )
 
+// ApprovalDecision represents the outcome of an approval request
+type ApprovalDecision struct {
+	Approved bool
+	Comment  string
+}
+
 // MCPServer wraps the mark3labs MCP server
 type MCPServer struct {
-	mcpServer       *server.MCPServer
-	httpServer      *server.StreamableHTTPServer
-	approvalManager approval.Manager
-	autoDenyAll     bool
+	mcpServer        *server.MCPServer
+	httpServer       *server.StreamableHTTPServer
+	approvalManager  approval.Manager
+	eventBus         bus.EventBus
+	autoDenyAll      bool
+	pendingApprovals sync.Map // map[string]chan ApprovalDecision
 }
 
 // NewMCPServer creates the full MCP server implementation
-func NewMCPServer(approvalManager approval.Manager) *MCPServer {
+func NewMCPServer(approvalManager approval.Manager, eventBus bus.EventBus) *MCPServer {
 	autoDeny := os.Getenv("MCP_AUTO_DENY_ALL") == "true"
 
 	s := &MCPServer{
 		approvalManager: approvalManager,
+		eventBus:        eventBus,
 		autoDenyAll:     autoDeny,
 	}
 
@@ -72,7 +83,15 @@ func NewMCPServer(approvalManager approval.Manager) *MCPServer {
 		server.WithStateLess(true),
 	)
 
+	// Don't start goroutine here - wait for Start() to be called
 	return s
+}
+
+// Start initializes the MCP server's background processes
+func (s *MCPServer) Start(ctx context.Context) {
+	if s.eventBus != nil {
+		go s.listenForApprovalDecisions(ctx)
+	}
 }
 
 func (s *MCPServer) handleRequestApproval(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -145,10 +164,36 @@ func (s *MCPServer) handleRequestApproval(ctx context.Context, request mcp.CallT
 		}, nil
 	}
 
-	// For now, just timeout waiting for approval
-	// Event-driven approval will come in Phase 5
+	// Register for event-driven approval resolution
+	decisionChan := make(chan ApprovalDecision, 1)
+	s.pendingApprovals.Store(toolUseID, decisionChan)
+	defer s.pendingApprovals.Delete(toolUseID)
+
+	// Wait for approval decision
 	select {
-	case <-time.After(30 * time.Second):
+	case decision := <-decisionChan:
+		responseData := map[string]interface{}{
+			"behavior": "deny",
+			"message":  decision.Comment,
+		}
+		if decision.Approved {
+			responseData = map[string]interface{}{
+				"behavior":     "allow",
+				"updatedInput": input,
+			}
+		}
+		responseJSON, _ := json.Marshal(responseData)
+
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				mcp.TextContent{
+					Type: "text",
+					Text: string(responseJSON),
+				},
+			},
+		}, nil
+
+	case <-time.After(5 * time.Minute):
 		return nil, fmt.Errorf("approval timeout")
 	case <-ctx.Done():
 		return nil, ctx.Err()
@@ -171,4 +216,44 @@ func (s *MCPServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	r = r.WithContext(ctx)
 
 	s.httpServer.ServeHTTP(w, r)
+}
+
+// listenForApprovalDecisions listens for approval resolution events and notifies waiting handlers
+func (s *MCPServer) listenForApprovalDecisions(ctx context.Context) {
+	sub := s.eventBus.Subscribe(ctx, bus.EventFilter{
+		Types: []bus.EventType{bus.EventApprovalResolved},
+	})
+
+	for {
+		select {
+		case <-ctx.Done():
+			slog.Info("MCP approval listener shutting down")
+			return
+		case event, ok := <-sub.Channel:
+			if !ok {
+				slog.Info("MCP approval listener channel closed")
+				return
+			}
+			toolUseID, _ := event.Data["tool_use_id"].(string)
+			approved, _ := event.Data["approved"].(bool)
+			comment, _ := event.Data["response_text"].(string)
+
+			if toolUseID == "" {
+				continue
+			}
+
+			// Find pending approval channel
+			if ch, ok := s.pendingApprovals.Load(toolUseID); ok {
+				select {
+				case ch.(chan ApprovalDecision) <- ApprovalDecision{
+					Approved: approved,
+					Comment:  comment,
+				}:
+					slog.Info("Sent approval decision", "tool_use_id", toolUseID, "approved", approved)
+				default:
+					slog.Warn("Channel full or closed", "tool_use_id", toolUseID)
+				}
+			}
+		}
+	}
 }

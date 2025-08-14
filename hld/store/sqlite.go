@@ -2141,22 +2141,47 @@ func MCPServersFromConfig(sessionID string, config map[string]claudecode.MCPServ
 	servers := make([]MCPServer, 0, len(config))
 	for _, name := range names {
 		server := config[name]
-		argsJSON, err := json.Marshal(server.Args)
-		if err != nil {
-			return nil, fmt.Errorf("failed to marshal args: %w", err)
-		}
 
-		envJSON, err := json.Marshal(server.Env)
-		if err != nil {
-			return nil, fmt.Errorf("failed to marshal env: %w", err)
+		// For HTTP servers, store the configuration differently
+		// We'll use Command field to store the type, ArgsJSON for URL, and EnvJSON for headers
+		var command string
+		var argsJSON string
+		var envJSON string
+
+		if server.Type == "http" {
+			// HTTP server
+			command = "http"                             // Use "http" as the command to indicate HTTP type
+			argsJSON = fmt.Sprintf(`["%s"]`, server.URL) // Store URL as single-element array
+
+			// Store headers in EnvJSON
+			headersData, err := json.Marshal(server.Headers)
+			if err != nil {
+				return nil, fmt.Errorf("failed to marshal headers: %w", err)
+			}
+			envJSON = string(headersData)
+		} else {
+			// Traditional stdio server
+			command = server.Command
+
+			argsData, err := json.Marshal(server.Args)
+			if err != nil {
+				return nil, fmt.Errorf("failed to marshal args: %w", err)
+			}
+			argsJSON = string(argsData)
+
+			envData, err := json.Marshal(server.Env)
+			if err != nil {
+				return nil, fmt.Errorf("failed to marshal env: %w", err)
+			}
+			envJSON = string(envData)
 		}
 
 		servers = append(servers, MCPServer{
 			SessionID: sessionID,
 			Name:      name,
-			Command:   server.Command,
-			ArgsJSON:  string(argsJSON),
-			EnvJSON:   string(envJSON),
+			Command:   command,
+			ArgsJSON:  argsJSON,
+			EnvJSON:   envJSON,
 		})
 	}
 	return servers, nil

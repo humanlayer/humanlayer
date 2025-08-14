@@ -28,6 +28,7 @@ type HTTPServer struct {
 	approvalHandlers *handlers.ApprovalHandlers
 	sseHandler       *handlers.SSEHandler
 	approvalManager  approval.Manager
+	eventBus         bus.EventBus
 	server           *http.Server
 }
 
@@ -74,6 +75,7 @@ func NewHTTPServer(
 		approvalHandlers: approvalHandlers,
 		sseHandler:       sseHandler,
 		approvalManager:  approvalManager,
+		eventBus:         eventBus,
 	}
 }
 
@@ -94,8 +96,9 @@ func (s *HTTPServer) Start(ctx context.Context) error {
 	// Register SSE endpoint directly (not part of strict interface)
 	v1.GET("/stream/events", s.sseHandler.StreamEvents)
 
-	// MCP endpoint (Phase 4: with approval manager)
-	mcpServer := mcp.NewMCPServer(s.approvalManager)
+	// MCP endpoint (Phase 5: with event-driven approvals)
+	mcpServer := mcp.NewMCPServer(s.approvalManager, s.eventBus)
+	mcpServer.Start(ctx) // Start background processes with context
 	v1.Any("/mcp", func(c *gin.Context) {
 		mcpServer.ServeHTTP(c.Writer, c.Request)
 	})
