@@ -84,6 +84,23 @@ export function ToolResultModal({
     },
   )
 
+  // Handle 'i' to close (toggle behavior)
+  useHotkeys(
+    'i',
+    ev => {
+      ev.preventDefault()
+      ev.stopPropagation()
+      if (toolResult || toolCall) {
+        onClose()
+      }
+    },
+    {
+      enabled: !!(toolResult || toolCall),
+      scopes: ToolResultModalHotkeysScope,
+      preventDefault: true,
+    },
+  )
+
   const isOpen = !!(toolResult || toolCall)
   useStealHotkeyScope(ToolResultModalHotkeysScope, isOpen)
 
@@ -167,7 +184,7 @@ export function ToolResultModal({
             <kbd>j/k</kbd> or <kbd>↓/↑</kbd> to scroll
           </span>
           <span className="text-xs text-muted-foreground">
-            <kbd>ESC</kbd> to close
+            <kbd>i</kbd> or <kbd>ESC</kbd> to close
           </span>
         </div>
       </DialogContent>
