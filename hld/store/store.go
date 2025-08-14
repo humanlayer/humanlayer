@@ -191,6 +191,7 @@ type Approval struct {
 	ID          string          `json:"id"`
 	RunID       string          `json:"run_id"`
 	SessionID   string          `json:"session_id"`
+	ToolUseID   *string         `json:"tool_use_id,omitempty"`
 	Status      ApprovalStatus  `json:"status"`
 	CreatedAt   time.Time       `json:"created_at"`
 	RespondedAt *time.Time      `json:"responded_at,omitempty"`

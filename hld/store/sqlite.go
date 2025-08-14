@@ -189,7 +189,6 @@ func (s *SQLiteStore) initSchema() error {
 		id TEXT PRIMARY KEY,
 		run_id TEXT NOT NULL,
 		session_id TEXT NOT NULL,
-		tool_use_id TEXT, -- For direct correlation with tool calls
 		status TEXT NOT NULL CHECK (status IN ('pending', 'approved', 'denied')),
 		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		responded_at DATETIME,
@@ -206,7 +205,6 @@ func (s *SQLiteStore) initSchema() error {
 	CREATE INDEX IF NOT EXISTS idx_approvals_pending ON approvals(status) WHERE status = 'pending';
 	CREATE INDEX IF NOT EXISTS idx_approvals_session ON approvals(session_id);
 	CREATE INDEX IF NOT EXISTS idx_approvals_run_id ON approvals(run_id);
-	CREATE INDEX IF NOT EXISTS idx_approvals_tool_use_id ON approvals(tool_use_id) WHERE tool_use_id IS NOT NULL;
 	`
 
 	if _, err := s.db.Exec(schema); err != nil {
@@ -616,9 +614,12 @@ func (s *SQLiteStore) applyMigrations() error {
 		slog.Info("Migration 11 applied successfully")
 	}
 
-	// Migration 12: Add tool_use_id column to approvals table
-	if currentVersion < 12 {
-		slog.Info("Applying migration 12: Add tool_use_id column to approvals table")
+	// Migration 12 and 13 are from another branch (token tracking and model_id)
+	// We skip to 14 to avoid conflicts
+
+	// Migration 14: Add tool_use_id column to approvals table
+	if currentVersion < 14 {
+		slog.Info("Applying migration 14: Add tool_use_id column to approvals table")
 
 		// Check if column already exists for idempotency
 		var columnExists int
@@ -676,13 +677,13 @@ func (s *SQLiteStore) applyMigrations() error {
 		// Record migration
 		_, err = s.db.Exec(`
 			INSERT INTO schema_version (version, description)
-			VALUES (12, 'Add tool_use_id column to approvals table for direct correlation')
+			VALUES (14, 'Add tool_use_id column to approvals table for direct correlation')
 		`)
 		if err != nil {
-			return fmt.Errorf("failed to record migration 12: %w", err)
+			return fmt.Errorf("failed to record migration 14: %w", err)
 		}
 
-		slog.Info("Migration 12 applied successfully")
+		slog.Info("Migration 14 applied successfully")
 	}
 
 	return nil
