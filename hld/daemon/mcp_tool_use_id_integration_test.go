@@ -3,22 +3,19 @@
 package daemon_test
 
 import (
-	"bufio"
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"net"
 	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
-	claudecode "github.com/humanlayer/humanlayer/claudecode-go"
 	"github.com/humanlayer/humanlayer/hld/daemon"
 	"github.com/humanlayer/humanlayer/hld/internal/testutil"
-	"github.com/humanlayer/humanlayer/hld/rpc"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/require"
 )
@@ -76,64 +73,56 @@ func TestMCPToolUseIDCorrelation(t *testing.T) {
 	require.NoError(t, err)
 	defer db.Close()
 
-	// We'll use daemon's RPC interface to launch sessions properly
+	// We'll use daemon's REST API to launch sessions properly
 
 	t.Run("SingleApprovalWithToolUseID", func(t *testing.T) {
 		// Clear any existing approvals
 		_, err = db.Exec("DELETE FROM approvals")
 		require.NoError(t, err)
 
-		// Connect to daemon socket to launch session properly
-		conn, err := net.Dial("unix", socketPath)
-		require.NoError(t, err)
-		defer conn.Close()
+		// Create temp directory for session
+		testWorkDir := t.TempDir()
 
-		// Prepare launch request through RPC
-		request := rpc.LaunchSessionRequest{
-			Query:                "Write 'Hello World' to a file called test.txt and then exit",
-			Model:                "sonnet",
-			PermissionPromptTool: "mcp__codelayer__request_approval",
-			MaxTurns:             3,
-			WorkingDir:           tempDir,
-			MCPConfig: &claudecode.MCPConfig{
-				MCPServers: map[string]claudecode.MCPServer{
-					"codelayer": {
-						Type: "http",
-						URL:  fmt.Sprintf("http://127.0.0.1:%d/api/v1/mcp", httpPort),
+		// Prepare session creation request for REST API
+		createReq := map[string]interface{}{
+			"query":                  "Write 'Hello World' to a file called test.txt and then exit",
+			"model":                  "sonnet",
+			"permission_prompt_tool": "mcp__codelayer__request_approval",
+			"max_turns":              3,
+			"working_dir":            testWorkDir,
+			"mcp_config": map[string]interface{}{
+				"mcp_servers": map[string]interface{}{
+					"codelayer": map[string]interface{}{
+						"type": "http",
+						"url":  fmt.Sprintf("http://127.0.0.1:%d/api/v1/mcp", httpPort),
 					},
 				},
 			},
 		}
 
-		// Send LaunchSession request
-		reqData, _ := json.Marshal(map[string]interface{}{
-			"jsonrpc": "2.0",
-			"method":  "launchSession",
-			"params":  request,
-			"id":      1,
-		})
+		// Send REST API request to create session
+		reqBody, _ := json.Marshal(createReq)
+		httpReq, err := http.NewRequest("POST", fmt.Sprintf("http://127.0.0.1:%d/api/v1/sessions", httpPort), bytes.NewBuffer(reqBody))
+		require.NoError(t, err)
+		httpReq.Header.Set("Content-Type", "application/json")
 
-		_, err = conn.Write(append(reqData, '\n'))
+		client := &http.Client{Timeout: 10 * time.Second}
+		resp, err := client.Do(httpReq)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+
+		// Check response status
+		require.Equal(t, http.StatusCreated, resp.StatusCode, "Expected 201 Created")
+
+		// Parse response
+		var createResp map[string]interface{}
+		err = json.NewDecoder(resp.Body).Decode(&createResp)
 		require.NoError(t, err)
 
-		// Read response to get session ID
-		scanner := bufio.NewScanner(conn)
-		scanner.Buffer(make([]byte, 1024*1024), 1024*1024) // 1MB buffer
-		require.True(t, scanner.Scan(), "Failed to read response")
-
-		var resp map[string]interface{}
-		err = json.Unmarshal(scanner.Bytes(), &resp)
-		require.NoError(t, err)
-
-		// Check for error
-		if errObj, ok := resp["error"]; ok {
-			t.Fatalf("RPC error: %v", errObj)
-		}
-
-		// Extract session ID from response
-		result := resp["result"].(map[string]interface{})
-		sessionID := result["session_id"].(string)
-		runID := result["run_id"].(string)
+		// Get session ID from response
+		data := createResp["data"].(map[string]interface{})
+		sessionID := data["session_id"].(string)
+		runID := data["run_id"].(string)
 		t.Logf("Launched session: %s with run_id: %s", sessionID, runID)
 
 		// Let Claude run for a bit to trigger approvals
@@ -227,51 +216,48 @@ func TestMCPToolUseIDCorrelation(t *testing.T) {
 		_, err = db.Exec("DELETE FROM approvals")
 		require.NoError(t, err)
 
-		// Connect to daemon socket
-		conn, err := net.Dial("unix", socketPath)
-		require.NoError(t, err)
-		defer conn.Close()
+		// Create temp directory for session
+		testWorkDir := t.TempDir()
 
-		// Prepare launch request for parallel writes
-		request := rpc.LaunchSessionRequest{
-			Query:                "Create 3 files in parallel: file1.txt with 'One', file2.txt with 'Two', file3.txt with 'Three'. Use parallel tool calls if possible.",
-			Model:                "sonnet",
-			PermissionPromptTool: "mcp__codelayer__request_approval",
-			MaxTurns:             3,
-			WorkingDir:           tempDir,
-			MCPConfig: &claudecode.MCPConfig{
-				MCPServers: map[string]claudecode.MCPServer{
-					"codelayer": {
-						Type: "http",
-						URL:  fmt.Sprintf("http://127.0.0.1:%d/api/v1/mcp", httpPort),
+		// Prepare session creation request for REST API
+		createReq := map[string]interface{}{
+			"query":                  "Create 3 files in parallel: file1.txt with 'One', file2.txt with 'Two', file3.txt with 'Three'. Use parallel tool calls if possible.",
+			"model":                  "sonnet",
+			"permission_prompt_tool": "mcp__codelayer__request_approval",
+			"max_turns":              3,
+			"working_dir":            testWorkDir,
+			"mcp_config": map[string]interface{}{
+				"mcp_servers": map[string]interface{}{
+					"codelayer": map[string]interface{}{
+						"type": "http",
+						"url":  fmt.Sprintf("http://127.0.0.1:%d/api/v1/mcp", httpPort),
 					},
 				},
 			},
 		}
 
-		// Send LaunchSession request
-		reqData, _ := json.Marshal(map[string]interface{}{
-			"jsonrpc": "2.0",
-			"method":  "launchSession",
-			"params":  request,
-			"id":      2,
-		})
+		// Send REST API request to create session
+		reqBody, _ := json.Marshal(createReq)
+		httpReq, err := http.NewRequest("POST", fmt.Sprintf("http://127.0.0.1:%d/api/v1/sessions", httpPort), bytes.NewBuffer(reqBody))
+		require.NoError(t, err)
+		httpReq.Header.Set("Content-Type", "application/json")
 
-		_, err = conn.Write(append(reqData, '\n'))
+		client := &http.Client{Timeout: 10 * time.Second}
+		resp, err := client.Do(httpReq)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+
+		// Check response status
+		require.Equal(t, http.StatusCreated, resp.StatusCode, "Expected 201 Created")
+
+		// Parse response
+		var createResp map[string]interface{}
+		err = json.NewDecoder(resp.Body).Decode(&createResp)
 		require.NoError(t, err)
 
-		// Read response
-		scanner := bufio.NewScanner(conn)
-		scanner.Buffer(make([]byte, 1024*1024), 1024*1024)
-		require.True(t, scanner.Scan(), "Failed to read response")
-
-		var resp map[string]interface{}
-		err = json.Unmarshal(scanner.Bytes(), &resp)
-		require.NoError(t, err)
-
-		// Extract session ID
-		result := resp["result"].(map[string]interface{})
-		sessionID := result["session_id"].(string)
+		// Get session ID from response
+		data := createResp["data"].(map[string]interface{})
+		sessionID := data["session_id"].(string)
 		t.Logf("Launched parallel session: %s", sessionID)
 
 		// Let Claude run for a bit
