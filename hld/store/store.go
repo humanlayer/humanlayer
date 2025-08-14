@@ -89,6 +89,12 @@ type Session struct {
 	DangerouslySkipPermissions          bool       `db:"dangerously_skip_permissions"`
 	DangerouslySkipPermissionsExpiresAt *time.Time `db:"dangerously_skip_permissions_expires_at"`
 	Archived                            bool       // New field for session archiving
+
+	// Proxy configuration
+	ProxyEnabled       bool   `db:"proxy_enabled"`
+	ProxyBaseURL       string `db:"proxy_base_url"`
+	ProxyModelOverride string `db:"proxy_model_override"`
+	ProxyAPIKey        string `db:"proxy_api_key"`
 }
 
 // SessionUpdate contains fields that can be updated

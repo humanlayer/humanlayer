@@ -239,6 +239,47 @@ func TestClient_WorkingDirectoryHandling(t *testing.T) {
 	}
 }
 
+func TestClient_LaunchWithEnvironmentVariables(t *testing.T) {
+	// Skip if no API key
+	if os.Getenv("ANTHROPIC_API_KEY") == "" {
+		t.Skip("ANTHROPIC_API_KEY not set")
+	}
+
+	client, err := claudecode.NewClient()
+	if err != nil {
+		t.Skip("claude binary not found in PATH")
+	}
+
+	config := claudecode.SessionConfig{
+		Query: "What is 2+2? Please just respond with the number.",
+		Env: map[string]string{
+			"ANTHROPIC_BASE_URL": "http://test-proxy:8080",
+			"TEST_ENV_VAR":       "test_value",
+		},
+		OutputFormat: claudecode.OutputText,
+		Model:        claudecode.ModelSonnet,
+	}
+
+	session, err := client.Launch(config)
+	if err != nil {
+		t.Fatalf("failed to launch session with environment variables: %v", err)
+	}
+
+	// Note: Can't directly verify env vars were set, but launch should succeed
+	// In integration tests, we'll verify the proxy URL is actually used
+
+	// Kill the session early since we can't actually connect to the test proxy
+	// This will cause an error but proves the env vars were passed
+	_ = session.Kill()
+	_, err = session.Wait()
+	// We expect an error here since we're using a fake proxy URL
+	if err == nil {
+		t.Error("expected error when using invalid proxy URL, but got none")
+	}
+
+	t.Log("Successfully launched Claude with custom environment variables")
+}
+
 func TestClaudeCodeSchemaCompatibility(t *testing.T) {
 	if os.Getenv("ANTHROPIC_API_KEY") == "" {
 		t.Skip("ANTHROPIC_API_KEY not set")

@@ -26,6 +26,7 @@ type HTTPServer struct {
 	sessionHandlers  *handlers.SessionHandlers
 	approvalHandlers *handlers.ApprovalHandlers
 	sseHandler       *handlers.SSEHandler
+	proxyHandler     *handlers.ProxyHandler
 	server           *http.Server
 }
 
@@ -64,6 +65,7 @@ func NewHTTPServer(
 	sessionHandlers := handlers.NewSessionHandlers(sessionManager, conversationStore, approvalManager)
 	approvalHandlers := handlers.NewApprovalHandlers(approvalManager, sessionManager)
 	sseHandler := handlers.NewSSEHandler(eventBus)
+	proxyHandler := handlers.NewProxyHandler(sessionManager, conversationStore)
 
 	return &HTTPServer{
 		config:           cfg,
@@ -71,6 +73,7 @@ func NewHTTPServer(
 		sessionHandlers:  sessionHandlers,
 		approvalHandlers: approvalHandlers,
 		sseHandler:       sseHandler,
+		proxyHandler:     proxyHandler,
 	}
 }
 
@@ -90,6 +93,9 @@ func (s *HTTPServer) Start(ctx context.Context) error {
 
 	// Register SSE endpoint directly (not part of strict interface)
 	v1.GET("/stream/events", s.sseHandler.StreamEvents)
+
+	// Register proxy endpoint directly (not part of strict interface)
+	v1.POST("/anthropic_proxy/:session_id/v1/messages", s.proxyHandler.ProxyAnthropicRequest)
 
 	// Create listener first to handle port 0
 	addr := fmt.Sprintf("%s:%d", s.config.HTTPHost, s.config.HTTPPort)

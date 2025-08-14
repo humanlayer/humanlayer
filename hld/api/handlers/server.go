@@ -22,3 +22,6 @@ func NewServerImpl(sessions *SessionHandlers, approvals *ApprovalHandlers, sse *
 
 // StreamEvents is handled directly by SSEHandler.StreamEvents, not through StrictServerInterface
 // The endpoint is excluded from code generation using the 'sse-manual' tag
+
+// ProxyAnthropicRequest is handled directly by ProxyHandler.ProxyAnthropicRequest, not through StrictServerInterface
+// The endpoint is excluded from code generation using the 'proxy-manual' tag

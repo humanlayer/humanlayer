@@ -300,6 +300,46 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /anthropic_proxy/{session_id}/v1/messages:
+    post:
+      summary: Proxy Anthropic API requests for a session
+      operationId: proxyAnthropicRequest
+      x-manual: true
+      tags:
+        - proxy-manual
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Session ID for per-session routing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Proxied response from Anthropic
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+            text/event-stream:
+              schema:
+                type: string
+                description: SSE stream for streaming responses
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
   /approvals:
     post:
       operationId: createApproval
@@ -1279,3 +1319,5 @@ tags:
     description: Human-in-the-loop approval workflows
   - name: Events
     description: Real-time event streaming
+  - name: Proxy
+    description: Model proxy endpoints for alternative providers

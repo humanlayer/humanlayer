@@ -136,6 +136,15 @@ func (m *Manager) LaunchSession(ctx context.Context, config LaunchSessionConfig)
 
 	// No longer storing full session in memory
 
+	// Set proxy URL for this session
+	if claudeConfig.Env == nil {
+		claudeConfig.Env = make(map[string]string)
+	}
+	// Point Claude back to our proxy endpoint
+	// TODO: Get actual daemon port from config instead of hardcoding 7777
+	proxyURL := fmt.Sprintf("http://localhost:7777/api/v1/anthropic_proxy/%s", sessionID)
+	claudeConfig.Env["ANTHROPIC_BASE_URL"] = proxyURL
+
 	// Log final configuration before launching
 	var mcpServersDetail string
 	var mcpServerCount int
@@ -152,7 +161,8 @@ func (m *Manager) LaunchSession(ctx context.Context, config LaunchSessionConfig)
 		"working_dir", claudeConfig.WorkingDir,
 		"permission_prompt_tool", claudeConfig.PermissionPromptTool,
 		"mcp_servers", mcpServerCount,
-		"mcp_servers_detail", mcpServersDetail)
+		"mcp_servers_detail", mcpServersDetail,
+		"proxy_url", proxyURL)
 
 	// Launch Claude session (without daemon-level settings)
 	claudeSession, err := m.client.Launch(claudeConfig)
