@@ -1,5 +1,25 @@
 import React, { Fragment } from 'react'
-// import { logger } from '@/lib/logging' // Commented out - used for debugging snapshot diff failures
+import { logger } from '@/lib/logging'
+
+// --- Debug utilities ---
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function debugLogSnapshotFailure(
+  error: unknown,
+  edits: { oldValue: string; newValue: string }[],
+  fileContents?: string
+) {
+  logger.warn('Snapshot-based diff rendering failed, falling back to simple diff:', {
+    error: error instanceof Error ? error.message : String(error),
+    editsCount: edits.length,
+    fileContentLength: fileContents?.length,
+    firstEditPreview: edits[0]
+      ? {
+          oldValue: edits[0].oldValue.substring(0, 50) + '...',
+          newValue: edits[0].newValue.substring(0, 50) + '...',
+        }
+      : null,
+  })
+}
 
 // --- Minimal diff utilities (no third-party libraries) ---
 function computeLineDiff(oldStr: string, newStr: string) {
@@ -601,19 +621,7 @@ export const CustomDiffViewer = ({
       </div>
     )
   } catch {
-    // Log detailed context for debugging
-    // Commented out (not deleted) for future debugging if needed
-    // logger.warn('Snapshot-based diff rendering failed, falling back to simple diff:', {
-    //   error: error instanceof Error ? error.message : String(error),
-    //   editsCount: edits.length,
-    //   fileContentLength: fileContents?.length,
-    //   firstEditPreview: edits[0]
-    //     ? {
-    //         oldValue: edits[0].oldValue.substring(0, 50) + '...',
-    //         newValue: edits[0].newValue.substring(0, 50) + '...',
-    //       }
-    //     : null,
-    // })
+    // debugLogSnapshotFailure(error, edits, fileContents) // error would be caught if uncommented
 
     // Recursively call self with undefined fileContents to trigger non-snapshot mode
     return <CustomDiffViewer fileContents={undefined} edits={edits} splitView={splitView} />
