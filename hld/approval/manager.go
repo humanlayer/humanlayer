@@ -232,7 +232,7 @@ func (m *manager) correlateApproval(ctx context.Context, approval *store.Approva
 	}
 
 	// Correlate by tool ID
-	if err := m.store.CorrelateApprovalByToolID(ctx, approval.SessionID, toolCall.ToolID, approval.ID); err != nil {
+	if err := m.store.LinkConversationEventToApprovalUsingToolID(ctx, approval.SessionID, toolCall.ToolID, approval.ID); err != nil {
 		return fmt.Errorf("failed to correlate approval: %w", err)
 	}
 
@@ -345,6 +345,14 @@ func (m *manager) CreateApprovalWithToolUseID(ctx context.Context, sessionID, to
 	// Publish event for real-time updates
 	m.publishNewApprovalEvent(approval)
 
+	if err := m.store.LinkConversationEventToApprovalUsingToolID(ctx, sessionID, toolUseID, approval.ID); err != nil {
+		// Log but don't fail
+		// TODO(1): Don't ship if above LinkConversationEventToApprovalUsingToolID does not retry
+		// it's possible, albeit unlikely, that the raw_event has not made it to
+		// conversation_events yet
+		return nil, fmt.Errorf("failed to correlate approval: %w", err)
+	}
+
 	// Handle status-specific post-creation tasks
 	switch status {
 	case store.ApprovalStatusLocalPending:
@@ -355,15 +363,7 @@ func (m *manager) CreateApprovalWithToolUseID(ctx context.Context, sessionID, to
 				"session_id", session.ID)
 		}
 	case store.ApprovalStatusLocalApproved:
-		// For auto-approved, update correlation status immediately if we can correlate
-		// Try to correlate with tool call by tool_use_id
-		if err := m.store.CorrelateApprovalByToolID(ctx, sessionID, toolUseID, approval.ID); err != nil {
-			// Log but don't fail
-			slog.Warn("failed to correlate auto-approved approval",
-				"error", err,
-				"approval_id", approval.ID,
-				"tool_use_id", toolUseID)
-		}
+		// For auto-approved, update correlation status immediately
 		// Update approval status
 		if err := m.store.UpdateApprovalStatus(ctx, approval.ID, store.ApprovalStatusApproved); err != nil {
 			slog.Warn("failed to update approval status in conversation events",

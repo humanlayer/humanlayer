@@ -1825,8 +1825,8 @@ func (s *SQLiteStore) CorrelateApproval(ctx context.Context, sessionID string, t
 	return nil
 }
 
-// CorrelateApprovalByToolID correlates an approval with a specific tool call by tool_id
-func (s *SQLiteStore) CorrelateApprovalByToolID(ctx context.Context, sessionID string, toolID string, approvalID string) error {
+// LinkConversationEventToApprovalUsingToolID correlates an approval with a specific tool call by tool_id
+func (s *SQLiteStore) LinkConversationEventToApprovalUsingToolID(ctx context.Context, sessionID string, toolID string, approvalID string) error {
 	// Update the tool call directly by tool_id
 	updateQuery := `
 		UPDATE conversation_events
