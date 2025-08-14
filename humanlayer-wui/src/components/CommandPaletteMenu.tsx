@@ -42,11 +42,33 @@ export default function CommandPaletteMenu() {
 
   // Check if we're viewing a session detail
   const isSessionDetail = isViewingSessionDetail()
-  
+
   // Check if we should show archive option
   const isSessionTable = !isSessionDetail && window.location.hash === '#/'
-  const shouldShowArchive = isSessionDetail || 
-    (isSessionTable && (focusedSession || selectedSessions.size > 0))
+  const shouldShowArchive =
+    isSessionDetail || (isSessionTable && (focusedSession || selectedSessions.size > 0))
+
+  // Determine if we should show unarchive instead of archive
+  const getArchiveLabel = (): string => {
+    if (isSessionDetail && activeSessionDetail) {
+      return activeSessionDetail.session.archived ? 'Unarchive' : 'Archive'
+    } else if (selectedSessions.size > 0) {
+      // For bulk operations, check if all selected sessions have same archive state
+      const sessionIds = Array.from(selectedSessions)
+      const sessionsToCheck = sessions.filter(s => sessionIds.includes(s.id))
+      const allArchived = sessionsToCheck.every(s => s.archived)
+      const allActive = sessionsToCheck.every(s => !s.archived)
+
+      // If mixed state, use "Archive" as default
+      if (!allArchived && !allActive) {
+        return 'Archive'
+      }
+      return allArchived ? 'Unarchive' : 'Archive'
+    } else if (focusedSession) {
+      return focusedSession.archived ? 'Unarchive' : 'Archive'
+    }
+    return 'Archive' // Default
+  }
 
   // Build base menu options
   const baseOptions: MenuOption[] = [
@@ -56,7 +78,7 @@ export default function CommandPaletteMenu() {
       action: createNewSession,
       hotkey: 'C',
     },
-    ...(isSessionDetail
+    ...(isSessionDetail && searchQuery.toLowerCase().includes('brain')
       ? [
           {
             id: 'toggle-brainrot',
@@ -72,11 +94,14 @@ export default function CommandPaletteMenu() {
       ? [
           {
             id: 'archive-session',
-            label: 'Archive',
+            label: getArchiveLabel(),
             action: async () => {
               if (isSessionDetail && activeSessionDetail) {
                 // Archive current session in detail view
-                await archiveSession(activeSessionDetail.session.id, !activeSessionDetail.session.archived)
+                await archiveSession(
+                  activeSessionDetail.session.id,
+                  !activeSessionDetail.session.archived,
+                )
                 close()
               } else if (selectedSessions.size > 0) {
                 // Bulk archive selected sessions
