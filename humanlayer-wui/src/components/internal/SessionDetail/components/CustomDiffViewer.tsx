@@ -600,7 +600,7 @@ export const CustomDiffViewer = ({
         </div>
       </div>
     )
-  } catch (_error) {
+  } catch {
     // Log detailed context for debugging
     // Commented out (not deleted) for future debugging if needed
     // logger.warn('Snapshot-based diff rendering failed, falling back to simple diff:', {
