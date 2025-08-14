@@ -27,10 +27,17 @@ const (
 )
 
 // MCPServer represents a single MCP server configuration
+// It can be either a stdio-based server (with command/args/env) or an HTTP server (with type/url/headers)
 type MCPServer struct {
-	Command string            `json:"command"`
+	// For stdio-based servers
+	Command string            `json:"command,omitempty"`
 	Args    []string          `json:"args,omitempty"`
 	Env     map[string]string `json:"env,omitempty"`
+	
+	// For HTTP servers
+	Type    string            `json:"type,omitempty"`    // "http" for HTTP servers
+	URL     string            `json:"url,omitempty"`     // The HTTP endpoint URL
+	Headers map[string]string `json:"headers,omitempty"` // HTTP headers to include
 }
 
 // MCPConfig represents the MCP configuration structure
