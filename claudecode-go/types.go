@@ -119,10 +119,10 @@ func (p *PermissionDenials) UnmarshalJSON(data []byte) error {
 	}
 
 	// Fall back to array of strings (legacy/simple format)
-	var strings []string
-	if err := json.Unmarshal(data, &strings); err == nil {
-		p.Denials = make([]PermissionDenial, len(strings))
-		for i, s := range strings {
+	var legacyStrings []string
+	if err := json.Unmarshal(data, &legacyStrings); err == nil {
+		p.Denials = make([]PermissionDenial, len(legacyStrings))
+		for i, s := range legacyStrings {
 			p.Denials[i] = PermissionDenial{ToolName: s}
 		}
 		return nil
