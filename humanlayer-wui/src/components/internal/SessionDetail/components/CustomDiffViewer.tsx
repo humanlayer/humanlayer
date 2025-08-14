@@ -1,9 +1,10 @@
 import React, { Fragment } from 'react'
-import { logger } from '@/lib/logging'
+// import { logger } from '@/lib/logging' // Uncomment when enabling debug logging
 
 // --- Debug utilities ---
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function debugLogSnapshotFailure(
+// Preserved for debugging - uncomment the function body and invocation below to enable
+/*
+function _debugLogSnapshotFailure(
   error: unknown,
   edits: { oldValue: string; newValue: string }[],
   fileContents?: string,
@@ -20,6 +21,7 @@ function debugLogSnapshotFailure(
       : null,
   })
 }
+*/
 
 // --- Minimal diff utilities (no third-party libraries) ---
 function computeLineDiff(oldStr: string, newStr: string) {
@@ -621,7 +623,7 @@ export const CustomDiffViewer = ({
       </div>
     )
   } catch {
-    // debugLogSnapshotFailure(error, edits, fileContents) // error would be caught if uncommented
+    // _debugLogSnapshotFailure(error, edits, fileContents) // uncomment to enable debug logging
 
     // Recursively call self with undefined fileContents to trigger non-snapshot mode
     return <CustomDiffViewer fileContents={undefined} edits={edits} splitView={splitView} />
