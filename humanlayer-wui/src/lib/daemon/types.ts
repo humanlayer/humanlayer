@@ -48,6 +48,14 @@ export interface SubscriptionHandle {
   unsubscribe: () => void
 }
 
+export interface DatabaseInfo {
+  path: string
+  size: number
+  table_count: number
+  stats: Record<string, number>
+  last_modified?: string
+}
+
 // Client interface using legacy types for backward compatibility
 export interface DaemonClient {
   connect(): Promise<void>
@@ -112,6 +120,7 @@ export interface DaemonClient {
 
   // Utility methods
   getRecentPaths(limit?: number): Promise<RecentPath[]>
+  getDatabaseInfo(): Promise<DatabaseInfo>
 }
 
 // Legacy enums and types for backward compatibility (to be gradually removed)

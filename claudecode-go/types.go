@@ -80,14 +80,15 @@ type StreamEvent struct {
 	APIKeySource   string `json:"apiKeySource,omitempty"`
 
 	// Result event fields (when type="result")
-	CostUSD     float64 `json:"total_cost_usd,omitempty"`
-	IsError     bool    `json:"is_error,omitempty"`
-	DurationMS  int     `json:"duration_ms,omitempty"`
-	DurationAPI int     `json:"duration_api_ms,omitempty"`
-	NumTurns    int     `json:"num_turns,omitempty"`
-	Result      string  `json:"result,omitempty"`
-	Usage       *Usage  `json:"usage,omitempty"`
-	Error       string  `json:"error,omitempty"`
+	CostUSD           float64  `json:"total_cost_usd,omitempty"`
+	IsError           bool     `json:"is_error,omitempty"`
+	DurationMS        int      `json:"duration_ms,omitempty"`
+	DurationAPI       int      `json:"duration_api_ms,omitempty"`
+	NumTurns          int      `json:"num_turns,omitempty"`
+	Result            string   `json:"result,omitempty"`
+	Usage             *Usage   `json:"usage,omitempty"`
+	Error             string   `json:"error,omitempty"`
+	PermissionDenials []string `json:"permission_denials,omitempty"`
 }
 
 // MCPStatus represents the status of an MCP server
@@ -174,17 +175,18 @@ type Usage struct {
 
 // Result represents the final result of a Claude session
 type Result struct {
-	Type        string  `json:"type"`
-	Subtype     string  `json:"subtype"`
-	CostUSD     float64 `json:"total_cost_usd"`
-	IsError     bool    `json:"is_error"`
-	DurationMS  int     `json:"duration_ms"`
-	DurationAPI int     `json:"duration_api_ms"`
-	NumTurns    int     `json:"num_turns"`
-	Result      string  `json:"result"`
-	SessionID   string  `json:"session_id"`
-	Usage       *Usage  `json:"usage,omitempty"`
-	Error       string  `json:"error,omitempty"`
+	Type              string   `json:"type"`
+	Subtype           string   `json:"subtype"`
+	CostUSD           float64  `json:"total_cost_usd"`
+	IsError           bool     `json:"is_error"`
+	DurationMS        int      `json:"duration_ms"`
+	DurationAPI       int      `json:"duration_api_ms"`
+	NumTurns          int      `json:"num_turns"`
+	Result            string   `json:"result"`
+	SessionID         string   `json:"session_id"`
+	Usage             *Usage   `json:"usage,omitempty"`
+	Error             string   `json:"error,omitempty"`
+	PermissionDenials []string `json:"permission_denials,omitempty"`
 }
 
 // Session represents an active Claude session

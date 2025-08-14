@@ -132,7 +132,6 @@ func TestGetConversationIntegration(t *testing.T) {
 		now := time.Now()
 		completedAt := now.Add(5 * time.Minute)
 		costUSD := 0.02
-		totalTokens := 500
 		durationMS := 300000
 
 		session := &store.Session{
@@ -156,7 +155,6 @@ func TestGetConversationIntegration(t *testing.T) {
 			LastActivityAt: &completedAt,
 			CompletedAt:    &completedAt,
 			CostUSD:        &costUSD,
-			TotalTokens:    &totalTokens,
 			DurationMS:     &durationMS,
 		}
 		err = daemon.store.UpdateSession(context.Background(), sessionID, update)
@@ -166,10 +164,9 @@ func TestGetConversationIntegration(t *testing.T) {
 		storedSession, err := daemon.store.GetSession(context.Background(), sessionID)
 		require.NoError(t, err)
 		require.NotNil(t, storedSession.CostUSD, "CostUSD should not be nil")
-		require.NotNil(t, storedSession.TotalTokens, "TotalTokens should not be nil")
 		require.NotNil(t, storedSession.CompletedAt, "CompletedAt should not be nil")
-		t.Logf("Stored session - CostUSD: %v, TotalTokens: %v",
-			*storedSession.CostUSD, *storedSession.TotalTokens)
+		t.Logf("Stored session - CostUSD: %v",
+			*storedSession.CostUSD)
 
 		// Get session state via RPC
 		resp, err := daemonClient.GetSessionState(sessionID)
@@ -183,7 +180,6 @@ func TestGetConversationIntegration(t *testing.T) {
 
 		// Check optional fields
 		assert.InDelta(t, 0.02, resp.Session.CostUSD, 0.001)
-		assert.Equal(t, 500, resp.Session.TotalTokens)
 		assert.Equal(t, 300000, resp.Session.DurationMS)
 		assert.NotEmpty(t, resp.Session.CompletedAt)
 	})

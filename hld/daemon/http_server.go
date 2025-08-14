@@ -62,7 +62,7 @@ func NewHTTPServer(
 	}))
 
 	// Create handlers
-	sessionHandlers := handlers.NewSessionHandlers(sessionManager, conversationStore, approvalManager)
+	sessionHandlers := handlers.NewSessionHandlersWithConfig(sessionManager, conversationStore, approvalManager, cfg)
 	approvalHandlers := handlers.NewApprovalHandlers(approvalManager, sessionManager)
 	sseHandler := handlers.NewSSEHandler(eventBus)
 

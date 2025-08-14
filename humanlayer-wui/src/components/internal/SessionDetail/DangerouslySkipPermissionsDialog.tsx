@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { AlertTriangle } from 'lucide-react'
 import { useStealHotkeyScope } from '@/hooks/useStealHotkeyScope'
+import { useHotkeys } from 'react-hotkeys-hook'
 
 const DangerouslySkipPermissionsHotkeysScope = 'dangerously-skip-permissions-dialog'
 
@@ -27,13 +28,37 @@ interface DangerouslySkipPermissionsDialogProps {
 const DangerouslySkipPermissionsDialogContent: FC<{
   onOpenChange: (open: boolean) => void
   onConfirm: (timeoutMinutes: number | null) => void
-}> = ({ onOpenChange, onConfirm }) => {
-  // Steal hotkey scope when this component mounts
-  useStealHotkeyScope(DangerouslySkipPermissionsHotkeysScope)
+  isOpen: boolean
+}> = ({ onOpenChange, onConfirm, isOpen }) => {
+  // Steal hotkey scope when this dialog is open
+  useStealHotkeyScope(DangerouslySkipPermissionsHotkeysScope, isOpen)
 
   const [timeoutMinutes, setTimeoutMinutes] = useState<number | ''>(15)
   const [useTimeout, setUseTimeout] = useState(true)
   const timeoutInputRef = useRef<HTMLInputElement>(null)
+
+  // Handle escape to close
+  useHotkeys(
+    'escape',
+    ev => {
+      ev.preventDefault()
+      ev.stopPropagation()
+
+      // If the timeout input is focused, blur it instead of closing
+      if (timeoutInputRef.current && document.activeElement === timeoutInputRef.current) {
+        timeoutInputRef.current.blur()
+        return
+      }
+
+      onOpenChange(false)
+    },
+    {
+      enabled: isOpen,
+      scopes: DangerouslySkipPermissionsHotkeysScope,
+      preventDefault: true,
+      enableOnFormTags: true,
+    },
+  )
 
   // Reset to default when component mounts (dialog opens)
   React.useEffect(() => {
@@ -143,9 +168,24 @@ export const DangerouslySkipPermissionsDialog: FC<DangerouslySkipPermissionsDial
 }) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[475px]">
+      <DialogContent
+        className="sm:max-w-[475px]"
+        onEscapeKeyDown={e => {
+          // Prevent the default Dialog escape handling
+          // Our custom escape handler will handle it
+          e.preventDefault()
+        }}
+        onPointerDownOutside={e => {
+          // Prevent closing when clicking outside
+          e.preventDefault()
+        }}
+      >
         {open && (
-          <DangerouslySkipPermissionsDialogContent onOpenChange={onOpenChange} onConfirm={onConfirm} />
+          <DangerouslySkipPermissionsDialogContent
+            onOpenChange={onOpenChange}
+            onConfirm={onConfirm}
+            isOpen={open}
+          />
         )}
       </DialogContent>
     </Dialog>

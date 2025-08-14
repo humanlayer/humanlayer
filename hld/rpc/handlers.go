@@ -371,9 +371,23 @@ func (h *SessionHandlers) HandleGetSessionState(ctx context.Context, params json
 	if session.CostUSD != nil {
 		state.CostUSD = *session.CostUSD
 	}
-	if session.TotalTokens != nil {
-		state.TotalTokens = *session.TotalTokens
+	if session.InputTokens != nil {
+		state.InputTokens = *session.InputTokens
 	}
+	if session.OutputTokens != nil {
+		state.OutputTokens = *session.OutputTokens
+	}
+	if session.CacheCreationInputTokens != nil {
+		state.CacheCreationInputTokens = *session.CacheCreationInputTokens
+	}
+	if session.CacheReadInputTokens != nil {
+		state.CacheReadInputTokens = *session.CacheReadInputTokens
+	}
+	if session.EffectiveContextTokens != nil {
+		state.EffectiveContextTokens = *session.EffectiveContextTokens
+	}
+	// Always set context limit based on model
+	state.ContextLimit = GetModelContextLimit(session.Model)
 	if session.DurationMS != nil {
 		state.DurationMS = *session.DurationMS
 	}

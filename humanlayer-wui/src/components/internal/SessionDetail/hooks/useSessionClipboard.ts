@@ -21,8 +21,8 @@ export function useSessionClipboard(focusedEvent: ConversationEvent | null, enab
       }
     },
     {
-      scopes: [SessionDetailHotkeysScope],
       enabled: enabled && !!focusedEvent,
+      scopes: SessionDetailHotkeysScope,
     },
   )
 }

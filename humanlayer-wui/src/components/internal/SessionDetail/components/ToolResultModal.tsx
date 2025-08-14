@@ -7,6 +7,7 @@ import { useStealHotkeyScope } from '@/hooks/useStealHotkeyScope'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { getToolIcon } from '../eventToDisplayObject'
 import { CustomDiffViewer } from './CustomDiffViewer'
+import { AnsiText, hasAnsiCodes } from '@/utils/ansiParser'
 
 // TODO(3): Add keyboard navigation hints in the UI
 // TODO(2): Consider adding copy-to-clipboard functionality for tool results
@@ -70,27 +71,47 @@ export function ToolResultModal({
   useHotkeys(
     'escape',
     ev => {
+      ev.preventDefault()
       ev.stopPropagation()
-      if (toolResult) {
+      if (toolResult || toolCall) {
         onClose()
       }
     },
-    { enabled: !!toolResult, scopes: ToolResultModalHotkeysScope },
+    {
+      enabled: !!(toolResult || toolCall),
+      scopes: ToolResultModalHotkeysScope,
+      preventDefault: true,
+    },
   )
 
-  useStealHotkeyScope(ToolResultModalHotkeysScope)
+  const isOpen = !!(toolResult || toolCall)
+  useStealHotkeyScope(ToolResultModalHotkeysScope, isOpen)
 
   // Show modal if we have either a tool result or just a tool call (unfinished)
-  if (!toolResult && !toolCall) return null
+  if (!isOpen) return null
 
   return (
     <Dialog
       open={!!(toolResult || toolCall)}
       onOpenChange={open => {
-        !open && onClose()
+        // Only close if Dialog is being closed by something other than escape
+        // Our custom escape handler will handle the escape key
+        if (!open) {
+          onClose()
+        }
       }}
     >
-      <DialogContent className="w-[90vw] max-w-[90vw] h-[85vh] p-0 sm:max-w-[90vw] flex flex-col overflow-hidden">
+      <DialogContent
+        className="w-[90vw] max-w-[90vw] h-[85vh] p-0 sm:max-w-[90vw] flex flex-col overflow-hidden"
+        onEscapeKeyDown={e => {
+          // Prevent the default Dialog escape handling
+          e.preventDefault()
+        }}
+        onPointerDownOutside={e => {
+          // Prevent closing when clicking outside
+          e.preventDefault()
+        }}
+      >
         <DialogHeader className="px-4 py-3 border-b bg-background flex-none">
           <DialogTitle className="text-sm font-mono">
             <div className="flex items-center gap-2">
@@ -126,7 +147,14 @@ export function ToolResultModal({
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground mb-2">Result</h3>
                   <pre className="font-mono text-sm whitespace-pre-wrap break-words">
-                    {toolResult.toolResultContent || 'No content'}
+                    {/* Only apply ANSI parsing to Bash tool output */}
+                    {toolCall?.toolName === 'Bash' &&
+                    typeof toolResult.toolResultContent === 'string' &&
+                    hasAnsiCodes(toolResult.toolResultContent) ? (
+                      <AnsiText content={toolResult.toolResultContent} />
+                    ) : (
+                      toolResult.toolResultContent || 'No content'
+                    )}
                   </pre>
                 </div>
               )}
