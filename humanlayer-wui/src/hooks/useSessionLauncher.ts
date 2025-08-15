@@ -40,6 +40,11 @@ interface LauncherState {
   reset: () => void
 }
 
+const isViewingSessionDetail = (): boolean => {
+  const hash = window.location.hash
+  return /^#\/sessions\/[^/]+$/.test(hash)
+}
+
 const LAST_WORKING_DIR_KEY = 'humanlayer-last-working-dir'
 const SESSION_LAUNCHER_QUERY_KEY = 'session-launcher-query'
 
@@ -218,6 +223,9 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
     })
   },
 }))
+
+// Export helper function
+export { isViewingSessionDetail }
 
 // Helper hook for global hotkey management
 export function useSessionLauncherHotkeys() {

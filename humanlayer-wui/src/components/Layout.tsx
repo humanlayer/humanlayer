@@ -32,6 +32,7 @@ import '@/App.css'
 import { logger } from '@/lib/logging'
 import { DangerousSkipPermissionsMonitor } from '@/components/DangerousSkipPermissionsMonitor'
 import { KeyboardShortcut } from '@/components/HotkeyPanel'
+import { DvdScreensaver } from '@/components/DvdScreensaver'
 
 export function Layout() {
   const [approvals, setApprovals] = useState<any[]>([])
@@ -511,6 +512,9 @@ export function Layout() {
 
       {/* Global Dangerous Skip Permissions Monitor */}
       <DangerousSkipPermissionsMonitor />
+
+      {/* DVD Screensaver */}
+      <DvdScreensaver />
     </div>
   )
 }
