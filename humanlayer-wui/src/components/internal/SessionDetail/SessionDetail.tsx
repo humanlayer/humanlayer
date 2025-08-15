@@ -577,7 +577,12 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         return
       }
 
-      if (dangerouslySkipPermissions) {
+      // Get the current value from the store directly to avoid stale closure
+      const currentSessionFromStore = useStore.getState().sessions.find(s => s.id === session.id)
+      const currentDangerouslySkipPermissions =
+        currentSessionFromStore?.dangerouslySkipPermissions ?? false
+
+      if (currentDangerouslySkipPermissions) {
         // Disable dangerous skip permissions
         try {
           await updateSessionOptimistic(session.id, {
@@ -597,7 +602,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       preventDefault: true,
       scopes: SessionDetailHotkeysScope,
     },
-    [session.id, dangerouslySkipPermissions],
+    [session.id], // Remove dangerouslySkipPermissions from deps since we get it fresh each time
   )
 
   // Handle dialog confirmation
@@ -765,7 +770,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   useHotkeys(
     'enter',
     () => {
-      if (responseInputRef.current && session.status !== SessionStatus.Failed) {
+      if (responseInputRef.current) {
         responseInputRef.current.focus()
       }
     },
@@ -935,7 +940,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
             onSelectEvent={handleForkSelect}
             isOpen={forkViewOpen}
             onOpenChange={setForkViewOpen}
-            sessionStatus={session.status}
           />
         </div>
       )}
@@ -1026,7 +1030,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
             onSelectEvent={handleForkSelect}
             isOpen={forkViewOpen}
             onOpenChange={setForkViewOpen}
-            sessionStatus={session.status}
           />
         </div>
       )}
@@ -1127,7 +1130,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
             handleContinueSession={actions.handleContinueSession}
             handleResponseInputKeyDown={actions.handleResponseInputKeyDown}
             isForkMode={actions.isForkMode}
-            onOpenForkView={() => setForkViewOpen(true)}
           />
           {/* Session mode indicator - shows either dangerous skip permissions or auto-accept */}
           <SessionModeIndicator

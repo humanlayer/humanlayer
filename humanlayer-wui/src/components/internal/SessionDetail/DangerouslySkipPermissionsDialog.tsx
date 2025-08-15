@@ -60,6 +60,26 @@ const DangerouslySkipPermissionsDialogContent: FC<{
     },
   )
 
+  // Add meta+enter to submit
+  useHotkeys(
+    'meta+enter, ctrl+enter',
+    ev => {
+      ev.preventDefault()
+      ev.stopPropagation()
+
+      // Only submit if the button would be enabled
+      if (!useTimeout || (timeoutMinutes !== '' && timeoutMinutes !== 0)) {
+        handleConfirm()
+      }
+    },
+    {
+      enabled: isOpen,
+      scopes: DangerouslySkipPermissionsHotkeysScope,
+      preventDefault: true,
+      enableOnFormTags: true,
+    },
+  )
+
   // Reset to default when component mounts (dialog opens)
   React.useEffect(() => {
     setTimeoutMinutes(15)
@@ -155,6 +175,11 @@ const DangerouslySkipPermissionsDialogContent: FC<{
           className="border-[var(--terminal-error)] text-[var(--terminal-error)] hover:bg-[var(--terminal-error)] hover:text-background disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Bypass Permissions
+          {!useTimeout || (timeoutMinutes !== '' && timeoutMinutes !== 0) ? (
+            <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">
+              {navigator.platform.toLowerCase().includes('mac') ? '⌘' : 'Ctrl'}+⏎
+            </kbd>
+          ) : null}
         </Button>
       </DialogFooter>
     </>

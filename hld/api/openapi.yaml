@@ -696,6 +696,10 @@ components:
           type: string
           description: Initial query for Claude
           example: "Help me write a Python script to process CSV files"
+        title:
+          type: string
+          description: Optional title for the session
+          example: "CSV Processing Script"
         model:
           type: string
           enum: [opus, sonnet]

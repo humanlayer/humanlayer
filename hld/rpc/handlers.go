@@ -42,6 +42,7 @@ func (h *SessionHandlers) SetEventBus(eventBus bus.EventBus) {
 // LaunchSessionRequest is the request for launching a new session
 type LaunchSessionRequest struct {
 	Query                             string                `json:"query"`
+	Title                             string                `json:"title,omitempty"`
 	Model                             string                `json:"model,omitempty"`
 	MCPConfig                         *claudecode.MCPConfig `json:"mcp_config,omitempty"`
 	PermissionPromptTool              string                `json:"permission_prompt_tool,omitempty"`
@@ -79,6 +80,7 @@ func (h *SessionHandlers) HandleLaunchSession(ctx context.Context, params json.R
 	config := session.LaunchSessionConfig{
 		SessionConfig: claudecode.SessionConfig{
 			Query:                req.Query,
+			Title:                req.Title,
 			MCPConfig:            req.MCPConfig,
 			PermissionPromptTool: req.PermissionPromptTool,
 			WorkingDir:           req.WorkingDir,

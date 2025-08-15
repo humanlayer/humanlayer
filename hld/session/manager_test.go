@@ -151,22 +151,26 @@ func TestContinueSession_ValidatesParentStatus(t *testing.T) {
 	testCases := []struct {
 		name          string
 		parentStatus  string
+		hasWorkingDir bool
 		expectedError string
 	}{
 		{
-			name:          "failed session",
+			name:          "failed session without working_dir",
 			parentStatus:  store.SessionStatusFailed,
-			expectedError: "cannot continue session with status failed (must be completed, interrupted, or running)",
+			hasWorkingDir: false,
+			expectedError: "parent session missing working_dir (cannot resume session without working directory)",
 		},
 		{
 			name:          "starting session",
 			parentStatus:  store.SessionStatusStarting,
-			expectedError: "cannot continue session with status starting (must be completed, interrupted, or running)",
+			hasWorkingDir: true,
+			expectedError: "cannot continue session with status starting (must be completed, interrupted, running, or failed)",
 		},
 		{
 			name:          "waiting input session",
 			parentStatus:  store.SessionStatusWaitingInput,
-			expectedError: "cannot continue session with status waiting_input (must be completed, interrupted, or running)",
+			hasWorkingDir: true,
+			expectedError: "cannot continue session with status waiting_input (must be completed, interrupted, running, or failed)",
 		},
 	}
 
@@ -179,6 +183,9 @@ func TestContinueSession_ValidatesParentStatus(t *testing.T) {
 				Status:          tc.parentStatus,
 				Query:           "original query",
 				CreatedAt:       time.Now(),
+			}
+			if tc.hasWorkingDir {
+				parentSession.WorkingDir = "/tmp"
 			}
 			mockStore.EXPECT().GetSession(gomock.Any(), "parent-1").Return(parentSession, nil)
 
@@ -195,6 +202,64 @@ func TestContinueSession_ValidatesParentStatus(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestContinueSession_AllowsFailedSessionWithValidRequirements(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	// Create a context that gets cancelled when test finishes
+	ctx, cancel := context.WithCancel(context.Background())
+	defer func() {
+		cancel()
+		// Give goroutines a moment to clean up
+		time.Sleep(50 * time.Millisecond)
+	}()
+
+	mockStore := store.NewMockConversationStore(ctrl)
+	manager, _ := NewManager(nil, mockStore, "")
+
+	// Create a failed parent session WITH valid claude_session_id and working_dir
+	failedParentSession := &store.Session{
+		ID:              "parent-failed-valid",
+		RunID:           "run-failed",
+		ClaudeSessionID: "claude-failed-valid", // Has valid session ID
+		Status:          store.SessionStatusFailed,
+		Query:           "original query that failed",
+		WorkingDir:      "/tmp", // Has valid working directory
+		CreatedAt:       time.Now(),
+	}
+
+	mockStore.EXPECT().GetSession(gomock.Any(), "parent-failed-valid").Return(failedParentSession, nil)
+	mockStore.EXPECT().GetMCPServers(gomock.Any(), "parent-failed-valid").Return([]store.MCPServer{}, nil)
+	mockStore.EXPECT().CreateSession(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(ctx interface{}, session *store.Session) error {
+			// Validate the created session
+			if session.ParentSessionID != "parent-failed-valid" {
+				t.Errorf("Expected parent_session_id to be 'parent-failed-valid', got '%s'", session.ParentSessionID)
+			}
+			if session.Query != "retry after failure" {
+				t.Errorf("Expected query 'retry after failure', got '%s'", session.Query)
+			}
+			return nil
+		})
+	mockStore.EXPECT().StoreMCPServers(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	mockStore.EXPECT().UpdateSession(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+
+	req := ContinueSessionConfig{
+		ParentSessionID: "parent-failed-valid",
+		Query:           "retry after failure",
+	}
+
+	// This should now succeed (or fail with Claude launch error, not validation error)
+	_, err := manager.ContinueSession(ctx, req)
+	if err != nil {
+		// Expected - Claude binary might not exist
+		if !containsError(err, "failed to launch resumed Claude session") {
+			t.Errorf("Unexpected error: %v", err)
+		}
+	}
+	// The important thing is we didn't get a validation error about the failed status
 }
 
 func TestContinueSession_ValidatesClaudeSessionID(t *testing.T) {

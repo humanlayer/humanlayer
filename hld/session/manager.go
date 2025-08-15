@@ -1113,11 +1113,12 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 		return nil, fmt.Errorf("failed to get parent session: %w", err)
 	}
 
-	// Validate parent session status - allow completed, interrupted, or running sessions
+	// Validate parent session status - allow completed, interrupted, running, or failed sessions
 	if parentSession.Status != store.SessionStatusCompleted &&
 		parentSession.Status != store.SessionStatusInterrupted &&
-		parentSession.Status != store.SessionStatusRunning {
-		return nil, fmt.Errorf("cannot continue session with status %s (must be completed, interrupted, or running)", parentSession.Status)
+		parentSession.Status != store.SessionStatusRunning &&
+		parentSession.Status != store.SessionStatusFailed {
+		return nil, fmt.Errorf("cannot continue session with status %s (must be completed, interrupted, running, or failed)", parentSession.Status)
 	}
 
 	// Validate parent session has claude_session_id (needed for resume)
@@ -1333,8 +1334,21 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 	}
 
 	// Launch resumed Claude session
+	slog.Info("attempting to resume Claude session",
+		"session_id", sessionID,
+		"parent_session_id", req.ParentSessionID,
+		"parent_status", parentSession.Status,
+		"claude_session_id", parentSession.ClaudeSessionID,
+		"query", req.Query)
+
 	claudeSession, err := m.client.Launch(config)
 	if err != nil {
+		slog.Error("failed to resume Claude session from failed parent",
+			"session_id", sessionID,
+			"parent_session_id", req.ParentSessionID,
+			"parent_status", parentSession.Status,
+			"claude_session_id", parentSession.ClaudeSessionID,
+			"error", err)
 		m.updateSessionStatus(ctx, sessionID, StatusFailed, err.Error())
 		return nil, fmt.Errorf("failed to launch resumed Claude session: %w", err)
 	}

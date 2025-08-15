@@ -100,6 +100,7 @@ program
   .command('launch <query>')
   .description('Launch a new Claude Code session via the daemon')
   .option('-m, --model <model>', 'Model to use (opus or sonnet)', 'sonnet')
+  .option('-t, --title <title>', 'Optional session title')
   .option('-w, --working-dir <path>', 'Working directory for the session')
   .option('--max-turns <number>', 'Maximum number of turns', parseInt)
   .option('--no-approvals', 'Disable HumanLayer approvals for high-stakes operations')
