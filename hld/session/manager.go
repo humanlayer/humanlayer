@@ -69,24 +69,42 @@ func (m *Manager) LaunchSession(ctx context.Context, config LaunchSessionConfig)
 	claudeConfig := config.SessionConfig
 
 	// Add HUMANLAYER_RUN_ID and HUMANLAYER_DAEMON_SOCKET to MCP server environment
+	// For HTTP servers, inject session ID header
 	if claudeConfig.MCPConfig != nil {
 		slog.Debug("configuring MCP servers", "count", len(claudeConfig.MCPConfig.MCPServers))
 		for name, server := range claudeConfig.MCPConfig.MCPServers {
-			if server.Env == nil {
-				server.Env = make(map[string]string)
-			}
-			server.Env["HUMANLAYER_RUN_ID"] = runID
-			// Add daemon socket path so MCP servers connect to the correct daemon
-			if m.socketPath != "" {
-				server.Env["HUMANLAYER_DAEMON_SOCKET"] = m.socketPath
+			// Check if this is an HTTP MCP server
+			if server.Type == "http" {
+				// For HTTP servers, inject session ID header if not already set
+				if server.Headers == nil {
+					server.Headers = make(map[string]string)
+				}
+				// Only inject if not already set (allow override)
+				if _, exists := server.Headers["X-Session-ID"]; !exists {
+					server.Headers["X-Session-ID"] = sessionID
+				}
+				slog.Debug("configured HTTP MCP server",
+					"name", name,
+					"url", server.URL,
+					"session_id", sessionID)
+			} else {
+				// For stdio servers, add environment variables
+				if server.Env == nil {
+					server.Env = make(map[string]string)
+				}
+				server.Env["HUMANLAYER_RUN_ID"] = runID
+				// Add daemon socket path so MCP servers connect to the correct daemon
+				if m.socketPath != "" {
+					server.Env["HUMANLAYER_DAEMON_SOCKET"] = m.socketPath
+				}
+				slog.Debug("configured stdio MCP server",
+					"name", name,
+					"command", server.Command,
+					"args", server.Args,
+					"run_id", runID,
+					"socket_path", m.socketPath)
 			}
 			claudeConfig.MCPConfig.MCPServers[name] = server
-			slog.Debug("configured MCP server",
-				"name", name,
-				"command", server.Command,
-				"args", server.Args,
-				"run_id", runID,
-				"socket_path", m.socketPath)
 		}
 	} else {
 		slog.Debug("no MCP config provided")
@@ -142,7 +160,11 @@ func (m *Manager) LaunchSession(ctx context.Context, config LaunchSessionConfig)
 	if claudeConfig.MCPConfig != nil {
 		mcpServerCount = len(claudeConfig.MCPConfig.MCPServers)
 		for name, server := range claudeConfig.MCPConfig.MCPServers {
-			mcpServersDetail += fmt.Sprintf("[%s: cmd=%s args=%v env=%v] ", name, server.Command, server.Args, server.Env)
+			if server.Type == "http" {
+				mcpServersDetail += fmt.Sprintf("[%s: type=http url=%s headers=%v] ", name, server.URL, server.Headers)
+			} else {
+				mcpServersDetail += fmt.Sprintf("[%s: cmd=%s args=%v env=%v] ", name, server.Command, server.Args, server.Env)
+			}
 		}
 	}
 	slog.Info("launching Claude session with configuration",
@@ -214,8 +236,15 @@ func (m *Manager) LaunchSession(ctx context.Context, config LaunchSessionConfig)
 	// Reconcile any existing approvals for this run_id
 	if m.approvalReconciler != nil {
 		go func() {
-			// Give the session a moment to start
-			time.Sleep(2 * time.Second)
+			// Give the session a moment to start (with cancellation support)
+			select {
+			case <-time.After(2 * time.Second):
+				// Continue with reconciliation
+			case <-ctx.Done():
+				// Context cancelled, exit early
+				return
+			}
+
 			if err := m.approvalReconciler.ReconcileApprovalsForSession(ctx, runID); err != nil {
 				slog.Error("failed to reconcile approvals for session",
 					"session_id", sessionID,
@@ -277,9 +306,25 @@ eventLoop:
 				}
 			}
 
-			// Capture Claude session ID
-			if event.SessionID != "" && claudeSessionID == "" {
-				claudeSessionID = event.SessionID
+			// Capture Claude session ID from either top-level or message session_id
+			if claudeSessionID == "" {
+				if event.SessionID != "" {
+					claudeSessionID = event.SessionID
+				} else if event.Message != nil && event.Message.ID != "" {
+					// For assistant/user messages, we can use the message itself as proof of session
+					// The actual claude session ID might be in the raw JSON
+					if eventJSON, err := json.Marshal(event); err == nil {
+						var rawEvent map[string]interface{}
+						if err := json.Unmarshal(eventJSON, &rawEvent); err == nil {
+							if sid, ok := rawEvent["session_id"].(string); ok && sid != "" {
+								claudeSessionID = sid
+							}
+						}
+					}
+				}
+			}
+
+			if claudeSessionID != "" {
 				// Note: Claude session ID captured for resume capability
 				slog.Debug("captured Claude session ID",
 					"session_id", sessionID,
@@ -469,6 +514,7 @@ func (m *Manager) GetSessionInfo(sessionID string) (*Info, error) {
 		Summary:         dbSession.Summary,
 		Title:           dbSession.Title,
 		Model:           dbSession.Model,
+		ModelID:         dbSession.ModelID,
 		WorkingDir:      dbSession.WorkingDir,
 		AutoAcceptEdits: dbSession.AutoAcceptEdits,
 		Archived:        dbSession.Archived,
@@ -532,6 +578,7 @@ func (m *Manager) ListSessions() []Info {
 			Summary:                             dbSession.Summary,
 			Title:                               dbSession.Title,
 			Model:                               dbSession.Model,
+			ModelID:                             dbSession.ModelID,
 			WorkingDir:                          dbSession.WorkingDir,
 			AutoAcceptEdits:                     dbSession.AutoAcceptEdits,
 			Archived:                            dbSession.Archived,
@@ -591,7 +638,65 @@ func (m *Manager) updateSessionActivity(ctx context.Context, sessionID string) {
 
 // processStreamEvent processes a streaming event and stores it in the database
 func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, claudeSessionID string, event claudecode.StreamEvent) error {
-	// Skip events without claude session ID
+	// Log the entire raw event JSON for debugging
+	if eventJSON, err := json.Marshal(event); err == nil {
+		slog.Debug("processing API event",
+			"session_id", sessionID,
+			"event_type", event.Type,
+			"raw_event_json", string(eventJSON))
+	}
+
+	// Process token updates from assistant messages even without claudeSessionID
+	if event.Type == "assistant" && event.Message != nil && event.Message.Role == "assistant" && event.Message.Usage != nil {
+		usage := event.Message.Usage
+		// Compute effective context tokens (what's actually in the context window)
+		// This includes ALL tokens that count toward the context limit
+		effective := usage.InputTokens + usage.OutputTokens + usage.CacheReadInputTokens + usage.CacheCreationInputTokens
+
+		now := time.Now()
+		update := store.SessionUpdate{
+			InputTokens:              &usage.InputTokens,
+			OutputTokens:             &usage.OutputTokens,
+			CacheCreationInputTokens: &usage.CacheCreationInputTokens,
+			CacheReadInputTokens:     &usage.CacheReadInputTokens,
+			EffectiveContextTokens:   &effective,
+			LastActivityAt:           &now,
+		}
+
+		if err := m.store.UpdateSession(ctx, sessionID, update); err != nil {
+			slog.Error("failed to update token usage",
+				"session_id", sessionID,
+				"error", err)
+		} else {
+			// Publish event to notify UI about token update
+			// The UI needs "new_status" field even though we're not changing status
+			if m.eventBus != nil {
+				// Get current session to include current status
+				session, _ := m.store.GetSession(ctx, sessionID)
+				currentStatus := "running"
+				if session != nil && session.Status != "" {
+					currentStatus = session.Status
+				}
+
+				slog.Debug("Publishing token update event",
+					"session_id", sessionID,
+					"status", currentStatus,
+					"effective_tokens", effective)
+
+				m.eventBus.Publish(bus.Event{
+					Type: bus.EventSessionStatusChanged,
+					Data: map[string]interface{}{
+						"session_id": sessionID,
+						"new_status": currentStatus, // Required by UI handler
+						"old_status": currentStatus, // Status isn't changing, just tokens
+						"reason":     "token_update",
+					},
+				})
+			}
+		}
+	}
+
+	// Skip remaining event processing without claude session ID
 	if claudeSessionID == "" {
 		return nil
 	}
@@ -637,6 +742,9 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 
 			// Only update if model is empty and init event has a model
 			if session != nil && session.Model == "" && event.Model != "" {
+				// Store the full model ID
+				modelID := event.Model
+
 				// Extract simple model name from API format (case-insensitive)
 				var modelName string
 				lowerModel := strings.ToLower(event.Model)
@@ -646,27 +754,39 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 					modelName = "sonnet"
 				}
 
-				// Update session with detected model
+				// Update session with both model ID and simplified name
 				if modelName != "" {
 					update := store.SessionUpdate{
-						Model: &modelName,
+						Model:   &modelName,
+						ModelID: &modelID,
 					}
 					if err := m.store.UpdateSession(ctx, sessionID, update); err != nil {
 						slog.Error("failed to update session model from init event",
 							"session_id", sessionID,
 							"model", modelName,
+							"model_id", modelID,
 							"error", err)
 					} else {
 						slog.Info("populated session model from init event",
 							"session_id", sessionID,
 							"model", modelName,
-							"original", event.Model)
+							"model_id", modelID)
 					}
 				} else {
-					// Log when we detect a model but don't recognize the format
-					slog.Debug("unrecognized model format in init event",
-						"session_id", sessionID,
-						"model", event.Model)
+					// Still store the model ID even if we don't recognize the format
+					update := store.SessionUpdate{
+						ModelID: &modelID,
+					}
+					if err := m.store.UpdateSession(ctx, sessionID, update); err != nil {
+						slog.Error("failed to update session model_id from init event",
+							"session_id", sessionID,
+							"model_id", modelID,
+							"error", err)
+					} else {
+						slog.Debug("stored unrecognized model format in init event",
+							"session_id", sessionID,
+							"model_id", modelID)
+					}
 				}
 			}
 			// Don't store init event in conversation history - we only extract the model
@@ -676,6 +796,7 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 	case "assistant", "user":
 		// Messages contain the actual content
 		if event.Message != nil {
+			// Token usage is already processed at the top of this function
 			// Process each content block
 			for _, content := range event.Message.Content {
 				switch content.Type {
@@ -852,6 +973,19 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 			CostUSD:        &event.CostUSD,
 			DurationMS:     &event.DurationMS,
 		}
+
+		// Process usage data from result event
+		if event.Usage != nil {
+			usage := event.Usage
+			// Skip updating token counts from result events - they appear to accumulate incorrectly
+			// Result events show cumulative cache reads across the entire session (bug)
+			// We only trust token counts from individual assistant messages
+			slog.Debug("Skipping result event token update due to API bug",
+				"session_id", sessionID,
+				"cache_read_tokens", usage.CacheReadInputTokens,
+				"reason", "result events report cumulative cache reads")
+		}
+
 		if event.Error != "" {
 			update.ErrorMessage = &event.Error
 		}
@@ -979,11 +1113,12 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 		return nil, fmt.Errorf("failed to get parent session: %w", err)
 	}
 
-	// Validate parent session status - allow completed, interrupted, or running sessions
+	// Validate parent session status - allow completed, interrupted, running, or failed sessions
 	if parentSession.Status != store.SessionStatusCompleted &&
 		parentSession.Status != store.SessionStatusInterrupted &&
-		parentSession.Status != store.SessionStatusRunning {
-		return nil, fmt.Errorf("cannot continue session with status %s (must be completed, interrupted, or running)", parentSession.Status)
+		parentSession.Status != store.SessionStatusRunning &&
+		parentSession.Status != store.SessionStatusFailed {
+		return nil, fmt.Errorf("cannot continue session with status %s (must be completed, interrupted, running, or failed)", parentSession.Status)
 	}
 
 	// Validate parent session has claude_session_id (needed for resume)
@@ -1077,10 +1212,24 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 				env = map[string]string{}
 			}
 
-			config.MCPConfig.MCPServers[server.Name] = claudecode.MCPServer{
-				Command: server.Command,
-				Args:    args,
-				Env:     env,
+			// Check if this is an HTTP server (stored with command="http")
+			if server.Command == "http" {
+				// HTTP server - extract URL from args and headers from env
+				var urls []string
+				if err := json.Unmarshal([]byte(server.ArgsJSON), &urls); err == nil && len(urls) > 0 {
+					config.MCPConfig.MCPServers[server.Name] = claudecode.MCPServer{
+						Type:    "http",
+						URL:     urls[0],
+						Headers: env, // Headers were stored in EnvJSON
+					}
+				}
+			} else {
+				// Traditional stdio server
+				config.MCPConfig.MCPServers[server.Name] = claudecode.MCPServer{
+					Command: server.Command,
+					Args:    args,
+					Env:     env,
+				}
 			}
 		}
 		slog.Debug("inherited MCP servers from parent session",
@@ -1149,15 +1298,28 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 	}
 
 	// Add run_id and daemon socket to MCP server environments
+	// For HTTP servers, inject session ID header
+
 	if config.MCPConfig != nil {
 		for name, server := range config.MCPConfig.MCPServers {
-			if server.Env == nil {
-				server.Env = make(map[string]string)
-			}
-			server.Env["HUMANLAYER_RUN_ID"] = runID
-			// Add daemon socket path so MCP servers connect to the correct daemon
-			if m.socketPath != "" {
-				server.Env["HUMANLAYER_DAEMON_SOCKET"] = m.socketPath
+			// Check if this is an HTTP MCP server
+			if server.Type == "http" {
+				// For HTTP servers, always set session ID header to child session ID
+				if server.Headers == nil {
+					server.Headers = make(map[string]string)
+				}
+				// Always set X-Session-ID to the new child session ID (replaces inherited parent ID)
+				server.Headers["X-Session-ID"] = sessionID
+			} else {
+				// For stdio servers, add environment variables
+				if server.Env == nil {
+					server.Env = make(map[string]string)
+				}
+				server.Env["HUMANLAYER_RUN_ID"] = runID
+				// Add daemon socket path so MCP servers connect to the correct daemon
+				if m.socketPath != "" {
+					server.Env["HUMANLAYER_DAEMON_SOCKET"] = m.socketPath
+				}
 			}
 			config.MCPConfig.MCPServers[name] = server
 		}
@@ -1172,8 +1334,21 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 	}
 
 	// Launch resumed Claude session
+	slog.Info("attempting to resume Claude session",
+		"session_id", sessionID,
+		"parent_session_id", req.ParentSessionID,
+		"parent_status", parentSession.Status,
+		"claude_session_id", parentSession.ClaudeSessionID,
+		"query", req.Query)
+
 	claudeSession, err := m.client.Launch(config)
 	if err != nil {
+		slog.Error("failed to resume Claude session from failed parent",
+			"session_id", sessionID,
+			"parent_session_id", req.ParentSessionID,
+			"parent_status", parentSession.Status,
+			"claude_session_id", parentSession.ClaudeSessionID,
+			"error", err)
 		m.updateSessionStatus(ctx, sessionID, StatusFailed, err.Error())
 		return nil, fmt.Errorf("failed to launch resumed Claude session: %w", err)
 	}
@@ -1220,8 +1395,15 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 	// Reconcile any existing approvals for this run_id (same run_id is reused for continuations)
 	if m.approvalReconciler != nil {
 		go func() {
-			// Give the session a moment to start
-			time.Sleep(2 * time.Second)
+			// Give the session a moment to start (with cancellation support)
+			select {
+			case <-time.After(2 * time.Second):
+				// Continue with reconciliation
+			case <-ctx.Done():
+				// Context cancelled, exit early
+				return
+			}
+
 			if err := m.approvalReconciler.ReconcileApprovalsForSession(ctx, runID); err != nil {
 				slog.Error("failed to reconcile approvals for continued session",
 					"session_id", sessionID,

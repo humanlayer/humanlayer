@@ -69,7 +69,10 @@ func (c *Client) buildArgs(config SessionConfig) ([]string, error) {
 	args := []string{}
 
 	// Always use print mode for SDK
-	args = append(args, "--print", config.Query)
+	args = append(args, "--print")
+
+	// Title is stored in our database but not passed to Claude CLI
+	// (Claude doesn't support --title flag)
 
 	// Session management
 	if config.SessionID != "" {
@@ -148,6 +151,11 @@ func (c *Client) buildArgs(config SessionConfig) ([]string, error) {
 	// Verbose
 	if config.Verbose {
 		args = append(args, "--verbose")
+	}
+
+	// Query must be passed as a positional argument at the end
+	if config.Query != "" {
+		args = append(args, config.Query)
 	}
 
 	return args, nil
@@ -336,17 +344,18 @@ func (s *Session) parseStreamingJSON(stdout, stderr io.Reader) {
 		// Store result if this is the final message
 		if event.Type == "result" {
 			s.result = &Result{
-				Type:        event.Type,
-				Subtype:     event.Subtype,
-				CostUSD:     event.CostUSD,
-				IsError:     event.IsError,
-				DurationMS:  event.DurationMS,
-				DurationAPI: event.DurationAPI,
-				NumTurns:    event.NumTurns,
-				Result:      event.Result,
-				SessionID:   event.SessionID,
-				Usage:       event.Usage,
-				Error:       event.Error,
+				Type:              event.Type,
+				Subtype:           event.Subtype,
+				CostUSD:           event.CostUSD,
+				IsError:           event.IsError,
+				DurationMS:        event.DurationMS,
+				DurationAPI:       event.DurationAPI,
+				NumTurns:          event.NumTurns,
+				Result:            event.Result,
+				SessionID:         event.SessionID,
+				Usage:             event.Usage,
+				Error:             event.Error,
+				PermissionDenials: event.PermissionDenials,
 			}
 		}
 

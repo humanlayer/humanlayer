@@ -362,7 +362,7 @@ export default function SessionTable({
 
   // Rename session hotkey
   useHotkeys(
-    'meta+r',
+    'shift+r',
     () => {
       if (focusedSession) {
         startEdit(focusedSession.id, focusedSession.title || '', focusedSession.summary || '')

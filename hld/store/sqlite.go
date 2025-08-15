@@ -96,7 +96,6 @@ func (s *SQLiteStore) initSchema() error {
 
 		-- Results
 		cost_usd REAL,
-		total_tokens INTEGER,
 		duration_ms INTEGER,
 		num_turns INTEGER,
 		result_content TEXT,
@@ -614,6 +613,157 @@ func (s *SQLiteStore) applyMigrations() error {
 		slog.Info("Migration 11 applied successfully")
 	}
 
+	// Migration 12: Add model_id column for storing full model identifier
+	if currentVersion < 12 {
+		slog.Info("Applying migration 12: Add model_id column")
+
+		// Check if model_id column exists
+		var modelIdExists int
+		err := s.db.QueryRow(`
+			SELECT COUNT(*) FROM pragma_table_info('sessions') WHERE name = 'model_id'
+		`).Scan(&modelIdExists)
+		if err != nil {
+			return fmt.Errorf("failed to check for model_id column: %w", err)
+		}
+
+		if modelIdExists == 0 {
+			_, err = s.db.Exec(`
+				ALTER TABLE sessions
+				ADD COLUMN model_id TEXT
+			`)
+			if err != nil {
+				return fmt.Errorf("failed to add model_id column: %w", err)
+			}
+		}
+
+		// Record migration
+		_, err = s.db.Exec(`
+			INSERT INTO schema_version (version, description)
+			VALUES (12, 'Add model_id column for full model identifier')
+		`)
+		if err != nil {
+			return fmt.Errorf("failed to record migration 12: %w", err)
+		}
+
+		slog.Info("Migration 12 applied successfully")
+	}
+
+	// Migration 13: Add detailed token tracking fields
+	if currentVersion < 13 {
+		slog.Info("Applying migration 13: Add detailed token tracking fields")
+
+		// Check if columns already exist
+		columnChecks := []string{
+			"input_tokens",
+			"output_tokens",
+			"cache_creation_input_tokens",
+			"cache_read_input_tokens",
+			"effective_context_tokens",
+		}
+
+		for _, column := range columnChecks {
+			var columnExists int
+			err = s.db.QueryRow(`
+				SELECT COUNT(*) FROM pragma_table_info('sessions')
+				WHERE name = ?
+			`, column).Scan(&columnExists)
+			if err != nil {
+				return fmt.Errorf("failed to check %s column: %w", column, err)
+			}
+
+			// Only add column if it doesn't exist
+			if columnExists == 0 {
+				_, err = s.db.Exec(fmt.Sprintf(`
+					ALTER TABLE sessions
+					ADD COLUMN %s INTEGER
+				`, column))
+				if err != nil {
+					return fmt.Errorf("failed to add %s column: %w", column, err)
+				}
+			}
+		}
+
+		// Record migration
+		_, err = s.db.Exec(`
+			INSERT INTO schema_version (version, description)
+			VALUES (13, 'Add detailed token tracking fields (input, output, cache, effective context)')
+		`)
+		if err != nil {
+			return fmt.Errorf("failed to record migration 13: %w", err)
+		}
+
+		slog.Info("Migration 13 applied successfully")
+	}
+
+	// Migration 14: Add tool_use_id column to approvals table
+	if currentVersion < 14 {
+		slog.Info("Applying migration 14: Add tool_use_id column to approvals table")
+
+		// Check if column already exists for idempotency
+		var columnExists int
+		err = s.db.QueryRow(`
+			SELECT COUNT(*) FROM pragma_table_info('approvals')
+			WHERE name = 'tool_use_id'
+		`).Scan(&columnExists)
+		if err != nil {
+			return fmt.Errorf("failed to check tool_use_id column: %w", err)
+		}
+
+		// Only add column if it doesn't exist
+		if columnExists == 0 {
+			_, err = s.db.Exec(`
+				ALTER TABLE approvals
+				ADD COLUMN tool_use_id TEXT
+			`)
+			if err != nil {
+				return fmt.Errorf("failed to add tool_use_id column: %w", err)
+			}
+		}
+
+		// Create index for efficient lookups
+		_, err = s.db.Exec(`
+			CREATE INDEX IF NOT EXISTS idx_approvals_tool_use_id
+			ON approvals(tool_use_id)
+			WHERE tool_use_id IS NOT NULL
+		`)
+		if err != nil {
+			return fmt.Errorf("failed to create tool_use_id index: %w", err)
+		}
+
+		// Update existing approvals to populate tool_use_id from correlated events
+		_, err = s.db.Exec(`
+			UPDATE approvals
+			SET tool_use_id = (
+				SELECT ce.tool_id
+				FROM conversation_events ce
+				WHERE ce.approval_id = approvals.id
+				AND ce.tool_id IS NOT NULL
+				LIMIT 1
+			)
+			WHERE EXISTS (
+				SELECT 1
+				FROM conversation_events ce
+				WHERE ce.approval_id = approvals.id
+				AND ce.tool_id IS NOT NULL
+			)
+		`)
+		if err != nil {
+			slog.Warn("Failed to populate tool_use_id for existing approvals (non-critical)", "error", err)
+			// This is non-critical as existing approvals may not have correlation
+		}
+
+		// Record migration
+		_, err = s.db.Exec(`
+			INSERT INTO schema_version (version, description)
+			VALUES (14, 'Add tool_use_id column to approvals table for direct correlation')
+		`)
+		if err != nil {
+			return fmt.Errorf("failed to record migration 14: %w", err)
+		}
+
+		slog.Info("Migration 14 applied successfully")
+	}
+
 	return nil
 }
 
@@ -627,15 +777,15 @@ func (s *SQLiteStore) CreateSession(ctx context.Context, session *Session) error
 	query := `
 		INSERT INTO sessions (
 			id, run_id, claude_session_id, parent_session_id,
-			query, summary, title, model, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
+			query, summary, title, model, model_id, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
 			permission_prompt_tool, allowed_tools, disallowed_tools,
 			status, created_at, last_activity_at, auto_accept_edits, archived, dangerously_skip_permissions, dangerously_skip_permissions_expires_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	_, err := s.db.ExecContext(ctx, query,
 		session.ID, session.RunID, session.ClaudeSessionID, session.ParentSessionID,
-		session.Query, session.Summary, session.Title, session.Model, session.WorkingDir, session.MaxTurns,
+		session.Query, session.Summary, session.Title, session.Model, session.ModelID, session.WorkingDir, session.MaxTurns,
 		session.SystemPrompt, session.AppendSystemPrompt, session.CustomInstructions,
 		session.PermissionPromptTool, session.AllowedTools, session.DisallowedTools,
 		session.Status, session.CreatedAt, session.LastActivityAt, session.AutoAcceptEdits, session.Archived,
@@ -673,9 +823,25 @@ func (s *SQLiteStore) UpdateSession(ctx context.Context, sessionID string, updat
 		setParts = append(setParts, "cost_usd = ?")
 		args = append(args, *updates.CostUSD)
 	}
-	if updates.TotalTokens != nil {
-		setParts = append(setParts, "total_tokens = ?")
-		args = append(args, *updates.TotalTokens)
+	if updates.InputTokens != nil {
+		setParts = append(setParts, "input_tokens = ?")
+		args = append(args, *updates.InputTokens)
+	}
+	if updates.OutputTokens != nil {
+		setParts = append(setParts, "output_tokens = ?")
+		args = append(args, *updates.OutputTokens)
+	}
+	if updates.CacheCreationInputTokens != nil {
+		setParts = append(setParts, "cache_creation_input_tokens = ?")
+		args = append(args, *updates.CacheCreationInputTokens)
+	}
+	if updates.CacheReadInputTokens != nil {
+		setParts = append(setParts, "cache_read_input_tokens = ?")
+		args = append(args, *updates.CacheReadInputTokens)
+	}
+	if updates.EffectiveContextTokens != nil {
+		setParts = append(setParts, "effective_context_tokens = ?")
+		args = append(args, *updates.EffectiveContextTokens)
 	}
 	if updates.DurationMS != nil {
 		setParts = append(setParts, "duration_ms = ?")
@@ -721,6 +887,10 @@ func (s *SQLiteStore) UpdateSession(ctx context.Context, sessionID string, updat
 		setParts = append(setParts, "model = ?")
 		args = append(args, *updates.Model)
 	}
+	if updates.ModelID != nil {
+		setParts = append(setParts, "model_id = ?")
+		args = append(args, *updates.ModelID)
+	}
 	if updates.Archived != nil {
 		setParts = append(setParts, "archived = ?")
 		args = append(args, *updates.Archived)
@@ -757,31 +927,34 @@ func (s *SQLiteStore) UpdateSession(ctx context.Context, sessionID string, updat
 func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Session, error) {
 	query := `
 		SELECT id, run_id, claude_session_id, parent_session_id,
-			query, summary, title, model, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
+			query, summary, title, model, model_id, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
 			permission_prompt_tool, allowed_tools, disallowed_tools,
 			status, created_at, last_activity_at, completed_at,
-			cost_usd, total_tokens, duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived,
+			cost_usd, input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens, effective_context_tokens,
+			duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived,
 			dangerously_skip_permissions, dangerously_skip_permissions_expires_at
 		FROM sessions WHERE id = ?
 	`
 
 	var session Session
-	var claudeSessionID, parentSessionID, summary, title, model, workingDir, systemPrompt, appendSystemPrompt, customInstructions sql.NullString
+	var claudeSessionID, parentSessionID, summary, title, model, modelID, workingDir, systemPrompt, appendSystemPrompt, customInstructions sql.NullString
 	var permissionPromptTool, allowedTools, disallowedTools sql.NullString
 	var completedAt sql.NullTime
 	var costUSD sql.NullFloat64
-	var totalTokens, durationMS, numTurns sql.NullInt64
+	var inputTokens, outputTokens, cacheCreationInputTokens, cacheReadInputTokens, effectiveContextTokens sql.NullInt64
+	var durationMS, numTurns sql.NullInt64
 	var resultContent, errorMessage sql.NullString
 	var archived sql.NullBool
 	var dangerouslySkipPermissionsExpiresAt sql.NullTime
 
 	err := s.db.QueryRowContext(ctx, query, sessionID).Scan(
 		&session.ID, &session.RunID, &claudeSessionID, &parentSessionID,
-		&session.Query, &summary, &title, &model, &workingDir, &session.MaxTurns,
+		&session.Query, &summary, &title, &model, &modelID, &workingDir, &session.MaxTurns,
 		&systemPrompt, &appendSystemPrompt, &customInstructions,
 		&permissionPromptTool, &allowedTools, &disallowedTools,
 		&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
-		&costUSD, &totalTokens, &durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
+		&costUSD, &inputTokens, &outputTokens, &cacheCreationInputTokens, &cacheReadInputTokens, &effectiveContextTokens,
+		&durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
 		&archived, &session.DangerouslySkipPermissions, &dangerouslySkipPermissionsExpiresAt,
 	)
 	if err == sql.ErrNoRows {
@@ -797,6 +970,7 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 	session.Summary = summary.String
 	session.Title = title.String
 	session.Model = model.String
+	session.ModelID = modelID.String
 	session.WorkingDir = workingDir.String
 	session.SystemPrompt = systemPrompt.String
 	session.AppendSystemPrompt = appendSystemPrompt.String
@@ -812,9 +986,25 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 	if costUSD.Valid {
 		session.CostUSD = &costUSD.Float64
 	}
-	if totalTokens.Valid {
-		tokens := int(totalTokens.Int64)
-		session.TotalTokens = &tokens
+	if inputTokens.Valid {
+		tokens := int(inputTokens.Int64)
+		session.InputTokens = &tokens
+	}
+	if outputTokens.Valid {
+		tokens := int(outputTokens.Int64)
+		session.OutputTokens = &tokens
+	}
+	if cacheCreationInputTokens.Valid {
+		tokens := int(cacheCreationInputTokens.Int64)
+		session.CacheCreationInputTokens = &tokens
+	}
+	if cacheReadInputTokens.Valid {
+		tokens := int(cacheReadInputTokens.Int64)
+		session.CacheReadInputTokens = &tokens
+	}
+	if effectiveContextTokens.Valid {
+		tokens := int(effectiveContextTokens.Int64)
+		session.EffectiveContextTokens = &tokens
 	}
 	if durationMS.Valid {
 		duration := int(durationMS.Int64)
@@ -840,32 +1030,35 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Session, error) {
 	query := `
 		SELECT id, run_id, claude_session_id, parent_session_id,
-			query, summary, title, model, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
+			query, summary, title, model, model_id, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
 			permission_prompt_tool, allowed_tools, disallowed_tools,
 			status, created_at, last_activity_at, completed_at,
-			cost_usd, total_tokens, duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived,
+			cost_usd, input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens, effective_context_tokens,
+			duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived,
 			dangerously_skip_permissions, dangerously_skip_permissions_expires_at
 		FROM sessions
 		WHERE run_id = ?
 	`
 
 	var session Session
-	var claudeSessionID, parentSessionID, summary, title, model, workingDir, systemPrompt, appendSystemPrompt, customInstructions sql.NullString
+	var claudeSessionID, parentSessionID, summary, title, model, modelID, workingDir, systemPrompt, appendSystemPrompt, customInstructions sql.NullString
 	var permissionPromptTool, allowedTools, disallowedTools sql.NullString
 	var completedAt sql.NullTime
 	var costUSD sql.NullFloat64
-	var totalTokens, durationMS, numTurns sql.NullInt64
+	var inputTokens, outputTokens, cacheCreationInputTokens, cacheReadInputTokens, effectiveContextTokens sql.NullInt64
+	var durationMS, numTurns sql.NullInt64
 	var resultContent, errorMessage sql.NullString
 	var archived sql.NullBool
 	var dangerouslySkipPermissionsExpiresAt sql.NullTime
 
 	err := s.db.QueryRowContext(ctx, query, runID).Scan(
 		&session.ID, &session.RunID, &claudeSessionID, &parentSessionID,
-		&session.Query, &summary, &title, &model, &workingDir, &session.MaxTurns,
+		&session.Query, &summary, &title, &model, &modelID, &workingDir, &session.MaxTurns,
 		&systemPrompt, &appendSystemPrompt, &customInstructions,
 		&permissionPromptTool, &allowedTools, &disallowedTools,
 		&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
-		&costUSD, &totalTokens, &durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
+		&costUSD, &inputTokens, &outputTokens, &cacheCreationInputTokens, &cacheReadInputTokens, &effectiveContextTokens,
+		&durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
 		&archived, &session.DangerouslySkipPermissions, &dangerouslySkipPermissionsExpiresAt,
 	)
 	if err == sql.ErrNoRows {
@@ -881,6 +1074,7 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 	session.Summary = summary.String
 	session.Title = title.String
 	session.Model = model.String
+	session.ModelID = modelID.String
 	session.WorkingDir = workingDir.String
 	session.SystemPrompt = systemPrompt.String
 	session.AppendSystemPrompt = appendSystemPrompt.String
@@ -896,9 +1090,25 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 	if costUSD.Valid {
 		session.CostUSD = &costUSD.Float64
 	}
-	if totalTokens.Valid {
-		tokens := int(totalTokens.Int64)
-		session.TotalTokens = &tokens
+	if inputTokens.Valid {
+		tokens := int(inputTokens.Int64)
+		session.InputTokens = &tokens
+	}
+	if outputTokens.Valid {
+		tokens := int(outputTokens.Int64)
+		session.OutputTokens = &tokens
+	}
+	if cacheCreationInputTokens.Valid {
+		tokens := int(cacheCreationInputTokens.Int64)
+		session.CacheCreationInputTokens = &tokens
+	}
+	if cacheReadInputTokens.Valid {
+		tokens := int(cacheReadInputTokens.Int64)
+		session.CacheReadInputTokens = &tokens
+	}
+	if effectiveContextTokens.Valid {
+		tokens := int(effectiveContextTokens.Int64)
+		session.EffectiveContextTokens = &tokens
 	}
 	if durationMS.Valid {
 		duration := int(durationMS.Int64)
@@ -924,10 +1134,11 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 	query := `
 		SELECT id, run_id, claude_session_id, parent_session_id,
-			query, summary, title, model, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
+			query, summary, title, model, model_id, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
 			permission_prompt_tool, allowed_tools, disallowed_tools,
 			status, created_at, last_activity_at, completed_at,
-			cost_usd, total_tokens, duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived,
+			cost_usd, input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens, effective_context_tokens,
+		duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived,
 			dangerously_skip_permissions, dangerously_skip_permissions_expires_at
 		FROM sessions
 		ORDER BY last_activity_at DESC
@@ -942,22 +1153,24 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 	var sessions []*Session
 	for rows.Next() {
 		var session Session
-		var claudeSessionID, parentSessionID, summary, title, model, workingDir, systemPrompt, appendSystemPrompt, customInstructions sql.NullString
+		var claudeSessionID, parentSessionID, summary, title, model, modelID, workingDir, systemPrompt, appendSystemPrompt, customInstructions sql.NullString
 		var permissionPromptTool, allowedTools, disallowedTools sql.NullString
 		var completedAt sql.NullTime
 		var costUSD sql.NullFloat64
-		var totalTokens, durationMS, numTurns sql.NullInt64
+		var inputTokens, outputTokens, cacheCreationInputTokens, cacheReadInputTokens, effectiveContextTokens sql.NullInt64
+		var durationMS, numTurns sql.NullInt64
 		var resultContent, errorMessage sql.NullString
 		var archived sql.NullBool
 		var dangerouslySkipPermissionsExpiresAt sql.NullTime
 
 		err := rows.Scan(
 			&session.ID, &session.RunID, &claudeSessionID, &parentSessionID,
-			&session.Query, &summary, &title, &model, &workingDir, &session.MaxTurns,
+			&session.Query, &summary, &title, &model, &modelID, &workingDir, &session.MaxTurns,
 			&systemPrompt, &appendSystemPrompt, &customInstructions,
 			&permissionPromptTool, &allowedTools, &disallowedTools,
 			&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
-			&costUSD, &totalTokens, &durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
+			&costUSD, &inputTokens, &outputTokens, &cacheCreationInputTokens, &cacheReadInputTokens, &effectiveContextTokens,
+			&durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
 			&archived, &session.DangerouslySkipPermissions, &dangerouslySkipPermissionsExpiresAt,
 		)
 		if err != nil {
@@ -970,6 +1183,7 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 		session.Summary = summary.String
 		session.Title = title.String
 		session.Model = model.String
+		session.ModelID = modelID.String
 		session.WorkingDir = workingDir.String
 		session.SystemPrompt = systemPrompt.String
 		session.AppendSystemPrompt = appendSystemPrompt.String
@@ -985,9 +1199,25 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 		if costUSD.Valid {
 			session.CostUSD = &costUSD.Float64
 		}
-		if totalTokens.Valid {
-			tokens := int(totalTokens.Int64)
-			session.TotalTokens = &tokens
+		if inputTokens.Valid {
+			tokens := int(inputTokens.Int64)
+			session.InputTokens = &tokens
+		}
+		if outputTokens.Valid {
+			tokens := int(outputTokens.Int64)
+			session.OutputTokens = &tokens
+		}
+		if cacheCreationInputTokens.Valid {
+			tokens := int(cacheCreationInputTokens.Int64)
+			session.CacheCreationInputTokens = &tokens
+		}
+		if cacheReadInputTokens.Valid {
+			tokens := int(cacheReadInputTokens.Int64)
+			session.CacheReadInputTokens = &tokens
+		}
+		if effectiveContextTokens.Valid {
+			tokens := int(effectiveContextTokens.Int64)
+			session.EffectiveContextTokens = &tokens
 		}
 		if durationMS.Valid {
 			duration := int(durationMS.Int64)
@@ -1019,10 +1249,11 @@ func (s *SQLiteStore) GetExpiredDangerousPermissionsSessions(ctx context.Context
 	now := time.Now()
 	query := `
 		SELECT id, run_id, claude_session_id, parent_session_id,
-			query, summary, title, model, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
+			query, summary, title, model, model_id, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
 			permission_prompt_tool, allowed_tools, disallowed_tools,
 			status, created_at, last_activity_at, completed_at,
-			cost_usd, total_tokens, duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived,
+			cost_usd, input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens, effective_context_tokens,
+		duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived,
 			dangerously_skip_permissions, dangerously_skip_permissions_expires_at
 		FROM sessions
 		WHERE dangerously_skip_permissions = 1
@@ -1041,22 +1272,24 @@ func (s *SQLiteStore) GetExpiredDangerousPermissionsSessions(ctx context.Context
 	var sessions []*Session
 	for rows.Next() {
 		var session Session
-		var claudeSessionID, parentSessionID, summary, title, model, workingDir, systemPrompt, appendSystemPrompt, customInstructions sql.NullString
+		var claudeSessionID, parentSessionID, summary, title, model, modelID, workingDir, systemPrompt, appendSystemPrompt, customInstructions sql.NullString
 		var permissionPromptTool, allowedTools, disallowedTools sql.NullString
 		var completedAt sql.NullTime
 		var costUSD sql.NullFloat64
-		var totalTokens, durationMS, numTurns sql.NullInt64
+		var inputTokens, outputTokens, cacheCreationInputTokens, cacheReadInputTokens, effectiveContextTokens sql.NullInt64
+		var durationMS, numTurns sql.NullInt64
 		var resultContent, errorMessage sql.NullString
 		var archived sql.NullBool
 		var dangerouslySkipPermissionsExpiresAt sql.NullTime
 
 		err := rows.Scan(
 			&session.ID, &session.RunID, &claudeSessionID, &parentSessionID,
-			&session.Query, &summary, &title, &model, &workingDir, &session.MaxTurns,
+			&session.Query, &summary, &title, &model, &modelID, &workingDir, &session.MaxTurns,
 			&systemPrompt, &appendSystemPrompt, &customInstructions,
 			&permissionPromptTool, &allowedTools, &disallowedTools,
 			&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
-			&costUSD, &totalTokens, &durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
+			&costUSD, &inputTokens, &outputTokens, &cacheCreationInputTokens, &cacheReadInputTokens, &effectiveContextTokens,
+			&durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
 			&archived, &session.DangerouslySkipPermissions, &dangerouslySkipPermissionsExpiresAt,
 		)
 		if err != nil {
@@ -1069,6 +1302,7 @@ func (s *SQLiteStore) GetExpiredDangerousPermissionsSessions(ctx context.Context
 		session.Summary = summary.String
 		session.Title = title.String
 		session.Model = model.String
+		session.ModelID = modelID.String
 		session.WorkingDir = workingDir.String
 		session.SystemPrompt = systemPrompt.String
 		session.AppendSystemPrompt = appendSystemPrompt.String
@@ -1084,9 +1318,25 @@ func (s *SQLiteStore) GetExpiredDangerousPermissionsSessions(ctx context.Context
 		if costUSD.Valid {
 			session.CostUSD = &costUSD.Float64
 		}
-		if totalTokens.Valid {
-			tokens := int(totalTokens.Int64)
-			session.TotalTokens = &tokens
+		if inputTokens.Valid {
+			tokens := int(inputTokens.Int64)
+			session.InputTokens = &tokens
+		}
+		if outputTokens.Valid {
+			tokens := int(outputTokens.Int64)
+			session.OutputTokens = &tokens
+		}
+		if cacheCreationInputTokens.Valid {
+			tokens := int(cacheCreationInputTokens.Int64)
+			session.CacheCreationInputTokens = &tokens
+		}
+		if cacheReadInputTokens.Valid {
+			tokens := int(cacheReadInputTokens.Int64)
+			session.CacheReadInputTokens = &tokens
+		}
+		if effectiveContextTokens.Valid {
+			tokens := int(effectiveContextTokens.Int64)
+			session.EffectiveContextTokens = &tokens
 		}
 		if durationMS.Valid {
 			duration := int(durationMS.Int64)
@@ -1575,8 +1825,8 @@ func (s *SQLiteStore) CorrelateApproval(ctx context.Context, sessionID string, t
 	return nil
 }
 
-// CorrelateApprovalByToolID correlates an approval with a specific tool call by tool_id
-func (s *SQLiteStore) CorrelateApprovalByToolID(ctx context.Context, sessionID string, toolID string, approvalID string) error {
+// LinkConversationEventToApprovalUsingToolID correlates an approval with a specific tool call by tool_id
+func (s *SQLiteStore) LinkConversationEventToApprovalUsingToolID(ctx context.Context, sessionID string, toolID string, approvalID string) error {
 	// Update the tool call directly by tool_id
 	updateQuery := `
 		UPDATE conversation_events
@@ -1719,14 +1969,14 @@ func (s *SQLiteStore) CreateApproval(ctx context.Context, approval *Approval) er
 
 	query := `
 		INSERT INTO approvals (
-			id, run_id, session_id, status, created_at,
-			tool_name, tool_input
-		) VALUES (?, ?, ?, ?, ?, ?, ?)
+			id, run_id, session_id, tool_use_id, status, created_at,
+			tool_name, tool_input, comment
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	_, err := s.db.ExecContext(ctx, query,
-		approval.ID, approval.RunID, approval.SessionID, approval.Status.String(), approval.CreatedAt,
-		approval.ToolName, string(approval.ToolInput),
+		approval.ID, approval.RunID, approval.SessionID, approval.ToolUseID, approval.Status.String(), approval.CreatedAt,
+		approval.ToolName, string(approval.ToolInput), approval.Comment,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create approval: %w", err)
@@ -1737,19 +1987,20 @@ func (s *SQLiteStore) CreateApproval(ctx context.Context, approval *Approval) er
 // GetApproval retrieves an approval by ID
 func (s *SQLiteStore) GetApproval(ctx context.Context, id string) (*Approval, error) {
 	query := `
-		SELECT id, run_id, session_id, status, created_at, responded_at,
+		SELECT id, run_id, session_id, tool_use_id, status, created_at, responded_at,
 			tool_name, tool_input, comment
 		FROM approvals WHERE id = ?
 	`
 
 	var approval Approval
+	var toolUseID sql.NullString
 	var respondedAt sql.NullTime
 	var comment sql.NullString
 	var statusStr string
 	var toolInputStr string
 
 	err := s.db.QueryRowContext(ctx, query, id).Scan(
-		&approval.ID, &approval.RunID, &approval.SessionID, &statusStr,
+		&approval.ID, &approval.RunID, &approval.SessionID, &toolUseID, &statusStr,
 		&approval.CreatedAt, &respondedAt,
 		&approval.ToolName, &toolInputStr, &comment,
 	)
@@ -1767,6 +2018,9 @@ func (s *SQLiteStore) GetApproval(ctx context.Context, id string) (*Approval, er
 	}
 
 	// Handle nullable fields
+	if toolUseID.Valid {
+		approval.ToolUseID = &toolUseID.String
+	}
 	if respondedAt.Valid {
 		approval.RespondedAt = &respondedAt.Time
 	}
@@ -1779,7 +2033,7 @@ func (s *SQLiteStore) GetApproval(ctx context.Context, id string) (*Approval, er
 // GetPendingApprovals retrieves all pending approvals for a session
 func (s *SQLiteStore) GetPendingApprovals(ctx context.Context, sessionID string) ([]*Approval, error) {
 	query := `
-		SELECT id, run_id, session_id, status, created_at, responded_at,
+		SELECT id, run_id, session_id, tool_use_id, status, created_at, responded_at,
 			tool_name, tool_input, comment
 		FROM approvals
 		WHERE session_id = ? AND status = ?
@@ -1795,13 +2049,14 @@ func (s *SQLiteStore) GetPendingApprovals(ctx context.Context, sessionID string)
 	var approvals []*Approval
 	for rows.Next() {
 		var approval Approval
+		var toolUseID sql.NullString
 		var respondedAt sql.NullTime
 		var comment sql.NullString
 		var statusStr string
 		var toolInputStr string
 
 		err := rows.Scan(
-			&approval.ID, &approval.RunID, &approval.SessionID, &statusStr,
+			&approval.ID, &approval.RunID, &approval.SessionID, &toolUseID, &statusStr,
 			&approval.CreatedAt, &respondedAt,
 			&approval.ToolName, &toolInputStr, &comment,
 		)
@@ -1816,6 +2071,9 @@ func (s *SQLiteStore) GetPendingApprovals(ctx context.Context, sessionID string)
 		}
 
 		// Handle nullable fields
+		if toolUseID.Valid {
+			approval.ToolUseID = &toolUseID.String
+		}
 		if respondedAt.Valid {
 			approval.RespondedAt = &respondedAt.Time
 		}
@@ -1883,22 +2141,47 @@ func MCPServersFromConfig(sessionID string, config map[string]claudecode.MCPServ
 	servers := make([]MCPServer, 0, len(config))
 	for _, name := range names {
 		server := config[name]
-		argsJSON, err := json.Marshal(server.Args)
-		if err != nil {
-			return nil, fmt.Errorf("failed to marshal args: %w", err)
-		}
 
-		envJSON, err := json.Marshal(server.Env)
-		if err != nil {
-			return nil, fmt.Errorf("failed to marshal env: %w", err)
+		// For HTTP servers, store the configuration differently
+		// We'll use Command field to store the type, ArgsJSON for URL, and EnvJSON for headers
+		var command string
+		var argsJSON string
+		var envJSON string
+
+		if server.Type == "http" {
+			// HTTP server
+			command = "http"                             // Use "http" as the command to indicate HTTP type
+			argsJSON = fmt.Sprintf(`["%s"]`, server.URL) // Store URL as single-element array
+
+			// Store headers in EnvJSON
+			headersData, err := json.Marshal(server.Headers)
+			if err != nil {
+				return nil, fmt.Errorf("failed to marshal headers: %w", err)
+			}
+			envJSON = string(headersData)
+		} else {
+			// Traditional stdio server
+			command = server.Command
+
+			argsData, err := json.Marshal(server.Args)
+			if err != nil {
+				return nil, fmt.Errorf("failed to marshal args: %w", err)
+			}
+			argsJSON = string(argsData)
+
+			envData, err := json.Marshal(server.Env)
+			if err != nil {
+				return nil, fmt.Errorf("failed to marshal env: %w", err)
+			}
+			envJSON = string(envData)
 		}
 
 		servers = append(servers, MCPServer{
 			SessionID: sessionID,
 			Name:      name,
-			Command:   server.Command,
-			ArgsJSON:  string(argsJSON),
-			EnvJSON:   string(envJSON),
+			Command:   command,
+			ArgsJSON:  argsJSON,
+			EnvJSON:   envJSON,
 		})
 	}
 	return servers, nil
@@ -1937,4 +2220,25 @@ func (s *SQLiteStore) GetFileSnapshots(ctx context.Context, sessionID string) ([
 		snapshots = append(snapshots, s)
 	}
 	return snapshots, rows.Err()
+}
+
+// GetSessionCount returns the total number of sessions
+func (s *SQLiteStore) GetSessionCount(ctx context.Context) (int, error) {
+	var count int
+	err := s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM sessions").Scan(&count)
+	return count, err
+}
+
+// GetApprovalCount returns the total number of approvals
+func (s *SQLiteStore) GetApprovalCount(ctx context.Context) (int, error) {
+	var count int
+	err := s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM approvals").Scan(&count)
+	return count, err
+}
+
+// GetEventCount returns the total number of conversation events
+func (s *SQLiteStore) GetEventCount(ctx context.Context) (int, error) {
+	var count int
+	err := s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM conversation_events").Scan(&count)
+	return count, err
 }

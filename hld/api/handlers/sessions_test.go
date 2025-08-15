@@ -89,7 +89,7 @@ func TestSessionHandlers_CreateSession(t *testing.T) {
 				McpConfig: &api.MCPConfig{
 					McpServers: &map[string]api.MCPServer{
 						"test-server": {
-							Command: "node",
+							Command: stringPtr("node"),
 							Args:    &[]string{"server.js"},
 							Env: &map[string]string{
 								"DEBUG": "true",
@@ -286,7 +286,6 @@ func TestSessionHandlers_GetSession(t *testing.T) {
 			Model:           "claude-3-sonnet",
 			WorkingDir:      "/home/user/project",
 			CostUSD:         floatPtr(0.05),
-			TotalTokens:     intPtr(1500),
 			DurationMS:      intPtr(45000),
 			AutoAcceptEdits: true,
 			Archived:        false,

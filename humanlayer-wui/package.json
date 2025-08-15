@@ -34,6 +34,7 @@
     "@tauri-apps/plugin-log": "^2.6.0",
     "@tauri-apps/plugin-notification": "^2.3.0",
     "@tauri-apps/plugin-opener": "^2",
+    "ansi-regex": "^6.1.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
@@ -50,6 +51,7 @@
     "react-syntax-highlighter": "^15.5.0",
     "remark-gfm": "^4.0.0",
     "sonner": "^2.0.5",
+    "strip-ansi": "^7.1.0",
     "tailwind-merge": "^3.3.1",
     "tailwindcss": "^4.1.10",
     "zustand": "^5.0.5"

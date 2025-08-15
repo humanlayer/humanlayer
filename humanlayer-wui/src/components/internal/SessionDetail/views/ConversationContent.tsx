@@ -255,6 +255,8 @@ export function ConversationContent({
                         )
                       : null
                     if (setExpandedToolResult && setExpandedToolCall) {
+                      // Clear focus when opening modal to prevent double escape handling
+                      setFocusedEventId(null)
                       setExpandedToolResult(toolResult || null)
                       setExpandedToolCall(event)
                     }

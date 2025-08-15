@@ -232,7 +232,7 @@ func (m *manager) correlateApproval(ctx context.Context, approval *store.Approva
 	}
 
 	// Correlate by tool ID
-	if err := m.store.CorrelateApprovalByToolID(ctx, approval.SessionID, toolCall.ToolID, approval.ID); err != nil {
+	if err := m.store.LinkConversationEventToApprovalUsingToolID(ctx, approval.SessionID, toolCall.ToolID, approval.ID); err != nil {
 		return fmt.Errorf("failed to correlate approval: %w", err)
 	}
 
@@ -258,15 +258,20 @@ func (m *manager) publishNewApprovalEvent(approval *store.Approval) {
 // publishApprovalResolvedEvent publishes an event when an approval is resolved
 func (m *manager) publishApprovalResolvedEvent(approval *store.Approval, approved bool, responseText string) {
 	if m.eventBus != nil {
+		eventData := map[string]interface{}{
+			"approval_id":   approval.ID,
+			"session_id":    approval.SessionID,
+			"approved":      approved,
+			"response_text": responseText,
+		}
+		// Include tool_use_id if present
+		if approval.ToolUseID != nil {
+			eventData["tool_use_id"] = *approval.ToolUseID
+		}
 		event := bus.Event{
 			Type:      bus.EventApprovalResolved,
 			Timestamp: time.Now(),
-			Data: map[string]interface{}{
-				"approval_id":   approval.ID,
-				"session_id":    approval.SessionID,
-				"approved":      approved,
-				"response_text": responseText,
-			},
+			Data:      eventData,
 		}
 		m.eventBus.Publish(event)
 	}
@@ -279,6 +284,109 @@ func (m *manager) updateSessionStatus(ctx context.Context, sessionID, status str
 		LastActivityAt: &[]time.Time{time.Now()}[0],
 	}
 	return m.store.UpdateSession(ctx, sessionID, updates)
+}
+
+// CreateApprovalWithToolUseID creates an approval with tool_use_id field
+func (m *manager) CreateApprovalWithToolUseID(ctx context.Context, sessionID, toolName string, toolInput json.RawMessage, toolUseID string) (*store.Approval, error) {
+	// Check if auto-accept is enabled (either mode)
+	session, err := m.store.GetSession(ctx, sessionID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get session: %w", err)
+	}
+	if session == nil {
+		return nil, fmt.Errorf("session not found: %s", sessionID)
+	}
+
+	status := store.ApprovalStatusLocalPending
+	comment := ""
+
+	// Check dangerously skip permissions first (overrides edit mode)
+	if session.DangerouslySkipPermissions {
+		// Check if it has an expiry and if it's expired
+		if session.DangerouslySkipPermissionsExpiresAt != nil && time.Now().After(*session.DangerouslySkipPermissionsExpiresAt) {
+			// Expired - disable it
+			update := store.SessionUpdate{
+				DangerouslySkipPermissions:          &[]bool{false}[0],
+				DangerouslySkipPermissionsExpiresAt: &[]*time.Time{nil}[0],
+			}
+			if err := m.store.UpdateSession(ctx, session.ID, update); err != nil {
+				slog.Error("failed to disable expired dangerously skip permissions", "session_id", session.ID, "error", err)
+			}
+			// Continue with normal approval
+		} else {
+			// Dangerously skip permissions is active (no expiry or not expired)
+			status = store.ApprovalStatusLocalApproved
+			comment = "Auto-accepted (dangerous skip permissions enabled)"
+		}
+	} else if session.AutoAcceptEdits && isEditTool(toolName) {
+		// Regular auto-accept edits mode
+		status = store.ApprovalStatusLocalApproved
+		comment = "Auto-accepted (auto-accept mode enabled)"
+	}
+
+	// Create approval with tool_use_id
+	approval := &store.Approval{
+		ID:        "local-" + uuid.New().String(),
+		RunID:     session.RunID,
+		SessionID: sessionID,
+		ToolUseID: &toolUseID,
+		Status:    status,
+		CreatedAt: time.Now(),
+		ToolName:  toolName,
+		ToolInput: toolInput,
+		Comment:   comment,
+	}
+
+	// Store it
+	if err := m.store.CreateApproval(ctx, approval); err != nil {
+		return nil, fmt.Errorf("failed to store approval: %w", err)
+	}
+
+	// Publish event for real-time updates
+	m.publishNewApprovalEvent(approval)
+
+	if err := m.store.LinkConversationEventToApprovalUsingToolID(ctx, sessionID, toolUseID, approval.ID); err != nil {
+		// Log but don't fail
+		// TODO(1): Don't ship if above LinkConversationEventToApprovalUsingToolID does not retry
+		// it's possible, albeit unlikely, that the raw_event has not made it to
+		// conversation_events yet
+		return nil, fmt.Errorf("failed to correlate approval: %w", err)
+	}
+
+	// Handle status-specific post-creation tasks
+	switch status {
+	case store.ApprovalStatusLocalPending:
+		// Update session status to waiting_input for pending approvals
+		if err := m.updateSessionStatus(ctx, session.ID, store.SessionStatusWaitingInput); err != nil {
+			slog.Warn("failed to update session status",
+				"error", err,
+				"session_id", session.ID)
+		}
+	case store.ApprovalStatusLocalApproved:
+		// For auto-approved, update correlation status immediately
+		// Update approval status
+		if err := m.store.UpdateApprovalStatus(ctx, approval.ID, store.ApprovalStatusApproved); err != nil {
+			slog.Warn("failed to update approval status in conversation events",
+				"error", err,
+				"approval_id", approval.ID)
+		}
+		// Publish resolved event for auto-approved
+		m.publishApprovalResolvedEvent(approval, true, comment)
+	}
+
+	logLevel := slog.LevelInfo
+	if status == store.ApprovalStatusLocalApproved {
+		logLevel = slog.LevelDebug // Less noise for auto-approved
+	}
+	slog.Log(ctx, logLevel, "created approval with tool_use_id",
+		"approval_id", approval.ID,
+		"session_id", sessionID,
+		"tool_name", toolName,
+		"tool_use_id", toolUseID,
+		"status", status,
+		"auto_accepted", status == store.ApprovalStatusLocalApproved)
+
+	return approval, nil
 }
 
 // isEditTool checks if a tool name is one of the edit tools

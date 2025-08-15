@@ -4,11 +4,12 @@ import { SearchInput } from './FuzzySearchInput'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 import { useRecentPaths } from '@/hooks/useRecentPaths'
 import { Textarea } from './ui/textarea'
+import { Input } from './ui/input'
 import { Label } from './ui/label'
 import { hasContent, isEmptyOrWhitespace } from '@/utils/validation'
 
 interface SessionConfig {
-  query: string
+  title?: string
   workingDir: string
   model?: string
   maxTurns?: number
@@ -30,7 +31,7 @@ export default function CommandInput({
   onSubmit,
   placeholder = 'Enter your command...',
   isLoading = false,
-  config = { query: '', workingDir: '' },
+  config = { workingDir: '' },
   onConfigChange,
 }: CommandInputProps) {
   const promptRef = useRef<HTMLTextAreaElement>(null)
@@ -84,6 +85,19 @@ export default function CommandInput({
           onSubmit={onSubmit}
           placeholder="/path/to/directory or leave empty for current directory"
           recentDirectories={recentPaths}
+        />
+      </div>
+
+      {/* Title Field (optional) */}
+      <div className="space-y-2">
+        <Label htmlFor="title">Title (optional)</Label>
+        <Input
+          id="title"
+          type="text"
+          value={config.title || ''}
+          onChange={e => onConfigChange?.({ ...config, title: e.target.value })}
+          placeholder="Optional session title"
+          disabled={isLoading}
         />
       </div>
 

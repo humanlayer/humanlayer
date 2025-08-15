@@ -26,7 +26,12 @@ When invoked with a parameter like `gh_username:branchName`:
    - Run setup: `make -C WORKTREE setup`
    - Initialize thoughts: `cd WORKTREE && npx humanlayer thoughts init --directory humanlayer`
 
-5. **Launch Claude Code session**:
+5. **Build CodeLayer in background**:
+   - Run: `make -C WORKTREE codelayer-dev &`
+   - This builds CodeLayer in the background so it's ready when needed
+   - If port 1420 is already in use, run with a different port: `VITE_PORT=1421 make -C WORKTREE codelayer-dev &`
+
+6. **Launch Claude Code session**:
    - If a ticket number was found: `npx humanlayer launch --model opus -w WORKTREE "We're working on ENG-XXXX - fetch the issue and then await further instructions"`
    - Otherwise: `npx humanlayer launch --model opus -w WORKTREE "We're reviewing the branch BRANCHNAME - please familiarize yourself with the changes and await further instructions"`
 
@@ -35,6 +40,7 @@ When invoked with a parameter like `gh_username:branchName`:
 - If worktree already exists, inform the user they need to remove it first
 - If remote fetch fails, check if the username/repo exists
 - If setup fails, provide the error but continue with the launch
+- If CodeLayer fails with "Port 1420 is already in use", use the VITE_PORT alternative command
 
 ## Example Usage
 
@@ -46,4 +52,5 @@ This will:
 - Add 'samdickson22' as a remote
 - Create worktree at `~/wt/humanlayer/eng-1696`
 - Set up the environment
+- Build CodeLayer in the background
 - Launch Claude with: "We're working on ENG-1696 - fetch the issue and then await further instructions"

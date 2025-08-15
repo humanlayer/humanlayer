@@ -136,6 +136,7 @@ export class HTTPDaemonClient implements IDaemonClient {
 
     const response = await this.client!.createSession({
       query: params.query,
+      title: 'title' in params ? params.title : undefined,
       workingDir:
         'workingDir' in params ? params.workingDir : (params as LaunchSessionRequest).working_dir,
       model: model,
@@ -168,6 +169,7 @@ export class HTTPDaemonClient implements IDaemonClient {
     const response = await this.client!.listSessions({
       leafOnly: true,
       includeArchived: request?.include_archived,
+      archivedOnly: request?.archived_only,
     })
     logger.debug(
       'getSessionLeaves raw response sample:',
@@ -433,6 +435,24 @@ export class HTTPDaemonClient implements IDaemonClient {
     // SDK client doesn't support limit parameter yet
     const response = await this.client!.getRecentPaths()
     return response // SDK now properly returns RecentPath[]
+  }
+
+  async getDatabaseInfo(): Promise<import('./types').DatabaseInfo> {
+    await this.ensureConnected()
+
+    // Use REST API endpoint
+    const baseUrl = await getDaemonUrl()
+    const response = await fetch(`${baseUrl}/api/v1/database-info`, {
+      method: 'GET',
+      headers: getDefaultHeaders(),
+    })
+
+    if (!response.ok) {
+      throw new Error(`Failed to get database info: ${response.statusText}`)
+    }
+
+    const data = await response.json()
+    return data
   }
 
   // Private Helper Methods

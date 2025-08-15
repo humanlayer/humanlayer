@@ -219,6 +219,8 @@ export function TaskGroup({
                     if (event?.eventType === ConversationEventType.ToolCall) {
                       const toolResult = event.toolId ? toolResultsByKey[event.toolId] : null
                       if (setExpandedToolResult && setExpandedToolCall) {
+                        // Clear focus when opening modal to prevent double escape handling
+                        setFocusedEventId(null)
                         setExpandedToolResult(toolResult || null)
                         setExpandedToolCall(event)
                       }

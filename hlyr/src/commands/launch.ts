@@ -5,6 +5,7 @@ import { join } from 'path'
 
 interface LaunchOptions {
   query?: string
+  title?: string
   model?: string
   workingDir?: string
   maxTurns?: number
@@ -28,6 +29,7 @@ export const launchCommand = async (query: string, options: LaunchOptions = {}) 
 
     console.log('Launching Claude Code session...')
     console.log('Query:', query)
+    if (options.title) console.log('Title:', options.title)
     if (options.model) console.log('Model:', options.model)
     console.log('Working directory:', options.workingDir || process.cwd())
     console.log('Approvals enabled:', options.approvals !== false)
@@ -44,13 +46,16 @@ export const launchCommand = async (query: string, options: LaunchOptions = {}) 
 
     try {
       // Build MCP config (approvals enabled by default unless explicitly disabled)
+      // Phase 6: Using HTTP MCP endpoint instead of stdio
+      const daemonPort = process.env.HUMANLAYER_DAEMON_HTTP_PORT || '7777'
       const mcpConfig =
         options.approvals !== false
           ? {
               mcpServers: {
-                approvals: {
-                  command: 'npx',
-                  args: ['humanlayer', 'mcp', 'claude_approvals'],
+                codelayer: {
+                  type: 'http',
+                  url: `http://localhost:${daemonPort}/api/v1/mcp`,
+                  // Session ID will be added as header by Claude Code
                 },
               },
             }
@@ -59,11 +64,12 @@ export const launchCommand = async (query: string, options: LaunchOptions = {}) 
       // Launch the session
       const result = await client.launchSession({
         query: query,
+        title: options.title,
         model: options.model,
         working_dir: options.workingDir || process.cwd(),
         max_turns: options.maxTurns,
         mcp_config: mcpConfig,
-        permission_prompt_tool: mcpConfig ? 'mcp__approvals__request_permission' : undefined,
+        permission_prompt_tool: mcpConfig ? 'mcp__codelayer__request_approval' : undefined,
         dangerously_skip_permissions: options.dangerouslySkipPermissions,
         dangerously_skip_permissions_timeout: options.dangerouslySkipPermissionsTimeout
           ? parseInt(options.dangerouslySkipPermissionsTimeout) * 60 * 1000

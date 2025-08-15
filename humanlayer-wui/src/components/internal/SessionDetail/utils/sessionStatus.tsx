@@ -11,22 +11,22 @@ export const Kbd = ({
 export const getSessionStatusText = (status: string): string => {
   if (status === 'completed') return 'Continue this conversation with a new message'
   if (status === 'interrupted') return 'Session was interrupted - continue with a new message'
+  if (status === 'failed') return 'Session failed - continue with a new message to retry'
   if (status === 'running' || status === 'starting')
     return 'Claude is working - you can interrupt with a new message'
   return 'Session must be completed to continue'
 }
 
 export const getInputPlaceholder = (status: string): string => {
-  if (status === 'failed') return 'Session failed - cannot continue...'
+  if (status === 'failed') return 'Enter your message to retry from where it failed...'
   if (status === 'running' || status === 'starting') return 'Enter message to interrupt...'
   return 'Enter your message to continue the conversation...'
 }
 
 export const getHelpText = (status: string): React.ReactNode => {
-  if (status === 'failed') return 'Session failed - cannot continue'
   const isMac = navigator.platform.includes('Mac')
   const sendKey = isMac ? '⌘+Enter' : 'Ctrl+Enter'
-  const skipKey = isMac ? 'Option+Y' : 'Alt+Y'
+  const skipKey = isMac ? '⌥+Y' : 'Alt+Y'
   if (status === 'running' || status === 'starting') {
     return (
       <>
