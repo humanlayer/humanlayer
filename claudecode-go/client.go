@@ -163,23 +163,10 @@ func (c *Client) Launch(config SessionConfig) (*Session, error) {
 	log.Printf("Executing Claude command: %s %v", c.claudePath, args)
 	cmd := exec.Command(c.claudePath, args...)
 
-	// Set environment variables if provided
+	// Set environment variables if specified
 	if len(config.Env) > 0 {
-		envMap := make(map[string]string)
-		// Start with current environment
-		for _, env := range os.Environ() {
-			parts := strings.SplitN(env, "=", 2)
-			if len(parts) == 2 {
-				envMap[parts[0]] = parts[1]
-			}
-		}
-		// Override with session-specific vars (avoids duplicates)
+		cmd.Env = os.Environ() // Start with current environment
 		for key, value := range config.Env {
-			envMap[key] = value
-		}
-		// Build final env slice
-		cmd.Env = make([]string, 0, len(envMap))
-		for key, value := range envMap {
 			cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", key, value))
 		}
 	}

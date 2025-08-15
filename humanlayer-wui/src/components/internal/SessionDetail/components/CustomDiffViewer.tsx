@@ -1,6 +1,28 @@
 import React, { Fragment } from 'react'
 import { logger } from '@/lib/logging'
 
+// --- Debug utilities ---
+// Preserved for debugging - uncomment the invocation below to enable
+// @ts-expect-error - Intentionally unused, preserved for debugging
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function debugLogSnapshotFailure(
+  error: unknown,
+  edits: { oldValue: string; newValue: string }[],
+  fileContents?: string,
+) {
+  logger.warn('Snapshot-based diff rendering failed, falling back to simple diff:', {
+    error: error instanceof Error ? error.message : String(error),
+    editsCount: edits.length,
+    fileContentLength: fileContents?.length,
+    firstEditPreview: edits[0]
+      ? {
+          oldValue: edits[0].oldValue.substring(0, 50) + '...',
+          newValue: edits[0].newValue.substring(0, 50) + '...',
+        }
+      : null,
+  })
+}
+
 // --- Minimal diff utilities (no third-party libraries) ---
 function computeLineDiff(oldStr: string, newStr: string) {
   // Returns an array of { type: 'equal'|'add'|'remove'|'replace', oldLine?: string, newLine?: string, oldIndex?: number, newIndex?: number }
@@ -600,19 +622,8 @@ export const CustomDiffViewer = ({
         </div>
       </div>
     )
-  } catch (error) {
-    // Log detailed context for debugging
-    logger.warn('Snapshot-based diff rendering failed, falling back to simple diff:', {
-      error: error instanceof Error ? error.message : String(error),
-      editsCount: edits.length,
-      fileContentLength: fileContents?.length,
-      firstEditPreview: edits[0]
-        ? {
-            oldValue: edits[0].oldValue.substring(0, 50) + '...',
-            newValue: edits[0].newValue.substring(0, 50) + '...',
-          }
-        : null,
-    })
+  } catch {
+    // debugLogSnapshotFailure(error, edits, fileContents) // uncomment to enable debug logging
 
     // Recursively call self with undefined fileContents to trigger non-snapshot mode
     return <CustomDiffViewer fileContents={undefined} edits={edits} splitView={splitView} />

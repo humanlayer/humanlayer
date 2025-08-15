@@ -29,7 +29,7 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ github.event.inputs.release_nightly }}" = "true" ]; then
             # For cron/scheduled runs or test mode, use YYYYMMDD-nightly format
-            echo "release_version=$(date +%Y%m%d)-nightly-test" >> $GITHUB_OUTPUT
+            echo "release_version=$(date +%Y%m%d)-nightly" >> $GITHUB_OUTPUT
           elif [ -z "${{ github.event.inputs.release_version }}" ]; then
             # For manual runs without specified version, use YYYYMMDD_HHmmss
             echo "release_version=$(date +%Y%m%d_%H%M%S)" >> $GITHUB_OUTPUT

@@ -14,6 +14,7 @@ import { useTaskGrouping } from '../hooks/useTaskGrouping'
 import { TaskGroup } from './TaskGroup'
 import { copyToClipboard } from '@/utils/clipboard'
 import { MessageContent } from '../components/MessageContent'
+import { hasTextSelection } from '@/utils/selection'
 
 // TODO(2): Extract keyboard navigation logic to a custom hook
 // TODO(2): Extract auto-scroll logic to a separate utility
@@ -239,6 +240,11 @@ export function ConversationContent({
                   setConfirmingApprovalId?.(null)
                 }}
                 onClick={() => {
+                  // Don't open modal if user has selected text
+                  if (hasTextSelection()) {
+                    return
+                  }
+
                   const event = events.find(e => e.id === displayObject.id)
                   if (event?.eventType === ConversationEventType.ToolCall) {
                     const toolResult = event.toolId
@@ -249,6 +255,8 @@ export function ConversationContent({
                         )
                       : null
                     if (setExpandedToolResult && setExpandedToolCall) {
+                      // Clear focus when opening modal to prevent double escape handling
+                      setFocusedEventId(null)
                       setExpandedToolResult(toolResult || null)
                       setExpandedToolCall(event)
                     }
@@ -404,6 +412,11 @@ export function ConversationContent({
                       setConfirmingApprovalId?.(null)
                     }}
                     onClick={() => {
+                      // Don't open modal if user has selected text
+                      if (hasTextSelection()) {
+                        return
+                      }
+
                       const event = events.find(e => e.id === displayObject.id)
                       if (event?.eventType === ConversationEventType.ToolCall) {
                         const toolResult = event.toolId

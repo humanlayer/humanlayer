@@ -23,6 +23,7 @@ import (
 type HTTPServer struct {
 	config           *config.Config
 	router           *gin.Engine
+	sessionManager   session.SessionManager
 	sessionHandlers  *handlers.SessionHandlers
 	approvalHandlers *handlers.ApprovalHandlers
 	sseHandler       *handlers.SSEHandler
@@ -62,7 +63,7 @@ func NewHTTPServer(
 	}))
 
 	// Create handlers
-	sessionHandlers := handlers.NewSessionHandlers(sessionManager, conversationStore, approvalManager)
+	sessionHandlers := handlers.NewSessionHandlersWithConfig(sessionManager, conversationStore, approvalManager, cfg)
 	approvalHandlers := handlers.NewApprovalHandlers(approvalManager, sessionManager)
 	sseHandler := handlers.NewSSEHandler(eventBus)
 	proxyHandler := handlers.NewProxyHandler(sessionManager, conversationStore)
@@ -70,6 +71,7 @@ func NewHTTPServer(
 	return &HTTPServer{
 		config:           cfg,
 		router:           router,
+		sessionManager:   sessionManager,
 		sessionHandlers:  sessionHandlers,
 		approvalHandlers: approvalHandlers,
 		sseHandler:       sseHandler,
@@ -112,6 +114,9 @@ func (s *HTTPServer) Start(ctx context.Context) error {
 	if s.config.HTTPPort == 0 {
 		fmt.Printf("HTTP_PORT=%d\n", actualPort)
 	}
+
+	// Update session manager with the actual HTTP port
+	s.sessionManager.SetHTTPPort(actualPort)
 
 	slog.Info("Starting HTTP server",
 		"configured_port", s.config.HTTPPort,

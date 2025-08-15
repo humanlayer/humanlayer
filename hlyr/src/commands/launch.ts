@@ -5,6 +5,7 @@ import { join } from 'path'
 
 interface LaunchOptions {
   query?: string
+  title?: string
   model?: string
   workingDir?: string
   maxTurns?: number
@@ -28,6 +29,7 @@ export const launchCommand = async (query: string, options: LaunchOptions = {}) 
 
     console.log('Launching Claude Code session...')
     console.log('Query:', query)
+    if (options.title) console.log('Title:', options.title)
     if (options.model) console.log('Model:', options.model)
     console.log('Working directory:', options.workingDir || process.cwd())
     console.log('Approvals enabled:', options.approvals !== false)
@@ -59,6 +61,7 @@ export const launchCommand = async (query: string, options: LaunchOptions = {}) 
       // Launch the session
       const result = await client.launchSession({
         query: query,
+        title: options.title,
         model: options.model,
         working_dir: options.workingDir || process.cwd(),
         max_turns: options.maxTurns,

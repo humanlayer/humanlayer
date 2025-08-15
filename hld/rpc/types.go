@@ -65,13 +65,19 @@ type SessionState struct {
 	Summary                             string  `json:"summary"`
 	Title                               string  `json:"title"`
 	Model                               string  `json:"model,omitempty"`
+	ModelID                             string  `json:"model_id,omitempty"`
 	WorkingDir                          string  `json:"working_dir,omitempty"`
 	CreatedAt                           string  `json:"created_at"`
 	LastActivityAt                      string  `json:"last_activity_at"`
 	CompletedAt                         string  `json:"completed_at,omitempty"`
 	ErrorMessage                        string  `json:"error_message,omitempty"`
 	CostUSD                             float64 `json:"cost_usd,omitempty"`
-	TotalTokens                         int     `json:"total_tokens,omitempty"`
+	InputTokens                         int     `json:"input_tokens,omitempty"`
+	OutputTokens                        int     `json:"output_tokens,omitempty"`
+	CacheCreationInputTokens            int     `json:"cache_creation_input_tokens,omitempty"`
+	CacheReadInputTokens                int     `json:"cache_read_input_tokens,omitempty"`
+	EffectiveContextTokens              int     `json:"effective_context_tokens,omitempty"`
+	ContextLimit                        int     `json:"context_limit,omitempty"`
 	DurationMS                          int     `json:"duration_ms,omitempty"`
 	AutoAcceptEdits                     bool    `json:"auto_accept_edits"`
 	DangerouslySkipPermissions          bool    `json:"dangerously_skip_permissions"`
@@ -114,6 +120,10 @@ type ContinueSessionRequest struct {
 	DisallowedTools      []string `json:"disallowed_tools,omitempty"`       // Disallowed tools list
 	CustomInstructions   string   `json:"custom_instructions,omitempty"`    // Custom instructions
 	MaxTurns             int      `json:"max_turns,omitempty"`              // Max conversation turns
+	ProxyEnabled         bool     `json:"proxy_enabled,omitempty"`          // Whether proxy is enabled
+	ProxyBaseURL         string   `json:"proxy_base_url,omitempty"`         // Proxy base URL
+	ProxyModelOverride   string   `json:"proxy_model_override,omitempty"`   // Model to use with proxy
+	ProxyAPIKey          string   `json:"proxy_api_key,omitempty"`          // API key for proxy service
 }
 
 // ContinueSessionResponse is the response for continuing a session

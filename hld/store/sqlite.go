@@ -96,7 +96,6 @@ func (s *SQLiteStore) initSchema() error {
 
 		-- Results
 		cost_usd REAL,
-		total_tokens INTEGER,
 		duration_ms INTEGER,
 		num_turns INTEGER,
 		result_content TEXT,
@@ -614,10 +613,93 @@ func (s *SQLiteStore) applyMigrations() error {
 		slog.Info("Migration 11 applied successfully")
 	}
 
-	// Migration 12: Add proxy configuration columns for model customization
+	// Migration 12: Add model_id column for storing full model identifier
 	if currentVersion < 12 {
-		slog.Info("Applying migration 12: Add proxy configuration columns")
+		slog.Info("Applying migration 12: Add model_id column")
 
+		// Check if model_id column exists
+		var modelIdExists int
+		err := s.db.QueryRow(`
+			SELECT COUNT(*) FROM pragma_table_info('sessions') WHERE name = 'model_id'
+		`).Scan(&modelIdExists)
+		if err != nil {
+			return fmt.Errorf("failed to check for model_id column: %w", err)
+		}
+
+		if modelIdExists == 0 {
+			_, err = s.db.Exec(`
+				ALTER TABLE sessions
+				ADD COLUMN model_id TEXT
+			`)
+			if err != nil {
+				return fmt.Errorf("failed to add model_id column: %w", err)
+			}
+		}
+
+		// Record migration
+		_, err = s.db.Exec(`
+			INSERT INTO schema_version (version, description)
+			VALUES (12, 'Add model_id column for full model identifier')
+		`)
+		if err != nil {
+			return fmt.Errorf("failed to record migration 12: %w", err)
+		}
+
+		slog.Info("Migration 12 applied successfully")
+	}
+
+	// Migration 13: Add detailed token tracking fields
+	if currentVersion < 13 {
+		slog.Info("Applying migration 13: Add detailed token tracking fields")
+
+		// Check if columns already exist
+		columnChecks := []string{
+			"input_tokens",
+			"output_tokens",
+			"cache_creation_input_tokens",
+			"cache_read_input_tokens",
+			"effective_context_tokens",
+		}
+
+		for _, column := range columnChecks {
+			var columnExists int
+			err = s.db.QueryRow(`
+				SELECT COUNT(*) FROM pragma_table_info('sessions')
+				WHERE name = ?
+			`, column).Scan(&columnExists)
+			if err != nil {
+				return fmt.Errorf("failed to check %s column: %w", column, err)
+			}
+
+			// Only add column if it doesn't exist
+			if columnExists == 0 {
+				_, err = s.db.Exec(fmt.Sprintf(`
+					ALTER TABLE sessions
+					ADD COLUMN %s INTEGER
+				`, column))
+				if err != nil {
+					return fmt.Errorf("failed to add %s column: %w", column, err)
+				}
+			}
+		}
+
+		// Record migration
+		_, err = s.db.Exec(`
+			INSERT INTO schema_version (version, description)
+			VALUES (13, 'Add detailed token tracking fields (input, output, cache, effective context)')
+		`)
+		if err != nil {
+			return fmt.Errorf("failed to record migration 13: %w", err)
+		}
+
+		slog.Info("Migration 13 applied successfully")
+	}
+
+	// Migration 14: Add proxy configuration columns for model customization
+	if currentVersion < 14 {
+		slog.Info("Applying migration 14: Add proxy configuration columns")
+
+		// Check if columns already exist for idempotency
 		columnsToAdd := []struct {
 			name         string
 			sqlType      string
@@ -653,13 +735,13 @@ func (s *SQLiteStore) applyMigrations() error {
 		// Record migration
 		_, err = s.db.Exec(`
 			INSERT INTO schema_version (version, description)
-			VALUES (12, 'Add proxy configuration columns for model customization')
+			VALUES (14, 'Add proxy configuration columns for model customization')
 		`)
 		if err != nil {
-			return fmt.Errorf("failed to record migration 12: %w", err)
+			return fmt.Errorf("failed to record migration 14: %w", err)
 		}
 
-		slog.Info("Migration 12 applied successfully")
+		slog.Info("Migration 14 applied successfully")
 	}
 
 	return nil
@@ -675,16 +757,16 @@ func (s *SQLiteStore) CreateSession(ctx context.Context, session *Session) error
 	query := `
 		INSERT INTO sessions (
 			id, run_id, claude_session_id, parent_session_id,
-			query, summary, title, model, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
+			query, summary, title, model, model_id, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
 			permission_prompt_tool, allowed_tools, disallowed_tools,
 			status, created_at, last_activity_at, auto_accept_edits, archived, dangerously_skip_permissions, dangerously_skip_permissions_expires_at,
 			proxy_enabled, proxy_base_url, proxy_model_override, proxy_api_key
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	_, err := s.db.ExecContext(ctx, query,
 		session.ID, session.RunID, session.ClaudeSessionID, session.ParentSessionID,
-		session.Query, session.Summary, session.Title, session.Model, session.WorkingDir, session.MaxTurns,
+		session.Query, session.Summary, session.Title, session.Model, session.ModelID, session.WorkingDir, session.MaxTurns,
 		session.SystemPrompt, session.AppendSystemPrompt, session.CustomInstructions,
 		session.PermissionPromptTool, session.AllowedTools, session.DisallowedTools,
 		session.Status, session.CreatedAt, session.LastActivityAt, session.AutoAcceptEdits, session.Archived,
@@ -723,9 +805,25 @@ func (s *SQLiteStore) UpdateSession(ctx context.Context, sessionID string, updat
 		setParts = append(setParts, "cost_usd = ?")
 		args = append(args, *updates.CostUSD)
 	}
-	if updates.TotalTokens != nil {
-		setParts = append(setParts, "total_tokens = ?")
-		args = append(args, *updates.TotalTokens)
+	if updates.InputTokens != nil {
+		setParts = append(setParts, "input_tokens = ?")
+		args = append(args, *updates.InputTokens)
+	}
+	if updates.OutputTokens != nil {
+		setParts = append(setParts, "output_tokens = ?")
+		args = append(args, *updates.OutputTokens)
+	}
+	if updates.CacheCreationInputTokens != nil {
+		setParts = append(setParts, "cache_creation_input_tokens = ?")
+		args = append(args, *updates.CacheCreationInputTokens)
+	}
+	if updates.CacheReadInputTokens != nil {
+		setParts = append(setParts, "cache_read_input_tokens = ?")
+		args = append(args, *updates.CacheReadInputTokens)
+	}
+	if updates.EffectiveContextTokens != nil {
+		setParts = append(setParts, "effective_context_tokens = ?")
+		args = append(args, *updates.EffectiveContextTokens)
 	}
 	if updates.DurationMS != nil {
 		setParts = append(setParts, "duration_ms = ?")
@@ -771,6 +869,10 @@ func (s *SQLiteStore) UpdateSession(ctx context.Context, sessionID string, updat
 		setParts = append(setParts, "model = ?")
 		args = append(args, *updates.Model)
 	}
+	if updates.ModelID != nil {
+		setParts = append(setParts, "model_id = ?")
+		args = append(args, *updates.ModelID)
+	}
 	if updates.Archived != nil {
 		setParts = append(setParts, "archived = ?")
 		args = append(args, *updates.Archived)
@@ -807,21 +909,23 @@ func (s *SQLiteStore) UpdateSession(ctx context.Context, sessionID string, updat
 func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Session, error) {
 	query := `
 		SELECT id, run_id, claude_session_id, parent_session_id,
-			query, summary, title, model, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
+			query, summary, title, model, model_id, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
 			permission_prompt_tool, allowed_tools, disallowed_tools,
 			status, created_at, last_activity_at, completed_at,
-			cost_usd, total_tokens, duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived,
+			cost_usd, input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens, effective_context_tokens,
+			duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived,
 			dangerously_skip_permissions, dangerously_skip_permissions_expires_at,
 			proxy_enabled, proxy_base_url, proxy_model_override, proxy_api_key
 		FROM sessions WHERE id = ?
 	`
 
 	var session Session
-	var claudeSessionID, parentSessionID, summary, title, model, workingDir, systemPrompt, appendSystemPrompt, customInstructions sql.NullString
+	var claudeSessionID, parentSessionID, summary, title, model, modelID, workingDir, systemPrompt, appendSystemPrompt, customInstructions sql.NullString
 	var permissionPromptTool, allowedTools, disallowedTools sql.NullString
 	var completedAt sql.NullTime
 	var costUSD sql.NullFloat64
-	var totalTokens, durationMS, numTurns sql.NullInt64
+	var inputTokens, outputTokens, cacheCreationInputTokens, cacheReadInputTokens, effectiveContextTokens sql.NullInt64
+	var durationMS, numTurns sql.NullInt64
 	var resultContent, errorMessage sql.NullString
 	var archived sql.NullBool
 	var dangerouslySkipPermissionsExpiresAt sql.NullTime
@@ -830,11 +934,12 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 
 	err := s.db.QueryRowContext(ctx, query, sessionID).Scan(
 		&session.ID, &session.RunID, &claudeSessionID, &parentSessionID,
-		&session.Query, &summary, &title, &model, &workingDir, &session.MaxTurns,
+		&session.Query, &summary, &title, &model, &modelID, &workingDir, &session.MaxTurns,
 		&systemPrompt, &appendSystemPrompt, &customInstructions,
 		&permissionPromptTool, &allowedTools, &disallowedTools,
 		&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
-		&costUSD, &totalTokens, &durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
+		&costUSD, &inputTokens, &outputTokens, &cacheCreationInputTokens, &cacheReadInputTokens, &effectiveContextTokens,
+		&durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
 		&archived, &session.DangerouslySkipPermissions, &dangerouslySkipPermissionsExpiresAt,
 		&proxyEnabled, &proxyBaseURL, &proxyModelOverride, &proxyAPIKey,
 	)
@@ -851,6 +956,7 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 	session.Summary = summary.String
 	session.Title = title.String
 	session.Model = model.String
+	session.ModelID = modelID.String
 	session.WorkingDir = workingDir.String
 	session.SystemPrompt = systemPrompt.String
 	session.AppendSystemPrompt = appendSystemPrompt.String
@@ -866,9 +972,25 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 	if costUSD.Valid {
 		session.CostUSD = &costUSD.Float64
 	}
-	if totalTokens.Valid {
-		tokens := int(totalTokens.Int64)
-		session.TotalTokens = &tokens
+	if inputTokens.Valid {
+		tokens := int(inputTokens.Int64)
+		session.InputTokens = &tokens
+	}
+	if outputTokens.Valid {
+		tokens := int(outputTokens.Int64)
+		session.OutputTokens = &tokens
+	}
+	if cacheCreationInputTokens.Valid {
+		tokens := int(cacheCreationInputTokens.Int64)
+		session.CacheCreationInputTokens = &tokens
+	}
+	if cacheReadInputTokens.Valid {
+		tokens := int(cacheReadInputTokens.Int64)
+		session.CacheReadInputTokens = &tokens
+	}
+	if effectiveContextTokens.Valid {
+		tokens := int(effectiveContextTokens.Int64)
+		session.EffectiveContextTokens = &tokens
 	}
 	if durationMS.Valid {
 		duration := int(durationMS.Int64)
@@ -887,12 +1009,6 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 		session.DangerouslySkipPermissionsExpiresAt = &dangerouslySkipPermissionsExpiresAt.Time
 	}
 
-	// Handle proxy fields
-	session.ProxyEnabled = proxyEnabled.Valid && proxyEnabled.Bool
-	session.ProxyBaseURL = proxyBaseURL.String
-	session.ProxyModelOverride = proxyModelOverride.String
-	session.ProxyAPIKey = proxyAPIKey.String
-
 	return &session, nil
 }
 
@@ -900,10 +1016,11 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Session, error) {
 	query := `
 		SELECT id, run_id, claude_session_id, parent_session_id,
-			query, summary, title, model, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
+			query, summary, title, model, model_id, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
 			permission_prompt_tool, allowed_tools, disallowed_tools,
 			status, created_at, last_activity_at, completed_at,
-			cost_usd, total_tokens, duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived,
+			cost_usd, input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens, effective_context_tokens,
+			duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived,
 			dangerously_skip_permissions, dangerously_skip_permissions_expires_at,
 			proxy_enabled, proxy_base_url, proxy_model_override, proxy_api_key
 		FROM sessions
@@ -911,11 +1028,12 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 	`
 
 	var session Session
-	var claudeSessionID, parentSessionID, summary, title, model, workingDir, systemPrompt, appendSystemPrompt, customInstructions sql.NullString
+	var claudeSessionID, parentSessionID, summary, title, model, modelID, workingDir, systemPrompt, appendSystemPrompt, customInstructions sql.NullString
 	var permissionPromptTool, allowedTools, disallowedTools sql.NullString
 	var completedAt sql.NullTime
 	var costUSD sql.NullFloat64
-	var totalTokens, durationMS, numTurns sql.NullInt64
+	var inputTokens, outputTokens, cacheCreationInputTokens, cacheReadInputTokens, effectiveContextTokens sql.NullInt64
+	var durationMS, numTurns sql.NullInt64
 	var resultContent, errorMessage sql.NullString
 	var archived sql.NullBool
 	var dangerouslySkipPermissionsExpiresAt sql.NullTime
@@ -924,11 +1042,12 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 
 	err := s.db.QueryRowContext(ctx, query, runID).Scan(
 		&session.ID, &session.RunID, &claudeSessionID, &parentSessionID,
-		&session.Query, &summary, &title, &model, &workingDir, &session.MaxTurns,
+		&session.Query, &summary, &title, &model, &modelID, &workingDir, &session.MaxTurns,
 		&systemPrompt, &appendSystemPrompt, &customInstructions,
 		&permissionPromptTool, &allowedTools, &disallowedTools,
 		&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
-		&costUSD, &totalTokens, &durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
+		&costUSD, &inputTokens, &outputTokens, &cacheCreationInputTokens, &cacheReadInputTokens, &effectiveContextTokens,
+		&durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
 		&archived, &session.DangerouslySkipPermissions, &dangerouslySkipPermissionsExpiresAt,
 		&proxyEnabled, &proxyBaseURL, &proxyModelOverride, &proxyAPIKey,
 	)
@@ -945,6 +1064,7 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 	session.Summary = summary.String
 	session.Title = title.String
 	session.Model = model.String
+	session.ModelID = modelID.String
 	session.WorkingDir = workingDir.String
 	session.SystemPrompt = systemPrompt.String
 	session.AppendSystemPrompt = appendSystemPrompt.String
@@ -960,9 +1080,25 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 	if costUSD.Valid {
 		session.CostUSD = &costUSD.Float64
 	}
-	if totalTokens.Valid {
-		tokens := int(totalTokens.Int64)
-		session.TotalTokens = &tokens
+	if inputTokens.Valid {
+		tokens := int(inputTokens.Int64)
+		session.InputTokens = &tokens
+	}
+	if outputTokens.Valid {
+		tokens := int(outputTokens.Int64)
+		session.OutputTokens = &tokens
+	}
+	if cacheCreationInputTokens.Valid {
+		tokens := int(cacheCreationInputTokens.Int64)
+		session.CacheCreationInputTokens = &tokens
+	}
+	if cacheReadInputTokens.Valid {
+		tokens := int(cacheReadInputTokens.Int64)
+		session.CacheReadInputTokens = &tokens
+	}
+	if effectiveContextTokens.Valid {
+		tokens := int(effectiveContextTokens.Int64)
+		session.EffectiveContextTokens = &tokens
 	}
 	if durationMS.Valid {
 		duration := int(durationMS.Int64)
@@ -994,11 +1130,13 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 	query := `
 		SELECT id, run_id, claude_session_id, parent_session_id,
-			query, summary, title, model, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
+			query, summary, title, model, model_id, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
 			permission_prompt_tool, allowed_tools, disallowed_tools,
 			status, created_at, last_activity_at, completed_at,
-			cost_usd, total_tokens, duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived,
-			dangerously_skip_permissions, dangerously_skip_permissions_expires_at
+			cost_usd, input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens, effective_context_tokens,
+		duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived,
+			dangerously_skip_permissions, dangerously_skip_permissions_expires_at,
+			proxy_enabled, proxy_base_url, proxy_model_override, proxy_api_key
 		FROM sessions
 		ORDER BY last_activity_at DESC
 	`
@@ -1012,23 +1150,28 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 	var sessions []*Session
 	for rows.Next() {
 		var session Session
-		var claudeSessionID, parentSessionID, summary, title, model, workingDir, systemPrompt, appendSystemPrompt, customInstructions sql.NullString
+		var claudeSessionID, parentSessionID, summary, title, model, modelID, workingDir, systemPrompt, appendSystemPrompt, customInstructions sql.NullString
 		var permissionPromptTool, allowedTools, disallowedTools sql.NullString
 		var completedAt sql.NullTime
 		var costUSD sql.NullFloat64
-		var totalTokens, durationMS, numTurns sql.NullInt64
+		var inputTokens, outputTokens, cacheCreationInputTokens, cacheReadInputTokens, effectiveContextTokens sql.NullInt64
+		var durationMS, numTurns sql.NullInt64
 		var resultContent, errorMessage sql.NullString
 		var archived sql.NullBool
 		var dangerouslySkipPermissionsExpiresAt sql.NullTime
+		var proxyEnabled sql.NullBool
+		var proxyBaseURL, proxyModelOverride, proxyAPIKey sql.NullString
 
 		err := rows.Scan(
 			&session.ID, &session.RunID, &claudeSessionID, &parentSessionID,
-			&session.Query, &summary, &title, &model, &workingDir, &session.MaxTurns,
+			&session.Query, &summary, &title, &model, &modelID, &workingDir, &session.MaxTurns,
 			&systemPrompt, &appendSystemPrompt, &customInstructions,
 			&permissionPromptTool, &allowedTools, &disallowedTools,
 			&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
-			&costUSD, &totalTokens, &durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
+			&costUSD, &inputTokens, &outputTokens, &cacheCreationInputTokens, &cacheReadInputTokens, &effectiveContextTokens,
+			&durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
 			&archived, &session.DangerouslySkipPermissions, &dangerouslySkipPermissionsExpiresAt,
+			&proxyEnabled, &proxyBaseURL, &proxyModelOverride, &proxyAPIKey,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan session: %w", err)
@@ -1040,6 +1183,7 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 		session.Summary = summary.String
 		session.Title = title.String
 		session.Model = model.String
+		session.ModelID = modelID.String
 		session.WorkingDir = workingDir.String
 		session.SystemPrompt = systemPrompt.String
 		session.AppendSystemPrompt = appendSystemPrompt.String
@@ -1055,9 +1199,25 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 		if costUSD.Valid {
 			session.CostUSD = &costUSD.Float64
 		}
-		if totalTokens.Valid {
-			tokens := int(totalTokens.Int64)
-			session.TotalTokens = &tokens
+		if inputTokens.Valid {
+			tokens := int(inputTokens.Int64)
+			session.InputTokens = &tokens
+		}
+		if outputTokens.Valid {
+			tokens := int(outputTokens.Int64)
+			session.OutputTokens = &tokens
+		}
+		if cacheCreationInputTokens.Valid {
+			tokens := int(cacheCreationInputTokens.Int64)
+			session.CacheCreationInputTokens = &tokens
+		}
+		if cacheReadInputTokens.Valid {
+			tokens := int(cacheReadInputTokens.Int64)
+			session.CacheReadInputTokens = &tokens
+		}
+		if effectiveContextTokens.Valid {
+			tokens := int(effectiveContextTokens.Int64)
+			session.EffectiveContextTokens = &tokens
 		}
 		if durationMS.Valid {
 			duration := int(durationMS.Int64)
@@ -1078,6 +1238,12 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 			session.DangerouslySkipPermissionsExpiresAt = &dangerouslySkipPermissionsExpiresAt.Time
 		}
 
+		// Handle proxy fields
+		session.ProxyEnabled = proxyEnabled.Valid && proxyEnabled.Bool
+		session.ProxyBaseURL = proxyBaseURL.String
+		session.ProxyModelOverride = proxyModelOverride.String
+		session.ProxyAPIKey = proxyAPIKey.String
+
 		sessions = append(sessions, &session)
 	}
 
@@ -1089,11 +1255,13 @@ func (s *SQLiteStore) GetExpiredDangerousPermissionsSessions(ctx context.Context
 	now := time.Now()
 	query := `
 		SELECT id, run_id, claude_session_id, parent_session_id,
-			query, summary, title, model, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
+			query, summary, title, model, model_id, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
 			permission_prompt_tool, allowed_tools, disallowed_tools,
 			status, created_at, last_activity_at, completed_at,
-			cost_usd, total_tokens, duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived,
-			dangerously_skip_permissions, dangerously_skip_permissions_expires_at
+			cost_usd, input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens, effective_context_tokens,
+		duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived,
+			dangerously_skip_permissions, dangerously_skip_permissions_expires_at,
+			proxy_enabled, proxy_base_url, proxy_model_override, proxy_api_key
 		FROM sessions
 		WHERE dangerously_skip_permissions = 1
 			AND dangerously_skip_permissions_expires_at IS NOT NULL
@@ -1111,23 +1279,28 @@ func (s *SQLiteStore) GetExpiredDangerousPermissionsSessions(ctx context.Context
 	var sessions []*Session
 	for rows.Next() {
 		var session Session
-		var claudeSessionID, parentSessionID, summary, title, model, workingDir, systemPrompt, appendSystemPrompt, customInstructions sql.NullString
+		var claudeSessionID, parentSessionID, summary, title, model, modelID, workingDir, systemPrompt, appendSystemPrompt, customInstructions sql.NullString
 		var permissionPromptTool, allowedTools, disallowedTools sql.NullString
 		var completedAt sql.NullTime
 		var costUSD sql.NullFloat64
-		var totalTokens, durationMS, numTurns sql.NullInt64
+		var inputTokens, outputTokens, cacheCreationInputTokens, cacheReadInputTokens, effectiveContextTokens sql.NullInt64
+		var durationMS, numTurns sql.NullInt64
 		var resultContent, errorMessage sql.NullString
 		var archived sql.NullBool
 		var dangerouslySkipPermissionsExpiresAt sql.NullTime
+		var proxyEnabled sql.NullBool
+		var proxyBaseURL, proxyModelOverride, proxyAPIKey sql.NullString
 
 		err := rows.Scan(
 			&session.ID, &session.RunID, &claudeSessionID, &parentSessionID,
-			&session.Query, &summary, &title, &model, &workingDir, &session.MaxTurns,
+			&session.Query, &summary, &title, &model, &modelID, &workingDir, &session.MaxTurns,
 			&systemPrompt, &appendSystemPrompt, &customInstructions,
 			&permissionPromptTool, &allowedTools, &disallowedTools,
 			&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
-			&costUSD, &totalTokens, &durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
+			&costUSD, &inputTokens, &outputTokens, &cacheCreationInputTokens, &cacheReadInputTokens, &effectiveContextTokens,
+			&durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
 			&archived, &session.DangerouslySkipPermissions, &dangerouslySkipPermissionsExpiresAt,
+			&proxyEnabled, &proxyBaseURL, &proxyModelOverride, &proxyAPIKey,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan session: %w", err)
@@ -1139,6 +1312,7 @@ func (s *SQLiteStore) GetExpiredDangerousPermissionsSessions(ctx context.Context
 		session.Summary = summary.String
 		session.Title = title.String
 		session.Model = model.String
+		session.ModelID = modelID.String
 		session.WorkingDir = workingDir.String
 		session.SystemPrompt = systemPrompt.String
 		session.AppendSystemPrompt = appendSystemPrompt.String
@@ -1154,9 +1328,25 @@ func (s *SQLiteStore) GetExpiredDangerousPermissionsSessions(ctx context.Context
 		if costUSD.Valid {
 			session.CostUSD = &costUSD.Float64
 		}
-		if totalTokens.Valid {
-			tokens := int(totalTokens.Int64)
-			session.TotalTokens = &tokens
+		if inputTokens.Valid {
+			tokens := int(inputTokens.Int64)
+			session.InputTokens = &tokens
+		}
+		if outputTokens.Valid {
+			tokens := int(outputTokens.Int64)
+			session.OutputTokens = &tokens
+		}
+		if cacheCreationInputTokens.Valid {
+			tokens := int(cacheCreationInputTokens.Int64)
+			session.CacheCreationInputTokens = &tokens
+		}
+		if cacheReadInputTokens.Valid {
+			tokens := int(cacheReadInputTokens.Int64)
+			session.CacheReadInputTokens = &tokens
+		}
+		if effectiveContextTokens.Valid {
+			tokens := int(effectiveContextTokens.Int64)
+			session.EffectiveContextTokens = &tokens
 		}
 		if durationMS.Valid {
 			duration := int(durationMS.Int64)
@@ -1176,6 +1366,12 @@ func (s *SQLiteStore) GetExpiredDangerousPermissionsSessions(ctx context.Context
 		if dangerouslySkipPermissionsExpiresAt.Valid {
 			session.DangerouslySkipPermissionsExpiresAt = &dangerouslySkipPermissionsExpiresAt.Time
 		}
+
+		// Handle proxy fields
+		session.ProxyEnabled = proxyEnabled.Valid && proxyEnabled.Bool
+		session.ProxyBaseURL = proxyBaseURL.String
+		session.ProxyModelOverride = proxyModelOverride.String
+		session.ProxyAPIKey = proxyAPIKey.String
 
 		sessions = append(sessions, &session)
 	}
@@ -2007,4 +2203,25 @@ func (s *SQLiteStore) GetFileSnapshots(ctx context.Context, sessionID string) ([
 		snapshots = append(snapshots, s)
 	}
 	return snapshots, rows.Err()
+}
+
+// GetSessionCount returns the total number of sessions
+func (s *SQLiteStore) GetSessionCount(ctx context.Context) (int, error) {
+	var count int
+	err := s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM sessions").Scan(&count)
+	return count, err
+}
+
+// GetApprovalCount returns the total number of approvals
+func (s *SQLiteStore) GetApprovalCount(ctx context.Context) (int, error) {
+	var count int
+	err := s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM approvals").Scan(&count)
+	return count, err
+}
+
+// GetEventCount returns the total number of conversation events
+func (s *SQLiteStore) GetEventCount(ctx context.Context) (int, error) {
+	var count int
+	err := s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM conversation_events").Scan(&count)
+	return count, err
 }

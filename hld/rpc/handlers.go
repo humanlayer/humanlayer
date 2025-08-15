@@ -42,6 +42,7 @@ func (h *SessionHandlers) SetEventBus(eventBus bus.EventBus) {
 // LaunchSessionRequest is the request for launching a new session
 type LaunchSessionRequest struct {
 	Query                             string                `json:"query"`
+	Title                             string                `json:"title,omitempty"`
 	Model                             string                `json:"model,omitempty"`
 	MCPConfig                         *claudecode.MCPConfig `json:"mcp_config,omitempty"`
 	PermissionPromptTool              string                `json:"permission_prompt_tool,omitempty"`
@@ -78,7 +79,8 @@ func (h *SessionHandlers) HandleLaunchSession(ctx context.Context, params json.R
 	// Build session config with daemon-level settings
 	config := session.LaunchSessionConfig{
 		SessionConfig: claudecode.SessionConfig{
-			Query:                req.Query,
+			Query: req.Query,
+			// Title:                req.Title, // TODO: Title field not available in claudecode.SessionConfig
 			MCPConfig:            req.MCPConfig,
 			PermissionPromptTool: req.PermissionPromptTool,
 			WorkingDir:           req.WorkingDir,
@@ -371,9 +373,23 @@ func (h *SessionHandlers) HandleGetSessionState(ctx context.Context, params json
 	if session.CostUSD != nil {
 		state.CostUSD = *session.CostUSD
 	}
-	if session.TotalTokens != nil {
-		state.TotalTokens = *session.TotalTokens
+	if session.InputTokens != nil {
+		state.InputTokens = *session.InputTokens
 	}
+	if session.OutputTokens != nil {
+		state.OutputTokens = *session.OutputTokens
+	}
+	if session.CacheCreationInputTokens != nil {
+		state.CacheCreationInputTokens = *session.CacheCreationInputTokens
+	}
+	if session.CacheReadInputTokens != nil {
+		state.CacheReadInputTokens = *session.CacheReadInputTokens
+	}
+	if session.EffectiveContextTokens != nil {
+		state.EffectiveContextTokens = *session.EffectiveContextTokens
+	}
+	// Always set context limit based on model
+	state.ContextLimit = GetModelContextLimit(session.Model)
 	if session.DurationMS != nil {
 		state.DurationMS = *session.DurationMS
 	}
@@ -409,6 +425,10 @@ func (h *SessionHandlers) HandleContinueSession(ctx context.Context, params json
 		DisallowedTools:      req.DisallowedTools,
 		CustomInstructions:   req.CustomInstructions,
 		MaxTurns:             req.MaxTurns,
+		ProxyEnabled:         req.ProxyEnabled,
+		ProxyBaseURL:         req.ProxyBaseURL,
+		ProxyModelOverride:   req.ProxyModelOverride,
+		ProxyAPIKey:          req.ProxyAPIKey,
 	}
 
 	// Parse MCP config if provided as JSON string

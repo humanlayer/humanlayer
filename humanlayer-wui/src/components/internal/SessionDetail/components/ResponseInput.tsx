@@ -3,12 +3,10 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Session, SessionStatus } from '@/lib/daemon/types'
 import {
-  getSessionStatusText,
   getInputPlaceholder,
   getHelpText,
   getForkInputPlaceholder,
 } from '@/components/internal/SessionDetail/utils/sessionStatus'
-import { GitBranch } from 'lucide-react'
 import { ResponseInputLocalStorageKey } from '@/components/internal/SessionDetail/hooks/useSessionActions'
 
 interface ResponseInputProps {
@@ -19,7 +17,6 @@ interface ResponseInputProps {
   handleContinueSession: () => void
   handleResponseInputKeyDown: (e: React.KeyboardEvent) => void
   isForkMode?: boolean
-  onOpenForkView?: () => void
 }
 
 export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>(
@@ -32,7 +29,6 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
       handleContinueSession,
       handleResponseInputKeyDown,
       isForkMode,
-      onOpenForkView,
     },
     ref,
   ) => {
@@ -64,22 +60,7 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
       // Regular help text
       return getHelpText(session.status)
     }
-    // Only show the simple status text if session is failed AND not in fork mode
-    if (session.status === SessionStatus.Failed && !isForkMode) {
-      return (
-        <div className="flex items-center justify-between py-1">
-          <span className="text-sm text-muted-foreground">{getSessionStatusText(session.status)}</span>
-          {onOpenForkView && (
-            <Button variant="ghost" size="sm" onClick={onOpenForkView} className="h-8 gap-2">
-              <GitBranch className="h-4 w-4" />
-              Fork from previous
-            </Button>
-          )}
-        </div>
-      )
-    }
-
-    // Otherwise always show the input
+    // Always show the input for all session states
     return (
       <div className="space-y-2">
         {isForkMode && <span className="text-sm font-medium">Fork from this message:</span>}

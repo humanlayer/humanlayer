@@ -38,7 +38,7 @@ export const DangerousSkipPermissionsMonitor = () => {
                 // Show notification using NotificationService
                 await notificationService.notify({
                   type: 'settings_changed',
-                  title: 'Dangerous skip permissions expired',
+                  title: 'Bypass permissions expired',
                   body: `Session: ${session.title || session.summary || 'Untitled'}`,
                   metadata: {
                     sessionId: session.id,

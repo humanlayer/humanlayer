@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"encoding/json"
+	"os"
 	"time"
 
 	claudecode "github.com/humanlayer/humanlayer/claudecode-go"
@@ -67,6 +68,7 @@ type Session struct {
 	Summary                             string
 	Title                               string // New field for user-editable title
 	Model                               string
+	ModelID                             string // Full model identifier (e.g., "claude-opus-4-1-20250805")
 	WorkingDir                          string
 	MaxTurns                            int
 	SystemPrompt                        string
@@ -80,7 +82,11 @@ type Session struct {
 	LastActivityAt                      time.Time
 	CompletedAt                         *time.Time
 	CostUSD                             *float64
-	TotalTokens                         *int
+	InputTokens                         *int `db:"input_tokens"`
+	OutputTokens                        *int `db:"output_tokens"`
+	CacheCreationInputTokens            *int `db:"cache_creation_input_tokens"`
+	CacheReadInputTokens                *int `db:"cache_read_input_tokens"`
+	EffectiveContextTokens              *int `db:"effective_context_tokens"`
 	DurationMS                          *int
 	NumTurns                            *int
 	ResultContent                       string
@@ -106,7 +112,11 @@ type SessionUpdate struct {
 	LastActivityAt                      *time.Time
 	CompletedAt                         *time.Time
 	CostUSD                             *float64
-	TotalTokens                         *int
+	InputTokens                         *int
+	OutputTokens                        *int
+	CacheCreationInputTokens            *int
+	CacheReadInputTokens                *int
+	EffectiveContextTokens              *int
 	DurationMS                          *int
 	NumTurns                            *int
 	ResultContent                       *string
@@ -115,7 +125,8 @@ type SessionUpdate struct {
 	DangerouslySkipPermissions          *bool       `db:"dangerously_skip_permissions"`
 	DangerouslySkipPermissionsExpiresAt **time.Time `db:"dangerously_skip_permissions_expires_at"`
 	Model                               *string
-	Archived                            *bool // New field for updating archived status
+	ModelID                             *string // Full model identifier
+	Archived                            *bool   // New field for updating archived status
 }
 
 // ConversationEvent represents a single event in a conversation
@@ -248,10 +259,11 @@ func NewSessionFromConfig(id, runID string, config claudecode.SessionConfig) *Se
 	allowedToolsJSON, _ := json.Marshal(config.AllowedTools)
 	disallowedToolsJSON, _ := json.Marshal(config.DisallowedTools)
 
-	return &Session{
+	session := &Session{
 		ID:                   id,
 		RunID:                runID,
 		Query:                config.Query,
+		Title:                "", // TODO: config.Title field not available in claudecode.SessionConfig
 		Model:                string(config.Model),
 		WorkingDir:           config.WorkingDir,
 		MaxTurns:             config.MaxTurns,
@@ -265,4 +277,15 @@ func NewSessionFromConfig(id, runID string, config claudecode.SessionConfig) *Se
 		CreatedAt:            time.Now(),
 		LastActivityAt:       time.Now(),
 	}
+
+	// Auto-detect OpenRouter configuration from environment
+	if apiKey := os.Getenv("OPENROUTER_API_KEY"); apiKey != "" {
+		session.ProxyEnabled = true
+		session.ProxyBaseURL = "https://openrouter.ai/api"
+		session.ProxyAPIKey = apiKey
+		// Default model for OpenRouter - can be overridden later
+		session.ProxyModelOverride = "openai/gpt-oss-120b"
+	}
+
+	return session
 }

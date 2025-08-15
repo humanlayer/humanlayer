@@ -37,6 +37,7 @@ const hotkeyData = [
   { category: 'Session List', key: 'Shift+K', description: 'Select upward' },
   { category: 'Session List', key: 'Enter', description: 'Open session' },
   { category: 'Session List', key: 'E', description: 'Archive/unarchive' },
+  { category: 'Session List', key: 'Shift+R', description: 'Rename session' },
   { category: 'Session List', key: 'Tab', description: 'Toggle normal/archived view' },
   { category: 'Session List', key: 'Escape', description: 'Exit archived view' },
 
@@ -50,6 +51,7 @@ const hotkeyData = [
   { category: 'Session Detail', key: 'A', description: 'Approve' },
   { category: 'Session Detail', key: 'D', description: 'Deny' },
   { category: 'Session Detail', key: 'E', description: 'Archive session' },
+  { category: 'Session Detail', key: 'Shift+R', description: 'Rename session' },
   { category: 'Session Detail', key: 'Ctrl+X', description: 'Interrupt session' },
   { category: 'Session Detail', key: 'P', description: 'Go to parent session' },
   { category: 'Session Detail', key: '⌘+Y', description: 'Toggle fork view' },

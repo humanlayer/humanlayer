@@ -59,10 +59,7 @@ type SessionConfig struct {
 	DisallowedTools      []string
 	CustomInstructions   string
 	Verbose              bool
-
-	// Environment variables to pass to Claude subprocess
-	// Example: {"ANTHROPIC_BASE_URL": "http://localhost:7777/api/anthropic_proxy/session-123"}
-	Env map[string]string `json:"env,omitempty"`
+	Env                  map[string]string // Environment variables to set for the Claude process
 }
 
 // StreamEvent represents a single event from the streaming JSON output

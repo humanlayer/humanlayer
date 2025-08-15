@@ -4,6 +4,7 @@ import { TaskEventGroup } from '../hooks/useTaskGrouping'
 import { truncate, formatAbsoluteTimestamp, formatTimestamp } from '@/utils/formatting'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { eventToDisplayObject } from '../eventToDisplayObject'
+import { hasTextSelection } from '@/utils/selection'
 
 interface TaskGroupProps {
   group: TaskEventGroup
@@ -209,10 +210,17 @@ export function TaskGroup({
                     setConfirmingApprovalId?.(null)
                   }}
                   onClick={() => {
+                    // Don't open modal if user has selected text
+                    if (hasTextSelection()) {
+                      return
+                    }
+
                     const event = subEvent
                     if (event?.eventType === ConversationEventType.ToolCall) {
                       const toolResult = event.toolId ? toolResultsByKey[event.toolId] : null
                       if (setExpandedToolResult && setExpandedToolCall) {
+                        // Clear focus when opening modal to prevent double escape handling
+                        setFocusedEventId(null)
                         setExpandedToolResult(toolResult || null)
                         setExpandedToolCall(event)
                       }

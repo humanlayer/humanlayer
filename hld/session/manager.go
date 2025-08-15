@@ -27,6 +27,7 @@ type Manager struct {
 	approvalReconciler ApprovalReconciler
 	pendingQueries     sync.Map // map[sessionID]query - stores queries waiting for Claude session ID
 	socketPath         string   // Daemon socket path for MCP servers
+	httpPort           int      // HTTP server port for proxy endpoint
 }
 
 // Compile-time check that Manager implements SessionManager
@@ -57,6 +58,14 @@ func (m *Manager) SetApprovalReconciler(reconciler ApprovalReconciler) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.approvalReconciler = reconciler
+}
+
+// SetHTTPPort sets the HTTP port for the proxy endpoint
+func (m *Manager) SetHTTPPort(port int) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.httpPort = port
+	slog.Debug("HTTP port set for proxy endpoint", "port", port)
 }
 
 // LaunchSession starts a new Claude Code session
@@ -136,14 +145,28 @@ func (m *Manager) LaunchSession(ctx context.Context, config LaunchSessionConfig)
 
 	// No longer storing full session in memory
 
-	// Set proxy URL for this session
-	if claudeConfig.Env == nil {
-		claudeConfig.Env = make(map[string]string)
+	// Set proxy URL for this session when proxy is enabled
+	if dbSession.ProxyEnabled || os.Getenv("OPENROUTER_API_KEY") != "" {
+		if claudeConfig.Env == nil {
+			claudeConfig.Env = make(map[string]string)
+		}
+		// Point Claude back to our proxy endpoint
+		// Use the actual HTTP port if set, otherwise default to 7777
+		m.mu.RLock()
+		httpPort := m.httpPort
+		m.mu.RUnlock()
+		if httpPort == 0 {
+			httpPort = 7777 // fallback to default
+			slog.Warn("HTTP port not set, using default", "default_port", httpPort)
+		}
+		proxyURL := fmt.Sprintf("http://localhost:%d/api/v1/anthropic_proxy/%s", httpPort, sessionID)
+		claudeConfig.Env["ANTHROPIC_BASE_URL"] = proxyURL
+		slog.Info("Setting ANTHROPIC_BASE_URL for proxy",
+			"session_id", sessionID,
+			"proxy_url", proxyURL,
+			"proxy_enabled", dbSession.ProxyEnabled,
+			"has_openrouter_key", os.Getenv("OPENROUTER_API_KEY") != "")
 	}
-	// Point Claude back to our proxy endpoint
-	// TODO: Get actual daemon port from config instead of hardcoding 7777
-	proxyURL := fmt.Sprintf("http://localhost:7777/api/v1/anthropic_proxy/%s", sessionID)
-	claudeConfig.Env["ANTHROPIC_BASE_URL"] = proxyURL
 
 	// Log final configuration before launching
 	var mcpServersDetail string
@@ -161,8 +184,7 @@ func (m *Manager) LaunchSession(ctx context.Context, config LaunchSessionConfig)
 		"working_dir", claudeConfig.WorkingDir,
 		"permission_prompt_tool", claudeConfig.PermissionPromptTool,
 		"mcp_servers", mcpServerCount,
-		"mcp_servers_detail", mcpServersDetail,
-		"proxy_url", proxyURL)
+		"mcp_servers_detail", mcpServersDetail)
 
 	// Launch Claude session (without daemon-level settings)
 	claudeSession, err := m.client.Launch(claudeConfig)
@@ -287,9 +309,25 @@ eventLoop:
 				}
 			}
 
-			// Capture Claude session ID
-			if event.SessionID != "" && claudeSessionID == "" {
-				claudeSessionID = event.SessionID
+			// Capture Claude session ID from either top-level or message session_id
+			if claudeSessionID == "" {
+				if event.SessionID != "" {
+					claudeSessionID = event.SessionID
+				} else if event.Message != nil && event.Message.ID != "" {
+					// For assistant/user messages, we can use the message itself as proof of session
+					// The actual claude session ID might be in the raw JSON
+					if eventJSON, err := json.Marshal(event); err == nil {
+						var rawEvent map[string]interface{}
+						if err := json.Unmarshal(eventJSON, &rawEvent); err == nil {
+							if sid, ok := rawEvent["session_id"].(string); ok && sid != "" {
+								claudeSessionID = sid
+							}
+						}
+					}
+				}
+			}
+
+			if claudeSessionID != "" {
 				// Note: Claude session ID captured for resume capability
 				slog.Debug("captured Claude session ID",
 					"session_id", sessionID,
@@ -479,6 +517,7 @@ func (m *Manager) GetSessionInfo(sessionID string) (*Info, error) {
 		Summary:         dbSession.Summary,
 		Title:           dbSession.Title,
 		Model:           dbSession.Model,
+		ModelID:         dbSession.ModelID,
 		WorkingDir:      dbSession.WorkingDir,
 		AutoAcceptEdits: dbSession.AutoAcceptEdits,
 		Archived:        dbSession.Archived,
@@ -542,6 +581,7 @@ func (m *Manager) ListSessions() []Info {
 			Summary:                             dbSession.Summary,
 			Title:                               dbSession.Title,
 			Model:                               dbSession.Model,
+			ModelID:                             dbSession.ModelID,
 			WorkingDir:                          dbSession.WorkingDir,
 			AutoAcceptEdits:                     dbSession.AutoAcceptEdits,
 			Archived:                            dbSession.Archived,
@@ -601,7 +641,65 @@ func (m *Manager) updateSessionActivity(ctx context.Context, sessionID string) {
 
 // processStreamEvent processes a streaming event and stores it in the database
 func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, claudeSessionID string, event claudecode.StreamEvent) error {
-	// Skip events without claude session ID
+	// Log the entire raw event JSON for debugging
+	if eventJSON, err := json.Marshal(event); err == nil {
+		slog.Debug("processing API event",
+			"session_id", sessionID,
+			"event_type", event.Type,
+			"raw_event_json", string(eventJSON))
+	}
+
+	// Process token updates from assistant messages even without claudeSessionID
+	if event.Type == "assistant" && event.Message != nil && event.Message.Role == "assistant" && event.Message.Usage != nil {
+		usage := event.Message.Usage
+		// Compute effective context tokens (what's actually in the context window)
+		// This includes ALL tokens that count toward the context limit
+		effective := usage.InputTokens + usage.OutputTokens + usage.CacheReadInputTokens + usage.CacheCreationInputTokens
+
+		now := time.Now()
+		update := store.SessionUpdate{
+			InputTokens:              &usage.InputTokens,
+			OutputTokens:             &usage.OutputTokens,
+			CacheCreationInputTokens: &usage.CacheCreationInputTokens,
+			CacheReadInputTokens:     &usage.CacheReadInputTokens,
+			EffectiveContextTokens:   &effective,
+			LastActivityAt:           &now,
+		}
+
+		if err := m.store.UpdateSession(ctx, sessionID, update); err != nil {
+			slog.Error("failed to update token usage",
+				"session_id", sessionID,
+				"error", err)
+		} else {
+			// Publish event to notify UI about token update
+			// The UI needs "new_status" field even though we're not changing status
+			if m.eventBus != nil {
+				// Get current session to include current status
+				session, _ := m.store.GetSession(ctx, sessionID)
+				currentStatus := "running"
+				if session != nil && session.Status != "" {
+					currentStatus = session.Status
+				}
+
+				slog.Debug("Publishing token update event",
+					"session_id", sessionID,
+					"status", currentStatus,
+					"effective_tokens", effective)
+
+				m.eventBus.Publish(bus.Event{
+					Type: bus.EventSessionStatusChanged,
+					Data: map[string]interface{}{
+						"session_id": sessionID,
+						"new_status": currentStatus, // Required by UI handler
+						"old_status": currentStatus, // Status isn't changing, just tokens
+						"reason":     "token_update",
+					},
+				})
+			}
+		}
+	}
+
+	// Skip remaining event processing without claude session ID
 	if claudeSessionID == "" {
 		return nil
 	}
@@ -647,6 +745,9 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 
 			// Only update if model is empty and init event has a model
 			if session != nil && session.Model == "" && event.Model != "" {
+				// Store the full model ID
+				modelID := event.Model
+
 				// Extract simple model name from API format (case-insensitive)
 				var modelName string
 				lowerModel := strings.ToLower(event.Model)
@@ -656,27 +757,39 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 					modelName = "sonnet"
 				}
 
-				// Update session with detected model
+				// Update session with both model ID and simplified name
 				if modelName != "" {
 					update := store.SessionUpdate{
-						Model: &modelName,
+						Model:   &modelName,
+						ModelID: &modelID,
 					}
 					if err := m.store.UpdateSession(ctx, sessionID, update); err != nil {
 						slog.Error("failed to update session model from init event",
 							"session_id", sessionID,
 							"model", modelName,
+							"model_id", modelID,
 							"error", err)
 					} else {
 						slog.Info("populated session model from init event",
 							"session_id", sessionID,
 							"model", modelName,
-							"original", event.Model)
+							"model_id", modelID)
 					}
 				} else {
-					// Log when we detect a model but don't recognize the format
-					slog.Debug("unrecognized model format in init event",
-						"session_id", sessionID,
-						"model", event.Model)
+					// Still store the model ID even if we don't recognize the format
+					update := store.SessionUpdate{
+						ModelID: &modelID,
+					}
+					if err := m.store.UpdateSession(ctx, sessionID, update); err != nil {
+						slog.Error("failed to update session model_id from init event",
+							"session_id", sessionID,
+							"model_id", modelID,
+							"error", err)
+					} else {
+						slog.Debug("stored unrecognized model format in init event",
+							"session_id", sessionID,
+							"model_id", modelID)
+					}
 				}
 			}
 			// Don't store init event in conversation history - we only extract the model
@@ -686,6 +799,7 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 	case "assistant", "user":
 		// Messages contain the actual content
 		if event.Message != nil {
+			// Token usage is already processed at the top of this function
 			// Process each content block
 			for _, content := range event.Message.Content {
 				switch content.Type {
@@ -862,6 +976,19 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 			CostUSD:        &event.CostUSD,
 			DurationMS:     &event.DurationMS,
 		}
+
+		// Process usage data from result event
+		if event.Usage != nil {
+			usage := event.Usage
+			// Skip updating token counts from result events - they appear to accumulate incorrectly
+			// Result events show cumulative cache reads across the entire session (bug)
+			// We only trust token counts from individual assistant messages
+			slog.Debug("Skipping result event token update due to API bug",
+				"session_id", sessionID,
+				"cache_read_tokens", usage.CacheReadInputTokens,
+				"reason", "result events report cumulative cache reads")
+		}
+
 		if event.Error != "" {
 			update.ErrorMessage = &event.Error
 		}
@@ -989,11 +1116,12 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 		return nil, fmt.Errorf("failed to get parent session: %w", err)
 	}
 
-	// Validate parent session status - allow completed, interrupted, or running sessions
+	// Validate parent session status - allow completed, interrupted, running, or failed sessions
 	if parentSession.Status != store.SessionStatusCompleted &&
 		parentSession.Status != store.SessionStatusInterrupted &&
-		parentSession.Status != store.SessionStatusRunning {
-		return nil, fmt.Errorf("cannot continue session with status %s (must be completed, interrupted, or running)", parentSession.Status)
+		parentSession.Status != store.SessionStatusRunning &&
+		parentSession.Status != store.SessionStatusFailed {
+		return nil, fmt.Errorf("cannot continue session with status %s (must be completed, interrupted, running, or failed)", parentSession.Status)
 	}
 
 	// Validate parent session has claude_session_id (needed for resume)
@@ -1153,6 +1281,28 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 	if dbSession.WorkingDir == "" && parentSession.WorkingDir != "" {
 		dbSession.WorkingDir = parentSession.WorkingDir
 	}
+	
+	// Inherit proxy configuration from parent or use provided values
+	if req.ProxyEnabled || parentSession.ProxyEnabled {
+		dbSession.ProxyEnabled = true
+		// Use provided proxy config if available, otherwise inherit from parent
+		if req.ProxyBaseURL != "" {
+			dbSession.ProxyBaseURL = req.ProxyBaseURL
+		} else {
+			dbSession.ProxyBaseURL = parentSession.ProxyBaseURL
+		}
+		if req.ProxyModelOverride != "" {
+			dbSession.ProxyModelOverride = req.ProxyModelOverride
+		} else {
+			dbSession.ProxyModelOverride = parentSession.ProxyModelOverride
+		}
+		if req.ProxyAPIKey != "" {
+			dbSession.ProxyAPIKey = req.ProxyAPIKey
+		} else {
+			dbSession.ProxyAPIKey = parentSession.ProxyAPIKey
+		}
+	}
+	
 	// Note: ClaudeSessionID will be captured from streaming events (will be different from parent)
 	if err := m.store.CreateSession(ctx, dbSession); err != nil {
 		return nil, fmt.Errorf("failed to store session in database: %w", err)
@@ -1181,9 +1331,48 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 		}
 	}
 
+	// Set proxy URL for resumed session when proxy is enabled
+	if dbSession.ProxyEnabled || os.Getenv("OPENROUTER_API_KEY") != "" {
+		if config.Env == nil {
+			config.Env = make(map[string]string)
+		}
+		// Point Claude back to our proxy endpoint
+		// Use the actual HTTP port if set, otherwise default to 7777
+		m.mu.RLock()
+		httpPort := m.httpPort
+		m.mu.RUnlock()
+		if httpPort == 0 {
+			httpPort = 7777 // fallback to default
+			slog.Warn("HTTP port not set, using default", "default_port", httpPort)
+		}
+		proxyURL := fmt.Sprintf("http://localhost:%d/api/v1/anthropic_proxy/%s", httpPort, sessionID)
+		config.Env["ANTHROPIC_BASE_URL"] = proxyURL
+		slog.Info("Setting ANTHROPIC_BASE_URL for resumed session proxy",
+			"session_id", sessionID,
+			"proxy_url", proxyURL,
+			"proxy_enabled", dbSession.ProxyEnabled,
+			"has_openrouter_key", os.Getenv("OPENROUTER_API_KEY") != "")
+	}
+
 	// Launch resumed Claude session
+	slog.Info("attempting to resume Claude session",
+		"session_id", sessionID,
+		"parent_session_id", req.ParentSessionID,
+		"parent_status", parentSession.Status,
+		"claude_session_id", parentSession.ClaudeSessionID,
+		"query", req.Query,
+		"proxy_enabled", dbSession.ProxyEnabled,
+		"proxy_base_url", dbSession.ProxyBaseURL,
+		"proxy_model", dbSession.ProxyModelOverride)
+
 	claudeSession, err := m.client.Launch(config)
 	if err != nil {
+		slog.Error("failed to resume Claude session from failed parent",
+			"session_id", sessionID,
+			"parent_session_id", req.ParentSessionID,
+			"parent_status", parentSession.Status,
+			"claude_session_id", parentSession.ClaudeSessionID,
+			"error", err)
 		m.updateSessionStatus(ctx, sessionID, StatusFailed, err.Error())
 		return nil, fmt.Errorf("failed to launch resumed Claude session: %w", err)
 	}

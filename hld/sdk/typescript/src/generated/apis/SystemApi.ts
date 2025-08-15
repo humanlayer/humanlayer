@@ -15,9 +15,12 @@
 
 import * as runtime from '../runtime';
 import type {
+  DatabaseInfoResponse,
   HealthResponse,
 } from '../models/index';
 import {
+    DatabaseInfoResponseFromJSON,
+    DatabaseInfoResponseToJSON,
     HealthResponseFromJSON,
     HealthResponseToJSON,
 } from '../models/index';
@@ -29,6 +32,21 @@ import {
  * @interface SystemApiInterface
  */
 export interface SystemApiInterface {
+    /**
+     * Get information about the daemon\'s SQLite database including path, size, and statistics
+     * @summary Get database information
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SystemApiInterface
+     */
+    getDatabaseInfoRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DatabaseInfoResponse>>;
+
+    /**
+     * Get information about the daemon\'s SQLite database including path, size, and statistics
+     * Get database information
+     */
+    getDatabaseInfo(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DatabaseInfoResponse>;
+
     /**
      * Check if the daemon is running and healthy
      * @summary Health check
@@ -50,6 +68,37 @@ export interface SystemApiInterface {
  * 
  */
 export class SystemApi extends runtime.BaseAPI implements SystemApiInterface {
+
+    /**
+     * Get information about the daemon\'s SQLite database including path, size, and statistics
+     * Get database information
+     */
+    async getDatabaseInfoRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DatabaseInfoResponse>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/database-info`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => DatabaseInfoResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Get information about the daemon\'s SQLite database including path, size, and statistics
+     * Get database information
+     */
+    async getDatabaseInfo(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DatabaseInfoResponse> {
+        const response = await this.getDatabaseInfoRaw(initOverrides);
+        return await response.value();
+    }
 
     /**
      * Check if the daemon is running and healthy

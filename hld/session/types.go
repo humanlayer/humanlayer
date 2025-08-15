@@ -53,6 +53,7 @@ type Info struct {
 	Summary                             string             `json:"summary"`
 	Title                               string             `json:"title"`
 	Model                               string             `json:"model,omitempty"`
+	ModelID                             string             `json:"model_id,omitempty"`
 	WorkingDir                          string             `json:"working_dir,omitempty"`
 	Result                              *claudecode.Result `json:"result,omitempty"`
 	AutoAcceptEdits                     bool               `json:"auto_accept_edits"`
@@ -81,6 +82,10 @@ type ContinueSessionConfig struct {
 	DisallowedTools      []string              // Optional disallowed tools override
 	CustomInstructions   string                // Optional custom instructions
 	MaxTurns             int                   // Optional max turns override
+	ProxyEnabled         bool                  // Whether proxy is enabled
+	ProxyBaseURL         string                // Proxy base URL
+	ProxyModelOverride   string                // Model to use with proxy
+	ProxyAPIKey          string                // API key for proxy service
 }
 
 // SessionManager defines the interface for managing Claude Code sessions
@@ -105,6 +110,9 @@ type SessionManager interface {
 
 	// UpdateSessionSettings updates session settings and publishes events
 	UpdateSessionSettings(ctx context.Context, sessionID string, updates store.SessionUpdate) error
+
+	// SetHTTPPort sets the HTTP port for the proxy endpoint
+	SetHTTPPort(port int)
 }
 
 // ReadToolResult represents the JSON structure of a Read tool result

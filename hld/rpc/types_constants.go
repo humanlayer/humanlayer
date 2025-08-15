@@ -80,3 +80,17 @@ func ParseDecision(s string) (Decision, error) {
 		return "", fmt.Errorf("invalid decision: %s", s)
 	}
 }
+
+// ModelContextLimits defines the context window size for each model
+var ModelContextLimits = map[string]int{
+	// Default for all models (Anthropic input token limit: 200k - 32k output reserved = 168k)
+	"default": 168000,
+}
+
+// GetModelContextLimit returns the context limit for a given model
+func GetModelContextLimit(model string) int {
+	if limit, ok := ModelContextLimits[model]; ok {
+		return limit
+	}
+	return ModelContextLimits["default"]
+}

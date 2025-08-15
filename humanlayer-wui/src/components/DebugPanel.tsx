@@ -11,9 +11,12 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Loader2, RefreshCw, Link, Server } from 'lucide-react'
+import { Loader2, RefreshCw, Link, Server, Database, Copy } from 'lucide-react'
 import { useDaemonConnection } from '@/hooks/useDaemonConnection'
 import { logger } from '@/lib/logging'
+import { daemonClient } from '@/lib/daemon'
+import type { DatabaseInfo } from '@/lib/daemon/types'
+import { toast } from 'sonner'
 
 interface DebugPanelProps {
   open?: boolean
@@ -29,10 +32,29 @@ export function DebugPanel({ open, onOpenChange }: DebugPanelProps) {
   const [daemonType, setDaemonType] = useState<'managed' | 'external'>('managed')
   const [externalDaemonUrl, setExternalDaemonUrl] = useState<string | null>(null)
   const [daemonInfo, setDaemonInfo] = useState<DaemonInfo | null>(null)
+  const [databaseInfo, setDatabaseInfo] = useState<DatabaseInfo | null>(null)
 
   // Only show in dev mode
   if (!import.meta.env.DEV) {
     return null
+  }
+
+  // Helper to format bytes to human-readable size
+  function formatBytes(bytes: number): string {
+    if (bytes === 0) return '0 B'
+    const k = 1024
+    const sizes = ['B', 'KB', 'MB', 'GB']
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`
+  }
+
+  // Helper to copy text to clipboard
+  async function copyToClipboard(text: string) {
+    try {
+      await navigator.clipboard.writeText(text)
+    } catch (error) {
+      logger.error('Failed to copy to clipboard:', error)
+    }
   }
 
   useEffect(() => {
@@ -47,6 +69,18 @@ export function DebugPanel({ open, onOpenChange }: DebugPanelProps) {
       setDaemonType(type)
       if (type === 'external') {
         setExternalDaemonUrl((window as any).__HUMANLAYER_DAEMON_URL || null)
+      }
+
+      // Fetch database info if connected
+      if (connected) {
+        try {
+          const dbInfo = await daemonClient.getDatabaseInfo()
+          console.log('dbInfo', dbInfo)
+          setDatabaseInfo(dbInfo)
+        } catch (error) {
+          logger.error('Failed to load database info:', error)
+          setDatabaseInfo(null)
+        }
       }
     } catch (error) {
       logger.error('Failed to load daemon info:', error)
@@ -106,12 +140,12 @@ export function DebugPanel({ open, onOpenChange }: DebugPanelProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>Debug Panel</DialogTitle>
           <DialogDescription>Advanced daemon management for developers</DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 py-4">
+        <div className="grid gap-4 py-4 md:grid-cols-2">
           <Card>
             <CardHeader>
               <CardTitle className="text-sm">Daemon Status</CardTitle>
@@ -217,6 +251,86 @@ export function DebugPanel({ open, onOpenChange }: DebugPanelProps) {
               {connectError && <p className="text-sm text-destructive">{connectError}</p>}
             </CardContent>
           </Card>
+
+          {databaseInfo && (
+            <Card className="md:col-span-2">
+              <CardHeader>
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Database className="h-4 w-4" />
+                  Database Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 sm:grid-cols-1">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Path</span>
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs font-mono" title={databaseInfo.path}>
+                          {databaseInfo.path}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          onClick={() => {
+                            copyToClipboard(databaseInfo.path)
+                            toast.success('Copied to clipboard')
+                          }}
+                        >
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    {databaseInfo.last_modified && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Last Modified</span>
+                        <span className="text-xs font-mono">
+                          {new Date(databaseInfo.last_modified).toLocaleString()}
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Size</span>
+                      <span className="text-sm font-medium">{formatBytes(databaseInfo.size)}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Tables</span>
+                      <span className="text-sm font-medium">{databaseInfo.table_count}</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    {databaseInfo.stats && (
+                      <>
+                        {databaseInfo.stats.sessions !== undefined && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-muted-foreground">Sessions</span>
+                            <span className="text-sm font-medium">{databaseInfo.stats.sessions}</span>
+                          </div>
+                        )}
+                        {databaseInfo.stats.approvals !== undefined && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-muted-foreground">Approvals</span>
+                            <span className="text-sm font-medium">{databaseInfo.stats.approvals}</span>
+                          </div>
+                        )}
+                        {databaseInfo.stats.events !== undefined && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-muted-foreground">Events</span>
+                            <span className="text-sm font-medium">{databaseInfo.stats.events}</span>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </DialogContent>
     </Dialog>

@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 )
@@ -10,6 +11,11 @@ import (
 // Transform request from Anthropic format to OpenAI format
 func (h *ProxyHandler) transformAnthropicToOpenAI(anthropicReq map[string]interface{}, session map[string]interface{}) map[string]interface{} {
 	openAIReq := make(map[string]interface{})
+
+	slog.Debug("transforming Anthropic to OpenAI format",
+		"session_id", session["id"],
+		"has_messages", anthropicReq["messages"] != nil,
+		"has_tools", anthropicReq["tools"] != nil)
 
 	// Transform messages
 	if messages, ok := anthropicReq["messages"].([]interface{}); ok {
@@ -41,25 +47,51 @@ func (h *ProxyHandler) transformAnthropicToOpenAI(anthropicReq map[string]interf
 		openAIReq["messages"] = openAIMessages
 	}
 
-	// Transform tools to OpenAI functions
+	// Transform tools to OpenAI tools format (not deprecated functions)
 	if tools, ok := anthropicReq["tools"].([]interface{}); ok {
-		var functions []interface{}
+		var openAITools []interface{}
 		for _, tool := range tools {
 			if t, ok := tool.(map[string]interface{}); ok {
 				// Filter out BatchTool
 				if name, ok := t["name"].(string); ok && name != "BatchTool" {
 					inputSchema := t["input_schema"].(map[string]interface{})
-					functions = append(functions, map[string]interface{}{
-						"name":        t["name"],
-						"description": t["description"],
-						"parameters":  removeURIFormat(inputSchema),
+					openAITools = append(openAITools, map[string]interface{}{
+						"type": "function",
+						"function": map[string]interface{}{
+							"name":        t["name"],
+							"description": t["description"],
+							"parameters":  removeURIFormat(inputSchema),
+						},
 					})
 				}
 			}
 		}
-		// OpenAI uses "functions" field, not "tools"
-		if len(functions) > 0 {
-			openAIReq["functions"] = functions
+		// OpenAI uses "tools" field with new structure
+		if len(openAITools) > 0 {
+			openAIReq["tools"] = openAITools
+			// Default to auto tool choice if not specified
+			if anthropicReq["tool_choice"] == nil {
+				openAIReq["tool_choice"] = "auto"
+			}
+		}
+	}
+
+	// Handle tool_choice if specified
+	if toolChoice, ok := anthropicReq["tool_choice"].(map[string]interface{}); ok {
+		if toolChoice["type"] == "tool" {
+			// Transform specific tool choice
+			if name, ok := toolChoice["name"].(string); ok {
+				openAIReq["tool_choice"] = map[string]interface{}{
+					"type": "function",
+					"function": map[string]interface{}{
+						"name": name,
+					},
+				}
+			}
+		} else if toolChoice["type"] == "any" {
+			openAIReq["tool_choice"] = "auto"
+		} else if toolChoice["type"] == "none" {
+			openAIReq["tool_choice"] = "none"
 		}
 	}
 
@@ -67,9 +99,15 @@ func (h *ProxyHandler) transformAnthropicToOpenAI(anthropicReq map[string]interf
 	// Use ProxyModelOverride if set, otherwise use default OpenRouter model
 	if modelOverride, ok := session["proxy_model_override"].(string); ok && modelOverride != "" {
 		openAIReq["model"] = modelOverride
+		slog.Debug("using proxy model override",
+			"session_id", session["id"],
+			"model", modelOverride)
 	} else {
 		// Default to anthropic/claude-sonnet-4 for OpenRouter
-		openAIReq["model"] = "anthropic/claude-sonnet-4"
+		openAIReq["model"] = "openai/gpt-oss-120b"
+		slog.Debug("using default OpenRouter model",
+			"session_id", session["id"],
+			"model", "openai/gpt-oss-120b")
 	}
 
 	// Copy standard parameters
@@ -82,6 +120,17 @@ func (h *ProxyHandler) transformAnthropicToOpenAI(anthropicReq map[string]interf
 	if maxTokens, ok := anthropicReq["max_tokens"]; ok {
 		openAIReq["max_tokens"] = maxTokens
 	}
+
+	messageCount := 0
+	if msgs, ok := openAIReq["messages"].([]interface{}); ok {
+		messageCount = len(msgs)
+	}
+
+	slog.Debug("transformation complete",
+		"session_id", session["id"],
+		"message_count", messageCount,
+		"has_tools", openAIReq["tools"] != nil,
+		"tool_choice", openAIReq["tool_choice"])
 
 	return openAIReq
 }
@@ -147,7 +196,7 @@ func transformSingleMessage(anthropicMsg map[string]interface{}) map[string]inte
 }
 
 // Transform OpenAI response back to Anthropic format
-func transformOpenAIToAnthropic(message map[string]interface{}, finishReason string) map[string]interface{} {
+func transformOpenAIToAnthropic(message map[string]interface{}, finishReason string, usage map[string]interface{}) map[string]interface{} {
 	// Map stop reasons
 	anthropicStopReason := mapStopReason(finishReason)
 
@@ -191,23 +240,49 @@ func transformOpenAIToAnthropic(message map[string]interface{}, finishReason str
 		})
 	}
 
+	// Extract actual token usage from OpenAI response
+	anthropicUsage := map[string]interface{}{
+		"input_tokens":  0,
+		"output_tokens": 0,
+	}
+
+	if usage != nil {
+		// Map OpenAI token fields to Anthropic format
+		// OpenRouter/OpenAI uses "prompt_tokens" and "completion_tokens"
+		if promptTokens, ok := usage["prompt_tokens"].(float64); ok {
+			anthropicUsage["input_tokens"] = int(promptTokens)
+		}
+		if completionTokens, ok := usage["completion_tokens"].(float64); ok {
+			anthropicUsage["output_tokens"] = int(completionTokens)
+		}
+		// Some OpenAI models may report total_tokens, but we don't need it
+
+		// Log token extraction for debugging
+		slog.Debug("extracted token usage from OpenAI response",
+			"input_tokens", anthropicUsage["input_tokens"],
+			"output_tokens", anthropicUsage["output_tokens"],
+			"raw_usage", usage)
+	} else {
+		// Fallback to estimates if no usage data available
+		slog.Warn("no usage data in OpenAI response, using estimates")
+		anthropicUsage["input_tokens"] = 100
+		anthropicUsage["output_tokens"] = 50
+	}
+
 	return map[string]interface{}{
 		"id":          fmt.Sprintf("msg_%d", time.Now().UnixNano()),
 		"type":        "message",
 		"role":        "assistant",
 		"content":     content,
 		"stop_reason": anthropicStopReason,
-		"usage": map[string]interface{}{
-			"input_tokens":  100, // Estimate - should come from OpenAI response
-			"output_tokens": 50,  // Estimate - should come from OpenAI response
-		},
+		"usage":       anthropicUsage,
 	}
 }
 
 // Map OpenAI stop reason to Anthropic format
 func mapStopReason(openaiReason string) string {
 	switch openaiReason {
-	case "function_call", "tool_calls":
+	case "tool_calls":
 		return "tool_use"
 	case "stop":
 		return "end_turn"
