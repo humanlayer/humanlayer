@@ -695,6 +695,75 @@ func (s *SQLiteStore) applyMigrations() error {
 		slog.Info("Migration 13 applied successfully")
 	}
 
+	// Migration 14: Add tool_use_id column to approvals table
+	if currentVersion < 14 {
+		slog.Info("Applying migration 14: Add tool_use_id column to approvals table")
+
+		// Check if column already exists for idempotency
+		var columnExists int
+		err = s.db.QueryRow(`
+			SELECT COUNT(*) FROM pragma_table_info('approvals')
+			WHERE name = 'tool_use_id'
+		`).Scan(&columnExists)
+		if err != nil {
+			return fmt.Errorf("failed to check tool_use_id column: %w", err)
+		}
+
+		// Only add column if it doesn't exist
+		if columnExists == 0 {
+			_, err = s.db.Exec(`
+				ALTER TABLE approvals
+				ADD COLUMN tool_use_id TEXT
+			`)
+			if err != nil {
+				return fmt.Errorf("failed to add tool_use_id column: %w", err)
+			}
+		}
+
+		// Create index for efficient lookups
+		_, err = s.db.Exec(`
+			CREATE INDEX IF NOT EXISTS idx_approvals_tool_use_id
+			ON approvals(tool_use_id)
+			WHERE tool_use_id IS NOT NULL
+		`)
+		if err != nil {
+			return fmt.Errorf("failed to create tool_use_id index: %w", err)
+		}
+
+		// Update existing approvals to populate tool_use_id from correlated events
+		_, err = s.db.Exec(`
+			UPDATE approvals
+			SET tool_use_id = (
+				SELECT ce.tool_id
+				FROM conversation_events ce
+				WHERE ce.approval_id = approvals.id
+				AND ce.tool_id IS NOT NULL
+				LIMIT 1
+			)
+			WHERE EXISTS (
+				SELECT 1
+				FROM conversation_events ce
+				WHERE ce.approval_id = approvals.id
+				AND ce.tool_id IS NOT NULL
+			)
+		`)
+		if err != nil {
+			slog.Warn("Failed to populate tool_use_id for existing approvals (non-critical)", "error", err)
+			// This is non-critical as existing approvals may not have correlation
+		}
+
+		// Record migration
+		_, err = s.db.Exec(`
+			INSERT INTO schema_version (version, description)
+			VALUES (14, 'Add tool_use_id column to approvals table for direct correlation')
+		`)
+		if err != nil {
+			return fmt.Errorf("failed to record migration 14: %w", err)
+		}
+
+		slog.Info("Migration 14 applied successfully")
+	}
+
 	return nil
 }
 
@@ -1756,8 +1825,8 @@ func (s *SQLiteStore) CorrelateApproval(ctx context.Context, sessionID string, t
 	return nil
 }
 
-// CorrelateApprovalByToolID correlates an approval with a specific tool call by tool_id
-func (s *SQLiteStore) CorrelateApprovalByToolID(ctx context.Context, sessionID string, toolID string, approvalID string) error {
+// LinkConversationEventToApprovalUsingToolID correlates an approval with a specific tool call by tool_id
+func (s *SQLiteStore) LinkConversationEventToApprovalUsingToolID(ctx context.Context, sessionID string, toolID string, approvalID string) error {
 	// Update the tool call directly by tool_id
 	updateQuery := `
 		UPDATE conversation_events
@@ -1900,14 +1969,14 @@ func (s *SQLiteStore) CreateApproval(ctx context.Context, approval *Approval) er
 
 	query := `
 		INSERT INTO approvals (
-			id, run_id, session_id, status, created_at,
-			tool_name, tool_input
-		) VALUES (?, ?, ?, ?, ?, ?, ?)
+			id, run_id, session_id, tool_use_id, status, created_at,
+			tool_name, tool_input, comment
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	_, err := s.db.ExecContext(ctx, query,
-		approval.ID, approval.RunID, approval.SessionID, approval.Status.String(), approval.CreatedAt,
-		approval.ToolName, string(approval.ToolInput),
+		approval.ID, approval.RunID, approval.SessionID, approval.ToolUseID, approval.Status.String(), approval.CreatedAt,
+		approval.ToolName, string(approval.ToolInput), approval.Comment,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create approval: %w", err)
@@ -1918,19 +1987,20 @@ func (s *SQLiteStore) CreateApproval(ctx context.Context, approval *Approval) er
 // GetApproval retrieves an approval by ID
 func (s *SQLiteStore) GetApproval(ctx context.Context, id string) (*Approval, error) {
 	query := `
-		SELECT id, run_id, session_id, status, created_at, responded_at,
+		SELECT id, run_id, session_id, tool_use_id, status, created_at, responded_at,
 			tool_name, tool_input, comment
 		FROM approvals WHERE id = ?
 	`
 
 	var approval Approval
+	var toolUseID sql.NullString
 	var respondedAt sql.NullTime
 	var comment sql.NullString
 	var statusStr string
 	var toolInputStr string
 
 	err := s.db.QueryRowContext(ctx, query, id).Scan(
-		&approval.ID, &approval.RunID, &approval.SessionID, &statusStr,
+		&approval.ID, &approval.RunID, &approval.SessionID, &toolUseID, &statusStr,
 		&approval.CreatedAt, &respondedAt,
 		&approval.ToolName, &toolInputStr, &comment,
 	)
@@ -1948,6 +2018,9 @@ func (s *SQLiteStore) GetApproval(ctx context.Context, id string) (*Approval, er
 	}
 
 	// Handle nullable fields
+	if toolUseID.Valid {
+		approval.ToolUseID = &toolUseID.String
+	}
 	if respondedAt.Valid {
 		approval.RespondedAt = &respondedAt.Time
 	}
@@ -1960,7 +2033,7 @@ func (s *SQLiteStore) GetApproval(ctx context.Context, id string) (*Approval, er
 // GetPendingApprovals retrieves all pending approvals for a session
 func (s *SQLiteStore) GetPendingApprovals(ctx context.Context, sessionID string) ([]*Approval, error) {
 	query := `
-		SELECT id, run_id, session_id, status, created_at, responded_at,
+		SELECT id, run_id, session_id, tool_use_id, status, created_at, responded_at,
 			tool_name, tool_input, comment
 		FROM approvals
 		WHERE session_id = ? AND status = ?
@@ -1976,13 +2049,14 @@ func (s *SQLiteStore) GetPendingApprovals(ctx context.Context, sessionID string)
 	var approvals []*Approval
 	for rows.Next() {
 		var approval Approval
+		var toolUseID sql.NullString
 		var respondedAt sql.NullTime
 		var comment sql.NullString
 		var statusStr string
 		var toolInputStr string
 
 		err := rows.Scan(
-			&approval.ID, &approval.RunID, &approval.SessionID, &statusStr,
+			&approval.ID, &approval.RunID, &approval.SessionID, &toolUseID, &statusStr,
 			&approval.CreatedAt, &respondedAt,
 			&approval.ToolName, &toolInputStr, &comment,
 		)
@@ -1997,6 +2071,9 @@ func (s *SQLiteStore) GetPendingApprovals(ctx context.Context, sessionID string)
 		}
 
 		// Handle nullable fields
+		if toolUseID.Valid {
+			approval.ToolUseID = &toolUseID.String
+		}
 		if respondedAt.Valid {
 			approval.RespondedAt = &respondedAt.Time
 		}
@@ -2064,22 +2141,47 @@ func MCPServersFromConfig(sessionID string, config map[string]claudecode.MCPServ
 	servers := make([]MCPServer, 0, len(config))
 	for _, name := range names {
 		server := config[name]
-		argsJSON, err := json.Marshal(server.Args)
-		if err != nil {
-			return nil, fmt.Errorf("failed to marshal args: %w", err)
-		}
 
-		envJSON, err := json.Marshal(server.Env)
-		if err != nil {
-			return nil, fmt.Errorf("failed to marshal env: %w", err)
+		// For HTTP servers, store the configuration differently
+		// We'll use Command field to store the type, ArgsJSON for URL, and EnvJSON for headers
+		var command string
+		var argsJSON string
+		var envJSON string
+
+		if server.Type == "http" {
+			// HTTP server
+			command = "http"                             // Use "http" as the command to indicate HTTP type
+			argsJSON = fmt.Sprintf(`["%s"]`, server.URL) // Store URL as single-element array
+
+			// Store headers in EnvJSON
+			headersData, err := json.Marshal(server.Headers)
+			if err != nil {
+				return nil, fmt.Errorf("failed to marshal headers: %w", err)
+			}
+			envJSON = string(headersData)
+		} else {
+			// Traditional stdio server
+			command = server.Command
+
+			argsData, err := json.Marshal(server.Args)
+			if err != nil {
+				return nil, fmt.Errorf("failed to marshal args: %w", err)
+			}
+			argsJSON = string(argsData)
+
+			envData, err := json.Marshal(server.Env)
+			if err != nil {
+				return nil, fmt.Errorf("failed to marshal env: %w", err)
+			}
+			envJSON = string(envData)
 		}
 
 		servers = append(servers, MCPServer{
 			SessionID: sessionID,
 			Name:      name,
-			Command:   server.Command,
-			ArgsJSON:  string(argsJSON),
-			EnvJSON:   string(envJSON),
+			Command:   command,
+			ArgsJSON:  argsJSON,
+			EnvJSON:   envJSON,
 		})
 	}
 	return servers, nil

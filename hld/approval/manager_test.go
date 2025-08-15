@@ -248,7 +248,7 @@ func TestManager_CorrelateApproval(t *testing.T) {
 	mockStore.EXPECT().GetUncorrelatedPendingToolCall(ctx, sessionID, toolName).Return(pendingToolCall, nil)
 
 	// Mock correlating by tool ID
-	mockStore.EXPECT().CorrelateApprovalByToolID(ctx, sessionID, "tool-123", gomock.Any()).Return(nil)
+	mockStore.EXPECT().LinkConversationEventToApprovalUsingToolID(ctx, sessionID, "tool-123", gomock.Any()).Return(nil)
 
 	// Mock event publishing
 	mockEventBus.EXPECT().Publish(gomock.Any())

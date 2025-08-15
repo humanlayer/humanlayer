@@ -447,14 +447,23 @@ type MCPConfig struct {
 
 // MCPServer defines model for MCPServer.
 type MCPServer struct {
-	// Args Command arguments
+	// Args Command arguments (for stdio servers)
 	Args *[]string `json:"args,omitempty"`
 
-	// Command Command to execute
-	Command string `json:"command"`
+	// Command Command to execute (for stdio servers)
+	Command *string `json:"command,omitempty"`
 
-	// Env Environment variables
+	// Env Environment variables (for stdio servers)
 	Env *map[string]string `json:"env,omitempty"`
+
+	// Headers HTTP headers to include (for HTTP servers)
+	Headers *map[string]string `json:"headers,omitempty"`
+
+	// Type Server type (http for HTTP servers, omit for stdio)
+	Type *string `json:"type,omitempty"`
+
+	// Url HTTP endpoint URL (for HTTP servers)
+	Url *string `json:"url,omitempty"`
 }
 
 // RecentPath defines model for RecentPath.

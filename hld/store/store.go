@@ -31,7 +31,7 @@ type ConversationStore interface {
 	GetToolCallByID(ctx context.Context, toolID string) (*ConversationEvent, error)
 	MarkToolCallCompleted(ctx context.Context, toolID string, sessionID string) error
 	CorrelateApproval(ctx context.Context, sessionID string, toolName string, approvalID string) error
-	CorrelateApprovalByToolID(ctx context.Context, sessionID string, toolID string, approvalID string) error
+	LinkConversationEventToApprovalUsingToolID(ctx context.Context, sessionID string, toolID string, approvalID string) error
 	UpdateApprovalStatus(ctx context.Context, approvalID string, status string) error
 
 	// MCP server operations
@@ -201,6 +201,7 @@ type Approval struct {
 	ID          string          `json:"id"`
 	RunID       string          `json:"run_id"`
 	SessionID   string          `json:"session_id"`
+	ToolUseID   *string         `json:"tool_use_id,omitempty"`
 	Status      ApprovalStatus  `json:"status"`
 	CreatedAt   time.Time       `json:"created_at"`
 	RespondedAt *time.Time      `json:"responded_at,omitempty"`
