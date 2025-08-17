@@ -124,22 +124,31 @@ export class HTTPDaemonClient implements IDaemonClient {
   ): Promise<CreateSessionResponseData> {
     await this.ensureConnected()
 
-    // Map model names to SDK enum values
-    let model: 'opus' | 'sonnet' | undefined = undefined
-    if (params.model) {
+    // Handle provider-specific model formatting
+    let model: string | undefined = params.model
+    const provider = 'provider' in params ? params.provider : 'anthropic'
+    
+    // Only map to enum for Anthropic provider
+    if (provider === 'anthropic' && params.model) {
       if (params.model.includes('sonnet')) {
         model = 'sonnet'
       } else if (params.model.includes('opus')) {
         model = 'opus'
       }
     }
+    // For OpenRouter, pass model string as-is
 
     const response = await this.client!.createSession({
       query: params.query,
       title: 'title' in params ? params.title : undefined,
       workingDir:
         'workingDir' in params ? params.workingDir : (params as LaunchSessionRequest).working_dir,
-      model: model,
+      model: model as 'opus' | 'sonnet' | undefined,
+      // Pass provider info if OpenRouter (backend will handle proxy setup)
+      ...(provider === 'openrouter' && { 
+        proxyEnabled: true,
+        modelOverride: model  // Pass custom model for OpenRouter
+      }),
       mcpConfig: 'mcpConfig' in params ? params.mcpConfig : (params as LaunchSessionRequest).mcp_config,
       permissionPromptTool:
         'permissionPromptTool' in params
@@ -289,6 +298,18 @@ export class HTTPDaemonClient implements IDaemonClient {
       success: true,
       archived_count: result.archived.length,
     }
+  }
+
+  async updateSession(
+    sessionId: string,
+    updates: {
+      model?: string
+      title?: string
+    },
+  ): Promise<{ success: boolean }> {
+    await this.ensureConnected()
+    await this.client!.updateSession(sessionId, updates)
+    return { success: true }
   }
 
   // remove ignore once we've implemented this again

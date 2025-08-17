@@ -28,7 +28,16 @@ export type SessionSnapshot = FileSnapshotInfo // Components expect snake_case
 export type HealthCheckResponse = HealthResponse
 
 // Define client-specific types not in SDK
-export interface LaunchSessionParams extends CreateSessionRequest {
+export interface LaunchSessionParams {
+  query: string
+  title?: string
+  provider?: 'anthropic' | 'openrouter'
+  model?: string
+  workingDir?: string
+  mcpConfig?: any
+  permissionPromptTool?: string
+  maxTurns?: number
+  autoAcceptEdits?: boolean
   // Add any WUI-specific extensions if needed
 }
 
@@ -82,6 +91,13 @@ export interface DaemonClient {
       auto_accept_edits?: boolean
       dangerously_skip_permissions?: boolean
       dangerously_skip_permissions_timeout_ms?: number
+    },
+  ): Promise<{ success: boolean }>
+  updateSession(
+    sessionId: string,
+    updates: {
+      model?: string
+      title?: string
     },
   ): Promise<{ success: boolean }>
   archiveSession(
@@ -152,6 +168,7 @@ export enum ViewMode {
 export interface LaunchSessionRequest {
   query: string
   title?: string
+  provider?: 'anthropic' | 'openrouter'
   model?: string
   mcp_config?: any
   permission_prompt_tool?: string

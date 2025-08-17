@@ -11,6 +11,7 @@ import { hasContent, isEmptyOrWhitespace } from '@/utils/validation'
 interface SessionConfig {
   title?: string
   workingDir: string
+  provider?: 'anthropic' | 'openrouter'
   model?: string
   maxTurns?: number
 }
@@ -127,21 +128,59 @@ export default function CommandInput({
         )}
       </div>
 
-      {/* Model Selection */}
-      <div className="space-y-2">
-        <label className="text-sm font-medium text-foreground">Model</label>
-        <Select
-          value={config.model || ''}
-          onValueChange={value => updateConfig({ model: value || undefined })}
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="System Default" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="sonnet">Sonnet</SelectItem>
-            <SelectItem value="opus">Opus</SelectItem>
-          </SelectContent>
-        </Select>
+      {/* Provider and Model Selection */}
+      <div className="grid grid-cols-2 gap-4">
+        {/* Provider Selection */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-foreground">Provider</label>
+          <Select
+            value={config.provider || 'anthropic'}
+            onValueChange={value => {
+              updateConfig({ 
+                provider: value as 'anthropic' | 'openrouter',
+                model: undefined // Clear model when provider changes
+              })
+            }}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select provider" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="anthropic">Anthropic</SelectItem>
+              <SelectItem value="openrouter">OpenRouter</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Model Selection */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-foreground">Model</label>
+          
+          {config.provider === 'openrouter' ? (
+            // Text input for OpenRouter models
+            <Input
+              type="text"
+              value={config.model || ''}
+              onChange={e => updateConfig({ model: e.target.value })}
+              placeholder="e.g., anthropic/claude-3-opus"
+              disabled={isLoading}
+            />
+          ) : (
+            // Dropdown for Anthropic models
+            <Select
+              value={config.model || ''}
+              onValueChange={value => updateConfig({ model: value || undefined })}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="System Default" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="sonnet">Sonnet</SelectItem>
+                <SelectItem value="opus">Opus</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
+        </div>
       </div>
 
       {/* Action Bar */}

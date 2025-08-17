@@ -22,6 +22,7 @@ import { ResponseInput } from './components/ResponseInput'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { SessionModeIndicator } from './AutoAcceptIndicator'
 import { ForkViewModal } from './components/ForkViewModal'
+import { ModelSelector } from './components/ModelSelector'
 import { DangerouslySkipPermissionsDialog } from './DangerouslySkipPermissionsDialog'
 import { TokenUsageBadge } from './components/TokenUsageBadge'
 
@@ -934,13 +935,21 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               <small className="font-mono text-xs text-muted-foreground">{session.workingDir}</small>
             )}
           </hgroup>
-          <ForkViewModal
-            events={events}
-            selectedEventIndex={previewEventIndex}
-            onSelectEvent={handleForkSelect}
-            isOpen={forkViewOpen}
-            onOpenChange={setForkViewOpen}
-          />
+          <div className="flex items-center gap-1 ml-auto">
+            <ModelSelector 
+              session={session}
+              onModelChange={() => {
+                // Refresh session data if needed
+              }}
+            />
+            <ForkViewModal
+              events={events}
+              selectedEventIndex={previewEventIndex}
+              onSelectEvent={handleForkSelect}
+              isOpen={forkViewOpen}
+              onOpenChange={setForkViewOpen}
+            />
+          </div>
         </div>
       )}
 
@@ -1024,13 +1033,21 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               />
             </div>
           </hgroup>
-          <ForkViewModal
-            events={events}
-            selectedEventIndex={previewEventIndex}
-            onSelectEvent={handleForkSelect}
-            isOpen={forkViewOpen}
-            onOpenChange={setForkViewOpen}
-          />
+          <div className="flex items-center gap-1 ml-auto">
+            <ModelSelector 
+              session={session}
+              onModelChange={() => {
+                // Refresh session data if needed
+              }}
+            />
+            <ForkViewModal
+              events={events}
+              selectedEventIndex={previewEventIndex}
+              onSelectEvent={handleForkSelect}
+              isOpen={forkViewOpen}
+              onOpenChange={setForkViewOpen}
+            />
+          </div>
         </div>
       )}
 

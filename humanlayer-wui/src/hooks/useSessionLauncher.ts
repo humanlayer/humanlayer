@@ -10,6 +10,7 @@ import { logger } from '@/lib/logging'
 interface SessionConfig {
   title?: string
   workingDir: string
+  provider?: 'anthropic' | 'openrouter'
   model?: string
   maxTurns?: number
 }
@@ -58,7 +59,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
   mode: 'command',
   view: 'menu',
   query: getSavedQuery(),
-  config: { workingDir: getDefaultWorkingDir() },
+  config: { workingDir: getDefaultWorkingDir(), provider: 'anthropic' },
   isLaunching: false,
   gPrefixMode: false,
   selectedMenuIndex: 0,
@@ -78,7 +79,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
       isOpen: false,
       view: 'menu',
       query: savedQuery,
-      config: { workingDir: getDefaultWorkingDir() },
+      config: { workingDir: getDefaultWorkingDir(), provider: 'anthropic' },
       selectedMenuIndex: 0,
       error: undefined,
       gPrefixMode: false,
@@ -149,6 +150,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
         query: query.trim(),
         title: config.title || undefined,
         working_dir: config.workingDir || undefined,
+        provider: config.provider || 'anthropic',
         model: config.model || undefined,
         max_turns: config.maxTurns || undefined,
         mcp_config: mcpConfig,
@@ -189,7 +191,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
     set({
       view: 'input',
       query: savedQuery,
-      config: { workingDir: getDefaultWorkingDir() },
+      config: { workingDir: getDefaultWorkingDir(), provider: 'anthropic' },
       error: undefined,
     })
   },
@@ -207,7 +209,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
       mode: 'command',
       view: 'menu',
       query: savedQuery,
-      config: { workingDir: getDefaultWorkingDir() },
+      config: { workingDir: getDefaultWorkingDir(), provider: 'anthropic' },
       selectedMenuIndex: 0,
       isLaunching: false,
       error: undefined,
