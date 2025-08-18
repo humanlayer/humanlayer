@@ -68,11 +68,18 @@ func (m *Manager) LaunchSession(ctx context.Context, config LaunchSessionConfig)
 	// Extract the Claude config (without daemon-level settings)
 	claudeConfig := config.SessionConfig
 
-	// Add HUMANLAYER_RUN_ID and HUMANLAYER_DAEMON_SOCKET to MCP server environment
+	// Add HUMANLAYER_RUN_ID to MCP server environment
 	// For HTTP servers, inject session ID header
 	if claudeConfig.MCPConfig != nil {
 		slog.Debug("configuring MCP servers", "count", len(claudeConfig.MCPConfig.MCPServers))
 		for name, server := range claudeConfig.MCPConfig.MCPServers {
+			slog.Debug("processing MCP server",
+				"name", name,
+				"type", server.Type,
+				"url", server.URL,
+				"command", server.Command,
+				"args", server.Args)
+
 			// Check if this is an HTTP MCP server
 			if server.Type == "http" {
 				// For HTTP servers, inject session ID header if not already set

@@ -153,6 +153,8 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
         },
       }
 
+      console.log('[useSessionLauncher] MCP config:', JSON.stringify(mcpConfig, null, 2))
+
       const request: LaunchSessionRequest = {
         query: query.trim(),
         title: config.title || undefined,

@@ -134,7 +134,7 @@ export class HTTPDaemonClient implements IDaemonClient {
       }
     }
 
-    const response = await this.client!.createSession({
+    const requestPayload = {
       query: params.query,
       title: 'title' in params ? params.title : undefined,
       workingDir:
@@ -149,7 +149,11 @@ export class HTTPDaemonClient implements IDaemonClient {
       // Additional fields that might be in legacy format
       ...((params as any).template && { template: (params as any).template }),
       ...((params as any).instructions && { instructions: (params as any).instructions }),
-    })
+    }
+
+    console.log('[HTTPDaemonClient] createSession request:', JSON.stringify(requestPayload, null, 2))
+
+    const response = await this.client!.createSession(requestPayload)
     return response
     // return this.transformSession(response)
   }

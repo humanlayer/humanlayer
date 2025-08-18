@@ -52,11 +52,37 @@ func NewSessionHandlersWithConfig(manager session.SessionManager, store store.Co
 
 // CreateSession implements POST /sessions
 func (h *SessionHandlers) CreateSession(ctx context.Context, req api.CreateSessionRequestObject) (api.CreateSessionResponseObject, error) {
+	// Debug log incoming MCP config
+	if req.Body.McpConfig != nil && req.Body.McpConfig.McpServers != nil {
+		for name, server := range *req.Body.McpConfig.McpServers {
+			slog.Debug("incoming MCP server config",
+				"name", name,
+				"type", server.Type,
+				"url", server.Url,
+				"command", server.Command,
+				"has_env", server.Env != nil,
+				"has_headers", server.Headers != nil)
+		}
+	}
+
 	// Build launch config with embedded Claude config
+	mcpConfig := h.mapper.MCPConfigFromAPI(req.Body.McpConfig)
+	if mcpConfig != nil {
+		for name, server := range mcpConfig.MCPServers {
+			slog.Debug("mapped MCP server config",
+				"name", name,
+				"type", server.Type,
+				"url", server.URL,
+				"command", server.Command,
+				"has_env", len(server.Env) > 0,
+				"has_headers", len(server.Headers) > 0)
+		}
+	}
+
 	config := session.LaunchSessionConfig{
 		SessionConfig: claudecode.SessionConfig{
 			Query:        req.Body.Query,
-			MCPConfig:    h.mapper.MCPConfigFromAPI(req.Body.McpConfig),
+			MCPConfig:    mcpConfig,
 			OutputFormat: claudecode.OutputStreamJSON, // Always use streaming JSON for monitoring
 		},
 	}
