@@ -1,4 +1,5 @@
 import { EventEmitter } from 'events'
+import { EventSource } from 'eventsource'
 
 interface JsonRpcRequest {
   jsonrpc: '2.0'
@@ -107,7 +108,9 @@ export class DaemonHttpClient extends EventEmitter {
   }
 
   // Subscribe using Server-Sent Events (SSE)
-  async subscribe(request: { event_types?: string[]; session_id?: string } = {}): Promise<EventEmitter> {
+  async subscribe(
+    request: { event_types?: string[]; session_id?: string } = {},
+  ): Promise<EventEmitter> {
     const subscriptionEmitter = new EventEmitter()
 
     // Build query parameters
@@ -122,11 +125,13 @@ export class DaemonHttpClient extends EventEmitter {
     const url = `${this.baseURL}/api/v1/stream/events?${params.toString()}`
 
     // Create EventSource for SSE
-    const EventSource = require('eventsource')
     const eventSource = new EventSource(url)
 
     eventSource.onopen = () => {
-      subscriptionEmitter.emit('subscribed', { subscription_id: 'sse', message: 'Connected to SSE stream' })
+      subscriptionEmitter.emit('subscribed', {
+        subscription_id: 'sse',
+        message: 'Connected to SSE stream',
+      })
     }
 
     eventSource.onmessage = (event: MessageEvent) => {
@@ -138,7 +143,7 @@ export class DaemonHttpClient extends EventEmitter {
         }
         // Emit the event
         subscriptionEmitter.emit('event', data)
-      } catch (err) {
+      } catch {
         // Ignore parse errors
       }
     }
@@ -150,7 +155,7 @@ export class DaemonHttpClient extends EventEmitter {
     }
 
     // Add method to close the connection
-    ;(subscriptionEmitter as any).close = () => {
+    subscriptionEmitter.close = () => {
       eventSource.close()
     }
 

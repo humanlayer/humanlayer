@@ -2,8 +2,6 @@ import chalk from 'chalk'
 import { DaemonHttpClient, connectWithRetry } from '../daemonHttpClient.js'
 import { resolveFullConfig } from '../config.js'
 import playSound from 'play-sound'
-import { homedir } from 'os'
-import { join } from 'path'
 import { EventEmitter } from 'events'
 
 // Re-export the Event interface from daemonClient

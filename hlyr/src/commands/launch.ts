@@ -1,7 +1,5 @@
 import { connectWithRetry } from '../daemonHttpClient.js'
 import { resolveFullConfig } from '../config.js'
-import { homedir } from 'os'
-import { join } from 'path'
 
 interface LaunchOptions {
   query?: string
