@@ -17,6 +17,7 @@ import type {
   SessionSnapshot,
   HealthCheckResponse,
   Session,
+  ConfigStatus,
 } from './types'
 import { transformSDKSession } from './types'
 
@@ -477,6 +478,18 @@ export class HTTPDaemonClient implements IDaemonClient {
   }
 
   // Private Helper Methods
+
+  async getConfigStatus(): Promise<ConfigStatus> {
+    await this.ensureConnected()
+    const baseUrl = await getDaemonUrl()
+    const response = await fetch(`${baseUrl}/api/v1/config/status`, {
+      headers: getDefaultHeaders(),
+    })
+    if (!response.ok) {
+      throw new Error('Failed to fetch config status')
+    }
+    return response.json()
+  }
 
   private async ensureConnected(): Promise<void> {
     if (!this.connected) {

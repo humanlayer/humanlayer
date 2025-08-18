@@ -1,6 +1,5 @@
 import { SessionStatus, ApprovalStatus } from '@humanlayer/hld-sdk'
 import type {
-  CreateSessionRequest,
   CreateSessionResponseData,
   HealthResponse,
   Event,
@@ -137,6 +136,7 @@ export interface DaemonClient {
   // Utility methods
   getRecentPaths(limit?: number): Promise<RecentPath[]>
   getDatabaseInfo(): Promise<DatabaseInfo>
+  getConfigStatus(): Promise<ConfigStatus>
 }
 
 // Legacy enums and types for backward compatibility (to be gradually removed)
@@ -405,6 +405,13 @@ export interface UpdateSessionTitleRequest {
 
 export interface UpdateSessionTitleResponse {
   success: boolean
+}
+
+// Config status types
+export interface ConfigStatus {
+  openrouter: {
+    api_key_configured: boolean
+  }
 }
 
 // Helper function to ensure SDK Session has proper defaults

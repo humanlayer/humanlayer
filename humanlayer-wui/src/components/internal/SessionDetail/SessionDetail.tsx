@@ -6,8 +6,6 @@ import { ConversationEvent, Session, ApprovalStatus, SessionStatus } from '@/lib
 import { Card, CardContent } from '@/components/ui/card'
 import { useConversation, useKeyboardNavigationProtection } from '@/hooks'
 import { ChevronDown, Archive, Pencil } from 'lucide-react'
-import { getStatusTextClass } from '@/utils/component-utils'
-import { renderSessionStatus } from '@/utils/sessionStatus'
 import { truncate } from '@/utils/formatting'
 import { daemonClient } from '@/lib/daemon/client'
 import { useStore } from '@/AppStore'
@@ -22,9 +20,7 @@ import { ResponseInput } from './components/ResponseInput'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { SessionModeIndicator } from './AutoAcceptIndicator'
 import { ForkViewModal } from './components/ForkViewModal'
-import { ModelSelector } from './components/ModelSelector'
 import { DangerouslySkipPermissionsDialog } from './DangerouslySkipPermissionsDialog'
-import { TokenUsageBadge } from './components/TokenUsageBadge'
 
 // Import hooks
 import { useSessionActions } from './hooks/useSessionActions'
@@ -235,6 +231,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   // Always prioritize store values as they are the source of truth for runtime state
   const sessionFromStore = useStore(state => state.sessions.find(s => s.id === session.id))
   const updateSessionOptimistic = useStore(state => state.updateSessionOptimistic)
+  const fetchActiveSessionDetail = useStore(state => state.fetchActiveSessionDetail)
 
   // Get parent session's token data to display when current session doesn't have its own yet
   const parentSession = useStore(state =>
@@ -911,37 +908,11 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                 </>
               )}
             </h2>
-            <div className="flex items-center gap-2">
-              <small
-                className={`font-mono text-xs uppercase tracking-wider ${getStatusTextClass(session.status)}`}
-              >
-                {`${renderSessionStatus(session).toUpperCase()}${session.model ? ` / ${session.model}` : ''}`}
-                {(session.status === 'running' || session.status === 'starting') && (
-                  <span className="ml-2 text-muted-foreground text-xs font-normal lowercase">
-                    (<kbd className="px-1 py-0.5 text-xs bg-muted/50 rounded normal-case">Ctrl+X</kbd>{' '}
-                    to interrupt)
-                  </span>
-                )}
-              </small>
-              <TokenUsageBadge
-                effectiveContextTokens={
-                  session.effectiveContextTokens ?? parentSessionData?.effectiveContextTokens
-                }
-                contextLimit={session.contextLimit ?? parentSessionData?.contextLimit}
-                model={session.model ?? parentSessionData?.model}
-              />
-            </div>
             {session.workingDir && (
               <small className="font-mono text-xs text-muted-foreground">{session.workingDir}</small>
             )}
           </hgroup>
           <div className="flex items-center gap-1 ml-auto">
-            <ModelSelector 
-              session={session}
-              onModelChange={() => {
-                // Refresh session data if needed
-              }}
-            />
             <ForkViewModal
               events={events}
               selectedEventIndex={previewEventIndex}
@@ -1011,35 +982,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                 </>
               )}
             </h2>
-            <div className="flex items-center gap-2">
-              <small
-                className={`font-mono text-xs uppercase tracking-wider ${getStatusTextClass(session.status)}`}
-              >
-                {`${renderSessionStatus(session).toUpperCase()}${session.model ? ` / ${session.model}` : ''}`}
-                {(session.status === 'running' || session.status === 'starting') && (
-                  <span className="ml-2 text-muted-foreground text-xs font-normal lowercase">
-                    (<kbd className="px-1 py-0.5 text-xs bg-muted/50 rounded normal-case">Ctrl+X</kbd>{' '}
-                    to interrupt)
-                  </span>
-                )}
-              </small>
-              <TokenUsageBadge
-                effectiveContextTokens={
-                  session.effectiveContextTokens ?? parentSessionData?.effectiveContextTokens
-                }
-                contextLimit={session.contextLimit ?? parentSessionData?.contextLimit}
-                model={session.model ?? parentSessionData?.model}
-                className="text-[10px]"
-              />
-            </div>
           </hgroup>
           <div className="flex items-center gap-1 ml-auto">
-            <ModelSelector 
-              session={session}
-              onModelChange={() => {
-                // Refresh session data if needed
-              }}
-            />
             <ForkViewModal
               events={events}
               selectedEventIndex={previewEventIndex}
@@ -1141,12 +1085,17 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
           <ResponseInput
             ref={responseInputRef}
             session={session}
+            parentSessionData={parentSessionData || parentSession || undefined}
             responseInput={actions.responseInput}
             setResponseInput={actions.setResponseInput}
             isResponding={actions.isResponding}
             handleContinueSession={actions.handleContinueSession}
             handleResponseInputKeyDown={actions.handleResponseInputKeyDown}
             isForkMode={actions.isForkMode}
+            onModelChange={() => {
+              // Refresh session data if needed
+              fetchActiveSessionDetail(session.id)
+            }}
           />
           {/* Session mode indicator - shows either dangerous skip permissions or auto-accept */}
           <SessionModeIndicator

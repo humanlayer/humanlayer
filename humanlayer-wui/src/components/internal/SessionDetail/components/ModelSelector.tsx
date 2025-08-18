@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { GitBranch } from 'lucide-react'
+import { GitBranch, AlertCircle, CheckCircle } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -12,8 +12,9 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { daemonClient } from '@/lib/daemon'
-import { Session } from '@/lib/daemon/types'
+import { Session, ConfigStatus } from '@/lib/daemon/types'
 import { toast } from 'sonner'
 import { useStore } from '@/AppStore'
 
@@ -21,6 +22,8 @@ interface ModelSelectorProps {
   session: Session
   onModelChange?: (model: string) => void
   className?: string
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
 function ModelSelectorContent({
@@ -48,6 +51,8 @@ function ModelSelectorContent({
   const [customModel, setCustomModel] = useState(initial.provider === 'openrouter' ? initial.model : '')
   const [isUpdating, setIsUpdating] = useState(false)
   const [hasChanges, setHasChanges] = useState(false)
+  const [configStatus, setConfigStatus] = useState<ConfigStatus | null>(null)
+  const [isCheckingConfig, setIsCheckingConfig] = useState(false)
 
   // Update local state when session changes
   useEffect(() => {
@@ -58,6 +63,20 @@ function ModelSelectorContent({
       setCustomModel(current.model)
     }
   }, [session.model])
+
+  // Check config status when provider changes to OpenRouter
+  useEffect(() => {
+    if (provider === 'openrouter') {
+      setIsCheckingConfig(true)
+      daemonClient.getConfigStatus()
+        .then(setConfigStatus)
+        .catch(err => {
+          console.error('Failed to check config:', err)
+          toast.error('Failed to check configuration')
+        })
+        .finally(() => setIsCheckingConfig(false))
+    }
+  }, [provider])
 
   const handleProviderChange = (newProvider: 'anthropic' | 'openrouter') => {
     setProvider(newProvider)
@@ -81,7 +100,15 @@ function ModelSelectorContent({
     setHasChanges(true)
   }
 
+  const canApplyOpenRouter = provider !== 'openrouter' || 
+    (configStatus?.openrouter?.api_key_configured ?? false)
+
   const handleApply = async () => {
+    if (!canApplyOpenRouter) {
+      toast.error('OpenRouter API key is required')
+      return
+    }
+    
     let modelValue = ''
     
     if (provider === 'anthropic') {
@@ -196,6 +223,41 @@ function ModelSelectorContent({
           )}
         </div>
 
+        {/* OpenRouter API Key Status */}
+        {provider === 'openrouter' && (
+          <Alert variant={canApplyOpenRouter ? 'default' : 'destructive'}>
+            <div className="flex items-center gap-2">
+              {isCheckingConfig ? (
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+              ) : canApplyOpenRouter ? (
+                <CheckCircle className="h-4 w-4" />
+              ) : (
+                <AlertCircle className="h-4 w-4" />
+              )}
+              <AlertDescription>
+                {isCheckingConfig ? (
+                  'Checking OpenRouter configuration...'
+                ) : canApplyOpenRouter ? (
+                  'OpenRouter API key is configured'
+                ) : (
+                  'OpenRouter API key is not configured. Set OPENROUTER_API_KEY environment variable.'
+                )}
+              </AlertDescription>
+            </div>
+          </Alert>
+        )}
+        
+        {/* Model change notice */}
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Model changes will take effect on your next message. 
+            {(session.status === 'running' || session.status === 'starting') && (
+              ' Use "Interrupt & Send" to apply changes immediately.'
+            )}
+          </AlertDescription>
+        </Alert>
+
         {/* Action Buttons */}
         <div className="flex justify-end gap-2 pt-2">
           <Button
@@ -208,7 +270,7 @@ function ModelSelectorContent({
           </Button>
           <Button
             onClick={handleApply}
-            disabled={!hasChanges || isUpdating}
+            disabled={!hasChanges || isUpdating || !canApplyOpenRouter}
             size="sm"
           >
             {isUpdating ? 'Applying...' : 'Apply'}
@@ -220,21 +282,26 @@ function ModelSelectorContent({
 }
 
 // Main component that handles the dialog
-export function ModelSelector({ session, onModelChange, className }: ModelSelectorProps) {
-  const [isOpen, setIsOpen] = useState(false)
+export function ModelSelector({ session, onModelChange, className, open, onOpenChange }: ModelSelectorProps) {
+  const [internalOpen, setInternalOpen] = useState(false)
+  const isOpen = open ?? internalOpen
+  const setIsOpen = onOpenChange ?? setInternalOpen
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          className={`h-8 w-8 p-0 ${className}`} 
-          title="Model Configuration"
-        >
-          <GitBranch className="h-4 w-4" />
-        </Button>
-      </DialogTrigger>
+      {/* Only show trigger if not controlled externally */}
+      {!open && !onOpenChange && (
+        <DialogTrigger asChild>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className={`h-8 w-8 p-0 ${className}`} 
+            title="Model Configuration"
+          >
+            <GitBranch className="h-4 w-4" />
+          </Button>
+        </DialogTrigger>
+      )}
 
       <DialogContent
         className="max-w-md"
