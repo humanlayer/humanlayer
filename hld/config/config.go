@@ -13,15 +13,11 @@ import (
 var (
 	// These can be overridden at build time using -ldflags
 	DefaultDatabasePath = "~/.humanlayer/daemon.db"
-	DefaultSocketPath   = "~/.humanlayer/daemon.sock"
 	DefaultHTTPPort     = "7777"
 )
 
 // Config represents the daemon configuration
 type Config struct {
-	// Socket configuration
-	SocketPath string `mapstructure:"socket_path"`
-
 	// Database configuration
 	DatabasePath string `mapstructure:"database_path"`
 
@@ -58,7 +54,6 @@ func Load() (*Config, error) {
 	v.AutomaticEnv()
 
 	// Map environment variables to config keys
-	_ = v.BindEnv("socket_path", "HUMANLAYER_DAEMON_SOCKET")
 	_ = v.BindEnv("database_path", "HUMANLAYER_DATABASE_PATH")
 	_ = v.BindEnv("api_key", "HUMANLAYER_API_KEY")
 	_ = v.BindEnv("api_base_url", "HUMANLAYER_API_BASE_URL", "HUMANLAYER_API_BASE")
@@ -84,7 +79,6 @@ func Load() (*Config, error) {
 	}
 
 	// Expand home directory in paths
-	config.SocketPath = expandHome(config.SocketPath)
 	config.DatabasePath = expandHome(config.DatabasePath)
 
 	return &config, nil
@@ -92,7 +86,6 @@ func Load() (*Config, error) {
 
 // setDefaults sets the default values for configuration
 func setDefaults(v *viper.Viper) {
-	v.SetDefault("socket_path", DefaultSocketPath)
 	v.SetDefault("database_path", DefaultDatabasePath)
 	v.SetDefault("api_base_url", "https://api.humanlayer.dev/humanlayer/v1")
 	v.SetDefault("log_level", "info")
@@ -135,10 +128,9 @@ func expandHome(path string) string {
 
 // Validate validates that configuration is valid
 func (c *Config) Validate() error {
-	// For Phase 1, we don't require API key yet
-	// Just validate socket path is not empty
-	if c.SocketPath == "" {
-		return fmt.Errorf("socket path cannot be empty")
+	// Validate database path is not empty
+	if c.DatabasePath == "" {
+		return fmt.Errorf("database path cannot be empty")
 	}
 	return nil
 }

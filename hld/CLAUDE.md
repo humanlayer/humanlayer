@@ -32,17 +32,18 @@ sqlite3 ~/.humanlayer/daemon-dev.db ".schema"
 ```
 
 
-depending on what are looking at, you want either
-
-- `~/.humanlayer/daemon.sock`
-- `~/.humanlayer/daemon-dev.sock`
-
-If you are debugging code changes, they are most likely to be in the dev socket.
-
-You can test RPC calls with nc:
+The daemon now uses HTTP REST API instead of Unix sockets. You can check which port it's running on:
 
 ```bash
-echo '{"jsonrpc":"2.0","method":"getSessionLeaves","params":{},"id":1}' | nc -U SOCKET_PATH | jq '.'
+# Check if daemon is running and get port
+make status
+```
+
+You can test API calls with curl:
+
+```bash
+# Example: Get session leaves
+curl -X GET http://localhost:PORT/api/v1/sessions/leaves | jq '.'
 ```
 
 

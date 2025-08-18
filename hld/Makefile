@@ -69,12 +69,16 @@ run: build
 
 # Check if daemon is running
 status:
-	@if [ -S ~/.humanlayer/daemon.sock ]; then \
-		echo "Daemon socket exists at ~/.humanlayer/daemon.sock"; \
-		if nc -zU ~/.humanlayer/daemon.sock 2>/dev/null; then \
-			echo "Daemon is running and accepting connections"; \
+	@if [ -f ~/.humanlayer/daemon.pid ]; then \
+		PID=$$(cat ~/.humanlayer/daemon.pid); \
+		if kill -0 $$PID 2>/dev/null; then \
+			echo "Daemon is running (PID: $$PID)"; \
+			PORT=$$(lsof -Pi -p $$PID | grep LISTEN | awk '{print $$9}' | cut -d: -f2 | head -1); \
+			if [ -n "$$PORT" ]; then \
+				echo "Listening on port: $$PORT"; \
+			fi \
 		else \
-			echo "Socket exists but daemon not responding"; \
+			echo "Pidfile exists but daemon not running (stale pidfile)"; \
 		fi \
 	else \
 		echo "Daemon is not running"; \

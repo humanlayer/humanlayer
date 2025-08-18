@@ -12,7 +12,7 @@ When the WUI is running, logs are written to:
 
 Logs include output from the WUI backend, daemon stderr (prefixed with [Daemon]), and frontend console logs (prefixed with [Console]). The log files automatically rotate at 50MB. The application hot-reloads automatically when you make changes to the code - you cannot manually restart it.
 
-The WUI communicates with the daemon via JSON-RPC over a Unix socket at ~/.humanlayer/daemon.sock. All session and approval data comes from the daemon - the WUI is purely a presentation layer.
+The WUI communicates with the daemon via HTTP REST API. All session and approval data comes from the daemon - the WUI is purely a presentation layer.
 
 To regenerate TypeScript types from the hld-sdk after OpenAPI spec changes:
 

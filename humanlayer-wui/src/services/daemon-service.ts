@@ -5,7 +5,6 @@ export interface DaemonInfo {
   port: number
   pid: number
   database_path: string
-  socket_path: string
   branch_id: string
 }
 
@@ -13,7 +12,6 @@ export interface DaemonConfig {
   branch_id: string
   port: number
   database_path: string
-  socket_path: string
   last_used: string
 }
 

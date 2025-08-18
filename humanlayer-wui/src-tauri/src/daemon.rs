@@ -13,7 +13,6 @@ pub struct DaemonInfo {
     pub port: u16,
     pub pid: u32,
     pub database_path: String,
-    pub socket_path: String,
     pub branch_id: String,
     pub is_running: bool,
 }
@@ -57,7 +56,6 @@ impl DaemonManager {
                         port,
                         pid: 0, // Unknown PID for external daemon
                         database_path: "external".to_string(),
-                        socket_path: "external".to_string(),
                         branch_id: "external".to_string(),
                         is_running: true,
                     };
@@ -92,13 +90,6 @@ impl DaemonManager {
             humanlayer_dir.join("daemon.db")
         };
 
-        // Socket path
-        let socket_path = if is_dev {
-            humanlayer_dir.join(format!("daemon-{branch_id}.sock"))
-        } else {
-            humanlayer_dir.join("daemon.sock")
-        };
-
         // Get daemon binary path (macOS only)
         let daemon_path = get_daemon_path(app_handle, is_dev)?;
 
@@ -107,10 +98,6 @@ impl DaemonManager {
         env_vars.push((
             "HUMANLAYER_DATABASE_PATH".to_string(),
             database_path.to_str().unwrap().to_string(),
-        ));
-        env_vars.push((
-            "HUMANLAYER_DAEMON_SOCKET".to_string(),
-            socket_path.to_str().unwrap().to_string(),
         ));
         env_vars.push(("HUMANLAYER_DAEMON_HTTP_PORT".to_string(), "0".to_string()));
         env_vars.push((
@@ -139,9 +126,8 @@ impl DaemonManager {
 
         // Log the full command being executed for debugging
         log::info!("[Tauri] Executing daemon at path: {daemon_path:?}");
-        log::info!("[Tauri] Daemon environment: database_path={}, socket_path={}, port=0, branch_id={branch_id}",
-                   database_path.display(),
-                   socket_path.display());
+        log::info!("[Tauri] Daemon environment: database_path={}, port=0, branch_id={branch_id}",
+                   database_path.display());
 
         // Always capture stderr for better debugging, even in production
         cmd.envs(env_vars)
@@ -277,7 +263,6 @@ impl DaemonManager {
             port,
             pid,
             database_path: database_path.to_str().unwrap().to_string(),
-            socket_path: socket_path.to_str().unwrap().to_string(),
             branch_id: branch_id.clone(),
             is_running: true,
         };
