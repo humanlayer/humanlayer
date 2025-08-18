@@ -20,47 +20,30 @@ import { mapValues } from '../runtime';
  */
 export interface MCPServer {
     /**
-     * Server type (http for HTTP servers, omit for stdio)
+     * Command to execute
      * @type {string}
      * @memberof MCPServer
      */
-    type?: string;
+    command: string;
     /**
-     * Command to execute (for stdio servers)
-     * @type {string}
-     * @memberof MCPServer
-     */
-    command?: string;
-    /**
-     * Command arguments (for stdio servers)
+     * Command arguments
      * @type {Array<string>}
      * @memberof MCPServer
      */
     args?: Array<string>;
     /**
-     * Environment variables (for stdio servers)
+     * Environment variables
      * @type {{ [key: string]: string; }}
      * @memberof MCPServer
      */
     env?: { [key: string]: string; };
-    /**
-     * HTTP endpoint URL (for HTTP servers)
-     * @type {string}
-     * @memberof MCPServer
-     */
-    url?: string;
-    /**
-     * HTTP headers to include (for HTTP servers)
-     * @type {{ [key: string]: string; }}
-     * @memberof MCPServer
-     */
-    headers?: { [key: string]: string; };
 }
 
 /**
  * Check if a given object implements the MCPServer interface.
  */
 export function instanceOfMCPServer(value: object): value is MCPServer {
+    if (!('command' in value) || value['command'] === undefined) return false;
     return true;
 }
 
@@ -74,12 +57,9 @@ export function MCPServerFromJSONTyped(json: any, ignoreDiscriminator: boolean):
     }
     return {
 
-        'type': json['type'] == null ? undefined : json['type'],
-        'command': json['command'] == null ? undefined : json['command'],
+        'command': json['command'],
         'args': json['args'] == null ? undefined : json['args'],
         'env': json['env'] == null ? undefined : json['env'],
-        'url': json['url'] == null ? undefined : json['url'],
-        'headers': json['headers'] == null ? undefined : json['headers'],
     };
 }
 
@@ -94,11 +74,8 @@ export function MCPServerToJSONTyped(value?: MCPServer | null, ignoreDiscriminat
 
     return {
 
-        'type': value['type'],
         'command': value['command'],
         'args': value['args'],
         'env': value['env'],
-        'url': value['url'],
-        'headers': value['headers'],
     };
 }

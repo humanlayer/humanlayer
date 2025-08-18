@@ -6,7 +6,7 @@ The daemon logs are in ~/.humanlayer/logs/daemon-*.log (timestamped files create
 
 WUI logs (which include daemon stderr output) are in:
 - Development: `~/.humanlayer/logs/wui-{branch}/codelayer.log`
-- Production: Platform-specific log directories, e.g. ~/Library/Logs/dev.humanlayer.wui.nightly/CodeLayer-Nightly.log
+- Production: Platform-specific log directories
 
 It uses a database at ~/.humanlayer/*.db - you can access it with sqlite3 to inspect progress and debug things.
 
@@ -47,9 +47,3 @@ echo '{"jsonrpc":"2.0","method":"getSessionLeaves","params":{},"id":1}' | nc -U 
 
 
 For testing guidelines and database isolation requirements, see TESTING.md
-
-
-### Go style guidelines
-
-- any async or long-running goroutine should accept a context.Context as a parameter and handle cancellation gracefully
-- context and CancelFuncs should never be stored on structs, always passed as the first parameter to a function

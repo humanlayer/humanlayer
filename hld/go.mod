@@ -11,13 +11,10 @@ require (
 	github.com/getkin/kin-openapi v0.132.0
 	github.com/gin-contrib/cors v1.7.6
 	github.com/gin-gonic/gin v1.10.1
-	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.6.0
 	github.com/humanlayer/humanlayer/claudecode-go v0.0.0-00010101000000-000000000000
-	github.com/mark3labs/mcp-go v0.37.0
 	github.com/mattn/go-sqlite3 v1.14.28
 	github.com/oapi-codegen/runtime v1.1.2
-	github.com/r3labs/sse/v2 v2.10.0
 	github.com/spf13/viper v1.20.1
 	github.com/stretchr/testify v1.10.0
 	go.uber.org/mock v0.5.2
@@ -25,8 +22,6 @@ require (
 
 require (
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
-	github.com/bahlo/generic-list-go v0.2.0 // indirect
-	github.com/buger/jsonparser v1.1.1 // indirect
 	github.com/bytedance/sonic v1.13.3 // indirect
 	github.com/bytedance/sonic/loader v0.2.4 // indirect
 	github.com/cloudwego/base64x v0.1.5 // indirect
@@ -41,7 +36,6 @@ require (
 	github.com/go-playground/validator/v10 v10.26.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.2.1 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
-	github.com/invopop/jsonschema v0.13.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.10 // indirect
@@ -56,6 +50,7 @@ require (
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
 	github.com/perimeterx/marshmallow v1.1.5 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/r3labs/sse/v2 v2.10.0 // indirect
 	github.com/sagikazarmark/locafero v0.7.0 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
 	github.com/spf13/afero v1.12.0 // indirect
@@ -64,8 +59,6 @@ require (
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.3.0 // indirect
-	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
-	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
 	golang.org/x/arch v0.18.0 // indirect

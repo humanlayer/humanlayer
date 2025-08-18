@@ -1,7 +1,6 @@
 import { create } from 'zustand'
 import { daemonClient } from '@/lib/daemon'
 import type { LaunchSessionRequest } from '@/lib/daemon/types'
-import { getDaemonUrl } from '@/lib/daemon/http-config'
 import { useHotkeysContext } from 'react-hotkeys-hook'
 import { SessionTableHotkeysScope } from '@/components/internal/SessionTable'
 import { exists } from '@tauri-apps/plugin-fs'
@@ -142,13 +141,11 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
       set({ isLaunching: true, error: undefined })
 
       // Build MCP config (approvals enabled by default)
-      // Use HTTP-based MCP server built into the daemon
-      const daemonUrl = await getDaemonUrl()
       const mcpConfig = {
         mcpServers: {
           approvals: {
-            type: 'http',
-            url: `${daemonUrl}/api/v1/mcp`,
+            command: 'npx',
+            args: ['humanlayer', 'mcp', 'claude_approvals'],
           },
         },
       }
@@ -160,7 +157,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
         model: config.model || undefined,
         max_turns: config.maxTurns || undefined,
         mcp_config: mcpConfig,
-        permission_prompt_tool: 'mcp__approvals__request_approval',
+        permission_prompt_tool: 'mcp__approvals__request_permission',
       }
 
       const response = await daemonClient.launchSession(request)

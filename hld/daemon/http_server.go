@@ -15,7 +15,6 @@ import (
 	"github.com/humanlayer/humanlayer/hld/approval"
 	"github.com/humanlayer/humanlayer/hld/bus"
 	"github.com/humanlayer/humanlayer/hld/config"
-	"github.com/humanlayer/humanlayer/hld/mcp"
 	"github.com/humanlayer/humanlayer/hld/session"
 	"github.com/humanlayer/humanlayer/hld/store"
 )
@@ -27,8 +26,6 @@ type HTTPServer struct {
 	sessionHandlers  *handlers.SessionHandlers
 	approvalHandlers *handlers.ApprovalHandlers
 	sseHandler       *handlers.SSEHandler
-	approvalManager  approval.Manager
-	eventBus         bus.EventBus
 	server           *http.Server
 }
 
@@ -74,8 +71,6 @@ func NewHTTPServer(
 		sessionHandlers:  sessionHandlers,
 		approvalHandlers: approvalHandlers,
 		sseHandler:       sseHandler,
-		approvalManager:  approvalManager,
-		eventBus:         eventBus,
 	}
 }
 
@@ -95,13 +90,6 @@ func (s *HTTPServer) Start(ctx context.Context) error {
 
 	// Register SSE endpoint directly (not part of strict interface)
 	v1.GET("/stream/events", s.sseHandler.StreamEvents)
-
-	// MCP endpoint (Phase 5: with event-driven approvals)
-	mcpServer := mcp.NewMCPServer(s.approvalManager, s.eventBus)
-	mcpServer.Start(ctx) // Start background processes with context
-	v1.Any("/mcp", func(c *gin.Context) {
-		mcpServer.ServeHTTP(c.Writer, c.Request)
-	})
 
 	// Create listener first to handle port 0
 	addr := fmt.Sprintf("%s:%d", s.config.HTTPHost, s.config.HTTPPort)

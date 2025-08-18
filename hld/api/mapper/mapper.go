@@ -201,22 +201,8 @@ func (m *Mapper) MCPConfigFromAPI(config *api.MCPConfig) *claudecode.MCPConfig {
 	servers := make(map[string]claudecode.MCPServer)
 	if config.McpServers != nil {
 		for name, server := range *config.McpServers {
-			mcpServer := claudecode.MCPServer{}
-
-			// Map HTTP server fields
-			if server.Type != nil {
-				mcpServer.Type = *server.Type
-			}
-			if server.Url != nil {
-				mcpServer.URL = *server.Url
-			}
-			if server.Headers != nil {
-				mcpServer.Headers = *server.Headers
-			}
-
-			// Map stdio server fields
-			if server.Command != nil {
-				mcpServer.Command = *server.Command
+			mcpServer := claudecode.MCPServer{
+				Command: server.Command,
 			}
 			if server.Args != nil {
 				mcpServer.Args = *server.Args
@@ -224,7 +210,6 @@ func (m *Mapper) MCPConfigFromAPI(config *api.MCPConfig) *claudecode.MCPConfig {
 			if server.Env != nil {
 				mcpServer.Env = *server.Env
 			}
-
 			servers[name] = mcpServer
 		}
 	}

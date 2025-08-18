@@ -71,10 +71,8 @@ func TestDaemonSubscriptionIntegration(t *testing.T) {
 		}
 
 		// Verify all clients get subscriber count
-		// Note: MCP server adds 1 subscriber for listening to approval events
-		expectedSubscribers := numClients + 1
-		if subCount := daemon.eventBus.GetSubscriberCount(); subCount != expectedSubscribers {
-			t.Errorf("Expected %d subscribers (including MCP listener), got %d", expectedSubscribers, subCount)
+		if subCount := daemon.eventBus.GetSubscriberCount(); subCount != numClients {
+			t.Errorf("Expected %d subscribers, got %d", numClients, subCount)
 		}
 
 		// Publish an event
@@ -268,8 +266,6 @@ func TestDaemonMemoryStability(t *testing.T) {
 	socketPath := testutil.CreateTestSocket(t)
 	t.Setenv("HUMANLAYER_SOCKET_PATH", socketPath)
 	t.Setenv("HUMANLAYER_LOG_LEVEL", "error")
-	// Use in-memory database for tests
-	t.Setenv("HUMANLAYER_DATABASE_PATH", ":memory:")
 
 	// Create and start daemon
 	daemon, err := New()
@@ -333,9 +329,9 @@ func TestDaemonMemoryStability(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 	}
 
-	// Check final subscriber count (should be 1 for MCP listener)
+	// Check final subscriber count (should be 0)
 	finalCount := daemon.eventBus.GetSubscriberCount()
-	if finalCount != 1 {
-		t.Errorf("Expected 1 subscriber (MCP listener) after all clients disconnected, got %d", finalCount)
+	if finalCount != 0 {
+		t.Errorf("Expected 0 subscribers after all clients disconnected, got %d", finalCount)
 	}
 }

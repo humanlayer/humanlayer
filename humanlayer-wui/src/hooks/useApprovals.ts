@@ -95,16 +95,6 @@ export function useApprovalsWithSubscription(sessionId?: string): UseApprovalsRe
           onEvent: event => {
             if (!isSubscribed) return
 
-            // Phase 7: Debug logging to verify tool_use_id flows through
-            if (event.type === 'new_approval' || event.type === 'approval_resolved') {
-              console.debug('Approval event with tool_use_id:', {
-                type: event.type,
-                approval_id: event.data?.approval_id,
-                tool_use_id: event.data?.tool_use_id,
-                data: event.data,
-              })
-            }
-
             // Handle different event types
             switch (event.type) {
               case 'new_approval':
