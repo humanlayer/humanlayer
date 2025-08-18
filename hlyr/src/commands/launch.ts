@@ -1,4 +1,4 @@
-import { connectWithRetry } from '../daemonClient.js'
+import { connectWithRetry } from '../daemonHttpClient.js'
 import { resolveFullConfig } from '../config.js'
 import { homedir } from 'os'
 import { join } from 'path'
@@ -18,14 +18,10 @@ interface LaunchOptions {
 
 export const launchCommand = async (query: string, options: LaunchOptions = {}) => {
   try {
-    // Get socket path from configuration
+    // Get daemon HTTP URL from configuration or environment
     const config = resolveFullConfig(options)
-    let socketPath = config.daemon_socket
-
-    // Expand ~ to home directory if needed
-    if (socketPath.startsWith('~')) {
-      socketPath = join(homedir(), socketPath.slice(1))
-    }
+    const daemonPort = process.env.HUMANLAYER_DAEMON_HTTP_PORT || config.daemon_http_port || '7777'
+    const daemonURL = process.env.HUMANLAYER_DAEMON_URL || `http://localhost:${daemonPort}`
 
     console.log('Launching Claude Code session...')
     console.log('Query:', query)
@@ -41,13 +37,12 @@ export const launchCommand = async (query: string, options: LaunchOptions = {}) 
       }
     }
 
-    // Connect to daemon
-    const client = await connectWithRetry(socketPath, 3, 1000)
+    // Connect to daemon via HTTP
+    const client = await connectWithRetry(daemonURL, 3, 1000)
 
     try {
       // Build MCP config (approvals enabled by default unless explicitly disabled)
       // Phase 6: Using HTTP MCP endpoint instead of stdio
-      const daemonPort = process.env.HUMANLAYER_DAEMON_HTTP_PORT || '7777'
       const mcpConfig =
         options.approvals !== false
           ? {

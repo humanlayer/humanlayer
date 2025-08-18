@@ -13,6 +13,7 @@ export type ConfigFile = {
   api_base_url?: string
   app_base_url?: string
   daemon_socket?: string
+  daemon_http_port?: string
   run_id?: string
   thoughts?: {
     thoughtsRepo: string
@@ -60,6 +61,13 @@ export interface ConfigSchema {
     defaultValue: string
     required: boolean
   }
+  daemon_http_port: {
+    envVar: 'HUMANLAYER_DAEMON_HTTP_PORT'
+    configKey: 'daemon_http_port'
+    flagKey: 'daemonHttpPort'
+    defaultValue: string
+    required: boolean
+  }
   run_id: {
     envVar: 'HUMANLAYER_RUN_ID'
     configKey: 'run_id'
@@ -95,6 +103,13 @@ const CONFIG_SCHEMA: ConfigSchema = {
     configKey: 'daemon_socket',
     flagKey: 'daemonSocket',
     defaultValue: '~/.humanlayer/daemon.sock',
+    required: true,
+  },
+  daemon_http_port: {
+    envVar: 'HUMANLAYER_DAEMON_HTTP_PORT',
+    configKey: 'daemon_http_port',
+    flagKey: 'daemonHttpPort',
+    defaultValue: '7777',
     required: true,
   },
   run_id: {

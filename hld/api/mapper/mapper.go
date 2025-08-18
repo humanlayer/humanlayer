@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	claudecode "github.com/humanlayer/humanlayer/claudecode-go"
 	"github.com/humanlayer/humanlayer/hld/api"
-	"github.com/humanlayer/humanlayer/hld/rpc"
+	"github.com/humanlayer/humanlayer/hld/models"
 	"github.com/humanlayer/humanlayer/hld/store"
 )
 
@@ -76,7 +76,7 @@ func (m *Mapper) SessionToAPI(s store.Session) api.Session {
 	}
 
 	// Always set context limit based on model
-	contextLimit := rpc.GetModelContextLimit(s.Model)
+	contextLimit := models.GetModelContextLimit(s.Model)
 	session.ContextLimit = &contextLimit
 
 	session.AutoAcceptEdits = &s.AutoAcceptEdits

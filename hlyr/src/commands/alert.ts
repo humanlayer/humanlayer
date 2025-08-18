@@ -1,5 +1,5 @@
 import chalk from 'chalk'
-import { DaemonClient, connectWithRetry } from '../daemonClient.js'
+import { DaemonHttpClient, connectWithRetry } from '../daemonHttpClient.js'
 import { resolveFullConfig } from '../config.js'
 import playSound from 'play-sound'
 import { homedir } from 'os'
@@ -94,12 +94,9 @@ async function playAlertSound(soundFile?: string): Promise<void> {
 export async function alertCommand(options: AlertOptions = {}): Promise<void> {
   const config = resolveFullConfig(options)
 
-  let socketPath = options.daemonSocket || config.daemon_socket
-
-  // Expand ~ to home directory if needed
-  if (socketPath.startsWith('~')) {
-    socketPath = join(homedir(), socketPath.slice(1))
-  }
+  // Get daemon HTTP URL from configuration or environment
+  const daemonPort = process.env.HUMANLAYER_DAEMON_HTTP_PORT || config.daemon_http_port || '7777'
+  const daemonURL = process.env.HUMANLAYER_DAEMON_URL || `http://localhost:${daemonPort}`
 
   console.log(chalk.blue('🔔 Starting HumanLayer alert monitor...'))
   console.log(chalk.gray('Press Ctrl+C to stop'))
@@ -119,7 +116,7 @@ export async function alertCommand(options: AlertOptions = {}): Promise<void> {
 
   console.log()
 
-  let client: DaemonClient | undefined
+  let client: DaemonHttpClient | undefined
   let subscriptionEmitter: EventEmitter | undefined
 
   // Handle cleanup on exit
@@ -135,7 +132,7 @@ export async function alertCommand(options: AlertOptions = {}): Promise<void> {
   try {
     // Connect to daemon with retries
     console.log(chalk.gray('Connecting to daemon...'))
-    client = await connectWithRetry(socketPath, 3, 1000)
+    client = await connectWithRetry(daemonURL, 3, 1000)
     console.log(chalk.green('✓ Connected to daemon'))
 
     // Subscribe to events

@@ -26,14 +26,14 @@ type Manager struct {
 	store              store.ConversationStore
 	approvalReconciler ApprovalReconciler
 	pendingQueries     sync.Map // map[sessionID]query - stores queries waiting for Claude session ID
-	socketPath         string   // Daemon socket path for MCP servers
+	httpPort           int      // Daemon HTTP port for MCP servers
 }
 
 // Compile-time check that Manager implements SessionManager
 var _ SessionManager = (*Manager)(nil)
 
 // NewManager creates a new session manager with required store
-func NewManager(eventBus bus.EventBus, store store.ConversationStore, socketPath string) (*Manager, error) {
+func NewManager(eventBus bus.EventBus, store store.ConversationStore, httpPort int) (*Manager, error) {
 	if store == nil {
 		return nil, fmt.Errorf("store is required")
 	}
@@ -48,7 +48,7 @@ func NewManager(eventBus bus.EventBus, store store.ConversationStore, socketPath
 		client:          client,
 		eventBus:        eventBus,
 		store:           store,
-		socketPath:      socketPath,
+		httpPort:        httpPort,
 	}, nil
 }
 
@@ -93,16 +93,16 @@ func (m *Manager) LaunchSession(ctx context.Context, config LaunchSessionConfig)
 					server.Env = make(map[string]string)
 				}
 				server.Env["HUMANLAYER_RUN_ID"] = runID
-				// Add daemon socket path so MCP servers connect to the correct daemon
-				if m.socketPath != "" {
-					server.Env["HUMANLAYER_DAEMON_SOCKET"] = m.socketPath
+				// Add daemon HTTP URL so MCP servers connect to the correct daemon
+				if m.httpPort > 0 {
+					server.Env["HUMANLAYER_DAEMON_URL"] = fmt.Sprintf("http://localhost:%d", m.httpPort)
 				}
 				slog.Debug("configured stdio MCP server",
 					"name", name,
 					"command", server.Command,
 					"args", server.Args,
 					"run_id", runID,
-					"socket_path", m.socketPath)
+					"http_port", m.httpPort)
 			}
 			claudeConfig.MCPConfig.MCPServers[name] = server
 		}
@@ -1297,7 +1297,7 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 		return nil, fmt.Errorf("failed to store session in database: %w", err)
 	}
 
-	// Add run_id and daemon socket to MCP server environments
+	// Add run_id to MCP server environments
 	// For HTTP servers, inject session ID header
 
 	if config.MCPConfig != nil {
@@ -1316,9 +1316,9 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 					server.Env = make(map[string]string)
 				}
 				server.Env["HUMANLAYER_RUN_ID"] = runID
-				// Add daemon socket path so MCP servers connect to the correct daemon
-				if m.socketPath != "" {
-					server.Env["HUMANLAYER_DAEMON_SOCKET"] = m.socketPath
+				// Add daemon HTTP URL so MCP servers connect to the correct daemon
+				if m.httpPort > 0 {
+					server.Env["HUMANLAYER_DAEMON_URL"] = fmt.Sprintf("http://localhost:%d", m.httpPort)
 				}
 			}
 			config.MCPConfig.MCPServers[name] = server

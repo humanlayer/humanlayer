@@ -20,7 +20,7 @@ func TestStopAllSessions_Success(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockStore := store.NewMockConversationStore(ctrl)
-	manager, _ := NewManager(nil, mockStore, "")
+	manager, _ := NewManager(nil, mockStore, 0)
 
 	// Create mock sessions
 	numSessions := 5
@@ -79,7 +79,7 @@ func TestStopAllSessions_Timeout(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockStore := store.NewMockConversationStore(ctrl)
-	manager, _ := NewManager(nil, mockStore, "")
+	manager, _ := NewManager(nil, mockStore, 0)
 
 	// Create stubborn session that won't stop
 	stubbornID := "stubborn-session"
@@ -112,7 +112,7 @@ func TestStopAllSessions_ConcurrentOperations(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockStore := store.NewMockConversationStore(ctrl)
-	manager, _ := NewManager(nil, mockStore, "")
+	manager, _ := NewManager(nil, mockStore, 0)
 
 	// Counter for operations
 	var interruptCount int32
@@ -217,7 +217,7 @@ func TestStopAllSessions_InterruptError(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockStore := store.NewMockConversationStore(ctrl)
-	manager, _ := NewManager(nil, mockStore, "")
+	manager, _ := NewManager(nil, mockStore, 0)
 
 	// Create sessions with different behaviors
 	successID := "success-session"
@@ -273,7 +273,7 @@ func TestStopAllSessions_EmptySessions(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockStore := store.NewMockConversationStore(ctrl)
-	manager, _ := NewManager(nil, mockStore, "")
+	manager, _ := NewManager(nil, mockStore, 0)
 
 	// No active sessions
 	err := manager.StopAllSessions(1 * time.Second)
@@ -288,7 +288,7 @@ func TestForceKillRemaining(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockStore := store.NewMockConversationStore(ctrl)
-	manager, _ := NewManager(nil, mockStore, "")
+	manager, _ := NewManager(nil, mockStore, 0)
 
 	// Create sessions
 	numSessions := 3
@@ -329,7 +329,7 @@ func TestStopAllSessions_MixedStatuses(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockStore := store.NewMockConversationStore(ctrl)
-	manager, _ := NewManager(nil, mockStore, "")
+	manager, _ := NewManager(nil, mockStore, 0)
 
 	// Create sessions with different statuses
 	runningID := "running-session"
@@ -396,7 +396,7 @@ func TestStopAllSessions_SessionWaitingInput(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockStore := store.NewMockConversationStore(ctrl)
-	manager, _ := NewManager(nil, mockStore, "")
+	manager, _ := NewManager(nil, mockStore, 0)
 
 	// Create session waiting for input
 	waitingID := "waiting-session"

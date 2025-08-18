@@ -5,6 +5,7 @@ package daemon
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"os"
 	"os/exec"
@@ -28,9 +29,11 @@ func TestDaemonBinaryIntegration(t *testing.T) {
 
 	// Test 1: Daemon starts successfully
 	t.Run("daemon_starts", func(t *testing.T) {
-		socketPath := testutil.SocketPath(t, "starts")
-		t.Setenv("HUMANLAYER_DAEMON_SOCKET", socketPath)
-		_ = testutil.DatabasePath(t, "daemon-starts")
+		// Use a unique port for this test to avoid conflicts
+		httpPort := "18001"
+		t.Setenv("HUMANLAYER_DAEMON_HTTP_PORT", httpPort)
+		dbPath := testutil.DatabasePath(t, "daemon-starts")
+		t.Setenv("HUMANLAYER_DATABASE_PATH", dbPath)
 
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
@@ -44,23 +47,20 @@ func TestDaemonBinaryIntegration(t *testing.T) {
 			t.Fatalf("failed to start daemon: %v", err)
 		}
 
-		// Wait for daemon to be ready - increased from 200ms to 1s
+		// Wait for daemon to be ready
 		time.Sleep(1 * time.Second)
 
-		// Verify socket exists with correct permissions
-		info, err := os.Stat(socketPath)
-		if err != nil {
-			t.Fatalf("socket not created: %v\nDaemon stderr: %s", err, stderr.String())
+		// Verify pidfile exists (based on database name)
+		pidfilePath := filepath.Join(os.Getenv("HOME"), ".humanlayer", "test-daemon-starts.pid")
+		if _, err := os.Stat(pidfilePath); err != nil {
+			t.Logf("Warning: pidfile not found at %s: %v", pidfilePath, err)
+			// Don't fail - pidfile location might vary
 		}
 
-		if info.Mode().Perm() != 0600 {
-			t.Errorf("wrong socket permissions: got %v, want 0600", info.Mode().Perm())
-		}
-
-		// Verify we can connect
-		conn, err := net.Dial("unix", socketPath)
+		// Verify we can connect via HTTP
+		conn, err := net.Dial("tcp", "localhost:"+httpPort)
 		if err != nil {
-			t.Fatalf("cannot connect to daemon: %v", err)
+			t.Fatalf("cannot connect to daemon HTTP: %v\nDaemon stderr: %s", err, stderr.String())
 		}
 		conn.Close()
 
@@ -68,16 +68,12 @@ func TestDaemonBinaryIntegration(t *testing.T) {
 		cmd.Process.Signal(syscall.SIGTERM)
 		cmd.Wait()
 
-		// Verify socket cleaned up
-		if _, err := os.Stat(socketPath); !os.IsNotExist(err) {
-			t.Error("socket not cleaned up after shutdown")
-		}
+		// No socket to verify cleanup - daemon uses HTTP only
 	})
 
 	// Test 2: Daemon refuses double start
 	t.Run("refuses_double_start", func(t *testing.T) {
-		socketPath := testutil.SocketPath(t, "starts")
-		t.Setenv("HUMANLAYER_DAEMON_SOCKET", socketPath)
+		// Second daemon will conflict on pidfile, not socket
 		_ = testutil.DatabasePath(t, "double-start")
 
 		// Start first daemon
@@ -111,11 +107,12 @@ func TestDaemonBinaryIntegration(t *testing.T) {
 
 	// Test 3: Graceful shutdown on signals
 	t.Run("graceful_shutdown", func(t *testing.T) {
-		for _, sig := range []syscall.Signal{syscall.SIGINT, syscall.SIGTERM} {
+		for i, sig := range []syscall.Signal{syscall.SIGINT, syscall.SIGTERM} {
 			t.Run(sig.String(), func(t *testing.T) {
-				socketPath := testutil.SocketPath(t, sig.String())
-				t.Setenv("HUMANLAYER_DAEMON_SOCKET", socketPath)
-				_ = testutil.DatabasePath(t, "graceful-"+sig.String())
+				httpPort := fmt.Sprintf("1800%d", 3+i)
+				t.Setenv("HUMANLAYER_DAEMON_HTTP_PORT", httpPort)
+				dbPath := testutil.DatabasePath(t, "graceful-"+sig.String())
+				t.Setenv("HUMANLAYER_DATABASE_PATH", dbPath)
 
 				cmd := exec.Command(binPath)
 				if err := cmd.Start(); err != nil {
@@ -146,10 +143,7 @@ func TestDaemonBinaryIntegration(t *testing.T) {
 					cmd.Process.Kill()
 				}
 
-				// Verify socket cleaned up
-				if _, err := os.Stat(socketPath); !os.IsNotExist(err) {
-					t.Errorf("socket not cleaned up after %v", sig)
-				}
+				// No socket to verify cleanup - daemon uses HTTP only
 			})
 		}
 	})

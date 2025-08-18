@@ -105,7 +105,7 @@ func TestMCPSocketPathNotSetWhenEmpty(t *testing.T) {
 	eventBus := bus.NewEventBus()
 
 	// Create manager with empty socket path
-	manager, err := NewManager(eventBus, sqliteStore, "")
+	manager, err := NewManager(eventBus, sqliteStore, 0)
 	require.NoError(t, err)
 
 	// Verify socket path is empty

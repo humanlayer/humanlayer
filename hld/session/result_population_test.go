@@ -19,7 +19,7 @@ func TestSessionManager_ResultPopulation(t *testing.T) {
 
 	// Create session manager
 	eventBus := bus.NewEventBus()
-	manager, err := NewManager(eventBus, testStore, "")
+	manager, err := NewManager(eventBus, testStore, 0)
 	if err != nil {
 		t.Fatalf("Failed to create session manager: %v", err)
 	}
@@ -109,7 +109,7 @@ func TestSessionManager_ListSessions_PopulatesResults(t *testing.T) {
 
 	// Create session manager
 	eventBus := bus.NewEventBus()
-	manager, err := NewManager(eventBus, testStore, "")
+	manager, err := NewManager(eventBus, testStore, 0)
 	if err != nil {
 		t.Fatalf("Failed to create session manager: %v", err)
 	}
@@ -244,7 +244,7 @@ func TestSessionManager_ResultWithError(t *testing.T) {
 
 	// Create session manager
 	eventBus := bus.NewEventBus()
-	manager, err := NewManager(eventBus, testStore, "")
+	manager, err := NewManager(eventBus, testStore, 0)
 	if err != nil {
 		t.Fatalf("Failed to create session manager: %v", err)
 	}

@@ -28,9 +28,11 @@
   "dependencies": {
     "@humanlayer/sdk": "^0.7.7",
     "@modelcontextprotocol/sdk": "^1.12.0",
+    "@types/eventsource": "^1.1.15",
     "chalk": "^5.4.1",
     "commander": "^14.0.0",
     "dotenv": "^16.5.0",
+    "eventsource": "^4.0.0",
     "play-sound": "^1.1.6"
   },
   "devDependencies": {

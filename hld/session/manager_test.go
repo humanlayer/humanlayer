@@ -21,7 +21,7 @@ func TestNewManager(t *testing.T) {
 	mockStore := store.NewMockConversationStore(ctrl)
 
 	var eventBus bus.EventBus = nil // no bus for this test
-	manager, err := NewManager(eventBus, mockStore, "")
+	manager, err := NewManager(eventBus, mockStore, 0)
 
 	if err != nil {
 		t.Fatalf("Failed to create manager: %v", err)
@@ -36,7 +36,7 @@ func TestNewManager(t *testing.T) {
 
 func TestNewManager_RequiresStore(t *testing.T) {
 	var eventBus bus.EventBus = nil
-	_, err := NewManager(eventBus, nil, "")
+	_, err := NewManager(eventBus, nil, 0)
 
 	if err == nil {
 		t.Fatal("Expected error when store is nil")
@@ -52,7 +52,7 @@ func TestListSessions(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockStore := store.NewMockConversationStore(ctrl)
-	manager, _ := NewManager(nil, mockStore, "")
+	manager, _ := NewManager(nil, mockStore, 0)
 
 	// Test empty list
 	mockStore.EXPECT().ListSessions(gomock.Any()).Return([]*store.Session{}, nil)
@@ -85,7 +85,7 @@ func TestGetSessionInfo(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockStore := store.NewMockConversationStore(ctrl)
-	manager, _ := NewManager(nil, mockStore, "")
+	manager, _ := NewManager(nil, mockStore, 0)
 
 	// Test not found
 	mockStore.EXPECT().GetSession(gomock.Any(), "not-found").Return(nil, fmt.Errorf("not found"))
@@ -123,7 +123,7 @@ func TestContinueSession_ValidatesParentExists(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockStore := store.NewMockConversationStore(ctrl)
-	manager, _ := NewManager(nil, mockStore, "")
+	manager, _ := NewManager(nil, mockStore, 0)
 
 	// Test parent not found
 	mockStore.EXPECT().GetSession(gomock.Any(), "not-found").Return(nil, fmt.Errorf("session not found"))
@@ -146,7 +146,7 @@ func TestContinueSession_ValidatesParentStatus(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockStore := store.NewMockConversationStore(ctrl)
-	manager, _ := NewManager(nil, mockStore, "")
+	manager, _ := NewManager(nil, mockStore, 0)
 
 	testCases := []struct {
 		name          string
@@ -217,7 +217,7 @@ func TestContinueSession_AllowsFailedSessionWithValidRequirements(t *testing.T) 
 	}()
 
 	mockStore := store.NewMockConversationStore(ctrl)
-	manager, _ := NewManager(nil, mockStore, "")
+	manager, _ := NewManager(nil, mockStore, 0)
 
 	// Create a failed parent session WITH valid claude_session_id and working_dir
 	failedParentSession := &store.Session{
@@ -267,7 +267,7 @@ func TestContinueSession_ValidatesClaudeSessionID(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockStore := store.NewMockConversationStore(ctrl)
-	manager, _ := NewManager(nil, mockStore, "")
+	manager, _ := NewManager(nil, mockStore, 0)
 
 	// Parent without claude_session_id
 	parentSession := &store.Session{
@@ -299,8 +299,8 @@ func TestLaunchSession_SetsMCPEnvironment(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockStore := store.NewMockConversationStore(ctrl)
-	testSocketPath := "/test/daemon.sock"
-	manager, _ := NewManager(nil, mockStore, testSocketPath)
+	testHTTPPort := 8888
+	manager, _ := NewManager(nil, mockStore, testHTTPPort)
 
 	// Store the session config that gets passed to CreateSession
 	mockStore.EXPECT().CreateSession(gomock.Any(), gomock.Any()).Return(nil)
@@ -354,9 +354,10 @@ func TestLaunchSession_SetsMCPEnvironment(t *testing.T) {
 		t.Error("HUMANLAYER_RUN_ID not set in MCP server environment")
 	}
 
-	// Check HUMANLAYER_DAEMON_SOCKET is set to our test socket path
-	if env["HUMANLAYER_DAEMON_SOCKET"] != testSocketPath {
-		t.Errorf("Expected HUMANLAYER_DAEMON_SOCKET to be %s, got %s", testSocketPath, env["HUMANLAYER_DAEMON_SOCKET"])
+	// Check HUMANLAYER_DAEMON_URL is set to our test HTTP URL
+	expectedURL := "http://localhost:8888"
+	if env["HUMANLAYER_DAEMON_URL"] != expectedURL {
+		t.Errorf("Expected HUMANLAYER_DAEMON_URL to be %s, got %s", expectedURL, env["HUMANLAYER_DAEMON_URL"])
 	}
 }
 
@@ -365,7 +366,7 @@ func TestContinueSession_ValidatesWorkingDirectory(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockStore := store.NewMockConversationStore(ctrl)
-	manager, _ := NewManager(nil, mockStore, "")
+	manager, _ := NewManager(nil, mockStore, 0)
 
 	// Parent without working directory
 	parentSession := &store.Session{
@@ -405,7 +406,7 @@ func TestContinueSession_CreatesNewSessionWithParentReference(t *testing.T) {
 	}()
 
 	mockStore := store.NewMockConversationStore(ctrl)
-	manager, _ := NewManager(nil, mockStore, "")
+	manager, _ := NewManager(nil, mockStore, 0)
 
 	// Mock parent session
 	parentSession := &store.Session{
@@ -489,7 +490,7 @@ func TestContinueSession_HandlesOptionalOverrides(t *testing.T) {
 	}()
 
 	mockStore := store.NewMockConversationStore(ctrl)
-	manager, _ := NewManager(nil, mockStore, "")
+	manager, _ := NewManager(nil, mockStore, 0)
 
 	// Mock parent session
 	parentSession := &store.Session{
@@ -588,7 +589,7 @@ func TestInterruptSession(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockStore := store.NewMockConversationStore(ctrl)
-	manager, _ := NewManager(nil, mockStore, "")
+	manager, _ := NewManager(nil, mockStore, 0)
 
 	// Test interrupting non-existent session
 	err := manager.InterruptSession(context.Background(), "not-found")
@@ -617,7 +618,7 @@ func TestContinueSession_InterruptsRunningSession(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockStore := store.NewMockConversationStore(ctrl)
-	manager, _ := NewManager(nil, mockStore, "")
+	manager, _ := NewManager(nil, mockStore, 0)
 
 	t.Run("running session without claude_session_id", func(t *testing.T) {
 		// Create a running parent session without claude_session_id (orphaned state)
@@ -684,7 +685,7 @@ func TestStopAllSessions_NoActiveSessions(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockStore := store.NewMockConversationStore(ctrl)
-	manager, _ := NewManager(nil, mockStore, "")
+	manager, _ := NewManager(nil, mockStore, 0)
 
 	// Test with no active sessions
 	err := manager.StopAllSessions(5 * time.Second)
@@ -698,7 +699,7 @@ func TestStopAllSessions_FiltersSessionsByStatus(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockStore := store.NewMockConversationStore(ctrl)
-	manager, _ := NewManager(nil, mockStore, "")
+	manager, _ := NewManager(nil, mockStore, 0)
 
 	// Create mock Claude sessions
 	mockClaudeSession1 := NewMockClaudeSession(ctrl)
@@ -771,7 +772,7 @@ func TestStopAllSessions_HandlesInterruptErrors(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockStore := store.NewMockConversationStore(ctrl)
-	manager, _ := NewManager(nil, mockStore, "")
+	manager, _ := NewManager(nil, mockStore, 0)
 
 	// Create a session that will fail to get info
 	mockClaudeSession := NewMockClaudeSession(ctrl)
@@ -808,7 +809,7 @@ func TestStopAllSessions_SuccessfulShutdown(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockStore := store.NewMockConversationStore(ctrl)
-	manager, _ := NewManager(nil, mockStore, "")
+	manager, _ := NewManager(nil, mockStore, 0)
 
 	// No active sessions means immediate success
 	err := manager.StopAllSessions(5 * time.Second)
@@ -822,7 +823,7 @@ func TestStopAllSessions_TimeoutBehavior(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockStore := store.NewMockConversationStore(ctrl)
-	manager, _ := NewManager(nil, mockStore, "")
+	manager, _ := NewManager(nil, mockStore, 0)
 
 	// Add a mock session that won't be removed
 	mockClaudeSession := NewMockClaudeSession(ctrl)
@@ -862,7 +863,7 @@ func TestStopAllSessions_RaceConditions(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockStore := store.NewMockConversationStore(ctrl)
-	manager, _ := NewManager(nil, mockStore, "")
+	manager, _ := NewManager(nil, mockStore, 0)
 
 	// Add multiple sessions
 	for i := 0; i < 10; i++ {
@@ -959,7 +960,7 @@ func TestStopAllSessions_ForceKillBehavior(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockStore := store.NewMockConversationStore(ctrl)
-	manager, _ := NewManager(nil, mockStore, "")
+	manager, _ := NewManager(nil, mockStore, 0)
 
 	// Track interrupt calls on mock Claude session
 	mockClaudeSession := NewMockClaudeSession(ctrl)
