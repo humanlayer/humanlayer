@@ -353,11 +353,13 @@ export class DaemonClient extends EventEmitter {
     runId: string,
     toolName: string,
     toolInput: unknown,
+    toolUseId?: string,
   ): Promise<{ approval_id: string }> {
     return this.call<{ approval_id: string }>('createApproval', {
       run_id: runId,
       tool_name: toolName,
       tool_input: toolInput,
+      ...(toolUseId && { tool_use_id: toolUseId }),
     })
   }
 

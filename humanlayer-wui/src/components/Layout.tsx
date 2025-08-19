@@ -296,6 +296,20 @@ export function Layout() {
     }
   })
 
+  // Prevent escape key from exiting full screen
+  // Might be worth guarding this specifically in macOS
+  // down-the-road
+  useHotkeys(
+    'escape',
+    () => {
+      // console.log('escape!', ev);
+    },
+    {
+      enableOnFormTags: true,
+      preventDefault: true,
+    },
+  )
+
   // Load sessions when connected
   useEffect(() => {
     if (connected) {

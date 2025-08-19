@@ -10,6 +10,7 @@ import { launchCommand } from './commands/launch.js'
 import { alertCommand } from './commands/alert.js'
 import { thoughtsCommand } from './commands/thoughts.js'
 import { joinWaitlistCommand } from './commands/joinWaitlist.js'
+import { startClaudeApprovalsMCPServer } from './mcp.js'
 import {
   getDefaultConfigPath,
   resolveFullConfig,
@@ -66,7 +67,7 @@ async function authenticate(printSelectedProject: boolean = false) {
 
 program.name('humanlayer').description('HumanLayer, but on your command-line.').version(VERSION)
 
-const UNPROTECTED_COMMANDS = ['config', 'login', 'thoughts', 'join-waitlist', 'launch']
+const UNPROTECTED_COMMANDS = ['config', 'login', 'thoughts', 'join-waitlist', 'launch', 'mcp']
 
 program.hook('preAction', async (thisCmd, actionCmd) => {
   // Get the full command path by traversing up the command hierarchy
@@ -95,6 +96,13 @@ program
   .option('--app-base <url>', 'App base URL')
   .option('--config-file <path>', 'Path to config file')
   .action(loginCommand)
+
+const mcpCommand = program.command('mcp').description('MCP server functionality')
+
+mcpCommand
+  .command('claude_approvals')
+  .description('Start the Claude approvals MCP server for permission requests')
+  .action(startClaudeApprovalsMCPServer)
 
 program
   .command('launch <query>')
