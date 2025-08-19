@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react'
+import { useRef, useEffect } from 'react'
 import { Button } from './ui/button'
 import { SearchInput } from './FuzzySearchInput'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
@@ -52,17 +52,6 @@ export default function CommandInput({
     }
   }, [])
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-      e.preventDefault()
-      onSubmit()
-    }
-
-    if (e.key === 'Escape') {
-      promptRef.current?.blur()
-    }
-  }
-
   const getPlatformKey = () => {
     return navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'
   }
@@ -109,15 +98,13 @@ export default function CommandInput({
           ref={promptRef}
           value={value}
           onChange={e => onChange(e.target.value)}
-          onKeyDown={handleKeyDown}
           placeholder={placeholder}
           disabled={isLoading}
           autoComplete="off"
           spellCheck={false}
         />
         <p className="text-xs text-muted-foreground mt-1">
-          <kbd className="px-1 py-0.5 bg-muted/50 rounded">{getPlatformKey()}+Enter</kbd> to launch
-          session, <kbd className="ml-1 px-1 py-0.5 bg-muted/50 rounded">Enter</kbd> for new line
+          <kbd className="px-1 py-0.5 bg-muted/50 rounded">Enter</kbd> for new line
         </p>
 
         {isLoading && (
@@ -159,7 +146,10 @@ export default function CommandInput({
                 Launching...
               </>
             ) : (
-              'Launch Session'
+              <>
+                Launch Session
+                <kbd className="ml-2 px-1 py-0.5 text-xs bg-muted/50 rounded">{getPlatformKey()}+⏎</kbd>
+              </>
             )}
           </Button>
         </div>
