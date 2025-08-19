@@ -10,7 +10,8 @@
 
 <h3>
 
-[Latest CodeLayer Release](https://github.com/humanlayer/humanlayer/releases) | [Discord](https://humanlayer.dev/discord)
+[HumanLayer Code](https://humanlayer.dev/code) | [Discord](https://humanlayer.dev/discord) | [Release](https://github.com/humanlayer/humanlayer/releases)
+
 
 </h3>
 
