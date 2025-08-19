@@ -337,11 +337,25 @@ func TestLaunchSession_SetsMCPEnvironment(t *testing.T) {
 	}
 
 	// Verify MCP servers have the correct environment variables
-	if len(capturedMCPServers) != 1 {
-		t.Fatalf("Expected 1 MCP server, got %d", len(capturedMCPServers))
+	// Should have the test server plus injected codelayer
+	if len(capturedMCPServers) != 2 {
+		t.Fatalf("Expected 2 MCP servers (test + codelayer), got %d", len(capturedMCPServers))
 	}
 
-	server := capturedMCPServers[0]
+	// Find the test server (not codelayer)
+	var server store.MCPServer
+	var found bool
+	for _, s := range capturedMCPServers {
+		if s.Name == "test-server" {
+			server = s
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		t.Fatal("Test server not found in MCP servers")
+	}
 
 	// Parse the environment JSON
 	var env map[string]string

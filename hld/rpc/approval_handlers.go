@@ -29,6 +29,7 @@ type CreateApprovalRequest struct {
 	RunID     string          `json:"run_id"`
 	ToolName  string          `json:"tool_name"`
 	ToolInput json.RawMessage `json:"tool_input"`
+	ToolUseID string          `json:"tool_use_id,omitempty"`
 }
 
 // CreateApprovalResponse is the response for creating a local approval
@@ -54,10 +55,22 @@ func (h *ApprovalHandlers) HandleCreateApproval(ctx context.Context, params json
 		return nil, fmt.Errorf("tool_input is required")
 	}
 
-	// Create the approval
-	approvalID, err := h.approvals.CreateApproval(ctx, req.RunID, req.ToolName, req.ToolInput)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create approval: %w", err)
+	// Create approval with or without tool use ID
+	var approvalID string
+	if req.ToolUseID != "" {
+		// Use the new method that accepts tool use ID
+		approval, err := h.approvals.CreateApprovalWithToolUseID(ctx, req.RunID, req.ToolName, req.ToolInput, req.ToolUseID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create approval with tool use ID: %w", err)
+		}
+		approvalID = approval.ID
+	} else {
+		// Fall back to legacy method for backward compatibility
+		var err error
+		approvalID, err = h.approvals.CreateApproval(ctx, req.RunID, req.ToolName, req.ToolInput)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create approval: %w", err)
+		}
 	}
 
 	return &CreateApprovalResponse{

@@ -45,22 +45,6 @@ export const launchCommand = async (query: string, options: LaunchOptions = {}) 
     const client = await connectWithRetry(socketPath, 3, 1000)
 
     try {
-      // Build MCP config (approvals enabled by default unless explicitly disabled)
-      // Phase 6: Using HTTP MCP endpoint instead of stdio
-      const daemonPort = process.env.HUMANLAYER_DAEMON_HTTP_PORT || '7777'
-      const mcpConfig =
-        options.approvals !== false
-          ? {
-              mcpServers: {
-                codelayer: {
-                  type: 'http',
-                  url: `http://localhost:${daemonPort}/api/v1/mcp`,
-                  // Session ID will be added as header by Claude Code
-                },
-              },
-            }
-          : undefined
-
       // Launch the session
       const result = await client.launchSession({
         query: query,
@@ -68,8 +52,9 @@ export const launchCommand = async (query: string, options: LaunchOptions = {}) 
         model: options.model,
         working_dir: options.workingDir || process.cwd(),
         max_turns: options.maxTurns,
-        mcp_config: mcpConfig,
-        permission_prompt_tool: mcpConfig ? 'mcp__codelayer__request_approval' : undefined,
+        // MCP config is now injected by daemon
+        permission_prompt_tool:
+          options.approvals !== false ? 'mcp__codelayer__request_permission' : undefined,
         dangerously_skip_permissions: options.dangerouslySkipPermissions,
         dangerously_skip_permissions_timeout: options.dangerouslySkipPermissionsTimeout
           ? parseInt(options.dangerouslySkipPermissionsTimeout) * 60 * 1000
