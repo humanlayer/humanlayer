@@ -84,7 +84,10 @@ func (h *ProxyHandler) ProxyAnthropicRequest(c *gin.Context) {
 	// Check session proxy configuration
 	if session.ProxyEnabled && session.ProxyBaseURL != "" {
 		// Use configured proxy (e.g., custom proxy server)
-		targetURL = session.ProxyBaseURL + "/v1/chat/completions"
+		// Handle both formats: with or without /v1 suffix
+		baseURL := strings.TrimSuffix(session.ProxyBaseURL, "/v1")
+		baseURL = strings.TrimSuffix(baseURL, "/")
+		targetURL = baseURL + "/v1/chat/completions"
 		needsTransform = true
 		slog.Info("using session proxy configuration",
 			"session_id", sessionID,

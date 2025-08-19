@@ -13,6 +13,7 @@ interface SessionConfig {
   provider?: 'anthropic' | 'openrouter'
   model?: string
   maxTurns?: number
+  openRouterApiKey?: string
 }
 
 interface LauncherState {
@@ -155,6 +156,12 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
         max_turns: config.maxTurns || undefined,
         mcp_config: mcpConfig,
         permission_prompt_tool: 'mcp__approvals__request_permission',
+        // Add OpenRouter API key if provided
+        ...(config.provider === 'openrouter' && config.openRouterApiKey
+          ? {
+              proxy_api_key: config.openRouterApiKey,
+            }
+          : {}),
       }
 
       const response = await daemonClient.launchSession(request)

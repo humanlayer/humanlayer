@@ -69,12 +69,12 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
     return (
       <div className="space-y-3">
         {/* Status Bar */}
-        <StatusBar 
-          session={session} 
+        <StatusBar
+          session={session}
           parentSessionData={parentSessionData}
           onModelChange={onModelChange}
         />
-        
+
         {/* Existing input area */}
         {isForkMode && <span className="text-sm font-medium">Fork from this message:</span>}
         <div className="flex gap-2">
@@ -100,7 +100,7 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
             {getSendButtonText()}
           </Button>
         </div>
-        
+
         {/* Keyboard shortcuts (condensed) */}
         <p className="text-xs text-muted-foreground">
           {isResponding

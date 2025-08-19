@@ -129,6 +129,14 @@ func (m *Manager) LaunchSession(ctx context.Context, config LaunchSessionConfig)
 		}
 	}
 
+	// Handle proxy configuration from config
+	if config.ProxyEnabled {
+		dbSession.ProxyEnabled = config.ProxyEnabled
+		dbSession.ProxyBaseURL = config.ProxyBaseURL
+		dbSession.ProxyModelOverride = config.ProxyModelOverride
+		dbSession.ProxyAPIKey = config.ProxyAPIKey
+	}
+
 	if err := m.store.CreateSession(ctx, dbSession); err != nil {
 		return nil, fmt.Errorf("failed to store session in database: %w", err)
 	}
@@ -145,8 +153,8 @@ func (m *Manager) LaunchSession(ctx context.Context, config LaunchSessionConfig)
 
 	// No longer storing full session in memory
 
-	// Set proxy URL for this session when proxy is enabled
-	if dbSession.ProxyEnabled || os.Getenv("OPENROUTER_API_KEY") != "" {
+	// Set proxy URL for this session ONLY when proxy is explicitly enabled
+	if config.ProxyEnabled {
 		if claudeConfig.Env == nil {
 			claudeConfig.Env = make(map[string]string)
 		}
@@ -164,8 +172,11 @@ func (m *Manager) LaunchSession(ctx context.Context, config LaunchSessionConfig)
 		slog.Info("Setting ANTHROPIC_BASE_URL for proxy",
 			"session_id", sessionID,
 			"proxy_url", proxyURL,
-			"proxy_enabled", dbSession.ProxyEnabled,
-			"has_openrouter_key", os.Getenv("OPENROUTER_API_KEY") != "")
+			"proxy_enabled", config.ProxyEnabled,
+			"proxy_base_url", config.ProxyBaseURL,
+			"proxy_model", config.ProxyModelOverride,
+			"has_api_key", config.ProxyAPIKey != "",
+			"has_env_key", os.Getenv("OPENROUTER_API_KEY") != "")
 	}
 
 	// Log final configuration before launching
@@ -1281,7 +1292,7 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 	if dbSession.WorkingDir == "" && parentSession.WorkingDir != "" {
 		dbSession.WorkingDir = parentSession.WorkingDir
 	}
-	
+
 	// Inherit proxy configuration from parent or use provided values
 	if req.ProxyEnabled || parentSession.ProxyEnabled {
 		dbSession.ProxyEnabled = true
@@ -1302,7 +1313,7 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 			dbSession.ProxyAPIKey = parentSession.ProxyAPIKey
 		}
 	}
-	
+
 	// Note: ClaudeSessionID will be captured from streaming events (will be different from parent)
 	if err := m.store.CreateSession(ctx, dbSession); err != nil {
 		return nil, fmt.Errorf("failed to store session in database: %w", err)
@@ -1332,7 +1343,7 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 	}
 
 	// Set proxy URL for resumed session when proxy is enabled
-	if dbSession.ProxyEnabled || os.Getenv("OPENROUTER_API_KEY") != "" {
+	if dbSession.ProxyEnabled {
 		if config.Env == nil {
 			config.Env = make(map[string]string)
 		}

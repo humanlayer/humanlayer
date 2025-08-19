@@ -714,6 +714,18 @@ components:
           type: boolean
           description: Whether session is archived
           default: false
+        proxy_enabled:
+          type: boolean
+          description: Whether proxy is enabled for this session
+          default: false
+        proxy_base_url:
+          type: string
+          description: Base URL of the proxy server
+          example: https://openrouter.ai/api/v1
+        proxy_model_override:
+          type: string
+          description: Model to use with the proxy
+          example: openai/gpt-oss-120b
 
     SessionStatus:
       type: string
@@ -793,6 +805,22 @@ components:
           type: boolean
           description: Enable verbose output
           default: false
+        # Proxy configuration for OpenRouter support
+        proxy_enabled:
+          type: boolean
+          description: Enable proxy routing for this session
+          default: false
+        proxy_base_url:
+          type: string
+          description: Base URL for proxy service
+          example: "https://openrouter.ai/api/v1"
+        proxy_model_override:
+          type: string
+          description: Model identifier for proxy routing
+          example: "openai/gpt-4"
+        proxy_api_key:
+          type: string
+          description: API key for proxy authentication
 
     CreateSessionResponse:
       type: object
@@ -853,6 +881,32 @@ components:
           type: string
           description: Update session title
           example: "Updated Task Name"
+        # New fields for model configuration
+        model:
+          type: string
+          description: Model to use (opus, sonnet, or empty for default)
+          example: "sonnet"
+        model_id:
+          type: string
+          description: Full model identifier
+          example: "claude-3-5-sonnet-20241022"
+        # New fields for proxy configuration
+        proxy_enabled:
+          type: boolean
+          description: Enable proxy routing for this session
+          example: true
+        proxy_base_url:
+          type: string
+          description: Base URL for proxy service
+          example: "https://openrouter.ai/api/v1"
+        proxy_model_override:
+          type: string
+          description: Model identifier for proxy routing
+          example: "anthropic/claude-3.5-sonnet"
+        proxy_api_key:
+          type: string
+          description: API key for proxy authentication
+          example: "sk-or-..."
 
     ContinueSessionRequest:
       type: object

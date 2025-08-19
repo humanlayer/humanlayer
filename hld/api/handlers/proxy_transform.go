@@ -78,7 +78,8 @@ func (h *ProxyHandler) transformAnthropicToOpenAI(anthropicReq map[string]interf
 
 	// Handle tool_choice if specified
 	if toolChoice, ok := anthropicReq["tool_choice"].(map[string]interface{}); ok {
-		if toolChoice["type"] == "tool" {
+		switch toolChoice["type"] {
+		case "tool":
 			// Transform specific tool choice
 			if name, ok := toolChoice["name"].(string); ok {
 				openAIReq["tool_choice"] = map[string]interface{}{
@@ -88,9 +89,9 @@ func (h *ProxyHandler) transformAnthropicToOpenAI(anthropicReq map[string]interf
 					},
 				}
 			}
-		} else if toolChoice["type"] == "any" {
+		case "any":
 			openAIReq["tool_choice"] = "auto"
-		} else if toolChoice["type"] == "none" {
+		case "none":
 			openAIReq["tool_choice"] = "none"
 		}
 	}
@@ -168,8 +169,8 @@ func transformSingleMessage(anthropicMsg map[string]interface{}) map[string]inte
 					}
 					toolCalls = append(toolCalls, toolCall)
 				case "tool_result":
-					// Handle tool results (convert to function response)
-					openAIMsg["role"] = "function"
+					// Handle tool results (convert to tool response)
+					openAIMsg["role"] = "tool"
 					if toolUseID, ok := block["tool_use_id"].(string); ok {
 						openAIMsg["tool_call_id"] = toolUseID
 					}

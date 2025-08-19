@@ -128,7 +128,7 @@ export class HTTPDaemonClient implements IDaemonClient {
     // Handle provider-specific model formatting
     let model: string | undefined = params.model
     const provider = 'provider' in params ? params.provider : 'anthropic'
-    
+
     // Only map to enum for Anthropic provider
     if (provider === 'anthropic' && params.model) {
       if (params.model.includes('sonnet')) {
@@ -139,27 +139,32 @@ export class HTTPDaemonClient implements IDaemonClient {
     }
     // For OpenRouter, pass model string as-is
 
+    // Create the session with appropriate settings
     const response = await this.client!.createSession({
       query: params.query,
       title: 'title' in params ? params.title : undefined,
       workingDir:
         'workingDir' in params ? params.workingDir : (params as LaunchSessionRequest).working_dir,
-      model: model as 'opus' | 'sonnet' | undefined,
-      // Pass provider info if OpenRouter (backend will handle proxy setup)
-      ...(provider === 'openrouter' && { 
-        proxyEnabled: true,
-        modelOverride: model  // Pass custom model for OpenRouter
-      }),
+      model: provider === 'openrouter' ? undefined : (model as 'opus' | 'sonnet' | undefined),
       mcpConfig: 'mcpConfig' in params ? params.mcpConfig : (params as LaunchSessionRequest).mcp_config,
       permissionPromptTool:
         'permissionPromptTool' in params
           ? params.permissionPromptTool
           : (params as LaunchSessionRequest).permission_prompt_tool,
       autoAcceptEdits: 'autoAcceptEdits' in params ? params.autoAcceptEdits : undefined,
+      // Pass proxy configuration directly if using OpenRouter
+      ...(provider === 'openrouter' && {
+        proxyEnabled: true,
+        proxyBaseUrl: 'https://openrouter.ai/api/v1',
+        proxyModelOverride: model,
+        proxyApiKey:
+          'proxyApiKey' in params ? params.proxyApiKey : (params as LaunchSessionRequest).proxy_api_key,
+      }),
       // Additional fields that might be in legacy format
       ...((params as any).template && { template: (params as any).template }),
       ...((params as any).instructions && { instructions: (params as any).instructions }),
-    })
+    } as any)
+
     return response
     // return this.transformSession(response)
   }
@@ -306,10 +311,53 @@ export class HTTPDaemonClient implements IDaemonClient {
     updates: {
       model?: string
       title?: string
+      archived?: boolean
+      autoAcceptEdits?: boolean
+      dangerouslySkipPermissions?: boolean
+      dangerouslySkipPermissionsTimeoutMs?: number
+      // New proxy fields
+      proxyEnabled?: boolean
+      proxyBaseUrl?: string
+      proxyModelOverride?: string
+      proxyApiKey?: string
     },
   ): Promise<{ success: boolean }> {
     await this.ensureConnected()
-    await this.client!.updateSession(sessionId, updates)
+
+    // Map to SDK client's expected format (snake_case for legacy fields, camelCase for new fields)
+    const sdkUpdates: any = {}
+    if (updates.model !== undefined) {
+      sdkUpdates.model = updates.model
+    }
+    if (updates.title !== undefined) {
+      sdkUpdates.title = updates.title
+    }
+    if (updates.archived !== undefined) {
+      sdkUpdates.archived = updates.archived
+    }
+    if (updates.autoAcceptEdits !== undefined) {
+      sdkUpdates.auto_accept_edits = updates.autoAcceptEdits
+    }
+    if (updates.dangerouslySkipPermissions !== undefined) {
+      sdkUpdates.dangerouslySkipPermissions = updates.dangerouslySkipPermissions
+    }
+    if (updates.dangerouslySkipPermissionsTimeoutMs !== undefined) {
+      sdkUpdates.dangerouslySkipPermissionsTimeoutMs = updates.dangerouslySkipPermissionsTimeoutMs
+    }
+    if (updates.proxyEnabled !== undefined) {
+      sdkUpdates.proxyEnabled = updates.proxyEnabled
+    }
+    if (updates.proxyBaseUrl !== undefined) {
+      sdkUpdates.proxyBaseUrl = updates.proxyBaseUrl
+    }
+    if (updates.proxyModelOverride !== undefined) {
+      sdkUpdates.proxyModelOverride = updates.proxyModelOverride
+    }
+    if (updates.proxyApiKey !== undefined) {
+      sdkUpdates.proxyApiKey = updates.proxyApiKey
+    }
+
+    await this.client!.updateSession(sessionId, sdkUpdates)
     return { success: true }
   }
 

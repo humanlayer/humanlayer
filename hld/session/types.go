@@ -68,6 +68,11 @@ type LaunchSessionConfig struct {
 	// Daemon-level settings that don't get passed to Claude Code
 	DangerouslySkipPermissions        bool   // Whether to auto-approve all tools
 	DangerouslySkipPermissionsTimeout *int64 // Optional timeout in milliseconds
+	// Proxy configuration
+	ProxyEnabled       bool   // Whether proxy is enabled
+	ProxyBaseURL       string // Proxy base URL
+	ProxyModelOverride string // Model to use with proxy
+	ProxyAPIKey        string // API key for proxy service
 }
 
 // ContinueSessionConfig contains the configuration for continuing a session

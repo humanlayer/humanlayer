@@ -110,7 +110,14 @@ export class HLDClient {
         auto_accept_edits?: boolean,
         title?: string,
         dangerouslySkipPermissions?: boolean,
-        dangerouslySkipPermissionsTimeoutMs?: number
+        dangerouslySkipPermissionsTimeoutMs?: number,
+        model?: string,
+        modelId?: string,
+        proxyEnabled?: boolean,
+        proxyBaseUrl?: string,
+        proxyModelOverride?: string,
+        proxyApiKey?: string,
+        archived?: boolean
     }): Promise<void> {
         // Build request with only defined fields to avoid sending undefined values
         const updateSessionRequest: any = {};
@@ -125,6 +132,27 @@ export class HLDClient {
         }
         if (updates.dangerouslySkipPermissionsTimeoutMs !== undefined) {
             updateSessionRequest.dangerouslySkipPermissionsTimeoutMs = updates.dangerouslySkipPermissionsTimeoutMs;
+        }
+        if (updates.model !== undefined) {
+            updateSessionRequest.model = updates.model;
+        }
+        if (updates.modelId !== undefined) {
+            updateSessionRequest.modelId = updates.modelId;
+        }
+        if (updates.proxyEnabled !== undefined) {
+            updateSessionRequest.proxyEnabled = updates.proxyEnabled;
+        }
+        if (updates.proxyBaseUrl !== undefined) {
+            updateSessionRequest.proxyBaseUrl = updates.proxyBaseUrl;
+        }
+        if (updates.proxyModelOverride !== undefined) {
+            updateSessionRequest.proxyModelOverride = updates.proxyModelOverride;
+        }
+        if (updates.proxyApiKey !== undefined) {
+            updateSessionRequest.proxyApiKey = updates.proxyApiKey;
+        }
+        if (updates.archived !== undefined) {
+            updateSessionRequest.archived = updates.archived;
         }
 
         await this.sessionsApi.updateSession({

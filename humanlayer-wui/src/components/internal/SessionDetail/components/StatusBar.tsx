@@ -1,17 +1,12 @@
 import { useState } from 'react'
-import { Edit2 } from 'lucide-react'
+import { Pencil } from 'lucide-react'
 import { Session } from '@/lib/daemon/types'
 import { Button } from '@/components/ui/button'
 import { TokenUsageBadge } from './TokenUsageBadge'
 import { ModelSelector } from './ModelSelector'
 import { renderSessionStatus } from '@/utils/sessionStatus'
 import { getStatusTextClass } from '@/utils/component-utils'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface StatusBarProps {
   session: Session
@@ -21,18 +16,29 @@ interface StatusBarProps {
 
 export function StatusBar({ session, parentSessionData, onModelChange }: StatusBarProps) {
   const [isModelSelectorOpen, setIsModelSelectorOpen] = useState(false)
-  
+
   const statusText = renderSessionStatus(session).toUpperCase()
-  const modelText = session.model || 'DEFAULT'
+  // Show proxy model if using OpenRouter, otherwise show regular model
+  const rawModelText =
+    session.proxyEnabled && session.proxyModelOverride
+      ? session.proxyModelOverride
+      : session.model || 'DEFAULT'
+  // Strip provider prefix (e.g., "openai/" from "openai/gpt-oss-120b")
+  const modelText = rawModelText.includes('/')
+    ? rawModelText.split('/').slice(1).join('/')
+    : rawModelText
   const isRunning = session.status === 'running' || session.status === 'starting'
-  
+  const isReadyForInput = session.status === 'completed' && !session.archived
+
   return (
     <div className="flex flex-wrap items-center gap-2 text-sm">
       {/* Status Badge */}
-      <span className={`font-mono text-xs uppercase tracking-wider ${getStatusTextClass(session.status)}`}>
+      <span
+        className={`font-mono text-xs uppercase tracking-wider ${getStatusTextClass(session.status)}`}
+      >
         {statusText}
       </span>
-      
+
       {/* Model Selector Badge - Linear Style */}
       <TooltipProvider>
         <Tooltip>
@@ -40,33 +46,47 @@ export function StatusBar({ session, parentSessionData, onModelChange }: StatusB
             <Button
               variant="outline"
               size="sm"
-              className="h-6 px-2 py-0 text-xs font-mono uppercase tracking-wider border-muted-foreground/20 hover:border-muted-foreground/40 hover:bg-muted/30 transition-all duration-200"
-              onClick={() => setIsModelSelectorOpen(true)}
+              className={`h-6 px-2 py-0 text-xs font-mono uppercase tracking-wider border-muted-foreground/20 transition-all duration-200 hover:text-current ${
+                isReadyForInput
+                  ? 'hover:border-muted-foreground/40 hover:!text-primary hover:!bg-primary/10'
+                  : 'cursor-not-allowed hover:bg-transparent'
+              } ${isReadyForInput ? '' : getStatusTextClass(session.status)}`}
+              onClick={() => isReadyForInput && setIsModelSelectorOpen(true)}
             >
               {modelText}
-              <Edit2 className="h-3 w-3 ml-1.5 opacity-50 hover:opacity-70" />
+              {isReadyForInput && <Pencil className="h-3 w-3 ml-1.5 opacity-50 hover:opacity-70" />}
             </Button>
           </TooltipTrigger>
           <TooltipContent>
-            <p className="font-medium">Click to change model</p>
-            {!isRunning && (
-              <p className="text-xs text-muted-foreground mt-1">
-                Changes take effect on next message
-              </p>
+            {isReadyForInput ? (
+              <p className="font-medium">Click to change model</p>
+            ) : isRunning ? (
+              <>
+                <p className="font-medium">Model changes unavailable while running</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Use "Interrupt" to stop and change model
+                </p>
+              </>
+            ) : (
+              <p className="font-medium">Model changes available when ready for input</p>
             )}
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
-      
+
       {/* Context Usage */}
       <TokenUsageBadge
         effectiveContextTokens={
           session.effectiveContextTokens ?? parentSessionData?.effectiveContextTokens
         }
         contextLimit={session.contextLimit ?? parentSessionData?.contextLimit}
-        model={session.model ?? parentSessionData?.model}
+        model={
+          session.proxyEnabled && session.proxyModelOverride
+            ? session.proxyModelOverride
+            : (session.model ?? parentSessionData?.model)
+        }
       />
-      
+
       {/* Model Selector Modal */}
       <ModelSelector
         session={session}

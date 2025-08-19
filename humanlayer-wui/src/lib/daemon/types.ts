@@ -37,6 +37,7 @@ export interface LaunchSessionParams {
   permissionPromptTool?: string
   maxTurns?: number
   autoAcceptEdits?: boolean
+  proxyApiKey?: string
   // Add any WUI-specific extensions if needed
 }
 
@@ -182,6 +183,7 @@ export interface LaunchSessionRequest {
   verbose?: boolean
   dangerously_skip_permissions?: boolean
   dangerously_skip_permissions_timeout?: number
+  proxy_api_key?: string
 }
 
 export interface LaunchSessionResponse {

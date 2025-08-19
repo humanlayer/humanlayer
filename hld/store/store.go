@@ -3,7 +3,6 @@ package store
 import (
 	"context"
 	"encoding/json"
-	"os"
 	"time"
 
 	claudecode "github.com/humanlayer/humanlayer/claudecode-go"
@@ -127,6 +126,11 @@ type SessionUpdate struct {
 	Model                               *string
 	ModelID                             *string // Full model identifier
 	Archived                            *bool   // New field for updating archived status
+	// New proxy fields
+	ProxyEnabled       *bool   `db:"proxy_enabled"`
+	ProxyBaseURL       *string `db:"proxy_base_url"`
+	ProxyModelOverride *string `db:"proxy_model_override"`
+	ProxyAPIKey        *string `db:"proxy_api_key"`
 }
 
 // ConversationEvent represents a single event in a conversation
@@ -278,14 +282,8 @@ func NewSessionFromConfig(id, runID string, config claudecode.SessionConfig) *Se
 		LastActivityAt:       time.Now(),
 	}
 
-	// Auto-detect OpenRouter configuration from environment
-	if apiKey := os.Getenv("OPENROUTER_API_KEY"); apiKey != "" {
-		session.ProxyEnabled = true
-		session.ProxyBaseURL = "https://openrouter.ai/api"
-		session.ProxyAPIKey = apiKey
-		// Default model for OpenRouter - can be overridden later
-		session.ProxyModelOverride = "openai/gpt-oss-120b"
-	}
+	// Note: Proxy configuration should be explicitly set by the user
+	// through the UI, not auto-detected from environment variables
 
 	return session
 }

@@ -246,11 +246,11 @@ func TestMapStopReason(t *testing.T) {
 
 func TestTransformOpenAIToAnthropic_TokenExtraction(t *testing.T) {
 	testCases := []struct {
-		name                string
-		message             map[string]interface{}
-		finishReason        string
-		usage               map[string]interface{}
-		expectedInputTokens int
+		name                 string
+		message              map[string]interface{}
+		finishReason         string
+		usage                map[string]interface{}
+		expectedInputTokens  int
 		expectedOutputTokens int
 	}{
 		{

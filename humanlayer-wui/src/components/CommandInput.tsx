@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react'
+import React, { useRef, useEffect, useState } from 'react'
 import { Button } from './ui/button'
 import { SearchInput } from './FuzzySearchInput'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
@@ -7,6 +7,9 @@ import { Textarea } from './ui/textarea'
 import { Input } from './ui/input'
 import { Label } from './ui/label'
 import { hasContent, isEmptyOrWhitespace } from '@/utils/validation'
+import { Eye, EyeOff, Pencil, CheckCircle, AlertCircle } from 'lucide-react'
+import { daemonClient } from '@/lib/daemon'
+import { ConfigStatus } from '@/lib/daemon/types'
 
 interface SessionConfig {
   title?: string
@@ -14,6 +17,7 @@ interface SessionConfig {
   provider?: 'anthropic' | 'openrouter'
   model?: string
   maxTurns?: number
+  openRouterApiKey?: string
 }
 
 interface CommandInputProps {
@@ -38,6 +42,10 @@ export default function CommandInput({
   const promptRef = useRef<HTMLTextAreaElement>(null)
   const directoryRef = useRef<HTMLInputElement>(null)
   const { paths: recentPaths } = useRecentPaths()
+  const [showApiKey, setShowApiKey] = useState(false)
+  const [showApiKeyInput, setShowApiKeyInput] = useState(false)
+  const [configStatus, setConfigStatus] = useState<ConfigStatus | null>(null)
+  const [isCheckingConfig, setIsCheckingConfig] = useState(false)
 
   useEffect(() => {
     // Focus on directory field if it has the default value, otherwise focus on prompt
@@ -52,6 +60,20 @@ export default function CommandInput({
       promptRef.current.focus()
     }
   }, [])
+
+  // Check config status when provider changes to OpenRouter
+  useEffect(() => {
+    if (config.provider === 'openrouter') {
+      setIsCheckingConfig(true)
+      daemonClient
+        .getConfigStatus()
+        .then(setConfigStatus)
+        .catch(err => {
+          console.error('Failed to check config:', err)
+        })
+        .finally(() => setIsCheckingConfig(false))
+    }
+  }, [config.provider])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
@@ -136,9 +158,10 @@ export default function CommandInput({
           <Select
             value={config.provider || 'anthropic'}
             onValueChange={value => {
-              updateConfig({ 
+              updateConfig({
                 provider: value as 'anthropic' | 'openrouter',
-                model: undefined // Clear model when provider changes
+                model: undefined, // Clear model when provider changes
+                openRouterApiKey: undefined, // Clear API key when switching providers
               })
             }}
           >
@@ -155,14 +178,14 @@ export default function CommandInput({
         {/* Model Selection */}
         <div className="space-y-2">
           <label className="text-sm font-medium text-foreground">Model</label>
-          
+
           {config.provider === 'openrouter' ? (
             // Text input for OpenRouter models
             <Input
               type="text"
               value={config.model || ''}
               onChange={e => updateConfig({ model: e.target.value })}
-              placeholder="e.g., anthropic/claude-3-opus"
+              placeholder="e.g., openai/gpt-oss-120b"
               disabled={isLoading}
             />
           ) : (
@@ -182,6 +205,106 @@ export default function CommandInput({
           )}
         </div>
       </div>
+
+      {/* OpenRouter API Key field - only shown when OpenRouter is selected */}
+      {config.provider === 'openrouter' && (
+        <div className="space-y-2">
+          {!showApiKeyInput ? (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {isCheckingConfig ? (
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                ) : configStatus?.openrouter?.api_key_configured || config.openRouterApiKey ? (
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                ) : (
+                  <AlertCircle className="h-4 w-4 text-destructive" />
+                )}
+                <span
+                  className={
+                    configStatus?.openrouter?.api_key_configured || config.openRouterApiKey
+                      ? 'text-sm text-muted-foreground'
+                      : 'text-sm text-destructive'
+                  }
+                >
+                  {isCheckingConfig
+                    ? 'Checking OpenRouter configuration...'
+                    : configStatus?.openrouter?.api_key_configured || config.openRouterApiKey
+                      ? 'OpenRouter API key is configured'
+                      : 'OpenRouter API key required'}
+                </span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0"
+                onClick={() => setShowApiKeyInput(!showApiKeyInput)}
+              >
+                <Pencil className="h-3 w-3" />
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Label htmlFor="api-key" className="text-xs">
+                OpenRouter API Key
+              </Label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Input
+                    id="api-key"
+                    type={showApiKey ? 'text' : 'password'}
+                    value={config.openRouterApiKey || ''}
+                    onChange={e => updateConfig({ openRouterApiKey: e.target.value })}
+                    placeholder="sk-or-..."
+                    className="h-8 pr-10 text-sm"
+                  />
+                  {config.openRouterApiKey && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-8 w-8 p-0"
+                      onClick={() => setShowApiKey(!showApiKey)}
+                      type="button"
+                    >
+                      {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  )}
+                </div>
+                {config.openRouterApiKey ? (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="h-8 px-3"
+                    onClick={() => {
+                      setShowApiKeyInput(false)
+                      setShowApiKey(false)
+                    }}
+                    type="button"
+                  >
+                    Save
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 px-3"
+                    onClick={() => {
+                      setShowApiKeyInput(false)
+                      updateConfig({ openRouterApiKey: undefined })
+                      setShowApiKey(false)
+                    }}
+                    type="button"
+                  >
+                    Cancel
+                  </Button>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Your API key will be stored with this session
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Action Bar */}
       {hasContent(value) && (

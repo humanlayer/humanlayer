@@ -877,6 +877,23 @@ func (s *SQLiteStore) UpdateSession(ctx context.Context, sessionID string, updat
 		setParts = append(setParts, "archived = ?")
 		args = append(args, *updates.Archived)
 	}
+	// Handle proxy field updates
+	if updates.ProxyEnabled != nil {
+		setParts = append(setParts, "proxy_enabled = ?")
+		args = append(args, *updates.ProxyEnabled)
+	}
+	if updates.ProxyBaseURL != nil {
+		setParts = append(setParts, "proxy_base_url = ?")
+		args = append(args, *updates.ProxyBaseURL)
+	}
+	if updates.ProxyModelOverride != nil {
+		setParts = append(setParts, "proxy_model_override = ?")
+		args = append(args, *updates.ProxyModelOverride)
+	}
+	if updates.ProxyAPIKey != nil {
+		setParts = append(setParts, "proxy_api_key = ?")
+		args = append(args, *updates.ProxyAPIKey)
+	}
 
 	if len(setParts) == 0 {
 		// No fields to update is OK - this is a no-op
@@ -1008,6 +1025,12 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 	if dangerouslySkipPermissionsExpiresAt.Valid {
 		session.DangerouslySkipPermissionsExpiresAt = &dangerouslySkipPermissionsExpiresAt.Time
 	}
+
+	// Handle proxy fields
+	session.ProxyEnabled = proxyEnabled.Valid && proxyEnabled.Bool
+	session.ProxyBaseURL = proxyBaseURL.String
+	session.ProxyModelOverride = proxyModelOverride.String
+	session.ProxyAPIKey = proxyAPIKey.String
 
 	return &session, nil
 }
