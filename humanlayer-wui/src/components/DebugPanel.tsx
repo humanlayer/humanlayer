@@ -118,8 +118,14 @@ export function DebugPanel({ open, onOpenChange }: DebugPanelProps) {
   async function handleConnectToCustom() {
     setConnectError(null)
 
+    let url = customUrl.trim()
+
+    if (!isNaN(Number(url))) {
+      url = `http://127.0.0.1:${url}`
+    }
+
     try {
-      await daemonService.connectToExisting(customUrl)
+      await daemonService.connectToExisting(url)
       await reconnect()
       await loadDaemonInfo()
       setCustomUrl('')
@@ -221,7 +227,7 @@ export function DebugPanel({ open, onOpenChange }: DebugPanelProps) {
             <CardHeader>
               <CardTitle className="text-sm">Connect to Existing Daemon</CardTitle>
               <CardDescription className="text-xs">
-                Connect to a daemon running on a custom URL
+                Connect to a daemon running on a custom URL (or provide a port number).
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">

@@ -102,6 +102,21 @@
 /* Custom bullets for unordered lists */
 .prose-terminal ul {
   list-style: none;
+
+  /* This is slightly a hack, we're making heavy use of `pre-wrap`
+  and we can potentially remove this in the future. For now it helps
+  make sure we're not rendering extra space around list items */
+  white-space: normal;
+
+  display: flex;
+  flex-direction: column;
+  gap: 0.75em;
+}
+
+.prose-terminal ul > li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75em;
 }
 
 .prose-terminal ul > li::before {
