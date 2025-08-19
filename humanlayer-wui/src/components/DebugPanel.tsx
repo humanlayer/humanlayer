@@ -118,7 +118,7 @@ export function DebugPanel({ open, onOpenChange }: DebugPanelProps) {
   async function handleConnectToCustom() {
     setConnectError(null)
 
-    let url = customUrl
+    let url = customUrl.trim()
 
     if (!isNaN(Number(url))) {
       url = `http://127.0.0.1:${url}`
