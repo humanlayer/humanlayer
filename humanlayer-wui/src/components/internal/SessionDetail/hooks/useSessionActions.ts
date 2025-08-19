@@ -147,7 +147,10 @@ export function useSessionActions({
         interruptSession(session.id)
       }
     },
-    { scopes: SessionDetailHotkeysScope },
+    {
+      scopes: SessionDetailHotkeysScope,
+      enableOnFormTags: true,
+    },
   )
 
   // R key - no longer needed since input is always visible
