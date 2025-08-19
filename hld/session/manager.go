@@ -68,6 +68,26 @@ func (m *Manager) LaunchSession(ctx context.Context, config LaunchSessionConfig)
 	// Extract the Claude config (without daemon-level settings)
 	claudeConfig := config.SessionConfig
 
+	// Inject daemon's CodeLayer MCP server configuration
+	if claudeConfig.MCPConfig == nil {
+		claudeConfig.MCPConfig = &claudecode.MCPConfig{
+			MCPServers: make(map[string]claudecode.MCPServer),
+		}
+	}
+
+	// Always inject codelayer MCP server (overwrite if exists)
+	claudeConfig.MCPConfig.MCPServers["codelayer"] = claudecode.MCPServer{
+		Command: "hlyr",
+		Args:    []string{"mcp", "claude_approvals"},
+		Env: map[string]string{
+			"HUMANLAYER_SESSION_ID":    sessionID,
+			"HUMANLAYER_DAEMON_SOCKET": m.socketPath,
+		},
+	}
+	slog.Debug("injected codelayer MCP server",
+		"session_id", sessionID,
+		"socket_path", m.socketPath)
+
 	// Add HUMANLAYER_RUN_ID and HUMANLAYER_DAEMON_SOCKET to MCP server environment
 	// For HTTP servers, inject session ID header
 	if claudeConfig.MCPConfig != nil {
@@ -1300,8 +1320,33 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 	// Add run_id and daemon socket to MCP server environments
 	// For HTTP servers, inject session ID header
 
+	// Ensure MCP config exists for injection
+	if config.MCPConfig == nil {
+		config.MCPConfig = &claudecode.MCPConfig{
+			MCPServers: make(map[string]claudecode.MCPServer),
+		}
+	}
+
+	// Always update codelayer MCP server with child session ID
+	config.MCPConfig.MCPServers["codelayer"] = claudecode.MCPServer{
+		Command: "hlyr",
+		Args:    []string{"mcp", "claude_approvals"},
+		Env: map[string]string{
+			"HUMANLAYER_SESSION_ID":    sessionID, // Use child session ID
+			"HUMANLAYER_DAEMON_SOCKET": m.socketPath,
+		},
+	}
+	slog.Debug("updated codelayer MCP server for child session",
+		"session_id", sessionID,
+		"parent_session_id", req.ParentSessionID,
+		"socket_path", m.socketPath)
+
 	if config.MCPConfig != nil {
 		for name, server := range config.MCPConfig.MCPServers {
+			// Skip codelayer as we already configured it above
+			if name == "codelayer" {
+				continue
+			}
 			// Check if this is an HTTP MCP server
 			if server.Type == "http" {
 				// For HTTP servers, always set session ID header to child session ID
