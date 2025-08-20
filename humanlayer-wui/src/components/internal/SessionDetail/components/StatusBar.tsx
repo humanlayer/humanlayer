@@ -61,12 +61,7 @@ export function StatusBar({ session, parentSessionData, onModelChange }: StatusB
             {isReadyForInput ? (
               <p className="font-medium">Click to change model</p>
             ) : isRunning ? (
-              <>
-                <p className="font-medium">Model changes unavailable while running</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Use "Interrupt" to stop and change model
-                </p>
-              </>
+              <p className="font-medium">Model changes unavailable while running</p>
             ) : (
               <p className="font-medium">Model changes available when ready for input</p>
             )}
