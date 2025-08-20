@@ -82,6 +82,6 @@ touch humanlayer-wui/src-tauri/bin/hld
 touch humanlayer-wui/src-tauri/bin/humanlayer
 
 echo "🏗️  Building hlyr..."
-run_silent "hlyr build" "npm run build -C hlyr"
+run_silent "hlyr build" "npm i -C hlyr && npm run build -C hlyr"
 
 echo "✅ Repository setup complete!"
