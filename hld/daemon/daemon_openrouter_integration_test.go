@@ -347,4 +347,3 @@ func TestOpenRouterContinueSession(t *testing.T) {
 
 	t.Log("Successfully created continued session with OpenRouter proxy configuration")
 }
-
