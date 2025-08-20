@@ -54,9 +54,8 @@ echo "📦 Generating HLD mocks..."
 run_silent "HLD mock generation" "make -C hld mocks"
 
 echo "📦 Installing NPM dependencies..."
-# Install npm dependencies in parallel
+# Install npm dependencies in parallel (except hlyr, which we'll build instead)
 (
-    run_silent "hlyr npm install" "npm i -C hlyr" &
     run_silent "humanlayer-ts npm install" "npm i -C humanlayer-ts" &
     run_silent "humanlayer-ts-vercel-ai-sdk npm install" "npm i -C humanlayer-ts-vercel-ai-sdk" &
     wait
@@ -82,7 +81,7 @@ mkdir -p humanlayer-wui/src-tauri/bin
 touch humanlayer-wui/src-tauri/bin/hld
 touch humanlayer-wui/src-tauri/bin/humanlayer
 
-echo "🏗️  Building hlyr (requires mocks and npm dependencies)..."
+echo "🏗️  Building hlyr..."
 run_silent "hlyr build" "npm run build -C hlyr"
 
 echo "✅ Repository setup complete!"

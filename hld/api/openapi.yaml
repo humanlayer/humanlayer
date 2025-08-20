@@ -28,20 +28,20 @@ paths:
               schema:
                 $ref: '#/components/schemas/HealthResponse'
 
-  /database-info:
+  /debug-info:
     get:
-      operationId: getDatabaseInfo
-      summary: Get database information
-      description: Get information about the daemon's SQLite database including path, size, and statistics
+      operationId: getDebugInfo
+      summary: Get debug information
+      description: Get debug information about the daemon including database stats and runtime configuration
       tags:
         - System
       responses:
         '200':
-          description: Database information retrieved successfully
+          description: Debug information retrieved successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DatabaseInfoResponse'
+                $ref: '#/components/schemas/DebugInfoResponse'
 
   /sessions:
     post:
@@ -510,13 +510,14 @@ components:
           example: "0.1.0"
 
     # Database Info Response
-    DatabaseInfoResponse:
+    DebugInfoResponse:
       type: object
       required:
         - path
         - size
         - table_count
         - stats
+        - cli_command
       properties:
         path:
           type: string
@@ -541,6 +542,10 @@ components:
             sessions: 42
             approvals: 15
             events: 237
+        cli_command:
+          type: string
+          description: CLI command configured for MCP servers
+          example: "hlyr"
         last_modified:
           type: string
           format: date-time
