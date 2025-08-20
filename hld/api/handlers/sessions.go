@@ -62,16 +62,18 @@ func (h *SessionHandlers) CreateSession(ctx context.Context, req api.CreateSessi
 	}
 
 	// Handle proxy configuration
+	// Note: OpenAPI generates ProxyBaseUrl/ProxyApiKey (following JSON conventions)
+	// but we map to ProxyBaseURL/ProxyAPIKey (following Go conventions for acronyms)
 	if req.Body.ProxyEnabled != nil && *req.Body.ProxyEnabled {
 		config.ProxyEnabled = true
 		if req.Body.ProxyBaseUrl != nil {
-			config.ProxyBaseURL = *req.Body.ProxyBaseUrl
+			config.ProxyBaseURL = *req.Body.ProxyBaseUrl // Intentional: ProxyBaseUrl -> ProxyBaseURL
 		}
 		if req.Body.ProxyModelOverride != nil {
 			config.ProxyModelOverride = *req.Body.ProxyModelOverride
 		}
 		if req.Body.ProxyApiKey != nil {
-			config.ProxyAPIKey = *req.Body.ProxyApiKey
+			config.ProxyAPIKey = *req.Body.ProxyApiKey // Intentional: ProxyApiKey -> ProxyAPIKey
 		}
 	}
 
@@ -326,17 +328,19 @@ func (h *SessionHandlers) UpdateSession(ctx context.Context, req api.UpdateSessi
 	}
 
 	// Update proxy configuration if specified
+	// Note: OpenAPI generates ProxyBaseUrl/ProxyApiKey (following JSON conventions)
+	// but we map to ProxyBaseURL/ProxyAPIKey (following Go conventions for acronyms)
 	if req.Body.ProxyEnabled != nil {
 		update.ProxyEnabled = req.Body.ProxyEnabled
 	}
 	if req.Body.ProxyBaseUrl != nil {
-		update.ProxyBaseURL = req.Body.ProxyBaseUrl
+		update.ProxyBaseURL = req.Body.ProxyBaseUrl // Intentional: ProxyBaseUrl -> ProxyBaseURL
 	}
 	if req.Body.ProxyModelOverride != nil {
 		update.ProxyModelOverride = req.Body.ProxyModelOverride
 	}
 	if req.Body.ProxyApiKey != nil {
-		update.ProxyAPIKey = req.Body.ProxyApiKey
+		update.ProxyAPIKey = req.Body.ProxyApiKey // Intentional: ProxyApiKey -> ProxyAPIKey
 	}
 
 	err := h.manager.UpdateSessionSettings(ctx, string(req.Id), update)

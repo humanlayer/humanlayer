@@ -116,9 +116,12 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
   },
 
   setConfig: config => {
-    // Save OpenRouter API key to localStorage when it's set
+    // Save or remove OpenRouter API key from localStorage
     if (config.openRouterApiKey) {
       localStorage.setItem(OPENROUTER_API_KEY, config.openRouterApiKey)
+    } else if (config.openRouterApiKey === undefined || config.openRouterApiKey === null || config.openRouterApiKey === '') {
+      // Remove from localStorage when cleared to avoid stale state
+      localStorage.removeItem(OPENROUTER_API_KEY)
     }
     return set({ config, error: undefined })
   },
