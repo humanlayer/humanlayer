@@ -119,7 +119,11 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
     // Save or remove OpenRouter API key from localStorage
     if (config.openRouterApiKey) {
       localStorage.setItem(OPENROUTER_API_KEY, config.openRouterApiKey)
-    } else if (config.openRouterApiKey === undefined || config.openRouterApiKey === null || config.openRouterApiKey === '') {
+    } else if (
+      config.openRouterApiKey === undefined ||
+      config.openRouterApiKey === null ||
+      config.openRouterApiKey === ''
+    ) {
       // Remove from localStorage when cleared to avoid stale state
       localStorage.removeItem(OPENROUTER_API_KEY)
     }
@@ -176,9 +180,12 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
         max_turns: config.maxTurns || undefined,
         // MCP config is now injected by daemon
         permission_prompt_tool: 'mcp__codelayer__request_permission',
-        // Add OpenRouter API key if provided
+        // Add OpenRouter proxy configuration if provider is openrouter
         ...(config.provider === 'openrouter' && config.openRouterApiKey
           ? {
+              proxy_enabled: true,
+              proxy_base_url: 'https://openrouter.ai/api/v1',
+              proxy_model_override: config.model || 'openai/gpt-4o-mini',
               proxy_api_key: config.openRouterApiKey,
             }
           : {}),

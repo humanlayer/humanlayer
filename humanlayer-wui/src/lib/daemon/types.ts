@@ -183,6 +183,9 @@ export interface LaunchSessionRequest {
   verbose?: boolean
   dangerously_skip_permissions?: boolean
   dangerously_skip_permissions_timeout?: number
+  proxy_enabled?: boolean
+  proxy_base_url?: string
+  proxy_model_override?: string
   proxy_api_key?: string
 }
 
