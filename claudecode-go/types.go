@@ -27,10 +27,17 @@ const (
 )
 
 // MCPServer represents a single MCP server configuration
+// It can be either a stdio-based server (with command/args/env) or an HTTP server (with type/url/headers)
 type MCPServer struct {
-	Command string            `json:"command"`
+	// For stdio-based servers
+	Command string            `json:"command,omitempty"`
 	Args    []string          `json:"args,omitempty"`
 	Env     map[string]string `json:"env,omitempty"`
+
+	// For HTTP servers
+	Type    string            `json:"type,omitempty"`    // "http" for HTTP servers
+	URL     string            `json:"url,omitempty"`     // The HTTP endpoint URL
+	Headers map[string]string `json:"headers,omitempty"` // HTTP headers to include
 }
 
 // MCPConfig represents the MCP configuration structure
@@ -81,14 +88,15 @@ type StreamEvent struct {
 	APIKeySource   string `json:"apiKeySource,omitempty"`
 
 	// Result event fields (when type="result")
-	CostUSD     float64 `json:"total_cost_usd,omitempty"`
-	IsError     bool    `json:"is_error,omitempty"`
-	DurationMS  int     `json:"duration_ms,omitempty"`
-	DurationAPI int     `json:"duration_api_ms,omitempty"`
-	NumTurns    int     `json:"num_turns,omitempty"`
-	Result      string  `json:"result,omitempty"`
-	Usage       *Usage  `json:"usage,omitempty"`
-	Error       string  `json:"error,omitempty"`
+	CostUSD           float64            `json:"total_cost_usd,omitempty"`
+	IsError           bool               `json:"is_error,omitempty"`
+	DurationMS        int                `json:"duration_ms,omitempty"`
+	DurationAPI       int                `json:"duration_api_ms,omitempty"`
+	NumTurns          int                `json:"num_turns,omitempty"`
+	Result            string             `json:"result,omitempty"`
+	Usage             *Usage             `json:"usage,omitempty"`
+	Error             string             `json:"error,omitempty"`
+	PermissionDenials *PermissionDenials `json:"permission_denials,omitempty"`
 }
 
 // MCPStatus represents the status of an MCP server
@@ -173,19 +181,77 @@ type Usage struct {
 	ServerToolUse            *ServerToolUse `json:"server_tool_use,omitempty"`
 }
 
+// PermissionDenial represents a single permission denial from Claude
+type PermissionDenial struct {
+	ToolName  string                 `json:"tool_name"`
+	ToolUseID string                 `json:"tool_use_id"`
+	ToolInput map[string]interface{} `json:"tool_input,omitempty"`
+}
+
+// PermissionDenials handles flexible permission denial formats
+type PermissionDenials struct {
+	Denials []PermissionDenial
+}
+
+// UnmarshalJSON implements custom unmarshaling to handle both object and string array formats
+func (p *PermissionDenials) UnmarshalJSON(data []byte) error {
+	// Handle null
+	if string(data) == "null" {
+		p.Denials = nil
+		return nil
+	}
+
+	// Try as array of objects first (current API format)
+	var denials []PermissionDenial
+	if err := json.Unmarshal(data, &denials); err == nil {
+		p.Denials = denials
+		return nil
+	}
+
+	// Fall back to array of strings (legacy/simple format)
+	var legacyStrings []string
+	if err := json.Unmarshal(data, &legacyStrings); err == nil {
+		p.Denials = make([]PermissionDenial, len(legacyStrings))
+		for i, s := range legacyStrings {
+			p.Denials[i] = PermissionDenial{ToolName: s}
+		}
+		return nil
+	}
+
+	return fmt.Errorf("permission_denials is neither object array nor string array format")
+}
+
+// MarshalJSON implements custom marshaling
+func (p PermissionDenials) MarshalJSON() ([]byte, error) {
+	return json.Marshal(p.Denials)
+}
+
+// ToStrings converts denials to string array for backward compatibility
+func (p PermissionDenials) ToStrings() []string {
+	if p.Denials == nil {
+		return nil
+	}
+	result := make([]string, len(p.Denials))
+	for i, d := range p.Denials {
+		result[i] = d.ToolName
+	}
+	return result
+}
+
 // Result represents the final result of a Claude session
 type Result struct {
-	Type        string  `json:"type"`
-	Subtype     string  `json:"subtype"`
-	CostUSD     float64 `json:"total_cost_usd"`
-	IsError     bool    `json:"is_error"`
-	DurationMS  int     `json:"duration_ms"`
-	DurationAPI int     `json:"duration_api_ms"`
-	NumTurns    int     `json:"num_turns"`
-	Result      string  `json:"result"`
-	SessionID   string  `json:"session_id"`
-	Usage       *Usage  `json:"usage,omitempty"`
-	Error       string  `json:"error,omitempty"`
+	Type              string             `json:"type"`
+	Subtype           string             `json:"subtype"`
+	CostUSD           float64            `json:"total_cost_usd"`
+	IsError           bool               `json:"is_error"`
+	DurationMS        int                `json:"duration_ms"`
+	DurationAPI       int                `json:"duration_api_ms"`
+	NumTurns          int                `json:"num_turns"`
+	Result            string             `json:"result"`
+	SessionID         string             `json:"session_id"`
+	Usage             *Usage             `json:"usage,omitempty"`
+	Error             string             `json:"error,omitempty"`
+	PermissionDenials *PermissionDenials `json:"permission_denials,omitempty"`
 }
 
 // Session represents an active Claude session

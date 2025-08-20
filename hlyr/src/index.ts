@@ -10,7 +10,7 @@ import { launchCommand } from './commands/launch.js'
 import { alertCommand } from './commands/alert.js'
 import { thoughtsCommand } from './commands/thoughts.js'
 import { joinWaitlistCommand } from './commands/joinWaitlist.js'
-import { startDefaultMCPServer, startClaudeApprovalsMCPServer } from './mcp.js'
+import { startClaudeApprovalsMCPServer } from './mcp.js'
 import {
   getDefaultConfigPath,
   resolveFullConfig,
@@ -97,6 +97,13 @@ program
   .option('--config-file <path>', 'Path to config file')
   .action(loginCommand)
 
+const mcpCommand = program.command('mcp').description('MCP server functionality')
+
+mcpCommand
+  .command('claude_approvals')
+  .description('Start the Claude approvals MCP server for permission requests')
+  .action(startClaudeApprovalsMCPServer)
+
 program
   .command('launch <query>')
   .description('Launch a new Claude Code session via the daemon')
@@ -171,36 +178,6 @@ program
   .option('--quiet', 'Disable sound notifications')
   .option('--daemon-socket <path>', 'Path to daemon socket')
   .action(alertCommand)
-
-const mcpCommand = program.command('mcp').description('MCP server functionality')
-
-mcpCommand
-  .command('serve')
-  .description('Start the default MCP server for contact_human functionality')
-  .action(startDefaultMCPServer)
-
-mcpCommand
-  .command('claude_approvals')
-  .description('Start the Claude approvals MCP server for permission requests')
-  .action(startClaudeApprovalsMCPServer)
-
-mcpCommand
-  .command('wrapper')
-  .description('Wrap an existing MCP server with human approval functionality (not implemented yet)')
-  .action(() => {
-    console.log('MCP wrapper functionality is not implemented yet.')
-    console.log('This will allow wrapping any existing MCP server with human approval.')
-    process.exit(1)
-  })
-
-mcpCommand
-  .command('inspector')
-  .description('Run MCP inspector for debugging MCP servers')
-  .argument('[command]', 'MCP server command to inspect', 'serve')
-  .action(command => {
-    const args = ['@modelcontextprotocol/inspector', 'node', 'dist/index.js', 'mcp', command]
-    spawn('npx', args, { stdio: 'inherit', cwd: process.cwd() })
-  })
 
 // Add thoughts command
 thoughtsCommand(program)

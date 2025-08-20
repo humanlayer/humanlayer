@@ -6,106 +6,22 @@ import {
   ListToolsRequestSchema,
   McpError,
 } from '@modelcontextprotocol/sdk/types.js'
-import { humanlayer } from '@humanlayer/sdk'
 import { resolveFullConfig } from './config.js'
 import { DaemonClient } from './daemonClient.js'
 import { logger } from './mcpLogger.js'
-
-function validateAuth(): void {
-  const config = resolveFullConfig({})
-
-  if (!config.api_key) {
-    console.error('Error: No HumanLayer API token found.')
-    console.error('Please set HUMANLAYER_API_KEY environment variable or run `humanlayer login`')
-    process.exit(1)
-  }
-}
-
-/**
- * Start the default MCP server that provides contact_human functionality
- * Uses web UI by default when no contact channel is configured
- */
-export async function startDefaultMCPServer() {
-  validateAuth()
-
-  const server = new Server(
-    {
-      name: 'humanlayer-standalone',
-      version: '1.0.0',
-    },
-    {
-      capabilities: {
-        tools: {},
-      },
-    },
-  )
-
-  const resolvedConfig = resolveFullConfig({})
-
-  const hl = humanlayer({
-    apiKey: resolvedConfig.api_key,
-    ...(resolvedConfig.api_base_url && { apiBaseUrl: resolvedConfig.api_base_url }),
-    ...(resolvedConfig.run_id && { runId: resolvedConfig.run_id }),
-    ...(Object.keys(resolvedConfig.contact_channel).length > 0 && {
-      contactChannel: resolvedConfig.contact_channel,
-    }),
-  })
-
-  server.setRequestHandler(ListToolsRequestSchema, async () => {
-    return {
-      tools: [
-        {
-          name: 'contact_human',
-          description: 'Contact a human for assistance',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              message: { type: 'string' },
-            },
-            required: ['message'],
-          },
-        },
-      ],
-    }
-  })
-
-  server.setRequestHandler(CallToolRequestSchema, async request => {
-    if (request.params.name === 'contact_human') {
-      const response = await hl.fetchHumanResponse({
-        spec: {
-          msg: request.params.arguments?.message,
-        },
-      })
-
-      return {
-        content: [
-          {
-            type: 'text',
-            text: response,
-          },
-        ],
-      }
-    }
-
-    throw new McpError(ErrorCode.InvalidRequest, 'Invalid tool name')
-  })
-
-  const transport = new StdioServerTransport()
-  await server.connect(transport)
-}
 
 /**
  * Start the Claude approvals MCP server that provides request_permission functionality
  * Returns responses in the format required by Claude Code SDK
  *
- * This now uses local approvals through the daemon instead of HumanLayer API
+ * This uses local approvals through the daemon instead of HumanLayer API
  */
 export async function startClaudeApprovalsMCPServer() {
   // No auth validation needed - uses local daemon
   logger.info('Starting Claude approvals MCP server')
   logger.info('Environment variables', {
     HUMANLAYER_DAEMON_SOCKET: process.env.HUMANLAYER_DAEMON_SOCKET,
-    HUMANLAYER_RUN_ID: process.env.HUMANLAYER_RUN_ID,
+    HUMANLAYER_SESSION_ID: process.env.HUMANLAYER_SESSION_ID,
   })
 
   const server = new Server(
@@ -138,8 +54,9 @@ export async function startClaudeApprovalsMCPServer() {
           properties: {
             tool_name: { type: 'string' },
             input: { type: 'object' },
+            tool_use_id: { type: 'string' }, // Added for Phase 2
           },
-          required: ['tool_name', 'input'],
+          required: ['tool_name', 'input', 'tool_use_id'],
         },
       },
     ]
@@ -152,6 +69,7 @@ export async function startClaudeApprovalsMCPServer() {
 
     if (request.params.name === 'request_permission') {
       const toolName: string | undefined = request.params.arguments?.tool_name
+      const toolUseId: string | undefined = request.params.arguments?.tool_use_id // Phase 2
 
       if (!toolName) {
         logger.error('Invalid tool name in request_permission', request.params.arguments)
@@ -160,14 +78,14 @@ export async function startClaudeApprovalsMCPServer() {
 
       const input: Record<string, unknown> = request.params.arguments?.input || {}
 
-      // Get run ID from environment (set by Claude Code)
-      const runId = process.env.HUMANLAYER_RUN_ID
-      if (!runId) {
-        logger.error('HUMANLAYER_RUN_ID not set in environment')
-        throw new McpError(ErrorCode.InternalError, 'HUMANLAYER_RUN_ID not set')
+      // Get session ID from environment (set by daemon)
+      const sessionId = process.env.HUMANLAYER_SESSION_ID
+      if (!sessionId) {
+        logger.error('HUMANLAYER_SESSION_ID not set in environment')
+        throw new McpError(ErrorCode.InternalError, 'HUMANLAYER_SESSION_ID not set')
       }
 
-      logger.info('Processing approval request', { runId, toolName })
+      logger.info('Processing approval request', { sessionId, toolName, toolUseId })
 
       try {
         // Connect to daemon
@@ -175,9 +93,9 @@ export async function startClaudeApprovalsMCPServer() {
         await daemonClient.connect()
         logger.debug('Connected to daemon')
 
-        // Create approval request
-        logger.debug('Creating approval request...', { runId, toolName })
-        const createResponse = await daemonClient.createApproval(runId, toolName, input)
+        // Create approval request with tool use ID (Phase 2)
+        logger.debug('Creating approval request...', { sessionId, toolName, toolUseId })
+        const createResponse = await daemonClient.createApproval(sessionId, toolName, input, toolUseId)
         const approvalId = createResponse.approval_id
         logger.info('Created approval', { approvalId })
 

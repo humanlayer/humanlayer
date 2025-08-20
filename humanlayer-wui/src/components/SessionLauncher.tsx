@@ -33,6 +33,21 @@ export function SessionLauncher({ isOpen, onClose }: SessionLauncherProps) {
     },
   )
 
+  useHotkeys(
+    'meta+enter, ctrl+enter',
+    e => {
+      e.preventDefault()
+      e.stopPropagation()
+      handleSubmit()
+    },
+    {
+      enabled: isOpen,
+      enableOnFormTags: true, // Critical: allows the shortcut to work in form inputs
+      scopes: SessionLauncherHotkeysScope,
+      preventDefault: true,
+    },
+  )
+
   // Only steal scope when actually open
   useStealHotkeyScope(SessionLauncherHotkeysScope, isOpen)
 
@@ -115,8 +130,7 @@ export function SessionLauncher({ isOpen, onClose }: SessionLauncherProps) {
 
                 <div className="flex items-center justify-end text-xs text-muted-foreground">
                   <div className="flex items-center space-x-2">
-                    <span>↵ Launch</span>
-                    <span>⌘K Close</span>
+                    <span>ESC Close</span>
                   </div>
                 </div>
               </>

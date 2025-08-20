@@ -59,7 +59,10 @@ function ModelSelectorContent({
   const [configStatus, setConfigStatus] = useState<ConfigStatus | null>(null)
   const [isCheckingConfig, setIsCheckingConfig] = useState(false)
   const [showApiKeyInput, setShowApiKeyInput] = useState(false)
-  const [apiKey, setApiKey] = useState('')
+  const [apiKey, setApiKey] = useState(() => {
+    // Load saved OpenRouter API key from localStorage
+    return localStorage.getItem('humanlayer-openrouter-api-key') || ''
+  })
   const [showPassword, setShowPassword] = useState(false)
 
   // Update local state when session changes
@@ -118,6 +121,11 @@ function ModelSelectorContent({
     apiKey.length > 0
 
   const handleApply = async () => {
+    if (provider === 'openrouter' && !customModel.trim()) {
+      toast.error('Model name is required for OpenRouter')
+      return
+    }
+
     if (!canApplyOpenRouter) {
       toast.error('OpenRouter API key is required')
       return
@@ -156,6 +164,11 @@ function ModelSelectorContent({
         ...proxyConfig,
       })
 
+      // Save API key to localStorage if provided
+      if (apiKey && provider === 'openrouter') {
+        localStorage.setItem('humanlayer-openrouter-api-key', apiKey)
+      }
+
       // Notify parent component
       if (onModelChange) {
         onModelChange(modelValue)
@@ -170,7 +183,8 @@ function ModelSelectorContent({
 
       setHasChanges(false)
       setShowApiKeyInput(false)
-      setApiKey('') // Clear API key from state after saving
+      // Don't clear the API key from state - keep it for display
+      // setApiKey('') // Clear API key from state after saving
 
       // Refresh the session data to update the status bar
       await fetchActiveSessionDetail(session.id)
@@ -247,19 +261,17 @@ function ModelSelectorContent({
         </div>
 
         {/* Help Text */}
-        <div className="text-xs text-muted-foreground">
-          {provider === 'openrouter' ? (
-            <p>Enter the full model identifier from OpenRouter (e.g., "openai/gpt-oss-120b")</p>
-          ) : (
+        {provider === 'anthropic' && (
+          <div className="text-muted-foreground">
             <p>Select a model or use the system default</p>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* OpenRouter API Key Status */}
         {provider === 'openrouter' && (
           <div className="space-y-2">
             {!showApiKeyInput ? (
-              <div className="flex items-center justify-between text-sm">
+              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   {isCheckingConfig ? (
                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
@@ -287,9 +299,7 @@ function ModelSelectorContent({
               </div>
             ) : (
               <div className="space-y-2">
-                <Label htmlFor="api-key" className="text-xs">
-                  OpenRouter API Key
-                </Label>
+                <Label htmlFor="api-key">OpenRouter API Key</Label>
                 <div className="flex gap-2">
                   <div className="relative flex-1">
                     <Input
@@ -301,7 +311,7 @@ function ModelSelectorContent({
                         setHasChanges(true)
                       }}
                       placeholder="sk-or-..."
-                      className="h-8 pr-10 text-sm"
+                      className="h-8 pr-10"
                     />
                     {apiKey && (
                       <Button
@@ -345,9 +355,7 @@ function ModelSelectorContent({
                     </Button>
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Your API key will be stored with this session
-                </p>
+                <p className="text-muted-foreground">Your API key will be stored with this session</p>
               </div>
             )}
           </div>
@@ -360,7 +368,12 @@ function ModelSelectorContent({
           </Button>
           <Button
             onClick={handleApply}
-            disabled={!hasChanges || isUpdating || !canApplyOpenRouter}
+            disabled={
+              !hasChanges ||
+              isUpdating ||
+              !canApplyOpenRouter ||
+              (provider === 'openrouter' && !customModel.trim())
+            }
             size="sm"
           >
             {isUpdating ? 'Applying...' : 'Apply'}

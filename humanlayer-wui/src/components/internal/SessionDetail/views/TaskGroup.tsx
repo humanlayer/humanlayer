@@ -54,7 +54,9 @@ export function TaskGroup({
   shouldIgnoreMouseEvent,
 }: TaskGroupProps) {
   const { parentTask, toolCallCount, latestEvent, hasPendingApproval } = group
-  const description = JSON.parse(parentTask.toolInputJson || '{}').description || 'Task'
+  const taskInput = JSON.parse(parentTask.toolInputJson || '{}')
+  const displayName = taskInput.subagent_type || 'Task'
+  const description = taskInput.description || 'Task'
   const isCompleted = parentTask.isCompleted
 
   return (
@@ -95,7 +97,10 @@ export function TaskGroup({
         <div className="flex-1">
           <div className="flex items-center gap-2">
             <Wrench className="w-4 h-4 text-accent" />
-            <span className="font-medium">{truncate(description, 80)}</span>
+            <div className="text-sm text-muted-foreground">
+              <span className="font-semibold">{displayName}: </span>
+              {description}
+            </div>
             {!isCompleted && <CircleDashed className="w-4 h-4 animate-spin text-muted-foreground" />}
             {hasPendingApproval && (
               <span className="text-xs bg-warning/20 text-warning px-2 py-0.5 rounded">
@@ -126,7 +131,8 @@ export function TaskGroup({
                       } else if (latestEvent.toolName === 'Bash' && toolInput.command) {
                         previewText = `$ ${truncate(toolInput.command, 50)}`
                       } else if (latestEvent.toolName === 'Task' && toolInput.description) {
-                        previewText = truncate(toolInput.description, 80)
+                        const taskName = toolInput.subagent_type ? toolInput.subagent_type + ': ' : ''
+                        previewText = taskName + truncate(toolInput.description, 80 - taskName.length)
                       }
                     } catch {
                       // Keep default preview text if JSON parsing fails

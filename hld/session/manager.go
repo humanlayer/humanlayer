@@ -77,25 +77,63 @@ func (m *Manager) LaunchSession(ctx context.Context, config LaunchSessionConfig)
 	// Extract the Claude config (without daemon-level settings)
 	claudeConfig := config.SessionConfig
 
+	// Inject daemon's CodeLayer MCP server configuration
+	if claudeConfig.MCPConfig == nil {
+		claudeConfig.MCPConfig = &claudecode.MCPConfig{
+			MCPServers: make(map[string]claudecode.MCPServer),
+		}
+	}
+
+	// Always inject codelayer MCP server (overwrite if exists)
+	claudeConfig.MCPConfig.MCPServers["codelayer"] = claudecode.MCPServer{
+		Command: "hlyr",
+		Args:    []string{"mcp", "claude_approvals"},
+		Env: map[string]string{
+			"HUMANLAYER_SESSION_ID":    sessionID,
+			"HUMANLAYER_DAEMON_SOCKET": m.socketPath,
+		},
+	}
+	slog.Debug("injected codelayer MCP server",
+		"session_id", sessionID,
+		"socket_path", m.socketPath)
+
 	// Add HUMANLAYER_RUN_ID and HUMANLAYER_DAEMON_SOCKET to MCP server environment
+	// For HTTP servers, inject session ID header
 	if claudeConfig.MCPConfig != nil {
 		slog.Debug("configuring MCP servers", "count", len(claudeConfig.MCPConfig.MCPServers))
 		for name, server := range claudeConfig.MCPConfig.MCPServers {
-			if server.Env == nil {
-				server.Env = make(map[string]string)
-			}
-			server.Env["HUMANLAYER_RUN_ID"] = runID
-			// Add daemon socket path so MCP servers connect to the correct daemon
-			if m.socketPath != "" {
-				server.Env["HUMANLAYER_DAEMON_SOCKET"] = m.socketPath
+			// Check if this is an HTTP MCP server
+			if server.Type == "http" {
+				// For HTTP servers, inject session ID header if not already set
+				if server.Headers == nil {
+					server.Headers = make(map[string]string)
+				}
+				// Only inject if not already set (allow override)
+				if _, exists := server.Headers["X-Session-ID"]; !exists {
+					server.Headers["X-Session-ID"] = sessionID
+				}
+				slog.Debug("configured HTTP MCP server",
+					"name", name,
+					"url", server.URL,
+					"session_id", sessionID)
+			} else {
+				// For stdio servers, add environment variables
+				if server.Env == nil {
+					server.Env = make(map[string]string)
+				}
+				server.Env["HUMANLAYER_RUN_ID"] = runID
+				// Add daemon socket path so MCP servers connect to the correct daemon
+				if m.socketPath != "" {
+					server.Env["HUMANLAYER_DAEMON_SOCKET"] = m.socketPath
+				}
+				slog.Debug("configured stdio MCP server",
+					"name", name,
+					"command", server.Command,
+					"args", server.Args,
+					"run_id", runID,
+					"socket_path", m.socketPath)
 			}
 			claudeConfig.MCPConfig.MCPServers[name] = server
-			slog.Debug("configured MCP server",
-				"name", name,
-				"command", server.Command,
-				"args", server.Args,
-				"run_id", runID,
-				"socket_path", m.socketPath)
 		}
 	} else {
 		slog.Debug("no MCP config provided")
@@ -185,7 +223,11 @@ func (m *Manager) LaunchSession(ctx context.Context, config LaunchSessionConfig)
 	if claudeConfig.MCPConfig != nil {
 		mcpServerCount = len(claudeConfig.MCPConfig.MCPServers)
 		for name, server := range claudeConfig.MCPConfig.MCPServers {
-			mcpServersDetail += fmt.Sprintf("[%s: cmd=%s args=%v env=%v] ", name, server.Command, server.Args, server.Env)
+			if server.Type == "http" {
+				mcpServersDetail += fmt.Sprintf("[%s: type=http url=%s headers=%v] ", name, server.URL, server.Headers)
+			} else {
+				mcpServersDetail += fmt.Sprintf("[%s: cmd=%s args=%v env=%v] ", name, server.Command, server.Args, server.Env)
+			}
 		}
 	}
 	slog.Info("launching Claude session with configuration",
@@ -257,8 +299,15 @@ func (m *Manager) LaunchSession(ctx context.Context, config LaunchSessionConfig)
 	// Reconcile any existing approvals for this run_id
 	if m.approvalReconciler != nil {
 		go func() {
-			// Give the session a moment to start
-			time.Sleep(2 * time.Second)
+			// Give the session a moment to start (with cancellation support)
+			select {
+			case <-time.After(2 * time.Second):
+				// Continue with reconciliation
+			case <-ctx.Done():
+				// Context cancelled, exit early
+				return
+			}
+
 			if err := m.approvalReconciler.ReconcileApprovalsForSession(ctx, runID); err != nil {
 				slog.Error("failed to reconcile approvals for session",
 					"session_id", sessionID,
@@ -1226,10 +1275,24 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 				env = map[string]string{}
 			}
 
-			config.MCPConfig.MCPServers[server.Name] = claudecode.MCPServer{
-				Command: server.Command,
-				Args:    args,
-				Env:     env,
+			// Check if this is an HTTP server (stored with command="http")
+			if server.Command == "http" {
+				// HTTP server - extract URL from args and headers from env
+				var urls []string
+				if err := json.Unmarshal([]byte(server.ArgsJSON), &urls); err == nil && len(urls) > 0 {
+					config.MCPConfig.MCPServers[server.Name] = claudecode.MCPServer{
+						Type:    "http",
+						URL:     urls[0],
+						Headers: env, // Headers were stored in EnvJSON
+					}
+				}
+			} else {
+				// Traditional stdio server
+				config.MCPConfig.MCPServers[server.Name] = claudecode.MCPServer{
+					Command: server.Command,
+					Args:    args,
+					Env:     env,
+				}
 			}
 		}
 		slog.Debug("inherited MCP servers from parent session",
@@ -1320,15 +1383,53 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 	}
 
 	// Add run_id and daemon socket to MCP server environments
+	// For HTTP servers, inject session ID header
+
+	// Ensure MCP config exists for injection
+	if config.MCPConfig == nil {
+		config.MCPConfig = &claudecode.MCPConfig{
+			MCPServers: make(map[string]claudecode.MCPServer),
+		}
+	}
+
+	// Always update codelayer MCP server with child session ID
+	config.MCPConfig.MCPServers["codelayer"] = claudecode.MCPServer{
+		Command: "hlyr",
+		Args:    []string{"mcp", "claude_approvals"},
+		Env: map[string]string{
+			"HUMANLAYER_SESSION_ID":    sessionID, // Use child session ID
+			"HUMANLAYER_DAEMON_SOCKET": m.socketPath,
+		},
+	}
+	slog.Debug("updated codelayer MCP server for child session",
+		"session_id", sessionID,
+		"parent_session_id", req.ParentSessionID,
+		"socket_path", m.socketPath)
+
 	if config.MCPConfig != nil {
 		for name, server := range config.MCPConfig.MCPServers {
-			if server.Env == nil {
-				server.Env = make(map[string]string)
+			// Skip codelayer as we already configured it above
+			if name == "codelayer" {
+				continue
 			}
-			server.Env["HUMANLAYER_RUN_ID"] = runID
-			// Add daemon socket path so MCP servers connect to the correct daemon
-			if m.socketPath != "" {
-				server.Env["HUMANLAYER_DAEMON_SOCKET"] = m.socketPath
+			// Check if this is an HTTP MCP server
+			if server.Type == "http" {
+				// For HTTP servers, always set session ID header to child session ID
+				if server.Headers == nil {
+					server.Headers = make(map[string]string)
+				}
+				// Always set X-Session-ID to the new child session ID (replaces inherited parent ID)
+				server.Headers["X-Session-ID"] = sessionID
+			} else {
+				// For stdio servers, add environment variables
+				if server.Env == nil {
+					server.Env = make(map[string]string)
+				}
+				server.Env["HUMANLAYER_RUN_ID"] = runID
+				// Add daemon socket path so MCP servers connect to the correct daemon
+				if m.socketPath != "" {
+					server.Env["HUMANLAYER_DAEMON_SOCKET"] = m.socketPath
+				}
 			}
 			config.MCPConfig.MCPServers[name] = server
 		}
@@ -1430,8 +1531,15 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 	// Reconcile any existing approvals for this run_id (same run_id is reused for continuations)
 	if m.approvalReconciler != nil {
 		go func() {
-			// Give the session a moment to start
-			time.Sleep(2 * time.Second)
+			// Give the session a moment to start (with cancellation support)
+			select {
+			case <-time.After(2 * time.Second):
+				// Continue with reconciliation
+			case <-ctx.Done():
+				// Context cancelled, exit early
+				return
+			}
+
 			if err := m.approvalReconciler.ReconcileApprovalsForSession(ctx, runID); err != nil {
 				slog.Error("failed to reconcile approvals for continued session",
 					"session_id", sessionID,

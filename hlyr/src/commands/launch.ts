@@ -45,19 +45,6 @@ export const launchCommand = async (query: string, options: LaunchOptions = {}) 
     const client = await connectWithRetry(socketPath, 3, 1000)
 
     try {
-      // Build MCP config (approvals enabled by default unless explicitly disabled)
-      const mcpConfig =
-        options.approvals !== false
-          ? {
-              mcpServers: {
-                approvals: {
-                  command: 'npx',
-                  args: ['humanlayer', 'mcp', 'claude_approvals'],
-                },
-              },
-            }
-          : undefined
-
       // Launch the session
       const result = await client.launchSession({
         query: query,
@@ -65,8 +52,9 @@ export const launchCommand = async (query: string, options: LaunchOptions = {}) 
         model: options.model,
         working_dir: options.workingDir || process.cwd(),
         max_turns: options.maxTurns,
-        mcp_config: mcpConfig,
-        permission_prompt_tool: mcpConfig ? 'mcp__approvals__request_permission' : undefined,
+        // MCP config is now injected by daemon
+        permission_prompt_tool:
+          options.approvals !== false ? 'mcp__codelayer__request_permission' : undefined,
         dangerously_skip_permissions: options.dangerouslySkipPermissions,
         dangerously_skip_permissions_timeout: options.dangerouslySkipPermissionsTimeout
           ? parseInt(options.dangerouslySkipPermissionsTimeout) * 60 * 1000

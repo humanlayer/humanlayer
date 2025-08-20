@@ -41,8 +41,14 @@ interface LauncherState {
   reset: () => void
 }
 
+const isViewingSessionDetail = (): boolean => {
+  const hash = window.location.hash
+  return /^#\/sessions\/[^/]+$/.test(hash)
+}
+
 const LAST_WORKING_DIR_KEY = 'humanlayer-last-working-dir'
 const SESSION_LAUNCHER_QUERY_KEY = 'session-launcher-query'
+const OPENROUTER_API_KEY = 'humanlayer-openrouter-api-key'
 
 // Helper function to get default working directory
 const getDefaultWorkingDir = (): string => {
@@ -55,12 +61,21 @@ const getSavedQuery = (): string => {
   return localStorage.getItem(SESSION_LAUNCHER_QUERY_KEY) || ''
 }
 
+// Helper function to get saved OpenRouter API key
+const getSavedOpenRouterKey = (): string | undefined => {
+  return localStorage.getItem(OPENROUTER_API_KEY) || undefined
+}
+
 export const useSessionLauncher = create<LauncherState>((set, get) => ({
   isOpen: false,
   mode: 'command',
   view: 'menu',
   query: getSavedQuery(),
-  config: { workingDir: getDefaultWorkingDir(), provider: 'anthropic' },
+  config: {
+    workingDir: getDefaultWorkingDir(),
+    provider: 'anthropic',
+    openRouterApiKey: getSavedOpenRouterKey(),
+  },
   isLaunching: false,
   gPrefixMode: false,
   selectedMenuIndex: 0,
@@ -80,7 +95,11 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
       isOpen: false,
       view: 'menu',
       query: savedQuery,
-      config: { workingDir: getDefaultWorkingDir(), provider: 'anthropic' },
+      config: {
+        workingDir: getDefaultWorkingDir(),
+        provider: 'anthropic',
+        openRouterApiKey: getSavedOpenRouterKey(),
+      },
       selectedMenuIndex: 0,
       error: undefined,
       gPrefixMode: false,
@@ -96,7 +115,13 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
     })
   },
 
-  setConfig: config => set({ config, error: undefined }),
+  setConfig: config => {
+    // Save OpenRouter API key to localStorage when it's set
+    if (config.openRouterApiKey) {
+      localStorage.setItem(OPENROUTER_API_KEY, config.openRouterApiKey)
+    }
+    return set({ config, error: undefined })
+  },
 
   setGPrefixMode: enabled => set({ gPrefixMode: enabled }),
 
@@ -137,15 +162,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
     try {
       set({ isLaunching: true, error: undefined })
 
-      // Build MCP config (approvals enabled by default)
-      const mcpConfig = {
-        mcpServers: {
-          approvals: {
-            command: 'npx',
-            args: ['humanlayer', 'mcp', 'claude_approvals'],
-          },
-        },
-      }
+      // MCP config is now injected by daemon
 
       const request: LaunchSessionRequest = {
         query: query.trim(),
@@ -154,8 +171,8 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
         provider: config.provider || 'anthropic',
         model: config.model || undefined,
         max_turns: config.maxTurns || undefined,
-        mcp_config: mcpConfig,
-        permission_prompt_tool: 'mcp__approvals__request_permission',
+        // MCP config is now injected by daemon
+        permission_prompt_tool: 'mcp__codelayer__request_permission',
         // Add OpenRouter API key if provided
         ...(config.provider === 'openrouter' && config.openRouterApiKey
           ? {
@@ -198,7 +215,11 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
     set({
       view: 'input',
       query: savedQuery,
-      config: { workingDir: getDefaultWorkingDir(), provider: 'anthropic' },
+      config: {
+        workingDir: getDefaultWorkingDir(),
+        provider: 'anthropic',
+        openRouterApiKey: getSavedOpenRouterKey(),
+      },
       error: undefined,
     })
   },
@@ -216,7 +237,11 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
       mode: 'command',
       view: 'menu',
       query: savedQuery,
-      config: { workingDir: getDefaultWorkingDir(), provider: 'anthropic' },
+      config: {
+        workingDir: getDefaultWorkingDir(),
+        provider: 'anthropic',
+        openRouterApiKey: getSavedOpenRouterKey(),
+      },
       selectedMenuIndex: 0,
       isLaunching: false,
       error: undefined,
@@ -224,6 +249,9 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
     })
   },
 }))
+
+// Export helper function
+export { isViewingSessionDetail }
 
 // Helper hook for global hotkey management
 export function useSessionLauncherHotkeys() {

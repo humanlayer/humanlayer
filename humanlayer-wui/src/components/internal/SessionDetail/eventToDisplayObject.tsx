@@ -128,9 +128,10 @@ export function eventToDisplayObject(
 
     if (event.toolName === 'Task') {
       const toolInput = JSON.parse(event.toolInputJson!)
+      const displayName = toolInput.subagent_type || 'Task'
       subject = (
         <span>
-          <span className="font-bold">{event.toolName} </span>
+          <span className="font-bold">{displayName} </span>
           <span className="font-mono text-sm text-muted-foreground">{toolInput.description}</span>
         </span>
       )

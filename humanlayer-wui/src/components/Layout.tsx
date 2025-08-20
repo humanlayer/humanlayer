@@ -24,7 +24,7 @@ import { notificationService, type NotificationOptions } from '@/services/Notifi
 import { useTheme } from '@/contexts/ThemeContext'
 import { formatMcpToolName, getSessionNotificationText } from '@/utils/formatting'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { MessageCircle, Bug } from 'lucide-react'
+import { MessageCircle, Bug, HelpCircle } from 'lucide-react'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { DebugPanel } from '@/components/DebugPanel'
 import { notifyLogLocation } from '@/lib/log-notification'
@@ -32,6 +32,7 @@ import '@/App.css'
 import { logger } from '@/lib/logging'
 import { DangerousSkipPermissionsMonitor } from '@/components/DangerousSkipPermissionsMonitor'
 import { KeyboardShortcut } from '@/components/HotkeyPanel'
+import { DvdScreensaver } from '@/components/DvdScreensaver'
 
 export function Layout() {
   const [approvals, setApprovals] = useState<any[]>([])
@@ -295,6 +296,20 @@ export function Layout() {
     }
   })
 
+  // Prevent escape key from exiting full screen
+  // Might be worth guarding this specifically in macOS
+  // down-the-road
+  useHotkeys(
+    'escape',
+    () => {
+      // console.log('escape!', ev);
+    },
+    {
+      enableOnFormTags: true,
+      preventDefault: true,
+    },
+  )
+
   // Load sessions when connected
   useEffect(() => {
     if (connected) {
@@ -455,7 +470,7 @@ export function Layout() {
                 href="https://github.com/humanlayer/humanlayer/issues/new?title=Feedback%20on%20CodeLayer&body=%23%23%23%20Problem%20to%20solve%20%2F%20Expected%20Behavior%0A%0A%0A%23%23%23%20Proposed%20solution"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center justify-center px-1.5 py-0.5 text-sm font-mono border border-border bg-background text-foreground hover:bg-accent/10 transition-colors"
+                className="inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-mono border border-border bg-background text-foreground hover:bg-accent/10 transition-colors"
               >
                 <MessageCircle className="w-3 h-3" />
               </a>
@@ -466,12 +481,27 @@ export function Layout() {
               </p>
             </TooltipContent>
           </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setHotkeyPanelOpen(true)}
+                className="inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-mono border border-border bg-background text-foreground hover:bg-accent/10 transition-colors"
+              >
+                <HelpCircle className="w-3 h-3" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p className="flex items-center gap-1">
+                View all keyboard shortcuts <KeyboardShortcut keyString="?" />
+              </p>
+            </TooltipContent>
+          </Tooltip>
           {import.meta.env.DEV && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   onClick={() => setIsDebugPanelOpen(true)}
-                  className="px-1.5 py-0.5 text-xs font-mono border border-border bg-background text-foreground hover:bg-accent/10 transition-colors"
+                  className="inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-mono border border-border bg-background text-foreground hover:bg-accent/10 transition-colors"
                 >
                   <Bug className="w-3 h-3" />
                 </button>
@@ -511,6 +541,9 @@ export function Layout() {
 
       {/* Global Dangerous Skip Permissions Monitor */}
       <DangerousSkipPermissionsMonitor />
+
+      {/* DVD Screensaver */}
+      <DvdScreensaver />
     </div>
   )
 }

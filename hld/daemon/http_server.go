@@ -15,6 +15,7 @@ import (
 	"github.com/humanlayer/humanlayer/hld/approval"
 	"github.com/humanlayer/humanlayer/hld/bus"
 	"github.com/humanlayer/humanlayer/hld/config"
+	"github.com/humanlayer/humanlayer/hld/mcp"
 	"github.com/humanlayer/humanlayer/hld/session"
 	"github.com/humanlayer/humanlayer/hld/store"
 )
@@ -29,6 +30,8 @@ type HTTPServer struct {
 	sseHandler       *handlers.SSEHandler
 	proxyHandler     *handlers.ProxyHandler
 	configHandler    *handlers.ConfigHandler
+	approvalManager  approval.Manager
+	eventBus         bus.EventBus
 	server           *http.Server
 }
 
@@ -79,6 +82,8 @@ func NewHTTPServer(
 		sseHandler:       sseHandler,
 		proxyHandler:     proxyHandler,
 		configHandler:    configHandler,
+		approvalManager:  approvalManager,
+		eventBus:         eventBus,
 	}
 }
 
@@ -104,6 +109,13 @@ func (s *HTTPServer) Start(ctx context.Context) error {
 
 	// Register config status endpoint
 	v1.GET("/config/status", s.configHandler.GetConfigStatus)
+
+	// MCP endpoint (Phase 5: with event-driven approvals)
+	mcpServer := mcp.NewMCPServer(s.approvalManager, s.eventBus)
+	mcpServer.Start(ctx) // Start background processes with context
+	v1.Any("/mcp", func(c *gin.Context) {
+		mcpServer.ServeHTTP(c.Writer, c.Request)
+	})
 
 	// Create listener first to handle port 0
 	addr := fmt.Sprintf("%s:%d", s.config.HTTPHost, s.config.HTTPPort)

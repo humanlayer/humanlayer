@@ -1336,26 +1336,39 @@ components:
 
     MCPServer:
       type: object
-      required:
-        - command
       properties:
+        type:
+          type: string
+          description: Server type (http for HTTP servers, omit for stdio)
+          example: http
         command:
           type: string
-          description: Command to execute
+          description: Command to execute (for stdio servers)
           example: mcp-server-filesystem
         args:
           type: array
           items:
             type: string
-          description: Command arguments
+          description: Command arguments (for stdio servers)
           example: ["--read-only", "/home/user"]
         env:
           type: object
           additionalProperties:
             type: string
-          description: Environment variables
+          description: Environment variables (for stdio servers)
           example:
             DEBUG: "true"
+        url:
+          type: string
+          description: HTTP endpoint URL (for HTTP servers)
+          example: http://localhost:7777/api/v1/mcp
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+          description: HTTP headers to include (for HTTP servers)
+          example:
+            X-Session-ID: "session-123"
 
     # Event Types
     EventType:
