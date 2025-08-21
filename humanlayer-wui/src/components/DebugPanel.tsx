@@ -15,7 +15,7 @@ import { Loader2, RefreshCw, Link, Server, Database, Copy } from 'lucide-react'
 import { useDaemonConnection } from '@/hooks/useDaemonConnection'
 import { logger } from '@/lib/logging'
 import { daemonClient } from '@/lib/daemon'
-import type { DatabaseInfo } from '@/lib/daemon/types'
+import type { DebugInfo } from '@/lib/daemon/types'
 import { toast } from 'sonner'
 
 interface DebugPanelProps {
@@ -32,7 +32,7 @@ export function DebugPanel({ open, onOpenChange }: DebugPanelProps) {
   const [daemonType, setDaemonType] = useState<'managed' | 'external'>('managed')
   const [externalDaemonUrl, setExternalDaemonUrl] = useState<string | null>(null)
   const [daemonInfo, setDaemonInfo] = useState<DaemonInfo | null>(null)
-  const [databaseInfo, setDatabaseInfo] = useState<DatabaseInfo | null>(null)
+  const [debugInfo, setDebugInfo] = useState<DebugInfo | null>(null)
 
   // Only show in dev mode
   if (!import.meta.env.DEV) {
@@ -71,15 +71,15 @@ export function DebugPanel({ open, onOpenChange }: DebugPanelProps) {
         setExternalDaemonUrl((window as any).__HUMANLAYER_DAEMON_URL || null)
       }
 
-      // Fetch database info if connected
+      // Fetch debug info if connected
       if (connected) {
         try {
-          const dbInfo = await daemonClient.getDatabaseInfo()
-          console.log('dbInfo', dbInfo)
-          setDatabaseInfo(dbInfo)
+          const dbgInfo = await daemonClient.getDebugInfo()
+          console.log('debugInfo', dbgInfo)
+          setDebugInfo(dbgInfo)
         } catch (error) {
-          logger.error('Failed to load database info:', error)
-          setDatabaseInfo(null)
+          logger.error('Failed to load debug info:', error)
+          setDebugInfo(null)
         }
       }
     } catch (error) {
@@ -258,12 +258,12 @@ export function DebugPanel({ open, onOpenChange }: DebugPanelProps) {
             </CardContent>
           </Card>
 
-          {databaseInfo && (
+          {debugInfo && (
             <Card className="md:col-span-2">
               <CardHeader>
                 <CardTitle className="text-sm flex items-center gap-2">
                   <Database className="h-4 w-4" />
-                  Database Information
+                  Debug Information
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -272,15 +272,15 @@ export function DebugPanel({ open, onOpenChange }: DebugPanelProps) {
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-muted-foreground">Path</span>
                       <div className="flex items-center gap-1">
-                        <span className="text-xs font-mono" title={databaseInfo.path}>
-                          {databaseInfo.path}
+                        <span className="text-xs font-mono" title={debugInfo.path}>
+                          {debugInfo.path}
                         </span>
                         <Button
                           variant="ghost"
                           size="sm"
                           className="h-6 w-6 p-0"
                           onClick={() => {
-                            copyToClipboard(databaseInfo.path)
+                            copyToClipboard(debugInfo.path)
                             toast.success('Copied to clipboard')
                           }}
                         >
@@ -289,45 +289,50 @@ export function DebugPanel({ open, onOpenChange }: DebugPanelProps) {
                       </div>
                     </div>
 
-                    {databaseInfo.last_modified && (
+                    {debugInfo.last_modified && (
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-muted-foreground">Last Modified</span>
                         <span className="text-xs font-mono">
-                          {new Date(databaseInfo.last_modified).toLocaleString()}
+                          {new Date(debugInfo.last_modified).toLocaleString()}
                         </span>
                       </div>
                     )}
 
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-muted-foreground">Size</span>
-                      <span className="text-sm font-medium">{formatBytes(databaseInfo.size)}</span>
+                      <span className="text-sm font-medium">{formatBytes(debugInfo.size)}</span>
                     </div>
 
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-muted-foreground">Tables</span>
-                      <span className="text-sm font-medium">{databaseInfo.table_count}</span>
+                      <span className="text-sm font-medium">{debugInfo.table_count}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">CLI Command</span>
+                      <span className="text-sm font-mono">{debugInfo.cli_command}</span>
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    {databaseInfo.stats && (
+                    {debugInfo.stats && (
                       <>
-                        {databaseInfo.stats.sessions !== undefined && (
+                        {debugInfo.stats.sessions !== undefined && (
                           <div className="flex items-center justify-between">
                             <span className="text-sm text-muted-foreground">Sessions</span>
-                            <span className="text-sm font-medium">{databaseInfo.stats.sessions}</span>
+                            <span className="text-sm font-medium">{debugInfo.stats.sessions}</span>
                           </div>
                         )}
-                        {databaseInfo.stats.approvals !== undefined && (
+                        {debugInfo.stats.approvals !== undefined && (
                           <div className="flex items-center justify-between">
                             <span className="text-sm text-muted-foreground">Approvals</span>
-                            <span className="text-sm font-medium">{databaseInfo.stats.approvals}</span>
+                            <span className="text-sm font-medium">{debugInfo.stats.approvals}</span>
                           </div>
                         )}
-                        {databaseInfo.stats.events !== undefined && (
+                        {debugInfo.stats.events !== undefined && (
                           <div className="flex items-center justify-between">
                             <span className="text-sm text-muted-foreground">Events</span>
-                            <span className="text-sm font-medium">{databaseInfo.stats.events}</span>
+                            <span className="text-sm font-medium">{debugInfo.stats.events}</span>
                           </div>
                         )}
                       </>

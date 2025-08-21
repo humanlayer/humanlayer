@@ -502,7 +502,9 @@ daemon: daemon-dev
 # Build nightly daemon binary
 .PHONY: daemon-nightly-build
 daemon-nightly-build:
-	cd hld && go build -o hld-nightly ./cmd/hld
+	cd hld && go build -ldflags "\
+		-X github.com/humanlayer/humanlayer/hld/config.DefaultCLICommand=humanlayer-nightly" \
+		-o hld-nightly ./cmd/hld
 	@echo "Built nightly daemon binary: hld/hld-nightly"
 
 # Run nightly daemon
@@ -611,8 +613,10 @@ cleanup-dev:
 
 # Build dev daemon binary
 .PHONY: daemon-dev-build
-daemon-dev-build:
-	cd hld && go build -o hld-dev ./cmd/hld
+daemon-dev-build: setup
+	cd hld && go build -ldflags "\
+		-X github.com/humanlayer/humanlayer/hld/config.DefaultCLICommand=$(PWD)/hlyr/dist/index.js" \
+		-o hld-dev ./cmd/hld
 	@echo "Built dev daemon binary: hld/hld-dev"
 
 # Run dev daemon with persistent dev database

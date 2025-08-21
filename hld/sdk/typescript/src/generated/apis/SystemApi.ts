@@ -15,12 +15,12 @@
 
 import * as runtime from '../runtime';
 import type {
-  DatabaseInfoResponse,
+  DebugInfoResponse,
   HealthResponse,
 } from '../models/index';
 import {
-    DatabaseInfoResponseFromJSON,
-    DatabaseInfoResponseToJSON,
+    DebugInfoResponseFromJSON,
+    DebugInfoResponseToJSON,
     HealthResponseFromJSON,
     HealthResponseToJSON,
 } from '../models/index';
@@ -33,19 +33,19 @@ import {
  */
 export interface SystemApiInterface {
     /**
-     * Get information about the daemon\'s SQLite database including path, size, and statistics
-     * @summary Get database information
+     * Get debug information about the daemon including database stats and runtime configuration
+     * @summary Get debug information
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof SystemApiInterface
      */
-    getDatabaseInfoRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DatabaseInfoResponse>>;
+    getDebugInfoRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DebugInfoResponse>>;
 
     /**
-     * Get information about the daemon\'s SQLite database including path, size, and statistics
-     * Get database information
+     * Get debug information about the daemon including database stats and runtime configuration
+     * Get debug information
      */
-    getDatabaseInfo(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DatabaseInfoResponse>;
+    getDebugInfo(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DebugInfoResponse>;
 
     /**
      * Check if the daemon is running and healthy
@@ -70,16 +70,16 @@ export interface SystemApiInterface {
 export class SystemApi extends runtime.BaseAPI implements SystemApiInterface {
 
     /**
-     * Get information about the daemon\'s SQLite database including path, size, and statistics
-     * Get database information
+     * Get debug information about the daemon including database stats and runtime configuration
+     * Get debug information
      */
-    async getDatabaseInfoRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DatabaseInfoResponse>> {
+    async getDebugInfoRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DebugInfoResponse>> {
         const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
 
 
-        let urlPath = `/database-info`;
+        let urlPath = `/debug-info`;
 
         const response = await this.request({
             path: urlPath,
@@ -88,15 +88,15 @@ export class SystemApi extends runtime.BaseAPI implements SystemApiInterface {
             query: queryParameters,
         }, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => DatabaseInfoResponseFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => DebugInfoResponseFromJSON(jsonValue));
     }
 
     /**
-     * Get information about the daemon\'s SQLite database including path, size, and statistics
-     * Get database information
+     * Get debug information about the daemon including database stats and runtime configuration
+     * Get debug information
      */
-    async getDatabaseInfo(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DatabaseInfoResponse> {
-        const response = await this.getDatabaseInfoRaw(initOverrides);
+    async getDebugInfo(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DebugInfoResponse> {
+        const response = await this.getDebugInfoRaw(initOverrides);
         return await response.value();
     }
 
