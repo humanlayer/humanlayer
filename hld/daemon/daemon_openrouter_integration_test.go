@@ -4,7 +4,6 @@ package daemon_test
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"net"
 	"net/http"
@@ -18,6 +17,7 @@ import (
 	"github.com/gin-gonic/gin"
 	claudecode "github.com/humanlayer/humanlayer/claudecode-go"
 	"github.com/humanlayer/humanlayer/hld/internal/testutil"
+	"github.com/humanlayer/humanlayer/hld/store"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/require"
 )
@@ -96,6 +96,14 @@ func TestOpenRouterProxyIntegration(t *testing.T) {
 					map[string]interface{}{
 						"name":        "request_approval",
 						"description": "Request approval for tool use",
+						"inputSchema": map[string]interface{}{
+							"type": "object",
+							"properties": map[string]interface{}{
+								"tool_name": map[string]interface{}{
+									"type": "string",
+								},
+							},
+						},
 					},
 				},
 			}
@@ -144,28 +152,47 @@ func TestOpenRouterProxyIntegration(t *testing.T) {
 		return false
 	}, 5*time.Second, 100*time.Millisecond, "HTTP server did not start")
 
-	// Open database connection
-	db, err := sql.Open("sqlite3", dbPath)
+	// Initialize database with migrations using store package
+	sqliteStore, err := store.NewSQLiteStore(dbPath)
 	require.NoError(t, err)
-	defer db.Close()
+	defer sqliteStore.Close()
 
 	// Create a test session in the database with proxy settings
 	testSessionID := "test-openrouter-session"
-	_, err = db.Exec(`
-		INSERT INTO sessions (
-			id, run_id, claude_session_id, query, model, working_dir,
-			status, created_at, last_activity_at, auto_accept_edits,
-			dangerously_skip_permissions, max_turns, system_prompt,
-			custom_instructions, cost_usd, input_tokens, output_tokens,
-			duration_ms, num_turns, result_content, error_message,
-			proxy_enabled, proxy_base_url, proxy_model_override, proxy_api_key
-		) VALUES (
-			?, 'run-openrouter', 'claude-test', 'test query', 'claude-3-sonnet', '/tmp',
-			'running', datetime('now'), datetime('now'), 0, 1, 10, '',
-			'', 0.0, 0, 0, 0, 0, '', '',
-			1, 'https://openrouter.ai/api/v1', 'openai/gpt-4o-mini', ?
-		)
-	`, testSessionID, os.Getenv("OPENROUTER_API_KEY"))
+	costUSD := 0.0
+	inputTokens := 0
+	outputTokens := 0
+	durationMS := 0
+	numTurns := 0
+
+	testSession := &store.Session{
+		ID:                         testSessionID,
+		RunID:                      "run-openrouter",
+		ClaudeSessionID:            "claude-test",
+		Query:                      "test query",
+		Model:                      "claude-3-sonnet",
+		WorkingDir:                 "/tmp",
+		Status:                     "running",
+		CreatedAt:                  time.Now(),
+		LastActivityAt:             time.Now(),
+		AutoAcceptEdits:            false,
+		DangerouslySkipPermissions: true,
+		MaxTurns:                   10,
+		SystemPrompt:               "",
+		CustomInstructions:         "",
+		CostUSD:                    &costUSD,
+		InputTokens:                &inputTokens,
+		OutputTokens:               &outputTokens,
+		DurationMS:                 &durationMS,
+		NumTurns:                   &numTurns,
+		ResultContent:              "",
+		ErrorMessage:               "",
+		ProxyEnabled:               true,
+		ProxyBaseURL:               "https://openrouter.ai/api/v1",
+		ProxyModelOverride:         "openai/gpt-4o-mini",
+		ProxyAPIKey:                os.Getenv("OPENROUTER_API_KEY"),
+	}
+	err = sqliteStore.CreateSession(context.Background(), testSession)
 	require.NoError(t, err)
 
 	// Create claudecode client
@@ -186,14 +213,13 @@ func TestOpenRouterProxyIntegration(t *testing.T) {
 
 	// Create session config
 	sessionConfig := claudecode.SessionConfig{
-		Query:                "Say 'OpenRouter test complete' and exit",
-		Model:                claudecode.ModelSonnet,
-		OutputFormat:         claudecode.OutputStreamJSON,
-		MCPConfig:            mcpConfig,
-		PermissionPromptTool: "mcp__humanlayer__request_approval",
-		MaxTurns:             1,
-		WorkingDir:           tempDir,
-		Verbose:              false,
+		Query:        "Say 'OpenRouter test complete' and exit",
+		Model:        claudecode.ModelSonnet,
+		OutputFormat: claudecode.OutputStreamJSON,
+		MCPConfig:    mcpConfig,
+		MaxTurns:     1,
+		WorkingDir:   tempDir,
+		Verbose:      false,
 	}
 
 	// Capture events from Claude
@@ -224,17 +250,37 @@ func TestOpenRouterProxyIntegration(t *testing.T) {
 			}
 			if event.Type == "result" {
 				t.Logf("Session completed with result: %s", event.Result)
-				break
 			}
 		}
 	}()
 
-	// Wait for session to complete
+	// Wait for session to complete with timeout
+	type waitResult struct {
+		result *claudecode.Result
+		err    error
+	}
+	waitDone := make(chan waitResult, 1)
+	go func() {
+		result, err := session.Wait()
+		waitDone <- waitResult{result, err}
+	}()
+
 	select {
-	case <-eventsDone:
-		t.Log("Session completed successfully")
+	case wr := <-waitDone:
+		if wr.err != nil {
+			t.Fatalf("Session failed: %v", wr.err)
+		}
+		t.Logf("Session completed successfully with result: %v", wr.result)
 	case <-time.After(30 * time.Second):
 		t.Fatal("Session did not complete within timeout")
+	}
+
+	// Give events channel time to drain
+	select {
+	case <-eventsDone:
+		// Events channel closed
+	case <-time.After(2 * time.Second):
+		t.Log("Events channel did not close within timeout")
 	}
 
 	// Verify we got some events
@@ -251,11 +297,10 @@ func TestOpenRouterProxyIntegration(t *testing.T) {
 	require.True(t, hasResult, "Session should have completed with a result")
 
 	// Verify session was marked as complete in database
-	var status string
-	err = db.QueryRow("SELECT status FROM sessions WHERE id = ?", testSessionID).Scan(&status)
+	testSessionFromDB, err := sqliteStore.GetSession(context.Background(), testSessionID)
 	require.NoError(t, err)
 	// Status might be 'completed' or 'running' depending on timing
-	t.Logf("Final session status: %s", status)
+	t.Logf("Final session status: %s", testSessionFromDB.Status)
 }
 
 func TestOpenRouterContinueSession(t *testing.T) {
@@ -290,60 +335,92 @@ func TestOpenRouterContinueSession(t *testing.T) {
 	configFile := filepath.Join(configDir, "humanlayer.json")
 	require.NoError(t, os.WriteFile(configFile, []byte(`{}`), 0644))
 
-	// Open database connection
-	db, err := sql.Open("sqlite3", dbPath)
+	// Initialize database with migrations using store package
+	sqliteStore, err := store.NewSQLiteStore(dbPath)
 	require.NoError(t, err)
-	defer db.Close()
+	defer sqliteStore.Close()
 
 	// Create initial session without proxy
 	parentSessionID := "parent-session"
-	_, err = db.Exec(`
-		INSERT INTO sessions (
-			id, run_id, claude_session_id, query, model, working_dir,
-			status, created_at, last_activity_at, auto_accept_edits,
-			dangerously_skip_permissions, max_turns, system_prompt,
-			custom_instructions, cost_usd, input_tokens, output_tokens,
-			duration_ms, num_turns, result_content, error_message
-		) VALUES (
-			?, 'run-parent', 'claude-parent', 'initial query', 'claude-3-sonnet', '/tmp',
-			'completed', datetime('now'), datetime('now'), 0, 0, 10, '',
-			'', 0.0, 100, 200, 1000, 1, 'Initial response', ''
-		)
-	`, parentSessionID)
+	costUSD := 0.0
+	inputTokens := 100
+	outputTokens := 200
+	durationMS := 1000
+	numTurns := 1
+	completedAt := time.Now()
+
+	parentSession := &store.Session{
+		ID:                         parentSessionID,
+		RunID:                      "run-parent",
+		ClaudeSessionID:            "claude-parent",
+		Query:                      "initial query",
+		Model:                      "claude-3-sonnet",
+		WorkingDir:                 "/tmp",
+		Status:                     "completed",
+		CreatedAt:                  time.Now(),
+		LastActivityAt:             time.Now(),
+		CompletedAt:                &completedAt,
+		AutoAcceptEdits:            false,
+		DangerouslySkipPermissions: false,
+		MaxTurns:                   10,
+		SystemPrompt:               "",
+		CustomInstructions:         "",
+		CostUSD:                    &costUSD,
+		InputTokens:                &inputTokens,
+		OutputTokens:               &outputTokens,
+		DurationMS:                 &durationMS,
+		NumTurns:                   &numTurns,
+		ResultContent:              "Initial response",
+		ErrorMessage:               "",
+	}
+	err = sqliteStore.CreateSession(context.Background(), parentSession)
 	require.NoError(t, err)
 
 	// Create continued session with proxy settings
 	continuedSessionID := "continued-session"
-	_, err = db.Exec(`
-		INSERT INTO sessions (
-			id, run_id, claude_session_id, query, model, working_dir,
-			status, created_at, last_activity_at, auto_accept_edits,
-			dangerously_skip_permissions, max_turns, system_prompt,
-			custom_instructions, cost_usd, input_tokens, output_tokens,
-			duration_ms, num_turns, result_content, error_message,
-			proxy_enabled, proxy_base_url, proxy_model_override, proxy_api_key,
-			parent_session_id
-		) VALUES (
-			?, 'run-continued', 'claude-continued', 'continue with proxy', 'claude-3-sonnet', '/tmp',
-			'running', datetime('now'), datetime('now'), 0, 0, 10, '',
-			'', 0.0, 0, 0, 0, 0, '', '',
-			1, 'https://openrouter.ai/api/v1', 'openai/gpt-4o-mini', ?,
-			?
-		)
-	`, continuedSessionID, os.Getenv("OPENROUTER_API_KEY"), parentSessionID)
+	costUSD2 := 0.0
+	inputTokens2 := 0
+	outputTokens2 := 0
+	durationMS2 := 0
+	numTurns2 := 0
+
+	continuedSession := &store.Session{
+		ID:                         continuedSessionID,
+		RunID:                      "run-continued",
+		ClaudeSessionID:            "claude-continued",
+		ParentSessionID:            parentSessionID,
+		Query:                      "continue with proxy",
+		Model:                      "claude-3-sonnet",
+		WorkingDir:                 "/tmp",
+		Status:                     "running",
+		CreatedAt:                  time.Now(),
+		LastActivityAt:             time.Now(),
+		AutoAcceptEdits:            false,
+		DangerouslySkipPermissions: false,
+		MaxTurns:                   10,
+		SystemPrompt:               "",
+		CustomInstructions:         "",
+		CostUSD:                    &costUSD2,
+		InputTokens:                &inputTokens2,
+		OutputTokens:               &outputTokens2,
+		DurationMS:                 &durationMS2,
+		NumTurns:                   &numTurns2,
+		ResultContent:              "",
+		ErrorMessage:               "",
+		ProxyEnabled:               true,
+		ProxyBaseURL:               "https://openrouter.ai/api/v1",
+		ProxyModelOverride:         "openai/gpt-4o-mini",
+		ProxyAPIKey:                os.Getenv("OPENROUTER_API_KEY"),
+	}
+	err = sqliteStore.CreateSession(context.Background(), continuedSession)
 	require.NoError(t, err)
 
 	// Verify the continued session has proxy settings
-	var proxyEnabled bool
-	var proxyBaseURL, proxyModel string
-	err = db.QueryRow(`
-		SELECT proxy_enabled, proxy_base_url, proxy_model_override
-		FROM sessions WHERE id = ?
-	`, continuedSessionID).Scan(&proxyEnabled, &proxyBaseURL, &proxyModel)
+	sessionFromDB, err := sqliteStore.GetSession(context.Background(), continuedSessionID)
 	require.NoError(t, err)
-	require.True(t, proxyEnabled, "Proxy should be enabled")
-	require.Equal(t, "https://openrouter.ai/api/v1", proxyBaseURL)
-	require.Equal(t, "openai/gpt-4o-mini", proxyModel)
+	require.True(t, sessionFromDB.ProxyEnabled, "Proxy should be enabled")
+	require.Equal(t, "https://openrouter.ai/api/v1", sessionFromDB.ProxyBaseURL)
+	require.Equal(t, "openai/gpt-4o-mini", sessionFromDB.ProxyModelOverride)
 
 	t.Log("Successfully created continued session with OpenRouter proxy configuration")
 }
