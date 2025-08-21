@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - dexter/eng-1758-cache-rust-and-go-compilationdependency-downloads-in-github
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
 
@@ -79,7 +78,6 @@ jobs:
           path: ~/go/bin
           key: go-tools-v4-${{ runner.os }}-go1.24-golangci-2.1.6-mockgen-0.5.2
 
-      # TODO: Update this, let's just pull the binary?
       - name: Install Go tools
         if: steps.go-tools-cache.outputs.cache-hit != 'true'
         run: |
