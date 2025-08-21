@@ -152,6 +152,7 @@ func SessionToInfo(s store.Session) Info {
 		DangerouslySkipPermissions:          s.DangerouslySkipPermissions,
 		DangerouslySkipPermissionsExpiresAt: s.DangerouslySkipPermissionsExpiresAt,
 		Archived:                            s.Archived,
+		// Note: CLICommand is not stored in database, it's a build-time constant
 	}
 
 	if s.CompletedAt != nil {

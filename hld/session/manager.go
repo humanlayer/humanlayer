@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 	claudecode "github.com/humanlayer/humanlayer/claudecode-go"
 	"github.com/humanlayer/humanlayer/hld/bus"
+	hldconfig "github.com/humanlayer/humanlayer/hld/config"
 	"github.com/humanlayer/humanlayer/hld/store"
 )
 
@@ -86,7 +87,7 @@ func (m *Manager) LaunchSession(ctx context.Context, config LaunchSessionConfig)
 
 	// Always inject codelayer MCP server (overwrite if exists)
 	claudeConfig.MCPConfig.MCPServers["codelayer"] = claudecode.MCPServer{
-		Command: "hlyr",
+		Command: hldconfig.DefaultCLICommand,
 		Args:    []string{"mcp", "claude_approvals"},
 		Env: map[string]string{
 			"HUMANLAYER_SESSION_ID":    sessionID,
@@ -1394,7 +1395,7 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 
 	// Always update codelayer MCP server with child session ID
 	config.MCPConfig.MCPServers["codelayer"] = claudecode.MCPServer{
-		Command: "hlyr",
+		Command: hldconfig.DefaultCLICommand,
 		Args:    []string{"mcp", "claude_approvals"},
 		Env: map[string]string{
 			"HUMANLAYER_SESSION_ID":    sessionID, // Use child session ID

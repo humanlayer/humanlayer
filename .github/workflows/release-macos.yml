@@ -72,6 +72,7 @@ jobs:
             LDFLAGS="${LDFLAGS} -X github.com/humanlayer/humanlayer/hld/config.DefaultDatabasePath=~/.humanlayer/daemon-nightly.db"
             LDFLAGS="${LDFLAGS} -X github.com/humanlayer/humanlayer/hld/config.DefaultSocketPath=~/.humanlayer/daemon-nightly.sock"
             LDFLAGS="${LDFLAGS} -X github.com/humanlayer/humanlayer/hld/config.DefaultHTTPPort=7778"
+            LDFLAGS="${LDFLAGS} -X github.com/humanlayer/humanlayer/hld/config.DefaultCLICommand=humanlayer-nightly"
           else
             # Regular build with version only
             LDFLAGS="-X github.com/humanlayer/humanlayer/hld/internal/version.BuildVersion=${BUILD_VERSION}"

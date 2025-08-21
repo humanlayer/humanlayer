@@ -18,7 +18,7 @@ export * from './CreateApprovalResponseData';
 export * from './CreateSessionRequest';
 export * from './CreateSessionResponse';
 export * from './CreateSessionResponseData';
-export * from './DatabaseInfoResponse';
+export * from './DebugInfoResponse';
 export * from './DecideApprovalRequest';
 export * from './DecideApprovalResponse';
 export * from './DecideApprovalResponseData';

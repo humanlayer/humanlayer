@@ -15,6 +15,7 @@ var (
 	DefaultDatabasePath = "~/.humanlayer/daemon.db"
 	DefaultSocketPath   = "~/.humanlayer/daemon.sock"
 	DefaultHTTPPort     = "7777"
+	DefaultCLICommand   = "hlyr" // CLI command to execute
 )
 
 // Config represents the daemon configuration

@@ -509,18 +509,18 @@ export class HTTPDaemonClient implements IDaemonClient {
     return response // SDK now properly returns RecentPath[]
   }
 
-  async getDatabaseInfo(): Promise<import('./types').DatabaseInfo> {
+  async getDebugInfo(): Promise<import('./types').DebugInfo> {
     await this.ensureConnected()
 
     // Use REST API endpoint
     const baseUrl = await getDaemonUrl()
-    const response = await fetch(`${baseUrl}/api/v1/database-info`, {
+    const response = await fetch(`${baseUrl}/api/v1/debug-info`, {
       method: 'GET',
       headers: getDefaultHeaders(),
     })
 
     if (!response.ok) {
-      throw new Error(`Failed to get database info: ${response.statusText}`)
+      throw new Error(`Failed to get debug info: ${response.statusText}`)
     }
 
     const data = await response.json()

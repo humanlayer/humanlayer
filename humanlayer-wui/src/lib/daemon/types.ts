@@ -57,11 +57,12 @@ export interface SubscriptionHandle {
   unsubscribe: () => void
 }
 
-export interface DatabaseInfo {
+export interface DebugInfo {
   path: string
   size: number
   table_count: number
   stats: Record<string, number>
+  cli_command: string
   last_modified?: string
 }
 
@@ -136,8 +137,7 @@ export interface DaemonClient {
 
   // Utility methods
   getRecentPaths(limit?: number): Promise<RecentPath[]>
-  getDatabaseInfo(): Promise<DatabaseInfo>
-  getConfigStatus(): Promise<ConfigStatus>
+  getDebugInfo(): Promise<DebugInfo>
 }
 
 // Legacy enums and types for backward compatibility (to be gradually removed)

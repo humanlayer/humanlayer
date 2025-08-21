@@ -685,8 +685,8 @@ func (h *SessionHandlers) GetHealth(ctx context.Context, req api.GetHealthReques
 	}, nil
 }
 
-// GetDatabaseInfo returns information about the daemon's database
-func (h *SessionHandlers) GetDatabaseInfo(ctx context.Context, req api.GetDatabaseInfoRequestObject) (api.GetDatabaseInfoResponseObject, error) {
+// GetDebugInfo returns debug information about the daemon
+func (h *SessionHandlers) GetDebugInfo(ctx context.Context, req api.GetDebugInfoRequestObject) (api.GetDebugInfoResponseObject, error) {
 	stats := make(map[string]int64)
 	var size int64
 	var lastModified *time.Time
@@ -724,11 +724,12 @@ func (h *SessionHandlers) GetDatabaseInfo(ctx context.Context, req api.GetDataba
 		}
 	}
 
-	response := api.GetDatabaseInfo200JSONResponse{
+	response := api.GetDebugInfo200JSONResponse{
 		Path:       dbPath,
 		Size:       size,
 		TableCount: 5, // We have 5 tables: sessions, conversation_events, approvals, mcp_servers, schema_version
 		Stats:      stats,
+		CliCommand: config.DefaultCLICommand,
 	}
 
 	if lastModified != nil {
