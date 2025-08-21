@@ -180,8 +180,7 @@ export function useSessionNavigation({
             )
           : null
 
-        // Clear focus when opening modal to prevent double escape handling
-        setFocusedEventId(null)
+        // Don't clear focus - the modal will preserve and restore it
         setExpandedToolResult(toolResult || null)
         setExpandedToolCall(focusedEvent)
       }

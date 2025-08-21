@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { GitBranch } from 'lucide-react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import {
@@ -35,8 +35,12 @@ function ForkViewModalContent({
 
   // Focus management
   const containerRef = useRef<HTMLDivElement>(null)
+  const previousFocusRef = useRef<HTMLElement | null>(null)
 
   useEffect(() => {
+    // Store the previously focused element
+    previousFocusRef.current = document.activeElement as HTMLElement
+
     // Focus the container when modal opens
     if (containerRef.current) {
       containerRef.current.focus()
@@ -48,6 +52,17 @@ function ForkViewModalContent({
       activeElement.blur()
     }
   }, [])
+
+  // Create unified close handler with focus preservation
+  const handleClose = useCallback(() => {
+    onClose()
+    // Restore focus after a microtask to avoid race conditions
+    setTimeout(() => {
+      if (previousFocusRef.current && previousFocusRef.current.focus) {
+        previousFocusRef.current.focus()
+      }
+    }, 0)
+  }, [onClose])
 
   // Filter to only user messages (excluding the first one)
   const userMessageIndices = events
@@ -126,7 +141,7 @@ function ForkViewModalContent({
       e.preventDefault()
       e.stopPropagation()
       if (selectedEventIndex !== null || localSelectedIndex === allOptions.length - 1) {
-        onClose()
+        handleClose() // Use unified handler
       }
     },
     { scopes: [ForkViewModalHotkeysScope], preventDefault: true },
@@ -138,8 +153,9 @@ function ForkViewModalContent({
     e => {
       e.preventDefault()
       e.stopPropagation()
+      e.stopImmediatePropagation() // Complete isolation
       onSelectEvent(null) // Clear selection first
-      onClose()
+      handleClose() // Use unified handler
     },
     { scopes: [ForkViewModalHotkeysScope], preventDefault: true },
   )
@@ -239,7 +255,16 @@ export function ForkViewModal({
   onOpenChange,
 }: ForkViewModalProps) {
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={isOpen => {
+        if (!isOpen) {
+          onOpenChange(false)
+        } else {
+          onOpenChange(true)
+        }
+      }}
+    >
       <DialogTrigger asChild>
         <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Fork View (Meta+Y)">
           <GitBranch className="h-4 w-4" />
@@ -251,10 +276,6 @@ export function ForkViewModal({
         showCloseButton={false}
         onOpenAutoFocus={e => {
           // Prevent default focus behavior but let our custom focus management work
-          e.preventDefault()
-        }}
-        onInteractOutside={e => {
-          // Prevent closing when clicking outside
           e.preventDefault()
         }}
         onEscapeKeyDown={e => {

@@ -502,13 +502,18 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         return null
       }
 
-      // Don't process escape if fork view is open
+      // Don't process escape if modals are open
       if (forkViewOpen) {
         return
       }
 
       // Don't process escape if dangerous skip permissions dialog is open
       if (dangerousSkipPermissionsDialogOpen) {
+        return
+      }
+
+      // Don't process escape if tool result modal is open
+      if (expandedToolResult) {
         return
       }
 
