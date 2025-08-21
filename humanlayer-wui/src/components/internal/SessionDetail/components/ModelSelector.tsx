@@ -31,6 +31,10 @@ function ModelSelectorContent({
   onClose,
 }: Omit<ModelSelectorProps, 'className'> & { onClose: () => void }) {
   const fetchActiveSessionDetail = useStore(state => state.fetchActiveSessionDetail)
+  const userSettings = useStore(state => state.userSettings)
+
+  const isAdvancedProvidersEnabled = userSettings?.advancedProviders ?? false
+
   // Parse provider and model from current session
   const getProviderAndModel = () => {
     // Check if using proxy (OpenRouter)
@@ -203,29 +207,33 @@ function ModelSelectorContent({
     <>
       <DialogHeader>
         <DialogTitle>Model Configuration</DialogTitle>
-        <DialogDescription>
-          Configure the model provider and specific model for this session
-        </DialogDescription>
+        {isAdvancedProvidersEnabled && (
+          <DialogDescription>
+            Configure the model provider and specific model for this session
+          </DialogDescription>
+        )}
       </DialogHeader>
 
       <div className="mt-6 space-y-4">
         {/* Provider Selection */}
-        <div className="space-y-2">
-          <Label htmlFor="provider">Provider</Label>
-          <Select
-            value={provider}
-            onValueChange={value => handleProviderChange(value as 'anthropic' | 'openrouter')}
-            disabled={isUpdating}
-          >
-            <SelectTrigger id="provider" className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="anthropic">Anthropic</SelectItem>
-              <SelectItem value="openrouter">OpenRouter</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        {isAdvancedProvidersEnabled && (
+          <div className="space-y-2">
+            <Label htmlFor="provider">Provider</Label>
+            <Select
+              value={provider}
+              onValueChange={value => handleProviderChange(value as 'anthropic' | 'openrouter')}
+              disabled={isUpdating}
+            >
+              <SelectTrigger id="provider" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="anthropic">Anthropic</SelectItem>
+                <SelectItem value="openrouter">OpenRouter</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         {/* Model Selection */}
         <div className="space-y-2">
@@ -261,7 +269,7 @@ function ModelSelectorContent({
         </div>
 
         {/* Help Text */}
-        {provider === 'anthropic' && (
+        {provider === 'anthropic' && isAdvancedProvidersEnabled && (
           <div className="text-muted-foreground">
             <p>Select a model or use the system default</p>
           </div>
