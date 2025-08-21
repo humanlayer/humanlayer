@@ -73,6 +73,15 @@ interface StoreState {
   /* UI State */
   isHotkeyPanelOpen: boolean
   setHotkeyPanelOpen: (open: boolean) => void
+  isSettingsDialogOpen: boolean
+  setSettingsDialogOpen: (open: boolean) => void
+
+  /* User Settings */
+  userSettings: {
+    advancedProviders: boolean
+  } | null
+  fetchUserSettings: () => Promise<void>
+  updateUserSettings: (settings: { advancedProviders: boolean }) => Promise<void>
 }
 
 export const useStore = create<StoreState>((set, get) => ({
@@ -762,6 +771,36 @@ export const useStore = create<StoreState>((set, get) => ({
   // UI State
   isHotkeyPanelOpen: false,
   setHotkeyPanelOpen: (open: boolean) => set({ isHotkeyPanelOpen: open }),
+  isSettingsDialogOpen: false,
+  setSettingsDialogOpen: (open: boolean) => set({ isSettingsDialogOpen: open }),
+
+  // User Settings
+  userSettings: null,
+  fetchUserSettings: async () => {
+    try {
+      const response = await daemonClient.getUserSettings()
+      set({
+        userSettings: {
+          advancedProviders: response.data.advancedProviders,
+        },
+      })
+    } catch (error) {
+      logger.error('Failed to fetch user settings:', error)
+    }
+  },
+  updateUserSettings: async (settings: { advancedProviders: boolean }) => {
+    try {
+      const response = await daemonClient.updateUserSettings(settings)
+      set({
+        userSettings: {
+          advancedProviders: response.data.advancedProviders,
+        },
+      })
+    } catch (error) {
+      logger.error('Failed to update user settings:', error)
+      throw error // Re-throw so the UI can handle it
+    }
+  },
 }))
 
 // Helper function to validate and clean up session state

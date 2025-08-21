@@ -315,6 +315,46 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /user-settings:
+    get:
+      operationId: getUserSettings
+      summary: Get user settings
+      description: Retrieve user preferences and settings
+      tags:
+        - Settings
+      responses:
+        '200':
+          description: User settings retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSettingsResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      operationId: updateUserSettings
+      summary: Update user settings
+      description: Update user preferences and settings
+      tags:
+        - Settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserSettingsRequest'
+      responses:
+        '200':
+          description: Settings updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSettingsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
   /anthropic_proxy/{session_id}/v1/messages:
     post:
       summary: Proxy Anthropic API requests for a session
@@ -1177,6 +1217,38 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/RecentPath'
+
+    UserSettings:
+      type: object
+      required:
+        - advanced_providers
+        - created_at
+        - updated_at
+      properties:
+        advanced_providers:
+          type: boolean
+          description: Enable advanced provider options like OpenRouter
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    UserSettingsResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/UserSettings'
+
+    UpdateUserSettingsRequest:
+      type: object
+      properties:
+        advanced_providers:
+          type: boolean
+          description: Enable or disable advanced provider options
 
     # Approval Types
     Approval:
