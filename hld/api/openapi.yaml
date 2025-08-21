@@ -509,7 +509,7 @@ components:
           type: string
           example: "0.1.0"
 
-    # Database Info Response
+    # Debug Info Response
     DebugInfoResponse:
       type: object
       required:
