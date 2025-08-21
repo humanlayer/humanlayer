@@ -34,6 +34,12 @@ export interface CreateSessionRequest {
      */
     query: string;
     /**
+     * Optional title for the session
+     * @type {string}
+     * @memberof CreateSessionRequest
+     */
+    title?: string;
+    /**
      * Model to use for the session
      * @type {string}
      * @memberof CreateSessionRequest
@@ -94,6 +100,18 @@ export interface CreateSessionRequest {
      */
     customInstructions?: string;
     /**
+     * Launch session with dangerously skip permissions enabled
+     * @type {boolean}
+     * @memberof CreateSessionRequest
+     */
+    dangerouslySkipPermissions?: boolean;
+    /**
+     * Optional default timeout in milliseconds for dangerously skip permissions
+     * @type {number}
+     * @memberof CreateSessionRequest
+     */
+    dangerouslySkipPermissionsTimeout?: number;
+    /**
      * Enable verbose output
      * @type {boolean}
      * @memberof CreateSessionRequest
@@ -131,6 +149,7 @@ export function CreateSessionRequestFromJSONTyped(json: any, ignoreDiscriminator
     return {
 
         'query': json['query'],
+        'title': json['title'] == null ? undefined : json['title'],
         'model': json['model'] == null ? undefined : json['model'],
         'mcpConfig': json['mcp_config'] == null ? undefined : MCPConfigFromJSON(json['mcp_config']),
         'permissionPromptTool': json['permission_prompt_tool'] == null ? undefined : json['permission_prompt_tool'],
@@ -141,6 +160,8 @@ export function CreateSessionRequestFromJSONTyped(json: any, ignoreDiscriminator
         'allowedTools': json['allowed_tools'] == null ? undefined : json['allowed_tools'],
         'disallowedTools': json['disallowed_tools'] == null ? undefined : json['disallowed_tools'],
         'customInstructions': json['custom_instructions'] == null ? undefined : json['custom_instructions'],
+        'dangerouslySkipPermissions': json['dangerously_skip_permissions'] == null ? undefined : json['dangerously_skip_permissions'],
+        'dangerouslySkipPermissionsTimeout': json['dangerously_skip_permissions_timeout'] == null ? undefined : json['dangerously_skip_permissions_timeout'],
         'verbose': json['verbose'] == null ? undefined : json['verbose'],
     };
 }
@@ -157,6 +178,7 @@ export function CreateSessionRequestToJSONTyped(value?: CreateSessionRequest | n
     return {
 
         'query': value['query'],
+        'title': value['title'],
         'model': value['model'],
         'mcp_config': MCPConfigToJSON(value['mcpConfig']),
         'permission_prompt_tool': value['permissionPromptTool'],
@@ -167,6 +189,8 @@ export function CreateSessionRequestToJSONTyped(value?: CreateSessionRequest | n
         'allowed_tools': value['allowedTools'],
         'disallowed_tools': value['disallowedTools'],
         'custom_instructions': value['customInstructions'],
+        'dangerously_skip_permissions': value['dangerouslySkipPermissions'],
+        'dangerously_skip_permissions_timeout': value['dangerouslySkipPermissionsTimeout'],
         'verbose': value['verbose'],
     };
 }

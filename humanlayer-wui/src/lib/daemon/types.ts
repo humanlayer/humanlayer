@@ -6,7 +6,7 @@ import type {
   Event,
   EventType,
   RecentPath as SDKRecentPath,
-  Session,
+  Session as SDKSession,
   Approval,
   ConversationEvent,
 } from '@humanlayer/hld-sdk'
@@ -17,7 +17,10 @@ export type { Event, EventType }
 export type RecentPath = SDKRecentPath
 
 // Export SDK types directly
-export type { Session, Approval } from '@humanlayer/hld-sdk'
+export type { Approval } from '@humanlayer/hld-sdk'
+
+// Use SDK Session type directly with camelCase naming
+export type Session = SDKSession
 
 // Export SDK ConversationEvent type directly
 export type { ConversationEvent } from '@humanlayer/hld-sdk'
@@ -45,9 +48,19 @@ export interface SubscriptionHandle {
   unsubscribe: () => void
 }
 
+export interface DebugInfo {
+  path: string
+  size: number
+  table_count: number
+  stats: Record<string, number>
+  cli_command: string
+  last_modified?: string
+}
+
 // Client interface using legacy types for backward compatibility
 export interface DaemonClient {
   connect(): Promise<void>
+  reconnect(): Promise<void>
   disconnect(): Promise<void>
   health(): Promise<HealthCheckResponse>
 
@@ -66,7 +79,11 @@ export interface DaemonClient {
   interruptSession(sessionId: string): Promise<{ success: boolean }>
   updateSessionSettings(
     sessionId: string,
-    settings: { auto_accept_edits?: boolean },
+    settings: {
+      auto_accept_edits?: boolean
+      dangerously_skip_permissions?: boolean
+      dangerously_skip_permissions_timeout_ms?: number
+    },
   ): Promise<{ success: boolean }>
   archiveSession(
     sessionIdOrRequest: string | { session_id: string; archived: boolean },
@@ -104,6 +121,7 @@ export interface DaemonClient {
 
   // Utility methods
   getRecentPaths(limit?: number): Promise<RecentPath[]>
+  getDebugInfo(): Promise<DebugInfo>
 }
 
 // Legacy enums and types for backward compatibility (to be gradually removed)
@@ -134,6 +152,7 @@ export enum ViewMode {
 // Legacy request/response types (for gradual migration)
 export interface LaunchSessionRequest {
   query: string
+  title?: string
   model?: string
   mcp_config?: any
   permission_prompt_tool?: string
@@ -145,6 +164,8 @@ export interface LaunchSessionRequest {
   disallowed_tools?: string[]
   custom_instructions?: string
   verbose?: boolean
+  dangerously_skip_permissions?: boolean
+  dangerously_skip_permissions_timeout?: number
 }
 
 export interface LaunchSessionResponse {
@@ -215,8 +236,26 @@ export interface ApprovalResolvedEventData {
 
 export interface SessionStatusChangedEventData {
   session_id: string
-  old_status: string
-  new_status: string
+  old_status: SessionStatus
+  new_status: SessionStatus
+}
+
+// Constants for session settings change reasons
+export const SessionSettingsChangeReason = {
+  EXPIRED: 'expired', // Dangerous skip permissions expired due to timeout
+} as const
+
+export type SessionSettingsChangeReasonType =
+  (typeof SessionSettingsChangeReason)[keyof typeof SessionSettingsChangeReason]
+
+export interface SessionSettingsChangedEventData {
+  session_id: string
+  event_type?: string
+  auto_accept_edits?: boolean
+  dangerously_skip_permissions?: boolean
+  dangerously_skip_permissions_timeout_ms?: number
+  reason?: SessionSettingsChangeReasonType
+  expired_at?: string // Timestamp when the dangerous skip permissions expired
 }
 
 // Conversation types
@@ -299,6 +338,8 @@ export interface InterruptSessionResponse {
 export interface UpdateSessionSettingsRequest {
   session_id: string
   auto_accept_edits?: boolean
+  dangerously_skip_permissions?: boolean
+  dangerously_skip_permissions_timeout_ms?: number
 }
 
 export interface UpdateSessionSettingsResponse {
@@ -348,4 +389,13 @@ export interface UpdateSessionTitleRequest {
 
 export interface UpdateSessionTitleResponse {
   success: boolean
+}
+
+// Helper function to ensure SDK Session has proper defaults
+export function transformSDKSession(sdkSession: SDKSession): Session {
+  // SDK Session already has the correct camelCase fields, just ensure defaults
+  return {
+    ...sdkSession,
+    dangerouslySkipPermissions: sdkSession.dangerouslySkipPermissions ?? false,
+  }
 }

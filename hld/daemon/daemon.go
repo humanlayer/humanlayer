@@ -37,17 +37,29 @@ func getShutdownTimeout() time.Duration {
 	return 5 * time.Second // default per ENG-1699 requirements
 }
 
+// getPermissionMonitorInterval returns the interval for dangerous skip permissions expiry checks
+func getPermissionMonitorInterval() time.Duration {
+	if intervalStr := os.Getenv("HLD_PERMISSION_MONITOR_INTERVAL"); intervalStr != "" {
+		if interval, err := time.ParseDuration(intervalStr); err == nil {
+			return interval
+		}
+		slog.Warn("invalid HLD_PERMISSION_MONITOR_INTERVAL, using default", "value", intervalStr)
+	}
+	return 30 * time.Second
+}
+
 // Daemon coordinates all daemon functionality
 type Daemon struct {
-	config     *config.Config
-	socketPath string
-	listener   net.Listener
-	rpcServer  *rpc.Server
-	httpServer *HTTPServer
-	sessions   session.SessionManager
-	approvals  approval.Manager
-	eventBus   bus.EventBus
-	store      store.ConversationStore
+	config            *config.Config
+	socketPath        string
+	listener          net.Listener
+	rpcServer         *rpc.Server
+	httpServer        *HTTPServer
+	sessions          session.SessionManager
+	approvals         approval.Manager
+	eventBus          bus.EventBus
+	store             store.ConversationStore
+	permissionMonitor *session.PermissionMonitor
 }
 
 // New creates a new daemon instance
@@ -115,12 +127,9 @@ func New() (*Daemon, error) {
 	approvalManager := approval.NewManager(conversationStore, eventBus)
 	slog.Debug("local approval manager created successfully")
 
-	// Create HTTP server if enabled
-	var httpServer *HTTPServer
-	if cfg.HTTPPort > 0 {
-		slog.Info("creating HTTP server", "port", cfg.HTTPPort)
-		httpServer = NewHTTPServer(cfg, sessionManager, approvalManager, conversationStore, eventBus)
-	}
+	// Create HTTP server (always enabled, port 0 means dynamic allocation)
+	slog.Info("creating HTTP server", "port", cfg.HTTPPort)
+	httpServer := NewHTTPServer(cfg, sessionManager, approvalManager, conversationStore, eventBus)
 
 	return &Daemon{
 		config:     cfg,
@@ -181,6 +190,16 @@ func (d *Daemon) Run(ctx context.Context) error {
 		slog.Warn("failed to mark orphaned sessions as failed", "error", err)
 		// Don't fail startup for this
 	}
+
+	// Create and start dangerous skip permissions monitor
+	permissionMonitor := session.NewPermissionMonitor(d.store, d.eventBus, getPermissionMonitorInterval())
+	d.permissionMonitor = permissionMonitor
+
+	// Start dangerous skip permissions monitor in background
+	go func() {
+		permissionMonitor.Start(ctx)
+	}()
+	slog.Info("started dangerous skip permissions expiry monitor")
 
 	// Register subscription handlers
 	subscriptionHandlers := rpc.NewSubscriptionHandlers(d.eventBus)

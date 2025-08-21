@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
-import { useSessionLauncher } from '@/hooks/useSessionLauncher'
+import { useSessionLauncher, isViewingSessionDetail } from '@/hooks/useSessionLauncher'
 import { useStore } from '@/AppStore'
 import { highlightMatches, type FuzzyMatch } from '@/lib/fuzzy-search'
 import { cn } from '@/lib/utils'
 import { useSessionFilter } from '@/hooks/useSessionFilter'
 import { EmptyState } from './internal/EmptyState'
 import { Search } from 'lucide-react'
+import { KeyboardShortcut } from './HotkeyPanel'
 
 interface MenuOption {
   id: string
@@ -14,17 +15,23 @@ interface MenuOption {
   description?: string
   action: () => void
   sessionId?: string
+  hotkey?: string
 }
 
 export default function CommandPaletteMenu() {
-  const { createNewSession, openSessionById, selectedMenuIndex, setSelectedMenuIndex, mode } =
+  const { createNewSession, openSessionById, selectedMenuIndex, setSelectedMenuIndex, mode, close } =
     useSessionLauncher()
 
   const [searchQuery, setSearchQuery] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Get sessions from the main app store
+  // Get sessions and state from the main app store
   const sessions = useStore(state => state.sessions)
+  const focusedSession = useStore(state => state.focusedSession)
+  const selectedSessions = useStore(state => state.selectedSessions)
+  const activeSessionDetail = useStore(state => state.activeSessionDetail)
+  const archiveSession = useStore(state => state.archiveSession)
+  const bulkArchiveSessions = useStore(state => state.bulkArchiveSessions)
 
   // Use the shared session filter hook
   const { filteredSessions, statusFilter, searchText, matchedSessions } = useSessionFilter({
@@ -33,14 +40,86 @@ export default function CommandPaletteMenu() {
     searchFields: ['summary', 'model'], // Search in both summary and model fields for the modal
   })
 
+  // Check if we're viewing a session detail
+  const isSessionDetail = isViewingSessionDetail()
+
+  // Check if we should show archive option
+  const isSessionTable = !isSessionDetail && window.location.hash === '#/'
+  const shouldShowArchive =
+    isSessionDetail || (isSessionTable && (focusedSession || selectedSessions.size > 0))
+
+  // Determine if we should show unarchive instead of archive
+  const getArchiveLabel = (): string => {
+    if (isSessionDetail && activeSessionDetail) {
+      return activeSessionDetail.session.archived ? 'Unarchive' : 'Archive'
+    } else if (selectedSessions.size > 0) {
+      // For bulk operations, check if all selected sessions have same archive state
+      const sessionIds = Array.from(selectedSessions)
+      const sessionsToCheck = sessions.filter(s => sessionIds.includes(s.id))
+      const allArchived = sessionsToCheck.every(s => s.archived)
+      const allActive = sessionsToCheck.every(s => !s.archived)
+
+      // If mixed state, use "Archive" as default
+      if (!allArchived && !allActive) {
+        return 'Archive'
+      }
+      return allArchived ? 'Unarchive' : 'Archive'
+    } else if (focusedSession) {
+      return focusedSession.archived ? 'Unarchive' : 'Archive'
+    }
+    return 'Archive' // Default
+  }
+
   // Build base menu options
   const baseOptions: MenuOption[] = [
     {
       id: 'create-session',
       label: 'Create Session',
-      description: 'Start a new session with AI assistance',
       action: createNewSession,
+      hotkey: 'C',
     },
+    ...(isSessionDetail && searchQuery.toLowerCase().includes('brain')
+      ? [
+          {
+            id: 'toggle-brainrot',
+            label: 'Brainrot Mode',
+            action: () => {
+              window.dispatchEvent(new CustomEvent('toggle-brainrot-mode'))
+              close()
+            },
+          },
+        ]
+      : []),
+    ...(shouldShowArchive
+      ? [
+          {
+            id: 'archive-session',
+            label: getArchiveLabel(),
+            action: async () => {
+              if (isSessionDetail && activeSessionDetail) {
+                // Archive current session in detail view
+                await archiveSession(
+                  activeSessionDetail.session.id,
+                  !activeSessionDetail.session.archived,
+                )
+                close()
+              } else if (selectedSessions.size > 0) {
+                // Bulk archive selected sessions
+                const sessionIds = Array.from(selectedSessions)
+                const sessionsToArchive = sessions.filter(s => sessionIds.includes(s.id))
+                const allArchived = sessionsToArchive.every(s => s.archived)
+                await bulkArchiveSessions(sessionIds, !allArchived)
+                close()
+              } else if (focusedSession) {
+                // Archive focused session
+                await archiveSession(focusedSession.id, !focusedSession.archived)
+                close()
+              }
+            },
+            hotkey: 'E',
+          },
+        ]
+      : []),
   ]
 
   // Command mode: Only Create Session
@@ -51,21 +130,25 @@ export default function CommandPaletteMenu() {
           id: `open-${session.id}`,
           label:
             session.summary || `${session.query.slice(0, 40)}${session.query.length > 40 ? '...' : ''}`,
-          description: `${session.status} • ${session.model || 'Unknown model'}`,
           action: () => openSessionById(session.id),
           sessionId: session.id, // Store for match lookup
         }))
       : [] // No sessions in command mode
 
+  // Filter options based on search query in command mode
+  const filteredBaseOptions = searchQuery
+    ? baseOptions.filter(option => option.label.toLowerCase().includes(searchQuery.toLowerCase()))
+    : baseOptions
+
   // Combine options based on mode
   const menuOptions: MenuOption[] =
     mode === 'command'
-      ? baseOptions // Command: Only Create Session
+      ? filteredBaseOptions // Command: Filtered base options
       : sessionOptions // Search: Only sessions (no Create Session), already limited to 5
 
-  // Keyboard navigation
+  // Keyboard navigation - only arrow keys
   useHotkeys(
-    'up, k',
+    'up',
     () => {
       setSelectedMenuIndex(selectedMenuIndex > 0 ? selectedMenuIndex - 1 : menuOptions.length - 1)
     },
@@ -73,7 +156,7 @@ export default function CommandPaletteMenu() {
   )
 
   useHotkeys(
-    'down, j',
+    'down',
     () => {
       setSelectedMenuIndex(selectedMenuIndex < menuOptions.length - 1 ? selectedMenuIndex + 1 : 0)
     },
@@ -117,8 +200,8 @@ export default function CommandPaletteMenu() {
 
   return (
     <div className="space-y-2">
-      {/* Search input for search mode */}
-      {mode === 'search' && (
+      {/* Search input for both modes */}
+      {(mode === 'search' || mode === 'command') && (
         <input
           ref={inputRef}
           type="text"
@@ -135,7 +218,7 @@ export default function CommandPaletteMenu() {
               menuOptions[selectedMenuIndex].action()
             }
           }}
-          placeholder="Search sessions..."
+          placeholder={mode === 'search' ? 'Search sessions...' : 'Search commands...'}
           className={cn(
             'w-full h-9 px-3 py-2 text-sm',
             'font-mono',
@@ -175,7 +258,7 @@ export default function CommandPaletteMenu() {
           <div
             key={option.id}
             className={cn(
-              'p-2 rounded cursor-pointer transition-all duration-150',
+              'p-3 rounded cursor-pointer transition-all duration-150',
               index === selectedMenuIndex
                 ? 'bg-primary text-primary-foreground'
                 : 'bg-muted/30 hover:bg-muted/60',
@@ -186,23 +269,14 @@ export default function CommandPaletteMenu() {
             }}
             onMouseEnter={() => setSelectedMenuIndex(index)}
           >
-            <div className="text-sm font-medium truncate">
-              {matchData
-                ? renderHighlightedText(option.label, matchData.matches, 'label')
-                : option.label}
-            </div>
-            {option.description && (
-              <div
-                className={cn(
-                  'text-xs mt-0.5 truncate',
-                  index === selectedMenuIndex ? 'text-primary-foreground/70' : 'text-muted-foreground',
-                )}
-              >
+            <div className="flex items-center justify-between">
+              <div className="text-sm font-medium truncate">
                 {matchData
-                  ? renderHighlightedText(option.description, matchData.matches, 'description')
-                  : option.description}
+                  ? renderHighlightedText(option.label, matchData.matches, 'label')
+                  : option.label}
               </div>
-            )}
+              {option.hotkey && <KeyboardShortcut keyString={option.hotkey} />}
+            </div>
           </div>
         )
       })}
@@ -217,7 +291,7 @@ export default function CommandPaletteMenu() {
 
       <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t border-border/30">
         <div className="flex items-center space-x-3">
-          <span>↑↓ j/k Navigate</span>
+          <span>↑↓ Navigate</span>
           <span>↵ Select</span>
         </div>
         <span>ESC Close</span>

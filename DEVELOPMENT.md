@@ -47,7 +47,8 @@ npx humanlayer launch "implement feature X" --daemon-socket ~/.humanlayer/daemon
 | Daemon Binary | `hld/hld-nightly` | `hld/hld-dev` |
 | Socket Path | `~/.humanlayer/daemon.sock` | `~/.humanlayer/daemon-dev.sock` |
 | Database | `~/.humanlayer/daemon.db` | `~/.humanlayer/dev/daemon-TIMESTAMP.db` |
-| Log Files | `daemon-nightly-*.log` | `daemon-dev-*.log` |
+| Daemon Logs | `daemon-nightly-*.log` | `daemon-dev-*.log` |
+| WUI Logs | Platform-specific | `~/.humanlayer/logs/wui-{branch}/codelayer.log` |
 | WUI | Installed in `~/Applications` | Running in dev mode |
 
 ### Available Commands
@@ -177,6 +178,7 @@ HUMANLAYER_DATABASE_PATH=~/.humanlayer/dev/daemon-20240717-143022.db make daemon
 **Q: How do I know which environment I'm in?**
 - Check WUI title bar: shows "dev" for dev daemon
 - Check daemon logs: `tail -f ~/.humanlayer/logs/daemon-*.log`
+- Check WUI logs: `tail -f ~/.humanlayer/logs/wui-*/codelayer.log`
 
 ## Other Development Commands
 

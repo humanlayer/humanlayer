@@ -5,12 +5,15 @@ import { join } from 'path'
 
 interface LaunchOptions {
   query?: string
+  title?: string
   model?: string
   workingDir?: string
   maxTurns?: number
   daemonSocket?: string
   configFile?: string
   approvals?: boolean
+  dangerouslySkipPermissions?: boolean
+  dangerouslySkipPermissionsTimeout?: string
 }
 
 export const launchCommand = async (query: string, options: LaunchOptions = {}) => {
@@ -26,35 +29,36 @@ export const launchCommand = async (query: string, options: LaunchOptions = {}) 
 
     console.log('Launching Claude Code session...')
     console.log('Query:', query)
+    if (options.title) console.log('Title:', options.title)
     if (options.model) console.log('Model:', options.model)
     console.log('Working directory:', options.workingDir || process.cwd())
     console.log('Approvals enabled:', options.approvals !== false)
+
+    if (options.dangerouslySkipPermissions) {
+      console.log('⚠️  Dangerously skip permissions enabled - ALL tools will be auto-approved')
+      if (options.dangerouslySkipPermissionsTimeout) {
+        console.log(`   Auto-disabling after ${options.dangerouslySkipPermissionsTimeout} minutes`)
+      }
+    }
 
     // Connect to daemon
     const client = await connectWithRetry(socketPath, 3, 1000)
 
     try {
-      // Build MCP config (approvals enabled by default unless explicitly disabled)
-      const mcpConfig =
-        options.approvals !== false
-          ? {
-              mcpServers: {
-                approvals: {
-                  command: 'npx',
-                  args: ['humanlayer', 'mcp', 'claude_approvals'],
-                },
-              },
-            }
-          : undefined
-
       // Launch the session
       const result = await client.launchSession({
         query: query,
+        title: options.title,
         model: options.model,
         working_dir: options.workingDir || process.cwd(),
         max_turns: options.maxTurns,
-        mcp_config: mcpConfig,
-        permission_prompt_tool: mcpConfig ? 'mcp__approvals__request_permission' : undefined,
+        // MCP config is now injected by daemon
+        permission_prompt_tool:
+          options.approvals !== false ? 'mcp__codelayer__request_permission' : undefined,
+        dangerously_skip_permissions: options.dangerouslySkipPermissions,
+        dangerously_skip_permissions_timeout: options.dangerouslySkipPermissionsTimeout
+          ? parseInt(options.dangerouslySkipPermissionsTimeout) * 60 * 1000
+          : undefined,
       })
 
       console.log('\nSession launched successfully!')

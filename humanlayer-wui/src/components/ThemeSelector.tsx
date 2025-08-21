@@ -1,9 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useTheme, type Theme } from '@/contexts/ThemeContext'
-import { Moon, Sun, Coffee, Cat, ScanEye, Framer, Box, Palette } from 'lucide-react'
+import {
+  Moon,
+  Sun,
+  Coffee,
+  Cat,
+  ScanEye,
+  Framer,
+  Box,
+  Palette,
+  Flower2,
+  Sunrise,
+  MoonStar,
+} from 'lucide-react'
 import { useHotkeys, useHotkeysContext } from 'react-hotkeys-hook'
 import { SessionTableHotkeysScope } from './internal/SessionTable'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { KeyboardShortcut } from './HotkeyPanel'
 
 const themes: { value: Theme; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { value: 'solarized-dark', label: 'Solarized Dark', icon: Moon },
@@ -16,6 +29,9 @@ const themes: { value: Theme; label: string; icon: React.ComponentType<{ classNa
   { value: 'gruvbox-dark', label: 'Gruvbox Dark', icon: Box },
   { value: 'gruvbox-light', label: 'Gruvbox Light', icon: Box },
   { value: 'monokai', label: 'Monokai', icon: Palette },
+  { value: 'rose-pine', label: 'Rosé Pine', icon: Flower2 },
+  { value: 'rose-pine-dawn', label: 'Rosé Pine Dawn', icon: Sunrise },
+  { value: 'rose-pine-moon', label: 'Rosé Pine Moon', icon: MoonStar },
 ]
 
 export const ThemeSelectorHotkeysScope = 'theme-selector'
@@ -125,7 +141,9 @@ export function ThemeSelector() {
           </button>
         </TooltipTrigger>
         <TooltipContent>
-          <p>Theme: {currentTheme?.label || 'Unknown'} (Ctrl+T)</p>
+          <p className="flex items-center gap-1">
+            Theme: {currentTheme?.label || 'Unknown'} <KeyboardShortcut keyString="Ctrl+T" />
+          </p>
         </TooltipContent>
       </Tooltip>
 

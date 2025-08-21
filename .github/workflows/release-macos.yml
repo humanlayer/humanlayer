@@ -1,12 +1,20 @@
 name: Build macOS Release Artifacts
 
 on:
+  schedule:
+    # Run daily at 7am PT (3pm UTC during standard time, 2pm UTC during daylight saving)
+    - cron: '0 14 * * *'
   workflow_dispatch:
     inputs:
       release_version:
-        description: 'Version tag for the release (defaults to YYYYMMDD)'
+        description: 'Version tag for the release (defaults to YYYYMMDD_HHmmss for manual, YYYYMMDD-nightly for cron)'
         required: false
         type: string
+      release_nightly:
+        description: 'Build and release a nightly build'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write  # Needed to create releases
@@ -19,9 +27,14 @@ jobs:
       - name: Set release version
         id: version
         run: |
-          if [ -z "${{ github.event.inputs.release_version }}" ]; then
-            echo "release_version=$(date +%Y%m%d)" >> $GITHUB_OUTPUT
+          if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ github.event.inputs.release_nightly }}" = "true" ]; then
+            # For cron/scheduled runs or test mode, use YYYYMMDD-nightly format
+            echo "release_version=$(date +%Y%m%d)-nightly" >> $GITHUB_OUTPUT
+          elif [ -z "${{ github.event.inputs.release_version }}" ]; then
+            # For manual runs without specified version, use YYYYMMDD_HHmmss
+            echo "release_version=$(date +%Y%m%d_%H%M%S)" >> $GITHUB_OUTPUT
           else
+            # Use the provided version
             echo "release_version=${{ github.event.inputs.release_version }}" >> $GITHUB_OUTPUT
           fi
 
@@ -70,15 +83,63 @@ jobs:
         working-directory: humanlayer-wui
         run: bun install
 
-      - name: Build Tauri app (including DMG)
-        working-directory: humanlayer-wui
-        run: bun run tauri build
-        env:
-          APPLE_SIGNING_IDENTITY: "-"  # Ad-hoc signing to prevent "damaged" error
-
       - name: Build daemon for macOS ARM
         working-directory: hld
-        run: GOOS=darwin GOARCH=arm64 go build -o hld-darwin-arm64 ./cmd/hld
+        run: |
+          BUILD_VERSION="${{ steps.version.outputs.release_version }}"
+
+          if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ github.event.inputs.release_nightly }}" = "true" ]; then
+            # Nightly build with custom defaults
+            LDFLAGS="-X github.com/humanlayer/humanlayer/hld/internal/version.BuildVersion=${BUILD_VERSION}"
+            LDFLAGS="${LDFLAGS} -X github.com/humanlayer/humanlayer/hld/config.DefaultDatabasePath=~/.humanlayer/daemon-nightly.db"
+            LDFLAGS="${LDFLAGS} -X github.com/humanlayer/humanlayer/hld/config.DefaultSocketPath=~/.humanlayer/daemon-nightly.sock"
+            LDFLAGS="${LDFLAGS} -X github.com/humanlayer/humanlayer/hld/config.DefaultHTTPPort=7778"
+            LDFLAGS="${LDFLAGS} -X github.com/humanlayer/humanlayer/hld/config.DefaultCLICommand=humanlayer-nightly"
+          else
+            # Regular build with version only
+            LDFLAGS="-X github.com/humanlayer/humanlayer/hld/internal/version.BuildVersion=${BUILD_VERSION}"
+          fi
+
+          GOOS=darwin GOARCH=arm64 go build -ldflags "${LDFLAGS}" -o hld-darwin-arm64 ./cmd/hld
+
+      - name: Build humanlayer CLI for macOS ARM
+        working-directory: hlyr
+        run: |
+          bun install
+          bun run build
+          bun build ./dist/index.js --compile --target=bun-darwin-arm64 --outfile=humanlayer-darwin-arm64
+          chmod +x humanlayer-darwin-arm64
+
+      - name: Copy binaries to Tauri resources
+        run: |
+          mkdir -p humanlayer-wui/src-tauri/bin
+          cp hld/hld-darwin-arm64 humanlayer-wui/src-tauri/bin/hld
+          cp hlyr/humanlayer-darwin-arm64 humanlayer-wui/src-tauri/bin/humanlayer
+          chmod +x humanlayer-wui/src-tauri/bin/hld
+          chmod +x humanlayer-wui/src-tauri/bin/humanlayer
+
+      - name: Use nightly icons for scheduled build
+        if: github.event_name == 'schedule' || github.event.inputs.release_nightly == 'true'
+        working-directory: humanlayer-wui/src-tauri
+        run: |
+          # Backup original icons
+          mv icons icons-original
+
+          # Use nightly icons
+          cp -r icons-nightly icons
+
+      - name: Build Tauri app (including DMG)
+        working-directory: humanlayer-wui
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ github.event.inputs.release_nightly }}" = "true" ]; then
+            # Use nightly config for scheduled builds
+            bun run tauri build --config src-tauri/tauri.nightly.conf.json
+          else
+            # Regular build for manual runs
+            bun run tauri build
+          fi
+        env:
+          APPLE_SIGNING_IDENTITY: "-"  # Ad-hoc signing to prevent "damaged" error
 
       - name: Upload DMG artifact
         uses: actions/upload-artifact@v4
@@ -87,50 +148,121 @@ jobs:
           path: humanlayer-wui/src-tauri/target/release/bundle/dmg/*.dmg
           if-no-files-found: error
 
-      - name: Upload daemon artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: hld-darwin-arm64
-          path: hld/hld-darwin-arm64
-          if-no-files-found: error
-
       # Create GitHub Release with artifacts
       - name: Create Release
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
         id: create_release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.release_version }}
-          name: HumanLayer ${{ steps.version.outputs.release_version }} - macOS Release
+          name: codelayer-${{ steps.version.outputs.release_version }}
           body: |
-            ## HumanLayer ${{ steps.version.outputs.release_version }} - macOS Release
+            ## codelayer-${{ steps.version.outputs.release_version }}
 
             This release includes:
-            - **CodeLayer** - Desktop application (DMG installer)
-            - **HumanLayer Daemon (hld)** - Command-line daemon (ARM64 binary)
 
-            ### Installation Instructions
+            * **CodeLayer** - Desktop application (DMG installer)
 
-            - Install the CLI: `npm install -g humanlayer@0.11.0`
-            - Download daemon binary (hld-darwin-arm64)
-            - Run it in a terminal e.g. `chmod +x ~/Downloads/hld-darwin-arm64 && ~/Downloads/hld-darwin-arm64`
-            - Dismiss the security modal
-            - Go to System Settings > Privacy & Security and scroll to the bottom, find the "allow" button and click it
-            - Run it again `~/Downloads/hld-darwin-arm64`
-            - Download CodeLayer (CodeLayer.dmg)
-            - Copy the app to Applications
-            - Open CodeLayer with your preferred app launcher
-            - Dismiss security modal
-            - Go to System Settings > Privacy & Security and allow
-            - Open CodeLayer again
+            ### tl;dr
+
+            ```
+            brew install --cask --no-quarantine humanlayer/humanlayer/codelayer${{ contains(steps.version.outputs.release_version, 'nightly') && '-nightly' || '' }}
+            # kill any existing hld process and open CodeLayer with current shell PATH so it can find your `claude` CLI
+            pkill hld; open /Applications/CodeLayer${{ contains(steps.version.outputs.release_version, 'nightly') && '-Nightly' || '' }}.app
+            ```
+
+            * if your `claude` cli is not in a very-default location like `/usr/local/bin`, you will need to launch with `open /Applications/CodeLayer${{ contains(steps.version.outputs.release_version, 'nightly') && '-Nightly' || '' }}.app` rather than launching from Spotlight/Finder/Raycast/etc
 
             ### Requirements
-            - macOS (Apple Silicon/M-series)
-            - Node.js installed
 
-          draft: true
-          prerelease: false
+            * macOS (Apple Silicon/M-series)
+
+            ### Troubleshooting / Known Issues
+
+            * If install fails, ensure you've cleaned up all previous artifacts. `brew reinstall` is worth a shot as well.
+            * Logs can be found at `~/Library/Logs/dev.humanlayer.wui${{ contains(steps.version.outputs.release_version, 'nightly') && '.nightly' || '' }}/CodeLayer.log`
+            * If daemon fails due to already running, you can `pkill hld` and reopen CodeLayer to try again
+            * If opening from spotlight/alfred/raycast/finder fails, try `pkill hld; open /Applications/CodeLayer${{ contains(steps.version.outputs.release_version, 'nightly') && '-Nightly' || '' }}.app` to push your PATH into CodeLayer so it can better find your `claude` CLI
+
+          draft: false
+          prerelease: ${{ contains(steps.version.outputs.release_version, 'nightly') }}
 
           files: |
             humanlayer-wui/src-tauri/target/release/bundle/dmg/*.dmg
-            hld/hld-darwin-arm64
+
+      # Update nightly cask for scheduled builds
+      - name: Prepare cask update
+        if: github.event_name == 'schedule' || github.event.inputs.release_nightly == 'true'
+        id: prepare
+        run: |
+          # Get the DMG filename
+          DMG_FILE=$(ls humanlayer-wui/src-tauri/target/release/bundle/dmg/*.dmg | head -1)
+          echo "dmg_file=${DMG_FILE}" >> $GITHUB_OUTPUT
+
+          # Calculate SHA256
+          SHA256=$(shasum -a 256 "${DMG_FILE}" | cut -f1 -d' ')
+          echo "sha256=${SHA256}" >> $GITHUB_OUTPUT
+
+          # Get release tag
+          RELEASE_TAG="${{ steps.version.outputs.release_version }}"
+          echo "release_tag=${RELEASE_TAG}" >> $GITHUB_OUTPUT
+
+          # Construct DMG URL
+          DMG_FILENAME=$(basename "${DMG_FILE}")
+          DMG_URL="https://github.com/humanlayer/humanlayer/releases/download/${RELEASE_TAG}/${DMG_FILENAME}"
+          echo "dmg_url=${DMG_URL}" >> $GITHUB_OUTPUT
+
+      - name: Checkout homebrew tap
+        if: github.event_name == 'schedule' || github.event.inputs.release_nightly == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: humanlayer/homebrew-humanlayer
+          token: ${{ secrets.HUMANLAYER_HOMEBREW_CASK_WRITE_GITHUB_PAT }}
+          path: homebrew-tap
+
+      - name: Update nightly cask
+        if: github.event_name == 'schedule' || github.event.inputs.release_nightly == 'true'
+        working-directory: homebrew-tap
+        run: |
+          # Update the cask file
+          cat > Casks/codelayer-nightly.rb << 'EOF'
+          cask "codelayer-nightly" do
+            version "${{ steps.prepare.outputs.release_tag }}"
+            sha256 "${{ steps.prepare.outputs.sha256 }}"
+
+            url "${{ steps.prepare.outputs.dmg_url }}",
+                verified: "github.com/humanlayer/humanlayer/"
+
+            name "CodeLayer Nightly"
+            desc "Nightly build of CodeLayer - Desktop application for managing AI agent approvals"
+            homepage "https://humanlayer.dev/"
+
+            # No conflicts - can install alongside stable
+
+            app "CodeLayer-Nightly.app"
+
+            binary "#{appdir}/CodeLayer-Nightly.app/Contents/Resources/bin/humanlayer", target: "humanlayer-nightly"
+            binary "#{appdir}/CodeLayer-Nightly.app/Contents/Resources/bin/hld", target: "hld-nightly"
+
+            zap trash: [
+              "~/Library/Application Support/CodeLayer-Nightly",
+              "~/Library/Preferences/dev.humanlayer.wui.nightly.plist",
+              "~/Library/Saved Application State/dev.humanlayer.wui.nightly.savedState",
+              "~/.humanlayer/codelayer-nightly*.json",
+              "~/.humanlayer/daemon-nightly*.db",
+              "~/.humanlayer/daemon-nightly*.sock",
+              "~/Library/Logs/dev.humanlayer.wui.nightly/",
+            ]
+          end
+          EOF
+
+      - name: Commit and push cask update
+        if: github.event_name == 'schedule' || github.event.inputs.release_nightly == 'true'
+        working-directory: homebrew-tap
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add Casks/codelayer-nightly.rb
+          git commit -m "Update codelayer-nightly to ${{ steps.prepare.outputs.release_tag }}"
+          git push

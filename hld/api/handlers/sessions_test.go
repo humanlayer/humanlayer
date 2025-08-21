@@ -47,7 +47,7 @@ func TestSessionHandlers_CreateSession(t *testing.T) {
 			mockSetup: func() {
 				mockManager.EXPECT().
 					LaunchSession(gomock.Any(), gomock.Any()).
-					DoAndReturn(func(ctx context.Context, config claudecode.SessionConfig) (*session.Session, error) {
+					DoAndReturn(func(ctx context.Context, config session.LaunchSessionConfig) (*session.Session, error) {
 						// Validate the config passed to LaunchSession
 						assert.Equal(t, "Help me write tests", config.Query)
 						assert.Equal(t, claudecode.Model("sonnet"), config.Model)
@@ -89,7 +89,7 @@ func TestSessionHandlers_CreateSession(t *testing.T) {
 				McpConfig: &api.MCPConfig{
 					McpServers: &map[string]api.MCPServer{
 						"test-server": {
-							Command: "node",
+							Command: stringPtr("node"),
 							Args:    &[]string{"server.js"},
 							Env: &map[string]string{
 								"DEBUG": "true",
@@ -101,7 +101,7 @@ func TestSessionHandlers_CreateSession(t *testing.T) {
 			mockSetup: func() {
 				mockManager.EXPECT().
 					LaunchSession(gomock.Any(), gomock.Any()).
-					DoAndReturn(func(ctx context.Context, config claudecode.SessionConfig) (*session.Session, error) {
+					DoAndReturn(func(ctx context.Context, config session.LaunchSessionConfig) (*session.Session, error) {
 						// Verify MCP config was properly converted
 						require.NotNil(t, config.MCPConfig)
 						assert.Len(t, config.MCPConfig.MCPServers, 1)
@@ -286,7 +286,6 @@ func TestSessionHandlers_GetSession(t *testing.T) {
 			Model:           "claude-3-sonnet",
 			WorkingDir:      "/home/user/project",
 			CostUSD:         floatPtr(0.05),
-			TotalTokens:     intPtr(1500),
 			DurationMS:      intPtr(45000),
 			AutoAcceptEdits: true,
 			Archived:        false,
@@ -339,8 +338,8 @@ func TestSessionHandlers_UpdateSession(t *testing.T) {
 	router := setupTestRouter(t, handlers, nil, nil)
 
 	t.Run("update auto-accept edits", func(t *testing.T) {
-		mockStore.EXPECT().
-			UpdateSession(gomock.Any(), "sess-123", store.SessionUpdate{
+		mockManager.EXPECT().
+			UpdateSessionSettings(gomock.Any(), "sess-123", store.SessionUpdate{
 				AutoAcceptEdits: boolPtr(true),
 			}).
 			Return(nil)
@@ -374,8 +373,8 @@ func TestSessionHandlers_UpdateSession(t *testing.T) {
 	})
 
 	t.Run("archive session", func(t *testing.T) {
-		mockStore.EXPECT().
-			UpdateSession(gomock.Any(), "sess-456", store.SessionUpdate{
+		mockManager.EXPECT().
+			UpdateSessionSettings(gomock.Any(), "sess-456", store.SessionUpdate{
 				Archived: boolPtr(true),
 			}).
 			Return(nil)
@@ -408,8 +407,8 @@ func TestSessionHandlers_UpdateSession(t *testing.T) {
 	})
 
 	t.Run("update session title", func(t *testing.T) {
-		mockStore.EXPECT().
-			UpdateSession(gomock.Any(), "sess-789", store.SessionUpdate{
+		mockManager.EXPECT().
+			UpdateSessionSettings(gomock.Any(), "sess-789", store.SessionUpdate{
 				Title: stringPtr("Updated Task Title"),
 			}).
 			Return(nil)
@@ -444,8 +443,8 @@ func TestSessionHandlers_UpdateSession(t *testing.T) {
 	})
 
 	t.Run("session not found", func(t *testing.T) {
-		mockStore.EXPECT().
-			UpdateSession(gomock.Any(), "sess-999", gomock.Any()).
+		mockManager.EXPECT().
+			UpdateSessionSettings(gomock.Any(), "sess-999", gomock.Any()).
 			Return(sql.ErrNoRows)
 
 		updateReq := api.UpdateSessionRequest{

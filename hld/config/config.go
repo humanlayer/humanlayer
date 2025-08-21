@@ -4,8 +4,18 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/spf13/viper"
+)
+
+// Build-time configurable defaults
+var (
+	// These can be overridden at build time using -ldflags
+	DefaultDatabasePath = "~/.humanlayer/daemon.db"
+	DefaultSocketPath   = "~/.humanlayer/daemon.sock"
+	DefaultHTTPPort     = "7777"
+	DefaultCLICommand   = "hlyr" // CLI command to execute
 )
 
 // Config represents the daemon configuration
@@ -59,12 +69,7 @@ func Load() (*Config, error) {
 	_ = v.BindEnv("http_host", "HUMANLAYER_DAEMON_HTTP_HOST")
 
 	// Set defaults
-	v.SetDefault("socket_path", "~/.humanlayer/daemon.sock")
-	v.SetDefault("database_path", "~/.humanlayer/daemon.db")
-	v.SetDefault("api_base_url", "https://api.humanlayer.dev/humanlayer/v1")
-	v.SetDefault("log_level", "info")
-	v.SetDefault("http_port", 7777) // Changed from 0 to 7777
-	v.SetDefault("http_host", "127.0.0.1")
+	setDefaults(v)
 
 	// Read config file (ignore if not found)
 	if err := v.ReadInConfig(); err != nil {
@@ -84,6 +89,22 @@ func Load() (*Config, error) {
 	config.DatabasePath = expandHome(config.DatabasePath)
 
 	return &config, nil
+}
+
+// setDefaults sets the default values for configuration
+func setDefaults(v *viper.Viper) {
+	v.SetDefault("socket_path", DefaultSocketPath)
+	v.SetDefault("database_path", DefaultDatabasePath)
+	v.SetDefault("api_base_url", "https://api.humanlayer.dev/humanlayer/v1")
+	v.SetDefault("log_level", "info")
+
+	// Convert string port to int
+	port, err := strconv.Atoi(DefaultHTTPPort)
+	if err != nil {
+		port = 7777 // fallback to default if conversion fails
+	}
+	v.SetDefault("http_port", port)
+	v.SetDefault("http_host", "127.0.0.1")
 }
 
 // getDefaultConfigDir returns the default configuration directory

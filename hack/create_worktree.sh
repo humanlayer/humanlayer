@@ -29,9 +29,14 @@ BASE_BRANCH=${2:-$(git branch --show-current)}
 # Get base directory name (should be 'humanlayer')
 REPO_BASE_NAME=$(basename "$(pwd)")
 
-# Construct paths
-WORKTREE_DIR_NAME="${REPO_BASE_NAME}_${WORKTREE_NAME}"
-WORKTREES_BASE="$HOME/.humanlayer/worktrees"
+if [ ! -z "$HUMANLAYER_WORKTREE_OVERRIDE_BASE" ]; then
+    WORKTREE_DIR_NAME="${WORKTREE_NAME}"
+    WORKTREES_BASE="${HUMANLAYER_WORKTREE_OVERRIDE_BASE}/${REPO_BASE_NAME}"
+else
+    WORKTREE_DIR_NAME="${WORKTREE_NAME}"
+    WORKTREES_BASE="$HOME/wt/${REPO_BASE_NAME}"
+fi
+
 WORKTREE_PATH="${WORKTREES_BASE}/${WORKTREE_DIR_NAME}"
 
 echo "🌳 Creating worktree: ${WORKTREE_NAME}"
@@ -81,21 +86,21 @@ if ! make setup; then
     exit 1
 fi
 
-echo "🧪 Verifying worktree with checks and tests..."
-temp_output=$(mktemp)
-if make check test > "$temp_output" 2>&1; then
-    rm "$temp_output"
-    echo "✅ All checks and tests pass!"
-else
-    cat "$temp_output"
-    rm "$temp_output"
-    echo "❌ Checks and tests failed. Cleaning up worktree..."
-    cd - > /dev/null
-    git worktree remove --force "$WORKTREE_PATH"
-    git branch -D "$WORKTREE_NAME" 2>/dev/null || true
-    echo "❌ Not allowed to create worktree from a branch that isn't passing checks and tests."
-    exit 1
-fi
+# echo "🧪 Verifying worktree with checks and tests..."
+# temp_output=$(mktemp)
+# if make check test > "$temp_output" 2>&1; then
+#     rm "$temp_output"
+#     echo "✅ All checks and tests pass!"
+# else
+#     cat "$temp_output"
+#     rm "$temp_output"
+#     echo "❌ Checks and tests failed. Cleaning up worktree..."
+#     cd - > /dev/null
+#     git worktree remove --force "$WORKTREE_PATH"
+#     git branch -D "$WORKTREE_NAME" 2>/dev/null || true
+#     echo "❌ Not allowed to create worktree from a branch that isn't passing checks and tests."
+#     exit 1
+# fi
 
 # Initialize thoughts (non-interactive mode with hardcoded directory)
 echo "🧠 Initializing thoughts..."

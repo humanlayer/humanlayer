@@ -53,9 +53,12 @@ export function SessionDetailPage() {
 
   // Render SessionDetail even during loading so it can show its skeleton UI
   // Pass a minimal session object if still loading
-  const session = activeSessionDetail?.session?.id
+  // Get the session from store if available for most up-to-date state
+  const sessionFromStore = useStore(state => state.sessions.find(s => s.id === sessionId))
+
+  let session = activeSessionDetail?.session?.id
     ? activeSessionDetail.session
-    : {
+    : sessionFromStore || {
         id: sessionId || '',
         runId: '',
         query: '',
@@ -65,6 +68,8 @@ export function SessionDetailPage() {
         lastActivityAt: new Date(),
         summary: '',
         autoAcceptEdits: false,
+        dangerouslySkipPermissions: false,
+        dangerouslySkipPermissionsExpiresAt: undefined,
       }
 
   return (

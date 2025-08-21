@@ -1,0 +1,9 @@
+{
+  "productName": "CodeLayer-Nightly",
+  "identifier": "dev.humanlayer.wui.nightly",
+  "bundle": {
+    "macOS": {
+      "minimumSystemVersion": "12.0"
+    }
+  }
+}

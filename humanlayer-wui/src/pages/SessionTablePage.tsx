@@ -103,16 +103,60 @@ export function SessionTablePage() {
     { enableOnFormTags: false, scopes: SessionTableHotkeysScope, enabled: !isSessionLauncherOpen },
   )
 
-  // Handle Shift+Tab to toggle backwards (same effect for only 2 modes)
+  // Handle Shift+Tab to trigger auto-accept for selected sessions
   useHotkeys(
     'shift+tab',
-    e => {
+    async e => {
       e.preventDefault()
-      setViewMode(viewMode === ViewMode.Normal ? ViewMode.Archived : ViewMode.Normal)
-      // Clear search when switching views
-      setSearchQuery('')
+
+      // Find sessions to apply auto-accept to
+      let sessionsToUpdate: string[] = []
+
+      if (selectedSessions.size > 0) {
+        // If sessions are selected, use those
+        sessionsToUpdate = Array.from(selectedSessions)
+      } else if (focusedSession) {
+        // Otherwise, use the focused session
+        sessionsToUpdate = [focusedSession.id]
+      }
+
+      if (sessionsToUpdate.length === 0) return
+
+      try {
+        // Get the sessions to check their status
+        const sessionsData = sessionsToUpdate
+          .map(id => sessions.find(s => s.id === id))
+          .filter(Boolean) as any[]
+
+        // Check if all selected sessions have the same auto-accept status
+        const autoAcceptStatuses = sessionsData.map(s => s.autoAcceptEdits)
+        const allSameStatus = autoAcceptStatuses.every(status => status === autoAcceptStatuses[0])
+
+        // Toggle the auto-accept status (if all true, turn off; otherwise turn on)
+        const newAutoAcceptStatus = allSameStatus ? !autoAcceptStatuses[0] : true
+
+        // Call the bulk update method
+        await useStore.getState().bulkSetAutoAcceptEdits(sessionsToUpdate, newAutoAcceptStatus)
+
+        // Show success notification
+        const action = newAutoAcceptStatus ? 'enabled' : 'disabled'
+        const sessionText =
+          sessionsToUpdate.length === 1 ? 'session' : `${sessionsToUpdate.length} sessions`
+
+        // Use toast from sonner
+        const { toast } = await import('sonner')
+        toast.success(`Auto-accept edits ${action} for ${sessionText}`, {
+          duration: 3000,
+        })
+      } catch (error) {
+        const { toast } = await import('sonner')
+        toast.error('Failed to update auto-accept settings', {
+          description: error instanceof Error ? error.message : 'Unknown error',
+        })
+      }
     },
     { enableOnFormTags: false, scopes: SessionTableHotkeysScope, enabled: !isSessionLauncherOpen },
+    [selectedSessions, focusedSession, sessions],
   )
 
   // Handle 'gg' to jump to top of list (vim-style)

@@ -2,9 +2,21 @@ This is the HumanLayer Web UI (WUI) - a desktop application for managing AI agen
 
 The WUI connects to the HumanLayer daemon (hld) to provide a graphical interface for monitoring Claude Code sessions and responding to approval requests. It's built with Tauri for desktop packaging and React for the interface.
 
-When the WUI is running, logs are written to ~/.humanlayer/logs/wui-TIMESTAMP.log for debugging purposes. The application hot-reloads automatically when you make changes to the code - you cannot manually restart it.
+When the WUI is running, logs are written to:
+
+- Development: `~/.humanlayer/logs/wui-{branch-id}/codelayer.log` (e.g., `wui-eng-1784/codelayer.log`)
+- Production: Platform-specific directories:
+  - macOS: `~/Library/Logs/dev.humanlayer.wui/`
+  - Windows: `%APPDATA%\dev.humanlayer.wui\logs\`
+  - Linux: `~/.config/dev.humanlayer.wui/logs/`
+
+Logs include output from the WUI backend, daemon stderr (prefixed with [Daemon]), and frontend console logs (prefixed with [Console]). The log files automatically rotate at 50MB. The application hot-reloads automatically when you make changes to the code - you cannot manually restart it.
 
 The WUI communicates with the daemon via JSON-RPC over a Unix socket at ~/.humanlayer/daemon.sock. All session and approval data comes from the daemon - the WUI is purely a presentation layer.
+
+To regenerate TypeScript types from the hld-sdk after OpenAPI spec changes:
+
+- Run `make generate-sdks` from the root directory
 
 For UI development, we use Radix UI components styled with Tailwind CSS. State management is handled by Zustand. The codebase follows React best practices with TypeScript for type safety.
 
@@ -15,6 +27,11 @@ For UI development, we use Radix UI components styled with Tailwind CSS. State m
 - DO use `zustand` for managing global state. In a number of cases we've used internal React state management, but as the application scales we'll want to push more of that state into `zustand`.
 - DO verify your changes with `bun run lint` and `bun run typecheck`.
 - DO provide a manual list of steps for a human to test new UI changes.
+
+## Guidelines
+
+- In React 19, ref is now available as a standard prop for functional components, eliminating the need to wrap components with forwardRef.
+- forwardRef is now depricated, NEVER use it. use ref instead.
 
 ## Testing
 

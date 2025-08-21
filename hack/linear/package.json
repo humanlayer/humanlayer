@@ -1,0 +1,27 @@
+{
+  "name": "linear-cli",
+  "version": "1.0.0",
+  "description": "Command line interface for Linear",
+  "main": "./dist/linear-cli.js",
+  "bin": {
+    "linear": "./dist/linear-cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "ts-node linear-cli.ts",
+    "prepare": "npm run build"
+  },
+  "dependencies": {
+    "@linear/sdk": "^1.22.0",
+    "chalk": "^4.1.2",
+    "commander": "^9.4.1",
+    "inquirer": "^8.2.5"
+  },
+  "devDependencies": {
+    "@types/inquirer": "^8.2.5",
+    "@types/node": "^18.11.9",
+    "brace-expansion": ">=2.0.2",
+    "ts-node": "^10.9.1",
+    "typescript": "^4.8.4"
+  }
+}

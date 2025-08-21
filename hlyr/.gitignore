@@ -93,3 +93,6 @@ temp/
 
 # test-mcp config files
 mcp-config.json
+
+# git ignore the build version for specific compiled platforms
+humanlayer-darwin-arm64

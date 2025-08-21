@@ -86,6 +86,7 @@ export interface Approval {
 
 interface LaunchSessionRequest {
   query: string
+  title?: string
   model?: string
   mcp_config?: unknown
   permission_prompt_tool?: string
@@ -97,6 +98,8 @@ interface LaunchSessionRequest {
   disallowed_tools?: string[]
   custom_instructions?: string
   verbose?: boolean
+  dangerously_skip_permissions?: boolean
+  dangerously_skip_permissions_timeout?: number
 }
 
 interface LaunchSessionResponse {
@@ -350,11 +353,13 @@ export class DaemonClient extends EventEmitter {
     runId: string,
     toolName: string,
     toolInput: unknown,
+    toolUseId?: string,
   ): Promise<{ approval_id: string }> {
     return this.call<{ approval_id: string }>('createApproval', {
       run_id: runId,
       tool_name: toolName,
       tool_input: toolInput,
+      ...(toolUseId && { tool_use_id: toolUseId }),
     })
   }
 

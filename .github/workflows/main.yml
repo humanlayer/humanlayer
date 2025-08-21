@@ -25,36 +25,10 @@ jobs:
         with:
           node-version: 22
 
-      - name: Install Claude Code CLI
-        run: npm install -g @anthropic-ai/claude-code
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v4
-        with:
-          enable-cache: true
-          cache-dependency-glob: "uv.lock"
-
-      - name: "Set up Python"
-        uses: actions/setup-python@v5
-        with:
-          python-version-file: "pyproject.toml"
-
-      - name: Install the project
-        run: uv sync --all-extras --dev
-
       - name: Install bun
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-
-      - name: Install ts deps
-        run: npm -C humanlayer-ts install && npm -C hlyr install && npm -C humanlayer-ts-vercel-ai-sdk install
-
-      - name: Build hld SDK
-        run: cd hld/sdk/typescript && bun install && bun run build
-
-      - name: Install wui deps
-        run: bun install --cwd=humanlayer-wui
 
       - uses: actions/setup-go@v5
         id: setup-go
@@ -70,19 +44,16 @@ jobs:
           restore-keys: |
             go-mod-v2-${{ runner.os }}-go${{ steps.setup-go.outputs.go-version }}-
 
-      - name: Cache Go tools
-        uses: actions/cache@v4
-        id: go-tools-cache
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
         with:
-          path: ~/go/bin
-          key: go-tools-v4-${{ runner.os }}-go1.24-golangci-2.1.6-mockgen-0.5.2
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
 
-      # TODO: Update this, let's just pull the binary?
-      - name: Install Go tools
-        if: steps.go-tools-cache.outputs.cache-hit != 'true'
-        run: |
-          go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.6
-          go install go.uber.org/mock/mockgen@v0.5.2
+      - name: "Set up Python"
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: "pyproject.toml"
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@1.83.0
@@ -101,11 +72,35 @@ jobs:
           packages: libwebkit2gtk-4.1-dev build-essential curl wget file libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
           version: 1.0
 
-      - name: Build CLI
-        run: npm -C hlyr run build
+      - name: Cache Go tools
+        uses: actions/cache@v4
+        id: go-tools-cache
+        with:
+          path: ~/go/bin
+          key: go-tools-v4-${{ runner.os }}-go1.24-golangci-2.1.6-mockgen-0.5.2
 
-      - name: Generate Go mocks
-        run: make -C hld mocks
+      # TODO: Update this, let's just pull the binary?
+      - name: Install Go tools
+        if: steps.go-tools-cache.outputs.cache-hit != 'true'
+        run: |
+          go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.6
+          go install go.uber.org/mock/mockgen@v0.5.2
+
+      - name: Cache Rust tools
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: rust-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Run repository setup
+        run: make setup-ci
+        env:
+          CI: true
 
       - name: Run checks
         run: make check
@@ -123,23 +118,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: "npm"
-          cache-dependency-path: humanlayer-ts/package-lock.json
 
-      - name: Install Claude Code CLI
-        run: npm install -g @anthropic-ai/claude-code
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v4
+      - name: Install bun
+        uses: oven-sh/setup-bun@v2
         with:
-          enable-cache: true
-          cache-dependency-glob: "uv.lock"
-
-      - name: Set up Python ${{ matrix.python-version }}
-        run: uv python install ${{ matrix.python-version }}
-
-      - name: Install ts deps
-        run: npm -C humanlayer-ts install && npm -C hlyr install && npm -C humanlayer-ts-vercel-ai-sdk install
+          bun-version: latest
 
       - uses: actions/setup-go@v5
         id: setup-go
@@ -155,16 +138,14 @@ jobs:
           restore-keys: |
             go-mod-v2-${{ runner.os }}-go${{ steps.setup-go.outputs.go-version }}-
 
-      - name: Cache Go tools
-        uses: actions/cache@v4
-        id: go-tools-cache-tests
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
         with:
-          path: ~/go/bin
-          key: go-tools-v4-${{ runner.os }}-go1.24-mockgen-0.5.2
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
 
-      - name: Install mockgen
-        if: steps.go-tools-cache-tests.outputs.cache-hit != 'true'
-        run: go install go.uber.org/mock/mockgen@v0.5.2
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -181,22 +162,32 @@ jobs:
           packages: libwebkit2gtk-4.1-dev build-essential curl wget file libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
           version: 1.0
 
-      - name: Build CLI
-        run: npm -C hlyr run build
-
-      - name: Generate Go mocks
-        run: make -C hld mocks
-
-      - name: Install bun
-        uses: oven-sh/setup-bun@v2
+      - name: Cache Go tools
+        uses: actions/cache@v4
+        id: go-tools-cache-tests
         with:
-          bun-version: latest
+          path: ~/go/bin
+          key: go-tools-v4-${{ runner.os }}-go1.24-mockgen-0.5.2
 
-      - name: Build hld SDK
-        run: cd hld/sdk/typescript && bun install && bun run build
+      - name: Install mockgen
+        if: steps.go-tools-cache-tests.outputs.cache-hit != 'true'
+        run: go install go.uber.org/mock/mockgen@v0.5.2
 
-      - name: Install wui deps
-        run: bun install --cwd=humanlayer-wui
+      - name: Cache Rust tools
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: rust-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Run repository setup
+        run: make setup-ci
+        env:
+          CI: true
 
       - name: Test
         run: make test
@@ -211,7 +202,7 @@ jobs:
             coverage.xml
 
   # for now leaving these commented out as they weren't passing (tsup or something was a related bug, want this merged more than I want in CI (Do we even want it
-          # in CI anyway?
+  # in CI anyway?
   # e2e-test:
   #   runs-on: ubuntu-latest
   #   steps:

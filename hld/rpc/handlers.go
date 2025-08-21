@@ -41,18 +41,21 @@ func (h *SessionHandlers) SetEventBus(eventBus bus.EventBus) {
 
 // LaunchSessionRequest is the request for launching a new session
 type LaunchSessionRequest struct {
-	Query                string                `json:"query"`
-	Model                string                `json:"model,omitempty"`
-	MCPConfig            *claudecode.MCPConfig `json:"mcp_config,omitempty"`
-	PermissionPromptTool string                `json:"permission_prompt_tool,omitempty"`
-	WorkingDir           string                `json:"working_dir,omitempty"`
-	MaxTurns             int                   `json:"max_turns,omitempty"`
-	SystemPrompt         string                `json:"system_prompt,omitempty"`
-	AppendSystemPrompt   string                `json:"append_system_prompt,omitempty"`
-	AllowedTools         []string              `json:"allowed_tools,omitempty"`
-	DisallowedTools      []string              `json:"disallowed_tools,omitempty"`
-	CustomInstructions   string                `json:"custom_instructions,omitempty"`
-	Verbose              bool                  `json:"verbose,omitempty"`
+	Query                             string                `json:"query"`
+	Title                             string                `json:"title,omitempty"`
+	Model                             string                `json:"model,omitempty"`
+	MCPConfig                         *claudecode.MCPConfig `json:"mcp_config,omitempty"`
+	PermissionPromptTool              string                `json:"permission_prompt_tool,omitempty"`
+	WorkingDir                        string                `json:"working_dir,omitempty"`
+	MaxTurns                          int                   `json:"max_turns,omitempty"`
+	SystemPrompt                      string                `json:"system_prompt,omitempty"`
+	AppendSystemPrompt                string                `json:"append_system_prompt,omitempty"`
+	AllowedTools                      []string              `json:"allowed_tools,omitempty"`
+	DisallowedTools                   []string              `json:"disallowed_tools,omitempty"`
+	CustomInstructions                string                `json:"custom_instructions,omitempty"`
+	Verbose                           bool                  `json:"verbose,omitempty"`
+	DangerouslySkipPermissions        bool                  `json:"dangerously_skip_permissions,omitempty"`
+	DangerouslySkipPermissionsTimeout *int64                `json:"dangerously_skip_permissions_timeout,omitempty"`
 }
 
 // LaunchSessionResponse is the response for launching a new session
@@ -73,20 +76,26 @@ func (h *SessionHandlers) HandleLaunchSession(ctx context.Context, params json.R
 		return nil, fmt.Errorf("query is required")
 	}
 
-	// Build session config
-	config := claudecode.SessionConfig{
-		Query:                req.Query,
-		MCPConfig:            req.MCPConfig,
-		PermissionPromptTool: req.PermissionPromptTool,
-		WorkingDir:           req.WorkingDir,
-		MaxTurns:             req.MaxTurns,
-		SystemPrompt:         req.SystemPrompt,
-		AppendSystemPrompt:   req.AppendSystemPrompt,
-		AllowedTools:         req.AllowedTools,
-		DisallowedTools:      req.DisallowedTools,
-		CustomInstructions:   req.CustomInstructions,
-		Verbose:              req.Verbose,
-		OutputFormat:         claudecode.OutputStreamJSON, // Always use streaming JSON for monitoring
+	// Build session config with daemon-level settings
+	config := session.LaunchSessionConfig{
+		SessionConfig: claudecode.SessionConfig{
+			Query:                req.Query,
+			Title:                req.Title,
+			MCPConfig:            req.MCPConfig,
+			PermissionPromptTool: req.PermissionPromptTool,
+			WorkingDir:           req.WorkingDir,
+			MaxTurns:             req.MaxTurns,
+			SystemPrompt:         req.SystemPrompt,
+			AppendSystemPrompt:   req.AppendSystemPrompt,
+			AllowedTools:         req.AllowedTools,
+			DisallowedTools:      req.DisallowedTools,
+			CustomInstructions:   req.CustomInstructions,
+			Verbose:              req.Verbose,
+			OutputFormat:         claudecode.OutputStreamJSON, // Always use streaming JSON for monitoring
+		},
+		// Daemon-level settings (not passed to Claude Code)
+		DangerouslySkipPermissions:        req.DangerouslySkipPermissions,
+		DangerouslySkipPermissionsTimeout: req.DangerouslySkipPermissionsTimeout,
 	}
 
 	// Parse model if provided
@@ -336,33 +345,51 @@ func (h *SessionHandlers) HandleGetSessionState(ctx context.Context, params json
 
 	// Convert to RPC session state
 	state := SessionState{
-		ID:              session.ID,
-		RunID:           session.RunID,
-		ClaudeSessionID: session.ClaudeSessionID,
-		ParentSessionID: session.ParentSessionID,
-		Status:          session.Status,
-		Query:           session.Query,
-		Summary:         session.Summary,
-		Title:           session.Title,
-		Model:           session.Model,
-		WorkingDir:      session.WorkingDir,
-		CreatedAt:       session.CreatedAt.Format(time.RFC3339),
-		LastActivityAt:  session.LastActivityAt.Format(time.RFC3339),
-		ErrorMessage:    session.ErrorMessage,
-		AutoAcceptEdits: session.AutoAcceptEdits,
-		Archived:        session.Archived,
+		ID:                         session.ID,
+		RunID:                      session.RunID,
+		ClaudeSessionID:            session.ClaudeSessionID,
+		ParentSessionID:            session.ParentSessionID,
+		Status:                     session.Status,
+		Query:                      session.Query,
+		Summary:                    session.Summary,
+		Title:                      session.Title,
+		Model:                      session.Model,
+		WorkingDir:                 session.WorkingDir,
+		CreatedAt:                  session.CreatedAt.Format(time.RFC3339),
+		LastActivityAt:             session.LastActivityAt.Format(time.RFC3339),
+		ErrorMessage:               session.ErrorMessage,
+		AutoAcceptEdits:            session.AutoAcceptEdits,
+		DangerouslySkipPermissions: session.DangerouslySkipPermissions,
+		Archived:                   session.Archived,
 	}
 
 	// Set optional fields
+	if session.DangerouslySkipPermissionsExpiresAt != nil {
+		state.DangerouslySkipPermissionsExpiresAt = session.DangerouslySkipPermissionsExpiresAt.Format(time.RFC3339)
+	}
 	if session.CompletedAt != nil {
 		state.CompletedAt = session.CompletedAt.Format(time.RFC3339)
 	}
 	if session.CostUSD != nil {
 		state.CostUSD = *session.CostUSD
 	}
-	if session.TotalTokens != nil {
-		state.TotalTokens = *session.TotalTokens
+	if session.InputTokens != nil {
+		state.InputTokens = *session.InputTokens
 	}
+	if session.OutputTokens != nil {
+		state.OutputTokens = *session.OutputTokens
+	}
+	if session.CacheCreationInputTokens != nil {
+		state.CacheCreationInputTokens = *session.CacheCreationInputTokens
+	}
+	if session.CacheReadInputTokens != nil {
+		state.CacheReadInputTokens = *session.CacheReadInputTokens
+	}
+	if session.EffectiveContextTokens != nil {
+		state.EffectiveContextTokens = *session.EffectiveContextTokens
+	}
+	// Always set context limit based on model
+	state.ContextLimit = GetModelContextLimit(session.Model)
 	if session.DurationMS != nil {
 		state.DurationMS = *session.DurationMS
 	}
@@ -481,41 +508,85 @@ func (h *SessionHandlers) HandleUpdateSessionSettings(ctx context.Context, param
 
 	// Update session settings
 	update := store.SessionUpdate{
-		AutoAcceptEdits: req.AutoAcceptEdits,
+		AutoAcceptEdits:            req.AutoAcceptEdits,
+		DangerouslySkipPermissions: req.DangerouslySkipPermissions,
+	}
+
+	// Handle timeout if dangerously skip permissions is being enabled
+	if req.DangerouslySkipPermissions != nil && *req.DangerouslySkipPermissions {
+		// Only set expiry if timeout is provided
+		if req.DangerouslySkipPermissionsTimeoutMs != nil && *req.DangerouslySkipPermissionsTimeoutMs > 0 {
+			expiresAt := time.Now().Add(time.Duration(*req.DangerouslySkipPermissionsTimeoutMs) * time.Millisecond)
+			expiresAtPtr := &expiresAt
+			update.DangerouslySkipPermissionsExpiresAt = &expiresAtPtr
+		}
+	} else if req.DangerouslySkipPermissions != nil && !*req.DangerouslySkipPermissions {
+		// Disabling dangerously skip permissions - clear expiry
+		var nilTime *time.Time
+		update.DangerouslySkipPermissionsExpiresAt = &nilTime
 	}
 
 	if err := h.store.UpdateSession(ctx, req.SessionID, update); err != nil {
 		return nil, fmt.Errorf("failed to update session: %w", err)
 	}
 
-	// If auto-accept was enabled, approve any pending edit tool approvals
-	if req.AutoAcceptEdits != nil && *req.AutoAcceptEdits && h.approvalManager != nil {
-		// Get pending approvals for the session
-		pendingApprovals, err := h.store.GetPendingApprovals(ctx, req.SessionID)
-		if err == nil && len(pendingApprovals) > 0 {
-			for _, approval := range pendingApprovals {
-				// Check if it's an edit tool
-				if isEditTool(approval.ToolName) {
-					// Auto-approve it
-					err := h.approvalManager.ApproveToolCall(ctx, approval.ID, "Auto-accepted (auto-accept mode enabled)")
-					if err != nil {
-						// Log but don't fail the whole operation
-						slog.Error("failed to auto-approve pending approval", "approval_id", approval.ID, "error", err)
+	// Update retroactive approval logic
+	// Change the condition to handle both modes:
+	if h.approvalManager != nil {
+		shouldAutoApprove := false
+		autoApproveComment := ""
+
+		// Check which mode is being enabled
+		if req.DangerouslySkipPermissions != nil && *req.DangerouslySkipPermissions {
+			shouldAutoApprove = true
+			autoApproveComment = "Auto-accepted (dangerous skip permissions enabled)"
+		} else if req.AutoAcceptEdits != nil && *req.AutoAcceptEdits {
+			shouldAutoApprove = true
+			autoApproveComment = "Auto-accepted (auto-accept mode enabled)"
+		}
+
+		if shouldAutoApprove {
+			pendingApprovals, err := h.store.GetPendingApprovals(ctx, req.SessionID)
+			if err == nil && len(pendingApprovals) > 0 {
+				for _, approval := range pendingApprovals {
+					// For dangerously skip permissions, approve ALL tools
+					// For edit mode, only approve edit tools
+					if req.DangerouslySkipPermissions != nil && *req.DangerouslySkipPermissions {
+						err := h.approvalManager.ApproveToolCall(ctx, approval.ID, autoApproveComment)
+						if err != nil {
+							slog.Error("failed to auto-approve pending approval", "approval_id", approval.ID, "error", err)
+						}
+					} else if req.AutoAcceptEdits != nil && *req.AutoAcceptEdits && isEditTool(approval.ToolName) {
+						err := h.approvalManager.ApproveToolCall(ctx, approval.ID, autoApproveComment)
+						if err != nil {
+							slog.Error("failed to auto-approve pending approval", "approval_id", approval.ID, "error", err)
+						}
 					}
 				}
 			}
 		}
 	}
 
-	// Publish event for UI updates
-	if h.eventBus != nil && req.AutoAcceptEdits != nil {
+	// Update event publishing
+	if h.eventBus != nil {
+		eventData := map[string]interface{}{
+			"session_id": req.SessionID,
+			"event_type": "settings_updated",
+		}
+
+		if req.AutoAcceptEdits != nil {
+			eventData["auto_accept_edits"] = *req.AutoAcceptEdits
+		}
+		if req.DangerouslySkipPermissions != nil {
+			eventData["dangerously_skip_permissions"] = *req.DangerouslySkipPermissions
+			if *req.DangerouslySkipPermissions && req.DangerouslySkipPermissionsTimeoutMs != nil {
+				eventData["dangerously_skip_permissions_timeout_ms"] = *req.DangerouslySkipPermissionsTimeoutMs
+			}
+		}
+
 		h.eventBus.Publish(bus.Event{
-			Type: bus.EventSessionStatusChanged,
-			Data: map[string]interface{}{
-				"session_id":        req.SessionID,
-				"auto_accept_edits": *req.AutoAcceptEdits,
-				"event_type":        "settings_updated",
-			},
+			Type: bus.EventSessionSettingsChanged,
+			Data: eventData,
 		})
 	}
 

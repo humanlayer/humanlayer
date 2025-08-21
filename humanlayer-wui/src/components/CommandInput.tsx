@@ -1,14 +1,15 @@
-import React, { useRef, useEffect } from 'react'
+import { useRef, useEffect } from 'react'
 import { Button } from './ui/button'
 import { SearchInput } from './FuzzySearchInput'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 import { useRecentPaths } from '@/hooks/useRecentPaths'
 import { Textarea } from './ui/textarea'
+import { Input } from './ui/input'
 import { Label } from './ui/label'
 import { hasContent, isEmptyOrWhitespace } from '@/utils/validation'
 
 interface SessionConfig {
-  query: string
+  title?: string
   workingDir: string
   model?: string
   maxTurns?: number
@@ -30,28 +31,29 @@ export default function CommandInput({
   onSubmit,
   placeholder = 'Enter your command...',
   isLoading = false,
-  config = { query: '', workingDir: '' },
+  config = { workingDir: '' },
   onConfigChange,
 }: CommandInputProps) {
   const promptRef = useRef<HTMLTextAreaElement>(null)
+  const directoryRef = useRef<HTMLInputElement>(null)
   const { paths: recentPaths } = useRecentPaths()
 
   useEffect(() => {
-    // focus on the prompt when the component mounts
-    if (promptRef.current) {
+    // Focus on directory field if it has the default value, otherwise focus on prompt
+    if (config.workingDir === '~/') {
+      // Focus on directory field when it has the default value
+      const directoryInput = directoryRef.current?.querySelector('input')
+      if (directoryInput) {
+        directoryInput.focus()
+      }
+    } else if (promptRef.current) {
+      // Focus on prompt field for normal usage
       promptRef.current.focus()
     }
   }, [])
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      onSubmit()
-    }
-
-    if (e.key === 'Escape') {
-      promptRef.current?.blur()
-    }
+  const getPlatformKey = () => {
+    return navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'
   }
 
   const updateConfig = (updates: Partial<SessionConfig>) => {
@@ -66,11 +68,25 @@ export default function CommandInput({
       <div className="space-y-2">
         <Label>Working Directory</Label>
         <SearchInput
+          ref={directoryRef}
           value={config.workingDir}
           onChange={value => onConfigChange?.({ ...config, workingDir: value })}
           onSubmit={onSubmit}
           placeholder="/path/to/directory or leave empty for current directory"
           recentDirectories={recentPaths}
+        />
+      </div>
+
+      {/* Title Field (optional) */}
+      <div className="space-y-2">
+        <Label htmlFor="title">Title (optional)</Label>
+        <Input
+          id="title"
+          type="text"
+          value={config.title || ''}
+          onChange={e => onConfigChange?.({ ...config, title: e.target.value })}
+          placeholder="Optional session title"
+          disabled={isLoading}
         />
       </div>
 
@@ -82,12 +98,14 @@ export default function CommandInput({
           ref={promptRef}
           value={value}
           onChange={e => onChange(e.target.value)}
-          onKeyDown={handleKeyDown}
           placeholder={placeholder}
           disabled={isLoading}
           autoComplete="off"
           spellCheck={false}
         />
+        <p className="text-xs text-muted-foreground mt-1">
+          <kbd className="px-1 py-0.5 bg-muted/50 rounded">Enter</kbd> for new line
+        </p>
 
         {isLoading && (
           <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -128,7 +146,10 @@ export default function CommandInput({
                 Launching...
               </>
             ) : (
-              'Launch Session'
+              <>
+                Launch Session
+                <kbd className="ml-2 px-1 py-0.5 text-xs bg-muted/50 rounded">{getPlatformKey()}+⏎</kbd>
+              </>
             )}
           </Button>
         </div>

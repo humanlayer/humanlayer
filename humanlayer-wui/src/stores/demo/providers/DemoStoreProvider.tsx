@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { StoreApi, useStore } from 'zustand'
+import { logger } from '@/lib/logging'
 import {
   ComposedDemoStore,
   createComposedDemoStore,
@@ -61,8 +62,8 @@ export function useDemoAnimator() {
   // In a real implementation, we'd expose the animator instance
   // For now, return basic controls
   return {
-    pause: () => console.log('Pause not implemented'),
-    resume: () => console.log('Resume not implemented'),
-    reset: () => console.log('Reset not implemented'),
+    pause: () => logger.log('Pause not implemented'),
+    resume: () => logger.log('Resume not implemented'),
+    reset: () => logger.log('Reset not implemented'),
   }
 }

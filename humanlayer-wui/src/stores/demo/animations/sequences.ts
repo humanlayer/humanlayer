@@ -22,6 +22,8 @@ function createMockSession(
     model: 'claude-3-5-sonnet-20241022',
     workingDir: '/home/user/project',
     autoAcceptEdits: false,
+    dangerouslySkipPermissions: false,
+    dangerouslySkipPermissionsExpiresAt: undefined,
     ...overrides,
   }
 }

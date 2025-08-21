@@ -44,7 +44,7 @@ export function DenyForm({
     <form onSubmit={handleSubmit} className="flex gap-2 items-center">
       <Input
         type="text"
-        placeholder="Reason for denial... (Enter to submit)"
+        placeholder="Reason for denial..."
         value={reason}
         onChange={e => setReason(e.target.value)}
         onKeyDown={handleKeyDown}

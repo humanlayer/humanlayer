@@ -2,9 +2,6 @@
 
 import { Command } from 'commander'
 import { spawn } from 'child_process'
-import { readFileSync } from 'fs'
-import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
 import { loginCommand } from './commands/login.js'
 import { contactHumanCommand } from './commands/contactHuman.js'
 import { configShowCommand } from './commands/configShow.js'
@@ -13,7 +10,7 @@ import { launchCommand } from './commands/launch.js'
 import { alertCommand } from './commands/alert.js'
 import { thoughtsCommand } from './commands/thoughts.js'
 import { joinWaitlistCommand } from './commands/joinWaitlist.js'
-import { startDefaultMCPServer, startClaudeApprovalsMCPServer } from './mcp.js'
+import { startClaudeApprovalsMCPServer } from './mcp.js'
 import {
   getDefaultConfigPath,
   resolveFullConfig,
@@ -23,9 +20,8 @@ import {
 import { getProject } from './hlClient.js'
 import chalk from 'chalk'
 
-// Read version from package.json
-const __dirname = dirname(fileURLToPath(import.meta.url))
-const packageJson = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf-8'))
+// Version is injected at build time by tsup
+const VERSION = process.env.PACKAGE_VERSION || '0.11.0'
 
 function showAbbreviatedConfig() {
   const configWithSources = resolveConfigWithSources({})
@@ -69,10 +65,7 @@ async function authenticate(printSelectedProject: boolean = false) {
   }
 }
 
-program
-  .name('humanlayer')
-  .description('HumanLayer, but on your command-line.')
-  .version(packageJson.version)
+program.name('humanlayer').description('HumanLayer, but on your command-line.').version(VERSION)
 
 const UNPROTECTED_COMMANDS = ['config', 'login', 'thoughts', 'join-waitlist', 'launch', 'mcp']
 
@@ -104,13 +97,29 @@ program
   .option('--config-file <path>', 'Path to config file')
   .action(loginCommand)
 
+const mcpCommand = program.command('mcp').description('MCP server functionality')
+
+mcpCommand
+  .command('claude_approvals')
+  .description('Start the Claude approvals MCP server for permission requests')
+  .action(startClaudeApprovalsMCPServer)
+
 program
   .command('launch <query>')
   .description('Launch a new Claude Code session via the daemon')
   .option('-m, --model <model>', 'Model to use (opus or sonnet)', 'sonnet')
+  .option('-t, --title <title>', 'Optional session title')
   .option('-w, --working-dir <path>', 'Working directory for the session')
   .option('--max-turns <number>', 'Maximum number of turns', parseInt)
   .option('--no-approvals', 'Disable HumanLayer approvals for high-stakes operations')
+  .option(
+    '--dangerously-skip-permissions',
+    'Enable dangerous skip permissions mode (bypasses all approval requirements)',
+  )
+  .option(
+    '--dangerously-skip-permissions-timeout <minutes>',
+    'Dangerously skip permissions timeout in minutes',
+  )
   .option('--daemon-socket <path>', 'Path to daemon socket')
   .option('--config-file <path>', 'Path to config file')
   .action(launchCommand)
@@ -169,36 +178,6 @@ program
   .option('--quiet', 'Disable sound notifications')
   .option('--daemon-socket <path>', 'Path to daemon socket')
   .action(alertCommand)
-
-const mcpCommand = program.command('mcp').description('MCP server functionality')
-
-mcpCommand
-  .command('serve')
-  .description('Start the default MCP server for contact_human functionality')
-  .action(startDefaultMCPServer)
-
-mcpCommand
-  .command('claude_approvals')
-  .description('Start the Claude approvals MCP server for permission requests')
-  .action(startClaudeApprovalsMCPServer)
-
-mcpCommand
-  .command('wrapper')
-  .description('Wrap an existing MCP server with human approval functionality (not implemented yet)')
-  .action(() => {
-    console.log('MCP wrapper functionality is not implemented yet.')
-    console.log('This will allow wrapping any existing MCP server with human approval.')
-    process.exit(1)
-  })
-
-mcpCommand
-  .command('inspector')
-  .description('Run MCP inspector for debugging MCP servers')
-  .argument('[command]', 'MCP server command to inspect', 'serve')
-  .action(command => {
-    const args = ['@modelcontextprotocol/inspector', 'node', 'dist/index.js', 'mcp', command]
-    spawn('npx', args, { stdio: 'inherit', cwd: process.cwd() })
-  })
 
 // Add thoughts command
 thoughtsCommand(program)

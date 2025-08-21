@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	claudecode "github.com/humanlayer/humanlayer/claudecode-go"
 	"github.com/humanlayer/humanlayer/hld/api"
+	"github.com/humanlayer/humanlayer/hld/rpc"
 	"github.com/humanlayer/humanlayer/hld/store"
 )
 
@@ -40,6 +41,9 @@ func (m *Mapper) SessionToAPI(s store.Session) api.Session {
 	if s.Model != "" {
 		session.Model = &s.Model
 	}
+	if s.ModelID != "" {
+		session.ModelId = &s.ModelID
+	}
 	if s.WorkingDir != "" {
 		session.WorkingDir = &s.WorkingDir
 	}
@@ -50,13 +54,36 @@ func (m *Mapper) SessionToAPI(s store.Session) api.Session {
 		costUsd := float32(*s.CostUSD)
 		session.CostUsd = &costUsd
 	}
-	if s.TotalTokens != nil && *s.TotalTokens > 0 {
-		session.TotalTokens = s.TotalTokens
-	}
 	if s.DurationMS != nil && *s.DurationMS > 0 {
 		session.DurationMs = s.DurationMS
 	}
+
+	// Map token fields
+	if s.InputTokens != nil {
+		session.InputTokens = s.InputTokens
+	}
+	if s.OutputTokens != nil {
+		session.OutputTokens = s.OutputTokens
+	}
+	if s.CacheCreationInputTokens != nil {
+		session.CacheCreationInputTokens = s.CacheCreationInputTokens
+	}
+	if s.CacheReadInputTokens != nil {
+		session.CacheReadInputTokens = s.CacheReadInputTokens
+	}
+	if s.EffectiveContextTokens != nil {
+		session.EffectiveContextTokens = s.EffectiveContextTokens
+	}
+
+	// Always set context limit based on model
+	contextLimit := rpc.GetModelContextLimit(s.Model)
+	session.ContextLimit = &contextLimit
+
 	session.AutoAcceptEdits = &s.AutoAcceptEdits
+	session.DangerouslySkipPermissions = &s.DangerouslySkipPermissions
+	if s.DangerouslySkipPermissionsExpiresAt != nil {
+		session.DangerouslySkipPermissionsExpiresAt = s.DangerouslySkipPermissionsExpiresAt
+	}
 	session.Archived = &s.Archived
 
 	return session
@@ -174,8 +201,22 @@ func (m *Mapper) MCPConfigFromAPI(config *api.MCPConfig) *claudecode.MCPConfig {
 	servers := make(map[string]claudecode.MCPServer)
 	if config.McpServers != nil {
 		for name, server := range *config.McpServers {
-			mcpServer := claudecode.MCPServer{
-				Command: server.Command,
+			mcpServer := claudecode.MCPServer{}
+
+			// Map HTTP server fields
+			if server.Type != nil {
+				mcpServer.Type = *server.Type
+			}
+			if server.Url != nil {
+				mcpServer.URL = *server.Url
+			}
+			if server.Headers != nil {
+				mcpServer.Headers = *server.Headers
+			}
+
+			// Map stdio server fields
+			if server.Command != nil {
+				mcpServer.Command = *server.Command
 			}
 			if server.Args != nil {
 				mcpServer.Args = *server.Args
@@ -183,6 +224,7 @@ func (m *Mapper) MCPConfigFromAPI(config *api.MCPConfig) *claudecode.MCPConfig {
 			if server.Env != nil {
 				mcpServer.Env = *server.Env
 			}
+
 			servers[name] = mcpServer
 		}
 	}

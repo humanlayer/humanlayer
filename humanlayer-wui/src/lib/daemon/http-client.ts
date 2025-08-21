@@ -2,11 +2,11 @@ import {
   CreateSessionResponseData,
   HLDClient,
   RecentPath as SDKRecentPath,
-  Session,
   Approval,
   ConversationEvent,
 } from '@humanlayer/hld-sdk'
 import { getDaemonUrl, getDefaultHeaders } from './http-config'
+import { logger } from '@/lib/logging'
 import type {
   DaemonClient as IDaemonClient,
   LaunchSessionParams,
@@ -16,7 +16,9 @@ import type {
   SubscriptionHandle,
   SessionSnapshot,
   HealthCheckResponse,
+  Session,
 } from './types'
+import { transformSDKSession } from './types'
 
 export class HTTPDaemonClient implements IDaemonClient {
   private client?: HLDClient
@@ -61,7 +63,8 @@ export class HTTPDaemonClient implements IDaemonClient {
   }
 
   private async doConnect(): Promise<void> {
-    const baseUrl = getDaemonUrl()
+    // getDaemonUrl now checks for managed daemon port dynamically
+    const baseUrl = await getDaemonUrl()
 
     this.client = new HLDClient({
       baseUrl: `${baseUrl}/api/v1`,
@@ -82,6 +85,16 @@ export class HTTPDaemonClient implements IDaemonClient {
     }
   }
 
+  async reconnect(): Promise<void> {
+    // Disconnect first if connected
+    if (this.connected || this.connectionPromise) {
+      await this.disconnect()
+    }
+
+    // Now connect to the potentially new URL
+    return this.connect()
+  }
+
   async disconnect(): Promise<void> {
     // Unsubscribe all event streams
     for (const unsubscribe of this.subscriptions.values()) {
@@ -91,6 +104,8 @@ export class HTTPDaemonClient implements IDaemonClient {
 
     this.connected = false
     this.client = undefined
+    this.connectionPromise = undefined
+    this.retryCount = 0
   }
 
   async health(): Promise<HealthCheckResponse> {
@@ -121,6 +136,7 @@ export class HTTPDaemonClient implements IDaemonClient {
 
     const response = await this.client!.createSession({
       query: params.query,
+      title: 'title' in params ? params.title : undefined,
       workingDir:
         'workingDir' in params ? params.workingDir : (params as LaunchSessionRequest).working_dir,
       model: model,
@@ -141,7 +157,7 @@ export class HTTPDaemonClient implements IDaemonClient {
   async listSessions(): Promise<Session[]> {
     await this.ensureConnected()
     const response = await this.client!.listSessions({ leafOnly: true })
-    return response
+    return response.map(transformSDKSession)
   }
 
   async getSessionLeaves(request?: {
@@ -152,10 +168,21 @@ export class HTTPDaemonClient implements IDaemonClient {
     // The SDK's listSessions with leafOnly=true is equivalent
     const response = await this.client!.listSessions({
       leafOnly: true,
-      includeArchived: request?.include_archived || request?.archived_only,
+      includeArchived: request?.include_archived,
+      archivedOnly: request?.archived_only,
     })
+    logger.debug(
+      'getSessionLeaves raw response sample:',
+      response[0]
+        ? {
+            id: response[0].id,
+            dangerouslySkipPermissions: response[0].dangerouslySkipPermissions,
+            dangerouslySkipPermissionsExpiresAt: response[0].dangerouslySkipPermissionsExpiresAt,
+          }
+        : 'no sessions',
+    )
     return {
-      sessions: response,
+      sessions: response.map(transformSDKSession),
     }
   }
 
@@ -165,7 +192,7 @@ export class HTTPDaemonClient implements IDaemonClient {
 
     // Transform to expected SessionState format
     return {
-      session: session,
+      session: transformSDKSession(session),
       pendingApprovals: [], // Will be populated if needed
     }
   }
@@ -190,13 +217,35 @@ export class HTTPDaemonClient implements IDaemonClient {
 
   async updateSessionSettings(
     sessionId: string,
-    settings: { auto_accept_edits?: boolean },
+    settings: {
+      auto_accept_edits?: boolean
+      dangerously_skip_permissions?: boolean
+      dangerously_skip_permissions_timeout_ms?: number
+    },
   ): Promise<{ success: boolean }> {
     await this.ensureConnected()
-    await this.client!.updateSession(sessionId, {
-      auto_accept_edits: settings.auto_accept_edits,
-    })
-    return { success: true }
+
+    // The SDK client expects camelCase for some fields but the method signature uses snake_case
+    const payload: any = {}
+    if (settings.auto_accept_edits !== undefined) {
+      payload.auto_accept_edits = settings.auto_accept_edits
+    }
+    if (settings.dangerously_skip_permissions !== undefined) {
+      payload.dangerouslySkipPermissions = settings.dangerously_skip_permissions
+    }
+    if (settings.dangerously_skip_permissions_timeout_ms !== undefined) {
+      payload.dangerouslySkipPermissionsTimeoutMs = settings.dangerously_skip_permissions_timeout_ms
+    }
+
+    logger.log('Sending updateSession request', { sessionId, payload })
+
+    try {
+      await this.client!.updateSession(sessionId, payload)
+      return { success: true }
+    } catch (error) {
+      logger.error('updateSession failed', { error, sessionId, payload })
+      throw error
+    }
   }
 
   async archiveSession(
@@ -346,10 +395,10 @@ export class HTTPDaemonClient implements IDaemonClient {
               })
             },
             onError: error => {
-              console.error('Event subscription error:', error)
+              logger.error('Event subscription error:', error)
               // Attempt reconnection
               if (!this.connected) {
-                this.connect().catch(console.error)
+                this.connect().catch(logger.error)
               }
             },
             onDisconnect: () => {
@@ -362,7 +411,7 @@ export class HTTPDaemonClient implements IDaemonClient {
         this.subscriptions.set(subscriptionId, unsubscribe)
       })
       .catch(error => {
-        console.error('Failed to start event subscription:', error)
+        logger.error('Failed to start event subscription:', error)
       })
 
     // Return handle for unsubscribing
@@ -386,6 +435,24 @@ export class HTTPDaemonClient implements IDaemonClient {
     // SDK client doesn't support limit parameter yet
     const response = await this.client!.getRecentPaths()
     return response // SDK now properly returns RecentPath[]
+  }
+
+  async getDebugInfo(): Promise<import('./types').DebugInfo> {
+    await this.ensureConnected()
+
+    // Use REST API endpoint
+    const baseUrl = await getDaemonUrl()
+    const response = await fetch(`${baseUrl}/api/v1/debug-info`, {
+      method: 'GET',
+      headers: getDefaultHeaders(),
+    })
+
+    if (!response.ok) {
+      throw new Error(`Failed to get debug info: ${response.statusText}`)
+    }
+
+    const data = await response.json()
+    return data
   }
 
   // Private Helper Methods

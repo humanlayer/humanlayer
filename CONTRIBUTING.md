@@ -8,6 +8,24 @@ If you're looking to contribute, please:
 - send a pull request.
 - we appreciate your input!
 
+## Running CodeLayer
+
+```
+make setup
+make codelayer-dev
+```
+
+When the Web UI launches in dev mode, you'll need to launch a managed daemon with it - click the 🐞 icon in the bottom right and launch a managed daemon.
+
+## Commands cheat sheet
+
+1. `/research_codebase`
+2. `/create_plan`
+3. `/implement_plan`
+4. `/commit`
+5. `gh pr create --fill`
+6. `/describe_pr`
+
 ## Running Tests
 
 Before submitting a pull request, please run the tests and linter:

@@ -5,6 +5,7 @@ import { Session, ConversationEvent, ViewMode } from '@/lib/daemon/types'
 import { daemonClient } from '@/lib/daemon/client'
 import { notificationService } from '@/services/NotificationService'
 import { useStore } from '@/AppStore'
+import { SessionDetailHotkeysScope } from '../SessionDetail'
 
 interface UseSessionActionsProps {
   session: Session
@@ -31,6 +32,7 @@ export function useSessionActions({
   const archiveSession = useStore(state => state.archiveSession)
   const setViewMode = useStore(state => state.setViewMode)
   const trackNavigationFrom = useStore(state => state.trackNavigationFrom)
+  const updateActiveSessionDetail = useStore(state => state.updateActiveSessionDetail)
   const navigate = useNavigate()
 
   // Update response input when fork message is selected
@@ -44,6 +46,7 @@ export function useSessionActions({
 
   // Continue session functionality
   const handleContinueSession = useCallback(async () => {
+    const sessionConversation = useStore.getState().activeSessionDetail?.conversation
     if (!responseInput.trim() || isResponding) return
 
     try {
@@ -67,6 +70,14 @@ export function useSessionActions({
 
       const response = await daemonClient.continueSession(targetSessionId, messageToSend)
 
+      if (!response.new_session_id) {
+        throw new Error('No new session ID returned from continueSession')
+      }
+
+      const nextSession = await daemonClient.getSessionState(response.new_session_id)
+
+      updateActiveSessionDetail(nextSession.session)
+
       // Clear fork state
       setForkFromSessionId(null)
 
@@ -76,7 +87,12 @@ export function useSessionActions({
       }
 
       // Always navigate to the new session - the backend handles queuing
-      navigate(`/sessions/${response.new_session_id || session.id}`)
+      navigate(`/sessions/${response.new_session_id || session.id}`, {
+        state: {
+          continuationSession: nextSession,
+          continuationConversation: sessionConversation,
+        },
+      })
 
       // Refresh the session list to ensure UI reflects current state
       await refreshSessions()
@@ -124,21 +140,32 @@ export function useSessionActions({
   // Note: Escape key is handled in SessionDetail to manage confirmingApprovalId state
 
   // Ctrl+X to interrupt session
-  useHotkeys('ctrl+x', () => {
-    if (session.status === 'running' || session.status === 'starting') {
-      interruptSession(session.id)
-    }
-  })
+  useHotkeys(
+    'ctrl+x',
+    () => {
+      if (session.status === 'running' || session.status === 'starting') {
+        interruptSession(session.id)
+      }
+    },
+    {
+      scopes: SessionDetailHotkeysScope,
+      enableOnFormTags: true,
+    },
+  )
 
   // R key - no longer needed since input is always visible
   // Keeping the hotkey registration but making it a no-op to avoid breaking anything
 
   // P key to navigate to parent session
-  useHotkeys('p', () => {
-    if (session.parentSessionId) {
-      handleNavigateToParent()
-    }
-  })
+  useHotkeys(
+    'p',
+    () => {
+      if (session.parentSessionId) {
+        handleNavigateToParent()
+      }
+    },
+    { scopes: SessionDetailHotkeysScope },
+  )
 
   return {
     responseInput,

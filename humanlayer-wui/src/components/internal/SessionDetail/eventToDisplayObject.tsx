@@ -26,6 +26,7 @@ import { formatToolResult } from './formatToolResult'
 import { DiffViewToggle } from './components/DiffViewToggle'
 import { DenyForm } from './components/DenyForm'
 import { CustomDiffViewer } from './components/CustomDiffViewer'
+import { parseMcpToolName } from '@/utils/formatting'
 
 // TODO(2): Break this monster function into smaller, focused display components
 // TODO(2): Extract tool-specific rendering logic
@@ -62,7 +63,7 @@ export function eventToDisplayObject(
   let iconComponent = null
   let toolResultContent = null
 
-  // console.log('event', event)
+  // logger.log('event', event)
   // Check if this is a thinking message
   const isThinking =
     event.eventType === ConversationEventType.Thinking ||
@@ -127,9 +128,10 @@ export function eventToDisplayObject(
 
     if (event.toolName === 'Task') {
       const toolInput = JSON.parse(event.toolInputJson!)
+      const displayName = toolInput.subagent_type || 'Task'
       subject = (
         <span>
-          <span className="font-bold">{event.toolName} </span>
+          <span className="font-bold">{displayName} </span>
           <span className="font-mono text-sm text-muted-foreground">{toolInput.description}</span>
         </span>
       )
@@ -236,17 +238,15 @@ export function eventToDisplayObject(
 
     // MCP tool handling
     if (event.toolName?.startsWith('mcp__')) {
-      // Parse the MCP tool name: mcp__service__method
-      const parts = event.toolName.split('__')
-      const service = parts[1] || 'unknown'
-      const method = parts.slice(2).join('__') || 'unknown' // Handle methods with __ in name
+      const { service, method } = parseMcpToolName(event.toolName)
+      const formattedMethod = method.replace(/_/g, ' ')
 
       const toolInput = event.toolInputJson ? JSON.parse(event.toolInputJson) : {}
 
       subject = (
         <span>
           <span className="font-bold">
-            {service} - {method}{' '}
+            {service} - {formattedMethod}{' '}
           </span>
           <span className="font-mono text-sm text-muted-foreground">
             {/* Show first parameter if it's simple (string/number) */}
@@ -618,7 +618,7 @@ export function eventToDisplayObject(
   }
 
   if (subject === null) {
-    // console.warn('Unknown subject for event', event)
+    // logger.warn('Unknown subject for event', event)
     subject = <span>Unknown Subject</span>
   }
 

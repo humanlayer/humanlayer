@@ -28,6 +28,21 @@ paths:
               schema:
                 $ref: '#/components/schemas/HealthResponse'
 
+  /debug-info:
+    get:
+      operationId: getDebugInfo
+      summary: Get debug information
+      description: Get debug information about the daemon including database stats and runtime configuration
+      tags:
+        - System
+      responses:
+        '200':
+          description: Debug information retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DebugInfoResponse'
+
   /sessions:
     post:
       operationId: createSession
@@ -494,6 +509,49 @@ components:
           type: string
           example: "0.1.0"
 
+    # Debug Info Response
+    DebugInfoResponse:
+      type: object
+      required:
+        - path
+        - size
+        - table_count
+        - stats
+        - cli_command
+      properties:
+        path:
+          type: string
+          description: Path to the SQLite database file
+          example: "/home/user/.humanlayer/daemon.db"
+        size:
+          type: integer
+          format: int64
+          description: Size of the database file in bytes
+          example: 1048576
+        table_count:
+          type: integer
+          description: Number of tables in the database
+          example: 5
+        stats:
+          type: object
+          description: Database statistics
+          additionalProperties:
+            type: integer
+            format: int64
+          example:
+            sessions: 42
+            approvals: 15
+            events: 237
+        cli_command:
+          type: string
+          description: CLI command configured for MCP servers
+          example: "hlyr"
+        last_modified:
+          type: string
+          format: date-time
+          description: Last modification time of the database file
+          example: "2024-01-15T10:30:00Z"
+
     # Session Types
     Session:
       type: object
@@ -539,6 +597,10 @@ components:
           type: string
           description: Model used for this session
           example: sonnet
+        model_id:
+          type: string
+          description: Full model identifier
+          example: claude-opus-4-1-20250805
         working_dir:
           type: string
           description: Working directory for the session
@@ -565,11 +627,36 @@ components:
           nullable: true
           description: Total cost in USD
           example: 0.05
-        total_tokens:
+        input_tokens:
           type: integer
           nullable: true
-          description: Total tokens used
-          example: 1500
+          description: Number of input tokens
+          example: 1000
+        output_tokens:
+          type: integer
+          nullable: true
+          description: Number of output tokens
+          example: 500
+        cache_creation_input_tokens:
+          type: integer
+          nullable: true
+          description: Number of cache creation input tokens
+          example: 100
+        cache_read_input_tokens:
+          type: integer
+          nullable: true
+          description: Number of cache read input tokens
+          example: 50000
+        effective_context_tokens:
+          type: integer
+          nullable: true
+          description: Total tokens counting toward context window limit
+          example: 51100
+        context_limit:
+          type: integer
+          nullable: true
+          description: Context window limit for the model
+          example: 168000
         duration_ms:
           type: integer
           nullable: true
@@ -579,6 +666,15 @@ components:
           type: boolean
           description: Whether edit tools are auto-accepted
           default: false
+        dangerously_skip_permissions:
+          type: boolean
+          description: When true, all tool calls are automatically approved without user consent
+          default: false
+        dangerously_skip_permissions_expires_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: ISO timestamp when dangerously skip permissions mode expires (optional)
         archived:
           type: boolean
           description: Whether session is archived
@@ -605,6 +701,10 @@ components:
           type: string
           description: Initial query for Claude
           example: "Help me write a Python script to process CSV files"
+        title:
+          type: string
+          description: Optional title for the session
+          example: "CSV Processing Script"
         model:
           type: string
           enum: [opus, sonnet]
@@ -644,6 +744,16 @@ components:
         custom_instructions:
           type: string
           description: Custom instructions for Claude
+        dangerously_skip_permissions:
+          type: boolean
+          description: Launch session with dangerously skip permissions enabled
+          default: false
+        dangerously_skip_permissions_timeout:
+          type: integer
+          format: int64
+          nullable: true
+          description: Optional default timeout in milliseconds for dangerously skip permissions
+          default: 900000  # 15 minutes default, but nullable
         verbose:
           type: boolean
           description: Enable verbose output
@@ -693,6 +803,14 @@ components:
         auto_accept_edits:
           type: boolean
           description: Enable/disable auto-accept for edit tools
+        dangerously_skip_permissions:
+          type: boolean
+          description: Enable or disable dangerously skip permissions mode
+        dangerously_skip_permissions_timeout_ms:
+          type: integer
+          format: int64
+          nullable: true
+          description: Optional timeout in milliseconds for dangerously skip permissions mode
         archived:
           type: boolean
           description: Archive/unarchive the session
@@ -1129,26 +1247,39 @@ components:
 
     MCPServer:
       type: object
-      required:
-        - command
       properties:
+        type:
+          type: string
+          description: Server type (http for HTTP servers, omit for stdio)
+          example: http
         command:
           type: string
-          description: Command to execute
+          description: Command to execute (for stdio servers)
           example: mcp-server-filesystem
         args:
           type: array
           items:
             type: string
-          description: Command arguments
+          description: Command arguments (for stdio servers)
           example: ["--read-only", "/home/user"]
         env:
           type: object
           additionalProperties:
             type: string
-          description: Environment variables
+          description: Environment variables (for stdio servers)
           example:
             DEBUG: "true"
+        url:
+          type: string
+          description: HTTP endpoint URL (for HTTP servers)
+          example: http://localhost:7777/api/v1/mcp
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+          description: HTTP headers to include (for HTTP servers)
+          example:
+            X-Session-ID: "session-123"
 
     # Event Types
     EventType:
@@ -1158,6 +1289,7 @@ components:
         - approval_resolved
         - session_status_changed
         - conversation_updated
+        - session_settings_changed
       description: Type of system event
 
     Event:

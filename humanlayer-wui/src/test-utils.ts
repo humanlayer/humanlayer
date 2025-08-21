@@ -17,6 +17,8 @@ export function createMockSession(overrides: Partial<Session> = {}): Session {
     lastActivityAt: timestamp,
     archived: false,
     autoAcceptEdits: false,
+    dangerouslySkipPermissions: false,
+    dangerouslySkipPermissionsExpiresAt: undefined,
     ...overrides,
   }
 }

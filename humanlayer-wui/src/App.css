@@ -57,6 +57,26 @@
   --terminal-success: #859900;
   --terminal-warning: #b58900;
   --terminal-error: #dc322f;
+
+  /* Standard colors (30-37, 40-47) - Official Solarized values */
+  --terminal-color-0: #073642; /* Black (base02) */
+  --terminal-color-1: #dc322f; /* Red */
+  --terminal-color-2: #859900; /* Green */
+  --terminal-color-3: #b58900; /* Yellow */
+  --terminal-color-4: #268bd2; /* Blue */
+  --terminal-color-5: #d33682; /* Magenta */
+  --terminal-color-6: #2aa198; /* Cyan */
+  --terminal-color-7: #eee8d5; /* White (base2) */
+
+  /* Bright colors (90-97, 100-107) - Official Solarized values */
+  --terminal-color-8: #002b36; /* Bright Black (base03) */
+  --terminal-color-9: #cb4b16; /* Bright Red (orange) */
+  --terminal-color-10: #586e75; /* Bright Green (base01) */
+  --terminal-color-11: #657b83; /* Bright Yellow (base00) */
+  --terminal-color-12: #839496; /* Bright Blue (base0) */
+  --terminal-color-13: #6c71c4; /* Bright Magenta (violet) */
+  --terminal-color-14: #93a1a1; /* Bright Cyan (base1) */
+  --terminal-color-15: #fdf6e3; /* Bright White (base3) */
 }
 
 /* Solarized Light */
@@ -71,6 +91,26 @@
   --terminal-success: #859900;
   --terminal-warning: #b58900;
   --terminal-error: #dc322f;
+
+  /* Standard colors - Official Solarized values (inverted for light theme) */
+  --terminal-color-0: #eee8d5; /* Black (base2) */
+  --terminal-color-1: #dc322f; /* Red */
+  --terminal-color-2: #859900; /* Green */
+  --terminal-color-3: #b58900; /* Yellow */
+  --terminal-color-4: #268bd2; /* Blue */
+  --terminal-color-5: #d33682; /* Magenta */
+  --terminal-color-6: #2aa198; /* Cyan */
+  --terminal-color-7: #073642; /* White (base02) */
+
+  /* Bright colors - Official Solarized values */
+  --terminal-color-8: #fdf6e3; /* Bright Black (base3) */
+  --terminal-color-9: #cb4b16; /* Bright Red (orange) */
+  --terminal-color-10: #93a1a1; /* Bright Green (base1) */
+  --terminal-color-11: #839496; /* Bright Yellow (base0) */
+  --terminal-color-12: #657b83; /* Bright Blue (base00) */
+  --terminal-color-13: #6c71c4; /* Bright Magenta (violet) */
+  --terminal-color-14: #586e75; /* Bright Cyan (base01) */
+  --terminal-color-15: #002b36; /* Bright White (base03) */
 }
 
 /* Cappuccino - Warm coffee theme */
@@ -85,6 +125,26 @@
   --terminal-success: #7b9171;
   --terminal-warning: #e9c46a;
   --terminal-error: #e63946;
+
+  /* Standard colors - Warm coffee-inspired palette */
+  --terminal-color-0: #2f1b14; /* Black (bg) */
+  --terminal-color-1: #e63946; /* Red */
+  --terminal-color-2: #7b9171; /* Green */
+  --terminal-color-3: #e9c46a; /* Yellow */
+  --terminal-color-4: #2a9d8f; /* Blue */
+  --terminal-color-5: #e76f51; /* Magenta/Orange */
+  --terminal-color-6: #264653; /* Cyan */
+  --terminal-color-7: #d4b895; /* White (fg) */
+
+  /* Bright colors - Lightened versions */
+  --terminal-color-8: #3d261a; /* Bright Black */
+  --terminal-color-9: #ff6b79; /* Bright Red */
+  --terminal-color-10: #93ab89; /* Bright Green */
+  --terminal-color-11: #f4d798; /* Bright Yellow */
+  --terminal-color-12: #5ab7a9; /* Bright Blue */
+  --terminal-color-13: #f4a261; /* Bright Magenta */
+  --terminal-color-14: #3a5a6a; /* Bright Cyan */
+  --terminal-color-15: #f5e6d3; /* Bright White */
 }
 
 /* Catppuccin Mocha - Popular pastel theme */
@@ -99,6 +159,26 @@
   --terminal-success: #a6e3a1;
   --terminal-warning: #f9e2af;
   --terminal-error: #f38ba8;
+
+  /* Standard colors - Official Catppuccin Mocha values */
+  --terminal-color-0: #45475a; /* Black (surface1) */
+  --terminal-color-1: #f38ba8; /* Red */
+  --terminal-color-2: #a6e3a1; /* Green */
+  --terminal-color-3: #f9e2af; /* Yellow */
+  --terminal-color-4: #89b4fa; /* Blue */
+  --terminal-color-5: #f5c2e7; /* Magenta (pink) */
+  --terminal-color-6: #94e2d5; /* Cyan (teal) */
+  --terminal-color-7: #bac2de; /* White (subtext1) */
+
+  /* Bright colors - Official Catppuccin Mocha values */
+  --terminal-color-8: #585b70; /* Bright Black (surface2) */
+  --terminal-color-9: #eba0ac; /* Bright Red (maroon) */
+  --terminal-color-10: #a6e3a1; /* Bright Green */
+  --terminal-color-11: #fab387; /* Bright Yellow (peach) */
+  --terminal-color-12: #89dceb; /* Bright Blue (sky) */
+  --terminal-color-13: #cba6f7; /* Bright Magenta (mauve) */
+  --terminal-color-14: #89dceb; /* Bright Cyan (sky) */
+  --terminal-color-15: #cdd6f4; /* Bright White (text) */
 }
 
 /* High Contrast - Sharp white on black */
@@ -113,6 +193,26 @@
   --terminal-success: #00ff00;
   --terminal-warning: #ffff00;
   --terminal-error: #ff0000;
+
+  /* Standard colors - Maximum contrast */
+  --terminal-color-0: #000000; /* Black */
+  --terminal-color-1: #ff0000; /* Red */
+  --terminal-color-2: #00ff00; /* Green */
+  --terminal-color-3: #ffff00; /* Yellow */
+  --terminal-color-4: #0000ff; /* Blue */
+  --terminal-color-5: #ff00ff; /* Magenta */
+  --terminal-color-6: #00ffff; /* Cyan */
+  --terminal-color-7: #c0c0c0; /* White (silver) */
+
+  /* Bright colors - Pure bright variants */
+  --terminal-color-8: #808080; /* Bright Black (gray) */
+  --terminal-color-9: #ff6060; /* Bright Red */
+  --terminal-color-10: #60ff60; /* Bright Green */
+  --terminal-color-11: #ffff60; /* Bright Yellow */
+  --terminal-color-12: #6060ff; /* Bright Blue */
+  --terminal-color-13: #ff60ff; /* Bright Magenta */
+  --terminal-color-14: #60ffff; /* Bright Cyan */
+  --terminal-color-15: #ffffff; /* Bright White */
 }
 
 /* Framer Dark - Inspired by Framer's dark theme */
@@ -127,6 +227,26 @@
   --terminal-success: #32ccdc;
   --terminal-warning: #fecb6e;
   --terminal-error: #fd886b;
+
+  /* Standard colors - Modern design-tool inspired */
+  --terminal-color-0: #181818; /* Black */
+  --terminal-color-1: #fd886b; /* Red */
+  --terminal-color-2: #32ccdc; /* Green/Teal */
+  --terminal-color-3: #fecb6e; /* Yellow */
+  --terminal-color-4: #20bcfc; /* Blue */
+  --terminal-color-5: #fd5799; /* Magenta */
+  --terminal-color-6: #00b8d4; /* Cyan */
+  --terminal-color-7: #999999; /* White */
+
+  /* Bright colors - Vibrant variants */
+  --terminal-color-8: #2f3439; /* Bright Black */
+  --terminal-color-9: #ff9580; /* Bright Red */
+  --terminal-color-10: #6edde5; /* Bright Green */
+  --terminal-color-11: #ffd98e; /* Bright Yellow */
+  --terminal-color-12: #60d0ff; /* Bright Blue */
+  --terminal-color-13: #ff7ab8; /* Bright Magenta */
+  --terminal-color-14: #4dd0e1; /* Bright Cyan */
+  --terminal-color-15: #eeeeee; /* Bright White */
 }
 
 /* Framer Light - Light counterpart to Framer Dark */
@@ -141,6 +261,26 @@
   --terminal-success: #22a06b;
   --terminal-warning: #cc7722;
   --terminal-error: #dc3545;
+
+  /* Standard colors - Clean professional palette */
+  --terminal-color-0: #f8f9fa; /* Black (light bg) */
+  --terminal-color-1: #dc3545; /* Red */
+  --terminal-color-2: #22a06b; /* Green */
+  --terminal-color-3: #cc7722; /* Yellow/Orange */
+  --terminal-color-4: #0066cc; /* Blue */
+  --terminal-color-5: #7b61ff; /* Magenta/Purple */
+  --terminal-color-6: #006bb3; /* Cyan */
+  --terminal-color-7: #333333; /* White (dark text) */
+
+  /* Bright colors - Muted variants */
+  --terminal-color-8: #e0e0e0; /* Bright Black */
+  --terminal-color-9: #e74856; /* Bright Red */
+  --terminal-color-10: #3db88b; /* Bright Green */
+  --terminal-color-11: #e6a045; /* Bright Yellow */
+  --terminal-color-12: #3399ff; /* Bright Blue */
+  --terminal-color-13: #9b81ff; /* Bright Magenta */
+  --terminal-color-14: #0099ff; /* Bright Cyan */
+  --terminal-color-15: #000000; /* Bright White (pure black) */
 }
 
 /* Gruvbox Dark - Material palette, medium contrast */
@@ -155,6 +295,26 @@
   --terminal-success: #a9b665;
   --terminal-warning: #d8a657;
   --terminal-error: #ea6962;
+
+  /* Standard colors - Official Gruvbox dark values */
+  --terminal-color-0: #282828; /* Black (bg0) */
+  --terminal-color-1: #cc241d; /* Red */
+  --terminal-color-2: #98971a; /* Green */
+  --terminal-color-3: #d79921; /* Yellow */
+  --terminal-color-4: #458588; /* Blue */
+  --terminal-color-5: #b16286; /* Magenta/Purple */
+  --terminal-color-6: #689d6a; /* Cyan/Aqua */
+  --terminal-color-7: #a89984; /* White (fg4) */
+
+  /* Bright colors - Official Gruvbox bright values */
+  --terminal-color-8: #928374; /* Bright Black (gray) */
+  --terminal-color-9: #fb4934; /* Bright Red */
+  --terminal-color-10: #b8bb26; /* Bright Green */
+  --terminal-color-11: #fabd2f; /* Bright Yellow */
+  --terminal-color-12: #83a598; /* Bright Blue */
+  --terminal-color-13: #d3869b; /* Bright Magenta */
+  --terminal-color-14: #8ec07c; /* Bright Cyan */
+  --terminal-color-15: #ebdbb2; /* Bright White (fg1) */
 }
 
 /* Gruvbox Light - Material palette, medium contrast */
@@ -169,6 +329,26 @@
   --terminal-success: #6c782e;
   --terminal-warning: #b47109;
   --terminal-error: #c14a4a;
+
+  /* Standard colors - Official Gruvbox light values */
+  --terminal-color-0: #fbf1c7; /* Black (bg0) */
+  --terminal-color-1: #cc241d; /* Red */
+  --terminal-color-2: #98971a; /* Green */
+  --terminal-color-3: #d79921; /* Yellow */
+  --terminal-color-4: #458588; /* Blue */
+  --terminal-color-5: #b16286; /* Magenta/Purple */
+  --terminal-color-6: #689d6a; /* Cyan/Aqua */
+  --terminal-color-7: #7c6f64; /* White (fg4) */
+
+  /* Bright colors - Official Gruvbox bright values */
+  --terminal-color-8: #928374; /* Bright Black (gray) */
+  --terminal-color-9: #9d0006; /* Bright Red (darkened) */
+  --terminal-color-10: #79740e; /* Bright Green (darkened) */
+  --terminal-color-11: #b57614; /* Bright Yellow (darkened) */
+  --terminal-color-12: #076678; /* Bright Blue (darkened) */
+  --terminal-color-13: #8f3f71; /* Bright Magenta (darkened) */
+  --terminal-color-14: #427b58; /* Bright Cyan (darkened) */
+  --terminal-color-15: #3c3836; /* Bright White (fg1) */
 }
 
 /* Monokai - Classic dark theme */
@@ -183,6 +363,26 @@
   --terminal-success: #a6e22e;
   --terminal-warning: #e6db74;
   --terminal-error: #f92672;
+
+  /* Standard colors - Classic Monokai palette */
+  --terminal-color-0: #272822; /* Black */
+  --terminal-color-1: #f92672; /* Red (pink) */
+  --terminal-color-2: #a6e22e; /* Green */
+  --terminal-color-3: #e6db74; /* Yellow */
+  --terminal-color-4: #66d9ef; /* Blue */
+  --terminal-color-5: #ae81ff; /* Magenta/Purple */
+  --terminal-color-6: #66d9ef; /* Cyan */
+  --terminal-color-7: #f8f8f2; /* White */
+
+  /* Bright colors - Intensified versions */
+  --terminal-color-8: #75715e; /* Bright Black (comment) */
+  --terminal-color-9: #fd5ff0; /* Bright Red/Pink */
+  --terminal-color-10: #b3e774; /* Bright Green */
+  --terminal-color-11: #feed6c; /* Bright Yellow */
+  --terminal-color-12: #81e7fc; /* Bright Blue */
+  --terminal-color-13: #c2a1ff; /* Bright Magenta */
+  --terminal-color-14: #81e7fc; /* Bright Cyan */
+  --terminal-color-15: #fcfcfa; /* Bright White */
 }
 
 /* Launch theme */
@@ -197,6 +397,128 @@
   --terminal-success: #458cc9;
   --terminal-warning: #ff6600;
   --terminal-error: #cc5200;
+
+  /* Standard colors - HN/minimalist palette */
+  --terminal-color-0: #f6f6ef; /* Black (bg) */
+  --terminal-color-1: #cc5200; /* Red */
+  --terminal-color-2: #458cc9; /* Green/Blue */
+  --terminal-color-3: #ff6600; /* Yellow/Orange */
+  --terminal-color-4: #458cc9; /* Blue */
+  --terminal-color-5: #828282; /* Magenta (gray) */
+  --terminal-color-6: #5a9fd4; /* Cyan */
+  --terminal-color-7: #000000; /* White (text) */
+
+  /* Bright colors - Duplicate for minimalist theme */
+  --terminal-color-8: #e0e0d7; /* Bright Black */
+  --terminal-color-9: #ff6600; /* Bright Red */
+  --terminal-color-10: #6ba3d0; /* Bright Green */
+  --terminal-color-11: #ff8833; /* Bright Yellow */
+  --terminal-color-12: #6ba3d0; /* Bright Blue */
+  --terminal-color-13: #999999; /* Bright Magenta */
+  --terminal-color-14: #7fb8e1; /* Bright Cyan */
+  --terminal-color-15: #333333; /* Bright White */
+}
+
+/* Rosé Pine - Soho vibes */
+[data-theme='rose-pine'] {
+  --terminal-bg: #191724;
+  --terminal-bg-alt: #1f1d2e;
+  --terminal-fg: #e0def4;
+  --terminal-fg-dim: #908caa;
+  --terminal-accent: #c4a7e7;
+  --terminal-accent-alt: #ebbcba;
+  --terminal-border: #6e6a86;
+  --terminal-success: #9ccfd8;
+  --terminal-warning: #f6c177;
+  --terminal-error: #eb6f92;
+
+  /* Standard colors - Official Rosé Pine values */
+  --terminal-color-0: #191724; /* Black (base) */
+  --terminal-color-1: #eb6f92; /* Red (love) */
+  --terminal-color-2: #9ccfd8; /* Green (foam) */
+  --terminal-color-3: #f6c177; /* Yellow (gold) */
+  --terminal-color-4: #3e8fb0; /* Blue (pine) */
+  --terminal-color-5: #c4a7e7; /* Magenta (iris) */
+  --terminal-color-6: #ebbcba; /* Cyan (rose) */
+  --terminal-color-7: #e0def4; /* White (text) */
+
+  /* Bright colors - Official Rosé Pine values */
+  --terminal-color-8: #26233a; /* Bright Black (overlay) */
+  --terminal-color-9: #eb6f92; /* Bright Red (love) */
+  --terminal-color-10: #9ccfd8; /* Bright Green (foam) */
+  --terminal-color-11: #f6c177; /* Bright Yellow (gold) */
+  --terminal-color-12: #31748f; /* Bright Blue (pine dark) */
+  --terminal-color-13: #c4a7e7; /* Bright Magenta (iris) */
+  --terminal-color-14: #ebbcba; /* Bright Cyan (rose) */
+  --terminal-color-15: #e0def4; /* Bright White (text) */
+}
+
+/* Rosé Pine Dawn - Light theme with warm tones */
+[data-theme='rose-pine-dawn'] {
+  --terminal-bg: #faf4ed;
+  --terminal-bg-alt: #fffaf3;
+  --terminal-fg: #575279;
+  --terminal-fg-dim: #797593;
+  --terminal-accent: #907aa9;
+  --terminal-accent-alt: #d7827e;
+  --terminal-border: #cecacd;
+  --terminal-success: #56949f;
+  --terminal-warning: #ea9d34;
+  --terminal-error: #b4637a;
+
+  /* Standard colors - Official Rosé Pine Dawn values */
+  --terminal-color-0: #faf4ed; /* Black (base) */
+  --terminal-color-1: #b4637a; /* Red (love) */
+  --terminal-color-2: #56949f; /* Green (foam) */
+  --terminal-color-3: #ea9d34; /* Yellow (gold) */
+  --terminal-color-4: #286983; /* Blue (pine) */
+  --terminal-color-5: #907aa9; /* Magenta (iris) */
+  --terminal-color-6: #d7827e; /* Cyan (rose) */
+  --terminal-color-7: #575279; /* White (text) */
+
+  /* Bright colors - Official Rosé Pine Dawn values */
+  --terminal-color-8: #f2e9e1; /* Bright Black (surface) */
+  --terminal-color-9: #b4637a; /* Bright Red (love) */
+  --terminal-color-10: #56949f; /* Bright Green (foam) */
+  --terminal-color-11: #ea9d34; /* Bright Yellow (gold) */
+  --terminal-color-12: #286983; /* Bright Blue (pine) */
+  --terminal-color-13: #907aa9; /* Bright Magenta (iris) */
+  --terminal-color-14: #d7827e; /* Bright Cyan (rose) */
+  --terminal-color-15: #575279; /* Bright White (text) */
+}
+
+/* Rosé Pine Moon - Softer dark theme */
+[data-theme='rose-pine-moon'] {
+  --terminal-bg: #232136;
+  --terminal-bg-alt: #2a273f;
+  --terminal-fg: #e0def4;
+  --terminal-fg-dim: #908caa;
+  --terminal-accent: #c4a7e7;
+  --terminal-accent-alt: #ebbcba;
+  --terminal-border: #6e6a86;
+  --terminal-success: #9ccfd8;
+  --terminal-warning: #f6c177;
+  --terminal-error: #eb6f92;
+
+  /* Standard colors - Official Rosé Pine Moon values */
+  --terminal-color-0: #232136; /* Black (base) */
+  --terminal-color-1: #eb6f92; /* Red (love) */
+  --terminal-color-2: #9ccfd8; /* Green (foam) */
+  --terminal-color-3: #f6c177; /* Yellow (gold) */
+  --terminal-color-4: #3e8fb0; /* Blue (pine) */
+  --terminal-color-5: #c4a7e7; /* Magenta (iris) */
+  --terminal-color-6: #ebbcba; /* Cyan (rose) */
+  --terminal-color-7: #e0def4; /* White (text) */
+
+  /* Bright colors - Official Rosé Pine Moon values */
+  --terminal-color-8: #393552; /* Bright Black (overlay) */
+  --terminal-color-9: #eb6f92; /* Bright Red (love) */
+  --terminal-color-10: #9ccfd8; /* Bright Green (foam) */
+  --terminal-color-11: #f6c177; /* Bright Yellow (gold) */
+  --terminal-color-12: #3e8fb0; /* Bright Blue (pine) */
+  --terminal-color-13: #c4a7e7; /* Bright Magenta (iris) */
+  --terminal-color-14: #ebbcba; /* Bright Cyan (rose) */
+  --terminal-color-15: #e0def4; /* Bright White (text) */
 }
 @layer base {
   * {
@@ -234,6 +556,23 @@
 
   .animate-pulse-warning {
     animation: pulse-warning 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  /* Pulsing animation for yolo mode */
+  @keyframes pulse-error {
+    0%,
+    100% {
+      opacity: 1;
+      color: var(--terminal-error);
+    }
+    50% {
+      opacity: 0.5;
+      color: var(--terminal-error);
+    }
+  }
+
+  .animate-pulse-error {
+    animation: pulse-error 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 
   /* Custom spinner animations */
@@ -328,6 +667,34 @@
       clip-path: polygon(0 55%, 100% 55%, 100% 100%, 0 100%);
       transform: translate(2px, -2px);
     }
+  }
+
+  @keyframes slide-in-up {
+    0% {
+      visibility: visible;
+      transform: translate3d(0, 100%, 0);
+    }
+    100% {
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  @keyframes slide-out-down {
+    0% {
+      visibility: visible;
+      transform: translate3d(0, 0, 0);
+    }
+    100% {
+      transform: translate3d(0, 100%, 0);
+    }
+  }
+
+  .animate-slide-in-up {
+    animation: slide-in-up 1s ease-in-out 0.25s 1;
+  }
+
+  .animate-slide-out-down {
+    animation: slide-out-down 1s ease-in-out 0.25s 1;
   }
 
   .animate-spin-reverse {

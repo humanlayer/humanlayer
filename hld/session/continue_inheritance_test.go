@@ -344,18 +344,73 @@ func TestContinueSessionInheritance(t *testing.T) {
 			t.Fatalf("Failed to get child MCP servers: %v", err)
 		}
 
-		// Should have inherited the MCP servers
-		if len(childMCPServers) != len(mcpServers) {
-			t.Errorf("MCP servers not inherited: got %d, want %d", len(childMCPServers), len(mcpServers))
+		// Should have inherited the MCP servers plus injected codelayer
+		expectedCount := len(mcpServers) + 1 // +1 for injected codelayer
+		if len(childMCPServers) != expectedCount {
+			t.Errorf("MCP servers count mismatch: got %d, want %d", len(childMCPServers), expectedCount)
 		}
 
-		// Verify server details (accounting for HUMANLAYER_RUN_ID being added)
+		// Find and verify the injected codelayer server
+		var foundCodelayer bool
+		var codelayerIdx int
 		for i, server := range childMCPServers {
-			if server.Name != mcpServers[i].Name {
-				t.Errorf("MCP server %d name mismatch: got %s, want %s", i, server.Name, mcpServers[i].Name)
+			if server.Name == "codelayer" {
+				foundCodelayer = true
+				codelayerIdx = i
+
+				// Verify codelayer configuration
+				if server.Command != "hlyr" {
+					t.Errorf("Codelayer command mismatch: got %s, want hlyr", server.Command)
+				}
+
+				var args []string
+				if err := json.Unmarshal([]byte(server.ArgsJSON), &args); err != nil {
+					t.Fatalf("Failed to unmarshal codelayer args: %v", err)
+				}
+				expectedArgs := []string{"mcp", "claude_approvals"}
+				if len(args) != len(expectedArgs) {
+					t.Errorf("Codelayer args length mismatch: got %d, want %d", len(args), len(expectedArgs))
+				} else {
+					for j, arg := range args {
+						if arg != expectedArgs[j] {
+							t.Errorf("Codelayer arg[%d] mismatch: got %s, want %s", j, arg, expectedArgs[j])
+						}
+					}
+				}
+
+				var env map[string]string
+				if err := json.Unmarshal([]byte(server.EnvJSON), &env); err != nil {
+					t.Fatalf("Failed to unmarshal codelayer env: %v", err)
+				}
+				if env["HUMANLAYER_SESSION_ID"] != childSession.ID {
+					t.Errorf("Codelayer env HUMANLAYER_SESSION_ID mismatch: got %s, want %s", env["HUMANLAYER_SESSION_ID"], childSession.ID)
+				}
+				break
 			}
-			if server.Command != mcpServers[i].Command {
-				t.Errorf("MCP server %d command mismatch: got %s, want %s", i, server.Command, mcpServers[i].Command)
+		}
+
+		if !foundCodelayer {
+			t.Error("Injected codelayer MCP server not found")
+		}
+
+		// Verify inherited servers (excluding codelayer)
+		parentIdx := 0
+		for i, server := range childMCPServers {
+			// Skip the codelayer server
+			if i == codelayerIdx {
+				continue
+			}
+
+			if parentIdx >= len(mcpServers) {
+				t.Errorf("Extra unexpected MCP server found: %s", server.Name)
+				continue
+			}
+
+			if server.Name != mcpServers[parentIdx].Name {
+				t.Errorf("MCP server %d name mismatch: got %s, want %s", parentIdx, server.Name, mcpServers[parentIdx].Name)
+			}
+			if server.Command != mcpServers[parentIdx].Command {
+				t.Errorf("MCP server %d command mismatch: got %s, want %s", parentIdx, server.Command, mcpServers[parentIdx].Command)
 			}
 
 			// Compare args (deserialize to compare content)
@@ -363,15 +418,15 @@ func TestContinueSessionInheritance(t *testing.T) {
 			if err := json.Unmarshal([]byte(server.ArgsJSON), &childArgs); err != nil {
 				t.Fatalf("Failed to unmarshal child args: %v", err)
 			}
-			if err := json.Unmarshal([]byte(mcpServers[i].ArgsJSON), &parentArgs); err != nil {
+			if err := json.Unmarshal([]byte(mcpServers[parentIdx].ArgsJSON), &parentArgs); err != nil {
 				t.Fatalf("Failed to unmarshal parent args: %v", err)
 			}
 			if len(childArgs) != len(parentArgs) {
-				t.Errorf("MCP server %d args length mismatch", i)
+				t.Errorf("MCP server %d args length mismatch", parentIdx)
 			} else {
 				for j, arg := range childArgs {
 					if arg != parentArgs[j] {
-						t.Errorf("MCP server %d arg[%d] mismatch: got %s, want %s", i, j, arg, parentArgs[j])
+						t.Errorf("MCP server %d arg[%d] mismatch: got %s, want %s", parentIdx, j, arg, parentArgs[j])
 					}
 				}
 			}
@@ -381,21 +436,23 @@ func TestContinueSessionInheritance(t *testing.T) {
 			if err := json.Unmarshal([]byte(server.EnvJSON), &childEnv); err != nil {
 				t.Fatalf("Failed to unmarshal child env: %v", err)
 			}
-			if err := json.Unmarshal([]byte(mcpServers[i].EnvJSON), &parentEnv); err != nil {
+			if err := json.Unmarshal([]byte(mcpServers[parentIdx].EnvJSON), &parentEnv); err != nil {
 				t.Fatalf("Failed to unmarshal parent env: %v", err)
 			}
 
 			// Child should have all parent env vars plus HUMANLAYER_RUN_ID
 			for key, val := range parentEnv {
 				if childEnv[key] != val {
-					t.Errorf("MCP server %d env[%s] mismatch: got %s, want %s", i, key, childEnv[key], val)
+					t.Errorf("MCP server %d env[%s] mismatch: got %s, want %s", parentIdx, key, childEnv[key], val)
 				}
 			}
 
 			// Should have HUMANLAYER_RUN_ID added
 			if _, ok := childEnv["HUMANLAYER_RUN_ID"]; !ok {
-				t.Errorf("MCP server %d missing HUMANLAYER_RUN_ID in env", i)
+				t.Errorf("MCP server %d missing HUMANLAYER_RUN_ID in env", parentIdx)
 			}
+
+			parentIdx++
 		}
 	})
 
@@ -576,17 +633,26 @@ func TestContinueSessionInheritance(t *testing.T) {
 			t.Fatalf("Failed to get child MCP servers: %v", err)
 		}
 
-		// Should have the override server, not the original
-		if len(childMCPServers) != 1 {
-			t.Fatalf("Expected 1 MCP server, got %d", len(childMCPServers))
+		// Should have the override server plus injected codelayer
+		if len(childMCPServers) != 2 {
+			t.Fatalf("Expected 2 MCP servers (override + codelayer), got %d", len(childMCPServers))
 		}
 
-		server := childMCPServers[0]
-		if server.Name != "override-server" {
-			t.Errorf("MCP server name not overridden: got %s", server.Name)
+		// Find the override server (not codelayer)
+		var overrideServer *store.MCPServer
+		for _, s := range childMCPServers {
+			if s.Name == "override-server" {
+				overrideServer = &s
+				break
+			}
 		}
-		if server.Command != "override-cmd" {
-			t.Errorf("MCP server command not overridden: got %s", server.Command)
+
+		if overrideServer == nil {
+			t.Fatal("Override server not found")
+		}
+
+		if overrideServer.Command != "override-cmd" {
+			t.Errorf("MCP server command not overridden: got %s", overrideServer.Command)
 		}
 	})
 
@@ -777,6 +843,133 @@ func TestContinueSessionInheritance(t *testing.T) {
 		// Verify child inherited the same original title
 		if childSession.Title != grandparentTitle {
 			t.Errorf("Child didn't inherit grandparent title: got %q, want %q", childSession.Title, grandparentTitle)
+		}
+	})
+
+	t.Run("HTTPMCPServerUpdatesXSessionIDHeader", func(t *testing.T) {
+		// This test verifies that when continuing a session with HTTP MCP servers,
+		// the X-Session-ID header is updated to the child session ID, not inherited
+		// from the parent session ID.
+
+		// Create parent session
+		parentSessionID := "parent-http-mcp"
+		parentSession := &store.Session{
+			ID:              parentSessionID,
+			RunID:           "run-http-mcp",
+			ClaudeSessionID: "claude-http-mcp",
+			Status:          store.SessionStatusCompleted,
+			Query:           "http mcp query",
+			Model:           "claude-3-opus-20240229",
+			WorkingDir:      "/tmp/test",
+			CreatedAt:       time.Now(),
+			LastActivityAt:  time.Now(),
+			CompletedAt:     &time.Time{},
+		}
+
+		if err := sqliteStore.CreateSession(ctx, parentSession); err != nil {
+			t.Fatalf("Failed to create parent session: %v", err)
+		}
+
+		// Store HTTP MCP server with X-Session-ID header for parent
+		// For HTTP servers: Command="http", ArgsJSON=["URL"], EnvJSON=headers
+		parentMCPServers := []store.MCPServer{
+			{
+				SessionID: parentSessionID,
+				Name:      "http-test-server",
+				Command:   "http",                                                                    // Indicates HTTP type
+				ArgsJSON:  `["http://localhost:8080/mcp"]`,                                           // URL as single-element array
+				EnvJSON:   `{"X-Session-ID": "parent-http-mcp", "Authorization": "Bearer token123"}`, // Headers
+			},
+		}
+		if err := sqliteStore.StoreMCPServers(ctx, parentSessionID, parentMCPServers); err != nil {
+			t.Fatalf("Failed to store MCP servers: %v", err)
+		}
+
+		// Continue session
+		req := ContinueSessionConfig{
+			ParentSessionID: parentSessionID,
+			Query:           "continue http mcp",
+		}
+
+		_, _ = manager.ContinueSession(ctx, req)
+		// Expected to fail due to missing Claude binary
+
+		// Find the child session
+		sessions, err := sqliteStore.ListSessions(ctx)
+		if err != nil {
+			t.Fatalf("Failed to list sessions: %v", err)
+		}
+
+		var childSession *store.Session
+		for _, s := range sessions {
+			if s.ParentSessionID == parentSessionID {
+				childSession = s
+				break
+			}
+		}
+
+		if childSession == nil {
+			t.Fatal("Child session not found")
+			return
+		}
+
+		// Get MCP servers for child session
+		childMCPServers, err := sqliteStore.GetMCPServers(ctx, childSession.ID)
+		if err != nil {
+			t.Fatalf("Failed to get child MCP servers: %v", err)
+		}
+
+		// Should have inherited the MCP server plus injected codelayer
+		if len(childMCPServers) != 2 {
+			t.Fatalf("Expected 2 MCP servers (http + codelayer), got %d", len(childMCPServers))
+		}
+
+		// Find the http test server (not codelayer)
+		var childMCPServer *store.MCPServer
+		for _, s := range childMCPServers {
+			if s.Name == "http-test-server" {
+				childMCPServer = &s
+				break
+			}
+		}
+
+		if childMCPServer == nil {
+			t.Fatal("HTTP test server not found")
+		}
+
+		// Verify basic inheritance
+		if childMCPServer.Command != "http" {
+			t.Errorf("MCP server type not inherited: got %s, want http", childMCPServer.Command)
+		}
+
+		// Verify URL was inherited (stored in ArgsJSON)
+		var childArgs []string
+		if err := json.Unmarshal([]byte(childMCPServer.ArgsJSON), &childArgs); err != nil {
+			t.Fatalf("Failed to unmarshal child args: %v", err)
+		}
+		if len(childArgs) != 1 || childArgs[0] != "http://localhost:8080/mcp" {
+			t.Errorf("MCP server URL not inherited: got %v, want [http://localhost:8080/mcp]", childArgs)
+		}
+
+		// Parse headers (stored in EnvJSON) and verify X-Session-ID was updated
+		var childHeaders map[string]string
+		if err := json.Unmarshal([]byte(childMCPServer.EnvJSON), &childHeaders); err != nil {
+			t.Fatalf("Failed to unmarshal child headers: %v", err)
+		}
+
+		// CRITICAL: X-Session-ID should be the CHILD session ID, not the parent's
+		if xSessionID, ok := childHeaders["X-Session-ID"]; !ok {
+			t.Error("X-Session-ID header missing in child MCP server")
+		} else if xSessionID != childSession.ID {
+			t.Errorf("X-Session-ID not updated to child session ID: got %s, want %s", xSessionID, childSession.ID)
+			t.Log("This is the bug! X-Session-ID should be replaced with the child session ID")
+		}
+
+		// Other headers should be preserved
+		if auth, ok := childHeaders["Authorization"]; !ok {
+			t.Error("Authorization header not inherited")
+		} else if auth != "Bearer token123" {
+			t.Errorf("Authorization header value changed: got %s, want Bearer token123", auth)
 		}
 	})
 }

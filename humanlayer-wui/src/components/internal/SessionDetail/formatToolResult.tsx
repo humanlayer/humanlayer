@@ -1,6 +1,7 @@
 import React from 'react'
 import { ConversationEvent } from '@/lib/daemon/types'
-import { truncate } from '@/utils/formatting'
+import { truncate, parseMcpToolName } from '@/utils/formatting'
+import { hasAnsiCodes, AnsiText } from '@/utils/ansiParser'
 
 // TODO(2): Consider creating tool-specific formatters in separate files
 // TODO(2): Add unit tests for each tool formatter
@@ -80,7 +81,7 @@ export function formatToolResult(
     isError = hasErrorKeyword && !isFalsePositive
   }
 
-  let abbreviated: string
+  let abbreviated: string | React.ReactNode
 
   switch (toolName) {
     case 'Read': {
@@ -96,9 +97,34 @@ export function formatToolResult(
       if (!content || lines.length === 0) {
         abbreviated = 'Command completed'
       } else if (lines.length === 1) {
-        abbreviated = truncate(lines[0], 80)
+        // For single line, show with ANSI colors if present
+        const firstLine = lines[0]
+        if (hasAnsiCodes(firstLine)) {
+          // Always return colored version, let CSS handle truncation
+          return (
+            <span className="inline-block max-w-[60ch] overflow-hidden text-ellipsis whitespace-nowrap">
+              <AnsiText content={firstLine} />
+            </span>
+          )
+        } else {
+          abbreviated = truncate(firstLine, 80)
+        }
       } else {
-        abbreviated = `${truncate(lines[0], 60)} ... (${lines.length} lines)`
+        // Multiple lines - show first line with colors
+        const firstLine = lines[0]
+        if (hasAnsiCodes(firstLine)) {
+          // Return colored first line with line count, CSS handles truncation
+          return (
+            <>
+              <span className="inline-block max-w-[45ch] overflow-hidden text-ellipsis whitespace-nowrap align-bottom">
+                <AnsiText content={firstLine} />
+              </span>
+              <span> ... ({lines.length} lines)</span>
+            </>
+          )
+        } else {
+          abbreviated = `${truncate(firstLine, 60)} ... (${lines.length} lines)`
+        }
       }
       break
     }
@@ -314,9 +340,7 @@ export function formatToolResult(
     default: {
       // MCP tool result formatting
       if (toolName.startsWith('mcp__')) {
-        const parts = toolName.split('__')
-        const service = parts[1] || 'unknown'
-        const method = parts.slice(2).join('__') || 'unknown'
+        const { service, method } = parseMcpToolName(toolName)
 
         // Generic MCP result formatting
         if (isError) {
@@ -354,7 +378,11 @@ export function formatToolResult(
   }
 
   // Also apply error styling for specific MultiEdit errors
-  if (toolName === 'MultiEdit' && abbreviated.includes('replace_all needed')) {
+  if (
+    toolName === 'MultiEdit' &&
+    typeof abbreviated === 'string' &&
+    abbreviated.includes('replace_all needed')
+  ) {
     return <span className="text-destructive">{abbreviated}</span>
   }
 

@@ -2,6 +2,14 @@ import type { Session, SessionStatus } from '@/lib/daemon/types'
 import { ViewMode } from '@/lib/daemon/types'
 import { create } from 'zustand'
 import { daemonClient } from '@/lib/daemon'
+import { logger } from '@/lib/logging'
+
+// Track pending updates for optimistic UI
+interface PendingUpdate {
+  updates: Partial<Session>
+  timestamp: number
+  retryCount?: number
+}
 
 interface StoreState {
   /* Sessions */
@@ -9,6 +17,8 @@ interface StoreState {
   focusedSession: Session | null
   viewMode: ViewMode
   selectedSessions: Set<string> // For bulk selection
+  pendingUpdates: Map<string, PendingUpdate> // Track in-flight updates
+  isRefreshing: boolean // Prevent concurrent refresh/updates
   activeSessionDetail: {
     session: Session
     conversation: any[] // ConversationEvent[] from useConversation
@@ -18,6 +28,7 @@ interface StoreState {
 
   initSessions: (sessions: Session[]) => void
   updateSession: (sessionId: string, updates: Partial<Session>) => void
+  updateSessionOptimistic: (sessionId: string, updates: Partial<Session>) => Promise<void>
   updateSessionStatus: (sessionId: string, status: SessionStatus) => void
   refreshSessions: () => Promise<void>
   setFocusedSession: (session: Session | null) => void
@@ -26,6 +37,7 @@ interface StoreState {
   interruptSession: (sessionId: string) => Promise<void>
   archiveSession: (sessionId: string, archived: boolean) => Promise<void>
   bulkArchiveSessions: (sessionIds: string[], archived: boolean) => Promise<void>
+  bulkSetAutoAcceptEdits: (sessionIds: string[], autoAcceptEdits: boolean) => Promise<void>
   setViewMode: (mode: ViewMode) => void
   toggleSessionSelection: (sessionId: string) => void
   clearSelection: () => void
@@ -49,6 +61,10 @@ interface StoreState {
   isItemNotified: (notificationId: string) => boolean
   clearNotificationsForSession: (sessionId: string) => void
 
+  recentResolvedApprovalsCache: Set<string>
+  addRecentResolvedApprovalToCache: (approvalId: string) => void
+  isRecentResolvedApproval: (approvalId: string) => boolean
+
   /* Navigation tracking */
   recentNavigations: Map<string, number> // sessionId -> timestamp
   trackNavigationFrom: (sessionId: string) => void
@@ -64,6 +80,8 @@ export const useStore = create<StoreState>((set, get) => ({
   focusedSession: null,
   viewMode: ViewMode.Normal,
   selectedSessions: new Set<string>(),
+  pendingUpdates: new Map<string, PendingUpdate>(),
+  isRefreshing: false,
   activeSessionDetail: null,
   initSessions: (sessions: Session[]) => set({ sessions }),
   updateSession: (sessionId: string, updates: Partial<Session>) =>
@@ -84,6 +102,97 @@ export const useStore = create<StoreState>((set, get) => ({
             }
           : state.activeSessionDetail,
     })),
+  updateSessionOptimistic: async (sessionId: string, updates: Partial<Session>) => {
+    const timestamp = Date.now()
+
+    // Capture original session state before applying optimistic update
+    const originalSession = get().sessions.find(s => s.id === sessionId)
+    if (!originalSession) {
+      logger.error(`Session ${sessionId} not found`)
+      throw new Error(`Session ${sessionId} not found`)
+    }
+
+    // Apply optimistic update immediately
+    set(state => ({
+      sessions: state.sessions.map(session =>
+        session.id === sessionId ? { ...session, ...updates } : session,
+      ),
+      pendingUpdates: new Map(state.pendingUpdates).set(sessionId, {
+        updates,
+        timestamp,
+      }),
+      focusedSession:
+        state.focusedSession?.id === sessionId
+          ? { ...state.focusedSession, ...updates }
+          : state.focusedSession,
+      activeSessionDetail:
+        state.activeSessionDetail?.session.id === sessionId
+          ? {
+              ...state.activeSessionDetail,
+              session: { ...state.activeSessionDetail.session, ...updates },
+            }
+          : state.activeSessionDetail,
+    }))
+
+    try {
+      // Send to server - map to the fields the API expects
+      const apiUpdates: any = {}
+      if (updates.autoAcceptEdits !== undefined) {
+        apiUpdates.auto_accept_edits = updates.autoAcceptEdits
+      }
+      if (updates.dangerouslySkipPermissions !== undefined) {
+        apiUpdates.dangerously_skip_permissions = updates.dangerouslySkipPermissions
+      }
+      if (updates.dangerouslySkipPermissionsExpiresAt !== undefined) {
+        // Convert Date to milliseconds for API
+        const expiresAt = updates.dangerouslySkipPermissionsExpiresAt
+        if (expiresAt) {
+          const now = Date.now()
+          const expiry = new Date(expiresAt).getTime()
+          apiUpdates.dangerously_skip_permissions_timeout_ms = expiry - now
+        } else {
+          apiUpdates.dangerously_skip_permissions_timeout_ms = undefined
+        }
+      }
+
+      await daemonClient.updateSessionSettings(sessionId, apiUpdates)
+
+      // Remove from pending on success
+      set(state => {
+        const pending = new Map(state.pendingUpdates)
+        pending.delete(sessionId)
+        return { pendingUpdates: pending }
+      })
+    } catch (error) {
+      logger.error('Failed to update session settings:', error)
+
+      // Revert optimistic update on failure
+      set(state => ({
+        sessions: state.sessions.map(session => {
+          if (session.id === sessionId) {
+            // Revert to original session state
+            return originalSession
+          }
+          return session
+        }),
+        pendingUpdates: (() => {
+          const pending = new Map(state.pendingUpdates)
+          pending.delete(sessionId)
+          return pending
+        })(),
+        focusedSession: state.focusedSession?.id === sessionId ? originalSession : state.focusedSession,
+        activeSessionDetail:
+          state.activeSessionDetail?.session.id === sessionId
+            ? {
+                ...state.activeSessionDetail,
+                session: originalSession,
+              }
+            : state.activeSessionDetail,
+      }))
+
+      throw error // Re-throw for caller to handle
+    }
+  },
   updateSessionStatus: (sessionId: string, status: string) =>
     set(state => ({
       sessions: state.sessions.map(session =>
@@ -103,15 +212,56 @@ export const useStore = create<StoreState>((set, get) => ({
           : state.activeSessionDetail,
     })),
   refreshSessions: async () => {
+    // Prevent concurrent refreshes
+    const state = get()
+    if (state.isRefreshing) {
+      logger.debug('Refresh already in progress, skipping')
+      return
+    }
+
+    set({ isRefreshing: true })
+
     try {
-      const { viewMode } = get()
+      const { viewMode, pendingUpdates } = get()
       const response = await daemonClient.getSessionLeaves({
         include_archived: viewMode === ViewMode.Archived,
         archived_only: viewMode === ViewMode.Archived,
       })
-      set({ sessions: response.sessions })
+
+      // Server is source of truth, but preserve unresolved pending updates
+      const updatedSessions = response.sessions.map(serverSession => {
+        const pending = pendingUpdates.get(serverSession.id)
+
+        // Only preserve pending updates that are recent (< 2 seconds old)
+        if (pending && pending.timestamp > Date.now() - 2000) {
+          logger.debug(`Preserving pending updates for session ${serverSession.id}`)
+          return validateSessionState({
+            ...serverSession,
+            ...pending.updates,
+          })
+        }
+
+        // Otherwise, use server data as-is (with validation)
+        return validateSessionState(serverSession)
+      })
+
+      // Clean up old pending updates
+      const cleanedPending = new Map<string, PendingUpdate>()
+      pendingUpdates.forEach((update, sessionId) => {
+        // Keep updates less than 2 seconds old
+        if (update.timestamp > Date.now() - 2000) {
+          cleanedPending.set(sessionId, update)
+        }
+      })
+
+      set({
+        sessions: updatedSessions,
+        pendingUpdates: cleanedPending,
+        isRefreshing: false,
+      })
     } catch (error) {
-      console.error('Failed to refresh sessions:', error)
+      logger.error('Failed to refresh sessions:', error)
+      set({ isRefreshing: false })
     }
   },
   refreshActiveSessionConversation: async (sessionId: string) => {
@@ -124,7 +274,7 @@ export const useStore = create<StoreState>((set, get) => ({
         const conversationResponse = await daemonClient.getConversation({ session_id: sessionId })
         updateActiveSessionConversation(conversationResponse)
       } catch (error) {
-        console.error('Failed to refresh active session conversation:', error)
+        logger.error('Failed to refresh active session conversation:', error)
       }
     }
   },
@@ -164,7 +314,7 @@ export const useStore = create<StoreState>((set, get) => ({
       await daemonClient.interruptSession(sessionId)
       // The session status will be updated via the subscription
     } catch (error) {
-      console.error('Failed to interrupt session:', error)
+      logger.error('Failed to interrupt session:', error)
     }
   },
   archiveSession: async (sessionId: string, archived: boolean) => {
@@ -175,7 +325,7 @@ export const useStore = create<StoreState>((set, get) => ({
       // Refresh sessions to update the list based on current view mode
       await get().refreshSessions()
     } catch (error) {
-      console.error('Failed to archive session:', error)
+      logger.error('Failed to archive session:', error)
       throw error
     }
   },
@@ -183,14 +333,41 @@ export const useStore = create<StoreState>((set, get) => ({
     try {
       const response = await daemonClient.bulkArchiveSessions({ session_ids: sessionIds, archived })
       if (!response.success) {
-        console.error('Failed to archive sessions')
+        logger.error('Failed to archive sessions')
       }
       // Refresh sessions to update the list
       await get().refreshSessions()
       // Clear selection after bulk operation
       get().clearSelection()
     } catch (error) {
-      console.error('Failed to bulk archive sessions:', error)
+      logger.error('Failed to bulk archive sessions:', error)
+      throw error
+    }
+  },
+  bulkSetAutoAcceptEdits: async (sessionIds: string[], autoAcceptEdits: boolean) => {
+    try {
+      const results = await Promise.allSettled(
+        sessionIds.map(sessionId =>
+          daemonClient.updateSessionSettings(sessionId, { auto_accept_edits: autoAcceptEdits }),
+        ),
+      )
+
+      // Check if any failed
+      const failedCount = results.filter(r => r.status === 'rejected').length
+      if (failedCount > 0) {
+        console.error(`Failed to update ${failedCount} sessions`)
+        throw new Error(`Failed to update ${failedCount} sessions`)
+      }
+
+      // Update local state for all successful sessions
+      sessionIds.forEach(sessionId => {
+        get().updateSession(sessionId, { autoAcceptEdits })
+      })
+
+      // Clear selection after bulk operation
+      get().clearSelection()
+    } catch (error) {
+      console.error('Failed to bulk update auto-accept settings:', error)
       throw error
     }
   },
@@ -216,7 +393,7 @@ export const useStore = create<StoreState>((set, get) => ({
       const anchorIndex = sessions.findIndex(s => s.id === anchorId)
       const targetIndex = sessions.findIndex(s => s.id === targetId)
 
-      console.log('[Store] selectRange (REPLACE):', {
+      logger.log('[Store] selectRange (REPLACE):', {
         anchorId,
         targetId,
         anchorIndex,
@@ -238,7 +415,7 @@ export const useStore = create<StoreState>((set, get) => ({
         newSelection.add(sessions[i].id)
       }
 
-      console.log('[Store] selectRange result:', {
+      logger.log('[Store] selectRange result:', {
         newSelectionSize: newSelection.size,
         newSelectionIds: Array.from(newSelection),
       })
@@ -251,7 +428,7 @@ export const useStore = create<StoreState>((set, get) => ({
       const anchorIndex = sessions.findIndex(s => s.id === anchorId)
       const targetIndex = sessions.findIndex(s => s.id === targetId)
 
-      console.log('[Store] addRangeToSelection (ADD):', {
+      logger.log('[Store] addRangeToSelection (ADD):', {
         anchorId,
         targetId,
         anchorIndex,
@@ -276,7 +453,7 @@ export const useStore = create<StoreState>((set, get) => ({
         newSelection.add(sessions[i].id)
       }
 
-      console.log('[Store] addRangeToSelection result:', {
+      logger.log('[Store] addRangeToSelection result:', {
         newSelectionSize: newSelection.size,
         newSelectionIds: Array.from(newSelection),
       })
@@ -289,7 +466,7 @@ export const useStore = create<StoreState>((set, get) => ({
       const anchorIndex = sessions.findIndex(s => s.id === anchorId)
       const targetIndex = sessions.findIndex(s => s.id === targetId)
 
-      console.log('[Store] updateCurrentRange:', {
+      logger.log('[Store] updateCurrentRange:', {
         anchorId,
         targetId,
         anchorIndex,
@@ -344,7 +521,7 @@ export const useStore = create<StoreState>((set, get) => ({
         newSelection.add(sessions[i].id)
       }
 
-      console.log('[Store] updateCurrentRange result:', {
+      logger.log('[Store] updateCurrentRange result:', {
         newSelectionSize: newSelection.size,
         newSelectionIds: Array.from(newSelection),
         currentRange: `${rangeStart}-${rangeEnd}`,
@@ -371,7 +548,7 @@ export const useStore = create<StoreState>((set, get) => ({
     // Check if we're starting within an existing selection
     const isStartingInSelection = selectedSessions.has(sessionId)
 
-    console.log(
+    logger.log(
       `[bulkSelect] sessionId: ${sessionId}, direction: ${direction}, isStartingInSelection: ${isStartingInSelection}`,
     )
 
@@ -418,7 +595,7 @@ export const useStore = create<StoreState>((set, get) => ({
 
       const anchorId = sessions[anchorIndex].id
 
-      console.log(
+      logger.log(
         `[bulkSelect] Starting in selection, found range: ${rangeStart}-${rangeEnd}, anchor at ${anchorIndex}`,
       )
 
@@ -426,11 +603,11 @@ export const useStore = create<StoreState>((set, get) => ({
       state.updateCurrentRange(anchorId, targetSession.id)
     } else if (selectedSessions.size > 0 && !isStartingInSelection) {
       // We have selections but starting fresh - add to existing
-      console.log('[bulkSelect] Adding new range to existing selections')
+      logger.log('[bulkSelect] Adding new range to existing selections')
       state.addRangeToSelection(sessionId, targetSession.id)
     } else {
       // No selections or replacing - create new range
-      console.log('[bulkSelect] Creating new selection range')
+      logger.log('[bulkSelect] Creating new selection range')
       state.selectRange(sessionId, targetSession.id)
     }
 
@@ -465,6 +642,21 @@ export const useStore = create<StoreState>((set, get) => ({
       return { notifiedItems: newSet }
     }),
 
+  recentResolvedApprovalsCache: new Set<string>(),
+  addRecentResolvedApprovalToCache: (approvalId: string) =>
+    set(state => {
+      const newSet = new Set(state.recentResolvedApprovalsCache)
+      newSet.add(approvalId)
+
+      // Limit to 50 items by converting to array, slicing, and converting back to Set
+      const limitedSet = new Set(Array.from(newSet).slice(-50))
+
+      return { recentResolvedApprovalsCache: limitedSet }
+    }),
+  isRecentResolvedApproval: (approvalId: string) => {
+    return get().recentResolvedApprovalsCache.has(approvalId)
+  },
+
   // Navigation tracking
   recentNavigations: new Map(),
   trackNavigationFrom: (sessionId: string) =>
@@ -472,7 +664,7 @@ export const useStore = create<StoreState>((set, get) => ({
       const newMap = new Map(state.recentNavigations)
       const timestamp = Date.now()
       newMap.set(sessionId, timestamp)
-      console.log(
+      logger.log(
         `Tracking navigation from session ${sessionId} at ${new Date(timestamp).toISOString()}`,
       )
 
@@ -483,7 +675,7 @@ export const useStore = create<StoreState>((set, get) => ({
           const updatedMap = new Map(currentMap)
           updatedMap.delete(sessionId)
           set({ recentNavigations: updatedMap })
-          console.log(`Removed navigation tracking for session ${sessionId} after timeout`)
+          logger.log(`Removed navigation tracking for session ${sessionId} after timeout`)
         }
       }, 5000)
       return { recentNavigations: newMap }
@@ -493,13 +685,13 @@ export const useStore = create<StoreState>((set, get) => ({
     const now = Date.now()
 
     if (!timestamp) {
-      console.log(`No navigation tracking found for session ${sessionId}`)
+      logger.log(`No navigation tracking found for session ${sessionId}`)
       return false
     }
 
     const elapsed = now - timestamp
     const wasRecent = elapsed < withinMs
-    console.log(
+    logger.log(
       `Checking navigation for session ${sessionId}: elapsed ${elapsed}ms, within ${withinMs}ms window: ${wasRecent}`,
     )
     return wasRecent
@@ -554,7 +746,7 @@ export const useStore = create<StoreState>((set, get) => ({
       })
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to fetch session detail'
-      console.error('Failed to fetch session detail:', error)
+      logger.error('Failed to fetch session detail:', error)
 
       set({
         activeSessionDetail: {
@@ -571,3 +763,43 @@ export const useStore = create<StoreState>((set, get) => ({
   isHotkeyPanelOpen: false,
   setHotkeyPanelOpen: (open: boolean) => set({ isHotkeyPanelOpen: open }),
 }))
+
+// Helper function to validate and clean up session state
+export const validateSessionState = (session: Session): Session => {
+  // Check if dangerous skip permissions should be disabled due to expiry
+  if (session.dangerouslySkipPermissions && session.dangerouslySkipPermissionsExpiresAt) {
+    const now = Date.now()
+    const expiry = new Date(session.dangerouslySkipPermissionsExpiresAt).getTime()
+
+    if (expiry <= now) {
+      // Expired - disable dangerous skip permissions
+      logger.debug(`Session ${session.id} dangerous skip permissions expired, cleaning up`)
+      return {
+        ...session,
+        dangerouslySkipPermissions: false,
+        dangerouslySkipPermissionsExpiresAt: undefined,
+      }
+    }
+  }
+
+  return session
+}
+
+// Run validation periodically to clean up expired states
+if (typeof window !== 'undefined') {
+  setInterval(() => {
+    const state = useStore.getState()
+    const validatedSessions = state.sessions.map(validateSessionState)
+
+    // Only update if something changed
+    const hasChanges = validatedSessions.some(
+      (validated, index) =>
+        validated.dangerouslySkipPermissions !== state.sessions[index].dangerouslySkipPermissions,
+    )
+
+    if (hasChanges) {
+      logger.debug('Cleaning up expired session states')
+      useStore.setState({ sessions: validatedSessions })
+    }
+  }, 5000) // Check every 5 seconds
+}

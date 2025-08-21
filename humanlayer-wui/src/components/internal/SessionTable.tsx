@@ -1,9 +1,9 @@
-import { Session } from '@/lib/daemon/types'
+import { Session, SessionStatus } from '@/lib/daemon/types'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 import { useHotkeys, useHotkeysContext } from 'react-hotkeys-hook'
 import { useEffect, useRef, useState } from 'react'
-import { CircleOff, CheckSquare, Square, FileText, Pencil } from 'lucide-react'
+import { CircleOff, CheckSquare, Square, FileText, Pencil, ShieldOff } from 'lucide-react'
 import { getStatusTextClass } from '@/utils/component-utils'
 import { formatTimestamp, formatAbsoluteTimestamp } from '@/utils/formatting'
 import { highlightMatches } from '@/lib/fuzzy-search'
@@ -17,6 +17,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { daemonClient } from '@/lib/daemon/client'
 import { renderSessionStatus } from '@/utils/sessionStatus'
+import { logger } from '@/lib/logging'
 
 interface SessionTableProps {
   sessions: Session[]
@@ -240,18 +241,32 @@ export default function SessionTable({
     async () => {
       try {
         // Find the current session from the sessions array to get the latest archived status
-        const currentSession = sessions.find(s => s.id === focusedSession?.id)
-        if (!currentSession) return
-
-        console.log('Archive hotkey pressed:', {
-          sessionId: currentSession.id,
-          archived: currentSession.archived,
-          willArchive: !currentSession.archived,
+        logger.log('Archive hotkey pressed:', {
+          currentSession: sessions.find(s => s.id === focusedSession?.id),
+          selectedSessions,
         })
 
         // If there are selected sessions, bulk archive them
         if (selectedSessions.size > 0) {
-          const isArchiving = !currentSession.archived
+          logger.log('selectedSessions', selectedSessions)
+
+          // Convert selectedSessions Set to array and get the sessions
+          const selectedSessionObjects = Array.from(selectedSessions)
+            .map(sessionId => sessions.find(s => s.id === sessionId))
+            .filter(Boolean)
+
+          // Check if all selected sessions have the same archived status
+          const archivedStatuses = selectedSessionObjects.map(s => s?.archived)
+          const allSameStatus = archivedStatuses.every(status => status === archivedStatuses[0])
+
+          if (!allSameStatus) {
+            toast.warning(
+              'Cannot bulk change archived status for archived and unarchived sessions at the same time (deselect one or the other)',
+            )
+            return
+          }
+
+          const isArchiving = !archivedStatuses[0] // If all are unarchived, we're archiving
 
           // Find next session to focus after bulk archive
           const nonSelectedSessions = sessions.filter(s => !selectedSessions.has(s.id))
@@ -274,6 +289,11 @@ export default function SessionTable({
           )
         } else {
           // Single session archive
+          const currentSession = sessions.find(s => s.id === focusedSession?.id)
+          if (!currentSession) {
+            logger.log('No current session found')
+            return
+          }
           const isArchiving = !currentSession.archived
 
           // Find the index of current session and determine next focus
@@ -340,6 +360,23 @@ export default function SessionTable({
     [focusedSession, toggleSessionSelection],
   )
 
+  // Rename session hotkey
+  useHotkeys(
+    'shift+r',
+    () => {
+      if (focusedSession) {
+        startEdit(focusedSession.id, focusedSession.title || '', focusedSession.summary || '')
+      }
+    },
+    {
+      scopes: SessionTableHotkeysScope,
+      enabled: !isSessionLauncherOpen && focusedSession !== null && editingSessionId === null,
+      preventDefault: true,
+      enableOnFormTags: false,
+    },
+    [focusedSession, startEdit, editingSessionId],
+  )
+
   return (
     <>
       {sessions.length > 0 ? (
@@ -403,16 +440,41 @@ export default function SessionTable({
                     </div>
                   </TableCell>
                   <TableCell className={getStatusTextClass(session.status)}>
+                    {session.status !== SessionStatus.Failed && (
+                      <>
+                        {session.dangerouslySkipPermissions ? (
+                          <>
+                            <ShieldOff
+                              className="inline-block w-4 h-4 text-[var(--terminal-error)] animate-pulse-error align-text-bottom"
+                              strokeWidth={3}
+                            />{' '}
+                          </>
+                        ) : session.autoAcceptEdits ? (
+                          <span className="align-text-top text-[var(--terminal-warning)] text-base leading-none animate-pulse-warning">
+                            {'⏵⏵ '}
+                          </span>
+                        ) : null}
+                      </>
+                    )}
                     {renderSessionStatus(session)}
                   </TableCell>
                   <TableCell className="max-w-[200px]">
                     <Tooltip>
                       <TooltipTrigger asChild>
+                        {/* Sets direction RTL with ellipsis at the start, and uses an inner <bdo> LTR override to keep the entire path (slashes/tilde) in logical order*/}
                         <span
                           className="block truncate cursor-help text-sm"
-                          style={{ textAlign: 'left' }}
+                          style={{
+                            direction: 'rtl',
+                            textAlign: 'left',
+                            overflow: 'hidden',
+                            whiteSpace: 'nowrap',
+                            textOverflow: 'ellipsis',
+                          }}
                         >
-                          {session.workingDir || '-'}
+                          <bdo dir="ltr" style={{ unicodeBidi: 'bidi-override' }}>
+                            {session.workingDir || '-'}
+                          </bdo>
                         </span>
                       </TooltipTrigger>
                       <TooltipContent className="max-w-[600px]">

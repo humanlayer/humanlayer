@@ -4,22 +4,19 @@
 
 </div>
 
-**HumanLayer** is an API and SDK that enables AI Agents to contact humans for help, feedback, and approvals.
-
-Bring your LLM (OpenAI, Llama, Claude, etc) and Framework (LangChain, CrewAI, etc) and start giving your AI agents safe access to the world.
+🚧 **HumanLayer** is undergoing some changes...stay tuned! 🚧
 
 <div align="center">
 
 <h3>
 
-[Homepage](https://www.humanlayer.dev/) | [Get Started](https://humanlayer.dev/docs/quickstart-python) | [Discord](https://humanlayer.dev/discord)
+[HumanLayer Code](https://humanlayer.dev/code) | [Discord](https://humanlayer.dev/discord) | [Release](https://github.com/humanlayer/humanlayer/releases)
+
 
 </h3>
 
 [![GitHub Repo stars](https://img.shields.io/github/stars/humanlayer/humanlayer)](https://github.com/humanlayer/humanlayer)
 [![License: Apache-2](https://img.shields.io/badge/License-Apache-green.svg)](https://opensource.org/licenses/Apache-2)
-[![PyPi Version](https://img.shields.io/pypi/v/humanlayer?color=006dad)](https://pypi.org/project/humanlayer/)
-[![NPM Version](https://img.shields.io/npm/v/humanlayer?color=ea2039)](https://www.npmjs.com/package/humanlayer)
 
 <img referrerpolicy="no-referrer-when-downgrade" src="https://static.scarf.sh/a.png?x-pxid=fcfc0926-d841-47fb-b8a6-6aba3a6c3228" />
 
@@ -34,88 +31,6 @@ Bring your LLM (OpenAI, Llama, Claude, etc) and Framework (LangChain, CrewAI, et
 - [Roadmap](#roadmap)
 - [Contributing](#contributing)
 - [License](#license)
-
-## Getting Started
-
-To get started, check out [Getting Started](https://humanlayer.dev/docs/quickstart-python), watch the [Getting Started Video](https://www.loom.com/share/7c65d48d18d1421a864a1591ff37e2bf), or jump straight into one of the [Examples](./examples/):
-
-- 🦜⛓️ [LangChain](./examples/langchain/)
-- 🚣‍ [CrewAI](./examples/crewai/)
-- 🦾 [ControlFlow](./examples/controlflow/)
-- 🧠 [Raw OpenAI Client](./examples/openai_client/)
-
-<div align="center">
-<a target="_blank" href="https://youtu.be/5sbN8rh_S5Q"><img width="60%" alt="video thumbnail showing editor" src="./docs/images/video-preview.png"></a>
-</div>
-
-## Example
-
-HumanLayer supports either Python or Typescript / JS.
-
-```shell
-pip install humanlayer
-```
-
-```python
-from humanlayer import HumanLayer
-hl = HumanLayer()
-
-@hl.require_approval()
-def send_email(to: str, subject: str, body: str):
-    """Send an email to the customer"""
-    ...
-
-
-# made up function, use whatever
-# tool-calling framework you prefer
-run_llm_task(
-    prompt="""Send an email welcoming the customer to
-    the platform and encouraging them to invite a team member.""",
-    tools=[send_email],
-    llm="gpt-4o"
-)
-```
-
-<div align="center"><img style="width: 400px" alt="A screenshot of slack showing a human replying to the bot" src="https://www.humanlayer.dev/slack-conversation.png"></div>
-
-For Typescript, install with npm:
-
-```
-npm install @humanlayer/sdk
-```
-
-More python and TS examples in the [framework specific examples](./examples) or the [Getting Started Guides](https://humanlayer.dev/docs/frameworks) to get hands on.
-
-#### Human as Tool
-
-You can also use `hl.human_as_tool()` to bring a human into the loop for any reason. This can be useful for debugging, asking for advice, or just getting a human's opinion on something.
-
-```python
-# human_as_tool.py
-
-from humanlayer import HumanLayer
-hl = HumanLayer()
-contact_a_human = hl.human_as_tool()
-
-def send_email(to: str, subject: str, body: str):
-    """Send an email to the customer"""
-    ...
-
-# made up method, use whatever
-# framework you prefer
-run_llm_task(
-    prompt="""Send an email welcoming the customer to
-    the platform and encouraging them to invite a team member.
-
-    Contact a human for collaboration and feedback on your email
-    draft
-    """,
-    tools=[send_email, contact_a_human],
-    llm="gpt-4o"
-)
-```
-
-See the [examples](./examples) for more advanced human as tool examples, and workflows that combine both concepts.
 
 ## Why HumanLayer?
 
@@ -173,48 +88,6 @@ While early versions of these agents may technically be "human initiated" in tha
 
 Example use cases for these outer loop agents include [the linkedin inbox assistant](./examples/langchain/04-human_as_tool_linkedin.py) and [the customer onboarding assistant](./examples/langchain/05-approvals_and_humans_composite.py), but that's really just scratching the surface.
 
-## Key Features
-
-- **Require Human Approval for Function Calls**: the `@hl.require_approval()` decorator blocks specific function calls until a human has been consulted - upon denial, feedback will be passed to the LLM
-- **Human as Tool**: generic `hl.human_as_tool()` allows for contacting a human for answers, advice, or feedback
-- **OmniChannel Contact**: Contact humans and collect responses across Slack, Email, Discord, and more
-- **Granular Routing**: Route approvals to specific teams or individuals
-- **Bring your own LLM + Framework**: Because HumanLayer is implemented at tools layer, it supports any LLM and all major orchestration frameworks that support tool calling.
-
-## Examples
-
-You can test different real life examples of HumanLayer in the [examples folder](./examples/):
-
-- 🦜⛓️ [LangChain Math](./examples/langchain/01-math_example.py)
-- 🦜⛓️ [LangChain Human As Tool](./examples/langchain/03-human_as_tool.py)
-- 🚣‍ [CrewAI Math](./examples/crewai/crewai_math.py)
-- 🦾 [ControlFlow Math](./examples/controlflow/controlflow_math.py)
-- 🧠 [Raw OpenAI Client](./examples/openai_client/01-math_example.py)
-
-## Roadmap
-
-| Feature                                                                            | Status              |
-| ---------------------------------------------------------------------------------- | ------------------- |
-| Require Approval                                                                   | ⚙️ Beta             |
-| Human as Tool                                                                      | ⚙️ Beta             |
-| CLI Approvals                                                                      | ⚙️ Beta             |
-| CLI Human as Tool                                                                  | ⚙️ Beta             |
-| Slack Approvals                                                                    | ⚙️ Beta             |
-| Langchain Support                                                                  | ⚙️ Beta             |
-| CrewAI Support                                                                     | ⚙️ Beta             |
-| [GripTape Support](./examples/griptape)                                            | ⚗️ Alpha            |
-| [GripTape Builtin Tools Support](./examples/griptape/02-decorate-existing-tool.py) | 🗓️ Planned          |
-| Controlflow Support                                                                | ⚗️ Alpha            |
-| Custom Response options                                                            | ⚗️ Alpha            |
-| Open Protocol for BYO server                                                       | 🗓️ Planned          |
-| Composite Contact Channels                                                         | 🚧 Work in progress |
-| Async / Webhook support                                                            | 🗓️ Planned          |
-| SMS/RCS Approvals                                                                  | 🗓️ Planned          |
-| Discord Approvals                                                                  | 🗓️ Planned          |
-| Email Approvals                                                                    | ⚙️ Beta             |
-| LlamaIndex Support                                                                 | 🗓️ Planned          |
-| Haystack Support                                                                   | 🗓️ Planned          |
-
 ## Contributing
 
 The HumanLayer SDK and docs are open-source and we welcome contributions in the form of issues, documentation, pull requests, and more. See [CONTRIBUTING.md](./CONTRIBUTING.md) for more details.
@@ -223,11 +96,6 @@ The HumanLayer SDK and docs are open-source and we welcome contributions in the 
 
 [![Star History Chart](https://api.star-history.com/svg?repos=humanlayer/humanlayer&type=Date)](https://star-history.com/#humanlayer/humanlayer&Date)
 
-Shouts out to [@erquhart](https://github.com/erquhart) for this one
-
-<div align="center">
-<img width="360" src="https://github.com/user-attachments/assets/849a7149-daff-43a7-8ca9-427ccd0ae77c" />
-</div>
 
 ## Development Conventions
 
@@ -244,4 +112,4 @@ We use a priority-based TODO annotation system throughout the codebase:
 
 ## License
 
-The HumanLayer SDK in this repo is licensed under the Apache 2 License.
+The HumanLayer SDK and CodeLayer sources in this repo are licensed under the Apache 2 License.

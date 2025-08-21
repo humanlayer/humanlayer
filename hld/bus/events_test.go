@@ -15,12 +15,15 @@ func TestEventBus_Subscribe(t *testing.T) {
 	sub := eb.Subscribe(ctx, EventFilter{})
 	if sub == nil {
 		t.Fatal("expected subscriber, got nil")
+		return // this return exists purely to satisfy the linter
 	}
 	if sub.ID == "" {
 		t.Error("expected subscriber ID, got empty string")
+		return // this return exists purely to satisfy the linter
 	}
 	if sub.Channel == nil {
 		t.Error("expected channel, got nil")
+		return // this return exists purely to satisfy the linter
 	}
 
 	// Verify subscriber count

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { daemonClient } from '@/lib/daemon'
 import { Approval } from '@/lib/daemon/types'
 import { formatError } from '@/utils/errors'
+import { logger } from '@/lib/logging'
 
 interface UseApprovalsReturn {
   approvals: Approval[]
@@ -94,6 +95,16 @@ export function useApprovalsWithSubscription(sessionId?: string): UseApprovalsRe
           onEvent: event => {
             if (!isSubscribed) return
 
+            // Phase 7: Debug logging to verify tool_use_id flows through
+            if (event.type === 'new_approval' || event.type === 'approval_resolved') {
+              console.debug('Approval event with tool_use_id:', {
+                type: event.type,
+                approval_id: event.data?.approval_id,
+                tool_use_id: event.data?.tool_use_id,
+                data: event.data,
+              })
+            }
+
             // Handle different event types
             switch (event.type) {
               case 'new_approval':
@@ -109,7 +120,7 @@ export function useApprovalsWithSubscription(sessionId?: string): UseApprovalsRe
         })
         unsubscribe = handle.unsubscribe
       } catch (err) {
-        console.error('Failed to subscribe to events:', err)
+        logger.error('Failed to subscribe to events:', err)
         // Fall back to polling on subscription failure
         const interval = setInterval(() => {
           if (isSubscribed) {

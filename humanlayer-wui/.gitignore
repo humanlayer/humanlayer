@@ -25,3 +25,7 @@ dist-ssr
 
 # Generated Tauri config for local development
 src-tauri/tauri.conf.local.json
+
+# Bundled binaries (created during build)
+src-tauri/bin/
+!src-tauri/bin/.gitkeep

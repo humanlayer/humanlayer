@@ -24,6 +24,7 @@ const hotkeyData = [
   { category: 'Global', key: 'C', description: 'Create new session' },
   { category: 'Global', key: 'G', description: 'Navigation prefix (G+S for sessions)' },
   { category: 'Global', key: 'Ctrl+T', description: 'Toggle theme selector' },
+  { category: 'Global', key: '⌘+Enter', description: 'Submit text input' },
 
   // Session List
   { category: 'Session List', key: 'J', description: 'Move down' },
@@ -36,6 +37,7 @@ const hotkeyData = [
   { category: 'Session List', key: 'Shift+K', description: 'Select upward' },
   { category: 'Session List', key: 'Enter', description: 'Open session' },
   { category: 'Session List', key: 'E', description: 'Archive/unarchive' },
+  { category: 'Session List', key: 'Shift+R', description: 'Rename session' },
   { category: 'Session List', key: 'Tab', description: 'Toggle normal/archived view' },
   { category: 'Session List', key: 'Escape', description: 'Exit archived view' },
 
@@ -49,12 +51,14 @@ const hotkeyData = [
   { category: 'Session Detail', key: 'A', description: 'Approve' },
   { category: 'Session Detail', key: 'D', description: 'Deny' },
   { category: 'Session Detail', key: 'E', description: 'Archive session' },
+  { category: 'Session Detail', key: 'Shift+R', description: 'Rename session' },
   { category: 'Session Detail', key: 'Ctrl+X', description: 'Interrupt session' },
   { category: 'Session Detail', key: 'P', description: 'Go to parent session' },
   { category: 'Session Detail', key: '⌘+Y', description: 'Toggle fork view' },
   { category: 'Session Detail', key: 'Shift+Tab', description: 'Toggle auto-accept edits' },
   { category: 'Session Detail', key: 'Enter', description: 'Focus response input' },
   { category: 'Session Detail', key: '⌘+Enter', description: 'Submit response' },
+  { category: 'Session Detail', key: '⌥+Y', description: 'Toggle bypass permissions' },
 ]
 
 // Group hotkeys by category
@@ -68,6 +72,20 @@ const groupedHotkeys = hotkeyData.reduce(
   },
   {} as Record<string, typeof hotkeyData>,
 )
+
+export const KeyboardShortcut = ({ keyString }: { keyString: string }) => {
+  return (
+    <kbd
+      className={cn(
+        'pointer-events-none inline-flex h-5 select-none items-center gap-1',
+        'rounded border bg-muted px-1.5 font-mono text-sm font-medium',
+        'text-muted-foreground',
+      )}
+    >
+      {keyString}
+    </kbd>
+  )
+}
 
 export function HotkeyPanel({ open, onOpenChange }: HotkeyPanelProps) {
   return (
@@ -113,15 +131,7 @@ export function HotkeyPanel({ open, onOpenChange }: HotkeyPanelProps) {
                         className="flex items-center justify-between"
                       >
                         <span className="text-sm">{hotkey.description}</span>
-                        <kbd
-                          className={cn(
-                            'pointer-events-none inline-flex h-5 select-none items-center gap-1',
-                            'rounded border bg-muted px-1.5 font-mono text-[10px] font-medium',
-                            'text-muted-foreground',
-                          )}
-                        >
-                          {hotkey.key}
-                        </kbd>
+                        <KeyboardShortcut keyString={hotkey.key} />
                       </CommandItem>
                     ))}
                   </CommandGroup>

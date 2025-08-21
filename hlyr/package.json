@@ -12,10 +12,10 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsup src/index.ts --format esm --target es2020 --clean && npm run build-go",
+    "build": "tsup && npm run build-go",
     "build-go": "npm run build-daemon",
     "build-daemon": "cd ../hld && go build -o hld ./cmd/hld && mkdir -p ../hlyr/dist/bin && cp hld ../hlyr/dist/bin/",
-    "build:watch": "tsup src/index.ts --format esm --target es2020 --watch",
+    "build:watch": "tsup --watch",
     "dev": "npm run build && ./dist/index.js",
     "lint": "eslint . --ext .ts",
     "format": "prettier --write .",
