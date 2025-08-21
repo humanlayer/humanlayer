@@ -4,6 +4,8 @@ import {
   RecentPath as SDKRecentPath,
   Approval,
   ConversationEvent,
+  UserSettingsResponse,
+  UpdateUserSettingsRequest,
 } from '@humanlayer/hld-sdk'
 import { getDaemonUrl, getDefaultHeaders } from './http-config'
 import { logger } from '@/lib/logging'
@@ -537,6 +539,22 @@ export class HTTPDaemonClient implements IDaemonClient {
       throw new Error('Failed to fetch config status')
     }
     return response.json()
+  }
+
+  async getUserSettings(): Promise<UserSettingsResponse> {
+    await this.ensureConnected()
+    if (!this.client) throw new Error('SDK client not initialized')
+
+    const response = await this.client.getUserSettings()
+    return response
+  }
+
+  async updateUserSettings(settings: UpdateUserSettingsRequest): Promise<UserSettingsResponse> {
+    await this.ensureConnected()
+    if (!this.client) throw new Error('SDK client not initialized')
+
+    const response = await this.client.updateUserSettings(settings)
+    return response
   }
 
   private async ensureConnected(): Promise<void> {

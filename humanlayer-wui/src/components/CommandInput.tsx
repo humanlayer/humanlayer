@@ -10,6 +10,7 @@ import { hasContent, isEmptyOrWhitespace } from '@/utils/validation'
 import { Eye, EyeOff, Pencil, CheckCircle, AlertCircle } from 'lucide-react'
 import { daemonClient } from '@/lib/daemon'
 import { ConfigStatus } from '@/lib/daemon/types'
+import { useStore } from '@/AppStore'
 
 interface SessionConfig {
   title?: string
@@ -46,6 +47,7 @@ export default function CommandInput({
   const [showApiKeyInput, setShowApiKeyInput] = useState(false)
   const [configStatus, setConfigStatus] = useState<ConfigStatus | null>(null)
   const [isCheckingConfig, setIsCheckingConfig] = useState(false)
+  const userSettings = useStore(state => state.userSettings)
 
   useEffect(() => {
     // Focus on directory field if it has the default value, otherwise focus on prompt
@@ -137,61 +139,80 @@ export default function CommandInput({
         )}
       </div>
 
-      {/* Provider and Model Selection */}
-      <div className="grid grid-cols-2 gap-4">
-        {/* Provider Selection */}
+      {/* Provider and Model Selection - Only show if advanced providers is enabled */}
+      {userSettings?.advancedProviders ? (
+        <div className="grid grid-cols-2 gap-4">
+          {/* Provider Selection */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Provider</label>
+            <Select
+              value={config.provider || 'anthropic'}
+              onValueChange={value => {
+                updateConfig({
+                  provider: value as 'anthropic' | 'openrouter',
+                  model: undefined, // Clear model when provider changes
+                  // Keep the API key persistent across provider changes
+                })
+              }}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select provider" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="anthropic">Anthropic</SelectItem>
+                <SelectItem value="openrouter">OpenRouter</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Model Selection */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Model</label>
+
+            {config.provider === 'openrouter' ? (
+              // Text input for OpenRouter models
+              <Input
+                type="text"
+                value={config.model || ''}
+                onChange={e => updateConfig({ model: e.target.value })}
+                placeholder="e.g., openai/gpt-oss-120b"
+                disabled={isLoading}
+              />
+            ) : (
+              // Dropdown for Anthropic models
+              <Select
+                value={config.model || ''}
+                onValueChange={value => updateConfig({ model: value || undefined })}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="System Default" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="sonnet">Sonnet</SelectItem>
+                  <SelectItem value="opus">Opus</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+        </div>
+      ) : (
+        // When advanced providers is disabled, just show model selection for Anthropic
         <div className="space-y-2">
-          <label className="text-sm font-medium text-foreground">Provider</label>
+          <label className="text-sm font-medium text-foreground">Model</label>
           <Select
-            value={config.provider || 'anthropic'}
-            onValueChange={value => {
-              updateConfig({
-                provider: value as 'anthropic' | 'openrouter',
-                model: undefined, // Clear model when provider changes
-                // Keep the API key persistent across provider changes
-              })
-            }}
+            value={config.model || ''}
+            onValueChange={value => updateConfig({ model: value || undefined })}
           >
             <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select provider" />
+              <SelectValue placeholder="System Default" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="anthropic">Anthropic</SelectItem>
-              <SelectItem value="openrouter">OpenRouter</SelectItem>
+              <SelectItem value="sonnet">Sonnet</SelectItem>
+              <SelectItem value="opus">Opus</SelectItem>
             </SelectContent>
           </Select>
         </div>
-
-        {/* Model Selection */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-foreground">Model</label>
-
-          {config.provider === 'openrouter' ? (
-            // Text input for OpenRouter models
-            <Input
-              type="text"
-              value={config.model || ''}
-              onChange={e => updateConfig({ model: e.target.value })}
-              placeholder="e.g., openai/gpt-oss-120b"
-              disabled={isLoading}
-            />
-          ) : (
-            // Dropdown for Anthropic models
-            <Select
-              value={config.model || ''}
-              onValueChange={value => updateConfig({ model: value || undefined })}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="System Default" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="sonnet">Sonnet</SelectItem>
-                <SelectItem value="opus">Opus</SelectItem>
-              </SelectContent>
-            </Select>
-          )}
-        </div>
-      </div>
+      )}
 
       {/* OpenRouter API Key field - only shown when OpenRouter is selected */}
       {config.provider === 'openrouter' && (

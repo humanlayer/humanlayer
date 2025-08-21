@@ -3,6 +3,7 @@ import {
     SessionsApi,
     ApprovalsApi,
     SystemApi,
+    SettingsApi,
     CreateSessionRequest,
     Session,
     Approval,
@@ -10,7 +11,9 @@ import {
     CreateSessionResponseData,
     EventFromJSON,
     RecentPath,
-    ListSessionsRequest
+    ListSessionsRequest,
+    UserSettingsResponse,
+    UpdateUserSettingsRequest
 } from './generated';
 
 export interface HLDClientOptions {
@@ -35,6 +38,7 @@ interface EventSourceLike {
 export class HLDClient {
     private sessionsApi: SessionsApi;
     private approvalsApi: ApprovalsApi;
+    private settingsApi: SettingsApi;
     private baseUrl: string;
     private headers?: Record<string, string>;
     private sseConnections: Map<string, EventSourceLike> = new Map();
@@ -50,6 +54,7 @@ export class HLDClient {
 
         this.sessionsApi = new SessionsApi(config);
         this.approvalsApi = new ApprovalsApi(config);
+        this.settingsApi = new SettingsApi(config);
     }
 
     // Session Management
@@ -194,6 +199,15 @@ export class HLDClient {
         }));
         const response = await systemApi.getHealth();
         return response;
+    }
+
+    // User Settings
+    async getUserSettings(): Promise<UserSettingsResponse> {
+        return await this.settingsApi.getUserSettings();
+    }
+
+    async updateUserSettings(request: UpdateUserSettingsRequest): Promise<UserSettingsResponse> {
+        return await this.settingsApi.updateUserSettings({ updateUserSettingsRequest: request });
     }
 
     // Server-Sent Events using eventsource polyfill

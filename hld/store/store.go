@@ -53,8 +53,19 @@ type ConversationStore interface {
 	// Recent paths operations
 	GetRecentWorkingDirs(ctx context.Context, limit int) ([]RecentPath, error)
 
+	// User settings operations
+	GetUserSettings(ctx context.Context) (*UserSettings, error)
+	UpdateUserSettings(ctx context.Context, settings UserSettings) error
+
 	// Database lifecycle
 	Close() error
+}
+
+// UserSettings represents user preferences
+type UserSettings struct {
+	AdvancedProviders bool      `json:"advanced_providers"`
+	CreatedAt         time.Time `json:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"`
 }
 
 // Session represents a Claude Code session

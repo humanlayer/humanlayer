@@ -813,6 +813,44 @@ func (s *SQLiteStore) applyMigrations() error {
 		slog.Info("Migration 15 applied successfully")
 	}
 
+	// Migration 16: Add user settings table for preferences
+	if currentVersion < 16 {
+		slog.Info("Applying migration 16: Add user settings table")
+
+		_, err := s.db.Exec(`
+			CREATE TABLE IF NOT EXISTS user_settings (
+				id INTEGER PRIMARY KEY CHECK (id = 1), -- Singleton row
+				advanced_providers BOOLEAN NOT NULL DEFAULT FALSE,
+				created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+			)
+		`)
+		if err != nil {
+			return fmt.Errorf("failed to create user_settings table: %w", err)
+		}
+
+		// Insert default row
+		_, err = s.db.Exec(`
+			INSERT INTO user_settings (id, advanced_providers)
+			VALUES (1, FALSE)
+			ON CONFLICT(id) DO NOTHING
+		`)
+		if err != nil {
+			return fmt.Errorf("failed to insert default user settings: %w", err)
+		}
+
+		// Record migration
+		_, err = s.db.Exec(`
+			INSERT INTO schema_version (version, description)
+			VALUES (16, 'Add user settings table for advanced providers preference')
+		`)
+		if err != nil {
+			return fmt.Errorf("failed to record migration 16: %w", err)
+		}
+
+		slog.Info("Migration 16 applied successfully")
+	}
+
 	return nil
 }
 
@@ -1516,6 +1554,35 @@ func (s *SQLiteStore) GetRecentWorkingDirs(ctx context.Context, limit int) ([]Re
 	}
 
 	return paths, rows.Err()
+}
+
+// GetUserSettings retrieves the user settings from the database
+func (s *SQLiteStore) GetUserSettings(ctx context.Context) (*UserSettings, error) {
+	var settings UserSettings
+	err := s.db.QueryRowContext(ctx, `
+		SELECT advanced_providers, created_at, updated_at
+		FROM user_settings WHERE id = 1
+	`).Scan(&settings.AdvancedProviders, &settings.CreatedAt, &settings.UpdatedAt)
+
+	if err == sql.ErrNoRows {
+		// Return defaults if not found (for backwards compatibility)
+		return &UserSettings{
+			AdvancedProviders: false,
+			CreatedAt:         time.Now(),
+			UpdatedAt:         time.Now(),
+		}, nil
+	}
+	return &settings, err
+}
+
+// UpdateUserSettings updates the user settings in the database
+func (s *SQLiteStore) UpdateUserSettings(ctx context.Context, settings UserSettings) error {
+	_, err := s.db.ExecContext(ctx, `
+		UPDATE user_settings
+		SET advanced_providers = ?, updated_at = CURRENT_TIMESTAMP
+		WHERE id = 1
+	`, settings.AdvancedProviders)
+	return err
 }
 
 // AddConversationEvent adds a new conversation event
