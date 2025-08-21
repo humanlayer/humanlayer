@@ -315,6 +315,86 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /user-settings:
+    get:
+      operationId: getUserSettings
+      summary: Get user settings
+      description: Retrieve user preferences and settings
+      tags:
+        - Settings
+      responses:
+        '200':
+          description: User settings retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSettingsResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      operationId: updateUserSettings
+      summary: Update user settings
+      description: Update user preferences and settings
+      tags:
+        - Settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserSettingsRequest'
+      responses:
+        '200':
+          description: Settings updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSettingsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /anthropic_proxy/{session_id}/v1/messages:
+    post:
+      summary: Proxy Anthropic API requests for a session
+      operationId: proxyAnthropicRequest
+      x-manual: true
+      tags:
+        - proxy-manual
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Session ID for per-session routing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Proxied response from Anthropic
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+            text/event-stream:
+              schema:
+                type: string
+                description: SSE stream for streaming responses
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
   /approvals:
     post:
       operationId: createApproval
@@ -679,6 +759,18 @@ components:
           type: boolean
           description: Whether session is archived
           default: false
+        proxy_enabled:
+          type: boolean
+          description: Whether proxy is enabled for this session
+          default: false
+        proxy_base_url:
+          type: string
+          description: Base URL of the proxy server
+          example: https://openrouter.ai/api/v1
+        proxy_model_override:
+          type: string
+          description: Model to use with the proxy
+          example: openai/gpt-oss-120b
 
     SessionStatus:
       type: string
@@ -758,6 +850,22 @@ components:
           type: boolean
           description: Enable verbose output
           default: false
+        # Proxy configuration for OpenRouter support
+        proxy_enabled:
+          type: boolean
+          description: Enable proxy routing for this session
+          default: false
+        proxy_base_url:
+          type: string
+          description: Base URL for proxy service
+          example: "https://openrouter.ai/api/v1"
+        proxy_model_override:
+          type: string
+          description: Model identifier for proxy routing
+          example: "openai/gpt-4"
+        proxy_api_key:
+          type: string
+          description: API key for proxy authentication
 
     CreateSessionResponse:
       type: object
@@ -818,6 +926,32 @@ components:
           type: string
           description: Update session title
           example: "Updated Task Name"
+        # New fields for model configuration
+        model:
+          type: string
+          description: Model to use (opus, sonnet, or empty for default)
+          example: "sonnet"
+        model_id:
+          type: string
+          description: Full model identifier
+          example: "claude-3-5-sonnet-20241022"
+        # New fields for proxy configuration
+        proxy_enabled:
+          type: boolean
+          description: Enable proxy routing for this session
+          example: true
+        proxy_base_url:
+          type: string
+          description: Base URL for proxy service
+          example: "https://openrouter.ai/api/v1"
+        proxy_model_override:
+          type: string
+          description: Model identifier for proxy routing
+          example: "anthropic/claude-3.5-sonnet"
+        proxy_api_key:
+          type: string
+          description: API key for proxy authentication
+          example: "sk-or-..."
 
     ContinueSessionRequest:
       type: object
@@ -1088,6 +1222,38 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/RecentPath'
+
+    UserSettings:
+      type: object
+      required:
+        - advanced_providers
+        - created_at
+        - updated_at
+      properties:
+        advanced_providers:
+          type: boolean
+          description: Enable advanced provider options like OpenRouter
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    UserSettingsResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/UserSettings'
+
+    UpdateUserSettingsRequest:
+      type: object
+      properties:
+        advanced_providers:
+          type: boolean
+          description: Enable or disable advanced provider options
 
     # Approval Types
     Approval:
@@ -1383,3 +1549,5 @@ tags:
     description: Human-in-the-loop approval workflows
   - name: Events
     description: Real-time event streaming
+  - name: Proxy
+    description: Model proxy endpoints for alternative providers

@@ -53,8 +53,19 @@ type ConversationStore interface {
 	// Recent paths operations
 	GetRecentWorkingDirs(ctx context.Context, limit int) ([]RecentPath, error)
 
+	// User settings operations
+	GetUserSettings(ctx context.Context) (*UserSettings, error)
+	UpdateUserSettings(ctx context.Context, settings UserSettings) error
+
 	// Database lifecycle
 	Close() error
+}
+
+// UserSettings represents user preferences
+type UserSettings struct {
+	AdvancedProviders bool      `json:"advanced_providers"`
+	CreatedAt         time.Time `json:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"`
 }
 
 // Session represents a Claude Code session
@@ -94,6 +105,12 @@ type Session struct {
 	DangerouslySkipPermissions          bool       `db:"dangerously_skip_permissions"`
 	DangerouslySkipPermissionsExpiresAt *time.Time `db:"dangerously_skip_permissions_expires_at"`
 	Archived                            bool       // New field for session archiving
+
+	// Proxy configuration
+	ProxyEnabled       bool   `db:"proxy_enabled"`
+	ProxyBaseURL       string `db:"proxy_base_url"`
+	ProxyModelOverride string `db:"proxy_model_override"`
+	ProxyAPIKey        string `db:"proxy_api_key"`
 }
 
 // SessionUpdate contains fields that can be updated
@@ -120,6 +137,11 @@ type SessionUpdate struct {
 	Model                               *string
 	ModelID                             *string // Full model identifier
 	Archived                            *bool   // New field for updating archived status
+	// New proxy fields
+	ProxyEnabled       *bool   `db:"proxy_enabled"`
+	ProxyBaseURL       *string `db:"proxy_base_url"`
+	ProxyModelOverride *string `db:"proxy_model_override"`
+	ProxyAPIKey        *string `db:"proxy_api_key"`
 }
 
 // ConversationEvent represents a single event in a conversation
@@ -253,11 +275,11 @@ func NewSessionFromConfig(id, runID string, config claudecode.SessionConfig) *Se
 	allowedToolsJSON, _ := json.Marshal(config.AllowedTools)
 	disallowedToolsJSON, _ := json.Marshal(config.DisallowedTools)
 
-	return &Session{
+	session := &Session{
 		ID:                   id,
 		RunID:                runID,
 		Query:                config.Query,
-		Title:                config.Title,
+		Title:                "", // TODO: config.Title field not available in claudecode.SessionConfig
 		Model:                string(config.Model),
 		WorkingDir:           config.WorkingDir,
 		MaxTurns:             config.MaxTurns,
@@ -271,4 +293,9 @@ func NewSessionFromConfig(id, runID string, config claudecode.SessionConfig) *Se
 		CreatedAt:            time.Now(),
 		LastActivityAt:       time.Now(),
 	}
+
+	// Note: Proxy configuration should be explicitly set by the user
+	// through the UI, not auto-detected from environment variables
+
+	return session
 }

@@ -8,27 +8,32 @@ import {
   getForkInputPlaceholder,
 } from '@/components/internal/SessionDetail/utils/sessionStatus'
 import { ResponseInputLocalStorageKey } from '@/components/internal/SessionDetail/hooks/useSessionActions'
+import { StatusBar } from './StatusBar'
 
 interface ResponseInputProps {
   session: Session
+  parentSessionData?: Partial<Session>
   responseInput: string
   setResponseInput: (input: string) => void
   isResponding: boolean
   handleContinueSession: () => void
   handleResponseInputKeyDown: (e: React.KeyboardEvent) => void
   isForkMode?: boolean
+  onModelChange?: () => void
 }
 
 export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>(
   (
     {
       session,
+      parentSessionData,
       responseInput,
       setResponseInput,
       isResponding,
       handleContinueSession,
       handleResponseInputKeyDown,
       isForkMode,
+      onModelChange,
     },
     ref,
   ) => {
@@ -62,7 +67,15 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
     }
     // Always show the input for all session states
     return (
-      <div className="space-y-2">
+      <div className="space-y-3">
+        {/* Status Bar */}
+        <StatusBar
+          session={session}
+          parentSessionData={parentSessionData}
+          onModelChange={onModelChange}
+        />
+
+        {/* Existing input area */}
         {isForkMode && <span className="text-sm font-medium">Fork from this message:</span>}
         <div className="flex gap-2">
           <Textarea
@@ -87,6 +100,8 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
             {getSendButtonText()}
           </Button>
         </div>
+
+        {/* Keyboard shortcuts (condensed) */}
         <p className="text-xs text-muted-foreground">
           {isResponding
             ? 'Waiting for Claude to accept the interrupt...'

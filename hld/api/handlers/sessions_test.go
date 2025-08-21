@@ -442,6 +442,50 @@ func TestSessionHandlers_UpdateSession(t *testing.T) {
 		assert.Equal(t, "Updated Task Title", *resp.Data.Title)
 	})
 
+	t.Run("update model with proxy configuration", func(t *testing.T) {
+		newModel := "opus"
+		proxyEnabled := true
+		proxyModelOverride := "openai/gpt-oss-120b"
+
+		mockManager.EXPECT().
+			UpdateSessionSettings(gomock.Any(), "sess-model", store.SessionUpdate{
+				Model:              &newModel,
+				ProxyEnabled:       &proxyEnabled,
+				ProxyModelOverride: &proxyModelOverride,
+			}).
+			Return(nil)
+
+		mockStore.EXPECT().
+			GetSession(gomock.Any(), "sess-model").
+			Return(&store.Session{
+				ID:                 "sess-model",
+				RunID:              "run-model",
+				Status:             "running",
+				Query:              "Test query",
+				CreatedAt:          time.Now().Add(-10 * time.Minute),
+				LastActivityAt:     time.Now(),
+				Model:              newModel,
+				ProxyEnabled:       proxyEnabled,
+				ProxyModelOverride: proxyModelOverride,
+			}, nil)
+
+		updateReq := api.UpdateSessionRequest{
+			Model:              &newModel,
+			ProxyEnabled:       &proxyEnabled,
+			ProxyModelOverride: &proxyModelOverride,
+		}
+		w := makeRequest(t, router, "PATCH", "/api/v1/sessions/sess-model", updateReq)
+
+		var resp struct {
+			Data api.Session `json:"data"`
+		}
+		assertJSONResponse(t, w, 200, &resp)
+
+		assert.Equal(t, "sess-model", resp.Data.Id)
+		assert.NotNil(t, resp.Data.Model)
+		assert.Equal(t, newModel, *resp.Data.Model)
+	})
+
 	t.Run("session not found", func(t *testing.T) {
 		mockManager.EXPECT().
 			UpdateSessionSettings(gomock.Any(), "sess-999", gomock.Any()).

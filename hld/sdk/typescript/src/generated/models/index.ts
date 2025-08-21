@@ -40,3 +40,6 @@ export * from './SessionStatus';
 export * from './SessionsResponse';
 export * from './SnapshotsResponse';
 export * from './UpdateSessionRequest';
+export * from './UpdateUserSettingsRequest';
+export * from './UserSettings';
+export * from './UserSettingsResponse';

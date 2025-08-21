@@ -86,6 +86,15 @@ func (m *Mapper) SessionToAPI(s store.Session) api.Session {
 	}
 	session.Archived = &s.Archived
 
+	// Proxy configuration fields
+	session.ProxyEnabled = &s.ProxyEnabled
+	if s.ProxyBaseURL != "" {
+		session.ProxyBaseUrl = &s.ProxyBaseURL
+	}
+	if s.ProxyModelOverride != "" {
+		session.ProxyModelOverride = &s.ProxyModelOverride
+	}
+
 	return session
 }
 

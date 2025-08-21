@@ -79,8 +79,8 @@ func (h *SessionHandlers) HandleLaunchSession(ctx context.Context, params json.R
 	// Build session config with daemon-level settings
 	config := session.LaunchSessionConfig{
 		SessionConfig: claudecode.SessionConfig{
-			Query:                req.Query,
-			Title:                req.Title,
+			Query: req.Query,
+			// Title:                req.Title, // TODO: Title field not available in claudecode.SessionConfig
 			MCPConfig:            req.MCPConfig,
 			PermissionPromptTool: req.PermissionPromptTool,
 			WorkingDir:           req.WorkingDir,
@@ -425,6 +425,10 @@ func (h *SessionHandlers) HandleContinueSession(ctx context.Context, params json
 		DisallowedTools:      req.DisallowedTools,
 		CustomInstructions:   req.CustomInstructions,
 		MaxTurns:             req.MaxTurns,
+		ProxyEnabled:         req.ProxyEnabled,
+		ProxyBaseURL:         req.ProxyBaseURL,
+		ProxyModelOverride:   req.ProxyModelOverride,
+		ProxyAPIKey:          req.ProxyAPIKey,
 	}
 
 	// Parse MCP config if provided as JSON string

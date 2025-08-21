@@ -189,6 +189,24 @@ export interface Session {
      * @memberof Session
      */
     archived?: boolean;
+    /**
+     * Whether proxy is enabled for this session
+     * @type {boolean}
+     * @memberof Session
+     */
+    proxyEnabled?: boolean;
+    /**
+     * Base URL of the proxy server
+     * @type {string}
+     * @memberof Session
+     */
+    proxyBaseUrl?: string;
+    /**
+     * Model to use with the proxy
+     * @type {string}
+     * @memberof Session
+     */
+    proxyModelOverride?: string;
 }
 
 
@@ -243,6 +261,9 @@ export function SessionFromJSONTyped(json: any, ignoreDiscriminator: boolean): S
         'dangerouslySkipPermissions': json['dangerously_skip_permissions'] == null ? undefined : json['dangerously_skip_permissions'],
         'dangerouslySkipPermissionsExpiresAt': json['dangerously_skip_permissions_expires_at'] == null ? undefined : (new Date(json['dangerously_skip_permissions_expires_at'])),
         'archived': json['archived'] == null ? undefined : json['archived'],
+        'proxyEnabled': json['proxy_enabled'] == null ? undefined : json['proxy_enabled'],
+        'proxyBaseUrl': json['proxy_base_url'] == null ? undefined : json['proxy_base_url'],
+        'proxyModelOverride': json['proxy_model_override'] == null ? undefined : json['proxy_model_override'],
     };
 }
 
@@ -284,5 +305,8 @@ export function SessionToJSONTyped(value?: Session | null, ignoreDiscriminator: 
         'dangerously_skip_permissions': value['dangerouslySkipPermissions'],
         'dangerously_skip_permissions_expires_at': value['dangerouslySkipPermissionsExpiresAt'] == null ? undefined : ((value['dangerouslySkipPermissionsExpiresAt']).toISOString()),
         'archived': value['archived'],
+        'proxy_enabled': value['proxyEnabled'],
+        'proxy_base_url': value['proxyBaseUrl'],
+        'proxy_model_override': value['proxyModelOverride'],
     };
 }

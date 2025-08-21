@@ -24,9 +24,13 @@ import (
 type HTTPServer struct {
 	config           *config.Config
 	router           *gin.Engine
+	sessionManager   session.SessionManager
 	sessionHandlers  *handlers.SessionHandlers
 	approvalHandlers *handlers.ApprovalHandlers
 	sseHandler       *handlers.SSEHandler
+	proxyHandler     *handlers.ProxyHandler
+	configHandler    *handlers.ConfigHandler
+	settingsHandlers *handlers.SettingsHandlers
 	approvalManager  approval.Manager
 	eventBus         bus.EventBus
 	server           *http.Server
@@ -67,13 +71,20 @@ func NewHTTPServer(
 	sessionHandlers := handlers.NewSessionHandlersWithConfig(sessionManager, conversationStore, approvalManager, cfg)
 	approvalHandlers := handlers.NewApprovalHandlers(approvalManager, sessionManager)
 	sseHandler := handlers.NewSSEHandler(eventBus)
+	proxyHandler := handlers.NewProxyHandler(sessionManager, conversationStore)
+	configHandler := handlers.NewConfigHandler()
+	settingsHandlers := handlers.NewSettingsHandlers(conversationStore)
 
 	return &HTTPServer{
 		config:           cfg,
 		router:           router,
+		sessionManager:   sessionManager,
 		sessionHandlers:  sessionHandlers,
 		approvalHandlers: approvalHandlers,
 		sseHandler:       sseHandler,
+		proxyHandler:     proxyHandler,
+		configHandler:    configHandler,
+		settingsHandlers: settingsHandlers,
 		approvalManager:  approvalManager,
 		eventBus:         eventBus,
 	}
@@ -82,7 +93,7 @@ func NewHTTPServer(
 // Start starts the HTTP server
 func (s *HTTPServer) Start(ctx context.Context) error {
 	// Create server implementation combining all handlers
-	serverImpl := handlers.NewServerImpl(s.sessionHandlers, s.approvalHandlers, s.sseHandler)
+	serverImpl := handlers.NewServerImpl(s.sessionHandlers, s.approvalHandlers, s.sseHandler, s.settingsHandlers)
 
 	// Create strict handler with middleware
 	strictHandler := api.NewStrictHandler(serverImpl, nil)
@@ -95,6 +106,12 @@ func (s *HTTPServer) Start(ctx context.Context) error {
 
 	// Register SSE endpoint directly (not part of strict interface)
 	v1.GET("/stream/events", s.sseHandler.StreamEvents)
+
+	// Register proxy endpoint directly (not part of strict interface)
+	v1.POST("/anthropic_proxy/:session_id/v1/messages", s.proxyHandler.ProxyAnthropicRequest)
+
+	// Register config status endpoint
+	v1.GET("/config/status", s.configHandler.GetConfigStatus)
 
 	// MCP endpoint (Phase 5: with event-driven approvals)
 	mcpServer := mcp.NewMCPServer(s.approvalManager, s.eventBus)
@@ -118,6 +135,9 @@ func (s *HTTPServer) Start(ctx context.Context) error {
 	if s.config.HTTPPort == 0 {
 		fmt.Printf("HTTP_PORT=%d\n", actualPort)
 	}
+
+	// Update session manager with the actual HTTP port
+	s.sessionManager.SetHTTPPort(actualPort)
 
 	slog.Info("Starting HTTP server",
 		"configured_port", s.config.HTTPPort,

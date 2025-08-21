@@ -68,6 +68,11 @@ type LaunchSessionConfig struct {
 	// Daemon-level settings that don't get passed to Claude Code
 	DangerouslySkipPermissions        bool   // Whether to auto-approve all tools
 	DangerouslySkipPermissionsTimeout *int64 // Optional timeout in milliseconds
+	// Proxy configuration
+	ProxyEnabled       bool   // Whether proxy is enabled
+	ProxyBaseURL       string // Proxy base URL
+	ProxyModelOverride string // Model to use with proxy
+	ProxyAPIKey        string // API key for proxy service
 }
 
 // ContinueSessionConfig contains the configuration for continuing a session
@@ -82,6 +87,10 @@ type ContinueSessionConfig struct {
 	DisallowedTools      []string              // Optional disallowed tools override
 	CustomInstructions   string                // Optional custom instructions
 	MaxTurns             int                   // Optional max turns override
+	ProxyEnabled         bool                  // Whether proxy is enabled
+	ProxyBaseURL         string                // Proxy base URL
+	ProxyModelOverride   string                // Model to use with proxy
+	ProxyAPIKey          string                // API key for proxy service
 }
 
 // SessionManager defines the interface for managing Claude Code sessions
@@ -106,6 +115,9 @@ type SessionManager interface {
 
 	// UpdateSessionSettings updates session settings and publishes events
 	UpdateSessionSettings(ctx context.Context, sessionID string, updates store.SessionUpdate) error
+
+	// SetHTTPPort sets the HTTP port for the proxy endpoint
+	SetHTTPPort(port int)
 }
 
 // ReadToolResult represents the JSON structure of a Read tool result

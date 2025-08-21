@@ -117,6 +117,30 @@ export interface CreateSessionRequest {
      * @memberof CreateSessionRequest
      */
     verbose?: boolean;
+    /**
+     * Enable proxy routing for this session
+     * @type {boolean}
+     * @memberof CreateSessionRequest
+     */
+    proxyEnabled?: boolean;
+    /**
+     * Base URL for proxy service
+     * @type {string}
+     * @memberof CreateSessionRequest
+     */
+    proxyBaseUrl?: string;
+    /**
+     * Model identifier for proxy routing
+     * @type {string}
+     * @memberof CreateSessionRequest
+     */
+    proxyModelOverride?: string;
+    /**
+     * API key for proxy authentication
+     * @type {string}
+     * @memberof CreateSessionRequest
+     */
+    proxyApiKey?: string;
 }
 
 
@@ -163,6 +187,10 @@ export function CreateSessionRequestFromJSONTyped(json: any, ignoreDiscriminator
         'dangerouslySkipPermissions': json['dangerously_skip_permissions'] == null ? undefined : json['dangerously_skip_permissions'],
         'dangerouslySkipPermissionsTimeout': json['dangerously_skip_permissions_timeout'] == null ? undefined : json['dangerously_skip_permissions_timeout'],
         'verbose': json['verbose'] == null ? undefined : json['verbose'],
+        'proxyEnabled': json['proxy_enabled'] == null ? undefined : json['proxy_enabled'],
+        'proxyBaseUrl': json['proxy_base_url'] == null ? undefined : json['proxy_base_url'],
+        'proxyModelOverride': json['proxy_model_override'] == null ? undefined : json['proxy_model_override'],
+        'proxyApiKey': json['proxy_api_key'] == null ? undefined : json['proxy_api_key'],
     };
 }
 
@@ -192,5 +220,9 @@ export function CreateSessionRequestToJSONTyped(value?: CreateSessionRequest | n
         'dangerously_skip_permissions': value['dangerouslySkipPermissions'],
         'dangerously_skip_permissions_timeout': value['dangerouslySkipPermissionsTimeout'],
         'verbose': value['verbose'],
+        'proxy_enabled': value['proxyEnabled'],
+        'proxy_base_url': value['proxyBaseUrl'],
+        'proxy_model_override': value['proxyModelOverride'],
+        'proxy_api_key': value['proxyApiKey'],
     };
 }

@@ -69,10 +69,7 @@ func (c *Client) buildArgs(config SessionConfig) ([]string, error) {
 	args := []string{}
 
 	// Always use print mode for SDK
-	args = append(args, "--print")
-
-	// Title is stored in our database but not passed to Claude CLI
-	// (Claude doesn't support --title flag)
+	args = append(args, "--print", config.Query)
 
 	// Session management
 	if config.SessionID != "" {
@@ -153,11 +150,6 @@ func (c *Client) buildArgs(config SessionConfig) ([]string, error) {
 		args = append(args, "--verbose")
 	}
 
-	// Query must be passed as a positional argument at the end
-	if config.Query != "" {
-		args = append(args, config.Query)
-	}
-
 	return args, nil
 }
 
@@ -170,6 +162,14 @@ func (c *Client) Launch(config SessionConfig) (*Session, error) {
 
 	log.Printf("Executing Claude command: %s %v", c.claudePath, args)
 	cmd := exec.Command(c.claudePath, args...)
+
+	// Set environment variables if specified
+	if len(config.Env) > 0 {
+		cmd.Env = os.Environ() // Start with current environment
+		for key, value := range config.Env {
+			cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", key, value))
+		}
+	}
 
 	// Set working directory if specified
 	if config.WorkingDir != "" {
@@ -344,18 +344,17 @@ func (s *Session) parseStreamingJSON(stdout, stderr io.Reader) {
 		// Store result if this is the final message
 		if event.Type == "result" {
 			s.result = &Result{
-				Type:              event.Type,
-				Subtype:           event.Subtype,
-				CostUSD:           event.CostUSD,
-				IsError:           event.IsError,
-				DurationMS:        event.DurationMS,
-				DurationAPI:       event.DurationAPI,
-				NumTurns:          event.NumTurns,
-				Result:            event.Result,
-				SessionID:         event.SessionID,
-				Usage:             event.Usage,
-				Error:             event.Error,
-				PermissionDenials: event.PermissionDenials,
+				Type:        event.Type,
+				Subtype:     event.Subtype,
+				CostUSD:     event.CostUSD,
+				IsError:     event.IsError,
+				DurationMS:  event.DurationMS,
+				DurationAPI: event.DurationAPI,
+				NumTurns:    event.NumTurns,
+				Result:      event.Result,
+				SessionID:   event.SessionID,
+				Usage:       event.Usage,
+				Error:       event.Error,
 			}
 		}
 

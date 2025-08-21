@@ -120,6 +120,10 @@ type ContinueSessionRequest struct {
 	DisallowedTools      []string `json:"disallowed_tools,omitempty"`       // Disallowed tools list
 	CustomInstructions   string   `json:"custom_instructions,omitempty"`    // Custom instructions
 	MaxTurns             int      `json:"max_turns,omitempty"`              // Max conversation turns
+	ProxyEnabled         bool     `json:"proxy_enabled,omitempty"`          // Whether proxy is enabled
+	ProxyBaseURL         string   `json:"proxy_base_url,omitempty"`         // Proxy base URL
+	ProxyModelOverride   string   `json:"proxy_model_override,omitempty"`   // Model to use with proxy
+	ProxyAPIKey          string   `json:"proxy_api_key,omitempty"`          // API key for proxy service
 }
 
 // ContinueSessionResponse is the response for continuing a session

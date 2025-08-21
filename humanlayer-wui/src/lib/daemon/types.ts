@@ -1,6 +1,5 @@
 import { SessionStatus, ApprovalStatus } from '@humanlayer/hld-sdk'
 import type {
-  CreateSessionRequest,
   CreateSessionResponseData,
   HealthResponse,
   Event,
@@ -28,7 +27,17 @@ export type SessionSnapshot = FileSnapshotInfo // Components expect snake_case
 export type HealthCheckResponse = HealthResponse
 
 // Define client-specific types not in SDK
-export interface LaunchSessionParams extends CreateSessionRequest {
+export interface LaunchSessionParams {
+  query: string
+  title?: string
+  provider?: 'anthropic' | 'openrouter'
+  model?: string
+  workingDir?: string
+  mcpConfig?: any
+  permissionPromptTool?: string
+  maxTurns?: number
+  autoAcceptEdits?: boolean
+  proxyApiKey?: string
   // Add any WUI-specific extensions if needed
 }
 
@@ -83,6 +92,13 @@ export interface DaemonClient {
       auto_accept_edits?: boolean
       dangerously_skip_permissions?: boolean
       dangerously_skip_permissions_timeout_ms?: number
+    },
+  ): Promise<{ success: boolean }>
+  updateSession(
+    sessionId: string,
+    updates: {
+      model?: string
+      title?: string
     },
   ): Promise<{ success: boolean }>
   archiveSession(
@@ -153,6 +169,7 @@ export enum ViewMode {
 export interface LaunchSessionRequest {
   query: string
   title?: string
+  provider?: 'anthropic' | 'openrouter'
   model?: string
   mcp_config?: any
   permission_prompt_tool?: string
@@ -166,6 +183,10 @@ export interface LaunchSessionRequest {
   verbose?: boolean
   dangerously_skip_permissions?: boolean
   dangerously_skip_permissions_timeout?: number
+  proxy_enabled?: boolean
+  proxy_base_url?: string
+  proxy_model_override?: string
+  proxy_api_key?: string
 }
 
 export interface LaunchSessionResponse {
@@ -389,6 +410,13 @@ export interface UpdateSessionTitleRequest {
 
 export interface UpdateSessionTitleResponse {
   success: boolean
+}
+
+// Config status types
+export interface ConfigStatus {
+  openrouter: {
+    api_key_configured: boolean
+  }
 }
 
 // Helper function to ensure SDK Session has proper defaults

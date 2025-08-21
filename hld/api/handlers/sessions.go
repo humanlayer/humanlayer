@@ -61,10 +61,27 @@ func (h *SessionHandlers) CreateSession(ctx context.Context, req api.CreateSessi
 		},
 	}
 
-	// Handle optional fields
-	if req.Body.Title != nil {
-		config.Title = *req.Body.Title
+	// Handle proxy configuration
+	// Note: OpenAPI generates ProxyBaseUrl/ProxyApiKey (following JSON conventions)
+	// but we map to ProxyBaseURL/ProxyAPIKey (following Go conventions for acronyms)
+	if req.Body.ProxyEnabled != nil && *req.Body.ProxyEnabled {
+		config.ProxyEnabled = true
+		if req.Body.ProxyBaseUrl != nil {
+			config.ProxyBaseURL = *req.Body.ProxyBaseUrl // Intentional: ProxyBaseUrl -> ProxyBaseURL
+		}
+		if req.Body.ProxyModelOverride != nil {
+			config.ProxyModelOverride = *req.Body.ProxyModelOverride
+		}
+		if req.Body.ProxyApiKey != nil {
+			config.ProxyAPIKey = *req.Body.ProxyApiKey // Intentional: ProxyApiKey -> ProxyAPIKey
+		}
 	}
+
+	// Handle optional fields
+	// TODO: Title field not available in claudecode.SessionConfig
+	// if req.Body.Title != nil {
+	// 	config.Title = *req.Body.Title
+	// }
 	if req.Body.PermissionPromptTool != nil {
 		config.PermissionPromptTool = *req.Body.PermissionPromptTool
 	}
@@ -300,6 +317,30 @@ func (h *SessionHandlers) UpdateSession(ctx context.Context, req api.UpdateSessi
 			var nilTime *time.Time
 			update.DangerouslySkipPermissionsExpiresAt = &nilTime
 		}
+	}
+
+	// Update model if specified
+	if req.Body.Model != nil {
+		update.Model = req.Body.Model
+	}
+	if req.Body.ModelId != nil {
+		update.ModelID = req.Body.ModelId
+	}
+
+	// Update proxy configuration if specified
+	// Note: OpenAPI generates ProxyBaseUrl/ProxyApiKey (following JSON conventions)
+	// but we map to ProxyBaseURL/ProxyAPIKey (following Go conventions for acronyms)
+	if req.Body.ProxyEnabled != nil {
+		update.ProxyEnabled = req.Body.ProxyEnabled
+	}
+	if req.Body.ProxyBaseUrl != nil {
+		update.ProxyBaseURL = req.Body.ProxyBaseUrl // Intentional: ProxyBaseUrl -> ProxyBaseURL
+	}
+	if req.Body.ProxyModelOverride != nil {
+		update.ProxyModelOverride = req.Body.ProxyModelOverride
+	}
+	if req.Body.ProxyApiKey != nil {
+		update.ProxyAPIKey = req.Body.ProxyApiKey // Intentional: ProxyApiKey -> ProxyAPIKey
 	}
 
 	err := h.manager.UpdateSessionSettings(ctx, string(req.Id), update)

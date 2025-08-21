@@ -50,9 +50,6 @@ type SessionConfig struct {
 	// Required
 	Query string
 
-	// Optional title for the session
-	Title string
-
 	// Session management
 	SessionID string // If set, resumes this session
 
@@ -69,6 +66,7 @@ type SessionConfig struct {
 	DisallowedTools      []string
 	CustomInstructions   string
 	Verbose              bool
+	Env                  map[string]string // Environment variables to set for the Claude process
 }
 
 // StreamEvent represents a single event from the streaming JSON output
@@ -99,63 +97,6 @@ type StreamEvent struct {
 	Usage             *Usage             `json:"usage,omitempty"`
 	Error             string             `json:"error,omitempty"`
 	PermissionDenials *PermissionDenials `json:"permission_denials,omitempty"`
-}
-
-// PermissionDenial represents a single permission denial from Claude
-type PermissionDenial struct {
-	ToolName  string                 `json:"tool_name"`
-	ToolUseID string                 `json:"tool_use_id"`
-	ToolInput map[string]interface{} `json:"tool_input,omitempty"`
-}
-
-// PermissionDenials handles flexible permission denial formats
-type PermissionDenials struct {
-	Denials []PermissionDenial
-}
-
-// UnmarshalJSON implements custom unmarshaling to handle both object and string array formats
-func (p *PermissionDenials) UnmarshalJSON(data []byte) error {
-	// Handle null
-	if string(data) == "null" {
-		p.Denials = nil
-		return nil
-	}
-
-	// Try as array of objects first (current API format)
-	var denials []PermissionDenial
-	if err := json.Unmarshal(data, &denials); err == nil {
-		p.Denials = denials
-		return nil
-	}
-
-	// Fall back to array of strings (legacy/simple format)
-	var legacyStrings []string
-	if err := json.Unmarshal(data, &legacyStrings); err == nil {
-		p.Denials = make([]PermissionDenial, len(legacyStrings))
-		for i, s := range legacyStrings {
-			p.Denials[i] = PermissionDenial{ToolName: s}
-		}
-		return nil
-	}
-
-	return fmt.Errorf("permission_denials is neither object array nor string array format")
-}
-
-// MarshalJSON implements custom marshaling
-func (p PermissionDenials) MarshalJSON() ([]byte, error) {
-	return json.Marshal(p.Denials)
-}
-
-// ToStrings converts denials to string array for backward compatibility
-func (p PermissionDenials) ToStrings() []string {
-	if p.Denials == nil {
-		return nil
-	}
-	result := make([]string, len(p.Denials))
-	for i, d := range p.Denials {
-		result[i] = d.ToolName
-	}
-	return result
 }
 
 // MCPStatus represents the status of an MCP server
@@ -238,6 +179,63 @@ type Usage struct {
 	CacheReadInputTokens     int            `json:"cache_read_input_tokens,omitempty"`
 	ServiceTier              string         `json:"service_tier,omitempty"`
 	ServerToolUse            *ServerToolUse `json:"server_tool_use,omitempty"`
+}
+
+// PermissionDenial represents a single permission denial from Claude
+type PermissionDenial struct {
+	ToolName  string                 `json:"tool_name"`
+	ToolUseID string                 `json:"tool_use_id"`
+	ToolInput map[string]interface{} `json:"tool_input,omitempty"`
+}
+
+// PermissionDenials handles flexible permission denial formats
+type PermissionDenials struct {
+	Denials []PermissionDenial
+}
+
+// UnmarshalJSON implements custom unmarshaling to handle both object and string array formats
+func (p *PermissionDenials) UnmarshalJSON(data []byte) error {
+	// Handle null
+	if string(data) == "null" {
+		p.Denials = nil
+		return nil
+	}
+
+	// Try as array of objects first (current API format)
+	var denials []PermissionDenial
+	if err := json.Unmarshal(data, &denials); err == nil {
+		p.Denials = denials
+		return nil
+	}
+
+	// Fall back to array of strings (legacy/simple format)
+	var legacyStrings []string
+	if err := json.Unmarshal(data, &legacyStrings); err == nil {
+		p.Denials = make([]PermissionDenial, len(legacyStrings))
+		for i, s := range legacyStrings {
+			p.Denials[i] = PermissionDenial{ToolName: s}
+		}
+		return nil
+	}
+
+	return fmt.Errorf("permission_denials is neither object array nor string array format")
+}
+
+// MarshalJSON implements custom marshaling
+func (p PermissionDenials) MarshalJSON() ([]byte, error) {
+	return json.Marshal(p.Denials)
+}
+
+// ToStrings converts denials to string array for backward compatibility
+func (p PermissionDenials) ToStrings() []string {
+	if p.Denials == nil {
+		return nil
+	}
+	result := make([]string, len(p.Denials))
+	for i, d := range p.Denials {
+		result[i] = d.ToolName
+	}
+	return result
 }
 
 // Result represents the final result of a Claude session

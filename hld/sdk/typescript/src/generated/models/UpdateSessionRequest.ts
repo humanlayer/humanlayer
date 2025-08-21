@@ -49,6 +49,42 @@ export interface UpdateSessionRequest {
      * @memberof UpdateSessionRequest
      */
     title?: string;
+    /**
+     * Model to use (opus, sonnet, or empty for default)
+     * @type {string}
+     * @memberof UpdateSessionRequest
+     */
+    model?: string;
+    /**
+     * Full model identifier
+     * @type {string}
+     * @memberof UpdateSessionRequest
+     */
+    modelId?: string;
+    /**
+     * Enable proxy routing for this session
+     * @type {boolean}
+     * @memberof UpdateSessionRequest
+     */
+    proxyEnabled?: boolean;
+    /**
+     * Base URL for proxy service
+     * @type {string}
+     * @memberof UpdateSessionRequest
+     */
+    proxyBaseUrl?: string;
+    /**
+     * Model identifier for proxy routing
+     * @type {string}
+     * @memberof UpdateSessionRequest
+     */
+    proxyModelOverride?: string;
+    /**
+     * API key for proxy authentication
+     * @type {string}
+     * @memberof UpdateSessionRequest
+     */
+    proxyApiKey?: string;
 }
 
 /**
@@ -73,6 +109,12 @@ export function UpdateSessionRequestFromJSONTyped(json: any, ignoreDiscriminator
         'dangerouslySkipPermissionsTimeoutMs': json['dangerously_skip_permissions_timeout_ms'] == null ? undefined : json['dangerously_skip_permissions_timeout_ms'],
         'archived': json['archived'] == null ? undefined : json['archived'],
         'title': json['title'] == null ? undefined : json['title'],
+        'model': json['model'] == null ? undefined : json['model'],
+        'modelId': json['model_id'] == null ? undefined : json['model_id'],
+        'proxyEnabled': json['proxy_enabled'] == null ? undefined : json['proxy_enabled'],
+        'proxyBaseUrl': json['proxy_base_url'] == null ? undefined : json['proxy_base_url'],
+        'proxyModelOverride': json['proxy_model_override'] == null ? undefined : json['proxy_model_override'],
+        'proxyApiKey': json['proxy_api_key'] == null ? undefined : json['proxy_api_key'],
     };
 }
 
@@ -92,5 +134,11 @@ export function UpdateSessionRequestToJSONTyped(value?: UpdateSessionRequest | n
         'dangerously_skip_permissions_timeout_ms': value['dangerouslySkipPermissionsTimeoutMs'],
         'archived': value['archived'],
         'title': value['title'],
+        'model': value['model'],
+        'model_id': value['modelId'],
+        'proxy_enabled': value['proxyEnabled'],
+        'proxy_base_url': value['proxyBaseUrl'],
+        'proxy_model_override': value['proxyModelOverride'],
+        'proxy_api_key': value['proxyApiKey'],
     };
 }

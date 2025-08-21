@@ -764,6 +764,93 @@ func (s *SQLiteStore) applyMigrations() error {
 		slog.Info("Migration 14 applied successfully")
 	}
 
+	// Migration 15: Add proxy configuration columns for model customization
+	if currentVersion < 15 {
+		slog.Info("Applying migration 15: Add proxy configuration columns")
+
+		// Check if columns already exist for idempotency
+		columnsToAdd := []struct {
+			name         string
+			sqlType      string
+			defaultValue string
+		}{
+			{"proxy_enabled", "BOOLEAN", "0"},
+			{"proxy_base_url", "TEXT", "''"},
+			{"proxy_model_override", "TEXT", "''"},
+			{"proxy_api_key", "TEXT", "''"},
+		}
+
+		for _, col := range columnsToAdd {
+			var columnExists int
+			err = s.db.QueryRow(`
+				SELECT COUNT(*) FROM pragma_table_info('sessions')
+				WHERE name = ?
+			`, col.name).Scan(&columnExists)
+			if err != nil {
+				return fmt.Errorf("failed to check column %s: %w", col.name, err)
+			}
+
+			if columnExists == 0 {
+				_, err = s.db.Exec(fmt.Sprintf(`
+					ALTER TABLE sessions
+					ADD COLUMN %s %s DEFAULT %s
+				`, col.name, col.sqlType, col.defaultValue))
+				if err != nil {
+					return fmt.Errorf("failed to add column %s: %w", col.name, err)
+				}
+			}
+		}
+
+		// Record migration
+		_, err = s.db.Exec(`
+			INSERT INTO schema_version (version, description)
+			VALUES (15, 'Add proxy configuration columns for model customization')
+		`)
+		if err != nil {
+			return fmt.Errorf("failed to record migration 15: %w", err)
+		}
+
+		slog.Info("Migration 15 applied successfully")
+	}
+
+	// Migration 16: Add user settings table for preferences
+	if currentVersion < 16 {
+		slog.Info("Applying migration 16: Add user settings table")
+
+		_, err := s.db.Exec(`
+			CREATE TABLE IF NOT EXISTS user_settings (
+				id INTEGER PRIMARY KEY CHECK (id = 1), -- Singleton row
+				advanced_providers BOOLEAN NOT NULL DEFAULT FALSE,
+				created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+			)
+		`)
+		if err != nil {
+			return fmt.Errorf("failed to create user_settings table: %w", err)
+		}
+
+		// Insert default row
+		_, err = s.db.Exec(`
+			INSERT INTO user_settings (id, advanced_providers)
+			VALUES (1, FALSE)
+			ON CONFLICT(id) DO NOTHING
+		`)
+		if err != nil {
+			return fmt.Errorf("failed to insert default user settings: %w", err)
+		}
+
+		// Record migration
+		_, err = s.db.Exec(`
+			INSERT INTO schema_version (version, description)
+			VALUES (16, 'Add user settings table for advanced providers preference')
+		`)
+		if err != nil {
+			return fmt.Errorf("failed to record migration 16: %w", err)
+		}
+
+		slog.Info("Migration 16 applied successfully")
+	}
+
 	return nil
 }
 
@@ -779,8 +866,9 @@ func (s *SQLiteStore) CreateSession(ctx context.Context, session *Session) error
 			id, run_id, claude_session_id, parent_session_id,
 			query, summary, title, model, model_id, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
 			permission_prompt_tool, allowed_tools, disallowed_tools,
-			status, created_at, last_activity_at, auto_accept_edits, archived, dangerously_skip_permissions, dangerously_skip_permissions_expires_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			status, created_at, last_activity_at, auto_accept_edits, archived, dangerously_skip_permissions, dangerously_skip_permissions_expires_at,
+			proxy_enabled, proxy_base_url, proxy_model_override, proxy_api_key
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	_, err := s.db.ExecContext(ctx, query,
@@ -790,6 +878,7 @@ func (s *SQLiteStore) CreateSession(ctx context.Context, session *Session) error
 		session.PermissionPromptTool, session.AllowedTools, session.DisallowedTools,
 		session.Status, session.CreatedAt, session.LastActivityAt, session.AutoAcceptEdits, session.Archived,
 		session.DangerouslySkipPermissions, session.DangerouslySkipPermissionsExpiresAt,
+		session.ProxyEnabled, session.ProxyBaseURL, session.ProxyModelOverride, session.ProxyAPIKey,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create session: %w", err)
@@ -895,6 +984,23 @@ func (s *SQLiteStore) UpdateSession(ctx context.Context, sessionID string, updat
 		setParts = append(setParts, "archived = ?")
 		args = append(args, *updates.Archived)
 	}
+	// Handle proxy field updates
+	if updates.ProxyEnabled != nil {
+		setParts = append(setParts, "proxy_enabled = ?")
+		args = append(args, *updates.ProxyEnabled)
+	}
+	if updates.ProxyBaseURL != nil {
+		setParts = append(setParts, "proxy_base_url = ?")
+		args = append(args, *updates.ProxyBaseURL)
+	}
+	if updates.ProxyModelOverride != nil {
+		setParts = append(setParts, "proxy_model_override = ?")
+		args = append(args, *updates.ProxyModelOverride)
+	}
+	if updates.ProxyAPIKey != nil {
+		setParts = append(setParts, "proxy_api_key = ?")
+		args = append(args, *updates.ProxyAPIKey)
+	}
 
 	if len(setParts) == 0 {
 		// No fields to update is OK - this is a no-op
@@ -932,7 +1038,8 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 			status, created_at, last_activity_at, completed_at,
 			cost_usd, input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens, effective_context_tokens,
 			duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived,
-			dangerously_skip_permissions, dangerously_skip_permissions_expires_at
+			dangerously_skip_permissions, dangerously_skip_permissions_expires_at,
+			proxy_enabled, proxy_base_url, proxy_model_override, proxy_api_key
 		FROM sessions WHERE id = ?
 	`
 
@@ -946,6 +1053,8 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 	var resultContent, errorMessage sql.NullString
 	var archived sql.NullBool
 	var dangerouslySkipPermissionsExpiresAt sql.NullTime
+	var proxyEnabled sql.NullBool
+	var proxyBaseURL, proxyModelOverride, proxyAPIKey sql.NullString
 
 	err := s.db.QueryRowContext(ctx, query, sessionID).Scan(
 		&session.ID, &session.RunID, &claudeSessionID, &parentSessionID,
@@ -956,6 +1065,7 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 		&costUSD, &inputTokens, &outputTokens, &cacheCreationInputTokens, &cacheReadInputTokens, &effectiveContextTokens,
 		&durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
 		&archived, &session.DangerouslySkipPermissions, &dangerouslySkipPermissionsExpiresAt,
+		&proxyEnabled, &proxyBaseURL, &proxyModelOverride, &proxyAPIKey,
 	)
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("session not found: %s", sessionID)
@@ -1023,6 +1133,12 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 		session.DangerouslySkipPermissionsExpiresAt = &dangerouslySkipPermissionsExpiresAt.Time
 	}
 
+	// Handle proxy fields
+	session.ProxyEnabled = proxyEnabled.Valid && proxyEnabled.Bool
+	session.ProxyBaseURL = proxyBaseURL.String
+	session.ProxyModelOverride = proxyModelOverride.String
+	session.ProxyAPIKey = proxyAPIKey.String
+
 	return &session, nil
 }
 
@@ -1035,7 +1151,8 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 			status, created_at, last_activity_at, completed_at,
 			cost_usd, input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens, effective_context_tokens,
 			duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived,
-			dangerously_skip_permissions, dangerously_skip_permissions_expires_at
+			dangerously_skip_permissions, dangerously_skip_permissions_expires_at,
+			proxy_enabled, proxy_base_url, proxy_model_override, proxy_api_key
 		FROM sessions
 		WHERE run_id = ?
 	`
@@ -1050,6 +1167,8 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 	var resultContent, errorMessage sql.NullString
 	var archived sql.NullBool
 	var dangerouslySkipPermissionsExpiresAt sql.NullTime
+	var proxyEnabled sql.NullBool
+	var proxyBaseURL, proxyModelOverride, proxyAPIKey sql.NullString
 
 	err := s.db.QueryRowContext(ctx, query, runID).Scan(
 		&session.ID, &session.RunID, &claudeSessionID, &parentSessionID,
@@ -1060,6 +1179,7 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 		&costUSD, &inputTokens, &outputTokens, &cacheCreationInputTokens, &cacheReadInputTokens, &effectiveContextTokens,
 		&durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
 		&archived, &session.DangerouslySkipPermissions, &dangerouslySkipPermissionsExpiresAt,
+		&proxyEnabled, &proxyBaseURL, &proxyModelOverride, &proxyAPIKey,
 	)
 	if err == sql.ErrNoRows {
 		return nil, nil // No session found
@@ -1127,6 +1247,12 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 		session.DangerouslySkipPermissionsExpiresAt = &dangerouslySkipPermissionsExpiresAt.Time
 	}
 
+	// Handle proxy fields
+	session.ProxyEnabled = proxyEnabled.Valid && proxyEnabled.Bool
+	session.ProxyBaseURL = proxyBaseURL.String
+	session.ProxyModelOverride = proxyModelOverride.String
+	session.ProxyAPIKey = proxyAPIKey.String
+
 	return &session, nil
 }
 
@@ -1139,7 +1265,8 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 			status, created_at, last_activity_at, completed_at,
 			cost_usd, input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens, effective_context_tokens,
 		duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived,
-			dangerously_skip_permissions, dangerously_skip_permissions_expires_at
+			dangerously_skip_permissions, dangerously_skip_permissions_expires_at,
+			proxy_enabled, proxy_base_url, proxy_model_override, proxy_api_key
 		FROM sessions
 		ORDER BY last_activity_at DESC
 	`
@@ -1162,6 +1289,8 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 		var resultContent, errorMessage sql.NullString
 		var archived sql.NullBool
 		var dangerouslySkipPermissionsExpiresAt sql.NullTime
+		var proxyEnabled sql.NullBool
+		var proxyBaseURL, proxyModelOverride, proxyAPIKey sql.NullString
 
 		err := rows.Scan(
 			&session.ID, &session.RunID, &claudeSessionID, &parentSessionID,
@@ -1172,6 +1301,7 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 			&costUSD, &inputTokens, &outputTokens, &cacheCreationInputTokens, &cacheReadInputTokens, &effectiveContextTokens,
 			&durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
 			&archived, &session.DangerouslySkipPermissions, &dangerouslySkipPermissionsExpiresAt,
+			&proxyEnabled, &proxyBaseURL, &proxyModelOverride, &proxyAPIKey,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan session: %w", err)
@@ -1238,6 +1368,12 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 			session.DangerouslySkipPermissionsExpiresAt = &dangerouslySkipPermissionsExpiresAt.Time
 		}
 
+		// Handle proxy fields
+		session.ProxyEnabled = proxyEnabled.Valid && proxyEnabled.Bool
+		session.ProxyBaseURL = proxyBaseURL.String
+		session.ProxyModelOverride = proxyModelOverride.String
+		session.ProxyAPIKey = proxyAPIKey.String
+
 		sessions = append(sessions, &session)
 	}
 
@@ -1254,7 +1390,8 @@ func (s *SQLiteStore) GetExpiredDangerousPermissionsSessions(ctx context.Context
 			status, created_at, last_activity_at, completed_at,
 			cost_usd, input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens, effective_context_tokens,
 		duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived,
-			dangerously_skip_permissions, dangerously_skip_permissions_expires_at
+			dangerously_skip_permissions, dangerously_skip_permissions_expires_at,
+			proxy_enabled, proxy_base_url, proxy_model_override, proxy_api_key
 		FROM sessions
 		WHERE dangerously_skip_permissions = 1
 			AND dangerously_skip_permissions_expires_at IS NOT NULL
@@ -1281,6 +1418,8 @@ func (s *SQLiteStore) GetExpiredDangerousPermissionsSessions(ctx context.Context
 		var resultContent, errorMessage sql.NullString
 		var archived sql.NullBool
 		var dangerouslySkipPermissionsExpiresAt sql.NullTime
+		var proxyEnabled sql.NullBool
+		var proxyBaseURL, proxyModelOverride, proxyAPIKey sql.NullString
 
 		err := rows.Scan(
 			&session.ID, &session.RunID, &claudeSessionID, &parentSessionID,
@@ -1291,6 +1430,7 @@ func (s *SQLiteStore) GetExpiredDangerousPermissionsSessions(ctx context.Context
 			&costUSD, &inputTokens, &outputTokens, &cacheCreationInputTokens, &cacheReadInputTokens, &effectiveContextTokens,
 			&durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
 			&archived, &session.DangerouslySkipPermissions, &dangerouslySkipPermissionsExpiresAt,
+			&proxyEnabled, &proxyBaseURL, &proxyModelOverride, &proxyAPIKey,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan session: %w", err)
@@ -1356,6 +1496,12 @@ func (s *SQLiteStore) GetExpiredDangerousPermissionsSessions(ctx context.Context
 		if dangerouslySkipPermissionsExpiresAt.Valid {
 			session.DangerouslySkipPermissionsExpiresAt = &dangerouslySkipPermissionsExpiresAt.Time
 		}
+
+		// Handle proxy fields
+		session.ProxyEnabled = proxyEnabled.Valid && proxyEnabled.Bool
+		session.ProxyBaseURL = proxyBaseURL.String
+		session.ProxyModelOverride = proxyModelOverride.String
+		session.ProxyAPIKey = proxyAPIKey.String
 
 		sessions = append(sessions, &session)
 	}
@@ -1408,6 +1554,35 @@ func (s *SQLiteStore) GetRecentWorkingDirs(ctx context.Context, limit int) ([]Re
 	}
 
 	return paths, rows.Err()
+}
+
+// GetUserSettings retrieves the user settings from the database
+func (s *SQLiteStore) GetUserSettings(ctx context.Context) (*UserSettings, error) {
+	var settings UserSettings
+	err := s.db.QueryRowContext(ctx, `
+		SELECT advanced_providers, created_at, updated_at
+		FROM user_settings WHERE id = 1
+	`).Scan(&settings.AdvancedProviders, &settings.CreatedAt, &settings.UpdatedAt)
+
+	if err == sql.ErrNoRows {
+		// Return defaults if not found (for backwards compatibility)
+		return &UserSettings{
+			AdvancedProviders: false,
+			CreatedAt:         time.Now(),
+			UpdatedAt:         time.Now(),
+		}, nil
+	}
+	return &settings, err
+}
+
+// UpdateUserSettings updates the user settings in the database
+func (s *SQLiteStore) UpdateUserSettings(ctx context.Context, settings UserSettings) error {
+	_, err := s.db.ExecContext(ctx, `
+		UPDATE user_settings
+		SET advanced_providers = ?, updated_at = CURRENT_TIMESTAMP
+		WHERE id = 1
+	`, settings.AdvancedProviders)
+	return err
 }
 
 // AddConversationEvent adds a new conversation event

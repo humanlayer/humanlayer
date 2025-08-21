@@ -8,4 +8,5 @@ output-options:
   skip-prune: true
   exclude-tags:
     - sse-manual
+    - proxy-manual
 output: server.gen.go

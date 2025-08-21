@@ -10,8 +10,10 @@ import { logger } from '@/lib/logging'
 interface SessionConfig {
   title?: string
   workingDir: string
+  provider?: 'anthropic' | 'openrouter'
   model?: string
   maxTurns?: number
+  openRouterApiKey?: string
 }
 
 interface LauncherState {
@@ -46,6 +48,7 @@ const isViewingSessionDetail = (): boolean => {
 
 const LAST_WORKING_DIR_KEY = 'humanlayer-last-working-dir'
 const SESSION_LAUNCHER_QUERY_KEY = 'session-launcher-query'
+const OPENROUTER_API_KEY = 'humanlayer-openrouter-api-key'
 
 // Helper function to get default working directory
 const getDefaultWorkingDir = (): string => {
@@ -58,12 +61,21 @@ const getSavedQuery = (): string => {
   return localStorage.getItem(SESSION_LAUNCHER_QUERY_KEY) || ''
 }
 
+// Helper function to get saved OpenRouter API key
+const getSavedOpenRouterKey = (): string | undefined => {
+  return localStorage.getItem(OPENROUTER_API_KEY) || undefined
+}
+
 export const useSessionLauncher = create<LauncherState>((set, get) => ({
   isOpen: false,
   mode: 'command',
   view: 'menu',
   query: getSavedQuery(),
-  config: { workingDir: getDefaultWorkingDir() },
+  config: {
+    workingDir: getDefaultWorkingDir(),
+    provider: 'anthropic',
+    openRouterApiKey: getSavedOpenRouterKey(),
+  },
   isLaunching: false,
   gPrefixMode: false,
   selectedMenuIndex: 0,
@@ -83,7 +95,11 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
       isOpen: false,
       view: 'menu',
       query: savedQuery,
-      config: { workingDir: getDefaultWorkingDir() },
+      config: {
+        workingDir: getDefaultWorkingDir(),
+        provider: 'anthropic',
+        openRouterApiKey: getSavedOpenRouterKey(),
+      },
       selectedMenuIndex: 0,
       error: undefined,
       gPrefixMode: false,
@@ -99,7 +115,20 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
     })
   },
 
-  setConfig: config => set({ config, error: undefined }),
+  setConfig: config => {
+    // Save or remove OpenRouter API key from localStorage
+    if (config.openRouterApiKey) {
+      localStorage.setItem(OPENROUTER_API_KEY, config.openRouterApiKey)
+    } else if (
+      config.openRouterApiKey === undefined ||
+      config.openRouterApiKey === null ||
+      config.openRouterApiKey === ''
+    ) {
+      // Remove from localStorage when cleared to avoid stale state
+      localStorage.removeItem(OPENROUTER_API_KEY)
+    }
+    return set({ config, error: undefined })
+  },
 
   setGPrefixMode: enabled => set({ gPrefixMode: enabled }),
 
@@ -146,10 +175,20 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
         query: query.trim(),
         title: config.title || undefined,
         working_dir: config.workingDir || undefined,
+        provider: config.provider || 'anthropic',
         model: config.model || undefined,
         max_turns: config.maxTurns || undefined,
         // MCP config is now injected by daemon
         permission_prompt_tool: 'mcp__codelayer__request_permission',
+        // Add OpenRouter proxy configuration if provider is openrouter
+        ...(config.provider === 'openrouter' && config.openRouterApiKey
+          ? {
+              proxy_enabled: true,
+              proxy_base_url: 'https://openrouter.ai/api/v1',
+              proxy_model_override: config.model || 'openai/gpt-4o-mini',
+              proxy_api_key: config.openRouterApiKey,
+            }
+          : {}),
       }
 
       const response = await daemonClient.launchSession(request)
@@ -186,7 +225,11 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
     set({
       view: 'input',
       query: savedQuery,
-      config: { workingDir: getDefaultWorkingDir() },
+      config: {
+        workingDir: getDefaultWorkingDir(),
+        provider: 'anthropic',
+        openRouterApiKey: getSavedOpenRouterKey(),
+      },
       error: undefined,
     })
   },
@@ -204,7 +247,11 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
       mode: 'command',
       view: 'menu',
       query: savedQuery,
-      config: { workingDir: getDefaultWorkingDir() },
+      config: {
+        workingDir: getDefaultWorkingDir(),
+        provider: 'anthropic',
+        openRouterApiKey: getSavedOpenRouterKey(),
+      },
       selectedMenuIndex: 0,
       isLaunching: false,
       error: undefined,
