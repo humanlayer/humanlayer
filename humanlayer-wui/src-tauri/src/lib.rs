@@ -177,7 +177,7 @@ pub fn run() {
     // Create daemon manager outside of builder
     let daemon_manager = DaemonManager::new();
     let exit_daemon_manager = daemon_manager.clone();
-    
+
     // Build the app
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())
@@ -271,9 +271,9 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|_window, event| {
-            log::info!("[Tauri] Window event: {:?}", event);
-            // Remove all the daemon shutdown logic
-            // Keep the event handler for logging purposes only
+            if let tauri::WindowEvent::CloseRequested { .. } = event {
+                log::info!("[Tauri] Window event: {:?}", event);
+            }
         })
         .invoke_handler(tauri::generate_handler![
             start_daemon,
@@ -294,28 +294,28 @@ pub fn run() {
             }
             tauri::RunEvent::Exit => {
                 log::info!("[Tauri] Exit - stopping daemon");
-                
+
                 // Get daemon info to update store
                 if let Some(info) = exit_daemon_manager.get_info() {
-                    log::info!("[Tauri] Found daemon on port {} with PID {:?}", 
+                    log::info!("[Tauri] Found daemon on port {} with PID {:?}",
                               info.port, info.pid);
-                    
+
                     // Determine store path
                     let is_dev = info.branch_id != "production";
                     let store_path = get_store_path(is_dev, Some(&info.branch_id));
-                    
+
                     // Update store to mark daemon as not running
                     // Note: We can't access app_handle here, so we update store directly
                     if let Some(home) = dirs::home_dir() {
                         let full_store_path = home.join(".humanlayer").join(&store_path);
-                        
+
                         // Read, update, and write store manually
                         if let Ok(store_content) = fs::read_to_string(&full_store_path) {
                             if let Ok(mut store_json) = serde_json::from_str::<serde_json::Value>(&store_content) {
                                 if let Some(current_daemon) = store_json.get_mut("current_daemon") {
                                     if let Some(daemon_obj) = current_daemon.as_object_mut() {
                                         daemon_obj.insert("is_running".to_string(), serde_json::json!(false));
-                                        
+
                                         // Write updated store back
                                         if let Ok(updated_content) = serde_json::to_string_pretty(&store_json) {
                                             let _ = fs::write(&full_store_path, updated_content);
@@ -326,7 +326,7 @@ pub fn run() {
                             }
                         }
                     }
-                    
+
                     // Stop the daemon process
                     if let Err(e) = exit_daemon_manager.stop_daemon() {
                         log::error!("[Tauri] Failed to stop daemon on exit: {}", e);

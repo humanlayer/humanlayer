@@ -342,17 +342,17 @@ impl DaemonManager {
 
         if let Some(mut child) = process.take() {
             let pid = child.id();
-            
+
             // Try SIGTERM first (graceful shutdown)
             signal::kill(Pid::from_raw(pid as i32), Signal::SIGTERM)
                 .map_err(|e| format!("Failed to send SIGTERM to daemon: {e}"))?;
-            
+
             log::info!("[Tauri] Sent SIGTERM to daemon process (PID: {})", pid);
 
             // Wait for process to exit gracefully (with timeout)
             let start = std::time::Instant::now();
             let timeout = std::time::Duration::from_secs(15);
-            
+
             loop {
                 match child.try_wait() {
                     Ok(Some(_)) => {
