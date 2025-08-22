@@ -22,6 +22,7 @@ import { SessionModeIndicator } from './AutoAcceptIndicator'
 import { ForkViewModal } from './components/ForkViewModal'
 import { DangerouslySkipPermissionsDialog } from './DangerouslySkipPermissionsDialog'
 import { TokenUsageBadge } from './components/TokenUsageBadge'
+import { AdditionalDirectoriesDropdown } from './components/AdditionalDirectoriesDropdown'
 
 // Import hooks
 import { useSessionActions } from './hooks/useSessionActions'
@@ -921,6 +922,14 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                 </>
               )}
             </h2>
+            {session.workingDir && (
+              <AdditionalDirectoriesDropdown 
+                workingDir={session.workingDir}
+                directories={session.additionalDirectories || []}
+                sessionStatus={session.status}
+                onDirectoriesChange={handleUpdateAdditionalDirectories}
+              />
+            )}
           </hgroup>
           <div className="flex items-center gap-1 ml-auto">
             <ForkViewModal
@@ -992,6 +1001,14 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                 </>
               )}
             </h2>
+            {session.workingDir && (
+              <AdditionalDirectoriesDropdown 
+                workingDir={session.workingDir}
+                directories={session.additionalDirectories || []}
+                sessionStatus={session.status}
+                onDirectoriesChange={handleUpdateAdditionalDirectories}
+              />
+            )}
           </hgroup>
           <div className="flex items-center gap-1 ml-auto">
             <ForkViewModal
@@ -1106,7 +1123,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               // Refresh session data if needed
               fetchActiveSessionDetail(session.id)
             }}
-            onDirectoriesChange={handleUpdateAdditionalDirectories}
           />
           {/* Session mode indicator - shows either dangerous skip permissions or auto-accept */}
           <SessionModeIndicator

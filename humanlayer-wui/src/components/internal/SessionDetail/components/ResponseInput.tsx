@@ -20,7 +20,6 @@ interface ResponseInputProps {
   handleResponseInputKeyDown: (e: React.KeyboardEvent) => void
   isForkMode?: boolean
   onModelChange?: () => void
-  onDirectoriesChange?: (directories: string[]) => void
 }
 
 export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>(
@@ -35,7 +34,6 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
       handleResponseInputKeyDown,
       isForkMode,
       onModelChange,
-      onDirectoriesChange,
     },
     ref,
   ) => {
@@ -75,7 +73,6 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
           session={session}
           parentSessionData={parentSessionData}
           onModelChange={onModelChange}
-          onDirectoriesChange={onDirectoriesChange}
         />
 
         {/* Existing input area */}

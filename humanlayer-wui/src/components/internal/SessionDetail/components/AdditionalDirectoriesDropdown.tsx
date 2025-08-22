@@ -75,9 +75,9 @@ export function AdditionalDirectoriesDropdown({
       )}
       {!canEdit && <Lock className="h-3 w-3 ml-1" />}
       {isOpen ? (
-        <ChevronDown className="h-3 w-3 ml-1" />
-      ) : (
         <ChevronUp className="h-3 w-3 ml-1" />
+      ) : (
+        <ChevronDown className="h-3 w-3 ml-1" />
       )}
     </button>
   )
@@ -91,7 +91,6 @@ export function AdditionalDirectoriesDropdown({
           </TooltipTrigger>
           <TooltipContent 
             align="start" 
-            side="top"
             sideOffset={5}
             className="text-xs"
           >
@@ -110,7 +109,6 @@ export function AdditionalDirectoriesDropdown({
       <PopoverContent 
         className="w-96 p-3" 
         align="start"
-        side="top"
         sideOffset={5}
       >
         <div className="space-y-2">
