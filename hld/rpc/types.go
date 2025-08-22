@@ -118,6 +118,7 @@ type ContinueSessionRequest struct {
 	PermissionPromptTool string   `json:"permission_prompt_tool,omitempty"` // MCP tool for permission prompts
 	AllowedTools         []string `json:"allowed_tools,omitempty"`          // Allowed tools list
 	DisallowedTools      []string `json:"disallowed_tools,omitempty"`       // Disallowed tools list
+	AdditionalDirectories []string `json:"additional_directories,omitempty"` // Additional directories list
 	CustomInstructions   string   `json:"custom_instructions,omitempty"`    // Custom instructions
 	MaxTurns             int      `json:"max_turns,omitempty"`              // Max conversation turns
 	ProxyEnabled         bool     `json:"proxy_enabled,omitempty"`          // Whether proxy is enabled

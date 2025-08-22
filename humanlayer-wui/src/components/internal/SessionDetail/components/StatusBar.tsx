@@ -7,14 +7,16 @@ import { ModelSelector } from './ModelSelector'
 import { renderSessionStatus } from '@/utils/sessionStatus'
 import { getStatusTextClass } from '@/utils/component-utils'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { AdditionalDirectoriesDropdown } from './AdditionalDirectoriesDropdown'
 
 interface StatusBarProps {
   session: Session
   parentSessionData?: Partial<Session>
   onModelChange?: () => void
+  onDirectoriesChange?: (directories: string[]) => void
 }
 
-export function StatusBar({ session, parentSessionData, onModelChange }: StatusBarProps) {
+export function StatusBar({ session, parentSessionData, onModelChange, onDirectoriesChange }: StatusBarProps) {
   const [isModelSelectorOpen, setIsModelSelectorOpen] = useState(false)
 
   const statusText = renderSessionStatus(session).toUpperCase()
@@ -81,6 +83,16 @@ export function StatusBar({ session, parentSessionData, onModelChange }: StatusB
             : (session.model ?? parentSessionData?.model)
         }
       />
+
+      {/* Directory Display */}
+      {session.workingDir && (
+        <AdditionalDirectoriesDropdown 
+          workingDir={session.workingDir}
+          directories={session.additionalDirectories || []}
+          sessionStatus={session.status}
+          onDirectoriesChange={onDirectoriesChange}
+        />
+      )}
 
       {/* Model Selector Modal */}
       <ModelSelector

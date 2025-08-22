@@ -236,6 +236,7 @@ func (m *Manager) LaunchSession(ctx context.Context, config LaunchSessionConfig)
 		"run_id", runID,
 		"query", claudeConfig.Query,
 		"working_dir", claudeConfig.WorkingDir,
+		"additional_directories", claudeConfig.AdditionalDirectories,
 		"permission_prompt_tool", claudeConfig.PermissionPromptTool,
 		"mcp_servers", mcpServerCount,
 		"mcp_servers_detail", mcpServersDetail)
@@ -1257,6 +1258,13 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 			config.DisallowedTools = disallowedTools
 		}
 	}
+	// Deserialize and inherit additional directories
+	if parentSession.AdditionalDirectories != "" {
+		var additionalDirs []string
+		if err := json.Unmarshal([]byte(parentSession.AdditionalDirectories), &additionalDirs); err == nil {
+			config.AdditionalDirectories = additionalDirs
+		}
+	}
 
 	// Retrieve and inherit MCP configuration from parent session
 	mcpServers, err := m.store.GetMCPServers(ctx, req.ParentSessionID)
@@ -1319,6 +1327,9 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 	}
 	if len(req.DisallowedTools) > 0 {
 		config.DisallowedTools = req.DisallowedTools
+	}
+	if len(req.AdditionalDirectories) > 0 {
+		config.AdditionalDirectories = req.AdditionalDirectories
 	}
 	if req.CustomInstructions != "" {
 		config.CustomInstructions = req.CustomInstructions

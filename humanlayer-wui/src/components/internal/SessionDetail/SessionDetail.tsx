@@ -21,6 +21,7 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 import { SessionModeIndicator } from './AutoAcceptIndicator'
 import { ForkViewModal } from './components/ForkViewModal'
 import { DangerouslySkipPermissionsDialog } from './DangerouslySkipPermissionsDialog'
+import { TokenUsageBadge } from './components/TokenUsageBadge'
 
 // Import hooks
 import { useSessionActions } from './hooks/useSessionActions'
@@ -217,6 +218,18 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const cancelEditTitle = () => {
     setIsEditingTitle(false)
     setEditValue('')
+  }
+
+  const handleUpdateAdditionalDirectories = async (directories: string[]) => {
+    try {
+      await daemonClient.updateSession(session.id, { additionalDirectories: directories })
+      // Update the local store
+      useStore.getState().updateSession(session.id, { additionalDirectories: directories })
+    } catch (error) {
+      toast.error('Failed to update additional directories', {
+        description: error instanceof Error ? error.message : 'Unknown error',
+      })
+    }
   }
 
   // Keyboard navigation protection
@@ -908,9 +921,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                 </>
               )}
             </h2>
-            {session.workingDir && (
-              <small className="font-mono text-xs text-muted-foreground">{session.workingDir}</small>
-            )}
           </hgroup>
           <div className="flex items-center gap-1 ml-auto">
             <ForkViewModal
@@ -1096,6 +1106,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               // Refresh session data if needed
               fetchActiveSessionDetail(session.id)
             }}
+            onDirectoriesChange={handleUpdateAdditionalDirectories}
           />
           {/* Session mode indicator - shows either dangerous skip permissions or auto-accept */}
           <SessionModeIndicator

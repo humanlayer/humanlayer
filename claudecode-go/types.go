@@ -64,6 +64,7 @@ type SessionConfig struct {
 	AppendSystemPrompt   string
 	AllowedTools         []string
 	DisallowedTools      []string
+	AdditionalDirectories []string
 	CustomInstructions   string
 	Verbose              bool
 	Env                  map[string]string // Environment variables to set for the Claude process

@@ -103,6 +103,9 @@ func (h *SessionHandlers) CreateSession(ctx context.Context, req api.CreateSessi
 	if req.Body.DisallowedTools != nil {
 		config.DisallowedTools = *req.Body.DisallowedTools
 	}
+	if req.Body.AdditionalDirectories != nil {
+		config.AdditionalDirectories = *req.Body.AdditionalDirectories
+	}
 	if req.Body.CustomInstructions != nil {
 		config.CustomInstructions = *req.Body.CustomInstructions
 	}
