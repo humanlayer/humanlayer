@@ -1,4 +1,6 @@
 use crate::get_branch_id;
+use nix::sys::signal::{self, Signal};
+use nix::unistd::Pid;
 use serde::{Deserialize, Serialize};
 use std::env;
 use std::fs;
@@ -339,12 +341,41 @@ impl DaemonManager {
         let mut process = self.process.lock().unwrap();
 
         if let Some(mut child) = process.take() {
-            child
-                .kill()
-                .map_err(|e| format!("Failed to stop daemon: {e}"))?;
+            let pid = child.id();
+            
+            // Try SIGTERM first (graceful shutdown)
+            signal::kill(Pid::from_raw(pid as i32), Signal::SIGTERM)
+                .map_err(|e| format!("Failed to send SIGTERM to daemon: {e}"))?;
+            
+            log::info!("[Tauri] Sent SIGTERM to daemon process (PID: {})", pid);
 
-            // Wait for process to exit
-            let _ = child.wait();
+            // Wait for process to exit gracefully (with timeout)
+            let start = std::time::Instant::now();
+            let timeout = std::time::Duration::from_secs(15);
+            
+            loop {
+                match child.try_wait() {
+                    Ok(Some(_)) => {
+                        log::info!("[Tauri] Daemon process exited gracefully after SIGTERM");
+                        break;
+                    }
+                    Ok(None) => {
+                        if start.elapsed() > timeout {
+                            // Force kill if it doesn't exit within timeout
+                            log::warn!("[Tauri] Daemon didn't exit gracefully, sending SIGKILL");
+                            child
+                                .kill()
+                                .map_err(|e| format!("Failed to kill daemon: {e}"))?;
+                            let _ = child.wait();
+                            break;
+                        }
+                        std::thread::sleep(std::time::Duration::from_millis(100));
+                    }
+                    Err(e) => {
+                        return Err(format!("Failed to check daemon status: {e}"));
+                    }
+                }
+            }
 
             // Update store to mark daemon as not running
             if let Some(info) = self.info.lock().unwrap().as_mut() {
