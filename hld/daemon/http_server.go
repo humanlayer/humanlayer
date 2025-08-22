@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -19,6 +20,20 @@ import (
 	"github.com/humanlayer/humanlayer/hld/session"
 	"github.com/humanlayer/humanlayer/hld/store"
 )
+
+// getHTTPShutdownTimeout returns the timeout for HTTP server graceful shutdown
+func getHTTPShutdownTimeout() time.Duration {
+	if timeoutStr := os.Getenv("HUMANLAYER_HLD_HTTP_SHUTDOWN_TIMEOUT"); timeoutStr != "" {
+		if timeout, err := time.ParseDuration(timeoutStr); err == nil {
+			slog.Info("using custom HTTP shutdown timeout", "timeout", timeout)
+			return timeout
+		} else {
+			slog.Warn("invalid HUMANLAYER_HLD_HTTP_SHUTDOWN_TIMEOUT, using default",
+				"value", timeoutStr, "error", err)
+		}
+	}
+	return 2 * time.Second // Reduced from 30s
+}
 
 // HTTPServer manages the REST API server
 type HTTPServer struct {
@@ -168,7 +183,8 @@ func (s *HTTPServer) Shutdown() error {
 	}
 
 	slog.Info("Shutting down HTTP server")
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	timeout := getHTTPShutdownTimeout()
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	return s.server.Shutdown(ctx)
