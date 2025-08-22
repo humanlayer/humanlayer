@@ -2,6 +2,7 @@ mod daemon;
 
 use daemon::{DaemonInfo, DaemonManager};
 use std::env;
+use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 use tauri::{Manager, State};
@@ -173,7 +174,12 @@ async fn get_log_directory() -> Result<String, String> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    // Create daemon manager outside of builder
+    let daemon_manager = DaemonManager::new();
+    let exit_daemon_manager = daemon_manager.clone();
+    
+    // Build the app
+    let app = tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
@@ -199,7 +205,7 @@ pub fn run() {
                 vec![
                     tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Folder {
                         path: log_dir,
-                        file_name: Some("codelayer.log".into()),
+                        file_name: Some("codelayer".into()),
                     }),
                     tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout),
                     tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Webview),
@@ -225,10 +231,9 @@ pub fn run() {
                 .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepAll)
                 .build()
         })
-        .setup(|app| {
-            let daemon_manager = DaemonManager::new();
+        .setup(move |app| {
+            // Register the daemon manager as managed state
             app.manage(daemon_manager.clone());
-
 
             // Check if auto-launch is disabled
             let should_autolaunch = env::var("HUMANLAYER_WUI_AUTOLAUNCH_DAEMON")
@@ -238,6 +243,7 @@ pub fn run() {
             if should_autolaunch {
                 // Start daemon automatically
                 let app_handle_clone = app.app_handle().clone();
+                let daemon_manager_for_autolaunch = daemon_manager.clone();
                 tauri::async_runtime::spawn(async move {
                     let is_dev = cfg!(debug_assertions);
 
@@ -245,7 +251,7 @@ pub fn run() {
                     tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
 
                     // Try to start daemon, but don't show errors in UI
-                    match daemon_manager
+                    match daemon_manager_for_autolaunch
                         .start_daemon(&app_handle_clone, is_dev, None)
                         .await
                     {
@@ -264,34 +270,10 @@ pub fn run() {
 
             Ok(())
         })
-        .on_window_event(|window, event| {
-            if let tauri::WindowEvent::CloseRequested { .. } = event {
-                let daemon_manager = window.state::<DaemonManager>();
-
-                // Always stop daemon when window closes
-                if let Some(info) = daemon_manager.get_info() {
-                    let is_dev = info.branch_id != "production";
-                    let store_path = get_store_path(is_dev, Some(&info.branch_id));
-
-                    if let Ok(store) = window.app_handle().store(&store_path) {
-                        // Update store to mark daemon as not running
-                        if let Some(mut stored_info) = store
-                            .get("current_daemon")
-                            .and_then(|v| serde_json::from_value::<DaemonInfo>(v).ok())
-                        {
-                            stored_info.is_running = false;
-                            store.set(
-                                "current_daemon",
-                                serde_json::to_value(&stored_info).unwrap(),
-                            );
-                            let _ = store.save();
-                        }
-                    }
-
-                    // Stop the daemon
-                    let _ = daemon_manager.stop_daemon();
-                }
-            }
+        .on_window_event(|_window, event| {
+            log::info!("[Tauri] Window event: {:?}", event);
+            // Remove all the daemon shutdown logic
+            // Keep the event handler for logging purposes only
         })
         .invoke_handler(tauri::generate_handler![
             start_daemon,
@@ -300,6 +282,62 @@ pub fn run() {
             is_daemon_running,
             get_log_directory,
         ])
-        .run(tauri::generate_context!())
+        .build(tauri::generate_context!())
         .expect("error while running tauri application");
+
+    // Run the app with access to exit_daemon_manager
+    app.run(move |_app, event| {
+        match event {
+            tauri::RunEvent::ExitRequested {code: _, api: _, ..} => {
+                log::info!("[Tauri] ExitRequested");
+                // Note: This doesn't fire on macOS due to Tauri bug
+            }
+            tauri::RunEvent::Exit => {
+                log::info!("[Tauri] Exit - stopping daemon");
+                
+                // Get daemon info to update store
+                if let Some(info) = exit_daemon_manager.get_info() {
+                    log::info!("[Tauri] Found daemon on port {} with PID {:?}", 
+                              info.port, info.pid);
+                    
+                    // Determine store path
+                    let is_dev = info.branch_id != "production";
+                    let store_path = get_store_path(is_dev, Some(&info.branch_id));
+                    
+                    // Update store to mark daemon as not running
+                    // Note: We can't access app_handle here, so we update store directly
+                    if let Some(home) = dirs::home_dir() {
+                        let full_store_path = home.join(".humanlayer").join(&store_path);
+                        
+                        // Read, update, and write store manually
+                        if let Ok(store_content) = fs::read_to_string(&full_store_path) {
+                            if let Ok(mut store_json) = serde_json::from_str::<serde_json::Value>(&store_content) {
+                                if let Some(current_daemon) = store_json.get_mut("current_daemon") {
+                                    if let Some(daemon_obj) = current_daemon.as_object_mut() {
+                                        daemon_obj.insert("is_running".to_string(), serde_json::json!(false));
+                                        
+                                        // Write updated store back
+                                        if let Ok(updated_content) = serde_json::to_string_pretty(&store_json) {
+                                            let _ = fs::write(&full_store_path, updated_content);
+                                            log::info!("[Tauri] Updated store to mark daemon as stopped");
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Stop the daemon process
+                    if let Err(e) = exit_daemon_manager.stop_daemon() {
+                        log::error!("[Tauri] Failed to stop daemon on exit: {}", e);
+                    } else {
+                        log::info!("[Tauri] Successfully stopped daemon on exit");
+                    }
+                } else {
+                    log::info!("[Tauri] No daemon to stop on exit");
+                }
+            }
+            _ => {}
+        }
+    });
 }
