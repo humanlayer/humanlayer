@@ -158,7 +158,7 @@ jobs:
             ### Troubleshooting / Known Issues
 
             * If install fails, ensure you've cleaned up all previous artifacts. `brew reinstall` is worth a shot as well.
-            * Logs can be found at `~/Library/Logs/dev.humanlayer.wui${{ contains(steps.version.outputs.release_version, 'nightly') && '.nightly' || '' }}/CodeLayer.log`
+            * Logs can be found at `~/Library/Logs/dev.humanlayer.wui${{ contains(steps.version.outputs.release_version, 'nightly') && '.nightly' || '' }}/CodeLayer${{ contains(steps.version.outputs.release_version, 'nightly') && '-Nightly' || '' }}.log`
             * If daemon fails due to already running, you can `pkill hld` and reopen CodeLayer to try again
             * If opening from spotlight/alfred/raycast/finder fails, try `pkill hld; open /Applications/CodeLayer${{ contains(steps.version.outputs.release_version, 'nightly') && '-Nightly' || '' }}.app` to push your PATH into CodeLayer so it can better find your `claude` CLI
 
