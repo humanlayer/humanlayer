@@ -66,6 +66,7 @@ type Info struct {
 type LaunchSessionConfig struct {
 	claudecode.SessionConfig
 	// Daemon-level settings that don't get passed to Claude Code
+	Title                             string // Session title (optional)
 	DangerouslySkipPermissions        bool   // Whether to auto-approve all tools
 	DangerouslySkipPermissionsTimeout *int64 // Optional timeout in milliseconds
 	// Proxy configuration
