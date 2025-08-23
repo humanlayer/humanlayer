@@ -14,12 +14,13 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { SessionStatus } from '@/lib/daemon/types'
+import { toast } from 'sonner'
 
 interface AdditionalDirectoriesDropdownProps {
   workingDir: string
   directories: string[]
   sessionStatus: SessionStatus
-  onDirectoriesChange?: (directories: string[]) => void
+  onDirectoriesChange?: (directories: string[]) => void | Promise<void>
 }
 
 export function AdditionalDirectoriesDropdown({ 
@@ -32,6 +33,7 @@ export function AdditionalDirectoriesDropdown({
   const [localDirectories, setLocalDirectories] = useState<string[]>(directories)
   const [newDirectory, setNewDirectory] = useState('')
   const [isAdding, setIsAdding] = useState(false)
+  const [isUpdating, setIsUpdating] = useState(false)
 
   // Update local state when prop changes
   useEffect(() => {
@@ -39,23 +41,57 @@ export function AdditionalDirectoriesDropdown({
   }, [directories])
 
   // Check if editing is allowed based on session status
-  const canEdit = sessionStatus === 'completed' || sessionStatus === 'ready_for_input'
+  const canEdit = sessionStatus === 'completed' || sessionStatus === 'waiting_input'
   
-  const handleAddDirectory = () => {
+  const handleAddDirectory = async () => {
     const trimmed = newDirectory.trim()
     if (trimmed && !localDirectories.includes(trimmed)) {
       const updated = [...localDirectories, trimmed]
       setLocalDirectories(updated)
-      onDirectoriesChange?.(updated)
-      setNewDirectory('')
-      setIsAdding(false)
+      setIsUpdating(true)
+      try {
+        // Await the update to ensure it completes before allowing further actions
+        await onDirectoriesChange?.(updated)
+        setNewDirectory('')
+        setIsAdding(false)
+        
+        // Show appropriate message based on session status
+        if (sessionStatus === 'running' || sessionStatus === 'starting') {
+          toast.success('Directory added - will apply at next message')
+        } else {
+          toast.success('Directory added')
+        }
+      } catch (error) {
+        toast.error('Failed to add directory')
+        // Revert the local change on error
+        setLocalDirectories(directories)
+      } finally {
+        setIsUpdating(false)
+      }
     }
   }
 
-  const handleRemoveDirectory = (dirToRemove: string) => {
+  const handleRemoveDirectory = async (dirToRemove: string) => {
     const updated = localDirectories.filter(dir => dir !== dirToRemove)
     setLocalDirectories(updated)
-    onDirectoriesChange?.(updated)
+    setIsUpdating(true)
+    try {
+      // Await the update to ensure it completes before allowing further actions
+      await onDirectoriesChange?.(updated)
+      
+      // Show appropriate message based on session status
+      if (sessionStatus === 'running' || sessionStatus === 'starting') {
+        toast.success('Directory removed - will apply at next message')
+      } else {
+        toast.success('Directory removed')
+      }
+    } catch (error) {
+      toast.error('Failed to remove directory')
+      // Revert the local change on error
+      setLocalDirectories(directories)
+    } finally {
+      setIsUpdating(false)
+    }
   }
 
   const directoryCount = directories?.length || 0
@@ -67,7 +103,7 @@ export function AdditionalDirectoriesDropdown({
           ? 'text-muted-foreground hover:text-foreground cursor-pointer' 
           : 'text-muted-foreground/50 cursor-not-allowed'
       }`}
-      disabled={!canEdit}
+      disabled={!canEdit || isUpdating}
     >
       <span>{workingDir}</span>
       {directoryCount > 0 && (
@@ -151,6 +187,7 @@ export function AdditionalDirectoriesDropdown({
                       size="sm"
                       variant="ghost"
                       onClick={() => handleRemoveDirectory(dir)}
+                      disabled={isUpdating}
                       className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                       <X className="h-3 w-3" />
@@ -179,6 +216,7 @@ export function AdditionalDirectoriesDropdown({
                 <Button
                   size="sm"
                   onClick={handleAddDirectory}
+                  disabled={isUpdating || !newDirectory.trim()}
                   className="h-7 px-2"
                 >
                   Add

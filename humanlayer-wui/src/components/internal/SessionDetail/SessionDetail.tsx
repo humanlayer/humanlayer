@@ -21,7 +21,6 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 import { SessionModeIndicator } from './AutoAcceptIndicator'
 import { ForkViewModal } from './components/ForkViewModal'
 import { DangerouslySkipPermissionsDialog } from './DangerouslySkipPermissionsDialog'
-import { TokenUsageBadge } from './components/TokenUsageBadge'
 import { AdditionalDirectoriesDropdown } from './components/AdditionalDirectoriesDropdown'
 
 // Import hooks
@@ -222,15 +221,11 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   }
 
   const handleUpdateAdditionalDirectories = async (directories: string[]) => {
-    try {
-      await daemonClient.updateSession(session.id, { additionalDirectories: directories })
-      // Update the local store
-      useStore.getState().updateSession(session.id, { additionalDirectories: directories })
-    } catch (error) {
-      toast.error('Failed to update additional directories', {
-        description: error instanceof Error ? error.message : 'Unknown error',
-      })
-    }
+    await daemonClient.updateSession(session.id, { additionalDirectories: directories })
+    // Update the local store
+    useStore.getState().updateSession(session.id, { additionalDirectories: directories })
+    // Refresh the session data to ensure UI reflects current state
+    await fetchActiveSessionDetail(session.id)
   }
 
   // Keyboard navigation protection
