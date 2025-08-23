@@ -158,6 +158,11 @@ func (m *Manager) LaunchSession(ctx context.Context, config LaunchSessionConfig)
 	dbSession := store.NewSessionFromConfig(sessionID, runID, claudeConfig)
 	dbSession.Summary = CalculateSummary(claudeConfig.Query)
 
+	// Set title from launch config if provided
+	if config.Title != "" {
+		dbSession.Title = config.Title
+	}
+
 	// Handle dangerously skip permissions from config
 	if config.DangerouslySkipPermissions {
 		dbSession.DangerouslySkipPermissions = true
