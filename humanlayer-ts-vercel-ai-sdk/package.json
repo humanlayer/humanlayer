@@ -39,12 +39,12 @@
   "homepage": "https://github.com/humanlayer/humanlayer#readme",
   "dependencies": {
     "@ai-sdk/openai": "^1.0.13",
-    "ai": "^4.0.26",
-    "@humanlayer/sdk": "0.7.9"
+    "@humanlayer/sdk": "0.7.9",
+    "ai": "^4.0.26"
   },
   "devDependencies": {
-    "@types/jest": "^29.5.14",
-    "@types/node": "^20.17.11",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^20.19.11",
     "eslint": "^8.57.0",
     "jest": "^29.7.0",
     "prettier": "^3.3.2",
