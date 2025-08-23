@@ -468,8 +468,16 @@ eventLoop:
 			})
 		}
 	} else if err != nil {
+		slog.Error("claude process failed",
+			"session_id", sessionID,
+			"error", err.Error(),
+			"duration", endTime.Sub(startTime))
 		m.updateSessionStatus(ctx, sessionID, StatusFailed, err.Error())
 	} else if result != nil && result.IsError {
+		slog.Error("claude process failed with error result",
+			"session_id", sessionID,
+			"error", result.Error,
+			"duration", endTime.Sub(startTime))
 		m.updateSessionStatus(ctx, sessionID, StatusFailed, result.Error)
 	} else {
 		// No longer updating in-memory session
@@ -518,10 +526,21 @@ eventLoop:
 		}
 	}
 
-	slog.Info("session completed",
-		"session_id", sessionID,
-		"status", StatusCompleted,
-		"duration", endTime.Sub(startTime))
+	// Determine final status for logging
+	finalStatus := StatusCompleted
+	if err != nil || (result != nil && result.IsError) {
+		finalStatus = StatusFailed
+	} else if dbErr == nil && session != nil && session.Status == string(StatusInterrupting) {
+		finalStatus = StatusInterrupted
+	}
+
+	// Only log as info if completed successfully, already logged errors above
+	if finalStatus == StatusCompleted {
+		slog.Info("session completed",
+			"session_id", sessionID,
+			"status", finalStatus,
+			"duration", endTime.Sub(startTime))
+	}
 
 	// Clean up active process
 	m.mu.Lock()
