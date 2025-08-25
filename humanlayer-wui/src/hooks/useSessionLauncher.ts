@@ -150,7 +150,6 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
     return set({ config, error: undefined })
   },
 
-
   setGPrefixMode: enabled => set({ gPrefixMode: enabled }),
 
   setView: view => set({ view }),
