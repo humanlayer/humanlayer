@@ -31,6 +31,42 @@ func NewProxyHandler(sessionManager session.SessionManager, store store.Conversa
 	}
 }
 
+// setAuthHeaders sets the appropriate authentication headers based on the target URL and session
+func (h *ProxyHandler) setAuthHeaders(c *gin.Context, req *http.Request, url string, session *store.Session) error {
+	if strings.Contains(url, "api.anthropic.com") {
+		req.Header.Set("anthropic-version", c.GetHeader("anthropic-version"))
+		apiKey := os.Getenv("ANTHROPIC_API_KEY")
+		if apiKey == "" {
+			c.JSON(500, gin.H{"error": "ANTHROPIC_API_KEY not configured"})
+			return fmt.Errorf("ANTHROPIC_API_KEY not configured")
+		}
+		req.Header.Set("x-api-key", apiKey)
+	} else if strings.Contains(url, "inference.baseten.co") {
+		// Baseten uses Bearer token - check Baseten-specific keys first
+		apiKey := session.ProxyAPIKey
+		if apiKey == "" {
+			apiKey = os.Getenv("BASETEN_API_KEY")
+		}
+		if apiKey == "" {
+			c.JSON(500, gin.H{"error": "BASETEN_API_KEY not configured"})
+			return fmt.Errorf("BASETEN_API_KEY not configured")
+		}
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", apiKey))
+	} else if strings.Contains(url, "openrouter.ai") || session.ProxyEnabled {
+		// OpenRouter or general proxy - check OpenRouter-specific keys
+		apiKey := session.ProxyAPIKey
+		if apiKey == "" {
+			apiKey = os.Getenv("OPENROUTER_API_KEY")
+		}
+		if apiKey == "" {
+			c.JSON(500, gin.H{"error": "No API key configured for proxy"})
+			return fmt.Errorf("no API key configured for proxy")
+		}
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", apiKey))
+	}
+	return nil
+}
+
 func (h *ProxyHandler) ProxyAnthropicRequest(c *gin.Context) {
 	startTime := time.Now()
 	sessionID := c.Param("session_id")
@@ -186,39 +222,9 @@ func (h *ProxyHandler) handleNonStreamingProxy(c *gin.Context, sessionID string,
 	// Set headers
 	req.Header.Set("Content-Type", "application/json")
 
-	// Set authentication based on provider
-	if strings.Contains(url, "api.anthropic.com") {
-		req.Header.Set("anthropic-version", c.GetHeader("anthropic-version"))
-		apiKey := os.Getenv("ANTHROPIC_API_KEY")
-		if apiKey == "" {
-			c.JSON(500, gin.H{"error": "ANTHROPIC_API_KEY not configured"})
-			return
-		}
-		req.Header.Set("x-api-key", apiKey)
-	} else if strings.Contains(url, "openrouter.ai") || session.ProxyEnabled {
-		// OpenRouter uses Bearer token
-		// First try session-specific API key, then fall back to env var
-		apiKey := session.ProxyAPIKey
-		if apiKey == "" {
-			apiKey = os.Getenv("OPENROUTER_API_KEY")
-		}
-		if apiKey == "" {
-			c.JSON(500, gin.H{"error": "No API key configured for proxy"})
-			return
-		}
-		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", apiKey))
-	} else if strings.Contains(url, "inference.baseten.co") {
-		// Baseten uses Bearer token
-		// First try session-specific API key, then fall back to env var
-		apiKey := session.ProxyAPIKey
-		if apiKey == "" {
-			apiKey = os.Getenv("BASETEN_API_KEY")
-		}
-		if apiKey == "" {
-			c.JSON(500, gin.H{"error": "BASETEN_API_KEY not configured"})
-			return
-		}
-		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", apiKey))
+	// Set authentication headers based on provider
+	if err := h.setAuthHeaders(c, req, url, session); err != nil {
+		return
 	}
 
 	// Make request
@@ -321,39 +327,9 @@ func (h *ProxyHandler) handleStreamingProxy(c *gin.Context, sessionID string, ur
 	// Set headers
 	req.Header.Set("Content-Type", "application/json")
 
-	// Set authentication based on provider
-	if strings.Contains(url, "api.anthropic.com") {
-		req.Header.Set("anthropic-version", c.GetHeader("anthropic-version"))
-		apiKey := os.Getenv("ANTHROPIC_API_KEY")
-		if apiKey == "" {
-			c.JSON(500, gin.H{"error": "ANTHROPIC_API_KEY not configured"})
-			return
-		}
-		req.Header.Set("x-api-key", apiKey)
-	} else if strings.Contains(url, "openrouter.ai") || session.ProxyEnabled {
-		// OpenRouter uses Bearer token
-		// First try session-specific API key, then fall back to env var
-		apiKey := session.ProxyAPIKey
-		if apiKey == "" {
-			apiKey = os.Getenv("OPENROUTER_API_KEY")
-		}
-		if apiKey == "" {
-			c.JSON(500, gin.H{"error": "No API key configured for proxy"})
-			return
-		}
-		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", apiKey))
-	} else if strings.Contains(url, "inference.baseten.co") {
-		// Baseten uses Bearer token
-		// First try session-specific API key, then fall back to env var
-		apiKey := session.ProxyAPIKey
-		if apiKey == "" {
-			apiKey = os.Getenv("BASETEN_API_KEY")
-		}
-		if apiKey == "" {
-			c.JSON(500, gin.H{"error": "BASETEN_API_KEY not configured"})
-			return
-		}
-		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", apiKey))
+	// Set authentication headers based on provider
+	if err := h.setAuthHeaders(c, req, url, session); err != nil {
+		return
 	}
 
 	// Make request
