@@ -1093,6 +1093,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
             denyingApprovalId={approvals.denyingApprovalId}
             isDenying={approvals.isDenying}
             onDeny={approvals.handleDeny}
+            handleCancelDeny={approvals.handleCancelDeny}
 
             session={session}
             parentSessionData={parentSessionData || parentSession || undefined}
