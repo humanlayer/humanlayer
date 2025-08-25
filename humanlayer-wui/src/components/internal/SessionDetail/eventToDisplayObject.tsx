@@ -12,7 +12,6 @@ import {
   Bot,
   Brain,
   FilePenLine,
-  UserCheck,
   User,
   Wrench,
   Globe,
@@ -20,6 +19,7 @@ import {
   Terminal,
   Search,
   ListTodo,
+  ListChecks,
 } from 'lucide-react'
 import { CommandToken } from '@/components/internal/CommandToken'
 import { formatToolResult } from './formatToolResult'
@@ -234,6 +234,32 @@ export function eventToDisplayObject(
       )
     }
 
+    if (event.toolName === 'WebFetch') {
+      const toolInput = JSON.parse(event.toolInputJson!)
+      subject = (
+        <span>
+          <span className="font-bold">Web Fetch </span>
+          <span className="font-mono text-sm text-muted-foreground">{toolInput.url}</span>
+          {toolInput.prompt && (
+            <div className="mt-1 text-sm text-muted-foreground italic">"{toolInput.prompt}"</div>
+          )}
+        </span>
+      )
+    }
+
+    if (event.toolName === 'ExitPlanMode') {
+      const toolInput = JSON.parse(event.toolInputJson!)
+      const planLines = toolInput.plan.split('\n').filter((l: string) => l.trim())
+      const lineCount = planLines.length
+
+      subject = (
+        <span>
+          <span className="font-bold">Exit Plan Mode </span>
+          <span className="text-sm text-muted-foreground">({lineCount} lines)</span>
+        </span>
+      )
+    }
+
     // MCP tool handling
     if (event.toolName?.startsWith('mcp__')) {
       const { service, method } = parseMcpToolName(event.toolName)
@@ -280,7 +306,7 @@ export function eventToDisplayObject(
       [ApprovalStatus.Denied]: 'text-[var(--terminal-error)]',
       resolved: 'text-[var(--terminal-success)]', // Add resolved status
     }
-    iconComponent = <UserCheck className={iconClasses} />
+    // Keep the original tool icon instead of overriding with UserCheck
     let previewFile = null
 
     // Get border class based on approval status
@@ -451,6 +477,23 @@ export function eventToDisplayObject(
       )
     }
 
+    if (event.toolName === 'ExitPlanMode') {
+      const toolInput = JSON.parse(event.toolInputJson!)
+
+      previewFile = (
+        <div className={`border ${getBorderClass()} rounded p-4 mt-4`}>
+          <div className="mb-4">
+            <span className="font-mono text-sm text-muted-foreground">
+              <span className="font-bold">Plan to execute</span>
+            </span>
+          </div>
+          <pre className="bg-muted/50 p-3 rounded text-xs overflow-x-auto max-h-96 overflow-y-auto">
+            <code>{toolInput.plan}</code>
+          </pre>
+        </div>
+      )
+    }
+
     // If we have a formatted subject from tool-specific rendering, use it
     if (formattedToolSubject) {
       subject = (
@@ -585,6 +628,11 @@ export function eventToDisplayObject(
               <span className="text-muted-foreground/50">⎿</span>
               <span className="text-destructive">
                 Denied: {toolResult.toolResultContent || 'No reason provided'}
+                {isFocused && (
+                  <span className="text-xs text-muted-foreground/50 ml-2">
+                    <kbd className="px-1 py-0.5 text-xs bg-muted/50 rounded">i</kbd> expand
+                  </span>
+                )}
               </span>
             </div>
           </>
@@ -612,6 +660,20 @@ export function eventToDisplayObject(
           )
         }
       }
+    } else if (
+      isFocused &&
+      event.toolName === 'WebFetch' &&
+      event.approvalStatus !== ApprovalStatus.Pending
+    ) {
+      // Show expand hint for WebFetch which has rich content even without results (but not when pending)
+      subject = (
+        <>
+          {subject}
+          <span className="text-xs text-muted-foreground/50 ml-2">
+            <kbd className="px-1 py-0.5 text-xs bg-muted/50 rounded">i</kbd> expand
+          </span>
+        </>
+      )
     }
   }
 
@@ -660,6 +722,10 @@ export function getToolIcon(toolName: string | undefined, className = 'w-3.5 h-3
       return <ListTodo className={className} />
     case 'WebSearch':
       return <Globe className={className} />
+    case 'WebFetch':
+      return <Globe className={className} />
+    case 'ExitPlanMode':
+      return <ListChecks className={className} />
     case 'NotebookRead':
     case 'NotebookEdit':
       return <FileText className={className} />
