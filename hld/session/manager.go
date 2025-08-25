@@ -1811,7 +1811,7 @@ func (m *Manager) UpdateSessionSettings(ctx context.Context, sessionID string, u
 			"session_id", sessionID,
 			"additional_directories", *updates.AdditionalDirectories)
 	}
-	
+
 	// First update the store
 	if err := m.store.UpdateSession(ctx, sessionID, updates); err != nil {
 		return err

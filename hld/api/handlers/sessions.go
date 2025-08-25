@@ -353,13 +353,13 @@ func (h *SessionHandlers) UpdateSession(ctx context.Context, req api.UpdateSessi
 		if err == nil {
 			dirStr := string(dirJSON)
 			update.AdditionalDirectories = &dirStr
-			slog.Info("Updating additional directories", 
-				"sessionId", req.Id, 
+			slog.Info("Updating additional directories",
+				"sessionId", req.Id,
 				"directories", req.Body.AdditionalDirectories,
 				"dirStr", dirStr)
 		} else {
-			slog.Error("Failed to marshal additional directories", 
-				"error", err, 
+			slog.Error("Failed to marshal additional directories",
+				"error", err,
 				"directories", req.Body.AdditionalDirectories)
 		}
 	}
