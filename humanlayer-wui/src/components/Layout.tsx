@@ -34,7 +34,6 @@ import { logger } from '@/lib/logging'
 import { DangerousSkipPermissionsMonitor } from '@/components/DangerousSkipPermissionsMonitor'
 import { KeyboardShortcut } from '@/components/HotkeyPanel'
 import { DvdScreensaver } from '@/components/DvdScreensaver'
-import { clear } from '@tauri-apps/plugin-clipboard-manager'
 
 export function Layout() {
   const [approvals, setApprovals] = useState<any[]>([])

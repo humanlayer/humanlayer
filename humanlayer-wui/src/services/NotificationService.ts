@@ -224,8 +224,6 @@ class NotificationService {
    * Show in-app notification using Sonner
    */
   private showInAppNotification(options: NotificationOptions) {
-    console.log('showInAppNotification', options)
-
     const toastOptions: ExternalToast = {
       closeButton: true, // Always show close button for better UX
       description: options.body,
@@ -235,7 +233,7 @@ class NotificationService {
 
     // control notification id when showing an approval (may expand later)
     if (options.type === 'approval_required') {
-      toastOptions.id = `approval_required:${options.metadata.approvalId}`
+      toastOptions.id = `${options.type}:${options.metadata.approvalId}`
     }
 
     // Add primary action if provided
