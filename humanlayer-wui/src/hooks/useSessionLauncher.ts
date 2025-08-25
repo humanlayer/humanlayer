@@ -200,7 +200,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
 
       console.log('Config before launch:', config)
       console.log('Additional directories:', config.additionalDirectories)
-      
+
       const request: LaunchSessionRequest = {
         query: query.trim(),
         title: config.title || undefined,
@@ -221,7 +221,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
             }
           : {}),
       }
-      
+
       console.log('Launch request:', request)
       console.log('Launch request additional_directories specifically:', request.additional_directories)
 

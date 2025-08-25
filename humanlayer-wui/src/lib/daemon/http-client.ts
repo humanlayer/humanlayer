@@ -144,7 +144,7 @@ export class HTTPDaemonClient implements IDaemonClient {
     const additionalDirs = 'additionalDirectories' in params
       ? params.additionalDirectories
       : (params as LaunchSessionRequest).additional_directories;
-    
+
     // Create the session with appropriate settings
     const response = await this.client!.createSession({
       query: params.query,

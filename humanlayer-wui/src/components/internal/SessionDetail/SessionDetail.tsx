@@ -918,7 +918,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               )}
             </h2>
             {session.workingDir && (
-              <AdditionalDirectoriesDropdown 
+              <AdditionalDirectoriesDropdown
                 workingDir={session.workingDir}
                 directories={session.additionalDirectories || []}
                 sessionStatus={session.status}
@@ -997,7 +997,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               )}
             </h2>
             {session.workingDir && (
-              <AdditionalDirectoriesDropdown 
+              <AdditionalDirectoriesDropdown
                 workingDir={session.workingDir}
                 directories={session.additionalDirectories || []}
                 sessionStatus={session.status}

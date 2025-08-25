@@ -23,11 +23,11 @@ interface AdditionalDirectoriesDropdownProps {
   onDirectoriesChange?: (directories: string[]) => void | Promise<void>
 }
 
-export function AdditionalDirectoriesDropdown({ 
-  workingDir, 
-  directories, 
+export function AdditionalDirectoriesDropdown({
+  workingDir,
+  directories,
   sessionStatus,
-  onDirectoriesChange 
+  onDirectoriesChange
 }: AdditionalDirectoriesDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [localDirectories, setLocalDirectories] = useState<string[]>(directories)
@@ -42,7 +42,7 @@ export function AdditionalDirectoriesDropdown({
 
   // Check if editing is allowed based on session status
   const canEdit = sessionStatus === 'completed' || sessionStatus === 'waiting_input'
-  
+
   const handleAddDirectory = async () => {
     const trimmed = newDirectory.trim()
     if (trimmed && !localDirectories.includes(trimmed)) {
@@ -54,7 +54,7 @@ export function AdditionalDirectoriesDropdown({
         await onDirectoriesChange?.(updated)
         setNewDirectory('')
         setIsAdding(false)
-        
+
         // Show appropriate message based on session status
         if (sessionStatus === 'running' || sessionStatus === 'starting') {
           toast.success('Directory added - will apply at next message')
@@ -78,7 +78,7 @@ export function AdditionalDirectoriesDropdown({
     try {
       // Await the update to ensure it completes before allowing further actions
       await onDirectoriesChange?.(updated)
-      
+
       // Show appropriate message based on session status
       if (sessionStatus === 'running' || sessionStatus === 'starting') {
         toast.success('Directory removed - will apply at next message')
@@ -95,12 +95,12 @@ export function AdditionalDirectoriesDropdown({
   }
 
   const directoryCount = directories?.length || 0
-  
+
   const buttonContent = (
     <button
       className={`inline-flex items-center text-xs font-mono transition-colors focus:outline-none ${
-        canEdit 
-          ? 'text-muted-foreground hover:text-foreground cursor-pointer' 
+        canEdit
+          ? 'text-muted-foreground hover:text-foreground cursor-pointer'
           : 'text-muted-foreground/50 cursor-not-allowed'
       }`}
       disabled={!canEdit || isUpdating}
@@ -125,8 +125,8 @@ export function AdditionalDirectoriesDropdown({
           <TooltipTrigger asChild>
             {buttonContent}
           </TooltipTrigger>
-          <TooltipContent 
-            align="start" 
+          <TooltipContent
+            align="start"
             sideOffset={5}
             className="text-xs"
           >
@@ -142,8 +142,8 @@ export function AdditionalDirectoriesDropdown({
       <PopoverTrigger asChild>
         {buttonContent}
       </PopoverTrigger>
-      <PopoverContent 
-        className="w-96 p-3" 
+      <PopoverContent
+        className="w-96 p-3"
         align="start"
         sideOffset={5}
       >
@@ -155,7 +155,7 @@ export function AdditionalDirectoriesDropdown({
           <div className="font-mono text-xs text-foreground py-1">
             {workingDir}
           </div>
-          
+
           <div className="flex items-center justify-between text-xs font-semibold text-foreground pt-2 pb-1 border-b">
             <div className="flex items-center gap-1.5">
               <FolderOpen className="h-3 w-3" />
@@ -172,7 +172,7 @@ export function AdditionalDirectoriesDropdown({
               </Button>
             )}
           </div>
-          
+
           <div className="space-y-1 max-h-48 overflow-y-auto">
             {localDirectories.length === 0 ? (
               <p className="text-xs text-muted-foreground py-1">No additional directories</p>
@@ -196,7 +196,7 @@ export function AdditionalDirectoriesDropdown({
                 </div>
               ))
             )}
-            
+
             {isAdding && (
               <div className="flex gap-1 pt-1">
                 <Input
