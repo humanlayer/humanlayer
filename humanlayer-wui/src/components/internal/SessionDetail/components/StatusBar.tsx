@@ -16,7 +16,13 @@ interface StatusBarProps {
   onModelChange?: () => void
 }
 
-export function StatusBar({ session, parentSessionData, isForkMode, forkTokenCount, onModelChange }: StatusBarProps) {
+export function StatusBar({
+  session,
+  parentSessionData,
+  isForkMode,
+  forkTokenCount,
+  onModelChange,
+}: StatusBarProps) {
   const [isModelSelectorOpen, setIsModelSelectorOpen] = useState(false)
 
   const statusText = renderSessionStatus(session).toUpperCase()

@@ -77,7 +77,6 @@ export const SessionModeIndicator: FC<SessionModeIndicatorProps> = ({
 
   // Fork mode takes highest priority
   if (isForkMode && forkTurnNumber !== undefined) {
-
     return (
       <div
         className={cn(
