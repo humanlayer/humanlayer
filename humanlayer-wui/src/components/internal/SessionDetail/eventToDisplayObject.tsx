@@ -559,7 +559,7 @@ export function eventToDisplayObject(
               )}
             </>
           ) : (
-            <DenyForm approvalId={event.approvalId!} onDeny={onDeny} onCancel={onCancelDeny} />
+            <DenyForm onCancel={onCancelDeny} isDenying={isDenying} />
           )}
         </div>
       )
@@ -620,7 +620,7 @@ export function eventToDisplayObject(
             <div className="mt-1 text-sm font-mono flex items-start gap-1">
               <span className="text-muted-foreground/50">⎿</span>
               <span className="text-destructive">
-                Denied: {toolResult.toolResultContent || 'No reason provided'}
+                Denial Reason: {toolResult.toolResultContent || 'No reason provided'}
                 {isFocused && (
                   <span className="text-xs text-muted-foreground/50 ml-2">
                     <kbd className="px-1 py-0.5 text-xs bg-muted/50 rounded">i</kbd> expand
