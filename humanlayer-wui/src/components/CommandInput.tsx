@@ -15,10 +15,11 @@ import { useStore } from '@/AppStore'
 interface SessionConfig {
   title?: string
   workingDir: string
-  provider?: 'anthropic' | 'openrouter'
+  provider?: 'anthropic' | 'openrouter' | 'baseten'
   model?: string
   maxTurns?: number
   openRouterApiKey?: string
+  basetenApiKey?: string
 }
 
 interface CommandInputProps {
@@ -45,6 +46,8 @@ export default function CommandInput({
   const { paths: recentPaths } = useRecentPaths()
   const [showApiKey, setShowApiKey] = useState(false)
   const [showApiKeyInput, setShowApiKeyInput] = useState(false)
+  const [showBasetenApiKey, setShowBasetenApiKey] = useState(false)
+  const [showBasetenApiKeyInput, setShowBasetenApiKeyInput] = useState(false)
   const [configStatus, setConfigStatus] = useState<ConfigStatus | null>(null)
   const [isCheckingConfig, setIsCheckingConfig] = useState(false)
   const userSettings = useStore(state => state.userSettings)
@@ -63,9 +66,9 @@ export default function CommandInput({
     }
   }, [])
 
-  // Check config status when provider changes to OpenRouter
+  // Check config status when provider changes to OpenRouter or Baseten
   useEffect(() => {
-    if (config.provider === 'openrouter') {
+    if (config.provider === 'openrouter' || config.provider === 'baseten') {
       setIsCheckingConfig(true)
       daemonClient
         .getConfigStatus()
@@ -149,7 +152,7 @@ export default function CommandInput({
               value={config.provider || 'anthropic'}
               onValueChange={value => {
                 updateConfig({
-                  provider: value as 'anthropic' | 'openrouter',
+                  provider: value as 'anthropic' | 'openrouter' | 'baseten',
                   model: undefined, // Clear model when provider changes
                   // Keep the API key persistent across provider changes
                 })
@@ -161,6 +164,7 @@ export default function CommandInput({
               <SelectContent>
                 <SelectItem value="anthropic">Anthropic</SelectItem>
                 <SelectItem value="openrouter">OpenRouter</SelectItem>
+                <SelectItem value="baseten">Baseten</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -176,6 +180,15 @@ export default function CommandInput({
                 value={config.model || ''}
                 onChange={e => updateConfig({ model: e.target.value })}
                 placeholder="e.g., openai/gpt-oss-120b"
+                disabled={isLoading}
+              />
+            ) : config.provider === 'baseten' ? (
+              // Text input for Baseten models
+              <Input
+                type="text"
+                value={config.model || ''}
+                onChange={e => updateConfig({ model: e.target.value })}
+                placeholder="e.g., deepseek-ai/DeepSeek-V3.1"
                 disabled={isLoading}
               />
             ) : (
@@ -299,6 +312,106 @@ export default function CommandInput({
                       setShowApiKeyInput(false)
                       updateConfig({ openRouterApiKey: undefined })
                       setShowApiKey(false)
+                    }}
+                    type="button"
+                  >
+                    Cancel
+                  </Button>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Your API key will be stored with this session
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Baseten API Key field - only shown when Baseten is selected */}
+      {config.provider === 'baseten' && (
+        <div className="space-y-2">
+          {!showBasetenApiKeyInput ? (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {isCheckingConfig ? (
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                ) : configStatus?.baseten?.api_key_configured || config.basetenApiKey ? (
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                ) : (
+                  <AlertCircle className="h-4 w-4 text-destructive" />
+                )}
+                <span
+                  className={
+                    configStatus?.baseten?.api_key_configured || config.basetenApiKey
+                      ? 'text-sm text-muted-foreground'
+                      : 'text-sm text-destructive'
+                  }
+                >
+                  {isCheckingConfig
+                    ? 'Checking Baseten configuration...'
+                    : configStatus?.baseten?.api_key_configured || config.basetenApiKey
+                      ? 'Baseten API key is configured'
+                      : 'Baseten API key required'}
+                </span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0"
+                onClick={() => setShowBasetenApiKeyInput(!showBasetenApiKeyInput)}
+              >
+                <Pencil className="h-3 w-3" />
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Label htmlFor="baseten-api-key" className="text-xs">
+                Baseten API Key
+              </Label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Input
+                    id="baseten-api-key"
+                    type={showBasetenApiKey ? 'text' : 'password'}
+                    value={config.basetenApiKey || ''}
+                    onChange={e => updateConfig({ basetenApiKey: e.target.value })}
+                    placeholder=""
+                    className="h-8 pr-10 text-sm"
+                  />
+                  {config.basetenApiKey && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-8 w-8 p-0"
+                      onClick={() => setShowBasetenApiKey(!showBasetenApiKey)}
+                      type="button"
+                    >
+                      {showBasetenApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  )}
+                </div>
+                {config.basetenApiKey ? (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="h-8 px-3"
+                    onClick={() => {
+                      setShowBasetenApiKeyInput(false)
+                      setShowBasetenApiKey(false)
+                    }}
+                    type="button"
+                  >
+                    Save
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 px-3"
+                    onClick={() => {
+                      setShowBasetenApiKeyInput(false)
+                      updateConfig({ basetenApiKey: undefined })
+                      setShowBasetenApiKey(false)
                     }}
                     type="button"
                   >

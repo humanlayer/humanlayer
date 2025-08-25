@@ -35,10 +35,12 @@ func (h *ProxyHandler) ProxyAnthropicRequest(c *gin.Context) {
 	startTime := time.Now()
 	sessionID := c.Param("session_id")
 
-	slog.Info("proxy request started",
+	slog.Info("🟢 PROXY REQUEST RECEIVED",
 		"session_id", sessionID,
 		"method", c.Request.Method,
 		"path", c.Request.URL.Path,
+		"remote_addr", c.Request.RemoteAddr,
+		"user_agent", c.Request.UserAgent(),
 		"start_time", startTime)
 
 	// Get session with proxy config
@@ -97,6 +99,13 @@ func (h *ProxyHandler) ProxyAnthropicRequest(c *gin.Context) {
 		targetURL = "https://openrouter.ai/api/v1/chat/completions"
 		needsTransform = true
 		slog.Info("using OpenRouter proxy",
+			"session_id", sessionID,
+			"target_url", targetURL)
+	} else if os.Getenv("BASETEN_API_KEY") != "" {
+		// If Baseten API key is set, use Baseten
+		targetURL = "https://inference.baseten.co/v1/chat/completions"
+		needsTransform = true
+		slog.Info("using Baseten proxy",
 			"session_id", sessionID,
 			"target_url", targetURL)
 	} else {
@@ -195,6 +204,18 @@ func (h *ProxyHandler) handleNonStreamingProxy(c *gin.Context, sessionID string,
 		}
 		if apiKey == "" {
 			c.JSON(500, gin.H{"error": "No API key configured for proxy"})
+			return
+		}
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", apiKey))
+	} else if strings.Contains(url, "inference.baseten.co") {
+		// Baseten uses Bearer token
+		// First try session-specific API key, then fall back to env var
+		apiKey := session.ProxyAPIKey
+		if apiKey == "" {
+			apiKey = os.Getenv("BASETEN_API_KEY")
+		}
+		if apiKey == "" {
+			c.JSON(500, gin.H{"error": "BASETEN_API_KEY not configured"})
 			return
 		}
 		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", apiKey))
@@ -318,6 +339,18 @@ func (h *ProxyHandler) handleStreamingProxy(c *gin.Context, sessionID string, ur
 		}
 		if apiKey == "" {
 			c.JSON(500, gin.H{"error": "No API key configured for proxy"})
+			return
+		}
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", apiKey))
+	} else if strings.Contains(url, "inference.baseten.co") {
+		// Baseten uses Bearer token
+		// First try session-specific API key, then fall back to env var
+		apiKey := session.ProxyAPIKey
+		if apiKey == "" {
+			apiKey = os.Getenv("BASETEN_API_KEY")
+		}
+		if apiKey == "" {
+			c.JSON(500, gin.H{"error": "BASETEN_API_KEY not configured"})
 			return
 		}
 		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", apiKey))
