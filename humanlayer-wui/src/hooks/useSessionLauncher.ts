@@ -10,10 +10,11 @@ import { logger } from '@/lib/logging'
 interface SessionConfig {
   title?: string
   workingDir: string
-  provider?: 'anthropic' | 'openrouter'
+  provider?: 'anthropic' | 'openrouter' | 'baseten'
   model?: string
   maxTurns?: number
   openRouterApiKey?: string
+  basetenApiKey?: string
 }
 
 interface LauncherState {
@@ -49,6 +50,7 @@ const isViewingSessionDetail = (): boolean => {
 const LAST_WORKING_DIR_KEY = 'humanlayer-last-working-dir'
 const SESSION_LAUNCHER_QUERY_KEY = 'session-launcher-query'
 const OPENROUTER_API_KEY = 'humanlayer-openrouter-api-key'
+const BASETEN_API_KEY = 'humanlayer-baseten-api-key'
 
 // Helper function to get default working directory
 const getDefaultWorkingDir = (): string => {
@@ -66,6 +68,11 @@ const getSavedOpenRouterKey = (): string | undefined => {
   return localStorage.getItem(OPENROUTER_API_KEY) || undefined
 }
 
+// Helper function to get saved Baseten API key
+const getSavedBasetenKey = (): string | undefined => {
+  return localStorage.getItem(BASETEN_API_KEY) || undefined
+}
+
 export const useSessionLauncher = create<LauncherState>((set, get) => ({
   isOpen: false,
   mode: 'command',
@@ -75,6 +82,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
     workingDir: getDefaultWorkingDir(),
     provider: 'anthropic',
     openRouterApiKey: getSavedOpenRouterKey(),
+    basetenApiKey: getSavedBasetenKey(),
   },
   isLaunching: false,
   gPrefixMode: false,
@@ -99,6 +107,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
         workingDir: getDefaultWorkingDir(),
         provider: 'anthropic',
         openRouterApiKey: getSavedOpenRouterKey(),
+        basetenApiKey: getSavedBasetenKey(),
       },
       selectedMenuIndex: 0,
       error: undefined,
@@ -127,8 +136,20 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
       // Remove from localStorage when cleared to avoid stale state
       localStorage.removeItem(OPENROUTER_API_KEY)
     }
+    // Save or remove Baseten API key from localStorage
+    if (config.basetenApiKey) {
+      localStorage.setItem(BASETEN_API_KEY, config.basetenApiKey)
+    } else if (
+      config.basetenApiKey === undefined ||
+      config.basetenApiKey === null ||
+      config.basetenApiKey === ''
+    ) {
+      // Remove from localStorage when cleared to avoid stale state
+      localStorage.removeItem(BASETEN_API_KEY)
+    }
     return set({ config, error: undefined })
   },
+
 
   setGPrefixMode: enabled => set({ gPrefixMode: enabled }),
 
@@ -189,6 +210,15 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
               proxy_api_key: config.openRouterApiKey,
             }
           : {}),
+        // Add Baseten proxy configuration if provider is baseten
+        ...(config.provider === 'baseten' && config.basetenApiKey
+          ? {
+              proxy_enabled: true,
+              proxy_base_url: 'https://inference.baseten.co/v1',
+              proxy_model_override: config.model || 'deepseek-ai/DeepSeek-V3.1',
+              proxy_api_key: config.basetenApiKey,
+            }
+          : {}),
       }
 
       const response = await daemonClient.launchSession(request)
@@ -229,6 +259,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
         workingDir: getDefaultWorkingDir(),
         provider: 'anthropic',
         openRouterApiKey: getSavedOpenRouterKey(),
+        basetenApiKey: getSavedBasetenKey(),
       },
       error: undefined,
     })
@@ -251,6 +282,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
         workingDir: getDefaultWorkingDir(),
         provider: 'anthropic',
         openRouterApiKey: getSavedOpenRouterKey(),
+        basetenApiKey: getSavedBasetenKey(),
       },
       selectedMenuIndex: 0,
       isLaunching: false,

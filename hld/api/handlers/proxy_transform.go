@@ -97,18 +97,27 @@ func (h *ProxyHandler) transformAnthropicToOpenAI(anthropicReq map[string]interf
 	}
 
 	// Copy other fields
-	// Use ProxyModelOverride if set, otherwise use default OpenRouter model
+	// Use ProxyModelOverride if set, otherwise use provider-specific default
 	if modelOverride, ok := session["proxy_model_override"].(string); ok && modelOverride != "" {
 		openAIReq["model"] = modelOverride
 		slog.Debug("using proxy model override",
 			"session_id", session["id"],
 			"model", modelOverride)
 	} else {
-		// Default to anthropic/claude-sonnet-4 for OpenRouter
-		openAIReq["model"] = "openai/gpt-oss-120b"
-		slog.Debug("using default OpenRouter model",
-			"session_id", session["id"],
-			"model", "openai/gpt-oss-120b")
+		// Default model based on provider
+		baseURL, _ := session["proxy_base_url"].(string)
+		if strings.Contains(baseURL, "baseten") {
+			openAIReq["model"] = "deepseek-ai/DeepSeek-V3.1"
+			slog.Debug("using default Baseten model",
+				"session_id", session["id"],
+				"model", "deepseek-ai/DeepSeek-V3.1")
+		} else {
+			// Default for OpenRouter and others
+			openAIReq["model"] = "openai/gpt-oss-120b"
+			slog.Debug("using default OpenRouter model",
+				"session_id", session["id"],
+				"model", "openai/gpt-oss-120b")
+		}
 	}
 
 	// Copy standard parameters

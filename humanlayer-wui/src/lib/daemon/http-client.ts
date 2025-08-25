@@ -139,7 +139,7 @@ export class HTTPDaemonClient implements IDaemonClient {
         model = 'opus'
       }
     }
-    // For OpenRouter, pass model string as-is
+    // For OpenRouter and Baseten, pass model string as-is via proxyModelOverride
 
     // Create the session with appropriate settings
     const response = await this.client!.createSession({
@@ -147,7 +147,7 @@ export class HTTPDaemonClient implements IDaemonClient {
       title: 'title' in params ? params.title : undefined,
       workingDir:
         'workingDir' in params ? params.workingDir : (params as LaunchSessionRequest).working_dir,
-      model: provider === 'openrouter' ? undefined : (model as 'opus' | 'sonnet' | undefined),
+      model: provider === 'openrouter' || provider === 'baseten' ? undefined : (model as 'opus' | 'sonnet' | undefined),
       mcpConfig: 'mcpConfig' in params ? params.mcpConfig : (params as LaunchSessionRequest).mcp_config,
       permissionPromptTool:
         'permissionPromptTool' in params
@@ -159,6 +159,16 @@ export class HTTPDaemonClient implements IDaemonClient {
         proxyEnabled: true,
         proxyBaseUrl: 'https://openrouter.ai/api/v1',
         proxyModelOverride: model,
+        proxyApiKey:
+          'proxyApiKey' in params ? params.proxyApiKey : (params as LaunchSessionRequest).proxy_api_key,
+      }),
+      // Pass proxy configuration directly if using Baseten
+      ...(provider === 'baseten' && {
+        proxyEnabled: 'proxy_enabled' in params ? params.proxy_enabled : true,
+        proxyBaseUrl: 'proxy_base_url' in params ? params.proxy_base_url : 'https://inference.baseten.co/v1',
+        proxyModelOverride: 'proxy_model_override' in params ? 
+          String(params.proxy_model_override).replace(/['"]/g, '') : 
+          String(model || 'deepseek-ai/DeepSeek-V3.1').replace(/['"]/g, ''),
         proxyApiKey:
           'proxyApiKey' in params ? params.proxyApiKey : (params as LaunchSessionRequest).proxy_api_key,
       }),
