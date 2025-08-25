@@ -141,9 +141,10 @@ export class HTTPDaemonClient implements IDaemonClient {
     }
     // For OpenRouter, pass model string as-is
 
-    const additionalDirs = 'additionalDirectories' in params
-      ? params.additionalDirectories
-      : (params as LaunchSessionRequest).additional_directories;
+    const additionalDirs =
+      'additionalDirectories' in params
+        ? params.additionalDirectories
+        : (params as LaunchSessionRequest).additional_directories
 
     // Create the session with appropriate settings
     const response = await this.client!.createSession({

@@ -110,21 +110,21 @@ type FileSnapshotInfo struct {
 
 // ContinueSessionRequest is the request for continuing an existing session
 type ContinueSessionRequest struct {
-	SessionID            string   `json:"session_id"`                       // The session to continue (required)
-	Query                string   `json:"query"`                            // The new query/message to send (required)
-	SystemPrompt         string   `json:"system_prompt,omitempty"`          // Override system prompt
-	AppendSystemPrompt   string   `json:"append_system_prompt,omitempty"`   // Append to system prompt
-	MCPConfig            string   `json:"mcp_config,omitempty"`             // JSON string of MCP config (to avoid import cycle)
-	PermissionPromptTool string   `json:"permission_prompt_tool,omitempty"` // MCP tool for permission prompts
-	AllowedTools         []string `json:"allowed_tools,omitempty"`          // Allowed tools list
-	DisallowedTools      []string `json:"disallowed_tools,omitempty"`       // Disallowed tools list
+	SessionID             string   `json:"session_id"`                       // The session to continue (required)
+	Query                 string   `json:"query"`                            // The new query/message to send (required)
+	SystemPrompt          string   `json:"system_prompt,omitempty"`          // Override system prompt
+	AppendSystemPrompt    string   `json:"append_system_prompt,omitempty"`   // Append to system prompt
+	MCPConfig             string   `json:"mcp_config,omitempty"`             // JSON string of MCP config (to avoid import cycle)
+	PermissionPromptTool  string   `json:"permission_prompt_tool,omitempty"` // MCP tool for permission prompts
+	AllowedTools          []string `json:"allowed_tools,omitempty"`          // Allowed tools list
+	DisallowedTools       []string `json:"disallowed_tools,omitempty"`       // Disallowed tools list
 	AdditionalDirectories []string `json:"additional_directories,omitempty"` // Additional directories list
-	CustomInstructions   string   `json:"custom_instructions,omitempty"`    // Custom instructions
-	MaxTurns             int      `json:"max_turns,omitempty"`              // Max conversation turns
-	ProxyEnabled         bool     `json:"proxy_enabled,omitempty"`          // Whether proxy is enabled
-	ProxyBaseURL         string   `json:"proxy_base_url,omitempty"`         // Proxy base URL
-	ProxyModelOverride   string   `json:"proxy_model_override,omitempty"`   // Model to use with proxy
-	ProxyAPIKey          string   `json:"proxy_api_key,omitempty"`          // API key for proxy service
+	CustomInstructions    string   `json:"custom_instructions,omitempty"`    // Custom instructions
+	MaxTurns              int      `json:"max_turns,omitempty"`              // Max conversation turns
+	ProxyEnabled          bool     `json:"proxy_enabled,omitempty"`          // Whether proxy is enabled
+	ProxyBaseURL          string   `json:"proxy_base_url,omitempty"`         // Proxy base URL
+	ProxyModelOverride    string   `json:"proxy_model_override,omitempty"`   // Model to use with proxy
+	ProxyAPIKey           string   `json:"proxy_api_key,omitempty"`          // API key for proxy service
 }
 
 // ContinueSessionResponse is the response for continuing a session

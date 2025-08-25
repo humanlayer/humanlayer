@@ -54,20 +54,20 @@ type SessionConfig struct {
 	SessionID string // If set, resumes this session
 
 	// Optional
-	Model                Model
-	OutputFormat         OutputFormat
-	MCPConfig            *MCPConfig
-	PermissionPromptTool string
-	WorkingDir           string
-	MaxTurns             int
-	SystemPrompt         string
-	AppendSystemPrompt   string
-	AllowedTools         []string
-	DisallowedTools      []string
+	Model                 Model
+	OutputFormat          OutputFormat
+	MCPConfig             *MCPConfig
+	PermissionPromptTool  string
+	WorkingDir            string
+	MaxTurns              int
+	SystemPrompt          string
+	AppendSystemPrompt    string
+	AllowedTools          []string
+	DisallowedTools       []string
 	AdditionalDirectories []string
-	CustomInstructions   string
-	Verbose              bool
-	Env                  map[string]string // Environment variables to set for the Claude process
+	CustomInstructions    string
+	Verbose               bool
+	Env                   map[string]string // Environment variables to set for the Claude process
 }
 
 // StreamEvent represents a single event from the streaming JSON output

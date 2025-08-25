@@ -76,7 +76,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
     workingDir: getDefaultWorkingDir(),
     provider: 'anthropic',
     openRouterApiKey: getSavedOpenRouterKey(),
-    additionalDirectories: []
+    additionalDirectories: [],
   },
   isLaunching: false,
   gPrefixMode: false,
@@ -101,7 +101,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
         workingDir: getDefaultWorkingDir(),
         provider: 'anthropic',
         openRouterApiKey: getSavedOpenRouterKey(),
-        additionalDirectories: []
+        additionalDirectories: [],
       },
       selectedMenuIndex: 0,
       error: undefined,
@@ -263,7 +263,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
         workingDir: getDefaultWorkingDir(),
         provider: 'anthropic',
         openRouterApiKey: getSavedOpenRouterKey(),
-        additionalDirectories: []
+        additionalDirectories: [],
       },
       error: undefined,
     })
@@ -286,7 +286,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
         workingDir: getDefaultWorkingDir(),
         provider: 'anthropic',
         openRouterApiKey: getSavedOpenRouterKey(),
-        additionalDirectories: []
+        additionalDirectories: [],
       },
       selectedMenuIndex: 0,
       isLaunching: false,
