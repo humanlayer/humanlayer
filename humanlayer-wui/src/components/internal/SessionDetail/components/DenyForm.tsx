@@ -30,27 +30,8 @@ export function DenyForm({
     }
   }
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-      e.preventDefault()
-      handleSubmit(e as any)
-    } else if (e.key === 'Escape' && onCancel) {
-      e.preventDefault()
-      onCancel()
-    }
-  }
-
   return (
     <form onSubmit={handleSubmit} className="flex gap-2 items-center">
-      <Input
-        type="text"
-        placeholder="Reason for denial..."
-        value={reason}
-        onChange={e => setReason(e.target.value)}
-        onKeyDown={handleKeyDown}
-        className="flex-1"
-        autoFocus
-      />
       <Button
         className="cursor-pointer"
         type="submit"

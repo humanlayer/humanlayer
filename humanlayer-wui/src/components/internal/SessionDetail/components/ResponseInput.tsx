@@ -1,4 +1,4 @@
-import React, { forwardRef } from 'react'
+import React, { forwardRef, useCallback, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Session, SessionStatus } from '@/lib/daemon/types'
@@ -9,6 +9,7 @@ import {
 } from '@/components/internal/SessionDetail/utils/sessionStatus'
 import { ResponseInputLocalStorageKey } from '@/components/internal/SessionDetail/hooks/useSessionActions'
 import { StatusBar } from './StatusBar'
+import { useHotkeys } from 'react-hotkeys-hook'
 
 interface ResponseInputProps {
   session: Session
@@ -25,13 +26,18 @@ interface ResponseInputProps {
 export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>(
   (
     {
+      denyingApprovalId,
+      isDenying,
+      onDeny,
+      handleCancelDeny,
+
       session,
       parentSessionData,
       responseInput,
       setResponseInput,
       isResponding,
       handleContinueSession,
-      handleResponseInputKeyDown,
+      // handleResponseInputKeyDown,
       isForkMode,
       onModelChange,
     },
@@ -39,6 +45,7 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
   ) => {
     const getSendButtonText = () => {
       if (isResponding) return 'Interrupting...'
+      if (isDenying) return 'Deny'
       if (
         session.archived &&
         (session.status === SessionStatus.Running || session.status === SessionStatus.Starting)
@@ -50,6 +57,25 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
         return 'Interrupt & Send'
       return 'Send'
     }
+
+    const handleSubmit = () => {
+      if (isDenying) {
+        onDeny(denyingApprovalId, responseInput.trim())
+      } else {
+        handleContinueSession()
+      }
+    }
+
+    const handleResponseInputKeyDown = useCallback(
+      (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+          e.preventDefault()
+          handleSubmit()
+        }
+      },
+      [handleContinueSession, handleSubmit],
+    )
+
 
     // Get help text for fork mode
     const getForkHelpText = (isFork: boolean): React.ReactNode => {
@@ -65,6 +91,33 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
       // Regular help text
       return getHelpText(session.status)
     }
+
+    useEffect(() => {
+      if (isDenying) {
+        ref.current?.focus()
+      } else {
+        ref.current?.blur()
+        setResponseInput('')
+      }
+    }, [isDenying])
+
+    useHotkeys('escape', () => {
+      if (isDenying) {
+        setResponseInput('')
+        handleCancelDeny()
+      }
+    }, {enableOnFormTags: true})
+
+    let placeholder = getInputPlaceholder(session.status)
+
+    if (isDenying) {
+      placeholder = 'Tell the agent what you\'d like to do differently...'
+    }
+
+    if (isForkMode) {
+      placeholder = getForkInputPlaceholder(session.status)
+    }
+
     // Always show the input for all session states
     return (
       <div className="space-y-3">
@@ -80,9 +133,7 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
         <div className="flex gap-2">
           <Textarea
             ref={ref}
-            placeholder={
-              isForkMode ? getForkInputPlaceholder(session.status) : getInputPlaceholder(session.status)
-            }
+            placeholder={placeholder}
             value={responseInput}
             onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
               setResponseInput(e.target.value)
@@ -93,9 +144,10 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
             className={`flex-1 min-h-[2.5rem] ${isResponding ? 'opacity-50' : ''}`}
           />
           <Button
-            onClick={handleContinueSession}
+            onClick={handleSubmit}
             disabled={!responseInput.trim() || isResponding}
             size="sm"
+            variant={isDenying ? 'destructive' : 'default'}
           >
             {getSendButtonText()}
           </Button>

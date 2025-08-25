@@ -1089,6 +1089,12 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         <CardContent className={isCompactView ? 'px-2' : 'px-4'}>
           <ResponseInput
             ref={responseInputRef}
+
+            denyingApprovalId={approvals.denyingApprovalId}
+            isDenying={approvals.isDenying}
+            onDeny={approvals.handleDeny}
+            handleCancelDeny={approvals.handleCancelDeny}
+
             session={session}
             parentSessionData={parentSessionData || parentSession || undefined}
             responseInput={actions.responseInput}
