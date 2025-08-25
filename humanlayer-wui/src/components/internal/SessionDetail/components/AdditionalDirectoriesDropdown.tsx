@@ -1,16 +1,7 @@
 import { useState, useEffect } from 'react'
 import { ChevronDown, ChevronUp, FolderOpen, Plus, X, Lock } from 'lucide-react'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { SessionStatus } from '@/lib/daemon/types'
@@ -27,7 +18,7 @@ export function AdditionalDirectoriesDropdown({
   workingDir,
   directories,
   sessionStatus,
-  onDirectoriesChange
+  onDirectoriesChange,
 }: AdditionalDirectoriesDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [localDirectories, setLocalDirectories] = useState<string[]>(directories)
@@ -61,7 +52,7 @@ export function AdditionalDirectoriesDropdown({
         } else {
           toast.success('Directory added')
         }
-      } catch (error) {
+      } catch {
         toast.error('Failed to add directory')
         // Revert the local change on error
         setLocalDirectories(directories)
@@ -85,7 +76,7 @@ export function AdditionalDirectoriesDropdown({
       } else {
         toast.success('Directory removed')
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to remove directory')
       // Revert the local change on error
       setLocalDirectories(directories)
@@ -106,15 +97,9 @@ export function AdditionalDirectoriesDropdown({
       disabled={!canEdit || isUpdating}
     >
       <span>{workingDir}</span>
-      {directoryCount > 0 && (
-        <span className="ml-1.5">+{directoryCount} more</span>
-      )}
+      {directoryCount > 0 && <span className="ml-1.5">+{directoryCount} more</span>}
       {!canEdit && <Lock className="h-3 w-3 ml-1" />}
-      {isOpen ? (
-        <ChevronUp className="h-3 w-3 ml-1" />
-      ) : (
-        <ChevronDown className="h-3 w-3 ml-1" />
-      )}
+      {isOpen ? <ChevronUp className="h-3 w-3 ml-1" /> : <ChevronDown className="h-3 w-3 ml-1" />}
     </button>
   )
 
@@ -122,14 +107,8 @@ export function AdditionalDirectoriesDropdown({
     return (
       <TooltipProvider>
         <Tooltip>
-          <TooltipTrigger asChild>
-            {buttonContent}
-          </TooltipTrigger>
-          <TooltipContent
-            align="start"
-            sideOffset={5}
-            className="text-xs"
-          >
+          <TooltipTrigger asChild>{buttonContent}</TooltipTrigger>
+          <TooltipContent align="start" sideOffset={5} className="text-xs">
             Directory changes available when ready for input
           </TooltipContent>
         </Tooltip>
@@ -139,22 +118,14 @@ export function AdditionalDirectoriesDropdown({
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <PopoverTrigger asChild>
-        {buttonContent}
-      </PopoverTrigger>
-      <PopoverContent
-        className="w-96 p-3"
-        align="start"
-        sideOffset={5}
-      >
+      <PopoverTrigger asChild>{buttonContent}</PopoverTrigger>
+      <PopoverContent className="w-96 p-3" align="start" sideOffset={5}>
         <div className="space-y-2">
           <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground pb-1 border-b">
             <FolderOpen className="h-3 w-3" />
             <span>Working Directory</span>
           </div>
-          <div className="font-mono text-xs text-foreground py-1">
-            {workingDir}
-          </div>
+          <div className="font-mono text-xs text-foreground py-1">{workingDir}</div>
 
           <div className="flex items-center justify-between text-xs font-semibold text-foreground pt-2 pb-1 border-b">
             <div className="flex items-center gap-1.5">
@@ -178,10 +149,11 @@ export function AdditionalDirectoriesDropdown({
               <p className="text-xs text-muted-foreground py-1">No additional directories</p>
             ) : (
               localDirectories.map((dir, index) => (
-                <div key={index} className="flex items-center justify-between group hover:bg-muted/50 rounded px-1 py-0.5">
-                  <span className="font-mono text-xs text-muted-foreground">
-                    {dir}
-                  </span>
+                <div
+                  key={index}
+                  className="flex items-center justify-between group hover:bg-muted/50 rounded px-1 py-0.5"
+                >
+                  <span className="font-mono text-xs text-muted-foreground">{dir}</span>
                   {onDirectoriesChange && (
                     <Button
                       size="sm"
@@ -201,8 +173,8 @@ export function AdditionalDirectoriesDropdown({
               <div className="flex gap-1 pt-1">
                 <Input
                   value={newDirectory}
-                  onChange={(e) => setNewDirectory(e.target.value)}
-                  onKeyDown={(e) => {
+                  onChange={e => setNewDirectory(e.target.value)}
+                  onKeyDown={e => {
                     if (e.key === 'Enter') handleAddDirectory()
                     if (e.key === 'Escape') {
                       setIsAdding(false)

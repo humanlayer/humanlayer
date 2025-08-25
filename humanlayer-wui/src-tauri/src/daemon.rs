@@ -347,7 +347,7 @@ impl DaemonManager {
             signal::kill(Pid::from_raw(pid as i32), Signal::SIGTERM)
                 .map_err(|e| format!("Failed to send SIGTERM to daemon: {e}"))?;
 
-            log::info!("[Tauri] Sent SIGTERM to daemon process (PID: {})", pid);
+            log::info!("[Tauri] Sent SIGTERM to daemon process (PID: {pid})");
 
             // Wait for process to exit gracefully (with timeout)
             let start = std::time::Instant::now();
