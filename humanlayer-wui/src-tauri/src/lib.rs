@@ -272,7 +272,7 @@ pub fn run() {
         })
         .on_window_event(|_window, event| {
             if let tauri::WindowEvent::CloseRequested { .. } = event {
-                log::info!("[Tauri] Window event: {:?}", event);
+                log::info!("[Tauri] Window event: {event:?}");
             }
         })
         .invoke_handler(tauri::generate_handler![
@@ -329,7 +329,7 @@ pub fn run() {
 
                     // Stop the daemon process
                     if let Err(e) = exit_daemon_manager.stop_daemon() {
-                        log::error!("[Tauri] Failed to stop daemon on exit: {}", e);
+                        log::error!("[Tauri] Failed to stop daemon on exit: {e}");
                     } else {
                         log::info!("[Tauri] Successfully stopped daemon on exit");
                     }

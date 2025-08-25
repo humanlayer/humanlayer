@@ -21,6 +21,7 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 import { SessionModeIndicator } from './AutoAcceptIndicator'
 import { ForkViewModal } from './components/ForkViewModal'
 import { DangerouslySkipPermissionsDialog } from './DangerouslySkipPermissionsDialog'
+import { AdditionalDirectoriesDropdown } from './components/AdditionalDirectoriesDropdown'
 
 // Import hooks
 import { useSessionActions } from './hooks/useSessionActions'
@@ -217,6 +218,14 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const cancelEditTitle = () => {
     setIsEditingTitle(false)
     setEditValue('')
+  }
+
+  const handleUpdateAdditionalDirectories = async (directories: string[]) => {
+    await daemonClient.updateSession(session.id, { additionalDirectories: directories })
+    // Update the local store
+    useStore.getState().updateSession(session.id, { additionalDirectories: directories })
+    // Refresh the session data to ensure UI reflects current state
+    await fetchActiveSessionDetail(session.id)
   }
 
   // Keyboard navigation protection
@@ -914,7 +923,12 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               )}
             </h2>
             {session.workingDir && (
-              <small className="font-mono text-xs text-muted-foreground">{session.workingDir}</small>
+              <AdditionalDirectoriesDropdown
+                workingDir={session.workingDir}
+                directories={session.additionalDirectories || []}
+                sessionStatus={session.status}
+                onDirectoriesChange={handleUpdateAdditionalDirectories}
+              />
             )}
           </hgroup>
           <div className="flex items-center gap-1 ml-auto">
@@ -987,6 +1001,14 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                 </>
               )}
             </h2>
+            {session.workingDir && (
+              <AdditionalDirectoriesDropdown
+                workingDir={session.workingDir}
+                directories={session.additionalDirectories || []}
+                sessionStatus={session.status}
+                onDirectoriesChange={handleUpdateAdditionalDirectories}
+              />
+            )}
           </hgroup>
           <div className="flex items-center gap-1 ml-auto">
             <ForkViewModal
