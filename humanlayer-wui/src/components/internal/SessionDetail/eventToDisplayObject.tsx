@@ -73,7 +73,7 @@ export function eventToDisplayObject(
 
   // Tool Calls
   if (event.eventType === ConversationEventType.ToolCall) {
-    iconComponent = <Wrench className={iconClasses} />
+    iconComponent = getToolIcon(event.toolName, iconClasses)
 
     // Claude Code converts "LS" to "List"
     if (event.toolName === 'LS') {
@@ -187,7 +187,6 @@ export function eventToDisplayObject(
     }
 
     if (event.toolName === 'Write') {
-      iconComponent = <FilePenLine className={iconClasses} />
       const toolInput = JSON.parse(event.toolInputJson!)
       subject = (
         <span>
@@ -226,7 +225,6 @@ export function eventToDisplayObject(
     }
 
     if (event.toolName === 'WebSearch') {
-      iconComponent = <Globe className={iconClasses} />
       const toolInput = JSON.parse(event.toolInputJson!)
       subject = (
         <span>
@@ -637,36 +635,36 @@ export function eventToDisplayObject(
 }
 
 // Export icon mapping function for reuse in modal
-export function getToolIcon(toolName: string | undefined): React.ReactNode {
-  if (!toolName) return <Wrench className="w-3.5 h-3.5" />
+export function getToolIcon(toolName: string | undefined, className = 'w-3.5 h-3.5'): React.ReactNode {
+  if (!toolName) return <Wrench className={className} />
 
   // Handle MCP tools
   if (toolName.startsWith('mcp__')) {
-    return <Globe className="w-3.5 h-3.5" />
+    return <Globe className={className} />
   }
 
   // Handle regular tools
   switch (toolName) {
     case 'Edit':
     case 'MultiEdit':
-      return <FilePenLine className="w-3.5 h-3.5" />
+      return <FilePenLine className={className} />
     case 'Read':
-      return <FileText className="w-3.5 h-3.5" />
+      return <FileText className={className} />
     case 'Write':
-      return <FilePenLine className="w-3.5 h-3.5" />
+      return <FilePenLine className={className} />
     case 'Bash':
-      return <Terminal className="w-3.5 h-3.5" />
+      return <Terminal className={className} />
     case 'Grep':
-      return <Search className="w-3.5 h-3.5" />
+      return <Search className={className} />
     case 'TodoWrite':
-      return <ListTodo className="w-3.5 h-3.5" />
+      return <ListTodo className={className} />
     case 'WebSearch':
-      return <Globe className="w-3.5 h-3.5" />
+      return <Globe className={className} />
     case 'NotebookRead':
     case 'NotebookEdit':
-      return <FileText className="w-3.5 h-3.5" />
+      return <FileText className={className} />
     default:
-      return <Wrench className="w-3.5 h-3.5" />
+      return <Wrench className={className} />
   }
 }
 

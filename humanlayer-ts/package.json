@@ -39,8 +39,8 @@
   },
   "homepage": "https://github.com/humanlayer/humanlayer#readme",
   "devDependencies": {
-    "@types/jest": "^29.5.14",
-    "@types/node": "^20.17.11",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^20.19.11",
     "eslint": "^8.57.0",
     "jest": "^29.7.0",
     "pkgroll": "^2.10.0",

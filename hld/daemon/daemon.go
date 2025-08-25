@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/humanlayer/humanlayer/hld/approval"
@@ -157,11 +158,13 @@ func (d *Daemon) Run(ctx context.Context) error {
 		return fmt.Errorf("failed to set socket permissions: %w", err)
 	}
 
-	// Track if listener was already closed
+	// Track if listener was already closed and shutdown timing
 	listenerClosed := &struct{ closed bool }{}
+	var shutdownStart time.Time
 
 	// Ensure cleanup on exit
 	defer func() {
+		cleanupStart := time.Now()
 		if !listenerClosed.closed {
 			if err := listener.Close(); err != nil {
 				slog.Warn("failed to close listener", "error", err)
@@ -175,7 +178,15 @@ func (d *Daemon) Run(ctx context.Context) error {
 				slog.Warn("failed to close store", "error", err)
 			}
 		}
-		slog.Info("cleaned up resources", "path", d.socketPath)
+		cleanupDuration := time.Since(cleanupStart)
+		var totalShutdownDuration time.Duration
+		if !shutdownStart.IsZero() {
+			totalShutdownDuration = time.Since(shutdownStart)
+		}
+		slog.Info("cleaned up resources",
+			"path", d.socketPath,
+			"cleanup_duration", cleanupDuration,
+			"total_shutdown_duration", totalShutdownDuration)
 	}()
 
 	// Create and start RPC server
@@ -233,7 +244,9 @@ func (d *Daemon) Run(ctx context.Context) error {
 
 	// Wait for shutdown signal
 	<-ctx.Done()
-	slog.Info("shutdown signal received, stopping sessions")
+	shutdownStart = time.Now()
+	slog.Info("shutdown signal received, starting graceful shutdown",
+		"start_time", shutdownStart)
 
 	// Stop accepting new connections immediately
 	if err := listener.Close(); err != nil {
@@ -241,21 +254,51 @@ func (d *Daemon) Run(ctx context.Context) error {
 	}
 	listenerClosed.closed = true
 
-	// Gracefully stop all active sessions with configurable timeout
-	if d.sessions != nil {
-		shutdownTimeout := getShutdownTimeout()
-		slog.Info("stopping sessions with timeout", "timeout", shutdownTimeout)
+	// Use WaitGroup to coordinate parallel shutdown
+	var wg sync.WaitGroup
+	var sessionErr, httpErr error
 
-		if err := d.sessions.StopAllSessions(shutdownTimeout); err != nil {
-			slog.Error("error stopping sessions", "error", err)
-		}
+	// Start session shutdown in goroutine
+	if d.sessions != nil {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			shutdownTimeout := getShutdownTimeout()
+			slog.Info("stopping sessions with timeout", "timeout", shutdownTimeout)
+
+			if err := d.sessions.StopAllSessions(shutdownTimeout); err != nil {
+				sessionErr = err
+				slog.Error("error stopping sessions", "error", err)
+			}
+		}()
 	}
 
-	// Stop HTTP server if running
+	// Start HTTP server shutdown in goroutine
 	if d.httpServer != nil {
-		if err := d.httpServer.Shutdown(); err != nil {
-			slog.Error("error shutting down HTTP server", "error", err)
-		}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			slog.Info("initiating HTTP server shutdown")
+
+			if err := d.httpServer.Shutdown(); err != nil {
+				httpErr = err
+				slog.Error("error shutting down HTTP server", "error", err)
+			}
+		}()
+	}
+
+	// Wait for both operations to complete
+	slog.Info("waiting for parallel shutdown operations to complete")
+	wg.Wait()
+	slog.Info("all shutdown operations completed",
+		"duration", time.Since(shutdownStart))
+
+	// Return first error if any occurred
+	if sessionErr != nil {
+		return sessionErr
+	}
+	if httpErr != nil {
+		return httpErr
 	}
 
 	return nil

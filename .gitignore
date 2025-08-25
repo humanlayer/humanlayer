@@ -183,3 +183,5 @@ cython_debug/
 hlyr/blah.txt
 hld/hld-dev
 hld/hld-nightly
+
+hlyr/*.bun-build

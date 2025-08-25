@@ -79,10 +79,9 @@ func (h *SessionHandlers) CreateSession(ctx context.Context, req api.CreateSessi
 	}
 
 	// Handle optional fields
-	// TODO: Title field not available in claudecode.SessionConfig
-	// if req.Body.Title != nil {
-	// 	config.Title = *req.Body.Title
-	// }
+	if req.Body.Title != nil {
+		config.Title = *req.Body.Title
+	}
 	if req.Body.PermissionPromptTool != nil {
 		config.PermissionPromptTool = *req.Body.PermissionPromptTool
 	}

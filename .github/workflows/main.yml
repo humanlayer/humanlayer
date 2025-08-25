@@ -15,7 +15,7 @@ jobs:
       - name: Check out
         uses: actions/checkout@v4
 
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: ~/.cache/pre-commit
           key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
@@ -30,8 +30,18 @@ jobs:
           bun-version: latest
 
       - uses: actions/setup-go@v5
+        id: setup-go
         with:
-          go-version: stable
+          go-version: '1.24'
+          cache: false
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: ~/go/pkg/mod
+          key: go-mod-v2-${{ runner.os }}-go${{ steps.setup-go.outputs.go-version }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            go-mod-v2-${{ runner.os }}-go${{ steps.setup-go.outputs.go-version }}-
 
       - name: Install uv
         uses: astral-sh/setup-uv@v4
@@ -49,6 +59,11 @@ jobs:
         with:
           components: rustfmt,clippy
 
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: humanlayer-wui/src-tauri
+
       - name: Cache and install Tauri system dependencies
         if: runner.os == 'Linux'
         uses: awalsh128/cache-apt-pkgs-action@latest
@@ -57,15 +72,20 @@ jobs:
           version: 1.0
 
       - name: Cache Go tools
-        uses: actions/cache@v3
+        uses: actions/cache@v4
+        id: go-tools-cache
         with:
           path: ~/go/bin
-          key: go-tools-${{ runner.os }}-${{ hashFiles('**/go.mod') }}
-          restore-keys: |
-            go-tools-${{ runner.os }}-
+          key: go-tools-v4-${{ runner.os }}-go1.24-golangci-2.1.6-mockgen-0.5.2
+
+      - name: Install Go tools
+        if: steps.go-tools-cache.outputs.cache-hit != 'true'
+        run: |
+          go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.6
+          go install go.uber.org/mock/mockgen@v0.5.2
 
       - name: Cache Rust tools
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/bin/
@@ -103,8 +123,18 @@ jobs:
           bun-version: latest
 
       - uses: actions/setup-go@v5
+        id: setup-go
         with:
-          go-version: stable
+          go-version: '1.24'
+          cache: false
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: ~/go/pkg/mod
+          key: go-mod-v2-${{ runner.os }}-go${{ steps.setup-go.outputs.go-version }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            go-mod-v2-${{ runner.os }}-go${{ steps.setup-go.outputs.go-version }}-
 
       - name: Install uv
         uses: astral-sh/setup-uv@v4
@@ -118,6 +148,11 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: humanlayer-wui/src-tauri
+
       - name: Cache and install Tauri system dependencies
         if: runner.os == 'Linux'
         uses: awalsh128/cache-apt-pkgs-action@latest
@@ -126,15 +161,18 @@ jobs:
           version: 1.0
 
       - name: Cache Go tools
-        uses: actions/cache@v3
+        uses: actions/cache@v4
+        id: go-tools-cache-tests
         with:
           path: ~/go/bin
-          key: go-tools-${{ runner.os }}-${{ hashFiles('**/go.mod') }}
-          restore-keys: |
-            go-tools-${{ runner.os }}-
+          key: go-tools-v4-${{ runner.os }}-go1.24-mockgen-0.5.2
+
+      - name: Install mockgen
+        if: steps.go-tools-cache-tests.outputs.cache-hit != 'true'
+        run: go install go.uber.org/mock/mockgen@v0.5.2
 
       - name: Cache Rust tools
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/bin/
@@ -162,7 +200,7 @@ jobs:
             coverage.xml
 
   # for now leaving these commented out as they weren't passing (tsup or something was a related bug, want this merged more than I want in CI (Do we even want it
-          # in CI anyway?
+  # in CI anyway?
   # e2e-test:
   #   runs-on: ubuntu-latest
   #   steps:

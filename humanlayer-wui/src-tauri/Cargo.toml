@@ -34,3 +34,4 @@ dirs = "5.0"
 regex = "1.10"
 reqwest = { version = "0.11", features = ["blocking"] }
 chrono = { version = "0.4", features = ["serde"] }
+nix = { version = "0.30.1", features = ["signal", "process"] }

@@ -158,6 +158,11 @@ func (m *Manager) LaunchSession(ctx context.Context, config LaunchSessionConfig)
 	dbSession := store.NewSessionFromConfig(sessionID, runID, claudeConfig)
 	dbSession.Summary = CalculateSummary(claudeConfig.Query)
 
+	// Set title from launch config if provided
+	if config.Title != "" {
+		dbSession.Title = config.Title
+	}
+
 	// Handle dangerously skip permissions from config
 	if config.DangerouslySkipPermissions {
 		dbSession.DangerouslySkipPermissions = true
@@ -464,8 +469,16 @@ eventLoop:
 			})
 		}
 	} else if err != nil {
+		slog.Error("claude process failed",
+			"session_id", sessionID,
+			"error", err.Error(),
+			"duration", endTime.Sub(startTime))
 		m.updateSessionStatus(ctx, sessionID, StatusFailed, err.Error())
 	} else if result != nil && result.IsError {
+		slog.Error("claude process failed with error result",
+			"session_id", sessionID,
+			"error", result.Error,
+			"duration", endTime.Sub(startTime))
 		m.updateSessionStatus(ctx, sessionID, StatusFailed, result.Error)
 	} else {
 		// No longer updating in-memory session
@@ -514,10 +527,21 @@ eventLoop:
 		}
 	}
 
-	slog.Info("session completed",
-		"session_id", sessionID,
-		"status", StatusCompleted,
-		"duration", endTime.Sub(startTime))
+	// Determine final status for logging
+	finalStatus := StatusCompleted
+	if err != nil || (result != nil && result.IsError) {
+		finalStatus = StatusFailed
+	} else if dbErr == nil && session != nil && session.Status == string(StatusInterrupting) {
+		finalStatus = StatusInterrupted
+	}
+
+	// Only log as info if completed successfully, already logged errors above
+	if finalStatus == StatusCompleted {
+		slog.Info("session completed",
+			"session_id", sessionID,
+			"status", finalStatus,
+			"duration", endTime.Sub(startTime))
+	}
 
 	// Clean up active process
 	m.mu.Lock()
@@ -713,50 +737,60 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 
 	// Process token updates from assistant messages even without claudeSessionID
 	if event.Type == "assistant" && event.Message != nil && event.Message.Role == "assistant" && event.Message.Usage != nil {
-		usage := event.Message.Usage
-		// Compute effective context tokens (what's actually in the context window)
-		// This includes ALL tokens that count toward the context limit
-		effective := usage.InputTokens + usage.OutputTokens + usage.CacheReadInputTokens + usage.CacheCreationInputTokens
-
-		now := time.Now()
-		update := store.SessionUpdate{
-			InputTokens:              &usage.InputTokens,
-			OutputTokens:             &usage.OutputTokens,
-			CacheCreationInputTokens: &usage.CacheCreationInputTokens,
-			CacheReadInputTokens:     &usage.CacheReadInputTokens,
-			EffectiveContextTokens:   &effective,
-			LastActivityAt:           &now,
-		}
-
-		if err := m.store.UpdateSession(ctx, sessionID, update); err != nil {
-			slog.Error("failed to update token usage",
+		// QUICK FIX: Skip token updates for subagent events
+		// Subagents have parent_tool_use_id set at the event level
+		if event.ParentToolUseID != "" {
+			slog.Debug("skipping token update for subagent event",
 				"session_id", sessionID,
-				"error", err)
+				"parent_tool_use_id", event.ParentToolUseID)
+			// Continue processing the rest of the event, just skip token updates
 		} else {
-			// Publish event to notify UI about token update
-			// The UI needs "new_status" field even though we're not changing status
-			if m.eventBus != nil {
-				// Get current session to include current status
-				session, _ := m.store.GetSession(ctx, sessionID)
-				currentStatus := "running"
-				if session != nil && session.Status != "" {
-					currentStatus = session.Status
-				}
+			// Original token update logic for root-level events
+			usage := event.Message.Usage
+			// Compute effective context tokens (what's actually in the context window)
+			// This includes ALL tokens that count toward the context limit
+			effective := usage.InputTokens + usage.OutputTokens + usage.CacheReadInputTokens + usage.CacheCreationInputTokens
 
-				slog.Debug("Publishing token update event",
+			now := time.Now()
+			update := store.SessionUpdate{
+				InputTokens:              &usage.InputTokens,
+				OutputTokens:             &usage.OutputTokens,
+				CacheCreationInputTokens: &usage.CacheCreationInputTokens,
+				CacheReadInputTokens:     &usage.CacheReadInputTokens,
+				EffectiveContextTokens:   &effective,
+				LastActivityAt:           &now,
+			}
+
+			if err := m.store.UpdateSession(ctx, sessionID, update); err != nil {
+				slog.Error("failed to update token usage",
 					"session_id", sessionID,
-					"status", currentStatus,
-					"effective_tokens", effective)
+					"error", err)
+			} else {
+				// Publish event to notify UI about token update
+				// The UI needs "new_status" field even though we're not changing status
+				if m.eventBus != nil {
+					// Get current session to include current status
+					session, _ := m.store.GetSession(ctx, sessionID)
+					currentStatus := "running"
+					if session != nil && session.Status != "" {
+						currentStatus = session.Status
+					}
 
-				m.eventBus.Publish(bus.Event{
-					Type: bus.EventSessionStatusChanged,
-					Data: map[string]interface{}{
-						"session_id": sessionID,
-						"new_status": currentStatus, // Required by UI handler
-						"old_status": currentStatus, // Status isn't changing, just tokens
-						"reason":     "token_update",
-					},
-				})
+					slog.Debug("Publishing token update event",
+						"session_id", sessionID,
+						"status", currentStatus,
+						"effective_tokens", effective)
+
+					m.eventBus.Publish(bus.Event{
+						Type: bus.EventSessionStatusChanged,
+						Data: map[string]interface{}{
+							"session_id": sessionID,
+							"new_status": currentStatus, // Required by UI handler
+							"old_status": currentStatus, // Status isn't changing, just tokens
+							"reason":     "token_update",
+						},
+					})
+				}
 			}
 		}
 	}
