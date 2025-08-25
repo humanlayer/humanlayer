@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { ConversationEvent, ApprovalStatus } from '@/lib/daemon/types'
 import { daemonClient } from '@/lib/daemon/client'
@@ -68,6 +68,10 @@ export function useSessionApprovals({
   const handleCancelDeny = useCallback(() => {
     setDenyingApprovalId(null)
   }, [])
+
+  const isDenying = useMemo(() => {
+    return denyingApprovalId !== null
+  }, [denyingApprovalId])
 
   // A key to approve focused event that has pending approval
   useHotkeys(
@@ -170,6 +174,7 @@ export function useSessionApprovals({
   }, [denyingApprovalId, events, isElementInView])
 
   return {
+    isDenying,
     approvingApprovalId,
     confirmingApprovalId,
     setConfirmingApprovalId,

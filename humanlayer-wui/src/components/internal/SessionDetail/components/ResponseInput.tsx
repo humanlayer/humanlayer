@@ -1,4 +1,4 @@
-import React, { forwardRef } from 'react'
+import React, { forwardRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Session, SessionStatus } from '@/lib/daemon/types'
@@ -25,6 +25,10 @@ interface ResponseInputProps {
 export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>(
   (
     {
+      denyingApprovalId,
+      isDenying,
+      onDeny,
+
       session,
       parentSessionData,
       responseInput,
@@ -39,6 +43,7 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
   ) => {
     const getSendButtonText = () => {
       if (isResponding) return 'Interrupting...'
+      if (isDenying) return 'Deny'
       if (
         session.archived &&
         (session.status === SessionStatus.Running || session.status === SessionStatus.Starting)
@@ -49,6 +54,14 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
       if (session.status === SessionStatus.Running || session.status === SessionStatus.Starting)
         return 'Interrupt & Send'
       return 'Send'
+    }
+
+    const handleSubmit = () => {
+      if (isDenying) {
+        onDeny(denyingApprovalId, responseInput.trim())
+      } else {
+        handleContinueSession()
+      }
     }
 
     // Get help text for fork mode
@@ -65,6 +78,13 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
       // Regular help text
       return getHelpText(session.status)
     }
+
+    useEffect(() => {
+      if (isDenying) {
+        ref.current?.focus()
+      } 
+    }, [isDenying])
+
     // Always show the input for all session states
     return (
       <div className="space-y-3">
@@ -93,7 +113,7 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
             className={`flex-1 min-h-[2.5rem] ${isResponding ? 'opacity-50' : ''}`}
           />
           <Button
-            onClick={handleContinueSession}
+            onClick={handleSubmit}
             disabled={!responseInput.trim() || isResponding}
             size="sm"
           >
