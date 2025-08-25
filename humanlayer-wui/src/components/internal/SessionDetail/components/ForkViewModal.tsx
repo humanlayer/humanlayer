@@ -22,12 +22,14 @@ interface ForkViewModalProps {
   onSelectEvent: (index: number | null) => void
   isOpen: boolean
   onOpenChange: (open: boolean) => void
+  sessionStatus?: string // Add this
 }
 
 function ForkViewModalContent({
   events,
   selectedEventIndex,
   onSelectEvent,
+  sessionStatus,
   onClose,
 }: Omit<ForkViewModalProps, 'isOpen' | 'onOpenChange'> & { onClose: () => void }) {
   // Steal hotkey scope when this component mounts
@@ -77,6 +79,14 @@ function ForkViewModalContent({
     : userMessageIndices
 
   const [localSelectedIndex, setLocalSelectedIndex] = useState(0)
+
+  // Pre-select last message for failed sessions
+  useEffect(() => {
+    if (sessionStatus === 'failed' && selectedEventIndex === null && allOptions.length > 0) {
+      // Pre-select the last user message for failed sessions
+      setLocalSelectedIndex(allOptions.length - 2) // Last message before "Current"
+    }
+  }, [sessionStatus, selectedEventIndex, allOptions.length])
 
   // Sync with external selection
   useEffect(() => {
@@ -140,9 +150,23 @@ function ForkViewModalContent({
     e => {
       e.preventDefault()
       e.stopPropagation()
-      if (selectedEventIndex !== null || localSelectedIndex === allOptions.length - 1) {
-        handleClose() // Use unified handler
+
+      // If nothing selected yet, select the currently highlighted item
+      if (selectedEventIndex === null && localSelectedIndex !== null) {
+        if (localSelectedIndex === allOptions.length - 1) {
+          // Selected "Current" option
+          onSelectEvent(null)
+        } else {
+          // Selected a fork point
+          const selectedOption = allOptions[localSelectedIndex]
+          if (selectedOption) {
+            onSelectEvent(selectedOption.index)
+          }
+        }
       }
+
+      // Always close on Enter (whether selecting or confirming)
+      handleClose()
     },
     { scopes: [ForkViewModalHotkeysScope], preventDefault: true },
   )
@@ -194,6 +218,7 @@ function ForkViewModalContent({
                   onClick={() => {
                     setLocalSelectedIndex(position)
                     onSelectEvent(index)
+                    handleClose() // Close modal immediately on selection
                   }}
                   onMouseEnter={() => setLocalSelectedIndex(position)}
                 >
@@ -218,8 +243,9 @@ function ForkViewModalContent({
                       : 'hover:bg-accent/50',
                   )}
                   onClick={() => {
-                    onSelectEvent(null)
                     setLocalSelectedIndex(allOptions.length - 1)
+                    onSelectEvent(null)
+                    handleClose() // Close modal immediately
                   }}
                   onMouseEnter={() => setLocalSelectedIndex(allOptions.length - 1)}
                 >
@@ -235,7 +261,7 @@ function ForkViewModalContent({
 
         <div className="flex items-center justify-between text-xs text-muted-foreground mt-4 pt-4 border-t">
           <div className="flex items-center gap-4">
-            <span>↑↓ j/k Navigate</span>
+            <span>↑↓/j/k Navigate</span>
             <span>1-9 Jump</span>
             <span>Enter Select</span>
             <span>Esc Cancel</span>
@@ -253,6 +279,7 @@ export function ForkViewModal({
   onSelectEvent,
   isOpen,
   onOpenChange,
+  sessionStatus,
 }: ForkViewModalProps) {
   return (
     <Dialog
@@ -289,6 +316,7 @@ export function ForkViewModal({
             events={events}
             selectedEventIndex={selectedEventIndex}
             onSelectEvent={onSelectEvent}
+            sessionStatus={sessionStatus}
             onClose={() => onOpenChange(false)}
           />
         )}

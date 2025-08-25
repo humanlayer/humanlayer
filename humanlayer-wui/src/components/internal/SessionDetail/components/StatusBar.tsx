@@ -11,10 +11,12 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 interface StatusBarProps {
   session: Session
   parentSessionData?: Partial<Session>
+  isForkMode?: boolean
+  forkTokenCount?: number | null
   onModelChange?: () => void
 }
 
-export function StatusBar({ session, parentSessionData, onModelChange }: StatusBarProps) {
+export function StatusBar({ session, parentSessionData, isForkMode, forkTokenCount, onModelChange }: StatusBarProps) {
   const [isModelSelectorOpen, setIsModelSelectorOpen] = useState(false)
 
   const statusText = renderSessionStatus(session).toUpperCase()
@@ -72,7 +74,9 @@ export function StatusBar({ session, parentSessionData, onModelChange }: StatusB
       {/* Context Usage */}
       <TokenUsageBadge
         effectiveContextTokens={
-          session.effectiveContextTokens ?? parentSessionData?.effectiveContextTokens
+          isForkMode && forkTokenCount !== null && forkTokenCount !== undefined
+            ? forkTokenCount
+            : (session.effectiveContextTokens ?? parentSessionData?.effectiveContextTokens)
         }
         contextLimit={session.contextLimit ?? parentSessionData?.contextLimit}
         model={
