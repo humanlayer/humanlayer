@@ -1,4 +1,4 @@
-import React, { forwardRef, useCallback, useEffect } from 'react'
+import React, { forwardRef, useCallback, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Session, SessionStatus } from '@/lib/daemon/types'
@@ -25,6 +25,8 @@ interface ResponseInputProps {
   isDenying?: boolean
   onDeny?: (approvalId: string, reason: string) => void
   handleCancelDeny?: () => void
+  sessionStatus: SessionStatus
+  denyAgainstOldestApproval: () => void
 }
 
 export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>(
@@ -34,6 +36,7 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
       isDenying,
       onDeny,
       handleCancelDeny,
+      denyAgainstOldestApproval,
 
       session,
       parentSessionData,
@@ -43,12 +46,15 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
       handleContinueSession,
       isForkMode,
       onModelChange,
+      sessionStatus,
     },
     ref,
   ) => {
+    const [youSure, setYouSure] = useState(false)
+
     const getSendButtonText = () => {
       if (isResponding) return 'Interrupting...'
-      if (isDenying) return 'Deny'
+      if (isDenying) return youSure ? 'Deny?' : 'Deny'
       if (
         session.archived &&
         (session.status === SessionStatus.Running || session.status === SessionStatus.Starting)
@@ -64,6 +70,10 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
     const handleSubmit = () => {
       if (isDenying && denyingApprovalId) {
         onDeny?.(denyingApprovalId, responseInput.trim())
+      } else if (sessionStatus === SessionStatus.WaitingInput) {
+        // Alternate sitch: If we haven't triggered the denying state by clicking/keyboarding through, it's possible we're potentially attemping to submit when we actually need to be providing an approvial. In these casese we need to enter a denying state relative to the oldest approval.
+        denyAgainstOldestApproval()
+        setYouSure(true)
       } else {
         handleContinueSession()
       }
@@ -111,6 +121,7 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
         if (isDenying) {
           setResponseInput('')
           handleCancelDeny?.()
+          setYouSure(false)
         }
       },
       { enableOnFormTags: true },

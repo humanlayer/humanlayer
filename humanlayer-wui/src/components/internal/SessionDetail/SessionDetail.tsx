@@ -1093,6 +1093,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
             isDenying={approvals.isDenying}
             onDeny={approvals.handleDeny}
             handleCancelDeny={approvals.handleCancelDeny}
+            denyAgainstOldestApproval={approvals.denyAgainstOldestApproval}
             session={session}
             parentSessionData={parentSessionData || parentSession || undefined}
             responseInput={actions.responseInput}
@@ -1105,6 +1106,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               // Refresh session data if needed
               fetchActiveSessionDetail(session.id)
             }}
+            sessionStatus={session.status}
           />
           {/* Session mode indicator - shows either dangerous skip permissions or auto-accept */}
           <SessionModeIndicator
