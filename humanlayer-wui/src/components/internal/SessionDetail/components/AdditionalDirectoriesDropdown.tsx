@@ -152,10 +152,15 @@ export function AdditionalDirectoriesDropdown({
     },
   )
 
-  // Handle Enter key on focused directory
+  // Handle Enter key on focused directory (not when typing in input)
   useHotkeys(
     'enter',
     e => {
+      // Don't handle Enter if input is focused
+      if (document.activeElement?.tagName === 'INPUT') {
+        return
+      }
+
       e.preventDefault()
       e.stopPropagation()
 
@@ -169,6 +174,7 @@ export function AdditionalDirectoriesDropdown({
       enabled: isOpen && focusedIndex !== null,
       scopes: AdditionalDirectoriesHotkeyScope,
       preventDefault: true,
+      enableOnFormTags: false, // Disable in form elements
     },
   )
 
@@ -214,8 +220,9 @@ export function AdditionalDirectoriesDropdown({
     },
   )
 
-  const handleAddDirectory = async () => {
-    const trimmed = newDirectory.trim()
+  const handleAddDirectory = async (directoryPath?: string) => {
+    const pathToAdd = directoryPath || newDirectory
+    const trimmed = pathToAdd.trim()
     if (trimmed && !localDirectories.includes(trimmed)) {
       const updated = [...localDirectories, trimmed]
       setLocalDirectories(updated)
@@ -414,8 +421,9 @@ export function AdditionalDirectoriesDropdown({
                   <SearchInput
                     value={newDirectory}
                     onChange={setNewDirectory}
-                    onSubmit={() => {
-                      handleAddDirectory()
+                    onSubmit={async value => {
+                      // Use the value passed from SearchInput (which is the selected item)
+                      await handleAddDirectory(value)
                       // After adding, focus returns to add button
                       setTimeout(() => {
                         addButtonRef.current?.focus()
@@ -431,7 +439,7 @@ export function AdditionalDirectoriesDropdown({
                 </div>
                 <Button
                   size="sm"
-                  onClick={handleAddDirectory}
+                  onClick={() => handleAddDirectory()}
                   disabled={isUpdating || !newDirectory.trim()}
                   className="h-7 px-2"
                 >
