@@ -1163,7 +1163,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       </Card>
 
       {/* Tool Result Expansion Modal */}
-      {expandedToolResult && (
+      {(expandedToolResult || expandedToolCall) && (
         <ToolResultModal
           toolCall={expandedToolCall}
           toolResult={expandedToolResult}

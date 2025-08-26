@@ -332,7 +332,7 @@ export function formatToolResult(
       break
     }
 
-    case 'exit_plan_mode': {
+    case 'ExitPlanMode': {
       abbreviated = 'Exited plan mode'
       break
     }
