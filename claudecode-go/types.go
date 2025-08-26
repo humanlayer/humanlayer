@@ -97,6 +97,7 @@ type StreamEvent struct {
 	Usage             *Usage             `json:"usage,omitempty"`
 	Error             string             `json:"error,omitempty"`
 	PermissionDenials *PermissionDenials `json:"permission_denials,omitempty"`
+	UUID              string             `json:"uuid,omitempty"`
 }
 
 // MCPStatus represents the status of an MCP server
@@ -252,6 +253,7 @@ type Result struct {
 	Usage             *Usage             `json:"usage,omitempty"`
 	Error             string             `json:"error,omitempty"`
 	PermissionDenials *PermissionDenials `json:"permission_denials,omitempty"`
+	UUID              string             `json:"uuid,omitempty"`
 }
 
 // Session represents an active Claude session

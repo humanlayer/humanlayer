@@ -24,7 +24,7 @@ import {
 import { CommandToken } from '@/components/internal/CommandToken'
 import { formatToolResult } from './formatToolResult'
 import { DiffViewToggle } from './components/DiffViewToggle'
-import { DenyForm } from './components/DenyForm'
+import { DenyButtons } from './components/DenyButtons'
 import { CustomDiffViewer } from './components/CustomDiffViewer'
 import { parseMcpToolName } from '@/utils/formatting'
 
@@ -559,7 +559,7 @@ export function eventToDisplayObject(
               )}
             </>
           ) : (
-            <DenyForm approvalId={event.approvalId!} onDeny={onDeny} onCancel={onCancelDeny} />
+            <DenyButtons onCancel={onCancelDeny} isDenying={isDenying} />
           )}
         </div>
       )
@@ -609,6 +609,12 @@ export function eventToDisplayObject(
     iconComponent = <User className={iconClasses} />
   }
 
+  const InfoExpand = (
+    <span className={`text-xs text-muted-foreground/50 ml-2 ${isFocused ? 'visible' : 'invisible'}`}>
+      <kbd className="px-1 py-0.5 text-xs bg-muted/50 rounded">i</kbd> expand
+    </span>
+  )
+
   // Display tool result content for tool calls
   if (event.eventType === ConversationEventType.ToolCall) {
     if (toolResult) {
@@ -620,12 +626,8 @@ export function eventToDisplayObject(
             <div className="mt-1 text-sm font-mono flex items-start gap-1">
               <span className="text-muted-foreground/50">⎿</span>
               <span className="text-destructive">
-                Denied: {toolResult.toolResultContent || 'No reason provided'}
-                {isFocused && (
-                  <span className="text-xs text-muted-foreground/50 ml-2">
-                    <kbd className="px-1 py-0.5 text-xs bg-muted/50 rounded">i</kbd> expand
-                  </span>
-                )}
+                Denial Reason: {toolResult.toolResultContent || 'No reason provided'}
+                {InfoExpand}
               </span>
             </div>
           </>
@@ -642,11 +644,7 @@ export function eventToDisplayObject(
                 <span className="text-muted-foreground/50">⎿</span>
                 <span>
                   {resultDisplay}
-                  {isFocused && (
-                    <span className="text-xs text-muted-foreground/50 ml-2">
-                      <kbd className="px-1 py-0.5 text-xs bg-muted/50 rounded">i</kbd> expand
-                    </span>
-                  )}
+                  {InfoExpand}
                 </span>
               </div>
             </>

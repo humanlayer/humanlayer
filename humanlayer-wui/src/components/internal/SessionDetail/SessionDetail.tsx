@@ -1067,7 +1067,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               onDeny={approvals.handleDeny}
               approvingApprovalId={approvals.approvingApprovalId}
               confirmingApprovalId={approvals.confirmingApprovalId}
-              denyingApprovalId={approvals.denyingApprovalId}
+              denyingApprovalId={approvals.denyingApprovalId ?? undefined}
               setDenyingApprovalId={approvals.setDenyingApprovalId}
               onCancelDeny={approvals.handleCancelDeny}
               isSplitView={isSplitView}
@@ -1128,6 +1128,11 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         <CardContent className={isCompactView ? 'px-2' : 'px-4'}>
           <ResponseInput
             ref={responseInputRef}
+            denyingApprovalId={approvals.denyingApprovalId ?? undefined}
+            isDenying={approvals.isDenying}
+            onDeny={approvals.handleDeny}
+            handleCancelDeny={approvals.handleCancelDeny}
+            denyAgainstOldestApproval={approvals.denyAgainstOldestApproval}
             session={session}
             parentSessionData={parentSessionData || parentSession || undefined}
             responseInput={actions.responseInput}
@@ -1141,6 +1146,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               // Refresh session data if needed
               fetchActiveSessionDetail(session.id)
             }}
+            sessionStatus={session.status}
           />
           {/* Session mode indicator - shows fork, dangerous skip permissions or auto-accept */}
           <SessionModeIndicator
