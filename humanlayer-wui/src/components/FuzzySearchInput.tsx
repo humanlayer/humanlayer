@@ -17,6 +17,8 @@ interface SearchInputProps {
   placeholder?: string
   recentDirectories?: RecentPath[]
   ref?: React.RefObject<HTMLDivElement>
+  className?: string
+  autoFocus?: boolean
 }
 
 export function SearchInput({
@@ -26,6 +28,8 @@ export function SearchInput({
   placeholder = 'Type a directory path...',
   recentDirectories = [],
   ref,
+  className,
+  autoFocus,
 }: SearchInputProps = {}) {
   // Use internal state if not controlled
   const [internalValue, setInternalValue] = useState('')
@@ -248,7 +252,7 @@ export function SearchInput({
         <PopoverAnchor>
           <Input
             id="search-input-hack-use-a-ref"
-            className="mt-2"
+            className={cn("mt-2", className)}
             ref={inputRef}
             spellCheck={false}
             onChange={onChange}
@@ -256,6 +260,7 @@ export function SearchInput({
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
             placeholder={placeholder}
+            autoFocus={autoFocus}
           />
         </PopoverAnchor>
 
@@ -264,7 +269,7 @@ export function SearchInput({
           side="bottom"
           align="start"
           avoidCollisions={false}
-          className="w-[var(--radix-popover-trigger-width)]"
+          className={cn("w-[var(--radix-popover-trigger-width)]", className?.includes('text-xs') && "[&_[cmdk-item]]:text-xs [&_[cmdk-item]]:py-1")}
         >
           <Command>
             <CommandList>
@@ -376,19 +381,6 @@ export function SearchInput({
                 </CommandGroup>
               )}
             </CommandList>
-            {directoryPreview.length > 0 && (
-              <div className="px-4 pt-2 text-xs text-muted-foreground bg-muted/30 border-t border-border/50 flex justify-end gap-4">
-                <span className="flex items-center gap-1">
-                  <ArrowDownUp className="w-3 h-3" /> Navigate
-                </span>
-                <span className="flex items-center gap-1">
-                  <kbd>↵</kbd> Select
-                </span>
-                <span className="flex items-center gap-1">
-                  <kbd>ESC</kbd> Close
-                </span>
-              </div>
-            )}
           </Command>
         </PopoverContent>
       </Popover>

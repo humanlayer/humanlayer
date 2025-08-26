@@ -3,7 +3,8 @@ import { ChevronDown, ChevronUp, FolderOpen, Plus, X, Lock } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { SearchInput } from '@/components/FuzzySearchInput'
+import { useRecentPaths } from '@/hooks/useRecentPaths'
 import { SessionStatus } from '@/lib/daemon/types'
 import { toast } from 'sonner'
 
@@ -25,6 +26,9 @@ export function AdditionalDirectoriesDropdown({
   const [newDirectory, setNewDirectory] = useState('')
   const [isAdding, setIsAdding] = useState(false)
   const [isUpdating, setIsUpdating] = useState(false)
+  
+  // Fetch recent paths for autocomplete
+  const { paths: recentPaths } = useRecentPaths(20)
 
   // Update local state when prop changes
   useEffect(() => {
@@ -171,20 +175,17 @@ export function AdditionalDirectoriesDropdown({
 
             {isAdding && (
               <div className="flex gap-1 pt-1">
-                <Input
-                  value={newDirectory}
-                  onChange={e => setNewDirectory(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') handleAddDirectory()
-                    if (e.key === 'Escape') {
-                      setIsAdding(false)
-                      setNewDirectory('')
-                    }
-                  }}
-                  placeholder="Enter directory path..."
-                  className="h-7 text-xs"
-                  autoFocus
-                />
+                <div className="flex-1">
+                  <SearchInput
+                    value={newDirectory}
+                    onChange={setNewDirectory}
+                    onSubmit={handleAddDirectory}
+                    placeholder="Enter directory path..."
+                    recentDirectories={recentPaths?.map(p => p.path) || []}
+                    className="!h-7 !text-xs md:!text-xs !mt-0"
+                    autoFocus
+                  />
+                </div>
                 <Button
                   size="sm"
                   onClick={handleAddDirectory}
