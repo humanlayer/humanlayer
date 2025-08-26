@@ -41,7 +41,6 @@ export function AdditionalDirectoriesDropdown({
   const [newDirectory, setNewDirectory] = useState('')
   const [isAdding, setIsAdding] = useState(false)
   const [isUpdating, setIsUpdating] = useState(false)
-  const [isInputFocused, setIsInputFocused] = useState(false)
 
   // Add refs for focus management
   const addButtonRef = useRef<HTMLButtonElement>(null)
@@ -190,7 +189,6 @@ export function AdditionalDirectoriesDropdown({
       if (isAdding && document.activeElement?.tagName === 'INPUT') {
         const input = document.activeElement as HTMLElement
         input.blur()
-        setIsInputFocused(false)
         // Don't close popover on first escape when input is focused
         return
       }
@@ -313,7 +311,6 @@ export function AdditionalDirectoriesDropdown({
           setIsAdding(false)
           setNewDirectory('')
           setFocusedIndex(-1)
-          setIsInputFocused(false)
 
           // Restore focus to trigger
           setTimeout(() => {
@@ -429,8 +426,6 @@ export function AdditionalDirectoriesDropdown({
                         addButtonRef.current?.focus()
                       }, 0)
                     }}
-                    onFocus={() => setIsInputFocused(true)}
-                    onBlur={() => setIsInputFocused(false)}
                     placeholder="Enter directory path..."
                     recentDirectories={recentPaths || []}
                     className="!h-7 !text-xs md:!text-xs !mt-0"

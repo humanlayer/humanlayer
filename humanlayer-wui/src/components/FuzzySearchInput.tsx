@@ -6,7 +6,7 @@ import { fuzzySearch, highlightMatches, type FuzzyMatch } from '@/lib/fuzzy-sear
 import { Input } from './ui/input'
 import { Popover, PopoverAnchor, PopoverContent } from './ui/popover'
 import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from './ui/command'
-import { ArrowDownUp, FileWarning, Clock } from 'lucide-react'
+import { FileWarning, Clock } from 'lucide-react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import type { RecentPath } from '@/lib/daemon'
 
@@ -58,7 +58,6 @@ export function SearchInput({
   const [lastValidPath, setLastValidPath] = useState('')
   const [allDirectories, setAllDirectories] = useState<DirEntry[]>([])
   const [selectedIndex, setSelectedIndex] = useState<number>(0)
-  const [isKeyboardNavigating, setIsKeyboardNavigating] = useState(false)
   const keyboardNavTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -78,19 +77,11 @@ export function SearchInput({
         case Hotkeys.ARROW_DOWN: {
           const totalItems = recentPreview.length + directoryPreview.length
           if (totalItems > 0) {
-            // Set keyboard navigation flag
-            setIsKeyboardNavigating(true)
-            
             // Clear any existing timeout
             if (keyboardNavTimeoutRef.current) {
               clearTimeout(keyboardNavTimeoutRef.current)
             }
-            
-            // Re-enable mouse events after 300ms
-            keyboardNavTimeoutRef.current = setTimeout(() => {
-              setIsKeyboardNavigating(false)
-            }, 300)
-            
+
             const direction = handler.keys?.join('') === Hotkeys.ARROW_UP ? -1 : 1
             const newIndex = (selectedIndex + direction + totalItems) % totalItems
             setSelectedIndex(newIndex)
@@ -173,7 +164,6 @@ export function SearchInput({
     setSearchValue(e.target.value)
     // Reset selection to 0 when user types
     setSelectedIndex(0)
-    setIsKeyboardNavigating(false)
 
     let searchPath = e.target.value
 
@@ -285,12 +275,10 @@ export function SearchInput({
             value={searchValue}
             onFocus={() => {
               setIsFocused(true)
-              setIsKeyboardNavigating(false)
               externalOnFocus?.()
             }}
             onBlur={() => {
               setIsFocused(false)
-              setIsKeyboardNavigating(false)
               externalOnBlur?.()
             }}
             placeholder={placeholder}
