@@ -956,7 +956,16 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               selectedEventIndex={previewEventIndex}
               onSelectEvent={handleForkSelect}
               isOpen={forkViewOpen}
-              onOpenChange={setForkViewOpen}
+              onOpenChange={open => {
+                setForkViewOpen(open)
+                // Focus the input when closing the fork modal
+                // Use longer delay to ensure it happens after all dialog cleanup
+                if (!open && responseInputRef.current) {
+                  setTimeout(() => {
+                    responseInputRef.current?.focus()
+                  }, 50)
+                }
+              }}
               sessionStatus={session.status}
             />
           </div>
@@ -1028,7 +1037,16 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               selectedEventIndex={previewEventIndex}
               onSelectEvent={handleForkSelect}
               isOpen={forkViewOpen}
-              onOpenChange={setForkViewOpen}
+              onOpenChange={open => {
+                setForkViewOpen(open)
+                // Focus the input when closing the fork modal
+                // Use longer delay to ensure it happens after all dialog cleanup
+                if (!open && responseInputRef.current) {
+                  setTimeout(() => {
+                    responseInputRef.current?.focus()
+                  }, 50)
+                }
+              }}
               sessionStatus={session.status}
             />
           </div>

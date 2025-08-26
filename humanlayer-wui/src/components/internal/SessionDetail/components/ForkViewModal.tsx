@@ -55,15 +55,10 @@ function ForkViewModalContent({
     }
   }, [])
 
-  // Create unified close handler with focus preservation
+  // Create unified close handler without focus management
+  // Focus will be handled by the parent component
   const handleClose = useCallback(() => {
     onClose()
-    // Restore focus after a microtask to avoid race conditions
-    setTimeout(() => {
-      if (previousFocusRef.current && previousFocusRef.current.focus) {
-        previousFocusRef.current.focus()
-      }
-    }, 0)
   }, [onClose])
 
   // Filter to only user messages (excluding the first one)
@@ -303,6 +298,11 @@ export function ForkViewModal({
         showCloseButton={false}
         onOpenAutoFocus={e => {
           // Prevent default focus behavior but let our custom focus management work
+          e.preventDefault()
+        }}
+        onCloseAutoFocus={e => {
+          // Prevent the dialog from restoring focus when it closes
+          // The parent component will handle focus restoration
           e.preventDefault()
         }}
         onEscapeKeyDown={e => {
