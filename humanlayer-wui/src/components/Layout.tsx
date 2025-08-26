@@ -330,7 +330,7 @@ export function Layout() {
     },
     {
       enableOnFormTags: true,
-      preventDefault: true,
+      preventDefault: !isOpen,
     },
   )
 

@@ -24,11 +24,25 @@ export function SessionLauncher({ isOpen, onClose }: SessionLauncherProps) {
     e => {
       e.preventDefault()
       e.stopPropagation()
-      onClose()
+
+      // Check if an input is currently focused
+      const activeElement = document.activeElement
+      const isInputFocused =
+        activeElement?.tagName === 'INPUT' ||
+        activeElement?.tagName === 'TEXTAREA' ||
+        (activeElement as HTMLElement)?.contentEditable === 'true'
+
+      if (isInputFocused) {
+        // First ESC: just blur the input
+        ;(activeElement as HTMLElement).blur()
+      } else {
+        // Second ESC or ESC when no input focused: close modal
+        onClose()
+      }
     },
     {
       enabled: isOpen,
-      enableOnFormTags: false,
+      enableOnFormTags: true,
       scopes: SessionLauncherHotkeysScope,
     },
   )
