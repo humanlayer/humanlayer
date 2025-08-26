@@ -75,7 +75,7 @@ export function useSessionApprovals({
       setFocusedEventId(oldestApproval.id)
       setFocusSource?.('keyboard')
     }
-  }, [events])
+  }, [events, setFocusedEventId, setFocusSource])
 
   const handleStartDeny = useCallback((approvalId: string) => {
     setDenyingApprovalId(approvalId)

@@ -1,10 +1,6 @@
-import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { hasContent } from '@/utils/validation'
 
 export function DenyForm({ isDenying, onCancel }: { isDenying: boolean; onCancel?: () => void }) {
-  const [reason] = useState('')
-
   return (
     <>
       <Button
@@ -12,12 +8,10 @@ export function DenyForm({ isDenying, onCancel }: { isDenying: boolean; onCancel
         type="submit"
         size="sm"
         variant="destructive"
-        disabled={!hasContent(reason) || isDenying}
+        disabled={isDenying}
       >
         {isDenying ? 'Denying...' : 'Deny'}{' '}
-        {hasContent(reason) && !isDenying && (
-          <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">⏎</kbd>
-        )}
+        {!isDenying && <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">⏎</kbd>}
       </Button>
       <Button
         className="cursor-pointer"
