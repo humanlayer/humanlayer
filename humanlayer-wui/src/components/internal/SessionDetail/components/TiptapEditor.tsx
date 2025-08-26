@@ -180,6 +180,29 @@ const MarkdownSyntaxHighlight = Extension.create({
                     Decoration.inline(start + 1, end - 1, { class: 'markdown-code' }),
                   )
                 }
+
+                // Match heading syntax at the beginning of the line
+                const headingRegex = /^(#{1,6})\s+(.*)$/
+                const headingMatch = headingRegex.exec(text)
+                if (headingMatch) {
+                  const start = pos
+                  const hashLength = headingMatch[1].length
+                  const hashEnd = start + hashLength
+                  const spaceEnd = hashEnd + 1 // for the space after hashes
+                  const end = start + text.length
+
+                  // Style the hash symbols
+                  decorations.push(
+                    Decoration.inline(start, hashEnd, { class: `markdown-syntax markdown-syntax-heading-${hashLength}` }),
+                  )
+
+                  // Style the heading content based on level
+                  if (spaceEnd < end) {
+                    decorations.push(
+                      Decoration.inline(spaceEnd, end, { class: `markdown-heading markdown-heading-${hashLength}` }),
+                    )
+                  }
+                }
               }
             })
 

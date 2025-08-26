@@ -67,6 +67,17 @@
   color: var(--terminal-brightYellow);
 }
 
+/* Heading syntax markers */
+.markdown-syntax-heading-1,
+.markdown-syntax-heading-2,
+.markdown-syntax-heading-3,
+.markdown-syntax-heading-4,
+.markdown-syntax-heading-5,
+.markdown-syntax-heading-6 {
+  color: var(--terminal-brightCyan);
+  opacity: 0.5;
+}
+
 /* Markdown content styles */
 .markdown-bold {
   font-weight: 700;
@@ -86,6 +97,31 @@
   padding: 0.125rem 0.25rem;
   border-radius: 0.25rem;
   font-size: 0.875em;
+}
+
+/* Heading content styles */
+.markdown-heading-1 {
+  font-weight: 700;
+}
+
+.markdown-heading-2 {
+  font-weight: 700;
+}
+
+.markdown-heading-3 {
+  font-weight: 600;
+}
+
+.markdown-heading-4 {
+  font-weight: 600;
+}
+
+.markdown-heading-5 {
+  font-weight: 600;
+}
+
+.markdown-heading-6 {
+  font-weight: 600;
 }
 
 /* Code block styles */
