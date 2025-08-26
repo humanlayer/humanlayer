@@ -239,6 +239,7 @@ export function Layout() {
       addRecentResolvedApprovalToCache(data.approval_id)
       updateSessionStatus(data.session_id, SessionStatus.Running)
       await refreshActiveSessionConversation(data.session_id)
+      notificationService.clearNotificationByApprovalId(data.approval_id)
     },
     // CODEREVIEW: Why did this previously exist? Sundeep wants to talk about this do not merge.
     onSessionSettingsChanged: async (data: SessionSettingsChangedEventData) => {
