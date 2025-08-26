@@ -206,6 +206,7 @@ export const TiptapEditor = forwardRef<{ focus: () => void }, TiptapEditorProps>
       extensions: [
         StarterKit.configure({
           // Disable these extensions since we want to show markdown syntax
+          heading: false,
           bold: false,
           italic: false,
           strike: false,
@@ -229,6 +230,9 @@ export const TiptapEditor = forwardRef<{ focus: () => void }, TiptapEditorProps>
         onChange(text)
       },
       editable: !disabled,
+
+      enableInputRules: false,
+      enablePasteRules: false,
     })
 
     // Sync external value changes

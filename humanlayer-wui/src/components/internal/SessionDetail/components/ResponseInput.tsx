@@ -187,7 +187,7 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
         {/* Existing input area */}
         {isForkMode && <span className="text-sm font-medium">Fork from this message:</span>}
         <div className="flex gap-2">
-          <Textarea
+          {/* <Textarea
             style={textareaStyle}
             ref={ref}
             placeholder={placeholder}
@@ -199,7 +199,7 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
             onKeyDown={handleResponseInputKeyDown}
             disabled={isResponding}
             className={`flex-1 min-h-[2.5rem] ${isResponding ? 'opacity-50' : ''} ${textareaOutlineClass}`}
-          />
+          /> */}
           {isComposeMode ? (
             <TiptapEditor
               ref={tiptapRef}
@@ -210,17 +210,14 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
               }}
               onKeyDown={handleResponseInputKeyDown}
               disabled={isResponding}
-              placeholder={
-                isForkMode ? getForkInputPlaceholder(session.status) : getInputPlaceholder(session.status)
-              }
-              className={`flex-1 ${isResponding ? 'opacity-50' : ''}`}
+              placeholder={placeholder}
+              className={`flex-1 min-h-[2.5rem] ${isResponding ? 'opacity-50' : ''} ${textareaOutlineClass}`}
             />
           ) : (
             <Textarea
               ref={textareaRef}
-              placeholder={
-                isForkMode ? getForkInputPlaceholder(session.status) : getInputPlaceholder(session.status)
-              }
+              style={textareaStyle}
+              placeholder={placeholder}
               value={responseInput}
               onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
                 setResponseInput(e.target.value)
@@ -228,7 +225,7 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
               }}
               onKeyDown={handleResponseInputKeyDown}
               disabled={isResponding}
-              className={`flex-1 min-h-[2.5rem] ${isResponding ? 'opacity-50' : ''}`}
+              className={`flex-1 min-h-[2.5rem] ${isResponding ? 'opacity-50' : ''} ${textareaOutlineClass}`}
             />
           )}
           <Button
