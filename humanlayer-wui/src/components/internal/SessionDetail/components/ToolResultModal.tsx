@@ -150,12 +150,7 @@ export function ToolResultModal({
           <ScrollArea className="h-full">
             <div className="px-4 py-4 space-y-4">
               {/* Tool Input Section */}
-              {toolCall?.toolInputJson && (
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground mb-2">Input</h3>
-                  {renderToolInput(toolCall)}
-                </div>
-              )}
+              {toolCall?.toolInputJson && renderToolInput(toolCall)}
 
               {/* Tool Result Section - only show if we have a result */}
               {toolResult && (
@@ -218,6 +213,11 @@ function getToolPrimaryParam(toolCall: ConversationEvent): string {
       return args.file_path
     } else if (toolCall.toolName === 'Grep' && args.pattern) {
       return args.pattern
+    } else if (toolCall.toolName === 'ExitPlanMode' && args.plan) {
+      const firstLine = args.plan.split('\n')[0].trim()
+      return truncate(firstLine, 60)
+    } else if (toolCall.toolName === 'WebFetch' && args.url) {
+      return truncate(args.url, 60)
     }
 
     // For other tools, show the first string value
@@ -315,6 +315,38 @@ function renderToolInput(toolCall: ConversationEvent): React.ReactNode {
           <div className="mt-2">
             <CustomDiffViewer edits={allEdits} splitView={false} />
           </div>
+        </div>
+      )
+    }
+
+    // Special rendering for ExitPlanMode tool
+    if (toolCall.toolName === 'ExitPlanMode') {
+      return (
+        <div className="space-y-2">
+          <div className="font-mono text-sm">
+            <span className="text-muted-foreground">Plan:</span>
+            <pre className="mt-1 whitespace-pre-wrap bg-muted/50 rounded-md p-3 break-words">
+              {args.plan}
+            </pre>
+          </div>
+        </div>
+      )
+    }
+
+    // Special rendering for WebFetch tool
+    if (toolCall.toolName === 'WebFetch') {
+      return (
+        <div className="space-y-2">
+          <div className="font-mono text-sm">
+            <span className="text-muted-foreground">URL:</span>{' '}
+            <span className="font-bold">{args.url}</span>
+          </div>
+          {args.prompt && (
+            <div className="font-mono text-sm">
+              <span className="text-muted-foreground">Prompt:</span>{' '}
+              <span className="italic">{args.prompt}</span>
+            </div>
+          )}
         </div>
       )
     }
