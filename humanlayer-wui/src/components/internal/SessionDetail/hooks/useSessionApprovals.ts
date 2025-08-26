@@ -143,26 +143,29 @@ export function useSessionApprovals({
   useHotkeys(
     'd',
     e => {
-      // Find any pending approval event
+      // Prevent the 'd' from being typed in any input that might get focused
+      e.preventDefault()
+
+      const currentFocusedEventId = events.find(e => e.id === focusedEventId)
+
+      // Deny against currently focused event
+      if (currentFocusedEventId?.approvalStatus === ApprovalStatus.Pending) {
+        handleStartDeny(currentFocusedEventId.approvalId!)
+        return
+      }
+
+      // Deny against first matching pending approval
       const pendingApprovalEvent = events.find(
         e => e.approvalStatus === ApprovalStatus.Pending && e.approvalId && e.id !== undefined,
       )
 
       if (!pendingApprovalEvent || pendingApprovalEvent.id === undefined) return
 
-      // Prevent the 'd' from being typed in any input that might get focused
-      e.preventDefault()
-
       // If no event is focused, or a different event is focused, focus this pending approval
       if (!focusedEventId || focusedEventId !== pendingApprovalEvent.id) {
         setFocusedEventId(pendingApprovalEvent.id)
         setFocusSource?.('keyboard')
         return
-      }
-
-      // If the pending approval is already focused, show the deny form
-      if (focusedEventId === pendingApprovalEvent.id) {
-        handleStartDeny(pendingApprovalEvent.approvalId!)
       }
     },
     {

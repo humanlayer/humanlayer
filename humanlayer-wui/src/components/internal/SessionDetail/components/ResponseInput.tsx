@@ -98,7 +98,6 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
         if (ref && typeof ref !== 'function' && ref.current) {
           ref.current.blur()
         }
-        setResponseInput('')
       }
     }, [isDenying])
 
@@ -106,7 +105,6 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
       'escape',
       () => {
         if (isDenying) {
-          setResponseInput('')
           handleCancelDeny?.()
           setYouSure(false)
         }

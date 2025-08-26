@@ -609,6 +609,12 @@ export function eventToDisplayObject(
     iconComponent = <User className={iconClasses} />
   }
 
+  const InfoExpand = (
+    <span className={`text-xs text-muted-foreground/50 ml-2 ${isFocused ? 'visible' : 'invisible'}`}>
+      <kbd className="px-1 py-0.5 text-xs bg-muted/50 rounded">i</kbd> expand
+    </span>
+  )
+
   // Display tool result content for tool calls
   if (event.eventType === ConversationEventType.ToolCall) {
     if (toolResult) {
@@ -621,11 +627,7 @@ export function eventToDisplayObject(
               <span className="text-muted-foreground/50">⎿</span>
               <span className="text-destructive">
                 Denial Reason: {toolResult.toolResultContent || 'No reason provided'}
-                {isFocused && (
-                  <span className="text-xs text-muted-foreground/50 ml-2">
-                    <kbd className="px-1 py-0.5 text-xs bg-muted/50 rounded">i</kbd> expand
-                  </span>
-                )}
+                {InfoExpand}
               </span>
             </div>
           </>
@@ -642,11 +644,7 @@ export function eventToDisplayObject(
                 <span className="text-muted-foreground/50">⎿</span>
                 <span>
                   {resultDisplay}
-                  {isFocused && (
-                    <span className="text-xs text-muted-foreground/50 ml-2">
-                      <kbd className="px-1 py-0.5 text-xs bg-muted/50 rounded">i</kbd> expand
-                    </span>
-                  )}
+                  {InfoExpand}
                 </span>
               </div>
             </>

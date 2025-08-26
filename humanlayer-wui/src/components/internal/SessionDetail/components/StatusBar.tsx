@@ -41,7 +41,7 @@ export function StatusBar({
   const isReadyForInput = session.status === 'completed' && !session.archived
 
   if (isDenying) {
-    statusText = 'Denying...'
+    statusText = 'Denying'
   }
 
   return (
