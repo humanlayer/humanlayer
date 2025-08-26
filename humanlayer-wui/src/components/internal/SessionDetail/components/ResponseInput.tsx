@@ -19,6 +19,7 @@ interface ResponseInputProps {
   handleContinueSession: () => void
   handleResponseInputKeyDown: (e: React.KeyboardEvent) => void
   isForkMode?: boolean
+  forkTokenCount?: number | null
   onModelChange?: () => void
 }
 
@@ -33,6 +34,7 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
       handleContinueSession,
       handleResponseInputKeyDown,
       isForkMode,
+      forkTokenCount,
       onModelChange,
     },
     ref,
@@ -51,20 +53,6 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
       return 'Send'
     }
 
-    // Get help text for fork mode
-    const getForkHelpText = (isFork: boolean): React.ReactNode => {
-      if (isFork) {
-        return (
-          <>
-            <kbd className="px-1 py-0.5 text-xs bg-muted/50 rounded">Cmd+Enter</kbd> to fork,{' '}
-            <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">Enter</kbd> for new line,{' '}
-            <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">Escape</kbd> to cancel fork
-          </>
-        )
-      }
-      // Regular help text
-      return getHelpText(session.status)
-    }
     // Always show the input for all session states
     return (
       <div className="space-y-3">
@@ -72,6 +60,8 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
         <StatusBar
           session={session}
           parentSessionData={parentSessionData}
+          isForkMode={isForkMode}
+          forkTokenCount={forkTokenCount}
           onModelChange={onModelChange}
         />
 
@@ -103,9 +93,7 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
 
         {/* Keyboard shortcuts (condensed) */}
         <p className="text-xs text-muted-foreground">
-          {isResponding
-            ? 'Waiting for Claude to accept the interrupt...'
-            : getForkHelpText(isForkMode || false)}
+          {isResponding ? 'Waiting for Claude to accept the interrupt...' : getHelpText(session.status)}
         </p>
       </div>
     )

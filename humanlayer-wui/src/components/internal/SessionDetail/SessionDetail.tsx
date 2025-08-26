@@ -185,6 +185,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [forkViewOpen, setForkViewOpen] = useState(false)
   const [previewEventIndex, setPreviewEventIndex] = useState<number | null>(null)
   const [pendingForkMessage, setPendingForkMessage] = useState<ConversationEvent | null>(null)
+  const [forkTokenCount, setForkTokenCount] = useState<number | null>(null)
   const [confirmingArchive, setConfirmingArchive] = useState(false)
   const [dangerousSkipPermissionsDialogOpen, setDangerousSkipPermissionsDialogOpen] = useState(false)
 
@@ -404,6 +405,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     // Reset preview state after successful fork
     setPreviewEventIndex(null)
     setPendingForkMessage(null)
+    setForkTokenCount(null)
     setForkViewOpen(false)
   }, [])
 
@@ -417,11 +419,12 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
 
   // Add fork selection handler
   const handleForkSelect = useCallback(
-    (eventIndex: number | null) => {
+    async (eventIndex: number | null) => {
       if (eventIndex === null) {
         // Return to current state - clear everything
         setPreviewEventIndex(null)
         setPendingForkMessage(null)
+        setForkTokenCount(null)
         // Also clear the response input when selecting "Current"
         actions.setResponseInput('')
         return
@@ -442,9 +445,19 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
           ...selectedEvent,
           sessionId: forkFromSessionId, // Override with the previous event's session ID
         })
+
+        // Fetch session data to get token count
+        try {
+          const forkSessionData = await daemonClient.getSessionState(forkFromSessionId)
+          setForkTokenCount(forkSessionData.session.effectiveContextTokens ?? null)
+        } catch (error) {
+          console.error('[Fork] Failed to fetch session token data:', error)
+          // Set to null on error but don't block fork functionality
+          setForkTokenCount(null)
+        }
       }
     },
-    [events, actions],
+    [events, actions, session.id],
   )
 
   // We no longer automatically clear preview when closing
@@ -521,7 +534,14 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         return
       }
 
-      if (confirmingArchive) {
+      // Check for fork mode first
+      if (previewEventIndex !== null) {
+        // Clear fork mode
+        setPreviewEventIndex(null)
+        setPendingForkMessage(null)
+        setForkTokenCount(null)
+        actions.setResponseInput('')
+      } else if (confirmingArchive) {
         setConfirmingArchive(false)
         // Clear timeout if exists
         if (confirmingArchiveTimeoutRef.current) {
@@ -540,6 +560,19 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       enableOnFormTags: true, // Enable escape key in form elements like textarea
       scopes: SessionDetailHotkeysScope,
     },
+    [
+      previewEventIndex,
+      confirmingArchive,
+      forkViewOpen,
+      dangerousSkipPermissionsDialogOpen,
+      expandedToolResult,
+      approvals.confirmingApprovalId,
+      approvals.setConfirmingApprovalId,
+      navigation.focusedEventId,
+      navigation.setFocusedEventId,
+      onClose,
+      actions.setResponseInput,
+    ],
   )
 
   // Add Shift+Tab handler for auto-accept edits mode
@@ -923,7 +956,17 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               selectedEventIndex={previewEventIndex}
               onSelectEvent={handleForkSelect}
               isOpen={forkViewOpen}
-              onOpenChange={setForkViewOpen}
+              onOpenChange={open => {
+                setForkViewOpen(open)
+                // Focus the input when closing the fork modal
+                // Use longer delay to ensure it happens after all dialog cleanup
+                if (!open && responseInputRef.current) {
+                  setTimeout(() => {
+                    responseInputRef.current?.focus()
+                  }, 50)
+                }
+              }}
+              sessionStatus={session.status}
             />
           </div>
         </div>
@@ -994,23 +1037,19 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               selectedEventIndex={previewEventIndex}
               onSelectEvent={handleForkSelect}
               isOpen={forkViewOpen}
-              onOpenChange={setForkViewOpen}
+              onOpenChange={open => {
+                setForkViewOpen(open)
+                // Focus the input when closing the fork modal
+                // Use longer delay to ensure it happens after all dialog cleanup
+                if (!open && responseInputRef.current) {
+                  setTimeout(() => {
+                    responseInputRef.current?.focus()
+                  }, 50)
+                }
+              }}
+              sessionStatus={session.status}
             />
           </div>
-        </div>
-      )}
-
-      {/* Fork Mode Indicator */}
-      {previewEventIndex !== null && (
-        <div className="bg-amber-500/10 border border-amber-500/20 rounded-md px-3 py-2 mb-4 text-sm">
-          <span className="text-amber-600 dark:text-amber-400">
-            Fork mode: Forking from turn{' '}
-            {
-              events
-                .slice(0, previewEventIndex)
-                .filter(e => e.eventType === 'message' && e.role === 'user').length
-            }
-          </span>
         </div>
       )}
 
@@ -1097,17 +1136,27 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
             handleContinueSession={actions.handleContinueSession}
             handleResponseInputKeyDown={actions.handleResponseInputKeyDown}
             isForkMode={actions.isForkMode}
+            forkTokenCount={forkTokenCount}
             onModelChange={() => {
               // Refresh session data if needed
               fetchActiveSessionDetail(session.id)
             }}
           />
-          {/* Session mode indicator - shows either dangerous skip permissions or auto-accept */}
+          {/* Session mode indicator - shows fork, dangerous skip permissions or auto-accept */}
           <SessionModeIndicator
             sessionId={session.id}
             autoAcceptEdits={autoAcceptEdits}
             dangerouslySkipPermissions={dangerouslySkipPermissions}
             dangerouslySkipPermissionsExpiresAt={dangerouslySkipPermissionsExpiresAt}
+            isForkMode={previewEventIndex !== null}
+            forkTurnNumber={
+              previewEventIndex !== null
+                ? events
+                    .slice(0, previewEventIndex)
+                    .filter(e => e.eventType === 'message' && e.role === 'user').length
+                : undefined
+            }
+            forkTokenCount={forkTokenCount}
             className="mt-2"
           />
         </CardContent>
