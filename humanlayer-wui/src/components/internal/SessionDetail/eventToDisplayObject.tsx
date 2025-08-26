@@ -481,15 +481,8 @@ export function eventToDisplayObject(
       const toolInput = JSON.parse(event.toolInputJson!)
 
       previewFile = (
-        <div className={`border ${getBorderClass()} rounded p-4 mt-4`}>
-          <div className="mb-4">
-            <span className="font-mono text-sm text-muted-foreground">
-              <span className="font-bold">Plan to execute</span>
-            </span>
-          </div>
-          <pre className="bg-muted/50 p-3 rounded text-xs overflow-x-auto max-h-96 overflow-y-auto">
-            <code>{toolInput.plan}</code>
-          </pre>
+        <div className="mt-2">
+          <MarkdownRenderer content={toolInput.plan} sanitize={false} />
         </div>
       )
     }
