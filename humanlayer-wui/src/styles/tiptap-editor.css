@@ -7,13 +7,13 @@
   width: 100%;
   min-height: 2.5rem;
   padding: 0.5rem 0.75rem;
-  font-family: inherit;
+  font-family: var(--font-mono);
   font-size: 0.875rem;
   line-height: 1.25rem;
   background-color: var(--background);
   color: var(--foreground);
   border: 1px solid var(--border);
-  border-radius: 0.375rem;
+  /* border-radius: 0.375rem; */
   outline: none;
   transition: border-color 0.2s;
 }
@@ -75,6 +75,12 @@
 .markdown-syntax-heading-5,
 .markdown-syntax-heading-6 {
   color: var(--terminal-brightCyan);
+  opacity: 0.5;
+}
+
+/* List syntax markers */
+.markdown-syntax-list {
+  color: var(--terminal-brightMagenta);
   opacity: 0.5;
 }
 

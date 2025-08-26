@@ -203,6 +203,38 @@ const MarkdownSyntaxHighlight = Extension.create({
                     )
                   }
                 }
+
+                // Match unordered list syntax at the beginning of the line
+                const unorderedListRegex = /^(\s*)([-*+])\s+(.*)$/
+                const unorderedListMatch = unorderedListRegex.exec(text)
+                if (unorderedListMatch) {
+                  const start = pos
+                  const indent = unorderedListMatch[1].length
+                  const bulletStart = start + indent
+                  const bulletEnd = bulletStart + 1
+                  const spaceEnd = bulletEnd + 1
+
+                  // Style the bullet marker
+                  decorations.push(
+                    Decoration.inline(bulletStart, bulletEnd, { class: 'markdown-syntax markdown-syntax-list' }),
+                  )
+                }
+
+                // Match ordered list syntax at the beginning of the line
+                const orderedListRegex = /^(\s*)(\d+)\.\s+(.*)$/
+                const orderedListMatch = orderedListRegex.exec(text)
+                if (orderedListMatch) {
+                  const start = pos
+                  const indent = orderedListMatch[1].length
+                  const numberStart = start + indent
+                  const numberEnd = numberStart + orderedListMatch[2].length
+                  const dotEnd = numberEnd + 1 // for the dot
+
+                  // Style the number and dot
+                  decorations.push(
+                    Decoration.inline(numberStart, dotEnd, { class: 'markdown-syntax markdown-syntax-list' }),
+                  )
+                }
               }
             })
 
