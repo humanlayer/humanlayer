@@ -188,6 +188,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [pendingForkMessage, setPendingForkMessage] = useState<ConversationEvent | null>(null)
   const [confirmingArchive, setConfirmingArchive] = useState(false)
   const [dangerousSkipPermissionsDialogOpen, setDangerousSkipPermissionsDialogOpen] = useState(false)
+  const [directoriesDropdownOpen, setDirectoriesDropdownOpen] = useState(false)
 
   // State for inline title editing
   const [isEditingTitle, setIsEditingTitle] = useState(false)
@@ -514,6 +515,11 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         return
       }
 
+      // Don't process escape if directories dropdown is open
+      if (directoriesDropdownOpen) {
+        return
+      }
+
       // Don't process escape if dangerous skip permissions dialog is open
       if (dangerousSkipPermissionsDialogOpen) {
         return
@@ -803,6 +809,21 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     [startEditTitle, isEditingTitle],
   )
 
+  // Open directories dropdown hotkey
+  useHotkeys(
+    'd',
+    () => {
+      setDirectoriesDropdownOpen(true)
+    },
+    {
+      scopes: SessionDetailHotkeysScope,
+      enabled: !isEditingTitle && !!session.workingDir,
+      preventDefault: true,
+      enableOnFormTags: false,
+    },
+    [isEditingTitle, session.workingDir],
+  )
+
   // Don't steal scope here - SessionDetail is the base layer
   // Only modals opening on top should steal scope
 
@@ -923,6 +944,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                 directories={session.additionalDirectories || []}
                 sessionStatus={session.status}
                 onDirectoriesChange={handleUpdateAdditionalDirectories}
+                open={directoriesDropdownOpen}
+                onOpenChange={setDirectoriesDropdownOpen}
               />
             )}
           </hgroup>
@@ -1002,6 +1025,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                 directories={session.additionalDirectories || []}
                 sessionStatus={session.status}
                 onDirectoriesChange={handleUpdateAdditionalDirectories}
+                open={directoriesDropdownOpen}
+                onOpenChange={setDirectoriesDropdownOpen}
               />
             )}
           </hgroup>

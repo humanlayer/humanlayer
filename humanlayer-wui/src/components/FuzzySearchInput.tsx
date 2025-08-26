@@ -19,6 +19,8 @@ interface SearchInputProps {
   ref?: React.RefObject<HTMLDivElement>
   className?: string
   autoFocus?: boolean
+  onFocus?: () => void
+  onBlur?: () => void
 }
 
 export function SearchInput({
@@ -30,6 +32,8 @@ export function SearchInput({
   ref,
   className,
   autoFocus,
+  onFocus: externalOnFocus,
+  onBlur: externalOnBlur,
 }: SearchInputProps = {}) {
   // Use internal state if not controlled
   const [internalValue, setInternalValue] = useState('')
@@ -252,13 +256,19 @@ export function SearchInput({
         <PopoverAnchor>
           <Input
             id="search-input-hack-use-a-ref"
-            className={cn("mt-2", className)}
+            className={cn('mt-2', className)}
             ref={inputRef}
             spellCheck={false}
             onChange={onChange}
             value={searchValue}
-            onFocus={() => setIsFocused(true)}
-            onBlur={() => setIsFocused(false)}
+            onFocus={() => {
+              setIsFocused(true)
+              externalOnFocus?.()
+            }}
+            onBlur={() => {
+              setIsFocused(false)
+              externalOnBlur?.()
+            }}
             placeholder={placeholder}
             autoFocus={autoFocus}
           />
@@ -269,7 +279,10 @@ export function SearchInput({
           side="bottom"
           align="start"
           avoidCollisions={false}
-          className={cn("w-[var(--radix-popover-trigger-width)]", className?.includes('text-xs') && "[&_[cmdk-item]]:text-xs [&_[cmdk-item]]:py-1")}
+          className={cn(
+            'w-[var(--radix-popover-trigger-width)]',
+            className?.includes('text-xs') && '[&_[cmdk-item]]:text-xs [&_[cmdk-item]]:py-1',
+          )}
         >
           <Command>
             <CommandList>

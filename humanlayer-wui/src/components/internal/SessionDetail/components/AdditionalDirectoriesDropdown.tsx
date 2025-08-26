@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { ChevronDown, ChevronUp, FolderOpen, Plus, X, Lock } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -7,12 +7,17 @@ import { SearchInput } from '@/components/FuzzySearchInput'
 import { useRecentPaths } from '@/hooks/useRecentPaths'
 import { SessionStatus } from '@/lib/daemon/types'
 import { toast } from 'sonner'
+import { useHotkeys } from 'react-hotkeys-hook'
+import { useStealHotkeyScope } from '@/hooks/useStealHotkeyScope'
+import { cn } from '@/lib/utils'
 
 interface AdditionalDirectoriesDropdownProps {
   workingDir: string
   directories: string[]
   sessionStatus: SessionStatus
   onDirectoriesChange?: (directories: string[]) => void | Promise<void>
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
 export function AdditionalDirectoriesDropdown({
@@ -20,13 +25,37 @@ export function AdditionalDirectoriesDropdown({
   directories,
   sessionStatus,
   onDirectoriesChange,
+  open: externalOpen,
+  onOpenChange: externalOnOpenChange,
 }: AdditionalDirectoriesDropdownProps) {
-  const [isOpen, setIsOpen] = useState(false)
+  const [internalOpen, setInternalOpen] = useState(false)
+  const isOpen = externalOpen !== undefined ? externalOpen : internalOpen
+  const setIsOpen = (open: boolean) => {
+    if (externalOnOpenChange) {
+      externalOnOpenChange(open)
+    } else {
+      setInternalOpen(open)
+    }
+  }
   const [localDirectories, setLocalDirectories] = useState<string[]>(directories)
   const [newDirectory, setNewDirectory] = useState('')
   const [isAdding, setIsAdding] = useState(false)
   const [isUpdating, setIsUpdating] = useState(false)
-  
+  const [isInputFocused, setIsInputFocused] = useState(false)
+
+  // Add refs for focus management
+  const addButtonRef = useRef<HTMLButtonElement>(null)
+  const searchInputRef = useRef<HTMLDivElement>(null)
+  const directoryRefs = useRef<(HTMLButtonElement | null)[]>([])
+  const [focusedIndex, setFocusedIndex] = useState<number>(-1)
+
+  // Track what triggered the popover opening
+  const triggerRef = useRef<HTMLElement | null>(null)
+
+  // Steal hotkey scope when popover is open
+  const AdditionalDirectoriesHotkeyScope = 'additional-directories-dropdown'
+  useStealHotkeyScope(AdditionalDirectoriesHotkeyScope, isOpen)
+
   // Fetch recent paths for autocomplete
   const { paths: recentPaths } = useRecentPaths(20)
 
@@ -35,8 +64,155 @@ export function AdditionalDirectoriesDropdown({
     setLocalDirectories(directories)
   }, [directories])
 
+  // Focus the add button when popover opens
+  useEffect(() => {
+    if (isOpen && !isAdding) {
+      // Small delay to ensure popover is rendered
+      setTimeout(() => {
+        addButtonRef.current?.focus()
+      }, 0)
+    }
+  }, [isOpen, isAdding])
+
+  // Cleanup refs when directories change
+  useEffect(() => {
+    directoryRefs.current = directoryRefs.current.slice(0, localDirectories.length)
+  }, [localDirectories.length])
+
+  // Reset focused index if it's out of bounds
+  useEffect(() => {
+    if (focusedIndex >= localDirectories.length) {
+      setFocusedIndex(-1)
+    }
+  }, [localDirectories.length, focusedIndex])
+
   // Check if editing is allowed based on session status
   const canEdit = sessionStatus === 'completed' || sessionStatus === 'waiting_input'
+
+  // Handle j/k navigation
+  useHotkeys(
+    'j',
+    e => {
+      e.preventDefault()
+      e.stopPropagation()
+
+      if (isAdding) return // Don't navigate when adding
+
+      const maxIndex = localDirectories.length - 1
+      if (focusedIndex < maxIndex) {
+        const newIndex = focusedIndex + 1
+        setFocusedIndex(newIndex)
+        directoryRefs.current[newIndex]?.focus()
+      } else if (focusedIndex === maxIndex) {
+        // Wrap to top
+        setFocusedIndex(-1)
+        addButtonRef.current?.focus()
+      } else {
+        // Start from first item
+        if (localDirectories.length > 0) {
+          setFocusedIndex(0)
+          directoryRefs.current[0]?.focus()
+        }
+      }
+    },
+    {
+      enabled: isOpen && !isAdding,
+      scopes: AdditionalDirectoriesHotkeyScope,
+      preventDefault: true,
+    },
+  )
+
+  useHotkeys(
+    'k',
+    e => {
+      e.preventDefault()
+      e.stopPropagation()
+
+      if (isAdding) return // Don't navigate when adding
+
+      if (focusedIndex > 0) {
+        const newIndex = focusedIndex - 1
+        setFocusedIndex(newIndex)
+        directoryRefs.current[newIndex]?.focus()
+      } else if (focusedIndex === 0) {
+        // Move to add button
+        setFocusedIndex(-1)
+        addButtonRef.current?.focus()
+      } else if (focusedIndex === -1 && localDirectories.length > 0) {
+        // Wrap to bottom
+        const lastIndex = localDirectories.length - 1
+        setFocusedIndex(lastIndex)
+        directoryRefs.current[lastIndex]?.focus()
+      }
+    },
+    {
+      enabled: isOpen && !isAdding,
+      scopes: AdditionalDirectoriesHotkeyScope,
+      preventDefault: true,
+    },
+  )
+
+  // Handle Enter key on focused directory
+  useHotkeys(
+    'enter',
+    e => {
+      e.preventDefault()
+      e.stopPropagation()
+
+      if (focusedIndex >= 0 && focusedIndex < localDirectories.length) {
+        handleRemoveDirectory(localDirectories[focusedIndex])
+      } else if (focusedIndex === -1 && !isAdding) {
+        setIsAdding(true)
+      }
+    },
+    {
+      enabled: isOpen && focusedIndex !== null,
+      scopes: AdditionalDirectoriesHotkeyScope,
+      preventDefault: true,
+    },
+  )
+
+  // Handle escape key with two-stage behavior
+  useHotkeys(
+    'escape',
+    e => {
+      // Prevent default and stop propagation
+      e.preventDefault()
+      e.stopPropagation()
+
+      // If input is focused, blur it first (first escape)
+      if (isAdding && document.activeElement?.tagName === 'INPUT') {
+        const input = document.activeElement as HTMLElement
+        input.blur()
+        setIsInputFocused(false)
+        // Don't close popover on first escape when input is focused
+        return
+      }
+
+      // If adding but input not focused, cancel adding mode
+      if (isAdding) {
+        setIsAdding(false)
+        setNewDirectory('')
+        setFocusedIndex(-1)
+        // Focus back on add button
+        setTimeout(() => {
+          addButtonRef.current?.focus()
+        }, 0)
+        // Don't close popover when canceling add mode
+        return
+      }
+
+      // Otherwise close the popover (second escape or when not adding)
+      setIsOpen(false)
+      setFocusedIndex(-1)
+    },
+    {
+      enabled: isOpen,
+      scopes: AdditionalDirectoriesHotkeyScope,
+      preventDefault: true,
+      enableOnFormTags: true, // Enable in input fields
+    },
+  )
 
   const handleAddDirectory = async () => {
     const trimmed = newDirectory.trim()
@@ -121,9 +297,57 @@ export function AdditionalDirectoriesDropdown({
   }
 
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <PopoverTrigger asChild>{buttonContent}</PopoverTrigger>
-      <PopoverContent className="w-96 p-3" align="start" sideOffset={5}>
+    <Popover
+      open={isOpen}
+      onOpenChange={open => {
+        setIsOpen(open)
+        if (!open) {
+          // Reset states when closing
+          setIsAdding(false)
+          setNewDirectory('')
+          setFocusedIndex(-1)
+          setIsInputFocused(false)
+
+          // Restore focus to trigger
+          setTimeout(() => {
+            triggerRef.current?.focus()
+          }, 0)
+        }
+      }}
+    >
+      <PopoverTrigger
+        asChild
+        onClick={e => {
+          triggerRef.current = e.currentTarget as HTMLElement
+        }}
+      >
+        {buttonContent}
+      </PopoverTrigger>
+      <PopoverContent
+        className="w-96 p-3"
+        align="start"
+        sideOffset={5}
+        onOpenAutoFocus={e => {
+          e.preventDefault()
+          // Let our custom focus management handle it
+        }}
+        onCloseAutoFocus={e => {
+          e.preventDefault()
+          // We handle focus restoration ourselves
+        }}
+        onEscapeKeyDown={e => {
+          // Always prevent Radix UI from closing popover on escape
+          // Our custom escape handler will manage the closing
+          e.preventDefault()
+        }}
+        onInteractOutside={e => {
+          // Prevent closing when interacting with the input or other elements
+          const target = e.target as HTMLElement
+          if (target.closest('[data-slot="popover-content"]')) {
+            e.preventDefault()
+          }
+        }}
+      >
         <div className="space-y-2">
           <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground pb-1 border-b">
             <FolderOpen className="h-3 w-3" />
@@ -138,10 +362,14 @@ export function AdditionalDirectoriesDropdown({
             </div>
             {onDirectoriesChange && (
               <Button
+                ref={addButtonRef}
                 size="sm"
                 variant="ghost"
-                onClick={() => setIsAdding(true)}
-                className="h-5 px-1 text-xs"
+                onClick={() => {
+                  setIsAdding(true)
+                  setFocusedIndex(-1)
+                }}
+                className="h-5 px-1 text-xs focus:ring-2 focus:ring-offset-0 focus:ring-accent/50"
               >
                 <Plus className="h-3 w-3" />
               </Button>
@@ -155,16 +383,23 @@ export function AdditionalDirectoriesDropdown({
               localDirectories.map((dir, index) => (
                 <div
                   key={index}
-                  className="flex items-center justify-between group hover:bg-muted/50 rounded px-1 py-0.5"
+                  className={cn(
+                    'flex items-center justify-between group hover:bg-muted/50 rounded px-1 py-0.5',
+                    focusedIndex === index && 'bg-accent/20',
+                  )}
                 >
                   <span className="font-mono text-xs text-muted-foreground">{dir}</span>
                   {onDirectoriesChange && (
                     <Button
+                      ref={el => (directoryRefs.current[index] = el)}
                       size="sm"
                       variant="ghost"
                       onClick={() => handleRemoveDirectory(dir)}
                       disabled={isUpdating}
-                      className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className={cn(
+                        'h-5 w-5 p-0 transition-opacity focus:outline-none focus:ring-0',
+                        focusedIndex === index ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
+                      )}
                     >
                       <X className="h-3 w-3" />
                     </Button>
@@ -175,13 +410,21 @@ export function AdditionalDirectoriesDropdown({
 
             {isAdding && (
               <div className="flex gap-1 pt-1">
-                <div className="flex-1">
+                <div className="flex-1" ref={searchInputRef}>
                   <SearchInput
                     value={newDirectory}
                     onChange={setNewDirectory}
-                    onSubmit={handleAddDirectory}
+                    onSubmit={() => {
+                      handleAddDirectory()
+                      // After adding, focus returns to add button
+                      setTimeout(() => {
+                        addButtonRef.current?.focus()
+                      }, 0)
+                    }}
+                    onFocus={() => setIsInputFocused(true)}
+                    onBlur={() => setIsInputFocused(false)}
                     placeholder="Enter directory path..."
-                    recentDirectories={recentPaths?.map(p => p.path) || []}
+                    recentDirectories={recentPaths || []}
                     className="!h-7 !text-xs md:!text-xs !mt-0"
                     autoFocus
                   />
