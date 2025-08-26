@@ -150,6 +150,7 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
           isForkMode={isForkMode}
           forkTokenCount={forkTokenCount}
           onModelChange={onModelChange}
+          isDenying={isDenying}
         />
 
         {/* Existing input area */}

@@ -24,7 +24,7 @@ import {
 import { CommandToken } from '@/components/internal/CommandToken'
 import { formatToolResult } from './formatToolResult'
 import { DiffViewToggle } from './components/DiffViewToggle'
-import { DenyForm } from './components/DenyForm'
+import { DenyButtons } from './components/DenyButtons'
 import { CustomDiffViewer } from './components/CustomDiffViewer'
 import { parseMcpToolName } from '@/utils/formatting'
 
@@ -559,7 +559,7 @@ export function eventToDisplayObject(
               )}
             </>
           ) : (
-            <DenyForm onCancel={onCancelDeny} isDenying={isDenying} />
+            <DenyButtons onCancel={onCancelDeny} isDenying={isDenying} />
           )}
         </div>
       )
