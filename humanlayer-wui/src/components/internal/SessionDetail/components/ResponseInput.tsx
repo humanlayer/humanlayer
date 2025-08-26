@@ -21,6 +21,10 @@ interface ResponseInputProps {
   handleResponseInputKeyDown: (e: React.KeyboardEvent) => void
   isForkMode?: boolean
   onModelChange?: () => void
+  denyingApprovalId?: string | null
+  isDenying?: boolean
+  onDeny?: (approvalId: string, reason: string) => void
+  handleCancelDeny?: () => void
 }
 
 export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>(
@@ -37,7 +41,6 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
       setResponseInput,
       isResponding,
       handleContinueSession,
-      // handleResponseInputKeyDown,
       isForkMode,
       onModelChange,
     },
@@ -59,8 +62,8 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
     }
 
     const handleSubmit = () => {
-      if (isDenying) {
-        onDeny(denyingApprovalId, responseInput.trim())
+      if (isDenying && denyingApprovalId) {
+        onDeny?.(denyingApprovalId, responseInput.trim())
       } else {
         handleContinueSession()
       }
@@ -75,7 +78,6 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
       },
       [handleContinueSession, handleSubmit],
     )
-
 
     // Get help text for fork mode
     const getForkHelpText = (isFork: boolean): React.ReactNode => {
@@ -93,30 +95,52 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
     }
 
     useEffect(() => {
-      if (isDenying) {
-        ref.current?.focus()
+      if (isDenying && ref && typeof ref !== 'function' && ref.current) {
+        ref.current.focus()
       } else {
-        ref.current?.blur()
+        if (ref && typeof ref !== 'function' && ref.current) {
+          ref.current.blur()
+        }
         setResponseInput('')
       }
     }, [isDenying])
 
-    useHotkeys('escape', () => {
-      if (isDenying) {
-        setResponseInput('')
-        handleCancelDeny()
-      }
-    }, {enableOnFormTags: true})
+    useHotkeys(
+      'escape',
+      () => {
+        if (isDenying) {
+          setResponseInput('')
+          handleCancelDeny?.()
+        }
+      },
+      { enableOnFormTags: true },
+    )
+
+    const isDisabled = !responseInput.trim() || isResponding
+    const isMac = navigator.platform.includes('Mac')
+    const sendKey = isMac ? '⌘+Enter' : 'Ctrl+Enter'
 
     let placeholder = getInputPlaceholder(session.status)
 
     if (isDenying) {
-      placeholder = 'Tell the agent what you\'d like to do differently...'
+      placeholder = "Tell the agent what you'd like to do differently..."
     }
 
     if (isForkMode) {
       placeholder = getForkInputPlaceholder(session.status)
     }
+
+    const textareaOutlineClass =
+      isDenying &&
+      ' focus:outline-[var(--terminal-error)] focus-visible:outline-[var(--terminal-error)] focus-visible:border-[var(--terminal-error)]'
+
+    // This is a hack, was struggling to find the style associated with
+    // the inserted box shadow from tailwind, there's a goofy ring-offset thing going on
+    const textareaStyle = isDenying
+      ? {
+          boxShadow: 'var(--terminal-error)',
+        }
+      : {}
 
     // Always show the input for all session states
     return (
@@ -132,6 +156,7 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
         {isForkMode && <span className="text-sm font-medium">Fork from this message:</span>}
         <div className="flex gap-2">
           <Textarea
+            style={textareaStyle}
             ref={ref}
             placeholder={placeholder}
             value={responseInput}
@@ -141,15 +166,18 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
             }}
             onKeyDown={handleResponseInputKeyDown}
             disabled={isResponding}
-            className={`flex-1 min-h-[2.5rem] ${isResponding ? 'opacity-50' : ''}`}
+            className={`flex-1 min-h-[2.5rem] ${isResponding ? 'opacity-50' : ''} ${textareaOutlineClass}`}
           />
           <Button
             onClick={handleSubmit}
-            disabled={!responseInput.trim() || isResponding}
+            disabled={isDisabled}
             size="sm"
             variant={isDenying ? 'destructive' : 'default'}
           >
             {getSendButtonText()}
+            {!isDisabled && (
+              <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">{sendKey}</kbd>
+            )}
           </Button>
         </div>
 
