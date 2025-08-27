@@ -1,6 +1,7 @@
 import React, { useEffect, forwardRef, useImperativeHandle } from 'react'
 import { useEditor, EditorContent, Extension } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
+import { Placeholder } from '@tiptap/extensions'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import { Plugin } from '@tiptap/pm/state'
 import { createLowlight } from 'lowlight'
@@ -390,9 +391,21 @@ const MarkdownSyntaxHighlight = Extension.create({
 
 const KeyboardShortcuts = Extension.create({
   name: 'KeyboardShortcuts',
+  addOptions() {
+    return {
+      onSubmit: undefined,
+    }
+  },
+
   addKeyboardShortcuts() {
     return {
       Escape: () => this.editor.commands.blur(),
+      'Mod-Enter': editor => {
+        if (!editor.editor.isEmpty) {
+          this.options.onSubmit?.()
+        }
+        return true
+      },
     }
   },
 })
@@ -404,10 +417,16 @@ interface TiptapEditorProps {
   disabled?: boolean
   placeholder?: string
   className?: string
+  onFocus?: () => void
+  onBlur?: () => void
+  onSubmit?: () => void
 }
 
 export const TiptapEditor = forwardRef<{ focus: () => void }, TiptapEditorProps>(
-  ({ value, onChange, onKeyDown, disabled, placeholder, className }, ref) => {
+  (
+    { value, onChange, onKeyDown, disabled, placeholder, className, onFocus, onBlur, onSubmit },
+    ref,
+  ) => {
     const editor = useEditor({
       autofocus: false,
       extensions: [
@@ -421,7 +440,14 @@ export const TiptapEditor = forwardRef<{ focus: () => void }, TiptapEditorProps>
           codeBlock: false, // Disable since we want to preserve markdown syntax
         }),
         MarkdownSyntaxHighlight,
-        KeyboardShortcuts,
+        KeyboardShortcuts.configure({
+          onSubmit: () => {
+            onSubmit?.()
+          },
+        }),
+        Placeholder.configure({
+          placeholder: placeholder || 'Type something...',
+        }),
       ],
       content: value,
       editorProps: {
@@ -497,7 +523,7 @@ export const TiptapEditor = forwardRef<{ focus: () => void }, TiptapEditorProps>
 
     return (
       <div className="tiptap-wrapper">
-        <EditorContent editor={editor} placeholder={placeholder} />
+        <EditorContent editor={editor} onFocus={onFocus} onBlur={onBlur} />
       </div>
     )
   },

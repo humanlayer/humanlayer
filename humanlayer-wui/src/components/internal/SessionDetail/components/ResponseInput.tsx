@@ -1,6 +1,5 @@
-import React, { forwardRef, useCallback, useEffect, useState, useRef, useImperativeHandle } from 'react'
+import React, { forwardRef, useEffect, useState, useRef, useImperativeHandle } from 'react'
 import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
 import { Session, SessionStatus } from '@/lib/daemon/types'
 import {
   getInputPlaceholder,
@@ -11,7 +10,6 @@ import { ResponseInputLocalStorageKey } from '@/components/internal/SessionDetai
 import { StatusBar } from './StatusBar'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { TiptapEditor } from './TiptapEditor'
-import { useStore } from '@/AppStore'
 
 interface ResponseInputProps {
   session: Session
@@ -55,6 +53,7 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
     ref,
   ) => {
     const [youSure, setYouSure] = useState(false)
+    const [isFocused, setIsFocused] = useState(false)
 
     const tiptapRef = useRef<{ focus: () => void }>(null)
     const getSendButtonText = () => {
@@ -105,15 +104,15 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
       )
     }
 
-    const handleResponseInputKeyDown = useCallback(
-      (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-          e.preventDefault()
-          handleSubmit()
-        }
-      },
-      [handleContinueSession, handleSubmit],
-    )
+    // const handleResponseInputKeyDown = useCallback(
+    //   (e: React.KeyboardEvent) => {
+    //     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+    //       e.preventDefault()
+    //       handleSubmit()
+    //     }
+    //   },
+    //   [handleContinueSession, handleSubmit],
+    // )
 
     useEffect(() => {
       if (isDenying && ref && typeof ref !== 'function' && ref.current) {
@@ -164,7 +163,9 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
 
     // Always show the input for all session states
     return (
-      <div className="space-y-3">
+      <div
+        className={`space-y-3 border-l-2 pl-4 pr-2 pb-4 ${isFocused ? 'border-[var(--terminal-accent)] ' : 'border-transparent'}`}
+      >
         {/* Status Bar */}
         <StatusBar
           session={session}
@@ -198,11 +199,27 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
               setResponseInput(value)
               localStorage.setItem(`${ResponseInputLocalStorageKey}.${session.id}`, value)
             }}
-            onKeyDown={handleResponseInputKeyDown}
+            onSubmit={handleSubmit}
             disabled={isResponding}
             placeholder={placeholder}
             className={`flex-1 min-h-[2.5rem] ${isResponding ? 'opacity-50' : ''} ${textareaOutlineClass}`}
+            onFocus={() => {
+              setIsFocused(true)
+            }}
+            onBlur={() => {
+              setIsFocused(false)
+            }}
           />
+        </div>
+
+        {/* Keyboard shortcuts (condensed) */}
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-muted-foreground">
+            {isResponding
+              ? 'Waiting for Claude to accept the interrupt...'
+              : getHelpText(session.status)}
+          </p>
+
           <Button
             onClick={handleSubmit}
             disabled={isDisabled}
@@ -215,11 +232,6 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
             )}
           </Button>
         </div>
-
-        {/* Keyboard shortcuts (condensed) */}
-        <p className="text-xs text-muted-foreground">
-          {isResponding ? 'Waiting for Claude to accept the interrupt...' : getHelpText(session.status)}
-        </p>
       </div>
     )
   },
