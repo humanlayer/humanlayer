@@ -14,6 +14,7 @@ interface SessionConfig {
   model?: string
   maxTurns?: number
   openRouterApiKey?: string
+  additionalDirectories?: string[]
 }
 
 interface LauncherState {
@@ -75,6 +76,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
     workingDir: getDefaultWorkingDir(),
     provider: 'anthropic',
     openRouterApiKey: getSavedOpenRouterKey(),
+    additionalDirectories: [],
   },
   isLaunching: false,
   gPrefixMode: false,
@@ -99,6 +101,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
         workingDir: getDefaultWorkingDir(),
         provider: 'anthropic',
         openRouterApiKey: getSavedOpenRouterKey(),
+        additionalDirectories: [],
       },
       selectedMenuIndex: 0,
       error: undefined,
@@ -166,10 +169,37 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
       }
     }
 
+    // Validate additional directories if provided
+    if (config.additionalDirectories && config.additionalDirectories.length > 0) {
+      for (const dir of config.additionalDirectories) {
+        try {
+          // Expand ~ to home directory
+          let pathToCheck = dir
+          if (pathToCheck.startsWith('~')) {
+            const home = await homeDir()
+            pathToCheck = pathToCheck.replace(/^~(?=$|\/|\\)/, home)
+          }
+
+          // Check if the path exists
+          const pathExists = await exists(pathToCheck)
+          if (!pathExists) {
+            set({ error: `Additional directory does not exist: ${dir}` })
+            return
+          }
+        } catch (err) {
+          set({ error: `Error checking additional directory ${dir}: ${err}` })
+          return
+        }
+      }
+    }
+
     try {
       set({ isLaunching: true, error: undefined })
 
       // MCP config is now injected by daemon
+
+      console.log('Config before launch:', config)
+      console.log('Additional directories:', config.additionalDirectories)
 
       const request: LaunchSessionRequest = {
         query: query.trim(),
@@ -178,6 +208,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
         provider: config.provider || 'anthropic',
         model: config.model || undefined,
         max_turns: config.maxTurns || undefined,
+        additional_directories: config.additionalDirectories || undefined,
         // MCP config is now injected by daemon
         permission_prompt_tool: 'mcp__codelayer__request_permission',
         // Add OpenRouter proxy configuration if provider is openrouter
@@ -190,6 +221,9 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
             }
           : {}),
       }
+
+      console.log('Launch request:', request)
+      console.log('Launch request additional_directories specifically:', request.additional_directories)
 
       const response = await daemonClient.launchSession(request)
 
@@ -229,6 +263,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
         workingDir: getDefaultWorkingDir(),
         provider: 'anthropic',
         openRouterApiKey: getSavedOpenRouterKey(),
+        additionalDirectories: [],
       },
       error: undefined,
     })
@@ -251,6 +286,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
         workingDir: getDefaultWorkingDir(),
         provider: 'anthropic',
         openRouterApiKey: getSavedOpenRouterKey(),
+        additionalDirectories: [],
       },
       selectedMenuIndex: 0,
       isLaunching: false,
