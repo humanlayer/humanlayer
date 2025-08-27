@@ -2,7 +2,7 @@ import { Session, SessionStatus } from '@/lib/daemon/types'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 import { useHotkeys, useHotkeysContext } from 'react-hotkeys-hook'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { CircleOff, CheckSquare, Square, FileText, Pencil, ShieldOff } from 'lucide-react'
 import { getStatusTextClass } from '@/utils/component-utils'
 import { formatTimestamp, formatAbsoluteTimestamp } from '@/utils/formatting'
@@ -15,7 +15,6 @@ import { EmptyState } from './EmptyState'
 import type { LucideIcon } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { daemonClient } from '@/lib/daemon/client'
 import { renderSessionStatus } from '@/utils/sessionStatus'
 import { logger } from '@/lib/logging'
 
@@ -57,40 +56,35 @@ export default function SessionTable({
   const { isOpen: isSessionLauncherOpen } = useSessionLauncher()
   const { enableScope, disableScope } = useHotkeysContext()
   const tableRef = useRef<HTMLTableElement>(null)
-  const { archiveSession, selectedSessions, toggleSessionSelection, bulkArchiveSessions, bulkSelect } =
-    useStore()
+  const {
+    archiveSession,
+    selectedSessions,
+    toggleSessionSelection,
+    bulkArchiveSessions,
+    bulkSelect,
+    // Session editing state and actions
+    editingSessionId,
+    editValue,
+    startEdit,
+    updateEditValue,
+    saveEdit,
+    cancelEdit,
+  } = useStore()
 
-  // State for inline editing
-  const [editingSessionId, setEditingSessionId] = useState<string | null>(null)
-  const [editValue, setEditValue] = useState('')
-
-  // Helper functions for inline editing
-  const startEdit = (sessionId: string, currentTitle: string, currentSummary: string) => {
-    setEditingSessionId(sessionId)
-    setEditValue(currentTitle || currentSummary || '')
+  // Helper to start editing with the appropriate initial value
+  const handleStartEdit = (sessionId: string, currentTitle: string, currentSummary: string) => {
+    startEdit(sessionId, currentTitle || currentSummary || '')
   }
 
-  const saveEdit = async () => {
-    if (!editingSessionId) return
-
+  // Helper to save edit with error handling
+  const handleSaveEdit = async () => {
     try {
-      await daemonClient.updateSessionTitle(editingSessionId, editValue)
-
-      // Update the session in the store
-      useStore.getState().updateSession(editingSessionId, { title: editValue })
-
-      setEditingSessionId(null)
-      setEditValue('')
+      await saveEdit()
     } catch (error) {
       toast.error('Failed to update session title', {
         description: error instanceof Error ? error.message : 'Unknown error',
       })
     }
-  }
-
-  const cancelEdit = () => {
-    setEditingSessionId(null)
-    setEditValue('')
   }
 
   // Helper to render highlighted text
@@ -365,7 +359,7 @@ export default function SessionTable({
     'shift+r',
     () => {
       if (focusedSession) {
-        startEdit(focusedSession.id, focusedSession.title || '', focusedSession.summary || '')
+        handleStartEdit(focusedSession.id, focusedSession.title || '', focusedSession.summary || '')
       }
     },
     {
@@ -374,7 +368,7 @@ export default function SessionTable({
       preventDefault: true,
       enableOnFormTags: false,
     },
-    [focusedSession, startEdit, editingSessionId],
+    [focusedSession, handleStartEdit, editingSessionId],
   )
 
   return (
@@ -489,11 +483,11 @@ export default function SessionTable({
                       <div className="flex items-center gap-2">
                         <Input
                           value={editValue}
-                          onChange={e => setEditValue(e.target.value)}
+                          onChange={e => updateEditValue(e.target.value)}
                           onKeyDown={e => {
                             if (e.key === 'Enter') {
                               e.preventDefault()
-                              saveEdit()
+                              handleSaveEdit()
                             } else if (e.key === 'Escape') {
                               e.preventDefault()
                               cancelEdit()
@@ -508,7 +502,7 @@ export default function SessionTable({
                           variant="ghost"
                           onClick={e => {
                             e.stopPropagation()
-                            saveEdit()
+                            handleSaveEdit()
                           }}
                           className="h-7 px-2"
                         >
@@ -536,7 +530,7 @@ export default function SessionTable({
                           variant="ghost"
                           onClick={e => {
                             e.stopPropagation()
-                            startEdit(session.id, session.title || '', session.summary || '')
+                            handleStartEdit(session.id, session.title || '', session.summary || '')
                           }}
                           className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
                         >

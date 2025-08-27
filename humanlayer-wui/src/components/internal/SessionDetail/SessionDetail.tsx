@@ -181,36 +181,41 @@ function OmniSpinner({ randomVerb, spinnerType }: { randomVerb: string; spinnerT
 
 function SessionDetail({ session, onClose }: SessionDetailProps) {
   const { enableScope, disableScope } = useHotkeysContext()
+
+  // Local UI state (layout and preferences)
   const [isWideView, setIsWideView] = useState(false)
   const [isCompactView, setIsCompactView] = useState(false)
-  const [expandedToolResult, setExpandedToolResult] = useState<ConversationEvent | null>(null)
-  const [expandedToolCall, setExpandedToolCall] = useState<ConversationEvent | null>(null)
   const [isSplitView, setIsSplitView] = useState(false)
-  const [forkViewOpen, setForkViewOpen] = useState(false)
   const [previewEventIndex, setPreviewEventIndex] = useState<number | null>(null)
   const [pendingForkMessage, setPendingForkMessage] = useState<ConversationEvent | null>(null)
-  const [confirmingArchive, setConfirmingArchive] = useState(false)
-  const [dangerousSkipPermissionsDialogOpen, setDangerousSkipPermissionsDialogOpen] = useState(false)
 
-  // State for inline title editing
-  const [isEditingTitle, setIsEditingTitle] = useState(false)
-  const [editValue, setEditValue] = useState('')
+  // Global modal/UI state from store
+  const {
+    expandedToolResult,
+    setExpandedToolResult,
+    expandedToolCall,
+    setExpandedToolCall,
+    forkViewOpen,
+    setForkViewOpen,
+    dangerousSkipPermissionsDialogOpen,
+    setDangerousSkipPermissionsDialogOpen,
+    confirmingArchive,
+    setConfirmingArchive,
+    isEditingTitle,
+    startTitleEdit,
+    updateTitleEdit,
+    saveTitleEdit,
+    cancelTitleEdit,
+  } = useStore()
 
   // Helper functions for inline title editing
-  const startEditTitle = () => {
-    setIsEditingTitle(true)
-    setEditValue(session.title || session.summary || '')
+  const handleStartEditTitle = () => {
+    startTitleEdit(session.id, session.title || session.summary || '')
   }
 
-  const saveEditTitle = async () => {
+  const handleSaveTitleEdit = async () => {
     try {
-      await daemonClient.updateSessionTitle(session.id, editValue)
-
-      // Update the session in the store
-      useStore.getState().updateSession(session.id, { title: editValue })
-
-      setIsEditingTitle(false)
-      setEditValue('')
+      await saveTitleEdit()
     } catch (error) {
       toast.error('Failed to update session title', {
         description: error instanceof Error ? error.message : 'Unknown error',
@@ -218,9 +223,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     }
   }
 
-  const cancelEditTitle = () => {
-    setIsEditingTitle(false)
-    setEditValue('')
+  const handleCancelTitleEdit = () => {
+    cancelTitleEdit()
   }
 
   // Keyboard navigation protection
@@ -786,15 +790,15 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   useHotkeys(
     'shift+r',
     () => {
-      startEditTitle()
+      handleStartEditTitle()
     },
     {
       scopes: SessionDetailHotkeysScope,
-      enabled: !isEditingTitle,
+      enabled: !isEditingTitle || isEditingTitle.sessionId !== session.id,
       preventDefault: true,
       enableOnFormTags: false,
     },
-    [startEditTitle, isEditingTitle],
+    [handleStartEditTitle, isEditingTitle],
   )
 
   // Don't steal scope here - SessionDetail is the base layer
@@ -867,28 +871,33 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
           <hgroup className="flex flex-col gap-1 flex-1">
             <h2 className="text-lg font-medium text-foreground font-mono flex items-center gap-2">
               {session.archived && <Archive className="h-4 w-4 text-muted-foreground" />}
-              {isEditingTitle ? (
+              {isEditingTitle?.sessionId === session.id ? (
                 <div className="flex items-center gap-2 flex-1">
                   <Input
                     aria-label="Edit session title"
-                    value={editValue}
-                    onChange={e => setEditValue(e.target.value)}
+                    value={isEditingTitle?.value || ''}
+                    onChange={e => updateTitleEdit(e.target.value)}
                     onKeyDown={e => {
                       if (e.key === 'Enter') {
                         e.preventDefault()
-                        saveEditTitle()
+                        handleSaveTitleEdit()
                       } else if (e.key === 'Escape') {
                         e.preventDefault()
-                        cancelEditTitle()
+                        handleCancelTitleEdit()
                       }
                     }}
                     className="h-7 text-sm font-mono"
                     autoFocus
                   />
-                  <Button size="sm" variant="ghost" onClick={saveEditTitle} className="h-7 px-2">
+                  <Button size="sm" variant="ghost" onClick={handleSaveTitleEdit} className="h-7 px-2">
                     Save
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={cancelEditTitle} className="h-7 px-2">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={handleCancelTitleEdit}
+                    className="h-7 px-2"
+                  >
                     Cancel
                   </Button>
                 </div>
@@ -903,7 +912,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                   <Button
                     size="sm"
                     variant="ghost"
-                    onClick={startEditTitle}
+                    onClick={handleStartEditTitle}
                     className="h-5 w-5 p-0 opacity-60 hover:opacity-100 transition-opacity"
                   >
                     <Pencil className="h-3 w-3" />
@@ -950,18 +959,18 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
           <hgroup className="flex flex-col gap-0.5 flex-1">
             <h2 className="text-sm font-medium text-foreground font-mono flex items-center gap-2">
               {session.archived && <Archive className="h-3 w-3 text-muted-foreground" />}
-              {isEditingTitle ? (
+              {isEditingTitle?.sessionId === session.id ? (
                 <div className="flex items-center gap-2 flex-1">
                   <Input
-                    value={editValue}
-                    onChange={e => setEditValue(e.target.value)}
+                    value={isEditingTitle?.value || ''}
+                    onChange={e => updateTitleEdit(e.target.value)}
                     onKeyDown={e => {
                       if (e.key === 'Enter') {
                         e.preventDefault()
-                        saveEditTitle()
+                        handleSaveTitleEdit()
                       } else if (e.key === 'Escape') {
                         e.preventDefault()
-                        cancelEditTitle()
+                        handleCancelTitleEdit()
                       }
                     }}
                     className="h-6 text-xs font-mono"
@@ -970,7 +979,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                   <Button
                     size="sm"
                     variant="ghost"
-                    onClick={saveEditTitle}
+                    onClick={handleSaveTitleEdit}
                     className="h-6 px-1 text-xs"
                   >
                     Save
@@ -978,7 +987,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                   <Button
                     size="sm"
                     variant="ghost"
-                    onClick={cancelEditTitle}
+                    onClick={handleCancelTitleEdit}
                     className="h-6 px-1 text-xs"
                   >
                     Cancel
@@ -995,7 +1004,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                   <Button
                     size="sm"
                     variant="ghost"
-                    onClick={startEditTitle}
+                    onClick={handleStartEditTitle}
                     className="h-4 w-4 p-0 opacity-60 hover:opacity-100 transition-opacity"
                   >
                     <Pencil className="h-3 w-3" />

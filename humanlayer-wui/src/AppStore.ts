@@ -1,4 +1,4 @@
-import type { Session, SessionStatus } from '@/lib/daemon/types'
+import type { Session, SessionStatus, ConversationEvent } from '@/lib/daemon/types'
 import { ViewMode } from '@/lib/daemon/types'
 import { create } from 'zustand'
 import { daemonClient } from '@/lib/daemon/client'
@@ -73,6 +73,36 @@ interface StoreState {
   /* UI State */
   isHotkeyPanelOpen: boolean
   setHotkeyPanelOpen: (open: boolean) => void
+
+  /* Session Detail UI State */
+  expandedToolResult: ConversationEvent | null
+  expandedToolCall: ConversationEvent | null
+  forkViewOpen: boolean
+  dangerousSkipPermissionsDialogOpen: boolean
+  confirmingArchive: boolean
+  isEditingTitle: { sessionId: string; value: string } | null
+  setExpandedToolResult: (event: ConversationEvent | null) => void
+  setExpandedToolCall: (event: ConversationEvent | null) => void
+  setForkViewOpen: (open: boolean) => void
+  setDangerousSkipPermissionsDialogOpen: (open: boolean) => void
+  setConfirmingArchive: (confirming: boolean) => void
+  startTitleEdit: (sessionId: string, initialValue: string) => void
+  updateTitleEdit: (value: string) => void
+  saveTitleEdit: () => Promise<void>
+  cancelTitleEdit: () => void
+
+  /* Session Editing */
+  editingSessionId: string | null
+  editValue: string
+  editingSince: number | null
+  hasUnsavedChanges: boolean
+  startEdit: (sessionId: string, initialValue: string) => void
+  updateEditValue: (value: string) => void
+  saveEdit: () => Promise<void>
+  cancelEdit: () => void
+  clearEditIfSession: (sessionId: string) => void
+  isEditing: (sessionId?: string) => boolean
+  getEditValue: () => string
 }
 
 export const useStore = create<StoreState>((set, get) => ({
@@ -83,6 +113,21 @@ export const useStore = create<StoreState>((set, get) => ({
   pendingUpdates: new Map<string, PendingUpdate>(),
   isRefreshing: false,
   activeSessionDetail: null,
+
+  // Session Detail UI state
+  expandedToolResult: null,
+  expandedToolCall: null,
+  forkViewOpen: false,
+  dangerousSkipPermissionsDialogOpen: false,
+  confirmingArchive: false,
+  isEditingTitle: null,
+
+  // Session editing state
+  editingSessionId: null,
+  editValue: '',
+  editingSince: null,
+  hasUnsavedChanges: false,
+
   initSessions: (sessions: Session[]) => set({ sessions }),
   updateSession: (sessionId: string, updates: Partial<Session>) =>
     set(state => ({
@@ -762,6 +807,114 @@ export const useStore = create<StoreState>((set, get) => ({
   // UI State
   isHotkeyPanelOpen: false,
   setHotkeyPanelOpen: (open: boolean) => set({ isHotkeyPanelOpen: open }),
+
+  // Session Detail UI Methods
+  setExpandedToolResult: (event: ConversationEvent | null) => set({ expandedToolResult: event }),
+  setExpandedToolCall: (event: ConversationEvent | null) => set({ expandedToolCall: event }),
+  setForkViewOpen: (open: boolean) => set({ forkViewOpen: open }),
+  setDangerousSkipPermissionsDialogOpen: (open: boolean) =>
+    set({ dangerousSkipPermissionsDialogOpen: open }),
+  setConfirmingArchive: (confirming: boolean) => set({ confirmingArchive: confirming }),
+
+  startTitleEdit: (sessionId: string, initialValue: string) => {
+    set({ isEditingTitle: { sessionId, value: initialValue } })
+  },
+
+  updateTitleEdit: (value: string) => {
+    const state = get()
+    if (state.isEditingTitle) {
+      set({ isEditingTitle: { ...state.isEditingTitle, value } })
+    }
+  },
+
+  saveTitleEdit: async () => {
+    const { isEditingTitle } = get()
+    if (!isEditingTitle) return
+
+    try {
+      await daemonClient.updateSessionTitle(isEditingTitle.sessionId, isEditingTitle.value)
+
+      // Update the session in the store
+      get().updateSession(isEditingTitle.sessionId, { title: isEditingTitle.value })
+
+      // Clear editing state
+      set({ isEditingTitle: null })
+    } catch (error) {
+      logger.error('Failed to update session title:', error)
+      throw error // Let the caller handle the toast notification
+    }
+  },
+
+  cancelTitleEdit: () => {
+    set({ isEditingTitle: null })
+  },
+
+  // Session Editing Methods
+  startEdit: (sessionId: string, initialValue: string) => {
+    set({
+      editingSessionId: sessionId,
+      editValue: initialValue,
+      editingSince: Date.now(),
+      hasUnsavedChanges: false,
+    })
+  },
+
+  updateEditValue: (value: string) => {
+    const state = get()
+    set({
+      editValue: value,
+      hasUnsavedChanges: value !== '' && state.editingSessionId !== null,
+    })
+  },
+
+  saveEdit: async () => {
+    const { editingSessionId, editValue } = get()
+    if (!editingSessionId) return
+
+    try {
+      await daemonClient.updateSessionTitle(editingSessionId, editValue)
+
+      // Update the session in the store
+      get().updateSession(editingSessionId, { title: editValue })
+
+      // Clear editing state
+      set({
+        editingSessionId: null,
+        editValue: '',
+        editingSince: null,
+        hasUnsavedChanges: false,
+      })
+    } catch (error) {
+      logger.error('Failed to update session title:', error)
+      throw error // Let the caller handle the toast notification
+    }
+  },
+
+  cancelEdit: () => {
+    set({
+      editingSessionId: null,
+      editValue: '',
+      editingSince: null,
+      hasUnsavedChanges: false,
+    })
+  },
+
+  clearEditIfSession: (sessionId: string) => {
+    const state = get()
+    if (state.editingSessionId === sessionId) {
+      get().cancelEdit()
+    }
+  },
+
+  isEditing: (sessionId?: string) => {
+    const state = get()
+    if (sessionId) {
+      return state.editingSessionId === sessionId
+    }
+    return state.editingSessionId !== null
+  },
+
+  getEditValue: () => get().editValue,
 }))
 
 // Helper function to validate and clean up session state

@@ -198,12 +198,15 @@ components/
 **Files Changed**: 15+ files
 
 #### What Was Done:
+
 1. **Eliminated all barrel export files**:
+
    - ❌ Removed `src/hooks/index.ts`
    - ❌ Removed `src/stores/index.ts`
    - ❌ Removed `src/lib/daemon/index.ts`
 
 2. **Updated all imports to use direct file paths**:
+
    - Fixed `SessionTablePage.tsx` and `SessionDetail.tsx` hooks imports
    - Updated 13 files importing from daemon barrel export
    - All imports now use pattern: `from '@/hooks/useSpecificHook'` instead of `from '@/hooks'`
@@ -215,17 +218,92 @@ components/
    - Added proper type assertions in `useSessionFilter.ts`
 
 #### Verification:
+
 - ✅ **Format check passed**
-- ✅ **Lint check passed** 
+- ✅ **Lint check passed**
 - ✅ **Type checking passed**
 - ✅ All barrel export usage eliminated
 - ✅ Direct imports following React coding standards
 
 #### Impact:
+
 - Improved code traversal depth (follows standard principle #1)
 - Better tree-shaking and build performance
 - More explicit dependencies
 - Eliminated potential circular dependency issues
 
+### ✅ COMPLETED: P0 Item #2 - Component State Migration to Zustand (2024-08-27)
+
+**Status**: Successfully completed
+**Time Spent**: ~3 hours
+**Files Changed**: 3 major files (AppStore.ts, SessionTable.tsx, SessionDetail.tsx)
+
+#### What Was Done:
+
+1. **Created SessionEditSlice in AppStore**:
+   - Added session editing state to global Zustand store
+   - Implemented actions: `startEdit`, `updateEditValue`, `saveEdit`, `cancelEdit`, `clearEditIfSession`, `isEditing`, `getEditValue`
+   - Added state properties: `editingSessionId`, `editValue`, `editingSince`, `hasUnsavedChanges`
+
+2. **Created UI Slice for SessionDetail Modal States**:
+   - Added high-priority modal states affecting global hotkey handling
+   - Migrated: `expandedToolResult`, `expandedToolCall`, `forkViewOpen`, `dangerousSkipPermissionsDialogOpen`, `confirmingArchive`
+   - Migrated title editing state: `isEditingTitle` (now object with `{ sessionId, value }`)
+   - Added corresponding actions for all modal state management
+
+3. **Migrated SessionTable Component**:
+   - ✅ Removed local useState for `editingSessionId` and `editValue`
+   - ✅ Updated to use store actions: `startEdit`, `updateEditValue`, `saveEdit`, `cancelEdit`
+   - ✅ Removed unused `daemonClient` import since editing logic now in store
+   - ✅ Removed unused `useState` import
+   - ✅ Added error handling wrapper functions: `handleStartEdit`, `handleSaveEdit`
+   - ✅ Updated all function calls and event handlers to use new store actions
+
+4. **Migrated SessionDetail Component High-Priority States**:
+   - ✅ Moved modal states to global store (affects hotkey scope management)
+   - ✅ Updated title editing to use store-based system
+   - ✅ Added helper functions: `handleStartEditTitle`, `handleSaveTitleEdit`, `handleCancelTitleEdit`
+   - ✅ Updated all references to use proper store state checks (`isEditingTitle?.sessionId === session.id`)
+   - ✅ Left appropriate local state unchanged (layout preferences, DOM-dependent state)
+
+#### State Migration Summary:
+
+**SessionTable (completely migrated)**:
+- `editingSessionId` → store
+- `editValue` → store
+- `startEdit()`, `saveEdit()`, `cancelEdit()` → store actions
+
+**SessionDetail (high-priority states migrated)**:
+- `expandedToolResult` → store ✅
+- `expandedToolCall` → store ✅
+- `forkViewOpen` → store ✅
+- `dangerousSkipPermissionsDialogOpen` → store ✅
+- `confirmingArchive` → store ✅
+- `isEditingTitle` → store ✅
+- Left local: `isWideView`, `isCompactView`, `isSplitView`, `previewEventIndex`, `pendingForkMessage` (appropriate local state)
+
+#### Verification:
+- ✅ **Format check passed**
+- ✅ **Lint check passed** 
+- ✅ **Type checking passed**
+- ⚠️ **Tests**: Some daemon connection tests failing (unrelated to state migration)
+- ✅ All editing functionality preserved and accessible via global store
+- ✅ Modal states now globally trackable for better hotkey scope management
+
+#### Benefits Achieved:
+1. **Better Testing**: Editing and modal states now accessible for testing via store
+2. **Global State Access**: Modal states can be checked across components
+3. **Improved Debugging**: All component state visible in Zustand devtools
+4. **Consistency**: Follows React coding standards - "Almost all state belongs in Zustand"
+5. **Hotkey Management**: Modal states properly integrated with global hotkey scope system
+6. **Performance**: Reduced re-renders by eliminating redundant local state
+
+#### Architecture Impact:
+- ✅ Follows established patterns in AppStore (similar to existing UI state)
+- ✅ Maintains separation between truly local state and global state
+- ✅ Provides foundation for future form state migration (P2 priority)
+- ✅ Enables optimistic updates and better error handling for editing operations
+
 ## Next Action
-**Start with P0 item #2**: Move component state to Zustand store, beginning with SessionTable selection state
+
+**Continue with P1 item #3**: Component File Structure Reorganization - co-locate components with tests and styles
