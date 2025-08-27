@@ -55,14 +55,12 @@ const MarkdownSyntaxHighlight = Extension.create({
             const doc = state.doc
             const decorations: Decoration[] = []
             
-            // Track code blocks - first pass to identify code block boundaries
+            // Track code blocks and collect lines
             let inCodeBlock = false
             let codeBlockLang = ''
-            let codeBlockContent = ''
-            let codeBlockContentStart = 0
-            const codeBlockRanges: Array<{start: number, end: number, lang: string, content: string}> = []
+            const codeBlockLines: Array<{pos: number, text: string}> = []
             
-            // First pass: identify code blocks
+            // First pass: collect code block lines and apply syntax highlighting per line
             doc.descendants((node: any, pos: number) => {
               if (node.isText && node.text) {
                 const text = node.text
@@ -72,104 +70,87 @@ const MarkdownSyntaxHighlight = Extension.create({
                     // Starting a code block
                     inCodeBlock = true
                     codeBlockLang = text.substring(3).trim()
-                    codeBlockContent = ''
-                    // Note: We'll set the actual start position when we encounter the content
-                    codeBlockContentStart = -1
+                    codeBlockLines.length = 0
                   } else {
-                    // Ending a code block
-                    if (codeBlockContent && codeBlockContentStart >= 0) {
-                      // Remove trailing newline from content
-                      const trimmedContent = codeBlockContent.replace(/\n$/, '')
-                      codeBlockRanges.push({
-                        start: codeBlockContentStart,
-                        end: codeBlockContentStart + trimmedContent.length,
-                        lang: codeBlockLang,
-                        content: trimmedContent
+                    // Ending a code block - process all collected lines
+                    if (codeBlockLines.length > 0 && codeBlockLang && lowlight.registered(codeBlockLang)) {
+                      // Process each line individually to maintain correct positions
+                      codeBlockLines.forEach(line => {
+                        try {
+                          // Highlight this specific line
+                          const result = lowlight.highlight(codeBlockLang, line.text)
+                          
+                          // Build segments for this line
+                          let currentOffset = 0
+                          const segments: Array<{start: number, end: number, classes: string[]}> = []
+                          
+                          const processNode = (node: any, parentClasses: string[] = []): void => {
+                            if (node.type === 'text') {
+                              const len = node.value?.length || 0
+                              if (len > 0) {
+                                segments.push({
+                                  start: currentOffset,
+                                  end: currentOffset + len,
+                                  classes: parentClasses
+                                })
+                                currentOffset += len
+                              }
+                            } else if (node.type === 'element') {
+                              const classes = node.properties?.className || []
+                              const combinedClasses = [...parentClasses, ...classes]
+                              if (node.children) {
+                                node.children.forEach((child: any) => processNode(child, combinedClasses))
+                              }
+                            } else if (node.type === 'root') {
+                              if (node.children) {
+                                node.children.forEach((child: any) => processNode(child, []))
+                              }
+                            }
+                          }
+                          
+                          processNode(result)
+                          
+                          // Apply decorations for this line
+                          segments.forEach(segment => {
+                            const allClasses = ['markdown-codeblock-content', ...segment.classes]
+                            decorations.push(
+                              Decoration.inline(line.pos + segment.start, line.pos + segment.end, { 
+                                class: allClasses.join(' ')
+                              })
+                            )
+                          })
+                        } catch (e) {
+                          console.error('Highlight error for line:', e)
+                        }
                       })
                     }
+                    
                     inCodeBlock = false
                     codeBlockLang = ''
-                    codeBlockContent = ''
-                    codeBlockContentStart = -1
+                    codeBlockLines.length = 0
                   }
                 } else if (inCodeBlock) {
-                  // This is code block content
-                  if (codeBlockContentStart === -1) {
-                    // First line of actual code content
-                    codeBlockContentStart = pos
-                  }
-                  codeBlockContent += text
-                }
-              }
-            })
-            
-            // Apply syntax highlighting to code blocks
-            codeBlockRanges.forEach(range => {
-              if (range.lang && lowlight.registered(range.lang) && range.content) {
-                try {
-                  // lowlight v3 API: highlight(language, text)
-                  const result = lowlight.highlight(range.lang, range.content)
-                  
-                  // Build segments with their classes
-                  let currentOffset = 0
-                  const segments: Array<{start: number, end: number, classes: string[]}> = []
-                  
-                  const processNode = (node: any, parentClasses: string[] = []): void => {
-                    if (node.type === 'text') {
-                      // For text nodes, record segment with accumulated classes
-                      const len = node.value?.length || 0
-                      if (len > 0) {
-                        segments.push({
-                          start: currentOffset,
-                          end: currentOffset + len,
-                          classes: parentClasses
-                        })
-                      }
-                      currentOffset += len
-                    } else if (node.type === 'element') {
-                      // For element nodes, accumulate classes and process children
-                      const classes = node.properties?.className || []
-                      const combinedClasses = [...parentClasses, ...classes]
-                      
-                      if (node.children) {
-                        node.children.forEach((child: any) => processNode(child, combinedClasses))
-                      }
-                    } else if (node.type === 'root') {
-                      // Process root node children
-                      if (node.children) {
-                        node.children.forEach((child: any) => processNode(child, []))
-                      }
-                    }
-                  }
-                  
-                  // Process the tree to get segments
-                  processNode(result)
-                  
-                  // Apply decorations for each segment with combined classes
-                  segments.forEach(segment => {
-                    // Always include the base markdown-codeblock-content class
-                    const allClasses = ['markdown-codeblock-content', ...segment.classes]
-                    decorations.push(
-                      Decoration.inline(range.start + segment.start, range.start + segment.end, { 
-                        class: allClasses.join(' ')
-                      })
-                    )
+                  // Collect code block content lines
+                  codeBlockLines.push({
+                    pos: pos,
+                    text: text
                   })
-                } catch (e) {
-                  console.error('Highlight error:', e)
                 }
               }
             })
             
-            // Second pass: apply decorations
+            // Second pass: apply decorations for markdown syntax (not code blocks)
+            let trackingCodeBlock = false
             doc.descendants((node: any, pos: number) => {
               if (node.isText && node.text) {
                 const text = node.text
                 
-                // Check if we're inside a code block
-                const insideCodeBlock = codeBlockRanges.some(range => 
-                  pos >= range.start && pos < range.end
-                )
+                // Track if we're inside a code block
+                if (text.startsWith('```')) {
+                  trackingCodeBlock = !trackingCodeBlock
+                }
+                
+                const insideCodeBlock = trackingCodeBlock && !text.startsWith('```')
 
                 // Check for code block fences
                 if (text.startsWith('```')) {
