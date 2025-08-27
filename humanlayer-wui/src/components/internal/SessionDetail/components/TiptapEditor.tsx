@@ -4,7 +4,6 @@ import StarterKit from '@tiptap/starter-kit'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import { Plugin } from '@tiptap/pm/state'
 import { createLowlight } from 'lowlight'
-import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
 import javascript from 'highlight.js/lib/languages/javascript'
 import typescript from 'highlight.js/lib/languages/typescript'
 import python from 'highlight.js/lib/languages/python'
@@ -407,6 +406,7 @@ interface TiptapEditorProps {
 export const TiptapEditor = forwardRef<{ focus: () => void }, TiptapEditorProps>(
   ({ value, onChange, onKeyDown, disabled, placeholder, className }, ref) => {
     const editor = useEditor({
+      autofocus: false,
       extensions: [
         StarterKit.configure({
           // Disable these extensions since we want to show markdown syntax

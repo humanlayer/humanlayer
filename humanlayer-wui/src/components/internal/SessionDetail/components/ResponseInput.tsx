@@ -89,17 +89,13 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
     }
 
     // Forward ref handling for both textarea and TipTap editor
-    useImperativeHandle(ref, () => textareaRef.current!, [isComposeMode])
-
-    // Focus effect for compose mode switching
-    useEffect(() => {
-      if (isComposeMode && tiptapRef.current) {
-        tiptapRef.current.focus()
-      } else if (!isComposeMode && textareaRef.current) {
-        textareaRef.current.focus()
+    useImperativeHandle(ref, () => {
+      if (isComposeMode) {
+        return tiptapRef.current!
       }
+      return textareaRef.current!
     }, [isComposeMode])
-    // Only show the simple status text if session is failed AND not in fork mode
+
     if (session.status === SessionStatus.Failed && !isForkMode) {
       return (
         <div className="flex items-center justify-between py-1">
