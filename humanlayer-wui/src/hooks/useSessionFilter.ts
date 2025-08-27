@@ -19,7 +19,7 @@ export function parseStatusFilter(query: string): ParsedFilter {
 
   // Find matching SessionStatus enum value (case-insensitive)
   const matchingStatus = Object.entries(SessionStatus).find(
-    ([, value]) => value.toLowerCase() === statusValue.toLowerCase(),
+    ([, value]) => (value as string).toLowerCase() === statusValue.toLowerCase(),
   )
 
   if (!matchingStatus) {

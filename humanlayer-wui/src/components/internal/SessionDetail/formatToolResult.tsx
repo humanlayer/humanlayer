@@ -234,21 +234,23 @@ export function formatToolResult(
         // Fallback: count based on mode
         const lineCount = content
           .split('\n')
-          .filter(l => l.trim() && !l.includes('(Results are truncated')).length
+          .filter((l: string) => l.trim() && !l.includes('(Results are truncated')).length
 
         if (mode === 'content') {
           abbreviated = `Found ${lineCount} lines`
         } else if (mode === 'count') {
           // For count mode, parse file:count format (e.g., "/path/file.go:14")
-          const lines = content.split('\n').filter(l => l.trim())
+          const lines = content.split('\n').filter((l: string) => l.trim())
           const counts = lines
-            .map(l => parseInt(l.match(/:(\d+)$/)?.[1] || '0'))
-            .filter(n => !isNaN(n) && n > 0)
-          const total = counts.reduce((sum, n) => sum + n, 0)
+            .map((l: string) => parseInt(l.match(/:(\d+)$/)?.[1] || '0'))
+            .filter((n: number) => !isNaN(n) && n > 0)
+          const total = counts.reduce((sum: number, n: number) => sum + n, 0)
 
           // Count unique files
           const uniqueFiles = new Set(
-            lines.filter(l => l.includes(':')).map(l => l.substring(0, l.lastIndexOf(':'))),
+            lines
+              .filter((l: string) => l.includes(':'))
+              .map((l: string) => l.substring(0, l.lastIndexOf(':'))),
           ).size
 
           abbreviated = `Found ${total} matches in ${uniqueFiles} files`

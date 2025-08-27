@@ -6,7 +6,8 @@ import SessionTable, { SessionTableHotkeysScope } from '@/components/internal/Se
 import { SessionTableSearch } from '@/components/SessionTableSearch'
 import { useSessionFilter } from '@/hooks/useSessionFilter'
 import { useHotkeys } from 'react-hotkeys-hook'
-import { useSessionLauncher, useKeyboardNavigationProtection } from '@/hooks'
+import { useSessionLauncher } from '@/hooks/useSessionLauncher'
+import { useKeyboardNavigationProtection } from '@/hooks/useKeyboardNavigationProtection'
 import { Inbox, Archive } from 'lucide-react'
 
 export function SessionTablePage() {

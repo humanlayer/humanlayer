@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { useHotkeys } from 'react-hotkeys-hook'
+import { daemonClient } from '@/lib/daemon/client'
 import {
   ApprovalResolvedEventData,
-  daemonClient,
   NewApprovalEventData,
   SessionSettingsChangedEventData,
   SessionSettingsChangeReason,
   SessionStatus,
   SessionStatusChangedEventData,
-} from '@/lib/daemon'
+} from '@/lib/daemon/types'
 import { Button } from '@/components/ui/button'
 import { ThemeSelector } from '@/components/ThemeSelector'
 import { SessionLauncher } from '@/components/SessionLauncher'

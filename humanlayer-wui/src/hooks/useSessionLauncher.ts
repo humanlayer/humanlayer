@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { daemonClient } from '@/lib/daemon'
+import { daemonClient } from '@/lib/daemon/client'
 import type { LaunchSessionRequest } from '@/lib/daemon/types'
 import { getDaemonUrl } from '@/lib/daemon/http-config'
 import { useHotkeysContext } from 'react-hotkeys-hook'

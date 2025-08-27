@@ -126,16 +126,17 @@ export class HTTPDaemonClient implements IDaemonClient {
 
     // Map model names to SDK enum values
     let model: 'opus' | 'sonnet' | undefined = undefined
-    if (params.model) {
-      if (params.model.includes('sonnet')) {
+    const modelValue = 'model' in params ? params.model : undefined
+    if (modelValue) {
+      if (modelValue.includes('sonnet')) {
         model = 'sonnet'
-      } else if (params.model.includes('opus')) {
+      } else if (modelValue.includes('opus')) {
         model = 'opus'
       }
     }
 
     const response = await this.client!.createSession({
-      query: params.query,
+      query: 'query' in params ? params.query : (params as LaunchSessionRequest).query,
       title: 'title' in params ? params.title : undefined,
       workingDir:
         'workingDir' in params ? params.workingDir : (params as LaunchSessionRequest).working_dir,
@@ -321,7 +322,7 @@ export class HTTPDaemonClient implements IDaemonClient {
     await this.ensureConnected()
     const snapshots = await this.client!.getSessionSnapshots(sessionId)
     // Transform FileSnapshot (camelCase) to FileSnapshotInfo (snake_case)
-    return snapshots.map(s => ({
+    return snapshots.map((s: any) => ({
       tool_id: s.toolId,
       file_path: s.filePath,
       content: s.content,
@@ -384,7 +385,7 @@ export class HTTPDaemonClient implements IDaemonClient {
             runId: options.run_id,
           },
           {
-            onMessage: event => {
+            onMessage: (event: any) => {
               // Transform event to match expected format
               // Handle timestamp conversion - SDK passes raw JSON, needs Date object
               options.onEvent({
@@ -394,7 +395,7 @@ export class HTTPDaemonClient implements IDaemonClient {
                   typeof event.timestamp === 'string' ? new Date(event.timestamp) : event.timestamp,
               })
             },
-            onError: error => {
+            onError: (error: any) => {
               logger.error('Event subscription error:', error)
               // Attempt reconnection
               if (!this.connected) {

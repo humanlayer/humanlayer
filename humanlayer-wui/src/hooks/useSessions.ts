@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
-import { daemonClient, LaunchSessionRequest } from '@/lib/daemon'
+import { daemonClient } from '@/lib/daemon/client'
+import type { LaunchSessionRequest } from '@/lib/daemon/types'
 import { SessionSummary } from '@/types/ui'
 import { formatError } from '@/utils/errors'
 import { useStore } from '@/AppStore'

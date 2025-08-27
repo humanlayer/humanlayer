@@ -1,5 +1,6 @@
 import { useEffect, useCallback } from 'react'
-import { daemonClient, RecentPath } from '@/lib/daemon'
+import { daemonClient } from '@/lib/daemon/client'
+import { RecentPath } from '@/lib/daemon/types'
 import { useAsyncState } from './useAsyncState'
 
 interface UseRecentPathsReturn {

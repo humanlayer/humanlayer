@@ -1,7 +1,7 @@
 import type { Session, SessionStatus } from '@/lib/daemon/types'
 import { ViewMode } from '@/lib/daemon/types'
 import { create } from 'zustand'
-import { daemonClient } from '@/lib/daemon'
+import { daemonClient } from '@/lib/daemon/client'
 import { logger } from '@/lib/logging'
 
 // Track pending updates for optimistic UI

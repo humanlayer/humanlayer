@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { daemonClient } from '@/lib/daemon'
+import { daemonClient } from '@/lib/daemon/client'
 import { logger } from '@/lib/logging'
 import type {
   Event,

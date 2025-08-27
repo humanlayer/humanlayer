@@ -1,0 +1,3 @@
+sourceRepo: ./
+targetRepo: ../humanlayer-transformed
+transformationInstructions: translate this python repo to typescript

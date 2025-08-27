@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { daemonClient } from '@/lib/daemon'
+import { daemonClient } from '@/lib/daemon/client'
 import { formatError } from '@/utils/errors'
 import { daemonService } from '@/services/daemon-service'
 

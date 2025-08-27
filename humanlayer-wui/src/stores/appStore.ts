@@ -1,7 +1,7 @@
 import type { Session, Approval } from '@/lib/daemon/types'
 import { SessionStatus } from '@/lib/daemon/types'
 import { create, StoreApi } from 'zustand'
-import { daemonClient } from '@/lib/daemon'
+import { daemonClient } from '@/lib/daemon/client'
 import { logger } from '@/lib/logging'
 
 export interface AppState {

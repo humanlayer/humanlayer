@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { daemonClient, ConversationEvent } from '@/lib/daemon'
+import { daemonClient } from '@/lib/daemon/client'
+import type { ConversationEvent } from '@/lib/daemon/types'
 import { formatError } from '@/utils/errors'
 import { useStore } from '@/AppStore'
 

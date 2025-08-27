@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label'
 import { Loader2, RefreshCw, Link, Server, Database, Copy } from 'lucide-react'
 import { useDaemonConnection } from '@/hooks/useDaemonConnection'
 import { logger } from '@/lib/logging'
-import { daemonClient } from '@/lib/daemon'
+import { daemonClient } from '@/lib/daemon/client'
 import type { DatabaseInfo } from '@/lib/daemon/types'
 import { toast } from 'sonner'
 

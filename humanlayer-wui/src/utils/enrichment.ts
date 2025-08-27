@@ -1,4 +1,4 @@
-import { Approval } from '@/lib/daemon'
+import { Approval } from '@/lib/daemon/types'
 
 // Types for display data
 export interface ApprovalField {
