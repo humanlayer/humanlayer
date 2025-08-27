@@ -1,9 +1,9 @@
 import React, { useEffect, useRef } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
-import { Card, CardContent } from './ui/card'
+import { Card, CardContent } from '../ui/card'
 import { cn } from '@/lib/utils'
-import CommandInput from './CommandInput'
-import CommandPaletteMenu from './CommandPaletteMenu'
+import CommandInput from '../CommandInput'
+import CommandPaletteMenu from '../CommandPaletteMenu'
 import { useSessionLauncher } from '@/hooks/useSessionLauncher'
 import { useStealHotkeyScope } from '@/hooks/useStealHotkeyScope'
 

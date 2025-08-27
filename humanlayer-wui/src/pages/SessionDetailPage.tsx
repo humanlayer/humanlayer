@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import SessionDetail from '@/components/internal/SessionDetail'
+import SessionDetail from '@/components/SessionDetail'
 import { useStore } from '@/AppStore'
 
 export function SessionDetailPage() {

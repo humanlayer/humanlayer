@@ -6,8 +6,8 @@ import {
   getInputPlaceholder,
   getHelpText,
   getForkInputPlaceholder,
-} from '@/components/internal/SessionDetail/utils/sessionStatus'
-import { ResponseInputLocalStorageKey } from '@/components/internal/SessionDetail/hooks/useSessionActions'
+} from '@/components/SessionDetail/utils/sessionStatus'
+import { ResponseInputLocalStorageKey } from '@/components/SessionDetail/hooks/useSessionActions'
 
 interface ResponseInputProps {
   session: Session

@@ -5,9 +5,9 @@ import { useStore } from '@/AppStore'
 import { highlightMatches, type FuzzyMatch } from '@/lib/fuzzy-search'
 import { cn } from '@/lib/utils'
 import { useSessionFilter } from '@/hooks/useSessionFilter'
-import { EmptyState } from './internal/EmptyState'
+import { EmptyState } from '../internal/EmptyState'
 import { Search } from 'lucide-react'
-import { KeyboardShortcut } from './HotkeyPanel'
+import { KeyboardShortcut } from '../HotkeyPanel'
 
 interface MenuOption {
   id: string

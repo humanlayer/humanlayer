@@ -14,7 +14,7 @@ import {
   MoonStar,
 } from 'lucide-react'
 import { useHotkeys, useHotkeysContext } from 'react-hotkeys-hook'
-import { SessionTableHotkeysScope } from './internal/SessionTable'
+import { SessionTableHotkeysScope } from './SessionTable/SessionTable'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { KeyboardShortcut } from './HotkeyPanel'
 
