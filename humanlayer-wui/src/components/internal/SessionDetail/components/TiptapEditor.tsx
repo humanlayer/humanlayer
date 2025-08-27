@@ -4,6 +4,7 @@ import StarterKit from '@tiptap/starter-kit'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import { Plugin } from '@tiptap/pm/state'
 import { createLowlight } from 'lowlight'
+import clojure from 'highlight.js/lib/languages/clojure'
 import javascript from 'highlight.js/lib/languages/javascript'
 import typescript from 'highlight.js/lib/languages/typescript'
 import python from 'highlight.js/lib/languages/python'
@@ -16,7 +17,7 @@ import json from 'highlight.js/lib/languages/json'
 import markdown from 'highlight.js/lib/languages/markdown'
 import xml from 'highlight.js/lib/languages/xml'
 import yaml from 'highlight.js/lib/languages/yaml'
-import '@/styles/tiptap-editor.css'
+// import '@/styles/tiptap-editor.css'
 
 // Create lowlight instance with common languages
 const lowlight = createLowlight()
@@ -41,6 +42,8 @@ lowlight.register('xml', xml)
 lowlight.register('html', xml)
 lowlight.register('yaml', yaml)
 lowlight.register('yml', yaml)
+lowlight.register('clojure', clojure)
+lowlight.register('clj', clojure)
 
 // Create a custom extension that highlights markdown syntax
 const MarkdownSyntaxHighlight = Extension.create({
