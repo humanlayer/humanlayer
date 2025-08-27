@@ -54,17 +54,17 @@ const MarkdownSyntaxHighlight = Extension.create({
           decorations: (state: any) => {
             const doc = state.doc
             const decorations: Decoration[] = []
-            
+
             // Track code blocks and collect lines
             let inCodeBlock = false
             let codeBlockLang = ''
-            const codeBlockLines: Array<{pos: number, text: string}> = []
-            
+            const codeBlockLines: Array<{ pos: number; text: string }> = []
+
             // First pass: collect code block lines and apply syntax highlighting per line
             doc.descendants((node: any, pos: number) => {
               if (node.isText && node.text) {
                 const text = node.text
-                
+
                 if (text.startsWith('```')) {
                   if (!inCodeBlock) {
                     // Starting a code block
@@ -73,17 +73,21 @@ const MarkdownSyntaxHighlight = Extension.create({
                     codeBlockLines.length = 0
                   } else {
                     // Ending a code block - process all collected lines
-                    if (codeBlockLines.length > 0 && codeBlockLang && lowlight.registered(codeBlockLang)) {
+                    if (
+                      codeBlockLines.length > 0 &&
+                      codeBlockLang &&
+                      lowlight.registered(codeBlockLang)
+                    ) {
                       // Process each line individually to maintain correct positions
                       codeBlockLines.forEach(line => {
                         try {
                           // Highlight this specific line
                           const result = lowlight.highlight(codeBlockLang, line.text)
-                          
+
                           // Build segments for this line
                           let currentOffset = 0
-                          const segments: Array<{start: number, end: number, classes: string[]}> = []
-                          
+                          const segments: Array<{ start: number; end: number; classes: string[] }> = []
+
                           const processNode = (node: any, parentClasses: string[] = []): void => {
                             if (node.type === 'text') {
                               const len = node.value?.length || 0
@@ -91,7 +95,7 @@ const MarkdownSyntaxHighlight = Extension.create({
                                 segments.push({
                                   start: currentOffset,
                                   end: currentOffset + len,
-                                  classes: parentClasses
+                                  classes: parentClasses,
                                 })
                                 currentOffset += len
                               }
@@ -99,7 +103,9 @@ const MarkdownSyntaxHighlight = Extension.create({
                               const classes = node.properties?.className || []
                               const combinedClasses = [...parentClasses, ...classes]
                               if (node.children) {
-                                node.children.forEach((child: any) => processNode(child, combinedClasses))
+                                node.children.forEach((child: any) =>
+                                  processNode(child, combinedClasses),
+                                )
                               }
                             } else if (node.type === 'root') {
                               if (node.children) {
@@ -107,16 +113,16 @@ const MarkdownSyntaxHighlight = Extension.create({
                               }
                             }
                           }
-                          
+
                           processNode(result)
-                          
+
                           // Apply decorations for this line
                           segments.forEach(segment => {
                             const allClasses = ['markdown-codeblock-content', ...segment.classes]
                             decorations.push(
-                              Decoration.inline(line.pos + segment.start, line.pos + segment.end, { 
-                                class: allClasses.join(' ')
-                              })
+                              Decoration.inline(line.pos + segment.start, line.pos + segment.end, {
+                                class: allClasses.join(' '),
+                              }),
                             )
                           })
                         } catch (e) {
@@ -124,7 +130,7 @@ const MarkdownSyntaxHighlight = Extension.create({
                         }
                       })
                     }
-                    
+
                     inCodeBlock = false
                     codeBlockLang = ''
                     codeBlockLines.length = 0
@@ -133,47 +139,47 @@ const MarkdownSyntaxHighlight = Extension.create({
                   // Collect code block content lines
                   codeBlockLines.push({
                     pos: pos,
-                    text: text
+                    text: text,
                   })
                 }
               }
             })
-            
+
             // Second pass: apply decorations for markdown syntax (not code blocks)
             let trackingCodeBlock = false
             doc.descendants((node: any, pos: number) => {
               if (node.isText && node.text) {
                 const text = node.text
-                
+
                 // Track if we're inside a code block
                 if (text.startsWith('```')) {
                   trackingCodeBlock = !trackingCodeBlock
                 }
-                
+
                 const insideCodeBlock = trackingCodeBlock && !text.startsWith('```')
 
                 // Check for code block fences
                 if (text.startsWith('```')) {
                   // Style the ``` markers
                   decorations.push(
-                    Decoration.inline(pos, pos + 3, { 
-                      class: 'markdown-syntax markdown-syntax-codeblock' 
-                    })
+                    Decoration.inline(pos, pos + 3, {
+                      class: 'markdown-syntax markdown-syntax-codeblock',
+                    }),
                   )
-                  
+
                   // If there's a language after ```
                   const afterFence = text.substring(3).trim()
                   if (afterFence) {
                     decorations.push(
-                      Decoration.inline(pos + 3, pos + text.length, { 
-                        class: 'markdown-codeblock-lang' 
-                      })
+                      Decoration.inline(pos + 3, pos + text.length, {
+                        class: 'markdown-codeblock-lang',
+                      }),
                     )
                   }
-                  
+
                   return // Don't process other markdown in code fence lines
                 }
-                
+
                 // Skip processing if inside a code block (already handled above)
                 if (insideCodeBlock) {
                   return // Don't process other markdown inside code blocks
@@ -189,16 +195,16 @@ const MarkdownSyntaxHighlight = Extension.create({
 
                   // Style the asterisks
                   decorations.push(
-                    Decoration.inline(start, start + 2, { class: 'markdown-syntax markdown-syntax-bold' }),
+                    Decoration.inline(start, start + 2, {
+                      class: 'markdown-syntax markdown-syntax-bold',
+                    }),
                   )
                   decorations.push(
                     Decoration.inline(end - 2, end, { class: 'markdown-syntax markdown-syntax-bold' }),
                   )
 
                   // Style the content
-                  decorations.push(
-                    Decoration.inline(start + 2, end - 2, { class: 'markdown-bold' }),
-                  )
+                  decorations.push(Decoration.inline(start + 2, end - 2, { class: 'markdown-bold' }))
                 }
 
                 // Match __bold__ syntax
@@ -209,16 +215,16 @@ const MarkdownSyntaxHighlight = Extension.create({
 
                   // Style the underscores
                   decorations.push(
-                    Decoration.inline(start, start + 2, { class: 'markdown-syntax markdown-syntax-bold' }),
+                    Decoration.inline(start, start + 2, {
+                      class: 'markdown-syntax markdown-syntax-bold',
+                    }),
                   )
                   decorations.push(
                     Decoration.inline(end - 2, end, { class: 'markdown-syntax markdown-syntax-bold' }),
                   )
 
                   // Style the content
-                  decorations.push(
-                    Decoration.inline(start + 2, end - 2, { class: 'markdown-bold' }),
-                  )
+                  decorations.push(Decoration.inline(start + 2, end - 2, { class: 'markdown-bold' }))
                 }
 
                 // Match *italic* syntax (careful not to match bold)
@@ -229,16 +235,18 @@ const MarkdownSyntaxHighlight = Extension.create({
 
                   // Style the asterisks
                   decorations.push(
-                    Decoration.inline(start, start + 1, { class: 'markdown-syntax markdown-syntax-italic' }),
+                    Decoration.inline(start, start + 1, {
+                      class: 'markdown-syntax markdown-syntax-italic',
+                    }),
                   )
                   decorations.push(
-                    Decoration.inline(end - 1, end, { class: 'markdown-syntax markdown-syntax-italic' }),
+                    Decoration.inline(end - 1, end, {
+                      class: 'markdown-syntax markdown-syntax-italic',
+                    }),
                   )
 
                   // Style the content
-                  decorations.push(
-                    Decoration.inline(start + 1, end - 1, { class: 'markdown-italic' }),
-                  )
+                  decorations.push(Decoration.inline(start + 1, end - 1, { class: 'markdown-italic' }))
                 }
 
                 // Match _italic_ syntax (careful not to match bold)
@@ -249,16 +257,18 @@ const MarkdownSyntaxHighlight = Extension.create({
 
                   // Style the underscores
                   decorations.push(
-                    Decoration.inline(start, start + 1, { class: 'markdown-syntax markdown-syntax-italic' }),
+                    Decoration.inline(start, start + 1, {
+                      class: 'markdown-syntax markdown-syntax-italic',
+                    }),
                   )
                   decorations.push(
-                    Decoration.inline(end - 1, end, { class: 'markdown-syntax markdown-syntax-italic' }),
+                    Decoration.inline(end - 1, end, {
+                      class: 'markdown-syntax markdown-syntax-italic',
+                    }),
                   )
 
                   // Style the content
-                  decorations.push(
-                    Decoration.inline(start + 1, end - 1, { class: 'markdown-italic' }),
-                  )
+                  decorations.push(Decoration.inline(start + 1, end - 1, { class: 'markdown-italic' }))
                 }
 
                 // Match ~~strikethrough~~ syntax
@@ -269,16 +279,18 @@ const MarkdownSyntaxHighlight = Extension.create({
 
                   // Style the tildes
                   decorations.push(
-                    Decoration.inline(start, start + 2, { class: 'markdown-syntax markdown-syntax-strike' }),
+                    Decoration.inline(start, start + 2, {
+                      class: 'markdown-syntax markdown-syntax-strike',
+                    }),
                   )
                   decorations.push(
-                    Decoration.inline(end - 2, end, { class: 'markdown-syntax markdown-syntax-strike' }),
+                    Decoration.inline(end - 2, end, {
+                      class: 'markdown-syntax markdown-syntax-strike',
+                    }),
                   )
 
                   // Style the content
-                  decorations.push(
-                    Decoration.inline(start + 2, end - 2, { class: 'markdown-strike' }),
-                  )
+                  decorations.push(Decoration.inline(start + 2, end - 2, { class: 'markdown-strike' }))
                 }
 
                 // Match `code` syntax
@@ -289,16 +301,16 @@ const MarkdownSyntaxHighlight = Extension.create({
 
                   // Style the backticks
                   decorations.push(
-                    Decoration.inline(start, start + 1, { class: 'markdown-syntax markdown-syntax-code' }),
+                    Decoration.inline(start, start + 1, {
+                      class: 'markdown-syntax markdown-syntax-code',
+                    }),
                   )
                   decorations.push(
                     Decoration.inline(end - 1, end, { class: 'markdown-syntax markdown-syntax-code' }),
                   )
 
                   // Style the content
-                  decorations.push(
-                    Decoration.inline(start + 1, end - 1, { class: 'markdown-code' }),
-                  )
+                  decorations.push(Decoration.inline(start + 1, end - 1, { class: 'markdown-code' }))
                 }
 
                 // Match heading syntax at the beginning of the line
@@ -313,13 +325,17 @@ const MarkdownSyntaxHighlight = Extension.create({
 
                   // Style the hash symbols
                   decorations.push(
-                    Decoration.inline(start, hashEnd, { class: `markdown-syntax markdown-syntax-heading-${hashLength}` }),
+                    Decoration.inline(start, hashEnd, {
+                      class: `markdown-syntax markdown-syntax-heading-${hashLength}`,
+                    }),
                   )
 
                   // Style the heading content based on level
                   if (spaceEnd < end) {
                     decorations.push(
-                      Decoration.inline(spaceEnd, end, { class: `markdown-heading markdown-heading-${hashLength}` }),
+                      Decoration.inline(spaceEnd, end, {
+                        class: `markdown-heading markdown-heading-${hashLength}`,
+                      }),
                     )
                   }
                 }
@@ -336,7 +352,9 @@ const MarkdownSyntaxHighlight = Extension.create({
 
                   // Style the bullet marker
                   decorations.push(
-                    Decoration.inline(bulletStart, bulletEnd, { class: 'markdown-syntax markdown-syntax-list' }),
+                    Decoration.inline(bulletStart, bulletEnd, {
+                      class: 'markdown-syntax markdown-syntax-list',
+                    }),
                   )
                 }
 
@@ -352,7 +370,9 @@ const MarkdownSyntaxHighlight = Extension.create({
 
                   // Style the number and dot
                   decorations.push(
-                    Decoration.inline(numberStart, dotEnd, { class: 'markdown-syntax markdown-syntax-list' }),
+                    Decoration.inline(numberStart, dotEnd, {
+                      class: 'markdown-syntax markdown-syntax-list',
+                    }),
                   )
                 }
               }
@@ -363,6 +383,15 @@ const MarkdownSyntaxHighlight = Extension.create({
         },
       }),
     ]
+  },
+})
+
+const KeyboardShortcuts = Extension.create({
+  name: 'KeyboardShortcuts',
+  addKeyboardShortcuts() {
+    return {
+      Escape: () => this.editor.commands.blur(),
+    }
   },
 })
 
@@ -386,13 +415,10 @@ export const TiptapEditor = forwardRef<{ focus: () => void }, TiptapEditorProps>
           italic: false,
           strike: false,
           code: false,
-          codeBlock: false,  // Disable since we want to preserve markdown syntax
+          codeBlock: false, // Disable since we want to preserve markdown syntax
         }),
-        // CodeBlockLowlight.configure({
-        //   lowlight,
-        //   defaultLanguage: 'plaintext',
-        // }),
         MarkdownSyntaxHighlight,
+        KeyboardShortcuts,
       ],
       content: value,
       editorProps: {
@@ -427,10 +453,13 @@ export const TiptapEditor = forwardRef<{ focus: () => void }, TiptapEditorProps>
       }
     }, [disabled, editor])
 
-    // Expose focus method
+    // Expose focus and blur methods
     useImperativeHandle(ref, () => ({
       focus: () => {
         editor?.commands.focus()
+      },
+      blur: () => {
+        editor?.commands.blur()
       },
     }))
 
