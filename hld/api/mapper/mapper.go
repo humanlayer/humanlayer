@@ -47,13 +47,6 @@ func (m *Mapper) SessionToAPI(s store.Session) api.Session {
 	if s.WorkingDir != "" {
 		session.WorkingDir = &s.WorkingDir
 	}
-	// Parse and include additional directories if present
-	if s.AdditionalDirectories != "" {
-		var dirs []string
-		if err := json.Unmarshal([]byte(s.AdditionalDirectories), &dirs); err == nil && len(dirs) > 0 {
-			session.AdditionalDirectories = &dirs
-		}
-	}
 	if s.ErrorMessage != "" {
 		session.ErrorMessage = &s.ErrorMessage
 	}
