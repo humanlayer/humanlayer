@@ -107,10 +107,7 @@ func (s *SQLiteStore) initSchema() error {
 		dangerously_skip_permissions_expires_at TIMESTAMP,
 
 		-- Archival
-		archived BOOLEAN DEFAULT FALSE,
-
-		-- Additional directories for --add-dir support
-		additional_directories TEXT
+		archived BOOLEAN DEFAULT FALSE
 	);
 	CREATE INDEX IF NOT EXISTS idx_sessions_claude ON sessions(claude_session_id);
 	CREATE INDEX IF NOT EXISTS idx_sessions_status ON sessions(status);
@@ -816,46 +813,9 @@ func (s *SQLiteStore) applyMigrations() error {
 		slog.Info("Migration 15 applied successfully")
 	}
 
-	// Migration 16: Add additional_directories column for --add-dir support
+	// Migration 16: Add user settings table for preferences
 	if currentVersion < 16 {
-		slog.Info("Applying migration 16: Add additional_directories column")
-
-		// Check if column already exists for idempotency
-		var columnExists int
-		err = s.db.QueryRow(`
-			SELECT COUNT(*) FROM pragma_table_info('sessions')
-			WHERE name = 'additional_directories'
-		`).Scan(&columnExists)
-		if err != nil {
-			return fmt.Errorf("failed to check additional_directories column: %w", err)
-		}
-
-		// Only add column if it doesn't exist
-		if columnExists == 0 {
-			_, err = s.db.Exec(`
-				ALTER TABLE sessions
-				ADD COLUMN additional_directories TEXT
-			`)
-			if err != nil {
-				return fmt.Errorf("failed to add additional_directories column: %w", err)
-			}
-		}
-
-		// Record migration
-		_, err = s.db.Exec(`
-			INSERT INTO schema_version (version, description)
-			VALUES (16, 'Add additional_directories column for --add-dir functionality')
-		`)
-		if err != nil {
-			return fmt.Errorf("failed to record migration 16: %w", err)
-		}
-
-		slog.Info("Migration 16 applied successfully")
-	}
-
-	// Migration 17: Add user settings table for preferences
-	if currentVersion < 17 {
-		slog.Info("Applying migration 17: Add user settings table")
+		slog.Info("Applying migration 16: Add user settings table")
 
 		_, err := s.db.Exec(`
 			CREATE TABLE IF NOT EXISTS user_settings (
@@ -882,13 +842,13 @@ func (s *SQLiteStore) applyMigrations() error {
 		// Record migration
 		_, err = s.db.Exec(`
 			INSERT INTO schema_version (version, description)
-			VALUES (17, 'Add user settings table for advanced providers preference')
+			VALUES (16, 'Add user settings table for advanced providers preference')
 		`)
 		if err != nil {
-			return fmt.Errorf("failed to record migration 17: %w", err)
+			return fmt.Errorf("failed to record migration 16: %w", err)
 		}
 
-		slog.Info("Migration 17 applied successfully")
+		slog.Info("Migration 16 applied successfully")
 	}
 
 	return nil
@@ -905,17 +865,17 @@ func (s *SQLiteStore) CreateSession(ctx context.Context, session *Session) error
 		INSERT INTO sessions (
 			id, run_id, claude_session_id, parent_session_id,
 			query, summary, title, model, model_id, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
-			permission_prompt_tool, allowed_tools, disallowed_tools, additional_directories,
+			permission_prompt_tool, allowed_tools, disallowed_tools,
 			status, created_at, last_activity_at, auto_accept_edits, archived, dangerously_skip_permissions, dangerously_skip_permissions_expires_at,
 			proxy_enabled, proxy_base_url, proxy_model_override, proxy_api_key
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	_, err := s.db.ExecContext(ctx, query,
 		session.ID, session.RunID, session.ClaudeSessionID, session.ParentSessionID,
 		session.Query, session.Summary, session.Title, session.Model, session.ModelID, session.WorkingDir, session.MaxTurns,
 		session.SystemPrompt, session.AppendSystemPrompt, session.CustomInstructions,
-		session.PermissionPromptTool, session.AllowedTools, session.DisallowedTools, session.AdditionalDirectories,
+		session.PermissionPromptTool, session.AllowedTools, session.DisallowedTools,
 		session.Status, session.CreatedAt, session.LastActivityAt, session.AutoAcceptEdits, session.Archived,
 		session.DangerouslySkipPermissions, session.DangerouslySkipPermissionsExpiresAt,
 		session.ProxyEnabled, session.ProxyBaseURL, session.ProxyModelOverride, session.ProxyAPIKey,
@@ -1024,10 +984,6 @@ func (s *SQLiteStore) UpdateSession(ctx context.Context, sessionID string, updat
 		setParts = append(setParts, "archived = ?")
 		args = append(args, *updates.Archived)
 	}
-	if updates.AdditionalDirectories != nil {
-		setParts = append(setParts, "additional_directories = ?")
-		args = append(args, *updates.AdditionalDirectories)
-	}
 	// Handle proxy field updates
 	if updates.ProxyEnabled != nil {
 		setParts = append(setParts, "proxy_enabled = ?")
@@ -1078,7 +1034,7 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 	query := `
 		SELECT id, run_id, claude_session_id, parent_session_id,
 			query, summary, title, model, model_id, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
-			permission_prompt_tool, allowed_tools, disallowed_tools, additional_directories,
+			permission_prompt_tool, allowed_tools, disallowed_tools,
 			status, created_at, last_activity_at, completed_at,
 			cost_usd, input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens, effective_context_tokens,
 			duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived,
@@ -1089,7 +1045,7 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 
 	var session Session
 	var claudeSessionID, parentSessionID, summary, title, model, modelID, workingDir, systemPrompt, appendSystemPrompt, customInstructions sql.NullString
-	var permissionPromptTool, allowedTools, disallowedTools, additionalDirectories sql.NullString
+	var permissionPromptTool, allowedTools, disallowedTools sql.NullString
 	var completedAt sql.NullTime
 	var costUSD sql.NullFloat64
 	var inputTokens, outputTokens, cacheCreationInputTokens, cacheReadInputTokens, effectiveContextTokens sql.NullInt64
@@ -1104,7 +1060,7 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 		&session.ID, &session.RunID, &claudeSessionID, &parentSessionID,
 		&session.Query, &summary, &title, &model, &modelID, &workingDir, &session.MaxTurns,
 		&systemPrompt, &appendSystemPrompt, &customInstructions,
-		&permissionPromptTool, &allowedTools, &disallowedTools, &additionalDirectories,
+		&permissionPromptTool, &allowedTools, &disallowedTools,
 		&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
 		&costUSD, &inputTokens, &outputTokens, &cacheCreationInputTokens, &cacheReadInputTokens, &effectiveContextTokens,
 		&durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
@@ -1132,7 +1088,6 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 	session.PermissionPromptTool = permissionPromptTool.String
 	session.AllowedTools = allowedTools.String
 	session.DisallowedTools = disallowedTools.String
-	session.AdditionalDirectories = additionalDirectories.String
 	session.ResultContent = resultContent.String
 	session.ErrorMessage = errorMessage.String
 	if completedAt.Valid {
@@ -1192,7 +1147,7 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 	query := `
 		SELECT id, run_id, claude_session_id, parent_session_id,
 			query, summary, title, model, model_id, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
-			permission_prompt_tool, allowed_tools, disallowed_tools, additional_directories,
+			permission_prompt_tool, allowed_tools, disallowed_tools,
 			status, created_at, last_activity_at, completed_at,
 			cost_usd, input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens, effective_context_tokens,
 			duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived,
@@ -1204,7 +1159,7 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 
 	var session Session
 	var claudeSessionID, parentSessionID, summary, title, model, modelID, workingDir, systemPrompt, appendSystemPrompt, customInstructions sql.NullString
-	var permissionPromptTool, allowedTools, disallowedTools, additionalDirectories sql.NullString
+	var permissionPromptTool, allowedTools, disallowedTools sql.NullString
 	var completedAt sql.NullTime
 	var costUSD sql.NullFloat64
 	var inputTokens, outputTokens, cacheCreationInputTokens, cacheReadInputTokens, effectiveContextTokens sql.NullInt64
@@ -1219,7 +1174,7 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 		&session.ID, &session.RunID, &claudeSessionID, &parentSessionID,
 		&session.Query, &summary, &title, &model, &modelID, &workingDir, &session.MaxTurns,
 		&systemPrompt, &appendSystemPrompt, &customInstructions,
-		&permissionPromptTool, &allowedTools, &disallowedTools, &additionalDirectories,
+		&permissionPromptTool, &allowedTools, &disallowedTools,
 		&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
 		&costUSD, &inputTokens, &outputTokens, &cacheCreationInputTokens, &cacheReadInputTokens, &effectiveContextTokens,
 		&durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
@@ -1247,7 +1202,6 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 	session.PermissionPromptTool = permissionPromptTool.String
 	session.AllowedTools = allowedTools.String
 	session.DisallowedTools = disallowedTools.String
-	session.AdditionalDirectories = additionalDirectories.String
 	session.ResultContent = resultContent.String
 	session.ErrorMessage = errorMessage.String
 	if completedAt.Valid {
@@ -1307,7 +1261,7 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 	query := `
 		SELECT id, run_id, claude_session_id, parent_session_id,
 			query, summary, title, model, model_id, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
-			permission_prompt_tool, allowed_tools, disallowed_tools, additional_directories,
+			permission_prompt_tool, allowed_tools, disallowed_tools,
 			status, created_at, last_activity_at, completed_at,
 			cost_usd, input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens, effective_context_tokens,
 		duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived,
@@ -1327,7 +1281,7 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 	for rows.Next() {
 		var session Session
 		var claudeSessionID, parentSessionID, summary, title, model, modelID, workingDir, systemPrompt, appendSystemPrompt, customInstructions sql.NullString
-		var permissionPromptTool, allowedTools, disallowedTools, additionalDirectories sql.NullString
+		var permissionPromptTool, allowedTools, disallowedTools sql.NullString
 		var completedAt sql.NullTime
 		var costUSD sql.NullFloat64
 		var inputTokens, outputTokens, cacheCreationInputTokens, cacheReadInputTokens, effectiveContextTokens sql.NullInt64
@@ -1342,7 +1296,7 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 			&session.ID, &session.RunID, &claudeSessionID, &parentSessionID,
 			&session.Query, &summary, &title, &model, &modelID, &workingDir, &session.MaxTurns,
 			&systemPrompt, &appendSystemPrompt, &customInstructions,
-			&permissionPromptTool, &allowedTools, &disallowedTools, &additionalDirectories,
+			&permissionPromptTool, &allowedTools, &disallowedTools,
 			&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
 			&costUSD, &inputTokens, &outputTokens, &cacheCreationInputTokens, &cacheReadInputTokens, &effectiveContextTokens,
 			&durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
@@ -1403,7 +1357,6 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 			turns := int(numTurns.Int64)
 			session.NumTurns = &turns
 		}
-		session.AdditionalDirectories = additionalDirectories.String
 		session.ResultContent = resultContent.String
 		session.ErrorMessage = errorMessage.String
 
@@ -1433,7 +1386,7 @@ func (s *SQLiteStore) GetExpiredDangerousPermissionsSessions(ctx context.Context
 	query := `
 		SELECT id, run_id, claude_session_id, parent_session_id,
 			query, summary, title, model, model_id, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
-			permission_prompt_tool, allowed_tools, disallowed_tools, additional_directories,
+			permission_prompt_tool, allowed_tools, disallowed_tools,
 			status, created_at, last_activity_at, completed_at,
 			cost_usd, input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens, effective_context_tokens,
 		duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived,
@@ -1457,7 +1410,7 @@ func (s *SQLiteStore) GetExpiredDangerousPermissionsSessions(ctx context.Context
 	for rows.Next() {
 		var session Session
 		var claudeSessionID, parentSessionID, summary, title, model, modelID, workingDir, systemPrompt, appendSystemPrompt, customInstructions sql.NullString
-		var permissionPromptTool, allowedTools, disallowedTools, additionalDirectories sql.NullString
+		var permissionPromptTool, allowedTools, disallowedTools sql.NullString
 		var completedAt sql.NullTime
 		var costUSD sql.NullFloat64
 		var inputTokens, outputTokens, cacheCreationInputTokens, cacheReadInputTokens, effectiveContextTokens sql.NullInt64
@@ -1472,7 +1425,7 @@ func (s *SQLiteStore) GetExpiredDangerousPermissionsSessions(ctx context.Context
 			&session.ID, &session.RunID, &claudeSessionID, &parentSessionID,
 			&session.Query, &summary, &title, &model, &modelID, &workingDir, &session.MaxTurns,
 			&systemPrompt, &appendSystemPrompt, &customInstructions,
-			&permissionPromptTool, &allowedTools, &disallowedTools, &additionalDirectories,
+			&permissionPromptTool, &allowedTools, &disallowedTools,
 			&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
 			&costUSD, &inputTokens, &outputTokens, &cacheCreationInputTokens, &cacheReadInputTokens, &effectiveContextTokens,
 			&durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
@@ -1533,7 +1486,6 @@ func (s *SQLiteStore) GetExpiredDangerousPermissionsSessions(ctx context.Context
 			turns := int(numTurns.Int64)
 			session.NumTurns = &turns
 		}
-		session.AdditionalDirectories = additionalDirectories.String
 		session.ResultContent = resultContent.String
 		session.ErrorMessage = errorMessage.String
 
