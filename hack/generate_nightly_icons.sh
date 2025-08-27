@@ -1,12 +1,12 @@
 #!/bin/bash
 
-# Script to generate all required icon formats for Tauri nightly build from Downloads image
+# Script to generate all required icon formats for Tauri nightly build
 # Requires: ImageMagick (brew install imagemagick)
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SOURCE_ICON="/Users/dex/Downloads/CodeLayerIcon-iOS-Dark-1024x10241x.png"
+SOURCE_ICON="${SCRIPT_DIR}/codelayer-icon-nightly.png"
 OUTPUT_DIR="${SCRIPT_DIR}/../humanlayer-wui/src-tauri/icons-nightly"
 
 # Check if source icon exists
