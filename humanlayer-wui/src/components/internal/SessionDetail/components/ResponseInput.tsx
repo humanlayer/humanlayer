@@ -56,9 +56,7 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
   ) => {
     const [youSure, setYouSure] = useState(false)
 
-    const isComposeMode = useStore(state => state.isComposeMode)
     const tiptapRef = useRef<{ focus: () => void }>(null)
-    const textareaRef = useRef<HTMLTextAreaElement>(null)
     const getSendButtonText = () => {
       if (isResponding) return 'Interrupting...'
       if (isDenying) return youSure ? 'Deny?' : 'Deny'
@@ -90,11 +88,8 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
 
     // Forward ref handling for both textarea and TipTap editor
     useImperativeHandle(ref, () => {
-      if (isComposeMode) {
-        return tiptapRef.current!
-      }
-      return textareaRef.current!
-    }, [isComposeMode])
+      return tiptapRef.current!
+    }, [])
 
     if (session.status === SessionStatus.Failed && !isForkMode) {
       return (
@@ -196,34 +191,18 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
             disabled={isResponding}
             className={`flex-1 min-h-[2.5rem] ${isResponding ? 'opacity-50' : ''} ${textareaOutlineClass}`}
           /> */}
-          {isComposeMode ? (
-            <TiptapEditor
-              ref={tiptapRef}
-              value={responseInput}
-              onChange={(value: string) => {
-                setResponseInput(value)
-                localStorage.setItem(`${ResponseInputLocalStorageKey}.${session.id}`, value)
-              }}
-              onKeyDown={handleResponseInputKeyDown}
-              disabled={isResponding}
-              placeholder={placeholder}
-              className={`flex-1 min-h-[2.5rem] ${isResponding ? 'opacity-50' : ''} ${textareaOutlineClass}`}
-            />
-          ) : (
-            <Textarea
-              ref={textareaRef}
-              style={textareaStyle}
-              placeholder={placeholder}
-              value={responseInput}
-              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
-                setResponseInput(e.target.value)
-                localStorage.setItem(`${ResponseInputLocalStorageKey}.${session.id}`, e.target.value)
-              }}
-              onKeyDown={handleResponseInputKeyDown}
-              disabled={isResponding}
-              className={`flex-1 min-h-[2.5rem] ${isResponding ? 'opacity-50' : ''} ${textareaOutlineClass}`}
-            />
-          )}
+          <TiptapEditor
+            ref={tiptapRef}
+            value={responseInput}
+            onChange={(value: string) => {
+              setResponseInput(value)
+              localStorage.setItem(`${ResponseInputLocalStorageKey}.${session.id}`, value)
+            }}
+            onKeyDown={handleResponseInputKeyDown}
+            disabled={isResponding}
+            placeholder={placeholder}
+            className={`flex-1 min-h-[2.5rem] ${isResponding ? 'opacity-50' : ''} ${textareaOutlineClass}`}
+          />
           <Button
             onClick={handleSubmit}
             disabled={isDisabled}

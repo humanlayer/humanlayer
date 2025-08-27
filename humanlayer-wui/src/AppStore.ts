@@ -82,8 +82,6 @@ interface StoreState {
   } | null
   fetchUserSettings: () => Promise<void>
   updateUserSettings: (settings: { advancedProviders: boolean }) => Promise<void>
-  isComposeMode: boolean
-  setComposeMode: (enabled: boolean) => void
 }
 
 export const useStore = create<StoreState>((set, get) => ({
@@ -803,8 +801,6 @@ export const useStore = create<StoreState>((set, get) => ({
       throw error // Re-throw so the UI can handle it
     }
   },
-  isComposeMode: false,
-  setComposeMode: (enabled: boolean) => set({ isComposeMode: enabled }),
 }))
 
 // Helper function to validate and clean up session state

@@ -48,7 +48,7 @@ export function Layout() {
   const { connected, connecting, version, connect } = useDaemonConnection()
 
   // Hotkey panel state from store
-  const { isHotkeyPanelOpen, setHotkeyPanelOpen, isComposeMode, setComposeMode } = useStore()
+  const { isHotkeyPanelOpen, setHotkeyPanelOpen } = useStore()
 
   // Session launcher state
   const { isOpen, close } = useSessionLauncher()
@@ -71,12 +71,6 @@ export function Layout() {
       enableOnFormTags: true,
     },
   )
-  // Compose mode toggle hotkey
-  useHotkeys('mod+shift+c', () => {
-    const newMode = !isComposeMode
-    setComposeMode(newMode)
-    toast.success(newMode ? 'Compose mode enabled' : 'Compose mode disabled')
-  })
 
   // Get store actions
   const updateSession = useStore(state => state.updateSession)
