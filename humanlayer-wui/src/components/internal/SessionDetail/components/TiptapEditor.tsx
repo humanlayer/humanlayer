@@ -401,6 +401,9 @@ export const TiptapEditor = forwardRef<{ focus: () => void }, TiptapEditorProps>
       editorProps: {
         attributes: {
           class: `tiptap-editor ${className || ''}`,
+          spellcheck: 'false',
+          autocorrect: 'off',
+          autocapitalize: 'off',
         },
       },
       onUpdate: ({ editor }) => {
