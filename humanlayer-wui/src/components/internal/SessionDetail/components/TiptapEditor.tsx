@@ -52,8 +52,8 @@ const MarkdownSyntaxHighlight = Extension.create({
       new Plugin({
         props: {
           decorations: (state: any) => {
-            const decorations: Decoration[] = []
             const doc = state.doc
+            const decorations: Decoration[] = []
             
             // Track code blocks - first pass to identify code block boundaries
             let inCodeBlock = false
@@ -73,24 +73,32 @@ const MarkdownSyntaxHighlight = Extension.create({
                     inCodeBlock = true
                     codeBlockLang = text.substring(3).trim()
                     codeBlockContent = ''
-                    codeBlockContentStart = pos + text.length + 1 // After this line
+                    // Note: We'll set the actual start position when we encounter the content
+                    codeBlockContentStart = -1
                   } else {
                     // Ending a code block
-                    if (codeBlockContent) {
+                    if (codeBlockContent && codeBlockContentStart >= 0) {
+                      // Remove trailing newline from content
+                      const trimmedContent = codeBlockContent.replace(/\n$/, '')
                       codeBlockRanges.push({
                         start: codeBlockContentStart,
-                        end: pos - 1, // Before this line
+                        end: codeBlockContentStart + trimmedContent.length,
                         lang: codeBlockLang,
-                        content: codeBlockContent.trim()
+                        content: trimmedContent
                       })
                     }
                     inCodeBlock = false
                     codeBlockLang = ''
                     codeBlockContent = ''
+                    codeBlockContentStart = -1
                   }
                 } else if (inCodeBlock) {
-                  // Accumulate code block content
-                  codeBlockContent += text + '\n'
+                  // This is code block content
+                  if (codeBlockContentStart === -1) {
+                    // First line of actual code content
+                    codeBlockContentStart = pos
+                  }
+                  codeBlockContent += text
                 }
               }
             })
@@ -102,36 +110,51 @@ const MarkdownSyntaxHighlight = Extension.create({
                   // lowlight v3 API: highlight(language, text)
                   const result = lowlight.highlight(range.lang, range.content)
                   
-                  // Process the tree structure returned by lowlight v3
+                  // Build segments with their classes
                   let currentOffset = 0
+                  const segments: Array<{start: number, end: number, classes: string[]}> = []
                   
-                  const processNode = (node: any): void => {
+                  const processNode = (node: any, parentClasses: string[] = []): void => {
                     if (node.type === 'text') {
+                      // For text nodes, record segment with accumulated classes
                       const len = node.value?.length || 0
+                      if (len > 0) {
+                        segments.push({
+                          start: currentOffset,
+                          end: currentOffset + len,
+                          classes: parentClasses
+                        })
+                      }
                       currentOffset += len
                     } else if (node.type === 'element') {
+                      // For element nodes, accumulate classes and process children
                       const classes = node.properties?.className || []
-                      const startOffset = currentOffset
+                      const combinedClasses = [...parentClasses, ...classes]
                       
-                      // Process children to get length
                       if (node.children) {
-                        node.children.forEach(processNode)
+                        node.children.forEach((child: any) => processNode(child, combinedClasses))
                       }
-                      
-                      if (classes.length > 0 && startOffset < currentOffset) {
-                        decorations.push(
-                          Decoration.inline(range.start + startOffset, range.start + currentOffset, { 
-                            class: classes.map((c: string) => c.startsWith('hljs') ? c : `hljs-${c}`).join(' ')
-                          })
-                        )
+                    } else if (node.type === 'root') {
+                      // Process root node children
+                      if (node.children) {
+                        node.children.forEach((child: any) => processNode(child, []))
                       }
                     }
                   }
                   
-                  // Process the root children
-                  if (result.children) {
-                    result.children.forEach(processNode)
-                  }
+                  // Process the tree to get segments
+                  processNode(result)
+                  
+                  // Apply decorations for each segment with combined classes
+                  segments.forEach(segment => {
+                    // Always include the base markdown-codeblock-content class
+                    const allClasses = ['markdown-codeblock-content', ...segment.classes]
+                    decorations.push(
+                      Decoration.inline(range.start + segment.start, range.start + segment.end, { 
+                        class: allClasses.join(' ')
+                      })
+                    )
+                  })
                 } catch (e) {
                   console.error('Highlight error:', e)
                 }
@@ -170,15 +193,8 @@ const MarkdownSyntaxHighlight = Extension.create({
                   return // Don't process other markdown in code fence lines
                 }
                 
-                // Apply syntax highlighting if inside a code block
+                // Skip processing if inside a code block (already handled above)
                 if (insideCodeBlock) {
-                  // First, apply base code block styling
-                  decorations.push(
-                    Decoration.inline(pos, pos + text.length, { 
-                      class: 'markdown-codeblock-content' 
-                    })
-                  )
-                  
                   return // Don't process other markdown inside code blocks
                 }
 
