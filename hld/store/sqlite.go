@@ -816,46 +816,9 @@ func (s *SQLiteStore) applyMigrations() error {
 		slog.Info("Migration 15 applied successfully")
 	}
 
-	// Migration 16: Add additional_directories column for --add-dir support
+	// Migration 16: Add user settings table for preferences
 	if currentVersion < 16 {
-		slog.Info("Applying migration 16: Add additional_directories column")
-
-		// Check if column already exists for idempotency
-		var columnExists int
-		err = s.db.QueryRow(`
-			SELECT COUNT(*) FROM pragma_table_info('sessions')
-			WHERE name = 'additional_directories'
-		`).Scan(&columnExists)
-		if err != nil {
-			return fmt.Errorf("failed to check additional_directories column: %w", err)
-		}
-
-		// Only add column if it doesn't exist
-		if columnExists == 0 {
-			_, err = s.db.Exec(`
-				ALTER TABLE sessions
-				ADD COLUMN additional_directories TEXT
-			`)
-			if err != nil {
-				return fmt.Errorf("failed to add additional_directories column: %w", err)
-			}
-		}
-
-		// Record migration
-		_, err = s.db.Exec(`
-			INSERT INTO schema_version (version, description)
-			VALUES (16, 'Add additional_directories column for --add-dir functionality')
-		`)
-		if err != nil {
-			return fmt.Errorf("failed to record migration 16: %w", err)
-		}
-
-		slog.Info("Migration 16 applied successfully")
-	}
-
-	// Migration 17: Add user settings table for preferences
-	if currentVersion < 17 {
-		slog.Info("Applying migration 17: Add user settings table")
+		slog.Info("Applying migration 16: Add user settings table")
 
 		_, err := s.db.Exec(`
 			CREATE TABLE IF NOT EXISTS user_settings (
@@ -882,7 +845,44 @@ func (s *SQLiteStore) applyMigrations() error {
 		// Record migration
 		_, err = s.db.Exec(`
 			INSERT INTO schema_version (version, description)
-			VALUES (17, 'Add user settings table for advanced providers preference')
+			VALUES (16, 'Add user settings table for advanced providers preference')
+		`)
+		if err != nil {
+			return fmt.Errorf("failed to record migration 16: %w", err)
+		}
+
+		slog.Info("Migration 16 applied successfully")
+	}
+
+	// Migration 17: Add additional_directories column for --add-dir support
+	if currentVersion < 17 {
+		slog.Info("Applying migration 17: Add additional_directories column")
+
+		// Check if column already exists for idempotency
+		var columnExists int
+		err = s.db.QueryRow(`
+			SELECT COUNT(*) FROM pragma_table_info('sessions')
+			WHERE name = 'additional_directories'
+		`).Scan(&columnExists)
+		if err != nil {
+			return fmt.Errorf("failed to check additional_directories column: %w", err)
+		}
+
+		// Only add column if it doesn't exist
+		if columnExists == 0 {
+			_, err = s.db.Exec(`
+				ALTER TABLE sessions
+				ADD COLUMN additional_directories TEXT
+			`)
+			if err != nil {
+				return fmt.Errorf("failed to add additional_directories column: %w", err)
+			}
+		}
+
+		// Record migration
+		_, err = s.db.Exec(`
+			INSERT INTO schema_version (version, description)
+			VALUES (17, 'Add additional_directories column for --add-dir functionality')
 		`)
 		if err != nil {
 			return fmt.Errorf("failed to record migration 17: %w", err)
