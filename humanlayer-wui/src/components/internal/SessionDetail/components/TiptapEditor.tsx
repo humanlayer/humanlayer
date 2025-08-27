@@ -54,10 +54,133 @@ const MarkdownSyntaxHighlight = Extension.create({
           decorations: (state: any) => {
             const decorations: Decoration[] = []
             const doc = state.doc
-
+            
+            // Track code blocks - first pass to identify code block boundaries
+            let inCodeBlock = false
+            let codeBlockLang = ''
+            let codeBlockContent = ''
+            let codeBlockContentStart = 0
+            const codeBlockRanges: Array<{start: number, end: number, lang: string, content: string}> = []
+            
+            // First pass: identify code blocks
             doc.descendants((node: any, pos: number) => {
               if (node.isText && node.text) {
                 const text = node.text
+                
+                if (text.startsWith('```')) {
+                  if (!inCodeBlock) {
+                    // Starting a code block
+                    inCodeBlock = true
+                    codeBlockLang = text.substring(3).trim()
+                    codeBlockContent = ''
+                    codeBlockContentStart = pos + text.length + 1 // After this line
+                  } else {
+                    // Ending a code block
+                    if (codeBlockContent) {
+                      codeBlockRanges.push({
+                        start: codeBlockContentStart,
+                        end: pos - 1, // Before this line
+                        lang: codeBlockLang,
+                        content: codeBlockContent.trim()
+                      })
+                    }
+                    inCodeBlock = false
+                    codeBlockLang = ''
+                    codeBlockContent = ''
+                  }
+                } else if (inCodeBlock) {
+                  // Accumulate code block content
+                  codeBlockContent += text + '\n'
+                }
+              }
+            })
+            
+            // Apply syntax highlighting to code blocks
+            codeBlockRanges.forEach(range => {
+              if (range.lang && lowlight.registered(range.lang) && range.content) {
+                try {
+                  // lowlight v3 API: highlight(language, text)
+                  const result = lowlight.highlight(range.lang, range.content)
+                  
+                  // Process the tree structure returned by lowlight v3
+                  let currentOffset = 0
+                  
+                  const processNode = (node: any): void => {
+                    if (node.type === 'text') {
+                      const len = node.value?.length || 0
+                      currentOffset += len
+                    } else if (node.type === 'element') {
+                      const classes = node.properties?.className || []
+                      const startOffset = currentOffset
+                      
+                      // Process children to get length
+                      if (node.children) {
+                        node.children.forEach(processNode)
+                      }
+                      
+                      if (classes.length > 0 && startOffset < currentOffset) {
+                        decorations.push(
+                          Decoration.inline(range.start + startOffset, range.start + currentOffset, { 
+                            class: classes.map((c: string) => c.startsWith('hljs') ? c : `hljs-${c}`).join(' ')
+                          })
+                        )
+                      }
+                    }
+                  }
+                  
+                  // Process the root children
+                  if (result.children) {
+                    result.children.forEach(processNode)
+                  }
+                } catch (e) {
+                  console.error('Highlight error:', e)
+                }
+              }
+            })
+            
+            // Second pass: apply decorations
+            doc.descendants((node: any, pos: number) => {
+              if (node.isText && node.text) {
+                const text = node.text
+                
+                // Check if we're inside a code block
+                const insideCodeBlock = codeBlockRanges.some(range => 
+                  pos >= range.start && pos < range.end
+                )
+
+                // Check for code block fences
+                if (text.startsWith('```')) {
+                  // Style the ``` markers
+                  decorations.push(
+                    Decoration.inline(pos, pos + 3, { 
+                      class: 'markdown-syntax markdown-syntax-codeblock' 
+                    })
+                  )
+                  
+                  // If there's a language after ```
+                  const afterFence = text.substring(3).trim()
+                  if (afterFence) {
+                    decorations.push(
+                      Decoration.inline(pos + 3, pos + text.length, { 
+                        class: 'markdown-codeblock-lang' 
+                      })
+                    )
+                  }
+                  
+                  return // Don't process other markdown in code fence lines
+                }
+                
+                // Apply syntax highlighting if inside a code block
+                if (insideCodeBlock) {
+                  // First, apply base code block styling
+                  decorations.push(
+                    Decoration.inline(pos, pos + text.length, { 
+                      class: 'markdown-codeblock-content' 
+                    })
+                  )
+                  
+                  return // Don't process other markdown inside code blocks
+                }
 
                 // Match **bold** syntax
                 const boldRegex = /\*\*([^*]+)\*\*/g
@@ -266,12 +389,12 @@ export const TiptapEditor = forwardRef<{ focus: () => void }, TiptapEditorProps>
           italic: false,
           strike: false,
           code: false,
-          codeBlock: false,
+          codeBlock: false,  // Disable since we want to preserve markdown syntax
         }),
-        CodeBlockLowlight.configure({
-          lowlight,
-          defaultLanguage: 'plaintext',
-        }),
+        // CodeBlockLowlight.configure({
+        //   lowlight,
+        //   defaultLanguage: 'plaintext',
+        // }),
         MarkdownSyntaxHighlight,
       ],
       content: value,

@@ -84,6 +84,22 @@
   opacity: 0.5;
 }
 
+/* Code block markers */
+.markdown-syntax-codeblock {
+  color: var(--terminal-brightGreen);
+  opacity: 0.5;
+}
+
+.markdown-codeblock-lang {
+  color: var(--terminal-brightCyan);
+  opacity: 0.7;
+}
+
+.markdown-codeblock-content {
+  font-family: 'SF Mono', Monaco, 'Cascadia Mono', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  /* Remove block-level styling - let these be inline for syntax highlighting */
+}
+
 /* Markdown content styles */
 .markdown-bold {
   font-weight: 700;
