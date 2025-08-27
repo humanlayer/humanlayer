@@ -437,7 +437,8 @@ export const TiptapEditor = forwardRef<{ focus: () => void }, TiptapEditorProps>
           italic: false,
           strike: false,
           code: false,
-          codeBlock: false, // Disable since we want to preserve markdown syntax
+          codeBlock: false,
+          hardBreak: false,
         }),
         MarkdownSyntaxHighlight,
         KeyboardShortcuts.configure({

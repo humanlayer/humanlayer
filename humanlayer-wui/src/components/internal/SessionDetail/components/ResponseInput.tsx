@@ -141,8 +141,13 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
 
     let placeholder = getInputPlaceholder(session.status)
 
+    let borderColorClass = isFocused ? 'border-[var(--terminal-accent)]' : 'border-transparent'
+
     if (isDenying) {
       placeholder = "Tell the agent what you'd like to do differently..."
+      if (isFocused) {
+        borderColorClass = 'border-[var(--terminal-error)]'
+      }
     }
 
     if (isForkMode) {
@@ -153,19 +158,9 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
       isDenying &&
       ' focus:outline-[var(--terminal-error)] focus-visible:outline-[var(--terminal-error)] focus-visible:border-[var(--terminal-error)]'
 
-    // This is a hack, was struggling to find the style associated with
-    // the inserted box shadow from tailwind, there's a goofy ring-offset thing going on
-    const textareaStyle = isDenying
-      ? {
-          boxShadow: 'var(--terminal-error)',
-        }
-      : {}
-
     // Always show the input for all session states
     return (
-      <div
-        className={`space-y-3 border-l-2 pl-4 pr-2 pb-4 ${isFocused ? 'border-[var(--terminal-accent)] ' : 'border-transparent'}`}
-      >
+      <div className={`space-y-3 border-l-2 pl-4 pr-2 pb-4 ${borderColorClass}`}>
         {/* Status Bar */}
         <StatusBar
           session={session}
