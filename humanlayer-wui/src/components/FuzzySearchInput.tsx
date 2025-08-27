@@ -18,6 +18,7 @@ interface SearchInputProps {
   recentDirectories?: RecentPath[]
   ref?: React.RefObject<HTMLDivElement>
   className?: string
+  dropdownClassName?: string
   autoFocus?: boolean
   onFocus?: () => void
   onBlur?: () => void
@@ -31,6 +32,7 @@ export function SearchInput({
   recentDirectories = [],
   ref,
   className,
+  dropdownClassName,
   autoFocus,
   onFocus: externalOnFocus,
   onBlur: externalOnBlur,
@@ -294,6 +296,7 @@ export function SearchInput({
           className={cn(
             'w-[var(--radix-popover-trigger-width)]',
             className?.includes('text-xs') && '[&_[cmdk-item]]:text-xs [&_[cmdk-item]]:py-1',
+            dropdownClassName,
           )}
         >
           <Command shouldFilter={false}>
