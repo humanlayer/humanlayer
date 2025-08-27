@@ -16,6 +16,7 @@ var (
 	DefaultSocketPath   = "~/.humanlayer/daemon.sock"
 	DefaultHTTPPort     = "7777"
 	DefaultCLICommand   = "hlyr" // CLI command to execute
+	DefaultClaudePath   = ""     // Empty means auto-detect
 )
 
 // Config represents the daemon configuration
@@ -39,6 +40,9 @@ type Config struct {
 	// HTTP Server configuration
 	HTTPPort int    `mapstructure:"http_port"`
 	HTTPHost string `mapstructure:"http_host"`
+
+	// Claude configuration
+	ClaudePath string `mapstructure:"claude_path"`
 }
 
 // Load loads configuration with priority: flags > env vars > config file > defaults
@@ -67,6 +71,7 @@ func Load() (*Config, error) {
 	_ = v.BindEnv("version_override", "HUMANLAYER_DAEMON_VERSION_OVERRIDE")
 	_ = v.BindEnv("http_port", "HUMANLAYER_DAEMON_HTTP_PORT")
 	_ = v.BindEnv("http_host", "HUMANLAYER_DAEMON_HTTP_HOST")
+	_ = v.BindEnv("claude_path", "HUMANLAYER_CLAUDE_PATH")
 
 	// Set defaults
 	setDefaults(v)
@@ -87,6 +92,7 @@ func Load() (*Config, error) {
 	// Expand home directory in paths
 	config.SocketPath = expandHome(config.SocketPath)
 	config.DatabasePath = expandHome(config.DatabasePath)
+	config.ClaudePath = expandHome(config.ClaudePath)
 
 	return &config, nil
 }
@@ -105,6 +111,7 @@ func setDefaults(v *viper.Viper) {
 	}
 	v.SetDefault("http_port", port)
 	v.SetDefault("http_host", "127.0.0.1")
+	v.SetDefault("claude_path", DefaultClaudePath)
 }
 
 // getDefaultConfigDir returns the default configuration directory

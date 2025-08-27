@@ -6,6 +6,8 @@ import {
   ConversationEvent,
   UserSettingsResponse,
   UpdateUserSettingsRequest,
+  ConfigResponse,
+  UpdateConfigRequest,
 } from '@humanlayer/hld-sdk'
 import { getDaemonUrl, getDefaultHeaders } from './http-config'
 import { logger } from '@/lib/logging'
@@ -554,6 +556,22 @@ export class HTTPDaemonClient implements IDaemonClient {
     if (!this.client) throw new Error('SDK client not initialized')
 
     const response = await this.client.updateUserSettings(settings)
+    return response
+  }
+
+  async getConfig(): Promise<ConfigResponse> {
+    await this.ensureConnected()
+    if (!this.client) throw new Error('SDK client not initialized')
+
+    const response = await this.client.getConfig()
+    return response
+  }
+
+  async updateConfig(settings: UpdateConfigRequest): Promise<ConfigResponse> {
+    await this.ensureConnected()
+    if (!this.client) throw new Error('SDK client not initialized')
+
+    const response = await this.client.updateConfig(settings)
     return response
   }
 

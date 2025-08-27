@@ -27,11 +27,13 @@ type SessionHandlers struct {
 	mapper          *mapper.Mapper
 	version         string
 	config          *config.Config
+	sessionManager  session.SessionManager // Add reference to session manager for Claude status checks
 }
 
 func NewSessionHandlers(manager session.SessionManager, store store.ConversationStore, approvalManager approval.Manager) *SessionHandlers {
 	return &SessionHandlers{
 		manager:         manager,
+		sessionManager:  manager,
 		store:           store,
 		approvalManager: approvalManager,
 		mapper:          &mapper.Mapper{},
@@ -42,6 +44,7 @@ func NewSessionHandlers(manager session.SessionManager, store store.Conversation
 func NewSessionHandlersWithConfig(manager session.SessionManager, store store.ConversationStore, approvalManager approval.Manager, cfg *config.Config) *SessionHandlers {
 	return &SessionHandlers{
 		manager:         manager,
+		sessionManager:  manager,
 		store:           store,
 		approvalManager: approvalManager,
 		mapper:          &mapper.Mapper{},
@@ -678,10 +681,100 @@ func (h *SessionHandlers) GetRecentPaths(ctx context.Context, req api.GetRecentP
 
 // GetHealth returns the health status of the daemon
 func (h *SessionHandlers) GetHealth(ctx context.Context, req api.GetHealthRequestObject) (api.GetHealthResponseObject, error) {
-	return api.GetHealth200JSONResponse{
-		Status:  api.Ok,
+	// Check Claude availability
+	claudeAvailable := h.sessionManager.IsClaudeAvailable()
+	claudePath := h.sessionManager.GetClaudeBinaryPath()
+
+	// Determine overall status
+	overallStatus := api.Ok
+	if !claudeAvailable {
+		overallStatus = api.Degraded
+	}
+
+	// Build response
+	response := api.GetHealth200JSONResponse{
+		Status:  overallStatus,
 		Version: h.version,
+	}
+
+	// Always add dependencies to show Claude status
+	claudeInfo := struct {
+		Available bool    `json:"available"`
+		Error     *string `json:"error"`
+		Path      *string `json:"path"`
+	}{
+		Available: claudeAvailable,
+	}
+
+	if claudePath != "" {
+		claudeInfo.Path = &claudePath
+	}
+
+	if !claudeAvailable {
+		errorMsg := "Claude binary not found in PATH or common locations"
+		claudeInfo.Error = &errorMsg
+	}
+
+	response.Dependencies = &struct {
+		Claude *struct {
+			Available bool    `json:"available"`
+			Error     *string `json:"error"`
+			Path      *string `json:"path"`
+		} `json:"claude,omitempty"`
+	}{
+		Claude: &claudeInfo,
+	}
+
+	return response, nil
+}
+
+// GetConfig retrieves the current daemon configuration
+func (h *SessionHandlers) GetConfig(ctx context.Context, req api.GetConfigRequestObject) (api.GetConfigResponseObject, error) {
+	detectedPath := h.sessionManager.GetClaudeBinaryPath()
+	return api.GetConfig200JSONResponse{
+		ClaudePath:         h.sessionManager.GetClaudePath(),
+		ClaudeDetectedPath: &detectedPath,
+		ClaudeAvailable:    h.sessionManager.IsClaudeAvailable(),
 	}, nil
+}
+
+// UpdateConfig updates daemon runtime configuration
+func (h *SessionHandlers) UpdateConfig(ctx context.Context, req api.UpdateConfigRequestObject) (api.UpdateConfigResponseObject, error) {
+	if req.Body.ClaudePath != nil {
+		// Update session manager's Claude path
+		h.sessionManager.UpdateClaudePath(*req.Body.ClaudePath)
+
+		// Persist to config file for next startup
+		if err := h.persistClaudePath(*req.Body.ClaudePath); err != nil {
+			slog.Error("failed to persist Claude path", "error", err)
+			// Continue anyway - at least update in-memory
+		}
+
+		// Check if Claude is available at new path
+		available := h.sessionManager.IsClaudeAvailable()
+		detectedPath := h.sessionManager.GetClaudeBinaryPath()
+
+		return api.UpdateConfig200JSONResponse{
+			ClaudePath:         *req.Body.ClaudePath,
+			ClaudeDetectedPath: &detectedPath,
+			ClaudeAvailable:    available,
+		}, nil
+	}
+
+	detectedPath := h.sessionManager.GetClaudeBinaryPath()
+	return api.UpdateConfig200JSONResponse{
+		ClaudePath:         h.sessionManager.GetClaudePath(),
+		ClaudeDetectedPath: &detectedPath,
+		ClaudeAvailable:    h.sessionManager.IsClaudeAvailable(),
+	}, nil
+}
+
+// persistClaudePath persists Claude path to config file
+func (h *SessionHandlers) persistClaudePath(path string) error {
+	// For now, just log that we would persist
+	// In a real implementation, we'd update the config file
+	slog.Info("would persist Claude path to config", "path", path)
+	return nil
 }
 
 // GetDebugInfo returns debug information about the daemon

@@ -117,7 +117,7 @@ func New() (*Daemon, error) {
 	}
 
 	// Create session manager with store and config
-	sessionManager, err := session.NewManager(eventBus, conversationStore, cfg.SocketPath)
+	sessionManager, err := session.NewManagerWithConfig(eventBus, conversationStore, cfg.SocketPath, cfg)
 	if err != nil {
 		_ = conversationStore.Close()
 		return nil, fmt.Errorf("failed to create session manager: %w", err)
