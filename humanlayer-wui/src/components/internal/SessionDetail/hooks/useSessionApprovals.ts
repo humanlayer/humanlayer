@@ -4,7 +4,6 @@ import { ConversationEvent, ApprovalStatus } from '@/lib/daemon/types'
 import { daemonClient } from '@/lib/daemon/client'
 import { notificationService } from '@/services/NotificationService'
 import { SessionDetailHotkeysScope } from '../SessionDetail'
-import { logger } from '@/lib/logging'
 import { useStore } from '@/AppStore'
 import { ResponseInputLocalStorageKey } from './useSessionActions'
 
@@ -60,23 +59,26 @@ export function useSessionApprovals({
     }
   }, [])
 
-  const handleDeny = useCallback(async (approvalId: string, reason: string, sessionId: string) => {
-    try {
-      const res = await daemonClient.denyFunctionCall(approvalId, reason)
-      console.log('handleDeny()', res)
+  const handleDeny = useCallback(
+    async (approvalId: string, reason: string, sessionId: string) => {
+      try {
+        const res = await daemonClient.denyFunctionCall(approvalId, reason)
+        console.log('handleDeny()', res)
 
-      if (res.success) {
-        responseEditor?.commands.setContent('')
-        localStorage.removeItem(`${ResponseInputLocalStorageKey}.${sessionId}`)
-      } else {
-        console.log('WHAT', res);
+        if (res.success) {
+          responseEditor?.commands.setContent('')
+          localStorage.removeItem(`${ResponseInputLocalStorageKey}.${sessionId}`)
+        } else {
+          console.log('WHAT', res)
+        }
+
+        setDenyingApprovalId(null)
+      } catch (error) {
+        notificationService.notifyError(error, 'Failed to deny')
       }
-
-      setDenyingApprovalId(null)
-    } catch (error) {
-      notificationService.notifyError(error, 'Failed to deny')
-    }
-  }, [responseEditor])
+    },
+    [responseEditor],
+  )
 
   const denyAgainstOldestApproval = useCallback(() => {
     const oldestApproval = events.find(
@@ -90,10 +92,13 @@ export function useSessionApprovals({
     }
   }, [events, setFocusedEventId, setFocusSource])
 
-  const handleStartDeny = useCallback((approvalId: string) => {
-    setDenyingApprovalId(approvalId)
-    responseEditor?.commands.focus()
-  }, [responseEditor])
+  const handleStartDeny = useCallback(
+    (approvalId: string) => {
+      setDenyingApprovalId(approvalId)
+      responseEditor?.commands.focus()
+    },
+    [responseEditor],
+  )
 
   const handleCancelDeny = useCallback(() => {
     setDenyingApprovalId(null)

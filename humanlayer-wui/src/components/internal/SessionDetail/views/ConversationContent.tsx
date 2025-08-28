@@ -267,7 +267,7 @@ export function ConversationContent({
                   index !== nonEmptyDisplayObjects.length - 1 ? 'border-b' : ''
                 } ${
                   focusedEventId === displayObject.id
-                    ? responseEditor?.isFocused 
+                    ? responseEditor?.isFocused
                       ? 'border-l-[var(--terminal-accent-dim)]'
                       : 'border-l-[var(--terminal-accent)]'
                     : 'border-l-transparent'
@@ -443,7 +443,7 @@ export function ConversationContent({
                         : ''
                     } ${
                       focusedEventId === displayObject.id
-                        ? responseEditor?.isFocused 
+                        ? responseEditor?.isFocused
                           ? 'border-l-[var(--terminal-accent-dim)]'
                           : 'border-l-[var(--terminal-accent)]'
                         : 'border-l-transparent'

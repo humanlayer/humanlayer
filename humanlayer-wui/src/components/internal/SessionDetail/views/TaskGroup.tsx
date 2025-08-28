@@ -64,8 +64,8 @@ export function TaskGroup({
   return (
     <div
       className={`p-4 TaskGroup cursor-pointer transition-colors duration-200 border-l-2 ${
-        focusedEventId === parentTask.id 
-          ? responseEditor?.isFocused 
+        focusedEventId === parentTask.id
+          ? responseEditor?.isFocused
             ? 'border-l-[var(--terminal-accent-dim)]'
             : 'border-l-[var(--terminal-accent)]'
           : 'border-l-transparent'
