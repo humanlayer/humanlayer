@@ -313,7 +313,7 @@ fn show_quick_launcher(app: tauri::AppHandle) -> Result<(), String> {
         WebviewUrl::App("index.html#/quick-launcher".into())
     )
     .title("")
-    .inner_size(500.0, 180.0)
+    .inner_size(500.0, 185.0)
     .resizable(false)
     .maximizable(false)
     .minimizable(false)

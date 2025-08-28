@@ -117,7 +117,7 @@ export function QuickLauncher() {
   }
 
   return (
-    <div className="flex flex-col p-3 bg-background" style={{ height: '180px' }}>
+    <div className="flex flex-col p-2 bg-background" style={{ height: '180px' }}>
       {/* Prompt field at the top */}
       <div className="flex-1 space-y-1">
         <Label htmlFor="prompt" className="text-xs">
@@ -151,7 +151,6 @@ export function QuickLauncher() {
           <SearchInput
             value={workingDir}
             onChange={setWorkingDir}
-            placeholder="Current directory"
             recentDirectories={recentDirectories}
             className="font-mono text-xs h-7"
             dropdownClassName=""
@@ -172,7 +171,7 @@ export function QuickLauncher() {
       </div>
 
       {/* Mode badges below */}
-      <div className="flex gap-1 mt-2">
+      <div className="flex gap-1">
         <button
           className={cn(
             'p-1 rounded transition-colors',
