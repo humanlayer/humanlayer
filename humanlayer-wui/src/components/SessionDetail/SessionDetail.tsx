@@ -20,6 +20,8 @@ import { ToolResultModal } from './components/ToolResultModal'
 import { TodoWidget } from './components/TodoWidget'
 import { ResponseInput } from './components/ResponseInput'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { APIErrorBoundary } from '@/components/ui/APIErrorBoundary'
+import { DataTransformErrorBoundary } from '@/components/ui/DataTransformErrorBoundary'
 import { SessionModeIndicator } from './AutoAcceptIndicator'
 import { ForkViewModal } from './components/ForkViewModal'
 import { DangerouslySkipPermissionsDialog } from './DangerouslySkipPermissionsDialog'
@@ -1078,30 +1080,42 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
           className={`Conversation-Card ${isWideView ? 'flex-1' : 'w-full'} relative ${cardVerticalPadding} flex flex-col min-h-0`}
         >
           <CardContent className={`${isCompactView ? 'px-2' : 'px-4'} flex flex-col flex-1 min-h-0`}>
-            <ConversationContent
-              sessionId={session.id}
-              focusedEventId={navigation.focusedEventId}
-              setFocusedEventId={navigation.setFocusedEventId}
-              onApprove={approvals.handleApprove}
-              onDeny={approvals.handleDeny}
-              approvingApprovalId={approvals.approvingApprovalId}
-              confirmingApprovalId={approvals.confirmingApprovalId}
-              denyingApprovalId={approvals.denyingApprovalId}
-              setDenyingApprovalId={approvals.setDenyingApprovalId}
-              onCancelDeny={approvals.handleCancelDeny}
-              isSplitView={isSplitView}
-              onToggleSplitView={() => setIsSplitView(!isSplitView)}
-              focusSource={navigation.focusSource}
-              setFocusSource={navigation.setFocusSource}
-              setConfirmingApprovalId={approvals.setConfirmingApprovalId}
-              expandedToolResult={expandedToolResult}
-              setExpandedToolResult={setExpandedToolResult}
-              setExpandedToolCall={setExpandedToolCall}
-              maxEventIndex={previewEventIndex ?? undefined}
-              shouldIgnoreMouseEvent={shouldIgnoreMouseEvent}
-              expandedTasks={expandedTasks}
-              toggleTaskGroup={toggleTaskGroup}
-            />
+            <APIErrorBoundary
+              operationContext="loading conversation data"
+              contextInfo={{ sessionId: session.id }}
+            >
+              <DataTransformErrorBoundary
+                dataContext="conversation events processing"
+                expectedDataType="ConversationEvent[]"
+                critical={true}
+                contextInfo={{ sessionId: session.id }}
+              >
+                <ConversationContent
+                  sessionId={session.id}
+                  focusedEventId={navigation.focusedEventId}
+                  setFocusedEventId={navigation.setFocusedEventId}
+                  onApprove={approvals.handleApprove}
+                  onDeny={approvals.handleDeny}
+                  approvingApprovalId={approvals.approvingApprovalId}
+                  confirmingApprovalId={approvals.confirmingApprovalId}
+                  denyingApprovalId={approvals.denyingApprovalId}
+                  setDenyingApprovalId={approvals.setDenyingApprovalId}
+                  onCancelDeny={approvals.handleCancelDeny}
+                  isSplitView={isSplitView}
+                  onToggleSplitView={() => setIsSplitView(!isSplitView)}
+                  focusSource={navigation.focusSource}
+                  setFocusSource={navigation.setFocusSource}
+                  setConfirmingApprovalId={approvals.setConfirmingApprovalId}
+                  expandedToolResult={expandedToolResult}
+                  setExpandedToolResult={setExpandedToolResult}
+                  setExpandedToolCall={setExpandedToolCall}
+                  maxEventIndex={previewEventIndex ?? undefined}
+                  shouldIgnoreMouseEvent={shouldIgnoreMouseEvent}
+                  expandedTasks={expandedTasks}
+                  toggleTaskGroup={toggleTaskGroup}
+                />
+              </DataTransformErrorBoundary>
+            </APIErrorBoundary>
           </CardContent>
           {isActivelyProcessing && (
             <div
@@ -1136,7 +1150,13 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         {isWideView && lastTodo && (
           <Card className="w-[20%] flex flex-col min-h-0">
             <CardContent className="flex flex-col flex-1 min-h-0 overflow-hidden">
-              <TodoWidget event={lastTodo} />
+              <DataTransformErrorBoundary
+                dataContext="todo widget data"
+                expectedDataType="ConversationEvent"
+                contextInfo={{ sessionId: session.id, eventId: lastTodo.id }}
+              >
+                <TodoWidget event={lastTodo} />
+              </DataTransformErrorBoundary>
             </CardContent>
           </Card>
         )}
@@ -1145,16 +1165,21 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       {/* Response input - always show but disable for non-completed sessions */}
       <Card className={isCompactView ? 'py-2' : 'py-4'}>
         <CardContent className={isCompactView ? 'px-2' : 'px-4'}>
-          <ResponseInput
-            ref={responseInputRef}
-            session={session}
-            responseInput={actions.responseInput}
-            setResponseInput={actions.setResponseInput}
-            isResponding={actions.isResponding}
-            handleContinueSession={actions.handleContinueSession}
-            handleResponseInputKeyDown={actions.handleResponseInputKeyDown}
-            isForkMode={actions.isForkMode}
-          />
+          <APIErrorBoundary
+            operationContext="session continuation"
+            contextInfo={{ sessionId: session.id }}
+          >
+            <ResponseInput
+              ref={responseInputRef}
+              session={session}
+              responseInput={actions.responseInput}
+              setResponseInput={actions.setResponseInput}
+              isResponding={actions.isResponding}
+              handleContinueSession={actions.handleContinueSession}
+              handleResponseInputKeyDown={actions.handleResponseInputKeyDown}
+              isForkMode={actions.isForkMode}
+            />
+          </APIErrorBoundary>
           {/* Session mode indicator - shows either dangerous skip permissions or auto-accept */}
           <SessionModeIndicator
             sessionId={session.id}

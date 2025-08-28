@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { hasContent } from '@/utils/validation'
+import { DataTransformErrorBoundary } from '@/components/ui/DataTransformErrorBoundary'
 
 // TODO(3): Add validation for minimum reason length
 // TODO(3): Consider adding a preset list of common denial reasons
@@ -41,38 +42,45 @@ export function DenyForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-2 items-center">
-      <Input
-        type="text"
-        placeholder="Reason for denial..."
-        value={reason}
-        onChange={e => setReason(e.target.value)}
-        onKeyDown={handleKeyDown}
-        className="flex-1"
-        autoFocus
-      />
-      <Button
-        className="cursor-pointer"
-        type="submit"
-        size="sm"
-        variant="destructive"
-        disabled={!hasContent(reason) || isDenying}
-      >
-        {isDenying ? 'Denying...' : 'Deny'}{' '}
-        {hasContent(reason) && !isDenying && (
-          <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">⏎</kbd>
-        )}
-      </Button>
-      <Button
-        className="cursor-pointer"
-        type="button"
-        size="sm"
-        variant="outline"
-        onClick={onCancel}
-        disabled={isDenying}
-      >
-        Cancel <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">Esc</kbd>
-      </Button>
-    </form>
+    <DataTransformErrorBoundary
+      dataContext="approval denial form"
+      expectedDataType="DenyFormData"
+      contextInfo={{ approvalId, isDenying, hasReason: hasContent(reason) }}
+      critical={true}
+    >
+      <form onSubmit={handleSubmit} className="flex gap-2 items-center">
+        <Input
+          type="text"
+          placeholder="Reason for denial..."
+          value={reason}
+          onChange={e => setReason(e.target.value)}
+          onKeyDown={handleKeyDown}
+          className="flex-1"
+          autoFocus
+        />
+        <Button
+          className="cursor-pointer"
+          type="submit"
+          size="sm"
+          variant="destructive"
+          disabled={!hasContent(reason) || isDenying}
+        >
+          {isDenying ? 'Denying...' : 'Deny'}{' '}
+          {hasContent(reason) && !isDenying && (
+            <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">⏎</kbd>
+          )}
+        </Button>
+        <Button
+          className="cursor-pointer"
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={onCancel}
+          disabled={isDenying}
+        >
+          Cancel <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">Esc</kbd>
+        </Button>
+      </form>
+    </DataTransformErrorBoundary>
   )
 }

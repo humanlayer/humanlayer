@@ -1,4 +1,5 @@
 import React, { memo } from 'react'
+import { DataTransformErrorBoundary } from '@/components/ui/DataTransformErrorBoundary'
 
 interface MessageContentProps {
   subject: React.ReactNode
@@ -11,15 +12,39 @@ export const MessageContent = memo(
   ({ subject, body, toolResultContent, className = '' }: MessageContentProps) => {
     return (
       <div className={className}>
-        <span className="whitespace-pre-wrap text-foreground break-words">{subject}</span>
+        <DataTransformErrorBoundary
+          dataContext="message subject rendering"
+          expectedDataType="ReactNode"
+          fallback={() => <span className="text-destructive text-sm">[Failed to render subject]</span>}
+        >
+          <span className="whitespace-pre-wrap text-foreground break-words">{subject}</span>
+        </DataTransformErrorBoundary>
 
         {/* Tool Result Content */}
         {toolResultContent && (
-          <div className="whitespace-pre-wrap text-foreground break-words">{toolResultContent}</div>
+          <DataTransformErrorBoundary
+            dataContext="tool result content rendering"
+            expectedDataType="ReactNode"
+            fallback={() => (
+              <div className="text-destructive text-sm">[Failed to render tool result content]</div>
+            )}
+          >
+            <div className="whitespace-pre-wrap text-foreground break-words">{toolResultContent}</div>
+          </DataTransformErrorBoundary>
         )}
 
         {/* Body */}
-        {body && <div className="whitespace-pre-wrap text-foreground break-words">{body}</div>}
+        {body && (
+          <DataTransformErrorBoundary
+            dataContext="message body rendering"
+            expectedDataType="ReactNode"
+            fallback={() => (
+              <div className="text-destructive text-sm">[Failed to render message body]</div>
+            )}
+          >
+            <div className="whitespace-pre-wrap text-foreground break-words">{body}</div>
+          </DataTransformErrorBoundary>
+        )}
       </div>
     )
   },

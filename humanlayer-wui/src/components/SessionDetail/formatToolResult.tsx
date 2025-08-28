@@ -2,6 +2,7 @@ import React from 'react'
 import { ConversationEvent } from '@/lib/daemon/types'
 import { truncate, parseMcpToolName } from '@/utils/formatting'
 import { hasAnsiCodes, AnsiText } from '@/utils/ansiParser'
+import { DataTransformErrorBoundary } from '@/components/ui/DataTransformErrorBoundary'
 
 // TODO(2): Consider creating tool-specific formatters in separate files
 // TODO(2): Add unit tests for each tool formatter
@@ -102,9 +103,25 @@ export function formatToolResult(
         if (hasAnsiCodes(firstLine)) {
           // Always return colored version, let CSS handle truncation
           return (
-            <span className="inline-block max-w-[60ch] overflow-hidden text-ellipsis whitespace-nowrap">
-              <AnsiText content={firstLine} />
-            </span>
+            <DataTransformErrorBoundary
+              dataContext="ANSI text processing"
+              expectedDataType="string"
+              extractFailureInfo={() => ({
+                operation: 'ANSI color parsing',
+                dataType: 'terminal output',
+                rawData: firstLine?.length > 100 ? firstLine.substring(0, 100) + '...' : firstLine,
+                failureLocation: 'ANSI escape sequence processing',
+              })}
+              fallback={() => (
+                <span className="inline-block max-w-[60ch] overflow-hidden text-ellipsis whitespace-nowrap text-muted-foreground">
+                  {truncate(firstLine, 80)}
+                </span>
+              )}
+            >
+              <span className="inline-block max-w-[60ch] overflow-hidden text-ellipsis whitespace-nowrap">
+                <AnsiText content={firstLine} />
+              </span>
+            </DataTransformErrorBoundary>
           )
         } else {
           abbreviated = truncate(firstLine, 80)
@@ -115,12 +132,28 @@ export function formatToolResult(
         if (hasAnsiCodes(firstLine)) {
           // Return colored first line with line count, CSS handles truncation
           return (
-            <>
-              <span className="inline-block max-w-[45ch] overflow-hidden text-ellipsis whitespace-nowrap align-bottom">
-                <AnsiText content={firstLine} />
-              </span>
-              <span> ... ({lines.length} lines)</span>
-            </>
+            <DataTransformErrorBoundary
+              dataContext="ANSI text processing (multi-line)"
+              expectedDataType="string"
+              extractFailureInfo={() => ({
+                operation: 'ANSI color parsing',
+                dataType: 'multi-line terminal output',
+                rawData: firstLine?.length > 100 ? firstLine.substring(0, 100) + '...' : firstLine,
+                failureLocation: 'ANSI escape sequence processing',
+              })}
+              fallback={() => (
+                <span className="text-muted-foreground">
+                  {truncate(firstLine, 60)} ... ({lines.length} lines)
+                </span>
+              )}
+            >
+              <>
+                <span className="inline-block max-w-[45ch] overflow-hidden text-ellipsis whitespace-nowrap align-bottom">
+                  <AnsiText content={firstLine} />
+                </span>
+                <span> ... ({lines.length} lines)</span>
+              </>
+            </DataTransformErrorBoundary>
           )
         } else {
           abbreviated = `${truncate(firstLine, 60)} ... (${lines.length} lines)`

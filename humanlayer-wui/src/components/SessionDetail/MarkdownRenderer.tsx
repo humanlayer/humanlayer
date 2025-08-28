@@ -7,6 +7,7 @@ import { Copy, Check } from 'lucide-react'
 import type { Components } from 'react-markdown'
 import { Button } from '@/components/ui/button'
 import { copyToClipboard } from '@/utils/clipboard'
+import { DataTransformErrorBoundary } from '@/components/ui/DataTransformErrorBoundary'
 
 // Import only needed languages for smaller bundle
 import json from 'react-syntax-highlighter/dist/cjs/languages/prism/json'
@@ -156,18 +157,38 @@ export const MarkdownRenderer = memo(
           return match ? (
             <div className="relative group not-prose">
               <div className="overflow-x-auto">
-                <SyntaxHighlighter
-                  language={match[1]}
-                  useInlineStyles={false}
-                  className="rsh-code-block text-sm"
-                  PreTag={({ children, ...props }) => (
-                    <pre className="rsh-pre" {...props}>
-                      {children}
+                <DataTransformErrorBoundary
+                  dataContext="syntax highlighting"
+                  expectedDataType="string"
+                  extractFailureInfo={() => ({
+                    operation: 'syntax highlighting',
+                    dataType: `${match[1]} code`,
+                    rawData:
+                      codeString?.length > 500 ? codeString.substring(0, 500) + '...' : codeString,
+                    failureLocation: `language: ${match[1]}`,
+                  })}
+                  fallback={({ transformFailure }) => (
+                    <pre className="rsh-pre bg-muted p-3 rounded border text-sm font-mono">
+                      <div className="text-destructive text-xs mb-2">
+                        Syntax highlighting failed for {match[1]}
+                      </div>
+                      {transformFailure.rawData}
                     </pre>
                   )}
                 >
-                  {codeString}
-                </SyntaxHighlighter>
+                  <SyntaxHighlighter
+                    language={match[1]}
+                    useInlineStyles={false}
+                    className="rsh-code-block text-sm"
+                    PreTag={({ children, ...props }) => (
+                      <pre className="rsh-pre" {...props}>
+                        {children}
+                      </pre>
+                    )}
+                  >
+                    {codeString}
+                  </SyntaxHighlighter>
+                </DataTransformErrorBoundary>
               </div>
               <Button
                 variant="ghost"
@@ -214,13 +235,57 @@ export const MarkdownRenderer = memo(
     )
 
     return (
-      <ReactMarkdown
-        className={`prose-terminal ${className}`}
-        remarkPlugins={[remarkGfm]}
-        components={components}
+      <DataTransformErrorBoundary
+        dataContext="markdown content rendering"
+        expectedDataType="string"
+        extractFailureInfo={error => ({
+          operation: 'markdown parsing',
+          dataType: 'markdown',
+          rawData: content?.length > 1000 ? content.substring(0, 1000) + '...' : content,
+          failureLocation: error.message.includes('syntax') ? 'markdown syntax' : 'rendering engine',
+        })}
+        fallbackData=""
+        validationConfig={{
+          showRawData: true,
+          maxRawDataDisplay: 1000,
+        }}
+        contextInfo={{
+          contentLength: content?.length || 0,
+          sanitized: sanitize,
+          className,
+        }}
+        fallback={({ transformFailure, useFallbackData, retryWithRepair }) => (
+          <div className="text-destructive border border-destructive/20 rounded p-3 space-y-2">
+            <div className="font-semibold">Markdown rendering failed</div>
+            <div className="text-sm">
+              Failed to render markdown content. This could be due to invalid syntax or a rendering
+              engine error.
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={retryWithRepair}>
+                Try Again
+              </Button>
+              <Button size="sm" variant="secondary" onClick={useFallbackData}>
+                Show Raw Text
+              </Button>
+            </div>
+            <details className="text-xs">
+              <summary className="cursor-pointer hover:text-foreground">Raw content preview</summary>
+              <pre className="mt-2 p-2 bg-muted rounded border text-xs whitespace-pre-wrap max-h-40 overflow-auto">
+                {transformFailure.rawData}
+              </pre>
+            </details>
+          </div>
+        )}
       >
-        {sanitizedContent}
-      </ReactMarkdown>
+        <ReactMarkdown
+          className={`prose-terminal ${className}`}
+          remarkPlugins={[remarkGfm]}
+          components={components}
+        >
+          {sanitizedContent}
+        </ReactMarkdown>
+      </DataTransformErrorBoundary>
     )
   },
 )

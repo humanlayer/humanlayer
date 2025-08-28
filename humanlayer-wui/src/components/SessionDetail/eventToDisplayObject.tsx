@@ -1,5 +1,6 @@
 import React from 'react'
 import { MarkdownRenderer } from './MarkdownRenderer'
+import { DataTransformErrorBoundary } from '@/components/ui/DataTransformErrorBoundary'
 
 import {
   ConversationEvent,
@@ -34,6 +35,28 @@ import { parseMcpToolName } from '@/utils/formatting'
 // TODO(3): Add proper TypeScript types for display objects
 
 function formatJson(json: string): React.ReactNode {
+  return (
+    <DataTransformErrorBoundary
+      dataContext="JSON formatting"
+      expectedDataType="string"
+      extractFailureInfo={error => ({
+        operation: 'JSON parsing and formatting',
+        dataType: 'JSON',
+        rawData: json?.length > 200 ? json.substring(0, 200) + '...' : json,
+        failureLocation: error.message.includes('parse') ? 'JSON.parse' : 'formatting',
+      })}
+      fallback={() => (
+        <span className="text-muted-foreground font-mono text-xs">
+          {json?.length > 100 ? json.substring(0, 100) + '...' : json}
+        </span>
+      )}
+    >
+      <JsonFormatter json={json} />
+    </DataTransformErrorBoundary>
+  )
+}
+
+function JsonFormatter({ json }: { json: string }): React.ReactNode {
   try {
     const formatted = JSON.stringify(JSON.parse(json), null, 2)
     return <MarkdownRenderer content={`\`\`\`json\n${formatted}\n\`\`\``} sanitize={false} />

@@ -8,6 +8,8 @@ import { useSessionFilter } from '@/hooks/useSessionFilter'
 import { EmptyState } from '../internal/EmptyState'
 import { Search } from 'lucide-react'
 import { KeyboardShortcut } from '../HotkeyPanel'
+import { APIErrorBoundary } from '@/components/ui/APIErrorBoundary'
+import { DataTransformErrorBoundary } from '@/components/ui/DataTransformErrorBoundary'
 
 interface MenuOption {
   id: string
@@ -199,103 +201,115 @@ export default function CommandPaletteMenu() {
   }
 
   return (
-    <div className="space-y-2">
-      {/* Search input for both modes */}
-      {(mode === 'search' || mode === 'command') && (
-        <input
-          ref={inputRef}
-          type="text"
-          value={searchQuery}
-          onChange={e => setSearchQuery(e.target.value)}
-          onKeyDown={e => {
-            // Prevent up/down from moving cursor, let them control the list
-            if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-              e.preventDefault()
-            }
-            // Enter should trigger selected option
-            if (e.key === 'Enter' && menuOptions[selectedMenuIndex]) {
-              e.preventDefault()
-              menuOptions[selectedMenuIndex].action()
-            }
-          }}
-          placeholder={mode === 'search' ? 'Search sessions...' : 'Search commands...'}
-          className={cn(
-            'w-full h-9 px-3 py-2 text-sm',
-            'font-mono',
-            'bg-background border rounded-md',
-            'transition-all duration-200',
-            'placeholder:text-muted-foreground/60',
-            'border-border hover:border-primary/50 focus:border-primary focus:ring-2 focus:ring-primary/20',
+    <APIErrorBoundary
+      operationContext="loading command palette data"
+      contextInfo={{ mode, searchQuery, sessionCount: sessions.length }}
+    >
+      <DataTransformErrorBoundary
+        dataContext="search and menu option processing"
+        expectedDataType="MenuOption[]"
+        contextInfo={{ filteredCount: filteredSessions.length, menuOptionsCount: menuOptions.length }}
+        fallbackData={[]}
+      >
+        <div className="space-y-2">
+          {/* Search input for both modes */}
+          {(mode === 'search' || mode === 'command') && (
+            <input
+              ref={inputRef}
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              onKeyDown={e => {
+                // Prevent up/down from moving cursor, let them control the list
+                if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                  e.preventDefault()
+                }
+                // Enter should trigger selected option
+                if (e.key === 'Enter' && menuOptions[selectedMenuIndex]) {
+                  e.preventDefault()
+                  menuOptions[selectedMenuIndex].action()
+                }
+              }}
+              placeholder={mode === 'search' ? 'Search sessions...' : 'Search commands...'}
+              className={cn(
+                'w-full h-9 px-3 py-2 text-sm',
+                'font-mono',
+                'bg-background border rounded-md',
+                'transition-all duration-200',
+                'placeholder:text-muted-foreground/60',
+                'border-border hover:border-primary/50 focus:border-primary focus:ring-2 focus:ring-primary/20',
+              )}
+              autoComplete="off"
+              autoFocus
+            />
           )}
-          autoComplete="off"
-          autoFocus
-        />
-      )}
 
-      {/* Results counter for search mode - compact */}
-      {mode === 'search' && (
-        <div className="text-xs text-muted-foreground">
-          {menuOptions.length} of {filteredSessions.length} sessions
-          {statusFilter && (
-            <span
-              className="ml-2 px-2 py-0.5 text-accent-foreground rounded"
-              style={{ backgroundColor: 'var(--terminal-accent)' }}
-            >
-              status: {statusFilter.toLowerCase()}
-            </span>
-          )}
-        </div>
-      )}
-
-      {menuOptions.map((option, index) => {
-        // Find the corresponding match data for highlighting
-        const matchData =
-          mode === 'search' && searchText && option.sessionId
-            ? matchedSessions.get(option.sessionId)
-            : null
-
-        return (
-          <div
-            key={option.id}
-            className={cn(
-              'p-3 rounded cursor-pointer transition-all duration-150',
-              index === selectedMenuIndex
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-muted/30 hover:bg-muted/60',
-            )}
-            onClick={() => {
-              setSelectedMenuIndex(index)
-              option.action()
-            }}
-            onMouseEnter={() => setSelectedMenuIndex(index)}
-          >
-            <div className="flex items-center justify-between">
-              <div className="text-sm font-medium truncate">
-                {matchData
-                  ? renderHighlightedText(option.label, matchData.matches, 'label')
-                  : option.label}
-              </div>
-              {option.hotkey && <KeyboardShortcut keyString={option.hotkey} />}
+          {/* Results counter for search mode - compact */}
+          {mode === 'search' && (
+            <div className="text-xs text-muted-foreground">
+              {menuOptions.length} of {filteredSessions.length} sessions
+              {statusFilter && (
+                <span
+                  className="ml-2 px-2 py-0.5 text-accent-foreground rounded"
+                  style={{ backgroundColor: 'var(--terminal-accent)' }}
+                >
+                  status: {statusFilter.toLowerCase()}
+                </span>
+              )}
             </div>
+          )}
+
+          {menuOptions.map((option, index) => {
+            // Find the corresponding match data for highlighting
+            const matchData =
+              mode === 'search' && searchText && option.sessionId
+                ? matchedSessions.get(option.sessionId)
+                : null
+
+            return (
+              <div
+                key={option.id}
+                className={cn(
+                  'p-3 rounded cursor-pointer transition-all duration-150',
+                  index === selectedMenuIndex
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted/30 hover:bg-muted/60',
+                )}
+                onClick={() => {
+                  setSelectedMenuIndex(index)
+                  option.action()
+                }}
+                onMouseEnter={() => setSelectedMenuIndex(index)}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="text-sm font-medium truncate">
+                    {matchData
+                      ? renderHighlightedText(option.label, matchData.matches, 'label')
+                      : option.label}
+                  </div>
+                  {option.hotkey && <KeyboardShortcut keyString={option.hotkey} />}
+                </div>
+              </div>
+            )
+          })}
+
+          {menuOptions.length === 0 && mode === 'search' && (
+            <EmptyState
+              icon={Search}
+              title="No sessions found"
+              message={searchQuery ? `No results for "${searchQuery}"` : 'No sessions yet'}
+            />
+          )}
+
+          <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t border-border/30">
+            <div className="flex items-center space-x-3">
+              <span>↑↓ Navigate</span>
+              <span>↵ Select</span>
+            </div>
+            <span>ESC Close</span>
           </div>
-        )
-      })}
-
-      {menuOptions.length === 0 && mode === 'search' && (
-        <EmptyState
-          icon={Search}
-          title="No sessions found"
-          message={searchQuery ? `No results for "${searchQuery}"` : 'No sessions yet'}
-        />
-      )}
-
-      <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t border-border/30">
-        <div className="flex items-center space-x-3">
-          <span>↑↓ Navigate</span>
-          <span>↵ Select</span>
         </div>
-        <span>ESC Close</span>
-      </div>
-    </div>
+      </DataTransformErrorBoundary>
+    </APIErrorBoundary>
   )
 }

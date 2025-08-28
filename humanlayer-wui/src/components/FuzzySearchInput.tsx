@@ -9,6 +9,8 @@ import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from '.
 import { ArrowDownUp, FileWarning, Clock } from 'lucide-react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import type { RecentPath } from '@/lib/daemon/types'
+import { BaseErrorBoundary } from '@/components/ui/BaseErrorBoundary'
+import { DataTransformErrorBoundary } from '@/components/ui/DataTransformErrorBoundary'
 
 interface SearchInputProps {
   value?: string
@@ -266,130 +268,155 @@ export function SearchInput({
           avoidCollisions={false}
           className="w-[var(--radix-popover-trigger-width)]"
         >
-          <Command>
-            <CommandList>
-              {recentPreview.length === 0 && directoryPreview.length === 0 && (
-                <CommandEmpty className="py-2">
-                  {isInvalidPath && (
-                    <span className="flex items-center">
-                      <FileWarning className="w-4 h-4 mr-2" />
-                      <span>...</span>
-                    </span>
+          <BaseErrorBoundary
+            title="Directory search failed"
+            description="An error occurred while searching directories"
+            contextInfo={{
+              searchValue,
+              lastValidPath,
+              isInvalidPath,
+              directoryCount: directoryPreview.length,
+              recentCount: recentPreview.length,
+            }}
+          >
+            <DataTransformErrorBoundary
+              dataContext="directory search results"
+              expectedDataType="DirectoryPreview[]"
+              fallbackData={[]}
+              extractFailureInfo={() => ({
+                operation: 'directory listing and search',
+                dataType: 'file system entries',
+                failureLocation: isInvalidPath ? `path: ${searchValue}` : 'search processing',
+              })}
+            >
+              <Command>
+                <CommandList>
+                  {recentPreview.length === 0 && directoryPreview.length === 0 && (
+                    <CommandEmpty className="py-2">
+                      {isInvalidPath && (
+                        <span className="flex items-center">
+                          <FileWarning className="w-4 h-4 mr-2" />
+                          <span>...</span>
+                        </span>
+                      )}
+                      {!isInvalidPath && (
+                        <span className="flex items-center">
+                          <FileWarning className="w-4 h-4 mr-2" />
+                          No results found
+                        </span>
+                      )}
+                    </CommandEmpty>
                   )}
-                  {!isInvalidPath && (
-                    <span className="flex items-center">
-                      <FileWarning className="w-4 h-4 mr-2" />
-                      No results found
-                    </span>
+                  {recentPreview.length > 0 && (
+                    <CommandGroup heading="Recent Directories">
+                      {recentPreview.map((item, idx) => {
+                        const pathMatch = item.matches?.find(m => m.key === 'path')
+                        const highlighted = pathMatch
+                          ? highlightMatches(item.path, pathMatch.indices)
+                          : null
+
+                        return (
+                          <CommandItem
+                            key={`recent-${idx}`}
+                            className={cn(
+                              item.selected && '!bg-accent/20',
+                              'data-[selected=true]:!bg-accent/20', // Apply same styling for mouse hover
+                              '[&[data-selected=true]]:text-foreground', // Override default accent-foreground
+                            )}
+                            onSelect={() => {
+                              setSearchValue(item.path)
+                              setDropdownOpen(false)
+                              inputRef.current?.focus()
+                            }}
+                          >
+                            <div className="flex items-center space-x-2 w-full">
+                              <Clock className="w-4 h-4 flex-shrink-0" />
+                              <span className="flex-1 truncate">
+                                {highlighted
+                                  ? highlighted.map((segment, i) => (
+                                      <span
+                                        key={i}
+                                        className={cn(
+                                          segment.highlighted && 'bg-accent/40 font-medium',
+                                        )}
+                                      >
+                                        {segment.text}
+                                      </span>
+                                    ))
+                                  : item.path}
+                              </span>
+                            </div>
+                          </CommandItem>
+                        )
+                      })}
+                    </CommandGroup>
                   )}
-                </CommandEmpty>
-              )}
-              {recentPreview.length > 0 && (
-                <CommandGroup heading="Recent Directories">
-                  {recentPreview.map((item, idx) => {
-                    const pathMatch = item.matches?.find(m => m.key === 'path')
-                    const highlighted = pathMatch
-                      ? highlightMatches(item.path, pathMatch.indices)
-                      : null
+                  {directoryPreview.length > 0 && (
+                    <CommandGroup heading="Paths">
+                      {directoryPreview.map(item => {
+                        const nameMatch = item.matches?.find(m => m.key === 'name')
+                        const highlighted =
+                          nameMatch && item.path.name
+                            ? highlightMatches(item.path.name, nameMatch.indices)
+                            : null
 
-                    return (
-                      <CommandItem
-                        key={`recent-${idx}`}
-                        className={cn(
-                          item.selected && '!bg-accent/20',
-                          'data-[selected=true]:!bg-accent/20', // Apply same styling for mouse hover
-                          '[&[data-selected=true]]:text-foreground', // Override default accent-foreground
-                        )}
-                        onSelect={() => {
-                          setSearchValue(item.path)
-                          setDropdownOpen(false)
-                          inputRef.current?.focus()
-                        }}
-                      >
-                        <div className="flex items-center space-x-2 w-full">
-                          <Clock className="w-4 h-4 flex-shrink-0" />
-                          <span className="flex-1 truncate">
-                            {highlighted
-                              ? highlighted.map((segment, i) => (
-                                  <span
-                                    key={i}
-                                    className={cn(segment.highlighted && 'bg-accent/40 font-medium')}
-                                  >
-                                    {segment.text}
-                                  </span>
-                                ))
-                              : item.path}
-                          </span>
-                        </div>
-                      </CommandItem>
-                    )
-                  })}
-                </CommandGroup>
-              )}
-              {directoryPreview.length > 0 && (
-                <CommandGroup heading="Paths">
-                  {directoryPreview.map(item => {
-                    const nameMatch = item.matches?.find(m => m.key === 'name')
-                    const highlighted =
-                      nameMatch && item.path.name
-                        ? highlightMatches(item.path.name, nameMatch.indices)
-                        : null
+                        return (
+                          <CommandItem
+                            key={item.path.name}
+                            className={cn(
+                              item.selected && '!bg-accent/20',
+                              'data-[selected=true]:!bg-accent/20', // Apply same styling for mouse hover
+                              '[&[data-selected=true]]:text-foreground', // Override default accent-foreground
+                            )}
+                            onSelect={() => {
+                              // Parse current path to get base directory
+                              const lastSlashIdx = searchValue.lastIndexOf('/')
+                              const basePath =
+                                lastSlashIdx === -1 ? '' : searchValue.substring(0, lastSlashIdx + 1)
 
-                    return (
-                      <CommandItem
-                        key={item.path.name}
-                        className={cn(
-                          item.selected && '!bg-accent/20',
-                          'data-[selected=true]:!bg-accent/20', // Apply same styling for mouse hover
-                          '[&[data-selected=true]]:text-foreground', // Override default accent-foreground
-                        )}
-                        onSelect={() => {
-                          // Parse current path to get base directory
-                          const lastSlashIdx = searchValue.lastIndexOf('/')
-                          const basePath =
-                            lastSlashIdx === -1 ? '' : searchValue.substring(0, lastSlashIdx + 1)
+                              // Replace the partial text with the selected directory
+                              const newPath = basePath + item.path.name
+                              setSearchValue(newPath)
+                              setDropdownOpen(false)
 
-                          // Replace the partial text with the selected directory
-                          const newPath = basePath + item.path.name
-                          setSearchValue(newPath)
-                          setDropdownOpen(false)
-
-                          // Keep focus on the input using ref
-                          inputRef.current?.focus()
-                        }}
-                      >
-                        <div>
-                          {highlighted
-                            ? highlighted.map((segment, i) => (
-                                <span
-                                  key={i}
-                                  className={cn(segment.highlighted && 'bg-accent/40 font-medium')}
-                                >
-                                  {segment.text}
-                                </span>
-                              ))
-                            : item.path.name}
-                        </div>
-                      </CommandItem>
-                    )
-                  })}
-                </CommandGroup>
-              )}
-            </CommandList>
-            {directoryPreview.length > 0 && (
-              <div className="px-4 pt-2 text-xs text-muted-foreground bg-muted/30 border-t border-border/50 flex justify-end gap-4">
-                <span className="flex items-center gap-1">
-                  <ArrowDownUp className="w-3 h-3" /> Navigate
-                </span>
-                <span className="flex items-center gap-1">
-                  <kbd>↵</kbd> Select
-                </span>
-                <span className="flex items-center gap-1">
-                  <kbd>ESC</kbd> Close
-                </span>
-              </div>
-            )}
-          </Command>
+                              // Keep focus on the input using ref
+                              inputRef.current?.focus()
+                            }}
+                          >
+                            <div>
+                              {highlighted
+                                ? highlighted.map((segment, i) => (
+                                    <span
+                                      key={i}
+                                      className={cn(segment.highlighted && 'bg-accent/40 font-medium')}
+                                    >
+                                      {segment.text}
+                                    </span>
+                                  ))
+                                : item.path.name}
+                            </div>
+                          </CommandItem>
+                        )
+                      })}
+                    </CommandGroup>
+                  )}
+                </CommandList>
+                {directoryPreview.length > 0 && (
+                  <div className="px-4 pt-2 text-xs text-muted-foreground bg-muted/30 border-t border-border/50 flex justify-end gap-4">
+                    <span className="flex items-center gap-1">
+                      <ArrowDownUp className="w-3 h-3" /> Navigate
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <kbd>↵</kbd> Select
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <kbd>ESC</kbd> Close
+                    </span>
+                  </div>
+                )}
+              </Command>
+            </DataTransformErrorBoundary>
+          </BaseErrorBoundary>
         </PopoverContent>
       </Popover>
     </div>

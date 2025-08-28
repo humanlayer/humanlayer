@@ -8,6 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { getToolIcon } from '../eventToDisplayObject'
 import { CustomDiffViewer } from './CustomDiffViewer'
 import { AnsiText, hasAnsiCodes } from '@/utils/ansiParser'
+import { DataTransformErrorBoundary } from '@/components/ui/DataTransformErrorBoundary'
 
 // TODO(3): Add keyboard navigation hints in the UI
 // TODO(2): Consider adding copy-to-clipboard functionality for tool results
@@ -155,7 +156,32 @@ export function ToolResultModal({
               {toolCall?.toolInputJson && (
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground mb-2">Input</h3>
-                  {renderToolInput(toolCall)}
+                  <DataTransformErrorBoundary
+                    dataContext="tool input rendering"
+                    expectedDataType="JSON"
+                    extractFailureInfo={error => ({
+                      operation: 'tool input parsing',
+                      dataType: 'tool parameters',
+                      rawData:
+                        toolCall?.toolInputJson && toolCall.toolInputJson.length > 500
+                          ? toolCall.toolInputJson.substring(0, 500) + '...'
+                          : toolCall?.toolInputJson || '',
+                      failureLocation: error.message.includes('JSON') ? 'JSON parsing' : 'rendering',
+                    })}
+                    fallback={({ transformFailure }) => (
+                      <div className="text-destructive text-sm p-3 bg-destructive/5 border border-destructive/20 rounded">
+                        Failed to render tool input
+                        <details className="mt-2">
+                          <summary className="cursor-pointer text-xs">Raw input</summary>
+                          <pre className="mt-1 text-xs font-mono bg-muted p-2 rounded overflow-auto max-h-32">
+                            {transformFailure.rawData}
+                          </pre>
+                        </details>
+                      </div>
+                    )}
+                  >
+                    {renderToolInput(toolCall)}
+                  </DataTransformErrorBoundary>
                 </div>
               )}
 
@@ -163,16 +189,68 @@ export function ToolResultModal({
               {toolResult && (
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground mb-2">Result</h3>
-                  <pre className="font-mono text-sm whitespace-pre-wrap break-words">
-                    {/* Only apply ANSI parsing to Bash tool output */}
-                    {toolCall?.toolName === 'Bash' &&
-                    typeof toolResult.toolResultContent === 'string' &&
-                    hasAnsiCodes(toolResult.toolResultContent) ? (
-                      <AnsiText content={toolResult.toolResultContent} />
-                    ) : (
-                      toolResult.toolResultContent || 'No content'
+                  <DataTransformErrorBoundary
+                    dataContext="tool result content display"
+                    expectedDataType="string"
+                    extractFailureInfo={error => ({
+                      operation: 'tool result rendering',
+                      dataType: `${toolCall?.toolName || 'unknown'} output`,
+                      rawData:
+                        typeof toolResult.toolResultContent === 'string'
+                          ? toolResult.toolResultContent.length > 1000
+                            ? toolResult.toolResultContent.substring(0, 1000) + '...'
+                            : toolResult.toolResultContent
+                          : String(toolResult.toolResultContent),
+                      failureLocation: error.stack?.includes('AnsiText')
+                        ? 'ANSI processing'
+                        : 'content rendering',
+                    })}
+                    contextInfo={{
+                      toolName: toolCall?.toolName,
+                      contentType: typeof toolResult.toolResultContent,
+                      hasAnsiCodes:
+                        typeof toolResult.toolResultContent === 'string' &&
+                        hasAnsiCodes(toolResult.toolResultContent),
+                    }}
+                    fallback={({ transformFailure, useFallbackData }) => (
+                      <div className="text-destructive text-sm p-3 bg-destructive/5 border border-destructive/20 rounded space-y-2">
+                        <div>Failed to render {toolCall?.toolName || 'tool'} result</div>
+                        <button
+                          className="text-xs underline hover:no-underline"
+                          onClick={useFallbackData}
+                        >
+                          Show raw output
+                        </button>
+                        <details>
+                          <summary className="cursor-pointer text-xs">Raw content preview</summary>
+                          <pre className="mt-1 text-xs font-mono bg-muted p-2 rounded overflow-auto max-h-40 whitespace-pre-wrap">
+                            {transformFailure.rawData}
+                          </pre>
+                        </details>
+                      </div>
                     )}
-                  </pre>
+                  >
+                    <pre className="font-mono text-sm whitespace-pre-wrap break-words">
+                      {/* Only apply ANSI parsing to Bash tool output */}
+                      {toolCall?.toolName === 'Bash' &&
+                      typeof toolResult.toolResultContent === 'string' &&
+                      hasAnsiCodes(toolResult.toolResultContent) ? (
+                        <DataTransformErrorBoundary
+                          dataContext="ANSI text processing in modal"
+                          expectedDataType="string"
+                          fallback={() => (
+                            <span className="text-muted-foreground">
+                              {toolResult.toolResultContent || 'No content'}
+                            </span>
+                          )}
+                        >
+                          <AnsiText content={toolResult.toolResultContent} />
+                        </DataTransformErrorBoundary>
+                      ) : (
+                        toolResult.toolResultContent || 'No content'
+                      )}
+                    </pre>
+                  </DataTransformErrorBoundary>
                 </div>
               )}
             </div>

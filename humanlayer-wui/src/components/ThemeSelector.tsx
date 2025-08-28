@@ -17,6 +17,7 @@ import { useHotkeys, useHotkeysContext } from 'react-hotkeys-hook'
 import { SessionTableHotkeysScope } from './SessionTable/SessionTable'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { KeyboardShortcut } from './HotkeyPanel'
+import { BaseErrorBoundary } from '@/components/ui/BaseErrorBoundary'
 
 const themes: { value: Theme; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { value: 'solarized-dark', label: 'Solarized Dark', icon: Moon },
@@ -129,52 +130,69 @@ export function ThemeSelector() {
   )
 
   return (
-    <div className="relative">
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            ref={buttonRef}
-            onClick={() => setIsOpen(!isOpen)}
-            className="px-1.5 py-0.5 text-xs font-mono border border-border bg-background text-foreground hover:bg-accent/10 transition-colors"
-          >
-            {currentTheme ? <currentTheme.icon className="w-3 h-3" /> : <ScanEye className="w-3 h-3" />}
-          </button>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p className="flex items-center gap-1">
-            Theme: {currentTheme?.label || 'Unknown'} <KeyboardShortcut keyString="Ctrl+T" />
-          </p>
-        </TooltipContent>
-      </Tooltip>
+    <BaseErrorBoundary
+      title="Theme selector failed"
+      description="Failed to load or apply theme settings"
+      contextInfo={{
+        currentTheme: theme,
+        themesCount: themes.length,
+        isOpen,
+        selectedIndex,
+      }}
+      showRetryButton={true}
+      showReloadButton={false}
+    >
+      <div className="relative">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              ref={buttonRef}
+              onClick={() => setIsOpen(!isOpen)}
+              className="px-1.5 py-0.5 text-xs font-mono border border-border bg-background text-foreground hover:bg-accent/10 transition-colors"
+            >
+              {currentTheme ? (
+                <currentTheme.icon className="w-3 h-3" />
+              ) : (
+                <ScanEye className="w-3 h-3" />
+              )}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p className="flex items-center gap-1">
+              Theme: {currentTheme?.label || 'Unknown'} <KeyboardShortcut keyString="Ctrl+T" />
+            </p>
+          </TooltipContent>
+        </Tooltip>
 
-      {isOpen && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
-          <div
-            className={`absolute ${positionAbove ? 'bottom-full mb-1' : 'top-full mt-1'} right-0 min-w-28 border border-border bg-background z-20 max-h-64 overflow-y-auto`}
-          >
-            {themes.map((themeOption, index) => (
-              <button
-                key={themeOption.value}
-                onClick={() => {
-                  setTheme(themeOption.value)
-                  setIsOpen(false)
-                }}
-                className={`w-full px-2 py-1.5 text-left text-xs font-mono transition-colors flex items-center gap-2 ${
-                  index === selectedIndex
-                    ? 'bg-accent/20 text-accent'
-                    : theme === themeOption.value
-                      ? 'bg-accent/10 text-accent'
-                      : 'text-foreground hover:bg-accent/5'
-                }`}
-              >
-                <themeOption.icon className="w-3 h-3" />
-                <span>{themeOption.label}</span>
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-    </div>
+        {isOpen && (
+          <>
+            <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
+            <div
+              className={`absolute ${positionAbove ? 'bottom-full mb-1' : 'top-full mt-1'} right-0 min-w-28 border border-border bg-background z-20 max-h-64 overflow-y-auto`}
+            >
+              {themes.map((themeOption, index) => (
+                <button
+                  key={themeOption.value}
+                  onClick={() => {
+                    setTheme(themeOption.value)
+                    setIsOpen(false)
+                  }}
+                  className={`w-full px-2 py-1.5 text-left text-xs font-mono transition-colors flex items-center gap-2 ${
+                    index === selectedIndex
+                      ? 'bg-accent/20 text-accent'
+                      : theme === themeOption.value
+                        ? 'bg-accent/10 text-accent'
+                        : 'text-foreground hover:bg-accent/5'
+                  }`}
+                >
+                  <themeOption.icon className="w-3 h-3" />
+                  <span>{themeOption.label}</span>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    </BaseErrorBoundary>
   )
 }

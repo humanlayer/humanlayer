@@ -8,6 +8,7 @@ import {
   getForkInputPlaceholder,
 } from '@/components/SessionDetail/utils/sessionStatus'
 import { ResponseInputLocalStorageKey } from '@/components/SessionDetail/hooks/useSessionActions'
+import { DataTransformErrorBoundary } from '@/components/ui/DataTransformErrorBoundary'
 
 interface ResponseInputProps {
   session: Session
@@ -62,37 +63,52 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
     }
     // Always show the input for all session states
     return (
-      <div className="space-y-2">
-        {isForkMode && <span className="text-sm font-medium">Fork from this message:</span>}
-        <div className="flex gap-2">
-          <Textarea
-            ref={ref}
-            placeholder={
-              isForkMode ? getForkInputPlaceholder(session.status) : getInputPlaceholder(session.status)
-            }
-            value={responseInput}
-            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
-              setResponseInput(e.target.value)
-              localStorage.setItem(`${ResponseInputLocalStorageKey}.${session.id}`, e.target.value)
-            }}
-            onKeyDown={handleResponseInputKeyDown}
-            disabled={isResponding}
-            className={`flex-1 min-h-[2.5rem] ${isResponding ? 'opacity-50' : ''}`}
-          />
-          <Button
-            onClick={handleContinueSession}
-            disabled={!responseInput.trim() || isResponding}
-            size="sm"
-          >
-            {getSendButtonText()}
-          </Button>
+      <DataTransformErrorBoundary
+        dataContext="session response input form"
+        expectedDataType="ResponseInputData"
+        contextInfo={{
+          sessionId: session.id,
+          status: session.status,
+          isResponding,
+          isForkMode,
+          hasInput: responseInput.trim().length > 0,
+        }}
+        critical={true}
+      >
+        <div className="space-y-2">
+          {isForkMode && <span className="text-sm font-medium">Fork from this message:</span>}
+          <div className="flex gap-2">
+            <Textarea
+              ref={ref}
+              placeholder={
+                isForkMode
+                  ? getForkInputPlaceholder(session.status)
+                  : getInputPlaceholder(session.status)
+              }
+              value={responseInput}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
+                setResponseInput(e.target.value)
+                localStorage.setItem(`${ResponseInputLocalStorageKey}.${session.id}`, e.target.value)
+              }}
+              onKeyDown={handleResponseInputKeyDown}
+              disabled={isResponding}
+              className={`flex-1 min-h-[2.5rem] ${isResponding ? 'opacity-50' : ''}`}
+            />
+            <Button
+              onClick={handleContinueSession}
+              disabled={!responseInput.trim() || isResponding}
+              size="sm"
+            >
+              {getSendButtonText()}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {isResponding
+              ? 'Waiting for Claude to accept the interrupt...'
+              : getForkHelpText(isForkMode || false)}
+          </p>
         </div>
-        <p className="text-xs text-muted-foreground">
-          {isResponding
-            ? 'Waiting for Claude to accept the interrupt...'
-            : getForkHelpText(isForkMode || false)}
-        </p>
-      </div>
+      </DataTransformErrorBoundary>
     )
   },
 )

@@ -6,6 +6,8 @@ import CommandInput from '../CommandInput'
 import CommandPaletteMenu from '../CommandPaletteMenu'
 import { useSessionLauncher } from '@/hooks/useSessionLauncher'
 import { useStealHotkeyScope } from '@/hooks/useStealHotkeyScope'
+import { APIErrorBoundary } from '@/components/ui/APIErrorBoundary'
+import { DataTransformErrorBoundary } from '@/components/ui/DataTransformErrorBoundary'
 
 const SessionLauncherHotkeysScope = 'session-launcher'
 
@@ -94,9 +96,19 @@ export function SessionLauncher({ isOpen, onClose }: SessionLauncherProps) {
             </div>
 
             {view === 'menu' ? (
-              <CommandPaletteMenu />
+              <APIErrorBoundary
+                operationContext="loading command palette menu"
+                contextInfo={{ mode, view }}
+              >
+                <CommandPaletteMenu />
+              </APIErrorBoundary>
             ) : (
-              <>
+              <DataTransformErrorBoundary
+                dataContext="session launcher form data"
+                expectedDataType="SessionConfig"
+                contextInfo={{ query, config, isLaunching }}
+                critical={true}
+              >
                 <CommandInput
                   value={query}
                   onChange={setQuery}
@@ -119,7 +131,7 @@ export function SessionLauncher({ isOpen, onClose }: SessionLauncherProps) {
                     <span>⌘K Close</span>
                   </div>
                 </div>
-              </>
+              </DataTransformErrorBoundary>
             )}
           </div>
         </CardContent>
