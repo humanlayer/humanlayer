@@ -7,7 +7,7 @@ import { Textarea } from './ui/textarea'
 import { Input } from './ui/input'
 import { Label } from './ui/label'
 import { hasContent, isEmptyOrWhitespace } from '@/utils/validation'
-import { Eye, EyeOff, Pencil, CheckCircle, AlertCircle } from 'lucide-react'
+import { ProviderApiKeyField } from './ProviderApiKeyField'
 import { daemonClient } from '@/lib/daemon'
 import { ConfigStatus } from '@/lib/daemon/types'
 import { useStore } from '@/AppStore'
@@ -15,10 +15,12 @@ import { useStore } from '@/AppStore'
 interface SessionConfig {
   title?: string
   workingDir: string
-  provider?: 'anthropic' | 'openrouter'
+  provider?: 'anthropic' | 'openrouter' | 'baseten'
   model?: string
   maxTurns?: number
   openRouterApiKey?: string
+  basetenApiKey?: string
+  additionalDirectories?: string[]
 }
 
 interface CommandInputProps {
@@ -43,8 +45,6 @@ export default function CommandInput({
   const promptRef = useRef<HTMLTextAreaElement>(null)
   const directoryRef = useRef<HTMLInputElement>(null)
   const { paths: recentPaths } = useRecentPaths()
-  const [showApiKey, setShowApiKey] = useState(false)
-  const [showApiKeyInput, setShowApiKeyInput] = useState(false)
   const [configStatus, setConfigStatus] = useState<ConfigStatus | null>(null)
   const [isCheckingConfig, setIsCheckingConfig] = useState(false)
   const userSettings = useStore(state => state.userSettings)
@@ -63,9 +63,9 @@ export default function CommandInput({
     }
   }, [])
 
-  // Check config status when provider changes to OpenRouter
+  // Check config status when provider changes to OpenRouter or Baseten
   useEffect(() => {
-    if (config.provider === 'openrouter') {
+    if (config.provider === 'openrouter' || config.provider === 'baseten') {
       setIsCheckingConfig(true)
       daemonClient
         .getConfigStatus()
@@ -149,7 +149,7 @@ export default function CommandInput({
               value={config.provider || 'anthropic'}
               onValueChange={value => {
                 updateConfig({
-                  provider: value as 'anthropic' | 'openrouter',
+                  provider: value as 'anthropic' | 'openrouter' | 'baseten',
                   model: undefined, // Clear model when provider changes
                   // Keep the API key persistent across provider changes
                 })
@@ -161,6 +161,7 @@ export default function CommandInput({
               <SelectContent>
                 <SelectItem value="anthropic">Anthropic</SelectItem>
                 <SelectItem value="openrouter">OpenRouter</SelectItem>
+                <SelectItem value="baseten">Baseten</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -176,6 +177,15 @@ export default function CommandInput({
                 value={config.model || ''}
                 onChange={e => updateConfig({ model: e.target.value })}
                 placeholder="e.g., openai/gpt-oss-120b"
+                disabled={isLoading}
+              />
+            ) : config.provider === 'baseten' ? (
+              // Text input for Baseten models
+              <Input
+                type="text"
+                value={config.model || ''}
+                onChange={e => updateConfig({ model: e.target.value })}
+                placeholder="e.g., deepseek-ai/DeepSeek-V3.1"
                 disabled={isLoading}
               />
             ) : (
@@ -216,101 +226,35 @@ export default function CommandInput({
 
       {/* OpenRouter API Key field - only shown when OpenRouter is selected */}
       {config.provider === 'openrouter' && (
-        <div className="space-y-2">
-          {!showApiKeyInput ? (
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                {isCheckingConfig ? (
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                ) : configStatus?.openrouter?.api_key_configured || config.openRouterApiKey ? (
-                  <CheckCircle className="h-4 w-4 text-green-500" />
-                ) : (
-                  <AlertCircle className="h-4 w-4 text-destructive" />
-                )}
-                <span
-                  className={
-                    configStatus?.openrouter?.api_key_configured || config.openRouterApiKey
-                      ? 'text-sm text-muted-foreground'
-                      : 'text-sm text-destructive'
-                  }
-                >
-                  {isCheckingConfig
-                    ? 'Checking OpenRouter configuration...'
-                    : configStatus?.openrouter?.api_key_configured || config.openRouterApiKey
-                      ? 'OpenRouter API key is configured'
-                      : 'OpenRouter API key required'}
-                </span>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 w-6 p-0"
-                onClick={() => setShowApiKeyInput(!showApiKeyInput)}
-              >
-                <Pencil className="h-3 w-3" />
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <Label htmlFor="api-key" className="text-xs">
-                OpenRouter API Key
-              </Label>
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Input
-                    id="api-key"
-                    type={showApiKey ? 'text' : 'password'}
-                    value={config.openRouterApiKey || ''}
-                    onChange={e => updateConfig({ openRouterApiKey: e.target.value })}
-                    placeholder="sk-or-..."
-                    className="h-8 pr-10 text-sm"
-                  />
-                  {config.openRouterApiKey && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-0 top-0 h-8 w-8 p-0"
-                      onClick={() => setShowApiKey(!showApiKey)}
-                      type="button"
-                    >
-                      {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </Button>
-                  )}
-                </div>
-                {config.openRouterApiKey ? (
-                  <Button
-                    variant="default"
-                    size="sm"
-                    className="h-8 px-3"
-                    onClick={() => {
-                      setShowApiKeyInput(false)
-                      setShowApiKey(false)
-                    }}
-                    type="button"
-                  >
-                    Save
-                  </Button>
-                ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 px-3"
-                    onClick={() => {
-                      setShowApiKeyInput(false)
-                      updateConfig({ openRouterApiKey: undefined })
-                      setShowApiKey(false)
-                    }}
-                    type="button"
-                  >
-                    Cancel
-                  </Button>
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Your API key will be stored with this session
-              </p>
-            </div>
-          )}
+        <ProviderApiKeyField
+          provider="openrouter"
+          displayName="OpenRouter"
+          apiKey={config.openRouterApiKey}
+          isConfigured={configStatus?.openrouter?.api_key_configured}
+          isCheckingConfig={isCheckingConfig}
+          placeholder="sk-or-..."
+          onApiKeyChange={value => updateConfig({ openRouterApiKey: value })}
+        />
+      )}
+
+      {/* Baseten API Key field - only shown when Baseten is selected */}
+      {config.provider === 'baseten' && (
+        <ProviderApiKeyField
+          provider="baseten"
+          displayName="Baseten"
+          apiKey={config.basetenApiKey}
+          isConfigured={configStatus?.baseten?.api_key_configured}
+          isCheckingConfig={isCheckingConfig}
+          placeholder=""
+          onApiKeyChange={value => updateConfig({ basetenApiKey: value })}
+        />
+      )}
+
+      {/* Warning for non-Anthropic providers */}
+      {config.provider && config.provider !== 'anthropic' && (
+        <div className="flex items-center gap-2 p-3 bg-muted/50 border border-border rounded-md text-sm text-muted-foreground">
+          <span>⚠️</span>
+          <span>Warning: Using non-Claude models and providers is experimental.</span>
         </div>
       )}
 

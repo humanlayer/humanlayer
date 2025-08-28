@@ -37,11 +37,19 @@ function ModelSelectorContent({
 
   // Parse provider and model from current session
   const getProviderAndModel = () => {
-    // Check if using proxy (OpenRouter)
+    // Check if using proxy (OpenRouter or Baseten)
     if (session.proxyEnabled && session.proxyModelOverride) {
-      return {
-        provider: 'openrouter' as const,
-        model: session.proxyModelOverride,
+      // Determine provider based on proxy base URL
+      if (session.proxyBaseUrl && session.proxyBaseUrl.includes('baseten.co')) {
+        return {
+          provider: 'baseten' as const,
+          model: session.proxyModelOverride,
+        }
+      } else {
+        return {
+          provider: 'openrouter' as const,
+          model: session.proxyModelOverride,
+        }
       }
     }
 
@@ -53,7 +61,7 @@ function ModelSelectorContent({
   }
 
   const initial = getProviderAndModel()
-  const [provider, setProvider] = useState<'anthropic' | 'openrouter'>(initial.provider)
+  const [provider, setProvider] = useState<'anthropic' | 'openrouter' | 'baseten'>(initial.provider)
   const [model, setModel] = useState(
     initial.provider === 'anthropic' ? initial.model || 'default' : 'default',
   )
@@ -64,7 +72,10 @@ function ModelSelectorContent({
   const [isCheckingConfig, setIsCheckingConfig] = useState(false)
   const [showApiKeyInput, setShowApiKeyInput] = useState(false)
   const [apiKey, setApiKey] = useState(() => {
-    // Load saved OpenRouter API key from localStorage
+    // Load saved API key from localStorage based on initial provider
+    if (initial.provider === 'baseten') {
+      return localStorage.getItem('humanlayer-baseten-api-key') || ''
+    }
     return localStorage.getItem('humanlayer-openrouter-api-key') || ''
   })
   const [showPassword, setShowPassword] = useState(false)
@@ -80,11 +91,18 @@ function ModelSelectorContent({
       setModel('default')
       setCustomModel(current.model)
     }
-  }, [session.model, session.proxyEnabled, session.proxyModelOverride])
 
-  // Check config status when provider changes to OpenRouter
+    // Update API key when provider changes
+    if (current.provider === 'baseten') {
+      setApiKey(localStorage.getItem('humanlayer-baseten-api-key') || '')
+    } else if (current.provider === 'openrouter') {
+      setApiKey(localStorage.getItem('humanlayer-openrouter-api-key') || '')
+    }
+  }, [session.model, session.proxyEnabled, session.proxyModelOverride, session.proxyBaseUrl])
+
+  // Check config status when provider changes to OpenRouter or Baseten
   useEffect(() => {
-    if (provider === 'openrouter') {
+    if (provider === 'openrouter' || provider === 'baseten') {
       setIsCheckingConfig(true)
       daemonClient
         .getConfigStatus()
@@ -97,15 +115,26 @@ function ModelSelectorContent({
     }
   }, [provider])
 
-  const handleProviderChange = (newProvider: 'anthropic' | 'openrouter') => {
+  const handleProviderChange = (newProvider: 'anthropic' | 'openrouter' | 'baseten') => {
     setProvider(newProvider)
     setHasChanges(true)
 
     // Clear model when switching providers
     if (newProvider === 'anthropic') {
       setModel('default')
+      setCustomModel('')
     } else {
       setCustomModel('')
+      setModel('default')
+    }
+
+    // Update API key when switching providers
+    if (newProvider === 'baseten') {
+      setApiKey(localStorage.getItem('humanlayer-baseten-api-key') || '')
+    } else if (newProvider === 'openrouter') {
+      setApiKey(localStorage.getItem('humanlayer-openrouter-api-key') || '')
+    } else {
+      setApiKey('')
     }
   }
 
@@ -124,14 +153,22 @@ function ModelSelectorContent({
     (configStatus?.openrouter?.api_key_configured ?? false) ||
     apiKey.length > 0
 
+  const canApplyBaseten =
+    provider !== 'baseten' || (configStatus?.baseten?.api_key_configured ?? false) || apiKey.length > 0
+
   const handleApply = async () => {
-    if (provider === 'openrouter' && !customModel.trim()) {
-      toast.error('Model name is required for OpenRouter')
+    if ((provider === 'openrouter' || provider === 'baseten') && !customModel.trim()) {
+      toast.error(`Model name is required for ${provider === 'baseten' ? 'Baseten' : 'OpenRouter'}`)
       return
     }
 
     if (!canApplyOpenRouter) {
       toast.error('OpenRouter API key is required')
+      return
+    }
+
+    if (!canApplyBaseten) {
+      toast.error('Baseten API key is required')
       return
     }
 
@@ -160,6 +197,16 @@ function ModelSelectorContent({
           proxyApiKey: apiKey || undefined,
         }
         modelValue = '' // Clear Anthropic model when using proxy
+      } else if (provider === 'baseten') {
+        // For Baseten, set proxy configuration
+        proxyConfig = {
+          proxyEnabled: true,
+          proxyBaseUrl: 'https://inference.baseten.co/v1',
+          proxyModelOverride: customModel || '',
+          // Include API key if user provided one, otherwise backend will use env var
+          proxyApiKey: apiKey || undefined,
+        }
+        modelValue = '' // Clear Anthropic model when using proxy
       }
 
       // Update session with model and proxy configuration
@@ -171,6 +218,8 @@ function ModelSelectorContent({
       // Save API key to localStorage if provided
       if (apiKey && provider === 'openrouter') {
         localStorage.setItem('humanlayer-openrouter-api-key', apiKey)
+      } else if (apiKey && provider === 'baseten') {
+        localStorage.setItem('humanlayer-baseten-api-key', apiKey)
       }
 
       // Notify parent component
@@ -221,7 +270,9 @@ function ModelSelectorContent({
             <Label htmlFor="provider">Provider</Label>
             <Select
               value={provider}
-              onValueChange={value => handleProviderChange(value as 'anthropic' | 'openrouter')}
+              onValueChange={value =>
+                handleProviderChange(value as 'anthropic' | 'openrouter' | 'baseten')
+              }
               disabled={isUpdating}
             >
               <SelectTrigger id="provider" className="w-full">
@@ -230,6 +281,7 @@ function ModelSelectorContent({
               <SelectContent>
                 <SelectItem value="anthropic">Anthropic</SelectItem>
                 <SelectItem value="openrouter">OpenRouter</SelectItem>
+                <SelectItem value="baseten">Baseten</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -254,6 +306,22 @@ function ModelSelectorContent({
               disabled={isUpdating}
               className="w-full"
             />
+          ) : provider === 'baseten' ? (
+            <Input
+              id="model"
+              type="text"
+              value={customModel}
+              onChange={e => handleCustomModelChange(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  handleApply()
+                }
+              }}
+              placeholder="e.g., deepseek-ai/DeepSeek-V3.1"
+              disabled={isUpdating}
+              className="w-full"
+            />
           ) : (
             <Select value={model || 'default'} onValueChange={handleModelChange} disabled={isUpdating}>
               <SelectTrigger id="model" className="w-full">
@@ -275,25 +343,31 @@ function ModelSelectorContent({
           </div>
         )}
 
-        {/* OpenRouter API Key Status */}
-        {provider === 'openrouter' && (
+        {/* API Key Status for OpenRouter and Baseten */}
+        {(provider === 'openrouter' || provider === 'baseten') && (
           <div className="space-y-2">
             {!showApiKeyInput ? (
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   {isCheckingConfig ? (
                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                  ) : canApplyOpenRouter ? (
+                  ) : (provider === 'openrouter' ? canApplyOpenRouter : canApplyBaseten) ? (
                     <CheckCircle className="h-4 w-4 text-green-500" />
                   ) : (
                     <AlertCircle className="h-4 w-4 text-destructive" />
                   )}
-                  <span className={canApplyOpenRouter ? 'text-muted-foreground' : 'text-destructive'}>
+                  <span
+                    className={
+                      (provider === 'openrouter' ? canApplyOpenRouter : canApplyBaseten)
+                        ? 'text-muted-foreground'
+                        : 'text-destructive'
+                    }
+                  >
                     {isCheckingConfig
-                      ? 'Checking OpenRouter configuration...'
-                      : canApplyOpenRouter
-                        ? 'OpenRouter API key is configured'
-                        : 'OpenRouter API key required'}
+                      ? `Checking ${provider === 'baseten' ? 'Baseten' : 'OpenRouter'} configuration...`
+                      : (provider === 'openrouter' ? canApplyOpenRouter : canApplyBaseten)
+                        ? `${provider === 'baseten' ? 'Baseten' : 'OpenRouter'} API key is configured`
+                        : `${provider === 'baseten' ? 'Baseten' : 'OpenRouter'} API key required`}
                   </span>
                 </div>
                 <Button
@@ -307,7 +381,9 @@ function ModelSelectorContent({
               </div>
             ) : (
               <div className="space-y-2">
-                <Label htmlFor="api-key">OpenRouter API Key</Label>
+                <Label htmlFor="api-key">
+                  {provider === 'baseten' ? 'Baseten' : 'OpenRouter'} API Key
+                </Label>
                 <div className="flex gap-2">
                   <div className="relative flex-1">
                     <Input
@@ -318,7 +394,7 @@ function ModelSelectorContent({
                         setApiKey(e.target.value)
                         setHasChanges(true)
                       }}
-                      placeholder="sk-or-..."
+                      placeholder={provider === 'baseten' ? 'Enter Baseten API key...' : 'sk-or-...'}
                       className="h-8 pr-10"
                     />
                     {apiKey && (
@@ -379,8 +455,9 @@ function ModelSelectorContent({
             disabled={
               !hasChanges ||
               isUpdating ||
-              !canApplyOpenRouter ||
-              (provider === 'openrouter' && !customModel.trim())
+              (provider === 'openrouter' && !canApplyOpenRouter) ||
+              (provider === 'baseten' && !canApplyBaseten) ||
+              ((provider === 'openrouter' || provider === 'baseten') && !customModel.trim())
             }
             size="sm"
           >
