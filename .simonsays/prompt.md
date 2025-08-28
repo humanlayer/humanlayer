@@ -2,7 +2,7 @@
 
 0a. Read the specification in humanlayer-wui/REACT_CODING_STANDARDS.md that describes the ideal architecture of a react repo and guides your refactoring project
 
-1. Read the REACT_REFACTOR_PLAN.md and implement the highest-priority change with tests using up to 50 parallel subagents
+1. Read the REACT_REFACTOR_PLAN.md and implement the SINGLE highest-priority change with tests using up to 50 parallel subagents
 
 2. Run the checks and tests with `make -C humanlayer-wui check test`, fix until all are passing
 
