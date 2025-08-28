@@ -172,6 +172,12 @@ type ServerToolUse struct {
 	WebSearchRequests int `json:"web_search_requests,omitempty"`
 }
 
+// CacheCreation tracks cache creation metrics
+type CacheCreation struct {
+	Ephemeral1HInputTokens int `json:"ephemeral_1h_input_tokens,omitempty"`
+	Ephemeral5MInputTokens int `json:"ephemeral_5m_input_tokens,omitempty"`
+}
+
 // Usage tracks token usage
 type Usage struct {
 	InputTokens              int            `json:"input_tokens"`
@@ -180,6 +186,7 @@ type Usage struct {
 	CacheReadInputTokens     int            `json:"cache_read_input_tokens,omitempty"`
 	ServiceTier              string         `json:"service_tier,omitempty"`
 	ServerToolUse            *ServerToolUse `json:"server_tool_use,omitempty"`
+	CacheCreation            *CacheCreation `json:"cache_creation,omitempty"`
 }
 
 // PermissionDenial represents a single permission denial from Claude
