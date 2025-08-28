@@ -407,11 +407,10 @@ export default function SessionTable({
                   }}
                   onClick={() => handleRowClick(session)}
                   className={cn(
-                    'cursor-pointer transition-shadow duration-200',
-                    focusedSession?.id === session.id && [
-                      'shadow-[inset_2px_0_0_0_var(--terminal-accent)]',
-                      'bg-accent/10',
-                    ],
+                    'cursor-pointer transition-colors duration-200 border-l-2',
+                    focusedSession?.id === session.id 
+                      ? ['border-l-[var(--terminal-accent)]', 'bg-accent/10']
+                      : 'border-l-transparent',
                     session.archived && 'opacity-60',
                   )}
                 >
