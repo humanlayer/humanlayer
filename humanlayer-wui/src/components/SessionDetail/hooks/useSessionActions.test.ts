@@ -13,7 +13,15 @@ const mockLocalStorage = {
   data: {} as Record<string, string>,
 }
 
-Object.defineProperty(window, 'localStorage', {
+// Mock window object and localStorage for Node.js testing environment
+Object.defineProperty(globalThis, 'window', {
+  value: {
+    localStorage: mockLocalStorage,
+  },
+  writable: true,
+})
+
+Object.defineProperty(globalThis, 'localStorage', {
   value: mockLocalStorage,
   writable: true,
 })

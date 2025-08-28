@@ -325,7 +325,7 @@ describe('Complete User Workflows - Integration Tests', () => {
       // Select multiple sessions
       store.clearSelection()
       store.toggleSessionSelection(mockSessions[0].id)
-      store.toggleSessionSelection(mockSessions[1].id) 
+      store.toggleSessionSelection(mockSessions[1].id)
       store.toggleSessionSelection(mockSessions[3].id)
       expect(store.selectedSessions.size).toBe(3)
 

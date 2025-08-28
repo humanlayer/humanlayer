@@ -50,7 +50,7 @@ describe('Session Management Tests', () => {
   describe('Large Dataset Performance', () => {
     test('should handle 1000+ sessions efficiently', () => {
       const store = useStore.getState()
-      
+
       // Measure large dataset initialization
       const startTime = performance.now()
       const largeSessions = createMockSessions(1500)
@@ -94,13 +94,13 @@ describe('Session Management Tests', () => {
     test('should efficiently filter and search large datasets', () => {
       const store = useStore.getState()
       const largeSessions = createMockSessions(1000)
-      
+
       // Add variety to session titles for search testing
       largeSessions.forEach((session, index) => {
         session.title = `Test Session ${index} - ${index % 2 === 0 ? 'Backend' : 'Frontend'} Task`
         session.status = index % 3 === 0 ? SessionStatus.Completed : SessionStatus.Running
       })
-      
+
       store.initSessions(largeSessions)
 
       // Test status filtering performance
@@ -116,7 +116,7 @@ describe('Session Management Tests', () => {
       const backendSessions = store.sessions.filter(s => s.title.includes('Backend'))
       const searchTime = performance.now() - searchStart
 
-      expect(searchTime).toBeLessThan(100) // Search should be fast  
+      expect(searchTime).toBeLessThan(100) // Search should be fast
       expect(backendSessions).toHaveLength(500) // Half should be backend tasks
     })
   })
@@ -214,11 +214,11 @@ describe('Performance Tests', () => {
       // Test bulk selection performance
       const bulkIds = largeSessions.slice(0, 100).map(s => s.id)
       const bulkSelectStart = performance.now()
-      
+
       // Clear previous selections and add bulk selection
       store.clearSelection()
       bulkIds.forEach(id => store.toggleSessionSelection(id))
-      
+
       const bulkSelectTime = performance.now() - bulkSelectStart
 
       expect(bulkSelectTime).toBeLessThan(200) // Bulk selection of 100 items
