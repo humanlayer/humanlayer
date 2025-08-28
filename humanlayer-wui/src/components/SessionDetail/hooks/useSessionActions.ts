@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react'
+import React, { useCallback, useEffect } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { useNavigate } from 'react-router-dom'
 import { Session, ConversationEvent, ViewMode } from '@/lib/daemon/types'
@@ -21,11 +21,15 @@ export function useSessionActions({
   pendingForkMessage,
   onForkCommit,
 }: UseSessionActionsProps) {
-  const [responseInput, setResponseInput] = useState(
-    localStorage.getItem(`${ResponseInputLocalStorageKey}.${session.id}`) || '',
-  )
-  const [isResponding, setIsResponding] = useState(false)
-  const [forkFromSessionId, setForkFromSessionId] = useState<string | null>(null)
+  // Use Zustand store for form state
+  const setSessionResponse = useStore(state => state.setSessionResponse)
+  const setSessionResponding = useStore(state => state.setSessionResponding)
+  const setSessionForkFrom = useStore(state => state.setSessionForkFrom)
+  const getSessionResponse = useStore(state => state.getSessionResponse)
+  const clearSessionResponse = useStore(state => state.clearSessionResponse)
+
+  // Get form state from store
+  const { input: responseInput, isResponding, forkFromSessionId } = getSessionResponse(session.id)
 
   const interruptSession = useStore(state => state.interruptSession)
   const refreshSessions = useStore(state => state.refreshSessions)
@@ -38,11 +42,11 @@ export function useSessionActions({
   // Update response input when fork message is selected
   useEffect(() => {
     if (pendingForkMessage) {
-      setResponseInput(pendingForkMessage.content || '')
+      setSessionResponse(session.id, pendingForkMessage.content || '')
       // Set the session ID to fork from (the one before this message)
-      setForkFromSessionId(pendingForkMessage.sessionId || null)
+      setSessionForkFrom(session.id, pendingForkMessage.sessionId || null)
     }
-  }, [pendingForkMessage])
+  }, [pendingForkMessage, session.id, setSessionResponse, setSessionForkFrom])
 
   // Continue session functionality
   const handleContinueSession = useCallback(async () => {
@@ -50,7 +54,7 @@ export function useSessionActions({
     if (!responseInput.trim() || isResponding) return
 
     try {
-      setIsResponding(true)
+      setSessionResponding(session.id, true)
       const messageToSend = responseInput.trim()
 
       // Use fork session ID if available, otherwise current session
@@ -79,7 +83,7 @@ export function useSessionActions({
       updateActiveSessionDetail(nextSession.session)
 
       // Clear fork state
-      setForkFromSessionId(null)
+      setSessionForkFrom(session.id, null)
 
       // Notify parent of fork commit
       if (forkFromSessionId && onForkCommit) {
@@ -98,13 +102,12 @@ export function useSessionActions({
       await refreshSessions()
 
       // Reset form state only after success
-      setResponseInput('')
-      localStorage.removeItem(`${ResponseInputLocalStorageKey}.${session.id}`)
+      clearSessionResponse(session.id)
     } catch (error) {
       notificationService.notifyError(error, 'Failed to continue session')
       // On error, keep the message so user can retry
     } finally {
-      setIsResponding(false)
+      setSessionResponding(session.id, false)
     }
   }, [
     responseInput,
@@ -117,6 +120,9 @@ export function useSessionActions({
     trackNavigationFrom,
     forkFromSessionId,
     onForkCommit,
+    setSessionResponding,
+    setSessionForkFrom,
+    clearSessionResponse,
   ])
 
   const handleResponseInputKeyDown = useCallback(
@@ -162,6 +168,14 @@ export function useSessionActions({
       }
     },
     { scopes: SessionDetailHotkeysScope },
+  )
+
+  // Create wrapper function for setSessionResponse to match original interface
+  const setResponseInput = useCallback(
+    (input: string) => {
+      setSessionResponse(session.id, input)
+    },
+    [session.id, setSessionResponse],
   )
 
   return {

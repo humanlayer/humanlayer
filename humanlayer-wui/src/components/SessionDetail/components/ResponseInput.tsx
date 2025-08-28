@@ -7,7 +7,6 @@ import {
   getHelpText,
   getForkInputPlaceholder,
 } from '@/components/SessionDetail/utils/sessionStatus'
-import { ResponseInputLocalStorageKey } from '@/components/SessionDetail/hooks/useSessionActions'
 import { DataTransformErrorBoundary } from '@/components/ui/DataTransformErrorBoundary'
 
 interface ResponseInputProps {
@@ -88,7 +87,6 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
               value={responseInput}
               onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
                 setResponseInput(e.target.value)
-                localStorage.setItem(`${ResponseInputLocalStorageKey}.${session.id}`, e.target.value)
               }}
               onKeyDown={handleResponseInputKeyDown}
               disabled={isResponding}

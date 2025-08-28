@@ -103,6 +103,39 @@ interface StoreState {
   clearEditIfSession: (sessionId: string) => void
   isEditing: (sessionId?: string) => boolean
   getEditValue: () => string
+
+  /* Form State */
+  sessionResponses: Record<
+    string,
+    {
+      input: string
+      isResponding: boolean
+      forkFromSessionId?: string
+    }
+  >
+  approvalDenials: Record<
+    string,
+    {
+      reason: string
+      isDenying: boolean
+    }
+  >
+
+  /* Form Actions */
+  setSessionResponse: (sessionId: string, input: string) => void
+  setSessionResponding: (sessionId: string, isResponding: boolean) => void
+  setSessionForkFrom: (sessionId: string, forkFromSessionId: string | null) => void
+  clearSessionResponse: (sessionId: string) => void
+  getSessionResponse: (sessionId: string) => {
+    input: string
+    isResponding: boolean
+    forkFromSessionId?: string
+  }
+
+  setApprovalDenialReason: (approvalId: string, reason: string) => void
+  setApprovalDenying: (approvalId: string, isDenying: boolean) => void
+  clearApprovalDenial: (approvalId: string) => void
+  getApprovalDenial: (approvalId: string) => { reason: string; isDenying: boolean }
 }
 
 export const useStore = create<StoreState>((set, get) => ({
@@ -127,6 +160,10 @@ export const useStore = create<StoreState>((set, get) => ({
   editValue: '',
   editingSince: null,
   hasUnsavedChanges: false,
+
+  // Form state
+  sessionResponses: {},
+  approvalDenials: {},
 
   initSessions: (sessions: Session[]) => set({ sessions }),
   updateSession: (sessionId: string, updates: Partial<Session>) =>
@@ -915,6 +952,129 @@ export const useStore = create<StoreState>((set, get) => ({
   },
 
   getEditValue: () => get().editValue,
+
+  // Form actions
+  setSessionResponse: (sessionId: string, input: string) => {
+    set(state => ({
+      sessionResponses: {
+        ...state.sessionResponses,
+        [sessionId]: {
+          ...state.sessionResponses[sessionId],
+          input,
+        },
+      },
+    }))
+    // Persist to localStorage for user convenience
+    if (typeof window !== 'undefined') {
+      const ResponseInputLocalStorageKey = 'response-input'
+      localStorage.setItem(`${ResponseInputLocalStorageKey}.${sessionId}`, input)
+    }
+  },
+
+  setSessionResponding: (sessionId: string, isResponding: boolean) => {
+    set(state => ({
+      sessionResponses: {
+        ...state.sessionResponses,
+        [sessionId]: {
+          ...state.sessionResponses[sessionId],
+          input: state.sessionResponses[sessionId]?.input || '',
+          isResponding,
+        },
+      },
+    }))
+  },
+
+  setSessionForkFrom: (sessionId: string, forkFromSessionId: string | null) => {
+    set(state => ({
+      sessionResponses: {
+        ...state.sessionResponses,
+        [sessionId]: {
+          ...state.sessionResponses[sessionId],
+          input: state.sessionResponses[sessionId]?.input || '',
+          isResponding: state.sessionResponses[sessionId]?.isResponding || false,
+          forkFromSessionId: forkFromSessionId || undefined,
+        },
+      },
+    }))
+  },
+
+  clearSessionResponse: (sessionId: string) => {
+    set(state => {
+      const newResponses = { ...state.sessionResponses }
+      delete newResponses[sessionId]
+      return { sessionResponses: newResponses }
+    })
+    // Clear localStorage
+    if (typeof window !== 'undefined') {
+      const ResponseInputLocalStorageKey = 'response-input'
+      localStorage.removeItem(`${ResponseInputLocalStorageKey}.${sessionId}`)
+    }
+  },
+
+  getSessionResponse: (sessionId: string) => {
+    const state = get()
+    if (!state.sessionResponses[sessionId]) {
+      // Initialize from localStorage if available
+      if (typeof window !== 'undefined') {
+        const ResponseInputLocalStorageKey = 'response-input'
+        const savedInput = localStorage.getItem(`${ResponseInputLocalStorageKey}.${sessionId}`) || ''
+        if (savedInput) {
+          // Initialize in store
+          get().setSessionResponse(sessionId, savedInput)
+        }
+      }
+    }
+    return (
+      state.sessionResponses[sessionId] || {
+        input: '',
+        isResponding: false,
+        forkFromSessionId: undefined,
+      }
+    )
+  },
+
+  setApprovalDenialReason: (approvalId: string, reason: string) => {
+    set(state => ({
+      approvalDenials: {
+        ...state.approvalDenials,
+        [approvalId]: {
+          ...state.approvalDenials[approvalId],
+          reason,
+        },
+      },
+    }))
+  },
+
+  setApprovalDenying: (approvalId: string, isDenying: boolean) => {
+    set(state => ({
+      approvalDenials: {
+        ...state.approvalDenials,
+        [approvalId]: {
+          ...state.approvalDenials[approvalId],
+          reason: state.approvalDenials[approvalId]?.reason || '',
+          isDenying,
+        },
+      },
+    }))
+  },
+
+  clearApprovalDenial: (approvalId: string) => {
+    set(state => {
+      const newDenials = { ...state.approvalDenials }
+      delete newDenials[approvalId]
+      return { approvalDenials: newDenials }
+    })
+  },
+
+  getApprovalDenial: (approvalId: string) => {
+    const state = get()
+    return (
+      state.approvalDenials[approvalId] || {
+        reason: '',
+        isDenying: false,
+      }
+    )
+  },
 }))
 
 // Helper function to validate and clean up session state
