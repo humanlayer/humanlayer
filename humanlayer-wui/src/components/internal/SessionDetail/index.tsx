@@ -6,7 +6,7 @@ export { ConversationContent } from './views/ConversationContent'
 export { ToolResultModal } from './components/ToolResultModal'
 export { TodoWidget } from './components/TodoWidget'
 export { DiffViewToggle } from './components/DiffViewToggle'
-export { DenyForm } from './components/DenyForm'
+export { DenyButtons } from './components/DenyButtons'
 
 // Export utilities
 export { formatToolResult } from './formatToolResult'

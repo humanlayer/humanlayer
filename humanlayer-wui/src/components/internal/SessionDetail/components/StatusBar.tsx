@@ -7,17 +7,26 @@ import { ModelSelector } from './ModelSelector'
 import { renderSessionStatus } from '@/utils/sessionStatus'
 import { getStatusTextClass } from '@/utils/component-utils'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-
 interface StatusBarProps {
   session: Session
   parentSessionData?: Partial<Session>
+  isForkMode?: boolean
+  forkTokenCount?: number | null
   onModelChange?: () => void
+  isDenying?: boolean
 }
 
-export function StatusBar({ session, parentSessionData, onModelChange }: StatusBarProps) {
+export function StatusBar({
+  session,
+  parentSessionData,
+  isForkMode,
+  forkTokenCount,
+  onModelChange,
+  isDenying,
+}: StatusBarProps) {
   const [isModelSelectorOpen, setIsModelSelectorOpen] = useState(false)
 
-  const statusText = renderSessionStatus(session).toUpperCase()
+  let statusText = renderSessionStatus(session).toUpperCase()
   // Show proxy model if using OpenRouter, otherwise show regular model
   const rawModelText =
     session.proxyEnabled && session.proxyModelOverride
@@ -30,11 +39,17 @@ export function StatusBar({ session, parentSessionData, onModelChange }: StatusB
   const isRunning = session.status === 'running' || session.status === 'starting'
   const isReadyForInput = session.status === 'completed' && !session.archived
 
+  if (isDenying) {
+    statusText = 'Denying'
+  }
+
   return (
     <div className="flex flex-wrap items-center gap-2 text-sm">
       {/* Status Badge */}
       <span
-        className={`font-mono text-xs uppercase tracking-wider ${getStatusTextClass(session.status)}`}
+        className={`font-mono text-xs uppercase tracking-wider ${getStatusTextClass(session.status)} ${
+          isDenying ? 'text-destructive' : ''
+        }`}
       >
         {statusText}
       </span>
@@ -72,7 +87,9 @@ export function StatusBar({ session, parentSessionData, onModelChange }: StatusB
       {/* Context Usage */}
       <TokenUsageBadge
         effectiveContextTokens={
-          session.effectiveContextTokens ?? parentSessionData?.effectiveContextTokens
+          isForkMode && forkTokenCount !== null && forkTokenCount !== undefined
+            ? forkTokenCount
+            : (session.effectiveContextTokens ?? parentSessionData?.effectiveContextTokens)
         }
         contextLimit={session.contextLimit ?? parentSessionData?.contextLimit}
         model={

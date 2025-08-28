@@ -141,6 +141,11 @@ export class HTTPDaemonClient implements IDaemonClient {
     }
     // For OpenRouter and Baseten, pass model string as-is via proxyModelOverride
 
+    const additionalDirs =
+      'additionalDirectories' in params
+        ? params.additionalDirectories
+        : (params as LaunchSessionRequest).additional_directories
+
     // Create the session with appropriate settings
     const response = await this.client!.createSession({
       query: params.query,
@@ -157,6 +162,14 @@ export class HTTPDaemonClient implements IDaemonClient {
           ? params.permissionPromptTool
           : (params as LaunchSessionRequest).permission_prompt_tool,
       autoAcceptEdits: 'autoAcceptEdits' in params ? params.autoAcceptEdits : undefined,
+      // Map array fields with snake_case conversion
+      allowedTools:
+        'allowedTools' in params ? params.allowedTools : (params as LaunchSessionRequest).allowed_tools,
+      disallowedTools:
+        'disallowedTools' in params
+          ? params.disallowedTools
+          : (params as LaunchSessionRequest).disallowed_tools,
+      additionalDirectories: additionalDirs,
       // Pass proxy configuration directly if using OpenRouter
       ...(provider === 'openrouter' && {
         proxyEnabled: true,
@@ -332,6 +345,7 @@ export class HTTPDaemonClient implements IDaemonClient {
       autoAcceptEdits?: boolean
       dangerouslySkipPermissions?: boolean
       dangerouslySkipPermissionsTimeoutMs?: number
+      additionalDirectories?: string[]
       // New proxy fields
       proxyEnabled?: boolean
       proxyBaseUrl?: string
@@ -360,6 +374,9 @@ export class HTTPDaemonClient implements IDaemonClient {
     }
     if (updates.dangerouslySkipPermissionsTimeoutMs !== undefined) {
       sdkUpdates.dangerouslySkipPermissionsTimeoutMs = updates.dangerouslySkipPermissionsTimeoutMs
+    }
+    if (updates.additionalDirectories !== undefined) {
+      sdkUpdates.additionalDirectories = updates.additionalDirectories
     }
     if (updates.proxyEnabled !== undefined) {
       sdkUpdates.proxyEnabled = updates.proxyEnabled

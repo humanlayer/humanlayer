@@ -48,7 +48,7 @@
 .prose-terminal ul,
 .prose-terminal ol {
   margin-top: 0; /* No top margin */
-  margin-bottom: 0.5em; /* Consistent bottom margin */
+  margin-bottom: 0.25em; /* Reduced bottom margin to prevent double spacing */
   padding-left: 1.5em; /* Reduced indent */
 }
 
@@ -79,16 +79,10 @@
 
 /* Display for list paragraphs is handled by component */
 
-/* Ensure list markers stay aligned */
-.prose-terminal ol > li {
-  list-style-position: outside;
-  padding-left: 0.25em; /* Minimal padding to separate from number */
-}
-
-/* Nested lists - minimal indent, no extra spacing */
+/* Nested lists - minimal indent, reduced spacing */
 .prose-terminal li > ul,
 .prose-terminal li > ol {
-  margin-top: 0;
+  margin-top: 0.25em; /* Reduced spacing between parent item and nested list */
   margin-bottom: 0;
   padding-left: 1.5em; /* Slightly less indent for nested */
 }
@@ -107,16 +101,22 @@
   and we can potentially remove this in the future. For now it helps
   make sure we're not rendering extra space around list items */
   white-space: normal;
-
-  display: flex;
-  flex-direction: column;
-  gap: 0.75em;
 }
 
 .prose-terminal ul > li {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75em;
+  display: block;
+  position: relative;
+}
+
+/* Add spacing between unordered list items */
+.prose-terminal ul > li + li {
+  margin-top: 0.25em; /* Small spacing between list items */
+}
+
+/* Space between block-level children within list items */
+/* Exclude nested lists as they handle their own spacing with margin-top */
+.prose-terminal ul > li > *:not(:last-child):not(ul):not(ol) {
+  margin-bottom: 0.25em; /* Reduced to prevent large gaps */
 }
 
 .prose-terminal ul > li::before {
@@ -124,6 +124,11 @@
   position: absolute;
   margin-left: -1em;
   color: var(--terminal-accent);
+}
+
+/* Preserve inline behavior for code elements within list items */
+.prose-terminal li code {
+  display: inline;
 }
 
 /* Keep existing theme colors for headings */
@@ -184,8 +189,21 @@
   color: inherit; /* Don't color the whole list */
 }
 
-.prose-terminal ol li {
+.prose-terminal ol > li {
   list-style-position: outside; /* Ensure number is outside */
+  display: list-item; /* Ensure list markers are shown */
+  position: relative;
+}
+
+/* Add spacing between ordered list items */
+.prose-terminal ol > li + li {
+  margin-top: 0.25em; /* Small spacing between list items */
+}
+
+/* Space between block-level children within ordered list items */
+/* Exclude nested lists as they handle their own spacing with margin-top */
+.prose-terminal ol > li > *:not(:last-child):not(ul):not(ol) {
+  margin-bottom: 0.25em; /* Reduced to prevent large gaps */
 }
 
 .prose-terminal ol li::marker {

@@ -41,6 +41,9 @@ export function useSessionActions({
       setResponseInput(pendingForkMessage.content || '')
       // Set the session ID to fork from (the one before this message)
       setForkFromSessionId(pendingForkMessage.sessionId || null)
+    } else {
+      // Clear fork state when pendingForkMessage is null (e.g., when selecting "Current")
+      setForkFromSessionId(null)
     }
   }, [pendingForkMessage])
 

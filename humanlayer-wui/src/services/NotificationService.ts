@@ -225,9 +225,15 @@ class NotificationService {
    */
   private showInAppNotification(options: NotificationOptions) {
     const toastOptions: ExternalToast = {
+      closeButton: true, // Always show close button for better UX
       description: options.body,
       duration: options.duration ?? 5000, // Default 5 seconds if undefined
-      closeButton: true, // Always show close button for better UX
+      position: 'top-right', // Position toast at top right corner
+    }
+
+    // control notification id when showing an approval (may expand later)
+    if (options.type === 'approval_required') {
+      toastOptions.id = `${options.type}:${options.metadata.approvalId}`
     }
 
     // Add primary action if provided
@@ -365,6 +371,19 @@ class NotificationService {
    */
   isAppFocused(): boolean {
     return this.appFocused
+  }
+
+  /**
+   * Clear notification by approvalId
+   */
+
+  clearNotificationByApprovalId(approvalId: string) {
+    const matchingToasts = toast
+      .getToasts()
+      .filter(toast => toast.id === `approval_required:${approvalId}`)
+
+    logger.log('clearNotificationByApprovalId', matchingToasts)
+    matchingToasts.forEach(toDismiss => toast.dismiss(toDismiss.id))
   }
 }
 
