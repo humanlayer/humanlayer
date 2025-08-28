@@ -180,29 +180,29 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
           {/* Existing input area */}
           <div className="flex gap-2">
             <ResponseEditor
-            ref={tiptapRef}
-            initialValue={initialValue}
-            onChange={(value: Content) => {
-              localStorage.setItem(
-                `${ResponseInputLocalStorageKey}.${session.id}`,
-                JSON.stringify(value),
-              )
-            }}
-            onSubmit={handleSubmit}
-            onToggleAutoAccept={onToggleAutoAccept}
-            onToggleDangerouslySkipPermissions={onToggleDangerouslySkipPermissions}
-            onToggleForkView={onToggleForkView}
-            disabled={isResponding}
-            placeholder={placeholder}
-            className={`flex-1 min-h-[2.5rem] ${isResponding ? 'opacity-50' : ''} ${textareaOutlineClass} ${
-              isDenying && isFocused ? 'caret-error' : isFocused ? 'caret-accent' : ''
-            }`}
-            onFocus={() => {
-              setIsFocused(true)
-            }}
-            onBlur={() => {
-              setIsFocused(false)
-            }}
+              ref={tiptapRef}
+              initialValue={initialValue}
+              onChange={(value: Content) => {
+                localStorage.setItem(
+                  `${ResponseInputLocalStorageKey}.${session.id}`,
+                  JSON.stringify(value),
+                )
+              }}
+              onSubmit={handleSubmit}
+              onToggleAutoAccept={onToggleAutoAccept}
+              onToggleDangerouslySkipPermissions={onToggleDangerouslySkipPermissions}
+              onToggleForkView={onToggleForkView}
+              disabled={isResponding}
+              placeholder={placeholder}
+              className={`flex-1 min-h-[2.5rem] ${isResponding ? 'opacity-50' : ''} ${textareaOutlineClass} ${
+                isDenying && isFocused ? 'caret-error' : isFocused ? 'caret-accent' : ''
+              }`}
+              onFocus={() => {
+                setIsFocused(true)
+              }}
+              onBlur={() => {
+                setIsFocused(false)
+              }}
             />
           </div>
 
@@ -221,9 +221,11 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
               className="h-auto py-0.5 px-2 text-xs"
             >
               {getSendButtonText()}
-              {!isDisabled && (
-                <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">{sendKey}</kbd>
-              )}
+              <kbd
+                className={`ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded ${isDisabled ? 'invisible' : ''}`}
+              >
+                {sendKey}
+              </kbd>
             </Button>
           </div>
         </div>

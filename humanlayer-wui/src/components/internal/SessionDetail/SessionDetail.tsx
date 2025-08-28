@@ -1134,7 +1134,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       </div>
 
       {/* Response input - always show but disable for non-completed sessions */}
-      <Card className="py-1">
+      <Card className="py-2">
         <CardContent className="px-2">
           <ResponseInput
             denyingApprovalId={approvals.denyingApprovalId ?? undefined}
