@@ -1,6 +1,18 @@
+// Mock localStorage before any imports that might use it
+Object.defineProperty(globalThis, 'localStorage', {
+  value: {
+    getItem: () => null,
+    setItem: () => {},
+    removeItem: () => {},
+    clear: () => {},
+  },
+  writable: true,
+})
+
 import { describe, it, expect, mock } from 'bun:test'
 // Note: Using basic testing instead of @testing-library/react since it's not installed
 // import { render, screen, fireEvent } from '@testing-library/react'
+
 import { Session, SessionStatus } from '@/lib/daemon/types'
 import SessionTable from './SessionTable'
 
@@ -22,7 +34,19 @@ mock.module('@/AppStore', () => ({
 }))
 
 mock.module('@/hooks/useSessionLauncher', () => ({
-  useSessionLauncher: mock(() => ({ isOpen: false })),
+  useSessionLauncher: mock(() => ({ 
+    isOpen: false,
+    query: '',
+    setQuery: mock(),
+    config: {},
+    setConfig: mock(),
+    launchSession: mock(),
+    isLaunching: false,
+    error: null,
+    mode: 'command',
+    view: 'menu',
+    setView: mock(),
+  })),
 }))
 
 mock.module('react-hotkeys-hook', () => ({

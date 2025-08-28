@@ -8,7 +8,7 @@ const mockGetSessionLeaves = mock(() => Promise.resolve({ sessions: [] as any[] 
 const mockUpdateSessionSettings = mock(() => Promise.resolve({ success: true }))
 
 // Mock the daemon client module
-mock.module('@/lib/daemon', () => ({
+mock.module('@/lib/daemon/client', () => ({
   daemonClient: {
     getSessionLeaves: mockGetSessionLeaves,
     updateSessionSettings: mockUpdateSessionSettings,
