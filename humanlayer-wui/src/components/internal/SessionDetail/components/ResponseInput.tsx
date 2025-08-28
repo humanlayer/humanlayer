@@ -17,8 +17,6 @@ import { Content } from '@tiptap/react'
 interface ResponseInputProps {
   session: Session
   parentSessionData?: Partial<Session>
-  responseInput: string
-  setResponseInput: (input: string) => void
   isResponding: boolean
   handleContinueSession: () => void
   handleResponseInputKeyDown: (e: React.KeyboardEvent) => void
@@ -31,9 +29,10 @@ interface ResponseInputProps {
   handleCancelDeny?: () => void
   sessionStatus: SessionStatus
   denyAgainstOldestApproval: () => void
+  onToggleAutoAccept?: () => void
 }
 
-export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>(
+export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }, ResponseInputProps>(
   (
     {
       denyingApprovalId,
@@ -44,13 +43,13 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
 
       session,
       parentSessionData,
-      responseInput,
       isResponding,
       handleContinueSession,
       isForkMode,
       forkTokenCount,
       onModelChange,
       sessionStatus,
+      onToggleAutoAccept,
     },
     ref,
   ) => {
@@ -108,13 +107,7 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
     if (session.status === SessionStatus.Failed && !isForkMode) {
       return (
         <div className="flex items-center justify-between py-1">
-          <span className="text-sm text-muted-foreground">{getSessionStatusText(session.status)}</span>
-          {onOpenForkView && (
-            <Button variant="ghost" size="sm" onClick={onOpenForkView} className="h-8 gap-2">
-              <GitBranch className="h-4 w-4" />
-              Fork from previous
-            </Button>
-          )}
+          <span className="text-sm text-muted-foreground">Session failed</span>
         </div>
       )
     }
@@ -123,7 +116,7 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
       if (isDenying && ref && typeof ref !== 'function' && ref.current) {
         ref.current.focus()
       } else {
-        if (ref && typeof ref !== 'function' && ref.current) {
+        if (ref && typeof ref !== 'function' && ref.current && ref.current.blur) {
           ref.current.blur()
         }
       }
@@ -199,6 +192,7 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
               localStorage.setItem(`${ResponseInputLocalStorageKey}.${session.id}`, JSON.stringify(value))
             }}
             onSubmit={handleSubmit}
+            onToggleAutoAccept={onToggleAutoAccept}
             disabled={isResponding}
             placeholder={placeholder}
             className={`flex-1 min-h-[2.5rem] ${isResponding ? 'opacity-50' : ''} ${textareaOutlineClass}`}

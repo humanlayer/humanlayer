@@ -40,14 +40,14 @@ export function useSessionActions({
   // Update response input when fork message is selected
   useEffect(() => {
     if (pendingForkMessage) {
-      setResponseInput(pendingForkMessage.content || '')
+      responseEditor?.commands.setContent(pendingForkMessage.content || '')
       // Set the session ID to fork from (the one before this message)
       setForkFromSessionId(pendingForkMessage.sessionId || null)
     } else {
       // Clear fork state when pendingForkMessage is null (e.g., when selecting "Current")
       setForkFromSessionId(null)
     }
-  }, [pendingForkMessage])
+  }, [pendingForkMessage, responseEditor])
 
   // Continue session functionality
   const handleContinueSession = useCallback(async () => {

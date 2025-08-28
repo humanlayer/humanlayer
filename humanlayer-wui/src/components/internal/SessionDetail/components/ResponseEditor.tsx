@@ -352,7 +352,6 @@ const MarkdownSyntaxHighlight = Extension.create({
                   const indent = unorderedListMatch[1].length
                   const bulletStart = start + indent
                   const bulletEnd = bulletStart + 1
-                  const spaceEnd = bulletEnd + 1
 
                   // Style the bullet marker
                   decorations.push(
@@ -395,6 +394,7 @@ const KeyboardShortcuts = Extension.create({
   addOptions() {
     return {
       onSubmit: undefined,
+      onToggleAutoAccept: undefined,
     }
   },
 
@@ -406,6 +406,10 @@ const KeyboardShortcuts = Extension.create({
           this.options.onSubmit?.()
         }
         return true
+      },
+      'Shift-Tab': () => {
+        this.options.onToggleAutoAccept?.()
+        return true // Prevent default tab behavior
       },
     }
   },
@@ -421,21 +425,24 @@ interface ResponseEditorProps {
   onFocus?: () => void
   onBlur?: () => void
   onSubmit?: () => void
+  onToggleAutoAccept?: () => void
 }
 
 export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorProps>(
   (
-    { initialValue, onChange, onKeyDown, disabled, placeholder, className, onFocus, onBlur, onSubmit },
+    { initialValue, onChange, onKeyDown, disabled, placeholder, className, onFocus, onBlur, onSubmit, onToggleAutoAccept },
     ref,
   ) => {
     const onSubmitRef = React.useRef<ResponseEditorProps['onSubmit']>()
     const onChangeRef = React.useRef<ResponseEditorProps['onChange']>()
+    const onToggleAutoAcceptRef = React.useRef<ResponseEditorProps['onToggleAutoAccept']>()
 
     const setResponseEditor = useStore(state => state.setResponseEditor)
     const removeResponseEditor = useStore(state => state.removeResponseEditor)
 
     useEffect(() => { onSubmitRef.current = onSubmit }, [onSubmit])
     useEffect(() => { onChangeRef.current = onChange }, [onChange])
+    useEffect(() => { onToggleAutoAcceptRef.current = onToggleAutoAccept }, [onToggleAutoAccept])
 
     const editor = useEditor({
       autofocus: false,
@@ -453,6 +460,7 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
         MarkdownSyntaxHighlight,
         KeyboardShortcuts.configure({
           onSubmit: () => onSubmitRef.current?.(),
+          onToggleAutoAccept: () => onToggleAutoAcceptRef.current?.(),
         }),
         Placeholder.configure({
           placeholder: placeholder || 'Type something...',
@@ -494,14 +502,12 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
     useEffect(() => {
       logger.log('ResponseEditor.useEffect() - setting response editor')
       setResponseEditor(editor)
-      window.editor = editor
       return () => {
         logger.log('TiptapEditor.useEffect() - destroying editor')
         editor?.destroy()
         removeResponseEditor()
-        window.editor = null
       }
-    }, [editor])
+    }, [editor, setResponseEditor, removeResponseEditor])
 
     // Handle keyboard events
     useEffect(() => {

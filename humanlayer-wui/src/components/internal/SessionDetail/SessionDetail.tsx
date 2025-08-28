@@ -426,7 +426,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         setPendingForkMessage(null)
         setForkTokenCount(null)
         // Also clear the response input when selecting "Current"
-        actions.setResponseInput('')
+        responseEditor?.commands.setContent('')
         return
       }
 
@@ -574,24 +574,27 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     ],
   )
 
+  // Create reusable handler for toggling auto-accept
+  const handleToggleAutoAccept = useCallback(async () => {
+    logger.log('toggleAutoAcceptEdits', autoAcceptEdits)
+    try {
+      const newState = !autoAcceptEdits
+      await updateSessionOptimistic(session.id, { autoAcceptEdits: newState })
+    } catch (error) {
+      logger.error('Failed to toggle auto-accept mode:', error)
+      toast.error('Failed to toggle auto-accept mode')
+    }
+  }, [session.id, autoAcceptEdits, updateSessionOptimistic])
+
   // Add Shift+Tab handler for auto-accept edits mode
   useHotkeys(
     'shift+tab',
-    async () => {
-      logger.log('shift+tab setAutoAcceptEdits', autoAcceptEdits)
-      try {
-        const newState = !autoAcceptEdits
-        await updateSessionOptimistic(session.id, { autoAcceptEdits: newState })
-      } catch (error) {
-        logger.error('Failed to toggle auto-accept mode:', error)
-        toast.error('Failed to toggle auto-accept mode')
-      }
-    },
+    handleToggleAutoAccept,
     {
       preventDefault: true,
       scopes: SessionDetailHotkeysScope,
     },
-    [session.id, autoAcceptEdits], // Dependencies
+    [handleToggleAutoAccept],
   )
 
   // Add Option+Y handler for dangerously skip permissions mode
@@ -1063,7 +1066,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               focusedEventId={navigation.focusedEventId}
               setFocusedEventId={navigation.setFocusedEventId}
               onApprove={approvals.handleApprove}
-              onDeny={approvals.handleDeny}
+              onDeny={(approvalId: string, reason: string) => approvals.handleDeny(approvalId, reason, session.id)}
               approvingApprovalId={approvals.approvingApprovalId}
               confirmingApprovalId={approvals.confirmingApprovalId}
               denyingApprovalId={approvals.denyingApprovalId ?? undefined}
@@ -1143,6 +1146,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               fetchActiveSessionDetail(session.id)
             }}
             sessionStatus={session.status}
+            onToggleAutoAccept={handleToggleAutoAccept}
           />
           {/* Session mode indicator - shows fork, dangerous skip permissions or auto-accept */}
           <SessionModeIndicator
