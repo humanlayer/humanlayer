@@ -395,6 +395,7 @@ const KeyboardShortcuts = Extension.create({
     return {
       onSubmit: undefined,
       onToggleAutoAccept: undefined,
+      onToggleDangerouslySkipPermissions: undefined,
     }
   },
 
@@ -411,6 +412,10 @@ const KeyboardShortcuts = Extension.create({
         this.options.onToggleAutoAccept?.()
         return true // Prevent default tab behavior
       },
+      'Alt-y': () => {
+        this.options.onToggleDangerouslySkipPermissions?.()
+        return true
+      },
     }
   },
 })
@@ -426,16 +431,18 @@ interface ResponseEditorProps {
   onBlur?: () => void
   onSubmit?: () => void
   onToggleAutoAccept?: () => void
+  onToggleDangerouslySkipPermissions?: () => void
 }
 
 export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorProps>(
   (
-    { initialValue, onChange, onKeyDown, disabled, placeholder, className, onFocus, onBlur, onSubmit, onToggleAutoAccept },
+    { initialValue, onChange, onKeyDown, disabled, placeholder, className, onFocus, onBlur, onSubmit, onToggleAutoAccept, onToggleDangerouslySkipPermissions },
     ref,
   ) => {
     const onSubmitRef = React.useRef<ResponseEditorProps['onSubmit']>()
     const onChangeRef = React.useRef<ResponseEditorProps['onChange']>()
     const onToggleAutoAcceptRef = React.useRef<ResponseEditorProps['onToggleAutoAccept']>()
+    const onToggleDangerouslySkipPermissionsRef = React.useRef<ResponseEditorProps['onToggleDangerouslySkipPermissions']>()
 
     const setResponseEditor = useStore(state => state.setResponseEditor)
     const removeResponseEditor = useStore(state => state.removeResponseEditor)
@@ -443,6 +450,7 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
     useEffect(() => { onSubmitRef.current = onSubmit }, [onSubmit])
     useEffect(() => { onChangeRef.current = onChange }, [onChange])
     useEffect(() => { onToggleAutoAcceptRef.current = onToggleAutoAccept }, [onToggleAutoAccept])
+    useEffect(() => { onToggleDangerouslySkipPermissionsRef.current = onToggleDangerouslySkipPermissions }, [onToggleDangerouslySkipPermissions])
 
     const editor = useEditor({
       autofocus: false,
@@ -461,6 +469,7 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
         KeyboardShortcuts.configure({
           onSubmit: () => onSubmitRef.current?.(),
           onToggleAutoAccept: () => onToggleAutoAcceptRef.current?.(),
+          onToggleDangerouslySkipPermissions: () => onToggleDangerouslySkipPermissionsRef.current?.(),
         }),
         Placeholder.configure({
           placeholder: placeholder || 'Type something...',

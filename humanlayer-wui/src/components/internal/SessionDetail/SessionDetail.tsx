@@ -574,6 +574,9 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     ],
   )
 
+  // Get hotkeys context for modal scope checking
+  const { activeScopes } = useHotkeysContext()
+
   // Create reusable handler for toggling auto-accept
   const handleToggleAutoAccept = useCallback(async () => {
     logger.log('toggleAutoAcceptEdits', autoAcceptEdits)
@@ -585,6 +588,43 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       toast.error('Failed to toggle auto-accept mode')
     }
   }, [session.id, autoAcceptEdits, updateSessionOptimistic])
+
+  // Create reusable handler for toggling dangerously skip permissions
+  const handleToggleDangerouslySkipPermissions = useCallback(async () => {
+    // Check if any modal scopes are active
+    const modalScopes = [
+      'tool-result-modal',
+      'fork-view-modal',
+      'dangerously-skip-permissions-dialog',
+    ]
+    const hasModalOpen = activeScopes.some(scope => modalScopes.includes(scope))
+
+    // Don't trigger if other modals are open
+    if (hasModalOpen || dangerousSkipPermissionsDialogOpen) {
+      return
+    }
+
+    // Get the current value from the store directly to avoid stale closure
+    const currentSessionFromStore = useStore.getState().sessions.find(s => s.id === session.id)
+    const currentDangerouslySkipPermissions =
+      currentSessionFromStore?.dangerouslySkipPermissions ?? false
+
+    if (currentDangerouslySkipPermissions) {
+      // Disable dangerous skip permissions
+      try {
+        await updateSessionOptimistic(session.id, {
+          dangerouslySkipPermissions: false,
+          dangerouslySkipPermissionsExpiresAt: undefined,
+        })
+      } catch (error) {
+        logger.error('Failed to disable dangerous skip permissions', { error })
+        toast.error('Failed to disable dangerous skip permissions')
+      }
+    } else {
+      // Show confirmation dialog
+      setDangerousSkipPermissionsDialogOpen(true)
+    }
+  }, [session.id, activeScopes, dangerousSkipPermissionsDialogOpen, updateSessionOptimistic])
 
   // Add Shift+Tab handler for auto-accept edits mode
   useHotkeys(
@@ -598,49 +638,14 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   )
 
   // Add Option+Y handler for dangerously skip permissions mode
-  const { activeScopes } = useHotkeysContext()
   useHotkeys(
     'alt+y',
-    async () => {
-      // Check if any modal scopes are active
-      const modalScopes = [
-        'tool-result-modal',
-        'fork-view-modal',
-        'dangerously-skip-permissions-dialog',
-      ]
-      const hasModalOpen = activeScopes.some(scope => modalScopes.includes(scope))
-
-      // Don't trigger if other modals are open
-      if (hasModalOpen || dangerousSkipPermissionsDialogOpen) {
-        return
-      }
-
-      // Get the current value from the store directly to avoid stale closure
-      const currentSessionFromStore = useStore.getState().sessions.find(s => s.id === session.id)
-      const currentDangerouslySkipPermissions =
-        currentSessionFromStore?.dangerouslySkipPermissions ?? false
-
-      if (currentDangerouslySkipPermissions) {
-        // Disable dangerous skip permissions
-        try {
-          await updateSessionOptimistic(session.id, {
-            dangerouslySkipPermissions: false,
-            dangerouslySkipPermissionsExpiresAt: undefined,
-          })
-        } catch (error) {
-          logger.error('Failed to disable dangerous skip permissions', { error })
-          toast.error('Failed to disable dangerous skip permissions')
-        }
-      } else {
-        // Show confirmation dialog
-        setDangerousSkipPermissionsDialogOpen(true)
-      }
-    },
+    handleToggleDangerouslySkipPermissions,
     {
       preventDefault: true,
       scopes: SessionDetailHotkeysScope,
     },
-    [session.id], // Remove dangerouslySkipPermissions from deps since we get it fresh each time
+    [handleToggleDangerouslySkipPermissions],
   )
 
   // Handle dialog confirmation
@@ -1147,6 +1152,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
             }}
             sessionStatus={session.status}
             onToggleAutoAccept={handleToggleAutoAccept}
+            onToggleDangerouslySkipPermissions={handleToggleDangerouslySkipPermissions}
           />
           {/* Session mode indicator - shows fork, dangerous skip permissions or auto-accept */}
           <SessionModeIndicator
