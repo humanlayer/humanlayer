@@ -4,6 +4,9 @@ import { ConversationEvent, ApprovalStatus } from '@/lib/daemon/types'
 import { daemonClient } from '@/lib/daemon/client'
 import { notificationService } from '@/services/NotificationService'
 import { SessionDetailHotkeysScope } from '../SessionDetail'
+import { logger } from '@/lib/logging'
+import { useStore } from '@/AppStore'
+import { ResponseInputLocalStorageKey } from './useSessionActions'
 
 /*
   Much of this state-based code should be ported to Zustand.
@@ -29,6 +32,7 @@ export function useSessionApprovals({
   const [approvingApprovalId, setApprovingApprovalId] = useState<string | null>(null)
   const [confirmingApprovalId, setConfirmingApprovalId] = useState<string | null>(null)
   const [denyingApprovalId, setDenyingApprovalId] = useState<string | null>(null)
+  const responseEditor = useStore(state => state.responseEditor)
 
   // Helper to check if element is in view
   const isElementInView = useCallback((elementId: number) => {
@@ -56,9 +60,16 @@ export function useSessionApprovals({
     }
   }, [])
 
-  const handleDeny = useCallback(async (approvalId: string, reason: string) => {
+  const handleDeny = useCallback(async (approvalId: string, reason: string, sessionId: string) => {
     try {
-      await daemonClient.denyFunctionCall(approvalId, reason)
+      const res = await daemonClient.denyFunctionCall(approvalId, reason)
+      logger.log('handleDeny()', res)
+
+      if (res.success) {
+        responseEditor?.commands.setContent('')
+        localStorage.removeItem(`${ResponseInputLocalStorageKey}.${sessionId}`)
+      }
+
       setDenyingApprovalId(null)
     } catch (error) {
       notificationService.notifyError(error, 'Failed to deny')

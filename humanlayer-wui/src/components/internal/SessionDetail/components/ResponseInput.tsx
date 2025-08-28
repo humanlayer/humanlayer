@@ -9,7 +9,10 @@ import {
 import { ResponseInputLocalStorageKey } from '@/components/internal/SessionDetail/hooks/useSessionActions'
 import { StatusBar } from './StatusBar'
 import { useHotkeys } from 'react-hotkeys-hook'
-import { TiptapEditor } from './TiptapEditor'
+import { ResponseEditor } from './ResponseEditor'
+import { useStore } from '@/AppStore'
+import { logger } from '@/lib/logging'
+import { Content } from '@tiptap/react'
 
 interface ResponseInputProps {
   session: Session
@@ -24,7 +27,7 @@ interface ResponseInputProps {
   onModelChange?: () => void
   denyingApprovalId?: string | null
   isDenying?: boolean
-  onDeny?: (approvalId: string, reason: string) => void
+  onDeny?: (approvalId: string, reason: string, sessionId: string) => void
   handleCancelDeny?: () => void
   sessionStatus: SessionStatus
   denyAgainstOldestApproval: () => void
@@ -42,7 +45,6 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
       session,
       parentSessionData,
       responseInput,
-      setResponseInput,
       isResponding,
       handleContinueSession,
       isForkMode,
@@ -54,6 +56,8 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
   ) => {
     const [youSure, setYouSure] = useState(false)
     const [isFocused, setIsFocused] = useState(false)
+    const responseEditor = useStore(state => state.responseEditor)
+    const localStorageValue = localStorage.getItem(`${ResponseInputLocalStorageKey}.${session.id}`)
 
     const tiptapRef = useRef<{ focus: () => void }>(null)
     const getSendButtonText = () => {
@@ -71,9 +75,20 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
       return 'Send'
     }
 
+    let initialValue = null;
+
+    if (initialValue === null && typeof localStorageValue === 'string' && localStorageValue.length > 0) {
+      try {
+        initialValue = JSON.parse(localStorageValue)
+      } catch (e) {
+        logger.error('ResponseInput.useEffect() - error parsing localStorageValue', e)
+      }
+    }
+
     const handleSubmit = () => {
+      logger.log('ResponseInput.handleSubmit()')
       if (isDenying && denyingApprovalId) {
-        onDeny?.(denyingApprovalId, responseInput.trim())
+        onDeny?.(denyingApprovalId, responseEditor?.getText().trim() || '', session.id)
       } else if (sessionStatus === SessionStatus.WaitingInput) {
         // Alternate situation: If we haven't triggered the denying state by clicking/keyboarding through, it's possible we're potentially attempting to submit when we actually need to be providing an approval. In these cases we need to enter a denying state relative to the oldest approval.
         denyAgainstOldestApproval()
@@ -104,16 +119,6 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
       )
     }
 
-    // const handleResponseInputKeyDown = useCallback(
-    //   (e: React.KeyboardEvent) => {
-    //     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-    //       e.preventDefault()
-    //       handleSubmit()
-    //     }
-    //   },
-    //   [handleContinueSession, handleSubmit],
-    // )
-
     useEffect(() => {
       if (isDenying && ref && typeof ref !== 'function' && ref.current) {
         ref.current.focus()
@@ -135,7 +140,7 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
       { enableOnFormTags: true },
     )
 
-    const isDisabled = !responseInput.trim() || isResponding
+    const isDisabled = responseEditor?.isEmpty || isResponding
     const isMac = navigator.platform.includes('Mac')
     const sendKey = isMac ? '⌘+Enter' : 'Ctrl+Enter'
 
@@ -187,12 +192,11 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
             disabled={isResponding}
             className={`flex-1 min-h-[2.5rem] ${isResponding ? 'opacity-50' : ''} ${textareaOutlineClass}`}
           /> */}
-          <TiptapEditor
+          <ResponseEditor
             ref={tiptapRef}
-            value={responseInput}
-            onChange={(value: string) => {
-              setResponseInput(value)
-              localStorage.setItem(`${ResponseInputLocalStorageKey}.${session.id}`, value)
+            initialValue={initialValue}
+            onChange={(value: Content) => {
+              localStorage.setItem(`${ResponseInputLocalStorageKey}.${session.id}`, JSON.stringify(value))
             }}
             onSubmit={handleSubmit}
             disabled={isResponding}

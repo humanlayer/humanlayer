@@ -193,6 +193,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [editValue, setEditValue] = useState('')
 
+  const responseEditor = useStore(state => state.responseEditor)
+
   // Helper functions for inline title editing
   const startEditTitle = () => {
     setIsEditingTitle(true)
@@ -224,8 +226,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const { shouldIgnoreMouseEvent, startKeyboardNavigation } = useKeyboardNavigationProtection()
 
   const isActivelyProcessing = ['starting', 'running', 'completing'].includes(session.status)
-  // const isActivelyProcessing = true
-  const responseInputRef = useRef<HTMLTextAreaElement>(null)
   const confirmingArchiveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Get session from store to access auto_accept_edits and dangerouslySkipPermissions
@@ -528,9 +528,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         return
       }
 
-      // If the textarea is focused, blur it and stop processing
-      if (ev.target === responseInputRef.current && responseInputRef.current) {
-        responseInputRef.current.blur()
+      if (responseEditor?.isFocused) {
+        responseEditor.commands.blur()
         return
       }
 
@@ -540,7 +539,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         setPreviewEventIndex(null)
         setPendingForkMessage(null)
         setForkTokenCount(null)
-        actions.setResponseInput('')
+        responseEditor?.commands.setContent('')
       } else if (confirmingArchive) {
         setConfirmingArchive(false)
         // Clear timeout if exists
@@ -571,7 +570,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       navigation.focusedEventId,
       navigation.setFocusedEventId,
       onClose,
-      actions.setResponseInput,
+      // actions.setResponseInput,
     ],
   )
 
@@ -806,9 +805,9 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   useHotkeys(
     'enter',
     () => {
-      if (responseInputRef.current) {
-        responseInputRef.current.focus()
-      }
+      if (responseEditor) {
+        responseEditor.commands.focus()
+      } 
     },
     {
       enableOnFormTags: false,
@@ -960,9 +959,9 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                 setForkViewOpen(open)
                 // Focus the input when closing the fork modal
                 // Use longer delay to ensure it happens after all dialog cleanup
-                if (!open && responseInputRef.current) {
+                if (!open && responseEditor) {
                   setTimeout(() => {
-                    responseInputRef.current?.focus()
+                    responseEditor.commands.focus()
                   }, 50)
                 }
               }}
@@ -1041,9 +1040,9 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                 setForkViewOpen(open)
                 // Focus the input when closing the fork modal
                 // Use longer delay to ensure it happens after all dialog cleanup
-                if (!open && responseInputRef.current) {
+                if (!open && responseEditor) {
                   setTimeout(() => {
-                    responseInputRef.current?.focus()
+                    responseEditor.commands.focus()
                   }, 50)
                 }
               }}
@@ -1127,7 +1126,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       <Card className={isCompactView ? 'py-2' : 'py-4'}>
         <CardContent className={isCompactView ? 'px-2' : 'px-4'}>
           <ResponseInput
-            ref={responseInputRef}
             denyingApprovalId={approvals.denyingApprovalId ?? undefined}
             isDenying={approvals.isDenying}
             onDeny={approvals.handleDeny}
@@ -1135,8 +1133,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
             denyAgainstOldestApproval={approvals.denyAgainstOldestApproval}
             session={session}
             parentSessionData={parentSessionData || parentSession || undefined}
-            responseInput={actions.responseInput}
-            setResponseInput={actions.setResponseInput}
             isResponding={actions.isResponding}
             handleContinueSession={actions.handleContinueSession}
             handleResponseInputKeyDown={actions.handleResponseInputKeyDown}

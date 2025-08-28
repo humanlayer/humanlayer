@@ -6,6 +6,7 @@ import { daemonClient } from '@/lib/daemon/client'
 import { notificationService } from '@/services/NotificationService'
 import { useStore } from '@/AppStore'
 import { SessionDetailHotkeysScope } from '../SessionDetail'
+import { logger } from '@/lib/logging'
 
 interface UseSessionActionsProps {
   session: Session
@@ -21,9 +22,9 @@ export function useSessionActions({
   pendingForkMessage,
   onForkCommit,
 }: UseSessionActionsProps) {
-  const [responseInput, setResponseInput] = useState(
-    localStorage.getItem(`${ResponseInputLocalStorageKey}.${session.id}`) || '',
-  )
+  // const [responseInput, setResponseInput] = useState(
+  //   localStorage.getItem(`${ResponseInputLocalStorageKey}.${session.id}`) || '',
+  // )
   const [isResponding, setIsResponding] = useState(false)
   const [forkFromSessionId, setForkFromSessionId] = useState<string | null>(null)
 
@@ -33,6 +34,7 @@ export function useSessionActions({
   const setViewMode = useStore(state => state.setViewMode)
   const trackNavigationFrom = useStore(state => state.trackNavigationFrom)
   const updateActiveSessionDetail = useStore(state => state.updateActiveSessionDetail)
+  const responseEditor = useStore(state => state.responseEditor)
   const navigate = useNavigate()
 
   // Update response input when fork message is selected
@@ -49,8 +51,10 @@ export function useSessionActions({
 
   // Continue session functionality
   const handleContinueSession = useCallback(async () => {
+    logger.log('handleContinueSession()')
     const sessionConversation = useStore.getState().activeSessionDetail?.conversation
-    if (!responseInput.trim() || isResponding) return
+    const responseInput = responseEditor?.getText()
+    if (!responseInput?.trim() || isResponding) return
 
     try {
       setIsResponding(true)
@@ -101,7 +105,7 @@ export function useSessionActions({
       await refreshSessions()
 
       // Reset form state only after success
-      setResponseInput('')
+      responseEditor?.commands.setContent('')
       localStorage.removeItem(`${ResponseInputLocalStorageKey}.${session.id}`)
     } catch (error) {
       notificationService.notifyError(error, 'Failed to continue session')
@@ -110,7 +114,7 @@ export function useSessionActions({
       setIsResponding(false)
     }
   }, [
-    responseInput,
+    responseEditor,
     isResponding,
     session.id,
     session.archived,
@@ -171,8 +175,6 @@ export function useSessionActions({
   )
 
   return {
-    responseInput,
-    setResponseInput,
     isResponding,
     handleContinueSession,
     handleResponseInputKeyDown,
