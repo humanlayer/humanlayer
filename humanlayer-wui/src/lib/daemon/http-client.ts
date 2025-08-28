@@ -159,6 +159,10 @@ export class HTTPDaemonClient implements IDaemonClient {
           ? params.permissionPromptTool
           : (params as LaunchSessionRequest).permission_prompt_tool,
       autoAcceptEdits: 'autoAcceptEdits' in params ? params.autoAcceptEdits : undefined,
+      dangerouslySkipPermissions:
+        'dangerouslySkipPermissions' in params
+          ? params.dangerouslySkipPermissions
+          : (params as LaunchSessionRequest).dangerously_skip_permissions,
       // Map array fields with snake_case conversion
       allowedTools:
         'allowedTools' in params ? params.allowedTools : (params as LaunchSessionRequest).allowed_tools,

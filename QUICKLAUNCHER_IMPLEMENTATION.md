@@ -76,7 +76,7 @@ Updated `src-tauri/tauri.conf.json`:
 .title_bar_style(tauri::TitleBarStyle::Overlay)
 ```
 - **Pros**: Content can flow under titlebar
-- **Cons**: 
+- **Cons**:
   - Only title text area is draggable
   - With `hidden_title: true`, nothing is draggable
   - Requires padding to avoid content overlap
@@ -102,7 +102,7 @@ Updated `src-tauri/tauri.conf.json`:
 
 #### Rounded Corners & Shadows
 - **Native macOS**: Requires `decorations(true)`
-- **Shadow control**: 
+- **Shadow control**:
   - `.shadow(true)` - Adds native shadow on macOS
   - `.shadow(false)` - No shadow, prevents 1px border
 - **Windows 11**: `.shadow(true)` with `.decorations(false)` adds rounded corners

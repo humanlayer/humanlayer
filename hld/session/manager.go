@@ -163,6 +163,9 @@ func (m *Manager) LaunchSession(ctx context.Context, config LaunchSessionConfig)
 		dbSession.Title = config.Title
 	}
 
+	// Handle auto-accept edits from config
+	dbSession.AutoAcceptEdits = config.AutoAcceptEdits
+
 	// Handle dangerously skip permissions from config
 	if config.DangerouslySkipPermissions {
 		dbSession.DangerouslySkipPermissions = true

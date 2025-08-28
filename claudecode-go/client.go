@@ -181,13 +181,6 @@ func (c *Client) buildArgs(config SessionConfig) ([]string, error) {
 		args = append(args, "--verbose")
 	}
 
-	// Query handling:
-	// When --add-dir is present, query must be passed via stdin
-	// Otherwise, pass as a positional argument
-	if config.Query != "" && len(config.AdditionalDirectories) == 0 {
-		args = append(args, config.Query)
-	}
-
 	return args, nil
 }
 

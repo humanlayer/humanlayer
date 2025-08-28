@@ -33,7 +33,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     localStorage.setItem('wui-theme', theme)
     document.documentElement.setAttribute('data-theme', theme)
-    
+
     // Sync the window background color with the theme
     // Need a small delay to ensure CSS variables are updated
     setTimeout(() => {

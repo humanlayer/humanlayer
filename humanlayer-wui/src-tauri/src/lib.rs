@@ -6,7 +6,6 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 use tauri::{Manager, State, WebviewUrl, WebviewWindowBuilder};
-use tauri::window::Color;
 use tauri_plugin_store::StoreExt;
 
 // Helper function to set macOS window background color with RGB values
@@ -15,7 +14,7 @@ use tauri_plugin_store::StoreExt;
 fn set_macos_window_background_color_rgb(window: &tauri::WebviewWindow, r: f64, g: f64, b: f64) {
     use cocoa::appkit::{NSColor, NSWindow};
     use cocoa::base::{id, nil};
-    
+
     let ns_window = window.ns_window().unwrap() as id;
     unsafe {
         let bg_color = NSColor::colorWithRed_green_blue_alpha_(
@@ -31,17 +30,18 @@ fn set_macos_window_background_color_rgb(window: &tauri::WebviewWindow, r: f64, 
 
 // Helper function to set macOS window appearance based on theme brightness
 #[cfg(target_os = "macos")]
-#[allow(deprecated)] // Using cocoa for compatibility with Tauri's ns_window() API  
+#[allow(deprecated)] // Using cocoa for compatibility with Tauri's ns_window() API
+#[allow(unexpected_cfgs)] // Clippy false positive with objc macros
 fn set_macos_window_appearance(window: &tauri::WebviewWindow, is_dark: bool) {
     #[link(name = "AppKit", kind = "framework")]
     extern "C" {
         static NSAppearanceNameAqua: id;
         static NSAppearanceNameDarkAqua: id;
     }
-    
+
     use cocoa::base::id;
     use objc::{msg_send, sel, sel_impl, class};
-    
+
     let ns_window = window.ns_window().unwrap() as id;
     unsafe {
         let appearance: id = msg_send![class!(NSAppearance), appearanceNamed: if is_dark { NSAppearanceNameDarkAqua } else { NSAppearanceNameAqua }];
@@ -72,17 +72,17 @@ fn set_window_background_color(
     if hex.len() != 6 {
         return Err("Invalid hex color format".to_string());
     }
-    
+
     let r = u8::from_str_radix(&hex[0..2], 16).map_err(|e| e.to_string())? as f64;
     let g = u8::from_str_radix(&hex[2..4], 16).map_err(|e| e.to_string())? as f64;
     let b = u8::from_str_radix(&hex[4..6], 16).map_err(|e| e.to_string())? as f64;
-    
+
     // Get the window and set its background color
     if let Some(window) = app.get_webview_window(&window_label) {
         set_macos_window_background_color_rgb(&window, r, g, b);
         Ok(())
     } else {
-        Err(format!("Window '{}' not found", window_label))
+        Err(format!("Window '{window_label}' not found"))
     }
 }
 
@@ -99,25 +99,25 @@ fn set_window_theme_colors(
     if bg.len() != 6 {
         return Err("Invalid background hex color format".to_string());
     }
-    
+
     let bg_r = u8::from_str_radix(&bg[0..2], 16).map_err(|e| e.to_string())? as f64;
     let bg_g = u8::from_str_radix(&bg[2..4], 16).map_err(|e| e.to_string())? as f64;
     let bg_b = u8::from_str_radix(&bg[4..6], 16).map_err(|e| e.to_string())? as f64;
-    
+
     // Parse foreground color
     let fg = fg_hex.trim_start_matches('#');
     if fg.len() != 6 {
         return Err("Invalid foreground hex color format".to_string());
     }
-    
+
     let fg_r = u8::from_str_radix(&fg[0..2], 16).map_err(|e| e.to_string())? as f64;
     let fg_g = u8::from_str_radix(&fg[2..4], 16).map_err(|e| e.to_string())? as f64;
     let fg_b = u8::from_str_radix(&fg[4..6], 16).map_err(|e| e.to_string())? as f64;
-    
+
     // Get the window and set its colors
     if let Some(window) = app.get_webview_window(&window_label) {
         set_macos_window_background_color_rgb(&window, bg_r, bg_g, bg_b);
-        
+
         // Determine if theme is dark based on foreground brightness
         // If foreground is bright (high RGB values), it's likely a dark theme
         #[cfg(target_os = "macos")]
@@ -126,10 +126,10 @@ fn set_window_theme_colors(
             let is_dark = brightness > 128.0;
             set_macos_window_appearance(&window, is_dark);
         }
-        
+
         Ok(())
     } else {
-        Err(format!("Window '{}' not found", window_label))
+        Err(format!("Window '{window_label}' not found"))
     }
 }
 
@@ -307,7 +307,7 @@ fn show_quick_launcher(app: tauri::AppHandle) -> Result<(), String> {
     }
 
     // Create new floating window without title bar
-    let window = WebviewWindowBuilder::new(
+    let _window = WebviewWindowBuilder::new(
         &app,
         "quick-launcher",
         WebviewUrl::App("index.html#/quick-launcher".into())

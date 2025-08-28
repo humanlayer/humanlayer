@@ -848,6 +848,10 @@ components:
         custom_instructions:
           type: string
           description: Custom instructions for Claude
+        auto_accept_edits:
+          type: boolean
+          description: Enable auto-accept for edit tools
+          default: false
         dangerously_skip_permissions:
           type: boolean
           description: Launch session with dangerously skip permissions enabled

@@ -27,18 +27,18 @@ export function QuickLauncher() {
 
   // Get recent directories from hook for fuzzy search
   const { paths: recentDirectories } = useRecentPaths()
-  
+
   // Sync window background color with theme on mount and prevent scrolling
   useEffect(() => {
     syncWindowBackgroundWithTheme('quick-launcher')
-    
+
     // Prevent scrolling on the body and html elements
     document.body.style.overflow = 'hidden'
     document.documentElement.style.overflow = 'hidden'
-    
+
     // Focus the prompt field on mount
     promptRef.current?.focus()
-    
+
     // Cleanup function to restore scroll when component unmounts
     return () => {
       document.body.style.overflow = ''
@@ -74,7 +74,7 @@ export function QuickLauncher() {
     try {
       // Use current directory if workingDir is empty
       const dirToUse = workingDir.trim() || '.'
-      
+
       // Save working directory only if it was explicitly set
       if (workingDir.trim()) {
         localStorage.setItem(LAST_WORKING_DIR_KEY, dirToUse)
@@ -87,13 +87,13 @@ export function QuickLauncher() {
         expandedWorkingDir = dirToUse.replace(/^~(?=$|\/|\\)/, home)
       }
 
-      // Launch session with options - note: API expects snake_case field names
+      // Launch session with options
       const response = await daemonClient.launchSession({
         query: prompt,
-        working_dir: expandedWorkingDir, // Changed from workingDir to working_dir
+        working_dir: expandedWorkingDir,
         provider: 'anthropic',
-        auto_accept_edits: autoAccept,
-        dangerously_skip_permissions: bypassPermissions,
+        autoAcceptEdits: autoAccept,
+        dangerouslySkipPermissions: bypassPermissions,
       })
 
       // Try to notify the main window about the new session
@@ -103,7 +103,7 @@ export function QuickLauncher() {
         if (mainWindow) {
           await emit('session-created', { sessionId: response.sessionId })
         }
-      } catch (e) {
+      } catch {
         // Ignore errors from main window notification - it's optional
       }
 
@@ -154,12 +154,14 @@ export function QuickLauncher() {
             recentDirectories={recentDirectories}
             className="font-mono text-xs h-7"
             dropdownClassName=""
+            dropdownSide="top"
+            initialSelectionPosition="bottom"
             onSubmit={() => {
               handleSubmit()
             }}
           />
         </div>
-        
+
         <Button
           size="sm"
           className="h-7 px-3 text-xs"
@@ -175,12 +177,9 @@ export function QuickLauncher() {
         <button
           className={cn(
             'p-1 rounded transition-colors',
-            autoAccept ? [
-              'text-[var(--terminal-warning)]',
-            ] : [
-              'text-muted-foreground/40',
-              'hover:text-muted-foreground/60',
-            ]
+            autoAccept
+              ? ['text-[var(--terminal-warning)]']
+              : ['text-muted-foreground/40', 'hover:text-muted-foreground/60'],
           )}
           onClick={() => setAutoAccept(!autoAccept)}
           tabIndex={0}
@@ -189,16 +188,13 @@ export function QuickLauncher() {
         >
           <span className="text-sm leading-none">⏵⏵</span>
         </button>
-        
+
         <button
           className={cn(
             'p-1 rounded transition-colors',
-            bypassPermissions ? [
-              'text-[var(--terminal-error)]',
-            ] : [
-              'text-muted-foreground/40',
-              'hover:text-muted-foreground/60',
-            ]
+            bypassPermissions
+              ? ['text-[var(--terminal-error)]']
+              : ['text-muted-foreground/40', 'hover:text-muted-foreground/60'],
           )}
           onClick={() => setBypassPermissions(!bypassPermissions)}
           tabIndex={0}

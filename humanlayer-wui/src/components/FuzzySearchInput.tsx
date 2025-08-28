@@ -1,6 +1,6 @@
 import { homeDir } from '@tauri-apps/api/path'
 import { DirEntry, readDir } from '@tauri-apps/plugin-fs'
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import { fuzzySearch, highlightMatches, type FuzzyMatch } from '@/lib/fuzzy-search'
 import { Input } from './ui/input'
@@ -19,6 +19,8 @@ interface SearchInputProps {
   ref?: React.RefObject<HTMLDivElement>
   className?: string
   dropdownClassName?: string
+  dropdownSide?: 'top' | 'bottom' | 'left' | 'right'
+  initialSelectionPosition?: 'top' | 'bottom'
   autoFocus?: boolean
   onFocus?: () => void
   onBlur?: () => void
@@ -33,6 +35,8 @@ export function SearchInput({
   ref,
   className,
   dropdownClassName,
+  dropdownSide = 'bottom',
+  initialSelectionPosition = 'top',
   autoFocus,
   onFocus: externalOnFocus,
   onBlur: externalOnBlur,
@@ -51,6 +55,7 @@ export function SearchInput({
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [isInvalidPath, setIsInvalidPath] = useState(false)
   const [isFocused, setIsFocused] = useState(false)
+  const listRef = useRef<HTMLDivElement>(null)
   const [directoryPreview, setDirectoryPreview] = useState<
     { path: DirEntry; matches?: FuzzyMatch['matches'] }[]
   >([])
@@ -59,7 +64,7 @@ export function SearchInput({
   >([])
   const [lastValidPath, setLastValidPath] = useState('')
   const [allDirectories, setAllDirectories] = useState<DirEntry[]>([])
-  const [selectedIndex, setSelectedIndex] = useState<number>(0)
+  const [selectedIndex, setSelectedIndex] = useState<number>(-1)
   const keyboardNavTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -164,8 +169,8 @@ export function SearchInput({
   const onChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     setDropdownOpen(e.target.value.length > 0)
     setSearchValue(e.target.value)
-    // Reset selection to 0 when user types
-    setSelectedIndex(0)
+    // Reset selection based on initialSelectionPosition when user types
+    setSelectedIndex(-1)
 
     let searchPath = e.target.value
 
@@ -264,6 +269,35 @@ export function SearchInput({
     setDirectoryPreview(dirObjs)
   }
 
+  // Initialize selection position when dropdown opens or items change
+  useEffect(() => {
+    if (dropdownOpen && isFocused) {
+      const totalItems = recentPreview.length + directoryPreview.length
+      if (totalItems > 0 && selectedIndex === -1) {
+        // Initialize selection based on position preference
+        const newIndex = initialSelectionPosition === 'bottom' ? totalItems - 1 : 0
+        setSelectedIndex(newIndex)
+
+        // Scroll to the selected item after a brief delay to ensure DOM is updated
+        setTimeout(() => {
+          if (listRef.current) {
+            const selectedItem = listRef.current.querySelector('[data-selected="true"]')
+            if (selectedItem) {
+              selectedItem.scrollIntoView({ block: 'nearest' })
+            }
+          }
+        }, 0)
+      }
+    }
+  }, [
+    dropdownOpen,
+    isFocused,
+    recentPreview.length,
+    directoryPreview.length,
+    initialSelectionPosition,
+    selectedIndex,
+  ])
+
   return (
     <div ref={ref} className="">
       <Popover open={dropdownOpen && isFocused} defaultOpen={false} modal={true}>
@@ -277,6 +311,12 @@ export function SearchInput({
             value={searchValue}
             onFocus={() => {
               setIsFocused(true)
+              // Initialize selection when focusing if there are items
+              const totalItems = recentPreview.length + directoryPreview.length
+              if (totalItems > 0 && selectedIndex === -1) {
+                const newIndex = initialSelectionPosition === 'bottom' ? totalItems - 1 : 0
+                setSelectedIndex(newIndex)
+              }
               externalOnFocus?.()
             }}
             onBlur={() => {
@@ -290,7 +330,7 @@ export function SearchInput({
 
         <PopoverContent
           onOpenAutoFocus={e => e.preventDefault()}
-          side="bottom"
+          side={dropdownSide}
           align="start"
           avoidCollisions={false}
           className={cn(
@@ -300,7 +340,7 @@ export function SearchInput({
           )}
         >
           <Command shouldFilter={false}>
-            <CommandList>
+            <CommandList ref={listRef}>
               {recentPreview.length === 0 && directoryPreview.length === 0 && (
                 <CommandEmpty className="py-2">
                   {isInvalidPath && (
