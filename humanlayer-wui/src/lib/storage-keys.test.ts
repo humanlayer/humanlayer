@@ -2,6 +2,7 @@
  * @jest-environment jsdom
  */
 
+import { describe, test, expect, beforeEach } from 'bun:test'
 import {
   THEME_STORAGE_KEY,
   RESPONSE_INPUT_STORAGE_KEY,
@@ -15,10 +16,38 @@ import {
   removeStorageItem,
 } from './storage-keys'
 
+// Mock localStorage for testing
+const mockLocalStorage = {
+  getItem: (key: string) => mockLocalStorage.data[key] || null,
+  setItem: (key: string, value: string) => {
+    mockLocalStorage.data[key] = value
+  },
+  removeItem: (key: string) => {
+    delete mockLocalStorage.data[key]
+  },
+  clear: () => {
+    mockLocalStorage.data = {}
+  },
+  data: {} as Record<string, string>,
+}
+
+// Mock window object and localStorage for Node.js testing environment
+Object.defineProperty(globalThis, 'window', {
+  value: {
+    localStorage: mockLocalStorage,
+  },
+  writable: true,
+})
+
+Object.defineProperty(globalThis, 'localStorage', {
+  value: mockLocalStorage,
+  writable: true,
+})
+
 describe('Storage Keys', () => {
   beforeEach(() => {
     // Clear localStorage before each test
-    localStorage.clear()
+    mockLocalStorage.clear()
   })
 
   describe('Storage Key Constants', () => {
@@ -54,7 +83,7 @@ describe('Storage Keys', () => {
   describe('Storage Utilities', () => {
     describe('getStorageItem', () => {
       test('should retrieve stored values', () => {
-        localStorage.setItem('test-key', 'test-value')
+        mockLocalStorage.setItem('test-key', 'test-value')
         expect(getStorageItem('test-key')).toBe('test-value')
       })
 
@@ -68,60 +97,60 @@ describe('Storage Keys', () => {
 
       test('should handle localStorage errors gracefully', () => {
         // Mock localStorage to throw an error
-        const originalGetItem = localStorage.getItem
-        localStorage.getItem = jest.fn().mockImplementation(() => {
+        const originalGetItem = mockLocalStorage.getItem
+        mockLocalStorage.getItem = (() => {
           throw new Error('Storage not available')
-        })
+        }) as any
 
         expect(getStorageItem('any-key', 'fallback')).toBe('fallback')
 
         // Restore original method
-        localStorage.getItem = originalGetItem
+        mockLocalStorage.getItem = originalGetItem
       })
     })
 
     describe('setStorageItem', () => {
       test('should store values in localStorage', () => {
         setStorageItem('test-key', 'test-value')
-        expect(localStorage.getItem('test-key')).toBe('test-value')
+        expect(mockLocalStorage.getItem('test-key')).toBe('test-value')
       })
 
       test('should handle localStorage errors gracefully', () => {
         // Mock localStorage to throw an error
-        const originalSetItem = localStorage.setItem
-        localStorage.setItem = jest.fn().mockImplementation(() => {
+        const originalSetItem = mockLocalStorage.setItem
+        mockLocalStorage.setItem = (() => {
           throw new Error('Storage not available')
-        })
+        }) as any
 
         // Should not throw an error
         expect(() => setStorageItem('test-key', 'test-value')).not.toThrow()
 
         // Restore original method
-        localStorage.setItem = originalSetItem
+        mockLocalStorage.setItem = originalSetItem
       })
     })
 
     describe('removeStorageItem', () => {
       test('should remove items from localStorage', () => {
-        localStorage.setItem('test-key', 'test-value')
-        expect(localStorage.getItem('test-key')).toBe('test-value')
+        mockLocalStorage.setItem('test-key', 'test-value')
+        expect(mockLocalStorage.getItem('test-key')).toBe('test-value')
 
         removeStorageItem('test-key')
-        expect(localStorage.getItem('test-key')).toBeNull()
+        expect(mockLocalStorage.getItem('test-key')).toBeNull()
       })
 
       test('should handle localStorage errors gracefully', () => {
         // Mock localStorage to throw an error
-        const originalRemoveItem = localStorage.removeItem
-        localStorage.removeItem = jest.fn().mockImplementation(() => {
+        const originalRemoveItem = mockLocalStorage.removeItem
+        mockLocalStorage.removeItem = (() => {
           throw new Error('Storage not available')
-        })
+        }) as any
 
         // Should not throw an error
         expect(() => removeStorageItem('test-key')).not.toThrow()
 
         // Restore original method
-        localStorage.removeItem = originalRemoveItem
+        mockLocalStorage.removeItem = originalRemoveItem
       })
     })
   })

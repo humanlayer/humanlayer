@@ -10,8 +10,8 @@ const mockDaemonClient = {
   getConversation: mockGetConversation,
 }
 
-// Mock the module
-mock.module('@/lib/daemon', () => ({
+// Mock the correct module path
+mock.module('@/lib/daemon/client', () => ({
   daemonClient: mockDaemonClient,
 }))
 
@@ -33,8 +33,8 @@ describe('AppStore - Event Handling', () => {
     store.clearSelection()
     store.clearActiveSessionDetail()
 
-    // Reset mocks
-    mockGetConversation.mockReset()
+    // Clear mocks
+    mockGetConversation.mockClear()
   })
 
   describe('Session Status Changes', () => {
