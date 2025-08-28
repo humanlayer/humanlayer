@@ -88,7 +88,10 @@ export function formatDuration(startTime: Date | string, endTime?: Date | string
   return `${duration.seconds || 0}s`
 }
 
-export function formatParameters(params: Record<string, any>, maxLength: number = DISPLAY_LIMITS.MAX_PARAMETER_LENGTH): string {
+export function formatParameters(
+  params: Record<string, any>,
+  maxLength: number = DISPLAY_LIMITS.MAX_PARAMETER_LENGTH,
+): string {
   const entries = Object.entries(params)
   if (entries.length === 0) return ''
 
@@ -112,7 +115,10 @@ export function formatParameters(params: Record<string, any>, maxLength: number 
   return parts.join(', ')
 }
 
-export function truncatePath(path: string | undefined, maxLength: number = DISPLAY_LIMITS.MAX_PATH_LENGTH): string {
+export function truncatePath(
+  path: string | undefined,
+  maxLength: number = DISPLAY_LIMITS.MAX_PATH_LENGTH,
+): string {
   if (!path) return '-'
 
   // If path fits, return as-is

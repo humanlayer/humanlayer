@@ -4,7 +4,12 @@ import { create } from 'zustand'
 import { daemonClient } from '@/lib/daemon/client'
 import { logger } from '@/lib/logging'
 import { TIMING, DISPLAY_LIMITS } from '@/lib/constants'
-import { getSessionResponseInputKey, setStorageItem, removeStorageItem, getStorageItem } from '@/lib/storage-keys'
+import {
+  getSessionResponseInputKey,
+  setStorageItem,
+  removeStorageItem,
+  getStorageItem,
+} from '@/lib/storage-keys'
 
 // Track pending updates for optimistic UI
 interface PendingUpdate {
@@ -764,7 +769,10 @@ export const useStore = create<StoreState>((set, get) => ({
       }, TIMING.HEALTH_CHECK_INTERVAL)
       return { recentNavigations: newMap }
     }),
-  wasRecentlyNavigatedFrom: (sessionId: string, withinMs = TIMING.SESSION_NAVIGATION_RECENT_THRESHOLD) => {
+  wasRecentlyNavigatedFrom: (
+    sessionId: string,
+    withinMs = TIMING.SESSION_NAVIGATION_RECENT_THRESHOLD,
+  ) => {
     const timestamp = get().recentNavigations.get(sessionId)
     const now = Date.now()
 

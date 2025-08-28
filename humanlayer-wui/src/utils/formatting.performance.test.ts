@@ -22,10 +22,10 @@ describe('formatTimestamp Performance Optimizations', () => {
 
     // First call should calculate
     const result1 = formatTimestamp(testDate)
-    
+
     // Second call with same parameters should return cached result
     const result2 = formatTimestamp(testDate)
-    
+
     expect(result1).toBe(result2)
     expect(result1).toMatch(/\d+ minutes ago/)
   })
@@ -38,7 +38,7 @@ describe('formatTimestamp Performance Optimizations', () => {
 
     const result1 = formatTimestamp(testDate1)
     const result2 = formatTimestamp(testDate2)
-    
+
     // Both should produce the same result since they're in the same minute
     expect(result1).toBe(result2)
   })
@@ -49,13 +49,13 @@ describe('formatTimestamp Performance Optimizations', () => {
     mockDateNow.mockImplementation(() => now)
 
     const result1 = formatTimestamp(testDate)
-    
+
     // Move time forward beyond cache TTL (30 seconds)
     now = now + 35000 // 35 seconds later
     mockDateNow.mockImplementation(() => now)
-    
+
     const result2 = formatTimestamp(testDate)
-    
+
     // Results should be the same (content-wise) but recalculated
     expect(result1).toMatch(/\d+ minutes ago/)
     expect(result2).toMatch(/\d+ minutes ago/)
@@ -68,7 +68,7 @@ describe('formatTimestamp Performance Optimizations', () => {
 
     const result = formatTimestamp(testDate)
     expect(result).toBe('Jan 1, 2023')
-    
+
     // Old dates should also be cached since they don't change
     const result2 = formatTimestamp(testDate)
     expect(result2).toBe('Jan 1, 2023')
@@ -77,7 +77,7 @@ describe('formatTimestamp Performance Optimizations', () => {
   test('handles invalid dates', () => {
     const result1 = formatTimestamp('invalid-date')
     const result2 = formatTimestamp(new Date('invalid'))
-    
+
     expect(result1).toBe('Invalid date')
     expect(result2).toBe('Invalid date')
   })
@@ -99,17 +99,17 @@ describe('formatTimestamp Performance Optimizations', () => {
 
   test('different current times produce different cache keys', () => {
     const testDate = new Date('2023-01-01T12:00:00Z')
-    
+
     // First call at 12:05
     let now = new Date('2023-01-01T12:05:00Z').getTime()
     mockDateNow.mockImplementation(() => now)
     const result1 = formatTimestamp(testDate)
-    
+
     // Second call at 12:10 - should be different due to relative time change
     now = new Date('2023-01-01T12:10:00Z').getTime()
     mockDateNow.mockImplementation(() => now)
     const result2 = formatTimestamp(testDate)
-    
+
     expect(result1).toMatch(/\d+ minutes ago/)
     expect(result2).toMatch(/\d+ minutes ago/)
   })

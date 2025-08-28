@@ -8,7 +8,13 @@ import { exists } from '@tauri-apps/plugin-fs'
 import { homeDir } from '@tauri-apps/api/path'
 import { logger } from '@/lib/logging'
 import { TIMING } from '@/lib/constants'
-import { LAST_WORKING_DIR_KEY, SESSION_LAUNCHER_QUERY_KEY, getStorageItem, setStorageItem, removeStorageItem } from '@/lib/storage-keys'
+import {
+  LAST_WORKING_DIR_KEY,
+  SESSION_LAUNCHER_QUERY_KEY,
+  getStorageItem,
+  setStorageItem,
+  removeStorageItem,
+} from '@/lib/storage-keys'
 
 interface SessionConfig {
   title?: string

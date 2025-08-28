@@ -111,7 +111,7 @@ describe('SessionDetail Constants', () => {
 
       scenarios.forEach(({ tokens, expectedBelowWarning, expectedBelowCritical }) => {
         const percentage = (tokens / DEFAULT_CONTEXT_LIMIT) * 100
-        
+
         if (expectedBelowWarning) {
           expect(percentage).toBeLessThan(TOKEN_USAGE_THRESHOLDS.WARNING)
         } else {

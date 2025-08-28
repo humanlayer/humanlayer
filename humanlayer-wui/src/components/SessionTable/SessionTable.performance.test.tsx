@@ -47,11 +47,19 @@ mock.module('react-hotkeys-hook', () => ({
 
 // Mock UI components to focus on performance logic
 mock.module('../ui/table', () => ({
-  Table: ({ children, ...props }: any) => <div data-testid="table" {...props}>{children}</div>,
+  Table: ({ children, ...props }: any) => (
+    <div data-testid="table" {...props}>
+      {children}
+    </div>
+  ),
   TableHeader: ({ children }: any) => <div data-testid="table-header">{children}</div>,
   TableHead: ({ children }: any) => <div data-testid="table-head">{children}</div>,
   TableBody: ({ children }: any) => <div data-testid="table-body">{children}</div>,
-  TableRow: ({ children, ...props }: any) => <div data-testid="table-row" {...props}>{children}</div>,
+  TableRow: ({ children, ...props }: any) => (
+    <div data-testid="table-row" {...props}>
+      {children}
+    </div>
+  ),
   TableCell: ({ children }: any) => <div data-testid="table-cell">{children}</div>,
 }))
 
@@ -64,7 +72,9 @@ mock.module('../ui/tooltip', () => ({
 // Mock other UI components
 mock.module('../ui/button', () => ({
   Button: ({ children, onClick, ...props }: any) => (
-    <button onClick={onClick} data-testid="button" {...props}>{children}</button>
+    <button onClick={onClick} data-testid="button" {...props}>
+      {children}
+    </button>
   ),
 }))
 
@@ -109,25 +119,25 @@ describe('SessionTable Performance Optimizations', () => {
 
   test('timestamp stabilization reduces re-renders', () => {
     const baseTime = new Date('2024-01-01T10:00:00Z')
-    
+
     // Create sessions with timestamps in the same minute but different seconds
     const session1 = createMockSession(
       'session-1',
       new Date(baseTime.getTime()),
-      new Date(baseTime.getTime() + 15000) // 15 seconds later
+      new Date(baseTime.getTime() + 15000), // 15 seconds later
     )
-    
+
     const session2 = createMockSession(
       'session-2',
       new Date(baseTime.getTime()),
-      new Date(baseTime.getTime() + 45000) // 45 seconds later
+      new Date(baseTime.getTime() + 45000), // 45 seconds later
     )
 
     const sessions = [session1, session2]
 
     // Render component (mocked rendering)
     const props = { ...defaultProps, sessions }
-    
+
     // Component should be able to instantiate without errors
     expect(() => {
       const element = React.createElement(SessionTable, props)
@@ -137,7 +147,7 @@ describe('SessionTable Performance Optimizations', () => {
     // Test that timestamp stabilization logic works
     const stableTime1 = Math.floor(session1.lastActivityAt.getTime() / 60000) * 60000
     const stableTime2 = Math.floor(session2.lastActivityAt.getTime() / 60000) * 60000
-    
+
     // Both sessions should have the same stable time since they're in the same minute
     expect(stableTime1).toBe(stableTime2)
   })
@@ -146,7 +156,7 @@ describe('SessionTable Performance Optimizations', () => {
     const session = createMockSession(
       'session-1',
       new Date('2024-01-01T10:00:00Z'),
-      new Date('2024-01-01T10:30:00Z')
+      new Date('2024-01-01T10:30:00Z'),
     )
 
     const sessions = [session]
@@ -173,23 +183,25 @@ describe('SessionTable Performance Optimizations', () => {
 
     // Create 100 sessions to test performance with large datasets
     for (let i = 0; i < 100; i++) {
-      sessions.push(createMockSession(
-        `session-${i}`,
-        new Date(baseTime.getTime() + i * 60000), // 1 minute apart
-        new Date(baseTime.getTime() + i * 60000 + 30000) // 30 seconds after creation
-      ))
+      sessions.push(
+        createMockSession(
+          `session-${i}`,
+          new Date(baseTime.getTime() + i * 60000), // 1 minute apart
+          new Date(baseTime.getTime() + i * 60000 + 30000), // 30 seconds after creation
+        ),
+      )
     }
 
     const props = { ...defaultProps, sessions }
 
     // Component should handle large datasets without errors
     const start = performance.now()
-    
+
     expect(() => {
       const element = React.createElement(SessionTable, props)
       expect(element.type).toBe(SessionTable)
     }).not.toThrow()
-    
+
     const end = performance.now()
     const renderTime = end - start
 
@@ -199,17 +211,17 @@ describe('SessionTable Performance Optimizations', () => {
 
   test('timestamp changes within same minute produce stable keys', () => {
     const baseTime = new Date('2024-01-01T10:30:00Z')
-    
+
     const sessionBefore = createMockSession(
       'session-1',
       baseTime,
-      new Date(baseTime.getTime() + 15000) // 15 seconds after
+      new Date(baseTime.getTime() + 15000), // 15 seconds after
     )
-    
+
     const sessionAfter = createMockSession(
       'session-1',
       baseTime,
-      new Date(baseTime.getTime() + 45000) // 45 seconds after
+      new Date(baseTime.getTime() + 45000), // 45 seconds after
     )
 
     // Stable timestamps should be identical for same minute
@@ -255,13 +267,13 @@ describe('SessionTable Performance Optimizations', () => {
     const session1 = createMockSession(
       'session-1',
       new Date('2024-01-01T10:30:00Z'),
-      new Date('2024-01-01T10:30:30Z') // 30 seconds into minute 30
+      new Date('2024-01-01T10:30:30Z'), // 30 seconds into minute 30
     )
-    
+
     const session2 = createMockSession(
       'session-1',
       new Date('2024-01-01T10:30:00Z'),
-      new Date('2024-01-01T10:31:30Z') // 30 seconds into minute 31
+      new Date('2024-01-01T10:31:30Z'), // 30 seconds into minute 31
     )
 
     const stable1 = Math.floor(session1.lastActivityAt.getTime() / 60000)
@@ -274,11 +286,11 @@ describe('SessionTable Performance Optimizations', () => {
   test('React.memo on TimestampRenderer prevents unnecessary renders', () => {
     // TimestampRenderer should be wrapped in React.memo
     // This test verifies the component structure includes memo optimization
-    
+
     const session = createMockSession(
       'session-1',
       new Date('2024-01-01T10:00:00Z'),
-      new Date('2024-01-01T10:30:00Z')
+      new Date('2024-01-01T10:30:00Z'),
     )
 
     const props = { ...defaultProps, sessions: [session] }

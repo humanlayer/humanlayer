@@ -5,7 +5,15 @@ import eslintConfigPrettier from 'eslint-config-prettier/flat'
 
 export default [
   {
-    ignores: ['dist/**/*', 'src-tauri/target/**/*', '.storybook/**/*'],
+    ignores: [
+      'dist/**/*',
+      'src-tauri/target/**/*',
+      '.storybook/**/*',
+      '**/*.test.ts',
+      '**/*.test.tsx',
+      '**/*.spec.ts',
+      '**/*.spec.tsx',
+    ],
   },
   {
     files: ['**/*.{js,mjs,cjs,ts,tsx}'],

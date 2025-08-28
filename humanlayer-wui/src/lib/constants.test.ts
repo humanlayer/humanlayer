@@ -70,7 +70,7 @@ describe('Constants', () => {
     test('should maintain logical relationships between limits', () => {
       // Min path end chars should be less than max path length
       expect(DISPLAY_LIMITS.MIN_PATH_END_CHARS).toBeLessThan(DISPLAY_LIMITS.MAX_PATH_LENGTH)
-      
+
       // Recent sessions should be a reasonable cache size
       expect(DISPLAY_LIMITS.MAX_RECENT_SESSIONS_SET_SIZE).toBeGreaterThan(10)
       expect(DISPLAY_LIMITS.MAX_RECENT_SESSIONS_SET_SIZE).toBeLessThan(1000)

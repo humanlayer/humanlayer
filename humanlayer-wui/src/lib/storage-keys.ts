@@ -1,6 +1,6 @@
 /**
  * Centralized localStorage and sessionStorage keys
- * 
+ *
  * This file consolidates all storage keys used throughout the application
  * to prevent typos and make key management easier.
  */
@@ -19,15 +19,15 @@ export const THEME_STORAGE_KEY = 'wui-theme'
 /** Session response input storage - base key */
 export const RESPONSE_INPUT_STORAGE_KEY = 'response-input'
 
-/** 
+/**
  * Get the full storage key for session response input
  * @param sessionId - The session ID
  * @returns Full storage key for the session's response input
  */
-export const getSessionResponseInputKey = (sessionId: string): string => 
+export const getSessionResponseInputKey = (sessionId: string): string =>
   `${RESPONSE_INPUT_STORAGE_KEY}.${sessionId}`
 
-// ===============================  
+// ===============================
 // Session Launcher
 // ===============================
 
@@ -46,8 +46,7 @@ export const SESSION_LAUNCHER_QUERY_KEY = 'session-launcher-query'
  * @param sessionId - The session ID
  * @returns Storage key for the session's brainrot mode setting
  */
-export const getBrainrotModeKey = (sessionId: string): string => 
-  `brainrot-mode-${sessionId}`
+export const getBrainrotModeKey = (sessionId: string): string => `brainrot-mode-${sessionId}`
 
 // ===============================
 // Demo and Development

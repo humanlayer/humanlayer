@@ -159,7 +159,7 @@ const TimestampRenderer = React.memo(({ timestamp, sessionId, label }: Timestamp
   const stableTimestamp = useMemo(() => {
     const date = typeof timestamp === 'string' ? new Date(timestamp) : timestamp
     if (!date || isNaN(date.getTime())) return timestamp
-    
+
     // Round to nearest minute (60000ms = 1 minute)
     return new Date(Math.floor(date.getTime() / 60000) * 60000)
   }, [timestamp instanceof Date ? Math.floor(timestamp.getTime() / 60000) : timestamp])
@@ -585,212 +585,216 @@ export default function SessionTable({
                   () => ({
                     ...session,
                     // Round timestamps to nearest minute to prevent constant updates
-                    createdAt: session.createdAt ? (
-                      typeof session.createdAt === 'string' 
+                    createdAt: session.createdAt
+                      ? typeof session.createdAt === 'string'
                         ? session.createdAt
                         : new Date(Math.floor(session.createdAt.getTime() / 60000) * 60000)
-                    ) : session.createdAt,
-                    lastActivityAt: session.lastActivityAt ? (
-                      typeof session.lastActivityAt === 'string'
+                      : session.createdAt,
+                    lastActivityAt: session.lastActivityAt
+                      ? typeof session.lastActivityAt === 'string'
                         ? session.lastActivityAt
                         : new Date(Math.floor(session.lastActivityAt.getTime() / 60000) * 60000)
-                    ) : session.lastActivityAt,
+                      : session.lastActivityAt,
                   }),
                   [
-                    session.id, 
-                    session.status, 
-                    session.title, 
-                    session.summary, 
-                    session.workingDir, 
-                    session.model, 
+                    session.id,
+                    session.status,
+                    session.title,
+                    session.summary,
+                    session.workingDir,
+                    session.model,
                     session.archived,
                     session.dangerouslySkipPermissions,
                     session.autoAcceptEdits,
                     // Stabilize timestamp dependencies to nearest minute
-                    session.createdAt instanceof Date 
+                    session.createdAt instanceof Date
                       ? Math.floor(session.createdAt.getTime() / 60000)
                       : session.createdAt,
-                    session.lastActivityAt instanceof Date 
+                    session.lastActivityAt instanceof Date
                       ? Math.floor(session.lastActivityAt.getTime() / 60000)
                       : session.lastActivityAt,
-                  ]
+                  ],
                 )
-                
+
                 return (
-                <BaseErrorBoundary
-                  key={session.id}
-                  title={`Error rendering session ${session.id}`}
-                  description="This session row failed to render, possibly due to corrupted session data."
-                  contextInfo={{ sessionId: session.id, session }}
-                  showErrorDetails={false}
-                  showReloadButton={false}
-                  fallback={({ retry }) => (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center py-4">
-                        <div className="text-sm text-muted-foreground">
-                          Failed to render session row
-                        </div>
-                        <Button onClick={retry} size="sm" variant="outline" className="mt-2">
-                          Retry
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                >
-                  <TableRow
-                    data-session-id={session.id}
-                    onMouseEnter={() => {
-                      handleFocusSession?.(session)
-                    }}
-                    onMouseLeave={() => {
-                      handleBlurSession?.()
-                    }}
-                    onClick={() => handleRowClick(session)}
-                    className={cn(
-                      'cursor-pointer transition-shadow duration-200',
-                      focusedSession?.id === session.id && [
-                        'shadow-[inset_2px_0_0_0_var(--terminal-accent)]',
-                        'bg-accent/10',
-                      ],
-                      session.archived && 'opacity-60',
+                  <BaseErrorBoundary
+                    key={session.id}
+                    title={`Error rendering session ${session.id}`}
+                    description="This session row failed to render, possibly due to corrupted session data."
+                    contextInfo={{ sessionId: session.id, session }}
+                    showErrorDetails={false}
+                    showReloadButton={false}
+                    fallback={({ retry }) => (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-4">
+                          <div className="text-sm text-muted-foreground">
+                            Failed to render session row
+                          </div>
+                          <Button onClick={retry} size="sm" variant="outline" className="mt-2">
+                            Retry
+                          </Button>
+                        </TableCell>
+                      </TableRow>
                     )}
                   >
-                    <TableCell
-                      className="w-[40px]"
-                      onClick={e => {
-                        e.stopPropagation()
-                        toggleSessionSelection(session.id)
+                    <TableRow
+                      data-session-id={session.id}
+                      onMouseEnter={() => {
+                        handleFocusSession?.(session)
                       }}
+                      onMouseLeave={() => {
+                        handleBlurSession?.()
+                      }}
+                      onClick={() => handleRowClick(session)}
+                      className={cn(
+                        'cursor-pointer transition-shadow duration-200',
+                        focusedSession?.id === session.id && [
+                          'shadow-[inset_2px_0_0_0_var(--terminal-accent)]',
+                          'bg-accent/10',
+                        ],
+                        session.archived && 'opacity-60',
+                      )}
                     >
-                      <div className="flex items-center justify-center">
-                        <div
-                          className={cn(
-                            'transition-all duration-200 ease-in-out',
-                            focusedSession?.id === session.id || selectedSessions.size > 0
-                              ? 'opacity-100 scale-100'
-                              : 'opacity-0 scale-75',
-                          )}
-                        >
-                          {selectedSessions.has(session.id) ? (
-                            <CheckSquare className="w-4 h-4 text-primary" />
-                          ) : (
-                            <Square className="w-4 h-4 text-muted-foreground" />
-                          )}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <SessionStatusRenderer session={stableSession} />
-                    </TableCell>
-                    <TableCell className="max-w-[200px]">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          {/* Sets direction RTL with ellipsis at the start, and uses an inner <bdo> LTR override to keep the entire path (slashes/tilde) in logical order*/}
-                          <span
-                            className="block truncate cursor-help text-sm"
-                            style={{
-                              direction: 'rtl',
-                              textAlign: 'left',
-                              overflow: 'hidden',
-                              whiteSpace: 'nowrap',
-                              textOverflow: 'ellipsis',
-                            }}
+                      <TableCell
+                        className="w-[40px]"
+                        onClick={e => {
+                          e.stopPropagation()
+                          toggleSessionSelection(session.id)
+                        }}
+                      >
+                        <div className="flex items-center justify-center">
+                          <div
+                            className={cn(
+                              'transition-all duration-200 ease-in-out',
+                              focusedSession?.id === session.id || selectedSessions.size > 0
+                                ? 'opacity-100 scale-100'
+                                : 'opacity-0 scale-75',
+                            )}
                           >
-                            <bdo dir="ltr" style={{ unicodeBidi: 'bidi-override' }}>
-                              {stableSession.workingDir || '-'}
-                            </bdo>
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent className="max-w-[600px]">
-                          <span className="font-mono text-sm">
-                            {stableSession.workingDir || 'No working directory'}
-                          </span>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TableCell>
-                    <TableCell>
-                      <SessionEditHandler sessionId={session.id}>
-                        {editingSessionId === session.id ? (
-                          <div className="flex items-center gap-2">
-                            <Input
-                              value={editValue}
-                              onChange={e => updateEditValue(e.target.value)}
-                              onKeyDown={e => {
-                                if (e.key === 'Enter') {
-                                  e.preventDefault()
-                                  handleSaveEdit()
-                                } else if (e.key === 'Escape') {
-                                  e.preventDefault()
-                                  cancelEdit()
-                                }
-                              }}
-                              onClick={e => e.stopPropagation()}
-                              className="h-7 text-sm"
-                              autoFocus
-                            />
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={e => {
-                                e.stopPropagation()
-                                handleSaveEdit()
-                              }}
-                              className="h-7 px-2"
-                            >
-                              Save
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={e => {
-                                e.stopPropagation()
-                                cancelEdit()
-                              }}
-                              className="h-7 px-2"
-                            >
-                              Cancel
-                            </Button>
+                            {selectedSessions.has(session.id) ? (
+                              <CheckSquare className="w-4 h-4 text-primary" />
+                            ) : (
+                              <Square className="w-4 h-4 text-muted-foreground" />
+                            )}
                           </div>
-                        ) : (
-                          <div className="flex items-center gap-2 group">
-                            <span>
-                              {renderHighlightedText(
-                                stableSession.title || stableSession.summary || '',
-                                stableSession.id,
-                              )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <SessionStatusRenderer session={stableSession} />
+                      </TableCell>
+                      <TableCell className="max-w-[200px]">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            {/* Sets direction RTL with ellipsis at the start, and uses an inner <bdo> LTR override to keep the entire path (slashes/tilde) in logical order*/}
+                            <span
+                              className="block truncate cursor-help text-sm"
+                              style={{
+                                direction: 'rtl',
+                                textAlign: 'left',
+                                overflow: 'hidden',
+                                whiteSpace: 'nowrap',
+                                textOverflow: 'ellipsis',
+                              }}
+                            >
+                              <bdo dir="ltr" style={{ unicodeBidi: 'bidi-override' }}>
+                                {stableSession.workingDir || '-'}
+                              </bdo>
                             </span>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={e => {
-                                e.stopPropagation()
-                                handleStartEdit(stableSession.id, stableSession.title || '', stableSession.summary || '')
-                              }}
-                              className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                            >
-                              <Pencil className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        )}
-                      </SessionEditHandler>
-                    </TableCell>
-                    <TableCell>{stableSession.model || <CircleOff className="w-4 h-4" />}</TableCell>
-                    <TableCell>
-                      <TimestampRenderer
-                        timestamp={stableSession.createdAt}
-                        sessionId={stableSession.id}
-                        label="created"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <TimestampRenderer
-                        timestamp={stableSession.lastActivityAt}
-                        sessionId={stableSession.id}
-                        label="last activity"
-                      />
-                    </TableCell>
-                  </TableRow>
-                </BaseErrorBoundary>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-[600px]">
+                            <span className="font-mono text-sm">
+                              {stableSession.workingDir || 'No working directory'}
+                            </span>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TableCell>
+                      <TableCell>
+                        <SessionEditHandler sessionId={session.id}>
+                          {editingSessionId === session.id ? (
+                            <div className="flex items-center gap-2">
+                              <Input
+                                value={editValue}
+                                onChange={e => updateEditValue(e.target.value)}
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault()
+                                    handleSaveEdit()
+                                  } else if (e.key === 'Escape') {
+                                    e.preventDefault()
+                                    cancelEdit()
+                                  }
+                                }}
+                                onClick={e => e.stopPropagation()}
+                                className="h-7 text-sm"
+                                autoFocus
+                              />
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={e => {
+                                  e.stopPropagation()
+                                  handleSaveEdit()
+                                }}
+                                className="h-7 px-2"
+                              >
+                                Save
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={e => {
+                                  e.stopPropagation()
+                                  cancelEdit()
+                                }}
+                                className="h-7 px-2"
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2 group">
+                              <span>
+                                {renderHighlightedText(
+                                  stableSession.title || stableSession.summary || '',
+                                  stableSession.id,
+                                )}
+                              </span>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={e => {
+                                  e.stopPropagation()
+                                  handleStartEdit(
+                                    stableSession.id,
+                                    stableSession.title || '',
+                                    stableSession.summary || '',
+                                  )
+                                }}
+                                className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                              >
+                                <Pencil className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          )}
+                        </SessionEditHandler>
+                      </TableCell>
+                      <TableCell>{stableSession.model || <CircleOff className="w-4 h-4" />}</TableCell>
+                      <TableCell>
+                        <TimestampRenderer
+                          timestamp={stableSession.createdAt}
+                          sessionId={stableSession.id}
+                          label="created"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <TimestampRenderer
+                          timestamp={stableSession.lastActivityAt}
+                          sessionId={stableSession.id}
+                          label="last activity"
+                        />
+                      </TableCell>
+                    </TableRow>
+                  </BaseErrorBoundary>
                 )
               })}
             </TableBody>
