@@ -91,9 +91,9 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
 
     const handleSubmit = () => {
       logger.log('ResponseInput.handleSubmit()')
-      if (isDenying && denyingApprovalId) {
+      if (isDenying && denyingApprovalId && !isForkMode) {
         onDeny?.(denyingApprovalId, responseEditor?.getText().trim() || '', session.id)
-      } else if (sessionStatus === SessionStatus.WaitingInput) {
+      } else if (sessionStatus === SessionStatus.WaitingInput && !isForkMode) {
         // Alternate situation: If we haven't triggered the denying state by clicking/keyboarding through, it's possible we're potentially attempting to submit when we actually need to be providing an approval. In these cases we need to enter a denying state relative to the oldest approval.
         denyAgainstOldestApproval()
         setYouSure(true)
@@ -163,7 +163,7 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
 
     // Always show the input for all session states
     return (
-      <div className={`space-y-3 border-l-2 pl-4 pr-2 pb-4 ${borderColorClass}`}>
+      <div className={`transition-colors space-y-3 border-l-2 pl-4 pr-2 pb-4 ${borderColorClass}`}>
         {/* Status Bar */}
         <StatusBar
           session={session}

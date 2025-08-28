@@ -63,18 +63,20 @@ export function useSessionApprovals({
   const handleDeny = useCallback(async (approvalId: string, reason: string, sessionId: string) => {
     try {
       const res = await daemonClient.denyFunctionCall(approvalId, reason)
-      logger.log('handleDeny()', res)
+      console.log('handleDeny()', res)
 
       if (res.success) {
         responseEditor?.commands.setContent('')
         localStorage.removeItem(`${ResponseInputLocalStorageKey}.${sessionId}`)
+      } else {
+        console.log('WHAT', res);
       }
 
       setDenyingApprovalId(null)
     } catch (error) {
       notificationService.notifyError(error, 'Failed to deny')
     }
-  }, [])
+  }, [responseEditor])
 
   const denyAgainstOldestApproval = useCallback(() => {
     const oldestApproval = events.find(
@@ -91,7 +93,7 @@ export function useSessionApprovals({
   const handleStartDeny = useCallback((approvalId: string) => {
     setDenyingApprovalId(approvalId)
     responseEditor?.commands.focus()
-  }, [])
+  }, [responseEditor])
 
   const handleCancelDeny = useCallback(() => {
     setDenyingApprovalId(null)
