@@ -250,6 +250,14 @@ export default function CommandInput({
         />
       )}
 
+      {/* Warning for non-Anthropic providers */}
+      {config.provider && config.provider !== 'anthropic' && (
+        <div className="flex items-center gap-2 p-3 bg-muted/50 border border-border rounded-md text-sm text-muted-foreground">
+          <span>⚠️</span>
+          <span>Warning: Using non-Claude models and providers is experimental.</span>
+        </div>
+      )}
+
       {/* Action Bar */}
       {hasContent(value) && (
         <div className="flex items-center justify-end pt-2">
