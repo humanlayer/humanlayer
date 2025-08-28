@@ -1,6 +1,5 @@
-import React, { forwardRef, useCallback, useEffect, useState } from 'react'
+import { forwardRef, useEffect, useState, useRef, useImperativeHandle } from 'react'
 import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
 import { Session, SessionStatus } from '@/lib/daemon/types'
 import {
   getInputPlaceholder,
@@ -10,27 +9,31 @@ import {
 import { ResponseInputLocalStorageKey } from '@/components/internal/SessionDetail/hooks/useSessionActions'
 import { StatusBar } from './StatusBar'
 import { useHotkeys } from 'react-hotkeys-hook'
+import { ResponseEditor } from './ResponseEditor'
+import { useStore } from '@/AppStore'
+import { logger } from '@/lib/logging'
+import { Content } from '@tiptap/react'
 
 interface ResponseInputProps {
   session: Session
   parentSessionData?: Partial<Session>
-  responseInput: string
-  setResponseInput: (input: string) => void
   isResponding: boolean
   handleContinueSession: () => void
-  handleResponseInputKeyDown: (e: React.KeyboardEvent) => void
   isForkMode?: boolean
   forkTokenCount?: number | null
   onModelChange?: () => void
   denyingApprovalId?: string | null
   isDenying?: boolean
-  onDeny?: (approvalId: string, reason: string) => void
+  onDeny?: (approvalId: string, reason: string, sessionId: string) => void
   handleCancelDeny?: () => void
   sessionStatus: SessionStatus
   denyAgainstOldestApproval: () => void
+  onToggleAutoAccept?: () => void
+  onToggleDangerouslySkipPermissions?: () => void
+  onToggleForkView?: () => void
 }
 
-export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>(
+export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }, ResponseInputProps>(
   (
     {
       denyingApprovalId,
@@ -41,19 +44,24 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
 
       session,
       parentSessionData,
-      responseInput,
-      setResponseInput,
       isResponding,
       handleContinueSession,
       isForkMode,
       forkTokenCount,
       onModelChange,
       sessionStatus,
+      onToggleAutoAccept,
+      onToggleDangerouslySkipPermissions,
+      onToggleForkView,
     },
     ref,
   ) => {
     const [youSure, setYouSure] = useState(false)
+    const [isFocused, setIsFocused] = useState(false)
+    const responseEditor = useStore(state => state.responseEditor)
+    const localStorageValue = localStorage.getItem(`${ResponseInputLocalStorageKey}.${session.id}`)
 
+    const tiptapRef = useRef<{ focus: () => void }>(null)
     const getSendButtonText = () => {
       if (isResponding) return 'Interrupting...'
       if (isDenying) return youSure ? 'Deny?' : 'Deny'
@@ -69,33 +77,53 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
       return 'Send'
     }
 
+    let initialValue = null
+
+    if (
+      initialValue === null &&
+      typeof localStorageValue === 'string' &&
+      localStorageValue.length > 0
+    ) {
+      try {
+        initialValue = JSON.parse(localStorageValue)
+      } catch (e) {
+        logger.error('ResponseInput.useEffect() - error parsing localStorageValue', e)
+      }
+    }
+
     const handleSubmit = () => {
-      if (isDenying && denyingApprovalId) {
-        onDeny?.(denyingApprovalId, responseInput.trim())
-      } else if (sessionStatus === SessionStatus.WaitingInput) {
+      logger.log('ResponseInput.handleSubmit()')
+      if (isDenying && denyingApprovalId && !isForkMode) {
+        onDeny?.(denyingApprovalId, responseEditor?.getText().trim() || '', session.id)
+      } else if (sessionStatus === SessionStatus.WaitingInput && !isForkMode) {
         // Alternate situation: If we haven't triggered the denying state by clicking/keyboarding through, it's possible we're potentially attempting to submit when we actually need to be providing an approval. In these cases we need to enter a denying state relative to the oldest approval.
         denyAgainstOldestApproval()
         setYouSure(true)
       } else {
         handleContinueSession()
       }
+      // Regular help text
+      return getHelpText(session.status)
     }
 
-    const handleResponseInputKeyDown = useCallback(
-      (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-          e.preventDefault()
-          handleSubmit()
-        }
-      },
-      [handleContinueSession, handleSubmit],
-    )
+    // Forward ref handling for both textarea and TipTap editor
+    useImperativeHandle(ref, () => {
+      return tiptapRef.current!
+    }, [])
+
+    if (session.status === SessionStatus.Failed && !isForkMode) {
+      return (
+        <div className="flex items-center justify-between py-1">
+          <span className="text-sm text-muted-foreground">Session failed</span>
+        </div>
+      )
+    }
 
     useEffect(() => {
       if (isDenying && ref && typeof ref !== 'function' && ref.current) {
         ref.current.focus()
       } else {
-        if (ref && typeof ref !== 'function' && ref.current) {
+        if (ref && typeof ref !== 'function' && ref.current && ref.current.blur) {
           ref.current.blur()
         }
       }
@@ -112,14 +140,19 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
       { enableOnFormTags: true },
     )
 
-    const isDisabled = !responseInput.trim() || isResponding
+    const isDisabled = responseEditor?.isEmpty || isResponding
     const isMac = navigator.platform.includes('Mac')
     const sendKey = isMac ? '⌘+Enter' : 'Ctrl+Enter'
 
     let placeholder = getInputPlaceholder(session.status)
 
+    let borderColorClass = isFocused ? 'border-[var(--terminal-accent)]' : 'border-transparent'
+
     if (isDenying) {
       placeholder = "Tell the agent what you'd like to do differently..."
+      if (isFocused) {
+        borderColorClass = 'border-[var(--terminal-error)]'
+      }
     }
 
     if (isForkMode) {
@@ -130,60 +163,72 @@ export const ResponseInput = forwardRef<HTMLTextAreaElement, ResponseInputProps>
       isDenying &&
       ' focus:outline-[var(--terminal-error)] focus-visible:outline-[var(--terminal-error)] focus-visible:border-[var(--terminal-error)]'
 
-    // This is a hack, was struggling to find the style associated with
-    // the inserted box shadow from tailwind, there's a goofy ring-offset thing going on
-    const textareaStyle = isDenying
-      ? {
-          boxShadow: 'var(--terminal-error)',
-        }
-      : {}
-
     // Always show the input for all session states
     return (
-      <div className="space-y-3">
-        {/* Status Bar */}
-        <StatusBar
-          session={session}
-          parentSessionData={parentSessionData}
-          isForkMode={isForkMode}
-          forkTokenCount={forkTokenCount}
-          onModelChange={onModelChange}
-          isDenying={isDenying}
-        />
-
-        {/* Existing input area */}
-        {isForkMode && <span className="text-sm font-medium">Fork from this message:</span>}
-        <div className="flex gap-2">
-          <Textarea
-            style={textareaStyle}
-            ref={ref}
-            placeholder={placeholder}
-            value={responseInput}
-            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
-              setResponseInput(e.target.value)
-              localStorage.setItem(`${ResponseInputLocalStorageKey}.${session.id}`, e.target.value)
-            }}
-            onKeyDown={handleResponseInputKeyDown}
-            disabled={isResponding}
-            className={`flex-1 min-h-[2.5rem] ${isResponding ? 'opacity-50' : ''} ${textareaOutlineClass}`}
+      <div className={`transition-colors border-l-2 pl-2 pr-2 ${borderColorClass}`}>
+        <div className="space-y-2">
+          {/* Status Bar */}
+          <StatusBar
+            session={session}
+            parentSessionData={parentSessionData}
+            isForkMode={isForkMode}
+            forkTokenCount={forkTokenCount}
+            onModelChange={onModelChange}
+            isDenying={isDenying}
           />
-          <Button
-            onClick={handleSubmit}
-            disabled={isDisabled}
-            size="sm"
-            variant={isDenying ? 'destructive' : 'default'}
-          >
-            {getSendButtonText()}
-            {!isDisabled && (
-              <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">{sendKey}</kbd>
-            )}
-          </Button>
-        </div>
 
-        {/* Keyboard shortcuts (condensed) */}
-        <p className="text-xs text-muted-foreground">
-          {isResponding ? 'Waiting for Claude to accept the interrupt...' : getHelpText(session.status)}
-        </p>
+          {/* Existing input area */}
+          <div className="flex gap-2">
+            <ResponseEditor
+              ref={tiptapRef}
+              initialValue={initialValue}
+              onChange={(value: Content) => {
+                localStorage.setItem(
+                  `${ResponseInputLocalStorageKey}.${session.id}`,
+                  JSON.stringify(value),
+                )
+              }}
+              onSubmit={handleSubmit}
+              onToggleAutoAccept={onToggleAutoAccept}
+              onToggleDangerouslySkipPermissions={onToggleDangerouslySkipPermissions}
+              onToggleForkView={onToggleForkView}
+              disabled={isResponding}
+              placeholder={placeholder}
+              className={`flex-1 min-h-[2.5rem] ${isResponding ? 'opacity-50' : ''} ${textareaOutlineClass} ${
+                isDenying && isFocused ? 'caret-error' : isFocused ? 'caret-accent' : ''
+              }`}
+              onFocus={() => {
+                setIsFocused(true)
+              }}
+              onBlur={() => {
+                setIsFocused(false)
+              }}
+            />
+          </div>
+
+          {/* Keyboard shortcuts (condensed) */}
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-muted-foreground">
+              {isResponding
+                ? 'Waiting for Claude to accept the interrupt...'
+                : getHelpText(session.status)}
+            </p>
+
+            <Button
+              onClick={handleSubmit}
+              disabled={isDisabled}
+              variant={isDenying ? 'destructive' : 'default'}
+              className="h-auto py-0.5 px-2 text-xs"
+            >
+              {getSendButtonText()}
+              <kbd
+                className={`ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded ${isDisabled ? 'invisible' : ''}`}
+              >
+                {sendKey}
+              </kbd>
+            </Button>
+          </div>
+        </div>
       </div>
     )
   },

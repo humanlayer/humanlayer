@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { useNavigate } from 'react-router-dom'
 import { Session, ConversationEvent, ViewMode } from '@/lib/daemon/types'
@@ -6,6 +6,7 @@ import { daemonClient } from '@/lib/daemon/client'
 import { notificationService } from '@/services/NotificationService'
 import { useStore } from '@/AppStore'
 import { SessionDetailHotkeysScope } from '../SessionDetail'
+import { logger } from '@/lib/logging'
 
 interface UseSessionActionsProps {
   session: Session
@@ -21,9 +22,6 @@ export function useSessionActions({
   pendingForkMessage,
   onForkCommit,
 }: UseSessionActionsProps) {
-  const [responseInput, setResponseInput] = useState(
-    localStorage.getItem(`${ResponseInputLocalStorageKey}.${session.id}`) || '',
-  )
   const [isResponding, setIsResponding] = useState(false)
   const [forkFromSessionId, setForkFromSessionId] = useState<string | null>(null)
 
@@ -33,24 +31,27 @@ export function useSessionActions({
   const setViewMode = useStore(state => state.setViewMode)
   const trackNavigationFrom = useStore(state => state.trackNavigationFrom)
   const updateActiveSessionDetail = useStore(state => state.updateActiveSessionDetail)
+  const responseEditor = useStore(state => state.responseEditor)
   const navigate = useNavigate()
 
   // Update response input when fork message is selected
   useEffect(() => {
     if (pendingForkMessage) {
-      setResponseInput(pendingForkMessage.content || '')
+      responseEditor?.commands.setContent(pendingForkMessage.content || '')
       // Set the session ID to fork from (the one before this message)
       setForkFromSessionId(pendingForkMessage.sessionId || null)
     } else {
       // Clear fork state when pendingForkMessage is null (e.g., when selecting "Current")
       setForkFromSessionId(null)
     }
-  }, [pendingForkMessage])
+  }, [pendingForkMessage, responseEditor])
 
   // Continue session functionality
   const handleContinueSession = useCallback(async () => {
+    logger.log('handleContinueSession()')
     const sessionConversation = useStore.getState().activeSessionDetail?.conversation
-    if (!responseInput.trim() || isResponding) return
+    const responseInput = responseEditor?.getText()
+    if (!responseInput?.trim() || isResponding) return
 
     try {
       setIsResponding(true)
@@ -101,7 +102,7 @@ export function useSessionActions({
       await refreshSessions()
 
       // Reset form state only after success
-      setResponseInput('')
+      responseEditor?.commands.setContent('')
       localStorage.removeItem(`${ResponseInputLocalStorageKey}.${session.id}`)
     } catch (error) {
       notificationService.notifyError(error, 'Failed to continue session')
@@ -110,7 +111,7 @@ export function useSessionActions({
       setIsResponding(false)
     }
   }, [
-    responseInput,
+    responseEditor,
     isResponding,
     session.id,
     session.archived,
@@ -121,16 +122,6 @@ export function useSessionActions({
     forkFromSessionId,
     onForkCommit,
   ])
-
-  const handleResponseInputKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault()
-        handleContinueSession()
-      }
-    },
-    [handleContinueSession],
-  )
 
   // Navigate to parent session
   const handleNavigateToParent = useCallback(() => {
@@ -171,11 +162,8 @@ export function useSessionActions({
   )
 
   return {
-    responseInput,
-    setResponseInput,
     isResponding,
     handleContinueSession,
-    handleResponseInputKeyDown,
     handleNavigateToParent,
     isForkMode: !!forkFromSessionId,
   }

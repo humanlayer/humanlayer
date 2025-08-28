@@ -5,6 +5,7 @@ import { truncate, formatAbsoluteTimestamp, formatTimestamp } from '@/utils/form
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { eventToDisplayObject } from '../eventToDisplayObject'
 import { hasTextSelection } from '@/utils/selection'
+import { useStore } from '@/AppStore'
 
 interface TaskGroupProps {
   group: TaskEventGroup
@@ -58,11 +59,16 @@ export function TaskGroup({
   const displayName = taskInput.subagent_type || 'Task'
   const description = taskInput.description || 'Task'
   const isCompleted = parentTask.isCompleted
+  const responseEditor = useStore(state => state.responseEditor)
 
   return (
     <div
-      className={`p-4 TaskGroup cursor-pointer transition-all duration-200 ${
-        focusedEventId === parentTask.id ? 'shadow-[inset_2px_0_0_0_var(--terminal-accent)]' : ''
+      className={`p-4 TaskGroup cursor-pointer transition-colors duration-200 border-l-2 ${
+        focusedEventId === parentTask.id
+          ? responseEditor?.isFocused
+            ? 'border-l-[var(--terminal-accent-dim)]'
+            : 'border-l-[var(--terminal-accent)]'
+          : 'border-l-transparent'
       }`}
     >
       {/* Task Header with Preview */}

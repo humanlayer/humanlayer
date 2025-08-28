@@ -193,6 +193,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [editValue, setEditValue] = useState('')
 
+  const responseEditor = useStore(state => state.responseEditor)
+
   // Helper functions for inline title editing
   const startEditTitle = () => {
     setIsEditingTitle(true)
@@ -224,8 +226,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const { shouldIgnoreMouseEvent, startKeyboardNavigation } = useKeyboardNavigationProtection()
 
   const isActivelyProcessing = ['starting', 'running', 'completing'].includes(session.status)
-  // const isActivelyProcessing = true
-  const responseInputRef = useRef<HTMLTextAreaElement>(null)
   const confirmingArchiveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Get session from store to access auto_accept_edits and dangerouslySkipPermissions
@@ -426,7 +426,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         setPendingForkMessage(null)
         setForkTokenCount(null)
         // Also clear the response input when selecting "Current"
-        actions.setResponseInput('')
+        responseEditor?.commands.setContent('')
         return
       }
 
@@ -528,9 +528,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         return
       }
 
-      // If the textarea is focused, blur it and stop processing
-      if (ev.target === responseInputRef.current && responseInputRef.current) {
-        responseInputRef.current.blur()
+      if (responseEditor?.isFocused) {
+        responseEditor.commands.blur()
         return
       }
 
@@ -540,7 +539,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         setPreviewEventIndex(null)
         setPendingForkMessage(null)
         setForkTokenCount(null)
-        actions.setResponseInput('')
+        responseEditor?.commands.setContent('')
       } else if (confirmingArchive) {
         setConfirmingArchive(false)
         // Clear timeout if exists
@@ -571,74 +570,78 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       navigation.focusedEventId,
       navigation.setFocusedEventId,
       onClose,
-      actions.setResponseInput,
+      // actions.setResponseInput,
     ],
   )
+
+  // Get hotkeys context for modal scope checking
+  const { activeScopes } = useHotkeysContext()
+
+  // Create reusable handler for toggling auto-accept
+  const handleToggleAutoAccept = useCallback(async () => {
+    logger.log('toggleAutoAcceptEdits', autoAcceptEdits)
+    try {
+      const newState = !autoAcceptEdits
+      await updateSessionOptimistic(session.id, { autoAcceptEdits: newState })
+    } catch (error) {
+      logger.error('Failed to toggle auto-accept mode:', error)
+      toast.error('Failed to toggle auto-accept mode')
+    }
+  }, [session.id, autoAcceptEdits, updateSessionOptimistic])
+
+  // Create reusable handler for toggling dangerously skip permissions
+  const handleToggleDangerouslySkipPermissions = useCallback(async () => {
+    // Check if any modal scopes are active
+    const modalScopes = ['tool-result-modal', 'fork-view-modal', 'dangerously-skip-permissions-dialog']
+    const hasModalOpen = activeScopes.some(scope => modalScopes.includes(scope))
+
+    // Don't trigger if other modals are open
+    if (hasModalOpen || dangerousSkipPermissionsDialogOpen) {
+      return
+    }
+
+    // Get the current value from the store directly to avoid stale closure
+    const currentSessionFromStore = useStore.getState().sessions.find(s => s.id === session.id)
+    const currentDangerouslySkipPermissions =
+      currentSessionFromStore?.dangerouslySkipPermissions ?? false
+
+    if (currentDangerouslySkipPermissions) {
+      // Disable dangerous skip permissions
+      try {
+        await updateSessionOptimistic(session.id, {
+          dangerouslySkipPermissions: false,
+          dangerouslySkipPermissionsExpiresAt: undefined,
+        })
+      } catch (error) {
+        logger.error('Failed to disable dangerous skip permissions', { error })
+        toast.error('Failed to disable dangerous skip permissions')
+      }
+    } else {
+      // Show confirmation dialog
+      setDangerousSkipPermissionsDialogOpen(true)
+    }
+  }, [session.id, activeScopes, dangerousSkipPermissionsDialogOpen, updateSessionOptimistic])
 
   // Add Shift+Tab handler for auto-accept edits mode
   useHotkeys(
     'shift+tab',
-    async () => {
-      logger.log('shift+tab setAutoAcceptEdits', autoAcceptEdits)
-      try {
-        const newState = !autoAcceptEdits
-        await updateSessionOptimistic(session.id, { autoAcceptEdits: newState })
-      } catch (error) {
-        logger.error('Failed to toggle auto-accept mode:', error)
-        toast.error('Failed to toggle auto-accept mode')
-      }
-    },
+    handleToggleAutoAccept,
     {
       preventDefault: true,
       scopes: SessionDetailHotkeysScope,
     },
-    [session.id, autoAcceptEdits], // Dependencies
+    [handleToggleAutoAccept],
   )
 
   // Add Option+Y handler for dangerously skip permissions mode
-  const { activeScopes } = useHotkeysContext()
   useHotkeys(
     'alt+y',
-    async () => {
-      // Check if any modal scopes are active
-      const modalScopes = [
-        'tool-result-modal',
-        'fork-view-modal',
-        'dangerously-skip-permissions-dialog',
-      ]
-      const hasModalOpen = activeScopes.some(scope => modalScopes.includes(scope))
-
-      // Don't trigger if other modals are open
-      if (hasModalOpen || dangerousSkipPermissionsDialogOpen) {
-        return
-      }
-
-      // Get the current value from the store directly to avoid stale closure
-      const currentSessionFromStore = useStore.getState().sessions.find(s => s.id === session.id)
-      const currentDangerouslySkipPermissions =
-        currentSessionFromStore?.dangerouslySkipPermissions ?? false
-
-      if (currentDangerouslySkipPermissions) {
-        // Disable dangerous skip permissions
-        try {
-          await updateSessionOptimistic(session.id, {
-            dangerouslySkipPermissions: false,
-            dangerouslySkipPermissionsExpiresAt: undefined,
-          })
-        } catch (error) {
-          logger.error('Failed to disable dangerous skip permissions', { error })
-          toast.error('Failed to disable dangerous skip permissions')
-        }
-      } else {
-        // Show confirmation dialog
-        setDangerousSkipPermissionsDialogOpen(true)
-      }
-    },
+    handleToggleDangerouslySkipPermissions,
     {
       preventDefault: true,
       scopes: SessionDetailHotkeysScope,
     },
-    [session.id], // Remove dangerouslySkipPermissions from deps since we get it fresh each time
+    [handleToggleDangerouslySkipPermissions],
   )
 
   // Handle dialog confirmation
@@ -728,26 +731,31 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     [session.id, session.archived, session.summary, session.status, onClose, confirmingArchive],
   )
 
+  // Create reusable handler for toggling fork view
+  const handleToggleForkView = useCallback(() => {
+    // Check if any modal scopes are active
+    const modalScopes = ['tool-result-modal', 'dangerously-skip-permissions-dialog']
+    const hasModalOpen = activeScopes.some(scope => modalScopes.includes(scope))
+
+    // Don't trigger if other modals are open
+    if (hasModalOpen) {
+      return
+    }
+
+    setForkViewOpen(!forkViewOpen)
+  }, [activeScopes, forkViewOpen])
+
   // Add hotkey to open fork view (Meta+Y)
   useHotkeys(
     'meta+y',
     e => {
       e.preventDefault()
-
-      // Check if any modal scopes are active
-      const modalScopes = ['tool-result-modal', 'dangerously-skip-permissions-dialog']
-      const hasModalOpen = activeScopes.some(scope => modalScopes.includes(scope))
-
-      // Don't trigger if other modals are open
-      if (hasModalOpen) {
-        return
-      }
-
-      setForkViewOpen(!forkViewOpen)
+      handleToggleForkView()
     },
     {
       scopes: SessionDetailHotkeysScope,
     },
+    [handleToggleForkView],
   )
 
   // Add Shift+G hotkey to scroll to bottom
@@ -806,8 +814,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   useHotkeys(
     'enter',
     () => {
-      if (responseInputRef.current) {
-        responseInputRef.current.focus()
+      if (responseEditor) {
+        responseEditor.commands.focus()
       }
     },
     {
@@ -960,9 +968,9 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                 setForkViewOpen(open)
                 // Focus the input when closing the fork modal
                 // Use longer delay to ensure it happens after all dialog cleanup
-                if (!open && responseInputRef.current) {
+                if (!open && responseEditor) {
                   setTimeout(() => {
-                    responseInputRef.current?.focus()
+                    responseEditor.commands.focus()
                   }, 50)
                 }
               }}
@@ -1041,9 +1049,9 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                 setForkViewOpen(open)
                 // Focus the input when closing the fork modal
                 // Use longer delay to ensure it happens after all dialog cleanup
-                if (!open && responseInputRef.current) {
+                if (!open && responseEditor) {
                   setTimeout(() => {
-                    responseInputRef.current?.focus()
+                    responseEditor.commands.focus()
                   }, 50)
                 }
               }}
@@ -1064,7 +1072,9 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               focusedEventId={navigation.focusedEventId}
               setFocusedEventId={navigation.setFocusedEventId}
               onApprove={approvals.handleApprove}
-              onDeny={approvals.handleDeny}
+              onDeny={(approvalId: string, reason: string) =>
+                approvals.handleDeny(approvalId, reason, session.id)
+              }
               approvingApprovalId={approvals.approvingApprovalId}
               confirmingApprovalId={approvals.confirmingApprovalId}
               denyingApprovalId={approvals.denyingApprovalId ?? undefined}
@@ -1124,10 +1134,9 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       </div>
 
       {/* Response input - always show but disable for non-completed sessions */}
-      <Card className={isCompactView ? 'py-2' : 'py-4'}>
-        <CardContent className={isCompactView ? 'px-2' : 'px-4'}>
+      <Card className="py-2">
+        <CardContent className="px-2">
           <ResponseInput
-            ref={responseInputRef}
             denyingApprovalId={approvals.denyingApprovalId ?? undefined}
             isDenying={approvals.isDenying}
             onDeny={approvals.handleDeny}
@@ -1135,11 +1144,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
             denyAgainstOldestApproval={approvals.denyAgainstOldestApproval}
             session={session}
             parentSessionData={parentSessionData || parentSession || undefined}
-            responseInput={actions.responseInput}
-            setResponseInput={actions.setResponseInput}
             isResponding={actions.isResponding}
             handleContinueSession={actions.handleContinueSession}
-            handleResponseInputKeyDown={actions.handleResponseInputKeyDown}
             isForkMode={actions.isForkMode}
             forkTokenCount={forkTokenCount}
             onModelChange={() => {
@@ -1147,6 +1153,9 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               fetchActiveSessionDetail(session.id)
             }}
             sessionStatus={session.status}
+            onToggleAutoAccept={handleToggleAutoAccept}
+            onToggleDangerouslySkipPermissions={handleToggleDangerouslySkipPermissions}
+            onToggleForkView={handleToggleForkView}
           />
           {/* Session mode indicator - shows fork, dangerous skip permissions or auto-accept */}
           <SessionModeIndicator
