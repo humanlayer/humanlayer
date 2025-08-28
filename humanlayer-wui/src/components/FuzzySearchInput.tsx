@@ -24,6 +24,8 @@ interface SearchInputProps {
   autoFocus?: boolean
   onFocus?: () => void
   onBlur?: () => void
+  maxRecentItems?: number
+  maxDirectoryItems?: number
 }
 
 export function SearchInput({
@@ -40,6 +42,8 @@ export function SearchInput({
   autoFocus,
   onFocus: externalOnFocus,
   onBlur: externalOnBlur,
+  maxRecentItems,
+  maxDirectoryItems,
 }: SearchInputProps = {}) {
   // Use internal state if not controlled
   const [internalValue, setInternalValue] = useState('')
@@ -234,6 +238,11 @@ export function SearchInput({
       }))
     }
 
+    // Apply max limit if specified
+    if (maxDirectoryItems && dirObjs.length > maxDirectoryItems) {
+      dirObjs = dirObjs.slice(0, maxDirectoryItems)
+    }
+
     setDirectoryPreview(dirObjs)
 
     // Filter recent directories based on search value
@@ -256,9 +265,15 @@ export function SearchInput({
           path: result.item.path,
           matches: result.matches,
         }))
+
+        // Apply max limit if specified
+        if (maxRecentItems && recentObjs.length > maxRecentItems) {
+          recentObjs = recentObjs.slice(0, maxRecentItems)
+        }
       } else {
         // Show all recent directories when no search term
-        recentObjs = recentDirectories.slice(0, 10).map(recent => ({
+        const limit = maxRecentItems || 10
+        recentObjs = recentDirectories.slice(0, limit).map(recent => ({
           path: recent.path,
         }))
       }

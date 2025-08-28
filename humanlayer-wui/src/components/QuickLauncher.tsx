@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Button } from './ui/button'
 import { Textarea } from './ui/textarea'
 import { Label } from './ui/label'
-import { SearchInput } from './FuzzySearchInput'
+import { QuickLauncherDirectoryInput } from './QuickLauncherDirectoryInput'
 import { daemonClient } from '@/lib/daemon'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { useHotkeys } from 'react-hotkeys-hook'
@@ -56,24 +56,29 @@ export function QuickLauncher() {
     { enableOnFormTags: true },
   )
 
-  // Cmd+Enter to submit
+  // Cmd+Enter to submit - works globally
   useHotkeys(
-    'cmd+enter',
-    () => {
+    'cmd+enter, meta+enter',
+    (e) => {
+      e.preventDefault()
+      e.stopPropagation()
       handleSubmit()
     },
-    { enableOnFormTags: true },
+    { 
+      enableOnFormTags: true,
+      preventDefault: true,
+    },
   )
 
   const handleSubmit = async () => {
-    if (!prompt.trim() || isLoading) return
+    if (!prompt.trim() || !workingDir.trim() || isLoading) return
 
     setIsLoading(true)
     setError(null)
 
     try {
-      // Use current directory if workingDir is empty
-      const dirToUse = workingDir.trim() || '.'
+      // Already validated that workingDir has a value
+      const dirToUse = workingDir.trim()
 
       // Save working directory only if it was explicitly set
       if (workingDir.trim()) {
@@ -130,13 +135,6 @@ export function QuickLauncher() {
           onChange={e => setPrompt(e.target.value)}
           placeholder="What would you like help with?"
           className="h-[60px] resize-none text-xs font-mono"
-          onKeyDown={e => {
-            // Handle Cmd+Enter to submit
-            if (e.metaKey && e.key === 'Enter') {
-              e.preventDefault()
-              handleSubmit()
-            }
-          }}
         />
       </div>
 
@@ -148,14 +146,12 @@ export function QuickLauncher() {
           <Label htmlFor="working-dir" className="text-xs">
             Directory
           </Label>
-          <SearchInput
+          <QuickLauncherDirectoryInput
             value={workingDir}
             onChange={setWorkingDir}
             recentDirectories={recentDirectories}
             className="font-mono text-xs h-7"
-            dropdownClassName=""
-            dropdownSide="top"
-            initialSelectionPosition="bottom"
+            placeholder="/path/to/directory"
             onSubmit={() => {
               handleSubmit()
             }}
@@ -166,7 +162,7 @@ export function QuickLauncher() {
           size="sm"
           className="h-7 px-3 text-xs"
           onClick={handleSubmit}
-          disabled={!prompt.trim() || isLoading}
+          disabled={!prompt.trim() || !workingDir.trim() || isLoading}
         >
           {isLoading ? '...' : 'Submit'}
         </Button>
