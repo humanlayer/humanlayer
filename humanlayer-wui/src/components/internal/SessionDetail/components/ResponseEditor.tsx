@@ -396,6 +396,7 @@ const KeyboardShortcuts = Extension.create({
       onSubmit: undefined,
       onToggleAutoAccept: undefined,
       onToggleDangerouslySkipPermissions: undefined,
+      onToggleForkView: undefined,
     }
   },
 
@@ -416,6 +417,10 @@ const KeyboardShortcuts = Extension.create({
         this.options.onToggleDangerouslySkipPermissions?.()
         return true
       },
+      'Mod-y': () => {
+        this.options.onToggleForkView?.()
+        return true
+      },
     }
   },
 })
@@ -432,6 +437,7 @@ interface ResponseEditorProps {
   onSubmit?: () => void
   onToggleAutoAccept?: () => void
   onToggleDangerouslySkipPermissions?: () => void
+  onToggleForkView?: () => void
 }
 
 export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorProps>(
@@ -448,6 +454,7 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
       onSubmit,
       onToggleAutoAccept,
       onToggleDangerouslySkipPermissions,
+      onToggleForkView,
     },
     ref,
   ) => {
@@ -456,6 +463,7 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
     const onToggleAutoAcceptRef = React.useRef<ResponseEditorProps['onToggleAutoAccept']>()
     const onToggleDangerouslySkipPermissionsRef =
       React.useRef<ResponseEditorProps['onToggleDangerouslySkipPermissions']>()
+    const onToggleForkViewRef = React.useRef<ResponseEditorProps['onToggleForkView']>()
 
     const setResponseEditor = useStore(state => state.setResponseEditor)
     const removeResponseEditor = useStore(state => state.removeResponseEditor)
@@ -472,6 +480,9 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
     useEffect(() => {
       onToggleDangerouslySkipPermissionsRef.current = onToggleDangerouslySkipPermissions
     }, [onToggleDangerouslySkipPermissions])
+    useEffect(() => {
+      onToggleForkViewRef.current = onToggleForkView
+    }, [onToggleForkView])
 
     const editor = useEditor({
       autofocus: false,
@@ -491,6 +502,7 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
           onSubmit: () => onSubmitRef.current?.(),
           onToggleAutoAccept: () => onToggleAutoAcceptRef.current?.(),
           onToggleDangerouslySkipPermissions: () => onToggleDangerouslySkipPermissionsRef.current?.(),
+          onToggleForkView: () => onToggleForkViewRef.current?.(),
         }),
         Placeholder.configure({
           placeholder: placeholder || 'Type something...',

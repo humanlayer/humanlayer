@@ -30,6 +30,7 @@ interface ResponseInputProps {
   denyAgainstOldestApproval: () => void
   onToggleAutoAccept?: () => void
   onToggleDangerouslySkipPermissions?: () => void
+  onToggleForkView?: () => void
 }
 
 export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }, ResponseInputProps>(
@@ -51,6 +52,7 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
       sessionStatus,
       onToggleAutoAccept,
       onToggleDangerouslySkipPermissions,
+      onToggleForkView,
     },
     ref,
   ) => {
@@ -188,6 +190,7 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
             onSubmit={handleSubmit}
             onToggleAutoAccept={onToggleAutoAccept}
             onToggleDangerouslySkipPermissions={onToggleDangerouslySkipPermissions}
+            onToggleForkView={onToggleForkView}
             disabled={isResponding}
             placeholder={placeholder}
             className={`flex-1 min-h-[2.5rem] ${isResponding ? 'opacity-50' : ''} ${textareaOutlineClass} ${

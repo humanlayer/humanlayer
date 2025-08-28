@@ -731,26 +731,31 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     [session.id, session.archived, session.summary, session.status, onClose, confirmingArchive],
   )
 
+  // Create reusable handler for toggling fork view
+  const handleToggleForkView = useCallback(() => {
+    // Check if any modal scopes are active
+    const modalScopes = ['tool-result-modal', 'dangerously-skip-permissions-dialog']
+    const hasModalOpen = activeScopes.some(scope => modalScopes.includes(scope))
+
+    // Don't trigger if other modals are open
+    if (hasModalOpen) {
+      return
+    }
+
+    setForkViewOpen(!forkViewOpen)
+  }, [activeScopes, forkViewOpen])
+
   // Add hotkey to open fork view (Meta+Y)
   useHotkeys(
     'meta+y',
     e => {
       e.preventDefault()
-
-      // Check if any modal scopes are active
-      const modalScopes = ['tool-result-modal', 'dangerously-skip-permissions-dialog']
-      const hasModalOpen = activeScopes.some(scope => modalScopes.includes(scope))
-
-      // Don't trigger if other modals are open
-      if (hasModalOpen) {
-        return
-      }
-
-      setForkViewOpen(!forkViewOpen)
+      handleToggleForkView()
     },
     {
       scopes: SessionDetailHotkeysScope,
     },
+    [handleToggleForkView],
   )
 
   // Add Shift+G hotkey to scroll to bottom
@@ -1150,6 +1155,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
             sessionStatus={session.status}
             onToggleAutoAccept={handleToggleAutoAccept}
             onToggleDangerouslySkipPermissions={handleToggleDangerouslySkipPermissions}
+            onToggleForkView={handleToggleForkView}
           />
           {/* Session mode indicator - shows fork, dangerous skip permissions or auto-accept */}
           <SessionModeIndicator
