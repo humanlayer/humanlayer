@@ -26,6 +26,15 @@
   cursor: not-allowed;
 }
 
+/* Caret color styling */
+.tiptap-editor.caret-accent {
+  caret-color: var(--terminal-accent);
+}
+
+.tiptap-editor.caret-error {
+  caret-color: var(--terminal-error);
+}
+
 /* Placeholder (https://tiptap.dev/docs/editor/extensions/functionality/placeholder) */
 .tiptap p.is-editor-empty:first-child::before {
   color: var(--terminal-fg-dim);

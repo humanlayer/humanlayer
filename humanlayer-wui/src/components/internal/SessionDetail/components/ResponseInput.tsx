@@ -205,7 +205,9 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
             onToggleDangerouslySkipPermissions={onToggleDangerouslySkipPermissions}
             disabled={isResponding}
             placeholder={placeholder}
-            className={`flex-1 min-h-[2.5rem] ${isResponding ? 'opacity-50' : ''} ${textareaOutlineClass}`}
+            className={`flex-1 min-h-[2.5rem] ${isResponding ? 'opacity-50' : ''} ${textareaOutlineClass} ${
+              isDenying && isFocused ? 'caret-error' : isFocused ? 'caret-accent' : ''
+            }`}
             onFocus={() => {
               setIsFocused(true)
             }}

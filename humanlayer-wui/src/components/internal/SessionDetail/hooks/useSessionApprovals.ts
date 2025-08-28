@@ -90,6 +90,7 @@ export function useSessionApprovals({
 
   const handleStartDeny = useCallback((approvalId: string) => {
     setDenyingApprovalId(approvalId)
+    responseEditor?.commands.focus()
   }, [])
 
   const handleCancelDeny = useCallback(() => {
