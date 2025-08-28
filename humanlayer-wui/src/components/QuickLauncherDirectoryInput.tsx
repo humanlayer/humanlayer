@@ -121,7 +121,7 @@ export function QuickLauncherDirectoryInput({
   const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value
     setSearchValue(newValue)
-    
+
     // Filter recent directories based on fuzzy search
     let filtered: Array<{ path: string; matches?: FuzzyMatch['matches'] }> = []
 
@@ -150,10 +150,10 @@ export function QuickLauncherDirectoryInput({
 
     // Limit to 4 items total
     filtered = filtered.slice(0, 4)
-    
+
     setFilteredItems(filtered)
     setDropdownOpen(filtered.length > 0)
-    
+
     // Start with bottom item selected (index 3 for 4 items)
     if (filtered.length > 0) {
       setSelectedIndex(filtered.length - 1)

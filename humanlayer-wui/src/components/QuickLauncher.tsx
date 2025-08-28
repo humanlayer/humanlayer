@@ -64,7 +64,7 @@ export function QuickLauncher() {
       e.stopPropagation()
       handleSubmit()
     },
-    { 
+    {
       enableOnFormTags: true,
       preventDefault: true,
     },
