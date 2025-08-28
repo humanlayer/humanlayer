@@ -8,6 +8,7 @@ import { useSessionFilter } from '@/hooks/useSessionFilter'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { useSessionLauncher } from '@/hooks/useSessionLauncher'
 import { Inbox, Archive } from 'lucide-react'
+import { TIMING } from '@/lib/constants'
 
 export function SessionTablePage() {
   const { isOpen: isSessionLauncherOpen, open: openSessionLauncher } = useSessionLauncher()
@@ -32,7 +33,7 @@ export function SessionTablePage() {
     }
     keyboardTimeoutRef.current = setTimeout(() => {
       setIsKeyboardNavigating(false)
-    }, 300)
+    }, TIMING.DEBOUNCE_DELAY)
   }, [])
 
   const shouldIgnoreMouseEvent = useCallback((): boolean => {
@@ -161,7 +162,7 @@ export function SessionTablePage() {
         // Use toast from sonner
         const { toast } = await import('sonner')
         toast.success(`Auto-accept edits ${action} for ${sessionText}`, {
-          duration: 3000,
+          duration: TIMING.NOTIFICATION_DURATION,
         })
       } catch (error) {
         const { toast } = await import('sonner')

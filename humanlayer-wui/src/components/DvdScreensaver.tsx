@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useStore } from '@/AppStore'
 import { isViewingSessionDetail } from '@/hooks/useSessionLauncher'
+import { getBrainrotModeKey, getStorageItem, setStorageItem } from '@/lib/storage-keys'
 
 interface Position {
   x: number
@@ -28,7 +29,7 @@ export function DvdScreensaver() {
   // Load saved state from localStorage for current session
   useEffect(() => {
     if (activeSessionDetail?.session?.id) {
-      const saved = localStorage.getItem(`brainrot-mode-${activeSessionDetail.session.id}`)
+      const saved = getStorageItem(getBrainrotModeKey(activeSessionDetail.session.id))
       if (saved === 'true' && isViewingSessionDetail()) {
         setIsEnabled(true)
       } else {
@@ -65,7 +66,7 @@ export function DvdScreensaver() {
       setIsEnabled(prev => {
         const newValue = !prev
         if (activeSessionDetail?.session?.id) {
-          localStorage.setItem(`brainrot-mode-${activeSessionDetail.session.id}`, String(newValue))
+          setStorageItem(getBrainrotModeKey(activeSessionDetail.session.id), String(newValue))
         }
         return newValue
       })

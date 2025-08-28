@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { daemonClient } from '@/lib/daemon/client'
 import { formatError } from '@/utils/errors'
 import { daemonService } from '@/services/daemon-service'
+import { TIMING } from '@/lib/constants'
 
 interface UseDaemonConnectionReturn {
   connected: boolean
@@ -92,7 +93,7 @@ export function useDaemonConnection(): UseDaemonConnectionReturn {
   useEffect(() => {
     if (!connected) return
 
-    const interval = setInterval(checkHealth, 30000) // Every 30 seconds
+    const interval = setInterval(checkHealth, TIMING.CONNECTION_HEALTH_CHECK_INTERVAL) // Regular health checks
 
     return () => clearInterval(interval)
   }, [connected, checkHealth])

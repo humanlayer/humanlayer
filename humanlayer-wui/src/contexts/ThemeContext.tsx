@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
+import { THEME_STORAGE_KEY, getStorageItem, setStorageItem } from '../lib/storage-keys'
 
 export type Theme =
   | 'solarized-dark'
@@ -25,12 +26,12 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined)
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {
-    const stored = localStorage.getItem('wui-theme')
+    const stored = getStorageItem(THEME_STORAGE_KEY)
     return (stored as Theme) || 'catppuccin'
   })
 
   useEffect(() => {
-    localStorage.setItem('wui-theme', theme)
+    setStorageItem(THEME_STORAGE_KEY, theme)
     document.documentElement.setAttribute('data-theme', theme)
   }, [theme])
 

@@ -7,6 +7,7 @@ import {
 } from '@humanlayer/hld-sdk'
 import { getDaemonUrl, getDefaultHeaders } from './http-config'
 import { logger } from '@/lib/logging'
+import { TIMING, NETWORK } from '@/lib/constants'
 import type {
   DaemonClient as IDaemonClient,
   LaunchSessionParams,
@@ -25,8 +26,7 @@ export class HTTPDaemonClient implements IDaemonClient {
   private connected = false
   private connectionPromise?: Promise<void>
   private retryCount = 0
-  private readonly maxRetries = 3
-  private readonly retryDelay = 500
+  private readonly maxRetries = NETWORK.MAX_CONNECTION_RETRIES
   private subscriptions = new Map<string, () => void>()
 
   async connect(): Promise<void> {
@@ -57,7 +57,7 @@ export class HTTPDaemonClient implements IDaemonClient {
           this.connectionPromise = undefined
           throw new Error('Cannot connect to daemon. Is it running?')
         }
-        await new Promise(resolve => setTimeout(resolve, this.retryDelay))
+        await new Promise(resolve => setTimeout(resolve, TIMING.CONNECTION_RETRY_DELAY))
       }
     }
   }
@@ -73,7 +73,7 @@ export class HTTPDaemonClient implements IDaemonClient {
 
     // Verify connection with timeout
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 5000)
+    const timeout = setTimeout(() => controller.abort(), TIMING.REQUEST_TIMEOUT)
 
     try {
       const health = await this.client.health()

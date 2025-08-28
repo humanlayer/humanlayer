@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useRef, useMemo } from 'react'
 import { Session, SessionStatus } from '@/lib/daemon/types'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
@@ -154,7 +154,16 @@ interface TimestampRendererProps {
   label: string
 }
 
-const TimestampRenderer = ({ timestamp, sessionId, label }: TimestampRendererProps) => {
+const TimestampRenderer = React.memo(({ timestamp, sessionId, label }: TimestampRendererProps) => {
+  // Stabilize timestamp to nearest minute to prevent constant re-renders
+  const stableTimestamp = useMemo(() => {
+    const date = typeof timestamp === 'string' ? new Date(timestamp) : timestamp
+    if (!date || isNaN(date.getTime())) return timestamp
+    
+    // Round to nearest minute (60000ms = 1 minute)
+    return new Date(Math.floor(date.getTime() / 60000) * 60000)
+  }, [timestamp instanceof Date ? Math.floor(timestamp.getTime() / 60000) : timestamp])
+
   return (
     <DataTransformErrorBoundary
       dataContext={`${label} timestamp formatting`}
@@ -171,13 +180,13 @@ const TimestampRenderer = ({ timestamp, sessionId, label }: TimestampRendererPro
     >
       <Tooltip>
         <TooltipTrigger asChild>
-          <span className="cursor-help">{formatTimestamp(timestamp)}</span>
+          <span className="cursor-help">{formatTimestamp(stableTimestamp)}</span>
         </TooltipTrigger>
-        <TooltipContent>{formatAbsoluteTimestamp(timestamp)}</TooltipContent>
+        <TooltipContent>{formatAbsoluteTimestamp(stableTimestamp)}</TooltipContent>
       </Tooltip>
     </DataTransformErrorBoundary>
   )
-}
+})
 
 // Note: BulkOperationHandler removed - bulk operations are handled directly in the hotkey handlers with error boundaries
 
@@ -570,7 +579,44 @@ export default function SessionTable({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sessions.map(session => (
+              {sessions.map(session => {
+                // Stabilize session data to prevent timestamp-related re-renders
+                const stableSession = useMemo(
+                  () => ({
+                    ...session,
+                    // Round timestamps to nearest minute to prevent constant updates
+                    createdAt: session.createdAt ? (
+                      typeof session.createdAt === 'string' 
+                        ? session.createdAt
+                        : new Date(Math.floor(session.createdAt.getTime() / 60000) * 60000)
+                    ) : session.createdAt,
+                    lastActivityAt: session.lastActivityAt ? (
+                      typeof session.lastActivityAt === 'string'
+                        ? session.lastActivityAt
+                        : new Date(Math.floor(session.lastActivityAt.getTime() / 60000) * 60000)
+                    ) : session.lastActivityAt,
+                  }),
+                  [
+                    session.id, 
+                    session.status, 
+                    session.title, 
+                    session.summary, 
+                    session.workingDir, 
+                    session.model, 
+                    session.archived,
+                    session.dangerouslySkipPermissions,
+                    session.autoAcceptEdits,
+                    // Stabilize timestamp dependencies to nearest minute
+                    session.createdAt instanceof Date 
+                      ? Math.floor(session.createdAt.getTime() / 60000)
+                      : session.createdAt,
+                    session.lastActivityAt instanceof Date 
+                      ? Math.floor(session.lastActivityAt.getTime() / 60000)
+                      : session.lastActivityAt,
+                  ]
+                )
+                
+                return (
                 <BaseErrorBoundary
                   key={session.id}
                   title={`Error rendering session ${session.id}`}
@@ -634,7 +680,7 @@ export default function SessionTable({
                       </div>
                     </TableCell>
                     <TableCell>
-                      <SessionStatusRenderer session={session} />
+                      <SessionStatusRenderer session={stableSession} />
                     </TableCell>
                     <TableCell className="max-w-[200px]">
                       <Tooltip>
@@ -651,13 +697,13 @@ export default function SessionTable({
                             }}
                           >
                             <bdo dir="ltr" style={{ unicodeBidi: 'bidi-override' }}>
-                              {session.workingDir || '-'}
+                              {stableSession.workingDir || '-'}
                             </bdo>
                           </span>
                         </TooltipTrigger>
                         <TooltipContent className="max-w-[600px]">
                           <span className="font-mono text-sm">
-                            {session.workingDir || 'No working directory'}
+                            {stableSession.workingDir || 'No working directory'}
                           </span>
                         </TooltipContent>
                       </Tooltip>
@@ -709,8 +755,8 @@ export default function SessionTable({
                           <div className="flex items-center gap-2 group">
                             <span>
                               {renderHighlightedText(
-                                session.title || session.summary || '',
-                                session.id,
+                                stableSession.title || stableSession.summary || '',
+                                stableSession.id,
                               )}
                             </span>
                             <Button
@@ -718,7 +764,7 @@ export default function SessionTable({
                               variant="ghost"
                               onClick={e => {
                                 e.stopPropagation()
-                                handleStartEdit(session.id, session.title || '', session.summary || '')
+                                handleStartEdit(stableSession.id, stableSession.title || '', stableSession.summary || '')
                               }}
                               className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
                             >
@@ -728,24 +774,25 @@ export default function SessionTable({
                         )}
                       </SessionEditHandler>
                     </TableCell>
-                    <TableCell>{session.model || <CircleOff className="w-4 h-4" />}</TableCell>
+                    <TableCell>{stableSession.model || <CircleOff className="w-4 h-4" />}</TableCell>
                     <TableCell>
                       <TimestampRenderer
-                        timestamp={session.createdAt}
-                        sessionId={session.id}
+                        timestamp={stableSession.createdAt}
+                        sessionId={stableSession.id}
                         label="created"
                       />
                     </TableCell>
                     <TableCell>
                       <TimestampRenderer
-                        timestamp={session.lastActivityAt}
-                        sessionId={session.id}
+                        timestamp={stableSession.lastActivityAt}
+                        sessionId={stableSession.id}
                         label="last activity"
                       />
                     </TableCell>
                   </TableRow>
                 </BaseErrorBoundary>
-              ))}
+                )
+              })}
             </TableBody>
           </Table>
         </DataTransformErrorBoundary>

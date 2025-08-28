@@ -3,6 +3,7 @@ import { daemonClient } from '@/lib/daemon/client'
 import { Approval } from '@/lib/daemon/types'
 import { formatError } from '@/utils/errors'
 import { logger } from '@/lib/logging'
+import { TIMING } from '@/lib/constants'
 
 interface UseApprovalsReturn {
   approvals: Approval[]
@@ -126,7 +127,7 @@ export function useApprovalsWithSubscription(sessionId?: string): UseApprovalsRe
           if (isSubscribed) {
             base.refresh()
           }
-        }, 5000)
+        }, TIMING.APPROVAL_RETRY_INTERVAL)
 
         return () => clearInterval(interval)
       }

@@ -3,6 +3,8 @@ import { ViewMode } from '@/lib/daemon/types'
 import { create } from 'zustand'
 import { daemonClient } from '@/lib/daemon/client'
 import { logger } from '@/lib/logging'
+import { TIMING, DISPLAY_LIMITS } from '@/lib/constants'
+import { getSessionResponseInputKey, setStorageItem, removeStorageItem, getStorageItem } from '@/lib/storage-keys'
 
 // Track pending updates for optimistic UI
 interface PendingUpdate {
@@ -314,8 +316,8 @@ export const useStore = create<StoreState>((set, get) => ({
       const updatedSessions = response.sessions.map(serverSession => {
         const pending = pendingUpdates.get(serverSession.id)
 
-        // Only preserve pending updates that are recent (< 2 seconds old)
-        if (pending && pending.timestamp > Date.now() - 2000) {
+        // Only preserve pending updates that are recent
+        if (pending && pending.timestamp > Date.now() - TIMING.OPTIMISTIC_UPDATE_STALE_THRESHOLD) {
           logger.debug(`Preserving pending updates for session ${serverSession.id}`)
           return validateSessionState({
             ...serverSession,
@@ -330,8 +332,8 @@ export const useStore = create<StoreState>((set, get) => ({
       // Clean up old pending updates
       const cleanedPending = new Map<string, PendingUpdate>()
       pendingUpdates.forEach((update, sessionId) => {
-        // Keep updates less than 2 seconds old
-        if (update.timestamp > Date.now() - 2000) {
+        // Keep updates that are not stale
+        if (update.timestamp > Date.now() - TIMING.OPTIMISTIC_UPDATE_STALE_THRESHOLD) {
           cleanedPending.set(sessionId, update)
         }
       })
@@ -730,8 +732,8 @@ export const useStore = create<StoreState>((set, get) => ({
       const newSet = new Set(state.recentResolvedApprovalsCache)
       newSet.add(approvalId)
 
-      // Limit to 50 items by converting to array, slicing, and converting back to Set
-      const limitedSet = new Set(Array.from(newSet).slice(-50))
+      // Limit to maximum items by converting to array, slicing, and converting back to Set
+      const limitedSet = new Set(Array.from(newSet).slice(-DISPLAY_LIMITS.MAX_RECENT_SESSIONS_SET_SIZE))
 
       return { recentResolvedApprovalsCache: limitedSet }
     }),
@@ -750,7 +752,7 @@ export const useStore = create<StoreState>((set, get) => ({
         `Tracking navigation from session ${sessionId} at ${new Date(timestamp).toISOString()}`,
       )
 
-      // Clean up old entries after 5 seconds
+      // Clean up old entries after timeout
       setTimeout(() => {
         const currentMap = get().recentNavigations
         if (currentMap.get(sessionId) === newMap.get(sessionId)) {
@@ -759,10 +761,10 @@ export const useStore = create<StoreState>((set, get) => ({
           set({ recentNavigations: updatedMap })
           logger.log(`Removed navigation tracking for session ${sessionId} after timeout`)
         }
-      }, 5000)
+      }, TIMING.HEALTH_CHECK_INTERVAL)
       return { recentNavigations: newMap }
     }),
-  wasRecentlyNavigatedFrom: (sessionId: string, withinMs = 3000) => {
+  wasRecentlyNavigatedFrom: (sessionId: string, withinMs = TIMING.SESSION_NAVIGATION_RECENT_THRESHOLD) => {
     const timestamp = get().recentNavigations.get(sessionId)
     const now = Date.now()
 
@@ -966,8 +968,7 @@ export const useStore = create<StoreState>((set, get) => ({
     }))
     // Persist to localStorage for user convenience
     if (typeof window !== 'undefined') {
-      const ResponseInputLocalStorageKey = 'response-input'
-      localStorage.setItem(`${ResponseInputLocalStorageKey}.${sessionId}`, input)
+      setStorageItem(getSessionResponseInputKey(sessionId), input)
     }
   },
 
@@ -1006,8 +1007,7 @@ export const useStore = create<StoreState>((set, get) => ({
     })
     // Clear localStorage
     if (typeof window !== 'undefined') {
-      const ResponseInputLocalStorageKey = 'response-input'
-      localStorage.removeItem(`${ResponseInputLocalStorageKey}.${sessionId}`)
+      removeStorageItem(getSessionResponseInputKey(sessionId))
     }
   },
 
@@ -1016,8 +1016,7 @@ export const useStore = create<StoreState>((set, get) => ({
     if (!state.sessionResponses[sessionId]) {
       // Initialize from localStorage if available
       if (typeof window !== 'undefined') {
-        const ResponseInputLocalStorageKey = 'response-input'
-        const savedInput = localStorage.getItem(`${ResponseInputLocalStorageKey}.${sessionId}`) || ''
+        const savedInput = getStorageItem(getSessionResponseInputKey(sessionId))
         if (savedInput) {
           // Initialize in store
           get().setSessionResponse(sessionId, savedInput)
@@ -1114,5 +1113,5 @@ if (typeof window !== 'undefined') {
       logger.debug('Cleaning up expired session states')
       useStore.setState({ sessions: validatedSessions })
     }
-  }, 5000) // Check every 5 seconds
+  }, TIMING.HEALTH_CHECK_INTERVAL) // Check every 5 seconds
 }

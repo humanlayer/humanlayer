@@ -7,6 +7,8 @@ import { SessionTableHotkeysScope } from '@/components/SessionTable/SessionTable
 import { exists } from '@tauri-apps/plugin-fs'
 import { homeDir } from '@tauri-apps/api/path'
 import { logger } from '@/lib/logging'
+import { TIMING } from '@/lib/constants'
+import { LAST_WORKING_DIR_KEY, SESSION_LAUNCHER_QUERY_KEY, getStorageItem, setStorageItem, removeStorageItem } from '@/lib/storage-keys'
 
 interface SessionConfig {
   title?: string
@@ -45,18 +47,15 @@ const isViewingSessionDetail = (): boolean => {
   return /^#\/sessions\/[^/]+$/.test(hash)
 }
 
-const LAST_WORKING_DIR_KEY = 'humanlayer-last-working-dir'
-const SESSION_LAUNCHER_QUERY_KEY = 'session-launcher-query'
-
 // Helper function to get default working directory
 const getDefaultWorkingDir = (): string => {
-  const stored = localStorage.getItem(LAST_WORKING_DIR_KEY)
+  const stored = getStorageItem(LAST_WORKING_DIR_KEY)
   return stored || '~/' // Default to home directory on first launch
 }
 
 // Helper function to get saved query
 const getSavedQuery = (): string => {
-  return localStorage.getItem(SESSION_LAUNCHER_QUERY_KEY) || ''
+  return getStorageItem(SESSION_LAUNCHER_QUERY_KEY)
 }
 
 export const useSessionLauncher = create<LauncherState>((set, get) => ({
@@ -93,7 +92,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
 
   setQuery: query => {
     // Save to localStorage on every change
-    localStorage.setItem(SESSION_LAUNCHER_QUERY_KEY, query)
+    setStorageItem(SESSION_LAUNCHER_QUERY_KEY, query)
     return set({
       query,
       error: undefined,
@@ -167,11 +166,11 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
 
       // Save the working directory to localStorage for next time
       if (config.workingDir) {
-        localStorage.setItem(LAST_WORKING_DIR_KEY, config.workingDir)
+        setStorageItem(LAST_WORKING_DIR_KEY, config.workingDir)
       }
 
       // Clear the saved query after successful launch
-      localStorage.removeItem(SESSION_LAUNCHER_QUERY_KEY)
+      removeStorageItem(SESSION_LAUNCHER_QUERY_KEY)
 
       // Navigate to new session (will be handled by parent component)
       window.location.hash = `#/sessions/${response.sessionId}`
@@ -306,7 +305,7 @@ export function useSessionLauncherHotkeys() {
       if (e.key === 'g' && !e.metaKey && !e.ctrlKey && !isTypingInInput() && !isModalScopeActive()) {
         e.preventDefault()
         setGPrefixMode(true)
-        setTimeout(() => setGPrefixMode(false), 2000)
+        setTimeout(() => setGPrefixMode(false), TIMING.G_PREFIX_MODE_AUTO_RESET)
         return
       }
 

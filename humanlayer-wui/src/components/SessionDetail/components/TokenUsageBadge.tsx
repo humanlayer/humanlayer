@@ -2,15 +2,7 @@ import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { AlertCircle } from 'lucide-react'
-
-// Threshold percentages for visual warnings
-const TOKEN_USAGE_THRESHOLDS = {
-  WARNING: 60, // Show warning color at 60%
-  CRITICAL: 90, // Show error color at 90%
-}
-
-// Default context limit when not provided by backend
-const DEFAULT_CONTEXT_LIMIT = 168000 // 200k total - 32k output reserved
+import { TOKEN_USAGE_THRESHOLDS, DEFAULT_CONTEXT_LIMIT } from '../constants'
 
 interface TokenUsageBadgeProps {
   effectiveContextTokens?: number
