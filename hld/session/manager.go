@@ -216,6 +216,8 @@ func (m *Manager) LaunchSession(ctx context.Context, config LaunchSessionConfig)
 		}
 		proxyURL := fmt.Sprintf("http://localhost:%d/api/v1/anthropic_proxy/%s", httpPort, sessionID)
 		claudeConfig.Env["ANTHROPIC_BASE_URL"] = proxyURL
+		// Claude CLI needs an API key to trigger requests, even though proxy handles auth, set dummy key
+		claudeConfig.Env["ANTHROPIC_API_KEY"] = "proxy-handled"
 		slog.Info("Setting ANTHROPIC_BASE_URL for proxy",
 			"session_id", sessionID,
 			"proxy_url", proxyURL,
@@ -244,7 +246,6 @@ func (m *Manager) LaunchSession(ctx context.Context, config LaunchSessionConfig)
 		"run_id", runID,
 		"query", claudeConfig.Query,
 		"working_dir", claudeConfig.WorkingDir,
-		"additional_directories", claudeConfig.AdditionalDirectories,
 		"permission_prompt_tool", claudeConfig.PermissionPromptTool,
 		"mcp_servers", mcpServerCount,
 		"mcp_servers_detail", mcpServersDetail)
@@ -1295,20 +1296,6 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 			config.DisallowedTools = disallowedTools
 		}
 	}
-	// Deserialize and inherit additional directories
-	if parentSession.AdditionalDirectories != "" {
-		var additionalDirs []string
-		if err := json.Unmarshal([]byte(parentSession.AdditionalDirectories), &additionalDirs); err == nil {
-			config.AdditionalDirectories = additionalDirs
-			slog.Debug("Inherited additional directories from parent session",
-				"parent_session_id", req.ParentSessionID,
-				"directories", additionalDirs)
-		} else {
-			slog.Error("Failed to unmarshal additional directories",
-				"error", err,
-				"raw", parentSession.AdditionalDirectories)
-		}
-	}
 
 	// Retrieve and inherit MCP configuration from parent session
 	mcpServers, err := m.store.GetMCPServers(ctx, req.ParentSessionID)
@@ -1372,9 +1359,6 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 	if len(req.DisallowedTools) > 0 {
 		config.DisallowedTools = req.DisallowedTools
 	}
-	if len(req.AdditionalDirectories) > 0 {
-		config.AdditionalDirectories = req.AdditionalDirectories
-	}
 	if req.CustomInstructions != "" {
 		config.CustomInstructions = req.CustomInstructions
 	}
@@ -1431,12 +1415,6 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 		} else {
 			dbSession.ProxyAPIKey = parentSession.ProxyAPIKey
 		}
-	}
-
-	// Inherit additional directories from parent if not already set
-	// This ensures that directories updated on the parent session are properly inherited
-	if dbSession.AdditionalDirectories == "" || dbSession.AdditionalDirectories == "[]" {
-		dbSession.AdditionalDirectories = parentSession.AdditionalDirectories
 	}
 
 	// Note: ClaudeSessionID will be captured from streaming events (will be different from parent)
@@ -1521,6 +1499,8 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 		}
 		proxyURL := fmt.Sprintf("http://localhost:%d/api/v1/anthropic_proxy/%s", httpPort, sessionID)
 		config.Env["ANTHROPIC_BASE_URL"] = proxyURL
+		// Claude CLI needs an API key to trigger requests, even though proxy handles auth
+		config.Env["ANTHROPIC_API_KEY"] = "proxy-handled"
 		slog.Info("Setting ANTHROPIC_BASE_URL for resumed session proxy",
 			"session_id", sessionID,
 			"proxy_url", proxyURL,
@@ -1808,13 +1788,6 @@ func (m *Manager) forceKillRemaining() {
 
 // UpdateSessionSettings updates session settings and publishes appropriate events
 func (m *Manager) UpdateSessionSettings(ctx context.Context, sessionID string, updates store.SessionUpdate) error {
-	// Log if additional directories are being updated
-	if updates.AdditionalDirectories != nil {
-		slog.Debug("Updating additional directories",
-			"session_id", sessionID,
-			"additional_directories", *updates.AdditionalDirectories)
-	}
-
 	// First update the store
 	if err := m.store.UpdateSession(ctx, sessionID, updates); err != nil {
 		return err

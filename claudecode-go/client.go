@@ -145,37 +145,6 @@ func (c *Client) buildArgs(config SessionConfig) ([]string, error) {
 		args = append(args, "--disallowedTools", strings.Join(config.DisallowedTools, ","))
 	}
 
-	// Additional directories
-	if len(config.AdditionalDirectories) > 0 {
-		log.Printf("Processing %d additional directories", len(config.AdditionalDirectories))
-		for _, dir := range config.AdditionalDirectories {
-			// Expand tilde if present
-			expandedDir := dir
-			if strings.HasPrefix(dir, "~/") {
-				if home, err := os.UserHomeDir(); err == nil {
-					expandedDir = filepath.Join(home, dir[2:])
-				}
-			} else if dir == "~" {
-				if home, err := os.UserHomeDir(); err == nil {
-					expandedDir = home
-				}
-			}
-
-			// Convert to absolute path
-			absPath, err := filepath.Abs(expandedDir)
-			if err == nil {
-				log.Printf("Adding directory (expanded): %s -> %s", dir, absPath)
-				args = append(args, "--add-dir", absPath)
-			} else {
-				// Fallback to original if absolute path conversion fails
-				log.Printf("Adding directory (original, expansion failed): %s", dir)
-				args = append(args, "--add-dir", dir)
-			}
-		}
-	} else {
-		log.Printf("No additional directories to add")
-	}
-
 	// Verbose
 	if config.Verbose {
 		args = append(args, "--verbose")
@@ -237,34 +206,9 @@ func (c *Client) Launch(config SessionConfig) (*Session, error) {
 		return nil, fmt.Errorf("failed to create stderr pipe: %w", err)
 	}
 
-	// If we have additional directories, we need to pass the query via stdin
-	if config.Query != "" && len(config.AdditionalDirectories) > 0 {
-		stdin, err := cmd.StdinPipe()
-		if err != nil {
-			return nil, fmt.Errorf("failed to create stdin pipe: %w", err)
-		}
-
-		// Start the command first
-		if err := cmd.Start(); err != nil {
-			return nil, fmt.Errorf("failed to start claude: %w", err)
-		}
-
-		// Write query to stdin and close it
-		go func() {
-			defer func() {
-				if err := stdin.Close(); err != nil {
-					log.Printf("WARNING: Failed to close stdin: %v", err)
-				}
-			}()
-			if _, err := stdin.Write([]byte(config.Query)); err != nil {
-				log.Printf("WARNING: Failed to write query to stdin: %v", err)
-			}
-		}()
-	} else {
-		// Start the command normally
-		if err := cmd.Start(); err != nil {
-			return nil, fmt.Errorf("failed to start claude: %w", err)
-		}
+	// Start the command
+	if err := cmd.Start(); err != nil {
+		return nil, fmt.Errorf("failed to start claude: %w", err)
 	}
 
 	session := &Session{

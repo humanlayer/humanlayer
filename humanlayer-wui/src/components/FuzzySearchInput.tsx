@@ -1,31 +1,22 @@
 import { homeDir } from '@tauri-apps/api/path'
 import { DirEntry, readDir } from '@tauri-apps/plugin-fs'
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef } from 'react'
 import { cn } from '@/lib/utils'
 import { fuzzySearch, highlightMatches, type FuzzyMatch } from '@/lib/fuzzy-search'
 import { Input } from './ui/input'
 import { Popover, PopoverAnchor, PopoverContent } from './ui/popover'
 import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from './ui/command'
-import { FileWarning, Clock } from 'lucide-react'
+import { ArrowDownUp, FileWarning, Clock } from 'lucide-react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import type { RecentPath } from '@/lib/daemon'
 
 interface SearchInputProps {
   value?: string
   onChange?: (value: string) => void
-  onSubmit?: (value?: string) => void
+  onSubmit?: () => void
   placeholder?: string
   recentDirectories?: RecentPath[]
   ref?: React.RefObject<HTMLDivElement>
-  className?: string
-  dropdownClassName?: string
-  dropdownSide?: 'top' | 'bottom' | 'left' | 'right'
-  initialSelectionPosition?: 'top' | 'bottom'
-  autoFocus?: boolean
-  onFocus?: () => void
-  onBlur?: () => void
-  maxRecentItems?: number
-  maxDirectoryItems?: number
 }
 
 export function SearchInput({
@@ -35,15 +26,6 @@ export function SearchInput({
   placeholder = 'Type a directory path...',
   recentDirectories = [],
   ref,
-  className,
-  dropdownClassName,
-  dropdownSide = 'bottom',
-  initialSelectionPosition = 'top',
-  autoFocus,
-  onFocus: externalOnFocus,
-  onBlur: externalOnBlur,
-  maxRecentItems,
-  maxDirectoryItems,
 }: SearchInputProps = {}) {
   // Use internal state if not controlled
   const [internalValue, setInternalValue] = useState('')
@@ -59,17 +41,14 @@ export function SearchInput({
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [isInvalidPath, setIsInvalidPath] = useState(false)
   const [isFocused, setIsFocused] = useState(false)
-  const listRef = useRef<HTMLDivElement>(null)
   const [directoryPreview, setDirectoryPreview] = useState<
-    { path: DirEntry; matches?: FuzzyMatch['matches'] }[]
+    { selected: boolean; path: DirEntry; matches?: FuzzyMatch['matches'] }[]
   >([])
   const [recentPreview, setRecentPreview] = useState<
-    { path: string; matches?: FuzzyMatch['matches'] }[]
+    { selected: boolean; path: string; matches?: FuzzyMatch['matches'] }[]
   >([])
   const [lastValidPath, setLastValidPath] = useState('')
   const [allDirectories, setAllDirectories] = useState<DirEntry[]>([])
-  const [selectedIndex, setSelectedIndex] = useState<number>(-1)
-  const keyboardNavTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const Hotkeys = {
@@ -88,73 +67,54 @@ export function SearchInput({
         case Hotkeys.ARROW_DOWN: {
           const totalItems = recentPreview.length + directoryPreview.length
           if (totalItems > 0) {
-            // Clear any existing timeout
-            if (keyboardNavTimeoutRef.current) {
-              clearTimeout(keyboardNavTimeoutRef.current)
-            }
+            // Find current selection across both lists
+            const recentSelectedIdx = recentPreview.findIndex(item => item.selected)
+            const dirSelectedIdx = directoryPreview.findIndex(item => item.selected)
+            const currentIndex =
+              recentSelectedIdx !== -1 ? recentSelectedIdx : recentPreview.length + dirSelectedIdx
 
             const direction = handler.keys?.join('') === Hotkeys.ARROW_UP ? -1 : 1
-            const newIndex = (selectedIndex + direction + totalItems) % totalItems
-            setSelectedIndex(newIndex)
+            const newIndex = (currentIndex + direction + totalItems) % totalItems
+
+            // Update selections
+            if (newIndex < recentPreview.length) {
+              setRecentPreview(prev =>
+                prev.map((item, idx) => ({ ...item, selected: idx === newIndex })),
+              )
+              setDirectoryPreview(prev => prev.map(item => ({ ...item, selected: false })))
+            } else {
+              setRecentPreview(prev => prev.map(item => ({ ...item, selected: false })))
+              setDirectoryPreview(prev =>
+                prev.map((item, idx) => ({
+                  ...item,
+                  selected: idx === newIndex - recentPreview.length,
+                })),
+              )
+            }
           }
           break
         }
+        case Hotkeys.ENTER:
         case Hotkeys.TAB: {
-          if (dropdownOpen) {
+          const selectedRecent = recentPreview.find(item => item.selected)
+          const selectedDir = directoryPreview.find(item => item.selected)
+
+          if ((selectedRecent || selectedDir) && dropdownOpen) {
             ev.preventDefault()
 
-            // Determine which item is selected based on selectedIndex
-            if (selectedIndex < recentPreview.length) {
-              const selectedRecent = recentPreview[selectedIndex]
-              if (selectedRecent) {
-                setSearchValue(selectedRecent.path)
-              }
-            } else {
-              const dirIndex = selectedIndex - recentPreview.length
-              const selectedDir = directoryPreview[dirIndex]
-              if (selectedDir) {
-                // Parse current path to get base directory
-                const lastSlashIdx = searchValue.lastIndexOf('/')
-                const basePath = lastSlashIdx === -1 ? '' : searchValue.substring(0, lastSlashIdx + 1)
-                const newPath = basePath + selectedDir.path.name
-                setSearchValue(newPath)
-              }
+            if (selectedRecent) {
+              setSearchValue(selectedRecent.path)
+            } else if (selectedDir) {
+              // Parse current path to get base directory
+              const lastSlashIdx = searchValue.lastIndexOf('/')
+              const basePath = lastSlashIdx === -1 ? '' : searchValue.substring(0, lastSlashIdx + 1)
+              const newPath = basePath + selectedDir.path.name
+              setSearchValue(newPath)
             }
             setDropdownOpen(false)
-          }
-          break
-        }
-        case Hotkeys.ENTER: {
-          ev.preventDefault()
-
-          let finalValue = searchValue
-
-          // If dropdown is open, use the selected item
-          if (dropdownOpen && recentPreview.length + directoryPreview.length > 0) {
-            if (selectedIndex < recentPreview.length) {
-              const selectedRecent = recentPreview[selectedIndex]
-              if (selectedRecent) {
-                finalValue = selectedRecent.path
-              }
-            } else {
-              const dirIndex = selectedIndex - recentPreview.length
-              const selectedDir = directoryPreview[dirIndex]
-              if (selectedDir) {
-                // Parse current path to get base directory
-                const lastSlashIdx = searchValue.lastIndexOf('/')
-                const basePath = lastSlashIdx === -1 ? '' : searchValue.substring(0, lastSlashIdx + 1)
-                finalValue = basePath + selectedDir.path.name
-              }
-            }
-          }
-
-          // Update the input value to match what we're submitting
-          setSearchValue(finalValue)
-          setDropdownOpen(false)
-
-          // Submit the final value
-          if (onSubmit) {
-            onSubmit(finalValue)
+          } else if (handler.keys?.join('') === Hotkeys.ENTER && !dropdownOpen && onSubmit) {
+            ev.preventDefault()
+            onSubmit()
           }
           break
         }
@@ -173,8 +133,6 @@ export function SearchInput({
   const onChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     setDropdownOpen(e.target.value.length > 0)
     setSearchValue(e.target.value)
-    // Reset selection based on initialSelectionPosition when user types
-    setSelectedIndex(-1)
 
     let searchPath = e.target.value
 
@@ -216,7 +174,7 @@ export function SearchInput({
     }
 
     // Filter directories based on search term
-    let dirObjs: Array<{ path: DirEntry; matches?: FuzzyMatch['matches'] }> = []
+    let dirObjs: Array<{ selected: boolean; path: DirEntry; matches?: FuzzyMatch['matches'] }> = []
 
     if (searchTerm) {
       // Use fuzzy search to filter and rank directories
@@ -227,26 +185,23 @@ export function SearchInput({
         includeMatches: true,
       })
 
-      dirObjs = searchResults.map(result => ({
+      dirObjs = searchResults.map((result, idx) => ({
+        selected: idx === 0,
         path: result.item,
         matches: result.matches,
       }))
     } else {
       // Show all directories if no search term
-      dirObjs = entries.map(dir => ({
+      dirObjs = entries.map((dir, idx) => ({
+        selected: idx === 0,
         path: dir,
       }))
-    }
-
-    // Apply max limit if specified
-    if (maxDirectoryItems && dirObjs.length > maxDirectoryItems) {
-      dirObjs = dirObjs.slice(0, maxDirectoryItems)
     }
 
     setDirectoryPreview(dirObjs)
 
     // Filter recent directories based on search value
-    let recentObjs: Array<{ path: string; matches?: FuzzyMatch['matches'] }> = []
+    let recentObjs: Array<{ selected: boolean; path: string; matches?: FuzzyMatch['matches'] }> = []
 
     if (recentDirectories.length > 0) {
       if (searchPath) {
@@ -262,56 +217,30 @@ export function SearchInput({
         )
 
         recentObjs = recentSearchResults.map(result => ({
+          selected: false,
           path: result.item.path,
           matches: result.matches,
         }))
-
-        // Apply max limit if specified
-        if (maxRecentItems && recentObjs.length > maxRecentItems) {
-          recentObjs = recentObjs.slice(0, maxRecentItems)
-        }
       } else {
         // Show all recent directories when no search term
-        const limit = maxRecentItems || 10
-        recentObjs = recentDirectories.slice(0, limit).map(recent => ({
+        recentObjs = recentDirectories.slice(0, 10).map(recent => ({
+          selected: false,
           path: recent.path,
         }))
       }
     }
 
-    // No need to apply selected property anymore since we use selectedIndex directly
+    // Set initial selection
+    if (recentObjs.length > 0) {
+      recentObjs[0].selected = true
+      dirObjs = dirObjs.map(d => ({ ...d, selected: false }))
+    } else if (dirObjs.length > 0 && recentObjs.length === 0) {
+      dirObjs[0].selected = true
+    }
+
     setRecentPreview(recentObjs)
     setDirectoryPreview(dirObjs)
   }
-
-  // Initialize selection position when dropdown opens or items change
-  useEffect(() => {
-    if (dropdownOpen && isFocused) {
-      const totalItems = recentPreview.length + directoryPreview.length
-      if (totalItems > 0 && selectedIndex === -1) {
-        // Initialize selection based on position preference
-        const newIndex = initialSelectionPosition === 'bottom' ? totalItems - 1 : 0
-        setSelectedIndex(newIndex)
-
-        // Scroll to the selected item after a brief delay to ensure DOM is updated
-        setTimeout(() => {
-          if (listRef.current) {
-            const selectedItem = listRef.current.querySelector('[data-selected="true"]')
-            if (selectedItem) {
-              selectedItem.scrollIntoView({ block: 'nearest' })
-            }
-          }
-        }, 0)
-      }
-    }
-  }, [
-    dropdownOpen,
-    isFocused,
-    recentPreview.length,
-    directoryPreview.length,
-    initialSelectionPosition,
-    selectedIndex,
-  ])
 
   return (
     <div ref={ref} className="">
@@ -319,43 +248,26 @@ export function SearchInput({
         <PopoverAnchor>
           <Input
             id="search-input-hack-use-a-ref"
-            className={cn('mt-2', className)}
+            className="mt-2"
             ref={inputRef}
             spellCheck={false}
             onChange={onChange}
             value={searchValue}
-            onFocus={() => {
-              setIsFocused(true)
-              // Initialize selection when focusing if there are items
-              const totalItems = recentPreview.length + directoryPreview.length
-              if (totalItems > 0 && selectedIndex === -1) {
-                const newIndex = initialSelectionPosition === 'bottom' ? totalItems - 1 : 0
-                setSelectedIndex(newIndex)
-              }
-              externalOnFocus?.()
-            }}
-            onBlur={() => {
-              setIsFocused(false)
-              externalOnBlur?.()
-            }}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
             placeholder={placeholder}
-            autoFocus={autoFocus}
           />
         </PopoverAnchor>
 
         <PopoverContent
           onOpenAutoFocus={e => e.preventDefault()}
-          side={dropdownSide}
+          side="bottom"
           align="start"
           avoidCollisions={false}
-          className={cn(
-            'w-[var(--radix-popover-trigger-width)]',
-            className?.includes('text-xs') && '[&_[cmdk-item]]:text-xs [&_[cmdk-item]]:py-1',
-            dropdownClassName,
-          )}
+          className="w-[var(--radix-popover-trigger-width)]"
         >
-          <Command shouldFilter={false}>
-            <CommandList ref={listRef}>
+          <Command>
+            <CommandList>
               {recentPreview.length === 0 && directoryPreview.length === 0 && (
                 <CommandEmpty className="py-2">
                   {isInvalidPath && (
@@ -384,13 +296,10 @@ export function SearchInput({
                       <CommandItem
                         key={`recent-${idx}`}
                         className={cn(
-                          selectedIndex === idx && '!bg-accent/20',
-                          'data-[selected=true]:!bg-accent/20',
-                          '[&[data-selected=true]]:text-foreground',
+                          item.selected && '!bg-accent/20',
+                          'data-[selected=true]:!bg-accent/20', // Apply same styling for mouse hover
+                          '[&[data-selected=true]]:text-foreground', // Override default accent-foreground
                         )}
-                        onMouseEnter={() => {
-                          setSelectedIndex(idx)
-                        }}
                         onSelect={() => {
                           setSearchValue(item.path)
                           setDropdownOpen(false)
@@ -419,26 +328,21 @@ export function SearchInput({
               )}
               {directoryPreview.length > 0 && (
                 <CommandGroup heading="Paths">
-                  {directoryPreview.map((item, dirIdx) => {
+                  {directoryPreview.map(item => {
                     const nameMatch = item.matches?.find(m => m.key === 'name')
                     const highlighted =
                       nameMatch && item.path.name
                         ? highlightMatches(item.path.name, nameMatch.indices)
                         : null
 
-                    const itemIndex = recentPreview.length + dirIdx
-
                     return (
                       <CommandItem
                         key={item.path.name}
                         className={cn(
-                          selectedIndex === itemIndex && '!bg-accent/20',
-                          'data-[selected=true]:!bg-accent/20',
-                          '[&[data-selected=true]]:text-foreground',
+                          item.selected && '!bg-accent/20',
+                          'data-[selected=true]:!bg-accent/20', // Apply same styling for mouse hover
+                          '[&[data-selected=true]]:text-foreground', // Override default accent-foreground
                         )}
-                        onMouseEnter={() => {
-                          setSelectedIndex(itemIndex)
-                        }}
                         onSelect={() => {
                           // Parse current path to get base directory
                           const lastSlashIdx = searchValue.lastIndexOf('/')
@@ -472,6 +376,19 @@ export function SearchInput({
                 </CommandGroup>
               )}
             </CommandList>
+            {directoryPreview.length > 0 && (
+              <div className="px-4 pt-2 text-xs text-muted-foreground bg-muted/30 border-t border-border/50 flex justify-end gap-4">
+                <span className="flex items-center gap-1">
+                  <ArrowDownUp className="w-3 h-3" /> Navigate
+                </span>
+                <span className="flex items-center gap-1">
+                  <kbd>↵</kbd> Select
+                </span>
+                <span className="flex items-center gap-1">
+                  <kbd>ESC</kbd> Close
+                </span>
+              </div>
+            )}
           </Command>
         </PopoverContent>
       </Popover>

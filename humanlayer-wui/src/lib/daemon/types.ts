@@ -18,8 +18,10 @@ export type RecentPath = SDKRecentPath
 // Export SDK types directly
 export type { Approval } from '@humanlayer/hld-sdk'
 
-// Use SDK Session type directly with camelCase naming
-export type Session = SDKSession
+// Extend SDK Session type with WUI-specific properties
+export interface Session extends SDKSession {
+  additionalDirectories?: string[]
+}
 
 // Export SDK ConversationEvent type directly
 export type { ConversationEvent } from '@humanlayer/hld-sdk'
@@ -30,7 +32,7 @@ export type HealthCheckResponse = HealthResponse
 export interface LaunchSessionParams {
   query: string
   title?: string
-  provider?: 'anthropic' | 'openrouter'
+  provider?: 'anthropic' | 'openrouter' | 'baseten'
   model?: string
   workingDir?: string
   mcpConfig?: any
@@ -39,6 +41,7 @@ export interface LaunchSessionParams {
   autoAcceptEdits?: boolean
   dangerouslySkipPermissions?: boolean
   proxyApiKey?: string
+  additionalDirectories?: string[]
   // Add any WUI-specific extensions if needed
 }
 
@@ -170,7 +173,7 @@ export enum ViewMode {
 export interface LaunchSessionRequest {
   query: string
   title?: string
-  provider?: 'anthropic' | 'openrouter'
+  provider?: 'anthropic' | 'openrouter' | 'baseten'
   model?: string
   mcp_config?: any
   permission_prompt_tool?: string
@@ -180,7 +183,6 @@ export interface LaunchSessionRequest {
   append_system_prompt?: string
   allowed_tools?: string[]
   disallowed_tools?: string[]
-  additional_directories?: string[]
   custom_instructions?: string
   verbose?: boolean
   dangerously_skip_permissions?: boolean
@@ -301,7 +303,6 @@ export interface ContinueSessionRequest {
   permission_prompt_tool?: string
   allowed_tools?: string[]
   disallowed_tools?: string[]
-  additional_directories?: string[]
   custom_instructions?: string
   max_turns?: number
 }
@@ -418,6 +419,9 @@ export interface UpdateSessionTitleResponse {
 // Config status types
 export interface ConfigStatus {
   openrouter: {
+    api_key_configured: boolean
+  }
+  baseten: {
     api_key_configured: boolean
   }
 }

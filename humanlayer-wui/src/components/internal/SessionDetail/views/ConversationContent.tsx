@@ -15,6 +15,7 @@ import { TaskGroup } from './TaskGroup'
 import { copyToClipboard } from '@/utils/clipboard'
 import { MessageContent } from '../components/MessageContent'
 import { hasTextSelection } from '@/utils/selection'
+import { useStore } from '@/AppStore'
 
 // TODO(2): Extract keyboard navigation logic to a custom hook
 // TODO(2): Extract auto-scroll logic to a separate utility
@@ -71,6 +72,7 @@ export function ConversationContent({
   void expandedToolResult
   const { events, loading, error, isInitialLoad } = useConversation(sessionId, undefined, 1000)
   const { getSnapshot, refetch } = useSessionSnapshots(sessionId)
+  const responseEditor = useStore(state => state.responseEditor)
 
   // Filter events based on maxEventIndex (exclude the event at maxEventIndex)
   const filteredEvents = maxEventIndex !== undefined ? events.slice(0, maxEventIndex) : events
@@ -261,12 +263,14 @@ export function ConversationContent({
                     }
                   }
                 }}
-                className={`group relative p-4 cursor-pointer NoSubTasksConversationContent transition-shadow duration-200 ${
+                className={`group relative p-4 cursor-pointer NoSubTasksConversationContent transition-colors duration-200 border-l-2 ${
                   index !== nonEmptyDisplayObjects.length - 1 ? 'border-b' : ''
                 } ${
                   focusedEventId === displayObject.id
-                    ? 'shadow-[inset_2px_0_0_0_var(--terminal-accent)]'
-                    : ''
+                    ? responseEditor?.isFocused
+                      ? 'border-l-[var(--terminal-accent-dim)]'
+                      : 'border-l-[var(--terminal-accent)]'
+                    : 'border-l-transparent'
                 }`}
               >
                 {/* Main content container with flexbox */}
@@ -431,7 +435,7 @@ export function ConversationContent({
                         }
                       }
                     }}
-                    className={`group relative p-4 cursor-pointer transition-shadow duration-200 ${
+                    className={`group relative p-4 cursor-pointer transition-colors duration-200 border-l-2 ${
                       index !==
                       rootEvents.filter(e => e.eventType !== ConversationEventType.ToolResult).length -
                         1
@@ -439,8 +443,10 @@ export function ConversationContent({
                         : ''
                     } ${
                       focusedEventId === displayObject.id
-                        ? 'shadow-[inset_2px_0_0_0_var(--terminal-accent)]'
-                        : ''
+                        ? responseEditor?.isFocused
+                          ? 'border-l-[var(--terminal-accent-dim)]'
+                          : 'border-l-[var(--terminal-accent)]'
+                        : 'border-l-transparent'
                     }`}
                   >
                     {/* Main content container with flexbox */}
