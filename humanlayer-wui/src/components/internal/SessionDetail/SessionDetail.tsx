@@ -21,7 +21,6 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 import { SessionModeIndicator } from './AutoAcceptIndicator'
 import { ForkViewModal } from './components/ForkViewModal'
 import { DangerouslySkipPermissionsDialog } from './DangerouslySkipPermissionsDialog'
-import { AdditionalDirectoriesDropdown } from './components/AdditionalDirectoriesDropdown'
 
 // Import hooks
 import { useSessionActions } from './hooks/useSessionActions'
@@ -189,7 +188,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [forkTokenCount, setForkTokenCount] = useState<number | null>(null)
   const [confirmingArchive, setConfirmingArchive] = useState(false)
   const [dangerousSkipPermissionsDialogOpen, setDangerousSkipPermissionsDialogOpen] = useState(false)
-  const [directoriesDropdownOpen, setDirectoriesDropdownOpen] = useState(false)
 
   // State for inline title editing
   const [isEditingTitle, setIsEditingTitle] = useState(false)
@@ -220,14 +218,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const cancelEditTitle = () => {
     setIsEditingTitle(false)
     setEditValue('')
-  }
-
-  const handleUpdateAdditionalDirectories = async (directories: string[]) => {
-    await daemonClient.updateSession(session.id, { additionalDirectories: directories })
-    // Update the local store
-    useStore.getState().updateSession(session.id, { additionalDirectories: directories })
-    // Refresh the session data to ensure UI reflects current state
-    await fetchActiveSessionDetail(session.id)
   }
 
   // Keyboard navigation protection
@@ -525,11 +515,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
 
       // Don't process escape if modals are open
       if (forkViewOpen) {
-        return
-      }
-
-      // Don't process escape if directories dropdown is open
-      if (directoriesDropdownOpen) {
         return
       }
 
@@ -847,21 +832,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     [startEditTitle, isEditingTitle],
   )
 
-  // Open directories dropdown hotkey
-  useHotkeys(
-    'd',
-    () => {
-      setDirectoriesDropdownOpen(true)
-    },
-    {
-      scopes: SessionDetailHotkeysScope,
-      enabled: !isEditingTitle && !!session.workingDir,
-      preventDefault: true,
-      enableOnFormTags: false,
-    },
-    [isEditingTitle, session.workingDir],
-  )
-
   // Don't steal scope here - SessionDetail is the base layer
   // Only modals opening on top should steal scope
 
@@ -977,14 +947,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               )}
             </h2>
             {session.workingDir && (
-              <AdditionalDirectoriesDropdown
-                workingDir={session.workingDir}
-                directories={session.additionalDirectories || []}
-                sessionStatus={session.status}
-                onDirectoriesChange={handleUpdateAdditionalDirectories}
-                open={directoriesDropdownOpen}
-                onOpenChange={setDirectoriesDropdownOpen}
-              />
+              <small className="font-mono text-xs text-muted-foreground">{session.workingDir}</small>
             )}
           </hgroup>
           <div className="flex items-center gap-1 ml-auto">
@@ -1067,16 +1030,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                 </>
               )}
             </h2>
-            {session.workingDir && (
-              <AdditionalDirectoriesDropdown
-                workingDir={session.workingDir}
-                directories={session.additionalDirectories || []}
-                sessionStatus={session.status}
-                onDirectoriesChange={handleUpdateAdditionalDirectories}
-                open={directoriesDropdownOpen}
-                onOpenChange={setDirectoriesDropdownOpen}
-              />
-            )}
           </hgroup>
           <div className="flex items-center gap-1 ml-auto">
             <ForkViewModal

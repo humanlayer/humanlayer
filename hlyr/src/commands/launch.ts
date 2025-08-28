@@ -8,8 +8,6 @@ interface LaunchOptions {
   title?: string
   model?: string
   workingDir?: string
-  additionalDirectories?: string[]
-  addDir?: string[] // CLI option name maps to this
   maxTurns?: number
   daemonSocket?: string
   configFile?: string
@@ -29,17 +27,11 @@ export const launchCommand = async (query: string, options: LaunchOptions = {}) 
       socketPath = join(homedir(), socketPath.slice(1))
     }
 
-    // Use addDir from CLI option if provided, otherwise use additionalDirectories
-    const additionalDirs = options.addDir || options.additionalDirectories
-
     console.log('Launching Claude Code session...')
     console.log('Query:', query)
     if (options.title) console.log('Title:', options.title)
     if (options.model) console.log('Model:', options.model)
     console.log('Working directory:', options.workingDir || process.cwd())
-    if (additionalDirs && additionalDirs.length > 0) {
-      console.log('Additional directories:', additionalDirs.join(', '))
-    }
     console.log('Approvals enabled:', options.approvals !== false)
 
     if (options.dangerouslySkipPermissions) {
@@ -59,7 +51,6 @@ export const launchCommand = async (query: string, options: LaunchOptions = {}) 
         title: options.title,
         model: options.model,
         working_dir: options.workingDir || process.cwd(),
-        additional_directories: additionalDirs,
         max_turns: options.maxTurns,
         // MCP config is now injected by daemon
         permission_prompt_tool:
