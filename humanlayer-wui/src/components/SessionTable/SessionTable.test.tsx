@@ -34,7 +34,7 @@ mock.module('@/AppStore', () => ({
 }))
 
 mock.module('@/hooks/useSessionLauncher', () => ({
-  useSessionLauncher: mock(() => ({ 
+  useSessionLauncher: mock(() => ({
     isOpen: false,
     query: '',
     setQuery: mock(),

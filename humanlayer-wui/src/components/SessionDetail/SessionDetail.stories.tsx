@@ -1,116 +1,43 @@
-// TODO: Enable when Storybook is properly configured and dependencies are installed
-// import type { Meta, StoryObj } from '@storybook/react'
-// import { fn } from '@storybook/test'
-// import { BrowserRouter } from 'react-router-dom'
-// import SessionDetail from './SessionDetail'
-// import { Session, SessionStatus } from '@/lib/daemon/types'
+import type { Meta, StoryObj } from '@storybook/react'
+import { fn } from '@storybook/test'
+import { BrowserRouter } from 'react-router-dom'
+import SessionDetail from './SessionDetail'
+import { Session, SessionStatus } from '@/lib/daemon/types'
 
-// Mock conversation events - available for use when Storybook is configured
-// const _mockEvents = [
-//   {
-//     id: 'event-1',
-//     sessionId: 'session-1',
-//     eventType: 'message',
-//     role: 'user',
-//     content: 'Create a new React component for displaying user profiles',
-//     timestamp: new Date('2024-01-01T10:00:00Z'),
-//   },
-//   {
-//     id: 'event-2',
-//     sessionId: 'session-1',
-//     eventType: 'message',
-//     role: 'assistant',
-//     content:
-//       "I'll help you create a React component for displaying user profiles. Let me start by creating the component structure.",
-//     timestamp: new Date('2024-01-01T10:00:30Z'),
-//   },
-//   {
-//     id: 'event-3',
-//     sessionId: 'session-1',
-//     eventType: 'tool_call',
-//     toolName: 'Write',
-//     toolInput: JSON.stringify({
-//       file_path: '/components/UserProfile.tsx',
-//       content: 'export const UserProfile = () => { ... }',
-//     }),
-//     timestamp: new Date('2024-01-01T10:01:00Z'),
-//     approvalStatus: 'approved',
-//   },
-// ]
+// Mock conversation events
+const mockEvents = [
+  {
+    id: 'event-1',
+    sessionId: 'session-1',
+    eventType: 'message',
+    role: 'user',
+    content: 'Create a new React component for displaying user profiles',
+    timestamp: new Date('2024-01-01T10:00:00Z'),
+  },
+  {
+    id: 'event-2',
+    sessionId: 'session-1',
+    eventType: 'message',
+    role: 'assistant',
+    content:
+      "I'll help you create a React component for displaying user profiles. Let me start by creating the component structure.",
+    timestamp: new Date('2024-01-01T10:00:30Z'),
+  },
+  {
+    id: 'event-3',
+    sessionId: 'session-1',
+    eventType: 'tool_call',
+    toolName: 'Write',
+    toolInput: JSON.stringify({
+      file_path: '/components/UserProfile.tsx',
+      content: 'export const UserProfile = () => { ... }',
+    }),
+    timestamp: new Date('2024-01-01T10:01:00Z'),
+    approvalStatus: 'approved',
+  },
+]
 
-// Mock hook functions - available for use when Storybook is configured
-// const _mockUseConversation = (_sessionId: string) => ({
-//   events: _mockEvents,
-//   isLoading: false,
-//   error: null,
-// })
-
-// const _mockUseStore = () => ({
-//   sessions: [],
-//   expandedToolResult: null,
-//   setExpandedToolResult: fn(),
-//   expandedToolCall: null,
-//   setExpandedToolCall: fn(),
-//   forkViewOpen: false,
-//   setForkViewOpen: fn(),
-//   dangerousSkipPermissionsDialogOpen: false,
-//   setDangerousSkipPermissionsDialogOpen: fn(),
-//   confirmingArchive: false,
-//   setConfirmingArchive: fn(),
-//   isEditingTitle: null,
-//   startTitleEdit: fn(),
-//   updateTitleEdit: fn(),
-//   saveTitleEdit: fn(),
-//   cancelTitleEdit: fn(),
-//   updateSessionOptimistic: fn(),
-// })
-
-// const _mockUseKeyboardNavigationProtection = () => ({
-//   shouldIgnoreMouseEvent: false,
-//   startKeyboardNavigation: fn(),
-// })
-
-// Mock components for complex dependencies
-// const _MockToast = {
-//   error: fn(),
-//   success: fn(),
-//   warning: fn(),
-// }
-
-// Decorator to provide mocks and router context
-// const withMocksAndRouter = (Story: any) => {
-// Mock all the hooks and dependencies
-// Note: These mocks would be activated when Storybook is properly configured
-// require('@/hooks/useConversation').useConversation = mockUseConversation
-// Note: useKeyboardNavigationProtection is now inlined in components, no mock needed
-// require('@/AppStore').useStore = mockUseStore
-// require('react-hotkeys-hook').useHotkeys = fn()
-// require('react-hotkeys-hook').useHotkeysContext = () => ({
-//   enableScope: fn(),
-//   disableScope: fn(),
-//   activeScopes: [],
-// })
-// require('sonner').toast = MockToast
-// require('@/lib/daemon/client').daemonClient = {
-//   getSessionState: fn(() => Promise.resolve({ session: mockCompletedSession })),
-// }
-// require('@/lib/logging').logger = {
-//   log: fn(),
-//   warn: fn(),
-//   error: fn(),
-// }
-
-// return (
-//   <BrowserRouter>
-//     <div style={{ height: '100vh', width: '100vw' }}>
-//       <Story />
-//     </div>
-//   </BrowserRouter>
-// )
-// }
-
-// Sample sessions for different states - available for future use
-/*
+// Sample sessions for different states
 const mockCompletedSession: Session = {
   id: 'session-1',
   runId: 'run-1',
@@ -169,11 +96,69 @@ const mockAutoAcceptSession: Session = {
   autoAcceptEdits: true,
   status: SessionStatus.Running,
 }
-*/
 
-// Storybook configuration - disabled until dependencies are installed
-/*
-const meta = {
+// Decorator to provide mocks and router context
+const withMocksAndRouter = (Story: any) => {
+  // Mock global functions for Storybook
+  if (typeof window !== 'undefined') {
+    ;(globalThis as any).__storybookMocks = {
+      ...((globalThis as any).__storybookMocks || {}),
+      useConversation: () => ({
+        events: mockEvents,
+        isLoading: false,
+        error: null,
+      }),
+      useStore: () => ({
+        sessions: [],
+        expandedToolResult: null,
+        setExpandedToolResult: fn(),
+        expandedToolCall: null,
+        setExpandedToolCall: fn(),
+        forkViewOpen: false,
+        setForkViewOpen: fn(),
+        dangerousSkipPermissionsDialogOpen: false,
+        setDangerousSkipPermissionsDialogOpen: fn(),
+        confirmingArchive: false,
+        setConfirmingArchive: fn(),
+        isEditingTitle: null,
+        startTitleEdit: fn(),
+        updateTitleEdit: fn(),
+        saveTitleEdit: fn(),
+        cancelTitleEdit: fn(),
+        updateSessionOptimistic: fn(),
+      }),
+      useHotkeys: fn(),
+      useHotkeysContext: () => ({
+        enableScope: fn(),
+        disableScope: fn(),
+        activeScopes: [],
+      }),
+      toast: {
+        error: fn(),
+        success: fn(),
+        warning: fn(),
+      },
+      daemonClient: {
+        getSessionState: fn(() => Promise.resolve({ session: mockCompletedSession })),
+      },
+      logger: {
+        log: fn(),
+        warn: fn(),
+        error: fn(),
+      },
+    }
+  }
+
+  return (
+    <BrowserRouter>
+      <div style={{ height: '100vh', width: '100vw' }}>
+        <Story />
+      </div>
+    </BrowserRouter>
+  )
+}
+
+const meta: Meta<typeof SessionDetail> = {
   title: 'Components/SessionDetail',
   component: SessionDetail,
   decorators: [withMocksAndRouter],
@@ -198,10 +183,10 @@ const meta = {
       description: 'Callback fired when the session detail view should close',
     },
   },
-} satisfies Meta<typeof SessionDetail>
+}
 
 export default meta
-type Story = StoryObj<typeof meta>
+type Story = StoryObj<typeof SessionDetail>
 
 // Default story - completed session
 export const Completed: Story = {
@@ -294,7 +279,30 @@ export const WaitingInput: Story = {
     },
   },
 }
-*/
 
-// Export a placeholder to prevent module errors
-export default {}
+// Session with minimal information
+export const MinimalInfo: Story = {
+  args: {
+    session: {
+      ...mockCompletedSession,
+      title: undefined,
+      summary: '',
+      model: undefined,
+      inputTokens: undefined,
+      outputTokens: undefined,
+      contextLimit: undefined,
+    },
+  },
+}
+
+// Failed session
+export const Failed: Story = {
+  args: {
+    session: {
+      ...mockCompletedSession,
+      status: SessionStatus.Failed,
+      title: 'Failed Session Example',
+      summary: 'This session encountered errors and could not complete successfully',
+    },
+  },
+}

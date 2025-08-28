@@ -1,35 +1,33 @@
-// TODO: Enable when Storybook is properly configured and dependencies are installed
-// import type { Meta, StoryObj } from '@storybook/react'
-// import { Session, SessionStatus } from '@/lib/daemon/types'
-// import SessionTable from './SessionTable'
-// import { Search } from 'lucide-react'
+import type { Meta, StoryObj } from '@storybook/react'
+import { Session, SessionStatus } from '@/lib/daemon/types'
+import SessionTable from './SessionTable'
+import { Search } from 'lucide-react'
+import { fn } from '@storybook/test'
 
-// Storybook configuration - disabled until dependencies are installed
-// const meta: Meta<typeof SessionTable> = {
-//   title: 'Components/SessionTable',
-//   component: SessionTable,
-//   parameters: {
-//     layout: 'fullscreen',
-//     docs: {
-//       description: {
-//         component:
-//           'A table component for displaying and managing AI assistant sessions with support for selection, editing, archiving, and keyboard navigation.',
-//       },
-//     },
-//   },
-//   argTypes: {
-//     sessions: { control: false },
-//     focusedSession: { control: false },
-//     matchedSessions: { control: false },
-//     emptyState: { control: false },
-//   },
-// }
+const meta: Meta<typeof SessionTable> = {
+  title: 'Components/SessionTable',
+  component: SessionTable,
+  parameters: {
+    layout: 'fullscreen',
+    docs: {
+      description: {
+        component:
+          'A table component for displaying and managing AI assistant sessions with support for selection, editing, archiving, and keyboard navigation.',
+      },
+    },
+  },
+  argTypes: {
+    sessions: { control: false },
+    focusedSession: { control: false },
+    matchedSessions: { control: false },
+    emptyState: { control: false },
+  },
+}
 
-// export default meta
-// type Story = StoryObj<typeof SessionTable>
+export default meta
+type Story = StoryObj<typeof SessionTable>
 
-// Mock sessions for stories - available for future use
-/*
+// Mock sessions for stories
 const mockSessions: Session[] = [
   {
     id: 'session-1',
@@ -92,20 +90,17 @@ const mockSessions: Session[] = [
     autoAcceptEdits: false,
   },
 ]
-*/
 
-// Stories are disabled until Storybook is configured - preserving structure for future use
-/*
 // Default story with multiple sessions
 export const Default: Story = {
   args: {
     sessions: mockSessions,
     focusedSession: null,
-    handleFocusSession: (session: Session) => console.log('Focus session:', session),
-    handleBlurSession: () => console.log('Blur session'),
-    handleFocusNextSession: () => console.log('Focus next session'),
-    handleFocusPreviousSession: () => console.log('Focus previous session'),
-    handleActivateSession: (session: Session) => console.log('Activate session:', session),
+    handleFocusSession: fn(),
+    handleBlurSession: fn(),
+    handleFocusNextSession: fn(),
+    handleFocusPreviousSession: fn(),
+    handleActivateSession: fn(),
   },
 }
 
@@ -161,7 +156,7 @@ export const EmptyCustom: Story = {
       message: 'Try adjusting your search criteria or create a new session',
       action: {
         label: 'Create Session',
-        onClick: () => console.log('Create new session'),
+        onClick: fn(),
       },
     },
   },
@@ -252,10 +247,6 @@ export const LongPaths: Story = {
 export const WithMissingModels: Story = {
   args: {
     ...Default.args,
-    sessions: mockSessions.map(session => ({ ...session, model: null })),
+    sessions: mockSessions.map(session => ({ ...session, model: undefined })),
   },
 }
-*/
-
-// Export a placeholder to prevent module errors
-export default {}

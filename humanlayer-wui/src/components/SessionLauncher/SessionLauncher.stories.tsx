@@ -1,40 +1,45 @@
-// TODO: Enable when Storybook is properly configured and dependencies are installed
-// import type { Meta, StoryObj } from '@storybook/react'
-// import { fn } from '@storybook/test'
-// import { SessionLauncher } from './SessionLauncher'
+import type { Meta, StoryObj } from '@storybook/react'
+import { fn } from '@storybook/test'
+import { SessionLauncher } from './SessionLauncher'
 
-// Mock the hooks for Storybook - available when Storybook is configured
-// const _mockUseSessionLauncher = () => ({
-//   query: '',
-//   setQuery: fn(),
-//   config: {},
-//   setConfig: fn(),
-//   launchSession: fn(),
-//   isLaunching: false,
-//   error: null,
-//   mode: 'command' as const,
-//   view: 'menu' as const,
-//   setView: fn(),
-// })
+// Mock the hooks for Storybook
+const withMockedHooks = (mockState: any) => (Story: any) => {
+  // Mock the hooks by temporarily replacing them in the global context
+  const originalModules: any = {}
 
-// const _mockUseStealHotkeyScope = () => {}
+  // Set up mocks before rendering
+  if (typeof window !== 'undefined') {
+    // Save originals
+    if ((globalThis as any).__storybookMocks) {
+      originalModules.useSessionLauncher = (globalThis as any).__storybookMocks.useSessionLauncher
+      originalModules.useStealHotkeyScope = (globalThis as any).__storybookMocks.useStealHotkeyScope
+    }
 
-// Add mock implementations for Storybook
-// const withMocks = (Story: any) => {
-// Mock the hooks - would be activated when Storybook is configured
-// require('@/hooks/useSessionLauncher').useSessionLauncher = mockUseSessionLauncher
-// require('@/hooks/useStealHotkeyScope').useStealHotkeyScope = mockUseStealHotkeyScope
-// require('react-hotkeys-hook').useHotkeys = fn()
+    // Set up our mocks
+    ;(globalThis as any).__storybookMocks = {
+      useSessionLauncher: () => ({
+        query: '',
+        setQuery: fn(),
+        config: {},
+        setConfig: fn(),
+        launchSession: fn(),
+        isLaunching: false,
+        error: null,
+        mode: 'command' as const,
+        view: 'menu' as const,
+        setView: fn(),
+        ...mockState,
+      }),
+      useStealHotkeyScope: () => {},
+    }
+  }
 
-// return <Story />
-// }
+  return <Story />
+}
 
-// Storybook configuration - disabled until dependencies are installed
-/*
-const meta = {
+const meta: Meta<typeof SessionLauncher> = {
   title: 'Components/SessionLauncher',
   component: SessionLauncher,
-  decorators: [withMocks],
   parameters: {
     layout: 'fullscreen',
     docs: {
@@ -57,16 +62,17 @@ const meta = {
       description: 'Callback fired when the modal should close',
     },
   },
-} satisfies Meta<typeof SessionLauncher>
+}
 
 export default meta
-type Story = StoryObj<typeof meta>
+type Story = StoryObj<typeof SessionLauncher>
 
 // Default story - modal closed
 export const Closed: Story = {
   args: {
     isOpen: false,
   },
+  decorators: [withMockedHooks({})],
 }
 
 // Modal open with command palette menu
@@ -74,6 +80,7 @@ export const Open: Story = {
   args: {
     isOpen: true,
   },
+  decorators: [withMockedHooks({ mode: 'command', view: 'menu' })],
 }
 
 // Modal open in input view
@@ -82,26 +89,15 @@ export const InputView: Story = {
     isOpen: true,
   },
   decorators: [
-    Story => {
-      // const _mockHook = () => ({
-      //         query: 'Create a new React component',
-      //         setQuery: fn(),
-      //         config: {
-      //           model: 'claude-3-sonnet-20240229',
-      //           temperature: 0.7,
-      //         },
-      //         setConfig: fn(),
-      //         launchSession: fn(),
-      //         isLaunching: false,
-      //         error: null,
-      //         mode: 'command' as const,
-      //         view: 'input' as const,
-      //         setView: fn(),
-      //       })
-
-      // require('@/hooks/useSessionLauncher').useSessionLauncher = mockHook
-      return <Story />
-    },
+    withMockedHooks({
+      query: 'Create a new React component',
+      config: {
+        model: 'claude-3-sonnet-20240229',
+        temperature: 0.7,
+      },
+      mode: 'command',
+      view: 'input',
+    }),
   ],
 }
 
@@ -111,23 +107,13 @@ export const Loading: Story = {
     isOpen: true,
   },
   decorators: [
-    Story => {
-      // const _mockHook = () => ({
-      //         query: 'Create a new React component',
-      //         setQuery: fn(),
-      //         config: {},
-      //         setConfig: fn(),
-      //         launchSession: fn(),
-      //         isLaunching: true,
-      //         error: null,
-      //         mode: 'command' as const,
-      //         view: 'input' as const,
-      //         setView: fn(),
-      //       })
-
-      // require('@/hooks/useSessionLauncher').useSessionLauncher = mockHook
-      return <Story />
-    },
+    withMockedHooks({
+      query: 'Create a new React component',
+      config: {},
+      isLaunching: true,
+      mode: 'command',
+      view: 'input',
+    }),
   ],
 }
 
@@ -137,23 +123,14 @@ export const WithError: Story = {
     isOpen: true,
   },
   decorators: [
-    Story => {
-      // const _mockHook = () => ({
-      //         query: 'Create a new React component',
-      //         setQuery: fn(),
-      //         config: {},
-      //         setConfig: fn(),
-      //         launchSession: fn(),
-      //         isLaunching: false,
-      //         error: 'Failed to launch session. Please check your connection and try again.',
-      //         mode: 'command' as const,
-      //         view: 'input' as const,
-      //         setView: fn(),
-      //       })
-
-      // require('@/hooks/useSessionLauncher').useSessionLauncher = mockHook
-      return <Story />
-    },
+    withMockedHooks({
+      query: 'Create a new React component',
+      config: {},
+      isLaunching: false,
+      error: 'Failed to launch session. Please check your connection and try again.',
+      mode: 'command',
+      view: 'input',
+    }),
   ],
 }
 
@@ -163,26 +140,31 @@ export const SessionMode: Story = {
     isOpen: true,
   },
   decorators: [
-    Story => {
-      // const _mockHook = () => ({
-      //         query: '',
-      //         setQuery: fn(),
-      //         config: {},
-      //         setConfig: fn(),
-      //         launchSession: fn(),
-      //         isLaunching: false,
-      //         error: null,
-      //         mode: 'session' as const,
-      //         view: 'menu' as const,
-      //         setView: fn(),
-      //       })
-
-      // require('@/hooks/useSessionLauncher').useSessionLauncher = mockHook
-      return <Story />
-    },
+    withMockedHooks({
+      mode: 'session',
+      view: 'menu',
+    }),
   ],
 }
-*/
 
-// Export a placeholder to prevent module errors
-export default {}
+// Complex configuration example
+export const WithComplexConfig: Story = {
+  args: {
+    isOpen: true,
+  },
+  decorators: [
+    withMockedHooks({
+      query: 'Help me optimize this React application for performance',
+      config: {
+        model: 'claude-3-opus-20240229',
+        temperature: 0.3,
+        maxTokens: 4000,
+        workingDirectory: '/Users/developer/projects/react-app',
+        dangerouslySkipPermissions: false,
+        autoAcceptEdits: true,
+      },
+      mode: 'command',
+      view: 'input',
+    }),
+  ],
+}

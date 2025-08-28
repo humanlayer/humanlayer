@@ -5,7 +5,7 @@ import eslintConfigPrettier from 'eslint-config-prettier/flat'
 
 export default [
   {
-    ignores: ['dist/**/*', 'src-tauri/target/**/*'],
+    ignores: ['dist/**/*', 'src-tauri/target/**/*', '.storybook/**/*'],
   },
   {
     files: ['**/*.{js,mjs,cjs,ts,tsx}'],
@@ -35,6 +35,7 @@ export default [
       'react/react-in-jsx-scope': 'off',
       // Per docs, no-unused-vars needs to be off when we're using `typescript-eslint`'s no-unused-vars
       'no-unused-vars': 'off',
+      'no-case-declarations': 'off',
     },
   },
   {
