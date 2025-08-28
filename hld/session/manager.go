@@ -213,6 +213,8 @@ func (m *Manager) LaunchSession(ctx context.Context, config LaunchSessionConfig)
 		}
 		proxyURL := fmt.Sprintf("http://localhost:%d/api/v1/anthropic_proxy/%s", httpPort, sessionID)
 		claudeConfig.Env["ANTHROPIC_BASE_URL"] = proxyURL
+		// Claude CLI needs an API key to trigger requests, even though proxy handles auth, set dummy key
+		claudeConfig.Env["ANTHROPIC_API_KEY"] = "proxy-handled"
 		slog.Info("Setting ANTHROPIC_BASE_URL for proxy",
 			"session_id", sessionID,
 			"proxy_url", proxyURL,
@@ -1494,6 +1496,8 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 		}
 		proxyURL := fmt.Sprintf("http://localhost:%d/api/v1/anthropic_proxy/%s", httpPort, sessionID)
 		config.Env["ANTHROPIC_BASE_URL"] = proxyURL
+		// Claude CLI needs an API key to trigger requests, even though proxy handles auth
+		config.Env["ANTHROPIC_API_KEY"] = "proxy-handled"
 		slog.Info("Setting ANTHROPIC_BASE_URL for resumed session proxy",
 			"session_id", sessionID,
 			"proxy_url", proxyURL,
