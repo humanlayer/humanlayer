@@ -1,4 +1,4 @@
-import React, { forwardRef, useEffect, useState, useRef, useImperativeHandle } from 'react'
+import { forwardRef, useEffect, useState, useRef, useImperativeHandle } from 'react'
 import { Button } from '@/components/ui/button'
 import { Session, SessionStatus } from '@/lib/daemon/types'
 import {
