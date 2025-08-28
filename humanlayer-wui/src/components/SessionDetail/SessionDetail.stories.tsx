@@ -82,8 +82,7 @@
 // Mock all the hooks and dependencies
 // Note: These mocks would be activated when Storybook is properly configured
 // require('@/hooks/useConversation').useConversation = mockUseConversation
-// require('@/hooks/useKeyboardNavigationProtection').useKeyboardNavigationProtection =
-//   mockUseKeyboardNavigationProtection
+// Note: useKeyboardNavigationProtection is now inlined in components, no mock needed
 // require('@/AppStore').useStore = mockUseStore
 // require('react-hotkeys-hook').useHotkeys = fn()
 // require('react-hotkeys-hook').useHotkeysContext = () => ({

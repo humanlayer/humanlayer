@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useStore } from '@/AppStore'
 import { ViewMode } from '@/lib/daemon/types'
@@ -7,7 +7,6 @@ import { SessionTableSearch } from '@/components/SessionTableSearch'
 import { useSessionFilter } from '@/hooks/useSessionFilter'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { useSessionLauncher } from '@/hooks/useSessionLauncher'
-import { useKeyboardNavigationProtection } from '@/hooks/useKeyboardNavigationProtection'
 import { Inbox, Archive } from 'lucide-react'
 
 export function SessionTablePage() {
@@ -22,8 +21,23 @@ export function SessionTablePage() {
   // Focus source tracking
   const [, setFocusSource] = useState<'mouse' | 'keyboard' | null>(null)
 
-  // Keyboard navigation protection
-  const { shouldIgnoreMouseEvent, startKeyboardNavigation } = useKeyboardNavigationProtection()
+  // Keyboard navigation protection - inline implementation
+  const [isKeyboardNavigating, setIsKeyboardNavigating] = useState(false)
+  const keyboardTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const startKeyboardNavigation = useCallback(() => {
+    setIsKeyboardNavigating(true)
+    if (keyboardTimeoutRef.current) {
+      clearTimeout(keyboardTimeoutRef.current)
+    }
+    keyboardTimeoutRef.current = setTimeout(() => {
+      setIsKeyboardNavigating(false)
+    }, 300)
+  }, [])
+
+  const shouldIgnoreMouseEvent = useCallback((): boolean => {
+    return isKeyboardNavigating
+  }, [isKeyboardNavigating])
 
   const sessions = useStore(state => state.sessions)
   const selectedSessions = useStore(state => state.selectedSessions)

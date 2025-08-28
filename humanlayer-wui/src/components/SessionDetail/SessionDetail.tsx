@@ -5,7 +5,6 @@ import { toast } from 'sonner'
 import { ConversationEvent, Session, ApprovalStatus, SessionStatus } from '@/lib/daemon/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { useConversation } from '@/hooks/useConversation'
-import { useKeyboardNavigationProtection } from '@/hooks/useKeyboardNavigationProtection'
 import { ChevronDown, Archive, Pencil } from 'lucide-react'
 import { getStatusTextClass } from '@/utils/component-utils'
 import { renderSessionStatus } from '@/utils/sessionStatus'
@@ -227,8 +226,23 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     cancelTitleEdit()
   }
 
-  // Keyboard navigation protection
-  const { shouldIgnoreMouseEvent, startKeyboardNavigation } = useKeyboardNavigationProtection()
+  // Keyboard navigation protection - inline implementation
+  const [isKeyboardNavigating, setIsKeyboardNavigating] = useState(false)
+  const keyboardTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const startKeyboardNavigation = useCallback(() => {
+    setIsKeyboardNavigating(true)
+    if (keyboardTimeoutRef.current) {
+      clearTimeout(keyboardTimeoutRef.current)
+    }
+    keyboardTimeoutRef.current = setTimeout(() => {
+      setIsKeyboardNavigating(false)
+    }, 300)
+  }, [])
+
+  const shouldIgnoreMouseEvent = useCallback((): boolean => {
+    return isKeyboardNavigating
+  }, [isKeyboardNavigating])
 
   const isActivelyProcessing = ['starting', 'running', 'completing'].includes(session.status)
   // const isActivelyProcessing = true

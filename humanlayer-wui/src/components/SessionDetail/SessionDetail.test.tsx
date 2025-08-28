@@ -14,13 +14,6 @@ mock.module('@/hooks/useConversation', () => ({
   })),
 }))
 
-mock.module('@/hooks/useKeyboardNavigationProtection', () => ({
-  useKeyboardNavigationProtection: mock(() => ({
-    shouldIgnoreMouseEvent: false,
-    startKeyboardNavigation: mock(),
-  })),
-}))
-
 mock.module('@/AppStore', () => ({
   useStore: mock(() => ({
     sessions: [],
