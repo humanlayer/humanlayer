@@ -165,20 +165,21 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
 
     // Always show the input for all session states
     return (
-      <div className={`transition-colors space-y-3 border-l-2 pl-4 pr-2 pb-4 ${borderColorClass}`}>
-        {/* Status Bar */}
-        <StatusBar
-          session={session}
-          parentSessionData={parentSessionData}
-          isForkMode={isForkMode}
-          forkTokenCount={forkTokenCount}
-          onModelChange={onModelChange}
-          isDenying={isDenying}
-        />
+      <div className={`transition-colors border-l-2 pl-2 pr-2 ${borderColorClass}`}>
+        <div className="space-y-2">
+          {/* Status Bar */}
+          <StatusBar
+            session={session}
+            parentSessionData={parentSessionData}
+            isForkMode={isForkMode}
+            forkTokenCount={forkTokenCount}
+            onModelChange={onModelChange}
+            isDenying={isDenying}
+          />
 
-        {/* Existing input area */}
-        <div className="flex gap-2">
-          <ResponseEditor
+          {/* Existing input area */}
+          <div className="flex gap-2">
+            <ResponseEditor
             ref={tiptapRef}
             initialValue={initialValue}
             onChange={(value: Content) => {
@@ -202,28 +203,29 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
             onBlur={() => {
               setIsFocused(false)
             }}
-          />
-        </div>
+            />
+          </div>
 
-        {/* Keyboard shortcuts (condensed) */}
-        <div className="flex items-center justify-between">
-          <p className="text-xs text-muted-foreground">
-            {isResponding
-              ? 'Waiting for Claude to accept the interrupt...'
-              : getHelpText(session.status)}
-          </p>
+          {/* Keyboard shortcuts (condensed) */}
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-muted-foreground">
+              {isResponding
+                ? 'Waiting for Claude to accept the interrupt...'
+                : getHelpText(session.status)}
+            </p>
 
-          <Button
-            onClick={handleSubmit}
-            disabled={isDisabled}
-            size="sm"
-            variant={isDenying ? 'destructive' : 'default'}
-          >
-            {getSendButtonText()}
-            {!isDisabled && (
-              <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">{sendKey}</kbd>
-            )}
-          </Button>
+            <Button
+              onClick={handleSubmit}
+              disabled={isDisabled}
+              variant={isDenying ? 'destructive' : 'default'}
+              className="h-auto py-0.5 px-2 text-xs"
+            >
+              {getSendButtonText()}
+              {!isDisabled && (
+                <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">{sendKey}</kbd>
+              )}
+            </Button>
+          </div>
         </div>
       </div>
     )
