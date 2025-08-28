@@ -141,6 +141,11 @@ export class HTTPDaemonClient implements IDaemonClient {
     }
     // For OpenRouter and Baseten, pass model string as-is via proxyModelOverride
 
+    const additionalDirs =
+      'additionalDirectories' in params
+        ? params.additionalDirectories
+        : undefined
+
     // Create the session with appropriate settings
     const response = await this.client!.createSession({
       query: params.query,

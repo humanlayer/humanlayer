@@ -117,7 +117,6 @@ export function QuickLauncherDirectoryInput({
     { enabled: isFocused, enableOnFormTags: true },
   )
 
-
   const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value
     setSearchValue(newValue)
@@ -234,9 +233,7 @@ export function QuickLauncherDirectoryInput({
               ) : (
                 filteredItems.map((item, idx) => {
                   const pathMatch = item.matches?.find(m => m.key === 'path')
-                  const highlighted = pathMatch
-                    ? highlightMatches(item.path, pathMatch.indices)
-                    : null
+                  const highlighted = pathMatch ? highlightMatches(item.path, pathMatch.indices) : null
 
                   return (
                     <CommandItem
