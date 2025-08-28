@@ -592,11 +592,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   // Create reusable handler for toggling dangerously skip permissions
   const handleToggleDangerouslySkipPermissions = useCallback(async () => {
     // Check if any modal scopes are active
-    const modalScopes = [
-      'tool-result-modal',
-      'fork-view-modal',
-      'dangerously-skip-permissions-dialog',
-    ]
+    const modalScopes = ['tool-result-modal', 'fork-view-modal', 'dangerously-skip-permissions-dialog']
     const hasModalOpen = activeScopes.some(scope => modalScopes.includes(scope))
 
     // Don't trigger if other modals are open
@@ -815,7 +811,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     () => {
       if (responseEditor) {
         responseEditor.commands.focus()
-      } 
+      }
     },
     {
       enableOnFormTags: false,
@@ -1071,7 +1067,9 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               focusedEventId={navigation.focusedEventId}
               setFocusedEventId={navigation.setFocusedEventId}
               onApprove={approvals.handleApprove}
-              onDeny={(approvalId: string, reason: string) => approvals.handleDeny(approvalId, reason, session.id)}
+              onDeny={(approvalId: string, reason: string) =>
+                approvals.handleDeny(approvalId, reason, session.id)
+              }
               approvingApprovalId={approvals.approvingApprovalId}
               confirmingApprovalId={approvals.confirmingApprovalId}
               denyingApprovalId={approvals.denyingApprovalId ?? undefined}

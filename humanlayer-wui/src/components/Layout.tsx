@@ -20,7 +20,7 @@ import { useSessionLauncher, useSessionLauncherHotkeys } from '@/hooks/useSessio
 import { useDaemonConnection } from '@/hooks/useDaemonConnection'
 import { useStore } from '@/AppStore'
 import { useSessionSubscriptions } from '@/hooks/useSubscriptions'
-import { Toaster, toast } from 'sonner'
+import { Toaster } from 'sonner'
 import { notificationService, type NotificationOptions } from '@/services/NotificationService'
 import { useTheme } from '@/contexts/ThemeContext'
 import { formatMcpToolName, getSessionNotificationText } from '@/utils/formatting'

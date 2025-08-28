@@ -421,7 +421,7 @@ const KeyboardShortcuts = Extension.create({
 })
 
 interface ResponseEditorProps {
-  initialValue: Content | null 
+  initialValue: Content | null
   onChange: (value: Content) => void
   onKeyDown?: (e: React.KeyboardEvent) => void
   disabled?: boolean
@@ -436,21 +436,42 @@ interface ResponseEditorProps {
 
 export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorProps>(
   (
-    { initialValue, onChange, onKeyDown, disabled, placeholder, className, onFocus, onBlur, onSubmit, onToggleAutoAccept, onToggleDangerouslySkipPermissions },
+    {
+      initialValue,
+      onChange,
+      onKeyDown,
+      disabled,
+      placeholder,
+      className,
+      onFocus,
+      onBlur,
+      onSubmit,
+      onToggleAutoAccept,
+      onToggleDangerouslySkipPermissions,
+    },
     ref,
   ) => {
     const onSubmitRef = React.useRef<ResponseEditorProps['onSubmit']>()
     const onChangeRef = React.useRef<ResponseEditorProps['onChange']>()
     const onToggleAutoAcceptRef = React.useRef<ResponseEditorProps['onToggleAutoAccept']>()
-    const onToggleDangerouslySkipPermissionsRef = React.useRef<ResponseEditorProps['onToggleDangerouslySkipPermissions']>()
+    const onToggleDangerouslySkipPermissionsRef =
+      React.useRef<ResponseEditorProps['onToggleDangerouslySkipPermissions']>()
 
     const setResponseEditor = useStore(state => state.setResponseEditor)
     const removeResponseEditor = useStore(state => state.removeResponseEditor)
 
-    useEffect(() => { onSubmitRef.current = onSubmit }, [onSubmit])
-    useEffect(() => { onChangeRef.current = onChange }, [onChange])
-    useEffect(() => { onToggleAutoAcceptRef.current = onToggleAutoAccept }, [onToggleAutoAccept])
-    useEffect(() => { onToggleDangerouslySkipPermissionsRef.current = onToggleDangerouslySkipPermissions }, [onToggleDangerouslySkipPermissions])
+    useEffect(() => {
+      onSubmitRef.current = onSubmit
+    }, [onSubmit])
+    useEffect(() => {
+      onChangeRef.current = onChange
+    }, [onChange])
+    useEffect(() => {
+      onToggleAutoAcceptRef.current = onToggleAutoAccept
+    }, [onToggleAutoAccept])
+    useEffect(() => {
+      onToggleDangerouslySkipPermissionsRef.current = onToggleDangerouslySkipPermissions
+    }, [onToggleDangerouslySkipPermissions])
 
     const editor = useEditor({
       autofocus: false,

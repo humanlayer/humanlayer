@@ -76,9 +76,13 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
       return 'Send'
     }
 
-    let initialValue = null;
+    let initialValue = null
 
-    if (initialValue === null && typeof localStorageValue === 'string' && localStorageValue.length > 0) {
+    if (
+      initialValue === null &&
+      typeof localStorageValue === 'string' &&
+      localStorageValue.length > 0
+    ) {
       try {
         initialValue = JSON.parse(localStorageValue)
       } catch (e) {
@@ -191,7 +195,10 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
             ref={tiptapRef}
             initialValue={initialValue}
             onChange={(value: Content) => {
-              localStorage.setItem(`${ResponseInputLocalStorageKey}.${session.id}`, JSON.stringify(value))
+              localStorage.setItem(
+                `${ResponseInputLocalStorageKey}.${session.id}`,
+                JSON.stringify(value),
+              )
             }}
             onSubmit={handleSubmit}
             onToggleAutoAccept={onToggleAutoAccept}
