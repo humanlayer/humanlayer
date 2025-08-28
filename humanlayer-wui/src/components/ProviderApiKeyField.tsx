@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { AlertCircle, CheckCircle, Eye, EyeOff, Pencil } from 'lucide-react'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
@@ -114,12 +114,9 @@ export function ProviderApiKeyField({
               </Button>
             )}
           </div>
-          <p className="text-xs text-muted-foreground">
-            Your API key will be stored with this session
-          </p>
+          <p className="text-xs text-muted-foreground">Your API key will be stored with this session</p>
         </div>
       )}
     </div>
   )
 }
-

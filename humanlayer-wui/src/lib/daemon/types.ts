@@ -18,8 +18,10 @@ export type RecentPath = SDKRecentPath
 // Export SDK types directly
 export type { Approval } from '@humanlayer/hld-sdk'
 
-// Use SDK Session type directly with camelCase naming
-export type Session = SDKSession
+// Extend SDK Session type with WUI-specific properties
+export interface Session extends SDKSession {
+  additionalDirectories?: string[]
+}
 
 // Export SDK ConversationEvent type directly
 export type { ConversationEvent } from '@humanlayer/hld-sdk'
@@ -38,6 +40,7 @@ export interface LaunchSessionParams {
   maxTurns?: number
   autoAcceptEdits?: boolean
   proxyApiKey?: string
+  additionalDirectories?: string[]
   // Add any WUI-specific extensions if needed
 }
 
