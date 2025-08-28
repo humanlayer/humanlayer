@@ -4,7 +4,28 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tauri + React + Typescript</title>
+    <title>CodeLayer</title>
+    <style>
+      /* Default to catppuccin theme colors to prevent white flash */
+      /* These match the default theme in ThemeContext */
+      :root {
+        --terminal-bg: #1e1e2e;
+      }
+
+      /* Immediate background color to prevent white flash */
+      html,
+      body {
+        background-color: var(--terminal-bg);
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+      }
+      #root {
+        width: 100%;
+        height: 100%;
+      }
+    </style>
   </head>
 
   <body>

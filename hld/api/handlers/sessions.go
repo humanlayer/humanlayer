@@ -108,6 +108,15 @@ func (h *SessionHandlers) CreateSession(ctx context.Context, req api.CreateSessi
 	if req.Body.Verbose != nil {
 		config.Verbose = *req.Body.Verbose
 	}
+	if req.Body.AutoAcceptEdits != nil {
+		config.AutoAcceptEdits = *req.Body.AutoAcceptEdits
+	}
+	if req.Body.DangerouslySkipPermissions != nil {
+		config.DangerouslySkipPermissions = *req.Body.DangerouslySkipPermissions
+		if req.Body.DangerouslySkipPermissionsTimeout != nil {
+			config.DangerouslySkipPermissionsTimeout = req.Body.DangerouslySkipPermissionsTimeout
+		}
+	}
 
 	// Parse model if provided
 	if req.Body.Model != nil && *req.Body.Model != "" {

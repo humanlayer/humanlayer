@@ -12,10 +12,13 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "CodeLayer",
         "width": 800,
         "height": 600,
-        "zoomHotkeysEnabled": true
+        "zoomHotkeysEnabled": true,
+        "titleBarStyle": "Transparent",
+        "hiddenTitle": false
       }
     ],
     "security": {

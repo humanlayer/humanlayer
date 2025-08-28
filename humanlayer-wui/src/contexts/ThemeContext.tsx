@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
+import { syncWindowBackgroundWithTheme } from '@/lib/windowTheme'
 
 export type Theme =
   | 'solarized-dark'
@@ -32,6 +33,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     localStorage.setItem('wui-theme', theme)
     document.documentElement.setAttribute('data-theme', theme)
+
+    // Sync the window background color with the theme
+    // Need a small delay to ensure CSS variables are updated
+    setTimeout(() => {
+      syncWindowBackgroundWithTheme('main')
+    }, 10)
   }, [theme])
 
   return <ThemeContext.Provider value={{ theme, setTheme }}>{children}</ThemeContext.Provider>

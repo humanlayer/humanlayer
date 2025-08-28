@@ -539,6 +539,7 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
     font-family: 'IBM Plex Mono', 'Consolas', 'Monaco', 'Courier New', monospace;
