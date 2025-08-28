@@ -182,7 +182,6 @@ export interface LaunchSessionRequest {
   append_system_prompt?: string
   allowed_tools?: string[]
   disallowed_tools?: string[]
-  additional_directories?: string[]
   custom_instructions?: string
   verbose?: boolean
   dangerously_skip_permissions?: boolean
@@ -303,7 +302,6 @@ export interface ContinueSessionRequest {
   permission_prompt_tool?: string
   allowed_tools?: string[]
   disallowed_tools?: string[]
-  additional_directories?: string[]
   custom_instructions?: string
   max_turns?: number
 }
