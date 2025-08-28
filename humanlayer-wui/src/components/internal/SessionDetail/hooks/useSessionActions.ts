@@ -22,9 +22,6 @@ export function useSessionActions({
   pendingForkMessage,
   onForkCommit,
 }: UseSessionActionsProps) {
-  // const [responseInput, setResponseInput] = useState(
-  //   localStorage.getItem(`${ResponseInputLocalStorageKey}.${session.id}`) || '',
-  // )
   const [isResponding, setIsResponding] = useState(false)
   const [forkFromSessionId, setForkFromSessionId] = useState<string | null>(null)
 
@@ -126,16 +123,6 @@ export function useSessionActions({
     onForkCommit,
   ])
 
-  const handleResponseInputKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault()
-        handleContinueSession()
-      }
-    },
-    [handleContinueSession],
-  )
-
   // Navigate to parent session
   const handleNavigateToParent = useCallback(() => {
     if (session.parentSessionId) {
@@ -177,7 +164,6 @@ export function useSessionActions({
   return {
     isResponding,
     handleContinueSession,
-    handleResponseInputKeyDown,
     handleNavigateToParent,
     isForkMode: !!forkFromSessionId,
   }

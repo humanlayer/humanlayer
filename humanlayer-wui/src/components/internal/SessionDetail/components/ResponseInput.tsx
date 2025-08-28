@@ -19,7 +19,6 @@ interface ResponseInputProps {
   parentSessionData?: Partial<Session>
   isResponding: boolean
   handleContinueSession: () => void
-  handleResponseInputKeyDown: (e: React.KeyboardEvent) => void
   isForkMode?: boolean
   forkTokenCount?: number | null
   onModelChange?: () => void
@@ -176,21 +175,7 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
         />
 
         {/* Existing input area */}
-        {isForkMode && <span className="text-sm font-medium">Fork from this message:</span>}
         <div className="flex gap-2">
-          {/* <Textarea
-            style={textareaStyle}
-            ref={ref}
-            placeholder={placeholder}
-            value={responseInput}
-            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
-              setResponseInput(e.target.value)
-              localStorage.setItem(`${ResponseInputLocalStorageKey}.${session.id}`, e.target.value)
-            }}
-            onKeyDown={handleResponseInputKeyDown}
-            disabled={isResponding}
-            className={`flex-1 min-h-[2.5rem] ${isResponding ? 'opacity-50' : ''} ${textareaOutlineClass}`}
-          /> */}
           <ResponseEditor
             ref={tiptapRef}
             initialValue={initialValue}

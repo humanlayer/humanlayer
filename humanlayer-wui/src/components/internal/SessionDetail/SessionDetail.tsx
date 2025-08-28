@@ -1141,7 +1141,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
             parentSessionData={parentSessionData || parentSession || undefined}
             isResponding={actions.isResponding}
             handleContinueSession={actions.handleContinueSession}
-            handleResponseInputKeyDown={actions.handleResponseInputKeyDown}
             isForkMode={actions.isForkMode}
             forkTokenCount={forkTokenCount}
             onModelChange={() => {
