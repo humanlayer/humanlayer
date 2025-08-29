@@ -196,6 +196,7 @@ export function TaskGroup({
               subEvent.toolId ? toolResultsByKey[subEvent.toolId] : undefined,
               focusedEventId === subEvent.id,
               getSnapshot,
+              responseEditor?.getText(),
             )
 
             if (!displayObject) return null
