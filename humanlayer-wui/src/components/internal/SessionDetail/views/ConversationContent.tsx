@@ -116,6 +116,7 @@ export function ConversationContent({
         event.toolId ? toolResultsByKey[event.toolId] : undefined,
         focusedEventId === event.id,
         getSnapshot,
+        responseEditor?.getText(),
       ),
     )
   const nonEmptyDisplayObjects = displayObjects.filter(displayObject => displayObject !== null)
@@ -394,6 +395,7 @@ export function ConversationContent({
                 event.toolId ? toolResultsByKey[event.toolId] : undefined,
                 focusedEventId === event.id,
                 getSnapshot,
+                responseEditor?.getText(),
               )
 
               if (!displayObject) return null

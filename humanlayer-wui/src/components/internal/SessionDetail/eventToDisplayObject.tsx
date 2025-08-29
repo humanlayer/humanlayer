@@ -57,6 +57,7 @@ export function eventToDisplayObject(
   toolResult?: ConversationEvent,
   isFocused?: boolean,
   getSnapshot?: (filePath: string) => FileSnapshotInfo | undefined,
+  responseText?: string,
 ) {
   let subject = null
   let body = null
@@ -559,7 +560,16 @@ export function eventToDisplayObject(
               )}
             </>
           ) : (
-            <DenyButtons onCancel={onCancelDeny} isDenying={isDenying} />
+            <DenyButtons
+              onCancel={onCancelDeny}
+              onDeny={() => {
+                if (event.approvalId && onDeny) {
+                  onDeny(event.approvalId, responseText?.trim() || '')
+                }
+              }}
+              isDenying={isDenying}
+              isDisabled={!responseText?.trim()}
+            />
           )}
         </div>
       )
