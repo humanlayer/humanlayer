@@ -22,7 +22,15 @@ export function formatTimestamp(date: Date | string): string {
   if (!isValid(d)) return 'Invalid date'
 
   // Use date-fns for relative time formatting
-  const distance = formatDistanceToNow(d, { addSuffix: true })
+  let distance = formatDistanceToNow(d, { addSuffix: true })
+  
+  // Replace "less than a minute ago" with "<1 minute ago"
+  if (distance === 'less than a minute ago') {
+    distance = '<1 minute ago'
+  }
+  
+  // Replace "about X hours ago" with "~X hours ago"
+  distance = distance.replace(/^about (\d+ hours? ago)/, '~$1')
 
   // For dates older than 7 days, show actual date
   const daysDiff = Math.floor((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24))
