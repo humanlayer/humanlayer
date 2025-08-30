@@ -13,9 +13,11 @@ import type { RecentPath } from '@/lib/daemon'
 interface SearchInputProps {
   value?: string
   onChange?: (value: string) => void
-  onSubmit?: () => void
+  onSubmit?: (value: string) => void
   placeholder?: string
   recentDirectories?: RecentPath[]
+  className?: string
+  autoFocus?: boolean
   ref?: React.RefObject<HTMLDivElement>
 }
 
@@ -25,6 +27,8 @@ export function SearchInput({
   onSubmit,
   placeholder = 'Type a directory path...',
   recentDirectories = [],
+  className,
+  autoFocus,
   ref,
 }: SearchInputProps = {}) {
   // Use internal state if not controlled
@@ -114,7 +118,7 @@ export function SearchInput({
             setDropdownOpen(false)
           } else if (handler.keys?.join('') === Hotkeys.ENTER && !dropdownOpen && onSubmit) {
             ev.preventDefault()
-            onSubmit()
+            onSubmit(searchValue)
           }
           break
         }
@@ -248,9 +252,10 @@ export function SearchInput({
         <PopoverAnchor>
           <Input
             id="search-input-hack-use-a-ref"
-            className="mt-2"
+            className={className || "mt-2"}
             ref={inputRef}
             spellCheck={false}
+            autoFocus={autoFocus}
             onChange={onChange}
             value={searchValue}
             onFocus={() => setIsFocused(true)}
