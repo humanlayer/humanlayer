@@ -685,12 +685,6 @@ components:
           type: string
           description: Working directory for the session
           example: /home/user/project
-        additional_directories:
-          type: array
-          items:
-            type: string
-          description: Additional directories Claude can access
-          example: ["~/.humanlayer/logs", "/var/log/myapp"]
         created_at:
           type: string
           format: date-time
@@ -839,12 +833,6 @@ components:
             type: string
           description: Blacklist of disallowed tools
           example: ["execute_command"]
-        additional_directories:
-          type: array
-          items:
-            type: string
-          description: Additional directories Claude can access
-          example: ["~/.humanlayer/logs", "/var/log/myapp"]
         custom_instructions:
           type: string
           description: Custom instructions for Claude
@@ -964,12 +952,6 @@ components:
           type: string
           description: API key for proxy authentication
           example: "sk-or-..."
-        additional_directories:
-          type: array
-          items:
-            type: string
-          description: Update additional directories Claude can access
-          example: ["~/.humanlayer/logs", "/var/log/myapp"]
 
     ContinueSessionRequest:
       type: object

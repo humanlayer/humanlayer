@@ -24,6 +24,25 @@ export function ToolResultModal({
   toolResult: ConversationEvent | null
   onClose: () => void
 }) {
+  // Store the focused element when modal opens
+  const previousFocusRef = React.useRef<HTMLElement | null>(null)
+
+  React.useEffect(() => {
+    if (toolResult || toolCall) {
+      previousFocusRef.current = document.activeElement as HTMLElement
+    }
+  }, [toolResult, toolCall])
+
+  // Create a unified close handler that preserves focus
+  const handleClose = React.useCallback(() => {
+    onClose()
+    // Restore focus after a microtask to avoid race conditions
+    setTimeout(() => {
+      if (previousFocusRef.current && previousFocusRef.current.focus) {
+        previousFocusRef.current.focus()
+      }
+    }, 0)
+  }, [onClose])
   // Handle j/k and arrow key navigation - using priority to override background hotkeys
   useHotkeys(
     'j,down',
@@ -67,31 +86,15 @@ export function ToolResultModal({
     },
   )
 
-  // Handle escape to close
+  // Consolidated escape and 'i' key handler
   useHotkeys(
-    'escape',
+    'escape, i', // Handle both keys with single declaration
     ev => {
       ev.preventDefault()
       ev.stopPropagation()
+      ev.stopImmediatePropagation() // Complete isolation
       if (toolResult || toolCall) {
-        onClose()
-      }
-    },
-    {
-      enabled: !!(toolResult || toolCall),
-      scopes: ToolResultModalHotkeysScope,
-      preventDefault: true,
-    },
-  )
-
-  // Handle 'i' to close (toggle behavior)
-  useHotkeys(
-    'i',
-    ev => {
-      ev.preventDefault()
-      ev.stopPropagation()
-      if (toolResult || toolCall) {
-        onClose()
+        handleClose() // Use the unified close handler
       }
     },
     {
@@ -111,21 +114,16 @@ export function ToolResultModal({
     <Dialog
       open={!!(toolResult || toolCall)}
       onOpenChange={open => {
-        // Only close if Dialog is being closed by something other than escape
-        // Our custom escape handler will handle the escape key
+        // This handles ALL dialog close triggers including click-outside
         if (!open) {
-          onClose()
+          handleClose() // Use unified close handler
         }
       }}
     >
       <DialogContent
         className="w-[90vw] max-w-[90vw] h-[85vh] p-0 sm:max-w-[90vw] flex flex-col overflow-hidden"
         onEscapeKeyDown={e => {
-          // Prevent the default Dialog escape handling
-          e.preventDefault()
-        }}
-        onPointerDownOutside={e => {
-          // Prevent closing when clicking outside
+          // Prevent the default Dialog escape handling (we handle it ourselves)
           e.preventDefault()
         }}
       >
@@ -152,12 +150,7 @@ export function ToolResultModal({
           <ScrollArea className="h-full">
             <div className="px-4 py-4 space-y-4">
               {/* Tool Input Section */}
-              {toolCall?.toolInputJson && (
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground mb-2">Input</h3>
-                  {renderToolInput(toolCall)}
-                </div>
-              )}
+              {toolCall?.toolInputJson && renderToolInput(toolCall)}
 
               {/* Tool Result Section - only show if we have a result */}
               {toolResult && (
@@ -220,6 +213,11 @@ function getToolPrimaryParam(toolCall: ConversationEvent): string {
       return args.file_path
     } else if (toolCall.toolName === 'Grep' && args.pattern) {
       return args.pattern
+    } else if (toolCall.toolName === 'ExitPlanMode' && args.plan) {
+      const firstLine = args.plan.split('\n')[0].trim()
+      return truncate(firstLine, 60)
+    } else if (toolCall.toolName === 'WebFetch' && args.url) {
+      return truncate(args.url, 60)
     }
 
     // For other tools, show the first string value
@@ -317,6 +315,38 @@ function renderToolInput(toolCall: ConversationEvent): React.ReactNode {
           <div className="mt-2">
             <CustomDiffViewer edits={allEdits} splitView={false} />
           </div>
+        </div>
+      )
+    }
+
+    // Special rendering for ExitPlanMode tool
+    if (toolCall.toolName === 'ExitPlanMode') {
+      return (
+        <div className="space-y-2">
+          <div className="font-mono text-sm">
+            <span className="text-muted-foreground">Plan:</span>
+            <pre className="mt-1 whitespace-pre-wrap bg-muted/50 rounded-md p-3 break-words">
+              {args.plan}
+            </pre>
+          </div>
+        </div>
+      )
+    }
+
+    // Special rendering for WebFetch tool
+    if (toolCall.toolName === 'WebFetch') {
+      return (
+        <div className="space-y-2">
+          <div className="font-mono text-sm">
+            <span className="text-muted-foreground">URL:</span>{' '}
+            <span className="font-bold">{args.url}</span>
+          </div>
+          {args.prompt && (
+            <div className="font-mono text-sm">
+              <span className="text-muted-foreground">Prompt:</span>{' '}
+              <span className="italic">{args.prompt}</span>
+            </div>
+          )}
         </div>
       )
     }

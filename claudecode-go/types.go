@@ -54,20 +54,19 @@ type SessionConfig struct {
 	SessionID string // If set, resumes this session
 
 	// Optional
-	Model                 Model
-	OutputFormat          OutputFormat
-	MCPConfig             *MCPConfig
-	PermissionPromptTool  string
-	WorkingDir            string
-	MaxTurns              int
-	SystemPrompt          string
-	AppendSystemPrompt    string
-	AllowedTools          []string
-	DisallowedTools       []string
-	AdditionalDirectories []string
-	CustomInstructions    string
-	Verbose               bool
-	Env                   map[string]string // Environment variables to set for the Claude process
+	Model                Model
+	OutputFormat         OutputFormat
+	MCPConfig            *MCPConfig
+	PermissionPromptTool string
+	WorkingDir           string
+	MaxTurns             int
+	SystemPrompt         string
+	AppendSystemPrompt   string
+	AllowedTools         []string
+	DisallowedTools      []string
+	CustomInstructions   string
+	Verbose              bool
+	Env                  map[string]string // Environment variables to set for the Claude process
 }
 
 // StreamEvent represents a single event from the streaming JSON output
@@ -98,6 +97,7 @@ type StreamEvent struct {
 	Usage             *Usage             `json:"usage,omitempty"`
 	Error             string             `json:"error,omitempty"`
 	PermissionDenials *PermissionDenials `json:"permission_denials,omitempty"`
+	UUID              string             `json:"uuid,omitempty"`
 }
 
 // MCPStatus represents the status of an MCP server
@@ -172,6 +172,12 @@ type ServerToolUse struct {
 	WebSearchRequests int `json:"web_search_requests,omitempty"`
 }
 
+// CacheCreation tracks cache creation metrics
+type CacheCreation struct {
+	Ephemeral1HInputTokens int `json:"ephemeral_1h_input_tokens,omitempty"`
+	Ephemeral5MInputTokens int `json:"ephemeral_5m_input_tokens,omitempty"`
+}
+
 // Usage tracks token usage
 type Usage struct {
 	InputTokens              int            `json:"input_tokens"`
@@ -180,6 +186,7 @@ type Usage struct {
 	CacheReadInputTokens     int            `json:"cache_read_input_tokens,omitempty"`
 	ServiceTier              string         `json:"service_tier,omitempty"`
 	ServerToolUse            *ServerToolUse `json:"server_tool_use,omitempty"`
+	CacheCreation            *CacheCreation `json:"cache_creation,omitempty"`
 }
 
 // PermissionDenial represents a single permission denial from Claude
@@ -253,6 +260,7 @@ type Result struct {
 	Usage             *Usage             `json:"usage,omitempty"`
 	Error             string             `json:"error,omitempty"`
 	PermissionDenials *PermissionDenials `json:"permission_denials,omitempty"`
+	UUID              string             `json:"uuid,omitempty"`
 }
 
 // Session represents an active Claude session
