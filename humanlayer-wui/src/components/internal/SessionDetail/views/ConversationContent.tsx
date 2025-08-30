@@ -294,7 +294,7 @@ export function ConversationContent({
                   </div>
 
                   {/* Right side: Actions and timestamp */}
-                  <div className="flex items-start gap-2 shrink-0">
+                  <div className="flex items-start gap-2 w-[160px] justify-end">
                     {/* Copy button - only show for user and assistant messages */}
                     {(() => {
                       const event = events.find(e => e.id === displayObject.id)
@@ -319,7 +319,7 @@ export function ConversationContent({
                     {/* Timestamp with tooltip */}
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <span className="text-xs text-muted-foreground/60 uppercase tracking-wider cursor-help">
+                        <span className="text-xs text-muted-foreground/60 uppercase tracking-wider cursor-help text-right block">
                           {displayObject.created_at ? formatTimestamp(displayObject.created_at) : ''}
                         </span>
                       </TooltipTrigger>
@@ -470,7 +470,7 @@ export function ConversationContent({
                       </div>
 
                       {/* Right side: Actions and timestamp */}
-                      <div className="flex items-start gap-2 shrink-0">
+                      <div className="flex items-start gap-2 w-[160px] justify-end">
                         {/* Copy button - only show for user and assistant messages */}
                         {(() => {
                           const currentEvent = events.find(e => e.id === displayObject.id)
@@ -495,7 +495,7 @@ export function ConversationContent({
                         {/* Timestamp with tooltip */}
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <span className="text-xs text-muted-foreground/60 cursor-help">
+                            <span className="text-xs text-muted-foreground/60 cursor-help text-right block">
                               {displayObject.created_at
                                 ? formatTimestamp(displayObject.created_at)
                                 : ''}
