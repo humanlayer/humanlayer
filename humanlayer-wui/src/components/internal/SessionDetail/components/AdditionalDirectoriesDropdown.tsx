@@ -429,6 +429,7 @@ export function AdditionalDirectoriesDropdown({
                     placeholder="Enter directory path..."
                     recentDirectories={recentPaths || []}
                     className="!h-7 !text-xs md:!text-xs !mt-0"
+                    dropdownClassName="text-xs"
                     autoFocus
                   />
                 </div>

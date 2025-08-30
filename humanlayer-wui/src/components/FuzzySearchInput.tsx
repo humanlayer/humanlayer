@@ -18,6 +18,7 @@ interface SearchInputProps {
   recentDirectories?: RecentPath[]
   className?: string
   autoFocus?: boolean
+  dropdownClassName?: string
   ref?: React.RefObject<HTMLDivElement>
 }
 
@@ -29,6 +30,7 @@ export function SearchInput({
   recentDirectories = [],
   className,
   autoFocus,
+  dropdownClassName,
   ref,
 }: SearchInputProps = {}) {
   // Use internal state if not controlled
@@ -252,7 +254,7 @@ export function SearchInput({
         <PopoverAnchor>
           <Input
             id="search-input-hack-use-a-ref"
-            className={className || "mt-2"}
+            className={cn("mt-2", className)}
             ref={inputRef}
             spellCheck={false}
             autoFocus={autoFocus}
@@ -301,6 +303,7 @@ export function SearchInput({
                       <CommandItem
                         key={`recent-${idx}`}
                         className={cn(
+                          dropdownClassName,
                           item.selected && '!bg-accent/20',
                           'data-[selected=true]:!bg-accent/20', // Apply same styling for mouse hover
                           '[&[data-selected=true]]:text-foreground', // Override default accent-foreground
@@ -344,6 +347,7 @@ export function SearchInput({
                       <CommandItem
                         key={item.path.name}
                         className={cn(
+                          dropdownClassName,
                           item.selected && '!bg-accent/20',
                           'data-[selected=true]:!bg-accent/20', // Apply same styling for mouse hover
                           '[&[data-selected=true]]:text-foreground', // Override default accent-foreground
