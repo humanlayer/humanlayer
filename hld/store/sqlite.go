@@ -21,6 +21,11 @@ type SQLiteStore struct {
 	db *sql.DB
 }
 
+// GetDB returns the underlying database connection for testing purposes
+func (s *SQLiteStore) GetDB() *sql.DB {
+	return s.db
+}
+
 // NewSQLiteStore creates a new SQLite-backed store
 func NewSQLiteStore(dbPath string) (*SQLiteStore, error) {
 	// Ensure directory exists (skip for in-memory databases)

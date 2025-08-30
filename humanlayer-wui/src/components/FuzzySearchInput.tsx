@@ -254,7 +254,7 @@ export function SearchInput({
         <PopoverAnchor>
           <Input
             id="search-input-hack-use-a-ref"
-            className={cn("mt-2", className)}
+            className={cn('mt-2', className)}
             ref={inputRef}
             spellCheck={false}
             autoFocus={autoFocus}

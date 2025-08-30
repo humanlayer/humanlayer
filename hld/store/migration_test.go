@@ -162,7 +162,7 @@ func TestMigration18Healing(t *testing.T) {
 			// Check initial state
 			var userSettingsExists int
 			_ = db.QueryRow(`
-				SELECT COUNT(*) FROM sqlite_master 
+				SELECT COUNT(*) FROM sqlite_master
 				WHERE type='table' AND name='user_settings'
 			`).Scan(&userSettingsExists)
 
@@ -198,7 +198,7 @@ func TestMigration18Healing(t *testing.T) {
 
 				// Check that both components exist
 				err = db.QueryRow(`
-					SELECT COUNT(*) FROM sqlite_master 
+					SELECT COUNT(*) FROM sqlite_master
 					WHERE type='table' AND name='user_settings'
 				`).Scan(&userSettingsExists)
 				require.NoError(t, err)
@@ -242,7 +242,7 @@ func TestMigration18Idempotency(t *testing.T) {
 	// This would happen if someone ran the migration twice
 	var tableExists int
 	err = db.QueryRow(`
-		SELECT COUNT(*) FROM sqlite_master 
+		SELECT COUNT(*) FROM sqlite_master
 		WHERE type='table' AND name='user_settings'
 	`).Scan(&tableExists)
 	require.NoError(t, err)
@@ -261,7 +261,7 @@ func TestMigration18Idempotency(t *testing.T) {
 
 	// Verify nothing broke
 	err = db.QueryRow(`
-		SELECT COUNT(*) FROM sqlite_master 
+		SELECT COUNT(*) FROM sqlite_master
 		WHERE type='table' AND name='user_settings'
 	`).Scan(&tableExists)
 	require.NoError(t, err)
@@ -449,20 +449,20 @@ func TestAllMigrationStates(t *testing.T) {
 			// Create a fresh database
 			s, err := store.NewSQLiteStore(":memory:")
 			require.NoError(t, err)
-			
+
 			// Get direct DB access
 			db := s.GetDB()
-			
+
 			// Clear the schema_version table to simulate starting from scratch
 			_, err = db.Exec(`DELETE FROM schema_version`)
 			require.NoError(t, err)
-			
+
 			// Apply migrations up to the target version
 			for _, mig := range migrations {
 				if mig.version > targetVersion {
 					break
 				}
-				
+
 				// Apply the migration's SQL
 				for _, sql := range mig.setupSQL {
 					_, err = db.Exec(sql)
@@ -470,7 +470,7 @@ func TestAllMigrationStates(t *testing.T) {
 					// This is a bit hacky but works for our test purposes
 					_ = err
 				}
-				
+
 				// Record this migration as applied
 				if mig.version > 0 {
 					_, err = db.Exec(
@@ -480,16 +480,16 @@ func TestAllMigrationStates(t *testing.T) {
 					require.NoError(t, err, "Failed to record migration %d", mig.version)
 				}
 			}
-			
+
 			// Verify we're at the expected version
 			var currentVersion int
 			err = db.QueryRow("SELECT COALESCE(MAX(version), 0) FROM schema_version").Scan(&currentVersion)
 			require.NoError(t, err)
 			assert.Equal(t, targetVersion, currentVersion, "Database should be at version %d", targetVersion)
-			
+
 			// Close and reopen to trigger migrations
 			_ = s.Close()
-			
+
 			// Reopen - this should run all remaining migrations
 			s, err = store.NewSQLiteStore(":memory:")
 			if targetVersion < 16 {
@@ -501,27 +501,27 @@ func TestAllMigrationStates(t *testing.T) {
 			} else {
 				require.NoError(t, err, "Should be able to open database from version %d", targetVersion)
 			}
-			
+
 			if s != nil {
 				defer func() { _ = s.Close() }()
-				
+
 				// Verify final state
 				db = s.GetDB()
-				
+
 				// Check final version is 18
 				err = db.QueryRow("SELECT MAX(version) FROM schema_version").Scan(&currentVersion)
 				require.NoError(t, err)
 				assert.Equal(t, 18, currentVersion, "Should be at version 18 after all migrations")
-				
+
 				// Verify both critical components exist
 				var userSettingsExists int
 				err = db.QueryRow(`
-					SELECT COUNT(*) FROM sqlite_master 
+					SELECT COUNT(*) FROM sqlite_master
 					WHERE type='table' AND name='user_settings'
 				`).Scan(&userSettingsExists)
 				require.NoError(t, err)
 				assert.Equal(t, 1, userSettingsExists, "user_settings table should exist")
-				
+
 				var additionalDirsExists int
 				err = db.QueryRow(`
 					SELECT COUNT(*) FROM pragma_table_info('sessions')
@@ -529,7 +529,7 @@ func TestAllMigrationStates(t *testing.T) {
 				`).Scan(&additionalDirsExists)
 				require.NoError(t, err)
 				assert.Equal(t, 1, additionalDirsExists, "additional_directories column should exist")
-				
+
 				t.Logf("Successfully migrated from version %d to 18", targetVersion)
 			}
 		})
@@ -542,75 +542,75 @@ func TestMigrationFromBuggyState17(t *testing.T) {
 	// 1. Database has migrations 1-16 properly applied
 	// 2. Version is marked as 17 but migration 17 didn't actually run
 	// 3. So we're missing the additional_directories column
-	
+
 	// Use a file-based database for this test
 	tempDir := t.TempDir()
 	dbPath := tempDir + "/test.db"
-	
+
 	// Create database and let it run migrations up to 16
 	s, err := store.NewSQLiteStore(dbPath)
 	require.NoError(t, err)
-	
+
 	db := s.GetDB()
-	
+
 	// Verify we're at version 18 after normal migration
 	var version int
 	err = db.QueryRow("SELECT MAX(version) FROM schema_version").Scan(&version)
 	require.NoError(t, err)
 	require.Equal(t, 18, version, "Fresh database should be at version 18")
-	
+
 	// Now simulate the buggy state by:
 	// 1. Remove migration 17 and 18 records
 	_, err = db.Exec(`DELETE FROM schema_version WHERE version >= 17`)
 	require.NoError(t, err)
-	
+
 	// 2. Drop the additional_directories column (to simulate it never being added)
 	// Note: SQLite doesn't support DROP COLUMN, so we need to recreate the table
 	// For simplicity, we'll just mark version as 17 without the column
-	
+
 	// 3. Just mark the database as being at version 17 (the buggy state)
 	_, err = db.Exec(
 		`INSERT INTO schema_version (version, description) VALUES (?, ?)`,
 		17, "Buggy migration 17 - simulating missing additional_directories",
 	)
 	require.NoError(t, err)
-	
+
 	// Verify we're now at version 17
 	err = db.QueryRow("SELECT MAX(version) FROM schema_version").Scan(&version)
 	require.NoError(t, err)
 	assert.Equal(t, 17, version, "Should be at version 17 (buggy state)")
-	
+
 	// Check that user_settings exists (from migration 16)
 	var userSettingsExists int
 	err = db.QueryRow(`
-		SELECT COUNT(*) FROM sqlite_master 
+		SELECT COUNT(*) FROM sqlite_master
 		WHERE type='table' AND name='user_settings'
 	`).Scan(&userSettingsExists)
 	require.NoError(t, err)
 	assert.Equal(t, 1, userSettingsExists, "user_settings should exist from migration 16")
-	
+
 	// Close and reopen to trigger migration 18 which should heal the database
 	_ = s.Close()
-	
+
 	s, err = store.NewSQLiteStore(dbPath)
 	require.NoError(t, err, "Should be able to open database with migration 18 healing")
 	defer func() { _ = s.Close() }()
-	
+
 	// Verify healing worked
 	db = s.GetDB()
-	
+
 	err = db.QueryRow("SELECT MAX(version) FROM schema_version").Scan(&version)
 	require.NoError(t, err)
 	assert.Equal(t, 18, version, "Should be at version 18 after healing")
-	
+
 	// Both components should exist
 	err = db.QueryRow(`
-		SELECT COUNT(*) FROM sqlite_master 
+		SELECT COUNT(*) FROM sqlite_master
 		WHERE type='table' AND name='user_settings'
 	`).Scan(&userSettingsExists)
 	require.NoError(t, err)
 	assert.Equal(t, 1, userSettingsExists, "user_settings table should still exist after healing")
-	
+
 	var additionalDirsExists int
 	err = db.QueryRow(`
 		SELECT COUNT(*) FROM pragma_table_info('sessions')
@@ -618,6 +618,6 @@ func TestMigrationFromBuggyState17(t *testing.T) {
 	`).Scan(&additionalDirsExists)
 	require.NoError(t, err)
 	assert.Equal(t, 1, additionalDirsExists, "additional_directories column should exist after healing")
-	
+
 	t.Logf("Successfully healed database from buggy v17 state")
 }
