@@ -106,7 +106,6 @@ type Session struct {
 	DangerouslySkipPermissions          bool       `db:"dangerously_skip_permissions"`
 	DangerouslySkipPermissionsExpiresAt *time.Time `db:"dangerously_skip_permissions_expires_at"`
 	Archived                            bool       // New field for session archiving
-	AdditionalDirectories               string     // JSON array of additional directories
 
 	// Proxy configuration
 	ProxyEnabled       bool   `db:"proxy_enabled"`
