@@ -87,6 +87,7 @@ type Session struct {
 	PermissionPromptTool                string // NEW: MCP tool for permission prompts
 	AllowedTools                        string // NEW: JSON array of allowed tools
 	DisallowedTools                     string // NEW: JSON array of disallowed tools
+	AdditionalDirectories               string // NEW: JSON array of additional directories
 	Status                              string
 	CreatedAt                           time.Time
 	LastActivityAt                      time.Time
