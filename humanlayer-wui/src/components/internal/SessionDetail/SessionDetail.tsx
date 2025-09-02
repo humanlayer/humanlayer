@@ -854,11 +854,11 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     [startEditTitle, isEditingTitle],
   )
 
-  // Open directories dropdown hotkey
+  // Toggle directories dropdown hotkey
   useHotkeys(
-    'd',
+    'shift+d',
     () => {
-      setDirectoriesDropdownOpen(true)
+      setDirectoriesDropdownOpen(prev => !prev)
     },
     {
       scopes: SessionDetailHotkeysScope,

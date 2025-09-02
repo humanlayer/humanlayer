@@ -218,6 +218,22 @@ export function AdditionalDirectoriesDropdown({
     },
   )
 
+  // Handle shift+d to close the dropdown when open
+  useHotkeys(
+    'shift+d',
+    e => {
+      e.preventDefault()
+      e.stopPropagation()
+      setIsOpen(false)
+      setFocusedIndex(-1)
+    },
+    {
+      enabled: isOpen,
+      scopes: AdditionalDirectoriesHotkeyScope,
+      preventDefault: true,
+    },
+  )
+
   const handleAddDirectory = async (directoryPath?: string) => {
     const pathToAdd = directoryPath || newDirectory
     const trimmed = pathToAdd.trim()
