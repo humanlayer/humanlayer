@@ -115,10 +115,11 @@ type ContinueSessionRequest struct {
 	SystemPrompt         string   `json:"system_prompt,omitempty"`          // Override system prompt
 	AppendSystemPrompt   string   `json:"append_system_prompt,omitempty"`   // Append to system prompt
 	MCPConfig            string   `json:"mcp_config,omitempty"`             // JSON string of MCP config (to avoid import cycle)
-	PermissionPromptTool string   `json:"permission_prompt_tool,omitempty"` // MCP tool for permission prompts
-	AllowedTools         []string `json:"allowed_tools,omitempty"`          // Allowed tools list
-	DisallowedTools      []string `json:"disallowed_tools,omitempty"`       // Disallowed tools list
-	CustomInstructions   string   `json:"custom_instructions,omitempty"`    // Custom instructions
+	PermissionPromptTool  string   `json:"permission_prompt_tool,omitempty"`  // MCP tool for permission prompts
+	AllowedTools          []string `json:"allowed_tools,omitempty"`           // Allowed tools list
+	DisallowedTools       []string `json:"disallowed_tools,omitempty"`        // Disallowed tools list
+	AdditionalDirectories []string `json:"additional_directories,omitempty"`  // Additional directories list
+	CustomInstructions    string   `json:"custom_instructions,omitempty"`     // Custom instructions
 	MaxTurns             int      `json:"max_turns,omitempty"`              // Max conversation turns
 	ProxyEnabled         bool     `json:"proxy_enabled,omitempty"`          // Whether proxy is enabled
 	ProxyBaseURL         string   `json:"proxy_base_url,omitempty"`         // Proxy base URL

@@ -854,6 +854,21 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     [startEditTitle, isEditingTitle],
   )
 
+  // Open directories dropdown hotkey
+  useHotkeys(
+    'shift+d',
+    () => {
+      setDirectoriesDropdownOpen(true)
+    },
+    {
+      scopes: SessionDetailHotkeysScope,
+      enabled: !isEditingTitle && !!session.workingDir,
+      preventDefault: true,
+      enableOnFormTags: false,
+    },
+    [isEditingTitle, session.workingDir],
+  )
+
   // Don't steal scope here - SessionDetail is the base layer
   // Only modals opening on top should steal scope
 
