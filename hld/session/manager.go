@@ -1432,10 +1432,19 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 		}
 	}
 
+	// Inherit additional directories from parent if not already set
+	// This ensures that directories updated on the parent session are properly inherited
+	if dbSession.AdditionalDirectories == "" || dbSession.AdditionalDirectories == "[]" {
+		dbSession.AdditionalDirectories = parentSession.AdditionalDirectories
+	}
+
 	// Note: ClaudeSessionID will be captured from streaming events (will be different from parent)
 	if err := m.store.CreateSession(ctx, dbSession); err != nil {
 		return nil, fmt.Errorf("failed to store session in database: %w", err)
 	}
+
+	// Re-apply MCP servers to the new session
+	// This ensures that forked sessions retain the MCP configuration
 
 	// Add run_id and daemon socket to MCP server environments
 	// For HTTP servers, inject session ID header
@@ -1803,6 +1812,12 @@ func (m *Manager) forceKillRemaining() {
 
 // UpdateSessionSettings updates session settings and publishes appropriate events
 func (m *Manager) UpdateSessionSettings(ctx context.Context, sessionID string, updates store.SessionUpdate) error {
+	// Log if additional directories are being updated
+	if updates.AdditionalDirectories != nil {
+		slog.Debug("Updating additional directories",
+			"session_id", sessionID,
+			"additional_directories", *updates.AdditionalDirectories)
+	}
 	// First update the store
 	if err := m.store.UpdateSession(ctx, sessionID, updates); err != nil {
 		return err

@@ -258,11 +258,7 @@ func (c *Client) Launch(config SessionConfig) (*Session, error) {
 
 		// Write query to stdin and close it
 		go func() {
-			defer func() {
-				if err := stdin.Close(); err != nil {
-					log.Printf("WARNING: Failed to close stdin: %v", err)
-				}
-			}()
+			defer func() { _ = stdin.Close() }()
 			if _, err := stdin.Write([]byte(config.Query)); err != nil {
 				log.Printf("WARNING: Failed to write query to stdin: %v", err)
 			}

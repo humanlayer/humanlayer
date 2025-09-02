@@ -499,9 +499,9 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
 
   // Handle updating additional directories
   const handleUpdateAdditionalDirectories = async (directories: string[]) => {
-    await daemonClient.updateSession(session.id, { additionalDirectories: directories })
-    // Update the local store
-    useStore.getState().updateSession(session.id, { additionalDirectories: directories })
+    await daemonClient.updateSession(session.id, { additionalDirectories: directories });
+    // Update the local store and refresh session data
+    useStore.getState().updateSession(session.id, { additionalDirectories: directories });
   }
 
   // Check if there are pending approvals out of view
@@ -856,7 +856,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
 
   // Open directories dropdown hotkey
   useHotkeys(
-    'shift+d',
+    'd',
     () => {
       setDirectoriesDropdownOpen(true)
     },

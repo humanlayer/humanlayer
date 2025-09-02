@@ -54,10 +54,10 @@ type SessionConfig struct {
 	SessionID string // If set, resumes this session
 
 	// Optional
-	Model                Model
-	OutputFormat         OutputFormat
-	MCPConfig            *MCPConfig
-	PermissionPromptTool string
+	Model                 Model
+	OutputFormat          OutputFormat
+	MCPConfig             *MCPConfig
+	PermissionPromptTool  string
 	WorkingDir            string
 	MaxTurns              int
 	SystemPrompt          string
