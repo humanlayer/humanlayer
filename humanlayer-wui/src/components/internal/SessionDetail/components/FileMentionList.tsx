@@ -11,7 +11,7 @@ interface FileMentionItem {
 interface FileMentionListProps {
   query: string
   command: (item: FileMentionItem) => void
-  editor?: any // TipTap editor instance
+  editor: any // TipTap editor instance - required for navigation
 }
 
 export interface FileMentionListRef {
@@ -21,19 +21,42 @@ export interface FileMentionListRef {
 export const FileMentionList = forwardRef<FileMentionListRef, FileMentionListProps>(
   ({ query, command, editor }, ref) => {
     const [selectedIndex, setSelectedIndex] = useState(0)
+    const [currentPath, setCurrentPath] = useState<string>('~')
+    const [searchQuery, setSearchQuery] = useState<string>('')
+    
+    // Parse the query to separate path navigation from search
+    useEffect(() => {
+      console.log('📍 FileMentionList: Query changed:', { query })
+      if (query.includes('/')) {
+        // User is navigating through folders
+        const lastSlashIndex = query.lastIndexOf('/')
+        const pathPart = query.substring(0, lastSlashIndex)
+        const searchPart = query.substring(lastSlashIndex + 1)
+        // Don't add extra slashes
+        const cleanPath = pathPart ? `~/${pathPart}` : '~'
+        console.log('📍 FileMentionList: Parsed path:', { pathPart, searchPart, cleanPath })
+        setCurrentPath(cleanPath)
+        setSearchQuery(searchPart)
+      } else {
+        // Just searching in current directory
+        setCurrentPath('~')
+        setSearchQuery(query)
+      }
+    }, [query])
     
     // Log when component mounts/unmounts
     useEffect(() => {
-      console.log('📦 FileMentionList: Mounted', { query })
+      console.log('📦 FileMentionList: Mounted', { query, currentPath })
       return () => {
         console.log('📦 FileMentionList: Unmounted')
       }
     }, [])
     
-    // Get the working directory from editor storage or use home directory
-    const workingDir = editor?.storage?.workingDir || '~'
-    // For file search, we want to search in the working directory with the query as a filter
-    const searchPath = `${workingDir}/${query || ''}`
+    // Build the search path from current directory and search query
+    // Ensure we don't have double slashes
+    const searchPath = searchQuery 
+      ? `${currentPath}/${searchQuery}`
+      : currentPath
     
     // Memoize the options to prevent re-runs
     const fileBrowserOptions = useMemo(() => ({
@@ -77,10 +100,47 @@ export const FileMentionList = forwardRef<FileMentionListRef, FileMentionListPro
         event.preventDefault()
         const selected = results[selectedIndex]
         if (selected) {
-          command({
-            id: selected.fullPath,
-            label: selected.name || '',
-          })
+          if (selected.isDirectory) {
+            // Navigate into the directory instead of selecting it
+            // Build the new path correctly
+            let newPath: string
+            if (query === '') {
+              // At root, just add the folder name
+              newPath = `${selected.name}/`
+            } else if (query.endsWith('/')) {
+              // Already in a folder, append the new folder
+              newPath = `${query}${selected.name}/`
+            } else if (query.includes('/')) {
+              // Searching within a folder, replace search with folder name
+              const pathBeforeSearch = query.substring(0, query.lastIndexOf('/') + 1)
+              newPath = `${pathBeforeSearch}${selected.name}/`
+            } else {
+              // Searching at root, replace search with folder name
+              newPath = `${selected.name}/`
+            }
+            
+            // We need to update the editor's mention query
+            // This is a bit tricky - we need to replace the current query with the new path
+            if (editor) {
+              const { state, dispatch } = editor.view
+              const { $from } = state.selection
+              const mentionStart = $from.pos - query.length - 1 // -1 for the @ character
+              const mentionEnd = $from.pos
+              
+              const tr = state.tr.replaceRangeWith(
+                mentionStart,
+                mentionEnd,
+                state.schema.text(`@${newPath}`)
+              )
+              dispatch(tr)
+            }
+          } else {
+            // It's a file, select it
+            command({
+              id: selected.fullPath,
+              label: selected.name || '',
+            })
+          }
         }
         return true
       }
@@ -88,6 +148,33 @@ export const FileMentionList = forwardRef<FileMentionListRef, FileMentionListPro
       if (event.key === 'Escape') {
         event.preventDefault()
         return false
+      }
+
+      // Handle backspace to go up a directory when at the end of a path
+      if (event.key === 'Backspace' && query.endsWith('/') && query.length > 0) {
+        event.preventDefault()
+        // Remove the trailing slash first
+        const withoutTrailingSlash = query.slice(0, -1)
+        // Find the previous slash to go up one directory
+        const lastSlashIndex = withoutTrailingSlash.lastIndexOf('/')
+        const newPath = lastSlashIndex >= 0 
+          ? withoutTrailingSlash.substring(0, lastSlashIndex + 1)
+          : ''
+        
+        if (editor) {
+          const { state, dispatch } = editor.view
+          const { $from } = state.selection
+          const mentionStart = $from.pos - query.length - 1
+          const mentionEnd = $from.pos
+          
+          const tr = state.tr.replaceRangeWith(
+            mentionStart,
+            mentionEnd,
+            state.schema.text(`@${newPath}`)
+          )
+          dispatch(tr)
+        }
+        return true
       }
 
       return false
@@ -100,10 +187,40 @@ export const FileMentionList = forwardRef<FileMentionListRef, FileMentionListPro
 
     // Handle item click
     const handleItemClick = (item: typeof results[0]) => {
-      command({
-        id: item.fullPath,
-        label: item.name || '',
-      })
+      if (item.isDirectory) {
+        // Navigate into the directory - use same logic as Enter key
+        let newPath: string
+        if (query === '') {
+          newPath = `${item.name}/`
+        } else if (query.endsWith('/')) {
+          newPath = `${query}${item.name}/`
+        } else if (query.includes('/')) {
+          const pathBeforeSearch = query.substring(0, query.lastIndexOf('/') + 1)
+          newPath = `${pathBeforeSearch}${item.name}/`
+        } else {
+          newPath = `${item.name}/`
+        }
+        
+        if (editor) {
+          const { state, dispatch } = editor.view
+          const { $from } = state.selection
+          const mentionStart = $from.pos - query.length - 1
+          const mentionEnd = $from.pos
+          
+          const tr = state.tr.replaceRangeWith(
+            mentionStart,
+            mentionEnd,
+            state.schema.text(`@${newPath}`)
+          )
+          dispatch(tr)
+        }
+      } else {
+        // It's a file, select it
+        command({
+          id: item.fullPath,
+          label: item.name || '',
+        })
+      }
     }
 
     // Handle mouse enter for hover selection
@@ -141,6 +258,11 @@ export const FileMentionList = forwardRef<FileMentionListRef, FileMentionListPro
       <div className="py-1">
         <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
           Files & Folders
+          {currentPath !== '~' && (
+            <span className="ml-2 font-mono">
+              in {currentPath}/
+            </span>
+          )}
         </div>
         {results.map((item, index) => (
           <button
@@ -162,19 +284,24 @@ export const FileMentionList = forwardRef<FileMentionListRef, FileMentionListPro
               <FileIcon className="h-4 w-4 text-muted-foreground" />
             )}
             <span className="flex-1 truncate">
-              {item.matches && item.matches.length > 0 ? (
-                <HighlightedText text={item.name || ''} matches={item.matches} />
-              ) : (
-                item.name
+              {item.name}
+              {item.isDirectory && (
+                <span className="ml-1 text-muted-foreground">/</span>
               )}
             </span>
-            <span className="text-xs text-muted-foreground truncate max-w-[200px]">
-              {item.fullPath}
-            </span>
+            {item.isDirectory ? (
+              <span className="text-xs text-muted-foreground">
+                Press Enter to open
+              </span>
+            ) : (
+              <span className="text-xs text-muted-foreground truncate max-w-[200px]">
+                {item.fullPath}
+              </span>
+            )}
           </button>
         ))}
         <div className="px-2 py-1 mt-1 text-xs text-muted-foreground border-t">
-          Use arrow keys to navigate, Enter to select
+          ↑↓ Navigate • Enter to open folder/select file • Backspace to go up
         </div>
       </div>
     )
@@ -189,7 +316,7 @@ function HighlightedText({
   matches 
 }: { 
   text: string
-  matches: Array<{ indices: Array<[number, number]> }>
+  matches: Array<{ indices: Array<[number, number]> | Array<number[]> }>
 }) {
   if (!matches || matches.length === 0) {
     return <>{text}</>
@@ -203,7 +330,14 @@ function HighlightedText({
   const parts: React.ReactNode[] = []
   let lastIndex = 0
 
-  highlights.forEach(([start, end]) => {
+  highlights.forEach((range) => {
+    // Handle both [start, end] tuple and [start, end] array formats
+    const start = Array.isArray(range) ? range[0] : 0
+    const end = Array.isArray(range) ? range[1] : 0
+    
+    if (typeof start !== 'number' || typeof end !== 'number') {
+      return // Skip invalid ranges
+    }
     // Add non-highlighted text before this match
     if (start > lastIndex) {
       parts.push(

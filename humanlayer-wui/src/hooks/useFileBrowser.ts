@@ -56,17 +56,32 @@ export function useFileBrowser(
       setError(null)
 
       try {
-        // Parse the search path to separate directory and search query
-        const lastSlashIndex = searchPath.lastIndexOf('/')
-        let dirPath = searchPath.substring(0, lastSlashIndex + 1) || '.'
-        const searchQuery = searchPath.substring(lastSlashIndex + 1)
+        let dirPath: string
+        let searchQuery: string
         
-        console.log('📂 useFileBrowser: parsed path', { dirPath, searchQuery })
+        // Special case for just "~"
+        if (searchPath === '~') {
+          dirPath = '~'
+          searchQuery = ''
+        } else {
+          // Parse the search path to separate directory and search query
+          const lastSlashIndex = searchPath.lastIndexOf('/')
+          if (lastSlashIndex === -1) {
+            // No slash, treat entire path as search in current directory
+            dirPath = '.'
+            searchQuery = searchPath
+          } else {
+            dirPath = searchPath.substring(0, lastSlashIndex) || '~'
+            searchQuery = searchPath.substring(lastSlashIndex + 1)
+          }
+        }
+        
+        console.log('📂 useFileBrowser: parsed path', { searchPath, dirPath, searchQuery })
 
         // Expand home directory if needed
-        if (dirPath.startsWith('~/')) {
+        if (dirPath === '~' || dirPath.startsWith('~/')) {
           const home = await homeDir()
-          dirPath = dirPath.replace('~/', `${home}/`)
+          dirPath = dirPath === '~' ? home : dirPath.replace('~', home)
           console.log('🏠 useFileBrowser: expanded home dir to:', dirPath)
         }
 
