@@ -541,7 +541,7 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
                 onStart: (props: any) => {
                   // Create a portal div for the dropdown with shadcn styling
                   popup = document.createElement('div')
-                  popup.className = 'z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md'
+                  popup.className = 'z-50 min-w-[20rem] max-w-[30rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md'
                   document.body.appendChild(popup)
 
                   component = new ReactRenderer(FileMentionList, {
@@ -552,14 +552,43 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
                   if (popup && component) {
                     popup.appendChild(component.element)
                     
-                    // Position the dropdown below the cursor
+                    // Position the dropdown intelligently based on available space
                     const { clientRect } = props
                     if (clientRect) {
                       const rect = typeof clientRect === 'function' ? clientRect() : clientRect
                       if (rect) {
                         popup.style.position = 'fixed'
-                        popup.style.left = `${rect.left}px`
-                        popup.style.top = `${rect.bottom + 4}px`
+                        
+                        // Handle horizontal positioning
+                        const dropdownWidth = 320 // min-w-[20rem]
+                        const spaceRight = window.innerWidth - rect.left
+                        
+                        if (spaceRight < dropdownWidth) {
+                          // Not enough space on the right, align to right edge
+                          popup.style.right = '10px'
+                          popup.style.left = 'auto'
+                        } else {
+                          popup.style.left = `${rect.left}px`
+                          popup.style.right = 'auto'
+                        }
+                        
+                        // Calculate available space above and below
+                        const spaceBelow = window.innerHeight - rect.bottom
+                        const spaceAbove = rect.top
+                        const dropdownHeight = 300 // Approximate height of dropdown
+                        
+                        // Position above if not enough space below
+                        if (spaceBelow < dropdownHeight && spaceAbove > dropdownHeight) {
+                          popup.style.bottom = `${window.innerHeight - rect.top + 4}px`
+                          popup.style.top = 'auto'
+                          popup.style.maxHeight = `${Math.min(spaceAbove - 20, 400)}px`
+                        } else {
+                          popup.style.top = `${rect.bottom + 4}px`
+                          popup.style.bottom = 'auto'
+                          popup.style.maxHeight = `${Math.min(spaceBelow - 20, 400)}px`
+                        }
+                        
+                        popup.style.overflowY = 'auto'
                       }
                     }
                   }
@@ -568,13 +597,37 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
                   if (component) {
                     component.updateProps(props)
                     
-                    // Update position
+                    // Update position with intelligent placement
                     const { clientRect } = props
                     if (clientRect && popup) {
                       const rect = typeof clientRect === 'function' ? clientRect() : clientRect
                       if (rect) {
-                        popup.style.left = `${rect.left}px`
-                        popup.style.top = `${rect.bottom + 4}px`
+                        // Handle horizontal positioning
+                        const dropdownWidth = 320
+                        const spaceRight = window.innerWidth - rect.left
+                        
+                        if (spaceRight < dropdownWidth) {
+                          popup.style.right = '10px'
+                          popup.style.left = 'auto'
+                        } else {
+                          popup.style.left = `${rect.left}px`
+                          popup.style.right = 'auto'
+                        }
+                        
+                        // Recalculate position based on available space
+                        const spaceBelow = window.innerHeight - rect.bottom
+                        const spaceAbove = rect.top
+                        const dropdownHeight = 300
+                        
+                        if (spaceBelow < dropdownHeight && spaceAbove > dropdownHeight) {
+                          popup.style.bottom = `${window.innerHeight - rect.top + 4}px`
+                          popup.style.top = 'auto'
+                          popup.style.maxHeight = `${Math.min(spaceAbove - 20, 400)}px`
+                        } else {
+                          popup.style.top = `${rect.bottom + 4}px`
+                          popup.style.bottom = 'auto'
+                          popup.style.maxHeight = `${Math.min(spaceBelow - 20, 400)}px`
+                        }
                       }
                     }
                   }
