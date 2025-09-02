@@ -68,15 +68,28 @@ export function useFileBrowser(
           dirPath = searchPath.slice(0, -1) // Remove trailing slash
           searchQuery = ''
         } else {
-          // Parse the search path to separate directory and search query
-          const lastSlashIndex = searchPath.lastIndexOf('/')
-          if (lastSlashIndex === -1) {
-            // No slash, treat entire path as search in current directory
-            dirPath = '.'
-            searchQuery = searchPath
-          } else {
-            dirPath = searchPath.substring(0, lastSlashIndex) || '/'
-            searchQuery = searchPath.substring(lastSlashIndex + 1)
+          // Check if this path exists as a directory
+          // If it does, list its contents; otherwise parse for search
+          try {
+            // Try to read it as a directory first
+            const testPath = searchPath.startsWith('~') 
+              ? searchPath.replace('~', await homeDir())
+              : searchPath
+            await readDir(testPath)
+            // If we get here, it's a valid directory
+            dirPath = searchPath
+            searchQuery = ''
+          } catch {
+            // Not a directory, parse for search query
+            const lastSlashIndex = searchPath.lastIndexOf('/')
+            if (lastSlashIndex === -1) {
+              // No slash, treat entire path as search in current directory
+              dirPath = '.'
+              searchQuery = searchPath
+            } else {
+              dirPath = searchPath.substring(0, lastSlashIndex) || '/'
+              searchQuery = searchPath.substring(lastSlashIndex + 1)
+            }
           }
         }
         
@@ -118,13 +131,13 @@ export function useFileBrowser(
           
           searchResults = fuzzyResults.slice(0, maxResults).map(result => ({
             ...result.item,
-            fullPath: `${dirPath}${result.item.name}`,
+            fullPath: `${dirPath}/${result.item.name}`,
             matches: result.matches,
           }))
         } else {
           searchResults = filtered.slice(0, maxResults).map(entry => ({
             ...entry,
-            fullPath: `${dirPath}${entry.name}`,
+            fullPath: `${dirPath}/${entry.name}`,
           }))
         }
 

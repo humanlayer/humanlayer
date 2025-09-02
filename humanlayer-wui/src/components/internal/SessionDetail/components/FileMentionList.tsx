@@ -84,10 +84,12 @@ export const FileMentionList = forwardRef<FileMentionListRef, FileMentionListPro
     }, [])
     
     // Build the search path from current directory and search query
-    // Ensure we don't have double slashes
-    const searchPath = searchQuery 
-      ? `${currentPath}/${searchQuery}`
-      : currentPath
+    // When we're in a directory (query ends with /), we want to list that directory's contents
+    const searchPath = query.endsWith('/') && !searchQuery
+      ? `${currentPath}/`  // Add trailing slash to indicate we want directory contents
+      : searchQuery 
+        ? `${currentPath}/${searchQuery}`
+        : currentPath
     
     // Memoize the options to prevent re-runs
     const fileBrowserOptions = useMemo(() => ({
