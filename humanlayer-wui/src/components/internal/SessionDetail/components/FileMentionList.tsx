@@ -1,4 +1,4 @@
-import React, { useState, useEffect, forwardRef, useImperativeHandle, useMemo } from 'react'
+import React, { useState, useEffect, forwardRef, useImperativeHandle, useMemo, useRef } from 'react'
 import { FileIcon, FolderIcon, AlertCircleIcon, LoaderIcon } from 'lucide-react'
 import { useFileBrowser } from '@/hooks/useFileBrowser'
 import { cn } from '@/lib/utils'
@@ -28,6 +28,7 @@ export const FileMentionList = forwardRef<FileMentionListRef, FileMentionListPro
     const [selectedIndex, setSelectedIndex] = useState(0)
     const [currentPath, setCurrentPath] = useState<string>(sessionWorkingDir || '~')
     const [searchQuery, setSearchQuery] = useState<string>('')
+    const itemRefs = useRef<(HTMLButtonElement | null)[]>([])
     
     // Parse the query to separate path navigation from search
     useEffect(() => {
@@ -95,7 +96,7 @@ export const FileMentionList = forwardRef<FileMentionListRef, FileMentionListPro
     const fileBrowserOptions = useMemo(() => ({
       includeFiles: true,
       includeDirectories: true,
-      maxResults: 10,
+      maxResults: 100, // Show more results, make scrollable
     }), [])
     
     // Use the file browser hook to get files
@@ -113,7 +114,19 @@ export const FileMentionList = forwardRef<FileMentionListRef, FileMentionListPro
     // Reset selection when results change
     useEffect(() => {
       setSelectedIndex(0)
+      itemRefs.current = []
     }, [results])
+
+    // Scroll selected item into view
+    useEffect(() => {
+      const selectedItem = itemRefs.current[selectedIndex]
+      if (selectedItem) {
+        selectedItem.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest',
+        })
+      }
+    }, [selectedIndex])
 
     // Handle keyboard navigation
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -340,7 +353,7 @@ export const FileMentionList = forwardRef<FileMentionListRef, FileMentionListPro
 
     return (
       <div className="py-1">
-        <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+        <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground border-b">
           Files & Folders
           {(currentPath !== '~' && currentPath !== (sessionWorkingDir || '~')) && (
             <span className="ml-2 font-mono">
@@ -348,9 +361,11 @@ export const FileMentionList = forwardRef<FileMentionListRef, FileMentionListPro
             </span>
           )}
         </div>
-        {results.map((item, index) => (
+        <div className="max-h-[360px] overflow-y-auto">
+          {results.map((item, index) => (
           <button
             key={item.fullPath}
+            ref={el => itemRefs.current[index] = el}
             onClick={() => handleItemClick(item)}
             onMouseEnter={() => handleMouseEnter(index)}
             className={cn(
@@ -383,9 +398,7 @@ export const FileMentionList = forwardRef<FileMentionListRef, FileMentionListPro
               </span>
             )}
           </button>
-        ))}
-        <div className="px-2 py-1 mt-1 text-xs text-muted-foreground border-t">
-          ↑↓ Navigate • Enter to open folder/select file • Backspace to go up
+          ))}
         </div>
       </div>
     )
