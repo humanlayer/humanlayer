@@ -528,9 +528,10 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
             char: '@',
             allowSpaces: true,
             startOfLine: false,
-            items: async ({ query }) => {
-              // Return the query to be used by FileMentionList
-              return [query]
+            items: ({ query }) => {
+              // Just return the query as a simple array
+              // The actual file searching happens in FileMentionList
+              return ['placeholder']
             },
             render: () => {
               let component: ReactRenderer<FileMentionListRef> | null = null

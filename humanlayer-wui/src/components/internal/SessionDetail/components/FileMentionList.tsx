@@ -1,4 +1,4 @@
-import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react'
+import React, { useState, useEffect, forwardRef, useImperativeHandle, useMemo } from 'react'
 import { FileIcon, FolderIcon, AlertCircleIcon, LoaderIcon } from 'lucide-react'
 import { useFileBrowser } from '@/hooks/useFileBrowser'
 import { cn } from '@/lib/utils'
@@ -22,17 +22,37 @@ export const FileMentionList = forwardRef<FileMentionListRef, FileMentionListPro
   ({ query, command, editor }, ref) => {
     const [selectedIndex, setSelectedIndex] = useState(0)
     
+    // Log when component mounts/unmounts
+    useEffect(() => {
+      console.log('📦 FileMentionList: Mounted', { query })
+      return () => {
+        console.log('📦 FileMentionList: Unmounted')
+      }
+    }, [])
+    
     // Get the working directory from editor storage or use home directory
     const workingDir = editor?.storage?.workingDir || '~'
     // For file search, we want to search in the working directory with the query as a filter
     const searchPath = `${workingDir}/${query || ''}`
     
-    // Use the file browser hook to get files
-    const { results, isLoading, error } = useFileBrowser(searchPath, {
+    // Memoize the options to prevent re-runs
+    const fileBrowserOptions = useMemo(() => ({
       includeFiles: true,
       includeDirectories: true,
       maxResults: 10,
-    })
+    }), [])
+    
+    // Use the file browser hook to get files
+    const { results, isLoading, error } = useFileBrowser(searchPath, fileBrowserOptions)
+    
+    // Log state changes only when results change
+    useEffect(() => {
+      console.log('📊 FileMentionList results changed:', { 
+        resultsCount: results.length,
+        isLoading,
+        error 
+      })
+    }, [results.length, isLoading, error])
 
     // Reset selection when results change
     useEffect(() => {
