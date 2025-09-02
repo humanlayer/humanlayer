@@ -11,7 +11,10 @@ interface ResponseEditorErrorBoundaryState {
   error: Error | null
 }
 
-export class ResponseEditorErrorBoundary extends Component<ResponseEditorErrorBoundaryProps, ResponseEditorErrorBoundaryState> {
+export class ResponseEditorErrorBoundary extends Component<
+  ResponseEditorErrorBoundaryProps,
+  ResponseEditorErrorBoundaryState
+> {
   constructor(props: ResponseEditorErrorBoundaryProps) {
     super(props)
     this.state = { hasError: false, error: null }
@@ -34,9 +37,7 @@ export class ResponseEditorErrorBoundary extends Component<ResponseEditorErrorBo
             <span>Editor unavailable</span>
           </div>
           {this.state.error && (
-            <div className="text-xs text-destructive">
-              {this.state.error.message}
-            </div>
+            <div className="text-xs text-destructive">{this.state.error.message}</div>
           )}
         </div>
       )

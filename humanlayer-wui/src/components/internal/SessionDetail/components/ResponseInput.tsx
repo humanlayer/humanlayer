@@ -221,14 +221,12 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
               onClick={handleSubmit}
               disabled={isDisabled}
               variant={isDenying ? 'destructive' : 'default'}
-              className="h-auto py-0.5 px-2 text-xs"
+              className="h-auto py-0.5 px-2 text-xs transition-all duration-200"
             >
               {getSendButtonText()}
-              <kbd
-                className={`ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded ${isDisabled ? 'invisible' : ''}`}
-              >
-                {sendKey}
-              </kbd>
+              {!isDisabled && (
+                <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">{sendKey}</kbd>
+              )}
             </Button>
           </div>
         </div>
