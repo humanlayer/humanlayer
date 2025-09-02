@@ -879,7 +879,7 @@ func (s *SQLiteStore) applyMigrations() error {
 		// Check and fix user_settings table independently
 		var tableExists int
 		err := s.db.QueryRow(`
-			SELECT COUNT(*) FROM sqlite_master 
+			SELECT COUNT(*) FROM sqlite_master
 			WHERE type='table' AND name='user_settings'
 		`).Scan(&tableExists)
 		if err != nil {
@@ -977,7 +977,7 @@ func (s *SQLiteStore) validateSchema() error {
 	// Validate user_settings table exists
 	var userSettingsExists int
 	err := s.db.QueryRow(`
-		SELECT COUNT(*) FROM sqlite_master 
+		SELECT COUNT(*) FROM sqlite_master
 		WHERE type='table' AND name='user_settings'
 	`).Scan(&userSettingsExists)
 	if err != nil {
