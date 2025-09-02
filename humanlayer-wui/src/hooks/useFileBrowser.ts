@@ -59,9 +59,13 @@ export function useFileBrowser(
         let dirPath: string
         let searchQuery: string
         
-        // Special case for just "~"
-        if (searchPath === '~') {
-          dirPath = '~'
+        // Special case for just "~" or "/"
+        if (searchPath === '~' || searchPath === '/') {
+          dirPath = searchPath
+          searchQuery = ''
+        } else if (searchPath.endsWith('/')) {
+          // Path ends with /, means we want to list that directory's contents
+          dirPath = searchPath.slice(0, -1) // Remove trailing slash
           searchQuery = ''
         } else {
           // Parse the search path to separate directory and search query
@@ -71,7 +75,7 @@ export function useFileBrowser(
             dirPath = '.'
             searchQuery = searchPath
           } else {
-            dirPath = searchPath.substring(0, lastSlashIndex) || '~'
+            dirPath = searchPath.substring(0, lastSlashIndex) || '/'
             searchQuery = searchPath.substring(lastSlashIndex + 1)
           }
         }
