@@ -122,6 +122,12 @@ fn set_window_theme_colors(
             set_macos_window_appearance(&window, is_dark);
         }
 
+        #[cfg(not(target_os = "macos"))]
+        {
+            // Ensure fg_hex is "used" even though we don't actually use it
+            let _ = fg_hex;
+        }
+
         Ok(())
     } else {
         Err(format!("Window '{window_label}' not found"))
