@@ -2,6 +2,7 @@ import React, { useState, useEffect, forwardRef, useImperativeHandle, useMemo } 
 import { FileIcon, FolderIcon, AlertCircleIcon, LoaderIcon } from 'lucide-react'
 import { useFileBrowser } from '@/hooks/useFileBrowser'
 import { cn } from '@/lib/utils'
+import { useStore } from '@/AppStore'
 
 interface FileMentionItem {
   id: string
@@ -20,29 +21,59 @@ export interface FileMentionListRef {
 
 export const FileMentionList = forwardRef<FileMentionListRef, FileMentionListProps>(
   ({ query, command, editor }, ref) => {
+    // Get the active session's working directory from the store
+    const activeSessionDetail = useStore(state => state.activeSessionDetail)
+    const sessionWorkingDir = activeSessionDetail?.session?.workingDir
+    
     const [selectedIndex, setSelectedIndex] = useState(0)
-    const [currentPath, setCurrentPath] = useState<string>('~')
+    const [currentPath, setCurrentPath] = useState<string>(sessionWorkingDir || '~')
     const [searchQuery, setSearchQuery] = useState<string>('')
     
     // Parse the query to separate path navigation from search
     useEffect(() => {
-      console.log('📍 FileMentionList: Query changed:', { query })
-      if (query.includes('/')) {
-        // User is navigating through folders
+      console.log('📍 FileMentionList: Query changed:', { query, sessionWorkingDir })
+      
+      // Handle special navigation characters
+      if (query === '/') {
+        // User typed '/' to navigate to root
+        setCurrentPath('/')
+        setSearchQuery('')
+        return
+      } else if (query === '~') {
+        // User typed '~' to navigate to home
+        setCurrentPath('~')
+        setSearchQuery('')
+        return
+      }
+      
+      // Handle normal path navigation
+      if (query.startsWith('/')) {
+        // Absolute path from root
+        const searchPart = query.substring(1) // Remove leading '/'
+        setCurrentPath('/')
+        setSearchQuery(searchPart)
+      } else if (query.startsWith('~/')) {
+        // Absolute path from home
+        const searchPart = query.substring(2) // Remove leading '~/'
+        setCurrentPath('~')
+        setSearchQuery(searchPart)
+      } else if (query.includes('/')) {
+        // User is navigating through folders from initial directory
         const lastSlashIndex = query.lastIndexOf('/')
         const pathPart = query.substring(0, lastSlashIndex)
         const searchPart = query.substring(lastSlashIndex + 1)
-        // Don't add extra slashes
-        const cleanPath = pathPart ? `~/${pathPart}` : '~'
+        // Build path from session working directory or home
+        const basePath = sessionWorkingDir || '~'
+        const cleanPath = pathPart ? `${basePath}/${pathPart}` : basePath
         console.log('📍 FileMentionList: Parsed path:', { pathPart, searchPart, cleanPath })
         setCurrentPath(cleanPath)
         setSearchQuery(searchPart)
       } else {
-        // Just searching in current directory
-        setCurrentPath('~')
+        // Just searching in session working directory or home
+        setCurrentPath(sessionWorkingDir || '~')
         setSearchQuery(query)
       }
-    }, [query])
+    }, [query, sessionWorkingDir])
     
     // Log when component mounts/unmounts
     useEffect(() => {
@@ -102,10 +133,37 @@ export const FileMentionList = forwardRef<FileMentionListRef, FileMentionListPro
         if (selected) {
           if (selected.isDirectory) {
             // Navigate into the directory instead of selecting it
-            // Build the new path correctly
+            // Build the new path correctly based on current context
             let newPath: string
-            if (query === '') {
-              // At root, just add the folder name
+            
+            // Handle special cases for root and home navigation
+            if (query === '/' || query === '~') {
+              // User is at root or home, add folder name
+              newPath = `${query === '/' ? '/' : '~/'}${selected.name}/`
+            } else if (query.startsWith('/')) {
+              // In root navigation mode
+              const pathAfterRoot = query.substring(1)
+              if (pathAfterRoot.endsWith('/')) {
+                newPath = `/${pathAfterRoot}${selected.name}/`
+              } else if (pathAfterRoot.includes('/')) {
+                const pathBeforeSearch = pathAfterRoot.substring(0, pathAfterRoot.lastIndexOf('/') + 1)
+                newPath = `/${pathBeforeSearch}${selected.name}/`
+              } else {
+                newPath = `/${selected.name}/`
+              }
+            } else if (query.startsWith('~/')) {
+              // In home navigation mode
+              const pathAfterHome = query.substring(2)
+              if (pathAfterHome.endsWith('/')) {
+                newPath = `~/${pathAfterHome}${selected.name}/`
+              } else if (pathAfterHome.includes('/')) {
+                const pathBeforeSearch = pathAfterHome.substring(0, pathAfterHome.lastIndexOf('/') + 1)
+                newPath = `~/${pathBeforeSearch}${selected.name}/`
+              } else {
+                newPath = `~/${selected.name}/`
+              }
+            } else if (query === '') {
+              // At initial directory, just add the folder name
               newPath = `${selected.name}/`
             } else if (query.endsWith('/')) {
               // Already in a folder, append the new folder
@@ -115,7 +173,7 @@ export const FileMentionList = forwardRef<FileMentionListRef, FileMentionListPro
               const pathBeforeSearch = query.substring(0, query.lastIndexOf('/') + 1)
               newPath = `${pathBeforeSearch}${selected.name}/`
             } else {
-              // Searching at root, replace search with folder name
+              // Searching at initial directory, replace search with folder name
               newPath = `${selected.name}/`
             }
             
@@ -190,7 +248,31 @@ export const FileMentionList = forwardRef<FileMentionListRef, FileMentionListPro
       if (item.isDirectory) {
         // Navigate into the directory - use same logic as Enter key
         let newPath: string
-        if (query === '') {
+        
+        // Handle special cases for root and home navigation
+        if (query === '/' || query === '~') {
+          newPath = `${query === '/' ? '/' : '~/'}${item.name}/`
+        } else if (query.startsWith('/')) {
+          const pathAfterRoot = query.substring(1)
+          if (pathAfterRoot.endsWith('/')) {
+            newPath = `/${pathAfterRoot}${item.name}/`
+          } else if (pathAfterRoot.includes('/')) {
+            const pathBeforeSearch = pathAfterRoot.substring(0, pathAfterRoot.lastIndexOf('/') + 1)
+            newPath = `/${pathBeforeSearch}${item.name}/`
+          } else {
+            newPath = `/${item.name}/`
+          }
+        } else if (query.startsWith('~/')) {
+          const pathAfterHome = query.substring(2)
+          if (pathAfterHome.endsWith('/')) {
+            newPath = `~/${pathAfterHome}${item.name}/`
+          } else if (pathAfterHome.includes('/')) {
+            const pathBeforeSearch = pathAfterHome.substring(0, pathAfterHome.lastIndexOf('/') + 1)
+            newPath = `~/${pathBeforeSearch}${item.name}/`
+          } else {
+            newPath = `~/${item.name}/`
+          }
+        } else if (query === '') {
           newPath = `${item.name}/`
         } else if (query.endsWith('/')) {
           newPath = `${query}${item.name}/`
@@ -258,7 +340,7 @@ export const FileMentionList = forwardRef<FileMentionListRef, FileMentionListPro
       <div className="py-1">
         <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
           Files & Folders
-          {currentPath !== '~' && (
+          {(currentPath !== '~' && currentPath !== (sessionWorkingDir || '~')) && (
             <span className="ml-2 font-mono">
               in {currentPath}/
             </span>
