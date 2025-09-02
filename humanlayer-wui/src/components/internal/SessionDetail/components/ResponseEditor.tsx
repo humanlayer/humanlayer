@@ -1,9 +1,11 @@
 import React, { useEffect, forwardRef, useImperativeHandle } from 'react'
-import { useEditor, EditorContent, Extension, Content } from '@tiptap/react'
+import { useEditor, EditorContent, Extension, Content, ReactRenderer } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { Placeholder } from '@tiptap/extensions'
+import Mention from '@tiptap/extension-mention'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import { Plugin } from '@tiptap/pm/state'
+import { FileMentionList, FileMentionListRef } from './FileMentionList'
 import { createLowlight } from 'lowlight'
 import clojure from 'highlight.js/lib/languages/clojure'
 import javascript from 'highlight.js/lib/languages/javascript'
@@ -506,6 +508,100 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
         }),
         Placeholder.configure({
           placeholder: placeholder || 'Type something...',
+        }),
+        Mention.configure({
+          HTMLAttributes: {
+            class: 'mention',
+            'data-mention': 'true',
+          },
+          renderHTML({ node }) {
+            return [
+              'span',
+              {
+                class: 'mention',
+                'data-mention': node.attrs.id,
+              },
+              `@${node.attrs.label || node.attrs.id}`,
+            ]
+          },
+          suggestion: {
+            char: '@',
+            allowSpaces: true,
+            startOfLine: false,
+            items: async ({ query }) => {
+              // Return the query to be used by FileMentionList
+              return [query]
+            },
+            render: () => {
+              let component: ReactRenderer<FileMentionListRef> | null = null
+              let popup: HTMLDivElement | null = null
+
+              return {
+                onStart: (props: any) => {
+                  // Create a portal div for the dropdown with shadcn styling
+                  popup = document.createElement('div')
+                  popup.className = 'z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md'
+                  document.body.appendChild(popup)
+
+                  component = new ReactRenderer(FileMentionList, {
+                    props,
+                    editor: props.editor,
+                  })
+
+                  if (popup && component) {
+                    popup.appendChild(component.element)
+                    
+                    // Position the dropdown below the cursor
+                    const { clientRect } = props
+                    if (clientRect) {
+                      const rect = typeof clientRect === 'function' ? clientRect() : clientRect
+                      if (rect) {
+                        popup.style.position = 'fixed'
+                        popup.style.left = `${rect.left}px`
+                        popup.style.top = `${rect.bottom + 4}px`
+                      }
+                    }
+                  }
+                },
+                onUpdate: (props: any) => {
+                  if (component) {
+                    component.updateProps(props)
+                    
+                    // Update position
+                    const { clientRect } = props
+                    if (clientRect && popup) {
+                      const rect = typeof clientRect === 'function' ? clientRect() : clientRect
+                      if (rect) {
+                        popup.style.left = `${rect.left}px`
+                        popup.style.top = `${rect.bottom + 4}px`
+                      }
+                    }
+                  }
+                },
+                onKeyDown: (props: any) => {
+                  if (props.event.key === 'Escape') {
+                    return true
+                  }
+                  
+                  if (component?.ref) {
+                    return component.ref.onKeyDown(props)
+                  }
+                  
+                  return false
+                },
+                onExit: () => {
+                  if (popup && popup.parentNode) {
+                    popup.parentNode.removeChild(popup)
+                  }
+                  if (component) {
+                    component.destroy()
+                  }
+                  popup = null
+                  component = null
+                },
+              }
+            },
+          },
         }),
       ],
       content: initialValue,
