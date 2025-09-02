@@ -69,7 +69,9 @@ func (c *Client) buildArgs(config SessionConfig) ([]string, error) {
 	args := []string{}
 
 	// Always use print mode for SDK
-	args = append(args, "--print", config.Query)
+	if config.Query != "" {
+		args = append(args, "--print", config.Query)
+	}
 
 	// Session management
 	if config.SessionID != "" {
@@ -181,13 +183,6 @@ func (c *Client) buildArgs(config SessionConfig) ([]string, error) {
 		args = append(args, "--verbose")
 	}
 
-	// Query handling:
-	// When --add-dir is present, query must be passed via stdin
-	// Otherwise, pass as a positional argument
-	if config.Query != "" && len(config.AdditionalDirectories) == 0 {
-		args = append(args, config.Query)
-	}
-
 	return args, nil
 }
 
@@ -244,30 +239,9 @@ func (c *Client) Launch(config SessionConfig) (*Session, error) {
 		return nil, fmt.Errorf("failed to create stderr pipe: %w", err)
 	}
 
-	// If we have additional directories, we need to pass the query via stdin
-	if config.Query != "" && len(config.AdditionalDirectories) > 0 {
-		stdin, err := cmd.StdinPipe()
-		if err != nil {
-			return nil, fmt.Errorf("failed to create stdin pipe: %w", err)
-		}
-
-		// Start the command first
-		if err := cmd.Start(); err != nil {
-			return nil, fmt.Errorf("failed to start claude: %w", err)
-		}
-
-		// Write query to stdin and close it
-		go func() {
-			defer func() { _ = stdin.Close() }()
-			if _, err := stdin.Write([]byte(config.Query)); err != nil {
-				log.Printf("WARNING: Failed to write query to stdin: %v", err)
-			}
-		}()
-	} else {
-		// Start the command normally
-		if err := cmd.Start(); err != nil {
-			return nil, fmt.Errorf("failed to start claude: %w", err)
-		}
+	// Start the command
+	if err := cmd.Start(); err != nil {
+		return nil, fmt.Errorf("failed to start claude: %w", err)
 	}
 
 	session := &Session{
