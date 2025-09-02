@@ -10,6 +10,7 @@ import { ResponseInputLocalStorageKey } from '@/components/internal/SessionDetai
 import { StatusBar } from './StatusBar'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { ResponseEditor } from './ResponseEditor'
+import { ResponseEditorErrorBoundary } from './ResponseEditorErrorBoundary'
 import { useStore } from '@/AppStore'
 import { logger } from '@/lib/logging'
 import { Content } from '@tiptap/react'
@@ -179,31 +180,33 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
 
           {/* Existing input area */}
           <div className="flex gap-2">
-            <ResponseEditor
-              ref={tiptapRef}
-              initialValue={initialValue}
-              onChange={(value: Content) => {
-                localStorage.setItem(
-                  `${ResponseInputLocalStorageKey}.${session.id}`,
-                  JSON.stringify(value),
-                )
-              }}
-              onSubmit={handleSubmit}
-              onToggleAutoAccept={onToggleAutoAccept}
-              onToggleDangerouslySkipPermissions={onToggleDangerouslySkipPermissions}
-              onToggleForkView={onToggleForkView}
-              disabled={isResponding}
-              placeholder={placeholder}
-              className={`flex-1 min-h-[2.5rem] ${isResponding ? 'opacity-50' : ''} ${textareaOutlineClass} ${
-                isDenying && isFocused ? 'caret-error' : isFocused ? 'caret-accent' : ''
-              }`}
-              onFocus={() => {
-                setIsFocused(true)
-              }}
-              onBlur={() => {
-                setIsFocused(false)
-              }}
-            />
+            <ResponseEditorErrorBoundary>
+              <ResponseEditor
+                ref={tiptapRef}
+                initialValue={initialValue}
+                onChange={(value: Content) => {
+                  localStorage.setItem(
+                    `${ResponseInputLocalStorageKey}.${session.id}`,
+                    JSON.stringify(value),
+                  )
+                }}
+                onSubmit={handleSubmit}
+                onToggleAutoAccept={onToggleAutoAccept}
+                onToggleDangerouslySkipPermissions={onToggleDangerouslySkipPermissions}
+                onToggleForkView={onToggleForkView}
+                disabled={isResponding}
+                placeholder={placeholder}
+                className={`flex-1 min-h-[2.5rem] ${isResponding ? 'opacity-50' : ''} ${textareaOutlineClass} ${
+                  isDenying && isFocused ? 'caret-error' : isFocused ? 'caret-accent' : ''
+                }`}
+                onFocus={() => {
+                  setIsFocused(true)
+                }}
+                onBlur={() => {
+                  setIsFocused(false)
+                }}
+              />
+            </ResponseEditorErrorBoundary>
           </div>
 
           {/* Keyboard shortcuts (condensed) */}
