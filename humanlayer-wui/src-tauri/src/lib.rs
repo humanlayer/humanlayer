@@ -55,11 +55,6 @@ fn set_macos_window_background_color_rgb(_window: &tauri::WebviewWindow, _r: f64
     // No-op on non-macOS platforms
 }
 
-#[cfg(not(target_os = "macos"))]
-fn set_macos_window_appearance(_window: &tauri::WebviewWindow, _is_dark: bool) {
-    // No-op on non-macOS platforms
-}
-
 // Tauri command to set window background color from JavaScript
 #[tauri::command]
 fn set_window_background_color(
@@ -104,16 +99,6 @@ fn set_window_theme_colors(
     let bg_g = u8::from_str_radix(&bg[2..4], 16).map_err(|e| e.to_string())? as f64;
     let bg_b = u8::from_str_radix(&bg[4..6], 16).map_err(|e| e.to_string())? as f64;
 
-    // Parse foreground color
-    let fg = fg_hex.trim_start_matches('#');
-    if fg.len() != 6 {
-        return Err("Invalid foreground hex color format".to_string());
-    }
-
-    let fg_r = u8::from_str_radix(&fg[0..2], 16).map_err(|e| e.to_string())? as f64;
-    let fg_g = u8::from_str_radix(&fg[2..4], 16).map_err(|e| e.to_string())? as f64;
-    let fg_b = u8::from_str_radix(&fg[4..6], 16).map_err(|e| e.to_string())? as f64;
-
     // Get the window and set its colors
     if let Some(window) = app.get_webview_window(&window_label) {
         set_macos_window_background_color_rgb(&window, bg_r, bg_g, bg_b);
@@ -122,6 +107,16 @@ fn set_window_theme_colors(
         // If foreground is bright (high RGB values), it's likely a dark theme
         #[cfg(target_os = "macos")]
         {
+            // Parse foreground color
+            let fg = fg_hex.trim_start_matches('#');
+            if fg.len() != 6 {
+                return Err("Invalid foreground hex color format".to_string());
+            }
+
+            let fg_r = u8::from_str_radix(&fg[0..2], 16).map_err(|e| e.to_string())? as f64;
+            let fg_g = u8::from_str_radix(&fg[2..4], 16).map_err(|e| e.to_string())? as f64;
+            let fg_b = u8::from_str_radix(&fg[4..6], 16).map_err(|e| e.to_string())? as f64;
+
             let brightness = (fg_r + fg_g + fg_b) / 3.0;
             let is_dark = brightness > 128.0;
             set_macos_window_appearance(&window, is_dark);
