@@ -203,7 +203,7 @@ export function SearchInput({
     }
 
     // Filter directories based on search term
-    let dirObjs: Array<{ selected: boolean; path: DirEntry; matches?: FuzzyMatch['matches'] }> = []
+    let dirObjs: Array<{ path: DirEntry; matches?: FuzzyMatch['matches'] }> = []
 
     if (searchTerm) {
       // Use fuzzy search to filter and rank directories
@@ -214,13 +214,13 @@ export function SearchInput({
         includeMatches: true,
       })
 
-      dirObjs = searchResults.map((result) => ({
+      dirObjs = searchResults.map(result => ({
         path: result.item,
         matches: result.matches,
       }))
     } else {
       // Show all directories if no search term
-      dirObjs = entries.map((dir) => ({
+      dirObjs = entries.map(dir => ({
         path: dir,
       }))
     }

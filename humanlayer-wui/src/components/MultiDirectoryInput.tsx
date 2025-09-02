@@ -22,7 +22,7 @@ export function MultiDirectoryInput({
   const [currentInput, setCurrentInput] = useState('')
 
   const handleAddDirectory = (directoryPath?: string) => {
-    const pathToAdd = directoryPath || currentInput;
+    const pathToAdd = directoryPath || currentInput
     const trimmedInput = pathToAdd.trim()
     if (trimmedInput && !directories.includes(trimmedInput)) {
       const newDirs = [...directories, trimmedInput]
@@ -70,9 +70,9 @@ export function MultiDirectoryInput({
           <SearchInput
             value={currentInput}
             onChange={setCurrentInput}
-            onSubmit={(value) => {
+            onSubmit={value => {
               // Use the value from SearchInput (selected item or typed text)
-              handleAddDirectory(value);
+              handleAddDirectory(value)
             }}
             placeholder={placeholder}
             recentDirectories={recentDirectories}
