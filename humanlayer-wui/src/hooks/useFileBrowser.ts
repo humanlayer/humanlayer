@@ -12,7 +12,7 @@ export interface FileBrowserOptions {
 
 export interface FileBrowserResult extends DirEntry {
   fullPath: string
-  matches?: Array<{ indices: Array<[number, number]>; value: string; key: string }>
+  matches?: Array<{ indices: number[]; value?: string; key?: string }>
 }
 
 export function useFileBrowser(searchPath: string, options: FileBrowserOptions = {}) {

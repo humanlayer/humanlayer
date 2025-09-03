@@ -3,6 +3,7 @@ import { FileIcon, FolderIcon, AlertCircleIcon, LoaderIcon } from 'lucide-react'
 import { useFileBrowser } from '@/hooks/useFileBrowser'
 import { cn } from '@/lib/utils'
 import { useStore } from '@/AppStore'
+import { highlightMatches } from '@/lib/fuzzy-search'
 
 interface FileMentionItem {
   id: string
@@ -169,6 +170,20 @@ export const FileMentionList = forwardRef<FileMentionListRef, FileMentionListPro
       if (event.key === 'ArrowDown') {
         event.preventDefault()
         setSelectedIndex(prev => (prev + 1) % results.length)
+        return true
+      }
+
+      // Tab key cycles forward through mentions
+      if (event.key === 'Tab' && !event.shiftKey) {
+        event.preventDefault()
+        setSelectedIndex(prev => (prev + 1) % results.length)
+        return true
+      }
+
+      // Shift+Tab cycles backward through mentions
+      if (event.key === 'Tab' && event.shiftKey) {
+        event.preventDefault()
+        setSelectedIndex(prev => (prev - 1 + results.length) % results.length || 0)
         return true
       }
 
@@ -406,8 +421,33 @@ export const FileMentionList = forwardRef<FileMentionListRef, FileMentionListPro
                 <FileIcon className="h-4 w-4 text-muted-foreground" />
               )}
               <span className="flex-1 truncate">
-                {item.name}
-                {item.isDirectory && <span className="ml-1 text-muted-foreground">/</span>}
+                {searchQuery && item.matches?.length ? (() => {
+                  const match = item.matches.find(m => m.key === 'name')
+                  if (match && match.indices) {
+                    const segments = highlightMatches(item.name || '', match.indices)
+                    return (
+                      <>
+                        {segments.map((segment, i) => (
+                          <span key={i} className={cn(segment.highlighted && 'bg-accent/40 font-medium')}>
+                            {segment.text}
+                          </span>
+                        ))}
+                        {item.isDirectory && <span className="ml-1 text-muted-foreground">/</span>}
+                      </>
+                    )
+                  }
+                  return (
+                    <>
+                      {item.name}
+                      {item.isDirectory && <span className="ml-1 text-muted-foreground">/</span>}
+                    </>
+                  )
+                })() : (
+                  <>
+                    {item.name}
+                    {item.isDirectory && <span className="ml-1 text-muted-foreground">/</span>}
+                  </>
+                )}
               </span>
               {item.isDirectory ? (
                 <span className="text-xs text-muted-foreground">Press Enter to open</span>

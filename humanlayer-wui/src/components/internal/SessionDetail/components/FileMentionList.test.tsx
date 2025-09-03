@@ -356,6 +356,70 @@ describe('FileMentionList', () => {
     expect(result).toBe(true) // Should handle the event
   })
 
+  test('Tab key cycles forward through file mentions', () => {
+    const files = [
+      { name: 'file1.ts', isFile: true, isDirectory: false, fullPath: '/project/file1.ts' },
+      { name: 'file2.ts', isFile: true, isDirectory: false, fullPath: '/project/file2.ts' },
+      { name: 'file3.ts', isFile: true, isDirectory: false, fullPath: '/project/file3.ts' },
+    ]
+
+    mockUseFileBrowser.mockReturnValue({
+      results: files,
+      isLoading: false,
+      error: null,
+    })
+
+    const ref = { current: null as any }
+    render(<FileMentionList ref={ref} query="" command={mockCommand} editor={mockEditor} />)
+
+    // Press Tab to cycle forward
+    let event = new KeyboardEvent('keydown', { key: 'Tab', shiftKey: false })
+    let result = ref.current.onKeyDown({ event })
+    expect(result).toBe(true)
+
+    // Press Tab again to cycle to third item
+    event = new KeyboardEvent('keydown', { key: 'Tab', shiftKey: false })
+    result = ref.current.onKeyDown({ event })
+    expect(result).toBe(true)
+
+    // Press Tab once more to cycle back to first item (wrapping)
+    event = new KeyboardEvent('keydown', { key: 'Tab', shiftKey: false })
+    result = ref.current.onKeyDown({ event })
+    expect(result).toBe(true)
+  })
+
+  test('Shift+Tab cycles backward through file mentions', () => {
+    const files = [
+      { name: 'file1.ts', isFile: true, isDirectory: false, fullPath: '/project/file1.ts' },
+      { name: 'file2.ts', isFile: true, isDirectory: false, fullPath: '/project/file2.ts' },
+      { name: 'file3.ts', isFile: true, isDirectory: false, fullPath: '/project/file3.ts' },
+    ]
+
+    mockUseFileBrowser.mockReturnValue({
+      results: files,
+      isLoading: false,
+      error: null,
+    })
+
+    const ref = { current: null as any }
+    render(<FileMentionList ref={ref} query="" command={mockCommand} editor={mockEditor} />)
+
+    // Press Shift+Tab to cycle backward (should wrap to last item)
+    let event = new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true })
+    let result = ref.current.onKeyDown({ event })
+    expect(result).toBe(true)
+
+    // Press Shift+Tab again to go to second-to-last item
+    event = new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true })
+    result = ref.current.onKeyDown({ event })
+    expect(result).toBe(true)
+
+    // Press Shift+Tab once more
+    event = new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true })
+    result = ref.current.onKeyDown({ event })
+    expect(result).toBe(true)
+  })
+
   test('scrolls selected item into view', async () => {
     const mockScrollIntoView = mock()
 
