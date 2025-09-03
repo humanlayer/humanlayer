@@ -50,14 +50,48 @@ export const FileMentionList = forwardRef<FileMentionListRef, FileMentionListPro
       // Handle normal path navigation
       if (query.startsWith('/')) {
         // Absolute path from root
-        const searchPart = query.substring(1) // Remove leading '/'
-        setCurrentPath('/')
-        setSearchQuery(searchPart)
+        const pathWithoutLeadingSlash = query.substring(1) // Remove leading '/'
+        
+        // Check if this is navigating into a directory (ends with /)
+        if (pathWithoutLeadingSlash.endsWith('/')) {
+          // Extract the directory path (e.g., "/other/path/" -> "/other/path")
+          const dirPath = pathWithoutLeadingSlash.slice(0, -1) // Remove trailing slash
+          setCurrentPath(dirPath ? `/${dirPath}` : '/')
+          setSearchQuery('')
+        } else if (pathWithoutLeadingSlash.includes('/')) {
+          // Has subdirectories with possible search (e.g., "/dir/subdir/search")
+          const lastSlashIndex = pathWithoutLeadingSlash.lastIndexOf('/')
+          const dirPath = pathWithoutLeadingSlash.substring(0, lastSlashIndex)
+          const searchPart = pathWithoutLeadingSlash.substring(lastSlashIndex + 1)
+          setCurrentPath(`/${dirPath}`)
+          setSearchQuery(searchPart)
+        } else {
+          // Just searching in root (e.g., "/searchterm")
+          setCurrentPath('/')
+          setSearchQuery(pathWithoutLeadingSlash)
+        }
       } else if (query.startsWith('~/')) {
         // Absolute path from home
-        const searchPart = query.substring(2) // Remove leading '~/'
-        setCurrentPath('~')
-        setSearchQuery(searchPart)
+        const pathWithoutHome = query.substring(2) // Remove leading '~/'
+        
+        // Check if this is navigating into a directory (ends with /)
+        if (pathWithoutHome.endsWith('/')) {
+          // Extract the directory path (e.g., "~/Documents/project/" -> "~/Documents/project")
+          const dirPath = pathWithoutHome.slice(0, -1) // Remove trailing slash
+          setCurrentPath(dirPath ? `~/${dirPath}` : '~')
+          setSearchQuery('')
+        } else if (pathWithoutHome.includes('/')) {
+          // Has subdirectories with possible search
+          const lastSlashIndex = pathWithoutHome.lastIndexOf('/')
+          const dirPath = pathWithoutHome.substring(0, lastSlashIndex)
+          const searchPart = pathWithoutHome.substring(lastSlashIndex + 1)
+          setCurrentPath(`~/${dirPath}`)
+          setSearchQuery(searchPart)
+        } else {
+          // Just searching in home (e.g., "~/searchterm")
+          setCurrentPath('~')
+          setSearchQuery(pathWithoutHome)
+        }
       } else if (query.includes('/')) {
         // User is navigating through folders from initial directory
         const lastSlashIndex = query.lastIndexOf('/')
@@ -88,9 +122,9 @@ export const FileMentionList = forwardRef<FileMentionListRef, FileMentionListPro
     // When we're in a directory (query ends with /), we want to list that directory's contents
     const searchPath =
       query.endsWith('/') && !searchQuery
-        ? `${currentPath}/` // Add trailing slash to indicate we want directory contents
+        ? currentPath === '/' ? '/' : `${currentPath}/` // Don't double up slashes for root
         : searchQuery
-          ? `${currentPath}/${searchQuery}`
+          ? currentPath === '/' ? `/${searchQuery}` : `${currentPath}/${searchQuery}`
           : currentPath
 
     // Memoize the options to prevent re-runs

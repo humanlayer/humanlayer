@@ -167,7 +167,7 @@ describe('FileMentionList', () => {
     expect(mockText).toHaveBeenCalledWith('@components/')
   })
 
-  test.skip('handles special navigation to root', () => {
+  test('handles special navigation to root', () => {
     mockUseFileBrowser.mockReturnValue({
       results: [{ name: 'usr', isDirectory: true, isFile: false, fullPath: '/usr' }],
       isLoading: false,
@@ -199,7 +199,7 @@ describe('FileMentionList', () => {
     expect(mockUseFileBrowser).toHaveBeenCalledWith('~', expect.any(Object))
   })
 
-  test.skip('shows current path when not in default directory', () => {
+  test('shows current path when not in default directory', () => {
     mockUseFileBrowser.mockReturnValue({
       results: [{ name: 'file.ts', isFile: true, isDirectory: false, fullPath: '/other/path/file.ts' }],
       isLoading: false,
