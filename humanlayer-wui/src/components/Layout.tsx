@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react'
-import { Outlet, useLocation } from 'react-router-dom'
+import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useHotkeys } from 'react-hotkeys-hook'
+import { register } from '@tauri-apps/plugin-global-shortcut'
+import { invoke } from '@tauri-apps/api/core'
+import { listen } from '@tauri-apps/api/event'
 import {
   ApprovalResolvedEventData,
   daemonClient,
@@ -42,6 +45,7 @@ export function Layout() {
   const [isDebugPanelOpen, setIsDebugPanelOpen] = useState(false)
   const [hasShownUnhealthyDialog, setHasShownUnhealthyDialog] = useState(false)
   const location = useLocation()
+  const navigate = useNavigate()
   const isSettingsDialogOpen = useStore(state => state.isSettingsDialogOpen)
   const setSettingsDialogOpen = useStore(state => state.setSettingsDialogOpen)
 
@@ -388,6 +392,49 @@ export function Layout() {
     }
   }, [])
 
+  // Register global shortcut as backup (Rust is primary)
+  useEffect(() => {
+    register('CommandOrControl+Shift+H', async event => {
+      if (event.state === 'Pressed') {
+        await invoke('show_quick_launcher')
+      }
+    }).catch(error => {
+      logger.debug('Global shortcut registration handled by Rust:', error)
+    })
+  }, [])
+
+  // Listen for events from quick launcher window
+  useEffect(() => {
+    const handleSessionCreated = async (payload: { sessionId: string }) => {
+      const { sessionId } = payload
+      if (sessionId) {
+        // Navigate to the new session silently
+        navigate(`/sessions/${sessionId}`)
+
+        // Do NOT focus the window - let it happen in background
+        // User will switch to the app when they're ready
+      }
+    }
+
+    // Set up the listener for cross-window communication
+    let unlistenPromise: Promise<() => void> | null = null
+
+    const setupListener = async () => {
+      const unlisten = await listen('session-created', event => {
+        handleSessionCreated(event.payload as { sessionId: string })
+      })
+      return unlisten
+    }
+
+    unlistenPromise = setupListener()
+
+    return () => {
+      if (unlistenPromise) {
+        unlistenPromise.then(unlisten => unlisten())
+      }
+    }
+  }, [navigate])
+
   useEffect(() => {
     if (location.state?.continuationSession) {
       const session = location.state.continuationSession.session
@@ -432,9 +479,6 @@ export function Layout() {
 
   return (
     <div className="h-screen flex flex-col bg-background text-foreground">
-      {/* Header */}
-      <div className="border-b border-border"></div>
-
       {/* Main content */}
       <main className="flex-1 flex flex-col p-4 overflow-hidden">
         {connected && (

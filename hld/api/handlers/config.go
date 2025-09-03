@@ -20,6 +20,9 @@ func (h *ConfigHandler) GetConfigStatus(c *gin.Context) {
 		"openrouter": map[string]bool{
 			"api_key_configured": os.Getenv("OPENROUTER_API_KEY") != "",
 		},
+		"baseten": map[string]bool{
+			"api_key_configured": os.Getenv("BASETEN_API_KEY") != "",
+		},
 	}
 	c.JSON(200, status)
 }

@@ -47,23 +47,8 @@ export function SettingsDialog({ open, onOpenChange, onConfigUpdate }: SettingsD
       setSaving(true)
       await updateUserSettings({ advancedProviders: checked })
       logger.log('Advanced providers setting updated:', checked)
-
-      // Show toast notification
-      if (checked) {
-        toast.success('Advanced Providers Enabled', {
-          description:
-            'OpenRouter and other alternative AI providers are now available in the session launcher.',
-        })
-      } else {
-        toast.info('Advanced Providers Disabled', {
-          description: 'Only Anthropic models will be available in the session launcher.',
-        })
-      }
     } catch (error) {
       logger.error('Failed to update settings:', error)
-      toast.error('Failed to Update Setting', {
-        description: 'Could not update the advanced providers setting. Please try again.',
-      })
     } finally {
       setSaving(false)
     }
@@ -136,130 +121,139 @@ export function SettingsDialog({ open, onOpenChange, onConfigUpdate }: SettingsD
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Settings</DialogTitle>
+          <DialogTitle className="text-sm font-medium">Settings</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between space-x-2">
-              <div className="space-y-0.5">
-                <Label htmlFor="advanced-providers">Advanced Providers</Label>
+        <div className="space-y-4 p-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <Label htmlFor="advanced-providers" className="text-sm font-medium">
+                Advanced Providers
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Enable alternative AI providers and models
+              </p>
+              <p
+                className="text-sm text-muted-foreground transition-opacity"
+                style={{
+                  opacity: userSettings?.advancedProviders ? 1 : 0,
+                  visibility: userSettings?.advancedProviders ? 'visible' : 'hidden',
+                }}
+              >
+                ⚠️ Warning: Using non-Claude models and providers is experimental.
+              </p>
+            </div>
+            <Switch
+              id="advanced-providers"
+              checked={userSettings?.advancedProviders ?? false}
+              onCheckedChange={handleProvidersToggle}
+              disabled={!userSettings || saving}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="claude-path" className="text-sm font-medium">Claude Binary Path</Label>
+            {!showClaudePathInput ? (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {claudeConfig?.claudeAvailable ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  ) : (
+                    <XCircle className="h-4 w-4 text-destructive" />
+                  )}
+                  <span
+                    className={
+                      claudeConfig?.claudeAvailable
+                        ? 'text-sm text-muted-foreground'
+                        : 'text-sm text-destructive'
+                    }
+                  >
+                    {claudeConfig?.claudeAvailable ? (
+                      <>
+                        Claude binary {claudeConfig.claudePath ? 'configured' : 'detected'} at:{' '}
+                        <code className="text-xs bg-muted px-1 py-0.5 rounded">
+                          {claudeConfig.claudePath || claudeConfig.claudeDetectedPath}
+                        </code>
+                      </>
+                    ) : (
+                      'Claude binary not found'
+                    )}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0"
+                    onClick={() => setShowClaudePathInput(!showClaudePathInput)}
+                    title="Edit Claude path"
+                  >
+                    <Pencil className="h-3 w-3" />
+                  </Button>
+                  <Button
+                    onClick={handleAutoDetect}
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0"
+                    disabled={isUpdatingPath}
+                    title="Auto-detect Claude binary"
+                  >
+                    <RefreshCw className="h-3 w-3" />
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <Input
+                    id="claude-path"
+                    placeholder="/usr/local/bin/claude or leave empty for auto-detect"
+                    value={claudePath}
+                    onChange={e => setClaudePath(e.target.value)}
+                    disabled={isUpdatingPath}
+                    className="flex-1"
+                  />
+                  <Button
+                    onClick={() => {
+                      handleClaudePathUpdate()
+                      setShowClaudePathInput(false)
+                    }}
+                    size="sm"
+                    disabled={isUpdatingPath}
+                  >
+                    Save
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setShowClaudePathInput(false)
+                      // Reset to current configured/detected path
+                      if (claudeConfig) {
+                        const pathToUse =
+                          claudeConfig.claudePath || claudeConfig.claudeDetectedPath || ''
+                        setClaudePath(pathToUse)
+                      }
+                    }}
+                    disabled={isUpdatingPath}
+                  >
+                    Cancel
+                  </Button>
+                </div>
                 <p className="text-xs text-muted-foreground">
-                  Enable OpenRouter and future alternative AI providers
+                  Specify the path to the Claude binary or leave empty for auto-detection
                 </p>
               </div>
-              <Switch
-                id="advanced-providers"
-                checked={userSettings?.advancedProviders ?? false}
-                onCheckedChange={handleProvidersToggle}
-                disabled={!userSettings || saving}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="claude-path">Claude Binary Path</Label>
-              {!showClaudePathInput ? (
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    {claudeConfig?.claudeAvailable ? (
-                      <CheckCircle2 className="h-4 w-4 text-green-500" />
-                    ) : (
-                      <XCircle className="h-4 w-4 text-destructive" />
-                    )}
-                    <span
-                      className={
-                        claudeConfig?.claudeAvailable
-                          ? 'text-sm text-muted-foreground'
-                          : 'text-sm text-destructive'
-                      }
-                    >
-                      {claudeConfig?.claudeAvailable ? (
-                        <>
-                          Claude binary {claudeConfig.claudePath ? 'configured' : 'detected'} at:{' '}
-                          <code className="text-xs bg-muted px-1 py-0.5 rounded">
-                            {claudeConfig.claudePath || claudeConfig.claudeDetectedPath}
-                          </code>
-                        </>
-                      ) : (
-                        'Claude binary not found'
-                      )}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 w-6 p-0"
-                      onClick={() => setShowClaudePathInput(!showClaudePathInput)}
-                      title="Edit Claude path"
-                    >
-                      <Pencil className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      onClick={handleAutoDetect}
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 w-6 p-0"
-                      disabled={isUpdatingPath}
-                      title="Auto-detect Claude binary"
-                    >
-                      <RefreshCw className="h-3 w-3" />
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <div className="flex gap-2">
-                    <Input
-                      id="claude-path"
-                      placeholder="/usr/local/bin/claude or leave empty for auto-detect"
-                      value={claudePath}
-                      onChange={e => setClaudePath(e.target.value)}
-                      disabled={isUpdatingPath}
-                      className="flex-1"
-                    />
-                    <Button
-                      onClick={() => {
-                        handleClaudePathUpdate()
-                        setShowClaudePathInput(false)
-                      }}
-                      size="sm"
-                      disabled={isUpdatingPath}
-                    >
-                      Save
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setShowClaudePathInput(false)
-                        // Reset to current configured/detected path
-                        if (claudeConfig) {
-                          const pathToUse =
-                            claudeConfig.claudePath || claudeConfig.claudeDetectedPath || ''
-                          setClaudePath(pathToUse)
-                        }
-                      }}
-                      disabled={isUpdatingPath}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Specify the path to the Claude binary or leave empty for auto-detection
-                  </p>
-                </div>
-              )}
-              {claudeConfig && !claudeConfig.claudeAvailable && (
-                <p className="text-xs text-amber-500">
-                  Claude is not available. Sessions will run with limited functionality. Install Claude
-                  CLI from{' '}
-                  <a href="https://claude.ai/code" className="underline" target="_blank">
-                    claude.ai/code
-                  </a>
-                </p>
-              )}
-            </div>
+            )}
+            {claudeConfig && !claudeConfig.claudeAvailable && (
+              <p className="text-xs text-amber-500">
+                Claude is not available. Sessions will run with limited functionality. Install Claude
+                CLI from{' '}
+                <a href="https://claude.ai/code" className="underline" target="_blank">
+                  claude.ai/code
+                </a>
+              </p>
+            )}
           </div>
         </div>
       </DialogContent>

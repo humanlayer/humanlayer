@@ -2,6 +2,7 @@
 @import 'tw-animate-css';
 @import './styles/markdown-terminal.css';
 @import './styles/react-syntax-highlighter-terminal.css';
+@import './styles/tiptap-editor.css';
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;1,100;1,200;1,300;1,400;1,500;1,600;1,700&display=swap');
 
 @custom-variant dark (&:is(.dark *));
@@ -52,6 +53,7 @@
   --terminal-fg: #839496;
   --terminal-fg-dim: #586e75;
   --terminal-accent: #268bd2;
+  --terminal-accent-dim: rgba(38, 139, 210, 0.3);
   --terminal-accent-alt: #2aa198;
   --terminal-border: #586e75;
   --terminal-success: #859900;
@@ -86,6 +88,7 @@
   --terminal-fg: #657b83;
   --terminal-fg-dim: #93a1a1;
   --terminal-accent: #268bd2;
+  --terminal-accent-dim: rgba(38, 139, 210, 0.3);
   --terminal-accent-alt: #2aa198;
   --terminal-border: #93a1a1;
   --terminal-success: #859900;
@@ -120,6 +123,7 @@
   --terminal-fg: #d4b895;
   --terminal-fg-dim: #a0896b;
   --terminal-accent: #f4a261;
+  --terminal-accent-dim: rgba(244, 162, 97, 0.3);
   --terminal-accent-alt: #e76f51;
   --terminal-border: #a0896b;
   --terminal-success: #7b9171;
@@ -154,6 +158,7 @@
   --terminal-fg: #cdd6f4;
   --terminal-fg-dim: #9399b2;
   --terminal-accent: #cba6f7;
+  --terminal-accent-dim: rgba(203, 166, 247, 0.3);
   --terminal-accent-alt: #f5c2e7;
   --terminal-border: #6c7086;
   --terminal-success: #a6e3a1;
@@ -188,6 +193,7 @@
   --terminal-fg: #ffffff;
   --terminal-fg-dim: #cccccc;
   --terminal-accent: #00ff00;
+  --terminal-accent-dim: rgba(0, 255, 0, 0.3);
   --terminal-accent-alt: #00cccc;
   --terminal-border: #666666;
   --terminal-success: #00ff00;
@@ -222,6 +228,7 @@
   --terminal-fg: #eeeeee;
   --terminal-fg-dim: #999999;
   --terminal-accent: #fd5799;
+  --terminal-accent-dim: rgba(253, 87, 153, 0.3);
   --terminal-accent-alt: #20bcfc;
   --terminal-border: #333333;
   --terminal-success: #32ccdc;
@@ -256,6 +263,7 @@
   --terminal-fg: #333333;
   --terminal-fg-dim: #666666;
   --terminal-accent: #0066cc;
+  --terminal-accent-dim: rgba(0, 102, 204, 0.3);
   --terminal-accent-alt: #006bb3;
   --terminal-border: #e0e0e0;
   --terminal-success: #22a06b;
@@ -290,6 +298,7 @@
   --terminal-fg: #d4be98;
   --terminal-fg-dim: #928374;
   --terminal-accent: #a9b665;
+  --terminal-accent-dim: rgba(169, 182, 101, 0.3);
   --terminal-accent-alt: #89b482;
   --terminal-border: #504945;
   --terminal-success: #a9b665;
@@ -324,6 +333,7 @@
   --terminal-fg: #654735;
   --terminal-fg-dim: #928374;
   --terminal-accent: #6c782e;
+  --terminal-accent-dim: rgba(108, 120, 46, 0.3);
   --terminal-accent-alt: #4c7a5d;
   --terminal-border: #d5c4a1;
   --terminal-success: #6c782e;
@@ -358,6 +368,7 @@
   --terminal-fg: #f8f8f2;
   --terminal-fg-dim: #75715e;
   --terminal-accent: #66d9ef;
+  --terminal-accent-dim: rgba(102, 217, 239, 0.3);
   --terminal-accent-alt: #a6e22e;
   --terminal-border: #75715e;
   --terminal-success: #a6e22e;
@@ -392,6 +403,7 @@
   --terminal-fg: #000000;
   --terminal-fg-dim: #828282;
   --terminal-accent: #ff6600;
+  --terminal-accent-dim: rgba(255, 102, 0, 0.3);
   --terminal-accent-alt: #458cc9;
   --terminal-border: #828282;
   --terminal-success: #458cc9;
@@ -426,6 +438,7 @@
   --terminal-fg: #e0def4;
   --terminal-fg-dim: #908caa;
   --terminal-accent: #c4a7e7;
+  --terminal-accent-dim: rgba(196, 167, 231, 0.3);
   --terminal-accent-alt: #ebbcba;
   --terminal-border: #6e6a86;
   --terminal-success: #9ccfd8;
@@ -460,6 +473,7 @@
   --terminal-fg: #575279;
   --terminal-fg-dim: #797593;
   --terminal-accent: #907aa9;
+  --terminal-accent-dim: rgba(144, 122, 169, 0.3);
   --terminal-accent-alt: #d7827e;
   --terminal-border: #cecacd;
   --terminal-success: #56949f;
@@ -494,6 +508,7 @@
   --terminal-fg: #e0def4;
   --terminal-fg-dim: #908caa;
   --terminal-accent: #c4a7e7;
+  --terminal-accent-dim: rgba(196, 167, 231, 0.3);
   --terminal-accent-alt: #ebbcba;
   --terminal-border: #6e6a86;
   --terminal-success: #9ccfd8;
@@ -524,6 +539,7 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
     font-family: 'IBM Plex Mono', 'Consolas', 'Monaco', 'Courier New', monospace;

@@ -4,6 +4,8 @@ import { ConversationEvent, ApprovalStatus } from '@/lib/daemon/types'
 import { daemonClient } from '@/lib/daemon/client'
 import { notificationService } from '@/services/NotificationService'
 import { SessionDetailHotkeysScope } from '../SessionDetail'
+import { useStore } from '@/AppStore'
+import { ResponseInputLocalStorageKey } from './useSessionActions'
 
 /*
   Much of this state-based code should be ported to Zustand.
@@ -29,6 +31,7 @@ export function useSessionApprovals({
   const [approvingApprovalId, setApprovingApprovalId] = useState<string | null>(null)
   const [confirmingApprovalId, setConfirmingApprovalId] = useState<string | null>(null)
   const [denyingApprovalId, setDenyingApprovalId] = useState<string | null>(null)
+  const responseEditor = useStore(state => state.responseEditor)
 
   // Helper to check if element is in view
   const isElementInView = useCallback((elementId: number) => {
@@ -56,14 +59,26 @@ export function useSessionApprovals({
     }
   }, [])
 
-  const handleDeny = useCallback(async (approvalId: string, reason: string) => {
-    try {
-      await daemonClient.denyFunctionCall(approvalId, reason)
-      setDenyingApprovalId(null)
-    } catch (error) {
-      notificationService.notifyError(error, 'Failed to deny')
-    }
-  }, [])
+  const handleDeny = useCallback(
+    async (approvalId: string, reason: string, sessionId: string) => {
+      try {
+        const res = await daemonClient.denyFunctionCall(approvalId, reason)
+        console.log('handleDeny()', res)
+
+        if (res.success) {
+          responseEditor?.commands.setContent('')
+          localStorage.removeItem(`${ResponseInputLocalStorageKey}.${sessionId}`)
+        } else {
+          console.log('WHAT', res)
+        }
+
+        setDenyingApprovalId(null)
+      } catch (error) {
+        notificationService.notifyError(error, 'Failed to deny')
+      }
+    },
+    [responseEditor],
+  )
 
   const denyAgainstOldestApproval = useCallback(() => {
     const oldestApproval = events.find(
@@ -77,9 +92,13 @@ export function useSessionApprovals({
     }
   }, [events, setFocusedEventId, setFocusSource])
 
-  const handleStartDeny = useCallback((approvalId: string) => {
-    setDenyingApprovalId(approvalId)
-  }, [])
+  const handleStartDeny = useCallback(
+    (approvalId: string) => {
+      setDenyingApprovalId(approvalId)
+      responseEditor?.commands.focus()
+    },
+    [responseEditor],
+  )
 
   const handleCancelDeny = useCallback(() => {
     setDenyingApprovalId(null)

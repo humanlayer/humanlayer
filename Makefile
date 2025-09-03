@@ -546,14 +546,47 @@ codelayer-bundle:
 	@echo "Building humanlayer for bundling..."
 	cd hlyr && bun install && bun run build
 	cd hlyr && bun build ./dist/index.js --compile --target=bun-darwin-arm64 --outfile=humanlayer-darwin-arm64
-	@echo "Copying binaries to CodeLayer resources..."
+
+codelayer-nightly-bundle:
+	@echo "Setting build version..."
+	$(eval BUILD_VERSION := $(shell date +%Y%m%d)-nightly-local)
+	@echo "Building nightly daemon for bundling (version: $(BUILD_VERSION))..."
+	cd hld && GOOS=darwin GOARCH=arm64 go build -ldflags "\
+		-X github.com/humanlayer/humanlayer/hld/internal/version.BuildVersion=$(BUILD_VERSION) \
+		-X github.com/humanlayer/humanlayer/hld/config.DefaultDatabasePath=~/.humanlayer/daemon-nightly.db \
+		-X github.com/humanlayer/humanlayer/hld/config.DefaultSocketPath=~/.humanlayer/daemon-nightly.sock \
+		-X github.com/humanlayer/humanlayer/hld/config.DefaultHTTPPort=7778 \
+		-X github.com/humanlayer/humanlayer/hld/config.DefaultCLICommand=humanlayer-nightly" \
+		-o hld-darwin-arm64 ./cmd/hld
+	@echo "Building humanlayer CLI for bundling..."
+	cd hlyr && bun install && bun run build
+	cd hlyr && bun build ./dist/index.js --compile --target=bun-darwin-arm64 --outfile=humanlayer-darwin-arm64
+	chmod +x hlyr/humanlayer-darwin-arm64
+	@echo "Copying binaries to Tauri resources..."
 	mkdir -p humanlayer-wui/src-tauri/bin
 	cp hld/hld-darwin-arm64 humanlayer-wui/src-tauri/bin/hld
 	cp hlyr/humanlayer-darwin-arm64 humanlayer-wui/src-tauri/bin/humanlayer
 	chmod +x humanlayer-wui/src-tauri/bin/hld
 	chmod +x humanlayer-wui/src-tauri/bin/humanlayer
-	@echo "Building CodeLayer with bundled binaries..."
-	cd humanlayer-wui && bun run tauri build
+	@echo "Installing WUI dependencies..."
+	cd humanlayer-wui && bun install
+	@echo "Backing up original icons and using nightly icons..."
+	@# Clean up any leftover backup directories first
+	cd humanlayer-wui/src-tauri && rm -rf icons-original icons-backup
+	cd humanlayer-wui/src-tauri && cp -r icons icons-original && rm -rf icons && cp -r icons-nightly icons
+	@echo "Building Tauri app with nightly config (with ad-hoc signing)..."
+	@# Use trap to ensure icons are restored even if build fails
+	cd humanlayer-wui && ( \
+		APPLE_SIGNING_IDENTITY="-" NO_STRIP=1 bun run tauri build --config src-tauri/tauri.nightly.conf.json; \
+		EXIT_CODE=$$?; \
+		echo "Restoring original icons..."; \
+		cd src-tauri && rm -rf icons && cp -r icons-original icons && rm -rf icons-original; \
+		exit $$EXIT_CODE \
+	)
+	@echo "Nightly build complete! DMG available at:"
+	@ls -la humanlayer-wui/src-tauri/target/release/bundle/dmg/*.dmg
+
+codelayer-dev: daemon-dev-build wui-dev
 	@echo "Build complete!"
 
 # Open nightly WUI

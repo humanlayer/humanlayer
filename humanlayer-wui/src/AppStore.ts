@@ -3,6 +3,7 @@ import { ViewMode } from '@/lib/daemon/types'
 import { create } from 'zustand'
 import { daemonClient } from '@/lib/daemon'
 import { logger } from '@/lib/logging'
+import { Editor } from '@tiptap/react'
 
 // Track pending updates for optimistic UI
 interface PendingUpdate {
@@ -99,6 +100,11 @@ interface StoreState {
     claudeDetectedPath?: string
     claudeAvailable: boolean
   }>
+
+  /* Response Editor */
+  responseEditor: Editor | null
+  setResponseEditor: (responseEditor: Editor) => void
+  removeResponseEditor: () => void
 }
 
 export const useStore = create<StoreState>((set, get) => ({
@@ -110,6 +116,7 @@ export const useStore = create<StoreState>((set, get) => ({
   isRefreshing: false,
   activeSessionDetail: null,
   claudeConfig: null,
+  responseEditor: null,
   initSessions: (sessions: Session[]) => set({ sessions }),
   updateSession: (sessionId: string, updates: Partial<Session>) =>
     set(state => ({
@@ -851,6 +858,11 @@ export const useStore = create<StoreState>((set, get) => ({
       throw error // Keep throwing for UI error handling
     }
   },
+
+  /* Response Editor */
+  responseEditor: null,
+  setResponseEditor: (responseEditor: Editor) => set({ responseEditor }),
+  removeResponseEditor: () => set({ responseEditor: null }),
 }))
 
 // Helper function to validate and clean up session state

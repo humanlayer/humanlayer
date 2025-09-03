@@ -1,8 +1,8 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Capability for the main window",
-  "windows": ["main"],
+  "description": "Capability for the main window and quick launcher",
+  "windows": ["main", "quick-launcher"],
   "permissions": [
     "core:default",
     "opener:default",
@@ -24,6 +24,14 @@
     "shell:allow-kill",
     "shell:allow-open",
     "store:default",
-    "log:default"
+    "log:default",
+    "global-shortcut:allow-register",
+    "global-shortcut:allow-unregister",
+    "global-shortcut:allow-is-registered",
+    "core:window:allow-close",
+    "core:window:allow-show",
+    "core:window:allow-hide",
+    "core:window:allow-set-focus",
+    "core:window:allow-center"
   ]
 }

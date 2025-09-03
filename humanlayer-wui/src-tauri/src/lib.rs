@@ -5,8 +5,134 @@ use std::env;
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
-use tauri::{Manager, State};
+use tauri::{Manager, State, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_store::StoreExt;
+
+// Helper function to set macOS window background color with RGB values
+#[cfg(target_os = "macos")]
+#[allow(deprecated)] // Using cocoa for compatibility with Tauri's ns_window() API
+fn set_macos_window_background_color_rgb(window: &tauri::WebviewWindow, r: f64, g: f64, b: f64) {
+    use cocoa::appkit::{NSColor, NSWindow};
+    use cocoa::base::{id, nil};
+
+    let ns_window = window.ns_window().unwrap() as id;
+    unsafe {
+        let bg_color = NSColor::colorWithRed_green_blue_alpha_(
+            nil,
+            r / 255.0,
+            g / 255.0,
+            b / 255.0,
+            1.0,
+        );
+        ns_window.setBackgroundColor_(bg_color);
+    }
+}
+
+// Helper function to set macOS window appearance based on theme brightness
+#[cfg(target_os = "macos")]
+#[allow(deprecated)] // Using cocoa for compatibility with Tauri's ns_window() API
+#[allow(unexpected_cfgs)] // Clippy false positive with objc macros
+fn set_macos_window_appearance(window: &tauri::WebviewWindow, is_dark: bool) {
+    #[link(name = "AppKit", kind = "framework")]
+    extern "C" {
+        static NSAppearanceNameAqua: id;
+        static NSAppearanceNameDarkAqua: id;
+    }
+
+    use cocoa::base::id;
+    use objc::{msg_send, sel, sel_impl, class};
+
+    let ns_window = window.ns_window().unwrap() as id;
+    unsafe {
+        let appearance: id = msg_send![class!(NSAppearance), appearanceNamed: if is_dark { NSAppearanceNameDarkAqua } else { NSAppearanceNameAqua }];
+        let _: () = msg_send![ns_window, setAppearance: appearance];
+    }
+}
+
+
+#[cfg(not(target_os = "macos"))]
+fn set_macos_window_background_color_rgb(_window: &tauri::WebviewWindow, _r: f64, _g: f64, _b: f64) {
+    // No-op on non-macOS platforms
+}
+
+// Tauri command to set window background color from JavaScript
+#[tauri::command]
+fn set_window_background_color(
+    app: tauri::AppHandle,
+    window_label: String,
+    hex_color: String,
+) -> Result<(), String> {
+    // Parse hex color
+    let hex = hex_color.trim_start_matches('#');
+    if hex.len() != 6 {
+        return Err("Invalid hex color format".to_string());
+    }
+
+    let r = u8::from_str_radix(&hex[0..2], 16).map_err(|e| e.to_string())? as f64;
+    let g = u8::from_str_radix(&hex[2..4], 16).map_err(|e| e.to_string())? as f64;
+    let b = u8::from_str_radix(&hex[4..6], 16).map_err(|e| e.to_string())? as f64;
+
+    // Get the window and set its background color
+    if let Some(window) = app.get_webview_window(&window_label) {
+        set_macos_window_background_color_rgb(&window, r, g, b);
+        Ok(())
+    } else {
+        Err(format!("Window '{window_label}' not found"))
+    }
+}
+
+// Tauri command to set window theme colors (background and text) from JavaScript
+#[tauri::command]
+fn set_window_theme_colors(
+    app: tauri::AppHandle,
+    window_label: String,
+    bg_hex: String,
+    fg_hex: String,
+) -> Result<(), String> {
+    // Parse background color
+    let bg = bg_hex.trim_start_matches('#');
+    if bg.len() != 6 {
+        return Err("Invalid background hex color format".to_string());
+    }
+
+    let bg_r = u8::from_str_radix(&bg[0..2], 16).map_err(|e| e.to_string())? as f64;
+    let bg_g = u8::from_str_radix(&bg[2..4], 16).map_err(|e| e.to_string())? as f64;
+    let bg_b = u8::from_str_radix(&bg[4..6], 16).map_err(|e| e.to_string())? as f64;
+
+    // Get the window and set its colors
+    if let Some(window) = app.get_webview_window(&window_label) {
+        set_macos_window_background_color_rgb(&window, bg_r, bg_g, bg_b);
+
+        // Determine if theme is dark based on foreground brightness
+        // If foreground is bright (high RGB values), it's likely a dark theme
+        #[cfg(target_os = "macos")]
+        {
+            // Parse foreground color
+            let fg = fg_hex.trim_start_matches('#');
+            if fg.len() != 6 {
+                return Err("Invalid foreground hex color format".to_string());
+            }
+
+            let fg_r = u8::from_str_radix(&fg[0..2], 16).map_err(|e| e.to_string())? as f64;
+            let fg_g = u8::from_str_radix(&fg[2..4], 16).map_err(|e| e.to_string())? as f64;
+            let fg_b = u8::from_str_radix(&fg[4..6], 16).map_err(|e| e.to_string())? as f64;
+
+            let brightness = (fg_r + fg_g + fg_b) / 3.0;
+            let is_dark = brightness > 128.0;
+            set_macos_window_appearance(&window, is_dark);
+        }
+
+        #[cfg(not(target_os = "macos"))]
+        {
+            // Ensure fg_hex is "used" even though we don't actually use it
+            let _ = fg_hex;
+        }
+
+        Ok(())
+    } else {
+        Err(format!("Window '{window_label}' not found"))
+    }
+}
 
 // Branch detection utilities
 pub fn get_git_branch() -> Option<String> {
@@ -171,6 +297,36 @@ async fn get_log_directory() -> Result<String, String> {
     }
 }
 
+#[tauri::command]
+fn show_quick_launcher(app: tauri::AppHandle) -> Result<(), String> {
+    // Check if quick launcher window already exists
+    if let Some(window) = app.get_webview_window("quick-launcher") {
+        let _ = window.show();
+        let _ = window.set_focus();
+        let _ = window.center();
+        return Ok(());
+    }
+
+    // Create new floating window without title bar
+    let _window = WebviewWindowBuilder::new(
+        &app,
+        "quick-launcher",
+        WebviewUrl::App("index.html#/quick-launcher".into())
+    )
+    .title("")
+    .inner_size(500.0, 185.0)
+    .resizable(false)
+    .maximizable(false)
+    .minimizable(false)
+    .always_on_top(true)
+    .skip_taskbar(true)
+    .decorations(false)  // Remove all window decorations including title bar
+    .center()
+    .build()
+    .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -186,6 +342,7 @@ pub fn run() {
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_store::Builder::new().build())
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin({
             let is_dev = cfg!(debug_assertions);
             let branch_id = get_branch_id(is_dev, None);
@@ -235,6 +392,21 @@ pub fn run() {
             // Register the daemon manager as managed state
             app.manage(daemon_manager.clone());
 
+            // Register global hotkey for quick launcher
+            #[cfg(desktop)]
+            {
+                use tauri_plugin_global_shortcut::GlobalShortcutExt;
+
+                let app_handle = app.handle().clone();
+                let shortcut = app.handle().global_shortcut();
+
+                // Register the shortcut with a callback
+                shortcut.on_shortcut("cmd+shift+h", move |_app, _shortcut, _event| {
+                    // Show quick launcher window
+                    let _ = show_quick_launcher(app_handle.clone());
+                })?;
+            }
+
             // Check if auto-launch is disabled
             let should_autolaunch = env::var("HUMANLAYER_WUI_AUTOLAUNCH_DAEMON")
                 .map(|v| v.to_lowercase() != "false")
@@ -281,6 +453,9 @@ pub fn run() {
             get_daemon_info,
             is_daemon_running,
             get_log_directory,
+            show_quick_launcher,
+            set_window_background_color,
+            set_window_theme_colors,
         ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application");
