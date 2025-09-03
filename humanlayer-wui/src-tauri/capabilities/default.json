@@ -6,6 +6,14 @@
   "permissions": [
     "core:default",
     "opener:default",
+    {
+      "identifier": "opener:allow-open-path",
+      "allow": [
+        {
+          "path": "/**"
+        }
+      ]
+    },
     "notification:default",
     "core:webview:allow-set-webview-zoom",
     "fs:default",

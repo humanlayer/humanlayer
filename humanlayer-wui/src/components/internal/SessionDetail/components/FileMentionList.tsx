@@ -32,8 +32,6 @@ export const FileMentionList = forwardRef<FileMentionListRef, FileMentionListPro
 
     // Parse the query to separate path navigation from search
     useEffect(() => {
-      console.log('📍 FileMentionList: Query changed:', { query, sessionWorkingDir })
-
       // Handle special navigation characters
       if (query === '/') {
         // User typed '/' to navigate to root
@@ -51,7 +49,7 @@ export const FileMentionList = forwardRef<FileMentionListRef, FileMentionListPro
       if (query.startsWith('/')) {
         // Absolute path from root
         const pathWithoutLeadingSlash = query.substring(1) // Remove leading '/'
-        
+
         // Check if this is navigating into a directory (ends with /)
         if (pathWithoutLeadingSlash.endsWith('/')) {
           // Extract the directory path (e.g., "/other/path/" -> "/other/path")
@@ -73,7 +71,7 @@ export const FileMentionList = forwardRef<FileMentionListRef, FileMentionListPro
       } else if (query.startsWith('~/')) {
         // Absolute path from home
         const pathWithoutHome = query.substring(2) // Remove leading '~/'
-        
+
         // Check if this is navigating into a directory (ends with /)
         if (pathWithoutHome.endsWith('/')) {
           // Extract the directory path (e.g., "~/Documents/project/" -> "~/Documents/project")
@@ -100,7 +98,6 @@ export const FileMentionList = forwardRef<FileMentionListRef, FileMentionListPro
         // Build path from session working directory or home
         const basePath = sessionWorkingDir || '~'
         const cleanPath = pathPart ? `${basePath}/${pathPart}` : basePath
-        console.log('📍 FileMentionList: Parsed path:', { pathPart, searchPart, cleanPath })
         setCurrentPath(cleanPath)
         setSearchQuery(searchPart)
       } else {
@@ -112,19 +109,20 @@ export const FileMentionList = forwardRef<FileMentionListRef, FileMentionListPro
 
     // Log when component mounts/unmounts
     useEffect(() => {
-      console.log('📦 FileMentionList: Mounted', { query, currentPath })
-      return () => {
-        console.log('📦 FileMentionList: Unmounted')
-      }
+      return () => {}
     }, [])
 
     // Build the search path from current directory and search query
     // When we're in a directory (query ends with /), we want to list that directory's contents
     const searchPath =
       query.endsWith('/') && !searchQuery
-        ? currentPath === '/' ? '/' : `${currentPath}/` // Don't double up slashes for root
+        ? currentPath === '/'
+          ? '/'
+          : `${currentPath}/` // Don't double up slashes for root
         : searchQuery
-          ? currentPath === '/' ? `/${searchQuery}` : `${currentPath}/${searchQuery}`
+          ? currentPath === '/'
+            ? `/${searchQuery}`
+            : `${currentPath}/${searchQuery}`
           : currentPath
 
     // Memoize the options to prevent re-runs
@@ -141,13 +139,7 @@ export const FileMentionList = forwardRef<FileMentionListRef, FileMentionListPro
     const { results, isLoading, error } = useFileBrowser(searchPath, fileBrowserOptions)
 
     // Log state changes only when results change
-    useEffect(() => {
-      console.log('📊 FileMentionList results changed:', {
-        resultsCount: results.length,
-        isLoading,
-        error,
-      })
-    }, [results.length, isLoading, error])
+    useEffect(() => {}, [results.length, isLoading, error])
 
     // Reset selection when results change
     useEffect(() => {

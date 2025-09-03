@@ -476,7 +476,7 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
       x: number
       y: number
     } | null>(null)
-    
+
     // Virtual anchor element for tooltip positioning
     const virtualAnchor = useRef<HTMLDivElement>(null)
 
@@ -744,17 +744,17 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
       const handleMouseMove = (event: MouseEvent) => {
         const target = event.target as HTMLElement
         const mention = target.closest('.mention') as HTMLElement
-        
+
         if (mention && mention.dataset.mention) {
           // Get the position of the mention element
           const rect = mention.getBoundingClientRect()
           const filePath = mention.dataset.mention
-          
+
           setTooltipState({
             open: true,
             content: filePath,
             x: rect.left + rect.width / 2,
-            y: rect.top
+            y: rect.top,
           })
         } else if (tooltipState?.open) {
           // Only close if we're not hovering over any mention
@@ -847,7 +847,7 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
         <div className="tiptap-wrapper">
           <EditorContent editor={editor} onFocus={onFocus} onBlur={onBlur} />
         </div>
-        
+
         {/* Controlled tooltip for file mentions */}
         <Tooltip open={tooltipState?.open || false}>
           <TooltipTrigger asChild>
@@ -864,11 +864,7 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
               aria-hidden="true"
             />
           </TooltipTrigger>
-          <TooltipContent 
-            side="top" 
-            sideOffset={8}
-            className="max-w-[400px] break-all"
-          >
+          <TooltipContent side="top" sideOffset={8} className="max-w-[400px] break-all">
             <div className="flex flex-col gap-1">
               <div className="font-mono text-xs">{tooltipState?.content}</div>
               <div className="text-xs opacity-70">Click to open in default editor</div>

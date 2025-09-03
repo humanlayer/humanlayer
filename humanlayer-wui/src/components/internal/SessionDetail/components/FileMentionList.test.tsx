@@ -418,7 +418,7 @@ describe('FileMentionList', () => {
     // Hover over second file
     fireEvent.mouseEnter(file2Button!)
 
-    // Should have selection class
-    expect(file2Button).toHaveClass('bg-accent')
+    // Should have selection indicator (border)
+    expect(file2Button).toHaveClass('border-l-[var(--terminal-accent)]')
   })
 })
