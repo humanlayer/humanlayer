@@ -1,4 +1,4 @@
-import React, { useEffect, forwardRef, useImperativeHandle } from 'react'
+import React, { useEffect, forwardRef, useImperativeHandle, useState, useRef } from 'react'
 import { useEditor, EditorContent, Extension, Content, ReactRenderer } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { Placeholder } from '@tiptap/extensions'
@@ -6,6 +6,7 @@ import Mention from '@tiptap/extension-mention'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import { Plugin } from '@tiptap/pm/state'
 import { FileMentionList, FileMentionListRef } from './FileMentionList'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { createLowlight } from 'lowlight'
 import clojure from 'highlight.js/lib/languages/clojure'
 import javascript from 'highlight.js/lib/languages/javascript'
@@ -22,6 +23,7 @@ import xml from 'highlight.js/lib/languages/xml'
 import yaml from 'highlight.js/lib/languages/yaml'
 import { logger } from '@/lib/logging'
 import { useStore } from '@/AppStore'
+import { openPath } from '@tauri-apps/plugin-opener'
 
 // Create lowlight instance with common languages
 const lowlight = createLowlight()
@@ -467,6 +469,17 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
       React.useRef<ResponseEditorProps['onToggleDangerouslySkipPermissions']>()
     const onToggleForkViewRef = React.useRef<ResponseEditorProps['onToggleForkView']>()
 
+    // Tooltip state for file mentions
+    const [tooltipState, setTooltipState] = useState<{
+      open: boolean
+      content: string
+      x: number
+      y: number
+    } | null>(null)
+    
+    // Virtual anchor element for tooltip positioning
+    const virtualAnchor = useRef<HTMLDivElement>(null)
+
     const setResponseEditor = useStore(state => state.setResponseEditor)
     const removeResponseEditor = useStore(state => state.removeResponseEditor)
 
@@ -520,6 +533,7 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
               {
                 class: 'mention',
                 'data-mention': node.attrs.id,
+                title: `Open ${node.attrs.id}`,
               },
               `@${node.attrs.label || node.attrs.id}`,
             ]
@@ -702,6 +716,103 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
       }
     }, [editor, setResponseEditor, removeResponseEditor])
 
+    // Handle clicks and hovers on mentions
+    useEffect(() => {
+      if (!editor) return
+
+      const handleClick = async (event: MouseEvent) => {
+        const target = event.target as HTMLElement
+
+        // Check if clicked element is a mention or inside a mention
+        const mention = target.closest('.mention') as HTMLElement
+        if (mention && mention.dataset.mention) {
+          event.preventDefault()
+          event.stopPropagation()
+
+          const filePath = mention.dataset.mention
+          logger.log('Opening file:', filePath)
+
+          try {
+            // Open the file using the default system editor
+            await openPath(filePath)
+          } catch (error) {
+            logger.error('Failed to open file:', error)
+          }
+        }
+      }
+
+      const handleMouseMove = (event: MouseEvent) => {
+        const target = event.target as HTMLElement
+        const mention = target.closest('.mention') as HTMLElement
+        
+        if (mention && mention.dataset.mention) {
+          // Get the position of the mention element
+          const rect = mention.getBoundingClientRect()
+          const filePath = mention.dataset.mention
+          
+          setTooltipState({
+            open: true,
+            content: filePath,
+            x: rect.left + rect.width / 2,
+            y: rect.top
+          })
+        } else if (tooltipState?.open) {
+          // Only close if we're not hovering over any mention
+          setTooltipState(null)
+        }
+      }
+
+      const handleMouseLeave = (event: MouseEvent) => {
+        // When leaving the editor entirely, close the tooltip
+        const relatedTarget = event.relatedTarget as HTMLElement
+        if (!relatedTarget || !relatedTarget.closest('.tiptap-editor')) {
+          setTooltipState(null)
+        }
+      }
+
+      // Set up the event handlers once the editor is ready
+      const setupEventHandlers = () => {
+        try {
+          // Check if the editor is destroyed
+          if (editor.isDestroyed) return undefined
+
+          // Check if the editor view is available
+          if (!editor.view || !editor.view.dom) return undefined
+
+          const editorElement = editor.view.dom
+          editorElement.addEventListener('click', handleClick)
+          editorElement.addEventListener('mousemove', handleMouseMove)
+          editorElement.addEventListener('mouseleave', handleMouseLeave)
+
+          return () => {
+            editorElement.removeEventListener('click', handleClick)
+            editorElement.removeEventListener('mousemove', handleMouseMove)
+            editorElement.removeEventListener('mouseleave', handleMouseLeave)
+          }
+        } catch {
+          // Editor not ready yet, will retry on next update
+          return undefined
+        }
+      }
+
+      // Try to set up immediately
+      let cleanup = setupEventHandlers()
+
+      // Also listen for editor updates to retry if needed
+      const updateHandler = () => {
+        if (!cleanup) {
+          cleanup = setupEventHandlers()
+        }
+      }
+
+      editor.on('update', updateHandler)
+
+      return () => {
+        cleanup?.()
+        editor.off('update', updateHandler)
+      }
+    }, [editor, tooltipState])
+
     // Handle keyboard events
     useEffect(() => {
       if (!editor || !onKeyDown) return
@@ -732,9 +843,39 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
     }, [editor, onKeyDown])
 
     return (
-      <div className="tiptap-wrapper">
-        <EditorContent editor={editor} onFocus={onFocus} onBlur={onBlur} />
-      </div>
+      <>
+        <div className="tiptap-wrapper">
+          <EditorContent editor={editor} onFocus={onFocus} onBlur={onBlur} />
+        </div>
+        
+        {/* Controlled tooltip for file mentions */}
+        <Tooltip open={tooltipState?.open || false}>
+          <TooltipTrigger asChild>
+            <div
+              ref={virtualAnchor}
+              style={{
+                position: 'fixed',
+                left: tooltipState?.x || 0,
+                top: tooltipState?.y || 0,
+                width: 1,
+                height: 1,
+                pointerEvents: 'none',
+              }}
+              aria-hidden="true"
+            />
+          </TooltipTrigger>
+          <TooltipContent 
+            side="top" 
+            sideOffset={8}
+            className="max-w-[400px] break-all"
+          >
+            <div className="flex flex-col gap-1">
+              <div className="font-mono text-xs">{tooltipState?.content}</div>
+              <div className="text-xs opacity-70">Click to open in default editor</div>
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      </>
     )
   },
 )
