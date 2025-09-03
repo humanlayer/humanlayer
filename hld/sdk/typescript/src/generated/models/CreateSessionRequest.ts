@@ -106,6 +106,12 @@ export interface CreateSessionRequest {
      */
     customInstructions?: string;
     /**
+     * Enable auto-accept for edit tools
+     * @type {boolean}
+     * @memberof CreateSessionRequest
+     */
+    autoAcceptEdits?: boolean;
+    /**
      * Launch session with dangerously skip permissions enabled
      * @type {boolean}
      * @memberof CreateSessionRequest
@@ -191,6 +197,7 @@ export function CreateSessionRequestFromJSONTyped(json: any, ignoreDiscriminator
         'disallowedTools': json['disallowed_tools'] == null ? undefined : json['disallowed_tools'],
         'additionalDirectories': json['additional_directories'] == null ? undefined : json['additional_directories'],
         'customInstructions': json['custom_instructions'] == null ? undefined : json['custom_instructions'],
+        'autoAcceptEdits': json['auto_accept_edits'] == null ? undefined : json['auto_accept_edits'],
         'dangerouslySkipPermissions': json['dangerously_skip_permissions'] == null ? undefined : json['dangerously_skip_permissions'],
         'dangerouslySkipPermissionsTimeout': json['dangerously_skip_permissions_timeout'] == null ? undefined : json['dangerously_skip_permissions_timeout'],
         'verbose': json['verbose'] == null ? undefined : json['verbose'],
@@ -225,6 +232,7 @@ export function CreateSessionRequestToJSONTyped(value?: CreateSessionRequest | n
         'disallowed_tools': value['disallowedTools'],
         'additional_directories': value['additionalDirectories'],
         'custom_instructions': value['customInstructions'],
+        'auto_accept_edits': value['autoAcceptEdits'],
         'dangerously_skip_permissions': value['dangerouslySkipPermissions'],
         'dangerously_skip_permissions_timeout': value['dangerouslySkipPermissionsTimeout'],
         'verbose': value['verbose'],
