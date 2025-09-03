@@ -31,13 +31,6 @@ export function useFileBrowser(searchPath: string, options: FileBrowserOptions =
   const fileExtensionsKey = fileExtensions.join(',')
 
   useEffect(() => {
-    console.log('🔍 useFileBrowser: effect triggered', {
-      searchPath,
-      includeFiles,
-      includeDirectories,
-      maxResults,
-      fileExtensionsKey,
-    })
 
     if (!searchPath) {
       setResults([])
@@ -48,7 +41,6 @@ export function useFileBrowser(searchPath: string, options: FileBrowserOptions =
 
     // Debounce the file fetching
     const timeoutId = setTimeout(async () => {
-      console.log('⏱️ useFileBrowser: timeout fired, starting fetch for:', searchPath)
       setIsLoading(true)
       setError(null)
 
@@ -90,19 +82,15 @@ export function useFileBrowser(searchPath: string, options: FileBrowserOptions =
           }
         }
 
-        console.log('📂 useFileBrowser: parsed path', { searchPath, dirPath, searchQuery })
 
         // Expand home directory if needed
         if (dirPath === '~' || dirPath.startsWith('~/')) {
           const home = await homeDir()
           dirPath = dirPath === '~' ? home : dirPath.replace('~', home)
-          console.log('🏠 useFileBrowser: expanded home dir to:', dirPath)
         }
 
         // Read directory contents
-        console.log('📖 useFileBrowser: reading directory:', dirPath)
         const entries = await readDir(dirPath)
-        console.log('📚 useFileBrowser: found entries:', entries.length)
 
         // Filter entries based on options
         let filtered = entries.filter(entry => {
@@ -138,7 +126,6 @@ export function useFileBrowser(searchPath: string, options: FileBrowserOptions =
           }))
         }
 
-        console.log('✅ useFileBrowser: setting results:', searchResults.length, 'items')
         setResults(searchResults)
       } catch (err) {
         console.error('❌ useFileBrowser: error reading directory:', err)
@@ -150,7 +137,6 @@ export function useFileBrowser(searchPath: string, options: FileBrowserOptions =
     }, 150)
 
     return () => {
-      console.log('🛑 useFileBrowser: clearing timeout for path:', searchPath)
       clearTimeout(timeoutId)
     }
   }, [searchPath, includeFiles, includeDirectories, fileExtensionsKey, maxResults])
