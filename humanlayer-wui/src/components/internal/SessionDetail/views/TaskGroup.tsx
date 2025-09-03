@@ -268,10 +268,10 @@ export function TaskGroup({
                     </div>
 
                     {/* Right side: Timestamp */}
-                    <div className="shrink-0">
+                    <div className="w-[160px] text-right">
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <span className="text-xs text-muted-foreground/60 cursor-help">
+                          <span className="text-xs text-muted-foreground/60 cursor-help text-right block">
                             {displayObject.created_at ? formatTimestamp(displayObject.created_at) : ''}
                           </span>
                         </TooltipTrigger>
