@@ -44,16 +44,35 @@ type Client struct {
 	claudePath string
 }
 
+// shouldSkipPath checks if a path should be skipped during search
+func shouldSkipPath(path string) bool {
+	// Skip node_modules directories
+	if strings.Contains(path, "/node_modules/") {
+		return true
+	}
+	// Skip backup files
+	if strings.HasSuffix(path, ".bak") {
+		return true
+	}
+	return false
+}
+
+// ShouldSkipPath checks if a path should be skipped during search (exported version)
+func ShouldSkipPath(path string) bool {
+	return shouldSkipPath(path)
+}
+
 // NewClient creates a new Claude Code client
 func NewClient() (*Client, error) {
 	// First try standard PATH
 	path, err := exec.LookPath("claude")
-	if err == nil {
+	if err == nil && !shouldSkipPath(path) {
 		return &Client{claudePath: path}, nil
 	}
 
 	// Try common installation paths
 	commonPaths := []string{
+		filepath.Join(os.Getenv("HOME"), ".claude/local/claude"), // Add Claude's own directory
 		filepath.Join(os.Getenv("HOME"), ".npm/bin/claude"),
 		filepath.Join(os.Getenv("HOME"), ".bun/bin/claude"),
 		filepath.Join(os.Getenv("HOME"), ".local/bin/claude"),
@@ -62,6 +81,9 @@ func NewClient() (*Client, error) {
 	}
 
 	for _, candidatePath := range commonPaths {
+		if shouldSkipPath(candidatePath) {
+			continue
+		}
 		if _, err := os.Stat(candidatePath); err == nil {
 			// Verify it's executable
 			if err := isExecutable(candidatePath); err == nil {
@@ -102,6 +124,11 @@ func isExecutable(path string) error {
 	return nil
 }
 
+// IsExecutable checks if file is executable (exported version)
+func IsExecutable(path string) error {
+	return isExecutable(path)
+}
+
 // tryLoginShell attempts to find claude using a login shell
 func tryLoginShell() string {
 	shells := []string{"zsh", "bash"}
@@ -110,7 +137,7 @@ func tryLoginShell() string {
 		out, err := cmd.Output()
 		if err == nil {
 			path := strings.TrimSpace(string(out))
-			if path != "" && path != "claude not found" {
+			if path != "" && path != "claude not found" && !shouldSkipPath(path) {
 				return path
 			}
 		}

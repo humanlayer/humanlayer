@@ -89,8 +89,16 @@ interface StoreState {
     claudeDetectedPath?: string
     claudeAvailable: boolean
   } | null
-  fetchClaudeConfig: () => Promise<void>
-  updateClaudePath: (path: string) => Promise<void>
+  fetchClaudeConfig: () => Promise<{
+    claudePath: string
+    claudeDetectedPath?: string
+    claudeAvailable: boolean
+  } | null>
+  updateClaudePath: (path: string) => Promise<{
+    claudePath: string
+    claudeDetectedPath?: string
+    claudeAvailable: boolean
+  }>
 }
 
 export const useStore = create<StoreState>((set, get) => ({
@@ -821,8 +829,10 @@ export const useStore = create<StoreState>((set, get) => ({
           claudeAvailable: response.claudeAvailable,
         },
       })
+      return response // Add this return
     } catch (error) {
       logger.error('Failed to fetch Claude config:', error)
+      return null // Return null on error
     }
   },
   updateClaudePath: async (path: string) => {
@@ -835,9 +845,10 @@ export const useStore = create<StoreState>((set, get) => ({
           claudeAvailable: response.claudeAvailable,
         },
       })
+      return response // Add this return
     } catch (error) {
       logger.error('Failed to update Claude path:', error)
-      throw error // Re-throw so the UI can handle it
+      throw error // Keep throwing for UI error handling
     }
   },
 }))

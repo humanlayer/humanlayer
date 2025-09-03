@@ -771,9 +771,20 @@ func (h *SessionHandlers) UpdateConfig(ctx context.Context, req api.UpdateConfig
 
 // persistClaudePath persists Claude path to config file
 func (h *SessionHandlers) persistClaudePath(path string) error {
-	// For now, just log that we would persist
-	// In a real implementation, we'd update the config file
-	slog.Info("would persist Claude path to config", "path", path)
+	if h.config == nil {
+		return fmt.Errorf("config not available")
+	}
+
+	// Update the config struct
+	h.config.ClaudePath = path
+
+	// Save to file
+	if err := config.Save(h.config); err != nil {
+		slog.Error("failed to persist Claude path to config", "path", path, "error", err)
+		return fmt.Errorf("failed to save config: %w", err)
+	}
+
+	slog.Info("persisted Claude path to config", "path", path)
 	return nil
 }
 

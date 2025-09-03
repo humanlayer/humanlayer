@@ -150,3 +150,47 @@ func (c *Config) Validate() error {
 	}
 	return nil
 }
+
+// Save saves the configuration to the config file
+func Save(cfg *Config) error {
+	v := viper.New()
+
+	// Set config name and type
+	v.SetConfigName("humanlayer")
+	v.SetConfigType("json")
+
+	// Set config paths
+	configDir := getDefaultConfigDir()
+	v.AddConfigPath(configDir)
+
+	// Ensure config directory exists
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		return fmt.Errorf("failed to create config directory: %w", err)
+	}
+
+	// Set the values from the config struct
+	v.Set("socket_path", cfg.SocketPath)
+	v.Set("database_path", cfg.DatabasePath)
+	v.Set("api_key", cfg.APIKey)
+	v.Set("api_base_url", cfg.APIBaseURL)
+	v.Set("log_level", cfg.LogLevel)
+	v.Set("version_override", cfg.VersionOverride)
+	v.Set("http_port", cfg.HTTPPort)
+	v.Set("http_host", cfg.HTTPHost)
+	v.Set("claude_path", cfg.ClaudePath)
+
+	// Set config file path explicitly
+	configFile := filepath.Join(configDir, "humanlayer.json")
+	v.SetConfigFile(configFile)
+
+	// Write the config
+	if err := v.WriteConfig(); err != nil {
+		// If file doesn't exist, use SafeWriteConfig
+		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			return v.SafeWriteConfig()
+		}
+		return fmt.Errorf("failed to write config: %w", err)
+	}
+
+	return nil
+}

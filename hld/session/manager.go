@@ -120,12 +120,22 @@ func (m *Manager) initializeClaudeClient() {
 	var err error
 
 	if m.claudePath != "" {
-		// Validate path exists before using it
-		if _, statErr := os.Stat(m.claudePath); statErr == nil {
+		// Validate path exists and is executable
+		// Note: We allow manual configuration of .bak files and other paths that auto-detection would skip
+		// This gives users control while auto-detection remains conservative
+		if _, statErr := os.Stat(m.claudePath); statErr != nil {
+			err = fmt.Errorf("configured Claude path does not exist: %s", m.claudePath)
+		} else if execErr := claudecode.IsExecutable(m.claudePath); execErr != nil {
+			err = fmt.Errorf("configured Claude path is not executable: %s: %w", m.claudePath, execErr)
+		} else {
+			// Warn if path would be skipped by auto-detection but allow it
+			if claudecode.ShouldSkipPath(m.claudePath) {
+				slog.Warn("Using manually configured Claude path that would be skipped by auto-detection",
+					"path", m.claudePath,
+					"reason", "backup file or invalid location")
+			}
 			client = claudecode.NewClientWithPath(m.claudePath)
 			slog.Info("Using configured Claude path", "path", m.claudePath)
-		} else {
-			err = fmt.Errorf("configured Claude path does not exist: %s", m.claudePath)
 		}
 	} else {
 		// Auto-detect

@@ -12,9 +12,10 @@ import { CheckCircle2, XCircle, RefreshCw, Pencil } from 'lucide-react'
 interface SettingsDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  onConfigUpdate?: () => Promise<void> // Add optional callback
 }
 
-export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
+export function SettingsDialog({ open, onOpenChange, onConfigUpdate }: SettingsDialogProps) {
   const userSettings = useStore(state => state.userSettings)
   const updateUserSettings = useStore(state => state.updateUserSettings)
   const claudeConfig = useStore(state => state.claudeConfig)
@@ -71,10 +72,15 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const handleClaudePathUpdate = async () => {
     try {
       setIsUpdatingPath(true)
-      await updateClaudePath(claudePath)
-      await fetchClaudeConfig() // Refresh to get availability status
+      const updateResponse = await updateClaudePath(claudePath)
 
-      if (claudeConfig?.claudeAvailable) {
+      // Trigger immediate health check if callback provided
+      if (onConfigUpdate) {
+        await onConfigUpdate()
+      }
+
+      // Use the response directly instead of stale claudeConfig
+      if (updateResponse?.claudeAvailable) {
         toast.success('Claude Path Updated', {
           description: 'Claude binary was found at the specified path.',
         })
@@ -97,13 +103,17 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     try {
       setIsUpdatingPath(true)
       // Empty string triggers auto-detection
-      await updateClaudePath('')
-      await fetchClaudeConfig() // Refresh to get new detected path
+      const updateResponse = await updateClaudePath('')
 
-      // After fetching, the config will have the detected path
-      const detectedPath = claudeConfig?.claudeDetectedPath || claudeConfig?.claudePath
+      // Trigger immediate health check
+      if (onConfigUpdate) {
+        await onConfigUpdate()
+      }
 
-      if (detectedPath) {
+      // Use response to determine if detection succeeded
+      const detectedPath = updateResponse?.claudeDetectedPath || updateResponse?.claudePath
+
+      if (detectedPath && updateResponse?.claudeAvailable) {
         toast.success('Claude Auto-Detection Complete', {
           description: `Claude binary found at: ${detectedPath}`,
         })

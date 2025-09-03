@@ -82,7 +82,8 @@ export class HTTPDaemonClient implements IDaemonClient {
 
     try {
       const health = await this.client.health()
-      if (health.status !== 'ok') {
+      // Accept both 'ok' and 'degraded' status - degraded means daemon is running but Claude is unavailable
+      if (health.status !== 'ok' && health.status !== 'degraded') {
         throw new Error('Daemon health check failed')
       }
     } finally {
