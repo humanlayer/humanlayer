@@ -152,7 +152,9 @@ export function SettingsDialog({ open, onOpenChange, onConfigUpdate }: SettingsD
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="claude-path" className="text-sm font-medium">Claude Binary Path</Label>
+            <Label htmlFor="claude-path" className="text-sm font-medium">
+              Claude Binary Path
+            </Label>
             {!showClaudePathInput ? (
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -175,8 +177,15 @@ export function SettingsDialog({ open, onOpenChange, onConfigUpdate }: SettingsD
                           {claudeConfig.claudePath || claudeConfig.claudeDetectedPath}
                         </code>
                       </>
+                    ) : claudeConfig?.claudePath ? (
+                      <>
+                        Claude binary not found at configured path:{' '}
+                        <code className="text-xs bg-muted px-1 py-0.5 rounded">
+                          {claudeConfig.claudePath}
+                        </code>
+                      </>
                     ) : (
-                      'Claude binary not found'
+                      'Claude binary could not be auto-detected'
                     )}
                   </span>
                 </div>
@@ -247,11 +256,16 @@ export function SettingsDialog({ open, onOpenChange, onConfigUpdate }: SettingsD
             )}
             {claudeConfig && !claudeConfig.claudeAvailable && (
               <p className="text-xs text-amber-500">
-                Claude is not available. Sessions will run with limited functionality. Install Claude
-                CLI from{' '}
-                <a href="https://claude.ai/code" className="underline" target="_blank">
-                  claude.ai/code
-                </a>
+                {claudeConfig?.claudePath ? (
+                  <>Please check the configured path or use auto-detect to find Claude automatically.</>
+                ) : (
+                  <>
+                    Claude is not available. Install Claude CLI from{' '}
+                    <a href="https://claude.ai/code" className="underline" target="_blank">
+                      claude.ai/code
+                    </a>
+                  </>
+                )}
               </p>
             )}
           </div>

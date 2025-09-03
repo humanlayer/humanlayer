@@ -860,7 +860,6 @@ export const useStore = create<StoreState>((set, get) => ({
   },
 
   /* Response Editor */
-  responseEditor: null,
   setResponseEditor: (responseEditor: Editor) => set({ responseEditor }),
   removeResponseEditor: () => set({ responseEditor: null }),
 }))
