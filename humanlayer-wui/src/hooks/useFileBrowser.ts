@@ -15,10 +15,7 @@ export interface FileBrowserResult extends DirEntry {
   matches?: Array<{ indices: Array<[number, number]>; value: string; key: string }>
 }
 
-export function useFileBrowser(
-  searchPath: string,
-  options: FileBrowserOptions = {}
-) {
+export function useFileBrowser(searchPath: string, options: FileBrowserOptions = {}) {
   const {
     includeFiles = false,
     includeDirectories = true,
@@ -29,19 +26,19 @@ export function useFileBrowser(
   const [results, setResults] = useState<FileBrowserResult[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  
+
   // Stabilize the fileExtensions array reference
   const fileExtensionsKey = fileExtensions.join(',')
 
   useEffect(() => {
-    console.log('🔍 useFileBrowser: effect triggered', { 
+    console.log('🔍 useFileBrowser: effect triggered', {
       searchPath,
-      includeFiles, 
-      includeDirectories, 
+      includeFiles,
+      includeDirectories,
       maxResults,
-      fileExtensionsKey
+      fileExtensionsKey,
     })
-    
+
     if (!searchPath) {
       setResults([])
       setIsLoading(false)
@@ -58,7 +55,7 @@ export function useFileBrowser(
       try {
         let dirPath: string
         let searchQuery: string
-        
+
         // Special case for just "~" or "/"
         if (searchPath === '~' || searchPath === '/') {
           dirPath = searchPath
@@ -72,7 +69,7 @@ export function useFileBrowser(
           // If it does, list its contents; otherwise parse for search
           try {
             // Try to read it as a directory first
-            const testPath = searchPath.startsWith('~') 
+            const testPath = searchPath.startsWith('~')
               ? searchPath.replace('~', await homeDir())
               : searchPath
             await readDir(testPath)
@@ -92,7 +89,7 @@ export function useFileBrowser(
             }
           }
         }
-        
+
         console.log('📂 useFileBrowser: parsed path', { searchPath, dirPath, searchQuery })
 
         // Expand home directory if needed
@@ -106,7 +103,7 @@ export function useFileBrowser(
         console.log('📖 useFileBrowser: reading directory:', dirPath)
         const entries = await readDir(dirPath)
         console.log('📚 useFileBrowser: found entries:', entries.length)
-        
+
         // Filter entries based on options
         let filtered = entries.filter(entry => {
           if (entry.isDirectory && includeDirectories) return true
@@ -128,7 +125,7 @@ export function useFileBrowser(
             minMatchCharLength: 1,
             includeMatches: true,
           })
-          
+
           searchResults = fuzzyResults.slice(0, maxResults).map(result => ({
             ...result.item,
             fullPath: `${dirPath}/${result.item.name}`,

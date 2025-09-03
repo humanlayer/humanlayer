@@ -21,7 +21,7 @@ describe('DropdownMenu Component', () => {
         <DropdownMenuContent>
           <DropdownMenuItem>Item 1</DropdownMenuItem>
         </DropdownMenuContent>
-      </DropdownMenu>
+      </DropdownMenu>,
     )
 
     const trigger = screen.getByText('Open Menu')
@@ -37,7 +37,7 @@ describe('DropdownMenu Component', () => {
         <DropdownMenuContent>
           <DropdownMenuItem>Test Item</DropdownMenuItem>
         </DropdownMenuContent>
-      </DropdownMenu>
+      </DropdownMenu>,
     )
 
     const trigger = screen.getByText('Test Trigger')
@@ -52,7 +52,7 @@ describe('DropdownMenu Component', () => {
         <DropdownMenuContent>
           <DropdownMenuItem>Item</DropdownMenuItem>
         </DropdownMenuContent>
-      </DropdownMenu>
+      </DropdownMenu>,
     )
 
     const trigger = screen.getByText('Styled Trigger')
@@ -69,16 +69,14 @@ describe('DropdownMenu Component', () => {
             <DropdownMenuLabel>Label</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem>Regular Item</DropdownMenuItem>
-            <DropdownMenuCheckboxItem checked={false}>
-              Checkbox Item
-            </DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem checked={false}>Checkbox Item</DropdownMenuCheckboxItem>
             <DropdownMenuRadioGroup value="1">
               <DropdownMenuRadioItem value="1">Radio 1</DropdownMenuRadioItem>
               <DropdownMenuRadioItem value="2">Radio 2</DropdownMenuRadioItem>
             </DropdownMenuRadioGroup>
           </DropdownMenuContent>
         </DropdownMenu>
-      </div>
+      </div>,
     )
 
     expect(container).toBeInTheDocument()
@@ -91,14 +89,14 @@ describe('DropdownMenu Component', () => {
         <DropdownMenuContent>
           <DropdownMenuItem>Item</DropdownMenuItem>
         </DropdownMenuContent>
-      </DropdownMenu>
+      </DropdownMenu>,
     )
 
     const trigger = screen.getByText('Accessible Menu')
-    
+
     // Should be focusable (button element)
     expect(trigger.tagName).toBe('BUTTON')
-    
+
     // Should not have tabindex -1
     expect(trigger).not.toHaveAttribute('tabindex', '-1')
   })
@@ -129,7 +127,7 @@ describe('DropdownMenu Component', () => {
           <DropdownMenuItem inset>Inset Item</DropdownMenuItem>
           <DropdownMenuLabel inset>Inset Label</DropdownMenuLabel>
         </DropdownMenuContent>
-      </DropdownMenu>
+      </DropdownMenu>,
     )
 
     // The components should render without errors

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, forwardRef, useImperativeHandle, useMemo, useRef } from 'react'
+import { useState, useEffect, forwardRef, useImperativeHandle, useMemo, useRef } from 'react'
 import { FileIcon, FolderIcon, AlertCircleIcon, LoaderIcon } from 'lucide-react'
 import { useFileBrowser } from '@/hooks/useFileBrowser'
 import { cn } from '@/lib/utils'
@@ -24,16 +24,16 @@ export const FileMentionList = forwardRef<FileMentionListRef, FileMentionListPro
     // Get the active session's working directory from the store
     const activeSessionDetail = useStore(state => state.activeSessionDetail)
     const sessionWorkingDir = activeSessionDetail?.session?.workingDir
-    
+
     const [selectedIndex, setSelectedIndex] = useState(0)
     const [currentPath, setCurrentPath] = useState<string>(sessionWorkingDir || '~')
     const [searchQuery, setSearchQuery] = useState<string>('')
     const itemRefs = useRef<(HTMLButtonElement | null)[]>([])
-    
+
     // Parse the query to separate path navigation from search
     useEffect(() => {
       console.log('📍 FileMentionList: Query changed:', { query, sessionWorkingDir })
-      
+
       // Handle special navigation characters
       if (query === '/') {
         // User typed '/' to navigate to root
@@ -46,7 +46,7 @@ export const FileMentionList = forwardRef<FileMentionListRef, FileMentionListPro
         setSearchQuery('')
         return
       }
-      
+
       // Handle normal path navigation
       if (query.startsWith('/')) {
         // Absolute path from root
@@ -75,7 +75,7 @@ export const FileMentionList = forwardRef<FileMentionListRef, FileMentionListPro
         setSearchQuery(query)
       }
     }, [query, sessionWorkingDir])
-    
+
     // Log when component mounts/unmounts
     useEffect(() => {
       console.log('📦 FileMentionList: Mounted', { query, currentPath })
@@ -83,31 +83,35 @@ export const FileMentionList = forwardRef<FileMentionListRef, FileMentionListPro
         console.log('📦 FileMentionList: Unmounted')
       }
     }, [])
-    
+
     // Build the search path from current directory and search query
     // When we're in a directory (query ends with /), we want to list that directory's contents
-    const searchPath = query.endsWith('/') && !searchQuery
-      ? `${currentPath}/`  // Add trailing slash to indicate we want directory contents
-      : searchQuery 
-        ? `${currentPath}/${searchQuery}`
-        : currentPath
-    
+    const searchPath =
+      query.endsWith('/') && !searchQuery
+        ? `${currentPath}/` // Add trailing slash to indicate we want directory contents
+        : searchQuery
+          ? `${currentPath}/${searchQuery}`
+          : currentPath
+
     // Memoize the options to prevent re-runs
-    const fileBrowserOptions = useMemo(() => ({
-      includeFiles: true,
-      includeDirectories: true,
-      maxResults: 100, // Show more results, make scrollable
-    }), [])
-    
+    const fileBrowserOptions = useMemo(
+      () => ({
+        includeFiles: true,
+        includeDirectories: true,
+        maxResults: 100, // Show more results, make scrollable
+      }),
+      [],
+    )
+
     // Use the file browser hook to get files
     const { results, isLoading, error } = useFileBrowser(searchPath, fileBrowserOptions)
-    
+
     // Log state changes only when results change
     useEffect(() => {
-      console.log('📊 FileMentionList results changed:', { 
+      console.log('📊 FileMentionList results changed:', {
         resultsCount: results.length,
         isLoading,
-        error 
+        error,
       })
     }, [results.length, isLoading, error])
 
@@ -132,13 +136,13 @@ export const FileMentionList = forwardRef<FileMentionListRef, FileMentionListPro
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'ArrowUp') {
         event.preventDefault()
-        setSelectedIndex((prev) => (prev - 1 + results.length) % results.length || 0)
+        setSelectedIndex(prev => (prev - 1 + results.length) % results.length || 0)
         return true
       }
 
       if (event.key === 'ArrowDown') {
         event.preventDefault()
-        setSelectedIndex((prev) => (prev + 1) % results.length)
+        setSelectedIndex(prev => (prev + 1) % results.length)
         return true
       }
 
@@ -150,7 +154,7 @@ export const FileMentionList = forwardRef<FileMentionListRef, FileMentionListPro
             // Navigate into the directory instead of selecting it
             // Build the new path correctly based on current context
             let newPath: string
-            
+
             // Handle special cases for root and home navigation
             if (query === '/' || query === '~') {
               // User is at root or home, add folder name
@@ -191,7 +195,7 @@ export const FileMentionList = forwardRef<FileMentionListRef, FileMentionListPro
               // Searching at initial directory, replace search with folder name
               newPath = `${selected.name}/`
             }
-            
+
             // We need to update the editor's mention query
             // This is a bit tricky - we need to replace the current query with the new path
             if (editor) {
@@ -199,11 +203,11 @@ export const FileMentionList = forwardRef<FileMentionListRef, FileMentionListPro
               const { $from } = state.selection
               const mentionStart = $from.pos - query.length - 1 // -1 for the @ character
               const mentionEnd = $from.pos
-              
+
               const tr = state.tr.replaceRangeWith(
                 mentionStart,
                 mentionEnd,
-                state.schema.text(`@${newPath}`)
+                state.schema.text(`@${newPath}`),
               )
               dispatch(tr)
             }
@@ -230,20 +234,18 @@ export const FileMentionList = forwardRef<FileMentionListRef, FileMentionListPro
         const withoutTrailingSlash = query.slice(0, -1)
         // Find the previous slash to go up one directory
         const lastSlashIndex = withoutTrailingSlash.lastIndexOf('/')
-        const newPath = lastSlashIndex >= 0 
-          ? withoutTrailingSlash.substring(0, lastSlashIndex + 1)
-          : ''
-        
+        const newPath = lastSlashIndex >= 0 ? withoutTrailingSlash.substring(0, lastSlashIndex + 1) : ''
+
         if (editor) {
           const { state, dispatch } = editor.view
           const { $from } = state.selection
           const mentionStart = $from.pos - query.length - 1
           const mentionEnd = $from.pos
-          
+
           const tr = state.tr.replaceRangeWith(
             mentionStart,
             mentionEnd,
-            state.schema.text(`@${newPath}`)
+            state.schema.text(`@${newPath}`),
           )
           dispatch(tr)
         }
@@ -259,11 +261,11 @@ export const FileMentionList = forwardRef<FileMentionListRef, FileMentionListPro
     }))
 
     // Handle item click
-    const handleItemClick = (item: typeof results[0]) => {
+    const handleItemClick = (item: (typeof results)[0]) => {
       if (item.isDirectory) {
         // Navigate into the directory - use same logic as Enter key
         let newPath: string
-        
+
         // Handle special cases for root and home navigation
         if (query === '/' || query === '~') {
           newPath = `${query === '/' ? '/' : '~/'}${item.name}/`
@@ -297,17 +299,17 @@ export const FileMentionList = forwardRef<FileMentionListRef, FileMentionListPro
         } else {
           newPath = `${item.name}/`
         }
-        
+
         if (editor) {
           const { state, dispatch } = editor.view
           const { $from } = state.selection
           const mentionStart = $from.pos - query.length - 1
           const mentionEnd = $from.pos
-          
+
           const tr = state.tr.replaceRangeWith(
             mentionStart,
             mentionEnd,
-            state.schema.text(`@${newPath}`)
+            state.schema.text(`@${newPath}`),
           )
           dispatch(tr)
         }
@@ -344,122 +346,55 @@ export const FileMentionList = forwardRef<FileMentionListRef, FileMentionListPro
     }
 
     if (results.length === 0) {
-      return (
-        <div className="px-3 py-2 text-sm text-muted-foreground">
-          No files found
-        </div>
-      )
+      return <div className="px-3 py-2 text-sm text-muted-foreground">No files found</div>
     }
 
     return (
       <div className="py-1">
         <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground border-b">
           Files & Folders
-          {(currentPath !== '~' && currentPath !== (sessionWorkingDir || '~')) && (
-            <span className="ml-2 font-mono">
-              in {currentPath}/
-            </span>
+          {currentPath !== '~' && currentPath !== (sessionWorkingDir || '~') && (
+            <span className="ml-2 font-mono">in {currentPath}/</span>
           )}
         </div>
         <div className="max-h-[360px] overflow-y-auto">
           {results.map((item, index) => (
-          <button
-            key={item.fullPath}
-            ref={el => itemRefs.current[index] = el}
-            onClick={() => handleItemClick(item)}
-            onMouseEnter={() => handleMouseEnter(index)}
-            className={cn(
-              'flex w-full items-center gap-2 px-2 py-1.5 text-sm text-left rounded-sm transition-colors',
-              'hover:bg-accent hover:text-accent-foreground',
-              'focus:bg-accent focus:text-accent-foreground focus:outline-none',
-              selectedIndex === index && 'bg-accent text-accent-foreground'
-            )}
-            role="menuitem"
-            aria-selected={selectedIndex === index}
-          >
-            {item.isDirectory ? (
-              <FolderIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            ) : (
-              <FileIcon className="h-4 w-4 text-muted-foreground" />
-            )}
-            <span className="flex-1 truncate">
-              {item.name}
-              {item.isDirectory && (
-                <span className="ml-1 text-muted-foreground">/</span>
+            <button
+              key={item.fullPath}
+              ref={el => (itemRefs.current[index] = el)}
+              onClick={() => handleItemClick(item)}
+              onMouseEnter={() => handleMouseEnter(index)}
+              className={cn(
+                'flex w-full items-center gap-2 px-2 py-1.5 text-sm text-left rounded-sm transition-colors',
+                'hover:bg-accent hover:text-accent-foreground',
+                'focus:bg-accent focus:text-accent-foreground focus:outline-none',
+                selectedIndex === index && 'bg-accent text-accent-foreground',
               )}
-            </span>
-            {item.isDirectory ? (
-              <span className="text-xs text-muted-foreground">
-                Press Enter to open
+              role="menuitem"
+              aria-selected={selectedIndex === index}
+            >
+              {item.isDirectory ? (
+                <FolderIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              ) : (
+                <FileIcon className="h-4 w-4 text-muted-foreground" />
+              )}
+              <span className="flex-1 truncate">
+                {item.name}
+                {item.isDirectory && <span className="ml-1 text-muted-foreground">/</span>}
               </span>
-            ) : (
-              <span className="text-xs text-muted-foreground truncate max-w-[200px]">
-                {item.fullPath}
-              </span>
-            )}
-          </button>
+              {item.isDirectory ? (
+                <span className="text-xs text-muted-foreground">Press Enter to open</span>
+              ) : (
+                <span className="text-xs text-muted-foreground truncate max-w-[200px]">
+                  {item.fullPath}
+                </span>
+              )}
+            </button>
           ))}
         </div>
       </div>
     )
-  }
+  },
 )
 
 FileMentionList.displayName = 'FileMentionList'
-
-// Helper component to highlight matched text
-function HighlightedText({ 
-  text, 
-  matches 
-}: { 
-  text: string
-  matches: Array<{ indices: Array<[number, number]> | Array<number[]> }>
-}) {
-  if (!matches || matches.length === 0) {
-    return <>{text}</>
-  }
-
-  const highlights = matches[0]?.indices || []
-  if (highlights.length === 0) {
-    return <>{text}</>
-  }
-
-  const parts: React.ReactNode[] = []
-  let lastIndex = 0
-
-  highlights.forEach((range) => {
-    // Handle both [start, end] tuple and [start, end] array formats
-    const start = Array.isArray(range) ? range[0] : 0
-    const end = Array.isArray(range) ? range[1] : 0
-    
-    if (typeof start !== 'number' || typeof end !== 'number') {
-      return // Skip invalid ranges
-    }
-    // Add non-highlighted text before this match
-    if (start > lastIndex) {
-      parts.push(
-        <span key={`normal-${lastIndex}`}>
-          {text.slice(lastIndex, start)}
-        </span>
-      )
-    }
-    // Add highlighted text
-    parts.push(
-      <span key={`highlight-${start}`} className="font-semibold text-accent-foreground">
-        {text.slice(start, end + 1)}
-      </span>
-    )
-    lastIndex = end + 1
-  })
-
-  // Add remaining text after last match
-  if (lastIndex < text.length) {
-    parts.push(
-      <span key={`normal-${lastIndex}`}>
-        {text.slice(lastIndex)}
-      </span>
-    )
-  }
-
-  return <>{parts}</>
-}

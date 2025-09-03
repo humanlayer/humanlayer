@@ -50,12 +50,12 @@ export function useSessionActions({
   const handleContinueSession = useCallback(async () => {
     logger.log('handleContinueSession()')
     const sessionConversation = useStore.getState().activeSessionDetail?.conversation
-    
+
     // Get the editor content and process mentions to use full paths
     let responseInput = ''
     if (responseEditor) {
       const json = responseEditor.getJSON()
-      
+
       const processNode = (node: any): string => {
         if (node.type === 'text') {
           return node.text || ''
@@ -69,12 +69,12 @@ export function useSessionActions({
         }
         return ''
       }
-      
+
       if (json.content) {
         responseInput = json.content.map(processNode).join('\n')
       }
     }
-    
+
     if (!responseInput?.trim() || isResponding) return
 
     try {

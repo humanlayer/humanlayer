@@ -12,7 +12,7 @@ export default [
     ...js.configs.recommended,
   },
   {
-    files: ['src/**/*.{ts,tsx}'],
+    files: ['src/**/*.{ts,tsx}', 'testing-library.ts'],
     languageOptions: {
       parser: tseslint.parser,
       parserOptions: {
@@ -23,6 +23,7 @@ export default [
       },
       globals: {
         ...globals.browser,
+        expect: 'readonly',
       },
     },
     plugins: {
