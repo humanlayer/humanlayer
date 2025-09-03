@@ -38,19 +38,6 @@ describe('useFileBrowser', () => {
     })
   })
 
-  // Helper to wait for the debounce and results
-  const waitForResults = async (result: any, expectedLength?: number) => {
-    await waitFor(
-      () => {
-        expect(result.current.isLoading).toBe(false)
-        if (expectedLength !== undefined) {
-          expect(result.current.results.length).toBe(expectedLength)
-        }
-      },
-      { timeout: 1000 },
-    )
-  }
-
   test('returns empty results for empty search path', () => {
     const { result } = renderHook(() => useFileBrowser(''))
 
@@ -61,12 +48,11 @@ describe('useFileBrowser', () => {
 
   test('expands home directory in paths', async () => {
     // Set up the mock to:
-    // 1. First call succeeds (checking if ~/Documents is a directory) 
+    // 1. First call succeeds (checking if ~/Documents is a directory)
     // 2. Second call returns the directory contents
-    mockReadDir.mockResolvedValueOnce([])  // First call when checking if it's a directory
-      .mockResolvedValueOnce([
-        { name: 'file.ts', isFile: true, isDirectory: false, isSymlink: false },
-      ])
+    mockReadDir
+      .mockResolvedValueOnce([]) // First call when checking if it's a directory
+      .mockResolvedValueOnce([{ name: 'file.ts', isFile: true, isDirectory: false, isSymlink: false }])
 
     const { result } = renderHook(() => useFileBrowser('~/Documents', { includeFiles: true }))
 

@@ -31,7 +31,6 @@ export function useFileBrowser(searchPath: string, options: FileBrowserOptions =
   const fileExtensionsKey = fileExtensions.join(',')
 
   useEffect(() => {
-
     if (!searchPath) {
       setResults([])
       setIsLoading(false)
@@ -81,7 +80,6 @@ export function useFileBrowser(searchPath: string, options: FileBrowserOptions =
             }
           }
         }
-
 
         // Expand home directory if needed
         if (dirPath === '~' || dirPath.startsWith('~/')) {
