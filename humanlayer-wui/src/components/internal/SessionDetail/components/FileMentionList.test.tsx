@@ -290,7 +290,7 @@ describe('FileMentionList', () => {
     expect(mockUseFileBrowser).toHaveBeenCalledWith('~', expect.any(Object))
   })
 
-  test.skip('parses absolute path from root', () => {
+  test('parses absolute path from root', () => {
     mockUseFileBrowser.mockReturnValue({
       results: [],
       isLoading: false,
@@ -299,11 +299,11 @@ describe('FileMentionList', () => {
 
     render(<FileMentionList query="/src/components" command={mockCommand} editor={mockEditor} />)
 
-    // Should parse as root path with search
-    expect(mockUseFileBrowser).toHaveBeenCalledWith('//components', expect.any(Object))
+    // Should parse /src/components as searching for "components" in "/src" directory
+    expect(mockUseFileBrowser).toHaveBeenCalledWith('/src/components', expect.any(Object))
   })
 
-  test.skip('parses absolute path from home', () => {
+  test('parses absolute path from home', () => {
     mockUseFileBrowser.mockReturnValue({
       results: [],
       isLoading: false,
@@ -312,8 +312,8 @@ describe('FileMentionList', () => {
 
     render(<FileMentionList query="~/Documents/project" command={mockCommand} editor={mockEditor} />)
 
-    // Should parse as home path with search
-    expect(mockUseFileBrowser).toHaveBeenCalledWith('~/project', expect.any(Object))
+    // Should parse ~/Documents/project as searching for "project" in "~/Documents" directory
+    expect(mockUseFileBrowser).toHaveBeenCalledWith('~/Documents/project', expect.any(Object))
   })
 
   test('handles relative path navigation', () => {
@@ -356,18 +356,12 @@ describe('FileMentionList', () => {
     expect(result).toBe(true) // Should handle the event
   })
 
-  test.skip('scrolls selected item into view', async () => {
+  test('scrolls selected item into view', async () => {
     const mockScrollIntoView = mock()
 
-    // Mock scrollIntoView on buttons
-    const originalQuerySelector = document.querySelector
-    document.querySelector = mock(selector => {
-      const element = originalQuerySelector.call(document, selector)
-      if (element && element.tagName === 'BUTTON') {
-        element.scrollIntoView = mockScrollIntoView
-      }
-      return element
-    })
+    // Mock scrollIntoView on HTMLElement prototype
+    const originalScrollIntoView = HTMLElement.prototype.scrollIntoView
+    HTMLElement.prototype.scrollIntoView = mockScrollIntoView
 
     mockUseFileBrowser.mockReturnValue({
       results: Array.from({ length: 10 }, (_, i) => ({
@@ -386,17 +380,20 @@ describe('FileMentionList', () => {
 
     // Navigate down to trigger scroll
     const event = new KeyboardEvent('keydown', { key: 'ArrowDown' })
-    ref.current?.onKeyDown({ event })
+    const handled = ref.current?.onKeyDown({ event })
+    expect(handled).toBe(true)
 
+    // Wait for useEffect to trigger scrollIntoView
     await waitFor(() => {
+      expect(mockScrollIntoView).toHaveBeenCalled()
       expect(mockScrollIntoView).toHaveBeenCalledWith({
         behavior: 'smooth',
         block: 'nearest',
       })
     })
 
-    // Restore original querySelector
-    document.querySelector = originalQuerySelector
+    // Restore original scrollIntoView
+    HTMLElement.prototype.scrollIntoView = originalScrollIntoView
   })
 
   test('updates selection on hover', async () => {

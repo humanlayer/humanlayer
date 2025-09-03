@@ -399,10 +399,11 @@ export const FileMentionList = forwardRef<FileMentionListRef, FileMentionListPro
               onClick={() => handleItemClick(item)}
               onMouseEnter={() => handleMouseEnter(index)}
               className={cn(
-                'flex w-full items-center gap-2 px-2 py-1.5 text-sm text-left rounded-sm transition-colors',
-                'hover:bg-accent hover:text-accent-foreground',
-                'focus:bg-accent focus:text-accent-foreground focus:outline-none',
-                selectedIndex === index && 'bg-accent text-accent-foreground',
+                'flex w-full items-center gap-2 px-2 py-1.5 text-sm text-left transition-colors duration-200 border-l-2',
+                selectedIndex === index
+                  ? 'border-l-[var(--terminal-accent)]'
+                  : 'border-l-transparent hover:border-l-[var(--terminal-accent-dim)]',
+                'focus:outline-none',
               )}
               role="menuitem"
               aria-selected={selectedIndex === index}
