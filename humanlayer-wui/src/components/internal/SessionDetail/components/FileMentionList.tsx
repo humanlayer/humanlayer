@@ -124,7 +124,7 @@ export const FileMentionList = forwardRef<FileMentionListRef, FileMentionListPro
           ? currentPath === '/'
             ? `/${searchQuery}`
             : `${currentPath}/${searchQuery}`
-          : currentPath
+          : `${currentPath}/` // Add trailing slash when listing current directory
 
     // Memoize the options to prevent re-runs
     const fileBrowserOptions = useMemo(

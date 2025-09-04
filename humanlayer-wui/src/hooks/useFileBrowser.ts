@@ -56,10 +56,7 @@ export function useFileBrowser(searchPath: string, options: FileBrowserOptions =
           dirPath = searchPath.slice(0, -1) // Remove trailing slash
           searchQuery = ''
         } else {
-          // For paths without trailing slash, we need to decide:
-          // - If it's a complete directory path (e.g., /Users/name/project)
-          // - Or if it's a search query in a parent directory
-          
+          // For paths without trailing slash, parse to find search query
           const lastSlashIndex = searchPath.lastIndexOf('/')
           if (lastSlashIndex === -1) {
             // No slash at all - always treat as search in current directory
@@ -67,37 +64,15 @@ export function useFileBrowser(searchPath: string, options: FileBrowserOptions =
             // jumping into a directory that happens to match
             dirPath = '.'
             searchQuery = searchPath
-          } else if (lastSlashIndex === 0) {
-            // Path like "/something" - could be root directory item or absolute path
-            // Treat as listing the directory if it starts with common absolute path prefixes
-            dirPath = searchPath
-            searchQuery = ''
           } else {
-            // Has a slash in middle - check if this looks like a complete directory path
-            // vs a search pattern. Directory paths typically start with / or common prefixes
-            const looksLikeCompletePath = searchPath.startsWith('/') || 
-                                         searchPath.startsWith('./') || 
-                                         searchPath.startsWith('../')
+            // Has a slash - split at the last slash to separate directory from search
+            const pathBeforeSlash = searchPath.substring(0, lastSlashIndex) || '/'
+            const pathAfterSlash = searchPath.substring(lastSlashIndex + 1)
             
-            if (looksLikeCompletePath && !searchPath.includes('*') && !searchPath.includes('?')) {
-              // Looks like a complete directory path, list its contents
-              dirPath = searchPath
-              searchQuery = ''
-            } else {
-              // Treat as search pattern - split at last slash
-              const pathBeforeSlash = searchPath.substring(0, lastSlashIndex) || '/'
-              const pathAfterSlash = searchPath.substring(lastSlashIndex + 1)
-              
-              if (pathAfterSlash) {
-                // There's text after the slash - treat as search in the parent directory
-                dirPath = pathBeforeSlash
-                searchQuery = pathAfterSlash
-              } else {
-                // Nothing after slash - list directory contents
-                dirPath = pathBeforeSlash
-                searchQuery = ''
-              }
-            }
+            // Always treat the part after the slash as the search query if it exists
+            // The part before the slash is the directory to search in
+            dirPath = pathBeforeSlash
+            searchQuery = pathAfterSlash
           }
         }
 
