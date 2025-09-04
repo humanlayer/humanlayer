@@ -849,28 +849,30 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
         </div>
 
         {/* Controlled tooltip for file mentions */}
-        <Tooltip open={tooltipState?.open || false}>
-          <TooltipTrigger asChild>
-            <div
-              ref={virtualAnchor}
-              style={{
-                position: 'fixed',
-                left: tooltipState?.x || 0,
-                top: tooltipState?.y || 0,
-                width: 1,
-                height: 1,
-                pointerEvents: 'none',
-              }}
-              aria-hidden="true"
-            />
-          </TooltipTrigger>
-          <TooltipContent side="top" sideOffset={8} className="max-w-[400px] break-all">
-            <div className="flex flex-col gap-1">
-              <div className="font-mono text-xs">{tooltipState?.content}</div>
-              <div className="text-xs opacity-70">Click to open in default editor</div>
-            </div>
-          </TooltipContent>
-        </Tooltip>
+        {tooltipState?.open && tooltipState?.content && (
+          <Tooltip open={true}>
+            <TooltipTrigger asChild>
+              <div
+                ref={virtualAnchor}
+                style={{
+                  position: 'fixed',
+                  left: tooltipState.x,
+                  top: tooltipState.y,
+                  width: 1,
+                  height: 1,
+                  pointerEvents: 'none',
+                }}
+                aria-hidden="true"
+              />
+            </TooltipTrigger>
+            <TooltipContent side="top" sideOffset={8} className="whitespace-nowrap">
+              <div className="flex flex-col gap-1">
+                <div className="font-mono text-xs">{tooltipState.content}</div>
+                <div className="text-[10px] opacity-70 text-right">click to open in default editor</div>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        )}
       </>
     )
   },
