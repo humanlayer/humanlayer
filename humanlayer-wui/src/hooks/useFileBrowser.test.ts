@@ -47,7 +47,9 @@ describe('useFileBrowser', () => {
   })
 
   test('expands home directory in paths', async () => {
-    mockReadDir.mockResolvedValueOnce([{ name: 'file.ts', isFile: true, isDirectory: false, isSymlink: false }])
+    mockReadDir.mockResolvedValueOnce([
+      { name: 'file.ts', isFile: true, isDirectory: false, isSymlink: false },
+    ])
 
     const { result } = renderHook(() => useFileBrowser('~/Documents/', { includeFiles: true }))
 
@@ -132,8 +134,8 @@ describe('useFileBrowser', () => {
       { name: 'package.json', isFile: true, isDirectory: false, isSymlink: false },
     ])
 
-    const { result } = renderHook(() => 
-      useFileBrowser('/Users/test/project/release', { includeFiles: true })
+    const { result } = renderHook(() =>
+      useFileBrowser('/Users/test/project/release', { includeFiles: true }),
     )
 
     await waitFor(
@@ -161,9 +163,7 @@ describe('useFileBrowser', () => {
       { name: 'src', isFile: false, isDirectory: true, isSymlink: false },
     ])
 
-    const { result } = renderHook(() => 
-      useFileBrowser('/Users/test/project/', { includeFiles: true })
-    )
+    const { result } = renderHook(() => useFileBrowser('/Users/test/project/', { includeFiles: true }))
 
     await waitFor(
       () => {

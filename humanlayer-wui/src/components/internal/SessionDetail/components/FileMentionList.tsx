@@ -239,12 +239,12 @@ export const FileMentionList = forwardRef<FileMentionListRef, FileMentionListPro
       if (item.isDirectory) {
         // Navigate into the directory using the full path to preserve context
         let newPath: string
-        
+
         // Use the fullPath from the item to maintain proper context
         // Convert absolute paths to relative paths for the editor
         const fullPath = item.fullPath
         const workingDir = sessionWorkingDir || '~'
-        
+
         // If the path is within the working directory, make it relative
         if (workingDir !== '~' && fullPath.startsWith(workingDir + '/')) {
           // Remove the working directory prefix and trailing slash
@@ -346,28 +346,33 @@ export const FileMentionList = forwardRef<FileMentionListRef, FileMentionListPro
                 <FileIcon className="h-4 w-4 text-muted-foreground" />
               )}
               <span className="flex-1 truncate">
-                {searchQuery && item.matches?.length ? (() => {
-                  const match = item.matches.find(m => m.key === 'name')
-                  if (match && match.indices) {
-                    const segments = highlightMatches(item.name || '', match.indices)
+                {searchQuery && item.matches?.length ? (
+                  (() => {
+                    const match = item.matches.find(m => m.key === 'name')
+                    if (match && match.indices) {
+                      const segments = highlightMatches(item.name || '', match.indices)
+                      return (
+                        <>
+                          {segments.map((segment, i) => (
+                            <span
+                              key={i}
+                              className={cn(segment.highlighted && 'bg-accent/40 font-medium')}
+                            >
+                              {segment.text}
+                            </span>
+                          ))}
+                          {item.isDirectory && <span className="ml-1 text-muted-foreground">/</span>}
+                        </>
+                      )
+                    }
                     return (
                       <>
-                        {segments.map((segment, i) => (
-                          <span key={i} className={cn(segment.highlighted && 'bg-accent/40 font-medium')}>
-                            {segment.text}
-                          </span>
-                        ))}
+                        {item.name}
                         {item.isDirectory && <span className="ml-1 text-muted-foreground">/</span>}
                       </>
                     )
-                  }
-                  return (
-                    <>
-                      {item.name}
-                      {item.isDirectory && <span className="ml-1 text-muted-foreground">/</span>}
-                    </>
-                  )
-                })() : (
+                  })()
+                ) : (
                   <>
                     {item.name}
                     {item.isDirectory && <span className="ml-1 text-muted-foreground">/</span>}

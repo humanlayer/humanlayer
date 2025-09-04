@@ -119,9 +119,9 @@ describe('FileMentionList', () => {
       expect(screen.getByText('components')).toBeInTheDocument()
     })
 
-    // Check for folder indicator
+    // Check for folder indicator (slash after folder name)
     const folderButton = screen.getByText('components').closest('button')
-    expect(folderButton?.textContent).toContain('Press Enter to open')
+    expect(folderButton?.textContent).toContain('components/')
   })
 
   test('handles file selection on click', async () => {
@@ -195,8 +195,8 @@ describe('FileMentionList', () => {
     // Path should be set to home
     expect(screen.getByText('Files & Folders')).toBeInTheDocument()
 
-    // Should be called with home path
-    expect(mockUseFileBrowser).toHaveBeenCalledWith('~', expect.any(Object))
+    // Should be called with home path (with trailing slash for directory listing)
+    expect(mockUseFileBrowser).toHaveBeenCalledWith('~/', expect.any(Object))
   })
 
   test('shows current path when not in default directory', () => {
@@ -256,8 +256,8 @@ describe('FileMentionList', () => {
 
     render(<FileMentionList query="" command={mockCommand} editor={mockEditor} />)
 
-    // Should use session working directory
-    expect(mockUseFileBrowser).toHaveBeenCalledWith('/custom/project', expect.any(Object))
+    // Should use session working directory (with trailing slash for directory listing)
+    expect(mockUseFileBrowser).toHaveBeenCalledWith('/custom/project/', expect.any(Object))
   })
 
   test('falls back to home when no session working directory', () => {
@@ -286,8 +286,8 @@ describe('FileMentionList', () => {
 
     render(<FileMentionList query="" command={mockCommand} editor={mockEditor} />)
 
-    // Should fall back to home directory
-    expect(mockUseFileBrowser).toHaveBeenCalledWith('~', expect.any(Object))
+    // Should fall back to home directory (with trailing slash for directory listing)
+    expect(mockUseFileBrowser).toHaveBeenCalledWith('~/', expect.any(Object))
   })
 
   test('parses absolute path from root', () => {
@@ -490,7 +490,7 @@ describe('FileMentionList', () => {
     // This test demonstrates the bug: when typing "@humanlayer" (without slash)
     // in a project where the working directory is /Users/nyx/dev/humanlayer/humanlayer,
     // it finds the subdirectory /Users/nyx/dev/humanlayer/humanlayer/humanlayer
-    
+
     // Set up working directory
     useStore.setState({
       activeSessionDetail: {
@@ -511,8 +511,18 @@ describe('FileMentionList', () => {
 
     mockUseFileBrowser.mockReturnValue({
       results: [
-        { name: 'cli', isDirectory: true, isFile: false, fullPath: '/Users/nyx/dev/humanlayer/humanlayer/humanlayer/cli' },
-        { name: 'core', isDirectory: true, isFile: false, fullPath: '/Users/nyx/dev/humanlayer/humanlayer/humanlayer/core' },
+        {
+          name: 'cli',
+          isDirectory: true,
+          isFile: false,
+          fullPath: '/Users/nyx/dev/humanlayer/humanlayer/humanlayer/cli',
+        },
+        {
+          name: 'core',
+          isDirectory: true,
+          isFile: false,
+          fullPath: '/Users/nyx/dev/humanlayer/humanlayer/humanlayer/core',
+        },
       ],
       isLoading: false,
       error: null,
@@ -531,7 +541,7 @@ describe('FileMentionList', () => {
 
   test('handles query with trailing slash correctly', () => {
     // This test shows the behavior when user types "@humanlayer/" with a slash
-    
+
     useStore.setState({
       activeSessionDetail: {
         session: {
@@ -551,14 +561,24 @@ describe('FileMentionList', () => {
 
     mockUseFileBrowser.mockReturnValue({
       results: [
-        { name: 'cli', isDirectory: true, isFile: false, fullPath: '/Users/nyx/dev/humanlayer/humanlayer/humanlayer/cli' },
-        { name: 'core', isDirectory: true, isFile: false, fullPath: '/Users/nyx/dev/humanlayer/humanlayer/humanlayer/core' },
+        {
+          name: 'cli',
+          isDirectory: true,
+          isFile: false,
+          fullPath: '/Users/nyx/dev/humanlayer/humanlayer/humanlayer/cli',
+        },
+        {
+          name: 'core',
+          isDirectory: true,
+          isFile: false,
+          fullPath: '/Users/nyx/dev/humanlayer/humanlayer/humanlayer/core',
+        },
       ],
       isLoading: false,
       error: null,
     })
 
-    // User types "@humanlayer/" with trailing slash  
+    // User types "@humanlayer/" with trailing slash
     render(<FileMentionList query="humanlayer/" command={mockCommand} editor={mockEditor} />)
 
     // With trailing slash, it treats "humanlayer" as a directory to navigate into
@@ -572,7 +592,7 @@ describe('FileMentionList', () => {
   test('clicking folder after query without slash preserves full path context', async () => {
     // This test verifies the fix: when clicking on a folder after typing "@humanlayer"
     // The navigation should preserve the full path context
-    
+
     useStore.setState({
       activeSessionDetail: {
         session: {
@@ -594,8 +614,18 @@ describe('FileMentionList', () => {
     // The paths are correct - they exist at /Users/nyx/dev/humanlayer/humanlayer/humanlayer/cli etc
     mockUseFileBrowser.mockReturnValue({
       results: [
-        { name: 'cli', isDirectory: true, isFile: false, fullPath: '/Users/nyx/dev/humanlayer/humanlayer/humanlayer/cli' },
-        { name: 'core', isDirectory: true, isFile: false, fullPath: '/Users/nyx/dev/humanlayer/humanlayer/humanlayer/core' },
+        {
+          name: 'cli',
+          isDirectory: true,
+          isFile: false,
+          fullPath: '/Users/nyx/dev/humanlayer/humanlayer/humanlayer/cli',
+        },
+        {
+          name: 'core',
+          isDirectory: true,
+          isFile: false,
+          fullPath: '/Users/nyx/dev/humanlayer/humanlayer/humanlayer/core',
+        },
       ],
       isLoading: false,
       error: null,
@@ -616,14 +646,14 @@ describe('FileMentionList', () => {
     // The relative path should be "humanlayer/cli/"
     expect(mockDispatch).toHaveBeenCalled()
     expect(mockText).toHaveBeenCalledWith('@humanlayer/cli/')
-    
+
     // Now when "@humanlayer/cli/" is processed, it will correctly resolve to
     // /Users/nyx/dev/humanlayer/humanlayer/humanlayer/cli
   })
 
   test('handles absolute paths correctly when clicking folders', async () => {
     // Test that absolute paths are preserved when navigating outside working directory
-    
+
     useStore.setState({
       activeSessionDetail: {
         session: {
@@ -656,7 +686,7 @@ describe('FileMentionList', () => {
       expect(screen.getByText('bin')).toBeInTheDocument()
     })
 
-    // Click on the "bin" folder  
+    // Click on the "bin" folder
     fireEvent.click(screen.getByText('bin'))
 
     // Should preserve absolute path since it's outside working directory
@@ -666,7 +696,7 @@ describe('FileMentionList', () => {
 
   test('handles home directory paths correctly when clicking folders', async () => {
     // Test that home directory paths are preserved
-    
+
     useStore.setState({
       activeSessionDetail: {
         session: {
@@ -709,7 +739,7 @@ describe('FileMentionList', () => {
 
   test('Enter key preserves full path context when navigating folders', () => {
     // Test that Enter key uses the same logic as clicking
-    
+
     useStore.setState({
       activeSessionDetail: {
         session: {
@@ -729,8 +759,18 @@ describe('FileMentionList', () => {
 
     mockUseFileBrowser.mockReturnValue({
       results: [
-        { name: 'cli', isDirectory: true, isFile: false, fullPath: '/Users/nyx/dev/humanlayer/humanlayer/humanlayer/cli' },
-        { name: 'core', isDirectory: true, isFile: false, fullPath: '/Users/nyx/dev/humanlayer/humanlayer/humanlayer/core' },
+        {
+          name: 'cli',
+          isDirectory: true,
+          isFile: false,
+          fullPath: '/Users/nyx/dev/humanlayer/humanlayer/humanlayer/cli',
+        },
+        {
+          name: 'core',
+          isDirectory: true,
+          isFile: false,
+          fullPath: '/Users/nyx/dev/humanlayer/humanlayer/humanlayer/core',
+        },
       ],
       isLoading: false,
       error: null,

@@ -68,7 +68,7 @@ export function useFileBrowser(searchPath: string, options: FileBrowserOptions =
             // Has a slash - split at the last slash to separate directory from search
             const pathBeforeSlash = searchPath.substring(0, lastSlashIndex) || '/'
             const pathAfterSlash = searchPath.substring(lastSlashIndex + 1)
-            
+
             // Always treat the part after the slash as the search query if it exists
             // The part before the slash is the directory to search in
             dirPath = pathBeforeSlash
