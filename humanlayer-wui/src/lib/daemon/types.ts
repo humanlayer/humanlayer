@@ -39,6 +39,7 @@ export interface LaunchSessionParams {
   permissionPromptTool?: string
   maxTurns?: number
   autoAcceptEdits?: boolean
+  dangerouslySkipPermissions?: boolean
   proxyApiKey?: string
   additionalDirectories?: string[]
   // Add any WUI-specific extensions if needed

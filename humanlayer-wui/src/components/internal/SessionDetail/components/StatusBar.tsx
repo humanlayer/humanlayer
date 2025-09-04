@@ -33,7 +33,7 @@ export function StatusBar({
   const defaultStatusText = renderSessionStatus(session).toUpperCase()
   const statusText = statusOverride?.text || defaultStatusText
   const statusClassName = statusOverride?.className || getStatusTextClass(session.status)
-  
+
   // Show proxy model if using OpenRouter, otherwise show regular model
   const rawModelText =
     session.proxyEnabled && session.proxyModelOverride
@@ -49,9 +49,7 @@ export function StatusBar({
   return (
     <div className="flex flex-wrap items-center gap-2 text-sm">
       {/* Status Badge */}
-      <span
-        className={`font-mono text-xs uppercase tracking-wider ${statusClassName}`}
-      >
+      <span className={`font-mono text-xs uppercase tracking-wider ${statusClassName}`}>
         {statusText}
       </span>
 
