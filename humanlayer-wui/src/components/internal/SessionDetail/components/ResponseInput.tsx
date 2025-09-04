@@ -135,27 +135,85 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
 
     useEffect(() => {
       let unlisten: UnlistenFn | undefined
+      let mounted = true
+      let isSettingUp = true
+
       ;(async () => {
-        unlisten = await getCurrentWebview().onDragDropEvent(event => {
-          if (event.payload.type === 'over') {
-            console.log('User hovering', event.payload.position)
-            setIsDragHover(true)
-          } else if (event.payload.type === 'drop') {
-            console.log('User dropped', event.payload.paths)
-            setIsDragHover(false)
+        try {
+          const unlistenFn = await getCurrentWebview().onDragDropEvent(event => {
+            if (!mounted) {
+              return
+            }
+
+            if (event.payload.type === 'over') {
+              setIsDragHover(true)
+            } else if (event.payload.type === 'drop') {
+              // Insert dropped files as mentions
+              const filePaths = event.payload.paths as string[]
+              if (responseEditor && filePaths.length > 0) {
+                // Check editor health before proceeding
+                if (responseEditor.isDestroyed) {
+                  return
+                }
+
+                if (!(responseEditor as any).editorView) {
+                  return
+                }
+
+                // Build content array with mentions
+                const content: any[] = []
+
+                filePaths.forEach((filePath, index) => {
+                  const fileName = filePath.split('/').pop() || filePath
+
+                  // Add space before mention if not first file
+                  if (index > 0) {
+                    content.push({ type: 'text', text: ' ' })
+                  }
+
+                  // Add the mention
+                  content.push({
+                    type: 'mention',
+                    attrs: {
+                      id: filePath, // Full path for functionality
+                      label: fileName, // Display name for UI
+                    },
+                  })
+                })
+
+                // Add a space after all mentions
+                content.push({ type: 'text', text: ' ' })
+
+                // Insert all mentions at once
+                responseEditor.chain().focus().insertContent(content).run()
+              }
+
+              setIsDragHover(false)
+            } else {
+              setIsDragHover(false)
+            }
+          })
+
+          // Store the unlisten function if component is still mounted
+          if (mounted && isSettingUp) {
+            unlisten = unlistenFn
           } else {
-            console.log('File drop cancelled')
-            setIsDragHover(false)
+            // Component unmounted during async setup, clean up immediately
+            unlistenFn()
           }
-        })
+        } finally {
+          isSettingUp = false
+        }
       })()
 
       return () => {
+        mounted = false
+        isSettingUp = false
         if (unlisten) {
           unlisten()
         }
       }
-    }, [])
+    }, [responseEditor])
 
     useHotkeys(
       'escape',

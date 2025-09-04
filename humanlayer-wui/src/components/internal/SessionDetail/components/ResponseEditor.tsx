@@ -811,7 +811,7 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
         cleanup?.()
         editor.off('update', updateHandler)
       }
-    }, [editor, tooltipState])
+    }, [editor])
 
     // Handle keyboard events
     useEffect(() => {
