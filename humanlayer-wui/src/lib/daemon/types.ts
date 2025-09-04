@@ -178,7 +178,6 @@ export interface LaunchSessionRequest {
   mcp_config?: any
   permission_prompt_tool?: string
   working_dir?: string
-  additional_directories?: string[]
   max_turns?: number
   system_prompt?: string
   append_system_prompt?: string
@@ -304,7 +303,6 @@ export interface ContinueSessionRequest {
   permission_prompt_tool?: string
   allowed_tools?: string[]
   disallowed_tools?: string[]
-  additional_directories?: string[]
   custom_instructions?: string
   max_turns?: number
 }

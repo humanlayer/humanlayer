@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -102,9 +101,6 @@ func (h *SessionHandlers) CreateSession(ctx context.Context, req api.CreateSessi
 	}
 	if req.Body.DisallowedTools != nil {
 		config.DisallowedTools = *req.Body.DisallowedTools
-	}
-	if req.Body.AdditionalDirectories != nil {
-		config.AdditionalDirectories = *req.Body.AdditionalDirectories
 	}
 	if req.Body.CustomInstructions != nil {
 		config.CustomInstructions = *req.Body.CustomInstructions
@@ -353,24 +349,6 @@ func (h *SessionHandlers) UpdateSession(ctx context.Context, req api.UpdateSessi
 	}
 	if req.Body.ProxyApiKey != nil {
 		update.ProxyAPIKey = req.Body.ProxyApiKey // Intentional: ProxyApiKey -> ProxyAPIKey
-	}
-
-	// Update additional directories if specified
-	if req.Body.AdditionalDirectories != nil {
-		// Convert to JSON string for storage
-		dirJSON, err := json.Marshal(req.Body.AdditionalDirectories)
-		if err == nil {
-			dirStr := string(dirJSON)
-			update.AdditionalDirectories = &dirStr
-			slog.Info("Updating additional directories",
-				"sessionId", req.Id,
-				"directories", req.Body.AdditionalDirectories,
-				"dirStr", dirStr)
-		} else {
-			slog.Error("Failed to marshal additional directories",
-				"error", err,
-				"directories", req.Body.AdditionalDirectories)
-		}
 	}
 
 	err := h.manager.UpdateSessionSettings(ctx, string(req.Id), update)
