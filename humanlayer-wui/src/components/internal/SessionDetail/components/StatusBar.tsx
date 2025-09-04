@@ -14,7 +14,10 @@ interface StatusBarProps {
   isForkMode?: boolean
   forkTokenCount?: number | null
   onModelChange?: () => void
-  isDenying?: boolean
+  statusOverride?: {
+    text: string
+    className?: string
+  }
 }
 
 export function StatusBar({
@@ -23,11 +26,14 @@ export function StatusBar({
   isForkMode,
   forkTokenCount,
   onModelChange,
-  isDenying,
+  statusOverride,
 }: StatusBarProps) {
   const [isModelSelectorOpen, setIsModelSelectorOpen] = useState(false)
 
-  let statusText = renderSessionStatus(session).toUpperCase()
+  const defaultStatusText = renderSessionStatus(session).toUpperCase()
+  const statusText = statusOverride?.text || defaultStatusText
+  const statusClassName = statusOverride?.className || getStatusTextClass(session.status)
+  
   // Show proxy model if using OpenRouter, otherwise show regular model
   const rawModelText =
     session.proxyEnabled && session.proxyModelOverride
@@ -40,17 +46,11 @@ export function StatusBar({
   const isRunning = session.status === 'running' || session.status === 'starting'
   const isReadyForInput = session.status === 'completed' && !session.archived
 
-  if (isDenying) {
-    statusText = 'Denying'
-  }
-
   return (
     <div className="flex flex-wrap items-center gap-2 text-sm">
       {/* Status Badge */}
       <span
-        className={`font-mono text-xs uppercase tracking-wider ${getStatusTextClass(session.status)} ${
-          isDenying ? 'text-destructive' : ''
-        }`}
+        className={`font-mono text-xs uppercase tracking-wider ${statusClassName}`}
       >
         {statusText}
       </span>
