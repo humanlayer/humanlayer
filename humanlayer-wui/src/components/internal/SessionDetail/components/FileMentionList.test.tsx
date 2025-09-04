@@ -485,4 +485,267 @@ describe('FileMentionList', () => {
     // Should have selection indicator (border)
     expect(file2Button).toHaveClass('border-l-[var(--terminal-accent)]')
   })
+
+  test('handles query without trailing slash when it matches a subdirectory', () => {
+    // This test demonstrates the bug: when typing "@humanlayer" (without slash)
+    // in a project where the working directory is /Users/nyx/dev/humanlayer/humanlayer,
+    // it finds the subdirectory /Users/nyx/dev/humanlayer/humanlayer/humanlayer
+    
+    // Set up working directory
+    useStore.setState({
+      activeSessionDetail: {
+        session: {
+          id: 'test-id',
+          runId: 'test-run',
+          status: 'active' as any,
+          query: 'test query',
+          createdAt: new Date(),
+          lastActivityAt: new Date(),
+          workingDir: '/Users/nyx/dev/humanlayer/humanlayer',
+        },
+        conversation: [],
+        loading: false,
+        error: null,
+      },
+    })
+
+    mockUseFileBrowser.mockReturnValue({
+      results: [
+        { name: 'cli', isDirectory: true, isFile: false, fullPath: '/Users/nyx/dev/humanlayer/humanlayer/humanlayer/cli' },
+        { name: 'core', isDirectory: true, isFile: false, fullPath: '/Users/nyx/dev/humanlayer/humanlayer/humanlayer/core' },
+      ],
+      isLoading: false,
+      error: null,
+    })
+
+    // User types "@humanlayer" without trailing slash
+    render(<FileMentionList query="humanlayer" command={mockCommand} editor={mockEditor} />)
+
+    // The path becomes /Users/nyx/dev/humanlayer/humanlayer/humanlayer
+    // because "humanlayer" is treated as a search/navigation term
+    expect(mockUseFileBrowser).toHaveBeenCalledWith(
+      '/Users/nyx/dev/humanlayer/humanlayer/humanlayer',
+      expect.any(Object),
+    )
+  })
+
+  test('handles query with trailing slash correctly', () => {
+    // This test shows the behavior when user types "@humanlayer/" with a slash
+    
+    useStore.setState({
+      activeSessionDetail: {
+        session: {
+          id: 'test-id',
+          runId: 'test-run',
+          status: 'active' as any,
+          query: 'test query',
+          createdAt: new Date(),
+          lastActivityAt: new Date(),
+          workingDir: '/Users/nyx/dev/humanlayer/humanlayer',
+        },
+        conversation: [],
+        loading: false,
+        error: null,
+      },
+    })
+
+    mockUseFileBrowser.mockReturnValue({
+      results: [
+        { name: 'cli', isDirectory: true, isFile: false, fullPath: '/Users/nyx/dev/humanlayer/humanlayer/humanlayer/cli' },
+        { name: 'core', isDirectory: true, isFile: false, fullPath: '/Users/nyx/dev/humanlayer/humanlayer/humanlayer/core' },
+      ],
+      isLoading: false,
+      error: null,
+    })
+
+    // User types "@humanlayer/" with trailing slash  
+    render(<FileMentionList query="humanlayer/" command={mockCommand} editor={mockEditor} />)
+
+    // With trailing slash, it treats "humanlayer" as a directory to navigate into
+    // The path includes a trailing slash to list directory contents
+    expect(mockUseFileBrowser).toHaveBeenCalledWith(
+      '/Users/nyx/dev/humanlayer/humanlayer/humanlayer/',
+      expect.any(Object),
+    )
+  })
+
+  test('clicking folder after query without slash preserves full path context', async () => {
+    // This test verifies the fix: when clicking on a folder after typing "@humanlayer"
+    // The navigation should preserve the full path context
+    
+    useStore.setState({
+      activeSessionDetail: {
+        session: {
+          id: 'test-id',
+          runId: 'test-run',
+          status: 'active' as any,
+          query: 'test query',
+          createdAt: new Date(),
+          lastActivityAt: new Date(),
+          workingDir: '/Users/nyx/dev/humanlayer/humanlayer',
+        },
+        conversation: [],
+        loading: false,
+        error: null,
+      },
+    })
+
+    // These are the actual results when searching for "humanlayer" in the working directory
+    // The paths are correct - they exist at /Users/nyx/dev/humanlayer/humanlayer/humanlayer/cli etc
+    mockUseFileBrowser.mockReturnValue({
+      results: [
+        { name: 'cli', isDirectory: true, isFile: false, fullPath: '/Users/nyx/dev/humanlayer/humanlayer/humanlayer/cli' },
+        { name: 'core', isDirectory: true, isFile: false, fullPath: '/Users/nyx/dev/humanlayer/humanlayer/humanlayer/core' },
+      ],
+      isLoading: false,
+      error: null,
+    })
+
+    render(<FileMentionList query="humanlayer" command={mockCommand} editor={mockEditor} />)
+
+    await waitFor(() => {
+      expect(screen.getByText('cli')).toBeInTheDocument()
+    })
+
+    // Click on the "cli" folder
+    fireEvent.click(screen.getByText('cli'))
+
+    // FIX: The editor should be updated with the relative path from the working directory
+    // Since fullPath is /Users/nyx/dev/humanlayer/humanlayer/humanlayer/cli
+    // and workingDir is /Users/nyx/dev/humanlayer/humanlayer
+    // The relative path should be "humanlayer/cli/"
+    expect(mockDispatch).toHaveBeenCalled()
+    expect(mockText).toHaveBeenCalledWith('@humanlayer/cli/')
+    
+    // Now when "@humanlayer/cli/" is processed, it will correctly resolve to
+    // /Users/nyx/dev/humanlayer/humanlayer/humanlayer/cli
+  })
+
+  test('handles absolute paths correctly when clicking folders', async () => {
+    // Test that absolute paths are preserved when navigating outside working directory
+    
+    useStore.setState({
+      activeSessionDetail: {
+        session: {
+          id: 'test-id',
+          runId: 'test-run',
+          status: 'active' as any,
+          query: 'test query',
+          createdAt: new Date(),
+          lastActivityAt: new Date(),
+          workingDir: '/project',
+        },
+        conversation: [],
+        loading: false,
+        error: null,
+      },
+    })
+
+    mockUseFileBrowser.mockReturnValue({
+      results: [
+        { name: 'bin', isDirectory: true, isFile: false, fullPath: '/usr/bin' },
+        { name: 'lib', isDirectory: true, isFile: false, fullPath: '/usr/lib' },
+      ],
+      isLoading: false,
+      error: null,
+    })
+
+    render(<FileMentionList query="/usr" command={mockCommand} editor={mockEditor} />)
+
+    await waitFor(() => {
+      expect(screen.getByText('bin')).toBeInTheDocument()
+    })
+
+    // Click on the "bin" folder  
+    fireEvent.click(screen.getByText('bin'))
+
+    // Should preserve absolute path since it's outside working directory
+    expect(mockDispatch).toHaveBeenCalled()
+    expect(mockText).toHaveBeenCalledWith('@/usr/bin/')
+  })
+
+  test('handles home directory paths correctly when clicking folders', async () => {
+    // Test that home directory paths are preserved
+    
+    useStore.setState({
+      activeSessionDetail: {
+        session: {
+          id: 'test-id',
+          runId: 'test-run',
+          status: 'active' as any,
+          query: 'test query',
+          createdAt: new Date(),
+          lastActivityAt: new Date(),
+          workingDir: '/project',
+        },
+        conversation: [],
+        loading: false,
+        error: null,
+      },
+    })
+
+    mockUseFileBrowser.mockReturnValue({
+      results: [
+        { name: 'Documents', isDirectory: true, isFile: false, fullPath: '~/Documents' },
+        { name: 'Downloads', isDirectory: true, isFile: false, fullPath: '~/Downloads' },
+      ],
+      isLoading: false,
+      error: null,
+    })
+
+    render(<FileMentionList query="~" command={mockCommand} editor={mockEditor} />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Documents')).toBeInTheDocument()
+    })
+
+    // Click on the "Documents" folder
+    fireEvent.click(screen.getByText('Documents'))
+
+    // Should preserve home directory path
+    expect(mockDispatch).toHaveBeenCalled()
+    expect(mockText).toHaveBeenCalledWith('@~/Documents/')
+  })
+
+  test('Enter key preserves full path context when navigating folders', () => {
+    // Test that Enter key uses the same logic as clicking
+    
+    useStore.setState({
+      activeSessionDetail: {
+        session: {
+          id: 'test-id',
+          runId: 'test-run',
+          status: 'active' as any,
+          query: 'test query',
+          createdAt: new Date(),
+          lastActivityAt: new Date(),
+          workingDir: '/Users/nyx/dev/humanlayer/humanlayer',
+        },
+        conversation: [],
+        loading: false,
+        error: null,
+      },
+    })
+
+    mockUseFileBrowser.mockReturnValue({
+      results: [
+        { name: 'cli', isDirectory: true, isFile: false, fullPath: '/Users/nyx/dev/humanlayer/humanlayer/humanlayer/cli' },
+        { name: 'core', isDirectory: true, isFile: false, fullPath: '/Users/nyx/dev/humanlayer/humanlayer/humanlayer/core' },
+      ],
+      isLoading: false,
+      error: null,
+    })
+
+    const ref = { current: null as any }
+    render(<FileMentionList ref={ref} query="humanlayer" command={mockCommand} editor={mockEditor} />)
+
+    // Press Enter to select the first item (cli)
+    const event = new KeyboardEvent('keydown', { key: 'Enter' })
+    const handled = ref.current?.onKeyDown({ event })
+    expect(handled).toBe(true)
+
+    // Should update the editor with the correct relative path
+    expect(mockDispatch).toHaveBeenCalled()
+    expect(mockText).toHaveBeenCalledWith('@humanlayer/cli/')
+  })
 })

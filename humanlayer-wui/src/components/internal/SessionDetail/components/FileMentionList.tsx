@@ -191,74 +191,7 @@ export const FileMentionList = forwardRef<FileMentionListRef, FileMentionListPro
         event.preventDefault()
         const selected = results[selectedIndex]
         if (selected) {
-          if (selected.isDirectory) {
-            // Navigate into the directory instead of selecting it
-            // Build the new path correctly based on current context
-            let newPath: string
-
-            // Handle special cases for root and home navigation
-            if (query === '/' || query === '~') {
-              // User is at root or home, add folder name
-              newPath = `${query === '/' ? '/' : '~/'}${selected.name}/`
-            } else if (query.startsWith('/')) {
-              // In root navigation mode
-              const pathAfterRoot = query.substring(1)
-              if (pathAfterRoot.endsWith('/')) {
-                newPath = `/${pathAfterRoot}${selected.name}/`
-              } else if (pathAfterRoot.includes('/')) {
-                const pathBeforeSearch = pathAfterRoot.substring(0, pathAfterRoot.lastIndexOf('/') + 1)
-                newPath = `/${pathBeforeSearch}${selected.name}/`
-              } else {
-                newPath = `/${selected.name}/`
-              }
-            } else if (query.startsWith('~/')) {
-              // In home navigation mode
-              const pathAfterHome = query.substring(2)
-              if (pathAfterHome.endsWith('/')) {
-                newPath = `~/${pathAfterHome}${selected.name}/`
-              } else if (pathAfterHome.includes('/')) {
-                const pathBeforeSearch = pathAfterHome.substring(0, pathAfterHome.lastIndexOf('/') + 1)
-                newPath = `~/${pathBeforeSearch}${selected.name}/`
-              } else {
-                newPath = `~/${selected.name}/`
-              }
-            } else if (query === '') {
-              // At initial directory, just add the folder name
-              newPath = `${selected.name}/`
-            } else if (query.endsWith('/')) {
-              // Already in a folder, append the new folder
-              newPath = `${query}${selected.name}/`
-            } else if (query.includes('/')) {
-              // Searching within a folder, replace search with folder name
-              const pathBeforeSearch = query.substring(0, query.lastIndexOf('/') + 1)
-              newPath = `${pathBeforeSearch}${selected.name}/`
-            } else {
-              // Searching at initial directory, replace search with folder name
-              newPath = `${selected.name}/`
-            }
-
-            // We need to update the editor's mention query
-            // This is a bit tricky - we need to replace the current query with the new path
-            if (editor) {
-              const { state, dispatch } = editor.view
-              const { $from } = state.selection
-              const mentionStart = $from.pos - query.length - 1 // -1 for the @ character
-              const mentionEnd = $from.pos
-
-              const tr = state.tr.replaceRangeWith(
-                mentionStart,
-                mentionEnd,
-                state.schema.text(`@${newPath}`),
-              )
-              dispatch(tr)
-            }
-          } else {
-            // It's a file, select it
-            command({
-              id: selected.fullPath,
-              label: selected.name || '',
-            })
-          }
+          handleItemSelection(selected)
         }
         return true
       }
@@ -301,43 +234,30 @@ export const FileMentionList = forwardRef<FileMentionListRef, FileMentionListPro
       onKeyDown: ({ event }) => handleKeyDown(event),
     }))
 
-    // Handle item click
-    const handleItemClick = (item: (typeof results)[0]) => {
+    // Handle navigation into a directory or selection of a file
+    const handleItemSelection = (item: (typeof results)[0]) => {
       if (item.isDirectory) {
-        // Navigate into the directory - use same logic as Enter key
+        // Navigate into the directory using the full path to preserve context
         let newPath: string
-
-        // Handle special cases for root and home navigation
-        if (query === '/' || query === '~') {
-          newPath = `${query === '/' ? '/' : '~/'}${item.name}/`
-        } else if (query.startsWith('/')) {
-          const pathAfterRoot = query.substring(1)
-          if (pathAfterRoot.endsWith('/')) {
-            newPath = `/${pathAfterRoot}${item.name}/`
-          } else if (pathAfterRoot.includes('/')) {
-            const pathBeforeSearch = pathAfterRoot.substring(0, pathAfterRoot.lastIndexOf('/') + 1)
-            newPath = `/${pathBeforeSearch}${item.name}/`
-          } else {
-            newPath = `/${item.name}/`
-          }
-        } else if (query.startsWith('~/')) {
-          const pathAfterHome = query.substring(2)
-          if (pathAfterHome.endsWith('/')) {
-            newPath = `~/${pathAfterHome}${item.name}/`
-          } else if (pathAfterHome.includes('/')) {
-            const pathBeforeSearch = pathAfterHome.substring(0, pathAfterHome.lastIndexOf('/') + 1)
-            newPath = `~/${pathBeforeSearch}${item.name}/`
-          } else {
-            newPath = `~/${item.name}/`
-          }
-        } else if (query === '') {
-          newPath = `${item.name}/`
-        } else if (query.endsWith('/')) {
-          newPath = `${query}${item.name}/`
-        } else if (query.includes('/')) {
-          const pathBeforeSearch = query.substring(0, query.lastIndexOf('/') + 1)
-          newPath = `${pathBeforeSearch}${item.name}/`
+        
+        // Use the fullPath from the item to maintain proper context
+        // Convert absolute paths to relative paths for the editor
+        const fullPath = item.fullPath
+        const workingDir = sessionWorkingDir || '~'
+        
+        // If the path is within the working directory, make it relative
+        if (workingDir !== '~' && fullPath.startsWith(workingDir + '/')) {
+          // Remove the working directory prefix and trailing slash
+          const relativePath = fullPath.substring(workingDir.length + 1)
+          newPath = `${relativePath}/`
+        } else if (fullPath.startsWith('/')) {
+          // Absolute path from root
+          newPath = `${fullPath}/`
+        } else if (fullPath.startsWith('~/')) {
+          // Home directory path
+          newPath = `${fullPath}/`
         } else {
+          // Fallback to simple folder name (shouldn't happen with proper fullPath)
           newPath = `${item.name}/`
         }
 
@@ -361,6 +281,11 @@ export const FileMentionList = forwardRef<FileMentionListRef, FileMentionListPro
           label: item.name || '',
         })
       }
+    }
+
+    // Handle item click
+    const handleItemClick = (item: (typeof results)[0]) => {
+      handleItemSelection(item)
     }
 
     // Handle mouse enter for hover selection

@@ -47,14 +47,9 @@ describe('useFileBrowser', () => {
   })
 
   test('expands home directory in paths', async () => {
-    // Set up the mock to:
-    // 1. First call succeeds (checking if ~/Documents is a directory)
-    // 2. Second call returns the directory contents
-    mockReadDir
-      .mockResolvedValueOnce([]) // First call when checking if it's a directory
-      .mockResolvedValueOnce([{ name: 'file.ts', isFile: true, isDirectory: false, isSymlink: false }])
+    mockReadDir.mockResolvedValueOnce([{ name: 'file.ts', isFile: true, isDirectory: false, isSymlink: false }])
 
-    const { result } = renderHook(() => useFileBrowser('~/Documents', { includeFiles: true }))
+    const { result } = renderHook(() => useFileBrowser('~/Documents/', { includeFiles: true }))
 
     // Wait for the debounce timeout (150ms) and loading to complete
     await waitFor(
@@ -69,5 +64,63 @@ describe('useFileBrowser', () => {
     expect(mockReadDir).toHaveBeenCalledWith('/Users/test/Documents')
     expect(result.current.results).toHaveLength(1)
     expect(result.current.results[0].fullPath).toBe('/Users/test/Documents/file.ts')
+  })
+
+  test('treats single word as search query not directory navigation', async () => {
+    // When given a single word like "humanlayer", it should search for it
+    // in the current directory rather than trying to navigate into it
+    mockReadDir.mockResolvedValueOnce([
+      { name: 'humanlayer', isFile: false, isDirectory: true, isSymlink: false },
+      { name: 'humanlayer-go', isFile: false, isDirectory: true, isSymlink: false },
+      { name: 'humanlayer-tui', isFile: false, isDirectory: true, isSymlink: false },
+    ])
+
+    const { result } = renderHook(() => useFileBrowser('humanlayer'))
+
+    // Wait for debounce and loading
+    await waitFor(
+      () => {
+        expect(result.current.isLoading).toBe(false)
+        // Check that results were populated
+        if (result.current.results.length > 0) {
+          return true
+        }
+        throw new Error('Waiting for results')
+      },
+      { timeout: 500 },
+    )
+
+    // Should read from current directory and search for "humanlayer"
+    expect(mockReadDir).toHaveBeenCalledWith('.')
+    // Should return fuzzy search results
+    expect(result.current.results.length).toBeGreaterThan(0)
+  })
+
+  test('navigates into directory when path ends with slash', async () => {
+    // When path ends with slash, should list directory contents
+    mockReadDir.mockResolvedValueOnce([
+      { name: 'cli', isFile: false, isDirectory: true, isSymlink: false },
+      { name: 'core', isFile: false, isDirectory: true, isSymlink: false },
+    ])
+
+    const { result } = renderHook(() => useFileBrowser('humanlayer/'))
+
+    await waitFor(
+      () => {
+        expect(result.current.isLoading).toBe(false)
+        if (result.current.results.length > 0) {
+          return true
+        }
+        throw new Error('Waiting for results')
+      },
+      { timeout: 500 },
+    )
+
+    // Should read the "humanlayer" directory
+    expect(mockReadDir).toHaveBeenCalledWith('humanlayer')
+    // Should list directory contents without search
+    expect(result.current.results).toHaveLength(2)
+    expect(result.current.results[0].name).toBe('cli')
+    expect(result.current.results[1].name).toBe('core')
   })
 })

@@ -56,27 +56,31 @@ export function useFileBrowser(searchPath: string, options: FileBrowserOptions =
           dirPath = searchPath.slice(0, -1) // Remove trailing slash
           searchQuery = ''
         } else {
-          // Check if this path exists as a directory
-          // If it does, list its contents; otherwise parse for search
-          try {
-            // Try to read it as a directory first
-            const testPath = searchPath.startsWith('~')
-              ? searchPath.replace('~', await homeDir())
-              : searchPath
-            await readDir(testPath)
-            // If we get here, it's a valid directory
-            dirPath = searchPath
-            searchQuery = ''
-          } catch {
-            // Not a directory, parse for search query
-            const lastSlashIndex = searchPath.lastIndexOf('/')
-            if (lastSlashIndex === -1) {
-              // No slash, treat entire path as search in current directory
-              dirPath = '.'
-              searchQuery = searchPath
+          // For paths without trailing slash, we need to decide:
+          // - If it's a search query in the parent directory
+          // - Or if it's a request to list a specific directory
+          
+          const lastSlashIndex = searchPath.lastIndexOf('/')
+          if (lastSlashIndex === -1) {
+            // No slash at all - always treat as search in current directory
+            // This ensures we search for patterns like "humanlayer" instead of
+            // jumping into a directory that happens to match
+            dirPath = '.'
+            searchQuery = searchPath
+          } else {
+            // Has a slash - check if the part after the slash could be a directory
+            const pathBeforeSlash = searchPath.substring(0, lastSlashIndex) || '/'
+            const pathAfterSlash = searchPath.substring(lastSlashIndex + 1)
+            
+            if (pathAfterSlash) {
+              // There's text after the slash - treat as search in the parent directory
+              // This allows searching for items like "src/comp" to find "components"
+              dirPath = pathBeforeSlash
+              searchQuery = pathAfterSlash
             } else {
-              dirPath = searchPath.substring(0, lastSlashIndex) || '/'
-              searchQuery = searchPath.substring(lastSlashIndex + 1)
+              // Nothing after slash - list directory contents
+              dirPath = pathBeforeSlash
+              searchQuery = ''
             }
           }
         }
