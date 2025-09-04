@@ -374,13 +374,13 @@ export const FileMentionList = forwardRef<FileMentionListRef, FileMentionListPro
                   </>
                 )}
               </span>
-              {item.isDirectory ? (
+              {/* {item.isDirectory ? (
                 <span className="text-xs text-muted-foreground">Press Enter to open</span>
               ) : (
                 <span className="text-xs text-muted-foreground truncate max-w-[200px]">
                   {item.fullPath}
                 </span>
-              )}
+              )} */}
             </button>
           ))}
         </div>

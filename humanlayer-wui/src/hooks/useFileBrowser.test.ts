@@ -123,4 +123,36 @@ describe('useFileBrowser', () => {
     expect(result.current.results[0].name).toBe('cli')
     expect(result.current.results[1].name).toBe('core')
   })
+
+  test('lists directory contents for absolute paths without trailing slash', async () => {
+    // When given an absolute path without trailing slash, should list its contents
+    mockReadDir.mockResolvedValueOnce([
+      { name: 'README.md', isFile: true, isDirectory: false, isSymlink: false },
+      { name: 'package.json', isFile: true, isDirectory: false, isSymlink: false },
+      { name: 'src', isFile: false, isDirectory: true, isSymlink: false },
+    ])
+
+    const { result } = renderHook(() => 
+      useFileBrowser('/Users/test/project', { includeFiles: true })
+    )
+
+    await waitFor(
+      () => {
+        expect(result.current.isLoading).toBe(false)
+        if (result.current.results.length > 0) {
+          return true
+        }
+        throw new Error('Waiting for results')
+      },
+      { timeout: 500 },
+    )
+
+    // Should read the absolute path directory
+    expect(mockReadDir).toHaveBeenCalledWith('/Users/test/project')
+    // Should show both files and directories
+    expect(result.current.results).toHaveLength(3)
+    expect(result.current.results.map(r => r.name)).toContain('README.md')
+    expect(result.current.results.map(r => r.name)).toContain('package.json')
+    expect(result.current.results.map(r => r.name)).toContain('src')
+  })
 })
