@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { ConversationEvent, Session, ApprovalStatus, SessionStatus } from '@/lib/daemon/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { useConversation, useKeyboardNavigationProtection } from '@/hooks'
-import { ChevronDown, Archive, Pencil } from 'lucide-react'
+import { ChevronDown, Archive, Pencil, ScrollText } from 'lucide-react'
 import { truncate } from '@/utils/formatting'
 import { daemonClient } from '@/lib/daemon/client'
 import { useStore } from '@/AppStore'
@@ -1122,6 +1122,24 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               <ChevronDown className="w-3 h-3 animate-bounce" />
             </div>
           </div>
+          {/* Auto-scroll indicator */}
+          {(() => {
+            const autoScrollEnabled = useStore(state => state.autoScrollEnabled)
+            const setAutoScrollEnabled = useStore(state => state.setAutoScrollEnabled)
+            return (
+              <Button
+                variant="ghost"
+                size="sm"
+                className={`absolute bottom-16 right-4 transition-opacity ${
+                  autoScrollEnabled ? 'opacity-50' : 'opacity-100'
+                }`}
+                onClick={() => setAutoScrollEnabled(!autoScrollEnabled)}
+                title={autoScrollEnabled ? 'Auto-scroll enabled' : 'Auto-scroll disabled'}
+              >
+                <ScrollText className={`h-4 w-4 ${autoScrollEnabled ? 'animate-pulse' : ''}`} />
+              </Button>
+            )
+          })()}
         </Card>
 
         {isWideView && lastTodo && (
