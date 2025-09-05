@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Pencil } from 'lucide-react'
 import { Session } from '@/lib/daemon/types'
+import React from 'react'
 import { Button } from '@/components/ui/button'
 import { TokenUsageBadge } from './TokenUsageBadge'
 import { ModelSelector } from './ModelSelector'
@@ -15,8 +16,9 @@ interface StatusBarProps {
   model?: string
   onModelChange?: () => void
   statusOverride?: {
-    text: string
+    text: string | React.ReactNode
     className?: string
+    icon?: React.ReactNode
   }
 }
 
@@ -49,7 +51,10 @@ export function StatusBar({
   return (
     <div className="flex flex-wrap items-center gap-2 text-sm">
       {/* Status Badge */}
-      <span className={`font-mono text-xs uppercase tracking-wider ${statusClassName}`}>
+      <span
+        className={`font-mono text-xs uppercase tracking-wider flex items-center gap-1.5 ${statusClassName}`}
+      >
+        {statusOverride?.icon}
         {statusText}
       </span>
 

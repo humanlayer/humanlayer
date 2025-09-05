@@ -1,6 +1,7 @@
 import { forwardRef, useEffect, useState, useRef, useImperativeHandle } from 'react'
 import { Button } from '@/components/ui/button'
 import { Session, SessionStatus } from '@/lib/daemon/types'
+import { Split, MessageCircleX } from 'lucide-react'
 import {
   getInputPlaceholder,
   getHelpText,
@@ -25,6 +26,7 @@ interface ResponseInputProps {
   handleContinueSession: () => void
   isForkMode?: boolean
   forkTokenCount?: number | null
+  forkTurnNumber?: number
   onModelChange?: () => void
   denyingApprovalId?: string | null
   isDenying?: boolean
@@ -52,6 +54,7 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
       handleContinueSession,
       isForkMode,
       forkTokenCount,
+      forkTurnNumber,
       onModelChange,
       sessionStatus,
       onToggleAutoAccept,
@@ -282,8 +285,29 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
                   isDragHover
                     ? { text: 'DRAGGING FILE, RELEASE TO INCLUDE', className: 'text-primary' }
                     : isDenying
-                      ? { text: 'DENYING', className: 'text-destructive' }
-                      : undefined
+                      ? {
+                          text: 'DENYING',
+                          className: 'text-destructive',
+                          icon: <MessageCircleX className="h-3 w-3" />,
+                        }
+                      : isForkMode
+                        ? {
+                            text: (
+                              <>
+                                {forkTurnNumber !== undefined
+                                  ? `FORK MODE: TURN ${forkTurnNumber}`
+                                  : 'FORK MODE'}
+                                {' ('}
+                                <kbd className="px-1 py-0.5 text-xs font-mono font-medium border border-current/30 rounded">
+                                  Esc
+                                </kbd>
+                                {' to cancel)'}
+                              </>
+                            ),
+                            className: 'text-[var(--terminal-accent)]',
+                            icon: <Split className="h-3 w-3" />,
+                          }
+                        : undefined
                 }
               />
 
