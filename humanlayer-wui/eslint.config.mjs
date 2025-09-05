@@ -2,6 +2,7 @@ import globals from 'globals'
 import js from '@eslint/js'
 import tseslint from 'typescript-eslint'
 import eslintConfigPrettier from 'eslint-config-prettier/flat'
+import reactHooks from 'eslint-plugin-react-hooks'
 
 export default [
   {
@@ -28,9 +29,11 @@ export default [
     },
     plugins: {
       '@typescript-eslint': tseslint.plugin,
+      'react-hooks': reactHooks,
     },
     rules: {
       ...tseslint.configs.recommended.rules,
+      ...reactHooks.configs['recommended-latest'].rules,
       'no-undef': 'error',
       '@typescript-eslint/no-unused-vars': 'error',
       'react/react-in-jsx-scope': 'off',
