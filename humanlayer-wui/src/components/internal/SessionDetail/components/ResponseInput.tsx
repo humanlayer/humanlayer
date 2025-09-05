@@ -1,7 +1,7 @@
 import { forwardRef, useEffect, useState, useRef, useImperativeHandle } from 'react'
 import { Button } from '@/components/ui/button'
 import { Session, SessionStatus } from '@/lib/daemon/types'
-import { Split, MessageCircleX } from 'lucide-react'
+import { Split, MessageCircleX, AlertCircle } from 'lucide-react'
 import {
   getInputPlaceholder,
   getHelpText,
@@ -222,18 +222,6 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
       { enableOnFormTags: true },
     )
 
-    // Early return for failed sessions (moved after all hooks)
-    if (session.status === SessionStatus.Failed && !isForkMode) {
-      return (
-        <div className="flex items-center justify-between py-1">
-          <span className="text-sm text-muted-foreground">Session failed</span>
-          {session.errorMessage && (
-            <span className="text-sm text-destructive">{session.errorMessage}</span>
-          )}
-        </div>
-      )
-    }
-
     const isDisabled = responseEditor?.isEmpty || isResponding
     const isMac = navigator.platform.includes('Mac')
     const sendKey = isMac ? '⌘+Enter' : 'Ctrl+Enter'
@@ -264,12 +252,67 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
       isDenying &&
       ' focus:outline-[var(--terminal-error)] focus-visible:outline-[var(--terminal-error)] focus-visible:border-[var(--terminal-error)]'
 
+    // Get status override based on current state
+    const getStatusOverride = () => {
+      if (isDragHover) {
+        return { text: 'DRAGGING FILE, RELEASE TO INCLUDE', className: 'text-primary' }
+      }
+
+      if (isDenying) {
+        return {
+          text: 'DENYING',
+          className: 'text-destructive',
+          icon: <MessageCircleX className="h-3 w-3" />,
+        }
+      }
+
+      if (isForkMode) {
+        return {
+          text: (
+            <>
+              {forkTurnNumber !== undefined ? `FORK MODE: TURN ${forkTurnNumber}` : 'FORK MODE'}
+              {' ('}
+              <kbd className="px-1 py-0.5 text-xs font-mono font-medium border border-current/30 rounded">
+                Esc
+              </kbd>
+              {' to cancel)'}
+            </>
+          ),
+          className: 'text-[var(--terminal-accent)]',
+          icon: <Split className="h-3 w-3" />,
+        }
+      }
+
+      if (session.status === SessionStatus.Failed && !isForkMode) {
+        return {
+          text: 'FAILED',
+          className: 'text-destructive',
+          icon: <AlertCircle className="h-3 w-3" />,
+        }
+      }
+
+      return undefined
+    }
+
     // Always show the input for all session states
     return (
       <Card className={`py-2 ${outerBorderColorClass}`}>
         <CardContent className="px-2">
           <div className={`transition-colors border-l-2 pl-2 pr-2 ${borderColorClass}`}>
-            <div className="space-y-2">
+            <div className="space-y-2 flex flex-col">
+              {/* Error message for failed sessions */}
+              {session.status === SessionStatus.Failed && session.errorMessage && (
+                <div className="flex flex-col w-full mb-4">
+                  <div
+                    className="text-sm text-destructive rounded-md p-2 mb-2 ml-auto flex items-center justify-end"
+                    style={{ width: 'fit-content' }}
+                  >
+                    <AlertCircle className="h-3 w-3 mr-2 my-auto" />
+                    {session.errorMessage}
+                  </div>
+                  <hr className="w-full border-border" />
+                </div>
+              )}
               {/* Status Bar */}
               <StatusBar
                 session={session}
@@ -281,34 +324,7 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
                 contextLimit={session.contextLimit ?? parentSessionData?.contextLimit}
                 model={session.model ?? parentSessionData?.model}
                 onModelChange={onModelChange}
-                statusOverride={
-                  isDragHover
-                    ? { text: 'DRAGGING FILE, RELEASE TO INCLUDE', className: 'text-primary' }
-                    : isDenying
-                      ? {
-                          text: 'DENYING',
-                          className: 'text-destructive',
-                          icon: <MessageCircleX className="h-3 w-3" />,
-                        }
-                      : isForkMode
-                        ? {
-                            text: (
-                              <>
-                                {forkTurnNumber !== undefined
-                                  ? `FORK MODE: TURN ${forkTurnNumber}`
-                                  : 'FORK MODE'}
-                                {' ('}
-                                <kbd className="px-1 py-0.5 text-xs font-mono font-medium border border-current/30 rounded">
-                                  Esc
-                                </kbd>
-                                {' to cancel)'}
-                              </>
-                            ),
-                            className: 'text-[var(--terminal-accent)]',
-                            icon: <Split className="h-3 w-3" />,
-                          }
-                        : undefined
-                }
+                statusOverride={getStatusOverride()}
               />
 
               {/* Existing input area */}
