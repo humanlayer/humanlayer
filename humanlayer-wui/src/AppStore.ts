@@ -860,8 +860,14 @@ export const useStore = create<StoreState>((set, get) => ({
   },
 
   /* Response Editor */
-  setResponseEditor: (responseEditor: Editor) => set({ responseEditor }),
-  removeResponseEditor: () => set({ responseEditor: null }),
+  setResponseEditor: (responseEditor: Editor) => {
+    logger.log('AppStore.setResponseEditor() - setting response editor')
+    return set({ responseEditor })
+  },
+  removeResponseEditor: () => {
+    logger.log('AppStore.removeResponseEditor() - removing response editor')
+    return set({ responseEditor: null })
+  },
 }))
 
 // Helper function to validate and clean up session state
