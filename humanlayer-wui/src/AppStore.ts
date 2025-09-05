@@ -84,6 +84,23 @@ interface StoreState {
   fetchUserSettings: () => Promise<void>
   updateUserSettings: (settings: { advancedProviders: boolean }) => Promise<void>
 
+  /* Claude Configuration */
+  claudeConfig: {
+    claudePath: string
+    claudeDetectedPath?: string
+    claudeAvailable: boolean
+  } | null
+  fetchClaudeConfig: () => Promise<{
+    claudePath: string
+    claudeDetectedPath?: string
+    claudeAvailable: boolean
+  } | null>
+  updateClaudePath: (path: string) => Promise<{
+    claudePath: string
+    claudeDetectedPath?: string
+    claudeAvailable: boolean
+  }>
+
   /* Response Editor */
   responseEditor: Editor | null
   setResponseEditor: (responseEditor: Editor) => void
@@ -98,6 +115,8 @@ export const useStore = create<StoreState>((set, get) => ({
   pendingUpdates: new Map<string, PendingUpdate>(),
   isRefreshing: false,
   activeSessionDetail: null,
+  claudeConfig: null,
+  responseEditor: null,
   initSessions: (sessions: Session[]) => set({ sessions }),
   updateSession: (sessionId: string, updates: Partial<Session>) =>
     set(state => ({
@@ -807,9 +826,40 @@ export const useStore = create<StoreState>((set, get) => ({
       throw error // Re-throw so the UI can handle it
     }
   },
+  fetchClaudeConfig: async () => {
+    try {
+      const response = await daemonClient.getConfig()
+      set({
+        claudeConfig: {
+          claudePath: response.claudePath,
+          claudeDetectedPath: response.claudeDetectedPath,
+          claudeAvailable: response.claudeAvailable,
+        },
+      })
+      return response // Add this return
+    } catch (error) {
+      logger.error('Failed to fetch Claude config:', error)
+      return null // Return null on error
+    }
+  },
+  updateClaudePath: async (path: string) => {
+    try {
+      const response = await daemonClient.updateConfig({ claudePath: path })
+      set({
+        claudeConfig: {
+          claudePath: response.claudePath,
+          claudeDetectedPath: response.claudeDetectedPath,
+          claudeAvailable: response.claudeAvailable,
+        },
+      })
+      return response // Add this return
+    } catch (error) {
+      logger.error('Failed to update Claude path:', error)
+      throw error // Keep throwing for UI error handling
+    }
+  },
 
   /* Response Editor */
-  responseEditor: null,
   setResponseEditor: (responseEditor: Editor) => {
     logger.log('AppStore.setResponseEditor() - setting response editor')
     return set({ responseEditor })

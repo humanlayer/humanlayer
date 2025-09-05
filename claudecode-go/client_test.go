@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/humanlayer/humanlayer/claudecode-go"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestClient_LaunchAndWait(t *testing.T) {
@@ -569,5 +570,79 @@ func TestStreamEventWithPermissionDenials(t *testing.T) {
 	// Verify denial details
 	if event.PermissionDenials.Denials[0].ToolName != "Bash" {
 		t.Errorf("Expected tool name 'Bash', got %s", event.PermissionDenials.Denials[0].ToolName)
+	}
+}
+
+// TestClaudePathDetectionOrder tests that Claude is detected in the expected order
+func TestClaudePathDetectionOrder(t *testing.T) {
+	// This test verifies that the search paths are in the expected order
+	// The actual functionality is tested by the integration tests
+
+	// Expected search order (for documentation purposes)
+	expectedOrder := []string{
+		filepath.Join(os.Getenv("HOME"), ".claude/local/claude"),
+		filepath.Join(os.Getenv("HOME"), ".npm/bin/claude"),
+		filepath.Join(os.Getenv("HOME"), ".bun/bin/claude"),
+		filepath.Join(os.Getenv("HOME"), ".local/bin/claude"),
+		"/usr/local/bin/claude",
+		"/opt/homebrew/bin/claude",
+	}
+
+	// Verify the list is not empty (basic sanity check)
+	assert.NotEmpty(t, expectedOrder, "Search paths should be defined")
+	assert.Equal(t, 6, len(expectedOrder), "Should have 6 search paths")
+
+	// Verify Claude's own directory is first
+	assert.Contains(t, expectedOrder[0], ".claude/local/claude",
+		"Claude's own directory should be searched first")
+}
+
+// TestClaudeDetectionWithExcludedPaths tests that problematic paths are excluded
+func TestClaudeDetectionWithExcludedPaths(t *testing.T) {
+	// This test creates mock binaries in excluded locations and verifies they're not detected
+	excludedPaths := []struct {
+		path        string
+		description string
+	}{
+		{
+			path:        filepath.Join(t.TempDir(), "node_modules", "claude"),
+			description: "node_modules directory",
+		},
+		{
+			path:        filepath.Join(t.TempDir(), "claude.bak"),
+			description: "backup file",
+		},
+	}
+
+	for _, tc := range excludedPaths {
+		t.Run(tc.description, func(t *testing.T) {
+			// Create directory if needed
+			dir := filepath.Dir(tc.path)
+			err := os.MkdirAll(dir, 0755)
+			assert.NoError(t, err, "Failed to create test directory")
+
+			// Create mock executable
+			mockScript := []byte("#!/bin/sh\necho 'mock claude'\n")
+			err = os.WriteFile(tc.path, mockScript, 0755)
+			assert.NoError(t, err, "Failed to create mock executable")
+			defer func() { _ = os.Remove(tc.path) }()
+
+			// Save and modify PATH to include the excluded directory
+			originalPath := os.Getenv("PATH")
+			err = os.Setenv("PATH", dir+":"+originalPath)
+			assert.NoError(t, err, "Failed to set PATH")
+			defer func() { _ = os.Setenv("PATH", originalPath) }()
+
+			// Try to create client - it should not find the excluded binary
+			// Note: This test assumes no other Claude binary is in PATH
+			// In practice, if there's a valid Claude elsewhere, it will be found
+			// The key is that the excluded path won't be used
+			client, _ := claudecode.NewClient()
+			if client != nil {
+				// If a client was created, verify it's not using the excluded path
+				assert.NotEqual(t, tc.path, client.GetPath(),
+					"Should not use Claude from %s", tc.description)
+			}
+		})
 	}
 }

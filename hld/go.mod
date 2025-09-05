@@ -11,7 +11,6 @@ require (
 	github.com/getkin/kin-openapi v0.132.0
 	github.com/gin-contrib/cors v1.7.6
 	github.com/gin-gonic/gin v1.10.1
-	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.6.0
 	github.com/humanlayer/humanlayer/claudecode-go v0.0.0-00010101000000-000000000000
 	github.com/mark3labs/mcp-go v0.37.0
@@ -19,7 +18,7 @@ require (
 	github.com/oapi-codegen/runtime v1.1.2
 	github.com/r3labs/sse/v2 v2.10.0
 	github.com/spf13/viper v1.20.1
-	github.com/stretchr/testify v1.10.0
+	github.com/stretchr/testify v1.11.1
 	go.uber.org/mock v0.5.2
 )
 

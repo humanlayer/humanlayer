@@ -13,6 +13,14 @@
  */
 
 import { mapValues } from '../runtime';
+import type { HealthResponseDependencies } from './HealthResponseDependencies';
+import {
+    HealthResponseDependenciesFromJSON,
+    HealthResponseDependenciesFromJSONTyped,
+    HealthResponseDependenciesToJSON,
+    HealthResponseDependenciesToJSONTyped,
+} from './HealthResponseDependencies';
+
 /**
  *
  * @export
@@ -31,6 +39,12 @@ export interface HealthResponse {
      * @memberof HealthResponse
      */
     version: string;
+    /**
+     *
+     * @type {HealthResponseDependencies}
+     * @memberof HealthResponse
+     */
+    dependencies?: HealthResponseDependencies;
 }
 
 
@@ -38,7 +52,8 @@ export interface HealthResponse {
  * @export
  */
 export const HealthResponseStatusEnum = {
-    Ok: 'ok'
+    Ok: 'ok',
+    Degraded: 'degraded'
 } as const;
 export type HealthResponseStatusEnum = typeof HealthResponseStatusEnum[keyof typeof HealthResponseStatusEnum];
 
@@ -64,6 +79,7 @@ export function HealthResponseFromJSONTyped(json: any, ignoreDiscriminator: bool
 
         'status': json['status'],
         'version': json['version'],
+        'dependencies': json['dependencies'] == null ? undefined : HealthResponseDependenciesFromJSON(json['dependencies']),
     };
 }
 
@@ -80,5 +96,6 @@ export function HealthResponseToJSONTyped(value?: HealthResponse | null, ignoreD
 
         'status': value['status'],
         'version': value['version'],
+        'dependencies': HealthResponseDependenciesToJSON(value['dependencies']),
     };
 }

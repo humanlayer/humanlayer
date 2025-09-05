@@ -16,6 +16,7 @@ var (
 	DefaultSocketPath   = "~/.humanlayer/daemon.sock"
 	DefaultHTTPPort     = "7777"
 	DefaultCLICommand   = "hlyr" // CLI command to execute
+	DefaultClaudePath   = ""     // Empty means auto-detect
 )
 
 // Config represents the daemon configuration
@@ -39,6 +40,9 @@ type Config struct {
 	// HTTP Server configuration
 	HTTPPort int    `mapstructure:"http_port"`
 	HTTPHost string `mapstructure:"http_host"`
+
+	// Claude configuration
+	ClaudePath string `mapstructure:"claude_path"`
 }
 
 // Load loads configuration with priority: flags > env vars > config file > defaults
@@ -67,6 +71,7 @@ func Load() (*Config, error) {
 	_ = v.BindEnv("version_override", "HUMANLAYER_DAEMON_VERSION_OVERRIDE")
 	_ = v.BindEnv("http_port", "HUMANLAYER_DAEMON_HTTP_PORT")
 	_ = v.BindEnv("http_host", "HUMANLAYER_DAEMON_HTTP_HOST")
+	_ = v.BindEnv("claude_path", "HUMANLAYER_CLAUDE_PATH")
 
 	// Set defaults
 	setDefaults(v)
@@ -87,6 +92,7 @@ func Load() (*Config, error) {
 	// Expand home directory in paths
 	config.SocketPath = expandHome(config.SocketPath)
 	config.DatabasePath = expandHome(config.DatabasePath)
+	config.ClaudePath = expandHome(config.ClaudePath)
 
 	return &config, nil
 }
@@ -105,6 +111,7 @@ func setDefaults(v *viper.Viper) {
 	}
 	v.SetDefault("http_port", port)
 	v.SetDefault("http_host", "127.0.0.1")
+	v.SetDefault("claude_path", DefaultClaudePath)
 }
 
 // getDefaultConfigDir returns the default configuration directory
@@ -141,5 +148,49 @@ func (c *Config) Validate() error {
 	if c.SocketPath == "" {
 		return fmt.Errorf("socket path cannot be empty")
 	}
+	return nil
+}
+
+// Save saves the configuration to the config file
+func Save(cfg *Config) error {
+	v := viper.New()
+
+	// Set config name and type
+	v.SetConfigName("humanlayer")
+	v.SetConfigType("json")
+
+	// Set config paths
+	configDir := getDefaultConfigDir()
+	v.AddConfigPath(configDir)
+
+	// Ensure config directory exists
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		return fmt.Errorf("failed to create config directory: %w", err)
+	}
+
+	// Set the values from the config struct
+	v.Set("socket_path", cfg.SocketPath)
+	v.Set("database_path", cfg.DatabasePath)
+	v.Set("api_key", cfg.APIKey)
+	v.Set("api_base_url", cfg.APIBaseURL)
+	v.Set("log_level", cfg.LogLevel)
+	v.Set("version_override", cfg.VersionOverride)
+	v.Set("http_port", cfg.HTTPPort)
+	v.Set("http_host", cfg.HTTPHost)
+	v.Set("claude_path", cfg.ClaudePath)
+
+	// Set config file path explicitly
+	configFile := filepath.Join(configDir, "humanlayer.json")
+	v.SetConfigFile(configFile)
+
+	// Write the config
+	if err := v.WriteConfig(); err != nil {
+		// If file doesn't exist, use SafeWriteConfig
+		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			return v.SafeWriteConfig()
+		}
+		return fmt.Errorf("failed to write config: %w", err)
+	}
+
 	return nil
 }

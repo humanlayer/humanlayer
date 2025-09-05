@@ -120,6 +120,18 @@ type SessionManager interface {
 
 	// SetHTTPPort sets the HTTP port for the proxy endpoint
 	SetHTTPPort(port int)
+
+	// UpdateClaudePath updates the Claude binary path at runtime
+	UpdateClaudePath(path string)
+
+	// GetClaudePath returns the current Claude path
+	GetClaudePath() string
+
+	// IsClaudeAvailable checks if Claude is available
+	IsClaudeAvailable() bool
+
+	// GetClaudeBinaryPath returns the actual path to the Claude binary if available
+	GetClaudeBinaryPath() string
 }
 
 // ReadToolResult represents the JSON structure of a Read tool result

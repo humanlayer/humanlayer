@@ -6,6 +6,8 @@ import {
   ConversationEvent,
   UserSettingsResponse,
   UpdateUserSettingsRequest,
+  ConfigResponse,
+  UpdateConfigRequest,
 } from '@humanlayer/hld-sdk'
 import { getDaemonUrl, getDefaultHeaders } from './http-config'
 import { logger } from '@/lib/logging'
@@ -80,7 +82,8 @@ export class HTTPDaemonClient implements IDaemonClient {
 
     try {
       const health = await this.client.health()
-      if (health.status !== 'ok') {
+      // Accept both 'ok' and 'degraded' status - degraded means daemon is running but Claude is unavailable
+      if (health.status !== 'ok' && health.status !== 'degraded') {
         throw new Error('Daemon health check failed')
       }
     } finally {
@@ -583,6 +586,22 @@ export class HTTPDaemonClient implements IDaemonClient {
     if (!this.client) throw new Error('SDK client not initialized')
 
     const response = await this.client.updateUserSettings(settings)
+    return response
+  }
+
+  async getConfig(): Promise<ConfigResponse> {
+    await this.ensureConnected()
+    if (!this.client) throw new Error('SDK client not initialized')
+
+    const response = await this.client.getConfig()
+    return response
+  }
+
+  async updateConfig(settings: UpdateConfigRequest): Promise<ConfigResponse> {
+    await this.ensureConnected()
+    if (!this.client) throw new Error('SDK client not initialized')
+
+    const response = await this.client.updateConfig(settings)
     return response
   }
 

@@ -28,7 +28,7 @@ import { notificationService, type NotificationOptions } from '@/services/Notifi
 import { useTheme } from '@/contexts/ThemeContext'
 import { formatMcpToolName, getSessionNotificationText } from '@/utils/formatting'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { MessageCircle, Bug, HelpCircle, Settings } from 'lucide-react'
+import { MessageCircle, Bug, HelpCircle, Settings, AlertCircle, RefreshCw } from 'lucide-react'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { DebugPanel } from '@/components/DebugPanel'
 import { notifyLogLocation } from '@/lib/log-notification'
@@ -43,13 +43,14 @@ export function Layout() {
   const [activeSessionId] = useState<string | null>(null)
   const { setTheme } = useTheme()
   const [isDebugPanelOpen, setIsDebugPanelOpen] = useState(false)
+  const [hasShownUnhealthyDialog, setHasShownUnhealthyDialog] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
   const isSettingsDialogOpen = useStore(state => state.isSettingsDialogOpen)
   const setSettingsDialogOpen = useStore(state => state.setSettingsDialogOpen)
 
   // Use the daemon connection hook for all connection management
-  const { connected, connecting, version, connect } = useDaemonConnection()
+  const { connected, connecting, version, healthStatus, connect, checkHealth } = useDaemonConnection()
 
   // Hotkey panel state from store
   const { isHotkeyPanelOpen, setHotkeyPanelOpen } = useStore()
@@ -87,6 +88,14 @@ export function Layout() {
       fetchUserSettings()
     }
   }, [connected, fetchUserSettings])
+
+  // Auto-open settings on first unhealthy detection
+  useEffect(() => {
+    if (connected && healthStatus === 'degraded' && !hasShownUnhealthyDialog) {
+      setSettingsDialogOpen(true)
+      setHasShownUnhealthyDialog(true)
+    }
+  }, [connected, healthStatus, hasShownUnhealthyDialog, setSettingsDialogOpen])
   const refreshActiveSessionConversation = useStore(state => state.refreshActiveSessionConversation)
   const clearNotificationsForSession = useStore(state => state.clearNotificationsForSession)
   const wasRecentlyNavigatedFrom = useStore(state => state.wasRecentlyNavigatedFrom)
@@ -526,8 +535,20 @@ export function Layout() {
           <div className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
             humanlayer
           </div>
+          {connected && healthStatus === 'degraded' && (
+            <Button
+              onClick={() => setSettingsDialogOpen(true)}
+              variant="outline"
+              size="sm"
+              className="text-amber-500 border-amber-500"
+            >
+              <AlertCircle className="h-4 w-4 mr-2" />
+              Unhealthy - Configure
+            </Button>
+          )}
           {!connected && !connecting && (
             <Button onClick={connect} variant="ghost" size="sm">
+              <RefreshCw className="h-4 w-4 mr-2" />
               Retry Connection
             </Button>
           )}
@@ -624,7 +645,11 @@ export function Layout() {
       <DebugPanel open={isDebugPanelOpen} onOpenChange={setIsDebugPanelOpen} />
 
       {/* Settings Dialog */}
-      <SettingsDialog open={isSettingsDialogOpen} onOpenChange={setSettingsDialogOpen} />
+      <SettingsDialog
+        open={isSettingsDialogOpen}
+        onOpenChange={setSettingsDialogOpen}
+        onConfigUpdate={checkHealth}
+      />
 
       {/* Global Dangerous Skip Permissions Monitor */}
       <DangerousSkipPermissionsMonitor />
