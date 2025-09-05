@@ -34,11 +34,6 @@ export function DebugPanel({ open, onOpenChange }: DebugPanelProps) {
   const [daemonInfo, setDaemonInfo] = useState<DaemonInfo | null>(null)
   const [debugInfo, setDebugInfo] = useState<DebugInfo | null>(null)
 
-  // Only show in dev mode
-  if (!import.meta.env.DEV) {
-    return null
-  }
-
   // Helper to format bytes to human-readable size
   function formatBytes(bytes: number): string {
     if (bytes === 0) return '0 B'
@@ -59,7 +54,12 @@ export function DebugPanel({ open, onOpenChange }: DebugPanelProps) {
 
   useEffect(() => {
     loadDaemonInfo()
-  }, [connected])
+  }, [connected]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Only show in dev mode (moved after hooks)
+  if (!import.meta.env.DEV) {
+    return null
+  }
 
   async function loadDaemonInfo() {
     try {

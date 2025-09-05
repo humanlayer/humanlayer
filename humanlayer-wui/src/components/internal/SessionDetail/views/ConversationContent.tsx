@@ -269,8 +269,8 @@ export function ConversationContent({
                 } ${
                   focusedEventId === displayObject.id
                     ? responseEditor?.isFocused
-                      ? 'border-l-[var(--terminal-accent-dim)]'
-                      : 'border-l-[var(--terminal-accent)]'
+                      ? 'border-l-[var(--terminal-accent-dim)] bg-accent/5'
+                      : 'border-l-[var(--terminal-accent)] bg-accent/10'
                     : 'border-l-transparent'
                 }`}
               >
@@ -446,8 +446,8 @@ export function ConversationContent({
                     } ${
                       focusedEventId === displayObject.id
                         ? responseEditor?.isFocused
-                          ? 'border-l-[var(--terminal-accent-dim)]'
-                          : 'border-l-[var(--terminal-accent)]'
+                          ? 'border-l-[var(--terminal-accent-dim)] bg-accent/5'
+                          : 'border-l-[var(--terminal-accent)] bg-accent/10'
                         : 'border-l-transparent'
                     }`}
                   >

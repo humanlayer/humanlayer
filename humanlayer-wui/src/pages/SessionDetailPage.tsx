@@ -10,6 +10,8 @@ export function SessionDetailPage() {
   const activeSessionDetail = useStore(state => state.activeSessionDetail)
   const fetchActiveSessionDetail = useStore(state => state.fetchActiveSessionDetail)
   const clearActiveSessionDetail = useStore(state => state.clearActiveSessionDetail)
+  // Get the session from store if available for most up-to-date state (moved before early returns)
+  const sessionFromStore = useStore(state => state.sessions.find(s => s.id === sessionId))
 
   useEffect(() => {
     if (sessionId) {
@@ -53,8 +55,6 @@ export function SessionDetailPage() {
 
   // Render SessionDetail even during loading so it can show its skeleton UI
   // Pass a minimal session object if still loading
-  // Get the session from store if available for most up-to-date state
-  const sessionFromStore = useStore(state => state.sessions.find(s => s.id === sessionId))
 
   let session = activeSessionDetail?.session?.id
     ? activeSessionDetail.session

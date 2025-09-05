@@ -3,9 +3,10 @@ import StarterKit from '@tiptap/starter-kit'
 import Mention from '@tiptap/extension-mention'
 
 /**
- * Create a test editor instance with common extensions
+ * Create a test editor hook with common extensions
+ * This is a custom hook and must be called from within a React component
  */
-export const createTestEditor = (options = {}) => {
+export const useTestEditor = (options = {}) => {
   return useEditor({
     extensions: [
       StarterKit,
