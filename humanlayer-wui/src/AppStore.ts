@@ -77,6 +77,10 @@ interface StoreState {
   isSettingsDialogOpen: boolean
   setSettingsDialogOpen: (open: boolean) => void
 
+  /* Auto-scroll State */
+  autoScrollEnabled: boolean
+  setAutoScrollEnabled: (enabled: boolean) => void
+
   /* User Settings */
   userSettings: {
     advancedProviders: boolean
@@ -779,6 +783,10 @@ export const useStore = create<StoreState>((set, get) => ({
   setHotkeyPanelOpen: (open: boolean) => set({ isHotkeyPanelOpen: open }),
   isSettingsDialogOpen: false,
   setSettingsDialogOpen: (open: boolean) => set({ isSettingsDialogOpen: open }),
+
+  // Auto-scroll state
+  autoScrollEnabled: true, // Default to enabled
+  setAutoScrollEnabled: (enabled: boolean) => set({ autoScrollEnabled: enabled }),
 
   // User Settings
   userSettings: null,

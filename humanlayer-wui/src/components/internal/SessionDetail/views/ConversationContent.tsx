@@ -16,9 +16,9 @@ import { copyToClipboard } from '@/utils/clipboard'
 import { MessageContent } from '../components/MessageContent'
 import { hasTextSelection } from '@/utils/selection'
 import { useStore } from '@/AppStore'
+import { useAutoScroll } from '../hooks/useAutoScroll'
 
 // TODO(2): Extract keyboard navigation logic to a custom hook
-// TODO(2): Extract auto-scroll logic to a separate utility
 // TODO(3): Add virtual scrolling for very long conversations
 
 export function ConversationContent({
@@ -129,31 +129,24 @@ export function ConversationContent({
   const previousEventCountRef = useRef(0)
   const previousEventsRef = useRef<ConversationEvent[]>([])
 
+  // Use the auto-scroll hook
+  useAutoScroll(
+    containerRef,
+    nonEmptyDisplayObjects.length > previousEventCountRef.current,
+    filteredEvents.length !== previousEventsRef.current.length ||
+      filteredEvents.some((event, index) => {
+        const prevEvent = previousEventsRef.current[index]
+        return (
+          !prevEvent ||
+          event.id !== prevEvent.id ||
+          event.toolResultContent !== prevEvent.toolResultContent
+        )
+      }),
+  )
+
+  // Update refs after checking
   useEffect(() => {
-    if (!loading && containerRef.current && nonEmptyDisplayObjects.length > 0) {
-      const hasNewEvents = nonEmptyDisplayObjects.length > previousEventCountRef.current
-
-      // Check if any events have changed (including tool results being added)
-      const eventsChanged =
-        filteredEvents.length !== previousEventsRef.current.length ||
-        filteredEvents.some((event, index) => {
-          const prevEvent = previousEventsRef.current[index]
-          return (
-            !prevEvent ||
-            event.id !== prevEvent.id ||
-            event.toolResultContent !== prevEvent.toolResultContent
-          )
-        })
-
-      // Auto-scroll if we have new display events or events have changed
-      // _and_ we're not focused on a row
-      if ((hasNewEvents || eventsChanged) && !focusedEventId) {
-        setTimeout(() => {
-          if (containerRef.current) {
-            containerRef.current.scrollTop = containerRef.current.scrollHeight
-          }
-        }, 50)
-      }
+    if (!loading) {
       previousEventCountRef.current = nonEmptyDisplayObjects.length
       previousEventsRef.current = [...filteredEvents]
     }
