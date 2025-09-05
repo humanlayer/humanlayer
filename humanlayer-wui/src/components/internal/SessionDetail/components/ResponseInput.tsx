@@ -116,14 +116,6 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
       return tiptapRef.current!
     }, [])
 
-    if (session.status === SessionStatus.Failed && !isForkMode) {
-      return (
-        <div className="flex items-center justify-between py-1">
-          <span className="text-sm text-muted-foreground">Session failed</span>
-        </div>
-      )
-    }
-
     useEffect(() => {
       if (isDenying && ref && typeof ref !== 'function' && ref.current) {
         ref.current.focus()
@@ -132,7 +124,7 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
           ref.current.blur()
         }
       }
-    }, [isDenying])
+    }, [isDenying, ref])
 
     useEffect(() => {
       let unlisten: UnlistenFn | undefined
@@ -227,6 +219,18 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
       { enableOnFormTags: true },
     )
 
+    // Early return for failed sessions (moved after all hooks)
+    if (session.status === SessionStatus.Failed && !isForkMode) {
+      return (
+        <div className="flex items-center justify-between py-1">
+          <span className="text-sm text-muted-foreground">Session failed</span>
+          {session.errorMessage && (
+            <span className="text-sm text-destructive">{session.errorMessage}</span>
+          )}
+        </div>
+      )
+    }
+
     const isDisabled = responseEditor?.isEmpty || isResponding
     const isMac = navigator.platform.includes('Mac')
     const sendKey = isMac ? '⌘+Enter' : 'Ctrl+Enter'
@@ -266,9 +270,13 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
               {/* Status Bar */}
               <StatusBar
                 session={session}
-                parentSessionData={parentSessionData}
-                isForkMode={isForkMode}
-                forkTokenCount={forkTokenCount}
+                effectiveContextTokens={
+                  isForkMode && forkTokenCount !== null && forkTokenCount !== undefined
+                    ? forkTokenCount
+                    : (session.effectiveContextTokens ?? parentSessionData?.effectiveContextTokens)
+                }
+                contextLimit={session.contextLimit ?? parentSessionData?.contextLimit}
+                model={session.model ?? parentSessionData?.model}
                 onModelChange={onModelChange}
                 statusOverride={
                   isDragHover

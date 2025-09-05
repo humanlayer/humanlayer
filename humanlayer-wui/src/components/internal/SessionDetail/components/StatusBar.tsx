@@ -10,9 +10,9 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 
 interface StatusBarProps {
   session: Session
-  parentSessionData?: Partial<Session>
-  isForkMode?: boolean
-  forkTokenCount?: number | null
+  effectiveContextTokens?: number
+  contextLimit?: number
+  model?: string
   onModelChange?: () => void
   statusOverride?: {
     text: string
@@ -22,9 +22,9 @@ interface StatusBarProps {
 
 export function StatusBar({
   session,
-  parentSessionData,
-  isForkMode,
-  forkTokenCount,
+  effectiveContextTokens,
+  contextLimit,
+  model,
   onModelChange,
   statusOverride,
 }: StatusBarProps) {
@@ -34,11 +34,11 @@ export function StatusBar({
   const statusText = statusOverride?.text || defaultStatusText
   const statusClassName = statusOverride?.className || getStatusTextClass(session.status)
 
-  // Show proxy model if using OpenRouter, otherwise show regular model
+  // Show proxy model if using OpenRouter, otherwise show provided model
   const rawModelText =
     session.proxyEnabled && session.proxyModelOverride
       ? session.proxyModelOverride
-      : session.model || 'DEFAULT'
+      : model || session.model || 'DEFAULT'
   // Strip provider prefix (e.g., "openai/" from "openai/gpt-oss-120b")
   const modelText = rawModelText.includes('/')
     ? rawModelText.split('/').slice(1).join('/')
@@ -85,17 +85,9 @@ export function StatusBar({
 
       {/* Context Usage */}
       <TokenUsageBadge
-        effectiveContextTokens={
-          isForkMode && forkTokenCount !== null && forkTokenCount !== undefined
-            ? forkTokenCount
-            : (session.effectiveContextTokens ?? parentSessionData?.effectiveContextTokens)
-        }
-        contextLimit={session.contextLimit ?? parentSessionData?.contextLimit}
-        model={
-          session.proxyEnabled && session.proxyModelOverride
-            ? session.proxyModelOverride
-            : (session.model ?? parentSessionData?.model)
-        }
+        effectiveContextTokens={effectiveContextTokens}
+        contextLimit={contextLimit}
+        model={session.proxyEnabled && session.proxyModelOverride ? session.proxyModelOverride : model}
       />
 
       {/* Model Selector Modal */}
