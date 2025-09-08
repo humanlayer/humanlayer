@@ -1,6 +1,6 @@
 import { FC, useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
-import { GitBranch, ShieldOff } from 'lucide-react'
+import { ShieldOff } from 'lucide-react'
 import { toast } from 'sonner'
 import { useStore } from '@/AppStore'
 import { logger } from '@/lib/logging'
@@ -75,33 +75,9 @@ export const SessionModeIndicator: FC<SessionModeIndicatorProps> = ({
     return null
   }
 
-  // Fork mode takes highest priority
+  // Fork mode takes highest priority (now displayed in ResponseInput StatusBar)
   if (isForkMode && forkTurnNumber !== undefined) {
-    return (
-      <div
-        className={cn(
-          'flex items-center justify-between gap-3 px-3 py-1.5',
-          'text-sm font-medium',
-          'bg-[var(--terminal-warning)]/15',
-          'text-[var(--terminal-warning)]',
-          'border border-[var(--terminal-warning)]/40',
-          'rounded-md',
-          'animate-pulse-warning',
-          className,
-        )}
-      >
-        <div className="flex items-center gap-2">
-          <GitBranch className="h-3.5 w-3.5" />
-          <span>Fork mode: Forking from turn {forkTurnNumber}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <kbd className="px-1.5 py-0.5 text-xs font-mono font-medium border border-[var(--terminal-warning)]/30 rounded">
-            Esc
-          </kbd>
-          <span className="text-xs opacity-75">to cancel</span>
-        </div>
-      </div>
-    )
+    return null
   }
 
   // Bypass permissions takes second priority

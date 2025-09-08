@@ -1147,6 +1147,13 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         handleContinueSession={actions.handleContinueSession}
         isForkMode={actions.isForkMode}
         forkTokenCount={forkTokenCount}
+        forkTurnNumber={
+          previewEventIndex !== null
+            ? events
+                .slice(0, previewEventIndex)
+                .filter(e => e.eventType === 'message' && e.role === 'user').length
+            : undefined
+        }
         onModelChange={() => {
           // Refresh session data if needed
           fetchActiveSessionDetail(session.id)
