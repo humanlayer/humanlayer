@@ -21,7 +21,6 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 import { SessionModeIndicator } from './AutoAcceptIndicator'
 import { ForkViewModal } from './components/ForkViewModal'
 import { DangerouslySkipPermissionsDialog } from './DangerouslySkipPermissionsDialog'
-import { AdditionalDirectoriesDropdown } from './components/AdditionalDirectoriesDropdown'
 
 // Import hooks
 import { useSessionActions } from './hooks/useSessionActions'
@@ -189,7 +188,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [forkTokenCount, setForkTokenCount] = useState<number | null>(null)
   const [confirmingArchive, setConfirmingArchive] = useState(false)
   const [dangerousSkipPermissionsDialogOpen, setDangerousSkipPermissionsDialogOpen] = useState(false)
-  const [directoriesDropdownOpen, setDirectoriesDropdownOpen] = useState(false)
 
   // State for inline title editing
   const [isEditingTitle, setIsEditingTitle] = useState(false)
@@ -497,13 +495,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     }
   }, [session.id])
 
-  // Handle updating additional directories
-  const handleUpdateAdditionalDirectories = async (directories: string[]) => {
-    await daemonClient.updateSession(session.id, { additionalDirectories: directories })
-    // Update the local store and refresh session data
-    useStore.getState().updateSession(session.id, { additionalDirectories: directories })
-  }
-
   // Check if there are pending approvals out of view
   const [hasPendingApprovalsOutOfView, setHasPendingApprovalsOutOfView] = useState(false)
 
@@ -529,11 +520,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
 
       // Don't process escape if dangerous skip permissions dialog is open
       if (dangerousSkipPermissionsDialogOpen) {
-        return
-      }
-
-      // Don't process escape if directories dropdown is open
-      if (directoriesDropdownOpen) {
         return
       }
 
@@ -854,21 +840,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     [startEditTitle, isEditingTitle],
   )
 
-  // Toggle directories dropdown hotkey
-  useHotkeys(
-    'shift+d',
-    () => {
-      setDirectoriesDropdownOpen(prev => !prev)
-    },
-    {
-      scopes: SessionDetailHotkeysScope,
-      enabled: !isEditingTitle && !!session.workingDir,
-      preventDefault: true,
-      enableOnFormTags: false,
-    },
-    [isEditingTitle, session.workingDir],
-  )
-
   // Don't steal scope here - SessionDetail is the base layer
   // Only modals opening on top should steal scope
 
@@ -984,14 +955,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               )}
             </h2>
             {session.workingDir && (
-              <AdditionalDirectoriesDropdown
-                workingDir={session.workingDir}
-                directories={session.additionalDirectories || []}
-                sessionStatus={session.status}
-                onDirectoriesChange={handleUpdateAdditionalDirectories}
-                open={directoriesDropdownOpen}
-                onOpenChange={setDirectoriesDropdownOpen}
-              />
+              <small className="font-mono text-xs text-muted-foreground">{session.workingDir}</small>
             )}
           </hgroup>
           <div className="flex items-center gap-1 ml-auto">
@@ -1170,48 +1134,52 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       </div>
 
       {/* Response input - always show but disable for non-completed sessions */}
-      <Card className="py-2">
-        <CardContent className="px-2">
-          <ResponseInput
-            denyingApprovalId={approvals.denyingApprovalId ?? undefined}
-            isDenying={approvals.isDenying}
-            onDeny={approvals.handleDeny}
-            handleCancelDeny={approvals.handleCancelDeny}
-            denyAgainstOldestApproval={approvals.denyAgainstOldestApproval}
-            session={session}
-            parentSessionData={parentSessionData || parentSession || undefined}
-            isResponding={actions.isResponding}
-            handleContinueSession={actions.handleContinueSession}
-            isForkMode={actions.isForkMode}
-            forkTokenCount={forkTokenCount}
-            onModelChange={() => {
-              // Refresh session data if needed
-              fetchActiveSessionDetail(session.id)
-            }}
-            sessionStatus={session.status}
-            onToggleAutoAccept={handleToggleAutoAccept}
-            onToggleDangerouslySkipPermissions={handleToggleDangerouslySkipPermissions}
-            onToggleForkView={handleToggleForkView}
-          />
-          {/* Session mode indicator - shows fork, dangerous skip permissions or auto-accept */}
-          <SessionModeIndicator
-            sessionId={session.id}
-            autoAcceptEdits={autoAcceptEdits}
-            dangerouslySkipPermissions={dangerouslySkipPermissions}
-            dangerouslySkipPermissionsExpiresAt={dangerouslySkipPermissionsExpiresAt}
-            isForkMode={previewEventIndex !== null}
-            forkTurnNumber={
-              previewEventIndex !== null
-                ? events
-                    .slice(0, previewEventIndex)
-                    .filter(e => e.eventType === 'message' && e.role === 'user').length
-                : undefined
-            }
-            forkTokenCount={forkTokenCount}
-            className="mt-2"
-          />
-        </CardContent>
-      </Card>
+
+      <ResponseInput
+        denyingApprovalId={approvals.denyingApprovalId ?? undefined}
+        isDenying={approvals.isDenying}
+        onDeny={approvals.handleDeny}
+        handleCancelDeny={approvals.handleCancelDeny}
+        denyAgainstOldestApproval={approvals.denyAgainstOldestApproval}
+        session={session}
+        parentSessionData={parentSessionData || parentSession || undefined}
+        isResponding={actions.isResponding}
+        handleContinueSession={actions.handleContinueSession}
+        isForkMode={actions.isForkMode}
+        forkTokenCount={forkTokenCount}
+        forkTurnNumber={
+          previewEventIndex !== null
+            ? events
+                .slice(0, previewEventIndex)
+                .filter(e => e.eventType === 'message' && e.role === 'user').length
+            : undefined
+        }
+        onModelChange={() => {
+          // Refresh session data if needed
+          fetchActiveSessionDetail(session.id)
+        }}
+        sessionStatus={session.status}
+        onToggleAutoAccept={handleToggleAutoAccept}
+        onToggleDangerouslySkipPermissions={handleToggleDangerouslySkipPermissions}
+        onToggleForkView={handleToggleForkView}
+      />
+      {/* Session mode indicator - shows fork, dangerous skip permissions or auto-accept */}
+      <SessionModeIndicator
+        sessionId={session.id}
+        autoAcceptEdits={autoAcceptEdits}
+        dangerouslySkipPermissions={dangerouslySkipPermissions}
+        dangerouslySkipPermissionsExpiresAt={dangerouslySkipPermissionsExpiresAt}
+        isForkMode={previewEventIndex !== null}
+        forkTurnNumber={
+          previewEventIndex !== null
+            ? events
+                .slice(0, previewEventIndex)
+                .filter(e => e.eventType === 'message' && e.role === 'user').length
+            : undefined
+        }
+        forkTokenCount={forkTokenCount}
+        className="mt-2"
+      />
 
       {/* Tool Result Expansion Modal */}
       {(expandedToolResult || expandedToolCall) && (

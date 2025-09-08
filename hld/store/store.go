@@ -87,7 +87,6 @@ type Session struct {
 	PermissionPromptTool                string // NEW: MCP tool for permission prompts
 	AllowedTools                        string // NEW: JSON array of allowed tools
 	DisallowedTools                     string // NEW: JSON array of disallowed tools
-	AdditionalDirectories               string // NEW: JSON array of additional directories
 	Status                              string
 	CreatedAt                           time.Time
 	LastActivityAt                      time.Time
@@ -138,7 +137,6 @@ type SessionUpdate struct {
 	Model                               *string
 	ModelID                             *string // Full model identifier
 	Archived                            *bool   // New field for updating archived status
-	AdditionalDirectories               *string `db:"additional_directories"`
 	// New proxy fields
 	ProxyEnabled       *bool   `db:"proxy_enabled"`
 	ProxyBaseURL       *string `db:"proxy_base_url"`
@@ -276,26 +274,24 @@ func NewSessionFromConfig(id, runID string, config claudecode.SessionConfig) *Se
 	// Convert slices to JSON for storage
 	allowedToolsJSON, _ := json.Marshal(config.AllowedTools)
 	disallowedToolsJSON, _ := json.Marshal(config.DisallowedTools)
-	additionalDirsJSON, _ := json.Marshal(config.AdditionalDirectories)
 
 	session := &Session{
-		ID:                    id,
-		RunID:                 runID,
-		Query:                 config.Query,
-		Title:                 "", // TODO: config.Title field not available in claudecode.SessionConfig
-		Model:                 string(config.Model),
-		WorkingDir:            config.WorkingDir,
-		MaxTurns:              config.MaxTurns,
-		SystemPrompt:          config.SystemPrompt,
-		AppendSystemPrompt:    config.AppendSystemPrompt,
-		CustomInstructions:    config.CustomInstructions,
-		PermissionPromptTool:  config.PermissionPromptTool,
-		AllowedTools:          string(allowedToolsJSON),
-		DisallowedTools:       string(disallowedToolsJSON),
-		AdditionalDirectories: string(additionalDirsJSON),
-		Status:                SessionStatusStarting,
-		CreatedAt:             time.Now(),
-		LastActivityAt:        time.Now(),
+		ID:                   id,
+		RunID:                runID,
+		Query:                config.Query,
+		Title:                "", // TODO: config.Title field not available in claudecode.SessionConfig
+		Model:                string(config.Model),
+		WorkingDir:           config.WorkingDir,
+		MaxTurns:             config.MaxTurns,
+		SystemPrompt:         config.SystemPrompt,
+		AppendSystemPrompt:   config.AppendSystemPrompt,
+		CustomInstructions:   config.CustomInstructions,
+		PermissionPromptTool: config.PermissionPromptTool,
+		AllowedTools:         string(allowedToolsJSON),
+		DisallowedTools:      string(disallowedToolsJSON),
+		Status:               SessionStatusStarting,
+		CreatedAt:            time.Now(),
+		LastActivityAt:       time.Now(),
 	}
 
 	// Note: Proxy configuration should be explicitly set by the user

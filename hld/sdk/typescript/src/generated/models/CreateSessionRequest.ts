@@ -94,12 +94,6 @@ export interface CreateSessionRequest {
      */
     disallowedTools?: Array<string>;
     /**
-     * Additional directories Claude can access
-     * @type {Array<string>}
-     * @memberof CreateSessionRequest
-     */
-    additionalDirectories?: Array<string>;
-    /**
      * Custom instructions for Claude
      * @type {string}
      * @memberof CreateSessionRequest
@@ -195,7 +189,6 @@ export function CreateSessionRequestFromJSONTyped(json: any, ignoreDiscriminator
         'appendSystemPrompt': json['append_system_prompt'] == null ? undefined : json['append_system_prompt'],
         'allowedTools': json['allowed_tools'] == null ? undefined : json['allowed_tools'],
         'disallowedTools': json['disallowed_tools'] == null ? undefined : json['disallowed_tools'],
-        'additionalDirectories': json['additional_directories'] == null ? undefined : json['additional_directories'],
         'customInstructions': json['custom_instructions'] == null ? undefined : json['custom_instructions'],
         'autoAcceptEdits': json['auto_accept_edits'] == null ? undefined : json['auto_accept_edits'],
         'dangerouslySkipPermissions': json['dangerously_skip_permissions'] == null ? undefined : json['dangerously_skip_permissions'],
@@ -230,7 +223,6 @@ export function CreateSessionRequestToJSONTyped(value?: CreateSessionRequest | n
         'append_system_prompt': value['appendSystemPrompt'],
         'allowed_tools': value['allowedTools'],
         'disallowed_tools': value['disallowedTools'],
-        'additional_directories': value['additionalDirectories'],
         'custom_instructions': value['customInstructions'],
         'auto_accept_edits': value['autoAcceptEdits'],
         'dangerously_skip_permissions': value['dangerouslySkipPermissions'],

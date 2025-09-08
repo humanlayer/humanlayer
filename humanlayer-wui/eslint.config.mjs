@@ -2,6 +2,7 @@ import globals from 'globals'
 import js from '@eslint/js'
 import tseslint from 'typescript-eslint'
 import eslintConfigPrettier from 'eslint-config-prettier/flat'
+import reactHooks from 'eslint-plugin-react-hooks'
 
 export default [
   {
@@ -12,7 +13,7 @@ export default [
     ...js.configs.recommended,
   },
   {
-    files: ['src/**/*.{ts,tsx}'],
+    files: ['src/**/*.{ts,tsx}', 'testing-library.ts'],
     languageOptions: {
       parser: tseslint.parser,
       parserOptions: {
@@ -23,13 +24,16 @@ export default [
       },
       globals: {
         ...globals.browser,
+        expect: 'readonly',
       },
     },
     plugins: {
       '@typescript-eslint': tseslint.plugin,
+      'react-hooks': reactHooks,
     },
     rules: {
       ...tseslint.configs.recommended.rules,
+      ...reactHooks.configs['recommended-latest'].rules,
       'no-undef': 'error',
       '@typescript-eslint/no-unused-vars': 'error',
       'react/react-in-jsx-scope': 'off',
