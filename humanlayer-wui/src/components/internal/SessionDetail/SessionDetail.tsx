@@ -21,6 +21,7 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 import { SessionModeIndicator } from './AutoAcceptIndicator'
 import { ForkViewModal } from './components/ForkViewModal'
 import { DangerouslySkipPermissionsDialog } from './DangerouslySkipPermissionsDialog'
+import { AdditionalDirectoriesDropdown } from './components/AdditionalDirectoriesDropdown'
 
 // Import hooks
 import { useSessionActions } from './hooks/useSessionActions'
@@ -188,6 +189,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [forkTokenCount, setForkTokenCount] = useState<number | null>(null)
   const [confirmingArchive, setConfirmingArchive] = useState(false)
   const [dangerousSkipPermissionsDialogOpen, setDangerousSkipPermissionsDialogOpen] = useState(false)
+  const [directoriesDropdownOpen, setDirectoriesDropdownOpen] = useState(false)
 
   // State for inline title editing
   const [isEditingTitle, setIsEditingTitle] = useState(false)
@@ -495,6 +497,13 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     }
   }, [session.id])
 
+  // Handle updating additional directories
+  const handleUpdateAdditionalDirectories = async (directories: string[]) => {
+    await daemonClient.updateSession(session.id, { additionalDirectories: directories })
+    // Update the local store and refresh session data
+    useStore.getState().updateSession(session.id, { additionalDirectories: directories })
+  }
+
   // Check if there are pending approvals out of view
   const [hasPendingApprovalsOutOfView, setHasPendingApprovalsOutOfView] = useState(false)
 
@@ -520,6 +529,11 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
 
       // Don't process escape if dangerous skip permissions dialog is open
       if (dangerousSkipPermissionsDialogOpen) {
+        return
+      }
+
+      // Don't process escape if directories dropdown is open
+      if (directoriesDropdownOpen) {
         return
       }
 
@@ -840,6 +854,21 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     [startEditTitle, isEditingTitle],
   )
 
+  // Toggle directories dropdown hotkey
+  useHotkeys(
+    'shift+d',
+    () => {
+      setDirectoriesDropdownOpen(prev => !prev)
+    },
+    {
+      scopes: SessionDetailHotkeysScope,
+      enabled: !isEditingTitle && !!session.workingDir,
+      preventDefault: true,
+      enableOnFormTags: false,
+    },
+    [isEditingTitle, session.workingDir],
+  )
+
   // Don't steal scope here - SessionDetail is the base layer
   // Only modals opening on top should steal scope
 
@@ -955,7 +984,14 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               )}
             </h2>
             {session.workingDir && (
-              <small className="font-mono text-xs text-muted-foreground">{session.workingDir}</small>
+              <AdditionalDirectoriesDropdown
+                workingDir={session.workingDir}
+                directories={session.additionalDirectories || []}
+                sessionStatus={session.status}
+                onDirectoriesChange={handleUpdateAdditionalDirectories}
+                open={directoriesDropdownOpen}
+                onOpenChange={setDirectoriesDropdownOpen}
+              />
             )}
           </hgroup>
           <div className="flex items-center gap-1 ml-auto">
