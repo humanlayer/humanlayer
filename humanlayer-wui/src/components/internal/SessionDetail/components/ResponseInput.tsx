@@ -112,14 +112,6 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
       return tiptapRef.current!
     }, [])
 
-    if (session.status === SessionStatus.Failed && !isForkMode) {
-      return (
-        <div className="flex items-center justify-between py-1">
-          <span className="text-sm text-muted-foreground">Session failed</span>
-        </div>
-      )
-    }
-
     useEffect(() => {
       if (isDenying && ref && typeof ref !== 'function' && ref.current) {
         ref.current.focus()
