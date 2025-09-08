@@ -24,7 +24,6 @@ describe('ComposedDemoStore', () => {
         // SessionSlice
         'sessions',
         'focusedSession',
-        'searchQuery',
         // LauncherSlice
         'isOpen',
         'mode',
