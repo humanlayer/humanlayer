@@ -1,10 +1,8 @@
-import { useState, useEffect, useRef } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useState, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useStore } from '@/AppStore'
 import { ViewMode } from '@/lib/daemon/types'
 import SessionTable, { SessionTableHotkeysScope } from '@/components/internal/SessionTable'
-import { SessionTableSearch } from '@/components/SessionTableSearch'
-import { useSessionFilter } from '@/hooks/useSessionFilter'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { useSessionLauncher, useKeyboardNavigationProtection } from '@/hooks'
 import { Inbox, Archive } from 'lucide-react'
@@ -12,11 +10,7 @@ import { Inbox, Archive } from 'lucide-react'
 export function SessionTablePage() {
   const { isOpen: isSessionLauncherOpen, open: openSessionLauncher } = useSessionLauncher()
   const navigate = useNavigate()
-  const [searchParams, setSearchParams] = useSearchParams()
   const tableRef = useRef<HTMLDivElement>(null)
-
-  // Initialize search from URL params
-  const [searchQuery, setSearchQuery] = useState(() => searchParams.get('q') || '')
 
   // Focus source tracking
   const [, setFocusSource] = useState<'mouse' | 'keyboard' | null>(null)
@@ -32,61 +26,41 @@ export function SessionTablePage() {
   const viewMode = useStore(state => state.viewMode)
   const setViewMode = useStore(state => state.setViewMode)
 
-  // Update URL when search changes
-  useEffect(() => {
-    if (searchQuery) {
-      setSearchParams({ q: searchQuery })
-    } else {
-      setSearchParams({})
-    }
-  }, [searchQuery, setSearchParams])
-
-  // Use the shared session filter hook
-  const { filteredSessions, statusFilter, searchText, matchedSessions } = useSessionFilter({
-    sessions,
-    query: searchQuery,
-    searchFields: ['summary'], // Only search in summary field for the table
-  })
-
   const handleActivateSession = (session: any) => {
     navigate(`/sessions/${session.id}`)
   }
 
-  // Custom navigation functions that work with filtered sessions
+  // Custom navigation functions that work with sessions
   const focusNextSession = () => {
-    if (filteredSessions.length === 0) return
+    if (sessions.length === 0) return
 
     startKeyboardNavigation()
 
-    const currentIndex = focusedSession
-      ? filteredSessions.findIndex(s => s.id === focusedSession.id)
-      : -1
+    const currentIndex = focusedSession ? sessions.findIndex(s => s.id === focusedSession.id) : -1
 
     // If no session is focused or we're at the last session, focus the first session
-    if (currentIndex === -1 || currentIndex === filteredSessions.length - 1) {
-      setFocusedSession(filteredSessions[0])
+    if (currentIndex === -1 || currentIndex === sessions.length - 1) {
+      setFocusedSession(sessions[0])
     } else {
       // Focus the next session
-      setFocusedSession(filteredSessions[currentIndex + 1])
+      setFocusedSession(sessions[currentIndex + 1])
     }
     setFocusSource('keyboard')
   }
 
   const focusPreviousSession = () => {
-    if (filteredSessions.length === 0) return
+    if (sessions.length === 0) return
 
     startKeyboardNavigation()
 
-    const currentIndex = focusedSession
-      ? filteredSessions.findIndex(s => s.id === focusedSession.id)
-      : -1
+    const currentIndex = focusedSession ? sessions.findIndex(s => s.id === focusedSession.id) : -1
 
     // If no session is focused or we're at the first session, focus the last session
     if (currentIndex === -1 || currentIndex === 0) {
-      setFocusedSession(filteredSessions[filteredSessions.length - 1])
+      setFocusedSession(sessions[sessions.length - 1])
     } else {
       // Focus the previous session
-      setFocusedSession(filteredSessions[currentIndex - 1])
+      setFocusedSession(sessions[currentIndex - 1])
     }
     setFocusSource('keyboard')
   }
@@ -97,8 +71,6 @@ export function SessionTablePage() {
     e => {
       e.preventDefault()
       setViewMode(viewMode === ViewMode.Normal ? ViewMode.Archived : ViewMode.Normal)
-      // Clear search when switching views
-      setSearchQuery('')
     },
     { enableOnFormTags: false, scopes: SessionTableHotkeysScope, enabled: !isSessionLauncherOpen },
   )
@@ -172,8 +144,8 @@ export function SessionTablePage() {
         container.scrollTop = 0
       }
       // Also focus the first session
-      if (filteredSessions.length > 0) {
-        setFocusedSession(filteredSessions[0])
+      if (sessions.length > 0) {
+        setFocusedSession(sessions[0])
       }
     },
     {
@@ -197,8 +169,8 @@ export function SessionTablePage() {
         container.scrollTop = container.scrollHeight
       }
       // Also focus the last session
-      if (filteredSessions.length > 0) {
-        setFocusedSession(filteredSessions[filteredSessions.length - 1])
+      if (sessions.length > 0) {
+        setFocusedSession(sessions[sessions.length - 1])
       }
     },
     {
@@ -233,18 +205,9 @@ export function SessionTablePage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="sticky top-0 z-10 bg-background pb-4">
-        <SessionTableSearch
-          value={searchQuery}
-          onChange={setSearchQuery}
-          statusFilter={statusFilter}
-          placeholder="Search sessions or filter by status:..."
-        />
-      </div>
-
       <div ref={tableRef} tabIndex={-1} className="focus:outline-none">
         <SessionTable
-          sessions={filteredSessions}
+          sessions={sessions}
           handleFocusSession={session => {
             if (!shouldIgnoreMouseEvent()) {
               setFocusedSession(session)
@@ -261,8 +224,8 @@ export function SessionTablePage() {
           focusedSession={focusedSession}
           handleFocusNextSession={focusNextSession}
           handleFocusPreviousSession={focusPreviousSession}
-          searchText={searchText}
-          matchedSessions={matchedSessions}
+          searchText={undefined}
+          matchedSessions={undefined}
           emptyState={
             viewMode === ViewMode.Archived
               ? {
@@ -282,7 +245,7 @@ export function SessionTablePage() {
                   action: {
                     label: 'Create new session',
                     onClick: () => {
-                      openSessionLauncher('command')
+                      openSessionLauncher()
                     },
                   },
                 }
