@@ -82,7 +82,7 @@ interface SequenceBuilder {
   addStep(step: AnimationStep): SequenceBuilder
   addDelay(ms: number): SequenceBuilder
   addSessions(sessions: Session[]): SequenceBuilder
-  openLauncher(mode?: 'command' | 'search'): SequenceBuilder
+  openLauncher(mode?: 'command'): SequenceBuilder
   closeLauncher(): SequenceBuilder
   setTheme(theme: string): SequenceBuilder
   showApproval(id: string, title: string): SequenceBuilder
@@ -116,11 +116,11 @@ export function createSequence(): SequenceBuilder {
       return builder
     },
 
-    openLauncher(mode: 'command' | 'search' = 'command') {
+    openLauncher() {
       steps.push({
-        launcherState: { isOpen: true, mode },
+        launcherState: { isOpen: true, mode: 'command' },
         delay: 1500,
-        description: `Open launcher in ${mode} mode`,
+        description: 'Open launcher in command mode',
       })
       return builder
     },

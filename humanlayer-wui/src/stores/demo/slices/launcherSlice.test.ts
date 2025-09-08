@@ -29,7 +29,6 @@ describe('Demo LauncherSlice', () => {
       store.testSetters([
         ['setOpen', 'isOpen', true],
         ['setOpen', 'isOpen', false],
-        ['setMode', 'mode', 'search'],
         ['setMode', 'mode', 'command'],
         ['setView', 'view', 'input'],
         ['setView', 'view', 'menu'],
@@ -65,9 +64,9 @@ describe('Demo LauncherSlice', () => {
       expect(state.error).toBeUndefined()
       expect(state.selectedMenuIndex).toBe(0)
 
-      // Specific mode
-      store.act(s => s.openLauncher('search'))
-      expect(store.getState().mode).toBe('search')
+      // Mode is always command
+      store.act(s => s.openLauncher())
+      expect(store.getState().mode).toBe('command')
     })
 
     test('should close launcher and reset state', () => {
@@ -98,7 +97,7 @@ describe('Demo LauncherSlice', () => {
       // Modify all properties
       store.act(s => {
         s.setOpen(true)
-        s.setMode('search')
+        s.setMode('command')
         s.setView('input')
         s.setQuery('test')
         s.setError('error')

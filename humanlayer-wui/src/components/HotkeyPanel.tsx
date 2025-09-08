@@ -20,7 +20,6 @@ const hotkeyData = [
   // Global
   { category: 'Global', key: '?', description: 'Toggle keyboard shortcuts' },
   { category: 'Global', key: '⌘+K', description: 'Open command palette' },
-  { category: 'Global', key: '/', description: 'Search sessions' },
   { category: 'Global', key: 'C', description: 'Create new session' },
   { category: 'Global', key: 'G', description: 'Navigation prefix (G+S for sessions)' },
   { category: 'Global', key: 'Ctrl+T', description: 'Toggle theme selector' },

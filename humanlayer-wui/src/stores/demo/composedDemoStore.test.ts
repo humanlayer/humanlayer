@@ -73,7 +73,7 @@ describe('ComposedDemoStore', () => {
       // Modify all slices
       store.act(s => {
         s.setSessions(mockSessions)
-        s.openLauncher('search')
+        s.openLauncher()
         s.setTheme('catppuccin')
         s.setConnected(false)
       })
@@ -82,7 +82,7 @@ describe('ComposedDemoStore', () => {
       const state = store.getState()
       expect(state.sessions).toHaveLength(3)
       expect(state.isOpen).toBe(true)
-      expect(state.mode).toBe('search')
+      expect(state.mode).toBe('command')
       expect(state.theme).toBe('catppuccin')
       expect(state.connected).toBe(false)
     })
@@ -158,9 +158,9 @@ describe('ComposedDemoAnimator', () => {
 
   test('should handle pause and resume', async () => {
     const sequence: DemoAnimationStep[] = [
-      { sessionState: { searchQuery: 'step1' }, delay: 20 },
-      { sessionState: { searchQuery: 'step2' }, delay: 20 },
-      { sessionState: { searchQuery: 'step3' }, delay: 20 },
+      { sessionState: { focusedSession: null }, delay: 20 },
+      { sessionState: { focusedSession: { id: 'session-1' } as any }, delay: 20 },
+      { sessionState: { focusedSession: { id: 'session-2' } as any }, delay: 20 },
     ]
 
     animator = new ComposedDemoAnimator(store.store, sequence)
@@ -169,7 +169,7 @@ describe('ComposedDemoAnimator', () => {
     await testAnimationSteps([
       {
         wait: 25,
-        test: () => expect(store.getState().searchQuery).toBe('step1'),
+        test: () => expect(store.getState().focusedSession).toBeNull(),
       },
       {
         wait: 0,
@@ -182,13 +182,13 @@ describe('ComposedDemoAnimator', () => {
         wait: 30,
         test: () => {
           // Should not change during pause
-          expect(store.getState().searchQuery).toBe('step1')
+          expect(store.getState().focusedSession).toBeNull()
           animator.resume()
         },
       },
       {
         wait: 25,
-        test: () => expect(store.getState().searchQuery).toBe('step2'),
+        test: () => expect(store.getState().focusedSession?.id).toBe('session-1'),
       },
     ])
 
@@ -214,7 +214,9 @@ describe('ComposedDemoAnimator', () => {
   })
 
   test('should reset animator', () => {
-    const sequence: DemoAnimationStep[] = [{ sessionState: { searchQuery: 'test' }, delay: 10 }]
+    const sequence: DemoAnimationStep[] = [
+      { sessionState: { focusedSession: { id: 'test' } as any }, delay: 10 },
+    ]
 
     animator = new ComposedDemoAnimator(store.store, sequence)
     animator.start()

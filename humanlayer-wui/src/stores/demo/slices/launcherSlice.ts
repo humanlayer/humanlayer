@@ -3,7 +3,7 @@ import { StateCreator } from 'zustand'
 export interface LauncherSlice {
   // State
   isOpen: boolean
-  mode: 'command' | 'search'
+  mode: 'command'
   view: 'menu' | 'input'
   query: string
   isLaunching: boolean
@@ -12,7 +12,7 @@ export interface LauncherSlice {
 
   // Actions
   setOpen: (open: boolean) => void
-  setMode: (mode: 'command' | 'search') => void
+  setMode: (mode: 'command') => void
   setView: (view: 'menu' | 'input') => void
   setQuery: (query: string) => void
   setIsLaunching: (loading: boolean) => void
@@ -20,7 +20,7 @@ export interface LauncherSlice {
   setSelectedMenuIndex: (index: number) => void
 
   // Workflow actions
-  openLauncher: (mode?: 'command' | 'search') => void
+  openLauncher: () => void
   closeLauncher: () => void
   resetLauncher: () => void
 
@@ -52,10 +52,10 @@ export const createLauncherSlice: StateCreator<LauncherSlice, [], [], LauncherSl
   setSelectedMenuIndex: index => set({ selectedMenuIndex: index }),
 
   // Workflow actions
-  openLauncher: (mode = 'command') =>
+  openLauncher: () =>
     set({
       isOpen: true,
-      mode,
+      mode: 'command', // Always command mode
       view: 'menu',
       error: undefined,
       selectedMenuIndex: 0,
