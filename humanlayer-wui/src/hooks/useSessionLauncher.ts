@@ -2,7 +2,6 @@ import { create } from 'zustand'
 import { daemonClient } from '@/lib/daemon'
 import type { LaunchSessionRequest } from '@/lib/daemon/types'
 import { useHotkeysContext } from 'react-hotkeys-hook'
-import { SessionTableHotkeysScope } from '@/components/internal/SessionTable'
 import { exists } from '@tauri-apps/plugin-fs'
 import { homeDir } from '@tauri-apps/api/path'
 import { logger } from '@/lib/logging'
@@ -20,7 +19,7 @@ interface SessionConfig {
 
 interface LauncherState {
   isOpen: boolean
-  mode: 'command' | 'search'
+  mode: 'command'
   view: 'menu' | 'input'
   query: string
   config: SessionConfig
@@ -30,7 +29,7 @@ interface LauncherState {
   selectedMenuIndex: number
 
   // Actions
-  open: (mode?: 'command' | 'search') => void
+  open: () => void
   close: () => void
   setQuery: (query: string) => void
   setConfig: (config: SessionConfig) => void
@@ -90,10 +89,10 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
   gPrefixMode: false,
   selectedMenuIndex: 0,
 
-  open: (mode = 'command') =>
+  open: () =>
     set({
       isOpen: true,
-      mode,
+      mode: 'command', // Always command mode
       view: 'menu',
       selectedMenuIndex: 0,
       error: undefined,
@@ -336,10 +335,10 @@ export function useSessionLauncherHotkeys() {
       // Cmd+K - Global command palette (shows menu)
       if (e.metaKey && e.key === 'k') {
         e.preventDefault()
-        if (isOpen) {
-          close()
+        if (!isOpen) {
+          open()
         } else {
-          open('command')
+          close()
         }
         return
       }
@@ -351,27 +350,11 @@ export function useSessionLauncherHotkeys() {
           e.preventDefault()
           // Open launcher if not already open
           if (!isOpen) {
-            open('command')
+            open()
           }
           createNewSession()
           return
         }
-      }
-
-      // / - Search sessions and approvals (only when not typing)
-      // Note: Check !e.shiftKey to allow shift+/ (?) to be handled by other hotkeys
-      if (
-        e.key === '/' &&
-        !e.shiftKey &&
-        !e.metaKey &&
-        !e.ctrlKey &&
-        !isTypingInInput() &&
-        !activeScopes.includes(SessionTableHotkeysScope) &&
-        !isModalScopeActive()
-      ) {
-        e.preventDefault()
-        open('search')
-        return
       }
 
       // G prefix navigation (prepare for Phase 2)

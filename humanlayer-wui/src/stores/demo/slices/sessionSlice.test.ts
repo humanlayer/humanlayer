@@ -17,7 +17,6 @@ describe('Demo SessionSlice', () => {
       testInitialState(store.getState(), {
         sessions: [],
         focusedSession: null,
-        searchQuery: '',
       })
     })
 
@@ -25,7 +24,6 @@ describe('Demo SessionSlice', () => {
       // Test setters
       store.testSetters([
         ['setSessions', 'sessions', mockSessions],
-        ['setSearchQuery', 'searchQuery', 'test query'],
         ['setFocusedSession', 'focusedSession', mockSessions[0]],
       ])
     })
@@ -104,13 +102,6 @@ describe('Demo SessionSlice', () => {
         s.focusPreviousSession()
       })
       expect(store.getState().focusedSession).toBeNull()
-    })
-  })
-
-  describe('Search Functionality', () => {
-    test('should set and clear search query', () => {
-      store.testSetter('setSearchQuery', 'searchQuery', 'test query')
-      store.testSetter('setSearchQuery', 'searchQuery', '')
     })
   })
 
