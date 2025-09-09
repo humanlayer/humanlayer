@@ -43,11 +43,11 @@ describe('useAutoScroll', () => {
   })
 
   it('should use percentage-based threshold', () => {
-    const mockContainer = createMockContainer(895, 1000, 100)
+    const mockContainer = createMockContainer(898, 1000, 100)
 
     const { result } = renderHook(() => useAutoScroll(mockContainer as any, false, false))
 
-    // Should be at bottom since 5px < 10px (10% of 100px viewport)
+    // Should be at bottom since 2px < 2.5px (2.5% of 100px viewport)
     expect(result.current.isAtBottom()).toBe(true)
   })
 })
