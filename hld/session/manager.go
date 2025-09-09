@@ -22,7 +22,10 @@ import (
 type Manager struct {
 	activeProcesses    map[string]ClaudeSession // Maps session ID to active Claude process
 	mu                 sync.RWMutex
-	client             *claudecode.Client
+	client             *claudecode.Client // Can be nil if Claude not available
+	claudeClientErr    error              // Store initialization error
+	claudePath         string             // Configured Claude path
+	lastCheckedPath    string             // Last path we checked
 	eventBus           bus.EventBus
 	store              store.ConversationStore
 	approvalReconciler ApprovalReconciler
@@ -40,18 +43,50 @@ func NewManager(eventBus bus.EventBus, store store.ConversationStore, socketPath
 		return nil, fmt.Errorf("store is required")
 	}
 
-	client, err := claudecode.NewClient()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Claude client: %w", err)
-	}
+	logger := slog.With("component", "session_manager")
 
-	return &Manager{
+	m := &Manager{
 		activeProcesses: make(map[string]ClaudeSession),
-		client:          client,
 		eventBus:        eventBus,
 		store:           store,
 		socketPath:      socketPath,
-	}, nil
+	}
+
+	// Try to initialize Claude client but don't fail if unavailable
+	m.initializeClaudeClient()
+	if m.claudeClientErr != nil {
+		logger.Warn("Claude binary not available at startup",
+			"error", m.claudeClientErr)
+	}
+
+	return m, nil
+}
+
+// NewManagerWithConfig creates a new session manager with required store and configuration
+func NewManagerWithConfig(eventBus bus.EventBus, store store.ConversationStore, socketPath string, cfg *hldconfig.Config) (*Manager, error) {
+	if store == nil {
+		return nil, fmt.Errorf("store is required")
+	}
+
+	logger := slog.With("component", "session_manager")
+
+	m := &Manager{
+		activeProcesses: make(map[string]ClaudeSession),
+		eventBus:        eventBus,
+		store:           store,
+		socketPath:      socketPath,
+		claudePath:      cfg.ClaudePath, // Use configured Claude path
+	}
+
+	// Try to initialize Claude client but don't fail if unavailable
+	m.initializeClaudeClient()
+	if m.claudeClientErr != nil {
+		logger.Warn("Claude binary not available at startup",
+			"error", m.claudeClientErr,
+			"configured_path", cfg.ClaudePath)
+	}
+
+	return m, nil
 }
 
 // SetApprovalReconciler sets the approval reconciler for the session manager
@@ -69,8 +104,77 @@ func (m *Manager) SetHTTPPort(port int) {
 	slog.Debug("HTTP port set for proxy endpoint", "port", port)
 }
 
+// initializeClaudeClient attempts to create or reinitialize the Claude client
+// Note: Using mutex instead of sync.Once to support reinitialization
+func (m *Manager) initializeClaudeClient() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	// Double-check pattern: skip if already initialized with same path
+	if m.client != nil && m.claudePath == m.lastCheckedPath && m.claudeClientErr == nil {
+		return // Already initialized successfully with this path
+	}
+
+	// Create client based on configured path
+	var client *claudecode.Client
+	var err error
+
+	if m.claudePath != "" {
+		// Validate path exists and is executable
+		// Note: We allow manual configuration of .bak files and other paths that auto-detection would skip
+		// This gives users control while auto-detection remains conservative
+		if _, statErr := os.Stat(m.claudePath); statErr != nil {
+			err = fmt.Errorf("configured Claude path does not exist: %s", m.claudePath)
+		} else if execErr := claudecode.IsExecutable(m.claudePath); execErr != nil {
+			err = fmt.Errorf("configured Claude path is not executable: %s: %w", m.claudePath, execErr)
+		} else {
+			// Warn if path would be skipped by auto-detection but allow it
+			if claudecode.ShouldSkipPath(m.claudePath) {
+				slog.Warn("Using manually configured Claude path that would be skipped by auto-detection",
+					"path", m.claudePath,
+					"reason", "backup file or invalid location")
+			}
+			client = claudecode.NewClientWithPath(m.claudePath)
+			slog.Info("Using configured Claude path", "path", m.claudePath)
+		}
+	} else {
+		// Auto-detect
+		client, err = claudecode.NewClient()
+	}
+
+	// Update state
+	m.lastCheckedPath = m.claudePath
+	m.client = client
+	m.claudeClientErr = err
+
+	if err != nil {
+		slog.Warn("Claude binary not found, sessions will not be launchable",
+			"error", err,
+			"configured_path", m.claudePath)
+	} else {
+		slog.Info("Claude client initialized successfully",
+			"path", m.claudePath)
+	}
+}
+
+// getClaudeClient ensures Claude client is initialized and returns it
+func (m *Manager) getClaudeClient() (*claudecode.Client, error) {
+	m.initializeClaudeClient()
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	if m.claudeClientErr != nil {
+		return nil, fmt.Errorf("claude not available: %w", m.claudeClientErr)
+	}
+	return m.client, nil
+}
+
 // LaunchSession starts a new Claude Code session
 func (m *Manager) LaunchSession(ctx context.Context, config LaunchSessionConfig) (*Session, error) {
+	// Get Claude client (will attempt initialization if needed)
+	client, err := m.getClaudeClient()
+	if err != nil {
+		return nil, fmt.Errorf("cannot launch session: %w", err)
+	}
 	// Generate unique IDs
 	sessionID := uuid.New().String()
 	runID := uuid.New().String()
@@ -252,7 +356,7 @@ func (m *Manager) LaunchSession(ctx context.Context, config LaunchSessionConfig)
 		"mcp_servers_detail", mcpServersDetail)
 
 	// Launch Claude session (without daemon-level settings)
-	claudeSession, err := m.client.Launch(claudeConfig)
+	claudeSession, err := client.Launch(claudeConfig)
 	if err != nil {
 		slog.Error("failed to launch Claude session",
 			"session_id", sessionID,
@@ -1535,6 +1639,12 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 			"has_openrouter_key", os.Getenv("OPENROUTER_API_KEY") != "")
 	}
 
+	// Get Claude client (will attempt initialization if needed)
+	client, err := m.getClaudeClient()
+	if err != nil {
+		return nil, fmt.Errorf("cannot continue session: %w", err)
+	}
+
 	// Launch resumed Claude session
 	slog.Info("attempting to resume Claude session",
 		"session_id", sessionID,
@@ -1546,7 +1656,7 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 		"proxy_base_url", dbSession.ProxyBaseURL,
 		"proxy_model", dbSession.ProxyModelOverride)
 
-	claudeSession, err := m.client.Launch(config)
+	claudeSession, err := client.Launch(config)
 	if err != nil {
 		slog.Error("failed to resume Claude session from failed parent",
 			"session_id", sessionID,
@@ -1702,6 +1812,40 @@ func (m *Manager) injectQueryAsFirstEvent(ctx context.Context, sessionID, claude
 		Content:         query,
 	}
 	return m.store.AddConversationEvent(ctx, event)
+}
+
+// UpdateClaudePath updates the Claude binary path at runtime
+func (m *Manager) UpdateClaudePath(path string) {
+	m.mu.Lock()
+	m.claudePath = path
+	m.mu.Unlock()
+
+	// Trigger reinitialization on next use
+	m.initializeClaudeClient()
+}
+
+// GetClaudePath returns the current Claude path
+func (m *Manager) GetClaudePath() string {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.claudePath
+}
+
+// IsClaudeAvailable checks if Claude is available
+func (m *Manager) IsClaudeAvailable() bool {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.client != nil && m.claudeClientErr == nil
+}
+
+// GetClaudeBinaryPath returns the actual path to the Claude binary if available
+func (m *Manager) GetClaudeBinaryPath() string {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	if m.client != nil {
+		return m.client.GetPath()
+	}
+	return ""
 }
 
 // StopAllSessions gracefully stops all active sessions with a timeout

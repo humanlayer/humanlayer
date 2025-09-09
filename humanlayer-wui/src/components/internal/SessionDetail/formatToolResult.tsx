@@ -17,7 +17,13 @@ export function formatToolResult(
 
   // Handle empty content
   if (!content.trim()) {
-    return <span className="text-muted-foreground italic">No output</span>
+    // Special handling for Write tool - empty content is normal
+    if (toolName === 'Write') {
+      // Don't return early - let the formatter handle this case
+      // The switch statement below will show "File written" or "Write failed" based on isCompleted
+    } else {
+      return <span className="text-muted-foreground italic">No output</span>
+    }
   }
 
   // More specific error detection to avoid false positives
@@ -30,9 +36,22 @@ export function formatToolResult(
       "has been updated. Here's the result of running `cat -n` on a snippet of the edited file:"
     isError = !content.includes(successPattern)
   } else if (toolName === 'Write') {
-    // For Write tool, check for success pattern
-    const successPattern = 'File created successfully'
-    isError = !content.includes(successPattern)
+    // Write tool success detection based on DB analysis of 622 operations:
+    // - Successful writes have empty content and isCompleted=true
+    // - Failed writes have error messages in content
+    if (content.trim() === '') {
+      // Empty content: check isCompleted field (98.6% accuracy from DB analysis)
+      isError = !toolResult.isCompleted
+    } else {
+      // Non-empty content: check for error indicators
+      const lowerContent = content.toLowerCase()
+      isError =
+        lowerContent.includes('error') ||
+        lowerContent.includes('failed') ||
+        lowerContent.includes('file has not been read')
+      // If content exists but no error indicators, assume success
+      // (though DB shows successful writes always have empty content)
+    }
   } else if (toolName === 'Grep') {
     // For Grep tool, only mark as error if it's a real grep error
     // The grep tool is built-in and rarely fails
@@ -180,15 +199,17 @@ export function formatToolResult(
     case 'Write': {
       if (isError) {
         // Extract specific error message if available
-        if (content.toLowerCase().includes('file has not been read yet')) {
+        const lowerContent = content.toLowerCase()
+        if (lowerContent.includes('file has not been read yet')) {
           abbreviated = 'File not read yet'
+        } else if (content.trim() && !lowerContent.includes('write failed')) {
+          // Show actual error content if present
+          abbreviated = truncate(content, 50)
         } else {
           abbreviated = 'Write failed'
         }
-      } else if (content.includes('successfully')) {
-        abbreviated = 'File written'
       } else {
-        // Only assume success if we didn't detect an error
+        // Success case - empty content is normal for successful writes
         abbreviated = 'File written'
       }
       break
