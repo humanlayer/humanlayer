@@ -150,7 +150,9 @@ func (c *Client) buildArgs(config SessionConfig) ([]string, error) {
 	args := []string{}
 
 	// Always use print mode for SDK
-	args = append(args, "--print", config.Query)
+	if config.Query != "" {
+		args = append(args, "--print", config.Query)
+	}
 
 	// Session management
 	if config.SessionID != "" {
@@ -224,6 +226,37 @@ func (c *Client) buildArgs(config SessionConfig) ([]string, error) {
 	}
 	if len(config.DisallowedTools) > 0 {
 		args = append(args, "--disallowedTools", strings.Join(config.DisallowedTools, ","))
+	}
+
+	// Additional directories
+	if len(config.AdditionalDirectories) > 0 {
+		log.Printf("Processing %d additional directories", len(config.AdditionalDirectories))
+		for _, dir := range config.AdditionalDirectories {
+			// Expand tilde if present
+			expandedDir := dir
+			if strings.HasPrefix(dir, "~/") {
+				if home, err := os.UserHomeDir(); err == nil {
+					expandedDir = filepath.Join(home, dir[2:])
+				}
+			} else if dir == "~" {
+				if home, err := os.UserHomeDir(); err == nil {
+					expandedDir = home
+				}
+			}
+
+			// Convert to absolute path
+			absPath, err := filepath.Abs(expandedDir)
+			if err == nil {
+				log.Printf("Adding directory (expanded): %s -> %s", dir, absPath)
+				args = append(args, "--add-dir", absPath)
+			} else {
+				// Fallback to original if absolute path conversion fails
+				log.Printf("Adding directory (original, expansion failed): %s", dir)
+				args = append(args, "--add-dir", dir)
+			}
+		}
+	} else {
+		log.Printf("No additional directories to add")
 	}
 
 	// Verbose
