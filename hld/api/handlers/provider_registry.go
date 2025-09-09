@@ -45,6 +45,8 @@ type ProviderRegistry struct {
 }
 
 // Initialize with existing providers
+// Note: TransformRequest functions for local proxies are set in InitializeRegistry()
+// to avoid circular dependencies between this file and proxy.go
 var defaultRegistry = &ProviderRegistry{
 	providers: map[string]ProviderConfig{
 		// REMOTE PROXIES - No local transformation needed
@@ -77,7 +79,7 @@ var defaultRegistry = &ProviderRegistry{
 			EnvVarKey:        "OPENROUTER_API_KEY",
 			LocalEndpoint:    "/chat/completions",
 			DefaultModel:     "openai/gpt-oss-120b",
-			TransformRequest: nil, // Will be set to transformAnthropicToOpenAI
+			TransformRequest: nil, // Will be set to transformAnthropicToOpenRouter
 		},
 		"baseten": {
 			Name:             "baseten",
@@ -88,7 +90,7 @@ var defaultRegistry = &ProviderRegistry{
 			EnvVarKey:        "BASETEN_API_KEY",
 			LocalEndpoint:    "/chat/completions",
 			DefaultModel:     "deepseek-ai/DeepSeek-V3.1",
-			TransformRequest: nil, // Will be set to transformAnthropicToOpenAI
+			TransformRequest: nil, // Will be set to transformAnthropicToBaseten
 		},
 	},
 }
