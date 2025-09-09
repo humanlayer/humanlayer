@@ -161,11 +161,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
     // Save or remove Z-AI API key from localStorage
     if (config.zAiApiKey) {
       localStorage.setItem(Z_AI_API_KEY, config.zAiApiKey)
-    } else if (
-      config.zAiApiKey === undefined ||
-      config.zAiApiKey === null ||
-      config.zAiApiKey === ''
-    ) {
+    } else if (config.zAiApiKey === undefined || config.zAiApiKey === null || config.zAiApiKey === '') {
       // Remove from localStorage when cleared to avoid stale state
       localStorage.removeItem(Z_AI_API_KEY)
     }
@@ -215,7 +211,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
 
       console.log('useSessionLauncher config:', config)
       console.log('useSessionLauncher provider:', config.provider)
-      
+
       const request: LaunchSessionRequest = {
         query: query.trim(),
         title: config.title || undefined,

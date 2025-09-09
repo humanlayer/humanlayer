@@ -247,6 +247,7 @@ func (h *SessionHandlers) ListSessions(ctx context.Context, req api.ListSessions
 			DangerouslySkipPermissions:          info.DangerouslySkipPermissions,
 			DangerouslySkipPermissionsExpiresAt: info.DangerouslySkipPermissionsExpiresAt,
 			Archived:                            info.Archived,
+			Provider:                            info.Provider,
 		}
 
 		// Copy result data if available
@@ -344,6 +345,11 @@ func (h *SessionHandlers) UpdateSession(ctx context.Context, req api.UpdateSessi
 		update.ModelID = req.Body.ModelId
 	}
 
+	// Update provider if specified
+	if req.Body.Provider != nil {
+		update.Provider = req.Body.Provider
+	}
+
 	// Update proxy configuration if specified
 	// Note: OpenAPI generates ProxyBaseUrl/ProxyApiKey (following JSON conventions)
 	// but we map to ProxyBaseURL/ProxyAPIKey (following Go conventions for acronyms)
@@ -434,6 +440,9 @@ func (h *SessionHandlers) ContinueSession(ctx context.Context, req api.ContinueS
 	}
 
 	// Handle optional fields
+	if req.Body.Provider != nil {
+		continueConfig.Provider = *req.Body.Provider
+	}
 	if req.Body.SystemPrompt != nil {
 		continueConfig.SystemPrompt = *req.Body.SystemPrompt
 	}

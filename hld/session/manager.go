@@ -187,8 +187,35 @@ func (m *Manager) LaunchSession(ctx context.Context, config LaunchSessionConfig)
 			"session_id", sessionID,
 			"provider", config.Provider,
 			"proxy_enabled", config.ProxyEnabled)
+	} else if config.ProxyEnabled && config.ProxyModelOverride != "" {
+		// Auto-detect provider from proxy model if not explicitly set
+		modelLower := strings.ToLower(config.ProxyModelOverride)
+		if strings.Contains(modelLower, "openai/") || strings.Contains(modelLower, "gpt") {
+			dbSession.Provider = "openrouter"
+			slog.Info("Auto-detected OpenRouter provider from model",
+				"session_id", sessionID,
+				"model", config.ProxyModelOverride)
+		} else if strings.Contains(modelLower, "glm") || strings.Contains(modelLower, "z-ai") {
+			dbSession.Provider = "z_ai"
+			slog.Info("Auto-detected Z-AI provider from model",
+				"session_id", sessionID,
+				"model", config.ProxyModelOverride)
+		} else if strings.Contains(modelLower, "deepseek") {
+			dbSession.Provider = "baseten"
+			slog.Info("Auto-detected Baseten provider from model",
+				"session_id", sessionID,
+				"model", config.ProxyModelOverride)
+		} else {
+			// Default to anthropic if we can't detect
+			dbSession.Provider = "anthropic"
+			slog.Info("Defaulting to anthropic provider",
+				"session_id", sessionID,
+				"proxy_enabled", config.ProxyEnabled)
+		}
 	} else {
-		slog.Info("No provider specified for session",
+		// Default to anthropic if no provider specified and no proxy
+		dbSession.Provider = "anthropic"
+		slog.Info("No provider specified for session, defaulting to anthropic",
 			"session_id", sessionID,
 			"proxy_enabled", config.ProxyEnabled)
 	}
@@ -1434,6 +1461,42 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 		}
 	}
 
+	// Inherit provider from parent or use provided value
+	if req.Provider != "" {
+		dbSession.Provider = req.Provider
+		slog.Info("ContinueSession: using provided provider",
+			"provider", req.Provider,
+			"parent_session_id", req.ParentSessionID)
+	} else if parentSession.Provider != "" {
+		dbSession.Provider = parentSession.Provider
+		slog.Info("ContinueSession: inheriting provider from parent",
+			"provider", parentSession.Provider,
+			"parent_session_id", req.ParentSessionID)
+	} else {
+		// Auto-detect provider from proxy model if proxy is enabled
+		if dbSession.ProxyEnabled && dbSession.ProxyModelOverride != "" {
+			modelLower := strings.ToLower(dbSession.ProxyModelOverride)
+			if strings.Contains(modelLower, "openai/") || strings.Contains(modelLower, "gpt") {
+				dbSession.Provider = "openrouter"
+			} else if strings.Contains(modelLower, "glm") || strings.Contains(modelLower, "z-ai") {
+				dbSession.Provider = "z_ai"
+			} else if strings.Contains(modelLower, "deepseek") {
+				dbSession.Provider = "baseten"
+			} else {
+				dbSession.Provider = "anthropic" // Default if we can't detect
+			}
+			slog.Info("ContinueSession: auto-detected provider from proxy model",
+				"provider", dbSession.Provider,
+				"proxy_model", dbSession.ProxyModelOverride,
+				"parent_session_id", req.ParentSessionID)
+		} else {
+			dbSession.Provider = "anthropic" // Default provider
+			slog.Info("ContinueSession: using default provider",
+				"provider", dbSession.Provider,
+				"parent_session_id", req.ParentSessionID)
+		}
+	}
+
 	// Note: ClaudeSessionID will be captured from streaming events (will be different from parent)
 	if err := m.store.CreateSession(ctx, dbSession); err != nil {
 		return nil, fmt.Errorf("failed to store session in database: %w", err)
@@ -1805,6 +1868,14 @@ func (m *Manager) forceKillRemaining() {
 
 // UpdateSessionSettings updates session settings and publishes appropriate events
 func (m *Manager) UpdateSessionSettings(ctx context.Context, sessionID string, updates store.SessionUpdate) error {
+	// Log the incoming updates including provider field
+	slog.Info("UpdateSessionSettings called",
+		"session_id", sessionID,
+		"provider", updates.Provider,
+		"model", updates.Model,
+		"proxy_enabled", updates.ProxyEnabled,
+		"proxy_model", updates.ProxyModelOverride)
+
 	// First update the store
 	if err := m.store.UpdateSession(ctx, sessionID, updates); err != nil {
 		return err

@@ -130,7 +130,7 @@ export class HTTPDaemonClient implements IDaemonClient {
     // Handle provider-specific model formatting
     let model: string | undefined = params.model
     const provider = 'provider' in params ? params.provider : 'anthropic'
-    
+
     console.log('http-client launchSession params:', params)
     console.log('http-client provider:', provider)
 
@@ -155,7 +155,7 @@ export class HTTPDaemonClient implements IDaemonClient {
       provider: provider,
       model:
         provider !== 'anthropic'
-          ? undefined  // Non-Anthropic providers use proxy_model_override
+          ? undefined // Non-Anthropic providers use proxy_model_override
           : (model as 'opus' | 'sonnet' | undefined),
       mcpConfig: 'mcpConfig' in params ? params.mcpConfig : (params as LaunchSessionRequest).mcp_config,
       permissionPromptTool:

@@ -131,12 +131,12 @@ func (h *ProxyHandler) ProxyAnthropicRequest(c *gin.Context) {
 			}
 		}
 	}
-	
+
 	if providerName == "" {
 		// For backward compatibility, default to anthropic
 		providerName = "anthropic"
 	}
-	
+
 	slog.Debug("provider selection",
 		"session_id", sessionID,
 		"provider_from_session", session.Provider,
@@ -179,7 +179,7 @@ func (h *ProxyHandler) ProxyAnthropicRequest(c *gin.Context) {
 			"proxy_model_override": session.ProxyModelOverride,
 			"proxy_api_key":        session.ProxyAPIKey,
 		}
-		
+
 		// Use provider-specific transform if available
 		if provider.TransformRequest != nil {
 			requestBody = provider.TransformRequest(requestBody, sessionMap)

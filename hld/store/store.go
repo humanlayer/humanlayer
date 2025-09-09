@@ -138,6 +138,7 @@ type SessionUpdate struct {
 	Model                               *string
 	ModelID                             *string // Full model identifier
 	Archived                            *bool   // New field for updating archived status
+	Provider                            *string // Provider field for updates
 	// New proxy fields
 	ProxyEnabled       *bool   `db:"proxy_enabled"`
 	ProxyBaseURL       *string `db:"proxy_base_url"`

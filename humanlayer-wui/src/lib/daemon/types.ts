@@ -430,11 +430,13 @@ export interface ConfigStatus {
   anthropic?: {
     api_key_configured: boolean
   }
-  [key: string]: {
-    api_key_configured: boolean
-    display_name?: string
-    mode?: string
-  } | undefined
+  [key: string]:
+    | {
+        api_key_configured: boolean
+        display_name?: string
+        mode?: string
+      }
+    | undefined
 }
 
 // Helper function to ensure SDK Session has proper defaults

@@ -1022,6 +1022,10 @@ func (s *SQLiteStore) UpdateSession(ctx context.Context, sessionID string, updat
 		setParts = append(setParts, "archived = ?")
 		args = append(args, *updates.Archived)
 	}
+	if updates.Provider != nil {
+		setParts = append(setParts, "provider = ?")
+		args = append(args, *updates.Provider)
+	}
 	// Handle proxy field updates
 	if updates.ProxyEnabled != nil {
 		setParts = append(setParts, "proxy_enabled = ?")

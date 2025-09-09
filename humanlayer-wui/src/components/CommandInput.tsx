@@ -84,7 +84,11 @@ export default function CommandInput({
 
   // Check config status when provider changes to OpenRouter, Baseten, or Z-AI
   useEffect(() => {
-    if (config.provider === 'openrouter' || config.provider === 'baseten' || config.provider === 'z_ai') {
+    if (
+      config.provider === 'openrouter' ||
+      config.provider === 'baseten' ||
+      config.provider === 'z_ai'
+    ) {
       setIsCheckingConfig(true)
       daemonClient
         .getConfigStatus()
@@ -183,10 +187,10 @@ export default function CommandInput({
                     <div className="flex items-center gap-2">
                       <span>{provider.displayName}</span>
                       {provider.mode === 'local' && (
-                        <span className="text-xs text-muted-foreground">(Local Proxy)</span>
+                        <span className="text-xs text-muted-foreground">(Custom)</span>
                       )}
                       {provider.mode === 'remote' && (
-                        <span className="text-xs text-muted-foreground">(Remote)</span>
+                        <span className="text-xs text-muted-foreground">(Official)</span>
                       )}
                     </div>
                   </SelectItem>
