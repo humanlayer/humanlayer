@@ -61,6 +61,11 @@ func (h *SessionHandlers) CreateSession(ctx context.Context, req api.CreateSessi
 		},
 	}
 
+	// Handle provider
+	if req.Body.Provider != nil {
+		config.Provider = *req.Body.Provider
+	}
+
 	// Handle proxy configuration
 	// Note: OpenAPI generates ProxyBaseUrl/ProxyApiKey (following JSON conventions)
 	// but we map to ProxyBaseURL/ProxyAPIKey (following Go conventions for acronyms)

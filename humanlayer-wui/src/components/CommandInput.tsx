@@ -12,14 +12,22 @@ import { daemonClient } from '@/lib/daemon'
 import { ConfigStatus } from '@/lib/daemon/types'
 import { useStore } from '@/AppStore'
 
+interface Provider {
+  name: string
+  displayName: string
+  mode: 'local' | 'remote'
+  configured: boolean
+}
+
 interface SessionConfig {
   title?: string
   workingDir: string
-  provider?: 'anthropic' | 'openrouter' | 'baseten'
+  provider?: string
   model?: string
   maxTurns?: number
   openRouterApiKey?: string
   basetenApiKey?: string
+  zAiApiKey?: string
   additionalDirectories?: string[]
 }
 
@@ -47,6 +55,7 @@ export default function CommandInput({
   const { paths: recentPaths } = useRecentPaths()
   const [configStatus, setConfigStatus] = useState<ConfigStatus | null>(null)
   const [isCheckingConfig, setIsCheckingConfig] = useState(false)
+  const [providers, setProviders] = useState<Provider[]>([])
   const userSettings = useStore(state => state.userSettings)
 
   useEffect(() => {
@@ -63,9 +72,19 @@ export default function CommandInput({
     }
   }, [])
 
-  // Check config status when provider changes to OpenRouter or Baseten
+  // Fetch available providers
   useEffect(() => {
-    if (config.provider === 'openrouter' || config.provider === 'baseten') {
+    if (userSettings?.advancedProviders) {
+      daemonClient
+        .getProviders()
+        .then(data => setProviders(data.providers))
+        .catch(err => console.error('Failed to fetch providers:', err))
+    }
+  }, [userSettings?.advancedProviders])
+
+  // Check config status when provider changes to OpenRouter, Baseten, or Z-AI
+  useEffect(() => {
+    if (config.provider === 'openrouter' || config.provider === 'baseten' || config.provider === 'z_ai') {
       setIsCheckingConfig(true)
       daemonClient
         .getConfigStatus()
@@ -149,7 +168,7 @@ export default function CommandInput({
               value={config.provider || 'anthropic'}
               onValueChange={value => {
                 updateConfig({
-                  provider: value as 'anthropic' | 'openrouter' | 'baseten',
+                  provider: value,
                   model: undefined, // Clear model when provider changes
                   // Keep the API key persistent across provider changes
                 })
@@ -159,9 +178,19 @@ export default function CommandInput({
                 <SelectValue placeholder="Select provider" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="anthropic">Anthropic</SelectItem>
-                <SelectItem value="openrouter">OpenRouter</SelectItem>
-                <SelectItem value="baseten">Baseten</SelectItem>
+                {providers.map(provider => (
+                  <SelectItem key={provider.name} value={provider.name}>
+                    <div className="flex items-center gap-2">
+                      <span>{provider.displayName}</span>
+                      {provider.mode === 'local' && (
+                        <span className="text-xs text-muted-foreground">(Local Proxy)</span>
+                      )}
+                      {provider.mode === 'remote' && (
+                        <span className="text-xs text-muted-foreground">(Remote)</span>
+                      )}
+                    </div>
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -188,6 +217,20 @@ export default function CommandInput({
                 placeholder="e.g., deepseek-ai/DeepSeek-V3.1"
                 disabled={isLoading}
               />
+            ) : config.provider === 'z_ai' ? (
+              // Dropdown for Z-AI models
+              <Select
+                value={config.model || ''}
+                onValueChange={value => updateConfig({ model: value || undefined })}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select Z-AI Model" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="glm-4.5">GLM-4.5</SelectItem>
+                  <SelectItem value="glm-4.5-air">GLM-4.5-Air</SelectItem>
+                </SelectContent>
+              </Select>
             ) : (
               // Dropdown for Anthropic models
               <Select
@@ -247,6 +290,19 @@ export default function CommandInput({
           isCheckingConfig={isCheckingConfig}
           placeholder=""
           onApiKeyChange={value => updateConfig({ basetenApiKey: value })}
+        />
+      )}
+
+      {/* Z-AI API Key field - only shown when Z-AI is selected */}
+      {config.provider === 'z_ai' && (
+        <ProviderApiKeyField
+          provider="z_ai"
+          displayName="Z-AI"
+          apiKey={config.zAiApiKey}
+          isConfigured={configStatus?.z_ai?.api_key_configured}
+          isCheckingConfig={isCheckingConfig}
+          placeholder="API key for Z-AI"
+          onApiKeyChange={value => updateConfig({ zAiApiKey: value })}
         />
       )}
 

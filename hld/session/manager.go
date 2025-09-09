@@ -176,6 +176,15 @@ func (m *Manager) LaunchSession(ctx context.Context, config LaunchSessionConfig)
 		}
 	}
 
+	// Handle provider configuration
+	if config.Provider != "" {
+		dbSession.Provider = config.Provider
+		// Automatically enable proxy for non-Anthropic providers
+		if config.Provider != "anthropic" {
+			config.ProxyEnabled = true
+		}
+	}
+
 	// Handle proxy configuration from config
 	if config.ProxyEnabled {
 		dbSession.ProxyEnabled = config.ProxyEnabled

@@ -70,7 +70,8 @@ type LaunchSessionConfig struct {
 	AutoAcceptEdits                   bool   // Auto-accept edit tools
 	DangerouslySkipPermissions        bool   // Whether to auto-approve all tools
 	DangerouslySkipPermissionsTimeout *int64 // Optional timeout in milliseconds
-	// Proxy configuration
+	// Provider and proxy configuration
+	Provider           string // Provider to use (anthropic, openrouter, baseten, z_ai)
 	ProxyEnabled       bool   // Whether proxy is enabled
 	ProxyBaseURL       string // Proxy base URL
 	ProxyModelOverride string // Model to use with proxy

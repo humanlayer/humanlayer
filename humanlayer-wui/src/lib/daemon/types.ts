@@ -173,7 +173,7 @@ export enum ViewMode {
 export interface LaunchSessionRequest {
   query: string
   title?: string
-  provider?: 'anthropic' | 'openrouter' | 'baseten'
+  provider?: string
   model?: string
   mcp_config?: any
   permission_prompt_tool?: string
@@ -424,6 +424,17 @@ export interface ConfigStatus {
   baseten: {
     api_key_configured: boolean
   }
+  z_ai?: {
+    api_key_configured: boolean
+  }
+  anthropic?: {
+    api_key_configured: boolean
+  }
+  [key: string]: {
+    api_key_configured: boolean
+    display_name?: string
+    mode?: string
+  } | undefined
 }
 
 // Helper function to ensure SDK Session has proper defaults

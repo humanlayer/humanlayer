@@ -9,11 +9,12 @@ import { logger } from '@/lib/logging'
 interface SessionConfig {
   title?: string
   workingDir: string
-  provider?: 'anthropic' | 'openrouter' | 'baseten'
+  provider?: string
   model?: string
   maxTurns?: number
   openRouterApiKey?: string
   basetenApiKey?: string
+  zAiApiKey?: string
   additionalDirectories?: string[]
 }
 
@@ -51,6 +52,7 @@ const LAST_WORKING_DIR_KEY = 'humanlayer-last-working-dir'
 const SESSION_LAUNCHER_QUERY_KEY = 'session-launcher-query'
 const OPENROUTER_API_KEY = 'humanlayer-openrouter-api-key'
 const BASETEN_API_KEY = 'humanlayer-baseten-api-key'
+const Z_AI_API_KEY = 'humanlayer-z-ai-api-key'
 
 // Helper function to get default working directory
 const getDefaultWorkingDir = (): string => {
@@ -73,6 +75,11 @@ const getSavedBasetenKey = (): string | undefined => {
   return localStorage.getItem(BASETEN_API_KEY) || undefined
 }
 
+// Helper function to get saved Z-AI API key
+const getSavedZAIKey = (): string | undefined => {
+  return localStorage.getItem(Z_AI_API_KEY) || undefined
+}
+
 export const useSessionLauncher = create<LauncherState>((set, get) => ({
   isOpen: false,
   mode: 'command',
@@ -83,6 +90,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
     provider: 'anthropic',
     openRouterApiKey: getSavedOpenRouterKey(),
     basetenApiKey: getSavedBasetenKey(),
+    zAiApiKey: getSavedZAIKey(),
     additionalDirectories: [],
   },
   isLaunching: false,
@@ -109,6 +117,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
         provider: 'anthropic',
         openRouterApiKey: getSavedOpenRouterKey(),
         basetenApiKey: getSavedBasetenKey(),
+        zAiApiKey: getSavedZAIKey(),
         additionalDirectories: [],
       },
       selectedMenuIndex: 0,
@@ -148,6 +157,17 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
     ) {
       // Remove from localStorage when cleared to avoid stale state
       localStorage.removeItem(BASETEN_API_KEY)
+    }
+    // Save or remove Z-AI API key from localStorage
+    if (config.zAiApiKey) {
+      localStorage.setItem(Z_AI_API_KEY, config.zAiApiKey)
+    } else if (
+      config.zAiApiKey === undefined ||
+      config.zAiApiKey === null ||
+      config.zAiApiKey === ''
+    ) {
+      // Remove from localStorage when cleared to avoid stale state
+      localStorage.removeItem(Z_AI_API_KEY)
     }
     return set({ config, error: undefined })
   },
@@ -202,22 +222,22 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
         max_turns: config.maxTurns || undefined,
         // MCP config is now injected by daemon
         permission_prompt_tool: 'mcp__codelayer__request_permission',
-        // Add OpenRouter proxy configuration if provider is openrouter
-        ...(config.provider === 'openrouter' && config.openRouterApiKey
+        // For non-Anthropic providers, enable proxy and pass API key if provided
+        // The daemon will handle all routing and transformation based on the provider
+        ...(config.provider && config.provider !== 'anthropic'
           ? {
               proxy_enabled: true,
-              proxy_base_url: 'https://openrouter.ai/api/v1',
-              proxy_model_override: config.model || 'openai/gpt-4o-mini',
-              proxy_api_key: config.openRouterApiKey,
-            }
-          : {}),
-        // Add Baseten proxy configuration if provider is baseten
-        ...(config.provider === 'baseten' && config.basetenApiKey
-          ? {
-              proxy_enabled: true,
-              proxy_base_url: 'https://inference.baseten.co/v1',
-              proxy_model_override: config.model || 'deepseek-ai/DeepSeek-V3.1',
-              proxy_api_key: config.basetenApiKey,
+              proxy_model_override: config.model || undefined,
+              // Pass the appropriate API key based on provider
+              ...(config.provider === 'openrouter' && config.openRouterApiKey
+                ? { proxy_api_key: config.openRouterApiKey }
+                : {}),
+              ...(config.provider === 'baseten' && config.basetenApiKey
+                ? { proxy_api_key: config.basetenApiKey }
+                : {}),
+              ...(config.provider === 'z_ai' && config.zAiApiKey
+                ? { proxy_api_key: config.zAiApiKey }
+                : {}),
             }
           : {}),
       }
@@ -261,6 +281,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
         provider: 'anthropic',
         openRouterApiKey: getSavedOpenRouterKey(),
         basetenApiKey: getSavedBasetenKey(),
+        zAiApiKey: getSavedZAIKey(),
         additionalDirectories: [],
       },
       error: undefined,
@@ -285,6 +306,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
         provider: 'anthropic',
         openRouterApiKey: getSavedOpenRouterKey(),
         basetenApiKey: getSavedBasetenKey(),
+        zAiApiKey: getSavedZAIKey(),
         additionalDirectories: [],
       },
       selectedMenuIndex: 0,

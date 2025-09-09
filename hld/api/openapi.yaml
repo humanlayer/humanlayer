@@ -801,6 +801,10 @@ components:
           type: string
           enum: [opus, sonnet]
           description: Model to use for the session
+        provider:
+          type: string
+          description: Provider to use for the session (anthropic, openrouter, baseten, z_ai)
+          example: "anthropic"
         mcp_config:
           $ref: '#/components/schemas/MCPConfig'
         permission_prompt_tool:

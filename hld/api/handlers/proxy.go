@@ -9,13 +9,17 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/humanlayer/humanlayer/hld/session"
 	"github.com/humanlayer/humanlayer/hld/store"
 )
+
+func init() {
+	// Initialize registry with provider-specific transform functions
+	InitializeRegistry()
+}
 
 type ProxyHandler struct {
 	sessionManager session.SessionManager
@@ -31,39 +35,31 @@ func NewProxyHandler(sessionManager session.SessionManager, store store.Conversa
 	}
 }
 
-// setAuthHeaders sets the appropriate authentication headers based on the target URL and session
-func (h *ProxyHandler) setAuthHeaders(c *gin.Context, req *http.Request, url string, session *store.Session) error {
-	if strings.Contains(url, "api.anthropic.com") {
-		req.Header.Set("anthropic-version", c.GetHeader("anthropic-version"))
-		apiKey := os.Getenv("ANTHROPIC_API_KEY")
-		if apiKey == "" {
-			c.JSON(500, gin.H{"error": "ANTHROPIC_API_KEY not configured"})
-			return fmt.Errorf("ANTHROPIC_API_KEY not configured")
-		}
+// setAuthHeaders sets the appropriate authentication headers based on the provider config
+func (h *ProxyHandler) setAuthHeaders(c *gin.Context, req *http.Request, provider ProviderConfig, session *store.Session) error {
+	// Get API key from session or environment
+	apiKey := session.ProxyAPIKey
+	if apiKey == "" {
+		apiKey = os.Getenv(provider.EnvVarKey)
+	}
+
+	if apiKey == "" {
+		c.JSON(500, gin.H{"error": fmt.Sprintf("%s not configured", provider.EnvVarKey)})
+		return fmt.Errorf("%s not configured", provider.EnvVarKey)
+	}
+
+	// Set authentication header based on provider's auth method
+	switch provider.AuthMethod {
+	case AuthMethodAPIKey:
 		req.Header.Set("x-api-key", apiKey)
-	} else if strings.Contains(url, "inference.baseten.co") {
-		// Baseten uses Bearer token - check Baseten-specific keys first
-		apiKey := session.ProxyAPIKey
-		if apiKey == "" {
-			apiKey = os.Getenv("BASETEN_API_KEY")
+		// Special handling for Anthropic
+		if provider.Name == "anthropic" {
+			req.Header.Set("anthropic-version", c.GetHeader("anthropic-version"))
 		}
-		if apiKey == "" {
-			c.JSON(500, gin.H{"error": "BASETEN_API_KEY not configured"})
-			return fmt.Errorf("BASETEN_API_KEY not configured")
-		}
-		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", apiKey))
-	} else if strings.Contains(url, "openrouter.ai") || session.ProxyEnabled {
-		// OpenRouter or general proxy - check OpenRouter-specific keys
-		apiKey := session.ProxyAPIKey
-		if apiKey == "" {
-			apiKey = os.Getenv("OPENROUTER_API_KEY")
-		}
-		if apiKey == "" {
-			c.JSON(500, gin.H{"error": "No API key configured for proxy"})
-			return fmt.Errorf("no API key configured for proxy")
-		}
+	case AuthMethodBearer:
 		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", apiKey))
 	}
+
 	return nil
 }
 
@@ -115,43 +111,36 @@ func (h *ProxyHandler) ProxyAnthropicRequest(c *gin.Context) {
 		return
 	}
 
-	// Determine target URL based on session config
-	var targetURL string
-	var needsTransform bool
-
-	// Check session proxy configuration
-	if session.ProxyEnabled && session.ProxyBaseURL != "" {
-		// Use configured proxy (e.g., custom proxy server)
-		// Handle both formats: with or without /v1 suffix
-		baseURL := strings.TrimSuffix(session.ProxyBaseURL, "/v1")
-		baseURL = strings.TrimSuffix(baseURL, "/")
-		targetURL = baseURL + "/v1/chat/completions"
-		needsTransform = true
-		slog.Info("using session proxy configuration",
-			"session_id", sessionID,
-			"target_url", targetURL)
-	} else if os.Getenv("OPENROUTER_API_KEY") != "" {
-		// If OpenRouter API key is set, use OpenRouter
-		targetURL = "https://openrouter.ai/api/v1/chat/completions"
-		needsTransform = true
-		slog.Info("using OpenRouter proxy",
-			"session_id", sessionID,
-			"target_url", targetURL)
-	} else if os.Getenv("BASETEN_API_KEY") != "" {
-		// If Baseten API key is set, use Baseten
-		targetURL = "https://inference.baseten.co/v1/chat/completions"
-		needsTransform = true
-		slog.Info("using Baseten proxy",
-			"session_id", sessionID,
-			"target_url", targetURL)
-	} else {
-		// Default passthrough to Anthropic
-		targetURL = "https://api.anthropic.com/v1/messages"
-		needsTransform = false
-		slog.Info("using direct Anthropic API",
-			"session_id", sessionID,
-			"target_url", targetURL)
+	// Use provider from session, fall back to detection if not set
+	providerName := session.Provider
+	if providerName == "" {
+		// For backward compatibility, default to anthropic
+		providerName = "anthropic"
 	}
+
+	// Get provider configuration from registry
+	provider, ok := defaultRegistry.GetProvider(providerName)
+	if !ok {
+		// Fall back to detecting provider
+		var err error
+		provider, err = defaultRegistry.DetectProvider("", session.ProxyEnabled)
+		if err != nil {
+			slog.Error("no provider available", "session_id", sessionID, "error", err)
+			c.JSON(500, gin.H{"error": "No provider available"})
+			return
+		}
+	}
+
+	// Determine target URL and whether transformation is needed
+	targetURL := provider.GetTargetURL()
+	needsTransform := provider.NeedsLocalTransform()
+
+	slog.Info("routing request via provider",
+		"session_id", sessionID,
+		"provider", provider.Name,
+		"mode", provider.Mode.String(),
+		"target_url", targetURL,
+		"needs_transform", needsTransform)
 
 	// Apply transformations if needed
 	if needsTransform {
@@ -189,9 +178,9 @@ func (h *ProxyHandler) ProxyAnthropicRequest(c *gin.Context) {
 		"elapsed_ms", time.Since(startTime).Milliseconds())
 
 	if stream {
-		h.handleStreamingProxy(c, sessionID, targetURL, forwardBytes, needsTransform)
+		h.handleStreamingProxy(c, sessionID, targetURL, forwardBytes, provider)
 	} else {
-		h.handleNonStreamingProxy(c, sessionID, targetURL, forwardBytes, needsTransform)
+		h.handleNonStreamingProxy(c, sessionID, targetURL, forwardBytes, provider)
 	}
 
 	slog.Info("proxy request completed",
@@ -199,12 +188,14 @@ func (h *ProxyHandler) ProxyAnthropicRequest(c *gin.Context) {
 		"total_duration_ms", time.Since(startTime).Milliseconds())
 }
 
-func (h *ProxyHandler) handleNonStreamingProxy(c *gin.Context, sessionID string, url string, body []byte, needsTransform bool) {
+func (h *ProxyHandler) handleNonStreamingProxy(c *gin.Context, sessionID string, url string, body []byte, provider ProviderConfig) {
 	handlerStart := time.Now()
 	slog.Debug("starting non-streaming proxy",
 		"session_id", sessionID,
 		"url", url,
-		"body_size", len(body))
+		"body_size", len(body),
+		"provider", provider.Name,
+		"mode", provider.Mode.String())
 
 	// Get session for auth details
 	session, _ := h.store.GetSession(c.Request.Context(), sessionID)
@@ -223,7 +214,7 @@ func (h *ProxyHandler) handleNonStreamingProxy(c *gin.Context, sessionID string,
 	req.Header.Set("Content-Type", "application/json")
 
 	// Set authentication headers based on provider
-	if err := h.setAuthHeaders(c, req, url, session); err != nil {
+	if err := h.setAuthHeaders(c, req, provider, session); err != nil {
 		return
 	}
 
@@ -269,8 +260,8 @@ func (h *ProxyHandler) handleNonStreamingProxy(c *gin.Context, sessionID string,
 		"body_size", len(respBody),
 		"read_duration_ms", time.Since(readStart).Milliseconds())
 
-	// Transform response if needed
-	if needsTransform && resp.StatusCode == 200 {
+	// Transform response if needed (for local proxies)
+	if provider.Mode == ProxyModeLocal && resp.StatusCode == 200 {
 		transformStart := time.Now()
 		var openAIResp map[string]interface{}
 		if err := json.Unmarshal(respBody, &openAIResp); err == nil {
@@ -286,11 +277,13 @@ func (h *ProxyHandler) handleNonStreamingProxy(c *gin.Context, sessionID string,
 
 				slog.Debug("response transformed",
 					"session_id", sessionID,
+					"provider", provider.Name,
 					"transform_duration_ms", time.Since(transformStart).Milliseconds())
 			}
 		} else {
 			slog.Warn("failed to parse OpenAI response for transformation",
 				"session_id", sessionID,
+				"provider", provider.Name,
 				"error", err)
 		}
 	}
@@ -304,12 +297,14 @@ func (h *ProxyHandler) handleNonStreamingProxy(c *gin.Context, sessionID string,
 		"response_size", len(respBody))
 }
 
-func (h *ProxyHandler) handleStreamingProxy(c *gin.Context, sessionID string, url string, body []byte, needsTransform bool) {
+func (h *ProxyHandler) handleStreamingProxy(c *gin.Context, sessionID string, url string, body []byte, provider ProviderConfig) {
 	handlerStart := time.Now()
 	slog.Debug("starting streaming proxy",
 		"session_id", sessionID,
 		"url", url,
-		"body_size", len(body))
+		"body_size", len(body),
+		"provider", provider.Name,
+		"mode", provider.Mode.String())
 
 	// Get session for auth details
 	session, _ := h.store.GetSession(c.Request.Context(), sessionID)
@@ -328,7 +323,7 @@ func (h *ProxyHandler) handleStreamingProxy(c *gin.Context, sessionID string, ur
 	req.Header.Set("Content-Type", "application/json")
 
 	// Set authentication headers based on provider
-	if err := h.setAuthHeaders(c, req, url, session); err != nil {
+	if err := h.setAuthHeaders(c, req, provider, session); err != nil {
 		return
 	}
 

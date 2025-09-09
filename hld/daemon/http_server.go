@@ -125,8 +125,9 @@ func (s *HTTPServer) Start(ctx context.Context) error {
 	// Register proxy endpoint directly (not part of strict interface)
 	v1.POST("/anthropic_proxy/:session_id/v1/messages", s.proxyHandler.ProxyAnthropicRequest)
 
-	// Register config status endpoint
+	// Register config endpoints
 	v1.GET("/config/status", s.configHandler.GetConfigStatus)
+	v1.GET("/config/providers", s.configHandler.GetProviders)
 
 	// MCP endpoint (Phase 5: with event-driven approvals)
 	mcpServer := mcp.NewMCPServer(s.approvalManager, s.eventBus)
