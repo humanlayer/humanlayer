@@ -356,6 +356,13 @@ export const useStore = create<StoreState>((set, get) => ({
       await daemonClient.archiveSession({ session_id: sessionId, archived })
       // Update local state immediately for better UX
       get().updateSession(sessionId, { archived })
+
+      // Clear focus if archiving and in Normal view
+      const state = get()
+      if (archived && state.viewMode === ViewMode.Normal && state.focusedSession?.id === sessionId) {
+        state.setFocusedSession(null)
+      }
+
       // Refresh sessions to update the list based on current view mode
       await get().refreshSessions()
     } catch (error) {
