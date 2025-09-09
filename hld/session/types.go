@@ -81,21 +81,22 @@ type LaunchSessionConfig struct {
 
 // ContinueSessionConfig contains the configuration for continuing a session
 type ContinueSessionConfig struct {
-	ParentSessionID      string                // The parent session to resume from
-	Query                string                // The new query
-	Provider             string                // Provider to use (anthropic, openrouter, baseten, z-ai)
-	SystemPrompt         string                // Optional system prompt override
-	AppendSystemPrompt   string                // Optional append to system prompt
-	MCPConfig            *claudecode.MCPConfig // Optional MCP config override
-	PermissionPromptTool string                // Optional permission prompt tool
-	AllowedTools         []string              // Optional allowed tools override
-	DisallowedTools      []string              // Optional disallowed tools override
-	CustomInstructions   string                // Optional custom instructions
-	MaxTurns             int                   // Optional max turns override
-	ProxyEnabled         bool                  // Whether proxy is enabled
-	ProxyBaseURL         string                // Proxy base URL
-	ProxyModelOverride   string                // Model to use with proxy
-	ProxyAPIKey          string                // API key for proxy service
+	ParentSessionID       string                // The parent session to resume from
+	Query                 string                // The new query
+	Provider              string                // Provider to use (anthropic, openrouter, baseten, z_ai)
+	SystemPrompt          string                // Optional system prompt override
+	AppendSystemPrompt    string                // Optional append to system prompt
+	MCPConfig             *claudecode.MCPConfig // Optional MCP config override
+	PermissionPromptTool  string                // Optional permission prompt tool
+	AllowedTools          []string              // Optional allowed tools override
+	DisallowedTools       []string              // Optional disallowed tools override
+	AdditionalDirectories []string              // Optional additional directories override
+	CustomInstructions    string                // Optional custom instructions
+	MaxTurns              int                   // Optional max turns override
+	ProxyEnabled          bool                  // Whether proxy is enabled
+	ProxyBaseURL          string                // Proxy base URL
+	ProxyModelOverride    string                // Model to use with proxy
+	ProxyAPIKey           string                // API key for proxy service
 }
 
 // SessionManager defines the interface for managing Claude Code sessions

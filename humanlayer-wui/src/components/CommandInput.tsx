@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState } from 'react'
 import { Button } from './ui/button'
 import { SearchInput } from './FuzzySearchInput'
+import { MultiDirectoryInput } from './MultiDirectoryInput'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 import { useRecentPaths } from '@/hooks/useRecentPaths'
 import { Textarea } from './ui/textarea'
@@ -8,9 +9,11 @@ import { Input } from './ui/input'
 import { Label } from './ui/label'
 import { hasContent, isEmptyOrWhitespace } from '@/utils/validation'
 import { ProviderApiKeyField } from './ProviderApiKeyField'
+import { ChevronDown, ChevronRight } from 'lucide-react'
 import { daemonClient } from '@/lib/daemon'
 import { ConfigStatus } from '@/lib/daemon/types'
 import { useStore } from '@/AppStore'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible'
 
 interface Provider {
   name: string
@@ -57,6 +60,7 @@ export default function CommandInput({
   const [isCheckingConfig, setIsCheckingConfig] = useState(false)
   const [providers, setProviders] = useState<Provider[]>([])
   const userSettings = useStore(state => state.userSettings)
+  const [isAdvancedOpen, setIsAdvancedOpen] = useState(false)
 
   useEffect(() => {
     // Focus on directory field if it has the default value, otherwise focus on prompt
@@ -118,7 +122,7 @@ export default function CommandInput({
         <SearchInput
           ref={directoryRef}
           value={config.workingDir}
-          onChange={value => onConfigChange?.({ ...config, workingDir: value })}
+          onChange={value => updateConfig({ workingDir: value })}
           onSubmit={onSubmit}
           placeholder="/path/to/directory or leave empty for current directory"
           recentDirectories={recentPaths}
@@ -132,7 +136,7 @@ export default function CommandInput({
           id="title"
           type="text"
           value={config.title || ''}
-          onChange={e => onConfigChange?.({ ...config, title: e.target.value })}
+          onChange={e => updateConfig({ title: e.target.value })}
           placeholder="Optional session title"
           disabled={isLoading}
         />
@@ -317,6 +321,27 @@ export default function CommandInput({
           <span>Warning: Using non-Claude models and providers is experimental.</span>
         </div>
       )}
+
+      {/* Advanced Settings Collapsible */}
+      <Collapsible open={isAdvancedOpen} onOpenChange={setIsAdvancedOpen}>
+        <CollapsibleTrigger className="flex items-center cursor-pointer text-sm font-medium text-foreground hover:opacity-80 p-0">
+          {isAdvancedOpen ? (
+            <ChevronDown className="h-4 w-4 mr-1" />
+          ) : (
+            <ChevronRight className="h-4 w-4 mr-1" />
+          )}
+          <span>Advanced Settings</span>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="space-y-4 pt-4">
+          {/* Additional Directories Field */}
+          <MultiDirectoryInput
+            directories={config.additionalDirectories || []}
+            onDirectoriesChange={directories => updateConfig({ additionalDirectories: directories })}
+            recentDirectories={recentPaths}
+            placeholder="Add additional directories for Claude to access..."
+          />
+        </CollapsibleContent>
+      </Collapsible>
 
       {/* Action Bar */}
       {hasContent(value) && (

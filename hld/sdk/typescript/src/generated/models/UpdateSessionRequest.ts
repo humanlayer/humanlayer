@@ -91,6 +91,12 @@ export interface UpdateSessionRequest {
      * @memberof UpdateSessionRequest
      */
     proxyApiKey?: string;
+    /**
+     * Update additional directories Claude can access
+     * @type {Array<string>}
+     * @memberof UpdateSessionRequest
+     */
+    additionalDirectories?: Array<string>;
 }
 
 /**
@@ -122,6 +128,7 @@ export function UpdateSessionRequestFromJSONTyped(json: any, ignoreDiscriminator
         'proxyBaseUrl': json['proxy_base_url'] == null ? undefined : json['proxy_base_url'],
         'proxyModelOverride': json['proxy_model_override'] == null ? undefined : json['proxy_model_override'],
         'proxyApiKey': json['proxy_api_key'] == null ? undefined : json['proxy_api_key'],
+        'additionalDirectories': json['additional_directories'] == null ? undefined : json['additional_directories'],
     };
 }
 
@@ -148,5 +155,6 @@ export function UpdateSessionRequestToJSONTyped(value?: UpdateSessionRequest | n
         'proxy_base_url': value['proxyBaseUrl'],
         'proxy_model_override': value['proxyModelOverride'],
         'proxy_api_key': value['proxyApiKey'],
+        'additional_directories': value['additionalDirectories'],
     };
 }

@@ -53,6 +53,7 @@ const SESSION_LAUNCHER_QUERY_KEY = 'session-launcher-query'
 const OPENROUTER_API_KEY = 'humanlayer-openrouter-api-key'
 const BASETEN_API_KEY = 'humanlayer-baseten-api-key'
 const Z_AI_API_KEY = 'humanlayer-z-ai-api-key'
+const ADDITIONAL_DIRECTORIES_KEY = 'humanlayer-additional-directories'
 
 // Helper function to get default working directory
 const getDefaultWorkingDir = (): string => {
@@ -80,6 +81,24 @@ const getSavedZAIKey = (): string | undefined => {
   return localStorage.getItem(Z_AI_API_KEY) || undefined
 }
 
+// Helper function to get saved additional directories
+const getSavedAdditionalDirectories = (): string[] => {
+  const stored = localStorage.getItem(ADDITIONAL_DIRECTORIES_KEY)
+  if (!stored) return []
+
+  try {
+    const parsed = JSON.parse(stored)
+    // Ensure we have an array of strings
+    if (Array.isArray(parsed)) {
+      return parsed.filter(item => typeof item === 'string')
+    }
+    return []
+  } catch {
+    // If parsing fails, return empty array
+    return []
+  }
+}
+
 export const useSessionLauncher = create<LauncherState>((set, get) => ({
   isOpen: false,
   mode: 'command',
@@ -91,7 +110,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
     openRouterApiKey: getSavedOpenRouterKey(),
     basetenApiKey: getSavedBasetenKey(),
     zAiApiKey: getSavedZAIKey(),
-    additionalDirectories: [],
+    additionalDirectories: getSavedAdditionalDirectories(),
   },
   isLaunching: false,
   gPrefixMode: false,
@@ -118,7 +137,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
         openRouterApiKey: getSavedOpenRouterKey(),
         basetenApiKey: getSavedBasetenKey(),
         zAiApiKey: getSavedZAIKey(),
-        additionalDirectories: [],
+        additionalDirectories: getSavedAdditionalDirectories(),
       },
       selectedMenuIndex: 0,
       error: undefined,
@@ -165,6 +184,17 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
       // Remove from localStorage when cleared to avoid stale state
       localStorage.removeItem(Z_AI_API_KEY)
     }
+    // Save or remove additional directories from localStorage
+    if (config.additionalDirectories && config.additionalDirectories.length > 0) {
+      localStorage.setItem(ADDITIONAL_DIRECTORIES_KEY, JSON.stringify(config.additionalDirectories))
+    } else if (
+      config.additionalDirectories === undefined ||
+      config.additionalDirectories === null ||
+      (Array.isArray(config.additionalDirectories) && config.additionalDirectories.length === 0)
+    ) {
+      // Remove from localStorage when cleared to avoid stale state
+      localStorage.removeItem(ADDITIONAL_DIRECTORIES_KEY)
+    }
     return set({ config, error: undefined })
   },
 
@@ -204,6 +234,30 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
       }
     }
 
+    // Validate additional directories if provided
+    if (config.additionalDirectories && config.additionalDirectories.length > 0) {
+      for (const dir of config.additionalDirectories) {
+        try {
+          // Expand ~ to home directory
+          let pathToCheck = dir
+          if (pathToCheck.startsWith('~')) {
+            const home = await homeDir()
+            pathToCheck = pathToCheck.replace(/^~(?=$|\/|\\)/, home)
+          }
+
+          // Check if the path exists
+          const pathExists = await exists(pathToCheck)
+          if (!pathExists) {
+            set({ error: `Additional directory does not exist: ${dir}` })
+            return
+          }
+        } catch (err) {
+          set({ error: `Error checking additional directory ${dir}: ${err}` })
+          return
+        }
+      }
+    }
+
     try {
       set({ isLaunching: true, error: undefined })
 
@@ -211,11 +265,13 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
 
       console.log('useSessionLauncher config:', config)
       console.log('useSessionLauncher provider:', config.provider)
+      console.log('Additional directories:', config.additionalDirectories)
 
       const request: LaunchSessionRequest = {
         query: query.trim(),
         title: config.title || undefined,
         working_dir: config.workingDir || undefined,
+        additional_directories: config.additionalDirectories || undefined,
         provider: config.provider || 'anthropic',
         model: config.model || undefined,
         max_turns: config.maxTurns || undefined,
@@ -242,6 +298,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
       }
 
       console.log('useSessionLauncher request:', request)
+      console.log('Launch request additional_directories specifically:', request.additional_directories)
       const response = await daemonClient.launchSession(request)
 
       // Save the working directory to localStorage for next time
@@ -251,6 +308,9 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
 
       // Clear the saved query after successful launch
       localStorage.removeItem(SESSION_LAUNCHER_QUERY_KEY)
+
+      // Clear the saved additional directories after successful launch (matching query behavior)
+      localStorage.removeItem(ADDITIONAL_DIRECTORIES_KEY)
 
       // Navigate to new session (will be handled by parent component)
       window.location.hash = `#/sessions/${response.sessionId}`
@@ -282,7 +342,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
         openRouterApiKey: getSavedOpenRouterKey(),
         basetenApiKey: getSavedBasetenKey(),
         zAiApiKey: getSavedZAIKey(),
-        additionalDirectories: [],
+        additionalDirectories: getSavedAdditionalDirectories(),
       },
       error: undefined,
     })
@@ -307,7 +367,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
         openRouterApiKey: getSavedOpenRouterKey(),
         basetenApiKey: getSavedBasetenKey(),
         zAiApiKey: getSavedZAIKey(),
-        additionalDirectories: [],
+        additionalDirectories: getSavedAdditionalDirectories(),
       },
       selectedMenuIndex: 0,
       isLaunching: false,

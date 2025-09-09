@@ -94,6 +94,12 @@ export interface Session {
      */
     workingDir?: string;
     /**
+     * Additional directories Claude can access
+     * @type {Array<string>}
+     * @memberof Session
+     */
+    additionalDirectories?: Array<string>;
+    /**
      * Session creation timestamp
      * @type {Date}
      * @memberof Session
@@ -251,6 +257,7 @@ export function SessionFromJSONTyped(json: any, ignoreDiscriminator: boolean): S
         'model': json['model'] == null ? undefined : json['model'],
         'modelId': json['model_id'] == null ? undefined : json['model_id'],
         'workingDir': json['working_dir'] == null ? undefined : json['working_dir'],
+        'additionalDirectories': json['additional_directories'] == null ? undefined : json['additional_directories'],
         'createdAt': (new Date(json['created_at'])),
         'lastActivityAt': (new Date(json['last_activity_at'])),
         'completedAt': json['completed_at'] == null ? undefined : (new Date(json['completed_at'])),
@@ -296,6 +303,7 @@ export function SessionToJSONTyped(value?: Session | null, ignoreDiscriminator: 
         'model': value['model'],
         'model_id': value['modelId'],
         'working_dir': value['workingDir'],
+        'additional_directories': value['additionalDirectories'],
         'created_at': ((value['createdAt']).toISOString()),
         'last_activity_at': ((value['lastActivityAt']).toISOString()),
         'completed_at': value['completedAt'] == null ? undefined : ((value['completedAt']).toISOString()),

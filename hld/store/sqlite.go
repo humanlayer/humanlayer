@@ -21,6 +21,11 @@ type SQLiteStore struct {
 	db *sql.DB
 }
 
+// GetDB returns the underlying database connection for testing purposes
+func (s *SQLiteStore) GetDB() *sql.DB {
+	return s.db
+}
+
 // NewSQLiteStore creates a new SQLite-backed store
 func NewSQLiteStore(dbPath string) (*SQLiteStore, error) {
 	// Ensure directory exists (skip for in-memory databases)
@@ -59,6 +64,12 @@ func NewSQLiteStore(dbPath string) (*SQLiteStore, error) {
 	if err := store.applyMigrations(); err != nil {
 		_ = db.Close()
 		return nil, fmt.Errorf("failed to apply migrations: %w", err)
+	}
+
+	// Validate schema is in expected state
+	if err := store.validateSchema(); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("schema validation failed: %w", err)
 	}
 
 	slog.Info("SQLite store initialized", "path", dbPath)
@@ -107,7 +118,10 @@ func (s *SQLiteStore) initSchema() error {
 		dangerously_skip_permissions_expires_at TIMESTAMP,
 
 		-- Archival
-		archived BOOLEAN DEFAULT FALSE
+		archived BOOLEAN DEFAULT FALSE,
+
+		-- Additional directories for --add-dir support
+		additional_directories TEXT
 	);
 	CREATE INDEX IF NOT EXISTS idx_sessions_claude ON sessions(claude_session_id);
 	CREATE INDEX IF NOT EXISTS idx_sessions_status ON sessions(status);
@@ -852,6 +866,110 @@ func (s *SQLiteStore) applyMigrations() error {
 		slog.Info("Migration 16 applied successfully")
 	}
 
+	// Migration 17 was skipped due to migration reordering issues
+	// Migration 18: Healing migration to fix schema inconsistencies from migration reordering
+	if currentVersion < 18 {
+		slog.Info("Applying migration 18: Healing migration for schema consistency")
+
+		// Track what we fix for monitoring
+		var fixedUserSettings bool
+		var fixedAdditionalDirs bool
+		var userSettingsError error
+		var additionalDirsError error
+
+		// Check and fix user_settings table independently
+		var tableExists int
+		err := s.db.QueryRow(`
+			SELECT COUNT(*) FROM sqlite_master
+			WHERE type='table' AND name='user_settings'
+		`).Scan(&tableExists)
+		if err != nil {
+			return fmt.Errorf("failed to check user_settings table existence: %w", err)
+		}
+
+		if tableExists == 0 {
+			slog.Warn("Migration 18: user_settings table missing, creating it")
+			_, userSettingsError = s.db.Exec(`
+				CREATE TABLE IF NOT EXISTS user_settings (
+					id INTEGER PRIMARY KEY CHECK (id = 1),
+					advanced_providers BOOLEAN NOT NULL DEFAULT FALSE,
+					created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+					updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+				)
+			`)
+			if userSettingsError != nil {
+				slog.Error("Failed to create user_settings table", "error", userSettingsError)
+			} else {
+				// Insert default row
+				_, err = s.db.Exec(`
+					INSERT INTO user_settings (id, advanced_providers)
+					VALUES (1, FALSE)
+					ON CONFLICT(id) DO NOTHING
+				`)
+				if err != nil {
+					slog.Error("Failed to insert default user settings", "error", err)
+				} else {
+					fixedUserSettings = true
+				}
+			}
+		} else {
+			slog.Info("Migration 18: user_settings table already exists")
+		}
+
+		// Check and fix additional_directories column independently
+		var columnExists int
+		err = s.db.QueryRow(`
+			SELECT COUNT(*) FROM pragma_table_info('sessions')
+			WHERE name = 'additional_directories'
+		`).Scan(&columnExists)
+		if err != nil {
+			return fmt.Errorf("failed to check additional_directories column: %w", err)
+		}
+
+		if columnExists == 0 {
+			slog.Warn("Migration 18: additional_directories column missing, adding it")
+			_, additionalDirsError = s.db.Exec(`
+				ALTER TABLE sessions
+				ADD COLUMN additional_directories TEXT
+			`)
+			if additionalDirsError != nil {
+				slog.Error("Failed to add additional_directories column", "error", additionalDirsError)
+			} else {
+				fixedAdditionalDirs = true
+			}
+		} else {
+			slog.Info("Migration 18: additional_directories column already exists")
+		}
+
+		// Log detailed results
+		if fixedUserSettings || fixedAdditionalDirs {
+			slog.Info("Migration 18: Fixed schema inconsistencies",
+				"fixed_user_settings", fixedUserSettings,
+				"fixed_additional_directories", fixedAdditionalDirs)
+		} else {
+			slog.Info("Migration 18: Schema already consistent, no fixes needed")
+		}
+
+		// Return any critical errors
+		if userSettingsError != nil {
+			return fmt.Errorf("migration 18 failed to create user_settings: %w", userSettingsError)
+		}
+		if additionalDirsError != nil {
+			return fmt.Errorf("migration 18 failed to add additional_directories: %w", additionalDirsError)
+		}
+
+		// Record migration
+		_, err = s.db.Exec(`
+			INSERT INTO schema_version (version, description)
+			VALUES (18, 'Healing migration to fix schema inconsistencies from migration reordering')
+		`)
+		if err != nil {
+			return fmt.Errorf("failed to record migration 18: %w", err)
+		}
+
+		slog.Info("Migration 18 applied successfully")
+	}
+
 	// Migration 19: Add provider column (fixing missing column from migration 15)
 	if currentVersion < 19 {
 		slog.Info("Applying migration 19: Add provider column")
@@ -892,6 +1010,67 @@ func (s *SQLiteStore) applyMigrations() error {
 	return nil
 }
 
+// validateSchema ensures the database schema is in the expected state
+func (s *SQLiteStore) validateSchema() error {
+	// Validate user_settings table exists
+	var userSettingsExists int
+	err := s.db.QueryRow(`
+		SELECT COUNT(*) FROM sqlite_master
+		WHERE type='table' AND name='user_settings'
+	`).Scan(&userSettingsExists)
+	if err != nil {
+		return fmt.Errorf("failed to validate user_settings table: %w", err)
+	}
+	if userSettingsExists == 0 {
+		return fmt.Errorf("schema validation failed: user_settings table missing")
+	}
+
+	// Validate additional_directories column exists
+	var additionalDirsExists int
+	err = s.db.QueryRow(`
+		SELECT COUNT(*) FROM pragma_table_info('sessions')
+		WHERE name = 'additional_directories'
+	`).Scan(&additionalDirsExists)
+	if err != nil {
+		return fmt.Errorf("failed to validate additional_directories column: %w", err)
+	}
+	if additionalDirsExists == 0 {
+		return fmt.Errorf("schema validation failed: additional_directories column missing")
+	}
+
+	// Validate provider column exists
+	var providerExists int
+	err = s.db.QueryRow(`
+		SELECT COUNT(*) FROM pragma_table_info('sessions')
+		WHERE name = 'provider'
+	`).Scan(&providerExists)
+	if err != nil {
+		return fmt.Errorf("failed to validate provider column: %w", err)
+	}
+	if providerExists == 0 {
+		return fmt.Errorf("schema validation failed: provider column missing")
+	}
+
+	// Validate schema version is at least 19
+	var currentVersion int
+	err = s.db.QueryRow("SELECT MAX(version) FROM schema_version").Scan(&currentVersion)
+	if err != nil {
+		return fmt.Errorf("failed to get schema version: %w", err)
+	}
+	if currentVersion < 19 {
+		return fmt.Errorf("schema validation failed: version %d is less than required 19", currentVersion)
+	}
+
+	slog.Info("Schema validation successful",
+		"version", currentVersion,
+		"user_settings_table", "present",
+		"additional_directories_column", "present",
+		"provider_column", "present")
+
+
+	return nil
+}
+
 // Close closes the database connection
 func (s *SQLiteStore) Close() error {
 	return s.db.Close()
@@ -905,8 +1084,8 @@ func (s *SQLiteStore) CreateSession(ctx context.Context, session *Session) error
 			query, summary, title, model, model_id, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
 			permission_prompt_tool, allowed_tools, disallowed_tools,
 			status, created_at, last_activity_at, auto_accept_edits, archived, dangerously_skip_permissions, dangerously_skip_permissions_expires_at,
-			provider, proxy_enabled, proxy_base_url, proxy_model_override, proxy_api_key
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			provider, proxy_enabled, proxy_base_url, proxy_model_override, proxy_api_key, additional_directories
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	_, err := s.db.ExecContext(ctx, query,
@@ -917,6 +1096,7 @@ func (s *SQLiteStore) CreateSession(ctx context.Context, session *Session) error
 		session.Status, session.CreatedAt, session.LastActivityAt, session.AutoAcceptEdits, session.Archived,
 		session.DangerouslySkipPermissions, session.DangerouslySkipPermissionsExpiresAt,
 		session.Provider, session.ProxyEnabled, session.ProxyBaseURL, session.ProxyModelOverride, session.ProxyAPIKey,
+		session.AdditionalDirectories,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create session: %w", err)
@@ -1043,6 +1223,10 @@ func (s *SQLiteStore) UpdateSession(ctx context.Context, sessionID string, updat
 		setParts = append(setParts, "proxy_api_key = ?")
 		args = append(args, *updates.ProxyAPIKey)
 	}
+	if updates.AdditionalDirectories != nil {
+		setParts = append(setParts, "additional_directories = ?")
+		args = append(args, *updates.AdditionalDirectories)
+	}
 
 	if len(setParts) == 0 {
 		// No fields to update is OK - this is a no-op
@@ -1081,7 +1265,7 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 			cost_usd, input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens, effective_context_tokens,
 			duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived,
 			dangerously_skip_permissions, dangerously_skip_permissions_expires_at,
-			provider, proxy_enabled, proxy_base_url, proxy_model_override, proxy_api_key
+			provider, proxy_enabled, proxy_base_url, proxy_model_override, proxy_api_key, additional_directories
 		FROM sessions WHERE id = ?
 	`
 
@@ -1098,6 +1282,7 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 	var provider sql.NullString
 	var proxyEnabled sql.NullBool
 	var proxyBaseURL, proxyModelOverride, proxyAPIKey sql.NullString
+	var additionalDirectories sql.NullString
 
 	err := s.db.QueryRowContext(ctx, query, sessionID).Scan(
 		&session.ID, &session.RunID, &claudeSessionID, &parentSessionID,
@@ -1108,7 +1293,7 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 		&costUSD, &inputTokens, &outputTokens, &cacheCreationInputTokens, &cacheReadInputTokens, &effectiveContextTokens,
 		&durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
 		&archived, &session.DangerouslySkipPermissions, &dangerouslySkipPermissionsExpiresAt,
-		&provider, &proxyEnabled, &proxyBaseURL, &proxyModelOverride, &proxyAPIKey,
+		&provider, &proxyEnabled, &proxyBaseURL, &proxyModelOverride, &proxyAPIKey, &additionalDirectories,
 	)
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("session not found: %s", sessionID)
@@ -1183,6 +1368,9 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 	session.ProxyModelOverride = proxyModelOverride.String
 	session.ProxyAPIKey = proxyAPIKey.String
 
+	// Handle additional directories
+	session.AdditionalDirectories = additionalDirectories.String
+
 	return &session, nil
 }
 
@@ -1196,7 +1384,7 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 			cost_usd, input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens, effective_context_tokens,
 			duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived,
 			dangerously_skip_permissions, dangerously_skip_permissions_expires_at,
-			provider, proxy_enabled, proxy_base_url, proxy_model_override, proxy_api_key
+			provider, proxy_enabled, proxy_base_url, proxy_model_override, proxy_api_key, additional_directories
 		FROM sessions
 		WHERE run_id = ?
 	`
@@ -1214,6 +1402,7 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 	var provider sql.NullString
 	var proxyEnabled sql.NullBool
 	var proxyBaseURL, proxyModelOverride, proxyAPIKey sql.NullString
+	var additionalDirectories sql.NullString
 
 	err := s.db.QueryRowContext(ctx, query, runID).Scan(
 		&session.ID, &session.RunID, &claudeSessionID, &parentSessionID,
@@ -1224,7 +1413,7 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 		&costUSD, &inputTokens, &outputTokens, &cacheCreationInputTokens, &cacheReadInputTokens, &effectiveContextTokens,
 		&durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
 		&archived, &session.DangerouslySkipPermissions, &dangerouslySkipPermissionsExpiresAt,
-		&provider, &proxyEnabled, &proxyBaseURL, &proxyModelOverride, &proxyAPIKey,
+		&provider, &proxyEnabled, &proxyBaseURL, &proxyModelOverride, &proxyAPIKey, &additionalDirectories,
 	)
 	if err == sql.ErrNoRows {
 		return nil, nil // No session found
@@ -1298,6 +1487,9 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 	session.ProxyBaseURL = proxyBaseURL.String
 	session.ProxyModelOverride = proxyModelOverride.String
 	session.ProxyAPIKey = proxyAPIKey.String
+
+	// Handle additional directories
+	session.AdditionalDirectories = additionalDirectories.String
 
 	return &session, nil
 }
