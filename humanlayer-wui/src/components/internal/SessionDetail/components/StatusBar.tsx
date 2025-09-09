@@ -92,7 +92,11 @@ export function StatusBar({
       <TokenUsageBadge
         effectiveContextTokens={effectiveContextTokens}
         contextLimit={contextLimit}
-        model={session.proxyEnabled && session.proxyModelOverride ? session.proxyModelOverride : model || session.model || 'DEFAULT'}
+        model={
+          session.proxyEnabled && session.proxyModelOverride
+            ? session.proxyModelOverride
+            : model || session.model || 'DEFAULT'
+        }
       />
 
       {/* Model Selector Modal */}
