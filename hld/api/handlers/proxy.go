@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -113,10 +114,35 @@ func (h *ProxyHandler) ProxyAnthropicRequest(c *gin.Context) {
 
 	// Use provider from session, fall back to detection if not set
 	providerName := session.Provider
+	if providerName == "" && session.ProxyEnabled {
+		// Try to detect provider from proxy model override
+		if session.ProxyModelOverride != "" {
+			// Check for known model patterns
+			modelLower := strings.ToLower(session.ProxyModelOverride)
+			if strings.Contains(modelLower, "openai/") || strings.Contains(modelLower, "gpt") {
+				providerName = "openrouter"
+				slog.Debug("detected OpenRouter from model", "model", session.ProxyModelOverride)
+			} else if strings.Contains(modelLower, "glm") || strings.Contains(modelLower, "z-ai") {
+				providerName = "z_ai"
+				slog.Debug("detected Z-AI from model", "model", session.ProxyModelOverride)
+			} else if strings.Contains(modelLower, "deepseek") {
+				providerName = "baseten"
+				slog.Debug("detected Baseten from model", "model", session.ProxyModelOverride)
+			}
+		}
+	}
+	
 	if providerName == "" {
 		// For backward compatibility, default to anthropic
 		providerName = "anthropic"
 	}
+	
+	slog.Debug("provider selection",
+		"session_id", sessionID,
+		"provider_from_session", session.Provider,
+		"proxy_enabled", session.ProxyEnabled,
+		"proxy_model", session.ProxyModelOverride,
+		"selected_provider", providerName)
 
 	// Get provider configuration from registry
 	provider, ok := defaultRegistry.GetProvider(providerName)
@@ -153,7 +179,14 @@ func (h *ProxyHandler) ProxyAnthropicRequest(c *gin.Context) {
 			"proxy_model_override": session.ProxyModelOverride,
 			"proxy_api_key":        session.ProxyAPIKey,
 		}
-		requestBody = h.transformAnthropicToOpenAI(requestBody, sessionMap)
+		
+		// Use provider-specific transform if available
+		if provider.TransformRequest != nil {
+			requestBody = provider.TransformRequest(requestBody, sessionMap)
+		} else {
+			// Fallback to generic OpenAI transformation
+			requestBody = h.transformAnthropicToOpenAI(requestBody, sessionMap)
+		}
 		slog.Debug("request transformed",
 			"session_id", sessionID,
 			"transform_duration_ms", time.Since(transformStart).Milliseconds(),
