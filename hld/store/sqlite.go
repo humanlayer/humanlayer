@@ -1067,7 +1067,6 @@ func (s *SQLiteStore) validateSchema() error {
 		"additional_directories_column", "present",
 		"provider_column", "present")
 
-
 	return nil
 }
 
