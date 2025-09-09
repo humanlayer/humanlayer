@@ -7,6 +7,8 @@ import { notificationService } from '@/services/NotificationService'
 import { useStore } from '@/AppStore'
 import { SessionDetailHotkeysScope } from '../SessionDetail'
 import { logger } from '@/lib/logging'
+import { checkUnsupportedCommand } from '@/constants/unsupportedCommands'
+import { toast } from 'sonner'
 
 interface UseSessionActionsProps {
   session: Session
@@ -80,6 +82,21 @@ export function useSessionActions({
     try {
       setIsResponding(true)
       const messageToSend = responseInput.trim()
+
+      // Check for unsupported commands
+      const unsupportedCmd = checkUnsupportedCommand(messageToSend)
+      if (unsupportedCmd) {
+        // Show error toast
+        toast.error(unsupportedCmd.message, {
+          description: unsupportedCmd.alternative,
+          duration: 8000,
+          closeButton: true,
+        })
+
+        // Don't send the message
+        setIsResponding(false)
+        return
+      }
 
       // Use fork session ID if available, otherwise current session
       const targetSessionId = forkFromSessionId || session.id
