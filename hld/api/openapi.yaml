@@ -824,6 +824,10 @@ components:
           type: boolean
           description: Whether session is archived
           default: false
+        provider:
+          type: string
+          description: Provider being used (anthropic, openrouter, baseten, z-ai)
+          example: openrouter
         proxy_enabled:
           type: boolean
           description: Whether proxy is enabled for this session
@@ -866,6 +870,10 @@ components:
           type: string
           enum: [opus, sonnet]
           description: Model to use for the session
+        provider:
+          type: string
+          description: Provider to use for the session (anthropic, openrouter, baseten, z_ai)
+          example: "anthropic"
         mcp_config:
           $ref: '#/components/schemas/MCPConfig'
         permission_prompt_tool:
@@ -1001,6 +1009,10 @@ components:
           type: string
           description: Update session title
           example: "Updated Task Name"
+        provider:
+          type: string
+          description: Provider to use (anthropic, openrouter, baseten, z-ai)
+          example: "openrouter"
         # New fields for model configuration
         model:
           type: string
@@ -1043,6 +1055,10 @@ components:
           type: string
           description: New query to continue with
           example: "Now add error handling to the script"
+        provider:
+          type: string
+          description: Override provider for the continued session
+          example: "baseten"
         system_prompt:
           type: string
           description: Override system prompt

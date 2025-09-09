@@ -34,6 +34,12 @@ export interface ContinueSessionRequest {
      */
     query: string;
     /**
+     * Override provider for the continued session
+     * @type {string}
+     * @memberof ContinueSessionRequest
+     */
+    provider?: string;
+    /**
      * Override system prompt
      * @type {string}
      * @memberof ContinueSessionRequest
@@ -102,6 +108,7 @@ export function ContinueSessionRequestFromJSONTyped(json: any, ignoreDiscriminat
     return {
 
         'query': json['query'],
+        'provider': json['provider'] == null ? undefined : json['provider'],
         'systemPrompt': json['system_prompt'] == null ? undefined : json['system_prompt'],
         'appendSystemPrompt': json['append_system_prompt'] == null ? undefined : json['append_system_prompt'],
         'mcpConfig': json['mcp_config'] == null ? undefined : MCPConfigFromJSON(json['mcp_config']),
@@ -125,6 +132,7 @@ export function ContinueSessionRequestToJSONTyped(value?: ContinueSessionRequest
     return {
 
         'query': value['query'],
+        'provider': value['provider'],
         'system_prompt': value['systemPrompt'],
         'append_system_prompt': value['appendSystemPrompt'],
         'mcp_config': MCPConfigToJSON(value['mcpConfig']),

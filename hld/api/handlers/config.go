@@ -16,13 +16,33 @@ func NewConfigHandler() *ConfigHandler {
 
 // GetConfigStatus returns the configuration status without exposing sensitive data
 func (h *ConfigHandler) GetConfigStatus(c *gin.Context) {
-	status := map[string]interface{}{
-		"openrouter": map[string]bool{
-			"api_key_configured": os.Getenv("OPENROUTER_API_KEY") != "",
-		},
-		"baseten": map[string]bool{
-			"api_key_configured": os.Getenv("BASETEN_API_KEY") != "",
-		},
+	// Use provider registry for dynamic status
+	providers := defaultRegistry.GetAvailableProviders()
+	status := make(map[string]interface{})
+
+	for _, provider := range providers {
+		status[provider.Name] = map[string]interface{}{
+			"api_key_configured": os.Getenv(provider.EnvVarKey) != "",
+			"display_name":       provider.DisplayName,
+			"mode":               provider.Mode.String(),
+		}
 	}
+
 	c.JSON(200, status)
+}
+
+// GetProviders returns the list of available providers
+func (h *ConfigHandler) GetProviders(c *gin.Context) {
+	providers := []map[string]interface{}{}
+
+	for _, provider := range defaultRegistry.GetAvailableProviders() {
+		providers = append(providers, map[string]interface{}{
+			"name":        provider.Name,
+			"displayName": provider.DisplayName,
+			"mode":        provider.Mode.String(),
+			"configured":  os.Getenv(provider.EnvVarKey) != "",
+		})
+	}
+
+	c.JSON(200, gin.H{"providers": providers})
 }

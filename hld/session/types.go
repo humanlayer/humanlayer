@@ -60,6 +60,7 @@ type Info struct {
 	DangerouslySkipPermissions          bool               `json:"dangerously_skip_permissions"`
 	DangerouslySkipPermissionsExpiresAt *time.Time         `json:"dangerously_skip_permissions_expires_at,omitempty"`
 	Archived                            bool               `json:"archived"`
+	Provider                            string             `json:"provider,omitempty"`
 }
 
 // LaunchSessionConfig contains the configuration for launching a new session
@@ -70,7 +71,8 @@ type LaunchSessionConfig struct {
 	AutoAcceptEdits                   bool   // Auto-accept edit tools
 	DangerouslySkipPermissions        bool   // Whether to auto-approve all tools
 	DangerouslySkipPermissionsTimeout *int64 // Optional timeout in milliseconds
-	// Proxy configuration
+	// Provider and proxy configuration
+	Provider           string // Provider to use (anthropic, openrouter, baseten, z_ai)
 	ProxyEnabled       bool   // Whether proxy is enabled
 	ProxyBaseURL       string // Proxy base URL
 	ProxyModelOverride string // Model to use with proxy
@@ -81,6 +83,7 @@ type LaunchSessionConfig struct {
 type ContinueSessionConfig struct {
 	ParentSessionID       string                // The parent session to resume from
 	Query                 string                // The new query
+	Provider              string                // Provider to use (anthropic, openrouter, baseten, z_ai)
 	SystemPrompt          string                // Optional system prompt override
 	AppendSystemPrompt    string                // Optional append to system prompt
 	MCPConfig             *claudecode.MCPConfig // Optional MCP config override
@@ -167,6 +170,7 @@ func SessionToInfo(s store.Session) Info {
 		DangerouslySkipPermissions:          s.DangerouslySkipPermissions,
 		DangerouslySkipPermissionsExpiresAt: s.DangerouslySkipPermissionsExpiresAt,
 		Archived:                            s.Archived,
+		Provider:                            s.Provider,
 		// Note: CLICommand is not stored in database, it's a build-time constant
 	}
 

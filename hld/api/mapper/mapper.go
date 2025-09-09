@@ -102,6 +102,11 @@ func (m *Mapper) SessionToAPI(s store.Session) api.Session {
 		session.ProxyModelOverride = &s.ProxyModelOverride
 	}
 
+	// Provider field
+	if s.Provider != "" {
+		session.Provider = &s.Provider
+	}
+
 	return session
 }
 

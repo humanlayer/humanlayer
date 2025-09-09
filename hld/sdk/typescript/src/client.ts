@@ -118,6 +118,7 @@ export class HLDClient {
         title?: string,
         dangerouslySkipPermissions?: boolean,
         dangerouslySkipPermissionsTimeoutMs?: number,
+        provider?: string,
         model?: string,
         modelId?: string,
         proxyEnabled?: boolean,
@@ -140,6 +141,9 @@ export class HLDClient {
         }
         if (updates.dangerouslySkipPermissionsTimeoutMs !== undefined) {
             updateSessionRequest.dangerouslySkipPermissionsTimeoutMs = updates.dangerouslySkipPermissionsTimeoutMs;
+        }
+        if (updates.provider !== undefined) {
+            updateSessionRequest.provider = updates.provider;
         }
         if (updates.model !== undefined) {
             updateSessionRequest.model = updates.model;

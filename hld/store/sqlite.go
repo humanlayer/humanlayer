@@ -788,6 +788,7 @@ func (s *SQLiteStore) applyMigrations() error {
 			sqlType      string
 			defaultValue string
 		}{
+			{"provider", "TEXT", "''"},
 			{"proxy_enabled", "BOOLEAN", "0"},
 			{"proxy_base_url", "TEXT", "''"},
 			{"proxy_model_override", "TEXT", "''"},
@@ -969,6 +970,43 @@ func (s *SQLiteStore) applyMigrations() error {
 		slog.Info("Migration 18 applied successfully")
 	}
 
+	// Migration 19: Add provider column (fixing missing column from migration 15)
+	if currentVersion < 19 {
+		slog.Info("Applying migration 19: Add provider column")
+
+		// Check if provider column already exists
+		var columnExists int
+		err = s.db.QueryRow(`
+			SELECT COUNT(*) FROM pragma_table_info('sessions')
+			WHERE name = 'provider'
+		`).Scan(&columnExists)
+		if err != nil {
+			return fmt.Errorf("failed to check provider column: %w", err)
+		}
+
+		if columnExists == 0 {
+			_, err = s.db.Exec(`
+				ALTER TABLE sessions
+				ADD COLUMN provider TEXT DEFAULT ''
+			`)
+			if err != nil {
+				return fmt.Errorf("failed to add provider column: %w", err)
+			}
+			slog.Info("Added provider column to sessions table")
+		}
+
+		// Record migration
+		_, err = s.db.Exec(`
+			INSERT INTO schema_version (version, description)
+			VALUES (19, 'Add provider column for provider registry support')
+		`)
+		if err != nil {
+			return fmt.Errorf("failed to record migration 19: %w", err)
+		}
+
+		slog.Info("Migration 19 applied successfully")
+	}
+
 	return nil
 }
 
@@ -1000,20 +1038,34 @@ func (s *SQLiteStore) validateSchema() error {
 		return fmt.Errorf("schema validation failed: additional_directories column missing")
 	}
 
-	// Validate schema version is at least 18
+	// Validate provider column exists
+	var providerExists int
+	err = s.db.QueryRow(`
+		SELECT COUNT(*) FROM pragma_table_info('sessions')
+		WHERE name = 'provider'
+	`).Scan(&providerExists)
+	if err != nil {
+		return fmt.Errorf("failed to validate provider column: %w", err)
+	}
+	if providerExists == 0 {
+		return fmt.Errorf("schema validation failed: provider column missing")
+	}
+
+	// Validate schema version is at least 19
 	var currentVersion int
 	err = s.db.QueryRow("SELECT MAX(version) FROM schema_version").Scan(&currentVersion)
 	if err != nil {
 		return fmt.Errorf("failed to get schema version: %w", err)
 	}
-	if currentVersion < 18 {
-		return fmt.Errorf("schema validation failed: version %d is less than required 18", currentVersion)
+	if currentVersion < 19 {
+		return fmt.Errorf("schema validation failed: version %d is less than required 19", currentVersion)
 	}
 
 	slog.Info("Schema validation successful",
 		"version", currentVersion,
 		"user_settings_table", "present",
-		"additional_directories_column", "present")
+		"additional_directories_column", "present",
+		"provider_column", "present")
 
 	return nil
 }
@@ -1031,8 +1083,8 @@ func (s *SQLiteStore) CreateSession(ctx context.Context, session *Session) error
 			query, summary, title, model, model_id, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
 			permission_prompt_tool, allowed_tools, disallowed_tools,
 			status, created_at, last_activity_at, auto_accept_edits, archived, dangerously_skip_permissions, dangerously_skip_permissions_expires_at,
-			proxy_enabled, proxy_base_url, proxy_model_override, proxy_api_key, additional_directories
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			provider, proxy_enabled, proxy_base_url, proxy_model_override, proxy_api_key, additional_directories
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	_, err := s.db.ExecContext(ctx, query,
@@ -1042,7 +1094,7 @@ func (s *SQLiteStore) CreateSession(ctx context.Context, session *Session) error
 		session.PermissionPromptTool, session.AllowedTools, session.DisallowedTools,
 		session.Status, session.CreatedAt, session.LastActivityAt, session.AutoAcceptEdits, session.Archived,
 		session.DangerouslySkipPermissions, session.DangerouslySkipPermissionsExpiresAt,
-		session.ProxyEnabled, session.ProxyBaseURL, session.ProxyModelOverride, session.ProxyAPIKey,
+		session.Provider, session.ProxyEnabled, session.ProxyBaseURL, session.ProxyModelOverride, session.ProxyAPIKey,
 		session.AdditionalDirectories,
 	)
 	if err != nil {
@@ -1149,6 +1201,10 @@ func (s *SQLiteStore) UpdateSession(ctx context.Context, sessionID string, updat
 		setParts = append(setParts, "archived = ?")
 		args = append(args, *updates.Archived)
 	}
+	if updates.Provider != nil {
+		setParts = append(setParts, "provider = ?")
+		args = append(args, *updates.Provider)
+	}
 	// Handle proxy field updates
 	if updates.ProxyEnabled != nil {
 		setParts = append(setParts, "proxy_enabled = ?")
@@ -1208,7 +1264,7 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 			cost_usd, input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens, effective_context_tokens,
 			duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived,
 			dangerously_skip_permissions, dangerously_skip_permissions_expires_at,
-			proxy_enabled, proxy_base_url, proxy_model_override, proxy_api_key, additional_directories
+			provider, proxy_enabled, proxy_base_url, proxy_model_override, proxy_api_key, additional_directories
 		FROM sessions WHERE id = ?
 	`
 
@@ -1222,6 +1278,7 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 	var resultContent, errorMessage sql.NullString
 	var archived sql.NullBool
 	var dangerouslySkipPermissionsExpiresAt sql.NullTime
+	var provider sql.NullString
 	var proxyEnabled sql.NullBool
 	var proxyBaseURL, proxyModelOverride, proxyAPIKey sql.NullString
 	var additionalDirectories sql.NullString
@@ -1235,7 +1292,7 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 		&costUSD, &inputTokens, &outputTokens, &cacheCreationInputTokens, &cacheReadInputTokens, &effectiveContextTokens,
 		&durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
 		&archived, &session.DangerouslySkipPermissions, &dangerouslySkipPermissionsExpiresAt,
-		&proxyEnabled, &proxyBaseURL, &proxyModelOverride, &proxyAPIKey, &additionalDirectories,
+		&provider, &proxyEnabled, &proxyBaseURL, &proxyModelOverride, &proxyAPIKey, &additionalDirectories,
 	)
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("session not found: %s", sessionID)
@@ -1303,7 +1360,8 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 		session.DangerouslySkipPermissionsExpiresAt = &dangerouslySkipPermissionsExpiresAt.Time
 	}
 
-	// Handle proxy fields
+	// Handle provider and proxy fields
+	session.Provider = provider.String
 	session.ProxyEnabled = proxyEnabled.Valid && proxyEnabled.Bool
 	session.ProxyBaseURL = proxyBaseURL.String
 	session.ProxyModelOverride = proxyModelOverride.String
@@ -1325,7 +1383,7 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 			cost_usd, input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens, effective_context_tokens,
 			duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived,
 			dangerously_skip_permissions, dangerously_skip_permissions_expires_at,
-			proxy_enabled, proxy_base_url, proxy_model_override, proxy_api_key, additional_directories
+			provider, proxy_enabled, proxy_base_url, proxy_model_override, proxy_api_key, additional_directories
 		FROM sessions
 		WHERE run_id = ?
 	`
@@ -1340,6 +1398,7 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 	var resultContent, errorMessage sql.NullString
 	var archived sql.NullBool
 	var dangerouslySkipPermissionsExpiresAt sql.NullTime
+	var provider sql.NullString
 	var proxyEnabled sql.NullBool
 	var proxyBaseURL, proxyModelOverride, proxyAPIKey sql.NullString
 	var additionalDirectories sql.NullString
@@ -1353,7 +1412,7 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 		&costUSD, &inputTokens, &outputTokens, &cacheCreationInputTokens, &cacheReadInputTokens, &effectiveContextTokens,
 		&durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
 		&archived, &session.DangerouslySkipPermissions, &dangerouslySkipPermissionsExpiresAt,
-		&proxyEnabled, &proxyBaseURL, &proxyModelOverride, &proxyAPIKey, &additionalDirectories,
+		&provider, &proxyEnabled, &proxyBaseURL, &proxyModelOverride, &proxyAPIKey, &additionalDirectories,
 	)
 	if err == sql.ErrNoRows {
 		return nil, nil // No session found
@@ -1421,7 +1480,8 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 		session.DangerouslySkipPermissionsExpiresAt = &dangerouslySkipPermissionsExpiresAt.Time
 	}
 
-	// Handle proxy fields
+	// Handle provider and proxy fields
+	session.Provider = provider.String
 	session.ProxyEnabled = proxyEnabled.Valid && proxyEnabled.Bool
 	session.ProxyBaseURL = proxyBaseURL.String
 	session.ProxyModelOverride = proxyModelOverride.String
@@ -1443,7 +1503,7 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 			cost_usd, input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens, effective_context_tokens,
 		duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived,
 			dangerously_skip_permissions, dangerously_skip_permissions_expires_at,
-			proxy_enabled, proxy_base_url, proxy_model_override, proxy_api_key
+			provider, proxy_enabled, proxy_base_url, proxy_model_override, proxy_api_key
 		FROM sessions
 		ORDER BY last_activity_at DESC
 	`
@@ -1466,6 +1526,7 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 		var resultContent, errorMessage sql.NullString
 		var archived sql.NullBool
 		var dangerouslySkipPermissionsExpiresAt sql.NullTime
+		var provider sql.NullString
 		var proxyEnabled sql.NullBool
 		var proxyBaseURL, proxyModelOverride, proxyAPIKey sql.NullString
 
@@ -1478,7 +1539,7 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 			&costUSD, &inputTokens, &outputTokens, &cacheCreationInputTokens, &cacheReadInputTokens, &effectiveContextTokens,
 			&durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
 			&archived, &session.DangerouslySkipPermissions, &dangerouslySkipPermissionsExpiresAt,
-			&proxyEnabled, &proxyBaseURL, &proxyModelOverride, &proxyAPIKey,
+			&provider, &proxyEnabled, &proxyBaseURL, &proxyModelOverride, &proxyAPIKey,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan session: %w", err)
@@ -1545,7 +1606,8 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 			session.DangerouslySkipPermissionsExpiresAt = &dangerouslySkipPermissionsExpiresAt.Time
 		}
 
-		// Handle proxy fields
+		// Handle provider and proxy fields
+		session.Provider = provider.String
 		session.ProxyEnabled = proxyEnabled.Valid && proxyEnabled.Bool
 		session.ProxyBaseURL = proxyBaseURL.String
 		session.ProxyModelOverride = proxyModelOverride.String
@@ -1568,7 +1630,7 @@ func (s *SQLiteStore) GetExpiredDangerousPermissionsSessions(ctx context.Context
 			cost_usd, input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens, effective_context_tokens,
 		duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived,
 			dangerously_skip_permissions, dangerously_skip_permissions_expires_at,
-			proxy_enabled, proxy_base_url, proxy_model_override, proxy_api_key
+			provider, proxy_enabled, proxy_base_url, proxy_model_override, proxy_api_key
 		FROM sessions
 		WHERE dangerously_skip_permissions = 1
 			AND dangerously_skip_permissions_expires_at IS NOT NULL
@@ -1595,6 +1657,7 @@ func (s *SQLiteStore) GetExpiredDangerousPermissionsSessions(ctx context.Context
 		var resultContent, errorMessage sql.NullString
 		var archived sql.NullBool
 		var dangerouslySkipPermissionsExpiresAt sql.NullTime
+		var provider sql.NullString
 		var proxyEnabled sql.NullBool
 		var proxyBaseURL, proxyModelOverride, proxyAPIKey sql.NullString
 
@@ -1607,7 +1670,7 @@ func (s *SQLiteStore) GetExpiredDangerousPermissionsSessions(ctx context.Context
 			&costUSD, &inputTokens, &outputTokens, &cacheCreationInputTokens, &cacheReadInputTokens, &effectiveContextTokens,
 			&durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
 			&archived, &session.DangerouslySkipPermissions, &dangerouslySkipPermissionsExpiresAt,
-			&proxyEnabled, &proxyBaseURL, &proxyModelOverride, &proxyAPIKey,
+			&provider, &proxyEnabled, &proxyBaseURL, &proxyModelOverride, &proxyAPIKey,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan session: %w", err)
@@ -1674,7 +1737,8 @@ func (s *SQLiteStore) GetExpiredDangerousPermissionsSessions(ctx context.Context
 			session.DangerouslySkipPermissionsExpiresAt = &dangerouslySkipPermissionsExpiresAt.Time
 		}
 
-		// Handle proxy fields
+		// Handle provider and proxy fields
+		session.Provider = provider.String
 		session.ProxyEnabled = proxyEnabled.Valid && proxyEnabled.Bool
 		session.ProxyBaseURL = proxyBaseURL.String
 		session.ProxyModelOverride = proxyModelOverride.String

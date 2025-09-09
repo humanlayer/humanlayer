@@ -280,6 +280,50 @@ func (m *Manager) LaunchSession(ctx context.Context, config LaunchSessionConfig)
 		}
 	}
 
+	// Handle provider configuration
+	if config.Provider != "" {
+		dbSession.Provider = config.Provider
+		// Automatically enable proxy for non-Anthropic providers
+		if config.Provider != "anthropic" {
+			config.ProxyEnabled = true
+		}
+		slog.Info("Setting provider for session",
+			"session_id", sessionID,
+			"provider", config.Provider,
+			"proxy_enabled", config.ProxyEnabled)
+	} else if config.ProxyEnabled && config.ProxyModelOverride != "" {
+		// Auto-detect provider from proxy model if not explicitly set
+		modelLower := strings.ToLower(config.ProxyModelOverride)
+		if strings.Contains(modelLower, "openai/") || strings.Contains(modelLower, "gpt") {
+			dbSession.Provider = "openrouter"
+			slog.Info("Auto-detected OpenRouter provider from model",
+				"session_id", sessionID,
+				"model", config.ProxyModelOverride)
+		} else if strings.Contains(modelLower, "glm") || strings.Contains(modelLower, "z-ai") {
+			dbSession.Provider = "z_ai"
+			slog.Info("Auto-detected Z-AI provider from model",
+				"session_id", sessionID,
+				"model", config.ProxyModelOverride)
+		} else if strings.Contains(modelLower, "deepseek") {
+			dbSession.Provider = "baseten"
+			slog.Info("Auto-detected Baseten provider from model",
+				"session_id", sessionID,
+				"model", config.ProxyModelOverride)
+		} else {
+			// Default to anthropic if we can't detect
+			dbSession.Provider = "anthropic"
+			slog.Info("Defaulting to anthropic provider",
+				"session_id", sessionID,
+				"proxy_enabled", config.ProxyEnabled)
+		}
+	} else {
+		// Default to anthropic if no provider specified and no proxy
+		dbSession.Provider = "anthropic"
+		slog.Info("No provider specified for session, defaulting to anthropic",
+			"session_id", sessionID,
+			"proxy_enabled", config.ProxyEnabled)
+	}
+
 	// Handle proxy configuration from config
 	if config.ProxyEnabled {
 		dbSession.ProxyEnabled = config.ProxyEnabled
@@ -1539,6 +1583,42 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 		}
 	}
 
+	// Inherit provider from parent or use provided value
+	if req.Provider != "" {
+		dbSession.Provider = req.Provider
+		slog.Info("ContinueSession: using provided provider",
+			"provider", req.Provider,
+			"parent_session_id", req.ParentSessionID)
+	} else if parentSession.Provider != "" {
+		dbSession.Provider = parentSession.Provider
+		slog.Info("ContinueSession: inheriting provider from parent",
+			"provider", parentSession.Provider,
+			"parent_session_id", req.ParentSessionID)
+	} else {
+		// Auto-detect provider from proxy model if proxy is enabled
+		if dbSession.ProxyEnabled && dbSession.ProxyModelOverride != "" {
+			modelLower := strings.ToLower(dbSession.ProxyModelOverride)
+			if strings.Contains(modelLower, "openai/") || strings.Contains(modelLower, "gpt") {
+				dbSession.Provider = "openrouter"
+			} else if strings.Contains(modelLower, "glm") || strings.Contains(modelLower, "z-ai") {
+				dbSession.Provider = "z_ai"
+			} else if strings.Contains(modelLower, "deepseek") {
+				dbSession.Provider = "baseten"
+			} else {
+				dbSession.Provider = "anthropic" // Default if we can't detect
+			}
+			slog.Info("ContinueSession: auto-detected provider from proxy model",
+				"provider", dbSession.Provider,
+				"proxy_model", dbSession.ProxyModelOverride,
+				"parent_session_id", req.ParentSessionID)
+		} else {
+			dbSession.Provider = "anthropic" // Default provider
+			slog.Info("ContinueSession: using default provider",
+				"provider", dbSession.Provider,
+				"parent_session_id", req.ParentSessionID)
+		}
+	}
+
 	// Inherit additional directories from parent if not already set
 	// This ensures that directories updated on the parent session are properly inherited
 	if dbSession.AdditionalDirectories == "" || dbSession.AdditionalDirectories == "[]" {
@@ -1959,6 +2039,14 @@ func (m *Manager) forceKillRemaining() {
 
 // UpdateSessionSettings updates session settings and publishes appropriate events
 func (m *Manager) UpdateSessionSettings(ctx context.Context, sessionID string, updates store.SessionUpdate) error {
+	// Log the incoming updates including provider field
+	slog.Info("UpdateSessionSettings called",
+		"session_id", sessionID,
+		"provider", updates.Provider,
+		"model", updates.Model,
+		"proxy_enabled", updates.ProxyEnabled,
+		"proxy_model", updates.ProxyModelOverride)
+
 	// Log if additional directories are being updated
 	if updates.AdditionalDirectories != nil {
 		slog.Debug("Updating additional directories",

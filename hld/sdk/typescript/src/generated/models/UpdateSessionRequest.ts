@@ -50,6 +50,12 @@ export interface UpdateSessionRequest {
      */
     title?: string;
     /**
+     * Provider to use (anthropic, openrouter, baseten, z-ai)
+     * @type {string}
+     * @memberof UpdateSessionRequest
+     */
+    provider?: string;
+    /**
      * Model to use (opus, sonnet, or empty for default)
      * @type {string}
      * @memberof UpdateSessionRequest
@@ -115,6 +121,7 @@ export function UpdateSessionRequestFromJSONTyped(json: any, ignoreDiscriminator
         'dangerouslySkipPermissionsTimeoutMs': json['dangerously_skip_permissions_timeout_ms'] == null ? undefined : json['dangerously_skip_permissions_timeout_ms'],
         'archived': json['archived'] == null ? undefined : json['archived'],
         'title': json['title'] == null ? undefined : json['title'],
+        'provider': json['provider'] == null ? undefined : json['provider'],
         'model': json['model'] == null ? undefined : json['model'],
         'modelId': json['model_id'] == null ? undefined : json['model_id'],
         'proxyEnabled': json['proxy_enabled'] == null ? undefined : json['proxy_enabled'],
@@ -141,6 +148,7 @@ export function UpdateSessionRequestToJSONTyped(value?: UpdateSessionRequest | n
         'dangerously_skip_permissions_timeout_ms': value['dangerouslySkipPermissionsTimeoutMs'],
         'archived': value['archived'],
         'title': value['title'],
+        'provider': value['provider'],
         'model': value['model'],
         'model_id': value['modelId'],
         'proxy_enabled': value['proxyEnabled'],

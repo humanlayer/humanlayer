@@ -65,6 +65,15 @@ func (h *SessionHandlers) CreateSession(ctx context.Context, req api.CreateSessi
 		},
 	}
 
+	// Handle provider
+	if req.Body.Provider != nil {
+		config.Provider = *req.Body.Provider
+		slog.Info("Provider specified in request",
+			"provider", config.Provider)
+	} else {
+		slog.Info("No provider specified in request")
+	}
+
 	// Handle proxy configuration
 	// Note: OpenAPI generates ProxyBaseUrl/ProxyApiKey (following JSON conventions)
 	// but we map to ProxyBaseURL/ProxyAPIKey (following Go conventions for acronyms)
@@ -245,6 +254,7 @@ func (h *SessionHandlers) ListSessions(ctx context.Context, req api.ListSessions
 			DangerouslySkipPermissions:          info.DangerouslySkipPermissions,
 			DangerouslySkipPermissionsExpiresAt: info.DangerouslySkipPermissionsExpiresAt,
 			Archived:                            info.Archived,
+			Provider:                            info.Provider,
 		}
 
 		// Copy result data if available
@@ -340,6 +350,11 @@ func (h *SessionHandlers) UpdateSession(ctx context.Context, req api.UpdateSessi
 	}
 	if req.Body.ModelId != nil {
 		update.ModelID = req.Body.ModelId
+	}
+
+	// Update provider if specified
+	if req.Body.Provider != nil {
+		update.Provider = req.Body.Provider
 	}
 
 	// Update proxy configuration if specified
@@ -450,6 +465,9 @@ func (h *SessionHandlers) ContinueSession(ctx context.Context, req api.ContinueS
 	}
 
 	// Handle optional fields
+	if req.Body.Provider != nil {
+		continueConfig.Provider = *req.Body.Provider
+	}
 	if req.Body.SystemPrompt != nil {
 		continueConfig.SystemPrompt = *req.Body.SystemPrompt
 	}

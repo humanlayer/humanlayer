@@ -46,6 +46,12 @@ export interface CreateSessionRequest {
      */
     model?: CreateSessionRequestModelEnum;
     /**
+     * Provider to use for the session (anthropic, openrouter, baseten, z_ai)
+     * @type {string}
+     * @memberof CreateSessionRequest
+     */
+    provider?: string;
+    /**
      *
      * @type {MCPConfig}
      * @memberof CreateSessionRequest
@@ -187,6 +193,7 @@ export function CreateSessionRequestFromJSONTyped(json: any, ignoreDiscriminator
         'query': json['query'],
         'title': json['title'] == null ? undefined : json['title'],
         'model': json['model'] == null ? undefined : json['model'],
+        'provider': json['provider'] == null ? undefined : json['provider'],
         'mcpConfig': json['mcp_config'] == null ? undefined : MCPConfigFromJSON(json['mcp_config']),
         'permissionPromptTool': json['permission_prompt_tool'] == null ? undefined : json['permission_prompt_tool'],
         'workingDir': json['working_dir'] == null ? undefined : json['working_dir'],
@@ -222,6 +229,7 @@ export function CreateSessionRequestToJSONTyped(value?: CreateSessionRequest | n
         'query': value['query'],
         'title': value['title'],
         'model': value['model'],
+        'provider': value['provider'],
         'mcp_config': MCPConfigToJSON(value['mcpConfig']),
         'permission_prompt_tool': value['permissionPromptTool'],
         'working_dir': value['workingDir'],

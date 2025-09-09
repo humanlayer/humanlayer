@@ -107,7 +107,8 @@ type Session struct {
 	DangerouslySkipPermissionsExpiresAt *time.Time `db:"dangerously_skip_permissions_expires_at"`
 	Archived                            bool       // New field for session archiving
 
-	// Proxy configuration
+	// Provider and proxy configuration
+	Provider           string `db:"provider"`
 	ProxyEnabled       bool   `db:"proxy_enabled"`
 	ProxyBaseURL       string `db:"proxy_base_url"`
 	ProxyModelOverride string `db:"proxy_model_override"`
@@ -138,6 +139,7 @@ type SessionUpdate struct {
 	Model                               *string
 	ModelID                             *string // Full model identifier
 	Archived                            *bool   // New field for updating archived status
+	Provider                            *string // Provider field for updates
 	AdditionalDirectories               *string `db:"additional_directories"`
 	// New proxy fields
 	ProxyEnabled       *bool   `db:"proxy_enabled"`
