@@ -1339,6 +1339,9 @@ components:
         advanced_providers:
           type: boolean
           description: Enable advanced provider options like OpenRouter
+        opt_in_telemetry:
+          type: boolean
+          description: Opt-in for performance and error reporting
         created_at:
           type: string
           format: date-time
@@ -1360,6 +1363,9 @@ components:
         advanced_providers:
           type: boolean
           description: Enable or disable advanced provider options
+        opt_in_telemetry:
+          type: boolean
+          description: Opt-in or opt-out of performance and error reporting
 
     # Approval Types
     Approval:

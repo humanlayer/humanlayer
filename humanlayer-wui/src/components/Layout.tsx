@@ -19,6 +19,7 @@ import { SessionLauncher } from '@/components/SessionLauncher'
 import { HotkeyPanel } from '@/components/HotkeyPanel'
 import { Breadcrumbs } from '@/components/Breadcrumbs'
 import { SettingsDialog } from '@/components/SettingsDialog'
+import { OptInTelemetryModal } from '@/components/OptInTelemetryModal'
 import { useSessionLauncher, useSessionLauncherHotkeys } from '@/hooks/useSessionLauncher'
 import { useDaemonConnection } from '@/hooks/useDaemonConnection'
 import { useStore } from '@/AppStore'
@@ -48,6 +49,7 @@ export function Layout() {
   const navigate = useNavigate()
   const isSettingsDialogOpen = useStore(state => state.isSettingsDialogOpen)
   const setSettingsDialogOpen = useStore(state => state.setSettingsDialogOpen)
+  const [showTelemetryModal, setShowTelemetryModal] = useState(false)
 
   // Use the daemon connection hook for all connection management
   const { connected, connecting, version, healthStatus, connect, checkHealth } = useDaemonConnection()
@@ -81,6 +83,7 @@ export function Layout() {
   const updateSession = useStore(state => state.updateSession)
   const updateSessionStatus = useStore(state => state.updateSessionStatus)
   const fetchUserSettings = useStore(state => state.fetchUserSettings)
+  const userSettings = useStore(state => state.userSettings)
 
   // Fetch user settings when connected
   useEffect(() => {
@@ -96,6 +99,22 @@ export function Layout() {
       setHasShownUnhealthyDialog(true)
     }
   }, [connected, healthStatus, hasShownUnhealthyDialog, setSettingsDialogOpen])
+
+  // Show telemetry modal on first run
+  useEffect(() => {
+    if (connected && userSettings !== null) {
+      const OPT_IN_KEY = 'telemetry-opt-in-seen'
+      // Show modal on first connection if user hasn't chosen yet
+      const hasSeenDialog = localStorage.getItem(OPT_IN_KEY) === 'true'
+      if (
+        !hasSeenDialog &&
+        (userSettings.optInTelemetry === undefined || userSettings.optInTelemetry === false)
+      ) {
+        setShowTelemetryModal(true)
+        localStorage.setItem(OPT_IN_KEY, 'true')
+      }
+    }
+  }, [connected, userSettings])
   const refreshActiveSessionConversation = useStore(state => state.refreshActiveSessionConversation)
   const clearNotificationsForSession = useStore(state => state.clearNotificationsForSession)
   const wasRecentlyNavigatedFrom = useStore(state => state.wasRecentlyNavigatedFrom)
@@ -650,6 +669,9 @@ export function Layout() {
         onOpenChange={setSettingsDialogOpen}
         onConfigUpdate={checkHealth}
       />
+
+      {/* Telemetry opt-in modal */}
+      <OptInTelemetryModal open={showTelemetryModal} onOpenChange={setShowTelemetryModal} />
 
       {/* Global Dangerous Skip Permissions Monitor */}
       <DangerousSkipPermissionsMonitor />

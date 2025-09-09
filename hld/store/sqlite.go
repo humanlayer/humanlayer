@@ -969,6 +969,43 @@ func (s *SQLiteStore) applyMigrations() error {
 		slog.Info("Migration 18 applied successfully")
 	}
 
+	// Migration 19: Add opt_in_telemetry column for error reporting consent
+	if currentVersion < 19 {
+		slog.Info("Applying migration 19: Add opt_in_telemetry column for error reporting consent")
+
+		// Check if opt_in_telemetry column already exists for idempotency
+		var optInTelemetryExists int
+		err := s.db.QueryRow(`
+			SELECT COUNT(*) FROM pragma_table_info('user_settings')
+			WHERE name = 'opt_in_telemetry'
+		`).Scan(&optInTelemetryExists)
+		if err != nil {
+			return fmt.Errorf("failed to check opt_in_telemetry column: %w", err)
+		}
+
+		if optInTelemetryExists == 0 {
+			// Add opt_in_telemetry column with NULL default (unset state)
+			_, err := s.db.Exec(`
+				ALTER TABLE user_settings
+				ADD COLUMN opt_in_telemetry BOOLEAN DEFAULT NULL
+			`)
+			if err != nil {
+				return fmt.Errorf("failed to add opt_in_telemetry column: %w", err)
+			}
+		}
+
+		// Record migration
+		_, err = s.db.Exec(`
+			INSERT INTO schema_version (version, description)
+			VALUES (?, ?)
+		`, 19, "Add opt_in_telemetry column for error reporting consent")
+		if err != nil {
+			return fmt.Errorf("failed to record migration 19: %w", err)
+		}
+
+		slog.Info("Migration 19 applied successfully")
+	}
+
 	return nil
 }
 
@@ -1737,9 +1774,9 @@ func (s *SQLiteStore) GetRecentWorkingDirs(ctx context.Context, limit int) ([]Re
 func (s *SQLiteStore) GetUserSettings(ctx context.Context) (*UserSettings, error) {
 	var settings UserSettings
 	err := s.db.QueryRowContext(ctx, `
-		SELECT advanced_providers, created_at, updated_at
+		SELECT advanced_providers, opt_in_telemetry, created_at, updated_at
 		FROM user_settings WHERE id = 1
-	`).Scan(&settings.AdvancedProviders, &settings.CreatedAt, &settings.UpdatedAt)
+	`).Scan(&settings.AdvancedProviders, &settings.OptInTelemetry, &settings.CreatedAt, &settings.UpdatedAt)
 
 	if err == sql.ErrNoRows {
 		// Return defaults if not found (for backwards compatibility)
@@ -1756,9 +1793,9 @@ func (s *SQLiteStore) GetUserSettings(ctx context.Context) (*UserSettings, error
 func (s *SQLiteStore) UpdateUserSettings(ctx context.Context, settings UserSettings) error {
 	_, err := s.db.ExecContext(ctx, `
 		UPDATE user_settings
-		SET advanced_providers = ?, updated_at = CURRENT_TIMESTAMP
+		SET advanced_providers = ?, opt_in_telemetry = ?, updated_at = CURRENT_TIMESTAMP
 		WHERE id = 1
-	`, settings.AdvancedProviders)
+	`, settings.AdvancedProviders, settings.OptInTelemetry)
 	return err
 }
 

@@ -47,8 +47,36 @@ export function SettingsDialog({ open, onOpenChange, onConfigUpdate }: SettingsD
       setSaving(true)
       await updateUserSettings({ advancedProviders: checked })
       logger.log('Advanced providers setting updated:', checked)
+      toast.success(checked ? 'Advanced providers enabled' : 'Advanced providers disabled')
     } catch (error) {
       logger.error('Failed to update settings:', error)
+      toast.error('Failed to update settings', {
+        description: 'Please try again or check your connection.',
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleTelemetryToggle = async (checked: boolean) => {
+    try {
+      setSaving(true)
+      await updateUserSettings({ optInTelemetry: checked })
+      logger.log('Telemetry opt-in setting updated:', checked)
+      if (checked) {
+        toast.success('Error reporting enabled', {
+          description: 'Thank you for helping us improve CodeLayer!',
+        })
+      } else {
+        toast.success('Error reporting disabled', {
+          description: 'Error and performance data will no longer be sent to third party providers.',
+        })
+      }
+    } catch (error) {
+      logger.error('Failed to update telemetry settings:', error)
+      toast.error('Failed to update telemetry settings', {
+        description: 'Please try again or check your connection.',
+      })
     } finally {
       setSaving(false)
     }
@@ -268,6 +296,23 @@ export function SettingsDialog({ open, onOpenChange, onConfigUpdate }: SettingsD
                 )}
               </p>
             )}
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <Label htmlFor="telemetry-opt-in" className="text-sm font-medium">
+                Performance & Error Reporting
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Share anonymous error reports and performance data
+              </p>
+            </div>
+            <Switch
+              id="telemetry-opt-in"
+              checked={userSettings?.optInTelemetry ?? false}
+              onCheckedChange={handleTelemetryToggle}
+              disabled={!userSettings || saving}
+            />
           </div>
         </div>
       </DialogContent>
