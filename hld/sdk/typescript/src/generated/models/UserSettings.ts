@@ -26,6 +26,12 @@ export interface UserSettings {
      */
     advancedProviders: boolean;
     /**
+     * Opt-in for performance and error reporting
+     * @type {boolean}
+     * @memberof UserSettings
+     */
+    optInTelemetry?: boolean;
+    /**
      *
      * @type {Date}
      * @memberof UserSettings
@@ -60,6 +66,7 @@ export function UserSettingsFromJSONTyped(json: any, ignoreDiscriminator: boolea
     return {
 
         'advancedProviders': json['advanced_providers'],
+        'optInTelemetry': json['opt_in_telemetry'] == null ? undefined : json['opt_in_telemetry'],
         'createdAt': (new Date(json['created_at'])),
         'updatedAt': (new Date(json['updated_at'])),
     };
@@ -77,6 +84,7 @@ export function UserSettingsToJSONTyped(value?: UserSettings | null, ignoreDiscr
     return {
 
         'advanced_providers': value['advancedProviders'],
+        'opt_in_telemetry': value['optInTelemetry'],
         'created_at': ((value['createdAt']).toISOString()),
         'updated_at': ((value['updatedAt']).toISOString()),
     };

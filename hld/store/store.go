@@ -64,6 +64,7 @@ type ConversationStore interface {
 // UserSettings represents user preferences
 type UserSettings struct {
 	AdvancedProviders bool      `json:"advanced_providers"`
+	OptInTelemetry    *bool     `json:"opt_in_telemetry"` // Pointer to handle NULL (unset)
 	CreatedAt         time.Time `json:"created_at"`
 	UpdatedAt         time.Time `json:"updated_at"`
 }

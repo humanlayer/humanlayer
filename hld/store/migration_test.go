@@ -100,8 +100,8 @@ func TestMigration18Healing(t *testing.T) {
 				// First, drop the additional_directories column if it exists
 				_, _ = db.Exec(`ALTER TABLE sessions DROP COLUMN additional_directories`)
 
-				// Remove migration 17 and 18 from schema_version to simulate v16
-				_, err := db.Exec(`DELETE FROM schema_version WHERE version IN (17, 18)`)
+				// Remove migration 17, 18 and 19 from schema_version to simulate v16
+				_, err := db.Exec(`DELETE FROM schema_version WHERE version IN (17, 18, 19)`)
 				return err
 			},
 			expectedFixes: []string{"additional_directories"},
@@ -116,8 +116,8 @@ func TestMigration18Healing(t *testing.T) {
 				// Drop the user_settings table
 				_, _ = db.Exec(`DROP TABLE IF EXISTS user_settings`)
 
-				// Remove migration 16, 17 and 18 from schema_version to simulate pre-16
-				_, err := db.Exec(`DELETE FROM schema_version WHERE version IN (16, 17, 18)`)
+				// Remove migration 16, 17, 18 and 19 from schema_version to simulate pre-16
+				_, err := db.Exec(`DELETE FROM schema_version WHERE version IN (16, 17, 18, 19)`)
 				return err
 			},
 			expectedFixes: []string{"user_settings"},
@@ -125,9 +125,9 @@ func TestMigration18Healing(t *testing.T) {
 		{
 			name: "v17_complete",
 			setupFunc: func(s *store.SQLiteStore) error {
-				// Everything should already be in place, just remove migration 18
+				// Everything should already be in place, just remove migrations 18 and 19
 				db := s.GetDB()
-				_, err := db.Exec(`DELETE FROM schema_version WHERE version = 18`)
+				_, err := db.Exec(`DELETE FROM schema_version WHERE version IN (18, 19)`)
 				return err
 			},
 			expectedFixes: []string{}, // No fixes needed
@@ -211,11 +211,11 @@ func TestMigration18Healing(t *testing.T) {
 				require.NoError(t, err)
 				assert.Equal(t, 1, additionalDirsExists, "additional_directories column should exist")
 
-				// Check version is 18
+				// Check version is 19
 				var version int
 				err = db.QueryRow("SELECT MAX(version) FROM schema_version").Scan(&version)
 				require.NoError(t, err)
-				assert.Equal(t, 18, version, "Database should be at version 18")
+				assert.Equal(t, 19, version, "Database should be at version 19")
 
 				t.Logf("After migration - user_settings exists: %d, additional_directories exists: %d, version: %d",
 					userSettingsExists, additionalDirsExists, version)
@@ -236,7 +236,7 @@ func TestMigration18Idempotency(t *testing.T) {
 	var version int
 	err = db.QueryRow("SELECT MAX(version) FROM schema_version").Scan(&version)
 	require.NoError(t, err)
-	assert.Equal(t, 18, version, "Should be at version 18")
+	assert.Equal(t, 19, version, "Should be at version 19")
 
 	// Try to manually run migration 18 logic again (simulating idempotency)
 	// This would happen if someone ran the migration twice
@@ -268,7 +268,7 @@ func TestMigration18Idempotency(t *testing.T) {
 	assert.Equal(t, 1, tableExists, "Table should still exist")
 }
 
-// TestAllMigrationStates tests that migrations work correctly from every possible starting state (versions 1-18)
+// TestAllMigrationStates tests that migrations work correctly from every possible starting state (versions 1-19)
 func TestAllMigrationStates(t *testing.T) {
 	// Define what each migration adds to help us simulate each state
 	type migrationDefinition struct {
@@ -442,9 +442,16 @@ func TestAllMigrationStates(t *testing.T) {
 				`INSERT INTO user_settings (id, advanced_providers) VALUES (1, FALSE) ON CONFLICT(id) DO NOTHING`,
 			},
 		},
+		{
+			version:     19,
+			description: "Add opt_in_telemetry column for error reporting consent",
+			setupSQL: []string{
+				`ALTER TABLE user_settings ADD COLUMN opt_in_telemetry BOOLEAN DEFAULT NULL`,
+			},
+		},
 	}
 
-	for _, targetVersion := range []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18} { // Note: 17 is skipped
+	for _, targetVersion := range []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 19} { // Note: 17 is skipped
 		t.Run(fmt.Sprintf("FromVersion_%d", targetVersion), func(t *testing.T) {
 			// Create a fresh database
 			s, err := store.NewSQLiteStore(":memory:")
@@ -508,10 +515,10 @@ func TestAllMigrationStates(t *testing.T) {
 				// Verify final state
 				db = s.GetDB()
 
-				// Check final version is 18
+				// Check final version is 19
 				err = db.QueryRow("SELECT MAX(version) FROM schema_version").Scan(&currentVersion)
 				require.NoError(t, err)
-				assert.Equal(t, 18, currentVersion, "Should be at version 18 after all migrations")
+				assert.Equal(t, 19, currentVersion, "Should be at version 19 after all migrations")
 
 				// Verify both critical components exist
 				var userSettingsExists int
@@ -530,7 +537,7 @@ func TestAllMigrationStates(t *testing.T) {
 				require.NoError(t, err)
 				assert.Equal(t, 1, additionalDirsExists, "additional_directories column should exist")
 
-				t.Logf("Successfully migrated from version %d to 18", targetVersion)
+				t.Logf("Successfully migrated from version %d to 19", targetVersion)
 			}
 		})
 	}
@@ -553,11 +560,11 @@ func TestMigrationFromBuggyState17(t *testing.T) {
 
 	db := s.GetDB()
 
-	// Verify we're at version 18 after normal migration
+	// Verify we're at version 19 after normal migration
 	var version int
 	err = db.QueryRow("SELECT MAX(version) FROM schema_version").Scan(&version)
 	require.NoError(t, err)
-	require.Equal(t, 18, version, "Fresh database should be at version 18")
+	require.Equal(t, 19, version, "Fresh database should be at version 19")
 
 	// Now simulate the buggy state by:
 	// 1. Remove migration 17 and 18 records
@@ -601,7 +608,7 @@ func TestMigrationFromBuggyState17(t *testing.T) {
 
 	err = db.QueryRow("SELECT MAX(version) FROM schema_version").Scan(&version)
 	require.NoError(t, err)
-	assert.Equal(t, 18, version, "Should be at version 18 after healing")
+	assert.Equal(t, 19, version, "Should be at version 19 after healing")
 
 	// Both components should exist
 	err = db.QueryRow(`

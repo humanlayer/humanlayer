@@ -25,6 +25,12 @@ export interface UpdateUserSettingsRequest {
      * @memberof UpdateUserSettingsRequest
      */
     advancedProviders?: boolean;
+    /**
+     * Opt-in or opt-out of performance and error reporting
+     * @type {boolean}
+     * @memberof UpdateUserSettingsRequest
+     */
+    optInTelemetry?: boolean;
 }
 
 /**
@@ -45,6 +51,7 @@ export function UpdateUserSettingsRequestFromJSONTyped(json: any, ignoreDiscrimi
     return {
 
         'advancedProviders': json['advanced_providers'] == null ? undefined : json['advanced_providers'],
+        'optInTelemetry': json['opt_in_telemetry'] == null ? undefined : json['opt_in_telemetry'],
     };
 }
 
@@ -60,5 +67,6 @@ export function UpdateUserSettingsRequestToJSONTyped(value?: UpdateUserSettingsR
     return {
 
         'advanced_providers': value['advancedProviders'],
+        'opt_in_telemetry': value['optInTelemetry'],
     };
 }
