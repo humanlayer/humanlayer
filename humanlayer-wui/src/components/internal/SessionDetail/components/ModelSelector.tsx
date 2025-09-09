@@ -37,7 +37,15 @@ function ModelSelectorContent({
 
   // Parse provider and model from current session
   const getProviderAndModel = () => {
-    // Check if using proxy (OpenRouter, Baseten, or Z-AI)
+    // Check if session has an explicit provider field (new approach)
+    if ((session as any).provider) {
+      return {
+        provider: (session as any).provider as 'anthropic' | 'openrouter' | 'baseten' | 'z-ai',
+        model: session.proxyModelOverride || session.model || 'default',
+      }
+    }
+    
+    // Fallback: infer from proxy settings (legacy approach)
     if (session.proxyEnabled && session.proxyModelOverride) {
       // Determine provider based on proxy base URL
       if (session.proxyBaseUrl && session.proxyBaseUrl.includes('baseten.co')) {
@@ -199,56 +207,31 @@ function ModelSelectorContent({
 
     setIsUpdating(true)
     try {
-      // Determine provider and model
-      let modelValue = ''
-      let proxyConfig: any = {}
-
-      if (provider === 'anthropic') {
-        modelValue = model === 'default' ? '' : model
-        // Clear proxy configuration when switching to Anthropic
-        proxyConfig = {
-          proxyEnabled: false,
-          proxyBaseUrl: undefined,
-          proxyModelOverride: undefined,
-          proxyApiKey: undefined,
-        }
-      } else if (provider === 'openrouter') {
-        // For OpenRouter, set proxy configuration
-        proxyConfig = {
-          proxyEnabled: true,
-          proxyBaseUrl: 'https://openrouter.ai/api/v1',
-          proxyModelOverride: customModel || '',
-          // Include API key if user provided one, otherwise backend will use env var
-          proxyApiKey: apiKey || undefined,
-        }
-        modelValue = '' // Clear Anthropic model when using proxy
-      } else if (provider === 'baseten') {
-        // For Baseten, set proxy configuration
-        proxyConfig = {
-          proxyEnabled: true,
-          proxyBaseUrl: 'https://inference.baseten.co/v1',
-          proxyModelOverride: customModel || '',
-          // Include API key if user provided one, otherwise backend will use env var
-          proxyApiKey: apiKey || undefined,
-        }
-        modelValue = '' // Clear Anthropic model when using proxy
-      } else if (provider === 'z-ai') {
-        // For Z-AI, set proxy configuration
-        proxyConfig = {
-          proxyEnabled: true,
-          proxyBaseUrl: 'https://api.z-ai.ai/v1',
-          proxyModelOverride: customModel || '',
-          // Include API key if user provided one, otherwise backend will use env var
-          proxyApiKey: apiKey || undefined,
-        }
-        modelValue = '' // Clear Anthropic model when using proxy
+      // Build update request with provider
+      const updateRequest: any = {
+        provider,  // Send provider explicitly
       }
 
-      // Update session with model and proxy configuration
-      await daemonClient.updateSession(session.id, {
-        model: modelValue || undefined,
-        ...proxyConfig,
-      })
+      if (provider === 'anthropic') {
+        // For Anthropic, just set the model
+        updateRequest.model = model === 'default' ? '' : model
+        // Clear proxy settings
+        updateRequest.proxyEnabled = false
+        updateRequest.proxyModelOverride = undefined
+        updateRequest.proxyApiKey = undefined
+      } else {
+        // For non-Anthropic providers, set proxy configuration
+        updateRequest.model = undefined  // Clear Anthropic model
+        updateRequest.proxyEnabled = true
+        updateRequest.proxyModelOverride = customModel || ''
+        updateRequest.proxyApiKey = apiKey || undefined
+        
+        // The backend will determine the base URL based on the provider
+        // No need to send proxyBaseUrl anymore
+      }
+
+      // Update session with provider and configuration
+      await daemonClient.updateSession(session.id, updateRequest)
 
       // Save API key to localStorage if provided
       if (apiKey && provider === 'openrouter') {
@@ -261,7 +244,8 @@ function ModelSelectorContent({
 
       // Notify parent component
       if (onModelChange) {
-        onModelChange(modelValue)
+        const modelToReport = provider === 'anthropic' ? (model === 'default' ? '' : model) : ''
+        onModelChange(modelToReport)
       }
 
       // Show appropriate message based on session status

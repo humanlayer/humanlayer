@@ -330,6 +330,7 @@ export class HTTPDaemonClient implements IDaemonClient {
   async updateSession(
     sessionId: string,
     updates: {
+      provider?: string
       model?: string
       title?: string
       archived?: boolean
@@ -347,6 +348,9 @@ export class HTTPDaemonClient implements IDaemonClient {
 
     // Map to SDK client's expected format (snake_case for legacy fields, camelCase for new fields)
     const sdkUpdates: any = {}
+    if (updates.provider !== undefined) {
+      sdkUpdates.provider = updates.provider
+    }
     if (updates.model !== undefined) {
       sdkUpdates.model = updates.model
     }
