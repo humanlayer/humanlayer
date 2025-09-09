@@ -213,6 +213,9 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
 
       // MCP config is now injected by daemon
 
+      console.log('useSessionLauncher config:', config)
+      console.log('useSessionLauncher provider:', config.provider)
+      
       const request: LaunchSessionRequest = {
         query: query.trim(),
         title: config.title || undefined,
@@ -242,6 +245,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
           : {}),
       }
 
+      console.log('useSessionLauncher request:', request)
       const response = await daemonClient.launchSession(request)
 
       // Save the working directory to localStorage for next time

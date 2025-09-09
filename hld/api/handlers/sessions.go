@@ -64,6 +64,10 @@ func (h *SessionHandlers) CreateSession(ctx context.Context, req api.CreateSessi
 	// Handle provider
 	if req.Body.Provider != nil {
 		config.Provider = *req.Body.Provider
+		slog.Info("Provider specified in request",
+			"provider", config.Provider)
+	} else {
+		slog.Info("No provider specified in request")
 	}
 
 	// Handle proxy configuration

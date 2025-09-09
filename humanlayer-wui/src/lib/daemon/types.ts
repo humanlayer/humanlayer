@@ -32,7 +32,7 @@ export type HealthCheckResponse = HealthResponse
 export interface LaunchSessionParams {
   query: string
   title?: string
-  provider?: 'anthropic' | 'openrouter' | 'baseten'
+  provider?: 'anthropic' | 'openrouter' | 'baseten' | 'z-ai'
   model?: string
   workingDir?: string
   mcpConfig?: any

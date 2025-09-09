@@ -130,6 +130,9 @@ export class HTTPDaemonClient implements IDaemonClient {
     // Handle provider-specific model formatting
     let model: string | undefined = params.model
     const provider = 'provider' in params ? params.provider : 'anthropic'
+    
+    console.log('http-client launchSession params:', params)
+    console.log('http-client provider:', provider)
 
     // Only map to enum for Anthropic provider
     if (provider === 'anthropic' && params.model) {

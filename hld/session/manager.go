@@ -183,6 +183,14 @@ func (m *Manager) LaunchSession(ctx context.Context, config LaunchSessionConfig)
 		if config.Provider != "anthropic" {
 			config.ProxyEnabled = true
 		}
+		slog.Info("Setting provider for session",
+			"session_id", sessionID,
+			"provider", config.Provider,
+			"proxy_enabled", config.ProxyEnabled)
+	} else {
+		slog.Info("No provider specified for session",
+			"session_id", sessionID,
+			"proxy_enabled", config.ProxyEnabled)
 	}
 
 	// Handle proxy configuration from config
