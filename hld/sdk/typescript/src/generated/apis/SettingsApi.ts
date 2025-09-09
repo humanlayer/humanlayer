@@ -15,18 +15,28 @@
 
 import * as runtime from '../runtime';
 import type {
+  ConfigResponse,
   ErrorResponse,
+  UpdateConfigRequest,
   UpdateUserSettingsRequest,
   UserSettingsResponse,
 } from '../models/index';
 import {
+    ConfigResponseFromJSON,
+    ConfigResponseToJSON,
     ErrorResponseFromJSON,
     ErrorResponseToJSON,
+    UpdateConfigRequestFromJSON,
+    UpdateConfigRequestToJSON,
     UpdateUserSettingsRequestFromJSON,
     UpdateUserSettingsRequestToJSON,
     UserSettingsResponseFromJSON,
     UserSettingsResponseToJSON,
 } from '../models/index';
+
+export interface UpdateConfigOperationRequest {
+    updateConfigRequest: UpdateConfigRequest;
+}
 
 export interface UpdateUserSettingsOperationRequest {
     updateUserSettingsRequest: UpdateUserSettingsRequest;
@@ -39,6 +49,21 @@ export interface UpdateUserSettingsOperationRequest {
  * @interface SettingsApiInterface
  */
 export interface SettingsApiInterface {
+    /**
+     * Retrieve current daemon configuration including Claude binary path
+     * @summary Get daemon configuration
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SettingsApiInterface
+     */
+    getConfigRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ConfigResponse>>;
+
+    /**
+     * Retrieve current daemon configuration including Claude binary path
+     * Get daemon configuration
+     */
+    getConfig(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ConfigResponse>;
+
     /**
      * Retrieve user preferences and settings
      * @summary Get user settings
@@ -53,6 +78,22 @@ export interface SettingsApiInterface {
      * Get user settings
      */
     getUserSettings(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<UserSettingsResponse>;
+
+    /**
+     * Update runtime daemon configuration such as Claude binary path
+     * @summary Update daemon configuration
+     * @param {UpdateConfigRequest} updateConfigRequest
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SettingsApiInterface
+     */
+    updateConfigRaw(requestParameters: UpdateConfigOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ConfigResponse>>;
+
+    /**
+     * Update runtime daemon configuration such as Claude binary path
+     * Update daemon configuration
+     */
+    updateConfig(requestParameters: UpdateConfigOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ConfigResponse>;
 
     /**
      * Update user preferences and settings
@@ -76,6 +117,37 @@ export interface SettingsApiInterface {
  *
  */
 export class SettingsApi extends runtime.BaseAPI implements SettingsApiInterface {
+
+    /**
+     * Retrieve current daemon configuration including Claude binary path
+     * Get daemon configuration
+     */
+    async getConfigRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ConfigResponse>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/config`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ConfigResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Retrieve current daemon configuration including Claude binary path
+     * Get daemon configuration
+     */
+    async getConfig(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ConfigResponse> {
+        const response = await this.getConfigRaw(initOverrides);
+        return await response.value();
+    }
 
     /**
      * Retrieve user preferences and settings
@@ -105,6 +177,47 @@ export class SettingsApi extends runtime.BaseAPI implements SettingsApiInterface
      */
     async getUserSettings(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<UserSettingsResponse> {
         const response = await this.getUserSettingsRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Update runtime daemon configuration such as Claude binary path
+     * Update daemon configuration
+     */
+    async updateConfigRaw(requestParameters: UpdateConfigOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ConfigResponse>> {
+        if (requestParameters['updateConfigRequest'] == null) {
+            throw new runtime.RequiredError(
+                'updateConfigRequest',
+                'Required parameter "updateConfigRequest" was null or undefined when calling updateConfig().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/config`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'PATCH',
+            headers: headerParameters,
+            query: queryParameters,
+            body: UpdateConfigRequestToJSON(requestParameters['updateConfigRequest']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ConfigResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Update runtime daemon configuration such as Claude binary path
+     * Update daemon configuration
+     */
+    async updateConfig(requestParameters: UpdateConfigOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ConfigResponse> {
+        const response = await this.updateConfigRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

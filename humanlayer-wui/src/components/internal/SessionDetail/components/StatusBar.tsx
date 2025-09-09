@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Pencil } from 'lucide-react'
 import { Session } from '@/lib/daemon/types'
+import React from 'react'
 import { Button } from '@/components/ui/button'
 import { TokenUsageBadge } from './TokenUsageBadge'
 import { ModelSelector } from './ModelSelector'
@@ -10,29 +11,36 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 
 interface StatusBarProps {
   session: Session
-  parentSessionData?: Partial<Session>
-  isForkMode?: boolean
-  forkTokenCount?: number | null
+  effectiveContextTokens?: number
+  contextLimit?: number
+  model?: string
   onModelChange?: () => void
-  isDenying?: boolean
+  statusOverride?: {
+    text: string | React.ReactNode
+    className?: string
+    icon?: React.ReactNode
+  }
 }
 
 export function StatusBar({
   session,
-  parentSessionData,
-  isForkMode,
-  forkTokenCount,
+  effectiveContextTokens,
+  contextLimit,
+  model,
   onModelChange,
-  isDenying,
+  statusOverride,
 }: StatusBarProps) {
   const [isModelSelectorOpen, setIsModelSelectorOpen] = useState(false)
 
-  let statusText = renderSessionStatus(session).toUpperCase()
-  // Show proxy model if using OpenRouter, otherwise show regular model
+  const defaultStatusText = renderSessionStatus(session).toUpperCase()
+  const statusText = statusOverride?.text || defaultStatusText
+  const statusClassName = statusOverride?.className || getStatusTextClass(session.status)
+
+  // Show proxy model if using OpenRouter, otherwise show provided model
   const rawModelText =
     session.proxyEnabled && session.proxyModelOverride
       ? session.proxyModelOverride
-      : session.model || 'DEFAULT'
+      : model || session.model || 'DEFAULT'
   // Strip provider prefix (e.g., "openai/" from "openai/gpt-oss-120b")
   const modelText = rawModelText.includes('/')
     ? rawModelText.split('/').slice(1).join('/')
@@ -40,18 +48,13 @@ export function StatusBar({
   const isRunning = session.status === 'running' || session.status === 'starting'
   const isReadyForInput = session.status === 'completed' && !session.archived
 
-  if (isDenying) {
-    statusText = 'Denying'
-  }
-
   return (
     <div className="flex flex-wrap items-center gap-2 text-sm">
       {/* Status Badge */}
       <span
-        className={`font-mono text-xs uppercase tracking-wider ${getStatusTextClass(session.status)} ${
-          isDenying ? 'text-destructive' : ''
-        }`}
+        className={`font-mono text-xs uppercase tracking-wider flex items-center gap-1.5 ${statusClassName}`}
       >
+        {statusOverride?.icon}
         {statusText}
       </span>
 
@@ -87,16 +90,12 @@ export function StatusBar({
 
       {/* Context Usage */}
       <TokenUsageBadge
-        effectiveContextTokens={
-          isForkMode && forkTokenCount !== null && forkTokenCount !== undefined
-            ? forkTokenCount
-            : (session.effectiveContextTokens ?? parentSessionData?.effectiveContextTokens)
-        }
-        contextLimit={session.contextLimit ?? parentSessionData?.contextLimit}
+        effectiveContextTokens={effectiveContextTokens}
+        contextLimit={contextLimit}
         model={
           session.proxyEnabled && session.proxyModelOverride
             ? session.proxyModelOverride
-            : (session.model ?? parentSessionData?.model)
+            : model || session.model || 'DEFAULT'
         }
       />
 

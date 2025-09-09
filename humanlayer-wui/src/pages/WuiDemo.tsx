@@ -3,8 +3,6 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import SessionTable from '@/components/internal/SessionTable'
-import { SessionTableSearch } from '@/components/SessionTableSearch'
-import { useSessionFilter } from '@/hooks/useSessionFilter'
 import { Session } from '@/lib/daemon/types'
 import { ThemeSelector } from '@/components/ThemeSelector'
 import { SessionLauncher } from '@/components/SessionLauncher'
@@ -18,19 +16,11 @@ import {
 
 // Session table component wrapper using new composed store
 function SessionTableWrapper() {
-  const searchQuery = useDemoStore(state => state.searchQuery)
-  const setSearchQuery = useDemoStore(state => state.setSearchQuery)
   const sessions = useDemoStore(state => state.sessions)
   const focusedSession = useDemoStore(state => state.focusedSession)
   const setFocusedSession = useDemoStore(state => state.setFocusedSession)
   const focusNextSession = useDemoStore(state => state.focusNextSession)
   const focusPreviousSession = useDemoStore(state => state.focusPreviousSession)
-
-  const { filteredSessions, statusFilter, searchText, matchedSessions } = useSessionFilter({
-    sessions,
-    query: searchQuery,
-    searchFields: ['summary'],
-  })
 
   const handleActivateSession = (session: Session) => {
     logger.log('Activating session:', session.id)
@@ -39,24 +29,17 @@ function SessionTableWrapper() {
 
   return (
     <div className="space-y-4">
-      <SessionTableSearch
-        value={searchQuery}
-        onChange={setSearchQuery}
-        statusFilter={statusFilter}
-        placeholder="Search sessions or filter by status:..."
-      />
-
       <div className="max-h-96 overflow-y-auto">
         <SessionTable
-          sessions={filteredSessions}
+          sessions={sessions}
           handleFocusSession={setFocusedSession}
           handleBlurSession={() => setFocusedSession(null)}
           handleActivateSession={handleActivateSession}
           focusedSession={focusedSession}
           handleFocusNextSession={focusNextSession}
           handleFocusPreviousSession={focusPreviousSession}
-          searchText={searchText}
-          matchedSessions={matchedSessions}
+          searchText={undefined}
+          matchedSessions={undefined}
         />
       </div>
     </div>
@@ -172,7 +155,7 @@ export default function WuiDemo() {
             <div>
               <h3 className="font-semibold mb-1">Session Table Integration:</h3>
               <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                <li>Full session table with search and filtering</li>
+                <li>Full session table display</li>
                 <li>Real-time status updates and animations</li>
                 <li>Keyboard navigation and focus management</li>
                 <li>Responsive design for different screen sizes</li>

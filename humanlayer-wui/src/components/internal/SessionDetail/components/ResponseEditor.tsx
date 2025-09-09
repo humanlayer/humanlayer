@@ -1,9 +1,12 @@
-import React, { useEffect, forwardRef, useImperativeHandle } from 'react'
-import { useEditor, EditorContent, Extension, Content } from '@tiptap/react'
+import React, { useEffect, forwardRef, useImperativeHandle, useState, useRef } from 'react'
+import { useEditor, EditorContent, Extension, Content, ReactRenderer } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { Placeholder } from '@tiptap/extensions'
+import Mention from '@tiptap/extension-mention'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import { Plugin } from '@tiptap/pm/state'
+import { FileMentionList, FileMentionListRef } from './FileMentionList'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { createLowlight } from 'lowlight'
 import clojure from 'highlight.js/lib/languages/clojure'
 import javascript from 'highlight.js/lib/languages/javascript'
@@ -20,6 +23,7 @@ import xml from 'highlight.js/lib/languages/xml'
 import yaml from 'highlight.js/lib/languages/yaml'
 import { logger } from '@/lib/logging'
 import { useStore } from '@/AppStore'
+import { openPath } from '@tauri-apps/plugin-opener'
 
 // Create lowlight instance with common languages
 const lowlight = createLowlight()
@@ -465,6 +469,17 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
       React.useRef<ResponseEditorProps['onToggleDangerouslySkipPermissions']>()
     const onToggleForkViewRef = React.useRef<ResponseEditorProps['onToggleForkView']>()
 
+    // Tooltip state for file mentions
+    const [tooltipState, setTooltipState] = useState<{
+      open: boolean
+      content: string
+      x: number
+      y: number
+    } | null>(null)
+
+    // Virtual anchor element for tooltip positioning
+    const virtualAnchor = useRef<HTMLDivElement>(null)
+
     const setResponseEditor = useStore(state => state.setResponseEditor)
     const removeResponseEditor = useStore(state => state.removeResponseEditor)
 
@@ -506,6 +521,156 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
         }),
         Placeholder.configure({
           placeholder: placeholder || 'Type something...',
+        }),
+        Mention.configure({
+          HTMLAttributes: {
+            class: 'mention',
+            'data-mention': 'true',
+          },
+          renderHTML({ node }) {
+            return [
+              'span',
+              {
+                class: 'mention',
+                'data-mention': node.attrs.id,
+                title: `Open ${node.attrs.id}`,
+              },
+              `@${node.attrs.label || node.attrs.id}`,
+            ]
+          },
+          suggestion: {
+            char: '@',
+            allowSpaces: true,
+            startOfLine: false,
+            items: () => {
+              // Just return the query as a simple array
+              // The actual file searching happens in FileMentionList
+              return ['placeholder']
+            },
+            render: () => {
+              let component: ReactRenderer<FileMentionListRef> | null = null
+              let popup: HTMLDivElement | null = null
+
+              return {
+                onStart: (props: any) => {
+                  // Create a portal div for the dropdown with shadcn styling
+                  popup = document.createElement('div')
+                  popup.className =
+                    'z-50 min-w-[20rem] max-w-[30rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md'
+                  document.body.appendChild(popup)
+
+                  component = new ReactRenderer(FileMentionList, {
+                    props,
+                    editor: props.editor,
+                  })
+
+                  if (popup && component) {
+                    popup.appendChild(component.element)
+
+                    // Position the dropdown intelligently based on available space
+                    const { clientRect } = props
+                    if (clientRect) {
+                      const rect = typeof clientRect === 'function' ? clientRect() : clientRect
+                      if (rect) {
+                        popup.style.position = 'fixed'
+
+                        // Handle horizontal positioning
+                        const dropdownWidth = 320 // min-w-[20rem]
+                        const spaceRight = window.innerWidth - rect.left
+
+                        if (spaceRight < dropdownWidth) {
+                          // Not enough space on the right, align to right edge
+                          popup.style.right = '10px'
+                          popup.style.left = 'auto'
+                        } else {
+                          popup.style.left = `${rect.left}px`
+                          popup.style.right = 'auto'
+                        }
+
+                        // Calculate available space above and below
+                        const spaceBelow = window.innerHeight - rect.bottom
+                        const spaceAbove = rect.top
+                        const dropdownHeight = 300 // Approximate height of dropdown
+
+                        // Position above if not enough space below
+                        if (spaceBelow < dropdownHeight && spaceAbove > dropdownHeight) {
+                          popup.style.bottom = `${window.innerHeight - rect.top + 4}px`
+                          popup.style.top = 'auto'
+                          popup.style.maxHeight = `${Math.min(spaceAbove - 20, 400)}px`
+                        } else {
+                          popup.style.top = `${rect.bottom + 4}px`
+                          popup.style.bottom = 'auto'
+                          popup.style.maxHeight = `${Math.min(spaceBelow - 20, 400)}px`
+                        }
+
+                        popup.style.overflowY = 'auto'
+                      }
+                    }
+                  }
+                },
+                onUpdate: (props: any) => {
+                  if (component) {
+                    component.updateProps(props)
+
+                    // Update position with intelligent placement
+                    const { clientRect } = props
+                    if (clientRect && popup) {
+                      const rect = typeof clientRect === 'function' ? clientRect() : clientRect
+                      if (rect) {
+                        // Handle horizontal positioning
+                        const dropdownWidth = 320
+                        const spaceRight = window.innerWidth - rect.left
+
+                        if (spaceRight < dropdownWidth) {
+                          popup.style.right = '10px'
+                          popup.style.left = 'auto'
+                        } else {
+                          popup.style.left = `${rect.left}px`
+                          popup.style.right = 'auto'
+                        }
+
+                        // Recalculate position based on available space
+                        const spaceBelow = window.innerHeight - rect.bottom
+                        const spaceAbove = rect.top
+                        const dropdownHeight = 300
+
+                        if (spaceBelow < dropdownHeight && spaceAbove > dropdownHeight) {
+                          popup.style.bottom = `${window.innerHeight - rect.top + 4}px`
+                          popup.style.top = 'auto'
+                          popup.style.maxHeight = `${Math.min(spaceAbove - 20, 400)}px`
+                        } else {
+                          popup.style.top = `${rect.bottom + 4}px`
+                          popup.style.bottom = 'auto'
+                          popup.style.maxHeight = `${Math.min(spaceBelow - 20, 400)}px`
+                        }
+                      }
+                    }
+                  }
+                },
+                onKeyDown: (props: any) => {
+                  if (props.event.key === 'Escape') {
+                    return true
+                  }
+
+                  if (component?.ref) {
+                    return component.ref.onKeyDown(props)
+                  }
+
+                  return false
+                },
+                onExit: () => {
+                  if (popup && popup.parentNode) {
+                    popup.parentNode.removeChild(popup)
+                  }
+                  if (component) {
+                    component.destroy()
+                  }
+                  popup = null
+                  component = null
+                },
+              }
+            },
+          },
         }),
       ],
       content: initialValue,
@@ -551,6 +716,103 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
       }
     }, [editor, setResponseEditor, removeResponseEditor])
 
+    // Handle clicks and hovers on mentions
+    useEffect(() => {
+      if (!editor) return
+
+      const handleClick = async (event: MouseEvent) => {
+        const target = event.target as HTMLElement
+
+        // Check if clicked element is a mention or inside a mention
+        const mention = target.closest('.mention') as HTMLElement
+        if (mention && mention.dataset.mention) {
+          event.preventDefault()
+          event.stopPropagation()
+
+          const filePath = mention.dataset.mention
+          logger.log('Opening file:', filePath)
+
+          try {
+            // Open the file using the default system editor
+            await openPath(filePath)
+          } catch (error) {
+            logger.error('Failed to open file:', error)
+          }
+        }
+      }
+
+      const handleMouseMove = (event: MouseEvent) => {
+        const target = event.target as HTMLElement
+        const mention = target.closest('.mention') as HTMLElement
+
+        if (mention && mention.dataset.mention) {
+          // Get the position of the mention element
+          const rect = mention.getBoundingClientRect()
+          const filePath = mention.dataset.mention
+
+          setTooltipState({
+            open: true,
+            content: filePath,
+            x: rect.left + rect.width / 2,
+            y: rect.top,
+          })
+        } else if (tooltipState?.open) {
+          // Only close if we're not hovering over any mention
+          setTooltipState(null)
+        }
+      }
+
+      const handleMouseLeave = (event: MouseEvent) => {
+        // When leaving the editor entirely, close the tooltip
+        const relatedTarget = event.relatedTarget as HTMLElement
+        if (!relatedTarget || !relatedTarget.closest('.tiptap-editor')) {
+          setTooltipState(null)
+        }
+      }
+
+      // Set up the event handlers once the editor is ready
+      const setupEventHandlers = () => {
+        try {
+          // Check if the editor is destroyed
+          if (editor.isDestroyed) return undefined
+
+          // Check if the editor view is available
+          if (!editor.view || !editor.view.dom) return undefined
+
+          const editorElement = editor.view.dom
+          editorElement.addEventListener('click', handleClick)
+          editorElement.addEventListener('mousemove', handleMouseMove)
+          editorElement.addEventListener('mouseleave', handleMouseLeave)
+
+          return () => {
+            editorElement.removeEventListener('click', handleClick)
+            editorElement.removeEventListener('mousemove', handleMouseMove)
+            editorElement.removeEventListener('mouseleave', handleMouseLeave)
+          }
+        } catch {
+          // Editor not ready yet, will retry on next update
+          return undefined
+        }
+      }
+
+      // Try to set up immediately
+      let cleanup = setupEventHandlers()
+
+      // Also listen for editor updates to retry if needed
+      const updateHandler = () => {
+        if (!cleanup) {
+          cleanup = setupEventHandlers()
+        }
+      }
+
+      editor.on('update', updateHandler)
+
+      return () => {
+        cleanup?.()
+        editor.off('update', updateHandler)
+      }
+    }, [editor])
+
     // Handle keyboard events
     useEffect(() => {
       if (!editor || !onKeyDown) return
@@ -581,9 +843,37 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
     }, [editor, onKeyDown])
 
     return (
-      <div className="tiptap-wrapper">
-        <EditorContent editor={editor} onFocus={onFocus} onBlur={onBlur} />
-      </div>
+      <>
+        <div className="tiptap-wrapper">
+          <EditorContent editor={editor} onFocus={onFocus} onBlur={onBlur} />
+        </div>
+
+        {/* Controlled tooltip for file mentions */}
+        {tooltipState?.open && tooltipState?.content && (
+          <Tooltip open={true}>
+            <TooltipTrigger asChild>
+              <div
+                ref={virtualAnchor}
+                style={{
+                  position: 'fixed',
+                  left: tooltipState.x,
+                  top: tooltipState.y,
+                  width: 1,
+                  height: 1,
+                  pointerEvents: 'none',
+                }}
+                aria-hidden="true"
+              />
+            </TooltipTrigger>
+            <TooltipContent side="top" sideOffset={8} className="whitespace-nowrap">
+              <div className="flex flex-col gap-1">
+                <div className="font-mono text-xs">{tooltipState.content}</div>
+                <div className="text-[10px] opacity-70 text-right">click to open in default editor</div>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        )}
+      </>
     )
   },
 )

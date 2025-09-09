@@ -80,8 +80,7 @@ func (h *SessionHandlers) HandleLaunchSession(ctx context.Context, params json.R
 	// Build session config with daemon-level settings
 	config := session.LaunchSessionConfig{
 		SessionConfig: claudecode.SessionConfig{
-			Query: req.Query,
-			// Title:                req.Title, // TODO: Title field not available in claudecode.SessionConfig
+			Query:                 req.Query,
 			MCPConfig:             req.MCPConfig,
 			PermissionPromptTool:  req.PermissionPromptTool,
 			WorkingDir:            req.WorkingDir,
@@ -96,6 +95,7 @@ func (h *SessionHandlers) HandleLaunchSession(ctx context.Context, params json.R
 			OutputFormat:          claudecode.OutputStreamJSON, // Always use streaming JSON for monitoring
 		},
 		// Daemon-level settings (not passed to Claude Code)
+		Title:                             req.Title,
 		DangerouslySkipPermissions:        req.DangerouslySkipPermissions,
 		DangerouslySkipPermissionsTimeout: req.DangerouslySkipPermissionsTimeout,
 	}

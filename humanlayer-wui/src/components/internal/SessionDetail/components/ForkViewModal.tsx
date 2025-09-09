@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { GitBranch } from 'lucide-react'
+import { Split } from 'lucide-react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import {
   Dialog,
@@ -197,7 +197,6 @@ function ForkViewModalContent({
           <div className="space-y-1 max-h-[400px] overflow-y-auto pr-2">
             {userMessageIndices.map(({ event, index }, position) => {
               const isSelected = position === localSelectedIndex
-              const isActive = index === selectedEventIndex
               const preview =
                 event.content?.split('\n')[0]?.substring(0, 80) +
                 (event.content && event.content.length > 80 ? '...' : '')
@@ -206,9 +205,10 @@ function ForkViewModalContent({
                 <div
                   key={event.id}
                   className={cn(
-                    'px-4 py-3 rounded-md cursor-pointer transition-all text-sm',
-                    isActive && 'ring-2 ring-primary',
-                    isSelected ? 'bg-accent text-accent-foreground' : 'hover:bg-accent/50',
+                    'px-4 py-3 cursor-pointer transition-all text-sm border-l-2',
+                    isSelected
+                      ? 'border-l-[var(--terminal-accent)] bg-accent/10'
+                      : 'border-transparent',
                   )}
                   onClick={() => {
                     setLocalSelectedIndex(position)
@@ -232,10 +232,10 @@ function ForkViewModalContent({
               <div className="border-t mt-2 pt-2">
                 <div
                   className={cn(
-                    'px-4 py-3 rounded-md cursor-pointer transition-all text-sm',
-                    selectedEventIndex === null
-                      ? 'bg-accent text-accent-foreground ring-2 ring-primary'
-                      : 'hover:bg-accent/50',
+                    'px-4 py-3 cursor-pointer transition-all text-sm border-l-2',
+                    localSelectedIndex === allOptions.length - 1
+                      ? 'border-l-[var(--terminal-accent)] bg-accent/10'
+                      : 'border-transparent',
                   )}
                   onClick={() => {
                     setLocalSelectedIndex(allOptions.length - 1)
@@ -289,7 +289,7 @@ export function ForkViewModal({
     >
       <DialogTrigger asChild>
         <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Fork View (Meta+Y)">
-          <GitBranch className="h-4 w-4" />
+          <Split className="h-4 w-4" />
         </Button>
       </DialogTrigger>
 
