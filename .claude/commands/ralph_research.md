@@ -28,7 +28,14 @@ think deeply about the research needs
 2d. examine existing similar features or related code
 2e. identify technical constraints and opportunities
 2f. Be unbiased - don't think too much about an ideal implementation plan, just document all related files and how the systems work today
-2g. document findings in a new thoughts document: `thoughts/shared/research/ENG-XXXX_research.md`
+2g. document findings in a new thoughts document: `thoughts/shared/research/YYYY-MM-DD-ENG-XXXX-description.md`
+   - Format: `YYYY-MM-DD-ENG-XXXX-description.md` where:
+     - YYYY-MM-DD is today's date
+     - ENG-XXXX is the ticket number (omit if no ticket)
+     - description is a brief kebab-case description of the research topic
+   - Examples:
+     - With ticket: `2025-01-08-ENG-1478-parent-child-tracking.md`
+     - Without ticket: `2025-01-08-error-handling-patterns.md`
 
 think deeply about the findings
 
@@ -44,3 +51,27 @@ think deeply about the findings
 4c. move the item to "research in review" using the MCP tools
 
 think deeply, use TodoWrite to track your tasks. When fetching from linear, get the top 10 items by priority but only work on ONE item - specifically the highest priority issue.
+
+## PART III - When you're done
+
+Print a message for the user (replace placeholders with actual values):
+
+```
+✅ Completed research for ENG-XXXX: [ticket title]
+
+Research topic: [research topic description]
+
+The research has been:
+
+Created at thoughts/shared/research/YYYY-MM-DD-ENG-XXXX-description.md
+Synced to thoughts repository
+Attached to the Linear ticket
+Ticket moved to "research in review" status
+
+Key findings:
+- [Major finding 1]
+- [Major finding 2]
+- [Major finding 3]
+
+View the ticket: https://linear.app/humanlayer/issue/ENG-XXXX/[ticket-slug]
+```

@@ -7,6 +7,8 @@ import { notificationService } from '@/services/NotificationService'
 import { useStore } from '@/AppStore'
 import { SessionDetailHotkeysScope } from '../SessionDetail'
 import { logger } from '@/lib/logging'
+import { checkUnsupportedCommand } from '@/constants/unsupportedCommands'
+import { toast } from 'sonner'
 
 interface UseSessionActionsProps {
   session: Session
@@ -50,12 +52,51 @@ export function useSessionActions({
   const handleContinueSession = useCallback(async () => {
     logger.log('handleContinueSession()')
     const sessionConversation = useStore.getState().activeSessionDetail?.conversation
-    const responseInput = responseEditor?.getText()
+
+    // Get the editor content and process mentions to use full paths
+    let responseInput = ''
+    if (responseEditor) {
+      const json = responseEditor.getJSON()
+
+      const processNode = (node: any): string => {
+        if (node.type === 'text') {
+          return node.text || ''
+        } else if (node.type === 'mention') {
+          // Use the full path (id) instead of the display label
+          return node.attrs.id || node.attrs.label || ''
+        } else if (node.type === 'paragraph' && node.content) {
+          return node.content.map(processNode).join('')
+        } else if (node.content) {
+          return node.content.map(processNode).join('\n')
+        }
+        return ''
+      }
+
+      if (json.content) {
+        responseInput = json.content.map(processNode).join('\n')
+      }
+    }
+
     if (!responseInput?.trim() || isResponding) return
 
     try {
       setIsResponding(true)
       const messageToSend = responseInput.trim()
+
+      // Check for unsupported commands
+      const unsupportedCmd = checkUnsupportedCommand(messageToSend)
+      if (unsupportedCmd) {
+        // Show error toast
+        toast.error(unsupportedCmd.message, {
+          description: unsupportedCmd.alternative,
+          duration: 8000,
+          closeButton: true,
+        })
+
+        // Don't send the message
+        setIsResponding(false)
+        return
+      }
 
       // Use fork session ID if available, otherwise current session
       const targetSessionId = forkFromSessionId || session.id

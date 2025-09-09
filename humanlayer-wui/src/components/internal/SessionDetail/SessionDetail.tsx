@@ -1170,48 +1170,52 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       </div>
 
       {/* Response input - always show but disable for non-completed sessions */}
-      <Card className="py-2">
-        <CardContent className="px-2">
-          <ResponseInput
-            denyingApprovalId={approvals.denyingApprovalId ?? undefined}
-            isDenying={approvals.isDenying}
-            onDeny={approvals.handleDeny}
-            handleCancelDeny={approvals.handleCancelDeny}
-            denyAgainstOldestApproval={approvals.denyAgainstOldestApproval}
-            session={session}
-            parentSessionData={parentSessionData || parentSession || undefined}
-            isResponding={actions.isResponding}
-            handleContinueSession={actions.handleContinueSession}
-            isForkMode={actions.isForkMode}
-            forkTokenCount={forkTokenCount}
-            onModelChange={() => {
-              // Refresh session data if needed
-              fetchActiveSessionDetail(session.id)
-            }}
-            sessionStatus={session.status}
-            onToggleAutoAccept={handleToggleAutoAccept}
-            onToggleDangerouslySkipPermissions={handleToggleDangerouslySkipPermissions}
-            onToggleForkView={handleToggleForkView}
-          />
-          {/* Session mode indicator - shows fork, dangerous skip permissions or auto-accept */}
-          <SessionModeIndicator
-            sessionId={session.id}
-            autoAcceptEdits={autoAcceptEdits}
-            dangerouslySkipPermissions={dangerouslySkipPermissions}
-            dangerouslySkipPermissionsExpiresAt={dangerouslySkipPermissionsExpiresAt}
-            isForkMode={previewEventIndex !== null}
-            forkTurnNumber={
-              previewEventIndex !== null
-                ? events
-                    .slice(0, previewEventIndex)
-                    .filter(e => e.eventType === 'message' && e.role === 'user').length
-                : undefined
-            }
-            forkTokenCount={forkTokenCount}
-            className="mt-2"
-          />
-        </CardContent>
-      </Card>
+
+      <ResponseInput
+        denyingApprovalId={approvals.denyingApprovalId ?? undefined}
+        isDenying={approvals.isDenying}
+        onDeny={approvals.handleDeny}
+        handleCancelDeny={approvals.handleCancelDeny}
+        denyAgainstOldestApproval={approvals.denyAgainstOldestApproval}
+        session={session}
+        parentSessionData={parentSessionData || parentSession || undefined}
+        isResponding={actions.isResponding}
+        handleContinueSession={actions.handleContinueSession}
+        isForkMode={actions.isForkMode}
+        forkTokenCount={forkTokenCount}
+        forkTurnNumber={
+          previewEventIndex !== null
+            ? events
+                .slice(0, previewEventIndex)
+                .filter(e => e.eventType === 'message' && e.role === 'user').length
+            : undefined
+        }
+        onModelChange={() => {
+          // Refresh session data if needed
+          fetchActiveSessionDetail(session.id)
+        }}
+        sessionStatus={session.status}
+        onToggleAutoAccept={handleToggleAutoAccept}
+        onToggleDangerouslySkipPermissions={handleToggleDangerouslySkipPermissions}
+        onToggleForkView={handleToggleForkView}
+      />
+      {/* Session mode indicator - shows fork, dangerous skip permissions or auto-accept */}
+      <SessionModeIndicator
+        sessionId={session.id}
+        autoAcceptEdits={autoAcceptEdits}
+        dangerouslySkipPermissions={dangerouslySkipPermissions}
+        dangerouslySkipPermissionsExpiresAt={dangerouslySkipPermissionsExpiresAt}
+        isForkMode={previewEventIndex !== null}
+        forkTurnNumber={
+          previewEventIndex !== null
+            ? events
+                .slice(0, previewEventIndex)
+                .filter(e => e.eventType === 'message' && e.role === 'user').length
+            : undefined
+        }
+        forkTokenCount={forkTokenCount}
+        className="mt-2"
+      />
 
       {/* Tool Result Expansion Modal */}
       {(expandedToolResult || expandedToolCall) && (

@@ -513,6 +513,10 @@ func TestSessionHandlers_GetHealth(t *testing.T) {
 	router := setupTestRouter(t, handlers, nil, nil)
 
 	t.Run("health check returns ok", func(t *testing.T) {
+		// Expect the new method calls
+		mockManager.EXPECT().IsClaudeAvailable().Return(true).Times(1)
+		mockManager.EXPECT().GetClaudeBinaryPath().Return("/usr/local/bin/claude").Times(1)
+
 		w := makeRequest(t, router, "GET", "/api/v1/health", nil)
 
 		var resp api.HealthResponse
@@ -520,6 +524,32 @@ func TestSessionHandlers_GetHealth(t *testing.T) {
 
 		assert.Equal(t, api.Ok, resp.Status)
 		assert.NotEmpty(t, resp.Version)
+		// Check dependencies are populated
+		assert.NotNil(t, resp.Dependencies)
+		if resp.Dependencies != nil && resp.Dependencies.Claude != nil {
+			assert.True(t, resp.Dependencies.Claude.Available)
+			assert.NotNil(t, resp.Dependencies.Claude.Path)
+		}
+	})
+
+	t.Run("health check returns degraded when claude unavailable", func(t *testing.T) {
+		// Expect the new method calls
+		mockManager.EXPECT().IsClaudeAvailable().Return(false).Times(1)
+		mockManager.EXPECT().GetClaudeBinaryPath().Return("").Times(1)
+
+		w := makeRequest(t, router, "GET", "/api/v1/health", nil)
+
+		var resp api.HealthResponse
+		assertJSONResponse(t, w, 200, &resp)
+
+		assert.Equal(t, api.Degraded, resp.Status)
+		assert.NotEmpty(t, resp.Version)
+		// Check dependencies are populated
+		assert.NotNil(t, resp.Dependencies)
+		if resp.Dependencies != nil && resp.Dependencies.Claude != nil {
+			assert.False(t, resp.Dependencies.Claude.Available)
+			assert.NotNil(t, resp.Dependencies.Claude.Error)
+		}
 	})
 }
 

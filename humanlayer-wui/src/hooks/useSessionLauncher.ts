@@ -2,7 +2,6 @@ import { create } from 'zustand'
 import { daemonClient } from '@/lib/daemon'
 import type { LaunchSessionRequest } from '@/lib/daemon/types'
 import { useHotkeysContext } from 'react-hotkeys-hook'
-import { SessionTableHotkeysScope } from '@/components/internal/SessionTable'
 import { exists } from '@tauri-apps/plugin-fs'
 import { homeDir } from '@tauri-apps/api/path'
 import { logger } from '@/lib/logging'
@@ -20,7 +19,7 @@ interface SessionConfig {
 
 interface LauncherState {
   isOpen: boolean
-  mode: 'command' | 'search'
+  mode: 'command'
   view: 'menu' | 'input'
   query: string
   config: SessionConfig
@@ -30,7 +29,7 @@ interface LauncherState {
   selectedMenuIndex: number
 
   // Actions
-  open: (mode?: 'command' | 'search') => void
+  open: () => void
   close: () => void
   setQuery: (query: string) => void
   setConfig: (config: SessionConfig) => void
@@ -52,6 +51,7 @@ const LAST_WORKING_DIR_KEY = 'humanlayer-last-working-dir'
 const SESSION_LAUNCHER_QUERY_KEY = 'session-launcher-query'
 const OPENROUTER_API_KEY = 'humanlayer-openrouter-api-key'
 const BASETEN_API_KEY = 'humanlayer-baseten-api-key'
+const ADDITIONAL_DIRECTORIES_KEY = 'humanlayer-additional-directories'
 
 // Helper function to get default working directory
 const getDefaultWorkingDir = (): string => {
@@ -74,6 +74,24 @@ const getSavedBasetenKey = (): string | undefined => {
   return localStorage.getItem(BASETEN_API_KEY) || undefined
 }
 
+// Helper function to get saved additional directories
+const getSavedAdditionalDirectories = (): string[] => {
+  const stored = localStorage.getItem(ADDITIONAL_DIRECTORIES_KEY)
+  if (!stored) return []
+
+  try {
+    const parsed = JSON.parse(stored)
+    // Ensure we have an array of strings
+    if (Array.isArray(parsed)) {
+      return parsed.filter(item => typeof item === 'string')
+    }
+    return []
+  } catch {
+    // If parsing fails, return empty array
+    return []
+  }
+}
+
 export const useSessionLauncher = create<LauncherState>((set, get) => ({
   isOpen: false,
   mode: 'command',
@@ -84,16 +102,16 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
     provider: 'anthropic',
     openRouterApiKey: getSavedOpenRouterKey(),
     basetenApiKey: getSavedBasetenKey(),
-    additionalDirectories: [],
+    additionalDirectories: getSavedAdditionalDirectories(),
   },
   isLaunching: false,
   gPrefixMode: false,
   selectedMenuIndex: 0,
 
-  open: (mode = 'command') =>
+  open: () =>
     set({
       isOpen: true,
-      mode,
+      mode: 'command', // Always command mode
       view: 'menu',
       selectedMenuIndex: 0,
       error: undefined,
@@ -110,7 +128,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
         provider: 'anthropic',
         openRouterApiKey: getSavedOpenRouterKey(),
         basetenApiKey: getSavedBasetenKey(),
-        additionalDirectories: [],
+        additionalDirectories: getSavedAdditionalDirectories(),
       },
       selectedMenuIndex: 0,
       error: undefined,
@@ -149,6 +167,17 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
     ) {
       // Remove from localStorage when cleared to avoid stale state
       localStorage.removeItem(BASETEN_API_KEY)
+    }
+    // Save or remove additional directories from localStorage
+    if (config.additionalDirectories && config.additionalDirectories.length > 0) {
+      localStorage.setItem(ADDITIONAL_DIRECTORIES_KEY, JSON.stringify(config.additionalDirectories))
+    } else if (
+      config.additionalDirectories === undefined ||
+      config.additionalDirectories === null ||
+      (Array.isArray(config.additionalDirectories) && config.additionalDirectories.length === 0)
+    ) {
+      // Remove from localStorage when cleared to avoid stale state
+      localStorage.removeItem(ADDITIONAL_DIRECTORIES_KEY)
     }
     return set({ config, error: undefined })
   },
@@ -264,6 +293,9 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
       // Clear the saved query after successful launch
       localStorage.removeItem(SESSION_LAUNCHER_QUERY_KEY)
 
+      // Clear the saved additional directories after successful launch (matching query behavior)
+      localStorage.removeItem(ADDITIONAL_DIRECTORIES_KEY)
+
       // Navigate to new session (will be handled by parent component)
       window.location.hash = `#/sessions/${response.sessionId}`
 
@@ -293,7 +325,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
         provider: 'anthropic',
         openRouterApiKey: getSavedOpenRouterKey(),
         basetenApiKey: getSavedBasetenKey(),
-        additionalDirectories: [],
+        additionalDirectories: getSavedAdditionalDirectories(),
       },
       error: undefined,
     })
@@ -317,7 +349,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
         provider: 'anthropic',
         openRouterApiKey: getSavedOpenRouterKey(),
         basetenApiKey: getSavedBasetenKey(),
-        additionalDirectories: [],
+        additionalDirectories: getSavedAdditionalDirectories(),
       },
       selectedMenuIndex: 0,
       isLaunching: false,
@@ -367,10 +399,10 @@ export function useSessionLauncherHotkeys() {
       // Cmd+K - Global command palette (shows menu)
       if (e.metaKey && e.key === 'k') {
         e.preventDefault()
-        if (isOpen) {
-          close()
+        if (!isOpen) {
+          open()
         } else {
-          open('command')
+          close()
         }
         return
       }
@@ -382,27 +414,11 @@ export function useSessionLauncherHotkeys() {
           e.preventDefault()
           // Open launcher if not already open
           if (!isOpen) {
-            open('command')
+            open()
           }
           createNewSession()
           return
         }
-      }
-
-      // / - Search sessions and approvals (only when not typing)
-      // Note: Check !e.shiftKey to allow shift+/ (?) to be handled by other hotkeys
-      if (
-        e.key === '/' &&
-        !e.shiftKey &&
-        !e.metaKey &&
-        !e.ctrlKey &&
-        !isTypingInInput() &&
-        !activeScopes.includes(SessionTableHotkeysScope) &&
-        !isModalScopeActive()
-      ) {
-        e.preventDefault()
-        open('search')
-        return
       }
 
       // G prefix navigation (prepare for Phase 2)

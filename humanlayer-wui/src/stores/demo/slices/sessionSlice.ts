@@ -5,12 +5,10 @@ export interface SessionSlice {
   // State
   sessions: Session[]
   focusedSession: Session | null
-  searchQuery: string
 
   // Actions
   setSessions: (sessions: Session[]) => void
   setFocusedSession: (session: Session | null) => void
-  setSearchQuery: (query: string) => void
   addSession: (session: Session) => void
   updateSession: (id: string, updates: Partial<Session>) => void
   removeSession: (id: string) => void
@@ -30,12 +28,10 @@ export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice
   // Initial state
   sessions: [],
   focusedSession: null,
-  searchQuery: '',
 
   // Basic setters
   setSessions: sessions => set({ sessions }),
   setFocusedSession: session => set({ focusedSession: session }),
-  setSearchQuery: query => set({ searchQuery: query }),
 
   // Session CRUD operations
   addSession: session =>
