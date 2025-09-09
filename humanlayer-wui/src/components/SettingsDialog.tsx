@@ -69,7 +69,7 @@ export function SettingsDialog({ open, onOpenChange, onConfigUpdate }: SettingsD
         })
       } else {
         toast.success('Error reporting disabled', {
-          description: 'Error and performance data will no longer be sent to third party providers.',
+          description: 'Error and performance data will no longer be sent to CodeLayer.',
         })
       }
     } catch (error) {

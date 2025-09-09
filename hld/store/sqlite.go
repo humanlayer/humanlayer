@@ -1037,14 +1037,14 @@ func (s *SQLiteStore) validateSchema() error {
 		return fmt.Errorf("schema validation failed: additional_directories column missing")
 	}
 
-	// Validate schema version is at least 18
+	// Validate schema version is at least 19
 	var currentVersion int
 	err = s.db.QueryRow("SELECT MAX(version) FROM schema_version").Scan(&currentVersion)
 	if err != nil {
 		return fmt.Errorf("failed to get schema version: %w", err)
 	}
-	if currentVersion < 18 {
-		return fmt.Errorf("schema validation failed: version %d is less than required 18", currentVersion)
+	if currentVersion < 19 {
+		return fmt.Errorf("schema validation failed: version %d is less than required 19", currentVersion)
 	}
 
 	slog.Info("Schema validation successful",
