@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/react'
 import { useStore } from '@/AppStore'
+import { getAppVersion } from '@/lib/version'
 
 // Only initialize in bundled/production builds
 const shouldInitializeSentry = (): boolean => {
@@ -30,7 +31,7 @@ export async function initializeSentry(): Promise<void> {
     Sentry.init({
       dsn: import.meta.env.VITE_SENTRY_DSN,
       environment: import.meta.env.DEV ? 'development' : 'production',
-      release: import.meta.env.VITE_APP_VERSION || 'unknown',
+      release: getAppVersion(), // Use standardized version (e.g., "0.1.0-20250910-143022-nightly")
 
       // Conservative sampling for initial rollout
       tracesSampleRate: 0, // No performance monitoring initially

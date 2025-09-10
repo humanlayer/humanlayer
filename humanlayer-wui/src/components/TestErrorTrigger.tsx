@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { toast } from 'sonner'
 import { captureException } from '@/lib/telemetry/sentry'
+import { getAppVersion } from '@/lib/version'
 
 // Component that intentionally throws an error for testing
 function ErrorBomb(): never {
@@ -29,7 +30,7 @@ export function TestErrorTrigger() {
       captureException(testError, {
         testType: 'manual_trigger',
         timestamp: new Date().toISOString(),
-        version: import.meta.env.VITE_APP_VERSION,
+        version: getAppVersion(),
         // Explicitly no sensitive data
       })
 

@@ -52,6 +52,8 @@ export default defineConfig(async () => ({
             authToken: process.env.SENTRY_AUTH_TOKEN!,
 
             release: {
+              // Use standardized version from CI/CD (e.g., "0.1.0-20250910-143022-nightly")
+              // Falls back to package.json version or 'unknown' for local builds
               name: process.env.VITE_APP_VERSION || process.env.npm_package_version || 'unknown',
               uploadLegacySourcemaps: {
                 paths: ['dist'],
