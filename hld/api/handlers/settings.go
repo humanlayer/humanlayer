@@ -38,6 +38,7 @@ func (h *SettingsHandlers) GetUserSettings(ctx context.Context, req api.GetUserS
 	return api.GetUserSettings200JSONResponse{
 		Data: api.UserSettings{
 			AdvancedProviders: settings.AdvancedProviders,
+			OptInTelemetry:    settings.OptInTelemetry,
 			CreatedAt:         settings.CreatedAt,
 			UpdatedAt:         settings.UpdatedAt,
 		},
@@ -63,6 +64,9 @@ func (h *SettingsHandlers) UpdateUserSettings(ctx context.Context, req api.Updat
 	// Apply updates
 	if req.Body.AdvancedProviders != nil {
 		current.AdvancedProviders = *req.Body.AdvancedProviders
+	}
+	if req.Body.OptInTelemetry != nil {
+		current.OptInTelemetry = req.Body.OptInTelemetry
 	}
 
 	// Save updated settings
@@ -96,6 +100,7 @@ func (h *SettingsHandlers) UpdateUserSettings(ctx context.Context, req api.Updat
 	return api.UpdateUserSettings200JSONResponse{
 		Data: api.UserSettings{
 			AdvancedProviders: updated.AdvancedProviders,
+			OptInTelemetry:    updated.OptInTelemetry,
 			CreatedAt:         updated.CreatedAt,
 			UpdatedAt:         updated.UpdatedAt,
 		},

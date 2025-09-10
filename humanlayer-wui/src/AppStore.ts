@@ -80,9 +80,30 @@ interface StoreState {
   /* User Settings */
   userSettings: {
     advancedProviders: boolean
+    optInTelemetry?: boolean
   } | null
   fetchUserSettings: () => Promise<void>
-  updateUserSettings: (settings: { advancedProviders: boolean }) => Promise<void>
+  updateUserSettings: (settings: {
+    advancedProviders?: boolean
+    optInTelemetry?: boolean
+  }) => Promise<void>
+
+  /* Claude Configuration */
+  claudeConfig: {
+    claudePath: string
+    claudeDetectedPath?: string
+    claudeAvailable: boolean
+  } | null
+  fetchClaudeConfig: () => Promise<{
+    claudePath: string
+    claudeDetectedPath?: string
+    claudeAvailable: boolean
+  } | null>
+  updateClaudePath: (path: string) => Promise<{
+    claudePath: string
+    claudeDetectedPath?: string
+    claudeAvailable: boolean
+  }>
 
   /* Response Editor */
   responseEditor: Editor | null
@@ -98,6 +119,8 @@ export const useStore = create<StoreState>((set, get) => ({
   pendingUpdates: new Map<string, PendingUpdate>(),
   isRefreshing: false,
   activeSessionDetail: null,
+  claudeConfig: null,
+  responseEditor: null,
   initSessions: (sessions: Session[]) => set({ sessions }),
   updateSession: (sessionId: string, updates: Partial<Session>) =>
     set(state => ({
@@ -337,6 +360,13 @@ export const useStore = create<StoreState>((set, get) => ({
       await daemonClient.archiveSession({ session_id: sessionId, archived })
       // Update local state immediately for better UX
       get().updateSession(sessionId, { archived })
+
+      // Clear focus if archiving and in Normal view
+      const state = get()
+      if (archived && state.viewMode === ViewMode.Normal && state.focusedSession?.id === sessionId) {
+        state.setFocusedSession(null)
+      }
+
       // Refresh sessions to update the list based on current view mode
       await get().refreshSessions()
     } catch (error) {
@@ -785,21 +815,25 @@ export const useStore = create<StoreState>((set, get) => ({
   fetchUserSettings: async () => {
     try {
       const response = await daemonClient.getUserSettings()
+      const { advancedProviders, optInTelemetry } = response.data
       set({
         userSettings: {
-          advancedProviders: response.data.advancedProviders,
+          advancedProviders,
+          optInTelemetry,
         },
       })
     } catch (error) {
       logger.error('Failed to fetch user settings:', error)
     }
   },
-  updateUserSettings: async (settings: { advancedProviders: boolean }) => {
+  updateUserSettings: async (settings: { advancedProviders?: boolean; optInTelemetry?: boolean }) => {
     try {
       const response = await daemonClient.updateUserSettings(settings)
+      const { advancedProviders, optInTelemetry } = response.data
       set({
         userSettings: {
-          advancedProviders: response.data.advancedProviders,
+          advancedProviders,
+          optInTelemetry,
         },
       })
     } catch (error) {
@@ -807,9 +841,40 @@ export const useStore = create<StoreState>((set, get) => ({
       throw error // Re-throw so the UI can handle it
     }
   },
+  fetchClaudeConfig: async () => {
+    try {
+      const response = await daemonClient.getConfig()
+      set({
+        claudeConfig: {
+          claudePath: response.claudePath,
+          claudeDetectedPath: response.claudeDetectedPath,
+          claudeAvailable: response.claudeAvailable,
+        },
+      })
+      return response // Add this return
+    } catch (error) {
+      logger.error('Failed to fetch Claude config:', error)
+      return null // Return null on error
+    }
+  },
+  updateClaudePath: async (path: string) => {
+    try {
+      const response = await daemonClient.updateConfig({ claudePath: path })
+      set({
+        claudeConfig: {
+          claudePath: response.claudePath,
+          claudeDetectedPath: response.claudeDetectedPath,
+          claudeAvailable: response.claudeAvailable,
+        },
+      })
+      return response // Add this return
+    } catch (error) {
+      logger.error('Failed to update Claude path:', error)
+      throw error // Keep throwing for UI error handling
+    }
+  },
 
   /* Response Editor */
-  responseEditor: null,
   setResponseEditor: (responseEditor: Editor) => {
     logger.log('AppStore.setResponseEditor() - setting response editor')
     return set({ responseEditor })

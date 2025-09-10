@@ -315,6 +315,46 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /config:
+    get:
+      operationId: getConfig
+      summary: Get daemon configuration
+      description: Retrieve current daemon configuration including Claude binary path
+      tags:
+        - Settings
+      responses:
+        '200':
+          description: Configuration retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      operationId: updateConfig
+      summary: Update daemon configuration
+      description: Update runtime daemon configuration such as Claude binary path
+      tags:
+        - Settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateConfigRequest'
+      responses:
+        '200':
+          description: Configuration updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
   /user-settings:
     get:
       operationId: getUserSettings
@@ -583,11 +623,30 @@ components:
       properties:
         status:
           type: string
-          enum: [ok]
+          enum: [ok, degraded]
           example: ok
         version:
           type: string
           example: "0.1.0"
+        dependencies:
+          type: object
+          properties:
+            claude:
+              type: object
+              properties:
+                available:
+                  type: boolean
+                  description: Whether Claude binary is available
+                path:
+                  type: string
+                  nullable: true
+                  description: Path to Claude binary if available
+                error:
+                  type: string
+                  nullable: true
+                  description: Error message if Claude is not available
+              required:
+                - available
 
     # Debug Info Response
     DebugInfoResponse:
@@ -685,6 +744,12 @@ components:
           type: string
           description: Working directory for the session
           example: /home/user/project
+        additional_directories:
+          type: array
+          items:
+            type: string
+          description: Additional directories Claude can access
+          example: ["~/.humanlayer/logs", "/var/log/myapp"]
         created_at:
           type: string
           format: date-time
@@ -833,6 +898,12 @@ components:
             type: string
           description: Blacklist of disallowed tools
           example: ["execute_command"]
+        additional_directories:
+          type: array
+          items:
+            type: string
+          description: Additional directories Claude can access
+          example: ["~/.humanlayer/logs", "/var/log/myapp"]
         custom_instructions:
           type: string
           description: Custom instructions for Claude
@@ -956,6 +1027,12 @@ components:
           type: string
           description: API key for proxy authentication
           example: "sk-or-..."
+        additional_directories:
+          type: array
+          items:
+            type: string
+          description: Update additional directories Claude can access
+          example: ["~/.humanlayer/logs", "/var/log/myapp"]
 
     ContinueSessionRequest:
       type: object
@@ -1227,6 +1304,31 @@ components:
           items:
             $ref: '#/components/schemas/RecentPath'
 
+    UpdateConfigRequest:
+      type: object
+      properties:
+        claude_path:
+          type: string
+          nullable: true
+          description: Path to Claude binary (empty string for auto-detection)
+          example: "/usr/local/bin/claude"
+
+    ConfigResponse:
+      type: object
+      required:
+        - claude_path
+        - claude_available
+      properties:
+        claude_path:
+          type: string
+          description: Currently configured Claude path
+        claude_detected_path:
+          type: string
+          description: Automatically detected Claude path (may differ from configured)
+        claude_available:
+          type: boolean
+          description: Whether Claude is available at the configured path
+
     UserSettings:
       type: object
       required:
@@ -1237,6 +1339,9 @@ components:
         advanced_providers:
           type: boolean
           description: Enable advanced provider options like OpenRouter
+        opt_in_telemetry:
+          type: boolean
+          description: Opt-in for performance and error reporting
         created_at:
           type: string
           format: date-time
@@ -1258,6 +1363,9 @@ components:
         advanced_providers:
           type: boolean
           description: Enable or disable advanced provider options
+        opt_in_telemetry:
+          type: boolean
+          description: Opt-in or opt-out of performance and error reporting
 
     # Approval Types
     Approval:

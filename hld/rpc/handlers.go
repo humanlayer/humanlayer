@@ -52,6 +52,7 @@ type LaunchSessionRequest struct {
 	AppendSystemPrompt                string                `json:"append_system_prompt,omitempty"`
 	AllowedTools                      []string              `json:"allowed_tools,omitempty"`
 	DisallowedTools                   []string              `json:"disallowed_tools,omitempty"`
+	AdditionalDirectories             []string              `json:"additional_directories,omitempty"`
 	CustomInstructions                string                `json:"custom_instructions,omitempty"`
 	Verbose                           bool                  `json:"verbose,omitempty"`
 	DangerouslySkipPermissions        bool                  `json:"dangerously_skip_permissions,omitempty"`
@@ -79,21 +80,22 @@ func (h *SessionHandlers) HandleLaunchSession(ctx context.Context, params json.R
 	// Build session config with daemon-level settings
 	config := session.LaunchSessionConfig{
 		SessionConfig: claudecode.SessionConfig{
-			Query: req.Query,
-			// Title:                req.Title, // TODO: Title field not available in claudecode.SessionConfig
-			MCPConfig:            req.MCPConfig,
-			PermissionPromptTool: req.PermissionPromptTool,
-			WorkingDir:           req.WorkingDir,
-			MaxTurns:             req.MaxTurns,
-			SystemPrompt:         req.SystemPrompt,
-			AppendSystemPrompt:   req.AppendSystemPrompt,
-			AllowedTools:         req.AllowedTools,
-			DisallowedTools:      req.DisallowedTools,
-			CustomInstructions:   req.CustomInstructions,
-			Verbose:              req.Verbose,
-			OutputFormat:         claudecode.OutputStreamJSON, // Always use streaming JSON for monitoring
+			Query:                 req.Query,
+			MCPConfig:             req.MCPConfig,
+			PermissionPromptTool:  req.PermissionPromptTool,
+			WorkingDir:            req.WorkingDir,
+			MaxTurns:              req.MaxTurns,
+			SystemPrompt:          req.SystemPrompt,
+			AppendSystemPrompt:    req.AppendSystemPrompt,
+			AllowedTools:          req.AllowedTools,
+			DisallowedTools:       req.DisallowedTools,
+			AdditionalDirectories: req.AdditionalDirectories,
+			CustomInstructions:    req.CustomInstructions,
+			Verbose:               req.Verbose,
+			OutputFormat:          claudecode.OutputStreamJSON, // Always use streaming JSON for monitoring
 		},
 		// Daemon-level settings (not passed to Claude Code)
+		Title:                             req.Title,
 		DangerouslySkipPermissions:        req.DangerouslySkipPermissions,
 		DangerouslySkipPermissionsTimeout: req.DangerouslySkipPermissionsTimeout,
 	}
@@ -416,19 +418,20 @@ func (h *SessionHandlers) HandleContinueSession(ctx context.Context, params json
 
 	// Build session config for manager
 	config := session.ContinueSessionConfig{
-		ParentSessionID:      req.SessionID,
-		Query:                req.Query,
-		SystemPrompt:         req.SystemPrompt,
-		AppendSystemPrompt:   req.AppendSystemPrompt,
-		PermissionPromptTool: req.PermissionPromptTool,
-		AllowedTools:         req.AllowedTools,
-		DisallowedTools:      req.DisallowedTools,
-		CustomInstructions:   req.CustomInstructions,
-		MaxTurns:             req.MaxTurns,
-		ProxyEnabled:         req.ProxyEnabled,
-		ProxyBaseURL:         req.ProxyBaseURL,
-		ProxyModelOverride:   req.ProxyModelOverride,
-		ProxyAPIKey:          req.ProxyAPIKey,
+		ParentSessionID:       req.SessionID,
+		Query:                 req.Query,
+		SystemPrompt:          req.SystemPrompt,
+		AppendSystemPrompt:    req.AppendSystemPrompt,
+		PermissionPromptTool:  req.PermissionPromptTool,
+		AllowedTools:          req.AllowedTools,
+		DisallowedTools:       req.DisallowedTools,
+		AdditionalDirectories: req.AdditionalDirectories,
+		CustomInstructions:    req.CustomInstructions,
+		MaxTurns:              req.MaxTurns,
+		ProxyEnabled:          req.ProxyEnabled,
+		ProxyBaseURL:          req.ProxyBaseURL,
+		ProxyModelOverride:    req.ProxyModelOverride,
+		ProxyAPIKey:           req.ProxyAPIKey,
 	}
 
 	// Parse MCP config if provided as JSON string

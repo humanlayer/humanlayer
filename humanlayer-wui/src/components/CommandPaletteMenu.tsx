@@ -121,7 +121,7 @@ export default function CommandPaletteMenu() {
     () => {
       setSelectedMenuIndex(selectedMenuIndex > 0 ? selectedMenuIndex - 1 : menuOptions.length - 1)
     },
-    { enabled: true },
+    { enabled: true, enableOnFormTags: true, scopes: 'session-launcher' },
   )
 
   useHotkeys(
@@ -129,7 +129,7 @@ export default function CommandPaletteMenu() {
     () => {
       setSelectedMenuIndex(selectedMenuIndex < menuOptions.length - 1 ? selectedMenuIndex + 1 : 0)
     },
-    { enabled: true },
+    { enabled: true, enableOnFormTags: true, scopes: 'session-launcher' },
   )
 
   useHotkeys(
@@ -139,7 +139,7 @@ export default function CommandPaletteMenu() {
         menuOptions[selectedMenuIndex].action()
       }
     },
-    { enabled: true },
+    { enabled: true, enableOnFormTags: true, scopes: 'session-launcher' },
   )
 
   // Reset selection when options change

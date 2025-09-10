@@ -13,7 +13,9 @@ import {
     RecentPath,
     ListSessionsRequest,
     UserSettingsResponse,
-    UpdateUserSettingsRequest
+    UpdateUserSettingsRequest,
+    ConfigResponse,
+    UpdateConfigRequest
 } from './generated';
 
 export interface HLDClientOptions {
@@ -122,7 +124,8 @@ export class HLDClient {
         proxyBaseUrl?: string,
         proxyModelOverride?: string,
         proxyApiKey?: string,
-        archived?: boolean
+        archived?: boolean,
+        additionalDirectories?: string[]
     }): Promise<void> {
         // Build request with only defined fields to avoid sending undefined values
         const updateSessionRequest: any = {};
@@ -158,6 +161,9 @@ export class HLDClient {
         }
         if (updates.archived !== undefined) {
             updateSessionRequest.archived = updates.archived;
+        }
+        if (updates.additionalDirectories !== undefined) {
+            updateSessionRequest.additionalDirectories = updates.additionalDirectories;
         }
 
         await this.sessionsApi.updateSession({
@@ -208,6 +214,15 @@ export class HLDClient {
 
     async updateUserSettings(request: UpdateUserSettingsRequest): Promise<UserSettingsResponse> {
         return await this.settingsApi.updateUserSettings({ updateUserSettingsRequest: request });
+    }
+
+    // Configuration
+    async getConfig(): Promise<ConfigResponse> {
+        return await this.settingsApi.getConfig();
+    }
+
+    async updateConfig(request: UpdateConfigRequest): Promise<ConfigResponse> {
+        return await this.settingsApi.updateConfig({ updateConfigRequest: request });
     }
 
     // Server-Sent Events using eventsource polyfill

@@ -44,17 +44,60 @@ type Client struct {
 	claudePath string
 }
 
+// shouldSkipPath checks if a path should be skipped during search
+func shouldSkipPath(path string) bool {
+	// Skip node_modules directories
+	if strings.Contains(path, "/node_modules/") {
+		return true
+	}
+	// Skip backup files
+	if strings.HasSuffix(path, ".bak") {
+		return true
+	}
+	return false
+}
+
+// ShouldSkipPath checks if a path should be skipped during search (exported version)
+func ShouldSkipPath(path string) bool {
+	return shouldSkipPath(path)
+}
+
 // NewClient creates a new Claude Code client
 func NewClient() (*Client, error) {
-	// Find claude binary in PATH
+	// First try standard PATH
 	path, err := exec.LookPath("claude")
-	if err != nil {
-		return nil, fmt.Errorf("claude binary not found in PATH: %w", err)
+	if err == nil && !shouldSkipPath(path) {
+		return &Client{claudePath: path}, nil
 	}
 
-	return &Client{
-		claudePath: path,
-	}, nil
+	// Try common installation paths
+	commonPaths := []string{
+		filepath.Join(os.Getenv("HOME"), ".claude/local/claude"), // Add Claude's own directory
+		filepath.Join(os.Getenv("HOME"), ".npm/bin/claude"),
+		filepath.Join(os.Getenv("HOME"), ".bun/bin/claude"),
+		filepath.Join(os.Getenv("HOME"), ".local/bin/claude"),
+		"/usr/local/bin/claude",
+		"/opt/homebrew/bin/claude",
+	}
+
+	for _, candidatePath := range commonPaths {
+		if shouldSkipPath(candidatePath) {
+			continue
+		}
+		if _, err := os.Stat(candidatePath); err == nil {
+			// Verify it's executable
+			if err := isExecutable(candidatePath); err == nil {
+				return &Client{claudePath: candidatePath}, nil
+			}
+		}
+	}
+
+	// Try login shell as last resort
+	if shellPath := tryLoginShell(); shellPath != "" {
+		return &Client{claudePath: shellPath}, nil
+	}
+
+	return nil, fmt.Errorf("claude binary not found in PATH or common locations")
 }
 
 // NewClientWithPath creates a new client with a specific claude binary path
@@ -64,12 +107,52 @@ func NewClientWithPath(claudePath string) *Client {
 	}
 }
 
+// GetPath returns the path to the Claude binary
+func (c *Client) GetPath() string {
+	return c.claudePath
+}
+
+// isExecutable checks if file is executable
+func isExecutable(path string) error {
+	info, err := os.Stat(path)
+	if err != nil {
+		return err
+	}
+	if info.Mode()&0111 == 0 {
+		return fmt.Errorf("file is not executable")
+	}
+	return nil
+}
+
+// IsExecutable checks if file is executable (exported version)
+func IsExecutable(path string) error {
+	return isExecutable(path)
+}
+
+// tryLoginShell attempts to find claude using a login shell
+func tryLoginShell() string {
+	shells := []string{"zsh", "bash"}
+	for _, shell := range shells {
+		cmd := exec.Command(shell, "-lc", "which claude")
+		out, err := cmd.Output()
+		if err == nil {
+			path := strings.TrimSpace(string(out))
+			if path != "" && path != "claude not found" && !shouldSkipPath(path) {
+				return path
+			}
+		}
+	}
+	return ""
+}
+
 // buildArgs converts SessionConfig into command line arguments
 func (c *Client) buildArgs(config SessionConfig) ([]string, error) {
 	args := []string{}
 
 	// Always use print mode for SDK
-	args = append(args, "--print", config.Query)
+	if config.Query != "" {
+		args = append(args, "--print", config.Query)
+	}
 
 	// Session management
 	if config.SessionID != "" {
@@ -143,6 +226,37 @@ func (c *Client) buildArgs(config SessionConfig) ([]string, error) {
 	}
 	if len(config.DisallowedTools) > 0 {
 		args = append(args, "--disallowedTools", strings.Join(config.DisallowedTools, ","))
+	}
+
+	// Additional directories
+	if len(config.AdditionalDirectories) > 0 {
+		log.Printf("Processing %d additional directories", len(config.AdditionalDirectories))
+		for _, dir := range config.AdditionalDirectories {
+			// Expand tilde if present
+			expandedDir := dir
+			if strings.HasPrefix(dir, "~/") {
+				if home, err := os.UserHomeDir(); err == nil {
+					expandedDir = filepath.Join(home, dir[2:])
+				}
+			} else if dir == "~" {
+				if home, err := os.UserHomeDir(); err == nil {
+					expandedDir = home
+				}
+			}
+
+			// Convert to absolute path
+			absPath, err := filepath.Abs(expandedDir)
+			if err == nil {
+				log.Printf("Adding directory (expanded): %s -> %s", dir, absPath)
+				args = append(args, "--add-dir", absPath)
+			} else {
+				// Fallback to original if absolute path conversion fails
+				log.Printf("Adding directory (original, expansion failed): %s", dir)
+				args = append(args, "--add-dir", dir)
+			}
+		}
+	} else {
+		log.Printf("No additional directories to add")
 	}
 
 	// Verbose
