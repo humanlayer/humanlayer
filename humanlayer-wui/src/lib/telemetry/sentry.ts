@@ -100,7 +100,7 @@ export async function initializeSentry(): Promise<void> {
   }
 }
 
-function scrubSensitiveData<T extends Sentry.Event>(event: T): T {
+export function scrubSensitiveData<T extends Sentry.Event>(event: T): T {
   // Remove any reference to Zustand stores completely
   if (event.contexts?.state) {
     delete event.contexts.state
@@ -152,6 +152,7 @@ function scrubSensitiveData<T extends Sentry.Event>(event: T): T {
           delete sanitized.messages
           delete sanitized.conversation
           delete sanitized.session
+          delete sanitized.approval
           breadcrumb.data = sanitized
         }
         return breadcrumb
@@ -160,7 +161,10 @@ function scrubSensitiveData<T extends Sentry.Event>(event: T): T {
 
   // Aggressively scrub extra context data
   if (event.extra) {
-    const sensitiveKeys = ['store', 'state', 'session', 'conversation', 'approval', 'messages']
+    const sensitiveKeys = [
+      'store', 'state', 'session', 'conversation', 'approval', 'messages',
+      'prompt', 'file_content', 'working_directory', 'api_key'
+    ]
     Object.keys(event.extra).forEach(key => {
       // Remove any key that might contain sensitive data
       if (sensitiveKeys.some(sensitive => key.toLowerCase().includes(sensitive))) {
