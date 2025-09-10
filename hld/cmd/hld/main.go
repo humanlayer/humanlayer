@@ -30,6 +30,13 @@ func main() {
 		slog.Debug("debug logging enabled")
 	}
 
+	// Log current PATH environment variable
+	if path := os.Getenv("PATH"); path != "" {
+		slog.Info("hld daemon starting with PATH", "path", path)
+	} else {
+		slog.Warn("hld daemon starting with no PATH environment variable")
+	}
+
 	// Create daemon instance
 	d, err := daemon.New()
 	if err != nil {

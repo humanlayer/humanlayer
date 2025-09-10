@@ -145,6 +145,11 @@ impl DaemonManager {
                    database_path.display(),
                    socket_path.display());
 
+        // Log current PATH that will be inherited by daemon
+        if let Ok(path) = std::env::var("PATH") {
+            log::info!("[Tauri] PATH being passed to daemon: {path}");
+        }
+
         // Always capture stderr for better debugging, even in production
         cmd.envs(env_vars)
             .stdout(Stdio::piped())
