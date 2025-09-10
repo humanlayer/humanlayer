@@ -7,6 +7,7 @@ import { Copy, Check } from 'lucide-react'
 import type { Components } from 'react-markdown'
 import { Button } from '@/components/ui/button'
 import { copyToClipboard } from '@/utils/clipboard'
+import { SentryErrorBoundary } from '@/components/ErrorBoundary'
 
 // Import only needed languages for smaller bundle
 import json from 'react-syntax-highlighter/dist/cjs/languages/prism/json'
@@ -85,7 +86,7 @@ const DOMPURIFY_CONFIG = {
   ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto):|[^a-z]|[a-z+.-]+(?:[^a-z+.\-:]|$))/i,
 }
 
-export const MarkdownRenderer = memo(
+const MarkdownRendererInner = memo(
   ({ content, className = '', sanitize = true }: MarkdownRendererProps) => {
     const [copiedBlocks, setCopiedBlocks] = React.useState<Set<string>>(new Set())
 
@@ -223,6 +224,29 @@ export const MarkdownRenderer = memo(
       </ReactMarkdown>
     )
   },
+)
+
+MarkdownRendererInner.displayName = 'MarkdownRendererInner'
+
+export const MarkdownRenderer = memo(
+  (props: MarkdownRendererProps) => (
+    <SentryErrorBoundary
+      variant="markdown"
+      componentName="MarkdownRenderer"
+      handleRefresh={() => {
+        // Clear URL params and reload
+        const sessionId = window.location.hash.match(/sessions\/([^/?]+)/)?.[1]
+        if (sessionId) {
+          window.location.href = `/#/sessions/${sessionId}`
+        } else {
+          window.location.href = '/#/'
+        }
+      }}
+      refreshButtonText="Reload Session"
+    >
+      <MarkdownRendererInner {...props} />
+    </SentryErrorBoundary>
+  ),
 )
 
 MarkdownRenderer.displayName = 'MarkdownRenderer'
