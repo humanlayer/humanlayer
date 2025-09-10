@@ -7,7 +7,7 @@ const mockGetState = mock(() => ({
 }))
 
 mock.module('@/AppStore', () => ({
-  useAppStore: {
+  useStore: {
     getState: mockGetState,
   },
 }))
@@ -15,14 +15,26 @@ mock.module('@/AppStore', () => ({
 // Mock Sentry
 const mockCaptureException = mock()
 const mockCaptureMessage = mock()
+const mockInit = mock()
+const mockBrowserTracingIntegration = mock()
+const mockBreadcrumbsIntegration = mock()
+const mockWithErrorBoundary = mock(Component => Component)
 
 mock.module('@sentry/react', () => ({
+  default: {
+    captureException: mockCaptureException,
+    captureMessage: mockCaptureMessage,
+    init: mockInit,
+    browserTracingIntegration: mockBrowserTracingIntegration,
+    breadcrumbsIntegration: mockBreadcrumbsIntegration,
+    withErrorBoundary: mockWithErrorBoundary,
+  },
   captureException: mockCaptureException,
   captureMessage: mockCaptureMessage,
-  init: mock(),
-  browserTracingIntegration: mock(),
-  breadcrumbsIntegration: mock(),
-  withErrorBoundary: mock((Component) => Component),
+  init: mockInit,
+  browserTracingIntegration: mockBrowserTracingIntegration,
+  breadcrumbsIntegration: mockBreadcrumbsIntegration,
+  withErrorBoundary: mockWithErrorBoundary,
 }))
 
 // Import after mocks are set up
@@ -46,13 +58,13 @@ describe('Sentry Data Sanitization', () => {
           conversation: { content: 'agent response' },
         },
       } as unknown as SentryType.Event
-      
+
       const scrubbed = scrubSensitiveData(event)
       expect(scrubbed.contexts?.state).toBeUndefined()
       expect(scrubbed.extra?.store).toBeUndefined()
       expect(scrubbed.extra?.conversation).toBeUndefined()
     })
-    
+
     test('never sends user prompts or file contents', () => {
       const event: SentryType.Event = {
         extra: {
@@ -71,7 +83,7 @@ describe('Sentry Data Sanitization', () => {
           },
         ],
       }
-      
+
       const scrubbed = scrubSensitiveData(event)
       expect(scrubbed.extra?.prompt).toBeUndefined()
       expect(scrubbed.extra?.file_content).toBeUndefined()
@@ -81,28 +93,30 @@ describe('Sentry Data Sanitization', () => {
       expect(scrubbed.breadcrumbs?.[0]?.data?.query).toBeUndefined()
       expect(scrubbed.breadcrumbs?.[0]?.data?.file_content).toBeUndefined()
     })
-    
+
     test('removes sensitive headers and scrubs URLs', () => {
       const event: SentryType.Event = {
         request: {
           url: 'https://api.example.com/endpoint?api_key=secret&token=abc123&query=search',
           headers: {
-            'Authorization': 'Bearer secret',
+            Authorization: 'Bearer secret',
             'X-API-Key': 'secret-key',
-            'Cookie': 'session=secret',
+            Cookie: 'session=secret',
             'Content-Type': 'application/json',
           },
         },
       }
-      
+
       const scrubbed = scrubSensitiveData(event)
-      expect(scrubbed.request?.url).toBe('https://api.example.com/endpoint?api_key=REDACTED&token=REDACTED&query=REDACTED')
+      expect(scrubbed.request?.url).toBe(
+        'https://api.example.com/endpoint?api_key=REDACTED&token=REDACTED&query=REDACTED',
+      )
       expect(scrubbed.request?.headers?.['Authorization']).toBeUndefined()
       expect(scrubbed.request?.headers?.['X-API-Key']).toBeUndefined()
       expect(scrubbed.request?.headers?.['Cookie']).toBeUndefined()
       expect(scrubbed.request?.headers?.['Content-Type']).toBe('application/json')
     })
-    
+
     test('anonymizes user data', () => {
       const event: SentryType.Event = {
         user: {
@@ -111,14 +125,14 @@ describe('Sentry Data Sanitization', () => {
           username: 'testuser',
         },
       }
-      
+
       const scrubbed = scrubSensitiveData(event)
       expect(scrubbed.user?.id).toBeDefined()
       expect(scrubbed.user?.id).not.toBe('user123')
       expect(scrubbed.user?.email).toBeUndefined()
       expect(scrubbed.user?.username).toBeUndefined()
     })
-    
+
     test('filters out sensitive breadcrumbs', () => {
       const event: SentryType.Event = {
         breadcrumbs: [
@@ -127,13 +141,13 @@ describe('Sentry Data Sanitization', () => {
           { message: 'Something with store in it' },
         ],
       }
-      
+
       const scrubbed = scrubSensitiveData(event)
       // Should only keep the navigation breadcrumb
       expect(scrubbed.breadcrumbs?.length).toBe(1)
       expect(scrubbed.breadcrumbs?.[0]?.category).toBe('navigation')
     })
-    
+
     test('scrubs extra context data aggressively', () => {
       const event: SentryType.Event = {
         extra: {
@@ -149,7 +163,7 @@ describe('Sentry Data Sanitization', () => {
           },
         },
       }
-      
+
       const scrubbed = scrubSensitiveData(event)
       expect(scrubbed.extra?.normal_data).toBe('this is fine')
       expect(scrubbed.extra?.store_data).toBeUndefined()
@@ -173,7 +187,7 @@ describe('Sentry Data Sanitization', () => {
           },
         ],
       }
-      
+
       const scrubbed = scrubSensitiveData(event)
       expect(scrubbed.breadcrumbs?.[0]?.data?.session).toBeUndefined()
       expect(scrubbed.breadcrumbs?.[0]?.data?.conversation).toBeUndefined()
@@ -186,23 +200,23 @@ describe('Sentry Data Sanitization', () => {
       mockGetState.mockReturnValueOnce({
         userSettings: { optInTelemetry: false },
       })
-      
+
       const error = new Error('Test error')
       captureException(error)
-      
+
       // Should not call Sentry when opted out
       expect(mockCaptureException).not.toHaveBeenCalled()
     })
-    
+
     test('captures exception when opted in', () => {
       mockGetState.mockReturnValueOnce({
         userSettings: { optInTelemetry: true },
       })
-      
+
       const error = new Error('Test error')
       const context = { testType: 'unit_test' }
       captureException(error, context)
-      
+
       // Should call Sentry when opted in
       expect(mockCaptureException).toHaveBeenCalledWith(error, expect.any(Object))
     })
@@ -211,10 +225,10 @@ describe('Sentry Data Sanitization', () => {
       mockGetState.mockReturnValueOnce({
         userSettings: null,
       } as any)
-      
+
       const error = new Error('Test error')
       captureException(error)
-      
+
       // Should not call Sentry when settings not loaded
       expect(mockCaptureException).not.toHaveBeenCalled()
     })
@@ -225,20 +239,20 @@ describe('Sentry Data Sanitization', () => {
       mockGetState.mockReturnValueOnce({
         userSettings: { optInTelemetry: false },
       })
-      
+
       captureMessage('Test message')
-      
+
       // Should not call Sentry when opted out
       expect(mockCaptureMessage).not.toHaveBeenCalled()
     })
-    
+
     test('captures message when opted in', () => {
       mockGetState.mockReturnValueOnce({
         userSettings: { optInTelemetry: true },
       })
-      
+
       captureMessage('Test message', 'info', { extra: 'data' })
-      
+
       // Should call Sentry when opted in
       expect(mockCaptureMessage).toHaveBeenCalledWith('Test message', expect.any(Object))
     })
@@ -247,15 +261,15 @@ describe('Sentry Data Sanitization', () => {
       mockGetState.mockReturnValueOnce({
         userSettings: { optInTelemetry: true },
       })
-      
+
       const sensitiveContext = {
         api_key: 'secret',
         normal: 'data',
         session: 'should be removed',
       }
-      
+
       captureMessage('Test message', 'info', sensitiveContext)
-      
+
       // Should call Sentry but context should be scrubbed
       expect(mockCaptureMessage).toHaveBeenCalled()
       const callArgs = mockCaptureMessage.mock.calls[0]

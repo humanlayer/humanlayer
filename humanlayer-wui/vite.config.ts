@@ -42,7 +42,7 @@ export default defineConfig(async () => ({
     react(),
     reactDevTools(),
     tailwindcss(),
-    
+
     // Sentry plugin only for builds with proper configuration
     ...(isSentryRelease
       ? [

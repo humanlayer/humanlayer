@@ -228,25 +228,23 @@ const MarkdownRendererInner = memo(
 
 MarkdownRendererInner.displayName = 'MarkdownRendererInner'
 
-export const MarkdownRenderer = memo(
-  (props: MarkdownRendererProps) => (
-    <SentryErrorBoundary
-      variant="markdown"
-      componentName="MarkdownRenderer"
-      handleRefresh={() => {
-        // Clear URL params and reload
-        const sessionId = window.location.hash.match(/sessions\/([^/?]+)/)?.[1]
-        if (sessionId) {
-          window.location.href = `/#/sessions/${sessionId}`
-        } else {
-          window.location.href = '/#/'
-        }
-      }}
-      refreshButtonText="Reload Session"
-    >
-      <MarkdownRendererInner {...props} />
-    </SentryErrorBoundary>
-  ),
-)
+export const MarkdownRenderer = memo((props: MarkdownRendererProps) => (
+  <SentryErrorBoundary
+    variant="markdown"
+    componentName="MarkdownRenderer"
+    handleRefresh={() => {
+      // Clear URL params and reload
+      const sessionId = window.location.hash.match(/sessions\/([^/?]+)/)?.[1]
+      if (sessionId) {
+        window.location.href = `/#/sessions/${sessionId}`
+      } else {
+        window.location.href = '/#/'
+      }
+    }}
+    refreshButtonText="Reload Session"
+  >
+    <MarkdownRendererInner {...props} />
+  </SentryErrorBoundary>
+))
 
 MarkdownRenderer.displayName = 'MarkdownRenderer'

@@ -31,12 +31,11 @@ class SentryErrorBoundaryCore extends React.Component<Props, State> {
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     const componentName = this.props.componentName || 'Unknown'
     const variant = this.props.variant || 'default'
-    
+
     // Log with component context
-    const logMessage = variant === 'default' 
-      ? 'React Error Boundary caught error:'
-      : `${componentName} Error:`
-    
+    const logMessage =
+      variant === 'default' ? 'React Error Boundary caught error:' : `${componentName} Error:`
+
     console.error(logMessage, error, errorInfo)
     logger.error(logMessage, error, errorInfo)
 
@@ -89,7 +88,7 @@ class SentryErrorBoundaryCore extends React.Component<Props, State> {
               )}
             </div>
           )
-        
+
         case 'response-editor':
           return (
             <div className="flex flex-col space-y-2 p-3 text-sm text-muted-foreground">
@@ -99,9 +98,9 @@ class SentryErrorBoundaryCore extends React.Component<Props, State> {
                   <span>Editor unavailable</span>
                 </div>
                 {this.props.handleRefresh && (
-                  <Button 
-                    onClick={this.handleReset} 
-                    variant="outline" 
+                  <Button
+                    onClick={this.handleReset}
+                    variant="outline"
                     size="sm"
                     className="h-6 text-xs"
                   >
@@ -114,16 +113,16 @@ class SentryErrorBoundaryCore extends React.Component<Props, State> {
               )}
             </div>
           )
-        
+
         case 'markdown':
           return (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-destructive text-sm">Failed to render content</span>
                 {this.props.handleRefresh && (
-                  <Button 
-                    onClick={this.handleReset} 
-                    variant="outline" 
+                  <Button
+                    onClick={this.handleReset}
+                    variant="outline"
                     size="sm"
                     className="h-6 text-xs"
                   >
@@ -137,14 +136,15 @@ class SentryErrorBoundaryCore extends React.Component<Props, State> {
               </pre>
             </div>
           )
-        
+
         default:
           return (
             <div className="flex flex-col items-center justify-center min-h-[50vh] p-8 text-center">
               <AlertCircle className="w-16 h-16 text-red-500 mb-4" />
               <h1 className="text-2xl font-bold mb-2">Something went wrong</h1>
               <p className="text-muted-foreground mb-6 max-w-md">
-                An unexpected error occurred. The error has been reported and we'll investigate the issue.
+                An unexpected error occurred. The error has been reported and we'll investigate the
+                issue.
               </p>
               <Button onClick={this.handleReset} className="gap-2">
                 <RefreshCw className="w-4 h-4" />
@@ -153,7 +153,9 @@ class SentryErrorBoundaryCore extends React.Component<Props, State> {
 
               {import.meta.env.DEV && this.state.error && (
                 <details className="mt-6 text-left">
-                  <summary className="cursor-pointer font-mono text-sm">Error Details (dev only)</summary>
+                  <summary className="cursor-pointer font-mono text-sm">
+                    Error Details (dev only)
+                  </summary>
                   <pre className="mt-2 text-xs bg-muted p-4 rounded overflow-auto">
                     {this.state.error.stack}
                   </pre>

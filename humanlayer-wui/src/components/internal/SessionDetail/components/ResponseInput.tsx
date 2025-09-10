@@ -329,7 +329,7 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
 
               {/* Existing input area */}
               <div className="flex gap-2">
-                <SentryErrorBoundary 
+                <SentryErrorBoundary
                   variant="response-editor"
                   componentName="ResponseEditor"
                   handleRefresh={() => {

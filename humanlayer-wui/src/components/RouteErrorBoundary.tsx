@@ -6,11 +6,11 @@ import { useEffect } from 'react'
 
 export function RouteErrorBoundary() {
   const error = useRouteError()
-  
+
   // Report to Sentry when component mounts with error
   useEffect(() => {
     console.error('Route Error Boundary caught error:', error)
-    
+
     if (error instanceof Error) {
       // Report to Sentry with route context
       Sentry.captureException(error, {
@@ -37,11 +37,11 @@ export function RouteErrorBoundary() {
       })
     }
   }, [error])
-  
+
   const handleReset = () => {
     window.location.href = '/'
   }
-  
+
   // Check if it's a React Router error response (like 404)
   if (isRouteErrorResponse(error)) {
     return (
@@ -60,11 +60,11 @@ export function RouteErrorBoundary() {
       </div>
     )
   }
-  
+
   // Handle regular JavaScript errors
   const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred'
   const errorStack = error instanceof Error ? error.stack : undefined
-  
+
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-8 text-center">
       <AlertCircle className="w-16 h-16 text-red-500 mb-4" />
@@ -76,15 +76,11 @@ export function RouteErrorBoundary() {
         <RefreshCw className="w-4 h-4" />
         Go Home
       </Button>
-      
+
       {import.meta.env.DEV && errorStack && (
         <details className="mt-6 text-left max-w-2xl">
-          <summary className="cursor-pointer font-mono text-sm">
-            Error Details (dev only)
-          </summary>
-          <pre className="mt-2 text-xs bg-muted p-4 rounded overflow-auto">
-            {errorStack}
-          </pre>
+          <summary className="cursor-pointer font-mono text-sm">Error Details (dev only)</summary>
+          <pre className="mt-2 text-xs bg-muted p-4 rounded overflow-auto">{errorStack}</pre>
         </details>
       )}
     </div>

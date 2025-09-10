@@ -162,8 +162,16 @@ export function scrubSensitiveData<T extends Sentry.Event>(event: T): T {
   // Aggressively scrub extra context data
   if (event.extra) {
     const sensitiveKeys = [
-      'store', 'state', 'session', 'conversation', 'approval', 'messages',
-      'prompt', 'file_content', 'working_directory', 'api_key'
+      'store',
+      'state',
+      'session',
+      'conversation',
+      'approval',
+      'messages',
+      'prompt',
+      'file_content',
+      'working_directory',
+      'api_key',
     ]
     Object.keys(event.extra).forEach(key => {
       // Remove any key that might contain sensitive data

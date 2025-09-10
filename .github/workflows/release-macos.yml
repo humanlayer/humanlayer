@@ -138,7 +138,7 @@ jobs:
         run: |
           # Set version for Sentry release tracking from package.json
           export VITE_APP_VERSION=$(node -p "require('./package.json').version")
-          
+
           if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ github.event.inputs.release_nightly }}" = "true" ]; then
             # Use nightly config for scheduled builds
             bun run tauri build --config src-tauri/tauri.nightly.conf.json
