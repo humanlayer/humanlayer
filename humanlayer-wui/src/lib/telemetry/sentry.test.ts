@@ -3,7 +3,7 @@ import type * as SentryType from '@sentry/react'
 import { useStore } from '@/AppStore'
 import { scrubSensitiveData, captureException, captureMessage } from './sentry'
 
-// Mock Sentry module 
+// Mock Sentry module
 const mockSentryCaptureException = mock()
 const mockSentryCaptureMessage = mock()
 
@@ -29,15 +29,15 @@ describe('Sentry Data Sanitization', () => {
     // Reset mocks
     mockSentryCaptureException.mockClear()
     mockSentryCaptureMessage.mockClear()
-    
+
     // Set default state in the real store
     // Only set the userSettings part we care about
     const currentState = useStore.getState()
     useStore.setState({
       ...currentState,
-      userSettings: { 
+      userSettings: {
         advancedProviders: false,
-        optInTelemetry: true 
+        optInTelemetry: true,
       },
     })
   })
@@ -195,9 +195,9 @@ describe('Sentry Data Sanitization', () => {
       const currentState = useStore.getState()
       useStore.setState({
         ...currentState,
-        userSettings: { 
+        userSettings: {
           advancedProviders: false,
-          optInTelemetry: false 
+          optInTelemetry: false,
         },
       })
 
@@ -212,9 +212,9 @@ describe('Sentry Data Sanitization', () => {
       const currentState = useStore.getState()
       useStore.setState({
         ...currentState,
-        userSettings: { 
+        userSettings: {
           advancedProviders: false,
-          optInTelemetry: true 
+          optInTelemetry: true,
         },
       })
 
@@ -246,9 +246,9 @@ describe('Sentry Data Sanitization', () => {
       const currentState = useStore.getState()
       useStore.setState({
         ...currentState,
-        userSettings: { 
+        userSettings: {
           advancedProviders: false,
-          optInTelemetry: false 
+          optInTelemetry: false,
         },
       })
 
@@ -262,9 +262,9 @@ describe('Sentry Data Sanitization', () => {
       const currentState = useStore.getState()
       useStore.setState({
         ...currentState,
-        userSettings: { 
+        userSettings: {
           advancedProviders: false,
-          optInTelemetry: true 
+          optInTelemetry: true,
         },
       })
 
@@ -278,9 +278,9 @@ describe('Sentry Data Sanitization', () => {
       const currentState = useStore.getState()
       useStore.setState({
         ...currentState,
-        userSettings: { 
+        userSettings: {
           advancedProviders: false,
-          optInTelemetry: true 
+          optInTelemetry: true,
         },
       })
 
