@@ -716,6 +716,20 @@ func (h *SessionHandlers) GetHealth(ctx context.Context, req api.GetHealthReques
 	claudeAvailable := h.sessionManager.IsClaudeAvailable()
 	claudePath := h.sessionManager.GetClaudeBinaryPath()
 
+	// Check Claude version if available
+	var claudeVersion *string
+	var versionError *string
+	if claudeAvailable {
+		if version, err := h.sessionManager.GetClaudeVersion(); err != nil {
+			versionErrorMsg := err.Error()
+			versionError = &versionErrorMsg
+			slog.Warn("Failed to get Claude version", "error", err, "path", claudePath)
+		} else {
+			claudeVersion = &version
+			slog.Debug("Claude version retrieved", "version", version, "path", claudePath)
+		}
+	}
+
 	// Determine overall status
 	overallStatus := api.Ok
 	if !claudeAvailable {
@@ -730,11 +744,15 @@ func (h *SessionHandlers) GetHealth(ctx context.Context, req api.GetHealthReques
 
 	// Always add dependencies to show Claude status
 	claudeInfo := struct {
-		Available bool    `json:"available"`
-		Error     *string `json:"error"`
-		Path      *string `json:"path"`
+		Available    bool    `json:"available"`
+		Error        *string `json:"error"`
+		Path         *string `json:"path"`
+		Version      *string `json:"version"`
+		VersionError *string `json:"version_error"`
 	}{
-		Available: claudeAvailable,
+		Available:    claudeAvailable,
+		Version:      claudeVersion,
+		VersionError: versionError,
 	}
 
 	if claudePath != "" {
@@ -748,9 +766,11 @@ func (h *SessionHandlers) GetHealth(ctx context.Context, req api.GetHealthReques
 
 	response.Dependencies = &struct {
 		Claude *struct {
-			Available bool    `json:"available"`
-			Error     *string `json:"error"`
-			Path      *string `json:"path"`
+			Available    bool    `json:"available"`
+			Error        *string `json:"error"`
+			Path         *string `json:"path"`
+			Version      *string `json:"version"`
+			VersionError *string `json:"version_error"`
 		} `json:"claude,omitempty"`
 	}{
 		Claude: &claudeInfo,

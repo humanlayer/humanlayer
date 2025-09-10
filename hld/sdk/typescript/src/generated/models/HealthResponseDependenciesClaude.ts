@@ -32,6 +32,18 @@ export interface HealthResponseDependenciesClaude {
      */
     path?: string;
     /**
+     * Claude binary version (e.g., "1.0.110")
+     * @type {string}
+     * @memberof HealthResponseDependenciesClaude
+     */
+    version?: string;
+    /**
+     * Error message if version check failed
+     * @type {string}
+     * @memberof HealthResponseDependenciesClaude
+     */
+    versionError?: string;
+    /**
      * Error message if Claude is not available
      * @type {string}
      * @memberof HealthResponseDependenciesClaude
@@ -59,6 +71,8 @@ export function HealthResponseDependenciesClaudeFromJSONTyped(json: any, ignoreD
 
         'available': json['available'],
         'path': json['path'] == null ? undefined : json['path'],
+        'version': json['version'] == null ? undefined : json['version'],
+        'versionError': json['version_error'] == null ? undefined : json['version_error'],
         'error': json['error'] == null ? undefined : json['error'],
     };
 }
@@ -76,6 +90,8 @@ export function HealthResponseDependenciesClaudeToJSONTyped(value?: HealthRespon
 
         'available': value['available'],
         'path': value['path'],
+        'version': value['version'],
+        'version_error': value['versionError'],
         'error': value['error'],
     };
 }

@@ -93,16 +93,22 @@ interface StoreState {
     claudePath: string
     claudeDetectedPath?: string
     claudeAvailable: boolean
+    claudeVersion?: string
+    claudeVersionError?: string
   } | null
   fetchClaudeConfig: () => Promise<{
     claudePath: string
     claudeDetectedPath?: string
     claudeAvailable: boolean
+    claudeVersion?: string
+    claudeVersionError?: string
   } | null>
   updateClaudePath: (path: string) => Promise<{
     claudePath: string
     claudeDetectedPath?: string
     claudeAvailable: boolean
+    claudeVersion?: string
+    claudeVersionError?: string
   }>
 
   /* Response Editor */
@@ -843,15 +849,25 @@ export const useStore = create<StoreState>((set, get) => ({
   },
   fetchClaudeConfig: async () => {
     try {
-      const response = await daemonClient.getConfig()
-      set({
-        claudeConfig: {
-          claudePath: response.claudePath,
-          claudeDetectedPath: response.claudeDetectedPath,
-          claudeAvailable: response.claudeAvailable,
-        },
-      })
-      return response // Add this return
+      const [configResponse, healthResponse] = await Promise.all([
+        daemonClient.getConfig(),
+        daemonClient.health(),
+      ])
+
+      // Extract version info from health response
+      const claudeVersion = healthResponse.dependencies?.claude?.version
+      const claudeVersionError = healthResponse.dependencies?.claude?.versionError
+
+      const config = {
+        claudePath: configResponse.claudePath,
+        claudeDetectedPath: configResponse.claudeDetectedPath,
+        claudeAvailable: configResponse.claudeAvailable,
+        claudeVersion,
+        claudeVersionError,
+      }
+
+      set({ claudeConfig: config })
+      return config
     } catch (error) {
       logger.error('Failed to fetch Claude config:', error)
       return null // Return null on error
@@ -859,15 +875,25 @@ export const useStore = create<StoreState>((set, get) => ({
   },
   updateClaudePath: async (path: string) => {
     try {
-      const response = await daemonClient.updateConfig({ claudePath: path })
-      set({
-        claudeConfig: {
-          claudePath: response.claudePath,
-          claudeDetectedPath: response.claudeDetectedPath,
-          claudeAvailable: response.claudeAvailable,
-        },
-      })
-      return response // Add this return
+      const [configResponse, healthResponse] = await Promise.all([
+        daemonClient.updateConfig({ claudePath: path }),
+        daemonClient.health(),
+      ])
+
+      // Extract version info from health response
+      const claudeVersion = healthResponse.dependencies?.claude?.version
+      const claudeVersionError = healthResponse.dependencies?.claude?.versionError
+
+      const config = {
+        claudePath: configResponse.claudePath,
+        claudeDetectedPath: configResponse.claudeDetectedPath,
+        claudeAvailable: configResponse.claudeAvailable,
+        claudeVersion,
+        claudeVersionError,
+      }
+
+      set({ claudeConfig: config })
+      return config
     } catch (error) {
       logger.error('Failed to update Claude path:', error)
       throw error // Keep throwing for UI error handling

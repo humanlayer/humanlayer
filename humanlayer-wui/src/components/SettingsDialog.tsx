@@ -191,31 +191,48 @@ export function SettingsDialog({ open, onOpenChange, onConfigUpdate }: SettingsD
                   ) : (
                     <XCircle className="h-4 w-4 text-destructive" />
                   )}
-                  <span
-                    className={
-                      claudeConfig?.claudeAvailable
-                        ? 'text-sm text-muted-foreground'
-                        : 'text-sm text-destructive'
-                    }
-                  >
-                    {claudeConfig?.claudeAvailable ? (
-                      <>
-                        Claude binary {claudeConfig.claudePath ? 'configured' : 'detected'} at:{' '}
-                        <code className="text-xs bg-muted px-1 py-0.5 rounded">
-                          {claudeConfig.claudePath || claudeConfig.claudeDetectedPath}
+                  <div className="flex flex-col">
+                    <span
+                      className={
+                        claudeConfig?.claudeAvailable
+                          ? 'text-sm text-muted-foreground'
+                          : 'text-sm text-destructive'
+                      }
+                    >
+                      {claudeConfig?.claudeAvailable ? (
+                        <>
+                          Claude binary {claudeConfig.claudePath ? 'configured' : 'detected'} at:{' '}
+                          <code className="text-xs bg-muted px-1 py-0.5 rounded">
+                            {claudeConfig.claudePath || claudeConfig.claudeDetectedPath}
+                          </code>
+                        </>
+                      ) : claudeConfig?.claudePath ? (
+                        <>
+                          Claude binary not found at configured path:{' '}
+                          <code className="text-xs bg-muted px-1 py-0.5 rounded">
+                            {claudeConfig.claudePath}
+                          </code>
+                        </>
+                      ) : (
+                        'Claude binary could not be auto-detected'
+                      )}
+                    </span>
+                    {/* Display version information */}
+                    {claudeConfig?.claudeAvailable && claudeConfig.claudeVersion && (
+                      <span className="text-xs text-muted-foreground">
+                        Version:{' '}
+                        <code className="bg-muted px-1 py-0.5 rounded">
+                          {claudeConfig.claudeVersion}
                         </code>
-                      </>
-                    ) : claudeConfig?.claudePath ? (
-                      <>
-                        Claude binary not found at configured path:{' '}
-                        <code className="text-xs bg-muted px-1 py-0.5 rounded">
-                          {claudeConfig.claudePath}
-                        </code>
-                      </>
-                    ) : (
-                      'Claude binary could not be auto-detected'
+                      </span>
                     )}
-                  </span>
+                    {/* Display version error if version check failed */}
+                    {claudeConfig?.claudeAvailable && claudeConfig.claudeVersionError && (
+                      <span className="text-xs text-amber-500">
+                        Version check failed: {claudeConfig.claudeVersionError}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div className="flex items-center gap-1">
                   <Button

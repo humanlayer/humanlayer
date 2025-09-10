@@ -139,7 +139,14 @@ func (m *Manager) initializeClaudeClient() {
 		}
 	} else {
 		// Auto-detect
+		// Log PATH before detection
+		if path := os.Getenv("PATH"); path != "" {
+			slog.Debug("Auto-detecting Claude binary with PATH", "path", path)
+		}
 		client, err = claudecode.NewClient()
+		if err == nil && client != nil {
+			slog.Debug("Claude binary auto-detected", "detected_path", client.GetPath())
+		}
 	}
 
 	// Update state
@@ -150,10 +157,12 @@ func (m *Manager) initializeClaudeClient() {
 	if err != nil {
 		slog.Warn("Claude binary not found, sessions will not be launchable",
 			"error", err,
-			"configured_path", m.claudePath)
+			"configured_path", m.claudePath,
+			"PATH", os.Getenv("PATH"))
 	} else {
-		slog.Info("Claude client initialized successfully",
-			"path", m.claudePath)
+		slog.Debug("Claude client initialized successfully",
+			"path", m.claudePath,
+			"PATH", os.Getenv("PATH"))
 	}
 }
 
@@ -1846,6 +1855,22 @@ func (m *Manager) GetClaudeBinaryPath() string {
 		return m.client.GetPath()
 	}
 	return ""
+}
+
+// GetClaudeVersion returns the Claude binary version if available
+func (m *Manager) GetClaudeVersion() (string, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	if m.client == nil {
+		return "", fmt.Errorf("claude client not available")
+	}
+
+	if m.claudeClientErr != nil {
+		return "", fmt.Errorf("claude not available: %w", m.claudeClientErr)
+	}
+
+	return m.client.GetVersion()
 }
 
 // StopAllSessions gracefully stops all active sessions with a timeout
