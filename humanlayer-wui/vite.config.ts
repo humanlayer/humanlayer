@@ -2,10 +2,14 @@ import path from 'path'
 import { defineConfig, PluginOption } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import { sentryVitePlugin } from '@sentry/vite-plugin'
 
 const host = process.env.TAURI_DEV_HOST
 const port = process.env.VITE_PORT ? parseInt(process.env.VITE_PORT) : 1420
 const hmrPort = port + 1
+
+// Determine if this is a Sentry-enabled build (has SENTRY_ORG configured)
+const isSentryRelease = !!process.env.SENTRY_ORG && process.env.NODE_ENV === 'production'
 
 /* React Dev Tools */
 // https://eikowagenknecht.de/posts/using-react-devtools-with-tauri-v2-and-vite/
@@ -34,11 +38,50 @@ const reactDevTools = (): PluginOption => {
 
 // https://vitejs.dev/config/
 export default defineConfig(async () => ({
-  plugins: [react(), reactDevTools(), tailwindcss()],
+  plugins: [
+    react(),
+    reactDevTools(),
+    tailwindcss(),
+    
+    // Sentry plugin only for builds with proper configuration
+    ...(isSentryRelease
+      ? [
+          sentryVitePlugin({
+            org: process.env.SENTRY_ORG!,
+            project: process.env.SENTRY_PROJECT!,
+            authToken: process.env.SENTRY_AUTH_TOKEN!,
+
+            release: {
+              name: process.env.VITE_APP_VERSION || process.env.npm_package_version || 'unknown',
+              uploadLegacySourcemaps: {
+                paths: ['dist'],
+              },
+            },
+
+            sourcemaps: {
+              // Security: Remove source maps after upload so they don't get bundled
+              filesToDeleteAfterUpload: ['**/*.js.map', '**/*.mjs.map'],
+            },
+          }),
+        ]
+      : []),
+  ],
 
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+    },
+  },
+
+  // Generate source maps for production builds (required for Sentry)
+  build: {
+    sourcemap: process.env.NODE_ENV === 'production',
+    // Additional build optimizations
+    rollupOptions: {
+      output: {
+        // Don't include source code in source maps (security)
+        sourcemapExcludeSources: true,
+      },
     },
   },
 

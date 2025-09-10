@@ -22,6 +22,11 @@ permissions:
 jobs:
   build-macos:
     runs-on: macos-latest
+    env:
+      SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+      SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
 
     steps:
       - name: Set release version
@@ -131,6 +136,9 @@ jobs:
       - name: Build Tauri app (including DMG)
         working-directory: humanlayer-wui
         run: |
+          # Set version for Sentry release tracking from package.json
+          export VITE_APP_VERSION=$(node -p "require('./package.json').version")
+          
           if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ github.event.inputs.release_nightly }}" = "true" ]; then
             # Use nightly config for scheduled builds
             bun run tauri build --config src-tauri/tauri.nightly.conf.json
@@ -140,6 +148,8 @@ jobs:
           fi
         env:
           APPLE_SIGNING_IDENTITY: "-"  # Ad-hoc signing to prevent "damaged" error
+          NODE_ENV: "production"
+          # Sentry environment variables already set at job level
 
       - name: Upload DMG artifact
         uses: actions/upload-artifact@v4
