@@ -1,50 +1,45 @@
 import { describe, test, expect, beforeEach, mock } from 'bun:test'
 import type * as SentryType from '@sentry/react'
+import { useStore } from '@/AppStore'
+import { scrubSensitiveData, captureException, captureMessage } from './sentry'
 
-// Mock the AppStore
-const mockGetState = mock(() => ({
-  userSettings: { optInTelemetry: true },
-}))
-
-mock.module('@/AppStore', () => ({
-  useStore: {
-    getState: mockGetState,
-  },
-}))
-
-// Mock Sentry
-const mockCaptureException = mock()
-const mockCaptureMessage = mock()
-const mockInit = mock()
-const mockBrowserTracingIntegration = mock()
-const mockBreadcrumbsIntegration = mock()
-const mockWithErrorBoundary = mock(Component => Component)
+// Mock Sentry module 
+const mockSentryCaptureException = mock()
+const mockSentryCaptureMessage = mock()
 
 mock.module('@sentry/react', () => ({
   default: {
-    captureException: mockCaptureException,
-    captureMessage: mockCaptureMessage,
-    init: mockInit,
-    browserTracingIntegration: mockBrowserTracingIntegration,
-    breadcrumbsIntegration: mockBreadcrumbsIntegration,
-    withErrorBoundary: mockWithErrorBoundary,
+    captureException: mockSentryCaptureException,
+    captureMessage: mockSentryCaptureMessage,
+    init: mock(),
+    browserTracingIntegration: mock(),
+    breadcrumbsIntegration: mock(),
+    withErrorBoundary: mock(Component => Component),
   },
-  captureException: mockCaptureException,
-  captureMessage: mockCaptureMessage,
-  init: mockInit,
-  browserTracingIntegration: mockBrowserTracingIntegration,
-  breadcrumbsIntegration: mockBreadcrumbsIntegration,
-  withErrorBoundary: mockWithErrorBoundary,
+  captureException: mockSentryCaptureException,
+  captureMessage: mockSentryCaptureMessage,
+  init: mock(),
+  browserTracingIntegration: mock(),
+  breadcrumbsIntegration: mock(),
+  withErrorBoundary: mock(Component => Component),
 }))
-
-// Import after mocks are set up
-import { scrubSensitiveData, captureException, captureMessage } from './sentry'
 
 describe('Sentry Data Sanitization', () => {
   beforeEach(() => {
-    mockGetState.mockClear()
-    mockCaptureException.mockClear()
-    mockCaptureMessage.mockClear()
+    // Reset mocks
+    mockSentryCaptureException.mockClear()
+    mockSentryCaptureMessage.mockClear()
+    
+    // Set default state in the real store
+    // Only set the userSettings part we care about
+    const currentState = useStore.getState()
+    useStore.setState({
+      ...currentState,
+      userSettings: { 
+        advancedProviders: false,
+        optInTelemetry: true 
+      },
+    })
   })
 
   describe('scrubSensitiveData', () => {
@@ -197,20 +192,30 @@ describe('Sentry Data Sanitization', () => {
 
   describe('captureException', () => {
     test('respects user consent when disabled', () => {
-      mockGetState.mockReturnValueOnce({
-        userSettings: { optInTelemetry: false },
+      const currentState = useStore.getState()
+      useStore.setState({
+        ...currentState,
+        userSettings: { 
+          advancedProviders: false,
+          optInTelemetry: false 
+        },
       })
 
       const error = new Error('Test error')
       captureException(error)
 
       // Should not call Sentry when opted out
-      expect(mockCaptureException).not.toHaveBeenCalled()
+      expect(mockSentryCaptureException).not.toHaveBeenCalled()
     })
 
     test('captures exception when opted in', () => {
-      mockGetState.mockReturnValueOnce({
-        userSettings: { optInTelemetry: true },
+      const currentState = useStore.getState()
+      useStore.setState({
+        ...currentState,
+        userSettings: { 
+          advancedProviders: false,
+          optInTelemetry: true 
+        },
       })
 
       const error = new Error('Test error')
@@ -218,48 +223,65 @@ describe('Sentry Data Sanitization', () => {
       captureException(error, context)
 
       // Should call Sentry when opted in
-      expect(mockCaptureException).toHaveBeenCalledWith(error, expect.any(Object))
+      expect(mockSentryCaptureException).toHaveBeenCalledWith(error, expect.any(Object))
     })
 
     test('does not capture when userSettings is null', () => {
-      mockGetState.mockReturnValueOnce({
+      const currentState = useStore.getState()
+      useStore.setState({
+        ...currentState,
         userSettings: null,
-      } as any)
+      })
 
       const error = new Error('Test error')
       captureException(error)
 
       // Should not call Sentry when settings not loaded
-      expect(mockCaptureException).not.toHaveBeenCalled()
+      expect(mockSentryCaptureException).not.toHaveBeenCalled()
     })
   })
 
   describe('captureMessage', () => {
     test('respects user consent when disabled', () => {
-      mockGetState.mockReturnValueOnce({
-        userSettings: { optInTelemetry: false },
+      const currentState = useStore.getState()
+      useStore.setState({
+        ...currentState,
+        userSettings: { 
+          advancedProviders: false,
+          optInTelemetry: false 
+        },
       })
 
       captureMessage('Test message')
 
       // Should not call Sentry when opted out
-      expect(mockCaptureMessage).not.toHaveBeenCalled()
+      expect(mockSentryCaptureMessage).not.toHaveBeenCalled()
     })
 
     test('captures message when opted in', () => {
-      mockGetState.mockReturnValueOnce({
-        userSettings: { optInTelemetry: true },
+      const currentState = useStore.getState()
+      useStore.setState({
+        ...currentState,
+        userSettings: { 
+          advancedProviders: false,
+          optInTelemetry: true 
+        },
       })
 
       captureMessage('Test message', 'info', { extra: 'data' })
 
       // Should call Sentry when opted in
-      expect(mockCaptureMessage).toHaveBeenCalledWith('Test message', expect.any(Object))
+      expect(mockSentryCaptureMessage).toHaveBeenCalledWith('Test message', expect.any(Object))
     })
 
     test('scrubs context data before sending', () => {
-      mockGetState.mockReturnValueOnce({
-        userSettings: { optInTelemetry: true },
+      const currentState = useStore.getState()
+      useStore.setState({
+        ...currentState,
+        userSettings: { 
+          advancedProviders: false,
+          optInTelemetry: true 
+        },
       })
 
       const sensitiveContext = {
@@ -271,8 +293,8 @@ describe('Sentry Data Sanitization', () => {
       captureMessage('Test message', 'info', sensitiveContext)
 
       // Should call Sentry but context should be scrubbed
-      expect(mockCaptureMessage).toHaveBeenCalled()
-      const callArgs = mockCaptureMessage.mock.calls[0]
+      expect(mockSentryCaptureMessage).toHaveBeenCalled()
+      const callArgs = mockSentryCaptureMessage.mock.calls[0]
       expect(callArgs[1].extra).toBeDefined()
       // The scrubbing should remove sensitive fields
       expect(callArgs[1].extra.api_key).toBeUndefined()
