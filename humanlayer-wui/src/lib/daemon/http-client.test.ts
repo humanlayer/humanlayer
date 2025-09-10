@@ -126,10 +126,16 @@ describe('HTTPDaemonClient', () => {
 
       const health = await client.health()
 
-      // The HTTP client only returns status and version
+      // The HTTP client now returns the full health response including dependencies
       expect(health).toEqual({
         status: 'degraded',
         version: '1.0.0',
+        dependencies: {
+          claude: {
+            available: false,
+            error: 'claude binary not found',
+          },
+        },
       })
     })
 

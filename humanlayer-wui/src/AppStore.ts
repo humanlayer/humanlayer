@@ -851,7 +851,7 @@ export const useStore = create<StoreState>((set, get) => ({
     try {
       const [configResponse, healthResponse] = await Promise.all([
         daemonClient.getConfig(),
-        daemonClient.health()
+        daemonClient.health(),
       ])
 
       // Extract version info from health response
@@ -877,7 +877,7 @@ export const useStore = create<StoreState>((set, get) => ({
     try {
       const [configResponse, healthResponse] = await Promise.all([
         daemonClient.updateConfig({ claudePath: path }),
-        daemonClient.health()
+        daemonClient.health(),
       ])
 
       // Extract version info from health response

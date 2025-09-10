@@ -220,7 +220,8 @@ export function SettingsDialog({ open, onOpenChange, onConfigUpdate }: SettingsD
                     {/* Display version information */}
                     {claudeConfig?.claudeAvailable && claudeConfig.claudeVersion && (
                       <span className="text-xs text-muted-foreground">
-                        Version: <code className="bg-muted px-1 py-0.5 rounded">
+                        Version:{' '}
+                        <code className="bg-muted px-1 py-0.5 rounded">
                           {claudeConfig.claudeVersion}
                         </code>
                       </span>

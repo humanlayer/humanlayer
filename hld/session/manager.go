@@ -145,7 +145,7 @@ func (m *Manager) initializeClaudeClient() {
 		}
 		client, err = claudecode.NewClient()
 		if err == nil && client != nil {
-			slog.Info("Claude binary auto-detected", "detected_path", client.GetPath())
+			slog.Debug("Claude binary auto-detected", "detected_path", client.GetPath())
 		}
 	}
 
@@ -160,7 +160,7 @@ func (m *Manager) initializeClaudeClient() {
 			"configured_path", m.claudePath,
 			"PATH", os.Getenv("PATH"))
 	} else {
-		slog.Info("Claude client initialized successfully",
+		slog.Debug("Claude client initialized successfully",
 			"path", m.claudePath,
 			"PATH", os.Getenv("PATH"))
 	}
