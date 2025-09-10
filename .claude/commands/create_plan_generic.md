@@ -173,7 +173,7 @@ After structure approval:
      - Without ticket: `2025-01-08-improve-error-handling.md`
 2. **Use this template structure**:
 
-```markdown
+````markdown
 # [Feature/Task Name] Implementation Plan
 
 ## Overview
@@ -266,7 +266,7 @@ After structure approval:
 - Original ticket: `thoughts/allison/tickets/eng_XXXX.md`
 - Related research: `thoughts/shared/research/[relevant].md`
 - Similar implementation: `[file:line]`
-```
+````
 
 ### Step 5: Sync and Review
 
