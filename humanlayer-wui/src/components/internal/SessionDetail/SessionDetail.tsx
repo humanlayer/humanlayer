@@ -5,12 +5,9 @@ import { toast } from 'sonner'
 import { ConversationEvent, Session, ApprovalStatus, SessionStatus } from '@/lib/daemon/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { useConversation, useKeyboardNavigationProtection } from '@/hooks'
-import { ChevronDown, Archive, Pencil } from 'lucide-react'
-import { truncate } from '@/utils/formatting'
+import { ChevronDown } from 'lucide-react'
 import { daemonClient } from '@/lib/daemon/client'
 import { useStore } from '@/AppStore'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
 
 // Import extracted components
 import { ConversationContent } from './views/ConversationContent'
@@ -22,6 +19,7 @@ import { SessionModeIndicator } from './AutoAcceptIndicator'
 import { ForkViewModal } from './components/ForkViewModal'
 import { DangerouslySkipPermissionsDialog } from './DangerouslySkipPermissionsDialog'
 import { AdditionalDirectoriesDropdown } from './components/AdditionalDirectoriesDropdown'
+import { ActionButtons } from './components/ActionButtons'
 
 // Import hooks
 import { useSessionActions } from './hooks/useSessionActions'
@@ -179,7 +177,6 @@ function OmniSpinner({ randomVerb, spinnerType }: { randomVerb: string; spinnerT
 function SessionDetail({ session, onClose }: SessionDetailProps) {
   const { enableScope, disableScope } = useHotkeysContext()
   const [isWideView, setIsWideView] = useState(false)
-  const [isCompactView, setIsCompactView] = useState(false)
   const [expandedToolResult, setExpandedToolResult] = useState<ConversationEvent | null>(null)
   const [expandedToolCall, setExpandedToolCall] = useState<ConversationEvent | null>(null)
   const [isSplitView, setIsSplitView] = useState(false)
@@ -191,38 +188,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [dangerousSkipPermissionsDialogOpen, setDangerousSkipPermissionsDialogOpen] = useState(false)
   const [directoriesDropdownOpen, setDirectoriesDropdownOpen] = useState(false)
 
-  // State for inline title editing
-  const [isEditingTitle, setIsEditingTitle] = useState(false)
-  const [editValue, setEditValue] = useState('')
-
   const responseEditor = useStore(state => state.responseEditor)
-
-  // Helper functions for inline title editing
-  const startEditTitle = () => {
-    setIsEditingTitle(true)
-    setEditValue(session.title || session.summary || '')
-  }
-
-  const saveEditTitle = async () => {
-    try {
-      await daemonClient.updateSessionTitle(session.id, editValue)
-
-      // Update the session in the store
-      useStore.getState().updateSession(session.id, { title: editValue })
-
-      setIsEditingTitle(false)
-      setEditValue('')
-    } catch (error) {
-      toast.error('Failed to update session title', {
-        description: error instanceof Error ? error.message : 'Unknown error',
-      })
-    }
-  }
-
-  const cancelEditTitle = () => {
-    setIsEditingTitle(false)
-    setEditValue('')
-  }
 
   // Keyboard navigation protection
   const { shouldIgnoreMouseEvent, startKeyboardNavigation } = useKeyboardNavigationProtection()
@@ -469,8 +435,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   useEffect(() => {
     const checkScreenSize = () => {
       setIsWideView(window.innerWidth >= 1024) // lg breakpoint
-      // Consider compact view for heights less than 800px
-      setIsCompactView(window.innerHeight < 800)
     }
 
     checkScreenSize()
@@ -839,21 +803,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     },
   )
 
-  // Rename session hotkey
-  useHotkeys(
-    'shift+r',
-    () => {
-      startEditTitle()
-    },
-    {
-      scopes: SessionDetailHotkeysScope,
-      enabled: !isEditingTitle,
-      preventDefault: true,
-      enableOnFormTags: false,
-    },
-    [startEditTitle, isEditingTitle],
-  )
-
   // Toggle directories dropdown hotkey
   useHotkeys(
     'shift+d',
@@ -862,11 +811,11 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     },
     {
       scopes: SessionDetailHotkeysScope,
-      enabled: !isEditingTitle && !!session.workingDir,
+      enabled: !!session.workingDir,
       preventDefault: true,
       enableOnFormTags: false,
     },
-    [isEditingTitle, session.workingDir],
+    [session.workingDir],
   )
 
   // Don't steal scope here - SessionDetail is the base layer
@@ -923,186 +872,118 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     }
   }, [session.status, events])
 
-  let cardVerticalPadding = isCompactView ? 'py-2' : 'py-4'
+  let cardVerticalPadding = 'py-3'
 
   if (isActivelyProcessing) {
     const cardLoadingLowerPadding = 'pb-12'
-    cardVerticalPadding = isCompactView
-      ? `pt-2 ${cardLoadingLowerPadding}`
-      : `pt-4 ${cardLoadingLowerPadding}`
+    cardVerticalPadding = `pt-3 ${cardLoadingLowerPadding}`
   }
 
   return (
-    <section className={`flex flex-col h-full ${isCompactView ? 'gap-2' : 'gap-4'}`}>
-      {!isCompactView && (
-        <div className="flex items-start justify-between">
-          <hgroup className="flex flex-col gap-1 flex-1">
-            <h2 className="text-lg font-medium text-foreground font-mono flex items-center gap-2">
-              {session.archived && <Archive className="h-4 w-4 text-muted-foreground" />}
-              {isEditingTitle ? (
-                <div className="flex items-center gap-2 flex-1">
-                  <Input
-                    aria-label="Edit session title"
-                    value={editValue}
-                    onChange={e => setEditValue(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault()
-                        saveEditTitle()
-                      } else if (e.key === 'Escape') {
-                        e.preventDefault()
-                        cancelEditTitle()
-                      }
-                    }}
-                    className="h-7 text-sm font-mono"
-                    autoFocus
-                  />
-                  <Button size="sm" variant="ghost" onClick={saveEditTitle} className="h-7 px-2">
-                    Save
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={cancelEditTitle} className="h-7 px-2">
-                    Cancel
-                  </Button>
-                </div>
-              ) : (
-                <>
-                  <span>
-                    {session.title || session.summary || truncate(session.query, 50)}{' '}
-                    {session.parentSessionId && (
-                      <span className="text-muted-foreground">[continued]</span>
-                    )}
-                  </span>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={startEditTitle}
-                    className="h-5 w-5 p-0 opacity-60 hover:opacity-100 transition-opacity"
-                  >
-                    <Pencil className="h-3 w-3" />
-                  </Button>
-                </>
-              )}
-            </h2>
-            {session.workingDir && (
-              <AdditionalDirectoriesDropdown
-                workingDir={session.workingDir}
-                directories={session.additionalDirectories || []}
-                sessionStatus={session.status}
-                onDirectoriesChange={handleUpdateAdditionalDirectories}
-                open={directoriesDropdownOpen}
-                onOpenChange={setDirectoriesDropdownOpen}
-              />
-            )}
-          </hgroup>
-          <div className="flex items-center gap-1 ml-auto">
-            <ForkViewModal
-              events={events}
-              selectedEventIndex={previewEventIndex}
-              onSelectEvent={handleForkSelect}
-              isOpen={forkViewOpen}
-              onOpenChange={open => {
-                setForkViewOpen(open)
-                // Focus the input when closing the fork modal
-                // Use longer delay to ensure it happens after all dialog cleanup
-                if (!open && responseEditor) {
-                  setTimeout(() => {
-                    responseEditor.commands.focus()
-                  }, 50)
-                }
-              }}
-              sessionStatus={session.status}
-            />
-          </div>
-        </div>
-      )}
+    <section className="flex flex-col h-full gap-3">
+      {/* Unified header with working directory and action buttons */}
+      <div className="flex items-center justify-between gap-2">
+        {/* Working directory info */}
+        {session.workingDir && (
+          <AdditionalDirectoriesDropdown
+            workingDir={session.workingDir}
+            directories={session.additionalDirectories || []}
+            sessionStatus={session.status}
+            onDirectoriesChange={handleUpdateAdditionalDirectories}
+            open={directoriesDropdownOpen}
+            onOpenChange={setDirectoriesDropdownOpen}
+          />
+        )}
 
-      {isCompactView && (
-        <div className="flex items-start justify-between">
-          <hgroup className="flex flex-col gap-0.5 flex-1">
-            <h2 className="text-sm font-medium text-foreground font-mono flex items-center gap-2">
-              {session.archived && <Archive className="h-3 w-3 text-muted-foreground" />}
-              {isEditingTitle ? (
-                <div className="flex items-center gap-2 flex-1">
-                  <Input
-                    value={editValue}
-                    onChange={e => setEditValue(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault()
-                        saveEditTitle()
-                      } else if (e.key === 'Escape') {
-                        e.preventDefault()
-                        cancelEditTitle()
-                      }
-                    }}
-                    className="h-6 text-xs font-mono"
-                    autoFocus
-                  />
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={saveEditTitle}
-                    className="h-6 px-1 text-xs"
-                  >
-                    Save
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={cancelEditTitle}
-                    className="h-6 px-1 text-xs"
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              ) : (
-                <>
-                  <span>
-                    {session.title || session.summary || truncate(session.query, 50)}{' '}
-                    {session.parentSessionId && (
-                      <span className="text-muted-foreground">[continued]</span>
-                    )}
-                  </span>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={startEditTitle}
-                    className="h-4 w-4 p-0 opacity-60 hover:opacity-100 transition-opacity"
-                  >
-                    <Pencil className="h-3 w-3" />
-                  </Button>
-                </>
-              )}
-            </h2>
-          </hgroup>
-          <div className="flex items-center gap-1 ml-auto">
-            <ForkViewModal
-              events={events}
-              selectedEventIndex={previewEventIndex}
-              onSelectEvent={handleForkSelect}
-              isOpen={forkViewOpen}
-              onOpenChange={open => {
-                setForkViewOpen(open)
-                // Focus the input when closing the fork modal
-                // Use longer delay to ensure it happens after all dialog cleanup
-                if (!open && responseEditor) {
-                  setTimeout(() => {
-                    responseEditor.commands.focus()
-                  }, 50)
-                }
-              }}
-              sessionStatus={session.status}
-            />
-          </div>
+        {/* Action buttons */}
+        <div className="flex items-center gap-1 ml-auto">
+          <ActionButtons
+            sessionId={session.id}
+            canFork={previewEventIndex === null && !isActivelyProcessing}
+            bypassEnabled={dangerouslySkipPermissions}
+            autoAcceptEnabled={autoAcceptEdits}
+            sessionStatus={session.status}
+            isArchived={session.archived || false}
+            onToggleFork={handleToggleForkView}
+            onToggleBypass={handleToggleDangerouslySkipPermissions}
+            onToggleAutoAccept={handleToggleAutoAccept}
+            onToggleArchive={async () => {
+              // Check if session is active (requires confirmation)
+              const isActiveSession = [
+                SessionStatus.Starting,
+                SessionStatus.Running,
+                SessionStatus.WaitingInput,
+              ].includes(session.status as any)
+
+              const isArchiving = !session.archived
+
+              if (isActiveSession && !confirmingArchive) {
+                // First press - show warning
+                setConfirmingArchive(true)
+                toast.warning('Press e again to archive active session', {
+                  description:
+                    'This session is still active. Press e again within 3 seconds to confirm.',
+                  duration: 3000,
+                })
+
+                // Set timeout to reset confirmation state
+                confirmingArchiveTimeoutRef.current = setTimeout(() => {
+                  setConfirmingArchive(false)
+                  confirmingArchiveTimeoutRef.current = null
+                }, 3000)
+                return
+              }
+
+              // Either second press for active session or immediate archive for completed/failed
+              try {
+                await useStore.getState().archiveSession(session.id, isArchiving)
+
+                // Clear confirmation state
+                setConfirmingArchive(false)
+
+                // Show success notification matching list view behavior
+                toast.success(isArchiving ? 'Session archived' : 'Session unarchived', {
+                  description: session.summary || 'Untitled session',
+                  duration: 3000,
+                })
+
+                // Navigate back to session list
+                onClose()
+              } catch (error) {
+                toast.error('Failed to archive session', {
+                  description: error instanceof Error ? error.message : 'Unknown error',
+                })
+                setConfirmingArchive(false)
+              }
+            }}
+          />
+
+          <ForkViewModal
+            events={events}
+            selectedEventIndex={previewEventIndex}
+            onSelectEvent={handleForkSelect}
+            isOpen={forkViewOpen}
+            onOpenChange={open => {
+              setForkViewOpen(open)
+              // Focus the input when closing the fork modal
+              // Use longer delay to ensure it happens after all dialog cleanup
+              if (!open && responseEditor) {
+                setTimeout(() => {
+                  responseEditor.commands.focus()
+                }, 50)
+              }
+            }}
+            sessionStatus={session.status}
+          />
         </div>
-      )}
+      </div>
 
       <div className={`flex flex-1 gap-4 ${isWideView ? 'flex-row' : 'flex-col'} min-h-0`}>
         {/* Conversation content and Loading */}
         <Card
           className={`Conversation-Card ${isWideView ? 'flex-1' : 'w-full'} relative ${cardVerticalPadding} flex flex-col min-h-0`}
         >
-          <CardContent className={`${isCompactView ? 'px-2' : 'px-4'} flex flex-col flex-1 min-h-0`}>
+          <CardContent className="px-3 flex flex-col flex-1 min-h-0">
             <ConversationContent
               sessionId={session.id}
               focusedEventId={navigation.focusedEventId}
@@ -1170,52 +1051,57 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       </div>
 
       {/* Response input - always show but disable for non-completed sessions */}
-
-      <ResponseInput
-        denyingApprovalId={approvals.denyingApprovalId ?? undefined}
-        isDenying={approvals.isDenying}
-        onDeny={approvals.handleDeny}
-        handleCancelDeny={approvals.handleCancelDeny}
-        denyAgainstOldestApproval={approvals.denyAgainstOldestApproval}
-        session={session}
-        parentSessionData={parentSessionData || parentSession || undefined}
-        isResponding={actions.isResponding}
-        handleContinueSession={actions.handleContinueSession}
-        isForkMode={actions.isForkMode}
-        forkTokenCount={forkTokenCount}
-        forkTurnNumber={
-          previewEventIndex !== null
-            ? events
-                .slice(0, previewEventIndex)
-                .filter(e => e.eventType === 'message' && e.role === 'user').length
-            : undefined
-        }
-        onModelChange={() => {
-          // Refresh session data if needed
-          fetchActiveSessionDetail(session.id)
-        }}
-        sessionStatus={session.status}
-        onToggleAutoAccept={handleToggleAutoAccept}
-        onToggleDangerouslySkipPermissions={handleToggleDangerouslySkipPermissions}
-        onToggleForkView={handleToggleForkView}
-      />
-      {/* Session mode indicator - shows fork, dangerous skip permissions or auto-accept */}
-      <SessionModeIndicator
-        sessionId={session.id}
-        autoAcceptEdits={autoAcceptEdits}
-        dangerouslySkipPermissions={dangerouslySkipPermissions}
-        dangerouslySkipPermissionsExpiresAt={dangerouslySkipPermissionsExpiresAt}
-        isForkMode={previewEventIndex !== null}
-        forkTurnNumber={
-          previewEventIndex !== null
-            ? events
-                .slice(0, previewEventIndex)
-                .filter(e => e.eventType === 'message' && e.role === 'user').length
-            : undefined
-        }
-        forkTokenCount={forkTokenCount}
-        className="mt-2"
-      />
+      <Card className="py-2">
+        <CardContent className="px-2">
+          <ResponseInput
+            denyingApprovalId={approvals.denyingApprovalId ?? undefined}
+            isDenying={approvals.isDenying}
+            onDeny={approvals.handleDeny}
+            handleCancelDeny={approvals.handleCancelDeny}
+            denyAgainstOldestApproval={approvals.denyAgainstOldestApproval}
+            session={session}
+            parentSessionData={parentSessionData || parentSession || undefined}
+            isResponding={actions.isResponding}
+            handleContinueSession={actions.handleContinueSession}
+            isForkMode={actions.isForkMode}
+            forkTokenCount={forkTokenCount}
+            forkTurnNumber={
+              previewEventIndex !== null
+                ? events
+                    .slice(0, previewEventIndex)
+                    .filter(e => e.eventType === 'message' && e.role === 'user').length
+                : undefined
+            }
+            onModelChange={() => {
+              // Refresh session data if needed
+              fetchActiveSessionDetail(session.id)
+            }}
+            sessionStatus={session.status}
+            onToggleAutoAccept={handleToggleAutoAccept}
+            onToggleDangerouslySkipPermissions={handleToggleDangerouslySkipPermissions}
+            onToggleForkView={handleToggleForkView}
+          />
+          {/* Session mode indicator - shows fork, dangerous skip permissions or auto-accept */}
+          <SessionModeIndicator
+            sessionId={session.id}
+            autoAcceptEdits={autoAcceptEdits}
+            dangerouslySkipPermissions={dangerouslySkipPermissions}
+            dangerouslySkipPermissionsExpiresAt={dangerouslySkipPermissionsExpiresAt}
+            isForkMode={previewEventIndex !== null}
+            forkTurnNumber={
+              previewEventIndex !== null
+                ? events
+                    .slice(0, previewEventIndex)
+                    .filter(e => e.eventType === 'message' && e.role === 'user').length
+                : undefined
+            }
+            forkTokenCount={forkTokenCount}
+            className="mt-2"
+            onToggleAutoAccept={handleToggleAutoAccept}
+            onToggleBypass={handleToggleDangerouslySkipPermissions}
+          />
+        </CardContent>
+      </Card>
 
       {/* Tool Result Expansion Modal */}
       {(expandedToolResult || expandedToolCall) && (
