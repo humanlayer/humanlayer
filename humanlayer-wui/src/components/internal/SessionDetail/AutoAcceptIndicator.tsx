@@ -1,9 +1,11 @@
 import { FC, useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
-import { ShieldOff } from 'lucide-react'
+import { ShieldOff, Info } from 'lucide-react'
 import { toast } from 'sonner'
 import { useStore } from '@/AppStore'
 import { logger } from '@/lib/logging'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { KeyboardShortcut } from '@/components/ui/keyboard-shortcut'
 
 interface SessionModeIndicatorProps {
   sessionId: string
@@ -14,6 +16,8 @@ interface SessionModeIndicatorProps {
   forkTurnNumber?: number
   forkTokenCount?: number | null // Keep for compatibility, but not used
   className?: string
+  onToggleAutoAccept?: () => void
+  onToggleBypass?: () => void
 }
 
 export const SessionModeIndicator: FC<SessionModeIndicatorProps> = ({
@@ -24,6 +28,8 @@ export const SessionModeIndicator: FC<SessionModeIndicatorProps> = ({
   isForkMode = false,
   forkTurnNumber,
   className,
+  onToggleAutoAccept,
+  onToggleBypass,
 }) => {
   const [timeRemaining, setTimeRemaining] = useState<string>('')
   const { updateSessionOptimistic } = useStore()
@@ -83,46 +89,54 @@ export const SessionModeIndicator: FC<SessionModeIndicatorProps> = ({
   // Bypass permissions takes second priority
   if (dangerouslySkipPermissions) {
     return (
-      <div
+      <button
+        onClick={onToggleBypass}
         className={cn(
-          'flex items-center justify-between gap-3 px-3 py-1.5',
+          'flex items-center justify-between gap-3 px-3 py-1.5 w-full',
           'text-sm font-medium',
           'bg-[var(--terminal-error)]/15',
           'text-[var(--terminal-error)]',
           'border border-[var(--terminal-error)]/40',
           'rounded-md',
           'animate-pulse-error',
+          'hover:bg-[var(--terminal-error)]/25 transition-colors',
           className,
         )}
       >
         <div className="flex items-center gap-2">
           <ShieldOff className="h-4 w-4" strokeWidth={3} />
-          <span>BYPASSING PERMISSIONS</span>
+          <span className="uppercase tracking-wider">BYPASSING PERMISSIONS</span>
           {dangerouslySkipPermissionsExpiresAt && timeRemaining && (
-            <span className="font-mono text-sm">{timeRemaining}</span>
+            <span className="font-mono text-sm">({timeRemaining})</span>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          <kbd className="px-1.5 py-0.5 text-xs font-mono font-medium border border-[var(--terminal-error)]/30 rounded">
-            ⌥Y
-          </kbd>
-          <span className="text-xs opacity-75">to disable</span>
-        </div>
-      </div>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Info className="h-3.5 w-3.5 text-[var(--terminal-error)]/60" />
+          </TooltipTrigger>
+          <TooltipContent>
+            <p className="flex items-center gap-1">
+              Click or press <KeyboardShortcut>⌥Y</KeyboardShortcut> to disable
+            </p>
+          </TooltipContent>
+        </Tooltip>
+      </button>
     )
   }
 
   // Auto-accept mode display
   return (
-    <div
+    <button
+      onClick={onToggleAutoAccept}
       className={cn(
-        'flex items-center justify-between gap-3 px-3 py-1.5',
+        'flex items-center justify-between gap-3 px-3 py-1.5 w-full',
         'text-sm font-medium',
         'bg-[var(--terminal-warning)]/15',
         'text-[var(--terminal-warning)]',
         'border border-[var(--terminal-warning)]/30',
         'rounded-md',
         'animate-pulse-warning',
+        'hover:bg-[var(--terminal-warning)]/25 transition-colors',
         className,
       )}
     >
@@ -130,13 +144,17 @@ export const SessionModeIndicator: FC<SessionModeIndicatorProps> = ({
         <span className="text-base leading-none">⏵⏵</span>
         <span>auto-accept edits on</span>
       </div>
-      <div className="flex items-center gap-2">
-        <kbd className="px-1.5 py-0.5 text-xs font-mono font-medium border border-[var(--terminal-warning)]/30 rounded">
-          Shift+Tab
-        </kbd>
-        <span className="text-xs opacity-75">to disable</span>
-      </div>
-    </div>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Info className="h-3.5 w-3.5 text-[var(--terminal-warning)]/60" />
+        </TooltipTrigger>
+        <TooltipContent>
+          <p className="flex items-center gap-1">
+            Click or press <KeyboardShortcut>Shift+Tab</KeyboardShortcut> to disable
+          </p>
+        </TooltipContent>
+      </Tooltip>
+    </button>
   )
 }
 
