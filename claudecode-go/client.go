@@ -2,6 +2,7 @@ package claudecode
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -110,6 +111,39 @@ func NewClientWithPath(claudePath string) *Client {
 // GetPath returns the path to the Claude binary
 func (c *Client) GetPath() string {
 	return c.claudePath
+}
+
+// GetVersion executes claude --version and returns the version string
+func (c *Client) GetVersion() (string, error) {
+	if c.claudePath == "" {
+		return "", fmt.Errorf("claude path not set")
+	}
+
+	// Create command with timeout to prevent hanging
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, c.claudePath, "--version")
+	output, err := cmd.Output()
+	if err != nil {
+		// Check if it was a timeout
+		if ctx.Err() == context.DeadlineExceeded {
+			return "", fmt.Errorf("claude --version timed out after 5 seconds")
+		}
+		// Check for exit error to get more details
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			return "", fmt.Errorf("claude --version failed with exit code %d: %s", exitErr.ExitCode(), string(exitErr.Stderr))
+		}
+		return "", fmt.Errorf("failed to execute claude --version: %w", err)
+	}
+
+	// Trim whitespace and return
+	version := strings.TrimSpace(string(output))
+	if version == "" {
+		return "", fmt.Errorf("claude --version returned empty output")
+	}
+
+	return version, nil
 }
 
 // isExecutable checks if file is executable

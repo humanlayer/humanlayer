@@ -641,6 +641,14 @@ components:
                   type: string
                   nullable: true
                   description: Path to Claude binary if available
+                version:
+                  type: string
+                  nullable: true
+                  description: Claude binary version (e.g., "1.0.110")
+                version_error:
+                  type: string
+                  nullable: true
+                  description: Error message if version check failed
                 error:
                   type: string
                   nullable: true
