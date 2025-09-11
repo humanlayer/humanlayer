@@ -1,5 +1,6 @@
 import { daemonService } from '@/services/daemon-service'
 import { logger } from '@/lib/logging'
+import { getAppVersion } from '@/lib/version'
 
 // Get daemon URL from environment or managed daemon
 export async function getDaemonUrl(): Promise<string> {
@@ -34,6 +35,6 @@ export async function getDaemonUrl(): Promise<string> {
 export function getDefaultHeaders(): Record<string, string> {
   return {
     'X-Client': 'codelayer',
-    'X-Client-Version': import.meta.env.VITE_APP_VERSION || 'unknown',
+    'X-Client-Version': getAppVersion(), // Use standardized version (e.g., "0.1.0-20250910-143022-nightly")
   }
 }

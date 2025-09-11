@@ -38,6 +38,7 @@ import { logger } from '@/lib/logging'
 import { DangerousSkipPermissionsMonitor } from '@/components/DangerousSkipPermissionsMonitor'
 import { KeyboardShortcut } from '@/components/HotkeyPanel'
 import { DvdScreensaver } from '@/components/DvdScreensaver'
+import { TestErrorTrigger } from '@/components/TestErrorTrigger'
 
 export function Layout() {
   const [approvals, setApprovals] = useState<any[]>([])
@@ -678,6 +679,9 @@ export function Layout() {
 
       {/* DVD Screensaver */}
       <DvdScreensaver />
+
+      {/* Test Error Trigger for Sentry testing */}
+      <TestErrorTrigger />
     </div>
   )
 }

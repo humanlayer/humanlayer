@@ -6,11 +6,13 @@ import { QuickLauncher } from '@/components/QuickLauncher'
 import StoreDemo from '@/pages/StoreDemo'
 import WuiDemo from '@/pages/WuiDemo'
 import StackedCardsDemo from '@/pages/StackedCardsDemo'
+import { RouteErrorBoundary } from '@/components/RouteErrorBoundary'
 
 export const router = createHashRouter([
   {
     path: '/',
     element: <Layout />,
+    errorElement: <RouteErrorBoundary />,
     children: [
       {
         index: true,

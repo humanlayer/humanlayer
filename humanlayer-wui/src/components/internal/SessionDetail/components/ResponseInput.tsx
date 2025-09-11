@@ -11,7 +11,7 @@ import { ResponseInputLocalStorageKey } from '@/components/internal/SessionDetai
 import { StatusBar } from './StatusBar'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { ResponseEditor } from './ResponseEditor'
-import { ResponseEditorErrorBoundary } from './ResponseEditorErrorBoundary'
+import { SentryErrorBoundary } from '@/components/ErrorBoundary'
 import { useStore } from '@/AppStore'
 import { logger } from '@/lib/logging'
 import { Content } from '@tiptap/react'
@@ -329,7 +329,15 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
 
               {/* Existing input area */}
               <div className="flex gap-2">
-                <ResponseEditorErrorBoundary>
+                <SentryErrorBoundary
+                  variant="response-editor"
+                  componentName="ResponseEditor"
+                  handleRefresh={() => {
+                    // Clear URL params and reload to recover the editor
+                    window.location.href = `/#/sessions/${session.id}`
+                  }}
+                  refreshButtonText="Reload Session"
+                >
                   <ResponseEditor
                     ref={tiptapRef}
                     initialValue={initialValue}
@@ -355,7 +363,7 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
                       setIsFocused(false)
                     }}
                   />
-                </ResponseEditorErrorBoundary>
+                </SentryErrorBoundary>
               </div>
 
               {/* Keyboard shortcuts (condensed) */}
