@@ -2,7 +2,7 @@ import { Toaster } from 'sonner'
 
 /**
  * CodeLayerToaster - Custom styled toast notifications
- * 
+ *
  * Uses Sonner's unstyled mode with comprehensive Tailwind classes
  * to match our design system while maintaining full control over styling.
  */
@@ -16,9 +16,9 @@ export function CodeLayerToaster() {
         info: null,
         loading: null,
       }}
-      toastOptions={{ 
+      toastOptions={{
         unstyled: true,
-        classNames: { 
+        classNames: {
           // Base toast container - Sonner default: padding: 16px, gap: 6px, border-radius: 8px
           toast: `
             relative
@@ -34,26 +34,26 @@ export function CodeLayerToaster() {
             bg-background
             border-border
             text-foreground
-            
+
             /* Hide content of background toasts in unstyled mode */
             [&[data-expanded='false'][data-front='false']>*:not([data-close-button])]:opacity-0
           `,
-          
+
           // Title styles - Sonner default: font-weight: 500, line-height: 1.5
           title: 'font-medium text-sm leading-tight',
-          
+
           // Description styles - Sonner default: font-weight: 400, line-height: 1.4
           description: 'text-sm opacity-90 leading-relaxed mt-1',
-          
+
           // Content wrapper - Sonner default: gap: 2px
           content: 'flex flex-col gap-0.5 flex-1',
-          
+
           // Icon styles - Not used since we disable icons
           // icon: 'h-4 w-4 flex-shrink-0',
-          
+
           // Loader/spinner styles - Not used since we disable icons
           // loader: 'h-4 w-4 animate-spin opacity-40',
-          
+
           // Close button - Sonner default: 20x20px, transform: translate(-35%, -35%)
           closeButton: `
             absolute -top-2.5 -left-2.5
@@ -69,7 +69,7 @@ export function CodeLayerToaster() {
             cursor-pointer
             z-10
           `,
-          
+
           // Action button - Matches app's button styling
           actionButton: `
             ml-auto flex-shrink-0
@@ -87,7 +87,7 @@ export function CodeLayerToaster() {
             focus-visible:outline-2 focus-visible:outline-dashed
             focus-visible:outline-offset-2 focus-visible:outline-ring
           `,
-          
+
           // Cancel button - Secondary/outline variant
           cancelButton: `
             ml-2 flex-shrink-0
@@ -105,48 +105,48 @@ export function CodeLayerToaster() {
             focus-visible:outline-2 focus-visible:outline-dashed
             focus-visible:outline-offset-2 focus-visible:outline-ring
           `,
-          
+
           // Type-specific styles (replaces richColors)
           // Uses theme-aware terminal colors like the rest of the app
           // Important flags needed to override base styles due to class concatenation order
           success: `
             ![background-color:color-mix(in_srgb,var(--terminal-success)_20%,var(--color-background))]
-            !border-[var(--terminal-success)] 
+            !border-[var(--terminal-success)]
             !text-[var(--terminal-success)]
           `,
-          
+
           // Error uses terminal error color with opacity for background
           error: `
             ![background-color:color-mix(in_srgb,var(--terminal-error)_20%,var(--color-background))]
-            !border-[var(--terminal-error)] 
+            !border-[var(--terminal-error)]
             !text-[var(--terminal-error)]
           `,
-          
+
           // Warning uses terminal warning color consistently
           warning: `
             ![background-color:color-mix(in_srgb,var(--terminal-warning)_20%,var(--color-background))]
-            !border-[var(--terminal-warning)] 
+            !border-[var(--terminal-warning)]
             !text-[var(--terminal-warning)]
           `,
-          
+
           // Info uses the terminal accent color for consistency
           info: `
             ![background-color:color-mix(in_srgb,var(--terminal-accent)_20%,var(--color-background))]
-            !border-[var(--terminal-accent)] 
+            !border-[var(--terminal-accent)]
             !text-[var(--terminal-accent)]
           `,
-          
+
           // Loading state uses muted colors
           loading: `
-            bg-muted/50 
-            border-muted-foreground/50 
+            bg-muted/50
+            border-muted-foreground/50
             text-muted-foreground
           `,
-          
+
           // Default/normal toast (when no type specified)
           // Note: Don't add colors here as they override type-specific colors
-          default: ''
-        } 
+          default: '',
+        },
       }}
       position="bottom-right"
     />

@@ -153,9 +153,7 @@ class SentryErrorBoundaryCore extends React.Component<Props, State> {
 
               {import.meta.env.DEV && this.state.error && (
                 <details className="mt-6 text-left">
-                  <summary className="cursor-pointer font-mono text-sm">
-                    Error Details 
-                  </summary>
+                  <summary className="cursor-pointer font-mono text-sm">Error Details</summary>
                   <pre className="mt-2 text-xs bg-muted p-4 rounded overflow-auto">
                     {this.state.error.stack}
                   </pre>
