@@ -86,6 +86,8 @@ export function Layout() {
   useHotkeys('mod+shift+c', () => {
     toast.dismiss()
     console.log('All toasts cleared')
+  }, {
+    preventDefault: true
   })
 
   // Toast styling test hotkey - cycles through toast types one at a time
@@ -185,6 +187,8 @@ export function Layout() {
 
     // Move to next index, cycling back to 0 after the last one
     setToastTestIndex(prev => (prev + 1) % toastTypes.length)
+  }, {
+    preventDefault: true
   })
 
   // Get store actions

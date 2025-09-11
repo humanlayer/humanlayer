@@ -9,6 +9,13 @@ import { Toaster } from 'sonner'
 export function CodeLayerToaster() {
   return (
     <Toaster
+      icons={{
+        success: null,
+        error: null,
+        warning: null,
+        info: null,
+        loading: null,
+      }}
       toastOptions={{ 
         unstyled: true,
         classNames: { 
@@ -22,9 +29,11 @@ export function CodeLayerToaster() {
             rounded-lg
             shadow-lg
             border
-            bg-white border-gray-200 text-gray-900
-            dark:bg-gray-900 dark:border-gray-800 dark:text-gray-100
+            font-mono
             transition-all duration-300
+            bg-background
+            border-border
+            text-foreground
           `,
           
           // Title styles - Sonner default: font-weight: 500, line-height: 1.5
@@ -36,11 +45,11 @@ export function CodeLayerToaster() {
           // Content wrapper - Sonner default: gap: 2px
           content: 'flex flex-col gap-0.5 flex-1',
           
-          // Icon styles - Sonner default: 16x16px
-          icon: 'h-4 w-4 flex-shrink-0',
+          // Icon styles - Not used since we disable icons
+          // icon: 'h-4 w-4 flex-shrink-0',
           
-          // Loader/spinner styles
-          loader: 'h-4 w-4 animate-spin opacity-40',
+          // Loader/spinner styles - Not used since we disable icons
+          // loader: 'h-4 w-4 animate-spin opacity-40',
           
           // Close button - Sonner default: 20x20px, transform: translate(-35%, -35%)
           closeButton: `
@@ -48,11 +57,11 @@ export function CodeLayerToaster() {
             h-5 w-5
             flex items-center justify-center
             rounded-full
-            bg-white dark:bg-gray-900
-            border border-gray-200 dark:border-gray-800
-            text-gray-500 hover:text-gray-900
-            dark:text-gray-400 dark:hover:text-gray-100
-            hover:bg-gray-50 dark:hover:bg-gray-800
+            bg-background
+            border border-border
+            text-foreground
+            hover:bg-muted
+            hover:border-muted-foreground
             transition-colors
             cursor-pointer
           `,
@@ -61,7 +70,7 @@ export function CodeLayerToaster() {
           actionButton: `
             ml-auto flex-shrink-0
             px-2 py-1
-            text-xs font-medium
+            text-xs font-mono font-medium
             rounded
             bg-gray-900 text-white
             dark:bg-white dark:text-gray-900
@@ -74,7 +83,7 @@ export function CodeLayerToaster() {
           cancelButton: `
             ml-2 flex-shrink-0
             px-2 py-1
-            text-xs font-medium
+            text-xs font-mono font-medium
             rounded
             bg-gray-100 text-gray-900
             dark:bg-gray-800 dark:text-gray-100
@@ -84,37 +93,44 @@ export function CodeLayerToaster() {
           `,
           
           // Type-specific styles (replaces richColors)
-          // Success - Light: hsl(143, 85%, 96%), Dark: hsl(150, 100%, 6%)
+          // Uses theme-aware terminal colors like the rest of the app
+          // Important flags needed to override base styles due to class concatenation order
           success: `
-            bg-green-50 border-green-200 text-green-900
-            dark:bg-green-950 dark:border-green-900 dark:text-green-100
+            ![background-color:color-mix(in_srgb,var(--terminal-success)_20%,var(--color-background))]
+            !border-[var(--terminal-success)] 
+            !text-[var(--terminal-success)]
           `,
           
-          // Error - Light: hsl(359, 100%, 97%), Dark: hsl(358, 76%, 10%)
+          // Error uses terminal error color with opacity for background
           error: `
-            bg-red-50 border-red-200 text-red-900
-            dark:bg-red-950 dark:border-red-900 dark:text-red-100
+            ![background-color:color-mix(in_srgb,var(--terminal-error)_20%,var(--color-background))]
+            !border-[var(--terminal-error)] 
+            !text-[var(--terminal-error)]
           `,
           
-          // Warning - Light: hsl(49, 100%, 97%), Dark: hsl(64, 100%, 6%)
+          // Warning uses terminal warning color consistently
           warning: `
-            bg-amber-50 border-amber-200 text-amber-900
-            dark:bg-amber-950 dark:border-amber-900 dark:text-amber-100
+            ![background-color:color-mix(in_srgb,var(--terminal-warning)_20%,var(--color-background))]
+            !border-[var(--terminal-warning)] 
+            !text-[var(--terminal-warning)]
           `,
           
-          // Info - Light: hsl(208, 100%, 97%), Dark: hsl(215, 100%, 6%)
+          // Info uses the terminal accent color for consistency
           info: `
-            bg-blue-50 border-blue-200 text-blue-900
-            dark:bg-blue-950 dark:border-blue-900 dark:text-blue-100
+            ![background-color:color-mix(in_srgb,var(--terminal-accent)_20%,var(--color-background))]
+            !border-[var(--terminal-accent)] 
+            !text-[var(--terminal-accent)]
           `,
           
-          // Loading state
+          // Loading state uses muted colors
           loading: `
-            bg-gray-50 border-gray-200 text-gray-900
-            dark:bg-gray-950 dark:border-gray-800 dark:text-gray-100
+            bg-muted/50 
+            border-muted-foreground/50 
+            text-muted-foreground
           `,
           
           // Default/normal toast (when no type specified)
+          // Note: Don't add colors here as they override type-specific colors
           default: ''
         } 
       }}
