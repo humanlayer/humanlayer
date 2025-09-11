@@ -70,30 +70,40 @@ export function CodeLayerToaster() {
             z-10
           `,
           
-          // Action button - Sonner default: height: 24px, font-size: 12px, padding: 0 8px
+          // Action button - Matches app's button styling
           actionButton: `
             ml-auto flex-shrink-0
-            px-2 py-1
+            inline-flex items-center justify-center
+            px-3 h-8
             text-xs font-mono font-medium
-            rounded
-            bg-gray-900 text-white
-            dark:bg-white dark:text-gray-900
-            hover:opacity-90
-            transition-opacity
+            uppercase tracking-wider
+            rounded-none
+            border
+            bg-background text-accent border-accent
+            hover:bg-accent hover:text-background
+            transition-all
             cursor-pointer
+            outline-none
+            focus-visible:outline-2 focus-visible:outline-dashed
+            focus-visible:outline-offset-2 focus-visible:outline-ring
           `,
           
-          // Cancel button - Secondary action
+          // Cancel button - Secondary/outline variant
           cancelButton: `
             ml-2 flex-shrink-0
-            px-2 py-1
+            inline-flex items-center justify-center
+            px-3 h-8
             text-xs font-mono font-medium
-            rounded
-            bg-gray-100 text-gray-900
-            dark:bg-gray-800 dark:text-gray-100
-            hover:bg-gray-200 dark:hover:bg-gray-700
-            transition-colors
+            uppercase tracking-wider
+            rounded-none
+            border
+            bg-transparent text-accent border-accent
+            hover:bg-accent hover:text-background
+            transition-all
             cursor-pointer
+            outline-none
+            focus-visible:outline-2 focus-visible:outline-dashed
+            focus-visible:outline-offset-2 focus-visible:outline-ring
           `,
           
           // Type-specific styles (replaces richColors)
