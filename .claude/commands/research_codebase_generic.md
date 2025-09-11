@@ -49,7 +49,14 @@ Then wait for the user's research query.
 
 5. **Gather metadata for the research document:**
    - generate all relevant metadata
-   - Filename: `thoughts/shared/research/YYYY-MM-DD_HH-MM-SS_topic.md`
+   - Filename: `thoughts/shared/research/YYYY-MM-DD-ENG-XXXX-description.md`
+     - Format: `YYYY-MM-DD-ENG-XXXX-description.md` where:
+       - YYYY-MM-DD is today's date
+       - ENG-XXXX is the ticket number (omit if no ticket)
+       - description is a brief kebab-case description of the research topic
+     - Examples:
+       - With ticket: `2025-01-08-ENG-1478-parent-child-tracking.md`
+       - Without ticket: `2025-01-08-authentication-flow.md`
 
 6. **Generate research document:**
    - Use the metadata gathered in step 4
