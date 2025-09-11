@@ -67,7 +67,7 @@ export function RouteErrorBoundary() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-8 text-center">
-      <AlertCircle className="w-16 h-16 text-red-500 mb-4" />
+      <AlertCircle className="w-16 h-16 text-destructive mb-4" />
       <h1 className="text-2xl font-bold mb-2">Something went wrong</h1>
       <p className="text-muted-foreground mb-6 max-w-md">
         {errorMessage}. The error has been reported and we'll investigate the issue.
@@ -79,7 +79,7 @@ export function RouteErrorBoundary() {
 
       {import.meta.env.DEV && errorStack && (
         <details className="mt-6 text-left max-w-2xl">
-          <summary className="cursor-pointer font-mono text-sm">Error Details (dev only)</summary>
+          <summary className="cursor-pointer font-mono text-sm">Error Details</summary>
           <pre className="mt-2 text-xs bg-muted p-4 rounded overflow-auto">{errorStack}</pre>
         </details>
       )}
