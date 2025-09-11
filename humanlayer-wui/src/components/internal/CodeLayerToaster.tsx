@@ -34,6 +34,9 @@ export function CodeLayerToaster() {
             bg-background
             border-border
             text-foreground
+            
+            /* Hide content of background toasts in unstyled mode */
+            [&[data-expanded='false'][data-front='false']>*:not([data-close-button])]:opacity-0
           `,
           
           // Title styles - Sonner default: font-weight: 500, line-height: 1.5
@@ -64,6 +67,7 @@ export function CodeLayerToaster() {
             hover:border-muted-foreground
             transition-colors
             cursor-pointer
+            z-10
           `,
           
           // Action button - Sonner default: height: 24px, font-size: 12px, padding: 0 8px
