@@ -24,7 +24,7 @@ import { useSessionLauncher, useSessionLauncherHotkeys } from '@/hooks/useSessio
 import { useDaemonConnection } from '@/hooks/useDaemonConnection'
 import { useStore } from '@/AppStore'
 import { useSessionSubscriptions } from '@/hooks/useSubscriptions'
-import { Toaster } from 'sonner'
+import { toast } from 'sonner'
 import { notificationService, type NotificationOptions } from '@/services/NotificationService'
 import { useTheme } from '@/contexts/ThemeContext'
 import { formatMcpToolName, getSessionNotificationText } from '@/utils/formatting'
@@ -39,6 +39,7 @@ import { DangerousSkipPermissionsMonitor } from '@/components/DangerousSkipPermi
 import { KeyboardShortcut } from '@/components/HotkeyPanel'
 import { DvdScreensaver } from '@/components/DvdScreensaver'
 import { TestErrorTrigger } from '@/components/TestErrorTrigger'
+import { CodeLayerToaster } from '@/components/internal/CodeLayerToaster'
 
 export function Layout() {
   const [approvals, setApprovals] = useState<any[]>([])
@@ -51,6 +52,7 @@ export function Layout() {
   const isSettingsDialogOpen = useStore(state => state.isSettingsDialogOpen)
   const setSettingsDialogOpen = useStore(state => state.setSettingsDialogOpen)
   const [showTelemetryModal, setShowTelemetryModal] = useState(false)
+  const [toastTestIndex, setToastTestIndex] = useState(0)
 
   // Use the daemon connection hook for all connection management
   const { connected, connecting, version, healthStatus, connect, checkHealth } = useDaemonConnection()
@@ -79,6 +81,111 @@ export function Layout() {
       enableOnFormTags: true,
     },
   )
+
+  // Clear all toasts hotkey
+  useHotkeys('mod+shift+c', () => {
+    toast.dismiss()
+    console.log('All toasts cleared')
+  })
+
+  // Toast styling test hotkey - cycles through toast types one at a time
+  useHotkeys('mod+shift+t', () => {
+    const toastTypes = [
+      {
+        type: 'default',
+        title: 'Default Toast',
+        description: 'This is a default toast notification for styling',
+        action: () =>
+          toast('Default Toast', {
+            description: 'This is a default toast notification for styling',
+            duration: Infinity,
+            closeButton: true,
+          }),
+      },
+      {
+        type: 'success',
+        title: 'Success Toast',
+        description: 'This is a success notification showing completion',
+        action: () =>
+          toast.success('Success Toast', {
+            description: 'This is a success notification showing completion',
+            duration: Infinity,
+            closeButton: true,
+          }),
+      },
+      {
+        type: 'error',
+        title: 'Error Toast',
+        description: 'This is an error notification showing a failure',
+        action: () =>
+          toast.error('Error Toast', {
+            description: 'This is an error notification showing a failure',
+            duration: Infinity,
+            closeButton: true,
+          }),
+      },
+      {
+        type: 'warning',
+        title: 'Warning Toast',
+        description: 'This is a warning notification for caution',
+        action: () =>
+          toast.warning('Warning Toast', {
+            description: 'This is a warning notification for caution',
+            duration: Infinity,
+            closeButton: true,
+          }),
+      },
+      {
+        type: 'info',
+        title: 'Info Toast',
+        description: 'This is an informational notification',
+        action: () =>
+          toast.info('Info Toast', {
+            description: 'This is an informational notification',
+            duration: Infinity,
+            closeButton: true,
+          }),
+      },
+      {
+        type: 'action',
+        title: 'Toast with Action',
+        description: 'This toast has an action button',
+        action: () =>
+          toast('Toast with Action', {
+            description: 'This toast has an action button',
+            duration: Infinity,
+            closeButton: true,
+            action: {
+              label: 'Take Action',
+              onClick: () => console.log('Action clicked!'),
+            },
+          }),
+      },
+      {
+        type: 'long',
+        title: 'Long Content Toast',
+        description:
+          'This is a toast with much longer content to test how the styling handles wrapping and larger blocks of text. It might contain important information that requires more space.',
+        action: () =>
+          toast('Long Content Toast', {
+            description:
+              'This is a toast with much longer content to test how the styling handles wrapping and larger blocks of text. It might contain important information that requires more space.',
+            duration: Infinity,
+            closeButton: true,
+          }),
+      },
+    ]
+
+    // Execute the current toast type
+    const currentToast = toastTypes[toastTestIndex]
+    currentToast.action()
+
+    // Log which toast was triggered for debugging
+    console.log(`Toast test ${toastTestIndex + 1}/${toastTypes.length}: ${currentToast.type}`)
+
+    // Move to next index, cycling back to 0 after the last one
+    setToastTestIndex(prev => (prev + 1) % toastTypes.length)
+  })
 
   // Get store actions
   const updateSession = useStore(state => state.updateSession)
@@ -659,7 +766,7 @@ export function Layout() {
       <HotkeyPanel open={isHotkeyPanelOpen} onOpenChange={setHotkeyPanelOpen} />
 
       {/* Notifications */}
-      <Toaster position="bottom-right" richColors />
+      <CodeLayerToaster />
 
       {/* Debug Panel */}
       <DebugPanel open={isDebugPanelOpen} onOpenChange={setIsDebugPanelOpen} />
