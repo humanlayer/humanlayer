@@ -24,7 +24,6 @@ import { useSessionLauncher, useSessionLauncherHotkeys } from '@/hooks/useSessio
 import { useDaemonConnection } from '@/hooks/useDaemonConnection'
 import { useStore } from '@/AppStore'
 import { useSessionSubscriptions } from '@/hooks/useSubscriptions'
-import { Toaster } from 'sonner'
 import { notificationService, type NotificationOptions } from '@/services/NotificationService'
 import { useTheme } from '@/contexts/ThemeContext'
 import { formatMcpToolName, getSessionNotificationText } from '@/utils/formatting'
@@ -38,6 +37,8 @@ import { logger } from '@/lib/logging'
 import { DangerousSkipPermissionsMonitor } from '@/components/DangerousSkipPermissionsMonitor'
 import { KeyboardShortcut } from '@/components/HotkeyPanel'
 import { DvdScreensaver } from '@/components/DvdScreensaver'
+import { TestErrorTrigger } from '@/components/TestErrorTrigger'
+import { CodeLayerToaster } from '@/components/internal/CodeLayerToaster'
 
 export function Layout() {
   const [approvals, setApprovals] = useState<any[]>([])
@@ -658,7 +659,7 @@ export function Layout() {
       <HotkeyPanel open={isHotkeyPanelOpen} onOpenChange={setHotkeyPanelOpen} />
 
       {/* Notifications */}
-      <Toaster position="bottom-right" richColors />
+      <CodeLayerToaster />
 
       {/* Debug Panel */}
       <DebugPanel open={isDebugPanelOpen} onOpenChange={setIsDebugPanelOpen} />
@@ -678,6 +679,9 @@ export function Layout() {
 
       {/* DVD Screensaver */}
       <DvdScreensaver />
+
+      {/* Test Error Trigger for Sentry testing */}
+      <TestErrorTrigger />
     </div>
   )
 }

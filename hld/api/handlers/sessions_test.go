@@ -516,6 +516,7 @@ func TestSessionHandlers_GetHealth(t *testing.T) {
 		// Expect the new method calls
 		mockManager.EXPECT().IsClaudeAvailable().Return(true).Times(1)
 		mockManager.EXPECT().GetClaudeBinaryPath().Return("/usr/local/bin/claude").Times(1)
+		mockManager.EXPECT().GetClaudeVersion().Return("1.0.110", nil).Times(1)
 
 		w := makeRequest(t, router, "GET", "/api/v1/health", nil)
 
@@ -536,6 +537,7 @@ func TestSessionHandlers_GetHealth(t *testing.T) {
 		// Expect the new method calls
 		mockManager.EXPECT().IsClaudeAvailable().Return(false).Times(1)
 		mockManager.EXPECT().GetClaudeBinaryPath().Return("").Times(1)
+		// GetClaudeVersion is not called when Claude is not available
 
 		w := makeRequest(t, router, "GET", "/api/v1/health", nil)
 

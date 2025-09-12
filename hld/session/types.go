@@ -133,6 +133,9 @@ type SessionManager interface {
 
 	// GetClaudeBinaryPath returns the actual path to the Claude binary if available
 	GetClaudeBinaryPath() string
+
+	// GetClaudeVersion returns the Claude binary version if available
+	GetClaudeVersion() (string, error)
 }
 
 // ReadToolResult represents the JSON structure of a Read tool result

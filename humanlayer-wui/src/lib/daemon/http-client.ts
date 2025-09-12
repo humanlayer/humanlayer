@@ -117,10 +117,8 @@ export class HTTPDaemonClient implements IDaemonClient {
   async health(): Promise<HealthCheckResponse> {
     await this.ensureConnected()
     const response = await this.client!.health()
-    return {
-      status: response.status as 'ok',
-      version: response.version || 'unknown',
-    }
+    // Return the full response including dependencies
+    return response as HealthCheckResponse
   }
 
   // Session Management Methods

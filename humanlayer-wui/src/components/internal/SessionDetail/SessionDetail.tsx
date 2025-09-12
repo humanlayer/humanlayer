@@ -17,7 +17,7 @@ import { ConversationContent } from './views/ConversationContent'
 import { ToolResultModal } from './components/ToolResultModal'
 import { TodoWidget } from './components/TodoWidget'
 import { ResponseInput } from './components/ResponseInput'
-import { ErrorBoundary } from './components/ErrorBoundary'
+import { SentryErrorBoundary } from '@/components/ErrorBoundary'
 import { SessionModeIndicator } from './AutoAcceptIndicator'
 import { ForkViewModal } from './components/ForkViewModal'
 import { DangerouslySkipPermissionsDialog } from './DangerouslySkipPermissionsDialog'
@@ -1240,10 +1240,21 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
 }
 
 // Export wrapped component
-const SessionDetailWithErrorBoundary = (props: SessionDetailProps) => (
-  <ErrorBoundary>
-    <SessionDetail {...props} />
-  </ErrorBoundary>
-)
+const SessionDetailWithErrorBoundary = (props: SessionDetailProps) => {
+  // const navigate = useNavigate()
+
+  return (
+    <SentryErrorBoundary
+      variant="session-detail"
+      componentName="SessionDetail"
+      handleRefresh={() => {
+        window.location.href = `/#/sessions/${props.session.id}`
+      }}
+      refreshButtonText="Reload Session"
+    >
+      <SessionDetail {...props} />
+    </SentryErrorBoundary>
+  )
+}
 
 export default SessionDetailWithErrorBoundary
