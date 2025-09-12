@@ -7,6 +7,8 @@ import {
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { formatError } from '@/utils/errors'
 import { logger } from '@/lib/logging'
+import { CodeLayerToastButtons } from '@/components/internal/CodeLayerToastButtons'
+import React from 'react'
 
 // Types for generic notification system
 export type NotificationType =
@@ -236,13 +238,23 @@ class NotificationService {
       toastOptions.id = `${options.type}:${options.metadata.approvalId}`
     }
 
-    // Add primary action if provided
+    // Add primary action if provided using CodeLayerToastButtons
     if (options.actions && options.actions.length > 0) {
       const primaryAction = options.actions[0]
-      toastOptions.action = {
-        label: primaryAction.label,
-        onClick: primaryAction.onClick,
-      }
+      // Determine variant based on notification type
+      const variant = options.type === 'error' || options.type === 'session_failed' 
+        ? 'error' 
+        : options.type === 'session_completed' 
+        ? 'success' 
+        : 'default'
+      
+      toastOptions.action = React.createElement(CodeLayerToastButtons, {
+        action: {
+          label: primaryAction.label,
+          onClick: primaryAction.onClick,
+        },
+        variant,
+      })
     }
 
     // Show toast based on type/priority
@@ -330,6 +342,7 @@ class NotificationService {
    */
   async notifyApprovalRequired(sessionId: string, approvalId: string, query: string, model?: string) {
     const body = this.formatQueryBody(query, model)
+    const toastId = `approval_required:${approvalId}`
 
     return this.notify({
       type: 'approval_required',
@@ -346,6 +359,8 @@ class NotificationService {
           label: 'Jump to Session',
           onClick: () => {
             window.location.hash = `/sessions/${sessionId}`
+            // Dismiss the toast when user clicks to jump to session
+            toast.dismiss(toastId)
           },
         },
       ],
