@@ -15,17 +15,21 @@ interface CodeLayerToastButtonsProps {
 /**
  * Wrapper component for toast action buttons that provides consistent layout
  * Use this when you need multiple buttons in a toast with equal width distribution
- * 
+ *
  * Note: Toast dismissal is handled automatically by sonner when buttons are clicked
  */
-export function CodeLayerToastButtons({ action, cancel, variant = 'default' }: CodeLayerToastButtonsProps) {
+export function CodeLayerToastButtons({
+  action,
+  cancel,
+  variant = 'default',
+}: CodeLayerToastButtonsProps) {
   const handleCancel = (e: React.MouseEvent<HTMLButtonElement>) => {
     cancel?.onClick?.(e)
   }
 
   const handleAction = (e: React.MouseEvent<HTMLButtonElement>) => {
     action?.onClick?.(e)
-    // Sonner automatically dismisses the toast after action.onClick 
+    // Sonner automatically dismisses the toast after action.onClick
     // unless event.preventDefault() is called
   }
 
@@ -36,28 +40,36 @@ export function CodeLayerToastButtons({ action, cancel, variant = 'default' }: C
     switch (variant) {
       case 'success':
         return {
-          action: 'bg-background text-[var(--terminal-success)] border-[var(--terminal-success)] hover:bg-[var(--terminal-success)] hover:text-background',
-          cancel: 'bg-transparent text-[var(--terminal-success)] border-[var(--terminal-success)] hover:bg-[var(--terminal-success)] hover:text-background'
+          action:
+            'bg-background text-[var(--terminal-success)] border-[var(--terminal-success)] hover:bg-[var(--terminal-success)] hover:text-background',
+          cancel:
+            'bg-transparent text-[var(--terminal-success)] border-[var(--terminal-success)] hover:bg-[var(--terminal-success)] hover:text-background',
         }
       case 'error':
         return {
-          action: 'bg-background text-[var(--terminal-error)] border-[var(--terminal-error)] hover:bg-[var(--terminal-error)] hover:text-background',
-          cancel: 'bg-transparent text-[var(--terminal-error)] border-[var(--terminal-error)] hover:bg-[var(--terminal-error)] hover:text-background'
+          action:
+            'bg-background text-[var(--terminal-error)] border-[var(--terminal-error)] hover:bg-[var(--terminal-error)] hover:text-background',
+          cancel:
+            'bg-transparent text-[var(--terminal-error)] border-[var(--terminal-error)] hover:bg-[var(--terminal-error)] hover:text-background',
         }
       case 'warning':
         return {
-          action: 'bg-background text-[var(--terminal-warning)] border-[var(--terminal-warning)] hover:bg-[var(--terminal-warning)] hover:text-background',
-          cancel: 'bg-transparent text-[var(--terminal-warning)] border-[var(--terminal-warning)] hover:bg-[var(--terminal-warning)] hover:text-background'
+          action:
+            'bg-background text-[var(--terminal-warning)] border-[var(--terminal-warning)] hover:bg-[var(--terminal-warning)] hover:text-background',
+          cancel:
+            'bg-transparent text-[var(--terminal-warning)] border-[var(--terminal-warning)] hover:bg-[var(--terminal-warning)] hover:text-background',
         }
       case 'info':
         return {
-          action: 'bg-background text-[var(--terminal-accent)] border-[var(--terminal-accent)] hover:bg-[var(--terminal-accent)] hover:text-background',
-          cancel: 'bg-transparent text-[var(--terminal-accent)] border-[var(--terminal-accent)] hover:bg-[var(--terminal-accent)] hover:text-background'
+          action:
+            'bg-background text-[var(--terminal-accent)] border-[var(--terminal-accent)] hover:bg-[var(--terminal-accent)] hover:text-background',
+          cancel:
+            'bg-transparent text-[var(--terminal-accent)] border-[var(--terminal-accent)] hover:bg-[var(--terminal-accent)] hover:text-background',
         }
       default:
         return {
           action: '', // Use default Button variant styles
-          cancel: '' // Use default Button variant styles
+          cancel: '', // Use default Button variant styles
         }
     }
   }

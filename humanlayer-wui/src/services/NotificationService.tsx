@@ -27,8 +27,8 @@ export interface NotificationAction {
 
 export interface NotificationOptions {
   type: NotificationType
-  title: string
-  body: string
+  title: string | React.ReactNode
+  body: string | React.ReactNode
   metadata: {
     sessionId?: string
     approvalId?: string
@@ -37,6 +37,7 @@ export interface NotificationOptions {
   actions?: NotificationAction[]
   duration?: number | null
   priority?: 'low' | 'normal' | 'high'
+  returnToastConfig?: boolean // If true, returns config instead of showing toast (default: false)
 }
 
 class NotificationService {
@@ -188,7 +189,15 @@ class NotificationService {
   /**
    * Main entry point for notifications
    */
-  async notify(options: NotificationOptions): Promise<string | null> {
+  async notify(options: NotificationOptions): Promise<
+    | string
+    | null
+    | {
+        title: string | React.ReactNode
+        options: ExternalToast
+        type: 'default' | 'success' | 'error' | 'warning' | 'info' | 'loading'
+      }
+  > {
     this.validateFocusState() // Ensure focus state is current
 
     // Generate unique ID for this notification
@@ -197,6 +206,11 @@ class NotificationService {
     const isViewingSession = options.metadata.sessionId
       ? this.isViewingSession(options.metadata.sessionId)
       : false
+
+    // If returnToastConfig is true, just return the config without showing anything
+    if (options.returnToastConfig) {
+      return this.buildToastConfig(options)
+    }
 
     logger.log('NotificationService.notify:', {
       appFocused: this.appFocused,
@@ -223,9 +237,13 @@ class NotificationService {
   }
 
   /**
-   * Show in-app notification using Sonner
+   * Build toast configuration without showing it
    */
-  private showInAppNotification(options: NotificationOptions) {
+  private buildToastConfig(options: NotificationOptions): {
+    title: string | React.ReactNode
+    options: ExternalToast
+    type: 'default' | 'success' | 'error' | 'warning' | 'info' | 'loading'
+  } {
     const toastOptions: ExternalToast = {
       closeButton: true, // Always show close button for better UX
       description: options.body,
@@ -242,12 +260,13 @@ class NotificationService {
     if (options.actions && options.actions.length > 0) {
       const primaryAction = options.actions[0]
       // Determine variant based on notification type
-      const variant = options.type === 'error' || options.type === 'session_failed' 
-        ? 'error' 
-        : options.type === 'session_completed' 
-        ? 'success' 
-        : 'default'
-      
+      const variant =
+        options.type === 'error' || options.type === 'session_failed'
+          ? 'error'
+          : options.type === 'session_completed'
+            ? 'success'
+            : 'default'
+
       toastOptions.action = React.createElement(CodeLayerToastButtons, {
         action: {
           label: primaryAction.label,
@@ -257,19 +276,43 @@ class NotificationService {
       })
     }
 
-    // Show toast based on type/priority
+    // Determine toast type
+    let toastType: 'default' | 'success' | 'error' | 'warning' | 'info' | 'loading' = 'default'
     switch (options.type) {
       case 'session_failed':
-        toast.error(options.title, toastOptions)
+      case 'error':
+        toastType = 'error'
         break
       case 'session_completed':
-        toast.success(options.title, toastOptions)
-        break
-      case 'error':
-        toast.error(options.title, toastOptions)
+        toastType = 'success'
         break
       default:
-        toast(options.title, toastOptions)
+        toastType = 'default'
+    }
+
+    return {
+      title: options.title,
+      options: toastOptions,
+      type: toastType,
+    }
+  }
+
+  /**
+   * Show in-app notification using Sonner
+   */
+  private showInAppNotification(options: NotificationOptions) {
+    const config = this.buildToastConfig(options)
+
+    // Show toast based on type
+    switch (config.type) {
+      case 'error':
+        toast.error(config.title, config.options)
+        break
+      case 'success':
+        toast.success(config.title, config.options)
+        break
+      default:
+        toast(config.title, config.options)
     }
   }
 
@@ -296,9 +339,13 @@ class NotificationService {
       }
 
       // Send the notification
+      // Convert React nodes to strings for OS notifications
+      const titleString = typeof options.title === 'string' ? options.title : 'Notification'
+      const bodyString = typeof options.body === 'string' ? options.body : ''
+
       await sendNotification({
-        title: options.title,
-        body: options.body,
+        title: titleString,
+        body: bodyString,
         // We can't directly handle clicks on OS notifications to navigate,
         // but at least the notification will bring attention to the app
       })
@@ -323,7 +370,7 @@ class NotificationService {
     const body = context ? `${context}: ${formattedMessage}` : formattedMessage
 
     // Use the existing notify method with error type
-    return this.notify({
+    const result = await this.notify({
       type: 'error',
       title: 'Error',
       body,
@@ -335,19 +382,56 @@ class NotificationService {
       duration: 8000, // Errors should be visible longer
       priority: 'high',
     })
+
+    // Return string or null (not the config object)
+    return typeof result === 'string' ? result : null
   }
 
   /**
    * Convenience method for approval required notifications
    */
-  async notifyApprovalRequired(sessionId: string, approvalId: string, query: string, model?: string) {
-    const body = this.formatQueryBody(query, model)
+  async notifyApprovalRequired(
+    sessionId: string,
+    approvalId: string,
+    toolName: string,
+    toolInputJson: string,
+    model?: string,
+    sessionTitle?: string,
+    returnToastConfig?: boolean,
+  ) {
     const toastId = `approval_required:${approvalId}`
+
+    // Truncate session title if it's too long
+    const truncatedTitle = sessionTitle
+      ? sessionTitle.length > 50
+        ? sessionTitle.substring(0, 47) + '...'
+        : sessionTitle
+      : `Session ${sessionId.slice(0, 8)}`
+
+    // Create title with warning color styling matching the session table
+    // and session title on second line with muted color
+    const titleElement = (
+      <div className="flex flex-col gap-0.5">
+        <span className="font-bold text-[var(--terminal-warning)]">needs_approval</span>
+        <span className="text-xs text-muted-foreground">{truncatedTitle}</span>
+      </div>
+    )
+
+    // Format the body with tool name highlighted in warning color
+    const bodyElement = (
+      <span>
+        <code className="text-accent bg-muted/50 rounded-md px-1 py-0.5 font-mono">{toolName}</code>
+        <span> using </span>
+        <code className="text-accent bg-muted/50 rounded-md px-1 py-0.5 font-mono">
+          {toolInputJson.length > 50 ? toolInputJson.substring(0, 47) + '...' : toolInputJson}
+        </code>
+      </span>
+    )
 
     return this.notify({
       type: 'approval_required',
-      title: `Approval Requested (${sessionId.slice(0, 8)})`,
-      body,
+      title: titleElement,
+      body: bodyElement,
       metadata: {
         sessionId,
         approvalId,
@@ -364,21 +448,8 @@ class NotificationService {
           },
         },
       ],
+      returnToastConfig,
     })
-  }
-
-  /**
-   * Format query for notification body
-   */
-  private formatQueryBody(query: string, model?: string): string {
-    // Truncate query to 100 chars
-    const truncatedQuery = query.length > 100 ? query.substring(0, 97) + '...' : query
-
-    if (model) {
-      return `${model}: ${truncatedQuery}`
-    }
-
-    return truncatedQuery
   }
 
   /**

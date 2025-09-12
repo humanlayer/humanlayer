@@ -3,6 +3,7 @@ import { CodeLayerToaster } from './CodeLayerToaster'
 import { CodeLayerToastButtons } from './CodeLayerToastButtons'
 import { Button } from '../ui/button'
 import { toast } from 'sonner'
+import { notificationService } from '@/services/NotificationService'
 
 // Define custom args type for stories that don't use component props
 type CodeLayerToasterArgs = {
@@ -297,7 +298,7 @@ export const Playground: PlaygroundStory = {
             toast.success('Action executed!')
           },
         }
-        
+
         const cancel = args.showCancel
           ? {
               label: args.cancelLabel,
@@ -443,7 +444,7 @@ export const CustomButtonLayout: Story = {
   ),
 }
 
-// Approval notification scenario - mimics real approval notifications
+// Approval notification scenario - uses real NotificationService
 export const ApprovalNotifications: Story = {
   render: () => {
     // Generate mock IDs
@@ -451,48 +452,53 @@ export const ApprovalNotifications: Story = {
       const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
       return Array.from({ length: 24 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
     }
-    
+
     const generateApprovalId = () => {
       return `appr_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
     }
 
-    // Mock approval scenarios
-    const triggerApprovalNotification = (model: string, query: string) => {
+    // Use real NotificationService to generate approval notifications
+    const triggerApprovalNotification = async (
+      model: string,
+      toolName: string,
+      toolInputJson: string,
+      sessionTitle?: string,
+    ) => {
       const sessionId = generateSessionId()
       const approvalId = generateApprovalId()
-      const toastId = `approval_required:${approvalId}`
-      
-      // Format the body like the real NotificationService does
-      const truncatedQuery = query.length > 100 ? query.substring(0, 97) + '...' : query
-      const body = `${model}: ${truncatedQuery}`
-      
-      // Create the toast exactly like NotificationService.notifyApprovalRequired does
-      toast(`Approval Requested (${sessionId.slice(0, 8)})`, {
-        id: toastId,
-        description: body,
-        duration: Infinity, // Approval notifications stick until dismissed
-        closeButton: true,
-        position: 'top-right',
-        action: (
-          <CodeLayerToastButtons
-            action={{
-              label: 'Jump to Session',
-              onClick: () => {
-                console.log(`Navigating to /sessions/${sessionId}`)
-                toast.dismiss(toastId)
-              },
-            }}
-            variant="default"
-          />
-        ),
-      })
+
+      // Get the toast configuration from notifyApprovalRequired
+      const config = await notificationService.notifyApprovalRequired(
+        sessionId,
+        approvalId,
+        toolName,
+        toolInputJson,
+        model,
+        sessionTitle,
+        true, // returnToastConfig
+      )
+
+      // Show the toast using the config
+      if (config && typeof config === 'object' && 'type' in config) {
+        switch (config.type) {
+          case 'error':
+            toast.error(config.title, config.options)
+            break
+          case 'success':
+            toast.success(config.title, config.options)
+            break
+          default:
+            toast(config.title, config.options)
+        }
+      }
     }
 
     return (
       <div className="flex flex-col gap-4 max-w-3xl">
         <h2 className="text-lg font-mono uppercase">Approval Notification Demo</h2>
         <p className="text-sm text-muted-foreground">
-          Simulates the approval notifications that appear when AI agents request tool execution approval.
+          Simulates the approval notifications that appear when AI agents request tool execution
+          approval.
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -503,7 +509,9 @@ export const ApprovalNotifications: Story = {
                 onClick={() =>
                   triggerApprovalNotification(
                     'claude-3-opus',
-                    'Execute shell command: rm -rf node_modules && npm install'
+                    'Bash',
+                    'npm install',
+                    'Fix dependency issues in React application',
                   )
                 }
                 variant="outline"
@@ -517,42 +525,48 @@ export const ApprovalNotifications: Story = {
                 onClick={() =>
                   triggerApprovalNotification(
                     'gpt-4-turbo',
-                    'Send email to john@example.com with subject "Project Update" and body containing sensitive financial data'
+                    'SendEmail',
+                    '{"to": "team@example.com", "subject": "Status Update"}',
+                    'Implement automated email notification system for project status updates with detailed financial reporting',
                   )
                 }
                 variant="outline"
                 size="sm"
                 className="justify-start"
               >
-                Send Email (Long)
+                Send Email (Long Title)
               </Button>
 
               <Button
                 onClick={() =>
                   triggerApprovalNotification(
                     'claude-3-sonnet',
-                    'Access database: SELECT * FROM users WHERE admin = true'
+                    'mcp__postgres__query',
+                    'SELECT * FROM users WHERE active = true',
+                    'Database migration v2.0',
                   )
                 }
                 variant="outline"
                 size="sm"
                 className="justify-start"
               >
-                Database Query
+                MCP Database Query
               </Button>
 
               <Button
                 onClick={() =>
                   triggerApprovalNotification(
                     'claude-3-haiku',
-                    'Deploy to production environment'
+                    'Task',
+                    '{"description": "Analyze codebase"}',
+                    undefined, // Test fallback to session ID
                   )
                 }
                 variant="outline"
                 size="sm"
                 className="justify-start"
               >
-                Deploy Code
+                Task Agent (No Title)
               </Button>
             </div>
           </div>
@@ -563,12 +577,27 @@ export const ApprovalNotifications: Story = {
               <Button
                 onClick={() => {
                   // Simulate multiple approvals coming in sequence
-                  triggerApprovalNotification('claude-3-opus', 'Read file: /etc/passwd')
+                  triggerApprovalNotification(
+                    'claude-3-opus',
+                    'Read',
+                    '/etc/passwd',
+                    'Security audit script',
+                  )
                   setTimeout(() => {
-                    triggerApprovalNotification('gpt-4', 'Write file: config.json')
+                    triggerApprovalNotification(
+                      'gpt-4',
+                      'Write',
+                      '{"path": "config.json", "content": "..."}',
+                      'Update application configuration',
+                    )
                   }, 200)
                   setTimeout(() => {
-                    triggerApprovalNotification('claude-3-sonnet', 'Execute: git push origin main')
+                    triggerApprovalNotification(
+                      'claude-3-sonnet',
+                      'Bash',
+                      'git push origin feature-branch',
+                      'Deploy feature branch',
+                    )
                   }, 400)
                 }}
                 variant="outline"
@@ -584,7 +613,9 @@ export const ApprovalNotifications: Story = {
                     setTimeout(() => {
                       triggerApprovalNotification(
                         ['claude-3-opus', 'gpt-4', 'claude-3-sonnet'][i % 3],
-                        `Tool execution request ${i + 1}`
+                        'ToolName',
+                        `{"request": ${i + 1}}`,
+                        `Tool execution request ${i + 1}`,
                       )
                     }, i * 100)
                   }
@@ -595,11 +626,7 @@ export const ApprovalNotifications: Story = {
                 Rapid Fire (5)
               </Button>
 
-              <Button
-                onClick={() => toast.dismiss()}
-                variant="ghost"
-                size="sm"
-              >
+              <Button onClick={() => toast.dismiss()} variant="ghost" size="sm">
                 Dismiss All
               </Button>
             </div>
@@ -607,14 +634,18 @@ export const ApprovalNotifications: Story = {
         </div>
 
         <div className="mt-4 p-4 border border-border rounded bg-muted/30">
-          <p className="text-xs font-mono text-muted-foreground mb-2">&gt; APPROVAL NOTIFICATION FEATURES:</p>
+          <p className="text-xs font-mono text-muted-foreground mb-2">
+            &gt; APPROVAL NOTIFICATION FEATURES:
+          </p>
           <ul className="text-xs space-y-1 ml-4 text-muted-foreground">
+            <li>• Shows "needs_approval" in warning color (matching session table)</li>
+            <li>• Displays session title on second line in muted text</li>
+            <li>• Truncates long titles to 50 characters</li>
+            <li>• Falls back to "Session ID" if no title available</li>
             <li>• Infinite duration (sticky until manually dismissed)</li>
-            <li>• Shows session ID prefix (first 8 characters)</li>
             <li>• Displays model name and truncated query (max 100 chars)</li>
             <li>• "Jump to Session" button navigates to session detail view</li>
             <li>• Positioned at top-right corner of screen</li>
-            <li>• Unique toast ID format: "approval_required:{'{'}approvalId{'}'}"</li>
             <li>• Smart routing: skips if user already viewing the session</li>
           </ul>
         </div>
