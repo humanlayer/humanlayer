@@ -25,6 +25,9 @@ export const Default: Story = {
 
 // All variants showcase
 export const AllVariants: Story = {
+  parameters: {
+    layout: 'centered',
+  },
   render: () => (
     <div className="flex flex-col gap-4">
       <div className="flex gap-2 items-center">
@@ -41,6 +44,9 @@ export const AllVariants: Story = {
 
 // All sizes showcase
 export const AllSizes: Story = {
+  parameters: {
+    layout: 'centered',
+  },
   render: () => (
     <div className="flex gap-2 items-center">
       <Button size="lg">LARGE</Button>
@@ -55,6 +61,9 @@ export const AllSizes: Story = {
 
 // Button with icon
 export const WithIcon: Story = {
+  parameters: {
+    layout: 'centered',
+  },
   render: () => (
     <div className="flex gap-2">
       <Button>
@@ -71,6 +80,9 @@ export const WithIcon: Story = {
 
 // Loading state
 export const LoadingState: Story = {
+  parameters: {
+    layout: 'centered',
+  },
   render: () => (
     <div className="flex gap-2">
       <Button disabled>PROCESSING...</Button>
@@ -84,6 +96,9 @@ export const LoadingState: Story = {
 
 // Terminal style showcase
 export const TerminalStyle: Story = {
+  parameters: {
+    layout: 'centered',
+  },
   render: () => (
     <div className="flex flex-col gap-4 p-4 bg-background text-foreground font-mono">
       <div className="text-xs text-muted-foreground mb-2">&gt; SELECT ACTION:</div>

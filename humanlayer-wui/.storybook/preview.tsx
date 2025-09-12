@@ -79,8 +79,11 @@ const preview: Preview = {
         }
       }, [theme])
 
+      // Check if the story has centered layout
+      const isCentered = context.parameters?.layout === 'centered'
+      
       return (
-        <div className="min-h-screen bg-background text-foreground font-mono">
+        <div className={`min-h-screen bg-background text-foreground font-mono ${isCentered ? 'flex items-center justify-center' : ''}`}>
           <Story />
         </div>
       )
