@@ -67,10 +67,10 @@ const preview: Preview = {
       useEffect(() => {
         // Set theme on documentElement for CSS variables
         document.documentElement.setAttribute('data-theme', theme)
-        
+
         // Apply theme class to body for proper background
         document.body.className = 'bg-background text-foreground'
-        
+
         // Get computed styles to apply background color
         const styles = getComputedStyle(document.documentElement)
         const bgColor = styles.getPropertyValue('--terminal-bg').trim()

@@ -15,15 +15,15 @@ if (typeof window !== 'undefined') {
 export const allThemes = {
   'solarized-dark': '🌙 Solarized Dark',
   'solarized-light': '☀️ Solarized Light',
-  'cappuccino': '☕ Cappuccino',
-  'catppuccin': '🐱 Catppuccin',
+  cappuccino: '☕ Cappuccino',
+  catppuccin: '🐱 Catppuccin',
   'high-contrast': '⚡ High Contrast',
   'framer-dark': '🎨 Framer Dark',
   'framer-light': '🎨 Framer Light',
   'gruvbox-dark': '🌲 Gruvbox Dark',
   'gruvbox-light': '🌲 Gruvbox Light',
-  'monokai': '🎯 Monokai',
-  'launch': '🚀 Launch',
+  monokai: '🎯 Monokai',
+  launch: '🚀 Launch',
   'rose-pine': '🌹 Rosé Pine',
   'rose-pine-dawn': '🌅 Rosé Pine Dawn',
   'rose-pine-moon': '🌙 Rosé Pine Moon',
@@ -49,7 +49,7 @@ const preview: Preview = {
       attributeName: 'data-theme',
     }),
     // Additional decorator to ensure proper styling
-    (Story) => (
+    Story => (
       <div className="min-h-screen bg-background text-foreground font-mono p-4">
         <Story />
       </div>
