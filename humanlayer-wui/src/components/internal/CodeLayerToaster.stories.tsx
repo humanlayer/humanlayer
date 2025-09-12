@@ -443,6 +443,186 @@ export const CustomButtonLayout: Story = {
   ),
 }
 
+// Approval notification scenario - mimics real approval notifications
+export const ApprovalNotifications: Story = {
+  render: () => {
+    // Generate mock IDs
+    const generateSessionId = () => {
+      const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
+      return Array.from({ length: 24 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
+    }
+    
+    const generateApprovalId = () => {
+      return `appr_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    }
+
+    // Mock approval scenarios
+    const triggerApprovalNotification = (model: string, query: string) => {
+      const sessionId = generateSessionId()
+      const approvalId = generateApprovalId()
+      const toastId = `approval_required:${approvalId}`
+      
+      // Format the body like the real NotificationService does
+      const truncatedQuery = query.length > 100 ? query.substring(0, 97) + '...' : query
+      const body = `${model}: ${truncatedQuery}`
+      
+      // Create the toast exactly like NotificationService.notifyApprovalRequired does
+      toast(`Approval Requested (${sessionId.slice(0, 8)})`, {
+        id: toastId,
+        description: body,
+        duration: Infinity, // Approval notifications stick until dismissed
+        closeButton: true,
+        position: 'top-right',
+        action: (
+          <CodeLayerToastButtons
+            action={{
+              label: 'Jump to Session',
+              onClick: () => {
+                console.log(`Navigating to /sessions/${sessionId}`)
+                toast.dismiss(toastId)
+              },
+            }}
+            variant="default"
+          />
+        ),
+      })
+    }
+
+    return (
+      <div className="flex flex-col gap-4 max-w-3xl">
+        <h2 className="text-lg font-mono uppercase">Approval Notification Demo</h2>
+        <p className="text-sm text-muted-foreground">
+          Simulates the approval notifications that appear when AI agents request tool execution approval.
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="p-4 border border-border rounded">
+            <p className="text-xs font-mono mb-3">COMMON APPROVAL SCENARIOS:</p>
+            <div className="flex flex-col gap-2">
+              <Button
+                onClick={() =>
+                  triggerApprovalNotification(
+                    'claude-3-opus',
+                    'Execute shell command: rm -rf node_modules && npm install'
+                  )
+                }
+                variant="outline"
+                size="sm"
+                className="justify-start"
+              >
+                Shell Command
+              </Button>
+
+              <Button
+                onClick={() =>
+                  triggerApprovalNotification(
+                    'gpt-4-turbo',
+                    'Send email to john@example.com with subject "Project Update" and body containing sensitive financial data'
+                  )
+                }
+                variant="outline"
+                size="sm"
+                className="justify-start"
+              >
+                Send Email (Long)
+              </Button>
+
+              <Button
+                onClick={() =>
+                  triggerApprovalNotification(
+                    'claude-3-sonnet',
+                    'Access database: SELECT * FROM users WHERE admin = true'
+                  )
+                }
+                variant="outline"
+                size="sm"
+                className="justify-start"
+              >
+                Database Query
+              </Button>
+
+              <Button
+                onClick={() =>
+                  triggerApprovalNotification(
+                    'claude-3-haiku',
+                    'Deploy to production environment'
+                  )
+                }
+                variant="outline"
+                size="sm"
+                className="justify-start"
+              >
+                Deploy Code
+              </Button>
+            </div>
+          </div>
+
+          <div className="p-4 border border-border rounded">
+            <p className="text-xs font-mono mb-3">MULTIPLE APPROVALS:</p>
+            <div className="flex flex-col gap-2">
+              <Button
+                onClick={() => {
+                  // Simulate multiple approvals coming in sequence
+                  triggerApprovalNotification('claude-3-opus', 'Read file: /etc/passwd')
+                  setTimeout(() => {
+                    triggerApprovalNotification('gpt-4', 'Write file: config.json')
+                  }, 200)
+                  setTimeout(() => {
+                    triggerApprovalNotification('claude-3-sonnet', 'Execute: git push origin main')
+                  }, 400)
+                }}
+                variant="outline"
+                size="sm"
+              >
+                Trigger 3 Approvals
+              </Button>
+
+              <Button
+                onClick={() => {
+                  // Simulate rapid approval requests
+                  for (let i = 0; i < 5; i++) {
+                    setTimeout(() => {
+                      triggerApprovalNotification(
+                        ['claude-3-opus', 'gpt-4', 'claude-3-sonnet'][i % 3],
+                        `Tool execution request ${i + 1}`
+                      )
+                    }, i * 100)
+                  }
+                }}
+                variant="outline"
+                size="sm"
+              >
+                Rapid Fire (5)
+              </Button>
+
+              <Button
+                onClick={() => toast.dismiss()}
+                variant="ghost"
+                size="sm"
+              >
+                Dismiss All
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4 p-4 border border-border rounded bg-muted/30">
+          <p className="text-xs font-mono text-muted-foreground mb-2">&gt; APPROVAL NOTIFICATION FEATURES:</p>
+          <ul className="text-xs space-y-1 ml-4 text-muted-foreground">
+            <li>• Infinite duration (sticky until manually dismissed)</li>
+            <li>• Shows session ID prefix (first 8 characters)</li>
+            <li>• Displays model name and truncated query (max 100 chars)</li>
+            <li>• "Jump to Session" button navigates to session detail view</li>
+            <li>• Positioned at top-right corner of screen</li>
+            <li>• Unique toast ID format: "approval_required:{'{'}approvalId{'}'}"</li>
+            <li>• Smart routing: skips if user already viewing the session</li>
+          </ul>
+        </div>
+      </div>
+    )
+  },
+}
+
 // Terminal-style notification scenario
 export const TerminalStyle: Story = {
   render: () => (
