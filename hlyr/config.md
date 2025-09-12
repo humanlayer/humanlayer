@@ -137,6 +137,7 @@ The following environment variables are supported:
 | `HUMANLAYER_API_KEY`         | API authentication token        | `hl_live_abc123...`          |
 | `HUMANLAYER_API_BASE`        | API server base URL             | `https://api.humanlayer.dev` |
 | `HUMANLAYER_APP_URL`         | Web app base URL                | `https://app.humanlayer.dev` |
+| `HUMANLAYER_WWW_BASE_URL`    | WWW/marketing site base URL     | `https://www.humanlayer.dev` |
 | `HUMANLAYER_SLACK_CHANNEL`   | Slack channel/user ID           | `C1234567890`                |
 | `HUMANLAYER_SLACK_BOT_TOKEN` | Slack bot token                 | `xoxb-...`                   |
 | `HUMANLAYER_SLACK_CONTEXT`   | Slack channel context           | `engineering team`           |
@@ -155,6 +156,7 @@ The configuration file is JSON with the following structure:
   "api_key": "hl_live_abc123...",
   "api_base_url": "https://api.humanlayer.dev",
   "app_base_url": "https://app.humanlayer.dev",
+  "www_base_url": "https://www.humanlayer.dev",
   "channel": {
     "slack": {
       "channel_or_user_id": "C1234567890",

@@ -1,4 +1,5 @@
 import chalk from 'chalk'
+import { resolveFullConfig } from '../config.js'
 
 interface JoinWaitlistOptions {
   email: string
@@ -12,16 +13,23 @@ export async function joinWaitlistCommand(options: JoinWaitlistOptions): Promise
     process.exit(1)
   }
 
+  // Get the www base URL from configuration
+  const config = resolveFullConfig({})
+  const wwwBaseUrl = config.www_base_url
+
   console.log(`Joining waitlist with email: ${options.email}...`)
 
   try {
-    const response = await fetch('https://www.humanlayer.dev/api/waitlist', {
+    const response = await fetch(`${wwwBaseUrl}/api/waitlist`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'User-Agent': 'humanlayer-cli',
       },
-      body: JSON.stringify({ email: options.email }),
+      body: JSON.stringify({
+        email: options.email,
+        joinedFromCli: true,
+      }),
     })
 
     if (!response.ok) {
