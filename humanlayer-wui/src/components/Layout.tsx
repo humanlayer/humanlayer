@@ -6,6 +6,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import {
   ApprovalResolvedEventData,
+  ApprovalStatus,
   daemonClient,
   NewApprovalEventData,
   SessionSettingsChangedEventData,
@@ -223,6 +224,19 @@ export function Layout() {
         return
       }
 
+      const conversation = await daemonClient.getConversation({ session_id: sessionId })
+      const approval = conversation.find(
+        event => event.approvalStatus === ApprovalStatus.Pending && event.approvalId === approvalId,
+      )
+
+      if (!approval) {
+        return
+      }
+
+      const toolInputJson = approval.toolInputJson
+
+      console.log('approval', approval)
+
       const notificationId = `approval_required:${sessionId}:${approvalId}`
       if (isItemNotified(notificationId)) {
         return
@@ -244,12 +258,15 @@ export function Layout() {
       try {
         const sessionState = await daemonClient.getSessionState(sessionId)
         const model = sessionState.session?.model || 'AI Agent'
+        const sessionTitle = sessionState.session?.title || sessionState.session?.summary
 
         await notificationService.notifyApprovalRequired(
           sessionId,
           approvalId,
-          `${displayToolName} approval required`,
+          displayToolName,
+          toolInputJson || '',
           model,
+          sessionTitle,
         )
         addNotifiedItem(notificationId)
       } catch (error) {
@@ -258,8 +275,10 @@ export function Layout() {
         await notificationService.notifyApprovalRequired(
           sessionId,
           approvalId,
-          `${displayToolName} approval required`,
+          displayToolName,
+          toolInputJson || '',
           'AI Agent',
+          undefined, // No session title available
         )
         addNotifiedItem(notificationId)
       }

@@ -41,14 +41,6 @@ export function useAutoScroll(
       return
     }
 
-    console.log('[useAutoScroll] Init effect - checking initialization', {
-      wasAtBottomRef: wasAtBottomRef.current,
-      scrollHeight: containerRef.current.scrollHeight,
-      scrollTop: containerRef.current.scrollTop,
-      clientHeight: containerRef.current.clientHeight,
-      autoScrollEnabled,
-    })
-
     // Only initialize once when we have actual content to scroll
     if (wasAtBottomRef.current === null && containerRef.current.scrollHeight > 0) {
       // Check if this is a new session (very little content) vs existing session
@@ -77,7 +69,7 @@ export function useAutoScroll(
       // Set initial auto-scroll state based on position
       setAutoScrollEnabled(shouldAutoScroll)
     } else if (wasAtBottomRef.current !== null) {
-      console.log('[useAutoScroll] Already initialized, wasAtBottomRef:', wasAtBottomRef.current)
+      // console.log('[useAutoScroll] Already initialized, wasAtBottomRef:', wasAtBottomRef.current)
     }
   }) // This runs on every render to catch when content becomes available
 

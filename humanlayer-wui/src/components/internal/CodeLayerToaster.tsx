@@ -22,7 +22,7 @@ export function CodeLayerToaster() {
           // Base toast container - Sonner default: padding: 16px, gap: 6px, border-radius: 8px
           toast: `
             relative
-            flex items-center gap-1.5
+            flex flex-col gap-1.5
             w-full max-w-[356px]
             pointer-events-auto
             p-4
@@ -70,7 +70,8 @@ export function CodeLayerToaster() {
             z-10
           `,
 
-          // Action button - Matches app's button styling
+          // Action button - Fallback styles for object-based actions
+          // For better control, use CodeLayerToastButtons component instead
           actionButton: `
             ml-auto flex-shrink-0
             inline-flex items-center justify-center
@@ -88,7 +89,8 @@ export function CodeLayerToaster() {
             focus-visible:outline-offset-2 focus-visible:outline-ring
           `,
 
-          // Cancel button - Secondary/outline variant
+          // Cancel button - Fallback styles for object-based actions
+          // For better control, use CodeLayerToastButtons component instead
           cancelButton: `
             ml-2 flex-shrink-0
             inline-flex items-center justify-center

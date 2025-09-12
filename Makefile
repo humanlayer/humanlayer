@@ -670,6 +670,11 @@ daemon-dev: daemon-dev-build
 wui-dev:
 	cd humanlayer-wui && HUMANLAYER_DAEMON_SOCKET=~/.humanlayer/daemon-dev.sock bun run tauri dev
 
+# Run Storybook for WUI component development
+.PHONY: storybook
+storybook: ## Run Storybook for WUI component documentation
+	cd humanlayer-wui && bun run storybook
+
 # Alias for wui-dev that ensures daemon is built first
 .PHONY: codelayer-dev
 codelayer-dev: daemon-dev-build wui-dev

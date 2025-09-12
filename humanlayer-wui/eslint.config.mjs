@@ -6,7 +6,7 @@ import reactHooks from 'eslint-plugin-react-hooks'
 
 export default [
   {
-    ignores: ['dist/**/*', 'src-tauri/target/**/*'],
+    ignores: ['dist/**/*', 'src-tauri/target/**/*', 'storybook-static/**/*', '.storybook/**/*'],
   },
   {
     files: ['**/*.{js,mjs,cjs,ts,tsx}'],
