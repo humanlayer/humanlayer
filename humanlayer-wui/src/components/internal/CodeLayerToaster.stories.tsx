@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react'
 import { CodeLayerToaster } from './CodeLayerToaster'
+import { CodeLayerToastButtons } from './CodeLayerToastButtons'
 import { Button } from '../ui/button'
 import { toast } from 'sonner'
 
@@ -203,6 +204,8 @@ interface ToasterArgs {
   position: 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right'
   showAction: boolean
   actionLabel: string
+  showCancel: boolean
+  cancelLabel: string
   closeButton: boolean
 }
 
@@ -248,6 +251,16 @@ export const Playground: PlaygroundStory = {
       description: 'Action button label',
       if: { arg: 'showAction', truthy: true },
     },
+    showCancel: {
+      control: 'boolean',
+      description: 'Show cancel button (requires action button)',
+      if: { arg: 'showAction', truthy: true },
+    },
+    cancelLabel: {
+      control: 'text',
+      description: 'Cancel button label',
+      if: { arg: 'showCancel', truthy: true },
+    },
     closeButton: {
       control: 'boolean',
       description: 'Show close button',
@@ -262,6 +275,8 @@ export const Playground: PlaygroundStory = {
     position: 'bottom-right',
     showAction: false,
     actionLabel: 'UNDO',
+    showCancel: false,
+    cancelLabel: 'CANCEL',
     closeButton: true,
   },
   render: args => {
@@ -273,14 +288,33 @@ export const Playground: PlaygroundStory = {
         closeButton: args.closeButton,
       }
 
+      // Use CodeLayerToastButtons wrapper for better button layout
       if (args.showAction) {
-        toastOptions.action = {
+        const action = {
           label: args.actionLabel,
           onClick: () => {
             console.log('Action clicked!')
             toast.success('Action executed!')
           },
         }
+        
+        const cancel = args.showCancel
+          ? {
+              label: args.cancelLabel,
+              onClick: () => {
+                console.log('Cancel clicked!')
+                toast.info('Action cancelled')
+              },
+            }
+          : undefined
+
+        toastOptions.action = (
+          <CodeLayerToastButtons
+            action={action}
+            cancel={cancel}
+            variant={args.type === 'loading' ? 'default' : args.type}
+          />
+        )
       }
 
       switch (args.type) {
@@ -330,6 +364,83 @@ export const Playground: PlaygroundStory = {
       </div>
     )
   },
+}
+
+// Story demonstrating custom button layout with wrapper
+export const CustomButtonLayout: Story = {
+  render: () => (
+    <div className="flex flex-col gap-4 max-w-2xl">
+      <h2 className="text-lg font-mono uppercase">Custom Button Layout Demo</h2>
+      <p className="text-sm text-muted-foreground">
+        Using CodeLayerToastButtons wrapper for consistent button positioning at the bottom of toasts.
+      </p>
+
+      <div className="flex flex-wrap gap-2">
+        <Button
+          onClick={() => {
+            toast('File deleted', {
+              description: 'The file has been moved to trash.',
+              action: (
+                <CodeLayerToastButtons
+                  action={{ label: 'Undo', onClick: () => console.log('Undo clicked') }}
+                />
+              ),
+            })
+          }}
+          variant="outline"
+        >
+          Single Action Button
+        </Button>
+
+        <Button
+          onClick={() => {
+            toast.error('Delete permanently?', {
+              description: 'This action cannot be undone.',
+              action: (
+                <CodeLayerToastButtons
+                  action={{ label: 'Delete', onClick: () => toast.success('Deleted!') }}
+                  cancel={{ label: 'Cancel', onClick: () => console.log('Cancelled') }}
+                  variant="error"
+                />
+              ),
+            })
+          }}
+          variant="outline"
+        >
+          Two Buttons (Equal Width)
+        </Button>
+
+        <Button
+          onClick={() => {
+            toast.warning('Unsaved changes', {
+              description: 'You have unsaved changes that will be lost.',
+              action: (
+                <CodeLayerToastButtons
+                  action={{ label: 'Save', onClick: () => toast.success('Saved!') }}
+                  cancel={{ label: 'Discard', onClick: () => toast.info('Changes discarded') }}
+                  variant="warning"
+                />
+              ),
+            })
+          }}
+          variant="outline"
+        >
+          Save/Discard Example
+        </Button>
+      </div>
+
+      <div className="mt-4 p-4 border border-border rounded font-mono text-xs">
+        <p className="text-muted-foreground mb-2">&gt; BUTTON LAYOUT FEATURES:</p>
+        <ul className="space-y-1 ml-4">
+          <li>• Buttons positioned at bottom of toast</li>
+          <li>• Equal width distribution when multiple buttons</li>
+          <li>• Full width when single button</li>
+          <li>• Uses shadcn Button components</li>
+          <li>• Automatic toast dismissal handling</li>
+        </ul>
+      </div>
+    </div>
+  ),
 }
 
 // Terminal-style notification scenario
