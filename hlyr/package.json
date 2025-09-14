@@ -1,6 +1,6 @@
 {
   "name": "humanlayer",
-  "version": "0.11.0",
+  "version": "0.11.1",
   "description": "HumanLayer, but on your command-line.",
   "type": "module",
   "bin": {
