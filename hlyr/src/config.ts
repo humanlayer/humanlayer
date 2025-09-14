@@ -12,6 +12,7 @@ export type ConfigFile = {
   api_key?: string
   api_base_url?: string
   app_base_url?: string
+  www_base_url?: string
   daemon_socket?: string
   run_id?: string
   thoughts?: {
@@ -53,6 +54,13 @@ export interface ConfigSchema {
     defaultValue: string
     required: boolean
   }
+  www_base_url: {
+    envVar: 'HUMANLAYER_WWW_BASE_URL'
+    configKey: 'www_base_url'
+    flagKey: 'wwwBase'
+    defaultValue: string
+    required: boolean
+  }
   daemon_socket: {
     envVar: 'HUMANLAYER_DAEMON_SOCKET'
     configKey: 'daemon_socket'
@@ -88,6 +96,13 @@ const CONFIG_SCHEMA: ConfigSchema = {
     configKey: 'app_base_url',
     flagKey: 'appBase',
     defaultValue: 'https://app.humanlayer.dev',
+    required: true,
+  },
+  www_base_url: {
+    envVar: 'HUMANLAYER_WWW_BASE_URL',
+    configKey: 'www_base_url',
+    flagKey: 'wwwBase',
+    defaultValue: 'https://www.humanlayer.dev',
     required: true,
   },
   daemon_socket: {
@@ -209,6 +224,7 @@ export class ConfigResolver {
     const api_key = this.resolveValue('api_key', options)
     const api_base_url = this.resolveValue('api_base_url', options)
     const app_base_url = this.resolveValue('app_base_url', options)
+    const www_base_url = this.resolveValue('www_base_url', options)
     const daemon_socket = this.resolveValue('daemon_socket', options)
     const run_id = this.resolveValue('run_id', options)
 
@@ -216,6 +232,7 @@ export class ConfigResolver {
       api_key,
       api_base_url,
       app_base_url,
+      www_base_url,
       daemon_socket,
       run_id,
       contact_channel: buildContactChannel(options, this.configFile),
@@ -229,6 +246,7 @@ export class ConfigResolver {
       api_key: resolved.api_key.value,
       api_base_url: resolved.api_base_url.value!,
       app_base_url: resolved.app_base_url.value!,
+      www_base_url: resolved.www_base_url.value!,
       daemon_socket: resolved.daemon_socket.value!,
       run_id: resolved.run_id.value,
       contact_channel: resolved.contact_channel,
@@ -324,6 +342,7 @@ export type ResolvedConfig = {
   api_key?: string
   api_base_url: string
   app_base_url: string
+  www_base_url: string
   daemon_socket: string
   run_id?: string
   contact_channel: ContactChannel
@@ -333,6 +352,7 @@ export type ConfigWithSources = {
   api_key?: ConfigValue<string | undefined>
   api_base_url: ConfigValue<string>
   app_base_url: ConfigValue<string>
+  www_base_url: ConfigValue<string>
   daemon_socket: ConfigValue<string>
   run_id?: ConfigValue<string | undefined>
   contact_channel: ContactChannel
@@ -347,6 +367,7 @@ export function resolveConfigWithSources(options: Record<string, unknown> = {}):
     api_key: resolved.api_key,
     api_base_url: resolved.api_base_url as ConfigValue<string>,
     app_base_url: resolved.app_base_url as ConfigValue<string>,
+    www_base_url: resolved.www_base_url as ConfigValue<string>,
     daemon_socket: resolved.daemon_socket as ConfigValue<string>,
     run_id: resolved.run_id,
     contact_channel: resolved.contact_channel,
