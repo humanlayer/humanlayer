@@ -96,6 +96,7 @@ type StreamEvent struct {
 	NumTurns          int                `json:"num_turns,omitempty"`
 	Result            string             `json:"result,omitempty"`
 	Usage             *Usage             `json:"usage,omitempty"`
+	ModelUsage        ModelUsage         `json:"modelUsage,omitempty"`
 	Error             string             `json:"error,omitempty"`
 	PermissionDenials *PermissionDenials `json:"permission_denials,omitempty"`
 	UUID              string             `json:"uuid,omitempty"`
@@ -247,6 +248,19 @@ func (p PermissionDenials) ToStrings() []string {
 	return result
 }
 
+// ModelUsageDetail represents token usage for a specific model
+type ModelUsageDetail struct {
+	InputTokens              int     `json:"inputTokens"`
+	OutputTokens             int     `json:"outputTokens"`
+	CacheReadInputTokens     int     `json:"cacheReadInputTokens"`
+	CacheCreationInputTokens int     `json:"cacheCreationInputTokens"`
+	WebSearchRequests        int     `json:"webSearchRequests"`
+	CostUSD                  float64 `json:"costUSD"`
+}
+
+// ModelUsage represents per-model usage statistics
+type ModelUsage map[string]ModelUsageDetail
+
 // Result represents the final result of a Claude session
 type Result struct {
 	Type              string             `json:"type"`
@@ -259,6 +273,7 @@ type Result struct {
 	Result            string             `json:"result"`
 	SessionID         string             `json:"session_id"`
 	Usage             *Usage             `json:"usage,omitempty"`
+	ModelUsage        ModelUsage         `json:"modelUsage,omitempty"`
 	Error             string             `json:"error,omitempty"`
 	PermissionDenials *PermissionDenials `json:"permission_denials,omitempty"`
 	UUID              string             `json:"uuid,omitempty"`
