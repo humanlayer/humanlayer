@@ -558,7 +558,7 @@
     0%,
     100% {
       opacity: 1;
-      color: var(--terminal-accent);
+      color: var(--terminal-warning);
     }
     50% {
       opacity: 0.5;

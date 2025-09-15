@@ -19,7 +19,6 @@ import { SessionModeIndicator } from './AutoAcceptIndicator'
 import { ForkViewModal } from './components/ForkViewModal'
 import { DangerouslySkipPermissionsDialog } from './DangerouslySkipPermissionsDialog'
 import { AdditionalDirectoriesDropdown } from './components/AdditionalDirectoriesDropdown'
-import { ActionButtons } from './components/ActionButtons'
 
 // Import hooks
 import { useSessionActions } from './hooks/useSessionActions'
@@ -736,6 +735,57 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     [handleToggleForkView],
   )
 
+  // Create archive handler
+  const handleToggleArchive = useCallback(async () => {
+    // Check if session is active (requires confirmation)
+    const isActiveSession = [
+      SessionStatus.Starting,
+      SessionStatus.Running,
+      SessionStatus.WaitingInput,
+    ].includes(session.status as any)
+
+    const isArchiving = !session.archived
+
+    if (isActiveSession && !confirmingArchive) {
+      // First press - show warning
+      setConfirmingArchive(true)
+      toast.warning('Press e again to archive active session', {
+        description:
+          'This session is still active. Press e again within 3 seconds to confirm.',
+        duration: 3000,
+      })
+
+      // Set timeout to reset confirmation state
+      confirmingArchiveTimeoutRef.current = setTimeout(() => {
+        setConfirmingArchive(false)
+        confirmingArchiveTimeoutRef.current = null
+      }, 3000)
+      return
+    }
+
+    // Either second press for active session or immediate archive for completed/failed
+    try {
+      await useStore.getState().archiveSession(session.id, isArchiving)
+
+      // Clear confirmation state
+      setConfirmingArchive(false)
+
+      // Show success notification matching list view behavior
+      toast.success(isArchiving ? 'Session archived' : 'Session unarchived', {
+        description: session.summary || 'Untitled session',
+        duration: 3000,
+      })
+
+      // Navigate back to session list
+      onClose()
+    } catch (error) {
+      toast.error('Failed to archive session', {
+        description: error instanceof Error ? error.message : 'Unknown error',
+      })
+      setConfirmingArchive(false)
+    }
+  }, [session.id, session.archived, session.summary, session.status, onClose, confirmingArchive])
+
   // Add Shift+G hotkey to scroll to bottom
   useHotkeys(
     'shift+g',
@@ -881,7 +931,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
 
   return (
     <section className="flex flex-col h-full gap-3">
-      {/* Unified header with working directory and action buttons */}
+      {/* Unified header with working directory */}
       <div className="flex items-center justify-between gap-2">
         {/* Working directory info */}
         {session.workingDir && (
@@ -895,87 +945,24 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
           />
         )}
 
-        {/* Action buttons */}
-        <div className="flex items-center gap-1 ml-auto">
-          <ActionButtons
-            sessionId={session.id}
-            canFork={previewEventIndex === null && !isActivelyProcessing}
-            bypassEnabled={dangerouslySkipPermissions}
-            autoAcceptEnabled={autoAcceptEdits}
-            sessionStatus={session.status}
-            isArchived={session.archived || false}
-            onToggleFork={handleToggleForkView}
-            onToggleBypass={handleToggleDangerouslySkipPermissions}
-            onToggleAutoAccept={handleToggleAutoAccept}
-            onToggleArchive={async () => {
-              // Check if session is active (requires confirmation)
-              const isActiveSession = [
-                SessionStatus.Starting,
-                SessionStatus.Running,
-                SessionStatus.WaitingInput,
-              ].includes(session.status as any)
-
-              const isArchiving = !session.archived
-
-              if (isActiveSession && !confirmingArchive) {
-                // First press - show warning
-                setConfirmingArchive(true)
-                toast.warning('Press e again to archive active session', {
-                  description:
-                    'This session is still active. Press e again within 3 seconds to confirm.',
-                  duration: 3000,
-                })
-
-                // Set timeout to reset confirmation state
-                confirmingArchiveTimeoutRef.current = setTimeout(() => {
-                  setConfirmingArchive(false)
-                  confirmingArchiveTimeoutRef.current = null
-                }, 3000)
-                return
-              }
-
-              // Either second press for active session or immediate archive for completed/failed
-              try {
-                await useStore.getState().archiveSession(session.id, isArchiving)
-
-                // Clear confirmation state
-                setConfirmingArchive(false)
-
-                // Show success notification matching list view behavior
-                toast.success(isArchiving ? 'Session archived' : 'Session unarchived', {
-                  description: session.summary || 'Untitled session',
-                  duration: 3000,
-                })
-
-                // Navigate back to session list
-                onClose()
-              } catch (error) {
-                toast.error('Failed to archive session', {
-                  description: error instanceof Error ? error.message : 'Unknown error',
-                })
-                setConfirmingArchive(false)
-              }
-            }}
-          />
-
-          <ForkViewModal
-            events={events}
-            selectedEventIndex={previewEventIndex}
-            onSelectEvent={handleForkSelect}
-            isOpen={forkViewOpen}
-            onOpenChange={open => {
-              setForkViewOpen(open)
-              // Focus the input when closing the fork modal
-              // Use longer delay to ensure it happens after all dialog cleanup
-              if (!open && responseEditor) {
-                setTimeout(() => {
-                  responseEditor.commands.focus()
-                }, 50)
-              }
-            }}
-            sessionStatus={session.status}
-          />
-        </div>
+        {/* Fork view modal */}
+        <ForkViewModal
+          events={events}
+          selectedEventIndex={previewEventIndex}
+          onSelectEvent={handleForkSelect}
+          isOpen={forkViewOpen}
+          onOpenChange={open => {
+            setForkViewOpen(open)
+            // Focus the input when closing the fork modal
+            // Use longer delay to ensure it happens after all dialog cleanup
+            if (!open && responseEditor) {
+              setTimeout(() => {
+                responseEditor.commands.focus()
+              }, 50)
+            }
+          }}
+          sessionStatus={session.status}
+        />
       </div>
 
       <div className={`flex flex-1 gap-4 ${isWideView ? 'flex-row' : 'flex-col'} min-h-0`}>
@@ -1080,6 +1067,14 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
             onToggleAutoAccept={handleToggleAutoAccept}
             onToggleDangerouslySkipPermissions={handleToggleDangerouslySkipPermissions}
             onToggleForkView={handleToggleForkView}
+            // ActionButtons props
+            canFork={previewEventIndex === null && !isActivelyProcessing}
+            bypassEnabled={dangerouslySkipPermissions}
+            autoAcceptEnabled={autoAcceptEdits}
+            isArchived={session.archived || false}
+            onToggleArchive={handleToggleArchive}
+            previewEventIndex={previewEventIndex}
+            isActivelyProcessing={isActivelyProcessing}
           />
           {/* Session mode indicator - shows fork, dangerous skip permissions or auto-accept */}
           <SessionModeIndicator
