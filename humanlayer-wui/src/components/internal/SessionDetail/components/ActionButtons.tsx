@@ -1,8 +1,8 @@
 import { FC } from 'react'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { KeyboardShortcut } from '@/components/ui/keyboard-shortcut'
-import { GitBranch, ShieldCheck, Zap, Archive } from 'lucide-react'
+import { KeyboardShortcut } from '@/components/HotkeyPanel'
+import { ShieldCheck, ChevronsRight, Archive, Split } from 'lucide-react'
 import { SessionStatus } from '@/lib/daemon/types'
 import { cn } from '@/lib/utils'
 
@@ -48,12 +48,12 @@ export const ActionButtons: FC<ActionButtonsProps> = ({
             onClick={onToggleFork}
             disabled={!canFork}
           >
-            <GitBranch className="h-3.5 w-3.5" />
+            <Split className="h-3.5 w-3.5" />
           </Button>
         </TooltipTrigger>
         <TooltipContent>
           <p className="flex items-center gap-1">
-            Fork session <KeyboardShortcut>⌘Y</KeyboardShortcut>
+            Fork session <KeyboardShortcut keyString="⌘Y" />
           </p>
         </TooltipContent>
       </Tooltip>
@@ -73,7 +73,7 @@ export const ActionButtons: FC<ActionButtonsProps> = ({
         <TooltipContent>
           <p className="flex items-center gap-1">
             {bypassEnabled ? 'Disable' : 'Enable'} bypass permissions{' '}
-            <KeyboardShortcut>⌥Y</KeyboardShortcut>
+            <KeyboardShortcut keyString="⌥Y" />
           </p>
         </TooltipContent>
       </Tooltip>
@@ -87,13 +87,13 @@ export const ActionButtons: FC<ActionButtonsProps> = ({
             className="h-7 px-2"
             onClick={onToggleAutoAccept}
           >
-            <Zap className="h-3.5 w-3.5" />
+            <ChevronsRight className="h-3.5 w-3.5" />
           </Button>
         </TooltipTrigger>
         <TooltipContent>
           <p className="flex items-center gap-1">
             {autoAcceptEnabled ? 'Disable' : 'Enable'} auto-accept{' '}
-            <KeyboardShortcut>Shift+Tab</KeyboardShortcut>
+            <KeyboardShortcut keyString="⇧+TAB" />
           </p>
         </TooltipContent>
       </Tooltip>
@@ -112,7 +112,7 @@ export const ActionButtons: FC<ActionButtonsProps> = ({
         </TooltipTrigger>
         <TooltipContent>
           <p className="flex items-center gap-1">
-            {isArchived ? 'Unarchive' : 'Archive'} session <KeyboardShortcut>E</KeyboardShortcut>
+            {isArchived ? 'Unarchive' : 'Archive'} session <KeyboardShortcut keyString="e" />
             {isActiveSession && ' (requires confirmation)'}
           </p>
         </TooltipContent>

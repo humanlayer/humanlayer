@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { useStore } from '@/AppStore'
 import { logger } from '@/lib/logging'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { KeyboardShortcut } from '@/components/ui/keyboard-shortcut'
+import { KeyboardShortcut } from '@/components/HotkeyPanel'
 
 interface SessionModeIndicatorProps {
   sessionId: string
@@ -116,7 +116,7 @@ export const SessionModeIndicator: FC<SessionModeIndicatorProps> = ({
           </TooltipTrigger>
           <TooltipContent>
             <p className="flex items-center gap-1">
-              Click or press <KeyboardShortcut>⌥Y</KeyboardShortcut> to disable
+              Click or press <KeyboardShortcut keyString="⌥Y" /> to disable
             </p>
           </TooltipContent>
         </Tooltip>
@@ -150,7 +150,7 @@ export const SessionModeIndicator: FC<SessionModeIndicatorProps> = ({
         </TooltipTrigger>
         <TooltipContent>
           <p className="flex items-center gap-1">
-            Click or press <KeyboardShortcut>Shift+Tab</KeyboardShortcut> to disable
+            Click or press <KeyboardShortcut keyString="⇧+TAB" /> to disable
           </p>
         </TooltipContent>
       </Tooltip>
