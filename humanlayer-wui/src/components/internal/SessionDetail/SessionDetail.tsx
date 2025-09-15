@@ -750,8 +750,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       // First press - show warning
       setConfirmingArchive(true)
       toast.warning('Press e again to archive active session', {
-        description:
-          'This session is still active. Press e again within 3 seconds to confirm.',
+        description: 'This session is still active. Press e again within 3 seconds to confirm.',
         duration: 3000,
       })
 

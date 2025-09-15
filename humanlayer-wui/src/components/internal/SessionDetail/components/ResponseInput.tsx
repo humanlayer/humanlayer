@@ -89,7 +89,8 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
       if (isResponding) return 'Interrupting...'
       if (isDenying) return youSure ? 'Deny?' : 'Deny'
 
-      const isRunning = session.status === SessionStatus.Running || session.status === SessionStatus.Starting
+      const isRunning =
+        session.status === SessionStatus.Running || session.status === SessionStatus.Starting
       const hasText = responseEditor && !responseEditor.isEmpty
 
       if (session.archived && isRunning) {
@@ -246,7 +247,8 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
       { enableOnFormTags: true },
     )
 
-    const isRunning = session.status === SessionStatus.Running || session.status === SessionStatus.Starting
+    const isRunning =
+      session.status === SessionStatus.Running || session.status === SessionStatus.Starting
     const hasText = responseEditor && !responseEditor.isEmpty
 
     // Only disable when: responding OR (not running AND no text)
@@ -254,7 +256,7 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
 
     const isMac = navigator.platform.includes('Mac')
     // Show different keyboard shortcut based on state
-    const sendKey = isRunning && !hasText ? 'Ctrl+X' : (isMac ? '⌘+Enter' : 'Ctrl+Enter')
+    const sendKey = isRunning && !hasText ? 'Ctrl+X' : isMac ? '⌘+Enter' : 'Ctrl+Enter'
     let outerBorderColorClass = ''
 
     let placeholder = getInputPlaceholder(session.status)
@@ -416,9 +418,7 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
                   onClick={handleSubmit}
                   disabled={isDisabled}
                   variant={
-                    isDenying ? 'destructive' :
-                    (isRunning && !hasText) ? 'destructive' :
-                    'default'
+                    isDenying ? 'destructive' : isRunning && !hasText ? 'destructive' : 'default'
                   }
                   className="h-auto py-0.5 px-2 text-xs transition-all duration-200"
                 >

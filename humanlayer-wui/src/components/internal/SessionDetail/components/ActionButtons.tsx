@@ -2,7 +2,7 @@ import { FC } from 'react'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { KeyboardShortcut } from '@/components/HotkeyPanel'
-import { ShieldCheck, ChevronsRight, Archive, Split, ArchiveRestore } from 'lucide-react'
+import { ShieldCheck, Archive, Split, ArchiveRestore } from 'lucide-react'
 import { SessionStatus } from '@/lib/daemon/types'
 import { cn } from '@/lib/utils'
 
@@ -71,6 +71,7 @@ export const ActionButtons: FC<ActionButtonsProps> = ({
                 'text-[var(--terminal-error)]',
                 'border-[var(--terminal-error)]/40',
                 'hover:bg-[var(--terminal-error)]/25',
+                'hover:border-[var(--terminal-error)]',
               ],
             )}
             onClick={onToggleBypass}
@@ -99,6 +100,7 @@ export const ActionButtons: FC<ActionButtonsProps> = ({
                 'text-[var(--terminal-warning)]',
                 'border-[var(--terminal-warning)]/30',
                 'hover:bg-[var(--terminal-warning)]/25',
+                'hover:border-[var(--terminal-warning)]',
               ],
             )}
             onClick={onToggleAutoAccept}
@@ -123,7 +125,11 @@ export const ActionButtons: FC<ActionButtonsProps> = ({
             className={cn('h-7 px-2', isActiveSession && 'text-warning')}
             onClick={onToggleArchive}
           >
-            {isArchived ? <ArchiveRestore className="h-3.5 w-3.5" /> : <Archive className="h-3.5 w-3.5" />}
+            {isArchived ? (
+              <ArchiveRestore className="h-3.5 w-3.5" />
+            ) : (
+              <Archive className="h-3.5 w-3.5" />
+            )}
           </Button>
         </TooltipTrigger>
         <TooltipContent>
