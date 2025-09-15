@@ -2,7 +2,7 @@ import { FC } from 'react'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { KeyboardShortcut } from '@/components/HotkeyPanel'
-import { ShieldCheck, ChevronsRight, Archive, Split } from 'lucide-react'
+import { ShieldCheck, ChevronsRight, Archive, Split, ArchiveRestore } from 'lucide-react'
 import { SessionStatus } from '@/lib/daemon/types'
 import { cn } from '@/lib/utils'
 
@@ -43,7 +43,7 @@ export const ActionButtons: FC<ActionButtonsProps> = ({
         <TooltipTrigger asChild>
           <Button
             size="sm"
-            variant={canFork ? 'outline' : 'ghost'}
+            variant="ghost"
             className={cn('h-7 px-2', !canFork && 'opacity-50')}
             onClick={onToggleFork}
             disabled={!canFork}
@@ -63,8 +63,16 @@ export const ActionButtons: FC<ActionButtonsProps> = ({
         <TooltipTrigger asChild>
           <Button
             size="sm"
-            variant={bypassEnabled ? 'destructive' : 'outline'}
-            className="h-7 px-2"
+            variant="ghost"
+            className={cn(
+              'h-7 px-2',
+              bypassEnabled && [
+                'bg-[var(--terminal-error)]/15',
+                'text-[var(--terminal-error)]',
+                'border-[var(--terminal-error)]/40',
+                'hover:bg-[var(--terminal-error)]/25',
+              ],
+            )}
             onClick={onToggleBypass}
           >
             <ShieldCheck className="h-3.5 w-3.5" />
@@ -83,11 +91,19 @@ export const ActionButtons: FC<ActionButtonsProps> = ({
         <TooltipTrigger asChild>
           <Button
             size="sm"
-            variant={autoAcceptEnabled ? 'secondary' : 'outline'}
-            className="h-7 px-2"
+            variant="ghost"
+            className={cn(
+              'h-7 px-2 min-w-[38px]',
+              autoAcceptEnabled && [
+                'bg-[var(--terminal-warning)]/15',
+                'text-[var(--terminal-warning)]',
+                'border-[var(--terminal-warning)]/30',
+                'hover:bg-[var(--terminal-warning)]/25',
+              ],
+            )}
             onClick={onToggleAutoAccept}
           >
-            <ChevronsRight className="h-3.5 w-3.5" />
+            <div className="w-4 h-4 text-base leading-none">⏵⏵</div>
           </Button>
         </TooltipTrigger>
         <TooltipContent>
@@ -103,11 +119,11 @@ export const ActionButtons: FC<ActionButtonsProps> = ({
         <TooltipTrigger asChild>
           <Button
             size="sm"
-            variant={isArchived ? 'secondary' : 'outline'}
+            variant={'ghost'}
             className={cn('h-7 px-2', isActiveSession && 'text-warning')}
             onClick={onToggleArchive}
           >
-            <Archive className="h-3.5 w-3.5" />
+            {isArchived ? <ArchiveRestore className="h-3.5 w-3.5" /> : <Archive className="h-3.5 w-3.5" />}
           </Button>
         </TooltipTrigger>
         <TooltipContent>

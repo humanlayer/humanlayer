@@ -2,6 +2,7 @@ import { forwardRef, useEffect, useState, useRef, useImperativeHandle } from 're
 import { Button } from '@/components/ui/button'
 import { Session, SessionStatus } from '@/lib/daemon/types'
 import { Split, MessageCircleX, AlertCircle } from 'lucide-react'
+import { ActionButtons } from './ActionButtons'
 import {
   getInputPlaceholder,
   getHelpText,
@@ -37,6 +38,14 @@ interface ResponseInputProps {
   onToggleAutoAccept?: () => void
   onToggleDangerouslySkipPermissions?: () => void
   onToggleForkView?: () => void
+  // Props for ActionButtons
+  canFork?: boolean
+  bypassEnabled?: boolean
+  autoAcceptEnabled?: boolean
+  isArchived?: boolean
+  onToggleArchive?: () => void
+  previewEventIndex?: number | null
+  isActivelyProcessing?: boolean
 }
 
 export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }, ResponseInputProps>(
@@ -60,6 +69,12 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
       onToggleAutoAccept,
       onToggleDangerouslySkipPermissions,
       onToggleForkView,
+      // ActionButtons props
+      canFork = false,
+      bypassEnabled = false,
+      autoAcceptEnabled = false,
+      isArchived = false,
+      onToggleArchive,
     },
     ref,
   ) => {
@@ -313,19 +328,33 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
                   <hr className="w-full border-border" />
                 </div>
               )}
-              {/* Status Bar */}
-              <StatusBar
-                session={session}
-                effectiveContextTokens={
-                  isForkMode && forkTokenCount !== null && forkTokenCount !== undefined
-                    ? forkTokenCount
-                    : (session.effectiveContextTokens ?? parentSessionData?.effectiveContextTokens)
-                }
-                contextLimit={session.contextLimit ?? parentSessionData?.contextLimit}
-                model={session.model ?? parentSessionData?.model}
-                onModelChange={onModelChange}
-                statusOverride={getStatusOverride()}
-              />
+              {/* Status Bar with Action Buttons */}
+              <div className="flex items-center justify-between gap-2">
+                <StatusBar
+                  session={session}
+                  effectiveContextTokens={
+                    isForkMode && forkTokenCount !== null && forkTokenCount !== undefined
+                      ? forkTokenCount
+                      : (session.effectiveContextTokens ?? parentSessionData?.effectiveContextTokens)
+                  }
+                  contextLimit={session.contextLimit ?? parentSessionData?.contextLimit}
+                  model={session.model ?? parentSessionData?.model}
+                  onModelChange={onModelChange}
+                  statusOverride={getStatusOverride()}
+                />
+                <ActionButtons
+                  sessionId={session.id}
+                  canFork={canFork}
+                  bypassEnabled={bypassEnabled}
+                  autoAcceptEnabled={autoAcceptEnabled}
+                  sessionStatus={sessionStatus}
+                  isArchived={isArchived || false}
+                  onToggleFork={onToggleForkView || (() => {})}
+                  onToggleBypass={onToggleDangerouslySkipPermissions || (() => {})}
+                  onToggleAutoAccept={onToggleAutoAccept || (() => {})}
+                  onToggleArchive={onToggleArchive || (() => {})}
+                />
+              </div>
 
               {/* Existing input area */}
               <div className="flex gap-2">
