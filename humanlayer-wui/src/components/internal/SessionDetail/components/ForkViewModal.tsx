@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Split } from 'lucide-react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import {
   Dialog,
@@ -7,9 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogTrigger,
 } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
 import { ConversationEvent } from '@/lib/daemon/types'
 import { cn } from '@/lib/utils'
 import { useStealHotkeyScope } from '@/hooks/useStealHotkeyScope'
@@ -287,12 +284,6 @@ export function ForkViewModal({
         }
       }}
     >
-      <DialogTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Fork View (Meta+Y)">
-          <Split className="h-4 w-4" />
-        </Button>
-      </DialogTrigger>
-
       <DialogContent
         className="max-w-2xl"
         showCloseButton={false}
