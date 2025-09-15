@@ -88,15 +88,24 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
     const getSendButtonText = () => {
       if (isResponding) return 'Interrupting...'
       if (isDenying) return youSure ? 'Deny?' : 'Deny'
-      if (
-        session.archived &&
-        (session.status === SessionStatus.Running || session.status === SessionStatus.Starting)
-      ) {
+
+      const isRunning = session.status === SessionStatus.Running || session.status === SessionStatus.Starting
+      const hasText = responseEditor && !responseEditor.isEmpty
+
+      if (session.archived && isRunning) {
         return 'Interrupt & Unarchive'
       }
       if (session.archived) return 'Send & Unarchive'
-      if (session.status === SessionStatus.Running || session.status === SessionStatus.Starting)
+
+      // When running and no text, show just "Interrupt"
+      if (isRunning && !hasText) {
+        return 'Interrupt'
+      }
+      // When running with text, show "Interrupt & Send"
+      if (isRunning && hasText) {
         return 'Interrupt & Send'
+      }
+
       return 'Send'
     }
 
@@ -237,9 +246,15 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
       { enableOnFormTags: true },
     )
 
-    const isDisabled = responseEditor?.isEmpty || isResponding
+    const isRunning = session.status === SessionStatus.Running || session.status === SessionStatus.Starting
+    const hasText = responseEditor && !responseEditor.isEmpty
+
+    // Only disable when: responding OR (not running AND no text)
+    const isDisabled = isResponding || (!isRunning && !hasText)
+
     const isMac = navigator.platform.includes('Mac')
-    const sendKey = isMac ? '⌘+Enter' : 'Ctrl+Enter'
+    // Show different keyboard shortcut based on state
+    const sendKey = isRunning && !hasText ? 'Ctrl+X' : (isMac ? '⌘+Enter' : 'Ctrl+Enter')
     let outerBorderColorClass = ''
 
     let placeholder = getInputPlaceholder(session.status)
@@ -396,17 +411,15 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
               </div>
 
               {/* Keyboard shortcuts (condensed) */}
-              <div className="flex items-center justify-between">
-                <p className="text-xs text-muted-foreground">
-                  {isResponding
-                    ? 'Waiting for Claude to accept the interrupt...'
-                    : getHelpText(session.status)}
-                </p>
-
+              <div className="flex items-center justify-end">
                 <Button
                   onClick={handleSubmit}
                   disabled={isDisabled}
-                  variant={isDenying ? 'destructive' : 'default'}
+                  variant={
+                    isDenying ? 'destructive' :
+                    (isRunning && !hasText) ? 'destructive' :
+                    'default'
+                  }
                   className="h-auto py-0.5 px-2 text-xs transition-all duration-200"
                 >
                   {getSendButtonText()}
