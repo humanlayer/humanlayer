@@ -2,7 +2,7 @@ import { FC } from 'react'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { KeyboardShortcut } from '@/components/HotkeyPanel'
-import { ShieldCheck, Archive, Split, ArchiveRestore } from 'lucide-react'
+import { Archive, Split, ArchiveRestore, ShieldOff } from 'lucide-react'
 import { SessionStatus } from '@/lib/daemon/types'
 import { cn } from '@/lib/utils'
 
@@ -76,7 +76,7 @@ export const ActionButtons: FC<ActionButtonsProps> = ({
             )}
             onClick={onToggleBypass}
           >
-            <ShieldCheck className="h-3.5 w-3.5" />
+            <ShieldOff className="h-3.5 w-3.5" />
           </Button>
         </TooltipTrigger>
         <TooltipContent>
