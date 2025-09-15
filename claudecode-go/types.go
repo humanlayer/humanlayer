@@ -89,16 +89,17 @@ type StreamEvent struct {
 	APIKeySource   string `json:"apiKeySource,omitempty"`
 
 	// Result event fields (when type="result")
-	CostUSD           float64            `json:"total_cost_usd,omitempty"`
-	IsError           bool               `json:"is_error,omitempty"`
-	DurationMS        int                `json:"duration_ms,omitempty"`
-	DurationAPI       int                `json:"duration_api_ms,omitempty"`
-	NumTurns          int                `json:"num_turns,omitempty"`
-	Result            string             `json:"result,omitempty"`
-	Usage             *Usage             `json:"usage,omitempty"`
-	Error             string             `json:"error,omitempty"`
-	PermissionDenials *PermissionDenials `json:"permission_denials,omitempty"`
-	UUID              string             `json:"uuid,omitempty"`
+	CostUSD           float64                     `json:"total_cost_usd,omitempty"`
+	IsError           bool                        `json:"is_error,omitempty"`
+	DurationMS        int                         `json:"duration_ms,omitempty"`
+	DurationAPI       int                         `json:"duration_api_ms,omitempty"`
+	NumTurns          int                         `json:"num_turns,omitempty"`
+	Result            string                      `json:"result,omitempty"`
+	Usage             *Usage                      `json:"usage,omitempty"`
+	ModelUsage        map[string]ModelUsageDetail `json:"modelUsage,omitempty"`
+	Error             string                      `json:"error,omitempty"`
+	PermissionDenials *PermissionDenials          `json:"permission_denials,omitempty"`
+	UUID              string                      `json:"uuid,omitempty"`
 }
 
 // MCPStatus represents the status of an MCP server
@@ -247,21 +248,32 @@ func (p PermissionDenials) ToStrings() []string {
 	return result
 }
 
+// ModelUsageDetail represents usage details for a specific model
+type ModelUsageDetail struct {
+	InputTokens              int     `json:"inputTokens"`
+	OutputTokens             int     `json:"outputTokens"`
+	CacheReadInputTokens     int     `json:"cacheReadInputTokens"`
+	CacheCreationInputTokens int     `json:"cacheCreationInputTokens"`
+	WebSearchRequests        int     `json:"webSearchRequests"`
+	CostUSD                  float64 `json:"costUSD"`
+}
+
 // Result represents the final result of a Claude session
 type Result struct {
-	Type              string             `json:"type"`
-	Subtype           string             `json:"subtype"`
-	CostUSD           float64            `json:"total_cost_usd"`
-	IsError           bool               `json:"is_error"`
-	DurationMS        int                `json:"duration_ms"`
-	DurationAPI       int                `json:"duration_api_ms"`
-	NumTurns          int                `json:"num_turns"`
-	Result            string             `json:"result"`
-	SessionID         string             `json:"session_id"`
-	Usage             *Usage             `json:"usage,omitempty"`
-	Error             string             `json:"error,omitempty"`
-	PermissionDenials *PermissionDenials `json:"permission_denials,omitempty"`
-	UUID              string             `json:"uuid,omitempty"`
+	Type              string                      `json:"type"`
+	Subtype           string                      `json:"subtype"`
+	CostUSD           float64                     `json:"total_cost_usd"`
+	IsError           bool                        `json:"is_error"`
+	DurationMS        int                         `json:"duration_ms"`
+	DurationAPI       int                         `json:"duration_api_ms"`
+	NumTurns          int                         `json:"num_turns"`
+	Result            string                      `json:"result"`
+	SessionID         string                      `json:"session_id"`
+	Usage             *Usage                      `json:"usage,omitempty"`
+	ModelUsage        map[string]ModelUsageDetail `json:"modelUsage,omitempty"`
+	Error             string                      `json:"error,omitempty"`
+	PermissionDenials *PermissionDenials          `json:"permission_denials,omitempty"`
+	UUID              string                      `json:"uuid,omitempty"`
 }
 
 // Session represents an active Claude session
