@@ -629,7 +629,7 @@
 
   /* Status colors */
   --terminal-success: #00c853; /* Green success (approve) */
-  --terminal-warning: #ffab00; /* Amber warning */
+  --terminal-warning: #2196f3; /* Blue for needs_approval/opus */
   --terminal-error: #d50000; /* Red error (deny) */
 
   /* Terminal ANSI colors - Same as dark for consistency */
@@ -661,8 +661,8 @@
 
   /* Accent and UI colors */
   --terminal-accent: #00ff41; /* Bright phosphor green - main accent */
-  --terminal-accent-dim: #008822; /* Dark forest green - secondary */
-  --terminal-accent-alt: #00ffaa; /* Cyan-green - alternative */
+  --terminal-accent-dim: #a0a0a0; /* Gray for inline code/secondary */
+  --terminal-accent-alt: #008822; /* Dark forest green - alternative */
   --terminal-border: #00ff41; /* Green border */
 
   /* Status colors */
@@ -670,22 +670,22 @@
   --terminal-warning: #ffaa00; /* Amber warning */
   --terminal-error: #ff4444; /* Red error */
 
-  /* Terminal ANSI colors - Mix of green and white */
+  /* Terminal ANSI colors - Mix of green, white, and grays */
   --terminal-color-0: #0a1510; /* Black (dark green) */
   --terminal-color-1: #ff4444; /* Red */
   --terminal-color-2: #00ff41; /* Green */
   --terminal-color-3: #ffff00; /* Yellow */
-  --terminal-color-4: #00aaff; /* Blue (cyan-ish) */
-  --terminal-color-5: #ff00ff; /* Magenta */
-  --terminal-color-6: #00ffff; /* Cyan */
+  --terminal-color-4: #4a90e2; /* Blue */
+  --terminal-color-5: #b8b8b8; /* Magenta (gray for code) */
+  --terminal-color-6: #00ffaa; /* Cyan */
   --terminal-color-7: #d0d0d0; /* White (light gray) */
-  --terminal-color-8: #1a2520; /* Bright Black (medium dark green) */
+  --terminal-color-8: #606060; /* Bright Black (medium gray) */
   --terminal-color-9: #ff6666; /* Bright Red */
   --terminal-color-10: #40ff60; /* Bright Green */
   --terminal-color-11: #ffff66; /* Bright Yellow */
-  --terminal-color-12: #66bbff; /* Bright Blue */
-  --terminal-color-13: #ff66ff; /* Bright Magenta */
-  --terminal-color-14: #66ffff; /* Bright Cyan */
+  --terminal-color-12: #6bb6ff; /* Bright Blue */
+  --terminal-color-13: #e0e0e0; /* Bright Magenta (light gray for code) */
+  --terminal-color-14: #66ffcc; /* Bright Cyan */
   --terminal-color-15: #ffffff; /* Bright White */
 }
 @layer base {
