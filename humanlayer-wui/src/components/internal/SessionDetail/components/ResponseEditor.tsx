@@ -681,6 +681,28 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
           autocorrect: 'off',
           autocapitalize: 'off',
         },
+        handleKeyDown: (view, event) => {
+          // Only handle Shift+Enter in regular paragraphs, not in code blocks or other special nodes
+          if (event.key === 'Enter' && event.shiftKey) {
+            const { state } = view
+            const { $from } = state.selection
+            const node = $from.parent
+
+            // Only handle in paragraph nodes (not code blocks, etc.)
+            if (node.type.name === 'paragraph') {
+              event.preventDefault()
+
+              // Insert a paragraph break (same as pressing Enter)
+              const { dispatch } = view
+              const tr = state.tr.split($from.pos)
+              dispatch(tr)
+
+              return true
+            }
+          }
+
+          return false
+        },
       },
       onUpdate: ({ editor }) => onChangeRef.current?.(editor.getJSON()),
       editable: !disabled,
