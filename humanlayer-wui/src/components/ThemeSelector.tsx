@@ -12,6 +12,8 @@ import {
   Flower2,
   Sunrise,
   MoonStar,
+  Building2,
+  CloudLightning,
 } from 'lucide-react'
 import { useHotkeys, useHotkeysContext } from 'react-hotkeys-hook'
 import { SessionTableHotkeysScope } from './internal/SessionTable'
@@ -32,6 +34,8 @@ const themes: { value: Theme; label: string; icon: React.ComponentType<{ classNa
   { value: 'rose-pine', label: 'Rosé Pine', icon: Flower2 },
   { value: 'rose-pine-dawn', label: 'Rosé Pine Dawn', icon: Sunrise },
   { value: 'rose-pine-moon', label: 'Rosé Pine Moon', icon: MoonStar },
+  { value: 'tokyo-night', label: 'Tokyo Night', icon: Building2 },
+  { value: 'tokyo-night-storm', label: 'Tokyo Night Storm', icon: CloudLightning },
 ]
 
 export const ThemeSelectorHotkeysScope = 'theme-selector'

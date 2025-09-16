@@ -535,6 +535,82 @@
   --terminal-color-14: #ebbcba; /* Bright Cyan (rose) */
   --terminal-color-15: #e0def4; /* Bright White (text) */
 }
+
+/* Tokyo Night - Classic dark theme */
+[data-theme='tokyo-night'] {
+  /* Core background/foreground colors */
+  --terminal-bg: #1a1b26; /* Night background */
+  --terminal-bg-alt: #16161e; /* Dark background */
+  --terminal-fg: #c0caf5; /* Primary foreground */
+  --terminal-fg-dim: #a9b1d6; /* Dimmed foreground */
+
+  /* Accent and UI colors */
+  --terminal-accent: #7aa2f7; /* Blue accent */
+  --terminal-accent-dim: #3d59a1; /* Dimmed blue */
+  --terminal-accent-alt: #bb9af7; /* Magenta accent */
+  --terminal-border: #3b4261; /* Border color */
+
+  /* Status colors */
+  --terminal-success: #9ece6a; /* Green */
+  --terminal-warning: #e0af68; /* Yellow */
+  --terminal-error: #f7768e; /* Red */
+
+  /* Terminal ANSI colors */
+  --terminal-color-0: #15161e; /* Black */
+  --terminal-color-1: #f7768e; /* Red */
+  --terminal-color-2: #9ece6a; /* Green */
+  --terminal-color-3: #e0af68; /* Yellow */
+  --terminal-color-4: #7aa2f7; /* Blue */
+  --terminal-color-5: #bb9af7; /* Magenta */
+  --terminal-color-6: #7dcfff; /* Cyan */
+  --terminal-color-7: #a9b1d6; /* White */
+  --terminal-color-8: #414868; /* Bright Black */
+  --terminal-color-9: #ff899d; /* Bright Red */
+  --terminal-color-10: #9fe044; /* Bright Green */
+  --terminal-color-11: #faba4a; /* Bright Yellow */
+  --terminal-color-12: #8db0ff; /* Bright Blue */
+  --terminal-color-13: #c7a9ff; /* Bright Magenta */
+  --terminal-color-14: #a4daff; /* Bright Cyan */
+  --terminal-color-15: #c0caf5; /* Bright White */
+}
+
+/* Tokyo Night Storm - Lighter variant */
+[data-theme='tokyo-night-storm'] {
+  /* Core background/foreground colors */
+  --terminal-bg: #24283b; /* Storm background */
+  --terminal-bg-alt: #1f2335; /* Dark background */
+  --terminal-fg: #c0caf5; /* Primary foreground */
+  --terminal-fg-dim: #a9b1d6; /* Dimmed foreground */
+
+  /* Accent and UI colors */
+  --terminal-accent: #7aa2f7; /* Blue accent */
+  --terminal-accent-dim: #3d59a1; /* Dimmed blue */
+  --terminal-accent-alt: #bb9af7; /* Magenta accent */
+  --terminal-border: #3b4261; /* Border color */
+
+  /* Status colors */
+  --terminal-success: #9ece6a; /* Green */
+  --terminal-warning: #e0af68; /* Yellow */
+  --terminal-error: #f7768e; /* Red */
+
+  /* Terminal ANSI colors */
+  --terminal-color-0: #1d202f; /* Black */
+  --terminal-color-1: #f7768e; /* Red */
+  --terminal-color-2: #9ece6a; /* Green */
+  --terminal-color-3: #e0af68; /* Yellow */
+  --terminal-color-4: #7aa2f7; /* Blue */
+  --terminal-color-5: #bb9af7; /* Magenta */
+  --terminal-color-6: #7dcfff; /* Cyan */
+  --terminal-color-7: #a9b1d6; /* White */
+  --terminal-color-8: #414868; /* Bright Black */
+  --terminal-color-9: #ff899d; /* Bright Red */
+  --terminal-color-10: #9fe044; /* Bright Green */
+  --terminal-color-11: #faba4a; /* Bright Yellow */
+  --terminal-color-12: #8db0ff; /* Bright Blue */
+  --terminal-color-13: #c7a9ff; /* Bright Magenta */
+  --terminal-color-14: #a4daff; /* Bright Cyan */
+  --terminal-color-15: #c0caf5; /* Bright White */
+}
 @layer base {
   * {
     @apply border-border outline-ring/50;
