@@ -18,6 +18,8 @@ export type Theme =
   | 'rose-pine-moon'
   | 'tokyo-night'
   | 'tokyo-night-storm'
+  | 'bubblegum'
+  | 'l33t'
 
 interface ThemeContextType {
   theme: Theme

@@ -611,6 +611,83 @@
   --terminal-color-14: #a4daff; /* Bright Cyan */
   --terminal-color-15: #c0caf5; /* Bright White */
 }
+
+
+/* Bubblegum - Pink-themed light mode */
+[data-theme='bubblegum'] {
+  /* Core background/foreground colors */
+  --terminal-bg: #f9f9f9; /* Light background */
+  --terminal-bg-alt: #eaf5fa; /* Alternative light blue */
+  --terminal-fg: #000000; /* Black foreground */
+  --terminal-fg-dim: #666666; /* Dimmed text */
+
+  /* Accent and UI colors */
+  --terminal-accent: #fa4fb8; /* Pink accent */
+  --terminal-accent-dim: #e048a6; /* Dimmed pink */
+  --terminal-accent-alt: #f8a8d9; /* Light pink */
+  --terminal-border: #dcf2ff; /* Light blue border */
+
+  /* Status colors */
+  --terminal-success: #00c853; /* Green success (approve) */
+  --terminal-warning: #ffab00; /* Amber warning */
+  --terminal-error: #d50000; /* Red error (deny) */
+
+  /* Terminal ANSI colors - Same as dark for consistency */
+  --terminal-color-0: #000000; /* Black */
+  --terminal-color-1: #cd3131; /* Red */
+  --terminal-color-2: #0dbc79; /* Green */
+  --terminal-color-3: #e5e510; /* Yellow */
+  --terminal-color-4: #2472c8; /* Blue */
+  --terminal-color-5: #bc3fbc; /* Magenta */
+  --terminal-color-6: #11a8cd; /* Cyan */
+  --terminal-color-7: #e5e5e5; /* White */
+  --terminal-color-8: #666666; /* Bright Black */
+  --terminal-color-9: #f14c4c; /* Bright Red */
+  --terminal-color-10: #23d18b; /* Bright Green */
+  --terminal-color-11: #f5f543; /* Bright Yellow */
+  --terminal-color-12: #3b8eea; /* Bright Blue */
+  --terminal-color-13: #d670d6; /* Bright Magenta */
+  --terminal-color-14: #29b8db; /* Bright Cyan */
+  --terminal-color-15: #e5e5e5; /* Bright White */
+}
+
+/* L33t - Classic hacker terminal theme */
+[data-theme='l33t'] {
+  /* Core background/foreground colors */
+  --terminal-bg: #070e0a; /* Dark green background */
+  --terminal-bg-alt: #0c1712; /* Slightly lighter dark green */
+  --terminal-fg: #00ff41; /* Bright phosphor green */
+  --terminal-fg-dim: #ffffff; /* White for labels/secondary text */
+
+  /* Accent and UI colors */
+  --terminal-accent: #00ff41; /* Bright phosphor green - main accent */
+  --terminal-accent-dim: #008822; /* Dark forest green - secondary */
+  --terminal-accent-alt: #00ffaa; /* Cyan-green - alternative */
+  --terminal-border: #00ff41; /* Green border */
+
+  /* Status colors */
+  --terminal-success: #00ff41; /* Bright green success */
+  --terminal-warning: #ffaa00; /* Amber warning */
+  --terminal-error: #ff4444; /* Red error */
+
+  /* Terminal ANSI colors - Mix of green and white */
+  --terminal-color-0: #0a1510; /* Black (dark green) */
+  --terminal-color-1: #ff4444; /* Red */
+  --terminal-color-2: #00ff41; /* Green */
+  --terminal-color-3: #ffff00; /* Yellow */
+  --terminal-color-4: #00aaff; /* Blue (cyan-ish) */
+  --terminal-color-5: #ff00ff; /* Magenta */
+  --terminal-color-6: #00ffff; /* Cyan */
+  --terminal-color-7: #d0d0d0; /* White (light gray) */
+  --terminal-color-8: #1a2520; /* Bright Black (medium dark green) */
+  --terminal-color-9: #ff6666; /* Bright Red */
+  --terminal-color-10: #40ff60; /* Bright Green */
+  --terminal-color-11: #ffff66; /* Bright Yellow */
+  --terminal-color-12: #66bbff; /* Bright Blue */
+  --terminal-color-13: #ff66ff; /* Bright Magenta */
+  --terminal-color-14: #66ffff; /* Bright Cyan */
+  --terminal-color-15: #ffffff; /* Bright White */
+}
 @layer base {
   * {
     @apply border-border outline-ring/50;
