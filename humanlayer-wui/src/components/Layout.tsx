@@ -40,6 +40,7 @@ import { KeyboardShortcut } from '@/components/HotkeyPanel'
 import { DvdScreensaver } from '@/components/DvdScreensaver'
 import { TestErrorTrigger } from '@/components/TestErrorTrigger'
 import { CodeLayerToaster } from '@/components/internal/CodeLayerToaster'
+import { useDebugStore } from '@/stores/useDebugStore'
 
 export function Layout() {
   const [approvals, setApprovals] = useState<any[]>([])
@@ -62,6 +63,29 @@ export function Layout() {
   // Session launcher state
   const { isOpen, close } = useSessionLauncher()
   const { handleKeyDown } = useSessionLauncherHotkeys()
+
+  // Debug store state
+  const showDevUrl = useDebugStore(state => state.showDevUrl)
+
+  /* 
+    react-hotkeys-hook had some trouble doing adding this shortcut,
+    I suspect because it overlaps typical browser behavior, so for now just using
+    a global event listener 
+  */
+  useEffect(() => {
+    const backForwardHandler = (e: KeyboardEvent) => {
+      if (e.metaKey && e.code === 'BracketLeft') {
+        e.preventDefault()
+        navigate(-1)
+      } else if (e.metaKey && e.code === 'BracketRight') {
+        e.preventDefault()
+        navigate(1)
+      }
+    }
+
+    window.addEventListener('keydown', backForwardHandler)
+    return () => window.removeEventListener('keydown', backForwardHandler)
+  }, [])
 
   // Secret hotkey for launch theme
   useHotkeys('mod+shift+y', () => {
@@ -593,6 +617,9 @@ export function Layout() {
           )}
         </div>
         <div className="flex items-center gap-3">
+          {import.meta.env.DEV && showDevUrl && (
+            <span className="text-xs text-muted-foreground">{window.location.href}</span>
+          )}
           <Tooltip>
             <TooltipTrigger asChild>
               <a
