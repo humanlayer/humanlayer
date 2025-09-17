@@ -2,7 +2,7 @@ import React from 'react'
 import { Button } from '../ui/button'
 
 interface ToastAction {
-  label: string
+  label: string | React.ReactNode
   onClick: (event?: React.MouseEvent<HTMLButtonElement>) => void
 }
 
