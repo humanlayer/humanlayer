@@ -586,9 +586,6 @@ codelayer-nightly-bundle:
 	@echo "Nightly build complete! DMG available at:"
 	@ls -la humanlayer-wui/src-tauri/target/release/bundle/dmg/*.dmg
 
-codelayer-dev: daemon-dev-build wui-dev
-	@echo "Build complete!"
-
 # Open nightly WUI
 .PHONY: wui-nightly
 wui-nightly: wui-nightly-build
@@ -652,6 +649,45 @@ daemon-dev-build: setup
 		-o hld-dev ./cmd/hld
 	@echo "Built dev daemon binary: hld/hld-dev"
 
+# Launch daemon with ticket-based configuration
+.PHONY: daemon-ticket
+daemon-ticket: daemon-dev-build
+	@source hack/port-utils.sh && \
+	if [ -z "$(TICKET)" ]; then \
+		echo "Error: TICKET parameter required"; \
+		echo "Usage: make daemon-ticket TICKET=ENG-2114"; \
+		exit 1; \
+	fi && \
+	ticket_num=$$(extract_ticket_number "$(TICKET)") && \
+	port=$$(find_available_port "$$ticket_num") && \
+	echo "Starting daemon for $(TICKET) on port $$port" && \
+	HUMANLAYER_DATABASE_PATH=~/.humanlayer/daemon-$(TICKET).db \
+	HUMANLAYER_DAEMON_SOCKET=~/.humanlayer/daemon-$$port.sock \
+	HUMANLAYER_DAEMON_HTTP_PORT=$$port \
+	HUMANLAYER_DAEMON_VERSION_OVERRIDE="$(TICKET)-$$(git branch --show-current)" \
+	./hld/hld-dev
+
+# Launch WUI with ticket-based configuration
+.PHONY: wui-ticket
+wui-ticket:
+	@source hack/port-utils.sh && \
+	if [ -z "$(TICKET)" ]; then \
+		echo "Error: TICKET parameter required"; \
+		echo "Usage: make wui-ticket TICKET=ENG-2114"; \
+		exit 1; \
+	fi && \
+	ticket_num=$$(extract_ticket_number "$(TICKET)") && \
+	port=$$(find_available_port "$$ticket_num") && \
+	vite_port=$$(find_available_vite_port "$$ticket_num") && \
+	echo "Starting WUI for $(TICKET) connecting to daemon port $$port, Vite port $$vite_port" && \
+	echo "{\"build\":{\"devUrl\":\"http://localhost:$$vite_port\"}}" > /tmp/tauri-config-$(TICKET).json && \
+	cd humanlayer-wui && \
+	HUMANLAYER_WUI_AUTOLAUNCH_DAEMON=false \
+	HUMANLAYER_DAEMON_SOCKET=~/.humanlayer/daemon-$$port.sock \
+	VITE_HUMANLAYER_DAEMON_URL=http://localhost:$$port \
+	VITE_PORT=$$vite_port \
+	bun tauri dev --config /tmp/tauri-config-$(TICKET).json
+
 # Run dev daemon with persistent dev database
 .PHONY: daemon-dev
 daemon-dev: daemon-dev-build
@@ -677,7 +713,52 @@ storybook: ## Run Storybook for WUI component documentation
 
 # Alias for wui-dev that ensures daemon is built first
 .PHONY: codelayer-dev
-codelayer-dev: daemon-dev-build wui-dev
+codelayer-dev: daemon-dev-build
+	@if [ -n "$(TICKET)" ]; then \
+		source hack/port-utils.sh && \
+		ticket_num=$$(extract_ticket_number "$(TICKET)") && \
+		port=$$(find_available_port "$$ticket_num") && \
+		vite_port=$$(find_available_vite_port "$$ticket_num") && \
+		echo "==========================================" && \
+		echo "Starting instances for ticket: $(TICKET)" && \
+		echo "Daemon Port: $$port" && \
+		echo "Vite Port: $$vite_port" && \
+		echo "Socket: ~/.humanlayer/daemon-$$port.sock" && \
+		echo "Database: ~/.humanlayer/daemon-$(TICKET).db" && \
+		echo "==========================================" && \
+		$(MAKE) daemon-ticket TICKET=$(TICKET) & \
+		daemon_pid=$$! && \
+		sleep 2 && \
+		$(MAKE) wui-ticket TICKET=$(TICKET) & \
+		wui_pid=$$! && \
+		echo "Started daemon PID: $$daemon_pid" && \
+		echo "Started WUI PID: $$wui_pid" && \
+		wait $$wui_pid && \
+		kill $$daemon_pid 2>/dev/null; \
+	else \
+		echo "==========================================" && \
+		echo "Starting default dev environment" && \
+		echo "WUI will auto-launch and manage daemon" && \
+		echo "Socket: ~/.humanlayer/daemon-dev.sock" && \
+		echo "Database: ~/.humanlayer/daemon-dev.db" && \
+		echo "(use TICKET=ENG-XXXX for isolated instance)" && \
+		echo "==========================================" && \
+		$(MAKE) wui-dev; \
+	fi
+
+# Test port allocation for a ticket
+.PHONY: test-port-allocation
+test-port-allocation:
+	@source hack/port-utils.sh && \
+	if [ -z "$(TICKET)" ]; then \
+		echo "Usage: make test-port-allocation TICKET=ENG-2114"; \
+		exit 1; \
+	fi && \
+	ticket_num=$$(extract_ticket_number "$(TICKET)") && \
+	port=$$(find_available_port "$$ticket_num") && \
+	echo "Ticket: $(TICKET)" && \
+	echo "Extracted number: $$ticket_num" && \
+	echo "Available port: $$port"
 
 # Show current dev environment setup
 .PHONY: dev-status
