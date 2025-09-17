@@ -21,7 +21,7 @@ export type NotificationType =
   | 'settings_changed'
 
 export interface NotificationAction {
-  label: string
+  label: string | React.ReactNode
   onClick: () => void
 }
 
@@ -50,6 +50,14 @@ class NotificationService {
   constructor() {
     logger.log('NotificationService: Constructor called')
     this.attachFocusListeners()
+  }
+
+  /**
+   * Get the platform-specific modifier key symbol
+   */
+  private getModifierKey(): string {
+    const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
+    return isMac ? '⌘' : 'Ctrl'
   }
 
   private validateFocusState() {
@@ -440,7 +448,14 @@ class NotificationService {
       duration: Infinity, // Approval notifications should stick until dismissed
       actions: [
         {
-          label: 'Jump to Session',
+          label: (
+            <span className="flex items-center gap-1">
+              Jump to Session
+              <kbd className="ml-1 px-1.5 py-0.5 text-sm font-medium bg-background/50 rounded border border-border">
+                {this.getModifierKey()}⇧J
+              </kbd>
+            </span>
+          ),
           onClick: () => {
             window.location.hash = `/sessions/${sessionId}`
             // Dismiss the toast when user clicks to jump to session

@@ -211,6 +211,86 @@ export function useSessionApprovals({
     }
   }, [denyingApprovalId, events, isElementInView])
 
+  // Focus a specific approval by ID
+  const focusApprovalById = useCallback(
+    (approvalId: string) => {
+      const event = events.find(e => e.approvalId === approvalId)
+
+      if (event && event.id !== undefined && event.approvalStatus === ApprovalStatus.Pending) {
+        setFocusedEventId(event.id)
+        setFocusSource?.('keyboard')
+
+        // Auto-scroll if not in view
+        const inView = isElementInView(event.id)
+
+        if (!inView) {
+          // Try multiple scroll attempts with increasing delays
+          const scrollAttempts = [100, 300, 500]
+
+          scrollAttempts.forEach(delay => {
+            setTimeout(() => {
+              const container = document.querySelector('[data-conversation-container]')
+              const element = container?.querySelector(`[data-event-id="${event.id}"]`)
+
+              if (element) {
+                // Check if still not in view before scrolling
+                const rect = element.getBoundingClientRect()
+                const containerRect = container!.getBoundingClientRect()
+                const stillNotInView =
+                  rect.top < containerRect.top || rect.bottom > containerRect.bottom
+
+                if (stillNotInView) {
+                  element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                }
+              }
+            }, delay)
+          })
+        }
+      } else {
+        // Fallback: Find the most recent pending approval
+        const pendingApprovals = events.filter(
+          e => e.approvalStatus === ApprovalStatus.Pending && e.approvalId && e.id !== undefined,
+        )
+
+        if (pendingApprovals.length > 0) {
+          // Use the last pending approval (most recent)
+          const mostRecent = pendingApprovals[pendingApprovals.length - 1]
+
+          setFocusedEventId(mostRecent.id!)
+          setFocusSource?.('keyboard')
+
+          // Auto-scroll if not in view
+          const inView = isElementInView(mostRecent.id!)
+
+          if (!inView) {
+            // Try multiple scroll attempts with increasing delays
+            const scrollAttempts = [100, 300, 500]
+
+            scrollAttempts.forEach(delay => {
+              setTimeout(() => {
+                const container = document.querySelector('[data-conversation-container]')
+                const element = container?.querySelector(`[data-event-id="${mostRecent.id}"]`)
+
+                if (element) {
+                  // Check if still not in view before scrolling
+                  const rect = element.getBoundingClientRect()
+                  const containerRect = container!.getBoundingClientRect()
+                  const stillNotInView =
+                    rect.top < containerRect.top || rect.bottom > containerRect.bottom
+
+                  if (stillNotInView) {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                  }
+                }
+              }, delay)
+            })
+          }
+        }
+      }
+    },
+    [events, setFocusedEventId, setFocusSource, isElementInView],
+  )
+
   return {
     isDenying,
     approvingApprovalId,
@@ -223,5 +303,6 @@ export function useSessionApprovals({
     handleStartDeny,
     handleCancelDeny,
     denyAgainstOldestApproval,
+    focusApprovalById,
   }
 }
