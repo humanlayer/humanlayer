@@ -4,6 +4,7 @@ import { useHotkeys } from 'react-hotkeys-hook'
 import { register } from '@tauri-apps/plugin-global-shortcut'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
+import { toast } from 'sonner'
 import {
   ApprovalResolvedEventData,
   ApprovalStatus,
@@ -79,6 +80,128 @@ export function Layout() {
     {
       enableOnFormTags: true,
     },
+  )
+
+  // Jump to most recent approval hotkey
+  useHotkeys(
+    'mod+shift+j',
+    async () => {
+      console.log('[HOTKEY-NAV] mod+shift+j pressed')
+
+      try {
+        // Get all visible toasts
+        // @ts-ignore - getToasts might not be in type definitions
+        const visibleToasts = toast.getToasts ? toast.getToasts() : []
+        const approvalToasts = visibleToasts.filter(
+          t => typeof t.id === 'string' && t.id.startsWith('approval_required:'),
+        )
+
+        console.log(
+          '[HOTKEY-NAV] Approval toasts:',
+          approvalToasts.map(t => t.id),
+        )
+
+        let targetApproval: { id: string; sessionId: string } | null = null
+
+        // If there are visible approval toasts, jump to the most recent one
+        if (approvalToasts.length > 0) {
+          // Toast IDs format: approval_required:${approvalId}
+          // Pick the last toast in the array (most recent)
+          const mostRecentToast = approvalToasts[approvalToasts.length - 1]
+          const toastIdParts = (mostRecentToast.id as string).split(':')
+          const approvalId = toastIdParts[1]
+
+          console.log('[HOTKEY-NAV] Using most recent toast approval:', approvalId)
+
+          // Find which session this approval belongs to
+          const sessions = await daemonClient.listSessions()
+          for (const session of sessions) {
+            try {
+              const conversation = await daemonClient.getConversation({ session_id: session.id })
+              const approval = conversation.find(
+                event =>
+                  event.approvalStatus === ApprovalStatus.Pending && event.approvalId === approvalId,
+              )
+              if (approval) {
+                targetApproval = { id: approvalId, sessionId: session.id }
+                break
+              }
+            } catch {
+              // Silent failure for sessions we can't fetch
+            }
+          }
+        } else {
+          // No visible toasts, fall back to fetching all approvals from daemon
+          console.log('[HOTKEY-NAV] No toasts visible, fetching from daemon')
+
+          const sessions = await daemonClient.listSessions()
+          console.log(
+            '[HOTKEY-NAV] Sessions:',
+            sessions.map(s => ({ id: s.id, title: s.title })),
+          )
+
+          // Collect all pending approvals from all sessions
+          const pendingApprovals: Array<{
+            id: string
+            sessionId: string
+            createdAt: string
+          }> = []
+
+          for (const session of sessions) {
+            try {
+              const conversation = await daemonClient.getConversation({ session_id: session.id })
+              const sessionPendingApprovals = conversation
+                .filter(event => event.approvalStatus === ApprovalStatus.Pending && event.approvalId)
+                .map(event => ({
+                  id: event.approvalId!,
+                  sessionId: session.id,
+                  createdAt: event.createdAt ? event.createdAt.toISOString() : new Date().toISOString(),
+                }))
+
+              pendingApprovals.push(...sessionPendingApprovals)
+            } catch {
+              // Silent failure for sessions we can't fetch
+            }
+          }
+
+          console.log('[HOTKEY-NAV] Pending approvals:', pendingApprovals)
+
+          if (pendingApprovals.length > 0) {
+            // Sort by createdAt timestamp (newest first)
+            const sortedApprovals = [...pendingApprovals].sort((a, b) => {
+              const timeA = new Date(a.createdAt).getTime()
+              const timeB = new Date(b.createdAt).getTime()
+              return timeB - timeA // Descending order (newest first)
+            })
+            targetApproval = sortedApprovals[0]
+          }
+        }
+
+        if (!targetApproval) {
+          toast.error('No pending approvals')
+          return
+        }
+
+        console.log('[HOTKEY-NAV] Selected approval:', targetApproval)
+
+        // Dismiss toast if it exists
+        const toastId = `approval_required:${targetApproval.id}`
+        if (visibleToasts.some(t => t.id === toastId)) {
+          toast.dismiss(toastId)
+        }
+
+        // Navigate to the session with approval parameter
+        navigate(`/sessions/${targetApproval.sessionId}?approval=${targetApproval.id}`)
+      } catch (error) {
+        console.error('[HOTKEY-NAV] Error:', error)
+        toast.error('Failed to fetch approvals')
+      }
+    },
+    {
+      enableOnFormTags: false,
+      preventDefault: true,
+    },
+    [navigate],
   )
 
   // Get store actions
