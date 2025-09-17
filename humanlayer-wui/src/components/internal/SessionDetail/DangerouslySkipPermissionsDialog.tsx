@@ -194,7 +194,8 @@ export const DangerouslySkipPermissionsDialog: FC<DangerouslySkipPermissionsDial
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="w-[90vw] max-w-[90vw] sm:max-w-[600px] md:max-w-[475px]"
+        className="overflow-hidden"
+        style={{ width: 'min(90%, 35rem)', maxWidth: 'min(90%, 35rem)' }}
         onEscapeKeyDown={e => {
           // Prevent the default Dialog escape handling
           // Our custom escape handler will handle it
