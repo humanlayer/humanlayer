@@ -535,6 +535,158 @@
   --terminal-color-14: #ebbcba; /* Bright Cyan (rose) */
   --terminal-color-15: #e0def4; /* Bright White (text) */
 }
+
+/* Tokyo Night - Classic dark theme */
+[data-theme='tokyo-night'] {
+  /* Core background/foreground colors */
+  --terminal-bg: #1a1b26; /* Night background */
+  --terminal-bg-alt: #16161e; /* Dark background */
+  --terminal-fg: #c0caf5; /* Primary foreground */
+  --terminal-fg-dim: #a9b1d6; /* Dimmed foreground */
+
+  /* Accent and UI colors */
+  --terminal-accent: #7aa2f7; /* Blue accent */
+  --terminal-accent-dim: #3d59a1; /* Dimmed blue */
+  --terminal-accent-alt: #bb9af7; /* Magenta accent */
+  --terminal-border: #3b4261; /* Border color */
+
+  /* Status colors */
+  --terminal-success: #9ece6a; /* Green */
+  --terminal-warning: #e0af68; /* Yellow */
+  --terminal-error: #f7768e; /* Red */
+
+  /* Terminal ANSI colors */
+  --terminal-color-0: #15161e; /* Black */
+  --terminal-color-1: #f7768e; /* Red */
+  --terminal-color-2: #9ece6a; /* Green */
+  --terminal-color-3: #e0af68; /* Yellow */
+  --terminal-color-4: #7aa2f7; /* Blue */
+  --terminal-color-5: #bb9af7; /* Magenta */
+  --terminal-color-6: #7dcfff; /* Cyan */
+  --terminal-color-7: #a9b1d6; /* White */
+  --terminal-color-8: #414868; /* Bright Black */
+  --terminal-color-9: #ff899d; /* Bright Red */
+  --terminal-color-10: #9fe044; /* Bright Green */
+  --terminal-color-11: #faba4a; /* Bright Yellow */
+  --terminal-color-12: #8db0ff; /* Bright Blue */
+  --terminal-color-13: #c7a9ff; /* Bright Magenta */
+  --terminal-color-14: #a4daff; /* Bright Cyan */
+  --terminal-color-15: #c0caf5; /* Bright White */
+}
+
+/* Tokyo Night Storm - Lighter variant */
+[data-theme='tokyo-night-storm'] {
+  /* Core background/foreground colors */
+  --terminal-bg: #24283b; /* Storm background */
+  --terminal-bg-alt: #1f2335; /* Dark background */
+  --terminal-fg: #c0caf5; /* Primary foreground */
+  --terminal-fg-dim: #a9b1d6; /* Dimmed foreground */
+
+  /* Accent and UI colors */
+  --terminal-accent: #7aa2f7; /* Blue accent */
+  --terminal-accent-dim: #3d59a1; /* Dimmed blue */
+  --terminal-accent-alt: #bb9af7; /* Magenta accent */
+  --terminal-border: #3b4261; /* Border color */
+
+  /* Status colors */
+  --terminal-success: #9ece6a; /* Green */
+  --terminal-warning: #e0af68; /* Yellow */
+  --terminal-error: #f7768e; /* Red */
+
+  /* Terminal ANSI colors */
+  --terminal-color-0: #1d202f; /* Black */
+  --terminal-color-1: #f7768e; /* Red */
+  --terminal-color-2: #9ece6a; /* Green */
+  --terminal-color-3: #e0af68; /* Yellow */
+  --terminal-color-4: #7aa2f7; /* Blue */
+  --terminal-color-5: #bb9af7; /* Magenta */
+  --terminal-color-6: #7dcfff; /* Cyan */
+  --terminal-color-7: #a9b1d6; /* White */
+  --terminal-color-8: #414868; /* Bright Black */
+  --terminal-color-9: #ff899d; /* Bright Red */
+  --terminal-color-10: #9fe044; /* Bright Green */
+  --terminal-color-11: #faba4a; /* Bright Yellow */
+  --terminal-color-12: #8db0ff; /* Bright Blue */
+  --terminal-color-13: #c7a9ff; /* Bright Magenta */
+  --terminal-color-14: #a4daff; /* Bright Cyan */
+  --terminal-color-15: #c0caf5; /* Bright White */
+}
+
+/* Bubblegum - Pink-themed light mode */
+[data-theme='bubblegum'] {
+  /* Core background/foreground colors */
+  --terminal-bg: #f9f9f9; /* Light background */
+  --terminal-bg-alt: #eaf5fa; /* Alternative light blue */
+  --terminal-fg: #000000; /* Black foreground */
+  --terminal-fg-dim: #666666; /* Dimmed text */
+
+  /* Accent and UI colors */
+  --terminal-accent: #fa4fb8; /* Pink accent */
+  --terminal-accent-dim: #e048a6; /* Dimmed pink */
+  --terminal-accent-alt: #f8a8d9; /* Light pink */
+  --terminal-border: #dcf2ff; /* Light blue border */
+
+  /* Status colors */
+  --terminal-success: #00c853; /* Green success (approve) */
+  --terminal-warning: #2196f3; /* Blue for needs_approval/opus */
+  --terminal-error: #d50000; /* Red error (deny) */
+
+  /* Terminal ANSI colors - Same as dark for consistency */
+  --terminal-color-0: #000000; /* Black */
+  --terminal-color-1: #cd3131; /* Red */
+  --terminal-color-2: #0dbc79; /* Green */
+  --terminal-color-3: #e5e510; /* Yellow */
+  --terminal-color-4: #2472c8; /* Blue */
+  --terminal-color-5: #bc3fbc; /* Magenta */
+  --terminal-color-6: #11a8cd; /* Cyan */
+  --terminal-color-7: #e5e5e5; /* White */
+  --terminal-color-8: #666666; /* Bright Black */
+  --terminal-color-9: #f14c4c; /* Bright Red */
+  --terminal-color-10: #23d18b; /* Bright Green */
+  --terminal-color-11: #f5f543; /* Bright Yellow */
+  --terminal-color-12: #3b8eea; /* Bright Blue */
+  --terminal-color-13: #d670d6; /* Bright Magenta */
+  --terminal-color-14: #29b8db; /* Bright Cyan */
+  --terminal-color-15: #e5e5e5; /* Bright White */
+}
+
+/* L33t - Classic hacker terminal theme */
+[data-theme='l33t'] {
+  /* Core background/foreground colors */
+  --terminal-bg: #070e0a; /* Dark green background */
+  --terminal-bg-alt: #0c1712; /* Slightly lighter dark green */
+  --terminal-fg: #00ff41; /* Bright phosphor green */
+  --terminal-fg-dim: #ffffff; /* White for labels/secondary text */
+
+  /* Accent and UI colors */
+  --terminal-accent: #00ff41; /* Bright phosphor green - main accent */
+  --terminal-accent-dim: #a0a0a0; /* Gray for inline code/secondary */
+  --terminal-accent-alt: #008822; /* Dark forest green - alternative */
+  --terminal-border: #00ff41; /* Green border */
+
+  /* Status colors */
+  --terminal-success: #00ff41; /* Bright green success */
+  --terminal-warning: #ffaa00; /* Amber warning */
+  --terminal-error: #ff4444; /* Red error */
+
+  /* Terminal ANSI colors - Mix of green, white, and grays */
+  --terminal-color-0: #0a1510; /* Black (dark green) */
+  --terminal-color-1: #ff4444; /* Red */
+  --terminal-color-2: #00ff41; /* Green */
+  --terminal-color-3: #ffff00; /* Yellow */
+  --terminal-color-4: #4a90e2; /* Blue */
+  --terminal-color-5: #b8b8b8; /* Magenta (gray for code) */
+  --terminal-color-6: #00ffaa; /* Cyan */
+  --terminal-color-7: #d0d0d0; /* White (light gray) */
+  --terminal-color-8: #606060; /* Bright Black (medium gray) */
+  --terminal-color-9: #ff6666; /* Bright Red */
+  --terminal-color-10: #40ff60; /* Bright Green */
+  --terminal-color-11: #ffff66; /* Bright Yellow */
+  --terminal-color-12: #6bb6ff; /* Bright Blue */
+  --terminal-color-13: #e0e0e0; /* Bright Magenta (light gray for code) */
+  --terminal-color-14: #66ffcc; /* Bright Cyan */
+  --terminal-color-15: #ffffff; /* Bright White */
+}
 @layer base {
   * {
     @apply border-border outline-ring/50;

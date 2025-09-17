@@ -12,6 +12,10 @@ import {
   Flower2,
   Sunrise,
   MoonStar,
+  Building2,
+  CloudLightning,
+  Heart,
+  Terminal,
 } from 'lucide-react'
 import { useHotkeys, useHotkeysContext } from 'react-hotkeys-hook'
 import { SessionTableHotkeysScope } from './internal/SessionTable'
@@ -32,6 +36,10 @@ const themes: { value: Theme; label: string; icon: React.ComponentType<{ classNa
   { value: 'rose-pine', label: 'Rosé Pine', icon: Flower2 },
   { value: 'rose-pine-dawn', label: 'Rosé Pine Dawn', icon: Sunrise },
   { value: 'rose-pine-moon', label: 'Rosé Pine Moon', icon: MoonStar },
+  { value: 'tokyo-night', label: 'Tokyo Night', icon: Building2 },
+  { value: 'tokyo-night-storm', label: 'Tokyo Night Storm', icon: CloudLightning },
+  { value: 'bubblegum', label: 'Bubblegum', icon: Heart },
+  { value: 'l33t', label: 'L33t', icon: Terminal },
 ]
 
 export const ThemeSelectorHotkeysScope = 'theme-selector'
@@ -151,7 +159,7 @@ export function ThemeSelector() {
         <>
           <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
           <div
-            className={`absolute ${positionAbove ? 'bottom-full mb-1' : 'top-full mt-1'} right-0 min-w-28 border border-border bg-background z-20 max-h-64 overflow-y-auto`}
+            className={`absolute ${positionAbove ? 'bottom-full mb-1' : 'top-full mt-1'} right-0 min-w-48 border border-border bg-background z-20 max-h-64 overflow-y-auto`}
           >
             {themes.map((themeOption, index) => (
               <button
