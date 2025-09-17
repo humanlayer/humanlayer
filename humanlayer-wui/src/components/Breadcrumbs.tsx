@@ -1,6 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Home, Pencil, Check, X } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import {
   Breadcrumb,
@@ -16,7 +16,6 @@ import { daemonClient } from '@/lib/daemon/client'
 export function Breadcrumbs() {
   const location = useLocation()
   const navigate = useNavigate()
-  const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [editValue, setEditValue] = useState('')
 
   const pathSegments = location.pathname.split('/').filter(Boolean)
@@ -24,8 +23,10 @@ export function Breadcrumbs() {
   const isSessionDetail = pathSegments[0] === 'sessions' && pathSegments[1]
   const sessionId = isSessionDetail ? pathSegments[1] : null
 
-  // Get session from store
+  // Get session and editing state from store
   const session = useStore(state => (sessionId ? state.sessions.find(s => s.id === sessionId) : null))
+  const isEditingTitle = useStore(state => state.isEditingSessionTitle)
+  const setIsEditingTitle = useStore(state => state.setIsEditingSessionTitle)
 
   const startEdit = () => {
     if (session) {
@@ -50,6 +51,13 @@ export function Breadcrumbs() {
     setIsEditingTitle(false)
     setEditValue('')
   }
+
+  // Watch for external triggers to start editing
+  useEffect(() => {
+    if (isEditingTitle && session && !editValue) {
+      setEditValue(session.title || session.summary || '')
+    }
+  }, [isEditingTitle, session])
 
   return (
     <Breadcrumb className="mb-4 font-mono text-sm uppercase tracking-wider">
@@ -85,7 +93,7 @@ export function Breadcrumbs() {
                       if (e.key === 'Enter') saveEdit()
                       if (e.key === 'Escape') cancelEdit()
                     }}
-                    className="px-1 py-0.5 text-sm bg-background border rounded font-mono uppercase tracking-wider"
+                    className="px-1 py-0.5 text-sm bg-background border rounded font-mono"
                     autoFocus
                   />
                   <button onClick={saveEdit} className="p-0.5 hover:opacity-80">

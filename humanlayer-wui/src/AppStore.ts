@@ -76,6 +76,8 @@ interface StoreState {
   setHotkeyPanelOpen: (open: boolean) => void
   isSettingsDialogOpen: boolean
   setSettingsDialogOpen: (open: boolean) => void
+  isEditingSessionTitle: boolean
+  setIsEditingSessionTitle: (editing: boolean) => void
 
   /* Auto-scroll State */
   autoScrollEnabled: boolean
@@ -819,6 +821,8 @@ export const useStore = create<StoreState>((set, get) => ({
   setHotkeyPanelOpen: (open: boolean) => set({ isHotkeyPanelOpen: open }),
   isSettingsDialogOpen: false,
   setSettingsDialogOpen: (open: boolean) => set({ isSettingsDialogOpen: open }),
+  isEditingSessionTitle: false,
+  setIsEditingSessionTitle: (editing: boolean) => set({ isEditingSessionTitle: editing }),
 
   // Auto-scroll state
   autoScrollEnabled: true, // Default to enabled
