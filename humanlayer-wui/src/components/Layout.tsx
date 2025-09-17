@@ -86,19 +86,12 @@ export function Layout() {
   useHotkeys(
     'mod+shift+j',
     async () => {
-      console.log('[HOTKEY-NAV] mod+shift+j pressed')
-
       try {
         // Get all visible toasts
         // @ts-ignore - getToasts might not be in type definitions
         const visibleToasts = toast.getToasts ? toast.getToasts() : []
         const approvalToasts = visibleToasts.filter(
           t => typeof t.id === 'string' && t.id.startsWith('approval_required:'),
-        )
-
-        console.log(
-          '[HOTKEY-NAV] Approval toasts:',
-          approvalToasts.map(t => t.id),
         )
 
         let targetApproval: { id: string; sessionId: string } | null = null
@@ -110,8 +103,6 @@ export function Layout() {
           const mostRecentToast = approvalToasts[approvalToasts.length - 1]
           const toastIdParts = (mostRecentToast.id as string).split(':')
           const approvalId = toastIdParts[1]
-
-          console.log('[HOTKEY-NAV] Using most recent toast approval:', approvalId)
 
           // Find which session this approval belongs to
           const sessions = await daemonClient.listSessions()
@@ -132,13 +123,7 @@ export function Layout() {
           }
         } else {
           // No visible toasts, fall back to fetching all approvals from daemon
-          console.log('[HOTKEY-NAV] No toasts visible, fetching from daemon')
-
           const sessions = await daemonClient.listSessions()
-          console.log(
-            '[HOTKEY-NAV] Sessions:',
-            sessions.map(s => ({ id: s.id, title: s.title })),
-          )
 
           // Collect all pending approvals from all sessions
           const pendingApprovals: Array<{
@@ -164,8 +149,6 @@ export function Layout() {
             }
           }
 
-          console.log('[HOTKEY-NAV] Pending approvals:', pendingApprovals)
-
           if (pendingApprovals.length > 0) {
             // Sort by createdAt timestamp (newest first)
             const sortedApprovals = [...pendingApprovals].sort((a, b) => {
@@ -182,8 +165,6 @@ export function Layout() {
           return
         }
 
-        console.log('[HOTKEY-NAV] Selected approval:', targetApproval)
-
         // Dismiss toast if it exists
         const toastId = `approval_required:${targetApproval.id}`
         if (visibleToasts.some(t => t.id === toastId)) {
@@ -193,7 +174,7 @@ export function Layout() {
         // Navigate to the session with approval parameter
         navigate(`/sessions/${targetApproval.sessionId}?approval=${targetApproval.id}`)
       } catch (error) {
-        console.error('[HOTKEY-NAV] Error:', error)
+        console.error('Failed to jump to approval:', error)
         toast.error('Failed to fetch approvals')
       }
     },
