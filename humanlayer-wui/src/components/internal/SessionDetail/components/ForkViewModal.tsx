@@ -38,7 +38,10 @@ function ForkViewModalContent({
   onClose,
 }: Omit<ForkViewModalProps, 'isOpen' | 'onOpenChange'> & { onClose: () => void }) {
   // Steal hotkey scope when this component mounts
-  useStealHotkeyScope(ForkViewModalHotkeysScope)
+  // Steal all hotkey scopes when this component is mounted - this prevents ANY hotkeys
+  // from reaching SessionDetail, including shift+tab that would trigger "accept edits"
+  // This component is only rendered when the modal is open, so we always steal scopes
+  useStealHotkeyScope(ForkViewModalHotkeysScope, true)
 
   // Focus management
   const containerRef = useRef<HTMLDivElement>(null)
@@ -214,59 +217,60 @@ function ForkViewModalContent({
     },
   )
 
-  // Tab to move focus between message list, checkbox, and buttons
+  // Tab navigation - MUST capture to prevent bubbling to background session
   useHotkeys(
     'tab',
     e => {
       e.preventDefault()
       e.stopPropagation()
-      e.stopImmediatePropagation() // Complete isolation
+      // Use native event for complete isolation
+      const keyEvent = e as any
+      if (keyEvent.nativeEvent && typeof keyEvent.nativeEvent.stopImmediatePropagation === 'function') {
+        keyEvent.nativeEvent.stopImmediatePropagation()
+      }
 
-      // Move focus forward: messages -> checkbox -> buttons (stop)
+      // Navigate forward through sections
       if (focusedSection === 'messages') {
         setFocusedSection('checkbox')
-        // Focus the checkbox element
-        setTimeout(() => {
-          const checkboxElement = document.getElementById('archive-on-fork')
-          checkboxElement?.focus()
-        }, 0)
+        const checkbox = document.getElementById('archive-on-fork')
+        checkbox?.focus()
       } else if (focusedSection === 'checkbox') {
         setFocusedSection('buttons')
-        // Focus the fork button directly (skip Cancel)
-        setTimeout(() => {
-          const forkButton = document.getElementById('fork-button')
-          forkButton?.focus()
-        }, 0)
+        const forkButton = document.getElementById('fork-button')
+        forkButton?.focus()
+      } else if (focusedSection === 'buttons') {
+        setFocusedSection('messages')
+        containerRef.current?.focus()
       }
-      // Do nothing if on buttons (stop at fork button)
     },
     { scopes: [ForkViewModalHotkeysScope], preventDefault: true, enableOnFormTags: true },
   )
 
-  // Shift+Tab to move focus backward
+  // Shift+Tab navigation - MUST capture to prevent triggering "accept edits" in background
   useHotkeys(
     'shift+tab',
     e => {
       e.preventDefault()
       e.stopPropagation()
-      e.stopImmediatePropagation() // Complete isolation
+      // Use native event for complete isolation
+      const keyEvent = e as any
+      if (keyEvent.nativeEvent && typeof keyEvent.nativeEvent.stopImmediatePropagation === 'function') {
+        keyEvent.nativeEvent.stopImmediatePropagation()
+      }
 
-      // Move focus backward: (stop) <- messages <- checkbox <- buttons
-      if (focusedSection === 'buttons') {
-        setFocusedSection('checkbox')
-        // Focus the checkbox element
-        setTimeout(() => {
-          const checkboxElement = document.getElementById('archive-on-fork')
-          checkboxElement?.focus()
-        }, 0)
+      // Navigate backward through sections
+      if (focusedSection === 'messages') {
+        setFocusedSection('buttons')
+        const forkButton = document.getElementById('fork-button')
+        forkButton?.focus()
       } else if (focusedSection === 'checkbox') {
         setFocusedSection('messages')
-        // Return focus to container
-        setTimeout(() => {
-          containerRef.current?.focus()
-        }, 0)
+        containerRef.current?.focus()
+      } else if (focusedSection === 'buttons') {
+        setFocusedSection('checkbox')
+        const checkbox = document.getElementById('archive-on-fork')
+        checkbox?.focus()
       }
-      // Do nothing if on messages (stop at message list)
     },
     { scopes: [ForkViewModalHotkeysScope], preventDefault: true, enableOnFormTags: true },
   )
@@ -313,25 +317,8 @@ function ForkViewModalContent({
             'outline-none border rounded-md transition-colors',
             focusedSection === 'messages' ? 'border-accent bg-accent/5' : 'border-border',
           )}
-          tabIndex={-1}
+          tabIndex={0}
           onFocus={() => setFocusedSection('messages')}
-          onKeyDown={e => {
-            // Capture Tab and Shift+Tab at the container level
-            if (e.key === 'Tab') {
-              e.preventDefault()
-              e.stopPropagation()
-              if (e.shiftKey) {
-                // Shift+Tab on message list does nothing (stop here)
-              } else {
-                // Tab goes to checkbox
-                setFocusedSection('checkbox')
-                setTimeout(() => {
-                  const checkboxElement = document.getElementById('archive-on-fork')
-                  checkboxElement?.focus()
-                }, 0)
-              }
-            }
-          }}
         >
           {userMessageIndices.length === 0 ? (
             <div className="text-sm text-muted-foreground text-center py-8">
@@ -418,27 +405,6 @@ function ForkViewModalContent({
               onCheckedChange={handleArchiveCheckboxChange}
               onFocus={() => setFocusedSection('checkbox')}
               className={focusedSection === 'checkbox' ? 'focus-visible:ring-0' : ''}
-              onKeyDown={e => {
-                // Handle both Tab and Shift+Tab on checkbox
-                if (e.key === 'Tab') {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  if (e.shiftKey) {
-                    // Shift+Tab goes back to message list
-                    setFocusedSection('messages')
-                    setTimeout(() => {
-                      containerRef.current?.focus()
-                    }, 0)
-                  } else {
-                    // Tab goes directly to fork button (skip Cancel)
-                    setFocusedSection('buttons')
-                    setTimeout(() => {
-                      const forkButton = document.getElementById('fork-button')
-                      forkButton?.focus()
-                    }, 0)
-                  }
-                }
-              }}
             />
             <TooltipProvider>
               <Tooltip>
@@ -457,23 +423,6 @@ function ForkViewModalContent({
 
         <DialogFooter className="mt-4">
           <Button
-            id="cancel-button"
-            variant="outline"
-            onClick={handleClose}
-            tabIndex={-1} // Remove from tab order
-            onFocus={() => setFocusedSection('buttons')}
-            onKeyDown={e => {
-              // Handle Enter to cancel/close
-              if (e.key === 'Enter') {
-                e.preventDefault()
-                e.stopPropagation()
-                handleClose()
-              }
-            }}
-          >
-            Cancel
-          </Button>
-          <Button
             id="fork-button"
             onClick={handleFork}
             disabled={userMessageIndices.length === 0}
@@ -484,21 +433,6 @@ function ForkViewModalContent({
                 e.preventDefault()
                 e.stopPropagation()
                 handleFork()
-              }
-              // Handle both Tab and Shift+Tab on fork button
-              else if (e.key === 'Tab') {
-                e.preventDefault()
-                e.stopPropagation()
-                if (e.shiftKey) {
-                  // Shift+Tab goes back to checkbox
-                  setFocusedSection('checkbox')
-                  setTimeout(() => {
-                    const checkboxElement = document.getElementById('archive-on-fork')
-                    checkboxElement?.focus()
-                  }, 0)
-                } else {
-                  // Tab on fork button does nothing (stop here)
-                }
               }
             }}
           >
