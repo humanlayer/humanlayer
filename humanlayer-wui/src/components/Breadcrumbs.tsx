@@ -126,7 +126,7 @@ export function Breadcrumbs() {
                     style={{
                       width: `${Math.max(20, editValue.length) * 0.7}em`,
                       minWidth: '20em',
-                      maxWidth: '80em'
+                      maxWidth: '80em',
                     }}
                     autoFocus
                   />
