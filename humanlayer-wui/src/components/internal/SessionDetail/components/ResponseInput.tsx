@@ -47,8 +47,6 @@ interface ResponseInputProps {
   onToggleArchive?: () => void
   previewEventIndex?: number | null
   isActivelyProcessing?: boolean
-  finalizeInterrupt?: boolean
-  onInterruptConfirm?: () => void
 }
 
 export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }, ResponseInputProps>(
@@ -78,8 +76,6 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
       autoAcceptEnabled = false,
       isArchived = false,
       onToggleArchive,
-      finalizeInterrupt = false,
-      onInterruptConfirm,
     },
     ref,
   ) => {
@@ -107,8 +103,7 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
       // When running and no text, show just "Interrupt" or disabled state
       if (isRunning && !hasText) {
         if (!canInterrupt) return 'Waiting...'
-        // Show confirmation state when finalizeInterrupt is true
-        return finalizeInterrupt ? 'Interrupt?' : 'Interrupt'
+        return 'Interrupt'
       }
       // When running with text, show "Interrupt & Send" or disabled state
       if (isRunning && hasText) {
@@ -139,17 +134,16 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
       const isRunning = session.status === SessionStatus.Running || session.status === SessionStatus.Starting
       const hasText = responseEditor && !responseEditor.isEmpty
 
-      if (isRunning && !hasText && !session.claudeSessionId) {
-        // This shouldn't happen if button is properly disabled, but add as safeguard
-        toast.warning('Session cannot be interrupted yet', {
-          description: 'Waiting for Claude to initialize the session. Please try again in a moment.',
-        })
+      // Early return if no text in editor
+      if (!hasText) {
         return
       }
 
-      // Handle finalizeInterrupt confirmation
-      if (isRunning && !hasText && finalizeInterrupt) {
-        onInterruptConfirm?.()
+      // Protection for "Interrupt & Send" scenario when text is present
+      if (isRunning && !session.claudeSessionId) {
+        toast.warning('Session cannot be interrupted yet', {
+          description: 'Waiting for Claude to initialize the session. Please try again in a moment.',
+        })
         return
       }
 
@@ -284,7 +278,7 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
 
     const isMac = navigator.platform.includes('Mac')
     // Show different keyboard shortcut based on state
-    const sendKey = finalizeInterrupt ? 'Esc' : isRunning && !hasText ? 'Ctrl+X' : isMac ? '⌘+Enter' : 'Ctrl+Enter'
+    const sendKey = isRunning && !hasText ? 'Ctrl+X' : isMac ? '⌘+Enter' : 'Ctrl+Enter'
     let outerBorderColorClass = ''
 
     let placeholder = getInputPlaceholder(session.status)
@@ -306,9 +300,6 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
 
     if (isDragHover) {
       outerBorderColorClass = 'border-[var(--terminal-accent)]'
-    } else if (finalizeInterrupt) {
-      // Show destructive border when in interrupt confirmation mode
-      outerBorderColorClass = 'border-[var(--terminal-error)]'
     }
 
     const textareaOutlineClass =
