@@ -76,8 +76,6 @@ interface StoreState {
   setHotkeyPanelOpen: (open: boolean) => void
   isSettingsDialogOpen: boolean
   setSettingsDialogOpen: (open: boolean) => void
-  isEditingSessionTitle: boolean
-  setIsEditingSessionTitle: (editing: boolean) => void
 
   /* Auto-scroll State */
   autoScrollEnabled: boolean
@@ -137,7 +135,6 @@ export const useStore = create<StoreState>((set, get) => ({
   activeSessionDetail: null,
   claudeConfig: null,
   responseEditor: null,
-  isEditingSessionTitle: false,
   initSessions: (sessions: Session[]) => set({ sessions }),
   updateSession: (sessionId: string, updates: Partial<Session>) =>
     set(state => ({
@@ -826,8 +823,6 @@ export const useStore = create<StoreState>((set, get) => ({
   setHotkeyPanelOpen: (open: boolean) => set({ isHotkeyPanelOpen: open }),
   isSettingsDialogOpen: false,
   setSettingsDialogOpen: (open: boolean) => set({ isSettingsDialogOpen: open }),
-  isEditingSessionTitle: false,
-  setIsEditingSessionTitle: (editing: boolean) => set({ isEditingSessionTitle: editing }),
 
   // Auto-scroll state
   autoScrollEnabled: true, // Default to enabled
@@ -926,6 +921,9 @@ export const useStore = create<StoreState>((set, get) => ({
     logger.log('AppStore.removeResponseEditor() - removing response editor')
     return set({ responseEditor: null })
   },
+
+  // Title Editing State
+  isEditingSessionTitle: false,
   setIsEditingSessionTitle: (editing: boolean) => set({ isEditingSessionTitle: editing }),
 }))
 
