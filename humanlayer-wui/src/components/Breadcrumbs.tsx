@@ -14,6 +14,7 @@ import {
 import { useStore } from '@/AppStore'
 import { daemonClient } from '@/lib/daemon/client'
 import { useStealHotkeyScope } from '@/hooks/useStealHotkeyScope'
+import { ViewMode } from '@/lib/daemon/types'
 
 // Create a dedicated scope for title editing
 const TitleEditingHotkeysScope = 'title-editing'
@@ -29,8 +30,9 @@ export function Breadcrumbs() {
   const isSessionDetail = pathSegments[0] === 'sessions' && pathSegments[1]
   const sessionId = isSessionDetail ? pathSegments[1] : null
 
-  // Get session and editing state from store
+  // Get session, viewMode, and editing state from store
   const session = useStore(state => (sessionId ? state.sessions.find(s => s.id === sessionId) : null))
+  const viewMode = useStore(state => state.viewMode)
   const isEditingTitle = useStore(state => state.isEditingSessionTitle)
   const setIsEditingTitle = useStore(state => state.setIsEditingSessionTitle)
 
@@ -85,6 +87,9 @@ export function Breadcrumbs() {
     }
   }, [isEditingTitle, session])
 
+  // Determine breadcrumb text based on view mode
+  const breadcrumbText = viewMode === ViewMode.Archived ? 'Archived Sessions' : 'Sessions'
+
   return (
     <Breadcrumb className="mb-4 font-mono text-sm tracking-wider">
       <BreadcrumbList>
@@ -92,7 +97,7 @@ export function Breadcrumbs() {
           {isHome ? (
             <BreadcrumbPage className="flex items-center gap-1">
               <Home className="w-4 h-4" />
-              Sessions
+              {breadcrumbText}
             </BreadcrumbPage>
           ) : (
             <BreadcrumbLink
@@ -100,7 +105,7 @@ export function Breadcrumbs() {
               className="flex items-center gap-1 cursor-pointer"
             >
               <Home className="w-4 h-4" />
-              Sessions
+              {breadcrumbText}
             </BreadcrumbLink>
           )}
         </BreadcrumbItem>
