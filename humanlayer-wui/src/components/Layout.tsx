@@ -68,10 +68,10 @@ export function Layout() {
   // Debug store state
   const showDevUrl = useDebugStore(state => state.showDevUrl)
 
-  /* 
+  /*
     react-hotkeys-hook had some trouble doing adding this shortcut,
     I suspect because it overlaps typical browser behavior, so for now just using
-    a global event listener 
+    a global event listener
   */
   useEffect(() => {
     const backForwardHandler = (e: KeyboardEvent) => {
@@ -396,7 +396,7 @@ export function Layout() {
   // G+S - Go to sessions (normal view)
   useHotkeys(
     'g>s',
-    (e) => {
+    e => {
       console.log('[Layout] g>s fired')
       e.stopPropagation()
       if (!isAnyModalOpen()) {
@@ -416,7 +416,7 @@ export function Layout() {
   // G+E - Go to archived sessions
   useHotkeys(
     'g>e',
-    (e) => {
+    e => {
       console.log('[Layout] g>e fired')
       e.stopPropagation()
       if (!isAnyModalOpen()) {
@@ -436,7 +436,7 @@ export function Layout() {
   // G+I - Go to inbox/sessions (alias for g>s)
   useHotkeys(
     'g>i',
-    (e) => {
+    e => {
       console.log('[Layout] g>i fired (alias for g>s)')
       e.stopPropagation()
       if (!isAnyModalOpen()) {

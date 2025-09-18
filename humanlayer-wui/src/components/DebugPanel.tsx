@@ -270,11 +270,7 @@ export function DebugPanel({ open, onOpenChange }: DebugPanelProps) {
                 <Label htmlFor="show-url" className="text-sm">
                   Show URL in Status Bar
                 </Label>
-                <Switch
-                  id="show-url"
-                  checked={showDevUrl}
-                  onCheckedChange={setShowDevUrl}
-                />
+                <Switch id="show-url" checked={showDevUrl} onCheckedChange={setShowDevUrl} />
               </div>
             </CardContent>
           </Card>

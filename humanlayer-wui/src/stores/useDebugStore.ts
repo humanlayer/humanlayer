@@ -9,16 +9,16 @@ interface DebugState {
 export const useDebugStore = create<DebugState>()(
   devtools(
     persist(
-      (set) => ({
+      set => ({
         showDevUrl: true,
-        setShowDevUrl: (show) => set({ showDevUrl: show }),
+        setShowDevUrl: show => set({ showDevUrl: show }),
       }),
       {
         name: 'debug-storage',
-      }
+      },
     ),
     {
       name: 'debug-store',
-    }
-  )
+    },
+  ),
 )

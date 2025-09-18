@@ -572,7 +572,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     ],
   )
 
-
   // Create reusable handler for toggling auto-accept
   const handleToggleAutoAccept = useCallback(async () => {
     logger.log('toggleAutoAcceptEdits', autoAcceptEdits)

@@ -150,7 +150,8 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
       logger.log('ResponseInput.handleSubmit()')
 
       // Check if this is an interruption attempt without claudeSessionId
-      const isRunning = session.status === SessionStatus.Running || session.status === SessionStatus.Starting
+      const isRunning =
+        session.status === SessionStatus.Running || session.status === SessionStatus.Starting
       const hasText = responseEditor && !responseEditor.isEmpty
 
       // Early return if no text in editor
@@ -459,7 +460,11 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
                   onClick={handleSubmit}
                   disabled={isDisabled}
                   variant={
-                    isDenying ? 'destructive' : (isRunning && !hasText && canInterrupt) ? 'destructive' : 'default'
+                    isDenying
+                      ? 'destructive'
+                      : isRunning && !hasText && canInterrupt
+                        ? 'destructive'
+                        : 'default'
                   }
                   className="h-auto py-0.5 px-2 text-xs transition-all duration-200"
                 >
