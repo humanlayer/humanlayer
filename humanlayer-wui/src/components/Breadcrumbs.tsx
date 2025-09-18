@@ -1,7 +1,8 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Home, Pencil, Check, X } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { toast } from 'sonner'
+import { useHotkeys } from 'react-hotkeys-hook'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -12,11 +13,16 @@ import {
 } from '@/components/ui/breadcrumb'
 import { useStore } from '@/AppStore'
 import { daemonClient } from '@/lib/daemon/client'
+import { useStealHotkeyScope } from '@/hooks/useStealHotkeyScope'
+
+// Create a dedicated scope for title editing
+const TitleEditingHotkeysScope = 'title-editing'
 
 export function Breadcrumbs() {
   const location = useLocation()
   const navigate = useNavigate()
   const [editValue, setEditValue] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const pathSegments = location.pathname.split('/').filter(Boolean)
   const isHome = pathSegments.length === 0
@@ -27,6 +33,26 @@ export function Breadcrumbs() {
   const session = useStore(state => (sessionId ? state.sessions.find(s => s.id === sessionId) : null))
   const isEditingTitle = useStore(state => state.isEditingSessionTitle)
   const setIsEditingTitle = useStore(state => state.setIsEditingSessionTitle)
+
+  // Steal all hotkey scopes when editing
+  useStealHotkeyScope(TitleEditingHotkeysScope, isEditingTitle)
+
+  // Add escape handler with the dedicated scope
+  useHotkeys(
+    'escape',
+    e => {
+      e.preventDefault()
+      setEditValue(session?.title || session?.summary || '')
+      setIsEditingTitle(false)
+      inputRef.current?.blur()
+    },
+    {
+      scopes: [TitleEditingHotkeysScope],
+      enableOnFormTags: true,
+      preventDefault: true,
+    },
+    [isEditingTitle, session],
+  )
 
   const startEdit = () => {
     if (session) {
@@ -60,7 +86,7 @@ export function Breadcrumbs() {
   }, [isEditingTitle, session])
 
   return (
-    <Breadcrumb className="mb-4 font-mono text-sm uppercase tracking-wider">
+    <Breadcrumb className="mb-4 font-mono text-sm tracking-wider">
       <BreadcrumbList>
         <BreadcrumbItem>
           {isHome ? (
@@ -86,14 +112,22 @@ export function Breadcrumbs() {
               {isEditingTitle ? (
                 <div className="flex items-center gap-1">
                   <input
+                    ref={inputRef}
                     type="text"
                     value={editValue}
                     onChange={e => setEditValue(e.target.value)}
                     onKeyDown={e => {
-                      if (e.key === 'Enter') saveEdit()
-                      if (e.key === 'Escape') cancelEdit()
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        saveEdit()
+                      }
                     }}
                     className="px-1 py-0.5 text-sm bg-background border rounded font-mono"
+                    style={{
+                      width: `${Math.max(20, editValue.length) * 0.7}em`,
+                      minWidth: '20em',
+                      maxWidth: '80em'
+                    }}
                     autoFocus
                   />
                   <button onClick={saveEdit} className="p-0.5 hover:opacity-80">
