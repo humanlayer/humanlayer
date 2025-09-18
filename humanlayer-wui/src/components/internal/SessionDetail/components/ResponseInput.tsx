@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Session, SessionStatus } from '@/lib/daemon/types'
 import { Split, MessageCircleX, AlertCircle } from 'lucide-react'
 import { ActionButtons } from './ActionButtons'
+import { toast } from 'sonner'
 import {
   getInputPlaceholder,
   getHelpText,
@@ -81,10 +82,29 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
     const [youSure, setYouSure] = useState(false)
     const [isFocused, setIsFocused] = useState(false)
     const [isDragHover, setIsDragHover] = useState(false)
+    const [debouncedCanInterrupt, setDebouncedCanInterrupt] = useState(false)
     const responseEditor = useStore(state => state.responseEditor)
     const localStorageValue = localStorage.getItem(`${ResponseInputLocalStorageKey}.${session.id}`)
 
     const tiptapRef = useRef<{ focus: () => void }>(null)
+
+    // Debounce the claudeSessionId to prevent brief interrupt button flashes
+    useEffect(() => {
+      let timeout: ReturnType<typeof setTimeout>
+      const hasClaudeSessionId = session.claudeSessionId !== undefined
+
+      if (hasClaudeSessionId) {
+        // Delay showing interrupt capability by 500ms
+        timeout = setTimeout(() => {
+          setDebouncedCanInterrupt(true)
+        }, 500)
+      } else {
+        // Immediately remove interrupt capability when claudeSessionId is gone
+        setDebouncedCanInterrupt(false)
+      }
+
+      return () => clearTimeout(timeout)
+    }, [session.claudeSessionId])
     const getSendButtonText = () => {
       if (isResponding) return 'Interrupting...'
       if (isDenying) return youSure ? 'Deny?' : 'Deny'
@@ -92,19 +112,21 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
       const isRunning =
         session.status === SessionStatus.Running || session.status === SessionStatus.Starting
       const hasText = responseEditor && !responseEditor.isEmpty
+      const canInterrupt = debouncedCanInterrupt // Use debounced value
 
       if (session.archived && isRunning) {
         return 'Interrupt & Unarchive'
       }
       if (session.archived) return 'Send & Unarchive'
 
-      // When running and no text, show just "Interrupt"
+      // When running and no text, show just "Interrupt" or disabled state
       if (isRunning && !hasText) {
+        if (!canInterrupt) return 'Waiting...'
         return 'Interrupt'
       }
-      // When running with text, show "Interrupt & Send"
+      // When running with text, show "Interrupt & Send" or disabled state
       if (isRunning && hasText) {
-        return 'Interrupt & Send'
+        return canInterrupt ? 'Interrupt & Send' : 'Waiting...'
       }
 
       return 'Send'
@@ -126,6 +148,25 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
 
     const handleSubmit = () => {
       logger.log('ResponseInput.handleSubmit()')
+
+      // Check if this is an interruption attempt without claudeSessionId
+      const isRunning =
+        session.status === SessionStatus.Running || session.status === SessionStatus.Starting
+      const hasText = responseEditor && !responseEditor.isEmpty
+
+      // Early return if no text in editor
+      if (!hasText) {
+        return
+      }
+
+      // Protection for "Interrupt & Send" scenario when text is present
+      if (isRunning && !debouncedCanInterrupt) {
+        toast.warning('Session cannot be interrupted yet', {
+          description: 'Waiting for Claude to initialize the session. Please try again in a moment.',
+        })
+        return
+      }
+
       if (isDenying && denyingApprovalId && !isForkMode) {
         onDeny?.(denyingApprovalId, responseEditor?.getText().trim() || '', session.id)
       } else if (sessionStatus === SessionStatus.WaitingInput && !isForkMode) {
@@ -250,9 +291,10 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
     const isRunning =
       session.status === SessionStatus.Running || session.status === SessionStatus.Starting
     const hasText = responseEditor && !responseEditor.isEmpty
+    const canInterrupt = debouncedCanInterrupt // Use debounced value
 
-    // Only disable when: responding OR (not running AND no text)
-    const isDisabled = isResponding || (!isRunning && !hasText)
+    // Disable when: responding OR (running without ability to interrupt) OR (not running and no text)
+    const isDisabled = isResponding || (isRunning && !canInterrupt) || (!isRunning && !hasText)
 
     const isMac = navigator.platform.includes('Mac')
     // Show different keyboard shortcut based on state
@@ -418,7 +460,11 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
                   onClick={handleSubmit}
                   disabled={isDisabled}
                   variant={
-                    isDenying ? 'destructive' : isRunning && !hasText ? 'destructive' : 'default'
+                    isDenying
+                      ? 'destructive'
+                      : isRunning && !hasText && canInterrupt
+                        ? 'destructive'
+                        : 'default'
                   }
                   className="h-auto py-0.5 px-2 text-xs transition-all duration-200"
                 >

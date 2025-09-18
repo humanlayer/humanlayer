@@ -211,6 +211,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   // Keyboard navigation protection
   const { shouldIgnoreMouseEvent, startKeyboardNavigation } = useKeyboardNavigationProtection()
 
+  // Show spinner for active states, but not for interrupted or interrupting
   const isActivelyProcessing = ['starting', 'running', 'completing'].includes(session.status)
   const confirmingArchiveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -525,6 +526,23 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     ?.toReversed()
     .find(e => e.eventType === 'tool_call' && e.toolName === 'TodoWrite')
 
+  // Get hotkeys context for modal scope checking (moved here for handleToggleForkView)
+  const { activeScopes } = useHotkeysContext()
+
+  // Fork view toggle handler (moved here to be available for escape handler)
+  const handleToggleForkView = useCallback(() => {
+    // Check if any modal scopes are active
+    const modalScopes = ['tool-result-modal', 'dangerously-skip-permissions-dialog']
+    const hasModalOpen = activeScopes.some(scope => modalScopes.includes(scope))
+
+    // Don't trigger if other modals are open
+    if (hasModalOpen) {
+      return
+    }
+
+    setForkViewOpen(!forkViewOpen)
+  }, [activeScopes, forkViewOpen])
+
   // Clear focus on escape, then close if nothing focused
   // This needs special handling for confirmingApprovalId
 
@@ -566,6 +584,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         return
       }
 
+      /* Everything below here implies the responeEditor is not focused */
+
       // Check for fork mode first
       if (previewEventIndex !== null) {
         // Clear fork mode
@@ -585,6 +605,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       } else if (navigation.focusedEventId) {
         navigation.setFocusedEventId(null)
       } else {
+        // Simply close the session detail
         onClose()
       }
     },
@@ -607,9 +628,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       // actions.setResponseInput,
     ],
   )
-
-  // Get hotkeys context for modal scope checking
-  const { activeScopes } = useHotkeysContext()
 
   // Create reusable handler for toggling auto-accept
   const handleToggleAutoAccept = useCallback(async () => {
@@ -696,10 +714,34 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     }
   }
 
+  // Track if g>e was recently pressed to prevent 'e' from firing
+  const gePressedRef = useRef<number | null>(null)
+
+  // Handle g>e navigation (to prevent 'e' from archiving)
+  useHotkeys(
+    'g>e',
+    () => {
+      console.log('[SessionDetail] g>e captured, blocking archive')
+      gePressedRef.current = Date.now()
+    },
+    {
+      preventDefault: true,
+      scopes: SessionDetailHotkeysScope,
+    },
+  )
+
   // Add hotkey to archive session ('e' key)
   useHotkeys(
     'e',
     async () => {
+      console.log('[SessionDetail] archive hotkey "e" fired')
+
+      // Check if g>e was pressed recently (within 50ms)
+      if (gePressedRef.current && Date.now() - gePressedRef.current < 50) {
+        console.log('[SessionDetail] Blocking archive due to recent g>e press')
+        return
+      }
+
       // TODO(3): The timeout clearing logic (using confirmingArchiveTimeoutRef) is duplicated in multiple places.
       // Consider refactoring this into a helper function to reduce repetition.
 
@@ -766,19 +808,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   )
 
   // Create reusable handler for toggling fork view
-  const handleToggleForkView = useCallback(() => {
-    // Check if any modal scopes are active
-    const modalScopes = ['tool-result-modal', 'dangerously-skip-permissions-dialog']
-    const hasModalOpen = activeScopes.some(scope => modalScopes.includes(scope))
-
-    // Don't trigger if other modals are open
-    if (hasModalOpen) {
-      return
-    }
-
-    setForkViewOpen(!forkViewOpen)
-  }, [activeScopes, forkViewOpen])
-
   // Add hotkey to open fork view (Meta+Y)
   useHotkeys(
     'meta+y',
