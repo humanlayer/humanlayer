@@ -232,7 +232,7 @@ function ForkViewModalContent({
         }, 0)
       } else if (focusedSection === 'checkbox') {
         setFocusedSection('buttons')
-        // Focus the fork button
+        // Focus the fork button directly (skip Cancel)
         setTimeout(() => {
           const forkButton = document.getElementById('fork-button')
           forkButton?.focus()
@@ -430,7 +430,7 @@ function ForkViewModalContent({
                       containerRef.current?.focus()
                     }, 0)
                   } else {
-                    // Tab goes to fork button
+                    // Tab goes directly to fork button (skip Cancel)
                     setFocusedSection('buttons')
                     setTimeout(() => {
                       const forkButton = document.getElementById('fork-button')
@@ -456,7 +456,21 @@ function ForkViewModalContent({
         </div>
 
         <DialogFooter className="mt-4">
-          <Button variant="outline" onClick={handleClose} onFocus={() => setFocusedSection('buttons')}>
+          <Button
+            id="cancel-button"
+            variant="outline"
+            onClick={handleClose}
+            tabIndex={-1} // Remove from tab order
+            onFocus={() => setFocusedSection('buttons')}
+            onKeyDown={e => {
+              // Handle Enter to cancel/close
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                e.stopPropagation()
+                handleClose()
+              }
+            }}
+          >
             Cancel
           </Button>
           <Button
@@ -465,8 +479,14 @@ function ForkViewModalContent({
             disabled={userMessageIndices.length === 0}
             onFocus={() => setFocusedSection('buttons')}
             onKeyDown={e => {
+              // Handle Enter to trigger fork
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                e.stopPropagation()
+                handleFork()
+              }
               // Handle both Tab and Shift+Tab on fork button
-              if (e.key === 'Tab') {
+              else if (e.key === 'Tab') {
                 e.preventDefault()
                 e.stopPropagation()
                 if (e.shiftKey) {
