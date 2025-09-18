@@ -3,19 +3,26 @@
 # Check if a port is available (returns 0 if available, 1 if in use)
 is_port_available() {
     local port=$1
-    if command -v nc >/dev/null 2>&1; then
-        # Use netcat to check port (nc returns 0 if connection succeeds = port in use)
-        ! nc -z 127.0.0.1 "$port" 2>/dev/null
-    elif command -v lsof >/dev/null 2>&1; then
-        # Fallback to lsof (returns 0 if port found = in use)
+
+    # Prefer lsof as it correctly detects both IPv4 and IPv6
+    if command -v lsof >/dev/null 2>&1; then
+        # lsof returns 0 if port found = in use
         ! lsof -i :"$port" >/dev/null 2>&1
+    elif command -v nc >/dev/null 2>&1; then
+        # Check both IPv4 and IPv6 with netcat
+        # If either succeeds (port in use), the port is not available
+        if nc -z 127.0.0.1 "$port" 2>/dev/null || nc -z ::1 "$port" 2>/dev/null; then
+            return 1  # Port is in use
+        else
+            return 0  # Port is available
+        fi
     else
         # If neither tool available, assume port is available
         return 0
     fi
 }
 
-# Find available port using progressive prefix fallback
+# Find available port for daemon (avoids 10000-19999 range used by Vite)
 find_available_port() {
     local ticket_num=$1
 
@@ -25,9 +32,30 @@ find_available_port() {
         return 0
     fi
 
-    # Try with progressive prefixes (1-6)
-    for prefix in 1 2 3 4 5 6; do
-        local port="${prefix}${ticket_num}"
+    # Try ports in 20000-29999 range to avoid Vite's 10000-19999 range
+    for offset in 0 1000 2000 3000 4000 5000 6000 7000 8000 9000; do
+        local port=$((20000 + (ticket_num % 10000) + offset))
+
+        # Skip if port would exceed our range
+        if [ "$port" -gt 29999 ]; then
+            break
+        fi
+
+        if is_port_available "$port"; then
+            echo "$port"
+            return 0
+        fi
+    done
+
+    # Fallback to 40000-49999 range if needed
+    for offset in 0 1000 2000 3000 4000 5000 6000 7000 8000 9000; do
+        local port=$((40000 + (ticket_num % 10000) + offset))
+
+        # Skip if port would exceed our range or maximum valid port
+        if [ "$port" -gt 49999 ] || [ "$port" -gt 65535 ]; then
+            break
+        fi
+
         if is_port_available "$port"; then
             echo "$port"
             return 0
@@ -45,9 +73,48 @@ extract_ticket_number() {
     echo "$ticket" | sed 's/.*-//'
 }
 
-# Find available Vite port (adds 10000 to ticket number and uses same fallback)
+# Find available Vite port (uses 10000-19999 and 30000-39999 ranges)
 find_available_vite_port() {
     local ticket_num=$1
+    local daemon_port=$2  # Optional daemon port to avoid
     local vite_base=$((ticket_num + 10000))
-    find_available_port "$vite_base"
+
+    # If base port is valid, available, and not the daemon port, use it
+    if [ "$vite_base" -le 19999 ] && [ "$vite_base" != "$daemon_port" ] && is_port_available "$vite_base"; then
+        echo "$vite_base"
+        return 0
+    fi
+
+    # Try ports in the 30000-39999 range
+    for offset in 0 1000 2000 3000 4000 5000 6000 7000 8000 9000; do
+        local port=$((30000 + (ticket_num % 10000) + offset))
+
+        # Skip if port would exceed our range
+        if [ "$port" -gt 39999 ]; then
+            break
+        fi
+
+        if [ "$port" != "$daemon_port" ] && is_port_available "$port"; then
+            echo "$port"
+            return 0
+        fi
+    done
+
+    # Fallback to 50000-59999 range if needed
+    for offset in 0 1000 2000 3000 4000 5000 6000 7000 8000 9000; do
+        local port=$((50000 + (ticket_num % 10000) + offset))
+
+        # Skip if port would exceed our range or maximum valid port
+        if [ "$port" -gt 59999 ] || [ "$port" -gt 65535 ]; then
+            break
+        fi
+
+        if [ "$port" != "$daemon_port" ] && is_port_available "$port"; then
+            echo "$port"
+            return 0
+        fi
+    done
+
+    echo "ERROR: Could not find available Vite port for ticket $ticket_num" >&2
+    return 1
 }

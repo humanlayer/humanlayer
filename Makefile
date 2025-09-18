@@ -652,14 +652,18 @@ daemon-dev-build: setup
 # Launch daemon with ticket-based configuration
 .PHONY: daemon-ticket
 daemon-ticket: daemon-dev-build
-	@source hack/port-utils.sh && \
-	if [ -z "$(TICKET)" ]; then \
+	@if [ -z "$(TICKET)" ]; then \
 		echo "Error: TICKET parameter required"; \
 		echo "Usage: make daemon-ticket TICKET=ENG-2114"; \
 		exit 1; \
 	fi && \
-	ticket_num=$$(extract_ticket_number "$(TICKET)") && \
-	port=$$(find_available_port "$$ticket_num") && \
+	if [ -z "$(PORT)" ]; then \
+		source hack/port-utils.sh && \
+		ticket_num=$$(extract_ticket_number "$(TICKET)") && \
+		port=$$(find_available_port "$$ticket_num"); \
+	else \
+		port="$(PORT)"; \
+	fi && \
 	echo "Starting daemon for $(TICKET) on port $$port" && \
 	HUMANLAYER_DATABASE_PATH=~/.humanlayer/daemon-$(TICKET).db \
 	HUMANLAYER_DAEMON_SOCKET=~/.humanlayer/daemon-$$port.sock \
@@ -670,15 +674,20 @@ daemon-ticket: daemon-dev-build
 # Launch WUI with ticket-based configuration
 .PHONY: wui-ticket
 wui-ticket:
-	@source hack/port-utils.sh && \
-	if [ -z "$(TICKET)" ]; then \
+	@if [ -z "$(TICKET)" ]; then \
 		echo "Error: TICKET parameter required"; \
 		echo "Usage: make wui-ticket TICKET=ENG-2114"; \
 		exit 1; \
 	fi && \
-	ticket_num=$$(extract_ticket_number "$(TICKET)") && \
-	port=$$(find_available_port "$$ticket_num") && \
-	vite_port=$$(find_available_vite_port "$$ticket_num") && \
+	if [ -z "$(PORT)" ] || [ -z "$(VITE_PORT)" ]; then \
+		source hack/port-utils.sh && \
+		ticket_num=$$(extract_ticket_number "$(TICKET)") && \
+		port=$$(find_available_port "$$ticket_num") && \
+		vite_port=$$(find_available_vite_port "$$ticket_num" "$$port"); \
+	else \
+		port="$(PORT)" && \
+		vite_port="$(VITE_PORT)"; \
+	fi && \
 	echo "Starting WUI for $(TICKET) connecting to daemon port $$port, Vite port $$vite_port" && \
 	echo "{\"build\":{\"devUrl\":\"http://localhost:$$vite_port\"}}" > /tmp/tauri-config-$(TICKET).json && \
 	cd humanlayer-wui && \
@@ -686,7 +695,7 @@ wui-ticket:
 	HUMANLAYER_DAEMON_SOCKET=~/.humanlayer/daemon-$$port.sock \
 	VITE_HUMANLAYER_DAEMON_URL=http://localhost:$$port \
 	VITE_PORT=$$vite_port \
-	bun tauri dev --config /tmp/tauri-config-$(TICKET).json
+	bun run tauri dev --config /tmp/tauri-config-$(TICKET).json
 
 # Run dev daemon with persistent dev database
 .PHONY: daemon-dev
@@ -718,7 +727,7 @@ codelayer-dev: daemon-dev-build
 		source hack/port-utils.sh && \
 		ticket_num=$$(extract_ticket_number "$(TICKET)") && \
 		port=$$(find_available_port "$$ticket_num") && \
-		vite_port=$$(find_available_vite_port "$$ticket_num") && \
+		vite_port=$$(find_available_vite_port "$$ticket_num" "$$port") && \
 		echo "==========================================" && \
 		echo "Starting instances for ticket: $(TICKET)" && \
 		echo "Daemon Port: $$port" && \
@@ -726,10 +735,10 @@ codelayer-dev: daemon-dev-build
 		echo "Socket: ~/.humanlayer/daemon-$$port.sock" && \
 		echo "Database: ~/.humanlayer/daemon-$(TICKET).db" && \
 		echo "==========================================" && \
-		$(MAKE) daemon-ticket TICKET=$(TICKET) & \
+		$(MAKE) daemon-ticket TICKET=$(TICKET) PORT=$$port & \
 		daemon_pid=$$! && \
 		sleep 2 && \
-		$(MAKE) wui-ticket TICKET=$(TICKET) & \
+		$(MAKE) wui-ticket TICKET=$(TICKET) PORT=$$port VITE_PORT=$$vite_port & \
 		wui_pid=$$! && \
 		echo "Started daemon PID: $$daemon_pid" && \
 		echo "Started WUI PID: $$wui_pid" && \
