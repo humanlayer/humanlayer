@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useHotkeys, useHotkeysContext } from 'react-hotkeys-hook'
 import { toast } from 'sonner'
+import { useSearchParams } from 'react-router'
 
 import { ConversationEvent, Session, ApprovalStatus, SessionStatus } from '@/lib/daemon/types'
 import { Card, CardContent } from '@/components/ui/card'
@@ -205,6 +206,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
 
   const responseEditor = useStore(state => state.responseEditor)
   const isEditingSessionTitle = useStore(state => state.isEditingSessionTitle)
+  const setIsEditingSessionTitle = useStore(state => state.setIsEditingSessionTitle)
 
   // Keyboard navigation protection
   const { shouldIgnoreMouseEvent, startKeyboardNavigation } = useKeyboardNavigationProtection()
@@ -384,6 +386,38 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const focusedEvent = events.find(e => e.id === navigation.focusedEventId) || null
   useSessionClipboard(focusedEvent, !expandedToolResult && !forkViewOpen)
 
+  // Handle approval parameter from URL
+  const [searchParams, setSearchParams] = useSearchParams()
+  const targetApprovalId = searchParams.get('approval')
+  const processedApprovalRef = useRef<string | null>(null)
+
+  // Handle auto-focus when navigating with approval parameter
+  useEffect(() => {
+    // Only run when we actually have an approval ID to focus
+    if (!targetApprovalId || events.length === 0) {
+      return
+    }
+
+    // Skip if we've already processed this approval ID
+    if (processedApprovalRef.current === targetApprovalId) {
+      return
+    }
+
+    if (approvals.focusApprovalById) {
+      // Mark as processed before calling to prevent re-runs
+      processedApprovalRef.current = targetApprovalId
+
+      // Use the hook's focus method for consistency
+      // This will try to match the specific approval, or fallback to most recent pending
+      approvals.focusApprovalById(targetApprovalId)
+
+      // Clear the parameter after focusing
+      searchParams.delete('approval')
+      setSearchParams(searchParams, { replace: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [targetApprovalId, events.length > 0, approvals.focusApprovalById]) // Minimal deps to prevent constant re-runs
+
   // Add fork commit handler
   const handleForkCommit = useCallback(() => {
     // Reset preview state after successful fork
@@ -502,7 +536,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         return null
       }
 
-      // Don't process escape if title is being edited
+      // Don't process escape if editing session title
       if (isEditingSessionTitle) {
         return
       }
@@ -559,6 +593,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       scopes: SessionDetailHotkeysScope,
     },
     [
+      isEditingSessionTitle,
       previewEventIndex,
       confirmingArchive,
       forkViewOpen,
@@ -890,6 +925,22 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       enableOnFormTags: false,
     },
     [session.workingDir],
+  )
+
+  // Rename session hotkey
+  useHotkeys(
+    'shift+r',
+    e => {
+      e.preventDefault()
+      setIsEditingSessionTitle(true)
+    },
+    {
+      enabled: !approvals.confirmingApprovalId && !expandedToolResult,
+      scopes: SessionDetailHotkeysScope,
+      preventDefault: true,
+      enableOnFormTags: false,
+    },
+    [setIsEditingSessionTitle, approvals.confirmingApprovalId, expandedToolResult],
   )
 
   // Don't steal scope here - SessionDetail is the base layer
