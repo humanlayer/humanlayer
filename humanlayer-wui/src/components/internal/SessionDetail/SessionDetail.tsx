@@ -205,6 +205,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [directoriesDropdownOpen, setDirectoriesDropdownOpen] = useState(false)
 
   const responseEditor = useStore(state => state.responseEditor)
+  const isEditingSessionTitle = useStore(state => state.isEditingSessionTitle)
+  const setIsEditingSessionTitle = useStore(state => state.setIsEditingSessionTitle)
 
   // Keyboard navigation protection
   const { shouldIgnoreMouseEvent, startKeyboardNavigation } = useKeyboardNavigationProtection()
@@ -534,6 +536,11 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         return null
       }
 
+      // Don't process escape if editing session title
+      if (isEditingSessionTitle) {
+        return
+      }
+
       // Don't process escape if modals are open
       if (forkViewOpen) {
         return
@@ -586,6 +593,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       scopes: SessionDetailHotkeysScope,
     },
     [
+      isEditingSessionTitle,
       previewEventIndex,
       confirmingArchive,
       forkViewOpen,
@@ -914,6 +922,22 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       enableOnFormTags: false,
     },
     [session.workingDir],
+  )
+
+  // Rename session hotkey
+  useHotkeys(
+    'shift+r',
+    e => {
+      e.preventDefault()
+      setIsEditingSessionTitle(true)
+    },
+    {
+      enabled: !approvals.confirmingApprovalId && !expandedToolResult,
+      scopes: SessionDetailHotkeysScope,
+      preventDefault: true,
+      enableOnFormTags: false,
+    },
+    [setIsEditingSessionTitle, approvals.confirmingApprovalId, expandedToolResult],
   )
 
   // Don't steal scope here - SessionDetail is the base layer
