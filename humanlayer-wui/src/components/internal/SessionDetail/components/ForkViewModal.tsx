@@ -37,11 +37,8 @@ function ForkViewModalContent({
   onArchiveOnForkChange,
   onClose,
 }: Omit<ForkViewModalProps, 'isOpen' | 'onOpenChange'> & { onClose: () => void }) {
-  // Steal hotkey scope when this component mounts
-  // Steal all hotkey scopes when this component is mounted - this prevents ANY hotkeys
-  // from reaching SessionDetail, including shift+tab that would trigger "accept edits"
-  // This component is only rendered when the modal is open, so we always steal scopes
-  useStealHotkeyScope(ForkViewModalHotkeysScope, true)
+  // Note: Scope stealing is handled in parent ForkViewModal component to ensure
+  // it happens BEFORE the dialog renders, preventing any timing gaps
 
   // Focus management
   const containerRef = useRef<HTMLDivElement>(null)
@@ -467,6 +464,10 @@ export function ForkViewModal({
   sessionStatus,
   onArchiveOnForkChange,
 }: ForkViewModalProps) {
+  // Steal all hotkey scopes IMMEDIATELY when modal opens - must happen before Dialog renders
+  // This prevents shift+tab from reaching SessionDetail during the render gap
+  useStealHotkeyScope(ForkViewModalHotkeysScope, isOpen)
+
   return (
     <Dialog
       open={isOpen}
