@@ -17,6 +17,7 @@ import { logger } from '@/lib/logging'
 import { daemonClient } from '@/lib/daemon'
 import type { DebugInfo } from '@/lib/daemon/types'
 import { toast } from 'sonner'
+import { getDaemonUrl } from '@/lib/daemon/http-config'
 import { useDebugStore } from '@/stores/useDebugStore'
 import { Switch } from '@/components/ui/switch'
 
@@ -32,9 +33,9 @@ export function DebugPanel({ open, onOpenChange }: DebugPanelProps) {
   const [customUrl, setCustomUrl] = useState('')
   const [connectError, setConnectError] = useState<string | null>(null)
   const [daemonType, setDaemonType] = useState<'managed' | 'external'>('managed')
-  const [externalDaemonUrl, setExternalDaemonUrl] = useState<string | null>(null)
   const [daemonInfo, setDaemonInfo] = useState<DaemonInfo | null>(null)
   const [debugInfo, setDebugInfo] = useState<DebugInfo | null>(null)
+  const [actualDaemonUrl, setActualDaemonUrl] = useState<string | null>(null)
   const { showDevUrl, setShowDevUrl } = useDebugStore()
 
   // Helper to format bytes to human-readable size
@@ -70,8 +71,14 @@ export function DebugPanel({ open, onOpenChange }: DebugPanelProps) {
       setDaemonInfo(info)
       const type = daemonService.getDaemonType()
       setDaemonType(type)
-      if (type === 'external') {
-        setExternalDaemonUrl((window as any).__HUMANLAYER_DAEMON_URL || null)
+
+      // Get the actual daemon URL being used
+      try {
+        const url = await getDaemonUrl()
+        setActualDaemonUrl(url)
+      } catch (error) {
+        logger.error('Failed to get daemon URL:', error)
+        setActualDaemonUrl(null)
       }
 
       // Fetch debug info if connected
@@ -194,11 +201,7 @@ export function DebugPanel({ open, onOpenChange }: DebugPanelProps) {
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Daemon URL</span>
                 <span className="text-sm font-mono">
-                  {daemonType === 'external' && externalDaemonUrl
-                    ? externalDaemonUrl
-                    : daemonInfo
-                      ? `http://localhost:${daemonInfo.port}`
-                      : 'Not connected'}
+                  {actualDaemonUrl || (connected ? 'Loading...' : 'Not connected')}
                 </span>
               </div>
 
