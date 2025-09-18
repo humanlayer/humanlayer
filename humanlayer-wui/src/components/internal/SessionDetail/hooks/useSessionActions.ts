@@ -179,6 +179,12 @@ export function useSessionActions({
     'ctrl+x',
     () => {
       if (session.status === 'running' || session.status === 'starting') {
+        if (!session.claudeSessionId) {
+          toast.warning('Session cannot be interrupted yet', {
+            description: 'Waiting for Claude to initialize the session. Please try again in a moment.',
+          })
+          return
+        }
         interruptSession(session.id)
       }
     },
@@ -207,5 +213,6 @@ export function useSessionActions({
     handleContinueSession,
     handleNavigateToParent,
     isForkMode: !!forkFromSessionId,
+    interruptSession,
   }
 }

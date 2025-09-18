@@ -235,10 +235,35 @@ export default function SessionTable({
     { scopes: SessionTableHotkeysScope, enabled: !isSessionLauncherOpen },
   )
 
+  // Track if g>e was recently pressed to prevent 'e' from firing
+  const gePressedRef = useRef<number | null>(null)
+
+  // Handle g>e navigation (to prevent 'e' from archiving)
+  useHotkeys(
+    'g>e',
+    () => {
+      console.log('[SessionTable] g>e captured, blocking archive')
+      gePressedRef.current = Date.now()
+    },
+    {
+      preventDefault: true,
+      scopes: SessionTableHotkeysScope,
+      enabled: !isSessionLauncherOpen,
+    },
+  )
+
   // Archive/unarchive hotkey
   useHotkeys(
     'e',
     async () => {
+      console.log('[SessionTable] archive hotkey "e" fired')
+
+      // Check if g>e was pressed recently (within 50ms)
+      if (gePressedRef.current && Date.now() - gePressedRef.current < 50) {
+        console.log('[SessionTable] Blocking archive due to recent g>e press')
+        return
+      }
+
       try {
         // Find the current session from the sessions array to get the latest archived status
         logger.log('Archive hotkey pressed:', {

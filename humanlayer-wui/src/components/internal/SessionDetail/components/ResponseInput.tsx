@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Session, SessionStatus } from '@/lib/daemon/types'
 import { Split, MessageCircleX, AlertCircle } from 'lucide-react'
 import { ActionButtons } from './ActionButtons'
+import { toast } from 'sonner'
 import {
   getInputPlaceholder,
   getHelpText,
@@ -46,6 +47,8 @@ interface ResponseInputProps {
   onToggleArchive?: () => void
   previewEventIndex?: number | null
   isActivelyProcessing?: boolean
+  finalizeInterrupt?: boolean
+  onInterruptConfirm?: () => void
 }
 
 export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }, ResponseInputProps>(
@@ -75,6 +78,8 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
       autoAcceptEnabled = false,
       isArchived = false,
       onToggleArchive,
+      finalizeInterrupt = false,
+      onInterruptConfirm,
     },
     ref,
   ) => {
@@ -92,19 +97,22 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
       const isRunning =
         session.status === SessionStatus.Running || session.status === SessionStatus.Starting
       const hasText = responseEditor && !responseEditor.isEmpty
+      const canInterrupt = session.claudeSessionId !== undefined
 
       if (session.archived && isRunning) {
         return 'Interrupt & Unarchive'
       }
       if (session.archived) return 'Send & Unarchive'
 
-      // When running and no text, show just "Interrupt"
+      // When running and no text, show just "Interrupt" or disabled state
       if (isRunning && !hasText) {
-        return 'Interrupt'
+        if (!canInterrupt) return 'Waiting...'
+        // Show confirmation state when finalizeInterrupt is true
+        return finalizeInterrupt ? 'Interrupt?' : 'Interrupt'
       }
-      // When running with text, show "Interrupt & Send"
+      // When running with text, show "Interrupt & Send" or disabled state
       if (isRunning && hasText) {
-        return 'Interrupt & Send'
+        return canInterrupt ? 'Interrupt & Send' : 'Waiting...'
       }
 
       return 'Send'
@@ -126,6 +134,25 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
 
     const handleSubmit = () => {
       logger.log('ResponseInput.handleSubmit()')
+
+      // Check if this is an interruption attempt without claudeSessionId
+      const isRunning = session.status === SessionStatus.Running || session.status === SessionStatus.Starting
+      const hasText = responseEditor && !responseEditor.isEmpty
+
+      if (isRunning && !hasText && !session.claudeSessionId) {
+        // This shouldn't happen if button is properly disabled, but add as safeguard
+        toast.warning('Session cannot be interrupted yet', {
+          description: 'Waiting for Claude to initialize the session. Please try again in a moment.',
+        })
+        return
+      }
+
+      // Handle finalizeInterrupt confirmation
+      if (isRunning && !hasText && finalizeInterrupt) {
+        onInterruptConfirm?.()
+        return
+      }
+
       if (isDenying && denyingApprovalId && !isForkMode) {
         onDeny?.(denyingApprovalId, responseEditor?.getText().trim() || '', session.id)
       } else if (sessionStatus === SessionStatus.WaitingInput && !isForkMode) {
@@ -250,13 +277,14 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
     const isRunning =
       session.status === SessionStatus.Running || session.status === SessionStatus.Starting
     const hasText = responseEditor && !responseEditor.isEmpty
+    const canInterrupt = session.claudeSessionId !== undefined
 
-    // Only disable when: responding OR (not running AND no text)
-    const isDisabled = isResponding || (!isRunning && !hasText)
+    // Disable when: responding OR (running without claudeSessionId and no text) OR (not running and no text)
+    const isDisabled = isResponding || (isRunning && !canInterrupt && !hasText) || (!isRunning && !hasText)
 
     const isMac = navigator.platform.includes('Mac')
     // Show different keyboard shortcut based on state
-    const sendKey = isRunning && !hasText ? 'Ctrl+X' : isMac ? '⌘+Enter' : 'Ctrl+Enter'
+    const sendKey = finalizeInterrupt ? 'Esc' : isRunning && !hasText ? 'Ctrl+X' : isMac ? '⌘+Enter' : 'Ctrl+Enter'
     let outerBorderColorClass = ''
 
     let placeholder = getInputPlaceholder(session.status)
@@ -278,6 +306,9 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
 
     if (isDragHover) {
       outerBorderColorClass = 'border-[var(--terminal-accent)]'
+    } else if (finalizeInterrupt) {
+      // Show destructive border when in interrupt confirmation mode
+      outerBorderColorClass = 'border-[var(--terminal-error)]'
     }
 
     const textareaOutlineClass =
@@ -418,7 +449,7 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
                   onClick={handleSubmit}
                   disabled={isDisabled}
                   variant={
-                    isDenying ? 'destructive' : isRunning && !hasText ? 'destructive' : 'default'
+                    isDenying ? 'destructive' : (isRunning && !hasText && canInterrupt) ? 'destructive' : 'default'
                   }
                   className="h-auto py-0.5 px-2 text-xs transition-all duration-200"
                 >

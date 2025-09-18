@@ -21,7 +21,8 @@ const hotkeyData = [
   { category: 'Global', key: '?', description: 'Toggle keyboard shortcuts' },
   { category: 'Global', key: '⌘+K', description: 'Open command palette' },
   { category: 'Global', key: 'C', description: 'Create new session' },
-  { category: 'Global', key: 'G', description: 'Navigation prefix (G+S for sessions)' },
+  { category: 'Global', key: 'G,S', description: 'Go to sessions' },
+  { category: 'Global', key: 'G,E', description: 'Go to archived sessions' },
   { category: 'Global', key: 'Ctrl+T', description: 'Toggle theme selector' },
   { category: 'Global', key: '⌘+Enter', description: 'Submit text input' },
 

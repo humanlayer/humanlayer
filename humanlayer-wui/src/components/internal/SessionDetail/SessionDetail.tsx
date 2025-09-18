@@ -186,14 +186,17 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [confirmingArchive, setConfirmingArchive] = useState(false)
   const [dangerousSkipPermissionsDialogOpen, setDangerousSkipPermissionsDialogOpen] = useState(false)
   const [directoriesDropdownOpen, setDirectoriesDropdownOpen] = useState(false)
+  const [finalizeInterrupt, setFinalizeInterrupt] = useState(false)
 
   const responseEditor = useStore(state => state.responseEditor)
 
   // Keyboard navigation protection
   const { shouldIgnoreMouseEvent, startKeyboardNavigation } = useKeyboardNavigationProtection()
 
+  // Show spinner for active states, but not for interrupted or interrupting
   const isActivelyProcessing = ['starting', 'running', 'completing'].includes(session.status)
   const confirmingArchiveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const finalizeInterruptTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Get session from store to access auto_accept_edits and dangerouslySkipPermissions
   // Always prioritize store values as they are the source of truth for runtime state
@@ -460,6 +463,38 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     }
   }, [session.id])
 
+  // Handle finalizeInterrupt timeout and cleanup
+  useEffect(() => {
+    if (finalizeInterrupt) {
+      // Clear any existing timeout
+      if (finalizeInterruptTimeoutRef.current) {
+        clearTimeout(finalizeInterruptTimeoutRef.current)
+      }
+
+      // Set new timeout for 3 seconds
+      finalizeInterruptTimeoutRef.current = setTimeout(() => {
+        setFinalizeInterrupt(false)
+        finalizeInterruptTimeoutRef.current = null
+      }, 3000)
+    }
+
+    return () => {
+      if (finalizeInterruptTimeoutRef.current) {
+        clearTimeout(finalizeInterruptTimeoutRef.current)
+        finalizeInterruptTimeoutRef.current = null
+      }
+    }
+  }, [finalizeInterrupt])
+
+  // Reset finalizeInterrupt on session change
+  useEffect(() => {
+    setFinalizeInterrupt(false)
+    if (finalizeInterruptTimeoutRef.current) {
+      clearTimeout(finalizeInterruptTimeoutRef.current)
+      finalizeInterruptTimeoutRef.current = null
+    }
+  }, [session.id])
+
   // Handle updating additional directories
   const handleUpdateAdditionalDirectories = async (directories: string[]) => {
     await daemonClient.updateSession(session.id, { additionalDirectories: directories })
@@ -473,6 +508,23 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const lastTodo = events
     ?.toReversed()
     .find(e => e.eventType === 'tool_call' && e.toolName === 'TodoWrite')
+
+  // Get hotkeys context for modal scope checking (moved here for handleToggleForkView)
+  const { activeScopes } = useHotkeysContext()
+
+  // Fork view toggle handler (moved here to be available for escape handler)
+  const handleToggleForkView = useCallback(() => {
+    // Check if any modal scopes are active
+    const modalScopes = ['tool-result-modal', 'dangerously-skip-permissions-dialog']
+    const hasModalOpen = activeScopes.some(scope => modalScopes.includes(scope))
+
+    // Don't trigger if other modals are open
+    if (hasModalOpen) {
+      return
+    }
+
+    setForkViewOpen(!forkViewOpen)
+  }, [activeScopes, forkViewOpen])
 
   // Clear focus on escape, then close if nothing focused
   // This needs special handling for confirmingApprovalId
@@ -510,6 +562,47 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         return
       }
 
+      /* Everything below here implies the responeEditor is not focused */
+
+      // Interrupt session if it's running or starting
+      if (
+        ([SessionStatus.Starting, SessionStatus.Running] as SessionStatus[]).includes(session.status)
+      ) {
+        ev.preventDefault()
+        if (!session.claudeSessionId) {
+          toast.warning('Session cannot be interrupted yet', {
+            description: 'Waiting for Claude to initialize the session. Please try again in a moment.',
+          })
+          return
+        }
+
+        // Two-step interruption flow
+        if (finalizeInterrupt) {
+          // Second press - actually interrupt
+          actions.interruptSession(session.id).then(() => {
+            setFinalizeInterrupt(false)
+            if (finalizeInterruptTimeoutRef.current) {
+              clearTimeout(finalizeInterruptTimeoutRef.current)
+              finalizeInterruptTimeoutRef.current = null
+            }
+          })
+        } else {
+          // First press - enter confirmation mode
+          setFinalizeInterrupt(true)
+        }
+        return
+      }
+
+      // Check for other escape contexts - these should clear finalizeInterrupt
+      if (finalizeInterrupt) {
+        // Clear the finalizeInterrupt state if we're handling other escape scenarios
+        setFinalizeInterrupt(false)
+        if (finalizeInterruptTimeoutRef.current) {
+          clearTimeout(finalizeInterruptTimeoutRef.current)
+          finalizeInterruptTimeoutRef.current = null
+        }
+      }
+
       // Check for fork mode first
       if (previewEventIndex !== null) {
         // Clear fork mode
@@ -529,7 +622,18 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       } else if (navigation.focusedEventId) {
         navigation.setFocusedEventId(null)
       } else {
-        onClose()
+        // Check if session is in a forkable state
+        const isForkable =
+          session.status === SessionStatus.WaitingInput ||
+          session.status === SessionStatus.Failed ||
+          session.status === SessionStatus.Interrupted
+
+        if (isForkable) {
+          // Open fork modal instead of closing
+          handleToggleForkView()
+        } else {
+          onClose()
+        }
       }
     },
     {
@@ -547,12 +651,13 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       navigation.focusedEventId,
       navigation.setFocusedEventId,
       onClose,
+      session.status,
+      actions.interruptSession,
+      handleToggleForkView,
       // actions.setResponseInput,
     ],
   )
 
-  // Get hotkeys context for modal scope checking
-  const { activeScopes } = useHotkeysContext()
 
   // Create reusable handler for toggling auto-accept
   const handleToggleAutoAccept = useCallback(async () => {
@@ -639,10 +744,34 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     }
   }
 
+  // Track if g>e was recently pressed to prevent 'e' from firing
+  const gePressedRef = useRef<number | null>(null)
+
+  // Handle g>e navigation (to prevent 'e' from archiving)
+  useHotkeys(
+    'g>e',
+    () => {
+      console.log('[SessionDetail] g>e captured, blocking archive')
+      gePressedRef.current = Date.now()
+    },
+    {
+      preventDefault: true,
+      scopes: SessionDetailHotkeysScope,
+    },
+  )
+
   // Add hotkey to archive session ('e' key)
   useHotkeys(
     'e',
     async () => {
+      console.log('[SessionDetail] archive hotkey "e" fired')
+
+      // Check if g>e was pressed recently (within 50ms)
+      if (gePressedRef.current && Date.now() - gePressedRef.current < 50) {
+        console.log('[SessionDetail] Blocking archive due to recent g>e press')
+        return
+      }
+
       // TODO(3): The timeout clearing logic (using confirmingArchiveTimeoutRef) is duplicated in multiple places.
       // Consider refactoring this into a helper function to reduce repetition.
 
@@ -709,19 +838,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   )
 
   // Create reusable handler for toggling fork view
-  const handleToggleForkView = useCallback(() => {
-    // Check if any modal scopes are active
-    const modalScopes = ['tool-result-modal', 'dangerously-skip-permissions-dialog']
-    const hasModalOpen = activeScopes.some(scope => modalScopes.includes(scope))
-
-    // Don't trigger if other modals are open
-    if (hasModalOpen) {
-      return
-    }
-
-    setForkViewOpen(!forkViewOpen)
-  }, [activeScopes, forkViewOpen])
-
   // Add hotkey to open fork view (Meta+Y)
   useHotkeys(
     'meta+y',
@@ -1074,6 +1190,17 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
             onToggleArchive={handleToggleArchive}
             previewEventIndex={previewEventIndex}
             isActivelyProcessing={isActivelyProcessing}
+            finalizeInterrupt={finalizeInterrupt}
+            onInterruptConfirm={() => {
+              // Handle the interrupt button click when in finalizeInterrupt mode
+              actions.interruptSession(session.id).then(() => {
+                setFinalizeInterrupt(false)
+                if (finalizeInterruptTimeoutRef.current) {
+                  clearTimeout(finalizeInterruptTimeoutRef.current)
+                  finalizeInterruptTimeoutRef.current = null
+                }
+              })
+            }}
           />
           {/* Session mode indicator - shows fork, dangerous skip permissions or auto-accept */}
           <SessionModeIndicator

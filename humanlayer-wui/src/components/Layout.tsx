@@ -13,6 +13,7 @@ import {
   SessionSettingsChangeReason,
   SessionStatus,
   SessionStatusChangedEventData,
+  ViewMode,
 } from '@/lib/daemon'
 import { Button } from '@/components/ui/button'
 import { ThemeSelector } from '@/components/ThemeSelector'
@@ -383,6 +384,72 @@ export function Layout() {
     {
       useKey: true,
       preventDefault: true,
+    },
+  )
+
+  // Navigation shortcuts - 'gs' for sessions (normal view), 'ge' for archived
+  // Check if any modal is open to prevent shortcuts during modal interactions
+  const isAnyModalOpen = () => {
+    return isSettingsDialogOpen || isHotkeyPanelOpen || isOpen || showTelemetryModal || isDebugPanelOpen
+  }
+
+  // G+S - Go to sessions (normal view)
+  useHotkeys(
+    'g>s',
+    (e) => {
+      console.log('[Layout] g>s fired')
+      e.stopPropagation()
+      if (!isAnyModalOpen()) {
+        // Navigate to sessions (normal view)
+        if (useStore.getState().viewMode !== ViewMode.Normal) {
+          useStore.getState().setViewMode(ViewMode.Normal)
+        }
+        navigate('/')
+      }
+    },
+    {
+      preventDefault: true,
+      enableOnFormTags: false,
+    },
+  )
+
+  // G+E - Go to archived sessions
+  useHotkeys(
+    'g>e',
+    (e) => {
+      console.log('[Layout] g>e fired')
+      e.stopPropagation()
+      if (!isAnyModalOpen()) {
+        // Navigate to archived sessions
+        if (useStore.getState().viewMode !== ViewMode.Archived) {
+          useStore.getState().setViewMode(ViewMode.Archived)
+        }
+        navigate('/')
+      }
+    },
+    {
+      preventDefault: true,
+      enableOnFormTags: false,
+    },
+  )
+
+  // G+I - Go to inbox/sessions (alias for g>s)
+  useHotkeys(
+    'g>i',
+    (e) => {
+      console.log('[Layout] g>i fired (alias for g>s)')
+      e.stopPropagation()
+      if (!isAnyModalOpen()) {
+        // Navigate to sessions (normal view)
+        if (useStore.getState().viewMode !== ViewMode.Normal) {
+          useStore.getState().setViewMode(ViewMode.Normal)
+        }
+        navigate('/')
+      }
+    },
+    {
+      preventDefault: true,
+      enableOnFormTags: false,
     },
   )
 

@@ -29,6 +29,7 @@ interface TaskGroupProps {
   setExpandedToolCall?: (event: ConversationEvent | null) => void
   getSnapshot?: (filePath: string) => FileSnapshotInfo | undefined
   shouldIgnoreMouseEvent?: () => boolean
+  sessionStatus?: string
 }
 
 export function TaskGroup({
@@ -53,6 +54,7 @@ export function TaskGroup({
   setExpandedToolCall,
   getSnapshot,
   shouldIgnoreMouseEvent,
+  sessionStatus,
 }: TaskGroupProps) {
   const { parentTask, toolCallCount, latestEvent, hasPendingApproval } = group
   const taskInput = JSON.parse(parentTask.toolInputJson || '{}')
@@ -107,7 +109,9 @@ export function TaskGroup({
               <span className="font-semibold">{displayName}: </span>
               {description}
             </div>
-            {!isCompleted && <CircleDashed className="w-4 h-4 animate-spin text-muted-foreground" />}
+            {!isCompleted && sessionStatus !== 'interrupted' && sessionStatus !== 'interrupting' && (
+              <CircleDashed className="w-4 h-4 animate-spin text-muted-foreground" />
+            )}
             {hasPendingApproval && (
               <span className="text-xs bg-warning/20 text-warning px-2 py-0.5 rounded">
                 Approval Required
