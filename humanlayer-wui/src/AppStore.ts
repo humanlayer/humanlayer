@@ -4,6 +4,7 @@ import { create } from 'zustand'
 import { daemonClient } from '@/lib/daemon'
 import { logger } from '@/lib/logging'
 import { Editor } from '@tiptap/react'
+import { toast } from 'sonner'
 
 // Track pending updates for optimistic UI
 interface PendingUpdate {
@@ -361,6 +362,22 @@ export const useStore = create<StoreState>((set, get) => ({
     }),
   interruptSession: async (sessionId: string) => {
     try {
+      // Get the current session to check claudeSessionId
+      const session = get().sessions.find(s => s.id === sessionId)
+      if (!session) {
+        logger.error(`Session ${sessionId} not found`)
+        return
+      }
+
+      // Prevent interruption if claudeSessionId is missing
+      if (!session.claudeSessionId) {
+        logger.warn(`Cannot interrupt session ${sessionId}: missing claudeSessionId`)
+        toast.warning('Session cannot be interrupted yet', {
+          description: 'Waiting for Claude to initialize the session. Please try again in a moment.',
+        })
+        return
+      }
+
       await daemonClient.interruptSession(sessionId)
       // The session status will be updated via the subscription
     } catch (error) {

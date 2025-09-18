@@ -73,6 +73,7 @@ export function ConversationContent({
   const { events, loading, error, isInitialLoad } = useConversation(sessionId, undefined, 1000)
   const { getSnapshot, refetch } = useSessionSnapshots(sessionId)
   const responseEditor = useStore(state => state.responseEditor)
+  const session = useStore(state => state.sessions.find(s => s.id === sessionId))
 
   // Filter events based on maxEventIndex (exclude the event at maxEventIndex)
   const filteredEvents = maxEventIndex !== undefined ? events.slice(0, maxEventIndex) : events
@@ -371,6 +372,7 @@ export function ConversationContent({
                   setExpandedToolCall={setExpandedToolCall}
                   getSnapshot={getSnapshot}
                   shouldIgnoreMouseEvent={shouldIgnoreMouseEvent}
+                  sessionStatus={session?.status}
                 />
               )
             } else {

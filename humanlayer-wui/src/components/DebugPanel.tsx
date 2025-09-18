@@ -18,6 +18,8 @@ import { daemonClient } from '@/lib/daemon'
 import type { DebugInfo } from '@/lib/daemon/types'
 import { toast } from 'sonner'
 import { getDaemonUrl } from '@/lib/daemon/http-config'
+import { useDebugStore } from '@/stores/useDebugStore'
+import { Switch } from '@/components/ui/switch'
 
 interface DebugPanelProps {
   open?: boolean
@@ -34,6 +36,7 @@ export function DebugPanel({ open, onOpenChange }: DebugPanelProps) {
   const [daemonInfo, setDaemonInfo] = useState<DaemonInfo | null>(null)
   const [debugInfo, setDebugInfo] = useState<DebugInfo | null>(null)
   const [actualDaemonUrl, setActualDaemonUrl] = useState<string | null>(null)
+  const { showDevUrl, setShowDevUrl } = useDebugStore()
 
   // Helper to format bytes to human-readable size
   function formatBytes(bytes: number): string {
@@ -263,6 +266,20 @@ export function DebugPanel({ open, onOpenChange }: DebugPanelProps) {
               </Button>
 
               {connectError && <p className="text-sm text-destructive">{connectError}</p>}
+            </CardContent>
+          </Card>
+
+          <Card className="md:col-span-2">
+            <CardHeader>
+              <CardTitle className="text-sm">Developer Settings</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="show-url" className="text-sm">
+                  Show URL in Status Bar
+                </Label>
+                <Switch id="show-url" checked={showDevUrl} onCheckedChange={setShowDevUrl} />
+              </div>
             </CardContent>
           </Card>
 
