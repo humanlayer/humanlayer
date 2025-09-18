@@ -49,7 +49,9 @@ export function QuickLauncher() {
   // ESC to close window
   useHotkeys(
     'escape',
-    async () => {
+    async e => {
+      e?.preventDefault()
+      e?.stopPropagation()
       const window = getCurrentWindow()
       await window.close()
     },
