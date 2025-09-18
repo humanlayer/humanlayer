@@ -50,6 +50,44 @@ impl DaemonManager {
             }
         }
 
+        // Check if we should skip auto-launch
+        if env::var("HUMANLAYER_WUI_AUTOLAUNCH_DAEMON").map(|v| v.trim().to_ascii_lowercase()) == Ok("false".to_string()) {
+            // Don't auto-launch daemon, expect it to be managed externally
+            log::info!("[Tauri] Auto-launch disabled via HUMANLAYER_WUI_AUTOLAUNCH_DAEMON=false");
+
+            // Still need to return daemon info for external daemon
+            if let Ok(port_str) = env::var("HUMANLAYER_DAEMON_HTTP_PORT") {
+                if let Ok(port) = port_str.parse::<u16>() {
+                    let socket_path = env::var("HUMANLAYER_DAEMON_SOCKET")
+                        .unwrap_or_else(|_| format!("~/.humanlayer/daemon-{}.sock", port));
+                    let database_path = env::var("HUMANLAYER_DATABASE_PATH")
+                        .unwrap_or_else(|_| "~/.humanlayer/daemon.db".to_string());
+
+                    // Get branch from environment or git
+                    let branch_id = if let Ok(version) = env::var("HUMANLAYER_DAEMON_VERSION_OVERRIDE") {
+                        version
+                    } else {
+                        get_branch_id(is_dev, branch_override)
+                    };
+
+                    let info = DaemonInfo {
+                        port,
+                        pid: 0, // Unknown PID for pre-existing daemon
+                        database_path,
+                        socket_path,
+                        branch_id,
+                        is_running: true,
+                    };
+                    *self.info.lock().unwrap() = Some(info.clone());
+                    return Ok(info);
+                }
+            }
+            return Err(
+                "HUMANLAYER_WUI_AUTOLAUNCH_DAEMON=false but no HUMANLAYER_DAEMON_HTTP_PORT set"
+                    .to_string(),
+            );
+        }
+
         // Check if daemon is already running on a specific port
         if let Ok(port_str) = env::var("HUMANLAYER_DAEMON_HTTP_PORT") {
             if let Ok(port) = port_str.parse::<u16>() {
@@ -78,8 +116,11 @@ impl DaemonManager {
         fs::create_dir_all(&humanlayer_dir)
             .map_err(|e| format!("Failed to create .humanlayer directory: {e}"))?;
 
-        // Database path
-        let database_path = if is_dev {
+        // Database path - check environment variable first
+        let database_path = if let Ok(db_path) = env::var("HUMANLAYER_DATABASE_PATH") {
+            log::info!("[Tauri] Using database path from HUMANLAYER_DATABASE_PATH: {db_path}");
+            PathBuf::from(db_path)
+        } else if is_dev {
             // Copy dev database if it doesn't exist
             let dev_db = humanlayer_dir.join(format!("daemon-{branch_id}.db"));
             if !dev_db.exists() {
@@ -94,8 +135,11 @@ impl DaemonManager {
             humanlayer_dir.join("daemon.db")
         };
 
-        // Socket path
-        let socket_path = if is_dev {
+        // Socket path - check environment variable first
+        let socket_path = if let Ok(sock_path) = env::var("HUMANLAYER_DAEMON_SOCKET") {
+            log::info!("[Tauri] Using socket path from HUMANLAYER_DAEMON_SOCKET: {sock_path}");
+            PathBuf::from(sock_path)
+        } else if is_dev {
             humanlayer_dir.join(format!("daemon-{branch_id}.sock"))
         } else {
             humanlayer_dir.join("daemon.sock")
@@ -126,14 +170,8 @@ impl DaemonManager {
                 branch_id.clone(),
             ));
             // Enable debug logging for daemon in dev mode
-            env_vars.push((
-                "HUMANLAYER_DEBUG".to_string(),
-                "true".to_string(),
-            ));
-            env_vars.push((
-                "GIN_MODE".to_string(),
-                "debug".to_string(),
-            ));
+            env_vars.push(("HUMANLAYER_DEBUG".to_string(), "true".to_string()));
+            env_vars.push(("GIN_MODE".to_string(), "debug".to_string()));
         }
 
         // Start daemon with stdout capture and stderr logging
@@ -175,9 +213,15 @@ impl DaemonManager {
                             // In production, always log at info level or higher for visibility
                             if is_prod {
                                 // Check if it's an error or warning
-                                if line.contains("ERROR") || line.contains("error") || line.contains("Error") {
+                                if line.contains("ERROR")
+                                    || line.contains("error")
+                                    || line.contains("Error")
+                                {
                                     log::error!("[Daemon] {branch_id_clone}: {line}");
-                                } else if line.contains("WARN") || line.contains("warn") || line.contains("Warning") {
+                                } else if line.contains("WARN")
+                                    || line.contains("warn")
+                                    || line.contains("Warning")
+                                {
                                     log::warn!("[Daemon] {branch_id_clone}: {line}");
                                 } else {
                                     log::info!("[Daemon] {branch_id_clone}: {line}");
@@ -188,11 +232,21 @@ impl DaemonManager {
                                 let cleaned_line = remove_timestamp(&line);
 
                                 match level {
-                                    LogLevel::Error => log::error!("[Daemon] {branch_id_clone}: {cleaned_line}"),
-                                    LogLevel::Warn => log::warn!("[Daemon] {branch_id_clone}: {cleaned_line}"),
-                                    LogLevel::Info => log::info!("[Daemon] {branch_id_clone}: {cleaned_line}"),
-                                    LogLevel::Debug => log::debug!("[Daemon] {branch_id_clone}: {cleaned_line}"),
-                                    LogLevel::Trace => log::trace!("[Daemon] {branch_id_clone}: {cleaned_line}"),
+                                    LogLevel::Error => {
+                                        log::error!("[Daemon] {branch_id_clone}: {cleaned_line}")
+                                    }
+                                    LogLevel::Warn => {
+                                        log::warn!("[Daemon] {branch_id_clone}: {cleaned_line}")
+                                    }
+                                    LogLevel::Info => {
+                                        log::info!("[Daemon] {branch_id_clone}: {cleaned_line}")
+                                    }
+                                    LogLevel::Debug => {
+                                        log::debug!("[Daemon] {branch_id_clone}: {cleaned_line}")
+                                    }
+                                    LogLevel::Trace => {
+                                        log::trace!("[Daemon] {branch_id_clone}: {cleaned_line}")
+                                    }
                                 }
                             }
                         }
@@ -275,7 +329,9 @@ impl DaemonManager {
         match child.try_wait() {
             Ok(None) => log::info!("[Tauri] Daemon process still running after port read"),
             Ok(Some(status)) => {
-                return Err(format!("Daemon process exited immediately after starting! Status: {status:?}"));
+                return Err(format!(
+                    "Daemon process exited immediately after starting! Status: {status:?}"
+                ));
             }
             Err(e) => log::error!("[Tauri] Error checking daemon status: {e}"),
         }
@@ -448,7 +504,6 @@ fn get_daemon_path(app_handle: &AppHandle, is_dev: bool) -> Result<PathBuf, Stri
         Ok(resource_dir.join("bin").join("hld"))
     }
 }
-
 
 async fn check_daemon_health(port: u16) -> Result<(), String> {
     let client = reqwest::Client::new();

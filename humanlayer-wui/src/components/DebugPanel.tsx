@@ -174,13 +174,6 @@ export function DebugPanel({ open, onOpenChange }: DebugPanelProps) {
                 </div>
               </div>
 
-              {daemonType === 'external' && externalDaemonUrl && (
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">External URL</span>
-                  <span className="text-sm font-mono">{externalDaemonUrl}</span>
-                </div>
-              )}
-
               {daemonInfo && (
                 <>
                   <div className="flex items-center justify-between">
@@ -193,6 +186,18 @@ export function DebugPanel({ open, onOpenChange }: DebugPanelProps) {
                   </div>
                 </>
               )}
+
+              {/* Display current daemon URL */}
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Daemon URL</span>
+                <span className="text-sm font-mono">
+                  {daemonType === 'external' && externalDaemonUrl
+                    ? externalDaemonUrl
+                    : daemonInfo
+                      ? `http://localhost:${daemonInfo.port}`
+                      : 'Not connected'}
+                </span>
+              </div>
 
               {daemonType === 'managed' ? (
                 <Button
