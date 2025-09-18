@@ -346,9 +346,8 @@ function ForkViewModalContent({
 
         <div
           className={cn(
-            'flex items-center justify-between mt-4 pt-4 border-t transition-all',
-            focusedSection === 'checkbox' &&
-              'ring-2 ring-[var(--terminal-accent)] ring-offset-2 rounded-md px-2 py-1',
+            'flex items-center justify-between mt-4 py-3 border-t transition-colors',
+            focusedSection === 'checkbox' ? 'bg-accent/10 px-4' : 'px-4',
           )}
         >
           <div className="flex items-center space-x-2">
@@ -357,6 +356,7 @@ function ForkViewModalContent({
               checked={localArchiveOnFork}
               onCheckedChange={handleArchiveCheckboxChange}
               onFocus={() => setFocusedSection('checkbox')}
+              className={focusedSection === 'checkbox' ? 'focus-visible:ring-0' : ''}
             />
             <TooltipProvider>
               <Tooltip>
