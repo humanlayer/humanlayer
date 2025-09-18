@@ -1,6 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Home, Pencil, Check, X } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import {
   Breadcrumb,
@@ -16,7 +16,8 @@ import { daemonClient } from '@/lib/daemon/client'
 export function Breadcrumbs() {
   const location = useLocation()
   const navigate = useNavigate()
-  const [isEditingTitle, setIsEditingTitle] = useState(false)
+  const isEditingTitle = useStore(state => state.isEditingSessionTitle)
+  const setIsEditingTitle = useStore(state => state.setIsEditingSessionTitle)
   const [editValue, setEditValue] = useState('')
 
   const pathSegments = location.pathname.split('/').filter(Boolean)
@@ -26,6 +27,13 @@ export function Breadcrumbs() {
 
   // Get session from store
   const session = useStore(state => (sessionId ? state.sessions.find(s => s.id === sessionId) : null))
+
+  // Watch for external triggers to start editing
+  useEffect(() => {
+    if (isEditingTitle && session && !editValue) {
+      setEditValue(session.title || session.summary || '')
+    }
+  }, [isEditingTitle, session, editValue])
 
   const startEdit = () => {
     if (session) {
@@ -81,9 +89,36 @@ export function Breadcrumbs() {
                     type="text"
                     value={editValue}
                     onChange={e => setEditValue(e.target.value)}
+                    onKeyDownCapture={e => {
+                      // Use capture phase to intercept escape before any other handler
+                      if (e.key === 'Escape') {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        e.nativeEvent.stopImmediatePropagation()
+                      }
+                    }}
                     onKeyDown={e => {
-                      if (e.key === 'Enter') saveEdit()
-                      if (e.key === 'Escape') cancelEdit()
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        saveEdit()
+                      } else if (e.key === 'Escape') {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        // Stop immediate propagation to prevent any other handlers
+                        e.nativeEvent.stopImmediatePropagation()
+                        // Reset edit value to original title
+                        setEditValue(session?.title || session?.summary || '')
+                        // Exit editing mode without saving
+                        setIsEditingTitle(false)
+                        // Just blur the input, don't focus anything else
+                        ;(e.target as HTMLInputElement).blur()
+                      }
+                    }}
+                    onKeyUp={e => {
+                      if (e.key === 'Escape') {
+                        e.stopPropagation()
+                        e.nativeEvent.stopImmediatePropagation()
+                      }
                     }}
                     className="px-1 py-0.5 text-sm bg-background border rounded font-mono uppercase tracking-wider"
                     autoFocus

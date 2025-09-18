@@ -119,6 +119,10 @@ interface StoreState {
   responseEditor: Editor | null
   setResponseEditor: (responseEditor: Editor) => void
   removeResponseEditor: () => void
+
+  /* Title Editing State */
+  isEditingSessionTitle: boolean
+  setIsEditingSessionTitle: (editing: boolean) => void
 }
 
 export const useStore = create<StoreState>((set, get) => ({
@@ -131,6 +135,7 @@ export const useStore = create<StoreState>((set, get) => ({
   activeSessionDetail: null,
   claudeConfig: null,
   responseEditor: null,
+  isEditingSessionTitle: false,
   initSessions: (sessions: Session[]) => set({ sessions }),
   updateSession: (sessionId: string, updates: Partial<Session>) =>
     set(state => ({
@@ -917,6 +922,7 @@ export const useStore = create<StoreState>((set, get) => ({
     logger.log('AppStore.removeResponseEditor() - removing response editor')
     return set({ responseEditor: null })
   },
+  setIsEditingSessionTitle: (editing: boolean) => set({ isEditingSessionTitle: editing }),
 }))
 
 // Helper function to validate and clean up session state

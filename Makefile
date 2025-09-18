@@ -686,7 +686,7 @@ wui-ticket:
 	HUMANLAYER_DAEMON_SOCKET=~/.humanlayer/daemon-$$port.sock \
 	VITE_HUMANLAYER_DAEMON_URL=http://localhost:$$port \
 	VITE_PORT=$$vite_port \
-	bun tauri dev --config /tmp/tauri-config-$(TICKET).json
+	bun run tauri dev --config /tmp/tauri-config-$(TICKET).json
 
 # Run dev daemon with persistent dev database
 .PHONY: daemon-dev

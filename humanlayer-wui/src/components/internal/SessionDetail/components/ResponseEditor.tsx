@@ -680,6 +680,7 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
           spellcheck: 'false',
           autocorrect: 'off',
           autocapitalize: 'off',
+          'data-prompt-input': 'true',
         },
         handleKeyDown: (view, event) => {
           // Only handle Shift+Enter in regular paragraphs, not in code blocks or other special nodes

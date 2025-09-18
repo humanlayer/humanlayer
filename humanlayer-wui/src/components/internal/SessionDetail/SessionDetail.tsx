@@ -204,6 +204,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [directoriesDropdownOpen, setDirectoriesDropdownOpen] = useState(false)
 
   const responseEditor = useStore(state => state.responseEditor)
+  const isEditingSessionTitle = useStore(state => state.isEditingSessionTitle)
 
   // Keyboard navigation protection
   const { shouldIgnoreMouseEvent, startKeyboardNavigation } = useKeyboardNavigationProtection()
@@ -501,6 +502,11 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         return null
       }
 
+      // Don't process escape if title is being edited
+      if (isEditingSessionTitle) {
+        return
+      }
+
       // Don't process escape if modals are open
       if (forkViewOpen) {
         return
@@ -557,12 +563,15 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       confirmingArchive,
       forkViewOpen,
       dangerousSkipPermissionsDialogOpen,
+      directoriesDropdownOpen,
       expandedToolResult,
+      isEditingSessionTitle,
       approvals.confirmingApprovalId,
       approvals.setConfirmingApprovalId,
       navigation.focusedEventId,
       navigation.setFocusedEventId,
       onClose,
+      responseEditor,
       // actions.setResponseInput,
     ],
   )

@@ -28,6 +28,12 @@ find_available_port() {
     # Try with progressive prefixes (1-6)
     for prefix in 1 2 3 4 5 6; do
         local port="${prefix}${ticket_num}"
+
+        # Skip if port would exceed maximum valid port number
+        if [ "$port" -gt 65535 ]; then
+            continue
+        fi
+
         if is_port_available "$port"; then
             echo "$port"
             return 0
@@ -45,9 +51,36 @@ extract_ticket_number() {
     echo "$ticket" | sed 's/.*-//'
 }
 
-# Find available Vite port (adds 10000 to ticket number and uses same fallback)
+# Find available Vite port with a different strategy to avoid exceeding port limits
 find_available_vite_port() {
     local ticket_num=$1
     local vite_base=$((ticket_num + 10000))
-    find_available_port "$vite_base"
+
+    # If base port is valid and available, use it
+    if [ "$vite_base" -le 65535 ] && is_port_available "$vite_base"; then
+        echo "$vite_base"
+        return 0
+    fi
+
+    # For high ticket numbers or if base is taken, use a different strategy
+    # Try ports in the 30000-65000 range with offsets
+    for offset in 0 100 200 300 400 500 600 700 800 900; do
+        local port=$((30000 + (ticket_num % 30000) + offset))
+        if [ "$port" -le 65535 ] && is_port_available "$port"; then
+            echo "$port"
+            return 0
+        fi
+    done
+
+    # If still no port found, try the 40000-50000 range
+    for offset in 0 1 2 3 4 5 6 7 8 9; do
+        local port=$((40000 + (ticket_num % 10000) + offset * 100))
+        if [ "$port" -le 65535 ] && is_port_available "$port"; then
+            echo "$port"
+            return 0
+        fi
+    done
+
+    echo "ERROR: Could not find available Vite port for ticket $ticket_num" >&2
+    return 1
 }
