@@ -34,9 +34,7 @@ function TimestampWithTooltip({ createdAt }: { createdAt?: Date }) {
           {createdAt ? formatTimestamp(createdAt) : ''}
         </span>
       </TooltipTrigger>
-      <TooltipContent>
-        {createdAt ? formatAbsoluteTimestamp(createdAt) : 'Unknown time'}
-      </TooltipContent>
+      <TooltipContent>{createdAt ? formatAbsoluteTimestamp(createdAt) : 'Unknown time'}</TooltipContent>
     </Tooltip>
   )
 }
@@ -141,6 +139,30 @@ function UserMessageContent({ eventContent }: { eventContent: string }) {
   )
 }
 
+function AssistantMessageContent({
+  eventContent,
+  isThinking,
+}: {
+  eventContent: string
+  isThinking: boolean
+}) {
+  if (isThinking && !eventContent) {
+    return (
+      <div>
+        <span className="text-muted-foreground italic">Thinking...</span>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <div className="whitespace-pre-wrap text-foreground break-all">
+        <MarkdownRenderer content={eventContent} />
+      </div>
+    </div>
+  )
+}
+
 function UnknownMessageContent() {
   return <div>Unknown Message Content</div>
 }
@@ -168,7 +190,7 @@ export function ConversationEventRow({
 }: ConversationEventRowProps) {
   const IconComponent = getIcon(event.eventType, event.role, event.isCompleted)
 
-  let messageContent = null;
+  let messageContent = null
   const isThinking = Boolean(
     event.eventType === ConversationEventType.Thinking ||
       (event.role === ConversationRole.Assistant && event.content?.startsWith('<thinking>')),
@@ -178,6 +200,10 @@ export function ConversationEventRow({
 
   if (event.role === ConversationRole.User) {
     messageContent = <UserMessageContent eventContent={event.content || ''} />
+  } else if (event.role === ConversationRole.Assistant) {
+    messageContent = (
+      <AssistantMessageContent eventContent={event.content || ''} isThinking={isThinking} />
+    )
   }
 
   if (messageContent === null) {
