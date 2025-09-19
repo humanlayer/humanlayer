@@ -9,6 +9,7 @@ import { useConversation, useKeyboardNavigationProtection } from '@/hooks'
 import { ChevronDown } from 'lucide-react'
 import { daemonClient } from '@/lib/daemon/client'
 import { useStore } from '@/AppStore'
+import { getArchiveOnForkPreference } from '@/lib/preferences'
 
 // Import extracted components
 import { ConversationContent } from './views/ConversationContent'
@@ -203,6 +204,9 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [confirmingArchive, setConfirmingArchive] = useState(false)
   const [dangerousSkipPermissionsDialogOpen, setDangerousSkipPermissionsDialogOpen] = useState(false)
   const [directoriesDropdownOpen, setDirectoriesDropdownOpen] = useState(false)
+  const [archiveOnFork, setArchiveOnFork] = useState(() => {
+    return getArchiveOnForkPreference()
+  })
 
   const responseEditor = useStore(state => state.responseEditor)
   const isEditingSessionTitle = useStore(state => state.isEditingSessionTitle)
@@ -434,6 +438,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     onClose,
     pendingForkMessage,
     onForkCommit: handleForkCommit,
+    archiveOnFork, // Add this
   })
 
   // Add fork selection handler
@@ -1063,6 +1068,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
             }
           }}
           sessionStatus={session.status}
+          onArchiveOnForkChange={setArchiveOnFork}
         />
       </div>
 

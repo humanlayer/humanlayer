@@ -6,10 +6,16 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
 } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Label } from '@/components/ui/label'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { ConversationEvent } from '@/lib/daemon/types'
 import { cn } from '@/lib/utils'
 import { useStealHotkeyScope } from '@/hooks/useStealHotkeyScope'
+import { getArchiveOnForkPreference, setArchiveOnForkPreference } from '@/lib/preferences'
 
 const ForkViewModalHotkeysScope = 'fork-view-modal'
 
@@ -20,6 +26,7 @@ interface ForkViewModalProps {
   isOpen: boolean
   onOpenChange: (open: boolean) => void
   sessionStatus?: string // Add this
+  onArchiveOnForkChange?: (value: boolean) => void
 }
 
 function ForkViewModalContent({
@@ -27,14 +34,17 @@ function ForkViewModalContent({
   selectedEventIndex,
   onSelectEvent,
   sessionStatus,
+  onArchiveOnForkChange,
   onClose,
 }: Omit<ForkViewModalProps, 'isOpen' | 'onOpenChange'> & { onClose: () => void }) {
-  // Steal hotkey scope when this component mounts
-  useStealHotkeyScope(ForkViewModalHotkeysScope)
+  // Note: Scope stealing is handled in parent ForkViewModal component to ensure
+  // it happens BEFORE the dialog renders, preventing any timing gaps
 
   // Focus management
   const containerRef = useRef<HTMLDivElement>(null)
   const previousFocusRef = useRef<HTMLElement | null>(null)
+  const checkboxRef = useRef<HTMLButtonElement>(null) // Radix Checkbox is a button element
+  const forkButtonRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     // Store the previously focused element
@@ -71,6 +81,31 @@ function ForkViewModalContent({
     : userMessageIndices
 
   const [localSelectedIndex, setLocalSelectedIndex] = useState(0)
+  const [localArchiveOnFork, setLocalArchiveOnFork] = useState(() => {
+    return getArchiveOnForkPreference()
+  })
+  // Track which section has focus: 'messages', 'checkbox', or 'buttons'
+  const [focusedSection, setFocusedSection] = useState<'messages' | 'checkbox' | 'buttons'>('messages')
+
+  // Add handler for checkbox change
+  const handleArchiveCheckboxChange = useCallback(
+    (checked: boolean) => {
+      setLocalArchiveOnFork(checked)
+      setArchiveOnForkPreference(checked)
+      onArchiveOnForkChange?.(checked)
+    },
+    [onArchiveOnForkChange],
+  )
+
+  // Handler for executing the fork action
+  const handleFork = useCallback(() => {
+    // Execute fork with current selection
+    const selectedOption = allOptions[localSelectedIndex]
+    if (selectedOption) {
+      onSelectEvent(selectedOption.index === -1 ? null : selectedOption.index)
+      handleClose()
+    }
+  }, [localSelectedIndex, allOptions, onSelectEvent, handleClose])
 
   // Pre-select last message for failed sessions
   useEffect(() => {
@@ -99,7 +134,8 @@ function ForkViewModalContent({
   useHotkeys(
     'j, down',
     () => {
-      if (localSelectedIndex < allOptions.length - 1) {
+      // Only navigate if message list is focused
+      if (focusedSection === 'messages' && localSelectedIndex < allOptions.length - 1) {
         const newIndex = localSelectedIndex + 1
         setLocalSelectedIndex(newIndex)
         const option = allOptions[newIndex]
@@ -112,7 +148,8 @@ function ForkViewModalContent({
   useHotkeys(
     'k, up',
     () => {
-      if (localSelectedIndex > 0) {
+      // Only navigate if message list is focused
+      if (focusedSection === 'messages' && localSelectedIndex > 0) {
         const newIndex = localSelectedIndex - 1
         setLocalSelectedIndex(newIndex)
         const option = allOptions[newIndex]
@@ -126,41 +163,124 @@ function ForkViewModalContent({
   useHotkeys(
     '1,2,3,4,5,6,7,8,9',
     (_, handler) => {
-      const num = parseInt(handler.keys?.[0] || '0') - 1
-      if (num < allOptions.length) {
-        setLocalSelectedIndex(num)
-        const option = allOptions[num]
-        onSelectEvent(option.index === -1 ? null : option.index)
+      // Only navigate if message list is focused
+      if (focusedSection === 'messages') {
+        const num = parseInt(handler.keys?.[0] || '0') - 1
+        if (num < allOptions.length) {
+          setLocalSelectedIndex(num)
+          const option = allOptions[num]
+          onSelectEvent(option.index === -1 ? null : option.index)
+        }
       }
     },
     { scopes: [ForkViewModalHotkeysScope], enableOnFormTags: true },
   )
 
-  // Enter to confirm fork
+  // Enter to select item (not fork) or toggle checkbox if focused
   useHotkeys(
     'enter',
     e => {
       e.preventDefault()
       e.stopPropagation()
 
-      // If nothing selected yet, select the currently highlighted item
-      if (selectedEventIndex === null && localSelectedIndex !== null) {
+      if (focusedSection === 'checkbox') {
+        // Toggle checkbox when Enter is pressed in checkbox section
+        handleArchiveCheckboxChange(!localArchiveOnFork)
+      } else if (focusedSection === 'messages') {
+        // Only select the item, don't close modal or fork
         if (localSelectedIndex === allOptions.length - 1) {
-          // Selected "Current" option
           onSelectEvent(null)
         } else {
-          // Selected a fork point
           const selectedOption = allOptions[localSelectedIndex]
           if (selectedOption) {
             onSelectEvent(selectedOption.index)
           }
         }
       }
-
-      // Always close on Enter (whether selecting or confirming)
-      handleClose()
     },
     { scopes: [ForkViewModalHotkeysScope], preventDefault: true },
+  )
+
+  // Cmd/Ctrl+Enter to execute fork
+  useHotkeys(
+    'mod+enter',
+    e => {
+      e.preventDefault()
+      e.stopPropagation()
+      handleFork()
+    },
+    {
+      scopes: [ForkViewModalHotkeysScope],
+      preventDefault: true,
+      enableOnFormTags: true,
+    },
+  )
+
+  // Tab navigation - MUST capture to prevent bubbling to background session
+  useHotkeys(
+    'tab',
+    e => {
+      e.preventDefault()
+      e.stopPropagation()
+      // Use native event for complete isolation
+      const keyEvent = e as any
+      if (keyEvent.nativeEvent && typeof keyEvent.nativeEvent.stopImmediatePropagation === 'function') {
+        keyEvent.nativeEvent.stopImmediatePropagation()
+      }
+
+      // Navigate forward through sections
+      if (focusedSection === 'messages') {
+        setFocusedSection('checkbox')
+        checkboxRef.current?.focus()
+      } else if (focusedSection === 'checkbox') {
+        setFocusedSection('buttons')
+        forkButtonRef.current?.focus()
+      } else if (focusedSection === 'buttons') {
+        setFocusedSection('messages')
+        containerRef.current?.focus()
+      }
+    },
+    { scopes: [ForkViewModalHotkeysScope], preventDefault: true, enableOnFormTags: true },
+  )
+
+  // Shift+Tab navigation - MUST capture to prevent triggering "accept edits" in background
+  useHotkeys(
+    'shift+tab',
+    e => {
+      e.preventDefault()
+      e.stopPropagation()
+      // Use native event for complete isolation
+      const keyEvent = e as any
+      if (keyEvent.nativeEvent && typeof keyEvent.nativeEvent.stopImmediatePropagation === 'function') {
+        keyEvent.nativeEvent.stopImmediatePropagation()
+      }
+
+      // Navigate backward through sections
+      if (focusedSection === 'messages') {
+        setFocusedSection('buttons')
+        forkButtonRef.current?.focus()
+      } else if (focusedSection === 'checkbox') {
+        setFocusedSection('messages')
+        containerRef.current?.focus()
+      } else if (focusedSection === 'buttons') {
+        setFocusedSection('checkbox')
+        checkboxRef.current?.focus()
+      }
+    },
+    { scopes: [ForkViewModalHotkeysScope], preventDefault: true, enableOnFormTags: true },
+  )
+
+  // Space to toggle checkbox when checkbox section is focused
+  useHotkeys(
+    'space',
+    e => {
+      if (focusedSection === 'checkbox') {
+        e.preventDefault()
+        e.stopPropagation()
+        handleArchiveCheckboxChange(!localArchiveOnFork)
+      }
+    },
+    { scopes: [ForkViewModalHotkeysScope], enableOnFormTags: true },
   )
 
   // Escape to close and clear selection
@@ -185,77 +305,147 @@ function ForkViewModalContent({
         </DialogDescription>
       </DialogHeader>
 
-      <div ref={containerRef} className="mt-4 outline-none" tabIndex={-1}>
-        {userMessageIndices.length === 0 ? (
-          <div className="text-sm text-muted-foreground text-center py-8">
-            No messages to fork from yet
-          </div>
-        ) : (
-          <div className="space-y-1 max-h-[400px] overflow-y-auto pr-2">
-            {userMessageIndices.map(({ event, index }, position) => {
-              const isSelected = position === localSelectedIndex
-              const preview =
-                event.content?.split('\n')[0]?.substring(0, 80) +
-                (event.content && event.content.length > 80 ? '...' : '')
+      <div className="mt-4">
+        <div
+          ref={containerRef}
+          className={cn(
+            'outline-none border rounded-md transition-colors',
+            focusedSection === 'messages' ? 'border-accent bg-accent/5' : 'border-border',
+          )}
+          tabIndex={0}
+          onFocus={() => setFocusedSection('messages')}
+        >
+          {userMessageIndices.length === 0 ? (
+            <div className="text-sm text-muted-foreground text-center py-8">
+              No messages to fork from yet
+            </div>
+          ) : (
+            <div className="space-y-1 max-h-[400px] overflow-y-auto p-2">
+              {userMessageIndices.map(({ event, index }, position) => {
+                const isSelected = position === localSelectedIndex
+                const preview =
+                  event.content?.split('\n')[0]?.substring(0, 80) +
+                  (event.content && event.content.length > 80 ? '...' : '')
 
-              return (
-                <div
-                  key={event.id}
-                  className={cn(
-                    'px-4 py-3 cursor-pointer transition-all text-sm border-l-2',
-                    isSelected
-                      ? 'border-l-[var(--terminal-accent)] bg-accent/10'
-                      : 'border-transparent',
-                  )}
-                  onClick={() => {
-                    setLocalSelectedIndex(position)
-                    onSelectEvent(index)
-                    handleClose() // Close modal immediately on selection
-                  }}
-                  onMouseEnter={() => setLocalSelectedIndex(position)}
-                >
-                  <div className="flex items-start gap-3">
-                    <span className="text-xs font-mono text-muted-foreground mt-0.5">
-                      {position + 1}
-                    </span>
-                    <span className="flex-1">{preview || '(empty message)'}</span>
+                return (
+                  <div
+                    key={event.id}
+                    className={cn(
+                      'px-3 py-2 cursor-pointer transition-all text-sm border-l-2 rounded',
+                      isSelected
+                        ? 'border-l-[var(--terminal-accent)] bg-accent/10'
+                        : 'border-transparent hover:bg-accent/5',
+                    )}
+                    onClick={() => {
+                      setLocalSelectedIndex(position)
+                      onSelectEvent(index)
+                      // Don't close modal on selection, wait for fork button
+                    }}
+                    onMouseEnter={() => {
+                      setLocalSelectedIndex(position)
+                      setFocusedSection('messages') // Ensure we're in messages section on hover
+                    }}
+                  >
+                    <div className="flex items-start gap-3">
+                      <span className="text-xs font-mono text-muted-foreground mt-0.5">
+                        {position + 1}
+                      </span>
+                      <span className="flex-1">{preview || '(empty message)'}</span>
+                    </div>
+                  </div>
+                )
+              })}
+
+              {/* Current option */}
+              {showCurrentOption && (
+                <div className="border-t mt-2 pt-2">
+                  <div
+                    className={cn(
+                      'px-3 py-2 cursor-pointer transition-all text-sm border-l-2 rounded',
+                      localSelectedIndex === allOptions.length - 1
+                        ? 'border-l-[var(--terminal-accent)] bg-accent/10'
+                        : 'border-transparent hover:bg-accent/5',
+                    )}
+                    onClick={() => {
+                      setLocalSelectedIndex(allOptions.length - 1)
+                      onSelectEvent(null)
+                      // Don't close modal on selection, wait for fork button
+                    }}
+                    onMouseEnter={() => {
+                      setLocalSelectedIndex(allOptions.length - 1)
+                      setFocusedSection('messages') // Ensure we're in messages section on hover
+                    }}
+                  >
+                    <div className="flex items-start gap-3">
+                      <span className="text-xs font-mono text-muted-foreground mt-0.5">•</span>
+                      <span className="flex-1 font-medium">Current (latest state)</span>
+                    </div>
                   </div>
                 </div>
-              )
-            })}
+              )}
+            </div>
+          )}
+        </div>
 
-            {/* Current option */}
-            {showCurrentOption && (
-              <div className="border-t mt-2 pt-2">
-                <div
-                  className={cn(
-                    'px-4 py-3 cursor-pointer transition-all text-sm border-l-2',
-                    localSelectedIndex === allOptions.length - 1
-                      ? 'border-l-[var(--terminal-accent)] bg-accent/10'
-                      : 'border-transparent',
-                  )}
-                  onClick={() => {
-                    setLocalSelectedIndex(allOptions.length - 1)
-                    onSelectEvent(null)
-                    handleClose() // Close modal immediately
-                  }}
-                  onMouseEnter={() => setLocalSelectedIndex(allOptions.length - 1)}
-                >
-                  <div className="flex items-start gap-3">
-                    <span className="text-xs font-mono text-muted-foreground mt-0.5">•</span>
-                    <span className="flex-1 font-medium">Current (latest state)</span>
-                  </div>
-                </div>
-              </div>
-            )}
+        <div
+          className={cn(
+            'flex items-center justify-between mt-4 py-3 border-t transition-colors',
+            focusedSection === 'checkbox' ? 'bg-accent/10 px-4' : 'px-4',
+          )}
+        >
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              ref={checkboxRef}
+              id="archive-on-fork"
+              checked={localArchiveOnFork}
+              onCheckedChange={handleArchiveCheckboxChange}
+              onFocus={() => setFocusedSection('checkbox')}
+              className={focusedSection === 'checkbox' ? 'focus-visible:ring-0' : ''}
+            />
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Label htmlFor="archive-on-fork" className="text-sm font-normal cursor-pointer">
+                    Archive original session after fork
+                  </Label>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Automatically archives the current session after creating a fork</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
-        )}
+        </div>
+
+        <DialogFooter className="mt-4">
+          <Button
+            ref={forkButtonRef}
+            id="fork-button"
+            onClick={handleFork}
+            disabled={userMessageIndices.length === 0}
+            onFocus={() => setFocusedSection('buttons')}
+            onKeyDown={e => {
+              // Handle Enter to trigger fork
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                e.stopPropagation()
+                handleFork()
+              }
+            }}
+          >
+            Fork Session
+            <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">
+              {navigator.platform.toLowerCase().includes('mac') ? '⌘' : 'Ctrl'}+⏎
+            </kbd>
+          </Button>
+        </DialogFooter>
 
         <div className="flex items-center justify-between text-xs text-muted-foreground mt-4 pt-4 border-t">
           <div className="flex items-center gap-4">
             <span>↑↓/j/k Navigate</span>
             <span>1-9 Jump</span>
-            <span>Enter Select</span>
+            <span>Tab Focus</span>
+            <span>⌘⏎ Fork</span>
             <span>Esc Cancel</span>
           </div>
         </div>
@@ -272,7 +462,12 @@ export function ForkViewModal({
   isOpen,
   onOpenChange,
   sessionStatus,
+  onArchiveOnForkChange,
 }: ForkViewModalProps) {
+  // Steal all hotkey scopes IMMEDIATELY when modal opens - must happen before Dialog renders
+  // This prevents shift+tab from reaching SessionDetail during the render gap
+  useStealHotkeyScope(ForkViewModalHotkeysScope, isOpen)
+
   return (
     <Dialog
       open={isOpen}
@@ -308,6 +503,7 @@ export function ForkViewModal({
             selectedEventIndex={selectedEventIndex}
             onSelectEvent={onSelectEvent}
             sessionStatus={sessionStatus}
+            onArchiveOnForkChange={onArchiveOnForkChange}
             onClose={() => onOpenChange(false)}
           />
         )}

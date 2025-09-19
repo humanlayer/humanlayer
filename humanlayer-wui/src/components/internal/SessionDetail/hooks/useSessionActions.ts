@@ -15,6 +15,7 @@ interface UseSessionActionsProps {
   onClose: () => void
   pendingForkMessage?: ConversationEvent | null
   onForkCommit?: () => void
+  archiveOnFork?: boolean // Add this
 }
 
 export const ResponseInputLocalStorageKey = 'response-input'
@@ -23,6 +24,7 @@ export function useSessionActions({
   session,
   pendingForkMessage,
   onForkCommit,
+  archiveOnFork = false, // Add with default
 }: UseSessionActionsProps) {
   const [isResponding, setIsResponding] = useState(false)
   const [forkFromSessionId, setForkFromSessionId] = useState<string | null>(null)
@@ -139,6 +141,30 @@ export function useSessionActions({
         },
       })
 
+      // Archive source session if fork was successful and preference is enabled
+      if (forkFromSessionId && archiveOnFork && !session.archived) {
+        const archiveToast = toast.loading('Archiving source session...', {
+          duration: Infinity,
+        })
+
+        try {
+          await archiveSession(session.id, true)
+          toast.success('Source session archived', {
+            id: archiveToast,
+            duration: 3000,
+          })
+        } catch (error) {
+          logger.error('Failed to archive source session after fork:', error)
+          toast.error('Failed to archive source session', {
+            id: archiveToast,
+            description: 'The fork was successful but archiving failed. You can archive manually.',
+            duration: 5000,
+            closeButton: true,
+          })
+          // Don't throw - fork was successful, archive failure is non-blocking
+        }
+      }
+
       // Refresh the session list to ensure UI reflects current state
       await refreshSessions()
 
@@ -162,6 +188,9 @@ export function useSessionActions({
     trackNavigationFrom,
     forkFromSessionId,
     onForkCommit,
+    archiveOnFork,
+    setViewMode,
+    updateActiveSessionDetail,
   ])
 
   // Navigate to parent session
