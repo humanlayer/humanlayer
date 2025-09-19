@@ -220,6 +220,7 @@ export function ConversationContent({
       >
         <div>
           {nonEmptyDisplayObjects.map((displayObject, index) => (
+            /* For reference, this is effectively the start of ConversationEventRow */
             <div key={displayObject.id}>
               <div
                 data-event-id={displayObject.id}

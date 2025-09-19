@@ -1040,7 +1040,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       <div className={`flex flex-1 gap-4 ${isWideView ? 'flex-row' : 'flex-col'} min-h-0`}>
         {/* Conversation content and Loading */}
         <Card
-          className={`Conversation-Card ${isWideView ? 'flex-1' : 'w-full'} relative ${cardVerticalPadding} flex flex-col min-h-0`}
+          className={`Conversation-Card w-full relative ${cardVerticalPadding} flex flex-col min-h-0`}
         >
           <CardContent className="px-3 flex flex-col flex-1 min-h-0">
             <ConversationContent
