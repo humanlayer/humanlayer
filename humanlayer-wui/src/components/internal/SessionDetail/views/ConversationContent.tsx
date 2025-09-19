@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import keyBy from 'lodash.keyby'
 
 import { ConversationEvent, ConversationEventType } from '@/lib/daemon/types'
@@ -17,6 +17,7 @@ import { MessageContent } from '../components/MessageContent'
 import { hasTextSelection } from '@/utils/selection'
 import { useStore } from '@/AppStore'
 import { useAutoScroll } from '../hooks/useAutoScroll'
+import { ConversationEventRow } from '@/components/internal/ConversationEventRow'
 
 // TODO(2): Extract keyboard navigation logic to a custom hook
 // TODO(3): Add virtual scrolling for very long conversations
@@ -44,6 +45,7 @@ export function ConversationContent({
   shouldIgnoreMouseEvent,
   expandedTasks,
   toggleTaskGroup,
+  useNewRenderer,
 }: {
   sessionId: string
   focusedEventId: number | null
@@ -67,6 +69,7 @@ export function ConversationContent({
   shouldIgnoreMouseEvent?: () => boolean
   expandedTasks?: Set<string>
   toggleTaskGroup?: (taskId: string) => void
+  useNewRenderer?: boolean
 }) {
   // expandedToolResult is used by parent to control hotkey availability
   void expandedToolResult
@@ -208,6 +211,35 @@ export function ConversationContent({
   // No events yet - return null so only the loader shows
   if (filteredEvents.length === 0) {
     return null
+  }
+
+  // New renderer path using ConversationEventRow component
+  if (useNewRenderer) {
+    // Use the same filtered events that would normally go through displayObjects
+    const eventsToRender = filteredEvents.filter(
+      event => event.eventType !== ConversationEventType.ToolResult,
+    )
+
+    return (
+      <div
+        ref={containerRef}
+        data-conversation-container
+        className="overflow-y-auto flex-1 flex flex-col"
+      >
+        {eventsToRender.map((event, index) => (
+          <ConversationEventRow
+            key={event.id}
+            event={event}
+            setFocusedEventId={setFocusedEventId}
+            setFocusSource={setFocusSource || (() => {})}
+            shouldIgnoreMouseEvent={shouldIgnoreMouseEvent || (() => false)}
+            isFocused={focusedEventId === event.id}
+            isLast={index === eventsToRender.length - 1}
+            responseEditorIsFocused={responseEditor?.isFocused || false}
+          />
+        ))}
+      </div>
+    )
   }
 
   // Early return for no sub-tasks case (most common)

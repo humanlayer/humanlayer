@@ -203,6 +203,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [confirmingArchive, setConfirmingArchive] = useState(false)
   const [dangerousSkipPermissionsDialogOpen, setDangerousSkipPermissionsDialogOpen] = useState(false)
   const [directoriesDropdownOpen, setDirectoriesDropdownOpen] = useState(false)
+  const [useNewRenderer, setUseNewRenderer] = useState(false)
 
   const responseEditor = useStore(state => state.responseEditor)
   const isEditingSessionTitle = useStore(state => state.isEditingSessionTitle)
@@ -940,6 +941,26 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     [setIsEditingSessionTitle, approvals.confirmingApprovalId, expandedToolResult],
   )
 
+  // Toggle message renderer hotkey
+  useHotkeys(
+    'shift+m',
+    e => {
+      e.preventDefault()
+      setUseNewRenderer(prev => {
+        const newValue = !prev
+        toast(newValue ? 'New message renderer enabled' : 'Original message renderer enabled')
+        return newValue
+      })
+    },
+    {
+      enabled: !approvals.confirmingApprovalId && !expandedToolResult,
+      scopes: SessionDetailHotkeysScope,
+      preventDefault: true,
+      enableOnFormTags: false,
+    },
+    [approvals.confirmingApprovalId, expandedToolResult],
+  )
+
   // Don't steal scope here - SessionDetail is the base layer
   // Only modals opening on top should steal scope
 
@@ -1068,6 +1089,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               shouldIgnoreMouseEvent={shouldIgnoreMouseEvent}
               expandedTasks={expandedTasks}
               toggleTaskGroup={toggleTaskGroup}
+              useNewRenderer={useNewRenderer}
             />
           </CardContent>
           {isActivelyProcessing && (
