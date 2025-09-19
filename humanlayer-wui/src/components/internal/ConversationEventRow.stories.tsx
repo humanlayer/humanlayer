@@ -150,3 +150,63 @@ By following these guidelines, you'll be able to create a robust and maintainabl
     },
   },
 }
+
+// Stories that demonstrate copy functionality
+export const UserMessageFocused: Story = {
+  args: {
+    ...UserMessage.args,
+    isFocused: true,
+    event: {
+      ...baseUserEvent,
+      content: 'This message is focused and should show the copy button on hover',
+    },
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: 'Shows a focused user message. The copy button becomes visible on hover.',
+      },
+    },
+  },
+}
+
+export const AssistantMessageFocused: Story = {
+  args: {
+    ...AssistantMessage.args,
+    isFocused: true,
+    event: {
+      ...baseAssistantEvent,
+      content: 'This assistant message is focused. The copy button appears when you hover over the row.',
+    },
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: 'Shows a focused assistant message. The copy button becomes visible on hover.',
+      },
+    },
+  },
+}
+
+export const MessageWithMultiLineContent: Story = {
+  args: {
+    ...UserMessage.args,
+    event: {
+      ...baseUserEvent,
+      content: `Please help me with this multi-line request.
+I need to:
+1. Parse this data
+2. Transform it into a new format
+3. Save it to a database
+
+Can you provide a solution?`,
+    },
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: 'Shows a message with multi-line content. The copy button will copy all content including line breaks.',
+      },
+    },
+  },
+}

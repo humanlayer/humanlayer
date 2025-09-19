@@ -5,10 +5,12 @@ import type {
   ConversationEventRoleEnum,
 } from '@humanlayer/hld-sdk'
 import { ConversationEventType, ConversationRole } from '@/lib/daemon'
-import { Bot, User } from 'lucide-react'
+import { Bot, User, Copy } from 'lucide-react'
 import { MarkdownRenderer } from './SessionDetail/MarkdownRenderer'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { formatAbsoluteTimestamp, formatTimestamp } from '@/utils/formatting'
+import { copyToClipboard } from '@/utils/clipboard'
+import { Button } from '@/components/ui/button'
 
 const getIcon = (
   type: ConversationEventEventTypeEnum,
@@ -39,6 +41,27 @@ function TimestampWithTooltip({ createdAt }: { createdAt?: Date }) {
   )
 }
 
+function CopyButton({ content }: { content: string }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="w-6 h-6 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+          onClick={(e) => {
+            e.stopPropagation()
+            copyToClipboard(content)
+          }}
+        >
+          <Copy className="w-3 h-3" />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>Copy message (y)</TooltipContent>
+    </Tooltip>
+  )
+}
+
 function ConversationEventRowShell({
   children,
   eventId,
@@ -52,6 +75,8 @@ function ConversationEventRowShell({
   ref,
   IconComponent,
   createdAt,
+  showCopyButton,
+  copyContent,
 }: {
   children: React.ReactNode
   eventId: number
@@ -65,6 +90,8 @@ function ConversationEventRowShell({
   ref: React.Ref<HTMLDivElement> | undefined
   IconComponent: React.ReactNode
   createdAt?: Date
+  showCopyButton?: boolean
+  copyContent?: string
 }) {
   let outerContainerClasses = ['group', 'p-4', 'transition-colors', 'duration-200', 'border-l-2']
 
@@ -99,7 +126,7 @@ function ConversationEventRowShell({
         setFocusSource(null)
       }}
     >
-      <div className="flex gap-4">
+      <div className="flex items-start gap-4">
         {/* Left side: Icon and message content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-baseline gap-2">
@@ -113,7 +140,8 @@ function ConversationEventRowShell({
         </div>
 
         {/* Right side: Actions and Timestamp */}
-        <div className="flex items-start gap-2 w-[160px] justify-end">
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {showCopyButton && copyContent && <CopyButton content={copyContent} />}
           <TimestampWithTooltip createdAt={createdAt} />
         </div>
       </div>
@@ -210,6 +238,11 @@ export function ConversationEventRow({
     messageContent = <UnknownMessageContent />
   }
 
+  // Only show copy button for user and assistant messages
+  const showCopyButton =
+    event.eventType === ConversationEventType.Message &&
+    (event.role === ConversationRole.User || event.role === ConversationRole.Assistant)
+
   return (
     <ConversationEventRowShell
       ref={ref}
@@ -223,6 +256,8 @@ export function ConversationEventRow({
       responseEditorIsFocused={responseEditorIsFocused}
       IconComponent={IconComponent}
       createdAt={event.createdAt}
+      showCopyButton={showCopyButton}
+      copyContent={event.content || ''}
     >
       {messageContent}
     </ConversationEventRowShell>
