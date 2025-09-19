@@ -43,6 +43,8 @@ function ForkViewModalContent({
   // Focus management
   const containerRef = useRef<HTMLDivElement>(null)
   const previousFocusRef = useRef<HTMLElement | null>(null)
+  const checkboxRef = useRef<HTMLButtonElement>(null) // Radix Checkbox is a button element
+  const forkButtonRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     // Store the previously focused element
@@ -229,12 +231,10 @@ function ForkViewModalContent({
       // Navigate forward through sections
       if (focusedSection === 'messages') {
         setFocusedSection('checkbox')
-        const checkbox = document.getElementById('archive-on-fork')
-        checkbox?.focus()
+        checkboxRef.current?.focus()
       } else if (focusedSection === 'checkbox') {
         setFocusedSection('buttons')
-        const forkButton = document.getElementById('fork-button')
-        forkButton?.focus()
+        forkButtonRef.current?.focus()
       } else if (focusedSection === 'buttons') {
         setFocusedSection('messages')
         containerRef.current?.focus()
@@ -258,15 +258,13 @@ function ForkViewModalContent({
       // Navigate backward through sections
       if (focusedSection === 'messages') {
         setFocusedSection('buttons')
-        const forkButton = document.getElementById('fork-button')
-        forkButton?.focus()
+        forkButtonRef.current?.focus()
       } else if (focusedSection === 'checkbox') {
         setFocusedSection('messages')
         containerRef.current?.focus()
       } else if (focusedSection === 'buttons') {
         setFocusedSection('checkbox')
-        const checkbox = document.getElementById('archive-on-fork')
-        checkbox?.focus()
+        checkboxRef.current?.focus()
       }
     },
     { scopes: [ForkViewModalHotkeysScope], preventDefault: true, enableOnFormTags: true },
@@ -397,6 +395,7 @@ function ForkViewModalContent({
         >
           <div className="flex items-center space-x-2">
             <Checkbox
+              ref={checkboxRef}
               id="archive-on-fork"
               checked={localArchiveOnFork}
               onCheckedChange={handleArchiveCheckboxChange}
@@ -420,6 +419,7 @@ function ForkViewModalContent({
 
         <DialogFooter className="mt-4">
           <Button
+            ref={forkButtonRef}
             id="fork-button"
             onClick={handleFork}
             disabled={userMessageIndices.length === 0}
