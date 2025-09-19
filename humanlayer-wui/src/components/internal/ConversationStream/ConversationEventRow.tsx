@@ -6,11 +6,11 @@ import type {
 } from '@humanlayer/hld-sdk'
 import { ConversationEventType, ConversationRole } from '@/lib/daemon'
 import { Bot, User, Copy } from 'lucide-react'
-import { MarkdownRenderer } from './SessionDetail/MarkdownRenderer'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { formatAbsoluteTimestamp, formatTimestamp } from '@/utils/formatting'
 import { copyToClipboard } from '@/utils/clipboard'
 import { Button } from '@/components/ui/button'
+import { UserMessageContent, AssistantMessageContent, UnknownMessageContent } from './MessageContent'
 
 const getIcon = (
   type: ConversationEventEventTypeEnum,
@@ -149,51 +149,6 @@ function ConversationEventRowShell({
   )
 }
 
-function UserMessageContent({ eventContent }: { eventContent: string }) {
-  const firstLine = eventContent?.split('\n')[0] || ''
-  const restLines = eventContent?.split('\n').slice(1).join('\n') || ''
-
-  return (
-    <div className="overflow-hidden">
-      <span className="whitespace-pre-wrap text-foreground break-all">
-        <MarkdownRenderer content={firstLine} />
-      </span>
-
-      {/* Body */}
-      <div className="whitespace-pre-wrap text-foreground break-all">
-        <MarkdownRenderer content={restLines} />
-      </div>
-    </div>
-  )
-}
-
-function AssistantMessageContent({
-  eventContent,
-  isThinking,
-}: {
-  eventContent: string
-  isThinking: boolean
-}) {
-  if (isThinking && !eventContent) {
-    return (
-      <div>
-        <span className="text-muted-foreground italic">Thinking...</span>
-      </div>
-    )
-  }
-
-  return (
-    <div>
-      <div className="whitespace-pre-wrap text-foreground break-all">
-        <MarkdownRenderer content={eventContent} />
-      </div>
-    </div>
-  )
-}
-
-function UnknownMessageContent() {
-  return <div>Unknown Message Content</div>
-}
 
 export interface ConversationEventRowProps extends React.HTMLAttributes<HTMLDivElement> {
   ref?: React.Ref<HTMLDivElement>

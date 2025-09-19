@@ -11,7 +11,7 @@ import { daemonClient } from '@/lib/daemon/client'
 import { useStore } from '@/AppStore'
 
 // Import extracted components
-import { ConversationContent } from './views/ConversationContent'
+import { ConversationStream } from '../ConversationStream/ConversationStream'
 import { ToolResultModal } from './components/ToolResultModal'
 import { TodoWidget } from './components/TodoWidget'
 import { ResponseInput } from './components/ResponseInput'
@@ -1064,7 +1064,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
           className={`Conversation-Card w-full relative ${cardVerticalPadding} flex flex-col min-h-0`}
         >
           <CardContent className="px-3 flex flex-col flex-1 min-h-0">
-            <ConversationContent
+            <ConversationStream
               sessionId={session.id}
               focusedEventId={navigation.focusedEventId}
               setFocusedEventId={navigation.setFocusedEventId}

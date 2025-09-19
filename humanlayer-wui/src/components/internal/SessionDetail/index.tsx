@@ -2,7 +2,7 @@
 export { default } from './SessionDetail'
 
 // Export individual components if needed elsewhere
-export { ConversationContent } from './views/ConversationContent'
+export { ConversationStream } from '../ConversationStream/ConversationStream'
 export { ToolResultModal } from './components/ToolResultModal'
 export { TodoWidget } from './components/TodoWidget'
 export { DiffViewToggle } from './components/DiffViewToggle'

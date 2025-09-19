@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import keyBy from 'lodash.keyby'
 
 import { ConversationEvent, ConversationEventType } from '@/lib/daemon/types'
@@ -9,20 +9,20 @@ import { Copy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { formatAbsoluteTimestamp, formatTimestamp } from '@/utils/formatting'
-import { eventToDisplayObject } from '../eventToDisplayObject'
-import { useTaskGrouping } from '../hooks/useTaskGrouping'
-import { TaskGroup } from './TaskGroup'
+import { eventToDisplayObject } from '../SessionDetail/eventToDisplayObject'
+import { useTaskGrouping } from '../SessionDetail/hooks/useTaskGrouping'
+import { TaskGroup } from '../SessionDetail/views/TaskGroup'
 import { copyToClipboard } from '@/utils/clipboard'
-import { MessageContent } from '../components/MessageContent'
+import { MessageContent } from '../SessionDetail/components/MessageContent'
 import { hasTextSelection } from '@/utils/selection'
 import { useStore } from '@/AppStore'
-import { useAutoScroll } from '../hooks/useAutoScroll'
-import { ConversationEventRow } from '@/components/internal/ConversationEventRow'
+import { useAutoScroll } from '../SessionDetail/hooks/useAutoScroll'
+import { ConversationEventRow } from './ConversationEventRow'
 
 // TODO(2): Extract keyboard navigation logic to a custom hook
 // TODO(3): Add virtual scrolling for very long conversations
 
-export function ConversationContent({
+export function ConversationStream({
   sessionId,
   focusedEventId,
   setFocusedEventId,
