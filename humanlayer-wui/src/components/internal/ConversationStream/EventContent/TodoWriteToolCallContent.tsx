@@ -17,7 +17,7 @@ interface TodoWriteToolInput {
 export function TodoWriteToolCallContent({
   toolInput,
   approvalStatus,
-  isCompleted,
+
   isFocused,
 }: ToolCallContentProps<TodoWriteToolInput>) {
   const getTaskCounts = () => {
@@ -39,11 +39,11 @@ export function TodoWriteToolCallContent({
   const getTaskIcon = (status: TodoItem['status']) => {
     switch (status) {
       case 'completed':
-        return <CheckCircle2 className="w-3 h-3 text-green-500" />
+        return <CheckCircle2 className="w-3 h-3 text-[var(--terminal-success)]" />
       case 'in_progress':
-        return <Clock className="w-3 h-3 text-blue-500" />
+        return <Clock className="w-3 h-3 text-[var(--terminal-warning)]" />
       case 'pending':
-        return <Circle className="w-3 h-3 text-gray-400" />
+        return <Circle className="w-3 h-3 text-[var(--terminal-fg-dim)]" />
     }
   }
 
@@ -57,7 +57,7 @@ export function TodoWriteToolCallContent({
           nameColor={getApprovalStatusColor(approvalStatus)}
         />
         <div className="ml-4">
-          <StatusBadge isCompleted={isCompleted} />
+          <StatusBadge status={approvalStatus} />
         </div>
       </div>
 
@@ -90,7 +90,7 @@ export function TodoWriteToolCallContent({
 
       {!isFocused && counts.total > 3 && (
         <div className="text-xs text-gray-400 dark:text-gray-500 ml-4">
-          Press Enter to view all {counts.total} tasks
+          Press <kbd>i</kbd> to view all {counts.total} tasks
         </div>
       )}
     </div>

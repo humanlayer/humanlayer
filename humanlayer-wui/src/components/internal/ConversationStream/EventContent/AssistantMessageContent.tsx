@@ -17,7 +17,9 @@ export function AssistantMessageContent({
 
   return (
     <div>
-      <div className="whitespace-pre-wrap text-foreground break-all">
+      <div
+        className={`whitespace-pre-wrap text-foreground break-all ${isThinking ? 'text-muted-foreground italic' : ''}`}
+      >
         <MarkdownRenderer content={eventContent} />
       </div>
     </div>

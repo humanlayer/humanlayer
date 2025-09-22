@@ -42,7 +42,7 @@ export function EditToolCallContent({
         nameColor={getApprovalStatusColor(approvalStatus)}
         status={
           <div className="flex items-center gap-2">
-            <StatusBadge approvalStatus={approvalStatus} isCompleted={isCompleted} />
+            <StatusBadge status={approvalStatus} />
             {showDiff && <DiffViewToggle isSplitView={isSplitView} onToggle={toggleView} />}
           </div>
         }

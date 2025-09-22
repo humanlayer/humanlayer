@@ -33,7 +33,7 @@ export function WriteToolCallContent({
         description={isNewFile ? 'Create new file' : 'Overwrite file'}
         primaryParam={<span className="font-mono text-sm">{toolInput.file_path}</span>}
         nameColor={getApprovalStatusColor(approvalStatus)}
-        status={<StatusBadge approvalStatus={approvalStatus} isCompleted={isCompleted} />}
+        status={<StatusBadge status={approvalStatus} />}
       />
 
       {showDiff && (

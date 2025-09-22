@@ -36,7 +36,7 @@ export function TaskToolCallContent({
           nameColor={getApprovalStatusColor(approvalStatus)}
         />
         <div className="ml-4">
-          <StatusBadge approvalStatus={approvalStatus} isCompleted={isCompleted} />
+          <StatusBadge status={approvalStatus} />
         </div>
       </div>
 

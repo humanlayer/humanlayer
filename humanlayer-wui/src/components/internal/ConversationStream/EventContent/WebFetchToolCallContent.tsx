@@ -11,7 +11,7 @@ interface WebFetchToolInput {
 export function WebFetchToolCallContent({
   toolInput,
   approvalStatus,
-  isCompleted,
+
   toolResultContent,
   isFocused,
 }: ToolCallContentProps<WebFetchToolInput>) {
@@ -51,7 +51,7 @@ export function WebFetchToolCallContent({
             <div className="text-sm text-muted-foreground italic">&ldquo;{toolInput.prompt}&rdquo;</div>
           ) : undefined
         }
-        status={<StatusBadge approvalStatus={approvalStatus} isCompleted={isCompleted} />}
+        status={<StatusBadge status={approvalStatus} />}
       />
 
       {formattedResult && (

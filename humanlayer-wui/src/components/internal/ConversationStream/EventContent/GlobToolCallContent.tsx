@@ -11,7 +11,7 @@ interface GlobToolInput {
 export function GlobToolCallContent({
   toolInput,
   approvalStatus,
-  isCompleted,
+
   toolResultContent,
   isFocused,
 }: ToolCallContentProps<GlobToolInput>) {
@@ -49,7 +49,7 @@ export function GlobToolCallContent({
           </div>
         </div>
         <div className="ml-4">
-          <StatusBadge approvalStatus={approvalStatus} isCompleted={isCompleted} />
+          <StatusBadge status={approvalStatus} />
         </div>
       </div>
 

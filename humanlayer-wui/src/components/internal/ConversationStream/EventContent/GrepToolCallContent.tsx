@@ -21,7 +21,7 @@ interface GrepToolInput {
 export function GrepToolCallContent({
   toolInput,
   approvalStatus,
-  isCompleted,
+
   toolResultContent,
   isFocused,
 }: ToolCallContentProps<GrepToolInput>) {
@@ -94,7 +94,7 @@ export function GrepToolCallContent({
           )}
         </div>
         <div className="ml-4">
-          <StatusBadge approvalStatus={approvalStatus} isCompleted={isCompleted} />
+          <StatusBadge status={approvalStatus} />
         </div>
       </div>
 

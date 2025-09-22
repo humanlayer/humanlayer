@@ -5,7 +5,21 @@ import type {
   ConversationEventRoleEnum,
 } from '@humanlayer/hld-sdk'
 import { ConversationEventType, ConversationRole } from '@/lib/daemon'
-import { Bot, User, Copy, Terminal, Wrench, ListTodo, Globe, Search } from 'lucide-react'
+import {
+  Bot,
+  User,
+  Copy,
+  Terminal,
+  Wrench,
+  ListTodo,
+  Globe,
+  Search,
+  FilePenLine,
+  ListChecks,
+  FileText,
+  List,
+  Brain,
+} from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { formatAbsoluteTimestamp, formatTimestamp } from '@/utils/formatting'
 import { copyToClipboard } from '@/utils/clipboard'
@@ -88,25 +102,45 @@ const getIcon = (
   role: ConversationEventRoleEnum | undefined,
   isCompleted: boolean | undefined,
   toolName?: string,
+  isThinking?: boolean,
 ) => {
   const iconClasses = `w-4 h-4 align-middle relative top-[1px] ${type === ConversationEventType.ToolCall && !isCompleted ? 'pulse-warning' : ''}`
 
   if (type === ConversationEventType.ToolCall) {
-    // Handle tool-specific icons
-    if (toolName === 'Bash') {
-      return <Terminal className={iconClasses} />
-    }
-    if (toolName === 'TodoWrite') {
-      return <ListTodo className={iconClasses} />
-    }
-    if (toolName === 'WebSearch' || toolName === 'WebFetch') {
+    if (toolName?.startsWith('mcp__')) {
       return <Globe className={iconClasses} />
     }
-    if (toolName === 'Grep') {
-      return <Search className={iconClasses} />
+
+    // Handle tool-specific icons
+    switch (toolName) {
+      case 'Edit':
+      case 'MultiEdit':
+        return <FilePenLine className={iconClasses} />
+      case 'Read':
+        return <FileText className={iconClasses} />
+      case 'Write':
+        return <FilePenLine className={iconClasses} />
+      case 'Bash':
+        return <Terminal className={iconClasses} />
+      case 'LS':
+        return <List className={iconClasses} />
+      case 'Glob':
+      case 'Grep':
+        return <Search className={iconClasses} />
+      case 'TodoWrite':
+        return <ListTodo className={iconClasses} />
+      case 'WebSearch':
+        return <Globe className={iconClasses} />
+      case 'WebFetch':
+        return <Globe className={iconClasses} />
+      case 'ExitPlanMode':
+        return <ListChecks className={iconClasses} />
+      case 'NotebookRead':
+      case 'NotebookEdit':
+        return <FileText className={iconClasses} />
+      default:
+        return <Wrench className={iconClasses} />
     }
-    // Default tool icon for Task, Glob, LS, and others
-    return <Wrench className={iconClasses} />
   }
 
   if (role === ConversationRole.User) {
@@ -114,6 +148,10 @@ const getIcon = (
   }
 
   if (role === ConversationRole.Assistant) {
+    if (isThinking) {
+      return <Brain className={iconClasses} />
+    }
+
     return <Bot className={iconClasses} />
   }
 }
@@ -277,13 +315,19 @@ export function ConversationEventRow({
   setDenyingApprovalId,
   onCancelDeny,
 }: ConversationEventRowProps) {
-  const IconComponent = getIcon(event.eventType, event.role, event.isCompleted, event.toolName)
-
-  let messageContent = null
   const isThinking = Boolean(
     event.eventType === ConversationEventType.Thinking ||
       (event.role === ConversationRole.Assistant && event.content?.startsWith('<thinking>')),
   )
+  const IconComponent = getIcon(
+    event.eventType,
+    event.role,
+    event.isCompleted,
+    event.toolName,
+    isThinking,
+  )
+
+  let messageContent = null
 
   /* Determine EventContent type */
 

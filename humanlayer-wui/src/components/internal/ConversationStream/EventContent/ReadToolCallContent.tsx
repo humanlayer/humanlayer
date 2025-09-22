@@ -12,7 +12,7 @@ export interface ReadToolInput {
 export function ReadToolCallContent({
   toolInput,
   approvalStatus,
-  isCompleted,
+
   toolResultContent,
   isFocused,
 }: ToolCallContentProps<ReadToolInput>) {
@@ -31,7 +31,7 @@ export function ReadToolCallContent({
             : undefined
         }
         primaryParam={<span className="font-mono text-sm">{toolInput.file_path}</span>}
-        status={<StatusBadge approvalStatus={approvalStatus} isCompleted={isCompleted} />}
+        status={<StatusBadge status={approvalStatus} />}
         nameColor={getApprovalStatusColor(approvalStatus)}
       />
 

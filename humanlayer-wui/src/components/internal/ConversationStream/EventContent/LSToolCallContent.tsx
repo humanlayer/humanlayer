@@ -11,7 +11,7 @@ interface LSToolInput {
 export function LSToolCallContent({
   toolInput,
   approvalStatus,
-  isCompleted,
+
   toolResultContent,
   isFocused,
 }: ToolCallContentProps<LSToolInput>) {
@@ -65,7 +65,7 @@ export function LSToolCallContent({
           nameColor={getApprovalStatusColor(approvalStatus)}
         />
         <div className="ml-4">
-          <StatusBadge approvalStatus={approvalStatus} isCompleted={isCompleted} />
+          <StatusBadge status={approvalStatus} />
         </div>
       </div>
 

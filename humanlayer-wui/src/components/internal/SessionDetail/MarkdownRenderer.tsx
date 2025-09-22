@@ -154,11 +154,12 @@ const MarkdownRendererInner = memo(
           const codeString = String(children).replace(/\n$/, '')
           const codeId = `code-${Math.random().toString(36).substr(2, 9)}`
 
-          return match ? (
+          // return match ? (
+          return (
             <div className="relative group not-prose">
               <div className="overflow-x-auto">
                 <SyntaxHighlighter
-                  language={match[1]}
+                  language={match?.[1] || 'plaintext'}
                   useInlineStyles={false}
                   className="rsh-code-block text-sm"
                   PreTag={({ children, ...props }) => (
@@ -188,11 +189,12 @@ const MarkdownRendererInner = memo(
                 )}
               </Button>
             </div>
-          ) : (
-            <code className="px-1 py-0.5 bg-accent/20 text-accent rounded-none text-sm font-mono">
-              {children}
-            </code>
           )
+          // ) : (
+          // <code className="px-1 py-0.5 bg-accent/20 text-accent rounded-none text-sm font-mono">
+          //   {children}
+          // </code>
+          // )
         },
         pre({ children }) {
           // Pre is handled by code block above

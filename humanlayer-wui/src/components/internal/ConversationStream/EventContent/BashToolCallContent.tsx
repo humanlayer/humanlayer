@@ -6,7 +6,7 @@ import { getApprovalStatusColor } from './utils/formatters'
 export function BashToolCallContent({
   toolInput,
   approvalStatus,
-  isCompleted,
+
   toolResultContent,
   isFocused,
 }: BashToolCallContentProps) {
@@ -41,7 +41,7 @@ export function BashToolCallContent({
           </div>
         </div>
         <div className="ml-4">
-          <StatusBadge approvalStatus={approvalStatus} isCompleted={isCompleted} />
+          <StatusBadge status={approvalStatus} />
         </div>
       </div>
 

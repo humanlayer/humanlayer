@@ -2,19 +2,29 @@ import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 
 interface StatusBadgeProps {
-  approvalStatus?: string
-  isCompleted?: boolean
+  status?: string
   className?: string
 }
 
-export function StatusBadge({ approvalStatus, className }: StatusBadgeProps) {
-  if (approvalStatus === 'pending') {
+export function StatusBadge({ status, className }: StatusBadgeProps) {
+  if (status === 'pending') {
     return (
       <Badge
         variant="secondary"
         className={cn('text-[var(--terminal-warning)] text-xs uppercase tracking-wider', className)}
       >
         needs_approval
+      </Badge>
+    )
+  }
+
+  if (status === 'groupRunning') {
+    return (
+      <Badge
+        variant="secondary"
+        className={cn('text-[var(--terminal-success)] text-xs uppercase tracking-wider', className)}
+      >
+        running
       </Badge>
     )
   }

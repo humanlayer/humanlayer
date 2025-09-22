@@ -18,6 +18,7 @@ import { hasTextSelection } from '@/utils/selection'
 import { useStore } from '@/AppStore'
 import { useAutoScroll } from '../SessionDetail/hooks/useAutoScroll'
 import { ConversationEventRow } from './ConversationEventRow'
+import { TaskGroupEventRow } from './TaskGroupEventRow'
 
 // TODO(2): Extract keyboard navigation logic to a custom hook
 // TODO(3): Add virtual scrolling for very long conversations
@@ -215,10 +216,10 @@ export function ConversationStream({
 
   // New renderer path using ConversationEventRow component
   if (useNewRenderer) {
-    // Use the same filtered events that would normally go through displayObjects
-    const eventsToRender = filteredEvents.filter(
-      event => event.eventType !== ConversationEventType.ToolResult,
-    )
+    // Use task grouping with the new renderer
+    const eventsToRender = hasSubTasks
+      ? rootEvents.filter(event => event.eventType !== ConversationEventType.ToolResult)
+      : filteredEvents.filter(event => event.eventType !== ConversationEventType.ToolResult)
 
     return (
       <div
@@ -226,25 +227,55 @@ export function ConversationStream({
         data-conversation-container
         className="overflow-y-auto flex-1 flex flex-col"
       >
-        {eventsToRender.map((event, index) => (
-          <ConversationEventRow
-            key={event.id}
-            event={event}
-            toolResult={event.toolId ? toolResultsByKey[event.toolId] : undefined}
-            setFocusedEventId={setFocusedEventId}
-            setFocusSource={setFocusSource || (() => {})}
-            shouldIgnoreMouseEvent={shouldIgnoreMouseEvent || (() => false)}
-            isFocused={focusedEventId === event.id}
-            isLast={index === eventsToRender.length - 1}
-            responseEditorIsFocused={responseEditor?.isFocused || false}
-            onApprove={onApprove}
-            onDeny={onDeny}
-            approvingApprovalId={approvingApprovalId}
-            denyingApprovalId={denyingApprovalId}
-            setDenyingApprovalId={setDenyingApprovalId}
-            onCancelDeny={onCancelDeny}
-          />
-        ))}
+        {eventsToRender.map((event, index) => {
+          const taskGroup = event.toolId ? taskGroups.get(event.toolId) : undefined
+
+          if (taskGroup) {
+            return (
+              <TaskGroupEventRow
+                key={event.id}
+                group={taskGroup}
+                isExpanded={actualExpandedTasks.has(event.toolId!)}
+                onToggle={() => actualToggleTaskGroup(event.toolId!)}
+                toolResult={undefined}
+                toolResultsByKey={toolResultsByKey}
+                focusedEventId={focusedEventId}
+                setFocusedEventId={setFocusedEventId}
+                setFocusSource={setFocusSource || (() => {})}
+                shouldIgnoreMouseEvent={shouldIgnoreMouseEvent || (() => false)}
+                isFocused={focusedEventId === event.id}
+                isLast={index === eventsToRender.length - 1}
+                responseEditorIsFocused={responseEditor?.isFocused || false}
+                onApprove={onApprove}
+                onDeny={onDeny}
+                approvingApprovalId={approvingApprovalId}
+                denyingApprovalId={denyingApprovalId}
+                setDenyingApprovalId={setDenyingApprovalId}
+                onCancelDeny={onCancelDeny}
+              />
+            )
+          }
+
+          return (
+            <ConversationEventRow
+              key={event.id}
+              event={event}
+              toolResult={event.toolId ? toolResultsByKey[event.toolId] : undefined}
+              setFocusedEventId={setFocusedEventId}
+              setFocusSource={setFocusSource || (() => {})}
+              shouldIgnoreMouseEvent={shouldIgnoreMouseEvent || (() => false)}
+              isFocused={focusedEventId === event.id}
+              isLast={index === eventsToRender.length - 1}
+              responseEditorIsFocused={responseEditor?.isFocused || false}
+              onApprove={onApprove}
+              onDeny={onDeny}
+              approvingApprovalId={approvingApprovalId}
+              denyingApprovalId={denyingApprovalId}
+              setDenyingApprovalId={setDenyingApprovalId}
+              onCancelDeny={onCancelDeny}
+            />
+          )
+        })}
       </div>
     )
   }

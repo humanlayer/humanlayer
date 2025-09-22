@@ -11,7 +11,7 @@ interface WebSearchToolInput {
 export function WebSearchToolCallContent({
   toolInput,
   approvalStatus,
-  isCompleted,
+
   toolResultContent,
   isFocused,
 }: ToolCallContentProps<WebSearchToolInput>) {
@@ -66,7 +66,7 @@ export function WebSearchToolCallContent({
           )}
         </div>
         <div className="ml-4">
-          <StatusBadge approvalStatus={approvalStatus} isCompleted={isCompleted} />
+          <StatusBadge status={approvalStatus} />
         </div>
       </div>
 
