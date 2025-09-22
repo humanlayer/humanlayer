@@ -32,6 +32,10 @@ import {
   ReadToolCallContent,
   WriteToolCallContent,
   EditToolCallContent,
+  MultiEditToolCallContent,
+  NotebookReadToolCallContent,
+  NotebookEditToolCallContent,
+  ExitPlanModeToolCallContent,
   GrepToolCallContent,
   GlobToolCallContent,
   LSToolCallContent,
@@ -42,7 +46,15 @@ import {
   ApprovalWrapper,
 } from './EventContent'
 import { BashToolInput, parseToolInput, ToolName } from './EventContent/types'
-import type { ReadToolInput, WriteToolInput, EditToolInput } from './EventContent'
+import type {
+  ReadToolInput,
+  WriteToolInput,
+  EditToolInput,
+  MultiEditToolInput,
+  NotebookReadToolInput,
+  NotebookEditToolInput,
+  ExitPlanModeToolInput,
+} from './EventContent'
 
 // Interface definitions for search tools
 interface GrepToolInput {
@@ -469,6 +481,59 @@ export function ConversationEventRow({
       if (toolInput) {
         messageContent = (
           <WebFetchToolCallContent
+            toolInput={toolInput}
+            approvalStatus={event.approvalStatus}
+            isCompleted={event.isCompleted}
+            toolResultContent={toolResult?.toolResultContent}
+            isFocused={isFocused}
+          />
+        )
+      }
+    } else if (event.toolName === ToolName.MultiEdit) {
+      const toolInput = parseToolInput<MultiEditToolInput>(event.toolInputJson)
+      if (toolInput) {
+        messageContent = (
+          <MultiEditToolCallContent
+            toolInput={toolInput}
+            approvalStatus={event.approvalStatus}
+            isCompleted={event.isCompleted}
+            toolResultContent={toolResult?.toolResultContent}
+            isFocused={isFocused}
+            fileSnapshot={fileSnapshot ? { content: fileSnapshot } : undefined}
+          />
+        )
+      }
+    } else if (event.toolName === ToolName.NotebookRead) {
+      const toolInput = parseToolInput<NotebookReadToolInput>(event.toolInputJson)
+      if (toolInput) {
+        messageContent = (
+          <NotebookReadToolCallContent
+            toolInput={toolInput}
+            approvalStatus={event.approvalStatus}
+            isCompleted={event.isCompleted}
+            toolResultContent={toolResult?.toolResultContent}
+            isFocused={isFocused}
+          />
+        )
+      }
+    } else if (event.toolName === ToolName.NotebookEdit) {
+      const toolInput = parseToolInput<NotebookEditToolInput>(event.toolInputJson)
+      if (toolInput) {
+        messageContent = (
+          <NotebookEditToolCallContent
+            toolInput={toolInput}
+            approvalStatus={event.approvalStatus}
+            isCompleted={event.isCompleted}
+            toolResultContent={toolResult?.toolResultContent}
+            isFocused={isFocused}
+          />
+        )
+      }
+    } else if (event.toolName === ToolName.ExitPlanMode) {
+      const toolInput = parseToolInput<ExitPlanModeToolInput>(event.toolInputJson)
+      if (toolInput) {
+        messageContent = (
+          <ExitPlanModeToolCallContent
             toolInput={toolInput}
             approvalStatus={event.approvalStatus}
             isCompleted={event.isCompleted}

@@ -30,3 +30,13 @@ export { TaskPreview } from './TaskPreview'
 // Phase 5 Web Tools
 export { WebSearchToolCallContent } from './WebSearchToolCallContent'
 export { WebFetchToolCallContent } from './WebFetchToolCallContent'
+
+// Phase 6 Remaining Tools
+export { MultiEditToolCallContent } from './MultiEditToolCallContent'
+export type { MultiEditToolInput } from './MultiEditToolCallContent'
+export { NotebookReadToolCallContent } from './NotebookReadToolCallContent'
+export type { NotebookReadToolInput } from './NotebookReadToolCallContent'
+export { NotebookEditToolCallContent } from './NotebookEditToolCallContent'
+export type { NotebookEditToolInput } from './NotebookEditToolCallContent'
+export { ExitPlanModeToolCallContent } from './ExitPlanModeToolCallContent'
+export type { ExitPlanModeToolInput } from './ExitPlanModeToolCallContent'

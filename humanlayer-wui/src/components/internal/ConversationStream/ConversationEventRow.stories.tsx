@@ -1591,3 +1591,331 @@ export const WebFetchFocused: Story = {
     },
   },
 }
+
+// MultiEdit Tool Stories
+const baseMultiEditToolEvent: ConversationEvent = {
+  approvalId: 'approval-multiedit-1',
+  approvalStatus: 'pending' as const,
+  claudeSessionId: 'a3751d3f-c6c5-402b-a7c6-a6fdfeaf6cd9',
+  content: undefined,
+  createdAt: new Date('2025-09-18T18:44:57Z'),
+  eventType: 'tool_call' as const,
+  id: 13,
+  isCompleted: false,
+  role: 'assistant' as const,
+  sequence: 13,
+  sessionId: '08f00f98-d110-40e1-8d0b-fdec7f594f18',
+  toolName: 'MultiEdit',
+  toolInputJson: JSON.stringify({
+    file_path: '/src/components/Header.tsx',
+    edits: [
+      { old_string: 'className="header"', new_string: 'className="header-main"' },
+      { old_string: '<h1>Welcome</h1>', new_string: '<h1>Welcome to Our App</h1>' },
+      { old_string: 'Home', new_string: 'Dashboard', replace_all: true },
+    ],
+  }),
+}
+
+export const MultiEditSimple: Story = {
+  args: {
+    event: baseMultiEditToolEvent,
+    shouldIgnoreMouseEvent: () => false,
+    setFocusedEventId: () => {},
+    setFocusSource: () => {},
+    isFocused: false,
+    isLast: true,
+    responseEditorIsFocused: false,
+  },
+}
+
+export const MultiEditWithReplaceAll: Story = {
+  args: {
+    ...MultiEditSimple.args,
+    event: {
+      ...baseMultiEditToolEvent,
+      toolInputJson: JSON.stringify({
+        file_path: '/src/config/settings.ts',
+        edits: [
+          { old_string: 'localhost', new_string: 'api.example.com', replace_all: true },
+          { old_string: '3000', new_string: '8080', replace_all: true },
+          { old_string: 'debug: true', new_string: 'debug: false' },
+        ],
+      }),
+    },
+  },
+}
+
+export const MultiEditComplexDiff: Story = {
+  args: {
+    ...MultiEditSimple.args,
+    event: {
+      ...baseMultiEditToolEvent,
+      toolInputJson: JSON.stringify({
+        file_path: '/src/utils/validators.ts',
+        edits: [
+          {
+            old_string: 'function validateEmail(email) { return email.includes("@"); }',
+            new_string:
+              'function validateEmail(email) { const regex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/; return regex.test(email); }',
+          },
+          {
+            old_string: 'function validatePhone(phone) { return phone.length === 10; }',
+            new_string:
+              'function validatePhone(phone) { const cleaned = phone.replace(/\\D/g, ""); return cleaned.length === 10; }',
+          },
+        ],
+      }),
+    },
+    fileSnapshot: `function validateEmail(email) { return email.includes("@"); }
+function validatePhone(phone) { return phone.length === 10; }
+function validateZipCode(zip) { return zip.length === 5; }`,
+  },
+}
+
+export const MultiEditCompleted: Story = {
+  args: {
+    ...MultiEditSimple.args,
+    event: {
+      ...baseMultiEditToolEvent,
+      approvalStatus: 'approved' as const,
+      isCompleted: true,
+      toolResultContent: '3 edits applied successfully',
+    },
+  },
+}
+
+// NotebookRead Tool Stories
+const baseNotebookReadToolEvent: ConversationEvent = {
+  approvalId: 'approval-notebookread-1',
+  approvalStatus: 'pending' as const,
+  claudeSessionId: 'a3751d3f-c6c5-402b-a7c6-a6fdfeaf6cd9',
+  content: undefined,
+  createdAt: new Date('2025-09-18T18:44:57Z'),
+  eventType: 'tool_call' as const,
+  id: 14,
+  isCompleted: false,
+  role: 'assistant' as const,
+  sequence: 14,
+  sessionId: '08f00f98-d110-40e1-8d0b-fdec7f594f18',
+  toolName: 'NotebookRead',
+  toolInputJson: JSON.stringify({
+    notebook_path: '/notebooks/data_analysis.ipynb',
+  }),
+}
+
+export const NotebookReadFullFile: Story = {
+  args: {
+    event: baseNotebookReadToolEvent,
+    shouldIgnoreMouseEvent: () => false,
+    setFocusedEventId: () => {},
+    setFocusSource: () => {},
+    isFocused: false,
+    isLast: true,
+    responseEditorIsFocused: false,
+  },
+}
+
+export const NotebookReadSingleCell: Story = {
+  args: {
+    ...NotebookReadFullFile.args,
+    event: {
+      ...baseNotebookReadToolEvent,
+      toolInputJson: JSON.stringify({
+        notebook_path: '/notebooks/data_analysis.ipynb',
+        cell_id: 'cell_3_code',
+      }),
+    },
+  },
+}
+
+export const NotebookReadCompleted: Story = {
+  args: {
+    ...NotebookReadFullFile.args,
+    event: {
+      ...baseNotebookReadToolEvent,
+      isCompleted: true,
+      toolResultContent: '[Cell 1 - markdown]: # Data Analysis\n[Cell 2 - code]: import pandas as pd',
+    },
+  },
+}
+
+// NotebookEdit Tool Stories
+const baseNotebookEditToolEvent: ConversationEvent = {
+  approvalId: 'approval-notebookedit-1',
+  approvalStatus: 'pending' as const,
+  claudeSessionId: 'a3751d3f-c6c5-402b-a7c6-a6fdfeaf6cd9',
+  content: undefined,
+  createdAt: new Date('2025-09-18T18:44:57Z'),
+  eventType: 'tool_call' as const,
+  id: 15,
+  isCompleted: false,
+  role: 'assistant' as const,
+  sequence: 15,
+  sessionId: '08f00f98-d110-40e1-8d0b-fdec7f594f18',
+  toolName: 'NotebookEdit',
+  toolInputJson: JSON.stringify({
+    notebook_path: '/notebooks/data_analysis.ipynb',
+    new_source: 'import pandas as pd\nimport numpy as np\n\n# Load data\ndf = pd.read_csv("data.csv")',
+    cell_type: 'code',
+    edit_mode: 'replace',
+  }),
+}
+
+export const NotebookEditReplace: Story = {
+  args: {
+    event: baseNotebookEditToolEvent,
+    shouldIgnoreMouseEvent: () => false,
+    setFocusedEventId: () => {},
+    setFocusSource: () => {},
+    isFocused: false,
+    isLast: true,
+    responseEditorIsFocused: false,
+  },
+}
+
+export const NotebookEditInsert: Story = {
+  args: {
+    ...NotebookEditReplace.args,
+    event: {
+      ...baseNotebookEditToolEvent,
+      toolInputJson: JSON.stringify({
+        notebook_path: '/notebooks/visualization.ipynb',
+        cell_id: 'after_cell_2',
+        new_source: '# Data Visualization\n\nThis section creates interactive charts using Plotly.',
+        cell_type: 'markdown',
+        edit_mode: 'insert',
+      }),
+    },
+  },
+}
+
+export const NotebookEditDelete: Story = {
+  args: {
+    ...NotebookEditReplace.args,
+    event: {
+      ...baseNotebookEditToolEvent,
+      toolInputJson: JSON.stringify({
+        notebook_path: '/notebooks/cleanup.ipynb',
+        cell_id: 'obsolete_cell_5',
+        new_source: '',
+        edit_mode: 'delete',
+      }),
+    },
+  },
+}
+
+export const NotebookEditCompleted: Story = {
+  args: {
+    ...NotebookEditReplace.args,
+    event: {
+      ...baseNotebookEditToolEvent,
+      approvalStatus: 'approved' as const,
+      isCompleted: true,
+      toolResultContent: 'Cell updated successfully',
+    },
+  },
+}
+
+// ExitPlanMode Tool Stories
+const baseExitPlanModeToolEvent: ConversationEvent = {
+  approvalId: 'approval-exitplan-1',
+  approvalStatus: 'pending' as const,
+  claudeSessionId: 'a3751d3f-c6c5-402b-a7c6-a6fdfeaf6cd9',
+  content: undefined,
+  createdAt: new Date('2025-09-18T18:44:57Z'),
+  eventType: 'tool_call' as const,
+  id: 16,
+  isCompleted: false,
+  role: 'assistant' as const,
+  sequence: 16,
+  sessionId: '08f00f98-d110-40e1-8d0b-fdec7f594f18',
+  toolName: 'ExitPlanMode',
+  toolInputJson: JSON.stringify({
+    plan: `## Implementation Plan
+
+1. **Set up project structure**
+   - Create directories for components, utils, and tests
+   - Initialize package.json with dependencies
+   - Configure TypeScript and ESLint
+
+2. **Implement core functionality**
+   - Create base components
+   - Add state management
+   - Set up routing
+
+3. **Testing and deployment**
+   - Write unit tests
+   - Add integration tests
+   - Deploy to staging`,
+  }),
+}
+
+export const ExitPlanModeShort: Story = {
+  args: {
+    event: {
+      ...baseExitPlanModeToolEvent,
+      toolInputJson: JSON.stringify({
+        plan: '1. Initialize project\n2. Build features\n3. Test\n4. Deploy',
+      }),
+    },
+    shouldIgnoreMouseEvent: () => false,
+    setFocusedEventId: () => {},
+    setFocusSource: () => {},
+    isFocused: false,
+    isLast: true,
+    responseEditorIsFocused: false,
+  },
+}
+
+export const ExitPlanModeLong: Story = {
+  args: {
+    event: baseExitPlanModeToolEvent,
+    shouldIgnoreMouseEvent: () => false,
+    setFocusedEventId: () => {},
+    setFocusSource: () => {},
+    isFocused: false,
+    isLast: true,
+    responseEditorIsFocused: false,
+  },
+}
+
+export const ExitPlanModeWithMarkdown: Story = {
+  args: {
+    ...ExitPlanModeLong.args,
+    event: {
+      ...baseExitPlanModeToolEvent,
+      toolInputJson: JSON.stringify({
+        plan: `# Project Roadmap
+
+## Phase 1: Foundation
+- **Database Design** - Create schema and relationships
+- **API Structure** - RESTful endpoints with OpenAPI spec
+- **Authentication** - JWT-based auth with refresh tokens
+
+## Phase 2: Features
+- User management system
+- File upload capabilities
+- Real-time notifications
+
+## Phase 3: Polish
+- Performance optimization
+- Security audit
+- Documentation
+
+> Ready to begin implementation!`,
+      }),
+    },
+  },
+}
+
+export const ExitPlanModeCompleted: Story = {
+  args: {
+    ...ExitPlanModeLong.args,
+    event: {
+      ...baseExitPlanModeToolEvent,
+      approvalStatus: 'approved' as const,
+      isCompleted: true,
+      toolResultContent: 'Plan mode exited successfully',
+    },
+  },
+}
