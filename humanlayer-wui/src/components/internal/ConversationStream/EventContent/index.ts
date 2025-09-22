@@ -21,3 +21,7 @@ export type { EditToolInput } from './EditToolCallContent'
 export { GrepToolCallContent } from './GrepToolCallContent'
 export { GlobToolCallContent } from './GlobToolCallContent'
 export { LSToolCallContent } from './LSToolCallContent'
+
+// Phase 4 Task Management Tools
+export { TaskToolCallContent } from './TaskToolCallContent'
+export { TodoWriteToolCallContent } from './TodoWriteToolCallContent'

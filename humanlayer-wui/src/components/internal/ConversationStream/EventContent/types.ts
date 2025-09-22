@@ -1,6 +1,7 @@
 export enum ToolName {
   Bash = 'Bash',
   Task = 'Task',
+  TodoWrite = 'TodoWrite',
   Read = 'Read',
   Write = 'Write',
   Edit = 'Edit',

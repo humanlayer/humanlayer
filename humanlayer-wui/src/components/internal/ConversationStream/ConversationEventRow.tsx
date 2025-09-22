@@ -21,6 +21,8 @@ import {
   GrepToolCallContent,
   GlobToolCallContent,
   LSToolCallContent,
+  TaskToolCallContent,
+  TodoWriteToolCallContent,
 } from './EventContent'
 import { BashToolInput, parseToolInput, ToolName } from './EventContent/types'
 import type { ReadToolInput, WriteToolInput, EditToolInput } from './EventContent'
@@ -49,6 +51,22 @@ interface GlobToolInput {
 interface LSToolInput {
   path: string
   recursive?: boolean
+}
+
+interface TaskToolInput {
+  description: string
+  prompt: string
+  subagent_type: string
+}
+
+interface TodoItem {
+  content: string
+  status: 'pending' | 'in_progress' | 'completed'
+  activeForm: string
+}
+
+interface TodoWriteToolInput {
+  todos: TodoItem[]
 }
 
 const getIcon = (
@@ -319,6 +337,32 @@ export function ConversationEventRow({
       if (toolInput) {
         messageContent = (
           <LSToolCallContent
+            toolInput={toolInput}
+            approvalStatus={event.approvalStatus}
+            isCompleted={event.isCompleted}
+            toolResultContent={toolResult?.toolResultContent}
+            isFocused={isFocused}
+          />
+        )
+      }
+    } else if (event.toolName === ToolName.Task) {
+      const toolInput = parseToolInput<TaskToolInput>(event.toolInputJson)
+      if (toolInput) {
+        messageContent = (
+          <TaskToolCallContent
+            toolInput={toolInput}
+            approvalStatus={event.approvalStatus}
+            isCompleted={event.isCompleted}
+            toolResultContent={toolResult?.toolResultContent}
+            isFocused={isFocused}
+          />
+        )
+      }
+    } else if (event.toolName === ToolName.TodoWrite) {
+      const toolInput = parseToolInput<TodoWriteToolInput>(event.toolInputJson)
+      if (toolInput) {
+        messageContent = (
+          <TodoWriteToolCallContent
             toolInput={toolInput}
             approvalStatus={event.approvalStatus}
             isCompleted={event.isCompleted}

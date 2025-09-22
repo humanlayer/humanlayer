@@ -1014,3 +1014,340 @@ node_modules/`,
     },
   },
 }
+
+// Task Tool Stories
+const baseTaskToolEvent: ConversationEvent = {
+  approvalId: 'approval-task-1',
+  approvalStatus: 'pending' as const,
+  claudeSessionId: 'a3751d3f-c6c5-402b-a7c6-a6fdfeaf6cd9',
+  content: undefined,
+  createdAt: new Date('2025-09-18T18:44:55Z'),
+  eventType: 'tool_call' as const,
+  id: 10,
+  isCompleted: false,
+  role: 'assistant' as const,
+  sequence: 10,
+  sessionId: '08f00f98-d110-40e1-8d0b-fdec7f594f18',
+  toolName: 'Task',
+  toolInputJson: JSON.stringify({
+    description: 'Find authentication logic',
+    prompt:
+      'Search the codebase for authentication implementation, including login, logout, and session management',
+    subagent_type: 'codebase-locator',
+  }),
+}
+
+export const TaskCodebaseLocator: Story = {
+  args: {
+    event: baseTaskToolEvent,
+    shouldIgnoreMouseEvent: () => false,
+    setFocusedEventId: () => {},
+    setFocusSource: () => {},
+    isFocused: false,
+    isLast: true,
+    responseEditorIsFocused: false,
+  },
+}
+
+export const TaskWebSearcher: Story = {
+  args: {
+    ...TaskCodebaseLocator.args,
+    event: {
+      ...baseTaskToolEvent,
+      toolInputJson: JSON.stringify({
+        description: 'Research React 19 features',
+        prompt:
+          'Find information about the latest React 19 features and breaking changes, focusing on the new hooks and performance improvements',
+        subagent_type: 'web-search-researcher',
+      }),
+    },
+  },
+}
+
+export const TaskCompleted: Story = {
+  args: {
+    ...TaskCodebaseLocator.args,
+    event: {
+      ...baseTaskToolEvent,
+      approvalStatus: 'approved' as const,
+      isCompleted: true,
+      toolResultContent: `Found 12 files related to authentication:
+
+/src/auth/login.tsx - Main login component with form validation
+/src/auth/logout.tsx - Logout handler and cleanup logic
+/src/auth/session.ts - Session management utilities
+/src/auth/hooks/useAuth.ts - Custom authentication hook
+/src/api/auth.ts - Authentication API endpoints
+/src/middleware/authMiddleware.ts - Route protection middleware
+/src/components/LoginForm.tsx - Reusable login form component
+/src/components/ProtectedRoute.tsx - Protected route wrapper
+/src/stores/authStore.ts - Authentication state management
+/src/types/auth.ts - Authentication type definitions
+/src/utils/tokens.ts - JWT token utilities
+/config/auth.config.ts - Authentication configuration
+
+Key findings:
+- Authentication uses JWT tokens stored in httpOnly cookies
+- Session management includes refresh token rotation
+- Protected routes use HOC pattern with middleware
+- Auth state managed via Zustand store`,
+    },
+  },
+}
+
+export const TaskCodebaseAnalyzer: Story = {
+  args: {
+    ...TaskCodebaseLocator.args,
+    event: {
+      ...baseTaskToolEvent,
+      toolInputJson: JSON.stringify({
+        description: 'Analyze database schema',
+        prompt:
+          'Analyze the database schema and models to understand the data structure and relationships',
+        subagent_type: 'codebase-analyzer',
+      }),
+      approvalStatus: 'approved' as const,
+      isCompleted: true,
+      toolResultContent:
+        'Database schema analysis complete. Found 15 models with complex relationships including User, Post, Comment, and Tag entities.',
+    },
+  },
+}
+
+export const TaskGeneralPurpose: Story = {
+  args: {
+    ...TaskCodebaseLocator.args,
+    event: {
+      ...baseTaskToolEvent,
+      toolInputJson: JSON.stringify({
+        description: 'Refactor API client',
+        prompt:
+          'Refactor the API client to use async/await instead of promises and add proper error handling',
+        subagent_type: 'general-purpose',
+      }),
+    },
+  },
+}
+
+export const TaskThoughtsLocator: Story = {
+  args: {
+    ...TaskCodebaseLocator.args,
+    event: {
+      ...baseTaskToolEvent,
+      toolInputJson: JSON.stringify({
+        description: 'Find design decisions',
+        prompt:
+          'Look for any documented design decisions or architecture notes related to the authentication system',
+        subagent_type: 'thoughts-locator',
+      }),
+      isCompleted: true,
+      toolResultContent:
+        'Found 3 relevant documents in thoughts/ directory discussing authentication architecture decisions.',
+    },
+  },
+}
+
+// TodoWrite Tool Stories
+const baseTodoWriteToolEvent: ConversationEvent = {
+  approvalId: undefined,
+  approvalStatus: undefined,
+  claudeSessionId: 'a3751d3f-c6c5-402b-a7c6-a6fdfeaf6cd9',
+  content: undefined,
+  createdAt: new Date('2025-09-18T18:44:56Z'),
+  eventType: 'tool_call' as const,
+  id: 11,
+  isCompleted: false,
+  role: 'assistant' as const,
+  sequence: 11,
+  sessionId: '08f00f98-d110-40e1-8d0b-fdec7f594f18',
+  toolName: 'TodoWrite',
+  toolInputJson: JSON.stringify({
+    todos: [
+      {
+        content: 'Set up project structure',
+        status: 'completed',
+        activeForm: 'Setting up project structure',
+      },
+      { content: 'Install dependencies', status: 'completed', activeForm: 'Installing dependencies' },
+      {
+        content: 'Create main components',
+        status: 'in_progress',
+        activeForm: 'Creating main components',
+      },
+      { content: 'Add routing', status: 'pending', activeForm: 'Adding routing' },
+      {
+        content: 'Implement state management',
+        status: 'pending',
+        activeForm: 'Implementing state management',
+      },
+    ],
+  }),
+}
+
+export const TodoWriteAllPending: Story = {
+  args: {
+    event: {
+      ...baseTodoWriteToolEvent,
+      toolInputJson: JSON.stringify({
+        todos: [
+          { content: 'Analyze requirements', status: 'pending', activeForm: 'Analyzing requirements' },
+          {
+            content: 'Design database schema',
+            status: 'pending',
+            activeForm: 'Designing database schema',
+          },
+          { content: 'Create API endpoints', status: 'pending', activeForm: 'Creating API endpoints' },
+          { content: 'Build UI components', status: 'pending', activeForm: 'Building UI components' },
+        ],
+      }),
+    },
+    shouldIgnoreMouseEvent: () => false,
+    setFocusedEventId: () => {},
+    setFocusSource: () => {},
+    isFocused: false,
+    isLast: true,
+    responseEditorIsFocused: false,
+  },
+}
+
+export const TodoWriteInProgress: Story = {
+  args: {
+    event: baseTodoWriteToolEvent,
+    shouldIgnoreMouseEvent: () => false,
+    setFocusedEventId: () => {},
+    setFocusSource: () => {},
+    isFocused: false,
+    isLast: true,
+    responseEditorIsFocused: false,
+  },
+}
+
+export const TodoWriteCompleted: Story = {
+  args: {
+    ...TodoWriteInProgress.args,
+    event: {
+      ...baseTodoWriteToolEvent,
+      toolInputJson: JSON.stringify({
+        todos: [
+          {
+            content: 'Set up project structure',
+            status: 'completed',
+            activeForm: 'Setting up project structure',
+          },
+          {
+            content: 'Install dependencies',
+            status: 'completed',
+            activeForm: 'Installing dependencies',
+          },
+          {
+            content: 'Create main components',
+            status: 'completed',
+            activeForm: 'Creating main components',
+          },
+          { content: 'Add routing', status: 'completed', activeForm: 'Adding routing' },
+          {
+            content: 'Implement state management',
+            status: 'completed',
+            activeForm: 'Implementing state management',
+          },
+        ],
+      }),
+      isCompleted: true,
+    },
+  },
+}
+
+export const TodoWriteFocused: Story = {
+  args: {
+    ...TodoWriteInProgress.args,
+    isFocused: true,
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: 'Shows a focused TodoWrite tool call with expanded todo list visible.',
+      },
+    },
+  },
+}
+
+export const TodoWriteLongList: Story = {
+  args: {
+    ...TodoWriteInProgress.args,
+    event: {
+      ...baseTodoWriteToolEvent,
+      toolInputJson: JSON.stringify({
+        todos: [
+          {
+            content: 'Research existing solutions',
+            status: 'completed',
+            activeForm: 'Researching existing solutions',
+          },
+          {
+            content: 'Define project requirements',
+            status: 'completed',
+            activeForm: 'Defining project requirements',
+          },
+          {
+            content: 'Set up development environment',
+            status: 'completed',
+            activeForm: 'Setting up development environment',
+          },
+          {
+            content: 'Initialize Git repository',
+            status: 'completed',
+            activeForm: 'Initializing Git repository',
+          },
+          {
+            content: 'Create project scaffolding',
+            status: 'completed',
+            activeForm: 'Creating project scaffolding',
+          },
+          {
+            content: 'Configure build tools',
+            status: 'in_progress',
+            activeForm: 'Configuring build tools',
+          },
+          {
+            content: 'Set up testing framework',
+            status: 'pending',
+            activeForm: 'Setting up testing framework',
+          },
+          {
+            content: 'Create database models',
+            status: 'pending',
+            activeForm: 'Creating database models',
+          },
+          {
+            content: 'Implement authentication',
+            status: 'pending',
+            activeForm: 'Implementing authentication',
+          },
+          { content: 'Build API endpoints', status: 'pending', activeForm: 'Building API endpoints' },
+          { content: 'Design UI mockups', status: 'pending', activeForm: 'Designing UI mockups' },
+          {
+            content: 'Implement frontend components',
+            status: 'pending',
+            activeForm: 'Implementing frontend components',
+          },
+          { content: 'Add form validation', status: 'pending', activeForm: 'Adding form validation' },
+          {
+            content: 'Integrate with external APIs',
+            status: 'pending',
+            activeForm: 'Integrating with external APIs',
+          },
+          { content: 'Write unit tests', status: 'pending', activeForm: 'Writing unit tests' },
+          {
+            content: 'Perform integration testing',
+            status: 'pending',
+            activeForm: 'Performing integration testing',
+          },
+          { content: 'Deploy to staging', status: 'pending', activeForm: 'Deploying to staging' },
+          { content: 'Conduct user testing', status: 'pending', activeForm: 'Conducting user testing' },
+          { content: 'Fix reported bugs', status: 'pending', activeForm: 'Fixing reported bugs' },
+          { content: 'Deploy to production', status: 'pending', activeForm: 'Deploying to production' },
+        ],
+      }),
+    },
+  },
+}
