@@ -7,7 +7,7 @@ export function BashToolCallContent({
   approvalStatus,
   isCompleted,
   toolResultContent,
-  isFocused
+  isFocused,
 }: BashToolCallContentProps) {
   const formatToolResult = (content: string) => {
     const lines = content.split('\n').filter(l => l.trim())
@@ -43,15 +43,11 @@ export function BashToolCallContent({
       </div>
 
       {toolInput.run_in_background && (
-        <div className="text-xs text-muted-foreground">
-          Running in background
-        </div>
+        <div className="text-xs text-muted-foreground">Running in background</div>
       )}
 
       {toolInput.timeout && (
-        <div className="text-xs text-muted-foreground">
-          Timeout: {toolInput.timeout}ms
-        </div>
+        <div className="text-xs text-muted-foreground">Timeout: {toolInput.timeout}ms</div>
       )}
 
       {formattedResult && (

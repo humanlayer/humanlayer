@@ -10,7 +10,12 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { formatAbsoluteTimestamp, formatTimestamp } from '@/utils/formatting'
 import { copyToClipboard } from '@/utils/clipboard'
 import { Button } from '@/components/ui/button'
-import { UserMessageContent, AssistantMessageContent, UnknownMessageContent, BashToolCallContent } from './EventContent'
+import {
+  UserMessageContent,
+  AssistantMessageContent,
+  UnknownMessageContent,
+  BashToolCallContent,
+} from './EventContent'
 import { BashToolInput, parseToolInput, ToolName } from './EventContent/types'
 
 const getIcon = (
@@ -60,7 +65,7 @@ function CopyButton({ content }: { content: string }) {
           variant="ghost"
           size="icon"
           className="w-6 h-6 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-          onClick={(e) => {
+          onClick={e => {
             e.stopPropagation()
             copyToClipboard(content)
           }}
@@ -159,7 +164,6 @@ function ConversationEventRowShell({
     </div>
   )
 }
-
 
 export interface ConversationEventRowProps extends React.HTMLAttributes<HTMLDivElement> {
   ref?: React.Ref<HTMLDivElement>

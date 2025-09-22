@@ -32,10 +32,7 @@ export function StatusBadge({ approvalStatus, isCompleted, className }: StatusBa
 
   if (isCompleted) {
     return (
-      <Badge
-        variant="secondary"
-        className={cn('text-xs uppercase tracking-wider', className)}
-      >
+      <Badge variant="secondary" className={cn('text-xs uppercase tracking-wider', className)}>
         Completed
       </Badge>
     )

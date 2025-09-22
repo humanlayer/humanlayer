@@ -52,7 +52,8 @@ export const UserMessageLongUnbrokenText: Story = {
     ...UserMessage.args,
     event: {
       ...baseUserEvent,
-      content: "Thisisaverylongmessagethatwillneverendnomatterhowhardyoutryitremainsthelongestlineintheworldandwilljustgoonandonandonandonuntileitherthiscomputerimplodesarethissolarsystemreachesitsinevitablesundeath",
+      content:
+        'Thisisaverylongmessagethatwillneverendnomatterhowhardyoutryitremainsthelongestlineintheworldandwilljustgoonandonandonandonuntileitherthiscomputerimplodesarethissolarsystemreachesitsinevitablesundeath',
     },
   },
 }
@@ -176,7 +177,8 @@ export const AssistantMessageFocused: Story = {
     isFocused: true,
     event: {
       ...baseAssistantEvent,
-      content: 'This assistant message is focused. The copy button appears when you hover over the row.',
+      content:
+        'This assistant message is focused. The copy button appears when you hover over the row.',
     },
   },
   parameters: {
@@ -205,7 +207,8 @@ Can you provide a solution?`,
   parameters: {
     docs: {
       description: {
-        story: 'Shows a message with multi-line content. The copy button will copy all content including line breaks.',
+        story:
+          'Shows a message with multi-line content. The copy button will copy all content including line breaks.',
       },
     },
   },
@@ -308,7 +311,8 @@ export const BashToolCallLongCommand: Story = {
     event: {
       ...baseBashToolEvent,
       toolInputJson: JSON.stringify({
-        command: 'git log --graph --pretty=format:"%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset" --abbrev-commit --date=relative --branches',
+        command:
+          'git log --graph --pretty=format:"%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset" --abbrev-commit --date=relative --branches',
         description: 'Show git history with graph',
       }),
     },
