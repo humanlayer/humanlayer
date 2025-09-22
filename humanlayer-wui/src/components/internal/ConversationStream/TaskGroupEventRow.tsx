@@ -38,7 +38,7 @@ export function TaskGroupEventRow({
   const displayName = taskInput.subagent_type || 'Task'
   const description = taskInput.description || 'Task'
   const isCompleted = parentTask.isCompleted
-  const isSubAgent = taskInput.subagent_type !== 'Task' 
+  const isSubAgent = taskInput.subagent_type !== 'Task'
 
   // Determine styling based on focus state
   let outerContainerClasses = ['group', 'p-4', 'transition-colors', 'duration-200', 'border-l-2']
@@ -91,7 +91,11 @@ export function TaskGroupEventRow({
         />
         <div className="flex-1">
           <div className="flex items-center gap-2">
-            {isSubAgent ? <HatGlasses className="w-4 h-4 text-accent" /> : <Wrench className="w-4 h-4 text-accent" />}
+            {isSubAgent ? (
+              <HatGlasses className="w-4 h-4 text-accent" />
+            ) : (
+              <Wrench className="w-4 h-4 text-accent" />
+            )}
             <div className="text-sm text-muted-foreground">
               <span className="font-semibold">{displayName}: </span>
               {description}
