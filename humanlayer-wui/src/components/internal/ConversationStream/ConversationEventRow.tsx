@@ -18,9 +18,38 @@ import {
   ReadToolCallContent,
   WriteToolCallContent,
   EditToolCallContent,
+  GrepToolCallContent,
+  GlobToolCallContent,
+  LSToolCallContent,
 } from './EventContent'
 import { BashToolInput, parseToolInput, ToolName } from './EventContent/types'
 import type { ReadToolInput, WriteToolInput, EditToolInput } from './EventContent'
+
+// Interface definitions for search tools
+interface GrepToolInput {
+  pattern: string
+  path?: string
+  output_mode?: 'content' | 'files_with_matches' | 'count'
+  glob?: string
+  type?: string
+  '-A'?: number
+  '-B'?: number
+  '-C'?: number
+  '-i'?: boolean
+  '-n'?: boolean
+  head_limit?: number
+  multiline?: boolean
+}
+
+interface GlobToolInput {
+  pattern: string
+  path?: string
+}
+
+interface LSToolInput {
+  path: string
+  recursive?: boolean
+}
 
 const getIcon = (
   type: ConversationEventEventTypeEnum,
@@ -251,6 +280,45 @@ export function ConversationEventRow({
       if (toolInput) {
         messageContent = (
           <EditToolCallContent
+            toolInput={toolInput}
+            approvalStatus={event.approvalStatus}
+            isCompleted={event.isCompleted}
+            toolResultContent={toolResult?.toolResultContent}
+            isFocused={isFocused}
+          />
+        )
+      }
+    } else if (event.toolName === ToolName.Grep) {
+      const toolInput = parseToolInput<GrepToolInput>(event.toolInputJson)
+      if (toolInput) {
+        messageContent = (
+          <GrepToolCallContent
+            toolInput={toolInput}
+            approvalStatus={event.approvalStatus}
+            isCompleted={event.isCompleted}
+            toolResultContent={toolResult?.toolResultContent}
+            isFocused={isFocused}
+          />
+        )
+      }
+    } else if (event.toolName === ToolName.Glob) {
+      const toolInput = parseToolInput<GlobToolInput>(event.toolInputJson)
+      if (toolInput) {
+        messageContent = (
+          <GlobToolCallContent
+            toolInput={toolInput}
+            approvalStatus={event.approvalStatus}
+            isCompleted={event.isCompleted}
+            toolResultContent={toolResult?.toolResultContent}
+            isFocused={isFocused}
+          />
+        )
+      }
+    } else if (event.toolName === ToolName.LS) {
+      const toolInput = parseToolInput<LSToolInput>(event.toolInputJson)
+      if (toolInput) {
+        messageContent = (
+          <LSToolCallContent
             toolInput={toolInput}
             approvalStatus={event.approvalStatus}
             isCompleted={event.isCompleted}

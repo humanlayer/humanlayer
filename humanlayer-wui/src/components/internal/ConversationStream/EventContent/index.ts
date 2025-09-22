@@ -16,3 +16,8 @@ export { WriteToolCallContent } from './WriteToolCallContent'
 export type { WriteToolInput } from './WriteToolCallContent'
 export { EditToolCallContent } from './EditToolCallContent'
 export type { EditToolInput } from './EditToolCallContent'
+
+// Phase 3 Search Tools
+export { GrepToolCallContent } from './GrepToolCallContent'
+export { GlobToolCallContent } from './GlobToolCallContent'
+export { LSToolCallContent } from './LSToolCallContent'

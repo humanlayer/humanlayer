@@ -6,6 +6,7 @@ export enum ToolName {
   Edit = 'Edit',
   Grep = 'Grep',
   Glob = 'Glob',
+  LS = 'LS',
   // Add more as needed
 }
 
