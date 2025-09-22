@@ -1,6 +1,7 @@
 import { CommandToken } from '../../CommandToken'
 import { BashToolCallContentProps } from './types'
 import { StatusBadge } from './StatusBadge'
+import { getApprovalStatusColor } from './utils/formatters'
 
 export function BashToolCallContent({
   toolInput,
@@ -28,7 +29,9 @@ export function BashToolCallContent({
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <div className="flex items-baseline gap-2">
-            <span className="font-semibold">Bash</span>
+            <span className={`font-semibold ${getApprovalStatusColor(approvalStatus) || ''}`}>
+              Bash
+            </span>
             {toolInput.description && (
               <span className="text-sm text-muted-foreground">{toolInput.description}</span>
             )}

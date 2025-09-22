@@ -6,6 +6,7 @@ interface ToolHeaderProps {
   primaryParam?: React.ReactNode
   secondaryParam?: React.ReactNode
   status?: React.ReactNode
+  nameColor?: string
 }
 
 export function ToolHeader({
@@ -14,12 +15,13 @@ export function ToolHeader({
   primaryParam,
   secondaryParam,
   status,
+  nameColor,
 }: ToolHeaderProps) {
   return (
     <div className="flex items-start justify-between">
       <div className="flex-1">
         <div className="flex items-baseline gap-2">
-          <span className="font-semibold">{name}</span>
+          <span className={`font-semibold ${nameColor || ''}`}>{name}</span>
           {description && <span className="text-sm text-muted-foreground">{description}</span>}
         </div>
         {primaryParam && (

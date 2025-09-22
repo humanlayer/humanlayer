@@ -1351,3 +1351,243 @@ export const TodoWriteLongList: Story = {
     },
   },
 }
+
+// WebSearch Tool Stories
+const baseWebSearchToolEvent: ConversationEvent = {
+  approvalId: 'approval-websearch-1',
+  approvalStatus: 'pending' as const,
+  claudeSessionId: 'a3751d3f-c6c5-402b-a7c6-a6fdfeaf6cd9',
+  content: undefined,
+  createdAt: new Date('2025-09-18T18:44:57Z'),
+  eventType: 'tool_call' as const,
+  id: 12,
+  isCompleted: false,
+  role: 'assistant' as const,
+  sequence: 12,
+  sessionId: '08f00f98-d110-40e1-8d0b-fdec7f594f18',
+  toolName: 'WebSearch',
+  toolInputJson: JSON.stringify({
+    query: 'React 19 new features and changes',
+  }),
+}
+
+export const WebSearchSimple: Story = {
+  args: {
+    event: baseWebSearchToolEvent,
+    shouldIgnoreMouseEvent: () => false,
+    setFocusedEventId: () => {},
+    setFocusSource: () => {},
+    isFocused: false,
+    isLast: true,
+    responseEditorIsFocused: false,
+  },
+}
+
+export const WebSearchWithDomainFilter: Story = {
+  args: {
+    ...WebSearchSimple.args,
+    event: {
+      ...baseWebSearchToolEvent,
+      toolInputJson: JSON.stringify({
+        query: 'TypeScript best practices 2025',
+        allowed_domains: ['typescript.org', 'microsoft.com', 'github.com'],
+      }),
+    },
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: 'Shows web search with allowed domain filters to restrict results to specific sites.',
+      },
+    },
+  },
+}
+
+export const WebSearchWithBlockedDomains: Story = {
+  args: {
+    ...WebSearchSimple.args,
+    event: {
+      ...baseWebSearchToolEvent,
+      toolInputJson: JSON.stringify({
+        query: 'JavaScript frameworks comparison',
+        blocked_domains: ['medium.com', 'dev.to'],
+      }),
+    },
+  },
+}
+
+export const WebSearchCompleted: Story = {
+  args: {
+    ...WebSearchSimple.args,
+    event: {
+      ...baseWebSearchToolEvent,
+      approvalStatus: 'approved' as const,
+      isCompleted: true,
+      toolResultContent: `Found 8 results for "React 19 new features and changes"
+
+1. React 19 Release Notes - Official React Blog
+2. What's New in React 19: A Complete Guide
+3. Breaking Changes in React 19 You Need to Know
+4. React 19: New Hooks and Performance Improvements
+5. Migrating from React 18 to React 19
+6. React 19 Server Components Deep Dive
+7. React 19 Concurrent Features Explained
+8. Community Reactions to React 19`,
+    },
+  },
+}
+
+export const WebSearchNoResults: Story = {
+  args: {
+    ...WebSearchSimple.args,
+    event: {
+      ...baseWebSearchToolEvent,
+      toolInputJson: JSON.stringify({
+        query: 'extremely specific technical query with no matches',
+      }),
+      isCompleted: true,
+      toolResultContent: '',
+    },
+  },
+}
+
+export const WebSearchFocused: Story = {
+  args: {
+    ...WebSearchCompleted.args,
+    isFocused: true,
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: 'Shows a focused web search with expand hint for viewing full results.',
+      },
+    },
+  },
+}
+
+// WebFetch Tool Stories
+const baseWebFetchToolEvent: ConversationEvent = {
+  approvalId: 'approval-webfetch-1',
+  approvalStatus: 'pending' as const,
+  claudeSessionId: 'a3751d3f-c6c5-402b-a7c6-a6fdfeaf6cd9',
+  content: undefined,
+  createdAt: new Date('2025-09-18T18:44:58Z'),
+  eventType: 'tool_call' as const,
+  id: 13,
+  isCompleted: false,
+  role: 'assistant' as const,
+  sequence: 13,
+  sessionId: '08f00f98-d110-40e1-8d0b-fdec7f594f18',
+  toolName: 'WebFetch',
+  toolInputJson: JSON.stringify({
+    url: 'https://react.dev/blog/2025/01/15/react-19',
+  }),
+}
+
+export const WebFetchSimple: Story = {
+  args: {
+    event: baseWebFetchToolEvent,
+    shouldIgnoreMouseEvent: () => false,
+    setFocusedEventId: () => {},
+    setFocusSource: () => {},
+    isFocused: false,
+    isLast: true,
+    responseEditorIsFocused: false,
+  },
+}
+
+export const WebFetchWithPrompt: Story = {
+  args: {
+    ...WebFetchSimple.args,
+    event: {
+      ...baseWebFetchToolEvent,
+      toolInputJson: JSON.stringify({
+        url: 'https://docs.github.com/en/actions/learn-github-actions',
+        prompt: 'Extract information about workflow syntax and job configuration',
+      }),
+    },
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: 'Shows web fetch with a prompt to guide content extraction.',
+      },
+    },
+  },
+}
+
+export const WebFetchCompleted: Story = {
+  args: {
+    ...WebFetchSimple.args,
+    event: {
+      ...baseWebFetchToolEvent,
+      approvalStatus: 'approved' as const,
+      isCompleted: true,
+      toolResultContent: `# React 19 Release Notes
+
+React 19 is now stable! This release brings several major improvements...
+
+## New Features
+
+### React Compiler
+The React Compiler is no longer experimental and can optimize your components...
+
+### Server Components
+Server Components are now stable and ready for production use...
+
+### New Hooks
+- useFormStatus: Track form submission state
+- useOptimistic: Optimistic UI updates
+- use: Simplified data fetching
+
+## Breaking Changes
+
+- Removed defaultProps in favor of default parameters
+- Stricter hydration mismatch errors
+- Updated TypeScript requirements
+
+[Content continues for 15KB...]`,
+    },
+  },
+}
+
+export const WebFetchError: Story = {
+  args: {
+    ...WebFetchSimple.args,
+    event: {
+      ...baseWebFetchToolEvent,
+      toolInputJson: JSON.stringify({
+        url: 'https://example.com/nonexistent-page',
+      }),
+      approvalStatus: 'approved' as const,
+      isCompleted: true,
+      toolResultContent: 'Error: Failed to fetch URL - 404 Not Found',
+    },
+  },
+}
+
+export const WebFetchLongUrl: Story = {
+  args: {
+    ...WebFetchSimple.args,
+    event: {
+      ...baseWebFetchToolEvent,
+      toolInputJson: JSON.stringify({
+        url: 'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/all?section=examples&subsection=handling-errors&filter=modern',
+      }),
+    },
+  },
+}
+
+export const WebFetchFocused: Story = {
+  args: {
+    ...WebFetchCompleted.args,
+    isFocused: true,
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: 'Shows a focused web fetch with expand hint for viewing full content.',
+      },
+    },
+  },
+}

@@ -2,7 +2,7 @@ import { ChevronRight } from 'lucide-react'
 import { ToolCallContentProps } from './types'
 import { ToolHeader } from './ToolHeader'
 import { StatusBadge } from './StatusBadge'
-import { formatToolResultPreview } from './utils/formatters'
+import { formatToolResultPreview, getApprovalStatusColor } from './utils/formatters'
 
 interface TaskToolInput {
   description: string
@@ -31,9 +31,9 @@ export function TaskToolCallContent({
     <div className="flex flex-col gap-1">
       <div className="flex items-start justify-between w-full">
         <ToolHeader
-          name="Task"
+          name={toolInput.subagent_type || 'Task'}
           description={toolInput.description}
-          primaryParam={`Agent: ${toolInput.subagent_type}`}
+          nameColor={getApprovalStatusColor(approvalStatus)}
         />
         <div className="ml-4">
           <StatusBadge approvalStatus={approvalStatus} isCompleted={isCompleted} />
@@ -41,20 +41,16 @@ export function TaskToolCallContent({
       </div>
 
       {!isCompleted && (
-        <div className="text-xs text-gray-500 dark:text-gray-400 ml-4">
+        <div className="text-xs text-muted-foreground ml-4">
           <ChevronRight className="inline-block w-3 h-3 mr-1" />
           <span className="italic">{toolInput.prompt.substring(0, 100)}...</span>
         </div>
       )}
 
-      {resultPreview && (
-        <div className="text-xs text-gray-600 dark:text-gray-300 ml-4 mt-1">{resultPreview}</div>
-      )}
+      {resultPreview && <div className="text-xs text-muted-foreground ml-4 mt-1">{resultPreview}</div>}
 
       {isFocused && isCompleted && toolResultContent && (
-        <div className="text-xs text-gray-400 dark:text-gray-500 ml-4">
-          Press Enter to view full result
-        </div>
+        <div className="text-xs text-muted-foreground/60 ml-4">Press Enter to view full result</div>
       )}
     </div>
   )

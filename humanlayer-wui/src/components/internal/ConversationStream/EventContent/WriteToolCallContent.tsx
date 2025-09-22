@@ -1,7 +1,7 @@
 import { ToolHeader } from './ToolHeader'
 import { StatusBadge } from './StatusBadge'
 import { DiffViewer } from './DiffViewer/DiffViewer'
-import { formatToolResultPreview, detectToolError } from './utils/formatters'
+import { formatToolResultPreview, detectToolError, getApprovalStatusColor } from './utils/formatters'
 import { ToolCallContentProps } from './types'
 
 export interface WriteToolInput {
@@ -32,6 +32,7 @@ export function WriteToolCallContent({
         name="Write"
         description={isNewFile ? 'Create new file' : 'Overwrite file'}
         primaryParam={<span className="font-mono text-sm">{toolInput.file_path}</span>}
+        nameColor={getApprovalStatusColor(approvalStatus)}
         status={<StatusBadge approvalStatus={approvalStatus} isCompleted={isCompleted} />}
       />
 

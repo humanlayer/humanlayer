@@ -1,6 +1,7 @@
 import { CommandToken } from '../../CommandToken'
 import { StatusBadge } from './StatusBadge'
 import { ToolCallContentProps } from './types'
+import { getApprovalStatusColor } from './utils/formatters'
 
 interface GlobToolInput {
   pattern: string
@@ -36,7 +37,9 @@ export function GlobToolCallContent({
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <div className="flex items-baseline gap-2">
-            <span className="font-semibold">Glob</span>
+            <span className={`font-semibold ${getApprovalStatusColor(approvalStatus) || ''}`}>
+              Glob
+            </span>
             {toolInput.path && (
               <span className="text-sm text-muted-foreground">in {toolInput.path}</span>
             )}

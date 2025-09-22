@@ -1,6 +1,7 @@
-import { CommandToken } from '../../CommandToken'
 import { StatusBadge } from './StatusBadge'
 import { ToolCallContentProps } from './types'
+import { ToolHeader } from './ToolHeader'
+import { getApprovalStatusColor } from './utils/formatters'
 
 interface LSToolInput {
   path: string
@@ -57,15 +58,12 @@ export function LSToolCallContent({
   return (
     <div className="space-y-2">
       <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <div className="flex items-baseline gap-2">
-            <span className="font-semibold">LS</span>
-            {toolInput.recursive && <span className="text-sm text-muted-foreground">recursive</span>}
-          </div>
-          <div className="mt-1">
-            <CommandToken>{toolInput.path}</CommandToken>
-          </div>
-        </div>
+        <ToolHeader
+          name="List"
+          description={toolInput.recursive ? 'recursive' : undefined}
+          primaryParam={toolInput.path}
+          nameColor={getApprovalStatusColor(approvalStatus)}
+        />
         <div className="ml-4">
           <StatusBadge approvalStatus={approvalStatus} isCompleted={isCompleted} />
         </div>

@@ -127,3 +127,22 @@ export function truncate(str: string, maxLength: number): string {
   if (str.length <= maxLength) return str
   return str.slice(0, maxLength - 3) + '...'
 }
+
+/**
+ * Get the color class for a given approval status
+ * @param approvalStatus The approval status
+ * @returns The color class to apply or undefined
+ */
+export function getApprovalStatusColor(approvalStatus?: string): string | undefined {
+  switch (approvalStatus) {
+    case 'pending':
+      return 'text-[var(--terminal-warning)]'
+    case 'approved':
+    case 'resolved':
+      return 'text-[var(--terminal-success)]'
+    case 'denied':
+      return 'text-[var(--terminal-error)]'
+    default:
+      return undefined
+  }
+}

@@ -5,7 +5,7 @@ import type {
   ConversationEventRoleEnum,
 } from '@humanlayer/hld-sdk'
 import { ConversationEventType, ConversationRole } from '@/lib/daemon'
-import { Bot, User, Copy, Terminal, Wrench } from 'lucide-react'
+import { Bot, User, Copy, Terminal, Wrench, ListTodo, Globe, Search } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { formatAbsoluteTimestamp, formatTimestamp } from '@/utils/formatting'
 import { copyToClipboard } from '@/utils/clipboard'
@@ -23,6 +23,9 @@ import {
   LSToolCallContent,
   TaskToolCallContent,
   TodoWriteToolCallContent,
+  WebSearchToolCallContent,
+  WebFetchToolCallContent,
+  ApprovalWrapper,
 } from './EventContent'
 import { BashToolInput, parseToolInput, ToolName } from './EventContent/types'
 import type { ReadToolInput, WriteToolInput, EditToolInput } from './EventContent'
@@ -69,6 +72,17 @@ interface TodoWriteToolInput {
   todos: TodoItem[]
 }
 
+interface WebSearchToolInput {
+  query: string
+  allowed_domains?: string[]
+  blocked_domains?: string[]
+}
+
+interface WebFetchToolInput {
+  url: string
+  prompt?: string
+}
+
 const getIcon = (
   type: ConversationEventEventTypeEnum,
   role: ConversationEventRoleEnum | undefined,
@@ -82,7 +96,16 @@ const getIcon = (
     if (toolName === 'Bash') {
       return <Terminal className={iconClasses} />
     }
-    // Default tool icon
+    if (toolName === 'TodoWrite') {
+      return <ListTodo className={iconClasses} />
+    }
+    if (toolName === 'WebSearch' || toolName === 'WebFetch') {
+      return <Globe className={iconClasses} />
+    }
+    if (toolName === 'Grep') {
+      return <Search className={iconClasses} />
+    }
+    // Default tool icon for Task, Glob, LS, and others
     return <Wrench className={iconClasses} />
   }
 
@@ -227,6 +250,13 @@ export interface ConversationEventRowProps extends React.HTMLAttributes<HTMLDivE
   isLast: boolean
   responseEditorIsFocused: boolean
   fileSnapshot?: string // For Write tool diff preview
+  // Approval-related props
+  onApprove?: (approvalId: string) => void
+  onDeny?: (approvalId: string, reason: string) => void
+  approvingApprovalId?: string | null
+  denyingApprovalId?: string | null
+  setDenyingApprovalId?: (approvalId: string | null) => void
+  onCancelDeny?: () => void
 }
 
 export function ConversationEventRow({
@@ -240,6 +270,12 @@ export function ConversationEventRow({
   isLast,
   responseEditorIsFocused,
   fileSnapshot,
+  onApprove,
+  onDeny,
+  approvingApprovalId,
+  denyingApprovalId,
+  setDenyingApprovalId,
+  onCancelDeny,
 }: ConversationEventRowProps) {
   const IconComponent = getIcon(event.eventType, event.role, event.isCompleted, event.toolName)
 
@@ -371,6 +407,32 @@ export function ConversationEventRow({
           />
         )
       }
+    } else if (event.toolName === ToolName.WebSearch) {
+      const toolInput = parseToolInput<WebSearchToolInput>(event.toolInputJson)
+      if (toolInput) {
+        messageContent = (
+          <WebSearchToolCallContent
+            toolInput={toolInput}
+            approvalStatus={event.approvalStatus}
+            isCompleted={event.isCompleted}
+            toolResultContent={toolResult?.toolResultContent}
+            isFocused={isFocused}
+          />
+        )
+      }
+    } else if (event.toolName === ToolName.WebFetch) {
+      const toolInput = parseToolInput<WebFetchToolInput>(event.toolInputJson)
+      if (toolInput) {
+        messageContent = (
+          <WebFetchToolCallContent
+            toolInput={toolInput}
+            approvalStatus={event.approvalStatus}
+            isCompleted={event.isCompleted}
+            toolResultContent={toolResult?.toolResultContent}
+            isFocused={isFocused}
+          />
+        )
+      }
     }
   } else if (event.role === ConversationRole.User) {
     messageContent = <UserMessageContent eventContent={event.content || ''} />
@@ -389,6 +451,14 @@ export function ConversationEventRow({
     event.eventType === ConversationEventType.Message &&
     (event.role === ConversationRole.User || event.role === ConversationRole.Assistant)
 
+  // Check if we need approval UI
+  const needsApproval =
+    event.eventType === ConversationEventType.ToolCall &&
+    event.approvalStatus === 'pending' &&
+    event.approvalId &&
+    onApprove &&
+    onDeny
+
   return (
     <ConversationEventRowShell
       ref={ref}
@@ -405,7 +475,22 @@ export function ConversationEventRow({
       showCopyButton={showCopyButton}
       copyContent={event.content || ''}
     >
-      {messageContent}
+      {needsApproval ? (
+        <ApprovalWrapper
+          event={event}
+          approvalStatus={event.approvalStatus}
+          onApprove={() => onApprove(event.approvalId!)}
+          onDeny={(reason: string) => onDeny(event.approvalId!, reason)}
+          isApproving={approvingApprovalId === event.approvalId}
+          isDenying={denyingApprovalId === event.approvalId}
+          onStartDeny={() => setDenyingApprovalId?.(event.approvalId!)}
+          onCancelDeny={onCancelDeny}
+        >
+          {messageContent}
+        </ApprovalWrapper>
+      ) : (
+        messageContent
+      )}
     </ConversationEventRowShell>
   )
 }

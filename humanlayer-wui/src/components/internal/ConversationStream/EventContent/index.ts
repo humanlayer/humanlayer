@@ -25,3 +25,7 @@ export { LSToolCallContent } from './LSToolCallContent'
 // Phase 4 Task Management Tools
 export { TaskToolCallContent } from './TaskToolCallContent'
 export { TodoWriteToolCallContent } from './TodoWriteToolCallContent'
+
+// Phase 5 Web Tools
+export { WebSearchToolCallContent } from './WebSearchToolCallContent'
+export { WebFetchToolCallContent } from './WebFetchToolCallContent'

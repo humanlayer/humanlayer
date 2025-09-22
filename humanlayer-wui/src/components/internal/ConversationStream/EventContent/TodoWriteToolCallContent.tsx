@@ -2,6 +2,7 @@ import { CheckCircle2, Circle, Clock } from 'lucide-react'
 import { ToolCallContentProps } from './types'
 import { ToolHeader } from './ToolHeader'
 import { StatusBadge } from './StatusBadge'
+import { getApprovalStatusColor } from './utils/formatters'
 
 interface TodoItem {
   content: string
@@ -15,6 +16,7 @@ interface TodoWriteToolInput {
 
 export function TodoWriteToolCallContent({
   toolInput,
+  approvalStatus,
   isCompleted,
   isFocused,
 }: ToolCallContentProps<TodoWriteToolInput>) {
@@ -49,9 +51,10 @@ export function TodoWriteToolCallContent({
     <div className="flex flex-col gap-1">
       <div className="flex items-start justify-between w-full">
         <ToolHeader
-          name="TodoWrite"
-          description={`${counts.completed}/${counts.total} completed`}
+          name="Update TODOs"
+          description={`${counts.completed} completed, ${counts.pending} pending`}
           primaryParam={currentTask ? currentTask.activeForm : undefined}
+          nameColor={getApprovalStatusColor(approvalStatus)}
         />
         <div className="ml-4">
           <StatusBadge isCompleted={isCompleted} />
@@ -59,7 +62,7 @@ export function TodoWriteToolCallContent({
       </div>
 
       {!isFocused && counts.inProgress > 0 && currentTask && (
-        <div className="text-xs text-blue-600 dark:text-blue-400 ml-4">
+        <div className="text-xs text-muted-foreground ml-4">
           <Clock className="inline-block w-3 h-3 mr-1" />
           {currentTask.activeForm}
         </div>
@@ -72,10 +75,10 @@ export function TodoWriteToolCallContent({
               key={index}
               className={`text-xs flex items-start gap-1 ${
                 todo.status === 'completed'
-                  ? 'text-gray-500 dark:text-gray-400'
+                  ? 'text-muted-foreground opacity-60'
                   : todo.status === 'in_progress'
-                    ? 'text-blue-600 dark:text-blue-400'
-                    : 'text-gray-600 dark:text-gray-300'
+                    ? 'text-foreground'
+                    : 'text-muted-foreground'
               }`}
             >
               {getTaskIcon(todo.status)}

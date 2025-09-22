@@ -6,7 +6,7 @@ import { DenyButtons } from '../../SessionDetail/components/DenyButtons'
 interface ApprovalWrapperProps {
   children: React.ReactNode
   event: ConversationEvent
-  approvalStatus?: 'pending' | 'approved' | 'denied'
+  approvalStatus?: 'pending' | 'approved' | 'denied' | 'resolved'
   onApprove?: () => void
   onDeny?: (reason: string) => void
   isApproving?: boolean
@@ -34,8 +34,9 @@ export function ApprovalWrapper({
   const getBorderClass = () => {
     switch (approvalStatus) {
       case 'pending':
-        return 'border-dashed border-muted-foreground'
+        return 'border-solid border-[var(--terminal-warning)]'
       case 'approved':
+      case 'resolved':
         return 'border-solid border-[var(--terminal-success)]'
       case 'denied':
         return 'border-solid border-[var(--terminal-error)]'

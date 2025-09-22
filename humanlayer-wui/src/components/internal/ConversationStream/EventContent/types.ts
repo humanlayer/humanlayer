@@ -8,6 +8,8 @@ export enum ToolName {
   Grep = 'Grep',
   Glob = 'Glob',
   LS = 'LS',
+  WebSearch = 'WebSearch',
+  WebFetch = 'WebFetch',
   // Add more as needed
 }
 

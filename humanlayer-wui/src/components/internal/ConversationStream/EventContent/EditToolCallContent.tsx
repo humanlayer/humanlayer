@@ -3,8 +3,9 @@ import { ToolHeader } from './ToolHeader'
 import { StatusBadge } from './StatusBadge'
 import { DiffViewer } from './DiffViewer/DiffViewer'
 import { DiffViewToggle } from './DiffViewToggle'
-import { formatToolResultPreview, detectToolError } from './utils/formatters'
+import { formatToolResultPreview, detectToolError, getApprovalStatusColor } from './utils/formatters'
 import { ToolCallContentProps } from './types'
+import { ApprovalStatus } from '@humanlayer/hld-sdk'
 
 export interface EditToolInput {
   file_path: string
@@ -21,9 +22,14 @@ export function EditToolCallContent({
   isFocused,
 }: ToolCallContentProps<EditToolInput>) {
   const [isSplitView, setIsSplitView] = useState(false)
+  const isDenied = approvalStatus === ApprovalStatus.Denied
   const hasError = toolResultContent ? detectToolError('Edit', toolResultContent) : false
-  const preview = toolResultContent ? formatToolResultPreview(toolResultContent) : null
+  let preview = toolResultContent ? formatToolResultPreview(toolResultContent) : null
   const showDiff = approvalStatus === 'pending' || approvalStatus === undefined || !isCompleted
+
+  if (isDenied) {
+    preview = `Denial Reason: ${toolResultContent ? formatToolResultPreview(toolResultContent) : null}`
+  }
 
   const toggleView = () => setIsSplitView(!isSplitView)
 
@@ -33,24 +39,23 @@ export function EditToolCallContent({
         name="Edit"
         description={toolInput.replace_all ? 'Replace all occurrences' : undefined}
         primaryParam={<span className="font-mono text-sm">{toolInput.file_path}</span>}
+        nameColor={getApprovalStatusColor(approvalStatus)}
         status={
           <div className="flex items-center gap-2">
-            {showDiff && <DiffViewToggle isSplitView={isSplitView} onToggle={toggleView} />}
             <StatusBadge approvalStatus={approvalStatus} isCompleted={isCompleted} />
+            {showDiff && <DiffViewToggle isSplitView={isSplitView} onToggle={toggleView} />}
           </div>
         }
       />
 
-      {showDiff && (
-        <div className="mt-2">
-          <DiffViewer
-            oldContent={toolInput.old_string}
-            newContent={toolInput.new_string}
-            mode={isSplitView ? 'split' : 'unified'}
-            showFullFile={false}
-          />
-        </div>
-      )}
+      <div className="mt-2">
+        <DiffViewer
+          oldContent={toolInput.old_string}
+          newContent={toolInput.new_string}
+          mode={isSplitView ? 'split' : 'unified'}
+          showFullFile={false}
+        />
+      </div>
 
       {!showDiff && isCompleted && (
         <div className="mt-1 text-sm text-muted-foreground font-mono flex items-start gap-1">

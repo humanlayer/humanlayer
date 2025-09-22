@@ -1,6 +1,6 @@
 import { ToolHeader } from './ToolHeader'
 import { StatusBadge } from './StatusBadge'
-import { formatLineCount, formatToolResultPreview } from './utils/formatters'
+import { formatLineCount, formatToolResultPreview, getApprovalStatusColor } from './utils/formatters'
 import { ToolCallContentProps } from './types'
 
 export interface ReadToolInput {
@@ -32,6 +32,7 @@ export function ReadToolCallContent({
         }
         primaryParam={<span className="font-mono text-sm">{toolInput.file_path}</span>}
         status={<StatusBadge approvalStatus={approvalStatus} isCompleted={isCompleted} />}
+        nameColor={getApprovalStatusColor(approvalStatus)}
       />
 
       {preview && (

@@ -237,6 +237,12 @@ export function ConversationStream({
             isFocused={focusedEventId === event.id}
             isLast={index === eventsToRender.length - 1}
             responseEditorIsFocused={responseEditor?.isFocused || false}
+            onApprove={onApprove}
+            onDeny={onDeny}
+            approvingApprovalId={approvingApprovalId}
+            denyingApprovalId={denyingApprovalId}
+            setDenyingApprovalId={setDenyingApprovalId}
+            onCancelDeny={onCancelDeny}
           />
         ))}
       </div>
