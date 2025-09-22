@@ -320,7 +320,9 @@ async fn save_window_state(
         .store(&store_path)
         .map_err(|e| format!("Failed to access store: {e}"))?;
 
-    store.set("window_state", serde_json::to_value(&state).unwrap());
+    let state_value = serde_json::to_value(&state)
+        .map_err(|e| format!("Failed to serialize window state: {e}"))?;
+    store.set("window_state", state_value);
     store
         .save()
         .map_err(|e| format!("Failed to save window state: {e}"))?;
