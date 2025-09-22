@@ -399,6 +399,9 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   // Track if we've scrolled to bottom for this session
   const hasScrolledToBottomRef = useRef(false)
 
+  // Cache the conversation container to avoid repeated DOM queries
+  const conversationContainerRef = useRef<HTMLElement | null>(null)
+
   // Handle auto-focus when navigating with approval parameter
   useEffect(() => {
     // Only run when we actually have an approval ID to focus
@@ -418,6 +421,10 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       // Use the hook's focus method for consistency
       // This will try to match the specific approval, or fallback to most recent pending
       approvals.focusApprovalById(targetApprovalId)
+
+      // Mark that we've already scrolled for this session to prevent auto-scroll to bottom
+      // when the approval parameter is cleared
+      hasScrolledToBottomRef.current = true
 
       // Clear the parameter after focusing
       searchParams.delete('approval')
@@ -505,12 +512,14 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   useEffect(() => {
     if (session.id) {
       hasScrolledToBottomRef.current = false
+      // Clear cached container ref when session changes
+      conversationContainerRef.current = null
     }
   }, [session.id])
 
   // Enhanced auto-scroll with retry logic
   useEffect(() => {
-    const hasApprovalParam = searchParams.get('approval') !== null
+    const hasApprovalParam = targetApprovalId !== null
 
     if (!hasScrolledToBottomRef.current && events.length > 0 && !hasApprovalParam) {
       // Try multiple times with increasing delays to handle rendering delays
@@ -520,7 +529,22 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       scrollAttempts.forEach(delay => {
         const timer = setTimeout(() => {
           if (!hasScrolledToBottomRef.current) {
-            const container = document.querySelector('[data-conversation-container]')
+            // First try to use cached ref, then query DOM if needed
+            let container = conversationContainerRef.current
+            // Verify cached element is still in the DOM
+            if (container && !document.body.contains(container)) {
+              container = null
+              conversationContainerRef.current = null
+            }
+
+            if (!container) {
+              container = document.querySelector('[data-conversation-container]')
+              // Cache the container for future use if found
+              if (container) {
+                conversationContainerRef.current = container as HTMLElement
+              }
+            }
+
             if (container) {
               container.scrollTop = container.scrollHeight
               hasScrolledToBottomRef.current = true
@@ -537,7 +561,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         timers.forEach(t => clearTimeout(t))
       }
     }
-  }, [events.length, searchParams])
+  }, [events.length, targetApprovalId])
 
   // Cleanup confirmation timeout on unmount or session change
   useEffect(() => {
