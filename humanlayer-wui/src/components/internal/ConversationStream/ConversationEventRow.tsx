@@ -10,7 +10,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { formatAbsoluteTimestamp, formatTimestamp } from '@/utils/formatting'
 import { copyToClipboard } from '@/utils/clipboard'
 import { Button } from '@/components/ui/button'
-import { UserMessageContent, AssistantMessageContent, UnknownMessageContent } from './MessageContent'
+import { UserMessageContent, AssistantMessageContent, UnknownMessageContent, BashToolCallContent } from './EventContent'
+import { BashToolInput, parseToolInput, ToolName } from './EventContent/types'
 
 const getIcon = (
   type: ConversationEventEventTypeEnum,
@@ -179,9 +180,25 @@ export function ConversationEventRow({
       (event.role === ConversationRole.Assistant && event.content?.startsWith('<thinking>')),
   )
 
-  /* Determine MessageContent type */
+  /* Determine EventContent type */
 
-  if (event.role === ConversationRole.User) {
+  if (event.eventType === ConversationEventType.ToolCall) {
+    // Handle tool calls
+    if (event.toolName === ToolName.Bash) {
+      const toolInput = parseToolInput<BashToolInput>(event.toolInputJson)
+      if (toolInput) {
+        // TODO: Get tool result if available
+        messageContent = (
+          <BashToolCallContent
+            toolInput={toolInput}
+            approvalStatus={event.approvalStatus}
+            isCompleted={event.isCompleted}
+            toolResultContent={undefined} // TODO: Get from tool result event
+          />
+        )
+      }
+    }
+  } else if (event.role === ConversationRole.User) {
     messageContent = <UserMessageContent eventContent={event.content || ''} />
   } else if (event.role === ConversationRole.Assistant) {
     messageContent = (

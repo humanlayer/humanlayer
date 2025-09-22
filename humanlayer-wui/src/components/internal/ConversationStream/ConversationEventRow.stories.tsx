@@ -210,3 +210,107 @@ Can you provide a solution?`,
     },
   },
 }
+
+// Tool call stories
+const baseBashToolEvent: ConversationEvent = {
+  approvalId: 'approval-123',
+  approvalStatus: 'pending' as const,
+  claudeSessionId: 'a3751d3f-c6c5-402b-a7c6-a6fdfeaf6cd9',
+  content: undefined,
+  createdAt: new Date('2025-09-18T18:44:48Z'),
+  eventType: 'tool_call' as const,
+  id: 3,
+  isCompleted: false,
+  role: 'assistant' as const,
+  sequence: 3,
+  sessionId: '08f00f98-d110-40e1-8d0b-fdec7f594f18',
+  toolName: 'Bash',
+  toolInputJson: JSON.stringify({
+    command: 'ls -la',
+    description: 'List all files in current directory',
+  }),
+}
+
+export const BashToolCallPending: Story = {
+  args: {
+    event: baseBashToolEvent,
+    shouldIgnoreMouseEvent: () => false,
+    setFocusedEventId: () => {},
+    setFocusSource: () => {},
+    isFocused: false,
+    isLast: true,
+    responseEditorIsFocused: false,
+  },
+}
+
+export const BashToolCallApproved: Story = {
+  args: {
+    ...BashToolCallPending.args,
+    event: {
+      ...baseBashToolEvent,
+      approvalStatus: 'approved' as const,
+    },
+  },
+}
+
+export const BashToolCallCompleted: Story = {
+  args: {
+    ...BashToolCallPending.args,
+    event: {
+      ...baseBashToolEvent,
+      approvalStatus: 'approved' as const,
+      isCompleted: true,
+    },
+  },
+}
+
+export const BashToolCallDenied: Story = {
+  args: {
+    ...BashToolCallPending.args,
+    event: {
+      ...baseBashToolEvent,
+      approvalStatus: 'denied' as const,
+    },
+  },
+}
+
+export const BashToolCallWithTimeout: Story = {
+  args: {
+    ...BashToolCallPending.args,
+    event: {
+      ...baseBashToolEvent,
+      toolInputJson: JSON.stringify({
+        command: 'npm install',
+        description: 'Install dependencies',
+        timeout: 60000,
+      }),
+    },
+  },
+}
+
+export const BashToolCallBackgroundJob: Story = {
+  args: {
+    ...BashToolCallPending.args,
+    event: {
+      ...baseBashToolEvent,
+      toolInputJson: JSON.stringify({
+        command: 'npm run dev',
+        description: 'Start development server',
+        run_in_background: true,
+      }),
+    },
+  },
+}
+
+export const BashToolCallLongCommand: Story = {
+  args: {
+    ...BashToolCallPending.args,
+    event: {
+      ...baseBashToolEvent,
+      toolInputJson: JSON.stringify({
+        command: 'git log --graph --pretty=format:"%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset" --abbrev-commit --date=relative --branches',
+        description: 'Show git history with graph',
+      }),
+    },
+  },
+}
