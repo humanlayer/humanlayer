@@ -15,8 +15,12 @@ import {
   AssistantMessageContent,
   UnknownMessageContent,
   BashToolCallContent,
+  ReadToolCallContent,
+  WriteToolCallContent,
+  EditToolCallContent,
 } from './EventContent'
 import { BashToolInput, parseToolInput, ToolName } from './EventContent/types'
+import type { ReadToolInput, WriteToolInput, EditToolInput } from './EventContent'
 
 const getIcon = (
   type: ConversationEventEventTypeEnum,
@@ -175,6 +179,7 @@ export interface ConversationEventRowProps extends React.HTMLAttributes<HTMLDivE
   isFocused: boolean
   isLast: boolean
   responseEditorIsFocused: boolean
+  fileSnapshot?: string // For Write tool diff preview
 }
 
 export function ConversationEventRow({
@@ -187,6 +192,7 @@ export function ConversationEventRow({
   isFocused,
   isLast,
   responseEditorIsFocused,
+  fileSnapshot,
 }: ConversationEventRowProps) {
   const IconComponent = getIcon(event.eventType, event.role, event.isCompleted, event.toolName)
 
@@ -205,6 +211,46 @@ export function ConversationEventRow({
       if (toolInput) {
         messageContent = (
           <BashToolCallContent
+            toolInput={toolInput}
+            approvalStatus={event.approvalStatus}
+            isCompleted={event.isCompleted}
+            toolResultContent={toolResult?.toolResultContent}
+            isFocused={isFocused}
+          />
+        )
+      }
+    } else if (event.toolName === ToolName.Read) {
+      const toolInput = parseToolInput<ReadToolInput>(event.toolInputJson)
+      if (toolInput) {
+        messageContent = (
+          <ReadToolCallContent
+            toolInput={toolInput}
+            approvalStatus={event.approvalStatus}
+            isCompleted={event.isCompleted}
+            toolResultContent={toolResult?.toolResultContent}
+            isFocused={isFocused}
+          />
+        )
+      }
+    } else if (event.toolName === ToolName.Write) {
+      const toolInput = parseToolInput<WriteToolInput>(event.toolInputJson)
+      if (toolInput) {
+        messageContent = (
+          <WriteToolCallContent
+            toolInput={toolInput}
+            approvalStatus={event.approvalStatus}
+            isCompleted={event.isCompleted}
+            toolResultContent={toolResult?.toolResultContent}
+            isFocused={isFocused}
+            fileSnapshot={fileSnapshot}
+          />
+        )
+      }
+    } else if (event.toolName === ToolName.Edit) {
+      const toolInput = parseToolInput<EditToolInput>(event.toolInputJson)
+      if (toolInput) {
+        messageContent = (
+          <EditToolCallContent
             toolInput={toolInput}
             approvalStatus={event.approvalStatus}
             isCompleted={event.isCompleted}

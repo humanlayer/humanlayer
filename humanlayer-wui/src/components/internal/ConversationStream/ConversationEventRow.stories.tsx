@@ -318,3 +318,373 @@ export const BashToolCallLongCommand: Story = {
     },
   },
 }
+
+// Read Tool Stories
+const baseReadToolEvent: ConversationEvent = {
+  approvalId: undefined,
+  approvalStatus: undefined,
+  claudeSessionId: 'a3751d3f-c6c5-402b-a7c6-a6fdfeaf6cd9',
+  content: undefined,
+  createdAt: new Date('2025-09-18T18:44:49Z'),
+  eventType: 'tool_call' as const,
+  id: 4,
+  isCompleted: false,
+  role: 'assistant' as const,
+  sequence: 4,
+  sessionId: '08f00f98-d110-40e1-8d0b-fdec7f594f18',
+  toolName: 'Read',
+  toolInputJson: JSON.stringify({
+    file_path: '/src/components/Button.tsx',
+  }),
+}
+
+export const ReadToolPending: Story = {
+  args: {
+    event: baseReadToolEvent,
+    shouldIgnoreMouseEvent: () => false,
+    setFocusedEventId: () => {},
+    setFocusSource: () => {},
+    isFocused: false,
+    isLast: true,
+    responseEditorIsFocused: false,
+  },
+}
+
+export const ReadToolCompleted: Story = {
+  args: {
+    ...ReadToolPending.args,
+    event: {
+      ...baseReadToolEvent,
+      isCompleted: true,
+      toolResultContent: `import React from 'react';
+
+interface ButtonProps {
+  label: string;
+  onClick: () => void;
+  variant?: 'primary' | 'secondary';
+}
+
+export function Button({ label, onClick, variant = 'primary' }: ButtonProps) {
+  return (
+    <button
+      className={\`btn btn-\${variant}\`}
+      onClick={onClick}
+    >
+      {label}
+    </button>
+  );
+}`,
+    },
+  },
+}
+
+export const ReadToolWithLongPath: Story = {
+  args: {
+    ...ReadToolPending.args,
+    event: {
+      ...baseReadToolEvent,
+      toolInputJson: JSON.stringify({
+        file_path:
+          '/Users/johndoe/Projects/my-awesome-application/src/components/features/authentication/LoginForm/LoginForm.tsx',
+      }),
+    },
+  },
+}
+
+export const ReadToolWithOffsetLimit: Story = {
+  args: {
+    ...ReadToolPending.args,
+    event: {
+      ...baseReadToolEvent,
+      toolInputJson: JSON.stringify({
+        file_path: '/src/utils/helpers.ts',
+        offset: 50,
+        limit: 100,
+      }),
+    },
+  },
+}
+
+export const ReadToolCompletedLarge: Story = {
+  args: {
+    ...ReadToolPending.args,
+    event: {
+      ...baseReadToolEvent,
+      isCompleted: true,
+      toolResultContent: Array(500)
+        .fill(null)
+        .map((_, i) => `Line ${i + 1}: Some code content here`)
+        .join('\n'),
+    },
+  },
+}
+
+export const ReadToolFocused: Story = {
+  args: {
+    ...ReadToolCompleted.args,
+    isFocused: true,
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: 'Shows a focused Read tool call with expand hint visible.',
+      },
+    },
+  },
+}
+
+// Write Tool Stories
+const baseWriteToolEvent: ConversationEvent = {
+  approvalId: 'approval-456',
+  approvalStatus: 'pending' as const,
+  claudeSessionId: 'a3751d3f-c6c5-402b-a7c6-a6fdfeaf6cd9',
+  content: undefined,
+  createdAt: new Date('2025-09-18T18:44:50Z'),
+  eventType: 'tool_call' as const,
+  id: 5,
+  isCompleted: false,
+  role: 'assistant' as const,
+  sequence: 5,
+  sessionId: '08f00f98-d110-40e1-8d0b-fdec7f594f18',
+  toolName: 'Write',
+  toolInputJson: JSON.stringify({
+    file_path: '/src/utils/newFile.ts',
+    content: `export function calculate(a: number, b: number): number {
+  return a + b;
+}
+
+export function format(value: number): string {
+  return value.toLocaleString();
+}`,
+  }),
+}
+
+export const WriteToolPendingNewFile: Story = {
+  args: {
+    event: baseWriteToolEvent,
+    shouldIgnoreMouseEvent: () => false,
+    setFocusedEventId: () => {},
+    setFocusSource: () => {},
+    isFocused: false,
+    isLast: true,
+    responseEditorIsFocused: false,
+    fileSnapshot: '',
+  },
+}
+
+export const WriteToolPendingWithDiff: Story = {
+  args: {
+    ...WriteToolPendingNewFile.args,
+    event: {
+      ...baseWriteToolEvent,
+      toolInputJson: JSON.stringify({
+        file_path: '/src/utils/existing.ts',
+        content: `// Updated version
+export function calculate(a: number, b: number): number {
+  const result = a + b;
+  console.log('Result:', result);
+  return result;
+}`,
+      }),
+    },
+    fileSnapshot: `export function calculate(a: number, b: number): number {
+  return a + b;
+}`,
+  },
+}
+
+export const WriteToolCompleted: Story = {
+  args: {
+    ...WriteToolPendingNewFile.args,
+    event: {
+      ...baseWriteToolEvent,
+      approvalStatus: 'approved' as const,
+      isCompleted: true,
+      toolResultContent: '',
+    },
+  },
+}
+
+export const WriteToolDenied: Story = {
+  args: {
+    ...WriteToolPendingNewFile.args,
+    event: {
+      ...baseWriteToolEvent,
+      approvalStatus: 'denied' as const,
+    },
+  },
+}
+
+export const WriteToolError: Story = {
+  args: {
+    ...WriteToolPendingNewFile.args,
+    event: {
+      ...baseWriteToolEvent,
+      approvalStatus: 'approved' as const,
+      isCompleted: true,
+      toolResultContent: 'Error: Permission denied - cannot write to system directory',
+    },
+  },
+}
+
+export const WriteToolLongContent: Story = {
+  args: {
+    ...WriteToolPendingNewFile.args,
+    event: {
+      ...baseWriteToolEvent,
+      toolInputJson: JSON.stringify({
+        file_path: '/src/components/ComplexComponent.tsx',
+        content: Array(100)
+          .fill(null)
+          .map((_, i) => `  // Line ${i + 1}: Some component code here`)
+          .join('\n'),
+      }),
+    },
+    fileSnapshot: Array(50)
+      .fill(null)
+      .map((_, i) => `  // Original line ${i + 1}`)
+      .join('\n'),
+  },
+}
+
+// Edit Tool Stories
+const baseEditToolEvent: ConversationEvent = {
+  approvalId: 'approval-789',
+  approvalStatus: 'pending' as const,
+  claudeSessionId: 'a3751d3f-c6c5-402b-a7c6-a6fdfeaf6cd9',
+  content: undefined,
+  createdAt: new Date('2025-09-18T18:44:51Z'),
+  eventType: 'tool_call' as const,
+  id: 6,
+  isCompleted: false,
+  role: 'assistant' as const,
+  sequence: 6,
+  sessionId: '08f00f98-d110-40e1-8d0b-fdec7f594f18',
+  toolName: 'Edit',
+  toolInputJson: JSON.stringify({
+    file_path: '/src/components/Button.tsx',
+    old_string: 'onClick={onClick}',
+    new_string: 'onClick={handleClick}',
+  }),
+}
+
+export const EditToolPending: Story = {
+  args: {
+    event: baseEditToolEvent,
+    shouldIgnoreMouseEvent: () => false,
+    setFocusedEventId: () => {},
+    setFocusSource: () => {},
+    isFocused: false,
+    isLast: true,
+    responseEditorIsFocused: false,
+  },
+}
+
+export const EditToolSplitView: Story = {
+  args: {
+    ...EditToolPending.args,
+    event: {
+      ...baseEditToolEvent,
+      toolInputJson: JSON.stringify({
+        file_path: '/src/utils/validators.ts',
+        old_string: `function validateEmail(email: string): boolean {
+  return email.includes('@');
+}`,
+        new_string: `function validateEmail(email: string): boolean {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+}`,
+      }),
+    },
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: 'Shows Edit tool with split view diff. Click the toggle button to switch views.',
+      },
+    },
+  },
+}
+
+export const EditToolReplaceAll: Story = {
+  args: {
+    ...EditToolPending.args,
+    event: {
+      ...baseEditToolEvent,
+      toolInputJson: JSON.stringify({
+        file_path: '/src/config.ts',
+        old_string: 'localhost',
+        new_string: 'api.example.com',
+        replace_all: true,
+      }),
+    },
+  },
+}
+
+export const EditToolCompleted: Story = {
+  args: {
+    ...EditToolPending.args,
+    event: {
+      ...baseEditToolEvent,
+      approvalStatus: 'approved' as const,
+      isCompleted: true,
+      toolResultContent:
+        "The file /src/components/Button.tsx has been updated. Here's the result of running `cat -n` on a snippet of the edited file:",
+    },
+  },
+}
+
+export const EditToolDenied: Story = {
+  args: {
+    ...EditToolPending.args,
+    event: {
+      ...baseEditToolEvent,
+      approvalStatus: 'denied' as const,
+    },
+  },
+}
+
+export const EditToolError: Story = {
+  args: {
+    ...EditToolPending.args,
+    event: {
+      ...baseEditToolEvent,
+      approvalStatus: 'approved' as const,
+      isCompleted: true,
+      toolResultContent: 'Error: Found 3 matches of the string to replace, but replace_all is false',
+    },
+  },
+}
+
+export const EditToolMultiLineEdit: Story = {
+  args: {
+    ...EditToolPending.args,
+    event: {
+      ...baseEditToolEvent,
+      toolInputJson: JSON.stringify({
+        file_path: '/src/components/Header.tsx',
+        old_string: `<header className="header">
+      <h1>Welcome</h1>
+      <nav>
+        <ul>
+          <li>Home</li>
+          <li>About</li>
+        </ul>
+      </nav>
+    </header>`,
+        new_string: `<header className="header-main">
+      <div className="header-content">
+        <h1 className="title">Welcome to Our Site</h1>
+        <nav className="navigation">
+          <ul className="nav-list">
+            <li className="nav-item">Home</li>
+            <li className="nav-item">About</li>
+            <li className="nav-item">Contact</li>
+          </ul>
+        </nav>
+      </div>
+    </header>`,
+      }),
+    },
+  },
+}

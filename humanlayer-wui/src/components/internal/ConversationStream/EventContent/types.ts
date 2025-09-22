@@ -24,6 +24,15 @@ export interface BashToolCallContentProps {
   isFocused?: boolean
 }
 
+// Generic tool call content props interface
+export interface ToolCallContentProps<T> {
+  toolInput: T
+  approvalStatus?: string
+  isCompleted?: boolean
+  toolResultContent?: string
+  isFocused?: boolean
+}
+
 export function parseToolInput<T>(toolInputJson: string | undefined): T | null {
   if (!toolInputJson) return null
   try {
