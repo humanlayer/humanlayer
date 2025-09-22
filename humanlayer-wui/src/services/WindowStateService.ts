@@ -11,7 +11,7 @@ interface WindowState {
 }
 
 class WindowStateService {
-  private debounceTimer: NodeJS.Timeout | null = null
+  private debounceTimer: ReturnType<typeof setTimeout> | null = null
   private unlisteners: Array<() => void> = []
 
   async initialize() {
