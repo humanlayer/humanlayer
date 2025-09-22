@@ -6,8 +6,23 @@ export function BashToolCallContent({
   toolInput,
   approvalStatus,
   isCompleted,
-  toolResultContent
+  toolResultContent,
+  isFocused
 }: BashToolCallContentProps) {
+  const formatToolResult = (content: string) => {
+    const lines = content.split('\n').filter(l => l.trim())
+    if (lines.length === 0) {
+      return null
+    } else if (lines.length === 1) {
+      return lines[0].length > 80 ? `${lines[0].slice(0, 77)}...` : lines[0]
+    } else {
+      const firstLine = lines[0]
+      return `${firstLine.length > 60 ? `${firstLine.slice(0, 57)}...` : firstLine} ... (${lines.length} lines)`
+    }
+  }
+
+  const formattedResult = toolResultContent ? formatToolResult(toolResultContent) : null
+
   return (
     <div className="space-y-2">
       <div className="flex items-start justify-between">
@@ -39,15 +54,17 @@ export function BashToolCallContent({
         </div>
       )}
 
-      {toolResultContent && (
-        <div className="mt-3 p-3 rounded-md bg-muted/50 border border-border">
-          <div className="text-xs text-muted-foreground mb-1">Output:</div>
-          <pre className="text-sm font-mono whitespace-pre-wrap break-all">
-            {toolResultContent.slice(0, 500)}
-            {toolResultContent.length > 500 && (
-              <span className="text-muted-foreground">... (truncated)</span>
+      {formattedResult && (
+        <div className="mt-1 text-sm text-muted-foreground font-mono flex items-start gap-1">
+          <span className="text-muted-foreground/50">⎿</span>
+          <span>
+            {formattedResult}
+            {isFocused && (
+              <span className="text-xs text-muted-foreground/50 ml-2">
+                <kbd className="px-1 py-0.5 text-xs bg-muted/50 rounded">i</kbd> expand
+              </span>
             )}
-          </pre>
+          </span>
         </div>
       )}
     </div>

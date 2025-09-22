@@ -21,6 +21,7 @@ export interface BashToolCallContentProps {
   approvalStatus?: string
   isCompleted?: boolean
   toolResultContent?: string
+  isFocused?: boolean
 }
 
 export function parseToolInput<T>(toolInputJson: string | undefined): T | null {

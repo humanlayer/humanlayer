@@ -5,7 +5,7 @@ import type {
   ConversationEventRoleEnum,
 } from '@humanlayer/hld-sdk'
 import { ConversationEventType, ConversationRole } from '@/lib/daemon'
-import { Bot, User, Copy } from 'lucide-react'
+import { Bot, User, Copy, Terminal, Wrench } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { formatAbsoluteTimestamp, formatTimestamp } from '@/utils/formatting'
 import { copyToClipboard } from '@/utils/clipboard'
@@ -17,8 +17,18 @@ const getIcon = (
   type: ConversationEventEventTypeEnum,
   role: ConversationEventRoleEnum | undefined,
   isCompleted: boolean | undefined,
+  toolName?: string,
 ) => {
   const iconClasses = `w-4 h-4 align-middle relative top-[1px] ${type === ConversationEventType.ToolCall && !isCompleted ? 'pulse-warning' : ''}`
+
+  if (type === ConversationEventType.ToolCall) {
+    // Handle tool-specific icons
+    if (toolName === 'Bash') {
+      return <Terminal className={iconClasses} />
+    }
+    // Default tool icon
+    return <Wrench className={iconClasses} />
+  }
 
   if (role === ConversationRole.User) {
     return <User className={iconClasses} />
@@ -154,6 +164,7 @@ function ConversationEventRowShell({
 export interface ConversationEventRowProps extends React.HTMLAttributes<HTMLDivElement> {
   ref?: React.Ref<HTMLDivElement>
   event: ConversationEvent
+  toolResult?: ConversationEvent
   setFocusedEventId: (eventId: number | null) => void
   setFocusSource: (source: 'mouse' | 'keyboard' | null) => void
   shouldIgnoreMouseEvent: () => boolean
@@ -164,6 +175,7 @@ export interface ConversationEventRowProps extends React.HTMLAttributes<HTMLDivE
 
 export function ConversationEventRow({
   event,
+  toolResult,
   ref,
   setFocusedEventId,
   setFocusSource,
@@ -172,7 +184,7 @@ export function ConversationEventRow({
   isLast,
   responseEditorIsFocused,
 }: ConversationEventRowProps) {
-  const IconComponent = getIcon(event.eventType, event.role, event.isCompleted)
+  const IconComponent = getIcon(event.eventType, event.role, event.isCompleted, event.toolName)
 
   let messageContent = null
   const isThinking = Boolean(
@@ -187,13 +199,13 @@ export function ConversationEventRow({
     if (event.toolName === ToolName.Bash) {
       const toolInput = parseToolInput<BashToolInput>(event.toolInputJson)
       if (toolInput) {
-        // TODO: Get tool result if available
         messageContent = (
           <BashToolCallContent
             toolInput={toolInput}
             approvalStatus={event.approvalStatus}
             isCompleted={event.isCompleted}
-            toolResultContent={undefined} // TODO: Get from tool result event
+            toolResultContent={toolResult?.toolResultContent}
+            isFocused={isFocused}
           />
         )
       }

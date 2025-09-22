@@ -230,6 +230,7 @@ export function ConversationStream({
           <ConversationEventRow
             key={event.id}
             event={event}
+            toolResult={event.toolId ? toolResultsByKey[event.toolId] : undefined}
             setFocusedEventId={setFocusedEventId}
             setFocusSource={setFocusSource || (() => {})}
             shouldIgnoreMouseEvent={shouldIgnoreMouseEvent || (() => false)}
