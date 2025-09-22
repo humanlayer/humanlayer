@@ -396,6 +396,9 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const targetApprovalId = searchParams.get('approval')
   const processedApprovalRef = useRef<string | null>(null)
 
+  // Track if we've scrolled to bottom for this session
+  const hasScrolledToBottomRef = useRef(false)
+
   // Handle auto-focus when navigating with approval parameter
   useEffect(() => {
     // Only run when we actually have an approval ID to focus
@@ -498,14 +501,43 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     return () => window.removeEventListener('resize', checkScreenSize)
   }, [])
 
-  // Scroll to bottom when session opens
+  // Reset scroll flag when session changes
   useEffect(() => {
-    // Scroll to bottom of conversation
-    const container = document.querySelector('[data-conversation-container]')
-    if (container) {
-      container.scrollTop = container.scrollHeight
+    if (session.id) {
+      hasScrolledToBottomRef.current = false
     }
-  }, [session.id]) // Re-run when session changes
+  }, [session.id])
+
+  // Enhanced auto-scroll with retry logic
+  useEffect(() => {
+    const hasApprovalParam = searchParams.get('approval') !== null
+
+    if (!hasScrolledToBottomRef.current && events.length > 0 && !hasApprovalParam) {
+      // Try multiple times with increasing delays to handle rendering delays
+      const scrollAttempts = [100, 300, 500]
+      const timers: ReturnType<typeof setTimeout>[] = []
+
+      scrollAttempts.forEach(delay => {
+        const timer = setTimeout(() => {
+          if (!hasScrolledToBottomRef.current) {
+            const container = document.querySelector('[data-conversation-container]')
+            if (container) {
+              container.scrollTop = container.scrollHeight
+              hasScrolledToBottomRef.current = true
+              // Clear remaining timers once successful
+              timers.forEach(t => clearTimeout(t))
+            }
+          }
+        }, delay)
+        timers.push(timer)
+      })
+
+      // Cleanup function to clear timers on unmount or deps change
+      return () => {
+        timers.forEach(t => clearTimeout(t))
+      }
+    }
+  }, [events.length, searchParams])
 
   // Cleanup confirmation timeout on unmount or session change
   useEffect(() => {
