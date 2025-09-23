@@ -10,4 +10,3 @@ export { DenyButtons } from './components/DenyButtons'
 
 // Export utilities
 export { formatToolResult } from './formatToolResult'
-export { eventToDisplayObject } from './eventToDisplayObject'

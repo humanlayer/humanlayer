@@ -195,7 +195,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [isWideView, setIsWideView] = useState(false)
   const [expandedToolResult, setExpandedToolResult] = useState<ConversationEvent | null>(null)
   const [expandedToolCall, setExpandedToolCall] = useState<ConversationEvent | null>(null)
-  const [isSplitView, setIsSplitView] = useState(false)
   const [forkViewOpen, setForkViewOpen] = useState(false)
   const [previewEventIndex, setPreviewEventIndex] = useState<number | null>(null)
   const [pendingForkMessage, setPendingForkMessage] = useState<ConversationEvent | null>(null)
@@ -203,7 +202,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [confirmingArchive, setConfirmingArchive] = useState(false)
   const [dangerousSkipPermissionsDialogOpen, setDangerousSkipPermissionsDialogOpen] = useState(false)
   const [directoriesDropdownOpen, setDirectoriesDropdownOpen] = useState(false)
-  const [useNewRenderer, setUseNewRenderer] = useState(false)
 
   const responseEditor = useStore(state => state.responseEditor)
   const isEditingSessionTitle = useStore(state => state.isEditingSessionTitle)
@@ -941,26 +939,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     [setIsEditingSessionTitle, approvals.confirmingApprovalId, expandedToolResult],
   )
 
-  // Toggle message renderer hotkey
-  useHotkeys(
-    'shift+m',
-    e => {
-      e.preventDefault()
-      setUseNewRenderer(prev => {
-        const newValue = !prev
-        toast(newValue ? 'New message renderer enabled' : 'Original message renderer enabled')
-        return newValue
-      })
-    },
-    {
-      enabled: !approvals.confirmingApprovalId && !expandedToolResult,
-      scopes: SessionDetailHotkeysScope,
-      preventDefault: true,
-      enableOnFormTags: false,
-    },
-    [approvals.confirmingApprovalId, expandedToolResult],
-  )
-
   // Don't steal scope here - SessionDetail is the base layer
   // Only modals opening on top should steal scope
 
@@ -1073,15 +1051,11 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                 approvals.handleDeny(approvalId, reason, session.id)
               }
               approvingApprovalId={approvals.approvingApprovalId}
-              confirmingApprovalId={approvals.confirmingApprovalId}
               denyingApprovalId={approvals.denyingApprovalId ?? undefined}
               setDenyingApprovalId={approvals.setDenyingApprovalId}
               onCancelDeny={approvals.handleCancelDeny}
-              isSplitView={isSplitView}
-              onToggleSplitView={() => setIsSplitView(!isSplitView)}
               focusSource={navigation.focusSource}
               setFocusSource={navigation.setFocusSource}
-              setConfirmingApprovalId={approvals.setConfirmingApprovalId}
               expandedToolResult={expandedToolResult}
               setExpandedToolResult={setExpandedToolResult}
               setExpandedToolCall={setExpandedToolCall}
@@ -1089,7 +1063,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               shouldIgnoreMouseEvent={shouldIgnoreMouseEvent}
               expandedTasks={expandedTasks}
               toggleTaskGroup={toggleTaskGroup}
-              useNewRenderer={useNewRenderer}
             />
           </CardContent>
           {isActivelyProcessing && (
