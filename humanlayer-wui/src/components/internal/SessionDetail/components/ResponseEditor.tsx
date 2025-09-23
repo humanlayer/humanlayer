@@ -522,6 +522,9 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
         Placeholder.configure({
           placeholder: placeholder || 'Type something...',
         }),
+        // TEMPORARILY DISABLED: Mention functionality for fuzzy file finding
+        // Uncomment the block below to re-enable @-mention file search
+        /*
         Mention.configure({
           HTMLAttributes: {
             class: 'mention',
@@ -672,6 +675,7 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
             },
           },
         }),
+        */
       ],
       content: initialValue,
       editorProps: {
