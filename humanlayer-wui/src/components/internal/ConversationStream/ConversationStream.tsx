@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import keyBy from 'lodash.keyby'
 
 import { ConversationEvent, ConversationEventType } from '@/lib/daemon/types'
@@ -59,6 +59,7 @@ export function ConversationStream({
   const { events, loading, error, isInitialLoad } = useConversation(sessionId, undefined, 1000)
   const { refetch } = useSessionSnapshots(sessionId)
   const responseEditor = useStore(state => state.responseEditor)
+  const [showSkeleton, setShowSkeleton] = useState(false)
 
   // Filter events based on maxEventIndex (exclude the event at maxEventIndex)
   const filteredEvents = maxEventIndex !== undefined ? events.slice(0, maxEventIndex) : events
@@ -73,6 +74,18 @@ export function ConversationStream({
   const { taskGroups, rootEvents, hasSubTasks } = localTaskGrouping
   const actualExpandedTasks = expandedTasks ?? localTaskGrouping.expandedTasks
   const actualToggleTaskGroup = toggleTaskGroup ?? localTaskGrouping.toggleTaskGroup
+
+  // Add delay before showing skeleton to prevent flashing
+  useEffect(() => {
+    if (loading && isInitialLoad) {
+      const timer = setTimeout(() => {
+        setShowSkeleton(true)
+      }, 200) // 200ms delay before showing skeleton
+      return () => clearTimeout(timer)
+    } else {
+      setShowSkeleton(false)
+    }
+  }, [loading, isInitialLoad])
 
   // Watch for new Read tool results and refetch snapshots
   useEffect(() => {
@@ -164,7 +177,7 @@ export function ConversationStream({
     return <div className="text-destructive">Error loading conversation: {error}</div>
   }
 
-  if (loading && isInitialLoad) {
+  if (loading && isInitialLoad && showSkeleton) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-4 w-3/4" />
