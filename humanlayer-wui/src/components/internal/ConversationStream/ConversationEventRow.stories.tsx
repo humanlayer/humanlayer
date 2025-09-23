@@ -1919,3 +1919,162 @@ export const ExitPlanModeCompleted: Story = {
     },
   },
 }
+
+// MCP Tool stories
+const baseMCPLinearToolEvent: ConversationEvent = {
+  approvalId: 'approval-mcp-1',
+  approvalStatus: 'pending' as const,
+  claudeSessionId: 'a3751d3f-c6c5-402b-a7c6-a6fdfeaf6cd9',
+  content: undefined,
+  createdAt: new Date('2025-09-19T10:00:00Z'),
+  eventType: 'tool_call' as const,
+  id: 20,
+  isCompleted: false,
+  role: 'assistant' as const,
+  sequence: 20,
+  sessionId: '08f00f98-d110-40e1-8d0b-fdec7f594f18',
+  toolName: 'mcp__linear__list_issues',
+  toolInputJson: JSON.stringify({
+    assignee: 'me',
+    team: 'engineering',
+    limit: 10,
+  }),
+}
+
+export const MCPLinearListIssues: Story = {
+  args: {
+    event: baseMCPLinearToolEvent,
+    shouldIgnoreMouseEvent: () => false,
+    setFocusedEventId: () => {},
+    setFocusSource: () => {},
+    isFocused: false,
+    isLast: true,
+    responseEditorIsFocused: false,
+  },
+}
+
+export const MCPLinearListIssuesCompleted: Story = {
+  args: {
+    ...MCPLinearListIssues.args,
+    event: {
+      ...baseMCPLinearToolEvent,
+      approvalStatus: 'approved' as const,
+      isCompleted: true,
+      toolResultContent: 'Found 8 issues assigned to you in the engineering team',
+    },
+  },
+}
+
+const baseMCPGitHubToolEvent: ConversationEvent = {
+  approvalId: 'approval-mcp-2',
+  approvalStatus: 'pending' as const,
+  claudeSessionId: 'a3751d3f-c6c5-402b-a7c6-a6fdfeaf6cd9',
+  content: undefined,
+  createdAt: new Date('2025-09-19T10:05:00Z'),
+  eventType: 'tool_call' as const,
+  id: 21,
+  isCompleted: false,
+  role: 'assistant' as const,
+  sequence: 21,
+  sessionId: '08f00f98-d110-40e1-8d0b-fdec7f594f18',
+  toolName: 'mcp__github__create_pr',
+  toolInputJson: JSON.stringify({
+    repo: 'humanlayer/humanlayer',
+    title: 'Add dark mode support',
+    body: 'This PR implements dark mode functionality across the application',
+    base: 'main',
+    head: 'feature/dark-mode',
+  }),
+}
+
+export const MCPGitHubCreatePR: Story = {
+  args: {
+    event: baseMCPGitHubToolEvent,
+    shouldIgnoreMouseEvent: () => false,
+    setFocusedEventId: () => {},
+    setFocusSource: () => {},
+    isFocused: false,
+    isLast: true,
+    responseEditorIsFocused: false,
+  },
+}
+
+export const MCPGitHubCreatePRApproved: Story = {
+  args: {
+    ...MCPGitHubCreatePR.args,
+    event: {
+      ...baseMCPGitHubToolEvent,
+      approvalStatus: 'approved' as const,
+    },
+  },
+}
+
+export const MCPGitHubCreatePRCompleted: Story = {
+  args: {
+    ...MCPGitHubCreatePR.args,
+    event: {
+      ...baseMCPGitHubToolEvent,
+      approvalStatus: 'approved' as const,
+      isCompleted: true,
+      toolResultContent: 'Pull request #123 created successfully',
+    },
+  },
+}
+
+const baseMCPGenericToolEvent: ConversationEvent = {
+  approvalId: 'approval-mcp-3',
+  approvalStatus: 'pending' as const,
+  claudeSessionId: 'a3751d3f-c6c5-402b-a7c6-a6fdfeaf6cd9',
+  content: undefined,
+  createdAt: new Date('2025-09-19T10:10:00Z'),
+  eventType: 'tool_call' as const,
+  id: 22,
+  isCompleted: false,
+  role: 'assistant' as const,
+  sequence: 22,
+  sessionId: '08f00f98-d110-40e1-8d0b-fdec7f594f18',
+  toolName: 'mcp__custom_service__complex_method_name',
+  toolInputJson: JSON.stringify({
+    complexParam: {
+      nested: {
+        values: [1, 2, 3],
+      },
+    },
+    simpleParam: 'test-value',
+    anotherParam: 42,
+  }),
+}
+
+export const MCPGenericService: Story = {
+  args: {
+    event: baseMCPGenericToolEvent,
+    shouldIgnoreMouseEvent: () => false,
+    setFocusedEventId: () => {},
+    setFocusSource: () => {},
+    isFocused: false,
+    isLast: true,
+    responseEditorIsFocused: false,
+  },
+}
+
+export const MCPGenericServiceDenied: Story = {
+  args: {
+    ...MCPGenericService.args,
+    event: {
+      ...baseMCPGenericToolEvent,
+      approvalStatus: 'denied' as const,
+    },
+  },
+}
+
+export const MCPGenericServiceError: Story = {
+  args: {
+    ...MCPGenericService.args,
+    event: {
+      ...baseMCPGenericToolEvent,
+      approvalStatus: 'approved' as const,
+      isCompleted: true,
+      toolResultContent: 'Error: Service unavailable - failed to connect to custom_service',
+    },
+  },
+}

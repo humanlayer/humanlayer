@@ -40,3 +40,6 @@ export { NotebookEditToolCallContent } from './NotebookEditToolCallContent'
 export type { NotebookEditToolInput } from './NotebookEditToolCallContent'
 export { ExitPlanModeToolCallContent } from './ExitPlanModeToolCallContent'
 export type { ExitPlanModeToolInput } from './ExitPlanModeToolCallContent'
+
+// Phase 7 MCP Tools
+export { MCPToolCallContent } from './MCPToolCallContent'
