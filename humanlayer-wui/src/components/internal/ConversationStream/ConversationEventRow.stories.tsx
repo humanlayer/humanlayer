@@ -950,3 +950,35 @@ export const MCPGenericToolCall: Story = {
     },
   },
 }
+
+// User message with JavaScript code block
+export const UserMessageWithCodeBlock: Story = {
+  args: {
+    event: {
+      id: 743,
+      sessionId: '3cb4b1e6-1e57-4a76-b3bb-c2a03b7a0563',
+      claudeSessionId: '2ddb9694-11f1-4bfe-ac9d-9a9dd6dac356',
+      sequence: 1,
+      eventType: 'message' as const,
+      createdAt: new Date('2025-09-23T18:06:11Z'),
+      role: 'user' as const,
+      content: "```javascript\nconsole.log('yo');\n```",
+      isCompleted: false,
+      approvalId: undefined,
+      approvalStatus: undefined,
+    },
+    setFocusedEventId: () => {},
+    setFocusSource: () => {},
+    shouldIgnoreMouseEvent: () => false,
+    isFocused: false,
+    isLast: false,
+    responseEditorIsFocused: false,
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: 'User message containing a JavaScript code block with syntax highlighting',
+      },
+    },
+  },
+}
