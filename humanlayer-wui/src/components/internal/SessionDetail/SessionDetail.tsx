@@ -9,6 +9,7 @@ import { useConversation, useKeyboardNavigationProtection } from '@/hooks'
 import { ChevronDown } from 'lucide-react'
 import { daemonClient } from '@/lib/daemon/client'
 import { useStore } from '@/AppStore'
+import { getArchiveOnForkPreference } from '@/lib/preferences'
 
 // Import extracted components
 import { ConversationStream } from '../ConversationStream/ConversationStream'
@@ -202,6 +203,9 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [confirmingArchive, setConfirmingArchive] = useState(false)
   const [dangerousSkipPermissionsDialogOpen, setDangerousSkipPermissionsDialogOpen] = useState(false)
   const [directoriesDropdownOpen, setDirectoriesDropdownOpen] = useState(false)
+  const [archiveOnFork, setArchiveOnFork] = useState(() => {
+    return getArchiveOnForkPreference()
+  })
 
   const responseEditor = useStore(state => state.responseEditor)
   const isEditingSessionTitle = useStore(state => state.isEditingSessionTitle)
@@ -210,6 +214,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   // Keyboard navigation protection
   const { shouldIgnoreMouseEvent, startKeyboardNavigation } = useKeyboardNavigationProtection()
 
+  // Show spinner for active states, but not for interrupted or interrupting
   const isActivelyProcessing = ['starting', 'running', 'completing'].includes(session.status)
   const confirmingArchiveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -390,6 +395,12 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const targetApprovalId = searchParams.get('approval')
   const processedApprovalRef = useRef<string | null>(null)
 
+  // Track if we've scrolled to bottom for this session
+  const hasScrolledToBottomRef = useRef(false)
+
+  // Cache the conversation container to avoid repeated DOM queries
+  const conversationContainerRef = useRef<HTMLElement | null>(null)
+
   // Handle auto-focus when navigating with approval parameter
   useEffect(() => {
     // Only run when we actually have an approval ID to focus
@@ -409,6 +420,10 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       // Use the hook's focus method for consistency
       // This will try to match the specific approval, or fallback to most recent pending
       approvals.focusApprovalById(targetApprovalId)
+
+      // Mark that we've already scrolled for this session to prevent auto-scroll to bottom
+      // when the approval parameter is cleared
+      hasScrolledToBottomRef.current = true
 
       // Clear the parameter after focusing
       searchParams.delete('approval')
@@ -432,6 +447,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     onClose,
     pendingForkMessage,
     onForkCommit: handleForkCommit,
+    archiveOnFork, // Add this
   })
 
   // Add fork selection handler
@@ -491,14 +507,60 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     return () => window.removeEventListener('resize', checkScreenSize)
   }, [])
 
-  // Scroll to bottom when session opens
+  // Reset scroll flag when session changes
   useEffect(() => {
-    // Scroll to bottom of conversation
-    const container = document.querySelector('[data-conversation-container]')
-    if (container) {
-      container.scrollTop = container.scrollHeight
+    if (session.id) {
+      hasScrolledToBottomRef.current = false
+      // Clear cached container ref when session changes
+      conversationContainerRef.current = null
     }
-  }, [session.id]) // Re-run when session changes
+  }, [session.id])
+
+  // Enhanced auto-scroll with retry logic
+  useEffect(() => {
+    const hasApprovalParam = targetApprovalId !== null
+
+    if (!hasScrolledToBottomRef.current && events.length > 0 && !hasApprovalParam) {
+      // Try multiple times with increasing delays to handle rendering delays
+      const scrollAttempts = [100, 300, 500]
+      const timers: ReturnType<typeof setTimeout>[] = []
+
+      scrollAttempts.forEach(delay => {
+        const timer = setTimeout(() => {
+          if (!hasScrolledToBottomRef.current) {
+            // First try to use cached ref, then query DOM if needed
+            let container = conversationContainerRef.current
+            // Verify cached element is still in the DOM
+            if (container && !document.body.contains(container)) {
+              container = null
+              conversationContainerRef.current = null
+            }
+
+            if (!container) {
+              container = document.querySelector('[data-conversation-container]')
+              // Cache the container for future use if found
+              if (container) {
+                conversationContainerRef.current = container as HTMLElement
+              }
+            }
+
+            if (container) {
+              container.scrollTop = container.scrollHeight
+              hasScrolledToBottomRef.current = true
+              // Clear remaining timers once successful
+              timers.forEach(t => clearTimeout(t))
+            }
+          }
+        }, delay)
+        timers.push(timer)
+      })
+
+      // Cleanup function to clear timers on unmount or deps change
+      return () => {
+        timers.forEach(t => clearTimeout(t))
+      }
+    }
+  }, [events.length, targetApprovalId])
 
   // Cleanup confirmation timeout on unmount or session change
   useEffect(() => {
@@ -523,6 +585,23 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const lastTodo = events
     ?.toReversed()
     .find(e => e.eventType === 'tool_call' && e.toolName === 'TodoWrite')
+
+  // Get hotkeys context for modal scope checking (moved here for handleToggleForkView)
+  const { activeScopes } = useHotkeysContext()
+
+  // Fork view toggle handler (moved here to be available for escape handler)
+  const handleToggleForkView = useCallback(() => {
+    // Check if any modal scopes are active
+    const modalScopes = ['tool-result-modal', 'dangerously-skip-permissions-dialog']
+    const hasModalOpen = activeScopes.some(scope => modalScopes.includes(scope))
+
+    // Don't trigger if other modals are open
+    if (hasModalOpen) {
+      return
+    }
+
+    setForkViewOpen(!forkViewOpen)
+  }, [activeScopes, forkViewOpen])
 
   // Clear focus on escape, then close if nothing focused
   // This needs special handling for confirmingApprovalId
@@ -565,6 +644,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         return
       }
 
+      /* Everything below here implies the responeEditor is not focused */
+
       // Check for fork mode first
       if (previewEventIndex !== null) {
         // Clear fork mode
@@ -584,6 +665,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       } else if (navigation.focusedEventId) {
         navigation.setFocusedEventId(null)
       } else {
+        // Simply close the session detail
         onClose()
       }
     },
@@ -606,9 +688,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       // actions.setResponseInput,
     ],
   )
-
-  // Get hotkeys context for modal scope checking
-  const { activeScopes } = useHotkeysContext()
 
   // Create reusable handler for toggling auto-accept
   const handleToggleAutoAccept = useCallback(async () => {
@@ -695,10 +774,34 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     }
   }
 
+  // Track if g>e was recently pressed to prevent 'e' from firing
+  const gePressedRef = useRef<number | null>(null)
+
+  // Handle g>e navigation (to prevent 'e' from archiving)
+  useHotkeys(
+    'g>e',
+    () => {
+      console.log('[SessionDetail] g>e captured, blocking archive')
+      gePressedRef.current = Date.now()
+    },
+    {
+      preventDefault: true,
+      scopes: SessionDetailHotkeysScope,
+    },
+  )
+
   // Add hotkey to archive session ('e' key)
   useHotkeys(
     'e',
     async () => {
+      console.log('[SessionDetail] archive hotkey "e" fired')
+
+      // Check if g>e was pressed recently (within 50ms)
+      if (gePressedRef.current && Date.now() - gePressedRef.current < 50) {
+        console.log('[SessionDetail] Blocking archive due to recent g>e press')
+        return
+      }
+
       // TODO(3): The timeout clearing logic (using confirmingArchiveTimeoutRef) is duplicated in multiple places.
       // Consider refactoring this into a helper function to reduce repetition.
 
@@ -765,19 +868,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   )
 
   // Create reusable handler for toggling fork view
-  const handleToggleForkView = useCallback(() => {
-    // Check if any modal scopes are active
-    const modalScopes = ['tool-result-modal', 'dangerously-skip-permissions-dialog']
-    const hasModalOpen = activeScopes.some(scope => modalScopes.includes(scope))
-
-    // Don't trigger if other modals are open
-    if (hasModalOpen) {
-      return
-    }
-
-    setForkViewOpen(!forkViewOpen)
-  }, [activeScopes, forkViewOpen])
-
   // Add hotkey to open fork view (Meta+Y)
   useHotkeys(
     'meta+y',
@@ -1033,6 +1123,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
             }
           }}
           sessionStatus={session.status}
+          onArchiveOnForkChange={setArchiveOnFork}
         />
       </div>
 

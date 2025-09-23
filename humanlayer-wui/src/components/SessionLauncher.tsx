@@ -62,6 +62,27 @@ export function SessionLauncher({ isOpen, onClose }: SessionLauncherProps) {
     },
   )
 
+  // Capture Shift+Tab to prevent bubbling to background session
+  useHotkeys(
+    'shift+tab',
+    e => {
+      e.preventDefault()
+      e.stopPropagation()
+      // Use native event for complete isolation
+      const keyEvent = e as any
+      if (keyEvent.nativeEvent && typeof keyEvent.nativeEvent.stopImmediatePropagation === 'function') {
+        keyEvent.nativeEvent.stopImmediatePropagation()
+      }
+      // Let browser handle the actual navigation but prevent bubbling
+    },
+    {
+      enabled: isOpen,
+      enableOnFormTags: true,
+      scopes: SessionLauncherHotkeysScope,
+      preventDefault: true,
+    },
+  )
+
   // Only steal scope when actually open
   useStealHotkeyScope(SessionLauncherHotkeysScope, isOpen)
 
