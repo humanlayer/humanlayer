@@ -75,9 +75,7 @@ export function GrepToolCallContent({
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <div className="flex items-baseline gap-2">
-            <span className={`font-semibold ${statusColor || ''}`}>
-              Grep
-            </span>
+            <span className={`font-semibold ${statusColor || ''}`}>Grep</span>
             <span className="text-sm text-muted-foreground">
               <CommandToken>{toolInput.pattern}</CommandToken>
             </span>

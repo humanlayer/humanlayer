@@ -33,9 +33,7 @@ export function BashToolCallContent({
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <div className="flex items-baseline gap-2">
-            <span className={`font-semibold ${statusColor || ''}`}>
-              Bash
-            </span>
+            <span className={`font-semibold ${statusColor || ''}`}>Bash</span>
             {toolInput.description && (
               <span className="text-sm text-muted-foreground">{toolInput.description}</span>
             )}

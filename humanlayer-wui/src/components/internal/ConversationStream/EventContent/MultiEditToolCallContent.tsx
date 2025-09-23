@@ -24,7 +24,10 @@ export function MultiEditToolCallContent({
   isFocused,
   fileSnapshot,
   isGroupItem,
-}: ToolCallContentProps<MultiEditToolInput> & { fileSnapshot?: { content: string }; isGroupItem?: boolean }) {
+}: ToolCallContentProps<MultiEditToolInput> & {
+  fileSnapshot?: { content: string }
+  isGroupItem?: boolean
+}) {
   const [isSplitView, setIsSplitView] = useState(false)
   const isDenied = approvalStatus === ApprovalStatus.Denied
   const hasError = toolResultContent ? detectToolError('MultiEdit', toolResultContent) : false

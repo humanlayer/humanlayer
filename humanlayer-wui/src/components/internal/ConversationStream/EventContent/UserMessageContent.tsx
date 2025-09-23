@@ -6,12 +6,12 @@ export function UserMessageContent({ eventContent }: { eventContent: string }) {
 
   return (
     <div className="overflow-hidden">
-      <span className="whitespace-pre-wrap text-foreground break-all hyphens-auto">
+      <span className="whitespace-pre-wrap text-foreground break-words hyphens-auto">
         <MarkdownRenderer content={firstLine} />
       </span>
 
       {/* Body */}
-      <div className="whitespace-pre-wrap text-foreground break-all hyphens-auto">
+      <div className="whitespace-pre-wrap text-foreground break-words hyphens-auto">
         <MarkdownRenderer content={restLines} />
       </div>
     </div>

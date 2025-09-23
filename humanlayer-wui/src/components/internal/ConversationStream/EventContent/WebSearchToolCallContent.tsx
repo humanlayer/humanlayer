@@ -59,9 +59,7 @@ export function WebSearchToolCallContent({
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <div className="flex items-baseline gap-2">
-            <span className={`font-semibold ${statusColor || ''}`}>
-              Web Search
-            </span>
+            <span className={`font-semibold ${statusColor || ''}`}>Web Search</span>
           </div>
           <div className="mt-1">
             <span className="italic text-muted-foreground">{toolInput.query}</span>
