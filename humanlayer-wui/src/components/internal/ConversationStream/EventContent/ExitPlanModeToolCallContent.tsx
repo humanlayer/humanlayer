@@ -15,7 +15,12 @@ export function ExitPlanModeToolCallContent({
   isCompleted,
   toolResultContent,
   isFocused,
+  isGroupItem,
 }: ToolCallContentProps<ExitPlanModeToolInput>) {
+  const approvalStatusColor = getApprovalStatusColor(approvalStatus)
+  let statusColor =
+    isGroupItem && !approvalStatusColor ? 'text-[var(--terminal-accent)]' : approvalStatusColor
+
   const isDenied = approvalStatus === ApprovalStatus.Denied
   const hasError = toolResultContent ? detectToolError('ExitPlanMode', toolResultContent) : false
   let preview = toolResultContent ? formatToolResultPreview(toolResultContent) : null
@@ -34,7 +39,7 @@ export function ExitPlanModeToolCallContent({
       <ToolHeader
         name="Exit Plan Mode"
         description={`${lineCount} lines`}
-        nameColor={getApprovalStatusColor(approvalStatus)}
+        nameColor={statusColor}
         status={<StatusBadge status={approvalStatus} />}
       />
 

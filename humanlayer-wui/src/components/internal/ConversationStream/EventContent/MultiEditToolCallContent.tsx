@@ -23,7 +23,8 @@ export function MultiEditToolCallContent({
   toolResultContent,
   isFocused,
   fileSnapshot,
-}: ToolCallContentProps<MultiEditToolInput> & { fileSnapshot?: { content: string } }) {
+  isGroupItem,
+}: ToolCallContentProps<MultiEditToolInput> & { fileSnapshot?: { content: string }; isGroupItem?: boolean }) {
   const [isSplitView, setIsSplitView] = useState(false)
   const isDenied = approvalStatus === ApprovalStatus.Denied
   const hasError = toolResultContent ? detectToolError('MultiEdit', toolResultContent) : false
@@ -66,6 +67,10 @@ export function MultiEditToolCallContent({
   const editCount = toolInput.edits.length
   const replaceAllCount = toolInput.edits.filter(e => e.replace_all).length
 
+  const approvalStatusColor = getApprovalStatusColor(approvalStatus)
+  let statusColor =
+    isGroupItem && !approvalStatusColor ? 'text-[var(--terminal-accent)]' : approvalStatusColor
+
   return (
     <div className="space-y-2">
       <ToolHeader
@@ -79,7 +84,7 @@ export function MultiEditToolCallContent({
             <span className="font-mono">{toolInput.file_path}</span>
           </span>
         }
-        nameColor={getApprovalStatusColor(approvalStatus)}
+        nameColor={statusColor}
         status={
           <div className="flex items-center gap-2">
             <StatusBadge status={approvalStatus} />

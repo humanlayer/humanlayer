@@ -11,6 +11,7 @@ interface MCPToolInput {
 
 interface MCPToolCallContentProps extends ToolCallContentProps<MCPToolInput> {
   toolName: string
+  isGroupItem?: boolean
 }
 
 export function MCPToolCallContent({
@@ -20,6 +21,7 @@ export function MCPToolCallContent({
   isCompleted,
   toolResultContent,
   isFocused,
+  isGroupItem,
 }: MCPToolCallContentProps) {
   const { service, method } = parseMcpToolName(toolName)
   const formattedMethod = method.replace(/_/g, ' ')
@@ -72,22 +74,25 @@ export function MCPToolCallContent({
     return firstLine
   }, [isCompleted, toolResultContent, service, formattedMethod])
 
+  const approvalStatusColor = getApprovalStatusColor(approvalStatus)
+  let statusColor =
+    isGroupItem && !approvalStatusColor ? 'text-[var(--terminal-accent)]' : approvalStatusColor
+
   return (
     <div>
       <ToolHeader
         name={displayName}
         primaryParam={paramPreview || undefined}
-        nameColor={approvalStatus ? getApprovalStatusColor(approvalStatus) : undefined}
+        nameColor={approvalStatus ? statusColor : undefined}
       />
       {isCompleted && resultPreview && (
         <div className="text-sm text-muted-foreground mt-1">{resultPreview}</div>
       )}
-      {isFocused && !isCompleted && paramPreview && (
-        <div className="text-xs text-muted-foreground/70 mt-1">
-          Press <KeyboardShortcut>i</KeyboardShortcut> or click to view full
-          parameters
-        </div>
-      )}
+      <div
+        className={`text-xs text-muted-foreground/70 mt-1 ${isFocused && !isCompleted && paramPreview ? 'visible' : 'invisible'}`}
+      >
+        Press <KeyboardShortcut>i</KeyboardShortcut> or click to view full parameters
+      </div>
     </div>
   )
 }

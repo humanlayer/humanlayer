@@ -6,9 +6,9 @@ import { getApprovalStatusColor } from './utils/formatters'
 export function BashToolCallContent({
   toolInput,
   approvalStatus,
-
   toolResultContent,
   isFocused,
+  isGroupItem,
 }: BashToolCallContentProps) {
   const formatToolResult = (content: string) => {
     const lines = content.split('\n').filter(l => l.trim())
@@ -24,12 +24,16 @@ export function BashToolCallContent({
 
   const formattedResult = toolResultContent ? formatToolResult(toolResultContent) : null
 
+  const approvalStatusColor = getApprovalStatusColor(approvalStatus)
+  let statusColor =
+    isGroupItem && !approvalStatusColor ? 'text-[var(--terminal-accent)]' : approvalStatusColor
+
   return (
     <div className="space-y-2">
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <div className="flex items-baseline gap-2">
-            <span className={`font-semibold ${getApprovalStatusColor(approvalStatus) || ''}`}>
+            <span className={`font-semibold ${statusColor || ''}`}>
               Bash
             </span>
             {toolInput.description && (

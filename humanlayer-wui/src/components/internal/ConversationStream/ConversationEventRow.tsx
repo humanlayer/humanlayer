@@ -391,6 +391,7 @@ export function ConversationEventRow({
             isCompleted={event.isCompleted}
             toolResultContent={toolResult?.toolResultContent}
             isFocused={isFocused}
+            isGroupItem={isGroupItem}
           />
         )
       }
@@ -404,6 +405,7 @@ export function ConversationEventRow({
             isCompleted={event.isCompleted}
             toolResultContent={toolResult?.toolResultContent}
             isFocused={isFocused}
+            isGroupItem={isGroupItem}
           />
         )
       }
@@ -418,6 +420,7 @@ export function ConversationEventRow({
             toolResultContent={toolResult?.toolResultContent}
             isFocused={isFocused}
             fileSnapshot={fileSnapshot}
+            isGroupItem={isGroupItem}
           />
         )
       }
@@ -431,6 +434,7 @@ export function ConversationEventRow({
             isCompleted={event.isCompleted}
             toolResultContent={toolResult?.toolResultContent}
             isFocused={isFocused}
+            isGroupItem={isGroupItem}
           />
         )
       }
@@ -444,6 +448,7 @@ export function ConversationEventRow({
             isCompleted={event.isCompleted}
             toolResultContent={toolResult?.toolResultContent}
             isFocused={isFocused}
+            isGroupItem={isGroupItem}
           />
         )
       }
@@ -457,6 +462,7 @@ export function ConversationEventRow({
             isCompleted={event.isCompleted}
             toolResultContent={toolResult?.toolResultContent}
             isFocused={isFocused}
+            isGroupItem={isGroupItem}
           />
         )
       }
@@ -470,6 +476,7 @@ export function ConversationEventRow({
             isCompleted={event.isCompleted}
             toolResultContent={toolResult?.toolResultContent}
             isFocused={isFocused}
+            isGroupItem={isGroupItem}
           />
         )
       }
@@ -483,6 +490,7 @@ export function ConversationEventRow({
             isCompleted={event.isCompleted}
             toolResultContent={toolResult?.toolResultContent}
             isFocused={isFocused}
+            isGroupItem={isGroupItem}
           />
         )
       }
@@ -496,6 +504,7 @@ export function ConversationEventRow({
             isCompleted={event.isCompleted}
             toolResultContent={toolResult?.toolResultContent}
             isFocused={isFocused}
+            isGroupItem={isGroupItem}
           />
         )
       }
@@ -509,6 +518,7 @@ export function ConversationEventRow({
             isCompleted={event.isCompleted}
             toolResultContent={toolResult?.toolResultContent}
             isFocused={isFocused}
+            isGroupItem={isGroupItem}
           />
         )
       }
@@ -522,6 +532,7 @@ export function ConversationEventRow({
             isCompleted={event.isCompleted}
             toolResultContent={toolResult?.toolResultContent}
             isFocused={isFocused}
+            isGroupItem={isGroupItem}
           />
         )
       }
@@ -536,6 +547,7 @@ export function ConversationEventRow({
             toolResultContent={toolResult?.toolResultContent}
             isFocused={isFocused}
             fileSnapshot={fileSnapshot ? { content: fileSnapshot } : undefined}
+            isGroupItem={isGroupItem}
           />
         )
       }
@@ -549,6 +561,7 @@ export function ConversationEventRow({
             isCompleted={event.isCompleted}
             toolResultContent={toolResult?.toolResultContent}
             isFocused={isFocused}
+            isGroupItem={isGroupItem}
           />
         )
       }
@@ -562,6 +575,7 @@ export function ConversationEventRow({
             isCompleted={event.isCompleted}
             toolResultContent={toolResult?.toolResultContent}
             isFocused={isFocused}
+            isGroupItem={isGroupItem}
           />
         )
       }
@@ -575,6 +589,7 @@ export function ConversationEventRow({
             isCompleted={event.isCompleted}
             toolResultContent={toolResult?.toolResultContent}
             isFocused={isFocused}
+            isGroupItem={isGroupItem}
           />
         )
       }
@@ -590,6 +605,7 @@ export function ConversationEventRow({
             isCompleted={event.isCompleted}
             toolResultContent={toolResult?.toolResultContent}
             isFocused={isFocused}
+            isGroupItem={isGroupItem}
           />
         )
       }

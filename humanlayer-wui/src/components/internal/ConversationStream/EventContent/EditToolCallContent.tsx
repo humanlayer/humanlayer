@@ -20,12 +20,17 @@ export function EditToolCallContent({
   isCompleted,
   toolResultContent,
   isFocused,
+  isGroupItem,
 }: ToolCallContentProps<EditToolInput>) {
   const [isSplitView, setIsSplitView] = useState(false)
   const isDenied = approvalStatus === ApprovalStatus.Denied
   const hasError = toolResultContent ? detectToolError('Edit', toolResultContent) : false
   let preview = toolResultContent ? formatToolResultPreview(toolResultContent) : null
   const showDiff = approvalStatus === 'pending' || approvalStatus === undefined || !isCompleted
+
+  const approvalStatusColor = getApprovalStatusColor(approvalStatus)
+  let statusColor =
+    isGroupItem && !approvalStatusColor ? 'text-[var(--terminal-accent)]' : approvalStatusColor
 
   if (isDenied) {
     preview = `Denial Reason: ${toolResultContent ? formatToolResultPreview(toolResultContent) : null}`
@@ -39,7 +44,7 @@ export function EditToolCallContent({
         name="Edit"
         description={toolInput.replace_all ? 'Replace all occurrences' : undefined}
         primaryParam={<span className="font-mono text-sm">{toolInput.file_path}</span>}
-        nameColor={getApprovalStatusColor(approvalStatus)}
+        nameColor={statusColor}
         status={
           <div className="flex items-center gap-2">
             <StatusBadge status={approvalStatus} />

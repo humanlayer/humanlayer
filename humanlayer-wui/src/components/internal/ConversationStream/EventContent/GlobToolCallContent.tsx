@@ -13,6 +13,7 @@ export function GlobToolCallContent({
   approvalStatus,
   toolResultContent,
   isFocused,
+  isGroupItem,
 }: ToolCallContentProps<GlobToolInput>) {
   const formatGlobResult = (content: string) => {
     const lines = content.split('\n').filter(l => l.trim())
@@ -31,19 +32,16 @@ export function GlobToolCallContent({
 
   const formattedResult = toolResultContent ? formatGlobResult(toolResultContent) : null
 
+  const approvalStatusColor = getApprovalStatusColor(approvalStatus)
+  let statusColor =
+    isGroupItem && !approvalStatusColor ? 'text-[var(--terminal-accent)]' : approvalStatusColor
+
   return (
     <div className="space-y-2">
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <div className="flex items-baseline gap-2">
-            <span className={`font-semibold ${getApprovalStatusColor(approvalStatus) || ''}`}>
-              Glob
-            </span>
-            {toolInput.path && (
-              <span className="text-sm text-muted-foreground">in {toolInput.path}</span>
-            )}
-          </div>
-          <div className="mt-1">
+            <span className={`font-semibold ${statusColor || ''}`}>Glob</span>
             <CommandToken>{toolInput.pattern}</CommandToken>
           </div>
         </div>

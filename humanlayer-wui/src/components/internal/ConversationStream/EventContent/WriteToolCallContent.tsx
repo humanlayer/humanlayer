@@ -11,6 +11,7 @@ export interface WriteToolInput {
 
 interface WriteToolCallContentPropsWithSnapshot extends ToolCallContentProps<WriteToolInput> {
   fileSnapshot?: string
+  isGroupItem?: boolean
 }
 
 export function WriteToolCallContent({
@@ -20,7 +21,12 @@ export function WriteToolCallContent({
   toolResultContent,
   isFocused,
   fileSnapshot,
+  isGroupItem,
 }: WriteToolCallContentPropsWithSnapshot) {
+  const approvalStatusColor = getApprovalStatusColor(approvalStatus)
+  let statusColor =
+    isGroupItem && !approvalStatusColor ? 'text-[var(--terminal-accent)]' : approvalStatusColor
+
   const isNewFile = !fileSnapshot || fileSnapshot.trim() === ''
   const hasError = toolResultContent ? detectToolError('Write', toolResultContent) : false
   const preview = toolResultContent ? formatToolResultPreview(toolResultContent) : null
@@ -32,7 +38,7 @@ export function WriteToolCallContent({
         name="Write"
         description={isNewFile ? 'Create new file' : 'Overwrite file'}
         primaryParam={<span className="font-mono text-sm">{toolInput.file_path}</span>}
-        nameColor={getApprovalStatusColor(approvalStatus)}
+        nameColor={statusColor}
         status={<StatusBadge status={approvalStatus} />}
       />
 

@@ -20,7 +20,12 @@ export function NotebookReadToolCallContent({
   isCompleted,
   toolResultContent,
   isFocused,
+  isGroupItem,
 }: ToolCallContentProps<NotebookReadToolInput>) {
+  const approvalStatusColor = getApprovalStatusColor(approvalStatus)
+  let statusColor =
+    isGroupItem && !approvalStatusColor ? 'text-[var(--terminal-accent)]' : approvalStatusColor
+
   const isDenied = approvalStatus === ApprovalStatus.Denied
   const hasError = toolResultContent ? detectToolError('NotebookRead', toolResultContent) : false
   let preview = toolResultContent ? formatToolResultPreview(toolResultContent) : null
@@ -37,7 +42,7 @@ export function NotebookReadToolCallContent({
         name="NotebookRead"
         description={toolInput.cell_id ? `Cell: ${toolInput.cell_id}` : undefined}
         primaryParam={<span className="font-mono text-sm">{toolInput.notebook_path}</span>}
-        nameColor={getApprovalStatusColor(approvalStatus)}
+        nameColor={statusColor}
         status={<StatusBadge status={approvalStatus} />}
       />
 

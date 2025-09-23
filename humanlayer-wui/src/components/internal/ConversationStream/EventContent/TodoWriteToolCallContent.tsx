@@ -19,7 +19,12 @@ export function TodoWriteToolCallContent({
   approvalStatus,
 
   isFocused,
+  isGroupItem,
 }: ToolCallContentProps<TodoWriteToolInput>) {
+  const approvalStatusColor = getApprovalStatusColor(approvalStatus)
+  let statusColor =
+    isGroupItem && !approvalStatusColor ? 'text-[var(--terminal-accent)]' : approvalStatusColor
+
   const getTaskCounts = () => {
     const completed = toolInput.todos.filter(t => t.status === 'completed').length
     const inProgress = toolInput.todos.filter(t => t.status === 'in_progress').length
@@ -54,7 +59,7 @@ export function TodoWriteToolCallContent({
           name="Update TODOs"
           description={`${counts.completed} completed, ${counts.pending} pending`}
           primaryParam={currentTask ? currentTask.activeForm : undefined}
-          nameColor={getApprovalStatusColor(approvalStatus)}
+          nameColor={statusColor}
         />
         <div className="ml-4">
           <StatusBadge status={approvalStatus} />

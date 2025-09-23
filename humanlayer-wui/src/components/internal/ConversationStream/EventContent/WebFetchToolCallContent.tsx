@@ -14,7 +14,12 @@ export function WebFetchToolCallContent({
 
   toolResultContent,
   isFocused,
+  isGroupItem,
 }: ToolCallContentProps<WebFetchToolInput>) {
+  const approvalStatusColor = getApprovalStatusColor(approvalStatus)
+  let statusColor =
+    isGroupItem && !approvalStatusColor ? 'text-[var(--terminal-accent)]' : approvalStatusColor
+
   const formatFetchResult = (content: string) => {
     // Try to extract character count or size info
     const charCount = content.length
@@ -31,7 +36,7 @@ export function WebFetchToolCallContent({
     <div className="space-y-2">
       <ToolHeader
         name="Web Fetch"
-        nameColor={getApprovalStatusColor(approvalStatus)}
+        nameColor={statusColor}
         primaryParam={
           <div className="flex items-center gap-2">
             <span className="text-sm">

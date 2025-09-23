@@ -11,9 +11,9 @@ interface LSToolInput {
 export function LSToolCallContent({
   toolInput,
   approvalStatus,
-
   toolResultContent,
   isFocused,
+  isGroupItem,
 }: ToolCallContentProps<LSToolInput>) {
   const formatLSResult = (content: string) => {
     if (!content || !content.trim()) {
@@ -55,6 +55,10 @@ export function LSToolCallContent({
 
   const formattedResult = toolResultContent ? formatLSResult(toolResultContent) : null
 
+  const approvalStatusColor = getApprovalStatusColor(approvalStatus)
+  let statusColor =
+    isGroupItem && !approvalStatusColor ? 'text-[var(--terminal-accent)]' : approvalStatusColor
+
   return (
     <div className="space-y-2">
       <div className="flex items-start justify-between">
@@ -62,7 +66,7 @@ export function LSToolCallContent({
           name="List"
           description={toolInput.recursive ? 'recursive' : undefined}
           primaryParam={toolInput.path}
-          nameColor={getApprovalStatusColor(approvalStatus)}
+          nameColor={statusColor}
         />
         <div className="ml-4">
           <StatusBadge status={approvalStatus} />

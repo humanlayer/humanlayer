@@ -134,27 +134,29 @@ export function TaskGroupEventRow({
         <div className="ml-6 mt-2">
           {subTaskEvents
             .filter(event => event.eventType !== ConversationEventType.ToolResult)
-            .map((subEvent, index) => (
-              <div key={subEvent.id} className="relative border-l-2 border-muted/20">
-                <ConversationEventRow
-                  event={subEvent}
-                  toolResult={subEvent.toolId ? props.toolResultsByKey?.[subEvent.toolId] : undefined}
-                  setFocusedEventId={setFocusedEventId}
-                  setFocusSource={setFocusSource}
-                  shouldIgnoreMouseEvent={shouldIgnoreMouseEvent}
-                  isFocused={props.focusedEventId === subEvent.id}
-                  isLast={index === subTaskEvents.length - 1}
-                  responseEditorIsFocused={responseEditorIsFocused}
-                  onApprove={onApprove}
-                  onDeny={onDeny}
-                  approvingApprovalId={approvingApprovalId}
-                  denyingApprovalId={denyingApprovalId}
-                  setDenyingApprovalId={setDenyingApprovalId}
-                  onCancelDeny={onCancelDeny}
-                  {...props}
-                />
-              </div>
-            ))}
+            .map((subEvent, index) => {
+              return (
+                <div key={subEvent.id} className="relative border-l-2 border-muted/20">
+                  <ConversationEventRow
+                    event={subEvent}
+                    toolResult={subEvent.toolId ? props.toolResultsByKey?.[subEvent.toolId] : undefined}
+                    setFocusedEventId={setFocusedEventId}
+                    setFocusSource={setFocusSource}
+                    shouldIgnoreMouseEvent={shouldIgnoreMouseEvent}
+                    isFocused={props.focusedEventId === subEvent.id}
+                    isLast={index === subTaskEvents.length - 1}
+                    responseEditorIsFocused={responseEditorIsFocused}
+                    onApprove={onApprove}
+                    onDeny={onDeny}
+                    approvingApprovalId={approvingApprovalId}
+                    denyingApprovalId={denyingApprovalId}
+                    setDenyingApprovalId={setDenyingApprovalId}
+                    onCancelDeny={onCancelDeny}
+                    isGroupItem={true}
+                  />
+                </div>
+              )
+            })}
         </div>
       )}
     </div>

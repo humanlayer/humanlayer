@@ -14,7 +14,12 @@ export function WebSearchToolCallContent({
 
   toolResultContent,
   isFocused,
+  isGroupItem,
 }: ToolCallContentProps<WebSearchToolInput>) {
+  const approvalStatusColor = getApprovalStatusColor(approvalStatus)
+  let statusColor =
+    isGroupItem && !approvalStatusColor ? 'text-[var(--terminal-accent)]' : approvalStatusColor
+
   const formatSearchResult = (content: string) => {
     const lines = content.split('\n').filter(l => l.trim())
 
@@ -54,7 +59,7 @@ export function WebSearchToolCallContent({
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <div className="flex items-baseline gap-2">
-            <span className={`font-semibold ${getApprovalStatusColor(approvalStatus) || ''}`}>
+            <span className={`font-semibold ${statusColor || ''}`}>
               Web Search
             </span>
           </div>

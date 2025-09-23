@@ -16,7 +16,12 @@ export function TaskToolCallContent({
   isCompleted,
   toolResultContent,
   isFocused,
+  isGroupItem,
 }: ToolCallContentProps<TaskToolInput>) {
+  const approvalStatusColor = getApprovalStatusColor(approvalStatus)
+  let statusColor =
+    isGroupItem && !approvalStatusColor ? 'text-[var(--terminal-accent)]' : approvalStatusColor
+
   const getResultPreview = () => {
     if (!toolResultContent) return null
 
@@ -33,7 +38,7 @@ export function TaskToolCallContent({
         <ToolHeader
           name={toolInput.subagent_type || 'Task'}
           description={toolInput.description}
-          nameColor={getApprovalStatusColor(approvalStatus)}
+          nameColor={statusColor}
         />
         <div className="ml-4">
           <StatusBadge status={approvalStatus} />

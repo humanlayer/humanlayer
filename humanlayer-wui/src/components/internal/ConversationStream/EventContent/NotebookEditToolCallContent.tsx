@@ -18,7 +18,12 @@ export function NotebookEditToolCallContent({
   isCompleted,
   toolResultContent,
   isFocused,
+  isGroupItem,
 }: ToolCallContentProps<NotebookEditToolInput>) {
+  const approvalStatusColor = getApprovalStatusColor(approvalStatus)
+  let statusColor =
+    isGroupItem && !approvalStatusColor ? 'text-[var(--terminal-accent)]' : approvalStatusColor
+
   const isDenied = approvalStatus === ApprovalStatus.Denied
   const hasError = toolResultContent ? detectToolError('NotebookEdit', toolResultContent) : false
   let preview = toolResultContent ? formatToolResultPreview(toolResultContent) : null
@@ -41,7 +46,7 @@ export function NotebookEditToolCallContent({
             <span className="font-mono">{toolInput.notebook_path}</span>
           </span>
         }
-        nameColor={getApprovalStatusColor(approvalStatus)}
+        nameColor={statusColor}
         status={<StatusBadge status={approvalStatus} />}
       />
 

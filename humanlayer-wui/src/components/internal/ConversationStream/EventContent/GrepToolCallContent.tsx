@@ -21,9 +21,9 @@ interface GrepToolInput {
 export function GrepToolCallContent({
   toolInput,
   approvalStatus,
-
   toolResultContent,
   isFocused,
+  isGroupItem,
 }: ToolCallContentProps<GrepToolInput>) {
   const formatGrepResult = (content: string) => {
     const lines = content.split('\n').filter(l => l.trim())
@@ -53,6 +53,10 @@ export function GrepToolCallContent({
 
   const formattedResult = toolResultContent ? formatGrepResult(toolResultContent) : null
 
+  const approvalStatusColor = getApprovalStatusColor(approvalStatus)
+  let statusColor =
+    isGroupItem && !approvalStatusColor ? 'text-[var(--terminal-accent)]' : approvalStatusColor
+
   // Build a description of the search parameters
   const searchDescription = []
   if (toolInput.path) searchDescription.push(`in ${toolInput.path}`)
@@ -71,21 +75,12 @@ export function GrepToolCallContent({
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <div className="flex items-baseline gap-2">
-            <span className={`font-semibold ${getApprovalStatusColor(approvalStatus) || ''}`}>
+            <span className={`font-semibold ${statusColor || ''}`}>
               Grep
             </span>
             <span className="text-sm text-muted-foreground">
-              {toolInput.output_mode === 'count' && 'count mode'}
-              {toolInput.output_mode === 'content' && 'content mode'}
-              {(!toolInput.output_mode || toolInput.output_mode === 'files_with_matches') &&
-                'files mode'}
+              <CommandToken>{toolInput.pattern}</CommandToken>
             </span>
-          </div>
-          <div className="mt-1">
-            <CommandToken>{toolInput.pattern}</CommandToken>
-            {searchDescription.length > 0 && (
-              <span className="text-sm text-muted-foreground ml-2">{searchDescription.join(' ')}</span>
-            )}
           </div>
           {contextDescription.length > 0 && (
             <div className="text-xs text-muted-foreground mt-1">
@@ -99,7 +94,7 @@ export function GrepToolCallContent({
       </div>
 
       {formattedResult && (
-        <div className="mt-1 text-sm text-muted-foreground font-mono flex items-start gap-1">
+        <div className="text-sm text-muted-foreground font-mono flex items-start gap-1">
           <span className="text-muted-foreground/50">⎿</span>
           <span>
             {formattedResult}
