@@ -46,6 +46,7 @@ import {
   WebFetchToolCallContent,
   ApprovalWrapper,
   MCPToolCallContent,
+  UnknownToolCallContent,
 } from './EventContent'
 import { BashToolInput, parseToolInput, ToolName } from './EventContent/types'
 import type {
@@ -609,6 +610,24 @@ export function ConversationEventRow({
           />
         )
       }
+    } else {
+      // Fallback for unmigrated tools
+      // Log warning for unmigrated tool in development
+      if (import.meta.env.DEV) {
+        console.warn(`Unmigrated tool: ${event.toolName}`)
+      }
+      // Parse tool input generically
+      const toolInput = parseToolInput<Record<string, any>>(event.toolInputJson)
+      messageContent = (
+        <UnknownToolCallContent
+          toolName={event.toolName}
+          toolInput={toolInput}
+          isCompleted={event.isCompleted}
+          toolResultContent={toolResult?.toolResultContent}
+          isFocused={isFocused}
+          isGroupItem={isGroupItem}
+        />
+      )
     }
   } else if (event.role === ConversationRole.User) {
     messageContent = <UserMessageContent eventContent={event.content || ''} />

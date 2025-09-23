@@ -42,7 +42,18 @@ function formatJson(json: string): React.ReactNode {
   }
 }
 
-/* This will almost certainly become something else over time, but for the moment while we get a feel for the data, this is okay */
+/**
+ * @deprecated This function is being replaced by individual tool components
+ * in ConversationEventRow. Only used for legacy support.
+ * See: ConversationStream/EventContent/* for new implementations
+ *
+ * Migration status:
+ * - All 16 named tools have been migrated to individual components
+ * - MCP tools have generic handling in MCPToolCallContent
+ * - This function remains for backward compatibility only
+ *
+ * TODO: Remove this function once all legacy dependencies are updated
+ */
 export function eventToDisplayObject(
   event: ConversationEvent,
   onApprove?: (approvalId: string) => void,

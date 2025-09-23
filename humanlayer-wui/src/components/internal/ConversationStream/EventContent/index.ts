@@ -43,3 +43,6 @@ export type { ExitPlanModeToolInput } from './ExitPlanModeToolCallContent'
 
 // Phase 7 MCP Tools
 export { MCPToolCallContent } from './MCPToolCallContent'
+
+// Phase 8 Fallback for Unmigrated Tools
+export { UnknownToolCallContent } from './UnknownToolCallContent'
