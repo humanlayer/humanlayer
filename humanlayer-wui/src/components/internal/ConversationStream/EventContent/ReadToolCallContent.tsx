@@ -26,26 +26,22 @@ export function ReadToolCallContent({
     <div className="space-y-2">
       <ToolHeader
         name="Read"
-        description={
-          toolInput.offset || toolInput.limit
-            ? `${toolInput.offset ? `from line ${toolInput.offset}` : ''}${
-                toolInput.limit ? ` (${toolInput.limit} lines max)` : ''
-              }`
-            : undefined
-        }
+        description={'Read from file'}
         primaryParam={<span className="font-mono text-sm">{toolInput.file_path}</span>}
         status={<StatusBadge status={approvalStatus} />}
         nameColor={statusColor}
       />
 
       <div className="mt-1 text-sm text-muted-foreground font-mono flex items-start gap-1">
-        <span className="text-muted-foreground/50">⎿</span>
         <span>
           {lineCount ? `Read ${lineCount} ` : ''}
           {isFocused && (
-            <span className="text-xs text-muted-foreground/50 ml-2">
-              <kbd className="px-1 py-0.5 text-xs bg-muted/50 rounded">i</kbd> expand
-            </span>
+            <>
+              <span className="text-muted-foreground/50">⎿</span>
+              <span className="text-xs text-muted-foreground/50 ml-2">
+                <kbd className="px-1 py-0.5 text-xs bg-muted/50 rounded">i</kbd> expand
+              </span>
+            </>
           )}
         </span>
       </div>

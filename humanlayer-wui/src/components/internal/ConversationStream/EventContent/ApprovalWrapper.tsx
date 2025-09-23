@@ -30,26 +30,11 @@ export function ApprovalWrapper({
   onStartDeny,
   onCancelDeny,
 }: ApprovalWrapperProps) {
-  // Get border class based on approval status
-  const getBorderClass = () => {
-    switch (approvalStatus) {
-      case 'pending':
-        return 'border-solid border-[var(--terminal-warning)]'
-      case 'approved':
-      case 'resolved':
-        return 'border-solid border-[var(--terminal-success)]'
-      case 'denied':
-        return 'border-solid border-[var(--terminal-error)]'
-      default:
-        return ''
-    }
-  }
-
   const needsApproval = approvalStatus === 'pending'
   const showApprovalUI = needsApproval && event.approvalId && onApprove && onDeny
 
   return (
-    <div className={approvalStatus ? `border ${getBorderClass()} rounded p-4` : ''}>
+    <div>
       {children}
 
       {/* Show approval/deny buttons for pending approvals */}
