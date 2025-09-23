@@ -246,6 +246,8 @@ export function ConversationStream({
                 isFocused={focusedEventId === event.id}
                 isLast={index === eventsToRender.length - 1}
                 responseEditorIsFocused={responseEditor?.isFocused || false}
+                setExpandedToolResult={setExpandedToolResult}
+                setExpandedToolCall={setExpandedToolCall}
                 onApprove={onApprove}
                 onDeny={onDeny}
                 approvingApprovalId={approvingApprovalId}
@@ -267,6 +269,8 @@ export function ConversationStream({
               isFocused={focusedEventId === event.id}
               isLast={index === eventsToRender.length - 1}
               responseEditorIsFocused={responseEditor?.isFocused || false}
+              setExpandedToolResult={setExpandedToolResult}
+              setExpandedToolCall={setExpandedToolCall}
               onApprove={onApprove}
               onDeny={onDeny}
               approvingApprovalId={approvingApprovalId}

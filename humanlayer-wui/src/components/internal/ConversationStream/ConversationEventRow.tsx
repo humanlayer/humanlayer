@@ -23,6 +23,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { formatAbsoluteTimestamp, formatTimestamp } from '@/utils/formatting'
 import { copyToClipboard } from '@/utils/clipboard'
+import { hasTextSelection } from '@/utils/selection'
 import { Button } from '@/components/ui/button'
 import {
   UserMessageContent,
@@ -206,6 +207,8 @@ function CopyButton({ content }: { content: string }) {
 function ConversationEventRowShell({
   children,
   eventId,
+  eventType,
+  onClick,
   shouldIgnoreMouseEvent,
   setFocusedEventId,
   setFocusSource,
@@ -218,9 +221,12 @@ function ConversationEventRowShell({
   createdAt,
   showCopyButton,
   copyContent,
+  isGroupItem,
 }: {
   children: React.ReactNode
   eventId: number
+  eventType: ConversationEventEventTypeEnum
+  onClick?: () => void
   shouldIgnoreMouseEvent: () => boolean
   setFocusedEventId: (eventId: number | null) => void
   setFocusSource: (source: 'mouse' | 'keyboard' | null) => void
@@ -233,8 +239,14 @@ function ConversationEventRowShell({
   createdAt?: Date
   showCopyButton?: boolean
   copyContent?: string
+  isGroupItem?: boolean
 }) {
   let outerContainerClasses = ['group', 'p-4', 'transition-colors', 'duration-200', 'border-l-2']
+
+  // Add cursor-pointer for clickable tool calls
+  if (eventType === ConversationEventType.ToolCall && onClick) {
+    outerContainerClasses.push('cursor-pointer hover:bg-muted/5')
+  }
 
   /* Focused state, if the reponseEditor is focused, we use the dimmed color */
   if (isFocused) {
@@ -251,11 +263,27 @@ function ConversationEventRowShell({
     outerContainerClasses.push('border-b')
   }
 
+  if (isGroupItem) {
+    outerContainerClasses = outerContainerClasses.filter(c => c !== 'border-b' && c !== 'p-4')
+    outerContainerClasses.push('p-2')
+    outerContainerClasses.push('pl-4')
+  }
+
   return (
     <div
       ref={ref}
       className={outerContainerClasses.join(' ')}
       data-event-id={eventId}
+      onClick={() => {
+        // Only handle click for tool calls with a handler
+        if (eventType === ConversationEventType.ToolCall && onClick) {
+          // Don't open modal if user has selected text
+          if (hasTextSelection()) {
+            return
+          }
+          onClick()
+        }
+      }}
       onMouseEnter={() => {
         if (shouldIgnoreMouseEvent()) return
         setFocusedEventId(eventId)
@@ -300,7 +328,11 @@ export interface ConversationEventRowProps extends React.HTMLAttributes<HTMLDivE
   isFocused: boolean
   isLast: boolean
   responseEditorIsFocused: boolean
+  isGroupItem?: boolean
   fileSnapshot?: string // For Write tool diff preview
+  // Modal expansion props
+  setExpandedToolResult?: (event: ConversationEvent | null) => void
+  setExpandedToolCall?: (event: ConversationEvent | null) => void
   // Approval-related props
   onApprove?: (approvalId: string) => void
   onDeny?: (approvalId: string, reason: string) => void
@@ -321,6 +353,9 @@ export function ConversationEventRow({
   isLast,
   responseEditorIsFocused,
   fileSnapshot,
+  setExpandedToolResult,
+  setExpandedToolCall,
+  isGroupItem,
   onApprove,
   onDeny,
   approvingApprovalId,
@@ -588,6 +623,17 @@ export function ConversationEventRow({
     <ConversationEventRowShell
       ref={ref}
       eventId={event.id}
+      eventType={event.eventType}
+      onClick={
+        event.eventType === ConversationEventType.ToolCall &&
+        setExpandedToolResult &&
+        setExpandedToolCall
+          ? () => {
+              setExpandedToolResult(toolResult || null)
+              setExpandedToolCall(event)
+            }
+          : undefined
+      }
       shouldIgnoreMouseEvent={shouldIgnoreMouseEvent}
       setFocusedEventId={setFocusedEventId}
       setFocusSource={setFocusSource}
@@ -595,6 +641,7 @@ export function ConversationEventRow({
       isLast={isLast}
       isThinking={isThinking}
       responseEditorIsFocused={responseEditorIsFocused}
+      isGroupItem={isGroupItem}
       IconComponent={IconComponent}
       createdAt={event.createdAt}
       showCopyButton={showCopyButton}

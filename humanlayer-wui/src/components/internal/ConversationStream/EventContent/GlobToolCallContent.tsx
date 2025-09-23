@@ -11,7 +11,6 @@ interface GlobToolInput {
 export function GlobToolCallContent({
   toolInput,
   approvalStatus,
-
   toolResultContent,
   isFocused,
 }: ToolCallContentProps<GlobToolInput>) {
