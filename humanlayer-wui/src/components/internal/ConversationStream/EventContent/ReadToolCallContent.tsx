@@ -1,6 +1,6 @@
 import { ToolHeader } from './ToolHeader'
 import { StatusBadge } from './StatusBadge'
-import { formatLineCount, formatToolResultPreview, getApprovalStatusColor } from './utils/formatters'
+import { formatLineCount, getApprovalStatusColor } from './utils/formatters'
 import { ToolCallContentProps } from './types'
 
 export interface ReadToolInput {

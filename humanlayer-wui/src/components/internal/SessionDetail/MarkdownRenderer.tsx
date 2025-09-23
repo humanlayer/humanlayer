@@ -147,7 +147,7 @@ const MarkdownRendererInner = memo(
           // Let CSS handle margins, only control display
           return <p style={{ display: isInList ? 'inline' : 'block' }}>{children}</p>
         },
-        pre({ children, ...props }) {
+        pre({ children }) {
           // Mark the code element as being inside a pre block
           const codeElement = children as any
           if (codeElement?.props) {
@@ -157,7 +157,8 @@ const MarkdownRendererInner = memo(
           return <pre>{children}</pre>
         },
         code(props) {
-          const { className, children, ...rest } = props as any
+          const { className, children, ...rest } =
+            props as any /* eslint-disable-line @typescript-eslint/no-unused-vars */
           const codeString = String(children).replace(/\n$/, '')
           const codeId = `code-${Math.random().toString(36).substr(2, 9)}`
 
