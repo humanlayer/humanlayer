@@ -63,6 +63,29 @@ export const UserMessage: Story = {
   },
 }
 
+export const UserMessageLongUnbrokenText: Story = {
+  args: {
+    event: {
+      ...baseUserEvent,
+      content:
+        'Thisisaverylongmessagethatwillneverendnomatterhowhardyoutryitremainsthelongestlineintheworldandwilljustgoonandonandonandonuntileitherthiscomputerimplodesarethissolarsystemreachesitsinevitablesundeath',
+    },
+    shouldIgnoreMouseEvent: () => false,
+    setFocusedEventId: () => {},
+    setFocusSource: () => {},
+    isFocused: false,
+    isLast: true,
+    responseEditorIsFocused: false,
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: 'User message with very long unbroken text to test word wrapping behavior',
+      },
+    },
+  },
+}
+
 export const AssistantMessage: Story = {
   args: {
     event: baseAssistantEvent,
@@ -493,7 +516,11 @@ export const TodoWriteToolCall: Story = {
             status: 'completed',
             activeForm: 'Setting up project structure',
           },
-          { content: 'Install dependencies', status: 'completed', activeForm: 'Installing dependencies' },
+          {
+            content: 'Install dependencies',
+            status: 'completed',
+            activeForm: 'Installing dependencies',
+          },
           {
             content: 'Create main components',
             status: 'in_progress',
