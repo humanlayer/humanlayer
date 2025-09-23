@@ -146,6 +146,8 @@ export function TaskGroupEventRow({
                     isFocused={props.focusedEventId === subEvent.id}
                     isLast={index === subTaskEvents.length - 1}
                     responseEditorIsFocused={responseEditorIsFocused}
+                    setExpandedToolResult={props.setExpandedToolResult}
+                    setExpandedToolCall={props.setExpandedToolCall}
                     onApprove={onApprove}
                     onDeny={onDeny}
                     approvingApprovalId={approvingApprovalId}
