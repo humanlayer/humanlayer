@@ -157,7 +157,7 @@ export function SettingsDialog({ open, onOpenChange, onConfigUpdate }: SettingsD
   const handleMcpConfigUpdate = async () => {
     try {
       setSaving(true)
-      await updateUserSettings({ customMcpConfig })
+      await updateUserSettings({ customMcpConfig: customMcpConfig.trim() })
       logger.log('MCP config path updated:', customMcpConfig)
       toast.success('MCP Configuration Updated', {
         description: customMcpConfig
