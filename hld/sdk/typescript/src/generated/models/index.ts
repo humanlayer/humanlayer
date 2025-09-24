@@ -33,6 +33,7 @@ export * from './HealthResponseDependencies';
 export * from './HealthResponseDependenciesClaude';
 export * from './InterruptSessionResponse';
 export * from './InterruptSessionResponseData';
+export * from './LaunchDraftSessionRequest';
 export * from './MCPConfig';
 export * from './MCPServer';
 export * from './RecentPath';

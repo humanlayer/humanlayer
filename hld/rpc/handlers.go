@@ -112,8 +112,8 @@ func (h *SessionHandlers) HandleLaunchSession(ctx context.Context, params json.R
 		}
 	}
 
-	// Launch session
-	session, err := h.manager.LaunchSession(ctx, config)
+	// Launch session (RPC always launches, never creates drafts)
+	session, err := h.manager.LaunchSession(ctx, config, false)
 	if err != nil {
 		return nil, err
 	}

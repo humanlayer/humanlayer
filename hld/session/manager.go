@@ -178,7 +178,8 @@ func (m *Manager) getClaudeClient() (*claudecode.Client, error) {
 }
 
 // LaunchSession starts a new Claude Code session
-func (m *Manager) LaunchSession(ctx context.Context, config LaunchSessionConfig) (*Session, error) {
+// TODO(0): Consider whether we need to support non-draft session creation directly in daemon post-implementation
+func (m *Manager) LaunchSession(ctx context.Context, config LaunchSessionConfig, isDraft bool) (*Session, error) {
 	// Get Claude client (will attempt initialization if needed)
 	client, err := m.getClaudeClient()
 	if err != nil {
@@ -271,6 +272,13 @@ func (m *Manager) LaunchSession(ctx context.Context, config LaunchSessionConfig)
 	dbSession := store.NewSessionFromConfig(sessionID, runID, claudeConfig)
 	dbSession.Summary = CalculateSummary(claudeConfig.Query)
 
+	// Set initial status based on isDraft
+	if isDraft {
+		dbSession.Status = store.SessionStatusDraft
+	} else {
+		dbSession.Status = store.SessionStatusStarting
+	}
+
 	// Set title from launch config if provided
 	if config.Title != "" {
 		dbSession.Title = config.Title
@@ -354,6 +362,25 @@ func (m *Manager) LaunchSession(ctx context.Context, config LaunchSessionConfig)
 			}
 		}
 	}
+	// Skip Claude launch if this is a draft session
+	if isDraft {
+		slog.Info("created draft session",
+			"session_id", sessionID,
+			"run_id", runID,
+			"query", claudeConfig.Query,
+			"working_dir", claudeConfig.WorkingDir,
+			"additional_directories", claudeConfig.AdditionalDirectories)
+
+		// Return the draft session
+		return &Session{
+			ID:        sessionID,
+			RunID:     runID,
+			Status:    StatusDraft,
+			StartTime: startTime,
+			Config:    claudeConfig,
+		}, nil
+	}
+
 	slog.Info("launching Claude session with configuration",
 		"session_id", sessionID,
 		"run_id", runID,
@@ -1801,6 +1828,30 @@ func (m *Manager) InterruptSession(ctx context.Context, sessionID string) error 
 	}
 
 	return nil
+}
+
+// LaunchDraftSession launches a draft session by transitioning it to running state
+func (m *Manager) LaunchDraftSession(ctx context.Context, sessionID string, prompt string) error {
+	// Get the session from store
+	sess, err := m.store.GetSession(ctx, sessionID)
+	if err != nil {
+		return fmt.Errorf("failed to get session: %w", err)
+	}
+
+	// Check if session is in draft state
+	if sess.Status != store.SessionStatusDraft {
+		return fmt.Errorf("session is not in draft state")
+	}
+
+	// TODO(0): Implement actual draft launch logic
+	// This needs to:
+	// 1. Reconstruct the LaunchSessionConfig from the stored session
+	// 2. Update the query with the provided prompt
+	// 3. Call the regular launch flow (possibly extract common launch logic)
+	// 4. Update session status to starting
+	// 5. Launch Claude with the configuration
+
+	return fmt.Errorf("LaunchDraftSession not yet implemented")
 }
 
 // injectQueryAsFirstEvent adds the user's query as the first conversation event

@@ -137,7 +137,10 @@ func (h *SessionHandlers) CreateSession(ctx context.Context, req api.CreateSessi
 		}
 	}
 
-	session, err := h.manager.LaunchSession(ctx, config)
+	// Check for draft flag in request
+	isDraft := req.Body.Draft != nil && *req.Body.Draft
+
+	session, err := h.manager.LaunchSession(ctx, config, isDraft)
 	if err != nil {
 		return api.CreateSession500JSONResponse{
 			InternalErrorJSONResponse: api.InternalErrorJSONResponse{
@@ -417,6 +420,58 @@ func (h *SessionHandlers) UpdateSession(ctx context.Context, req api.UpdateSessi
 		Data: h.mapper.SessionToAPI(*session),
 	}
 	return api.UpdateSession200JSONResponse(resp), nil
+}
+
+// LaunchDraftSession launches a draft session
+func (h *SessionHandlers) LaunchDraftSession(ctx context.Context, req api.LaunchDraftSessionRequestObject) (api.LaunchDraftSessionResponseObject, error) {
+	// Get the session and verify it's a draft
+	sess, err := h.store.GetSession(ctx, string(req.Id))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return api.LaunchDraftSession404JSONResponse{
+				NotFoundJSONResponse: api.NotFoundJSONResponse{
+					Error: api.ErrorDetail{
+						Code:    "HLD-4003",
+						Message: "Session not found",
+					},
+				},
+			}, nil
+		}
+		return api.LaunchDraftSession500JSONResponse{
+			InternalErrorJSONResponse: api.InternalErrorJSONResponse{
+				Error: api.ErrorDetail{
+					Code:    "HLD-4004",
+					Message: err.Error(),
+				},
+			},
+		}, nil
+	}
+
+	// Check if session is in draft state
+	if sess.Status != store.SessionStatusDraft {
+		return api.LaunchDraftSession400JSONResponse{
+			Error: api.ErrorDetail{
+				Code:    "HLD-4001",
+				Message: "Session is not in draft state",
+			},
+		}, nil
+	}
+
+	// Launch the draft session (implementation to be added)
+	// TODO(0): Implement actual draft launch logic
+	// This will need to:
+	// 1. Update session status to starting
+	// 2. Update query with the prompt from request
+	// 3. Launch Claude with existing configuration
+
+	return api.LaunchDraftSession500JSONResponse{
+		InternalErrorJSONResponse: api.InternalErrorJSONResponse{
+			Error: api.ErrorDetail{
+				Code:    "HLD-4005",
+				Message: "LaunchDraftSession not yet implemented",
+			},
+		},
+	}, nil
 }
 
 // ContinueSession creates a new session that continues from an existing one

@@ -261,6 +261,7 @@ const (
 
 // SessionStatus constants
 const (
+	SessionStatusDraft        = "draft"
 	SessionStatusStarting     = "starting"
 	SessionStatusRunning      = "running"
 	SessionStatusCompleted    = "completed"

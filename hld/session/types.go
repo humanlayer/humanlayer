@@ -17,6 +17,7 @@ type ApprovalReconciler interface {
 type Status string
 
 const (
+	StatusDraft        Status = "draft"         // Session in configuration state
 	StatusStarting     Status = "starting"
 	StatusRunning      Status = "running"
 	StatusCompleted    Status = "completed"
@@ -99,7 +100,7 @@ type ContinueSessionConfig struct {
 // SessionManager defines the interface for managing Claude Code sessions
 type SessionManager interface {
 	// LaunchSession starts a new Claude Code session
-	LaunchSession(ctx context.Context, config LaunchSessionConfig) (*Session, error)
+	LaunchSession(ctx context.Context, config LaunchSessionConfig, isDraft bool) (*Session, error)
 
 	// ContinueSession resumes an existing completed session with a new query and optional config overrides
 	ContinueSession(ctx context.Context, req ContinueSessionConfig) (*Session, error)
@@ -112,6 +113,9 @@ type SessionManager interface {
 
 	// InterruptSession interrupts a running session
 	InterruptSession(ctx context.Context, sessionID string) error
+
+	// LaunchDraftSession launches a draft session by transitioning it to running state
+	LaunchDraftSession(ctx context.Context, sessionID string, prompt string) error
 
 	// StopAllSessions gracefully stops all active sessions with a timeout
 	StopAllSessions(timeout time.Duration) error
