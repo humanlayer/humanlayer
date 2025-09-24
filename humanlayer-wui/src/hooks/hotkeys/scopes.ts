@@ -17,6 +17,6 @@ export const HOTKEY_SCOPES = {
   TITLE_EDITING: 'titleEditing',
   ADDITIONAL_DIRECTORIES: 'additionalDirectories',
   SESSION_LAUNCHER: 'sessionLauncher',
-} as const;
+} as const
 
-export type HotkeyScope = typeof HOTKEY_SCOPES[keyof typeof HOTKEY_SCOPES];
+export type HotkeyScope = (typeof HOTKEY_SCOPES)[keyof typeof HOTKEY_SCOPES]

@@ -1,17 +1,17 @@
-import { useEffect, useState } from 'react';
-import { scopeManager } from '../hooks/hotkeys/scopeManager';
-import { useHotkeysContext } from 'react-hotkeys-hook';
+import { useEffect, useState } from 'react'
+import { scopeManager } from '../hooks/hotkeys/scopeManager'
+import { useHotkeysContext } from 'react-hotkeys-hook'
 
 export function HotkeyScopeDebugger() {
-  const [stack, setStack] = useState(scopeManager.getStack());
-  const { activeScopes } = useHotkeysContext();
+  const [stack, setStack] = useState(scopeManager.getStack())
+  const { activeScopes } = useHotkeysContext()
 
   useEffect(() => {
-    return scopeManager.subscribe(setStack);
-  }, []);
+    return scopeManager.subscribe(setStack)
+  }, [])
 
   if (!import.meta.env.DEV) {
-    return null;
+    return null
   }
 
   return (
@@ -38,5 +38,5 @@ export function HotkeyScopeDebugger() {
         ))}
       </div>
     </div>
-  );
+  )
 }

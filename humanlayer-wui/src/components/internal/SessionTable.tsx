@@ -19,6 +19,7 @@ import { daemonClient } from '@/lib/daemon/client'
 import { renderSessionStatus } from '@/utils/sessionStatus'
 import { logger } from '@/lib/logging'
 import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
+import { HotkeyScopeBoundary } from '../HotkeyScopeBoundary'
 
 interface SessionTableProps {
   sessions: Session[]
@@ -399,7 +400,10 @@ export default function SessionTable({
   )
 
   return (
-    <>
+    <HotkeyScopeBoundary
+      scope={SessionTableHotkeysScope}
+      componentName="SessionTable"
+    >
       {sessions.length > 0 ? (
         <>
           {/* TODO(2): Fix ref warning - Table component needs forwardRef */}
@@ -596,6 +600,6 @@ export default function SessionTable({
           message={searchText ? `No sessions matching "${searchText}"` : 'No sessions yet'}
         />
       )}
-    </>
+    </HotkeyScopeBoundary>
   )
 }

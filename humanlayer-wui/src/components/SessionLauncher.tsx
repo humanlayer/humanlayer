@@ -117,67 +117,67 @@ export function SessionLauncher({ isOpen, onClose }: SessionLauncherProps) {
         onClick={handleOverlayClick}
       >
         <Card
-        ref={modalRef}
-        data-command-palette
-        className={cn(
-          'w-full max-w-2xl bg-background border-2 shadow-xl',
-          'animate-in fade-in-0 zoom-in-95 duration-200',
-        )}
-      >
-        <CardContent className="p-6">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-foreground">
-                {view === 'menu'
-                  ? mode === 'command'
-                    ? 'Command Palette'
-                    : 'Jump to Session'
-                  : 'Create Session'}
-              </h2>
-              <div className="flex items-center space-x-2">
-                {view === 'input' && (
-                  <button
-                    onClick={() => setView('menu')}
-                    className="text-xs text-muted-foreground hover:text-foreground"
-                  >
-                    ← Back
-                  </button>
-                )}
-                <kbd className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">ESC</kbd>
-              </div>
-            </div>
-
-            {view === 'menu' ? (
-              <CommandPaletteMenu />
-            ) : (
-              <>
-                <CommandInput
-                  value={query}
-                  onChange={setQuery}
-                  onSubmit={handleSubmit}
-                  placeholder="Ask an agent..."
-                  isLoading={isLaunching}
-                  config={config}
-                  onConfigChange={setConfig}
-                />
-
-                {error && (
-                  <div className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded p-3">
-                    {error}
-                  </div>
-                )}
-
-                <div className="flex items-center justify-end text-xs text-muted-foreground">
-                  <div className="flex items-center space-x-2">
-                    <span>ESC Close</span>
-                  </div>
+          ref={modalRef}
+          data-command-palette
+          className={cn(
+            'w-full max-w-2xl bg-background border-2 shadow-xl',
+            'animate-in fade-in-0 zoom-in-95 duration-200',
+          )}
+        >
+          <CardContent className="p-6">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-foreground">
+                  {view === 'menu'
+                    ? mode === 'command'
+                      ? 'Command Palette'
+                      : 'Jump to Session'
+                    : 'Create Session'}
+                </h2>
+                <div className="flex items-center space-x-2">
+                  {view === 'input' && (
+                    <button
+                      onClick={() => setView('menu')}
+                      className="text-xs text-muted-foreground hover:text-foreground"
+                    >
+                      ← Back
+                    </button>
+                  )}
+                  <kbd className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">ESC</kbd>
                 </div>
-              </>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+              </div>
+
+              {view === 'menu' ? (
+                <CommandPaletteMenu />
+              ) : (
+                <>
+                  <CommandInput
+                    value={query}
+                    onChange={setQuery}
+                    onSubmit={handleSubmit}
+                    placeholder="Ask an agent..."
+                    isLoading={isLaunching}
+                    config={config}
+                    onConfigChange={setConfig}
+                  />
+
+                  {error && (
+                    <div className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded p-3">
+                      {error}
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-end text-xs text-muted-foreground">
+                    <div className="flex items-center space-x-2">
+                      <span>ESC Close</span>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </HotkeyScopeBoundary>
   )
 }

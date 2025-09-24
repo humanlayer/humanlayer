@@ -105,11 +105,15 @@ export function Layout() {
   }, [])
 
   // Secret hotkey for launch theme
-  useHotkeys('mod+shift+y', () => {
-    setTheme('launch')
-  }, {
-    scopes: [HOTKEY_SCOPES.ROOT]
-  })
+  useHotkeys(
+    'mod+shift+y',
+    () => {
+      setTheme('launch')
+    },
+    {
+      scopes: [HOTKEY_SCOPES.ROOT],
+    },
+  )
 
   // Settings dialog hotkey
   // TODO: We should bump this to "cmd+," later on
@@ -733,8 +737,8 @@ export function Layout() {
 
   return (
     <div className="h-screen flex flex-col bg-background text-foreground">
-        {/* Main content */}
-        <main className="flex-1 flex flex-col p-4 overflow-hidden">
+      {/* Main content */}
+      <main className="flex-1 flex flex-col p-4 overflow-hidden">
         {connected && (
           <>
             <Breadcrumbs />

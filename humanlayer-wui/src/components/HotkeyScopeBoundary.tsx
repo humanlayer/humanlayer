@@ -1,15 +1,15 @@
-import React, { useEffect, useRef } from 'react';
-import { useHotkeysContext } from 'react-hotkeys-hook';
-import { scopeManager } from '../hooks/hotkeys/scopeManager';
-import { HotkeyScope, HOTKEY_SCOPES } from '../hooks/hotkeys/scopes';
-import { nanoid } from 'nanoid';
+import React, { useEffect, useRef } from 'react'
+import { useHotkeysContext } from 'react-hotkeys-hook'
+import { scopeManager } from '../hooks/hotkeys/scopeManager'
+import { HotkeyScope, HOTKEY_SCOPES } from '../hooks/hotkeys/scopes'
+import { nanoid } from 'nanoid'
 
 interface HotkeyScopeBoundaryProps {
-  scope: HotkeyScope;
-  isActive?: boolean; // For modals/conditionally visible components
-  rootScopeDisabled?: boolean;
-  componentName?: string; // For debugging
-  children: React.ReactNode;
+  scope: HotkeyScope
+  isActive?: boolean // For modals/conditionally visible components
+  rootScopeDisabled?: boolean
+  componentName?: string // For debugging
+  children: React.ReactNode
 }
 
 export function HotkeyScopeBoundary({
@@ -17,21 +17,21 @@ export function HotkeyScopeBoundary({
   isActive = true,
   rootScopeDisabled = false,
   componentName,
-  children
+  children,
 }: HotkeyScopeBoundaryProps) {
-  const { enableScope, disableScope, activeScopes } = useHotkeysContext();
-  const entryIdRef = useRef<string>();
-  const previousScopesRef = useRef<string[]>([]);
+  const { enableScope, disableScope, activeScopes } = useHotkeysContext()
+  const entryIdRef = useRef<string>()
+  const previousScopesRef = useRef<string[]>([])
 
   useEffect(() => {
-    if (!isActive) return;
+    if (!isActive) return
 
     // Generate unique ID for this boundary instance
-    const entryId = nanoid();
-    entryIdRef.current = entryId;
+    const entryId = nanoid()
+    entryIdRef.current = entryId
 
     // Capture current active scopes
-    previousScopesRef.current = [...activeScopes];
+    previousScopesRef.current = [...activeScopes]
 
     // Push to stack
     scopeManager.push({
@@ -39,8 +39,8 @@ export function HotkeyScopeBoundary({
       scope,
       rootDisabled: rootScopeDisabled,
       timestamp: Date.now(),
-      component: componentName
-    });
+      component: componentName,
+    })
 
     // Apply scope changes
     const applyScopes = () => {
@@ -48,37 +48,38 @@ export function HotkeyScopeBoundary({
       previousScopesRef.current.forEach(s => {
         if (s !== HOTKEY_SCOPES.GLOBAL) {
           if (rootScopeDisabled || s !== HOTKEY_SCOPES.ROOT) {
-            disableScope(s);
+            disableScope(s)
           }
         }
-      });
+      })
 
       // Enable our scope
-      enableScope(scope);
-    };
+      enableScope(scope)
+    }
 
-    applyScopes();
+    applyScopes()
 
     // Cleanup
     return () => {
       // Use setTimeout to handle React's unmount order
       setTimeout(() => {
         if (entryIdRef.current) {
-          scopeManager.remove(entryIdRef.current);
+          scopeManager.remove(entryIdRef.current)
 
           // Disable our scope
-          disableScope(scope);
+          disableScope(scope)
 
           // Restore previous scopes
           previousScopesRef.current.forEach(s => {
-            if (s !== scope) { // Don't re-enable if it was in previous
-              enableScope(s);
+            if (s !== scope) {
+              // Don't re-enable if it was in previous
+              enableScope(s)
             }
-          });
+          })
         }
-      }, 0);
-    };
-  }, [isActive, scope, rootScopeDisabled, componentName, enableScope, disableScope]);
+      }, 0)
+    }
+  }, [isActive, scope, rootScopeDisabled, componentName, enableScope, disableScope])
 
-  return <>{children}</>;
+  return <>{children}</>
 }

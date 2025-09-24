@@ -392,7 +392,7 @@ export function useSessionLauncherHotkeys() {
     {
       scopes: [HOTKEY_SCOPES.ROOT],
       preventDefault: true,
-    }
+    },
   )
 
   // C - Create new session (root scope)
@@ -409,7 +409,7 @@ export function useSessionLauncherHotkeys() {
       scopes: [HOTKEY_SCOPES.ROOT],
       enabled: !isTypingInInput(),
       preventDefault: true,
-    }
+    },
   )
 
   // G - G prefix mode (root scope)
@@ -423,7 +423,7 @@ export function useSessionLauncherHotkeys() {
       scopes: [HOTKEY_SCOPES.ROOT],
       enabled: !isTypingInInput(),
       preventDefault: true,
-    }
+    },
   )
 
   // Note: G>S, G>E, G>I are already handled in Layout.tsx with the new scope system
