@@ -5,9 +5,61 @@ import { ConversationEvent } from '@/lib/daemon/types'
 import { truncate, parseMcpToolName } from '@/utils/formatting'
 import { useStealHotkeyScope } from '@/hooks/useStealHotkeyScope'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { getToolIcon } from '../eventToDisplayObject'
 import { CustomDiffViewer } from './CustomDiffViewer'
 import { AnsiText, hasAnsiCodes } from '@/utils/ansiParser'
+import {
+  Wrench,
+  Globe,
+  FilePenLine,
+  FileText,
+  Terminal,
+  Search,
+  ListTodo,
+  ListChecks,
+} from 'lucide-react'
+
+// Helper function to get the appropriate icon for a tool
+function getToolIcon(toolName: string | undefined): React.ReactNode {
+  const className = 'w-3.5 h-3.5'
+
+  if (!toolName) return <Wrench className={className} />
+
+  // Handle MCP tools
+  if (toolName.startsWith('mcp__')) {
+    return <Globe className={className} />
+  }
+
+  // Handle regular tools
+  switch (toolName) {
+    case 'Edit':
+    case 'MultiEdit':
+      return <FilePenLine className={className} />
+    case 'Read':
+      return <FileText className={className} />
+    case 'Write':
+      return <FilePenLine className={className} />
+    case 'Bash':
+      return <Terminal className={className} />
+    case 'Grep':
+    case 'Glob':
+      return <Search className={className} />
+    case 'LS':
+    case 'List':
+      return <FileText className={className} />
+    case 'TodoWrite':
+      return <ListTodo className={className} />
+    case 'WebSearch':
+    case 'WebFetch':
+      return <Globe className={className} />
+    case 'ExitPlanMode':
+      return <ListChecks className={className} />
+    case 'NotebookRead':
+    case 'NotebookEdit':
+      return <FileText className={className} />
+    default:
+      return <Wrench className={className} />
+  }
+}
 
 // TODO(3): Add keyboard navigation hints in the UI
 // TODO(2): Consider adding copy-to-clipboard functionality for tool results

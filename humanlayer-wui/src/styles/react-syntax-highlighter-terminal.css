@@ -9,6 +9,7 @@
   border: 1px solid var(--terminal-border);
   border-radius: 0;
   overflow-x: auto;
+  padding: 1rem !important;
 }
 
 .rsh-pre {

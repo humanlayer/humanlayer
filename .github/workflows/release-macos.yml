@@ -179,11 +179,10 @@ jobs:
 
             ```
             brew install --cask --no-quarantine humanlayer/humanlayer/codelayer${{ contains(steps.version.outputs.release_version, 'nightly') && '-nightly' || '' }}
-            # open CodeLayer with current shell PATH so it can find your `claude` CLI
+            # if you want Claude to inherit your shell environment (API keys, claude env vars)
+            # then open from the CLI rather than Spotlight/Raycast/etc
             open /Applications/CodeLayer${{ contains(steps.version.outputs.release_version, 'nightly') && '-Nightly' || '' }}.app
             ```
-
-            * if your `claude` cli is not in a very-default location like `/usr/local/bin`, you will need to launch with `open /Applications/CodeLayer${{ contains(steps.version.outputs.release_version, 'nightly') && '-Nightly' || '' }}.app` rather than launching from Spotlight/Finder/Raycast/etc
 
             ### Requirements
 
@@ -194,7 +193,7 @@ jobs:
             * If install fails, ensure you've cleaned up all previous artifacts. `brew reinstall` is worth a shot as well.
             * Logs can be found at `~/Library/Logs/dev.humanlayer.wui${{ contains(steps.version.outputs.release_version, 'nightly') && '.nightly' || '' }}/CodeLayer${{ contains(steps.version.outputs.release_version, 'nightly') && '-Nightly' || '' }}.log`
             * If daemon fails due to already running, close CodeLayer completely and reopen
-            * If opening from spotlight/alfred/raycast/finder fails, try `open /Applications/CodeLayer${{ contains(steps.version.outputs.release_version, 'nightly') && '-Nightly' || '' }}.app` to push your PATH into CodeLayer so it can better find your `claude` CLI
+            * If opening from spotlight/alfred/raycast/finder fails, try `open /Applications/CodeLayer${{ contains(steps.version.outputs.release_version, 'nightly') && '-Nightly' || '' }}.app` to push your shell environment into CodeLayer so it can access your API keys and claude env vars
 
           draft: false
           prerelease: ${{ contains(steps.version.outputs.release_version, 'nightly') }}

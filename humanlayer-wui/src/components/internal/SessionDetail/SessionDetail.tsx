@@ -12,7 +12,7 @@ import { useStore } from '@/AppStore'
 import { getArchiveOnForkPreference } from '@/lib/preferences'
 
 // Import extracted components
-import { ConversationContent } from './views/ConversationContent'
+import { ConversationStream } from '../ConversationStream/ConversationStream'
 import { ToolResultModal } from './components/ToolResultModal'
 import { TodoWidget } from './components/TodoWidget'
 import { ResponseInput } from './components/ResponseInput'
@@ -196,7 +196,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [isWideView, setIsWideView] = useState(false)
   const [expandedToolResult, setExpandedToolResult] = useState<ConversationEvent | null>(null)
   const [expandedToolCall, setExpandedToolCall] = useState<ConversationEvent | null>(null)
-  const [isSplitView, setIsSplitView] = useState(false)
   const [forkViewOpen, setForkViewOpen] = useState(false)
   const [previewEventIndex, setPreviewEventIndex] = useState<number | null>(null)
   const [pendingForkMessage, setPendingForkMessage] = useState<ConversationEvent | null>(null)
@@ -1131,10 +1130,10 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       <div className={`flex flex-1 gap-4 ${isWideView ? 'flex-row' : 'flex-col'} min-h-0`}>
         {/* Conversation content and Loading */}
         <Card
-          className={`Conversation-Card ${isWideView ? 'flex-1' : 'w-full'} relative ${cardVerticalPadding} flex flex-col min-h-0`}
+          className={`Conversation-Card w-full relative ${cardVerticalPadding} flex flex-col min-h-0`}
         >
           <CardContent className="px-3 flex flex-col flex-1 min-h-0">
-            <ConversationContent
+            <ConversationStream
               sessionId={session.id}
               focusedEventId={navigation.focusedEventId}
               setFocusedEventId={navigation.setFocusedEventId}
@@ -1143,15 +1142,11 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                 approvals.handleDeny(approvalId, reason, session.id)
               }
               approvingApprovalId={approvals.approvingApprovalId}
-              confirmingApprovalId={approvals.confirmingApprovalId}
               denyingApprovalId={approvals.denyingApprovalId ?? undefined}
               setDenyingApprovalId={approvals.setDenyingApprovalId}
               onCancelDeny={approvals.handleCancelDeny}
-              isSplitView={isSplitView}
-              onToggleSplitView={() => setIsSplitView(!isSplitView)}
               focusSource={navigation.focusSource}
               setFocusSource={navigation.setFocusSource}
-              setConfirmingApprovalId={approvals.setConfirmingApprovalId}
               expandedToolResult={expandedToolResult}
               setExpandedToolResult={setExpandedToolResult}
               setExpandedToolCall={setExpandedToolCall}
