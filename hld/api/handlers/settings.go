@@ -36,8 +36,8 @@ func (h *SettingsHandlers) GetUserSettings(ctx context.Context, req api.GetUserS
 	}
 
 	var customMCPConfig *string
-	if settings.CustomMCPConfig != "" {
-		customMCPConfig = &settings.CustomMCPConfig
+	if settings.CustomMcpConfig != "" {
+		customMCPConfig = &settings.CustomMcpConfig
 	}
 
 	return api.GetUserSettings200JSONResponse{
@@ -75,7 +75,7 @@ func (h *SettingsHandlers) UpdateUserSettings(ctx context.Context, req api.Updat
 		current.OptInTelemetry = req.Body.OptInTelemetry
 	}
 	if req.Body.CustomMcpConfig != nil {
-		current.CustomMCPConfig = *req.Body.CustomMcpConfig
+		current.CustomMcpConfig = *req.Body.CustomMcpConfig
 	}
 
 	// Save updated settings
@@ -107,8 +107,8 @@ func (h *SettingsHandlers) UpdateUserSettings(ctx context.Context, req api.Updat
 	}
 
 	var updatedCustomMCPConfig *string
-	if updated.CustomMCPConfig != "" {
-		updatedCustomMCPConfig = &updated.CustomMCPConfig
+	if updated.CustomMcpConfig != "" {
+		updatedCustomMCPConfig = &updated.CustomMcpConfig
 	}
 
 	return api.UpdateUserSettings200JSONResponse{

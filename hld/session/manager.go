@@ -258,8 +258,8 @@ func (m *Manager) LaunchSession(ctx context.Context, config LaunchSessionConfig)
 	userSettings, err := m.store.GetUserSettings(ctx)
 	if err != nil {
 		slog.Warn("failed to get user settings for MCP config", "error", err)
-	} else if userSettings.CustomMCPConfig != "" {
-		if err := m.loadCustomMCPConfig(ctx, userSettings.CustomMCPConfig, claudeConfig.MCPConfig); err != nil {
+	} else if userSettings.CustomMcpConfig != "" {
+		if err := m.loadCustomMCPConfig(ctx, userSettings.CustomMcpConfig, claudeConfig.MCPConfig); err != nil {
 			slog.Error("failed to load custom MCP config", "error", err)
 			// Continue anyway - don't fail the session launch
 		}

@@ -1818,7 +1818,7 @@ func (s *SQLiteStore) GetUserSettings(ctx context.Context) (*UserSettings, error
 		SELECT advanced_providers, opt_in_telemetry, COALESCE(custom_mcp_config, ''), created_at, updated_at
 		FROM user_settings WHERE id = 1
 	`).Scan(&settings.AdvancedProviders, &settings.OptInTelemetry, &customMCPConfig, &settings.CreatedAt, &settings.UpdatedAt)
-	settings.CustomMCPConfig = customMCPConfig.String
+	settings.CustomMcpConfig = customMCPConfig.String
 
 	if err == sql.ErrNoRows {
 		// Return defaults if not found (for backwards compatibility)
@@ -1837,7 +1837,7 @@ func (s *SQLiteStore) UpdateUserSettings(ctx context.Context, settings UserSetti
 		UPDATE user_settings
 		SET advanced_providers = ?, opt_in_telemetry = ?, custom_mcp_config = ?, updated_at = CURRENT_TIMESTAMP
 		WHERE id = 1
-	`, settings.AdvancedProviders, settings.OptInTelemetry, settings.CustomMCPConfig)
+	`, settings.AdvancedProviders, settings.OptInTelemetry, settings.CustomMcpConfig)
 	return err
 }
 

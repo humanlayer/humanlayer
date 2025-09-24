@@ -65,7 +65,7 @@ type ConversationStore interface {
 type UserSettings struct {
 	AdvancedProviders bool      `json:"advanced_providers"`
 	OptInTelemetry    *bool     `json:"opt_in_telemetry"` // Pointer to handle NULL (unset)
-	CustomMCPConfig   string    `json:"custom_mcp_config"` // Path to custom MCP configuration JSON file
+	CustomMcpConfig   string    `json:"custom_mcp_config"` // Path to custom MCP configuration JSON file
 	CreatedAt         time.Time `json:"created_at"`
 	UpdatedAt         time.Time `json:"updated_at"`
 }
