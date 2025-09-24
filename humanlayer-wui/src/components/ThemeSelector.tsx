@@ -18,7 +18,6 @@ import {
   Terminal,
 } from 'lucide-react'
 import { useHotkeys, useHotkeysContext } from 'react-hotkeys-hook'
-import { SessionTableHotkeysScope } from './internal/SessionTable'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { KeyboardShortcut } from './HotkeyPanel'
 

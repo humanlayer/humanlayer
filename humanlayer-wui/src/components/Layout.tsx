@@ -44,6 +44,7 @@ import { DvdScreensaver } from '@/components/DvdScreensaver'
 import { TestErrorTrigger } from '@/components/TestErrorTrigger'
 import { CodeLayerToaster } from '@/components/internal/CodeLayerToaster'
 import { useDebugStore } from '@/stores/useDebugStore'
+import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
 
 export function Layout() {
   const [approvals, setApprovals] = useState<any[]>([])
@@ -571,15 +572,25 @@ export function Layout() {
   )
 
   // Global hotkey for feedback
-  useHotkeys('mod+shift+f', async () => {
-    try {
-      await openUrl(
-        'https://github.com/humanlayer/humanlayer/issues/new?title=Feedback%20on%20CodeLayer&body=%23%23%23%20Problem%20to%20solve%20%2F%20Expected%20Behavior%0A%0A%0A%23%23%23%20Proposed%20solution',
-      )
-    } catch (error) {
-      logger.error('Failed to open feedback URL:', error)
-    }
-  })
+  // Note: Not specifying a scope makes it work in whatever scopes are currently active
+  // This is different from scopes: '*' which would require the '*' scope to be enabled
+  useHotkeys(
+    'mod+shift+f',
+    async () => {
+      try {
+        await openUrl(
+          'https://github.com/humanlayer/humanlayer/issues/new?title=Feedback%20on%20CodeLayer&body=%23%23%23%20Problem%20to%20solve%20%2F%20Expected%20Behavior%0A%0A%0A%23%23%23%20Proposed%20solution',
+        )
+      } catch (error) {
+        logger.error('Failed to open feedback URL:', error)
+      }
+    },
+    {
+      // No scope specified - works in all active scopes
+      enabled: true,
+      preventDefault: true,
+    },
+  )
 
   // Prevent escape key from exiting full screen
   // Might be worth guarding this specifically in macOS
