@@ -47,6 +47,9 @@ interface ResponseInputProps {
   onToggleArchive?: () => void
   previewEventIndex?: number | null
   isActivelyProcessing?: boolean
+  isDraft?: boolean
+  onLaunchDraft?: () => void
+  onDiscardDraft?: () => void
 }
 
 export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }, ResponseInputProps>(
@@ -76,6 +79,9 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
       autoAcceptEnabled = false,
       isArchived = false,
       onToggleArchive,
+      isDraft = false,
+      onLaunchDraft,
+      onDiscardDraft,
     },
     ref,
   ) => {
@@ -106,6 +112,7 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
       return () => clearTimeout(timeout)
     }, [session.claudeSessionId])
     const getSendButtonText = () => {
+      if (isDraft) return 'Launch'
       if (isResponding) return 'Interrupting...'
       if (isDenying) return youSure ? 'Deny?' : 'Deny'
 
@@ -148,6 +155,12 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
 
     const handleSubmit = () => {
       logger.log('ResponseInput.handleSubmit()')
+
+      // Handle draft launch
+      if (isDraft) {
+        onLaunchDraft?.()
+        return
+      }
 
       // Check if this is an interruption attempt without claudeSessionId
       const isRunning =
@@ -299,6 +312,17 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
     const isMac = navigator.platform.includes('Mac')
     // Show different keyboard shortcut based on state
     const sendKey = isRunning && !hasText ? 'Ctrl+X' : isMac ? '⌘+Enter' : 'Ctrl+Enter'
+
+    // Determine submit button variant based on state
+    let submitButtonVariant: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link' = 'default'
+    if (isDraft) {
+      submitButtonVariant = 'default'
+    } else if (isDenying) {
+      submitButtonVariant = 'destructive'
+    } else if (isRunning && !hasText && canInterrupt) {
+      submitButtonVariant = 'destructive'
+    }
+
     let outerBorderColorClass = ''
 
     let placeholder = getInputPlaceholder(session.status)
@@ -455,17 +479,21 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
               </div>
 
               {/* Keyboard shortcuts (condensed) */}
-              <div className="flex items-center justify-end">
+              <div className="flex items-center justify-end gap-2">
+                {isDraft && (
+                  <Button
+                    onClick={onDiscardDraft}
+                    disabled={isResponding}
+                    variant="outline"
+                    className="h-auto py-0.5 px-2 text-xs transition-all duration-200"
+                  >
+                    {responseEditor && !responseEditor.isEmpty ? 'Discard' : 'Cancel'}
+                  </Button>
+                )}
                 <Button
                   onClick={handleSubmit}
                   disabled={isDisabled}
-                  variant={
-                    isDenying
-                      ? 'destructive'
-                      : isRunning && !hasText && canInterrupt
-                        ? 'destructive'
-                        : 'default'
-                  }
+                  variant={submitButtonVariant}
                   className="h-auto py-0.5 px-2 text-xs transition-all duration-200"
                 >
                   {getSendButtonText()}

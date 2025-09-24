@@ -21,6 +21,7 @@ import { SessionModeIndicator } from './AutoAcceptIndicator'
 import { ForkViewModal } from './components/ForkViewModal'
 import { DangerouslySkipPermissionsDialog } from './DangerouslySkipPermissionsDialog'
 import { AdditionalDirectoriesDropdown } from './components/AdditionalDirectoriesDropdown'
+import { DiscardDraftDialog } from './components/DiscardDraftDialog'
 
 // Import hooks
 import { useSessionActions } from './hooks/useSessionActions'
@@ -206,6 +207,10 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [archiveOnFork, setArchiveOnFork] = useState(() => {
     return getArchiveOnForkPreference()
   })
+  const [showDiscardDialog, setShowDiscardDialog] = useState(false)
+
+  // Check if this is a draft session
+  const isDraft = session.status === SessionStatus.Draft
 
   const responseEditor = useStore(state => state.responseEditor)
   const isEditingSessionTitle = useStore(state => state.isEditingSessionTitle)
@@ -578,6 +583,55 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     // Update the local store and refresh session data
     useStore.getState().updateSession(session.id, { additionalDirectories: directories })
   }
+
+  // Handle launching a draft session
+  const handleLaunchDraft = useCallback(async () => {
+    if (!isDraft) return
+
+    try {
+      // Save prompt to localStorage
+      localStorage.setItem(`response-input.${session.id}`, JSON.stringify(responseEditor?.getJSON() || {}))
+
+      // TODO: Call the launch draft endpoint once it's available
+      // await daemonClient.launchDraftSession(session.id)
+
+      // For now, just continue the session which will transition it from draft to running
+      actions.handleContinueSession()
+    } catch (error) {
+      toast.error('Failed to launch draft session', {
+        description: error instanceof Error ? error.message : 'Unknown error',
+      })
+    }
+  }, [isDraft, session.id, responseEditor, actions])
+
+  // Handle discarding a draft session
+  const handleDiscardDraft = useCallback(() => {
+    const hasChanges = responseEditor && !responseEditor.isEmpty
+    if (hasChanges) {
+      setShowDiscardDialog(true)
+    } else {
+      // No changes, just go back
+      onClose()
+    }
+  }, [responseEditor, onClose])
+
+  // Handle confirmed discard
+  const handleConfirmDiscard = useCallback(async () => {
+    try {
+      // TODO: Call delete draft endpoint once it's available
+      // await daemonClient.deleteDraftSession(session.id)
+
+      // Clear localStorage
+      localStorage.removeItem(`response-input.${session.id}`)
+
+      // Navigate back to session list
+      onClose()
+    } catch (error) {
+      toast.error('Failed to discard draft', {
+        description: error instanceof Error ? error.message : 'Unknown error',
+      })
+    }
+  }, [session.id, onClose])
 
   // Check if there are pending approvals out of view
   const [hasPendingApprovalsOutOfView, setHasPendingApprovalsOutOfView] = useState(false)
@@ -1133,28 +1187,34 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
           className={`Conversation-Card w-full relative ${cardVerticalPadding} flex flex-col min-h-0`}
         >
           <CardContent className="px-3 flex flex-col flex-1 min-h-0">
-            <ConversationStream
-              sessionId={session.id}
-              focusedEventId={navigation.focusedEventId}
-              setFocusedEventId={navigation.setFocusedEventId}
-              onApprove={approvals.handleApprove}
-              onDeny={(approvalId: string, reason: string) =>
-                approvals.handleDeny(approvalId, reason, session.id)
-              }
-              approvingApprovalId={approvals.approvingApprovalId}
-              denyingApprovalId={approvals.denyingApprovalId ?? undefined}
-              setDenyingApprovalId={approvals.setDenyingApprovalId}
-              onCancelDeny={approvals.handleCancelDeny}
-              focusSource={navigation.focusSource}
-              setFocusSource={navigation.setFocusSource}
-              expandedToolResult={expandedToolResult}
-              setExpandedToolResult={setExpandedToolResult}
-              setExpandedToolCall={setExpandedToolCall}
-              maxEventIndex={previewEventIndex ?? undefined}
-              shouldIgnoreMouseEvent={shouldIgnoreMouseEvent}
-              expandedTasks={expandedTasks}
-              toggleTaskGroup={toggleTaskGroup}
-            />
+            {!isDraft ? (
+              <ConversationStream
+                sessionId={session.id}
+                focusedEventId={navigation.focusedEventId}
+                setFocusedEventId={navigation.setFocusedEventId}
+                onApprove={approvals.handleApprove}
+                onDeny={(approvalId: string, reason: string) =>
+                  approvals.handleDeny(approvalId, reason, session.id)
+                }
+                approvingApprovalId={approvals.approvingApprovalId}
+                denyingApprovalId={approvals.denyingApprovalId ?? undefined}
+                setDenyingApprovalId={approvals.setDenyingApprovalId}
+                onCancelDeny={approvals.handleCancelDeny}
+                focusSource={navigation.focusSource}
+                setFocusSource={navigation.setFocusSource}
+                expandedToolResult={expandedToolResult}
+                setExpandedToolResult={setExpandedToolResult}
+                setExpandedToolCall={setExpandedToolCall}
+                maxEventIndex={previewEventIndex ?? undefined}
+                shouldIgnoreMouseEvent={shouldIgnoreMouseEvent}
+                expandedTasks={expandedTasks}
+                toggleTaskGroup={toggleTaskGroup}
+              />
+            ) : (
+              <div className="flex flex-1 items-center justify-center text-muted-foreground">
+                <p>Configure your session settings and launch when ready</p>
+              </div>
+            )}
           </CardContent>
           {isActivelyProcessing && (
             <div
@@ -1210,6 +1270,9 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
             handleContinueSession={actions.handleContinueSession}
             isForkMode={actions.isForkMode}
             forkTokenCount={forkTokenCount}
+            isDraft={isDraft}
+            onLaunchDraft={handleLaunchDraft}
+            onDiscardDraft={handleDiscardDraft}
             forkTurnNumber={
               previewEventIndex !== null
                 ? events
@@ -1273,6 +1336,13 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         open={dangerousSkipPermissionsDialogOpen}
         onOpenChange={setDangerousSkipPermissionsDialogOpen}
         onConfirm={handleDangerousSkipPermissionsConfirm}
+      />
+
+      {/* Discard Draft Dialog */}
+      <DiscardDraftDialog
+        open={showDiscardDialog}
+        onConfirm={handleConfirmDiscard}
+        onCancel={() => setShowDiscardDialog(false)}
       />
     </section>
   )
