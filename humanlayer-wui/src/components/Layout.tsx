@@ -5,6 +5,7 @@ import { register } from '@tauri-apps/plugin-global-shortcut'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { toast } from 'sonner'
+import { windowStateService } from '@/services/WindowStateService'
 import {
   ApprovalResolvedEventData,
   ApprovalStatus,
@@ -87,6 +88,18 @@ export function Layout() {
 
     window.addEventListener('keydown', backForwardHandler)
     return () => window.removeEventListener('keydown', backForwardHandler)
+  }, [])
+
+  // Initialize window state service for main window only
+  useEffect(() => {
+    // Only initialize for main window, not quick-launcher
+    if (window.location.hash !== '#/quick-launcher') {
+      windowStateService.initialize()
+    }
+
+    return () => {
+      windowStateService.destroy()
+    }
   }, [])
 
   // Secret hotkey for launch theme

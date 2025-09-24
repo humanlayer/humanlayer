@@ -253,3 +253,15 @@
   height: auto;
   margin-bottom: 0.5em;
 }
+
+.prose-terminal code.language-plaintext {
+  color: var(--terminal-accent);
+}
+
+pre:has(> code.language-plaintext) {
+  background-color: color-mix(in oklab, var(--terminal-accent) 20%, transparent) !important;
+}
+
+pre.prismjs {
+  border: none;
+}

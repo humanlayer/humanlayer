@@ -147,33 +147,54 @@ const MarkdownRendererInner = memo(
           // Let CSS handle margins, only control display
           return <p style={{ display: isInList ? 'inline' : 'block' }}>{children}</p>
         },
+        pre({ children }) {
+          // Mark the code element as being inside a pre block
+          const codeElement = children as any
+          if (codeElement?.props) {
+            // Pass a flag to the code component indicating it's in a pre block
+            return <pre>{React.cloneElement(codeElement, { 'data-is-block': true })}</pre>
+          }
+          return <pre>{children}</pre>
+        },
         code(props) {
-          const { className, children } = props as any
-          // Check if it's an inline code or code block by looking at the presence of language class
-          const match = /language-(\w+)/.exec(className || '')
+          const { className, children, ...rest } =
+            props as any /* eslint-disable-line @typescript-eslint/no-unused-vars */
           const codeString = String(children).replace(/\n$/, '')
           const codeId = `code-${Math.random().toString(36).substr(2, 9)}`
 
-          return match ? (
-            <div className="relative group not-prose">
+          // Check if this code is inside a pre block
+          const isBlock = rest['data-is-block'] === true
+
+          // Extract language if present
+          const match = /language-(\w+)/.exec(className || '')
+          const language = match?.[1] ?? 'plaintext'
+
+          return isBlock ? (
+            <div className="relative group not-prose inline-block min-w-[250px]">
               <div className="overflow-x-auto">
-                <SyntaxHighlighter
-                  language={match[1]}
-                  useInlineStyles={false}
-                  className="rsh-code-block text-sm"
-                  PreTag={({ children, ...props }) => (
-                    <pre className="rsh-pre" {...props}>
-                      {children}
-                    </pre>
-                  )}
-                >
-                  {codeString}
-                </SyntaxHighlighter>
+                {language ? (
+                  <SyntaxHighlighter
+                    language={language}
+                    useInlineStyles={false}
+                    className="rsh-code-block text-sm"
+                    PreTag={({ children, ...props }) => (
+                      <pre className="rsh-pre" {...props}>
+                        {children}
+                      </pre>
+                    )}
+                  >
+                    {codeString}
+                  </SyntaxHighlighter>
+                ) : (
+                  <pre className="rsh-pre rsh-code-block text-sm">
+                    <code>{codeString}</code>
+                  </pre>
+                )}
               </div>
               <Button
                 variant="ghost"
                 size="icon"
-                className="absolute top-2 right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10 touch:opacity-100 md:touch:opacity-0 md:touch:group-hover:opacity-100"
+                className="absolute top-2 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10 touch:opacity-100 md:touch:opacity-0 md:touch:group-hover:opacity-100"
                 onClick={e => {
                   e.stopPropagation()
                   handleCopy(codeString, codeId)
@@ -193,10 +214,6 @@ const MarkdownRendererInner = memo(
               {children}
             </code>
           )
-        },
-        pre({ children }) {
-          // Pre is handled by code block above
-          return <>{children}</>
         },
         a({ href, children }) {
           return (
