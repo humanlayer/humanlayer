@@ -7,7 +7,7 @@ import CommandPaletteMenu from './CommandPaletteMenu'
 import { useSessionLauncher } from '@/hooks/useSessionLauncher'
 import { useStealHotkeyScope } from '@/hooks/useStealHotkeyScope'
 
-const SessionLauncherHotkeysScope = 'session-launcher'
+const SessionLauncherHotkeysScope = 'sessionLauncher'
 
 interface SessionLauncherProps {
   isOpen: boolean

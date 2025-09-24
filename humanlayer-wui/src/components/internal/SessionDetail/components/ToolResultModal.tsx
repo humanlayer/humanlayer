@@ -64,7 +64,7 @@ function getToolIcon(toolName: string | undefined): React.ReactNode {
 // TODO(3): Add keyboard navigation hints in the UI
 // TODO(2): Consider adding copy-to-clipboard functionality for tool results
 
-const ToolResultModalHotkeysScope = 'tool-result-modal'
+const ToolResultModalHotkeysScope = 'sessions.details.toolResultModal'
 
 // Minimalist modal for showing full tool results
 export function ToolResultModal({

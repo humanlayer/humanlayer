@@ -17,7 +17,7 @@ import { cn } from '@/lib/utils'
 import { useStealHotkeyScope } from '@/hooks/useStealHotkeyScope'
 import { getArchiveOnForkPreference, setArchiveOnForkPreference } from '@/lib/preferences'
 
-const ForkViewModalHotkeysScope = 'fork-view-modal'
+const ForkViewModalHotkeysScope = 'sessions.details.forkModal'
 
 interface ForkViewModalProps {
   events: ConversationEvent[]

@@ -42,7 +42,7 @@ const themes: { value: Theme; label: string; icon: React.ComponentType<{ classNa
   { value: 'l33t', label: 'L33t', icon: Terminal },
 ]
 
-export const ThemeSelectorHotkeysScope = 'theme-selector'
+export const ThemeSelectorHotkeysScope = 'themeSelector'
 
 export function ThemeSelector() {
   const { theme, setTheme } = useTheme()
@@ -78,9 +78,9 @@ export function ThemeSelector() {
   useEffect(() => {
     if (isOpen) {
       enableScope(ThemeSelectorHotkeysScope)
-      disableScope(SessionTableHotkeysScope)
+      disableScope('sessions')
     } else {
-      enableScope(SessionTableHotkeysScope)
+      enableScope('sessions')
       disableScope(ThemeSelectorHotkeysScope)
     }
   }, [isOpen])

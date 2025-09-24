@@ -17,7 +17,7 @@ import { useStealHotkeyScope } from '@/hooks/useStealHotkeyScope'
 import { ViewMode } from '@/lib/daemon/types'
 
 // Create a dedicated scope for title editing
-const TitleEditingHotkeysScope = 'title-editing'
+const TitleEditingHotkeysScope = 'titleEditing'
 
 export function Breadcrumbs() {
   const location = useLocation()

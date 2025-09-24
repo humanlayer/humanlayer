@@ -16,7 +16,7 @@ import { AlertTriangle } from 'lucide-react'
 import { useStealHotkeyScope } from '@/hooks/useStealHotkeyScope'
 import { useHotkeys } from 'react-hotkeys-hook'
 
-const DangerouslySkipPermissionsHotkeysScope = 'dangerously-skip-permissions-dialog'
+const DangerouslySkipPermissionsHotkeysScope = 'sessions.details.bypassPermissionsModal'
 
 interface DangerouslySkipPermissionsDialogProps {
   open: boolean
