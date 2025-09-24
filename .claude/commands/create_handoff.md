@@ -39,7 +39,7 @@ type: implementation_strategy
 # Handoff: ENG-XXXX {very concise description}
 
 ## Task(s)
-{description of the task(s) that you were working on, along with the status of each (completed, work in progress, planned/discussed). If you are working on an implementation plan, make sure to call out which phase you are on. Make sure to reference the plan document and/or research document(s) you are working from that were provided to you at the beginning of hte session, if aplicable.}
+{description of the task(s) that you were working on, along with the status of each (completed, work in progress, planned/discussed). If you are working on an implementation plan, make sure to call out which phase you are on. Make sure to reference the plan document and/or research document(s) you are working from that were provided to you at the beginning of the session, if applicable.}
 
 ## Recent changes
 {describe recent changes made to the codebase that you made in line:file syntax}
