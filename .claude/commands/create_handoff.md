@@ -41,6 +41,9 @@ type: implementation_strategy
 ## Task(s)
 {description of the task(s) that you were working on, along with the status of each (completed, work in progress, planned/discussed). If you are working on an implementation plan, make sure to call out which phase you are on. Make sure to reference the plan document and/or research document(s) you are working from that were provided to you at the beginning of hte session, if aplicable.}
 
+## Critical References
+{List any critical specification documents, architectural decisions, or design docs that must be followed. Include only 2-3 most important file paths. Leave blank if none.}
+
 ## Recent changes
 {describe recent changes made to the codebase that you made in line:file syntax}
 

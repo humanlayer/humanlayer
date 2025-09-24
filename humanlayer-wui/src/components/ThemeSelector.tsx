@@ -73,13 +73,11 @@ export function ThemeSelector() {
     }
   }, [isOpen])
 
-  // manage hotkey scopes when this componetn is opened/closed
+  // manage hotkey scopes when this component is opened/closed
   useEffect(() => {
     if (isOpen) {
       enableScope(ThemeSelectorHotkeysScope)
-      disableScope('sessions')
     } else {
-      enableScope('sessions')
       disableScope(ThemeSelectorHotkeysScope)
     }
   }, [isOpen])

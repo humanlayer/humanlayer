@@ -5,9 +5,8 @@ import { cn } from '@/lib/utils'
 import CommandInput from './CommandInput'
 import CommandPaletteMenu from './CommandPaletteMenu'
 import { useSessionLauncher } from '@/hooks/useSessionLauncher'
-import { useStealHotkeyScope } from '@/hooks/useStealHotkeyScope'
-
-const SessionLauncherHotkeysScope = 'sessionLauncher'
+import { HotkeyScopeBoundary } from './HotkeyScopeBoundary'
+import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
 
 interface SessionLauncherProps {
   isOpen: boolean
@@ -43,7 +42,7 @@ export function SessionLauncher({ isOpen, onClose }: SessionLauncherProps) {
     {
       enabled: isOpen,
       enableOnFormTags: true,
-      scopes: SessionLauncherHotkeysScope,
+      scopes: [HOTKEY_SCOPES.SESSION_LAUNCHER],
     },
   )
 
@@ -57,7 +56,7 @@ export function SessionLauncher({ isOpen, onClose }: SessionLauncherProps) {
     {
       enabled: isOpen,
       enableOnFormTags: true, // Critical: allows the shortcut to work in form inputs
-      scopes: SessionLauncherHotkeysScope,
+      scopes: [HOTKEY_SCOPES.SESSION_LAUNCHER],
       preventDefault: true,
     },
   )
@@ -78,13 +77,12 @@ export function SessionLauncher({ isOpen, onClose }: SessionLauncherProps) {
     {
       enabled: isOpen,
       enableOnFormTags: true,
-      scopes: SessionLauncherHotkeysScope,
+      scopes: [HOTKEY_SCOPES.SESSION_LAUNCHER],
       preventDefault: true,
     },
   )
 
-  // Only steal scope when actually open
-  useStealHotkeyScope(SessionLauncherHotkeysScope, isOpen)
+  // Scope is now managed by HotkeyScopeBoundary wrapper
 
   useEffect(() => {
     if (isOpen && view === 'input' && modalRef.current) {
@@ -108,11 +106,17 @@ export function SessionLauncher({ isOpen, onClose }: SessionLauncherProps) {
   if (!isOpen) return null
 
   return (
-    <div
-      className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
-      onClick={handleOverlayClick}
+    <HotkeyScopeBoundary
+      scope={HOTKEY_SCOPES.SESSION_LAUNCHER}
+      isActive={isOpen}
+      rootScopeDisabled={true}
+      componentName="SessionLauncher"
     >
-      <Card
+      <div
+        className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+        onClick={handleOverlayClick}
+      >
+        <Card
         ref={modalRef}
         data-command-palette
         className={cn(
@@ -174,5 +178,6 @@ export function SessionLauncher({ isOpen, onClose }: SessionLauncherProps) {
         </CardContent>
       </Card>
     </div>
+    </HotkeyScopeBoundary>
   )
 }

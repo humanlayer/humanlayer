@@ -66,7 +66,8 @@ export function Layout() {
 
   // Session launcher state
   const { isOpen, close } = useSessionLauncher()
-  const { handleKeyDown } = useSessionLauncherHotkeys()
+  // Initialize hotkeys (they're now handled via useHotkeys in the hook)
+  useSessionLauncherHotkeys()
 
   // Debug store state
   const showDevUrl = useDebugStore(state => state.showDevUrl)
@@ -106,6 +107,8 @@ export function Layout() {
   // Secret hotkey for launch theme
   useHotkeys('mod+shift+y', () => {
     setTheme('launch')
+  }, {
+    scopes: [HOTKEY_SCOPES.ROOT]
   })
 
   // Settings dialog hotkey
@@ -117,6 +120,7 @@ export function Layout() {
       setSettingsDialogOpen(!isSettingsDialogOpen)
     },
     {
+      scopes: [HOTKEY_SCOPES.ROOT],
       enableOnFormTags: true,
     },
   )
@@ -218,6 +222,7 @@ export function Layout() {
       }
     },
     {
+      scopes: [HOTKEY_SCOPES.ROOT],
       enableOnFormTags: false,
       preventDefault: true,
     },
@@ -493,23 +498,21 @@ export function Layout() {
     },
   })
 
-  // Global hotkey for toggling hotkey panel
+  // Root hotkey for toggling hotkey panel
   useHotkeys(
     '?',
     () => {
       setHotkeyPanelOpen(!isHotkeyPanelOpen)
     },
     {
+      scopes: [HOTKEY_SCOPES.ROOT],
       useKey: true,
       preventDefault: true,
     },
   )
 
   // Navigation shortcuts - 'gs' for sessions (normal view), 'ge' for archived
-  // Check if any modal is open to prevent shortcuts during modal interactions
-  const isAnyModalOpen = () => {
-    return isSettingsDialogOpen || isHotkeyPanelOpen || isOpen || showTelemetryModal || isDebugPanelOpen
-  }
+  // Note: Root scope hotkeys are now automatically disabled when modals open
 
   // G+S - Go to sessions (normal view)
   useHotkeys(
@@ -517,15 +520,14 @@ export function Layout() {
     e => {
       console.log('[Layout] g>s fired')
       e.stopPropagation()
-      if (!isAnyModalOpen()) {
-        // Navigate to sessions (normal view)
-        if (useStore.getState().viewMode !== ViewMode.Normal) {
-          useStore.getState().setViewMode(ViewMode.Normal)
-        }
-        navigate('/')
+      // Navigate to sessions (normal view)
+      if (useStore.getState().viewMode !== ViewMode.Normal) {
+        useStore.getState().setViewMode(ViewMode.Normal)
       }
+      navigate('/')
     },
     {
+      scopes: [HOTKEY_SCOPES.ROOT],
       preventDefault: true,
       enableOnFormTags: false,
     },
@@ -537,15 +539,14 @@ export function Layout() {
     e => {
       console.log('[Layout] g>e fired')
       e.stopPropagation()
-      if (!isAnyModalOpen()) {
-        // Navigate to archived sessions
-        if (useStore.getState().viewMode !== ViewMode.Archived) {
-          useStore.getState().setViewMode(ViewMode.Archived)
-        }
-        navigate('/')
+      // Navigate to archived sessions
+      if (useStore.getState().viewMode !== ViewMode.Archived) {
+        useStore.getState().setViewMode(ViewMode.Archived)
       }
+      navigate('/')
     },
     {
+      scopes: [HOTKEY_SCOPES.ROOT],
       preventDefault: true,
       enableOnFormTags: false,
     },
@@ -557,15 +558,14 @@ export function Layout() {
     e => {
       console.log('[Layout] g>i fired (alias for g>s)')
       e.stopPropagation()
-      if (!isAnyModalOpen()) {
-        // Navigate to sessions (normal view)
-        if (useStore.getState().viewMode !== ViewMode.Normal) {
-          useStore.getState().setViewMode(ViewMode.Normal)
-        }
-        navigate('/')
+      // Navigate to sessions (normal view)
+      if (useStore.getState().viewMode !== ViewMode.Normal) {
+        useStore.getState().setViewMode(ViewMode.Normal)
       }
+      navigate('/')
     },
     {
+      scopes: [HOTKEY_SCOPES.ROOT],
       preventDefault: true,
       enableOnFormTags: false,
     },
@@ -637,11 +637,7 @@ export function Layout() {
     return () => window.removeEventListener('session-created', handleSessionCreated)
   }, [connected])
 
-  // Global hotkey handler
-  useEffect(() => {
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [handleKeyDown])
+  // Global hotkey handler is now handled via useHotkeys in useSessionLauncherHotkeys
 
   // Notify about log location on startup (production only)
   useEffect(() => {
@@ -737,8 +733,8 @@ export function Layout() {
 
   return (
     <div className="h-screen flex flex-col bg-background text-foreground">
-      {/* Main content */}
-      <main className="flex-1 flex flex-col p-4 overflow-hidden">
+        {/* Main content */}
+        <main className="flex-1 flex flex-col p-4 overflow-hidden">
         {connected && (
           <>
             <Breadcrumbs />

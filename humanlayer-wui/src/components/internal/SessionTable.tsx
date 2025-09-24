@@ -1,7 +1,7 @@
 import { Session, SessionStatus } from '@/lib/daemon/types'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
-import { useHotkeys, useHotkeysContext } from 'react-hotkeys-hook'
+import { useHotkeys } from 'react-hotkeys-hook'
 import { useEffect, useRef, useState } from 'react'
 import { CircleOff, CheckSquare, Square, FileText, Pencil, ShieldOff } from 'lucide-react'
 import { getStatusTextClass } from '@/utils/component-utils'
@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button'
 import { daemonClient } from '@/lib/daemon/client'
 import { renderSessionStatus } from '@/utils/sessionStatus'
 import { logger } from '@/lib/logging'
+import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
 
 interface SessionTableProps {
   sessions: Session[]
@@ -40,7 +41,7 @@ interface SessionTableProps {
   }
 }
 
-export const SessionTableHotkeysScope = 'session-table'
+export const SessionTableHotkeysScope = HOTKEY_SCOPES.SESSIONS
 
 export default function SessionTable({
   sessions,
@@ -55,7 +56,6 @@ export default function SessionTable({
   emptyState,
 }: SessionTableProps) {
   const { isOpen: isSessionLauncherOpen } = useSessionLauncher()
-  const { enableScope, disableScope } = useHotkeysContext()
   const tableRef = useRef<HTMLTableElement>(null)
   const { archiveSession, selectedSessions, toggleSessionSelection, bulkArchiveSessions, bulkSelect } =
     useStore()
@@ -124,12 +124,8 @@ export default function SessionTable({
     handleActivateSession?.(session)
   }
 
-  useEffect(() => {
-    enableScope(SessionTableHotkeysScope)
-    return () => {
-      disableScope(SessionTableHotkeysScope)
-    }
-  }, [])
+  // Scope is now managed by parent component or initially active
+  // No need for manual scope management here
 
   // Scroll focused session into view
   useEffect(() => {
