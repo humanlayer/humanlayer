@@ -366,7 +366,7 @@ export { isViewingSessionDetail }
 export function useSessionLauncherHotkeys() {
   const { activeScopes } = useHotkeysContext()
 
-  const { open, close, isOpen, gPrefixMode, setGPrefixMode, createNewSession } = useSessionLauncher()
+  const { open, close, isOpen, gPrefixMode, setGPrefixMode } = useSessionLauncher()
 
   // Helper to check if user is actively typing in a text input
   const isTypingInInput = () => {
@@ -407,16 +407,26 @@ export function useSessionLauncherHotkeys() {
         return
       }
 
-      // C - Create new session directly (bypasses command palette)
+      // C - Create new draft session directly
       // Don't trigger if a modal is already open
       if (e.key === 'c' && !e.metaKey && !e.ctrlKey && !isTypingInInput()) {
         if (!isModalScopeActive()) {
           e.preventDefault()
-          // Open launcher if not already open
-          if (!isOpen) {
-            open()
-          }
-          createNewSession()
+          // Create draft session and navigate directly
+          ;(async () => {
+            try {
+              const response = await daemonClient.launchSession({
+                query: '', // Empty initial query for draft
+                workingDir: localStorage.getItem(LAST_WORKING_DIR_KEY) || '~/',
+                draft: true, // Create as draft
+              })
+
+              // Navigate directly to SessionDetail
+              window.location.hash = `#/sessions/${response.sessionId}`
+            } catch (error) {
+              logger.error('Failed to create draft session:', error)
+            }
+          })()
           return
         }
       }

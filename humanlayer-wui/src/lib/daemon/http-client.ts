@@ -175,6 +175,7 @@ export class HTTPDaemonClient implements IDaemonClient {
           ? params.disallowedTools
           : (params as LaunchSessionRequest).disallowed_tools,
       additionalDirectories: additionalDirs,
+      draft: 'draft' in params ? params.draft : undefined,
       // Pass proxy configuration directly if using OpenRouter
       ...(provider === 'openrouter' && {
         proxyEnabled: true,

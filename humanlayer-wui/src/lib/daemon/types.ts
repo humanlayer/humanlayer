@@ -42,6 +42,7 @@ export interface LaunchSessionParams {
   dangerouslySkipPermissions?: boolean
   proxyApiKey?: string
   additionalDirectories?: string[]
+  draft?: boolean  // Add draft parameter
   // Add any WUI-specific extensions if needed
 }
 
@@ -192,6 +193,7 @@ export interface LaunchSessionRequest {
   proxy_base_url?: string
   proxy_model_override?: string
   proxy_api_key?: string
+  draft?: boolean  // Add draft parameter
 }
 
 export interface LaunchSessionResponse {
