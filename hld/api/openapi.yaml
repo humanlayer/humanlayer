@@ -1350,6 +1350,9 @@ components:
         opt_in_telemetry:
           type: boolean
           description: Opt-in for performance and error reporting
+        custom_mcp_config:
+          type: string
+          description: Path to custom MCP configuration JSON file
         created_at:
           type: string
           format: date-time
@@ -1374,6 +1377,9 @@ components:
         opt_in_telemetry:
           type: boolean
           description: Opt-in or opt-out of performance and error reporting
+        custom_mcp_config:
+          type: string
+          description: Path to custom MCP configuration JSON file
 
     # Approval Types
     Approval:

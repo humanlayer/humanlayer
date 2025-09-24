@@ -1006,6 +1006,46 @@ func (s *SQLiteStore) applyMigrations() error {
 		slog.Info("Migration 19 applied successfully")
 	}
 
+	// Migration 20: Add custom_mcp_config field to user_settings
+	if currentVersion < 20 {
+		slog.Info("Applying migration 20: Add custom_mcp_config to user_settings")
+
+		// Check if column already exists
+		var columnExists int
+		err = s.db.QueryRow(`
+			SELECT COUNT(*) FROM pragma_table_info('user_settings')
+			WHERE name = 'custom_mcp_config'
+		`).Scan(&columnExists)
+		if err != nil {
+			return fmt.Errorf("failed to check custom_mcp_config column: %w", err)
+		}
+
+		if columnExists == 0 {
+			// Add custom_mcp_config column with empty string default
+			_, err := s.db.Exec(`
+				ALTER TABLE user_settings
+				ADD COLUMN custom_mcp_config TEXT NOT NULL DEFAULT ''
+			`)
+			if err != nil {
+				return fmt.Errorf("failed to add custom_mcp_config column: %w", err)
+			}
+			slog.Info("Added custom_mcp_config column to user_settings table")
+		} else {
+			slog.Info("custom_mcp_config column already exists")
+		}
+
+		// Record migration
+		_, err = s.db.Exec(`
+			INSERT INTO schema_version (version, description)
+			VALUES (20, 'Add custom_mcp_config for custom MCP configuration file path')
+		`)
+		if err != nil {
+			return fmt.Errorf("failed to record migration 20: %w", err)
+		}
+
+		slog.Info("Migration 20 applied successfully")
+	}
+
 	return nil
 }
 
@@ -1043,8 +1083,8 @@ func (s *SQLiteStore) validateSchema() error {
 	if err != nil {
 		return fmt.Errorf("failed to get schema version: %w", err)
 	}
-	if currentVersion < 19 {
-		return fmt.Errorf("schema validation failed: version %d is less than required 19", currentVersion)
+	if currentVersion < 20 {
+		return fmt.Errorf("schema validation failed: version %d is less than required 20", currentVersion)
 	}
 
 	slog.Info("Schema validation successful",
@@ -1773,10 +1813,12 @@ func (s *SQLiteStore) GetRecentWorkingDirs(ctx context.Context, limit int) ([]Re
 // GetUserSettings retrieves the user settings from the database
 func (s *SQLiteStore) GetUserSettings(ctx context.Context) (*UserSettings, error) {
 	var settings UserSettings
+	var customMCPConfig sql.NullString
 	err := s.db.QueryRowContext(ctx, `
-		SELECT advanced_providers, opt_in_telemetry, created_at, updated_at
+		SELECT advanced_providers, opt_in_telemetry, COALESCE(custom_mcp_config, ''), created_at, updated_at
 		FROM user_settings WHERE id = 1
-	`).Scan(&settings.AdvancedProviders, &settings.OptInTelemetry, &settings.CreatedAt, &settings.UpdatedAt)
+	`).Scan(&settings.AdvancedProviders, &settings.OptInTelemetry, &customMCPConfig, &settings.CreatedAt, &settings.UpdatedAt)
+	settings.CustomMCPConfig = customMCPConfig.String
 
 	if err == sql.ErrNoRows {
 		// Return defaults if not found (for backwards compatibility)
@@ -1793,9 +1835,9 @@ func (s *SQLiteStore) GetUserSettings(ctx context.Context) (*UserSettings, error
 func (s *SQLiteStore) UpdateUserSettings(ctx context.Context, settings UserSettings) error {
 	_, err := s.db.ExecContext(ctx, `
 		UPDATE user_settings
-		SET advanced_providers = ?, opt_in_telemetry = ?, updated_at = CURRENT_TIMESTAMP
+		SET advanced_providers = ?, opt_in_telemetry = ?, custom_mcp_config = ?, updated_at = CURRENT_TIMESTAMP
 		WHERE id = 1
-	`, settings.AdvancedProviders, settings.OptInTelemetry)
+	`, settings.AdvancedProviders, settings.OptInTelemetry, settings.CustomMCPConfig)
 	return err
 }
 

@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react'
 import { useStore } from '@/AppStore'
 import { logger } from '@/lib/logging'
 import { toast } from 'sonner'
-import { CheckCircle2, XCircle, RefreshCw, Pencil } from 'lucide-react'
+import { CheckCircle2, XCircle, RefreshCw, Pencil, FileJson } from 'lucide-react'
 
 interface SettingsDialogProps {
   open: boolean
@@ -25,6 +25,8 @@ export function SettingsDialog({ open, onOpenChange, onConfigUpdate }: SettingsD
   const [claudePath, setClaudePath] = useState('')
   const [isUpdatingPath, setIsUpdatingPath] = useState(false)
   const [showClaudePathInput, setShowClaudePathInput] = useState(false)
+  const [customMcpConfig, setCustomMcpConfig] = useState('')
+  const [showMcpConfigInput, setShowMcpConfigInput] = useState(false)
 
   // Fetch Claude config when dialog opens
   useEffect(() => {
@@ -41,6 +43,13 @@ export function SettingsDialog({ open, onOpenChange, onConfigUpdate }: SettingsD
       setClaudePath(pathToUse)
     }
   }, [claudeConfig])
+
+  // Update local state when user settings change
+  useEffect(() => {
+    if (userSettings) {
+      setCustomMcpConfig(userSettings.customMcpConfig || '')
+    }
+  }, [userSettings])
 
   const handleProvidersToggle = async (checked: boolean) => {
     try {
@@ -142,6 +151,27 @@ export function SettingsDialog({ open, onOpenChange, onConfigUpdate }: SettingsD
       })
     } finally {
       setIsUpdatingPath(false)
+    }
+  }
+
+  const handleMcpConfigUpdate = async () => {
+    try {
+      setSaving(true)
+      await updateUserSettings({ customMcpConfig })
+      logger.log('MCP config path updated:', customMcpConfig)
+      toast.success('MCP Configuration Updated', {
+        description: customMcpConfig
+          ? `MCP config will be loaded from: ${customMcpConfig}`
+          : 'MCP configuration path cleared',
+      })
+      setShowMcpConfigInput(false)
+    } catch (error) {
+      logger.error('Failed to update MCP config path:', error)
+      toast.error('Failed to Update MCP Configuration', {
+        description: 'Could not update the MCP configuration path. Please try again.',
+      })
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -312,6 +342,65 @@ export function SettingsDialog({ open, onOpenChange, onConfigUpdate }: SettingsD
                   </>
                 )}
               </p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="mcp-config" className="text-sm font-medium">
+              Custom MCP Configuration
+            </Label>
+            {!showMcpConfigInput ? (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <FileJson className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">
+                    {customMcpConfig || 'No custom MCP configuration file specified'}
+                  </span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0"
+                  onClick={() => setShowMcpConfigInput(!showMcpConfigInput)}
+                  title="Edit MCP config path"
+                >
+                  <Pencil className="h-3 w-3" />
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <Input
+                    id="mcp-config"
+                    placeholder="/path/to/mcp-config.json or leave empty to use defaults"
+                    value={customMcpConfig}
+                    onChange={e => setCustomMcpConfig(e.target.value)}
+                    disabled={saving}
+                    className="flex-1"
+                  />
+                  <Button onClick={handleMcpConfigUpdate} size="sm" disabled={saving}>
+                    Save
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setShowMcpConfigInput(false)
+                      // Reset to current configured path
+                      if (userSettings) {
+                        setCustomMcpConfig(userSettings.customMcpConfig || '')
+                      }
+                    }}
+                    disabled={saving}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Specify the path to a custom MCP configuration JSON file that will be merged with
+                  default MCP servers
+                </p>
+              </div>
             )}
           </div>
 

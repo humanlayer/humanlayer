@@ -31,6 +31,12 @@ export interface UpdateUserSettingsRequest {
      * @memberof UpdateUserSettingsRequest
      */
     optInTelemetry?: boolean;
+    /**
+     * Path to custom MCP configuration JSON file
+     * @type {string}
+     * @memberof UpdateUserSettingsRequest
+     */
+    customMcpConfig?: string;
 }
 
 /**
@@ -52,6 +58,7 @@ export function UpdateUserSettingsRequestFromJSONTyped(json: any, ignoreDiscrimi
 
         'advancedProviders': json['advanced_providers'] == null ? undefined : json['advanced_providers'],
         'optInTelemetry': json['opt_in_telemetry'] == null ? undefined : json['opt_in_telemetry'],
+        'customMcpConfig': json['custom_mcp_config'] == null ? undefined : json['custom_mcp_config'],
     };
 }
 
@@ -68,5 +75,6 @@ export function UpdateUserSettingsRequestToJSONTyped(value?: UpdateUserSettingsR
 
         'advanced_providers': value['advancedProviders'],
         'opt_in_telemetry': value['optInTelemetry'],
+        'custom_mcp_config': value['customMcpConfig'],
     };
 }

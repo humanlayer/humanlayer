@@ -177,6 +177,62 @@ func (m *Manager) getClaudeClient() (*claudecode.Client, error) {
 	return m.client, nil
 }
 
+// loadCustomMCPConfig loads and merges custom MCP configuration from the specified file path
+func (m *Manager) loadCustomMCPConfig(ctx context.Context, customConfigPath string, baseConfig *claudecode.MCPConfig) error {
+	if customConfigPath == "" {
+		return nil // No custom config to load
+	}
+
+	// Expand home directory in path
+	if strings.HasPrefix(customConfigPath, "~") {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return fmt.Errorf("failed to expand home directory: %w", err)
+		}
+		customConfigPath = filepath.Join(home, customConfigPath[1:])
+	}
+
+	// Check if file exists
+	if _, err := os.Stat(customConfigPath); os.IsNotExist(err) {
+		slog.Warn("custom MCP config file does not exist", "path", customConfigPath)
+		return nil // Not an error, just skip
+	}
+
+	// Read the file
+	data, err := os.ReadFile(customConfigPath)
+	if err != nil {
+		return fmt.Errorf("failed to read custom MCP config: %w", err)
+	}
+
+	// Parse the JSON
+	var customMCPConfig struct {
+		MCPServers map[string]claudecode.MCPServer `json:"mcpServers"`
+	}
+	if err := json.Unmarshal(data, &customMCPConfig); err != nil {
+		return fmt.Errorf("failed to parse custom MCP config: %w", err)
+	}
+
+	// Merge custom servers into base config (custom config takes precedence)
+	if baseConfig.MCPServers == nil {
+		baseConfig.MCPServers = make(map[string]claudecode.MCPServer)
+	}
+
+	for name, server := range customMCPConfig.MCPServers {
+		// Skip codelayer server - it's always injected by the daemon
+		if name == "codelayer" {
+			continue
+		}
+		baseConfig.MCPServers[name] = server
+		slog.Debug("loaded custom MCP server", "name", name, "type", server.Type)
+	}
+
+	slog.Info("loaded custom MCP configuration",
+		"path", customConfigPath,
+		"servers_count", len(customMCPConfig.MCPServers))
+
+	return nil
+}
+
 // LaunchSession starts a new Claude Code session
 func (m *Manager) LaunchSession(ctx context.Context, config LaunchSessionConfig) (*Session, error) {
 	// Get Claude client (will attempt initialization if needed)
@@ -191,10 +247,21 @@ func (m *Manager) LaunchSession(ctx context.Context, config LaunchSessionConfig)
 	// Extract the Claude config (without daemon-level settings)
 	claudeConfig := config.SessionConfig
 
-	// Inject daemon's CodeLayer MCP server configuration
+	// Initialize MCP config if not present
 	if claudeConfig.MCPConfig == nil {
 		claudeConfig.MCPConfig = &claudecode.MCPConfig{
 			MCPServers: make(map[string]claudecode.MCPServer),
+		}
+	}
+
+	// Load and merge custom MCP configuration from user settings
+	userSettings, err := m.store.GetUserSettings(ctx)
+	if err != nil {
+		slog.Warn("failed to get user settings for MCP config", "error", err)
+	} else if userSettings.CustomMCPConfig != "" {
+		if err := m.loadCustomMCPConfig(ctx, userSettings.CustomMCPConfig, claudeConfig.MCPConfig); err != nil {
+			slog.Error("failed to load custom MCP config", "error", err)
+			// Continue anyway - don't fail the session launch
 		}
 	}
 

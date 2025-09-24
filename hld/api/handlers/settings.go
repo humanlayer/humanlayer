@@ -35,10 +35,16 @@ func (h *SettingsHandlers) GetUserSettings(ctx context.Context, req api.GetUserS
 		}, nil
 	}
 
+	var customMCPConfig *string
+	if settings.CustomMCPConfig != "" {
+		customMCPConfig = &settings.CustomMCPConfig
+	}
+
 	return api.GetUserSettings200JSONResponse{
 		Data: api.UserSettings{
 			AdvancedProviders: settings.AdvancedProviders,
 			OptInTelemetry:    settings.OptInTelemetry,
+			CustomMcpConfig:   customMCPConfig,
 			CreatedAt:         settings.CreatedAt,
 			UpdatedAt:         settings.UpdatedAt,
 		},
@@ -67,6 +73,9 @@ func (h *SettingsHandlers) UpdateUserSettings(ctx context.Context, req api.Updat
 	}
 	if req.Body.OptInTelemetry != nil {
 		current.OptInTelemetry = req.Body.OptInTelemetry
+	}
+	if req.Body.CustomMcpConfig != nil {
+		current.CustomMCPConfig = *req.Body.CustomMcpConfig
 	}
 
 	// Save updated settings
@@ -97,10 +106,16 @@ func (h *SettingsHandlers) UpdateUserSettings(ctx context.Context, req api.Updat
 		}, nil
 	}
 
+	var updatedCustomMCPConfig *string
+	if updated.CustomMCPConfig != "" {
+		updatedCustomMCPConfig = &updated.CustomMCPConfig
+	}
+
 	return api.UpdateUserSettings200JSONResponse{
 		Data: api.UserSettings{
 			AdvancedProviders: updated.AdvancedProviders,
 			OptInTelemetry:    updated.OptInTelemetry,
+			CustomMcpConfig:   updatedCustomMCPConfig,
 			CreatedAt:         updated.CreatedAt,
 			UpdatedAt:         updated.UpdatedAt,
 		},

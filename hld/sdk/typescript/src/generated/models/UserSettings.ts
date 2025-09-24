@@ -32,6 +32,12 @@ export interface UserSettings {
      */
     optInTelemetry?: boolean;
     /**
+     * Path to custom MCP configuration JSON file
+     * @type {string}
+     * @memberof UserSettings
+     */
+    customMcpConfig?: string;
+    /**
      *
      * @type {Date}
      * @memberof UserSettings
@@ -67,6 +73,7 @@ export function UserSettingsFromJSONTyped(json: any, ignoreDiscriminator: boolea
 
         'advancedProviders': json['advanced_providers'],
         'optInTelemetry': json['opt_in_telemetry'] == null ? undefined : json['opt_in_telemetry'],
+        'customMcpConfig': json['custom_mcp_config'] == null ? undefined : json['custom_mcp_config'],
         'createdAt': (new Date(json['created_at'])),
         'updatedAt': (new Date(json['updated_at'])),
     };
@@ -85,6 +92,7 @@ export function UserSettingsToJSONTyped(value?: UserSettings | null, ignoreDiscr
 
         'advanced_providers': value['advancedProviders'],
         'opt_in_telemetry': value['optInTelemetry'],
+        'custom_mcp_config': value['customMcpConfig'],
         'created_at': ((value['createdAt']).toISOString()),
         'updated_at': ((value['updatedAt']).toISOString()),
     };
