@@ -1,12 +1,22 @@
 mod daemon;
 
 use daemon::{DaemonInfo, DaemonManager};
+use serde::{Deserialize, Serialize};
 use std::env;
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 use tauri::{Manager, State, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_store::StoreExt;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct WindowState {
+    width: f64,
+    height: f64,
+    x: Option<f64>,
+    y: Option<f64>,
+    maximized: bool,
+}
 
 // Helper function to set macOS window background color with RGB values
 #[cfg(target_os = "macos")]
@@ -298,6 +308,46 @@ async fn get_log_directory() -> Result<String, String> {
 }
 
 #[tauri::command]
+async fn save_window_state(
+    app: tauri::AppHandle,
+    state: WindowState,
+) -> Result<(), String> {
+    let is_dev = cfg!(debug_assertions);
+    let branch_id = get_branch_id(is_dev, None);
+    let store_path = get_store_path(is_dev, Some(&branch_id));
+
+    let store = app
+        .store(&store_path)
+        .map_err(|e| format!("Failed to access store: {e}"))?;
+
+    let state_value = serde_json::to_value(&state)
+        .map_err(|e| format!("Failed to serialize window state: {e}"))?;
+    store.set("window_state", state_value);
+    store
+        .save()
+        .map_err(|e| format!("Failed to save window state: {e}"))?;
+
+    Ok(())
+}
+
+#[tauri::command]
+async fn load_window_state(app: tauri::AppHandle) -> Result<Option<WindowState>, String> {
+    let is_dev = cfg!(debug_assertions);
+    let branch_id = get_branch_id(is_dev, None);
+    let store_path = get_store_path(is_dev, Some(&branch_id));
+
+    let store = app
+        .store(&store_path)
+        .map_err(|e| format!("Failed to access store: {e}"))?;
+
+    let state = store
+        .get("window_state")
+        .and_then(|v| serde_json::from_value::<WindowState>(v).ok());
+
+    Ok(state)
+}
+
+#[tauri::command]
 fn show_quick_launcher(app: tauri::AppHandle) -> Result<(), String> {
     // Check if quick launcher window already exists
     if let Some(window) = app.get_webview_window("quick-launcher") {
@@ -392,6 +442,42 @@ pub fn run() {
             // Register the daemon manager as managed state
             app.manage(daemon_manager.clone());
 
+            // Restore window state if it exists
+            if let Some(main_window) = app.get_webview_window("main") {
+                let is_dev = cfg!(debug_assertions);
+                let branch_id = get_branch_id(is_dev, None);
+                let store_path = get_store_path(is_dev, Some(&branch_id));
+
+                if let Ok(store) = app.store(&store_path) {
+                    if let Some(window_state_value) = store.get("window_state") {
+                        if let Ok(window_state) = serde_json::from_value::<WindowState>(window_state_value) {
+                            // Restore window size
+                            if window_state.width > 0.0 && window_state.height > 0.0 {
+                                let _ = main_window.set_size(tauri::PhysicalSize::new(
+                                    window_state.width as u32,
+                                    window_state.height as u32,
+                                ));
+                            }
+
+                            // Restore window position
+                            if let (Some(x), Some(y)) = (window_state.x, window_state.y) {
+                                if x >= 0.0 && y >= 0.0 {
+                                    let _ = main_window.set_position(tauri::PhysicalPosition::new(
+                                        x as i32,
+                                        y as i32,
+                                    ));
+                                }
+                            }
+
+                            // Restore maximized state
+                            if window_state.maximized {
+                                let _ = main_window.maximize();
+                            }
+                        }
+                    }
+                }
+            }
+
             // Register global hotkey for quick launcher
             #[cfg(desktop)]
             {
@@ -456,6 +542,8 @@ pub fn run() {
             show_quick_launcher,
             set_window_background_color,
             set_window_theme_colors,
+            save_window_state,
+            load_window_state,
         ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application");
