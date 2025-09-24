@@ -59,7 +59,7 @@ impl DaemonManager {
             if let Ok(port_str) = env::var("HUMANLAYER_DAEMON_HTTP_PORT") {
                 if let Ok(port) = port_str.parse::<u16>() {
                     let socket_path = env::var("HUMANLAYER_DAEMON_SOCKET")
-                        .unwrap_or_else(|_| format!("~/.humanlayer/daemon-{}.sock", port));
+                        .unwrap_or_else(|_| format!("~/.humanlayer/daemon-{port}.sock"));
                     let database_path = env::var("HUMANLAYER_DATABASE_PATH")
                         .unwrap_or_else(|_| "~/.humanlayer/daemon.db".to_string());
 
