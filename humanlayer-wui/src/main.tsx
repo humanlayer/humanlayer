@@ -7,6 +7,8 @@ import { HotkeysProvider } from 'react-hotkeys-hook'
 import { attachConsole } from '@tauri-apps/plugin-log'
 import { initializeSentry } from '@/lib/telemetry/sentry'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
+import { HotkeyScopeDebugger } from './components/HotkeyScopeDebugger'
+import { HOTKEY_SCOPES } from './hooks/hotkeys/scopes'
 
 // Initialize console logging bridge to display Tauri logs in browser console
 // Note: This does NOT capture frontend console.* calls - it only shows Rust logs in the browser
@@ -19,8 +21,9 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
     <ErrorBoundary>
       <ThemeProvider>
-        <HotkeysProvider>
+        <HotkeysProvider initiallyActiveScopes={[HOTKEY_SCOPES.GLOBAL, HOTKEY_SCOPES.ROOT]}>
           <RouterProvider router={router} />
+          <HotkeyScopeDebugger />
         </HotkeysProvider>
       </ThemeProvider>
     </ErrorBoundary>
