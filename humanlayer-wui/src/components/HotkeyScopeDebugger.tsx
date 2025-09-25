@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { scopeManager } from '../hooks/hotkeys/scopeManager'
 import { useHotkeysContext, useHotkeys } from 'react-hotkeys-hook'
-import { HOTKEY_SCOPES } from '../hooks/hotkeys/scopes'
 import { HotkeyScopeDebuggerIndicator } from './HotkeyScopeDebuggerIndicator'
 
 export function HotkeyScopeDebugger() {
@@ -20,7 +19,7 @@ export function HotkeyScopeDebugger() {
       setIsVisible(prev => !prev)
     },
     {
-      scopes: [HOTKEY_SCOPES.GLOBAL],
+      // No scopes specified - works in wildcard scope
       enabled: import.meta.env.DEV,
       preventDefault: true,
     },

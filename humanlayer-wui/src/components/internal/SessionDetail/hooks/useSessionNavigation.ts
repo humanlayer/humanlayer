@@ -104,9 +104,10 @@ export function useSessionNavigation({
       : -1
 
     if (currentIndex === -1) {
-      // When no event is focused, j should do nothing (stay at bottom)
-      // User must press k first to start navigating from bottom
-      return
+      // When no event is focused, j should select the first event
+      startKeyboardNavigation?.()
+      setFocusedEventId(navigableItems[0].id)
+      setFocusSource('keyboard')
     } else if (currentIndex < navigableItems.length - 1) {
       startKeyboardNavigation?.()
       setFocusedEventId(navigableItems[currentIndex + 1].id)
@@ -122,7 +123,7 @@ export function useSessionNavigation({
       : -1
 
     if (currentIndex === -1) {
-      // Start from the bottom when first pressing k
+      // When no event is focused, k should select the last event
       startKeyboardNavigation?.()
       setFocusedEventId(navigableItems[navigableItems.length - 1].id)
       setFocusSource('keyboard')

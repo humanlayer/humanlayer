@@ -60,16 +60,18 @@ export function HotkeyScopeBoundary({
     // 2. Enable our scope
     // 3. Enable root if not disabled
 
-    // Step 1: Disable currently active scopes except global
+    // Step 1: Disable currently active scopes except wildcard
     currentActive.forEach(s => {
-      if (s !== HOTKEY_SCOPES.GLOBAL) {
-        if (s === HOTKEY_SCOPES.ROOT && !rootScopeDisabled) {
-          // Keep root enabled if this boundary doesn't disable it
-          return
-        }
-        console.log(`[HOTKEY-DEBUG] Disabling active scope: ${s}`)
-        disableScope(s)
+      // Never try to disable the wildcard scope '*'
+      if (s === '*') {
+        return
       }
+      if (s === HOTKEY_SCOPES.ROOT && !rootScopeDisabled) {
+        // Keep root enabled if this boundary doesn't disable it
+        return
+      }
+      console.log(`[HOTKEY-DEBUG] Disabling active scope: ${s}`)
+      disableScope(s)
     })
 
     // Step 2: Enable our scope
