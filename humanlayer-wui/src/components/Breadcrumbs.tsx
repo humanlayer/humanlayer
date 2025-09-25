@@ -82,7 +82,7 @@ export function Breadcrumbs() {
 
   // Watch for external triggers to start editing
   useEffect(() => {
-    if (isEditingTitle && session && !editValue) {
+    if (isEditingTitle && session) {
       setEditValue(session.title || session.summary || '')
     }
   }, [isEditingTitle, session])
