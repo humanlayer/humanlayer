@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { daemonClient, ConversationEvent } from '@/lib/daemon'
 import { formatError } from '@/utils/errors'
 import { useStore } from '@/AppStore'
+import { logger } from '@/lib/logging'
 
 interface UseConversationReturn {
   events: ConversationEvent[]
@@ -18,6 +19,7 @@ export function useConversation(
 ): UseConversationReturn {
   const activeSessionDetail = useStore(state => state.activeSessionDetail)
   const updateActiveSessionConversation = useStore(state => state.updateActiveSessionConversation)
+  const sessionStatus = activeSessionDetail?.session.status
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [errorCount, setErrorCount] = useState(0)
@@ -44,15 +46,26 @@ export function useConversation(
 
     // Cancel any in-flight request
     if (abortControllerRef.current) {
-      abortControllerRef.current.abort()
+      try {
+        abortControllerRef.current.abort()
+      } catch (err) {
+        console.log('[useConversation] Error aborting request:', err)
+      }
     }
 
     // Create new abort controller for this request
     abortControllerRef.current = new AbortController()
 
     try {
+      if (abortControllerRef.current.signal.aborted) {
+        console.log('[useConversation] Ignoring abort error')
+        return
+      }
+
       setLoading(true)
       setError(null)
+
+      console.log('[useConversation] Fetching conversation for session:', sessionId, 'status:', sessionStatus, 'abortControllerRef.current:', abortControllerRef.current)
 
       const response = await daemonClient.getConversation(
         { session_id: sessionId, claude_session_id: claudeSessionId },
@@ -67,10 +80,13 @@ export function useConversation(
       setErrorCount(0)
       setIsInitialLoad(false)
     } catch (err: any) {
-      // Ignore abort errors
-      if (err.name === 'AbortError') {
+      if (abortControllerRef.current?.signal.aborted || err?.cause?.name === 'AbortError') {
+        console.log('[useConversation] Ignoring abort error')
         return
       }
+
+      console.log('[useConversation] Error fetching conversation:', err, 'sessionStatus:', sessionStatus)
+
       setError(formatError(err))
       setErrorCount(prev => prev + 1)
     } finally {
@@ -83,6 +99,11 @@ export function useConversation(
   fetchConversationRef.current = fetchConversation
 
   useEffect(() => {
+    // Don't poll if sessionId is undefined (e.g., for draft sessions)
+    if (!sessionId) {
+      return
+    }
+
     // Only poll if this is the active session
     if (activeSessionDetail?.session.id !== sessionId) {
       return

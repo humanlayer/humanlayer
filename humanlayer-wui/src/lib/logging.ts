@@ -1,11 +1,10 @@
 // Detect if we're in a test environment (no window object) | Sometimes the webkit devtools don't cut it, this allows opening in a Chrome-based browser
-const isTestEnvironment =
-  typeof window === 'undefined' || window.navigator.userAgent.toLowerCase().indexOf('chrome') !== -1
+const isBrowser = typeof window !== 'undefined' && !('__TAURI__' in window)
 
 // Lazy load Tauri logging to avoid import errors in tests
 let tauriLog: any = null
 const getTauriLog = async () => {
-  if (!tauriLog && !isTestEnvironment) {
+  if (!tauriLog && !isBrowser) {
     tauriLog = await import('@tauri-apps/plugin-log')
   }
   return tauriLog
@@ -20,7 +19,7 @@ export const logger = {
       .join(' ')
 
     // In test environment, preserve original arguments
-    if (isTestEnvironment) {
+    if (isBrowser) {
       console.log(message, ...args)
       return
     }
@@ -37,7 +36,7 @@ export const logger = {
       .map(arg => (typeof arg === 'object' ? JSON.stringify(arg) : String(arg)))
       .join(' ')
 
-    if (isTestEnvironment) {
+    if (isBrowser) {
       // In tests, preserve original arguments for test assertions
       console.error(message, ...args)
       return
@@ -54,7 +53,7 @@ export const logger = {
       .map(arg => (typeof arg === 'object' ? JSON.stringify(arg) : String(arg)))
       .join(' ')
 
-    if (isTestEnvironment) {
+    if (isBrowser) {
       console.warn(message, ...args)
       return
     }
@@ -70,7 +69,7 @@ export const logger = {
       .map(arg => (typeof arg === 'object' ? JSON.stringify(arg) : String(arg)))
       .join(' ')
 
-    if (isTestEnvironment) {
+    if (isBrowser) {
       console.debug(message, ...args)
       return
     }
@@ -86,7 +85,7 @@ export const logger = {
       .map(arg => (typeof arg === 'object' ? JSON.stringify(arg) : String(arg)))
       .join(' ')
 
-    if (isTestEnvironment) {
+    if (isBrowser) {
       console.trace(message, ...args)
       return
     }

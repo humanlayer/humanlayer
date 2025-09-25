@@ -1,6 +1,7 @@
 import { daemonClient } from '@/lib/daemon'
 import { useHotkeysContext } from 'react-hotkeys-hook'
 import { logger } from '@/lib/logging'
+import { useStore } from '@/AppStore'
 
 const LAST_WORKING_DIR_KEY = 'humanlayer-last-working-dir'
 
@@ -13,6 +14,7 @@ export const setLastWorkingDir = (dir: string) => localStorage.setItem(LAST_WORK
 // Helper hook for global hotkey management
 export function useSessionLauncherHotkeys() {
   const { activeScopes } = useHotkeysContext()
+  const refreshSessions = useStore(state => state.refreshSessions)
 
   // Helper to check if user is actively typing in a text input
   const isTypingInInput = () => {
@@ -53,6 +55,9 @@ export function useSessionLauncherHotkeys() {
                 working_dir: getLastWorkingDir() || '~/',
                 draft: true, // Create as draft
               })
+
+              // Refresh sessions to include the new draft
+              await refreshSessions()
 
               // Navigate directly to SessionDetail
               window.location.hash = `#/sessions/${response.sessionId}`

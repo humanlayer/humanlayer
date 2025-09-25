@@ -50,6 +50,7 @@ interface ResponseInputProps {
   isDraft?: boolean
   onLaunchDraft?: () => void
   onDiscardDraft?: () => void
+  isLaunchingDraft?: boolean
 }
 
 export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }, ResponseInputProps>(
@@ -82,6 +83,7 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
       isDraft = false,
       onLaunchDraft,
       onDiscardDraft,
+      isLaunchingDraft = false,
     },
     ref,
   ) => {
@@ -112,7 +114,7 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
       return () => clearTimeout(timeout)
     }, [session.claudeSessionId])
     const getSendButtonText = () => {
-      if (isDraft) return 'Launch'
+      if (isDraft) return isLaunchingDraft ? 'Launching...' : 'Launch'
       if (isResponding) return 'Interrupting...'
       if (isDenying) return youSure ? 'Deny?' : 'Deny'
 
@@ -306,8 +308,8 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
     const hasText = responseEditor && !responseEditor.isEmpty
     const canInterrupt = debouncedCanInterrupt // Use debounced value
 
-    // Disable when: responding OR (running without ability to interrupt) OR (not running and no text)
-    const isDisabled = isResponding || (isRunning && !canInterrupt) || (!isRunning && !hasText)
+    // Disable when: responding OR (running without ability to interrupt) OR (not running and no text) OR launching draft
+    const isDisabled = isResponding || (isRunning && !canInterrupt) || (!isRunning && !hasText) || isLaunchingDraft
 
     const isMac = navigator.platform.includes('Mac')
     // Show different keyboard shortcut based on state

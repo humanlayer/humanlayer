@@ -363,15 +363,15 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     }
   }, [isActivelyProcessing])
 
-  // Get events for sidebar access
-  const { events } = useConversation(session.id)
+  // Get events for sidebar access - only poll for non-draft sessions
+  const { events } = useConversation(isDraft ? undefined : session.id)
 
-  // Use task grouping
-  const { hasSubTasks, expandedTasks, toggleTaskGroup } = useTaskGrouping(events)
+  // Use task grouping - pass empty array for drafts to avoid unnecessary processing
+  const { hasSubTasks, expandedTasks, toggleTaskGroup } = useTaskGrouping(isDraft ? [] : events)
 
-  // Use navigation hook
+  // Use navigation hook - pass empty events for drafts
   const navigation = useSessionNavigation({
-    events,
+    events: isDraft ? [] : events,
     hasSubTasks,
     expandedTasks,
     toggleTaskGroup,
@@ -392,7 +392,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   })
 
   // Use clipboard hook
-  const focusedEvent = events.find(e => e.id === navigation.focusedEventId) || null
+  const focusedEvent = events?.find(e => e.id === navigation.focusedEventId) || null
   useSessionClipboard(focusedEvent, !expandedToolResult && !forkViewOpen)
 
   // Handle approval parameter from URL
@@ -435,7 +435,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       setSearchParams(searchParams, { replace: true })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [targetApprovalId, events.length > 0, approvals.focusApprovalById]) // Minimal deps to prevent constant re-runs
+  }, [targetApprovalId, events?.length > 0, approvals.focusApprovalById]) // Minimal deps to prevent constant re-runs
 
   // Add fork commit handler
   const handleForkCommit = useCallback(() => {
@@ -525,7 +525,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   useEffect(() => {
     const hasApprovalParam = targetApprovalId !== null
 
-    if (!hasScrolledToBottomRef.current && events.length > 0 && !hasApprovalParam) {
+    if (!hasScrolledToBottomRef.current && events?.length > 0 && !hasApprovalParam) {
       // Try multiple times with increasing delays to handle rendering delays
       const scrollAttempts = [100, 300, 500]
       const timers: ReturnType<typeof setTimeout>[] = []
@@ -565,7 +565,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         timers.forEach(t => clearTimeout(t))
       }
     }
-  }, [events.length, targetApprovalId])
+  }, [events?.length, targetApprovalId])
 
   // Cleanup confirmation timeout on unmount or session change
   useEffect(() => {
@@ -585,23 +585,32 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   }
 
   // Handle launching a draft session
+  const [isLaunchingDraft, setIsLaunchingDraft] = useState(false)
   const handleLaunchDraft = useCallback(async () => {
-    if (!isDraft) return
+    if (!isDraft || isLaunchingDraft) return
 
     try {
+      setIsLaunchingDraft(true)
+
       // Get the prompt text from the editor
       const prompt = responseEditor?.getText() || ''
 
       // Launch the draft session with the prompt
       await daemonClient.launchDraftSession(session.id, prompt)
 
+      // Clear the input after successful launch
+      responseEditor?.commands.setContent('')
+      localStorage.removeItem(`response-input.${session.id}`)
+
       // Session status will update via WebSocket, no need to do anything else
     } catch (error) {
       toast.error('Failed to launch draft session', {
         description: error instanceof Error ? error.message : 'Unknown error',
       })
+    } finally {
+      setIsLaunchingDraft(false)
     }
-  }, [isDraft, session.id, responseEditor])
+  }, [isDraft, session.id, responseEditor, isLaunchingDraft])
 
   // Handle discarding a draft session
   const handleDiscardDraft = useCallback(() => {
@@ -1009,7 +1018,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       if (container) {
         container.scrollTop = container.scrollHeight
         // Focus the last event
-        if (events.length > 0) {
+        if (events?.length > 0) {
           const lastEvent = events[events.length - 1]
           if (lastEvent.id !== undefined) {
             navigation.setFocusedEventId(lastEvent.id)
@@ -1034,7 +1043,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       if (container) {
         container.scrollTop = 0
         // Focus the first event
-        if (events.length > 0) {
+        if (events?.length > 0) {
           const firstEvent = events[0]
           if (firstEvent.id !== undefined) {
             navigation.setFocusedEventId(firstEvent.id)
@@ -1196,13 +1205,13 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       </div>
 
       <div className={`flex flex-1 gap-4 ${isWideView ? 'flex-row' : 'flex-col'} min-h-0`}>
-        {/* Conversation content and Loading */}
-        <Card
+        {/* Conversation content and Loading - only show for non-draft sessions */}
+        {!isDraft && (
+          <Card
           className={`Conversation-Card w-full relative ${cardVerticalPadding} flex flex-col min-h-0`}
         >
           <CardContent className="px-3 flex flex-col flex-1 min-h-0">
-            {!isDraft ? (
-              <ConversationStream
+            <ConversationStream
                 sessionId={session.id}
                 focusedEventId={navigation.focusedEventId}
                 setFocusedEventId={navigation.setFocusedEventId}
@@ -1224,11 +1233,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                 expandedTasks={expandedTasks}
                 toggleTaskGroup={toggleTaskGroup}
               />
-            ) : (
-              <div className="flex flex-1 items-center justify-center text-muted-foreground">
-                <p>Configure your session settings and launch when ready</p>
-              </div>
-            )}
           </CardContent>
           {isActivelyProcessing && (
             <div
@@ -1258,7 +1262,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               <ChevronDown className="w-3 h-3 animate-bounce" />
             </div>
           </div>
-        </Card>
+          </Card>
+        )}
 
         {isWideView && lastTodo && (
           <Card className="w-[20%] flex flex-col min-h-0">
@@ -1287,6 +1292,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
             isDraft={isDraft}
             onLaunchDraft={handleLaunchDraft}
             onDiscardDraft={handleDiscardDraft}
+            isLaunchingDraft={isLaunchingDraft}
             forkTurnNumber={
               previewEventIndex !== null
                 ? events
