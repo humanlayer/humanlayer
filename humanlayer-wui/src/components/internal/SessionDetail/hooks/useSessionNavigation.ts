@@ -155,6 +155,21 @@ export function useSessionNavigation({
       const focusedEvent = events.find(e => e.id === focusedEventId)
       if (!focusedEvent || focusedEvent.eventType !== ConversationEventType.ToolCall) return
 
+      // Handle sub-agent info display for Task events
+      if (focusedEvent.toolName === 'Task' && focusedEvent.toolInputJson && setExpandedToolCall) {
+        try {
+          const taskInput = JSON.parse(focusedEvent.toolInputJson)
+          // Show modal for sub-agents to display prompt and parameters
+          if (taskInput.subagent_type && taskInput.subagent_type !== 'Task') {
+            // Use the existing modal infrastructure to show sub-agent details
+            setExpandedToolCall(focusedEvent)
+            return
+          }
+        } catch (e) {
+          console.error('Failed to parse task input:', e)
+        }
+      }
+
       // Handle task group expansion for Task events with sub-events
       if (focusedEvent.toolName === 'Task' && focusedEvent.toolId && hasSubTasks) {
         const subEventsByParent = new Map<string, ConversationEvent[]>()

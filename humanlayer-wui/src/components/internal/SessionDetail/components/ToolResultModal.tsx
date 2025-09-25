@@ -17,6 +17,7 @@ import {
   Search,
   ListTodo,
   ListChecks,
+  HatGlasses,
 } from 'lucide-react'
 
 // Helper function to get the appropriate icon for a tool
@@ -32,6 +33,8 @@ function getToolIcon(toolName: string | undefined): React.ReactNode {
 
   // Handle regular tools
   switch (toolName) {
+    case 'Task':
+      return <Wrench className={className} />
     case 'Edit':
     case 'MultiEdit':
       return <FilePenLine className={className} />
@@ -187,9 +190,35 @@ export function ToolResultModal({
             <DialogTitle className="text-sm font-mono">
               <div className="flex items-center gap-2">
                 {/* Add tool icon */}
-                <span className="text-accent">{getToolIcon(toolCall?.toolName)}</span>
+                <span className="text-accent">{(() => {
+                  // Special icon for sub-agents
+                  if (toolCall?.toolName === 'Task' && toolCall.toolInputJson) {
+                    try {
+                      const args = JSON.parse(toolCall.toolInputJson)
+                      if (args.subagent_type && args.subagent_type !== 'Task') {
+                        return <HatGlasses className="w-3.5 h-3.5" />
+                      }
+                    } catch {
+                      // Ignore parse errors
+                    }
+                  }
+                  return getToolIcon(toolCall?.toolName)
+                })()}</span>
                 <span>
-                  {toolCall?.toolName || 'Tool Result'}
+                  {(() => {
+                    // Show sub-agent type for Task tools
+                    if (toolCall?.toolName === 'Task' && toolCall.toolInputJson) {
+                      try {
+                        const args = JSON.parse(toolCall.toolInputJson)
+                        if (args.subagent_type && args.subagent_type !== 'Task') {
+                          return `Sub-agent: ${args.subagent_type}`
+                        }
+                      } catch {
+                        // Ignore parse errors
+                      }
+                    }
+                    return toolCall?.toolName || 'Tool Result'
+                  })()}
                   {!toolResult && toolCall && !toolCall.isCompleted && (
                     <span className="text-xs text-muted-foreground ml-2">(in progress)</span>
                   )}
@@ -260,7 +289,9 @@ function getToolPrimaryParam(toolCall: ConversationEvent): string {
     const args = JSON.parse(toolCall.toolInputJson)
 
     // Show the most relevant argument based on tool name
-    if (toolCall.toolName === 'Read' && args.file_path) {
+    if (toolCall.toolName === 'Task' && args.description) {
+      return truncate(args.description, 60)
+    } else if (toolCall.toolName === 'Read' && args.file_path) {
       return args.file_path
     } else if (toolCall.toolName === 'Bash' && args.command) {
       return truncate(args.command, 60)
@@ -386,6 +417,47 @@ function renderToolInput(toolCall: ConversationEvent): React.ReactNode {
               {args.plan}
             </pre>
           </div>
+        </div>
+      )
+    }
+
+    // Special rendering for Task tool (sub-agents)
+    if (toolCall.toolName === 'Task' && args.subagent_type) {
+      return (
+        <div className="space-y-3">
+          <div className="font-mono text-sm">
+            <span className="text-muted-foreground">Sub-agent Type:</span>{' '}
+            <span className="font-bold text-accent">{args.subagent_type}</span>
+          </div>
+          {args.description && (
+            <div className="font-mono text-sm">
+              <span className="text-muted-foreground">Description:</span>{' '}
+              <span className="italic">{args.description}</span>
+            </div>
+          )}
+          {args.prompt && (
+            <div className="font-mono text-sm">
+              <div className="text-muted-foreground mb-1">Prompt:</div>
+              <pre className="mt-1 whitespace-pre-wrap bg-muted/50 rounded-md p-3 break-words">
+                {args.prompt}
+              </pre>
+            </div>
+          )}
+          {/* Show other parameters if they exist */}
+          {Object.keys(args).filter(k => !['subagent_type', 'description', 'prompt'].includes(k)).length > 0 && (
+            <div className="font-mono text-sm">
+              <div className="text-muted-foreground mb-1">Additional Parameters:</div>
+              <pre className="mt-1 whitespace-pre-wrap bg-muted/50 rounded-md p-3 break-words">
+                {JSON.stringify(
+                  Object.fromEntries(
+                    Object.entries(args).filter(([k]) => !['subagent_type', 'description', 'prompt'].includes(k))
+                  ),
+                  null,
+                  2
+                )}
+              </pre>
+            </div>
+          )}
         </div>
       )
     }
