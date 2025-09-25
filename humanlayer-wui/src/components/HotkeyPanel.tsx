@@ -157,49 +157,51 @@ export function HotkeyPanel({ open, onOpenChange }: HotkeyPanelProps) {
             )}
           />
           <DialogPrimitive.Content
-          className={cn(
-            'fixed right-0 top-0 bottom-0 z-50 h-full w-full max-w-[400px]',
-            'bg-background shadow-xl',
-            'data-[state=open]:animate-in data-[state=closed]:animate-out',
-            'data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right',
-            'duration-200',
-          )}
-        >
-          <div className="flex h-full flex-col">
-            {/* Header */}
-            <div className="flex items-center justify-between border-b px-4 py-3">
-              <DialogPrimitive.Title>Keyboard Shortcuts</DialogPrimitive.Title>
-              <DialogPrimitive.Close className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
-                <X className="h-4 w-4" />
-                <span className="sr-only">Close</span>
-              </DialogPrimitive.Close>
-            </div>
+            className={cn(
+              'fixed right-0 top-0 bottom-0 z-50 h-full w-full max-w-[400px]',
+              'bg-background shadow-xl',
+              'data-[state=open]:animate-in data-[state=closed]:animate-out',
+              'data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right',
+              'duration-200',
+            )}
+          >
+            <div className="flex h-full flex-col">
+              {/* Header */}
+              <div className="flex items-center justify-between border-b px-4 py-3">
+                <DialogPrimitive.Title>Keyboard Shortcuts</DialogPrimitive.Title>
+                <DialogPrimitive.Close className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+                  <X className="h-4 w-4" />
+                  <span className="sr-only">Close</span>
+                </DialogPrimitive.Close>
+              </div>
 
-            {/* Command component for filtering */}
-            <Command className="flex-1 overflow-hidden">
-              <CommandInput placeholder="Search shortcuts..." className="h-11" autoFocus />
-              <CommandList className="max-h-none">
-                <CommandEmpty>No shortcuts found.</CommandEmpty>
-                {Object.entries(groupedHotkeys).map(([category, hotkeys]) => (
-                  <CommandGroup key={category} heading={category} className="py-3">
-                    {hotkeys.map((hotkey, index) => (
-                      <CommandItem
-                        key={`${category}-${index}`}
-                        value={`${hotkey.description} ${hotkey.key} ${category}`}
-                        className="flex items-center justify-between"
-                      >
-                        <span className="text-sm">{hotkey.description}</span>
-                        <KeyboardShortcut keyString={formatHotkeyForDisplay(hotkey.key, unicodeChars)} />
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                ))}
-              </CommandList>
-            </Command>
-          </div>
-        </DialogPrimitive.Content>
-      </DialogPrimitive.Portal>
-    </DialogPrimitive.Root>
+              {/* Command component for filtering */}
+              <Command className="flex-1 overflow-hidden">
+                <CommandInput placeholder="Search shortcuts..." className="h-11" autoFocus />
+                <CommandList className="max-h-none">
+                  <CommandEmpty>No shortcuts found.</CommandEmpty>
+                  {Object.entries(groupedHotkeys).map(([category, hotkeys]) => (
+                    <CommandGroup key={category} heading={category} className="py-3">
+                      {hotkeys.map((hotkey, index) => (
+                        <CommandItem
+                          key={`${category}-${index}`}
+                          value={`${hotkey.description} ${hotkey.key} ${category}`}
+                          className="flex items-center justify-between"
+                        >
+                          <span className="text-sm">{hotkey.description}</span>
+                          <KeyboardShortcut
+                            keyString={formatHotkeyForDisplay(hotkey.key, unicodeChars)}
+                          />
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  ))}
+                </CommandList>
+              </Command>
+            </div>
+          </DialogPrimitive.Content>
+        </DialogPrimitive.Portal>
+      </DialogPrimitive.Root>
     </HotkeyScopeBoundary>
   )
 }

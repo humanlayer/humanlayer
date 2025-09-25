@@ -576,7 +576,7 @@ export function Layout() {
   )
 
   // Global hotkey for feedback
-  // Use the GLOBAL scope ('*') so it's always active, even when other scopes are disabled
+  // Don't specify scopes to make it work globally (defaults to wildcard '*')
   useHotkeys(
     'meta+shift+f, ctrl+shift+f',
     async () => {
@@ -589,7 +589,7 @@ export function Layout() {
       }
     },
     {
-      scopes: [HOTKEY_SCOPES.GLOBAL],
+      // No scopes specified - works in wildcard scope
       enabled: true,
       preventDefault: true,
     },

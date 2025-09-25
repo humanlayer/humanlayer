@@ -61,7 +61,7 @@ export function useHotkeyUnicodeChars() {
  */
 export function formatHotkeyForDisplay(
   hotkey: string,
-  unicodeChars: ReturnType<typeof useHotkeyUnicodeChars>
+  unicodeChars: ReturnType<typeof useHotkeyUnicodeChars>,
 ): string {
   let formatted = hotkey
 
@@ -75,9 +75,7 @@ export function formatHotkeyForDisplay(
 
   // Keep Mac symbols on Mac
   if (unicodeChars.isMac) {
-    formatted = formatted
-      .replace(/Ctrl\+/gi, '⌘+')
-      .replace(/Alt\+/gi, '⌥+')
+    formatted = formatted.replace(/Ctrl\+/gi, '⌘+').replace(/Alt\+/gi, '⌥+')
   }
 
   return formatted

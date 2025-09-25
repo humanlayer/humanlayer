@@ -756,7 +756,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
 
   // Add Option+Y handler for dangerously skip permissions mode
   useHotkeys(
-    'alt+y',
+    'alt+y, option+y',
     handleToggleDangerouslySkipPermissions,
     {
       preventDefault: true,
@@ -879,7 +879,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   // Create reusable handler for toggling fork view
   // Add hotkey to open fork view (Meta+Y)
   useHotkeys(
-    'meta+y',
+    'meta+y, ctrl+y',
     e => {
       e.preventDefault()
       handleToggleForkView()
@@ -949,20 +949,18 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       const container = document.querySelector('[data-conversation-container]')
       if (container) {
         container.scrollTop = container.scrollHeight
-        // Focus the last event
-        if (events.length > 0) {
-          const lastEvent = events[events.length - 1]
-          if (lastEvent.id !== undefined) {
-            navigation.setFocusedEventId(lastEvent.id)
-            navigation.setFocusSource('keyboard')
-          }
+        // Focus the last navigable item
+        if (navigation.navigableItems.length > 0) {
+          const lastItem = navigation.navigableItems[navigation.navigableItems.length - 1]
+          navigation.setFocusedEventId(lastItem.id)
+          navigation.setFocusSource('keyboard')
         }
       }
     },
     {
       scopes: [detailScope],
     },
-    [events, navigation.setFocusedEventId, navigation.setFocusSource],
+    [navigation.navigableItems, navigation.setFocusedEventId, navigation.setFocusSource],
   )
 
   // Add 'gg' to jump to top of conversation (vim-style)
@@ -974,13 +972,11 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       const container = document.querySelector('[data-conversation-container]')
       if (container) {
         container.scrollTop = 0
-        // Focus the first event
-        if (events.length > 0) {
-          const firstEvent = events[0]
-          if (firstEvent.id !== undefined) {
-            navigation.setFocusedEventId(firstEvent.id)
-            navigation.setFocusSource('keyboard')
-          }
+        // Focus the first navigable item
+        if (navigation.navigableItems.length > 0) {
+          const firstItem = navigation.navigableItems[0]
+          navigation.setFocusedEventId(firstItem.id)
+          navigation.setFocusSource('keyboard')
         }
       }
     },
@@ -989,7 +985,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       preventDefault: true,
       scopes: [detailScope],
     },
-    [events, navigation.setFocusedEventId, navigation.setFocusSource],
+    [navigation.navigableItems, navigation.setFocusedEventId, navigation.setFocusSource],
   )
 
   // Add Enter key to focus text input

@@ -198,7 +198,7 @@ export default function SessionTable({
 
   // Select all with meta+a (Cmd+A on Mac, Ctrl+A on Windows/Linux)
   useHotkeys(
-    'meta+a',
+    'meta+a, ctrl+a',
     () => {
       // Toggle all sessions - if all are selected, deselect all; otherwise select all
       const allSelected = sessions.every(s => selectedSessions.has(s.id))
