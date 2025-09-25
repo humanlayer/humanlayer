@@ -14,7 +14,7 @@ export const HOTKEY_SCOPES = {
   THEME_SELECTOR: 'themeSelector',
   KEYBOARD_HELPER: 'keyboardHelper',
   SETTINGS_MODAL: 'settingsModal',
-  TITLE_EDITING: 'titleEditing',
+  TITLE_EDITING: 'sessions.details.titleEditing',
   ADDITIONAL_DIRECTORIES: 'additionalDirectories',
   SESSION_LAUNCHER: 'sessions.launcher',
 } as const

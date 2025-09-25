@@ -233,7 +233,10 @@ function ForkViewModalContent({
         checkboxRef.current?.focus()
       } else if (focusedSection === 'checkbox') {
         setFocusedSection('buttons')
-        forkButtonRef.current?.focus()
+        // Use setTimeout to ensure the button is ready to receive focus
+        setTimeout(() => {
+          forkButtonRef.current?.focus()
+        }, 0)
       } else if (focusedSection === 'buttons') {
         setFocusedSection('messages')
         containerRef.current?.focus()
@@ -257,7 +260,10 @@ function ForkViewModalContent({
       // Navigate backward through sections
       if (focusedSection === 'messages') {
         setFocusedSection('buttons')
-        forkButtonRef.current?.focus()
+        // Use setTimeout to ensure the button is ready to receive focus
+        setTimeout(() => {
+          forkButtonRef.current?.focus()
+        }, 0)
       } else if (focusedSection === 'checkbox') {
         setFocusedSection('messages')
         containerRef.current?.focus()

@@ -743,9 +743,9 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     }
   }, [session.id, activeScopes, dangerousSkipPermissionsDialogOpen, updateSessionOptimistic])
 
-  // Add Shift+Tab handler for auto-accept edits mode
+  // Add Option+A handler for auto-accept edits mode
   useHotkeys(
-    'shift+tab',
+    'alt+a, option+a',
     handleToggleAutoAccept,
     {
       preventDefault: true,

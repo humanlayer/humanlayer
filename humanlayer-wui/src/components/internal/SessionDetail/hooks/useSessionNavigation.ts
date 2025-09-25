@@ -191,6 +191,68 @@ export function useSessionNavigation({
     { enabled: !expandedToolResult && !disabled, scopes: [scope] },
   )
 
+  // H key to toggle task group expand/collapse
+  useHotkeys(
+    'h',
+    () => {
+      if (!focusedEventId) return
+
+      startKeyboardNavigation?.()
+
+      const focusedEvent = events.find(e => e.id === focusedEventId)
+      if (!focusedEvent || focusedEvent.eventType !== ConversationEventType.ToolCall) return
+
+      // Handle task group toggle for Task events with sub-events
+      if (focusedEvent.toolName === 'Task' && focusedEvent.toolId && hasSubTasks) {
+        const subEventsByParent = new Map<string, ConversationEvent[]>()
+        events.forEach(event => {
+          if (event.parentToolUseId) {
+            const siblings = subEventsByParent.get(event.parentToolUseId) || []
+            siblings.push(event)
+            subEventsByParent.set(event.parentToolUseId, siblings)
+          }
+        })
+
+        const hasSubEvents = subEventsByParent.has(focusedEvent.toolId)
+        if (hasSubEvents) {
+          toggleTaskGroup(focusedEvent.toolId)
+        }
+      }
+    },
+    { enabled: !expandedToolResult && !disabled, scopes: [scope] },
+  )
+
+  // L key to collapse task group
+  useHotkeys(
+    'l',
+    () => {
+      if (!focusedEventId) return
+
+      startKeyboardNavigation?.()
+
+      const focusedEvent = events.find(e => e.id === focusedEventId)
+      if (!focusedEvent || focusedEvent.eventType !== ConversationEventType.ToolCall) return
+
+      // Handle task group collapse for Task events with sub-events
+      if (focusedEvent.toolName === 'Task' && focusedEvent.toolId && hasSubTasks) {
+        const subEventsByParent = new Map<string, ConversationEvent[]>()
+        events.forEach(event => {
+          if (event.parentToolUseId) {
+            const siblings = subEventsByParent.get(event.parentToolUseId) || []
+            siblings.push(event)
+            subEventsByParent.set(event.parentToolUseId, siblings)
+          }
+        })
+
+        const hasSubEvents = subEventsByParent.has(focusedEvent.toolId)
+        if (hasSubEvents && expandedTasks.has(focusedEvent.toolId)) {
+          toggleTaskGroup(focusedEvent.toolId)
+        }
+      }
+    },
+    { enabled: !expandedToolResult && !disabled, scopes: [scope] },
+  )
+
   // Scroll focused element into view (only for keyboard navigation)
   useEffect(() => {
     if (focusedEventId && focusSource === 'keyboard') {

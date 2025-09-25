@@ -55,7 +55,9 @@ const hotkeyData = [
   { category: 'Session Detail', key: 'K', description: 'Previous event' },
   { category: 'Session Detail', key: 'G,G', description: 'Scroll to top' },
   { category: 'Session Detail', key: 'Shift+G', description: 'Scroll to bottom' },
-  { category: 'Session Detail', key: 'I', description: 'Inspect/expand' },
+  { category: 'Session Detail', key: 'I', description: 'Inspect/expand toggle' },
+  { category: 'Session Detail', key: 'H', description: 'Inspect/expand sub-agent group' },
+  { category: 'Session Detail', key: 'L', description: 'Collapse task group' },
   { category: 'Session Detail', key: 'A', description: 'Approve' },
   { category: 'Session Detail', key: 'D', description: 'Deny' },
   { category: 'Session Detail', key: 'E', description: 'Archive session' },
@@ -63,23 +65,12 @@ const hotkeyData = [
   { category: 'Session Detail', key: 'Ctrl+X', description: 'Interrupt session' },
   { category: 'Session Detail', key: 'P', description: 'Go to parent session' },
   { category: 'Session Detail', key: '⌘+Y', description: 'Toggle fork view' },
-  { category: 'Session Detail', key: 'Shift+Tab', description: 'Toggle auto-accept edits' },
+  { category: 'Session Detail', key: 'Option+A', description: 'Toggle auto-accept edits' },
   { category: 'Session Detail', key: 'Enter', description: 'Focus response input' },
   { category: 'Session Detail', key: '⌘+Enter', description: 'Submit response' },
   { category: 'Session Detail', key: '⌥+Y', description: 'Toggle bypass permissions' },
 ]
 
-// Group hotkeys by category
-const groupedHotkeys = hotkeyData.reduce(
-  (acc, hotkey) => {
-    if (!acc[hotkey.category]) {
-      acc[hotkey.category] = []
-    }
-    acc[hotkey.category].push(hotkey)
-    return acc
-  },
-  {} as Record<string, typeof hotkeyData>,
-)
 
 export const KeyboardShortcut = ({ keyString }: { keyString: string }) => {
   return (
@@ -97,6 +88,24 @@ export const KeyboardShortcut = ({ keyString }: { keyString: string }) => {
 
 export function HotkeyPanel({ open, onOpenChange }: HotkeyPanelProps) {
   const unicodeChars = useHotkeyUnicodeChars()
+
+  // Format hotkey data with OS-specific keys
+  const formattedHotkeyData = hotkeyData.map(item => ({
+    ...item,
+    key: formatHotkeyForDisplay(item.key, unicodeChars),
+  }))
+
+  // Group hotkeys by category
+  const groupedHotkeys = formattedHotkeyData.reduce(
+    (acc, hotkey) => {
+      if (!acc[hotkey.category]) {
+        acc[hotkey.category] = []
+      }
+      acc[hotkey.category].push(hotkey)
+      return acc
+    },
+    {} as Record<string, typeof formattedHotkeyData>,
+  )
 
   // Handle J/K navigation for scrolling
   useHotkeys(
