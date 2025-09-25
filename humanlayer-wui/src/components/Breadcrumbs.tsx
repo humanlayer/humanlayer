@@ -128,7 +128,7 @@ export function Breadcrumbs() {
                           saveEdit()
                         }
                       }}
-                      className="px-1 py-0.5 text-sm bg-background border rounded font-mono"
+                      className="px-1 py-0.5 text-sm bg-background border rounded font-mono focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none"
                       style={{
                         width: `${Math.max(20, editValue.length) * 0.7}em`,
                         minWidth: '20em',
@@ -136,10 +136,16 @@ export function Breadcrumbs() {
                       }}
                       autoFocus
                     />
-                    <button onClick={saveEdit} className="p-0.5 hover:opacity-80">
+                    <button
+                      onClick={saveEdit}
+                      className="p-0.5 hover:opacity-80 focus-visible:ring-ring/50 focus-visible:ring-[2px] focus-visible:outline-none rounded"
+                    >
                       <Check className="h-3 w-3" />
                     </button>
-                    <button onClick={cancelEdit} className="p-0.5 hover:opacity-80">
+                    <button
+                      onClick={cancelEdit}
+                      className="p-0.5 hover:opacity-80 focus-visible:ring-ring/50 focus-visible:ring-[2px] focus-visible:outline-none rounded"
+                    >
                       <X className="h-3 w-3" />
                     </button>
                   </div>
@@ -150,7 +156,7 @@ export function Breadcrumbs() {
                     </span>
                     <button
                       onClick={startEdit}
-                      className="p-0.5 opacity-50 hover:opacity-100 transition-opacity"
+                      className="p-0.5 opacity-50 hover:opacity-100 transition-opacity focus-visible:ring-ring/50 focus-visible:ring-[2px] focus-visible:outline-none rounded"
                       aria-label="Edit session title"
                     >
                       <Pencil className="h-3 w-3" />

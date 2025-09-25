@@ -175,7 +175,7 @@ export default function CommandPaletteMenu() {
           'bg-background border rounded-md',
           'transition-all duration-200',
           'placeholder:text-muted-foreground/60',
-          'border-border hover:border-primary/50 focus:border-primary focus:ring-2 focus:ring-primary/20',
+          'border-border hover:border-primary/50 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none',
         )}
         autoComplete="off"
         autoFocus

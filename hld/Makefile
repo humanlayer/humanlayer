@@ -27,7 +27,7 @@ test-quiet:
 # Base test-unit target overridden below
 
 # Run integration tests (requires build tag)
-test-integration: build
+test-integration:
 	@if [ -n "$$VERBOSE" ]; then \
 		CGO_LDFLAGS="-Wl,-w" go test -v -tags=integration -run Integration ./daemon/...; \
 	else \
@@ -35,7 +35,7 @@ test-integration: build
 	fi
 
 # Run integration tests with quiet output
-test-integration-quiet: build
+test-integration-quiet:
 	@. ../hack/run_silent.sh && run_silent_with_test_count "Integration tests passed" "CGO_LDFLAGS=\"-Wl,-w\" go test -json -tags=integration -run Integration ./daemon/..." "go"
 
 # Run integration tests with race detection
@@ -47,7 +47,7 @@ test-integration-race:
 	fi
 
 # Run integration tests with race detection and quiet output
-test-integration-race-quiet: build
+test-integration-race-quiet:
 	@. ../hack/run_silent.sh && run_silent_with_test_count "Integration tests with race detection passed" "CGO_LDFLAGS=\"-Wl,-w\" go test -json -race -tags=integration -run Integration ./daemon/..." "go"
 
 # Run unit tests with race detection

@@ -100,6 +100,7 @@ export const SessionModeIndicator: FC<SessionModeIndicatorProps> = ({
           'rounded-md',
           'animate-pulse-error',
           'hover:bg-[var(--terminal-error)]/25 transition-colors',
+          'focus-visible:ring-[3px] focus-visible:ring-[var(--terminal-error)]/50 focus-visible:outline-none',
           className,
         )}
       >
@@ -137,6 +138,7 @@ export const SessionModeIndicator: FC<SessionModeIndicatorProps> = ({
         'rounded-md',
         'animate-pulse-warning',
         'hover:bg-[var(--terminal-warning)]/25 transition-colors',
+        'focus-visible:ring-[3px] focus-visible:ring-[var(--terminal-warning)]/50 focus-visible:outline-none',
         className,
       )}
     >

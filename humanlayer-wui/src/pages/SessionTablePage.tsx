@@ -80,9 +80,9 @@ export function SessionTablePage() {
     },
   )
 
-  // Handle Shift+Tab to trigger auto-accept for selected sessions
+  // Handle Option+A to trigger auto-accept for selected sessions
   useHotkeys(
-    'shift+tab',
+    'alt+a',
     async e => {
       e.preventDefault()
 

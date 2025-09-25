@@ -41,30 +41,30 @@ export function CodeLayerToastButtons({
       case 'success':
         return {
           action:
-            'bg-background text-[var(--terminal-success)] border-[var(--terminal-success)] hover:bg-[var(--terminal-success)] hover:text-background',
+            'bg-background text-[var(--terminal-success)] border-[var(--terminal-success)] hover:bg-[var(--terminal-success)] hover:text-background focus-visible:border-[var(--terminal-success)] focus-visible:ring-[var(--terminal-success)]/50',
           cancel:
-            'bg-transparent text-[var(--terminal-success)] border-[var(--terminal-success)] hover:bg-[var(--terminal-success)] hover:text-background',
+            'bg-transparent text-[var(--terminal-success)] border-[var(--terminal-success)] hover:bg-[var(--terminal-success)] hover:text-background focus-visible:border-[var(--terminal-success)] focus-visible:ring-[var(--terminal-success)]/50',
         }
       case 'error':
         return {
           action:
-            'bg-background text-[var(--terminal-error)] border-[var(--terminal-error)] hover:bg-[var(--terminal-error)] hover:text-background',
+            'bg-background text-[var(--terminal-error)] border-[var(--terminal-error)] hover:bg-[var(--terminal-error)] hover:text-background focus-visible:border-[var(--terminal-error)] focus-visible:ring-[var(--terminal-error)]/50',
           cancel:
-            'bg-transparent text-[var(--terminal-error)] border-[var(--terminal-error)] hover:bg-[var(--terminal-error)] hover:text-background',
+            'bg-transparent text-[var(--terminal-error)] border-[var(--terminal-error)] hover:bg-[var(--terminal-error)] hover:text-background focus-visible:border-[var(--terminal-error)] focus-visible:ring-[var(--terminal-error)]/50',
         }
       case 'warning':
         return {
           action:
-            'bg-background text-[var(--terminal-warning)] border-[var(--terminal-warning)] hover:bg-[var(--terminal-warning)] hover:text-background',
+            'bg-background text-[var(--terminal-warning)] border-[var(--terminal-warning)] hover:bg-[var(--terminal-warning)] hover:text-background focus-visible:border-[var(--terminal-warning)] focus-visible:ring-[var(--terminal-warning)]/50',
           cancel:
-            'bg-transparent text-[var(--terminal-warning)] border-[var(--terminal-warning)] hover:bg-[var(--terminal-warning)] hover:text-background',
+            'bg-transparent text-[var(--terminal-warning)] border-[var(--terminal-warning)] hover:bg-[var(--terminal-warning)] hover:text-background focus-visible:border-[var(--terminal-warning)] focus-visible:ring-[var(--terminal-warning)]/50',
         }
       case 'info':
         return {
           action:
-            'bg-background text-[var(--terminal-accent)] border-[var(--terminal-accent)] hover:bg-[var(--terminal-accent)] hover:text-background',
+            'bg-background text-[var(--terminal-accent)] border-[var(--terminal-accent)] hover:bg-[var(--terminal-accent)] hover:text-background focus-visible:border-[var(--terminal-accent)] focus-visible:ring-[var(--terminal-accent)]/50',
           cancel:
-            'bg-transparent text-[var(--terminal-accent)] border-[var(--terminal-accent)] hover:bg-[var(--terminal-accent)] hover:text-background',
+            'bg-transparent text-[var(--terminal-accent)] border-[var(--terminal-accent)] hover:bg-[var(--terminal-accent)] hover:text-background focus-visible:border-[var(--terminal-accent)] focus-visible:ring-[var(--terminal-accent)]/50',
         }
       default:
         return {
