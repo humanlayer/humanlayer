@@ -1,12 +1,13 @@
-import React, { useEffect, useRef } from 'react'
-import { useHotkeys } from 'react-hotkeys-hook'
-import { Card, CardContent } from './ui/card'
+import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
+import { useSessionLauncher } from '@/hooks/useSessionLauncher'
 import { cn } from '@/lib/utils'
+import type React from 'react'
+import { useEffect, useRef } from 'react'
+import { useHotkeys } from 'react-hotkeys-hook'
 import CommandInput from './CommandInput'
 import CommandPaletteMenu from './CommandPaletteMenu'
-import { useSessionLauncher } from '@/hooks/useSessionLauncher'
 import { HotkeyScopeBoundary } from './HotkeyScopeBoundary'
-import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
+import { Card, CardContent } from './ui/card'
 
 interface SessionLauncherProps {
   isOpen: boolean
@@ -14,6 +15,7 @@ interface SessionLauncherProps {
 }
 
 export function SessionLauncher({ isOpen, onClose }: SessionLauncherProps) {
+  console.log(`[HOTKEY-DEBUG] SessionLauncher render: isOpen=${isOpen}`)
   const modalRef = useRef<HTMLDivElement>(null)
   const { query, setQuery, config, setConfig, launchSession, isLaunching, error, mode, view, setView } =
     useSessionLauncher()
@@ -21,6 +23,7 @@ export function SessionLauncher({ isOpen, onClose }: SessionLauncherProps) {
   useHotkeys(
     'escape',
     e => {
+      console.log('[HOTKEY-DEBUG] Escape pressed in SessionLauncher')
       e.preventDefault()
       e.stopPropagation()
 
@@ -33,9 +36,11 @@ export function SessionLauncher({ isOpen, onClose }: SessionLauncherProps) {
 
       if (isInputFocused) {
         // First ESC: just blur the input
+        console.log('[HOTKEY-DEBUG] Blurring input')
         ;(activeElement as HTMLElement).blur()
       } else {
         // Second ESC or ESC when no input focused: close modal
+        console.log('[HOTKEY-DEBUG] Closing SessionLauncher')
         onClose()
       }
     },
@@ -86,8 +91,15 @@ export function SessionLauncher({ isOpen, onClose }: SessionLauncherProps) {
 
   useEffect(() => {
     if (isOpen && view === 'input' && modalRef.current) {
-      const input = modalRef.current.querySelector('input')
-      input?.focus()
+      // Small delay to ensure DOM is ready
+      setTimeout(() => {
+        // Look for the directory input specifically (it's the first input in the form)
+        const directoryInput = modalRef.current?.querySelector('input[type="text"]')
+        if (directoryInput) {
+          ;(directoryInput as HTMLInputElement).focus()
+          console.log('[HOTKEY-DEBUG] Focused directory input in SessionLauncher')
+        }
+      }, 50)
     }
   }, [isOpen, view])
 

@@ -1,7 +1,7 @@
 // Debugging logger
 const DEBUG = import.meta.env.DEV
 
-interface ScopeEntry {
+export interface ScopeEntry {
   id: string
   scope: string
   rootDisabled: boolean
@@ -12,6 +12,11 @@ interface ScopeEntry {
 class ScopeManager {
   private stack: ScopeEntry[] = []
   private listeners = new Set<(stack: ScopeEntry[]) => void>()
+
+  // Track how many boundaries want root scope disabled
+  // When this is 0, root scope should be enabled
+  // When this is > 0, root scope should be disabled
+  private rootDisabledCount = 0
 
   // Debug logging
   private logChange(
@@ -40,6 +45,14 @@ class ScopeManager {
   push(entry: ScopeEntry): void {
     const stackBefore = [...this.stack]
     this.stack.push(entry)
+
+    // Update root disabled count
+    if (entry.rootDisabled) {
+      this.rootDisabledCount++
+      if (DEBUG)
+        console.log(`[HOTKEY-DEBUG] Root disabled count increased to ${this.rootDisabledCount}`)
+    }
+
     this.logChange('PUSH', entry, stackBefore, this.stack)
     this.notifyListeners()
   }
@@ -50,6 +63,14 @@ class ScopeManager {
     if (index !== -1) {
       const removed = this.stack[index]
       this.stack.splice(index, 1)
+
+      // Update root disabled count
+      if (removed.rootDisabled) {
+        this.rootDisabledCount = Math.max(0, this.rootDisabledCount - 1)
+        if (DEBUG)
+          console.log(`[HOTKEY-DEBUG] Root disabled count decreased to ${this.rootDisabledCount}`)
+      }
+
       this.logChange('REMOVE', removed, stackBefore, this.stack)
       this.notifyListeners()
     }
@@ -61,6 +82,33 @@ class ScopeManager {
 
   getStack(): ScopeEntry[] {
     return [...this.stack]
+  }
+
+  findEntry(scope: string, component?: string): ScopeEntry | undefined {
+    return this.stack.find(e => e.scope === scope && e.component === component)
+  }
+
+  shouldRootBeEnabled(): boolean {
+    // Root should be enabled when no boundaries have it disabled
+    return this.rootDisabledCount === 0
+  }
+
+  getRootDisabledCount(): number {
+    return this.rootDisabledCount
+  }
+
+  // Clean up any orphaned entries with the same scope/component
+  // This helps handle React StrictMode double-mounting
+  cleanupOrphaned(scope: string, component?: string): void {
+    const orphaned = this.stack.filter(e => e.scope === scope && e.component === component)
+    if (orphaned.length > 1 && DEBUG) {
+      console.log(
+        `[HOTKEY-DEBUG] Found ${orphaned.length} orphaned entries for ${scope}/${component}, cleaning up extras`,
+      )
+    }
+    // Keep only the most recent entry
+    const toRemove = orphaned.slice(0, -1)
+    toRemove.forEach(entry => this.remove(entry.id))
   }
 
   subscribe(listener: (stack: ScopeEntry[]) => void): () => void {

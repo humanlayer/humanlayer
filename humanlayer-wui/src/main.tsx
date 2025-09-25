@@ -20,7 +20,7 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
     <ErrorBoundary>
       <ThemeProvider>
-        <HotkeysProvider initiallyActiveScopes={['*', '.', 'sessions']}>
+        <HotkeysProvider initiallyActiveScopes={['*', '.']}>
           <RouterProvider router={router} />
           <HotkeyScopeDebugger />
         </HotkeysProvider>

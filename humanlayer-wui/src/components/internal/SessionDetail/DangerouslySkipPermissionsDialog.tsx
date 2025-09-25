@@ -13,10 +13,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { AlertTriangle } from 'lucide-react'
-import { useStealHotkeyScope } from '@/hooks/useStealHotkeyScope'
 import { useHotkeys } from 'react-hotkeys-hook'
-
-const DangerouslySkipPermissionsHotkeysScope = 'sessions.details.bypassPermissionsModal'
+import { HotkeyScopeBoundary } from '@/components/HotkeyScopeBoundary'
+import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
 
 interface DangerouslySkipPermissionsDialogProps {
   open: boolean
@@ -30,9 +29,6 @@ const DangerouslySkipPermissionsDialogContent: FC<{
   onConfirm: (timeoutMinutes: number | null) => void
   isOpen: boolean
 }> = ({ onOpenChange, onConfirm, isOpen }) => {
-  // Steal hotkey scope when this dialog is open
-  useStealHotkeyScope(DangerouslySkipPermissionsHotkeysScope, isOpen)
-
   const [timeoutMinutes, setTimeoutMinutes] = useState<number | ''>(15)
   const [useTimeout, setUseTimeout] = useState(true)
   const timeoutInputRef = useRef<HTMLInputElement>(null)
@@ -54,7 +50,7 @@ const DangerouslySkipPermissionsDialogContent: FC<{
     },
     {
       enabled: isOpen,
-      scopes: DangerouslySkipPermissionsHotkeysScope,
+      scopes: [HOTKEY_SCOPES.BYPASS_PERMISSIONS_MODAL],
       preventDefault: true,
       enableOnFormTags: true,
     },
@@ -74,7 +70,7 @@ const DangerouslySkipPermissionsDialogContent: FC<{
     },
     {
       enabled: isOpen,
-      scopes: DangerouslySkipPermissionsHotkeysScope,
+      scopes: [HOTKEY_SCOPES.BYPASS_PERMISSIONS_MODAL],
       preventDefault: true,
       enableOnFormTags: true,
     },
@@ -207,11 +203,18 @@ export const DangerouslySkipPermissionsDialog: FC<DangerouslySkipPermissionsDial
         }}
       >
         {open && (
-          <DangerouslySkipPermissionsDialogContent
-            onOpenChange={onOpenChange}
-            onConfirm={onConfirm}
-            isOpen={open}
-          />
+          <HotkeyScopeBoundary
+            scope={HOTKEY_SCOPES.BYPASS_PERMISSIONS_MODAL}
+            isActive={open}
+            rootScopeDisabled={true}
+            componentName="DangerouslySkipPermissionsDialog"
+          >
+            <DangerouslySkipPermissionsDialogContent
+              onOpenChange={onOpenChange}
+              onConfirm={onConfirm}
+              isOpen={open}
+            />
+          </HotkeyScopeBoundary>
         )}
       </DialogContent>
     </Dialog>

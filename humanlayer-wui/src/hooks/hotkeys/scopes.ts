@@ -16,7 +16,7 @@ export const HOTKEY_SCOPES = {
   SETTINGS_MODAL: 'settingsModal',
   TITLE_EDITING: 'titleEditing',
   ADDITIONAL_DIRECTORIES: 'additionalDirectories',
-  SESSION_LAUNCHER: 'sessionLauncher',
+  SESSION_LAUNCHER: 'sessions.launcher',
 } as const
 
 export type HotkeyScope = (typeof HOTKEY_SCOPES)[keyof typeof HOTKEY_SCOPES]

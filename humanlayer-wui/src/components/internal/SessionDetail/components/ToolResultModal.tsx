@@ -3,10 +3,11 @@ import { useHotkeys } from 'react-hotkeys-hook'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ConversationEvent } from '@/lib/daemon/types'
 import { truncate, parseMcpToolName } from '@/utils/formatting'
-import { useStealHotkeyScope } from '@/hooks/useStealHotkeyScope'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { CustomDiffViewer } from './CustomDiffViewer'
 import { AnsiText, hasAnsiCodes } from '@/utils/ansiParser'
+import { HotkeyScopeBoundary } from '@/components/HotkeyScopeBoundary'
+import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
 import {
   Wrench,
   Globe,
@@ -64,8 +65,6 @@ function getToolIcon(toolName: string | undefined): React.ReactNode {
 // TODO(3): Add keyboard navigation hints in the UI
 // TODO(2): Consider adding copy-to-clipboard functionality for tool results
 
-const ToolResultModalHotkeysScope = 'sessions.details.toolResultModal'
-
 // Minimalist modal for showing full tool results
 export function ToolResultModal({
   toolCall,
@@ -113,7 +112,7 @@ export function ToolResultModal({
       enabled: !!(toolResult || toolCall),
       enableOnFormTags: true,
       preventDefault: true,
-      scopes: ToolResultModalHotkeysScope,
+      scopes: [HOTKEY_SCOPES.TOOL_RESULT_MODAL],
     },
   )
 
@@ -134,7 +133,7 @@ export function ToolResultModal({
       enabled: !!(toolResult || toolCall),
       enableOnFormTags: true,
       preventDefault: true,
-      scopes: ToolResultModalHotkeysScope,
+      scopes: [HOTKEY_SCOPES.TOOL_RESULT_MODAL],
     },
   )
 
@@ -151,89 +150,95 @@ export function ToolResultModal({
     },
     {
       enabled: !!(toolResult || toolCall),
-      scopes: ToolResultModalHotkeysScope,
+      scopes: [HOTKEY_SCOPES.TOOL_RESULT_MODAL],
       preventDefault: true,
     },
   )
 
   const isOpen = !!(toolResult || toolCall)
-  useStealHotkeyScope(ToolResultModalHotkeysScope, isOpen)
 
   // Show modal if we have either a tool result or just a tool call (unfinished)
   if (!isOpen) return null
 
   return (
-    <Dialog
-      open={!!(toolResult || toolCall)}
-      onOpenChange={open => {
-        // This handles ALL dialog close triggers including click-outside
-        if (!open) {
-          handleClose() // Use unified close handler
-        }
-      }}
+    <HotkeyScopeBoundary
+      scope={HOTKEY_SCOPES.TOOL_RESULT_MODAL}
+      isActive={isOpen}
+      rootScopeDisabled={true}
+      componentName="ToolResultModal"
     >
-      <DialogContent
-        className="w-[90vw] max-w-[90vw] h-[85vh] p-0 sm:max-w-[90vw] flex flex-col overflow-hidden"
-        onEscapeKeyDown={e => {
-          // Prevent the default Dialog escape handling (we handle it ourselves)
-          e.preventDefault()
+      <Dialog
+        open={!!(toolResult || toolCall)}
+        onOpenChange={open => {
+          // This handles ALL dialog close triggers including click-outside
+          if (!open) {
+            handleClose() // Use unified close handler
+          }
         }}
       >
-        <DialogHeader className="px-4 py-3 border-b bg-background flex-none">
-          <DialogTitle className="text-sm font-mono">
-            <div className="flex items-center gap-2">
-              {/* Add tool icon */}
-              <span className="text-accent">{getToolIcon(toolCall?.toolName)}</span>
-              <span>
-                {toolCall?.toolName || 'Tool Result'}
-                {!toolResult && toolCall && !toolCall.isCompleted && (
-                  <span className="text-xs text-muted-foreground ml-2">(in progress)</span>
+        <DialogContent
+          className="w-[90vw] max-w-[90vw] h-[85vh] p-0 sm:max-w-[90vw] flex flex-col overflow-hidden"
+          onEscapeKeyDown={e => {
+            // Prevent the default Dialog escape handling (we handle it ourselves)
+            e.preventDefault()
+          }}
+        >
+          <DialogHeader className="px-4 py-3 border-b bg-background flex-none">
+            <DialogTitle className="text-sm font-mono">
+              <div className="flex items-center gap-2">
+                {/* Add tool icon */}
+                <span className="text-accent">{getToolIcon(toolCall?.toolName)}</span>
+                <span>
+                  {toolCall?.toolName || 'Tool Result'}
+                  {!toolResult && toolCall && !toolCall.isCompleted && (
+                    <span className="text-xs text-muted-foreground ml-2">(in progress)</span>
+                  )}
+                </span>
+                {/* Show primary parameter */}
+                {toolCall?.toolInputJson && (
+                  <span className="text-xs text-muted-foreground">{getToolPrimaryParam(toolCall)}</span>
                 )}
-              </span>
-              {/* Show primary parameter */}
-              {toolCall?.toolInputJson && (
-                <span className="text-xs text-muted-foreground">{getToolPrimaryParam(toolCall)}</span>
-              )}
-            </div>
-          </DialogTitle>
-        </DialogHeader>
+              </div>
+            </DialogTitle>
+          </DialogHeader>
 
-        <div className="flex-1 overflow-hidden">
-          <ScrollArea className="h-full">
-            <div className="px-4 py-4 space-y-4">
-              {/* Tool Input Section */}
-              {toolCall?.toolInputJson && renderToolInput(toolCall)}
+          <div className="flex-1 overflow-hidden">
+            <ScrollArea className="h-full">
+              <div className="px-4 py-4 space-y-4">
+                {/* Tool Input Section */}
+                {toolCall?.toolInputJson && renderToolInput(toolCall)}
 
-              {/* Tool Result Section - only show if we have a result */}
-              {toolResult && (
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground mb-2">Result</h3>
-                  <pre className="font-mono text-sm whitespace-pre-wrap break-words">
-                    {/* Only apply ANSI parsing to Bash tool output */}
-                    {toolCall?.toolName === 'Bash' &&
-                    typeof toolResult.toolResultContent === 'string' &&
-                    hasAnsiCodes(toolResult.toolResultContent) ? (
-                      <AnsiText content={toolResult.toolResultContent} />
-                    ) : (
-                      toolResult.toolResultContent || 'No content'
-                    )}
-                  </pre>
-                </div>
-              )}
-            </div>
-          </ScrollArea>
-        </div>
+                {/* Tool Result Section - only show if we have a result */}
+                {toolResult && (
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground mb-2">Result</h3>
+                    <pre className="font-mono text-sm whitespace-pre-wrap break-words">
+                      {/* Only apply ANSI parsing to Bash tool output */}
+                      {toolCall?.toolName === 'Bash' &&
+                      typeof toolResult.toolResultContent === 'string' &&
+                      hasAnsiCodes(toolResult.toolResultContent) ? (
+                        <AnsiText content={toolResult.toolResultContent} />
+                      ) : (
+                        toolResult.toolResultContent || 'No content'
+                      )}
+                    </pre>
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+          </div>
 
-        <div className="px-4 py-2 border-t bg-muted/30 flex justify-between items-center flex-none">
-          <span className="text-xs text-muted-foreground">
-            <kbd>j/k</kbd> or <kbd>↓/↑</kbd> to scroll
-          </span>
-          <span className="text-xs text-muted-foreground">
-            <kbd>i</kbd> or <kbd>ESC</kbd> to close
-          </span>
-        </div>
-      </DialogContent>
-    </Dialog>
+          <div className="px-4 py-2 border-t bg-muted/30 flex justify-between items-center flex-none">
+            <span className="text-xs text-muted-foreground">
+              <kbd>j/k</kbd> or <kbd>↓/↑</kbd> to scroll
+            </span>
+            <span className="text-xs text-muted-foreground">
+              <kbd>i</kbd> or <kbd>ESC</kbd> to close
+            </span>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </HotkeyScopeBoundary>
   )
 }
 

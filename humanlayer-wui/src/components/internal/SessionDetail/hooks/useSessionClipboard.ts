@@ -1,9 +1,15 @@
 import { useHotkeys } from 'react-hotkeys-hook'
 import { ConversationEvent, ConversationEventType } from '@/lib/daemon/types'
 import { copyToClipboard } from '@/utils/clipboard'
-import { SessionDetailHotkeysScope } from '../SessionDetail'
+import { HotkeyScope } from '@/hooks/hotkeys/scopes'
 
-export function useSessionClipboard(focusedEvent: ConversationEvent | null, enabled: boolean = true) {
+interface UseSessionClipboardProps {
+  focusedEvent: ConversationEvent | null
+  enabled?: boolean
+  scope: HotkeyScope
+}
+
+export function useSessionClipboard({ focusedEvent, enabled = true, scope }: UseSessionClipboardProps) {
   const getMessageContent = (event: ConversationEvent): string | null => {
     if (event.eventType !== ConversationEventType.Message) return null
     if (event.role !== 'user' && event.role !== 'assistant') return null
@@ -22,7 +28,7 @@ export function useSessionClipboard(focusedEvent: ConversationEvent | null, enab
     },
     {
       enabled: enabled && !!focusedEvent,
-      scopes: SessionDetailHotkeysScope,
+      scopes: [scope],
     },
   )
 }

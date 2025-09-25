@@ -226,6 +226,7 @@ export function SessionTablePage() {
           handleFocusPreviousSession={focusPreviousSession}
           searchText={undefined}
           matchedSessions={undefined}
+          archived={viewMode === ViewMode.Archived}
           emptyState={
             viewMode === ViewMode.Archived
               ? {

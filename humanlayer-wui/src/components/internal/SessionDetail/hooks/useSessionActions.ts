@@ -5,7 +5,7 @@ import { Session, ConversationEvent, ViewMode } from '@/lib/daemon/types'
 import { daemonClient } from '@/lib/daemon/client'
 import { notificationService } from '@/services/NotificationService'
 import { useStore } from '@/AppStore'
-import { SessionDetailHotkeysScope } from '../SessionDetail'
+import { HotkeyScope } from '@/hooks/hotkeys/scopes'
 import { logger } from '@/lib/logging'
 import { checkUnsupportedCommand } from '@/constants/unsupportedCommands'
 import { toast } from 'sonner'
@@ -16,6 +16,7 @@ interface UseSessionActionsProps {
   pendingForkMessage?: ConversationEvent | null
   onForkCommit?: () => void
   archiveOnFork?: boolean // Add this
+  scope: HotkeyScope
 }
 
 export const ResponseInputLocalStorageKey = 'response-input'
@@ -25,6 +26,7 @@ export function useSessionActions({
   pendingForkMessage,
   onForkCommit,
   archiveOnFork = false, // Add with default
+  scope,
 }: UseSessionActionsProps) {
   const [isResponding, setIsResponding] = useState(false)
   const [forkFromSessionId, setForkFromSessionId] = useState<string | null>(null)
@@ -218,7 +220,7 @@ export function useSessionActions({
       }
     },
     {
-      scopes: SessionDetailHotkeysScope,
+      scopes: [scope],
       enableOnFormTags: true,
     },
   )
@@ -234,7 +236,7 @@ export function useSessionActions({
         handleNavigateToParent()
       }
     },
-    { scopes: SessionDetailHotkeysScope },
+    { scopes: [scope] },
   )
 
   return {

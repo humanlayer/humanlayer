@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { ConversationEvent, ConversationEventType } from '@/lib/daemon/types'
-import { SessionDetailHotkeysScope } from '../SessionDetail'
+import { HotkeyScope } from '@/hooks/hotkeys/scopes'
 
 interface NavigableItem {
   id: number
@@ -18,6 +18,7 @@ interface UseSessionNavigationProps {
   setExpandedToolCall?: (event: ConversationEvent | null) => void
   disabled?: boolean
   startKeyboardNavigation?: () => void
+  scope: HotkeyScope
 }
 
 export function useSessionNavigation({
@@ -30,6 +31,7 @@ export function useSessionNavigation({
   setExpandedToolCall,
   disabled = false,
   startKeyboardNavigation,
+  scope,
 }: UseSessionNavigationProps) {
   const [focusedEventId, setFocusedEventId] = useState<number | null>(null)
   const [focusSource, setFocusSource] = useState<'mouse' | 'keyboard' | null>(null)
@@ -134,11 +136,11 @@ export function useSessionNavigation({
   // Keyboard navigation
   useHotkeys('j, ArrowDown', focusNextEvent, {
     enabled: !expandedToolResult && !disabled,
-    scopes: SessionDetailHotkeysScope,
+    scopes: [scope],
   })
   useHotkeys('k, ArrowUp', focusPreviousEvent, {
     enabled: !expandedToolResult && !disabled,
-    scopes: SessionDetailHotkeysScope,
+    scopes: [scope],
   })
 
   // I key to expand task groups or inspect tool results
@@ -185,7 +187,7 @@ export function useSessionNavigation({
         setExpandedToolCall(focusedEvent)
       }
     },
-    { enabled: !expandedToolResult && !disabled, scopes: SessionDetailHotkeysScope },
+    { enabled: !expandedToolResult && !disabled, scopes: [scope] },
   )
 
   // Scroll focused element into view (only for keyboard navigation)

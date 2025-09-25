@@ -3,7 +3,7 @@ import { useHotkeys } from 'react-hotkeys-hook'
 import { ConversationEvent, ApprovalStatus } from '@/lib/daemon/types'
 import { daemonClient } from '@/lib/daemon/client'
 import { notificationService } from '@/services/NotificationService'
-import { SessionDetailHotkeysScope } from '../SessionDetail'
+import { HotkeyScope } from '@/hooks/hotkeys/scopes'
 import { useStore } from '@/AppStore'
 import { ResponseInputLocalStorageKey } from './useSessionActions'
 
@@ -17,6 +17,7 @@ interface UseSessionApprovalsProps {
   focusedEventId: number | null
   setFocusedEventId: (id: number | null) => void
   setFocusSource?: (source: 'mouse' | 'keyboard' | null) => void
+  scope: HotkeyScope
 }
 
 export function useSessionApprovals({
@@ -25,6 +26,7 @@ export function useSessionApprovals({
   focusedEventId,
   setFocusedEventId,
   setFocusSource,
+  scope,
 }: UseSessionApprovalsProps) {
   // sessionId may be used in future for session-specific approvals
   void sessionId
@@ -145,7 +147,7 @@ export function useSessionApprovals({
       }
     },
     {
-      scopes: SessionDetailHotkeysScope,
+      scopes: [scope],
     },
     [
       events,
@@ -188,7 +190,7 @@ export function useSessionApprovals({
       }
     },
     {
-      scopes: SessionDetailHotkeysScope,
+      scopes: [scope],
     },
     [events, focusedEventId, handleStartDeny, setFocusedEventId, setFocusSource],
   )

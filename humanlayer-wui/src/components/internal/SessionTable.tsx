@@ -21,6 +21,9 @@ import { logger } from '@/lib/logging'
 import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
 import { HotkeyScopeBoundary } from '../HotkeyScopeBoundary'
 
+// Export for parent components that need to use the same scope
+export const SessionTableHotkeysScope = HOTKEY_SCOPES.SESSIONS
+
 interface SessionTableProps {
   sessions: Session[]
   handleFocusSession?: (session: Session) => void
@@ -31,6 +34,7 @@ interface SessionTableProps {
   focusedSession: Session | null
   searchText?: string
   matchedSessions?: Map<string, any>
+  archived?: boolean // Add this to indicate if showing archived sessions
   emptyState?: {
     icon?: LucideIcon
     title: string
@@ -42,8 +46,6 @@ interface SessionTableProps {
   }
 }
 
-export const SessionTableHotkeysScope = HOTKEY_SCOPES.SESSIONS
-
 export default function SessionTable({
   sessions,
   handleFocusSession,
@@ -54,12 +56,16 @@ export default function SessionTable({
   focusedSession,
   searchText,
   matchedSessions,
+  archived = false,
   emptyState,
 }: SessionTableProps) {
   const { isOpen: isSessionLauncherOpen } = useSessionLauncher()
   const tableRef = useRef<HTMLTableElement>(null)
   const { archiveSession, selectedSessions, toggleSessionSelection, bulkArchiveSessions, bulkSelect } =
     useStore()
+
+  // Determine scope based on archived state
+  const tableScope = archived ? HOTKEY_SCOPES.SESSIONS_ARCHIVED : HOTKEY_SCOPES.SESSIONS
 
   // State for inline editing
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null)
@@ -144,7 +150,7 @@ export default function SessionTable({
       handleFocusNextSession?.()
     },
     {
-      scopes: SessionTableHotkeysScope,
+      scopes: [tableScope],
       enabled: !isSessionLauncherOpen,
     },
     [handleFocusNextSession],
@@ -156,7 +162,7 @@ export default function SessionTable({
       handleFocusPreviousSession?.()
     },
     {
-      scopes: SessionTableHotkeysScope,
+      scopes: [tableScope],
       enabled: !isSessionLauncherOpen,
     },
     [handleFocusPreviousSession],
@@ -171,7 +177,7 @@ export default function SessionTable({
       }
     },
     {
-      scopes: SessionTableHotkeysScope,
+      scopes: [tableScope],
       enabled: !isSessionLauncherOpen,
       preventDefault: true,
     },
@@ -186,7 +192,7 @@ export default function SessionTable({
       }
     },
     {
-      scopes: SessionTableHotkeysScope,
+      scopes: [tableScope],
       enabled: !isSessionLauncherOpen,
       preventDefault: true,
     },
@@ -215,7 +221,7 @@ export default function SessionTable({
       })
     },
     {
-      scopes: SessionTableHotkeysScope,
+      scopes: [tableScope],
       enabled: !isSessionLauncherOpen,
       preventDefault: true,
     },
@@ -229,7 +235,7 @@ export default function SessionTable({
         handleActivateSession?.(focusedSession)
       }
     },
-    { scopes: SessionTableHotkeysScope, enabled: !isSessionLauncherOpen },
+    { scopes: [tableScope], enabled: !isSessionLauncherOpen },
   )
 
   // Track if g>e was recently pressed to prevent 'e' from firing
@@ -244,7 +250,7 @@ export default function SessionTable({
     },
     {
       preventDefault: true,
-      scopes: SessionTableHotkeysScope,
+      scopes: [tableScope],
       enabled: !isSessionLauncherOpen,
     },
   )
@@ -350,7 +356,7 @@ export default function SessionTable({
       }
     },
     {
-      scopes: SessionTableHotkeysScope,
+      scopes: [tableScope],
       enabled: !isSessionLauncherOpen && (focusedSession !== null || selectedSessions.size > 0),
       preventDefault: true,
       enableOnFormTags: false,
@@ -374,7 +380,7 @@ export default function SessionTable({
       }
     },
     {
-      scopes: SessionTableHotkeysScope,
+      scopes: [tableScope],
       enabled: !isSessionLauncherOpen && focusedSession !== null,
       preventDefault: true,
       enableOnFormTags: false,
@@ -391,7 +397,7 @@ export default function SessionTable({
       }
     },
     {
-      scopes: SessionTableHotkeysScope,
+      scopes: [tableScope],
       enabled: !isSessionLauncherOpen && focusedSession !== null && editingSessionId === null,
       preventDefault: true,
       enableOnFormTags: false,
@@ -401,8 +407,8 @@ export default function SessionTable({
 
   return (
     <HotkeyScopeBoundary
-      scope={SessionTableHotkeysScope}
-      componentName="SessionTable"
+      scope={tableScope}
+      componentName={`SessionTable-${archived ? 'archived' : 'normal'}`}
     >
       {sessions.length > 0 ? (
         <>
