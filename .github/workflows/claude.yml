@@ -1,9 +1,6 @@
 name: Claude Code
 
 on:
-  push:
-    branches:
-      - kyle/eng-2175-auto-create-worktree-and-checkout-for-linear
   issue_comment:
     types: [created]
   pull_request_review_comment:
@@ -16,7 +13,6 @@ on:
 jobs:
   claude:
     if: |
-      github.event_name == 'push' ||
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude') &&
         (github.event.comment.author_association == 'OWNER' || github.event.comment.author_association == 'MEMBER' || github.event.comment.author_association == 'COLLABORATOR')) ||
       (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude') &&
