@@ -21,9 +21,6 @@ import { logger } from '@/lib/logging'
 import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
 import { HotkeyScopeBoundary } from '../HotkeyScopeBoundary'
 
-// Export for parent components that need to use the same scope
-export const SessionTableHotkeysScope = HOTKEY_SCOPES.SESSIONS
-
 interface SessionTableProps {
   sessions: Session[]
   handleFocusSession?: (session: Session) => void

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useTheme, type Theme } from '@/contexts/ThemeContext'
 import {
   Moon,
@@ -81,7 +81,7 @@ export function ThemeSelector() {
     if (isOpen && itemRefs.current[selectedIndex]) {
       itemRefs.current[selectedIndex]?.scrollIntoView({
         block: 'nearest',
-        behavior: 'smooth'
+        behavior: 'smooth',
       })
     }
   }, [selectedIndex, isOpen])
@@ -151,7 +151,8 @@ export function ThemeSelector() {
         </TooltipTrigger>
         <TooltipContent>
           <p className="flex items-center gap-1">
-            Theme: {currentTheme?.label || 'Unknown'} <KeyboardShortcut keyString={`${unicodeChars.Mod}+T`} />
+            Theme: {currentTheme?.label || 'Unknown'}{' '}
+            <KeyboardShortcut keyString={`${unicodeChars.Mod}+T`} />
           </p>
         </TooltipContent>
       </Tooltip>
@@ -172,7 +173,7 @@ export function ThemeSelector() {
               {themes.map((themeOption, index) => (
                 <button
                   key={themeOption.value}
-                  ref={el => itemRefs.current[index] = el}
+                  ref={el => (itemRefs.current[index] = el)}
                   onClick={() => {
                     setTheme(themeOption.value)
                     setIsOpen(false)
