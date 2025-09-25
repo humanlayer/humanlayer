@@ -1,8 +1,8 @@
 import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
 import { useSessionLauncher } from '@/hooks/useSessionLauncher'
+import { useFocusTrap } from '@/hooks/useFocusTrap'
 import { cn } from '@/lib/utils'
 import type React from 'react'
-import { useEffect, useRef } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import CommandInput from './CommandInput'
 import CommandPaletteMenu from './CommandPaletteMenu'
@@ -16,7 +16,7 @@ interface SessionLauncherProps {
 
 export function SessionLauncher({ isOpen, onClose }: SessionLauncherProps) {
   console.log(`[HOTKEY-DEBUG] SessionLauncher render: isOpen=${isOpen}`)
-  const modalRef = useRef<HTMLDivElement>(null)
+  const focusTrapRef = useFocusTrap(isOpen)
   const { query, setQuery, config, setConfig, launchSession, isLaunching, error, mode, view, setView } =
     useSessionLauncher()
 
@@ -66,42 +66,9 @@ export function SessionLauncher({ isOpen, onClose }: SessionLauncherProps) {
     },
   )
 
-  // Capture Shift+Tab to prevent bubbling to background session
-  useHotkeys(
-    'shift+tab',
-    e => {
-      e.preventDefault()
-      e.stopPropagation()
-      // Use native event for complete isolation
-      const keyEvent = e as any
-      if (keyEvent.nativeEvent && typeof keyEvent.nativeEvent.stopImmediatePropagation === 'function') {
-        keyEvent.nativeEvent.stopImmediatePropagation()
-      }
-      // Let browser handle the actual navigation but prevent bubbling
-    },
-    {
-      enabled: isOpen,
-      enableOnFormTags: true,
-      scopes: [HOTKEY_SCOPES.SESSION_LAUNCHER],
-      preventDefault: true,
-    },
-  )
+  // Tab navigation is now handled by useFocusTrap hook
 
   // Scope is now managed by HotkeyScopeBoundary wrapper
-
-  useEffect(() => {
-    if (isOpen && view === 'input' && modalRef.current) {
-      // Small delay to ensure DOM is ready
-      setTimeout(() => {
-        // Look for the directory input specifically (it's the first input in the form)
-        const directoryInput = modalRef.current?.querySelector('input[type="text"]')
-        if (directoryInput) {
-          ;(directoryInput as HTMLInputElement).focus()
-          console.log('[HOTKEY-DEBUG] Focused directory input in SessionLauncher')
-        }
-      }, 50)
-    }
-  }, [isOpen, view])
 
   // Click outside to close
   const handleOverlayClick = (e: React.MouseEvent) => {
@@ -129,7 +96,7 @@ export function SessionLauncher({ isOpen, onClose }: SessionLauncherProps) {
         onClick={handleOverlayClick}
       >
         <Card
-          ref={modalRef}
+          ref={focusTrapRef}
           data-command-palette
           className={cn(
             'w-full max-w-2xl bg-background border-2 shadow-xl',

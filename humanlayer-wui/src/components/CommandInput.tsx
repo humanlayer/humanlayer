@@ -54,16 +54,10 @@ export default function CommandInput({
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false)
 
   useEffect(() => {
-    // Focus on directory field if it has the default value, otherwise focus on prompt
-    if (config.workingDir === '~/') {
-      // Focus on directory field when it has the default value
-      const directoryInput = directoryRef.current?.querySelector('input')
-      if (directoryInput) {
-        directoryInput.focus()
-      }
-    } else if (promptRef.current) {
-      // Focus on prompt field for normal usage
-      promptRef.current.focus()
+    // Always focus on the directory field first
+    const directoryInput = directoryRef.current?.querySelector('input')
+    if (directoryInput) {
+      directoryInput.focus()
     }
   }, [])
 
