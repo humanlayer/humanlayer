@@ -168,3 +168,56 @@ The system handles StrictMode double-mounting automatically through:
 3. **Modal Isolation**: Always disable root scope for modals
 4. **Consistent Naming**: Use hierarchical dot notation for related scopes
 5. **Debug in Dev**: Use the debug panel to verify scope behavior
+
+## Available Hotkeys
+
+### Global Shortcuts (Available Everywhere)
+- `?` - Toggle keyboard shortcuts panel
+- `Cmd+K` / `Ctrl+K` - Open command palette
+- `C` - Create new session
+- `G,S` - Go to sessions
+- `G,E` - Go to archived sessions
+- `Cmd+T` / `Ctrl+T` - Toggle theme selector
+- `Cmd+Enter` / `Ctrl+Enter` - Submit text input
+- `Cmd+Shift+J` / `Ctrl+Shift+J` - Jump to most recent approval
+- `Cmd+Shift+S` / `Ctrl+Shift+S` - Toggle settings dialog
+- `Cmd+Shift+F` / `Ctrl+Shift+F` - Open feedback URL
+- `Cmd+Shift+Y` / `Ctrl+Shift+Y` - Toggle launch theme
+- `Alt+Shift+H` - Toggle hotkey scope debugger (dev mode only)
+
+### Session List Navigation
+- `J` - Move down
+- `K` - Move up
+- `G,G` - Jump to top
+- `Shift+G` - Jump to bottom
+- `Cmd+A` / `Ctrl+A` - Select all
+- `X` - Toggle selection
+- `Shift+J` - Select downward
+- `Shift+K` - Select upward
+- `Enter` - Open session
+- `E` - Archive/unarchive
+- `Shift+R` - Rename session
+- `Tab` - Toggle normal/archived view
+- `Escape` - Exit archived view
+
+### Session Detail View
+- `Escape` - Close detail view
+- `J` - Next event
+- `K` - Previous event
+- `G,G` - Scroll to top
+- `Shift+G` - Scroll to bottom
+- `U` - Jump to last user message
+- `I` - Display sub-agent info modal
+- `H` - Expand/collapse sub-agent group
+- `L` - Collapse task group
+- `A` - Approve pending request
+- `D` - Deny pending request
+- `E` - Archive session
+- `Shift+R` - Rename session
+- `Ctrl+X` - Interrupt session
+- `P` - Go to parent session
+- `Cmd+Y` / `Ctrl+Y` - Toggle fork view
+- `Option+A` / `Alt+A` - Toggle auto-accept edits
+- `Enter` - Focus response input
+- `Cmd+Enter` / `Ctrl+Enter` - Submit response
+- `Option+Y` / `Alt+Y` - Toggle bypass permissions
