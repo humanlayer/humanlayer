@@ -55,6 +55,7 @@ const hotkeyData = [
   { category: 'Session Detail', key: 'K', description: 'Previous event' },
   { category: 'Session Detail', key: 'G,G', description: 'Scroll to top' },
   { category: 'Session Detail', key: 'Shift+G', description: 'Scroll to bottom' },
+  { category: 'Session Detail', key: 'U', description: 'Jump to last user message' },
   { category: 'Session Detail', key: 'I', description: 'Inspect/expand toggle' },
   { category: 'Session Detail', key: 'H', description: 'Inspect/expand sub-agent group' },
   { category: 'Session Detail', key: 'L', description: 'Collapse task group' },

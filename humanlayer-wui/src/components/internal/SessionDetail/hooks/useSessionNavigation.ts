@@ -253,6 +253,33 @@ export function useSessionNavigation({
     { enabled: !expandedToolResult && !disabled, scopes: [scope] },
   )
 
+  // U key to jump to most recent user message
+  useHotkeys(
+    'u',
+    () => {
+      startKeyboardNavigation?.()
+
+      // Find the most recent user message (search from end)
+      for (let i = events.length - 1; i >= 0; i--) {
+        const event = events[i]
+        if (event.eventType === ConversationEventType.Message && event.role === 'user') {
+          setFocusedEventId(event.id)
+          setFocusSource('keyboard')
+
+          // Scroll to the message
+          setTimeout(() => {
+            const element = document.querySelector(`[data-event-id="${event.id}"]`)
+            if (element) {
+              element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            }
+          }, 0)
+          break
+        }
+      }
+    },
+    { enabled: !disabled, scopes: [scope] },
+  )
+
   // Scroll focused element into view (only for keyboard navigation)
   useEffect(() => {
     if (focusedEventId && focusSource === 'keyboard') {
