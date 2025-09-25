@@ -106,7 +106,7 @@ export function Layout() {
 
   // Secret hotkey for launch theme
   useHotkeys(
-    'mod+shift+y',
+    'meta+shift+y, ctrl+shift+y',
     () => {
       setTheme('launch')
     },
@@ -119,7 +119,7 @@ export function Layout() {
   // TODO: We should bump this to "cmd+," later on
   // There's some pain associated with doing this with MenuBuilder in Tauri, so saving for later
   useHotkeys(
-    'mod+shift+s',
+    'meta+shift+s, ctrl+shift+s',
     () => {
       setSettingsDialogOpen(!isSettingsDialogOpen)
     },
@@ -131,7 +131,7 @@ export function Layout() {
 
   // Jump to most recent approval hotkey
   useHotkeys(
-    'mod+shift+j',
+    'meta+shift+j, ctrl+shift+j',
     async () => {
       try {
         // Get all visible toasts
@@ -576,10 +576,9 @@ export function Layout() {
   )
 
   // Global hotkey for feedback
-  // Note: Not specifying a scope makes it work in whatever scopes are currently active
-  // This is different from scopes: '*' which would require the '*' scope to be enabled
+  // Use the GLOBAL scope ('*') so it's always active, even when other scopes are disabled
   useHotkeys(
-    'mod+shift+f',
+    'meta+shift+f, ctrl+shift+f',
     async () => {
       try {
         await openUrl(
@@ -590,7 +589,7 @@ export function Layout() {
       }
     },
     {
-      // No scope specified - works in all active scopes
+      scopes: [HOTKEY_SCOPES.GLOBAL],
       enabled: true,
       preventDefault: true,
     },
@@ -741,10 +740,7 @@ export function Layout() {
       <main className="flex-1 flex flex-col p-4 overflow-hidden">
         {connected && (
           <>
-            <div className="flex justify-between items-center mb-2">
-              <Breadcrumbs />
-              <ThemeSelector />
-            </div>
+            <Breadcrumbs />
             <div className="flex-1 overflow-y-auto" data-main-scroll-container>
               <Outlet />
             </div>
@@ -865,6 +861,7 @@ export function Layout() {
               </TooltipContent>
             </Tooltip>
           )}
+          <ThemeSelector />
           <Tooltip>
             <TooltipTrigger asChild>
               <button

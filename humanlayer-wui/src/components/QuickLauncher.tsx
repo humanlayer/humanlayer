@@ -60,7 +60,7 @@ export function QuickLauncher() {
 
   // Cmd+Enter to submit - works globally
   useHotkeys(
-    'cmd+enter, meta+enter',
+    'meta+enter, ctrl+enter',
     e => {
       e.preventDefault()
       e.stopPropagation()

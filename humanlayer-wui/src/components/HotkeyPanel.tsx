@@ -12,6 +12,7 @@ import { X } from 'lucide-react'
 import { HotkeyScopeBoundary } from './HotkeyScopeBoundary'
 import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
 import { useHotkeys } from 'react-hotkeys-hook'
+import { useHotkeyUnicodeChars, formatHotkeyForDisplay } from '@/hooks/useHotkeyUnicodeChars'
 
 interface HotkeyPanelProps {
   open: boolean
@@ -29,6 +30,9 @@ const hotkeyData = [
   { category: 'Global', key: '⌘+T', description: 'Toggle theme selector' },
   { category: 'Global', key: '⌘+Enter', description: 'Submit text input' },
   { category: 'Global', key: '⌘+⇧+J', description: 'Jump to most recent approval' },
+  { category: 'Global', key: '⌘+⇧+S', description: 'Toggle settings dialog' },
+  { category: 'Global', key: '⌘+⇧+F', description: 'Open feedback URL' },
+  { category: 'Global', key: '⌘+⇧+Y', description: 'Toggle launch theme' },
 
   // Session List
   { category: 'Session List', key: 'J', description: 'Move down' },
@@ -92,6 +96,8 @@ export const KeyboardShortcut = ({ keyString }: { keyString: string }) => {
 }
 
 export function HotkeyPanel({ open, onOpenChange }: HotkeyPanelProps) {
+  const unicodeChars = useHotkeyUnicodeChars()
+
   // Handle J/K navigation for scrolling
   useHotkeys(
     'j',
@@ -183,7 +189,7 @@ export function HotkeyPanel({ open, onOpenChange }: HotkeyPanelProps) {
                         className="flex items-center justify-between"
                       >
                         <span className="text-sm">{hotkey.description}</span>
-                        <KeyboardShortcut keyString={hotkey.key} />
+                        <KeyboardShortcut keyString={formatHotkeyForDisplay(hotkey.key, unicodeChars)} />
                       </CommandItem>
                     ))}
                   </CommandGroup>

@@ -381,7 +381,7 @@ export function useSessionLauncherHotkeys() {
 
   // Cmd+K - Command palette (root scope)
   useHotkeys(
-    'mod+k',
+    'meta+k, ctrl+k',
     () => {
       if (!isOpen) {
         open()

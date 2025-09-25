@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useTheme, type Theme } from '@/contexts/ThemeContext'
 import {
   Moon,
@@ -22,6 +22,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { KeyboardShortcut } from './HotkeyPanel'
 import { HotkeyScopeBoundary } from './HotkeyScopeBoundary'
 import { HOTKEY_SCOPES } from '../hooks/hotkeys/scopes'
+import { useHotkeyUnicodeChars } from '../hooks/useHotkeyUnicodeChars'
 
 const themes: { value: Theme; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { value: 'solarized-dark', label: 'Solarized Dark', icon: Moon },
@@ -45,11 +46,14 @@ const themes: { value: Theme; label: string; icon: React.ComponentType<{ classNa
 
 export function ThemeSelector() {
   const { theme, setTheme } = useTheme()
+  const unicodeChars = useHotkeyUnicodeChars()
   const [isOpen, setIsOpen] = useState(false)
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [positionAbove, setPositionAbove] = useState(true)
   const currentTheme = themes.find(t => t.value === theme)
   const buttonRef = useRef<HTMLButtonElement>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+  const itemRefs = useRef<(HTMLButtonElement | null)[]>([])
 
   // Update selected index when theme changes or dropdown opens
   useEffect(() => {
@@ -71,6 +75,16 @@ export function ThemeSelector() {
       setPositionAbove(spaceAbove >= dropdownHeight && spaceAbove > spaceBelow)
     }
   }, [isOpen])
+
+  // Scroll selected item into view when selectedIndex changes
+  useEffect(() => {
+    if (isOpen && itemRefs.current[selectedIndex]) {
+      itemRefs.current[selectedIndex]?.scrollIntoView({
+        block: 'nearest',
+        behavior: 'smooth'
+      })
+    }
+  }, [selectedIndex, isOpen])
 
   // Hotkey to toggle dropdown
   useHotkeys(
@@ -137,7 +151,7 @@ export function ThemeSelector() {
         </TooltipTrigger>
         <TooltipContent>
           <p className="flex items-center gap-1">
-            Theme: {currentTheme?.label || 'Unknown'} <KeyboardShortcut keyString="⌘+T" />
+            Theme: {currentTheme?.label || 'Unknown'} <KeyboardShortcut keyString={`${unicodeChars.Mod}+T`} />
           </p>
         </TooltipContent>
       </Tooltip>
@@ -152,11 +166,13 @@ export function ThemeSelector() {
           <>
             <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
             <div
+              ref={dropdownRef}
               className={`absolute ${positionAbove ? 'bottom-full mb-1' : 'top-full mt-1'} right-0 min-w-48 border border-border bg-background z-20 max-h-64 overflow-y-auto`}
             >
               {themes.map((themeOption, index) => (
                 <button
                   key={themeOption.value}
+                  ref={el => itemRefs.current[index] = el}
                   onClick={() => {
                     setTheme(themeOption.value)
                     setIsOpen(false)

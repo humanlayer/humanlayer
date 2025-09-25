@@ -202,7 +202,7 @@ function ForkViewModalContent({
 
   // Cmd/Ctrl+Enter to execute fork
   useHotkeys(
-    'mod+enter',
+    'meta+enter, ctrl+enter',
     e => {
       e.preventDefault()
       e.stopPropagation()
