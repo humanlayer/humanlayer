@@ -422,6 +422,66 @@ func (h *SessionHandlers) UpdateSession(ctx context.Context, req api.UpdateSessi
 	return api.UpdateSession200JSONResponse(resp), nil
 }
 
+// DeleteDraftSession deletes a draft session
+func (h *SessionHandlers) DeleteDraftSession(ctx context.Context, req api.DeleteDraftSessionRequestObject) (api.DeleteDraftSessionResponseObject, error) {
+	// Get the session and verify it's a draft
+	sess, err := h.store.GetSession(ctx, string(req.Id))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return api.DeleteDraftSession404JSONResponse{
+				NotFoundJSONResponse: api.NotFoundJSONResponse{
+					Error: api.ErrorDetail{
+						Code:    "HLD-4007",
+						Message: "Session not found",
+					},
+				},
+			}, nil
+		}
+		return api.DeleteDraftSession500JSONResponse{
+			InternalErrorJSONResponse: api.InternalErrorJSONResponse{
+				Error: api.ErrorDetail{
+					Code:    "HLD-4008",
+					Message: err.Error(),
+				},
+			},
+		}, nil
+	}
+
+	// Check if session is in draft state
+	if sess.Status != store.SessionStatusDraft {
+		return api.DeleteDraftSession400JSONResponse{
+			Error: api.ErrorDetail{
+				Code:    "HLD-4002",
+				Message: "Can only delete draft sessions",
+			},
+		}, nil
+	}
+
+	// Mark session as failed (effectively deleting it from the active list)
+	// We don't actually delete from the database, just mark as failed
+	failedStatus := string(store.SessionStatusFailed)
+	deletedMessage := "Draft session discarded"
+	update := store.SessionUpdate{
+		Status:       &failedStatus,
+		ErrorMessage: &deletedMessage,
+	}
+
+	err = h.store.UpdateSession(ctx, string(req.Id), update)
+	if err != nil {
+		return api.DeleteDraftSession500JSONResponse{
+			InternalErrorJSONResponse: api.InternalErrorJSONResponse{
+				Error: api.ErrorDetail{
+					Code:    "HLD-4009",
+					Message: fmt.Sprintf("Failed to delete draft session: %v", err),
+				},
+			},
+		}, nil
+	}
+
+	// Return 204 No Content on successful deletion
+	return api.DeleteDraftSession204Response{}, nil
+}
+
 // LaunchDraftSession launches a draft session
 func (h *SessionHandlers) LaunchDraftSession(ctx context.Context, req api.LaunchDraftSessionRequestObject) (api.LaunchDraftSessionResponseObject, error) {
 	// Get the session and verify it's a draft
@@ -457,26 +517,44 @@ func (h *SessionHandlers) LaunchDraftSession(ctx context.Context, req api.Launch
 		}, nil
 	}
 
-	// Launch the draft session (implementation to be added)
-	// TODO(0): Implement actual draft launch logic
-	// This will need to:
-	// 1. Update session status to starting
-	// 2. Update query with the prompt from request
-	// 3. Launch Claude with existing configuration
-
-	return api.LaunchDraftSession500JSONResponse{
-		InternalErrorJSONResponse: api.InternalErrorJSONResponse{
-			Error: api.ErrorDetail{
-				Code:    "HLD-4005",
-				Message: "LaunchDraftSession not yet implemented",
+	// Launch the draft session
+	err = h.manager.LaunchDraftSession(ctx, string(req.Id), req.Body.Prompt)
+	if err != nil {
+		slog.Error("failed to launch draft session",
+			"session_id", req.Id,
+			"error", err)
+		return api.LaunchDraftSession500JSONResponse{
+			InternalErrorJSONResponse: api.InternalErrorJSONResponse{
+				Error: api.ErrorDetail{
+					Code:    "HLD-4005",
+					Message: fmt.Sprintf("Failed to launch draft session: %v", err),
+				},
 			},
-		},
-	}, nil
+		}, nil
+	}
+
+	// Fetch updated session to return
+	updatedSession, err := h.store.GetSession(ctx, string(req.Id))
+	if err != nil {
+		return api.LaunchDraftSession500JSONResponse{
+			InternalErrorJSONResponse: api.InternalErrorJSONResponse{
+				Error: api.ErrorDetail{
+					Code:    "HLD-4006",
+					Message: "Failed to get updated session after launch",
+				},
+			},
+		}, nil
+	}
+
+	resp := api.SessionResponse{
+		Data: h.mapper.SessionToAPI(*updatedSession),
+	}
+	return api.LaunchDraftSession200JSONResponse(resp), nil
 }
 
 // ContinueSession creates a new session that continues from an existing one
 func (h *SessionHandlers) ContinueSession(ctx context.Context, req api.ContinueSessionRequestObject) (api.ContinueSessionResponseObject, error) {
-	_, err := h.store.GetSession(ctx, string(req.Id))
+	parentSession, err := h.store.GetSession(ctx, string(req.Id))
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return api.ContinueSession404JSONResponse{
@@ -493,6 +571,18 @@ func (h *SessionHandlers) ContinueSession(ctx context.Context, req api.ContinueS
 				Error: api.ErrorDetail{
 					Code:    "HLD-4001",
 					Message: err.Error(),
+				},
+			},
+		}, nil
+	}
+
+	// Check if parent session is in draft state
+	if parentSession.Status == store.SessionStatusDraft {
+		return api.ContinueSession500JSONResponse{
+			InternalErrorJSONResponse: api.InternalErrorJSONResponse{
+				Error: api.ErrorDetail{
+					Code:    "HLD-4003",
+					Message: "Cannot continue from draft session",
 				},
 			},
 		}, nil

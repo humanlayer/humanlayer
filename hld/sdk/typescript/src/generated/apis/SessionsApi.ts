@@ -77,6 +77,10 @@ export interface CreateSessionOperationRequest {
     createSessionRequest: CreateSessionRequest;
 }
 
+export interface DeleteDraftSessionRequest {
+    id: string;
+}
+
 export interface GetRecentPathsRequest {
     limit?: number;
 }
@@ -168,6 +172,22 @@ export interface SessionsApiInterface {
      * Launch a new session
      */
     createSession(requestParameters: CreateSessionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreateSessionResponse>;
+
+    /**
+     * Delete a draft session that has not been launched yet
+     * @summary Delete a draft session
+     * @param {string} id Session ID
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SessionsApiInterface
+     */
+    deleteDraftSessionRaw(requestParameters: DeleteDraftSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     * Delete a draft session that has not been launched yet
+     * Delete a draft session
+     */
+    deleteDraftSession(requestParameters: DeleteDraftSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
 
     /**
      * Retrieve recently used working directories for quick access
@@ -437,6 +457,44 @@ export class SessionsApi extends runtime.BaseAPI implements SessionsApiInterface
     async createSession(requestParameters: CreateSessionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreateSessionResponse> {
         const response = await this.createSessionRaw(requestParameters, initOverrides);
         return await response.value();
+    }
+
+    /**
+     * Delete a draft session that has not been launched yet
+     * Delete a draft session
+     */
+    async deleteDraftSessionRaw(requestParameters: DeleteDraftSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling deleteDraftSession().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/sessions/{id}/launch`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Delete a draft session that has not been launched yet
+     * Delete a draft session
+     */
+    async deleteDraftSession(requestParameters: DeleteDraftSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.deleteDraftSessionRaw(requestParameters, initOverrides);
     }
 
     /**

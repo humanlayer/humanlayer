@@ -1102,6 +1102,10 @@ func (s *SQLiteStore) UpdateSession(ctx context.Context, sessionID string, updat
 		setParts = append(setParts, "claude_session_id = ?")
 		args = append(args, *updates.ClaudeSessionID)
 	}
+	if updates.Query != nil {
+		setParts = append(setParts, "query = ?")
+		args = append(args, *updates.Query)
+	}
 	if updates.Status != nil {
 		setParts = append(setParts, "status = ?")
 		args = append(args, *updates.Status)

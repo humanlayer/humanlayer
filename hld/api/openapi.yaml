@@ -222,6 +222,28 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+    delete:
+      operationId: deleteDraftSession
+      summary: Delete a draft session
+      description: Delete a draft session that has not been launched yet
+      tags:
+        - Sessions
+      parameters:
+        - $ref: '#/components/parameters/sessionId'
+      responses:
+        '204':
+          description: Draft session deleted successfully
+        '400':
+          description: Session is not in draft state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
   /sessions/{id}/interrupt:
     post:
       operationId: interruptSession

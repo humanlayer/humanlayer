@@ -118,6 +118,7 @@ type Session struct {
 // SessionUpdate contains fields that can be updated
 type SessionUpdate struct {
 	ClaudeSessionID                     *string
+	Query                               *string // For updating draft session queries
 	Summary                             *string
 	Title                               *string // New field for updating title
 	Status                              *string
