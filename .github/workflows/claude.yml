@@ -58,6 +58,9 @@ jobs:
       - name: Setup repository
         run: make setup
 
+      - name: Install humanlayer CLI globally
+        run: npm install -g humanlayer
+
       - name: Initialize thoughts tool
         run: make thoughts
 
