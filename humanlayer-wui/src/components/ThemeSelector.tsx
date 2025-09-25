@@ -74,7 +74,7 @@ export function ThemeSelector() {
 
   // Hotkey to toggle dropdown
   useHotkeys(
-    'ctrl+t',
+    'meta+t, ctrl+t',
     () => {
       setIsOpen(prev => !prev)
     },
@@ -137,7 +137,7 @@ export function ThemeSelector() {
         </TooltipTrigger>
         <TooltipContent>
           <p className="flex items-center gap-1">
-            Theme: {currentTheme?.label || 'Unknown'} <KeyboardShortcut keyString="Ctrl+T" />
+            Theme: {currentTheme?.label || 'Unknown'} <KeyboardShortcut keyString="⌘+T" />
           </p>
         </TooltipContent>
       </Tooltip>

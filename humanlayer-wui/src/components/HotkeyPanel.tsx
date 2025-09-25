@@ -9,6 +9,9 @@ import {
 } from '@/components/ui/command'
 import { cn } from '@/lib/utils'
 import { X } from 'lucide-react'
+import { HotkeyScopeBoundary } from './HotkeyScopeBoundary'
+import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
+import { useHotkeys } from 'react-hotkeys-hook'
 
 interface HotkeyPanelProps {
   open: boolean
@@ -23,7 +26,7 @@ const hotkeyData = [
   { category: 'Global', key: 'C', description: 'Create new session' },
   { category: 'Global', key: 'G,S', description: 'Go to sessions' },
   { category: 'Global', key: 'G,E', description: 'Go to archived sessions' },
-  { category: 'Global', key: 'Ctrl+T', description: 'Toggle theme selector' },
+  { category: 'Global', key: '⌘+T', description: 'Toggle theme selector' },
   { category: 'Global', key: '⌘+Enter', description: 'Submit text input' },
   { category: 'Global', key: '⌘+⇧+J', description: 'Jump to most recent approval' },
 
@@ -89,17 +92,65 @@ export const KeyboardShortcut = ({ keyString }: { keyString: string }) => {
 }
 
 export function HotkeyPanel({ open, onOpenChange }: HotkeyPanelProps) {
+  // Handle J/K navigation for scrolling
+  useHotkeys(
+    'j',
+    () => {
+      // Scroll down
+      const commandList = document.querySelector('[cmdk-list]')
+      if (commandList) {
+        commandList.scrollTop += 40
+      }
+    },
+    {
+      enabled: open,
+      scopes: [HOTKEY_SCOPES.KEYBOARD_HELPER],
+    },
+  )
+
+  useHotkeys(
+    'k',
+    () => {
+      // Scroll up
+      const commandList = document.querySelector('[cmdk-list]')
+      if (commandList) {
+        commandList.scrollTop -= 40
+      }
+    },
+    {
+      enabled: open,
+      scopes: [HOTKEY_SCOPES.KEYBOARD_HELPER],
+    },
+  )
+
+  useHotkeys(
+    'escape',
+    () => {
+      onOpenChange(false)
+    },
+    {
+      enabled: open,
+      scopes: [HOTKEY_SCOPES.KEYBOARD_HELPER],
+    },
+  )
+
   return (
-    <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
-      <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay
-          className={cn(
-            'fixed inset-0 z-50 bg-black/50',
-            'data-[state=open]:animate-in data-[state=closed]:animate-out',
-            'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
-          )}
-        />
-        <DialogPrimitive.Content
+    <HotkeyScopeBoundary
+      scope={HOTKEY_SCOPES.KEYBOARD_HELPER}
+      isActive={open}
+      rootScopeDisabled={true}
+      componentName="HotkeyPanel"
+    >
+      <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
+        <DialogPrimitive.Portal>
+          <DialogPrimitive.Overlay
+            className={cn(
+              'fixed inset-0 z-50 bg-black/50',
+              'data-[state=open]:animate-in data-[state=closed]:animate-out',
+              'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
+            )}
+          />
+          <DialogPrimitive.Content
           className={cn(
             'fixed right-0 top-0 bottom-0 z-50 h-full w-full max-w-[400px]',
             'bg-background shadow-xl',
@@ -143,5 +194,6 @@ export function HotkeyPanel({ open, onOpenChange }: HotkeyPanelProps) {
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>
+    </HotkeyScopeBoundary>
   )
 }

@@ -741,7 +741,10 @@ export function Layout() {
       <main className="flex-1 flex flex-col p-4 overflow-hidden">
         {connected && (
           <>
-            <Breadcrumbs />
+            <div className="flex justify-between items-center mb-2">
+              <Breadcrumbs />
+              <ThemeSelector />
+            </div>
             <div className="flex-1 overflow-y-auto" data-main-scroll-container>
               <Outlet />
             </div>
@@ -862,7 +865,6 @@ export function Layout() {
               </TooltipContent>
             </Tooltip>
           )}
-          <ThemeSelector />
           <Tooltip>
             <TooltipTrigger asChild>
               <button
