@@ -72,7 +72,6 @@ const hotkeyData = [
   { category: 'Session Detail', key: '⌥+Y', description: 'Toggle bypass permissions' },
 ]
 
-
 export const KeyboardShortcut = ({ keyString }: { keyString: string }) => {
   return (
     <kbd

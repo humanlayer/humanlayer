@@ -172,6 +172,7 @@ The system handles StrictMode double-mounting automatically through:
 ## Available Hotkeys
 
 ### Global Shortcuts (Available Everywhere)
+
 - `?` - Toggle keyboard shortcuts panel
 - `Cmd+K` / `Ctrl+K` - Open command palette
 - `C` - Create new session
@@ -186,6 +187,7 @@ The system handles StrictMode double-mounting automatically through:
 - `Alt+Shift+H` - Toggle hotkey scope debugger (dev mode only)
 
 ### Session List Navigation
+
 - `J` - Move down
 - `K` - Move up
 - `G,G` - Jump to top
@@ -201,6 +203,7 @@ The system handles StrictMode double-mounting automatically through:
 - `Escape` - Exit archived view
 
 ### Session Detail View
+
 - `Escape` - Close detail view
 - `J` - Next event
 - `K` - Previous event

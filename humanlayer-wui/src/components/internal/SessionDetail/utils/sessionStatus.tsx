@@ -37,7 +37,8 @@ export const getHelpText = (status: string): React.ReactNode => {
   }
   return (
     <>
-      <Kbd>{sendKey}</Kbd> to send / <Kbd>{skipKey}</Kbd> to bypass permissions / <Kbd>⌥A</Kbd> for auto-accept edits
+      <Kbd>{sendKey}</Kbd> to send / <Kbd>{skipKey}</Kbd> to bypass permissions / <Kbd>⌥A</Kbd> for
+      auto-accept edits
     </>
   )
 }

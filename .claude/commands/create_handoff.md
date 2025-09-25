@@ -13,7 +13,7 @@ Use the following information to understand how to create your document:
         - ENG-ZZZZ is the ticket number (omit if no ticket)
         - description is a brief kebab-case description
     - Run the `scripts/spec_metadata.sh` script to generate all relevant metadata
-    - Examples: 
+    - Examples:
         - With ticket: `2025-01-08_13-55-22_ENG-2166_create-context-compaction.md`
         - Without ticket: `2025-01-08_13-55-22_create-context-compaction.md`
 
@@ -89,4 +89,3 @@ Handoff created and synced! You can resume from this handoff in a new session wi
 - **more information, not less**. This is a guideline that defines the minimum of what a handoff should be. Always feel free to include more information if necessary.
 - **be thorough and precise**. include both top-level objectives, and lower-level details as necessary.
 - **avoid excessive code snippets**. While a brief snippet to describe some key change is important, avoid large code blocks or diffs; do not include one unless it's absolutely necessary. Prefer using `/path/to/file.ext:line` references that an agent can follow later when it's ready, e.g. `packages/dashboard/src/app/dashboard/page.tsx:12-24`
-

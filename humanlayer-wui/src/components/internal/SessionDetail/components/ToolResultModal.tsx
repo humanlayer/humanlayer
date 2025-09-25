@@ -190,20 +190,22 @@ export function ToolResultModal({
             <DialogTitle className="text-sm font-mono">
               <div className="flex items-center gap-2">
                 {/* Add tool icon */}
-                <span className="text-accent">{(() => {
-                  // Special icon for sub-agents
-                  if (toolCall?.toolName === 'Task' && toolCall.toolInputJson) {
-                    try {
-                      const args = JSON.parse(toolCall.toolInputJson)
-                      if (args.subagent_type && args.subagent_type !== 'Task') {
-                        return <HatGlasses className="w-3.5 h-3.5" />
+                <span className="text-accent">
+                  {(() => {
+                    // Special icon for sub-agents
+                    if (toolCall?.toolName === 'Task' && toolCall.toolInputJson) {
+                      try {
+                        const args = JSON.parse(toolCall.toolInputJson)
+                        if (args.subagent_type && args.subagent_type !== 'Task') {
+                          return <HatGlasses className="w-3.5 h-3.5" />
+                        }
+                      } catch {
+                        // Ignore parse errors
                       }
-                    } catch {
-                      // Ignore parse errors
                     }
-                  }
-                  return getToolIcon(toolCall?.toolName)
-                })()}</span>
+                    return getToolIcon(toolCall?.toolName)
+                  })()}
+                </span>
                 <span>
                   {(() => {
                     // Show sub-agent type for Task tools
@@ -444,16 +446,19 @@ function renderToolInput(toolCall: ConversationEvent): React.ReactNode {
             </div>
           )}
           {/* Show other parameters if they exist */}
-          {Object.keys(args).filter(k => !['subagent_type', 'description', 'prompt'].includes(k)).length > 0 && (
+          {Object.keys(args).filter(k => !['subagent_type', 'description', 'prompt'].includes(k))
+            .length > 0 && (
             <div className="font-mono text-sm">
               <div className="text-muted-foreground mb-1">Additional Parameters:</div>
               <pre className="mt-1 whitespace-pre-wrap bg-muted/50 rounded-md p-3 break-words">
                 {JSON.stringify(
                   Object.fromEntries(
-                    Object.entries(args).filter(([k]) => !['subagent_type', 'description', 'prompt'].includes(k))
+                    Object.entries(args).filter(
+                      ([k]) => !['subagent_type', 'description', 'prompt'].includes(k),
+                    ),
                   ),
                   null,
-                  2
+                  2,
                 )}
               </pre>
             </div>
