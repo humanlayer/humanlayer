@@ -5,17 +5,21 @@ import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '@/lib/utils'
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-none text-sm font-mono font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:outline-2 focus-visible:outline-dashed focus-visible:outline-offset-2 focus-visible:outline-ring uppercase tracking-wider border",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-none text-sm font-mono font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:ring-[3px] uppercase tracking-wider border",
   {
     variants: {
       variant: {
-        default: 'bg-background text-accent border-accent hover:bg-accent hover:text-background',
+        default:
+          'bg-background text-accent border-accent hover:bg-accent hover:text-background focus-visible:border-ring focus-visible:ring-ring/50',
         destructive:
-          'bg-background text-destructive border-destructive hover:bg-destructive hover:text-background',
-        outline: 'bg-transparent text-accent border-accent hover:bg-accent hover:text-background',
-        secondary: 'bg-secondary text-secondary-foreground border-border hover:bg-muted',
-        ghost: 'bg-transparent text-accent border-transparent hover:bg-accent/10 hover:border-accent',
-        link: 'text-accent underline-offset-4 hover:underline border-transparent bg-transparent',
+          'bg-background text-destructive border-destructive hover:bg-destructive hover:text-background focus-visible:border-destructive focus-visible:ring-destructive/50',
+        outline:
+          'bg-transparent text-accent border-accent hover:bg-accent hover:text-background focus-visible:border-ring focus-visible:ring-ring/50',
+        secondary:
+          'bg-secondary text-secondary-foreground border-border hover:bg-muted focus-visible:border-ring focus-visible:ring-ring/50',
+        ghost:
+          'bg-transparent text-accent border-transparent hover:bg-accent/10 hover:border-accent focus-visible:border-ring focus-visible:ring-ring/50',
+        link: 'text-accent underline-offset-4 hover:underline border-transparent bg-transparent focus-visible:border-ring focus-visible:ring-ring/50',
       },
       size: {
         default: 'h-9 px-4 py-2 has-[>svg]:px-3',

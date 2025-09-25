@@ -810,7 +810,7 @@ export function Layout() {
                 href="https://github.com/humanlayer/humanlayer/issues/new?title=Feedback%20on%20CodeLayer&body=%23%23%23%20Problem%20to%20solve%20%2F%20Expected%20Behavior%0A%0A%0A%23%23%23%20Proposed%20solution"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-mono border border-border bg-background text-foreground hover:bg-accent/10 transition-colors"
+                className="inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-mono border border-border bg-background text-foreground hover:bg-accent/10 transition-colors focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none"
               >
                 <MessageCircle className="w-3 h-3" />
               </a>
@@ -825,7 +825,7 @@ export function Layout() {
             <TooltipTrigger asChild>
               <button
                 onClick={() => setHotkeyPanelOpen(true)}
-                className="inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-mono border border-border bg-background text-foreground hover:bg-accent/10 transition-colors"
+                className="inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-mono border border-border bg-background text-foreground hover:bg-accent/10 transition-colors focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none"
               >
                 <HelpCircle className="w-3 h-3" />
               </button>
@@ -841,7 +841,7 @@ export function Layout() {
               <TooltipTrigger asChild>
                 <button
                   onClick={() => setIsDebugPanelOpen(true)}
-                  className="inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-mono border border-border bg-background text-foreground hover:bg-accent/10 transition-colors"
+                  className="inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-mono border border-border bg-background text-foreground hover:bg-accent/10 transition-colors focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none"
                 >
                   <Bug className="w-3 h-3" />
                 </button>
@@ -856,7 +856,7 @@ export function Layout() {
             <TooltipTrigger asChild>
               <button
                 onClick={() => setSettingsDialogOpen(true)}
-                className="inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-mono border border-border bg-background text-foreground hover:bg-accent/10 transition-colors"
+                className="inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-mono border border-border bg-background text-foreground hover:bg-accent/10 transition-colors focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none"
               >
                 <Settings className="w-3 h-3" />
               </button>

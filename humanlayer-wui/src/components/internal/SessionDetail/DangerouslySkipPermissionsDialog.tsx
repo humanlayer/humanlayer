@@ -172,7 +172,7 @@ const DangerouslySkipPermissionsDialogContent: FC<{
           variant="outline"
           onClick={handleConfirm}
           disabled={useTimeout && (timeoutMinutes === '' || timeoutMinutes === 0)}
-          className="border-[var(--terminal-error)] text-[var(--terminal-error)] hover:bg-[var(--terminal-error)] hover:text-background disabled:opacity-50 disabled:cursor-not-allowed"
+          className="border-[var(--terminal-error)] text-[var(--terminal-error)] hover:bg-[var(--terminal-error)] hover:text-background focus-visible:border-[var(--terminal-error)] focus-visible:ring-[var(--terminal-error)]/50 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Bypass Permissions
           {!useTimeout || (timeoutMinutes !== '' && timeoutMinutes !== 0) ? (

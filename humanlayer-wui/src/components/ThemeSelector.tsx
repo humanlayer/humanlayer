@@ -143,7 +143,7 @@ export function ThemeSelector() {
           <button
             ref={buttonRef}
             onClick={() => setIsOpen(!isOpen)}
-            className="px-1.5 py-0.5 text-xs font-mono border border-border bg-background text-foreground hover:bg-accent/10 transition-colors"
+            className="px-1.5 py-0.5 text-xs font-mono border border-border bg-background text-foreground hover:bg-accent/10 transition-colors focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none"
           >
             {currentTheme ? <currentTheme.icon className="w-3 h-3" /> : <ScanEye className="w-3 h-3" />}
           </button>
