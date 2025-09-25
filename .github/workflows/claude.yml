@@ -33,6 +33,12 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: Setup repository
+        run: make setup
+
+      - name: Initialize thoughts tool
+        run: make thoughts
+
       - name: Run Claude Code
         id: claude
         uses: anthropics/claude-code-action@beta
