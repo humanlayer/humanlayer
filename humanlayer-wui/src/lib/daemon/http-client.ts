@@ -266,6 +266,18 @@ export class HTTPDaemonClient implements IDaemonClient {
     return { success: true }
   }
 
+  async launchDraftSession(sessionId: string, prompt: string): Promise<{ success: boolean }> {
+    await this.ensureConnected()
+    await this.client!.launchDraftSession(sessionId, prompt)
+    return { success: true }
+  }
+
+  async deleteDraftSession(sessionId: string): Promise<{ success: boolean }> {
+    await this.ensureConnected()
+    await this.client!.deleteDraftSession(sessionId)
+    return { success: true }
+  }
+
   async updateSessionSettings(
     sessionId: string,
     settings: {

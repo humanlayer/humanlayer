@@ -589,20 +589,19 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     if (!isDraft) return
 
     try {
-      // Save prompt to localStorage
-      localStorage.setItem(`response-input.${session.id}`, JSON.stringify(responseEditor?.getJSON() || {}))
+      // Get the prompt text from the editor
+      const prompt = responseEditor?.getText() || ''
 
-      // TODO: Call the launch draft endpoint once it's available
-      // await daemonClient.launchDraftSession(session.id)
+      // Launch the draft session with the prompt
+      await daemonClient.launchDraftSession(session.id, prompt)
 
-      // For now, just continue the session which will transition it from draft to running
-      actions.handleContinueSession()
+      // Session status will update via WebSocket, no need to do anything else
     } catch (error) {
       toast.error('Failed to launch draft session', {
         description: error instanceof Error ? error.message : 'Unknown error',
       })
     }
-  }, [isDraft, session.id, responseEditor, actions])
+  }, [isDraft, session.id, responseEditor])
 
   // Handle discarding a draft session
   const handleDiscardDraft = useCallback(() => {
@@ -618,8 +617,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   // Handle confirmed discard
   const handleConfirmDiscard = useCallback(async () => {
     try {
-      // TODO: Call delete draft endpoint once it's available
-      // await daemonClient.deleteDraftSession(session.id)
+      // Delete the draft session
+      await daemonClient.deleteDraftSession(session.id)
 
       // Clear localStorage
       localStorage.removeItem(`response-input.${session.id}`)
@@ -808,6 +807,21 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       scopes: SessionDetailHotkeysScope,
     },
     [handleToggleDangerouslySkipPermissions],
+  )
+
+  // Add Cmd+Shift+. handler for discarding draft sessions
+  useHotkeys(
+    'cmd+shift+., ctrl+shift+.',
+    () => {
+      if (isDraft) {
+        setShowDiscardDialog(true)
+      }
+    },
+    {
+      preventDefault: true,
+      scopes: SessionDetailHotkeysScope,
+    },
+    [isDraft],
   )
 
   // Handle dialog confirmation

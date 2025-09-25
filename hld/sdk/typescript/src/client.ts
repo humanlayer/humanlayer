@@ -102,6 +102,19 @@ export class HLDClient {
         await this.sessionsApi.interruptSession({ id });
     }
 
+    // Launch draft session
+    async launchDraftSession(id: string, prompt: string): Promise<void> {
+        await this.sessionsApi.launchDraftSession({
+            id,
+            launchDraftSessionRequest: { prompt }
+        });
+    }
+
+    // Delete draft session
+    async deleteDraftSession(id: string): Promise<void> {
+        await this.sessionsApi.deleteDraftSession({ id });
+    }
+
     // Session archival
     async archiveSessions(sessionIds: string[], archived: boolean = true): Promise<{ archived: string[] }> {
         const response = await this.sessionsApi.bulkArchiveSessions({

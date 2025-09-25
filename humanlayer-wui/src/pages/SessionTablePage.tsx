@@ -4,11 +4,13 @@ import { useStore } from '@/AppStore'
 import { ViewMode } from '@/lib/daemon/types'
 import SessionTable, { SessionTableHotkeysScope } from '@/components/internal/SessionTable'
 import { useHotkeys } from 'react-hotkeys-hook'
-import { useSessionLauncher, useKeyboardNavigationProtection } from '@/hooks'
+import { useKeyboardNavigationProtection, getLastWorkingDir } from '@/hooks'
+import { daemonClient } from '@/lib/daemon'
 import { Inbox, Archive } from 'lucide-react'
 
 export function SessionTablePage() {
-  const { isOpen: isSessionLauncherOpen, open: openSessionLauncher } = useSessionLauncher()
+  // Session launcher has been replaced by draft sessions
+  const isSessionLauncherOpen = false
   const navigate = useNavigate()
   const tableRef = useRef<HTMLDivElement>(null)
 
@@ -244,8 +246,19 @@ export function SessionTablePage() {
                   message: 'Create a new session by pressing "c" or clicking below.',
                   action: {
                     label: 'Create new session',
-                    onClick: () => {
-                      openSessionLauncher()
+                    onClick: async () => {
+                      // Create draft session and navigate directly
+                      try {
+                        const response = await daemonClient.launchSession({
+                          query: '', // Empty initial query for draft
+                          working_dir: getLastWorkingDir() || '~/',
+                          draft: true, // Create as draft
+                        })
+                        // Navigate directly to SessionDetail
+                        window.location.hash = `#/sessions/${response.sessionId}`
+                      } catch (error) {
+                        console.error('Failed to create draft session:', error)
+                      }
                     },
                   },
                 }

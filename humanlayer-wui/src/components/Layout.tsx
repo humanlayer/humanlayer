@@ -19,12 +19,11 @@ import {
 } from '@/lib/daemon'
 import { Button } from '@/components/ui/button'
 import { ThemeSelector } from '@/components/ThemeSelector'
-import { SessionLauncher } from '@/components/SessionLauncher'
 import { HotkeyPanel } from '@/components/HotkeyPanel'
 import { Breadcrumbs } from '@/components/Breadcrumbs'
 import { SettingsDialog } from '@/components/SettingsDialog'
 import { OptInTelemetryModal } from '@/components/OptInTelemetryModal'
-import { useSessionLauncher, useSessionLauncherHotkeys } from '@/hooks/useSessionLauncher'
+import { useSessionLauncherHotkeys } from '@/hooks/useSessionLauncher'
 import { useDaemonConnection } from '@/hooks/useDaemonConnection'
 import { useStore } from '@/AppStore'
 import { useSessionSubscriptions } from '@/hooks/useSubscriptions'
@@ -63,8 +62,7 @@ export function Layout() {
   // Hotkey panel state from store
   const { isHotkeyPanelOpen, setHotkeyPanelOpen } = useStore()
 
-  // Session launcher state
-  const { isOpen, close } = useSessionLauncher()
+  // Session launcher hotkeys
   const { handleKeyDown } = useSessionLauncherHotkeys()
 
   // Debug store state
@@ -507,7 +505,7 @@ export function Layout() {
   // Navigation shortcuts - 'gs' for sessions (normal view), 'ge' for archived
   // Check if any modal is open to prevent shortcuts during modal interactions
   const isAnyModalOpen = () => {
-    return isSettingsDialogOpen || isHotkeyPanelOpen || isOpen || showTelemetryModal || isDebugPanelOpen
+    return isSettingsDialogOpen || isHotkeyPanelOpen || showTelemetryModal || isDebugPanelOpen
   }
 
   // G+S - Go to sessions (normal view)
@@ -591,7 +589,7 @@ export function Layout() {
     },
     {
       enableOnFormTags: true,
-      preventDefault: !isOpen,
+      preventDefault: true,
     },
   )
 
@@ -881,9 +879,6 @@ export function Layout() {
           </div>
         </div>
       </div>
-
-      {/* Session Launcher */}
-      <SessionLauncher isOpen={isOpen} onClose={close} />
 
       {/* Hotkey Panel */}
       <HotkeyPanel open={isHotkeyPanelOpen} onOpenChange={setHotkeyPanelOpen} />

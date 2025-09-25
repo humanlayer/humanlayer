@@ -7,7 +7,6 @@ import { CircleOff, CheckSquare, Square, FileText, Pencil, ShieldOff } from 'luc
 import { getStatusTextClass } from '@/utils/component-utils'
 import { formatTimestamp, formatAbsoluteTimestamp } from '@/utils/formatting'
 import { highlightMatches } from '@/lib/fuzzy-search'
-import { useSessionLauncher } from '@/hooks/useSessionLauncher'
 import { cn } from '@/lib/utils'
 import { useStore } from '@/AppStore'
 import { toast } from 'sonner'
@@ -54,7 +53,8 @@ export default function SessionTable({
   matchedSessions,
   emptyState,
 }: SessionTableProps) {
-  const { isOpen: isSessionLauncherOpen } = useSessionLauncher()
+  // Session launcher has been replaced by draft sessions
+  const isSessionLauncherOpen = false
   const { enableScope, disableScope } = useHotkeysContext()
   const tableRef = useRef<HTMLTableElement>(null)
   const { archiveSession, selectedSessions, toggleSessionSelection, bulkArchiveSessions, bulkSelect } =

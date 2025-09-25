@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import SessionTable from '@/components/internal/SessionTable'
 import { Session } from '@/lib/daemon/types'
 import { ThemeSelector } from '@/components/ThemeSelector'
-import { SessionLauncher } from '@/components/SessionLauncher'
+// import { SessionLauncher } from '@/components/SessionLauncher' // Removed - using drafts now
 import { DemoStoreProvider, useDemoStore } from '@/stores/demo/providers/DemoStoreProvider'
 import { logger } from '@/lib/logging'
 import {
@@ -46,13 +46,6 @@ function SessionTableWrapper() {
   )
 }
 
-// Launcher wrapper that uses new composed demo store
-function LauncherWrapper() {
-  const isOpen = useDemoStore(state => state.isOpen)
-  const closeLauncher = useDemoStore(state => state.closeLauncher)
-
-  return <SessionLauncher isOpen={isOpen} onClose={closeLauncher} />
-}
 
 // Complete app wrapper with session table and launcher
 function DemoAppWrapper({ label, variant }: { label: string; variant: 'default' | 'secondary' }) {
@@ -66,7 +59,7 @@ function DemoAppWrapper({ label, variant }: { label: string; variant: 'default' 
           <SessionTableWrapper />
         </CardContent>
       </Card>
-      <LauncherWrapper />
+      {/* LauncherWrapper removed - using draft sessions now */}
     </div>
   )
 }
