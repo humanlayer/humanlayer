@@ -36,7 +36,7 @@ export function DebugPanel({ open, onOpenChange }: DebugPanelProps) {
   const [daemonInfo, setDaemonInfo] = useState<DaemonInfo | null>(null)
   const [debugInfo, setDebugInfo] = useState<DebugInfo | null>(null)
   const [actualDaemonUrl, setActualDaemonUrl] = useState<string | null>(null)
-  const { showDevUrl, setShowDevUrl } = useDebugStore()
+  const { showDevUrl, setShowDevUrl, showHotkeyDebugger, setShowHotkeyDebugger } = useDebugStore()
 
   // Helper to format bytes to human-readable size
   function formatBytes(bytes: number): string {
@@ -279,6 +279,21 @@ export function DebugPanel({ open, onOpenChange }: DebugPanelProps) {
                   Show URL in Status Bar
                 </Label>
                 <Switch id="show-url" checked={showDevUrl} onCheckedChange={setShowDevUrl} />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="show-hotkey-debugger" className="text-sm">
+                    Show Hotkey Scope Debugger
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Toggle with Alt+Shift+H
+                  </p>
+                </div>
+                <Switch
+                  id="show-hotkey-debugger"
+                  checked={showHotkeyDebugger}
+                  onCheckedChange={setShowHotkeyDebugger}
+                />
               </div>
             </CardContent>
           </Card>

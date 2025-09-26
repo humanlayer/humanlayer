@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
 import { scopeManager } from '../hooks/hotkeys/scopeManager'
 import { useHotkeysContext, useHotkeys } from 'react-hotkeys-hook'
-import { HotkeyScopeDebuggerIndicator } from './HotkeyScopeDebuggerIndicator'
+import { useDebugStore } from '@/stores/useDebugStore'
 
 export function HotkeyScopeDebugger() {
   const [stack, setStack] = useState(scopeManager.getStack())
-  const [isVisible, setIsVisible] = useState(false)
   const { activeScopes } = useHotkeysContext()
+  const { showHotkeyDebugger, setShowHotkeyDebugger } = useDebugStore()
 
   useEffect(() => {
     return scopeManager.subscribe(setStack)
@@ -16,21 +16,18 @@ export function HotkeyScopeDebugger() {
   useHotkeys(
     'alt+shift+h',
     () => {
-      setIsVisible(prev => !prev)
+      setShowHotkeyDebugger(!showHotkeyDebugger)
     },
     {
       // No scopes specified - works in wildcard scope
       enabled: import.meta.env.DEV,
       preventDefault: true,
     },
+    [showHotkeyDebugger], // Add dependency to ensure fresh value
   )
 
-  if (!import.meta.env.DEV) {
+  if (!import.meta.env.DEV || !showHotkeyDebugger) {
     return null
-  }
-
-  if (!isVisible) {
-    return <HotkeyScopeDebuggerIndicator onToggle={() => setIsVisible(true)} />
   }
 
   return (
@@ -38,7 +35,7 @@ export function HotkeyScopeDebugger() {
       <div className="flex justify-between items-center mb-2">
         <h3 className="text-xs font-bold">🎹 Hotkey Scope Stack</h3>
         <button
-          onClick={() => setIsVisible(false)}
+          onClick={() => setShowHotkeyDebugger(false)}
           className="text-gray-400 hover:text-white text-xs"
           title="Close (Alt+Shift+H)"
         >
