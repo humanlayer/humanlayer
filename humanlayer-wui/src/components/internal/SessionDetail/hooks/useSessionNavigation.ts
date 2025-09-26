@@ -215,19 +215,42 @@ export function useSessionNavigation({
       startKeyboardNavigation?.()
 
       const focusedEvent = events.find(e => e.id === focusedEventId)
-      if (!focusedEvent || focusedEvent.eventType !== ConversationEventType.ToolCall) return
+      if (!focusedEvent) return
 
-      // Handle task group toggle for Task events with sub-events
-      if (focusedEvent.toolName === 'Task' && focusedEvent.toolId && hasSubTasks) {
-        const subEventsByParent = new Map<string, ConversationEvent[]>()
-        events.forEach(event => {
-          if (event.parentToolUseId) {
-            const siblings = subEventsByParent.get(event.parentToolUseId) || []
-            siblings.push(event)
-            subEventsByParent.set(event.parentToolUseId, siblings)
-          }
-        })
+      // Build map of sub-events by parent
+      const subEventsByParent = new Map<string, ConversationEvent[]>()
+      events.forEach(event => {
+        if (event.parentToolUseId) {
+          const siblings = subEventsByParent.get(event.parentToolUseId) || []
+          siblings.push(event)
+          subEventsByParent.set(event.parentToolUseId, siblings)
+        }
+      })
 
+      // Case 1: Focused on a sub-event within a task group
+      if (focusedEvent.parentToolUseId) {
+        // Find the parent task event
+        const parentTask = events.find(
+          e => e.toolId === focusedEvent.parentToolUseId &&
+          e.toolName === 'Task' &&
+          e.eventType === ConversationEventType.ToolCall
+        )
+
+        if (parentTask && expandedTasks.has(focusedEvent.parentToolUseId)) {
+          // Collapse the parent group
+          toggleTaskGroup(focusedEvent.parentToolUseId)
+          // Set focus to the parent task
+          setFocusedEventId(parentTask.id)
+          setFocusSource('keyboard')
+        }
+        return
+      }
+
+      // Case 2: Focused on a parent Task event - toggle expand/collapse
+      if (focusedEvent.eventType === ConversationEventType.ToolCall &&
+          focusedEvent.toolName === 'Task' &&
+          focusedEvent.toolId &&
+          hasSubTasks) {
         const hasSubEvents = subEventsByParent.has(focusedEvent.toolId)
         if (hasSubEvents) {
           toggleTaskGroup(focusedEvent.toolId)
