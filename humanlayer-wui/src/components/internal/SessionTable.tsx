@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button'
 import { daemonClient } from '@/lib/daemon/client'
 import { renderSessionStatus } from '@/utils/sessionStatus'
 import { logger } from '@/lib/logging'
+import { DiscardDraftsDialog } from './DiscardDraftsDialog'
 
 interface SessionTableProps {
   sessions: Session[]
@@ -57,12 +58,16 @@ export default function SessionTable({
   const isSessionLauncherOpen = false
   const { enableScope, disableScope } = useHotkeysContext()
   const tableRef = useRef<HTMLTableElement>(null)
-  const { archiveSession, selectedSessions, toggleSessionSelection, bulkArchiveSessions, bulkSelect } =
+  const { archiveSession, selectedSessions, toggleSessionSelection, bulkArchiveSessions, bulkSelect, bulkDiscardDrafts } =
     useStore()
 
   // State for inline editing
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
+
+  // State for discard dialog
+  const [discardDialogOpen, setDiscardDialogOpen] = useState(false)
+  const [draftsToDiscard, setDraftsToDiscard] = useState<string[]>([])
 
   // Helper functions for inline editing
   const startEdit = (sessionId: string, currentTitle: string, currentSummary: string) => {
@@ -91,6 +96,60 @@ export default function SessionTable({
   const cancelEdit = () => {
     setEditingSessionId(null)
     setEditValue('')
+  }
+
+  // Handle confirmed discard
+  const handleConfirmDiscard = async () => {
+    try {
+      if (draftsToDiscard.length === 1) {
+        // Single draft discard
+        const sessionId = draftsToDiscard[0]
+        const currentSession = sessions.find(s => s.id === sessionId)
+
+        await daemonClient.deleteDraftSession(sessionId)
+        useStore.getState().removeSession(sessionId)
+
+        // Find next session to focus
+        const currentIndex = sessions.findIndex(s => s.id === sessionId)
+        let nextFocusSession = null
+
+        if (currentIndex > 0) {
+          nextFocusSession = sessions[currentIndex - 1]
+        } else if (currentIndex < sessions.length - 1) {
+          nextFocusSession = sessions[currentIndex + 1]
+        }
+
+        if (nextFocusSession && handleFocusSession) {
+          handleFocusSession(nextFocusSession)
+        }
+
+        toast.success('Draft discarded', {
+          description: currentSession?.summary || 'Untitled draft',
+          duration: 3000,
+        })
+      } else {
+        // Bulk discard
+        const nonSelectedSessions = sessions.filter(s => !draftsToDiscard.includes(s.id))
+        const nextFocusSession = nonSelectedSessions.length > 0 ? nonSelectedSessions[0] : null
+
+        await bulkDiscardDrafts(draftsToDiscard)
+
+        if (nextFocusSession && handleFocusSession) {
+          handleFocusSession(nextFocusSession)
+        }
+
+        toast.success(`Discarded ${draftsToDiscard.length} drafts`, {
+          duration: 3000,
+        })
+      }
+    } catch (error) {
+      toast.error('Failed to discard draft(s)', {
+        description: error instanceof Error ? error.message : 'Unknown error',
+      })
+    } finally {
+      setDiscardDialogOpen(false)
+      setDraftsToDiscard([])
+    }
   }
 
   // Helper to render highlighted text
@@ -252,11 +311,11 @@ export default function SessionTable({
     },
   )
 
-  // Archive/unarchive hotkey
+  // Archive/unarchive hotkey or discard drafts
   useHotkeys(
     'e',
     async () => {
-      console.log('[SessionTable] archive hotkey "e" fired')
+      console.log('[SessionTable] archive/discard hotkey "e" fired')
 
       // Check if g>e was pressed recently (within 50ms)
       if (gePressedRef.current && Date.now() - gePressedRef.current < 50) {
@@ -266,12 +325,12 @@ export default function SessionTable({
 
       try {
         // Find the current session from the sessions array to get the latest archived status
-        logger.log('Archive hotkey pressed:', {
+        logger.log('Archive/discard hotkey pressed:', {
           currentSession: sessions.find(s => s.id === focusedSession?.id),
           selectedSessions,
         })
 
-        // If there are selected sessions, bulk archive them
+        // If there are selected sessions, bulk archive/discard them
         if (selectedSessions.size > 0) {
           logger.log('selectedSessions', selectedSessions)
 
@@ -280,46 +339,66 @@ export default function SessionTable({
             .map(sessionId => sessions.find(s => s.id === sessionId))
             .filter(Boolean)
 
-          // Check if all selected sessions have the same archived status
-          const archivedStatuses = selectedSessionObjects.map(s => s?.archived)
-          const allSameStatus = archivedStatuses.every(status => status === archivedStatuses[0])
+          // Check if any selected sessions are drafts
+          const hasDrafts = selectedSessionObjects.some(s => s?.status === SessionStatus.Draft)
+          const hasNonDrafts = selectedSessionObjects.some(s => s?.status !== SessionStatus.Draft)
 
-          if (!allSameStatus) {
-            toast.warning(
-              'Cannot bulk change archived status for archived and unarchived sessions at the same time (deselect one or the other)',
-            )
+          // Don't allow mixed operations
+          if (hasDrafts && hasNonDrafts) {
+            toast.warning('Cannot mix draft and non-draft sessions for bulk operations')
             return
           }
 
-          const isArchiving = !archivedStatuses[0] // If all are unarchived, we're archiving
+          if (hasDrafts) {
+            // Show confirmation dialog for bulk discard
+            const draftIds = selectedSessionObjects
+              .filter(s => s?.status === SessionStatus.Draft)
+              .map(s => s!.id)
 
-          // Find next session to focus after bulk archive
-          const nonSelectedSessions = sessions.filter(s => !selectedSessions.has(s.id))
-          const nextFocusSession = nonSelectedSessions.length > 0 ? nonSelectedSessions[0] : null
+            setDraftsToDiscard(draftIds)
+            setDiscardDialogOpen(true)
+            return
+          } else {
+            // Original archive logic for non-drafts
+            const archivedStatuses = selectedSessionObjects.map(s => s?.archived)
+            const allSameStatus = archivedStatuses.every(status => status === archivedStatuses[0])
 
-          await bulkArchiveSessions(Array.from(selectedSessions), isArchiving)
+            if (!allSameStatus) {
+              toast.warning(
+                'Cannot bulk change archived status for archived and unarchived sessions at the same time (deselect one or the other)',
+              )
+              return
+            }
 
-          // Focus next available session
-          if (nextFocusSession && handleFocusSession) {
-            handleFocusSession(nextFocusSession)
+            const isArchiving = !archivedStatuses[0] // If all are unarchived, we're archiving
+
+            // Find next session to focus after bulk archive
+            const nonSelectedSessions = sessions.filter(s => !selectedSessions.has(s.id))
+            const nextFocusSession = nonSelectedSessions.length > 0 ? nonSelectedSessions[0] : null
+
+            await bulkArchiveSessions(Array.from(selectedSessions), isArchiving)
+
+            // Focus next available session
+            if (nextFocusSession && handleFocusSession) {
+              handleFocusSession(nextFocusSession)
+            }
+
+            toast.success(
+              isArchiving
+                ? `Archived ${selectedSessions.size} sessions`
+                : `Unarchived ${selectedSessions.size} sessions`,
+              {
+                duration: 3000,
+              },
+            )
           }
-
-          toast.success(
-            isArchiving
-              ? `Archived ${selectedSessions.size} sessions`
-              : `Unarchived ${selectedSessions.size} sessions`,
-            {
-              duration: 3000,
-            },
-          )
         } else {
-          // Single session archive
+          // Single session archive/discard
           const currentSession = sessions.find(s => s.id === focusedSession?.id)
           if (!currentSession) {
             logger.log('No current session found')
             return
           }
-          const isArchiving = !currentSession.archived
 
           // Find the index of current session and determine next focus
           const currentIndex = sessions.findIndex(s => s.id === currentSession.id)
@@ -333,21 +412,31 @@ export default function SessionTable({
             nextFocusSession = sessions[currentIndex + 1]
           }
 
-          await archiveSession(currentSession.id, isArchiving)
+          if (currentSession.status === SessionStatus.Draft) {
+            // Show confirmation dialog for single draft discard
+            setDraftsToDiscard([currentSession.id])
+            setDiscardDialogOpen(true)
+            return
+          } else {
+            // Original archive logic
+            const isArchiving = !currentSession.archived
 
-          // Set focus to the determined session
-          if (nextFocusSession && handleFocusSession) {
-            handleFocusSession(nextFocusSession)
+            await archiveSession(currentSession.id, isArchiving)
+
+            // Set focus to the determined session
+            if (nextFocusSession && handleFocusSession) {
+              handleFocusSession(nextFocusSession)
+            }
+
+            // Show success notification
+            toast.success(isArchiving ? 'Session archived' : 'Session unarchived', {
+              description: currentSession.summary || 'Untitled session',
+              duration: 3000,
+            })
           }
-
-          // Show success notification
-          toast.success(isArchiving ? 'Session archived' : 'Session unarchived', {
-            description: currentSession.summary || 'Untitled session',
-            duration: 3000,
-          })
         }
       } catch (error) {
-        toast.error('Failed to archive session', {
+        toast.error('Failed to archive/discard session', {
           description: error instanceof Error ? error.message : 'Unknown error',
         })
       }
@@ -364,6 +453,7 @@ export default function SessionTable({
       archiveSession,
       selectedSessions,
       bulkArchiveSessions,
+      bulkDiscardDrafts,
       handleFocusSession,
     ],
   )
@@ -413,7 +503,7 @@ export default function SessionTable({
                 <TableHead className="w-[40px]"></TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Working Directory</TableHead>
-                <TableHead>Summary</TableHead>
+                <TableHead>Title</TableHead>
                 <TableHead>Model</TableHead>
                 <TableHead>Started</TableHead>
                 <TableHead>Last Activity</TableHead>
@@ -600,6 +690,17 @@ export default function SessionTable({
           message={searchText ? `No sessions matching "${searchText}"` : 'No sessions yet'}
         />
       )}
+
+      {/* Discard Drafts Confirmation Dialog */}
+      <DiscardDraftsDialog
+        open={discardDialogOpen}
+        draftCount={draftsToDiscard.length}
+        onConfirm={handleConfirmDiscard}
+        onCancel={() => {
+          setDiscardDialogOpen(false)
+          setDraftsToDiscard([])
+        }}
+      />
     </>
   )
 }

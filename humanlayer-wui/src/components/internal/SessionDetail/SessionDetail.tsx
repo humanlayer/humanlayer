@@ -6,7 +6,7 @@ import { useSearchParams } from 'react-router'
 import { ConversationEvent, Session, ApprovalStatus, SessionStatus } from '@/lib/daemon/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { useConversation, useKeyboardNavigationProtection } from '@/hooks'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown, FolderOpen } from 'lucide-react'
 import { daemonClient } from '@/lib/daemon/client'
 import { useStore } from '@/AppStore'
 import { getArchiveOnForkPreference } from '@/lib/preferences'
@@ -22,6 +22,7 @@ import { ForkViewModal } from './components/ForkViewModal'
 import { DangerouslySkipPermissionsDialog } from './DangerouslySkipPermissionsDialog'
 import { AdditionalDirectoriesDropdown } from './components/AdditionalDirectoriesDropdown'
 import { DiscardDraftDialog } from './components/DiscardDraftDialog'
+import { SearchInput } from '@/components/FuzzySearchInput'
 
 // Import hooks
 import { useSessionActions } from './hooks/useSessionActions'
@@ -614,7 +615,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
 
   // Handle discarding a draft session
   const handleDiscardDraft = useCallback(() => {
-    const hasChanges = responseEditor && !responseEditor.isEmpty
+    // TODO(3): Implement hasChanges logic, for now we'll just say there are changes
+    const hasChanges = true;
     if (hasChanges) {
       setShowDiscardDialog(true)
     } else {
@@ -867,15 +869,21 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     },
   )
 
-  // Add hotkey to archive session ('e' key)
+  // Add hotkey to archive session or discard draft ('e' key)
   useHotkeys(
     'e',
     async () => {
-      console.log('[SessionDetail] archive hotkey "e" fired')
+      console.log('[SessionDetail] archive/discard hotkey "e" fired')
 
       // Check if g>e was pressed recently (within 50ms)
       if (gePressedRef.current && Date.now() - gePressedRef.current < 50) {
         console.log('[SessionDetail] Blocking archive due to recent g>e press')
+        return
+      }
+
+      // For draft sessions, trigger discard flow instead of archive
+      if (isDraft) {
+        handleDiscardDraft()
         return
       }
 
@@ -941,7 +949,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       preventDefault: true,
       scopes: SessionDetailHotkeysScope,
     },
-    [session.id, session.archived, session.summary, session.status, onClose, confirmingArchive],
+    [session.id, session.archived, session.summary, session.status, onClose, confirmingArchive, isDraft, handleDiscardDraft],
   )
 
   // Create reusable handler for toggling fork view
@@ -1171,16 +1179,29 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     <section className="flex flex-col h-full gap-3">
       {/* Unified header with working directory */}
       <div className="flex items-center justify-between gap-2">
-        {/* Working directory info */}
-        {session.workingDir && (
-          <AdditionalDirectoriesDropdown
-            workingDir={session.workingDir}
-            directories={session.additionalDirectories || []}
-            sessionStatus={session.status}
-            onDirectoriesChange={handleUpdateAdditionalDirectories}
-            open={directoriesDropdownOpen}
-            onOpenChange={setDirectoriesDropdownOpen}
-          />
+        {/* Working directory info - show SearchInput for drafts, AdditionalDirectoriesDropdown otherwise */}
+        {isDraft ? (
+          <div className="flex-1">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground pb-1">
+              <FolderOpen className="h-3 w-3" />
+              <span>Working Directory</span>
+            </div>
+            <SearchInput
+              placeholder="Select a directory to work in..."
+              className="mt-1"
+            />
+          </div>
+        ) : (
+          session.workingDir && (
+            <AdditionalDirectoriesDropdown
+              workingDir={session.workingDir}
+              directories={session.additionalDirectories || []}
+              sessionStatus={session.status}
+              onDirectoriesChange={handleUpdateAdditionalDirectories}
+              open={directoriesDropdownOpen}
+              onOpenChange={setDirectoriesDropdownOpen}
+            />
+          )
         )}
 
         {/* Fork view modal */}

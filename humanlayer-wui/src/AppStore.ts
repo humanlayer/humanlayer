@@ -45,6 +45,8 @@ interface StoreState {
   archiveSession: (sessionId: string, archived: boolean) => Promise<void>
   bulkArchiveSessions: (sessionIds: string[], archived: boolean) => Promise<void>
   bulkSetAutoAcceptEdits: (sessionIds: string[], autoAcceptEdits: boolean) => Promise<void>
+  removeSession: (sessionId: string) => void
+  bulkDiscardDrafts: (sessionIds: string[]) => Promise<void>
   setViewMode: (mode: ViewMode) => void
   getViewMode: () => ViewMode
   setNextViewMode: () => void
@@ -472,6 +474,42 @@ export const useStore = create<StoreState>((set, get) => ({
       get().clearSelection()
     } catch (error) {
       console.error('Failed to bulk update auto-accept settings:', error)
+      throw error
+    }
+  },
+  removeSession: (sessionId: string) => {
+    set(state => ({
+      sessions: state.sessions.filter(session => session.id !== sessionId),
+      // Clear focused session if it was removed
+      focusedSession: state.focusedSession?.id === sessionId ? null : state.focusedSession,
+      // Remove from selected sessions if it was selected
+      selectedSessions: new Set(Array.from(state.selectedSessions).filter(id => id !== sessionId)),
+    }))
+  },
+  bulkDiscardDrafts: async (sessionIds: string[]) => {
+    try {
+      // Delete each draft session
+      const results = await Promise.allSettled(
+        sessionIds.map(sessionId => daemonClient.deleteDraftSession(sessionId)),
+      )
+
+      // Check if any failed
+      const failedCount = results.filter(r => r.status === 'rejected').length
+      if (failedCount > 0) {
+        logger.error(`Failed to discard ${failedCount} drafts`)
+        throw new Error(`Failed to discard ${failedCount} drafts`)
+      }
+
+      // Remove all successfully deleted sessions from local state
+      set(state => ({
+        sessions: state.sessions.filter(session => !sessionIds.includes(session.id)),
+        // Clear focused session if it was removed
+        focusedSession: sessionIds.includes(state.focusedSession?.id ?? '') ? null : state.focusedSession,
+        // Clear selection after bulk operation
+        selectedSessions: new Set(),
+      }))
+    } catch (error) {
+      logger.error('Failed to bulk discard drafts:', error)
       throw error
     }
   },
