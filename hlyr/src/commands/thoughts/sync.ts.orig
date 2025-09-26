@@ -1,5 +1,6 @@
 import fs from 'fs'
 import path from 'path'
+import { execSync, execFileSync } from 'child_process'
 import chalk from 'chalk'
 import {
   loadThoughtsConfig,
@@ -113,7 +114,7 @@ function createSearchDirectory(thoughtsDir: string): void {
   if (fs.existsSync(searchDir)) {
     try {
       const { stdout } = await execFile('git', [
-    if (!fs.existsSync(thoughtsDir) || !fs.statSync(thoughtsDir).isDirectory()) {
+        '-C',
         thoughtsDir,
         'config',
         '--get',

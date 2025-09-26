@@ -1,0 +1,35 @@
+--- hlyr/src/commands/thoughts/sync.ts
++++ hlyr/src/commands/thoughts/sync.ts
+@@ -1,11 +1,11 @@
+-import { exec as execCallback } from 'child_process';
++import { execFile as execFileCallback } from 'child_process';
+ import { Command, Flags } from '@oclif/core';
+ import { sync } from '../../services/thought';
+ import { getThoughtRedirect } from '../../utils/thought';
+ import config from '../../utils/config';
+ import { promisify } from 'util';
+ 
+-const exec = promisify(execCallback);
++const execFile = promisify(execFileCallback);
+ 
+ export default class Sync extends Command {
+   static description = 'Sync thoughts with a remote git repository';
+@@ -112,11 +112,15 @@
+ 
+   private async getGitRepo(thoughtsDir: string): Promise<string | null> {
+     try {
+       // Check if it's a git repository and get the remote URL
+-      const { stdout } = await exec(
+-        `git -C "${thoughtsDir}" config --get remote.origin.url`,
+-      );
++      const { stdout } = await execFile('git', [
++        '-C',
++        thoughtsDir,
++        'config',
++        '--get',
++        'remote.origin.url',
++      ]);
+       return stdout.trim();
+     } catch (error) {
+       // Not a git repository or no remote named 'origin'
+ 
