@@ -19,7 +19,7 @@ Built on Claude Code. Open source. Scale from your laptop to your entire team.
 
 <h3>
 
-[Join Waitlist](https://humanlayer.dev/code) | [Discord](https://humanlayer.dev/discord) | [Latest Release](https://github.com/humanlayer/humanlayer/releases)
+[Join Waitlist](https://humanlayer.dev/code) | [Discord](https://humanlayer.dev/discord)
 
 </h3>
 
