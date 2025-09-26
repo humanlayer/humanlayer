@@ -2,10 +2,11 @@ import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '@/AppStore'
 import { ViewMode } from '@/lib/daemon/types'
-import SessionTable, { SessionTableHotkeysScope } from '@/components/internal/SessionTable'
+import SessionTable from '@/components/internal/SessionTable'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { useSessionLauncher, useKeyboardNavigationProtection } from '@/hooks'
 import { Inbox, Archive } from 'lucide-react'
+import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
 
 export function SessionTablePage() {
   const { isOpen: isSessionLauncherOpen, open: openSessionLauncher } = useSessionLauncher()
@@ -72,12 +73,16 @@ export function SessionTablePage() {
       e.preventDefault()
       setViewMode(viewMode === ViewMode.Normal ? ViewMode.Archived : ViewMode.Normal)
     },
-    { enableOnFormTags: false, scopes: SessionTableHotkeysScope, enabled: !isSessionLauncherOpen },
+    {
+      enableOnFormTags: false,
+      scopes: [HOTKEY_SCOPES.SESSIONS, HOTKEY_SCOPES.SESSIONS_ARCHIVED],
+      enabled: !isSessionLauncherOpen,
+    },
   )
 
-  // Handle Shift+Tab to trigger auto-accept for selected sessions
+  // Handle Option+A to trigger auto-accept for selected sessions
   useHotkeys(
-    'shift+tab',
+    'alt+a',
     async e => {
       e.preventDefault()
 
@@ -127,7 +132,11 @@ export function SessionTablePage() {
         })
       }
     },
-    { enableOnFormTags: false, scopes: SessionTableHotkeysScope, enabled: !isSessionLauncherOpen },
+    {
+      enableOnFormTags: false,
+      scopes: [HOTKEY_SCOPES.SESSIONS, HOTKEY_SCOPES.SESSIONS_ARCHIVED],
+      enabled: !isSessionLauncherOpen,
+    },
     [selectedSessions, focusedSession, sessions],
   )
 
@@ -150,7 +159,7 @@ export function SessionTablePage() {
     },
     {
       enableOnFormTags: false,
-      scopes: SessionTableHotkeysScope,
+      scopes: [HOTKEY_SCOPES.SESSIONS, HOTKEY_SCOPES.SESSIONS_ARCHIVED],
       enabled: !isSessionLauncherOpen,
       preventDefault: true,
     },
@@ -175,7 +184,7 @@ export function SessionTablePage() {
     },
     {
       enableOnFormTags: false,
-      scopes: SessionTableHotkeysScope,
+      scopes: [HOTKEY_SCOPES.SESSIONS, HOTKEY_SCOPES.SESSIONS_ARCHIVED],
       enabled: !isSessionLauncherOpen,
       preventDefault: true,
     },
@@ -187,7 +196,7 @@ export function SessionTablePage() {
     () => {
       if (selectedSessions.size > 0) {
         clearSelection()
-        return null
+        return
       }
 
       if (viewMode === ViewMode.Archived) {
@@ -196,11 +205,28 @@ export function SessionTablePage() {
     },
     {
       enableOnFormTags: false,
-      scopes: SessionTableHotkeysScope,
-      enabled: !isSessionLauncherOpen,
+      scopes: [HOTKEY_SCOPES.SESSIONS_ARCHIVED],
+      enabled: !isSessionLauncherOpen && viewMode === ViewMode.Archived,
       preventDefault: true,
     },
-    [selectedSessions],
+    [selectedSessions, viewMode],
+  )
+
+  // Handle ESC to clear selection in normal sessions view
+  useHotkeys(
+    'escape',
+    () => {
+      if (selectedSessions.size > 0) {
+        clearSelection()
+      }
+    },
+    {
+      enableOnFormTags: false,
+      scopes: [HOTKEY_SCOPES.SESSIONS],
+      enabled: !isSessionLauncherOpen && viewMode === ViewMode.Normal && selectedSessions.size > 0,
+      preventDefault: true,
+    },
+    [selectedSessions, viewMode],
   )
 
   return (
@@ -226,6 +252,7 @@ export function SessionTablePage() {
           handleFocusPreviousSession={focusPreviousSession}
           searchText={undefined}
           matchedSessions={undefined}
+          archived={viewMode === ViewMode.Archived}
           emptyState={
             viewMode === ViewMode.Archived
               ? {

@@ -1,10 +1,10 @@
 import { create } from 'zustand'
 import { daemonClient } from '@/lib/daemon'
 import type { LaunchSessionRequest } from '@/lib/daemon/types'
-import { useHotkeysContext } from 'react-hotkeys-hook'
+import { useHotkeys } from 'react-hotkeys-hook'
 import { exists } from '@tauri-apps/plugin-fs'
 import { homeDir } from '@tauri-apps/api/path'
-import { logger } from '@/lib/logging'
+import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
 
 interface SessionConfig {
   title?: string
@@ -364,9 +364,7 @@ export { isViewingSessionDetail }
 
 // Helper hook for global hotkey management
 export function useSessionLauncherHotkeys() {
-  const { activeScopes } = useHotkeysContext()
-
-  const { open, close, isOpen, gPrefixMode, setGPrefixMode, createNewSession } = useSessionLauncher()
+  const { open, close, isOpen, setGPrefixMode, createNewSession } = useSessionLauncher()
 
   // Helper to check if user is actively typing in a text input
   const isTypingInInput = () => {
@@ -381,71 +379,61 @@ export function useSessionLauncherHotkeys() {
     )
   }
 
-  // Check if a modal scope is active (indicating a modal is open)
-  const isModalScopeActive = () => {
-    // Only check for specific modals that should block global hotkeys
-    // Don't include all modals - for example, we want 'c' to work in SessionDetail
-    return activeScopes.some(
-      scope =>
-        scope === 'tool-result-modal' || // Tool result modal (opened with 'i')
-        scope === 'session-launcher' || // Session launcher itself
-        scope === 'fork-view-modal' || // Fork view modal
-        scope === 'dangerously-skip-permissions-dialog', // Permissions dialog
-    )
-  }
+  // Cmd+K - Command palette (root scope)
+  useHotkeys(
+    'meta+k, ctrl+k',
+    () => {
+      if (!isOpen) {
+        open()
+      } else {
+        close()
+      }
+    },
+    {
+      scopes: [HOTKEY_SCOPES.ROOT],
+      preventDefault: true,
+    },
+  )
 
+  // C - Create new session (root scope)
+  useHotkeys(
+    'c',
+    () => {
+      // Open launcher if not already open
+      if (!isOpen) {
+        open()
+      }
+      createNewSession()
+    },
+    {
+      scopes: [HOTKEY_SCOPES.ROOT],
+      enabled: !isTypingInInput(),
+      preventDefault: true,
+    },
+  )
+
+  // G - G prefix mode (root scope)
+  useHotkeys(
+    'g',
+    () => {
+      setGPrefixMode(true)
+      setTimeout(() => setGPrefixMode(false), 2000)
+    },
+    {
+      scopes: [HOTKEY_SCOPES.ROOT],
+      enabled: !isTypingInInput(),
+      preventDefault: true,
+    },
+  )
+
+  // Note: G>S, G>E, G>I are already handled in Layout.tsx with the new scope system
+  // They don't need to be duplicated here
+
+  // For backward compatibility, return an empty handleKeyDown
+  // This can be removed once Layout.tsx is updated to not use it
   return {
-    handleKeyDown: (e: KeyboardEvent) => {
-      // Cmd+K - Global command palette (shows menu)
-      if (e.metaKey && e.key === 'k') {
-        e.preventDefault()
-        if (!isOpen) {
-          open()
-        } else {
-          close()
-        }
-        return
-      }
-
-      // C - Create new session directly (bypasses command palette)
-      // Don't trigger if a modal is already open
-      if (e.key === 'c' && !e.metaKey && !e.ctrlKey && !isTypingInInput()) {
-        if (!isModalScopeActive()) {
-          e.preventDefault()
-          // Open launcher if not already open
-          if (!isOpen) {
-            open()
-          }
-          createNewSession()
-          return
-        }
-      }
-
-      // G prefix navigation (prepare for Phase 2)
-      if (e.key === 'g' && !e.metaKey && !e.ctrlKey && !isTypingInInput() && !isModalScopeActive()) {
-        e.preventDefault()
-        setGPrefixMode(true)
-        setTimeout(() => setGPrefixMode(false), 2000)
-        return
-      }
-
-      // G+A - Go to approvals (Phase 2)
-      if (gPrefixMode && e.key === 'a') {
-        e.preventDefault()
-        setGPrefixMode(false)
-        // TODO: Navigate to approvals view
-        logger.log('Navigate to approvals (Phase 2)')
-        return
-      }
-
-      // G+S - Go to sessions (Phase 2)
-      if (gPrefixMode && e.key === 's') {
-        e.preventDefault()
-        setGPrefixMode(false)
-        // Navigate to sessions view
-        window.location.hash = '#/'
-        return
-      }
+    handleKeyDown: () => {
+      // No-op - hotkeys are now handled via useHotkeys with proper scopes
     },
   }
 }

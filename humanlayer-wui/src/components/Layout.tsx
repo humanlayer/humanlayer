@@ -44,6 +44,7 @@ import { DvdScreensaver } from '@/components/DvdScreensaver'
 import { TestErrorTrigger } from '@/components/TestErrorTrigger'
 import { CodeLayerToaster } from '@/components/internal/CodeLayerToaster'
 import { useDebugStore } from '@/stores/useDebugStore'
+import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
 
 export function Layout() {
   const [approvals, setApprovals] = useState<any[]>([])
@@ -65,7 +66,8 @@ export function Layout() {
 
   // Session launcher state
   const { isOpen, close } = useSessionLauncher()
-  const { handleKeyDown } = useSessionLauncherHotkeys()
+  // Initialize hotkeys (they're now handled via useHotkeys in the hook)
+  useSessionLauncherHotkeys()
 
   // Debug store state
   const showDevUrl = useDebugStore(state => state.showDevUrl)
@@ -103,26 +105,33 @@ export function Layout() {
   }, [])
 
   // Secret hotkey for launch theme
-  useHotkeys('mod+shift+y', () => {
-    setTheme('launch')
-  })
+  useHotkeys(
+    'meta+shift+y, ctrl+shift+y',
+    () => {
+      setTheme('launch')
+    },
+    {
+      scopes: [HOTKEY_SCOPES.ROOT],
+    },
+  )
 
   // Settings dialog hotkey
   // TODO: We should bump this to "cmd+," later on
   // There's some pain associated with doing this with MenuBuilder in Tauri, so saving for later
   useHotkeys(
-    'mod+shift+s',
+    'meta+shift+s, ctrl+shift+s',
     () => {
       setSettingsDialogOpen(!isSettingsDialogOpen)
     },
     {
+      scopes: [HOTKEY_SCOPES.ROOT],
       enableOnFormTags: true,
     },
   )
 
   // Jump to most recent approval hotkey
   useHotkeys(
-    'mod+shift+j',
+    'meta+shift+j, ctrl+shift+j',
     async () => {
       try {
         // Get all visible toasts
@@ -217,6 +226,7 @@ export function Layout() {
       }
     },
     {
+      scopes: [HOTKEY_SCOPES.ROOT],
       enableOnFormTags: false,
       preventDefault: true,
     },
@@ -492,23 +502,21 @@ export function Layout() {
     },
   })
 
-  // Global hotkey for toggling hotkey panel
+  // Root hotkey for toggling hotkey panel
   useHotkeys(
     '?',
     () => {
       setHotkeyPanelOpen(!isHotkeyPanelOpen)
     },
     {
+      scopes: [HOTKEY_SCOPES.ROOT],
       useKey: true,
       preventDefault: true,
     },
   )
 
   // Navigation shortcuts - 'gs' for sessions (normal view), 'ge' for archived
-  // Check if any modal is open to prevent shortcuts during modal interactions
-  const isAnyModalOpen = () => {
-    return isSettingsDialogOpen || isHotkeyPanelOpen || isOpen || showTelemetryModal || isDebugPanelOpen
-  }
+  // Note: Root scope hotkeys are now automatically disabled when modals open
 
   // G+S - Go to sessions (normal view)
   useHotkeys(
@@ -516,15 +524,14 @@ export function Layout() {
     e => {
       console.log('[Layout] g>s fired')
       e.stopPropagation()
-      if (!isAnyModalOpen()) {
-        // Navigate to sessions (normal view)
-        if (useStore.getState().viewMode !== ViewMode.Normal) {
-          useStore.getState().setViewMode(ViewMode.Normal)
-        }
-        navigate('/')
+      // Navigate to sessions (normal view)
+      if (useStore.getState().viewMode !== ViewMode.Normal) {
+        useStore.getState().setViewMode(ViewMode.Normal)
       }
+      navigate('/')
     },
     {
+      scopes: [HOTKEY_SCOPES.ROOT],
       preventDefault: true,
       enableOnFormTags: false,
     },
@@ -536,15 +543,14 @@ export function Layout() {
     e => {
       console.log('[Layout] g>e fired')
       e.stopPropagation()
-      if (!isAnyModalOpen()) {
-        // Navigate to archived sessions
-        if (useStore.getState().viewMode !== ViewMode.Archived) {
-          useStore.getState().setViewMode(ViewMode.Archived)
-        }
-        navigate('/')
+      // Navigate to archived sessions
+      if (useStore.getState().viewMode !== ViewMode.Archived) {
+        useStore.getState().setViewMode(ViewMode.Archived)
       }
+      navigate('/')
     },
     {
+      scopes: [HOTKEY_SCOPES.ROOT],
       preventDefault: true,
       enableOnFormTags: false,
     },
@@ -556,30 +562,38 @@ export function Layout() {
     e => {
       console.log('[Layout] g>i fired (alias for g>s)')
       e.stopPropagation()
-      if (!isAnyModalOpen()) {
-        // Navigate to sessions (normal view)
-        if (useStore.getState().viewMode !== ViewMode.Normal) {
-          useStore.getState().setViewMode(ViewMode.Normal)
-        }
-        navigate('/')
+      // Navigate to sessions (normal view)
+      if (useStore.getState().viewMode !== ViewMode.Normal) {
+        useStore.getState().setViewMode(ViewMode.Normal)
       }
+      navigate('/')
     },
     {
+      scopes: [HOTKEY_SCOPES.ROOT],
       preventDefault: true,
       enableOnFormTags: false,
     },
   )
 
   // Global hotkey for feedback
-  useHotkeys('mod+shift+f', async () => {
-    try {
-      await openUrl(
-        'https://github.com/humanlayer/humanlayer/issues/new?title=Feedback%20on%20CodeLayer&body=%23%23%23%20Problem%20to%20solve%20%2F%20Expected%20Behavior%0A%0A%0A%23%23%23%20Proposed%20solution',
-      )
-    } catch (error) {
-      logger.error('Failed to open feedback URL:', error)
-    }
-  })
+  // Don't specify scopes to make it work globally (defaults to wildcard '*')
+  useHotkeys(
+    'meta+shift+f, ctrl+shift+f',
+    async () => {
+      try {
+        await openUrl(
+          'https://github.com/humanlayer/humanlayer/issues/new?title=Feedback%20on%20CodeLayer&body=%23%23%23%20Problem%20to%20solve%20%2F%20Expected%20Behavior%0A%0A%0A%23%23%23%20Proposed%20solution',
+        )
+      } catch (error) {
+        logger.error('Failed to open feedback URL:', error)
+      }
+    },
+    {
+      // No scopes specified - works in wildcard scope
+      enabled: true,
+      preventDefault: true,
+    },
+  )
 
   // Prevent escape key from exiting full screen
   // Might be worth guarding this specifically in macOS
@@ -626,11 +640,7 @@ export function Layout() {
     return () => window.removeEventListener('session-created', handleSessionCreated)
   }, [connected])
 
-  // Global hotkey handler
-  useEffect(() => {
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [handleKeyDown])
+  // Global hotkey handler is now handled via useHotkeys in useSessionLauncherHotkeys
 
   // Notify about log location on startup (production only)
   useEffect(() => {

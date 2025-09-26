@@ -14,10 +14,9 @@ import { Label } from '@/components/ui/label'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { ConversationEvent } from '@/lib/daemon/types'
 import { cn } from '@/lib/utils'
-import { useStealHotkeyScope } from '@/hooks/useStealHotkeyScope'
 import { getArchiveOnForkPreference, setArchiveOnForkPreference } from '@/lib/preferences'
-
-const ForkViewModalHotkeysScope = 'fork-view-modal'
+import { HotkeyScopeBoundary } from '@/components/HotkeyScopeBoundary'
+import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
 
 interface ForkViewModalProps {
   events: ConversationEvent[]
@@ -142,7 +141,7 @@ function ForkViewModalContent({
         onSelectEvent(option.index === -1 ? null : option.index)
       }
     },
-    { scopes: [ForkViewModalHotkeysScope], enableOnFormTags: true },
+    { scopes: [HOTKEY_SCOPES.FORK_MODAL], enableOnFormTags: true },
   )
 
   useHotkeys(
@@ -156,7 +155,7 @@ function ForkViewModalContent({
         onSelectEvent(option.index === -1 ? null : option.index)
       }
     },
-    { scopes: [ForkViewModalHotkeysScope], enableOnFormTags: true },
+    { scopes: [HOTKEY_SCOPES.FORK_MODAL], enableOnFormTags: true },
   )
 
   // Number key navigation
@@ -173,7 +172,7 @@ function ForkViewModalContent({
         }
       }
     },
-    { scopes: [ForkViewModalHotkeysScope], enableOnFormTags: true },
+    { scopes: [HOTKEY_SCOPES.FORK_MODAL], enableOnFormTags: true },
   )
 
   // Enter to select item (not fork) or toggle checkbox if focused
@@ -198,19 +197,19 @@ function ForkViewModalContent({
         }
       }
     },
-    { scopes: [ForkViewModalHotkeysScope], preventDefault: true },
+    { scopes: [HOTKEY_SCOPES.FORK_MODAL], preventDefault: true },
   )
 
   // Cmd/Ctrl+Enter to execute fork
   useHotkeys(
-    'mod+enter',
+    'meta+enter, ctrl+enter',
     e => {
       e.preventDefault()
       e.stopPropagation()
       handleFork()
     },
     {
-      scopes: [ForkViewModalHotkeysScope],
+      scopes: [HOTKEY_SCOPES.FORK_MODAL],
       preventDefault: true,
       enableOnFormTags: true,
     },
@@ -234,13 +233,16 @@ function ForkViewModalContent({
         checkboxRef.current?.focus()
       } else if (focusedSection === 'checkbox') {
         setFocusedSection('buttons')
-        forkButtonRef.current?.focus()
+        // Use setTimeout to ensure the button is ready to receive focus
+        setTimeout(() => {
+          forkButtonRef.current?.focus()
+        }, 0)
       } else if (focusedSection === 'buttons') {
         setFocusedSection('messages')
         containerRef.current?.focus()
       }
     },
-    { scopes: [ForkViewModalHotkeysScope], preventDefault: true, enableOnFormTags: true },
+    { scopes: [HOTKEY_SCOPES.FORK_MODAL], preventDefault: true, enableOnFormTags: true },
   )
 
   // Shift+Tab navigation - MUST capture to prevent triggering "accept edits" in background
@@ -258,7 +260,10 @@ function ForkViewModalContent({
       // Navigate backward through sections
       if (focusedSection === 'messages') {
         setFocusedSection('buttons')
-        forkButtonRef.current?.focus()
+        // Use setTimeout to ensure the button is ready to receive focus
+        setTimeout(() => {
+          forkButtonRef.current?.focus()
+        }, 0)
       } else if (focusedSection === 'checkbox') {
         setFocusedSection('messages')
         containerRef.current?.focus()
@@ -267,7 +272,7 @@ function ForkViewModalContent({
         checkboxRef.current?.focus()
       }
     },
-    { scopes: [ForkViewModalHotkeysScope], preventDefault: true, enableOnFormTags: true },
+    { scopes: [HOTKEY_SCOPES.FORK_MODAL], preventDefault: true, enableOnFormTags: true },
   )
 
   // Space to toggle checkbox when checkbox section is focused
@@ -280,7 +285,7 @@ function ForkViewModalContent({
         handleArchiveCheckboxChange(!localArchiveOnFork)
       }
     },
-    { scopes: [ForkViewModalHotkeysScope], enableOnFormTags: true },
+    { scopes: [HOTKEY_SCOPES.FORK_MODAL], enableOnFormTags: true },
   )
 
   // Escape to close and clear selection
@@ -293,7 +298,7 @@ function ForkViewModalContent({
       onSelectEvent(null) // Clear selection first
       handleClose() // Use unified handler
     },
-    { scopes: [ForkViewModalHotkeysScope], preventDefault: true },
+    { scopes: [HOTKEY_SCOPES.FORK_MODAL], preventDefault: true },
   )
 
   return (
@@ -464,50 +469,53 @@ export function ForkViewModal({
   sessionStatus,
   onArchiveOnForkChange,
 }: ForkViewModalProps) {
-  // Steal all hotkey scopes IMMEDIATELY when modal opens - must happen before Dialog renders
-  // This prevents shift+tab from reaching SessionDetail during the render gap
-  useStealHotkeyScope(ForkViewModalHotkeysScope, isOpen)
-
   return (
-    <Dialog
-      open={isOpen}
-      onOpenChange={isOpen => {
-        if (!isOpen) {
-          onOpenChange(false)
-        } else {
-          onOpenChange(true)
-        }
-      }}
+    <HotkeyScopeBoundary
+      scope={HOTKEY_SCOPES.FORK_MODAL}
+      isActive={isOpen}
+      rootScopeDisabled={true}
+      componentName="ForkViewModal"
     >
-      <DialogContent
-        className="max-w-2xl"
-        showCloseButton={false}
-        onOpenAutoFocus={e => {
-          // Prevent default focus behavior but let our custom focus management work
-          e.preventDefault()
-        }}
-        onCloseAutoFocus={e => {
-          // Prevent the dialog from restoring focus when it closes
-          // The parent component will handle focus restoration
-          e.preventDefault()
-        }}
-        onEscapeKeyDown={e => {
-          // Prevent the default Dialog escape handling
-          // Our custom escape handler in ForkViewModalContent will handle it
-          e.preventDefault()
+      <Dialog
+        open={isOpen}
+        onOpenChange={isOpen => {
+          if (!isOpen) {
+            onOpenChange(false)
+          } else {
+            onOpenChange(true)
+          }
         }}
       >
-        {isOpen && (
-          <ForkViewModalContent
-            events={events}
-            selectedEventIndex={selectedEventIndex}
-            onSelectEvent={onSelectEvent}
-            sessionStatus={sessionStatus}
-            onArchiveOnForkChange={onArchiveOnForkChange}
-            onClose={() => onOpenChange(false)}
-          />
-        )}
-      </DialogContent>
-    </Dialog>
+        <DialogContent
+          className="max-w-2xl"
+          showCloseButton={false}
+          onOpenAutoFocus={e => {
+            // Prevent default focus behavior but let our custom focus management work
+            e.preventDefault()
+          }}
+          onCloseAutoFocus={e => {
+            // Prevent the dialog from restoring focus when it closes
+            // The parent component will handle focus restoration
+            e.preventDefault()
+          }}
+          onEscapeKeyDown={e => {
+            // Prevent the default Dialog escape handling
+            // Our custom escape handler in ForkViewModalContent will handle it
+            e.preventDefault()
+          }}
+        >
+          {isOpen && (
+            <ForkViewModalContent
+              events={events}
+              selectedEventIndex={selectedEventIndex}
+              onSelectEvent={onSelectEvent}
+              sessionStatus={sessionStatus}
+              onArchiveOnForkChange={onArchiveOnForkChange}
+              onClose={() => onOpenChange(false)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+    </HotkeyScopeBoundary>
   )
 }
