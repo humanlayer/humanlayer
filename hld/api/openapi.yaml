@@ -1053,6 +1053,19 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Session'
+        counts:
+          type: object
+          description: Session counts by category
+          properties:
+            normal:
+              type: integer
+              description: Number of normal (non-archived, non-draft) sessions
+            archived:
+              type: integer
+              description: Number of archived sessions
+            draft:
+              type: integer
+              description: Number of draft sessions
 
     UpdateSessionRequest:
       type: object

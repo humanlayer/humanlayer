@@ -22,6 +22,7 @@ export function SessionTablePage() {
   const { shouldIgnoreMouseEvent, startKeyboardNavigation } = useKeyboardNavigationProtection()
 
   const sessions = useStore(state => state.sessions)
+  const sessionCounts = useStore(state => state.sessionCounts)
   const selectedSessions = useStore(state => state.selectedSessions)
   const clearSelection = useStore(state => state.clearSelection)
   const focusedSession = useStore(state => state.focusedSession)
@@ -218,11 +219,19 @@ export function SessionTablePage() {
   return (
     <div className="flex flex-col gap-4">
       <nav className="sticky top-0 z-10">
-        <Tabs className="w-[400px]" value={viewMode} onValueChange={(value) => setViewMode(value as ViewMode)}>
+        <Tabs
+          className="w-[400px]"
+          value={viewMode}
+          onValueChange={value => setViewMode(value as ViewMode)}
+        >
           <TabsList>
-            <TabsTrigger value={ViewMode.Normal}>Sessions</TabsTrigger>
+            <TabsTrigger value={ViewMode.Normal}>
+              Sessions{sessionCounts?.normal !== undefined ? ` (${sessionCounts.normal})` : ''}
+            </TabsTrigger>
             <TabsTrigger value={ViewMode.Archived}>Archived</TabsTrigger>
-            <TabsTrigger value={ViewMode.Drafts}>Drafts</TabsTrigger>
+            <TabsTrigger value={ViewMode.Drafts}>
+              Drafts{sessionCounts?.draft !== undefined ? ` (${sessionCounts.draft})` : ''}
+            </TabsTrigger>
           </TabsList>
         </Tabs>
       </nav>

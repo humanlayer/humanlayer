@@ -81,9 +81,14 @@ export interface DaemonClient {
   // Session methods
   launchSession(params: LaunchSessionParams | LaunchSessionRequest): Promise<CreateSessionResponseData>
   listSessions(): Promise<Session[]>
-  getSessionLeaves(request?: {
-    filter?: 'normal' | 'archived' | 'draft'
-  }): Promise<{ sessions: Session[] }>
+  getSessionLeaves(request?: { filter?: 'normal' | 'archived' | 'draft' }): Promise<{
+    sessions: Session[]
+    counts?: {
+      normal?: number
+      archived?: number
+      draft?: number
+    }
+  }>
   getSessionState(sessionId: string): Promise<SessionState>
   continueSession(
     sessionId: string,

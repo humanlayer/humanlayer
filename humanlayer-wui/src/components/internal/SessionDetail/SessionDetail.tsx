@@ -30,6 +30,7 @@ import { useSessionApprovals } from './hooks/useSessionApprovals'
 import { useSessionNavigation } from './hooks/useSessionNavigation'
 import { useTaskGrouping } from './hooks/useTaskGrouping'
 import { useSessionClipboard } from './hooks/useSessionClipboard'
+import { useRecentPaths } from '@/hooks/useRecentPaths'
 import { logger } from '@/lib/logging'
 
 interface SessionDetailProps {
@@ -209,9 +210,16 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     return getArchiveOnForkPreference()
   })
   const [showDiscardDialog, setShowDiscardDialog] = useState(false)
+  // For draft sessions, use the session's workingDir if it exists
+  const [selectedDirectory, setSelectedDirectory] = useState<string>(() => {
+    return session.workingDir || ''
+  })
 
   // Check if this is a draft session
   const isDraft = session.status === SessionStatus.Draft
+
+  // Get recent paths for draft directory selection
+  const { paths: recentPaths } = useRecentPaths()
 
   const responseEditor = useStore(state => state.responseEditor)
   const isEditingSessionTitle = useStore(state => state.isEditingSessionTitle)
@@ -590,11 +598,26 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const handleLaunchDraft = useCallback(async () => {
     if (!isDraft || isLaunchingDraft) return
 
+    // Use either the selected directory or the session's existing workingDir
+    const workingDir = selectedDirectory || session.workingDir
+
+    // Validate that a directory is selected or exists on the session
+    if (!workingDir) {
+      toast.error('Please select a working directory', {
+        description: 'You must choose a directory before launching the session',
+      })
+      return
+    }
+
     try {
       setIsLaunchingDraft(true)
 
       // Get the prompt text from the editor
       const prompt = responseEditor?.getText() || ''
+
+      // TODO: If the selected directory is different from session.workingDir,
+      // we need to update the session first. This requires backend support
+      // to update the workingDir field via UpdateSessionRequest
 
       // Launch the draft session with the prompt
       await daemonClient.launchDraftSession(session.id, prompt)
@@ -611,12 +634,12 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     } finally {
       setIsLaunchingDraft(false)
     }
-  }, [isDraft, session.id, responseEditor, isLaunchingDraft])
+  }, [isDraft, session.id, session.workingDir, responseEditor, isLaunchingDraft, selectedDirectory])
 
   // Handle discarding a draft session
   const handleDiscardDraft = useCallback(() => {
     // TODO(3): Implement hasChanges logic, for now we'll just say there are changes
-    const hasChanges = true;
+    const hasChanges = true
     if (hasChanges) {
       setShowDiscardDialog(true)
     } else {
@@ -949,7 +972,16 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       preventDefault: true,
       scopes: SessionDetailHotkeysScope,
     },
-    [session.id, session.archived, session.summary, session.status, onClose, confirmingArchive, isDraft, handleDiscardDraft],
+    [
+      session.id,
+      session.archived,
+      session.summary,
+      session.status,
+      onClose,
+      confirmingArchive,
+      isDraft,
+      handleDiscardDraft,
+    ],
   )
 
   // Create reusable handler for toggling fork view
@@ -1189,7 +1221,16 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
             <SearchInput
               placeholder="Select a directory to work in..."
               className="mt-1"
+              recentDirectories={recentPaths}
+              value={selectedDirectory}
+              onChange={setSelectedDirectory}
+              onSubmit={setSelectedDirectory}
             />
+            {selectedDirectory && (
+              <div className="mt-2 px-2 py-1 bg-muted/50 rounded-md">
+                <p className="text-xs font-mono text-muted-foreground truncate">{selectedDirectory}</p>
+              </div>
+            )}
           </div>
         ) : (
           session.workingDir && (

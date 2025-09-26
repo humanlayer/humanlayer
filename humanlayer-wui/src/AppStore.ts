@@ -21,6 +21,11 @@ interface ViewModeOption {
 interface StoreState {
   /* Sessions */
   sessions: Session[]
+  sessionCounts: {
+    normal?: number
+    archived?: number
+    draft?: number
+  } | null
   focusedSession: Session | null
   sessionTableViewModes: ViewModeOption[]
   selectedSessions: Set<string> // For bulk selection
@@ -136,6 +141,7 @@ interface StoreState {
 
 export const useStore = create<StoreState>((set, get) => ({
   sessions: [],
+  sessionCounts: null,
   focusedSession: null,
   sessionTableViewModes: [
     { mode: ViewMode.Normal, selected: true },
@@ -335,6 +341,7 @@ export const useStore = create<StoreState>((set, get) => ({
 
       set({
         sessions: updatedSessions,
+        sessionCounts: response.counts || null,
         pendingUpdates: cleanedPending,
         isRefreshing: false,
       })
@@ -504,7 +511,9 @@ export const useStore = create<StoreState>((set, get) => ({
       set(state => ({
         sessions: state.sessions.filter(session => !sessionIds.includes(session.id)),
         // Clear focused session if it was removed
-        focusedSession: sessionIds.includes(state.focusedSession?.id ?? '') ? null : state.focusedSession,
+        focusedSession: sessionIds.includes(state.focusedSession?.id ?? '')
+          ? null
+          : state.focusedSession,
         // Clear selection after bulk operation
         selectedSessions: new Set(),
       }))

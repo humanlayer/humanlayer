@@ -58,8 +58,14 @@ export default function SessionTable({
   const isSessionLauncherOpen = false
   const { enableScope, disableScope } = useHotkeysContext()
   const tableRef = useRef<HTMLTableElement>(null)
-  const { archiveSession, selectedSessions, toggleSessionSelection, bulkArchiveSessions, bulkSelect, bulkDiscardDrafts } =
-    useStore()
+  const {
+    archiveSession,
+    selectedSessions,
+    toggleSessionSelection,
+    bulkArchiveSessions,
+    bulkSelect,
+    bulkDiscardDrafts,
+  } = useStore()
 
   // State for inline editing
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null)

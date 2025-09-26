@@ -6,6 +6,7 @@ import {
     SettingsApi,
     CreateSessionRequest,
     Session,
+    SessionsResponse,
     Approval,
     CreateSessionResponse,
     CreateSessionResponseData,
@@ -68,6 +69,10 @@ export class HLDClient {
     async listSessions(params?: ListSessionsRequest): Promise<Session[]> {
         const response = await this.sessionsApi.listSessions(params);
         return response.data;
+    }
+
+    async listSessionsWithCounts(params?: ListSessionsRequest): Promise<SessionsResponse> {
+        return await this.sessionsApi.listSessions(params);
     }
 
     async getSession(id: string): Promise<Session> {

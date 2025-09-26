@@ -176,6 +176,18 @@ func (h *SessionHandlers) ListSessions(ctx context.Context, req api.ListSessions
 	// Get all sessions from manager
 	sessionInfos := h.manager.ListSessions()
 
+	// Calculate counts for all sessions (before filtering)
+	var normalCount, archivedCount, draftCount int
+	for _, s := range sessionInfos {
+		if s.Archived {
+			archivedCount++
+		} else if s.Status == session.StatusDraft {
+			draftCount++
+		} else if s.Status != session.StatusDiscarded {
+			normalCount++
+		}
+	}
+
 	// Apply filters
 	var filtered []session.Info
 
@@ -251,6 +263,15 @@ func (h *SessionHandlers) ListSessions(ctx context.Context, req api.ListSessions
 
 	resp := api.SessionsResponse{
 		Data: sessions,
+		Counts: &struct {
+			Archived *int `json:"archived,omitempty"`
+			Draft    *int `json:"draft,omitempty"`
+			Normal   *int `json:"normal,omitempty"`
+		}{
+			Normal:   &normalCount,
+			Archived: &archivedCount,
+			Draft:    &draftCount,
+		},
 	}
 	return api.ListSessions200JSONResponse(resp), nil
 }

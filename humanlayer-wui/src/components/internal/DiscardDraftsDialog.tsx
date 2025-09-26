@@ -26,10 +26,12 @@ export const DiscardDraftsDialog: React.FC<DiscardDraftsDialogProps> = ({
     <Dialog open={open} onOpenChange={onCancel}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Discard {draftCount} Draft{draftCount > 1 ? 's' : ''}?</DialogTitle>
+          <DialogTitle>
+            Discard {draftCount} Draft{draftCount > 1 ? 's' : ''}?
+          </DialogTitle>
           <DialogDescription>
-            Are you sure you want to discard {draftCount} draft session{draftCount > 1 ? 's' : ''}?
-            This action cannot be undone and all unsaved changes will be lost.
+            Are you sure you want to discard {draftCount} draft session{draftCount > 1 ? 's' : ''}? This
+            action cannot be undone and all unsaved changes will be lost.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>

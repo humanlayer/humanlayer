@@ -42,6 +42,7 @@ export * from './Session';
 export * from './SessionResponse';
 export * from './SessionStatus';
 export * from './SessionsResponse';
+export * from './SessionsResponseCounts';
 export * from './SnapshotsResponse';
 export * from './UpdateConfigRequest';
 export * from './UpdateSessionRequest';
