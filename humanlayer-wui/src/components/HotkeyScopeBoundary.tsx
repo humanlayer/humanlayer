@@ -26,7 +26,6 @@ export function HotkeyScopeBoundary({
 
   useEffect(() => {
     if (!isActive) {
-      console.log(`[HOTKEY-DEBUG] Skip inactive: scope=${scope} component=${componentName}`)
       return
     }
 
@@ -37,9 +36,6 @@ export function HotkeyScopeBoundary({
     const mountId = nanoid()
     entryIdRef.current = mountId
 
-    console.log(
-      `[HOTKEY-DEBUG] Boundary mount: scope=${scope} component=${componentName} rootDisabled=${rootScopeDisabled}`,
-    )
 
     // Push to stack
     scopeManager.push({
@@ -53,7 +49,6 @@ export function HotkeyScopeBoundary({
     // Capture current active scopes before we change them
     const currentActive = [...activeScopes]
     previousScopesRef.current = currentActive
-    console.log(`[HOTKEY-DEBUG] Active scopes before: [${currentActive.join(', ')}]`)
 
     // SIMPLIFIED APPROACH:
     // 1. Disable only the currently active scopes (except global)
@@ -70,17 +65,14 @@ export function HotkeyScopeBoundary({
         // Keep root enabled if this boundary doesn't disable it
         return
       }
-      console.log(`[HOTKEY-DEBUG] Disabling active scope: ${s}`)
       disableScope(s)
     })
 
     // Step 2: Enable our scope
-    console.log(`[HOTKEY-DEBUG] Enabling scope: ${scope}`)
     enableScope(scope)
 
     // Step 3: Ensure root is enabled if not disabled
     if (!rootScopeDisabled && !currentActive.includes(HOTKEY_SCOPES.ROOT)) {
-      console.log(`[HOTKEY-DEBUG] Enabling root scope`)
       enableScope(HOTKEY_SCOPES.ROOT)
     }
 
@@ -88,15 +80,11 @@ export function HotkeyScopeBoundary({
     return () => {
       // Prevent double cleanup in StrictMode
       if (hasCleanedUpRef.current) {
-        console.log(`[HOTKEY-DEBUG] Cleanup already run, skipping: scope=${scope}`)
         return
       }
       hasCleanedUpRef.current = true
 
       const cleanupId = entryIdRef.current
-      console.log(
-        `[HOTKEY-DEBUG] Cleanup start: scope=${scope} component=${componentName} id=${cleanupId}`,
-      )
 
       // Use setTimeout to handle React's unmount order
       setTimeout(() => {
@@ -106,28 +94,23 @@ export function HotkeyScopeBoundary({
         }
 
         // Disable our scope
-        console.log(`[HOTKEY-DEBUG] Disabling scope: ${scope}`)
         disableScope(scope)
 
         // Find what should be active now
         const stack = scopeManager.getStack()
-        console.log(`[HOTKEY-DEBUG] Stack after cleanup: [${stack.map(e => e.scope).join(', ')}]`)
 
         if (stack.length > 0) {
           const newTop = stack[stack.length - 1]
 
           // Enable the new top scope
-          console.log(`[HOTKEY-DEBUG] Restoring scope: ${newTop.scope}`)
           enableScope(newTop.scope)
 
           // Enable root if not disabled by new top
           if (!newTop.rootDisabled) {
-            console.log(`[HOTKEY-DEBUG] Restoring root scope`)
             enableScope(HOTKEY_SCOPES.ROOT)
           }
         } else {
           // Stack empty, restore to initial state
-          console.log(`[HOTKEY-DEBUG] Stack empty, restoring initial scopes`)
           enableScope(HOTKEY_SCOPES.ROOT)
           // Sessions scope is handled by SessionTable boundary
         }

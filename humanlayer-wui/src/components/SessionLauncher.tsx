@@ -15,7 +15,6 @@ interface SessionLauncherProps {
 }
 
 export function SessionLauncher({ isOpen, onClose }: SessionLauncherProps) {
-  console.log(`[HOTKEY-DEBUG] SessionLauncher render: isOpen=${isOpen}`)
   const focusTrapRef = useFocusTrap(isOpen)
   const { query, setQuery, config, setConfig, launchSession, isLaunching, error, mode, view, setView } =
     useSessionLauncher()
@@ -23,7 +22,6 @@ export function SessionLauncher({ isOpen, onClose }: SessionLauncherProps) {
   useHotkeys(
     'escape',
     e => {
-      console.log('[HOTKEY-DEBUG] Escape pressed in SessionLauncher')
       e.preventDefault()
       e.stopPropagation()
 
@@ -36,11 +34,9 @@ export function SessionLauncher({ isOpen, onClose }: SessionLauncherProps) {
 
       if (isInputFocused) {
         // First ESC: just blur the input
-        console.log('[HOTKEY-DEBUG] Blurring input')
         ;(activeElement as HTMLElement).blur()
       } else {
         // Second ESC or ESC when no input focused: close modal
-        console.log('[HOTKEY-DEBUG] Closing SessionLauncher')
         onClose()
       }
     },

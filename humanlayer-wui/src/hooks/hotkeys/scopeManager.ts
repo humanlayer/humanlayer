@@ -49,8 +49,6 @@ class ScopeManager {
     // Update root disabled count
     if (entry.rootDisabled) {
       this.rootDisabledCount++
-      if (DEBUG)
-        console.log(`[HOTKEY-DEBUG] Root disabled count increased to ${this.rootDisabledCount}`)
     }
 
     this.logChange('PUSH', entry, stackBefore, this.stack)
@@ -67,8 +65,6 @@ class ScopeManager {
       // Update root disabled count
       if (removed.rootDisabled) {
         this.rootDisabledCount = Math.max(0, this.rootDisabledCount - 1)
-        if (DEBUG)
-          console.log(`[HOTKEY-DEBUG] Root disabled count decreased to ${this.rootDisabledCount}`)
       }
 
       this.logChange('REMOVE', removed, stackBefore, this.stack)
@@ -101,11 +97,6 @@ class ScopeManager {
   // This helps handle React StrictMode double-mounting
   cleanupOrphaned(scope: string, component?: string): void {
     const orphaned = this.stack.filter(e => e.scope === scope && e.component === component)
-    if (orphaned.length > 1 && DEBUG) {
-      console.log(
-        `[HOTKEY-DEBUG] Found ${orphaned.length} orphaned entries for ${scope}/${component}, cleaning up extras`,
-      )
-    }
     // Keep only the most recent entry
     const toRemove = orphaned.slice(0, -1)
     toRemove.forEach(entry => this.remove(entry.id))
