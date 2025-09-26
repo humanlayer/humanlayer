@@ -218,7 +218,7 @@ export function SessionTablePage() {
   return (
     <div className="flex flex-col gap-4">
       <nav className="sticky top-0 z-10">
-        <Tabs className="w-[400px]" value={viewMode}>
+        <Tabs className="w-[400px]" value={viewMode} onValueChange={(value) => setViewMode(value as ViewMode)}>
           <TabsList>
             <TabsTrigger value={ViewMode.Normal}>Sessions</TabsTrigger>
             <TabsTrigger value={ViewMode.Archived}>Archived</TabsTrigger>

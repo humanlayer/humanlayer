@@ -491,7 +491,8 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
                     variant="outline"
                     className="h-auto py-0.5 px-2 text-xs transition-all duration-200"
                   >
-                    {responseEditor && !responseEditor.isEmpty ? 'Discard' : 'Cancel'}
+                    {/* {responseEditor && !responseEditor.isEmpty ? 'Discard' : 'Cancel'} Until we've implemented change detection we'll always discard */}
+                    {'Discard'}
                   </Button>
                 )}
                 <Button

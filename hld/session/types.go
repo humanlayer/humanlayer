@@ -25,6 +25,7 @@ const (
 	StatusInterrupting Status = "interrupting"  // Session received interrupt signal and is shutting down
 	StatusInterrupted  Status = "interrupted"   // Session was interrupted but can be resumed
 	StatusWaitingInput Status = "waiting_input" // Session is waiting for tool approval input
+	StatusDiscarded    Status = "discarded"     // Draft session was discarded by the user
 )
 
 // Session represents a Claude Code session managed by the daemon

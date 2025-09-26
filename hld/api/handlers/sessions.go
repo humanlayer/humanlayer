@@ -259,7 +259,7 @@ func (h *SessionHandlers) ListSessions(ctx context.Context, req api.ListSessions
 func shouldIncludeSession(s session.Info, filterType string) bool {
 	switch filterType {
 	case "normal":
-		return !s.Archived && s.Status != session.StatusDraft
+		return !s.Archived && s.Status != session.StatusDraft && s.Status != session.StatusDiscarded
 	case "archived":
 		return s.Archived
 	case "draft":
@@ -465,12 +465,12 @@ func (h *SessionHandlers) DeleteDraftSession(ctx context.Context, req api.Delete
 		}, nil
 	}
 
-	// Mark session as failed (effectively deleting it from the active list)
-	// We don't actually delete from the database, just mark as failed
-	failedStatus := string(store.SessionStatusFailed)
+	// Mark session as discarded (effectively removing it from the active list)
+	// We don't actually delete from the database, just mark as discarded
+	discardedStatus := string(store.SessionStatusDiscarded)
 	deletedMessage := "Draft session discarded"
 	update := store.SessionUpdate{
-		Status:       &failedStatus,
+		Status:       &discardedStatus,
 		ErrorMessage: &deletedMessage,
 	}
 

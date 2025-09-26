@@ -12,6 +12,7 @@ export const getSessionStatusText = (status: string): string => {
   if (status === 'completed') return 'Continue this conversation with a new message'
   if (status === 'interrupted') return 'Session was interrupted - continue with a new message'
   if (status === 'failed') return 'Session failed - continue with a new message to retry'
+  if (status === 'discarded') return 'Draft session was discarded'
   if (status === 'running' || status === 'starting')
     return 'Claude is working - you can interrupt with a new message'
   return 'Session must be completed to continue'

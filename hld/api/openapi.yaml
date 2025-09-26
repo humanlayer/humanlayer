@@ -916,6 +916,7 @@ components:
         - interrupting
         - interrupted
         - waiting_input
+        - discarded
       description: Current status of the session
 
     CreateSessionRequest:

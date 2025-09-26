@@ -270,6 +270,7 @@ const (
 	SessionStatusWaitingInput = "waiting_input"
 	SessionStatusInterrupting = "interrupting" // Session received interrupt signal and is shutting down
 	SessionStatusInterrupted  = "interrupted"  // Session was interrupted but can be resumed
+	SessionStatusDiscarded    = "discarded"    // Draft session was discarded by the user
 )
 
 // Helper functions for converting between store types and Claude types
