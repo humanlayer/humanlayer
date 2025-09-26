@@ -231,9 +231,10 @@ export function useSessionNavigation({
       if (focusedEvent.parentToolUseId) {
         // Find the parent task event
         const parentTask = events.find(
-          e => e.toolId === focusedEvent.parentToolUseId &&
-          e.toolName === 'Task' &&
-          e.eventType === ConversationEventType.ToolCall
+          e =>
+            e.toolId === focusedEvent.parentToolUseId &&
+            e.toolName === 'Task' &&
+            e.eventType === ConversationEventType.ToolCall,
         )
 
         if (parentTask && expandedTasks.has(focusedEvent.parentToolUseId)) {
@@ -247,10 +248,12 @@ export function useSessionNavigation({
       }
 
       // Case 2: Focused on a parent Task event - toggle expand/collapse
-      if (focusedEvent.eventType === ConversationEventType.ToolCall &&
-          focusedEvent.toolName === 'Task' &&
-          focusedEvent.toolId &&
-          hasSubTasks) {
+      if (
+        focusedEvent.eventType === ConversationEventType.ToolCall &&
+        focusedEvent.toolName === 'Task' &&
+        focusedEvent.toolId &&
+        hasSubTasks
+      ) {
         const hasSubEvents = subEventsByParent.has(focusedEvent.toolId)
         if (hasSubEvents) {
           toggleTaskGroup(focusedEvent.toolId)

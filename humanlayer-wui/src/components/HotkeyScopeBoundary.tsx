@@ -36,7 +36,6 @@ export function HotkeyScopeBoundary({
     const mountId = nanoid()
     entryIdRef.current = mountId
 
-
     // Push to stack
     scopeManager.push({
       id: mountId,

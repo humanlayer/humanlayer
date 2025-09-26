@@ -285,9 +285,7 @@ export function DebugPanel({ open, onOpenChange }: DebugPanelProps) {
                   <Label htmlFor="show-hotkey-debugger" className="text-sm">
                     Show Hotkey Scope Debugger
                   </Label>
-                  <p className="text-xs text-muted-foreground">
-                    Toggle with Alt+Shift+H
-                  </p>
+                  <p className="text-xs text-muted-foreground">Toggle with Alt+Shift+H</p>
                 </div>
                 <Switch
                   id="show-hotkey-debugger"
