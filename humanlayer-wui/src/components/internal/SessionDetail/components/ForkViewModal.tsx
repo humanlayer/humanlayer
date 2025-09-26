@@ -245,7 +245,7 @@ function ForkViewModalContent({
 
   // Shift+Tab navigation - MUST capture to prevent triggering "accept edits" in background
   useHotkeys(
-    'shift+tab',
+    'alt+a',
     e => {
       e.preventDefault()
       e.stopPropagation()
@@ -465,7 +465,7 @@ export function ForkViewModal({
   onArchiveOnForkChange,
 }: ForkViewModalProps) {
   // Steal all hotkey scopes IMMEDIATELY when modal opens - must happen before Dialog renders
-  // This prevents shift+tab from reaching SessionDetail during the render gap
+  // This prevents alt+a from reaching SessionDetail during the render gap
   useStealHotkeyScope(ForkViewModalHotkeysScope, isOpen)
 
   return (

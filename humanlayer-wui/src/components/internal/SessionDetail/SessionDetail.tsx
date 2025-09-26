@@ -798,7 +798,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
 
   // Add Shift+Tab handler for auto-accept edits mode
   useHotkeys(
-    'shift+tab',
+    'alt+a',
     handleToggleAutoAccept,
     {
       preventDefault: true,
@@ -1204,14 +1204,14 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         />
       </div>
 
-      <div className={`flex flex-1 gap-4 ${isWideView ? 'flex-row' : 'flex-col'} min-h-0`}>
-        {/* Conversation content and Loading - only show for non-draft sessions */}
-        {!isDraft && (
+      {!isDraft && (
+        <div className={`flex flex-1 gap-4 ${isWideView ? 'flex-row' : 'flex-col'} min-h-0`}>
+          {/* Conversation content and Loading - only show for non-draft sessions */}
           <Card
-          className={`Conversation-Card w-full relative ${cardVerticalPadding} flex flex-col min-h-0`}
-        >
-          <CardContent className="px-3 flex flex-col flex-1 min-h-0">
-            <ConversationStream
+            className={`Conversation-Card w-full relative ${cardVerticalPadding} flex flex-col min-h-0`}
+          >
+            <CardContent className="px-3 flex flex-col flex-1 min-h-0">
+              <ConversationStream
                 sessionId={session.id}
                 focusedEventId={navigation.focusedEventId}
                 setFocusedEventId={navigation.setFocusedEventId}
@@ -1233,46 +1233,46 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                 expandedTasks={expandedTasks}
                 toggleTaskGroup={toggleTaskGroup}
               />
-          </CardContent>
-          {isActivelyProcessing && (
-            <div
-              className={`absolute bottom-0 left-0 px-3 py-1.5 border-t border-border bg-secondary/30 w-full font-mono text-sm uppercase tracking-wider text-muted-foreground transition-all duration-300 ease-out ${
-                isActivelyProcessing ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'
-              }`}
-            >
-              <OmniSpinner randomVerb={randomVerb} spinnerType={spinnerType} />
-            </div>
-          )}
-          {/* Status bar for pending approvals */}
-          <div
-            className={`absolute bottom-0 left-0 right-0 p-2 cursor-pointer transition-all duration-300 ease-in-out ${
-              hasPendingApprovalsOutOfView
-                ? 'opacity-100 translate-y-0'
-                : 'opacity-0 translate-y-full pointer-events-none'
-            }`}
-            onClick={() => {
-              const container = document.querySelector('[data-conversation-container]')
-              if (container) {
-                container.scrollTop = container.scrollHeight
-              }
-            }}
-          >
-            <div className="flex items-center justify-center gap-1 font-mono text-xs uppercase tracking-wider text-muted-foreground bg-background/60 backdrop-blur-sm border-t border-border/50 py-1 shadow-sm hover:bg-background/80 transition-colors">
-              <span>Pending Approval</span>
-              <ChevronDown className="w-3 h-3 animate-bounce" />
-            </div>
-          </div>
-          </Card>
-        )}
-
-        {isWideView && lastTodo && (
-          <Card className="w-[20%] flex flex-col min-h-0">
-            <CardContent className="flex flex-col flex-1 min-h-0 overflow-hidden">
-              <TodoWidget event={lastTodo} />
             </CardContent>
+            {isActivelyProcessing && (
+              <div
+                className={`absolute bottom-0 left-0 px-3 py-1.5 border-t border-border bg-secondary/30 w-full font-mono text-sm uppercase tracking-wider text-muted-foreground transition-all duration-300 ease-out ${
+                  isActivelyProcessing ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'
+                }`}
+              >
+                <OmniSpinner randomVerb={randomVerb} spinnerType={spinnerType} />
+              </div>
+            )}
+            {/* Status bar for pending approvals */}
+            <div
+              className={`absolute bottom-0 left-0 right-0 p-2 cursor-pointer transition-all duration-300 ease-in-out ${
+                hasPendingApprovalsOutOfView
+                  ? 'opacity-100 translate-y-0'
+                  : 'opacity-0 translate-y-full pointer-events-none'
+              }`}
+              onClick={() => {
+                const container = document.querySelector('[data-conversation-container]')
+                if (container) {
+                  container.scrollTop = container.scrollHeight
+                }
+              }}
+            >
+              <div className="flex items-center justify-center gap-1 font-mono text-xs uppercase tracking-wider text-muted-foreground bg-background/60 backdrop-blur-sm border-t border-border/50 py-1 shadow-sm hover:bg-background/80 transition-colors">
+                <span>Pending Approval</span>
+                <ChevronDown className="w-3 h-3 animate-bounce" />
+              </div>
+            </div>
           </Card>
-        )}
-      </div>
+
+          {isWideView && lastTodo && (
+            <Card className="w-[20%] flex flex-col min-h-0">
+              <CardContent className="flex flex-col flex-1 min-h-0 overflow-hidden">
+                <TodoWidget event={lastTodo} />
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
 
       {/* Response input - always show but disable for non-completed sessions */}
       <Card className="py-2">

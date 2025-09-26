@@ -168,6 +168,7 @@ export enum ConversationRole {
 export enum ViewMode {
   Normal = 'normal',
   Archived = 'archived',
+  Drafts = 'drafts',
 }
 
 // Legacy request/response types (for gradual migration)

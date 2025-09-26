@@ -13,11 +13,16 @@ interface PendingUpdate {
   retryCount?: number
 }
 
+interface ViewModeOption {
+  mode: ViewMode
+  selected: boolean
+}
+
 interface StoreState {
   /* Sessions */
   sessions: Session[]
   focusedSession: Session | null
-  viewMode: ViewMode
+  sessionTableViewModes: ViewModeOption[]
   selectedSessions: Set<string> // For bulk selection
   pendingUpdates: Map<string, PendingUpdate> // Track in-flight updates
   isRefreshing: boolean // Prevent concurrent refresh/updates
@@ -41,6 +46,9 @@ interface StoreState {
   bulkArchiveSessions: (sessionIds: string[], archived: boolean) => Promise<void>
   bulkSetAutoAcceptEdits: (sessionIds: string[], autoAcceptEdits: boolean) => Promise<void>
   setViewMode: (mode: ViewMode) => void
+  getViewMode: () => ViewMode
+  setNextViewMode: () => void
+  setPreviousViewMode: () => void
   toggleSessionSelection: (sessionId: string) => void
   clearSelection: () => void
   selectRange: (anchorId: string, targetId: string) => void
@@ -127,7 +135,11 @@ interface StoreState {
 export const useStore = create<StoreState>((set, get) => ({
   sessions: [],
   focusedSession: null,
-  viewMode: ViewMode.Normal,
+  sessionTableViewModes: [
+    { mode: ViewMode.Normal, selected: true },
+    { mode: ViewMode.Archived, selected: false },
+    { mode: ViewMode.Drafts, selected: false },
+  ],
   selectedSessions: new Set<string>(),
   pendingUpdates: new Map<string, PendingUpdate>(),
   isRefreshing: false,
@@ -273,7 +285,8 @@ export const useStore = create<StoreState>((set, get) => ({
     set({ isRefreshing: true })
 
     try {
-      const { viewMode, pendingUpdates } = get()
+      const { pendingUpdates, getViewMode } = get()
+      const viewMode = getViewMode()
       const response = await daemonClient.getSessionLeaves({
         include_archived: viewMode === ViewMode.Archived,
         archived_only: viewMode === ViewMode.Archived,
@@ -446,8 +459,39 @@ export const useStore = create<StoreState>((set, get) => ({
     }
   },
   setViewMode: (mode: ViewMode) => {
-    set({ viewMode: mode })
-    // Refresh sessions when view mode changes
+    let viewModes = get().sessionTableViewModes
+    viewModes = viewModes.map(v => ({ ...v, selected: false }))
+    viewModes = viewModes.map(v => ({ ...v, selected: v.mode === mode }))
+    set({ sessionTableViewModes: viewModes })
+    get().refreshSessions()
+  },
+  getViewMode: () => {
+    return get().sessionTableViewModes.find(v => v.selected)?.mode ?? ViewMode.Normal
+  },
+  setNextViewMode: () => {
+    const viewModes = get().sessionTableViewModes
+    const selectedIndex = viewModes.findIndex(v => v.selected)
+    if (selectedIndex === -1) return
+    let nextIndex = selectedIndex + 1
+    if (nextIndex >= viewModes.length) {
+      nextIndex = 0
+    }
+    viewModes[selectedIndex].selected = false
+    viewModes[nextIndex].selected = true
+    set({ sessionTableViewModes: viewModes })
+    get().refreshSessions()
+  },
+  setPreviousViewMode: () => {
+    const viewModes = get().sessionTableViewModes
+    const selectedIndex = viewModes.findIndex(v => v.selected)
+    if (selectedIndex === -1) return
+    let nextIndex = selectedIndex - 1
+    if (nextIndex < 0) {
+      nextIndex = viewModes.length - 1
+    }
+    viewModes[selectedIndex].selected = false
+    viewModes[nextIndex].selected = true
+    set({ sessionTableViewModes: viewModes })
     get().refreshSessions()
   },
   toggleSessionSelection: (sessionId: string) =>

@@ -516,7 +516,7 @@ export function Layout() {
       e.stopPropagation()
       if (!isAnyModalOpen()) {
         // Navigate to sessions (normal view)
-        if (useStore.getState().viewMode !== ViewMode.Normal) {
+        if (useStore.getState().getViewMode() !== ViewMode.Normal) {
           useStore.getState().setViewMode(ViewMode.Normal)
         }
         navigate('/')
@@ -536,7 +536,7 @@ export function Layout() {
       e.stopPropagation()
       if (!isAnyModalOpen()) {
         // Navigate to archived sessions
-        if (useStore.getState().viewMode !== ViewMode.Archived) {
+        if (useStore.getState().getViewMode() !== ViewMode.Archived) {
           useStore.getState().setViewMode(ViewMode.Archived)
         }
         navigate('/')
@@ -556,7 +556,7 @@ export function Layout() {
       e.stopPropagation()
       if (!isAnyModalOpen()) {
         // Navigate to sessions (normal view)
-        if (useStore.getState().viewMode !== ViewMode.Normal) {
+        if (useStore.getState().getViewMode() !== ViewMode.Normal) {
           useStore.getState().setViewMode(ViewMode.Normal)
         }
         navigate('/')
@@ -728,7 +728,7 @@ export function Layout() {
       <main className="flex-1 flex flex-col p-4 overflow-hidden">
         {connected && (
           <>
-            <Breadcrumbs />
+            {location.hash !== '' && <Breadcrumbs />}
             <div className="flex-1 overflow-y-auto" data-main-scroll-container>
               <Outlet />
             </div>

@@ -7,6 +7,7 @@ import { useHotkeys } from 'react-hotkeys-hook'
 import { useKeyboardNavigationProtection, getLastWorkingDir } from '@/hooks'
 import { daemonClient } from '@/lib/daemon'
 import { Inbox, Archive } from 'lucide-react'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 export function SessionTablePage() {
   // Session launcher has been replaced by draft sessions
@@ -25,8 +26,12 @@ export function SessionTablePage() {
   const clearSelection = useStore(state => state.clearSelection)
   const focusedSession = useStore(state => state.focusedSession)
   const setFocusedSession = useStore(state => state.setFocusedSession)
-  const viewMode = useStore(state => state.viewMode)
+  const setNextViewMode = useStore(state => state.setNextViewMode)
+  const setPreviousViewMode = useStore(state => state.setPreviousViewMode)
+  const getViewMode = useStore(state => state.getViewMode)
   const setViewMode = useStore(state => state.setViewMode)
+
+  const viewMode = getViewMode()
 
   const handleActivateSession = (session: any) => {
     navigate(`/sessions/${session.id}`)
@@ -72,14 +77,19 @@ export function SessionTablePage() {
     'tab',
     e => {
       e.preventDefault()
-      setViewMode(viewMode === ViewMode.Normal ? ViewMode.Archived : ViewMode.Normal)
+      setNextViewMode()
     },
     { enableOnFormTags: false, scopes: SessionTableHotkeysScope, enabled: !isSessionLauncherOpen },
   )
 
+  useHotkeys('shift+tab', e => {
+    e.preventDefault()
+    setPreviousViewMode()
+  })
+
   // Handle Shift+Tab to trigger auto-accept for selected sessions
   useHotkeys(
-    'shift+tab',
+    'alt+a',
     async e => {
       e.preventDefault()
 
@@ -207,6 +217,15 @@ export function SessionTablePage() {
 
   return (
     <div className="flex flex-col gap-4">
+      <nav className="sticky top-0 z-10">
+        <Tabs className="w-[400px]" value={viewMode}>
+          <TabsList>
+            <TabsTrigger value={ViewMode.Normal}>Sessions</TabsTrigger>
+            <TabsTrigger value={ViewMode.Archived}>Archived</TabsTrigger>
+            <TabsTrigger value={ViewMode.Drafts}>Drafts</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </nav>
       <div ref={tableRef} tabIndex={-1} className="focus:outline-none">
         <SessionTable
           sessions={sessions}
