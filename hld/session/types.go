@@ -17,7 +17,7 @@ type ApprovalReconciler interface {
 type Status string
 
 const (
-	StatusDraft        Status = "draft"         // Session in configuration state
+	StatusDraft        Status = "draft" // Session in configuration state
 	StatusStarting     Status = "starting"
 	StatusRunning      Status = "running"
 	StatusCompleted    Status = "completed"

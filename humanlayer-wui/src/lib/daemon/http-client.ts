@@ -207,20 +207,18 @@ export class HTTPDaemonClient implements IDaemonClient {
 
   async listSessions(): Promise<Session[]> {
     await this.ensureConnected()
-    const response = await this.client!.listSessions({ leafOnly: true })
+    const response = await this.client!.listSessions({ leavesOnly: true })
     return response.map(transformSDKSession)
   }
 
   async getSessionLeaves(request?: {
-    include_archived?: boolean
-    archived_only?: boolean
+    filter?: 'normal' | 'archived' | 'draft'
   }): Promise<{ sessions: Session[] }> {
     await this.ensureConnected()
-    // The SDK's listSessions with leafOnly=true is equivalent
+    // The SDK's listSessions with leavesOnly=true is equivalent
     const response = await this.client!.listSessions({
-      leafOnly: true,
-      includeArchived: request?.include_archived,
-      archivedOnly: request?.archived_only,
+      leavesOnly: true,
+      filter: request?.filter,
     })
     logger.debug(
       'getSessionLeaves raw response sample:',

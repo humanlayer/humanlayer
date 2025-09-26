@@ -287,9 +287,22 @@ export const useStore = create<StoreState>((set, get) => ({
     try {
       const { pendingUpdates, getViewMode } = get()
       const viewMode = getViewMode()
+
+      let filter: 'normal' | 'archived' | 'draft' | undefined
+      switch (viewMode) {
+        case ViewMode.Normal:
+          filter = 'normal'
+          break
+        case ViewMode.Archived:
+          filter = 'archived'
+          break
+        case ViewMode.Drafts:
+          filter = 'draft'
+          break
+      }
+
       const response = await daemonClient.getSessionLeaves({
-        include_archived: viewMode === ViewMode.Archived,
-        archived_only: viewMode === ViewMode.Archived,
+        filter: filter,
       })
 
       // Server is source of truth, but preserve unresolved pending updates
@@ -405,7 +418,11 @@ export const useStore = create<StoreState>((set, get) => ({
 
       // Clear focus if archiving and in Normal view
       const state = get()
-      if (archived && state.viewMode === ViewMode.Normal && state.focusedSession?.id === sessionId) {
+      if (
+        archived &&
+        state.getViewMode() === ViewMode.Normal &&
+        state.focusedSession?.id === sessionId
+      ) {
         state.setFocusedSession(null)
       }
 

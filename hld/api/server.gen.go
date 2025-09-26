@@ -97,6 +97,13 @@ const (
 	SessionStatusWaitingInput SessionStatus = "waiting_input"
 )
 
+// Defines values for ListSessionsParamsFilter.
+const (
+	Archived ListSessionsParamsFilter = "archived"
+	Draft    ListSessionsParamsFilter = "draft"
+	Normal   ListSessionsParamsFilter = "normal"
+)
+
 // Approval defines model for Approval.
 type Approval struct {
 	// Comment Approver's comment
@@ -752,15 +759,15 @@ type GetRecentPathsParams struct {
 
 // ListSessionsParams defines parameters for ListSessions.
 type ListSessionsParams struct {
-	// LeafOnly Return only leaf sessions (no children)
-	LeafOnly *bool `form:"leafOnly,omitempty" json:"leafOnly,omitempty"`
+	// LeavesOnly Return only leaf sessions (sessions with no children)
+	LeavesOnly *bool `form:"leavesOnly,omitempty" json:"leavesOnly,omitempty"`
 
-	// IncludeArchived Include archived sessions in results
-	IncludeArchived *bool `form:"includeArchived,omitempty" json:"includeArchived,omitempty"`
-
-	// ArchivedOnly Return only archived sessions
-	ArchivedOnly *bool `form:"archivedOnly,omitempty" json:"archivedOnly,omitempty"`
+	// Filter Filter sessions by type
+	Filter *ListSessionsParamsFilter `form:"filter,omitempty" json:"filter,omitempty"`
 }
+
+// ListSessionsParamsFilter defines parameters for ListSessions.
+type ListSessionsParamsFilter string
 
 // LaunchDraftSessionJSONBody defines parameters for LaunchDraftSession.
 type LaunchDraftSessionJSONBody struct {
@@ -1047,27 +1054,19 @@ func (siw *ServerInterfaceWrapper) ListSessions(c *gin.Context) {
 	// Parameter object where we will unmarshal all parameters from the context
 	var params ListSessionsParams
 
-	// ------------- Optional query parameter "leafOnly" -------------
+	// ------------- Optional query parameter "leavesOnly" -------------
 
-	err = runtime.BindQueryParameter("form", true, false, "leafOnly", c.Request.URL.Query(), &params.LeafOnly)
+	err = runtime.BindQueryParameter("form", true, false, "leavesOnly", c.Request.URL.Query(), &params.LeavesOnly)
 	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter leafOnly: %w", err), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter leavesOnly: %w", err), http.StatusBadRequest)
 		return
 	}
 
-	// ------------- Optional query parameter "includeArchived" -------------
+	// ------------- Optional query parameter "filter" -------------
 
-	err = runtime.BindQueryParameter("form", true, false, "includeArchived", c.Request.URL.Query(), &params.IncludeArchived)
+	err = runtime.BindQueryParameter("form", true, false, "filter", c.Request.URL.Query(), &params.Filter)
 	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter includeArchived: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Optional query parameter "archivedOnly" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "archivedOnly", c.Request.URL.Query(), &params.ArchivedOnly)
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter archivedOnly: %w", err), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter filter: %w", err), http.StatusBadRequest)
 		return
 	}
 
@@ -2938,25 +2937,25 @@ var swaggerSpec = []string{
 	"F95Hb5D2lvvOfPf0tl8N8W9bHGrsr3X5Uy/mX+rCGLJsoFkgG0XTiDUzbGOoNLVVD4nHVvVWBImXxuWq",
 	"oHaQNtFlpjAlQH1Y4jofd+rN990Xjxmdb01qy00r5kvA+PU/VyS9rmM4HeQFWcVDdrhrBkR9HoqGFEmm",
 	"OKbitMcod8lUNa592sXJXLcfsp2D5gN9hB5Uq4+lV0c/7qKGmZ3f2y1oSBmjYUOg2QiTYZawzf4OV03u",
-	"3TFtL433zhyhF1vfdstQUiBG8y3KAfsMNfGRPmrORBnSLZA50MdH6BKkHv+W5tt/859OWEETBuPq6jqD",
-	"/OYGePC9Bi8CHXoUgtPHiRa+ODP21W11k2lMGYmLWdYwEGrbdIoeAGwFyvM6XzwCh81FGgYkREYHmB4I",
-	"3Lh+NPQt/5CHr5PRsMNp5jd4bz6zAGWRwzbkKaOZyaWyPjOrYr5kWRiljnnJLv3Th3OStbIFvouPrJ3c",
-	"E70+g3zuH0TNtF0SDVWDfIPd4njmvu3S7zaxaQyM1x+WQUWVS1LWeWFalmAkCF3lUEciOpwUfK4lEKEP",
-	"wU+Rj+t8Y5sl9mma2Nfzqvy6xhiqE7BuJ8nJ/Nm3Bucd5jr10hX8fidu1ljpfIFoQPQ1GPueXMB9MvE3",
-	"kLVA3M8rWEd9vsUlNUaOfXevr2gB0nez7XSpuElcaxLvRgnzpXQJCeOBAqLTJY8+UqViOLq7z2Uq1THP",
-	"0RU4j0JMIWwkut2ZGx7Kf3PI1fpdmLHfd/OtObOHr0YKn5n7jk7/3dqIXvrEHd0Jxr4rzKesMEXwhZhe",
-	"6Xbc5CMldA1cZ98iIkWz6+2aCMn4Nsavra/j/IAc2/MlrG+tDvZ8RSjCu28C+jXCpt+aZR3MSsQtGb9W",
-	"V9loXVBzrc/u7mfbS6CZYkk/FAmy0hmbDGHvBnN8ilJcCcOjSLKP1Gk4aMVxCvp4x7i03W3lR71me7vC",
-	"7BBxQQZ9n+3wbYJhYVs5QmvSSSzh+zCwR2eXk8ZysOkibthWMVqk7YL+HWHXhDyUvGtsmkRdAVDbkBwy",
-	"tIVYcFjNcq6meBAePY0A3oDXbO8HYSHbW6vZ2f17BVBj5N3PXeLN6cYcEyQ5pkKXIFiRpu9nM0iy1gnq",
-	"uA71pPfKMYddvs2MyL5e3q4MzzzXX6qwX6zo+9RDu22ImTieK/lDKp/+wP//mepxL404U12RHCRuDoSJ",
-	"dM/FKs+j2qwpX6oPo49tfqRuhUnQ3MAktcr6M1dRf35tyf/hoPxBVY3ox63isfAadR713824T6PgjOQc",
-	"1wpzBOvott9+PEpxKXXj9azSpW9BHdYEiTW70Xyjf9UfIWFL89ED3XHUuX90hyrTL5sUsJt9fF3hD+sR",
-	"6hQ+Rpjn1wYWvx/XNKm5g110jvrMNUvXieGVAD4VQZ3GbsbRDU5KDkvgQFMwqRGBtd8heKM84AEJFi1o",
-	"iNBMjavdXg+cA1WFix2W/LQfwrsFSA+a6BSrdPrGCstYursxP2K+0wg20e+5Fp+d2PlrluLcpdf4bhp1",
-	"yUxfP0AtQ+1qHc+F6ZNtcl5cLFRWwjcjFHXo2ea6dOPYXlckS0i3aQ5BcU3weh33jXd9J3Qq1zDNGStR",
-	"tyCnnuh5UHXRFWE9BTv166+MYOy+a4oUTVWi377RsHJNXUk2gMJaLDvjO93t4/bT7f8GAAD//0VOjOn7",
-	"iwAA",
+	"3TFtL433zhyhF1vfdstQUiBG8y3KAfsMNfGRPmrORBnSLZA50MdH6BKkGr8B8Zbm23/zH09YQRMK4+zq",
+	"uoP89ga48L0GMAIf2gFeH2d6eOPs2VfJ1eOh8utfbZGtR46tahDfWjGcboqoEqj5GaKMTl1odKL/sl2+",
+	"PE2mPvn8zP+vBkRhSY3Rb52h5sv2qU5lZQWRUq3h6P/89esAs5TV7PL4Y5j8YCANvyrhWphFWjY85Pnt",
+	"JEXs8Lv5s3NvbjdRc2/kvA4522hm0rGs281qqS9ZFga6Y462S//04fxsrYSD7+Jma+cHRW/gICX8B9FU",
+	"baNFQ9UgZWG3RJ+5z8P0e15sJgTj9bdpUFHlkpR1apluSoORIHSVQx3M6HBS8MWXQAY/BD9Fvs/zjc2e",
+	"2NdtYh/gq/LrGmOozuG6nSQn82ffGpx3mOvsTVcz/J24WWOl8xGjAdHXYOx78iL3ycTfQNYCcT/HYh04",
+	"+haX1Bg59t0dx6IFSN/NttMr4yZx3U28JyZMudJVKIwH+ovOuDz6SJVq5ujuvrip1Ls8R1fgnBIxjbKR",
+	"K3dnbngoF9AhV+t3YcZ+98+35swevhopfGbuUzz9d2sjAOpzf3QzGfuuMF/DwhTBF2Lardtxk4+U0DVw",
+	"ncCLiBTNxrlrIiTj2xi/tj6w8wNybM/HtL61OtjzIaII774J6NeIvH5rlnUwKxG3ZPxaXWWjdUHNtT5B",
+	"vJ9tL4FmiiX9UCTISid9MoS9J83xKUpxJQyPIsk+UqfhoBXHKejjHePSdsOWH/Wa7W0ss0PEBUn4fbbD",
+	"t4mnhZ3pCK1JJ7GE78PAHp1dThrLwaYRuWFbxWiRzg36d4SbTgojedfY9Jm6AqC2pzlkaAux+LKa5VxN",
+	"8SA8ehoBvAGv2d4PwkK2PVezOfz3isHGyLufu8Sb0405JkhyTIWuYrAiTd/PZpBkrRPU8T3qSe+VYw67",
+	"fJtJlX3twF0ln3muP3ZhP3rR97WIducRM3E83fKHVD79gf//M9XjXhpxproiOcj9HIg06baNVZ5HtVlT",
+	"AVUfRh8e/UjdCpOgP4LJi5X1l7KiAYHakv/DQfmDqhrR72PFw+k16jzqv5txn0bBGck5rpvmCNbRncP9",
+	"eJTiUure7Vmlq+eCUq4JEmt2o/lG/6q/Y8KW5rsJummpc//oJlem5TYpYDf7+NLEH9Yj1KmdjDDPrw0s",
+	"fj+uaVJzB7voNPeZ67euc8srAXwqglKP3Yyje6SUHJbAgaZgsisCa79D8EaFwQMSLFoTEaGZGle7vR44",
+	"jaoKFzssf2o/hHdrmB40VypWLPWNFZaxdHdjfsSUqRFsot9zXUI7wffXLMW5y9DxDTnqqpu+loJahtrV",
+	"Op4L02rbpM24WKishO9nKOrQuU2X6Ubgva5IlpBu0xyC+pzg9TruG28cT+hUrmGaM1aibk1PPdHzoHCj",
+	"K8J6an7q118Zwdh919Q5msJGv32jYeWaupJsAIXlXHbGd7phyO2n2/8NAAD//xqawYc+jAAA",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

@@ -174,7 +174,7 @@ export function ConversationStream({
   }, [denyingApprovalId, filteredEvents])
 
   if (error) {
-    console.log('error', error);
+    console.log('error', error)
     return <div className="text-destructive">Error loading conversation: {error}</div>
   }
 

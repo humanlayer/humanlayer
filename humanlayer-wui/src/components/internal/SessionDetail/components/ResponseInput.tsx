@@ -309,14 +309,16 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
     const canInterrupt = debouncedCanInterrupt // Use debounced value
 
     // Disable when: responding OR (running without ability to interrupt) OR (not running and no text) OR launching draft
-    const isDisabled = isResponding || (isRunning && !canInterrupt) || (!isRunning && !hasText) || isLaunchingDraft
+    const isDisabled =
+      isResponding || (isRunning && !canInterrupt) || (!isRunning && !hasText) || isLaunchingDraft
 
     const isMac = navigator.platform.includes('Mac')
     // Show different keyboard shortcut based on state
     const sendKey = isRunning && !hasText ? 'Ctrl+X' : isMac ? '⌘+Enter' : 'Ctrl+Enter'
 
     // Determine submit button variant based on state
-    let submitButtonVariant: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link' = 'default'
+    let submitButtonVariant: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link' =
+      'default'
     if (isDraft) {
       submitButtonVariant = 'default'
     } else if (isDenying) {

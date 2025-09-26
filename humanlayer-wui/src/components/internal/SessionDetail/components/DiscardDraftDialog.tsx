@@ -18,7 +18,7 @@ interface DiscardDraftDialogProps {
 export const DiscardDraftDialog: React.FC<DiscardDraftDialogProps> = ({
   open,
   onConfirm,
-  onCancel
+  onCancel,
 }) => {
   return (
     <Dialog open={open} onOpenChange={onCancel}>

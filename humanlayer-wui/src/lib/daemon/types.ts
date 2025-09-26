@@ -42,7 +42,7 @@ export interface LaunchSessionParams {
   dangerouslySkipPermissions?: boolean
   proxyApiKey?: string
   additionalDirectories?: string[]
-  draft?: boolean  // Add draft parameter
+  draft?: boolean // Add draft parameter
   // Add any WUI-specific extensions if needed
 }
 
@@ -82,8 +82,7 @@ export interface DaemonClient {
   launchSession(params: LaunchSessionParams | LaunchSessionRequest): Promise<CreateSessionResponseData>
   listSessions(): Promise<Session[]>
   getSessionLeaves(request?: {
-    include_archived?: boolean
-    archived_only?: boolean
+    filter?: 'normal' | 'archived' | 'draft'
   }): Promise<{ sessions: Session[] }>
   getSessionState(sessionId: string): Promise<SessionState>
   continueSession(
@@ -194,7 +193,7 @@ export interface LaunchSessionRequest {
   proxy_base_url?: string
   proxy_model_override?: string
   proxy_api_key?: string
-  draft?: boolean  // Add draft parameter
+  draft?: boolean // Add draft parameter
 }
 
 export interface LaunchSessionResponse {

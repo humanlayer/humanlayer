@@ -46,7 +46,6 @@ function SessionTableWrapper() {
   )
 }
 
-
 // Complete app wrapper with session table and launcher
 function DemoAppWrapper({ label, variant }: { label: string; variant: 'default' | 'secondary' }) {
   return (

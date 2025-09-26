@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { daemonClient, ConversationEvent } from '@/lib/daemon'
 import { formatError } from '@/utils/errors'
 import { useStore } from '@/AppStore'
-import { logger } from '@/lib/logging'
 
 interface UseConversationReturn {
   events: ConversationEvent[]
@@ -65,7 +64,14 @@ export function useConversation(
       setLoading(true)
       setError(null)
 
-      console.log('[useConversation] Fetching conversation for session:', sessionId, 'status:', sessionStatus, 'abortControllerRef.current:', abortControllerRef.current)
+      console.log(
+        '[useConversation] Fetching conversation for session:',
+        sessionId,
+        'status:',
+        sessionStatus,
+        'abortControllerRef.current:',
+        abortControllerRef.current,
+      )
 
       const response = await daemonClient.getConversation(
         { session_id: sessionId, claude_session_id: claudeSessionId },
@@ -85,7 +91,12 @@ export function useConversation(
         return
       }
 
-      console.log('[useConversation] Error fetching conversation:', err, 'sessionStatus:', sessionStatus)
+      console.log(
+        '[useConversation] Error fetching conversation:',
+        err,
+        'sessionStatus:',
+        sessionStatus,
+      )
 
       setError(formatError(err))
       setErrorCount(prev => prev + 1)

@@ -160,20 +160,18 @@ func (h *SessionHandlers) CreateSession(ctx context.Context, req api.CreateSessi
 
 // ListSessions implements GET /sessions
 func (h *SessionHandlers) ListSessions(ctx context.Context, req api.ListSessionsRequestObject) (api.ListSessionsResponseObject, error) {
-	leafOnly := true
-	if req.Params.LeafOnly != nil {
-		leafOnly = *req.Params.LeafOnly
+	// NEW: leavesOnly parameter (renamed from leafOnly, default true)
+	leavesOnly := true
+	if req.Params.LeavesOnly != nil {
+		leavesOnly = *req.Params.LeavesOnly
 	}
 
-	includeArchived := false
-	if req.Params.IncludeArchived != nil {
-		includeArchived = *req.Params.IncludeArchived
+	// NEW: filter parameter logic
+	var filterType string
+	if req.Params.Filter != nil {
+		filterType = string(*req.Params.Filter)
 	}
-
-	archivedOnly := false
-	if req.Params.ArchivedOnly != nil {
-		archivedOnly = *req.Params.ArchivedOnly
-	}
+	// When filter is nil, return ALL sessions (no filtering)
 
 	// Get all sessions from manager
 	sessionInfos := h.manager.ListSessions()
@@ -181,7 +179,7 @@ func (h *SessionHandlers) ListSessions(ctx context.Context, req api.ListSessions
 	// Apply filters
 	var filtered []session.Info
 
-	if leafOnly {
+	if leavesOnly {
 		// Build parent-to-children map
 		childrenMap := make(map[string][]string)
 		for _, s := range sessionInfos {
@@ -196,27 +194,19 @@ func (h *SessionHandlers) ListSessions(ctx context.Context, req api.ListSessions
 				continue // Has children, not a leaf
 			}
 
-			// Apply archive filter
-			if !includeArchived && s.Archived {
-				continue
-			}
-			if archivedOnly && !s.Archived {
+			// NEW: Apply filter logic
+			if !shouldIncludeSession(s, filterType) {
 				continue
 			}
 
 			filtered = append(filtered, s)
 		}
 	} else {
-		// All sessions, apply archive filter
+		// All sessions, apply filter
 		for _, s := range sessionInfos {
-			if !includeArchived && s.Archived {
-				continue
+			if shouldIncludeSession(s, filterType) {
+				filtered = append(filtered, s)
 			}
-			if archivedOnly && !s.Archived {
-				continue
-			}
-
-			filtered = append(filtered, s)
 		}
 	}
 
@@ -263,6 +253,24 @@ func (h *SessionHandlers) ListSessions(ctx context.Context, req api.ListSessions
 		Data: sessions,
 	}
 	return api.ListSessions200JSONResponse(resp), nil
+}
+
+// shouldIncludeSession helper function for filter logic
+func shouldIncludeSession(s session.Info, filterType string) bool {
+	switch filterType {
+	case "normal":
+		return !s.Archived && s.Status != session.StatusDraft
+	case "archived":
+		return s.Archived
+	case "draft":
+		return s.Status == session.StatusDraft && !s.Archived
+	case "":
+		// No filter specified - include ALL sessions
+		return true
+	default:
+		// Unknown filter - include all (graceful degradation)
+		return true
+	}
 }
 
 // GetSession retrieves details for a specific session

@@ -5,11 +5,9 @@ import { useStore } from '@/AppStore'
 
 const LAST_WORKING_DIR_KEY = 'humanlayer-last-working-dir'
 
-
 // Export localStorage key helpers
 export const getLastWorkingDir = () => localStorage.getItem(LAST_WORKING_DIR_KEY)
 export const setLastWorkingDir = (dir: string) => localStorage.setItem(LAST_WORKING_DIR_KEY, dir)
-
 
 // Helper hook for global hotkey management
 export function useSessionLauncherHotkeys() {

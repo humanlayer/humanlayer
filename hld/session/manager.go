@@ -2093,14 +2093,14 @@ func (m *Manager) LaunchDraftSession(ctx context.Context, sessionID string, prom
 
 	// Build the launch config
 	launchConfig := LaunchSessionConfig{
-		SessionConfig:                       claudeConfig,
-		Title:                               sess.Title,
-		AutoAcceptEdits:                     sess.AutoAcceptEdits,
-		DangerouslySkipPermissions:          sess.DangerouslySkipPermissions,
-		ProxyEnabled:                        sess.ProxyEnabled,
-		ProxyBaseURL:                        sess.ProxyBaseURL,
-		ProxyModelOverride:                  sess.ProxyModelOverride,
-		ProxyAPIKey:                         sess.ProxyAPIKey,
+		SessionConfig:              claudeConfig,
+		Title:                      sess.Title,
+		AutoAcceptEdits:            sess.AutoAcceptEdits,
+		DangerouslySkipPermissions: sess.DangerouslySkipPermissions,
+		ProxyEnabled:               sess.ProxyEnabled,
+		ProxyBaseURL:               sess.ProxyBaseURL,
+		ProxyModelOverride:         sess.ProxyModelOverride,
+		ProxyAPIKey:                sess.ProxyAPIKey,
 	}
 
 	// If dangerously skip permissions has an expiry, calculate the timeout

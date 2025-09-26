@@ -728,7 +728,7 @@ export function Layout() {
       <main className="flex-1 flex flex-col p-4 overflow-hidden">
         {connected && (
           <>
-            {location.hash !== '' && <Breadcrumbs />}
+            {location.pathname !== '/' && <Breadcrumbs />}
             <div className="flex-1 overflow-y-auto" data-main-scroll-container>
               <Outlet />
             </div>

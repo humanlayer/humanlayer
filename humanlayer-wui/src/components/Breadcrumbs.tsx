@@ -32,9 +32,11 @@ export function Breadcrumbs() {
 
   // Get session, viewMode, and editing state from store
   const session = useStore(state => (sessionId ? state.sessions.find(s => s.id === sessionId) : null))
-  const viewMode = useStore(state => state.viewMode)
+  const getViewMode = useStore(state => state.getViewMode)
   const isEditingTitle = useStore(state => state.isEditingSessionTitle)
   const setIsEditingTitle = useStore(state => state.setIsEditingSessionTitle)
+
+  const viewMode = getViewMode()
 
   // Steal all hotkey scopes when editing
   useStealHotkeyScope(TitleEditingHotkeysScope, isEditingTitle)
@@ -87,8 +89,13 @@ export function Breadcrumbs() {
     }
   }, [isEditingTitle, session])
 
-  // Determine breadcrumb text based on view mode
-  const breadcrumbText = viewMode === ViewMode.Archived ? 'Archived Sessions' : 'Sessions'
+  const viewModeToBreadcrumbText = {
+    [ViewMode.Normal]: 'sessions',
+    [ViewMode.Archived]: 'archived',
+    [ViewMode.Drafts]: 'drafts',
+  }
+
+  const breadcrumbText = viewModeToBreadcrumbText[viewMode]
 
   return (
     <Breadcrumb className="mb-4 font-mono text-sm tracking-wider">
