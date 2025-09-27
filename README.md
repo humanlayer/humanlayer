@@ -35,17 +35,11 @@ Built on Claude Code. Open source. Scale from your laptop to your entire team.
 
 ---
 
-## Superhuman for Claude Code
+- **Superhuman for Claude Code** - Keyboard-first workflows designed for builders who value speed and control.
 
-Keyboard-first workflows designed for builders who value speed and control.
+- **Advanced Context Engineering** - Scale AI-first dev to your entire team, without devolving into a chaotic slop-fest.
 
-## Advanced Context Engineering
-
-Scale AI-first dev to your entire team, without devolving into a chaotic slop-fest.
-
-## M U L T I C L A U D E
-
-Run Claude Code sessions in parallel. Worktrees? Done. Remote cloud workers? You got it.
+- **M U L T I C L A U D E** - Run Claude Code sessions in parallel. Worktrees? Done. Remote cloud workers? You got it.
 
 ---
 
@@ -58,8 +52,6 @@ Run Claude Code sessions in parallel. Worktrees? Done. Remote cloud workers? You
 ## From the team that brought you "Context Engineering"
 
 Leading experts on getting the most out of today's models.
-
-### 📚 Resources
 
 #### [Advanced Context Engineering for Coding Agents](https://github.com/humanlayer/humanlayer)
 This talk, given at YC on August 20th, 2025 lays out the groundwork for using AI to solve hard problems in complex codebases.
@@ -96,6 +88,7 @@ HumanLayer's expert engineers will ship in the trenches with you and your team u
 
 ```bash
 # Coming soon - join the waitlist for early access
+npx humanlayer join-waitlist --email ...
 ```
 
 ---
