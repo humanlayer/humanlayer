@@ -272,7 +272,13 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
         mounted = false
         isSettingUp = false
         if (unlisten) {
-          unlisten()
+          // Defensive try-catch for Tauri v2 race condition (ENG-2189)
+          // The unlisten function may fail if the listener wasn't fully registered
+          try {
+            unlisten()
+          } catch (error) {
+            console.warn('[ResponseInput] Error during drag-drop unlisten (non-critical):', error)
+          }
         }
       }
     }, [responseEditor])
