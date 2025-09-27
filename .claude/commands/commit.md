@@ -2,7 +2,7 @@
 
 You are tasked with creating git commits for the changes made during this session.
 
-## Process:
+## Process
 
 1. **Think about what changed:**
    - Review the conversation history and understand what was accomplished
@@ -26,14 +26,16 @@ You are tasked with creating git commits for the changes made during this sessio
    - Create commits with your planned messages
    - Show the result with `git log --oneline -n [number]`
 
-## Important:
+## Important
+
 - **NEVER add co-author information or Claude attribution**
 - Commits should be authored solely by the user
 - Do not include any "Generated with Claude" messages
-- Do not add "Co-Authored-By" lines
 - Write commit messages as if the user wrote them
+- Do not add "Co-Authored-By" lines
 
-## Remember:
+## Remember
+
 - You have the full context of what was done in this session
 - Group related changes together
 - Keep commits focused and atomic when possible
