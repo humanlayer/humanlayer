@@ -196,3 +196,27 @@ export const WhitespaceOnlyChanges: Story = {
     mode: 'unified',
   },
 }
+
+export const UndefinedContent: Story = {
+  args: {
+    oldContent: undefined as any,
+    newContent: undefined as any,
+    mode: 'unified',
+  },
+}
+
+export const PartiallyUndefinedOld: Story = {
+  args: {
+    oldContent: undefined as any,
+    newContent: 'const greeting = "Hello World"',
+    mode: 'unified',
+  },
+}
+
+export const PartiallyUndefinedNew: Story = {
+  args: {
+    oldContent: 'const greeting = "Hello"',
+    newContent: undefined as any,
+    mode: 'unified',
+  },
+}

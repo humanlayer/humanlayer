@@ -45,8 +45,8 @@ export function MultiEditToolCallContent({
     if (!fileSnapshot?.content) {
       // If no snapshot, create a simplified diff from the edits themselves
       return {
-        oldContent: toolInput.edits.map(e => e.old_string).join('\n...\n'),
-        newContent: toolInput.edits.map(e => e.new_string).join('\n...\n'),
+        oldContent: toolInput.edits.map(e => e.old_string || '').join('\n...\n'),
+        newContent: toolInput.edits.map(e => e.new_string || '').join('\n...\n'),
       }
     }
 
