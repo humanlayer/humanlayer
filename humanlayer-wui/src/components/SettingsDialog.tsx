@@ -10,6 +10,7 @@ import { toast } from 'sonner'
 import { CheckCircle2, XCircle, RefreshCw, Pencil } from 'lucide-react'
 import { HotkeyScopeBoundary } from './HotkeyScopeBoundary'
 import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
+import { clearSavedModelPreferences } from '@/hooks/useSessionLauncher'
 
 interface SettingsDialogProps {
   open: boolean
@@ -47,6 +48,12 @@ export function SettingsDialog({ open, onOpenChange, onConfigUpdate }: SettingsD
   const handleProvidersToggle = async (checked: boolean) => {
     try {
       setSaving(true)
+
+      // Clear saved model preferences when disabling advanced providers
+      if (!checked) {
+        clearSavedModelPreferences()
+      }
+
       await updateUserSettings({ advancedProviders: checked })
       logger.log('Advanced providers setting updated:', checked)
       toast.success(checked ? 'Advanced providers enabled' : 'Advanced providers disabled')
