@@ -42,17 +42,20 @@ export function MultiEditToolCallContent({
 
   // Apply all edits sequentially to the file content for diff display
   const getResultContent = () => {
+    // Defensive check for edits array
+    const edits = Array.isArray(toolInput.edits) ? toolInput.edits : []
+
     if (!fileSnapshot?.content) {
       // If no snapshot, create a simplified diff from the edits themselves
       return {
-        oldContent: toolInput.edits.map(e => e.old_string).join('\n...\n'),
-        newContent: toolInput.edits.map(e => e.new_string).join('\n...\n'),
+        oldContent: edits.map(e => e.old_string).join('\n...\n'),
+        newContent: edits.map(e => e.new_string).join('\n...\n'),
       }
     }
 
     // Apply edits sequentially to the file content
     let resultContent = fileSnapshot.content
-    for (const edit of toolInput.edits) {
+    for (const edit of edits) {
       if (edit.replace_all) {
         resultContent = resultContent.split(edit.old_string).join(edit.new_string)
       } else {
@@ -67,8 +70,9 @@ export function MultiEditToolCallContent({
   }
 
   const { oldContent, newContent } = getResultContent()
-  const editCount = toolInput.edits.length
-  const replaceAllCount = toolInput.edits.filter(e => e.replace_all).length
+  const edits = Array.isArray(toolInput.edits) ? toolInput.edits : []
+  const editCount = edits.length
+  const replaceAllCount = edits.filter(e => e.replace_all).length
 
   const approvalStatusColor = getApprovalStatusColor(approvalStatus)
   let statusColor =

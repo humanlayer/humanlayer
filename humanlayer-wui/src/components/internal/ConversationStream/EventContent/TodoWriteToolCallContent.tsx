@@ -26,16 +26,20 @@ export function TodoWriteToolCallContent({
     isGroupItem && !approvalStatusColor ? 'text-[var(--terminal-accent)]' : approvalStatusColor
 
   const getTaskCounts = () => {
-    const completed = toolInput.todos.filter(t => t.status === 'completed').length
-    const inProgress = toolInput.todos.filter(t => t.status === 'in_progress').length
-    const pending = toolInput.todos.filter(t => t.status === 'pending').length
-    const total = toolInput.todos.length
+    // Defensive check for todos array
+    const todos = Array.isArray(toolInput.todos) ? toolInput.todos : []
+
+    const completed = todos.filter(t => t.status === 'completed').length
+    const inProgress = todos.filter(t => t.status === 'in_progress').length
+    const pending = todos.filter(t => t.status === 'pending').length
+    const total = todos.length
 
     return { completed, inProgress, pending, total }
   }
 
   const getCurrentTask = () => {
-    return toolInput.todos.find(t => t.status === 'in_progress')
+    const todos = Array.isArray(toolInput.todos) ? toolInput.todos : []
+    return todos.find(t => t.status === 'in_progress')
   }
 
   const counts = getTaskCounts()
@@ -75,7 +79,7 @@ export function TodoWriteToolCallContent({
 
       {isFocused && (
         <div className="ml-4 mt-1 space-y-1">
-          {toolInput.todos.map((todo, index) => (
+          {(Array.isArray(toolInput.todos) ? toolInput.todos : []).map((todo, index) => (
             <div
               key={index}
               className={`text-xs flex items-start gap-1 ${
