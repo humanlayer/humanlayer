@@ -52,6 +52,39 @@ const SESSION_LAUNCHER_QUERY_KEY = 'session-launcher-query'
 const OPENROUTER_API_KEY = 'humanlayer-openrouter-api-key'
 const BASETEN_API_KEY = 'humanlayer-baseten-api-key'
 const ADDITIONAL_DIRECTORIES_KEY = 'humanlayer-additional-directories'
+const PROVIDER_KEY = 'humanlayer-provider'
+const MODEL_KEY = 'humanlayer-model'
+const OPENROUTER_MODEL_KEY = 'humanlayer-openrouter-model'
+const BASETEN_MODEL_KEY = 'humanlayer-baseten-model'
+
+// Helper function to get saved provider
+const getSavedProvider = (): 'anthropic' | 'openrouter' | 'baseten' => {
+  const stored = localStorage.getItem(PROVIDER_KEY)
+  if (stored === 'openrouter' || stored === 'baseten') {
+    return stored
+  }
+  return 'anthropic' // Default to Anthropic
+}
+
+// Helper function to get saved model based on provider
+const getSavedModel = (provider: 'anthropic' | 'openrouter' | 'baseten'): string | undefined => {
+  if (provider === 'anthropic') {
+    return localStorage.getItem(MODEL_KEY) || undefined
+  } else if (provider === 'openrouter') {
+    return localStorage.getItem(OPENROUTER_MODEL_KEY) || undefined
+  } else if (provider === 'baseten') {
+    return localStorage.getItem(BASETEN_MODEL_KEY) || undefined
+  }
+  return undefined
+}
+
+// Helper function to clear all saved model preferences
+export const clearSavedModelPreferences = (): void => {
+  localStorage.removeItem(PROVIDER_KEY)
+  localStorage.removeItem(MODEL_KEY)
+  localStorage.removeItem(OPENROUTER_MODEL_KEY)
+  localStorage.removeItem(BASETEN_MODEL_KEY)
+}
 
 // Helper function to get default working directory
 const getDefaultWorkingDir = (): string => {
@@ -99,7 +132,8 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
   query: getSavedQuery(),
   config: {
     workingDir: getDefaultWorkingDir(),
-    provider: 'anthropic',
+    provider: getSavedProvider(),
+    model: getSavedModel(getSavedProvider()),
     openRouterApiKey: getSavedOpenRouterKey(),
     basetenApiKey: getSavedBasetenKey(),
     additionalDirectories: getSavedAdditionalDirectories(),
@@ -119,13 +153,15 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
 
   close: () => {
     const savedQuery = getSavedQuery()
+    const savedProvider = getSavedProvider()
     set({
       isOpen: false,
       view: 'menu',
       query: savedQuery,
       config: {
         workingDir: getDefaultWorkingDir(),
-        provider: 'anthropic',
+        provider: savedProvider,
+        model: getSavedModel(savedProvider),
         openRouterApiKey: getSavedOpenRouterKey(),
         basetenApiKey: getSavedBasetenKey(),
         additionalDirectories: getSavedAdditionalDirectories(),
@@ -146,6 +182,31 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
   },
 
   setConfig: config => {
+    // Save provider if it changed
+    if (config.provider) {
+      localStorage.setItem(PROVIDER_KEY, config.provider)
+    }
+
+    // Save model based on provider
+    if (config.model !== undefined) {
+      const modelKey =
+        config.provider === 'anthropic'
+          ? MODEL_KEY
+          : config.provider === 'openrouter'
+            ? OPENROUTER_MODEL_KEY
+            : config.provider === 'baseten'
+              ? BASETEN_MODEL_KEY
+              : null
+
+      if (modelKey) {
+        if (config.model) {
+          localStorage.setItem(modelKey, config.model)
+        } else {
+          localStorage.removeItem(modelKey)
+        }
+      }
+    }
+
     // Save or remove OpenRouter API key from localStorage
     if (config.openRouterApiKey) {
       localStorage.setItem(OPENROUTER_API_KEY, config.openRouterApiKey)
@@ -316,13 +377,15 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
 
   createNewSession: () => {
     const savedQuery = getSavedQuery()
+    const savedProvider = getSavedProvider()
     // Switch to input mode for session creation
     set({
       view: 'input',
       query: savedQuery,
       config: {
         workingDir: getDefaultWorkingDir(),
-        provider: 'anthropic',
+        provider: savedProvider,
+        model: getSavedModel(savedProvider),
         openRouterApiKey: getSavedOpenRouterKey(),
         basetenApiKey: getSavedBasetenKey(),
         additionalDirectories: getSavedAdditionalDirectories(),
@@ -339,6 +402,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
 
   reset: () => {
     const savedQuery = getSavedQuery()
+    const savedProvider = getSavedProvider()
     return set({
       isOpen: false,
       mode: 'command',
@@ -346,7 +410,8 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
       query: savedQuery,
       config: {
         workingDir: getDefaultWorkingDir(),
-        provider: 'anthropic',
+        provider: savedProvider,
+        model: getSavedModel(savedProvider),
         openRouterApiKey: getSavedOpenRouterKey(),
         basetenApiKey: getSavedBasetenKey(),
         additionalDirectories: getSavedAdditionalDirectories(),
