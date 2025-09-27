@@ -1,5 +1,5 @@
 import { ConversationEvent } from '@/lib/daemon/types'
-import { CheckCircle, CircleDashed, Hourglass } from 'lucide-react'
+import { CheckCircle, CircleDashed, Clock } from 'lucide-react'
 
 // TODO(2): Consider extracting priority and status constants to shared types
 // TODO(3): Add animations for status changes
@@ -11,7 +11,7 @@ export function TodoWidget({ event }: { event: ConversationEvent }) {
   const pendingCount = todos.filter((todo: any) => todo.status === 'pending').length
   const iconClasses = 'w-3 h-3 align-middle relative top-[1px]'
   const statusToIcon = {
-    in_progress: <Hourglass className={iconClasses + ' text-[var(--terminal-warning)]'} />,
+    in_progress: <Clock className={iconClasses + ' text-[var(--terminal-warning)]'} />,
     pending: <CircleDashed className={iconClasses + ' text-[var(--terminal-fg-dim)]'} />,
     completed: <CheckCircle className={iconClasses + ' text-[var(--terminal-success)]'} />,
   }
