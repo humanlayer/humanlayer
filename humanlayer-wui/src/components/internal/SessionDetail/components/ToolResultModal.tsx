@@ -388,7 +388,10 @@ function renderToolInput(toolCall: ConversationEvent): React.ReactNode {
 
     // Special rendering for MultiEdit tool
     if (toolCall.toolName === 'MultiEdit') {
-      const allEdits = args.edits.map((e: any) => ({
+      // Defensive check for edits array
+      const edits = Array.isArray(args.edits) ? args.edits : []
+
+      const allEdits = edits.map((e: any) => ({
         oldValue: e.old_string,
         newValue: e.new_string,
       }))
@@ -400,7 +403,7 @@ function renderToolInput(toolCall: ConversationEvent): React.ReactNode {
             <span className="font-bold">{args.file_path}</span>
           </div>
           <div className="font-mono text-sm mb-2">
-            <span className="text-muted-foreground">{args.edits.length} edits</span>
+            <span className="text-muted-foreground">{edits.length} edits</span>
           </div>
           <div className="mt-2">
             <CustomDiffViewer edits={allEdits} splitView={false} />

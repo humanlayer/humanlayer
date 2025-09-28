@@ -24,16 +24,20 @@ export function TodoWriteToolCallContent({
     isGroupItem && !approvalStatusColor ? 'text-[var(--terminal-accent)]' : approvalStatusColor
 
   const getTaskCounts = () => {
-    const completed = toolInput.todos.filter(t => t.status === 'completed').length
-    const inProgress = toolInput.todos.filter(t => t.status === 'in_progress').length
-    const pending = toolInput.todos.filter(t => t.status === 'pending').length
-    const total = toolInput.todos.length
+    // Defensive check for todos array
+    const todos = Array.isArray(toolInput.todos) ? toolInput.todos : []
+
+    const completed = todos.filter(t => t.status === 'completed').length
+    const inProgress = todos.filter(t => t.status === 'in_progress').length
+    const pending = todos.filter(t => t.status === 'pending').length
+    const total = todos.length
 
     return { completed, inProgress, pending, total }
   }
 
   const getWindowedTodos = () => {
-    const todos = toolInput.todos
+    // Defensive check for todos array
+    const todos = Array.isArray(toolInput.todos) ? toolInput.todos : []
     const totalCount = todos.length
 
     // Handle empty list
@@ -55,7 +59,7 @@ export function TodoWriteToolCallContent({
     // Priority 2: last completed task
     if (focusIndex === -1) {
       for (let i = todos.length - 1; i >= 0; i--) {
-        if (todos[i].status === 'completed') {
+        if (todos[i] && todos[i].status === 'completed') {
           focusIndex = i
           break
         }
@@ -86,7 +90,8 @@ export function TodoWriteToolCallContent({
   }
 
   const counts = getTaskCounts()
-  const currentTask = toolInput.todos.find(t => t.status === 'in_progress')
+  const todos = Array.isArray(toolInput.todos) ? toolInput.todos : []
+  const currentTask = todos.find(t => t && t.status === 'in_progress')
 
   const getTaskIcon = (status: TodoItem['status']) => {
     switch (status) {
@@ -138,7 +143,8 @@ export function TodoWriteToolCallContent({
       {/* Show count indicator if not all todos are visible */}
       {(() => {
         const { windowStart, windowEnd } = getWindowedTodos()
-        const totalCount = toolInput.todos.length
+        const todos = Array.isArray(toolInput.todos) ? toolInput.todos : []
+        const totalCount = todos.length
         return totalCount > 5 ? (
           <div className="text-xs text-gray-400 dark:text-gray-500 ml-4">
             Showing {windowStart + 1}-{windowEnd} of {totalCount} • Press <kbd>i</kbd> to view all
