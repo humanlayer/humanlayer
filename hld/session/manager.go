@@ -1387,6 +1387,7 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 	config := claudecode.SessionConfig{
 		Query:                req.Query,
 		SessionID:            parentSession.ClaudeSessionID, // This triggers --resume flag
+		ForkSession:          true,                          // Enable fork instead of resume
 		OutputFormat:         claudecode.OutputStreamJSON,   // Always use streaming JSON
 		Model:                claudecode.Model(parentSession.Model),
 		WorkingDir:           parentSession.WorkingDir,
