@@ -1,4 +1,4 @@
-name: "Research XS/S Linear"
+name: "Research XS/S Linear Tickets"
 on:
   push:
   schedule:
