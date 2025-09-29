@@ -460,6 +460,8 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
     },
     ref,
   ) => {
+    logger.log('ResponseEditor - Component rendering with initialValue:', { initialValue })
+
     const onSubmitRef = React.useRef<ResponseEditorProps['onSubmit']>()
     const onChangeRef = React.useRef<ResponseEditorProps['onChange']>()
     const onToggleAutoAcceptRef = React.useRef<ResponseEditorProps['onToggleAutoAccept']>()
@@ -676,6 +678,13 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
         */
       ],
       content: initialValue,
+      onCreate: ({ editor }) => {
+        logger.log('ResponseEditor - Editor created with content:', {
+          content: editor.getJSON(),
+          isEmpty: editor.isEmpty,
+          initialValue
+        })
+      },
       editorProps: {
         attributes: {
           class: `tiptap-editor ${className || ''}`,

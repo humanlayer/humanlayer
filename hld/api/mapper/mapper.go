@@ -102,6 +102,11 @@ func (m *Mapper) SessionToAPI(s store.Session) api.Session {
 		session.ProxyModelOverride = &s.ProxyModelOverride
 	}
 
+	// Editor state for draft sessions
+	if s.EditorState != nil && *s.EditorState != "" {
+		session.EditorState = s.EditorState
+	}
+
 	return session
 }
 

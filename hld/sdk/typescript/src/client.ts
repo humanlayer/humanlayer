@@ -144,7 +144,8 @@ export class HLDClient {
         proxyApiKey?: string,
         archived?: boolean,
         additionalDirectories?: string[],
-        working_dir?: string
+        working_dir?: string,
+        editorState?: string
     }): Promise<void> {
         // Build request with only defined fields to avoid sending undefined values
         const updateSessionRequest: any = {};
@@ -186,6 +187,9 @@ export class HLDClient {
         }
         if (updates.working_dir !== undefined) {
             updateSessionRequest.workingDir = updates.working_dir;
+        }
+        if (updates.editorState !== undefined) {
+            updateSessionRequest.editorState = updates.editorState;
         }
 
         await this.sessionsApi.updateSession({

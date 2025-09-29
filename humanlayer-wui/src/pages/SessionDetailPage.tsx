@@ -58,7 +58,7 @@ export function SessionDetailPage() {
 
   let session = activeSessionDetail?.session?.id
     ? activeSessionDetail.session
-    : sessionFromStore || {
+    : sessionFromStore ? { ...sessionFromStore, fromStore: true } : {
         id: sessionId || '',
         runId: '',
         query: '',

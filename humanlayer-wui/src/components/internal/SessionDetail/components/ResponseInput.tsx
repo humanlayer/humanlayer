@@ -144,27 +144,72 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
 
     let initialValue = null
 
-    // For draft sessions, prefer editor state from database over localStorage
-    if (isDraft && session.editorState) {
-      try {
-        initialValue = JSON.parse(session.editorState)
-      } catch (e) {
-        logger.error('ResponseInput - error parsing editorState from database', e)
+    // Only load editor state once we have proper session data (not "unknown" status)
+    // Also wait for server fetch (not fromStore) for draft sessions to ensure we have editorState
+    const hasValidSessionData = session.status !== 'unknown' && !(session as any).fromStore
+
+    logger.log('ResponseInput - Determining initialValue', {
+      sessionId: session.id,
+      isDraft,
+      status: session.status,
+      fromStore: (session as any).fromStore,
+      hasValidSessionData,
+      hasEditorState: !!session.editorState,
+      editorState: session.editorState,
+      editorStateLength: session.editorState?.length
+    })
+
+    if (hasValidSessionData) {
+      if (isDraft) {
+        // For draft sessions, only use editor state from database (never localStorage)
+        if (session.editorState) {
+          try {
+            initialValue = JSON.parse(session.editorState)
+            logger.log('ResponseInput - Successfully parsed editorState from database', { initialValue })
+          } catch (e) {
+            logger.error('ResponseInput - error parsing editorState from database', e)
+          }
+        }
+      } else {
+        // For non-draft sessions, fall back to localStorage
+        if (
+          initialValue === null &&
+          typeof localStorageValue === 'string' &&
+          localStorageValue.length > 0
+        ) {
+          try {
+            initialValue = JSON.parse(localStorageValue)
+          } catch (e) {
+            logger.error('ResponseInput.useEffect() - error parsing localStorageValue', e)
+          }
+        }
       }
     }
 
-    // Fall back to localStorage if no database value or not a draft
-    if (
-      initialValue === null &&
-      typeof localStorageValue === 'string' &&
-      localStorageValue.length > 0
-    ) {
-      try {
-        initialValue = JSON.parse(localStorageValue)
-      } catch (e) {
-        logger.error('ResponseInput.useEffect() - error parsing localStorageValue', e)
-      }
-    }
+    const handleChange = useCallback(
+      async (value: Content) => {
+        const valueStr = JSON.stringify(value)
+
+        if (isDraft && session.status === SessionStatus.Draft) {
+          // For draft sessions, only save to database (not localStorage)
+          try {
+            await daemonClient.updateSession(session.id, {
+              editorState: valueStr,
+            })
+          } catch (error) {
+            // Log but don't show toast to avoid disrupting typing
+            logger.error('Failed to save editor state to database:', error)
+          }
+        } else {
+          // For non-draft sessions, save to localStorage
+          localStorage.setItem(
+            `${ResponseInputLocalStorageKey}.${session.id}`,
+            valueStr,
+          )
+        }
+      },
+      [session.id, isDraft, session.status],
+    )
 
     const handleSubmit = () => {
       logger.log('ResponseInput.handleSubmit()')
@@ -471,48 +516,35 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
                   }}
                   refreshButtonText="Reload Session"
                 >
-                  <ResponseEditor
-                    ref={tiptapRef}
-                    initialValue={initialValue}
-                    onChange={useCallback(
-                      async (value: Content) => {
-                        // Always save to localStorage
-                        const valueStr = JSON.stringify(value)
-                        localStorage.setItem(
-                          `${ResponseInputLocalStorageKey}.${session.id}`,
-                          valueStr,
-                        )
-
-                        // For draft sessions, also save to database
-                        if (isDraft && session.status === SessionStatus.Draft) {
-                          try {
-                            await daemonClient.updateSession(session.id, {
-                              editorState: valueStr,
-                            })
-                          } catch (error) {
-                            // Log but don't show toast to avoid disrupting typing
-                            logger.error('Failed to save editor state to database:', error)
-                          }
-                        }
-                      },
-                      [session.id, isDraft, session.status],
-                    )}
-                    onSubmit={handleSubmit}
-                    onToggleAutoAccept={onToggleAutoAccept}
-                    onToggleDangerouslySkipPermissions={onToggleDangerouslySkipPermissions}
-                    onToggleForkView={onToggleForkView}
-                    disabled={isResponding}
-                    placeholder={placeholder}
-                    className={`flex-1 min-h-[2.5rem] ${isResponding ? 'opacity-50' : ''} ${textareaOutlineClass} ${
-                      isDenying && isFocused ? 'caret-error' : isFocused ? 'caret-accent' : ''
-                    }`}
-                    onFocus={() => {
-                      setIsFocused(true)
-                    }}
-                    onBlur={() => {
-                      setIsFocused(false)
-                    }}
-                  />
+                  {hasValidSessionData ? (
+                    <>
+                      {logger.log('ResponseInput - Rendering ResponseEditor with initialValue:', { initialValue, sessionId: session.id }) || null}
+                      <ResponseEditor
+                        ref={tiptapRef}
+                        initialValue={initialValue}
+                        onChange={handleChange}
+                        onSubmit={handleSubmit}
+                        onToggleAutoAccept={onToggleAutoAccept}
+                        onToggleDangerouslySkipPermissions={onToggleDangerouslySkipPermissions}
+                        onToggleForkView={onToggleForkView}
+                        disabled={isResponding}
+                        placeholder={placeholder}
+                        className={`flex-1 min-h-[2.5rem] ${isResponding ? 'opacity-50' : ''} ${textareaOutlineClass} ${
+                          isDenying && isFocused ? 'caret-error' : isFocused ? 'caret-accent' : ''
+                        }`}
+                        onFocus={() => {
+                          setIsFocused(true)
+                        }}
+                        onBlur={() => {
+                          setIsFocused(false)
+                        }}
+                      />
+                    </>
+                  ) : (
+                    <div className="flex-1 min-h-[2.5rem] flex items-center justify-center text-muted-foreground">
+                      Loading editor...
+                    </div>
+                  )}
                 </SentryErrorBoundary>
               </div>
 
@@ -527,7 +559,7 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
                   >
                     {/* {responseEditor && !responseEditor.isEmpty ? 'Discard' : 'Cancel'} Until we've implemented change detection we'll always discard */}
                     {'Discard'}
-                    <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded invisible">Esc</kbd>
+                    <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">e</kbd>
                   </Button>
                 )}
                 <Button

@@ -369,6 +369,7 @@ export class HTTPDaemonClient implements IDaemonClient {
       dangerouslySkipPermissionsTimeoutMs?: number
       additionalDirectories?: string[]
       workingDir?: string
+      editorState?: string
       // New proxy fields
       proxyEnabled?: boolean
       proxyBaseUrl?: string
@@ -403,6 +404,9 @@ export class HTTPDaemonClient implements IDaemonClient {
     }
     if (updates.workingDir !== undefined) {
       sdkUpdates.working_dir = updates.workingDir
+    }
+    if (updates.editorState !== undefined) {
+      sdkUpdates.editorState = updates.editorState
     }
     if (updates.proxyEnabled !== undefined) {
       sdkUpdates.proxyEnabled = updates.proxyEnabled
