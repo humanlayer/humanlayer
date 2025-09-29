@@ -575,6 +575,25 @@ export function Layout() {
     },
   )
 
+  // G+D - Go to drafts
+  useHotkeys(
+    'g>d',
+    e => {
+      console.log('[Layout] g>d fired')
+      e.stopPropagation()
+      // Navigate to drafts view
+      if (useStore.getState().getViewMode() !== ViewMode.Drafts) {
+        useStore.getState().setViewMode(ViewMode.Drafts)
+      }
+      navigate('/')
+    },
+    {
+      scopes: [HOTKEY_SCOPES.ROOT],
+      preventDefault: true,
+      enableOnFormTags: false,
+    },
+  )
+
   // Global hotkey for feedback
   // Don't specify scopes to make it work globally (defaults to wildcard '*')
   useHotkeys(

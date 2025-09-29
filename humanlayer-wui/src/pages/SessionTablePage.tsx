@@ -252,11 +252,17 @@ export function SessionTablePage() {
         >
           <TabsList>
             <TabsTrigger value={ViewMode.Normal}>
-              Sessions{sessionCounts?.normal !== undefined ? ` (${sessionCounts.normal})` : ''}
+              Sessions
+              {sessionCounts?.normal !== undefined && sessionCounts.normal > 0
+                ? ` (${sessionCounts.normal})`
+                : ''}
             </TabsTrigger>
             <TabsTrigger value={ViewMode.Archived}>Archived</TabsTrigger>
             <TabsTrigger value={ViewMode.Drafts}>
-              Drafts{sessionCounts?.draft !== undefined ? ` (${sessionCounts.draft})` : ''}
+              Drafts
+              {sessionCounts?.draft !== undefined && sessionCounts.draft > 0
+                ? ` (${sessionCounts.draft})`
+                : ''}
             </TabsTrigger>
           </TabsList>
         </Tabs>
