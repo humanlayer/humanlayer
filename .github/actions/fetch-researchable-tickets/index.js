@@ -3,7 +3,7 @@ import { LinearClient } from "@linear/sdk";
 
 async function run() {
 	try {
-		const numTickets = parseInt(core.getInput("num_tickets") ?? "10", 10);
+		const numTickets = parseInt(core.getInput("num_tickets") || "10", 10);
 
 		console.log(`Fetching ${numTickets} linear tickets...`);
 
@@ -40,7 +40,7 @@ async function run() {
 		);
 		console.log(
 			`Fetched ${result.nodes.length} eligible tickets: `,
-			result.nodes.map((node) => node.idnetifier).join(", "),
+			result.nodes.map((node) => node.identifier).join(", "),
 		);
 
 		// We have to fetch  because it's an N+1
