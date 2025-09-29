@@ -9,6 +9,7 @@ import { formatTimestamp, formatAbsoluteTimestamp } from '@/utils/formatting'
 import { highlightMatches } from '@/lib/fuzzy-search'
 import { cn } from '@/lib/utils'
 import { useStore } from '@/AppStore'
+import { useSessionLauncher } from '@/hooks/useSessionLauncher'
 import { toast } from 'sonner'
 import { EmptyState } from './EmptyState'
 import type { LucideIcon } from 'lucide-react'
@@ -54,8 +55,7 @@ export default function SessionTable({
   matchedSessions,
   emptyState,
 }: SessionTableProps) {
-  // Session launcher has been replaced by draft sessions
-  const isSessionLauncherOpen = false
+  const isSessionLauncherOpen = useSessionLauncher(state => state.isOpen)
   const { enableScope, disableScope } = useHotkeysContext()
   const tableRef = useRef<HTMLTableElement>(null)
   const {

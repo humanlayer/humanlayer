@@ -6,12 +6,12 @@ import SessionTable, { SessionTableHotkeysScope } from '@/components/internal/Se
 import { useHotkeys } from 'react-hotkeys-hook'
 import { useKeyboardNavigationProtection, getLastWorkingDir } from '@/hooks'
 import { daemonClient } from '@/lib/daemon'
+import { useSessionLauncher } from '@/hooks/useSessionLauncher'
 import { Inbox, Archive } from 'lucide-react'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 export function SessionTablePage() {
-  // Session launcher has been replaced by draft sessions
-  const isSessionLauncherOpen = false
+  const isSessionLauncherOpen = useSessionLauncher(state => state.isOpen)
   const navigate = useNavigate()
   const tableRef = useRef<HTMLDivElement>(null)
 

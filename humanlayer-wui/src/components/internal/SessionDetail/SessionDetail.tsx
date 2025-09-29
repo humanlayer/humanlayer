@@ -1224,7 +1224,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               recentDirectories={recentPaths}
               value={selectedDirectory}
               onChange={setSelectedDirectory}
-              onSubmit={setSelectedDirectory}
+              onSubmit={value => value && setSelectedDirectory(value)}
             />
             {selectedDirectory && (
               <div className="mt-2 px-2 py-1 bg-muted/50 rounded-md">

@@ -256,6 +256,7 @@ type ModelUsageDetail struct {
 	CacheCreationInputTokens int     `json:"cacheCreationInputTokens"`
 	WebSearchRequests        int     `json:"webSearchRequests"`
 	CostUSD                  float64 `json:"costUSD"`
+	ContextWindow            int     `json:"contextWindow,omitempty"`
 }
 
 // Result represents the final result of a Claude session

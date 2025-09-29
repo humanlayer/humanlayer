@@ -23,6 +23,7 @@ import { HotkeyPanel } from '@/components/HotkeyPanel'
 import { Breadcrumbs } from '@/components/Breadcrumbs'
 import { SettingsDialog } from '@/components/SettingsDialog'
 import { OptInTelemetryModal } from '@/components/OptInTelemetryModal'
+import { SessionLauncher } from '@/components/SessionLauncher'
 import { useSessionLauncherHotkeys } from '@/hooks/useSessionLauncher'
 import { useDaemonConnection } from '@/hooks/useDaemonConnection'
 import { useStore } from '@/AppStore'
@@ -879,6 +880,9 @@ export function Layout() {
           </div>
         </div>
       </div>
+
+      {/* Session Launcher Modal */}
+      <SessionLauncher />
 
       {/* Hotkey Panel */}
       <HotkeyPanel open={isHotkeyPanelOpen} onOpenChange={setHotkeyPanelOpen} />

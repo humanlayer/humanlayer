@@ -1,18 +1,378 @@
+import { create } from 'zustand'
 import { daemonClient } from '@/lib/daemon'
+import type { LaunchSessionRequest } from '@/lib/daemon/types'
 import { useHotkeysContext } from 'react-hotkeys-hook'
+import { exists } from '@tauri-apps/plugin-fs'
+import { homeDir } from '@tauri-apps/api/path'
 import { logger } from '@/lib/logging'
 import { useStore } from '@/AppStore'
 
-const LAST_WORKING_DIR_KEY = 'humanlayer-last-working-dir'
+interface SessionConfig {
+  title?: string
+  workingDir: string
+  provider?: 'anthropic' | 'openrouter' | 'baseten'
+  model?: string
+  maxTurns?: number
+  openRouterApiKey?: string
+  basetenApiKey?: string
+  additionalDirectories?: string[]
+}
 
-// Export localStorage key helpers
+interface LauncherState {
+  isOpen: boolean
+  mode: 'command'
+  view: 'menu' | 'input'
+  query: string
+  config: SessionConfig
+  isLaunching: boolean
+  error?: string
+  gPrefixMode: boolean
+  selectedMenuIndex: number
+
+  // Actions
+  open: () => void
+  close: () => void
+  setQuery: (query: string) => void
+  setConfig: (config: SessionConfig) => void
+  setGPrefixMode: (enabled: boolean) => void
+  setView: (view: 'menu' | 'input') => void
+  setSelectedMenuIndex: (index: number) => void
+  launchSession: () => Promise<void>
+  createNewSession: () => void
+  openSessionById: (sessionId: string) => void
+  reset: () => void
+}
+
+const isViewingSessionDetail = (): boolean => {
+  const hash = window.location.hash
+  return /^#\/sessions\/[^/]+$/.test(hash)
+}
+
+const LAST_WORKING_DIR_KEY = 'humanlayer-last-working-dir'
+const SESSION_LAUNCHER_QUERY_KEY = 'session-launcher-query'
+const OPENROUTER_API_KEY = 'humanlayer-openrouter-api-key'
+const BASETEN_API_KEY = 'humanlayer-baseten-api-key'
+const ADDITIONAL_DIRECTORIES_KEY = 'humanlayer-additional-directories'
+
+// Export localStorage key helpers (used by other components)
 export const getLastWorkingDir = () => localStorage.getItem(LAST_WORKING_DIR_KEY)
 export const setLastWorkingDir = (dir: string) => localStorage.setItem(LAST_WORKING_DIR_KEY, dir)
+
+// Helper function to get default working directory
+const getDefaultWorkingDir = (): string => {
+  const stored = localStorage.getItem(LAST_WORKING_DIR_KEY)
+  return stored || '~/' // Default to home directory on first launch
+}
+
+// Helper function to get saved query
+const getSavedQuery = (): string => {
+  return localStorage.getItem(SESSION_LAUNCHER_QUERY_KEY) || ''
+}
+
+// Helper function to get saved OpenRouter API key
+const getSavedOpenRouterKey = (): string | undefined => {
+  return localStorage.getItem(OPENROUTER_API_KEY) || undefined
+}
+
+// Helper function to get saved Baseten API key
+const getSavedBasetenKey = (): string | undefined => {
+  return localStorage.getItem(BASETEN_API_KEY) || undefined
+}
+
+// Helper function to get saved additional directories
+const getSavedAdditionalDirectories = (): string[] => {
+  const stored = localStorage.getItem(ADDITIONAL_DIRECTORIES_KEY)
+  if (!stored) return []
+
+  try {
+    const parsed = JSON.parse(stored)
+    // Ensure we have an array of strings
+    if (Array.isArray(parsed)) {
+      return parsed.filter(item => typeof item === 'string')
+    }
+    return []
+  } catch {
+    // If parsing fails, return empty array
+    return []
+  }
+}
+
+export const useSessionLauncher = create<LauncherState>((set, get) => ({
+  isOpen: false,
+  mode: 'command',
+  view: 'menu',
+  query: getSavedQuery(),
+  config: {
+    workingDir: getDefaultWorkingDir(),
+    provider: 'anthropic',
+    openRouterApiKey: getSavedOpenRouterKey(),
+    basetenApiKey: getSavedBasetenKey(),
+    additionalDirectories: getSavedAdditionalDirectories(),
+  },
+  isLaunching: false,
+  gPrefixMode: false,
+  selectedMenuIndex: 0,
+
+  open: () =>
+    set({
+      isOpen: true,
+      mode: 'command', // Always command mode
+      view: 'menu',
+      selectedMenuIndex: 0,
+      error: undefined,
+    }),
+
+  close: () => {
+    const savedQuery = getSavedQuery()
+    set({
+      isOpen: false,
+      view: 'menu',
+      query: savedQuery,
+      config: {
+        workingDir: getDefaultWorkingDir(),
+        provider: 'anthropic',
+        openRouterApiKey: getSavedOpenRouterKey(),
+        basetenApiKey: getSavedBasetenKey(),
+        additionalDirectories: getSavedAdditionalDirectories(),
+      },
+      selectedMenuIndex: 0,
+      error: undefined,
+      gPrefixMode: false,
+    })
+  },
+
+  setQuery: query => {
+    // Save to localStorage on every change
+    localStorage.setItem(SESSION_LAUNCHER_QUERY_KEY, query)
+    return set({
+      query,
+      error: undefined,
+    })
+  },
+
+  setConfig: config => {
+    // Save or remove OpenRouter API key from localStorage
+    if (config.openRouterApiKey) {
+      localStorage.setItem(OPENROUTER_API_KEY, config.openRouterApiKey)
+    } else if (
+      config.openRouterApiKey === undefined ||
+      config.openRouterApiKey === null ||
+      config.openRouterApiKey === ''
+    ) {
+      // Remove from localStorage when cleared to avoid stale state
+      localStorage.removeItem(OPENROUTER_API_KEY)
+    }
+    // Save or remove Baseten API key from localStorage
+    if (config.basetenApiKey) {
+      localStorage.setItem(BASETEN_API_KEY, config.basetenApiKey)
+    } else if (
+      config.basetenApiKey === undefined ||
+      config.basetenApiKey === null ||
+      config.basetenApiKey === ''
+    ) {
+      // Remove from localStorage when cleared to avoid stale state
+      localStorage.removeItem(BASETEN_API_KEY)
+    }
+    // Save or remove additional directories from localStorage
+    if (config.additionalDirectories && config.additionalDirectories.length > 0) {
+      localStorage.setItem(ADDITIONAL_DIRECTORIES_KEY, JSON.stringify(config.additionalDirectories))
+    } else if (
+      config.additionalDirectories === undefined ||
+      config.additionalDirectories === null ||
+      (Array.isArray(config.additionalDirectories) && config.additionalDirectories.length === 0)
+    ) {
+      // Remove from localStorage when cleared to avoid stale state
+      localStorage.removeItem(ADDITIONAL_DIRECTORIES_KEY)
+    }
+    return set({ config, error: undefined })
+  },
+
+  setGPrefixMode: enabled => set({ gPrefixMode: enabled }),
+
+  setView: view => set({ view }),
+
+  setSelectedMenuIndex: index => set({ selectedMenuIndex: index }),
+
+  launchSession: async () => {
+    const { query, config } = get()
+
+    if (!query.trim()) {
+      set({ error: 'Please enter a query to launch a session' })
+      return
+    }
+
+    // Validate working directory if provided
+    if (config.workingDir) {
+      try {
+        // Expand ~ to home directory
+        let pathToCheck = config.workingDir
+        if (pathToCheck.startsWith('~')) {
+          const home = await homeDir()
+          pathToCheck = pathToCheck.replace(/^~(?=$|\/|\\)/, home)
+        }
+
+        // Check if the path exists
+        const pathExists = await exists(pathToCheck)
+        if (!pathExists) {
+          set({ error: `Directory does not exist: ${config.workingDir}` })
+          return
+        }
+      } catch (err) {
+        set({ error: `Error checking directory: ${err}` })
+        return
+      }
+    }
+
+    // Validate additional directories if provided
+    if (config.additionalDirectories && config.additionalDirectories.length > 0) {
+      for (const dir of config.additionalDirectories) {
+        try {
+          // Expand ~ to home directory
+          let pathToCheck = dir
+          if (pathToCheck.startsWith('~')) {
+            const home = await homeDir()
+            pathToCheck = pathToCheck.replace(/^~(?=$|\/|\\)/, home)
+          }
+
+          // Check if the path exists
+          const pathExists = await exists(pathToCheck)
+          if (!pathExists) {
+            set({ error: `Additional directory does not exist: ${dir}` })
+            return
+          }
+        } catch (err) {
+          set({ error: `Error checking additional directory ${dir}: ${err}` })
+          return
+        }
+      }
+    }
+
+    try {
+      set({ isLaunching: true, error: undefined })
+
+      // MCP config is now injected by daemon
+
+      console.log('Config before launch:', config)
+      console.log('Additional directories:', config.additionalDirectories)
+
+      const request: LaunchSessionRequest = {
+        query: query.trim(),
+        title: config.title || undefined,
+        working_dir: config.workingDir || undefined,
+        additional_directories: config.additionalDirectories || undefined,
+        provider: config.provider || 'anthropic',
+        model: config.model || undefined,
+        max_turns: config.maxTurns || undefined,
+        // MCP config is now injected by daemon
+        permission_prompt_tool: 'mcp__codelayer__request_permission',
+        // Add OpenRouter proxy configuration if provider is openrouter
+        ...(config.provider === 'openrouter' && config.openRouterApiKey
+          ? {
+              proxy_enabled: true,
+              proxy_base_url: 'https://openrouter.ai/api/v1',
+              proxy_model_override: config.model || 'openai/gpt-4o-mini',
+              proxy_api_key: config.openRouterApiKey,
+            }
+          : {}),
+        // Add Baseten proxy configuration if provider is baseten
+        ...(config.provider === 'baseten' && config.basetenApiKey
+          ? {
+              proxy_enabled: true,
+              proxy_base_url: 'https://inference.baseten.co/v1',
+              proxy_model_override: config.model || 'deepseek-ai/DeepSeek-V3.1',
+              proxy_api_key: config.basetenApiKey,
+            }
+          : {}),
+      }
+
+      console.log('Launch request:', request)
+      console.log('Launch request additional_directories specifically:', request.additional_directories)
+
+      const response = await daemonClient.launchSession(request)
+
+      // Save the working directory to localStorage for next time
+      if (config.workingDir) {
+        localStorage.setItem(LAST_WORKING_DIR_KEY, config.workingDir)
+      }
+
+      // Clear the saved query after successful launch
+      localStorage.removeItem(SESSION_LAUNCHER_QUERY_KEY)
+
+      // Clear the saved additional directories after successful launch (matching query behavior)
+      localStorage.removeItem(ADDITIONAL_DIRECTORIES_KEY)
+
+      // Navigate to new session (will be handled by parent component)
+      window.location.hash = `#/sessions/${response.sessionId}`
+
+      // Close launcher
+      get().close()
+
+      // Trigger a session refresh
+      // Import loadSessions from App or dispatch a custom event
+      window.dispatchEvent(new CustomEvent('session-created'))
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to launch session',
+      })
+    } finally {
+      set({ isLaunching: false })
+    }
+  },
+
+  createNewSession: () => {
+    const savedQuery = getSavedQuery()
+    // Switch to input mode for session creation
+    set({
+      view: 'input',
+      query: savedQuery,
+      config: {
+        workingDir: getDefaultWorkingDir(),
+        provider: 'anthropic',
+        openRouterApiKey: getSavedOpenRouterKey(),
+        basetenApiKey: getSavedBasetenKey(),
+        additionalDirectories: getSavedAdditionalDirectories(),
+      },
+      error: undefined,
+    })
+  },
+
+  openSessionById: (sessionId: string) => {
+    // Navigate to existing session
+    window.location.hash = `#/sessions/${sessionId}`
+    get().close()
+  },
+
+  reset: () => {
+    const savedQuery = getSavedQuery()
+    return set({
+      isOpen: false,
+      mode: 'command',
+      view: 'menu',
+      query: savedQuery,
+      config: {
+        workingDir: getDefaultWorkingDir(),
+        provider: 'anthropic',
+        openRouterApiKey: getSavedOpenRouterKey(),
+        basetenApiKey: getSavedBasetenKey(),
+        additionalDirectories: getSavedAdditionalDirectories(),
+      },
+      selectedMenuIndex: 0,
+      isLaunching: false,
+      error: undefined,
+      gPrefixMode: false,
+    })
+  },
+}))
+
+// Export helper function
+export { isViewingSessionDetail }
 
 // Helper hook for global hotkey management
 export function useSessionLauncherHotkeys() {
   const { activeScopes } = useHotkeysContext()
   const refreshSessions = useStore(state => state.refreshSessions)
+
+  const { open, close, isOpen, gPrefixMode, setGPrefixMode } = useSessionLauncher()
 
   // Helper to check if user is actively typing in a text input
   const isTypingInInput = () => {
@@ -30,9 +390,11 @@ export function useSessionLauncherHotkeys() {
   // Check if a modal scope is active (indicating a modal is open)
   const isModalScopeActive = () => {
     // Only check for specific modals that should block global hotkeys
+    // Don't include all modals - for example, we want 'c' to work in SessionDetail
     return activeScopes.some(
       scope =>
         scope === 'tool-result-modal' || // Tool result modal (opened with 'i')
+        scope === 'session-launcher' || // Session launcher itself
         scope === 'fork-view-modal' || // Fork view modal
         scope === 'dangerously-skip-permissions-dialog', // Permissions dialog
     )
@@ -40,6 +402,17 @@ export function useSessionLauncherHotkeys() {
 
   return {
     handleKeyDown: (e: KeyboardEvent) => {
+      // Cmd+K - Global command palette (shows menu)
+      if (e.metaKey && e.key === 'k') {
+        e.preventDefault()
+        if (!isOpen) {
+          open()
+        } else {
+          close()
+        }
+        return
+      }
+
       // C - Create new draft session directly
       // Don't trigger if a modal is already open
       if (e.key === 'c' && !e.metaKey && !e.ctrlKey && !isTypingInInput()) {
@@ -67,20 +440,30 @@ export function useSessionLauncherHotkeys() {
         }
       }
 
-      // G+S - Go to sessions
+      // G prefix navigation (prepare for Phase 2)
       if (e.key === 'g' && !e.metaKey && !e.ctrlKey && !isTypingInInput() && !isModalScopeActive()) {
         e.preventDefault()
-        // Listen for 's' key for navigation
-        const handleSKey = (evt: KeyboardEvent) => {
-          if (evt.key === 's') {
-            evt.preventDefault()
-            // Navigate to sessions view
-            window.location.hash = '#/'
-            window.removeEventListener('keydown', handleSKey)
-          }
-        }
-        window.addEventListener('keydown', handleSKey)
-        setTimeout(() => window.removeEventListener('keydown', handleSKey), 2000)
+        setGPrefixMode(true)
+        setTimeout(() => setGPrefixMode(false), 2000)
+        return
+      }
+
+      // G+A - Go to approvals (Phase 2)
+      if (gPrefixMode && e.key === 'a') {
+        e.preventDefault()
+        setGPrefixMode(false)
+        // TODO: Navigate to approvals view
+        logger.log('Navigate to approvals (Phase 2)')
+        return
+      }
+
+      // G+S - Go to sessions (Phase 2)
+      if (gPrefixMode && e.key === 's') {
+        e.preventDefault()
+        setGPrefixMode(false)
+        // Navigate to sessions view
+        window.location.hash = '#/'
+        return
       }
     },
   }
