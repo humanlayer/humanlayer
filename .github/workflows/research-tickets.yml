@@ -1,0 +1,20 @@
+name: "Research XS/S Linear"
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+    inputs:
+      num_tickets:
+        description: "Maximum number of tickets to try and fetch"
+        required: false
+        type: string
+        default: "10"
+
+jobs:
+  fetch-tickets:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Fetch Researchable Linear Tickets"
+        uses: ./.github/actions/fetch-researchable-tickets
+        with:
+          num_tickets: ${{ inputs.num_tickets }}

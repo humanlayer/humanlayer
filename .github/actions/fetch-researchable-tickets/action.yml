@@ -1,0 +1,15 @@
+name: 'Fetch Researchable Linear Tickets'
+description: 'Fetch XS- and S-sized Linear Tickets'
+author: 'Kyle Mistele <kyle@humanlayer.dev>'
+runs:
+  using: node24
+  main: index.js
+
+inputs: 
+  num_tickets: 
+    description: 'The number of tickets to fetch'
+    required: false
+    default: '10'
+outputs:
+  researchable_ticket_ids:
+    description: 'an array of researchable tickest (XS/S-sized "ready for research" tickets) in ENG-XXXX format'
