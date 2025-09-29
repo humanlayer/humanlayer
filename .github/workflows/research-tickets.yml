@@ -18,6 +18,12 @@ jobs:
       - name: "Checkout repository"
         uses: actions/checkout@v4
 
+      - name: "Setup bun"
+        uses: oven-sh/setup-bun@v2
+
+      - name: "Build actions"
+        run: cd .github/actions/fetch-researchable-tickest && bun install
+
       - name: "Fetch Researchable Linear Tickets"
         uses: ./.github/actions/fetch-researchable-tickets
         with:
