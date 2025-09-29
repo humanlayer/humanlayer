@@ -408,6 +408,14 @@ func (h *SessionHandlers) UpdateSession(ctx context.Context, req api.UpdateSessi
 		}
 	}
 
+	// Update working directory if specified
+	if req.Body.WorkingDir != nil {
+		update.WorkingDir = req.Body.WorkingDir
+		slog.Info("Updating working directory",
+			"sessionId", req.Id,
+			"workingDir", *req.Body.WorkingDir)
+	}
+
 	err := h.manager.UpdateSessionSettings(ctx, string(req.Id), update)
 	if err != nil {
 		// Log the actual error for debugging

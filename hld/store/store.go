@@ -146,6 +146,8 @@ type SessionUpdate struct {
 	ProxyBaseURL       *string `db:"proxy_base_url"`
 	ProxyModelOverride *string `db:"proxy_model_override"`
 	ProxyAPIKey        *string `db:"proxy_api_key"`
+	// Working directory field
+	WorkingDir *string `db:"working_dir"`
 }
 
 // ConversationEvent represents a single event in a conversation

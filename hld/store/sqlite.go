@@ -1211,6 +1211,10 @@ func (s *SQLiteStore) UpdateSession(ctx context.Context, sessionID string, updat
 		setParts = append(setParts, "additional_directories = ?")
 		args = append(args, *updates.AdditionalDirectories)
 	}
+	if updates.WorkingDir != nil {
+		setParts = append(setParts, "working_dir = ?")
+		args = append(args, *updates.WorkingDir)
+	}
 
 	if len(setParts) == 0 {
 		// No fields to update is OK - this is a no-op

@@ -108,6 +108,16 @@ export interface DaemonClient {
     updates: {
       model?: string
       title?: string
+      archived?: boolean
+      autoAcceptEdits?: boolean
+      dangerouslySkipPermissions?: boolean
+      dangerouslySkipPermissionsTimeoutMs?: number
+      additionalDirectories?: string[]
+      workingDir?: string
+      proxyEnabled?: boolean
+      proxyBaseUrl?: string
+      proxyModelOverride?: string
+      proxyApiKey?: string
     },
   ): Promise<{ success: boolean }>
   archiveSession(

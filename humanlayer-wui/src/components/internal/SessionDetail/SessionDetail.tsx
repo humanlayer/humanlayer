@@ -624,11 +624,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       // Get the prompt text from the editor
       const prompt = responseEditor?.getText() || ''
 
-      // TODO: If the selected directory is different from session.workingDir,
-      // we need to update the session first. This requires backend support
-      // to update the workingDir field via UpdateSessionRequest
-
       // Launch the draft session with the prompt
+      // Note: working directory is already updated when selected in the fuzzy finder
       await daemonClient.launchDraftSession(session.id, prompt)
 
       // Clear the input after successful launch
@@ -644,6 +641,29 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       setIsLaunchingDraft(false)
     }
   }, [isDraft, session.id, session.workingDir, responseEditor, isLaunchingDraft, selectedDirectory])
+
+  // Handle directory selection change
+  const handleDirectoryChange = useCallback(async (newDirectory: string) => {
+    // Update local state immediately
+    setSelectedDirectory(newDirectory)
+
+    // If it's a valid directory and different from current, update backend
+    if (newDirectory && newDirectory !== session.workingDir) {
+      try {
+        await daemonClient.updateSession(session.id, {
+          workingDir: newDirectory,
+        })
+        // Update the store to reflect the change
+        useStore.getState().updateSession(session.id, { workingDir: newDirectory })
+      } catch (error) {
+        toast.error('Failed to update working directory', {
+          description: error instanceof Error ? error.message : 'Unknown error',
+        })
+        // Revert local state on error
+        setSelectedDirectory(session.workingDir || '')
+      }
+    }
+  }, [session.id, session.workingDir])
 
   // Handle discarding a draft session
   const handleDiscardDraft = useCallback(() => {
@@ -1232,8 +1252,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                 className="mt-1"
                 recentDirectories={recentPaths}
                 value={selectedDirectory}
-                onChange={setSelectedDirectory}
-                onSubmit={value => value && setSelectedDirectory(value)}
+                onChange={handleDirectoryChange}
+                onSubmit={value => value && handleDirectoryChange(value)}
               />
               {selectedDirectory && (
                 <div className="mt-2 px-2 py-1 bg-muted/50 rounded-md">

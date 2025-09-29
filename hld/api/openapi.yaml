@@ -1120,6 +1120,10 @@ components:
             type: string
           description: Update additional directories Claude can access
           example: ["~/.humanlayer/logs", "/var/log/myapp"]
+        working_dir:
+          type: string
+          description: Update the working directory for the session
+          example: "/Users/john/projects/myapp"
 
     ContinueSessionRequest:
       type: object
