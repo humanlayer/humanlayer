@@ -1539,7 +1539,7 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 			cost_usd, input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens, effective_context_tokens,
 		duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived,
 			dangerously_skip_permissions, dangerously_skip_permissions_expires_at,
-			proxy_enabled, proxy_base_url, proxy_model_override, proxy_api_key
+			proxy_enabled, proxy_base_url, proxy_model_override, proxy_api_key, additional_directories, editor_state
 		FROM sessions
 		ORDER BY last_activity_at DESC
 	`
@@ -1649,6 +1649,14 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 		session.ProxyModelOverride = proxyModelOverride.String
 		session.ProxyAPIKey = proxyAPIKey.String
 
+		// Handle additional directories
+		session.AdditionalDirectories = additionalDirectories.String
+
+		// Handle editor state
+		if editorState.Valid {
+			session.EditorState = &editorState.String
+		}
+
 		sessions = append(sessions, &session)
 	}
 
@@ -1666,7 +1674,7 @@ func (s *SQLiteStore) GetExpiredDangerousPermissionsSessions(ctx context.Context
 			cost_usd, input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens, effective_context_tokens,
 		duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived,
 			dangerously_skip_permissions, dangerously_skip_permissions_expires_at,
-			proxy_enabled, proxy_base_url, proxy_model_override, proxy_api_key
+			proxy_enabled, proxy_base_url, proxy_model_override, proxy_api_key, additional_directories, editor_state
 		FROM sessions
 		WHERE dangerously_skip_permissions = 1
 			AND dangerously_skip_permissions_expires_at IS NOT NULL
@@ -1779,6 +1787,14 @@ func (s *SQLiteStore) GetExpiredDangerousPermissionsSessions(ctx context.Context
 		session.ProxyBaseURL = proxyBaseURL.String
 		session.ProxyModelOverride = proxyModelOverride.String
 		session.ProxyAPIKey = proxyAPIKey.String
+
+		// Handle additional directories
+		session.AdditionalDirectories = additionalDirectories.String
+
+		// Handle editor state
+		if editorState.Valid {
+			session.EditorState = &editorState.String
+		}
 
 		sessions = append(sessions, &session)
 	}
