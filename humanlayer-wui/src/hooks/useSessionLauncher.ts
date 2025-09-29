@@ -39,7 +39,7 @@ interface LauncherState {
   setView: (view: 'menu' | 'input') => void
   setSelectedMenuIndex: (index: number) => void
   launchSession: () => Promise<void>
-  createNewSession: () => void
+  createNewSession: () => Promise<void>
   openSessionById: (sessionId: string) => void
   reset: () => void
 }
@@ -381,23 +381,27 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
     }
   },
 
-  createNewSession: () => {
-    const savedQuery = getSavedQuery()
-    const savedProvider = getSavedProvider()
-    // Switch to input mode for session creation
-    set({
-      view: 'input',
-      query: savedQuery,
-      config: {
-        workingDir: getDefaultWorkingDir(),
-        provider: savedProvider,
-        model: getSavedModel(savedProvider),
-        openRouterApiKey: getSavedOpenRouterKey(),
-        basetenApiKey: getSavedBasetenKey(),
-        additionalDirectories: getSavedAdditionalDirectories(),
-      },
-      error: undefined,
-    })
+  createNewSession: async () => {
+    // Create draft session and navigate directly
+    try {
+      const response = await daemonClient.launchSession({
+        query: '', // Empty initial query for draft
+        working_dir: getLastWorkingDir() || '~/',
+        draft: true, // Create as draft
+      })
+
+      // Refresh sessions to include the new draft
+      await useStore.getState().refreshSessions()
+
+      // Close the command palette
+      get().close()
+
+      // Navigate directly to SessionDetail
+      window.location.hash = `#/sessions/${response.sessionId}`
+    } catch (error) {
+      logger.error('Failed to create draft session:', error)
+      set({ error: 'Failed to create draft session' })
+    }
   },
 
   openSessionById: (sessionId: string) => {

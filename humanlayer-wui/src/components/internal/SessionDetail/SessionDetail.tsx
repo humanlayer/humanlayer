@@ -921,11 +921,29 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     },
   )
 
-  // Add hotkey to archive session or discard draft ('e' key)
+  // Add hotkey to discard draft ('cmd+shift+.' key)
+  useHotkeys(
+    'mod+shift+.',
+    async () => {
+      console.log('[SessionDetail] discard draft hotkey "cmd+shift+." fired')
+
+      // Only works for draft sessions
+      if (isDraft) {
+        handleDiscardDraft()
+      }
+    },
+    {
+      enableOnFormTags: true,
+      preventDefault: true,
+      scopes: [detailScope],
+    },
+  )
+
+  // Add hotkey to archive session ('e' key)
   useHotkeys(
     'e',
     async () => {
-      console.log('[SessionDetail] archive/discard hotkey "e" fired')
+      console.log('[SessionDetail] archive hotkey "e" fired')
 
       // Check if g>e was pressed recently (within 50ms)
       if (gePressedRef.current && Date.now() - gePressedRef.current < 50) {
@@ -933,9 +951,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         return
       }
 
-      // For draft sessions, trigger discard flow instead of archive
+      // Don't archive drafts with 'e' key
       if (isDraft) {
-        handleDiscardDraft()
         return
       }
 

@@ -559,7 +559,7 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
                   >
                     {/* {responseEditor && !responseEditor.isEmpty ? 'Discard' : 'Cancel'} Until we've implemented change detection we'll always discard */}
                     {'Discard'}
-                    <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">e</kbd>
+                    <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">{isMac ? 'Cmd+Shift+.' : 'Ctrl+Shift+.'}</kbd>
                   </Button>
                 )}
                 <Button
@@ -569,9 +569,7 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
                   className="h-auto py-0.5 px-2 text-xs transition-all duration-200"
                 >
                   {getSendButtonText()}
-                  {!isDisabled && (
-                    <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">{sendKey}</kbd>
-                  )}
+                  <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">{sendKey}</kbd>
                 </Button>
               </div>
             </div>

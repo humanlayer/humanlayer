@@ -176,20 +176,8 @@ func (h *SessionHandlers) ListSessions(ctx context.Context, req api.ListSessions
 	// Get all sessions from manager
 	sessionInfos := h.manager.ListSessions()
 
-	// Calculate counts for all sessions (before filtering)
-	var normalCount, archivedCount, draftCount int
-	for _, s := range sessionInfos {
-		if s.Archived {
-			archivedCount++
-		} else if s.Status == session.StatusDraft {
-			draftCount++
-		} else if s.Status != session.StatusDiscarded {
-			normalCount++
-		}
-	}
-
-	// Apply filters
-	var filtered []session.Info
+	// Determine which sessions to use for counting
+	var sessionsForCounting []session.Info
 
 	if leavesOnly {
 		// Build parent-to-children map
@@ -200,26 +188,40 @@ func (h *SessionHandlers) ListSessions(ctx context.Context, req api.ListSessions
 			}
 		}
 
-		// Filter to leaves only
+		// When leavesOnly, only count leaf sessions
 		for _, s := range sessionInfos {
-			if len(childrenMap[s.ID]) > 0 {
-				continue // Has children, not a leaf
+			if len(childrenMap[s.ID]) == 0 {
+				// This is a leaf session
+				sessionsForCounting = append(sessionsForCounting, s)
 			}
-
-			// NEW: Apply filter logic
-			if !shouldIncludeSession(s, filterType) {
-				continue
-			}
-
-			filtered = append(filtered, s)
 		}
 	} else {
-		// All sessions, apply filter
-		for _, s := range sessionInfos {
-			if shouldIncludeSession(s, filterType) {
-				filtered = append(filtered, s)
-			}
+		// When not leavesOnly, count all sessions
+		sessionsForCounting = sessionInfos
+	}
+
+	// Calculate counts based on the appropriate set of sessions
+	var normalCount, archivedCount, draftCount int
+	for _, s := range sessionsForCounting {
+		if s.Archived {
+			archivedCount++
+		} else if s.Status == session.StatusDraft {
+			draftCount++
+		} else if s.Status != session.StatusDiscarded {
+			normalCount++
 		}
+	}
+
+	// Apply filters for the returned list
+	var filtered []session.Info
+
+	for _, s := range sessionsForCounting {
+		// Apply filter logic
+		if !shouldIncludeSession(s, filterType) {
+			continue
+		}
+
+		filtered = append(filtered, s)
 	}
 
 	// Sort by last activity (newest first)
