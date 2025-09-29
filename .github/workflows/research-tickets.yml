@@ -26,5 +26,7 @@ jobs:
 
       - name: "Fetch Researchable Linear Tickets"
         uses: ./.github/actions/fetch-researchable-tickets
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
         with:
           num_tickets: ${{ inputs.num_tickets }}
