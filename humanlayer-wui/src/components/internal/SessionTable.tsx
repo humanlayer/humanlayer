@@ -392,7 +392,8 @@ export default function SessionTable({
           const nonDraftSessions = selectedSessionObjects.filter(s => s?.status !== SessionStatus.Draft)
 
           if (nonDraftSessions.length === 0) {
-            // All selected are drafts, ignore 'e' key
+            // All selected are drafts, show warning
+            toast.warning('Drafts cannot be archived with "e" key. Use Cmd+Shift+. to discard drafts.')
             return
           }
 
@@ -443,6 +444,7 @@ export default function SessionTable({
 
           // Ignore 'e' key for drafts
           if (currentSession.status === SessionStatus.Draft) {
+            toast.warning('Drafts cannot be archived with "e" key. Use Cmd+Shift+. to discard drafts.')
             return
           }
 

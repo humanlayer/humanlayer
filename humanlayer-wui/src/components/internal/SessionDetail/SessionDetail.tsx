@@ -953,6 +953,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
 
       // Don't archive drafts with 'e' key
       if (isDraft) {
+        toast.warning('Drafts cannot be archived with "e" key. Use Cmd+Shift+. to discard drafts.')
         return
       }
 
