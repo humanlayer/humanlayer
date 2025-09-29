@@ -416,6 +416,14 @@ func (h *SessionHandlers) UpdateSession(ctx context.Context, req api.UpdateSessi
 			"workingDir", *req.Body.WorkingDir)
 	}
 
+	// Update editor state if specified
+	if req.Body.EditorState != nil {
+		update.EditorState = req.Body.EditorState
+		slog.Info("Updating editor state",
+			"sessionId", req.Id,
+			"editorStateLength", len(*req.Body.EditorState))
+	}
+
 	err := h.manager.UpdateSessionSettings(ctx, string(req.Id), update)
 	if err != nil {
 		// Log the actual error for debugging

@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useState, useRef, useImperativeHandle } from 'react'
+import { forwardRef, useEffect, useState, useRef, useImperativeHandle, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Session, SessionStatus } from '@/lib/daemon/types'
 import { Split, MessageCircleX, AlertCircle } from 'lucide-react'
@@ -20,6 +20,7 @@ import { Content } from '@tiptap/react'
 import { getCurrentWebview } from '@tauri-apps/api/webview'
 import type { UnlistenFn } from '@tauri-apps/api/event'
 import { Card, CardContent } from '@/components/ui/card'
+import { daemonClient } from '@/lib/daemon'
 
 interface ResponseInputProps {
   session: Session
@@ -143,6 +144,16 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
 
     let initialValue = null
 
+    // For draft sessions, prefer editor state from database over localStorage
+    if (isDraft && session.editorState) {
+      try {
+        initialValue = JSON.parse(session.editorState)
+      } catch (e) {
+        logger.error('ResponseInput - error parsing editorState from database', e)
+      }
+    }
+
+    // Fall back to localStorage if no database value or not a draft
     if (
       initialValue === null &&
       typeof localStorageValue === 'string' &&
@@ -463,12 +474,29 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
                   <ResponseEditor
                     ref={tiptapRef}
                     initialValue={initialValue}
-                    onChange={(value: Content) => {
-                      localStorage.setItem(
-                        `${ResponseInputLocalStorageKey}.${session.id}`,
-                        JSON.stringify(value),
-                      )
-                    }}
+                    onChange={useCallback(
+                      async (value: Content) => {
+                        // Always save to localStorage
+                        const valueStr = JSON.stringify(value)
+                        localStorage.setItem(
+                          `${ResponseInputLocalStorageKey}.${session.id}`,
+                          valueStr,
+                        )
+
+                        // For draft sessions, also save to database
+                        if (isDraft && session.status === SessionStatus.Draft) {
+                          try {
+                            await daemonClient.updateSession(session.id, {
+                              editorState: valueStr,
+                            })
+                          } catch (error) {
+                            // Log but don't show toast to avoid disrupting typing
+                            logger.error('Failed to save editor state to database:', error)
+                          }
+                        }
+                      },
+                      [session.id, isDraft, session.status],
+                    )}
                     onSubmit={handleSubmit}
                     onToggleAutoAccept={onToggleAutoAccept}
                     onToggleDangerouslySkipPermissions={onToggleDangerouslySkipPermissions}
@@ -494,11 +522,12 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
                   <Button
                     onClick={onDiscardDraft}
                     disabled={isResponding}
-                    variant="outline"
+                    variant="secondary"
                     className="h-auto py-0.5 px-2 text-xs transition-all duration-200"
                   >
                     {/* {responseEditor && !responseEditor.isEmpty ? 'Discard' : 'Cancel'} Until we've implemented change detection we'll always discard */}
                     {'Discard'}
+                    <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded invisible">Esc</kbd>
                   </Button>
                 )}
                 <Button

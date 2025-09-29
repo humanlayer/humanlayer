@@ -411,9 +411,9 @@ const KeyboardShortcuts = Extension.create({
         }
         return true
       },
-      'Shift-Tab': () => {
+      'Alt-a': () => {
         this.options.onToggleAutoAccept?.()
-        return true // Prevent default tab behavior
+        return true
       },
       'Alt-y': () => {
         this.options.onToggleDangerouslySkipPermissions?.()

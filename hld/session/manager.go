@@ -1995,14 +1995,16 @@ func (m *Manager) LaunchDraftSession(ctx context.Context, sessionID string, prom
 		return fmt.Errorf("session is not in draft state: current status is %s", sess.Status)
 	}
 
-	// Update the query with the actual prompt
+	// Update the query with the actual prompt and clear editor state
 	queryUpdate := prompt
 	statusStarting := string(StatusStarting)
 	now := time.Now()
+	emptyString := "" // Use empty string to clear editor state
 	update := store.SessionUpdate{
 		Status:         &statusStarting,
 		Query:          &queryUpdate,
 		LastActivityAt: &now,
+		EditorState:    &emptyString, // Clear editor state when launching
 	}
 	if err := m.store.UpdateSession(ctx, sessionID, update); err != nil {
 		return fmt.Errorf("failed to update draft session: %w", err)
