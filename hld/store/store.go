@@ -113,6 +113,9 @@ type Session struct {
 	ProxyBaseURL       string `db:"proxy_base_url"`
 	ProxyModelOverride string `db:"proxy_model_override"`
 	ProxyAPIKey        string `db:"proxy_api_key"`
+
+	// Editor state for draft sessions (JSON blob)
+	EditorState *string `db:"editor_state"`
 }
 
 // SessionUpdate contains fields that can be updated
@@ -148,6 +151,8 @@ type SessionUpdate struct {
 	ProxyAPIKey        *string `db:"proxy_api_key"`
 	// Working directory field
 	WorkingDir *string `db:"working_dir"`
+	// Editor state field (JSON blob)
+	EditorState *string `db:"editor_state"`
 }
 
 // ConversationEvent represents a single event in a conversation

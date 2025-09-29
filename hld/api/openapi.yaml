@@ -904,6 +904,11 @@ components:
           type: string
           description: Model to use with the proxy
           example: openai/gpt-oss-120b
+        editor_state:
+          type: string
+          nullable: true
+          description: JSON blob of editor state for draft sessions
+          example: '{"content":"console.log(\"hello\");","cursorPosition":24}'
 
     SessionStatus:
       type: string
@@ -1124,6 +1129,10 @@ components:
           type: string
           description: Update the working directory for the session
           example: "/Users/john/projects/myapp"
+        editor_state:
+          type: string
+          description: JSON blob of editor state for draft sessions
+          example: '{"content":"console.log(\"hello\");","cursorPosition":24}'
 
     ContinueSessionRequest:
       type: object
