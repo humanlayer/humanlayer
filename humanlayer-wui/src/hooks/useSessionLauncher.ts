@@ -436,7 +436,7 @@ export { isViewingSessionDetail }
 // Helper hook for global hotkey management
 export function useSessionLauncherHotkeys() {
   const refreshSessions = useStore(state => state.refreshSessions)
-  const { open, close, isOpen, gPrefixMode, setGPrefixMode, createNewSession } = useSessionLauncher()
+  const { open, close, isOpen, setGPrefixMode } = useSessionLauncher()
 
   // Helper to check if user is actively typing in a text input
   const isTypingInInput = () => {

@@ -1237,20 +1237,22 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               />
               {selectedDirectory && (
                 <div className="mt-2 px-2 py-1 bg-muted/50 rounded-md">
-                  <p className="text-xs font-mono text-muted-foreground truncate">{selectedDirectory}</p>
+                  <p className="text-xs font-mono text-muted-foreground truncate">
+                    {selectedDirectory}
+                  </p>
                 </div>
               )}
             </div>
           ) : (
             session.workingDir && (
               <AdditionalDirectoriesDropdown
-              workingDir={session.workingDir}
-              directories={session.additionalDirectories || []}
-              sessionStatus={session.status}
-              onDirectoriesChange={handleUpdateAdditionalDirectories}
-              open={directoriesDropdownOpen}
-              onOpenChange={setDirectoriesDropdownOpen}
-            />
+                workingDir={session.workingDir}
+                directories={session.additionalDirectories || []}
+                sessionStatus={session.status}
+                onDirectoriesChange={handleUpdateAdditionalDirectories}
+                open={directoriesDropdownOpen}
+                onOpenChange={setDirectoriesDropdownOpen}
+              />
             )
           )}
 
@@ -1261,93 +1263,91 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
             onSelectEvent={handleForkSelect}
             isOpen={forkViewOpen}
             onOpenChange={open => {
-            setForkViewOpen(open)
-            // Focus the input when closing the fork modal
-            // Use longer delay to ensure it happens after all dialog cleanup
-            if (!open && responseEditor) {
-              setTimeout(() => {
-                responseEditor.commands.focus()
-              }, 50)
-            }
-          }}
-          sessionStatus={session.status}
-          onArchiveOnForkChange={setArchiveOnFork}
-        />
-      </div>
-
+              setForkViewOpen(open)
+              // Focus the input when closing the fork modal
+              // Use longer delay to ensure it happens after all dialog cleanup
+              if (!open && responseEditor) {
+                setTimeout(() => {
+                  responseEditor.commands.focus()
+                }, 50)
+              }
+            }}
+            sessionStatus={session.status}
+            onArchiveOnForkChange={setArchiveOnFork}
+          />
         </div>
 
         {!isDraft && (
           <div className={`flex flex-1 gap-4 ${isWideView ? 'flex-row' : 'flex-col'} min-h-0`}>
             {/* Conversation content and Loading - only show for non-draft sessions */}
             <Card
-            className={`Conversation-Card w-full relative ${cardVerticalPadding} flex flex-col min-h-0`}
-          >
-            <CardContent className="px-3 flex flex-col flex-1 min-h-0">
-              <ConversationStream
-                sessionId={session.id}
-                focusedEventId={navigation.focusedEventId}
-                setFocusedEventId={navigation.setFocusedEventId}
-                onApprove={approvals.handleApprove}
-                onDeny={(approvalId: string, reason: string) =>
-                  approvals.handleDeny(approvalId, reason, session.id)
-                }
-                approvingApprovalId={approvals.approvingApprovalId}
-                denyingApprovalId={approvals.denyingApprovalId ?? undefined}
-                setDenyingApprovalId={approvals.setDenyingApprovalId}
-                onCancelDeny={approvals.handleCancelDeny}
-                focusSource={navigation.focusSource}
-                setFocusSource={navigation.setFocusSource}
-                expandedToolResult={expandedToolResult}
-                setExpandedToolResult={setExpandedToolResult}
-                setExpandedToolCall={setExpandedToolCall}
-                maxEventIndex={previewEventIndex ?? undefined}
-                shouldIgnoreMouseEvent={shouldIgnoreMouseEvent}
-                expandedTasks={expandedTasks}
-                toggleTaskGroup={toggleTaskGroup}
-              />
-            </CardContent>
-            {isActivelyProcessing && (
-              <div
-                className={`absolute bottom-0 left-0 px-3 py-1.5 border-t border-border bg-secondary/30 w-full font-mono text-sm uppercase tracking-wider text-muted-foreground transition-all duration-300 ease-out ${
-                  isActivelyProcessing ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'
-                }`}
-              >
-                <OmniSpinner randomVerb={randomVerb} spinnerType={spinnerType} />
-              </div>
-            )}
-            {/* Status bar for pending approvals */}
-            <div
-              className={`absolute bottom-0 left-0 right-0 p-2 cursor-pointer transition-all duration-300 ease-in-out ${
-                hasPendingApprovalsOutOfView
-                  ? 'opacity-100 translate-y-0'
-                  : 'opacity-0 translate-y-full pointer-events-none'
-              }`}
-              onClick={() => {
-                const container = document.querySelector('[data-conversation-container]')
-                if (container) {
-                  container.scrollTop = container.scrollHeight
-                }
-              }}
+              className={`Conversation-Card w-full relative ${cardVerticalPadding} flex flex-col min-h-0`}
             >
-              <div className="flex items-center justify-center gap-1 font-mono text-xs uppercase tracking-wider text-muted-foreground bg-background/60 backdrop-blur-sm border-t border-border/50 py-1 shadow-sm hover:bg-background/80 transition-colors">
-                <span>Pending Approval</span>
-                <ChevronDown className="w-3 h-3 animate-bounce" />
-              </div>
-            </div>
-          </Card>
-
-          {isWideView && lastTodo && (
-            <Card className="w-[20%] flex flex-col min-h-0">
-              <CardContent className="flex flex-col flex-1 min-h-0 overflow-hidden">
-                <TodoWidget event={lastTodo} />
+              <CardContent className="px-3 flex flex-col flex-1 min-h-0">
+                <ConversationStream
+                  sessionId={session.id}
+                  focusedEventId={navigation.focusedEventId}
+                  setFocusedEventId={navigation.setFocusedEventId}
+                  onApprove={approvals.handleApprove}
+                  onDeny={(approvalId: string, reason: string) =>
+                    approvals.handleDeny(approvalId, reason, session.id)
+                  }
+                  approvingApprovalId={approvals.approvingApprovalId}
+                  denyingApprovalId={approvals.denyingApprovalId ?? undefined}
+                  setDenyingApprovalId={approvals.setDenyingApprovalId}
+                  onCancelDeny={approvals.handleCancelDeny}
+                  focusSource={navigation.focusSource}
+                  setFocusSource={navigation.setFocusSource}
+                  expandedToolResult={expandedToolResult}
+                  setExpandedToolResult={setExpandedToolResult}
+                  setExpandedToolCall={setExpandedToolCall}
+                  maxEventIndex={previewEventIndex ?? undefined}
+                  shouldIgnoreMouseEvent={shouldIgnoreMouseEvent}
+                  expandedTasks={expandedTasks}
+                  toggleTaskGroup={toggleTaskGroup}
+                />
               </CardContent>
+              {isActivelyProcessing && (
+                <div
+                  className={`absolute bottom-0 left-0 px-3 py-1.5 border-t border-border bg-secondary/30 w-full font-mono text-sm uppercase tracking-wider text-muted-foreground transition-all duration-300 ease-out ${
+                    isActivelyProcessing ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'
+                  }`}
+                >
+                  <OmniSpinner randomVerb={randomVerb} spinnerType={spinnerType} />
+                </div>
+              )}
+              {/* Status bar for pending approvals */}
+              <div
+                className={`absolute bottom-0 left-0 right-0 p-2 cursor-pointer transition-all duration-300 ease-in-out ${
+                  hasPendingApprovalsOutOfView
+                    ? 'opacity-100 translate-y-0'
+                    : 'opacity-0 translate-y-full pointer-events-none'
+                }`}
+                onClick={() => {
+                  const container = document.querySelector('[data-conversation-container]')
+                  if (container) {
+                    container.scrollTop = container.scrollHeight
+                  }
+                }}
+              >
+                <div className="flex items-center justify-center gap-1 font-mono text-xs uppercase tracking-wider text-muted-foreground bg-background/60 backdrop-blur-sm border-t border-border/50 py-1 shadow-sm hover:bg-background/80 transition-colors">
+                  <span>Pending Approval</span>
+                  <ChevronDown className="w-3 h-3 animate-bounce" />
+                </div>
+              </div>
             </Card>
-          )}
-        </div>
-      )}
 
-      {/* Response input - always show but disable for non-completed sessions */}
+            {isWideView && lastTodo && (
+              <Card className="w-[20%] flex flex-col min-h-0">
+                <CardContent className="flex flex-col flex-1 min-h-0 overflow-hidden">
+                  <TodoWidget event={lastTodo} />
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )}
+
+        {/* Response input - always show but disable for non-completed sessions */}
         <Card className="py-2">
           <CardContent className="px-2">
             <ResponseInput
