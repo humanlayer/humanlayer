@@ -40,6 +40,11 @@ interface StoreState {
   archiveSession: (sessionId: string, archived: boolean) => Promise<void>
   bulkArchiveSessions: (sessionIds: string[], archived: boolean) => Promise<void>
   bulkSetAutoAcceptEdits: (sessionIds: string[], autoAcceptEdits: boolean) => Promise<void>
+  bulkSetBypassPermissions: (
+    sessionIds: string[],
+    enabled: boolean,
+    expiresAt: Date | null,
+  ) => Promise<void>
   setViewMode: (mode: ViewMode) => void
   toggleSessionSelection: (sessionId: string) => void
   clearSelection: () => void
@@ -442,6 +447,62 @@ export const useStore = create<StoreState>((set, get) => ({
       get().clearSelection()
     } catch (error) {
       console.error('Failed to bulk update auto-accept settings:', error)
+      throw error
+    }
+  },
+  bulkSetBypassPermissions: async (
+    sessionIds: string[],
+    enabled: boolean,
+    expiresAt: Date | null = null,
+  ) => {
+    try {
+      // Calculate timeout in milliseconds if expiration is set
+      const timeoutMs = expiresAt ? expiresAt.getTime() - Date.now() : undefined
+
+      // Update all sessions in parallel
+      const results = await Promise.allSettled(
+        sessionIds.map(sessionId =>
+          daemonClient.updateSessionSettings(sessionId, {
+            dangerously_skip_permissions: enabled,
+            dangerously_skip_permissions_timeout_ms: enabled ? timeoutMs : undefined,
+          }),
+        ),
+      )
+
+      // Check for failures
+      const failedCount = results.filter(r => r.status === 'rejected').length
+      if (failedCount > 0) {
+        console.error(`Failed to update bypass permissions for ${failedCount} sessions`)
+        throw new Error(`Failed to update ${failedCount} sessions`)
+      }
+
+      // Update local state for all sessions
+      sessionIds.forEach(sessionId => {
+        get().updateSession(sessionId, {
+          dangerouslySkipPermissions: enabled,
+          dangerouslySkipPermissionsExpiresAt: expiresAt || undefined,
+        })
+      })
+
+      // Clear selection after successful bulk operation
+      get().clearSelection()
+
+      // If any sessions are in the active detail view, update them
+      const activeDetail = get().activeSessionDetail
+      if (activeDetail && sessionIds.includes(activeDetail.session.id)) {
+        set(state => ({
+          activeSessionDetail: {
+            ...state.activeSessionDetail!,
+            session: {
+              ...state.activeSessionDetail!.session,
+              dangerouslySkipPermissions: enabled,
+              dangerouslySkipPermissionsExpiresAt: expiresAt || undefined,
+            },
+          },
+        }))
+      }
+    } catch (error) {
+      console.error('Failed to bulk update bypass permissions:', error)
       throw error
     }
   },
