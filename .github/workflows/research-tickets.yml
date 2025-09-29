@@ -22,7 +22,7 @@ jobs:
         uses: oven-sh/setup-bun@v2
 
       - name: "Build actions"
-        run: cd .github/actions/fetch-researchable-tickest && bun install
+        run: cd .github/actions/fetch-researchable-tickets && bun install
 
       - name: "Fetch Researchable Linear Tickets"
         uses: ./.github/actions/fetch-researchable-tickets
