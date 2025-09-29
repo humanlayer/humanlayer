@@ -17,7 +17,7 @@ import { logger } from '@/lib/logging'
 import { daemonClient } from '@/lib/daemon'
 import type { DebugInfo } from '@/lib/daemon/types'
 import { toast } from 'sonner'
-import { getDaemonUrl } from '@/lib/daemon/http-config'
+import { getDaemonUrl, storeDaemonUrl, clearStoredDaemonUrl } from '@/lib/daemon/http-config'
 import { useDebugStore } from '@/stores/useDebugStore'
 import { Switch } from '@/components/ui/switch'
 
@@ -136,6 +136,8 @@ export function DebugPanel({ open, onOpenChange }: DebugPanelProps) {
 
     try {
       await daemonService.connectToExisting(url)
+      // Store to localStorage (only when not in Tauri)
+      storeDaemonUrl(url)
       await reconnect()
       await loadDaemonInfo()
       setCustomUrl('')
@@ -147,6 +149,8 @@ export function DebugPanel({ open, onOpenChange }: DebugPanelProps) {
   async function handleSwitchToManaged() {
     try {
       await daemonService.switchToManagedDaemon()
+      // Clear stored URL from localStorage (only when not in Tauri)
+      clearStoredDaemonUrl()
       await reconnect()
       await loadDaemonInfo()
     } catch (error: any) {
