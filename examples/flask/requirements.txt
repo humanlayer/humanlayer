@@ -1,5 +1,0 @@
-flask
-python-dotenv
-langchain
-langchain-openai
-humanlayer==0.7.9
