@@ -317,11 +317,11 @@ export default function SessionTable({
     },
   )
 
-  // Discard draft hotkey (cmd+shift+.)
+  // Discard draft hotkey (cmd+shift+., which is mod+shift+>)
   useHotkeys(
-    'mod+shift+.',
+    'meta+shift+period',
     async () => {
-      console.log('[SessionTable] discard draft hotkey "cmd+shift+." fired')
+      console.log('[SessionTable] discard draft hotkey "cmd+shift+>" fired')
 
       try {
         // If there are selected sessions, bulk discard drafts

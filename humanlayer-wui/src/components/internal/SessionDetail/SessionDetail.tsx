@@ -921,11 +921,11 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     },
   )
 
-  // Add hotkey to discard draft ('cmd+shift+.' key)
+  // Add hotkey to discard draft ('cmd+shift+.' key, which is 'mod+shift+>')
   useHotkeys(
-    'mod+shift+.',
+    'meta+shift+period',
     async () => {
-      console.log('[SessionDetail] discard draft hotkey "cmd+shift+." fired')
+      console.log('[SessionDetail] discard draft hotkey "cmd+shift+>" fired')
 
       // Only works for draft sessions
       if (isDraft) {
