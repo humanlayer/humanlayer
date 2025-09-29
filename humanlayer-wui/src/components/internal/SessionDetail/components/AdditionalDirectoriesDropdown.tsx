@@ -8,7 +8,8 @@ import { useRecentPaths } from '@/hooks/useRecentPaths'
 import { SessionStatus } from '@/lib/daemon/types'
 import { toast } from 'sonner'
 import { useHotkeys } from 'react-hotkeys-hook'
-import { useStealHotkeyScope } from '@/hooks/useStealHotkeyScope'
+import { HotkeyScopeBoundary } from '@/components/HotkeyScopeBoundary'
+import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
 import { cn } from '@/lib/utils'
 
 interface AdditionalDirectoriesDropdownProps {
@@ -51,9 +52,7 @@ export function AdditionalDirectoriesDropdown({
   // Track what triggered the popover opening
   const triggerRef = useRef<HTMLElement | null>(null)
 
-  // Steal hotkey scope when popover is open
-  const AdditionalDirectoriesHotkeyScope = 'additional-directories-dropdown'
-  useStealHotkeyScope(AdditionalDirectoriesHotkeyScope, isOpen)
+  // Use the proper hotkey scope from centralized definitions
 
   // Fetch recent paths for autocomplete
   const { paths: recentPaths } = useRecentPaths(20)
@@ -116,7 +115,7 @@ export function AdditionalDirectoriesDropdown({
     },
     {
       enabled: isOpen && !isAdding,
-      scopes: AdditionalDirectoriesHotkeyScope,
+      scopes: HOTKEY_SCOPES.ADDITIONAL_DIRECTORIES,
       preventDefault: true,
     },
   )
@@ -146,7 +145,7 @@ export function AdditionalDirectoriesDropdown({
     },
     {
       enabled: isOpen && !isAdding,
-      scopes: AdditionalDirectoriesHotkeyScope,
+      scopes: HOTKEY_SCOPES.ADDITIONAL_DIRECTORIES,
       preventDefault: true,
     },
   )
@@ -171,7 +170,7 @@ export function AdditionalDirectoriesDropdown({
     },
     {
       enabled: isOpen && focusedIndex !== null,
-      scopes: AdditionalDirectoriesHotkeyScope,
+      scopes: HOTKEY_SCOPES.ADDITIONAL_DIRECTORIES,
       preventDefault: true,
       enableOnFormTags: false, // Disable in form elements
     },
@@ -212,7 +211,7 @@ export function AdditionalDirectoriesDropdown({
     },
     {
       enabled: isOpen,
-      scopes: AdditionalDirectoriesHotkeyScope,
+      scopes: HOTKEY_SCOPES.ADDITIONAL_DIRECTORIES,
       preventDefault: true,
       enableOnFormTags: true, // Enable in input fields
     },
@@ -229,7 +228,7 @@ export function AdditionalDirectoriesDropdown({
     },
     {
       enabled: isOpen,
-      scopes: AdditionalDirectoriesHotkeyScope,
+      scopes: HOTKEY_SCOPES.ADDITIONAL_DIRECTORIES,
       preventDefault: true,
     },
   )
@@ -368,110 +367,116 @@ export function AdditionalDirectoriesDropdown({
           }
         }}
       >
-        <div className="space-y-2">
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground pb-1 border-b">
-            <FolderOpen className="h-3 w-3" />
-            <span>Working Directory</span>
-          </div>
-          <div className="font-mono text-xs text-foreground py-1">{workingDir}</div>
-
-          <div className="flex items-center justify-between text-xs font-semibold text-foreground pt-2 pb-1 border-b">
-            <div className="flex items-center gap-1.5">
+        <HotkeyScopeBoundary
+          scope={HOTKEY_SCOPES.ADDITIONAL_DIRECTORIES}
+          isActive={isOpen}
+          componentName="AdditionalDirectoriesDropdown"
+        >
+          <div className="space-y-2">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground pb-1 border-b">
               <FolderOpen className="h-3 w-3" />
-              <span>Additional Directories</span>
+              <span>Working Directory</span>
             </div>
-            {onDirectoriesChange && (
-              <Button
-                ref={addButtonRef}
-                size="sm"
-                variant="ghost"
-                onClick={() => {
-                  setIsAdding(true)
-                  setFocusedIndex(-1)
-                }}
-                className="h-5 px-1 text-xs focus:ring-2 focus:ring-offset-0 focus:ring-accent/50"
-              >
-                <Plus className="h-3 w-3" />
-              </Button>
-            )}
-          </div>
+            <div className="font-mono text-xs text-foreground py-1">{workingDir}</div>
 
-          <div className="space-y-1 max-h-48 overflow-y-auto">
-            {localDirectories.length === 0 ? (
-              <p className="text-xs text-muted-foreground py-1">No additional directories</p>
-            ) : (
-              localDirectories.map((dir, index) => (
-                <div
-                  key={index}
-                  className={cn(
-                    'flex items-center justify-between group hover:bg-muted/50 rounded px-1 py-0.5',
-                    focusedIndex === index && 'bg-accent/20',
-                  )}
-                >
-                  <span className="font-mono text-xs text-muted-foreground">{dir}</span>
-                  {onDirectoriesChange && (
-                    <Button
-                      ref={el => (directoryRefs.current[index] = el)}
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => handleRemoveDirectory(dir)}
-                      disabled={isUpdating}
-                      className={cn(
-                        'h-5 w-5 p-0 transition-opacity focus:outline-none focus:ring-0',
-                        focusedIndex === index ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
-                      )}
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  )}
-                </div>
-              ))
-            )}
-
-            {isAdding && (
-              <div className="flex gap-1 pt-1">
-                <div className="flex-1" ref={searchInputRef}>
-                  <SearchInput
-                    value={newDirectory}
-                    onChange={setNewDirectory}
-                    onSubmit={async value => {
-                      // Use the value passed from SearchInput (which is the selected item)
-                      await handleAddDirectory(value)
-                      // After adding, focus returns to add button
-                      setTimeout(() => {
-                        addButtonRef.current?.focus()
-                      }, 0)
-                    }}
-                    placeholder="Enter directory path..."
-                    recentDirectories={recentPaths || []}
-                    className="!h-7 !text-xs md:!text-xs !mt-0"
-                    dropdownClassName="text-xs"
-                    autoFocus
-                  />
-                </div>
+            <div className="flex items-center justify-between text-xs font-semibold text-foreground pt-2 pb-1 border-b">
+              <div className="flex items-center gap-1.5">
+                <FolderOpen className="h-3 w-3" />
+                <span>Additional Directories</span>
+              </div>
+              {onDirectoriesChange && (
                 <Button
-                  size="sm"
-                  onClick={() => handleAddDirectory()}
-                  disabled={isUpdating || !newDirectory.trim()}
-                  className="h-7 px-2"
-                >
-                  Add
-                </Button>
-                <Button
+                  ref={addButtonRef}
                   size="sm"
                   variant="ghost"
                   onClick={() => {
-                    setIsAdding(false)
-                    setNewDirectory('')
+                    setIsAdding(true)
+                    setFocusedIndex(-1)
                   }}
-                  className="h-7 px-2"
+                  className="h-5 px-1 text-xs focus:ring-2 focus:ring-offset-0 focus:ring-accent/50"
                 >
-                  Cancel
+                  <Plus className="h-3 w-3" />
                 </Button>
-              </div>
-            )}
+              )}
+            </div>
+
+            <div className="space-y-1 max-h-48 overflow-y-auto">
+              {localDirectories.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-1">No additional directories</p>
+              ) : (
+                localDirectories.map((dir, index) => (
+                  <div
+                    key={index}
+                    className={cn(
+                      'flex items-center justify-between group hover:bg-muted/50 rounded px-1 py-0.5',
+                      focusedIndex === index && 'bg-accent/20',
+                    )}
+                  >
+                    <span className="font-mono text-xs text-muted-foreground">{dir}</span>
+                    {onDirectoriesChange && (
+                      <Button
+                        ref={el => (directoryRefs.current[index] = el)}
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleRemoveDirectory(dir)}
+                        disabled={isUpdating}
+                        className={cn(
+                          'h-5 w-5 p-0 transition-opacity focus:outline-none focus:ring-0',
+                          focusedIndex === index ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
+                        )}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
+                ))
+              )}
+
+              {isAdding && (
+                <div className="flex gap-1 pt-1">
+                  <div className="flex-1" ref={searchInputRef}>
+                    <SearchInput
+                      value={newDirectory}
+                      onChange={setNewDirectory}
+                      onSubmit={async value => {
+                        // Use the value passed from SearchInput (which is the selected item)
+                        await handleAddDirectory(value)
+                        // After adding, focus returns to add button
+                        setTimeout(() => {
+                          addButtonRef.current?.focus()
+                        }, 0)
+                      }}
+                      placeholder="Enter directory path..."
+                      recentDirectories={recentPaths || []}
+                      className="!h-7 !text-xs md:!text-xs !mt-0"
+                      dropdownClassName="text-xs"
+                      autoFocus
+                    />
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => handleAddDirectory()}
+                    disabled={isUpdating || !newDirectory.trim()}
+                    className="h-7 px-2"
+                  >
+                    Add
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setIsAdding(false)
+                      setNewDirectory('')
+                    }}
+                    className="h-7 px-2"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        </HotkeyScopeBoundary>
       </PopoverContent>
     </Popover>
   )

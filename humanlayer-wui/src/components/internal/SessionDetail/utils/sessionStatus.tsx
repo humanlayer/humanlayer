@@ -32,14 +32,14 @@ export const getHelpText = (status: string): React.ReactNode => {
     return (
       <>
         <Kbd>Ctrl+X</Kbd> to interrupt / <Kbd>{sendKey}</Kbd> to interrupt and send /{' '}
-        <Kbd>{skipKey}</Kbd> to bypass permissions / <Kbd>Shift+Tab</Kbd> for auto-accept edits
+        <Kbd>{skipKey}</Kbd> to bypass permissions / <Kbd>⌥A</Kbd> for auto-accept edits
       </>
     )
   }
   return (
     <>
-      <Kbd>{sendKey}</Kbd> to send / <Kbd>{skipKey}</Kbd> to bypass permissions / <Kbd>Shift+Tab</Kbd>{' '}
-      for auto-accept edits
+      <Kbd>{sendKey}</Kbd> to send / <Kbd>{skipKey}</Kbd> to bypass permissions / <Kbd>⌥A</Kbd> for
+      auto-accept edits
     </>
   )
 }

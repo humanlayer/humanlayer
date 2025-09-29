@@ -3,10 +3,11 @@ import { useHotkeys } from 'react-hotkeys-hook'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ConversationEvent } from '@/lib/daemon/types'
 import { truncate, parseMcpToolName } from '@/utils/formatting'
-import { useStealHotkeyScope } from '@/hooks/useStealHotkeyScope'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { CustomDiffViewer } from './CustomDiffViewer'
 import { AnsiText, hasAnsiCodes } from '@/utils/ansiParser'
+import { HotkeyScopeBoundary } from '@/components/HotkeyScopeBoundary'
+import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
 import {
   Wrench,
   Globe,
@@ -16,6 +17,7 @@ import {
   Search,
   ListTodo,
   ListChecks,
+  HatGlasses,
 } from 'lucide-react'
 
 // Helper function to get the appropriate icon for a tool
@@ -31,6 +33,8 @@ function getToolIcon(toolName: string | undefined): React.ReactNode {
 
   // Handle regular tools
   switch (toolName) {
+    case 'Task':
+      return <Wrench className={className} />
     case 'Edit':
     case 'MultiEdit':
       return <FilePenLine className={className} />
@@ -63,8 +67,6 @@ function getToolIcon(toolName: string | undefined): React.ReactNode {
 
 // TODO(3): Add keyboard navigation hints in the UI
 // TODO(2): Consider adding copy-to-clipboard functionality for tool results
-
-const ToolResultModalHotkeysScope = 'tool-result-modal'
 
 // Minimalist modal for showing full tool results
 export function ToolResultModal({
@@ -113,7 +115,7 @@ export function ToolResultModal({
       enabled: !!(toolResult || toolCall),
       enableOnFormTags: true,
       preventDefault: true,
-      scopes: ToolResultModalHotkeysScope,
+      scopes: [HOTKEY_SCOPES.TOOL_RESULT_MODAL],
     },
   )
 
@@ -134,7 +136,7 @@ export function ToolResultModal({
       enabled: !!(toolResult || toolCall),
       enableOnFormTags: true,
       preventDefault: true,
-      scopes: ToolResultModalHotkeysScope,
+      scopes: [HOTKEY_SCOPES.TOOL_RESULT_MODAL],
     },
   )
 
@@ -151,89 +153,123 @@ export function ToolResultModal({
     },
     {
       enabled: !!(toolResult || toolCall),
-      scopes: ToolResultModalHotkeysScope,
+      scopes: [HOTKEY_SCOPES.TOOL_RESULT_MODAL],
       preventDefault: true,
     },
   )
 
   const isOpen = !!(toolResult || toolCall)
-  useStealHotkeyScope(ToolResultModalHotkeysScope, isOpen)
 
   // Show modal if we have either a tool result or just a tool call (unfinished)
   if (!isOpen) return null
 
   return (
-    <Dialog
-      open={!!(toolResult || toolCall)}
-      onOpenChange={open => {
-        // This handles ALL dialog close triggers including click-outside
-        if (!open) {
-          handleClose() // Use unified close handler
-        }
-      }}
+    <HotkeyScopeBoundary
+      scope={HOTKEY_SCOPES.TOOL_RESULT_MODAL}
+      isActive={isOpen}
+      rootScopeDisabled={true}
+      componentName="ToolResultModal"
     >
-      <DialogContent
-        className="w-[90vw] max-w-[90vw] h-[85vh] p-0 sm:max-w-[90vw] flex flex-col overflow-hidden"
-        onEscapeKeyDown={e => {
-          // Prevent the default Dialog escape handling (we handle it ourselves)
-          e.preventDefault()
+      <Dialog
+        open={!!(toolResult || toolCall)}
+        onOpenChange={open => {
+          // This handles ALL dialog close triggers including click-outside
+          if (!open) {
+            handleClose() // Use unified close handler
+          }
         }}
       >
-        <DialogHeader className="px-4 py-3 border-b bg-background flex-none">
-          <DialogTitle className="text-sm font-mono">
-            <div className="flex items-center gap-2">
-              {/* Add tool icon */}
-              <span className="text-accent">{getToolIcon(toolCall?.toolName)}</span>
-              <span>
-                {toolCall?.toolName || 'Tool Result'}
-                {!toolResult && toolCall && !toolCall.isCompleted && (
-                  <span className="text-xs text-muted-foreground ml-2">(in progress)</span>
+        <DialogContent
+          className="w-[90vw] max-w-[90vw] h-[85vh] p-0 sm:max-w-[90vw] flex flex-col overflow-hidden"
+          onEscapeKeyDown={e => {
+            // Prevent the default Dialog escape handling (we handle it ourselves)
+            e.preventDefault()
+          }}
+        >
+          <DialogHeader className="px-4 py-3 border-b bg-background flex-none">
+            <DialogTitle className="text-sm font-mono">
+              <div className="flex items-center gap-2">
+                {/* Add tool icon */}
+                <span className="text-accent">
+                  {(() => {
+                    // Special icon for sub-agents
+                    if (toolCall?.toolName === 'Task' && toolCall.toolInputJson) {
+                      try {
+                        const args = JSON.parse(toolCall.toolInputJson)
+                        if (args.subagent_type && args.subagent_type !== 'Task') {
+                          return <HatGlasses className="w-3.5 h-3.5" />
+                        }
+                      } catch {
+                        // Ignore parse errors
+                      }
+                    }
+                    return getToolIcon(toolCall?.toolName)
+                  })()}
+                </span>
+                <span>
+                  {(() => {
+                    // Show sub-agent type for Task tools
+                    if (toolCall?.toolName === 'Task' && toolCall.toolInputJson) {
+                      try {
+                        const args = JSON.parse(toolCall.toolInputJson)
+                        if (args.subagent_type && args.subagent_type !== 'Task') {
+                          return `Sub-agent: ${args.subagent_type}`
+                        }
+                      } catch {
+                        // Ignore parse errors
+                      }
+                    }
+                    return toolCall?.toolName || 'Tool Result'
+                  })()}
+                  {!toolResult && toolCall && !toolCall.isCompleted && (
+                    <span className="text-xs text-muted-foreground ml-2">(in progress)</span>
+                  )}
+                </span>
+                {/* Show primary parameter */}
+                {toolCall?.toolInputJson && (
+                  <span className="text-xs text-muted-foreground">{getToolPrimaryParam(toolCall)}</span>
                 )}
-              </span>
-              {/* Show primary parameter */}
-              {toolCall?.toolInputJson && (
-                <span className="text-xs text-muted-foreground">{getToolPrimaryParam(toolCall)}</span>
-              )}
-            </div>
-          </DialogTitle>
-        </DialogHeader>
+              </div>
+            </DialogTitle>
+          </DialogHeader>
 
-        <div className="flex-1 overflow-hidden">
-          <ScrollArea className="h-full">
-            <div className="px-4 py-4 space-y-4">
-              {/* Tool Input Section */}
-              {toolCall?.toolInputJson && renderToolInput(toolCall)}
+          <div className="flex-1 overflow-hidden">
+            <ScrollArea className="h-full">
+              <div className="px-4 py-4 space-y-4">
+                {/* Tool Input Section */}
+                {toolCall?.toolInputJson && renderToolInput(toolCall)}
 
-              {/* Tool Result Section - only show if we have a result */}
-              {toolResult && (
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground mb-2">Result</h3>
-                  <pre className="font-mono text-sm whitespace-pre-wrap break-words">
-                    {/* Only apply ANSI parsing to Bash tool output */}
-                    {toolCall?.toolName === 'Bash' &&
-                    typeof toolResult.toolResultContent === 'string' &&
-                    hasAnsiCodes(toolResult.toolResultContent) ? (
-                      <AnsiText content={toolResult.toolResultContent} />
-                    ) : (
-                      toolResult.toolResultContent || 'No content'
-                    )}
-                  </pre>
-                </div>
-              )}
-            </div>
-          </ScrollArea>
-        </div>
+                {/* Tool Result Section - only show if we have a result */}
+                {toolResult && (
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground mb-2">Result</h3>
+                    <pre className="font-mono text-sm whitespace-pre-wrap break-words">
+                      {/* Only apply ANSI parsing to Bash tool output */}
+                      {toolCall?.toolName === 'Bash' &&
+                      typeof toolResult.toolResultContent === 'string' &&
+                      hasAnsiCodes(toolResult.toolResultContent) ? (
+                        <AnsiText content={toolResult.toolResultContent} />
+                      ) : (
+                        toolResult.toolResultContent || 'No content'
+                      )}
+                    </pre>
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+          </div>
 
-        <div className="px-4 py-2 border-t bg-muted/30 flex justify-between items-center flex-none">
-          <span className="text-xs text-muted-foreground">
-            <kbd>j/k</kbd> or <kbd>↓/↑</kbd> to scroll
-          </span>
-          <span className="text-xs text-muted-foreground">
-            <kbd>i</kbd> or <kbd>ESC</kbd> to close
-          </span>
-        </div>
-      </DialogContent>
-    </Dialog>
+          <div className="px-4 py-2 border-t bg-muted/30 flex justify-between items-center flex-none">
+            <span className="text-xs text-muted-foreground">
+              <kbd>j/k</kbd> or <kbd>↓/↑</kbd> to scroll
+            </span>
+            <span className="text-xs text-muted-foreground">
+              <kbd>i</kbd> or <kbd>ESC</kbd> to close
+            </span>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </HotkeyScopeBoundary>
   )
 }
 
@@ -255,7 +291,9 @@ function getToolPrimaryParam(toolCall: ConversationEvent): string {
     const args = JSON.parse(toolCall.toolInputJson)
 
     // Show the most relevant argument based on tool name
-    if (toolCall.toolName === 'Read' && args.file_path) {
+    if (toolCall.toolName === 'Task' && args.description) {
+      return truncate(args.description, 60)
+    } else if (toolCall.toolName === 'Read' && args.file_path) {
       return args.file_path
     } else if (toolCall.toolName === 'Bash' && args.command) {
       return truncate(args.command, 60)
@@ -350,7 +388,10 @@ function renderToolInput(toolCall: ConversationEvent): React.ReactNode {
 
     // Special rendering for MultiEdit tool
     if (toolCall.toolName === 'MultiEdit') {
-      const allEdits = args.edits.map((e: any) => ({
+      // Defensive check for edits array
+      const edits = Array.isArray(args.edits) ? args.edits : []
+
+      const allEdits = edits.map((e: any) => ({
         oldValue: e.old_string,
         newValue: e.new_string,
       }))
@@ -362,7 +403,7 @@ function renderToolInput(toolCall: ConversationEvent): React.ReactNode {
             <span className="font-bold">{args.file_path}</span>
           </div>
           <div className="font-mono text-sm mb-2">
-            <span className="text-muted-foreground">{args.edits.length} edits</span>
+            <span className="text-muted-foreground">{edits.length} edits</span>
           </div>
           <div className="mt-2">
             <CustomDiffViewer edits={allEdits} splitView={false} />
@@ -381,6 +422,50 @@ function renderToolInput(toolCall: ConversationEvent): React.ReactNode {
               {args.plan}
             </pre>
           </div>
+        </div>
+      )
+    }
+
+    // Special rendering for Task tool (sub-agents)
+    if (toolCall.toolName === 'Task' && args.subagent_type) {
+      return (
+        <div className="space-y-3">
+          <div className="font-mono text-sm">
+            <span className="text-muted-foreground">Sub-agent Type:</span>{' '}
+            <span className="font-bold text-accent">{args.subagent_type}</span>
+          </div>
+          {args.description && (
+            <div className="font-mono text-sm">
+              <span className="text-muted-foreground">Description:</span>{' '}
+              <span className="italic">{args.description}</span>
+            </div>
+          )}
+          {args.prompt && (
+            <div className="font-mono text-sm">
+              <div className="text-muted-foreground mb-1">Prompt:</div>
+              <pre className="mt-1 whitespace-pre-wrap bg-muted/50 rounded-md p-3 break-words">
+                {args.prompt}
+              </pre>
+            </div>
+          )}
+          {/* Show other parameters if they exist */}
+          {Object.keys(args).filter(k => !['subagent_type', 'description', 'prompt'].includes(k))
+            .length > 0 && (
+            <div className="font-mono text-sm">
+              <div className="text-muted-foreground mb-1">Additional Parameters:</div>
+              <pre className="mt-1 whitespace-pre-wrap bg-muted/50 rounded-md p-3 break-words">
+                {JSON.stringify(
+                  Object.fromEntries(
+                    Object.entries(args).filter(
+                      ([k]) => !['subagent_type', 'description', 'prompt'].includes(k),
+                    ),
+                  ),
+                  null,
+                  2,
+                )}
+              </pre>
+            </div>
+          )}
         </div>
       )
     }

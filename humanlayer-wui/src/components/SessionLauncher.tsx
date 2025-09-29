@@ -1,30 +1,23 @@
-import React, { useEffect, useRef } from 'react'
-import { useHotkeys } from 'react-hotkeys-hook'
-import { Card, CardContent } from './ui/card'
+import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
+import { useSessionLauncher } from '@/hooks/useSessionLauncher'
+import { useFocusTrap } from '@/hooks/useFocusTrap'
 import { cn } from '@/lib/utils'
+import type React from 'react'
+import { useHotkeys } from 'react-hotkeys-hook'
 import CommandInput from './CommandInput'
 import CommandPaletteMenu from './CommandPaletteMenu'
-import { useSessionLauncher } from '@/hooks/useSessionLauncher'
-import { useStealHotkeyScope } from '@/hooks/useStealHotkeyScope'
+import { HotkeyScopeBoundary } from './HotkeyScopeBoundary'
+import { Card, CardContent } from './ui/card'
 
-const SessionLauncherHotkeysScope = 'session-launcher'
+interface SessionLauncherProps {
+  isOpen: boolean
+  onClose: () => void
+}
 
-export function SessionLauncher() {
-  const modalRef = useRef<HTMLDivElement>(null)
-  const {
-    isOpen,
-    close,
-    query,
-    setQuery,
-    config,
-    setConfig,
-    launchSession,
-    isLaunching,
-    error,
-    mode,
-    view,
-    setView,
-  } = useSessionLauncher()
+export function SessionLauncher({ isOpen, onClose }: SessionLauncherProps) {
+  const focusTrapRef = useFocusTrap(isOpen)
+  const { query, setQuery, config, setConfig, launchSession, isLaunching, error, mode, view, setView } =
+    useSessionLauncher()
 
   useHotkeys(
     'escape',
@@ -44,13 +37,13 @@ export function SessionLauncher() {
         ;(activeElement as HTMLElement).blur()
       } else {
         // Second ESC or ESC when no input focused: close modal
-        close()
+        onClose()
       }
     },
     {
       enabled: isOpen,
       enableOnFormTags: true,
-      scopes: SessionLauncherHotkeysScope,
+      scopes: [HOTKEY_SCOPES.SESSION_LAUNCHER],
     },
   )
 
@@ -64,46 +57,19 @@ export function SessionLauncher() {
     {
       enabled: isOpen,
       enableOnFormTags: true, // Critical: allows the shortcut to work in form inputs
-      scopes: SessionLauncherHotkeysScope,
+      scopes: [HOTKEY_SCOPES.SESSION_LAUNCHER],
       preventDefault: true,
     },
   )
 
-  // Capture Shift+Tab to prevent bubbling to background session
-  useHotkeys(
-    'shift+tab',
-    e => {
-      e.preventDefault()
-      e.stopPropagation()
-      // Use native event for complete isolation
-      const keyEvent = e as any
-      if (keyEvent.nativeEvent && typeof keyEvent.nativeEvent.stopImmediatePropagation === 'function') {
-        keyEvent.nativeEvent.stopImmediatePropagation()
-      }
-      // Let browser handle the actual navigation but prevent bubbling
-    },
-    {
-      enabled: isOpen,
-      enableOnFormTags: true,
-      scopes: SessionLauncherHotkeysScope,
-      preventDefault: true,
-    },
-  )
+  // Tab navigation is now handled by useFocusTrap hook
 
-  // Only steal scope when actually open
-  useStealHotkeyScope(SessionLauncherHotkeysScope, isOpen)
-
-  useEffect(() => {
-    if (isOpen && view === 'input' && modalRef.current) {
-      const input = modalRef.current.querySelector('input')
-      input?.focus()
-    }
-  }, [isOpen, view])
+  // Scope is now managed by HotkeyScopeBoundary wrapper
 
   // Click outside to close
   const handleOverlayClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
-      close()
+      onClose()
     }
   }
 
@@ -115,71 +81,78 @@ export function SessionLauncher() {
   if (!isOpen) return null
 
   return (
-    <div
-      className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
-      onClick={handleOverlayClick}
+    <HotkeyScopeBoundary
+      scope={HOTKEY_SCOPES.SESSION_LAUNCHER}
+      isActive={isOpen}
+      rootScopeDisabled={true}
+      componentName="SessionLauncher"
     >
-      <Card
-        ref={modalRef}
-        data-command-palette
-        className={cn(
-          'w-full max-w-2xl bg-background border-2 shadow-xl',
-          'animate-in fade-in-0 zoom-in-95 duration-200',
-        )}
+      <div
+        className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+        onClick={handleOverlayClick}
       >
-        <CardContent className="p-6">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-foreground">
-                {view === 'menu'
-                  ? mode === 'command'
-                    ? 'Command Palette'
-                    : 'Jump to Session'
-                  : 'Create Session'}
-              </h2>
-              <div className="flex items-center space-x-2">
-                {view === 'input' && (
-                  <button
-                    onClick={() => setView('menu')}
-                    className="text-xs text-muted-foreground hover:text-foreground"
-                  >
-                    ← Back
-                  </button>
-                )}
-                <kbd className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">ESC</kbd>
-              </div>
-            </div>
-
-            {view === 'menu' ? (
-              <CommandPaletteMenu />
-            ) : (
-              <>
-                <CommandInput
-                  value={query}
-                  onChange={setQuery}
-                  onSubmit={handleSubmit}
-                  placeholder="Ask an agent..."
-                  isLoading={isLaunching}
-                  config={config}
-                  onConfigChange={setConfig}
-                />
-
-                {error && (
-                  <div className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded p-3">
-                    {error}
-                  </div>
-                )}
-
-                <div className="flex items-center justify-end text-xs text-muted-foreground">
-                  <div className="flex items-center space-x-2">
-                    <span>ESC Close</span>
-                  </div>
+        <Card
+          ref={focusTrapRef}
+          data-command-palette
+          className={cn(
+            'w-full max-w-2xl bg-background border-2 shadow-xl',
+            'animate-in fade-in-0 zoom-in-95 duration-200',
+          )}
+        >
+          <CardContent className="p-6">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-foreground">
+                  {view === 'menu'
+                    ? mode === 'command'
+                      ? 'Command Palette'
+                      : 'Jump to Session'
+                    : 'Create Session'}
+                </h2>
+                <div className="flex items-center space-x-2">
+                  {view === 'input' && (
+                    <button
+                      onClick={() => setView('menu')}
+                      className="text-xs text-muted-foreground hover:text-foreground"
+                    >
+                      ← Back
+                    </button>
+                  )}
+                  <kbd className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">ESC</kbd>
                 </div>
-              </>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+              </div>
+
+              {view === 'menu' ? (
+                <CommandPaletteMenu />
+              ) : (
+                <>
+                  <CommandInput
+                    value={query}
+                    onChange={setQuery}
+                    onSubmit={handleSubmit}
+                    placeholder="Ask an agent..."
+                    isLoading={isLaunching}
+                    config={config}
+                    onConfigChange={setConfig}
+                  />
+
+                  {error && (
+                    <div className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded p-3">
+                      {error}
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-end text-xs text-muted-foreground">
+                    <div className="flex items-center space-x-2">
+                      <span>ESC Close</span>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </HotkeyScopeBoundary>
   )
 }

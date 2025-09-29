@@ -1,11 +1,12 @@
 import { create } from 'zustand'
 import { daemonClient } from '@/lib/daemon'
 import type { LaunchSessionRequest } from '@/lib/daemon/types'
-import { useHotkeysContext } from 'react-hotkeys-hook'
+import { useHotkeys } from 'react-hotkeys-hook'
 import { exists } from '@tauri-apps/plugin-fs'
 import { homeDir } from '@tauri-apps/api/path'
 import { logger } from '@/lib/logging'
 import { useStore } from '@/AppStore'
+import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
 
 interface SessionConfig {
   title?: string
@@ -53,6 +54,39 @@ const SESSION_LAUNCHER_QUERY_KEY = 'session-launcher-query'
 const OPENROUTER_API_KEY = 'humanlayer-openrouter-api-key'
 const BASETEN_API_KEY = 'humanlayer-baseten-api-key'
 const ADDITIONAL_DIRECTORIES_KEY = 'humanlayer-additional-directories'
+const PROVIDER_KEY = 'humanlayer-provider'
+const MODEL_KEY = 'humanlayer-model'
+const OPENROUTER_MODEL_KEY = 'humanlayer-openrouter-model'
+const BASETEN_MODEL_KEY = 'humanlayer-baseten-model'
+
+// Helper function to get saved provider
+const getSavedProvider = (): 'anthropic' | 'openrouter' | 'baseten' => {
+  const stored = localStorage.getItem(PROVIDER_KEY)
+  if (stored === 'openrouter' || stored === 'baseten') {
+    return stored
+  }
+  return 'anthropic' // Default to Anthropic
+}
+
+// Helper function to get saved model based on provider
+const getSavedModel = (provider: 'anthropic' | 'openrouter' | 'baseten'): string | undefined => {
+  if (provider === 'anthropic') {
+    return localStorage.getItem(MODEL_KEY) || undefined
+  } else if (provider === 'openrouter') {
+    return localStorage.getItem(OPENROUTER_MODEL_KEY) || undefined
+  } else if (provider === 'baseten') {
+    return localStorage.getItem(BASETEN_MODEL_KEY) || undefined
+  }
+  return undefined
+}
+
+// Helper function to clear all saved model preferences
+export const clearSavedModelPreferences = (): void => {
+  localStorage.removeItem(PROVIDER_KEY)
+  localStorage.removeItem(MODEL_KEY)
+  localStorage.removeItem(OPENROUTER_MODEL_KEY)
+  localStorage.removeItem(BASETEN_MODEL_KEY)
+}
 
 // Export localStorage key helpers (used by other components)
 export const getLastWorkingDir = () => localStorage.getItem(LAST_WORKING_DIR_KEY)
@@ -104,7 +138,8 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
   query: getSavedQuery(),
   config: {
     workingDir: getDefaultWorkingDir(),
-    provider: 'anthropic',
+    provider: getSavedProvider(),
+    model: getSavedModel(getSavedProvider()),
     openRouterApiKey: getSavedOpenRouterKey(),
     basetenApiKey: getSavedBasetenKey(),
     additionalDirectories: getSavedAdditionalDirectories(),
@@ -124,13 +159,15 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
 
   close: () => {
     const savedQuery = getSavedQuery()
+    const savedProvider = getSavedProvider()
     set({
       isOpen: false,
       view: 'menu',
       query: savedQuery,
       config: {
         workingDir: getDefaultWorkingDir(),
-        provider: 'anthropic',
+        provider: savedProvider,
+        model: getSavedModel(savedProvider),
         openRouterApiKey: getSavedOpenRouterKey(),
         basetenApiKey: getSavedBasetenKey(),
         additionalDirectories: getSavedAdditionalDirectories(),
@@ -151,6 +188,31 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
   },
 
   setConfig: config => {
+    // Save provider if it changed
+    if (config.provider) {
+      localStorage.setItem(PROVIDER_KEY, config.provider)
+    }
+
+    // Save model based on provider
+    if (config.model !== undefined) {
+      const modelKey =
+        config.provider === 'anthropic'
+          ? MODEL_KEY
+          : config.provider === 'openrouter'
+            ? OPENROUTER_MODEL_KEY
+            : config.provider === 'baseten'
+              ? BASETEN_MODEL_KEY
+              : null
+
+      if (modelKey) {
+        if (config.model) {
+          localStorage.setItem(modelKey, config.model)
+        } else {
+          localStorage.removeItem(modelKey)
+        }
+      }
+    }
+
     // Save or remove OpenRouter API key from localStorage
     if (config.openRouterApiKey) {
       localStorage.setItem(OPENROUTER_API_KEY, config.openRouterApiKey)
@@ -321,13 +383,15 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
 
   createNewSession: () => {
     const savedQuery = getSavedQuery()
+    const savedProvider = getSavedProvider()
     // Switch to input mode for session creation
     set({
       view: 'input',
       query: savedQuery,
       config: {
         workingDir: getDefaultWorkingDir(),
-        provider: 'anthropic',
+        provider: savedProvider,
+        model: getSavedModel(savedProvider),
         openRouterApiKey: getSavedOpenRouterKey(),
         basetenApiKey: getSavedBasetenKey(),
         additionalDirectories: getSavedAdditionalDirectories(),
@@ -344,6 +408,7 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
 
   reset: () => {
     const savedQuery = getSavedQuery()
+    const savedProvider = getSavedProvider()
     return set({
       isOpen: false,
       mode: 'command',
@@ -351,7 +416,8 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
       query: savedQuery,
       config: {
         workingDir: getDefaultWorkingDir(),
-        provider: 'anthropic',
+        provider: savedProvider,
+        model: getSavedModel(savedProvider),
         openRouterApiKey: getSavedOpenRouterKey(),
         basetenApiKey: getSavedBasetenKey(),
         additionalDirectories: getSavedAdditionalDirectories(),
@@ -369,10 +435,8 @@ export { isViewingSessionDetail }
 
 // Helper hook for global hotkey management
 export function useSessionLauncherHotkeys() {
-  const { activeScopes } = useHotkeysContext()
   const refreshSessions = useStore(state => state.refreshSessions)
-
-  const { open, close, isOpen, gPrefixMode, setGPrefixMode } = useSessionLauncher()
+  const { open, close, isOpen, gPrefixMode, setGPrefixMode, createNewSession } = useSessionLauncher()
 
   // Helper to check if user is actively typing in a text input
   const isTypingInInput = () => {
@@ -387,84 +451,72 @@ export function useSessionLauncherHotkeys() {
     )
   }
 
-  // Check if a modal scope is active (indicating a modal is open)
-  const isModalScopeActive = () => {
-    // Only check for specific modals that should block global hotkeys
-    // Don't include all modals - for example, we want 'c' to work in SessionDetail
-    return activeScopes.some(
-      scope =>
-        scope === 'tool-result-modal' || // Tool result modal (opened with 'i')
-        scope === 'session-launcher' || // Session launcher itself
-        scope === 'fork-view-modal' || // Fork view modal
-        scope === 'dangerously-skip-permissions-dialog', // Permissions dialog
-    )
-  }
+  // Cmd+K - Command palette (root scope)
+  useHotkeys(
+    'meta+k, ctrl+k',
+    () => {
+      if (!isOpen) {
+        open()
+      } else {
+        close()
+      }
+    },
+    {
+      scopes: [HOTKEY_SCOPES.ROOT],
+      preventDefault: true,
+    },
+  )
 
+  // C - Create new session (root scope)
+  useHotkeys(
+    'c',
+    async () => {
+      // Create draft session and navigate directly
+      try {
+        const response = await daemonClient.launchSession({
+          query: '', // Empty initial query for draft
+          working_dir: getLastWorkingDir() || '~/',
+          draft: true, // Create as draft
+        })
+
+        // Refresh sessions to include the new draft
+        await refreshSessions()
+
+        // Navigate directly to SessionDetail
+        window.location.hash = `#/sessions/${response.sessionId}`
+      } catch (error) {
+        logger.error('Failed to create draft session:', error)
+      }
+    },
+    {
+      scopes: [HOTKEY_SCOPES.ROOT],
+      enabled: !isTypingInInput(),
+      preventDefault: true,
+    },
+  )
+
+  // G - G prefix mode (root scope)
+  useHotkeys(
+    'g',
+    () => {
+      setGPrefixMode(true)
+      setTimeout(() => setGPrefixMode(false), 2000)
+    },
+    {
+      scopes: [HOTKEY_SCOPES.ROOT],
+      enabled: !isTypingInInput(),
+      preventDefault: true,
+    },
+  )
+
+  // Note: G>S, G>E, G>I are already handled in Layout.tsx with the new scope system
+  // They don't need to be duplicated here
+
+  // For backward compatibility, return an empty handleKeyDown
+  // This can be removed once Layout.tsx is updated to not use it
   return {
-    handleKeyDown: (e: KeyboardEvent) => {
-      // Cmd+K - Global command palette (shows menu)
-      if (e.metaKey && e.key === 'k') {
-        e.preventDefault()
-        if (!isOpen) {
-          open()
-        } else {
-          close()
-        }
-        return
-      }
-
-      // C - Create new draft session directly
-      // Don't trigger if a modal is already open
-      if (e.key === 'c' && !e.metaKey && !e.ctrlKey && !isTypingInInput()) {
-        if (!isModalScopeActive()) {
-          e.preventDefault()
-          // Create draft session and navigate directly
-          ;(async () => {
-            try {
-              const response = await daemonClient.launchSession({
-                query: '', // Empty initial query for draft
-                working_dir: getLastWorkingDir() || '~/',
-                draft: true, // Create as draft
-              })
-
-              // Refresh sessions to include the new draft
-              await refreshSessions()
-
-              // Navigate directly to SessionDetail
-              window.location.hash = `#/sessions/${response.sessionId}`
-            } catch (error) {
-              logger.error('Failed to create draft session:', error)
-            }
-          })()
-          return
-        }
-      }
-
-      // G prefix navigation (prepare for Phase 2)
-      if (e.key === 'g' && !e.metaKey && !e.ctrlKey && !isTypingInInput() && !isModalScopeActive()) {
-        e.preventDefault()
-        setGPrefixMode(true)
-        setTimeout(() => setGPrefixMode(false), 2000)
-        return
-      }
-
-      // G+A - Go to approvals (Phase 2)
-      if (gPrefixMode && e.key === 'a') {
-        e.preventDefault()
-        setGPrefixMode(false)
-        // TODO: Navigate to approvals view
-        logger.log('Navigate to approvals (Phase 2)')
-        return
-      }
-
-      // G+S - Go to sessions (Phase 2)
-      if (gPrefixMode && e.key === 's') {
-        e.preventDefault()
-        setGPrefixMode(false)
-        // Navigate to sessions view
-        window.location.hash = '#/'
-        return
-      }
+    handleKeyDown: () => {
+      // No-op - hotkeys are now handled via useHotkeys with proper scopes
     },
   }
 }

@@ -17,7 +17,7 @@ export function TestErrorTrigger() {
 
   // Cmd+Shift+Alt+E - Send test error via captureException (doesn't crash app)
   useHotkeys(
-    'meta+shift+alt+e',
+    'meta+shift+alt+e, ctrl+shift+alt+e',
     e => {
       console.log('[TestErrorTrigger] Hotkey triggered!')
       e.preventDefault()
@@ -44,7 +44,7 @@ export function TestErrorTrigger() {
 
   // Cmd+Shift+Alt+B - Trigger React error boundary (crashes component)
   useHotkeys(
-    'meta+shift+alt+b',
+    'meta+shift+alt+b, ctrl+shift+alt+b',
     () => {
       console.log('[TestErrorTrigger] Triggering React Error Boundary test!')
       toast.warning('Triggering Error Boundary in 1 second...')

@@ -196,3 +196,83 @@ export const WhitespaceOnlyChanges: Story = {
     mode: 'unified',
   },
 }
+
+export const UndefinedContent: Story = {
+  args: {
+    oldContent: undefined as any,
+    newContent: undefined as any,
+    mode: 'unified',
+  },
+}
+
+export const PartiallyUndefinedOld: Story = {
+  args: {
+    oldContent: undefined as any,
+    newContent: 'const greeting = "Hello World"',
+    mode: 'unified',
+  },
+}
+
+export const PartiallyUndefinedNew: Story = {
+  args: {
+    oldContent: 'const greeting = "Hello"',
+    newContent: undefined as any,
+    mode: 'unified',
+  },
+}
+
+// Real-world broken case that ENG-2188 fixed
+export const MalformedToolInput: Story = {
+  name: 'Malformed Tool Input (ENG-2188 Bug Fix)',
+  args: {
+    oldContent: undefined as any,
+    newContent: undefined as any,
+    mode: 'unified',
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: `This demonstrates the bug from ENG-2188 where malformed tool input JSON
+        (e.g., {"file_path": "/test.js"} without old_string/new_string fields)
+        would cause a TypeError. With the fix, this now displays an empty diff instead of crashing.`,
+      },
+    },
+  },
+}
+
+// Another real case: Edit tool with null values
+export const EditToolNullValues: Story = {
+  name: 'Edit Tool with Null Values',
+  args: {
+    oldContent: null as any,
+    newContent: null as any,
+    mode: 'split',
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: `Simulates Edit tool receiving null values from backend JSON parsing.
+        Previously would crash with "Cannot read properties of null".
+        Now handles gracefully showing empty diff panels.`,
+      },
+    },
+  },
+}
+
+// Partial content case common in Write tool
+export const WriteToolMissingContent: Story = {
+  name: 'Write Tool Missing Content',
+  args: {
+    oldContent: '// Existing file content\nfunction main() {\n  console.log("hello");\n}',
+    newContent: undefined as any,
+    mode: 'unified',
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: `Simulates Write tool when content field is missing from JSON.
+        Should show the existing file content with no additions.`,
+      },
+    },
+  },
+}

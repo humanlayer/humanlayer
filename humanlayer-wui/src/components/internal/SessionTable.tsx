@@ -1,7 +1,7 @@
 import { Session, SessionStatus } from '@/lib/daemon/types'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
-import { useHotkeys, useHotkeysContext } from 'react-hotkeys-hook'
+import { useHotkeys } from 'react-hotkeys-hook'
 import { useEffect, useRef, useState } from 'react'
 import { CircleOff, CheckSquare, Square, FileText, Pencil, ShieldOff } from 'lucide-react'
 import { getStatusTextClass } from '@/utils/component-utils'
@@ -19,6 +19,8 @@ import { daemonClient } from '@/lib/daemon/client'
 import { renderSessionStatus } from '@/utils/sessionStatus'
 import { logger } from '@/lib/logging'
 import { DiscardDraftsDialog } from './DiscardDraftsDialog'
+import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
+import { HotkeyScopeBoundary } from '../HotkeyScopeBoundary'
 
 interface SessionTableProps {
   sessions: Session[]
@@ -30,6 +32,7 @@ interface SessionTableProps {
   focusedSession: Session | null
   searchText?: string
   matchedSessions?: Map<string, any>
+  archived?: boolean // Add this to indicate if showing archived sessions
   emptyState?: {
     icon?: LucideIcon
     title: string
@@ -41,8 +44,6 @@ interface SessionTableProps {
   }
 }
 
-export const SessionTableHotkeysScope = 'session-table'
-
 export default function SessionTable({
   sessions,
   handleFocusSession,
@@ -53,10 +54,10 @@ export default function SessionTable({
   focusedSession,
   searchText,
   matchedSessions,
+  archived = false,
   emptyState,
 }: SessionTableProps) {
   const isSessionLauncherOpen = useSessionLauncher(state => state.isOpen)
-  const { enableScope, disableScope } = useHotkeysContext()
   const tableRef = useRef<HTMLTableElement>(null)
   const {
     archiveSession,
@@ -66,6 +67,9 @@ export default function SessionTable({
     bulkSelect,
     bulkDiscardDrafts,
   } = useStore()
+
+  // Determine scope based on archived state
+  const tableScope = archived ? HOTKEY_SCOPES.SESSIONS_ARCHIVED : HOTKEY_SCOPES.SESSIONS
 
   // State for inline editing
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null)
@@ -189,12 +193,8 @@ export default function SessionTable({
     handleActivateSession?.(session)
   }
 
-  useEffect(() => {
-    enableScope(SessionTableHotkeysScope)
-    return () => {
-      disableScope(SessionTableHotkeysScope)
-    }
-  }, [])
+  // Scope is now managed by parent component or initially active
+  // No need for manual scope management here
 
   // Scroll focused session into view
   useEffect(() => {
@@ -212,7 +212,7 @@ export default function SessionTable({
       handleFocusNextSession?.()
     },
     {
-      scopes: SessionTableHotkeysScope,
+      scopes: [tableScope],
       enabled: !isSessionLauncherOpen,
     },
     [handleFocusNextSession],
@@ -224,7 +224,7 @@ export default function SessionTable({
       handleFocusPreviousSession?.()
     },
     {
-      scopes: SessionTableHotkeysScope,
+      scopes: [tableScope],
       enabled: !isSessionLauncherOpen,
     },
     [handleFocusPreviousSession],
@@ -239,7 +239,7 @@ export default function SessionTable({
       }
     },
     {
-      scopes: SessionTableHotkeysScope,
+      scopes: [tableScope],
       enabled: !isSessionLauncherOpen,
       preventDefault: true,
     },
@@ -254,7 +254,7 @@ export default function SessionTable({
       }
     },
     {
-      scopes: SessionTableHotkeysScope,
+      scopes: [tableScope],
       enabled: !isSessionLauncherOpen,
       preventDefault: true,
     },
@@ -263,7 +263,7 @@ export default function SessionTable({
 
   // Select all with meta+a (Cmd+A on Mac, Ctrl+A on Windows/Linux)
   useHotkeys(
-    'meta+a',
+    'meta+a, ctrl+a',
     () => {
       // Toggle all sessions - if all are selected, deselect all; otherwise select all
       const allSelected = sessions.every(s => selectedSessions.has(s.id))
@@ -283,7 +283,7 @@ export default function SessionTable({
       })
     },
     {
-      scopes: SessionTableHotkeysScope,
+      scopes: [tableScope],
       enabled: !isSessionLauncherOpen,
       preventDefault: true,
     },
@@ -297,7 +297,7 @@ export default function SessionTable({
         handleActivateSession?.(focusedSession)
       }
     },
-    { scopes: SessionTableHotkeysScope, enabled: !isSessionLauncherOpen },
+    { scopes: [tableScope], enabled: !isSessionLauncherOpen },
   )
 
   // Track if g>e was recently pressed to prevent 'e' from firing
@@ -312,7 +312,7 @@ export default function SessionTable({
     },
     {
       preventDefault: true,
-      scopes: SessionTableHotkeysScope,
+      scopes: [tableScope],
       enabled: !isSessionLauncherOpen,
     },
   )
@@ -448,7 +448,7 @@ export default function SessionTable({
       }
     },
     {
-      scopes: SessionTableHotkeysScope,
+      scopes: [tableScope],
       enabled: !isSessionLauncherOpen && (focusedSession !== null || selectedSessions.size > 0),
       preventDefault: true,
       enableOnFormTags: false,
@@ -473,7 +473,7 @@ export default function SessionTable({
       }
     },
     {
-      scopes: SessionTableHotkeysScope,
+      scopes: [tableScope],
       enabled: !isSessionLauncherOpen && focusedSession !== null,
       preventDefault: true,
       enableOnFormTags: false,
@@ -490,7 +490,7 @@ export default function SessionTable({
       }
     },
     {
-      scopes: SessionTableHotkeysScope,
+      scopes: [tableScope],
       enabled: !isSessionLauncherOpen && focusedSession !== null && editingSessionId === null,
       preventDefault: true,
       enableOnFormTags: false,
@@ -499,7 +499,10 @@ export default function SessionTable({
   )
 
   return (
-    <>
+    <HotkeyScopeBoundary
+      scope={tableScope}
+      componentName={`SessionTable-${archived ? 'archived' : 'normal'}`}
+    >
       {sessions.length > 0 ? (
         <>
           {/* TODO(2): Fix ref warning - Table component needs forwardRef */}
@@ -707,6 +710,6 @@ export default function SessionTable({
           setDraftsToDiscard([])
         }}
       />
-    </>
+    </HotkeyScopeBoundary>
   )
 }

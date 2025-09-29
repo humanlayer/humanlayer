@@ -46,7 +46,7 @@ export function WriteToolCallContent({
         <div className="mt-2">
           <DiffViewer
             oldContent={fileSnapshot || ''}
-            newContent={toolInput.content}
+            newContent={toolInput.content || ''}
             mode="unified"
             showFullFile={false}
           />
