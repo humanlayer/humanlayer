@@ -15,6 +15,9 @@ jobs:
   fetch-tickets:
     runs-on: ubuntu-latest
     steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@v4
+
       - name: "Fetch Researchable Linear Tickets"
         uses: ./.github/actions/fetch-researchable-tickets
         with:
