@@ -50,6 +50,38 @@ jobs:
       matrix:
         ticket_id: ${{ fromJSON(needs.fetch-tickets.outputs.ticket_ids)}}
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.21"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Add Go bin to PATH
+        run: echo "$HOME/go/bin" >> $GITHUB_PATH
+
+      - name: Setup repository
+        run: make setup
+
+      - name: Install humanlayer CLI globally
+        run: npm install -g humanlayer
+
+      - name: Initialize thoughts tool
+        run: make thoughts
+
       - name: Fetch Ticket with Linear CLI
         id: fetch-ticket
         run: linear get-issue ${{ matrix.ticket_id }}
