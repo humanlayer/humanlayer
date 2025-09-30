@@ -82,6 +82,14 @@ jobs:
       - name: Install humanlayer CLI globally
         run: npm install -g humanlayer
 
+      - name: Clone thoughts repository
+        uses: actions/checkout@v4
+        with:
+          repository: humanlayer/thoughts
+          ref: main
+          ssh-key: ${{ secrets.THOUGHTS_WRITE_DEPLOY_KEY }}
+          path: ./..
+
       - name: Initialize thoughts tool
         run: make thoughts
 
