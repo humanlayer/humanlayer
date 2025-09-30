@@ -129,7 +129,7 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: >
-          cd humanlayer && claude --dangerously-skip-permissions -p "/create_plan ${{ env.TICKET_FILE_PATH }} 
+          cd humanlayer && claude --model opus --dangerously-skip-permissions -p "/create_plan ${{ env.TICKET_FILE_PATH }} 
             Start by reading the ticket file and all of the comments in it. 
             Then, locate the research for the ticket in thoughts/shared/research.
             Also check /thoughts/shared/images/${{matrix.ticket_id}} for any relevant images and read any you find.
@@ -138,7 +138,12 @@ jobs:
 
             **DO NOT ASK THE USER FOR DIRECTIONS OR CLARIFICATION. Simply proceed to create a plan based on the information you have been provided with, and then write your plan document. **
 
-            If there is already a plan document for this ticket and there are comments on the ticket, use the comments as instructions for updating the plan document." 2>&1 | tee CLAUDE_ANSWER.md
+            If there is already a plan document for this ticket and there are comments on the ticket, use the comments as instructions for updating the plan document.
+            
+            When referencing the plan document that you created in thoughts/ to the user once you finish, always provide GitHub markdown-style links:
+              - `thoughts/shared/plans/... → `[LINK TITLE HERE](https://github.com/humanlayer/thoughts/blob/main/repos/humanlayer/shared/plans/...)`
+              
+            " 2>&1 | tee CLAUDE_ANSWER.md
 
       - name: Sync plan to thoughts
         id: sync-plan-document
