@@ -21,6 +21,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	claudecode "github.com/humanlayer/humanlayer/claudecode-go"
+	"github.com/humanlayer/humanlayer/hld/store"
 	"github.com/humanlayer/humanlayer/hld/internal/testutil"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/require"
@@ -232,58 +233,14 @@ func TestMCPClaudeCodeSessionIDCorrelation(t *testing.T) {
 		return false
 	}, 5*time.Second, 100*time.Millisecond, "HTTP server did not start")
 
-	// Open database connection
+	// Initialize database properly using the store package instead of CREATE TABLE IF NOT EXISTS
+	_, err = store.NewSQLiteStore(dbPath)
+	require.NoError(t, err, "Failed to initialize database store")
+
+	// Open database connection after initialization
 	db, err := sql.Open("sqlite3", dbPath)
 	require.NoError(t, err)
 	defer db.Close()
-
-	// Run database migrations first
-	// Create the sessions table schema
-	_, err = db.Exec(`
-		CREATE TABLE IF NOT EXISTS sessions (
-			id TEXT PRIMARY KEY,
-			run_id TEXT NOT NULL,
-			claude_session_id TEXT,
-			parent_session_id TEXT,
-			query TEXT,
-			summary TEXT,
-			title TEXT,
-			model TEXT,
-			model_id TEXT,
-			working_dir TEXT,
-			status TEXT NOT NULL,
-			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			last_activity_at DATETIME,
-			completed_at DATETIME,
-			auto_accept_edits INTEGER DEFAULT 0,
-			dangerously_skip_permissions INTEGER DEFAULT 0,
-			dangerously_skip_permissions_expires_at DATETIME,
-			max_turns INTEGER,
-			system_prompt TEXT,
-			append_system_prompt TEXT,
-			custom_instructions TEXT,
-			permission_prompt_tool TEXT,
-			allowed_tools TEXT,
-			disallowed_tools TEXT,
-			additional_directories TEXT,
-			cost_usd REAL,
-			input_tokens INTEGER,
-			output_tokens INTEGER,
-			cache_creation_input_tokens INTEGER DEFAULT 0,
-			cache_read_input_tokens INTEGER DEFAULT 0,
-			effective_context_tokens INTEGER DEFAULT 0,
-			duration_ms INTEGER,
-			num_turns INTEGER,
-			result_content TEXT,
-			error_message TEXT,
-			archived INTEGER DEFAULT 0,
-			proxy_enabled INTEGER DEFAULT 0,
-			proxy_base_url TEXT,
-			proxy_model_override TEXT,
-			proxy_api_key TEXT
-		)
-	`)
-	require.NoError(t, err)
 
 	// Create a test session in the database
 	testSessionID := "test-claudecode-session"
