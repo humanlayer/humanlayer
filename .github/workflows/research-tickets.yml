@@ -105,10 +105,14 @@ jobs:
       - name: Fetch Ticket with Linear CLI
         id: fetch-ticket
         run: linear get-issue ${{ matrix.ticket_id }} >> humanlayer/${{ env.TICKET_FILE_PATH }}
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
 
       - name: Fetch images from ticket with Linear CLI
         id: fetch-ticket-images
         run: cd humanlayer && linear fetch-images ${{ matrix.ticket_id}}
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
 
       - name: Install Claude Code
         id: run-claude-research
@@ -129,3 +133,5 @@ jobs:
       - name: Add comment
         id: update-ticket-with-notes
         run: linear add-comment -i ${{matrix.ticket_id}} "$(cat CLAUDE_ANSWER.md)"
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
