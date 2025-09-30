@@ -77,7 +77,7 @@ jobs:
         run: echo "$HOME/go/bin" >> $GITHUB_PATH
 
       - name: Setup repository
-        run: make setup-ci
+        run: npm install -g @anthropic-ai/claude-code
 
       - name: Install humanlayer CLI globally
         run: npm install -g humanlayer
