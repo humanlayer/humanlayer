@@ -297,6 +297,68 @@ async function addComment(message: string, options: { issueId?: string }) {
   }
 }
 
+async function updateStatus(issueId: string, statusName: string): Promise<void> {
+  try {
+    if (!linear) {
+      throw new Error("Linear client not initialized. Check your API key.");
+    }
+
+    // Validate issue ID format
+    if (!issueId || !/^[A-Za-z]+-\d+$/i.test(issueId)) {
+      console.error(chalk.red("Error: Invalid issue ID format. Expected format: ENG-123"));
+      process.exit(1);
+    }
+
+    const normalizedId = issueId.toUpperCase();
+
+    // First, fetch the issue to get its team
+    const issue = await linear.issue(normalizedId);
+
+    if (!issue) {
+      console.error(chalk.red(`Issue ${normalizedId} not found.`));
+      process.exit(1);
+    }
+
+    const team = await issue.team;
+    if (!team) {
+      console.error(chalk.red(`Could not determine team for issue ${normalizedId}.`));
+      process.exit(1);
+    }
+
+    // Fetch available states for the team
+    const states = await team.states();
+
+    // Find the state by name (case-insensitive)
+    const targetState = states.nodes.find(state =>
+      state.name.toLowerCase() === statusName.toLowerCase()
+    );
+
+    if (!targetState) {
+      console.error(chalk.red(`Status "${statusName}" not found for team ${team.name}.`));
+      console.log(chalk.yellow("\nAvailable statuses:"));
+      states.nodes.forEach(state => {
+        console.log(`  - ${state.name}`);
+      });
+      process.exit(1);
+    }
+
+    // Update the issue with the new state
+    const result = await linear.issueUpdate(normalizedId, {
+      stateId: targetState.id
+    });
+
+    if (result.success) {
+      console.log(chalk.green(`✓ Updated ${normalizedId} status to "${targetState.name}"`));
+    } else {
+      console.error(chalk.red(`Failed to update status for ${normalizedId}.`));
+      process.exit(1);
+    }
+  } catch (error) {
+    console.error(chalk.red("Error updating status:"), error instanceof Error ? error.message : String(error));
+    process.exit(1);
+  }
+}
+
 async function fetchImages(issueId: string): Promise<void> {
   try {
     // Re-initialize Linear client with signed URL headers to get JWT-signed URLs
@@ -424,6 +486,11 @@ program
   .description("Download all images from a Linear issue to thoughts/shared/images/")
   .action(fetchImages);
 
+program
+  .command("update-status <id> <status>")
+  .description("Update the status of a Linear issue (e.g. 'research needed', 'in review')")
+  .action(updateStatus);
+
 // Add completion generation
 program
   .command("completion")
@@ -432,7 +499,7 @@ program
   .option("--zsh", "Generate Zsh completion script")
   .option("--fish", "Generate Fish completion script")
   .action((options) => {
-    const commands = ["list-issues", "get-issue", "add-comment", "fetch-images", "completion", "help"];
+    const commands = ["list-issues", "get-issue", "add-comment", "fetch-images", "update-status", "completion", "help"];
 
     if (options.bash) {
       // Basic bash completion
@@ -467,6 +534,7 @@ _linear() {
     'get-issue:Show issue details and comments'
     'add-comment:Add a comment to an issue'
     'fetch-images:Download all images from an issue'
+    'update-status:Update the status of a Linear issue'
     'completion:Generate shell completion script'
     'help:Display help for command'
   )
@@ -496,6 +564,7 @@ complete -c linear -n "__fish_use_subcommand" -a "list-issues" -d "List your ass
 complete -c linear -n "__fish_use_subcommand" -a "get-issue" -d "Show issue details and comments"
 complete -c linear -n "__fish_use_subcommand" -a "add-comment" -d "Add a comment to an issue"
 complete -c linear -n "__fish_use_subcommand" -a "fetch-images" -d "Download all images from an issue"
+complete -c linear -n "__fish_use_subcommand" -a "update-status" -d "Update the status of a Linear issue"
 complete -c linear -n "__fish_use_subcommand" -a "completion" -d "Generate shell completion script"
 complete -c linear -n "__fish_use_subcommand" -a "help" -d "Display help for command"
 
