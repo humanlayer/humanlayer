@@ -129,7 +129,7 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: >
-          cd humanlayer && claude --model opus --dangerously-skip-permissions -p "/research_codebase ${{ env.TICKET_FILE_PATH }} 
+          cd humanlayer && claude --dangerously-skip-permissions -p '/research_codebase ${{ env.TICKET_FILE_PATH }} 
             Start by reading the ticket and all of the comments.
             Also check /thoughts/shared/images/${{matrix.ticket_id}} for any relevant images and read any you find.
             Then proceed to research the codebase based on the instructions.
@@ -140,7 +140,7 @@ jobs:
             When referencing the research document that you created in thoughts/ to the user once you finish, always provide GitHub markdown-style links:
             - thoughts/shared/research/... → [LINK TITLE HERE](https://github.com/humanlayer/thoughts/blob/main/repos/humanlayer/shared/research/...)
               
-            " 2>&1 | tee CLAUDE_ANSWER.md
+            ' 2>&1 | tee CLAUDE_ANSWER.md
 
       - name: Sync research to thoughts
         id: sync-research-document
