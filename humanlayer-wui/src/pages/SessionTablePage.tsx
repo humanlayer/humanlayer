@@ -257,13 +257,13 @@ export function SessionTablePage() {
                 ? ` (${sessionCounts.normal})`
                 : ''}
             </TabsTrigger>
-            <TabsTrigger value={ViewMode.Archived}>Archived</TabsTrigger>
             <TabsTrigger value={ViewMode.Drafts}>
               Drafts
               {sessionCounts?.draft !== undefined && sessionCounts.draft > 0
                 ? ` (${sessionCounts.draft})`
                 : ''}
             </TabsTrigger>
+            <TabsTrigger value={ViewMode.Archived}>Archived</TabsTrigger>
           </TabsList>
         </Tabs>
       </nav>

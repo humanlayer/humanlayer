@@ -145,8 +145,8 @@ export const useStore = create<StoreState>((set, get) => ({
   focusedSession: null,
   sessionTableViewModes: [
     { mode: ViewMode.Normal, selected: true },
-    { mode: ViewMode.Archived, selected: false },
     { mode: ViewMode.Drafts, selected: false },
+    { mode: ViewMode.Archived, selected: false },
   ],
   selectedSessions: new Set<string>(),
   pendingUpdates: new Map<string, PendingUpdate>(),

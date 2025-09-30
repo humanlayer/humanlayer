@@ -490,18 +490,6 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
                   onModelChange={onModelChange}
                   statusOverride={getStatusOverride()}
                 />
-                <ActionButtons
-                  sessionId={session.id}
-                  canFork={canFork}
-                  bypassEnabled={bypassEnabled}
-                  autoAcceptEnabled={autoAcceptEnabled}
-                  sessionStatus={sessionStatus}
-                  isArchived={isArchived || false}
-                  onToggleFork={onToggleForkView || (() => {})}
-                  onToggleBypass={onToggleDangerouslySkipPermissions || (() => {})}
-                  onToggleAutoAccept={onToggleAutoAccept || (() => {})}
-                  onToggleArchive={onToggleArchive || (() => {})}
-                />
               </div>
 
               {/* Existing input area */}
@@ -545,30 +533,44 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
               </div>
 
               {/* Keyboard shortcuts (condensed) */}
-              <div className="flex items-center justify-end gap-2">
-                {isDraft && (
+              <div className="flex items-center justify-between gap-2">
+                <ActionButtons
+                  sessionId={session.id}
+                  canFork={canFork}
+                  bypassEnabled={bypassEnabled}
+                  autoAcceptEnabled={autoAcceptEnabled}
+                  sessionStatus={sessionStatus}
+                  isArchived={isArchived || false}
+                  onToggleFork={onToggleForkView || (() => {})}
+                  onToggleBypass={onToggleDangerouslySkipPermissions || (() => {})}
+                  onToggleAutoAccept={onToggleAutoAccept || (() => {})}
+                  onToggleArchive={onToggleArchive || (() => {})}
+                />
+                <div className="flex items-center justify-end gap-2">
+                  {isDraft && (
+                    <Button
+                      onClick={onDiscardDraft}
+                      disabled={isResponding}
+                      variant="secondary"
+                      className="h-auto py-0.5 px-2 text-xs transition-all duration-200"
+                    >
+                      {/* {responseEditor && !responseEditor.isEmpty ? 'Discard' : 'Cancel'} Until we've implemented change detection we'll always discard */}
+                      {'Discard'}
+                      <kbd className="ml-1 px-1 py-0.5 text-xs bg-[var(--terminal-accent-dim)]/50 border border-border text-white rounded">
+                        {isMac ? 'Cmd+Shift+.' : 'Ctrl+Shift+.'}
+                      </kbd>
+                    </Button>
+                  )}
                   <Button
-                    onClick={onDiscardDraft}
-                    disabled={isResponding}
-                    variant="secondary"
+                    onClick={handleSubmit}
+                    disabled={isDisabled}
+                    variant={submitButtonVariant}
                     className="h-auto py-0.5 px-2 text-xs transition-all duration-200"
                   >
-                    {/* {responseEditor && !responseEditor.isEmpty ? 'Discard' : 'Cancel'} Until we've implemented change detection we'll always discard */}
-                    {'Discard'}
-                    <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">
-                      {isMac ? 'Cmd+Shift+.' : 'Ctrl+Shift+.'}
-                    </kbd>
+                    {getSendButtonText()}
+                    <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">{sendKey}</kbd>
                   </Button>
-                )}
-                <Button
-                  onClick={handleSubmit}
-                  disabled={isDisabled}
-                  variant={submitButtonVariant}
-                  className="h-auto py-0.5 px-2 text-xs transition-all duration-200"
-                >
-                  {getSendButtonText()}
-                  <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">{sendKey}</kbd>
-                </Button>
+                </div>
               </div>
             </div>
           </div>

@@ -19,6 +19,7 @@ export const getSessionStatusText = (status: string): string => {
 }
 
 export const getInputPlaceholder = (status: string): string => {
+  if (status === 'draft') return 'Find a bug and fix it.'
   if (status === 'failed') return 'Enter your message to retry from where it failed...'
   if (status === 'running' || status === 'starting') return 'Enter message to interrupt...'
   return 'Enter your message to continue the conversation...'

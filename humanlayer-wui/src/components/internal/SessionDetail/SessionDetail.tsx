@@ -6,7 +6,7 @@ import { useSearchParams } from 'react-router'
 import { ConversationEvent, Session, ApprovalStatus, SessionStatus } from '@/lib/daemon/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { useConversation, useKeyboardNavigationProtection } from '@/hooks'
-import { ChevronDown, FolderOpen } from 'lucide-react'
+import { ChevronDown, FolderOpen, TextSearch } from 'lucide-react'
 import { daemonClient } from '@/lib/daemon/client'
 import { useStore } from '@/AppStore'
 import { getArchiveOnForkPreference } from '@/lib/preferences'
@@ -34,6 +34,8 @@ import { useTaskGrouping } from './hooks/useTaskGrouping'
 import { useSessionClipboard } from './hooks/useSessionClipboard'
 import { useRecentPaths } from '@/hooks/useRecentPaths'
 import { logger } from '@/lib/logging'
+import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
 
 interface SessionDetailProps {
   session: Session
@@ -674,6 +676,24 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     [session.id, session.workingDir],
   )
 
+  // Handle title changes for draft sessions
+  const handleTitleChange = useCallback(
+    async (newTitle: string) => {
+      // Only allow editing title in draft mode
+      if (!isDraft) return
+
+      try {
+        await daemonClient.updateSessionTitle(session.id, newTitle)
+        useStore.getState().updateSession(session.id, { title: newTitle })
+      } catch (error) {
+        toast.error('Failed to update session title', {
+          description: error instanceof Error ? error.message : 'Unknown error',
+        })
+      }
+    },
+    [isDraft, session.id],
+  )
+
   // Handle discarding a draft session
   const handleDiscardDraft = useCallback(() => {
     // TODO(3): Implement hasChanges logic, for now we'll just say there are changes
@@ -1273,14 +1293,31 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
           {/* Working directory info - show SearchInput for drafts, AdditionalDirectoriesDropdown otherwise */}
           {isDraft ? (
             <div className="flex-1">
-              <SearchInput
-                placeholder="Select a directory to work in..."
-                className="mt-1"
-                recentDirectories={recentPaths}
-                value={selectedDirectory}
-                onChange={handleDirectoryChange}
-                onSubmit={value => value && handleDirectoryChange(value)}
-              />
+              <div className="mb-4 px-2">
+                <Label className="text-xs mb-1 uppercase tracking-wider text-muted-foreground">
+                  <TextSearch className="h-3 w-3" /> title
+                </Label>
+                <Input
+                  placeholder="Describe this session..."
+                  className="mt-1"
+                  value={session.title || session.summary || ''}
+                  onChange={e => handleTitleChange(e.target.value)}
+                />
+              </div>
+
+              <div className="mb-4 px-2">
+                <Label className="text-xs mb-1 uppercase tracking-wider text-muted-foreground">
+                  <FolderOpen className="h-3 w-3" /> working directory
+                </Label>
+                <SearchInput
+                  placeholder="Select a directory to work in..."
+                  className="mt-1"
+                  recentDirectories={recentPaths}
+                  value={selectedDirectory}
+                  onChange={handleDirectoryChange}
+                  onSubmit={value => value && handleDirectoryChange(value)}
+                />
+              </div>
             </div>
           ) : (
             session.workingDir && (
