@@ -87,7 +87,7 @@ jobs:
           # allowed_tools: "Bash(npm install),Bash(npm run build),Bash(npm run test:*),Bash(npm run lint:*)"
 
           # Custom instructions including manual prompt when triggered via workflow_dispatch
-          custom_instructions: |
+          prompt: |
             ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.prompt || '' }}
 
           # Optional: Custom environment variables for Claude
