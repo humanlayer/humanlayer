@@ -138,7 +138,7 @@ jobs:
 
             If there is already a research document for this ticket and there are comments on the ticket, use the comments as instructions for updating the research document.
             When referencing the research document that you created in thoughts/ to the user once you finish, always provide GitHub markdown-style links:
-            - `thoughts/shared/research/... → `[LINK TITLE HERE](https://github.com/humanlayer/thoughts/blob/main/repos/humanlayer/shared/research/...)`
+            - thoughts/shared/research/... → [LINK TITLE HERE](https://github.com/humanlayer/thoughts/blob/main/repos/humanlayer/shared/research/...)
               
             " 2>&1 | tee CLAUDE_ANSWER.md
 
