@@ -12,7 +12,6 @@ setup-ci: ci-tools setup ## Complete CI setup including CI-specific tools
 ci-tools: ## Install CI-specific tools
 	@echo "Installing CI-specific tools..."
 	@command -v claude >/dev/null 2>&1 || npm install -g @anthropic-ai/claude-code
-	@command -v uv >/dev/null 2>&1 || (curl -LsSf https://astral.sh/uv/install.sh | sh)
 	@command -v golangci-lint >/dev/null 2>&1 || go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 
 thoughts:

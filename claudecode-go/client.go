@@ -191,6 +191,11 @@ func (c *Client) buildArgs(config SessionConfig) ([]string, error) {
 	// Session management
 	if config.SessionID != "" {
 		args = append(args, "--resume", config.SessionID)
+
+		// Add fork flag if specified
+		if config.ForkSession {
+			args = append(args, "--fork-session")
+		}
 	}
 
 	// Model
