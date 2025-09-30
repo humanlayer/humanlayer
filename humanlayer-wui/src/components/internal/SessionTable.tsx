@@ -142,7 +142,7 @@ export default function SessionTable({
   }, [focusedSession])
 
   useHotkeys(
-    'j',
+    'j, ArrowDown',
     () => {
       handleFocusNextSession?.()
     },
@@ -154,7 +154,7 @@ export default function SessionTable({
   )
 
   useHotkeys(
-    'k',
+    'k, ArrowUp',
     () => {
       handleFocusPreviousSession?.()
     },
@@ -165,9 +165,9 @@ export default function SessionTable({
     [handleFocusPreviousSession],
   )
 
-  // Bulk selection with shift+j/k
+  // Bulk selection with shift+j/k and shift+arrow keys
   useHotkeys(
-    'shift+j',
+    'shift+j, shift+ArrowDown',
     () => {
       if (focusedSession && sessions.length > 0) {
         bulkSelect(focusedSession.id, 'desc')
@@ -182,7 +182,7 @@ export default function SessionTable({
   )
 
   useHotkeys(
-    'shift+k',
+    'shift+k, shift+ArrowUp',
     () => {
       if (focusedSession && sessions.length > 0) {
         bulkSelect(focusedSession.id, 'asc')

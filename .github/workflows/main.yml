@@ -43,17 +43,6 @@ jobs:
           restore-keys: |
             go-mod-v2-${{ runner.os }}-go${{ steps.setup-go.outputs.go-version }}-
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v4
-        with:
-          enable-cache: true
-          cache-dependency-glob: "uv.lock"
-
-      - name: "Set up Python"
-        uses: actions/setup-python@v5
-        with:
-          python-version-file: "pyproject.toml"
-
       - name: Install Rust
         uses: dtolnay/rust-toolchain@1.83.0
         with:
@@ -135,15 +124,6 @@ jobs:
           key: go-mod-v2-${{ runner.os }}-go${{ steps.setup-go.outputs.go-version }}-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             go-mod-v2-${{ runner.os }}-go${{ steps.setup-go.outputs.go-version }}-
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v4
-        with:
-          enable-cache: true
-          cache-dependency-glob: "uv.lock"
-
-      - name: Set up Python ${{ matrix.python-version }}
-        run: uv python install ${{ matrix.python-version }}
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
