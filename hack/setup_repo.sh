@@ -21,12 +21,6 @@ install_ci_tools() {
     
     # Install Claude Code CLI
     run_silent "Installing Claude Code CLI" "npm install -g @anthropic-ai/claude-code"
-    
-    # Install UV for Python
-    if ! command -v uv &> /dev/null; then
-        run_silent "Installing UV" "curl -LsSf https://astral.sh/uv/install.sh | sh"
-    fi
-    
     # Install golangci-lint
     if ! command -v golangci-lint &> /dev/null; then
         run_silent "Installing golangci-lint" "go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest"
@@ -53,14 +47,6 @@ fi
 echo "📦 Generating HLD mocks..."
 run_silent "HLD mock generation" "make -C hld mocks"
 
-echo "📦 Installing NPM dependencies..."
-# Install npm dependencies in parallel (except hlyr, which we'll build instead)
-(
-    run_silent "humanlayer-ts npm install" "npm i -C humanlayer-ts" &
-    run_silent "humanlayer-ts-vercel-ai-sdk npm install" "npm i -C humanlayer-ts-vercel-ai-sdk" &
-    wait
-)
-
 echo "📦 Installing HLD SDK dependencies..."
 run_silent "hld-sdk bun install" "bun install --cwd=hld/sdk/typescript"
 
@@ -69,12 +55,6 @@ run_silent "hld-sdk build" "sh -c 'cd hld/sdk/typescript && bun run build'"
 
 echo "📦 Installing WUI dependencies..."
 run_silent "humanlayer-wui bun install" "bun install --cwd=humanlayer-wui"
-
-# Install Python dependencies if uv is available
-if command -v uv &> /dev/null; then
-    echo "🐍 Setting up Python environment..."
-    run_silent "Installing Python dependencies" "uv sync --all-extras --dev"
-fi
 
 echo "🔧 Creating placeholder binaries for Tauri..."
 mkdir -p humanlayer-wui/src-tauri/bin

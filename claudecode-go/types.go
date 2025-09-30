@@ -51,7 +51,8 @@ type SessionConfig struct {
 	Query string
 
 	// Session management
-	SessionID string // If set, resumes this session
+	SessionID   string // If set, resumes this session
+	ForkSession bool   // If true with SessionID, forks instead of resuming
 
 	// Optional
 	Model                 Model

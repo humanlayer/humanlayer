@@ -43,6 +43,7 @@ interface SessionTableProps {
       onClick: () => void
     }
   }
+  onBypassPermissions?: (sessionIds: string[]) => void
 }
 
 export default function SessionTable({
@@ -58,6 +59,7 @@ export default function SessionTable({
   isArchivedView = false,
   isDraftsView = false,
   emptyState,
+  onBypassPermissions,
 }: SessionTableProps) {
   const isSessionLauncherOpen = useSessionLauncher(state => state.isOpen)
   const tableRef = useRef<HTMLTableElement>(null)
@@ -212,7 +214,7 @@ export default function SessionTable({
   }, [focusedSession])
 
   useHotkeys(
-    'j',
+    'j, ArrowDown',
     () => {
       handleFocusNextSession?.()
     },
@@ -224,7 +226,7 @@ export default function SessionTable({
   )
 
   useHotkeys(
-    'k',
+    'k, ArrowUp',
     () => {
       handleFocusPreviousSession?.()
     },
@@ -235,9 +237,9 @@ export default function SessionTable({
     [handleFocusPreviousSession],
   )
 
-  // Bulk selection with shift+j/k
+  // Bulk selection with shift+j/k and shift+arrow keys
   useHotkeys(
-    'shift+j',
+    'shift+j, shift+ArrowDown',
     () => {
       if (focusedSession && sessions.length > 0) {
         bulkSelect(focusedSession.id, 'desc')
@@ -252,7 +254,7 @@ export default function SessionTable({
   )
 
   useHotkeys(
-    'shift+k',
+    'shift+k, shift+ArrowUp',
     () => {
       if (focusedSession && sessions.length > 0) {
         bulkSelect(focusedSession.id, 'asc')
@@ -536,6 +538,35 @@ export default function SessionTable({
       enableOnFormTags: false,
     },
     [focusedSession, startEdit, editingSessionId],
+  )
+
+  // Bypass permissions hotkey
+  const isInlineRenameOpen = editingSessionId !== null
+  useHotkeys(
+    'alt+y, option+y',
+    () => {
+      if (!focusedSession && selectedSessions.size === 0) {
+        return
+      }
+
+      // Get sessions to bypass
+      const sessionsToBypass =
+        selectedSessions.size > 0
+          ? Array.from(selectedSessions)
+          : focusedSession
+            ? [focusedSession.id]
+            : []
+
+      if (sessionsToBypass.length > 0) {
+        onBypassPermissions?.(sessionsToBypass)
+      }
+    },
+    {
+      scopes: [tableScope],
+      enabled: !isSessionLauncherOpen && !isInlineRenameOpen,
+      preventDefault: true,
+    },
+    [focusedSession, selectedSessions, onBypassPermissions, isInlineRenameOpen],
   )
 
   return (

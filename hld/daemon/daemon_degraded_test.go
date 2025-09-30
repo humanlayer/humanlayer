@@ -26,7 +26,11 @@ func TestDaemonDegradedState(t *testing.T) {
 	originalPath := os.Getenv("PATH")
 	defer os.Setenv("PATH", originalPath)
 	os.Setenv("PATH", "/usr/bin:/bin")
-	os.Unsetenv("CLAUDE_PATH")
+
+	// Set a non-existent Claude path to force degraded mode
+	nonExistentPath := "/tmp/nonexistent-claude-for-test"
+	os.Setenv("HUMANLAYER_CLAUDE_PATH", nonExistentPath)
+	defer os.Unsetenv("HUMANLAYER_CLAUDE_PATH")
 
 	// Create test daemon with minimal environment
 	socketPath := testutil.SocketPath(t, "degraded")
@@ -44,7 +48,6 @@ func TestDaemonDegradedState(t *testing.T) {
 	defer os.Unsetenv("HUMANLAYER_DAEMON_HTTP_HOST")
 	os.Setenv("HUMANLAYER_API_KEY", "") // Disable cloud API
 	defer os.Unsetenv("HUMANLAYER_API_KEY")
-	// Don't set HUMANLAYER_CLAUDE_PATH - let it try to find Claude and fail
 
 	// Create daemon
 	d, err := New()
@@ -141,6 +144,11 @@ func TestDaemonTransitionsToHealthy(t *testing.T) {
 	originalPath := os.Getenv("PATH")
 	defer os.Setenv("PATH", originalPath)
 	os.Setenv("PATH", "/usr/bin:/bin")
+
+	// Set a non-existent Claude path initially to force degraded mode
+	nonExistentPath := "/tmp/nonexistent-claude-for-test-transition"
+	os.Setenv("HUMANLAYER_CLAUDE_PATH", nonExistentPath)
+	defer os.Unsetenv("HUMANLAYER_CLAUDE_PATH")
 
 	// Create a mock Claude binary that we'll add later
 	mockClaudePath := filepath.Join(t.TempDir(), "claude")

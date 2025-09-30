@@ -22,6 +22,7 @@ import (
 	"github.com/gin-gonic/gin"
 	claudecode "github.com/humanlayer/humanlayer/claudecode-go"
 	"github.com/humanlayer/humanlayer/hld/internal/testutil"
+	"github.com/humanlayer/humanlayer/hld/store"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/require"
 )
@@ -232,7 +233,11 @@ func TestMCPClaudeCodeSessionIDCorrelation(t *testing.T) {
 		return false
 	}, 5*time.Second, 100*time.Millisecond, "HTTP server did not start")
 
-	// Open database connection
+	// Initialize database properly using the store package instead of CREATE TABLE IF NOT EXISTS
+	_, err = store.NewSQLiteStore(dbPath)
+	require.NoError(t, err, "Failed to initialize database store")
+
+	// Open database connection after initialization
 	db, err := sql.Open("sqlite3", dbPath)
 	require.NoError(t, err)
 	defer db.Close()

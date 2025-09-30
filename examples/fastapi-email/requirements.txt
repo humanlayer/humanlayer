@@ -1,5 +1,0 @@
-fastapi
-uvicorn
-python-dotenv
-humanlayer==0.7.9
-marvin

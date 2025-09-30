@@ -43,17 +43,6 @@ jobs:
           restore-keys: |
             go-mod-v2-${{ runner.os }}-go${{ steps.setup-go.outputs.go-version }}-
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v4
-        with:
-          enable-cache: true
-          cache-dependency-glob: "uv.lock"
-
-      - name: "Set up Python"
-        uses: actions/setup-python@v5
-        with:
-          python-version-file: "pyproject.toml"
-
       - name: Install Rust
         uses: dtolnay/rust-toolchain@1.83.0
         with:
@@ -105,10 +94,6 @@ jobs:
 
   tests:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.11"]
-      fail-fast: false
     steps:
       - name: Check out
         uses: actions/checkout@v4
@@ -135,15 +120,6 @@ jobs:
           key: go-mod-v2-${{ runner.os }}-go${{ steps.setup-go.outputs.go-version }}-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             go-mod-v2-${{ runner.os }}-go${{ steps.setup-go.outputs.go-version }}-
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v4
-        with:
-          enable-cache: true
-          cache-dependency-glob: "uv.lock"
-
-      - name: Set up Python ${{ matrix.python-version }}
-        run: uv python install ${{ matrix.python-version }}
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -194,7 +170,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: pytest-results-${{ matrix.python-version }}
+          name: test-results
           path: |
             junit.xml
             coverage.xml
