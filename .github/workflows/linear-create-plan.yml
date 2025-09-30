@@ -42,6 +42,7 @@ jobs:
     needs:
       - fetch-tickets
     runs-on: ubuntu-latest
+    if: ${{ needs.fetch-tickets.outputs.ticket_ids != '[]' && needs.fetch-tickets.outputs.ticket_ids != ''}}
     strategy:
       fail-fast: false # one failure should not cause all the others to fail
       matrix:
