@@ -129,6 +129,8 @@ jobs:
       - name: Sync thoughts
         id: sync-research-document
         run: |
+          git config --global user.email "noreply@anthropic.com"
+          git config --global user.name "Claude" 
           cd thoughts && git add -A && git commit -m "Sync thoughts from CI for ${{ matrix.ticket_id}}" && git pull --rebase && git push
 
       - name: Add comment
