@@ -14,19 +14,42 @@ on:
 jobs:
   fetch-tickets:
     runs-on: ubuntu-latest
+    outputs:
+      ticket_ids: ${{ steps.fetch-tickets.outputs.researchable_ticket_ids }}
     steps:
       - name: "Checkout repository"
+        id: checkout-repository
         uses: actions/checkout@v4
 
       - name: "Setup bun"
+        id: setup-bun
         uses: oven-sh/setup-bun@v2
 
       - name: "Build actions"
+        id: build-action
         run: cd .github/actions/fetch-researchable-tickets && bun install
 
       - name: "Fetch Researchable Linear Tickets"
+        id: fetch-tickets
         uses: ./.github/actions/fetch-researchable-tickets
         env:
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
         with:
           num_tickets: ${{ inputs.num_tickets }}
+
+      - name: "Output Ids"
+        run: echo ${{steps.fetch-tickets.outputs.researchable_ticket_ids}}
+
+  research-tickets:
+    name: Research Ticket ${{matrix.ticket_id}}
+    needs:
+      - fetch-tickets
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false # we don't want all jobs to stop just because one fails
+      matrix:
+        ticket_id: ${{ fromJSON(needs.fetch-tickets.outputs.ticket_ids)}}
+    steps:
+      - name: Test step ${{ matrix.ticket_id}}
+        id: test-step
+        run: echo ${{matrix.ticket_id}}
