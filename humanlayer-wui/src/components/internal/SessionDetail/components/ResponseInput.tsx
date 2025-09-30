@@ -156,7 +156,7 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
       hasValidSessionData,
       hasEditorState: !!session.editorState,
       editorState: session.editorState,
-      editorStateLength: session.editorState?.length
+      editorStateLength: session.editorState?.length,
     })
 
     if (hasValidSessionData) {
@@ -165,7 +165,9 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
         if (session.editorState) {
           try {
             initialValue = JSON.parse(session.editorState)
-            logger.log('ResponseInput - Successfully parsed editorState from database', { initialValue })
+            logger.log('ResponseInput - Successfully parsed editorState from database', {
+              initialValue,
+            })
           } catch (e) {
             logger.error('ResponseInput - error parsing editorState from database', e)
           }
@@ -202,10 +204,7 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
           }
         } else {
           // For non-draft sessions, save to localStorage
-          localStorage.setItem(
-            `${ResponseInputLocalStorageKey}.${session.id}`,
-            valueStr,
-          )
+          localStorage.setItem(`${ResponseInputLocalStorageKey}.${session.id}`, valueStr)
         }
       },
       [session.id, isDraft, session.status],
@@ -517,29 +516,26 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
                   refreshButtonText="Reload Session"
                 >
                   {hasValidSessionData ? (
-                    <>
-                      {logger.log('ResponseInput - Rendering ResponseEditor with initialValue:', { initialValue, sessionId: session.id }) || null}
-                      <ResponseEditor
-                        ref={tiptapRef}
-                        initialValue={initialValue}
-                        onChange={handleChange}
-                        onSubmit={handleSubmit}
-                        onToggleAutoAccept={onToggleAutoAccept}
-                        onToggleDangerouslySkipPermissions={onToggleDangerouslySkipPermissions}
-                        onToggleForkView={onToggleForkView}
-                        disabled={isResponding}
-                        placeholder={placeholder}
-                        className={`flex-1 min-h-[2.5rem] ${isResponding ? 'opacity-50' : ''} ${textareaOutlineClass} ${
-                          isDenying && isFocused ? 'caret-error' : isFocused ? 'caret-accent' : ''
-                        }`}
-                        onFocus={() => {
-                          setIsFocused(true)
-                        }}
-                        onBlur={() => {
-                          setIsFocused(false)
-                        }}
-                      />
-                    </>
+                    <ResponseEditor
+                      ref={tiptapRef}
+                      initialValue={initialValue}
+                      onChange={handleChange}
+                      onSubmit={handleSubmit}
+                      onToggleAutoAccept={onToggleAutoAccept}
+                      onToggleDangerouslySkipPermissions={onToggleDangerouslySkipPermissions}
+                      onToggleForkView={onToggleForkView}
+                      disabled={isResponding}
+                      placeholder={placeholder}
+                      className={`flex-1 min-h-[2.5rem] ${isResponding ? 'opacity-50' : ''} ${textareaOutlineClass} ${
+                        isDenying && isFocused ? 'caret-error' : isFocused ? 'caret-accent' : ''
+                      }`}
+                      onFocus={() => {
+                        setIsFocused(true)
+                      }}
+                      onBlur={() => {
+                        setIsFocused(false)
+                      }}
+                    />
                   ) : (
                     <div className="flex-1 min-h-[2.5rem] flex items-center justify-center text-muted-foreground">
                       Loading editor...
@@ -559,7 +555,9 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
                   >
                     {/* {responseEditor && !responseEditor.isEmpty ? 'Discard' : 'Cancel'} Until we've implemented change detection we'll always discard */}
                     {'Discard'}
-                    <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">{isMac ? 'Cmd+Shift+.' : 'Ctrl+Shift+.'}</kbd>
+                    <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">
+                      {isMac ? 'Cmd+Shift+.' : 'Ctrl+Shift+.'}
+                    </kbd>
                   </Button>
                 )}
                 <Button

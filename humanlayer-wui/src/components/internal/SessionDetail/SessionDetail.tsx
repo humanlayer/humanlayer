@@ -271,6 +271,12 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     }
   }, [session.parentSessionId, parentSession])
 
+  useEffect(() => {
+    if (session.workingDir) {
+      setSelectedDirectory(session.workingDir)
+    }
+  }, [session.workingDir])
+
   // Debug logging for token data
   useEffect(() => {
     console.log('[TokenDebug] Session token state:', {
@@ -643,27 +649,30 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   }, [isDraft, session.id, session.workingDir, responseEditor, isLaunchingDraft, selectedDirectory])
 
   // Handle directory selection change
-  const handleDirectoryChange = useCallback(async (newDirectory: string) => {
-    // Update local state immediately
-    setSelectedDirectory(newDirectory)
+  const handleDirectoryChange = useCallback(
+    async (newDirectory: string) => {
+      // Update local state immediately
+      setSelectedDirectory(newDirectory)
 
-    // If it's a valid directory and different from current, update backend
-    if (newDirectory && newDirectory !== session.workingDir) {
-      try {
-        await daemonClient.updateSession(session.id, {
-          workingDir: newDirectory,
-        })
-        // Update the store to reflect the change
-        useStore.getState().updateSession(session.id, { workingDir: newDirectory })
-      } catch (error) {
-        toast.error('Failed to update working directory', {
-          description: error instanceof Error ? error.message : 'Unknown error',
-        })
-        // Revert local state on error
-        setSelectedDirectory(session.workingDir || '')
+      // If it's a valid directory and different from current, update backend
+      if (newDirectory && newDirectory !== session.workingDir) {
+        try {
+          await daemonClient.updateSession(session.id, {
+            workingDir: newDirectory,
+          })
+          // Update the store to reflect the change
+          useStore.getState().updateSession(session.id, { workingDir: newDirectory })
+        } catch (error) {
+          toast.error('Failed to update working directory', {
+            description: error instanceof Error ? error.message : 'Unknown error',
+          })
+          // Revert local state on error
+          setSelectedDirectory(session.workingDir || '')
+        }
       }
-    }
-  }, [session.id, session.workingDir])
+    },
+    [session.id, session.workingDir],
+  )
 
   // Handle discarding a draft session
   const handleDiscardDraft = useCallback(() => {
@@ -685,6 +694,9 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
 
       // Clear localStorage
       localStorage.removeItem(`response-input.${session.id}`)
+
+      // Refresh sessions to update counts
+      await useStore.getState().refreshSessions()
 
       // Navigate back to session list
       onClose()
@@ -1261,10 +1273,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
           {/* Working directory info - show SearchInput for drafts, AdditionalDirectoriesDropdown otherwise */}
           {isDraft ? (
             <div className="flex-1">
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground pb-1">
-                <FolderOpen className="h-3 w-3" />
-                <span>Working Directory</span>
-              </div>
               <SearchInput
                 placeholder="Select a directory to work in..."
                 className="mt-1"
@@ -1273,13 +1281,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                 onChange={handleDirectoryChange}
                 onSubmit={value => value && handleDirectoryChange(value)}
               />
-              {selectedDirectory && (
-                <div className="mt-2 px-2 py-1 bg-muted/50 rounded-md">
-                  <p className="text-xs font-mono text-muted-foreground truncate">
-                    {selectedDirectory}
-                  </p>
-                </div>
-              )}
             </div>
           ) : (
             session.workingDir && (

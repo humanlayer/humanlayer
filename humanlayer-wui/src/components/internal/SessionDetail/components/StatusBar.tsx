@@ -47,6 +47,9 @@ export function StatusBar({
     : rawModelText
   const isRunning = session.status === 'running' || session.status === 'starting'
   const isReadyForInput = session.status === 'completed' && !session.archived
+  const isDraft = session.status === 'draft'
+
+  const isReadyForInputOrDraft = isReadyForInput || isDraft
 
   return (
     <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -66,18 +69,18 @@ export function StatusBar({
               variant="outline"
               size="sm"
               className={`h-6 px-2 py-0 text-xs font-mono uppercase tracking-wider border-muted-foreground/20 transition-all duration-200 hover:text-current ${
-                isReadyForInput
+                isReadyForInputOrDraft
                   ? 'hover:border-muted-foreground/40 hover:!text-primary hover:!bg-primary/10'
                   : 'cursor-not-allowed hover:bg-transparent'
-              } ${isReadyForInput ? '' : getStatusTextClass(session.status)}`}
-              onClick={() => isReadyForInput && setIsModelSelectorOpen(true)}
+              } ${isReadyForInputOrDraft ? '' : getStatusTextClass(session.status)}`}
+              onClick={() => isReadyForInputOrDraft && setIsModelSelectorOpen(true)}
             >
               {modelText}
-              {isReadyForInput && <Pencil className="h-3 w-3 ml-1.5 opacity-50 hover:opacity-70" />}
+              {isReadyForInputOrDraft && <Pencil className="h-3 w-3 ml-1.5 opacity-50 hover:opacity-70" />}
             </Button>
           </TooltipTrigger>
           <TooltipContent>
-            {isReadyForInput ? (
+            {isReadyForInputOrDraft ? (
               <p className="font-medium">Click to change model</p>
             ) : isRunning ? (
               <p className="font-medium">Model changes unavailable while running</p>

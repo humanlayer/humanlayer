@@ -18,7 +18,7 @@ import { Button } from '@/components/ui/button'
 import { daemonClient } from '@/lib/daemon/client'
 import { renderSessionStatus } from '@/utils/sessionStatus'
 import { logger } from '@/lib/logging'
-import { DiscardDraftsDialog } from './DiscardDraftsDialog'
+import { DiscardDraftDialog } from './SessionDetail/components/DiscardDraftDialog'
 import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
 import { HotkeyScopeBoundary } from '../HotkeyScopeBoundary'
 
@@ -32,7 +32,8 @@ interface SessionTableProps {
   focusedSession: Session | null
   searchText?: string
   matchedSessions?: Map<string, any>
-  archived?: boolean // Add this to indicate if showing archived sessions
+  isArchivedView?: boolean // Add this to indicate if showing archived sessions
+  isDraftsView?: boolean // Add this to indicate if showing drafts view
   emptyState?: {
     icon?: LucideIcon
     title: string
@@ -54,7 +55,8 @@ export default function SessionTable({
   focusedSession,
   searchText,
   matchedSessions,
-  archived = false,
+  isArchivedView = false,
+  isDraftsView = false,
   emptyState,
 }: SessionTableProps) {
   const isSessionLauncherOpen = useSessionLauncher(state => state.isOpen)
@@ -69,7 +71,7 @@ export default function SessionTable({
   } = useStore()
 
   // Determine scope based on archived state
-  const tableScope = archived ? HOTKEY_SCOPES.SESSIONS_ARCHIVED : HOTKEY_SCOPES.SESSIONS
+  const tableScope = isArchivedView ? HOTKEY_SCOPES.SESSIONS_ARCHIVED : HOTKEY_SCOPES.SESSIONS
 
   // State for inline editing
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null)
@@ -152,6 +154,9 @@ export default function SessionTable({
           duration: 3000,
         })
       }
+
+      // Refresh sessions to update counts
+      await useStore.getState().refreshSessions()
     } catch (error) {
       toast.error('Failed to discard draft(s)', {
         description: error instanceof Error ? error.message : 'Unknown error',
@@ -536,7 +541,7 @@ export default function SessionTable({
   return (
     <HotkeyScopeBoundary
       scope={tableScope}
-      componentName={`SessionTable-${archived ? 'archived' : 'normal'}`}
+      componentName={`SessionTable-${isArchivedView ? 'archived' : 'normal'}`}
     >
       {sessions.length > 0 ? (
         <>
@@ -545,7 +550,7 @@ export default function SessionTable({
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[40px]"></TableHead>
-                <TableHead>Status</TableHead>
+                {!isDraftsView && <TableHead>Status</TableHead>}
                 <TableHead>Working Directory</TableHead>
                 <TableHead>Title</TableHead>
                 <TableHead>Model</TableHead>
@@ -597,25 +602,27 @@ export default function SessionTable({
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className={getStatusTextClass(session.status)}>
-                    {session.status !== SessionStatus.Failed && (
-                      <>
-                        {session.dangerouslySkipPermissions ? (
-                          <>
-                            <ShieldOff
-                              className="inline-block w-4 h-4 text-[var(--terminal-error)] animate-pulse-error align-text-bottom"
-                              strokeWidth={3}
-                            />{' '}
-                          </>
-                        ) : session.autoAcceptEdits ? (
-                          <span className="align-text-top text-[var(--terminal-warning)] text-base leading-none animate-pulse-warning">
-                            {'⏵⏵ '}
-                          </span>
-                        ) : null}
-                      </>
-                    )}
-                    {renderSessionStatus(session)}
-                  </TableCell>
+                  {!isDraftsView && (
+                    <TableCell className={getStatusTextClass(session.status)}>
+                      {session.status !== SessionStatus.Failed && (
+                        <>
+                          {session.dangerouslySkipPermissions ? (
+                            <>
+                              <ShieldOff
+                                className="inline-block w-4 h-4 text-[var(--terminal-error)] animate-pulse-error align-text-bottom"
+                                strokeWidth={3}
+                              />{' '}
+                            </>
+                          ) : session.autoAcceptEdits ? (
+                            <span className="align-text-top text-[var(--terminal-warning)] text-base leading-none animate-pulse-warning">
+                              {'⏵⏵ '}
+                            </span>
+                          ) : null}
+                        </>
+                      )}
+                      {renderSessionStatus(session)}
+                    </TableCell>
+                  )}
                   <TableCell className="max-w-[200px]">
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -736,7 +743,7 @@ export default function SessionTable({
       )}
 
       {/* Discard Drafts Confirmation Dialog */}
-      <DiscardDraftsDialog
+      <DiscardDraftDialog
         open={discardDialogOpen}
         draftCount={draftsToDiscard.length}
         onConfirm={handleConfirmDiscard}
