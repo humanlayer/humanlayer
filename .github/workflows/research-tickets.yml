@@ -82,6 +82,10 @@ jobs:
       - name: Initialize thoughts tool
         run: make thoughts
 
+      - name: Setup linear tool
+        run: |
+          cd hack/linear && npm install -g .
+
       - name: Fetch Ticket with Linear CLI
         id: fetch-ticket
         run: linear get-issue ${{ matrix.ticket_id }}
