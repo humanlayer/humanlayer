@@ -457,7 +457,7 @@ export const useStore = create<StoreState>((set, get) => ({
   ) => {
     try {
       // Calculate timeout in milliseconds if expiration is set
-      const timeoutMs = expiresAt ? expiresAt.getTime() - Date.now() : undefined
+      const timeoutMs = expiresAt ? Math.max(0, expiresAt.getTime() - Date.now()) : undefined
 
       // Update all sessions in parallel
       const results = await Promise.allSettled(
