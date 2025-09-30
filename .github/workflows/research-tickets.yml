@@ -27,6 +27,8 @@ jobs:
           cd hack/linear && npm install && npm install -g .
 
       - name: "Get researchable tickets"
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
         id: fetch-tickets
         run: >
           echo 'ticket_ids=$(linear fetch-issues --max-issues ${{ inputs.num_tickets }} --status "research needed" --size 1,2 --ids-only --output-format json)' >> "$GITHUB_OUTPUT"
