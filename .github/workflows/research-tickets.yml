@@ -116,6 +116,8 @@ jobs:
 
       - name: Install Claude Code
         id: run-claude-research
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: >
           cd humanlayer && claude -p "/research_codebase ${{ env.TICKET_FILE_PATH }} 
             Start by reading the ticket and all of the comments.
