@@ -21,6 +21,7 @@ interface DangerouslySkipPermissionsDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onConfirm: (timeoutMinutes: number | null) => void
+  sessionCount?: number // Add for multi-session support
 }
 
 // Inner component that uses the hotkey scope stealing
@@ -28,7 +29,8 @@ const DangerouslySkipPermissionsDialogContent: FC<{
   onOpenChange: (open: boolean) => void
   onConfirm: (timeoutMinutes: number | null) => void
   isOpen: boolean
-}> = ({ onOpenChange, onConfirm, isOpen }) => {
+  sessionCount?: number
+}> = ({ onOpenChange, onConfirm, isOpen, sessionCount }) => {
   const [timeoutMinutes, setTimeoutMinutes] = useState<number | ''>(15)
   const [useTimeout, setUseTimeout] = useState(true)
   const timeoutInputRef = useRef<HTMLInputElement>(null)
@@ -94,12 +96,15 @@ const DangerouslySkipPermissionsDialogContent: FC<{
         <DialogTitle className="flex items-center gap-2 text-[var(--terminal-error)] text-base font-bold">
           <AlertTriangle className="h-4 w-4" />
           Bypass Permissions
+          {sessionCount && sessionCount > 1 && ` for ${sessionCount} Sessions`}
         </DialogTitle>
         <DialogDescription asChild>
           <div className="space-y-2">
             <p>
               Bypassing permissions will <strong>automatically accept ALL tool calls</strong> without
-              your approval. This includes:
+              your approval
+              {sessionCount && sessionCount > 1 ? ` for all ${sessionCount} selected sessions` : ''}.
+              This includes:
             </p>
             <ul className="list-disc list-inside space-y-1">
               <li>File edits and writes</li>
@@ -170,7 +175,9 @@ const DangerouslySkipPermissionsDialogContent: FC<{
           disabled={useTimeout && (timeoutMinutes === '' || timeoutMinutes === 0)}
           className="border-[var(--terminal-error)] text-[var(--terminal-error)] hover:bg-[var(--terminal-error)] hover:text-background focus-visible:border-[var(--terminal-error)] focus-visible:ring-[var(--terminal-error)]/50 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Bypass Permissions
+          {sessionCount && sessionCount > 1
+            ? `Bypass Permissions for ${sessionCount} Sessions`
+            : 'Bypass Permissions'}
           {!useTimeout || (timeoutMinutes !== '' && timeoutMinutes !== 0) ? (
             <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">
               {navigator.platform.toLowerCase().includes('mac') ? '⌘' : 'Ctrl'}+⏎
@@ -186,6 +193,7 @@ export const DangerouslySkipPermissionsDialog: FC<DangerouslySkipPermissionsDial
   open,
   onOpenChange,
   onConfirm,
+  sessionCount,
 }) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -213,6 +221,7 @@ export const DangerouslySkipPermissionsDialog: FC<DangerouslySkipPermissionsDial
               onOpenChange={onOpenChange}
               onConfirm={onConfirm}
               isOpen={open}
+              sessionCount={sessionCount}
             />
           </HotkeyScopeBoundary>
         )}

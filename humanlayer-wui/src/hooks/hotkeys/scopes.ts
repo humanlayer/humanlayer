@@ -3,6 +3,7 @@ export const HOTKEY_SCOPES = {
   ROOT: '.',
   SESSIONS: 'sessions',
   SESSIONS_ARCHIVED: 'sessions.archived',
+  SESSIONS_BYPASS_PERMISSIONS_MODAL: 'sessions.bypassPermissionsModal',
   SESSION_DETAIL: 'sessions.details',
   SESSION_DETAIL_ARCHIVED: 'sessions.details.archived',
   SESSION_DETAIL_DRAFT: 'sessions.details.draft',

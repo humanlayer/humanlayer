@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '@/AppStore'
 import { ViewMode } from '@/lib/daemon/types'
@@ -7,6 +7,9 @@ import { useHotkeys } from 'react-hotkeys-hook'
 import { useSessionLauncher, useKeyboardNavigationProtection } from '@/hooks'
 import { Inbox, Archive } from 'lucide-react'
 import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
+import { DangerouslySkipPermissionsDialog } from '@/components/internal/SessionDetail/DangerouslySkipPermissionsDialog'
+import { HotkeyScopeBoundary } from '@/components/HotkeyScopeBoundary'
+import { toast } from 'sonner'
 
 export function SessionTablePage() {
   const { isOpen: isSessionLauncherOpen, open: openSessionLauncher } = useSessionLauncher()
@@ -26,6 +29,80 @@ export function SessionTablePage() {
   const setFocusedSession = useStore(state => state.setFocusedSession)
   const viewMode = useStore(state => state.viewMode)
   const setViewMode = useStore(state => state.setViewMode)
+
+  // Bypass permissions modal state
+  const [bypassPermissionsOpen, setBypassPermissionsOpen] = useState(false)
+  const [bypassSessionIds, setBypassSessionIds] = useState<string[]>([])
+
+  // Handler for direct disable (no modal)
+  const handleDirectDisable = useCallback(async (sessionIds: string[]) => {
+    try {
+      await useStore.getState().bulkSetBypassPermissions(sessionIds, false, null)
+      // No toast - silent like SessionDetail
+    } catch (error) {
+      console.error('Failed to disable bypass permissions', error)
+      toast.error('Failed to disable bypass permissions')
+    }
+  }, [])
+
+  // Handler for hotkey trigger with intelligent toggle logic
+  const handleBypassPermissions = useCallback(
+    (sessionIds: string[]) => {
+      // Get the actual session objects
+      const selectedSessionObjects = sessionIds
+        .map(id => sessions.find(s => s.id === id))
+        .filter(Boolean) as typeof sessions
+
+      if (selectedSessionObjects.length === 0) return
+
+      // Check bypass status of all selected sessions
+      const bypassStatuses = selectedSessionObjects.map(s => s.dangerouslySkipPermissions)
+      const allBypassing = bypassStatuses.every(status => status === true)
+
+      if (selectedSessionObjects.length === 1) {
+        // Single session behavior - matches SessionDetail
+        const session = selectedSessionObjects[0]
+
+        if (session.dangerouslySkipPermissions) {
+          // Directly disable without modal (like SessionDetail.tsx:729-739)
+          handleDirectDisable([session.id])
+        } else {
+          // Show modal to enable
+          setBypassSessionIds([session.id])
+          setBypassPermissionsOpen(true)
+        }
+      } else {
+        // Multiple sessions behavior
+        if (allBypassing) {
+          // All are bypassing - disable all without modal
+          handleDirectDisable(sessionIds)
+        } else {
+          // Mixed state or none bypassing - show modal to enable/refresh all
+          setBypassSessionIds(sessionIds)
+          setBypassPermissionsOpen(true)
+        }
+      }
+    },
+    [sessions, handleDirectDisable],
+  )
+
+  // Handler for modal confirmation
+  const handleBypassPermissionsConfirm = useCallback(
+    async (timeoutMinutes: number | null) => {
+      try {
+        const expiresAt = timeoutMinutes ? new Date(Date.now() + timeoutMinutes * 60 * 1000) : null
+
+        await useStore.getState().bulkSetBypassPermissions(bypassSessionIds, true, expiresAt)
+
+        toast.success(`Bypass permissions enabled for ${bypassSessionIds.length} session(s)`)
+        setBypassPermissionsOpen(false)
+        setBypassSessionIds([])
+      } catch {
+        toast.error('Failed to enable bypass permissions')
+      }
+    },
+    [bypassSessionIds],
+  )
 
   const handleActivateSession = (session: any) => {
     navigate(`/sessions/${session.id}`)
@@ -277,8 +354,22 @@ export function SessionTablePage() {
                   },
                 }
           }
+          onBypassPermissions={handleBypassPermissions}
         />
       </div>
+      <HotkeyScopeBoundary
+        scope={HOTKEY_SCOPES.SESSIONS_BYPASS_PERMISSIONS_MODAL}
+        isActive={bypassPermissionsOpen}
+        rootScopeDisabled={true}
+        componentName="SessionListBypassPermissionsDialog"
+      >
+        <DangerouslySkipPermissionsDialog
+          open={bypassPermissionsOpen}
+          onOpenChange={setBypassPermissionsOpen}
+          onConfirm={handleBypassPermissionsConfirm}
+          sessionCount={bypassSessionIds.length}
+        />
+      </HotkeyScopeBoundary>
     </div>
   )
 }

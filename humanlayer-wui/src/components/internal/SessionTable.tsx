@@ -41,6 +41,7 @@ interface SessionTableProps {
       onClick: () => void
     }
   }
+  onBypassPermissions?: (sessionIds: string[]) => void
 }
 
 export default function SessionTable({
@@ -55,6 +56,7 @@ export default function SessionTable({
   matchedSessions,
   archived = false,
   emptyState,
+  onBypassPermissions,
 }: SessionTableProps) {
   const { isOpen: isSessionLauncherOpen } = useSessionLauncher()
   const tableRef = useRef<HTMLTableElement>(null)
@@ -400,6 +402,35 @@ export default function SessionTable({
       enableOnFormTags: false,
     },
     [focusedSession, startEdit, editingSessionId],
+  )
+
+  // Bypass permissions hotkey
+  const isInlineRenameOpen = editingSessionId !== null
+  useHotkeys(
+    'alt+y, option+y',
+    () => {
+      if (!focusedSession && selectedSessions.size === 0) {
+        return
+      }
+
+      // Get sessions to bypass
+      const sessionsToBypass =
+        selectedSessions.size > 0
+          ? Array.from(selectedSessions)
+          : focusedSession
+            ? [focusedSession.id]
+            : []
+
+      if (sessionsToBypass.length > 0) {
+        onBypassPermissions?.(sessionsToBypass)
+      }
+    },
+    {
+      scopes: [tableScope],
+      enabled: !isSessionLauncherOpen && !isInlineRenameOpen,
+      preventDefault: true,
+    },
+    [focusedSession, selectedSessions, onBypassPermissions, isInlineRenameOpen],
   )
 
   return (
