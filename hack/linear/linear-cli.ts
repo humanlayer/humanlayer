@@ -462,10 +462,154 @@ async function fetchImages(issueId: string): Promise<void> {
   }
 }
 
-async function fetchIssues(options: {
+async function getIssueV2(issueId: string, options: {
+  outputFormat?: string,
+  fields?: string
+}) {
+  try {
+    if (!linear) {
+      throw new Error("Linear client not initialized. Check your API key.");
+    }
+
+    // Validate issue ID format
+    if (!issueId || !/^[A-Za-z]+-\d+$/i.test(issueId)) {
+      console.error(chalk.red("Error: Invalid issue ID format. Expected format: ENG-123"));
+      process.exit(1);
+    }
+
+    const normalizedId = issueId.toUpperCase();
+    const outputFormat = options.outputFormat || "json";
+    const useCompactJson = outputFormat === "json";
+    const usePrettyJson = outputFormat === "rich-json";
+
+    const requestedFields = options.fields
+      ? options.fields.split(',').map(f => f.trim())
+      : ["identifier", "title", "branch"];
+
+    // Fetch the issue
+    const issue = await linear.issue(normalizedId);
+
+    if (!issue) {
+      console.error(chalk.red(`Issue ${normalizedId} not found.`));
+      process.exit(1);
+    }
+
+    // Collect issue data based on requested fields
+    const issueData: any = {};
+
+    if (requestedFields.includes("identifier")) {
+      issueData.identifier = issue.identifier;
+    }
+
+    if (requestedFields.includes("title")) {
+      issueData.title = issue.title;
+    }
+
+    if (requestedFields.includes("branch")) {
+      issueData.branch = issue.branchName || null;
+    }
+
+    if (requestedFields.includes("description")) {
+      issueData.description = issue.description || null;
+    }
+
+    if (requestedFields.includes("assignee")) {
+      const assignee = await issue.assignee;
+      issueData.assignee = assignee?.name || null;
+    }
+
+    if (requestedFields.includes("comments")) {
+      const comments = await issue.comments();
+      issueData.comments = [];
+
+      for (const comment of comments.nodes) {
+        let commentUser;
+        try {
+          commentUser = await comment.user;
+        } catch (error) {
+          commentUser = null;
+        }
+
+        issueData.comments.push({
+          author: commentUser?.name || "Unknown",
+          body: comment.body,
+          createdAt: comment.createdAt
+        });
+      }
+    }
+
+    // Always fetch state and estimate for markdown format
+    const state = await issue.state;
+    const assignee = await issue.assignee;
+
+    issueData._state = state?.name || "Unknown";
+    issueData._estimate = issue.estimate || null;
+    issueData._assignee = assignee?.name || null;
+
+    // Output based on format
+    if (useCompactJson || usePrettyJson) {
+      // For JSON, remove the internal fields and output clean JSON
+      const cleanedData: any = {};
+      for (const key of Object.keys(issueData)) {
+        if (!key.startsWith('_')) {
+          cleanedData[key] = issueData[key];
+        }
+      }
+      console.log(JSON.stringify(cleanedData, null, usePrettyJson ? 2 : undefined));
+    } else {
+      // Markdown format
+      if (requestedFields.includes("identifier") && requestedFields.includes("title")) {
+        console.log(`[${chalk.cyan(issueData.identifier)}] ${issueData.title}`);
+      } else if (requestedFields.includes("identifier")) {
+        console.log(`[${chalk.cyan(issueData.identifier)}]`);
+      } else if (requestedFields.includes("title")) {
+        console.log(issueData.title);
+      }
+
+      console.log(chalk.dim(`Status: ${issueData._state}`));
+
+      if (issueData._estimate) {
+        console.log(chalk.dim(`Size: ${issueData._estimate}`));
+      }
+
+      if (requestedFields.includes("assignee") && issueData.assignee) {
+        console.log(chalk.dim(`Assignee: ${issueData.assignee}`));
+      } else if (issueData._assignee) {
+        console.log(chalk.dim(`Assignee: ${issueData._assignee}`));
+      }
+
+      if (requestedFields.includes("branch") && issueData.branch) {
+        console.log(chalk.dim(`Branch: ${issueData.branch}`));
+      }
+
+      if (requestedFields.includes("description") && issueData.description) {
+        console.log(chalk.bold("\nDescription:"));
+        console.log(issueData.description);
+      }
+
+      if (requestedFields.includes("comments") && issueData.comments && issueData.comments.length > 0) {
+        console.log(chalk.bold("\nComments:"));
+        for (const comment of issueData.comments) {
+          const commentDate = new Date(comment.createdAt);
+          const dateStr = commentDate.toISOString().split("T")[0];
+          const timeStr = commentDate.toTimeString().split(" ")[0];
+          console.log(chalk.dim(`[${dateStr} ${timeStr}] ${comment.author}:`));
+          console.log(comment.body);
+          console.log("");
+        }
+      }
+    }
+  } catch (error) {
+    console.error(chalk.red("Error fetching issue:"), error instanceof Error ? error.message : String(error));
+    process.exit(1);
+  }
+}
+
+async function listIssuesV2(options: {
   maxIssues?: string,
   status?: string,
   size?: string,
+  assignee?: string,
   sortAsc?: boolean,
   outputFormat?: string,
   fields?: string,
@@ -501,6 +645,28 @@ async function fetchIssues(options: {
 
     // Build filter conditions
     const filterConditions: any[] = [];
+
+    // Handle assignee filter
+    if (options.assignee) {
+      const assigneeValue = options.assignee.trim();
+
+      // Fetch all users to find the matching one
+      const users = await linear.users();
+      const matchingUser = users.nodes.find(user =>
+        user.name.toLowerCase() === assigneeValue.toLowerCase() ||
+        user.email.toLowerCase() === assigneeValue.toLowerCase() ||
+        user.displayName.toLowerCase() === assigneeValue.toLowerCase()
+      );
+
+      if (!matchingUser) {
+        console.error(chalk.red(`Error: No user found matching "${assigneeValue}"`));
+        process.exit(1);
+      }
+
+      filterConditions.push({
+        assignee: { id: { eq: matchingUser.id } }
+      });
+    }
 
     // Handle status filter (comma-separated values)
     if (options.status) {
@@ -593,6 +759,11 @@ async function fetchIssues(options: {
         issueData.description = issue.description || null;
       }
 
+      if (requestedFields.includes("assignee")) {
+        const assignee = await issue.assignee;
+        issueData.assignee = assignee?.name || null;
+      }
+
       if (requestedFields.includes("comments")) {
         const comments = await issue.comments();
         issueData.comments = [];
@@ -658,7 +829,9 @@ async function fetchIssues(options: {
           console.log(chalk.dim(`  Size: ${issue._estimate}`));
         }
 
-        if (issue._assignee) {
+        if (requestedFields.includes("assignee") && issue.assignee) {
+          console.log(chalk.dim(`  Assignee: ${issue.assignee}`));
+        } else if (issue._assignee) {
           console.log(chalk.dim(`  Assignee: ${issue._assignee}`));
         }
 
@@ -706,7 +879,7 @@ program
   .showHelpAfterError();
 
 program
-  .command("list-issues")
+  .command("my-issues")
   .description("List your assigned issues")
   .action(listIssues);
 
@@ -714,6 +887,13 @@ program
   .command("get-issue [id]")
   .description("Show issue details and comments (ID optional if in git branch)")
   .action(getIssue);
+
+program
+  .command("get-issue-v2 <id>")
+  .description("Get a single issue with the same output format and field options as list-issues")
+  .option("--output-format <format>", "Output format: markdown, json (compact), or rich-json (pretty)", "json")
+  .option("--fields <fields>", "Comma-separated fields to include: identifier,title,branch,assignee,description,comments", "identifier,title,branch")
+  .action(getIssueV2);
 
 program
   .command("add-comment <message>")
@@ -732,16 +912,17 @@ program
   .action(updateStatus);
 
 program
-  .command("fetch-issues")
-  .description("Fetch and display issues with advanced filtering")
+  .command("list-issues")
+  .description("List and filter issues with advanced options")
   .option("--max-issues <number>", "Maximum number of issues to fetch", "10")
+  .option("--assignee <assignee>", "Filter by assignee (name, email, or display name)")
   .option("--status <statuses>", "Filter by status (comma-separated, e.g. 'research needed,in review')")
   .option("--size <sizes>", "Filter by issue size (comma-separated numbers, e.g. '1,2')")
   .option("--sort-asc", "Sort by updatedAt in ascending order (default is descending)")
   .option("--output-format <format>", "Output format: markdown, json (compact), or rich-json (pretty)", "markdown")
-  .option("--fields <fields>", "Comma-separated fields to include: identifier,title,branch,description,comments", "identifier,title,branch")
+  .option("--fields <fields>", "Comma-separated fields to include: identifier,title,branch,assignee,description,comments", "identifier,title,branch")
   .option("--ids-only", "Output only issue identifiers (incompatible with --fields)")
-  .action(fetchIssues);
+  .action(listIssuesV2);
 
 // Add completion generation
 program
@@ -751,7 +932,7 @@ program
   .option("--zsh", "Generate Zsh completion script")
   .option("--fish", "Generate Fish completion script")
   .action((options) => {
-    const commands = ["list-issues", "get-issue", "add-comment", "fetch-images", "update-status", "fetch-issues", "completion", "help"];
+    const commands = ["my-issues", "list-issues", "get-issue", "get-issue-v2", "add-comment", "fetch-images", "update-status", "completion", "help"];
 
     if (options.bash) {
       // Basic bash completion
@@ -782,12 +963,13 @@ complete -F _linear_completions linear`);
 _linear() {
   local -a commands
   commands=(
-    'list-issues:List your assigned issues'
+    'my-issues:List your assigned issues'
+    'list-issues:List and filter issues with advanced options'
     'get-issue:Show issue details and comments'
+    'get-issue-v2:Get a single issue with the same output format as list-issues'
     'add-comment:Add a comment to an issue'
     'fetch-images:Download all images from an issue'
     'update-status:Update the status of a Linear issue'
-    'fetch-issues:Fetch and display issues with advanced filtering'
     'completion:Generate shell completion script'
     'help:Display help for command'
   )
@@ -801,9 +983,15 @@ _linear() {
           '-i[Specify the Linear issue ID manually]' \\
           '--issue-id[Specify the Linear issue ID manually]'
         ;;
-      fetch-issues)
+      get-issue-v2)
+        _arguments \\
+          '--output-format[Output format]:format:(markdown json rich-json)' \\
+          '--fields[Fields to include]:fields:'
+        ;;
+      list-issues)
         _arguments \\
           '--max-issues[Maximum number of issues to fetch]:number:' \\
+          '--assignee[Filter by assignee]:assignee:' \\
           '--status[Filter by status]:statuses:' \\
           '--size[Filter by issue size]:sizes:' \\
           '--sort-asc[Sort by updatedAt in ascending order]' \\
@@ -823,26 +1011,32 @@ _linear`);
 complete -c linear -f
 
 # Commands
-complete -c linear -n "__fish_use_subcommand" -a "list-issues" -d "List your assigned issues"
+complete -c linear -n "__fish_use_subcommand" -a "my-issues" -d "List your assigned issues"
+complete -c linear -n "__fish_use_subcommand" -a "list-issues" -d "List and filter issues with advanced options"
 complete -c linear -n "__fish_use_subcommand" -a "get-issue" -d "Show issue details and comments"
+complete -c linear -n "__fish_use_subcommand" -a "get-issue-v2" -d "Get a single issue with the same output format as list-issues"
 complete -c linear -n "__fish_use_subcommand" -a "add-comment" -d "Add a comment to an issue"
 complete -c linear -n "__fish_use_subcommand" -a "fetch-images" -d "Download all images from an issue"
 complete -c linear -n "__fish_use_subcommand" -a "update-status" -d "Update the status of a Linear issue"
-complete -c linear -n "__fish_use_subcommand" -a "fetch-issues" -d "Fetch and display issues with advanced filtering"
 complete -c linear -n "__fish_use_subcommand" -a "completion" -d "Generate shell completion script"
 complete -c linear -n "__fish_use_subcommand" -a "help" -d "Display help for command"
 
 # Options for add-comment
 complete -c linear -n "__fish_seen_subcommand_from add-comment" -s i -l issue-id -d "Specify the Linear issue ID manually"
 
-# Options for fetch-issues
-complete -c linear -n "__fish_seen_subcommand_from fetch-issues" -l max-issues -d "Maximum number of issues to fetch"
-complete -c linear -n "__fish_seen_subcommand_from fetch-issues" -l status -d "Filter by status (comma-separated)"
-complete -c linear -n "__fish_seen_subcommand_from fetch-issues" -l size -d "Filter by issue size (comma-separated)"
-complete -c linear -n "__fish_seen_subcommand_from fetch-issues" -l sort-asc -d "Sort by updatedAt in ascending order"
-complete -c linear -n "__fish_seen_subcommand_from fetch-issues" -l output-format -d "Output format" -a "markdown json rich-json"
-complete -c linear -n "__fish_seen_subcommand_from fetch-issues" -l fields -d "Fields to include (comma-separated)"
-complete -c linear -n "__fish_seen_subcommand_from fetch-issues" -l ids-only -d "Output only issue identifiers"
+# Options for get-issue-v2
+complete -c linear -n "__fish_seen_subcommand_from get-issue-v2" -l output-format -d "Output format" -a "markdown json rich-json"
+complete -c linear -n "__fish_seen_subcommand_from get-issue-v2" -l fields -d "Fields to include (comma-separated)"
+
+# Options for list-issues
+complete -c linear -n "__fish_seen_subcommand_from list-issues" -l max-issues -d "Maximum number of issues to fetch"
+complete -c linear -n "__fish_seen_subcommand_from list-issues" -l assignee -d "Filter by assignee (name, email, or display name)"
+complete -c linear -n "__fish_seen_subcommand_from list-issues" -l status -d "Filter by status (comma-separated)"
+complete -c linear -n "__fish_seen_subcommand_from list-issues" -l size -d "Filter by issue size (comma-separated)"
+complete -c linear -n "__fish_seen_subcommand_from list-issues" -l sort-asc -d "Sort by updatedAt in ascending order"
+complete -c linear -n "__fish_seen_subcommand_from list-issues" -l output-format -d "Output format" -a "markdown json rich-json"
+complete -c linear -n "__fish_seen_subcommand_from list-issues" -l fields -d "Fields to include (comma-separated)"
+complete -c linear -n "__fish_seen_subcommand_from list-issues" -l ids-only -d "Output only issue identifiers"
 
 # Options for completion
 complete -c linear -n "__fish_seen_subcommand_from completion" -l bash -d "Generate Bash completion script"
