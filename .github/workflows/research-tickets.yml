@@ -15,30 +15,24 @@ jobs:
   fetch-tickets:
     runs-on: ubuntu-latest
     outputs:
-      ticket_ids: ${{ steps.fetch-tickets.outputs.researchable_ticket_ids }}
+      ticket_ids: ${{ steps.fetch-tickets.outputs.ticket_ids }}
     steps:
       - name: "Checkout repository"
         id: checkout-repository
         uses: actions/checkout@v4
 
-      - name: "Setup bun"
-        id: setup-bun
-        uses: oven-sh/setup-bun@v2
+      - name: "Set up linear tool"
+        id: setup-linear-tool
+        run: |
+          cd hack/linear && npm install && npm install -g .
 
-      - name: "Build actions"
-        id: build-action
-        run: cd .github/actions/fetch-researchable-tickets && bun install
-
-      - name: "Fetch Researchable Linear Tickets"
+      - name: "Get researchable tickets"
         id: fetch-tickets
-        uses: ./.github/actions/fetch-researchable-tickets
-        env:
-          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
-        with:
-          num_tickets: ${{ inputs.num_tickets }}
+        run: >
+          echo 'ticket_ids=$(linear fetch-issues --max-issues ${{ inputs.num_tickets }} --status "research needed" --size 1,2 --ids-only --output-format json)' >> "$GITHUB_OUTPUT"
 
       - name: "Output Ids"
-        run: echo ${{steps.fetch-tickets.outputs.researchable_ticket_ids}}
+        run: echo ${{steps.fetch-tickets.outputs.ticket_ids}}
 
   research-tickets:
     name: Research Ticket ${{matrix.ticket_id}}
