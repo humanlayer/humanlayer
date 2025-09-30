@@ -1226,7 +1226,13 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       preventDefault: true,
       enableOnFormTags: false,
     },
-    [isDraft, titleInputRef, setIsEditingSessionTitle, approvals.confirmingApprovalId, expandedToolResult],
+    [
+      isDraft,
+      titleInputRef,
+      setIsEditingSessionTitle,
+      approvals.confirmingApprovalId,
+      expandedToolResult,
+    ],
   )
 
   // Don't steal scope here - SessionDetail is the base layer

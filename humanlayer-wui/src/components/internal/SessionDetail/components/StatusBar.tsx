@@ -51,7 +51,8 @@ export function StatusBar({
   const modelText = rawModelText.includes('/')
     ? rawModelText.split('/').slice(1).join('/')
     : rawModelText
-  const isRunning = session.status === SessionStatus.Running || session.status === SessionStatus.Starting
+  const isRunning =
+    session.status === SessionStatus.Running || session.status === SessionStatus.Starting
   const isReadyForInput = session.status === SessionStatus.Completed && !session.archived
   const isDraft = session.status === SessionStatus.Draft
 
