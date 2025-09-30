@@ -462,6 +462,239 @@ async function fetchImages(issueId: string): Promise<void> {
   }
 }
 
+async function fetchIssues(options: {
+  maxIssues?: string,
+  status?: string,
+  size?: string,
+  sortAsc?: boolean,
+  outputFormat?: string,
+  fields?: string,
+  idsOnly?: boolean
+}) {
+  try {
+    if (!linear) {
+      throw new Error("Linear client not initialized. Check your API key.");
+    }
+
+    const limit = parseInt(options.maxIssues || "10", 10);
+    const outputFormat = options.outputFormat || "markdown";
+    const idsOnly = options.idsOnly || false;
+    const useCompactJson = outputFormat === "json";
+    const usePrettyJson = outputFormat === "rich-json";
+
+    // Check if --fields was explicitly provided by user (not just the default)
+    // We detect this by checking if the value differs from the default
+    const defaultFields = "identifier,title,branch";
+    const fieldsExplicitlyProvided = options.fields && options.fields !== defaultFields;
+
+    // Validate mutually exclusive options
+    if (idsOnly && fieldsExplicitlyProvided) {
+      console.error(chalk.red("Error: --ids-only and --fields cannot be used together"));
+      process.exit(1);
+    }
+
+    const requestedFields = idsOnly
+      ? ["identifier"]
+      : options.fields
+        ? options.fields.split(',').map(f => f.trim())
+        : ["identifier", "title", "branch"];
+
+    // Build filter conditions
+    const filterConditions: any[] = [];
+
+    // Handle status filter (comma-separated values)
+    if (options.status) {
+      const statuses = options.status.split(',').map(s => s.trim().replace(/^["']|["']$/g, ''));
+      if (statuses.length === 1) {
+        filterConditions.push({
+          state: { name: { eq: statuses[0] } }
+        });
+      } else {
+        filterConditions.push({
+          or: statuses.map(status => ({
+            state: { name: { eq: status } }
+          }))
+        });
+      }
+    }
+
+    // Handle issue size filter (comma-separated numbers)
+    if (options.size) {
+      const sizes = options.size.split(',').map(s => parseInt(s.trim(), 10));
+      if (sizes.length === 1) {
+        filterConditions.push({
+          estimate: { eq: sizes[0] }
+        });
+      } else {
+        filterConditions.push({
+          or: sizes.map(size => ({
+            estimate: { eq: size }
+          }))
+        });
+      }
+    }
+
+    // Construct the final filter
+    const filter = filterConditions.length > 0
+      ? { and: filterConditions }
+      : undefined;
+
+    // Fetch issues with sorting
+    const queryOptions: any = {
+      first: limit,
+      filter,
+    };
+
+    if (options.sortAsc) {
+      queryOptions.orderBy = "updatedAt";
+    }
+
+    const result = await linear.issues(queryOptions);
+
+    if (!result.nodes.length) {
+      if (useCompactJson || usePrettyJson) {
+        console.log(JSON.stringify([], null, usePrettyJson ? 2 : undefined));
+      } else {
+        console.log(chalk.yellow("No issues found matching the criteria."));
+      }
+      return;
+    }
+
+    // Handle ids-only mode
+    if (idsOnly) {
+      const ids = result.nodes.map(issue => issue.identifier);
+      if (useCompactJson || usePrettyJson) {
+        console.log(JSON.stringify(ids, null, usePrettyJson ? 2 : undefined));
+      } else {
+        // Markdown/plain format - one ID per line
+        ids.forEach(id => console.log(id));
+      }
+      return;
+    }
+
+    // Collect all issue data
+    const issuesData = [];
+    for (const issue of result.nodes) {
+      const issueData: any = {};
+
+      if (requestedFields.includes("identifier")) {
+        issueData.identifier = issue.identifier;
+      }
+
+      if (requestedFields.includes("title")) {
+        issueData.title = issue.title;
+      }
+
+      if (requestedFields.includes("branch")) {
+        issueData.branch = issue.branchName || null;
+      }
+
+      if (requestedFields.includes("description")) {
+        issueData.description = issue.description || null;
+      }
+
+      if (requestedFields.includes("comments")) {
+        const comments = await issue.comments();
+        issueData.comments = [];
+
+        for (const comment of comments.nodes) {
+          let commentUser;
+          try {
+            commentUser = await comment.user;
+          } catch (error) {
+            commentUser = null;
+          }
+
+          issueData.comments.push({
+            author: commentUser?.name || "Unknown",
+            body: comment.body,
+            createdAt: comment.createdAt
+          });
+        }
+      }
+
+      // Always fetch state and assignee for markdown format
+      const state = await issue.state;
+      const assignee = await issue.assignee;
+
+      issueData._state = state?.name || "Unknown";
+      issueData._estimate = issue.estimate || null;
+      issueData._assignee = assignee?.name || null;
+
+      issuesData.push(issueData);
+    }
+
+    // Output based on format
+    if (useCompactJson || usePrettyJson) {
+      // For JSON, remove the internal fields and output clean JSON
+      const cleanedData = issuesData.map(issue => {
+        const cleaned: any = {};
+        for (const key of Object.keys(issue)) {
+          if (!key.startsWith('_')) {
+            cleaned[key] = issue[key];
+          }
+        }
+        return cleaned;
+      });
+      console.log(JSON.stringify(cleanedData, null, usePrettyJson ? 2 : undefined));
+    } else {
+      // Markdown format
+      console.log(chalk.bold(`\nFound ${issuesData.length} issue${issuesData.length > 1 ? 's' : ''}:`));
+
+      for (const issue of issuesData) {
+        console.log("");
+
+        if (requestedFields.includes("identifier") && requestedFields.includes("title")) {
+          console.log(`[${chalk.cyan(issue.identifier)}] ${issue.title}`);
+        } else if (requestedFields.includes("identifier")) {
+          console.log(`[${chalk.cyan(issue.identifier)}]`);
+        } else if (requestedFields.includes("title")) {
+          console.log(issue.title);
+        }
+
+        console.log(chalk.dim(`  Status: ${issue._state}`));
+
+        if (issue._estimate) {
+          console.log(chalk.dim(`  Size: ${issue._estimate}`));
+        }
+
+        if (issue._assignee) {
+          console.log(chalk.dim(`  Assignee: ${issue._assignee}`));
+        }
+
+        if (requestedFields.includes("branch") && issue.branch) {
+          console.log(chalk.dim(`  Branch: ${issue.branch}`));
+        }
+
+        if (requestedFields.includes("description") && issue.description) {
+          console.log(chalk.bold("\n  Description:"));
+          console.log("  " + issue.description.split('\n').join('\n  '));
+        }
+
+        if (requestedFields.includes("comments") && issue.comments && issue.comments.length > 0) {
+          console.log(chalk.bold("\n  Comments:"));
+          for (const comment of issue.comments) {
+            const commentDate = new Date(comment.createdAt);
+            const dateStr = commentDate.toISOString().split("T")[0];
+            const timeStr = commentDate.toTimeString().split(" ")[0];
+            console.log(chalk.dim(`  [${dateStr} ${timeStr}] ${comment.author}:`));
+            console.log("  " + comment.body.split('\n').join('\n  '));
+            console.log("");
+          }
+        }
+      }
+
+      // Show pagination info if there are more issues
+      if (result.pageInfo.hasNextPage) {
+        console.log(chalk.dim(`\nShowing first ${limit} issues. There may be more issues available.`));
+      }
+    }
+  } catch (error) {
+    console.error(chalk.red("Error fetching issues:"), error instanceof Error ? error.message : String(error));
+    process.exit(1);
+  }
+}
+
 // Set up CLI commands
 const program = new Command();
 
@@ -498,6 +731,18 @@ program
   .description("Update the status of a Linear issue (e.g. 'research needed', 'in review')")
   .action(updateStatus);
 
+program
+  .command("fetch-issues")
+  .description("Fetch and display issues with advanced filtering")
+  .option("--max-issues <number>", "Maximum number of issues to fetch", "10")
+  .option("--status <statuses>", "Filter by status (comma-separated, e.g. 'research needed,in review')")
+  .option("--size <sizes>", "Filter by issue size (comma-separated numbers, e.g. '1,2')")
+  .option("--sort-asc", "Sort by updatedAt in ascending order (default is descending)")
+  .option("--output-format <format>", "Output format: markdown, json (compact), or rich-json (pretty)", "markdown")
+  .option("--fields <fields>", "Comma-separated fields to include: identifier,title,branch,description,comments", "identifier,title,branch")
+  .option("--ids-only", "Output only issue identifiers (incompatible with --fields)")
+  .action(fetchIssues);
+
 // Add completion generation
 program
   .command("completion")
@@ -506,7 +751,7 @@ program
   .option("--zsh", "Generate Zsh completion script")
   .option("--fish", "Generate Fish completion script")
   .action((options) => {
-    const commands = ["list-issues", "get-issue", "add-comment", "fetch-images", "update-status", "completion", "help"];
+    const commands = ["list-issues", "get-issue", "add-comment", "fetch-images", "update-status", "fetch-issues", "completion", "help"];
 
     if (options.bash) {
       // Basic bash completion
@@ -542,6 +787,7 @@ _linear() {
     'add-comment:Add a comment to an issue'
     'fetch-images:Download all images from an issue'
     'update-status:Update the status of a Linear issue'
+    'fetch-issues:Fetch and display issues with advanced filtering'
     'completion:Generate shell completion script'
     'help:Display help for command'
   )
@@ -554,6 +800,16 @@ _linear() {
         _arguments \\
           '-i[Specify the Linear issue ID manually]' \\
           '--issue-id[Specify the Linear issue ID manually]'
+        ;;
+      fetch-issues)
+        _arguments \\
+          '--max-issues[Maximum number of issues to fetch]:number:' \\
+          '--status[Filter by status]:statuses:' \\
+          '--size[Filter by issue size]:sizes:' \\
+          '--sort-asc[Sort by updatedAt in ascending order]' \\
+          '--output-format[Output format]:format:(markdown json rich-json)' \\
+          '--fields[Fields to include]:fields:' \\
+          '--ids-only[Output only issue identifiers]'
         ;;
     esac
   fi
@@ -572,11 +828,21 @@ complete -c linear -n "__fish_use_subcommand" -a "get-issue" -d "Show issue deta
 complete -c linear -n "__fish_use_subcommand" -a "add-comment" -d "Add a comment to an issue"
 complete -c linear -n "__fish_use_subcommand" -a "fetch-images" -d "Download all images from an issue"
 complete -c linear -n "__fish_use_subcommand" -a "update-status" -d "Update the status of a Linear issue"
+complete -c linear -n "__fish_use_subcommand" -a "fetch-issues" -d "Fetch and display issues with advanced filtering"
 complete -c linear -n "__fish_use_subcommand" -a "completion" -d "Generate shell completion script"
 complete -c linear -n "__fish_use_subcommand" -a "help" -d "Display help for command"
 
 # Options for add-comment
 complete -c linear -n "__fish_seen_subcommand_from add-comment" -s i -l issue-id -d "Specify the Linear issue ID manually"
+
+# Options for fetch-issues
+complete -c linear -n "__fish_seen_subcommand_from fetch-issues" -l max-issues -d "Maximum number of issues to fetch"
+complete -c linear -n "__fish_seen_subcommand_from fetch-issues" -l status -d "Filter by status (comma-separated)"
+complete -c linear -n "__fish_seen_subcommand_from fetch-issues" -l size -d "Filter by issue size (comma-separated)"
+complete -c linear -n "__fish_seen_subcommand_from fetch-issues" -l sort-asc -d "Sort by updatedAt in ascending order"
+complete -c linear -n "__fish_seen_subcommand_from fetch-issues" -l output-format -d "Output format" -a "markdown json rich-json"
+complete -c linear -n "__fish_seen_subcommand_from fetch-issues" -l fields -d "Fields to include (comma-separated)"
+complete -c linear -n "__fish_seen_subcommand_from fetch-issues" -l ids-only -d "Output only issue identifiers"
 
 # Options for completion
 complete -c linear -n "__fish_seen_subcommand_from completion" -l bash -d "Generate Bash completion script"
