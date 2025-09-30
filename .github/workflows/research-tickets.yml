@@ -119,7 +119,7 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: >
-          cd humanlayer && claude -p "/research_codebase ${{ env.TICKET_FILE_PATH }} 
+          cd humanlayer && claude --dangerously-skip-permissions -p "/research_codebase ${{ env.TICKET_FILE_PATH }} 
             Start by reading the ticket and all of the comments.
             Also check /thoughts/shared/images/${{matrix.ticket_id}} for any relevant images and read any you find.
             Then proceed to research the codebase based on the instructions.
@@ -138,5 +138,11 @@ jobs:
       - name: Add comment
         id: update-ticket-with-notes
         run: cd humanlayer && linear add-comment -i ${{matrix.ticket_id}} "$(cat CLAUDE_ANSWER.md)"
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+
+      - name: Update status
+        id: update-ticket-status
+        run: cd humanlayer && linear update-status ${{ matrix.ticket_id }} "research in review"
         env:
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
