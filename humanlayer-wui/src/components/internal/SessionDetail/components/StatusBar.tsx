@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useImperativeHandle } from 'react'
 import { Pencil } from 'lucide-react'
-import { Session } from '@/lib/daemon/types'
+import { Session, SessionStatus } from '@/lib/daemon/types'
 import React from 'react'
 import { Button } from '@/components/ui/button'
 import { TokenUsageBadge } from './TokenUsageBadge'
@@ -8,6 +8,10 @@ import { ModelSelector } from './ModelSelector'
 import { renderSessionStatus } from '@/utils/sessionStatus'
 import { getStatusTextClass } from '@/utils/component-utils'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+
+export interface StatusBarRef {
+  openModelSelector: () => void
+}
 
 interface StatusBarProps {
   session: Session
@@ -20,6 +24,7 @@ interface StatusBarProps {
     className?: string
     icon?: React.ReactNode
   }
+  ref?: React.Ref<StatusBarRef>
 }
 
 export function StatusBar({
@@ -29,6 +34,7 @@ export function StatusBar({
   model,
   onModelChange,
   statusOverride,
+  ref,
 }: StatusBarProps) {
   const [isModelSelectorOpen, setIsModelSelectorOpen] = useState(false)
 
@@ -45,11 +51,20 @@ export function StatusBar({
   const modelText = rawModelText.includes('/')
     ? rawModelText.split('/').slice(1).join('/')
     : rawModelText
-  const isRunning = session.status === 'running' || session.status === 'starting'
-  const isReadyForInput = session.status === 'completed' && !session.archived
-  const isDraft = session.status === 'draft'
+  const isRunning = session.status === SessionStatus.Running || session.status === SessionStatus.Starting
+  const isReadyForInput = session.status === SessionStatus.Completed && !session.archived
+  const isDraft = session.status === SessionStatus.Draft
 
   const isReadyForInputOrDraft = isReadyForInput || isDraft
+
+  // Expose methods to parent via ref (React 19 style)
+  useImperativeHandle(ref, () => ({
+    openModelSelector: () => {
+      if (isReadyForInputOrDraft) {
+        setIsModelSelectorOpen(true)
+      }
+    },
+  }))
 
   return (
     <div className="flex flex-wrap items-center gap-2 text-sm">

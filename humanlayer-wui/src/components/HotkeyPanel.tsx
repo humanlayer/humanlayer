@@ -63,6 +63,7 @@ const hotkeyData = [
   { category: 'Session Detail', key: 'D', description: 'Deny' },
   { category: 'Session Detail', key: 'E', description: 'Archive session' },
   { category: 'Session Detail', key: 'Shift+R', description: 'Rename session' },
+  { category: 'Session Detail', key: 'Shift+M', description: 'Change model' },
   { category: 'Session Detail', key: 'Ctrl+X', description: 'Interrupt session' },
   { category: 'Session Detail', key: 'P', description: 'Go to parent session' },
   { category: 'Session Detail', key: '⌘+Y', description: 'Toggle fork view' },

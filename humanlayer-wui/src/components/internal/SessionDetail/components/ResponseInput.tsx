@@ -10,7 +10,7 @@ import {
   getForkInputPlaceholder,
 } from '@/components/internal/SessionDetail/utils/sessionStatus'
 import { ResponseInputLocalStorageKey } from '@/components/internal/SessionDetail/hooks/useSessionActions'
-import { StatusBar } from './StatusBar'
+import { StatusBar, StatusBarRef } from './StatusBar'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { ResponseEditor } from './ResponseEditor'
 import { SentryErrorBoundary } from '@/components/ErrorBoundary'
@@ -97,6 +97,7 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
     const localStorageValue = localStorage.getItem(`${ResponseInputLocalStorageKey}.${session.id}`)
 
     const tiptapRef = useRef<{ focus: () => void }>(null)
+    const statusBarRef = useRef<StatusBarRef>(null)
 
     // Debounce the claudeSessionId to prevent brief interrupt button flashes
     useEffect(() => {
@@ -354,6 +355,16 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
       { enableOnFormTags: true },
     )
 
+    // Shift+M to open model selector
+    useHotkeys(
+      'shift+m',
+      e => {
+        e.preventDefault()
+        statusBarRef.current?.openModelSelector()
+      },
+      { enableOnFormTags: true },
+    )
+
     const isRunning =
       session.status === SessionStatus.Running || session.status === SessionStatus.Starting
     const hasText = !isResponseEditorEmpty
@@ -469,6 +480,7 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
               {/* Status Bar with Action Buttons */}
               <div className="flex items-center justify-between gap-2">
                 <StatusBar
+                  ref={statusBarRef}
                   session={session}
                   effectiveContextTokens={
                     isForkMode && forkTokenCount !== null && forkTokenCount !== undefined
@@ -546,7 +558,7 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
                     >
                       {/* {responseEditor && !responseEditor.isEmpty ? 'Discard' : 'Cancel'} Until we've implemented change detection we'll always discard */}
                       {'Discard'}
-                      <kbd className="ml-1 px-1 py-0.5 text-xs bg-[var(--terminal-accent-dim)]/50 border border-border text-white rounded">
+                      <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded border border-border">
                         {isMac ? 'Cmd+Shift+.' : 'Ctrl+Shift+.'}
                       </kbd>
                     </Button>

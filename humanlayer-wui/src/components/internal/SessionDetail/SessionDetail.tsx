@@ -1212,7 +1212,13 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     'shift+r',
     e => {
       e.preventDefault()
-      setIsEditingSessionTitle(true)
+      // For drafts, focus the title input directly in SessionDetail
+      if (isDraft && titleInputRef.current) {
+        titleInputRef.current.focus()
+      } else {
+        // For non-drafts, trigger editing in breadcrumb bar
+        setIsEditingSessionTitle(true)
+      }
     },
     {
       enabled: !approvals.confirmingApprovalId && !expandedToolResult,
@@ -1220,7 +1226,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       preventDefault: true,
       enableOnFormTags: false,
     },
-    [setIsEditingSessionTitle, approvals.confirmingApprovalId, expandedToolResult],
+    [isDraft, titleInputRef, setIsEditingSessionTitle, approvals.confirmingApprovalId, expandedToolResult],
   )
 
   // Don't steal scope here - SessionDetail is the base layer
