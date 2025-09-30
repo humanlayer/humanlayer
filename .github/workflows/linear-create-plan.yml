@@ -98,7 +98,7 @@ jobs:
           }' >> humanlayer/.humanlayer.json
 
       - name: Initialize thoughts tool
-        run: cd humanlayer && humanlayer thoughts init --config-file .humanlayer.json --directory humanlayer && humanlayer thoughts sync
+        run: cd humanlayer && humanlayer thoughts init --config-file .humanlayer.json --directory humanlayer
 
       - name: Setup linear tool
         run: |
