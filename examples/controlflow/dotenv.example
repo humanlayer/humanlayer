@@ -1,7 +1,0 @@
-# copy to .env
-OPENAI_API_KEY=
-HUMANLAYER_API_KEY=
-
-# optionally, if you have a prefect backend for controlflow, you can set:
-PREFECT_API_URL=
-PREFECT_API_KEY=
