@@ -6,7 +6,7 @@
 
 <div align="center">
 
-# Close your editor forever.
+## The best way to get Coding Agents to solve hard problems in complex codebases
 
 **CodeLayer is an open source IDE that lets you orchestrate AI coding agents.**
 

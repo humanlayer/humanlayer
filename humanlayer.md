@@ -2,6 +2,8 @@
 
 🚧 **Note**: This documentation covers the HumanLayer SDK which is being superseded by CodeLayer. For the latest IDE experience, see the main README. 🚧
 
+The humanlayer sdks were removed in [#646](https://github.com/humanlayer/humanlayer/pull/646)
+
 ## Table of contents
 
 - [Getting Started](#getting-started)

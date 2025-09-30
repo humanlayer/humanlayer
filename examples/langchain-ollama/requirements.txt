@@ -1,5 +1,0 @@
-langchain
-langchain-ollama
-python-dotenv
-# install humanlayer
-humanlayer==0.7.9
