@@ -3,7 +3,7 @@ import { useHotkeys, useHotkeysContext } from 'react-hotkeys-hook'
 import { toast } from 'sonner'
 import { useSearchParams } from 'react-router'
 
-import { ConversationEvent, Session, ApprovalStatus, SessionStatus } from '@/lib/daemon/types'
+import { ConversationEvent, Session, ApprovalStatus, SessionStatus, ViewMode } from '@/lib/daemon/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { useConversation, useKeyboardNavigationProtection } from '@/hooks'
 import { ChevronDown, FolderOpen, TextSearch } from 'lucide-react'
@@ -642,8 +642,11 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       responseEditor?.commands.setContent('')
       localStorage.removeItem(`response-input.${session.id}`)
 
-      // Refresh sessions to update the session list
-      await useStore.getState().refreshSessions()
+      const storeState = useStore.getState()
+
+      // Refresh sessions to update the session list, set view mode to 'normal'
+      await storeState.refreshSessions()
+      await storeState.setViewMode(ViewMode.Normal)
 
       // Session status will update via WebSocket
     } catch (error) {
