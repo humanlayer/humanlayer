@@ -37,3 +37,88 @@ jobs:
 
       - name: "Output Ids"
         run: echo ${{ steps.fetch-tickets.outputs.ticket_ids}}
+
+  implement-plan:
+    name: Implement plan for ${{matrix.ticket_id}}
+    runs-on: ubuntu-latest
+    needs:
+      - fetch-tickets
+    if: ${{ needs.fetch-tickets.outputs.ticket_ids != '[]' && needs.fetch-tickets.outputs.ticket_ids != ''}}
+    strategy:
+      fail-fast: false
+      matrix:
+        ticket_id: ${{ fromJSON(needs.fetch-tickets.outputs.ticket_ids) }}
+    env:
+      TICKET_FILE_PATH: thoughts/shared/tickets/${{matrix.ticket_id}}.md
+    steps:
+      - name: Checkout humanlayer repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          path: humanlayer
+
+      - name: Setup humanlayer repository
+        run: |
+          cd humanlayer && make setup
+
+      - name: Configure git user
+        run: |
+          git config --global user.email "noreply@anthropic.com"
+          git config --global user.name "Claude"
+
+      - name: Checkout thoughts repository
+        uses: actions/checkout@v4
+        with:
+          repository: humanlayer/thoughts
+          ref: main
+          ssh-key: ${{ secrets.THOUGHTS_WRITE_DEPLOY_KEY }}
+          path: thoughts
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Claude code
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Install humanlayer CLI globally
+        run: cd humanlayer && npm install -g humanlayer
+
+      - name: Setup thoughts tool config
+        run: |
+          echo '{
+            "thoughts": {
+              "thoughtsRepo": "${{ github.workspace }}/thoughts",
+              "reposDir": "repos",
+              "globalDir": "global",
+              "user": "claude",
+              "repoMappings": {}
+            }
+          }' >> humanlayer/.humanlayer.json
+
+      - name: Initialize thoughts tool
+        run: cd humanlayer && humanlayer thoughts init --config-file .humanlayer.json --directory humanlayer
+
+      - name: Setup linear tool
+        run: |
+          cd humanlayer/hack/linear && npm install && npm install -g .
+
+      # doing this again because it may have been updated since research
+      - name: Fetch Ticket with Linear CLI
+        id: fetch-ticket
+        run: linear get-issue ${{ matrix.ticket_id }} >> humanlayer/${{ env.TICKET_FILE_PATH }}
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+
+      # doing this again because it may have been updated since research
+      - name: Fetch images from ticket with Linear CLI
+        id: fetch-ticket-images
+        run: cd humanlayer && linear fetch-images ${{ matrix.ticket_id}}
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
