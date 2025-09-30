@@ -642,7 +642,10 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       responseEditor?.commands.setContent('')
       localStorage.removeItem(`response-input.${session.id}`)
 
-      // Session status will update via WebSocket, no need to do anything else
+      // Refresh sessions to update the session list
+      await useStore.getState().refreshSessions()
+
+      // Session status will update via WebSocket
     } catch (error) {
       toast.error('Failed to launch draft session', {
         description: error instanceof Error ? error.message : 'Unknown error',
