@@ -12,18 +12,14 @@ This is a monorepo containing two distinct but interconnected project groups:
 ## Project 1: HumanLayer SDK & Platform
 
 ### Components
-- `humanlayer/` - Python SDK with decorators for approval flows and human interaction
 - `humanlayer-ts/` - TypeScript SDK for Node.js and browser environments
 - `humanlayer-go/` - Minimal Go client for building tools
 - `humanlayer-ts-vercel-ai-sdk/` - Specialized integration for Vercel AI SDK
-- `examples/` - Integration examples for LangChain, CrewAI, OpenAI, and other frameworks
 - `docs/` - Mintlify documentation site
 
 ### Core Concepts
-- **Approval Decorators**: `@hl.require_approval()` wraps functions requiring human oversight
-- **Human as Tool**: `hl.human_as_tool()` enables AI agents to consult humans
 - **Contact Channels**: Slack, Email, CLI, and web interfaces for human interaction
-- **Multi-language Support**: Feature parity across Python, TypeScript, and Go SDKs
+- **Multi-language Support**: Feature parity across TypeScript and Go SDKs
 
 ## Project 2: Local Tools Suite
 
@@ -52,10 +48,6 @@ Claude Code → MCP Protocol → hlyr → JSON-RPC → hld → HumanLayer Cloud 
 - **Trigger macOS nightly build**: `gh workflow run "Build macOS Release Artifacts" --repo humanlayer/humanlayer`
 - Workflow definitions are located in `.github/workflows/`
 
-### Python Development
-- Uses `uv` exclusively - never use pip directly
-- Tests are co-located with source as `*_test.py` files
-- Commands: `uv sync`, `make check-py`, `make test-py`
 
 ### TypeScript Development
 - Package managers vary - check `package.json` for npm or bun
@@ -68,11 +60,6 @@ Claude Code → MCP Protocol → hlyr → JSON-RPC → hld → HumanLayer Cloud 
 - Integration tests only in some projects (look for `-tags=integration`)
 
 ## Technical Guidelines
-
-### Python
-- Strict type hints (mypy strict mode)
-- Async/await patterns where established
-- Follow existing code style
 
 ### TypeScript
 - Modern ES6+ features
@@ -98,5 +85,4 @@ We use a priority-based TODO annotation system throughout the codebase:
 - `PERF`: Performance optimization opportunities
 
 ## Additional Resources
-- Check `examples/` for integration patterns
 - Consult `docs/` for user-facing documentation

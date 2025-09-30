@@ -94,10 +94,6 @@ jobs:
 
   tests:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.11"]
-      fail-fast: false
     steps:
       - name: Check out
         uses: actions/checkout@v4
@@ -174,7 +170,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: pytest-results-${{ matrix.python-version }}
+          name: test-results
           path: |
             junit.xml
             coverage.xml
