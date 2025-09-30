@@ -83,8 +83,20 @@ jobs:
       - name: Install humanlayer CLI globally
         run: cd humanlayer && npm install -g humanlayer
 
+      - name: setup thoughts tool config
+        run: |
+          echo '{
+            "thoughts": {
+              "thoughtsRepo": "${{ env.GITHUB_WORKSPACE}}/thoughts",
+              "reposDir": "repos",
+              "globalDir": "global",
+              "user": "claude",
+              "repoMappings": {}
+            }
+          }' >> .humanlayer.json
+
       - name: Initialize thoughts tool
-        run: cd humanlayer && make thoughts
+        run: cd humanlayer && humanlayer thoughts init --config .humanlayer.json --directory humanlayer
 
       - name: Setup linear tool
         run: |
