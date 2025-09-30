@@ -1,6 +1,8 @@
 name: "Research XS/S Linear Tickets"
 on:
   push:
+    branches:
+      - kyle/eng-2175-auto-create-worktree-and-checkout-for-linear
   schedule:
     - cron: "*/15 * * * *"
   workflow_dispatch:
@@ -49,7 +51,7 @@ jobs:
       TICKET_FILE_PATH: thoughts/shared/tickets/${{matrix.ticket_id}}.md
 
     steps:
-      - name: Checkout repository
+      - name: Checkout humanlayer repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
@@ -73,13 +75,13 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Setup repository
+      - name: Install Claude Code
         run: npm install -g @anthropic-ai/claude-code
 
       - name: Install humanlayer CLI globally
         run: cd humanlayer && npm install -g humanlayer
 
-      - name: setup thoughts tool config
+      - name: Setup thoughts tool config
         run: |
           echo '{
             "thoughts": {
@@ -110,7 +112,7 @@ jobs:
         env:
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
 
-      - name: Install Claude Code
+      - name: Run research with Claude
         id: run-claude-research
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -124,20 +126,20 @@ jobs:
 
             If there is already a research document for this ticket and there are comments on the ticket, use the comments as instructions for updating the research document." 2>&1 | tee CLAUDE_ANSWER.md
 
-      - name: Sync thoughts
+      - name: Sync research to thoughts
         id: sync-research-document
         run: |
           git config --global user.email "noreply@anthropic.com"
           git config --global user.name "Claude" 
           cd thoughts && git add -A && git commit -m "Sync thoughts from CI for ${{ matrix.ticket_id}}" && git pull --rebase && git push
 
-      - name: Add comment
+      - name: Add comment to linear ticket
         id: update-ticket-with-notes
         run: cd humanlayer && linear add-comment -i ${{matrix.ticket_id}} "$(cat CLAUDE_ANSWER.md)"
         env:
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
 
-      - name: Update status
+      - name: Update linear ticket status
         id: update-ticket-status
         run: cd humanlayer && linear update-status ${{ matrix.ticket_id }} "research in review"
         env:
