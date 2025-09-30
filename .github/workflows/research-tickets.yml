@@ -87,7 +87,7 @@ jobs:
 
       - name: Setup linear tool
         run: |
-          cd hack/linear && npm install -g .
+          cd hack/linear && npm install && npm install -g .
 
       - name: Fetch Ticket with Linear CLI
         id: fetch-ticket
