@@ -4,7 +4,6 @@
 	"type": "module",
 	"private": true,
 	"bin": {
-		"fetch-linear-issues": "./cli.js"
 	},
 	"devDependencies": {
 		"@types/bun": "latest"
