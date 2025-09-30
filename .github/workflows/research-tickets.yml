@@ -93,7 +93,7 @@ jobs:
               "user": "claude",
               "repoMappings": {}
             }
-          }' >> .humanlayer.json
+          }' >> humanlayer/.humanlayer.json
 
       - name: Initialize thoughts tool
         run: cd humanlayer && humanlayer thoughts init --config-file .humanlayer.json --directory humanlayer
