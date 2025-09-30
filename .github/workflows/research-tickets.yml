@@ -104,7 +104,7 @@ jobs:
 
       - name: Fetch Ticket with Linear CLI
         id: fetch-ticket
-        run: cd humanlayer && linear get-issue ${{ matrix.ticket_id }} > ${{ env.TICKET_FILE_PATH }}
+        run: linear get-issue ${{ matrix.ticket_id }} >> humanlayer/${{ env.TICKET_FILE_PATH }}
 
       - name: Fetch images from ticket with Linear CLI
         id: fetch-ticket-images
