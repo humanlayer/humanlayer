@@ -243,11 +243,18 @@ async function getIssue(issueId?: string) {
       const reversedComments = [...comments.nodes].reverse();
       
       for (const comment of reversedComments) {
-        const commentUser = await comment.user;
+        let commentUser;
+        try {
+          commentUser = await comment.user;
+        } catch (error) {
+          // Handle case where user is null (bot comments, deleted users, etc.)
+          commentUser = null;
+        }
+
         const commentDate = new Date(comment.createdAt);
         const dateStr = commentDate.toISOString().split("T")[0];
         const timeStr = commentDate.toTimeString().split(" ")[0]; // HH:MM:SS format
-        
+
         console.log(chalk.dim(`[${dateStr} ${timeStr}] ${commentUser?.name || "Unknown"}:`));
         console.log(comment.body);
         console.log(); // Empty line between comments
