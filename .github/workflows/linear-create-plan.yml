@@ -1,4 +1,4 @@
-name: 'Linear: Create Plan for XS/S Tickets in "ready for plan"'
+name: "Linear: Create Plan for Task"
 on:
   push:
     branches:

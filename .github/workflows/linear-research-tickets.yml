@@ -1,4 +1,4 @@
-name: 'Linear: Research XS/S Tickets in "research needed"'
+name: "Linear: Research Task"
 on:
   push:
     branches:

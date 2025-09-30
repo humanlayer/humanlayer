@@ -1,0 +1,39 @@
+name: "Linear: Implement Plan for Task"
+on:
+  push:
+    branches:
+      - kyle/eng-2175-auto-create-worktree-and-checkout-for-linear
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+    inputs:
+      num_tickets:
+        description: "Maximum number of tickets to create a plan for"
+        required: false
+        type: string
+        default: "10"
+
+jobs:
+  fetch-tickets:
+    runs-on: ubuntu-latest
+    outputs:
+      ticket_ids: ${{ steps.fetch-tickets.outputs.ticket_ids}}
+    steps:
+      - name: "Checkout repository"
+        id: checkout-repository
+        uses: actions/checkout@v4
+
+      - name: "Setup linear tool"
+        id: setup-linear-tool
+        run: |
+          cd hack/linear && npm install && npm install -g .
+
+      - name: "Get tickets in 'ready for plan'"
+        id: fetch-tickets
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+        run: >
+          echo "ticket_ids=$(linear list-issues --max-issues ${{ inputs.num_tickets || 10 }} --status 'ready for dev' --assignee 'LinearLayer (Claude)' --ids-only --output-format json)" >> "$GITHUB_OUTPUT"
+
+      - name: "Output Ids"
+        run: echo ${{ steps.fetch-tickets.outputs.ticket_ids}}
