@@ -117,18 +117,19 @@ jobs:
       - name: Install Claude Code
         id: run-claude-research
         run: >
-          cd humanlayer && $(claude -p "/research_codebase ${{ env.TICKET_FILE_PATH }} 
+          cd humanlayer && claude -p "/research_codebase ${{ env.TICKET_FILE_PATH }} 
             Start by reading the ticket and all of the comments.
             Also check /thoughts/shared/images/${{matrix.ticket_id}} for any relevant images and read any you find.
             Then proceed to research the codebase based on the instructions.
 
             **DO NOT ASK THE USER FOR DIRECTIONS OR CLARIFICATION. Simply proceed to the research based on the information you have been provided with, and then write your research document. **
 
-            If there is already a research document for this ticket and there are comments on the ticket, use the comments as instructions for updating the research document." >> CLAUDE_ANSWER.md)
+            If there is already a research document for this ticket and there are comments on the ticket, use the comments as instructions for updating the research document." 2>&1 | tee CLAUDE_ANSWER.md
 
       - name: Sync thoughts
         id: sync-research-document
-        run: cd humanlayer && humanlayer thoughts sync
+        run: |
+          cd thoughts && git add -A && git commit -m "Sync thoughts from CI for ${{ matrix.ticket_id}}" && git pull --rebase && git push
 
       - name: Add comment
         id: update-ticket-with-notes
