@@ -1,4 +1,4 @@
-name: "Research XS/S Linear Tickets"
+name: 'Linear: Research XS/S Tickets in "research needed"'
 on:
   push:
     branches:
@@ -33,7 +33,7 @@ jobs:
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
         id: fetch-tickets
         run: >
-          echo "ticket_ids=$(linear fetch-issues --max-issues ${{ inputs.num_tickets || 10 }} --status 'research needed' --size 1,2 --ids-only --output-format json)" >> "$GITHUB_OUTPUT"
+          echo "ticket_ids=$(linear list-issues --max-issues ${{ inputs.num_tickets || 10 }} --status 'research needed' --assignee 'LinearLayer (Claude)' --ids-only --output-format json)" >> "$GITHUB_OUTPUT"
 
       - name: "Output Ids"
         run: echo ${{steps.fetch-tickets.outputs.ticket_ids}}
@@ -56,6 +56,11 @@ jobs:
         with:
           fetch-depth: 1
           path: humanlayer
+
+      - name: Configure git user
+        run: |
+          git config --global user.email "noreply@anthropic.com"
+          git config --global user.name "Claude"
 
       - name: Checkout thoughts repository
         uses: actions/checkout@v4
@@ -112,6 +117,12 @@ jobs:
         env:
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
 
+      - name: Update linear ticket status to Research in Progress
+        id: update-ticket-status-progress
+        run: cd humanlayer && linear update-status ${{ matrix.ticket_id }} "research in progress"
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+
       - name: Run research with Claude
         id: run-claude-research
         env:
@@ -129,9 +140,23 @@ jobs:
       - name: Sync research to thoughts
         id: sync-research-document
         run: |
-          git config --global user.email "noreply@anthropic.com"
-          git config --global user.name "Claude" 
           cd thoughts && git add -A && git commit -m "Sync thoughts from CI for ${{ matrix.ticket_id}}" && git pull --rebase && git push
+
+      # if the task fails, update the status to "research needed"
+      - name: In event of failure reset status
+        if: ${{ failure() }}
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+        run: |
+          cd humanlayer && linear update-status ${{ matrix.ticket_id }} "research needed"
+
+      # if the task is cancelled, update the status to "research needed"
+      - name: In event of cancellation reset status
+        if: ${{ cancelled() }}
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+        run: |
+          cd humanlayer && linear update-status ${{ matrix.ticket_id }} "research needed"
 
       - name: Add comment to linear ticket
         id: update-ticket-with-notes
@@ -140,7 +165,7 @@ jobs:
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
 
       - name: Update linear ticket status
-        id: update-ticket-status
+        id: update-ticket-status-review
         run: cd humanlayer && linear update-status ${{ matrix.ticket_id }} "research in review"
         env:
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}

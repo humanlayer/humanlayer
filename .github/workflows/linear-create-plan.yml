@@ -1,4 +1,4 @@
-name: "Create Implementation Plan for XS/S Linear Tickets"
+name: 'Linear: Create Plan for XS/S Tickets in "ready for plan"'
 on:
   push:
     branches:
@@ -16,7 +16,7 @@ jobs:
   fetch-tickets:
     runs-on: ubuntu-latest
     outputs:
-      ticket-ids: $ {{ steps.fetch-tickets.outputs.ticket_ids }}
+      ticket_ids: $ {{ steps.fetch-tickets.outputs.ticket_ids }}
     steps:
       - name: "Checkout repository"
         id: checkout-repository
@@ -32,7 +32,142 @@ jobs:
         env:
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
         run: >
-          echo "ticket_ids=$(linear fetch-issues --max-issues ${{ inputs.num_tickets || 10 }} --status 'ready for plan' --size 1,2 --ids-only --output-format json)" >> "$GITHUB_OUTPUT"
+          echo "ticket_ids=$(linear list-issues --max-issues ${{ inputs.num_tickets || 10 }} --status 'ready for plan' --assignee 'LinearLayer (Claude)' --ids-only --output-format json)" >> "$GITHUB_OUTPUT"
 
       - name: "Output Ids"
         run: echo ${{ steps.fetch-tickets.outputs.ticket_ids}}
+
+  create-plan:
+    name: Create Plan for ${{ matrix.ticket_id}}
+    needs:
+      - fetch-tickets
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false # one failure should not cause all the others to fail
+      matrix:
+        ticket_id: ${{ fromJSON(needs.fetch-tickets.outputs.ticket_ids)}}
+    env:
+      TICKET_FILE_PATH: thoughts/shared/tickets/${{matrix.ticket_id}}.md
+    steps:
+      - name: Checkout humanlayer repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          path: humanlayer
+
+      - name: Configure git user
+        run: |
+          git config --global user.email "noreply@anthropic.com"
+          git config --global user.name "Claude"
+
+      - name: Checkout thoughts repository
+        uses: actions/checkout@v4
+        with:
+          repository: humanlayer/thoughts
+          ref: main
+          ssh-key: ${{ secrets.THOUGHTS_WRITE_DEPLOY_KEY }}
+          path: thoughts
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Install humanlayer CLI globally
+        run: cd humanlayer && npm install -g humanlayer
+
+      - name: Setup thoughts tool config
+        run: |
+          echo '{
+            "thoughts": {
+              "thoughtsRepo": "${{ github.workspace }}/thoughts",
+              "reposDir": "repos",
+              "globalDir": "global",
+              "user": "claude",
+              "repoMappings": {}
+            }
+          }' >> humanlayer/.humanlayer.json
+
+      - name: Initialize thoughts tool
+        run: cd humanlayer && humanlayer thoughts init --config-file .humanlayer.json --directory humanlayer && humanlayer thoughts sync
+
+      - name: Setup linear tool
+        run: |
+          cd humanlayer/hack/linear && npm install && npm install -g .
+
+      # doing this again because it may have been updated since research
+      - name: Fetch Ticket with Linear CLI
+        id: fetch-ticket
+        run: linear get-issue ${{ matrix.ticket_id }} >> humanlayer/${{ env.TICKET_FILE_PATH }}
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+
+      # doing this again because it may have been updated since research
+      - name: Fetch images from ticket with Linear CLI
+        id: fetch-ticket-images
+        run: cd humanlayer && linear fetch-images ${{ matrix.ticket_id}}
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+
+      - name: Update linear ticket status to Plan in Progress
+        id: update-ticket-status-progress
+        run: cd humanlayer && linear update-status ${{ matrix.ticket_id }} "plan in progress"
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+
+      - name: Create plan with Claude
+        id: run-claude-create-plan
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: >
+          cd humanlayer && claude --dangerously-skip-permissions -p "/create_plan ${{ env.TICKET_FILE_PATH }} 
+            Start by reading the ticket file and all of the comments in it. 
+            Then, locate the research for the ticket in thoughts/shared/research.
+            Also check /thoughts/shared/images/${{matrix.ticket_id}} for any relevant images and read any you find.
+            
+            Then proceed to create a plan for the ticket based on the information.
+
+            **DO NOT ASK THE USER FOR DIRECTIONS OR CLARIFICATION. Simply proceed to create a plan based on the information you have been provided with, and then write your plan document. **
+
+            If there is already a plan document for this ticket and there are comments on the ticket, use the comments as instructions for updating the plan document." 2>&1 | tee CLAUDE_ANSWER.md
+
+      - name: Sync plan to thoughts
+        id: sync-plan-document
+        run: |
+          cd thoughts && git add -A && git commit -m "Sync thoughts from CI for ${{ matrix.ticket_id}}" && git pull --rebase && git push
+
+      # if the task fails, update the status to "research needed"
+      - name: In event of failure reset status
+        if: ${{ failure() }}
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+        run: |
+          cd humanlayer && linear update-status ${{ matrix.ticket_id }} "ready for plan"
+
+      # if the task is cancelled, update the status to "research needed"
+      - name: In event of cancellation reset status
+        if: ${{ cancelled() }}
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+        run: |
+          cd humanlayer && linear update-status ${{ matrix.ticket_id }} "ready for plan"
+
+      - name: Add comment to linear ticket
+        id: update-ticket-with-notes
+        run: cd humanlayer && linear add-comment -i ${{matrix.ticket_id}} "$(cat CLAUDE_ANSWER.md)"
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+
+      - name: Update linear ticket status
+        id: update-ticket-status-review
+        run: cd humanlayer && linear update-status ${{ matrix.ticket_id }} "plan in review"
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
