@@ -87,7 +87,7 @@ jobs:
         run: |
           echo '{
             "thoughts": {
-              "thoughtsRepo": "${{ env.GITHUB_WORKSPACE}}/thoughts",
+              "thoughtsRepo": "${{ github.workspace }}/thoughts",
               "reposDir": "repos",
               "globalDir": "global",
               "user": "claude",
