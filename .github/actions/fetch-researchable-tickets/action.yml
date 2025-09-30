@@ -12,4 +12,4 @@ inputs:
     default: '10'
 outputs:
   researchable_ticket_ids:
-    description: 'an array of researchable tickest (XS/S-sized "ready for research" tickets) in ENG-XXXX format'
+    description: 'an array of researchable tickets (XS/S-sized "ready for research" tickets) in ENG-XXXX format'
