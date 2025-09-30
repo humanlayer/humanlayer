@@ -254,6 +254,14 @@ func (m *Manager) LaunchSession(ctx context.Context, config LaunchSessionConfig,
 		slog.Debug("no MCP config provided")
 	}
 
+	// Set permission prompt tool to use the injected MCP server
+	if claudeConfig.PermissionPromptTool == "" {
+		claudeConfig.PermissionPromptTool = "mcp__codelayer__request_permission"
+		slog.Debug("auto-injected permission_prompt_tool",
+			"session_id", sessionID,
+			"permission_prompt_tool", claudeConfig.PermissionPromptTool)
+	}
+
 	// Capture current working directory if not specified
 	if claudeConfig.WorkingDir == "" {
 		cwd, err := os.Getwd()
@@ -1651,6 +1659,15 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 		}
 	}
 
+	// Set permission prompt tool to use the injected MCP server
+	if config.PermissionPromptTool == "" {
+		config.PermissionPromptTool = "mcp__codelayer__request_permission"
+		slog.Debug("auto-injected permission_prompt_tool for continued session",
+			"session_id", sessionID,
+			"parent_session_id", req.ParentSessionID,
+			"permission_prompt_tool", config.PermissionPromptTool)
+	}
+
 	// Set proxy URL for resumed session when proxy is enabled
 	if dbSession.ProxyEnabled {
 		if config.Env == nil {
@@ -1881,6 +1898,14 @@ func (m *Manager) launchDraftWithConfig(ctx context.Context, sessionID, runID st
 			}
 			claudeConfig.MCPConfig.MCPServers[name] = server
 		}
+	}
+
+	// Set permission prompt tool to use the injected MCP server
+	if claudeConfig.PermissionPromptTool == "" {
+		claudeConfig.PermissionPromptTool = "mcp__codelayer__request_permission"
+		slog.Debug("auto-injected permission_prompt_tool for draft",
+			"session_id", sessionID,
+			"permission_prompt_tool", claudeConfig.PermissionPromptTool)
 	}
 
 	// Set proxy URL for this session ONLY when proxy is explicitly enabled

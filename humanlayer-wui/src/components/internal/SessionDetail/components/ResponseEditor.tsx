@@ -460,8 +460,6 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
     },
     ref,
   ) => {
-    logger.log('ResponseEditor - Component rendering with initialValue:', { initialValue })
-
     const onSubmitRef = React.useRef<ResponseEditorProps['onSubmit']>()
     const onChangeRef = React.useRef<ResponseEditorProps['onChange']>()
     const onToggleAutoAcceptRef = React.useRef<ResponseEditorProps['onToggleAutoAccept']>()
@@ -481,6 +479,7 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
     const virtualAnchor = useRef<HTMLDivElement>(null)
 
     const setResponseEditor = useStore(state => state.setResponseEditor)
+    const setResponseEditorEmpty = useStore(state => state.setResponseEditorEmpty)
     const removeResponseEditor = useStore(state => state.removeResponseEditor)
 
     useEffect(() => {
@@ -715,7 +714,10 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
           return false
         },
       },
-      onUpdate: ({ editor }) => onChangeRef.current?.(editor.getJSON()),
+      onUpdate: ({ editor }) => {
+        onChangeRef.current?.(editor.getJSON())
+        setResponseEditorEmpty(editor.isEmpty)
+      },
       editable: !disabled,
 
       enableInputRules: false,
@@ -742,12 +744,13 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
     useEffect(() => {
       logger.log('ResponseEditor.useEffect() - setting response editor')
       setResponseEditor(editor)
+      setResponseEditorEmpty(editor.isEmpty)
       return () => {
         logger.log('TiptapEditor.useEffect() - destroying editor')
         editor?.destroy()
         removeResponseEditor()
       }
-    }, [editor, setResponseEditor, removeResponseEditor])
+    }, [editor, setResponseEditor, setResponseEditorEmpty, removeResponseEditor])
 
     // Handle clicks and hovers on mentions
     useEffect(() => {

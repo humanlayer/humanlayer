@@ -93,6 +93,7 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
     const [isDragHover, setIsDragHover] = useState(false)
     const [debouncedCanInterrupt, setDebouncedCanInterrupt] = useState(false)
     const responseEditor = useStore(state => state.responseEditor)
+    const isResponseEditorEmpty = useStore(state => state.isResponseEditorEmpty)
     const localStorageValue = localStorage.getItem(`${ResponseInputLocalStorageKey}.${session.id}`)
 
     const tiptapRef = useRef<{ focus: () => void }>(null)
@@ -121,7 +122,7 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
 
       const isRunning =
         session.status === SessionStatus.Running || session.status === SessionStatus.Starting
-      const hasText = responseEditor && !responseEditor.isEmpty
+      const hasText = !isResponseEditorEmpty
       const canInterrupt = debouncedCanInterrupt // Use debounced value
 
       if (session.archived && isRunning) {
@@ -147,17 +148,6 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
     // Only load editor state once we have proper session data (not "unknown" status)
     // Also wait for server fetch (not fromStore) for draft sessions to ensure we have editorState
     const hasValidSessionData = (session.status as any) !== 'unknown' && !(session as any).fromStore
-
-    logger.log('ResponseInput - Determining initialValue', {
-      sessionId: session.id,
-      isDraft,
-      status: session.status,
-      fromStore: (session as any).fromStore,
-      hasValidSessionData,
-      hasEditorState: !!session.editorState,
-      editorState: session.editorState,
-      editorStateLength: session.editorState?.length,
-    })
 
     if (hasValidSessionData) {
       if (isDraft) {
@@ -222,7 +212,7 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
       // Check if this is an interruption attempt without claudeSessionId
       const isRunning =
         session.status === SessionStatus.Running || session.status === SessionStatus.Starting
-      const hasText = responseEditor && !responseEditor.isEmpty
+      const hasText = !isResponseEditorEmpty
 
       // Early return if no text in editor
       if (!hasText) {
@@ -366,7 +356,7 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
 
     const isRunning =
       session.status === SessionStatus.Running || session.status === SessionStatus.Starting
-    const hasText = responseEditor && !responseEditor.isEmpty
+    const hasText = !isResponseEditorEmpty
     const canInterrupt = debouncedCanInterrupt // Use debounced value
 
     // Disable when: responding OR (running without ability to interrupt) OR (not running and no text) OR launching draft

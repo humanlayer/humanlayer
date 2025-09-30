@@ -64,15 +64,6 @@ export function useConversation(
       setLoading(true)
       setError(null)
 
-      console.log(
-        '[useConversation] Fetching conversation for session:',
-        sessionId,
-        'status:',
-        sessionStatus,
-        'abortControllerRef.current:',
-        abortControllerRef.current,
-      )
-
       const response = await daemonClient.getConversation(
         { session_id: sessionId, claude_session_id: claudeSessionId },
         { signal: abortControllerRef.current.signal },

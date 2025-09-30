@@ -140,7 +140,9 @@ interface StoreState {
 
   /* Response Editor */
   responseEditor: Editor | null
+  isResponseEditorEmpty: boolean
   setResponseEditor: (responseEditor: Editor) => void
+  setResponseEditorEmpty: (isEmpty: boolean) => void
   removeResponseEditor: () => void
 }
 
@@ -159,6 +161,7 @@ export const useStore = create<StoreState>((set, get) => ({
   activeSessionDetail: null,
   claudeConfig: null,
   responseEditor: null,
+  isResponseEditorEmpty: true,
   initSessions: (sessions: Session[]) => set({ sessions }),
   updateSession: (sessionId: string, updates: Partial<Session>) =>
     set(state => ({
@@ -1103,9 +1106,12 @@ export const useStore = create<StoreState>((set, get) => ({
     logger.log('AppStore.setResponseEditor() - setting response editor')
     return set({ responseEditor })
   },
+  setResponseEditorEmpty: (isEmpty: boolean) => {
+    return set({ isResponseEditorEmpty: isEmpty })
+  },
   removeResponseEditor: () => {
     logger.log('AppStore.removeResponseEditor() - removing response editor')
-    return set({ responseEditor: null })
+    return set({ responseEditor: null, isResponseEditorEmpty: true })
   },
 }))
 

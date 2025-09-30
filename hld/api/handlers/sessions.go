@@ -329,7 +329,7 @@ func (h *SessionHandlers) GetSession(ctx context.Context, req api.GetSessionRequ
 // UpdateSession updates session settings (auto-accept, archived status)
 func (h *SessionHandlers) UpdateSession(ctx context.Context, req api.UpdateSessionRequestObject) (api.UpdateSessionResponseObject, error) {
 	// Debug log incoming request
-	slog.Info("UpdateSession called", "sessionId", req.Id, "body", req.Body)
+	// slog.Debug("UpdateSession called", "sessionId", req.Id, "body", req.Body)
 
 	update := store.SessionUpdate{}
 
@@ -421,9 +421,9 @@ func (h *SessionHandlers) UpdateSession(ctx context.Context, req api.UpdateSessi
 	// Update editor state if specified
 	if req.Body.EditorState != nil {
 		update.EditorState = req.Body.EditorState
-		slog.Info("Updating editor state",
-			"sessionId", req.Id,
-			"editorStateLength", len(*req.Body.EditorState))
+		// slog.Debug("Updating editor state",
+		// 	"sessionId", req.Id,
+		// 	"editorStateLength", len(*req.Body.EditorState))
 	}
 
 	err := h.manager.UpdateSessionSettings(ctx, string(req.Id), update)
