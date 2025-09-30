@@ -17,10 +17,12 @@ import {
   Heart,
   Terminal,
 } from 'lucide-react'
-import { useHotkeys, useHotkeysContext } from 'react-hotkeys-hook'
-import { SessionTableHotkeysScope } from './internal/SessionTable'
+import { useHotkeys } from 'react-hotkeys-hook'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { KeyboardShortcut } from './HotkeyPanel'
+import { HotkeyScopeBoundary } from './HotkeyScopeBoundary'
+import { HOTKEY_SCOPES } from '../hooks/hotkeys/scopes'
+import { useHotkeyUnicodeChars } from '../hooks/useHotkeyUnicodeChars'
 
 const themes: { value: Theme; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { value: 'solarized-dark', label: 'Solarized Dark', icon: Moon },
@@ -42,16 +44,16 @@ const themes: { value: Theme; label: string; icon: React.ComponentType<{ classNa
   { value: 'l33t', label: 'L33t', icon: Terminal },
 ]
 
-export const ThemeSelectorHotkeysScope = 'theme-selector'
-
 export function ThemeSelector() {
   const { theme, setTheme } = useTheme()
+  const unicodeChars = useHotkeyUnicodeChars()
   const [isOpen, setIsOpen] = useState(false)
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [positionAbove, setPositionAbove] = useState(true)
   const currentTheme = themes.find(t => t.value === theme)
-  const { enableScope, disableScope } = useHotkeysContext()
   const buttonRef = useRef<HTMLButtonElement>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+  const itemRefs = useRef<(HTMLButtonElement | null)[]>([])
 
   // Update selected index when theme changes or dropdown opens
   useEffect(() => {
@@ -74,20 +76,19 @@ export function ThemeSelector() {
     }
   }, [isOpen])
 
-  // manage hotkey scopes when this componetn is opened/closed
+  // Scroll selected item into view when selectedIndex changes
   useEffect(() => {
-    if (isOpen) {
-      enableScope(ThemeSelectorHotkeysScope)
-      disableScope(SessionTableHotkeysScope)
-    } else {
-      enableScope(SessionTableHotkeysScope)
-      disableScope(ThemeSelectorHotkeysScope)
+    if (isOpen && itemRefs.current[selectedIndex]) {
+      itemRefs.current[selectedIndex]?.scrollIntoView({
+        block: 'nearest',
+        behavior: 'smooth',
+      })
     }
-  }, [isOpen])
+  }, [selectedIndex, isOpen])
 
   // Hotkey to toggle dropdown
   useHotkeys(
-    'ctrl+t',
+    'meta+t, ctrl+t',
     () => {
       setIsOpen(prev => !prev)
     },
@@ -102,7 +103,7 @@ export function ThemeSelector() {
         setSelectedIndex(prev => (prev + 1) % themes.length)
       }
     },
-    { preventDefault: true, enabled: isOpen, scopes: ThemeSelectorHotkeysScope },
+    { preventDefault: true, enabled: isOpen, scopes: [HOTKEY_SCOPES.THEME_SELECTOR] },
   )
 
   useHotkeys(
@@ -112,7 +113,7 @@ export function ThemeSelector() {
         setSelectedIndex(prev => (prev - 1 + themes.length) % themes.length)
       }
     },
-    { preventDefault: true, enabled: isOpen, scopes: ThemeSelectorHotkeysScope },
+    { preventDefault: true, enabled: isOpen, scopes: [HOTKEY_SCOPES.THEME_SELECTOR] },
   )
 
   useHotkeys(
@@ -123,7 +124,7 @@ export function ThemeSelector() {
         setIsOpen(false)
       }
     },
-    { preventDefault: true, enabled: isOpen, scopes: ThemeSelectorHotkeysScope },
+    { preventDefault: true, enabled: isOpen, scopes: [HOTKEY_SCOPES.THEME_SELECTOR] },
   )
 
   useHotkeys(
@@ -133,7 +134,7 @@ export function ThemeSelector() {
         setIsOpen(false)
       }
     },
-    { preventDefault: true, enabled: isOpen, scopes: ThemeSelectorHotkeysScope },
+    { preventDefault: true, enabled: isOpen, scopes: [HOTKEY_SCOPES.THEME_SELECTOR] },
   )
 
   return (
@@ -150,38 +151,48 @@ export function ThemeSelector() {
         </TooltipTrigger>
         <TooltipContent>
           <p className="flex items-center gap-1">
-            Theme: {currentTheme?.label || 'Unknown'} <KeyboardShortcut keyString="Ctrl+T" />
+            Theme: {currentTheme?.label || 'Unknown'}{' '}
+            <KeyboardShortcut keyString={`${unicodeChars.Mod}+T`} />
           </p>
         </TooltipContent>
       </Tooltip>
 
       {isOpen && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
-          <div
-            className={`absolute ${positionAbove ? 'bottom-full mb-1' : 'top-full mt-1'} right-0 min-w-48 border border-border bg-background z-20 max-h-64 overflow-y-auto`}
-          >
-            {themes.map((themeOption, index) => (
-              <button
-                key={themeOption.value}
-                onClick={() => {
-                  setTheme(themeOption.value)
-                  setIsOpen(false)
-                }}
-                className={`w-full px-2 py-1.5 text-left text-xs font-mono transition-colors flex items-center gap-2 ${
-                  index === selectedIndex
-                    ? 'bg-accent/20 text-accent'
-                    : theme === themeOption.value
-                      ? 'bg-accent/10 text-accent'
-                      : 'text-foreground hover:bg-accent/5'
-                }`}
-              >
-                <themeOption.icon className="w-3 h-3" />
-                <span>{themeOption.label}</span>
-              </button>
-            ))}
-          </div>
-        </>
+        <HotkeyScopeBoundary
+          scope={HOTKEY_SCOPES.THEME_SELECTOR}
+          isActive={isOpen}
+          rootScopeDisabled={true}
+          componentName="ThemeSelector"
+        >
+          <>
+            <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
+            <div
+              ref={dropdownRef}
+              className={`absolute ${positionAbove ? 'bottom-full mb-1' : 'top-full mt-1'} right-0 min-w-48 border border-border bg-background z-20 max-h-64 overflow-y-auto`}
+            >
+              {themes.map((themeOption, index) => (
+                <button
+                  key={themeOption.value}
+                  ref={el => (itemRefs.current[index] = el)}
+                  onClick={() => {
+                    setTheme(themeOption.value)
+                    setIsOpen(false)
+                  }}
+                  className={`w-full px-2 py-1.5 text-left text-xs font-mono transition-colors flex items-center gap-2 ${
+                    index === selectedIndex
+                      ? 'bg-accent/20 text-accent'
+                      : theme === themeOption.value
+                        ? 'bg-accent/10 text-accent'
+                        : 'text-foreground hover:bg-accent/5'
+                  }`}
+                >
+                  <themeOption.icon className="w-3 h-3" />
+                  <span>{themeOption.label}</span>
+                </button>
+              ))}
+            </div>
+          </>
+        </HotkeyScopeBoundary>
       )}
     </div>
   )

@@ -10,6 +10,8 @@ import { ChevronDown } from 'lucide-react'
 import { daemonClient } from '@/lib/daemon/client'
 import { useStore } from '@/AppStore'
 import { getArchiveOnForkPreference } from '@/lib/preferences'
+import { HotkeyScopeBoundary } from '@/components/HotkeyScopeBoundary'
+import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
 
 // Import extracted components
 import { ConversationStream } from '../ConversationStream/ConversationStream'
@@ -36,7 +38,7 @@ interface SessionDetailProps {
 }
 
 // SessionDetail uses its own scope so it can be properly disabled when modals are open
-export const SessionDetailHotkeysScope = 'session-detail'
+export const SessionDetailHotkeysScope = HOTKEY_SCOPES.SESSION_DETAIL
 
 const ROBOT_VERBS = [
   'accelerating',
@@ -192,7 +194,13 @@ function OmniSpinner({ randomVerb, spinnerType }: { randomVerb: string; spinnerT
 }
 
 function SessionDetail({ session, onClose }: SessionDetailProps) {
-  const { enableScope, disableScope } = useHotkeysContext()
+  // Note: enableScope/disableScope removed - now handled by HotkeyScopeBoundary
+
+  // Determine the appropriate scope based on session state
+  const detailScope = session?.archived
+    ? HOTKEY_SCOPES.SESSION_DETAIL_ARCHIVED
+    : HOTKEY_SCOPES.SESSION_DETAIL
+
   const [isWideView, setIsWideView] = useState(false)
   const [expandedToolResult, setExpandedToolResult] = useState<ConversationEvent | null>(null)
   const [expandedToolCall, setExpandedToolCall] = useState<ConversationEvent | null>(null)
@@ -285,13 +293,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       ? sessionFromStore.dangerouslySkipPermissionsExpiresAt?.toISOString()
       : session.dangerouslySkipPermissionsExpiresAt?.toISOString()
 
-  // Enable SessionDetail scope when mounted
-  useEffect(() => {
-    enableScope(SessionDetailHotkeysScope)
-    return () => {
-      disableScope(SessionDetailHotkeysScope)
-    }
-  }, [enableScope, disableScope])
+  // Scope is now handled by HotkeyScopeBoundary wrapper
 
   // Debug logging
   useEffect(() => {
@@ -375,6 +377,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     setExpandedToolCall,
     disabled: forkViewOpen, // Disable navigation when fork view is open
     startKeyboardNavigation,
+    scope: detailScope,
   })
 
   // Use approvals hook
@@ -384,11 +387,16 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     focusedEventId: navigation.focusedEventId,
     setFocusedEventId: navigation.setFocusedEventId,
     setFocusSource: navigation.setFocusSource,
+    scope: detailScope,
   })
 
   // Use clipboard hook
   const focusedEvent = events.find(e => e.id === navigation.focusedEventId) || null
-  useSessionClipboard(focusedEvent, !expandedToolResult && !forkViewOpen)
+  useSessionClipboard({
+    focusedEvent,
+    enabled: !expandedToolResult && !forkViewOpen,
+    scope: detailScope,
+  })
 
   // Handle approval parameter from URL
   const [searchParams, setSearchParams] = useSearchParams()
@@ -448,6 +456,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     pendingForkMessage,
     onForkCommit: handleForkCommit,
     archiveOnFork, // Add this
+    scope: detailScope,
   })
 
   // Add fork selection handler
@@ -592,8 +601,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   // Fork view toggle handler (moved here to be available for escape handler)
   const handleToggleForkView = useCallback(() => {
     // Check if any modal scopes are active
-    const modalScopes = ['tool-result-modal', 'dangerously-skip-permissions-dialog']
-    const hasModalOpen = activeScopes.some(scope => modalScopes.includes(scope))
+    const modalScopes = [HOTKEY_SCOPES.TOOL_RESULT_MODAL, HOTKEY_SCOPES.BYPASS_PERMISSIONS_MODAL]
+    const hasModalOpen = activeScopes.some(scope => modalScopes.includes(scope as any))
 
     // Don't trigger if other modals are open
     if (hasModalOpen) {
@@ -671,7 +680,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     },
     {
       enableOnFormTags: true, // Enable escape key in form elements like textarea
-      scopes: SessionDetailHotkeysScope,
+      scopes: [detailScope],
     },
     [
       isEditingSessionTitle,
@@ -734,24 +743,24 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     }
   }, [session.id, activeScopes, dangerousSkipPermissionsDialogOpen, updateSessionOptimistic])
 
-  // Add Shift+Tab handler for auto-accept edits mode
+  // Add Option+A handler for auto-accept edits mode
   useHotkeys(
-    'shift+tab',
+    'alt+a, option+a',
     handleToggleAutoAccept,
     {
       preventDefault: true,
-      scopes: SessionDetailHotkeysScope,
+      scopes: [detailScope],
     },
     [handleToggleAutoAccept],
   )
 
   // Add Option+Y handler for dangerously skip permissions mode
   useHotkeys(
-    'alt+y',
+    'alt+y, option+y',
     handleToggleDangerouslySkipPermissions,
     {
       preventDefault: true,
-      scopes: SessionDetailHotkeysScope,
+      scopes: [detailScope],
     },
     [handleToggleDangerouslySkipPermissions],
   )
@@ -786,7 +795,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     },
     {
       preventDefault: true,
-      scopes: SessionDetailHotkeysScope,
+      scopes: [detailScope],
     },
   )
 
@@ -862,7 +871,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     },
     {
       preventDefault: true,
-      scopes: SessionDetailHotkeysScope,
+      scopes: [detailScope],
     },
     [session.id, session.archived, session.summary, session.status, onClose, confirmingArchive],
   )
@@ -870,13 +879,13 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   // Create reusable handler for toggling fork view
   // Add hotkey to open fork view (Meta+Y)
   useHotkeys(
-    'meta+y',
+    'meta+y, ctrl+y',
     e => {
       e.preventDefault()
       handleToggleForkView()
     },
     {
-      scopes: SessionDetailHotkeysScope,
+      scopes: [detailScope],
     },
     [handleToggleForkView],
   )
@@ -940,20 +949,18 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       const container = document.querySelector('[data-conversation-container]')
       if (container) {
         container.scrollTop = container.scrollHeight
-        // Focus the last event
-        if (events.length > 0) {
-          const lastEvent = events[events.length - 1]
-          if (lastEvent.id !== undefined) {
-            navigation.setFocusedEventId(lastEvent.id)
-            navigation.setFocusSource('keyboard')
-          }
+        // Focus the last navigable item
+        if (navigation.navigableItems.length > 0) {
+          const lastItem = navigation.navigableItems[navigation.navigableItems.length - 1]
+          navigation.setFocusedEventId(lastItem.id)
+          navigation.setFocusSource('keyboard')
         }
       }
     },
     {
-      scopes: SessionDetailHotkeysScope,
+      scopes: [detailScope],
     },
-    [events, navigation.setFocusedEventId, navigation.setFocusSource],
+    [navigation.navigableItems, navigation.setFocusedEventId, navigation.setFocusSource],
   )
 
   // Add 'gg' to jump to top of conversation (vim-style)
@@ -965,22 +972,20 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       const container = document.querySelector('[data-conversation-container]')
       if (container) {
         container.scrollTop = 0
-        // Focus the first event
-        if (events.length > 0) {
-          const firstEvent = events[0]
-          if (firstEvent.id !== undefined) {
-            navigation.setFocusedEventId(firstEvent.id)
-            navigation.setFocusSource('keyboard')
-          }
+        // Focus the first navigable item
+        if (navigation.navigableItems.length > 0) {
+          const firstItem = navigation.navigableItems[0]
+          navigation.setFocusedEventId(firstItem.id)
+          navigation.setFocusSource('keyboard')
         }
       }
     },
     {
       enableOnFormTags: false,
       preventDefault: true,
-      scopes: SessionDetailHotkeysScope,
+      scopes: [detailScope],
     },
-    [events, navigation.setFocusedEventId, navigation.setFocusSource],
+    [navigation.navigableItems, navigation.setFocusedEventId, navigation.setFocusSource],
   )
 
   // Add Enter key to focus text input
@@ -994,7 +999,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     {
       enableOnFormTags: false,
       preventDefault: true,
-      scopes: SessionDetailHotkeysScope,
+      scopes: [detailScope],
     },
   )
 
@@ -1005,7 +1010,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       setDirectoriesDropdownOpen(prev => !prev)
     },
     {
-      scopes: SessionDetailHotkeysScope,
+      scopes: [detailScope],
       enabled: !!session.workingDir,
       preventDefault: true,
       enableOnFormTags: false,
@@ -1022,7 +1027,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     },
     {
       enabled: !approvals.confirmingApprovalId && !expandedToolResult,
-      scopes: SessionDetailHotkeysScope,
+      scopes: [detailScope],
       preventDefault: true,
       enableOnFormTags: false,
     },
@@ -1091,190 +1096,195 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   }
 
   return (
-    <section className="flex flex-col h-full gap-3">
-      {/* Unified header with working directory */}
-      <div className="flex items-center justify-between gap-2">
-        {/* Working directory info */}
-        {session.workingDir && (
-          <AdditionalDirectoriesDropdown
-            workingDir={session.workingDir}
-            directories={session.additionalDirectories || []}
-            sessionStatus={session.status}
-            onDirectoriesChange={handleUpdateAdditionalDirectories}
-            open={directoriesDropdownOpen}
-            onOpenChange={setDirectoriesDropdownOpen}
-          />
-        )}
+    <HotkeyScopeBoundary
+      scope={detailScope}
+      componentName={`SessionDetail-${session?.archived ? 'archived' : 'normal'}`}
+    >
+      <section className="flex flex-col h-full gap-3">
+        {/* Unified header with working directory */}
+        <div className="flex items-center justify-between gap-2">
+          {/* Working directory info */}
+          {session.workingDir && (
+            <AdditionalDirectoriesDropdown
+              workingDir={session.workingDir}
+              directories={session.additionalDirectories || []}
+              sessionStatus={session.status}
+              onDirectoriesChange={handleUpdateAdditionalDirectories}
+              open={directoriesDropdownOpen}
+              onOpenChange={setDirectoriesDropdownOpen}
+            />
+          )}
 
-        {/* Fork view modal */}
-        <ForkViewModal
-          events={events}
-          selectedEventIndex={previewEventIndex}
-          onSelectEvent={handleForkSelect}
-          isOpen={forkViewOpen}
-          onOpenChange={open => {
-            setForkViewOpen(open)
-            // Focus the input when closing the fork modal
-            // Use longer delay to ensure it happens after all dialog cleanup
-            if (!open && responseEditor) {
-              setTimeout(() => {
-                responseEditor.commands.focus()
-              }, 50)
-            }
-          }}
-          sessionStatus={session.status}
-          onArchiveOnForkChange={setArchiveOnFork}
-        />
-      </div>
-
-      <div className={`flex flex-1 gap-4 ${isWideView ? 'flex-row' : 'flex-col'} min-h-0`}>
-        {/* Conversation content and Loading */}
-        <Card
-          className={`Conversation-Card w-full relative ${cardVerticalPadding} flex flex-col min-h-0`}
-        >
-          <CardContent className="px-3 flex flex-col flex-1 min-h-0">
-            <ConversationStream
-              sessionId={session.id}
-              focusedEventId={navigation.focusedEventId}
-              setFocusedEventId={navigation.setFocusedEventId}
-              onApprove={approvals.handleApprove}
-              onDeny={(approvalId: string, reason: string) =>
-                approvals.handleDeny(approvalId, reason, session.id)
+          {/* Fork view modal */}
+          <ForkViewModal
+            events={events}
+            selectedEventIndex={previewEventIndex}
+            onSelectEvent={handleForkSelect}
+            isOpen={forkViewOpen}
+            onOpenChange={open => {
+              setForkViewOpen(open)
+              // Focus the input when closing the fork modal
+              // Use longer delay to ensure it happens after all dialog cleanup
+              if (!open && responseEditor) {
+                setTimeout(() => {
+                  responseEditor.commands.focus()
+                }, 50)
               }
-              approvingApprovalId={approvals.approvingApprovalId}
+            }}
+            sessionStatus={session.status}
+            onArchiveOnForkChange={setArchiveOnFork}
+          />
+        </div>
+
+        <div className={`flex flex-1 gap-4 ${isWideView ? 'flex-row' : 'flex-col'} min-h-0`}>
+          {/* Conversation content and Loading */}
+          <Card
+            className={`Conversation-Card w-full relative ${cardVerticalPadding} flex flex-col min-h-0`}
+          >
+            <CardContent className="px-3 flex flex-col flex-1 min-h-0">
+              <ConversationStream
+                sessionId={session.id}
+                focusedEventId={navigation.focusedEventId}
+                setFocusedEventId={navigation.setFocusedEventId}
+                onApprove={approvals.handleApprove}
+                onDeny={(approvalId: string, reason: string) =>
+                  approvals.handleDeny(approvalId, reason, session.id)
+                }
+                approvingApprovalId={approvals.approvingApprovalId}
+                denyingApprovalId={approvals.denyingApprovalId ?? undefined}
+                setDenyingApprovalId={approvals.setDenyingApprovalId}
+                onCancelDeny={approvals.handleCancelDeny}
+                focusSource={navigation.focusSource}
+                setFocusSource={navigation.setFocusSource}
+                expandedToolResult={expandedToolResult}
+                setExpandedToolResult={setExpandedToolResult}
+                setExpandedToolCall={setExpandedToolCall}
+                maxEventIndex={previewEventIndex ?? undefined}
+                shouldIgnoreMouseEvent={shouldIgnoreMouseEvent}
+                expandedTasks={expandedTasks}
+                toggleTaskGroup={toggleTaskGroup}
+              />
+            </CardContent>
+            {isActivelyProcessing && (
+              <div
+                className={`absolute bottom-0 left-0 px-3 py-1.5 border-t border-border bg-secondary/30 w-full font-mono text-sm uppercase tracking-wider text-muted-foreground transition-all duration-300 ease-out ${
+                  isActivelyProcessing ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'
+                }`}
+              >
+                <OmniSpinner randomVerb={randomVerb} spinnerType={spinnerType} />
+              </div>
+            )}
+            {/* Status bar for pending approvals */}
+            <div
+              className={`absolute bottom-0 left-0 right-0 p-2 cursor-pointer transition-all duration-300 ease-in-out ${
+                hasPendingApprovalsOutOfView
+                  ? 'opacity-100 translate-y-0'
+                  : 'opacity-0 translate-y-full pointer-events-none'
+              }`}
+              onClick={() => {
+                const container = document.querySelector('[data-conversation-container]')
+                if (container) {
+                  container.scrollTop = container.scrollHeight
+                }
+              }}
+            >
+              <div className="flex items-center justify-center gap-1 font-mono text-xs uppercase tracking-wider text-muted-foreground bg-background/60 backdrop-blur-sm border-t border-border/50 py-1 shadow-sm hover:bg-background/80 transition-colors">
+                <span>Pending Approval</span>
+                <ChevronDown className="w-3 h-3 animate-bounce" />
+              </div>
+            </div>
+          </Card>
+
+          {isWideView && lastTodo && (
+            <Card className="w-[20%] flex flex-col min-h-0">
+              <CardContent className="flex flex-col flex-1 min-h-0 overflow-hidden">
+                <TodoWidget event={lastTodo} />
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {/* Response input - always show but disable for non-completed sessions */}
+        <Card className="py-2">
+          <CardContent className="px-2">
+            <ResponseInput
               denyingApprovalId={approvals.denyingApprovalId ?? undefined}
-              setDenyingApprovalId={approvals.setDenyingApprovalId}
-              onCancelDeny={approvals.handleCancelDeny}
-              focusSource={navigation.focusSource}
-              setFocusSource={navigation.setFocusSource}
-              expandedToolResult={expandedToolResult}
-              setExpandedToolResult={setExpandedToolResult}
-              setExpandedToolCall={setExpandedToolCall}
-              maxEventIndex={previewEventIndex ?? undefined}
-              shouldIgnoreMouseEvent={shouldIgnoreMouseEvent}
-              expandedTasks={expandedTasks}
-              toggleTaskGroup={toggleTaskGroup}
+              isDenying={approvals.isDenying}
+              onDeny={approvals.handleDeny}
+              handleCancelDeny={approvals.handleCancelDeny}
+              denyAgainstOldestApproval={approvals.denyAgainstOldestApproval}
+              session={session}
+              parentSessionData={parentSessionData || parentSession || undefined}
+              isResponding={actions.isResponding}
+              handleContinueSession={actions.handleContinueSession}
+              isForkMode={actions.isForkMode}
+              forkTokenCount={forkTokenCount}
+              forkTurnNumber={
+                previewEventIndex !== null
+                  ? events
+                      .slice(0, previewEventIndex)
+                      .filter(e => e.eventType === 'message' && e.role === 'user').length
+                  : undefined
+              }
+              onModelChange={() => {
+                // Refresh session data if needed
+                fetchActiveSessionDetail(session.id)
+              }}
+              sessionStatus={session.status}
+              onToggleAutoAccept={handleToggleAutoAccept}
+              onToggleDangerouslySkipPermissions={handleToggleDangerouslySkipPermissions}
+              onToggleForkView={handleToggleForkView}
+              // ActionButtons props
+              canFork={previewEventIndex === null && !isActivelyProcessing}
+              bypassEnabled={dangerouslySkipPermissions}
+              autoAcceptEnabled={autoAcceptEdits}
+              isArchived={session.archived || false}
+              onToggleArchive={handleToggleArchive}
+              previewEventIndex={previewEventIndex}
+              isActivelyProcessing={isActivelyProcessing}
+            />
+            {/* Session mode indicator - shows fork, dangerous skip permissions or auto-accept */}
+            <SessionModeIndicator
+              sessionId={session.id}
+              autoAcceptEdits={autoAcceptEdits}
+              dangerouslySkipPermissions={dangerouslySkipPermissions}
+              dangerouslySkipPermissionsExpiresAt={dangerouslySkipPermissionsExpiresAt}
+              isForkMode={previewEventIndex !== null}
+              forkTurnNumber={
+                previewEventIndex !== null
+                  ? events
+                      .slice(0, previewEventIndex)
+                      .filter(e => e.eventType === 'message' && e.role === 'user').length
+                  : undefined
+              }
+              forkTokenCount={forkTokenCount}
+              className="mt-2"
+              onToggleAutoAccept={handleToggleAutoAccept}
+              onToggleBypass={handleToggleDangerouslySkipPermissions}
             />
           </CardContent>
-          {isActivelyProcessing && (
-            <div
-              className={`absolute bottom-0 left-0 px-3 py-1.5 border-t border-border bg-secondary/30 w-full font-mono text-sm uppercase tracking-wider text-muted-foreground transition-all duration-300 ease-out ${
-                isActivelyProcessing ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'
-              }`}
-            >
-              <OmniSpinner randomVerb={randomVerb} spinnerType={spinnerType} />
-            </div>
-          )}
-          {/* Status bar for pending approvals */}
-          <div
-            className={`absolute bottom-0 left-0 right-0 p-2 cursor-pointer transition-all duration-300 ease-in-out ${
-              hasPendingApprovalsOutOfView
-                ? 'opacity-100 translate-y-0'
-                : 'opacity-0 translate-y-full pointer-events-none'
-            }`}
-            onClick={() => {
-              const container = document.querySelector('[data-conversation-container]')
-              if (container) {
-                container.scrollTop = container.scrollHeight
-              }
-            }}
-          >
-            <div className="flex items-center justify-center gap-1 font-mono text-xs uppercase tracking-wider text-muted-foreground bg-background/60 backdrop-blur-sm border-t border-border/50 py-1 shadow-sm hover:bg-background/80 transition-colors">
-              <span>Pending Approval</span>
-              <ChevronDown className="w-3 h-3 animate-bounce" />
-            </div>
-          </div>
         </Card>
 
-        {isWideView && lastTodo && (
-          <Card className="w-[20%] flex flex-col min-h-0">
-            <CardContent className="flex flex-col flex-1 min-h-0 overflow-hidden">
-              <TodoWidget event={lastTodo} />
-            </CardContent>
-          </Card>
-        )}
-      </div>
-
-      {/* Response input - always show but disable for non-completed sessions */}
-      <Card className="py-2">
-        <CardContent className="px-2">
-          <ResponseInput
-            denyingApprovalId={approvals.denyingApprovalId ?? undefined}
-            isDenying={approvals.isDenying}
-            onDeny={approvals.handleDeny}
-            handleCancelDeny={approvals.handleCancelDeny}
-            denyAgainstOldestApproval={approvals.denyAgainstOldestApproval}
-            session={session}
-            parentSessionData={parentSessionData || parentSession || undefined}
-            isResponding={actions.isResponding}
-            handleContinueSession={actions.handleContinueSession}
-            isForkMode={actions.isForkMode}
-            forkTokenCount={forkTokenCount}
-            forkTurnNumber={
-              previewEventIndex !== null
-                ? events
-                    .slice(0, previewEventIndex)
-                    .filter(e => e.eventType === 'message' && e.role === 'user').length
-                : undefined
-            }
-            onModelChange={() => {
-              // Refresh session data if needed
-              fetchActiveSessionDetail(session.id)
+        {/* Tool Result Expansion Modal */}
+        {(expandedToolResult || expandedToolCall) && (
+          <ToolResultModal
+            toolCall={expandedToolCall}
+            toolResult={expandedToolResult}
+            onClose={() => {
+              setExpandedToolResult(null)
+              setExpandedToolCall(null)
             }}
-            sessionStatus={session.status}
-            onToggleAutoAccept={handleToggleAutoAccept}
-            onToggleDangerouslySkipPermissions={handleToggleDangerouslySkipPermissions}
-            onToggleForkView={handleToggleForkView}
-            // ActionButtons props
-            canFork={previewEventIndex === null && !isActivelyProcessing}
-            bypassEnabled={dangerouslySkipPermissions}
-            autoAcceptEnabled={autoAcceptEdits}
-            isArchived={session.archived || false}
-            onToggleArchive={handleToggleArchive}
-            previewEventIndex={previewEventIndex}
-            isActivelyProcessing={isActivelyProcessing}
           />
-          {/* Session mode indicator - shows fork, dangerous skip permissions or auto-accept */}
-          <SessionModeIndicator
-            sessionId={session.id}
-            autoAcceptEdits={autoAcceptEdits}
-            dangerouslySkipPermissions={dangerouslySkipPermissions}
-            dangerouslySkipPermissionsExpiresAt={dangerouslySkipPermissionsExpiresAt}
-            isForkMode={previewEventIndex !== null}
-            forkTurnNumber={
-              previewEventIndex !== null
-                ? events
-                    .slice(0, previewEventIndex)
-                    .filter(e => e.eventType === 'message' && e.role === 'user').length
-                : undefined
-            }
-            forkTokenCount={forkTokenCount}
-            className="mt-2"
-            onToggleAutoAccept={handleToggleAutoAccept}
-            onToggleBypass={handleToggleDangerouslySkipPermissions}
-          />
-        </CardContent>
-      </Card>
+        )}
 
-      {/* Tool Result Expansion Modal */}
-      {(expandedToolResult || expandedToolCall) && (
-        <ToolResultModal
-          toolCall={expandedToolCall}
-          toolResult={expandedToolResult}
-          onClose={() => {
-            setExpandedToolResult(null)
-            setExpandedToolCall(null)
-          }}
+        {/* Dangerously Skip Permissions Dialog */}
+        <DangerouslySkipPermissionsDialog
+          open={dangerousSkipPermissionsDialogOpen}
+          onOpenChange={setDangerousSkipPermissionsDialogOpen}
+          onConfirm={handleDangerousSkipPermissionsConfirm}
         />
-      )}
-
-      {/* Dangerously Skip Permissions Dialog */}
-      <DangerouslySkipPermissionsDialog
-        open={dangerousSkipPermissionsDialogOpen}
-        onOpenChange={setDangerousSkipPermissionsDialogOpen}
-        onConfirm={handleDangerousSkipPermissionsConfirm}
-      />
-    </section>
+      </section>
+    </HotkeyScopeBoundary>
   )
 }
 

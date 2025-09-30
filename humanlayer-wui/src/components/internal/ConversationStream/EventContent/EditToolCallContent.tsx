@@ -55,8 +55,8 @@ export function EditToolCallContent({
 
       <div className="mt-2">
         <DiffViewer
-          oldContent={toolInput.old_string}
-          newContent={toolInput.new_string}
+          oldContent={toolInput.old_string || ''}
+          newContent={toolInput.new_string || ''}
           mode={isSplitView ? 'split' : 'unified'}
           showFullFile={false}
         />

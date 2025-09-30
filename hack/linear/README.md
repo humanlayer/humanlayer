@@ -4,9 +4,10 @@ A command-line interface for interacting with Linear issue tracking.
 
 ## Features
 
-- List your active assigned issues (`list-issues`) 
+- List your active assigned issues (`list-issues`)
 - View issue details and comments (`get-issue`)
 - Add comments to issues (`add-comment`)
+- Download all images from issues (`fetch-images`)
 - Automatically detect issue IDs from git branch names
 - Shell completions for fish, zsh, and bash
 - Cross-platform with support for multiple JavaScript runtimes
@@ -40,6 +41,31 @@ linear get-issue
 # Add a comment to an issue (requires message as first parameter)
 linear add-comment "This is my comment" --issue-id ENG-123  # Explicit ID
 linear add-comment "This is my comment"  # Uses git branch auto-detection
+
+# Download all images from an issue to local thoughts directory
+linear fetch-images ENG-123
+```
+
+### Fetch Images
+
+Download all images from a Linear issue to the local thoughts directory:
+
+```bash
+linear fetch-images ENG-123
+```
+
+This command:
+- Downloads all images embedded in the issue description and comments
+- Saves them to `thoughts/shared/images/ENG-123/`
+- Names files as `ENG-123-01.png`, `ENG-123-02.jpg`, etc.
+- Outputs the list of saved file paths (one per line)
+- Shows progress messages to stderr
+
+Example output:
+```
+Downloaded 2 images:
+thoughts/shared/images/ENG-123/ENG-123-01.png
+thoughts/shared/images/ENG-123/ENG-123-02.jpg
 ```
 
 ### Add Comment Requirements

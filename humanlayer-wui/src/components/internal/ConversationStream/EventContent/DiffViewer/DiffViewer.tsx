@@ -32,8 +32,8 @@ function debugLogSnapshotFailure(
 function computeLineDiff(oldStr: string, newStr: string) {
   // Returns an array of { type: 'equal'|'add'|'remove'|'replace', oldLine?: string, newLine?: string, oldIndex?: number, newIndex?: number }
   // Simple LCS-based diff for lines
-  const oldLines = oldStr.split('\n')
-  const newLines = newStr.split('\n')
+  const oldLines = (oldStr || '').split('\n')
+  const newLines = (newStr || '').split('\n')
   const n = oldLines.length
   const m = newLines.length
   // LCS table

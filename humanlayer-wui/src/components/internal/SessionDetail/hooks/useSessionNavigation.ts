@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { ConversationEvent, ConversationEventType } from '@/lib/daemon/types'
-import { SessionDetailHotkeysScope } from '../SessionDetail'
+import { HotkeyScope } from '@/hooks/hotkeys/scopes'
 
 interface NavigableItem {
   id: number
@@ -18,6 +18,7 @@ interface UseSessionNavigationProps {
   setExpandedToolCall?: (event: ConversationEvent | null) => void
   disabled?: boolean
   startKeyboardNavigation?: () => void
+  scope: HotkeyScope
 }
 
 export function useSessionNavigation({
@@ -30,6 +31,7 @@ export function useSessionNavigation({
   setExpandedToolCall,
   disabled = false,
   startKeyboardNavigation,
+  scope,
 }: UseSessionNavigationProps) {
   const [focusedEventId, setFocusedEventId] = useState<number | null>(null)
   const [focusSource, setFocusSource] = useState<'mouse' | 'keyboard' | null>(null)
@@ -102,9 +104,10 @@ export function useSessionNavigation({
       : -1
 
     if (currentIndex === -1) {
-      // When no event is focused, j should do nothing (stay at bottom)
-      // User must press k first to start navigating from bottom
-      return
+      // When no event is focused, j should select the first event
+      startKeyboardNavigation?.()
+      setFocusedEventId(navigableItems[0].id)
+      setFocusSource('keyboard')
     } else if (currentIndex < navigableItems.length - 1) {
       startKeyboardNavigation?.()
       setFocusedEventId(navigableItems[currentIndex + 1].id)
@@ -120,7 +123,7 @@ export function useSessionNavigation({
       : -1
 
     if (currentIndex === -1) {
-      // Start from the bottom when first pressing k
+      // When no event is focused, k should select the last event
       startKeyboardNavigation?.()
       setFocusedEventId(navigableItems[navigableItems.length - 1].id)
       setFocusSource('keyboard')
@@ -134,11 +137,11 @@ export function useSessionNavigation({
   // Keyboard navigation
   useHotkeys('j, ArrowDown', focusNextEvent, {
     enabled: !expandedToolResult && !disabled,
-    scopes: SessionDetailHotkeysScope,
+    scopes: [scope],
   })
   useHotkeys('k, ArrowUp', focusPreviousEvent, {
     enabled: !expandedToolResult && !disabled,
-    scopes: SessionDetailHotkeysScope,
+    scopes: [scope],
   })
 
   // I key to expand task groups or inspect tool results
@@ -151,6 +154,21 @@ export function useSessionNavigation({
 
       const focusedEvent = events.find(e => e.id === focusedEventId)
       if (!focusedEvent || focusedEvent.eventType !== ConversationEventType.ToolCall) return
+
+      // Handle sub-agent info display for Task events
+      if (focusedEvent.toolName === 'Task' && focusedEvent.toolInputJson && setExpandedToolCall) {
+        try {
+          const taskInput = JSON.parse(focusedEvent.toolInputJson)
+          // Show modal for sub-agents to display prompt and parameters
+          if (taskInput.subagent_type && taskInput.subagent_type !== 'Task') {
+            // Use the existing modal infrastructure to show sub-agent details
+            setExpandedToolCall(focusedEvent)
+            return
+          }
+        } catch (e) {
+          console.error('Failed to parse task input:', e)
+        }
+      }
 
       // Handle task group expansion for Task events with sub-events
       if (focusedEvent.toolName === 'Task' && focusedEvent.toolId && hasSubTasks) {
@@ -185,7 +203,122 @@ export function useSessionNavigation({
         setExpandedToolCall(focusedEvent)
       }
     },
-    { enabled: !expandedToolResult && !disabled, scopes: SessionDetailHotkeysScope },
+    { enabled: !expandedToolResult && !disabled, scopes: [scope] },
+  )
+
+  // H key to toggle task group expand/collapse
+  useHotkeys(
+    'h',
+    () => {
+      if (!focusedEventId) return
+
+      startKeyboardNavigation?.()
+
+      const focusedEvent = events.find(e => e.id === focusedEventId)
+      if (!focusedEvent) return
+
+      // Build map of sub-events by parent
+      const subEventsByParent = new Map<string, ConversationEvent[]>()
+      events.forEach(event => {
+        if (event.parentToolUseId) {
+          const siblings = subEventsByParent.get(event.parentToolUseId) || []
+          siblings.push(event)
+          subEventsByParent.set(event.parentToolUseId, siblings)
+        }
+      })
+
+      // Case 1: Focused on a sub-event within a task group
+      if (focusedEvent.parentToolUseId) {
+        // Find the parent task event
+        const parentTask = events.find(
+          e =>
+            e.toolId === focusedEvent.parentToolUseId &&
+            e.toolName === 'Task' &&
+            e.eventType === ConversationEventType.ToolCall,
+        )
+
+        if (parentTask && expandedTasks.has(focusedEvent.parentToolUseId)) {
+          // Collapse the parent group
+          toggleTaskGroup(focusedEvent.parentToolUseId)
+          // Set focus to the parent task
+          setFocusedEventId(parentTask.id)
+          setFocusSource('keyboard')
+        }
+        return
+      }
+
+      // Case 2: Focused on a parent Task event - toggle expand/collapse
+      if (
+        focusedEvent.eventType === ConversationEventType.ToolCall &&
+        focusedEvent.toolName === 'Task' &&
+        focusedEvent.toolId &&
+        hasSubTasks
+      ) {
+        const hasSubEvents = subEventsByParent.has(focusedEvent.toolId)
+        if (hasSubEvents) {
+          toggleTaskGroup(focusedEvent.toolId)
+        }
+      }
+    },
+    { enabled: !expandedToolResult && !disabled, scopes: [scope] },
+  )
+
+  // L key to collapse task group
+  useHotkeys(
+    'l',
+    () => {
+      if (!focusedEventId) return
+
+      startKeyboardNavigation?.()
+
+      const focusedEvent = events.find(e => e.id === focusedEventId)
+      if (!focusedEvent || focusedEvent.eventType !== ConversationEventType.ToolCall) return
+
+      // Handle task group collapse for Task events with sub-events
+      if (focusedEvent.toolName === 'Task' && focusedEvent.toolId && hasSubTasks) {
+        const subEventsByParent = new Map<string, ConversationEvent[]>()
+        events.forEach(event => {
+          if (event.parentToolUseId) {
+            const siblings = subEventsByParent.get(event.parentToolUseId) || []
+            siblings.push(event)
+            subEventsByParent.set(event.parentToolUseId, siblings)
+          }
+        })
+
+        const hasSubEvents = subEventsByParent.has(focusedEvent.toolId)
+        if (hasSubEvents && expandedTasks.has(focusedEvent.toolId)) {
+          toggleTaskGroup(focusedEvent.toolId)
+        }
+      }
+    },
+    { enabled: !expandedToolResult && !disabled, scopes: [scope] },
+  )
+
+  // U key to jump to most recent user message
+  useHotkeys(
+    'u',
+    () => {
+      startKeyboardNavigation?.()
+
+      // Find the most recent user message (search from end)
+      for (let i = events.length - 1; i >= 0; i--) {
+        const event = events[i]
+        if (event.eventType === ConversationEventType.Message && event.role === 'user') {
+          setFocusedEventId(event.id)
+          setFocusSource('keyboard')
+
+          // Scroll to the message
+          setTimeout(() => {
+            const element = document.querySelector(`[data-event-id="${event.id}"]`)
+            if (element) {
+              element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            }
+          }, 0)
+          break
+        }
+      }
+    },
+    { enabled: !disabled, scopes: [scope] },
   )
 
   // Scroll focused element into view (only for keyboard navigation)

@@ -13,11 +13,9 @@ import {
 } from '@/components/ui/breadcrumb'
 import { useStore } from '@/AppStore'
 import { daemonClient } from '@/lib/daemon/client'
-import { useStealHotkeyScope } from '@/hooks/useStealHotkeyScope'
+import { HotkeyScopeBoundary } from './HotkeyScopeBoundary'
+import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
 import { ViewMode } from '@/lib/daemon/types'
-
-// Create a dedicated scope for title editing
-const TitleEditingHotkeysScope = 'title-editing'
 
 export function Breadcrumbs() {
   const location = useLocation()
@@ -36,9 +34,6 @@ export function Breadcrumbs() {
   const isEditingTitle = useStore(state => state.isEditingSessionTitle)
   const setIsEditingTitle = useStore(state => state.setIsEditingSessionTitle)
 
-  // Steal all hotkey scopes when editing
-  useStealHotkeyScope(TitleEditingHotkeysScope, isEditingTitle)
-
   // Add escape handler with the dedicated scope
   useHotkeys(
     'escape',
@@ -49,7 +44,7 @@ export function Breadcrumbs() {
       inputRef.current?.blur()
     },
     {
-      scopes: [TitleEditingHotkeysScope],
+      scopes: [HOTKEY_SCOPES.TITLE_EDITING],
       enableOnFormTags: true,
       preventDefault: true,
     },
@@ -82,7 +77,7 @@ export function Breadcrumbs() {
 
   // Watch for external triggers to start editing
   useEffect(() => {
-    if (isEditingTitle && session && !editValue) {
+    if (isEditingTitle && session) {
       setEditValue(session.title || session.summary || '')
     }
   }, [isEditingTitle, session])
@@ -114,52 +109,61 @@ export function Breadcrumbs() {
           <>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              {isEditingTitle ? (
-                <div className="flex items-center gap-1">
-                  <input
-                    ref={inputRef}
-                    type="text"
-                    value={editValue}
-                    onChange={e => setEditValue(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault()
-                        saveEdit()
-                      }
-                    }}
-                    className="px-1 py-0.5 text-sm bg-background border rounded font-mono focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none"
-                    style={{
-                      width: `${Math.max(20, editValue.length) * 0.7}em`,
-                      minWidth: '20em',
-                      maxWidth: '80em',
-                    }}
-                    autoFocus
-                  />
-                  <button
-                    onClick={saveEdit}
-                    className="p-0.5 hover:opacity-80 focus-visible:ring-ring/50 focus-visible:ring-[2px] focus-visible:outline-none rounded"
-                  >
-                    <Check className="h-3 w-3" />
-                  </button>
-                  <button
-                    onClick={cancelEdit}
-                    className="p-0.5 hover:opacity-80 focus-visible:ring-ring/50 focus-visible:ring-[2px] focus-visible:outline-none rounded"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </div>
-              ) : (
-                <BreadcrumbPage className="flex items-center gap-1">
-                  <span>{session.title || session.summary || `Session ${sessionId?.slice(0, 8)}`}</span>
-                  <button
-                    onClick={startEdit}
-                    className="p-0.5 opacity-50 hover:opacity-100 transition-opacity focus-visible:ring-ring/50 focus-visible:ring-[2px] focus-visible:outline-none rounded"
-                    aria-label="Edit session title"
-                  >
-                    <Pencil className="h-3 w-3" />
-                  </button>
-                </BreadcrumbPage>
-              )}
+              <HotkeyScopeBoundary
+                scope={HOTKEY_SCOPES.TITLE_EDITING}
+                isActive={isEditingTitle}
+                rootScopeDisabled={true}
+                componentName="Breadcrumbs-TitleEditing"
+              >
+                {isEditingTitle ? (
+                  <div className="flex items-center gap-1">
+                    <input
+                      ref={inputRef}
+                      type="text"
+                      value={editValue}
+                      onChange={e => setEditValue(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          saveEdit()
+                        }
+                      }}
+                      className="px-1 py-0.5 text-sm bg-background border rounded font-mono focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none"
+                      style={{
+                        width: `${Math.max(20, editValue.length) * 0.7}em`,
+                        minWidth: '20em',
+                        maxWidth: '80em',
+                      }}
+                      autoFocus
+                    />
+                    <button
+                      onClick={saveEdit}
+                      className="p-0.5 hover:opacity-80 focus-visible:ring-ring/50 focus-visible:ring-[2px] focus-visible:outline-none rounded"
+                    >
+                      <Check className="h-3 w-3" />
+                    </button>
+                    <button
+                      onClick={cancelEdit}
+                      className="p-0.5 hover:opacity-80 focus-visible:ring-ring/50 focus-visible:ring-[2px] focus-visible:outline-none rounded"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ) : (
+                  <BreadcrumbPage className="flex items-center gap-1">
+                    <span>
+                      {session.title || session.summary || `Session ${sessionId?.slice(0, 8)}`}
+                    </span>
+                    <button
+                      onClick={startEdit}
+                      className="p-0.5 opacity-50 hover:opacity-100 transition-opacity focus-visible:ring-ring/50 focus-visible:ring-[2px] focus-visible:outline-none rounded"
+                      aria-label="Edit session title"
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </button>
+                  </BreadcrumbPage>
+                )}
+              </HotkeyScopeBoundary>
             </BreadcrumbItem>
           </>
         )}
