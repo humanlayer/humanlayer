@@ -253,6 +253,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     session.parentSessionId ? state.sessions.find(s => s.id === session.parentSessionId) : null,
   )
 
+  const titleInputRef = useRef<HTMLInputElement>(null)
+
   // Fetch parent session if it's not in the store
   const [parentSessionData, setParentSessionData] = useState<Session | null>(null)
   useEffect(() => {
@@ -1275,6 +1277,12 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     }
   }, [session.status, events])
 
+  useEffect(() => {
+    if (isDraft && titleInputRef.current) {
+      titleInputRef.current.focus()
+    }
+  }, [isDraft, titleInputRef, session.id])
+
   let cardVerticalPadding = 'py-3'
 
   if (isActivelyProcessing) {
@@ -1298,6 +1306,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                   <TextSearch className="h-3 w-3" /> title
                 </Label>
                 <Input
+                  ref={titleInputRef}
                   placeholder="Describe this session..."
                   className="mt-1"
                   value={session.title || session.summary || ''}

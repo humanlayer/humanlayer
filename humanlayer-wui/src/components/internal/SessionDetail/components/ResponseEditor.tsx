@@ -682,7 +682,7 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
         logger.log('ResponseEditor - Editor created with content:', {
           content: editor.getJSON(),
           isEmpty: editor.isEmpty,
-          initialValue
+          initialValue,
         })
       },
       editorProps: {

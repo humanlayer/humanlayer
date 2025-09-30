@@ -58,19 +58,21 @@ export function SessionDetailPage() {
 
   let session = activeSessionDetail?.session?.id
     ? activeSessionDetail.session
-    : sessionFromStore ? { ...sessionFromStore, fromStore: true } : {
-        id: sessionId || '',
-        runId: '',
-        query: '',
-        status: 'unknown' as any,
-        model: '',
-        createdAt: new Date(),
-        lastActivityAt: new Date(),
-        summary: '',
-        autoAcceptEdits: false,
-        dangerouslySkipPermissions: false,
-        dangerouslySkipPermissionsExpiresAt: undefined,
-      }
+    : sessionFromStore
+      ? { ...sessionFromStore, fromStore: true }
+      : {
+          id: sessionId || '',
+          runId: '',
+          query: '',
+          status: 'unknown' as any,
+          model: '',
+          createdAt: new Date(),
+          lastActivityAt: new Date(),
+          summary: '',
+          autoAcceptEdits: false,
+          dangerouslySkipPermissions: false,
+          dangerouslySkipPermissionsExpiresAt: undefined,
+        }
 
   return (
     <div className="h-full">

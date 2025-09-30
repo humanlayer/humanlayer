@@ -76,7 +76,9 @@ export function StatusBar({
               onClick={() => isReadyForInputOrDraft && setIsModelSelectorOpen(true)}
             >
               {modelText}
-              {isReadyForInputOrDraft && <Pencil className="h-3 w-3 ml-1.5 opacity-50 hover:opacity-70" />}
+              {isReadyForInputOrDraft && (
+                <Pencil className="h-3 w-3 ml-1.5 opacity-50 hover:opacity-70" />
+              )}
             </Button>
           </TooltipTrigger>
           <TooltipContent>

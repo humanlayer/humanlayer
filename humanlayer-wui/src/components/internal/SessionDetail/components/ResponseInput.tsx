@@ -146,7 +146,7 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
 
     // Only load editor state once we have proper session data (not "unknown" status)
     // Also wait for server fetch (not fromStore) for draft sessions to ensure we have editorState
-    const hasValidSessionData = session.status !== 'unknown' && !(session as any).fromStore
+    const hasValidSessionData = (session.status as any) !== 'unknown' && !(session as any).fromStore
 
     logger.log('ResponseInput - Determining initialValue', {
       sessionId: session.id,
