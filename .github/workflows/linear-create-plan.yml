@@ -16,7 +16,7 @@ jobs:
   fetch-tickets:
     runs-on: ubuntu-latest
     outputs:
-      ticket_ids: $ {{ steps.fetch-tickets.outputs.ticket_ids }}
+      ticket_ids: ${{ steps.fetch-tickets.outputs.ticket_ids }}
     steps:
       - name: "Checkout repository"
         id: checkout-repository
