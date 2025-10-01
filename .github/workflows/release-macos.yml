@@ -3,21 +3,21 @@ name: Build macOS Release Artifacts
 on:
   schedule:
     # Run daily at 7am PT (3pm UTC during standard time, 2pm UTC during daylight saving)
-    - cron: '0 14 * * *'
+    - cron: "0 14 * * *"
   workflow_dispatch:
     inputs:
       release_version:
-        description: 'Version tag for the release (defaults to YYYYMMDD_HHmmss for manual, YYYYMMDD-nightly for cron)'
+        description: "Version tag for the release (defaults to YYYYMMDD_HHmmss for manual, YYYYMMDD-nightly for cron)"
         required: false
         type: string
       release_nightly:
-        description: 'Build and release a nightly build'
+        description: "Build and release a nightly build"
         required: false
         type: boolean
         default: false
 
 permissions:
-  contents: write  # Needed to create releases
+  contents: write # Needed to create releases
 
 jobs:
   build-macos:
@@ -60,7 +60,7 @@ jobs:
         uses: actions/setup-go@v5
         id: setup-go
         with:
-          go-version-file: 'hld/go.mod'
+          go-version-file: "hld/go.mod"
           cache: false
 
       - name: Cache Go modules
@@ -149,7 +149,7 @@ jobs:
             bun run tauri build
           fi
         env:
-          APPLE_SIGNING_IDENTITY: "-"  # Ad-hoc signing to prevent "damaged" error
+          APPLE_SIGNING_IDENTITY: "-" # Ad-hoc signing to prevent "damaged" error
           NODE_ENV: "production"
           # Sentry environment variables already set at job level
 
