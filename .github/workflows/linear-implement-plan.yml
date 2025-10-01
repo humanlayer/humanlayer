@@ -172,6 +172,7 @@ jobs:
         id: run-claude-implement-plan
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY}}
+          GH_TOKEN: ${{ github.token }}
         run: >
           cd humanlayer && claude --dangerously-skip-permissions -p '/implement_plan ${{ env.TICKET_FILE_PATH }}
             Start by reading the ticket file and all of the comments in it. 
@@ -191,6 +192,7 @@ jobs:
         id: run-claude-create-commits
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GH_TOKEN: ${{ github.token }}
         run: >
           cd humanlayer && claude --dangerously-skip-permissions -p "/ci_commit"
 
@@ -198,6 +200,7 @@ jobs:
         id: pull-before-push
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           cd humanlayer
           branch=${{ steps.retrieve-branch-name.outputs.branch }}
@@ -227,6 +230,7 @@ jobs:
         id: run-claude-create-pr
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           cd humanlayer && claude --dangerously-skip-permissions -p '/ci_describe_pr 
 
