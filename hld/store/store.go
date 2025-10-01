@@ -106,6 +106,7 @@ type Session struct {
 	AutoAcceptEdits                     bool       `db:"auto_accept_edits"`
 	DangerouslySkipPermissions          bool       `db:"dangerously_skip_permissions"`
 	DangerouslySkipPermissionsExpiresAt *time.Time `db:"dangerously_skip_permissions_expires_at"`
+	DangerouslySkipPermissionsTimeoutMs *int64     `db:"dangerously_skip_permissions_timeout_ms"`
 	Archived                            bool       // New field for session archiving
 
 	// Proxy configuration
@@ -140,6 +141,7 @@ type SessionUpdate struct {
 	AutoAcceptEdits                     *bool       `db:"auto_accept_edits"`
 	DangerouslySkipPermissions          *bool       `db:"dangerously_skip_permissions"`
 	DangerouslySkipPermissionsExpiresAt **time.Time `db:"dangerously_skip_permissions_expires_at"`
+	DangerouslySkipPermissionsTimeoutMs *int64      `db:"dangerously_skip_permissions_timeout_ms"`
 	Model                               *string
 	ModelID                             *string // Full model identifier
 	Archived                            *bool   // New field for updating archived status

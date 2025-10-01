@@ -873,9 +873,14 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     }
 
     // Get the current value from the store directly to avoid stale closure
-    const currentSessionFromStore = useStore.getState().sessions.find(s => s.id === session.id)
-    const currentDangerouslySkipPermissions =
-      currentSessionFromStore?.dangerouslySkipPermissions ?? false
+    let currentSession = useStore.getState().sessions.find(s => s.id === session.id)
+
+    if (!currentSession) {
+      const sessionState = await daemonClient.getSessionState(session.id)
+      currentSession = sessionState.session
+    }
+
+    const currentDangerouslySkipPermissions = currentSession?.dangerouslySkipPermissions ?? false
 
     if (currentDangerouslySkipPermissions) {
       // Disable dangerous skip permissions
@@ -1503,6 +1508,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               autoAcceptEdits={autoAcceptEdits}
               dangerouslySkipPermissions={dangerouslySkipPermissions}
               dangerouslySkipPermissionsExpiresAt={dangerouslySkipPermissionsExpiresAt}
+              sessionStatus={session.status}
               isForkMode={previewEventIndex !== null}
               forkTurnNumber={
                 previewEventIndex !== null

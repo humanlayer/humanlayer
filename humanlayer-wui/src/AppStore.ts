@@ -203,7 +203,14 @@ export const useStore = create<StoreState>((set, get) => {
       const timestamp = Date.now()
 
       // Capture original session state before applying optimistic update
-      const originalSession = get().sessions.find(s => s.id === sessionId)
+      let originalSession = get().sessions.find(s => s.id === sessionId)
+
+      // If there is no original session in the store, fetch it from the server
+      if (!originalSession) {
+        const sessionState = await daemonClient.getSessionState(sessionId)
+        originalSession = sessionState.session
+      }
+
       if (!originalSession) {
         logger.error(`Session ${sessionId} not found`)
         throw new Error(`Session ${sessionId} not found`)
