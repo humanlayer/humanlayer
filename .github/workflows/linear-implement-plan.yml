@@ -262,10 +262,10 @@ jobs:
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
         run: |
           cd humanlayer
-          if [ -s CLAUDE_PR.md ]; then
+          if [ -s CLAUDE_PR.md ] && [ -n "$(tr -d '[:space:]' < CLAUDE_PR.md)" ]; then
             linear add-comment -i ${{ matrix.ticket_id }} "$(cat CLAUDE_PR.md)"
           else
-            echo "CLAUDE_PR.md is empty, skipping comment"
+            echo "CLAUDE_PR.md is empty or contains only whitespace, skipping comment"
           fi
 
       - name: Update linear ticket status
