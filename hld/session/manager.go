@@ -357,6 +357,32 @@ func (m *Manager) LaunchSession(ctx context.Context, config LaunchSessionConfig,
 			"has_env_key", os.Getenv("OPENROUTER_API_KEY") != "")
 	}
 
+	// Inherit ANTHROPIC_* environment variables from the daemon environment if
+	// they are not explicitly set in the session config. This allows users to
+	// configure Bedrock or custom Anthropic-compatible endpoints at the daemon
+	// level (for example via systemd/env), and have spawned Claude processes
+	// pick them up automatically. We only inject if the key is not already set
+	// in the session's env to allow explicit overrides.
+	if claudeConfig.Env == nil {
+		claudeConfig.Env = make(map[string]string)
+	}
+	if base := os.Getenv("ANTHROPIC_BASE_URL"); base != "" {
+		if _, ok := claudeConfig.Env["ANTHROPIC_BASE_URL"]; !ok {
+			claudeConfig.Env["ANTHROPIC_BASE_URL"] = base
+			slog.Debug("inherited ANTHROPIC_BASE_URL from daemon environment",
+				"session_id", sessionID,
+				"anthropic_base_url", base)
+		}
+	}
+	if key := os.Getenv("ANTHROPIC_API_KEY"); key != "" {
+		if _, ok := claudeConfig.Env["ANTHROPIC_API_KEY"]; !ok {
+			claudeConfig.Env["ANTHROPIC_API_KEY"] = key
+			slog.Debug("inherited ANTHROPIC_API_KEY from daemon environment",
+				"session_id", sessionID,
+				"has_api_key", true)
+		}
+	}
+
 	// Log final configuration before launching
 	var mcpServersDetail string
 	var mcpServerCount int
@@ -1691,6 +1717,32 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 			"proxy_url", proxyURL,
 			"proxy_enabled", dbSession.ProxyEnabled,
 			"has_openrouter_key", os.Getenv("OPENROUTER_API_KEY") != "")
+	}
+
+	// Ensure config.Env is initialized before we inspect or assign keys.
+	if config.Env == nil {
+		config.Env = make(map[string]string)
+	}
+
+	// If the daemon has ANTHROPIC_* env vars set (for example to point to Bedrock),
+	// inherit them into the resumed session if the session config did not set
+	// these values explicitly. This lets the daemon control the Anthropic endpoint
+	// used by spawned Claude processes.
+	if base := os.Getenv("ANTHROPIC_BASE_URL"); base != "" {
+		if _, ok := config.Env["ANTHROPIC_BASE_URL"]; !ok {
+			config.Env["ANTHROPIC_BASE_URL"] = base
+			slog.Debug("inherited ANTHROPIC_BASE_URL from daemon environment for resumed session",
+				"session_id", sessionID,
+				"anthropic_base_url", base)
+		}
+	}
+	if key := os.Getenv("ANTHROPIC_API_KEY"); key != "" {
+		if _, ok := config.Env["ANTHROPIC_API_KEY"]; !ok {
+			config.Env["ANTHROPIC_API_KEY"] = key
+			slog.Debug("inherited ANTHROPIC_API_KEY from daemon environment for resumed session",
+				"session_id", sessionID,
+				"has_api_key", true)
+		}
 	}
 
 	// Get Claude client (will attempt initialization if needed)
