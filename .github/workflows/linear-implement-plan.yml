@@ -198,6 +198,7 @@ jobs:
         id: link-pr-to-ticket
         env:
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+          GH_TOKEN: ${{ github.token }}
         run: >
           cd humanlayer && 
           pr_number="$(gh pr view --json number --jq ".number")" &&
