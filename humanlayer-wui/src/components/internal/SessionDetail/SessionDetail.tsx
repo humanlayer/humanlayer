@@ -36,6 +36,7 @@ import { useRecentPaths } from '@/hooks/useRecentPaths'
 import { logger } from '@/lib/logging'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
+import { LAST_WORKING_DIR_KEY } from '@/hooks/useSessionLauncher'
 
 interface SessionDetailProps {
   session: Session
@@ -637,6 +638,9 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       // Launch the draft session with the prompt
       // Note: working directory is already updated when selected in the fuzzy finder
       await daemonClient.launchDraftSession(session.id, prompt)
+
+      // store working directory in localStorage
+      localStorage.setItem(LAST_WORKING_DIR_KEY, selectedDirectory || '')
 
       // Clear the input after successful launch
       responseEditor?.commands.setContent('')
