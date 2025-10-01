@@ -130,8 +130,23 @@ jobs:
           cd humanlayer
           branch=${{ steps.retrieve-branch-name.outputs.branch }}
           echo "Setting up git branch from linear: $branch"
-          git branch $branch
-          git checkout $branch
+
+          # Fetch all remote branches
+          git fetch origin
+
+          # Check if branch exists locally or remotely
+          if git show-ref --verify --quiet refs/heads/$branch; then
+            echo "Branch exists locally, checking out"
+            git checkout $branch
+            git pull origin $branch
+          elif git show-ref --verify --quiet refs/remotes/origin/$branch; then
+            echo "Branch exists remotely, checking out and tracking"
+            git checkout -b $branch origin/$branch
+            git pull origin $branch
+          else
+            echo "Branch does not exist, creating new branch"
+            git checkout -b $branch
+          fi
 
       # doing this again because it may have been updated since research
       - name: Fetch Ticket with Linear CLI
@@ -157,6 +172,7 @@ jobs:
         id: run-claude-implement-plan
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY}}
+          GH_TOKEN: ${{ github.token }}
         run: >
           cd humanlayer && claude --dangerously-skip-permissions -p '/implement_plan ${{ env.TICKET_FILE_PATH }}
             Start by reading the ticket file and all of the comments in it. 
@@ -176,8 +192,38 @@ jobs:
         id: run-claude-create-commits
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GH_TOKEN: ${{ github.token }}
         run: >
           cd humanlayer && claude --dangerously-skip-permissions -p "/ci_commit"
+
+      - name: Pull and merge before push (use claude to resolve any conflicts)
+        id: pull-before-push
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd humanlayer
+          branch=${{ steps.retrieve-branch-name.outputs.branch }}
+
+          echo "Checking if remote branch exists: $branch"
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+            echo "Remote branch exists, pulling latest changes"
+            git pull origin $branch || {
+              if git diff --name-only --diff-filter=U | grep -q .; then
+                echo "Merge conflicts detected, using Claude to resolve"
+                claude --dangerously-skip-permissions -p "There are merge conflicts in the current branch. Please resolve all merge conflicts by:
+                1. Reading the conflicted files
+                2. Understanding both changes
+                3. Resolving the conflicts appropriately
+                4. After resolving all conflicts, use the SlashCommand tool to run '/commit' to commit the merge resolution."
+              else
+                echo "Pull failed but no conflicts detected"
+                exit 1
+              fi
+            }
+          else
+            echo "Remote branch does not exist yet, skipping pull"
+          fi
 
       - name: Push branch to origin
         id: push-branch
@@ -185,8 +231,11 @@ jobs:
           echo "Pushing branch to origin: ${{ steps.retrieve-branch-name.outputs.branch }}"
           cd humanlayer && git push --set-upstream origin ${{ steps.retrieve-branch-name.outputs.branch }}
 
-      - name: Create PR
+      - name: Create PR with Claude
         id: run-claude-create-pr
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           cd humanlayer && claude --dangerously-skip-permissions -p '/ci_describe_pr 
 
@@ -198,6 +247,7 @@ jobs:
         id: link-pr-to-ticket
         env:
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+          GH_TOKEN: ${{ github.token }}
         run: >
           cd humanlayer && 
           pr_number="$(gh pr view --json number --jq ".number")" &&
@@ -218,7 +268,7 @@ jobs:
         env:
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
         run: |
-          cd humanlayer && linear update-status ${{ matrix.ticket_id }} "code reviewgs"
+          cd humanlayer && linear update-status ${{ matrix.ticket_id }} "code review"
 
       # if the task fails, update the status to "research needed"
       - name: In event of failure reset status
