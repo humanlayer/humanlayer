@@ -362,7 +362,7 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
         e.preventDefault()
         statusBarRef.current?.openModelSelector()
       },
-      { enableOnFormTags: true },
+      { enableOnFormTags: false },
     )
 
     const isRunning =
