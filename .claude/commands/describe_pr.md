@@ -7,6 +7,8 @@ You are tasked with generating a comprehensive pull request description followin
 1. **Read the PR description template:**
    - First, check if `thoughts/shared/pr_description.md` exists
    - If it doesn't exist, inform the user that their `humanlayer thoughts` setup is incomplete and they need to create a PR description template at `thoughts/shared/pr_description.md`
+   - Read the template carefully to understand all sections and requirements
+
 
 2. **Identify the PR to describe:**
    - Check if the current branch has an associated PR: `gh pr view --json url,number,title,state 2>/dev/null`
