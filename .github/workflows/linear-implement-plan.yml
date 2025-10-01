@@ -194,7 +194,7 @@ jobs:
         run: >
           cd humanlayer && claude --dangerously-skip-permissions -p "/ci_commit"
 
-      - name: Pull and merge before push
+      - name: Pull and merge before push (use claude to resolve any conflicts)
         id: pull-before-push
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -223,8 +223,10 @@ jobs:
           echo "Pushing branch to origin: ${{ steps.retrieve-branch-name.outputs.branch }}"
           cd humanlayer && git push --set-upstream origin ${{ steps.retrieve-branch-name.outputs.branch }}
 
-      - name: Create PR
+      - name: Create PR with Claude
         id: run-claude-create-pr
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           cd humanlayer && claude --dangerously-skip-permissions -p '/ci_describe_pr 
 
