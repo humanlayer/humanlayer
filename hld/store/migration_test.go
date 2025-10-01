@@ -215,7 +215,7 @@ func TestMigration18Healing(t *testing.T) {
 				var version int
 				err = db.QueryRow("SELECT MAX(version) FROM schema_version").Scan(&version)
 				require.NoError(t, err)
-				assert.Equal(t, 20, version, "Database should be at version 20")
+				assert.Equal(t, 21, version, "Database should be at version 21")
 
 				t.Logf("After migration - user_settings exists: %d, additional_directories exists: %d, version: %d",
 					userSettingsExists, additionalDirsExists, version)
@@ -236,7 +236,7 @@ func TestMigration18Idempotency(t *testing.T) {
 	var version int
 	err = db.QueryRow("SELECT MAX(version) FROM schema_version").Scan(&version)
 	require.NoError(t, err)
-	assert.Equal(t, 20, version, "Should be at version 20")
+	assert.Equal(t, 21, version, "Should be at version 21")
 
 	// Try to manually run migration 18 logic again (simulating idempotency)
 	// This would happen if someone ran the migration twice
@@ -515,10 +515,10 @@ func TestAllMigrationStates(t *testing.T) {
 				// Verify final state
 				db = s.GetDB()
 
-				// Check final version is 19
+				// Check final version is 21
 				err = db.QueryRow("SELECT MAX(version) FROM schema_version").Scan(&currentVersion)
 				require.NoError(t, err)
-				assert.Equal(t, 20, currentVersion, "Should be at version 20 after all migrations")
+				assert.Equal(t, 21, currentVersion, "Should be at version 21 after all migrations")
 
 				// Verify both critical components exist
 				var userSettingsExists int
@@ -537,7 +537,7 @@ func TestAllMigrationStates(t *testing.T) {
 				require.NoError(t, err)
 				assert.Equal(t, 1, additionalDirsExists, "additional_directories column should exist")
 
-				t.Logf("Successfully migrated from version %d to 20", targetVersion)
+				t.Logf("Successfully migrated from version %d to 21", targetVersion)
 			}
 		})
 	}
@@ -560,11 +560,11 @@ func TestMigrationFromBuggyState17(t *testing.T) {
 
 	db := s.GetDB()
 
-	// Verify we're at version 20 after normal migration
+	// Verify we're at version 21 after normal migration
 	var version int
 	err = db.QueryRow("SELECT MAX(version) FROM schema_version").Scan(&version)
 	require.NoError(t, err)
-	require.Equal(t, 20, version, "Fresh database should be at version 20")
+	require.Equal(t, 21, version, "Fresh database should be at version 21")
 
 	// Now simulate the buggy state by:
 	// 1. Remove migration 17 and 18 records
@@ -608,7 +608,7 @@ func TestMigrationFromBuggyState17(t *testing.T) {
 
 	err = db.QueryRow("SELECT MAX(version) FROM schema_version").Scan(&version)
 	require.NoError(t, err)
-	assert.Equal(t, 20, version, "Should be at version 20 after healing")
+	assert.Equal(t, 21, version, "Should be at version 20 after healing")
 
 	// Both components should exist
 	err = db.QueryRow(`

@@ -1041,6 +1041,46 @@ func (s *SQLiteStore) applyMigrations() error {
 		slog.Info("Migration 20 applied successfully")
 	}
 
+	// Migration 21: Add dangerously_skip_permissions_timeout_ms column to store timeout duration
+	if currentVersion < 21 {
+		slog.Info("Applying migration 21: Adding dangerously_skip_permissions_timeout_ms column to sessions table")
+
+		// Check if column already exists for idempotency
+		var columnExists int
+		err := s.db.QueryRow(`
+			SELECT COUNT(*) FROM pragma_table_info('sessions')
+			WHERE name = 'dangerously_skip_permissions_timeout_ms'
+		`).Scan(&columnExists)
+		if err != nil {
+			return fmt.Errorf("failed to check dangerously_skip_permissions_timeout_ms column: %w", err)
+		}
+
+		if columnExists == 0 {
+			// Add column to sessions table
+			_, err = s.db.Exec(`
+				ALTER TABLE sessions
+				ADD COLUMN dangerously_skip_permissions_timeout_ms INTEGER
+			`)
+			if err != nil {
+				return fmt.Errorf("failed to add dangerously_skip_permissions_timeout_ms column: %w", err)
+			}
+			slog.Info("Added dangerously_skip_permissions_timeout_ms column")
+		} else {
+			slog.Info("dangerously_skip_permissions_timeout_ms column already exists")
+		}
+
+		// Record migration
+		_, err = s.db.Exec(`
+			INSERT INTO schema_version (version, description)
+			VALUES (21, 'Add dangerously_skip_permissions_timeout_ms column to store bypass permissions timeout duration')
+		`)
+		if err != nil {
+			return fmt.Errorf("failed to record migration 21: %w", err)
+		}
+
+		slog.Info("Migration 21 applied successfully")
+	}
+
 	return nil
 }
 
@@ -1103,8 +1143,9 @@ func (s *SQLiteStore) CreateSession(ctx context.Context, session *Session) error
 			query, summary, title, model, model_id, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
 			permission_prompt_tool, allowed_tools, disallowed_tools,
 			status, created_at, last_activity_at, auto_accept_edits, archived, dangerously_skip_permissions, dangerously_skip_permissions_expires_at,
+			dangerously_skip_permissions_timeout_ms,
 			proxy_enabled, proxy_base_url, proxy_model_override, proxy_api_key, additional_directories, editor_state
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	_, err := s.db.ExecContext(ctx, query,
@@ -1114,6 +1155,7 @@ func (s *SQLiteStore) CreateSession(ctx context.Context, session *Session) error
 		session.PermissionPromptTool, session.AllowedTools, session.DisallowedTools,
 		session.Status, session.CreatedAt, session.LastActivityAt, session.AutoAcceptEdits, session.Archived,
 		session.DangerouslySkipPermissions, session.DangerouslySkipPermissionsExpiresAt,
+		session.DangerouslySkipPermissionsTimeoutMs,
 		session.ProxyEnabled, session.ProxyBaseURL, session.ProxyModelOverride, session.ProxyAPIKey,
 		session.AdditionalDirectories, session.EditorState,
 	)
@@ -1213,6 +1255,10 @@ func (s *SQLiteStore) UpdateSession(ctx context.Context, sessionID string, updat
 			args = append(args, nil)
 		}
 	}
+	if updates.DangerouslySkipPermissionsTimeoutMs != nil {
+		setParts = append(setParts, "dangerously_skip_permissions_timeout_ms = ?")
+		args = append(args, *updates.DangerouslySkipPermissionsTimeoutMs)
+	}
 	if updates.Model != nil {
 		setParts = append(setParts, "model = ?")
 		args = append(args, *updates.Model)
@@ -1291,7 +1337,7 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 			status, created_at, last_activity_at, completed_at,
 			cost_usd, input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens, effective_context_tokens,
 			duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived,
-			dangerously_skip_permissions, dangerously_skip_permissions_expires_at,
+			dangerously_skip_permissions, dangerously_skip_permissions_expires_at, dangerously_skip_permissions_timeout_ms,
 			proxy_enabled, proxy_base_url, proxy_model_override, proxy_api_key, additional_directories, editor_state
 		FROM sessions WHERE id = ?
 	`
@@ -1306,6 +1352,7 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 	var resultContent, errorMessage sql.NullString
 	var archived sql.NullBool
 	var dangerouslySkipPermissionsExpiresAt sql.NullTime
+	var dangerouslySkipPermissionsTimeoutMs sql.NullInt64
 	var proxyEnabled sql.NullBool
 	var proxyBaseURL, proxyModelOverride, proxyAPIKey sql.NullString
 	var additionalDirectories sql.NullString
@@ -1319,7 +1366,7 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 		&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
 		&costUSD, &inputTokens, &outputTokens, &cacheCreationInputTokens, &cacheReadInputTokens, &effectiveContextTokens,
 		&durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
-		&archived, &session.DangerouslySkipPermissions, &dangerouslySkipPermissionsExpiresAt,
+		&archived, &session.DangerouslySkipPermissions, &dangerouslySkipPermissionsExpiresAt, &dangerouslySkipPermissionsTimeoutMs,
 		&proxyEnabled, &proxyBaseURL, &proxyModelOverride, &proxyAPIKey, &additionalDirectories, &editorState,
 	)
 	if err == sql.ErrNoRows {
@@ -1388,6 +1435,11 @@ func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Sessio
 		session.DangerouslySkipPermissionsExpiresAt = &dangerouslySkipPermissionsExpiresAt.Time
 	}
 
+	// Handle dangerously skip permissions timeout ms
+	if dangerouslySkipPermissionsTimeoutMs.Valid {
+		session.DangerouslySkipPermissionsTimeoutMs = &dangerouslySkipPermissionsTimeoutMs.Int64
+	}
+
 	// Handle proxy fields
 	session.ProxyEnabled = proxyEnabled.Valid && proxyEnabled.Bool
 	session.ProxyBaseURL = proxyBaseURL.String
@@ -1414,7 +1466,7 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 			status, created_at, last_activity_at, completed_at,
 			cost_usd, input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens, effective_context_tokens,
 			duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived,
-			dangerously_skip_permissions, dangerously_skip_permissions_expires_at,
+			dangerously_skip_permissions, dangerously_skip_permissions_expires_at, dangerously_skip_permissions_timeout_ms,
 			proxy_enabled, proxy_base_url, proxy_model_override, proxy_api_key, additional_directories, editor_state
 		FROM sessions
 		WHERE run_id = ?
@@ -1430,6 +1482,7 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 	var resultContent, errorMessage sql.NullString
 	var archived sql.NullBool
 	var dangerouslySkipPermissionsExpiresAt sql.NullTime
+	var dangerouslySkipPermissionsTimeoutMs sql.NullInt64
 	var proxyEnabled sql.NullBool
 	var proxyBaseURL, proxyModelOverride, proxyAPIKey sql.NullString
 	var additionalDirectories sql.NullString
@@ -1443,7 +1496,7 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 		&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
 		&costUSD, &inputTokens, &outputTokens, &cacheCreationInputTokens, &cacheReadInputTokens, &effectiveContextTokens,
 		&durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
-		&archived, &session.DangerouslySkipPermissions, &dangerouslySkipPermissionsExpiresAt,
+		&archived, &session.DangerouslySkipPermissions, &dangerouslySkipPermissionsExpiresAt, &dangerouslySkipPermissionsTimeoutMs,
 		&proxyEnabled, &proxyBaseURL, &proxyModelOverride, &proxyAPIKey, &additionalDirectories, &editorState,
 	)
 	if err == sql.ErrNoRows {
@@ -1512,6 +1565,11 @@ func (s *SQLiteStore) GetSessionByRunID(ctx context.Context, runID string) (*Ses
 		session.DangerouslySkipPermissionsExpiresAt = &dangerouslySkipPermissionsExpiresAt.Time
 	}
 
+	// Handle dangerously skip permissions timeout ms
+	if dangerouslySkipPermissionsTimeoutMs.Valid {
+		session.DangerouslySkipPermissionsTimeoutMs = &dangerouslySkipPermissionsTimeoutMs.Int64
+	}
+
 	// Handle proxy fields
 	session.ProxyEnabled = proxyEnabled.Valid && proxyEnabled.Bool
 	session.ProxyBaseURL = proxyBaseURL.String
@@ -1538,7 +1596,7 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 			status, created_at, last_activity_at, completed_at,
 			cost_usd, input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens, effective_context_tokens,
 		duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived,
-			dangerously_skip_permissions, dangerously_skip_permissions_expires_at,
+			dangerously_skip_permissions, dangerously_skip_permissions_expires_at, dangerously_skip_permissions_timeout_ms,
 			proxy_enabled, proxy_base_url, proxy_model_override, proxy_api_key, additional_directories, editor_state
 		FROM sessions
 		ORDER BY last_activity_at DESC
@@ -1562,6 +1620,7 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 		var resultContent, errorMessage sql.NullString
 		var archived sql.NullBool
 		var dangerouslySkipPermissionsExpiresAt sql.NullTime
+		var dangerouslySkipPermissionsTimeoutMs sql.NullInt64
 		var proxyEnabled sql.NullBool
 		var proxyBaseURL, proxyModelOverride, proxyAPIKey sql.NullString
 		var additionalDirectories sql.NullString
@@ -1575,7 +1634,7 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 			&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
 			&costUSD, &inputTokens, &outputTokens, &cacheCreationInputTokens, &cacheReadInputTokens, &effectiveContextTokens,
 			&durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
-			&archived, &session.DangerouslySkipPermissions, &dangerouslySkipPermissionsExpiresAt,
+			&archived, &session.DangerouslySkipPermissions, &dangerouslySkipPermissionsExpiresAt, &dangerouslySkipPermissionsTimeoutMs,
 			&proxyEnabled, &proxyBaseURL, &proxyModelOverride, &proxyAPIKey, &additionalDirectories, &editorState,
 		)
 		if err != nil {
@@ -1641,6 +1700,11 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 		// Handle dangerously skip permissions expires at
 		if dangerouslySkipPermissionsExpiresAt.Valid {
 			session.DangerouslySkipPermissionsExpiresAt = &dangerouslySkipPermissionsExpiresAt.Time
+		}
+
+		// Handle dangerously skip permissions timeout ms
+		if dangerouslySkipPermissionsTimeoutMs.Valid {
+			session.DangerouslySkipPermissionsTimeoutMs = &dangerouslySkipPermissionsTimeoutMs.Int64
 		}
 
 		// Handle proxy fields
@@ -1673,7 +1737,7 @@ func (s *SQLiteStore) GetExpiredDangerousPermissionsSessions(ctx context.Context
 			status, created_at, last_activity_at, completed_at,
 			cost_usd, input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens, effective_context_tokens,
 		duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived,
-			dangerously_skip_permissions, dangerously_skip_permissions_expires_at,
+			dangerously_skip_permissions, dangerously_skip_permissions_expires_at, dangerously_skip_permissions_timeout_ms,
 			proxy_enabled, proxy_base_url, proxy_model_override, proxy_api_key, additional_directories, editor_state
 		FROM sessions
 		WHERE dangerously_skip_permissions = 1
@@ -1701,6 +1765,7 @@ func (s *SQLiteStore) GetExpiredDangerousPermissionsSessions(ctx context.Context
 		var resultContent, errorMessage sql.NullString
 		var archived sql.NullBool
 		var dangerouslySkipPermissionsExpiresAt sql.NullTime
+		var dangerouslySkipPermissionsTimeoutMs sql.NullInt64
 		var proxyEnabled sql.NullBool
 		var proxyBaseURL, proxyModelOverride, proxyAPIKey sql.NullString
 		var additionalDirectories sql.NullString
@@ -1714,7 +1779,7 @@ func (s *SQLiteStore) GetExpiredDangerousPermissionsSessions(ctx context.Context
 			&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
 			&costUSD, &inputTokens, &outputTokens, &cacheCreationInputTokens, &cacheReadInputTokens, &effectiveContextTokens,
 			&durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
-			&archived, &session.DangerouslySkipPermissions, &dangerouslySkipPermissionsExpiresAt,
+			&archived, &session.DangerouslySkipPermissions, &dangerouslySkipPermissionsExpiresAt, &dangerouslySkipPermissionsTimeoutMs,
 			&proxyEnabled, &proxyBaseURL, &proxyModelOverride, &proxyAPIKey, &additionalDirectories, &editorState,
 		)
 		if err != nil {
@@ -1780,6 +1845,11 @@ func (s *SQLiteStore) GetExpiredDangerousPermissionsSessions(ctx context.Context
 		// Handle dangerously skip permissions expires at
 		if dangerouslySkipPermissionsExpiresAt.Valid {
 			session.DangerouslySkipPermissionsExpiresAt = &dangerouslySkipPermissionsExpiresAt.Time
+		}
+
+		// Handle dangerously skip permissions timeout ms
+		if dangerouslySkipPermissionsTimeoutMs.Valid {
+			session.DangerouslySkipPermissionsTimeoutMs = &dangerouslySkipPermissionsTimeoutMs.Int64
 		}
 
 		// Handle proxy fields
