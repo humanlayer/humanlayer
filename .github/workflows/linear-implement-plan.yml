@@ -67,6 +67,7 @@ jobs:
         with:
           bun-version: latest
 
+      # necessary for mockgen which happens in `make setup`
       - name: Add Go bin to PATH
         run: |
           echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
@@ -122,6 +123,7 @@ jobs:
 
       - name: Configure git branch
         run: |
+          cd humanlayer
           branch=${{ steps.retrieve-branch-name.outputs.branch }}
           echo "Setting up git branch from linear: $branch"
           git branch $branch
