@@ -59,7 +59,7 @@ jobs:
 
       - name: Setup humanlayer repository
         run: |
-          cd humanlayer && make setup
+          make -C humanlayer setup
 
       - name: Configure git user
         run: |
@@ -178,7 +178,7 @@ jobs:
       - name: Create PR
         id: run-claude-create-pr
         run: |
-          cd humanlayer && claude --dangerously-skip-permissions -p '/describe_pr 
+          cd humanlayer && claude --dangerously-skip-permissions -p '/ci_describe_pr 
 
           The changes for this PR have now been pushed to origin with the branch name "${{ steps.retrieve-branch-name.outputs.branch }}".
           Please create a PR for this issue.
