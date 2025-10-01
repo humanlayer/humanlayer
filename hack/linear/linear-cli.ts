@@ -366,6 +366,64 @@ async function updateStatus(issueId: string, statusName: string): Promise<void> 
   }
 }
 
+async function addLink(issueId: string, url: string, options: { title?: string }): Promise<void> {
+  try {
+    if (!linear) {
+      throw new Error("Linear client not initialized. Check your API key.");
+    }
+
+    // Validate issue ID format
+    if (!issueId || !/^[A-Za-z]+-\d+$/i.test(issueId)) {
+      console.error(chalk.red("Error: Invalid issue ID format. Expected format: ENG-123"));
+      process.exit(1);
+    }
+
+    // Validate URL
+    if (!url) {
+      console.error(chalk.red("Error: URL is required"));
+      process.exit(1);
+    }
+
+    try {
+      new URL(url);
+    } catch {
+      console.error(chalk.red("Error: Invalid URL format"));
+      process.exit(1);
+    }
+
+    const normalizedId = issueId.toUpperCase();
+
+    // First, fetch the issue to verify it exists
+    const issue = await linear.issue(normalizedId);
+
+    if (!issue) {
+      console.error(chalk.red(`Issue ${normalizedId} not found.`));
+      process.exit(1);
+    }
+
+    // Create the attachment (link)
+    const result = await linear.attachmentCreate({
+      issueId: issue.id,
+      url: url,
+      title: options.title || url,
+    });
+
+    if (result.success) {
+      console.log(chalk.green(`✓ Added link to issue ${normalizedId}`));
+      if (options.title) {
+        console.log(chalk.dim(`  Title: ${options.title}`));
+      }
+      console.log(chalk.dim(`  URL: ${url}`));
+    } else {
+      console.error(chalk.red(`Failed to add link to ${normalizedId}.`));
+      process.exit(1);
+    }
+  } catch (error) {
+    console.error(chalk.red("Error adding link:"), error instanceof Error ? error.message : String(error));
+    process.exit(1);
+  }
+}
+
 async function fetchImages(issueId: string): Promise<void> {
   try {
     // Re-initialize Linear client with signed URL headers to get JWT-signed URLs
@@ -912,6 +970,12 @@ program
   .action(updateStatus);
 
 program
+  .command("add-link <id> <url>")
+  .description("Add a link/attachment to a Linear issue")
+  .option("-t, --title <title>", "Optional title for the link (defaults to URL)")
+  .action(addLink);
+
+program
   .command("list-issues")
   .description("List and filter issues with advanced options")
   .option("--max-issues <number>", "Maximum number of issues to fetch", "10")
@@ -932,7 +996,7 @@ program
   .option("--zsh", "Generate Zsh completion script")
   .option("--fish", "Generate Fish completion script")
   .action((options) => {
-    const commands = ["my-issues", "list-issues", "get-issue", "get-issue-v2", "add-comment", "fetch-images", "update-status", "completion", "help"];
+    const commands = ["my-issues", "list-issues", "get-issue", "get-issue-v2", "add-comment", "fetch-images", "update-status", "add-link", "completion", "help"];
 
     if (options.bash) {
       // Basic bash completion
@@ -970,6 +1034,7 @@ _linear() {
     'add-comment:Add a comment to an issue'
     'fetch-images:Download all images from an issue'
     'update-status:Update the status of a Linear issue'
+    'add-link:Add a link/attachment to a Linear issue'
     'completion:Generate shell completion script'
     'help:Display help for command'
   )
@@ -982,6 +1047,11 @@ _linear() {
         _arguments \\
           '-i[Specify the Linear issue ID manually]' \\
           '--issue-id[Specify the Linear issue ID manually]'
+        ;;
+      add-link)
+        _arguments \\
+          '-t[Optional title for the link]:title:' \\
+          '--title[Optional title for the link]:title:'
         ;;
       get-issue-v2)
         _arguments \\
@@ -1018,11 +1088,15 @@ complete -c linear -n "__fish_use_subcommand" -a "get-issue-v2" -d "Get a single
 complete -c linear -n "__fish_use_subcommand" -a "add-comment" -d "Add a comment to an issue"
 complete -c linear -n "__fish_use_subcommand" -a "fetch-images" -d "Download all images from an issue"
 complete -c linear -n "__fish_use_subcommand" -a "update-status" -d "Update the status of a Linear issue"
+complete -c linear -n "__fish_use_subcommand" -a "add-link" -d "Add a link/attachment to a Linear issue"
 complete -c linear -n "__fish_use_subcommand" -a "completion" -d "Generate shell completion script"
 complete -c linear -n "__fish_use_subcommand" -a "help" -d "Display help for command"
 
 # Options for add-comment
 complete -c linear -n "__fish_seen_subcommand_from add-comment" -s i -l issue-id -d "Specify the Linear issue ID manually"
+
+# Options for add-link
+complete -c linear -n "__fish_seen_subcommand_from add-link" -s t -l title -d "Optional title for the link"
 
 # Options for get-issue-v2
 complete -c linear -n "__fish_seen_subcommand_from get-issue-v2" -l output-format -d "Output format" -a "markdown json rich-json"
