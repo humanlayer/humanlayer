@@ -1,8 +1,8 @@
-import { useStore } from '@/AppStore'
-import { isViewingSessionDetail, useSessionLauncher } from '@/hooks/useSessionLauncher'
-import { cn } from '@/lib/utils'
 import { useEffect, useRef, useState } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
+import { useSessionLauncher, isViewingSessionDetail } from '@/hooks/useSessionLauncher'
+import { useStore } from '@/AppStore'
+import { cn } from '@/lib/utils'
 import { KeyboardShortcut } from './HotkeyPanel'
 
 interface MenuOption {
