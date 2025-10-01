@@ -260,9 +260,13 @@ jobs:
         id: add-comment-to-ticket
         env:
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
-        run: >
-          cd humanlayer && 
-          linear add-comment -i ${{ matrix.ticket_id }} "$(cat CLAUDE_PR.md)"
+        run: |
+          cd humanlayer
+          if [ -s CLAUDE_PR.md ]; then
+            linear add-comment -i ${{ matrix.ticket_id }} "$(cat CLAUDE_PR.md)"
+          else
+            echo "CLAUDE_PR.md is empty, skipping comment"
+          fi
 
       - name: Update linear ticket status
         id: update-ticket-status-done
