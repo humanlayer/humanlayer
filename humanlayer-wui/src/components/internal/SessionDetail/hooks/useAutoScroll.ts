@@ -84,7 +84,7 @@ export function useAutoScroll(
     const setupScrollHandler = () => {
       const container = containerRef.current
       if (!container) {
-        console.log('[useAutoScroll] Container not ready, will retry in 100ms')
+        // console.log('[useAutoScroll] Container not ready, will retry in 100ms')
         const retryTimer = setTimeout(setupScrollHandler, 100)
         return () => clearTimeout(retryTimer)
       }
