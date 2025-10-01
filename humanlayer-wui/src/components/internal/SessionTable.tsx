@@ -3,7 +3,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { useEffect, useRef, useState } from 'react'
-import { CircleOff, CheckSquare, Square, FileText, Pencil, ShieldOff } from 'lucide-react'
+import { CircleOff, CheckSquare, Square, Pencil, ShieldOff } from 'lucide-react'
 import { getStatusTextClass } from '@/utils/component-utils'
 import { formatTimestamp, formatAbsoluteTimestamp } from '@/utils/formatting'
 import { highlightMatches } from '@/lib/fuzzy-search'
@@ -11,8 +11,6 @@ import { cn } from '@/lib/utils'
 import { useStore } from '@/AppStore'
 import { useSessionLauncher } from '@/hooks/useSessionLauncher'
 import { toast } from 'sonner'
-import { EmptyState } from './EmptyState'
-import type { LucideIcon } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { daemonClient } from '@/lib/daemon/client'
@@ -21,6 +19,8 @@ import { logger } from '@/lib/logging'
 import { DiscardDraftDialog } from './SessionDetail/components/DiscardDraftDialog'
 import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
 import { HotkeyScopeBoundary } from '../HotkeyScopeBoundary'
+import { SessionsEmptyState } from './SessionsEmptyState'
+import { ArchivedSessionsEmptyState } from './ArchivedSessionsEmptyState'
 
 interface SessionTableProps {
   sessions: Session[]
@@ -34,15 +34,7 @@ interface SessionTableProps {
   matchedSessions?: Map<string, any>
   isArchivedView?: boolean // Add this to indicate if showing archived sessions
   isDraftsView?: boolean // Add this to indicate if showing drafts view
-  emptyState?: {
-    icon?: LucideIcon
-    title: string
-    message?: string
-    action?: {
-      label: string
-      onClick: () => void
-    }
-  }
+  onNavigateToSessions?: () => void // For archived view navigation
   onBypassPermissions?: (sessionIds: string[]) => void
 }
 
@@ -58,7 +50,7 @@ export default function SessionTable({
   matchedSessions,
   isArchivedView = false,
   isDraftsView = false,
-  emptyState,
+  onNavigateToSessions,
   onBypassPermissions,
 }: SessionTableProps) {
   const isSessionLauncherOpen = useSessionLauncher(state => state.isOpen)
@@ -763,14 +755,10 @@ export default function SessionTable({
             </TableBody>
           </Table>
         </>
-      ) : emptyState ? (
-        <EmptyState {...emptyState} />
+      ) : isArchivedView ? (
+        <ArchivedSessionsEmptyState onNavigateBack={() => onNavigateToSessions?.()} />
       ) : (
-        <EmptyState
-          icon={FileText}
-          title="No sessions found"
-          message={searchText ? `No sessions matching "${searchText}"` : 'No sessions yet'}
-        />
+        <SessionsEmptyState />
       )}
 
       {/* Discard Drafts Confirmation Dialog */}

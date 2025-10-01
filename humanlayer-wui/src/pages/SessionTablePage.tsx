@@ -4,10 +4,8 @@ import { useStore } from '@/AppStore'
 import { ViewMode } from '@/lib/daemon/types'
 import SessionTable from '@/components/internal/SessionTable'
 import { useHotkeys } from 'react-hotkeys-hook'
-import { useKeyboardNavigationProtection, getLastWorkingDir } from '@/hooks'
-import { daemonClient } from '@/lib/daemon'
+import { useKeyboardNavigationProtection } from '@/hooks'
 import { useSessionLauncher } from '@/hooks/useSessionLauncher'
-import { Inbox, Archive } from 'lucide-react'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
 import { DangerouslySkipPermissionsDialog } from '@/components/internal/SessionDetail/DangerouslySkipPermissionsDialog'
@@ -367,41 +365,7 @@ export function SessionTablePage() {
           matchedSessions={undefined}
           isArchivedView={viewMode === ViewMode.Archived}
           isDraftsView={viewMode === ViewMode.Drafts}
-          emptyState={
-            viewMode === ViewMode.Archived
-              ? {
-                  icon: Archive,
-                  title: 'No archived sessions',
-                  message:
-                    'Sessions you archive will appear here. Press ESC or click below to go back.',
-                  action: {
-                    label: 'View all sessions',
-                    onClick: () => setViewMode(ViewMode.Normal),
-                  },
-                }
-              : {
-                  icon: Inbox,
-                  title: 'No sessions yet',
-                  message: 'Create a new session by pressing "c" or clicking below.',
-                  action: {
-                    label: 'Create new session',
-                    onClick: async () => {
-                      // Create draft session and navigate directly
-                      try {
-                        const response = await daemonClient.launchSession({
-                          query: '', // Empty initial query for draft
-                          working_dir: getLastWorkingDir() || '~/',
-                          draft: true, // Create as draft
-                        })
-                        // Navigate directly to SessionDetail
-                        window.location.hash = `#/sessions/${response.sessionId}`
-                      } catch (error) {
-                        console.error('Failed to create draft session:', error)
-                      }
-                    },
-                  },
-                }
-          }
+          onNavigateToSessions={() => setViewMode(ViewMode.Normal)}
           onBypassPermissions={handleBypassPermissions}
         />
       </div>
