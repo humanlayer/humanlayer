@@ -26,9 +26,15 @@ You are tasked with creating git commits for the changes made during this sessio
    - Create commits with your planned messages
    - Show the result with `git log --oneline -n [number]`
 
+## Important:
+- **NEVER add co-author information or Claude attribution**
+- Commits should be authored solely by the user
+- Do not include any "Generated with Claude" messages
+- Do not add "Co-Authored-By" lines
+- Write commit messages as if the user wrote them
+
 ## Remember:
 - You have the full context of what was done in this session
 - Group related changes together
 - Keep commits focused and atomic when possible
 - The user trusts your judgment - they asked you to commit
-- **IMPORTANT**: never stop and ask for feedback from the user until you finish. 
