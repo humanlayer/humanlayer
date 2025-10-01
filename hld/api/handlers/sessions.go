@@ -137,7 +137,10 @@ func (h *SessionHandlers) CreateSession(ctx context.Context, req api.CreateSessi
 		}
 	}
 
-	session, err := h.manager.LaunchSession(ctx, config)
+	// Check for draft flag in request
+	isDraft := req.Body.Draft != nil && *req.Body.Draft
+
+	session, err := h.manager.LaunchSession(ctx, config, isDraft)
 	if err != nil {
 		return api.CreateSession500JSONResponse{
 			InternalErrorJSONResponse: api.InternalErrorJSONResponse{
@@ -157,28 +160,26 @@ func (h *SessionHandlers) CreateSession(ctx context.Context, req api.CreateSessi
 
 // ListSessions implements GET /sessions
 func (h *SessionHandlers) ListSessions(ctx context.Context, req api.ListSessionsRequestObject) (api.ListSessionsResponseObject, error) {
-	leafOnly := true
-	if req.Params.LeafOnly != nil {
-		leafOnly = *req.Params.LeafOnly
+	// NEW: leavesOnly parameter (renamed from leafOnly, default true)
+	leavesOnly := true
+	if req.Params.LeavesOnly != nil {
+		leavesOnly = *req.Params.LeavesOnly
 	}
 
-	includeArchived := false
-	if req.Params.IncludeArchived != nil {
-		includeArchived = *req.Params.IncludeArchived
+	// NEW: filter parameter logic
+	var filterType string
+	if req.Params.Filter != nil {
+		filterType = string(*req.Params.Filter)
 	}
-
-	archivedOnly := false
-	if req.Params.ArchivedOnly != nil {
-		archivedOnly = *req.Params.ArchivedOnly
-	}
+	// When filter is nil, return ALL sessions (no filtering)
 
 	// Get all sessions from manager
 	sessionInfos := h.manager.ListSessions()
 
-	// Apply filters
-	var filtered []session.Info
+	// Determine which sessions to use for counting
+	var sessionsForCounting []session.Info
 
-	if leafOnly {
+	if leavesOnly {
 		// Build parent-to-children map
 		childrenMap := make(map[string][]string)
 		for _, s := range sessionInfos {
@@ -187,34 +188,40 @@ func (h *SessionHandlers) ListSessions(ctx context.Context, req api.ListSessions
 			}
 		}
 
-		// Filter to leaves only
+		// When leavesOnly, only count leaf sessions
 		for _, s := range sessionInfos {
-			if len(childrenMap[s.ID]) > 0 {
-				continue // Has children, not a leaf
+			if len(childrenMap[s.ID]) == 0 {
+				// This is a leaf session
+				sessionsForCounting = append(sessionsForCounting, s)
 			}
-
-			// Apply archive filter
-			if !includeArchived && s.Archived {
-				continue
-			}
-			if archivedOnly && !s.Archived {
-				continue
-			}
-
-			filtered = append(filtered, s)
 		}
 	} else {
-		// All sessions, apply archive filter
-		for _, s := range sessionInfos {
-			if !includeArchived && s.Archived {
-				continue
-			}
-			if archivedOnly && !s.Archived {
-				continue
-			}
+		// When not leavesOnly, count all sessions
+		sessionsForCounting = sessionInfos
+	}
 
-			filtered = append(filtered, s)
+	// Calculate counts based on the appropriate set of sessions
+	var normalCount, archivedCount, draftCount int
+	for _, s := range sessionsForCounting {
+		if s.Archived {
+			archivedCount++
+		} else if s.Status == session.StatusDraft {
+			draftCount++
+		} else if s.Status != session.StatusDiscarded {
+			normalCount++
 		}
+	}
+
+	// Apply filters for the returned list
+	var filtered []session.Info
+
+	for _, s := range sessionsForCounting {
+		// Apply filter logic
+		if !shouldIncludeSession(s, filterType) {
+			continue
+		}
+
+		filtered = append(filtered, s)
 	}
 
 	// Sort by last activity (newest first)
@@ -258,8 +265,35 @@ func (h *SessionHandlers) ListSessions(ctx context.Context, req api.ListSessions
 
 	resp := api.SessionsResponse{
 		Data: sessions,
+		Counts: &struct {
+			Archived *int `json:"archived,omitempty"`
+			Draft    *int `json:"draft,omitempty"`
+			Normal   *int `json:"normal,omitempty"`
+		}{
+			Normal:   &normalCount,
+			Archived: &archivedCount,
+			Draft:    &draftCount,
+		},
 	}
 	return api.ListSessions200JSONResponse(resp), nil
+}
+
+// shouldIncludeSession helper function for filter logic
+func shouldIncludeSession(s session.Info, filterType string) bool {
+	switch filterType {
+	case "normal":
+		return !s.Archived && s.Status != session.StatusDraft && s.Status != session.StatusDiscarded
+	case "archived":
+		return s.Archived
+	case "draft":
+		return s.Status == session.StatusDraft && !s.Archived
+	case "":
+		// No filter specified - include ALL sessions
+		return true
+	default:
+		// Unknown filter - include all (graceful degradation)
+		return true
+	}
 }
 
 // GetSession retrieves details for a specific session
@@ -295,7 +329,7 @@ func (h *SessionHandlers) GetSession(ctx context.Context, req api.GetSessionRequ
 // UpdateSession updates session settings (auto-accept, archived status)
 func (h *SessionHandlers) UpdateSession(ctx context.Context, req api.UpdateSessionRequestObject) (api.UpdateSessionResponseObject, error) {
 	// Debug log incoming request
-	slog.Info("UpdateSession called", "sessionId", req.Id, "body", req.Body)
+	// slog.Debug("UpdateSession called", "sessionId", req.Id, "body", req.Body)
 
 	update := store.SessionUpdate{}
 
@@ -376,6 +410,22 @@ func (h *SessionHandlers) UpdateSession(ctx context.Context, req api.UpdateSessi
 		}
 	}
 
+	// Update working directory if specified
+	if req.Body.WorkingDir != nil {
+		update.WorkingDir = req.Body.WorkingDir
+		slog.Info("Updating working directory",
+			"sessionId", req.Id,
+			"workingDir", *req.Body.WorkingDir)
+	}
+
+	// Update editor state if specified
+	if req.Body.EditorState != nil {
+		update.EditorState = req.Body.EditorState
+		// slog.Debug("Updating editor state",
+		// 	"sessionId", req.Id,
+		// 	"editorStateLength", len(*req.Body.EditorState))
+	}
+
 	err := h.manager.UpdateSessionSettings(ctx, string(req.Id), update)
 	if err != nil {
 		// Log the actual error for debugging
@@ -419,9 +469,139 @@ func (h *SessionHandlers) UpdateSession(ctx context.Context, req api.UpdateSessi
 	return api.UpdateSession200JSONResponse(resp), nil
 }
 
+// DeleteDraftSession deletes a draft session
+func (h *SessionHandlers) DeleteDraftSession(ctx context.Context, req api.DeleteDraftSessionRequestObject) (api.DeleteDraftSessionResponseObject, error) {
+	// Get the session and verify it's a draft
+	sess, err := h.store.GetSession(ctx, string(req.Id))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return api.DeleteDraftSession404JSONResponse{
+				NotFoundJSONResponse: api.NotFoundJSONResponse{
+					Error: api.ErrorDetail{
+						Code:    "HLD-4007",
+						Message: "Session not found",
+					},
+				},
+			}, nil
+		}
+		return api.DeleteDraftSession500JSONResponse{
+			InternalErrorJSONResponse: api.InternalErrorJSONResponse{
+				Error: api.ErrorDetail{
+					Code:    "HLD-4008",
+					Message: err.Error(),
+				},
+			},
+		}, nil
+	}
+
+	// Check if session is in draft state
+	if sess.Status != store.SessionStatusDraft {
+		return api.DeleteDraftSession400JSONResponse{
+			Error: api.ErrorDetail{
+				Code:    "HLD-4002",
+				Message: "Can only delete draft sessions",
+			},
+		}, nil
+	}
+
+	// Mark session as discarded (effectively removing it from the active list)
+	// We don't actually delete from the database, just mark as discarded
+	discardedStatus := string(store.SessionStatusDiscarded)
+	deletedMessage := "Draft session discarded"
+	update := store.SessionUpdate{
+		Status:       &discardedStatus,
+		ErrorMessage: &deletedMessage,
+	}
+
+	err = h.store.UpdateSession(ctx, string(req.Id), update)
+	if err != nil {
+		return api.DeleteDraftSession500JSONResponse{
+			InternalErrorJSONResponse: api.InternalErrorJSONResponse{
+				Error: api.ErrorDetail{
+					Code:    "HLD-4009",
+					Message: fmt.Sprintf("Failed to delete draft session: %v", err),
+				},
+			},
+		}, nil
+	}
+
+	// Return 204 No Content on successful deletion
+	return api.DeleteDraftSession204Response{}, nil
+}
+
+// LaunchDraftSession launches a draft session
+func (h *SessionHandlers) LaunchDraftSession(ctx context.Context, req api.LaunchDraftSessionRequestObject) (api.LaunchDraftSessionResponseObject, error) {
+	// Get the session and verify it's a draft
+	sess, err := h.store.GetSession(ctx, string(req.Id))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return api.LaunchDraftSession404JSONResponse{
+				NotFoundJSONResponse: api.NotFoundJSONResponse{
+					Error: api.ErrorDetail{
+						Code:    "HLD-4003",
+						Message: "Session not found",
+					},
+				},
+			}, nil
+		}
+		return api.LaunchDraftSession500JSONResponse{
+			InternalErrorJSONResponse: api.InternalErrorJSONResponse{
+				Error: api.ErrorDetail{
+					Code:    "HLD-4004",
+					Message: err.Error(),
+				},
+			},
+		}, nil
+	}
+
+	// Check if session is in draft state
+	if sess.Status != store.SessionStatusDraft {
+		return api.LaunchDraftSession400JSONResponse{
+			Error: api.ErrorDetail{
+				Code:    "HLD-4001",
+				Message: "Session is not in draft state",
+			},
+		}, nil
+	}
+
+	// Launch the draft session
+	err = h.manager.LaunchDraftSession(ctx, string(req.Id), req.Body.Prompt)
+	if err != nil {
+		slog.Error("failed to launch draft session",
+			"session_id", req.Id,
+			"error", err)
+		return api.LaunchDraftSession500JSONResponse{
+			InternalErrorJSONResponse: api.InternalErrorJSONResponse{
+				Error: api.ErrorDetail{
+					Code:    "HLD-4005",
+					Message: fmt.Sprintf("Failed to launch draft session: %v", err),
+				},
+			},
+		}, nil
+	}
+
+	// Fetch updated session to return
+	updatedSession, err := h.store.GetSession(ctx, string(req.Id))
+	if err != nil {
+		return api.LaunchDraftSession500JSONResponse{
+			InternalErrorJSONResponse: api.InternalErrorJSONResponse{
+				Error: api.ErrorDetail{
+					Code:    "HLD-4006",
+					Message: "Failed to get updated session after launch",
+				},
+			},
+		}, nil
+	}
+
+	resp := api.SessionResponse{
+		Data: h.mapper.SessionToAPI(*updatedSession),
+	}
+	return api.LaunchDraftSession200JSONResponse(resp), nil
+}
+
 // ContinueSession creates a new session that continues from an existing one
 func (h *SessionHandlers) ContinueSession(ctx context.Context, req api.ContinueSessionRequestObject) (api.ContinueSessionResponseObject, error) {
-	_, err := h.store.GetSession(ctx, string(req.Id))
+	parentSession, err := h.store.GetSession(ctx, string(req.Id))
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return api.ContinueSession404JSONResponse{
@@ -438,6 +618,18 @@ func (h *SessionHandlers) ContinueSession(ctx context.Context, req api.ContinueS
 				Error: api.ErrorDetail{
 					Code:    "HLD-4001",
 					Message: err.Error(),
+				},
+			},
+		}, nil
+	}
+
+	// Check if parent session is in draft state
+	if parentSession.Status == store.SessionStatusDraft {
+		return api.ContinueSession500JSONResponse{
+			InternalErrorJSONResponse: api.InternalErrorJSONResponse{
+				Error: api.ErrorDetail{
+					Code:    "HLD-4003",
+					Message: "Cannot continue from draft session",
 				},
 			},
 		}, nil

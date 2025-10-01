@@ -91,6 +91,18 @@ export interface UpdateSessionRequest {
      * @memberof UpdateSessionRequest
      */
     additionalDirectories?: Array<string>;
+    /**
+     * Update the working directory for the session
+     * @type {string}
+     * @memberof UpdateSessionRequest
+     */
+    workingDir?: string;
+    /**
+     * JSON blob of editor state for draft sessions
+     * @type {string}
+     * @memberof UpdateSessionRequest
+     */
+    editorState?: string;
 }
 
 /**
@@ -122,6 +134,8 @@ export function UpdateSessionRequestFromJSONTyped(json: any, ignoreDiscriminator
         'proxyModelOverride': json['proxy_model_override'] == null ? undefined : json['proxy_model_override'],
         'proxyApiKey': json['proxy_api_key'] == null ? undefined : json['proxy_api_key'],
         'additionalDirectories': json['additional_directories'] == null ? undefined : json['additional_directories'],
+        'workingDir': json['working_dir'] == null ? undefined : json['working_dir'],
+        'editorState': json['editor_state'] == null ? undefined : json['editor_state'],
     };
 }
 
@@ -148,5 +162,7 @@ export function UpdateSessionRequestToJSONTyped(value?: UpdateSessionRequest | n
         'proxy_model_override': value['proxyModelOverride'],
         'proxy_api_key': value['proxyApiKey'],
         'additional_directories': value['additionalDirectories'],
+        'working_dir': value['workingDir'],
+        'editor_state': value['editorState'],
     };
 }

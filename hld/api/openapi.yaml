@@ -73,28 +73,27 @@ paths:
       summary: List sessions
       description: |
         List all sessions with optional filtering. By default returns only leaf sessions
-        (sessions with no children). Set leafOnly=false to get all sessions.
+        (sessions with no children). Set leavesOnly=false to get all sessions.
       tags:
         - Sessions
       parameters:
-        - name: leafOnly
+        - name: leavesOnly
           in: query
-          description: Return only leaf sessions (no children)
+          description: Return only leaf sessions (sessions with no children)
           schema:
             type: boolean
             default: true
-        - name: includeArchived
+        - name: filter
           in: query
-          description: Include archived sessions in results
+          description: Filter sessions by type
           schema:
-            type: boolean
-            default: false
-        - name: archivedOnly
-          in: query
-          description: Return only archived sessions
-          schema:
-            type: boolean
-            default: false
+            type: string
+            enum: [normal, archived, draft]
+            description: |
+              - normal: non-archived, non-draft sessions
+              - archived: archived sessions only
+              - draft: draft sessions only
+              When omitted, returns ALL sessions (no filtering)
       responses:
         '200':
           description: List of sessions
@@ -178,6 +177,67 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ContinueSessionResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /sessions/{id}/launch:
+    post:
+      operationId: launchDraftSession
+      summary: Launch a draft session
+      description: Launch a draft session, transitioning it from draft to running state
+      tags:
+        - Sessions
+      parameters:
+        - $ref: '#/components/parameters/sessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                prompt:
+                  type: string
+                  description: Initial prompt to send to Claude
+              required:
+                - prompt
+      responses:
+        '200':
+          description: Session launched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionResponse'
+        '400':
+          description: Session is not in draft state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    delete:
+      operationId: deleteDraftSession
+      summary: Delete a draft session
+      description: Delete a draft session that has not been launched yet
+      tags:
+        - Sessions
+      parameters:
+        - $ref: '#/components/parameters/sessionId'
+      responses:
+        '204':
+          description: Draft session deleted successfully
+        '400':
+          description: Session is not in draft state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           $ref: '#/components/responses/NotFound'
         '500':
@@ -844,10 +904,16 @@ components:
           type: string
           description: Model to use with the proxy
           example: openai/gpt-oss-120b
+        editor_state:
+          type: string
+          nullable: true
+          description: JSON blob of editor state for draft sessions
+          example: '{"content":"console.log(\"hello\");","cursorPosition":24}'
 
     SessionStatus:
       type: string
       enum:
+        - draft
         - starting
         - running
         - completed
@@ -855,6 +921,7 @@ components:
         - interrupting
         - interrupted
         - waiting_input
+        - discarded
       description: Current status of the session
 
     CreateSessionRequest:
@@ -949,6 +1016,10 @@ components:
         proxy_api_key:
           type: string
           description: API key for proxy authentication
+        draft:
+          type: boolean
+          description: Create session in draft state without launching Claude
+          default: false
 
     CreateSessionResponse:
       type: object
@@ -987,6 +1058,19 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Session'
+        counts:
+          type: object
+          description: Session counts by category
+          properties:
+            normal:
+              type: integer
+              description: Number of normal (non-archived, non-draft) sessions
+            archived:
+              type: integer
+              description: Number of archived sessions
+            draft:
+              type: integer
+              description: Number of draft sessions
 
     UpdateSessionRequest:
       type: object
@@ -1041,6 +1125,14 @@ components:
             type: string
           description: Update additional directories Claude can access
           example: ["~/.humanlayer/logs", "/var/log/myapp"]
+        working_dir:
+          type: string
+          description: Update the working directory for the session
+          example: "/Users/john/projects/myapp"
+        editor_state:
+          type: string
+          description: JSON blob of editor state for draft sessions
+          example: '{"content":"console.log(\"hello\");","cursorPosition":24}'
 
     ContinueSessionRequest:
       type: object

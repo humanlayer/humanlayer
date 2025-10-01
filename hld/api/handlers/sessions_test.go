@@ -46,8 +46,8 @@ func TestSessionHandlers_CreateSession(t *testing.T) {
 			},
 			mockSetup: func() {
 				mockManager.EXPECT().
-					LaunchSession(gomock.Any(), gomock.Any()).
-					DoAndReturn(func(ctx context.Context, config session.LaunchSessionConfig) (*session.Session, error) {
+					LaunchSession(gomock.Any(), gomock.Any(), gomock.Any()).
+					DoAndReturn(func(ctx context.Context, config session.LaunchSessionConfig, isDraft bool) (*session.Session, error) {
 						// Validate the config passed to LaunchSession
 						assert.Equal(t, "Help me write tests", config.Query)
 						assert.Equal(t, claudecode.Model("sonnet"), config.Model)
@@ -72,7 +72,7 @@ func TestSessionHandlers_CreateSession(t *testing.T) {
 			},
 			mockSetup: func() {
 				mockManager.EXPECT().
-					LaunchSession(gomock.Any(), gomock.Any()).
+					LaunchSession(gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(nil, fmt.Errorf("failed to start Claude"))
 			},
 			expectedStatus: 500,
@@ -100,8 +100,8 @@ func TestSessionHandlers_CreateSession(t *testing.T) {
 			},
 			mockSetup: func() {
 				mockManager.EXPECT().
-					LaunchSession(gomock.Any(), gomock.Any()).
-					DoAndReturn(func(ctx context.Context, config session.LaunchSessionConfig) (*session.Session, error) {
+					LaunchSession(gomock.Any(), gomock.Any(), gomock.Any()).
+					DoAndReturn(func(ctx context.Context, config session.LaunchSessionConfig, isDraft bool) (*session.Session, error) {
 						// Verify MCP config was properly converted
 						require.NotNil(t, config.MCPConfig)
 						assert.Len(t, config.MCPConfig.MCPServers, 1)
@@ -216,12 +216,12 @@ func TestSessionHandlers_ListSessions(t *testing.T) {
 		assert.False(t, foundIDs["sess-1"]) // Not a leaf
 	})
 
-	t.Run("list all sessions with leafOnly=false", func(t *testing.T) {
+	t.Run("list all sessions with leavesOnly=false", func(t *testing.T) {
 		mockManager.EXPECT().
 			ListSessions().
 			Return(sessionInfos)
 
-		w := makeRequest(t, router, "GET", "/api/v1/sessions?leafOnly=false", nil)
+		w := makeRequest(t, router, "GET", "/api/v1/sessions?leavesOnly=false", nil)
 
 		var resp struct {
 			Data []api.Session `json:"data"`
@@ -231,7 +231,7 @@ func TestSessionHandlers_ListSessions(t *testing.T) {
 		assert.Len(t, resp.Data, 3)
 	})
 
-	t.Run("filter archived sessions", func(t *testing.T) {
+	t.Run("filter normal sessions", func(t *testing.T) {
 		archivedSessions := append(sessionInfos, session.Info{
 			ID:             "sess-archived",
 			RunID:          "run-archived",
@@ -246,8 +246,8 @@ func TestSessionHandlers_ListSessions(t *testing.T) {
 			ListSessions().
 			Return(archivedSessions)
 
-		// Default should exclude archived
-		w := makeRequest(t, router, "GET", "/api/v1/sessions", nil)
+		// filter=normal should exclude archived
+		w := makeRequest(t, router, "GET", "/api/v1/sessions?filter=normal", nil)
 
 		var resp struct {
 			Data []api.Session `json:"data"`

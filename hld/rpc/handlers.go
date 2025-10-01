@@ -112,8 +112,8 @@ func (h *SessionHandlers) HandleLaunchSession(ctx context.Context, params json.R
 		}
 	}
 
-	// Launch session
-	session, err := h.manager.LaunchSession(ctx, config)
+	// Launch session (RPC always launches, never creates drafts)
+	session, err := h.manager.LaunchSession(ctx, config, false)
 	if err != nil {
 		return nil, err
 	}
@@ -155,8 +155,7 @@ func (h *SessionHandlers) HandleListSessions(ctx context.Context, params json.Ra
 // GetSessionLeavesRequest is the request for getting session leaves
 // TODO(3): This is gross, we should lean an alternate approach to handling filters.
 type GetSessionLeavesRequest struct {
-	IncludeArchived bool `json:"include_archived,omitempty"` // Include archived sessions (default false)
-	ArchivedOnly    bool `json:"archived_only,omitempty"`    // Show only archived sessions
+	Filter string `json:"filter,omitempty"` // "normal", "archived", or "draft"
 }
 
 // GetSessionLeavesResponse is the response for getting session leaves
@@ -188,7 +187,7 @@ func (h *SessionHandlers) HandleGetSessionLeaves(ctx context.Context, params jso
 		}
 	}
 
-	// Identify leaf sessions (sessions with no children) and apply archive filter
+	// Identify leaf sessions (sessions with no children) and apply filter
 	leaves := make([]session.Info, 0) // Initialize to empty slice, not nil
 	for _, s := range sessions {
 		children := childrenMap[s.ID]
@@ -198,12 +197,9 @@ func (h *SessionHandlers) HandleGetSessionLeaves(ctx context.Context, params jso
 			continue
 		}
 
-		// Apply archive filter
-		if !req.IncludeArchived && s.Archived {
-			continue // Skip archived sessions unless explicitly requested
-		}
-		if req.ArchivedOnly && !s.Archived {
-			continue // Skip non-archived sessions when only archived requested
+		// Apply filter logic
+		if !shouldIncludeSessionRPC(s, req.Filter) {
+			continue
 		}
 
 		// Already have session.Info, just append
@@ -218,6 +214,24 @@ func (h *SessionHandlers) HandleGetSessionLeaves(ctx context.Context, params jso
 	return &GetSessionLeavesResponse{
 		Sessions: leaves,
 	}, nil
+}
+
+// shouldIncludeSessionRPC helper function for RPC filter logic
+func shouldIncludeSessionRPC(s session.Info, filterType string) bool {
+	switch filterType {
+	case "normal":
+		return !s.Archived && s.Status != session.StatusDraft
+	case "archived":
+		return s.Archived
+	case "draft":
+		return s.Status == session.StatusDraft && !s.Archived
+	case "":
+		// No filter specified - include ALL sessions
+		return true
+	default:
+		// Unknown filter - include all (graceful degradation)
+		return true
+	}
 }
 
 // HandleGetConversation handles the GetConversation RPC method

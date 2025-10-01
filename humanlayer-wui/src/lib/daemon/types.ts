@@ -42,6 +42,7 @@ export interface LaunchSessionParams {
   dangerouslySkipPermissions?: boolean
   proxyApiKey?: string
   additionalDirectories?: string[]
+  draft?: boolean // Add draft parameter
   // Add any WUI-specific extensions if needed
 }
 
@@ -80,10 +81,14 @@ export interface DaemonClient {
   // Session methods
   launchSession(params: LaunchSessionParams | LaunchSessionRequest): Promise<CreateSessionResponseData>
   listSessions(): Promise<Session[]>
-  getSessionLeaves(request?: {
-    include_archived?: boolean
-    archived_only?: boolean
-  }): Promise<{ sessions: Session[] }>
+  getSessionLeaves(request?: { filter?: 'normal' | 'archived' | 'draft' }): Promise<{
+    sessions: Session[]
+    counts?: {
+      normal?: number
+      archived?: number
+      draft?: number
+    }
+  }>
   getSessionState(sessionId: string): Promise<SessionState>
   continueSession(
     sessionId: string,
@@ -103,6 +108,16 @@ export interface DaemonClient {
     updates: {
       model?: string
       title?: string
+      archived?: boolean
+      autoAcceptEdits?: boolean
+      dangerouslySkipPermissions?: boolean
+      dangerouslySkipPermissionsTimeoutMs?: number
+      additionalDirectories?: string[]
+      workingDir?: string
+      proxyEnabled?: boolean
+      proxyBaseUrl?: string
+      proxyModelOverride?: string
+      proxyApiKey?: string
     },
   ): Promise<{ success: boolean }>
   archiveSession(
@@ -167,6 +182,7 @@ export enum ConversationRole {
 export enum ViewMode {
   Normal = 'normal',
   Archived = 'archived',
+  Drafts = 'drafts',
 }
 
 // Legacy request/response types (for gradual migration)
@@ -192,6 +208,7 @@ export interface LaunchSessionRequest {
   proxy_base_url?: string
   proxy_model_override?: string
   proxy_api_key?: string
+  draft?: boolean // Add draft parameter
 }
 
 export interface LaunchSessionResponse {

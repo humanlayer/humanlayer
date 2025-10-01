@@ -12,6 +12,7 @@ export const HOTKEY_SCOPES = {
   TOOL_RESULT_MODAL: 'sessions.details.toolResultModal',
   BYPASS_PERMISSIONS_MODAL: 'sessions.details.bypassPermissionsModal',
   SELECT_MODEL_MODAL: 'sessions.details.selectModelModal',
+  DISCARD_DRAFT_DIALOG: 'sessions.details.discardDraftDialog',
   THEME_SELECTOR: 'themeSelector',
   KEYBOARD_HELPER: 'keyboardHelper',
   SETTINGS_MODAL: 'settingsModal',

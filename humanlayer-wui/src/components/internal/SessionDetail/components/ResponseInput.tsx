@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useState, useRef, useImperativeHandle } from 'react'
+import { forwardRef, useEffect, useState, useRef, useImperativeHandle, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Session, SessionStatus } from '@/lib/daemon/types'
 import { Split, MessageCircleX, AlertCircle } from 'lucide-react'
@@ -10,7 +10,7 @@ import {
   getForkInputPlaceholder,
 } from '@/components/internal/SessionDetail/utils/sessionStatus'
 import { ResponseInputLocalStorageKey } from '@/components/internal/SessionDetail/hooks/useSessionActions'
-import { StatusBar } from './StatusBar'
+import { StatusBar, StatusBarRef } from './StatusBar'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { ResponseEditor } from './ResponseEditor'
 import { SentryErrorBoundary } from '@/components/ErrorBoundary'
@@ -20,6 +20,7 @@ import { Content } from '@tiptap/react'
 import { getCurrentWebview } from '@tauri-apps/api/webview'
 import type { UnlistenFn } from '@tauri-apps/api/event'
 import { Card, CardContent } from '@/components/ui/card'
+import { daemonClient } from '@/lib/daemon'
 
 interface ResponseInputProps {
   session: Session
@@ -47,6 +48,10 @@ interface ResponseInputProps {
   onToggleArchive?: () => void
   previewEventIndex?: number | null
   isActivelyProcessing?: boolean
+  isDraft?: boolean
+  onLaunchDraft?: () => void
+  onDiscardDraft?: () => void
+  isLaunchingDraft?: boolean
 }
 
 export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }, ResponseInputProps>(
@@ -76,6 +81,10 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
       autoAcceptEnabled = false,
       isArchived = false,
       onToggleArchive,
+      isDraft = false,
+      onLaunchDraft,
+      onDiscardDraft,
+      isLaunchingDraft = false,
     },
     ref,
   ) => {
@@ -84,9 +93,11 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
     const [isDragHover, setIsDragHover] = useState(false)
     const [debouncedCanInterrupt, setDebouncedCanInterrupt] = useState(false)
     const responseEditor = useStore(state => state.responseEditor)
+    const isResponseEditorEmpty = useStore(state => state.isResponseEditorEmpty)
     const localStorageValue = localStorage.getItem(`${ResponseInputLocalStorageKey}.${session.id}`)
 
     const tiptapRef = useRef<{ focus: () => void }>(null)
+    const statusBarRef = useRef<StatusBarRef>(null)
 
     // Debounce the claudeSessionId to prevent brief interrupt button flashes
     useEffect(() => {
@@ -106,12 +117,13 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
       return () => clearTimeout(timeout)
     }, [session.claudeSessionId])
     const getSendButtonText = () => {
+      if (isDraft) return isLaunchingDraft ? 'Launching...' : 'Launch'
       if (isResponding) return 'Interrupting...'
       if (isDenying) return youSure ? 'Deny?' : 'Deny'
 
       const isRunning =
         session.status === SessionStatus.Running || session.status === SessionStatus.Starting
-      const hasText = responseEditor && !responseEditor.isEmpty
+      const hasText = !isResponseEditorEmpty
       const canInterrupt = debouncedCanInterrupt // Use debounced value
 
       if (session.archived && isRunning) {
@@ -134,25 +146,74 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
 
     let initialValue = null
 
-    if (
-      initialValue === null &&
-      typeof localStorageValue === 'string' &&
-      localStorageValue.length > 0
-    ) {
-      try {
-        initialValue = JSON.parse(localStorageValue)
-      } catch (e) {
-        logger.error('ResponseInput.useEffect() - error parsing localStorageValue', e)
+    // Only load editor state once we have proper session data (not "unknown" status)
+    // Also wait for server fetch (not fromStore) for draft sessions to ensure we have editorState
+    const hasValidSessionData = (session.status as any) !== 'unknown' && !(session as any).fromStore
+
+    if (hasValidSessionData) {
+      if (isDraft) {
+        // For draft sessions, only use editor state from database (never localStorage)
+        if (session.editorState) {
+          try {
+            initialValue = JSON.parse(session.editorState)
+            logger.log('ResponseInput - Successfully parsed editorState from database', {
+              initialValue,
+            })
+          } catch (e) {
+            logger.error('ResponseInput - error parsing editorState from database', e)
+          }
+        }
+      } else {
+        // For non-draft sessions, fall back to localStorage
+        if (
+          initialValue === null &&
+          typeof localStorageValue === 'string' &&
+          localStorageValue.length > 0
+        ) {
+          try {
+            initialValue = JSON.parse(localStorageValue)
+          } catch (e) {
+            logger.error('ResponseInput.useEffect() - error parsing localStorageValue', e)
+          }
+        }
       }
     }
+
+    const handleChange = useCallback(
+      async (value: Content) => {
+        const valueStr = JSON.stringify(value)
+
+        if (isDraft && session.status === SessionStatus.Draft) {
+          // For draft sessions, only save to database (not localStorage)
+          try {
+            await daemonClient.updateSession(session.id, {
+              editorState: valueStr,
+            })
+          } catch (error) {
+            // Log but don't show toast to avoid disrupting typing
+            logger.error('Failed to save editor state to database:', error)
+          }
+        } else {
+          // For non-draft sessions, save to localStorage
+          localStorage.setItem(`${ResponseInputLocalStorageKey}.${session.id}`, valueStr)
+        }
+      },
+      [session.id, isDraft, session.status],
+    )
 
     const handleSubmit = () => {
       logger.log('ResponseInput.handleSubmit()')
 
+      // Handle draft launch
+      if (isDraft) {
+        onLaunchDraft?.()
+        return
+      }
+
       // Check if this is an interruption attempt without claudeSessionId
       const isRunning =
         session.status === SessionStatus.Running || session.status === SessionStatus.Starting
-      const hasText = responseEditor && !responseEditor.isEmpty
+      const hasText = !isResponseEditorEmpty
 
       // Early return if no text in editor
       if (!hasText) {
@@ -294,17 +355,40 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
       { enableOnFormTags: true },
     )
 
+    // Shift+M to open model selector
+    useHotkeys(
+      'shift+m',
+      e => {
+        e.preventDefault()
+        statusBarRef.current?.openModelSelector()
+      },
+      { enableOnFormTags: true },
+    )
+
     const isRunning =
       session.status === SessionStatus.Running || session.status === SessionStatus.Starting
-    const hasText = responseEditor && !responseEditor.isEmpty
+    const hasText = !isResponseEditorEmpty
     const canInterrupt = debouncedCanInterrupt // Use debounced value
 
-    // Disable when: responding OR (running without ability to interrupt) OR (not running and no text)
-    const isDisabled = isResponding || (isRunning && !canInterrupt) || (!isRunning && !hasText)
+    // Disable when: responding OR (running without ability to interrupt) OR (not running and no text) OR launching draft
+    const isDisabled =
+      isResponding || (isRunning && !canInterrupt) || (!isRunning && !hasText) || isLaunchingDraft
 
     const isMac = navigator.platform.includes('Mac')
     // Show different keyboard shortcut based on state
     const sendKey = isRunning && !hasText ? 'Ctrl+X' : isMac ? '⌘+Enter' : 'Ctrl+Enter'
+
+    // Determine submit button variant based on state
+    let submitButtonVariant: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link' =
+      'default'
+    if (isDraft) {
+      submitButtonVariant = 'default'
+    } else if (isDenying) {
+      submitButtonVariant = 'destructive'
+    } else if (isRunning && !hasText && canInterrupt) {
+      submitButtonVariant = 'destructive'
+    }
+
     let outerBorderColorClass = ''
 
     let placeholder = getInputPlaceholder(session.status)
@@ -396,6 +480,7 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
               {/* Status Bar with Action Buttons */}
               <div className="flex items-center justify-between gap-2">
                 <StatusBar
+                  ref={statusBarRef}
                   session={session}
                   effectiveContextTokens={
                     isForkMode && forkTokenCount !== null && forkTokenCount !== undefined
@@ -406,18 +491,6 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
                   model={session.model ?? parentSessionData?.model}
                   onModelChange={onModelChange}
                   statusOverride={getStatusOverride()}
-                />
-                <ActionButtons
-                  sessionId={session.id}
-                  canFork={canFork}
-                  bypassEnabled={bypassEnabled}
-                  autoAcceptEnabled={autoAcceptEnabled}
-                  sessionStatus={sessionStatus}
-                  isArchived={isArchived || false}
-                  onToggleFork={onToggleForkView || (() => {})}
-                  onToggleBypass={onToggleDangerouslySkipPermissions || (() => {})}
-                  onToggleAutoAccept={onToggleAutoAccept || (() => {})}
-                  onToggleArchive={onToggleArchive || (() => {})}
                 />
               </div>
 
@@ -432,53 +505,74 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
                   }}
                   refreshButtonText="Reload Session"
                 >
-                  <ResponseEditor
-                    ref={tiptapRef}
-                    initialValue={initialValue}
-                    onChange={(value: Content) => {
-                      localStorage.setItem(
-                        `${ResponseInputLocalStorageKey}.${session.id}`,
-                        JSON.stringify(value),
-                      )
-                    }}
-                    onSubmit={handleSubmit}
-                    onToggleAutoAccept={onToggleAutoAccept}
-                    onToggleDangerouslySkipPermissions={onToggleDangerouslySkipPermissions}
-                    onToggleForkView={onToggleForkView}
-                    disabled={isResponding}
-                    placeholder={placeholder}
-                    className={`flex-1 min-h-[2.5rem] ${isResponding ? 'opacity-50' : ''} ${textareaOutlineClass} ${
-                      isDenying && isFocused ? 'caret-error' : isFocused ? 'caret-accent' : ''
-                    }`}
-                    onFocus={() => {
-                      setIsFocused(true)
-                    }}
-                    onBlur={() => {
-                      setIsFocused(false)
-                    }}
-                  />
+                  {hasValidSessionData ? (
+                    <ResponseEditor
+                      ref={tiptapRef}
+                      initialValue={initialValue}
+                      onChange={handleChange}
+                      onSubmit={handleSubmit}
+                      onToggleAutoAccept={onToggleAutoAccept}
+                      onToggleDangerouslySkipPermissions={onToggleDangerouslySkipPermissions}
+                      onToggleForkView={onToggleForkView}
+                      disabled={isResponding}
+                      placeholder={placeholder}
+                      className={`flex-1 min-h-[2.5rem] ${isResponding ? 'opacity-50' : ''} ${textareaOutlineClass} ${
+                        isDenying && isFocused ? 'caret-error' : isFocused ? 'caret-accent' : ''
+                      }`}
+                      onFocus={() => {
+                        setIsFocused(true)
+                      }}
+                      onBlur={() => {
+                        setIsFocused(false)
+                      }}
+                    />
+                  ) : (
+                    <div className="flex-1 min-h-[2.5rem] flex items-center justify-center text-muted-foreground">
+                      Loading editor...
+                    </div>
+                  )}
                 </SentryErrorBoundary>
               </div>
 
               {/* Keyboard shortcuts (condensed) */}
-              <div className="flex items-center justify-end">
-                <Button
-                  onClick={handleSubmit}
-                  disabled={isDisabled}
-                  variant={
-                    isDenying
-                      ? 'destructive'
-                      : isRunning && !hasText && canInterrupt
-                        ? 'destructive'
-                        : 'default'
-                  }
-                  className="h-auto py-0.5 px-2 text-xs transition-all duration-200"
-                >
-                  {getSendButtonText()}
-                  {!isDisabled && (
-                    <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">{sendKey}</kbd>
+              <div className="flex items-center justify-between gap-2">
+                <ActionButtons
+                  sessionId={session.id}
+                  canFork={canFork}
+                  bypassEnabled={bypassEnabled}
+                  autoAcceptEnabled={autoAcceptEnabled}
+                  sessionStatus={sessionStatus}
+                  isArchived={isArchived || false}
+                  onToggleFork={onToggleForkView || (() => {})}
+                  onToggleBypass={onToggleDangerouslySkipPermissions || (() => {})}
+                  onToggleAutoAccept={onToggleAutoAccept || (() => {})}
+                  onToggleArchive={onToggleArchive || (() => {})}
+                />
+                <div className="flex items-center justify-end gap-2">
+                  {isDraft && (
+                    <Button
+                      onClick={onDiscardDraft}
+                      disabled={isResponding}
+                      variant="secondary"
+                      className="h-auto py-0.5 px-2 text-xs transition-all duration-200"
+                    >
+                      {/* {responseEditor && !responseEditor.isEmpty ? 'Discard' : 'Cancel'} Until we've implemented change detection we'll always discard */}
+                      {'Discard'}
+                      <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded border border-border">
+                        {isMac ? 'Cmd+Shift+.' : 'Ctrl+Shift+.'}
+                      </kbd>
+                    </Button>
                   )}
-                </Button>
+                  <Button
+                    onClick={handleSubmit}
+                    disabled={isDisabled}
+                    variant={submitButtonVariant}
+                    className="h-auto py-0.5 px-2 text-xs transition-all duration-200"
+                  >
+                    {getSendButtonText()}
+                    <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">{sendKey}</kbd>
+                  </Button>
+                </div>
               </div>
             </div>
           </div>

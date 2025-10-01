@@ -213,6 +213,12 @@ export interface Session {
      * @memberof Session
      */
     proxyModelOverride?: string;
+    /**
+     * JSON blob of editor state for draft sessions
+     * @type {string}
+     * @memberof Session
+     */
+    editorState?: string;
 }
 
 
@@ -271,6 +277,7 @@ export function SessionFromJSONTyped(json: any, ignoreDiscriminator: boolean): S
         'proxyEnabled': json['proxy_enabled'] == null ? undefined : json['proxy_enabled'],
         'proxyBaseUrl': json['proxy_base_url'] == null ? undefined : json['proxy_base_url'],
         'proxyModelOverride': json['proxy_model_override'] == null ? undefined : json['proxy_model_override'],
+        'editorState': json['editor_state'] == null ? undefined : json['editor_state'],
     };
 }
 
@@ -316,5 +323,6 @@ export function SessionToJSONTyped(value?: Session | null, ignoreDiscriminator: 
         'proxy_enabled': value['proxyEnabled'],
         'proxy_base_url': value['proxyBaseUrl'],
         'proxy_model_override': value['proxyModelOverride'],
+        'editor_state': value['editorState'],
     };
 }

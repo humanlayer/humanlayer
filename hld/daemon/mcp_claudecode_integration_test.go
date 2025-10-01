@@ -21,8 +21,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	claudecode "github.com/humanlayer/humanlayer/claudecode-go"
-	"github.com/humanlayer/humanlayer/hld/store"
 	"github.com/humanlayer/humanlayer/hld/internal/testutil"
+	"github.com/humanlayer/humanlayer/hld/store"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/require"
 )

@@ -157,8 +157,7 @@ const MarkdownRendererInner = memo(
           return <pre>{children}</pre>
         },
         code(props) {
-          const { className, children, ...rest } =
-            props as any /* eslint-disable-line @typescript-eslint/no-unused-vars */
+          const { className, children, ...rest } = props as any
           const codeString = String(children).replace(/\n$/, '')
           const codeId = `code-${Math.random().toString(36).substr(2, 9)}`
 

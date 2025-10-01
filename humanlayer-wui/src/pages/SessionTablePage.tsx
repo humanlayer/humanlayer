@@ -4,15 +4,18 @@ import { useStore } from '@/AppStore'
 import { ViewMode } from '@/lib/daemon/types'
 import SessionTable from '@/components/internal/SessionTable'
 import { useHotkeys } from 'react-hotkeys-hook'
-import { useSessionLauncher, useKeyboardNavigationProtection } from '@/hooks'
+import { useKeyboardNavigationProtection, getLastWorkingDir } from '@/hooks'
+import { daemonClient } from '@/lib/daemon'
+import { useSessionLauncher } from '@/hooks/useSessionLauncher'
 import { Inbox, Archive } from 'lucide-react'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
 import { DangerouslySkipPermissionsDialog } from '@/components/internal/SessionDetail/DangerouslySkipPermissionsDialog'
 import { HotkeyScopeBoundary } from '@/components/HotkeyScopeBoundary'
 import { toast } from 'sonner'
 
 export function SessionTablePage() {
-  const { isOpen: isSessionLauncherOpen, open: openSessionLauncher } = useSessionLauncher()
+  const isSessionLauncherOpen = useSessionLauncher(state => state.isOpen)
   const navigate = useNavigate()
   const tableRef = useRef<HTMLDivElement>(null)
 
@@ -23,12 +26,17 @@ export function SessionTablePage() {
   const { shouldIgnoreMouseEvent, startKeyboardNavigation } = useKeyboardNavigationProtection()
 
   const sessions = useStore(state => state.sessions)
+  const sessionCounts = useStore(state => state.sessionCounts)
   const selectedSessions = useStore(state => state.selectedSessions)
   const clearSelection = useStore(state => state.clearSelection)
   const focusedSession = useStore(state => state.focusedSession)
   const setFocusedSession = useStore(state => state.setFocusedSession)
-  const viewMode = useStore(state => state.viewMode)
+  const setNextViewMode = useStore(state => state.setNextViewMode)
+  const setPreviousViewMode = useStore(state => state.setPreviousViewMode)
+  const getViewMode = useStore(state => state.getViewMode)
   const setViewMode = useStore(state => state.setViewMode)
+
+  const viewMode = getViewMode()
 
   // Bypass permissions modal state
   const [bypassPermissionsOpen, setBypassPermissionsOpen] = useState(false)
@@ -148,7 +156,7 @@ export function SessionTablePage() {
     'tab',
     e => {
       e.preventDefault()
-      setViewMode(viewMode === ViewMode.Normal ? ViewMode.Archived : ViewMode.Normal)
+      setNextViewMode()
     },
     {
       enableOnFormTags: false,
@@ -156,6 +164,11 @@ export function SessionTablePage() {
       enabled: !isSessionLauncherOpen,
     },
   )
+
+  useHotkeys('shift+tab', e => {
+    e.preventDefault()
+    setPreviousViewMode()
+  })
 
   // Handle Option+A to trigger auto-accept for selected sessions
   useHotkeys(
@@ -308,6 +321,29 @@ export function SessionTablePage() {
 
   return (
     <div className="flex flex-col gap-4">
+      <nav className="sticky top-0 z-10">
+        <Tabs
+          className="w-[400px]"
+          value={viewMode}
+          onValueChange={value => setViewMode(value as ViewMode)}
+        >
+          <TabsList>
+            <TabsTrigger value={ViewMode.Normal}>
+              Sessions
+              {sessionCounts?.normal !== undefined && sessionCounts.normal > 0
+                ? ` (${sessionCounts.normal})`
+                : ''}
+            </TabsTrigger>
+            <TabsTrigger value={ViewMode.Drafts}>
+              Drafts
+              {sessionCounts?.draft !== undefined && sessionCounts.draft > 0
+                ? ` (${sessionCounts.draft})`
+                : ''}
+            </TabsTrigger>
+            <TabsTrigger value={ViewMode.Archived}>Archived</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </nav>
       <div ref={tableRef} tabIndex={-1} className="focus:outline-none">
         <SessionTable
           sessions={sessions}
@@ -329,7 +365,8 @@ export function SessionTablePage() {
           handleFocusPreviousSession={focusPreviousSession}
           searchText={undefined}
           matchedSessions={undefined}
-          archived={viewMode === ViewMode.Archived}
+          isArchivedView={viewMode === ViewMode.Archived}
+          isDraftsView={viewMode === ViewMode.Drafts}
           emptyState={
             viewMode === ViewMode.Archived
               ? {
@@ -348,8 +385,19 @@ export function SessionTablePage() {
                   message: 'Create a new session by pressing "c" or clicking below.',
                   action: {
                     label: 'Create new session',
-                    onClick: () => {
-                      openSessionLauncher()
+                    onClick: async () => {
+                      // Create draft session and navigate directly
+                      try {
+                        const response = await daemonClient.launchSession({
+                          query: '', // Empty initial query for draft
+                          working_dir: getLastWorkingDir() || '~/',
+                          draft: true, // Create as draft
+                        })
+                        // Navigate directly to SessionDetail
+                        window.location.hash = `#/sessions/${response.sessionId}`
+                      } catch (error) {
+                        console.error('Failed to create draft session:', error)
+                      }
                     },
                   },
                 }

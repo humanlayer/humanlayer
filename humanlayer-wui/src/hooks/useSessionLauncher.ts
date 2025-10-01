@@ -4,6 +4,8 @@ import type { LaunchSessionRequest } from '@/lib/daemon/types'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { exists } from '@tauri-apps/plugin-fs'
 import { homeDir } from '@tauri-apps/api/path'
+import { logger } from '@/lib/logging'
+import { useStore } from '@/AppStore'
 import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
 
 interface SessionConfig {
@@ -37,7 +39,7 @@ interface LauncherState {
   setView: (view: 'menu' | 'input') => void
   setSelectedMenuIndex: (index: number) => void
   launchSession: () => Promise<void>
-  createNewSession: () => void
+  createNewSession: () => Promise<void>
   openSessionById: (sessionId: string) => void
   reset: () => void
 }
@@ -85,6 +87,10 @@ export const clearSavedModelPreferences = (): void => {
   localStorage.removeItem(OPENROUTER_MODEL_KEY)
   localStorage.removeItem(BASETEN_MODEL_KEY)
 }
+
+// Export localStorage key helpers (used by other components)
+export const getLastWorkingDir = () => localStorage.getItem(LAST_WORKING_DIR_KEY)
+export const setLastWorkingDir = (dir: string) => localStorage.setItem(LAST_WORKING_DIR_KEY, dir)
 
 // Helper function to get default working directory
 const getDefaultWorkingDir = (): string => {
@@ -375,23 +381,27 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
     }
   },
 
-  createNewSession: () => {
-    const savedQuery = getSavedQuery()
-    const savedProvider = getSavedProvider()
-    // Switch to input mode for session creation
-    set({
-      view: 'input',
-      query: savedQuery,
-      config: {
-        workingDir: getDefaultWorkingDir(),
-        provider: savedProvider,
-        model: getSavedModel(savedProvider),
-        openRouterApiKey: getSavedOpenRouterKey(),
-        basetenApiKey: getSavedBasetenKey(),
-        additionalDirectories: getSavedAdditionalDirectories(),
-      },
-      error: undefined,
-    })
+  createNewSession: async () => {
+    // Create draft session and navigate directly
+    try {
+      const response = await daemonClient.launchSession({
+        query: '', // Empty initial query for draft
+        working_dir: getLastWorkingDir() || '~/',
+        draft: true, // Create as draft
+      })
+
+      // Refresh sessions to include the new draft
+      await useStore.getState().refreshSessions()
+
+      // Close the command palette
+      get().close()
+
+      // Navigate directly to SessionDetail
+      window.location.hash = `#/sessions/${response.sessionId}`
+    } catch (error) {
+      logger.error('Failed to create draft session:', error)
+      set({ error: 'Failed to create draft session' })
+    }
   },
 
   openSessionById: (sessionId: string) => {
@@ -429,7 +439,8 @@ export { isViewingSessionDetail }
 
 // Helper hook for global hotkey management
 export function useSessionLauncherHotkeys() {
-  const { open, close, isOpen, setGPrefixMode, createNewSession } = useSessionLauncher()
+  const refreshSessions = useStore(state => state.refreshSessions)
+  const { open, close, isOpen, setGPrefixMode } = useSessionLauncher()
 
   // Helper to check if user is actively typing in a text input
   const isTypingInInput = () => {
@@ -463,12 +474,23 @@ export function useSessionLauncherHotkeys() {
   // C - Create new session (root scope)
   useHotkeys(
     'c',
-    () => {
-      // Open launcher if not already open
-      if (!isOpen) {
-        open()
+    async () => {
+      // Create draft session and navigate directly
+      try {
+        const response = await daemonClient.launchSession({
+          query: '', // Empty initial query for draft
+          working_dir: getLastWorkingDir() || '~/',
+          draft: true, // Create as draft
+        })
+
+        // Refresh sessions to include the new draft
+        await refreshSessions()
+
+        // Navigate directly to SessionDetail
+        window.location.hash = `#/sessions/${response.sessionId}`
+      } catch (error) {
+        logger.error('Failed to create draft session:', error)
       }
-      createNewSession()
     },
     {
       scopes: [HOTKEY_SCOPES.ROOT],
