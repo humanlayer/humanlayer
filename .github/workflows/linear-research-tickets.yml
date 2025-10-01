@@ -131,6 +131,7 @@ jobs:
         run: >
           cd humanlayer && claude --dangerously-skip-permissions -p '/research_codebase ${{ env.TICKET_FILE_PATH }} 
             Start by reading the ticket and all of the comments.
+            Pay extra code attention to the comments - if you (LinearLayer/claude) are mentioned in a comment you should treat that comment as an instruction.
             Also check /thoughts/shared/images/${{matrix.ticket_id}} for any relevant images and read any you find.
             Then proceed to research the codebase based on the instructions.
 

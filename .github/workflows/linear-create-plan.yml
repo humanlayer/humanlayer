@@ -131,6 +131,7 @@ jobs:
         run: >
           cd humanlayer && claude --dangerously-skip-permissions -p '/create_plan ${{ env.TICKET_FILE_PATH }} 
             Start by reading the ticket file and all of the comments in it. 
+            Pay extra code attention to the comments - if you (LinearLayer/claude) are mentioned in a comment you should treat that comment as an instruction.
             Then, locate the research for the ticket in thoughts/shared/research.
             Also check /thoughts/shared/images/${{matrix.ticket_id}} for any relevant images and read any you find.
             
