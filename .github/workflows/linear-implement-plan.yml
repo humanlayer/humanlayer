@@ -130,8 +130,23 @@ jobs:
           cd humanlayer
           branch=${{ steps.retrieve-branch-name.outputs.branch }}
           echo "Setting up git branch from linear: $branch"
-          git branch $branch
-          git checkout $branch
+
+          # Fetch all remote branches
+          git fetch origin
+
+          # Check if branch exists locally or remotely
+          if git show-ref --verify --quiet refs/heads/$branch; then
+            echo "Branch exists locally, checking out"
+            git checkout $branch
+            git pull origin $branch
+          elif git show-ref --verify --quiet refs/remotes/origin/$branch; then
+            echo "Branch exists remotely, checking out and tracking"
+            git checkout -b $branch origin/$branch
+            git pull origin $branch
+          else
+            echo "Branch does not exist, creating new branch"
+            git checkout -b $branch
+          fi
 
       # doing this again because it may have been updated since research
       - name: Fetch Ticket with Linear CLI
@@ -178,6 +193,29 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: >
           cd humanlayer && claude --dangerously-skip-permissions -p "/ci_commit"
+
+      - name: Pull and merge before push
+        id: pull-before-push
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          cd humanlayer
+          branch=${{ steps.retrieve-branch-name.outputs.branch }}
+
+          echo "Pulling latest changes from origin/$branch"
+          git pull origin $branch || {
+            if git diff --name-only --diff-filter=U | grep -q .; then
+              echo "Merge conflicts detected, using Claude to resolve"
+              claude --dangerously-skip-permissions -p "There are merge conflicts in the current branch. Please resolve all merge conflicts by:
+              1. Reading the conflicted files
+              2. Understanding both changes
+              3. Resolving the conflicts appropriately
+              4. After resolving all conflicts, use the SlashCommand tool to run '/commit' to commit the merge resolution."
+            else
+              echo "Pull failed but no conflicts detected"
+              exit 1
+            fi
+          }
 
       - name: Push branch to origin
         id: push-branch
