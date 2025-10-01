@@ -57,9 +57,23 @@ jobs:
           fetch-depth: 1
           path: humanlayer
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Add Go bin to PATH
+        run: |
+          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+
       - name: Setup humanlayer repository
         run: |
-          make -C humanlayer setup
+          cd humanlayer && make setup
 
       - name: Configure git user
         run: |
@@ -73,16 +87,6 @@ jobs:
           ref: main
           ssh-key: ${{ secrets.THOUGHTS_WRITE_DEPLOY_KEY }}
           path: thoughts
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
 
       - name: Install Claude code
         run: npm install -g @anthropic-ai/claude-code
