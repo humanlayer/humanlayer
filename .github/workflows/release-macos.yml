@@ -271,7 +271,6 @@ jobs:
         if: github.event_name == 'schedule' || github.event.inputs.release_nightly == 'true'
         working-directory: homebrew-tap
         run: |
-          cd humanlayer
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
