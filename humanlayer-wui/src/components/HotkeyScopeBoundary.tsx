@@ -71,7 +71,7 @@ export function HotkeyScopeBoundary({
     enableScope(scope)
 
     // Step 3: Ensure root is enabled if not disabled
-    if (!rootScopeDisabled && !currentActive.includes(HOTKEY_SCOPES.ROOT)) {
+    if (!rootScopeDisabled) {
       enableScope(HOTKEY_SCOPES.ROOT)
     }
 

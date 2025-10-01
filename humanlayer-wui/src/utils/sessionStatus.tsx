@@ -1,4 +1,9 @@
 export const renderSessionStatus = (session: { status: string; archived?: boolean }): string => {
+  // Show draft status as-is
+  if (session.status === 'draft') {
+    return 'draft'
+  }
+
   // Always show interrupted status as-is
   if (session.status === 'interrupted') {
     return 'interrupted'

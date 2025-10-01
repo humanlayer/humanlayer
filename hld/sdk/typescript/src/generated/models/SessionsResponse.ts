@@ -13,6 +13,13 @@
  */
 
 import { mapValues } from '../runtime';
+import type { SessionsResponseCounts } from './SessionsResponseCounts';
+import {
+    SessionsResponseCountsFromJSON,
+    SessionsResponseCountsFromJSONTyped,
+    SessionsResponseCountsToJSON,
+    SessionsResponseCountsToJSONTyped,
+} from './SessionsResponseCounts';
 import type { Session } from './Session';
 import {
     SessionFromJSON,
@@ -33,6 +40,12 @@ export interface SessionsResponse {
      * @memberof SessionsResponse
      */
     data: Array<Session>;
+    /**
+     *
+     * @type {SessionsResponseCounts}
+     * @memberof SessionsResponse
+     */
+    counts?: SessionsResponseCounts;
 }
 
 /**
@@ -54,6 +67,7 @@ export function SessionsResponseFromJSONTyped(json: any, ignoreDiscriminator: bo
     return {
 
         'data': ((json['data'] as Array<any>).map(SessionFromJSON)),
+        'counts': json['counts'] == null ? undefined : SessionsResponseCountsFromJSON(json['counts']),
     };
 }
 
@@ -69,5 +83,6 @@ export function SessionsResponseToJSONTyped(value?: SessionsResponse | null, ign
     return {
 
         'data': ((value['data'] as Array<any>).map(SessionToJSON)),
+        'counts': SessionsResponseCountsToJSON(value['counts']),
     };
 }

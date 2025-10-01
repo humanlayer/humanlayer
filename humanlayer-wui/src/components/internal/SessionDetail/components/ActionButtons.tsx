@@ -36,27 +36,31 @@ export const ActionButtons: FC<ActionButtonsProps> = ({
     SessionStatus.WaitingInput,
   ].includes(sessionStatus as any)
 
+  const isDraft = sessionStatus === SessionStatus.Draft
+
   return (
     <div className="flex items-center gap-1">
-      {/* Fork button */}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            size="sm"
-            variant="ghost"
-            className={cn('h-7 px-2', !canFork && 'opacity-50')}
-            onClick={onToggleFork}
-            disabled={!canFork}
-          >
-            <Split className="h-3.5 w-3.5" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p className="flex items-center gap-1">
-            Fork session <KeyboardShortcut keyString="⌘Y" />
-          </p>
-        </TooltipContent>
-      </Tooltip>
+      {/* Fork button - hide for draft sessions */}
+      {!isDraft && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              size="sm"
+              variant="ghost"
+              className={cn('h-7 px-2', !canFork && 'opacity-50')}
+              onClick={onToggleFork}
+              disabled={!canFork}
+            >
+              <Split className="h-3.5 w-3.5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p className="flex items-center gap-1">
+              Fork session <KeyboardShortcut keyString="⌘Y" />
+            </p>
+          </TooltipContent>
+        </Tooltip>
+      )}
 
       {/* Bypass permissions toggle */}
       <Tooltip>
@@ -116,29 +120,31 @@ export const ActionButtons: FC<ActionButtonsProps> = ({
         </TooltipContent>
       </Tooltip>
 
-      {/* Archive button */}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            size="sm"
-            variant={'ghost'}
-            className={cn('h-7 px-2', isActiveSession && 'text-warning')}
-            onClick={onToggleArchive}
-          >
-            {isArchived ? (
-              <ArchiveRestore className="h-3.5 w-3.5" />
-            ) : (
-              <Archive className="h-3.5 w-3.5" />
-            )}
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p className="flex items-center gap-1">
-            {isArchived ? 'Unarchive' : 'Archive'} session <KeyboardShortcut keyString="e" />
-            {isActiveSession && ' (requires confirmation)'}
-          </p>
-        </TooltipContent>
-      </Tooltip>
+      {/* Archive button - hide for draft sessions */}
+      {!isDraft && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              size="sm"
+              variant={'ghost'}
+              className={cn('h-7 px-2', isActiveSession && 'text-warning')}
+              onClick={onToggleArchive}
+            >
+              {isArchived ? (
+                <ArchiveRestore className="h-3.5 w-3.5" />
+              ) : (
+                <Archive className="h-3.5 w-3.5" />
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p className="flex items-center gap-1">
+              {isArchived ? 'Unarchive' : 'Archive'} session <KeyboardShortcut keyString="e" />
+              {isActiveSession && ' (requires confirmation)'}
+            </p>
+          </TooltipContent>
+        </Tooltip>
+      )}
     </div>
   )
 }

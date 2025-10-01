@@ -411,9 +411,9 @@ const KeyboardShortcuts = Extension.create({
         }
         return true
       },
-      'Shift-Tab': () => {
+      'Alt-a': () => {
         this.options.onToggleAutoAccept?.()
-        return true // Prevent default tab behavior
+        return true
       },
       'Alt-y': () => {
         this.options.onToggleDangerouslySkipPermissions?.()
@@ -479,6 +479,7 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
     const virtualAnchor = useRef<HTMLDivElement>(null)
 
     const setResponseEditor = useStore(state => state.setResponseEditor)
+    const setResponseEditorEmpty = useStore(state => state.setResponseEditorEmpty)
     const removeResponseEditor = useStore(state => state.removeResponseEditor)
 
     useEffect(() => {
@@ -676,6 +677,13 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
         */
       ],
       content: initialValue,
+      onCreate: ({ editor }) => {
+        logger.log('ResponseEditor - Editor created with content:', {
+          content: editor.getJSON(),
+          isEmpty: editor.isEmpty,
+          initialValue,
+        })
+      },
       editorProps: {
         attributes: {
           class: `tiptap-editor ${className || ''}`,
@@ -706,7 +714,10 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
           return false
         },
       },
-      onUpdate: ({ editor }) => onChangeRef.current?.(editor.getJSON()),
+      onUpdate: ({ editor }) => {
+        onChangeRef.current?.(editor.getJSON())
+        setResponseEditorEmpty(editor.isEmpty)
+      },
       editable: !disabled,
 
       enableInputRules: false,
@@ -733,12 +744,13 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
     useEffect(() => {
       logger.log('ResponseEditor.useEffect() - setting response editor')
       setResponseEditor(editor)
+      setResponseEditorEmpty(editor.isEmpty)
       return () => {
         logger.log('TiptapEditor.useEffect() - destroying editor')
         editor?.destroy()
         removeResponseEditor()
       }
-    }, [editor, setResponseEditor, removeResponseEditor])
+    }, [editor, setResponseEditor, setResponseEditorEmpty, removeResponseEditor])
 
     // Handle clicks and hovers on mentions
     useEffect(() => {

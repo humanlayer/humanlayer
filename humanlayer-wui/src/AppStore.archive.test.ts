@@ -63,7 +63,7 @@ describe('AppStore - Archive Session Focus Clearing', () => {
     const initialState = useStore.getState()
     expect(initialState.focusedSession).toBeDefined()
     expect(initialState.focusedSession?.id).toBe('session-1')
-    expect(initialState.viewMode).toBe(ViewMode.Normal)
+    expect(initialState.getViewMode()).toBe(ViewMode.Normal)
 
     // Archive the focused session
     await useStore.getState().archiveSession('session-1', true)
@@ -117,7 +117,7 @@ describe('AppStore - Archive Session Focus Clearing', () => {
     // Verify initial state
     const initialState = useStore.getState()
     expect(initialState.focusedSession?.id).toBe('session-1')
-    expect(initialState.viewMode).toBe(ViewMode.Archived)
+    expect(initialState.getViewMode()).toBe(ViewMode.Archived)
 
     // Archive the focused session
     await useStore.getState().archiveSession('session-1', true)

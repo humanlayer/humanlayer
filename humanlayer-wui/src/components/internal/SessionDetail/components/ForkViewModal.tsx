@@ -247,7 +247,7 @@ function ForkViewModalContent({
 
   // Shift+Tab navigation - MUST capture to prevent triggering "accept edits" in background
   useHotkeys(
-    'shift+tab',
+    'alt+a',
     e => {
       e.preventDefault()
       e.stopPropagation()

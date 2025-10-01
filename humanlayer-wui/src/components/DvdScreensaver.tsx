@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { useStore } from '@/AppStore'
-import { isViewingSessionDetail } from '@/hooks/useSessionLauncher'
+
+// Helper to check if currently viewing a session detail
+const isViewingSessionDetail = (): boolean => {
+  const hash = window.location.hash
+  return /^#\/sessions\/[^/]+$/.test(hash)
+}
 
 interface Position {
   x: number

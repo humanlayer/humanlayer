@@ -19,11 +19,11 @@ import {
 } from '@/lib/daemon'
 import { Button } from '@/components/ui/button'
 import { ThemeSelector } from '@/components/ThemeSelector'
-import { SessionLauncher } from '@/components/SessionLauncher'
 import { HotkeyPanel } from '@/components/HotkeyPanel'
 import { Breadcrumbs } from '@/components/Breadcrumbs'
 import { SettingsDialog } from '@/components/SettingsDialog'
 import { OptInTelemetryModal } from '@/components/OptInTelemetryModal'
+import { SessionLauncher } from '@/components/SessionLauncher'
 import { useSessionLauncher, useSessionLauncherHotkeys } from '@/hooks/useSessionLauncher'
 import { useDaemonConnection } from '@/hooks/useDaemonConnection'
 import { useStore } from '@/AppStore'
@@ -525,7 +525,7 @@ export function Layout() {
       console.log('[Layout] g>s fired')
       e.stopPropagation()
       // Navigate to sessions (normal view)
-      if (useStore.getState().viewMode !== ViewMode.Normal) {
+      if (useStore.getState().getViewMode() !== ViewMode.Normal) {
         useStore.getState().setViewMode(ViewMode.Normal)
       }
       navigate('/')
@@ -544,7 +544,7 @@ export function Layout() {
       console.log('[Layout] g>e fired')
       e.stopPropagation()
       // Navigate to archived sessions
-      if (useStore.getState().viewMode !== ViewMode.Archived) {
+      if (useStore.getState().getViewMode() !== ViewMode.Archived) {
         useStore.getState().setViewMode(ViewMode.Archived)
       }
       navigate('/')
@@ -563,8 +563,27 @@ export function Layout() {
       console.log('[Layout] g>i fired (alias for g>s)')
       e.stopPropagation()
       // Navigate to sessions (normal view)
-      if (useStore.getState().viewMode !== ViewMode.Normal) {
+      if (useStore.getState().getViewMode() !== ViewMode.Normal) {
         useStore.getState().setViewMode(ViewMode.Normal)
+      }
+      navigate('/')
+    },
+    {
+      scopes: [HOTKEY_SCOPES.ROOT],
+      preventDefault: true,
+      enableOnFormTags: false,
+    },
+  )
+
+  // G+D - Go to drafts
+  useHotkeys(
+    'g>d',
+    e => {
+      console.log('[Layout] g>d fired')
+      e.stopPropagation()
+      // Navigate to drafts view
+      if (useStore.getState().getViewMode() !== ViewMode.Drafts) {
+        useStore.getState().setViewMode(ViewMode.Drafts)
       }
       navigate('/')
     },
@@ -605,7 +624,7 @@ export function Layout() {
     },
     {
       enableOnFormTags: true,
-      preventDefault: !isOpen,
+      preventDefault: true,
     },
   )
 
@@ -740,7 +759,7 @@ export function Layout() {
       <main className="flex-1 flex flex-col p-4 overflow-hidden">
         {connected && (
           <>
-            <Breadcrumbs />
+            {location.pathname !== '/' && <Breadcrumbs />}
             <div className="flex-1 overflow-y-auto" data-main-scroll-container>
               <Outlet />
             </div>
@@ -892,7 +911,7 @@ export function Layout() {
         </div>
       </div>
 
-      {/* Session Launcher */}
+      {/* Session Launcher Modal */}
       <SessionLauncher isOpen={isOpen} onClose={close} />
 
       {/* Hotkey Panel */}

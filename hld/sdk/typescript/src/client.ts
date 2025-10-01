@@ -6,6 +6,7 @@ import {
     SettingsApi,
     CreateSessionRequest,
     Session,
+    SessionsResponse,
     Approval,
     CreateSessionResponse,
     CreateSessionResponseData,
@@ -70,6 +71,10 @@ export class HLDClient {
         return response.data;
     }
 
+    async listSessionsWithCounts(params?: ListSessionsRequest): Promise<SessionsResponse> {
+        return await this.sessionsApi.listSessions(params);
+    }
+
     async getSession(id: string): Promise<Session> {
         const response = await this.sessionsApi.getSession({ id });
         return response.data;
@@ -102,6 +107,19 @@ export class HLDClient {
         await this.sessionsApi.interruptSession({ id });
     }
 
+    // Launch draft session
+    async launchDraftSession(id: string, prompt: string): Promise<void> {
+        await this.sessionsApi.launchDraftSession({
+            id,
+            launchDraftSessionRequest: { prompt }
+        });
+    }
+
+    // Delete draft session
+    async deleteDraftSession(id: string): Promise<void> {
+        await this.sessionsApi.deleteDraftSession({ id });
+    }
+
     // Session archival
     async archiveSessions(sessionIds: string[], archived: boolean = true): Promise<{ archived: string[] }> {
         const response = await this.sessionsApi.bulkArchiveSessions({
@@ -125,7 +143,9 @@ export class HLDClient {
         proxyModelOverride?: string,
         proxyApiKey?: string,
         archived?: boolean,
-        additionalDirectories?: string[]
+        additionalDirectories?: string[],
+        working_dir?: string,
+        editorState?: string
     }): Promise<void> {
         // Build request with only defined fields to avoid sending undefined values
         const updateSessionRequest: any = {};
@@ -164,6 +184,12 @@ export class HLDClient {
         }
         if (updates.additionalDirectories !== undefined) {
             updateSessionRequest.additionalDirectories = updates.additionalDirectories;
+        }
+        if (updates.working_dir !== undefined) {
+            updateSessionRequest.workingDir = updates.working_dir;
+        }
+        if (updates.editorState !== undefined) {
+            updateSessionRequest.editorState = updates.editorState;
         }
 
         await this.sessionsApi.updateSession({

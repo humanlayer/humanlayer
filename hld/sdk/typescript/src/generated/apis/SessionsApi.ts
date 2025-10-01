@@ -24,6 +24,7 @@ import type {
   CreateSessionResponse,
   ErrorResponse,
   InterruptSessionResponse,
+  LaunchDraftSessionRequest,
   RecentPathsResponse,
   SessionResponse,
   SessionsResponse,
@@ -49,6 +50,8 @@ import {
     ErrorResponseToJSON,
     InterruptSessionResponseFromJSON,
     InterruptSessionResponseToJSON,
+    LaunchDraftSessionRequestFromJSON,
+    LaunchDraftSessionRequestToJSON,
     RecentPathsResponseFromJSON,
     RecentPathsResponseToJSON,
     SessionResponseFromJSON,
@@ -74,6 +77,10 @@ export interface CreateSessionOperationRequest {
     createSessionRequest: CreateSessionRequest;
 }
 
+export interface DeleteDraftSessionRequest {
+    id: string;
+}
+
 export interface GetRecentPathsRequest {
     limit?: number;
 }
@@ -94,10 +101,14 @@ export interface InterruptSessionRequest {
     id: string;
 }
 
+export interface LaunchDraftSessionOperationRequest {
+    id: string;
+    launchDraftSessionRequest: LaunchDraftSessionRequest;
+}
+
 export interface ListSessionsRequest {
-    leafOnly?: boolean;
-    includeArchived?: boolean;
-    archivedOnly?: boolean;
+    leavesOnly?: boolean;
+    filter?: ListSessionsFilterEnum;
 }
 
 export interface UpdateSessionOperationRequest {
@@ -160,6 +171,22 @@ export interface SessionsApiInterface {
      * Launch a new session
      */
     createSession(requestParameters: CreateSessionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreateSessionResponse>;
+
+    /**
+     * Delete a draft session that has not been launched yet
+     * @summary Delete a draft session
+     * @param {string} id Session ID
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SessionsApiInterface
+     */
+    deleteDraftSessionRaw(requestParameters: DeleteDraftSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     * Delete a draft session that has not been launched yet
+     * Delete a draft session
+     */
+    deleteDraftSession(requestParameters: DeleteDraftSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
 
     /**
      * Retrieve recently used working directories for quick access
@@ -242,11 +269,27 @@ export interface SessionsApiInterface {
     interruptSession(requestParameters: InterruptSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<InterruptSessionResponse>;
 
     /**
-     * List all sessions with optional filtering. By default returns only leaf sessions (sessions with no children). Set leafOnly=false to get all sessions.
+     * Launch a draft session, transitioning it from draft to running state
+     * @summary Launch a draft session
+     * @param {string} id Session ID
+     * @param {LaunchDraftSessionRequest} launchDraftSessionRequest
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SessionsApiInterface
+     */
+    launchDraftSessionRaw(requestParameters: LaunchDraftSessionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SessionResponse>>;
+
+    /**
+     * Launch a draft session, transitioning it from draft to running state
+     * Launch a draft session
+     */
+    launchDraftSession(requestParameters: LaunchDraftSessionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SessionResponse>;
+
+    /**
+     * List all sessions with optional filtering. By default returns only leaf sessions (sessions with no children). Set leavesOnly=false to get all sessions.
      * @summary List sessions
-     * @param {boolean} [leafOnly] Return only leaf sessions (no children)
-     * @param {boolean} [includeArchived] Include archived sessions in results
-     * @param {boolean} [archivedOnly] Return only archived sessions
+     * @param {boolean} [leavesOnly] Return only leaf sessions (sessions with no children)
+     * @param {'normal' | 'archived' | 'draft'} [filter] Filter sessions by type
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof SessionsApiInterface
@@ -254,7 +297,7 @@ export interface SessionsApiInterface {
     listSessionsRaw(requestParameters: ListSessionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SessionsResponse>>;
 
     /**
-     * List all sessions with optional filtering. By default returns only leaf sessions (sessions with no children). Set leafOnly=false to get all sessions.
+     * List all sessions with optional filtering. By default returns only leaf sessions (sessions with no children). Set leavesOnly=false to get all sessions.
      * List sessions
      */
     listSessions(requestParameters: ListSessionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SessionsResponse>;
@@ -412,6 +455,44 @@ export class SessionsApi extends runtime.BaseAPI implements SessionsApiInterface
     async createSession(requestParameters: CreateSessionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreateSessionResponse> {
         const response = await this.createSessionRaw(requestParameters, initOverrides);
         return await response.value();
+    }
+
+    /**
+     * Delete a draft session that has not been launched yet
+     * Delete a draft session
+     */
+    async deleteDraftSessionRaw(requestParameters: DeleteDraftSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling deleteDraftSession().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/sessions/{id}/launch`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Delete a draft session that has not been launched yet
+     * Delete a draft session
+     */
+    async deleteDraftSession(requestParameters: DeleteDraftSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.deleteDraftSessionRaw(requestParameters, initOverrides);
     }
 
     /**
@@ -606,22 +687,67 @@ export class SessionsApi extends runtime.BaseAPI implements SessionsApiInterface
     }
 
     /**
-     * List all sessions with optional filtering. By default returns only leaf sessions (sessions with no children). Set leafOnly=false to get all sessions.
+     * Launch a draft session, transitioning it from draft to running state
+     * Launch a draft session
+     */
+    async launchDraftSessionRaw(requestParameters: LaunchDraftSessionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SessionResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling launchDraftSession().'
+            );
+        }
+
+        if (requestParameters['launchDraftSessionRequest'] == null) {
+            throw new runtime.RequiredError(
+                'launchDraftSessionRequest',
+                'Required parameter "launchDraftSessionRequest" was null or undefined when calling launchDraftSession().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/sessions/{id}/launch`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: LaunchDraftSessionRequestToJSON(requestParameters['launchDraftSessionRequest']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => SessionResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Launch a draft session, transitioning it from draft to running state
+     * Launch a draft session
+     */
+    async launchDraftSession(requestParameters: LaunchDraftSessionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SessionResponse> {
+        const response = await this.launchDraftSessionRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * List all sessions with optional filtering. By default returns only leaf sessions (sessions with no children). Set leavesOnly=false to get all sessions.
      * List sessions
      */
     async listSessionsRaw(requestParameters: ListSessionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SessionsResponse>> {
         const queryParameters: any = {};
 
-        if (requestParameters['leafOnly'] != null) {
-            queryParameters['leafOnly'] = requestParameters['leafOnly'];
+        if (requestParameters['leavesOnly'] != null) {
+            queryParameters['leavesOnly'] = requestParameters['leavesOnly'];
         }
 
-        if (requestParameters['includeArchived'] != null) {
-            queryParameters['includeArchived'] = requestParameters['includeArchived'];
-        }
-
-        if (requestParameters['archivedOnly'] != null) {
-            queryParameters['archivedOnly'] = requestParameters['archivedOnly'];
+        if (requestParameters['filter'] != null) {
+            queryParameters['filter'] = requestParameters['filter'];
         }
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -640,7 +766,7 @@ export class SessionsApi extends runtime.BaseAPI implements SessionsApiInterface
     }
 
     /**
-     * List all sessions with optional filtering. By default returns only leaf sessions (sessions with no children). Set leafOnly=false to get all sessions.
+     * List all sessions with optional filtering. By default returns only leaf sessions (sessions with no children). Set leavesOnly=false to get all sessions.
      * List sessions
      */
     async listSessions(requestParameters: ListSessionsRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SessionsResponse> {
@@ -698,3 +824,13 @@ export class SessionsApi extends runtime.BaseAPI implements SessionsApiInterface
     }
 
 }
+
+/**
+ * @export
+ */
+export const ListSessionsFilterEnum = {
+    Normal: 'normal',
+    Archived: 'archived',
+    Draft: 'draft'
+} as const;
+export type ListSessionsFilterEnum = typeof ListSessionsFilterEnum[keyof typeof ListSessionsFilterEnum];

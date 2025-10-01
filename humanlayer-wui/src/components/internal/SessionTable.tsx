@@ -3,23 +3,24 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { useEffect, useRef, useState } from 'react'
-import { CircleOff, CheckSquare, Square, FileText, Pencil, ShieldOff } from 'lucide-react'
+import { CircleOff, CheckSquare, Square, Pencil, ShieldOff } from 'lucide-react'
 import { getStatusTextClass } from '@/utils/component-utils'
 import { formatTimestamp, formatAbsoluteTimestamp } from '@/utils/formatting'
 import { highlightMatches } from '@/lib/fuzzy-search'
-import { useSessionLauncher } from '@/hooks/useSessionLauncher'
 import { cn } from '@/lib/utils'
 import { useStore } from '@/AppStore'
+import { useSessionLauncher } from '@/hooks/useSessionLauncher'
 import { toast } from 'sonner'
-import { EmptyState } from './EmptyState'
-import type { LucideIcon } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { daemonClient } from '@/lib/daemon/client'
 import { renderSessionStatus } from '@/utils/sessionStatus'
 import { logger } from '@/lib/logging'
+import { DiscardDraftDialog } from './SessionDetail/components/DiscardDraftDialog'
 import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
 import { HotkeyScopeBoundary } from '../HotkeyScopeBoundary'
+import { SessionsEmptyState } from './SessionsEmptyState'
+import { ArchivedSessionsEmptyState } from './ArchivedSessionsEmptyState'
 
 interface SessionTableProps {
   sessions: Session[]
@@ -31,16 +32,9 @@ interface SessionTableProps {
   focusedSession: Session | null
   searchText?: string
   matchedSessions?: Map<string, any>
-  archived?: boolean // Add this to indicate if showing archived sessions
-  emptyState?: {
-    icon?: LucideIcon
-    title: string
-    message?: string
-    action?: {
-      label: string
-      onClick: () => void
-    }
-  }
+  isArchivedView?: boolean // Add this to indicate if showing archived sessions
+  isDraftsView?: boolean // Add this to indicate if showing drafts view
+  onNavigateToSessions?: () => void // For archived view navigation
   onBypassPermissions?: (sessionIds: string[]) => void
 }
 
@@ -54,21 +48,32 @@ export default function SessionTable({
   focusedSession,
   searchText,
   matchedSessions,
-  archived = false,
-  emptyState,
+  isArchivedView = false,
+  isDraftsView = false,
+  onNavigateToSessions,
   onBypassPermissions,
 }: SessionTableProps) {
-  const { isOpen: isSessionLauncherOpen } = useSessionLauncher()
+  const isSessionLauncherOpen = useSessionLauncher(state => state.isOpen)
   const tableRef = useRef<HTMLTableElement>(null)
-  const { archiveSession, selectedSessions, toggleSessionSelection, bulkArchiveSessions, bulkSelect } =
-    useStore()
+  const {
+    archiveSession,
+    selectedSessions,
+    toggleSessionSelection,
+    bulkArchiveSessions,
+    bulkSelect,
+    bulkDiscardDrafts,
+  } = useStore()
 
   // Determine scope based on archived state
-  const tableScope = archived ? HOTKEY_SCOPES.SESSIONS_ARCHIVED : HOTKEY_SCOPES.SESSIONS
+  const tableScope = isArchivedView ? HOTKEY_SCOPES.SESSIONS_ARCHIVED : HOTKEY_SCOPES.SESSIONS
 
   // State for inline editing
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
+
+  // State for discard dialog
+  const [discardDialogOpen, setDiscardDialogOpen] = useState(false)
+  const [draftsToDiscard, setDraftsToDiscard] = useState<string[]>([])
 
   // Helper functions for inline editing
   const startEdit = (sessionId: string, currentTitle: string, currentSummary: string) => {
@@ -97,6 +102,63 @@ export default function SessionTable({
   const cancelEdit = () => {
     setEditingSessionId(null)
     setEditValue('')
+  }
+
+  // Handle confirmed discard
+  const handleConfirmDiscard = async () => {
+    try {
+      if (draftsToDiscard.length === 1) {
+        // Single draft discard
+        const sessionId = draftsToDiscard[0]
+        const currentSession = sessions.find(s => s.id === sessionId)
+
+        await daemonClient.deleteDraftSession(sessionId)
+        useStore.getState().removeSession(sessionId)
+
+        // Find next session to focus
+        const currentIndex = sessions.findIndex(s => s.id === sessionId)
+        let nextFocusSession = null
+
+        if (currentIndex > 0) {
+          nextFocusSession = sessions[currentIndex - 1]
+        } else if (currentIndex < sessions.length - 1) {
+          nextFocusSession = sessions[currentIndex + 1]
+        }
+
+        if (nextFocusSession && handleFocusSession) {
+          handleFocusSession(nextFocusSession)
+        }
+
+        toast.success('Draft discarded', {
+          description: currentSession?.summary || 'Untitled draft',
+          duration: 3000,
+        })
+      } else {
+        // Bulk discard
+        const nonSelectedSessions = sessions.filter(s => !draftsToDiscard.includes(s.id))
+        const nextFocusSession = nonSelectedSessions.length > 0 ? nonSelectedSessions[0] : null
+
+        await bulkDiscardDrafts(draftsToDiscard)
+
+        if (nextFocusSession && handleFocusSession) {
+          handleFocusSession(nextFocusSession)
+        }
+
+        toast.success(`Discarded ${draftsToDiscard.length} drafts`, {
+          duration: 3000,
+        })
+      }
+
+      // Refresh sessions to update counts
+      await useStore.getState().refreshSessions()
+    } catch (error) {
+      toast.error('Failed to discard draft(s)', {
+        description: error instanceof Error ? error.message : 'Unknown error',
+      })
+    } finally {
+      setDiscardDialogOpen(false)
+      setDraftsToDiscard([])
+    }
   }
 
   // Helper to render highlighted text
@@ -254,6 +316,49 @@ export default function SessionTable({
     },
   )
 
+  // Discard draft hotkey (cmd+shift+., which is mod+shift+>)
+  useHotkeys(
+    'meta+shift+period',
+    async () => {
+      console.log('[SessionTable] discard draft hotkey "cmd+shift+>" fired')
+
+      try {
+        // If there are selected sessions, bulk discard drafts
+        if (selectedSessions.size > 0) {
+          const selectedSessionObjects = Array.from(selectedSessions)
+            .map(sessionId => sessions.find(s => s.id === sessionId))
+            .filter(Boolean)
+
+          const draftIds = selectedSessionObjects
+            .filter(s => s?.status === SessionStatus.Draft)
+            .map(s => s!.id)
+
+          if (draftIds.length > 0) {
+            setDraftsToDiscard(draftIds)
+            setDiscardDialogOpen(true)
+          }
+        } else {
+          // Single session discard
+          const currentSession = sessions.find(s => s.id === focusedSession?.id)
+          if (currentSession && currentSession.status === SessionStatus.Draft) {
+            setDraftsToDiscard([currentSession.id])
+            setDiscardDialogOpen(true)
+          }
+        }
+      } catch (error) {
+        toast.error('Failed to discard draft', {
+          description: error instanceof Error ? error.message : 'Unknown error',
+        })
+      }
+    },
+    {
+      scopes: [tableScope],
+      enabled: !isSessionLauncherOpen && (focusedSession !== null || selectedSessions.size > 0),
+      preventDefault: true,
+      enableOnFormTags: false,
+    },
+  )
+
   // Archive/unarchive hotkey
   useHotkeys(
     'e',
@@ -282,7 +387,21 @@ export default function SessionTable({
             .map(sessionId => sessions.find(s => s.id === sessionId))
             .filter(Boolean)
 
-          // Check if all selected sessions have the same archived status
+          // Filter out drafts - 'e' key should only archive non-draft sessions
+          const nonDraftSessions = selectedSessionObjects.filter(s => s?.status !== SessionStatus.Draft)
+
+          if (nonDraftSessions.length === 0) {
+            // All selected are drafts, show warning
+            toast.warning('Drafts cannot be archived with "e" key. Use Cmd+Shift+. to discard drafts.')
+            return
+          }
+
+          if (nonDraftSessions.length < selectedSessionObjects.length) {
+            toast.warning('Drafts cannot be archived with "e" key. Use Cmd+Shift+. to discard drafts.')
+            return
+          }
+
+          // Original archive logic for non-drafts
           const archivedStatuses = selectedSessionObjects.map(s => s?.archived)
           const allSameStatus = archivedStatuses.every(status => status === archivedStatuses[0])
 
@@ -321,7 +440,12 @@ export default function SessionTable({
             logger.log('No current session found')
             return
           }
-          const isArchiving = !currentSession.archived
+
+          // Ignore 'e' key for drafts
+          if (currentSession.status === SessionStatus.Draft) {
+            toast.warning('Drafts cannot be archived with "e" key. Use Cmd+Shift+. to discard drafts.')
+            return
+          }
 
           // Find the index of current session and determine next focus
           const currentIndex = sessions.findIndex(s => s.id === currentSession.id)
@@ -334,6 +458,9 @@ export default function SessionTable({
             // Focus next session if no previous
             nextFocusSession = sessions[currentIndex + 1]
           }
+
+          // Archive logic
+          const isArchiving = !currentSession.archived
 
           await archiveSession(currentSession.id, isArchiving)
 
@@ -366,6 +493,7 @@ export default function SessionTable({
       archiveSession,
       selectedSessions,
       bulkArchiveSessions,
+      bulkDiscardDrafts,
       handleFocusSession,
     ],
   )
@@ -436,7 +564,7 @@ export default function SessionTable({
   return (
     <HotkeyScopeBoundary
       scope={tableScope}
-      componentName={`SessionTable-${archived ? 'archived' : 'normal'}`}
+      componentName={`SessionTable-${isArchivedView ? 'archived' : 'normal'}`}
     >
       {sessions.length > 0 ? (
         <>
@@ -445,9 +573,9 @@ export default function SessionTable({
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[40px]"></TableHead>
-                <TableHead>Status</TableHead>
+                {!isDraftsView && <TableHead>Status</TableHead>}
                 <TableHead>Working Directory</TableHead>
-                <TableHead>Summary</TableHead>
+                <TableHead>Title</TableHead>
                 <TableHead>Model</TableHead>
                 <TableHead>Started</TableHead>
                 <TableHead>Last Activity</TableHead>
@@ -497,25 +625,27 @@ export default function SessionTable({
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className={getStatusTextClass(session.status)}>
-                    {session.status !== SessionStatus.Failed && (
-                      <>
-                        {session.dangerouslySkipPermissions ? (
-                          <>
-                            <ShieldOff
-                              className="inline-block w-4 h-4 text-[var(--terminal-error)] animate-pulse-error align-text-bottom"
-                              strokeWidth={3}
-                            />{' '}
-                          </>
-                        ) : session.autoAcceptEdits ? (
-                          <span className="align-text-top text-[var(--terminal-warning)] text-base leading-none animate-pulse-warning">
-                            {'⏵⏵ '}
-                          </span>
-                        ) : null}
-                      </>
-                    )}
-                    {renderSessionStatus(session)}
-                  </TableCell>
+                  {!isDraftsView && (
+                    <TableCell className={getStatusTextClass(session.status)}>
+                      {session.status !== SessionStatus.Failed && (
+                        <>
+                          {session.dangerouslySkipPermissions ? (
+                            <>
+                              <ShieldOff
+                                className="inline-block w-4 h-4 text-[var(--terminal-error)] animate-pulse-error align-text-bottom"
+                                strokeWidth={3}
+                              />{' '}
+                            </>
+                          ) : session.autoAcceptEdits ? (
+                            <span className="align-text-top text-[var(--terminal-warning)] text-base leading-none animate-pulse-warning">
+                              {'⏵⏵ '}
+                            </span>
+                          ) : null}
+                        </>
+                      )}
+                      {renderSessionStatus(session)}
+                    </TableCell>
+                  )}
                   <TableCell className="max-w-[200px]">
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -625,15 +755,22 @@ export default function SessionTable({
             </TableBody>
           </Table>
         </>
-      ) : emptyState ? (
-        <EmptyState {...emptyState} />
+      ) : isArchivedView ? (
+        <ArchivedSessionsEmptyState onNavigateBack={() => onNavigateToSessions?.()} />
       ) : (
-        <EmptyState
-          icon={FileText}
-          title="No sessions found"
-          message={searchText ? `No sessions matching "${searchText}"` : 'No sessions yet'}
-        />
+        <SessionsEmptyState />
       )}
+
+      {/* Discard Drafts Confirmation Dialog */}
+      <DiscardDraftDialog
+        open={discardDialogOpen}
+        draftCount={draftsToDiscard.length}
+        onConfirm={handleConfirmDiscard}
+        onCancel={() => {
+          setDiscardDialogOpen(false)
+          setDraftsToDiscard([])
+        }}
+      />
     </HotkeyScopeBoundary>
   )
 }

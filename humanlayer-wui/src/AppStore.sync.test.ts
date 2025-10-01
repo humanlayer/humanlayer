@@ -26,21 +26,25 @@ mock.module('@/lib/logging', () => ({
 }))
 
 describe('AppStore - State Synchronization', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     // Reset store to initial state
     useStore.setState({
       sessions: [],
       focusedSession: null,
-      viewMode: ViewMode.Normal,
       selectedSessions: new Set(),
       pendingUpdates: new Map(),
       isRefreshing: false,
       activeSessionDetail: null,
     })
+    // Set view mode separately using the method
+    useStore.getState().setViewMode(ViewMode.Normal)
 
     // Clear all mocks
     mockGetSessionLeaves.mockClear()
     mockUpdateSessionSettings.mockClear()
+
+    // Make sure any pending operations are complete
+    await new Promise(resolve => setTimeout(resolve, 0))
   })
 
   afterEach(() => {
@@ -219,20 +223,31 @@ describe('AppStore - State Synchronization', () => {
     })
 
     test('should prevent concurrent refreshes', async () => {
-      mockGetSessionLeaves.mockImplementation(
-        () => new Promise(resolve => setTimeout(() => resolve({ sessions: [] }), 100)),
-      )
+      let resolvePromise: (value: { sessions: any[] }) => void
+      const promise = new Promise<{ sessions: any[] }>(resolve => {
+        resolvePromise = resolve
+      })
+
+      mockGetSessionLeaves.mockImplementation(() => promise)
 
       // Start first refresh
-      const refresh1 = useStore.getState().refreshSessions()
+      const refresh1Promise = useStore.getState().refreshSessions()
 
-      // Try to start second refresh immediately
-      const refresh2 = useStore.getState().refreshSessions()
+      // Try to start second refresh immediately (should be skipped)
+      const refresh2Promise = useStore.getState().refreshSessions()
 
-      await Promise.all([refresh1, refresh2])
+      // Resolve the promise to complete the first refresh
+      resolvePromise!({ sessions: [] })
+
+      // Wait for both to complete
+      await refresh1Promise
+      await refresh2Promise
 
       // Should only call API once
       expect(mockGetSessionLeaves).toHaveBeenCalledTimes(1)
+
+      // Ensure isRefreshing is false after completion
+      expect(useStore.getState().isRefreshing).toBe(false)
     })
 
     test('should set isRefreshing flag correctly', async () => {

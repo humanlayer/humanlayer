@@ -175,6 +175,7 @@ export class HTTPDaemonClient implements IDaemonClient {
           ? params.disallowedTools
           : (params as LaunchSessionRequest).disallowed_tools,
       additionalDirectories: additionalDirs,
+      draft: 'draft' in params ? params.draft : undefined,
       // Pass proxy configuration directly if using OpenRouter
       ...(provider === 'openrouter' && {
         proxyEnabled: true,
@@ -206,33 +207,37 @@ export class HTTPDaemonClient implements IDaemonClient {
 
   async listSessions(): Promise<Session[]> {
     await this.ensureConnected()
-    const response = await this.client!.listSessions({ leafOnly: true })
-    return response.map(transformSDKSession)
+    const sessions = await this.client!.listSessions({ leavesOnly: true })
+    return sessions.map(transformSDKSession)
   }
 
-  async getSessionLeaves(request?: {
-    include_archived?: boolean
-    archived_only?: boolean
-  }): Promise<{ sessions: Session[] }> {
+  async getSessionLeaves(request?: { filter?: 'normal' | 'archived' | 'draft' }): Promise<{
+    sessions: Session[]
+    counts?: {
+      normal?: number
+      archived?: number
+      draft?: number
+    }
+  }> {
     await this.ensureConnected()
-    // The SDK's listSessions with leafOnly=true is equivalent
-    const response = await this.client!.listSessions({
-      leafOnly: true,
-      includeArchived: request?.include_archived,
-      archivedOnly: request?.archived_only,
+    // Use the new method that returns the full response with counts
+    const response = await this.client!.listSessionsWithCounts({
+      leavesOnly: true,
+      filter: request?.filter,
     })
     logger.debug(
       'getSessionLeaves raw response sample:',
-      response[0]
+      response.data?.[0]
         ? {
-            id: response[0].id,
-            dangerouslySkipPermissions: response[0].dangerouslySkipPermissions,
-            dangerouslySkipPermissionsExpiresAt: response[0].dangerouslySkipPermissionsExpiresAt,
+            id: response.data[0].id,
+            dangerouslySkipPermissions: response.data[0].dangerouslySkipPermissions,
+            dangerouslySkipPermissionsExpiresAt: response.data[0].dangerouslySkipPermissionsExpiresAt,
           }
         : 'no sessions',
     )
     return {
-      sessions: response.map(transformSDKSession),
+      sessions: response.data.map(transformSDKSession),
+      counts: response.counts,
     }
   }
 
@@ -262,6 +267,18 @@ export class HTTPDaemonClient implements IDaemonClient {
   async interruptSession(sessionId: string): Promise<{ success: boolean }> {
     await this.ensureConnected()
     await this.client!.interruptSession(sessionId)
+    return { success: true }
+  }
+
+  async launchDraftSession(sessionId: string, prompt: string): Promise<{ success: boolean }> {
+    await this.ensureConnected()
+    await this.client!.launchDraftSession(sessionId, prompt)
+    return { success: true }
+  }
+
+  async deleteDraftSession(sessionId: string): Promise<{ success: boolean }> {
+    await this.ensureConnected()
+    await this.client!.deleteDraftSession(sessionId)
     return { success: true }
   }
 
@@ -351,6 +368,8 @@ export class HTTPDaemonClient implements IDaemonClient {
       dangerouslySkipPermissions?: boolean
       dangerouslySkipPermissionsTimeoutMs?: number
       additionalDirectories?: string[]
+      workingDir?: string
+      editorState?: string
       // New proxy fields
       proxyEnabled?: boolean
       proxyBaseUrl?: string
@@ -382,6 +401,12 @@ export class HTTPDaemonClient implements IDaemonClient {
     }
     if (updates.additionalDirectories !== undefined) {
       sdkUpdates.additionalDirectories = updates.additionalDirectories
+    }
+    if (updates.workingDir !== undefined) {
+      sdkUpdates.working_dir = updates.workingDir
+    }
+    if (updates.editorState !== undefined) {
+      sdkUpdates.editorState = updates.editorState
     }
     if (updates.proxyEnabled !== undefined) {
       sdkUpdates.proxyEnabled = updates.proxyEnabled

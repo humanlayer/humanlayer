@@ -153,6 +153,12 @@ export interface CreateSessionRequest {
      * @memberof CreateSessionRequest
      */
     proxyApiKey?: string;
+    /**
+     * Create session in draft state without launching Claude
+     * @type {boolean}
+     * @memberof CreateSessionRequest
+     */
+    draft?: boolean;
 }
 
 
@@ -205,6 +211,7 @@ export function CreateSessionRequestFromJSONTyped(json: any, ignoreDiscriminator
         'proxyBaseUrl': json['proxy_base_url'] == null ? undefined : json['proxy_base_url'],
         'proxyModelOverride': json['proxy_model_override'] == null ? undefined : json['proxy_model_override'],
         'proxyApiKey': json['proxy_api_key'] == null ? undefined : json['proxy_api_key'],
+        'draft': json['draft'] == null ? undefined : json['draft'],
     };
 }
 
@@ -240,5 +247,6 @@ export function CreateSessionRequestToJSONTyped(value?: CreateSessionRequest | n
         'proxy_base_url': value['proxyBaseUrl'],
         'proxy_model_override': value['proxyModelOverride'],
         'proxy_api_key': value['proxyApiKey'],
+        'draft': value['draft'],
     };
 }

@@ -113,11 +113,15 @@ type Session struct {
 	ProxyBaseURL       string `db:"proxy_base_url"`
 	ProxyModelOverride string `db:"proxy_model_override"`
 	ProxyAPIKey        string `db:"proxy_api_key"`
+
+	// Editor state for draft sessions (JSON blob)
+	EditorState *string `db:"editor_state"`
 }
 
 // SessionUpdate contains fields that can be updated
 type SessionUpdate struct {
 	ClaudeSessionID                     *string
+	Query                               *string // For updating draft session queries
 	Summary                             *string
 	Title                               *string // New field for updating title
 	Status                              *string
@@ -145,6 +149,10 @@ type SessionUpdate struct {
 	ProxyBaseURL       *string `db:"proxy_base_url"`
 	ProxyModelOverride *string `db:"proxy_model_override"`
 	ProxyAPIKey        *string `db:"proxy_api_key"`
+	// Working directory field
+	WorkingDir *string `db:"working_dir"`
+	// Editor state field (JSON blob)
+	EditorState *string `db:"editor_state"`
 }
 
 // ConversationEvent represents a single event in a conversation
@@ -261,6 +269,7 @@ const (
 
 // SessionStatus constants
 const (
+	SessionStatusDraft        = "draft"
 	SessionStatusStarting     = "starting"
 	SessionStatusRunning      = "running"
 	SessionStatusCompleted    = "completed"
@@ -268,6 +277,7 @@ const (
 	SessionStatusWaitingInput = "waiting_input"
 	SessionStatusInterrupting = "interrupting" // Session received interrupt signal and is shutting down
 	SessionStatusInterrupted  = "interrupted"  // Session was interrupted but can be resumed
+	SessionStatusDiscarded    = "discarded"    // Draft session was discarded by the user
 )
 
 // Helper functions for converting between store types and Claude types

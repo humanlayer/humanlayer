@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useImperativeHandle } from 'react'
 import { Pencil } from 'lucide-react'
-import { Session } from '@/lib/daemon/types'
+import { Session, SessionStatus } from '@/lib/daemon/types'
 import React from 'react'
 import { Button } from '@/components/ui/button'
 import { TokenUsageBadge } from './TokenUsageBadge'
@@ -8,6 +8,10 @@ import { ModelSelector } from './ModelSelector'
 import { renderSessionStatus } from '@/utils/sessionStatus'
 import { getStatusTextClass } from '@/utils/component-utils'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+
+export interface StatusBarRef {
+  openModelSelector: () => void
+}
 
 interface StatusBarProps {
   session: Session
@@ -20,6 +24,7 @@ interface StatusBarProps {
     className?: string
     icon?: React.ReactNode
   }
+  ref?: React.Ref<StatusBarRef>
 }
 
 export function StatusBar({
@@ -29,6 +34,7 @@ export function StatusBar({
   model,
   onModelChange,
   statusOverride,
+  ref,
 }: StatusBarProps) {
   const [isModelSelectorOpen, setIsModelSelectorOpen] = useState(false)
 
@@ -45,8 +51,21 @@ export function StatusBar({
   const modelText = rawModelText.includes('/')
     ? rawModelText.split('/').slice(1).join('/')
     : rawModelText
-  const isRunning = session.status === 'running' || session.status === 'starting'
-  const isReadyForInput = session.status === 'completed' && !session.archived
+  const isRunning =
+    session.status === SessionStatus.Running || session.status === SessionStatus.Starting
+  const isReadyForInput = session.status === SessionStatus.Completed && !session.archived
+  const isDraft = session.status === SessionStatus.Draft
+
+  const isReadyForInputOrDraft = isReadyForInput || isDraft
+
+  // Expose methods to parent via ref (React 19 style)
+  useImperativeHandle(ref, () => ({
+    openModelSelector: () => {
+      if (isReadyForInputOrDraft) {
+        setIsModelSelectorOpen(true)
+      }
+    },
+  }))
 
   return (
     <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -66,18 +85,20 @@ export function StatusBar({
               variant="outline"
               size="sm"
               className={`h-6 px-2 py-0 text-xs font-mono uppercase tracking-wider border-muted-foreground/20 transition-all duration-200 hover:text-current ${
-                isReadyForInput
+                isReadyForInputOrDraft
                   ? 'hover:border-muted-foreground/40 hover:!text-primary hover:!bg-primary/10'
                   : 'cursor-not-allowed hover:bg-transparent'
-              } ${isReadyForInput ? '' : getStatusTextClass(session.status)}`}
-              onClick={() => isReadyForInput && setIsModelSelectorOpen(true)}
+              } ${isReadyForInputOrDraft ? '' : getStatusTextClass(session.status)}`}
+              onClick={() => isReadyForInputOrDraft && setIsModelSelectorOpen(true)}
             >
               {modelText}
-              {isReadyForInput && <Pencil className="h-3 w-3 ml-1.5 opacity-50 hover:opacity-70" />}
+              {isReadyForInputOrDraft && (
+                <Pencil className="h-3 w-3 ml-1.5 opacity-50 hover:opacity-70" />
+              )}
             </Button>
           </TooltipTrigger>
           <TooltipContent>
-            {isReadyForInput ? (
+            {isReadyForInputOrDraft ? (
               <p className="font-medium">Click to change model</p>
             ) : isRunning ? (
               <p className="font-medium">Model changes unavailable while running</p>

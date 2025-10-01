@@ -18,13 +18,15 @@
  * @export
  */
 export const SessionStatus = {
+    Draft: 'draft',
     Starting: 'starting',
     Running: 'running',
     Completed: 'completed',
     Failed: 'failed',
     Interrupting: 'interrupting',
     Interrupted: 'interrupted',
-    WaitingInput: 'waiting_input'
+    WaitingInput: 'waiting_input',
+    Discarded: 'discarded'
 } as const;
 export type SessionStatus = typeof SessionStatus[keyof typeof SessionStatus];
 

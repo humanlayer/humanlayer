@@ -29,17 +29,19 @@ export function Breadcrumbs() {
   const sessionId = isSessionDetail ? pathSegments[1] : null
 
   // Get session, viewMode, and editing state from store
-  const session = useStore(state => (sessionId ? state.sessions.find(s => s.id === sessionId) : null))
-  const viewMode = useStore(state => state.viewMode)
+  const activeSessionDetail = useStore(state => state.activeSessionDetail)
+  const getViewMode = useStore(state => state.getViewMode)
   const isEditingTitle = useStore(state => state.isEditingSessionTitle)
   const setIsEditingTitle = useStore(state => state.setIsEditingSessionTitle)
+
+  const viewMode = getViewMode()
 
   // Add escape handler with the dedicated scope
   useHotkeys(
     'escape',
     e => {
       e.preventDefault()
-      setEditValue(session?.title || session?.summary || '')
+      setEditValue(activeSessionDetail?.session?.title || activeSessionDetail?.session?.summary || '')
       setIsEditingTitle(false)
       inputRef.current?.blur()
     },
@@ -48,22 +50,26 @@ export function Breadcrumbs() {
       enableOnFormTags: true,
       preventDefault: true,
     },
-    [isEditingTitle, session],
+    [isEditingTitle, activeSessionDetail?.session],
   )
 
   const startEdit = () => {
-    if (session) {
-      setEditValue(session.title || session.summary || '')
+    if (activeSessionDetail?.session) {
+      // Don't allow editing via breadcrumb if session is a draft
+      if (activeSessionDetail.session.status === 'draft') {
+        return
+      }
+      setEditValue(activeSessionDetail.session.title || activeSessionDetail.session.summary || '')
       setIsEditingTitle(true)
     }
   }
 
   const saveEdit = async () => {
-    if (!session || !editValue.trim()) return
+    if (!activeSessionDetail?.session || !editValue.trim()) return
 
     try {
-      await daemonClient.updateSessionTitle(session.id, editValue)
-      useStore.getState().updateSession(session.id, { title: editValue })
+      await daemonClient.updateSessionTitle(activeSessionDetail.session.id, editValue)
+      useStore.getState().updateSession(activeSessionDetail.session.id, { title: editValue })
       setIsEditingTitle(false)
     } catch {
       toast.error('Failed to update session title')
@@ -77,13 +83,18 @@ export function Breadcrumbs() {
 
   // Watch for external triggers to start editing
   useEffect(() => {
-    if (isEditingTitle && session) {
-      setEditValue(session.title || session.summary || '')
+    if (isEditingTitle && activeSessionDetail?.session) {
+      setEditValue(activeSessionDetail.session.title || activeSessionDetail.session.summary || '')
     }
-  }, [isEditingTitle, session])
+  }, [isEditingTitle, activeSessionDetail?.session])
 
-  // Determine breadcrumb text based on view mode
-  const breadcrumbText = viewMode === ViewMode.Archived ? 'Archived Sessions' : 'Sessions'
+  const viewModeToBreadcrumbText = {
+    [ViewMode.Normal]: 'sessions',
+    [ViewMode.Archived]: 'archived',
+    [ViewMode.Drafts]: 'drafts',
+  }
+
+  const breadcrumbText = viewModeToBreadcrumbText[viewMode]
 
   return (
     <Breadcrumb className="mb-4 font-mono text-sm tracking-wider">
@@ -105,7 +116,7 @@ export function Breadcrumbs() {
           )}
         </BreadcrumbItem>
 
-        {isSessionDetail && session && (
+        {isSessionDetail && activeSessionDetail && (
           <>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
@@ -152,15 +163,20 @@ export function Breadcrumbs() {
                 ) : (
                   <BreadcrumbPage className="flex items-center gap-1">
                     <span>
-                      {session.title || session.summary || `Session ${sessionId?.slice(0, 8)}`}
+                      {activeSessionDetail.session.title ||
+                        activeSessionDetail.session.summary ||
+                        `session ${sessionId?.slice(0, 8)}`}
                     </span>
-                    <button
-                      onClick={startEdit}
-                      className="p-0.5 opacity-50 hover:opacity-100 transition-opacity focus-visible:ring-ring/50 focus-visible:ring-[2px] focus-visible:outline-none rounded"
-                      aria-label="Edit session title"
-                    >
-                      <Pencil className="h-3 w-3" />
-                    </button>
+                    {/* Don't show edit button for draft sessions */}
+                    {activeSessionDetail.session.status !== 'draft' && (
+                      <button
+                        onClick={startEdit}
+                        className="p-0.5 opacity-50 hover:opacity-100 transition-opacity focus-visible:ring-ring/50 focus-visible:ring-[2px] focus-visible:outline-none rounded"
+                        aria-label="Edit session title"
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </button>
+                    )}
                   </BreadcrumbPage>
                 )}
               </HotkeyScopeBoundary>

@@ -331,7 +331,7 @@ func TestLaunchSession_SetsMCPEnvironment(t *testing.T) {
 		},
 	}
 
-	_, err := manager.LaunchSession(context.Background(), config)
+	_, err := manager.LaunchSession(context.Background(), config, false)
 	if err != nil {
 		t.Fatalf("Failed to launch session: %v", err)
 	}
