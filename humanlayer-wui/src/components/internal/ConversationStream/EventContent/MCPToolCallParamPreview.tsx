@@ -24,8 +24,14 @@ export function MCPToolCallParamPreview({
     if (value === undefined) return 'undefined'
     if (typeof value === 'string') return `"${value}"`
     if (typeof value === 'number' || typeof value === 'boolean') return String(value)
-    if (Array.isArray(value)) return `[array:${value.length}]`
-    if (typeof value === 'object') return `[object:${Object.keys(value).length}]`
+    if (Array.isArray(value)) {
+      const count = value.length
+      return `[/*...${count} ${count === 1 ? 'item' : 'items'}*/]`
+    }
+    if (typeof value === 'object') {
+      const count = Object.keys(value).length
+      return `{/*...${count} ${count === 1 ? 'key' : 'keys'}*/}`
+    }
     return String(value)
   }
 
