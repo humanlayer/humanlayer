@@ -109,6 +109,20 @@ jobs:
         run: |
           cd humanlayer/hack/linear && npm install && npm install -g .
 
+      - name: Get git branch from linear
+        id: retrieve-branch-name
+        run: |
+          echo "branch=$(linear get-issue-v2 ${{ matrix.ticket_id }} --fields branch --output-format json | jq -r .branch)" >> $GITHUB_OUTPUT
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+
+      - name: Configure git branch
+        run: |
+          branch=${{ steps.retrieve-branch-name.outputs.branch }}
+          echo "Setting up git branch from linear: $branch"
+          git branch $branch
+          git checkout $branch
+
       # doing this again because it may have been updated since research
       - name: Fetch Ticket with Linear CLI
         id: fetch-ticket
@@ -122,3 +136,92 @@ jobs:
         run: cd humanlayer && linear fetch-images ${{ matrix.ticket_id}}
         env:
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+
+      - name: Update linear ticket status to Plan in Progress
+        id: update-ticket-status-progress
+        run: cd humanlayer && linear update-status ${{ matrix.ticket_id }} "in dev"
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+
+      - name: Implement plan with Claude
+        id: run-claude-implement-plan
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY}}
+        run: >
+          cd humanlayer && claude --dangerously-skip-permissions -p '/implement_plan ${{ env.TICKET_FILE_PATH }}
+            Start by reading the ticket file and all of the comments in it. 
+            Then, locate the research and the implementation plan for the ticket in thoughts/shared/research and thoughts/shared/plans.
+            Also check thoughts/shared/images/${{ matrix.ticket_id }} for any relevant images and read any you find.
+
+            Then proceed to execute the implementation plan for the ticket based on that information. 
+            If and only if you cannot find an existing implementation plan for the ticket, then you should exit early and indicate that there is no implementation plan.
+            
+            If there is an existing implementation plan, proceed to execute the implementation plan in all of its phases - **DO NOT ASK THE USER FOR DIRECTIONS OR CLARIFICATIONS ALONG THE WAY**. Just execute the plan and notify the user when you are done.
+
+            When referencing any documents in the thoughts/ directory, you should always provide GitHub markdown-style links:
+              - thoughts/shared/plans/... → [LINK TITLE HERE](https://github.com/humanlayer/thoughts/blob/main/repos/humanlayer/shared/plans/...)
+            ' 2>&1 | tee CLAUDE_ANSWER.md
+
+      - name: Create commits with claude
+        id: run-claude-create-commits
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: >
+          cd humanlayer && claude --dangerously-skip-permissions -p "/ci_commit"
+
+      - name: Push branch to origin
+        id: push-branch
+        run: |
+          echo "Pushing branch to origin: ${{ steps.retrieve-branch-name.outputs.branch }}"
+          cd humanlayer && git push --set-upstream origin ${{ steps.retrieve-branch-name.outputs.branch }}
+
+      - name: Create PR
+        id: run-claude-create-pr
+        run: |
+          cd humanlayer && claude --dangerously-skip-permissions -p '/describe_pr 
+
+          The changes for this PR have now been pushed to origin with the branch name "${{ steps.retrieve-branch-name.outputs.branch }}".
+          Please create a PR for this issue.
+          ' 2>&1 | tee CLAUDE_PR.md
+
+      - name: Link the PR to the ticket
+        id: link-pr-to-ticket
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+        run: >
+          cd humanlayer && 
+          pr_number="$(gh pr view --json number --jq ".number")" &&
+          pr_title="$(gh pr view --json title --jq ".title")" && 
+          echo "Found PR $pr_number for this branch with title $pr_title!" && 
+          linear add-link ${{ matrix.ticket_id }} "https://github.com/humanlayer/humanlayer/pull/$pr_number" --title "$pr_title"
+
+      - name: Update PR with comment
+        id: add-comment-to-ticket
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+        run: >
+          cd humanlayer && 
+          linear add-comment -i ${{ matrix.ticket_id }} "$(cat CLAUDE_PR.md)"
+
+      - name: Update linear ticket status
+        id: update-ticket-status-done
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+        run: |
+          cd humanlayer && linear update-status ${{ matrix.ticket_id }} "code reviewgs"
+
+      # if the task fails, update the status to "research needed"
+      - name: In event of failure reset status
+        if: ${{ failure() }}
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+        run: |
+          cd humanlayer && linear update-status ${{ matrix.ticket_id }} "ready for dev"
+
+      # if the task is cancelled, update the status to "research needed"
+      - name: In event of cancellation reset status
+        if: ${{ cancelled() }}
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+        run: |
+          cd humanlayer && linear update-status ${{ matrix.ticket_id }} "ready for dev"
