@@ -555,6 +555,216 @@ func TestSessionHandlers_GetHealth(t *testing.T) {
 	})
 }
 
+func TestSessionHandlers_LaunchDraftSession_BypassPermissionsTimerRecalculation(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockManager := session.NewMockSessionManager(ctrl)
+	mockStore := store.NewMockConversationStore(ctrl)
+	mockApprovalManager := approval.NewMockManager(ctrl)
+
+	handlers := handlers.NewSessionHandlers(mockManager, mockStore, mockApprovalManager)
+	router := setupTestRouter(t, handlers, nil, nil)
+
+	t.Run("recalculates bypass permissions timer on draft launch", func(t *testing.T) {
+		sessionID := "sess-draft-123"
+		timeoutMs := int64(900000) // 15 minutes
+
+		// Set an expiration time in the past to simulate a draft that was set up earlier
+		pastExpiration := time.Now().Add(-5 * time.Minute)
+
+		// The draft session with bypass permissions enabled
+		draftSession := &store.Session{
+			ID:                                  sessionID,
+			RunID:                               "run-draft-456",
+			Status:                              store.SessionStatusDraft,
+			Query:                               "Test draft query",
+			CreatedAt:                           time.Now().Add(-10 * time.Minute),
+			LastActivityAt:                      time.Now().Add(-10 * time.Minute),
+			DangerouslySkipPermissions:          true,
+			DangerouslySkipPermissionsExpiresAt: &pastExpiration,
+			DangerouslySkipPermissionsTimeoutMs: &timeoutMs,
+		}
+
+		// Mock getting the draft session
+		mockStore.EXPECT().
+			GetSession(gomock.Any(), sessionID).
+			Return(draftSession, nil).
+			Times(1)
+
+		// Expect UpdateSession to be called with recalculated expiration
+		mockStore.EXPECT().
+			UpdateSession(gomock.Any(), sessionID, gomock.Any()).
+			DoAndReturn(func(ctx context.Context, id string, update store.SessionUpdate) error {
+				// Verify that the expiration was recalculated
+				require.NotNil(t, update.DangerouslySkipPermissionsExpiresAt)
+				require.NotNil(t, *update.DangerouslySkipPermissionsExpiresAt)
+
+				newExpiration := **update.DangerouslySkipPermissionsExpiresAt
+				now := time.Now()
+
+				// The new expiration should be approximately now + 15 minutes
+				expectedExpiration := now.Add(time.Duration(timeoutMs) * time.Millisecond)
+
+				// Allow 2 seconds of tolerance for test execution time
+				timeDiff := newExpiration.Sub(expectedExpiration)
+				assert.True(t, timeDiff < 2*time.Second && timeDiff > -2*time.Second,
+					"Expected expiration to be recalculated to ~15 minutes from now, got difference of %v", timeDiff)
+
+				return nil
+			}).
+			Times(1)
+
+		// Mock launching the draft session
+		mockManager.EXPECT().
+			LaunchDraftSession(gomock.Any(), sessionID, "Test prompt").
+			Return(nil).
+			Times(1)
+
+		// Mock getting the updated session after launch
+		launchedSession := &store.Session{
+			ID:             sessionID,
+			RunID:          "run-draft-456",
+			Status:         store.SessionStatusStarting,
+			Query:          "Test draft query",
+			CreatedAt:      time.Now().Add(-10 * time.Minute),
+			LastActivityAt: time.Now(),
+		}
+		mockStore.EXPECT().
+			GetSession(gomock.Any(), sessionID).
+			Return(launchedSession, nil).
+			Times(1)
+
+		// Make the launch request
+		launchReq := api.LaunchDraftSessionJSONBody{
+			Prompt: "Test prompt",
+		}
+		w := makeRequest(t, router, "POST", fmt.Sprintf("/api/v1/sessions/%s/launch", sessionID), launchReq)
+
+		var resp struct {
+			Data api.Session `json:"data"`
+		}
+		assertJSONResponse(t, w, 200, &resp)
+
+		assert.Equal(t, sessionID, resp.Data.Id)
+		assert.Equal(t, api.SessionStatusStarting, resp.Data.Status)
+	})
+
+	t.Run("does not recalculate timer when bypass permissions disabled", func(t *testing.T) {
+		sessionID := "sess-draft-no-bypass"
+
+		// Draft session without bypass permissions
+		draftSession := &store.Session{
+			ID:                         sessionID,
+			RunID:                      "run-draft-789",
+			Status:                     store.SessionStatusDraft,
+			Query:                      "Test draft query",
+			CreatedAt:                  time.Now().Add(-10 * time.Minute),
+			LastActivityAt:             time.Now().Add(-10 * time.Minute),
+			DangerouslySkipPermissions: false,
+		}
+
+		// Mock getting the draft session
+		mockStore.EXPECT().
+			GetSession(gomock.Any(), sessionID).
+			Return(draftSession, nil).
+			Times(1)
+
+		// UpdateSession should NOT be called since bypass permissions is disabled
+
+		// Mock launching the draft session
+		mockManager.EXPECT().
+			LaunchDraftSession(gomock.Any(), sessionID, "Test prompt").
+			Return(nil).
+			Times(1)
+
+		// Mock getting the updated session after launch
+		launchedSession := &store.Session{
+			ID:             sessionID,
+			RunID:          "run-draft-789",
+			Status:         store.SessionStatusStarting,
+			Query:          "Test draft query",
+			CreatedAt:      time.Now().Add(-10 * time.Minute),
+			LastActivityAt: time.Now(),
+		}
+		mockStore.EXPECT().
+			GetSession(gomock.Any(), sessionID).
+			Return(launchedSession, nil).
+			Times(1)
+
+		// Make the launch request
+		launchReq := api.LaunchDraftSessionJSONBody{
+			Prompt: "Test prompt",
+		}
+		w := makeRequest(t, router, "POST", fmt.Sprintf("/api/v1/sessions/%s/launch", sessionID), launchReq)
+
+		var resp struct {
+			Data api.Session `json:"data"`
+		}
+		assertJSONResponse(t, w, 200, &resp)
+
+		assert.Equal(t, sessionID, resp.Data.Id)
+	})
+
+	t.Run("does not recalculate timer when timeout not set", func(t *testing.T) {
+		sessionID := "sess-draft-no-timeout"
+
+		// Draft session with bypass permissions but no timeout
+		draftSession := &store.Session{
+			ID:                         sessionID,
+			RunID:                      "run-draft-abc",
+			Status:                     store.SessionStatusDraft,
+			Query:                      "Test draft query",
+			CreatedAt:                  time.Now().Add(-10 * time.Minute),
+			LastActivityAt:             time.Now().Add(-10 * time.Minute),
+			DangerouslySkipPermissions: true,
+			// No timeout set - unlimited bypass
+			DangerouslySkipPermissionsTimeoutMs: nil,
+		}
+
+		// Mock getting the draft session
+		mockStore.EXPECT().
+			GetSession(gomock.Any(), sessionID).
+			Return(draftSession, nil).
+			Times(1)
+
+		// UpdateSession should NOT be called since there's no timeout to recalculate
+
+		// Mock launching the draft session
+		mockManager.EXPECT().
+			LaunchDraftSession(gomock.Any(), sessionID, "Test prompt").
+			Return(nil).
+			Times(1)
+
+		// Mock getting the updated session after launch
+		launchedSession := &store.Session{
+			ID:             sessionID,
+			RunID:          "run-draft-abc",
+			Status:         store.SessionStatusStarting,
+			Query:          "Test draft query",
+			CreatedAt:      time.Now().Add(-10 * time.Minute),
+			LastActivityAt: time.Now(),
+		}
+		mockStore.EXPECT().
+			GetSession(gomock.Any(), sessionID).
+			Return(launchedSession, nil).
+			Times(1)
+
+		// Make the launch request
+		launchReq := api.LaunchDraftSessionJSONBody{
+			Prompt: "Test prompt",
+		}
+		w := makeRequest(t, router, "POST", fmt.Sprintf("/api/v1/sessions/%s/launch", sessionID), launchReq)
+
+		var resp struct {
+			Data api.Session `json:"data"`
+		}
+		assertJSONResponse(t, w, 200, &resp)
+
+		assert.Equal(t, sessionID, resp.Data.Id)
+	})
+}
+
 // Helper functions
 func floatPtr(f float64) *float64 {
 	return &f

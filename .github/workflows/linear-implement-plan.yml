@@ -1,0 +1,292 @@
+name: "Linear: Implement Plan for Task"
+on:
+  push:
+    branches:
+      - kyle/eng-2175-auto-create-worktree-and-checkout-for-linear
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+    inputs:
+      num_tickets:
+        description: "Maximum number of tickets to create a plan for"
+        required: false
+        type: string
+        default: "10"
+
+jobs:
+  fetch-tickets:
+    runs-on: ubuntu-latest
+    outputs:
+      ticket_ids: ${{ steps.fetch-tickets.outputs.ticket_ids}}
+    steps:
+      - name: "Checkout repository"
+        id: checkout-repository
+        uses: actions/checkout@v4
+
+      - name: "Setup linear tool"
+        id: setup-linear-tool
+        run: |
+          cd hack/linear && npm install && npm install -g .
+
+      - name: "Get tickets in 'ready for plan'"
+        id: fetch-tickets
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+        run: >
+          echo "ticket_ids=$(linear list-issues --max-issues ${{ inputs.num_tickets || 10 }} --status 'ready for dev' --assignee 'LinearLayer (Claude)' --ids-only --output-format json)" >> "$GITHUB_OUTPUT"
+
+      - name: "Output Ids"
+        run: echo ${{ steps.fetch-tickets.outputs.ticket_ids}}
+
+  implement-plan:
+    name: Implement plan for ${{matrix.ticket_id}}
+    runs-on: ubuntu-latest
+    needs:
+      - fetch-tickets
+    if: ${{ needs.fetch-tickets.outputs.ticket_ids != '[]' && needs.fetch-tickets.outputs.ticket_ids != ''}}
+    strategy:
+      fail-fast: false
+      matrix:
+        ticket_id: ${{ fromJSON(needs.fetch-tickets.outputs.ticket_ids) }}
+    env:
+      TICKET_FILE_PATH: thoughts/shared/tickets/${{matrix.ticket_id}}.md
+    permissions: # Job-level permissions configuration starts here
+      contents: write # 'write' access to repository contents
+      pull-requests: write # 'write' access to pull requests
+      issues: write
+    steps:
+      - name: Checkout humanlayer repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          path: humanlayer
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      # necessary for mockgen which happens in `make setup`
+      - name: Add Go bin to PATH
+        run: |
+          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+
+      - name: Setup humanlayer repository
+        run: |
+          cd humanlayer && make setup
+
+      - name: Configure git user
+        run: |
+          git config --global user.email "noreply@anthropic.com"
+          git config --global user.name "Claude"
+
+      - name: Checkout thoughts repository
+        uses: actions/checkout@v4
+        with:
+          repository: humanlayer/thoughts
+          ref: main
+          ssh-key: ${{ secrets.THOUGHTS_WRITE_DEPLOY_KEY }}
+          path: thoughts
+
+      - name: Install Claude code
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Install humanlayer CLI globally
+        run: cd humanlayer && npm install -g humanlayer
+
+      - name: Setup thoughts tool config
+        run: |
+          echo '{
+            "thoughts": {
+              "thoughtsRepo": "${{ github.workspace }}/thoughts",
+              "reposDir": "repos",
+              "globalDir": "global",
+              "user": "claude",
+              "repoMappings": {}
+            }
+          }' >> humanlayer/.humanlayer.json
+
+      - name: Initialize thoughts tool
+        run: cd humanlayer && humanlayer thoughts init --config-file .humanlayer.json --directory humanlayer
+
+      - name: Setup linear tool
+        run: |
+          cd humanlayer/hack/linear && npm install && npm install -g .
+
+      - name: Get git branch from linear
+        id: retrieve-branch-name
+        run: |
+          echo "branch=$(linear get-issue-v2 ${{ matrix.ticket_id }} --fields branch --output-format json | jq -r .branch)" >> $GITHUB_OUTPUT
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+
+      - name: Configure git branch
+        run: |
+          cd humanlayer
+          branch=${{ steps.retrieve-branch-name.outputs.branch }}
+          echo "Setting up git branch from linear: $branch"
+
+          # Fetch all remote branches
+          git fetch origin
+
+          # Check if branch exists locally or remotely
+          if git show-ref --verify --quiet refs/heads/$branch; then
+            echo "Branch exists locally, checking out"
+            git checkout $branch
+            git pull origin $branch
+          elif git show-ref --verify --quiet refs/remotes/origin/$branch; then
+            echo "Branch exists remotely, checking out and tracking"
+            git checkout -b $branch origin/$branch
+            git pull origin $branch
+          else
+            echo "Branch does not exist, creating new branch"
+            git checkout -b $branch
+          fi
+
+      # doing this again because it may have been updated since research
+      - name: Fetch Ticket with Linear CLI
+        id: fetch-ticket
+        run: linear get-issue ${{ matrix.ticket_id }} >> humanlayer/${{ env.TICKET_FILE_PATH }}
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+
+      # doing this again because it may have been updated since research
+      - name: Fetch images from ticket with Linear CLI
+        id: fetch-ticket-images
+        run: cd humanlayer && linear fetch-images ${{ matrix.ticket_id}}
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+
+      - name: Update linear ticket status to Plan in Progress
+        id: update-ticket-status-progress
+        run: cd humanlayer && linear update-status ${{ matrix.ticket_id }} "in dev"
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+
+      - name: Implement plan with Claude
+        id: run-claude-implement-plan
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY}}
+          GH_TOKEN: ${{ github.token }}
+        run: >
+          cd humanlayer && claude --dangerously-skip-permissions -p '/implement_plan ${{ env.TICKET_FILE_PATH }}
+            Start by reading the ticket file and all of the comments in it. 
+            Pay extra code attention to the comments - if you (LinearLayer/claude are mentioned in a comment you should treat that comment as an instruction).
+            Then, locate the research and the implementation plan for the ticket in thoughts/shared/research and thoughts/shared/plans.
+            Also check thoughts/shared/images/${{ matrix.ticket_id }} for any relevant images and read any you find.
+
+            Then proceed to execute the implementation plan for the ticket based on that information. 
+            If and only if you cannot find an existing implementation plan for the ticket, then you should exit early and indicate that there is no implementation plan.
+            
+            If there is an existing implementation plan, proceed to execute the implementation plan in all of its phases - **DO NOT ASK THE USER FOR DIRECTIONS OR CLARIFICATIONS ALONG THE WAY**. Just execute the plan and notify the user when you are done.
+
+            When referencing any documents in the thoughts/ directory, you should always provide GitHub markdown-style links:
+              - thoughts/shared/plans/... → [LINK TITLE HERE](https://github.com/humanlayer/thoughts/blob/main/repos/humanlayer/shared/plans/...)
+            ' 2>&1 | tee CLAUDE_ANSWER.md
+
+      - name: Create commits with claude
+        id: run-claude-create-commits
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GH_TOKEN: ${{ github.token }}
+        run: >
+          cd humanlayer && claude --dangerously-skip-permissions -p "/ci_commit"
+
+      - name: Pull and merge before push (use claude to resolve any conflicts)
+        id: pull-before-push
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd humanlayer
+          branch=${{ steps.retrieve-branch-name.outputs.branch }}
+
+          echo "Checking if remote branch exists: $branch"
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+            echo "Remote branch exists, pulling latest changes"
+            git pull origin $branch || {
+              if git diff --name-only --diff-filter=U | grep -q .; then
+                echo "Merge conflicts detected, using Claude to resolve"
+                claude --dangerously-skip-permissions -p "There are merge conflicts in the current branch. Please resolve all merge conflicts by:
+                1. Reading the conflicted files
+                2. Understanding both changes
+                3. Resolving the conflicts appropriately
+                4. After resolving all conflicts, use the SlashCommand tool to run '/commit' to commit the merge resolution."
+              else
+                echo "Pull failed but no conflicts detected"
+                exit 1
+              fi
+            }
+          else
+            echo "Remote branch does not exist yet, skipping pull"
+          fi
+
+      - name: Push branch to origin
+        id: push-branch
+        run: |
+          echo "Pushing branch to origin: ${{ steps.retrieve-branch-name.outputs.branch }}"
+          cd humanlayer && git push --set-upstream origin ${{ steps.retrieve-branch-name.outputs.branch }}
+
+      - name: Create PR with Claude
+        id: run-claude-create-pr
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd humanlayer && claude --dangerously-skip-permissions -p '/ci_describe_pr 
+
+          The changes for this PR have now been pushed to origin with the branch name "${{ steps.retrieve-branch-name.outputs.branch }}".
+          Please create a PR for this issue.
+          ' 2>&1 | tee CLAUDE_PR.md
+
+      - name: Link the PR to the ticket
+        id: link-pr-to-ticket
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+          GH_TOKEN: ${{ github.token }}
+        run: >
+          cd humanlayer && 
+          pr_number="$(gh pr view --json number --jq ".number")" &&
+          pr_title="$(gh pr view --json title --jq ".title")" && 
+          echo "Found PR $pr_number for this branch with title $pr_title!" && 
+          linear add-link ${{ matrix.ticket_id }} "https://github.com/humanlayer/humanlayer/pull/$pr_number" --title "$pr_title"
+
+      - name: Update PR with comment
+        id: add-comment-to-ticket
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+        run: |
+          cd humanlayer
+          if [ -s CLAUDE_PR.md ] && [ -n "$(tr -d '[:space:]' < CLAUDE_PR.md)" ]; then
+            linear add-comment -i ${{ matrix.ticket_id }} "$(cat CLAUDE_PR.md)"
+          else
+            echo "CLAUDE_PR.md is empty or contains only whitespace, skipping comment"
+          fi
+
+      - name: Update linear ticket status
+        id: update-ticket-status-done
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+        run: |
+          cd humanlayer && linear update-status ${{ matrix.ticket_id }} "code review"
+
+      # if the task fails, update the status to "research needed"
+      - name: In event of failure reset status
+        if: ${{ failure() }}
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+        run: |
+          cd humanlayer && linear update-status ${{ matrix.ticket_id }} "ready for dev"
+
+      # if the task is cancelled, update the status to "research needed"
+      - name: In event of cancellation reset status
+        if: ${{ cancelled() }}
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+        run: |
+          cd humanlayer && linear update-status ${{ matrix.ticket_id }} "ready for dev"

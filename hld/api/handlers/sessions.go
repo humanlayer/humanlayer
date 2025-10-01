@@ -357,14 +357,19 @@ func (h *SessionHandlers) UpdateSession(ctx context.Context, req api.UpdateSessi
 	if req.Body.DangerouslySkipPermissionsTimeoutMs != nil {
 		timeoutMs := *req.Body.DangerouslySkipPermissionsTimeoutMs
 		if timeoutMs > 0 {
+			// Store the timeout duration so we can recalculate the timer later (e.g., when launching a draft)
+			update.DangerouslySkipPermissionsTimeoutMs = &timeoutMs
+
 			// Convert milliseconds to time.Time
 			expiresAt := time.Now().Add(time.Duration(timeoutMs) * time.Millisecond)
 			expiresAtPtr := &expiresAt
 			update.DangerouslySkipPermissionsExpiresAt = &expiresAtPtr
 		} else {
-			// Clear the expiration if timeout is 0
+			// Clear the expiration and timeout if timeout is 0
 			var nilTime *time.Time
+			var nilTimeout int64 = 0
 			update.DangerouslySkipPermissionsExpiresAt = &nilTime
+			update.DangerouslySkipPermissionsTimeoutMs = &nilTimeout
 		}
 	}
 
@@ -562,6 +567,33 @@ func (h *SessionHandlers) LaunchDraftSession(ctx context.Context, req api.Launch
 				Message: "Session is not in draft state",
 			},
 		}, nil
+	}
+
+	// If bypass permissions is enabled with a stored timeout duration, recalculate the expiration
+	// time from now, so the timer starts when the draft is launched rather than when it was set
+	if sess.DangerouslySkipPermissions && sess.DangerouslySkipPermissionsTimeoutMs != nil && *sess.DangerouslySkipPermissionsTimeoutMs > 0 {
+		timeoutMs := *sess.DangerouslySkipPermissionsTimeoutMs
+
+		// Recalculate expiration from now
+		expiresAt := time.Now().Add(time.Duration(timeoutMs) * time.Millisecond)
+		expiresAtPtr := &expiresAt
+
+		// Update the session with the new expiration time
+		update := store.SessionUpdate{
+			DangerouslySkipPermissionsExpiresAt: &expiresAtPtr,
+		}
+
+		err = h.store.UpdateSession(ctx, string(req.Id), update)
+		if err != nil {
+			slog.Error("failed to update bypass permissions timer on draft launch",
+				"session_id", req.Id,
+				"error", err)
+			// Don't fail the launch if timer update fails, but log it
+		} else {
+			slog.Info("recalculated bypass permissions timer on draft launch",
+				"session_id", req.Id,
+				"timeout_ms", timeoutMs)
+		}
 	}
 
 	// Launch the draft session

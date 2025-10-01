@@ -6,12 +6,14 @@ import { useStore } from '@/AppStore'
 import { logger } from '@/lib/logging'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { KeyboardShortcut } from '@/components/HotkeyPanel'
+import { SessionStatus } from '@/lib/daemon/types'
 
 interface SessionModeIndicatorProps {
   sessionId: string
   autoAcceptEdits: boolean
   dangerouslySkipPermissions: boolean
   dangerouslySkipPermissionsExpiresAt?: string
+  sessionStatus?: SessionStatus
   isForkMode?: boolean
   forkTurnNumber?: number
   forkTokenCount?: number | null // Keep for compatibility, but not used
@@ -25,6 +27,7 @@ export const SessionModeIndicator: FC<SessionModeIndicatorProps> = ({
   autoAcceptEdits,
   dangerouslySkipPermissions,
   dangerouslySkipPermissionsExpiresAt,
+  sessionStatus,
   isForkMode = false,
   forkTurnNumber,
   className,
@@ -34,8 +37,12 @@ export const SessionModeIndicator: FC<SessionModeIndicatorProps> = ({
   const [timeRemaining, setTimeRemaining] = useState<string>('')
   const { updateSessionOptimistic } = useStore()
 
+  // Check if this is a draft session - don't show timer for drafts
+  const isDraft = sessionStatus === SessionStatus.Draft
+
   useEffect(() => {
-    if (!dangerouslySkipPermissions || !dangerouslySkipPermissionsExpiresAt) return
+    // Don't show or update timer for draft sessions
+    if (isDraft || !dangerouslySkipPermissions || !dangerouslySkipPermissionsExpiresAt) return
 
     const updateTimer = async () => {
       const now = new Date().getTime()
@@ -106,8 +113,11 @@ export const SessionModeIndicator: FC<SessionModeIndicatorProps> = ({
       >
         <div className="flex items-center gap-2">
           <ShieldOff className="h-4 w-4" strokeWidth={3} />
-          <span className="uppercase tracking-wider">BYPASSING PERMISSIONS</span>
-          {dangerouslySkipPermissionsExpiresAt && timeRemaining && (
+          <span className="uppercase tracking-wider">
+            {isDraft ? 'WILL BYPASS PERMISSIONS ON LAUNCH' : 'BYPASSING PERMISSIONS'}
+          </span>
+          {/* Only show timer if not a draft and we have a timer value */}
+          {!isDraft && dangerouslySkipPermissionsExpiresAt && timeRemaining && (
             <span className="font-mono text-sm">({timeRemaining})</span>
           )}
         </div>
@@ -144,7 +154,7 @@ export const SessionModeIndicator: FC<SessionModeIndicatorProps> = ({
     >
       <div className="flex items-center gap-2">
         <span className="text-base leading-none">⏵⏵</span>
-        <span>auto-accept edits on</span>
+        <span>{isDraft ? 'will auto-accept edits on launch' : 'auto-accept edits on'}</span>
       </div>
       <Tooltip>
         <TooltipTrigger asChild>

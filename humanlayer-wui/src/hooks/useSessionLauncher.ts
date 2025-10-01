@@ -49,7 +49,7 @@ const isViewingSessionDetail = (): boolean => {
   return /^#\/sessions\/[^/]+$/.test(hash)
 }
 
-const LAST_WORKING_DIR_KEY = 'humanlayer-last-working-dir'
+export const LAST_WORKING_DIR_KEY = 'humanlayer-last-working-dir'
 const SESSION_LAUNCHER_QUERY_KEY = 'session-launcher-query'
 const OPENROUTER_API_KEY = 'humanlayer-openrouter-api-key'
 const BASETEN_API_KEY = 'humanlayer-baseten-api-key'

@@ -4,7 +4,6 @@
     "": {
       "dependencies": {
         "@linear/sdk": "^1.22.0",
-        "brace-expansion": ">=2.0.2",
         "chalk": "^4.1.2",
         "commander": "^9.4.1",
         "inquirer": "^8.2.5",
