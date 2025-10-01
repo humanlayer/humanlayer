@@ -50,6 +50,10 @@ jobs:
         ticket_id: ${{ fromJSON(needs.fetch-tickets.outputs.ticket_ids) }}
     env:
       TICKET_FILE_PATH: thoughts/shared/tickets/${{matrix.ticket_id}}.md
+    permissions: # Job-level permissions configuration starts here
+      contents: write # 'write' access to repository contents
+      pull-requests: write # 'write' access to pull requests
+      issues: write
     steps:
       - name: Checkout humanlayer repository
         uses: actions/checkout@v4
