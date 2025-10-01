@@ -263,7 +263,7 @@ jobs:
         env:
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
         run: |
-          cd humanlayer && linear update-status ${{ matrix.ticket_id }} "code reviewgs"
+          cd humanlayer && linear update-status ${{ matrix.ticket_id }} "code review"
 
       # if the task fails, update the status to "research needed"
       - name: In event of failure reset status
