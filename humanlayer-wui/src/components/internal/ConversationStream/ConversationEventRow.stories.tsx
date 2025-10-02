@@ -98,6 +98,39 @@ export const AssistantMessage: Story = {
   },
 }
 
+export const AssistantMessageWithLongCodeBlocks: Story = {
+  args: {
+    event: {
+      ...baseAssistantEvent,
+      id: 10,
+      sequence: 2,
+      content: `\`\`\`
+Thisisaverylongmessagethatwillneverendnomatterhowhardyoutryitremainsthelongestlineintheworldandwilljustgoonandonandonandonuntileitherthiscomputerimplodesarethissolarsystemreachesitsinevitablesundeath
+\`\`\`
+
+and
+
+\`\`\`
+"This is a very long message that will never end no matter how hard you try it remains the longest line in teh world and will go on and on and on and on and on likely until the sun explodes but we all know that won't be for a very long time probably but anyway how do we feel about chickens"
+\`\`\``,
+      createdAt: new Date('2025-10-02T20:05:14Z'),
+    },
+    shouldIgnoreMouseEvent: () => false,
+    setFocusedEventId: () => {},
+    setFocusSource: () => {},
+    isFocused: false,
+    isLast: true,
+    responseEditorIsFocused: false,
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: 'Assistant message with long code blocks to test word wrapping behavior',
+      },
+    },
+  },
+}
+
 // Bash Tool - shows background job feature
 export const BashToolCall: Story = {
   args: {
@@ -116,6 +149,45 @@ export const BashToolCall: Story = {
       toolName: 'Bash',
       toolInputJson: JSON.stringify({
         command: 'npm run dev',
+        description: 'Start development server',
+        run_in_background: true,
+      }),
+    },
+    shouldIgnoreMouseEvent: () => false,
+    setFocusedEventId: () => {},
+    setFocusSource: () => {},
+    isFocused: false,
+    isLast: true,
+    responseEditorIsFocused: false,
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: 'Bash tool call with background job execution option',
+      },
+    },
+  },
+}
+
+// Bash Tool - shows background job feature
+export const BashToolCallLongCommand: Story = {
+  args: {
+    event: {
+      approvalId: 'approval-123',
+      approvalStatus: 'pending' as const,
+      claudeSessionId: 'a3751d3f-c6c5-402b-a7c6-a6fdfeaf6cd9',
+      content: undefined,
+      createdAt: new Date('2025-09-18T18:44:48Z'),
+      eventType: 'tool_call' as const,
+      id: 3,
+      isCompleted: false,
+      role: 'assistant' as const,
+      sequence: 3,
+      sessionId: '08f00f98-d110-40e1-8d0b-fdec7f594f18',
+      toolName: 'Bash',
+      toolInputJson: JSON.stringify({
+        command:
+          'humanlayer-nightly launch --model opus --dangerously-skip-permissions --title "implement ENG-2090" -w ~/wt/humanlayer/ENG-2090 "/implement_plan and when you are done implementing and all tests pass high five your friends"',
         description: 'Start development server',
         run_in_background: true,
       }),
