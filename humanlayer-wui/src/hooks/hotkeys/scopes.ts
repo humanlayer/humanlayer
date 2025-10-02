@@ -7,6 +7,7 @@ export const HOTKEY_SCOPES = {
   SESSION_DETAIL: 'sessions.details',
   SESSION_DETAIL_ARCHIVED: 'sessions.details.archived',
   SESSION_DETAIL_DRAFT: 'sessions.details.draft',
+  DRAFT_LAUNCHER: 'sessions.details.draftLauncher',
   SESSION_DETAIL_FORK_IN_PROGRESS: 'sessions.details.forkInProgress',
   FORK_MODAL: 'sessions.details.forkModal',
   TOOL_RESULT_MODAL: 'sessions.details.toolResultModal',
