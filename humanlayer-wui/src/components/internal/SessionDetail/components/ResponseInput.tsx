@@ -559,7 +559,7 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
                       {/* {responseEditor && !responseEditor.isEmpty ? 'Discard' : 'Cancel'} Until we've implemented change detection we'll always discard */}
                       {'Discard'}
                       <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded border border-border">
-                        {isMac ? 'Cmd+Shift+.' : 'Ctrl+Shift+.'}
+                        {isMac ? '⌘+Shift+.' : 'Ctrl+Shift+.'}
                       </kbd>
                     </Button>
                   )}
