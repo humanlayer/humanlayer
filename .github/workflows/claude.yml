@@ -30,10 +30,9 @@ jobs:
         (github.event.issue.author_association == 'OWNER' || github.event.issue.author_association == 'MEMBER' || github.event.issue.author_association == 'COLLABORATOR'))
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       pull-requests: write
       issues: write
-      id-token: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -61,11 +60,40 @@ jobs:
       - name: Setup repository
         run: make setup
 
+      - name: Checkout thoughts repository
+        uses: actions/checkout@v4
+        with:
+          repository: humanlayer/thoughts
+          ref: main
+          ssh-key: ${{ secrets.THOUGHTS_WRITE_DEPLOY_KEY }}
+          path: thoughts
+
       - name: Install humanlayer CLI globally
         run: npm install -g humanlayer
 
+      - name: Setup thoughts tool config
+        run: |
+          echo '{
+            "thoughts": {
+              "thoughtsRepo": "${{ github.workspace }}/thoughts",
+              "reposDir": "repos",
+              "globalDir": "global",
+              "user": "claude",
+              "repoMappings": {}
+            }
+          }' >> .humanlayer.json
+
       - name: Initialize thoughts tool
-        run: make thoughts
+        run: humanlayer thoughts init --config-file .humanlayer.json --directory humanlayer
+
+      - name: Setup linear tool
+        run: |
+          cd hack/linear && npm install && npm install -g .
+
+      - name: Configure git user
+        run: |
+          git config --global user.email "noreply@anthropic.com"
+          git config --global user.name "Claude"
 
       - name: Run Claude Code
         id: claude
@@ -90,6 +118,7 @@ jobs:
           prompt: |
             ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.prompt || '' }}
 
-          # Optional: Custom environment variables for Claude
-          # claude_env: |
-          #   NODE_ENV: test
+          # Custom environment variables for Claude
+          claude_env: |
+            GH_TOKEN: ${{ github.token }}
+            LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
