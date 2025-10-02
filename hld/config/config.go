@@ -43,6 +43,10 @@ type Config struct {
 
 	// Claude configuration
 	ClaudePath string `mapstructure:"claude_path"`
+
+	// Anthropic API configuration for Bedrock or custom endpoints
+	AnthropicBaseURL string `mapstructure:"anthropic_base_url"`
+	AnthropicAPIKey  string `mapstructure:"anthropic_api_key"`
 }
 
 // Load loads configuration with priority: flags > env vars > config file > defaults
@@ -72,6 +76,8 @@ func Load() (*Config, error) {
 	_ = v.BindEnv("http_port", "HUMANLAYER_DAEMON_HTTP_PORT")
 	_ = v.BindEnv("http_host", "HUMANLAYER_DAEMON_HTTP_HOST")
 	_ = v.BindEnv("claude_path", "HUMANLAYER_CLAUDE_PATH")
+	_ = v.BindEnv("anthropic_base_url", "ANTHROPIC_BASE_URL")
+	_ = v.BindEnv("anthropic_api_key", "ANTHROPIC_API_KEY")
 
 	// Set defaults
 	setDefaults(v)
@@ -178,6 +184,8 @@ func Save(cfg *Config) error {
 	v.Set("http_port", cfg.HTTPPort)
 	v.Set("http_host", cfg.HTTPHost)
 	v.Set("claude_path", cfg.ClaudePath)
+	v.Set("anthropic_base_url", cfg.AnthropicBaseURL)
+	v.Set("anthropic_api_key", cfg.AnthropicAPIKey)
 
 	// Set config file path explicitly
 	configFile := filepath.Join(configDir, "humanlayer.json")
