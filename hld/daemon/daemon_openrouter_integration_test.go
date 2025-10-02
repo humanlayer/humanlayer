@@ -61,8 +61,7 @@ func TestOpenRouterProxyIntegration(t *testing.T) {
 	os.Setenv("XDG_CONFIG_HOME", tempDir)
 	configDir := filepath.Join(tempDir, "humanlayer")
 	require.NoError(t, os.MkdirAll(configDir, 0755))
-	configFile := filepath.Join(configDir, "
-	")
+	configFile := filepath.Join(configDir, "humanlayer.json")
 	require.NoError(t, os.WriteFile(configFile, []byte(`{}`), 0644))
 
 	// Setup HTTP server with MCP endpoint
