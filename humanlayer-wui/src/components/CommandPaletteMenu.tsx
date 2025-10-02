@@ -74,7 +74,7 @@ export default function CommandPaletteMenu() {
         setSettingsDialogOpen(true)
         close()
       },
-      hotkey: '⌘⇧S',
+      hotkey: '⌘+⇧+S',
     },
     ...(isSessionDetail && searchQuery.toLowerCase().includes('brain')
       ? [
