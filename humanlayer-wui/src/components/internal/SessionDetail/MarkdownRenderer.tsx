@@ -22,6 +22,7 @@ import bash from 'react-syntax-highlighter/dist/cjs/languages/prism/bash'
 import lua from 'react-syntax-highlighter/dist/cjs/languages/prism/lua'
 import clojure from 'react-syntax-highlighter/dist/cjs/languages/prism/clojure'
 import zig from 'react-syntax-highlighter/dist/cjs/languages/prism/zig'
+import { CommandToken } from '../CommandToken'
 
 // Register languages
 SyntaxHighlighter.registerLanguage('json', json)
@@ -169,49 +170,40 @@ const MarkdownRendererInner = memo(
           const language = match?.[1] ?? 'plaintext'
 
           return isBlock ? (
-            <div className="relative group not-prose inline-block min-w-[250px]">
-              <div className="overflow-x-auto">
-                {language ? (
-                  <SyntaxHighlighter
-                    language={language}
-                    useInlineStyles={false}
-                    className="rsh-code-block text-sm"
-                    PreTag={({ children, ...props }) => (
-                      <pre className="rsh-pre" {...props}>
-                        {children}
-                      </pre>
-                    )}
+            <SyntaxHighlighter
+              language={language}
+              useInlineStyles={false}
+              className="rsh-code-block text-sm grid relative min-w-[250px]"
+              codeTagProps={{
+                className: 'overflow-x-auto',
+              }}
+              PreTag={({ children, ...props }) => (
+                <pre className="rsh-pre" {...props}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute top-2 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10 touch:opacity-100 md:touch:opacity-0 md:touch:group-hover:opacity-100 bg-[var(--terminal-bg-alt)] hover:bg-[var(--terminal-bg-alt)]"
+                    onClick={e => {
+                      e.stopPropagation()
+                      handleCopy(codeString, codeId)
+                    }}
+                    aria-label="Copy code"
+                    title="Copy code"
                   >
-                    {codeString}
-                  </SyntaxHighlighter>
-                ) : (
-                  <pre className="rsh-pre rsh-code-block text-sm">
-                    <code>{codeString}</code>
-                  </pre>
-                )}
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute top-2 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10 touch:opacity-100 md:touch:opacity-0 md:touch:group-hover:opacity-100"
-                onClick={e => {
-                  e.stopPropagation()
-                  handleCopy(codeString, codeId)
-                }}
-                aria-label="Copy code"
-                title="Copy code"
-              >
-                {copiedBlocks.has(codeId) ? (
-                  <Check className="h-3 w-3 text-success" />
-                ) : (
-                  <Copy className="h-3 w-3" />
-                )}
-              </Button>
-            </div>
+                    {copiedBlocks.has(codeId) ? (
+                      <Check className="h-3 w-3 text-success" />
+                    ) : (
+                      <Copy className="h-3 w-3" />
+                    )}
+                  </Button>
+                  {children}
+                </pre>
+              )}
+            >
+              {codeString}
+            </SyntaxHighlighter>
           ) : (
-            <code className="px-1 py-0.5 bg-accent/20 text-accent rounded-none text-sm font-mono">
-              {children}
-            </code>
+            <CommandToken>{children}</CommandToken>
           )
         },
         a({ href, children }) {
