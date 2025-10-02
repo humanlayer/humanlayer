@@ -263,7 +263,7 @@ export function useSessionNavigation({
     { enabled: !expandedToolResult && !disabled, scopes: [scope] },
   )
 
-  // L key to collapse task group
+  // L key to expand task group
   useHotkeys(
     'l',
     () => {
@@ -272,21 +272,35 @@ export function useSessionNavigation({
       startKeyboardNavigation?.()
 
       const focusedEvent = events.find(e => e.id === focusedEventId)
-      if (!focusedEvent || focusedEvent.eventType !== ConversationEventType.ToolCall) return
+      if (!focusedEvent) return
 
-      // Handle task group collapse for Task events with sub-events
-      if (focusedEvent.toolName === 'Task' && focusedEvent.toolId && hasSubTasks) {
-        const subEventsByParent = new Map<string, ConversationEvent[]>()
-        events.forEach(event => {
-          if (event.parentToolUseId) {
-            const siblings = subEventsByParent.get(event.parentToolUseId) || []
-            siblings.push(event)
-            subEventsByParent.set(event.parentToolUseId, siblings)
-          }
-        })
+      // Build map of sub-events by parent
+      const subEventsByParent = new Map<string, ConversationEvent[]>()
+      events.forEach(event => {
+        if (event.parentToolUseId) {
+          const siblings = subEventsByParent.get(event.parentToolUseId) || []
+          siblings.push(event)
+          subEventsByParent.set(event.parentToolUseId, siblings)
+        }
+      })
 
+      // Case 1: Focused on a sub-event within a task group - find and expand parent if collapsed
+      if (focusedEvent.parentToolUseId) {
+        // If we're already in an expanded task, the parent is expanded, so do nothing
+        // This maintains consistency - l expands, h collapses
+        return
+      }
+
+      // Case 2: Focused on a parent Task event - expand if collapsed
+      if (
+        focusedEvent.eventType === ConversationEventType.ToolCall &&
+        focusedEvent.toolName === 'Task' &&
+        focusedEvent.toolId &&
+        hasSubTasks
+      ) {
         const hasSubEvents = subEventsByParent.has(focusedEvent.toolId)
-        if (hasSubEvents && expandedTasks.has(focusedEvent.toolId)) {
+        // Expand if collapsed (inverse of h key behavior)
+        if (hasSubEvents && !expandedTasks.has(focusedEvent.toolId)) {
           toggleTaskGroup(focusedEvent.toolId)
         }
       }
