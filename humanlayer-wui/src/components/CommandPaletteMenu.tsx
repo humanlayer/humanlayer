@@ -27,6 +27,7 @@ export default function CommandPaletteMenu() {
   const activeSessionDetail = useStore(state => state.activeSessionDetail)
   const archiveSession = useStore(state => state.archiveSession)
   const bulkArchiveSessions = useStore(state => state.bulkArchiveSessions)
+  const setSettingsDialogOpen = useStore(state => state.setSettingsDialogOpen)
 
   // Check if we're viewing a session detail
   const isSessionDetail = isViewingSessionDetail()
@@ -65,6 +66,15 @@ export default function CommandPaletteMenu() {
       label: 'Create Session',
       action: createNewSession,
       hotkey: 'C',
+    },
+    {
+      id: 'open-settings',
+      label: 'Settings',
+      action: () => {
+        setSettingsDialogOpen(true)
+        close()
+      },
+      hotkey: '⌘+⇧+S',
     },
     ...(isSessionDetail && searchQuery.toLowerCase().includes('brain')
       ? [
