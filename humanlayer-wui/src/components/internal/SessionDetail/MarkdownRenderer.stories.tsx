@@ -516,3 +516,28 @@ This renderer doesn't support LaTeX, but here are some Unicode math symbols:
 ✨ Magic Happens`,
   },
 }
+
+export const CodeBlocksLong: Story = {
+  args: {
+    content: `# Long block examples
+
+## One really long inline code string
+I'm out here just typing this bananas thing that should really just wrap \`Thisisaverylongmessagethatwillneverendnomatterhowhardyoutryitremainsthelongestlineintheworldandwilljustgoonandonandonandonuntileitherthiscomputerimplodesarethissolarsystemreachesitsinevitablesundeath\` 
+
+## One standard long inline code string
+I'm out here just typing this bananas thing that should really just wrap \`This is a very long message that will never end no matter how hard you try it remains the longest line in teh world and will go on and on and on and on and on likely until the sun explodes but we all know that won't be for a very long time probably but anyway how do we feel about chickens\`
+
+## Plaintext Long Single String
+\`\`\`
+Thisisaverylongmessagethatwillneverendnomatterhowhardyoutryitremainsthelongestlineintheworldandwilljustgoonandonandonandonuntileitherthiscomputerimplodesarethissolarsystemreachesitsinevitablesundeath
+\`\`\`
+
+## Plaintext Long Broken Up String
+\`\`\`
+This is a very long message that will never end no matter how hard you try it remains the longest line in teh world and will go on and on and on and on and on likely until the sun explodes but we all know that won't be for a very long time probably but anyway how do we feel about chickens
+\`\`\`
+
+
+`,
+  },
+}
