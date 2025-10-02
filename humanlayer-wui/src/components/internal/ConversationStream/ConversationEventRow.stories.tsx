@@ -926,15 +926,8 @@ export const MCPGenericToolCall: Story = {
       sequence: 20,
       sessionId: '08f00f98-d110-40e1-8d0b-fdec7f594f18',
       toolName: 'mcp__custom_service__complex_method_name',
-      toolInputJson: JSON.stringify({
-        complexParam: {
-          nested: {
-            values: [1, 2, 3],
-          },
-        },
-        simpleParam: 'test-value',
-        anotherParam: 42,
-      }),
+      toolInputJson:
+        '{"complexParam":{"test": "abc","nested":{"values":[1,2,3]}},"simpleParam":"test-value","anotherParam":42, "arr": [], "arr2": [1, 2, 3]}',
     },
     shouldIgnoreMouseEvent: () => false,
     setFocusedEventId: () => {},
