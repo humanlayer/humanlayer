@@ -148,12 +148,20 @@ jobs:
         run: |
           cd thoughts
 
-          # Pull with rebase for cleaner history
-          git pull --rebase
-
-          # Stage and commit our changes
+          # Stage all changes first
           git add -A
+
+          # Check if there are changes to commit
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+
+          # Commit our changes BEFORE pulling
           git commit -m "Sync thoughts from CI for ${{ matrix.ticket_id}}"
+
+          # Pull with rebase to get any remote changes and rebase our commit on top
+          git pull --rebase
 
           # Retry push up to 5 times
           for i in {1..5}; do
