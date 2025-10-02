@@ -146,7 +146,27 @@ jobs:
       - name: Sync research to thoughts
         id: sync-research-document
         run: |
-          cd thoughts && git add -A && git commit -m "Sync thoughts from CI for ${{ matrix.ticket_id}}" && git pull --rebase && git push
+          cd thoughts
+
+          # Pull with rebase for cleaner history
+          git pull --rebase
+
+          # Stage and commit our changes
+          git add -A
+          git commit -m "Sync thoughts from CI for ${{ matrix.ticket_id}}"
+
+          # Retry push up to 5 times
+          for i in {1..5}; do
+            git push && break || {
+              if [ $i -eq 5 ]; then
+                echo "Failed to push after 5 attempts"
+                exit 1
+              fi
+              echo "Push failed, attempt $i/5. Pulling and retrying..."
+              git pull --rebase
+              sleep 2
+            }
+          done
 
       # if the task fails, update the status to "research needed"
       - name: In event of failure reset status
