@@ -870,6 +870,7 @@ export const MCPLinearToolCall: Story = {
 
 // MCP GitHub Tool - shows completed GitHub API call
 export const MCPGitHubToolCall: Story = {
+  name: 'MCP GitHub Tool Call',
   args: {
     event: {
       approvalId: 'approval-mcp-2',
@@ -925,15 +926,8 @@ export const MCPGenericToolCall: Story = {
       sequence: 20,
       sessionId: '08f00f98-d110-40e1-8d0b-fdec7f594f18',
       toolName: 'mcp__custom_service__complex_method_name',
-      toolInputJson: JSON.stringify({
-        complexParam: {
-          nested: {
-            values: [1, 2, 3],
-          },
-        },
-        simpleParam: 'test-value',
-        anotherParam: 42,
-      }),
+      toolInputJson:
+        '{"complexParam":{"test": "abc","nested":{"values":[1,2,3]}},"simpleParam":"test-value","anotherParam":42, "arr": [], "arr2": [1, 2, 3]}',
     },
     shouldIgnoreMouseEvent: () => false,
     setFocusedEventId: () => {},
@@ -978,6 +972,85 @@ export const UserMessageWithCodeBlock: Story = {
     docs: {
       description: {
         story: 'User message containing a JavaScript code block with syntax highlighting',
+      },
+    },
+  },
+}
+
+// MCP Linear list_issues - shows Linear tickets listing
+export const MCPLinearListIssuesToolCall: Story = {
+  args: {
+    event: {
+      approvalId: 'approval-mcp-linear-1',
+      approvalStatus: 'approved' as const,
+      claudeSessionId: 'a3751d3f-c6c5-402b-a7c6-a6fdfeaf6cd9',
+      content: undefined,
+      createdAt: new Date('2025-10-01T15:09:00Z'),
+      eventType: 'tool_call' as const,
+      id: 21,
+      isCompleted: true,
+      role: 'assistant' as const,
+      sequence: 21,
+      sessionId: '08f00f98-d110-40e1-8d0b-fdec7f594f18',
+      toolName: 'mcp__linear__list_issues',
+      toolInputJson: JSON.stringify({
+        limit: 10,
+        includeArchived: false,
+      }),
+      toolResultContent: `Found 8 issues:
+
+1. **ENG-2219** - Add MCP tool event content storybook story
+   Status: In Progress | Priority: High
+   Assignee: @nyx | Updated: 2025-10-01
+   https://linear.app/humanlayer/issue/ENG-2219
+
+2. **ENG-2218** - Improve welcome message on first use
+   Status: Done | Priority: Medium
+   Assignee: @dexter | Updated: 2025-09-30
+   https://linear.app/humanlayer/issue/ENG-2218
+
+3. **ENG-2123** - Consolidate session launch modal with SessionDetail view
+   Status: Done | Priority: High
+   Assignee: @sundeep | Updated: 2025-09-29
+   https://linear.app/humanlayer/issue/ENG-2123
+
+4. **ENG-2120** - Fix conversation stream rendering performance
+   Status: In Progress | Priority: High
+   Assignee: @nyx | Updated: 2025-09-28
+   https://linear.app/humanlayer/issue/ENG-2120
+
+5. **ENG-1753** - Add Linear image attachment support
+   Status: In Review | Priority: Medium
+   Assignee: @allison | Updated: 2025-09-24
+   https://linear.app/humanlayer/issue/ENG-1753
+
+6. **ENG-1646** - Explore Linear API integration options
+   Status: Done | Priority: Low
+   Assignee: @allison | Updated: 2025-09-20
+   https://linear.app/humanlayer/issue/ENG-1646
+
+7. **ENG-1411** - Research Linear MCP server capabilities
+   Status: Done | Priority: Medium
+   Assignee: @allison | Updated: 2025-09-15
+   https://linear.app/humanlayer/issue/ENG-1411
+
+8. **ENG-2100** - Implement dark mode for WUI
+   Status: Todo | Priority: Low
+   Assignee: Unassigned | Updated: 2025-09-10
+   https://linear.app/humanlayer/issue/ENG-2100`,
+    },
+    shouldIgnoreMouseEvent: () => false,
+    setFocusedEventId: () => {},
+    setFocusSource: () => {},
+    isFocused: false,
+    isLast: true,
+    responseEditorIsFocused: false,
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'MCP Linear integration showing list of issues with status, priority, and assignee details',
       },
     },
   },

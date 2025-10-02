@@ -4,6 +4,7 @@ import type { ToolCallContentProps } from './types'
 import { getApprovalStatusColor } from './utils/formatters'
 import { parseMcpToolName } from '@/utils/formatting'
 import { KeyboardShortcut } from '@/components/ui/keyboard-shortcut'
+import { MCPToolCallParamPreview } from './MCPToolCallParamPreview'
 
 interface MCPToolInput {
   [key: string]: any
@@ -26,26 +27,6 @@ export function MCPToolCallContent({
   const { service, method } = parseMcpToolName(toolName)
   const formattedMethod = method.replace(/_/g, ' ')
   const displayName = `${service} - ${formattedMethod}`
-
-  // Format parameters for display - show first 2 simple parameters
-  const paramPreview = React.useMemo(() => {
-    if (!toolInput || typeof toolInput !== 'object') return null
-    const entries = Object.entries(toolInput)
-    if (entries.length === 0) return null
-
-    const params = entries
-      .slice(0, 2)
-      .map(([key, value]) => {
-        if (typeof value === 'string' || typeof value === 'number') {
-          return `${key}: "${value}"`
-        }
-        return `${key}: ...`
-      })
-      .join(', ')
-
-    const hasMore = entries.length > 2
-    return `(${params}${hasMore ? ', ...' : ''})`
-  }, [toolInput])
 
   // Format result preview for completed MCP calls
   const resultPreview = React.useMemo(() => {
@@ -80,16 +61,13 @@ export function MCPToolCallContent({
 
   return (
     <div>
-      <ToolHeader
-        name={displayName}
-        primaryParam={paramPreview || undefined}
-        nameColor={approvalStatus ? statusColor : undefined}
-      />
+      <ToolHeader name={displayName} nameColor={approvalStatus ? statusColor : undefined} />
+      {toolInput && <MCPToolCallParamPreview toolInput={toolInput} isDim={isCompleted && !isFocused} />}
       {isCompleted && resultPreview && (
         <div className="text-sm text-muted-foreground mt-1">{resultPreview}</div>
       )}
       <div
-        className={`text-xs text-muted-foreground/70 mt-1 ${isFocused && !isCompleted && paramPreview ? 'visible' : 'invisible'}`}
+        className={`text-xs text-muted-foreground/70 mt-1 ${isFocused && !isCompleted && toolInput ? 'visible' : 'invisible'}`}
       >
         Press <KeyboardShortcut>i</KeyboardShortcut> or click to view full parameters
       </div>
