@@ -174,7 +174,7 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY}}
           GH_TOKEN: ${{ github.token }}
         run: >
-          cd humanlayer && claude --dangerously-skip-permissions -p '/implement_plan ${{ env.TICKET_FILE_PATH }}
+          cd humanlayer && claude --dangerously-skip-permissions --model opus -p '/implement_plan ${{ env.TICKET_FILE_PATH }}
             Start by reading the ticket file and all of the comments in it. 
             Pay extra code attention to the comments - if you (LinearLayer/claude are mentioned in a comment you should treat that comment as an instruction).
             Then, locate the research and the implementation plan for the ticket in thoughts/shared/research and thoughts/shared/plans.
@@ -195,7 +195,7 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GH_TOKEN: ${{ github.token }}
         run: >
-          cd humanlayer && claude --dangerously-skip-permissions -p "/ci_commit"
+          cd humanlayer && claude --dangerously-skip-permissions --model opus -p "/ci_commit"
 
       - name: Pull and merge before push (use claude to resolve any conflicts)
         id: pull-before-push
@@ -212,7 +212,7 @@ jobs:
             git pull origin $branch || {
               if git diff --name-only --diff-filter=U | grep -q .; then
                 echo "Merge conflicts detected, using Claude to resolve"
-                claude --dangerously-skip-permissions -p "There are merge conflicts in the current branch. Please resolve all merge conflicts by:
+                claude --dangerously-skip-permissions --model opus -p "There are merge conflicts in the current branch. Please resolve all merge conflicts by:
                 1. Reading the conflicted files
                 2. Understanding both changes
                 3. Resolving the conflicts appropriately
@@ -238,7 +238,7 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GH_TOKEN: ${{ github.token }}
         run: |
-          cd humanlayer && claude --dangerously-skip-permissions -p '/ci_describe_pr 
+          cd humanlayer && claude --dangerously-skip-permissions --model opus -p '/ci_describe_pr 
 
           The changes for this PR have now been pushed to origin with the branch name "${{ steps.retrieve-branch-name.outputs.branch }}".
           Please create a PR for this issue.
