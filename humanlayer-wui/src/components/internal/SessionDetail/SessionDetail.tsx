@@ -250,15 +250,18 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   // Debug logging for localStorage values
   useEffect(() => {
     if (isDraft) {
-      logger.log('[LocalStorage] Draft session preferences loaded:', {
+      logger.log('[LocalStorage] Draft session using localStorage preferences:', {
         savedBypassPermissions,
         savedAutoAccept,
         bypassLoaded,
         autoAcceptLoaded,
         sessionId: session.id,
+        // These are the values that will be displayed in the UI
+        displayedBypass: dangerouslySkipPermissions,
+        displayedAutoAccept: autoAcceptEdits,
       })
     }
-  }, [isDraft, savedBypassPermissions, savedAutoAccept, bypassLoaded, autoAcceptLoaded, session.id])
+  }, [isDraft, savedBypassPermissions, savedAutoAccept, bypassLoaded, autoAcceptLoaded, session.id, dangerouslySkipPermissions, autoAcceptEdits])
 
   const responseEditor = useStore(state => state.responseEditor)
   const isEditingSessionTitle = useStore(state => state.isEditingSessionTitle)
@@ -310,40 +313,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     }
   }, [session.workingDir])
 
-  // Track if we've applied localStorage preferences to avoid re-applying
-  const preferencesAppliedRef = useRef(false)
-
-  // Initialize draft session with saved preferences from localStorage
-  useEffect(() => {
-    if (isDraft && bypassLoaded && autoAcceptLoaded && !preferencesAppliedRef.current) {
-      // Apply saved preferences to draft sessions, overriding defaults
-      const updates: any = {}
-
-      // Check if current session values differ from saved preferences
-      const currentBypass = sessionFromStore?.dangerouslySkipPermissions ?? session.dangerouslySkipPermissions ?? false
-      const currentAutoAccept = sessionFromStore?.autoAcceptEdits ?? session.autoAcceptEdits ?? false
-
-      if (currentBypass !== savedBypassPermissions) {
-        updates.dangerouslySkipPermissions = savedBypassPermissions
-      }
-
-      if (currentAutoAccept !== savedAutoAccept) {
-        updates.autoAcceptEdits = savedAutoAccept
-      }
-
-      // Only update if there are changes to apply
-      if (Object.keys(updates).length > 0) {
-        logger.log('Applying saved preferences to draft session:', updates)
-        preferencesAppliedRef.current = true
-        updateSessionOptimistic(session.id, updates).catch(error => {
-          logger.error('Failed to apply saved preferences to draft session:', error)
-        })
-      } else {
-        // Mark as applied even if no updates needed
-        preferencesAppliedRef.current = true
-      }
-    }
-  }, [isDraft, bypassLoaded, autoAcceptLoaded, session.id, sessionFromStore, session.dangerouslySkipPermissions, session.autoAcceptEdits, savedBypassPermissions, savedAutoAccept, updateSessionOptimistic])
 
   // Debug logging for token data
   useEffect(() => {
@@ -364,15 +333,17 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     sessionFromStore?.effectiveContextTokens,
   ])
 
-  // Use store values if available, otherwise fall back to session prop
-  // Store values take precedence because they reflect real-time updates
-  const autoAcceptEdits =
-    sessionFromStore?.autoAcceptEdits !== undefined
+  // For draft sessions, use localStorage values directly as the source of truth
+  // For active sessions, use store values if available, otherwise fall back to session prop
+  const autoAcceptEdits = isDraft && autoAcceptLoaded
+    ? savedAutoAccept
+    : sessionFromStore?.autoAcceptEdits !== undefined
       ? sessionFromStore.autoAcceptEdits
       : (session.autoAcceptEdits ?? false)
 
-  const dangerouslySkipPermissions =
-    sessionFromStore?.dangerouslySkipPermissions !== undefined
+  const dangerouslySkipPermissions = isDraft && bypassLoaded
+    ? savedBypassPermissions
+    : sessionFromStore?.dangerouslySkipPermissions !== undefined
       ? sessionFromStore.dangerouslySkipPermissions
       : (session.dangerouslySkipPermissions ?? false)
 
@@ -915,19 +886,22 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   // Create reusable handler for toggling auto-accept
   const handleToggleAutoAccept = useCallback(async () => {
     logger.log('toggleAutoAcceptEdits', autoAcceptEdits)
-    try {
-      const newState = !autoAcceptEdits
-      await updateSessionOptimistic(session.id, { autoAcceptEdits: newState })
 
-      // Save to localStorage if this is a draft session
-      if (isDraft) {
-        setSavedAutoAccept(newState)
+    if (isDraft) {
+      // For draft sessions, just toggle localStorage value
+      const newState = !savedAutoAccept
+      setSavedAutoAccept(newState)
+    } else {
+      // For active sessions, update the session state
+      try {
+        const newState = !autoAcceptEdits
+        await updateSessionOptimistic(session.id, { autoAcceptEdits: newState })
+      } catch (error) {
+        logger.error('Failed to toggle auto-accept mode:', error)
+        toast.error('Failed to toggle auto-accept mode')
       }
-    } catch (error) {
-      logger.error('Failed to toggle auto-accept mode:', error)
-      toast.error('Failed to toggle auto-accept mode')
     }
-  }, [session.id, autoAcceptEdits, updateSessionOptimistic, isDraft, setSavedAutoAccept])
+  }, [session.id, autoAcceptEdits, updateSessionOptimistic, isDraft, savedAutoAccept, setSavedAutoAccept])
 
   // Create reusable handler for toggling dangerously skip permissions
   const handleToggleDangerouslySkipPermissions = useCallback(async () => {
@@ -940,37 +914,44 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       return
     }
 
-    // Get the current value from the store directly to avoid stale closure
-    let currentSession = useStore.getState().sessions.find(s => s.id === session.id)
-
-    if (!currentSession) {
-      const sessionState = await daemonClient.getSessionState(session.id)
-      currentSession = sessionState.session
-    }
-
-    const currentDangerouslySkipPermissions = currentSession?.dangerouslySkipPermissions ?? false
-
-    if (currentDangerouslySkipPermissions) {
-      // Disable dangerous skip permissions
-      try {
-        await updateSessionOptimistic(session.id, {
-          dangerouslySkipPermissions: false,
-          dangerouslySkipPermissionsExpiresAt: undefined,
-        })
-
-        // Save to localStorage if this is a draft session
-        if (isDraft) {
-          setSavedBypassPermissions(false)
-        }
-      } catch (error) {
-        logger.error('Failed to disable dangerous skip permissions', { error })
-        toast.error('Failed to disable dangerous skip permissions')
+    if (isDraft) {
+      // For draft sessions, handle localStorage directly
+      if (savedBypassPermissions) {
+        // Disable bypass permissions
+        setSavedBypassPermissions(false)
+      } else {
+        // Show confirmation dialog
+        setDangerousSkipPermissionsDialogOpen(true)
       }
     } else {
-      // Show confirmation dialog
-      setDangerousSkipPermissionsDialogOpen(true)
+      // For active sessions, use the session state
+      // Get the current value from the store directly to avoid stale closure
+      let currentSession = useStore.getState().sessions.find(s => s.id === session.id)
+
+      if (!currentSession) {
+        const sessionState = await daemonClient.getSessionState(session.id)
+        currentSession = sessionState.session
+      }
+
+      const currentDangerouslySkipPermissions = currentSession?.dangerouslySkipPermissions ?? false
+
+      if (currentDangerouslySkipPermissions) {
+        // Disable dangerous skip permissions
+        try {
+          await updateSessionOptimistic(session.id, {
+            dangerouslySkipPermissions: false,
+            dangerouslySkipPermissionsExpiresAt: undefined,
+          })
+        } catch (error) {
+          logger.error('Failed to disable dangerous skip permissions', { error })
+          toast.error('Failed to disable dangerous skip permissions')
+        }
+      } else {
+        // Show confirmation dialog
+        setDangerousSkipPermissionsDialogOpen(true)
+      }
     }
-  }, [session.id, activeScopes, dangerousSkipPermissionsDialogOpen, updateSessionOptimistic, isDraft, setSavedBypassPermissions])
+  }, [session.id, activeScopes, dangerousSkipPermissionsDialogOpen, updateSessionOptimistic, isDraft, savedBypassPermissions, setSavedBypassPermissions])
 
   // ===== DRAFT MODE HOTKEYS =====
   // These only work when in draft mode (DRAFT_LAUNCHER scope)
@@ -1096,24 +1077,24 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
 
   // Handle dialog confirmation
   const handleDangerousSkipPermissionsConfirm = async (timeoutMinutes: number | null) => {
-    try {
-      // Immediately update the store for instant UI feedback
-      const expiresAt = timeoutMinutes
-        ? new Date(Date.now() + timeoutMinutes * 60 * 1000).toISOString()
-        : undefined
+    if (isDraft) {
+      // For draft sessions, just update localStorage
+      setSavedBypassPermissions(true)
+    } else {
+      // For active sessions, update the session state
+      try {
+        const expiresAt = timeoutMinutes
+          ? new Date(Date.now() + timeoutMinutes * 60 * 1000).toISOString()
+          : undefined
 
-      await updateSessionOptimistic(session.id, {
-        dangerouslySkipPermissions: true,
-        dangerouslySkipPermissionsExpiresAt: expiresAt ? new Date(expiresAt) : undefined,
-      })
-
-      // Save to localStorage if this is a draft session
-      if (isDraft) {
-        setSavedBypassPermissions(true)
+        await updateSessionOptimistic(session.id, {
+          dangerouslySkipPermissions: true,
+          dangerouslySkipPermissionsExpiresAt: expiresAt ? new Date(expiresAt) : undefined,
+        })
+      } catch (error) {
+        logger.error('Failed to enable dangerous skip permissions', { error })
+        toast.error('Failed to enable dangerous skip permissions')
       }
-    } catch (error) {
-      logger.error('Failed to enable dangerous skip permissions', { error })
-      toast.error('Failed to enable dangerous skip permissions')
     }
   }
 
