@@ -893,6 +893,21 @@
     animation: glitch 5s linear infinite;
   }
 
+  /* Single pulse animation for approval confirmation */
+  @keyframes pulse-once {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+  }
+
+  .animate-pulse-once {
+    animation: pulse-once 0.6s ease-in-out;
+  }
+
   /* Gradient utilities for conic and radial gradients */
   .bg-gradient-conic {
     background: conic-gradient(var(--tw-gradient-stops));

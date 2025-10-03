@@ -2,6 +2,7 @@ import React from 'react'
 import { Button } from '@/components/ui/button'
 import { ConversationEvent } from '@/lib/daemon/types'
 import { DenyButtons } from '../../SessionDetail/components/DenyButtons'
+import { cn } from '@/lib/utils'
 
 interface ApprovalWrapperProps {
   children: React.ReactNode
@@ -43,7 +44,10 @@ export function ApprovalWrapper({
           {!isDenying ? (
             <>
               <Button
-                className="cursor-pointer"
+                className={cn(
+                  'cursor-pointer',
+                  confirmingApprovalId === event.approvalId && 'animate-pulse-once',
+                )}
                 size="sm"
                 variant={isApproving ? 'outline' : 'default'}
                 onClick={e => {

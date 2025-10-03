@@ -340,6 +340,7 @@ export interface ConversationEventRowProps extends React.HTMLAttributes<HTMLDivE
   onApprove?: (approvalId: string) => void
   onDeny?: (approvalId: string, reason: string) => void
   approvingApprovalId?: string | null
+  confirmingApprovalId?: string | null
   denyingApprovalId?: string | null
   setDenyingApprovalId?: (approvalId: string | null) => void
   onCancelDeny?: () => void
@@ -362,6 +363,7 @@ function ConversationEventRowInner({
   onApprove,
   onDeny,
   approvingApprovalId,
+  confirmingApprovalId,
   denyingApprovalId,
   setDenyingApprovalId,
   onCancelDeny,
@@ -691,6 +693,7 @@ function ConversationEventRowInner({
           onApprove={() => onApprove(event.approvalId!)}
           onDeny={(reason: string) => onDeny(event.approvalId!, reason)}
           isApproving={approvingApprovalId === event.approvalId}
+          confirmingApprovalId={confirmingApprovalId}
           isDenying={denyingApprovalId === event.approvalId}
           onStartDeny={() => setDenyingApprovalId?.(event.approvalId!)}
           onCancelDeny={onCancelDeny}

@@ -1491,6 +1491,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                     approvals.handleDeny(approvalId, reason, session.id)
                   }
                   approvingApprovalId={approvals.approvingApprovalId}
+                  confirmingApprovalId={approvals.confirmingApprovalId}
                   denyingApprovalId={approvals.denyingApprovalId ?? undefined}
                   setDenyingApprovalId={approvals.setDenyingApprovalId}
                   onCancelDeny={approvals.handleCancelDeny}
