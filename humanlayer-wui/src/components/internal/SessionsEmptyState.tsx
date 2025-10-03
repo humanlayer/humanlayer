@@ -1,8 +1,14 @@
 import { Button } from '@/components/ui/button'
 import { daemonClient } from '@/lib/daemon/client'
 import { getLastWorkingDir } from '@/hooks'
+import { useSessionLauncher } from '@/hooks/useSessionLauncher'
+import { useHotkeyUnicodeChars } from '@/hooks/useHotkeyUnicodeChars'
+import { KeyboardShortcut } from '../HotkeyPanel'
 
 export function SessionsEmptyState() {
+  const { open } = useSessionLauncher()
+  const { Mod } = useHotkeyUnicodeChars()
+
   const handleCreateSession = async () => {
     try {
       const response = await daemonClient.launchSession({
@@ -34,12 +40,14 @@ export function SessionsEmptyState() {
           <p>Create a session to get started.</p>
         </div>
 
-        <Button onClick={handleCreateSession} size="lg">
-          Create Session{' '}
-          <kbd className="ml-2 pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
-            C
-          </kbd>
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={handleCreateSession} size="lg">
+            Create Session <KeyboardShortcut keyString="C" />
+          </Button>
+          <Button variant="outline" size="lg" onClick={() => open()}>
+            Open command palette <KeyboardShortcut keyString={`${Mod}+K`} />
+          </Button>
+        </div>
       </div>
     </div>
   )
