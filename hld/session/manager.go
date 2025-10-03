@@ -2023,12 +2023,14 @@ func (m *Manager) LaunchDraftSession(ctx context.Context, sessionID string, prom
 
 	// Update the query with the actual prompt and clear editor state
 	queryUpdate := prompt
+	summaryUpdate := CalculateSummary(prompt)
 	statusStarting := string(StatusStarting)
 	now := time.Now()
 	emptyString := "" // Use empty string to clear editor state
 	update := store.SessionUpdate{
 		Status:         &statusStarting,
 		Query:          &queryUpdate,
+		Summary:        &summaryUpdate,
 		LastActivityAt: &now,
 		EditorState:    &emptyString, // Clear editor state when launching
 	}
