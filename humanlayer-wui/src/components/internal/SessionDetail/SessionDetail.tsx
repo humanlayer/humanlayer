@@ -9,7 +9,8 @@ import { useConversation, useKeyboardNavigationProtection } from '@/hooks'
 import { ChevronDown, FolderOpen, TextSearch } from 'lucide-react'
 import { daemonClient } from '@/lib/daemon/client'
 import { useStore } from '@/AppStore'
-import { getArchiveOnForkPreference } from '@/lib/preferences'
+import { getArchiveOnForkPreference, DRAFT_LAUNCHER_PREFS, getDraftLauncherDefaults } from '@/lib/preferences'
+import { useLocalStorage } from '@/hooks/useLocalStorage'
 import { HotkeyScopeBoundary } from '@/components/HotkeyScopeBoundary'
 import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
 
@@ -235,6 +236,30 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   // Get recent paths for draft directory selection
   const { paths: recentPaths } = useRecentPaths()
 
+  // Load draft launcher preferences from localStorage (only for draft sessions)
+  const defaults = getDraftLauncherDefaults()
+  const [savedBypassPermissions, setSavedBypassPermissions, bypassLoaded] = useLocalStorage(
+    DRAFT_LAUNCHER_PREFS.BYPASS_PERMISSIONS,
+    defaults.bypassPermissions
+  )
+  const [savedAutoAccept, setSavedAutoAccept, autoAcceptLoaded] = useLocalStorage(
+    DRAFT_LAUNCHER_PREFS.AUTO_ACCEPT,
+    defaults.autoAccept
+  )
+
+  // Debug logging for localStorage values
+  useEffect(() => {
+    if (isDraft) {
+      logger.log('[LocalStorage] Draft session preferences loaded:', {
+        savedBypassPermissions,
+        savedAutoAccept,
+        bypassLoaded,
+        autoAcceptLoaded,
+        sessionId: session.id,
+      })
+    }
+  }, [isDraft, savedBypassPermissions, savedAutoAccept, bypassLoaded, autoAcceptLoaded, session.id])
+
   const responseEditor = useStore(state => state.responseEditor)
   const isEditingSessionTitle = useStore(state => state.isEditingSessionTitle)
   const setIsEditingSessionTitle = useStore(state => state.setIsEditingSessionTitle)
@@ -284,6 +309,41 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       setSelectedDirectory(session.workingDir)
     }
   }, [session.workingDir])
+
+  // Track if we've applied localStorage preferences to avoid re-applying
+  const preferencesAppliedRef = useRef(false)
+
+  // Initialize draft session with saved preferences from localStorage
+  useEffect(() => {
+    if (isDraft && bypassLoaded && autoAcceptLoaded && !preferencesAppliedRef.current) {
+      // Apply saved preferences to draft sessions, overriding defaults
+      const updates: any = {}
+
+      // Check if current session values differ from saved preferences
+      const currentBypass = sessionFromStore?.dangerouslySkipPermissions ?? session.dangerouslySkipPermissions ?? false
+      const currentAutoAccept = sessionFromStore?.autoAcceptEdits ?? session.autoAcceptEdits ?? false
+
+      if (currentBypass !== savedBypassPermissions) {
+        updates.dangerouslySkipPermissions = savedBypassPermissions
+      }
+
+      if (currentAutoAccept !== savedAutoAccept) {
+        updates.autoAcceptEdits = savedAutoAccept
+      }
+
+      // Only update if there are changes to apply
+      if (Object.keys(updates).length > 0) {
+        logger.log('Applying saved preferences to draft session:', updates)
+        preferencesAppliedRef.current = true
+        updateSessionOptimistic(session.id, updates).catch(error => {
+          logger.error('Failed to apply saved preferences to draft session:', error)
+        })
+      } else {
+        // Mark as applied even if no updates needed
+        preferencesAppliedRef.current = true
+      }
+    }
+  }, [isDraft, bypassLoaded, autoAcceptLoaded, session.id, sessionFromStore, session.dangerouslySkipPermissions, session.autoAcceptEdits, savedBypassPermissions, savedAutoAccept, updateSessionOptimistic])
 
   // Debug logging for token data
   useEffect(() => {
@@ -858,11 +918,16 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     try {
       const newState = !autoAcceptEdits
       await updateSessionOptimistic(session.id, { autoAcceptEdits: newState })
+
+      // Save to localStorage if this is a draft session
+      if (isDraft) {
+        setSavedAutoAccept(newState)
+      }
     } catch (error) {
       logger.error('Failed to toggle auto-accept mode:', error)
       toast.error('Failed to toggle auto-accept mode')
     }
-  }, [session.id, autoAcceptEdits, updateSessionOptimistic])
+  }, [session.id, autoAcceptEdits, updateSessionOptimistic, isDraft, setSavedAutoAccept])
 
   // Create reusable handler for toggling dangerously skip permissions
   const handleToggleDangerouslySkipPermissions = useCallback(async () => {
@@ -892,6 +957,11 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
           dangerouslySkipPermissions: false,
           dangerouslySkipPermissionsExpiresAt: undefined,
         })
+
+        // Save to localStorage if this is a draft session
+        if (isDraft) {
+          setSavedBypassPermissions(false)
+        }
       } catch (error) {
         logger.error('Failed to disable dangerous skip permissions', { error })
         toast.error('Failed to disable dangerous skip permissions')
@@ -900,7 +970,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       // Show confirmation dialog
       setDangerousSkipPermissionsDialogOpen(true)
     }
-  }, [session.id, activeScopes, dangerousSkipPermissionsDialogOpen, updateSessionOptimistic])
+  }, [session.id, activeScopes, dangerousSkipPermissionsDialogOpen, updateSessionOptimistic, isDraft, setSavedBypassPermissions])
 
   // ===== DRAFT MODE HOTKEYS =====
   // These only work when in draft mode (DRAFT_LAUNCHER scope)
@@ -909,6 +979,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   useHotkeys(
     'meta+enter, ctrl+enter',
     e => {
+      console.log('[HOTKEY_SCOPE] cmd+enter pressed in DRAFT_LAUNCHER scope')
       e.preventDefault()
       e.stopPropagation()
 
@@ -975,6 +1046,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   useHotkeys(
     'alt+y, option+y',
     e => {
+      console.log('[HOTKEY_SCOPE] opt+y pressed in DRAFT_LAUNCHER scope')
       e.preventDefault()
       handleToggleDangerouslySkipPermissions()
     },
@@ -1034,6 +1106,11 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         dangerouslySkipPermissions: true,
         dangerouslySkipPermissionsExpiresAt: expiresAt ? new Date(expiresAt) : undefined,
       })
+
+      // Save to localStorage if this is a draft session
+      if (isDraft) {
+        setSavedBypassPermissions(true)
+      }
     } catch (error) {
       logger.error('Failed to enable dangerous skip permissions', { error })
       toast.error('Failed to enable dangerous skip permissions')

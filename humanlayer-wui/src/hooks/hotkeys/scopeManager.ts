@@ -27,19 +27,28 @@ class ScopeManager {
   ) {
     if (!DEBUG) return
 
-    console.group(`🎹 HotkeyScope ${action}: ${entry.scope}`)
-    console.log('Component:', entry.component || 'Unknown')
+    const prefix = '[HOTKEY_SCOPE]'
+    console.log(`${prefix} ${action}: ${entry.scope} (${entry.component || 'Unknown'})`)
     console.log(
-      'Stack Before:',
-      stackBefore.map(e => e.scope),
+      `${prefix} Stack: [${stackBefore.map(e => e.scope).join(' → ')}] → [${stackAfter.map(e => e.scope).join(' → ')}]`,
     )
     console.log(
-      'Stack After:',
-      stackAfter.map(e => e.scope),
+      `${prefix} Active: ${this.getActiveScope() || 'none'}, Root Disabled Count: ${this.rootDisabledCount}`,
     )
-    console.log('Active Scope:', this.getActiveScope())
-    console.table(stackAfter)
-    console.groupEnd()
+
+    // Extra detailed logging for bypass-related transitions
+    if (
+      entry.scope.includes('MODAL') ||
+      entry.component?.includes('Bypass') ||
+      entry.component?.includes('Modal')
+    ) {
+      console.log(`${prefix} ⚠️ Modal-related transition detected`)
+      console.log(`${prefix} Root should be enabled: ${this.shouldRootBeEnabled()}`)
+    }
+
+    if (action === 'REMOVE' && entry.scope.includes('MODAL')) {
+      console.log(`${prefix} ✅ Modal scope removed, restoring to: ${this.getActiveScope() || 'none'}`)
+    }
   }
 
   push(entry: ScopeEntry): void {
