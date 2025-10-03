@@ -3,9 +3,18 @@ import { useEffect, useRef } from 'react'
 /**
  * Custom hook to trap focus within a container element.
  * Handles Tab and Shift+Tab navigation to cycle through focusable elements.
+ * @param isActive - Whether the focus trap is active
+ * @param options - Configuration options
+ * @param options.allowTabNavigation - If true, Tab/Shift+Tab will not be trapped (useful for custom navigation)
  */
-export function useFocusTrap(isActive: boolean) {
+export function useFocusTrap(
+  isActive: boolean,
+  options?: {
+    allowTabNavigation?: boolean
+  },
+) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const { allowTabNavigation = false } = options || {}
 
   useEffect(() => {
     if (!isActive || !containerRef.current) return
@@ -34,6 +43,9 @@ export function useFocusTrap(isActive: boolean) {
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'Tab') return
+
+      // If Tab navigation is allowed for other purposes, don't trap it
+      if (allowTabNavigation) return
 
       const focusableElements = getFocusableElements()
       if (focusableElements.length === 0) return
@@ -89,7 +101,7 @@ export function useFocusTrap(isActive: boolean) {
     return () => {
       container.removeEventListener('keydown', handleKeyDown, true)
     }
-  }, [isActive])
+  }, [isActive, allowTabNavigation])
 
   return containerRef
 }
