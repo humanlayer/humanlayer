@@ -600,9 +600,7 @@ export function Layout() {
     'meta+shift+f, ctrl+shift+f',
     async () => {
       try {
-        await openUrl(
-          'https://github.com/humanlayer/humanlayer/issues/new?title=Feedback%20on%20CodeLayer&body=%23%23%23%20Problem%20to%20solve%20%2F%20Expected%20Behavior%0A%0A%0A%23%23%23%20Proposed%20solution',
-        )
+        await openUrl('https://github.com/humanlayer/humanlayer/issues/new/choose')
       } catch (error) {
         logger.error('Failed to open feedback URL:', error)
       }
@@ -836,7 +834,7 @@ export function Layout() {
           <Tooltip>
             <TooltipTrigger asChild>
               <a
-                href="https://github.com/humanlayer/humanlayer/issues/new?title=Feedback%20on%20CodeLayer&body=%23%23%23%20Problem%20to%20solve%20%2F%20Expected%20Behavior%0A%0A%0A%23%23%23%20Proposed%20solution"
+                href="https://github.com/humanlayer/humanlayer/issues/new/choose"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-mono border border-border bg-background text-foreground hover:bg-accent/10 transition-colors focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none"
