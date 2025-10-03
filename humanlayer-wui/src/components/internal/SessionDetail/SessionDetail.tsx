@@ -202,10 +202,16 @@ function OmniSpinner({ randomVerb, spinnerType }: { randomVerb: string; spinnerT
 function SessionDetail({ session, onClose }: SessionDetailProps) {
   // Note: enableScope/disableScope removed - now handled by HotkeyScopeBoundary
 
+  // Check if this is a draft session
+  const isDraft = session.status === SessionStatus.Draft
+
   // Determine the appropriate scope based on session state
-  const detailScope = session?.archived
-    ? HOTKEY_SCOPES.SESSION_DETAIL_ARCHIVED
-    : HOTKEY_SCOPES.SESSION_DETAIL
+  // Draft sessions get their own scope with different hotkey behaviors
+  const detailScope = isDraft
+    ? HOTKEY_SCOPES.DRAFT_LAUNCHER
+    : session?.archived
+      ? HOTKEY_SCOPES.SESSION_DETAIL_ARCHIVED
+      : HOTKEY_SCOPES.SESSION_DETAIL
 
   const [isWideView, setIsWideView] = useState(false)
   const [expandedToolResult, setExpandedToolResult] = useState<ConversationEvent | null>(null)
@@ -225,9 +231,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [selectedDirectory, setSelectedDirectory] = useState<string>(() => {
     return session.workingDir || ''
   })
-
-  // Check if this is a draft session
-  const isDraft = session.status === SessionStatus.Draft
 
   // Get recent paths for draft directory selection
   const { paths: recentPaths } = useRecentPaths()
@@ -899,41 +902,124 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     }
   }, [session.id, activeScopes, dangerousSkipPermissionsDialogOpen, updateSessionOptimistic])
 
-  // Add Option+A handler for auto-accept edits mode
+  // ===== DRAFT MODE HOTKEYS =====
+  // These only work when in draft mode (DRAFT_LAUNCHER scope)
+
+  // Cmd+Enter handler for launching draft sessions
+  useHotkeys(
+    'meta+enter, ctrl+enter',
+    e => {
+      e.preventDefault()
+      e.stopPropagation()
+
+      // Check if editor has content
+      const prompt = responseEditor?.getText() || ''
+      if (!prompt.trim()) {
+        toast.error('Please enter a prompt', {
+          description: 'Cannot launch an empty session',
+        })
+        return
+      }
+
+      // Check if working directory is set
+      const workingDir = selectedDirectory || session.workingDir
+      if (!workingDir) {
+        toast.error('Please select a working directory', {
+          description: 'You must choose a directory before launching the session',
+        })
+        return
+      }
+
+      // Launch the draft
+      handleLaunchDraft()
+    },
+    {
+      enabled: isDraft,
+      preventDefault: true,
+      enableOnFormTags: ['INPUT', 'TEXTAREA', 'SELECT'], // Explicit array to ensure it works in form fields
+      scopes: [HOTKEY_SCOPES.DRAFT_LAUNCHER],
+    },
+    [selectedDirectory, session.workingDir, responseEditor, handleLaunchDraft],
+  )
+
+  // Cmd+Shift+. handler for discarding draft sessions
+  useHotkeys(
+    'meta+shift+., ctrl+shift+.',
+    () => {
+      setShowDiscardDialog(true)
+    },
+    {
+      enabled: isDraft,
+      preventDefault: true,
+      scopes: [HOTKEY_SCOPES.DRAFT_LAUNCHER],
+    },
+  )
+
+  // Option+A handler for auto-accept edits mode (draft version)
   useHotkeys(
     'alt+a, option+a',
-    handleToggleAutoAccept,
+    e => {
+      e.preventDefault()
+      handleToggleAutoAccept()
+    },
     {
+      enabled: isDraft,
       preventDefault: true,
-      scopes: [detailScope],
+      enableOnFormTags: ['INPUT', 'TEXTAREA', 'SELECT'], // Explicit to ensure it works in forms
+      scopes: [HOTKEY_SCOPES.DRAFT_LAUNCHER],
     },
     [handleToggleAutoAccept],
   )
 
-  // Add Option+Y handler for dangerously skip permissions mode
+  // Option+Y handler for dangerously skip permissions mode (draft version)
   useHotkeys(
     'alt+y, option+y',
-    handleToggleDangerouslySkipPermissions,
+    e => {
+      e.preventDefault()
+      handleToggleDangerouslySkipPermissions()
+    },
     {
+      enabled: isDraft,
       preventDefault: true,
-      scopes: [detailScope],
+      enableOnFormTags: ['INPUT', 'TEXTAREA', 'SELECT'], // Explicit to ensure it works in forms
+      scopes: [HOTKEY_SCOPES.DRAFT_LAUNCHER],
     },
     [handleToggleDangerouslySkipPermissions],
   )
 
-  // Add Cmd+Shift+. handler for discarding draft sessions
+  // ===== NON-DRAFT MODE HOTKEYS =====
+  // These only work when NOT in draft mode (SESSION_DETAIL scope)
+
+  // Option+A handler for auto-accept edits mode (non-draft version)
   useHotkeys(
-    'cmd+shift+., ctrl+shift+.',
-    () => {
-      if (isDraft) {
-        setShowDiscardDialog(true)
-      }
+    'alt+a, option+a',
+    e => {
+      e.preventDefault()
+      handleToggleAutoAccept()
     },
     {
+      enabled: !isDraft,
       preventDefault: true,
-      scopes: SessionDetailHotkeysScope,
+      enableOnFormTags: ['INPUT', 'TEXTAREA', 'SELECT'], // Explicit to ensure it works in forms
+      scopes: [HOTKEY_SCOPES.SESSION_DETAIL, HOTKEY_SCOPES.SESSION_DETAIL_ARCHIVED],
     },
-    [isDraft],
+    [handleToggleAutoAccept],
+  )
+
+  // Option+Y handler for dangerously skip permissions mode (non-draft version)
+  useHotkeys(
+    'alt+y, option+y',
+    e => {
+      e.preventDefault()
+      handleToggleDangerouslySkipPermissions()
+    },
+    {
+      enabled: !isDraft,
+      preventDefault: true,
+      enableOnFormTags: ['INPUT', 'TEXTAREA', 'SELECT'], // Explicit to ensure it works in forms
+      scopes: [HOTKEY_SCOPES.SESSION_DETAIL, HOTKEY_SCOPES.SESSION_DETAIL_ARCHIVED],
+    },
+    [handleToggleDangerouslySkipPermissions],
   )
 
   // Handle dialog confirmation
@@ -1320,7 +1406,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   return (
     <HotkeyScopeBoundary
       scope={detailScope}
-      componentName={`SessionDetail-${session?.archived ? 'archived' : 'normal'}`}
+      componentName={`SessionDetail-${isDraft ? 'draft' : session?.archived ? 'archived' : 'normal'}`}
     >
       <section className="flex flex-col h-full gap-3">
         {/* Unified header with working directory */}
