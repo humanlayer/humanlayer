@@ -142,6 +142,12 @@ func (h *SessionHandlers) CreateSession(ctx context.Context, req api.CreateSessi
 
 	session, err := h.manager.LaunchSession(ctx, config, isDraft)
 	if err != nil {
+		slog.Error("Failed to launch session",
+			"error", fmt.Sprintf("%v", err),
+			"query", config.Query,
+			"working_dir", config.WorkingDir,
+			"operation", "CreateSession",
+		)
 		return api.CreateSession500JSONResponse{
 			InternalErrorJSONResponse: api.InternalErrorJSONResponse{
 				Error: api.ErrorDetail{
@@ -310,6 +316,11 @@ func (h *SessionHandlers) GetSession(ctx context.Context, req api.GetSessionRequ
 				},
 			}, nil
 		}
+		slog.Error("Failed to get session",
+			"error", fmt.Sprintf("%v", err),
+			"session_id", req.Id,
+			"operation", "GetSession",
+		)
 		return api.GetSession500JSONResponse{
 			InternalErrorJSONResponse: api.InternalErrorJSONResponse{
 				Error: api.ErrorDetail{
@@ -445,6 +456,11 @@ func (h *SessionHandlers) UpdateSession(ctx context.Context, req api.UpdateSessi
 				},
 			}, nil
 		}
+		slog.Error("Failed to update session settings",
+			"error", fmt.Sprintf("%v", err),
+			"session_id", req.Id,
+			"operation", "UpdateSession",
+		)
 		return api.UpdateSession500JSONResponse{
 			InternalErrorJSONResponse: api.InternalErrorJSONResponse{
 				Error: api.ErrorDetail{
@@ -458,6 +474,11 @@ func (h *SessionHandlers) UpdateSession(ctx context.Context, req api.UpdateSessi
 	// Fetch updated session
 	session, err := h.store.GetSession(ctx, string(req.Id))
 	if err != nil {
+		slog.Error("Failed to fetch updated session",
+			"error", fmt.Sprintf("%v", err),
+			"session_id", req.Id,
+			"operation", "UpdateSession",
+		)
 		return api.UpdateSession500JSONResponse{
 			InternalErrorJSONResponse: api.InternalErrorJSONResponse{
 				Error: api.ErrorDetail{
@@ -489,6 +510,11 @@ func (h *SessionHandlers) DeleteDraftSession(ctx context.Context, req api.Delete
 				},
 			}, nil
 		}
+		slog.Error("Failed to get session for deletion",
+			"error", fmt.Sprintf("%v", err),
+			"session_id", req.Id,
+			"operation", "DeleteDraftSession",
+		)
 		return api.DeleteDraftSession500JSONResponse{
 			InternalErrorJSONResponse: api.InternalErrorJSONResponse{
 				Error: api.ErrorDetail{
@@ -520,6 +546,11 @@ func (h *SessionHandlers) DeleteDraftSession(ctx context.Context, req api.Delete
 
 	err = h.store.UpdateSession(ctx, string(req.Id), update)
 	if err != nil {
+		slog.Error("Failed to mark draft session as discarded",
+			"error", fmt.Sprintf("%v", err),
+			"session_id", req.Id,
+			"operation", "DeleteDraftSession",
+		)
 		return api.DeleteDraftSession500JSONResponse{
 			InternalErrorJSONResponse: api.InternalErrorJSONResponse{
 				Error: api.ErrorDetail{
@@ -549,6 +580,11 @@ func (h *SessionHandlers) LaunchDraftSession(ctx context.Context, req api.Launch
 				},
 			}, nil
 		}
+		slog.Error("Failed to get draft session for launch",
+			"error", fmt.Sprintf("%v", err),
+			"session_id", req.Id,
+			"operation", "LaunchDraftSession",
+		)
 		return api.LaunchDraftSession500JSONResponse{
 			InternalErrorJSONResponse: api.InternalErrorJSONResponse{
 				Error: api.ErrorDetail{
@@ -599,9 +635,10 @@ func (h *SessionHandlers) LaunchDraftSession(ctx context.Context, req api.Launch
 	// Launch the draft session
 	err = h.manager.LaunchDraftSession(ctx, string(req.Id), req.Body.Prompt)
 	if err != nil {
-		slog.Error("failed to launch draft session",
+		slog.Error("Failed to launch draft session",
+			"error", fmt.Sprintf("%v", err),
 			"session_id", req.Id,
-			"error", err)
+			"operation", "LaunchDraftSession")
 		return api.LaunchDraftSession500JSONResponse{
 			InternalErrorJSONResponse: api.InternalErrorJSONResponse{
 				Error: api.ErrorDetail{
@@ -615,6 +652,11 @@ func (h *SessionHandlers) LaunchDraftSession(ctx context.Context, req api.Launch
 	// Fetch updated session to return
 	updatedSession, err := h.store.GetSession(ctx, string(req.Id))
 	if err != nil {
+		slog.Error("Failed to get updated session after launch",
+			"error", fmt.Sprintf("%v", err),
+			"session_id", req.Id,
+			"operation", "LaunchDraftSession",
+		)
 		return api.LaunchDraftSession500JSONResponse{
 			InternalErrorJSONResponse: api.InternalErrorJSONResponse{
 				Error: api.ErrorDetail{
@@ -645,6 +687,11 @@ func (h *SessionHandlers) ContinueSession(ctx context.Context, req api.ContinueS
 				},
 			}, nil
 		}
+		slog.Error("Failed to get parent session for continuation",
+			"error", fmt.Sprintf("%v", err),
+			"parent_session_id", req.Id,
+			"operation", "ContinueSession",
+		)
 		return api.ContinueSession500JSONResponse{
 			InternalErrorJSONResponse: api.InternalErrorJSONResponse{
 				Error: api.ErrorDetail{
@@ -703,6 +750,12 @@ func (h *SessionHandlers) ContinueSession(ctx context.Context, req api.ContinueS
 
 	result, err := h.manager.ContinueSession(ctx, continueConfig)
 	if err != nil {
+		slog.Error("Failed to continue session",
+			"error", fmt.Sprintf("%v", err),
+			"parent_session_id", req.Id,
+			"query", req.Body.Query,
+			"operation", "ContinueSession",
+		)
 		return api.ContinueSession500JSONResponse{
 			InternalErrorJSONResponse: api.InternalErrorJSONResponse{
 				Error: api.ErrorDetail{
@@ -716,6 +769,12 @@ func (h *SessionHandlers) ContinueSession(ctx context.Context, req api.ContinueS
 	// Get the created session to get the claude session ID
 	newSession, err := h.store.GetSession(ctx, result.ID)
 	if err != nil {
+		slog.Error("Failed to get created session details",
+			"error", fmt.Sprintf("%v", err),
+			"parent_session_id", req.Id,
+			"new_session_id", result.ID,
+			"operation", "ContinueSession",
+		)
 		return api.ContinueSession500JSONResponse{
 			InternalErrorJSONResponse: api.InternalErrorJSONResponse{
 				Error: api.ErrorDetail{
@@ -748,6 +807,11 @@ func (h *SessionHandlers) InterruptSession(ctx context.Context, req api.Interrup
 				},
 			}, nil
 		}
+		slog.Error("Failed to get session for interrupt",
+			"error", fmt.Sprintf("%v", err),
+			"session_id", req.Id,
+			"operation", "InterruptSession",
+		)
 		return api.InterruptSession500JSONResponse{
 			InternalErrorJSONResponse: api.InternalErrorJSONResponse{
 				Error: api.ErrorDetail{
@@ -769,6 +833,11 @@ func (h *SessionHandlers) InterruptSession(ctx context.Context, req api.Interrup
 
 	err = h.manager.InterruptSession(ctx, string(req.Id))
 	if err != nil {
+		slog.Error("Failed to interrupt session",
+			"error", fmt.Sprintf("%v", err),
+			"session_id", req.Id,
+			"operation", "InterruptSession",
+		)
 		return api.InterruptSession500JSONResponse{
 			InternalErrorJSONResponse: api.InternalErrorJSONResponse{
 				Error: api.ErrorDetail{
@@ -800,6 +869,11 @@ func (h *SessionHandlers) GetSessionMessages(ctx context.Context, req api.GetSes
 				},
 			}, nil
 		}
+		slog.Error("Failed to get session conversation",
+			"error", fmt.Sprintf("%v", err),
+			"session_id", req.Id,
+			"operation", "GetSessionMessages",
+		)
 		return api.GetSessionMessages500JSONResponse{
 			InternalErrorJSONResponse: api.InternalErrorJSONResponse{
 				Error: api.ErrorDetail{
@@ -836,6 +910,11 @@ func (h *SessionHandlers) GetSessionSnapshots(ctx context.Context, req api.GetSe
 				},
 			}, nil
 		}
+		slog.Error("Failed to verify session exists for snapshots",
+			"error", fmt.Sprintf("%v", err),
+			"session_id", req.Id,
+			"operation", "GetSessionSnapshots",
+		)
 		return api.GetSessionSnapshots500JSONResponse{
 			InternalErrorJSONResponse: api.InternalErrorJSONResponse{
 				Error: api.ErrorDetail{
@@ -848,6 +927,11 @@ func (h *SessionHandlers) GetSessionSnapshots(ctx context.Context, req api.GetSe
 
 	snapshots, err := h.store.GetFileSnapshots(ctx, string(req.Id))
 	if err != nil {
+		slog.Error("Failed to get file snapshots",
+			"error", fmt.Sprintf("%v", err),
+			"session_id", req.Id,
+			"operation", "GetSessionSnapshots",
+		)
 		return api.GetSessionSnapshots500JSONResponse{
 			InternalErrorJSONResponse: api.InternalErrorJSONResponse{
 				Error: api.ErrorDetail{
@@ -919,6 +1003,11 @@ func (h *SessionHandlers) GetRecentPaths(ctx context.Context, req api.GetRecentP
 
 	paths, err := h.store.GetRecentWorkingDirs(ctx, limit)
 	if err != nil {
+		slog.Error("Failed to get recent working directories",
+			"error", fmt.Sprintf("%v", err),
+			"limit", limit,
+			"operation", "GetRecentPaths",
+		)
 		return api.GetRecentPaths500JSONResponse{
 			InternalErrorJSONResponse: api.InternalErrorJSONResponse{
 				Error: api.ErrorDetail{

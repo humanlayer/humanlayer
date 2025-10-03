@@ -37,6 +37,11 @@ func (h *ProxyHandler) setAuthHeaders(c *gin.Context, req *http.Request, url str
 		req.Header.Set("anthropic-version", c.GetHeader("anthropic-version"))
 		apiKey := os.Getenv("ANTHROPIC_API_KEY")
 		if apiKey == "" {
+			slog.Error("ANTHROPIC_API_KEY not configured",
+				"error", "ANTHROPIC_API_KEY not configured",
+				"session_id", session.ID,
+				"operation", "ProxyAnthropicRequest",
+			)
 			c.JSON(500, gin.H{"error": "ANTHROPIC_API_KEY not configured"})
 			return fmt.Errorf("ANTHROPIC_API_KEY not configured")
 		}
@@ -48,6 +53,11 @@ func (h *ProxyHandler) setAuthHeaders(c *gin.Context, req *http.Request, url str
 			apiKey = os.Getenv("BASETEN_API_KEY")
 		}
 		if apiKey == "" {
+			slog.Error("BASETEN_API_KEY not configured",
+				"error", "BASETEN_API_KEY not configured",
+				"session_id", session.ID,
+				"operation", "ProxyAnthropicRequest",
+			)
 			c.JSON(500, gin.H{"error": "BASETEN_API_KEY not configured"})
 			return fmt.Errorf("BASETEN_API_KEY not configured")
 		}
@@ -59,6 +69,11 @@ func (h *ProxyHandler) setAuthHeaders(c *gin.Context, req *http.Request, url str
 			apiKey = os.Getenv("OPENROUTER_API_KEY")
 		}
 		if apiKey == "" {
+			slog.Error("No API key configured for proxy",
+				"error", "No API key configured for proxy",
+				"session_id", session.ID,
+				"operation", "ProxyAnthropicRequest",
+			)
 			c.JSON(500, gin.H{"error": "No API key configured for proxy"})
 			return fmt.Errorf("no API key configured for proxy")
 		}
@@ -82,7 +97,7 @@ func (h *ProxyHandler) ProxyAnthropicRequest(c *gin.Context) {
 	// Get session with proxy config
 	session, err := h.store.GetSession(c.Request.Context(), sessionID)
 	if err != nil {
-		slog.Error("session not found", "session_id", sessionID, "error", err)
+		slog.Error("session not found", "session_id", sessionID, "error", fmt.Sprintf("%v", err))
 		c.JSON(404, gin.H{"error": "Session not found"})
 		return
 	}
@@ -97,7 +112,7 @@ func (h *ProxyHandler) ProxyAnthropicRequest(c *gin.Context) {
 	// Read request body
 	bodyBytes, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		slog.Error("failed to read request body", "error", err)
+		slog.Error("failed to read request body", "error", fmt.Sprintf("%v", err))
 		c.JSON(400, gin.H{"error": "Failed to read request body"})
 		return
 	}
@@ -110,7 +125,7 @@ func (h *ProxyHandler) ProxyAnthropicRequest(c *gin.Context) {
 	// Parse to check if streaming is requested
 	var requestBody map[string]interface{}
 	if err := json.Unmarshal(bodyBytes, &requestBody); err != nil {
-		slog.Error("invalid JSON in request", "error", err)
+		slog.Error("invalid JSON in request", "error", fmt.Sprintf("%v", err))
 		c.JSON(400, gin.H{"error": "Invalid JSON"})
 		return
 	}
@@ -214,7 +229,7 @@ func (h *ProxyHandler) handleNonStreamingProxy(c *gin.Context, sessionID string,
 	if err != nil {
 		slog.Error("failed to create upstream request",
 			"session_id", sessionID,
-			"error", err)
+			"error", fmt.Sprintf("%v", err))
 		c.JSON(500, gin.H{"error": "Failed to create request"})
 		return
 	}
@@ -240,7 +255,7 @@ func (h *ProxyHandler) handleNonStreamingProxy(c *gin.Context, sessionID string,
 		slog.Error("upstream request failed",
 			"session_id", sessionID,
 			"url", url,
-			"error", err,
+			"error", fmt.Sprintf("%v", err),
 			"duration_ms", time.Since(requestStart).Milliseconds())
 		c.JSON(500, gin.H{"error": "Upstream request failed"})
 		return
@@ -259,7 +274,7 @@ func (h *ProxyHandler) handleNonStreamingProxy(c *gin.Context, sessionID string,
 	if err != nil {
 		slog.Error("failed to read response body",
 			"session_id", sessionID,
-			"error", err)
+			"error", fmt.Sprintf("%v", err))
 		c.JSON(500, gin.H{"error": "Failed to read response"})
 		return
 	}
@@ -319,7 +334,7 @@ func (h *ProxyHandler) handleStreamingProxy(c *gin.Context, sessionID string, ur
 	if err != nil {
 		slog.Error("failed to create streaming upstream request",
 			"session_id", sessionID,
-			"error", err)
+			"error", fmt.Sprintf("%v", err))
 		c.JSON(500, gin.H{"error": "Failed to create request"})
 		return
 	}
@@ -344,7 +359,7 @@ func (h *ProxyHandler) handleStreamingProxy(c *gin.Context, sessionID string, ur
 		slog.Error("streaming upstream request failed",
 			"session_id", sessionID,
 			"url", url,
-			"error", err,
+			"error", fmt.Sprintf("%v", err),
 			"duration_ms", time.Since(requestStart).Milliseconds())
 		c.JSON(500, gin.H{"error": "Upstream request failed"})
 		return
@@ -395,7 +410,7 @@ func (h *ProxyHandler) handleStreamingProxy(c *gin.Context, sessionID string, ur
 	if err := scanner.Err(); err != nil {
 		slog.Error("streaming scanner error",
 			"session_id", sessionID,
-			"error", err)
+			"error", fmt.Sprintf("%v", err))
 		_, _ = fmt.Fprintf(c.Writer, "event: error\ndata: %s\n\n", err.Error())
 		flusher.Flush()
 	}
