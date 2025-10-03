@@ -516,7 +516,7 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
                       onToggleForkView={onToggleForkView}
                       disabled={isResponding}
                       placeholder={placeholder}
-                      className={`flex-1 min-h-[2.5rem] ${isResponding ? 'opacity-50' : ''} ${textareaOutlineClass} ${
+                      className={`flex-1 min-h-[2.5rem] max-h-[50vh] overflow-y-auto ${isResponding ? 'opacity-50' : ''} ${textareaOutlineClass} ${
                         isDenying && isFocused ? 'caret-error' : isFocused ? 'caret-accent' : ''
                       }`}
                       onFocus={() => {
