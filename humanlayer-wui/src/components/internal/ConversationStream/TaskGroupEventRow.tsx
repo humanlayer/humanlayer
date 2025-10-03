@@ -6,6 +6,7 @@ import { StatusBadge } from './EventContent/StatusBadge'
 import { ConversationEvent, ConversationEventType } from '@/lib/daemon/types'
 import { formatTimestamp, formatAbsoluteTimestamp } from '@/utils/formatting'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { SentryErrorBoundary } from '@/components/ErrorBoundary'
 
 interface TaskGroupEventRowProps extends Omit<ConversationEventRowProps, 'event'> {
   group: TaskEventGroup
@@ -15,7 +16,7 @@ interface TaskGroupEventRowProps extends Omit<ConversationEventRowProps, 'event'
   focusedEventId?: number | null
 }
 
-export function TaskGroupEventRow({
+function TaskGroupEventRowInner({
   group,
   isExpanded,
   onToggle,
@@ -162,5 +163,26 @@ export function TaskGroupEventRow({
         </div>
       )}
     </div>
+  )
+}
+
+// Export wrapped version with error boundary
+export function TaskGroupEventRow(props: TaskGroupEventRowProps) {
+  return (
+    <SentryErrorBoundary
+      variant="response-editor"
+      componentName="TaskGroupEventRow"
+      handleRefresh={() => {
+        const sessionId = window.location.hash.match(/sessions\/([^/?]+)/)?.[1]
+        if (sessionId) {
+          window.location.href = `/#/sessions/${sessionId}`
+        } else {
+          window.location.href = '/#/'
+        }
+      }}
+      refreshButtonText="Reload Session"
+    >
+      <TaskGroupEventRowInner {...props} />
+    </SentryErrorBoundary>
   )
 }

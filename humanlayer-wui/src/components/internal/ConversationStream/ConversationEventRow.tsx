@@ -5,6 +5,7 @@ import type {
   ConversationEventRoleEnum,
 } from '@humanlayer/hld-sdk'
 import { ConversationEventType, ConversationRole } from '@/lib/daemon'
+import { SentryErrorBoundary } from '@/components/ErrorBoundary'
 import {
   Bot,
   User,
@@ -343,7 +344,7 @@ export interface ConversationEventRowProps extends React.HTMLAttributes<HTMLDivE
   onCancelDeny?: () => void
 }
 
-export function ConversationEventRow({
+function ConversationEventRowInner({
   event,
   toolResult,
   ref,
@@ -699,5 +700,27 @@ export function ConversationEventRow({
         messageContent
       )}
     </ConversationEventRowShell>
+  )
+}
+
+// Export wrapped version with error boundary
+export function ConversationEventRow(props: ConversationEventRowProps) {
+  return (
+    <SentryErrorBoundary
+      variant="response-editor"
+      componentName="ConversationEventRow"
+      handleRefresh={() => {
+        // Extract session ID from URL and reload
+        const sessionId = window.location.hash.match(/sessions\/([^/?]+)/)?.[1]
+        if (sessionId) {
+          window.location.href = `/#/sessions/${sessionId}`
+        } else {
+          window.location.href = '/#/'
+        }
+      }}
+      refreshButtonText="Reload Session"
+    >
+      <ConversationEventRowInner {...props} />
+    </SentryErrorBoundary>
   )
 }
