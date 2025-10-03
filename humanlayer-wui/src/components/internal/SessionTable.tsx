@@ -4,6 +4,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { useEffect, useRef, useState } from 'react'
 import { CircleOff, CheckSquare, Square, Pencil, ShieldOff } from 'lucide-react'
+import { SentryErrorBoundary } from '@/components/ErrorBoundary'
 import { getStatusTextClass } from '@/utils/component-utils'
 import { formatTimestamp, formatAbsoluteTimestamp } from '@/utils/formatting'
 import { highlightMatches } from '@/lib/fuzzy-search'
@@ -38,7 +39,7 @@ interface SessionTableProps {
   onBypassPermissions?: (sessionIds: string[]) => void
 }
 
-export default function SessionTable({
+function SessionTableInner({
   sessions,
   handleFocusSession,
   handleBlurSession,
@@ -772,5 +773,21 @@ export default function SessionTable({
         }}
       />
     </HotkeyScopeBoundary>
+  )
+}
+
+// Export wrapped version with error boundary
+export default function SessionTable(props: SessionTableProps) {
+  return (
+    <SentryErrorBoundary
+      variant="session-detail"
+      componentName="SessionTable"
+      handleRefresh={() => {
+        window.location.href = '/#/'
+      }}
+      refreshButtonText="Reload Sessions"
+    >
+      <SessionTableInner {...props} />
+    </SentryErrorBoundary>
   )
 }

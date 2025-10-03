@@ -1127,3 +1127,50 @@ export const MCPLinearListIssuesToolCall: Story = {
     },
   },
 }
+
+// Error Boundary Demo - shows error boundary with compact inline fallback UI
+export const ErrorBoundaryDemo: Story = {
+  args: {} as any,
+  render: () => {
+    // Create an event that throws when the component tries to access properties during render
+    const brokenEvent = new Proxy(
+      {
+        id: 1,
+        sessionId: 'test-session',
+        claudeSessionId: 'test-claude-session',
+        sequence: 1,
+        createdAt: new Date(),
+        isCompleted: false,
+      },
+      {
+        get(target, prop) {
+          // Throw error when component tries to access eventType during render
+          if (prop === 'eventType') {
+            throw new Error('Test error: ConversationEventRow rendering failed')
+          }
+          return (target as any)[prop]
+        },
+      },
+    ) as ConversationEvent
+
+    return (
+      <ConversationEventRow
+        event={brokenEvent}
+        shouldIgnoreMouseEvent={() => false}
+        setFocusedEventId={() => {}}
+        setFocusSource={() => {}}
+        isFocused={false}
+        isLast={true}
+        responseEditorIsFocused={false}
+      />
+    )
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Demonstrates error boundary behavior by using a Proxy that throws when the component accesses properties during render. Shows the compact "response-editor" variant fallback UI with refresh functionality.',
+      },
+    },
+  },
+}

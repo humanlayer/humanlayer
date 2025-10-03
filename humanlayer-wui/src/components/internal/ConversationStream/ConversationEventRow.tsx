@@ -5,6 +5,7 @@ import type {
   ConversationEventRoleEnum,
 } from '@humanlayer/hld-sdk'
 import { ConversationEventType, ConversationRole } from '@/lib/daemon'
+import { SentryErrorBoundary } from '@/components/ErrorBoundary'
 import {
   Bot,
   User,
@@ -19,6 +20,7 @@ import {
   FileText,
   List,
   Brain,
+  AlertCircle,
 } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { formatAbsoluteTimestamp, formatTimestamp } from '@/utils/formatting'
@@ -343,7 +345,7 @@ export interface ConversationEventRowProps extends React.HTMLAttributes<HTMLDivE
   onCancelDeny?: () => void
 }
 
-export function ConversationEventRow({
+function ConversationEventRowInner({
   event,
   toolResult,
   ref,
@@ -699,5 +701,51 @@ export function ConversationEventRow({
         messageContent
       )}
     </ConversationEventRowShell>
+  )
+}
+
+// Custom error fallback component for ConversationEventRow
+function ConversationEventRowErrorFallback({
+  error,
+  resetError,
+}: {
+  error: Error
+  resetError: () => void
+}) {
+  return (
+    <div className="flex flex-col space-y-2 p-3 text-sm text-muted-foreground">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <AlertCircle className="w-4 h-4" />
+          <span>Error rendering event</span>
+        </div>
+        <Button onClick={resetError} variant="outline" size="sm" className="h-6 text-xs">
+          Reload Session
+        </Button>
+      </div>
+      <div className="text-xs text-destructive">{error.message}</div>
+    </div>
+  )
+}
+
+// Export wrapped version with error boundary
+export function ConversationEventRow(props: ConversationEventRowProps) {
+  return (
+    <SentryErrorBoundary
+      fallback={ConversationEventRowErrorFallback}
+      componentName="ConversationEventRow"
+      handleRefresh={() => {
+        // Extract session ID from URL and reload
+        const sessionId = window.location.hash.match(/sessions\/([^/?]+)/)?.[1]
+        if (sessionId) {
+          window.location.href = `/#/sessions/${sessionId}`
+        } else {
+          window.location.href = '/#/'
+        }
+      }}
+      refreshButtonText="Reload Session"
+    >
+      <ConversationEventRowInner {...props} />
+    </SentryErrorBoundary>
   )
 }
