@@ -44,7 +44,7 @@ export function SessionsEmptyState() {
           <Button onClick={handleCreateSession} size="lg">
             Create Session <KeyboardShortcut keyString="C" />
           </Button>
-          <Button variant="outline" size="lg" onClick={() => open()}>
+          <Button variant="secondary" size="lg" onClick={() => open()}>
             Open command palette <KeyboardShortcut keyString={`${Mod}+K`} />
           </Button>
         </div>
