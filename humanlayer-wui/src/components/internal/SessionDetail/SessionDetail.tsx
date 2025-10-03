@@ -907,7 +907,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
 
   // Cmd+Enter handler for launching draft sessions
   useHotkeys(
-    'cmd+enter, ctrl+enter',
+    'meta+enter, ctrl+enter',
     e => {
       e.preventDefault()
       e.stopPropagation()
@@ -936,7 +936,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     {
       enabled: isDraft,
       preventDefault: true,
-      enableOnFormTags: true, // Important: allows hotkey to work in input fields
+      enableOnFormTags: ['INPUT', 'TEXTAREA', 'SELECT'], // Explicit array to ensure it works in form fields
       scopes: [HOTKEY_SCOPES.DRAFT_LAUNCHER],
     },
     [selectedDirectory, session.workingDir, responseEditor, handleLaunchDraft],
@@ -944,7 +944,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
 
   // Cmd+Shift+. handler for discarding draft sessions
   useHotkeys(
-    'cmd+shift+., ctrl+shift+.',
+    'meta+shift+., ctrl+shift+.',
     () => {
       setShowDiscardDialog(true)
     },
