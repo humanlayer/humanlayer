@@ -28,6 +28,7 @@ export default function CommandPaletteMenu() {
   const archiveSession = useStore(state => state.archiveSession)
   const bulkArchiveSessions = useStore(state => state.bulkArchiveSessions)
   const setSettingsDialogOpen = useStore(state => state.setSettingsDialogOpen)
+  const setHotkeyPanelOpen = useStore(state => state.setHotkeyPanelOpen)
 
   // Check if we're viewing a session detail
   const isSessionDetail = isViewingSessionDetail()
@@ -76,6 +77,16 @@ export default function CommandPaletteMenu() {
       },
       hotkey: '⌘+⇧+S',
     },
+    {
+      id: 'view-hotkey-map',
+      label: 'View Hotkey Map',
+      description: 'View all keyboard shortcuts',
+      action: () => {
+        close() // Close command palette first
+        setHotkeyPanelOpen(true) // Then open hotkey panel
+      },
+      hotkey: '?',
+    },
     ...(isSessionDetail && searchQuery.toLowerCase().includes('brain')
       ? [
           {
@@ -120,9 +131,14 @@ export default function CommandPaletteMenu() {
       : []),
   ]
 
-  // Filter options based on search query
+  // Filter options based on search query (match against label and description)
   const menuOptions = searchQuery
-    ? baseOptions.filter(option => option.label.toLowerCase().includes(searchQuery.toLowerCase()))
+    ? baseOptions.filter(option => {
+        const query = searchQuery.toLowerCase()
+        const labelMatch = option.label.toLowerCase().includes(query)
+        const descriptionMatch = option.description?.toLowerCase().includes(query) || false
+        return labelMatch || descriptionMatch
+      })
     : baseOptions
 
   // Keyboard navigation - only arrow keys
