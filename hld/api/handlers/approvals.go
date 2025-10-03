@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"log/slog"
 	"github.com/humanlayer/humanlayer/hld/api"
 	"github.com/humanlayer/humanlayer/hld/api/mapper"
 	"github.com/humanlayer/humanlayer/hld/approval"
@@ -48,6 +50,12 @@ func (h *ApprovalHandlers) CreateApproval(ctx context.Context, req api.CreateApp
 		toolInputJSON,
 	)
 	if err != nil {
+		slog.Error("Failed to create approval",
+			"error", fmt.Sprintf("%v", err),
+			"run_id", req.Body.RunId,
+			"tool_name", req.Body.ToolName,
+			"operation", "CreateApproval",
+		)
 		return api.CreateApproval500JSONResponse{
 			InternalErrorJSONResponse: api.InternalErrorJSONResponse{
 				Error: api.ErrorDetail{
@@ -76,6 +84,11 @@ func (h *ApprovalHandlers) ListApprovals(ctx context.Context, req api.ListApprov
 	}
 
 	if err != nil {
+		slog.Error("Failed to list approvals",
+			"error", fmt.Sprintf("%v", err),
+			"session_id", req.Params.SessionId,
+			"operation", "ListApprovals",
+		)
 		return api.ListApprovals500JSONResponse{
 			InternalErrorJSONResponse: api.InternalErrorJSONResponse{
 				Error: api.ErrorDetail{
@@ -112,6 +125,11 @@ func (h *ApprovalHandlers) GetApproval(ctx context.Context, req api.GetApprovalR
 				},
 			}, nil
 		}
+		slog.Error("Failed to get approval",
+			"error", fmt.Sprintf("%v", err),
+			"approval_id", req.Id,
+			"operation", "GetApproval",
+		)
 		return api.GetApproval500JSONResponse{
 			InternalErrorJSONResponse: api.InternalErrorJSONResponse{
 				Error: api.ErrorDetail{
@@ -179,6 +197,12 @@ func (h *ApprovalHandlers) DecideApproval(ctx context.Context, req api.DecideApp
 				},
 			}, nil
 		}
+		slog.Error("Failed to decide approval",
+			"error", fmt.Sprintf("%v", err),
+			"approval_id", req.Id,
+			"decision", req.Body.Decision,
+			"operation", "DecideApproval",
+		)
 		return api.DecideApproval500JSONResponse{
 			InternalErrorJSONResponse: api.InternalErrorJSONResponse{
 				Error: api.ErrorDetail{
