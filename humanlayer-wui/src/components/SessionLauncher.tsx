@@ -15,7 +15,9 @@ interface SessionLauncherProps {
 }
 
 export function SessionLauncher({ isOpen, onClose }: SessionLauncherProps) {
-  const focusTrapRef = useFocusTrap(isOpen)
+  const focusTrapRef = useFocusTrap(isOpen, {
+    allowTabNavigation: true,
+  })
   const { query, setQuery, config, setConfig, launchSession, isLaunching, error, mode, view, setView } =
     useSessionLauncher()
 
@@ -98,6 +100,26 @@ export function SessionLauncher({ isOpen, onClose }: SessionLauncherProps) {
             'w-full max-w-2xl bg-background border-2 shadow-xl',
             'animate-in fade-in-0 zoom-in-95 duration-200',
           )}
+          onKeyDown={e => {
+            // Prevent Tab from escaping the modal
+            if (e.key === 'Tab') {
+              const focusableElements = focusTrapRef.current?.querySelectorAll(
+                'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+              )
+              if (focusableElements && focusableElements.length > 0) {
+                const firstElement = focusableElements[0] as HTMLElement
+                const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement
+
+                if (e.shiftKey && document.activeElement === firstElement) {
+                  e.preventDefault()
+                  lastElement.focus()
+                } else if (!e.shiftKey && document.activeElement === lastElement) {
+                  e.preventDefault()
+                  firstElement.focus()
+                }
+              }
+            }
+          }}
         >
           <CardContent className="p-6">
             <div className="space-y-4">

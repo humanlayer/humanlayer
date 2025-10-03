@@ -4,6 +4,7 @@ import { useSessionLauncher, isViewingSessionDetail } from '@/hooks/useSessionLa
 import { useStore } from '@/AppStore'
 import { cn } from '@/lib/utils'
 import { KeyboardShortcut } from './HotkeyPanel'
+import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
 
 interface MenuOption {
   id: string
@@ -147,7 +148,7 @@ export default function CommandPaletteMenu() {
     () => {
       setSelectedMenuIndex(selectedMenuIndex > 0 ? selectedMenuIndex - 1 : menuOptions.length - 1)
     },
-    { enabled: true, enableOnFormTags: true, scopes: 'session-launcher' },
+    { enabled: true, enableOnFormTags: true, scopes: [HOTKEY_SCOPES.SESSION_LAUNCHER] },
   )
 
   useHotkeys(
@@ -155,7 +156,7 @@ export default function CommandPaletteMenu() {
     () => {
       setSelectedMenuIndex(selectedMenuIndex < menuOptions.length - 1 ? selectedMenuIndex + 1 : 0)
     },
-    { enabled: true, enableOnFormTags: true, scopes: 'session-launcher' },
+    { enabled: true, enableOnFormTags: true, scopes: [HOTKEY_SCOPES.SESSION_LAUNCHER] },
   )
 
   useHotkeys(
@@ -165,7 +166,39 @@ export default function CommandPaletteMenu() {
         menuOptions[selectedMenuIndex].action()
       }
     },
-    { enabled: true, enableOnFormTags: true, scopes: 'session-launcher' },
+    { enabled: true, enableOnFormTags: true, scopes: [HOTKEY_SCOPES.SESSION_LAUNCHER] },
+  )
+
+  // Tab key navigates down the list
+  useHotkeys(
+    'tab',
+    e => {
+      if (menuOptions.length === 0) return
+      e.preventDefault()
+      setSelectedMenuIndex((selectedMenuIndex + 1) % menuOptions.length)
+    },
+    {
+      enabled: true,
+      enableOnFormTags: true,
+      scopes: [HOTKEY_SCOPES.SESSION_LAUNCHER],
+      preventDefault: true,
+    },
+  )
+
+  // Shift+Tab navigates up the list
+  useHotkeys(
+    'shift+tab',
+    e => {
+      if (menuOptions.length === 0) return
+      e.preventDefault()
+      setSelectedMenuIndex(selectedMenuIndex > 0 ? selectedMenuIndex - 1 : menuOptions.length - 1)
+    },
+    {
+      enabled: true,
+      enableOnFormTags: true,
+      scopes: [HOTKEY_SCOPES.SESSION_LAUNCHER],
+      preventDefault: true,
+    },
   )
 
   // Reset selection when options change
@@ -231,7 +264,7 @@ export default function CommandPaletteMenu() {
 
       <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t border-border/30">
         <div className="flex items-center space-x-3">
-          <span>↑↓ Navigate</span>
+          <span>↑↓/Tab Navigate</span>
           <span>↵ Select</span>
         </div>
         <span>ESC Close</span>
