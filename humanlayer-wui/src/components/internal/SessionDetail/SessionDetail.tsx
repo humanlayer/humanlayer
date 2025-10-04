@@ -9,7 +9,11 @@ import { useConversation, useKeyboardNavigationProtection } from '@/hooks'
 import { ChevronDown, FolderOpen, TextSearch } from 'lucide-react'
 import { daemonClient } from '@/lib/daemon/client'
 import { useStore } from '@/AppStore'
-import { getArchiveOnForkPreference, DRAFT_LAUNCHER_PREFS, getDraftLauncherDefaults } from '@/lib/preferences'
+import {
+  getArchiveOnForkPreference,
+  DRAFT_LAUNCHER_PREFS,
+  getDraftLauncherDefaults,
+} from '@/lib/preferences'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
 import { HotkeyScopeBoundary } from '@/components/HotkeyScopeBoundary'
 import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
@@ -240,11 +244,11 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const defaults = getDraftLauncherDefaults()
   const [savedBypassPermissions, setSavedBypassPermissions, bypassLoaded] = useLocalStorage(
     DRAFT_LAUNCHER_PREFS.BYPASS_PERMISSIONS,
-    defaults.bypassPermissions
+    defaults.bypassPermissions,
   )
   const [savedAutoAccept, setSavedAutoAccept, autoAcceptLoaded] = useLocalStorage(
     DRAFT_LAUNCHER_PREFS.AUTO_ACCEPT,
-    defaults.autoAccept
+    defaults.autoAccept,
   )
 
   const responseEditor = useStore(state => state.responseEditor)
@@ -299,17 +303,19 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
 
   // For draft sessions, use localStorage values directly as the source of truth
   // For active sessions, use store values if available, otherwise fall back to session prop
-  const autoAcceptEdits = isDraft && autoAcceptLoaded
-    ? savedAutoAccept
-    : sessionFromStore?.autoAcceptEdits !== undefined
-      ? sessionFromStore.autoAcceptEdits
-      : (session.autoAcceptEdits ?? false)
+  const autoAcceptEdits =
+    isDraft && autoAcceptLoaded
+      ? savedAutoAccept
+      : sessionFromStore?.autoAcceptEdits !== undefined
+        ? sessionFromStore.autoAcceptEdits
+        : (session.autoAcceptEdits ?? false)
 
-  const dangerouslySkipPermissions = isDraft && bypassLoaded
-    ? savedBypassPermissions
-    : sessionFromStore?.dangerouslySkipPermissions !== undefined
-      ? sessionFromStore.dangerouslySkipPermissions
-      : (session.dangerouslySkipPermissions ?? false)
+  const dangerouslySkipPermissions =
+    isDraft && bypassLoaded
+      ? savedBypassPermissions
+      : sessionFromStore?.dangerouslySkipPermissions !== undefined
+        ? sessionFromStore.dangerouslySkipPermissions
+        : (session.dangerouslySkipPermissions ?? false)
 
   const dangerouslySkipPermissionsExpiresAt =
     sessionFromStore?.dangerouslySkipPermissionsExpiresAt !== undefined
@@ -640,7 +646,16 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     } finally {
       setIsLaunchingDraft(false)
     }
-  }, [isDraft, session.id, session.workingDir, responseEditor, isLaunchingDraft, selectedDirectory, autoAcceptEdits, dangerouslySkipPermissions])
+  }, [
+    isDraft,
+    session.id,
+    session.workingDir,
+    responseEditor,
+    isLaunchingDraft,
+    selectedDirectory,
+    autoAcceptEdits,
+    dangerouslySkipPermissions,
+  ])
 
   // Handle directory selection change
   const handleDirectoryChange = useCallback(
@@ -847,7 +862,14 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         toast.error('Failed to toggle auto-accept mode')
       }
     }
-  }, [session.id, autoAcceptEdits, updateSessionOptimistic, isDraft, savedAutoAccept, setSavedAutoAccept])
+  }, [
+    session.id,
+    autoAcceptEdits,
+    updateSessionOptimistic,
+    isDraft,
+    savedAutoAccept,
+    setSavedAutoAccept,
+  ])
 
   // Create reusable handler for toggling dangerously skip permissions
   const handleToggleDangerouslySkipPermissions = useCallback(async () => {
@@ -897,7 +919,15 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         setDangerousSkipPermissionsDialogOpen(true)
       }
     }
-  }, [session.id, activeScopes, dangerousSkipPermissionsDialogOpen, updateSessionOptimistic, isDraft, savedBypassPermissions, setSavedBypassPermissions])
+  }, [
+    session.id,
+    activeScopes,
+    dangerousSkipPermissionsDialogOpen,
+    updateSessionOptimistic,
+    isDraft,
+    savedBypassPermissions,
+    setSavedBypassPermissions,
+  ])
 
   // ===== DRAFT MODE HOTKEYS =====
   // These only work when in draft mode (DRAFT_LAUNCHER scope)

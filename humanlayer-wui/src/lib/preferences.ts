@@ -5,7 +5,7 @@ export const ARCHIVE_ON_FORK_KEY = 'archive-source-on-fork'
 export const DRAFT_LAUNCHER_PREFS = {
   BYPASS_PERMISSIONS: 'draft-launcher-bypass-permissions',
   AUTO_ACCEPT: 'draft-launcher-auto-accept',
-} as const;
+} as const
 
 // Helper functions
 export const getArchiveOnForkPreference = (): boolean => {
@@ -22,5 +22,5 @@ export function getDraftLauncherDefaults() {
   return {
     bypassPermissions: false,
     autoAccept: false,
-  };
+  }
 }
