@@ -108,11 +108,13 @@ interface StoreState {
   userSettings: {
     advancedProviders: boolean
     optInTelemetry?: boolean
+    enableGlobalShortcut?: boolean
   } | null
   fetchUserSettings: () => Promise<void>
   updateUserSettings: (settings: {
     advancedProviders?: boolean
     optInTelemetry?: boolean
+    enableGlobalShortcut?: boolean
   }) => Promise<void>
 
   /* Claude Configuration */
@@ -1048,25 +1050,27 @@ export const useStore = create<StoreState>((set, get) => {
     fetchUserSettings: async () => {
       try {
         const response = await daemonClient.getUserSettings()
-        const { advancedProviders, optInTelemetry } = response.data
+        const { advancedProviders, optInTelemetry, enableGlobalShortcut } = response.data
         set({
           userSettings: {
             advancedProviders,
             optInTelemetry,
+            enableGlobalShortcut,
           },
         })
       } catch (error) {
         logger.error('Failed to fetch user settings:', error)
       }
     },
-    updateUserSettings: async (settings: { advancedProviders?: boolean; optInTelemetry?: boolean }) => {
+    updateUserSettings: async (settings: { advancedProviders?: boolean; optInTelemetry?: boolean; enableGlobalShortcut?: boolean }) => {
       try {
         const response = await daemonClient.updateUserSettings(settings)
-        const { advancedProviders, optInTelemetry } = response.data
+        const { advancedProviders, optInTelemetry, enableGlobalShortcut } = response.data
         set({
           userSettings: {
             advancedProviders,
             optInTelemetry,
+            enableGlobalShortcut,
           },
         })
       } catch (error) {

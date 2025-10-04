@@ -1442,6 +1442,9 @@ components:
         opt_in_telemetry:
           type: boolean
           description: Opt-in for performance and error reporting
+        enable_global_shortcut:
+          type: boolean
+          description: Enable global keyboard shortcut (Cmd+Shift+H) for quick launcher
         created_at:
           type: string
           format: date-time
@@ -1466,6 +1469,9 @@ components:
         opt_in_telemetry:
           type: boolean
           description: Opt-in or opt-out of performance and error reporting
+        enable_global_shortcut:
+          type: boolean
+          description: Enable or disable global keyboard shortcut (Cmd+Shift+H)
 
     # Approval Types
     Approval:
