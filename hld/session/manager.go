@@ -1981,23 +1981,7 @@ func (m *Manager) launchDraftWithConfig(ctx context.Context, sessionID, runID st
 		}
 	}
 
-	// 2. Apply specific ANTHROPIC_* config fields (medium priority)
-	if m.anthropicBaseURL != "" {
-		if _, ok := claudeConfig.Env["ANTHROPIC_BASE_URL"]; !ok {
-			claudeConfig.Env["ANTHROPIC_BASE_URL"] = m.anthropicBaseURL
-			slog.Debug("inherited ANTHROPIC_BASE_URL from daemon configuration",
-				"session_id", sessionID,
-				"anthropic_base_url", m.anthropicBaseURL)
-		}
-	}
-	if m.anthropicAPIKey != "" {
-		if _, ok := claudeConfig.Env["ANTHROPIC_API_KEY"]; !ok {
-			claudeConfig.Env["ANTHROPIC_API_KEY"] = m.anthropicAPIKey
-			slog.Debug("inherited ANTHROPIC_API_KEY from daemon configuration",
-				"session_id", sessionID,
-				"has_api_key", true)
-		}
-	}
+	// ANTHROPIC_* variables are inherited via the generic env inheritance above
 
 	// Launch Claude session
 	slog.Info("launching draft session with Claude",

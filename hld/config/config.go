@@ -102,19 +102,29 @@ func Load() (*Config, error) {
 	configFile := v.ConfigFileUsed()
 	if configFile != "" && config.Env != nil {
 		data, err := os.ReadFile(configFile)
-		if err == nil {
-			var rawConfig map[string]interface{}
-			if err := json.Unmarshal(data, &rawConfig); err == nil {
-				if envMap, ok := rawConfig["env"].(map[string]interface{}); ok {
-					// Replace the lowercased env map with the case-preserved version
-					config.Env = make(map[string]string)
-					for k, v := range envMap {
-						if str, ok := v.(string); ok {
-							config.Env[k] = str
-						}
-					}
-				}
+		if err != nil {
+			return nil, fmt.Errorf("failed to read config file %q for env key case preservation: %w", configFile, err)
+		}
+		var rawConfig map[string]interface{}
+		if err := json.Unmarshal(data, &rawConfig); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal config file %q for env key case preservation: %w", configFile, err)
+		}
+		envValue, ok := rawConfig["env"]
+		if !ok {
+			return nil, fmt.Errorf("config file %q does not contain 'env' key for case preservation", configFile)
+		}
+		envMap, ok := envValue.(map[string]interface{})
+		if !ok {
+			return nil, fmt.Errorf("config file %q 'env' value is not a map[string]interface{}, got %T", configFile, envValue)
+		}
+		// Replace the lowercased env map with the case-preserved version
+		config.Env = make(map[string]string)
+		for k, v := range envMap {
+			str, ok := v.(string)
+			if !ok {
+				return nil, fmt.Errorf("config file %q env key %q value is not a string, got %T", configFile, k, v)
 			}
+			config.Env[k] = str
 		}
 	}
 
