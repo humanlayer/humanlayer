@@ -247,22 +247,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     defaults.autoAccept
   )
 
-  // Debug logging for localStorage values
-  useEffect(() => {
-    if (isDraft) {
-      logger.log('[LocalStorage] Draft session using localStorage preferences:', {
-        savedBypassPermissions,
-        savedAutoAccept,
-        bypassLoaded,
-        autoAcceptLoaded,
-        sessionId: session.id,
-        // These are the values that will be displayed in the UI
-        displayedBypass: dangerouslySkipPermissions,
-        displayedAutoAccept: autoAcceptEdits,
-      })
-    }
-  }, [isDraft, savedBypassPermissions, savedAutoAccept, bypassLoaded, autoAcceptLoaded, session.id, dangerouslySkipPermissions, autoAcceptEdits])
-
   const responseEditor = useStore(state => state.responseEditor)
   const isEditingSessionTitle = useStore(state => state.isEditingSessionTitle)
   const setIsEditingSessionTitle = useStore(state => state.setIsEditingSessionTitle)
@@ -354,7 +338,23 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
 
   // Scope is now handled by HotkeyScopeBoundary wrapper
 
-  // Debug logging
+  // Debug logging for localStorage values (for draft sessions)
+  useEffect(() => {
+    if (isDraft) {
+      logger.log('[LocalStorage] Draft session using localStorage preferences:', {
+        savedBypassPermissions,
+        savedAutoAccept,
+        bypassLoaded,
+        autoAcceptLoaded,
+        sessionId: session.id,
+        // These are the values that will be displayed in the UI
+        displayedBypass: dangerouslySkipPermissions,
+        displayedAutoAccept: autoAcceptEdits,
+      })
+    }
+  }, [isDraft, savedBypassPermissions, savedAutoAccept, bypassLoaded, autoAcceptLoaded, session.id, dangerouslySkipPermissions, autoAcceptEdits])
+
+  // Debug logging for permissions state
   useEffect(() => {
     logger.log('Session permissions state', {
       sessionId: session.id,
@@ -669,6 +669,13 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       // Get the prompt text from the editor
       const prompt = responseEditor?.getText() || ''
 
+      // Apply localStorage settings to the draft session before launching
+      // This ensures the session is created with the user's saved preferences
+      await daemonClient.updateSession(session.id, {
+        autoAcceptEdits: autoAcceptEdits,
+        dangerouslySkipPermissions: dangerouslySkipPermissions,
+      })
+
       // Launch the draft session with the prompt
       // Note: working directory is already updated when selected in the fuzzy finder
       await daemonClient.launchDraftSession(session.id, prompt)
@@ -694,7 +701,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     } finally {
       setIsLaunchingDraft(false)
     }
-  }, [isDraft, session.id, session.workingDir, responseEditor, isLaunchingDraft, selectedDirectory])
+  }, [isDraft, session.id, session.workingDir, responseEditor, isLaunchingDraft, selectedDirectory, autoAcceptEdits, dangerouslySkipPermissions])
 
   // Handle directory selection change
   const handleDirectoryChange = useCallback(
