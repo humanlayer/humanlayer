@@ -967,7 +967,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   useHotkeys(
     'meta+enter, ctrl+enter',
     e => {
-      console.log('[HOTKEY_SCOPE] cmd+enter pressed in DRAFT_LAUNCHER scope')
       e.preventDefault()
       e.stopPropagation()
 
@@ -1034,7 +1033,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   useHotkeys(
     'alt+y, option+y',
     e => {
-      console.log('[HOTKEY_SCOPE] opt+y pressed in DRAFT_LAUNCHER scope')
       e.preventDefault()
       handleToggleDangerouslySkipPermissions()
     },

@@ -80,20 +80,11 @@ const DangerouslySkipPermissionsDialogContent: FC<{
 
   // Reset to default when component mounts (dialog opens)
   React.useEffect(() => {
-    console.log('[HOTKEY_SCOPE] BypassModal: Component mounted, isOpen:', isOpen)
     setTimeoutMinutes(15)
     setUseTimeout(true)
-    return () => {
-      console.log('[HOTKEY_SCOPE] BypassModal: Component unmounting')
-    }
   }, [])
 
-  React.useEffect(() => {
-    console.log('[HOTKEY_SCOPE] BypassModal: isOpen changed to:', isOpen)
-  }, [isOpen])
-
   const handleConfirm = () => {
-    console.log('[HOTKEY_SCOPE] BypassModal: handleConfirm called, closing modal')
     const minutes = useTimeout ? (timeoutMinutes === '' ? 15 : timeoutMinutes) : null
     onConfirm(minutes)
     onOpenChange(false)
