@@ -29,11 +29,10 @@ type Manager struct {
 	eventBus           bus.EventBus
 	store              store.ConversationStore
 	approvalReconciler ApprovalReconciler
-	pendingQueries     sync.Map // map[sessionID]query - stores queries waiting for Claude session ID
-	socketPath         string   // Daemon socket path for MCP servers
-	httpPort           int      // HTTP server port for proxy endpoint
-	anthropicBaseURL   string   // Anthropic API base URL (for Bedrock/custom endpoints)
-	anthropicAPIKey    string   // Anthropic API key
+	pendingQueries     sync.Map          // map[sessionID]query - stores queries waiting for Claude session ID
+	socketPath         string            // Daemon socket path for MCP servers
+	httpPort           int               // HTTP server port for proxy endpoint
+	env                map[string]string // Generic environment variables to pass to all sessions
 }
 
 // Compile-time check that Manager implements SessionManager
@@ -73,13 +72,12 @@ func NewManagerWithConfig(eventBus bus.EventBus, store store.ConversationStore, 
 	logger := slog.With("component", "session_manager")
 
 	m := &Manager{
-		activeProcesses:  make(map[string]ClaudeSession),
-		eventBus:         eventBus,
-		store:            store,
-		socketPath:       socketPath,
-		claudePath:       cfg.ClaudePath, // Use configured Claude path
-		anthropicBaseURL: cfg.AnthropicBaseURL,
-		anthropicAPIKey:  cfg.AnthropicAPIKey,
+		activeProcesses: make(map[string]ClaudeSession),
+		eventBus:        eventBus,
+		store:           store,
+		socketPath:      socketPath,
+		claudePath:      cfg.ClaudePath, // Use configured Claude path
+		env:             cfg.Env,
 	}
 
 	// Try to initialize Claude client but don't fail if unavailable
@@ -361,30 +359,23 @@ func (m *Manager) LaunchSession(ctx context.Context, config LaunchSessionConfig,
 			"has_env_key", os.Getenv("OPENROUTER_API_KEY") != "")
 	}
 
-	// Inherit ANTHROPIC_* environment variables from the daemon's configuration
-	// if they are not explicitly set in the session config. This allows users to
-	// configure Bedrock or custom Anthropic-compatible endpoints via config file
+	// Inherit environment variables from the daemon's configuration.
+	// This allows users to configure environment via config file
 	// (e.g., ~/.config/humanlayer/humanlayer.json) which is necessary because
 	// macOS apps launched from Spotlight/Raycast don't inherit shell environment.
-	// We only inject if the key is not already set in the session's env to allow
-	// explicit per-session overrides.
+	//
+	// Precedence: daemon env < session-specific env overrides
 	if claudeConfig.Env == nil {
 		claudeConfig.Env = make(map[string]string)
 	}
-	if m.anthropicBaseURL != "" {
-		if _, ok := claudeConfig.Env["ANTHROPIC_BASE_URL"]; !ok {
-			claudeConfig.Env["ANTHROPIC_BASE_URL"] = m.anthropicBaseURL
-			slog.Debug("inherited ANTHROPIC_BASE_URL from daemon configuration",
+
+	// Apply env vars from config (only if not already present in session config)
+	for key, value := range m.env {
+		if _, ok := claudeConfig.Env[key]; !ok {
+			claudeConfig.Env[key] = value
+			slog.Debug("inherited env var from daemon configuration",
 				"session_id", sessionID,
-				"anthropic_base_url", m.anthropicBaseURL)
-		}
-	}
-	if m.anthropicAPIKey != "" {
-		if _, ok := claudeConfig.Env["ANTHROPIC_API_KEY"]; !ok {
-			claudeConfig.Env["ANTHROPIC_API_KEY"] = m.anthropicAPIKey
-			slog.Debug("inherited ANTHROPIC_API_KEY from daemon configuration",
-				"session_id", sessionID,
-				"has_api_key", true)
+				"key", key)
 		}
 	}
 
@@ -1729,24 +1720,14 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 		config.Env = make(map[string]string)
 	}
 
-	// If the daemon configuration has ANTHROPIC_* values set (from config file),
-	// inherit them into the resumed session if the session config did not set
-	// these values explicitly. This lets the configuration control the Anthropic
-	// endpoint used by spawned Claude processes.
-	if m.anthropicBaseURL != "" {
-		if _, ok := config.Env["ANTHROPIC_BASE_URL"]; !ok {
-			config.Env["ANTHROPIC_BASE_URL"] = m.anthropicBaseURL
-			slog.Debug("inherited ANTHROPIC_BASE_URL from daemon configuration for resumed session",
+	// Inherit environment variables from the daemon's configuration.
+	// Precedence: daemon env < session-specific env overrides
+	for key, value := range m.env {
+		if _, ok := config.Env[key]; !ok {
+			config.Env[key] = value
+			slog.Debug("inherited env var from daemon configuration for resumed session",
 				"session_id", sessionID,
-				"anthropic_base_url", m.anthropicBaseURL)
-		}
-	}
-	if m.anthropicAPIKey != "" {
-		if _, ok := config.Env["ANTHROPIC_API_KEY"]; !ok {
-			config.Env["ANTHROPIC_API_KEY"] = m.anthropicAPIKey
-			slog.Debug("inherited ANTHROPIC_API_KEY from daemon configuration for resumed session",
-				"session_id", sessionID,
-				"has_api_key", true)
+				"key", key)
 		}
 	}
 
@@ -1979,6 +1960,43 @@ func (m *Manager) launchDraftWithConfig(ctx context.Context, sessionID, runID st
 		proxyURL := fmt.Sprintf("http://localhost:%d/api/v1/anthropic_proxy/%s", httpPort, sessionID)
 		claudeConfig.Env["ANTHROPIC_BASE_URL"] = proxyURL
 		claudeConfig.Env["ANTHROPIC_API_KEY"] = "proxy-handled"
+	}
+
+	// Inherit environment variables from the daemon's configuration.
+	// This happens in three layers:
+	// 1. Generic env map from config (lowest priority)
+	// 2. Specific ANTHROPIC_* config fields (medium priority)
+	// 3. Session-specific env overrides (highest priority, already in claudeConfig.Env)
+	if claudeConfig.Env == nil {
+		claudeConfig.Env = make(map[string]string)
+	}
+
+	// 1. Apply generic env vars from config (lowest priority)
+	for key, value := range m.env {
+		if _, ok := claudeConfig.Env[key]; !ok {
+			claudeConfig.Env[key] = value
+			slog.Debug("inherited generic env var from daemon configuration",
+				"session_id", sessionID,
+				"key", key)
+		}
+	}
+
+	// 2. Apply specific ANTHROPIC_* config fields (medium priority)
+	if m.anthropicBaseURL != "" {
+		if _, ok := claudeConfig.Env["ANTHROPIC_BASE_URL"]; !ok {
+			claudeConfig.Env["ANTHROPIC_BASE_URL"] = m.anthropicBaseURL
+			slog.Debug("inherited ANTHROPIC_BASE_URL from daemon configuration",
+				"session_id", sessionID,
+				"anthropic_base_url", m.anthropicBaseURL)
+		}
+	}
+	if m.anthropicAPIKey != "" {
+		if _, ok := claudeConfig.Env["ANTHROPIC_API_KEY"]; !ok {
+			claudeConfig.Env["ANTHROPIC_API_KEY"] = m.anthropicAPIKey
+			slog.Debug("inherited ANTHROPIC_API_KEY from daemon configuration",
+				"session_id", sessionID,
+				"has_api_key", true)
+		}
 	}
 
 	// Launch Claude session
