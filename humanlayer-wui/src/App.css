@@ -898,9 +898,11 @@
     0%,
     100% {
       opacity: 1;
+      transform: scale(1);
     }
     50% {
-      opacity: 0.5;
+      opacity: 0.6;
+      transform: scale(1.05);
     }
   }
 
@@ -908,13 +910,13 @@
     animation: pulse-once 0.6s ease-in-out;
   }
 
-  /* Deny button pulse animation - pulses between filled and unfilled states */
+  /* Deny button pulse animation - gently pulses between filled and unfilled states */
   @keyframes pulse-deny {
     0%,
     100% {
       background-color: hsl(var(--destructive));
       color: hsl(var(--destructive-foreground));
-      border-color: transparent;
+      border-color: hsl(var(--destructive));
     }
     50% {
       background-color: transparent;
@@ -925,8 +927,7 @@
 
   .animate-pulse-deny {
     animation: pulse-deny 2s ease-in-out infinite;
-    border-width: 1px;
-    border-style: solid;
+    border: 1px solid hsl(var(--destructive));
   }
 
   /* Gradient utilities for conic and radial gradients */

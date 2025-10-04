@@ -123,14 +123,11 @@ export function useSessionApprovals({
 
       // If no event is focused, or a different event is focused, focus this pending approval
       if (!focusedEventId || focusedEventId !== pendingApprovalEvent.id) {
-        const wasInView = isElementInView(pendingApprovalEvent.id)
         setFocusedEventId(pendingApprovalEvent.id)
         setFocusSource?.('keyboard')
 
-        // Only set confirming state if element was out of view and we're scrolling to it
-        if (!wasInView) {
-          setConfirmingApprovalId(pendingApprovalEvent.approvalId!)
-        }
+        // Always set confirming state on first press to show visual feedback
+        setConfirmingApprovalId(pendingApprovalEvent.approvalId!)
         return
       }
 
@@ -141,8 +138,8 @@ export function useSessionApprovals({
           handleApprove(pendingApprovalEvent.approvalId!)
           setConfirmingApprovalId(null)
         } else {
-          // If not in confirming state, approve directly
-          handleApprove(pendingApprovalEvent.approvalId!)
+          // If not in confirming state, set confirmation state
+          setConfirmingApprovalId(pendingApprovalEvent.approvalId!)
         }
       }
     },
@@ -158,6 +155,20 @@ export function useSessionApprovals({
       setFocusedEventId,
       setFocusSource,
     ],
+  )
+
+  // Escape key to cancel confirmation state
+  useHotkeys(
+    'escape',
+    () => {
+      if (confirmingApprovalId) {
+        setConfirmingApprovalId(null)
+      }
+    },
+    {
+      scopes: [scope],
+    },
+    [confirmingApprovalId],
   )
 
   // D key to deny focused event that has pending approval
