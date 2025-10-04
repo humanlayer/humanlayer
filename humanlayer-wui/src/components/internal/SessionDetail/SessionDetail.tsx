@@ -297,26 +297,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     }
   }, [session.workingDir])
 
-
-  // Debug logging for token data
-  useEffect(() => {
-    console.log('[TokenDebug] Session token state:', {
-      sessionId: session.id,
-      parentSessionId: session.parentSessionId,
-      sessionTokens: session.effectiveContextTokens,
-      parentTokens: parentSessionData?.effectiveContextTokens,
-      fallbackTokens: session.effectiveContextTokens ?? parentSessionData?.effectiveContextTokens,
-      sessionFromStore: sessionFromStore?.effectiveContextTokens,
-      parentFromStore: parentSession,
-      parentFetched: parentSessionData,
-    })
-  }, [
-    session.id,
-    session.effectiveContextTokens,
-    parentSessionData?.effectiveContextTokens,
-    sessionFromStore?.effectiveContextTokens,
-  ])
-
   // For draft sessions, use localStorage values directly as the source of truth
   // For active sessions, use store values if available, otherwise fall back to session prop
   const autoAcceptEdits = isDraft && autoAcceptLoaded
@@ -337,47 +317,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       : session.dangerouslySkipPermissionsExpiresAt?.toISOString()
 
   // Scope is now handled by HotkeyScopeBoundary wrapper
-
-  // Debug logging for localStorage values (for draft sessions)
-  useEffect(() => {
-    if (isDraft) {
-      logger.log('[LocalStorage] Draft session using localStorage preferences:', {
-        savedBypassPermissions,
-        savedAutoAccept,
-        bypassLoaded,
-        autoAcceptLoaded,
-        sessionId: session.id,
-        // These are the values that will be displayed in the UI
-        displayedBypass: dangerouslySkipPermissions,
-        displayedAutoAccept: autoAcceptEdits,
-      })
-    }
-  }, [isDraft, savedBypassPermissions, savedAutoAccept, bypassLoaded, autoAcceptLoaded, session.id, dangerouslySkipPermissions, autoAcceptEdits])
-
-  // Debug logging for permissions state
-  useEffect(() => {
-    logger.log('Session permissions state', {
-      sessionId: session.id,
-      dangerouslySkipPermissions,
-      dangerouslySkipPermissionsExpiresAt,
-      sessionFromStore: sessionFromStore
-        ? {
-            id: sessionFromStore.id,
-            dangerouslySkipPermissions: sessionFromStore.dangerouslySkipPermissions,
-            dangerouslySkipPermissionsExpiresAt: sessionFromStore.dangerouslySkipPermissionsExpiresAt,
-          }
-        : 'not found',
-      sessionProp: {
-        dangerouslySkipPermissions: session.dangerouslySkipPermissions,
-        dangerouslySkipPermissionsExpiresAt: session.dangerouslySkipPermissionsExpiresAt,
-      },
-    })
-  }, [
-    session.id,
-    dangerouslySkipPermissions,
-    dangerouslySkipPermissionsExpiresAt,
-    sessionFromStore?.dangerouslySkipPermissions,
-  ])
 
   // Generate random verb that changes every 10-20 seconds
   const [randomVerb, setRandomVerb] = useState(() => {
