@@ -893,6 +893,43 @@
     animation: glitch 5s linear infinite;
   }
 
+  /* Single pulse animation for approval confirmation */
+  @keyframes pulse-once {
+    0%,
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.6;
+      transform: scale(1.05);
+    }
+  }
+
+  .animate-pulse-once {
+    animation: pulse-once 0.6s ease-in-out;
+  }
+
+  /* Deny button pulse animation - gently pulses between filled and unfilled states */
+  @keyframes pulse-deny {
+    0%,
+    100% {
+      background-color: hsl(var(--destructive));
+      color: hsl(var(--destructive-foreground));
+      border-color: hsl(var(--destructive));
+    }
+    50% {
+      background-color: transparent;
+      color: hsl(var(--destructive));
+      border-color: hsl(var(--destructive));
+    }
+  }
+
+  .animate-pulse-deny {
+    animation: pulse-deny 2s ease-in-out infinite;
+    border: 1px solid hsl(var(--destructive));
+  }
+
   /* Gradient utilities for conic and radial gradients */
   .bg-gradient-conic {
     background: conic-gradient(var(--tw-gradient-stops));

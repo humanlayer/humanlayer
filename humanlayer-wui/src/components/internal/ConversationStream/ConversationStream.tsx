@@ -21,6 +21,7 @@ export function ConversationStream({
   onApprove,
   onDeny,
   approvingApprovalId,
+  confirmingApprovalId,
   denyingApprovalId,
   setDenyingApprovalId,
   onCancelDeny,
@@ -247,6 +248,7 @@ export function ConversationStream({
             onApprove={onApprove}
             onDeny={onDeny}
             approvingApprovalId={approvingApprovalId}
+            confirmingApprovalId={confirmingApprovalId}
             denyingApprovalId={denyingApprovalId}
             setDenyingApprovalId={setDenyingApprovalId}
             onCancelDeny={onCancelDeny}
