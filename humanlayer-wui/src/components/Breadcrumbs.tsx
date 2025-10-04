@@ -82,11 +82,15 @@ export function Breadcrumbs() {
   }
 
   // Watch for external triggers to start editing
+  // NOTE: Intentionally not depending on activeSessionDetail?.session to prevent resets during editing.
+  // The effect only needs to run when isEditingTitle transitions to true. Once editing has started,
+  // we don't want SSE events (status changes, etc.) to reset the user's unsaved input.
   useEffect(() => {
     if (isEditingTitle && activeSessionDetail?.session) {
       setEditValue(activeSessionDetail.session.title || activeSessionDetail.session.summary || '')
     }
-  }, [isEditingTitle, activeSessionDetail?.session])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditingTitle])
 
   const viewModeToBreadcrumbText = {
     [ViewMode.Normal]: 'sessions',
