@@ -44,7 +44,7 @@ export function WebFetchToolCallContent({
                 href={toolInput.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-500 hover:underline"
+                 className="text-accent underline hover:text-accent/80 transition-colors"
               >
                 {toolInput.url}
               </a>
