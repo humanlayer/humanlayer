@@ -908,6 +908,27 @@
     animation: pulse-once 0.6s ease-in-out;
   }
 
+  /* Deny button pulse animation - pulses between filled and unfilled states */
+  @keyframes pulse-deny {
+    0%,
+    100% {
+      background-color: hsl(var(--destructive));
+      color: hsl(var(--destructive-foreground));
+      border-color: transparent;
+    }
+    50% {
+      background-color: transparent;
+      color: hsl(var(--destructive));
+      border-color: hsl(var(--destructive));
+    }
+  }
+
+  .animate-pulse-deny {
+    animation: pulse-deny 2s ease-in-out infinite;
+    border-width: 1px;
+    border-style: solid;
+  }
+
   /* Gradient utilities for conic and radial gradients */
   .bg-gradient-conic {
     background: conic-gradient(var(--tw-gradient-stops));

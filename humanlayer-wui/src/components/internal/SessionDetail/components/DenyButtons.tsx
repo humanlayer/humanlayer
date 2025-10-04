@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 export function DenyButtons({
   isDenying,
@@ -23,7 +24,10 @@ export function DenyButtons({
       className="inline-flex gap-2"
     >
       <Button
-        className={isDisabled ? 'cursor-not-allowed' : 'cursor-pointer'}
+        className={cn(
+          isDisabled ? 'cursor-not-allowed' : 'cursor-pointer',
+          isDenying && 'animate-pulse-deny',
+        )}
         type="button"
         size="sm"
         variant="destructive"
