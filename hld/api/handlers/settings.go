@@ -37,10 +37,11 @@ func (h *SettingsHandlers) GetUserSettings(ctx context.Context, req api.GetUserS
 
 	return api.GetUserSettings200JSONResponse{
 		Data: api.UserSettings{
-			AdvancedProviders: settings.AdvancedProviders,
-			OptInTelemetry:    settings.OptInTelemetry,
-			CreatedAt:         settings.CreatedAt,
-			UpdatedAt:         settings.UpdatedAt,
+			AdvancedProviders:    settings.AdvancedProviders,
+			OptInTelemetry:       settings.OptInTelemetry,
+			EnableGlobalShortcut: settings.EnableGlobalShortcut,
+			CreatedAt:            settings.CreatedAt,
+			UpdatedAt:            settings.UpdatedAt,
 		},
 	}, nil
 }
@@ -67,6 +68,9 @@ func (h *SettingsHandlers) UpdateUserSettings(ctx context.Context, req api.Updat
 	}
 	if req.Body.OptInTelemetry != nil {
 		current.OptInTelemetry = req.Body.OptInTelemetry
+	}
+	if req.Body.EnableGlobalShortcut != nil {
+		current.EnableGlobalShortcut = req.Body.EnableGlobalShortcut
 	}
 
 	// Save updated settings
@@ -99,10 +103,11 @@ func (h *SettingsHandlers) UpdateUserSettings(ctx context.Context, req api.Updat
 
 	return api.UpdateUserSettings200JSONResponse{
 		Data: api.UserSettings{
-			AdvancedProviders: updated.AdvancedProviders,
-			OptInTelemetry:    updated.OptInTelemetry,
-			CreatedAt:         updated.CreatedAt,
-			UpdatedAt:         updated.UpdatedAt,
+			AdvancedProviders:    updated.AdvancedProviders,
+			OptInTelemetry:       updated.OptInTelemetry,
+			EnableGlobalShortcut: updated.EnableGlobalShortcut,
+			CreatedAt:            updated.CreatedAt,
+			UpdatedAt:            updated.UpdatedAt,
 		},
 	}, nil
 }

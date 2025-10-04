@@ -11,6 +11,7 @@ import { CheckCircle2, XCircle, RefreshCw, Pencil } from 'lucide-react'
 import { HotkeyScopeBoundary } from './HotkeyScopeBoundary'
 import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
 import { clearSavedModelPreferences } from '@/hooks/useSessionLauncher'
+import { invoke } from '@tauri-apps/api/core'
 
 interface SettingsDialogProps {
   open: boolean
@@ -84,6 +85,39 @@ export function SettingsDialog({ open, onOpenChange, onConfigUpdate }: SettingsD
     } catch (error) {
       logger.error('Failed to update telemetry settings:', error)
       toast.error('Failed to update telemetry settings', {
+        description: 'Please try again or check your connection.',
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleGlobalShortcutToggle = async (checked: boolean) => {
+    try {
+      setSaving(true)
+      await updateUserSettings({ enableGlobalShortcut: checked })
+      logger.log('Global shortcut setting updated:', checked)
+
+      // Register or unregister the global shortcut
+      try {
+        if (checked) {
+          await invoke('register_global_shortcut')
+        } else {
+          await invoke('unregister_global_shortcut')
+        }
+      } catch (error) {
+        logger.error('Failed to update global shortcut registration:', error)
+        // Continue - settings were saved, just shortcut registration failed
+      }
+
+      toast.success(checked ? 'Global shortcut enabled' : 'Global shortcut disabled', {
+        description: checked
+          ? 'Press Cmd+Shift+H to open the quick launcher'
+          : 'The global shortcut has been disabled',
+      })
+    } catch (error) {
+      logger.error('Failed to update global shortcut settings:', error)
+      toast.error('Failed to update global shortcut settings', {
         description: 'Please try again or check your connection.',
       })
     } finally {
@@ -330,6 +364,23 @@ export function SettingsDialog({ open, onOpenChange, onConfigUpdate }: SettingsD
                   )}
                 </p>
               )}
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <Label htmlFor="global-shortcut" className="text-sm font-medium">
+                  Enable Global Shortcut
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Use Cmd+Shift+H to open the quick launcher from anywhere
+                </p>
+              </div>
+              <Switch
+                id="global-shortcut"
+                checked={userSettings?.enableGlobalShortcut ?? true}
+                onCheckedChange={handleGlobalShortcutToggle}
+                disabled={!userSettings || saving}
+              />
             </div>
 
             <div className="flex items-center justify-between">

@@ -378,6 +378,47 @@ fn show_quick_launcher(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+fn register_global_shortcut(app: tauri::AppHandle) -> Result<(), String> {
+    #[cfg(desktop)]
+    {
+        use tauri_plugin_global_shortcut::GlobalShortcutExt;
+
+        let shortcut = app.global_shortcut();
+        let app_handle = app.clone();
+
+        // Check if already registered
+        if shortcut.is_registered("cmd+shift+h").map_err(|e| e.to_string())? {
+            return Ok(());
+        }
+
+        shortcut.on_shortcut("cmd+shift+h", move |_app, _shortcut, _event| {
+            let _ = show_quick_launcher(app_handle.clone());
+        }).map_err(|e| e.to_string())?;
+
+        log::info!("[Tauri] Global shortcut registered");
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+fn unregister_global_shortcut(app: tauri::AppHandle) -> Result<(), String> {
+    #[cfg(desktop)]
+    {
+        use tauri_plugin_global_shortcut::GlobalShortcutExt;
+
+        let shortcut = app.global_shortcut();
+
+        if shortcut.is_registered("cmd+shift+h").map_err(|e| e.to_string())? {
+            shortcut.unregister("cmd+shift+h").map_err(|e| e.to_string())?;
+            log::info!("[Tauri] Global shortcut unregistered");
+        }
+    }
+
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Create daemon manager outside of builder
@@ -515,6 +556,15 @@ pub fn run() {
                     {
                         Ok(info) => {
                             log::info!("[Tauri] Daemon started automatically on port {}", info.port);
+
+                            // Register global shortcut after daemon starts (defaults to enabled)
+                            // The frontend will check the user setting and unregister if disabled
+                            #[cfg(desktop)]
+                            {
+                                if let Err(e) = register_global_shortcut(app_handle_clone.clone()) {
+                                    log::error!("[Tauri] Failed to register global shortcut: {e}");
+                                }
+                            }
                         }
                         Err(e) => {
                             // Log error but don't interrupt user experience
@@ -540,6 +590,8 @@ pub fn run() {
             is_daemon_running,
             get_log_directory,
             show_quick_launcher,
+            register_global_shortcut,
+            unregister_global_shortcut,
             set_window_background_color,
             set_window_theme_colors,
             save_window_state,

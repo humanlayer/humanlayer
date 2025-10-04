@@ -246,6 +246,24 @@ export function Layout() {
     }
   }, [connected, fetchUserSettings])
 
+  // Register or unregister global shortcut based on user setting
+  useEffect(() => {
+    if (userSettings !== null) {
+      const isEnabled = userSettings.enableGlobalShortcut ?? true // default to enabled
+
+      // Register or unregister the shortcut based on the setting
+      if (isEnabled) {
+        invoke('register_global_shortcut').catch(error => {
+          console.error('Failed to register global shortcut:', error)
+        })
+      } else {
+        invoke('unregister_global_shortcut').catch(error => {
+          console.error('Failed to unregister global shortcut:', error)
+        })
+      }
+    }
+  }, [userSettings?.enableGlobalShortcut])
+
   // Auto-open settings on first unhealthy detection
   useEffect(() => {
     if (connected && healthStatus === 'degraded' && !hasShownUnhealthyDialog) {

@@ -1081,6 +1081,46 @@ func (s *SQLiteStore) applyMigrations() error {
 		slog.Info("Migration 21 applied successfully")
 	}
 
+	// Migration 22: Add enable_global_shortcut field to user_settings
+	if currentVersion < 22 {
+		slog.Info("Applying migration 22: Add enable_global_shortcut to user_settings")
+
+		// Check if column already exists
+		var columnExists int
+		err = s.db.QueryRow(`
+			SELECT COUNT(*) FROM pragma_table_info('user_settings')
+			WHERE name = 'enable_global_shortcut'
+		`).Scan(&columnExists)
+		if err != nil {
+			return fmt.Errorf("failed to check enable_global_shortcut column: %w", err)
+		}
+
+		if columnExists == 0 {
+			// Add enable_global_shortcut column with NULL default (unset state, defaults to true in UI)
+			_, err := s.db.Exec(`
+				ALTER TABLE user_settings
+				ADD COLUMN enable_global_shortcut BOOLEAN DEFAULT NULL
+			`)
+			if err != nil {
+				return fmt.Errorf("failed to add enable_global_shortcut column: %w", err)
+			}
+			slog.Info("Added enable_global_shortcut column to user_settings table")
+		} else {
+			slog.Info("enable_global_shortcut column already exists")
+		}
+
+		// Record migration
+		_, err = s.db.Exec(`
+			INSERT INTO schema_version (version, description)
+			VALUES (22, 'Add enable_global_shortcut for global keyboard shortcut toggle')
+		`)
+		if err != nil {
+			return fmt.Errorf("failed to record migration 22: %w", err)
+		}
+
+		slog.Info("Migration 22 applied successfully")
+	}
+
 	return nil
 }
 
@@ -1923,9 +1963,9 @@ func (s *SQLiteStore) GetRecentWorkingDirs(ctx context.Context, limit int) ([]Re
 func (s *SQLiteStore) GetUserSettings(ctx context.Context) (*UserSettings, error) {
 	var settings UserSettings
 	err := s.db.QueryRowContext(ctx, `
-		SELECT advanced_providers, opt_in_telemetry, created_at, updated_at
+		SELECT advanced_providers, opt_in_telemetry, enable_global_shortcut, created_at, updated_at
 		FROM user_settings WHERE id = 1
-	`).Scan(&settings.AdvancedProviders, &settings.OptInTelemetry, &settings.CreatedAt, &settings.UpdatedAt)
+	`).Scan(&settings.AdvancedProviders, &settings.OptInTelemetry, &settings.EnableGlobalShortcut, &settings.CreatedAt, &settings.UpdatedAt)
 
 	if err == sql.ErrNoRows {
 		// Return defaults if not found (for backwards compatibility)
@@ -1942,9 +1982,9 @@ func (s *SQLiteStore) GetUserSettings(ctx context.Context) (*UserSettings, error
 func (s *SQLiteStore) UpdateUserSettings(ctx context.Context, settings UserSettings) error {
 	_, err := s.db.ExecContext(ctx, `
 		UPDATE user_settings
-		SET advanced_providers = ?, opt_in_telemetry = ?, updated_at = CURRENT_TIMESTAMP
+		SET advanced_providers = ?, opt_in_telemetry = ?, enable_global_shortcut = ?, updated_at = CURRENT_TIMESTAMP
 		WHERE id = 1
-	`, settings.AdvancedProviders, settings.OptInTelemetry)
+	`, settings.AdvancedProviders, settings.OptInTelemetry, settings.EnableGlobalShortcut)
 	return err
 }
 
