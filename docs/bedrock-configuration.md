@@ -20,8 +20,10 @@ The recommended way to configure Bedrock or custom endpoints is through CodeLaye
 2. Create or edit `~/.config/humanlayer/humanlayer.json`:
    ```json
    {
-     "anthropic_base_url": "https://bedrock-runtime.us-east-1.amazonaws.com",
-     "anthropic_api_key": "your-aws-credentials-or-api-key"
+     "env": {
+       "ANTHROPIC_BASE_URL": "https://bedrock-runtime.us-east-1.amazonaws.com",
+       "ANTHROPIC_API_KEY": "your-aws-credentials-or-api-key"
+     }
    }
    ```
 
@@ -34,17 +36,19 @@ The recommended way to configure Bedrock or custom endpoints is through CodeLaye
 
 ### Configuration Options
 
-The configuration file supports the following Anthropic-related options:
+The configuration file supports environment variables through the `env` section. Any environment variables set here will be inherited by Claude sessions:
 
-- `anthropic_base_url`: The base URL for the Anthropic API or compatible endpoint
+- `ANTHROPIC_BASE_URL`: The base URL for the Anthropic API or compatible endpoint
   - For AWS Bedrock: `https://bedrock-runtime.<region>.amazonaws.com`
   - For custom endpoints: Your custom API endpoint
-  - Leave empty to use default Anthropic API
+  - Leave unset to use default Anthropic API
 
-- `anthropic_api_key`: The API key to use
+- `ANTHROPIC_API_KEY`: The API key to use
   - For AWS Bedrock: Your AWS access credentials (formatted appropriately)
   - For custom endpoints: Your API key
-  - Leave empty if using system credentials
+  - Leave unset if using system credentials
+
+- Any other environment variables: You can set additional environment variables that will be inherited by all Claude sessions (e.g., `AWS_REGION`, `AWS_PROFILE`, etc.)
 
 ### Alternative: Environment Variables (Terminal Launch Only)
 
@@ -82,8 +86,10 @@ Example configuration for AWS Bedrock in `us-west-2`:
 
 ```json
 {
-  "anthropic_base_url": "https://bedrock-runtime.us-west-2.amazonaws.com",
-  "anthropic_api_key": ""
+  "env": {
+    "ANTHROPIC_BASE_URL": "https://bedrock-runtime.us-west-2.amazonaws.com",
+    "AWS_REGION": "us-west-2"
+  }
 }
 ```
 
@@ -109,7 +115,7 @@ Check the daemon logs to see if your configuration was loaded:
 tail -f ~/Library/Logs/CodeLayer/daemon.log
 ```
 
-Look for debug messages about "inherited ANTHROPIC_BASE_URL from daemon configuration".
+Look for debug messages about "inherited generic env var from daemon configuration" for keys like "ANTHROPIC_BASE_URL".
 
 ### Security Considerations
 
@@ -136,8 +142,11 @@ Here's a complete example configuration file with all available options:
   "http_port": 7777,
   "http_host": "127.0.0.1",
   "claude_path": "/opt/homebrew/bin/claude",
-  "anthropic_base_url": "https://bedrock-runtime.us-west-2.amazonaws.com",
-  "anthropic_api_key": ""
+  "env": {
+    "ANTHROPIC_BASE_URL": "https://bedrock-runtime.us-west-2.amazonaws.com",
+    "AWS_REGION": "us-west-2",
+    "AWS_PROFILE": "my-profile"
+  }
 }
 ```
 
