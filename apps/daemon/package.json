@@ -12,6 +12,7 @@
 	},
 	"dependencies": {
 		"@codelayer/contracts": "workspace:*",
+		"@orpc/openapi": "^1.9.2",
 		"@orpc/server": "^1.9.2",
 		"zod": "^4.1.11"
 	}

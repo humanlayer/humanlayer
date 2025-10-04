@@ -22,11 +22,13 @@ export const listSessionContract = oc
 	)
 
 /**
- * This is the core contract that the RPC router will implement
+ * This is the core contract that the RPC router will implement.
+ *
+ * Example: daemonRouterContract.sessions.list's implementation will check (compile and runtime) that listSessionContract (function inputs and outputs) are met!
  */
 export const daemonRouterContract = {
 	sessions: {
-		listSessionContract,
+		list: listSessionContract,
 	},
 }
 export type DaemonRouterContractType = InferContractRouterInputs<
