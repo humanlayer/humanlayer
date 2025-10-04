@@ -42,6 +42,7 @@ const themes: { value: Theme; label: string; icon: React.ComponentType<{ classNa
   { value: 'tokyo-night-storm', label: 'Tokyo Night Storm', icon: CloudLightning },
   { value: 'bubblegum', label: 'Bubblegum', icon: Heart },
   { value: 'l33t', label: 'L33t', icon: Terminal },
+  { value: 'vesper', label: 'Vesper', icon: MoonStar },
 ]
 
 export function ThemeSelector() {
