@@ -9,7 +9,12 @@ import { useConversation, useKeyboardNavigationProtection } from '@/hooks'
 import { ChevronDown, FolderOpen, TextSearch } from 'lucide-react'
 import { daemonClient } from '@/lib/daemon/client'
 import { useStore } from '@/AppStore'
-import { getArchiveOnForkPreference } from '@/lib/preferences'
+import {
+  getArchiveOnForkPreference,
+  DRAFT_LAUNCHER_PREFS,
+  getDraftLauncherDefaults,
+} from '@/lib/preferences'
+import { useLocalStorage } from '@/hooks/useLocalStorage'
 import { HotkeyScopeBoundary } from '@/components/HotkeyScopeBoundary'
 import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
 
@@ -235,6 +240,17 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   // Get recent paths for draft directory selection
   const { paths: recentPaths } = useRecentPaths()
 
+  // Load draft launcher preferences from localStorage (only for draft sessions)
+  const defaults = getDraftLauncherDefaults()
+  const [savedBypassPermissions, setSavedBypassPermissions, bypassLoaded] = useLocalStorage(
+    DRAFT_LAUNCHER_PREFS.BYPASS_PERMISSIONS,
+    defaults.bypassPermissions,
+  )
+  const [savedAutoAccept, setSavedAutoAccept, autoAcceptLoaded] = useLocalStorage(
+    DRAFT_LAUNCHER_PREFS.AUTO_ACCEPT,
+    defaults.autoAccept,
+  )
+
   const responseEditor = useStore(state => state.responseEditor)
   const isEditingSessionTitle = useStore(state => state.isEditingSessionTitle)
   const setIsEditingSessionTitle = useStore(state => state.setIsEditingSessionTitle)
@@ -285,36 +301,21 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     }
   }, [session.workingDir])
 
-  // Debug logging for token data
-  useEffect(() => {
-    console.log('[TokenDebug] Session token state:', {
-      sessionId: session.id,
-      parentSessionId: session.parentSessionId,
-      sessionTokens: session.effectiveContextTokens,
-      parentTokens: parentSessionData?.effectiveContextTokens,
-      fallbackTokens: session.effectiveContextTokens ?? parentSessionData?.effectiveContextTokens,
-      sessionFromStore: sessionFromStore?.effectiveContextTokens,
-      parentFromStore: parentSession,
-      parentFetched: parentSessionData,
-    })
-  }, [
-    session.id,
-    session.effectiveContextTokens,
-    parentSessionData?.effectiveContextTokens,
-    sessionFromStore?.effectiveContextTokens,
-  ])
-
-  // Use store values if available, otherwise fall back to session prop
-  // Store values take precedence because they reflect real-time updates
+  // For draft sessions, use localStorage values directly as the source of truth
+  // For active sessions, use store values if available, otherwise fall back to session prop
   const autoAcceptEdits =
-    sessionFromStore?.autoAcceptEdits !== undefined
-      ? sessionFromStore.autoAcceptEdits
-      : (session.autoAcceptEdits ?? false)
+    isDraft && autoAcceptLoaded
+      ? savedAutoAccept
+      : sessionFromStore?.autoAcceptEdits !== undefined
+        ? sessionFromStore.autoAcceptEdits
+        : (session.autoAcceptEdits ?? false)
 
   const dangerouslySkipPermissions =
-    sessionFromStore?.dangerouslySkipPermissions !== undefined
-      ? sessionFromStore.dangerouslySkipPermissions
-      : (session.dangerouslySkipPermissions ?? false)
+    isDraft && bypassLoaded
+      ? savedBypassPermissions
+      : sessionFromStore?.dangerouslySkipPermissions !== undefined
+        ? sessionFromStore.dangerouslySkipPermissions
+        : (session.dangerouslySkipPermissions ?? false)
 
   const dangerouslySkipPermissionsExpiresAt =
     sessionFromStore?.dangerouslySkipPermissionsExpiresAt !== undefined
@@ -322,31 +323,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       : session.dangerouslySkipPermissionsExpiresAt?.toISOString()
 
   // Scope is now handled by HotkeyScopeBoundary wrapper
-
-  // Debug logging
-  useEffect(() => {
-    logger.log('Session permissions state', {
-      sessionId: session.id,
-      dangerouslySkipPermissions,
-      dangerouslySkipPermissionsExpiresAt,
-      sessionFromStore: sessionFromStore
-        ? {
-            id: sessionFromStore.id,
-            dangerouslySkipPermissions: sessionFromStore.dangerouslySkipPermissions,
-            dangerouslySkipPermissionsExpiresAt: sessionFromStore.dangerouslySkipPermissionsExpiresAt,
-          }
-        : 'not found',
-      sessionProp: {
-        dangerouslySkipPermissions: session.dangerouslySkipPermissions,
-        dangerouslySkipPermissionsExpiresAt: session.dangerouslySkipPermissionsExpiresAt,
-      },
-    })
-  }, [
-    session.id,
-    dangerouslySkipPermissions,
-    dangerouslySkipPermissionsExpiresAt,
-    sessionFromStore?.dangerouslySkipPermissions,
-  ])
 
   // Generate random verb that changes every 10-20 seconds
   const [randomVerb, setRandomVerb] = useState(() => {
@@ -638,6 +614,13 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       // Get the prompt text from the editor
       const prompt = responseEditor?.getText() || ''
 
+      // Apply localStorage settings to the draft session before launching
+      // This ensures the session is created with the user's saved preferences
+      await daemonClient.updateSession(session.id, {
+        autoAcceptEdits: autoAcceptEdits,
+        dangerouslySkipPermissions: dangerouslySkipPermissions,
+      })
+
       // Launch the draft session with the prompt
       // Note: working directory is already updated when selected in the fuzzy finder
       await daemonClient.launchDraftSession(session.id, prompt)
@@ -663,7 +646,16 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     } finally {
       setIsLaunchingDraft(false)
     }
-  }, [isDraft, session.id, session.workingDir, responseEditor, isLaunchingDraft, selectedDirectory])
+  }, [
+    isDraft,
+    session.id,
+    session.workingDir,
+    responseEditor,
+    isLaunchingDraft,
+    selectedDirectory,
+    autoAcceptEdits,
+    dangerouslySkipPermissions,
+  ])
 
   // Handle directory selection change
   const handleDirectoryChange = useCallback(
@@ -855,14 +847,29 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   // Create reusable handler for toggling auto-accept
   const handleToggleAutoAccept = useCallback(async () => {
     logger.log('toggleAutoAcceptEdits', autoAcceptEdits)
-    try {
-      const newState = !autoAcceptEdits
-      await updateSessionOptimistic(session.id, { autoAcceptEdits: newState })
-    } catch (error) {
-      logger.error('Failed to toggle auto-accept mode:', error)
-      toast.error('Failed to toggle auto-accept mode')
+
+    if (isDraft) {
+      // For draft sessions, just toggle localStorage value
+      const newState = !savedAutoAccept
+      setSavedAutoAccept(newState)
+    } else {
+      // For active sessions, update the session state
+      try {
+        const newState = !autoAcceptEdits
+        await updateSessionOptimistic(session.id, { autoAcceptEdits: newState })
+      } catch (error) {
+        logger.error('Failed to toggle auto-accept mode:', error)
+        toast.error('Failed to toggle auto-accept mode')
+      }
     }
-  }, [session.id, autoAcceptEdits, updateSessionOptimistic])
+  }, [
+    session.id,
+    autoAcceptEdits,
+    updateSessionOptimistic,
+    isDraft,
+    savedAutoAccept,
+    setSavedAutoAccept,
+  ])
 
   // Create reusable handler for toggling dangerously skip permissions
   const handleToggleDangerouslySkipPermissions = useCallback(async () => {
@@ -875,32 +882,52 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       return
     }
 
-    // Get the current value from the store directly to avoid stale closure
-    let currentSession = useStore.getState().sessions.find(s => s.id === session.id)
-
-    if (!currentSession) {
-      const sessionState = await daemonClient.getSessionState(session.id)
-      currentSession = sessionState.session
-    }
-
-    const currentDangerouslySkipPermissions = currentSession?.dangerouslySkipPermissions ?? false
-
-    if (currentDangerouslySkipPermissions) {
-      // Disable dangerous skip permissions
-      try {
-        await updateSessionOptimistic(session.id, {
-          dangerouslySkipPermissions: false,
-          dangerouslySkipPermissionsExpiresAt: undefined,
-        })
-      } catch (error) {
-        logger.error('Failed to disable dangerous skip permissions', { error })
-        toast.error('Failed to disable dangerous skip permissions')
+    if (isDraft) {
+      // For draft sessions, handle localStorage directly
+      if (savedBypassPermissions) {
+        // Disable bypass permissions
+        setSavedBypassPermissions(false)
+      } else {
+        // Show confirmation dialog
+        setDangerousSkipPermissionsDialogOpen(true)
       }
     } else {
-      // Show confirmation dialog
-      setDangerousSkipPermissionsDialogOpen(true)
+      // For active sessions, use the session state
+      // Get the current value from the store directly to avoid stale closure
+      let currentSession = useStore.getState().sessions.find(s => s.id === session.id)
+
+      if (!currentSession) {
+        const sessionState = await daemonClient.getSessionState(session.id)
+        currentSession = sessionState.session
+      }
+
+      const currentDangerouslySkipPermissions = currentSession?.dangerouslySkipPermissions ?? false
+
+      if (currentDangerouslySkipPermissions) {
+        // Disable dangerous skip permissions
+        try {
+          await updateSessionOptimistic(session.id, {
+            dangerouslySkipPermissions: false,
+            dangerouslySkipPermissionsExpiresAt: undefined,
+          })
+        } catch (error) {
+          logger.error('Failed to disable dangerous skip permissions', { error })
+          toast.error('Failed to disable dangerous skip permissions')
+        }
+      } else {
+        // Show confirmation dialog
+        setDangerousSkipPermissionsDialogOpen(true)
+      }
     }
-  }, [session.id, activeScopes, dangerousSkipPermissionsDialogOpen, updateSessionOptimistic])
+  }, [
+    session.id,
+    activeScopes,
+    dangerousSkipPermissionsDialogOpen,
+    updateSessionOptimistic,
+    isDraft,
+    savedBypassPermissions,
+    setSavedBypassPermissions,
+  ])
 
   // ===== DRAFT MODE HOTKEYS =====
   // These only work when in draft mode (DRAFT_LAUNCHER scope)
@@ -1024,19 +1051,24 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
 
   // Handle dialog confirmation
   const handleDangerousSkipPermissionsConfirm = async (timeoutMinutes: number | null) => {
-    try {
-      // Immediately update the store for instant UI feedback
-      const expiresAt = timeoutMinutes
-        ? new Date(Date.now() + timeoutMinutes * 60 * 1000).toISOString()
-        : undefined
+    if (isDraft) {
+      // For draft sessions, just update localStorage
+      setSavedBypassPermissions(true)
+    } else {
+      // For active sessions, update the session state
+      try {
+        const expiresAt = timeoutMinutes
+          ? new Date(Date.now() + timeoutMinutes * 60 * 1000).toISOString()
+          : undefined
 
-      await updateSessionOptimistic(session.id, {
-        dangerouslySkipPermissions: true,
-        dangerouslySkipPermissionsExpiresAt: expiresAt ? new Date(expiresAt) : undefined,
-      })
-    } catch (error) {
-      logger.error('Failed to enable dangerous skip permissions', { error })
-      toast.error('Failed to enable dangerous skip permissions')
+        await updateSessionOptimistic(session.id, {
+          dangerouslySkipPermissions: true,
+          dangerouslySkipPermissionsExpiresAt: expiresAt ? new Date(expiresAt) : undefined,
+        })
+      } catch (error) {
+        logger.error('Failed to enable dangerous skip permissions', { error })
+        toast.error('Failed to enable dangerous skip permissions')
+      }
     }
   }
 
