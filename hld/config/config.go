@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -44,9 +45,11 @@ type Config struct {
 	// Claude configuration
 	ClaudePath string `mapstructure:"claude_path"`
 
-	// Anthropic API configuration for Bedrock or custom endpoints
-	AnthropicBaseURL string `mapstructure:"anthropic_base_url"`
-	AnthropicAPIKey  string `mapstructure:"anthropic_api_key"`
+	// Generic environment variables to pass to all Claude sessions
+	// This allows setting arbitrary environment variables that will be inherited
+	// by all sessions, useful for custom configurations like ANTHROPIC_BASE_URL,
+	// ANTHROPIC_API_KEY, AWS_REGION, or any other environment-based configuration.
+	Env map[string]string `mapstructure:"env"`
 }
 
 // Load loads configuration with priority: flags > env vars > config file > defaults
@@ -76,8 +79,6 @@ func Load() (*Config, error) {
 	_ = v.BindEnv("http_port", "HUMANLAYER_DAEMON_HTTP_PORT")
 	_ = v.BindEnv("http_host", "HUMANLAYER_DAEMON_HTTP_HOST")
 	_ = v.BindEnv("claude_path", "HUMANLAYER_CLAUDE_PATH")
-	_ = v.BindEnv("anthropic_base_url", "ANTHROPIC_BASE_URL")
-	_ = v.BindEnv("anthropic_api_key", "ANTHROPIC_API_KEY")
 
 	// Set defaults
 	setDefaults(v)
@@ -93,6 +94,28 @@ func Load() (*Config, error) {
 	var config Config
 	if err := v.Unmarshal(&config); err != nil {
 		return nil, fmt.Errorf("error unmarshaling config: %w", err)
+	}
+
+	// Viper/mapstructure lowercases all map keys, but environment variables are case-sensitive.
+	// We need to preserve the original case from the config file for the env map.
+	// Read the config file again and extract the env map with original case preserved.
+	configFile := v.ConfigFileUsed()
+	if configFile != "" && config.Env != nil {
+		data, err := os.ReadFile(configFile)
+		if err == nil {
+			var rawConfig map[string]interface{}
+			if err := json.Unmarshal(data, &rawConfig); err == nil {
+				if envMap, ok := rawConfig["env"].(map[string]interface{}); ok {
+					// Replace the lowercased env map with the case-preserved version
+					config.Env = make(map[string]string)
+					for k, v := range envMap {
+						if str, ok := v.(string); ok {
+							config.Env[k] = str
+						}
+					}
+				}
+			}
+		}
 	}
 
 	// Expand home directory in paths
@@ -184,8 +207,7 @@ func Save(cfg *Config) error {
 	v.Set("http_port", cfg.HTTPPort)
 	v.Set("http_host", cfg.HTTPHost)
 	v.Set("claude_path", cfg.ClaudePath)
-	v.Set("anthropic_base_url", cfg.AnthropicBaseURL)
-	v.Set("anthropic_api_key", cfg.AnthropicAPIKey)
+	v.Set("env", cfg.Env)
 
 	// Set config file path explicitly
 	configFile := filepath.Join(configDir, "humanlayer.json")
