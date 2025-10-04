@@ -471,6 +471,37 @@ func (h *SessionHandlers) UpdateSession(ctx context.Context, req api.UpdateSessi
 		}, nil
 	}
 
+	// Auto-approve pending approvals if bypass permissions was just enabled
+	if req.Body.DangerouslySkipPermissions != nil && *req.Body.DangerouslySkipPermissions {
+		// Get all pending approvals for this session
+		pendingApprovals, err := h.approvalManager.GetPendingApprovals(ctx, string(req.Id))
+		if err != nil {
+			// Log error but don't fail the request
+			slog.Error("Failed to get pending approvals for auto-approval",
+				"error", err,
+				"session_id", req.Id,
+				"operation", "UpdateSession")
+		} else {
+			// Auto-approve each pending approval
+			for _, approval := range pendingApprovals {
+				err := h.approvalManager.ApproveToolCall(ctx, approval.ID, "Auto-approved due to bypass permissions")
+				if err != nil {
+					// Log error but continue with other approvals
+					slog.Error("Failed to auto-approve pending approval",
+						"error", err,
+						"approval_id", approval.ID,
+						"session_id", req.Id,
+						"operation", "UpdateSession")
+				} else {
+					slog.Info("Auto-approved pending approval due to bypass permissions",
+						"approval_id", approval.ID,
+						"session_id", req.Id,
+						"operation", "UpdateSession")
+				}
+			}
+		}
+	}
+
 	// Fetch updated session
 	session, err := h.store.GetSession(ctx, string(req.Id))
 	if err != nil {

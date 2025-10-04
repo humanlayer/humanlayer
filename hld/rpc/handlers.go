@@ -551,38 +551,32 @@ func (h *SessionHandlers) HandleUpdateSessionSettings(ctx context.Context, param
 		return nil, fmt.Errorf("failed to update session: %w", err)
 	}
 
-	// Update retroactive approval logic
-	// Change the condition to handle both modes:
-	if h.approvalManager != nil {
-		shouldAutoApprove := false
-		autoApproveComment := ""
-
-		// Check which mode is being enabled
-		if req.DangerouslySkipPermissions != nil && *req.DangerouslySkipPermissions {
-			shouldAutoApprove = true
-			autoApproveComment = "Auto-accepted (dangerous skip permissions enabled)"
-		} else if req.AutoAcceptEdits != nil && *req.AutoAcceptEdits {
-			shouldAutoApprove = true
-			autoApproveComment = "Auto-accepted (auto-accept mode enabled)"
-		}
-
-		if shouldAutoApprove {
-			pendingApprovals, err := h.store.GetPendingApprovals(ctx, req.SessionID)
-			if err == nil && len(pendingApprovals) > 0 {
-				for _, approval := range pendingApprovals {
-					// For dangerously skip permissions, approve ALL tools
-					// For edit mode, only approve edit tools
-					if req.DangerouslySkipPermissions != nil && *req.DangerouslySkipPermissions {
-						err := h.approvalManager.ApproveToolCall(ctx, approval.ID, autoApproveComment)
-						if err != nil {
-							slog.Error("failed to auto-approve pending approval", "approval_id", approval.ID, "error", err)
-						}
-					} else if req.AutoAcceptEdits != nil && *req.AutoAcceptEdits && isEditTool(approval.ToolName) {
-						err := h.approvalManager.ApproveToolCall(ctx, approval.ID, autoApproveComment)
-						if err != nil {
-							slog.Error("failed to auto-approve pending approval", "approval_id", approval.ID, "error", err)
-						}
-					}
+	// Auto-approve pending approvals if bypass permissions was just enabled
+	if req.DangerouslySkipPermissions != nil && *req.DangerouslySkipPermissions {
+		// Get all pending approvals for this session
+		pendingApprovals, err := h.approvalManager.GetPendingApprovals(ctx, req.SessionID)
+		if err != nil {
+			// Log error but don't fail the request
+			slog.Error("Failed to get pending approvals for auto-approval",
+				"error", err,
+				"session_id", req.SessionID,
+				"method", "updateSessionSettings")
+		} else {
+			// Auto-approve each pending approval
+			for _, approval := range pendingApprovals {
+				err := h.approvalManager.ApproveToolCall(ctx, approval.ID, "Auto-approved due to bypass permissions")
+				if err != nil {
+					// Log error but continue with other approvals
+					slog.Error("Failed to auto-approve pending approval",
+						"error", err,
+						"approval_id", approval.ID,
+						"session_id", req.SessionID,
+						"method", "updateSessionSettings")
+				} else {
+					slog.Info("Auto-approved pending approval due to bypass permissions",
+						"approval_id", approval.ID,
+						"session_id", req.SessionID,
+						"method", "updateSessionSettings")
 				}
 			}
 		}
@@ -679,11 +673,6 @@ func (h *SessionHandlers) HandleUpdateSessionTitle(ctx context.Context, params j
 	return &UpdateSessionTitleResponse{
 		Success: true,
 	}, nil
-}
-
-// isEditTool checks if a tool name is one of the edit tools
-func isEditTool(toolName string) bool {
-	return toolName == "Edit" || toolName == "Write" || toolName == "MultiEdit"
 }
 
 // ArchiveSessionRequest is the request for archiving/unarchiving a session
