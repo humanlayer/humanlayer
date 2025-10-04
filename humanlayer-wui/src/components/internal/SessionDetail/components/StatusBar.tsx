@@ -53,7 +53,11 @@ export function StatusBar({
     : rawModelText
   const isRunning =
     session.status === SessionStatus.Running || session.status === SessionStatus.Starting
-  const isReadyForInput = session.status === SessionStatus.Completed && !session.archived
+  const isReadyForInput =
+    (session.status === SessionStatus.Completed ||
+      session.status === SessionStatus.Failed ||
+      session.status === SessionStatus.Interrupted) &&
+    !session.archived
   const isDraft = session.status === SessionStatus.Draft
 
   const isReadyForInputOrDraft = isReadyForInput || isDraft
