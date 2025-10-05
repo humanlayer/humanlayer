@@ -40,9 +40,7 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const { execSync } = require('child_process');
-
-            let buildVersion, isNightly, isStable;
+            let buildVersion, isNightly, isStable, shouldCreateTag = false;
 
             // Determine build type
             if (context.eventName === 'schedule' || context.payload.inputs?.release_nightly === 'true') {
@@ -116,18 +114,7 @@ jobs:
                 }
 
                 buildVersion = newVersion;
-
-                // Create and push the new tag
-                try {
-                  execSync(`git config user.name "github-actions[bot]"`);
-                  execSync(`git config user.email "github-actions[bot]@users.noreply.github.com"`);
-                  execSync(`git tag -a "v${newVersion}" -m "Release v${newVersion}"`);
-                  execSync(`git push origin "v${newVersion}"`);
-                  console.log(`Created and pushed tag: v${newVersion}`);
-                } catch (error) {
-                  console.error('Failed to create/push tag:', error.message);
-                  throw error;
-                }
+                shouldCreateTag = true; // Mark that we need to create a tag after checkout
               }
 
               isNightly = false;
@@ -149,13 +136,24 @@ jobs:
             core.setOutput('release_version', buildVersion);
             core.setOutput('is_nightly', isNightly.toString());
             core.setOutput('is_stable', isStable.toString());
+            core.setOutput('should_create_tag', shouldCreateTag.toString());
 
             console.log(`Build Version: ${buildVersion}`);
             console.log(`Is Nightly: ${isNightly}`);
             console.log(`Is Stable: ${isStable}`);
+            console.log(`Should Create Tag: ${shouldCreateTag}`);
 
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Create and push tag
+        if: steps.version.outputs.should_create_tag == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "v${{ steps.version.outputs.release_version }}" -m "Release v${{ steps.version.outputs.release_version }}"
+          git push origin "v${{ steps.version.outputs.release_version }}"
+          echo "Created and pushed tag: v${{ steps.version.outputs.release_version }}"
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
