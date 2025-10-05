@@ -56,7 +56,7 @@ After implementing a phase:
   Let me know when manual testing is complete so I can proceed to Phase [N+1].
   ```
 
-If you are explicitly asked to do multiple specific phases without stopping. Then you can skip this until you complete the last phase mentioned by the user. Otherwise assume you are just doing one phase.
+If instructed to execute multiple phases consecutively, skip the pause until the last phase. Otherwise, assume you are just doing one phase.
 
 do not check off items in the manual testing steps until confirmed by the user.
 
