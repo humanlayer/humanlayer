@@ -43,6 +43,8 @@ export * from './SessionResponse';
 export * from './SessionStatus';
 export * from './SessionsResponse';
 export * from './SessionsResponseCounts';
+export * from './SlashCommand';
+export * from './SlashCommandsResponse';
 export * from './SnapshotsResponse';
 export * from './UpdateConfigRequest';
 export * from './UpdateSessionRequest';

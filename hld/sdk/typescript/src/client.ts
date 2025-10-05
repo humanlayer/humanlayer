@@ -210,6 +210,12 @@ export class HLDClient {
         return response.data;
     }
 
+    // Get slash commands
+    async getSlashCommands(params: { sessionId: string; query?: string }): Promise<{ data: Array<{ name: string }> }> {
+        const response = await this.sessionsApi.getSlashCommands(params);
+        return response;
+    }
+
     // Get recent paths
     async getRecentPaths(): Promise<RecentPath[]> {
         const response = await this.sessionsApi.getRecentPaths({});

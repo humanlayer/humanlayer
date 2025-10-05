@@ -80,6 +80,10 @@ export interface DaemonClient {
 
   // Session methods
   launchSession(params: LaunchSessionParams | LaunchSessionRequest): Promise<CreateSessionResponseData>
+  getSlashCommands(params: {
+    sessionId: string
+    query?: string
+  }): Promise<{ data: Array<{ name: string }> }>
   listSessions(): Promise<Session[]>
   getSessionLeaves(request?: { filter?: 'normal' | 'archived' | 'draft' }): Promise<{
     sessions: Session[]

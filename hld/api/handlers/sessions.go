@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"os"
 	"sort"
+	"strings"
 	"time"
 
 	claudecode "github.com/humanlayer/humanlayer/claudecode-go"
@@ -19,6 +20,7 @@ import (
 	"github.com/humanlayer/humanlayer/hld/internal/version"
 	"github.com/humanlayer/humanlayer/hld/session"
 	"github.com/humanlayer/humanlayer/hld/store"
+	"github.com/sahilm/fuzzy"
 )
 
 type SessionHandlers struct {
@@ -1204,4 +1206,53 @@ func (h *SessionHandlers) GetDebugInfo(ctx context.Context, req api.GetDebugInfo
 	}
 
 	return response, nil
+}
+
+// GetSlashCommands retrieves available slash commands for a session
+func (h *SessionHandlers) GetSlashCommands(ctx context.Context, req api.GetSlashCommandsRequestObject) (api.GetSlashCommandsResponseObject, error) {
+	// Mock command pool
+	allCommands := []string{
+		"/create_plan",
+		"/implement_plan",
+		"/research_codebase",
+		"/linear",
+		"/hl:research",
+		"/hl:alpha:test",
+	}
+
+	// Initialize results as empty array instead of nil
+	results := []api.SlashCommand{}
+
+	// Apply fuzzy search if query provided
+	if req.Params.Query != nil && *req.Params.Query != "" && *req.Params.Query != "/" {
+		query := strings.TrimPrefix(*req.Params.Query, "/")
+
+		// Create searchable items
+		var searchItems []string
+		for _, cmd := range allCommands {
+			// Remove slash for searching
+			searchItems = append(searchItems, strings.TrimPrefix(cmd, "/"))
+		}
+
+		// Fuzzy search
+		matches := fuzzy.Find(query, searchItems)
+
+		// Convert matches back to commands
+		for _, match := range matches {
+			results = append(results, api.SlashCommand{
+				Name: "/" + match.Str,
+			})
+		}
+	} else {
+		// Return all commands if no query
+		for _, cmd := range allCommands {
+			results = append(results, api.SlashCommand{
+				Name: cmd,
+			})
+		}
+	}
+
+	return api.GetSlashCommands200JSONResponse{
+		Data: results,
+	}, nil
 }

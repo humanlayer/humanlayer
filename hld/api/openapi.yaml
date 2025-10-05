@@ -375,6 +375,38 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /slash-commands:
+    get:
+      operationId: getSlashCommands
+      summary: Get available slash commands
+      description: Retrieve slash commands available in the session's working directory
+      tags:
+        - Sessions
+      parameters:
+        - name: session_id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Session ID to get working directory
+        - name: query
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Fuzzy search query
+      responses:
+        '200':
+          description: List of slash commands
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SlashCommandsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
   /config:
     get:
       operationId: getConfig
@@ -1403,6 +1435,27 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/RecentPath'
+
+    # Slash Command Types
+    SlashCommand:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          example: "/create_plan"
+          description: Command name including slash prefix
+
+    SlashCommandsResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/SlashCommand'
 
     UpdateConfigRequest:
       type: object
