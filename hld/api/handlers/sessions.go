@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -1210,14 +1211,63 @@ func (h *SessionHandlers) GetDebugInfo(ctx context.Context, req api.GetDebugInfo
 
 // GetSlashCommands retrieves available slash commands for a session
 func (h *SessionHandlers) GetSlashCommands(ctx context.Context, req api.GetSlashCommandsRequestObject) (api.GetSlashCommandsResponseObject, error) {
-	// Mock command pool
-	allCommands := []string{
-		"/create_plan",
-		"/implement_plan",
-		"/research_codebase",
-		"/linear",
-		"/hl:research",
-		"/hl:alpha:test",
+	// Get session to access working directory
+	session, err := h.store.GetSession(ctx, req.Params.SessionId)
+	if err != nil {
+		slog.Error("Failed to get session for slash commands",
+			"error", fmt.Sprintf("%v", err),
+			"session_id", req.Params.SessionId,
+			"operation", "GetSlashCommands",
+		)
+		return api.GetSlashCommands400JSONResponse{
+			BadRequestJSONResponse: api.BadRequestJSONResponse{
+				Error: api.ErrorDetail{
+					Code:    "HLD-4001",
+					Message: "Invalid session ID",
+				},
+			},
+		}, nil
+	}
+
+	// Build command directory path
+	commandsDir := filepath.Join(session.WorkingDir, ".claude", "commands")
+
+	// Recursively find all .md files
+	var allCommands []string
+	err = filepath.WalkDir(commandsDir, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			// Directory might not exist, that's ok
+			return nil
+		}
+
+		if !d.IsDir() && strings.HasSuffix(path, ".md") {
+			// Convert path to command name with colon convention
+			relPath, _ := filepath.Rel(commandsDir, path)
+			commandName := strings.TrimSuffix(relPath, ".md")
+
+			// Convert path separators to colons
+			commandName = strings.ReplaceAll(commandName, string(filepath.Separator), ":")
+
+			allCommands = append(allCommands, "/" + commandName)
+		}
+
+		return nil
+	})
+
+	if err != nil && !os.IsNotExist(err) {
+		slog.Error("Failed to read commands directory",
+			"error", fmt.Sprintf("%v", err),
+			"commands_dir", commandsDir,
+			"operation", "GetSlashCommands",
+		)
+		return api.GetSlashCommands500JSONResponse{
+			InternalErrorJSONResponse: api.InternalErrorJSONResponse{
+				Error: api.ErrorDetail{
+					Code:    "HLD-5001",
+					Message: "Failed to read commands",
+				},
+			},
+		}, nil
 	}
 
 	// Initialize results as empty array instead of nil
@@ -1227,10 +1277,9 @@ func (h *SessionHandlers) GetSlashCommands(ctx context.Context, req api.GetSlash
 	if req.Params.Query != nil && *req.Params.Query != "" && *req.Params.Query != "/" {
 		query := strings.TrimPrefix(*req.Params.Query, "/")
 
-		// Create searchable items
+		// Create searchable items (without slash prefix)
 		var searchItems []string
 		for _, cmd := range allCommands {
-			// Remove slash for searching
 			searchItems = append(searchItems, strings.TrimPrefix(cmd, "/"))
 		}
 
