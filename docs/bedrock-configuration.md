@@ -115,7 +115,12 @@ Check the daemon logs to see if your configuration was loaded:
 tail -f ~/Library/Logs/CodeLayer/daemon.log
 ```
 
-Look for debug messages about "inherited generic env var from daemon configuration" for keys like "ANTHROPIC_BASE_URL".
+Look for debug messages indicating environment variables were inherited from daemon configuration. Depending on the session type, you'll see one of these messages:
+- `"inherited env var from daemon configuration"` - For new sessions (LaunchSession)
+- `"inherited env var from daemon configuration for resumed session"` - For resumed sessions (ContinueSession)
+- `"inherited generic env var from daemon configuration"` - For draft sessions (launchDraftWithConfig)
+
+Each log entry will include the session ID and the environment variable key (e.g., `ANTHROPIC_BASE_URL`).
 
 ### Security Considerations
 

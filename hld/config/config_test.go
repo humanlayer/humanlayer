@@ -12,7 +12,9 @@ func TestLoad_EnvCasePreservation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() {
+		_ = os.RemoveAll(tmpDir)
+	}()
 
 	// Create a config file with mixed-case environment variable keys
 	configContent := `{
@@ -33,8 +35,12 @@ func TestLoad_EnvCasePreservation(t *testing.T) {
 
 	// Set environment to use our test config
 	oldDir, _ := os.Getwd()
-	os.Chdir(tmpDir)
-	defer os.Chdir(oldDir)
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("Failed to change to temp dir: %v", err)
+	}
+	defer func() {
+		_ = os.Chdir(oldDir)
+	}()
 
 	// Load the configuration
 	cfg, err := Load()
@@ -80,7 +86,9 @@ func TestLoad_EnvEmpty(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() {
+		_ = os.RemoveAll(tmpDir)
+	}()
 
 	// Create a config file without env section
 	configContent := `{
@@ -95,8 +103,12 @@ func TestLoad_EnvEmpty(t *testing.T) {
 
 	// Set environment to use our test config
 	oldDir, _ := os.Getwd()
-	os.Chdir(tmpDir)
-	defer os.Chdir(oldDir)
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("Failed to change to temp dir: %v", err)
+	}
+	defer func() {
+		_ = os.Chdir(oldDir)
+	}()
 
 	// Load the configuration
 	cfg, err := Load()
@@ -116,7 +128,9 @@ func TestLoad_EnvWithEmptyObject(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() {
+		_ = os.RemoveAll(tmpDir)
+	}()
 
 	// Create a config file with empty env object
 	configContent := `{
@@ -132,8 +146,12 @@ func TestLoad_EnvWithEmptyObject(t *testing.T) {
 
 	// Set environment to use our test config
 	oldDir, _ := os.Getwd()
-	os.Chdir(tmpDir)
-	defer os.Chdir(oldDir)
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("Failed to change to temp dir: %v", err)
+	}
+	defer func() {
+		_ = os.Chdir(oldDir)
+	}()
 
 	// Load the configuration
 	cfg, err := Load()
@@ -141,11 +159,11 @@ func TestLoad_EnvWithEmptyObject(t *testing.T) {
 		t.Fatalf("Failed to load config: %v", err)
 	}
 
-	// With the current implementation, an empty env object in the config 
+	// With the current implementation, an empty env object in the config
 	// won't trigger the case preservation logic since viper unmarshals it as nil.
 	// This is acceptable behavior - if no env vars are set, the map can be nil.
 	// The important thing is that it doesn't cause errors.
-	if cfg.Env != nil && len(cfg.Env) != 0 {
+	if len(cfg.Env) != 0 {
 		t.Errorf("Expected Env to be nil or empty, got %d entries", len(cfg.Env))
 	}
 }
@@ -156,12 +174,18 @@ func TestSaveAndLoad_EnvRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() {
+		_ = os.RemoveAll(tmpDir)
+	}()
 
 	// Override the default config dir for this test
 	origHome := os.Getenv("HOME")
-	os.Setenv("HOME", tmpDir)
-	defer os.Setenv("HOME", origHome)
+	if err := os.Setenv("HOME", tmpDir); err != nil {
+		t.Fatalf("Failed to set HOME env: %v", err)
+	}
+	defer func() {
+		_ = os.Setenv("HOME", origHome)
+	}()
 
 	// Create a config with environment variables
 	cfg := &Config{
@@ -185,8 +209,12 @@ func TestSaveAndLoad_EnvRoundTrip(t *testing.T) {
 	// Change to config directory
 	configDir := getDefaultConfigDir()
 	oldDir, _ := os.Getwd()
-	os.Chdir(configDir)
-	defer os.Chdir(oldDir)
+	if err := os.Chdir(configDir); err != nil {
+		t.Fatalf("Failed to change to config dir: %v", err)
+	}
+	defer func() {
+		_ = os.Chdir(oldDir)
+	}()
 
 	// Load the configuration back
 	loadedCfg, err := Load()
@@ -223,7 +251,9 @@ func TestLoad_EnvWithSpecialCharacters(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() {
+		_ = os.RemoveAll(tmpDir)
+	}()
 
 	// Create a config file with special characters in values
 	configContent := `{
@@ -243,8 +273,12 @@ func TestLoad_EnvWithSpecialCharacters(t *testing.T) {
 
 	// Set environment to use our test config
 	oldDir, _ := os.Getwd()
-	os.Chdir(tmpDir)
-	defer os.Chdir(oldDir)
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("Failed to change to temp dir: %v", err)
+	}
+	defer func() {
+		_ = os.Chdir(oldDir)
+	}()
 
 	// Load the configuration
 	cfg, err := Load()

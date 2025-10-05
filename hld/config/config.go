@@ -3,6 +3,7 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -99,32 +100,46 @@ func Load() (*Config, error) {
 	// Viper/mapstructure lowercases all map keys, but environment variables are case-sensitive.
 	// We need to preserve the original case from the config file for the env map.
 	// Read the config file again and extract the env map with original case preserved.
+	// This is done defensively - if anything fails, we log a warning and use what Viper gave us.
 	configFile := v.ConfigFileUsed()
 	if configFile != "" && config.Env != nil {
 		data, err := os.ReadFile(configFile)
 		if err != nil {
-			return nil, fmt.Errorf("failed to read config file %q for env key case preservation: %w", configFile, err)
-		}
-		var rawConfig map[string]interface{}
-		if err := json.Unmarshal(data, &rawConfig); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal config file %q for env key case preservation: %w", configFile, err)
-		}
-		envValue, ok := rawConfig["env"]
-		if !ok {
-			return nil, fmt.Errorf("config file %q does not contain 'env' key for case preservation", configFile)
-		}
-		envMap, ok := envValue.(map[string]interface{})
-		if !ok {
-			return nil, fmt.Errorf("config file %q 'env' value is not a map[string]interface{}, got %T", configFile, envValue)
-		}
-		// Replace the lowercased env map with the case-preserved version
-		config.Env = make(map[string]string)
-		for k, v := range envMap {
-			str, ok := v.(string)
-			if !ok {
-				return nil, fmt.Errorf("config file %q env key %q value is not a string, got %T", configFile, k, v)
+			slog.Warn("failed to read config file for env key case preservation, using lowercased keys",
+				"file", configFile, "error", err)
+		} else {
+			var rawConfig map[string]interface{}
+			if err := json.Unmarshal(data, &rawConfig); err != nil {
+				slog.Warn("failed to unmarshal config file for env key case preservation, using lowercased keys",
+					"file", configFile, "error", err)
+			} else {
+				envValue, ok := rawConfig["env"]
+				if !ok {
+					// This is fine - Viper populated config.Env but the raw JSON doesn't have it
+					// (shouldn't happen, but be defensive)
+					slog.Debug("config file does not contain 'env' key for case preservation",
+						"file", configFile)
+				} else if envMap, ok := envValue.(map[string]interface{}); !ok {
+					slog.Warn("config file 'env' value is not a map, using lowercased keys",
+						"file", configFile, "type", fmt.Sprintf("%T", envValue))
+				} else {
+					// Collect case-preserved env vars
+					preservedEnv := make(map[string]string)
+					for k, v := range envMap {
+						str, ok := v.(string)
+						if !ok {
+							slog.Warn("config file env key has non-string value, skipping",
+								"file", configFile, "key", k, "type", fmt.Sprintf("%T", v))
+							continue
+						}
+						preservedEnv[k] = str
+					}
+					// Only replace if we got at least one valid entry
+					if len(preservedEnv) > 0 {
+						config.Env = preservedEnv
+					}
+				}
 			}
-			config.Env[k] = str
 		}
 	}
 
