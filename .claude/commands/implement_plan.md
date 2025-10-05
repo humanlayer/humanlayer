@@ -43,8 +43,23 @@ After implementing a phase:
 - Fix any issues before proceeding
 - Update your progress in both the plan and your todos
 - Check off completed items in the plan file itself using Edit
+- **Pause for human verification**: After completing all automated verification for a phase, pause and inform the human that the phase is ready for manual testing. Use this format:
+  ```
+  Phase [N] Complete - Ready for Manual Verification
 
-Don't let verification interrupt your flow - batch it at natural stopping points.
+  Automated verification passed:
+  - [List automated checks that passed]
+
+  Please perform the manual verification steps listed in the plan:
+  - [List manual verification items from the plan]
+
+  Let me know when manual testing is complete so I can proceed to Phase [N+1].
+  ```
+
+If you are explicitly asked to do multiple specific phases without stopping. Then you can skip this until you complete the last phase mentioned by the user. Otherwise assume you are just doing one phase.
+
+do not check off items in the manual testing steps until confirmed by the user.
+
 
 ## If You Get Stuck
 
