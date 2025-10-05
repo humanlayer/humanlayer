@@ -201,12 +201,12 @@ func TestGetSlashCommands(t *testing.T) {
 
 	// Create test command files
 	testCommands := map[string]string{
-		"create_plan.md":         "# Create Plan",
-		"implement_plan.md":      "# Implement Plan",
-		"research_codebase.md":   "# Research Codebase",
-		"linear.md":              "# Linear",
-		"hl/research.md":         "# HL Research",
-		"hl/alpha/test.md":       "# HL Alpha Test",
+		"create_plan.md":       "# Create Plan",
+		"implement_plan.md":    "# Implement Plan",
+		"research_codebase.md": "# Research Codebase",
+		"linear.md":            "# Linear",
+		"hl/research.md":       "# HL Research",
+		"hl/alpha/test.md":     "# HL Alpha Test",
 	}
 
 	for path, content := range testCommands {

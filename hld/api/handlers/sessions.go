@@ -1248,7 +1248,7 @@ func (h *SessionHandlers) GetSlashCommands(ctx context.Context, req api.GetSlash
 			// Convert path separators to colons
 			commandName = strings.ReplaceAll(commandName, string(filepath.Separator), ":")
 
-			allCommands = append(allCommands, "/" + commandName)
+			allCommands = append(allCommands, "/"+commandName)
 		}
 
 		return nil
