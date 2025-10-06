@@ -23,14 +23,12 @@ export const FileMentionNode = ({ node }: FileMentionNodeProps) => {
       data-is-directory={isDirectory ? 'true' : 'false'}
       title={`Open ${id}`}
     >
-      <span className="inline-flex items-center">
-        {isDirectory ? (
-          <FolderIcon className="inline-block mr-1 h-3.5 w-3.5" />
-        ) : (
-          <FileIcon className="inline-block mr-1 h-3.5 w-3.5" />
-        )}
-        @{label || id}
-      </span>
+      {isDirectory ? (
+        <FolderIcon className="inline-block mr-1 h-3.5 w-3.5" />
+      ) : (
+        <FileIcon className="inline-block mr-1 h-3.5 w-3.5" />
+      )}
+      @{label || id}
     </NodeViewWrapper>
   )
 }
