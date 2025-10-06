@@ -141,7 +141,11 @@ export const FuzzyFileMentionList = forwardRef<FileMentionListRef, FileMentionLi
           event.preventDefault()
           if (results.length > 0) {
             const selected = results[selectedIndex]
-            command({ id: selected.path, label: selected.displayPath, isDirectory: selected.isDirectory })
+            command({
+              id: selected.path,
+              label: selected.displayPath,
+              isDirectory: selected.isDirectory,
+            })
           }
           return true
         }
@@ -187,79 +191,77 @@ export const FuzzyFileMentionList = forwardRef<FileMentionListRef, FileMentionLi
 
     // Render file list
     return (
-      <div className="p-1">
-        <div className="max-h-[360px] overflow-y-auto">
-          {results.map((result, index) => {
-            // Use displayPath from backend (already computed relative to working dir)
-            const displayPath = result.displayPath || result.path
+      <div className="max-h-[360px] overflow-y-auto flex flex-col">
+        {results.map((result, index) => {
+          // Use displayPath from backend (already computed relative to working dir)
+          const displayPath = result.displayPath || result.path
 
-            // For highlighting, use the basename only since that's what we primarily match
-            const lastSep = result.path.lastIndexOf('/')
-            const basename = lastSep >= 0 ? result.path.substring(lastSep + 1) : result.path
+          // For highlighting, use the basename only since that's what we primarily match
+          const lastSep = result.path.lastIndexOf('/')
+          const basename = lastSep >= 0 ? result.path.substring(lastSep + 1) : result.path
 
-            // Find which matched indexes are in the basename portion
-            const basenameStartIdx = lastSep + 1
-            const basenameIndexes = result.matchedIndexes
-              ?.filter(idx => idx >= basenameStartIdx)
-              .map(idx => idx - basenameStartIdx)
+          // Find which matched indexes are in the basename portion
+          const basenameStartIdx = lastSep + 1
+          const basenameIndexes = result.matchedIndexes
+            ?.filter(idx => idx >= basenameStartIdx)
+            .map(idx => idx - basenameStartIdx)
 
-            // Highlight the basename
-            const basenameHighlighted = basenameIndexes?.length
-              ? highlightMatches(basename, basenameIndexes)
-              : null
+          // Highlight the basename
+          const basenameHighlighted = basenameIndexes?.length
+            ? highlightMatches(basename, basenameIndexes)
+            : null
 
-            return (
-              <Button
-                key={result.path}
-                variant="ghost"
-                size="sm"
-                className={`w-full justify-start px-2 py-1 ${
-                  index === selectedIndex ? 'bg-accent !text-[var(--terminal-bg)]' : ''
-                }`}
-                onMouseEnter={() => setSelectedIndex(index)}
-                onClick={() => {
-                  command({ id: result.path, label: result.displayPath, isDirectory: result.isDirectory })
-                }}
-              >
-                <div className="flex items-center gap-2 w-full min-w-0">
-                  {result.isDirectory ? (
-                    <FolderIcon className="h-4 w-4 flex-shrink-0" />
+          return (
+            <Button
+              key={result.path}
+              variant="ghost"
+              size="sm"
+              className={`w-full justify-start px-2 py-1 ${
+                index === selectedIndex ? 'bg-accent !text-[var(--terminal-bg)]' : ''
+              }`}
+              onMouseEnter={() => setSelectedIndex(index)}
+              onClick={() => {
+                command({ id: result.path, label: result.displayPath, isDirectory: result.isDirectory })
+              }}
+            >
+              <div className="flex items-center gap-2 w-full min-w-0">
+                {result.isDirectory ? (
+                  <FolderIcon className="h-4 w-4 flex-shrink-0" />
+                ) : (
+                  <FileIcon className="h-4 w-4 flex-shrink-0" />
+                )}
+                <span className="text-sm truncate w-full normal-case text-left">
+                  {basenameHighlighted ? (
+                    <>
+                      {/* Show directory path without highlighting */}
+                      {displayPath.substring(0, displayPath.length - basename.length)}
+                      {/* Show basename with highlighting */}
+                      {basenameHighlighted.map((segment, i) => (
+                        <span
+                          key={i}
+                          className={cn(
+                            segment.highlighted &&
+                              (index === selectedIndex
+                                ? 'bg-accent-foreground/20 font-medium'
+                                : 'bg-accent/40 font-medium'),
+                          )}
+                        >
+                          {segment.text}
+                        </span>
+                      ))}
+                      {result.isDirectory && <span className="text-muted-foreground">/</span>}
+                    </>
                   ) : (
-                    <FileIcon className="h-4 w-4 flex-shrink-0" />
+                    <>
+                      {displayPath}
+                      {result.isDirectory && <span className="text-muted-foreground">/</span>}
+                    </>
                   )}
-                  <span className="text-sm truncate w-full normal-case text-left">
-                    {basenameHighlighted ? (
-                      <>
-                        {/* Show directory path without highlighting */}
-                        {displayPath.substring(0, displayPath.length - basename.length)}
-                        {/* Show basename with highlighting */}
-                        {basenameHighlighted.map((segment, i) => (
-                          <span
-                            key={i}
-                            className={cn(
-                              segment.highlighted &&
-                                (index === selectedIndex
-                                  ? 'bg-accent-foreground/20 font-medium'
-                                  : 'bg-accent/40 font-medium'),
-                            )}
-                          >
-                            {segment.text}
-                          </span>
-                        ))}
-                        {result.isDirectory && <span className="text-muted-foreground">/</span>}
-                      </>
-                    ) : (
-                      <>
-                        {displayPath}
-                        {result.isDirectory && <span className="text-muted-foreground">/</span>}
-                      </>
-                    )}
-                  </span>
-                </div>
-              </Button>
-            )
-          })}
-        </div>
+                </span>
+              </div>
+            </Button>
+          )
+        })}
       </div>
     )
   },
