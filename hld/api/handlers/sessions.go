@@ -57,6 +57,24 @@ func NewSessionHandlersWithConfig(manager session.SessionManager, store store.Co
 	}
 }
 
+// expandTilde expands ~ to the user's home directory
+func expandTilde(path string) string {
+	if len(path) > 0 && path[0] == '~' {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return path
+		}
+		if len(path) == 1 {
+			return home
+		}
+		if path[1] == filepath.Separator {
+			return filepath.Join(home, path[2:])
+		}
+		return filepath.Join(home, path[1:])
+	}
+	return path
+}
+
 // CreateSession implements POST /sessions
 func (h *SessionHandlers) CreateSession(ctx context.Context, req api.CreateSessionRequestObject) (api.CreateSessionResponseObject, error) {
 	// Build launch config with embedded Claude config
@@ -1230,7 +1248,7 @@ func (h *SessionHandlers) GetSlashCommands(ctx context.Context, req api.GetSlash
 	}
 
 	// Build command directory paths
-	localCommandsDir := filepath.Join(session.WorkingDir, ".claude", "commands")
+	localCommandsDir := filepath.Join(expandTilde(session.WorkingDir), ".claude", "commands")
 	homeDir, err := os.UserHomeDir()
 	globalCommandsDir := ""
 	if err == nil {
