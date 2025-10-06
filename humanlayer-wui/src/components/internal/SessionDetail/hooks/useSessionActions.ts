@@ -65,7 +65,7 @@ export function useSessionActions({
       const processNode = (node: any): string => {
         if (node.type === 'text') {
           return node.text || ''
-        } else if (node.type === 'mention') {
+        } else if (node.type === 'mention' || node.type === 'slash-command') {
           // Use the full path (id) instead of the display label
           return node.attrs.id || node.attrs.label || ''
         } else if (node.type === 'paragraph' && node.content) {

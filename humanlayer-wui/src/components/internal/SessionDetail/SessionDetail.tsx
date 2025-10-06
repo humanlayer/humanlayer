@@ -611,8 +611,29 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     try {
       setIsLaunchingDraft(true)
 
-      // Get the prompt text from the editor
-      const prompt = responseEditor?.getText() || ''
+      // Get the editor content and process mentions/slash commands properly
+      let prompt = ''
+      if (responseEditor) {
+        const json = responseEditor.getJSON()
+
+        const processNode = (node: any): string => {
+          if (node.type === 'text') {
+            return node.text || ''
+          } else if (node.type === 'mention' || node.type === 'slash-command') {
+            // Use the full path (id) instead of the display label
+            return node.attrs.id || node.attrs.label || ''
+          } else if (node.type === 'paragraph' && node.content) {
+            return node.content.map(processNode).join('')
+          } else if (node.type === 'doc' && node.content) {
+            return node.content.map(processNode).join('\n')
+          } else if (node.type === 'hardBreak') {
+            return '\n'
+          }
+          return ''
+        }
+
+        prompt = processNode(json)
+      }
 
       // Apply localStorage settings to the draft session before launching
       // This ensures the session is created with the user's saved preferences
@@ -940,7 +961,29 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       e.stopPropagation()
 
       // Check if editor has content
-      const prompt = responseEditor?.getText() || ''
+      let prompt = ''
+      if (responseEditor) {
+        const json = responseEditor.getJSON()
+
+        const processNode = (node: any): string => {
+          if (node.type === 'text') {
+            return node.text || ''
+          } else if (node.type === 'mention' || node.type === 'slash-command') {
+            // Use the full path (id) instead of the display label
+            return node.attrs.id || node.attrs.label || ''
+          } else if (node.type === 'paragraph' && node.content) {
+            return node.content.map(processNode).join('')
+          } else if (node.type === 'doc' && node.content) {
+            return node.content.map(processNode).join('\n')
+          } else if (node.type === 'hardBreak') {
+            return '\n'
+          }
+          return ''
+        }
+
+        prompt = processNode(json)
+      }
+
       if (!prompt.trim()) {
         toast.error('Please enter a prompt', {
           description: 'Cannot launch an empty session',
