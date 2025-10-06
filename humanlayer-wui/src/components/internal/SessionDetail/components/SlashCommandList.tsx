@@ -18,6 +18,7 @@ interface SlashCommandListRef {
 
 interface SlashCommand {
   name: string
+  source: 'local' | 'global'
 }
 
 export const SlashCommandList = forwardRef<SlashCommandListRef, SlashCommandListProps>(
@@ -165,7 +166,10 @@ export const SlashCommandList = forwardRef<SlashCommandListRef, SlashCommandList
                 command({ id: cmd.name, label: cmd.name })
               }}
             >
-              <span>{cmd.name}</span>
+              <span className="flex-1 text-left">{cmd.name}</span>
+              <span className="ml-2 px-1.5 py-0.5 text-[10px] text-muted-foreground bg-muted rounded">
+                {cmd.source}
+              </span>
             </Button>
           ))}
         </div>

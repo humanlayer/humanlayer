@@ -83,7 +83,7 @@ export interface DaemonClient {
   getSlashCommands(params: {
     sessionId: string
     query?: string
-  }): Promise<{ data: Array<{ name: string }> }>
+  }): Promise<{ data: Array<{ name: string; source: 'local' | 'global' }> }>
   listSessions(): Promise<Session[]>
   getSessionLeaves(request?: { filter?: 'normal' | 'archived' | 'draft' }): Promise<{
     sessions: Session[]
