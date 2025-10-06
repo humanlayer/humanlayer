@@ -599,3 +599,52 @@ func TestGetSlashCommandsGlobalOverridesLocal(t *testing.T) {
 
 	mockStore.AssertExpectations(t)
 }
+
+func TestExpandTilde(t *testing.T) {
+	homeDir, err := os.UserHomeDir()
+	assert.NoError(t, err)
+
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "tilde with path",
+			input:    "~/projects/myapp",
+			expected: filepath.Join(homeDir, "projects", "myapp"),
+		},
+		{
+			name:     "just tilde",
+			input:    "~",
+			expected: homeDir,
+		},
+		{
+			name:     "tilde with slash",
+			input:    "~/",
+			expected: homeDir,
+		},
+		{
+			name:     "no tilde",
+			input:    "/absolute/path",
+			expected: "/absolute/path",
+		},
+		{
+			name:     "relative path",
+			input:    "relative/path",
+			expected: "relative/path",
+		},
+		{
+			name:     "empty string",
+			input:    "",
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := expandTilde(tt.input)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
