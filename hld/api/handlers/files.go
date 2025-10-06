@@ -105,40 +105,87 @@ func (h *FileHandlers) FuzzySearchFiles(
 		paths[i] = entry.AbsPath
 	}
 
-	// Perform fuzzy matching without sorting (we'll do custom scoring)
-	matches := fuzzy.FindNoSort(req.Body.Query, paths)
-
-	// Enhance scores to prefer basename matches over directory path matches
-	for i := range matches {
-		// Find the last separator to identify basename portion
-		lastSep := strings.LastIndexAny(matches[i].Str, "/\\")
-
-		// Count how many matched characters are in the basename
-		basenameMatches := 0
-		for _, idx := range matches[i].MatchedIndexes {
-			if idx > lastSep {
-				basenameMatches++
-			}
-		}
-
-		// Boost score significantly for each character matched in the basename
-		// This ensures "readme" in "docs/readme.md" ranks higher than
-		// scattered "r...e...a...d...m...e" in "/Users/nyx/dev/..."
-		matches[i].Score += basenameMatches * 30
-	}
-
-	// Sort by enhanced scores (higher is better)
-	sort.Stable(matches)
-
-	// Apply limit
+	// Determine limit
 	limit := 20
 	if req.Body.Limit != nil {
 		limit = *req.Body.Limit
 	}
-	totalMatches := len(matches)
-	if len(matches) > limit {
-		matches = matches[:limit]
+
+	// Two-round search strategy:
+	// Round 1: Search basenames only (better quality results)
+	// Round 2: If needed, search full paths to fill up to limit
+
+	// Extract basenames for first round
+	basenames := make([]string, len(paths))
+	for i, path := range paths {
+		lastSep := strings.LastIndexAny(path, "/\\")
+		if lastSep >= 0 {
+			basenames[i] = path[lastSep+1:]
+		} else {
+			basenames[i] = path
+		}
 	}
+
+	// Round 1: Search basenames
+	basenameMatches := fuzzy.FindNoSort(req.Body.Query, basenames)
+
+	// Track which path indices we've already matched
+	matchedIndices := make(map[int]struct{})
+	var allMatches fuzzy.Matches
+
+	// Convert basename matches to full path matches
+	for _, match := range basenameMatches {
+		fullPath := paths[match.Index]
+		lastSep := strings.LastIndexAny(fullPath, "/\\")
+
+		// Adjust matched indexes to be relative to full path
+		adjustedIndexes := make([]int, len(match.MatchedIndexes))
+		for i, idx := range match.MatchedIndexes {
+			adjustedIndexes[i] = lastSep + 1 + idx
+		}
+
+		// Boost score for basename matches to prioritize them over full path matches
+		boostedScore := match.Score + (len(match.MatchedIndexes) * 30)
+
+		fullMatch := fuzzy.Match{
+			Str:            fullPath,
+			Index:          match.Index,
+			Score:          boostedScore,
+			MatchedIndexes: adjustedIndexes,
+		}
+
+		allMatches = append(allMatches, fullMatch)
+		matchedIndices[match.Index] = struct{}{}
+	}
+
+	// Round 2: If we need more results, search full paths
+	if len(allMatches) < limit {
+		fullPathMatches := fuzzy.FindNoSort(req.Body.Query, paths)
+
+		// Add new matches that weren't already included from basename search
+		for _, match := range fullPathMatches {
+			if _, alreadyMatched := matchedIndices[match.Index]; !alreadyMatched {
+				allMatches = append(allMatches, match)
+				matchedIndices[match.Index] = struct{}{}
+
+				// Stop if we've reached the limit
+				if len(allMatches) >= limit {
+					break
+				}
+			}
+		}
+	}
+
+	// Sort by score (higher is better)
+	sort.Stable(allMatches)
+
+	// Apply limit and track total matches
+	totalMatches := len(allMatches)
+	if len(allMatches) > limit {
+		allMatches = allMatches[:limit]
+	}
+
+	matches := allMatches
 
 	// Convert to API response
 	results := make([]api.FileMatch, len(matches))

@@ -169,38 +169,14 @@ export const FuzzyFileMentionList = forwardRef<FileMentionListRef, FileMentionLi
       return <div className="px-3 py-2 text-sm text-muted-foreground">No files found</div>
     }
 
-    // Helper to extract filename from path
-    const getFileName = (path: string): string => {
-      const parts = path.split('/')
-      return parts[parts.length - 1] || path
-    }
-
-    // Helper to get relative path from working directory
-    const getRelativePath = (path: string): string | null => {
-      if (!sessionWorkingDir) return null
-      if (path.startsWith(sessionWorkingDir + '/')) {
-        return path.substring(sessionWorkingDir.length + 1)
-      }
-      return null
-    }
-
     // Render file list
     return (
       <div className="p-1">
         <div className="max-h-[360px] overflow-y-auto">
           {results.map((result, index) => {
-            const fileName = getFileName(result.path)
-            const relativePath = getRelativePath(result.path)
-            const displayPath = relativePath || result.path
-            const displayName = getFileName(displayPath)
-
-            // Get parent directory for context
-            const pathParts = displayPath.split('/')
-            const parentPath = pathParts.length > 1 ? pathParts.slice(0, -1).join('/') : null
-
-            // Highlight matches in the filename
+            // Highlight matches in the full path
             const highlighted = result.matchedIndexes?.length
-              ? highlightMatches(fileName, result.matchedIndexes)
+              ? highlightMatches(result.path, result.matchedIndexes)
               : null
 
             return (
@@ -217,39 +193,32 @@ export const FuzzyFileMentionList = forwardRef<FileMentionListRef, FileMentionLi
                   command({ id: result.path, label: result.path })
                 }}
               >
-                <div className="flex items-start gap-2 w-full min-w-0">
+                <div className="flex items-center gap-2 w-full min-w-0">
                   {result.isDirectory ? (
-                    <FolderIcon className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                    <FolderIcon className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
                   ) : (
-                    <FileIcon className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                    <FileIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                   )}
-                  <div className="flex flex-col items-start min-w-0 flex-1">
-                    <span className="text-sm truncate w-full">
-                      {highlighted ? (
-                        <>
-                          {highlighted.map((segment, i) => (
-                            <span
-                              key={i}
-                              className={cn(segment.highlighted && 'bg-accent/40 font-medium')}
-                            >
-                              {segment.text}
-                            </span>
-                          ))}
-                          {result.isDirectory && <span className="text-muted-foreground">/</span>}
-                        </>
-                      ) : (
-                        <>
-                          {displayName}
-                          {result.isDirectory && <span className="text-muted-foreground">/</span>}
-                        </>
-                      )}
-                    </span>
-                    {parentPath && (
-                      <span className="text-xs text-muted-foreground truncate w-full">
-                        in {parentPath}
-                      </span>
+                  <span className="text-sm truncate w-full">
+                    {highlighted ? (
+                      <>
+                        {highlighted.map((segment, i) => (
+                          <span
+                            key={i}
+                            className={cn(segment.highlighted && 'bg-accent/40 font-medium')}
+                          >
+                            {segment.text}
+                          </span>
+                        ))}
+                        {result.isDirectory && <span className="text-muted-foreground">/</span>}
+                      </>
+                    ) : (
+                      <>
+                        {result.path}
+                        {result.isDirectory && <span className="text-muted-foreground">/</span>}
+                      </>
                     )}
-                  </div>
+                  </span>
                 </div>
               </Button>
             )
