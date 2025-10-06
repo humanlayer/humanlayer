@@ -218,6 +218,37 @@ humanlayer thoughts config --json
 
 The thoughts system keeps your notes separate from code while making them easily accessible to AI assistants. See the [Thoughts documentation](./THOUGHTS.md) for detailed information.
 
+### `claude`
+
+Manage Claude Code configuration.
+
+```bash
+humanlayer claude <subcommand>
+```
+
+**Subcommands:**
+
+- `init` - Initialize Claude Code configuration in current directory
+
+**Examples:**
+
+```bash
+# Initialize Claude Code configuration interactively
+humanlayer claude init
+
+# Copy all files without prompting
+humanlayer claude init --all
+
+# Force overwrite existing .claude directory
+humanlayer claude init --force
+```
+
+The `claude init` command copies Claude Code configuration files to your project:
+
+- **Commands** - Workflow commands for planning, research, CI, etc.
+- **Agents** - Specialized sub-agents for code analysis
+- **Settings** - Project permissions configuration
+
 ## Use Cases
 
 - **CI/CD Pipelines**: Get human approval before deploying
