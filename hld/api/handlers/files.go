@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/humanlayer/humanlayer/hld/api"
@@ -42,9 +44,15 @@ func (h *FileHandlers) FuzzySearchFiles(
 	searchCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
+	// Expand tildes in paths
+	expandedPaths := make([]string, len(req.Body.Paths))
+	for i, path := range req.Body.Paths {
+		expandedPaths[i] = expandTilde(path)
+	}
+
 	// Initialize scanner
 	scanOpts := filescan.ScanOptions{
-		Paths:            req.Body.Paths,
+		Paths:            expandedPaths,
 		FilesOnly:        req.Body.FilesOnly != nil && *req.Body.FilesOnly,
 		RespectGitignore: req.Body.RespectGitignore == nil || *req.Body.RespectGitignore,
 	}
@@ -97,8 +105,30 @@ func (h *FileHandlers) FuzzySearchFiles(
 		paths[i] = entry.AbsPath
 	}
 
-	// Perform fuzzy matching
-	matches := fuzzy.Find(req.Body.Query, paths)
+	// Perform fuzzy matching without sorting (we'll do custom scoring)
+	matches := fuzzy.FindNoSort(req.Body.Query, paths)
+
+	// Enhance scores to prefer basename matches over directory path matches
+	for i := range matches {
+		// Find the last separator to identify basename portion
+		lastSep := strings.LastIndexAny(matches[i].Str, "/\\")
+
+		// Count how many matched characters are in the basename
+		basenameMatches := 0
+		for _, idx := range matches[i].MatchedIndexes {
+			if idx > lastSep {
+				basenameMatches++
+			}
+		}
+
+		// Boost score significantly for each character matched in the basename
+		// This ensures "readme" in "docs/readme.md" ranks higher than
+		// scattered "r...e...a...d...m...e" in "/Users/nyx/dev/..."
+		matches[i].Score += basenameMatches * 30
+	}
+
+	// Sort by enhanced scores (higher is better)
+	sort.Stable(matches)
 
 	// Apply limit
 	limit := 20
