@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils'
 
 interface FileMentionListProps {
   query: string
-  command: (item: { id: string; label: string }) => void
+  command: (item: { id: string; label: string; isDirectory?: boolean }) => void
   editor: Editor
 }
 
@@ -141,7 +141,7 @@ export const FuzzyFileMentionList = forwardRef<FileMentionListRef, FileMentionLi
           event.preventDefault()
           if (results.length > 0) {
             const selected = results[selectedIndex]
-            command({ id: selected.path, label: selected.path })
+            command({ id: selected.path, label: selected.displayPath, isDirectory: selected.isDirectory })
           }
           return true
         }
@@ -213,22 +213,21 @@ export const FuzzyFileMentionList = forwardRef<FileMentionListRef, FileMentionLi
                 key={result.path}
                 variant="ghost"
                 size="sm"
-                className={cn(
-                  'w-full justify-start px-2 py-1.5 h-auto',
-                  index === selectedIndex ? 'bg-accent text-accent-foreground' : '',
-                )}
+                className={`w-full justify-start px-2 py-1 ${
+                  index === selectedIndex ? 'bg-accent !text-[var(--terminal-bg)]' : ''
+                }`}
                 onMouseEnter={() => setSelectedIndex(index)}
                 onClick={() => {
-                  command({ id: result.path, label: result.path })
+                  command({ id: result.path, label: result.displayPath, isDirectory: result.isDirectory })
                 }}
               >
                 <div className="flex items-center gap-2 w-full min-w-0">
                   {result.isDirectory ? (
-                    <FolderIcon className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                    <FolderIcon className="h-4 w-4 flex-shrink-0" />
                   ) : (
-                    <FileIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    <FileIcon className="h-4 w-4 flex-shrink-0" />
                   )}
-                  <span className="text-sm truncate w-full normal-case">
+                  <span className="text-sm truncate w-full normal-case text-left">
                     {basenameHighlighted ? (
                       <>
                         {/* Show directory path without highlighting */}
@@ -237,7 +236,12 @@ export const FuzzyFileMentionList = forwardRef<FileMentionListRef, FileMentionLi
                         {basenameHighlighted.map((segment, i) => (
                           <span
                             key={i}
-                            className={cn(segment.highlighted && 'bg-accent/40 font-medium')}
+                            className={cn(
+                              segment.highlighted &&
+                                (index === selectedIndex
+                                  ? 'bg-accent-foreground/20 font-medium'
+                                  : 'bg-accent/40 font-medium'),
+                            )}
                           >
                             {segment.text}
                           </span>

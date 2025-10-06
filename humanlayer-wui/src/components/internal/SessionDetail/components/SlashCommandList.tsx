@@ -158,7 +158,7 @@ export const SlashCommandList = forwardRef<SlashCommandListRef, SlashCommandList
               variant="ghost"
               size="sm"
               className={`w-full justify-start px-2 py-1 ${
-                index === selectedIndex ? 'bg-accent text-accent-foreground' : ''
+                index === selectedIndex ? 'bg-accent !text-[var(--terminal-bg)]' : ''
               }`}
               onMouseEnter={() => setSelectedIndex(index)}
               onClick={() => {

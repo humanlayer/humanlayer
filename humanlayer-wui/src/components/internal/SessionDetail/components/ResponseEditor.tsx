@@ -1,5 +1,5 @@
 import React, { useEffect, forwardRef, useImperativeHandle, useState, useRef } from 'react'
-import { useEditor, EditorContent, Extension, Content, ReactRenderer } from '@tiptap/react'
+import { useEditor, EditorContent, Extension, Content, ReactRenderer, ReactNodeViewRenderer } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { Placeholder } from '@tiptap/extensions'
 import Mention from '@tiptap/extension-mention'
@@ -7,6 +7,7 @@ import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import { Plugin } from '@tiptap/pm/state'
 import { SlashCommandList } from './SlashCommandList'
 import { FuzzyFileMentionList } from './FuzzyFileMentionList'
+import { FileMentionNode } from './FileMentionNode'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { createLowlight } from 'lowlight'
 import clojure from 'highlight.js/lib/languages/clojure'
@@ -630,21 +631,27 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
         }),
         // TEMPORARILY DISABLED: Mention functionality for fuzzy file finding
         // Uncomment the block below to re-enable @-mention file search
-        Mention.configure({
+        Mention.extend({
+          addAttributes() {
+            return {
+              ...this.parent?.(),
+              isDirectory: {
+                default: false,
+                parseHTML: element => element.getAttribute('data-is-directory') === 'true',
+                renderHTML: attributes => {
+                  if (!attributes.isDirectory) return {}
+                  return { 'data-is-directory': 'true' }
+                },
+              },
+            }
+          },
+          addNodeView() {
+            return ReactNodeViewRenderer(FileMentionNode)
+          },
+        }).configure({
           HTMLAttributes: {
             class: 'mention',
             'data-mention': 'true',
-          },
-          renderHTML({ node }) {
-            return [
-              'span',
-              {
-                class: 'mention',
-                'data-mention': node.attrs.id,
-                title: `Open ${node.attrs.id}`,
-              },
-              `@${node.attrs.label || node.attrs.id}`,
-            ]
           },
           suggestion: {
             char: '@',
