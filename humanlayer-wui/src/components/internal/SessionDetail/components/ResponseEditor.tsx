@@ -1,5 +1,12 @@
 import React, { useEffect, forwardRef, useImperativeHandle, useState, useRef } from 'react'
-import { useEditor, EditorContent, Extension, Content, ReactRenderer, ReactNodeViewRenderer } from '@tiptap/react'
+import {
+  useEditor,
+  EditorContent,
+  Extension,
+  Content,
+  ReactRenderer,
+  ReactNodeViewRenderer,
+} from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { Placeholder } from '@tiptap/extensions'
 import Mention from '@tiptap/extension-mention'
@@ -634,11 +641,27 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
         Mention.extend({
           addAttributes() {
             return {
-              ...this.parent?.(),
+              id: {
+                default: null,
+                parseHTML: (element: HTMLElement) => element.getAttribute('data-id'),
+                renderHTML: (attributes: any) => {
+                  if (!attributes.id) return {}
+                  return { 'data-id': attributes.id }
+                },
+              },
+              label: {
+                default: null,
+                parseHTML: (element: HTMLElement) => element.getAttribute('data-label'),
+                renderHTML: (attributes: any) => {
+                  if (!attributes.label) return {}
+                  return { 'data-label': attributes.label }
+                },
+              },
               isDirectory: {
                 default: false,
-                parseHTML: element => element.getAttribute('data-is-directory') === 'true',
-                renderHTML: attributes => {
+                parseHTML: (element: HTMLElement) =>
+                  element.getAttribute('data-is-directory') === 'true',
+                renderHTML: (attributes: any) => {
                   if (!attributes.isDirectory) return {}
                   return { 'data-is-directory': 'true' }
                 },
@@ -646,7 +669,7 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
             }
           },
           addNodeView() {
-            return ReactNodeViewRenderer(FileMentionNode)
+            return ReactNodeViewRenderer(FileMentionNode as any)
           },
         }).configure({
           HTMLAttributes: {
