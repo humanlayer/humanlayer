@@ -20,6 +20,7 @@ interface FileMentionListRef {
 
 interface FileMatch {
   path: string
+  displayPath: string
   score: number
   matchedIndexes: number[]
   isDirectory: boolean
@@ -30,6 +31,7 @@ export const FuzzyFileMentionList = forwardRef<FileMentionListRef, FileMentionLi
     const [selectedIndex, setSelectedIndex] = useState(0)
     const [results, setResults] = useState<FileMatch[]>([])
     const [isLoading, setIsLoading] = useState(false)
+    const [showLoader, setShowLoader] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const activeSessionDetail = useStore(state => state.activeSessionDetail)
     const sessionWorkingDir = activeSessionDetail?.session?.workingDir
@@ -39,6 +41,20 @@ export const FuzzyFileMentionList = forwardRef<FileMentionListRef, FileMentionLi
       () => activeSessionDetail?.session?.additionalDirectories || [],
       [activeSessionDetail?.session?.additionalDirectories],
     )
+
+    // Delay showing loader to avoid flashing
+    useEffect(() => {
+      if (!isLoading) {
+        setShowLoader(false)
+        return
+      }
+
+      const timer = setTimeout(() => {
+        setShowLoader(true)
+      }, 300)
+
+      return () => clearTimeout(timer)
+    }, [isLoading])
 
     // Fetch files from daemon
     useEffect(() => {
@@ -145,7 +161,7 @@ export const FuzzyFileMentionList = forwardRef<FileMentionListRef, FileMentionLi
     }))
 
     // Render loading state
-    if (isLoading) {
+    if (showLoader) {
       return (
         <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
@@ -174,9 +190,22 @@ export const FuzzyFileMentionList = forwardRef<FileMentionListRef, FileMentionLi
       <div className="p-1">
         <div className="max-h-[360px] overflow-y-auto">
           {results.map((result, index) => {
-            // Highlight matches in the full path
-            const highlighted = result.matchedIndexes?.length
-              ? highlightMatches(result.path, result.matchedIndexes)
+            // Use displayPath from backend (already computed relative to working dir)
+            const displayPath = result.displayPath || result.path
+
+            // For highlighting, use the basename only since that's what we primarily match
+            const lastSep = result.path.lastIndexOf('/')
+            const basename = lastSep >= 0 ? result.path.substring(lastSep + 1) : result.path
+
+            // Find which matched indexes are in the basename portion
+            const basenameStartIdx = lastSep + 1
+            const basenameIndexes = result.matchedIndexes
+              ?.filter(idx => idx >= basenameStartIdx)
+              .map(idx => idx - basenameStartIdx)
+
+            // Highlight the basename
+            const basenameHighlighted = basenameIndexes?.length
+              ? highlightMatches(basename, basenameIndexes)
               : null
 
             return (
@@ -199,10 +228,13 @@ export const FuzzyFileMentionList = forwardRef<FileMentionListRef, FileMentionLi
                   ) : (
                     <FileIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                   )}
-                  <span className="text-sm truncate w-full">
-                    {highlighted ? (
+                  <span className="text-sm truncate w-full normal-case">
+                    {basenameHighlighted ? (
                       <>
-                        {highlighted.map((segment, i) => (
+                        {/* Show directory path without highlighting */}
+                        {displayPath.substring(0, displayPath.length - basename.length)}
+                        {/* Show basename with highlighting */}
+                        {basenameHighlighted.map((segment, i) => (
                           <span
                             key={i}
                             className={cn(segment.highlighted && 'bg-accent/40 font-medium')}
@@ -214,7 +246,7 @@ export const FuzzyFileMentionList = forwardRef<FileMentionListRef, FileMentionLi
                       </>
                     ) : (
                       <>
-                        {result.path}
+                        {displayPath}
                         {result.isDirectory && <span className="text-muted-foreground">/</span>}
                       </>
                     )}

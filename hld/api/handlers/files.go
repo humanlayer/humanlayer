@@ -199,8 +199,18 @@ func (h *FileHandlers) FuzzySearchFiles(
 			}
 		}
 
+		// Compute display path (relative to first search path if possible)
+		displayPath := match.Str
+		if len(expandedPaths) > 0 {
+			firstPath := expandedPaths[0]
+			if strings.HasPrefix(match.Str, firstPath+"/") {
+				displayPath = match.Str[len(firstPath)+1:]
+			}
+		}
+
 		results[i] = api.FileMatch{
 			Path:           match.Str,
+			DisplayPath:    displayPath,
 			Score:          match.Score,
 			MatchedIndexes: match.MatchedIndexes,
 			IsDirectory:    isDir,

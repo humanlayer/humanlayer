@@ -664,7 +664,7 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
                   // Create a portal div for the dropdown with shadcn styling
                   popup = document.createElement('div')
                   popup.className =
-                    'z-50 min-w-[20rem] max-w-[30rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md'
+                    'z-50 min-w-[20rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md'
                   document.body.appendChild(popup)
 
                   component = new ReactRenderer(FuzzyFileMentionList, {

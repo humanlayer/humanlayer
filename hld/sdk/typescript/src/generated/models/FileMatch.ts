@@ -26,6 +26,12 @@ export interface FileMatch {
      */
     path: string;
     /**
+     * Relative path for display (relative to first search path if applicable)
+     * @type {string}
+     * @memberof FileMatch
+     */
+    displayPath: string;
+    /**
      * Match quality score (higher is better)
      * @type {number}
      * @memberof FileMatch
@@ -50,6 +56,7 @@ export interface FileMatch {
  */
 export function instanceOfFileMatch(value: object): value is FileMatch {
     if (!('path' in value) || value['path'] === undefined) return false;
+    if (!('displayPath' in value) || value['displayPath'] === undefined) return false;
     if (!('score' in value) || value['score'] === undefined) return false;
     if (!('matchedIndexes' in value) || value['matchedIndexes'] === undefined) return false;
     if (!('isDirectory' in value) || value['isDirectory'] === undefined) return false;
@@ -67,6 +74,7 @@ export function FileMatchFromJSONTyped(json: any, ignoreDiscriminator: boolean):
     return {
         
         'path': json['path'],
+        'displayPath': json['displayPath'],
         'score': json['score'],
         'matchedIndexes': json['matchedIndexes'],
         'isDirectory': json['isDirectory'],
@@ -85,6 +93,7 @@ export function FileMatchToJSONTyped(value?: FileMatch | null, ignoreDiscriminat
     return {
         
         'path': value['path'],
+        'displayPath': value['displayPath'],
         'score': value['score'],
         'matchedIndexes': value['matchedIndexes'],
         'isDirectory': value['isDirectory'],
