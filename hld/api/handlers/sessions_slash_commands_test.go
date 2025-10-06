@@ -196,6 +196,14 @@ func TestGetSlashCommands(t *testing.T) {
 	tempDir := t.TempDir()
 	commandsDir := filepath.Join(tempDir, ".claude", "commands")
 
+	// Override HOME to avoid picking up real global commands
+	tempHomeDir := t.TempDir()
+	originalHome := os.Getenv("HOME")
+	assert.NoError(t, os.Setenv("HOME", tempHomeDir))
+	defer func() {
+		_ = os.Setenv("HOME", originalHome)
+	}()
+
 	// Create directory structure with test commands
 	assert.NoError(t, os.MkdirAll(filepath.Join(commandsDir, "hl", "alpha"), 0755))
 
@@ -306,10 +314,13 @@ func TestGetSlashCommands(t *testing.T) {
 			jsonResp, ok := resp.(api.GetSlashCommands200JSONResponse)
 			assert.True(t, ok, "expected 200 response")
 
-			// Extract command names
+			// Extract command names and verify they all have 'local' source
 			var names []string
 			for _, cmd := range jsonResp.Data {
 				names = append(names, cmd.Name)
+				// Since we only have local commands in this test, all should be 'local'
+				assert.Equal(t, api.Local, cmd.Source,
+					"command %s should have source 'local'", cmd.Name)
 			}
 
 			assert.ElementsMatch(t, tt.expected, names, "commands should match expected for query: %s", tt.query)
@@ -340,5 +351,251 @@ func TestGetSlashCommands(t *testing.T) {
 	})
 
 	// Verify all expected mock calls were made
+	mockStore.AssertExpectations(t)
+}
+
+func TestGetSlashCommandsWithGlobalCommands(t *testing.T) {
+	ctx := context.Background()
+
+	// Create temporary directories for local and global commands
+	tempDir := t.TempDir()
+	localCommandsDir := filepath.Join(tempDir, ".claude", "commands")
+
+	// Create a temp home directory for global commands
+	tempHomeDir := t.TempDir()
+	globalCommandsDir := filepath.Join(tempHomeDir, ".claude", "commands")
+
+	// Set HOME env var temporarily for this test
+	originalHome := os.Getenv("HOME")
+	assert.NoError(t, os.Setenv("HOME", tempHomeDir))
+	defer func() {
+		_ = os.Setenv("HOME", originalHome)
+	}()
+
+	// Create directory structures
+	assert.NoError(t, os.MkdirAll(localCommandsDir, 0755))
+	assert.NoError(t, os.MkdirAll(globalCommandsDir, 0755))
+
+	// Create test command files - some overlap between local and global
+	localCommands := map[string]string{
+		"create_plan.md":    "# Local Create Plan",
+		"local_only.md":     "# Local Only Command",
+		"shared_command.md": "# Local Shared Command",
+	}
+
+	globalCommands := map[string]string{
+		"create_plan.md":    "# Global Create Plan", // Duplicate - global should win
+		"global_only.md":    "# Global Only Command",
+		"shared_command.md": "# Global Shared Command", // Duplicate - global should win
+		"implement_plan.md": "# Global Implement Plan",
+	}
+
+	// Write local commands
+	for path, content := range localCommands {
+		fullPath := filepath.Join(localCommandsDir, path)
+		assert.NoError(t, os.WriteFile(fullPath, []byte(content), 0644))
+	}
+
+	// Write global commands
+	for path, content := range globalCommands {
+		fullPath := filepath.Join(globalCommandsDir, path)
+		assert.NoError(t, os.WriteFile(fullPath, []byte(content), 0644))
+	}
+
+	// Create mock store
+	mockStore := new(MockStore)
+
+	// Set up handler with mock store
+	handler := &SessionHandlers{
+		store: mockStore,
+	}
+
+	// Mock GetSession to return a session with our temp directory
+	mockSession := &store.Session{
+		ID:         "test-session",
+		WorkingDir: tempDir,
+	}
+	mockStore.On("GetSession", ctx, "test-session").Return(mockSession, nil)
+
+	tests := []struct {
+		name            string
+		query           string
+		expectedNames   []string
+		expectedSources map[string]api.SlashCommandSource
+	}{
+		{
+			name:  "no query returns all commands with proper deduplication",
+			query: "",
+			expectedNames: []string{
+				"/create_plan",    // Global version should be returned
+				"/local_only",     // Local only
+				"/shared_command", // Global version should be returned
+				"/global_only",    // Global only
+				"/implement_plan", // Global only
+			},
+			expectedSources: map[string]api.SlashCommandSource{
+				"/create_plan":    api.Global,
+				"/local_only":     api.Local,
+				"/shared_command": api.Global,
+				"/global_only":    api.Global,
+				"/implement_plan": api.Global,
+			},
+		},
+		{
+			name:          "fuzzy match 'plan' includes commands from both sources",
+			query:         "plan",
+			expectedNames: []string{"/create_plan", "/implement_plan"},
+			expectedSources: map[string]api.SlashCommandSource{
+				"/create_plan":    api.Global, // Global version
+				"/implement_plan": api.Global,
+			},
+		},
+		{
+			name:          "fuzzy match 'local' finds local_only command",
+			query:         "local",
+			expectedNames: []string{"/local_only"},
+			expectedSources: map[string]api.SlashCommandSource{
+				"/local_only": api.Local,
+			},
+		},
+		{
+			name:          "fuzzy match 'global' finds global_only command",
+			query:         "global",
+			expectedNames: []string{"/global_only"},
+			expectedSources: map[string]api.SlashCommandSource{
+				"/global_only": api.Global,
+			},
+		},
+		{
+			name:          "fuzzy match 'shared' returns global version",
+			query:         "shared",
+			expectedNames: []string{"/shared_command"},
+			expectedSources: map[string]api.SlashCommandSource{
+				"/shared_command": api.Global,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var queryPtr *string
+			if tt.query != "" {
+				queryPtr = &tt.query
+			}
+
+			req := api.GetSlashCommandsRequestObject{
+				Params: api.GetSlashCommandsParams{
+					SessionId: "test-session",
+					Query:     queryPtr,
+				},
+			}
+
+			resp, err := handler.GetSlashCommands(ctx, req)
+			assert.NoError(t, err)
+
+			jsonResp, ok := resp.(api.GetSlashCommands200JSONResponse)
+			assert.True(t, ok, "expected 200 response")
+
+			// Extract command names and verify sources
+			var names []string
+			for _, cmd := range jsonResp.Data {
+				names = append(names, cmd.Name)
+
+				// Verify source if specified in expected
+				if expectedSource, exists := tt.expectedSources[cmd.Name]; exists {
+					assert.Equal(t, expectedSource, cmd.Source,
+						"command %s should have source %s", cmd.Name, expectedSource)
+				}
+			}
+
+			assert.ElementsMatch(t, tt.expectedNames, names,
+				"commands should match expected for query: %s", tt.query)
+		})
+	}
+
+	// Verify all expected mock calls were made
+	mockStore.AssertExpectations(t)
+}
+
+func TestGetSlashCommandsGlobalOverridesLocal(t *testing.T) {
+	ctx := context.Background()
+
+	// Create temporary directories for local and global commands
+	tempDir := t.TempDir()
+	localCommandsDir := filepath.Join(tempDir, ".claude", "commands")
+
+	// Create a temp home directory for global commands
+	tempHomeDir := t.TempDir()
+	globalCommandsDir := filepath.Join(tempHomeDir, ".claude", "commands")
+
+	// Set HOME env var temporarily for this test
+	originalHome := os.Getenv("HOME")
+	assert.NoError(t, os.Setenv("HOME", tempHomeDir))
+	defer func() {
+		_ = os.Setenv("HOME", originalHome)
+	}()
+
+	// Create directory structures with nested folders
+	assert.NoError(t, os.MkdirAll(filepath.Join(localCommandsDir, "nested"), 0755))
+	assert.NoError(t, os.MkdirAll(filepath.Join(globalCommandsDir, "nested"), 0755))
+
+	// Create overlapping commands in both directories
+	// All these commands exist in both local and global
+	duplicateCommands := []string{
+		"duplicate1.md",
+		"duplicate2.md",
+		"nested/duplicate3.md",
+	}
+
+	// Write the same commands to both directories
+	for _, path := range duplicateCommands {
+		localPath := filepath.Join(localCommandsDir, path)
+		globalPath := filepath.Join(globalCommandsDir, path)
+
+		assert.NoError(t, os.WriteFile(localPath, []byte("Local version"), 0644))
+		assert.NoError(t, os.WriteFile(globalPath, []byte("Global version"), 0644))
+	}
+
+	// Create mock store
+	mockStore := new(MockStore)
+	handler := &SessionHandlers{
+		store: mockStore,
+	}
+
+	mockSession := &store.Session{
+		ID:         "test-session",
+		WorkingDir: tempDir,
+	}
+	mockStore.On("GetSession", ctx, "test-session").Return(mockSession, nil)
+
+	req := api.GetSlashCommandsRequestObject{
+		Params: api.GetSlashCommandsParams{
+			SessionId: "test-session",
+		},
+	}
+
+	resp, err := handler.GetSlashCommands(ctx, req)
+	assert.NoError(t, err)
+
+	jsonResp, ok := resp.(api.GetSlashCommands200JSONResponse)
+	assert.True(t, ok, "expected 200 response")
+
+	// All commands should be present, but all should be from global source
+	expectedCommands := map[string]api.SlashCommandSource{
+		"/duplicate1":        api.Global,
+		"/duplicate2":        api.Global,
+		"/nested:duplicate3": api.Global,
+	}
+
+	assert.Len(t, jsonResp.Data, len(expectedCommands),
+		"should have exactly %d commands (no duplicates)", len(expectedCommands))
+
+	for _, cmd := range jsonResp.Data {
+		expectedSource, exists := expectedCommands[cmd.Name]
+		assert.True(t, exists, "unexpected command: %s", cmd.Name)
+		assert.Equal(t, expectedSource, cmd.Source,
+			"command %s should be from global source", cmd.Name)
+	}
+
 	mockStore.AssertExpectations(t)
 }

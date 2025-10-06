@@ -1229,45 +1229,84 @@ func (h *SessionHandlers) GetSlashCommands(ctx context.Context, req api.GetSlash
 		}, nil
 	}
 
-	// Build command directory path
-	commandsDir := filepath.Join(session.WorkingDir, ".claude", "commands")
+	// Build command directory paths
+	localCommandsDir := filepath.Join(session.WorkingDir, ".claude", "commands")
+	homeDir, err := os.UserHomeDir()
+	globalCommandsDir := ""
+	if err == nil {
+		globalCommandsDir = filepath.Join(homeDir, ".claude", "commands")
+	}
 
-	// Recursively find all .md files
-	var allCommands []string
-	err = filepath.WalkDir(commandsDir, func(path string, d os.DirEntry, err error) error {
-		if err != nil {
-			// Directory might not exist, that's ok
+	// Use a map to track commands and handle deduplication
+	// Key is command name, value is the command with source
+	commandMap := make(map[string]api.SlashCommand)
+
+	// Helper function to discover commands from a directory
+	discoverCommands := func(dir string, source api.SlashCommandSource) error {
+		if dir == "" {
 			return nil
 		}
 
-		if !d.IsDir() && strings.HasSuffix(path, ".md") {
-			// Convert path to command name with colon convention
-			relPath, _ := filepath.Rel(commandsDir, path)
-			commandName := strings.TrimSuffix(relPath, ".md")
+		return filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
+			if err != nil {
+				// Directory might not exist, that's ok
+				return nil
+			}
 
-			// Convert path separators to colons
-			commandName = strings.ReplaceAll(commandName, string(filepath.Separator), ":")
+			if !d.IsDir() && strings.HasSuffix(path, ".md") {
+				// Convert path to command name with colon convention
+				relPath, _ := filepath.Rel(dir, path)
+				commandName := strings.TrimSuffix(relPath, ".md")
 
-			allCommands = append(allCommands, "/"+commandName)
-		}
+				// Convert path separators to colons
+				commandName = strings.ReplaceAll(commandName, string(filepath.Separator), ":")
+				fullCommandName := "/" + commandName
 
-		return nil
-	})
+				// Check if command already exists
+				if _, exists := commandMap[fullCommandName]; exists {
+					// Global commands take precedence
+					if source == api.Global {
+						commandMap[fullCommandName] = api.SlashCommand{
+							Name:   fullCommandName,
+							Source: source,
+						}
+					}
+					// If source is "local" and global already exists, do nothing (global wins)
+				} else {
+					// New command, add it
+					commandMap[fullCommandName] = api.SlashCommand{
+						Name:   fullCommandName,
+						Source: source,
+					}
+				}
+			}
 
-	if err != nil && !os.IsNotExist(err) {
-		slog.Error("Failed to read commands directory",
+			return nil
+		})
+	}
+
+	// Discover local commands first
+	if err := discoverCommands(localCommandsDir, api.Local); err != nil && !os.IsNotExist(err) {
+		slog.Warn("Failed to read local commands directory",
 			"error", fmt.Sprintf("%v", err),
-			"commands_dir", commandsDir,
+			"commands_dir", localCommandsDir,
 			"operation", "GetSlashCommands",
 		)
-		return api.GetSlashCommands500JSONResponse{
-			InternalErrorJSONResponse: api.InternalErrorJSONResponse{
-				Error: api.ErrorDetail{
-					Code:    "HLD-5001",
-					Message: "Failed to read commands",
-				},
-			},
-		}, nil
+	}
+
+	// Then discover global commands (these will override local if duplicates exist)
+	if err := discoverCommands(globalCommandsDir, api.Global); err != nil && !os.IsNotExist(err) {
+		slog.Warn("Failed to read global commands directory",
+			"error", fmt.Sprintf("%v", err),
+			"commands_dir", globalCommandsDir,
+			"operation", "GetSlashCommands",
+		)
+	}
+
+	// Extract all commands from map
+	var allCommands []api.SlashCommand
+	for _, cmd := range commandMap {
+		allCommands = append(allCommands, cmd)
 	}
 
 	// Initialize results as empty array instead of nil
@@ -1278,27 +1317,48 @@ func (h *SessionHandlers) GetSlashCommands(ctx context.Context, req api.GetSlash
 		query := strings.TrimPrefix(*req.Params.Query, "/")
 
 		// Create searchable items (without slash prefix)
-		var searchItems []string
+		type searchItem struct {
+			Command api.SlashCommand
+			Name    string
+		}
+		var searchItems []searchItem
 		for _, cmd := range allCommands {
-			searchItems = append(searchItems, strings.TrimPrefix(cmd, "/"))
+			searchItems = append(searchItems, searchItem{
+				Command: cmd,
+				Name:    strings.TrimPrefix(cmd.Name, "/"),
+			})
+		}
+
+		// Extract just names for fuzzy search
+		var names []string
+		for _, item := range searchItems {
+			names = append(names, item.Name)
 		}
 
 		// Fuzzy search
-		matches := fuzzy.Find(query, searchItems)
+		matches := fuzzy.Find(query, names)
 
-		// Convert matches back to commands
+		// Build results maintaining the original command objects with source
 		for _, match := range matches {
-			results = append(results, api.SlashCommand{
-				Name: "/" + match.Str,
-			})
+			for _, item := range searchItems {
+				if item.Name == match.Str {
+					results = append(results, item.Command)
+					break
+				}
+			}
 		}
 	} else {
 		// Return all commands if no query
-		for _, cmd := range allCommands {
-			results = append(results, api.SlashCommand{
-				Name: cmd,
-			})
-		}
+		results = allCommands
+
+		// Sort alphabetically when no query, with local as tiebreaker
+		sort.Slice(results, func(i, j int) bool {
+			// Sort by name, but local comes before global as tiebreaker
+			if results[i].Name == results[j].Name {
+				return results[i].Source == api.Local && results[j].Source == api.Global
+			}
+			return results[i].Name < results[j].Name
+		})
 	}
 
 	return api.GetSlashCommands200JSONResponse{

@@ -1441,11 +1441,17 @@ components:
       type: object
       required:
         - name
+        - source
       properties:
         name:
           type: string
           example: "/create_plan"
           description: Command name including slash prefix
+        source:
+          type: string
+          enum: ["local", "global"]
+          description: Source of the command - local (repo) or global (user home)
+          example: "local"
 
     SlashCommandsResponse:
       type: object

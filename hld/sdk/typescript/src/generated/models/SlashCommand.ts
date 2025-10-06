@@ -25,13 +25,31 @@ export interface SlashCommand {
      * @memberof SlashCommand
      */
     name: string;
+    /**
+     * Source of the command - local (repo) or global (user home)
+     * @type {string}
+     * @memberof SlashCommand
+     */
+    source: SlashCommandSourceEnum;
 }
+
+
+/**
+ * @export
+ */
+export const SlashCommandSourceEnum = {
+    Local: 'local',
+    Global: 'global'
+} as const;
+export type SlashCommandSourceEnum = typeof SlashCommandSourceEnum[keyof typeof SlashCommandSourceEnum];
+
 
 /**
  * Check if a given object implements the SlashCommand interface.
  */
 export function instanceOfSlashCommand(value: object): value is SlashCommand {
     if (!('name' in value) || value['name'] === undefined) return false;
+    if (!('source' in value) || value['source'] === undefined) return false;
     return true;
 }
 
@@ -46,6 +64,7 @@ export function SlashCommandFromJSONTyped(json: any, ignoreDiscriminator: boolea
     return {
         
         'name': json['name'],
+        'source': json['source'],
     };
 }
 
@@ -61,6 +80,7 @@ export function SlashCommandToJSONTyped(value?: SlashCommand | null, ignoreDiscr
     return {
         
         'name': value['name'],
+        'source': value['source'],
     };
 }
 
