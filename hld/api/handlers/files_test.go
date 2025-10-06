@@ -168,6 +168,102 @@ func TestFuzzySearchFiles_LimitApplied(t *testing.T) {
 	assert.Greater(t, resp.Metadata.TotalMatches, 10)
 }
 
+func TestFuzzySearchFiles_AbsolutePath(t *testing.T) {
+	tmpDir := t.TempDir()
+	createTestFiles(t, tmpDir, []string{
+		"test.txt",
+		"file.go",
+		"nested/test.txt", // Should NOT be found due to depth limit
+	})
+
+	router := setupTestRouterFiles(t, handlers.NewFileHandlers())
+
+	// Query with absolute path should search only top-level of that directory
+	reqBody := api.FuzzySearchFilesRequest{
+		Query: tmpDir + "/test",
+		Paths: []string{"/some/other/path"}, // Should be overridden
+	}
+	w := makeRequest(t, router, "POST", "/api/v1/fuzzy-search/files", reqBody)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var resp api.FuzzySearchFilesResponse
+	err := json.NewDecoder(w.Body).Decode(&resp)
+	require.NoError(t, err)
+
+	// Should find top-level test.txt
+	assert.GreaterOrEqual(t, len(resp.Results), 1)
+	foundTopLevel := false
+	foundNested := false
+	for _, r := range resp.Results {
+		if r.Path == filepath.Join(tmpDir, "test.txt") {
+			foundTopLevel = true
+		}
+		if r.Path == filepath.Join(tmpDir, "nested/test.txt") {
+			foundNested = true
+		}
+	}
+	assert.True(t, foundTopLevel, "Should find top-level test.txt")
+	assert.False(t, foundNested, "Should NOT find nested test.txt due to depth=1")
+}
+
+func TestFuzzySearchFiles_AbsolutePathTrailingSlash(t *testing.T) {
+	tmpDir := t.TempDir()
+	createTestFiles(t, tmpDir, []string{
+		"nested/file.txt",
+		"file.go",
+		"test.txt",
+	})
+
+	router := setupTestRouterFiles(t, handlers.NewFileHandlers())
+
+	// Query ending with / should search only top-level of that directory
+	reqBody := api.FuzzySearchFilesRequest{
+		Query: tmpDir + "/",
+		Paths: []string{"/some/other/path"},
+	}
+	w := makeRequest(t, router, "POST", "/api/v1/fuzzy-search/files", reqBody)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var resp api.FuzzySearchFilesResponse
+	err := json.NewDecoder(w.Body).Decode(&resp)
+	require.NoError(t, err)
+
+	// Should find top-level items (file.go, test.txt, nested dir) but NOT nested/file.txt
+	assert.GreaterOrEqual(t, len(resp.Results), 2)
+
+	// Verify nested/file.txt is NOT in results
+	for _, r := range resp.Results {
+		assert.NotEqual(t, filepath.Join(tmpDir, "nested/file.txt"), r.Path,
+			"Should not find nested files when listing directory with trailing slash")
+	}
+
+	// Verify we do have top-level files
+	foundTopLevel := false
+	for _, r := range resp.Results {
+		if filepath.Base(r.Path) == "file.go" || filepath.Base(r.Path) == "test.txt" {
+			foundTopLevel = true
+			break
+		}
+	}
+	assert.True(t, foundTopLevel, "Should find top-level files")
+}
+
+func TestFuzzySearchFiles_AbsolutePathNonExistent(t *testing.T) {
+	router := setupTestRouterFiles(t, handlers.NewFileHandlers())
+
+	// Query with non-existent absolute path should return error
+	reqBody := api.FuzzySearchFilesRequest{
+		Query: "/nonexistent/directory/test",
+		Paths: []string{"/some/path"},
+	}
+	w := makeRequest(t, router, "POST", "/api/v1/fuzzy-search/files", reqBody)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assertErrorResponse(t, w, "HLD-3001", "Invalid search paths")
+}
+
 // Helper to setup router with file handlers
 func setupTestRouterFiles(t *testing.T, files *handlers.FileHandlers) *gin.Engine {
 	gin.SetMode(gin.TestMode)

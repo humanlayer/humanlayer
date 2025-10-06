@@ -18,6 +18,8 @@ type ScanOptions struct {
 	FilesOnly bool
 	// RespectGitignore filters out gitignored paths
 	RespectGitignore bool
+	// MaxDepth limits recursion depth (-1 for unlimited, 1 for immediate children only)
+	MaxDepth int
 }
 
 // FileEntry represents a discovered file or directory
@@ -95,6 +97,31 @@ func (s *Scanner) Scan(ctx context.Context) ([]FileEntry, error) {
 
 			// Skip root path itself
 			if absPath == rootPath {
+				return nil
+			}
+
+			// Calculate depth relative to root
+			relPath, err := filepath.Rel(rootPath, absPath)
+			if err != nil {
+				return nil
+			}
+			depth := len(filepath.SplitList(relPath))
+			if filepath.Separator == '/' {
+				// On Unix, count separators in the relative path
+				depth = 0
+				for _, c := range relPath {
+					if c == '/' {
+						depth++
+					}
+				}
+				depth++ // Add 1 for the file/dir itself
+			}
+
+			// Apply max depth limit
+			if s.options.MaxDepth > 0 && depth > s.options.MaxDepth {
+				if d.IsDir() {
+					return fs.SkipDir
+				}
 				return nil
 			}
 
