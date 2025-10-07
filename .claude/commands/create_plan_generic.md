@@ -231,6 +231,8 @@ After structure approval:
 - [ ] Edge case handling verified manually
 - [ ] No regressions in related features
 
+**Implementation Note**: After completing this phase and all automated verification passes, pause here for manual confirmation from the human that the manual testing was successful before proceeding to the next phase.
+
 ---
 
 ## Phase 2: [Descriptive Name]

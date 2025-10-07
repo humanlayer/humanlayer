@@ -1,9 +1,12 @@
 import React, { useEffect, forwardRef, useImperativeHandle, useState, useRef } from 'react'
-import { useEditor, EditorContent, Extension, Content } from '@tiptap/react'
+import { useEditor, EditorContent, Extension, Content, ReactRenderer } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { Placeholder } from '@tiptap/extensions'
+import Mention from '@tiptap/extension-mention'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import { Plugin } from '@tiptap/pm/state'
+import { SlashCommandList } from './SlashCommandList'
+import type { FileMentionListRef } from './FileMentionList'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { createLowlight } from 'lowlight'
 import clojure from 'highlight.js/lib/languages/clojure'
@@ -520,6 +523,110 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
         }),
         Placeholder.configure({
           placeholder: placeholder || 'Type something...',
+        }),
+        // Slash command Mention extension
+        Mention.extend({
+          name: 'slash-command',
+        }).configure({
+          HTMLAttributes: {
+            class: 'mention slash-command',
+          },
+          renderHTML({ node }) {
+            return [
+              'span',
+              {
+                class: 'mention slash-command',
+                'data-slash-command': node.attrs.id,
+              },
+              node.attrs.label || node.attrs.id,
+            ]
+          },
+          suggestion: {
+            char: '/',
+            startOfLine: true, // Only trigger at start of message
+            allowSpaces: false,
+            items: () => ['placeholder'], // Dummy items, actual search in component
+
+            render: () => {
+              let component: ReactRenderer<FileMentionListRef> | null = null
+              let popup: HTMLDivElement | null = null
+
+              return {
+                onStart: (props: any) => {
+                  // Create popup div
+                  popup = document.createElement('div')
+                  popup.className =
+                    'z-50 min-w-[20rem] max-w-[30rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md'
+                  document.body.appendChild(popup)
+
+                  // Create React component
+                  component = new ReactRenderer(SlashCommandList, {
+                    props,
+                    editor: props.editor,
+                  })
+
+                  popup.appendChild(component.element)
+
+                  // Position dropdown
+                  const { clientRect } = props
+                  if (!clientRect) return
+
+                  const rect = clientRect()
+
+                  // Check space below
+                  const spaceBelow = window.innerHeight - rect.bottom
+                  const spaceAbove = rect.top
+
+                  if (spaceBelow < 300 && spaceAbove > 300) {
+                    // Position above
+                    popup.style.position = 'fixed'
+                    popup.style.left = `${rect.left}px`
+                    popup.style.bottom = `${window.innerHeight - rect.top + 4}px`
+                    popup.style.maxHeight = `${Math.min(spaceAbove - 20, 360)}px`
+                  } else {
+                    // Position below
+                    popup.style.position = 'fixed'
+                    popup.style.left = `${rect.left}px`
+                    popup.style.top = `${rect.bottom + 4}px`
+                    popup.style.maxHeight = `${Math.min(spaceBelow - 20, 360)}px`
+                  }
+                },
+
+                onUpdate(props: any) {
+                  component?.updateProps(props)
+
+                  // Reposition if needed
+                  if (!popup || !props.clientRect) return
+
+                  const rect = props.clientRect()
+
+                  const spaceBelow = window.innerHeight - rect.bottom
+                  const spaceAbove = rect.top
+
+                  if (spaceBelow < 300 && spaceAbove > 300) {
+                    popup.style.left = `${rect.left}px`
+                    popup.style.bottom = `${window.innerHeight - rect.top + 4}px`
+                  } else {
+                    popup.style.left = `${rect.left}px`
+                    popup.style.top = `${rect.bottom + 4}px`
+                  }
+                },
+
+                onKeyDown(props: any) {
+                  if (props.event.key === 'Escape') {
+                    props.event.stopPropagation()
+                    return true
+                  }
+                  return component?.ref?.onKeyDown(props) ?? false
+                },
+
+                onExit() {
+                  popup?.remove()
+                  component?.destroy()
+                },
+              }
+            },
+          },
         }),
         // TEMPORARILY DISABLED: Mention functionality for fuzzy file finding
         // Uncomment the block below to re-enable @-mention file search

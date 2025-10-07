@@ -123,6 +123,17 @@ export class HTTPDaemonClient implements IDaemonClient {
 
   // Session Management Methods
 
+  async getSlashCommands(params: {
+    sessionId: string
+    query?: string
+  }): Promise<{ data: Array<{ name: string; source: 'local' | 'global' }> }> {
+    await this.ensureConnected()
+
+    const response = await this.client!.getSlashCommands(params)
+
+    return response as { data: Array<{ name: string; source: 'local' | 'global' }> }
+  }
+
   async launchSession(
     params: LaunchSessionParams | LaunchSessionRequest,
   ): Promise<CreateSessionResponseData> {
