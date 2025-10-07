@@ -217,7 +217,9 @@ export const FuzzyFileMentionList = forwardRef<FileMentionListRef, FileMentionLi
               variant="ghost"
               size="sm"
               className={`w-full justify-start px-2 py-1 ${
-                index === selectedIndex ? 'bg-accent !text-[var(--terminal-bg)]' : ''
+                index === selectedIndex
+                  ? 'bg-accent text-[var(--terminal-bg)] hover:text-[var(--terminal-accent)]'
+                  : ''
               }`}
               onMouseEnter={() => setSelectedIndex(index)}
               onClick={() => {
