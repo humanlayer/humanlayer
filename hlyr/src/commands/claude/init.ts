@@ -129,25 +129,16 @@ export async function claudeInitCommand(options: InitOptions): Promise<void> {
     let filesCopied = 0
     let filesSkipped = 0
 
-    // Copy selected categories
-    for (const category of selectedCategories) {
-      if (category === 'commands' || category === 'agents') {
-        const sourceDir = path.join(sourceClaudeDir, category)
-        const targetCategoryDir = path.join(claudeTargetDir, category)
+    // Wizard-style file selection for each category
+    const filesToCopyByCategory: Record<string, string[]> = {}
 
-        if (!fs.existsSync(sourceDir)) {
-          p.log.warn(`${category} directory not found in source, skipping`)
-          continue
-        }
-
-        // Get all files in category
-        const allFiles = fs.readdirSync(sourceDir)
-
-        // For commands, allow variant selection
-        let filesToCopy = allFiles
-
-        if (category === 'commands' && !options.all) {
-          // Show file selection
+    // If in interactive mode, prompt for file selection per category
+    if (!options.all) {
+      // Commands file selection (if selected)
+      if (selectedCategories.includes('commands')) {
+        const sourceDir = path.join(sourceClaudeDir, 'commands')
+        if (fs.existsSync(sourceDir)) {
+          const allFiles = fs.readdirSync(sourceDir)
           const fileSelection = await p.multiselect({
             message: 'Select command files to copy:',
             options: allFiles.map(file => ({
@@ -163,12 +154,65 @@ export async function claudeInitCommand(options: InitOptions): Promise<void> {
             process.exit(0)
           }
 
-          filesToCopy = fileSelection as string[]
+          filesToCopyByCategory['commands'] = fileSelection as string[]
 
-          if (filesToCopy.length === 0) {
+          if (filesToCopyByCategory['commands'].length === 0) {
             filesSkipped += allFiles.length
-            continue
           }
+        }
+      }
+
+      // Agents file selection (if selected)
+      if (selectedCategories.includes('agents')) {
+        const sourceDir = path.join(sourceClaudeDir, 'agents')
+        if (fs.existsSync(sourceDir)) {
+          const allFiles = fs.readdirSync(sourceDir)
+          const fileSelection = await p.multiselect({
+            message: 'Select agent files to copy:',
+            options: allFiles.map(file => ({
+              value: file,
+              label: file,
+            })),
+            initialValues: allFiles,
+            required: false,
+          })
+
+          if (p.isCancel(fileSelection)) {
+            p.cancel('Operation cancelled.')
+            process.exit(0)
+          }
+
+          filesToCopyByCategory['agents'] = fileSelection as string[]
+
+          if (filesToCopyByCategory['agents'].length === 0) {
+            filesSkipped += allFiles.length
+          }
+        }
+      }
+    }
+
+    // Copy selected categories
+    for (const category of selectedCategories) {
+      if (category === 'commands' || category === 'agents') {
+        const sourceDir = path.join(sourceClaudeDir, category)
+        const targetCategoryDir = path.join(claudeTargetDir, category)
+
+        if (!fs.existsSync(sourceDir)) {
+          p.log.warn(`${category} directory not found in source, skipping`)
+          continue
+        }
+
+        // Get all files in category
+        const allFiles = fs.readdirSync(sourceDir)
+
+        // Determine which files to copy
+        let filesToCopy = allFiles
+        if (!options.all && filesToCopyByCategory[category]) {
+          filesToCopy = filesToCopyByCategory[category]
+        }
+
+        if (filesToCopy.length === 0) {
+          continue
         }
 
         // Copy files
