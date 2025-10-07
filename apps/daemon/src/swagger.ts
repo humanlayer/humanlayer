@@ -81,6 +81,6 @@ const server = createServer(async (req, res) => {
 	res.end(html)
 })
 
-server.listen(3000, () => {
+server.listen(process.env.PORT ?? 3_000, () => {
 	console.log('Playground is available at http://localhost:3000')
 })
