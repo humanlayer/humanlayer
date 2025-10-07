@@ -687,6 +687,45 @@
   --terminal-color-14: #66ffcc; /* Bright Cyan */
   --terminal-color-15: #ffffff; /* Bright White */
 }
+
+/* Vesper - Official theme colors */
+[data-theme='vesper'] {
+  /* Core background/foreground colors */
+  --terminal-bg: #101010; /* Black background */
+  --terminal-bg-alt: #505050; /* Darker variant (using bright black) */
+  --terminal-fg: #ffffff; /* White foreground */
+  --terminal-fg-dim: #a0a0a0; /* Dimmed text (using blue as gray) */
+
+  /* Accent and UI colors */
+  --terminal-accent: #ffc799; /* Yellow accent */
+  --terminal-accent-dim: rgba(255, 199, 153, 0.3); /* Dimmed yellow */
+  --terminal-accent-alt: #99ffe4; /* Cyan accent alternative */
+  --terminal-border: #505050; /* Border using bright black */
+
+  /* Status colors */
+  --terminal-success: #99ffe4; /* Green/Cyan */
+  --terminal-warning: #ffc799; /* Yellow */
+  --terminal-error: #ff8080; /* Red */
+
+  /* Terminal ANSI colors - Official Vesper palette */
+  --terminal-color-0: #101010; /* Black */
+  --terminal-color-1: #ff8080; /* Red */
+  --terminal-color-2: #99ffe4; /* Green */
+  --terminal-color-3: #ffc799; /* Yellow */
+  --terminal-color-4: #a0a0a0; /* Blue (gray) */
+  --terminal-color-5: #ff7300; /* Magenta (orange) */
+  --terminal-color-6: #99ffe4; /* Cyan */
+  --terminal-color-7: #ffffff; /* White */
+  --terminal-color-8: #505050; /* Bright Black */
+  --terminal-color-9: #ff8080; /* Bright Red */
+  --terminal-color-10: #99ffe4; /* Bright Green */
+  --terminal-color-11: #ffcfa8; /* Bright Yellow */
+  --terminal-color-12: #a0a0a0; /* Bright Blue (gray) */
+  --terminal-color-13: #ff8080; /* Bright Magenta (red) */
+  --terminal-color-14: #99ffe4; /* Bright Cyan */
+  --terminal-color-15: #ffffff; /* Bright White */
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
