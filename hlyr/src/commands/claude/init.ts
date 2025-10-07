@@ -1,7 +1,7 @@
 import fs from 'fs'
 import path from 'path'
-import readline from 'readline'
 import chalk from 'chalk'
+import * as p from '@clack/prompts'
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
 
@@ -12,27 +12,6 @@ const __dirname = dirname(__filename)
 interface InitOptions {
   force?: boolean
   all?: boolean
-}
-
-interface SelectionItem {
-  title: string
-  value: string
-  selected: boolean
-  description?: string
-}
-
-function prompt(question: string): Promise<string> {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  })
-
-  return new Promise(resolve => {
-    rl.question(question, answer => {
-      rl.close()
-      resolve(answer.trim())
-    })
-  })
 }
 
 function ensureGitignoreEntry(targetDir: string, entry: string): void {
@@ -61,51 +40,16 @@ function ensureGitignoreEntry(targetDir: string, entry: string): void {
   fs.writeFileSync(gitignorePath, newContent)
 }
 
-async function multiselect(message: string, items: SelectionItem[]): Promise<string[]> {
-  console.log(chalk.cyan(message))
-  console.log(chalk.gray('(Use space to select, enter to confirm)'))
-  console.log('')
-
-  // Display items with checkbox
-  items.forEach(item => {
-    const checkbox = item.selected ? chalk.green('◉') : chalk.gray('◯')
-    const label = item.selected ? chalk.green(item.title) : item.title
-    const desc = item.description ? chalk.gray(` - ${item.description}`) : ''
-    console.log(`  ${checkbox} ${label}${desc}`)
-  })
-
-  console.log('')
-  console.log(
-    chalk.gray('Enter space-separated numbers to toggle (e.g., "1 3 4"), or press enter to continue:'),
-  )
-
-  const answer = await prompt('Selection: ')
-
-  if (answer.trim()) {
-    // Parse space-separated numbers
-    const toggleIndices = answer
-      .trim()
-      .split(/\s+/)
-      .map(n => parseInt(n) - 1)
-      .filter(n => n >= 0 && n < items.length)
-
-    // Toggle selected items
-    toggleIndices.forEach(idx => {
-      items[idx].selected = !items[idx].selected
-    })
-
-    // Recurse to show updated UI
-    return multiselect(message, items)
-  }
-
-  // Return selected values
-  return items.filter(item => item.selected).map(item => item.value)
-}
-
 export async function claudeInitCommand(options: InitOptions): Promise<void> {
   try {
-    console.log(chalk.blue('=== Initialize Claude Code Configuration ==='))
-    console.log('')
+    p.intro(chalk.blue('Initialize Claude Code Configuration'))
+
+    // Check if running in interactive terminal
+    if (!process.stdin.isTTY && !options.all) {
+      p.log.error('Not running in interactive terminal.')
+      p.log.info('Use --all flag to copy all files without prompting.')
+      process.exit(1)
+    }
 
     const targetDir = process.cwd()
     const claudeTargetDir = path.join(targetDir, '.claude')
@@ -119,18 +63,21 @@ export async function claudeInitCommand(options: InitOptions): Promise<void> {
 
     // Verify source directory exists
     if (!fs.existsSync(sourceClaudeDir)) {
-      console.error(chalk.red(`Error: Source .claude directory not found at ${sourceClaudeDir}`))
-      console.error(chalk.gray('Are you running from the humanlayer repository or npm package?'))
+      p.log.error(`Source .claude directory not found at ${sourceClaudeDir}`)
+      p.log.info('Are you running from the humanlayer repository or npm package?')
       process.exit(1)
     }
 
     // Check if .claude already exists
     if (fs.existsSync(claudeTargetDir) && !options.force) {
-      console.log(chalk.yellow('.claude directory already exists.'))
-      const proceed = await prompt('Overwrite existing configuration? (y/N): ')
-      if (proceed.toLowerCase() !== 'y') {
-        console.log(chalk.gray('Operation cancelled.'))
-        return
+      const overwrite = await p.confirm({
+        message: '.claude directory already exists. Overwrite?',
+        initialValue: false,
+      })
+
+      if (p.isCancel(overwrite) || !overwrite) {
+        p.cancel('Operation cancelled.')
+        process.exit(0)
       }
     }
 
@@ -140,32 +87,39 @@ export async function claudeInitCommand(options: InitOptions): Promise<void> {
       selectedCategories = ['commands', 'agents', 'settings']
     } else {
       // Interactive selection
-      const categories: SelectionItem[] = [
-        {
-          title: 'Commands',
-          value: 'commands',
-          selected: true,
-          description: '30 workflow commands (planning, CI, research, etc.)',
-        },
-        {
-          title: 'Agents',
-          value: 'agents',
-          selected: true,
-          description: '6 specialized sub-agents for code analysis',
-        },
-        {
-          title: 'Settings',
-          value: 'settings',
-          selected: true,
-          description: 'Project permissions configuration',
-        },
-      ]
+      const selection = await p.multiselect({
+        message: 'What would you like to copy?',
+        options: [
+          {
+            value: 'commands',
+            label: 'Commands',
+            hint: '30 workflow commands (planning, CI, research, etc.)',
+          },
+          {
+            value: 'agents',
+            label: 'Agents',
+            hint: '6 specialized sub-agents for code analysis',
+          },
+          {
+            value: 'settings',
+            label: 'Settings',
+            hint: 'Project permissions configuration',
+          },
+        ],
+        initialValues: ['commands', 'agents', 'settings'],
+        required: false,
+      })
 
-      selectedCategories = await multiselect('What would you like to copy?', categories)
+      if (p.isCancel(selection)) {
+        p.cancel('Operation cancelled.')
+        process.exit(0)
+      }
+
+      selectedCategories = selection as string[]
 
       if (selectedCategories.length === 0) {
-        console.log(chalk.gray('No items selected. Operation cancelled.'))
-        return
+        p.cancel('No items selected.')
+        process.exit(0)
       }
     }
 
@@ -182,7 +136,7 @@ export async function claudeInitCommand(options: InitOptions): Promise<void> {
         const targetCategoryDir = path.join(claudeTargetDir, category)
 
         if (!fs.existsSync(sourceDir)) {
-          console.log(chalk.yellow(`⚠ ${category} directory not found in source, skipping`))
+          p.log.warn(`${category} directory not found in source, skipping`)
           continue
         }
 
@@ -194,17 +148,24 @@ export async function claudeInitCommand(options: InitOptions): Promise<void> {
 
         if (category === 'commands' && !options.all) {
           // Show file selection
-          const fileItems: SelectionItem[] = allFiles.map(file => ({
-            title: file,
-            value: file,
-            selected: true,
-          }))
+          const fileSelection = await p.multiselect({
+            message: 'Select command files to copy:',
+            options: allFiles.map(file => ({
+              value: file,
+              label: file,
+            })),
+            initialValues: allFiles,
+            required: false,
+          })
 
-          console.log('')
-          filesToCopy = await multiselect(`Select command files to copy:`, fileItems)
+          if (p.isCancel(fileSelection)) {
+            p.cancel('Operation cancelled.')
+            process.exit(0)
+          }
+
+          filesToCopy = fileSelection as string[]
 
           if (filesToCopy.length === 0) {
-            console.log(chalk.gray(`No ${category} files selected, skipping`))
             filesSkipped += allFiles.length
             continue
           }
@@ -222,7 +183,7 @@ export async function claudeInitCommand(options: InitOptions): Promise<void> {
         }
 
         filesSkipped += allFiles.length - filesToCopy.length
-        console.log(chalk.green(`✓ Copied ${filesToCopy.length} ${category} file(s)`))
+        p.log.success(`Copied ${filesToCopy.length} ${category} file(s)`)
       } else if (category === 'settings') {
         const settingsPath = path.join(sourceClaudeDir, 'settings.json')
         const targetSettingsPath = path.join(claudeTargetDir, 'settings.json')
@@ -230,9 +191,9 @@ export async function claudeInitCommand(options: InitOptions): Promise<void> {
         if (fs.existsSync(settingsPath)) {
           fs.copyFileSync(settingsPath, targetSettingsPath)
           filesCopied++
-          console.log(chalk.green('✓ Copied settings.json'))
+          p.log.success('Copied settings.json')
         } else {
-          console.log(chalk.yellow('⚠ settings.json not found in source, skipping'))
+          p.log.warn('settings.json not found in source, skipping')
         }
       }
     }
@@ -240,18 +201,18 @@ export async function claudeInitCommand(options: InitOptions): Promise<void> {
     // Update .gitignore to exclude settings.local.json
     if (selectedCategories.includes('settings')) {
       ensureGitignoreEntry(targetDir, '.claude/settings.local.json')
-      console.log(chalk.gray('✓ Updated .gitignore to exclude settings.local.json'))
+      p.log.info('Updated .gitignore to exclude settings.local.json')
     }
 
-    console.log('')
-    console.log(chalk.green(`✅ Successfully copied ${filesCopied} file(s) to ${claudeTargetDir}`))
+    let message = `Successfully copied ${filesCopied} file(s) to ${claudeTargetDir}`
     if (filesSkipped > 0) {
-      console.log(chalk.gray(`   Skipped ${filesSkipped} file(s)`))
+      message += chalk.gray(`\n   Skipped ${filesSkipped} file(s)`)
     }
-    console.log('')
-    console.log(chalk.gray('You can now use these commands in Claude Code.'))
+    message += chalk.gray('\n   You can now use these commands in Claude Code.')
+
+    p.outro(message)
   } catch (error) {
-    console.error(chalk.red(`Error during claude init: ${error}`))
+    p.log.error(`Error during claude init: ${error}`)
     process.exit(1)
   }
 }

@@ -29,6 +29,7 @@
     "clean": "rm -rf dist/"
   },
   "dependencies": {
+    "@clack/prompts": "^0.11.0",
     "@humanlayer/sdk": "^0.7.7",
     "@modelcontextprotocol/sdk": "^1.12.0",
     "chalk": "^5.4.1",
