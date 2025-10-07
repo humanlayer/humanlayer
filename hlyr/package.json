@@ -16,7 +16,7 @@
     "build": "tsup && npm run build-go",
     "build-go": "npm run build-daemon",
     "build-daemon": "cd ../hld && go build -o hld ./cmd/hld && mkdir -p ../hlyr/dist/bin && cp hld ../hlyr/dist/bin/",
-    "prepack": "npm run build && rm -rf .claude && mkdir -p .claude && cp -r ../.claude/commands ../.claude/agents ../.claude/settings.json .claude/",
+    "prepack": "npm run build && rimraf .claude && mkdir -p .claude && cp -r ../.claude/commands ../.claude/agents ../.claude/settings.json .claude/",
     "postpack": "rm -rf .claude",
     "build:watch": "tsup --watch",
     "dev": "npm run build && ./dist/index.js",
