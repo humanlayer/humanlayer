@@ -67,7 +67,7 @@ const hotkeyData = [
   { category: 'Session Detail', key: 'Ctrl+X', description: 'Interrupt session' },
   { category: 'Session Detail', key: 'P', description: 'Go to parent session' },
   { category: 'Session Detail', key: '⌘+Y', description: 'Toggle fork view' },
-  { category: 'Session Detail', key: 'Option+A', description: 'Toggle auto-accept edits' },
+  { category: 'Session Detail', key: '⌥+A', description: 'Toggle auto-accept edits' },
   { category: 'Session Detail', key: 'Enter', description: 'Focus response input' },
   { category: 'Session Detail', key: '⌘+Enter', description: 'Submit response' },
   { category: 'Session Detail', key: '⌥+Y', description: 'Toggle bypass permissions' },
