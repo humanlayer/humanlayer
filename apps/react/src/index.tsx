@@ -1,8 +1,12 @@
+import { db, thoughtsDocuments } from '@codelayer/database'
 import { serve } from 'bun'
 import 'dotenv/config'
 import index from './index.html'
 import { proxyToElectric } from './lib/electric-proxy'
-import { ThoughtsOperationSchema } from './lib/schemas'
+import {
+	NewThoughtsDocumentRequestSchema,
+	ThoughtsOperationSchema,
+} from './lib/schemas'
 
 if (!process.env.DATABASE_URL) throw new Error('missing database URL!')
 
@@ -18,7 +22,6 @@ const server = serve({
 		},
 		'/shape-proxy/thoughts-documents-operations': {
 			GET: async (request: Request) => {
-				console.log('database URL', process.env.DATABASE_URL)
 				return await proxyToElectric(
 					request,
 					'thoughts_documents_operations',
@@ -27,13 +30,37 @@ const server = serve({
 		},
 		'/shape-proxy/thoughts-documents': {
 			GET: async (request: Request) => {
-				console.log('database URL', process.env.DATABASE_URL)
+				console.log('Getting thoughts documents')
 				return await proxyToElectric(request, 'thoughts_documents')
+			},
+		},
+		'/v1/thoughts-documents/create': {
+			POST: async (request: Request) => {
+				const { data, error } =
+					NewThoughtsDocumentRequestSchema.safeParse(
+						await request.json(),
+					)
+				if (error) {
+					console.error(
+						'Error parsing New Thoughts Document request',
+						error,
+					)
+					return new Response('Bad Request', { status: 400 })
+				}
+
+				const [result] = await db
+					.insert(thoughtsDocuments)
+					.values({
+						organizationId: data.organizationId,
+						filePath: data.filePath,
+						title: data.title,
+					})
+					.returning()
+				return new Response(JSON.stringify(result), { status: 201 })
 			},
 		},
 		'/v1/thoughts-operation': {
 			POST: async (request: Request) => {
-				console.log('database URL', process.env.DATABASE_URL)
 				const { error, data } = ThoughtsOperationSchema.safeParse(
 					await request.json(),
 				)

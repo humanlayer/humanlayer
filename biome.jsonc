@@ -16,7 +16,13 @@
     "linter": {
         "enabled": true,
         "rules": {
-            "recommended": true
+            "recommended": true,
+            "correctness": {
+                "useUniqueElementIds": "off"
+            },
+            "a11y": {
+                "noStaticElementInteractions": "off"
+            }
         }
     },
     "javascript": {
@@ -24,7 +30,7 @@
             "quoteStyle": "single",
             "semicolons": "asNeeded",
             "indentWidth": 4
-        }
+        },
     },
     "assist": {
         "enabled": true,

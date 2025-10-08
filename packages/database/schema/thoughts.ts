@@ -1,5 +1,5 @@
 import {
-	integer,
+	bigint,
 	pgTable,
 	primaryKey,
 	text,
@@ -7,13 +7,16 @@ import {
 } from 'drizzle-orm/pg-core'
 import { uuidv7 } from 'uuidv7'
 import { bytea } from '../columns/bytea'
+
 export const thoughtsDocuments = pgTable('thoughts_documents', {
 	id: text('id')
 		.primaryKey()
 		.$defaultFn(() => `thd_${uuidv7()}`),
 	filePath: text('file_path').notNull(),
 	title: text('title').notNull(),
-	createdAt: integer('created_at').$defaultFn(() => Date.now()),
+	createdAt: bigint('created_at', { mode: 'number' }).$defaultFn(() =>
+		Date.now(),
+	),
 	organizationId: text('organization_id').notNull(), // NOTE there is no FK here for testing but there should be
 })
 

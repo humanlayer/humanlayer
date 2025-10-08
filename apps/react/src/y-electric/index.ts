@@ -237,7 +237,7 @@ export class ElectricProvider extends ObservableV2<ObservableProvider> {
 			this.operationsStream = new ShapeStream<OperationMessage>({
 				url: this.baseUrl + `/thoughts-documents-operations`,
 				params: {
-					where: `note_id = '${this.roomName}'`,
+					where: `thoughts_document_id = '${this.roomName}'`,
 				},
 				parser: parseToDecoder,
 				subscribe: true,
@@ -246,7 +246,7 @@ export class ElectricProvider extends ObservableV2<ObservableProvider> {
 			this.awarenessStream = new ShapeStream({
 				url: this.baseUrl + `/awareness`,
 				params: {
-					where: `note_id = '${this.roomName}'`,
+					where: `thoughts_document_id = '${this.roomName}'`,
 				},
 				parser: { ...parseToDecoderLazy, ...paserToTimestamptz },
 			})
