@@ -317,49 +317,6 @@ function SessionTableInner({
     },
   )
 
-  // Discard draft hotkey (cmd+shift+., which is mod+shift+>)
-  useHotkeys(
-    'meta+shift+period',
-    async () => {
-      console.log('[SessionTable] discard draft hotkey "cmd+shift+>" fired')
-
-      try {
-        // If there are selected sessions, bulk discard drafts
-        if (selectedSessions.size > 0) {
-          const selectedSessionObjects = Array.from(selectedSessions)
-            .map(sessionId => sessions.find(s => s.id === sessionId))
-            .filter(Boolean)
-
-          const draftIds = selectedSessionObjects
-            .filter(s => s?.status === SessionStatus.Draft)
-            .map(s => s!.id)
-
-          if (draftIds.length > 0) {
-            setDraftsToDiscard(draftIds)
-            setDiscardDialogOpen(true)
-          }
-        } else {
-          // Single session discard
-          const currentSession = sessions.find(s => s.id === focusedSession?.id)
-          if (currentSession && currentSession.status === SessionStatus.Draft) {
-            setDraftsToDiscard([currentSession.id])
-            setDiscardDialogOpen(true)
-          }
-        }
-      } catch (error) {
-        toast.error('Failed to discard draft', {
-          description: error instanceof Error ? error.message : 'Unknown error',
-        })
-      }
-    },
-    {
-      scopes: [tableScope],
-      enabled: !isSessionLauncherOpen && (focusedSession !== null || selectedSessions.size > 0),
-      preventDefault: true,
-      enableOnFormTags: false,
-    },
-  )
-
   // Archive/unarchive hotkey
   useHotkeys(
     'e',
@@ -388,17 +345,23 @@ function SessionTableInner({
             .map(sessionId => sessions.find(s => s.id === sessionId))
             .filter(Boolean)
 
-          // Filter out drafts - 'e' key should only archive non-draft sessions
+          // Separate drafts from non-drafts
+          const draftSessions = selectedSessionObjects.filter(s => s?.status === SessionStatus.Draft)
           const nonDraftSessions = selectedSessionObjects.filter(s => s?.status !== SessionStatus.Draft)
 
-          if (nonDraftSessions.length === 0) {
-            // All selected are drafts, show warning
-            toast.warning('Drafts cannot be archived with "e" key. Use Cmd+Shift+. to discard drafts.')
+          if (draftSessions.length > 0 && nonDraftSessions.length > 0) {
+            // Mixed selection: warn user
+            toast.warning(
+              'Cannot archive sessions and discard drafts in one operation. Please select only sessions or only drafts.',
+            )
             return
           }
 
-          if (nonDraftSessions.length < selectedSessionObjects.length) {
-            toast.warning('Drafts cannot be archived with "e" key. Use Cmd+Shift+. to discard drafts.')
+          if (draftSessions.length > 0) {
+            // All selected are drafts, discard them
+            const draftIds = draftSessions.map(s => s!.id)
+            setDraftsToDiscard(draftIds)
+            setDiscardDialogOpen(true)
             return
           }
 
@@ -442,9 +405,10 @@ function SessionTableInner({
             return
           }
 
-          // Ignore 'e' key for drafts
+          // Handle drafts - discard instead of archive
           if (currentSession.status === SessionStatus.Draft) {
-            toast.warning('Drafts cannot be archived with "e" key. Use Cmd+Shift+. to discard drafts.')
+            setDraftsToDiscard([currentSession.id])
+            setDiscardDialogOpen(true)
             return
           }
 
