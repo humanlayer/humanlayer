@@ -8,6 +8,7 @@ import { ModelSelector } from './ModelSelector'
 import { renderSessionStatus } from '@/utils/sessionStatus'
 import { getStatusTextClass } from '@/utils/component-utils'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { KeyboardShortcut } from '@/components/HotkeyPanel'
 
 export interface StatusBarRef {
   openModelSelector: () => void
@@ -103,7 +104,10 @@ export function StatusBar({
           </TooltipTrigger>
           <TooltipContent>
             {isReadyForInputOrDraft ? (
-              <p className="font-medium">Click to change model</p>
+              <div className="flex items-center gap-1">
+                <span className="font-medium">Click to change model</span>
+                <KeyboardShortcut keyString="⇧+M" />
+              </div>
             ) : isRunning ? (
               <p className="font-medium">Model changes unavailable while running</p>
             ) : (
