@@ -499,6 +499,148 @@ func TestSessionHandlers_UpdateSession(t *testing.T) {
 		assertErrorResponse(t, w, "HLD-1002", "Session not found")
 		assert.Equal(t, 404, w.Code)
 	})
+
+	t.Run("auto-approve pending approvals when bypass permissions enabled", func(t *testing.T) {
+		mockManager.EXPECT().
+			UpdateSessionSettings(gomock.Any(), "sess-auto", store.SessionUpdate{
+				DangerouslySkipPermissions: boolPtr(true),
+			}).
+			Return(nil)
+
+		// Mock getting pending approvals
+		pendingApprovals := []*store.Approval{
+			{
+				ID:        "approval-1",
+				SessionID: "sess-auto",
+				ToolName:  "Bash",
+				Status:    store.ApprovalStatusLocalPending,
+			},
+			{
+				ID:        "approval-2",
+				SessionID: "sess-auto",
+				ToolName:  "Write",
+				Status:    store.ApprovalStatusLocalPending,
+			},
+		}
+
+		mockApprovalManager.EXPECT().
+			GetPendingApprovals(gomock.Any(), "sess-auto").
+			Return(pendingApprovals, nil)
+
+		// Expect each approval to be auto-approved
+		mockApprovalManager.EXPECT().
+			ApproveToolCall(gomock.Any(), "approval-1", "Auto-approved due to bypass permissions").
+			Return(nil)
+		mockApprovalManager.EXPECT().
+			ApproveToolCall(gomock.Any(), "approval-2", "Auto-approved due to bypass permissions").
+			Return(nil)
+
+		mockStore.EXPECT().
+			GetSession(gomock.Any(), "sess-auto").
+			Return(&store.Session{
+				ID:                         "sess-auto",
+				RunID:                      "run-auto",
+				Status:                     "running",
+				Query:                      "Test query",
+				CreatedAt:                  time.Now().Add(-10 * time.Minute),
+				LastActivityAt:             time.Now(),
+				DangerouslySkipPermissions: true,
+				Archived:                   false,
+			}, nil)
+
+		updateReq := api.UpdateSessionRequest{
+			DangerouslySkipPermissions: boolPtr(true),
+		}
+		w := makeRequest(t, router, "PATCH", "/api/v1/sessions/sess-auto", updateReq)
+
+		var resp struct {
+			Data api.Session `json:"data"`
+		}
+		assertJSONResponse(t, w, 200, &resp)
+
+		assert.Equal(t, "sess-auto", resp.Data.Id)
+		assert.NotNil(t, resp.Data.DangerouslySkipPermissions)
+		assert.True(t, *resp.Data.DangerouslySkipPermissions)
+	})
+
+	t.Run("auto-approve handles errors gracefully", func(t *testing.T) {
+		mockManager.EXPECT().
+			UpdateSessionSettings(gomock.Any(), "sess-error", store.SessionUpdate{
+				DangerouslySkipPermissions: boolPtr(true),
+			}).
+			Return(nil)
+
+		// Mock getting pending approvals returns error
+		mockApprovalManager.EXPECT().
+			GetPendingApprovals(gomock.Any(), "sess-error").
+			Return(nil, fmt.Errorf("database error"))
+
+		// Should still return success since auto-approval is best-effort
+		mockStore.EXPECT().
+			GetSession(gomock.Any(), "sess-error").
+			Return(&store.Session{
+				ID:                         "sess-error",
+				RunID:                      "run-error",
+				Status:                     "running",
+				Query:                      "Test query",
+				CreatedAt:                  time.Now().Add(-10 * time.Minute),
+				LastActivityAt:             time.Now(),
+				DangerouslySkipPermissions: true,
+				Archived:                   false,
+			}, nil)
+
+		updateReq := api.UpdateSessionRequest{
+			DangerouslySkipPermissions: boolPtr(true),
+		}
+		w := makeRequest(t, router, "PATCH", "/api/v1/sessions/sess-error", updateReq)
+
+		var resp struct {
+			Data api.Session `json:"data"`
+		}
+		assertJSONResponse(t, w, 200, &resp)
+
+		assert.Equal(t, "sess-error", resp.Data.Id)
+	})
+
+	t.Run("no auto-approve when no pending approvals", func(t *testing.T) {
+		mockManager.EXPECT().
+			UpdateSessionSettings(gomock.Any(), "sess-none", store.SessionUpdate{
+				DangerouslySkipPermissions: boolPtr(true),
+			}).
+			Return(nil)
+
+		// Mock getting pending approvals - empty list
+		mockApprovalManager.EXPECT().
+			GetPendingApprovals(gomock.Any(), "sess-none").
+			Return([]*store.Approval{}, nil)
+
+		// No calls to ApproveToolCall expected
+
+		mockStore.EXPECT().
+			GetSession(gomock.Any(), "sess-none").
+			Return(&store.Session{
+				ID:                         "sess-none",
+				RunID:                      "run-none",
+				Status:                     "running",
+				Query:                      "Test query",
+				CreatedAt:                  time.Now().Add(-10 * time.Minute),
+				LastActivityAt:             time.Now(),
+				DangerouslySkipPermissions: true,
+				Archived:                   false,
+			}, nil)
+
+		updateReq := api.UpdateSessionRequest{
+			DangerouslySkipPermissions: boolPtr(true),
+		}
+		w := makeRequest(t, router, "PATCH", "/api/v1/sessions/sess-none", updateReq)
+
+		var resp struct {
+			Data api.Session `json:"data"`
+		}
+		assertJSONResponse(t, w, 200, &resp)
+
+		assert.Equal(t, "sess-none", resp.Data.Id)
+	})
 }
 
 func TestSessionHandlers_GetHealth(t *testing.T) {

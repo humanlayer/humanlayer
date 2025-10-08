@@ -750,3 +750,161 @@ func TestHandleGetSessionSnapshots(t *testing.T) {
 		assert.Contains(t, err.Error(), "failed to get snapshots")
 	})
 }
+
+func TestHandleUpdateSessionSettings(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockManager := session.NewMockSessionManager(ctrl)
+	mockStore := store.NewMockConversationStore(ctrl)
+	mockApprovalManager := approval.NewMockManager(ctrl)
+
+	handlers := NewSessionHandlers(mockManager, mockStore, mockApprovalManager)
+
+	t.Run("auto-approve pending approvals when bypass permissions enabled", func(t *testing.T) {
+		sessionID := "sess-auto"
+		enabled := true
+
+		mockStore.EXPECT().
+			GetSession(gomock.Any(), sessionID).
+			Return(&store.Session{
+				ID:     sessionID,
+				Status: store.SessionStatusWaitingInput,
+			}, nil)
+
+		mockStore.EXPECT().
+			UpdateSession(gomock.Any(), sessionID, gomock.Any()).
+			Return(nil)
+
+		// Mock getting pending approvals
+		pendingApprovals := []*store.Approval{
+			{
+				ID:        "approval-1",
+				SessionID: sessionID,
+				ToolName:  "Bash",
+				Status:    store.ApprovalStatusLocalPending,
+			},
+			{
+				ID:        "approval-2",
+				SessionID: sessionID,
+				ToolName:  "Write",
+				Status:    store.ApprovalStatusLocalPending,
+			},
+		}
+
+		mockApprovalManager.EXPECT().
+			GetPendingApprovals(gomock.Any(), sessionID).
+			Return(pendingApprovals, nil)
+
+		// Expect each approval to be auto-approved
+		mockApprovalManager.EXPECT().
+			ApproveToolCall(gomock.Any(), "approval-1", "Auto-approved due to bypass permissions").
+			Return(nil)
+		mockApprovalManager.EXPECT().
+			ApproveToolCall(gomock.Any(), "approval-2", "Auto-approved due to bypass permissions").
+			Return(nil)
+
+		req := UpdateSessionSettingsRequest{
+			SessionID:                  sessionID,
+			DangerouslySkipPermissions: &enabled,
+		}
+		reqJSON, _ := json.Marshal(req)
+
+		result, err := handlers.HandleUpdateSessionSettings(context.Background(), reqJSON)
+		require.NoError(t, err)
+
+		resp, ok := result.(UpdateSessionSettingsResponse)
+		require.True(t, ok)
+		assert.True(t, resp.Success)
+	})
+
+	t.Run("auto-approve handles errors gracefully", func(t *testing.T) {
+		sessionID := "sess-error"
+		enabled := true
+
+		mockStore.EXPECT().
+			GetSession(gomock.Any(), sessionID).
+			Return(&store.Session{
+				ID:     sessionID,
+				Status: store.SessionStatusRunning,
+			}, nil)
+
+		mockStore.EXPECT().
+			UpdateSession(gomock.Any(), sessionID, gomock.Any()).
+			Return(nil)
+
+		// Mock getting pending approvals returns error
+		mockApprovalManager.EXPECT().
+			GetPendingApprovals(gomock.Any(), sessionID).
+			Return(nil, fmt.Errorf("database error"))
+
+		// Should still return success since auto-approval is best-effort
+		req := UpdateSessionSettingsRequest{
+			SessionID:                  sessionID,
+			DangerouslySkipPermissions: &enabled,
+		}
+		reqJSON, _ := json.Marshal(req)
+
+		result, err := handlers.HandleUpdateSessionSettings(context.Background(), reqJSON)
+		require.NoError(t, err)
+
+		resp, ok := result.(UpdateSessionSettingsResponse)
+		require.True(t, ok)
+		assert.True(t, resp.Success)
+	})
+
+	t.Run("no auto-approve when no pending approvals", func(t *testing.T) {
+		sessionID := "sess-none"
+		enabled := true
+
+		mockStore.EXPECT().
+			GetSession(gomock.Any(), sessionID).
+			Return(&store.Session{
+				ID:     sessionID,
+				Status: store.SessionStatusRunning,
+			}, nil)
+
+		mockStore.EXPECT().
+			UpdateSession(gomock.Any(), sessionID, gomock.Any()).
+			Return(nil)
+
+		// Mock getting pending approvals - empty list
+		mockApprovalManager.EXPECT().
+			GetPendingApprovals(gomock.Any(), sessionID).
+			Return([]*store.Approval{}, nil)
+
+		// No calls to ApproveToolCall expected
+
+		req := UpdateSessionSettingsRequest{
+			SessionID:                  sessionID,
+			DangerouslySkipPermissions: &enabled,
+		}
+		reqJSON, _ := json.Marshal(req)
+
+		result, err := handlers.HandleUpdateSessionSettings(context.Background(), reqJSON)
+		require.NoError(t, err)
+
+		resp, ok := result.(UpdateSessionSettingsResponse)
+		require.True(t, ok)
+		assert.True(t, resp.Success)
+	})
+
+	t.Run("session not found", func(t *testing.T) {
+		sessionID := "sess-missing"
+		enabled := true
+
+		mockStore.EXPECT().
+			GetSession(gomock.Any(), sessionID).
+			Return(nil, sql.ErrNoRows)
+
+		req := UpdateSessionSettingsRequest{
+			SessionID:                  sessionID,
+			DangerouslySkipPermissions: &enabled,
+		}
+		reqJSON, _ := json.Marshal(req)
+
+		_, err := handlers.HandleUpdateSessionSettings(context.Background(), reqJSON)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to get session")
+	})
+}

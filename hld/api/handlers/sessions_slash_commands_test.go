@@ -28,6 +28,11 @@ func (m *MockStore) UpdateSession(ctx context.Context, sessionID string, updates
 	return args.Error(0)
 }
 
+func (m *MockStore) HardDeleteSession(ctx context.Context, sessionID string) error {
+	args := m.Called(ctx, sessionID)
+	return args.Error(0)
+}
+
 func (m *MockStore) GetSession(ctx context.Context, sessionID string) (*store.Session, error) {
 	args := m.Called(ctx, sessionID)
 	if args.Get(0) == nil {

@@ -105,6 +105,10 @@ export interface GetSlashCommandsRequest {
     query?: string;
 }
 
+export interface HardDeleteEmptyDraftSessionRequest {
+    id: string;
+}
+
 export interface InterruptSessionRequest {
     id: string;
 }
@@ -276,6 +280,22 @@ export interface SessionsApiInterface {
      * Get available slash commands
      */
     getSlashCommands(requestParameters: GetSlashCommandsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SlashCommandsResponse>;
+
+    /**
+     * Permanently delete a draft or discarded session from the database if it is truly empty. A session is considered empty if it has no meaningful content (no title, no query, default model, no editor state). 
+     * @summary Permanently delete an empty draft session
+     * @param {string} id Session ID
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SessionsApiInterface
+     */
+    hardDeleteEmptyDraftSessionRaw(requestParameters: HardDeleteEmptyDraftSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     * Permanently delete a draft or discarded session from the database if it is truly empty. A session is considered empty if it has no meaningful content (no title, no query, default model, no editor state). 
+     * Permanently delete an empty draft session
+     */
+    hardDeleteEmptyDraftSession(requestParameters: HardDeleteEmptyDraftSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
 
     /**
      * Send an interrupt signal to a running session, causing it to complete gracefully. 
@@ -716,6 +736,44 @@ export class SessionsApi extends runtime.BaseAPI implements SessionsApiInterface
     async getSlashCommands(requestParameters: GetSlashCommandsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SlashCommandsResponse> {
         const response = await this.getSlashCommandsRaw(requestParameters, initOverrides);
         return await response.value();
+    }
+
+    /**
+     * Permanently delete a draft or discarded session from the database if it is truly empty. A session is considered empty if it has no meaningful content (no title, no query, default model, no editor state). 
+     * Permanently delete an empty draft session
+     */
+    async hardDeleteEmptyDraftSessionRaw(requestParameters: HardDeleteEmptyDraftSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling hardDeleteEmptyDraftSession().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/sessions/{id}/hard-delete-empty`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Permanently delete a draft or discarded session from the database if it is truly empty. A session is considered empty if it has no meaningful content (no title, no query, default model, no editor state). 
+     * Permanently delete an empty draft session
+     */
+    async hardDeleteEmptyDraftSession(requestParameters: HardDeleteEmptyDraftSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.hardDeleteEmptyDraftSessionRaw(requestParameters, initOverrides);
     }
 
     /**
