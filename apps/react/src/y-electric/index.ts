@@ -192,14 +192,17 @@ export class ElectricProvider extends ObservableV2<ObservableProvider> {
 		const op = toBase64(encoding.toUint8Array(encoder))
 		const room = this.roomName
 
-		console.log({ room, op })
-		return fetch(new URL('/v1/note-operation', this.baseUrl), {
-			method: `POST`,
-			headers: {
-				'content-type': `application/json`,
+		console.log(`sending operation to room ${room}`)
+		return fetch(
+			new URL('/v1/thoughts-document-operations', this.baseUrl),
+			{
+				method: `POST`,
+				headers: {
+					'content-type': `application/json`,
+				},
+				body: JSON.stringify({ thoughtsDocumentId: room, op }),
 			},
-			body: JSON.stringify({ note_id: room, op }),
-		})
+		)
 	}
 
 	private sendAwareness(changedClients: number[]) {
@@ -216,14 +219,24 @@ export class ElectricProvider extends ObservableV2<ObservableProvider> {
 		if (this.connected) {
 			const room = this.roomName
 			const clientId = `${this.doc.clientID}`
+			console.log(
+				`sending awareness to room ${room} with client ID ${clientId}`,
+			)
 
-			return fetch(new URL('/v1/note-operation', this.baseUrl), {
-				method: `POST`,
-				headers: {
-					'content-type': `application/json`,
+			return fetch(
+				new URL('/v1/thoughts-document-operations', this.baseUrl),
+				{
+					method: `POST`,
+					headers: {
+						'content-type': `application/json`,
+					},
+					body: JSON.stringify({
+						clientId,
+						thoughtsDocumentId: room,
+						op,
+					}),
 				},
-				body: JSON.stringify({ clientId, note_id: room, op }),
-			})
+			)
 		}
 	}
 
@@ -235,7 +248,7 @@ export class ElectricProvider extends ObservableV2<ObservableProvider> {
 			console.log(`Setting up shape stream for room: ${this.roomName}`)
 
 			this.operationsStream = new ShapeStream<OperationMessage>({
-				url: this.baseUrl + `/thoughts-documents-operations`,
+				url: this.baseUrl + `/thoughts-document-operations`,
 				params: {
 					where: `thoughts_document_id = '${this.roomName}'`,
 				},

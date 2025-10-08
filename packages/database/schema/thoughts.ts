@@ -41,7 +41,7 @@ export const ydocAwareness = pgTable(
 		thoughtsDocumentId: text('thoughts_document_id')
 			.references(() => thoughtsDocuments.id, { onDelete: 'cascade' })
 			.notNull(),
-		op: bytea('op').notNull(),
+		operation: bytea('op').notNull(),
 		updatedAt: timestamp('updated_at').defaultNow(), // normally we like integer timestamp but this way the DB calculates instead of the client code
 	},
 	(t) => [primaryKey({ columns: [t.clientId, t.thoughtsDocumentId] })], // compound primary key

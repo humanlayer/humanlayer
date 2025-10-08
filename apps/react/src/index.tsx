@@ -1,4 +1,9 @@
-import { db, thoughtsDocuments } from '@codelayer/database'
+import {
+	db,
+	thoughtsDocuments,
+	thoughtsDocumentsOperations,
+	ydocAwareness,
+} from '@codelayer/database'
 import { serve } from 'bun'
 import 'dotenv/config'
 import index from './index.html'
@@ -20,7 +25,7 @@ const server = serve({
 				return await proxyToElectric(request, 'ydoc_awareness')
 			},
 		},
-		'/shape-proxy/thoughts-documents-operations': {
+		'/shape-proxy/thoughts-document-operations': {
 			GET: async (request: Request) => {
 				return await proxyToElectric(
 					request,
@@ -59,20 +64,45 @@ const server = serve({
 				return new Response(JSON.stringify(result), { status: 201 })
 			},
 		},
-		'/v1/thoughts-operation': {
+		'/v1/thoughts-document-operations': {
 			POST: async (request: Request) => {
 				const { error, data } = ThoughtsOperationSchema.safeParse(
 					await request.json(),
 				)
 				if (error) {
 					console.error(
-						`Error parsing /v1/thoughts-operation request:`,
+						`Error parsing /v1/thoughts-document-operations request:`,
 						error,
 					)
 					return new Response('Bad Request', { status: 400 })
 				}
 
 				// if client ID then it's an awareness update
+				// TODO do the operation
+				if (data.clientId) {
+					await db
+						.insert(ydocAwareness)
+						.values({
+							thoughtsDocumentId: data.thoughtsDocumentId,
+							clientId: data.clientId,
+							operation: Buffer.from(data.op, 'base64'),
+						})
+						.onConflictDoUpdate({
+							target: [
+								ydocAwareness.clientId,
+								ydocAwareness.thoughtsDocumentId,
+							],
+							set: {
+								operation: Buffer.from(data.op, 'base64'),
+							},
+						})
+				} else {
+					// If no client ID it's an awareness update
+					await db.insert(thoughtsDocumentsOperations).values({
+						thoughtsDocumentId: data.thoughtsDocumentId,
+						operation: Buffer.from(data.op, 'base64'),
+					})
+				}
 
 				return new Response()
 			},

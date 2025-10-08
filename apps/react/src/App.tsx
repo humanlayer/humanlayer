@@ -5,7 +5,6 @@ import {
 	CardHeader,
 	CardTitle,
 } from '@/components/ui/card'
-import type { ThoughtsDocument } from '@codelayer/database'
 import { useShape } from '@electric-sql/react'
 import { useState } from 'react'
 import { Editor } from './components/Editor'
@@ -17,13 +16,17 @@ import './index.css'
 export function App() {
 	// NOTE that this is probably non-optimal and should be used with another library that handles the aborting
 	// Use the template parameter as the type exported from the database
-	const { data, isError, isLoading, error, lastSyncedAt } =
-		useShape<ThoughtsDocument>({
-			url: 'http://localhost:3000/v1/shape',
-			params: {
-				table: 'thoughts_documents',
-			},
-		})
+
+	const { data, isError, isLoading, error, lastSyncedAt } = useShape<{
+		file_path: string
+		title: string
+		id: string
+	}>({
+		url: 'http://localhost:3000/v1/shape',
+		params: {
+			table: 'thoughts_documents',
+		},
+	})
 
 	const [title, setTitle] = useState('')
 	const [filepath, setFilepath] = useState('')
@@ -82,7 +85,14 @@ export function App() {
 
 							<div>
 								{data.map((row) => (
-									<div key={'row-' + row.id}>
+									<div
+										key={'row-' + row.id}
+										className={
+											selectedDocument === row.id
+												? 'rounded-sm p-1 bg-gray-200'
+												: ''
+										}
+									>
 										<div className="flex flex-col px-4 py-2">
 											<div className="">
 												<span
@@ -96,7 +106,7 @@ export function App() {
 													{row.title}
 												</span>{' '}
 												(
-												<code className="px-2 py-0.5 bg-gray-400 text-white rounded-sm">
+												<code className="px-2 py-0.5">
 													{row.file_path}
 												</code>
 												)
@@ -162,10 +172,15 @@ export function App() {
 						</CardDescription>
 					</CardHeader>
 					<div className="p-4">
-						<Editor
-							documentId="demo-doc-1"
-							electricUrl="http://localhost:4000/shape-proxy"
-						/>
+						{selectedDocument ? (
+							<Editor
+								documentId={selectedDocument ?? ''}
+								electricUrl="http://localhost:4000/shape-proxy"
+							/>
+						) : (
+							<p>Please select a document</p>
+						)}
+
 						{/* NOTE THIS MUST BE THE URL OF THE BUN APP WHICH IS 4000*/}
 					</div>
 				</Card>
