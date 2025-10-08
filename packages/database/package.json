@@ -20,6 +20,7 @@
 	},
 	"dependencies": {
 		"drizzle-orm": "^0.44.6",
+		"pg": "^8.16.3",
 		"uuidv7": "^1.0.2"
 	}
 }

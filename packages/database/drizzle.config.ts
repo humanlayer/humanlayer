@@ -9,7 +9,6 @@ if (!dbUrl) throw new Error('Unable to load migration DATABASE_URL')
 export default defineConfig({
 	dialect: 'postgresql',
 	schema: ['./schema/index.ts'],
-	driver: 'pglite',
 	dbCredentials: {
 		url: dbUrl,
 	},

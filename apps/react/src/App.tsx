@@ -51,14 +51,17 @@ export function App() {
 					<CardHeader>
 						<CardTitle>Collaborative Editor</CardTitle>
 						<CardDescription>
-							<p>Tiptap editor with Y.js + Electric collaboration</p>
+							<p>
+								Tiptap editor with Y.js + Electric collaboration
+							</p>
 						</CardDescription>
 					</CardHeader>
 					<div className="p-4">
 						<Editor
 							documentId="demo-doc-1"
-							electricUrl="http://localhost:3000/shape-proxy"
+							electricUrl="http://localhost:4000/shape-proxy"
 						/>
+						{/* NOTE THIS MUST BE THE URL OF THE BUN APP WHICH IS 4000*/}
 					</div>
 				</Card>
 			</div>

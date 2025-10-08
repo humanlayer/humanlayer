@@ -22,7 +22,8 @@
     "javascript": {
         "formatter": {
             "quoteStyle": "single",
-            "semicolons": "asNeeded"
+            "semicolons": "asNeeded",
+            "indentWidth": 4
         }
     },
     "assist": {

@@ -4,7 +4,7 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"dev": "bun --hot src/index.tsx",
+		"dev": "PORT=4000 bun --hot src/index.tsx",
 		"start": "NODE_ENV=production bun src/index.tsx",
 		"build": "bun run build.ts"
 	},
@@ -22,6 +22,7 @@
 		"bun-plugin-tailwind": "^0.0.15",
 		"class-variance-authority": "^0.7.1",
 		"clsx": "^2.1.1",
+		"dotenv": "^17.2.3",
 		"lib0": "^0.2.114",
 		"lucide-react": "^0.525.0",
 		"react": "^19",
@@ -30,7 +31,8 @@
 		"tailwindcss": "^4.1.11",
 		"tailwindcss-animate": "^1.0.7",
 		"y-protocols": "^1.0.6",
-		"yjs": "^13.6.27"
+		"yjs": "^13.6.27",
+		"zod": "^4.1.12"
 	},
 	"devDependencies": {
 		"@types/react": "^19",
