@@ -12,6 +12,7 @@ import {
 } from '@humanlayer/hld-sdk'
 import { getDaemonUrl, getDefaultHeaders } from './http-config'
 import { logger } from '@/lib/logging'
+import { captureException } from '@/lib/telemetry/sentry'
 import type {
   DaemonClient as IDaemonClient,
   LaunchSessionParams,
@@ -75,6 +76,22 @@ export class HTTPDaemonClient implements IDaemonClient {
     this.client = new HLDClient({
       baseUrl: `${baseUrl}/api/v1`,
       headers: getDefaultHeaders(),
+      // Add Sentry error handler
+      onFetchError: (error, context) => {
+        logger.error('[HTTPDaemonClient] SDK fetch error:', {
+          url: context.url,
+          method: context.method,
+          error: error.message,
+        })
+
+        // Trace to Sentry with context
+        captureException(error, {
+          component: 'HTTPDaemonClient',
+          url: context.url,
+          method: context.method,
+          errorType: 'FetchError',
+        })
+      },
     })
 
     // Verify connection with timeout
