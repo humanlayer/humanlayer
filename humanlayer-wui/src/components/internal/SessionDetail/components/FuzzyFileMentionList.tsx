@@ -142,7 +142,7 @@ export const FuzzyFileMentionList = forwardRef<FileMentionListRef, FileMentionLi
           if (results.length > 0) {
             const selected = results[selectedIndex]
             command({
-              id: selected.path,
+              id: '@' + selected.path,
               label: selected.displayPath,
               isDirectory: selected.isDirectory,
             })
@@ -223,7 +223,7 @@ export const FuzzyFileMentionList = forwardRef<FileMentionListRef, FileMentionLi
               }`}
               onMouseEnter={() => setSelectedIndex(index)}
               onClick={() => {
-                command({ id: result.path, label: result.displayPath, isDirectory: result.isDirectory })
+                command({ id: '@' + result.path, label: result.displayPath, isDirectory: result.isDirectory })
               }}
             >
               <div className="flex items-center gap-2 w-full min-w-0">

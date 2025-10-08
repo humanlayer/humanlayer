@@ -678,7 +678,7 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
           },
           suggestion: {
             char: '@',
-            allowSpaces: true,
+            allowSpaces: false,
             startOfLine: false,
             items: () => {
               // Just return the query as a simple array
