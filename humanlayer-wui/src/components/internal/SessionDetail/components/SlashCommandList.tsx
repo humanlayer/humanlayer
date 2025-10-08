@@ -1,4 +1,4 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useState } from 'react'
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { Editor } from '@tiptap/react'
 import { AlertCircle, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -28,6 +28,16 @@ export const SlashCommandList = forwardRef<SlashCommandListRef, SlashCommandList
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const activeSessionDetail = useStore(state => state.activeSessionDetail)
+    const itemRefs = useRef<(HTMLButtonElement | null)[]>([])
+    const mouseEnabledRef = useRef(true)
+
+    // Scroll selected item into view
+    useEffect(() => {
+      itemRefs.current[selectedIndex]?.scrollIntoView({
+        block: 'nearest',
+        behavior: 'auto',
+      })
+    }, [selectedIndex])
 
     // Fetch commands from daemon
     useEffect(() => {
@@ -74,18 +84,21 @@ export const SlashCommandList = forwardRef<SlashCommandListRef, SlashCommandList
       ({ event }: { event: KeyboardEvent }) => {
         if (event.key === 'ArrowUp') {
           event.preventDefault()
+          mouseEnabledRef.current = false
           setSelectedIndex(prev => (prev - 1 + commands.length) % commands.length || 0)
           return true
         }
 
         if (event.key === 'ArrowDown') {
           event.preventDefault()
+          mouseEnabledRef.current = false
           setSelectedIndex(prev => (prev + 1) % commands.length)
           return true
         }
 
         if (event.key === 'Tab') {
           event.preventDefault()
+          mouseEnabledRef.current = false
           if (event.shiftKey) {
             setSelectedIndex(prev => (prev - 1 + commands.length) % commands.length || 0)
           } else {
@@ -155,12 +168,21 @@ export const SlashCommandList = forwardRef<SlashCommandListRef, SlashCommandList
           {commands.map((cmd, index) => (
             <Button
               key={cmd.name}
+              ref={el => (itemRefs.current[index] = el)}
               variant="ghost"
               size="sm"
               className={`w-full justify-start px-2 py-1 ${
                 index === selectedIndex ? 'bg-accent !text-[var(--terminal-bg)]' : ''
               }`}
-              onMouseEnter={() => setSelectedIndex(index)}
+              onMouseEnter={() => {
+                if (mouseEnabledRef.current) {
+                  setSelectedIndex(index)
+                }
+              }}
+              onMouseMove={() => {
+                // Re-enable mouse control on mouse movement
+                mouseEnabledRef.current = true
+              }}
               onClick={() => {
                 // Pass the full command with slash - Tiptap will replace the trigger /
                 command({ id: cmd.name, label: cmd.name })
