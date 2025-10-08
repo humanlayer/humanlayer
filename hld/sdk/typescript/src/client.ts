@@ -68,7 +68,7 @@ export class HLDClient {
                         if (options.onFetchError) {
                             options.onFetchError(error, {
                                 url: context.url,
-                                method: context.init.method,
+                                method: context.init?.method,
                             });
                         }
                     },
