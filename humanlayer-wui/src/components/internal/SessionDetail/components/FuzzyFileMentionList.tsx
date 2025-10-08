@@ -1,4 +1,12 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useState, useMemo } from 'react'
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useState,
+  useMemo,
+  useRef,
+} from 'react'
 import { Editor } from '@tiptap/react'
 import { AlertCircle, Loader2, FileIcon, FolderIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -33,6 +41,7 @@ export const FuzzyFileMentionList = forwardRef<FileMentionListRef, FileMentionLi
     const [isLoading, setIsLoading] = useState(false)
     const [showLoader, setShowLoader] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const buttonRefs = useRef<(HTMLButtonElement | null)[]>([])
     const activeSessionDetail = useStore(state => state.activeSessionDetail)
     const sessionWorkingDir = activeSessionDetail?.session?.workingDir
 
@@ -105,6 +114,14 @@ export const FuzzyFileMentionList = forwardRef<FileMentionListRef, FileMentionLi
       setSelectedIndex(0)
     }, [results])
 
+    // Scroll selected item into view
+    useEffect(() => {
+      const selectedButton = buttonRefs.current[selectedIndex]
+      if (selectedButton) {
+        selectedButton.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+      }
+    }, [selectedIndex])
+
     // Keyboard navigation
     const onKeyDown = useCallback(
       ({ event }: { event: KeyboardEvent }) => {
@@ -142,7 +159,7 @@ export const FuzzyFileMentionList = forwardRef<FileMentionListRef, FileMentionLi
           if (results.length > 0) {
             const selected = results[selectedIndex]
             command({
-              id: selected.path,
+              id: '@' + selected.path,
               label: selected.displayPath,
               isDirectory: selected.isDirectory,
             })
@@ -214,6 +231,7 @@ export const FuzzyFileMentionList = forwardRef<FileMentionListRef, FileMentionLi
           return (
             <Button
               key={result.path}
+              ref={el => (buttonRefs.current[index] = el)}
               variant="ghost"
               size="sm"
               className={`w-full justify-start px-2 py-1 ${
@@ -223,7 +241,11 @@ export const FuzzyFileMentionList = forwardRef<FileMentionListRef, FileMentionLi
               }`}
               onMouseEnter={() => setSelectedIndex(index)}
               onClick={() => {
-                command({ id: result.path, label: result.displayPath, isDirectory: result.isDirectory })
+                command({
+                  id: '@' + result.path,
+                  label: result.displayPath,
+                  isDirectory: result.isDirectory,
+                })
               }}
             >
               <div className="flex items-center gap-2 w-full min-w-0">

@@ -621,10 +621,6 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
                 },
 
                 onKeyDown(props: any) {
-                  if (props.event.key === 'Escape') {
-                    props.event.stopPropagation()
-                    return true
-                  }
                   return component?.ref?.onKeyDown(props) ?? false
                 },
 
@@ -678,7 +674,7 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
           },
           suggestion: {
             char: '@',
-            allowSpaces: true,
+            allowSpaces: false,
             startOfLine: false,
             items: () => {
               // Just return the query as a simple array
@@ -786,10 +782,6 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
                   }
                 },
                 onKeyDown: (props: any) => {
-                  if (props.event.key === 'Escape') {
-                    return true
-                  }
-
                   if (component?.ref) {
                     return component.ref.onKeyDown(props)
                   }
