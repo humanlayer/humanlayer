@@ -552,7 +552,7 @@ func (h *SessionHandlers) HandleUpdateSessionSettings(ctx context.Context, param
 	}
 
 	// Auto-approve pending approvals if bypass permissions was just enabled
-	if req.DangerouslySkipPermissions != nil && *req.DangerouslySkipPermissions {
+	if req.DangerouslySkipPermissions != nil && *req.DangerouslySkipPermissions && h.approvalManager != nil {
 		// Get all pending approvals for this session
 		pendingApprovals, err := h.approvalManager.GetPendingApprovals(ctx, req.SessionID)
 		if err != nil {
