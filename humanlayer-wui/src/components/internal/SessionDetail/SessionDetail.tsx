@@ -942,19 +942,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     [selectedDirectory, session.workingDir, responseEditor, handleLaunchDraft],
   )
 
-  // Cmd+Shift+. handler for discarding draft sessions
-  useHotkeys(
-    'meta+shift+., ctrl+shift+.',
-    () => {
-      setShowDiscardDialog(true)
-    },
-    {
-      enabled: isDraft,
-      preventDefault: true,
-      scopes: [HOTKEY_SCOPES.DRAFT_LAUNCHER],
-    },
-  )
-
   // Option+A handler for auto-accept edits mode (draft version)
   useHotkeys(
     'alt+a, option+a',
@@ -1056,24 +1043,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     },
   )
 
-  // Add hotkey to discard draft ('cmd+shift+.' key, which is 'mod+shift+>')
-  useHotkeys(
-    'meta+shift+period',
-    async () => {
-      console.log('[SessionDetail] discard draft hotkey "cmd+shift+>" fired')
-
-      // Only works for draft sessions
-      if (isDraft) {
-        handleDiscardDraft()
-      }
-    },
-    {
-      enableOnFormTags: true,
-      preventDefault: true,
-      scopes: [detailScope],
-    },
-  )
-
   // Add hotkey to archive session ('e' key)
   useHotkeys(
     'e',
@@ -1086,9 +1055,9 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         return
       }
 
-      // Don't archive drafts with 'e' key
+      // Handle drafts - discard instead of archive
       if (isDraft) {
-        toast.warning('Drafts cannot be archived with "e" key. Use Cmd+Shift+. to discard drafts.')
+        handleDiscardDraft()
         return
       }
 
