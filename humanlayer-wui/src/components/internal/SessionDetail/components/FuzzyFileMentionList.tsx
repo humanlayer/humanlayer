@@ -1,4 +1,12 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useState, useMemo, useRef } from 'react'
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useState,
+  useMemo,
+  useRef,
+} from 'react'
 import { Editor } from '@tiptap/react'
 import { AlertCircle, Loader2, FileIcon, FolderIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -233,7 +241,11 @@ export const FuzzyFileMentionList = forwardRef<FileMentionListRef, FileMentionLi
               }`}
               onMouseEnter={() => setSelectedIndex(index)}
               onClick={() => {
-                command({ id: '@' + result.path, label: result.displayPath, isDirectory: result.isDirectory })
+                command({
+                  id: '@' + result.path,
+                  label: result.displayPath,
+                  isDirectory: result.isDirectory,
+                })
               }}
             >
               <div className="flex items-center gap-2 w-full min-w-0">
