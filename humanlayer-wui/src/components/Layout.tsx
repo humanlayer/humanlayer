@@ -890,7 +890,7 @@ export function Layout() {
             </TooltipTrigger>
             <TooltipContent>
               <div className="flex items-center gap-1">
-                Settings <KeyboardShortcut keyString="⌘+shift+s" />
+                Settings <KeyboardShortcut keyString="⌘+⇧+S" />
               </div>
             </TooltipContent>
           </Tooltip>
