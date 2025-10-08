@@ -710,9 +710,10 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       // Only allow editing title in draft mode
       if (!isDraft) return
 
+      useStore.getState().updateSession(session.id, { title: newTitle })
+
       try {
         await daemonClient.updateSessionTitle(session.id, newTitle)
-        useStore.getState().updateSession(session.id, { title: newTitle })
       } catch (error) {
         toast.error('Failed to update session title', {
           description: error instanceof Error ? error.message : 'Unknown error',
