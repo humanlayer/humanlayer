@@ -4,6 +4,7 @@ import {
     ApprovalsApi,
     SystemApi,
     SettingsApi,
+    FilesApi,
     CreateSessionRequest,
     Session,
     SessionsResponse,
@@ -16,7 +17,9 @@ import {
     UserSettingsResponse,
     UpdateUserSettingsRequest,
     ConfigResponse,
-    UpdateConfigRequest
+    UpdateConfigRequest,
+    FuzzySearchFilesRequest,
+    FuzzySearchFilesResponse
 } from './generated';
 
 export interface HLDClientOptions {
@@ -42,6 +45,7 @@ export class HLDClient {
     private sessionsApi: SessionsApi;
     private approvalsApi: ApprovalsApi;
     private settingsApi: SettingsApi;
+    private filesApi: FilesApi;
     private baseUrl: string;
     private headers?: Record<string, string>;
     private sseConnections: Map<string, EventSourceLike> = new Map();
@@ -58,6 +62,7 @@ export class HLDClient {
         this.sessionsApi = new SessionsApi(config);
         this.approvalsApi = new ApprovalsApi(config);
         this.settingsApi = new SettingsApi(config);
+        this.filesApi = new FilesApi(config);
     }
 
     // Session Management
@@ -255,6 +260,20 @@ export class HLDClient {
 
     async updateConfig(request: UpdateConfigRequest): Promise<ConfigResponse> {
         return await this.settingsApi.updateConfig({ updateConfigRequest: request });
+    }
+
+    // Files
+    async fuzzySearchFiles(params: {
+        query: string;
+        paths: string[];
+        limit?: number;
+        filesOnly?: boolean;
+        respectGitignore?: boolean;
+    }): Promise<FuzzySearchFilesResponse> {
+        const response = await this.filesApi.fuzzySearchFiles({
+            fuzzySearchFilesRequest: params
+        });
+        return response;
     }
 
     // Server-Sent Events using eventsource polyfill

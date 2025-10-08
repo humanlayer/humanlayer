@@ -8,6 +8,7 @@ import {
   UpdateUserSettingsRequest,
   ConfigResponse,
   UpdateConfigRequest,
+  FuzzySearchFilesResponse,
 } from '@humanlayer/hld-sdk'
 import { getDaemonUrl, getDefaultHeaders } from './http-config'
 import { logger } from '@/lib/logging'
@@ -580,6 +581,18 @@ export class HTTPDaemonClient implements IDaemonClient {
     // SDK client doesn't support limit parameter yet
     const response = await this.client!.getRecentPaths()
     return response // SDK now properly returns RecentPath[]
+  }
+
+  async fuzzySearchFiles(params: {
+    query: string
+    paths: string[]
+    limit?: number
+    filesOnly?: boolean
+    respectGitignore?: boolean
+  }): Promise<FuzzySearchFilesResponse> {
+    await this.ensureConnected()
+    const response = await this.client!.fuzzySearchFiles(params)
+    return response
   }
 
   async getDebugInfo(): Promise<import('./types').DebugInfo> {

@@ -1,12 +1,20 @@
 import React, { useEffect, forwardRef, useImperativeHandle, useState, useRef } from 'react'
-import { useEditor, EditorContent, Extension, Content, ReactRenderer } from '@tiptap/react'
+import {
+  useEditor,
+  EditorContent,
+  Extension,
+  Content,
+  ReactRenderer,
+  ReactNodeViewRenderer,
+} from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { Placeholder } from '@tiptap/extensions'
 import Mention from '@tiptap/extension-mention'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import { Plugin } from '@tiptap/pm/state'
 import { SlashCommandList } from './SlashCommandList'
-import type { FileMentionListRef } from './FileMentionList'
+import { FuzzyFileMentionList } from './FuzzyFileMentionList'
+import { FileMentionNode } from './FileMentionNode'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { createLowlight } from 'lowlight'
 import clojure from 'highlight.js/lib/languages/clojure'
@@ -548,7 +556,7 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
             items: () => ['placeholder'], // Dummy items, actual search in component
 
             render: () => {
-              let component: ReactRenderer<FileMentionListRef> | null = null
+              let component: ReactRenderer<any> | null = null
               let popup: HTMLDivElement | null = null
 
               return {
@@ -630,22 +638,43 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
         }),
         // TEMPORARILY DISABLED: Mention functionality for fuzzy file finding
         // Uncomment the block below to re-enable @-mention file search
-        /*
-        Mention.configure({
+        Mention.extend({
+          addAttributes() {
+            return {
+              id: {
+                default: null,
+                parseHTML: (element: HTMLElement) => element.getAttribute('data-id'),
+                renderHTML: (attributes: any) => {
+                  if (!attributes.id) return {}
+                  return { 'data-id': attributes.id }
+                },
+              },
+              label: {
+                default: null,
+                parseHTML: (element: HTMLElement) => element.getAttribute('data-label'),
+                renderHTML: (attributes: any) => {
+                  if (!attributes.label) return {}
+                  return { 'data-label': attributes.label }
+                },
+              },
+              isDirectory: {
+                default: false,
+                parseHTML: (element: HTMLElement) =>
+                  element.getAttribute('data-is-directory') === 'true',
+                renderHTML: (attributes: any) => {
+                  if (!attributes.isDirectory) return {}
+                  return { 'data-is-directory': 'true' }
+                },
+              },
+            }
+          },
+          addNodeView() {
+            return ReactNodeViewRenderer(FileMentionNode as any)
+          },
+        }).configure({
           HTMLAttributes: {
             class: 'mention',
             'data-mention': 'true',
-          },
-          renderHTML({ node }) {
-            return [
-              'span',
-              {
-                class: 'mention',
-                'data-mention': node.attrs.id,
-                title: `Open ${node.attrs.id}`,
-              },
-              `@${node.attrs.label || node.attrs.id}`,
-            ]
           },
           suggestion: {
             char: '@',
@@ -653,11 +682,11 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
             startOfLine: false,
             items: () => {
               // Just return the query as a simple array
-              // The actual file searching happens in FileMentionList
+              // The actual file searching happens in FuzzyFileMentionList
               return ['placeholder']
             },
             render: () => {
-              let component: ReactRenderer<FileMentionListRef> | null = null
+              let component: ReactRenderer<any> | null = null
               let popup: HTMLDivElement | null = null
 
               return {
@@ -665,10 +694,10 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
                   // Create a portal div for the dropdown with shadcn styling
                   popup = document.createElement('div')
                   popup.className =
-                    'z-50 min-w-[20rem] max-w-[30rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md'
+                    'z-50 min-w-[20rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md'
                   document.body.appendChild(popup)
 
-                  component = new ReactRenderer(FileMentionList, {
+                  component = new ReactRenderer(FuzzyFileMentionList, {
                     props,
                     editor: props.editor,
                   })
@@ -781,7 +810,6 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
             },
           },
         }),
-        */
       ],
       content: initialValue,
       onCreate: ({ editor }) => {
