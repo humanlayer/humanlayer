@@ -86,7 +86,7 @@ export const ActionButtons: FC<ActionButtonsProps> = ({
         <TooltipContent>
           <p className="flex items-center gap-1">
             {bypassEnabled ? 'Disable' : 'Enable'} bypass permissions{' '}
-            <KeyboardShortcut keyString="⌥Y" />
+            <KeyboardShortcut keyString="⌥+Y" />
           </p>
         </TooltipContent>
       </Tooltip>
@@ -114,8 +114,7 @@ export const ActionButtons: FC<ActionButtonsProps> = ({
         </TooltipTrigger>
         <TooltipContent>
           <p className="flex items-center gap-1">
-            {autoAcceptEnabled ? 'Disable' : 'Enable'} auto-accept{' '}
-            <KeyboardShortcut keyString="⇧+TAB" />
+            {autoAcceptEnabled ? 'Disable' : 'Enable'} auto-accept <KeyboardShortcut keyString="⌥+A" />
           </p>
         </TooltipContent>
       </Tooltip>
