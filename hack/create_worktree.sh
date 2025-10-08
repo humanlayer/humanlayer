@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # create_worktree.sh - Create a new worktree for development work
-# Usage: ./create_worktree.sh [worktree_name] [base_branch]
+# Usage: ./create_worktree.sh [--no-thoughts] [worktree_name] [base_branch]
 # If no name provided, generates a unique human-readable one
 # If no base branch provided, uses current branch
 
@@ -19,6 +19,20 @@ generate_unique_name() {
 
     echo "${adj}_${noun}_${timestamp}"
 }
+
+# Parse flags
+INIT_THOUGHTS=true
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --no-thoughts)
+            INIT_THOUGHTS=false
+            shift
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
 
 # Get worktree name from parameter or generate one
 WORKTREE_NAME=${1:-$(generate_unique_name)}
@@ -103,18 +117,20 @@ fi
 # fi
 
 # Initialize thoughts (non-interactive mode with hardcoded directory)
-echo "🧠 Initializing thoughts..."
-cd "$WORKTREE_PATH"
-if humanlayer thoughts init --directory humanlayer > /dev/null 2>&1; then
-    echo "✅ Thoughts initialized!"
-    # Run sync to create searchable directory
-    if humanlayer thoughts sync > /dev/null 2>&1; then
-        echo "✅ Thoughts searchable index created!"
+if [ "$INIT_THOUGHTS" = true ]; then
+    echo "🧠 Initializing thoughts..."
+    cd "$WORKTREE_PATH"
+    if humanlayer thoughts init --directory humanlayer > /dev/null 2>&1; then
+        echo "✅ Thoughts initialized!"
+        # Run sync to create searchable directory
+        if humanlayer thoughts sync > /dev/null 2>&1; then
+            echo "✅ Thoughts searchable index created!"
+        else
+            echo "⚠️  Could not create searchable index. Run 'humanlayer thoughts sync' manually."
+        fi
     else
-        echo "⚠️  Could not create searchable index. Run 'humanlayer thoughts sync' manually."
+        echo "⚠️  Could not initialize thoughts automatically. Run 'humanlayer thoughts init' manually."
     fi
-else
-    echo "⚠️  Could not initialize thoughts automatically. Run 'humanlayer thoughts init' manually."
 fi
 
 # Return to original directory

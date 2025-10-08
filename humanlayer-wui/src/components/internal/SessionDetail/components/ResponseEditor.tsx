@@ -1,9 +1,20 @@
 import React, { useEffect, forwardRef, useImperativeHandle, useState, useRef } from 'react'
-import { useEditor, EditorContent, Extension, Content } from '@tiptap/react'
+import {
+  useEditor,
+  EditorContent,
+  Extension,
+  Content,
+  ReactRenderer,
+  ReactNodeViewRenderer,
+} from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { Placeholder } from '@tiptap/extensions'
+import Mention from '@tiptap/extension-mention'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import { Plugin } from '@tiptap/pm/state'
+import { SlashCommandList } from './SlashCommandList'
+import { FuzzyFileMentionList } from './FuzzyFileMentionList'
+import { FileMentionNode } from './FileMentionNode'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { createLowlight } from 'lowlight'
 import clojure from 'highlight.js/lib/languages/clojure'
@@ -521,24 +532,149 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
         Placeholder.configure({
           placeholder: placeholder || 'Type something...',
         }),
-        // TEMPORARILY DISABLED: Mention functionality for fuzzy file finding
-        // Uncomment the block below to re-enable @-mention file search
-        /*
-        Mention.configure({
+        // Slash command Mention extension
+        Mention.extend({
+          name: 'slash-command',
+        }).configure({
           HTMLAttributes: {
-            class: 'mention',
-            'data-mention': 'true',
+            class: 'mention slash-command',
           },
           renderHTML({ node }) {
             return [
               'span',
               {
-                class: 'mention',
-                'data-mention': node.attrs.id,
-                title: `Open ${node.attrs.id}`,
+                class: 'mention slash-command',
+                'data-slash-command': node.attrs.id,
               },
-              `@${node.attrs.label || node.attrs.id}`,
+              node.attrs.label || node.attrs.id,
             ]
+          },
+          suggestion: {
+            char: '/',
+            startOfLine: true, // Only trigger at start of message
+            allowSpaces: false,
+            items: () => ['placeholder'], // Dummy items, actual search in component
+
+            render: () => {
+              let component: ReactRenderer<any> | null = null
+              let popup: HTMLDivElement | null = null
+
+              return {
+                onStart: (props: any) => {
+                  // Create popup div
+                  popup = document.createElement('div')
+                  popup.className =
+                    'z-50 min-w-[20rem] max-w-[30rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md'
+                  document.body.appendChild(popup)
+
+                  // Create React component
+                  component = new ReactRenderer(SlashCommandList, {
+                    props,
+                    editor: props.editor,
+                  })
+
+                  popup.appendChild(component.element)
+
+                  // Position dropdown
+                  const { clientRect } = props
+                  if (!clientRect) return
+
+                  const rect = clientRect()
+
+                  // Check space below
+                  const spaceBelow = window.innerHeight - rect.bottom
+                  const spaceAbove = rect.top
+
+                  if (spaceBelow < 300 && spaceAbove > 300) {
+                    // Position above
+                    popup.style.position = 'fixed'
+                    popup.style.left = `${rect.left}px`
+                    popup.style.bottom = `${window.innerHeight - rect.top + 4}px`
+                    popup.style.maxHeight = `${Math.min(spaceAbove - 20, 360)}px`
+                  } else {
+                    // Position below
+                    popup.style.position = 'fixed'
+                    popup.style.left = `${rect.left}px`
+                    popup.style.top = `${rect.bottom + 4}px`
+                    popup.style.maxHeight = `${Math.min(spaceBelow - 20, 360)}px`
+                  }
+                },
+
+                onUpdate(props: any) {
+                  component?.updateProps(props)
+
+                  // Reposition if needed
+                  if (!popup || !props.clientRect) return
+
+                  const rect = props.clientRect()
+
+                  const spaceBelow = window.innerHeight - rect.bottom
+                  const spaceAbove = rect.top
+
+                  if (spaceBelow < 300 && spaceAbove > 300) {
+                    popup.style.left = `${rect.left}px`
+                    popup.style.bottom = `${window.innerHeight - rect.top + 4}px`
+                  } else {
+                    popup.style.left = `${rect.left}px`
+                    popup.style.top = `${rect.bottom + 4}px`
+                  }
+                },
+
+                onKeyDown(props: any) {
+                  if (props.event.key === 'Escape') {
+                    props.event.stopPropagation()
+                    return true
+                  }
+                  return component?.ref?.onKeyDown(props) ?? false
+                },
+
+                onExit() {
+                  popup?.remove()
+                  component?.destroy()
+                },
+              }
+            },
+          },
+        }),
+        // TEMPORARILY DISABLED: Mention functionality for fuzzy file finding
+        // Uncomment the block below to re-enable @-mention file search
+        Mention.extend({
+          addAttributes() {
+            return {
+              id: {
+                default: null,
+                parseHTML: (element: HTMLElement) => element.getAttribute('data-id'),
+                renderHTML: (attributes: any) => {
+                  if (!attributes.id) return {}
+                  return { 'data-id': attributes.id }
+                },
+              },
+              label: {
+                default: null,
+                parseHTML: (element: HTMLElement) => element.getAttribute('data-label'),
+                renderHTML: (attributes: any) => {
+                  if (!attributes.label) return {}
+                  return { 'data-label': attributes.label }
+                },
+              },
+              isDirectory: {
+                default: false,
+                parseHTML: (element: HTMLElement) =>
+                  element.getAttribute('data-is-directory') === 'true',
+                renderHTML: (attributes: any) => {
+                  if (!attributes.isDirectory) return {}
+                  return { 'data-is-directory': 'true' }
+                },
+              },
+            }
+          },
+          addNodeView() {
+            return ReactNodeViewRenderer(FileMentionNode as any)
+          },
+        }).configure({
+          HTMLAttributes: {
+            class: 'mention',
+            'data-mention': 'true',
           },
           suggestion: {
             char: '@',
@@ -546,11 +682,11 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
             startOfLine: false,
             items: () => {
               // Just return the query as a simple array
-              // The actual file searching happens in FileMentionList
+              // The actual file searching happens in FuzzyFileMentionList
               return ['placeholder']
             },
             render: () => {
-              let component: ReactRenderer<FileMentionListRef> | null = null
+              let component: ReactRenderer<any> | null = null
               let popup: HTMLDivElement | null = null
 
               return {
@@ -558,10 +694,10 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
                   // Create a portal div for the dropdown with shadcn styling
                   popup = document.createElement('div')
                   popup.className =
-                    'z-50 min-w-[20rem] max-w-[30rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md'
+                    'z-50 min-w-[20rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md'
                   document.body.appendChild(popup)
 
-                  component = new ReactRenderer(FileMentionList, {
+                  component = new ReactRenderer(FuzzyFileMentionList, {
                     props,
                     editor: props.editor,
                   })
@@ -674,7 +810,6 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
             },
           },
         }),
-        */
       ],
       content: initialValue,
       onCreate: ({ editor }) => {

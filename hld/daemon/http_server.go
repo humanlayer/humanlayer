@@ -42,6 +42,7 @@ type HTTPServer struct {
 	sessionManager   session.SessionManager
 	sessionHandlers  *handlers.SessionHandlers
 	approvalHandlers *handlers.ApprovalHandlers
+	fileHandlers     *handlers.FileHandlers
 	sseHandler       *handlers.SSEHandler
 	proxyHandler     *handlers.ProxyHandler
 	configHandler    *handlers.ConfigHandler
@@ -85,6 +86,7 @@ func NewHTTPServer(
 	// Create handlers
 	sessionHandlers := handlers.NewSessionHandlersWithConfig(sessionManager, conversationStore, approvalManager, cfg)
 	approvalHandlers := handlers.NewApprovalHandlers(approvalManager, sessionManager)
+	fileHandlers := handlers.NewFileHandlers()
 	sseHandler := handlers.NewSSEHandler(eventBus)
 	proxyHandler := handlers.NewProxyHandler(sessionManager, conversationStore)
 	configHandler := handlers.NewConfigHandler()
@@ -96,6 +98,7 @@ func NewHTTPServer(
 		sessionManager:   sessionManager,
 		sessionHandlers:  sessionHandlers,
 		approvalHandlers: approvalHandlers,
+		fileHandlers:     fileHandlers,
 		sseHandler:       sseHandler,
 		proxyHandler:     proxyHandler,
 		configHandler:    configHandler,
@@ -108,7 +111,7 @@ func NewHTTPServer(
 // Start starts the HTTP server
 func (s *HTTPServer) Start(ctx context.Context) error {
 	// Create server implementation combining all handlers
-	serverImpl := handlers.NewServerImpl(s.sessionHandlers, s.approvalHandlers, s.sseHandler, s.settingsHandlers)
+	serverImpl := handlers.NewServerImpl(s.sessionHandlers, s.approvalHandlers, s.fileHandlers, s.sseHandler, s.settingsHandlers)
 
 	// Create strict handler with middleware
 	strictHandler := api.NewStrictHandler(serverImpl, nil)
