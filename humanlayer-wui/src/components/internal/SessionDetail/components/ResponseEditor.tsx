@@ -34,6 +34,10 @@ import { logger } from '@/lib/logging'
 import { useStore } from '@/AppStore'
 import { openPath } from '@tauri-apps/plugin-opener'
 
+// Export regex patterns for markdown italic syntax
+export const italicRegex = /(?<=^|\s|[^\w])\*(?!\*)([^*]+)\*(?!\*)(?=\s|[^\w]|$)/g
+export const underscoreItalicRegex = /(?<=^|\s|[^\w])_(?!_)([^_]+)_(?!_)(?=\s|[^\w]|$)/g
+
 // Create lowlight instance with common languages
 const lowlight = createLowlight()
 lowlight.register('javascript', javascript)
@@ -246,7 +250,6 @@ const MarkdownSyntaxHighlight = Extension.create({
 
                 // Match *italic* syntax - require word boundary or whitespace before/after
                 // This prevents matching within identifiers that might use asterisks
-                const italicRegex = /(?<=^|\s|[^\w])\*(?!\*)([^*]+)\*(?!\*)(?=\s|[^\w]|$)/g
                 while ((match = italicRegex.exec(text)) !== null) {
                   const start = pos + match.index
                   const end = start + match[0].length
@@ -269,7 +272,6 @@ const MarkdownSyntaxHighlight = Extension.create({
 
                 // Match _italic_ syntax - require word boundary or whitespace before/after
                 // This prevents matching within identifiers like dept_id
-                const underscoreItalicRegex = /(?<=^|\s|[^\w])_(?!_)([^_]+)_(?!_)(?=\s|[^\w]|$)/g
                 while ((match = underscoreItalicRegex.exec(text)) !== null) {
                   const start = pos + match.index
                   const end = start + match[0].length

@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'bun:test'
+import { italicRegex, underscoreItalicRegex } from '../ResponseEditor'
 
 // Helper to extract matched ranges from a regex
 function getMatches(
@@ -20,10 +21,6 @@ function getMatches(
 }
 
 describe('Markdown Italic Patterns', () => {
-  // The fixed regex patterns
-  const underscoreItalicRegex = /(?<=^|\s|[^\w])_(?!_)([^_]+)_(?!_)(?=\s|[^\w]|$)/g
-  const asteriskItalicRegex = /(?<=^|\s|[^\w])\*(?!\*)([^*]+)\*(?!\*)(?=\s|[^\w]|$)/g
-
   describe('underscore italic pattern', () => {
     it('should NOT match programming identifiers', () => {
       const text = 'dept_id should have an eng_id'
@@ -79,14 +76,14 @@ describe('Markdown Italic Patterns', () => {
   describe('asterisk italic pattern', () => {
     it('should match valid italic syntax', () => {
       const text = 'this is *italic* text'
-      const matches = getMatches(asteriskItalicRegex, text)
+      const matches = getMatches(italicRegex, text)
       expect(matches).toHaveLength(1)
       expect(matches[0].content).toBe('italic')
     })
 
     it('should NOT match within identifiers', () => {
       const text = 'variable*name and other*thing'
-      const matches = getMatches(asteriskItalicRegex, text)
+      const matches = getMatches(italicRegex, text)
       expect(matches).toHaveLength(0)
     })
   })
