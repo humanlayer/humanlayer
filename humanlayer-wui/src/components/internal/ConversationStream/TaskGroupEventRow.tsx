@@ -101,12 +101,12 @@ function TaskGroupEventRowInner({
               <span className="font-semibold">{displayName}: </span>
               {description}
             </div>
-            {!isExpanded && (
-              <>
+            {/* {!isExpanded && (
+              <> */}
                 {hasPendingApproval && <StatusBadge status="pending" />}
                 {!hasPendingApproval && !isCompleted && <StatusBadge status="groupRunning" />}
-              </>
-            )}
+              {/* </> */}
+            {/* )} */}
           </div>
 
           {/* Preview when collapsed */}
