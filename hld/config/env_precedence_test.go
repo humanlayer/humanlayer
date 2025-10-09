@@ -153,7 +153,7 @@ func TestEnvPrecedence_ConfigFileVsOSEnv(t *testing.T) {
 
 		// Config.Env should be nil or empty since we didn't specify "env" section
 		// OS environment variables are NOT automatically added to Config.Env
-		if cfg.Env != nil && len(cfg.Env) > 0 {
+		if len(cfg.Env) > 0 {
 			t.Errorf("Expected Env to be empty when not in config, got: %v", cfg.Env)
 		}
 
@@ -270,18 +270,20 @@ func TestEnvPrecedence_RealWorldScenarios(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to create temp dir: %v", err)
 		}
-		defer os.RemoveAll(tmpDir)
+		defer func() {
+			_ = os.RemoveAll(tmpDir)
+		}()
 
 		// Set OS env var for LINEAR_API_KEY
 		oldLinearKey := os.Getenv("LINEAR_API_KEY")
 		defer func() {
 			if oldLinearKey != "" {
-				os.Setenv("LINEAR_API_KEY", oldLinearKey)
+				_ = os.Setenv("LINEAR_API_KEY", oldLinearKey)
 			} else {
-				os.Unsetenv("LINEAR_API_KEY")
+				_ = os.Unsetenv("LINEAR_API_KEY")
 			}
 		}()
-		os.Setenv("LINEAR_API_KEY", "lin_os_env_key_12345")
+		_ = os.Setenv("LINEAR_API_KEY", "lin_os_env_key_12345")
 
 		// Create config file with LINEAR_API_KEY
 		configContent := `{
@@ -302,7 +304,9 @@ func TestEnvPrecedence_RealWorldScenarios(t *testing.T) {
 		if err := os.Chdir(tmpDir); err != nil {
 			t.Fatalf("Failed to change to temp dir: %v", err)
 		}
-		defer os.Chdir(oldDir)
+		defer func() {
+			_ = os.Chdir(oldDir)
+		}()
 
 		// Load configuration
 		cfg, err := Load()
@@ -337,7 +341,9 @@ func TestEnvPrecedence_RealWorldScenarios(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to create temp dir: %v", err)
 		}
-		defer os.RemoveAll(tmpDir)
+		defer func() {
+			_ = os.RemoveAll(tmpDir)
+		}()
 
 		// Create config file with Bedrock settings
 		configContent := `{
@@ -360,7 +366,9 @@ func TestEnvPrecedence_RealWorldScenarios(t *testing.T) {
 		if err := os.Chdir(tmpDir); err != nil {
 			t.Fatalf("Failed to change to temp dir: %v", err)
 		}
-		defer os.Chdir(oldDir)
+		defer func() {
+			_ = os.Chdir(oldDir)
+		}()
 
 		// Load configuration
 		cfg, err := Load()
