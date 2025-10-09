@@ -15,7 +15,7 @@ describe('Button Component - React Testing Library', () => {
     render(<Button>Default Button</Button>)
 
     const button = screen.getByRole('button')
-    expect(button).toHaveClass('bg-background', 'text-accent', 'border-accent')
+    expect(button).toHaveClass('bg-accent/20', 'text-accent', 'border-accent')
   })
 
   test('should apply destructive variant class', () => {
