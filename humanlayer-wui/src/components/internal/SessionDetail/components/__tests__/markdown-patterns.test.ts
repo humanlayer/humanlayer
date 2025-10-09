@@ -1,15 +1,18 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'bun:test'
 
 // Helper to extract matched ranges from a regex
-function getMatches(regex: RegExp, text: string): Array<{start: number, end: number, content: string}> {
-  const matches: Array<{start: number, end: number, content: string}> = []
+function getMatches(
+  regex: RegExp,
+  text: string,
+): Array<{ start: number; end: number; content: string }> {
+  const matches: Array<{ start: number; end: number; content: string }> = []
   let match
 
   while ((match = regex.exec(text)) !== null) {
     matches.push({
       start: match.index,
       end: match.index + match[0].length,
-      content: match[1] // The captured group
+      content: match[1], // The captured group
     })
   }
 
@@ -57,13 +60,7 @@ describe('Markdown Italic Patterns', () => {
     })
 
     it('should NOT match snake_case variables', () => {
-      const cases = [
-        'user_name',
-        'API_KEY',
-        'SECRET_TOKEN',
-        'get_user_by_id',
-        '__private_var__'
-      ]
+      const cases = ['user_name', 'API_KEY', 'SECRET_TOKEN', 'get_user_by_id', '__private_var__']
 
       cases.forEach(testCase => {
         const matches = getMatches(underscoreItalicRegex, testCase)
