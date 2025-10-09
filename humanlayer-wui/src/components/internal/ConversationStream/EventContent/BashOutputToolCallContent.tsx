@@ -74,7 +74,7 @@ export function BashOutputToolCallContent({
               {parsedToolResultContent.stderr && parsedToolResultContent.stderr.length > 100
                 ? `${parsedToolResultContent.stderr.substring(0, 100)}...`
                 : parsedToolResultContent.stderr}
-
+              {` (Exit Code: ${parsedToolResultContent.exitCode})`}
               {isFocused && (
                 <span className="text-xs text-muted-foreground/50 ml-2">
                   <kbd className="px-1 py-0.5 text-xs bg-muted/50 rounded">i</kbd> expand
