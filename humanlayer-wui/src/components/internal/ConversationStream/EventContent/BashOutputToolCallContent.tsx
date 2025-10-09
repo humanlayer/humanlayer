@@ -47,7 +47,7 @@ export function BashOutputToolCallContent({
       <div className="flex flex-col gap-1">
         <div className="flex items-baseline gap-2">
           <span className="font-medium text-muted-foreground">{'Bash Output'}</span>
-          <span className="text-muted-foreground/60 text-xs">{toolInput.bash_id || 'No ID'}</span>
+          <span className="text-muted-foreground/60 text-xs">{toolInput?.bash_id || 'No ID'}</span>
         </div>
 
         {isCompleted && toolResultContent && parsedToolResultContent.exitCode === 0 && (
