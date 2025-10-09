@@ -32,6 +32,7 @@ import {
   AssistantMessageContent,
   UnknownMessageContent,
   BashToolCallContent,
+  BashOutputToolCallContent,
   ReadToolCallContent,
   WriteToolCallContent,
   EditToolCallContent,
@@ -398,6 +399,18 @@ function ConversationEventRowInner({
           />
         )
       }
+    } else if (event.toolName === ToolName.BashOutput) {
+      const toolInput = parseToolInput<Record<string, any>>(event.toolInputJson)
+      messageContent = (
+        <BashOutputToolCallContent
+          toolName={event.toolName}
+          toolInput={toolInput}
+          isCompleted={event.isCompleted}
+          toolResultContent={toolResult?.toolResultContent}
+          isFocused={isFocused}
+          isGroupItem={isGroupItem}
+        />
+      )
     } else if (event.toolName === ToolName.Read) {
       const toolInput = parseToolInput<ReadToolInput>(event.toolInputJson)
       if (toolInput) {
