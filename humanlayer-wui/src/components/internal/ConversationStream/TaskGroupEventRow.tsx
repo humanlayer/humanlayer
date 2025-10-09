@@ -3,13 +3,14 @@ import { TaskEventGroup } from '@/components/internal/SessionDetail/hooks/useTas
 import { ConversationEventRow, ConversationEventRowProps } from './ConversationEventRow'
 import { TaskPreview } from './EventContent/TaskPreview'
 import { StatusBadge } from './EventContent/StatusBadge'
-import { ConversationEvent, ConversationEventType } from '@/lib/daemon/types'
+import { ConversationEvent, ConversationEventType, Session, SessionStatus } from '@/lib/daemon/types'
 import { formatTimestamp, formatAbsoluteTimestamp } from '@/utils/formatting'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { SentryErrorBoundary } from '@/components/ErrorBoundary'
 
 interface TaskGroupEventRowProps extends Omit<ConversationEventRowProps, 'event'> {
   group: TaskEventGroup
+  session: Session
   isExpanded: boolean
   onToggle: () => void
   toolResultsByKey?: Record<string, ConversationEvent>
@@ -18,6 +19,7 @@ interface TaskGroupEventRowProps extends Omit<ConversationEventRowProps, 'event'
 
 function TaskGroupEventRowInner({
   group,
+  session,
   isExpanded,
   onToggle,
   setFocusedEventId,
@@ -40,6 +42,8 @@ function TaskGroupEventRowInner({
   const description = taskInput.description || 'Task'
   const isCompleted = parentTask.isCompleted
   const isSubAgent = taskInput.subagent_type !== 'Task'
+  const isSessionInterrupted =
+    session.status === SessionStatus.Interrupted || session.status === SessionStatus.Interrupting
 
   // Determine styling based on focus state
   let outerContainerClasses = ['group', 'p-4', 'transition-colors', 'duration-200', 'border-l-2']
@@ -101,12 +105,12 @@ function TaskGroupEventRowInner({
               <span className="font-semibold">{displayName}: </span>
               {description}
             </div>
-            {/* {!isExpanded && (
-              <> */}
-                {hasPendingApproval && <StatusBadge status="pending" />}
-                {!hasPendingApproval && !isCompleted && <StatusBadge status="groupRunning" />}
-              {/* </> */}
-            {/* )} */}
+            {hasPendingApproval && <StatusBadge status="pending" />}
+
+            {/* Only show running badge if the session is not interrupted and the parent task is from the current session */}
+            {!hasPendingApproval && !isCompleted && session.id === group.parentTask.sessionId && (
+              <StatusBadge status={isSessionInterrupted ? 'interrupted' : 'groupRunning'} />
+            )}
           </div>
 
           {/* Preview when collapsed */}

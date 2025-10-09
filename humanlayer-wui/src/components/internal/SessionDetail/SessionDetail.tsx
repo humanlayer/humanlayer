@@ -1528,7 +1528,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
             >
               <CardContent className="px-3 flex flex-col flex-1 min-h-0">
                 <ConversationStream
-                  sessionId={session.id}
+                  session={session}
                   focusedEventId={navigation.focusedEventId}
                   setFocusedEventId={navigation.setFocusedEventId}
                   onApprove={approvals.handleApprove}

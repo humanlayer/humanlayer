@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import keyBy from 'lodash.keyby'
 
-import { ConversationEvent, ConversationEventType } from '@/lib/daemon/types'
+import { ConversationEvent, ConversationEventType, Session } from '@/lib/daemon/types'
 import { useConversation } from '@/hooks/useConversation'
 import { useSessionSnapshots } from '@/hooks/useSessionSnapshots'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -15,7 +15,7 @@ import { TaskGroupEventRow } from './TaskGroupEventRow'
 // TODO(3): Add virtual scrolling for very long conversations
 
 export function ConversationStream({
-  sessionId,
+  session,
   focusedEventId,
   setFocusedEventId,
   onApprove,
@@ -34,7 +34,7 @@ export function ConversationStream({
   expandedTasks,
   toggleTaskGroup,
 }: {
-  sessionId: string
+  session: Session
   focusedEventId: number | null
   setFocusedEventId: (id: number | null) => void
   onApprove?: (approvalId: string) => void
@@ -56,6 +56,7 @@ export function ConversationStream({
 }) {
   // expandedToolResult is used by parent to control hotkey availability
   void expandedToolResult
+  const sessionId = session.id
   const { events, loading, error, isInitialLoad } = useConversation(sessionId, undefined, 1000)
   const { refetch } = useSessionSnapshots(sessionId)
   const responseEditor = useStore(state => state.responseEditor)
@@ -208,6 +209,7 @@ export function ConversationStream({
             <TaskGroupEventRow
               key={event.id}
               group={taskGroup}
+              session={session}
               isExpanded={actualExpandedTasks.has(event.toolId!)}
               onToggle={() => actualToggleTaskGroup(event.toolId!)}
               toolResult={undefined}

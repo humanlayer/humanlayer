@@ -29,5 +29,16 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
     )
   }
 
+  if (status === 'interrupted') {
+    return (
+      <Badge
+        variant="secondary"
+        className={cn('text-[var(--terminal-error)] text-xs uppercase tracking-wider', className)}
+      >
+        interrupted
+      </Badge>
+    )
+  }
+
   return null
 }

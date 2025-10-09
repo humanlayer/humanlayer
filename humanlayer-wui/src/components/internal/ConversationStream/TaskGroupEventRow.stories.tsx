@@ -1,7 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react'
 import { TaskGroupEventRow } from './TaskGroupEventRow'
-import type { ConversationEvent } from '@humanlayer/hld-sdk'
+import type { ConversationEvent, Session } from '@humanlayer/hld-sdk'
 import type { TaskEventGroup } from '@/components/internal/SessionDetail/hooks/useTaskGrouping'
+import { SessionStatus } from '@/lib/daemon/types'
 
 const meta = {
   title: 'Internal/TaskGroupEventRow',
@@ -21,6 +22,15 @@ const meta = {
 
 export default meta
 type Story = StoryObj<typeof meta>
+
+// Mock session for stories - minimal fields required
+const mockSession: Session = {
+  id: '08f00f98-d110-40e1-8d0b-fdec7f594f18',
+  runId: 'run-123',
+  status: SessionStatus.Running,
+  createdAt: new Date('2025-09-22T10:00:00Z'),
+  workingDir: '/workspace',
+} as Session
 
 // Base task event that spawns sub-tasks
 const baseParentTask: ConversationEvent = {
@@ -158,6 +168,7 @@ const completedTaskGroup: TaskEventGroup = {
 export const CollapsedRunning: Story = {
   args: {
     group: baseTaskGroup,
+    session: mockSession,
     isExpanded: false,
     onToggle: () => console.log('Toggle clicked'),
     shouldIgnoreMouseEvent: () => false,
@@ -201,6 +212,23 @@ export const CollapsedCompleted: Story = {
     docs: {
       description: {
         story: 'Shows a collapsed task group that has completed.',
+      },
+    },
+  },
+}
+
+export const CollapsedInterrupted: Story = {
+  args: {
+    ...CollapsedRunning.args,
+    session: {
+      ...mockSession,
+      status: SessionStatus.Interrupted,
+    },
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: 'Shows a collapsed task group with interrupted session badge.',
       },
     },
   },
