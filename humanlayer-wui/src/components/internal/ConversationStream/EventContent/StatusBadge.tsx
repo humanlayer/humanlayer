@@ -6,39 +6,34 @@ interface StatusBadgeProps {
   className?: string
 }
 
+const statusConfig = {
+  pending: {
+    label: 'needs_approval',
+    colorClass: 'text-[var(--terminal-warning)]',
+  },
+  groupRunning: {
+    label: 'running',
+    colorClass: 'text-[var(--terminal-success)]',
+  },
+  interrupted: {
+    label: 'interrupted',
+    colorClass: 'text-[var(--terminal-error)]',
+  },
+} as const
+
 export function StatusBadge({ status, className }: StatusBadgeProps) {
-  if (status === 'pending') {
-    return (
-      <Badge
-        variant="secondary"
-        className={cn('text-[var(--terminal-warning)] text-xs uppercase tracking-wider', className)}
-      >
-        needs_approval
-      </Badge>
-    )
+  if (!status || !(status in statusConfig)) {
+    return null
   }
 
-  if (status === 'groupRunning') {
-    return (
-      <Badge
-        variant="secondary"
-        className={cn('text-[var(--terminal-success)] text-xs uppercase tracking-wider', className)}
-      >
-        running
-      </Badge>
-    )
-  }
+  const config = statusConfig[status as keyof typeof statusConfig]
 
-  if (status === 'interrupted') {
-    return (
-      <Badge
-        variant="secondary"
-        className={cn('text-[var(--terminal-error)] text-xs uppercase tracking-wider', className)}
-      >
-        interrupted
-      </Badge>
-    )
-  }
-
-  return null
+  return (
+    <Badge
+      variant="secondary"
+      className={cn('text-xs uppercase tracking-wider', config.colorClass, className)}
+    >
+      {config.label}
+    </Badge>
+  )
 }
