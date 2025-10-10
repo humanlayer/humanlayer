@@ -196,6 +196,13 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     setFocusedEventId: navigation.setFocusedEventId,
     setFocusSource: navigation.setFocusSource,
     scope: detailScope,
+    onStartDeny: () => {
+      // Clear fork state when entering denial mode
+      if (forkPreviewData) {
+        setForkPreviewData(null)
+        responseEditor?.commands.setContent('')
+      }
+    },
   })
 
   // Use clipboard hook
@@ -554,8 +561,12 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
 
   // Fork view toggle handler - Trust the scope system to handle modal conflicts
   const handleToggleForkView = useCallback(() => {
+    // Clear denial state if entering fork view
+    if (!forkViewOpen && approvals.denyingApprovalId) {
+      approvals.handleCancelDeny()
+    }
     setForkViewOpen(!forkViewOpen)
-  }, [forkViewOpen])
+  }, [forkViewOpen, approvals.denyingApprovalId, approvals.handleCancelDeny])
 
   // Clear focus on escape, then close if nothing focused
   // This needs special handling for confirmingApprovalId
@@ -1290,6 +1301,11 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                     if (id === null) {
                       approvals.handleCancelDeny()
                     } else {
+                      // Clear fork state when entering denial mode
+                      if (forkPreviewData) {
+                        setForkPreviewData(null)
+                        responseEditor?.commands.setContent('')
+                      }
                       approvals.handleStartDeny(id)
                     }
                   }}

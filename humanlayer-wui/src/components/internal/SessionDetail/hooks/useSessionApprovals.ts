@@ -18,6 +18,7 @@ interface UseSessionApprovalsProps {
   setFocusedEventId: (id: number | null) => void
   setFocusSource?: (source: 'mouse' | 'keyboard' | null) => void
   scope: HotkeyScope
+  onStartDeny?: () => void // Callback when denial mode is entered
 }
 
 export function useSessionApprovals({
@@ -27,6 +28,7 @@ export function useSessionApprovals({
   setFocusedEventId,
   setFocusSource,
   scope,
+  onStartDeny,
 }: UseSessionApprovalsProps) {
   // sessionId may be used in future for session-specific approvals
   void sessionId
@@ -87,15 +89,21 @@ export function useSessionApprovals({
       e => e.approvalStatus === ApprovalStatus.Pending && e.approvalId && e.id !== undefined,
     )
     if (oldestApproval) {
+      // Call the callback to clear fork state if needed
+      onStartDeny?.()
+
       setDenyingApprovalId(oldestApproval.approvalId!)
       // focus the oldest approval
       setFocusedEventId(oldestApproval.id)
       setFocusSource?.('keyboard')
     }
-  }, [events, setFocusedEventId, setFocusSource])
+  }, [events, setFocusedEventId, setFocusSource, onStartDeny])
 
   const handleStartDeny = useCallback(
     (approvalId: string) => {
+      // Call the callback to clear fork state if needed
+      onStartDeny?.()
+
       setDenyingApprovalId(approvalId)
 
       // Use setTimeout to ensure focus happens after all browser event handling
@@ -104,7 +112,7 @@ export function useSessionApprovals({
         responseEditor?.commands.focus()
       }, 0)
     },
-    [responseEditor],
+    [responseEditor, onStartDeny],
   )
 
   const handleCancelDeny = useCallback(() => {
