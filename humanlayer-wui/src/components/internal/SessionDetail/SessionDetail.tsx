@@ -9,10 +9,7 @@ import { useConversation, useKeyboardNavigationProtection } from '@/hooks'
 import { ChevronDown, FolderOpen, TextSearch } from 'lucide-react'
 import { daemonClient } from '@/lib/daemon/client'
 import { useStore } from '@/AppStore'
-import {
-  DRAFT_LAUNCHER_PREFS,
-  getDraftLauncherDefaults,
-} from '@/lib/preferences'
+import { DRAFT_LAUNCHER_PREFS, getDraftLauncherDefaults } from '@/lib/preferences'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
 import { HotkeyScopeBoundary } from '@/components/HotkeyScopeBoundary'
 import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
@@ -70,10 +67,10 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [expandedToolCall, setExpandedToolCall] = useState<ConversationEvent | null>(null)
   const [forkViewOpen, setForkViewOpen] = useState(false)
   const [forkPreviewData, setForkPreviewData] = useState<{
-    eventIndex: number        // For scrolling in ConversationStream
+    eventIndex: number // For scrolling in ConversationStream
     message: ConversationEvent // For execution in useSessionActions
-    tokenCount: number | null  // For display in ResponseInput
-    archiveOnFork: boolean     // For execution preference
+    tokenCount: number | null // For display in ResponseInput
+    archiveOnFork: boolean // For execution preference
   } | null>(null)
   const [confirmingArchive, setConfirmingArchive] = useState(false)
   const [dangerousSkipPermissionsDialogOpen, setDangerousSkipPermissionsDialogOpen] = useState(false)
@@ -285,10 +282,10 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         message: {
           ...data.message,
           sessionId: forkFromSessionId, // Override with the correct session ID
-        }
+        },
       })
     },
-    [events, session.id]
+    [events, session.id],
   )
 
   // Fork cancel handler - clears preview state
