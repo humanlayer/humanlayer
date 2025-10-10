@@ -10,6 +10,7 @@ interface CodeLayerToastButtonsProps {
   action?: ToastAction
   cancel?: ToastAction
   variant?: 'default' | 'success' | 'error' | 'warning' | 'info'
+  toastId?: string
 }
 
 /**
@@ -22,6 +23,7 @@ export function CodeLayerToastButtons({
   action,
   cancel,
   variant = 'default',
+  toastId,
 }: CodeLayerToastButtonsProps) {
   const handleCancel = (e: React.MouseEvent<HTMLButtonElement>) => {
     cancel?.onClick?.(e)
@@ -83,6 +85,7 @@ export function CodeLayerToastButtons({
         <Button
           data-button
           data-cancel
+          data-toast-id={toastId}
           onClick={handleCancel}
           variant={variant === 'default' ? 'outline' : undefined}
           size="sm"
@@ -95,6 +98,7 @@ export function CodeLayerToastButtons({
         <Button
           data-button
           data-action
+          data-toast-id={toastId}
           onClick={handleAction}
           variant={variant === 'default' ? 'default' : undefined}
           size="sm"
