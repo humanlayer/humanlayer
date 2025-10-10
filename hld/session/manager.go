@@ -29,9 +29,10 @@ type Manager struct {
 	eventBus           bus.EventBus
 	store              store.ConversationStore
 	approvalReconciler ApprovalReconciler
-	pendingQueries     sync.Map // map[sessionID]query - stores queries waiting for Claude session ID
-	socketPath         string   // Daemon socket path for MCP servers
-	httpPort           int      // HTTP server port for proxy endpoint
+	pendingQueries     sync.Map          // map[sessionID]query - stores queries waiting for Claude session ID
+	socketPath         string            // Daemon socket path for MCP servers
+	httpPort           int               // HTTP server port for proxy endpoint
+	env                map[string]string // Generic environment variables to pass to all sessions
 }
 
 // Compile-time check that Manager implements SessionManager
@@ -76,6 +77,7 @@ func NewManagerWithConfig(eventBus bus.EventBus, store store.ConversationStore, 
 		store:           store,
 		socketPath:      socketPath,
 		claudePath:      cfg.ClaudePath, // Use configured Claude path
+		env:             cfg.Env,
 	}
 
 	// Try to initialize Claude client but don't fail if unavailable
@@ -355,6 +357,26 @@ func (m *Manager) LaunchSession(ctx context.Context, config LaunchSessionConfig,
 			"proxy_model", config.ProxyModelOverride,
 			"has_api_key", config.ProxyAPIKey != "",
 			"has_env_key", os.Getenv("OPENROUTER_API_KEY") != "")
+	}
+
+	// Inherit environment variables from the daemon's configuration.
+	// This allows users to configure environment via config file
+	// (e.g., ~/.config/humanlayer/humanlayer.json) which is necessary because
+	// macOS apps launched from Spotlight/Raycast don't inherit shell environment.
+	//
+	// Precedence: daemon env < session-specific env overrides
+	if claudeConfig.Env == nil {
+		claudeConfig.Env = make(map[string]string)
+	}
+
+	// Apply env vars from config (only if not already present in session config)
+	for key, value := range m.env {
+		if _, ok := claudeConfig.Env[key]; !ok {
+			claudeConfig.Env[key] = value
+			slog.Debug("inherited env var from daemon configuration",
+				"session_id", sessionID,
+				"key", key)
+		}
 	}
 
 	// Log final configuration before launching
@@ -1693,6 +1715,22 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 			"has_openrouter_key", os.Getenv("OPENROUTER_API_KEY") != "")
 	}
 
+	// Ensure config.Env is initialized before we inspect or assign keys.
+	if config.Env == nil {
+		config.Env = make(map[string]string)
+	}
+
+	// Inherit environment variables from the daemon's configuration.
+	// Precedence: daemon env < session-specific env overrides
+	for key, value := range m.env {
+		if _, ok := config.Env[key]; !ok {
+			config.Env[key] = value
+			slog.Debug("inherited env var from daemon configuration for resumed session",
+				"session_id", sessionID,
+				"key", key)
+		}
+	}
+
 	// Get Claude client (will attempt initialization if needed)
 	client, err := m.getClaudeClient()
 	if err != nil {
@@ -1923,6 +1961,27 @@ func (m *Manager) launchDraftWithConfig(ctx context.Context, sessionID, runID st
 		claudeConfig.Env["ANTHROPIC_BASE_URL"] = proxyURL
 		claudeConfig.Env["ANTHROPIC_API_KEY"] = "proxy-handled"
 	}
+
+	// Inherit environment variables from the daemon's configuration.
+	// This happens in three layers:
+	// 1. Generic env map from config (lowest priority)
+	// 2. Specific ANTHROPIC_* config fields (medium priority)
+	// 3. Session-specific env overrides (highest priority, already in claudeConfig.Env)
+	if claudeConfig.Env == nil {
+		claudeConfig.Env = make(map[string]string)
+	}
+
+	// 1. Apply generic env vars from config (lowest priority)
+	for key, value := range m.env {
+		if _, ok := claudeConfig.Env[key]; !ok {
+			claudeConfig.Env[key] = value
+			slog.Debug("inherited generic env var from daemon configuration",
+				"session_id", sessionID,
+				"key", key)
+		}
+	}
+
+	// ANTHROPIC_* variables are inherited via the generic env inheritance above
 
 	// Launch Claude session
 	slog.Info("launching draft session with Claude",
