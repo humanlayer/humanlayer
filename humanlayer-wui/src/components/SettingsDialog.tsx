@@ -3,13 +3,7 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useState, useEffect } from 'react'
 import { useStore } from '@/AppStore'
 import { logger } from '@/lib/logging'
@@ -18,12 +12,7 @@ import { CheckCircle2, XCircle, RefreshCw, Pencil } from 'lucide-react'
 import { HotkeyScopeBoundary } from './HotkeyScopeBoundary'
 import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
 import { clearSavedModelPreferences } from '@/hooks/useSessionLauncher'
-import {
-  getPreferredEditor,
-  setPreferredEditor,
-  EDITOR_OPTIONS,
-  EditorType,
-} from '@/lib/preferences'
+import { getPreferredEditor, setPreferredEditor, EDITOR_OPTIONS, EditorType } from '@/lib/preferences'
 
 interface SettingsDialogProps {
   open: boolean
