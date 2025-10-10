@@ -57,7 +57,7 @@ export function AdditionalDirectoriesDropdown({
 
   // Add focus trap for proper focus management
   const focusTrapRef = useFocusTrap(isOpen, {
-    allowTabNavigation: true // Allows j/k hotkeys to still work
+    allowTabNavigation: true, // Allows j/k hotkeys to still work
   })
 
   // Fetch recent paths for autocomplete

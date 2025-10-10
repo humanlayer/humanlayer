@@ -178,10 +178,7 @@ export function OmniSpinner({ className }: OmniSpinnerProps) {
   // Spinner variants (4 types) - very compact sizes
   const spinners = [
     // Type 0: Dynamic semi-circle with direction and size changes
-    <div
-      key={0}
-      className="relative w-4 h-4 flex items-center justify-center"
-    >
+    <div key={0} className="relative w-4 h-4 flex items-center justify-center">
       <div
         className="transition-transform duration-500"
         style={{
@@ -248,9 +245,7 @@ export function OmniSpinner({ className }: OmniSpinnerProps) {
   return (
     <div className={`flex items-center gap-2 ${className || ''}`}>
       {spinners[spinnerType]}
-      <span className="text-muted-foreground opacity-80 animate-fade-pulse text-xs">
-        {randomVerb}
-      </span>
+      <span className="text-muted-foreground opacity-80 animate-fade-pulse text-xs">{randomVerb}</span>
     </div>
   )
 }
