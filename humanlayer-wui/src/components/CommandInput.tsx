@@ -306,7 +306,9 @@ export default function CommandInput({
             ) : (
               <>
                 Launch Session
-                <kbd className="ml-2 px-1 py-0.5 text-xs bg-muted/50 rounded">{getPlatformKey()}+⏎</kbd>
+                <kbd className="ml-2 px-1 py-0.5 text-xs bg-muted/50 rounded">
+                  {getPlatformKey()}+ENTER
+                </kbd>
               </>
             )}
           </Button>
