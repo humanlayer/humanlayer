@@ -2,7 +2,8 @@ import { forwardRef, useEffect, useState, useRef, useImperativeHandle, useCallba
 import { Button } from '@/components/ui/button'
 import { Session, SessionStatus } from '@/lib/daemon/types'
 import { Split, MessageCircleX, AlertCircle } from 'lucide-react'
-import { ActionButtons } from './ActionButtons'
+import { DraftActionButtons } from './DraftActionButtons'
+import { ActiveSessionActionButtons } from './ActiveSessionActionButtons'
 import { toast } from 'sonner'
 import {
   getInputPlaceholder,
@@ -551,18 +552,26 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
 
               {/* Keyboard shortcuts (condensed) */}
               <div className="flex items-center justify-between gap-2">
-                <ActionButtons
-                  sessionId={session.id}
-                  canFork={canFork}
-                  bypassEnabled={bypassEnabled}
-                  autoAcceptEnabled={autoAcceptEnabled}
-                  sessionStatus={sessionStatus}
-                  isArchived={isArchived || false}
-                  onToggleFork={handleToggleForkView}
-                  onToggleBypass={handleToggleDangerouslySkipPermissions}
-                  onToggleAutoAccept={onToggleAutoAccept || (() => {})}
-                  onToggleArchive={onToggleArchive || (() => {})}
-                />
+                {isDraft ? (
+                  <DraftActionButtons
+                    bypassEnabled={bypassEnabled}
+                    autoAcceptEnabled={autoAcceptEnabled}
+                    onToggleBypass={handleToggleDangerouslySkipPermissions}
+                    onToggleAutoAccept={onToggleAutoAccept || (() => {})}
+                  />
+                ) : (
+                  <ActiveSessionActionButtons
+                    canFork={canFork}
+                    bypassEnabled={bypassEnabled}
+                    autoAcceptEnabled={autoAcceptEnabled}
+                    sessionStatus={sessionStatus}
+                    isArchived={isArchived || false}
+                    onToggleFork={handleToggleForkView}
+                    onToggleBypass={handleToggleDangerouslySkipPermissions}
+                    onToggleAutoAccept={onToggleAutoAccept || (() => {})}
+                    onToggleArchive={onToggleArchive || (() => {})}
+                  />
+                )}
                 <div className="flex items-center justify-end gap-2">
                   {isDraft && (
                     <Button
