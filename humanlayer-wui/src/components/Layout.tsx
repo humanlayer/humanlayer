@@ -212,14 +212,75 @@ export function Layout() {
           return
         }
 
-        // Dismiss toast if it exists
+        // Flash the button to provide visual feedback
         const toastId = `approval_required:${targetApproval.id}`
-        if (visibleToasts.some(t => t.id === toastId)) {
-          toast.dismiss(toastId)
-        }
 
-        // Navigate to the session with approval parameter
-        navigate(`/sessions/${targetApproval.sessionId}?approval=${targetApproval.id}`)
+        if (visibleToasts.some(t => t.id === toastId)) {
+          // Find the toast button element using data attributes
+          const toastElements = document.querySelectorAll(`[data-sonner-toast][data-id="${toastId}"]`)
+
+          // Also try alternative selectors
+          const allToastElements = document.querySelectorAll('[data-sonner-toast]')
+
+          // If we can't find by data-id, try to find the button directly in all toast elements
+          if (toastElements.length === 0 && allToastElements.length > 0) {
+            for (const toastEl of allToastElements) {
+              const buttonInToast = toastEl.querySelector('[data-button][data-action]') as HTMLElement
+              if (buttonInToast) {
+                // Apply flash styles (accent color background to match button's border)
+                const originalClasses = buttonInToast.className
+                buttonInToast.classList.add('!bg-accent', '!text-background')
+
+                // Remove flash after 100ms
+                setTimeout(() => {
+                  buttonInToast.className = originalClasses
+
+                  // Wait another 100ms before dismissing toast and navigating
+                  setTimeout(() => {
+                    toast.dismiss(toastId)
+                    navigate(`/sessions/${targetApproval.sessionId}?approval=${targetApproval.id}`)
+                  }, 100)
+                }, 100)
+
+                return // Early return to prevent immediate dismiss
+              }
+            }
+          }
+
+          if (toastElements.length > 0) {
+            const toastElement = toastElements[0]
+            const buttonElement = toastElement.querySelector(
+              '[data-button][data-action]',
+            ) as HTMLElement
+
+            if (buttonElement) {
+              // Apply flash styles (accent color background to match button's border)
+              const originalClasses = buttonElement.className
+              buttonElement.classList.add('!bg-accent', '!text-background')
+
+              // Remove flash after 100ms
+              setTimeout(() => {
+                buttonElement.className = originalClasses
+
+                // Wait another 100ms before dismissing toast and navigating
+                setTimeout(() => {
+                  toast.dismiss(toastId)
+                  navigate(`/sessions/${targetApproval.sessionId}?approval=${targetApproval.id}`)
+                }, 100)
+              }, 100)
+
+              return // Early return to prevent immediate dismiss
+            }
+          }
+
+          // Fallback: if button not found, just dismiss immediately and navigate
+          toast.dismiss(toastId)
+          // Navigate immediately since we couldn't flash the button
+          navigate(`/sessions/${targetApproval.sessionId}?approval=${targetApproval.id}`)
+        } else {
+          // Navigate immediately since there's no toast
+          navigate(`/sessions/${targetApproval.sessionId}?approval=${targetApproval.id}`)
+        }
       } catch (error) {
         console.error('Failed to jump to approval:', error)
         toast.error('Failed to fetch approvals')
