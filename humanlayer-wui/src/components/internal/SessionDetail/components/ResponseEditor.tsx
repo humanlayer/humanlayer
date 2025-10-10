@@ -411,9 +411,6 @@ const KeyboardShortcuts = Extension.create({
   addOptions() {
     return {
       onSubmit: undefined,
-      onToggleAutoAccept: undefined,
-      onToggleDangerouslySkipPermissions: undefined,
-      onToggleForkView: undefined,
     }
   },
 
@@ -426,18 +423,18 @@ const KeyboardShortcuts = Extension.create({
         }
         return true
       },
-      'Alt-a': () => {
-        this.options.onToggleAutoAccept?.()
-        return true
-      },
-      'Alt-y': () => {
-        this.options.onToggleDangerouslySkipPermissions?.()
-        return true
-      },
-      'Mod-y': () => {
-        this.options.onToggleForkView?.()
-        return true
-      },
+      // NOTE: Business logic hotkeys (Alt-a, Alt-y, Mod-y) have been removed
+      // They are now handled by SessionDetail with enableOnContentEditable: true
+      // This prevents duplication and ensures single source of truth
+
+      // TEST NOTE: We may need to add these back as simple return true statements
+      // if special characters (å, ¥) still get typed when the editor is focused.
+      // For now, relying on preventDefault: true in SessionDetail's useHotkeys
+
+      // Uncomment these lines if testing shows special characters are still typed:
+      // 'Alt-a': () => true, // Just prevent default, no business logic
+      // 'Alt-y': () => true, // Just prevent default, no business logic
+      // 'Mod-y': () => true, // Just prevent default, no business logic
     }
   },
 })
@@ -452,12 +449,10 @@ interface ResponseEditorProps {
   onFocus?: () => void
   onBlur?: () => void
   onSubmit?: () => void
-  onToggleAutoAccept?: () => void
-  onToggleDangerouslySkipPermissions?: () => void
-  onToggleForkView?: () => void
+  // NOTE: Business logic callbacks removed - now handled by SessionDetail
 }
 
-export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorProps>(
+export const ResponseEditor = forwardRef<{ focus: () => void; blur?: () => void }, ResponseEditorProps>(
   (
     {
       initialValue,
@@ -469,18 +464,11 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
       onFocus,
       onBlur,
       onSubmit,
-      onToggleAutoAccept,
-      onToggleDangerouslySkipPermissions,
-      onToggleForkView,
     },
     ref,
   ) => {
     const onSubmitRef = React.useRef<ResponseEditorProps['onSubmit']>()
     const onChangeRef = React.useRef<ResponseEditorProps['onChange']>()
-    const onToggleAutoAcceptRef = React.useRef<ResponseEditorProps['onToggleAutoAccept']>()
-    const onToggleDangerouslySkipPermissionsRef =
-      React.useRef<ResponseEditorProps['onToggleDangerouslySkipPermissions']>()
-    const onToggleForkViewRef = React.useRef<ResponseEditorProps['onToggleForkView']>()
 
     // Tooltip state for file mentions
     const [tooltipState, setTooltipState] = useState<{
@@ -503,15 +491,6 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
     useEffect(() => {
       onChangeRef.current = onChange
     }, [onChange])
-    useEffect(() => {
-      onToggleAutoAcceptRef.current = onToggleAutoAccept
-    }, [onToggleAutoAccept])
-    useEffect(() => {
-      onToggleDangerouslySkipPermissionsRef.current = onToggleDangerouslySkipPermissions
-    }, [onToggleDangerouslySkipPermissions])
-    useEffect(() => {
-      onToggleForkViewRef.current = onToggleForkView
-    }, [onToggleForkView])
 
     const editor = useEditor({
       autofocus: false,
@@ -529,9 +508,6 @@ export const ResponseEditor = forwardRef<{ focus: () => void }, ResponseEditorPr
         MarkdownSyntaxHighlight,
         KeyboardShortcuts.configure({
           onSubmit: () => onSubmitRef.current?.(),
-          onToggleAutoAccept: () => onToggleAutoAcceptRef.current?.(),
-          onToggleDangerouslySkipPermissions: () => onToggleDangerouslySkipPermissionsRef.current?.(),
-          onToggleForkView: () => onToggleForkViewRef.current?.(),
         }),
         Placeholder.configure({
           placeholder: placeholder || 'Type something...',

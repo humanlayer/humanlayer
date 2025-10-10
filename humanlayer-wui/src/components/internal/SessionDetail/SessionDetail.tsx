@@ -751,14 +751,15 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   // Option+A handler for auto-accept edits mode (draft version)
   useHotkeys(
     'alt+a, option+a',
-    e => {
-      e.preventDefault()
+    () => {
+      // preventDefault handled by library with option below
       handleToggleAutoAccept()
     },
     {
       enabled: isDraft,
       preventDefault: true,
-      enableOnFormTags: ['INPUT', 'TEXTAREA', 'SELECT'], // Explicit to ensure it works in forms
+      enableOnFormTags: ['INPUT', 'TEXTAREA', 'SELECT'],
+      enableOnContentEditable: true, // Critical: enables hotkey on TipTap editor
       scopes: [HOTKEY_SCOPES.DRAFT_LAUNCHER],
     },
     [handleToggleAutoAccept],
@@ -767,14 +768,15 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   // Option+Y handler for dangerously skip permissions mode (draft version)
   useHotkeys(
     'alt+y, option+y',
-    e => {
-      e.preventDefault()
+    () => {
+      // preventDefault handled by library with option below
       handleToggleDangerouslySkipPermissions()
     },
     {
       enabled: isDraft,
       preventDefault: true,
-      enableOnFormTags: ['INPUT', 'TEXTAREA', 'SELECT'], // Explicit to ensure it works in forms
+      enableOnFormTags: ['INPUT', 'TEXTAREA', 'SELECT'],
+      enableOnContentEditable: true, // Critical: enables hotkey on TipTap editor
       scopes: [HOTKEY_SCOPES.DRAFT_LAUNCHER],
     },
     [handleToggleDangerouslySkipPermissions],
@@ -786,14 +788,15 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   // Option+A handler for auto-accept edits mode (non-draft version)
   useHotkeys(
     'alt+a, option+a',
-    e => {
-      e.preventDefault()
+    () => {
+      // preventDefault handled by library with option below
       handleToggleAutoAccept()
     },
     {
       enabled: !isDraft,
       preventDefault: true,
-      enableOnFormTags: ['INPUT', 'TEXTAREA', 'SELECT'], // Explicit to ensure it works in forms
+      enableOnFormTags: ['INPUT', 'TEXTAREA', 'SELECT'],
+      enableOnContentEditable: true, // Critical: enables hotkey on TipTap editor
       scopes: [HOTKEY_SCOPES.SESSION_DETAIL, HOTKEY_SCOPES.SESSION_DETAIL_ARCHIVED],
     },
     [handleToggleAutoAccept],
@@ -802,14 +805,15 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   // Option+Y handler for dangerously skip permissions mode (non-draft version)
   useHotkeys(
     'alt+y, option+y',
-    e => {
-      e.preventDefault()
+    () => {
+      // preventDefault handled by library with option below
       handleToggleDangerouslySkipPermissions()
     },
     {
       enabled: !isDraft,
       preventDefault: true,
-      enableOnFormTags: ['INPUT', 'TEXTAREA', 'SELECT'], // Explicit to ensure it works in forms
+      enableOnFormTags: ['INPUT', 'TEXTAREA', 'SELECT'],
+      enableOnContentEditable: true, // Critical: enables hotkey on TipTap editor
       scopes: [HOTKEY_SCOPES.SESSION_DETAIL, HOTKEY_SCOPES.SESSION_DETAIL_ARCHIVED],
     },
     [handleToggleDangerouslySkipPermissions],
@@ -950,11 +954,14 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   // Only available in active session scopes, not in draft launcher
   useHotkeys(
     'meta+y, ctrl+y',
-    e => {
-      e.preventDefault()
+    () => {
+      // preventDefault handled by library with option below
       handleToggleForkView()
     },
     {
+      preventDefault: true,
+      enableOnFormTags: ['INPUT', 'TEXTAREA', 'SELECT'],
+      enableOnContentEditable: true, // Critical: enables hotkey on TipTap editor
       scopes: [HOTKEY_SCOPES.SESSION_DETAIL, HOTKEY_SCOPES.SESSION_DETAIL_ARCHIVED],
     },
     [handleToggleForkView],

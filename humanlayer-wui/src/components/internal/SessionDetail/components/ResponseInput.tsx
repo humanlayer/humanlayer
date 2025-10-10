@@ -96,7 +96,7 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
     const isResponseEditorEmpty = useStore(state => state.isResponseEditorEmpty)
     const localStorageValue = localStorage.getItem(`${ResponseInputLocalStorageKey}.${session.id}`)
 
-    const tiptapRef = useRef<{ focus: () => void }>(null)
+    const tiptapRef = useRef<{ focus: () => void; blur?: () => void }>(null)
     const statusBarRef = useRef<StatusBarRef>(null)
 
     // Debounce the claudeSessionId to prevent brief interrupt button flashes
@@ -365,6 +365,24 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
       { enableOnFormTags: false },
     )
 
+    // Wrapped handlers that blur editor when opening modals
+    const handleToggleForkView = useCallback(() => {
+      // Blur editor before opening fork modal
+      tiptapRef.current?.blur?.()
+      onToggleForkView?.()
+    }, [onToggleForkView])
+
+    const handleToggleDangerouslySkipPermissions = useCallback(() => {
+      // Blur editor before opening bypass modal
+      tiptapRef.current?.blur?.()
+      onToggleDangerouslySkipPermissions?.()
+    }, [onToggleDangerouslySkipPermissions])
+
+    // NOTE: Business logic hotkeys have been removed from here
+    // They are now handled by SessionDetail with enableOnContentEditable: true
+    // This prevents duplication and ensures single source of truth
+    // The TipTap KeyboardShortcuts in ResponseEditor no longer handle business logic
+
     const isRunning =
       session.status === SessionStatus.Running || session.status === SessionStatus.Starting
     const hasText = !isResponseEditorEmpty
@@ -511,9 +529,6 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
                       initialValue={initialValue}
                       onChange={handleChange}
                       onSubmit={handleSubmit}
-                      onToggleAutoAccept={onToggleAutoAccept}
-                      onToggleDangerouslySkipPermissions={onToggleDangerouslySkipPermissions}
-                      onToggleForkView={onToggleForkView}
                       disabled={isResponding}
                       placeholder={placeholder}
                       className={`flex-1 min-h-[2.5rem] max-h-[50vh] overflow-y-auto ${isResponding ? 'opacity-50' : ''} ${textareaOutlineClass} ${
@@ -543,8 +558,8 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
                   autoAcceptEnabled={autoAcceptEnabled}
                   sessionStatus={sessionStatus}
                   isArchived={isArchived || false}
-                  onToggleFork={onToggleForkView || (() => {})}
-                  onToggleBypass={onToggleDangerouslySkipPermissions || (() => {})}
+                  onToggleFork={handleToggleForkView}
+                  onToggleBypass={handleToggleDangerouslySkipPermissions}
                   onToggleAutoAccept={onToggleAutoAccept || (() => {})}
                   onToggleArchive={onToggleArchive || (() => {})}
                 />
