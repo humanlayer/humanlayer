@@ -217,14 +217,13 @@ export function Layout() {
 
         if (visibleToasts.some(t => t.id === toastId)) {
           // Find the button directly using the toastId data attribute
+          // Use CSS.escape to safely handle special characters in the selector
+          const escapedToastId = CSS.escape(toastId)
           const buttonElement = document.querySelector(
-            `[data-toast-id="${toastId}"][data-button][data-action]`,
+            `[data-toast-id="${escapedToastId}"][data-button][data-action]`,
           ) as HTMLElement
 
           if (buttonElement) {
-            // Flash the button by changing background to match border color
-            const originalClasses = buttonElement.className
-
             // Apply flash effect using the button's border color (accent color)
             buttonElement.classList.add('!bg-[var(--terminal-accent)]', '!text-background')
 
@@ -236,7 +235,8 @@ export function Layout() {
 
             // Remove flash after 100ms
             setTimeout(() => {
-              buttonElement.className = originalClasses
+              // Remove only the flash classes, preserving any other dynamic classes
+              buttonElement.classList.remove('!bg-[var(--terminal-accent)]', '!text-background')
               childElements.forEach(child => {
                 ;(child as HTMLElement).classList.remove('!text-background')
               })
