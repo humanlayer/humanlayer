@@ -2,10 +2,11 @@ import { forwardRef, useEffect, useState, useRef, useImperativeHandle, useCallba
 import { Button } from '@/components/ui/button'
 import { Session, SessionStatus } from '@/lib/daemon/types'
 import { Split, MessageCircleX, AlertCircle } from 'lucide-react'
-import { ActiveSessionActionButtons } from './ActiveSessionActionButtons'
+import { ActionButtons } from './ActionButtons'
 import { toast } from 'sonner'
 import {
   getInputPlaceholder,
+  getHelpText,
   getForkInputPlaceholder,
 } from '@/components/internal/SessionDetail/utils/sessionStatus'
 import { ResponseInputLocalStorageKey } from '@/components/internal/SessionDetail/hooks/useSessionActions'
@@ -19,13 +20,15 @@ import { Content } from '@tiptap/react'
 import { getCurrentWebview } from '@tauri-apps/api/webview'
 import type { UnlistenFn } from '@tauri-apps/api/event'
 import { Card, CardContent } from '@/components/ui/card'
+import { daemonClient } from '@/lib/daemon'
+import { openPath } from '@tauri-apps/plugin-opener'
+import { getPreferredEditor, EDITOR_OPTIONS } from '@/lib/preferences'
 
-interface ActiveSessionInputProps {
+interface ResponseInputProps {
   session: Session
   parentSessionData?: Partial<Session>
   isResponding: boolean
   handleContinueSession: () => void
-  interruptSession: (sessionId: string) => void
   isForkMode?: boolean
   forkTokenCount?: number | null
   forkTurnNumber?: number
@@ -34,6 +37,7 @@ interface ActiveSessionInputProps {
   isDenying?: boolean
   onDeny?: (approvalId: string, reason: string, sessionId: string) => void
   handleCancelDeny?: () => void
+  sessionStatus: SessionStatus
   denyAgainstOldestApproval: () => void
   onToggleAutoAccept?: () => void
   onToggleDangerouslySkipPermissions?: () => void
@@ -44,33 +48,32 @@ interface ActiveSessionInputProps {
   autoAcceptEnabled?: boolean
   isArchived?: boolean
   onToggleArchive?: () => void
+  previewEventIndex?: number | null
+  isActivelyProcessing?: boolean
+  isDraft?: boolean
+  onLaunchDraft?: () => void
+  onDiscardDraft?: () => void
+  isLaunchingDraft?: boolean
 }
 
-/**
- * ActiveSessionInput - Input component for active and archived sessions
- * This component handles continue/interrupt/deny operations for running sessions.
- * It does NOT handle draft sessions - those use DraftLauncherInput instead.
- */
-export const ActiveSessionInput = forwardRef<
-  { focus: () => void; blur?: () => void },
-  ActiveSessionInputProps
->(
+export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }, ResponseInputProps>(
   (
     {
-      session,
-      parentSessionData,
-      isResponding,
-      handleContinueSession,
-      interruptSession,
-      isForkMode,
-      forkTokenCount,
-      forkTurnNumber,
-      onModelChange,
       denyingApprovalId,
       isDenying,
       onDeny,
       handleCancelDeny,
       denyAgainstOldestApproval,
+
+      session,
+      parentSessionData,
+      isResponding,
+      handleContinueSession,
+      isForkMode,
+      forkTokenCount,
+      forkTurnNumber,
+      onModelChange,
+      sessionStatus,
       onToggleAutoAccept,
       onToggleDangerouslySkipPermissions,
       onToggleForkView,
@@ -80,6 +83,10 @@ export const ActiveSessionInput = forwardRef<
       autoAcceptEnabled = false,
       isArchived = false,
       onToggleArchive,
+      isDraft = false,
+      onLaunchDraft,
+      onDiscardDraft,
+      isLaunchingDraft = false,
     },
     ref,
   ) => {
@@ -91,7 +98,7 @@ export const ActiveSessionInput = forwardRef<
     const isResponseEditorEmpty = useStore(state => state.isResponseEditorEmpty)
     const localStorageValue = localStorage.getItem(`${ResponseInputLocalStorageKey}.${session.id}`)
 
-    const tiptapRef = useRef<{ focus: () => void; blur?: () => void }>(null)
+    const tiptapRef = useRef<{ focus: () => void }>(null)
     const statusBarRef = useRef<StatusBarRef>(null)
 
     // Debounce the claudeSessionId to prevent brief interrupt button flashes
@@ -111,15 +118,15 @@ export const ActiveSessionInput = forwardRef<
 
       return () => clearTimeout(timeout)
     }, [session.claudeSessionId])
-
     const getSendButtonText = () => {
+      if (isDraft) return isLaunchingDraft ? 'Launching...' : 'Launch'
       if (isResponding) return 'Interrupting...'
       if (isDenying) return youSure ? 'Deny?' : 'Deny'
 
       const isRunning =
         session.status === SessionStatus.Running || session.status === SessionStatus.Starting
       const hasText = !isResponseEditorEmpty
-      const canInterrupt = debouncedCanInterrupt
+      const canInterrupt = debouncedCanInterrupt // Use debounced value
 
       if (session.archived && isRunning) {
         return 'Interrupt & Unarchive'
@@ -139,21 +146,37 @@ export const ActiveSessionInput = forwardRef<
       return 'Send'
     }
 
-    // Load initial editor value from localStorage
     let initialValue = null
-    const hasValidSessionData = (session.status as any) !== 'unknown'
+
+    // Only load editor state once we have proper session data (not "unknown" status)
+    // Also wait for server fetch (not fromStore) for draft sessions to ensure we have editorState
+    const hasValidSessionData = (session.status as any) !== 'unknown' && !(session as any).fromStore
 
     if (hasValidSessionData) {
-      // For active sessions, use localStorage for persistence
-      if (
-        initialValue === null &&
-        typeof localStorageValue === 'string' &&
-        localStorageValue.length > 0
-      ) {
-        try {
-          initialValue = JSON.parse(localStorageValue)
-        } catch (e) {
-          logger.error('ActiveSessionInput - error parsing localStorageValue', e)
+      if (isDraft) {
+        // For draft sessions, only use editor state from database (never localStorage)
+        if (session.editorState) {
+          try {
+            initialValue = JSON.parse(session.editorState)
+            logger.log('ResponseInput - Successfully parsed editorState from database', {
+              initialValue,
+            })
+          } catch (e) {
+            logger.error('ResponseInput - error parsing editorState from database', e)
+          }
+        }
+      } else {
+        // For non-draft sessions, fall back to localStorage
+        if (
+          initialValue === null &&
+          typeof localStorageValue === 'string' &&
+          localStorageValue.length > 0
+        ) {
+          try {
+            initialValue = JSON.parse(localStorageValue)
+          } catch (e) {
+            logger.error('ResponseInput.useEffect() - error parsing localStorageValue', e)
+          }
         }
       }
     }
@@ -162,34 +185,39 @@ export const ActiveSessionInput = forwardRef<
       async (value: Content) => {
         const valueStr = JSON.stringify(value)
 
-        // Save to localStorage for active sessions
-        localStorage.setItem(`${ResponseInputLocalStorageKey}.${session.id}`, valueStr)
+        if (isDraft && session.status === SessionStatus.Draft) {
+          // For draft sessions, only save to database (not localStorage)
+          try {
+            await daemonClient.updateSession(session.id, {
+              editorState: valueStr,
+            })
+          } catch (error) {
+            // Log but don't show toast to avoid disrupting typing
+            logger.error('Failed to save editor state to database:', error)
+          }
+        } else {
+          // For non-draft sessions, save to localStorage
+          localStorage.setItem(`${ResponseInputLocalStorageKey}.${session.id}`, valueStr)
+        }
       },
-      [session.id],
+      [session.id, isDraft, session.status],
     )
 
     const handleSubmit = () => {
-      logger.log('ActiveSessionInput.handleSubmit()')
+      logger.log('ResponseInput.handleSubmit()')
+
+      // Handle draft launch
+      if (isDraft) {
+        onLaunchDraft?.()
+        return
+      }
 
       // Check if this is an interruption attempt without claudeSessionId
       const isRunning =
         session.status === SessionStatus.Running || session.status === SessionStatus.Starting
       const hasText = !isResponseEditorEmpty
 
-      // Handle interrupt-only case (no text in editor)
-      if (!hasText && isRunning) {
-        if (!debouncedCanInterrupt) {
-          toast.warning('Session cannot be interrupted yet', {
-            description: 'Waiting for Claude to initialize the session. Please try again in a moment.',
-          })
-          return
-        }
-        // Interrupt the session
-        interruptSession(session.id)
-        return
-      }
-
-      // Early return if no text in editor and not running
+      // Early return if no text in editor
       if (!hasText) {
         return
       }
@@ -204,21 +232,48 @@ export const ActiveSessionInput = forwardRef<
 
       if (isDenying && denyingApprovalId && !isForkMode) {
         onDeny?.(denyingApprovalId, responseEditor?.getText().trim() || '', session.id)
-      } else if (session.status === SessionStatus.WaitingInput && !isForkMode) {
-        // If we haven't triggered denying state, we might need to deny against oldest approval
+      } else if (sessionStatus === SessionStatus.WaitingInput && !isForkMode) {
+        // Alternate situation: If we haven't triggered the denying state by clicking/keyboarding through, it's possible we're potentially attempting to submit when we actually need to be providing an approval. In these cases we need to enter a denying state relative to the oldest approval.
         denyAgainstOldestApproval()
         setYouSure(true)
       } else {
         handleContinueSession()
       }
+      // Regular help text
+      return getHelpText(session.status)
     }
 
-    // Forward ref handling
+    const handleOpenInEditor = useCallback(async () => {
+      if (!session.workingDir) {
+        toast.error('No working directory available')
+        return
+      }
+
+      const preferredEditor = getPreferredEditor()
+      const editorConfig = EDITOR_OPTIONS.find(e => e.value === preferredEditor)
+
+      if (!editorConfig) {
+        toast.error('Editor configuration not found')
+        return
+      }
+
+      try {
+        // Use tauri-plugin-opener to open the directory with the editor command
+        await openPath(session.workingDir, editorConfig.command)
+        logger.log(`Opened ${session.workingDir} in ${editorConfig.label}`)
+      } catch (error) {
+        logger.error('Failed to open in editor:', error)
+        toast.error(`Failed to open in ${editorConfig.label}`, {
+          description: `Make sure ${editorConfig.label} is installed and available in your PATH.`,
+        })
+      }
+    }, [session.workingDir])
+
+    // Forward ref handling for both textarea and TipTap editor
     useImperativeHandle(ref, () => {
       return tiptapRef.current!
     }, [])
 
-    // Focus editor when entering deny mode
     useEffect(() => {
       if (isDenying && ref && typeof ref !== 'function' && ref.current) {
         ref.current.focus()
@@ -229,7 +284,6 @@ export const ActiveSessionInput = forwardRef<
       }
     }, [isDenying, ref])
 
-    // Setup drag and drop handling
     useEffect(() => {
       let unlisten: UnlistenFn | undefined
       let mounted = true
@@ -307,17 +361,17 @@ export const ActiveSessionInput = forwardRef<
         mounted = false
         isSettingUp = false
         if (unlisten) {
-          // Defensive try-catch for Tauri v2 race condition
+          // Defensive try-catch for Tauri v2 race condition (ENG-2189)
+          // The unlisten function may fail if the listener wasn't fully registered
           try {
             unlisten()
           } catch (error) {
-            console.warn('[ActiveSessionInput] Error during drag-drop unlisten (non-critical):', error)
+            console.warn('[ResponseInput] Error during drag-drop unlisten (non-critical):', error)
           }
         }
       }
     }, [responseEditor])
 
-    // Escape key to cancel deny mode
     useHotkeys(
       'escape',
       () => {
@@ -339,26 +393,26 @@ export const ActiveSessionInput = forwardRef<
       { enableOnFormTags: false },
     )
 
-    // Wrapped handlers that blur editor when opening modals
-    const handleToggleForkView = useCallback(() => {
-      // Blur editor before opening fork modal
-      tiptapRef.current?.blur?.()
-      onToggleForkView?.()
-    }, [onToggleForkView])
-
-    const handleToggleDangerouslySkipPermissions = useCallback(() => {
-      // Blur editor before opening bypass modal
-      tiptapRef.current?.blur?.()
-      onToggleDangerouslySkipPermissions?.()
-    }, [onToggleDangerouslySkipPermissions])
+    // Cmd+Shift+E to open in editor
+    useHotkeys(
+      'mod+shift+e',
+      e => {
+        e.preventDefault()
+        if (session.workingDir && !isDraft) {
+          handleOpenInEditor()
+        }
+      },
+      { enableOnFormTags: true },
+    )
 
     const isRunning =
       session.status === SessionStatus.Running || session.status === SessionStatus.Starting
     const hasText = !isResponseEditorEmpty
-    const canInterrupt = debouncedCanInterrupt
+    const canInterrupt = debouncedCanInterrupt // Use debounced value
 
-    // Disable when: responding OR (running without ability to interrupt) OR (not running and no text)
-    const isDisabled = isResponding || (isRunning && !canInterrupt) || (!isRunning && !hasText)
+    // Disable when: responding OR (running without ability to interrupt) OR (not running and no text) OR launching draft
+    const isDisabled =
+      isResponding || (isRunning && !canInterrupt) || (!isRunning && !hasText) || isLaunchingDraft
 
     const isMac = navigator.platform.includes('Mac')
     // Show different keyboard shortcut based on state
@@ -367,20 +421,24 @@ export const ActiveSessionInput = forwardRef<
     // Determine submit button variant based on state
     let submitButtonVariant: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link' =
       'default'
-    if (isDenying) {
+    if (isDraft) {
+      submitButtonVariant = 'default'
+    } else if (isDenying) {
       submitButtonVariant = 'destructive'
     } else if (isRunning && !hasText && canInterrupt) {
       submitButtonVariant = 'destructive'
     }
 
     let outerBorderColorClass = ''
+
     let placeholder = getInputPlaceholder(session.status)
+
     let borderColorClass = isFocused ? 'border-[var(--terminal-accent)]' : 'border-transparent'
 
     if (isDragHover) {
       borderColorClass = 'border-[var(--terminal-accent)]'
     } else if (isDenying) {
-      placeholder = 'Type your instructions here, then press Enter to deny with feedback...'
+      placeholder = "Tell the agent what you'd like to do differently..."
       if (isFocused) {
         borderColorClass = 'border-[var(--terminal-error)]'
       }
@@ -406,16 +464,7 @@ export const ActiveSessionInput = forwardRef<
 
       if (isDenying) {
         return {
-          text: (
-            <>
-              TELL CLAUDE WHAT TO DO DIFFERENTLY
-              {' ('}
-              <kbd className="px-1 py-0.5 text-xs font-mono font-medium border border-current/30 rounded">
-                ESC
-              </kbd>
-              {' to cancel)'}
-            </>
-          ),
+          text: 'DENYING',
           className: 'text-destructive',
           icon: <MessageCircleX className="h-3 w-3" />,
         }
@@ -449,7 +498,7 @@ export const ActiveSessionInput = forwardRef<
       return undefined
     }
 
-    // Render the active session input
+    // Always show the input for all session states
     return (
       <Card className={`py-2 ${outerBorderColorClass}`}>
         <CardContent className="px-2">
@@ -468,8 +517,7 @@ export const ActiveSessionInput = forwardRef<
                   <hr className="w-full border-border" />
                 </div>
               )}
-
-              {/* Status Bar */}
+              {/* Status Bar with Action Buttons */}
               <div className="flex items-center justify-between gap-2">
                 <StatusBar
                   ref={statusBarRef}
@@ -486,7 +534,7 @@ export const ActiveSessionInput = forwardRef<
                 />
               </div>
 
-              {/* Editor area */}
+              {/* Existing input area */}
               <div className="flex gap-2">
                 <SentryErrorBoundary
                   variant="response-editor"
@@ -503,6 +551,9 @@ export const ActiveSessionInput = forwardRef<
                       initialValue={initialValue}
                       onChange={handleChange}
                       onSubmit={handleSubmit}
+                      onToggleAutoAccept={onToggleAutoAccept}
+                      onToggleDangerouslySkipPermissions={onToggleDangerouslySkipPermissions}
+                      onToggleForkView={onToggleForkView}
                       disabled={isResponding}
                       placeholder={placeholder}
                       className={`flex-1 min-h-[2.5rem] max-h-[50vh] overflow-y-auto ${isResponding ? 'opacity-50' : ''} ${textareaOutlineClass} ${
@@ -523,20 +574,37 @@ export const ActiveSessionInput = forwardRef<
                 </SentryErrorBoundary>
               </div>
 
-              {/* Action buttons and submit */}
+              {/* Keyboard shortcuts (condensed) */}
               <div className="flex items-center justify-between gap-2">
-                <ActiveSessionActionButtons
+                <ActionButtons
+                  sessionId={session.id}
                   canFork={canFork}
                   bypassEnabled={bypassEnabled}
                   autoAcceptEnabled={autoAcceptEnabled}
-                  sessionStatus={session.status}
-                  isArchived={isArchived}
-                  onToggleFork={handleToggleForkView}
-                  onToggleBypass={handleToggleDangerouslySkipPermissions}
+                  sessionStatus={sessionStatus}
+                  isArchived={isArchived || false}
+                  workingDir={session.workingDir}
+                  onToggleFork={onToggleForkView || (() => {})}
+                  onToggleBypass={onToggleDangerouslySkipPermissions || (() => {})}
                   onToggleAutoAccept={onToggleAutoAccept || (() => {})}
                   onToggleArchive={onToggleArchive || (() => {})}
+                  onOpenInEditor={handleOpenInEditor}
                 />
                 <div className="flex items-center justify-end gap-2">
+                  {isDraft && (
+                    <Button
+                      onClick={onDiscardDraft}
+                      disabled={isResponding}
+                      variant="secondary"
+                      className="h-auto py-0.5 px-2 text-xs transition-all duration-200"
+                    >
+                      {/* {responseEditor && !responseEditor.isEmpty ? 'Discard' : 'Cancel'} Until we've implemented change detection we'll always discard */}
+                      {'Discard'}
+                      <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded border border-border">
+                        {isMac ? '⌘+Shift+.' : 'Ctrl+Shift+.'}
+                      </kbd>
+                    </Button>
+                  )}
                   <Button
                     onClick={handleSubmit}
                     disabled={isDisabled}
@@ -556,4 +624,4 @@ export const ActiveSessionInput = forwardRef<
   },
 )
 
-ActiveSessionInput.displayName = 'ActiveSessionInput'
+ResponseInput.displayName = 'ResponseInput'

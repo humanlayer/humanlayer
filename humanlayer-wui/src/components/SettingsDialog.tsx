@@ -3,6 +3,13 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { useState, useEffect } from 'react'
 import { useStore } from '@/AppStore'
 import { logger } from '@/lib/logging'
@@ -11,6 +18,12 @@ import { CheckCircle2, XCircle, RefreshCw, Pencil } from 'lucide-react'
 import { HotkeyScopeBoundary } from './HotkeyScopeBoundary'
 import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
 import { clearSavedModelPreferences } from '@/hooks/useSessionLauncher'
+import {
+  getPreferredEditor,
+  setPreferredEditor,
+  EDITOR_OPTIONS,
+  EditorType,
+} from '@/lib/preferences'
 
 interface SettingsDialogProps {
   open: boolean
@@ -28,11 +41,13 @@ export function SettingsDialog({ open, onOpenChange, onConfigUpdate }: SettingsD
   const [claudePath, setClaudePath] = useState('')
   const [isUpdatingPath, setIsUpdatingPath] = useState(false)
   const [showClaudePathInput, setShowClaudePathInput] = useState(false)
+  const [preferredEditor, setPreferredEditorState] = useState<EditorType>(getPreferredEditor())
 
   // Fetch Claude config when dialog opens
   useEffect(() => {
     if (open) {
       fetchClaudeConfig()
+      setPreferredEditorState(getPreferredEditor())
     }
   }, [open, fetchClaudeConfig])
 
@@ -152,6 +167,15 @@ export function SettingsDialog({ open, onOpenChange, onConfigUpdate }: SettingsD
     } finally {
       setIsUpdatingPath(false)
     }
+  }
+
+  const handleEditorChange = (value: EditorType) => {
+    setPreferredEditorState(value)
+    setPreferredEditor(value)
+    const editorLabel = EDITOR_OPTIONS.find(e => e.value === value)?.label
+    toast.success('Editor Preference Updated', {
+      description: `Default editor set to ${editorLabel}`,
+    })
   }
 
   return (
@@ -330,6 +354,27 @@ export function SettingsDialog({ open, onOpenChange, onConfigUpdate }: SettingsD
                   )}
                 </p>
               )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="preferred-editor" className="text-sm font-medium">
+                Preferred Editor
+              </Label>
+              <Select value={preferredEditor} onValueChange={handleEditorChange}>
+                <SelectTrigger id="preferred-editor" className="w-full">
+                  <SelectValue placeholder="Select an editor" />
+                </SelectTrigger>
+                <SelectContent>
+                  {EDITOR_OPTIONS.map(editor => (
+                    <SelectItem key={editor.value} value={editor.value}>
+                      {editor.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Choose which editor to use when opening a session's working directory (⌘+Shift+E)
+              </p>
             </div>
 
             <div className="flex items-center justify-between">
