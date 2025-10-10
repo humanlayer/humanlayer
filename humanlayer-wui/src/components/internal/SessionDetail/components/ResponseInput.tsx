@@ -21,6 +21,8 @@ import { getCurrentWebview } from '@tauri-apps/api/webview'
 import type { UnlistenFn } from '@tauri-apps/api/event'
 import { Card, CardContent } from '@/components/ui/card'
 import { daemonClient } from '@/lib/daemon'
+import { openPath } from '@tauri-apps/plugin-opener'
+import { getPreferredEditor, EDITOR_OPTIONS } from '@/lib/preferences'
 
 interface ResponseInputProps {
   session: Session
@@ -241,6 +243,32 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
       return getHelpText(session.status)
     }
 
+    const handleOpenInEditor = useCallback(async () => {
+      if (!session.workingDir) {
+        toast.error('No working directory available')
+        return
+      }
+
+      const preferredEditor = getPreferredEditor()
+      const editorConfig = EDITOR_OPTIONS.find(e => e.value === preferredEditor)
+
+      if (!editorConfig) {
+        toast.error('Editor configuration not found')
+        return
+      }
+
+      try {
+        // Use tauri-plugin-opener to open the directory with the editor command
+        await openPath(session.workingDir, editorConfig.command)
+        logger.log(`Opened ${session.workingDir} in ${editorConfig.label}`)
+      } catch (error) {
+        logger.error('Failed to open in editor:', error)
+        toast.error(`Failed to open in ${editorConfig.label}`, {
+          description: `Make sure ${editorConfig.label} is installed and available in your PATH.`,
+        })
+      }
+    }, [session.workingDir])
+
     // Forward ref handling for both textarea and TipTap editor
     useImperativeHandle(ref, () => {
       return tiptapRef.current!
@@ -363,6 +391,18 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
         statusBarRef.current?.openModelSelector()
       },
       { enableOnFormTags: false },
+    )
+
+    // Cmd+Shift+E to open in editor
+    useHotkeys(
+      'mod+shift+e',
+      e => {
+        e.preventDefault()
+        if (session.workingDir && !isDraft) {
+          handleOpenInEditor()
+        }
+      },
+      { enableOnFormTags: true },
     )
 
     const isRunning =
@@ -543,10 +583,12 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
                   autoAcceptEnabled={autoAcceptEnabled}
                   sessionStatus={sessionStatus}
                   isArchived={isArchived || false}
+                  workingDir={session.workingDir}
                   onToggleFork={onToggleForkView || (() => {})}
                   onToggleBypass={onToggleDangerouslySkipPermissions || (() => {})}
                   onToggleAutoAccept={onToggleAutoAccept || (() => {})}
                   onToggleArchive={onToggleArchive || (() => {})}
+                  onOpenInEditor={handleOpenInEditor}
                 />
                 <div className="flex items-center justify-end gap-2">
                   {isDraft && (
