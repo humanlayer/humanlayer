@@ -281,6 +281,7 @@ class NotificationService {
           onClick: primaryAction.onClick,
         },
         variant,
+        toastId: typeof toastOptions.id === 'string' ? toastOptions.id : undefined,
       })
     }
 
