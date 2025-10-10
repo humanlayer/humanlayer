@@ -376,7 +376,7 @@ function ForkViewModalContent({
   return (
     <>
       <DialogHeader>
-        <DialogTitle>Fork View</DialogTitle>
+        <DialogTitle>Fork Conversation</DialogTitle>
         <DialogDescription>
           Select a message to fork from that point in the conversation
         </DialogDescription>
