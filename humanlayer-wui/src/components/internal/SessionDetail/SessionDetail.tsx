@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useHotkeys, useHotkeysContext } from 'react-hotkeys-hook'
+import { useHotkeys } from 'react-hotkeys-hook'
 import { toast } from 'sonner'
 import { useSearchParams } from 'react-router'
 
@@ -271,48 +271,39 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     scope: detailScope,
   })
 
-  // Add fork selection handler
-  const handleForkSelect = useCallback(
-    async (eventIndex: number | null) => {
-      if (eventIndex === null) {
-        // Return to current state - clear everything
-        setPreviewEventIndex(null)
-        setPendingForkMessage(null)
-        setForkTokenCount(null)
-        // Also clear the response input when selecting "Current"
-        responseEditor?.commands.setContent('')
-        return
-      }
+  // Fork preview handler - receives data from ForkViewModal
+  const handleForkPreview = useCallback(
+    (data: {
+      eventIndex: number
+      message: ConversationEvent
+      tokenCount: number | null
+      archiveOnFork: boolean
+    }) => {
+      setPreviewEventIndex(data.eventIndex)
 
-      // Set preview mode
-      setPreviewEventIndex(eventIndex)
+      // Find the session ID from the event before this one
+      const previousEvent = data.eventIndex > 0 ? events[data.eventIndex - 1] : null
+      const forkFromSessionId = previousEvent?.sessionId || session.id
 
-      // Find the selected user message
-      const selectedEvent = events[eventIndex]
-      if (selectedEvent?.eventType === 'message' && selectedEvent?.role === 'user') {
-        // Find the session ID from the event before this one
-        const previousEvent = eventIndex > 0 ? events[eventIndex - 1] : null
-        const forkFromSessionId = previousEvent?.sessionId || session.id
+      setPendingForkMessage({
+        ...data.message,
+        sessionId: forkFromSessionId, // Override with the previous event's session ID
+      })
 
-        // Store both the message content and the session ID to fork from
-        setPendingForkMessage({
-          ...selectedEvent,
-          sessionId: forkFromSessionId, // Override with the previous event's session ID
-        })
-
-        // Fetch session data to get token count
-        try {
-          const forkSessionData = await daemonClient.getSessionState(forkFromSessionId)
-          setForkTokenCount(forkSessionData.session.effectiveContextTokens ?? null)
-        } catch (error) {
-          console.error('[Fork] Failed to fetch session token data:', error)
-          // Set to null on error but don't block fork functionality
-          setForkTokenCount(null)
-        }
-      }
+      setForkTokenCount(data.tokenCount)
+      setArchiveOnFork(data.archiveOnFork)
     },
-    [events, actions, session.id],
+    [events, session.id],
   )
+
+  // Fork cancel handler - clears preview state
+  const handleForkCancel = useCallback(() => {
+    setPreviewEventIndex(null)
+    setPendingForkMessage(null)
+    setForkTokenCount(null)
+    // Also clear the response input when canceling fork
+    responseEditor?.commands.setContent('')
+  }, [responseEditor])
 
   // We no longer automatically clear preview when closing
   // This allows the preview to persist after selecting with Enter
@@ -571,22 +562,10 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     ?.toReversed()
     .find(e => e.eventType === 'tool_call' && e.toolName === 'TodoWrite')
 
-  // Get hotkeys context for modal scope checking (moved here for handleToggleForkView)
-  const { activeScopes } = useHotkeysContext()
-
-  // Fork view toggle handler (moved here to be available for escape handler)
+  // Fork view toggle handler - Trust the scope system to handle modal conflicts
   const handleToggleForkView = useCallback(() => {
-    // Check if any modal scopes are active
-    const modalScopes = [HOTKEY_SCOPES.TOOL_RESULT_MODAL, HOTKEY_SCOPES.BYPASS_PERMISSIONS_MODAL]
-    const hasModalOpen = activeScopes.some(scope => modalScopes.includes(scope as any))
-
-    // Don't trigger if other modals are open
-    if (hasModalOpen) {
-      return
-    }
-
     setForkViewOpen(!forkViewOpen)
-  }, [activeScopes, forkViewOpen])
+  }, [forkViewOpen])
 
   // Clear focus on escape, then close if nothing focused
   // This needs special handling for confirmingApprovalId
@@ -680,15 +659,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
 
   // Create reusable handler for toggling dangerously skip permissions
   const handleToggleDangerouslySkipPermissions = useCallback(async () => {
-    // Check if any modal scopes are active
-    const modalScopes = ['tool-result-modal', 'fork-view-modal', 'dangerously-skip-permissions-dialog']
-    const hasModalOpen = activeScopes.some(scope => modalScopes.includes(scope))
-
-    // Don't trigger if other modals are open
-    if (hasModalOpen || dangerousSkipPermissionsDialogOpen) {
-      return
-    }
-
     if (isDraft) {
       // For draft sessions, handle localStorage directly
       if (savedBypassPermissions) {
@@ -726,15 +696,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         setDangerousSkipPermissionsDialogOpen(true)
       }
     }
-  }, [
-    session.id,
-    activeScopes,
-    dangerousSkipPermissionsDialogOpen,
-    updateSessionOptimistic,
-    isDraft,
-    savedBypassPermissions,
-    setSavedBypassPermissions,
-  ])
+  }, [session.id, updateSessionOptimistic, isDraft, savedBypassPermissions, setSavedBypassPermissions])
 
   // ===== DRAFT MODE HOTKEYS =====
   // These only work when in draft mode (DRAFT_LAUNCHER scope)
@@ -996,8 +958,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     ],
   )
 
-  // Create reusable handler for toggling fork view
   // Add hotkey to open fork view (Meta+Y)
+  // Only available in active session scopes, not in draft launcher
   useHotkeys(
     'meta+y, ctrl+y',
     e => {
@@ -1005,7 +967,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       handleToggleForkView()
     },
     {
-      scopes: [detailScope],
+      scopes: [HOTKEY_SCOPES.SESSION_DETAIL, HOTKEY_SCOPES.SESSION_DETAIL_ARCHIVED],
     },
     [handleToggleForkView],
   )
@@ -1287,8 +1249,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
           {/* Fork view modal */}
           <ForkViewModal
             events={events}
-            selectedEventIndex={previewEventIndex}
-            onSelectEvent={handleForkSelect}
             isOpen={forkViewOpen}
             onOpenChange={open => {
               setForkViewOpen(open)
@@ -1301,7 +1261,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               }
             }}
             sessionStatus={session.status}
-            onArchiveOnForkChange={setArchiveOnFork}
+            onForkPreview={handleForkPreview}
+            onForkCancel={handleForkCancel}
           />
         </div>
 

@@ -17,23 +17,27 @@ import { cn } from '@/lib/utils'
 import { getArchiveOnForkPreference, setArchiveOnForkPreference } from '@/lib/preferences'
 import { HotkeyScopeBoundary } from '@/components/HotkeyScopeBoundary'
 import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
+import { daemonClient } from '@/lib/daemon/client'
 
 interface ForkViewModalProps {
   events: ConversationEvent[]
-  selectedEventIndex: number | null
-  onSelectEvent: (index: number | null) => void
   isOpen: boolean
   onOpenChange: (open: boolean) => void
-  sessionStatus?: string // Add this
-  onArchiveOnForkChange?: (value: boolean) => void
+  sessionStatus?: string
+  onForkPreview?: (data: {
+    eventIndex: number
+    message: ConversationEvent
+    tokenCount: number | null
+    archiveOnFork: boolean
+  }) => void
+  onForkCancel?: () => void
 }
 
 function ForkViewModalContent({
   events,
-  selectedEventIndex,
-  onSelectEvent,
   sessionStatus,
-  onArchiveOnForkChange,
+  onForkPreview,
+  onForkCancel,
   onClose,
 }: Omit<ForkViewModalProps, 'isOpen' | 'onOpenChange'> & { onClose: () => void }) {
   // Note: Scope stealing is handled in parent ForkViewModal component to ensure
@@ -80,7 +84,10 @@ function ForkViewModalContent({
     ? [...userMessageIndices, { event: null, index: -1 }]
     : userMessageIndices
 
+  // Modal owns ALL its state
   const [localSelectedIndex, setLocalSelectedIndex] = useState(0)
+  const [selectedEventIndex, setSelectedEventIndex] = useState<number | null>(null)
+  const [tokenCount, setTokenCount] = useState<number | null>(null)
   const [localArchiveOnFork, setLocalArchiveOnFork] = useState(() => {
     return getArchiveOnForkPreference()
   })
@@ -88,47 +95,89 @@ function ForkViewModalContent({
   const [focusedSection, setFocusedSection] = useState<'messages' | 'checkbox' | 'buttons'>('messages')
 
   // Add handler for checkbox change
-  const handleArchiveCheckboxChange = useCallback(
-    (checked: boolean) => {
-      setLocalArchiveOnFork(checked)
-      setArchiveOnForkPreference(checked)
-      onArchiveOnForkChange?.(checked)
-    },
-    [onArchiveOnForkChange],
-  )
+  const handleArchiveCheckboxChange = useCallback((checked: boolean) => {
+    setLocalArchiveOnFork(checked)
+    setArchiveOnForkPreference(checked)
+  }, [])
 
   // Handler for executing the fork action
   const handleFork = useCallback(() => {
     // Execute fork with current selection
     const selectedOption = allOptions[localSelectedIndex]
     if (selectedOption) {
-      onSelectEvent(selectedOption.index === -1 ? null : selectedOption.index)
+      const eventIndex = selectedOption.index
+      if (eventIndex === -1) {
+        // Current selected - clear preview
+        onForkCancel?.()
+      } else {
+        // User message selected - send preview data
+        const selectedEvent = events[eventIndex]
+        if (selectedEvent && onForkPreview) {
+          onForkPreview({
+            eventIndex,
+            message: selectedEvent,
+            tokenCount,
+            archiveOnFork: localArchiveOnFork,
+          })
+        }
+      }
       handleClose()
     }
-  }, [localSelectedIndex, allOptions, onSelectEvent, handleClose])
+  }, [
+    localSelectedIndex,
+    allOptions,
+    events,
+    tokenCount,
+    localArchiveOnFork,
+    onForkPreview,
+    onForkCancel,
+    handleClose,
+  ])
+
+  // Handle selection change and fetch token count
+  const handleSelectionChange = useCallback(
+    async (index: number | null) => {
+      setSelectedEventIndex(index)
+
+      if (index === null) {
+        // Current selected - no token count needed
+        setTokenCount(null)
+      } else {
+        // Fetch token count for the selected event
+        const selectedEvent = events[index]
+        if (selectedEvent?.eventType === 'message' && selectedEvent?.role === 'user') {
+          // Find the session ID from the event before this one
+          const previousEvent = index > 0 ? events[index - 1] : null
+          const forkFromSessionId = previousEvent?.sessionId
+
+          if (forkFromSessionId) {
+            try {
+              const forkSessionData = await daemonClient.getSessionState(forkFromSessionId)
+              setTokenCount(forkSessionData.session.effectiveContextTokens ?? null)
+            } catch (error) {
+              console.error('[Fork] Failed to fetch session token data:', error)
+              // Set to null on error but don't block fork functionality
+              setTokenCount(null)
+            }
+          }
+        }
+      }
+    },
+    [events],
+  )
 
   // Pre-select last message for failed sessions
   useEffect(() => {
     if (sessionStatus === 'failed' && selectedEventIndex === null && allOptions.length > 0) {
       // Pre-select the last user message for failed sessions
-      setLocalSelectedIndex(allOptions.length - 2) // Last message before "Current"
-    }
-  }, [sessionStatus, selectedEventIndex, allOptions.length])
-
-  // Sync with external selection
-  useEffect(() => {
-    if (selectedEventIndex === null) {
-      // Current is selected
-      setLocalSelectedIndex(allOptions.length - 1)
-    } else {
-      const userMessagePosition = userMessageIndices.findIndex(
-        ({ index }) => index === selectedEventIndex,
-      )
-      if (userMessagePosition !== -1) {
-        setLocalSelectedIndex(userMessagePosition)
+      const index = allOptions.length - 2 // Last message before "Current"
+      setLocalSelectedIndex(index)
+      const option = allOptions[index]
+      if (option) {
+        handleSelectionChange(option.index === -1 ? null : option.index)
       }
     }
-  }, [selectedEventIndex, userMessageIndices, allOptions.length])
+  }, [sessionStatus, selectedEventIndex, allOptions.length, handleSelectionChange])
 
   // Scroll selected item into view when localSelectedIndex changes
   useEffect(() => {
@@ -149,10 +198,11 @@ function ForkViewModalContent({
         const newIndex = localSelectedIndex + 1
         setLocalSelectedIndex(newIndex)
         const option = allOptions[newIndex]
-        onSelectEvent(option.index === -1 ? null : option.index)
+        handleSelectionChange(option.index === -1 ? null : option.index)
       }
     },
     { scopes: [HOTKEY_SCOPES.FORK_MODAL], enableOnFormTags: true },
+    [focusedSection, localSelectedIndex, allOptions, handleSelectionChange],
   )
 
   useHotkeys(
@@ -163,10 +213,11 @@ function ForkViewModalContent({
         const newIndex = localSelectedIndex - 1
         setLocalSelectedIndex(newIndex)
         const option = allOptions[newIndex]
-        onSelectEvent(option.index === -1 ? null : option.index)
+        handleSelectionChange(option.index === -1 ? null : option.index)
       }
     },
     { scopes: [HOTKEY_SCOPES.FORK_MODAL], enableOnFormTags: true },
+    [focusedSection, localSelectedIndex, allOptions, handleSelectionChange],
   )
 
   // Number key navigation
@@ -179,11 +230,12 @@ function ForkViewModalContent({
         if (num < allOptions.length) {
           setLocalSelectedIndex(num)
           const option = allOptions[num]
-          onSelectEvent(option.index === -1 ? null : option.index)
+          handleSelectionChange(option.index === -1 ? null : option.index)
         }
       }
     },
     { scopes: [HOTKEY_SCOPES.FORK_MODAL], enableOnFormTags: true },
+    [focusedSection, allOptions, handleSelectionChange],
   )
 
   // Enter to select item (not fork) or toggle checkbox if focused
@@ -199,16 +251,24 @@ function ForkViewModalContent({
       } else if (focusedSection === 'messages') {
         // Only select the item, don't close modal or fork
         if (localSelectedIndex === allOptions.length - 1) {
-          onSelectEvent(null)
+          handleSelectionChange(null)
         } else {
           const selectedOption = allOptions[localSelectedIndex]
           if (selectedOption) {
-            onSelectEvent(selectedOption.index)
+            handleSelectionChange(selectedOption.index)
           }
         }
       }
     },
     { scopes: [HOTKEY_SCOPES.FORK_MODAL], preventDefault: true },
+    [
+      focusedSection,
+      localSelectedIndex,
+      allOptions,
+      localArchiveOnFork,
+      handleArchiveCheckboxChange,
+      handleSelectionChange,
+    ],
   )
 
   // Cmd/Ctrl+Enter to execute fork
@@ -306,10 +366,11 @@ function ForkViewModalContent({
       e.preventDefault()
       e.stopPropagation()
       e.stopImmediatePropagation() // Complete isolation
-      onSelectEvent(null) // Clear selection first
+      onForkCancel?.() // Notify parent to clear preview
       handleClose() // Use unified handler
     },
     { scopes: [HOTKEY_SCOPES.FORK_MODAL], preventDefault: true },
+    [onForkCancel, handleClose],
   )
 
   return (
@@ -355,7 +416,7 @@ function ForkViewModalContent({
                     )}
                     onClick={() => {
                       setLocalSelectedIndex(position)
-                      onSelectEvent(index)
+                      handleSelectionChange(index)
                       // Don't close modal on selection, wait for fork button
                     }}
                     onMouseEnter={() => {
@@ -386,7 +447,7 @@ function ForkViewModalContent({
                     )}
                     onClick={() => {
                       setLocalSelectedIndex(allOptions.length - 1)
-                      onSelectEvent(null)
+                      handleSelectionChange(null)
                       // Don't close modal on selection, wait for fork button
                     }}
                     onMouseEnter={() => {
@@ -453,7 +514,7 @@ function ForkViewModalContent({
           >
             Fork Session
             <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">
-              {navigator.platform.toLowerCase().includes('mac') ? '⌘' : 'Ctrl'}+⏎
+              {navigator.platform.toLowerCase().includes('mac') ? '⌘' : 'Ctrl'}+ENTER
             </kbd>
           </Button>
         </DialogFooter>
@@ -463,7 +524,7 @@ function ForkViewModalContent({
             <span>↑↓/j/k Navigate</span>
             <span>1-9 Jump</span>
             <span>Tab Focus</span>
-            <span>⌘⏎ Fork</span>
+            <span>⌘+ENTER Fork</span>
             <span>Esc Cancel</span>
           </div>
         </div>
@@ -475,12 +536,11 @@ function ForkViewModalContent({
 // Main component that handles the dialog
 export function ForkViewModal({
   events,
-  selectedEventIndex,
-  onSelectEvent,
   isOpen,
   onOpenChange,
   sessionStatus,
-  onArchiveOnForkChange,
+  onForkPreview,
+  onForkCancel,
 }: ForkViewModalProps) {
   return (
     <HotkeyScopeBoundary
@@ -520,10 +580,9 @@ export function ForkViewModal({
           {isOpen && (
             <ForkViewModalContent
               events={events}
-              selectedEventIndex={selectedEventIndex}
-              onSelectEvent={onSelectEvent}
               sessionStatus={sessionStatus}
-              onArchiveOnForkChange={onArchiveOnForkChange}
+              onForkPreview={onForkPreview}
+              onForkCancel={onForkCancel}
               onClose={() => onOpenChange(false)}
             />
           )}
