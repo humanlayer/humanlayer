@@ -453,7 +453,7 @@ function ForkViewModalContent({
           >
             Fork Session
             <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">
-              {navigator.platform.toLowerCase().includes('mac') ? '⌘' : 'Ctrl'}+⏎
+              {navigator.platform.toLowerCase().includes('mac') ? '⌘' : 'Ctrl'}+ENTER
             </kbd>
           </Button>
         </DialogFooter>
@@ -463,7 +463,7 @@ function ForkViewModalContent({
             <span>↑↓/j/k Navigate</span>
             <span>1-9 Jump</span>
             <span>Tab Focus</span>
-            <span>⌘⏎ Fork</span>
+            <span>⌘+ENTER Fork</span>
             <span>Esc Cancel</span>
           </div>
         </div>
