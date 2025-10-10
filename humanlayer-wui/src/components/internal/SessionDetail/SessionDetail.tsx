@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useHotkeys, useHotkeysContext } from 'react-hotkeys-hook'
 import { toast } from 'sonner'
 import { useSearchParams } from 'react-router'
@@ -30,6 +30,7 @@ import { DangerouslySkipPermissionsDialog } from './DangerouslySkipPermissionsDi
 import { AdditionalDirectoriesDropdown } from './components/AdditionalDirectoriesDropdown'
 import { DiscardDraftDialog } from './components/DiscardDraftDialog'
 import { SearchInput } from '@/components/FuzzySearchInput'
+import { OmniSpinner } from './components/OmniSpinner'
 
 // Import hooks
 import { useSessionActions } from './hooks/useSessionActions'
@@ -50,159 +51,6 @@ interface SessionDetailProps {
 
 // SessionDetail uses its own scope so it can be properly disabled when modals are open
 export const SessionDetailHotkeysScope = HOTKEY_SCOPES.SESSION_DETAIL
-
-const ROBOT_VERBS = [
-  'accelerating',
-  'actuating',
-  'adhering',
-  'aggregating',
-  'amplifying',
-  'anthropomorphizing',
-  'attending',
-  'balancing',
-  'bamboozling',
-  'capacitizing',
-  'clauding',
-  'collapsing',
-  'conducting',
-  'defragmenting',
-  'densifying',
-  'diffusing',
-  'enchanting',
-  'enshrining',
-  'extrapolating',
-  'finagling',
-  'fixating',
-  'frolicking',
-  'fusing',
-  'generating',
-  'gravitating',
-  'harmonizing',
-  'hyperthreading',
-  'hypothecating',
-  'ideating',
-  'inducting',
-  'ionizing',
-  'layering',
-  'mechanizing',
-  'overclocking',
-  'overcomplicating',
-  'philosophizing',
-  'photosynthesizing',
-  'potentiating',
-  'proliferating',
-  'propagating',
-  'prototyping',
-  'quantizing',
-  'radiating',
-  'recalibrating',
-  'receiving',
-  'reflecting',
-  'riffing',
-  'schlepping',
-  'shapeshifting',
-  'simplifying',
-  'sublimating',
-  'superconducting',
-  'synergizing',
-  'thriving',
-  'transcribing',
-  'transisting',
-  'triangulating',
-  'vibing',
-  'zooming',
-]
-
-function OmniSpinner({ randomVerb, spinnerType }: { randomVerb: string; spinnerType: number }) {
-  // Select spinner based on random type
-  const FancySpinner = (
-    <div className="relative w-2 h-2">
-      {/* Outermost orbiting particles */}
-      <div className="absolute inset-0 animate-spin-slow">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary/40 animate-pulse" />
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary/40 animate-pulse delay-75" />
-        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-1 rounded-full bg-primary/40 animate-pulse delay-150" />
-        <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-1 rounded-full bg-primary/40 animate-pulse delay-300" />
-      </div>
-
-      {/* Outer gradient ring */}
-      <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-primary/0 via-primary/30 to-primary/0 animate-spin" />
-
-      {/* Mid rotating ring with gradient */}
-      <div className="absolute inset-1 rounded-full">
-        <div className="absolute inset-0 rounded-full bg-gradient-conic from-primary/10 via-primary/50 to-primary/10 animate-spin-reverse" />
-      </div>
-
-      {/* Inner wave ring */}
-      <div className="absolute inset-2 rounded-full overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/30 via-transparent to-primary/30 animate-wave" />
-      </div>
-
-      {/* Morphing core */}
-      <div className="absolute inset-3 animate-morph">
-        <div className="absolute inset-0 rounded-full bg-gradient-radial from-primary/60 to-primary/20 blur-sm" />
-        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary/40 to-transparent" />
-      </div>
-
-      {/* Center glow */}
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="relative">
-          <div className="absolute w-2 h-2 rounded-full bg-primary/80 animate-ping" />
-          <div className="relative w-2 h-2 rounded-full bg-primary animate-pulse-bright" />
-        </div>
-      </div>
-
-      {/* Random glitch effect */}
-      <div className="absolute inset-0 rounded-full opacity-20 animate-glitch" />
-    </div>
-  )
-
-  const SimpleSpinner = (
-    <div className="relative w-2 h-2">
-      {/* Single spinning ring */}
-      <div className="absolute inset-0 rounded-full border-2 border-primary/20 border-t-primary/60 animate-spin" />
-
-      {/* Pulsing center dot */}
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="w-2 h-2 rounded-full bg-primary/50 animate-pulse" />
-      </div>
-
-      {/* Simple gradient overlay */}
-      <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary/10 to-transparent" />
-    </div>
-  )
-
-  const MinimalSpinner = (
-    <div className="relative w-10 h-10">
-      {/* Three dots rotating */}
-      <div className="absolute inset-0 animate-spin">
-        <div className="absolute top-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-primary/60" />
-        <div className="absolute bottom-1 left-2 w-1.5 h-1.5 rounded-full bg-primary/40" />
-        <div className="absolute bottom-1 right-2 w-1.5 h-1.5 rounded-full bg-primary/40" />
-      </div>
-    </div>
-  )
-
-  const BarsSpinner = (
-    <div className="relative w-10 h-2 flex items-center justify-center gap-1">
-      {/* Five bouncing bars */}
-      <div className="w-1 h-2 bg-primary/40 rounded-full animate-bounce-slow" />
-      <div className="w-1 h-3 bg-primary/60 rounded-full animate-bounce-medium" />
-      <div className="w-1 h-2 bg-primary/80 rounded-full animate-bounce-fast" />
-      <div className="w-1 h-1 bg-primary/60 rounded-full animate-bounce-medium delay-150" />
-      <div className="w-1 h-2 bg-primary/40 rounded-full animate-bounce-slow delay-300" />
-    </div>
-  )
-
-  const spinners = [FancySpinner, SimpleSpinner, MinimalSpinner, BarsSpinner]
-
-  return (
-    <div className="flex items-center gap-3 ">
-      {spinners[spinnerType]}
-      <p className="text-muted-foreground opacity-80 animate-fade-pulse">{randomVerb}</p>
-    </div>
-  )
-}
 
 function SessionDetail({ session, onClose }: SessionDetailProps) {
   // Note: enableScope/disableScope removed - now handled by HotkeyScopeBoundary
@@ -323,46 +171,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       : session.dangerouslySkipPermissionsExpiresAt?.toISOString()
 
   // Scope is now handled by HotkeyScopeBoundary wrapper
-
-  // Generate random verb that changes every 10-20 seconds
-  const [randomVerb, setRandomVerb] = useState(() => {
-    const verb = ROBOT_VERBS[Math.floor(Math.random() * ROBOT_VERBS.length)]
-    return verb.charAt(0).toUpperCase() + verb.slice(1)
-  })
-
-  // Randomly choose spinner type on mount (0: fancy, 1: simple, 2: bars)
-  const spinnerType = useMemo(() => {
-    const types = [0, 1, 3] // Excluding 2 (minimal)
-    return types[Math.floor(Math.random() * types.length)]
-  }, [])
-
-  useEffect(() => {
-    if (!isActivelyProcessing) return
-
-    const changeVerb = () => {
-      const verb = ROBOT_VERBS[Math.floor(Math.random() * ROBOT_VERBS.length)]
-      setRandomVerb(verb.charAt(0).toUpperCase() + verb.slice(1))
-    }
-
-    let intervalId: ReturnType<typeof setTimeout>
-
-    // Function to schedule next change
-    const scheduleNextChange = () => {
-      const delay = 2000 + Math.random() * 18000 // 2-20 seconds
-      intervalId = setTimeout(() => {
-        changeVerb()
-        scheduleNextChange() // Schedule the next change
-      }, delay)
-    }
-
-    // Start the first scheduled change
-    scheduleNextChange()
-
-    // Cleanup
-    return () => {
-      if (intervalId) clearTimeout(intervalId)
-    }
-  }, [isActivelyProcessing])
 
   // Get events for sidebar access - only poll for non-draft sessions
   const { events } = useConversation(isDraft ? undefined : session.id)
@@ -802,11 +610,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
 
       // Don't process escape if dangerous skip permissions dialog is open
       if (dangerousSkipPermissionsDialogOpen) {
-        return
-      }
-
-      // Don't process escape if directories dropdown is open
-      if (directoriesDropdownOpen) {
         return
       }
 
@@ -1582,11 +1385,11 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               </CardContent>
               {isActivelyProcessing && (
                 <div
-                  className={`absolute bottom-0 left-0 px-3 py-1.5 border-t border-border bg-secondary/30 w-full font-mono text-sm uppercase tracking-wider text-muted-foreground transition-all duration-300 ease-out ${
+                  className={`absolute bottom-0 left-0 px-3 py-1.5 border-t border-border bg-secondary/30 w-full font-mono text-xs uppercase tracking-wider text-muted-foreground transition-all duration-300 ease-out ${
                     isActivelyProcessing ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'
                   }`}
                 >
-                  <OmniSpinner randomVerb={randomVerb} spinnerType={spinnerType} />
+                  <OmniSpinner />
                 </div>
               )}
               {/* Status bar for pending approvals */}

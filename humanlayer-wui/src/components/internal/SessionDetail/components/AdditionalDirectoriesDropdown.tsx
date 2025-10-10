@@ -11,6 +11,7 @@ import { useHotkeys } from 'react-hotkeys-hook'
 import { HotkeyScopeBoundary } from '@/components/HotkeyScopeBoundary'
 import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
 import { cn } from '@/lib/utils'
+import { useFocusTrap } from '@/hooks/useFocusTrap'
 
 interface AdditionalDirectoriesDropdownProps {
   workingDir: string
@@ -53,6 +54,11 @@ export function AdditionalDirectoriesDropdown({
   const triggerRef = useRef<HTMLElement | null>(null)
 
   // Use the proper hotkey scope from centralized definitions
+
+  // Add focus trap for proper focus management
+  const focusTrapRef = useFocusTrap(isOpen, {
+    allowTabNavigation: true // Allows j/k hotkeys to still work
+  })
 
   // Fetch recent paths for autocomplete
   const { paths: recentPaths } = useRecentPaths(20)
@@ -370,9 +376,10 @@ export function AdditionalDirectoriesDropdown({
         <HotkeyScopeBoundary
           scope={HOTKEY_SCOPES.ADDITIONAL_DIRECTORIES}
           isActive={isOpen}
+          rootScopeDisabled={true}
           componentName="AdditionalDirectoriesDropdown"
         >
-          <div className="space-y-2">
+          <div ref={focusTrapRef} className="space-y-2">
             <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground pb-1 border-b">
               <FolderOpen className="h-3 w-3" />
               <span>Working Directory</span>
