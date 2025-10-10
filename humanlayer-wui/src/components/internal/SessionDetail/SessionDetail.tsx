@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useHotkeys, useHotkeysContext } from 'react-hotkeys-hook'
+import { useHotkeys } from 'react-hotkeys-hook'
 import { toast } from 'sonner'
 import { useSearchParams } from 'react-router'
 
@@ -9,11 +9,7 @@ import { useConversation, useKeyboardNavigationProtection } from '@/hooks'
 import { ChevronDown, FolderOpen, TextSearch } from 'lucide-react'
 import { daemonClient } from '@/lib/daemon/client'
 import { useStore } from '@/AppStore'
-import {
-  getArchiveOnForkPreference,
-  DRAFT_LAUNCHER_PREFS,
-  getDraftLauncherDefaults,
-} from '@/lib/preferences'
+import { DRAFT_LAUNCHER_PREFS, getDraftLauncherDefaults } from '@/lib/preferences'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
 import { HotkeyScopeBoundary } from '@/components/HotkeyScopeBoundary'
 import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
@@ -70,15 +66,15 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [expandedToolResult, setExpandedToolResult] = useState<ConversationEvent | null>(null)
   const [expandedToolCall, setExpandedToolCall] = useState<ConversationEvent | null>(null)
   const [forkViewOpen, setForkViewOpen] = useState(false)
-  const [previewEventIndex, setPreviewEventIndex] = useState<number | null>(null)
-  const [pendingForkMessage, setPendingForkMessage] = useState<ConversationEvent | null>(null)
-  const [forkTokenCount, setForkTokenCount] = useState<number | null>(null)
+  const [forkPreviewData, setForkPreviewData] = useState<{
+    eventIndex: number // For scrolling in ConversationStream
+    message: ConversationEvent // For execution in useSessionActions
+    tokenCount: number | null // For display in ResponseInput
+    archiveOnFork: boolean // For execution preference
+  } | null>(null)
   const [confirmingArchive, setConfirmingArchive] = useState(false)
   const [dangerousSkipPermissionsDialogOpen, setDangerousSkipPermissionsDialogOpen] = useState(false)
   const [directoriesDropdownOpen, setDirectoriesDropdownOpen] = useState(false)
-  const [archiveOnFork, setArchiveOnFork] = useState(() => {
-    return getArchiveOnForkPreference()
-  })
   const [showDiscardDialog, setShowDiscardDialog] = useState(false)
   // For draft sessions, use the session's workingDir if it exists
   const [selectedDirectory, setSelectedDirectory] = useState<string>(() => {
@@ -255,9 +251,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   // Add fork commit handler
   const handleForkCommit = useCallback(() => {
     // Reset preview state after successful fork
-    setPreviewEventIndex(null)
-    setPendingForkMessage(null)
-    setForkTokenCount(null)
+    setForkPreviewData(null)
     setForkViewOpen(false)
   }, [])
 
@@ -265,54 +259,41 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const actions = useSessionActions({
     session,
     onClose,
-    pendingForkMessage,
+    pendingForkMessage: forkPreviewData?.message || null,
     onForkCommit: handleForkCommit,
-    archiveOnFork, // Add this
+    archiveOnFork: forkPreviewData?.archiveOnFork || false,
     scope: detailScope,
   })
 
-  // Add fork selection handler
-  const handleForkSelect = useCallback(
-    async (eventIndex: number | null) => {
-      if (eventIndex === null) {
-        // Return to current state - clear everything
-        setPreviewEventIndex(null)
-        setPendingForkMessage(null)
-        setForkTokenCount(null)
-        // Also clear the response input when selecting "Current"
-        responseEditor?.commands.setContent('')
-        return
-      }
+  // Fork preview handler - receives data from ForkViewModal
+  const handleForkPreview = useCallback(
+    (data: {
+      eventIndex: number
+      message: ConversationEvent
+      tokenCount: number | null
+      archiveOnFork: boolean
+    }) => {
+      // Find the session ID from the event before this one
+      const previousEvent = data.eventIndex > 0 ? events[data.eventIndex - 1] : null
+      const forkFromSessionId = previousEvent?.sessionId || session.id
 
-      // Set preview mode
-      setPreviewEventIndex(eventIndex)
-
-      // Find the selected user message
-      const selectedEvent = events[eventIndex]
-      if (selectedEvent?.eventType === 'message' && selectedEvent?.role === 'user') {
-        // Find the session ID from the event before this one
-        const previousEvent = eventIndex > 0 ? events[eventIndex - 1] : null
-        const forkFromSessionId = previousEvent?.sessionId || session.id
-
-        // Store both the message content and the session ID to fork from
-        setPendingForkMessage({
-          ...selectedEvent,
-          sessionId: forkFromSessionId, // Override with the previous event's session ID
-        })
-
-        // Fetch session data to get token count
-        try {
-          const forkSessionData = await daemonClient.getSessionState(forkFromSessionId)
-          setForkTokenCount(forkSessionData.session.effectiveContextTokens ?? null)
-        } catch (error) {
-          console.error('[Fork] Failed to fetch session token data:', error)
-          // Set to null on error but don't block fork functionality
-          setForkTokenCount(null)
-        }
-      }
+      setForkPreviewData({
+        ...data,
+        message: {
+          ...data.message,
+          sessionId: forkFromSessionId, // Override with the correct session ID
+        },
+      })
     },
-    [events, actions, session.id],
+    [events, session.id],
   )
+
+  // Fork cancel handler - clears preview state
+  const handleForkCancel = useCallback(() => {
+    setForkPreviewData(null)
+    // Also clear the response input when canceling fork
+    responseEditor?.commands.setContent('')
+  }, [responseEditor])
 
   // We no longer automatically clear preview when closing
   // This allows the preview to persist after selecting with Enter
@@ -571,22 +552,10 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     ?.toReversed()
     .find(e => e.eventType === 'tool_call' && e.toolName === 'TodoWrite')
 
-  // Get hotkeys context for modal scope checking (moved here for handleToggleForkView)
-  const { activeScopes } = useHotkeysContext()
-
-  // Fork view toggle handler (moved here to be available for escape handler)
+  // Fork view toggle handler - Trust the scope system to handle modal conflicts
   const handleToggleForkView = useCallback(() => {
-    // Check if any modal scopes are active
-    const modalScopes = [HOTKEY_SCOPES.TOOL_RESULT_MODAL, HOTKEY_SCOPES.BYPASS_PERMISSIONS_MODAL]
-    const hasModalOpen = activeScopes.some(scope => modalScopes.includes(scope as any))
-
-    // Don't trigger if other modals are open
-    if (hasModalOpen) {
-      return
-    }
-
     setForkViewOpen(!forkViewOpen)
-  }, [activeScopes, forkViewOpen])
+  }, [forkViewOpen])
 
   // Clear focus on escape, then close if nothing focused
   // This needs special handling for confirmingApprovalId
@@ -612,11 +581,9 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       /* Everything below here implies the responeEditor is not focused */
 
       // Check for fork mode first
-      if (previewEventIndex !== null) {
+      if (forkPreviewData !== null) {
         // Clear fork mode
-        setPreviewEventIndex(null)
-        setPendingForkMessage(null)
-        setForkTokenCount(null)
+        setForkPreviewData(null)
         responseEditor?.commands.setContent('')
       } else if (confirmingArchive) {
         setConfirmingArchive(false)
@@ -640,14 +607,14 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     },
     [
       isEditingSessionTitle,
-      previewEventIndex,
+      forkPreviewData,
       confirmingArchive,
       approvals.confirmingApprovalId,
       approvals.setConfirmingApprovalId,
       navigation.focusedEventId,
       navigation.setFocusedEventId,
       onClose,
-      // actions.setResponseInput,
+      responseEditor,
     ],
   )
 
@@ -680,15 +647,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
 
   // Create reusable handler for toggling dangerously skip permissions
   const handleToggleDangerouslySkipPermissions = useCallback(async () => {
-    // Check if any modal scopes are active
-    const modalScopes = ['tool-result-modal', 'fork-view-modal', 'dangerously-skip-permissions-dialog']
-    const hasModalOpen = activeScopes.some(scope => modalScopes.includes(scope))
-
-    // Don't trigger if other modals are open
-    if (hasModalOpen || dangerousSkipPermissionsDialogOpen) {
-      return
-    }
-
     if (isDraft) {
       // For draft sessions, handle localStorage directly
       if (savedBypassPermissions) {
@@ -726,15 +684,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         setDangerousSkipPermissionsDialogOpen(true)
       }
     }
-  }, [
-    session.id,
-    activeScopes,
-    dangerousSkipPermissionsDialogOpen,
-    updateSessionOptimistic,
-    isDraft,
-    savedBypassPermissions,
-    setSavedBypassPermissions,
-  ])
+  }, [session.id, updateSessionOptimistic, isDraft, savedBypassPermissions, setSavedBypassPermissions])
 
   // ===== DRAFT MODE HOTKEYS =====
   // These only work when in draft mode (DRAFT_LAUNCHER scope)
@@ -996,8 +946,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     ],
   )
 
-  // Create reusable handler for toggling fork view
   // Add hotkey to open fork view (Meta+Y)
+  // Only available in active session scopes, not in draft launcher
   useHotkeys(
     'meta+y, ctrl+y',
     e => {
@@ -1005,7 +955,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       handleToggleForkView()
     },
     {
-      scopes: [detailScope],
+      scopes: [HOTKEY_SCOPES.SESSION_DETAIL, HOTKEY_SCOPES.SESSION_DETAIL_ARCHIVED],
     },
     [handleToggleForkView],
   )
@@ -1287,8 +1237,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
           {/* Fork view modal */}
           <ForkViewModal
             events={events}
-            selectedEventIndex={previewEventIndex}
-            onSelectEvent={handleForkSelect}
             isOpen={forkViewOpen}
             onOpenChange={open => {
               setForkViewOpen(open)
@@ -1301,7 +1249,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               }
             }}
             sessionStatus={session.status}
-            onArchiveOnForkChange={setArchiveOnFork}
+            onForkPreview={handleForkPreview}
+            onForkCancel={handleForkCancel}
           />
         </div>
 
@@ -1329,7 +1278,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                   expandedToolResult={expandedToolResult}
                   setExpandedToolResult={setExpandedToolResult}
                   setExpandedToolCall={setExpandedToolCall}
-                  maxEventIndex={previewEventIndex ?? undefined}
+                  maxEventIndex={forkPreviewData?.eventIndex ?? undefined}
                   shouldIgnoreMouseEvent={shouldIgnoreMouseEvent}
                   expandedTasks={expandedTasks}
                   toggleTaskGroup={toggleTaskGroup}
@@ -1388,16 +1337,16 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               parentSessionData={parentSessionData || parentSession || undefined}
               isResponding={actions.isResponding}
               handleContinueSession={actions.handleContinueSession}
-              isForkMode={actions.isForkMode}
-              forkTokenCount={forkTokenCount}
+              isForkMode={!!forkPreviewData}
+              forkTokenCount={forkPreviewData?.tokenCount}
               isDraft={isDraft}
               onLaunchDraft={handleLaunchDraft}
               onDiscardDraft={handleDiscardDraft}
               isLaunchingDraft={isLaunchingDraft}
               forkTurnNumber={
-                previewEventIndex !== null
+                forkPreviewData?.eventIndex !== undefined
                   ? events
-                      .slice(0, previewEventIndex)
+                      .slice(0, forkPreviewData.eventIndex)
                       .filter(e => e.eventType === 'message' && e.role === 'user').length
                   : undefined
               }
@@ -1410,12 +1359,12 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               onToggleDangerouslySkipPermissions={handleToggleDangerouslySkipPermissions}
               onToggleForkView={handleToggleForkView}
               // ActionButtons props
-              canFork={previewEventIndex === null && !isActivelyProcessing}
+              canFork={forkPreviewData === null && !isActivelyProcessing}
               bypassEnabled={dangerouslySkipPermissions}
               autoAcceptEnabled={autoAcceptEdits}
               isArchived={session.archived || false}
               onToggleArchive={handleToggleArchive}
-              previewEventIndex={previewEventIndex}
+              previewEventIndex={forkPreviewData?.eventIndex ?? null}
               isActivelyProcessing={isActivelyProcessing}
             />
             {/* Session mode indicator - shows fork, dangerous skip permissions or auto-accept */}
@@ -1425,15 +1374,15 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               dangerouslySkipPermissions={dangerouslySkipPermissions}
               dangerouslySkipPermissionsExpiresAt={dangerouslySkipPermissionsExpiresAt}
               sessionStatus={session.status}
-              isForkMode={previewEventIndex !== null}
+              isForkMode={!!forkPreviewData}
               forkTurnNumber={
-                previewEventIndex !== null
+                forkPreviewData?.eventIndex !== undefined
                   ? events
-                      .slice(0, previewEventIndex)
+                      .slice(0, forkPreviewData.eventIndex)
                       .filter(e => e.eventType === 'message' && e.role === 'user').length
                   : undefined
               }
-              forkTokenCount={forkTokenCount}
+              forkTokenCount={forkPreviewData?.tokenCount}
               className="mt-2"
               onToggleAutoAccept={handleToggleAutoAccept}
               onToggleBypass={handleToggleDangerouslySkipPermissions}
