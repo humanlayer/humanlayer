@@ -1338,7 +1338,13 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                   }
                   approvingApprovalId={approvals.approvingApprovalId}
                   denyingApprovalId={approvals.denyingApprovalId ?? undefined}
-                  setDenyingApprovalId={approvals.handleStartDeny}
+                  setDenyingApprovalId={(id) => {
+                    if (id === null) {
+                      approvals.handleCancelDeny()
+                    } else {
+                      approvals.handleStartDeny(id)
+                    }
+                  }}
                   onCancelDeny={approvals.handleCancelDeny}
                   focusSource={navigation.focusSource}
                   setFocusSource={navigation.setFocusSource}
