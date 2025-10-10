@@ -219,34 +219,6 @@ export function Layout() {
           // Find the toast button element using data attributes
           const toastElements = document.querySelectorAll(`[data-sonner-toast][data-id="${toastId}"]`)
 
-          // Also try alternative selectors
-          const allToastElements = document.querySelectorAll('[data-sonner-toast]')
-
-          // If we can't find by data-id, try to find the button directly in all toast elements
-          if (toastElements.length === 0 && allToastElements.length > 0) {
-            for (const toastEl of allToastElements) {
-              const buttonInToast = toastEl.querySelector('[data-button][data-action]') as HTMLElement
-              if (buttonInToast) {
-                // Apply flash styles (accent color background to match button's border)
-                const originalClasses = buttonInToast.className
-                buttonInToast.classList.add('!bg-accent', '!text-background', '[&_*]:!text-background')
-
-                // Remove flash after 100ms
-                setTimeout(() => {
-                  buttonInToast.className = originalClasses
-
-                  // Wait another 100ms before dismissing toast and navigating
-                  setTimeout(() => {
-                    toast.dismiss(toastId)
-                    navigate(`/sessions/${targetApproval.sessionId}?approval=${targetApproval.id}`)
-                  }, 100)
-                }, 100)
-
-                return // Early return to prevent immediate dismiss
-              }
-            }
-          }
-
           if (toastElements.length > 0) {
             const toastElement = toastElements[0]
             const buttonElement = toastElement.querySelector(
@@ -255,12 +227,15 @@ export function Layout() {
 
             if (buttonElement) {
               // Apply flash styles (accent color background to match button's border)
-              const originalClasses = buttonElement.className
               buttonElement.classList.add('!bg-accent', '!text-background', '[&_*]:!text-background')
 
               // Remove flash after 100ms
               setTimeout(() => {
-                buttonElement.className = originalClasses
+                buttonElement.classList.remove(
+                  '!bg-accent',
+                  '!text-background',
+                  '[&_*]:!text-background',
+                )
 
                 // Wait another 100ms before dismissing toast and navigating
                 setTimeout(() => {
