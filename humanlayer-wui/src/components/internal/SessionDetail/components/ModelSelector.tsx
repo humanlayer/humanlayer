@@ -447,7 +447,7 @@ function ModelSelectorContent({
 
         {/* Action Buttons */}
         <div className="flex justify-end gap-2 pt-2">
-          <Button onClick={onClose} disabled={isUpdating} variant="outline" size="sm">
+          <Button onClick={onClose} disabled={isUpdating} variant="secondary" size="sm">
             Cancel
           </Button>
           <Button
