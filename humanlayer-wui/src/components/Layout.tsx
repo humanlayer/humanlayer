@@ -216,8 +216,38 @@ export function Layout() {
         const toastId = `approval_required:${targetApproval.id}`
 
         if (visibleToasts.some(t => t.id === toastId)) {
-          // Find the toast button element using data attributes
+          // Debug logging for toast DOM structure
+          console.log('[TOAST-DEBUG] Looking for toast with ID:', toastId)
+
+          // Log all toast elements and their attributes
+          const allToasts = document.querySelectorAll('[data-sonner-toast]')
+          console.log('[TOAST-DEBUG] Total toast elements found:', allToasts.length)
+
+          allToasts.forEach((toast, index) => {
+            const dataId = toast.getAttribute('data-id')
+            const allDataAttrs = Array.from(toast.attributes)
+              .filter(attr => attr.name.startsWith('data-'))
+              .map(attr => `${attr.name}="${attr.value}"`)
+              .join(', ')
+            console.log(`[TOAST-DEBUG] Toast ${index}: ${allDataAttrs}`)
+
+            // Check for buttons in this toast
+            const buttons = toast.querySelectorAll('button')
+            const dataButtons = toast.querySelectorAll('[data-button]')
+            const actionButtons = toast.querySelectorAll('[data-action]')
+            console.log(
+              `[TOAST-DEBUG] Toast ${index} buttons: regular=${buttons.length}, data-button=${dataButtons.length}, data-action=${actionButtons.length}`,
+            )
+
+            // Log if this matches our target
+            if (dataId === toastId) {
+              console.log(`[TOAST-DEBUG] ✅ Found matching toast at index ${index}`)
+            }
+          })
+
+          // Try finding with the specific selector
           const toastElements = document.querySelectorAll(`[data-sonner-toast][data-id="${toastId}"]`)
+          console.log('[TOAST-DEBUG] Toasts found with specific selector:', toastElements.length)
 
           if (toastElements.length > 0) {
             const toastElement = toastElements[0]
@@ -226,6 +256,7 @@ export function Layout() {
             ) as HTMLElement
 
             if (buttonElement) {
+              console.log('[TOAST-DEBUG] Found button with data-button/data-action selectors')
               // Apply flash styles (accent color background to match button's border)
               buttonElement.classList.add('!bg-accent', '!text-background', '[&_*]:!text-background')
 
@@ -245,7 +276,67 @@ export function Layout() {
               }, 100)
 
               return // Early return to prevent immediate dismiss
+            } else {
+              console.log(
+                '[TOAST-DEBUG] No button found with data-button/data-action, trying fallback selectors',
+              )
             }
+          }
+
+          // SAFER FALLBACK: If primary selector fails, try to find the correct toast by ID
+          // This time we'll verify the toast ID matches before flashing
+          if (toastElements.length === 0) {
+            console.log('[TOAST-DEBUG] Primary selector failed, trying safer fallback')
+
+            // Find toast that contains our approval ID in some way
+            for (const toastEl of allToasts) {
+              // Check various ways the ID might be stored
+              const dataId = toastEl.getAttribute('data-id')
+              const toastText = toastEl.textContent || ''
+
+              console.log(
+                `[TOAST-DEBUG] Checking toast for ID match: data-id="${dataId}", contains text="${targetApproval.id}"`,
+              )
+
+              // Only proceed if this toast is related to our target approval
+              if (dataId === toastId || toastText.includes(targetApproval.id)) {
+                console.log('[TOAST-DEBUG] Found matching toast via fallback, looking for button')
+
+                // Try various button selectors
+                const buttonInToast = (toastEl.querySelector('button') ||
+                  toastEl.querySelector('[data-button]') ||
+                  toastEl.querySelector('[data-action]') ||
+                  toastEl.querySelector('[role="button"]')) as HTMLElement | null
+
+                if (buttonInToast) {
+                  console.log('[TOAST-DEBUG] Found button in matching toast via fallback')
+                  // Apply flash styles
+                  buttonInToast.classList.add(
+                    '!bg-accent',
+                    '!text-background',
+                    '[&_*]:!text-background',
+                  )
+
+                  // Remove flash after 100ms
+                  setTimeout(() => {
+                    buttonInToast.classList.remove(
+                      '!bg-accent',
+                      '!text-background',
+                      '[&_*]:!text-background',
+                    )
+
+                    // Wait another 100ms before dismissing toast and navigating
+                    setTimeout(() => {
+                      toast.dismiss(toastId)
+                      navigate(`/sessions/${targetApproval.sessionId}?approval=${targetApproval.id}`)
+                    }, 100)
+                  }, 100)
+
+                  return // Early return to prevent immediate dismiss
+                }
+              }
+            }
+            console.log('[TOAST-DEBUG] No matching toast found via fallback')
           }
 
           // Fallback: if button not found, just dismiss immediately and navigate
