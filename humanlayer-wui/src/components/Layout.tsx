@@ -229,7 +229,7 @@ export function Layout() {
               if (buttonInToast) {
                 // Apply flash styles (accent color background to match button's border)
                 const originalClasses = buttonInToast.className
-                buttonInToast.classList.add('!bg-accent', '!text-background')
+                buttonInToast.classList.add('!bg-accent', '!text-background', '[&_*]:!text-background')
 
                 // Remove flash after 100ms
                 setTimeout(() => {
@@ -256,7 +256,7 @@ export function Layout() {
             if (buttonElement) {
               // Apply flash styles (accent color background to match button's border)
               const originalClasses = buttonElement.className
-              buttonElement.classList.add('!bg-accent', '!text-background')
+              buttonElement.classList.add('!bg-accent', '!text-background', '[&_*]:!text-background')
 
               // Remove flash after 100ms
               setTimeout(() => {
