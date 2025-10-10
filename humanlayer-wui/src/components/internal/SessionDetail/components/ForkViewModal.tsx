@@ -44,6 +44,7 @@ function ForkViewModalContent({
   const previousFocusRef = useRef<HTMLElement | null>(null)
   const checkboxRef = useRef<HTMLButtonElement>(null) // Radix Checkbox is a button element
   const forkButtonRef = useRef<HTMLButtonElement>(null)
+  const messageItemRefs = useRef<(HTMLDivElement | null)[]>([])
 
   useEffect(() => {
     // Store the previously focused element
@@ -128,6 +129,16 @@ function ForkViewModalContent({
       }
     }
   }, [selectedEventIndex, userMessageIndices, allOptions.length])
+
+  // Scroll selected item into view when localSelectedIndex changes
+  useEffect(() => {
+    if (messageItemRefs.current[localSelectedIndex]) {
+      messageItemRefs.current[localSelectedIndex]?.scrollIntoView({
+        block: 'nearest',
+        behavior: 'smooth',
+      })
+    }
+  }, [localSelectedIndex])
 
   // Navigation hotkeys
   useHotkeys(
@@ -335,6 +346,7 @@ function ForkViewModalContent({
                 return (
                   <div
                     key={event.id}
+                    ref={el => (messageItemRefs.current[position] = el)}
                     className={cn(
                       'px-3 py-2 cursor-pointer transition-all text-sm border-l-2 rounded',
                       isSelected
@@ -365,6 +377,7 @@ function ForkViewModalContent({
               {showCurrentOption && (
                 <div className="border-t mt-2 pt-2">
                   <div
+                    ref={el => (messageItemRefs.current[allOptions.length - 1] = el)}
                     className={cn(
                       'px-3 py-2 cursor-pointer transition-all text-sm border-l-2 rounded',
                       localSelectedIndex === allOptions.length - 1
