@@ -224,12 +224,17 @@ export function Layout() {
           console.log('[TOAST-DEBUG] Total toast elements found:', allToasts.length)
 
           allToasts.forEach((toast, index) => {
+            // Check for BOTH id and data-id attributes
+            const idAttr = toast.getAttribute('id')
             const dataId = toast.getAttribute('data-id')
-            const allDataAttrs = Array.from(toast.attributes)
-              .filter(attr => attr.name.startsWith('data-'))
+
+            // Get ALL attributes to see everything
+            const allAttrs = Array.from(toast.attributes)
               .map(attr => `${attr.name}="${attr.value}"`)
               .join(', ')
-            console.log(`[TOAST-DEBUG] Toast ${index}: ${allDataAttrs}`)
+
+            console.log(`[TOAST-DEBUG] Toast ${index} ALL attributes: ${allAttrs}`)
+            console.log(`[TOAST-DEBUG] Toast ${index} id="${idAttr}" (regular id), data-id="${dataId}" (data attribute)`)
 
             // Check for buttons in this toast
             const buttons = toast.querySelectorAll('button')
@@ -239,15 +244,21 @@ export function Layout() {
               `[TOAST-DEBUG] Toast ${index} buttons: regular=${buttons.length}, data-button=${dataButtons.length}, data-action=${actionButtons.length}`,
             )
 
-            // Log if this matches our target
-            if (dataId === toastId) {
-              console.log(`[TOAST-DEBUG] ✅ Found matching toast at index ${index}`)
+            // Check if this matches our target using EITHER id or data-id
+            if (idAttr === toastId || dataId === toastId) {
+              console.log(`[TOAST-DEBUG] ✅ Found matching toast at index ${index} via ${idAttr === toastId ? 'id' : 'data-id'} attribute`)
             }
           })
 
-          // Try finding with the specific selector
-          const toastElements = document.querySelectorAll(`[data-sonner-toast][data-id="${toastId}"]`)
-          console.log('[TOAST-DEBUG] Toasts found with specific selector:', toastElements.length)
+          // Try finding with different selectors
+          let toastElements = document.querySelectorAll(`[data-sonner-toast][data-id="${toastId}"]`)
+          console.log('[TOAST-DEBUG] Toasts found with data-id selector:', toastElements.length)
+
+          // If data-id didn't work, try regular id attribute
+          if (toastElements.length === 0) {
+            toastElements = document.querySelectorAll(`[data-sonner-toast]#${CSS.escape(toastId)}`)
+            console.log('[TOAST-DEBUG] Toasts found with id selector:', toastElements.length)
+          }
 
           if (toastElements.length > 0) {
             const toastElement = toastElements[0]
