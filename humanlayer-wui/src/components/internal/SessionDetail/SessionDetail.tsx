@@ -10,7 +10,6 @@ import { ChevronDown, FolderOpen, TextSearch } from 'lucide-react'
 import { daemonClient } from '@/lib/daemon/client'
 import { useStore } from '@/AppStore'
 import {
-  getArchiveOnForkPreference,
   DRAFT_LAUNCHER_PREFS,
   getDraftLauncherDefaults,
 } from '@/lib/preferences'
@@ -70,15 +69,15 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [expandedToolResult, setExpandedToolResult] = useState<ConversationEvent | null>(null)
   const [expandedToolCall, setExpandedToolCall] = useState<ConversationEvent | null>(null)
   const [forkViewOpen, setForkViewOpen] = useState(false)
-  const [previewEventIndex, setPreviewEventIndex] = useState<number | null>(null)
-  const [pendingForkMessage, setPendingForkMessage] = useState<ConversationEvent | null>(null)
-  const [forkTokenCount, setForkTokenCount] = useState<number | null>(null)
+  const [forkPreviewData, setForkPreviewData] = useState<{
+    eventIndex: number        // For scrolling in ConversationStream
+    message: ConversationEvent // For execution in useSessionActions
+    tokenCount: number | null  // For display in ResponseInput
+    archiveOnFork: boolean     // For execution preference
+  } | null>(null)
   const [confirmingArchive, setConfirmingArchive] = useState(false)
   const [dangerousSkipPermissionsDialogOpen, setDangerousSkipPermissionsDialogOpen] = useState(false)
   const [directoriesDropdownOpen, setDirectoriesDropdownOpen] = useState(false)
-  const [archiveOnFork, setArchiveOnFork] = useState(() => {
-    return getArchiveOnForkPreference()
-  })
   const [showDiscardDialog, setShowDiscardDialog] = useState(false)
   // For draft sessions, use the session's workingDir if it exists
   const [selectedDirectory, setSelectedDirectory] = useState<string>(() => {
@@ -255,9 +254,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   // Add fork commit handler
   const handleForkCommit = useCallback(() => {
     // Reset preview state after successful fork
-    setPreviewEventIndex(null)
-    setPendingForkMessage(null)
-    setForkTokenCount(null)
+    setForkPreviewData(null)
     setForkViewOpen(false)
   }, [])
 
@@ -265,9 +262,9 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const actions = useSessionActions({
     session,
     onClose,
-    pendingForkMessage,
+    pendingForkMessage: forkPreviewData?.message || null,
     onForkCommit: handleForkCommit,
-    archiveOnFork, // Add this
+    archiveOnFork: forkPreviewData?.archiveOnFork || false,
     scope: detailScope,
   })
 
@@ -279,28 +276,24 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       tokenCount: number | null
       archiveOnFork: boolean
     }) => {
-      setPreviewEventIndex(data.eventIndex)
-
       // Find the session ID from the event before this one
       const previousEvent = data.eventIndex > 0 ? events[data.eventIndex - 1] : null
       const forkFromSessionId = previousEvent?.sessionId || session.id
 
-      setPendingForkMessage({
-        ...data.message,
-        sessionId: forkFromSessionId, // Override with the previous event's session ID
+      setForkPreviewData({
+        ...data,
+        message: {
+          ...data.message,
+          sessionId: forkFromSessionId, // Override with the correct session ID
+        }
       })
-
-      setForkTokenCount(data.tokenCount)
-      setArchiveOnFork(data.archiveOnFork)
     },
-    [events, session.id],
+    [events, session.id]
   )
 
   // Fork cancel handler - clears preview state
   const handleForkCancel = useCallback(() => {
-    setPreviewEventIndex(null)
-    setPendingForkMessage(null)
-    setForkTokenCount(null)
+    setForkPreviewData(null)
     // Also clear the response input when canceling fork
     responseEditor?.commands.setContent('')
   }, [responseEditor])
@@ -591,11 +584,9 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       /* Everything below here implies the responeEditor is not focused */
 
       // Check for fork mode first
-      if (previewEventIndex !== null) {
+      if (forkPreviewData !== null) {
         // Clear fork mode
-        setPreviewEventIndex(null)
-        setPendingForkMessage(null)
-        setForkTokenCount(null)
+        setForkPreviewData(null)
         responseEditor?.commands.setContent('')
       } else if (confirmingArchive) {
         setConfirmingArchive(false)
@@ -619,14 +610,14 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     },
     [
       isEditingSessionTitle,
-      previewEventIndex,
+      forkPreviewData,
       confirmingArchive,
       approvals.confirmingApprovalId,
       approvals.setConfirmingApprovalId,
       navigation.focusedEventId,
       navigation.setFocusedEventId,
       onClose,
-      // actions.setResponseInput,
+      responseEditor,
     ],
   )
 
@@ -1290,7 +1281,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                   expandedToolResult={expandedToolResult}
                   setExpandedToolResult={setExpandedToolResult}
                   setExpandedToolCall={setExpandedToolCall}
-                  maxEventIndex={previewEventIndex ?? undefined}
+                  maxEventIndex={forkPreviewData?.eventIndex ?? undefined}
                   shouldIgnoreMouseEvent={shouldIgnoreMouseEvent}
                   expandedTasks={expandedTasks}
                   toggleTaskGroup={toggleTaskGroup}
@@ -1349,16 +1340,16 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               parentSessionData={parentSessionData || parentSession || undefined}
               isResponding={actions.isResponding}
               handleContinueSession={actions.handleContinueSession}
-              isForkMode={actions.isForkMode}
-              forkTokenCount={forkTokenCount}
+              isForkMode={!!forkPreviewData}
+              forkTokenCount={forkPreviewData?.tokenCount}
               isDraft={isDraft}
               onLaunchDraft={handleLaunchDraft}
               onDiscardDraft={handleDiscardDraft}
               isLaunchingDraft={isLaunchingDraft}
               forkTurnNumber={
-                previewEventIndex !== null
+                forkPreviewData?.eventIndex !== undefined
                   ? events
-                      .slice(0, previewEventIndex)
+                      .slice(0, forkPreviewData.eventIndex)
                       .filter(e => e.eventType === 'message' && e.role === 'user').length
                   : undefined
               }
@@ -1371,12 +1362,12 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               onToggleDangerouslySkipPermissions={handleToggleDangerouslySkipPermissions}
               onToggleForkView={handleToggleForkView}
               // ActionButtons props
-              canFork={previewEventIndex === null && !isActivelyProcessing}
+              canFork={forkPreviewData === null && !isActivelyProcessing}
               bypassEnabled={dangerouslySkipPermissions}
               autoAcceptEnabled={autoAcceptEdits}
               isArchived={session.archived || false}
               onToggleArchive={handleToggleArchive}
-              previewEventIndex={previewEventIndex}
+              previewEventIndex={forkPreviewData?.eventIndex ?? null}
               isActivelyProcessing={isActivelyProcessing}
             />
             {/* Session mode indicator - shows fork, dangerous skip permissions or auto-accept */}
@@ -1386,15 +1377,15 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               dangerouslySkipPermissions={dangerouslySkipPermissions}
               dangerouslySkipPermissionsExpiresAt={dangerouslySkipPermissionsExpiresAt}
               sessionStatus={session.status}
-              isForkMode={previewEventIndex !== null}
+              isForkMode={!!forkPreviewData}
               forkTurnNumber={
-                previewEventIndex !== null
+                forkPreviewData?.eventIndex !== undefined
                   ? events
-                      .slice(0, previewEventIndex)
+                      .slice(0, forkPreviewData.eventIndex)
                       .filter(e => e.eventType === 'message' && e.role === 'user').length
                   : undefined
               }
-              forkTokenCount={forkTokenCount}
+              forkTokenCount={forkPreviewData?.tokenCount}
               className="mt-2"
               onToggleAutoAccept={handleToggleAutoAccept}
               onToggleBypass={handleToggleDangerouslySkipPermissions}
