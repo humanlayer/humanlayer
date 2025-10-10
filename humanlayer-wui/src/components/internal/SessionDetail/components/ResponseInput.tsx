@@ -398,7 +398,7 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
     if (isDragHover) {
       borderColorClass = 'border-[var(--terminal-accent)]'
     } else if (isDenying) {
-      placeholder = "Type your instructions here, then press Enter to deny with feedback..."
+      placeholder = 'Type your instructions here, then press Enter to deny with feedback...'
       if (isFocused) {
         borderColorClass = 'border-[var(--terminal-error)]'
       }
