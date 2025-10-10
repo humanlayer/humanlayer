@@ -604,14 +604,27 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         return
       }
 
+      // Check for denying state early - whether editor is focused or not
+      const isDenying = approvals.denyingApprovalId !== null
+
       if (responseEditor?.isFocused) {
         responseEditor.commands.blur()
+        // If we're denying, don't process further - let the next ESC cancel the deny
+        if (isDenying) {
+          return
+        }
         return
       }
 
-      /* Everything below here implies the responeEditor is not focused */
+      /* Everything below here implies the responseEditor is not focused */
 
-      // Check for fork mode first
+      // Cancel denial if in denying state
+      if (isDenying) {
+        approvals.handleCancelDeny()
+        return
+      }
+
+      // Check for fork mode
       if (previewEventIndex !== null) {
         // Clear fork mode
         setPreviewEventIndex(null)
@@ -644,9 +657,12 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       confirmingArchive,
       approvals.confirmingApprovalId,
       approvals.setConfirmingApprovalId,
+      approvals.denyingApprovalId,
+      approvals.handleCancelDeny,
       navigation.focusedEventId,
       navigation.setFocusedEventId,
       onClose,
+      responseEditor,
       // actions.setResponseInput,
     ],
   )
@@ -1322,7 +1338,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                   }
                   approvingApprovalId={approvals.approvingApprovalId}
                   denyingApprovalId={approvals.denyingApprovalId ?? undefined}
-                  setDenyingApprovalId={approvals.setDenyingApprovalId}
+                  setDenyingApprovalId={approvals.handleStartDeny}
                   onCancelDeny={approvals.handleCancelDeny}
                   focusSource={navigation.focusSource}
                   setFocusSource={navigation.setFocusSource}

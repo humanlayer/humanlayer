@@ -97,7 +97,12 @@ export function useSessionApprovals({
   const handleStartDeny = useCallback(
     (approvalId: string) => {
       setDenyingApprovalId(approvalId)
-      responseEditor?.commands.focus()
+
+      // Use setTimeout to ensure focus happens after all browser event handling
+      // This works around the browser's default focus behavior on button clicks
+      setTimeout(() => {
+        responseEditor?.commands.focus()
+      }, 0)
     },
     [responseEditor],
   )
