@@ -603,21 +603,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         return
       }
 
-      // Don't process escape if modals are open
-      if (forkViewOpen) {
-        return
-      }
-
-      // Don't process escape if dangerous skip permissions dialog is open
-      if (dangerousSkipPermissionsDialogOpen) {
-        return
-      }
-
-      // Don't process escape if tool result modal is open
-      if (expandedToolResult) {
-        return
-      }
-
       if (responseEditor?.isFocused) {
         responseEditor.commands.blur()
         return
@@ -656,9 +641,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       isEditingSessionTitle,
       previewEventIndex,
       confirmingArchive,
-      forkViewOpen,
-      dangerousSkipPermissionsDialogOpen,
-      expandedToolResult,
       approvals.confirmingApprovalId,
       approvals.setConfirmingApprovalId,
       navigation.focusedEventId,
