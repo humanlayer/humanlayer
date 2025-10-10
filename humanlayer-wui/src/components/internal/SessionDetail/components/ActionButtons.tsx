@@ -127,12 +127,7 @@ export const ActionButtons: FC<ActionButtonsProps> = ({
       {!isDraft && workingDir && onOpenInEditor && (
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-7 px-2"
-              onClick={onOpenInEditor}
-            >
+            <Button size="sm" variant="ghost" className="h-7 px-2" onClick={onOpenInEditor}>
               <Pencil className="h-3.5 w-3.5" />
             </Button>
           </TooltipTrigger>
