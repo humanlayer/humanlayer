@@ -13,42 +13,36 @@ import { HotkeyScopeBoundary } from '@/components/HotkeyScopeBoundary'
 import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
 
 // Import extracted components
-import { ConversationStream } from '../ConversationStream/ConversationStream'
-import { ToolResultModal } from './components/ToolResultModal'
-import { TodoWidget } from './components/TodoWidget'
-import { ActiveSessionInput } from './components/ActiveSessionInput'
-import { DraftLauncher } from './components/DraftLauncher'
-import { SentryErrorBoundary } from '@/components/ErrorBoundary'
-import { SessionModeIndicator } from './AutoAcceptIndicator'
-import { ForkViewModal } from './components/ForkViewModal'
-import { DangerouslySkipPermissionsDialog } from './DangerouslySkipPermissionsDialog'
-import { AdditionalDirectoriesDropdown } from './components/AdditionalDirectoriesDropdown'
-import { OmniSpinner } from './components/OmniSpinner'
+import { ConversationStream } from '../../ConversationStream/ConversationStream'
+import { ToolResultModal } from './ToolResultModal'
+import { TodoWidget } from './TodoWidget'
+import { ActiveSessionInput } from './ActiveSessionInput'
+import { SessionModeIndicator } from '../AutoAcceptIndicator'
+import { ForkViewModal } from './ForkViewModal'
+import { DangerouslySkipPermissionsDialog } from '../DangerouslySkipPermissionsDialog'
+import { AdditionalDirectoriesDropdown } from './AdditionalDirectoriesDropdown'
+import { OmniSpinner } from './OmniSpinner'
 
 // Import hooks
-import { useSessionActions } from './hooks/useSessionActions'
-import { useSessionApprovals } from './hooks/useSessionApprovals'
-import { useSessionNavigation } from './hooks/useSessionNavigation'
-import { useTaskGrouping } from './hooks/useTaskGrouping'
-import { useSessionClipboard } from './hooks/useSessionClipboard'
+import { useSessionActions } from '../hooks/useSessionActions'
+import { useSessionApprovals } from '../hooks/useSessionApprovals'
+import { useSessionNavigation } from '../hooks/useSessionNavigation'
+import { useTaskGrouping } from '../hooks/useTaskGrouping'
+import { useSessionClipboard } from '../hooks/useSessionClipboard'
 import { logger } from '@/lib/logging'
 
-interface SessionDetailProps {
+interface ActiveSessionProps {
   session: Session
   onClose: () => void
 }
 
-// SessionDetail uses its own scope so it can be properly disabled when modals are open
-export const SessionDetailHotkeysScope = HOTKEY_SCOPES.SESSION_DETAIL
-
-function SessionDetail({ session, onClose }: SessionDetailProps) {
-  // Note: enableScope/disableScope removed - now handled by HotkeyScopeBoundary
-
-  // Check if this is a draft session
-  const isDraft = session.status === SessionStatus.Draft
-
+/**
+ * ActiveSession - Orchestrator component for active and archived sessions
+ * This component handles all the complex logic for active sessions.
+ * It does NOT handle draft sessions - those use DraftLauncher instead.
+ */
+export function ActiveSession({ session, onClose }: ActiveSessionProps) {
   // Determine the appropriate scope based on session state
-  // Draft sessions are handled by DraftLauncher which manages its own scope
   const detailScope = session?.archived
     ? HOTKEY_SCOPES.SESSION_DETAIL_ARCHIVED
     : HOTKEY_SCOPES.SESSION_DETAIL
@@ -60,7 +54,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [forkPreviewData, setForkPreviewData] = useState<{
     eventIndex: number // For scrolling in ConversationStream
     message: ConversationEvent // For execution in useSessionActions
-    tokenCount: number | null // For display in ResponseInput
+    tokenCount: number | null // For display in ActiveSessionInput
     archiveOnFork: boolean // For execution preference
   } | null>(null)
   const [confirmingArchive, setConfirmingArchive] = useState(false)
@@ -79,7 +73,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const confirmingArchiveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Get session from store to access auto_accept_edits and dangerouslySkipPermissions
-  // Always prioritize store values as they are the source of truth for runtime state
   const sessionFromStore = useStore(state => state.sessions.find(s => s.id === session.id))
   const updateSessionOptimistic = useStore(state => state.updateSessionOptimistic)
   const fetchActiveSessionDetail = useStore(state => state.fetchActiveSessionDetail)
@@ -109,40 +102,38 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     }
   }, [session.parentSessionId, parentSession])
 
-  // These computed values now only apply to active sessions, not drafts
+  // These computed values only apply to active sessions
   const autoAcceptEdits = useMemo(() => {
-    if (!session || isDraft) return false
+    if (!session) return false
     return sessionFromStore?.autoAcceptEdits ?? session.autoAcceptEdits ?? false
-  }, [session, isDraft, sessionFromStore?.autoAcceptEdits])
+  }, [session, sessionFromStore?.autoAcceptEdits])
 
   const dangerouslySkipPermissions = useMemo(() => {
-    if (!session || isDraft) return false
+    if (!session) return false
     return sessionFromStore?.dangerouslySkipPermissions ?? session.dangerouslySkipPermissions ?? false
-  }, [session, isDraft, sessionFromStore?.dangerouslySkipPermissions])
+  }, [session, sessionFromStore?.dangerouslySkipPermissions])
 
   const dangerouslySkipPermissionsExpiresAt =
     sessionFromStore?.dangerouslySkipPermissionsExpiresAt !== undefined
       ? sessionFromStore.dangerouslySkipPermissionsExpiresAt?.toISOString()
       : session.dangerouslySkipPermissionsExpiresAt?.toISOString()
 
-  // Scope is now handled by HotkeyScopeBoundary wrapper
+  // Get events for sidebar access
+  const { events } = useConversation(session.id)
 
-  // Get events for sidebar access - only poll for non-draft sessions
-  const { events } = useConversation(isDraft ? undefined : session.id)
+  // Use task grouping
+  const { hasSubTasks, expandedTasks, toggleTaskGroup } = useTaskGrouping(events)
 
-  // Use task grouping - pass empty array for drafts to avoid unnecessary processing
-  const { hasSubTasks, expandedTasks, toggleTaskGroup } = useTaskGrouping(isDraft ? [] : events)
-
-  // Use navigation hook - pass empty events for drafts
+  // Use navigation hook
   const navigation = useSessionNavigation({
-    events: isDraft ? [] : events,
+    events,
     hasSubTasks,
     expandedTasks,
     toggleTaskGroup,
     expandedToolResult,
     setExpandedToolResult,
     setExpandedToolCall,
-    disabled: forkViewOpen, // Disable navigation when fork view is open
+    disabled: forkViewOpen,
     startKeyboardNavigation,
     scope: detailScope,
   })
@@ -178,38 +169,27 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
 
   // Handle auto-focus when navigating with approval parameter
   useEffect(() => {
-    // Only run when we actually have an approval ID to focus
     if (!targetApprovalId || events.length === 0) {
       return
     }
 
-    // Skip if we've already processed this approval ID
     if (processedApprovalRef.current === targetApprovalId) {
       return
     }
 
     if (approvals.focusApprovalById) {
-      // Mark as processed before calling to prevent re-runs
       processedApprovalRef.current = targetApprovalId
-
-      // Use the hook's focus method for consistency
-      // This will try to match the specific approval, or fallback to most recent pending
       approvals.focusApprovalById(targetApprovalId)
-
-      // Mark that we've already scrolled for this session to prevent auto-scroll to bottom
-      // when the approval parameter is cleared
       hasScrolledToBottomRef.current = true
 
       // Clear the parameter after focusing
       searchParams.delete('approval')
       setSearchParams(searchParams, { replace: true })
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [targetApprovalId, events?.length > 0, approvals.focusApprovalById]) // Minimal deps to prevent constant re-runs
+  }, [targetApprovalId, events?.length > 0, approvals.focusApprovalById])
 
   // Add fork commit handler
   const handleForkCommit = useCallback(() => {
-    // Reset preview state after successful fork
     setForkPreviewData(null)
     setForkViewOpen(false)
   }, [])
@@ -224,7 +204,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     scope: detailScope,
   })
 
-  // Fork preview handler - receives data from ForkViewModal
+  // Fork preview handler
   const handleForkPreview = useCallback(
     (data: {
       eventIndex: number
@@ -232,7 +212,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       tokenCount: number | null
       archiveOnFork: boolean
     }) => {
-      // Find the session ID from the event before this one
       const previousEvent = data.eventIndex > 0 ? events[data.eventIndex - 1] : null
       const forkFromSessionId = previousEvent?.sessionId || session.id
 
@@ -240,27 +219,23 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         ...data,
         message: {
           ...data.message,
-          sessionId: forkFromSessionId, // Override with the correct session ID
+          sessionId: forkFromSessionId,
         },
       })
     },
     [events, session.id],
   )
 
-  // Fork cancel handler - clears preview state
+  // Fork cancel handler
   const handleForkCancel = useCallback(() => {
     setForkPreviewData(null)
-    // Also clear the response input when canceling fork
     responseEditor?.commands.setContent('')
   }, [responseEditor])
-
-  // We no longer automatically clear preview when closing
-  // This allows the preview to persist after selecting with Enter
 
   // Screen size detection for responsive layout
   useEffect(() => {
     const checkScreenSize = () => {
-      setIsWideView(window.innerWidth >= 1024) // lg breakpoint
+      setIsWideView(window.innerWidth >= 1024)
     }
 
     checkScreenSize()
@@ -272,7 +247,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   useEffect(() => {
     if (session.id) {
       hasScrolledToBottomRef.current = false
-      // Clear cached container ref when session changes
       conversationContainerRef.current = null
     }
   }, [session.id])
@@ -282,16 +256,13 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     const hasApprovalParam = targetApprovalId !== null
 
     if (!hasScrolledToBottomRef.current && events?.length > 0 && !hasApprovalParam) {
-      // Try multiple times with increasing delays to handle rendering delays
       const scrollAttempts = [100, 300, 500]
       const timers: ReturnType<typeof setTimeout>[] = []
 
       scrollAttempts.forEach(delay => {
         const timer = setTimeout(() => {
           if (!hasScrolledToBottomRef.current) {
-            // First try to use cached ref, then query DOM if needed
             let container = conversationContainerRef.current
-            // Verify cached element is still in the DOM
             if (container && !document.body.contains(container)) {
               container = null
               conversationContainerRef.current = null
@@ -299,7 +270,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
 
             if (!container) {
               container = document.querySelector('[data-conversation-container]')
-              // Cache the container for future use if found
               if (container) {
                 conversationContainerRef.current = container as HTMLElement
               }
@@ -308,7 +278,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
             if (container) {
               container.scrollTop = container.scrollHeight
               hasScrolledToBottomRef.current = true
-              // Clear remaining timers once successful
               timers.forEach(t => clearTimeout(t))
             }
           }
@@ -316,7 +285,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         timers.push(timer)
       })
 
-      // Cleanup function to clear timers on unmount or deps change
       return () => {
         timers.forEach(t => clearTimeout(t))
       }
@@ -336,7 +304,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   // Handle updating additional directories
   const handleUpdateAdditionalDirectories = async (directories: string[]) => {
     await daemonClient.updateSession(session.id, { additionalDirectories: directories })
-    // Update the local store and refresh session data
     useStore.getState().updateSession(session.id, { additionalDirectories: directories })
   }
 
@@ -347,23 +314,20 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     ?.toReversed()
     .find(e => e.eventType === 'tool_call' && e.toolName === 'TodoWrite')
 
-  // Fork view toggle handler - Trust the scope system to handle modal conflicts
+  // Fork view toggle handler
   const handleToggleForkView = useCallback(() => {
     setForkViewOpen(!forkViewOpen)
   }, [forkViewOpen])
 
-  // Clear focus on escape, then close if nothing focused
-  // This needs special handling for confirmingApprovalId
-
+  // Escape key handler
   useHotkeys(
     'escape',
     ev => {
       if ((ev.target as HTMLElement)?.dataset.slot === 'dialog-close') {
-        logger.warn('Ignoring onClose triggered by dialog-close in SessionDetail')
+        logger.warn('Ignoring onClose triggered by dialog-close in ActiveSession')
         return null
       }
 
-      // Don't process escape if editing session title
       if (isEditingSessionTitle) {
         return
       }
@@ -373,16 +337,11 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         return
       }
 
-      /* Everything below here implies the responeEditor is not focused */
-
-      // Check for fork mode first
       if (forkPreviewData !== null) {
-        // Clear fork mode
         setForkPreviewData(null)
         responseEditor?.commands.setContent('')
       } else if (confirmingArchive) {
         setConfirmingArchive(false)
-        // Clear timeout if exists
         if (confirmingArchiveTimeoutRef.current) {
           clearTimeout(confirmingArchiveTimeoutRef.current)
           confirmingArchiveTimeoutRef.current = null
@@ -392,12 +351,11 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       } else if (navigation.focusedEventId) {
         navigation.setFocusedEventId(null)
       } else {
-        // Simply close the session detail
         onClose()
       }
     },
     {
-      enableOnFormTags: true, // Enable escape key in form elements like textarea
+      enableOnFormTags: true,
       scopes: [detailScope],
     },
     [
@@ -413,10 +371,9 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     ],
   )
 
-  // Create reusable handler for toggling auto-accept (active sessions only)
+  // Toggle auto-accept handler
   const handleToggleAutoAccept = useCallback(async () => {
-    // Only handle active sessions here, drafts are handled internally in DraftLauncherInput
-    if (!session || isDraft) return
+    if (!session) return
 
     logger.log('toggleAutoAcceptEdits', autoAcceptEdits)
 
@@ -427,14 +384,12 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       logger.error('Failed to toggle auto-accept mode:', error)
       toast.error('Failed to toggle auto-accept mode')
     }
-  }, [session, isDraft, session.id, autoAcceptEdits, updateSessionOptimistic])
+  }, [session, session.id, autoAcceptEdits, updateSessionOptimistic])
 
-  // Create reusable handler for toggling dangerously skip permissions (active sessions only)
+  // Toggle dangerously skip permissions handler
   const handleToggleDangerouslySkipPermissions = useCallback(async () => {
-    // Only handle active sessions here, drafts are handled internally in DraftLauncherInput
-    if (!session || isDraft) return
+    if (!session) return
 
-    // Get the current value from the store directly to avoid stale closure
     let currentSession = useStore.getState().sessions.find(s => s.id === session.id)
 
     if (!currentSession) {
@@ -445,7 +400,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     const currentDangerouslySkipPermissions = currentSession?.dangerouslySkipPermissions ?? false
 
     if (currentDangerouslySkipPermissions) {
-      // Disable dangerous skip permissions
       try {
         await updateSessionOptimistic(session.id, {
           dangerouslySkipPermissions: false,
@@ -456,52 +410,43 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         toast.error('Failed to disable dangerous skip permissions')
       }
     } else {
-      // Show confirmation dialog
       setDangerousSkipPermissionsDialogOpen(true)
     }
-  }, [session, isDraft, session.id, updateSessionOptimistic])
+  }, [session, session.id, updateSessionOptimistic])
 
-  // ===== NON-DRAFT MODE HOTKEYS =====
-  // These only work when NOT in draft mode (SESSION_DETAIL scope)
-
-  // Option+A handler for auto-accept edits mode (non-draft version)
+  // Option+A handler for auto-accept edits mode
   useHotkeys(
     'alt+a, option+a',
     () => {
-      // preventDefault handled by library with option below
       handleToggleAutoAccept()
     },
     {
-      enabled: !isDraft,
       preventDefault: true,
       enableOnFormTags: ['INPUT', 'TEXTAREA', 'SELECT'],
-      enableOnContentEditable: true, // Critical: enables hotkey on TipTap editor
+      enableOnContentEditable: true,
       scopes: [HOTKEY_SCOPES.SESSION_DETAIL, HOTKEY_SCOPES.SESSION_DETAIL_ARCHIVED],
     },
     [handleToggleAutoAccept],
   )
 
-  // Option+Y handler for dangerously skip permissions mode (non-draft version)
+  // Option+Y handler for dangerously skip permissions mode
   useHotkeys(
     'alt+y, option+y',
     () => {
-      // preventDefault handled by library with option below
       handleToggleDangerouslySkipPermissions()
     },
     {
-      enabled: !isDraft,
       preventDefault: true,
       enableOnFormTags: ['INPUT', 'TEXTAREA', 'SELECT'],
-      enableOnContentEditable: true, // Critical: enables hotkey on TipTap editor
+      enableOnContentEditable: true,
       scopes: [HOTKEY_SCOPES.SESSION_DETAIL, HOTKEY_SCOPES.SESSION_DETAIL_ARCHIVED],
     },
     [handleToggleDangerouslySkipPermissions],
   )
 
-  // Handle dialog confirmation (active sessions only)
+  // Handle dialog confirmation
   const handleDangerousSkipPermissionsConfirm = async (timeoutMinutes: number | null) => {
-    // Only handle active sessions here, drafts don't show this dialog
-    if (!session || isDraft) return
+    if (!session) return
 
     try {
       const expiresAt = timeoutMinutes
@@ -521,11 +466,11 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   // Track if g>e was recently pressed to prevent 'e' from firing
   const gePressedRef = useRef<number | null>(null)
 
-  // Handle g>e navigation (to prevent 'e' from archiving)
+  // Handle g>e navigation
   useHotkeys(
     'g>e',
     () => {
-      console.log('[SessionDetail] g>e captured, blocking archive')
+      console.log('[ActiveSession] g>e captured, blocking archive')
       gePressedRef.current = Date.now()
     },
     {
@@ -534,28 +479,22 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     },
   )
 
-  // Add hotkey to archive session ('e' key)
+  // Archive session hotkey
   useHotkeys(
     'e',
     async () => {
-      console.log('[SessionDetail] archive hotkey "e" fired')
+      console.log('[ActiveSession] archive hotkey "e" fired')
 
-      // Check if g>e was pressed recently (within 50ms)
       if (gePressedRef.current && Date.now() - gePressedRef.current < 50) {
-        console.log('[SessionDetail] Blocking archive due to recent g>e press')
+        console.log('[ActiveSession] Blocking archive due to recent g>e press')
         return
       }
 
-      // TODO(3): The timeout clearing logic (using confirmingArchiveTimeoutRef) is duplicated in multiple places.
-      // Consider refactoring this into a helper function to reduce repetition.
-
-      // Clear any existing timeout
       if (confirmingArchiveTimeoutRef.current) {
         clearTimeout(confirmingArchiveTimeoutRef.current)
         confirmingArchiveTimeoutRef.current = null
       }
 
-      // Check if session is active (requires confirmation)
       const isActiveSession = (
         [SessionStatus.Starting, SessionStatus.Running, SessionStatus.WaitingInput] as SessionStatus[]
       ).includes(session.status)
@@ -563,18 +502,12 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       const isArchiving = !session.archived
 
       if (isActiveSession && !confirmingArchive) {
-        // First press - show warning
         setConfirmingArchive(true)
-        // TODO(3): Consider using a Dialog instead of toast for archive confirmation.
-        // This would improve accessibility (mouse users can click buttons) and avoid
-        // complexity around timeout management. The current toast approach works but
-        // isn't ideal for all users.
         toast.warning('Press e again to archive active session', {
           description: 'This session is still active. Press e again within 3 seconds to confirm.',
           duration: 3000,
         })
 
-        // Set timeout to reset confirmation state
         confirmingArchiveTimeoutRef.current = setTimeout(() => {
           setConfirmingArchive(false)
           confirmingArchiveTimeoutRef.current = null
@@ -582,20 +515,15 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         return
       }
 
-      // Either second press for active session or immediate archive for completed/failed
       try {
         await useStore.getState().archiveSession(session.id, isArchiving)
-
-        // Clear confirmation state
         setConfirmingArchive(false)
 
-        // Show success notification matching list view behavior
         toast.success(isArchiving ? 'Session archived' : 'Session unarchived', {
           description: session.summary || 'Untitled session',
           duration: 3000,
         })
 
-        // Navigate back to session list
         onClose()
       } catch (error) {
         toast.error('Failed to archive session', {
@@ -611,18 +539,16 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     [session.id, session.archived, session.summary, session.status, onClose, confirmingArchive],
   )
 
-  // Add hotkey to open fork view (Meta+Y)
-  // Only available in active session scopes, not in draft launcher
+  // Fork view hotkey (Meta+Y)
   useHotkeys(
     'meta+y, ctrl+y',
     () => {
-      // preventDefault handled by library with option below
       handleToggleForkView()
     },
     {
       preventDefault: true,
       enableOnFormTags: ['INPUT', 'TEXTAREA', 'SELECT'],
-      enableOnContentEditable: true, // Critical: enables hotkey on TipTap editor
+      enableOnContentEditable: true,
       scopes: [HOTKEY_SCOPES.SESSION_DETAIL, HOTKEY_SCOPES.SESSION_DETAIL_ARCHIVED],
     },
     [handleToggleForkView],
@@ -630,7 +556,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
 
   // Create archive handler
   const handleToggleArchive = useCallback(async () => {
-    // Check if session is active (requires confirmation)
     const isActiveSession = [
       SessionStatus.Starting,
       SessionStatus.Running,
@@ -640,14 +565,12 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     const isArchiving = !session.archived
 
     if (isActiveSession && !confirmingArchive) {
-      // First press - show warning
       setConfirmingArchive(true)
       toast.warning('Press e again to archive active session', {
         description: 'This session is still active. Press e again within 3 seconds to confirm.',
         duration: 3000,
       })
 
-      // Set timeout to reset confirmation state
       confirmingArchiveTimeoutRef.current = setTimeout(() => {
         setConfirmingArchive(false)
         confirmingArchiveTimeoutRef.current = null
@@ -655,20 +578,15 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       return
     }
 
-    // Either second press for active session or immediate archive for completed/failed
     try {
       await useStore.getState().archiveSession(session.id, isArchiving)
-
-      // Clear confirmation state
       setConfirmingArchive(false)
 
-      // Show success notification matching list view behavior
       toast.success(isArchiving ? 'Session archived' : 'Session unarchived', {
         description: session.summary || 'Untitled session',
         duration: 3000,
       })
 
-      // Navigate back to session list
       onClose()
     } catch (error) {
       toast.error('Failed to archive session', {
@@ -678,7 +596,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     }
   }, [session.id, session.archived, session.summary, session.status, onClose, confirmingArchive])
 
-  // Add Shift+G hotkey to scroll to bottom
+  // Vim navigation hotkeys
   useHotkeys(
     'shift+g',
     () => {
@@ -687,7 +605,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       const container = document.querySelector('[data-conversation-container]')
       if (container) {
         container.scrollTop = container.scrollHeight
-        // Focus the last navigable item
         if (navigation.navigableItems.length > 0) {
           const lastItem = navigation.navigableItems[navigation.navigableItems.length - 1]
           navigation.setFocusedEventId(lastItem.id)
@@ -701,7 +618,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     [navigation.navigableItems, navigation.setFocusedEventId, navigation.setFocusSource],
   )
 
-  // Add 'gg' to jump to top of conversation (vim-style)
   useHotkeys(
     'g>g',
     () => {
@@ -710,7 +626,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       const container = document.querySelector('[data-conversation-container]')
       if (container) {
         container.scrollTop = 0
-        // Focus the first navigable item
         if (navigation.navigableItems.length > 0) {
           const firstItem = navigation.navigableItems[0]
           navigation.setFocusedEventId(firstItem.id)
@@ -726,7 +641,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     [navigation.navigableItems, navigation.setFocusedEventId, navigation.setFocusSource],
   )
 
-  // Add Enter key to focus text input
+  // Enter key to focus text input
   useHotkeys(
     'enter',
     () => {
@@ -741,7 +656,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     },
   )
 
-  // Toggle directories dropdown hotkey
+  // Toggle directories dropdown
   useHotkeys(
     'shift+d',
     () => {
@@ -761,7 +676,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     'shift+r',
     e => {
       e.preventDefault()
-      // Trigger editing in breadcrumb bar
       setIsEditingSessionTitle(true)
     },
     {
@@ -773,13 +687,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     [setIsEditingSessionTitle, approvals.confirmingApprovalId, expandedToolResult],
   )
 
-  // Don't steal scope here - SessionDetail is the base layer
-  // Only modals opening on top should steal scope
-
-  // Note: Most hotkeys are handled by the hooks (ctrl+x, r, p, i, a, d)
-  // Only the escape key needs special handling here for confirmingApprovalId
-
-  // Check if there are pending approvals out of view when in waiting_input status
+  // Check if there are pending approvals out of view
   useEffect(() => {
     const checkPendingApprovalVisibility = () => {
       if (session.status === SessionStatus.WaitingInput) {
@@ -788,8 +696,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
           const container = document.querySelector('[data-conversation-container]')
           const element = container?.querySelector(`[data-event-id="${pendingEvent.id}"]`)
           if (container && element) {
-            // Check if the approve/deny buttons are visible
-            // Look for buttons containing the approval keyboard shortcuts
             const buttons = element.querySelectorAll('button')
             let approveButton = null
             buttons.forEach(btn => {
@@ -802,7 +708,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
             const elementRect = targetElement.getBoundingClientRect()
             const containerRect = container.getBoundingClientRect()
 
-            // Consider the buttons in view if they're at least partially visible
             const inView =
               elementRect.top < containerRect.bottom && elementRect.bottom > containerRect.top
 
@@ -816,10 +721,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       }
     }
 
-    // Initial check
     checkPendingApprovalVisibility()
 
-    // Add scroll listener
     const container = document.querySelector('[data-conversation-container]')
     if (container) {
       container.addEventListener('scroll', checkPendingApprovalVisibility)
@@ -834,18 +737,11 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     cardVerticalPadding = `pt-3 ${cardLoadingLowerPadding}`
   }
 
-  // For drafts, render DraftLauncher directly with its own scope
-  if (isDraft) {
-    return (
-      <DraftLauncher session={session} onSessionUpdated={() => fetchActiveSessionDetail(session.id)} />
-    )
-  }
-
-  // Active sessions use SessionDetail scope
+  // Render active session UI
   return (
     <HotkeyScopeBoundary
       scope={detailScope}
-      componentName={`SessionDetail-${session?.archived ? 'archived' : 'normal'}`}
+      componentName={`ActiveSession-${session?.archived ? 'archived' : 'normal'}`}
     >
       <section className="flex flex-col h-full gap-3">
         {/* Header with working directory dropdown */}
@@ -867,8 +763,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
             isOpen={forkViewOpen}
             onOpenChange={open => {
               setForkViewOpen(open)
-              // Focus the input when closing the fork modal
-              // Use longer delay to ensure it happens after all dialog cleanup
               if (!open && responseEditor) {
                 setTimeout(() => {
                   responseEditor.commands.focus()
@@ -882,7 +776,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         </div>
 
         <div className={`flex flex-1 gap-4 ${isWideView ? 'flex-row' : 'flex-col'} min-h-0`}>
-          {/* Conversation content and Loading */}
+          {/* Conversation content */}
           <Card
             className={`Conversation-Card w-full relative ${cardVerticalPadding} flex flex-col min-h-0`}
           >
@@ -949,7 +843,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
           )}
         </div>
 
-        {/* Active session input - specialized for active sessions */}
+        {/* Active session input */}
         <ActiveSessionInput
           session={session}
           parentSessionData={parentSessionData || parentSession || undefined}
@@ -965,7 +859,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
               : undefined
           }
           onModelChange={() => {
-            // Refresh session data if needed
             fetchActiveSessionDetail(session.id)
           }}
           denyingApprovalId={approvals.denyingApprovalId ?? undefined}
@@ -976,7 +869,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
           onToggleAutoAccept={handleToggleAutoAccept}
           onToggleDangerouslySkipPermissions={handleToggleDangerouslySkipPermissions}
           onToggleForkView={handleToggleForkView}
-          // ActionButtons props
           canFork={forkPreviewData === null && !isActivelyProcessing}
           bypassEnabled={dangerouslySkipPermissions}
           autoAcceptEnabled={autoAcceptEdits}
@@ -984,7 +876,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
           onToggleArchive={handleToggleArchive}
         />
 
-        {/* Session mode indicator - shows fork, dangerous skip permissions or auto-accept */}
+        {/* Session mode indicator */}
         <SessionModeIndicator
           sessionId={session.id}
           autoAcceptEdits={autoAcceptEdits}
@@ -1027,23 +919,3 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     </HotkeyScopeBoundary>
   )
 }
-
-// Export wrapped component
-const SessionDetailWithErrorBoundary = (props: SessionDetailProps) => {
-  // const navigate = useNavigate()
-
-  return (
-    <SentryErrorBoundary
-      variant="session-detail"
-      componentName="SessionDetail"
-      handleRefresh={() => {
-        window.location.href = `/#/sessions/${props.session.id}`
-      }}
-      refreshButtonText="Reload Session"
-    >
-      <SessionDetail {...props} />
-    </SentryErrorBoundary>
-  )
-}
-
-export default SessionDetailWithErrorBoundary
