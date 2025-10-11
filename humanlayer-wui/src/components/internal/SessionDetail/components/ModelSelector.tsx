@@ -1,21 +1,25 @@
-import { useState, useEffect } from 'react'
-import { GitBranch, AlertCircle, CheckCircle, Pencil, Eye, EyeOff } from 'lucide-react'
+import { useStore } from '@/AppStore'
+import { HotkeyScopeBoundary } from '@/components/HotkeyScopeBoundary'
+import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
+import { useFocusTrap } from '@/hooks/useFocusTrap'
 import { daemonClient } from '@/lib/daemon'
-import { Session, ConfigStatus } from '@/lib/daemon/types'
+import { ConfigStatus, Session } from '@/lib/daemon/types'
+import { AlertCircle, CheckCircle, Eye, EyeOff, Pencil } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useHotkeys } from 'react-hotkeys-hook'
 import { toast } from 'sonner'
-import { useStore } from '@/AppStore'
 
 interface ModelSelectorProps {
   session: Session
@@ -79,6 +83,11 @@ function ModelSelectorContent({
     return localStorage.getItem('humanlayer-openrouter-api-key') || ''
   })
   const [showPassword, setShowPassword] = useState(false)
+
+  // Focus management
+  const focusTrapRef = useFocusTrap(true, {
+    allowTabNavigation: false,
+  })
 
   // Update local state when session changes
   useEffect(() => {
@@ -252,8 +261,30 @@ function ModelSelectorContent({
     }
   }
 
+  // Register CMD+ENTER to apply changes
+  useHotkeys(
+    'mod+enter',
+    e => {
+      e.preventDefault()
+      e.stopPropagation()
+      if (
+        hasChanges &&
+        !isUpdating &&
+        (provider !== 'openrouter' || canApplyOpenRouter) &&
+        (provider !== 'baseten' || canApplyBaseten) &&
+        (provider === 'anthropic' || customModel.trim())
+      ) {
+        handleApply()
+      }
+    },
+    {
+      scopes: [HOTKEY_SCOPES.SELECT_MODEL_MODAL],
+      enableOnFormTags: true,
+    },
+  )
+
   return (
-    <>
+    <div ref={focusTrapRef}>
       <DialogHeader>
         <DialogTitle>Model Configuration</DialogTitle>
         {isAdvancedProvidersEnabled && (
@@ -462,10 +493,15 @@ function ModelSelectorContent({
             size="sm"
           >
             {isUpdating ? 'Applying...' : 'Apply'}
+            {!isUpdating && (
+              <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">
+                {navigator.platform.toLowerCase().includes('mac') ? '⌘' : 'Ctrl'}+ENTER
+              </kbd>
+            )}
           </Button>
         </div>
       </div>
-    </>
+    </div>
   )
 }
 
@@ -481,41 +517,49 @@ export function ModelSelector({
   const isOpen = open ?? internalOpen
   const setIsOpen = onOpenChange ?? setInternalOpen
 
-  return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      {/* Only show trigger if not controlled externally */}
-      {!open && !onOpenChange && (
-        <DialogTrigger asChild>
-          <Button
-            variant="ghost"
-            size="sm"
-            className={`h-8 w-8 p-0 ${className}`}
-            title="Model Configuration"
-          >
-            <GitBranch className="h-4 w-4" />
-          </Button>
-        </DialogTrigger>
-      )}
 
-      <DialogContent
-        className="max-w-md"
-        onInteractOutside={e => {
-          // Prevent closing when clicking outside if there are unsaved changes
-          e.preventDefault()
-        }}
-        onEscapeKeyDown={e => {
-          // Let the dialog handle escape
-          e.stopPropagation()
-        }}
-      >
-        {isOpen && (
-          <ModelSelectorContent
-            session={session}
-            onModelChange={onModelChange}
-            onClose={() => setIsOpen(false)}
-          />
+  return (
+    <HotkeyScopeBoundary
+      scope={HOTKEY_SCOPES.SELECT_MODEL_MODAL}
+      isActive={isOpen}
+      rootScopeDisabled={true}
+      componentName="ModelSelector"
+    >
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        {/* Only show trigger if not controlled externally */}
+        {!open && !onOpenChange && (
+          <DialogTrigger asChild >
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`h-8 w-8 p-0 ${className}`}
+              title="Model Configuration"
+            >
+              
+            </Button>
+          </DialogTrigger>
         )}
-      </DialogContent>
-    </Dialog>
+
+        <DialogContent
+          className="max-w-md"
+          onInteractOutside={e => {
+            // Prevent closing when clicking outside if there are unsaved changes
+            e.preventDefault()
+          }}
+          onEscapeKeyDown={e => {
+            // Let the dialog handle escape
+            e.stopPropagation()
+          }}
+        >
+          {isOpen && (
+            <ModelSelectorContent
+              session={session}
+              onModelChange={onModelChange}
+              onClose={() => setIsOpen(false)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+    </HotkeyScopeBoundary>
   )
 }
