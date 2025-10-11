@@ -50,7 +50,10 @@ interface ActiveSessionInputProps {
  * This component handles continue/interrupt/deny operations for running sessions.
  * It does NOT handle draft sessions - those use DraftLauncherInput instead.
  */
-export const ActiveSessionInput = forwardRef<{ focus: () => void; blur?: () => void }, ActiveSessionInputProps>(
+export const ActiveSessionInput = forwardRef<
+  { focus: () => void; blur?: () => void },
+  ActiveSessionInputProps
+>(
   (
     {
       session,

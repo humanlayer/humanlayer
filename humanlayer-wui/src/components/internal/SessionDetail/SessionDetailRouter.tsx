@@ -24,10 +24,7 @@ function SessionDetailRouter({ session, onClose }: SessionDetailProps) {
   // Single routing decision - the ONLY isDraft check in the entire flow
   if (session.status === SessionStatus.Draft) {
     return (
-      <DraftLauncher
-        session={session}
-        onSessionUpdated={() => fetchActiveSessionDetail(session.id)}
-      />
+      <DraftLauncher session={session} onSessionUpdated={() => fetchActiveSessionDetail(session.id)} />
     )
   }
 
