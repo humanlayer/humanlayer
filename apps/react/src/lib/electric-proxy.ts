@@ -20,7 +20,7 @@ export async function proxyToElectric(request: Request, table: string) {
 	const requestClone = request.clone()
 	const headersClone = new Headers(requestClone.headers)
 
-	console.log(`Fetching shape from Admin Electric: ${originUrl.toString()}`)
+	// console.log(`Fetching shape from Admin Electric: ${originUrl.toString()}`)
 
 	const response = await fetch(originUrl.toString(), {
 		headers: headersClone,

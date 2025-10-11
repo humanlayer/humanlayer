@@ -2,6 +2,7 @@ import {
 	isChangeMessage,
 	isControlMessage,
 	type Message,
+	type Offset,
 	ShapeStream,
 } from '@electric-sql/client'
 import { toBase64 } from 'lib0/buffer'
@@ -65,6 +66,11 @@ export class ElectricProvider extends ObservableV2<ObservableProvider> {
 	private exitHandler?: () => void
 
 	private awarenessState: Record<string, number | string> | null = null
+
+	private resume: {
+		operations?: { offset: Offset; handle: string }
+		awareness?: { offset: Offset; handle: string }
+	} = {}
 
 	constructor(
 		baseUrl: string,
@@ -192,7 +198,7 @@ export class ElectricProvider extends ObservableV2<ObservableProvider> {
 		const op = toBase64(encoding.toUint8Array(encoder))
 		const room = this.roomName
 
-		console.log(`sending operation to room ${room}`)
+		// console.log(`sending operation to room ${room}`)
 		return fetch(
 			new URL('/v1/thoughts-document-operations', this.baseUrl),
 			{
@@ -247,72 +253,107 @@ export class ElectricProvider extends ObservableV2<ObservableProvider> {
 
 			console.log(`Setting up shape stream for room: ${this.roomName}`)
 
-			this.operationsStream = new ShapeStream<OperationMessage>({
-				url: this.baseUrl + `/thoughts-document-operations`,
-				params: {
-					where: `thoughts_document_id = '${this.roomName}'`,
-				},
-				parser: parseToDecoder,
-				subscribe: true,
-			})
+			try {
+				const operationsUrl = this.baseUrl + `/thoughts-document-operations`
+				const awarenessUrl = this.baseUrl + `/awareness`
 
-			this.awarenessStream = new ShapeStream({
-				url: this.baseUrl + `/awareness`,
-				params: {
-					where: `thoughts_document_id = '${this.roomName}'`,
-				},
-				parser: { ...parseToDecoderLazy, ...paserToTimestamptz },
-			})
+				console.log(`Creating operations stream:`, operationsUrl, `where thoughts_document_id = '${this.roomName}'`)
+				console.log(`Creating awareness stream:`, awarenessUrl, `where thoughts_document_id = '${this.roomName}'`)
+
+				this.operationsStream = new ShapeStream<OperationMessage>({
+					url: operationsUrl,
+					params: {
+						where: `thoughts_document_id = '${this.roomName}'`,
+					},
+					parser: parseToDecoder,
+					subscribe: true,
+					...this.resume.operations,
+				})
+
+				this.awarenessStream = new ShapeStream({
+					url: awarenessUrl,
+					params: {
+						where: `thoughts_document_id = '${this.roomName}'`,
+					},
+					parser: { ...parseToDecoderLazy, ...paserToTimestamptz },
+					...this.resume.awareness,
+				})
+
+				console.log(`Shape streams created successfully`)
+			} catch (error) {
+				console.error(`Error setting up shape streams:`, error)
+				this.operationsStream = undefined
+				this.awarenessStream = undefined
+				return
+			}
+
+			const updateShapeState = (
+				name: `operations` | `awareness`,
+				offset: Offset,
+				handle: string,
+			) => {
+				this.resume[name] = { offset, handle }
+				// TODO: persist to IndexedDB for offline support
+			}
 
 			const handleSyncMessage = (
 				messages: Message<OperationMessage>[],
 			) => {
-				messages.forEach((message) => {
-					if (isChangeMessage(message) && message.value.op) {
-						const decoder = message.value.op
-						const encoder = encoding.createEncoder()
-						encoding.writeVarUint(encoder, messageSync)
-						syncProtocol.readSyncMessage(
-							decoder,
-							encoder,
-							this.doc,
-							this,
-						)
-					} else if (
-						isControlMessage(message) &&
-						message.headers.control === `up-to-date`
-					) {
-						this.synced = true
-					}
-				})
+				try {
+					messages.forEach((message) => {
+						if (isChangeMessage(message) && message.value.op) {
+							const decoder = message.value.op
+							const encoder = encoding.createEncoder()
+							encoding.writeVarUint(encoder, messageSync)
+							syncProtocol.readSyncMessage(
+								decoder,
+								encoder,
+								this.doc,
+								this,
+							)
+						} else if (
+							isControlMessage(message) &&
+							message.headers.control === `up-to-date`
+						) {
+							this.synced = true
+						}
+					})
+				} catch (error) {
+					console.error(`Error handling sync message:`, error)
+				}
 			}
 
 			const unsubscribeSyncHandler =
 				this.operationsStream.subscribe(handleSyncMessage)
 
-			const handleAwarenessMessage = (
-				messages: Message<AwarenessMessage>[],
-			) => {
-				const minTime = new Date(Date.now() - awarenessPingPeriod)
-				messages.forEach((message) => {
-					if (isChangeMessage(message) && message.value.op) {
-						if (message.value.updated < minTime) {
-							return
-						}
+			// TODO: Re-enable awareness when resume state is implemented
+			// const handleAwarenessMessage = (
+			// 	messages: Message<AwarenessMessage>[],
+			// ) => {
+			// 	try {
+			// 		const minTime = new Date(Date.now() - awarenessPingPeriod)
+			// 		messages.forEach((message) => {
+			// 			if (isChangeMessage(message) && message.value.op) {
+			// 				if (message.value.updated < minTime) {
+			// 					return
+			// 				}
 
-						const decoder = message.value.op()
-						awarenessProtocol.applyAwarenessUpdate(
-							this.awareness!,
-							decoding.readVarUint8Array(decoder),
-							this,
-						)
-					}
-				})
-			}
+			// 				const decoder = message.value.op()
+			// 				awarenessProtocol.applyAwarenessUpdate(
+			// 					this.awareness!,
+			// 					decoding.readVarUint8Array(decoder),
+			// 					this,
+			// 				)
+			// 			}
+			// 		})
+			// 	} catch (error) {
+			// 		console.error(`Error handling awareness message:`, error)
+			// 	}
+			// }
 
-			const unsubscribeAwarenessHandler = this.awarenessStream.subscribe(
-				handleAwarenessMessage,
-			)
+			// const unsubscribeAwarenessHandler = this.awarenessStream.subscribe(
+			// 	handleAwarenessMessage,
+			// )
 
 			this.disconnectShapeHandler = () => {
 				this.operationsStream = undefined
@@ -327,7 +368,7 @@ export class ElectricProvider extends ObservableV2<ObservableProvider> {
 				}
 
 				unsubscribeSyncHandler()
-				unsubscribeAwarenessHandler()
+				// unsubscribeAwarenessHandler()
 				this.disconnectShapeHandler = undefined
 				this.emit(`connection-close`, [])
 			}
