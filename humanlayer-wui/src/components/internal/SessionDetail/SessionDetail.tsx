@@ -196,6 +196,13 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     setFocusedEventId: navigation.setFocusedEventId,
     setFocusSource: navigation.setFocusSource,
     scope: detailScope,
+    onStartDeny: () => {
+      // Clear fork state when entering denial mode
+      if (forkPreviewData) {
+        setForkPreviewData(null)
+        responseEditor?.commands.setContent('')
+      }
+    },
   })
 
   // Use clipboard hook
@@ -554,8 +561,12 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
 
   // Fork view toggle handler - Trust the scope system to handle modal conflicts
   const handleToggleForkView = useCallback(() => {
+    // Clear denial state if entering fork view
+    if (!forkViewOpen && approvals.denyingApprovalId) {
+      approvals.handleCancelDeny()
+    }
     setForkViewOpen(!forkViewOpen)
-  }, [forkViewOpen])
+  }, [forkViewOpen, approvals.denyingApprovalId, approvals.handleCancelDeny])
 
   // Clear focus on escape, then close if nothing focused
   // This needs special handling for confirmingApprovalId
@@ -573,14 +584,27 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         return
       }
 
+      // Check for denying state early - whether editor is focused or not
+      const isDenying = approvals.denyingApprovalId !== null
+
       if (responseEditor?.isFocused) {
         responseEditor.commands.blur()
+        // If we're denying, don't process further - let the next ESC cancel the deny
+        if (isDenying) {
+          return
+        }
         return
       }
 
-      /* Everything below here implies the responeEditor is not focused */
+      /* Everything below here implies the responseEditor is not focused */
 
-      // Check for fork mode first
+      // Cancel denial if in denying state
+      if (isDenying) {
+        approvals.handleCancelDeny()
+        return
+      }
+
+      // Check for fork mode
       if (forkPreviewData !== null) {
         // Clear fork mode
         setForkPreviewData(null)
@@ -611,6 +635,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       confirmingArchive,
       approvals.confirmingApprovalId,
       approvals.setConfirmingApprovalId,
+      approvals.denyingApprovalId,
+      approvals.handleCancelDeny,
       navigation.focusedEventId,
       navigation.setFocusedEventId,
       onClose,
@@ -1271,7 +1297,18 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                   }
                   approvingApprovalId={approvals.approvingApprovalId}
                   denyingApprovalId={approvals.denyingApprovalId ?? undefined}
-                  setDenyingApprovalId={approvals.setDenyingApprovalId}
+                  setDenyingApprovalId={id => {
+                    if (id === null) {
+                      approvals.handleCancelDeny()
+                    } else {
+                      // Clear fork state when entering denial mode
+                      if (forkPreviewData) {
+                        setForkPreviewData(null)
+                        responseEditor?.commands.setContent('')
+                      }
+                      approvals.handleStartDeny(id)
+                    }
+                  }}
                   onCancelDeny={approvals.handleCancelDeny}
                   focusSource={navigation.focusSource}
                   setFocusSource={navigation.setFocusSource}

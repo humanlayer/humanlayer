@@ -398,7 +398,7 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
     if (isDragHover) {
       borderColorClass = 'border-[var(--terminal-accent)]'
     } else if (isDenying) {
-      placeholder = "Tell the agent what you'd like to do differently..."
+      placeholder = 'Type your instructions here, then press Enter to deny with feedback...'
       if (isFocused) {
         borderColorClass = 'border-[var(--terminal-error)]'
       }
@@ -424,7 +424,16 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
 
       if (isDenying) {
         return {
-          text: 'DENYING',
+          text: (
+            <>
+              TELL CLAUDE WHAT TO DO DIFFERENTLY
+              {' ('}
+              <kbd className="px-1 py-0.5 text-xs font-mono font-medium border border-current/30 rounded">
+                ESC
+              </kbd>
+              {' to cancel)'}
+            </>
+          ),
           className: 'text-destructive',
           icon: <MessageCircleX className="h-3 w-3" />,
         }
