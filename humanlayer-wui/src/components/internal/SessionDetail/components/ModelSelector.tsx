@@ -16,7 +16,7 @@ import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
 import { useFocusTrap } from '@/hooks/useFocusTrap'
 import { daemonClient } from '@/lib/daemon'
 import { ConfigStatus, Session } from '@/lib/daemon/types'
-import { AlertCircle, CheckCircle, Eye, EyeOff, Pencil } from 'lucide-react'
+import { AlertCircle, CheckCircle, Eye, EyeOff, GitBranch, Pencil } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { toast } from 'sonner'
@@ -517,7 +517,6 @@ export function ModelSelector({
   const isOpen = open ?? internalOpen
   const setIsOpen = onOpenChange ?? setInternalOpen
 
-
   return (
     <HotkeyScopeBoundary
       scope={HOTKEY_SCOPES.SELECT_MODEL_MODAL}
@@ -528,14 +527,14 @@ export function ModelSelector({
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         {/* Only show trigger if not controlled externally */}
         {!open && !onOpenChange && (
-          <DialogTrigger asChild >
+          <DialogTrigger asChild>
             <Button
               variant="ghost"
               size="sm"
               className={`h-8 w-8 p-0 ${className}`}
               title="Model Configuration"
             >
-              
+              <GitBranch className="h-4 w-4" />
             </Button>
           </DialogTrigger>
         )}

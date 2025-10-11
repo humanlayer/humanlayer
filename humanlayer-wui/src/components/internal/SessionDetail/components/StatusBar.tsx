@@ -94,12 +94,11 @@ export function StatusBar({
                   : 'cursor-not-allowed hover:bg-transparent'
               } ${isReadyForInputOrDraft ? '' : getStatusTextClass(session.status)}`}
               onClick={() => isReadyForInputOrDraft && setIsModelSelectorOpen(true)}
-              onKeyDown={(e) => {
-                if (isReadyForInput && e.key === 'Enter') {
+              onKeyDown={e => {
+                if (isReadyForInputOrDraft && e.key === 'Enter') {
                   e.preventDefault()
                   setIsModelSelectorOpen(true)
                 }
-                isReadyForInputOrDraft && e.key === 'Enter' && setIsModelSelectorOpen(true)
               }}
             >
               {modelText}
