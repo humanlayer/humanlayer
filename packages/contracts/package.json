@@ -1,0 +1,32 @@
+{
+	"name": "@codelayer/contracts",
+	"module": "index.ts",
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"type": "module",
+	"scripts": {
+		"build": "bun build --target=node ./src/index.ts --outfile=dist/index.js && bun run build:declaration",
+		"build:declaration": "tsc --emitDeclarationOnly --project tsconfig.types.json",
+		"postbuild": "rimraf tsconfig.types.tsbuildinfo"
+	},
+	"devDependencies": {
+		"@types/bun": "latest",
+		"bun-types": "^1.2.23",
+		"rimraf": "^6.0.1"
+	},
+	"peerDependencies": {
+		"typescript": "^5"
+	},
+	"files": [
+		"dist/*.js",
+		"dist/*.d.ts"
+	],
+	"dependencies": {
+		"@orpc/contract": "^1.9.2",
+		"zod": "^4.1.11"
+	},
+	"exports": {
+		".": "./src/index.ts",
+		"./daemon": "./src/daemon/index.ts"
+	}
+}
