@@ -3,10 +3,10 @@ import { useHotkeys } from 'react-hotkeys-hook'
 import { toast } from 'sonner'
 import { useSearchParams } from 'react-router'
 
-import { ConversationEvent, Session, ApprovalStatus, SessionStatus, ViewMode } from '@/lib/daemon/types'
+import { ConversationEvent, Session, ApprovalStatus, SessionStatus } from '@/lib/daemon/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { useConversation, useKeyboardNavigationProtection } from '@/hooks'
-import { ChevronDown, FolderOpen, TextSearch } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
 import { daemonClient } from '@/lib/daemon/client'
 import { useStore } from '@/AppStore'
 import { HotkeyScopeBoundary } from '@/components/HotkeyScopeBoundary'
@@ -17,14 +17,12 @@ import { ConversationStream } from '../ConversationStream/ConversationStream'
 import { ToolResultModal } from './components/ToolResultModal'
 import { TodoWidget } from './components/TodoWidget'
 import { ResponseInput } from './components/ResponseInput'
-import { DraftLauncherInput } from './components/DraftLauncherInput'
+import { DraftLauncher } from './components/DraftLauncher'
 import { SentryErrorBoundary } from '@/components/ErrorBoundary'
 import { SessionModeIndicator } from './AutoAcceptIndicator'
 import { ForkViewModal } from './components/ForkViewModal'
 import { DangerouslySkipPermissionsDialog } from './DangerouslySkipPermissionsDialog'
 import { AdditionalDirectoriesDropdown } from './components/AdditionalDirectoriesDropdown'
-import { DiscardDraftDialog } from './components/DiscardDraftDialog'
-import { SearchInput } from '@/components/FuzzySearchInput'
 import { OmniSpinner } from './components/OmniSpinner'
 
 // Import hooks
@@ -33,11 +31,7 @@ import { useSessionApprovals } from './hooks/useSessionApprovals'
 import { useSessionNavigation } from './hooks/useSessionNavigation'
 import { useTaskGrouping } from './hooks/useTaskGrouping'
 import { useSessionClipboard } from './hooks/useSessionClipboard'
-import { useRecentPaths } from '@/hooks/useRecentPaths'
 import { logger } from '@/lib/logging'
-import { Label } from '@/components/ui/label'
-import { Input } from '@/components/ui/input'
-import { LAST_WORKING_DIR_KEY } from '@/hooks/useSessionLauncher'
 
 interface SessionDetailProps {
   session: Session
@@ -54,12 +48,10 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const isDraft = session.status === SessionStatus.Draft
 
   // Determine the appropriate scope based on session state
-  // Draft sessions get their own scope with different hotkey behaviors
-  const detailScope = isDraft
-    ? HOTKEY_SCOPES.DRAFT_LAUNCHER
-    : session?.archived
-      ? HOTKEY_SCOPES.SESSION_DETAIL_ARCHIVED
-      : HOTKEY_SCOPES.SESSION_DETAIL
+  // Draft sessions are handled by DraftLauncher which manages its own scope
+  const detailScope = session?.archived
+    ? HOTKEY_SCOPES.SESSION_DETAIL_ARCHIVED
+    : HOTKEY_SCOPES.SESSION_DETAIL
 
   const [isWideView, setIsWideView] = useState(false)
   const [expandedToolResult, setExpandedToolResult] = useState<ConversationEvent | null>(null)
@@ -74,14 +66,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   const [confirmingArchive, setConfirmingArchive] = useState(false)
   const [dangerousSkipPermissionsDialogOpen, setDangerousSkipPermissionsDialogOpen] = useState(false)
   const [directoriesDropdownOpen, setDirectoriesDropdownOpen] = useState(false)
-  const [showDiscardDialog, setShowDiscardDialog] = useState(false)
-  // For draft sessions, use the session's workingDir if it exists
-  const [selectedDirectory, setSelectedDirectory] = useState<string>(() => {
-    return session.workingDir || ''
-  })
-
-  // Get recent paths for draft directory selection
-  const { paths: recentPaths } = useRecentPaths()
 
   const responseEditor = useStore(state => state.responseEditor)
   const isEditingSessionTitle = useStore(state => state.isEditingSessionTitle)
@@ -105,8 +89,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     session.parentSessionId ? state.sessions.find(s => s.id === session.parentSessionId) : null,
   )
 
-  const titleInputRef = useRef<HTMLInputElement>(null)
-
   // Fetch parent session if it's not in the store
   const [parentSessionData, setParentSessionData] = useState<Session | null>(null)
   useEffect(() => {
@@ -126,12 +108,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       setParentSessionData(parentSession)
     }
   }, [session.parentSessionId, parentSession])
-
-  useEffect(() => {
-    if (session.workingDir) {
-      setSelectedDirectory(session.workingDir)
-    }
-  }, [session.workingDir])
 
   // These computed values now only apply to active sessions, not drafts
   const autoAcceptEdits = useMemo(() => {
@@ -364,163 +340,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     useStore.getState().updateSession(session.id, { additionalDirectories: directories })
   }
 
-  // Handle launching a draft session
-  const [isLaunchingDraft, setIsLaunchingDraft] = useState(false)
-  const handleLaunchDraft = useCallback(
-    async (settings: { autoAcceptEdits: boolean; dangerouslySkipPermissions: boolean }) => {
-      if (!isDraft || isLaunchingDraft) return
-
-      // Use either the selected directory or the session's existing workingDir
-      const workingDir = selectedDirectory || session.workingDir
-
-      // Validate that a directory is selected or exists on the session
-      if (!workingDir) {
-        toast.error('Please select a working directory', {
-          description: 'You must choose a directory before launching the session',
-        })
-        return
-      }
-
-      try {
-        setIsLaunchingDraft(true)
-
-        // Get the editor content and process mentions/slash commands properly
-        let prompt = ''
-        if (responseEditor) {
-          const json = responseEditor.getJSON()
-
-          const processNode = (node: any): string => {
-            if (node.type === 'text') {
-              return node.text || ''
-            } else if (node.type === 'mention' || node.type === 'slash-command') {
-              // Use the full path (id) instead of the display label
-              return node.attrs.id || node.attrs.label || ''
-            } else if (node.type === 'paragraph' && node.content) {
-              return node.content.map(processNode).join('')
-            } else if (node.type === 'doc' && node.content) {
-              return node.content.map(processNode).join('\n')
-            } else if (node.type === 'hardBreak') {
-              return '\n'
-            }
-            return ''
-          }
-
-          prompt = processNode(json)
-        }
-
-        // Apply the settings from DraftLauncherInput to the draft session before launching
-        await daemonClient.updateSession(session.id, {
-          autoAcceptEdits: settings.autoAcceptEdits,
-          dangerouslySkipPermissions: settings.dangerouslySkipPermissions,
-        })
-
-        // Launch the draft session with the prompt
-        // Note: working directory is already updated when selected in the fuzzy finder
-        await daemonClient.launchDraftSession(session.id, prompt)
-
-        // store working directory in localStorage
-        localStorage.setItem(LAST_WORKING_DIR_KEY, selectedDirectory || '')
-
-        // Clear the input after successful launch
-        responseEditor?.commands.setContent('')
-        localStorage.removeItem(`response-input.${session.id}`)
-
-        const storeState = useStore.getState()
-
-        // Refresh sessions to update the session list, set view mode to 'normal'
-        await storeState.refreshSessions()
-        await storeState.setViewMode(ViewMode.Normal)
-
-        // Session status will update via WebSocket
-      } catch (error) {
-        toast.error('Failed to launch draft session', {
-          description: error instanceof Error ? error.message : 'Unknown error',
-        })
-      } finally {
-        setIsLaunchingDraft(false)
-      }
-    },
-    [isDraft, session.id, session.workingDir, responseEditor, isLaunchingDraft, selectedDirectory],
-  )
-
-  // Handle directory selection change
-  const handleDirectoryChange = useCallback(
-    async (newDirectory: string) => {
-      // Update local state immediately
-      setSelectedDirectory(newDirectory)
-
-      // If it's a valid directory and different from current, update backend
-      if (newDirectory && newDirectory !== session.workingDir) {
-        try {
-          await daemonClient.updateSession(session.id, {
-            workingDir: newDirectory,
-          })
-          // Update the store to reflect the change
-          useStore.getState().updateSession(session.id, { workingDir: newDirectory })
-        } catch (error) {
-          toast.error('Failed to update working directory', {
-            description: error instanceof Error ? error.message : 'Unknown error',
-          })
-          // Revert local state on error
-          setSelectedDirectory(session.workingDir || '')
-        }
-      }
-    },
-    [session.id, session.workingDir],
-  )
-
-  // Handle title changes for draft sessions
-  const handleTitleChange = useCallback(
-    async (newTitle: string) => {
-      // Only allow editing title in draft mode
-      if (!isDraft) return
-
-      useStore.getState().updateSession(session.id, { title: newTitle })
-
-      try {
-        await daemonClient.updateSessionTitle(session.id, newTitle)
-      } catch (error) {
-        toast.error('Failed to update session title', {
-          description: error instanceof Error ? error.message : 'Unknown error',
-        })
-      }
-    },
-    [isDraft, session.id],
-  )
-
-  // Handle discarding a draft session
-  const handleDiscardDraft = useCallback(() => {
-    // TODO(3): Implement hasChanges logic, for now we'll just say there are changes
-    const hasChanges = true
-    if (hasChanges) {
-      setShowDiscardDialog(true)
-    } else {
-      // No changes, just go back
-      onClose()
-    }
-  }, [responseEditor, onClose])
-
-  // Handle confirmed discard
-  const handleConfirmDiscard = useCallback(async () => {
-    try {
-      // Delete the draft session
-      await daemonClient.deleteDraftSession(session.id)
-
-      // Clear localStorage
-      localStorage.removeItem(`response-input.${session.id}`)
-
-      // Refresh sessions to update counts
-      await useStore.getState().refreshSessions()
-
-      // Navigate back to session list
-      onClose()
-    } catch (error) {
-      toast.error('Failed to discard draft', {
-        description: error instanceof Error ? error.message : 'Unknown error',
-      })
-    }
-  }, [session.id, onClose])
-
   // Check if there are pending approvals out of view
   const [hasPendingApprovalsOutOfView, setHasPendingApprovalsOutOfView] = useState(false)
 
@@ -727,12 +546,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
         return
       }
 
-      // Handle drafts - discard instead of archive
-      if (isDraft) {
-        handleDiscardDraft()
-        return
-      }
-
       // TODO(3): The timeout clearing logic (using confirmingArchiveTimeoutRef) is duplicated in multiple places.
       // Consider refactoring this into a helper function to reduce repetition.
 
@@ -795,16 +608,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       preventDefault: true,
       scopes: [detailScope],
     },
-    [
-      session.id,
-      session.archived,
-      session.summary,
-      session.status,
-      onClose,
-      confirmingArchive,
-      isDraft,
-      handleDiscardDraft,
-    ],
+    [session.id, session.archived, session.summary, session.status, onClose, confirmingArchive],
   )
 
   // Add hotkey to open fork view (Meta+Y)
@@ -957,13 +761,8 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     'shift+r',
     e => {
       e.preventDefault()
-      // For drafts, focus the title input directly in SessionDetail
-      if (isDraft && titleInputRef.current) {
-        titleInputRef.current.focus()
-      } else {
-        // For non-drafts, trigger editing in breadcrumb bar
-        setIsEditingSessionTitle(true)
-      }
+      // Trigger editing in breadcrumb bar
+      setIsEditingSessionTitle(true)
     },
     {
       enabled: !approvals.confirmingApprovalId && !expandedToolResult,
@@ -971,13 +770,7 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
       preventDefault: true,
       enableOnFormTags: false,
     },
-    [
-      isDraft,
-      titleInputRef,
-      setIsEditingSessionTitle,
-      approvals.confirmingApprovalId,
-      expandedToolResult,
-    ],
+    [setIsEditingSessionTitle, approvals.confirmingApprovalId, expandedToolResult],
   )
 
   // Don't steal scope here - SessionDetail is the base layer
@@ -1034,12 +827,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     }
   }, [session.status, events])
 
-  useEffect(() => {
-    if (isDraft && titleInputRef.current) {
-      titleInputRef.current.focus()
-    }
-  }, [isDraft, titleInputRef, session.id])
-
   let cardVerticalPadding = 'py-3'
 
   if (isActivelyProcessing) {
@@ -1047,55 +834,31 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     cardVerticalPadding = `pt-3 ${cardLoadingLowerPadding}`
   }
 
+  // For drafts, render DraftLauncher directly with its own scope
+  if (isDraft) {
+    return (
+      <DraftLauncher session={session} onSessionUpdated={() => fetchActiveSessionDetail(session.id)} />
+    )
+  }
+
+  // Active sessions use SessionDetail scope
   return (
     <HotkeyScopeBoundary
       scope={detailScope}
-      componentName={`SessionDetail-${isDraft ? 'draft' : session?.archived ? 'archived' : 'normal'}`}
+      componentName={`SessionDetail-${session?.archived ? 'archived' : 'normal'}`}
     >
       <section className="flex flex-col h-full gap-3">
-        {/* Unified header with working directory */}
+        {/* Header with working directory dropdown */}
         <div className="flex items-center justify-between gap-2">
-          {/* Working directory info - show SearchInput for drafts, AdditionalDirectoriesDropdown otherwise */}
-          {isDraft ? (
-            <div className="flex-1">
-              <div className="mb-4 px-2">
-                <Label className="text-xs mb-1 uppercase tracking-wider text-muted-foreground">
-                  <TextSearch className="h-3 w-3" /> title
-                </Label>
-                <Input
-                  ref={titleInputRef}
-                  placeholder="Describe this session..."
-                  className="mt-1"
-                  value={session.title || session.summary || ''}
-                  onChange={e => handleTitleChange(e.target.value)}
-                />
-              </div>
-
-              <div className="mb-4 px-2">
-                <Label className="text-xs mb-1 uppercase tracking-wider text-muted-foreground">
-                  <FolderOpen className="h-3 w-3" /> working directory
-                </Label>
-                <SearchInput
-                  placeholder="Select a directory to work in..."
-                  className="mt-1"
-                  recentDirectories={recentPaths}
-                  value={selectedDirectory}
-                  onChange={handleDirectoryChange}
-                  onSubmit={value => value && handleDirectoryChange(value)}
-                />
-              </div>
-            </div>
-          ) : (
-            session.workingDir && (
-              <AdditionalDirectoriesDropdown
-                workingDir={session.workingDir}
-                directories={session.additionalDirectories || []}
-                sessionStatus={session.status}
-                onDirectoriesChange={handleUpdateAdditionalDirectories}
-                open={directoriesDropdownOpen}
-                onOpenChange={setDirectoriesDropdownOpen}
-              />
-            )
+          {session.workingDir && (
+            <AdditionalDirectoriesDropdown
+              workingDir={session.workingDir}
+              directories={session.additionalDirectories || []}
+              sessionStatus={session.status}
+              onDirectoriesChange={handleUpdateAdditionalDirectories}
+              open={directoriesDropdownOpen}
+              onOpenChange={setDirectoriesDropdownOpen}
+            />
           )}
 
           {/* Fork view modal */}
@@ -1118,150 +881,133 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
           />
         </div>
 
-        {!isDraft && (
-          <div className={`flex flex-1 gap-4 ${isWideView ? 'flex-row' : 'flex-col'} min-h-0`}>
-            {/* Conversation content and Loading - only show for non-draft sessions */}
-            <Card
-              className={`Conversation-Card w-full relative ${cardVerticalPadding} flex flex-col min-h-0`}
-            >
-              <CardContent className="px-3 flex flex-col flex-1 min-h-0">
-                <ConversationStream
-                  session={session}
-                  focusedEventId={navigation.focusedEventId}
-                  setFocusedEventId={navigation.setFocusedEventId}
-                  onApprove={approvals.handleApprove}
-                  onDeny={(approvalId: string, reason: string) =>
-                    approvals.handleDeny(approvalId, reason, session.id)
-                  }
-                  approvingApprovalId={approvals.approvingApprovalId}
-                  denyingApprovalId={approvals.denyingApprovalId ?? undefined}
-                  setDenyingApprovalId={approvals.setDenyingApprovalId}
-                  onCancelDeny={approvals.handleCancelDeny}
-                  focusSource={navigation.focusSource}
-                  setFocusSource={navigation.setFocusSource}
-                  expandedToolResult={expandedToolResult}
-                  setExpandedToolResult={setExpandedToolResult}
-                  setExpandedToolCall={setExpandedToolCall}
-                  maxEventIndex={forkPreviewData?.eventIndex ?? undefined}
-                  shouldIgnoreMouseEvent={shouldIgnoreMouseEvent}
-                  expandedTasks={expandedTasks}
-                  toggleTaskGroup={toggleTaskGroup}
-                />
-              </CardContent>
-              {isActivelyProcessing && (
-                <div
-                  className={`absolute bottom-0 left-0 px-3 py-1.5 border-t border-border bg-secondary/30 w-full font-mono text-xs uppercase tracking-wider text-muted-foreground transition-all duration-300 ease-out ${
-                    isActivelyProcessing ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'
-                  }`}
-                >
-                  <OmniSpinner />
-                </div>
-              )}
-              {/* Status bar for pending approvals */}
+        <div className={`flex flex-1 gap-4 ${isWideView ? 'flex-row' : 'flex-col'} min-h-0`}>
+          {/* Conversation content and Loading */}
+          <Card
+            className={`Conversation-Card w-full relative ${cardVerticalPadding} flex flex-col min-h-0`}
+          >
+            <CardContent className="px-3 flex flex-col flex-1 min-h-0">
+              <ConversationStream
+                session={session}
+                focusedEventId={navigation.focusedEventId}
+                setFocusedEventId={navigation.setFocusedEventId}
+                onApprove={approvals.handleApprove}
+                onDeny={(approvalId: string, reason: string) =>
+                  approvals.handleDeny(approvalId, reason, session.id)
+                }
+                approvingApprovalId={approvals.approvingApprovalId}
+                denyingApprovalId={approvals.denyingApprovalId ?? undefined}
+                setDenyingApprovalId={approvals.setDenyingApprovalId}
+                onCancelDeny={approvals.handleCancelDeny}
+                focusSource={navigation.focusSource}
+                setFocusSource={navigation.setFocusSource}
+                expandedToolResult={expandedToolResult}
+                setExpandedToolResult={setExpandedToolResult}
+                setExpandedToolCall={setExpandedToolCall}
+                maxEventIndex={forkPreviewData?.eventIndex ?? undefined}
+                shouldIgnoreMouseEvent={shouldIgnoreMouseEvent}
+                expandedTasks={expandedTasks}
+                toggleTaskGroup={toggleTaskGroup}
+              />
+            </CardContent>
+            {isActivelyProcessing && (
               <div
-                className={`absolute bottom-0 left-0 right-0 p-2 cursor-pointer transition-all duration-300 ease-in-out ${
-                  hasPendingApprovalsOutOfView
-                    ? 'opacity-100 translate-y-0'
-                    : 'opacity-0 translate-y-full pointer-events-none'
+                className={`absolute bottom-0 left-0 px-3 py-1.5 border-t border-border bg-secondary/30 w-full font-mono text-xs uppercase tracking-wider text-muted-foreground transition-all duration-300 ease-out ${
+                  isActivelyProcessing ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'
                 }`}
-                onClick={() => {
-                  const container = document.querySelector('[data-conversation-container]')
-                  if (container) {
-                    container.scrollTop = container.scrollHeight
-                  }
-                }}
               >
-                <div className="flex items-center justify-center gap-1 font-mono text-xs uppercase tracking-wider text-muted-foreground bg-background/60 backdrop-blur-sm border-t border-border/50 py-1 shadow-sm hover:bg-background/80 transition-colors">
-                  <span>Pending Approval</span>
-                  <ChevronDown className="w-3 h-3 animate-bounce" />
-                </div>
+                <OmniSpinner />
               </div>
-            </Card>
-
-            {isWideView && lastTodo && (
-              <Card className="w-[20%] flex flex-col min-h-0">
-                <CardContent className="flex flex-col flex-1 min-h-0 overflow-hidden">
-                  <TodoWidget event={lastTodo} />
-                </CardContent>
-              </Card>
             )}
-          </div>
-        )}
+            {/* Status bar for pending approvals */}
+            <div
+              className={`absolute bottom-0 left-0 right-0 p-2 cursor-pointer transition-all duration-300 ease-in-out ${
+                hasPendingApprovalsOutOfView
+                  ? 'opacity-100 translate-y-0'
+                  : 'opacity-0 translate-y-full pointer-events-none'
+              }`}
+              onClick={() => {
+                const container = document.querySelector('[data-conversation-container]')
+                if (container) {
+                  container.scrollTop = container.scrollHeight
+                }
+              }}
+            >
+              <div className="flex items-center justify-center gap-1 font-mono text-xs uppercase tracking-wider text-muted-foreground bg-background/60 backdrop-blur-sm border-t border-border/50 py-1 shadow-sm hover:bg-background/80 transition-colors">
+                <span>Pending Approval</span>
+                <ChevronDown className="w-3 h-3 animate-bounce" />
+              </div>
+            </div>
+          </Card>
 
-        {/* Response input - show DraftLauncherInput for drafts, ResponseInput for active sessions */}
+          {isWideView && lastTodo && (
+            <Card className="w-[20%] flex flex-col min-h-0">
+              <CardContent className="flex flex-col flex-1 min-h-0 overflow-hidden">
+                <TodoWidget event={lastTodo} />
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {/* Response input - always ResponseInput for active sessions since we returned early for drafts */}
         <Card className="py-2">
           <CardContent className="px-2">
-            {isDraft ? (
-              <DraftLauncherInput
-                session={session}
-                onLaunchDraft={handleLaunchDraft}
-                onDiscardDraft={handleDiscardDraft}
-                isLaunchingDraft={isLaunchingDraft}
-                onModelChange={() => {
-                  // Refresh session data if needed
-                  fetchActiveSessionDetail(session.id)
-                }}
-              />
-            ) : (
-              <>
-                <ResponseInput
-                  denyingApprovalId={approvals.denyingApprovalId ?? undefined}
-                  isDenying={approvals.isDenying}
-                  onDeny={approvals.handleDeny}
-                  handleCancelDeny={approvals.handleCancelDeny}
-                  denyAgainstOldestApproval={approvals.denyAgainstOldestApproval}
-                  session={session}
-                  parentSessionData={parentSessionData || parentSession || undefined}
-                  isResponding={actions.isResponding}
-                  handleContinueSession={actions.handleContinueSession}
-                  isForkMode={!!forkPreviewData}
-                  forkTokenCount={forkPreviewData?.tokenCount}
-                  forkTurnNumber={
-                    forkPreviewData?.eventIndex !== undefined
-                      ? events
-                          .slice(0, forkPreviewData.eventIndex)
-                          .filter(e => e.eventType === 'message' && e.role === 'user').length
-                      : undefined
-                  }
-                  onModelChange={() => {
-                    // Refresh session data if needed
-                    fetchActiveSessionDetail(session.id)
-                  }}
-                  sessionStatus={session.status}
-                  onToggleAutoAccept={handleToggleAutoAccept}
-                  onToggleDangerouslySkipPermissions={handleToggleDangerouslySkipPermissions}
-                  onToggleForkView={handleToggleForkView}
-                  // ActionButtons props
-                  canFork={forkPreviewData === null && !isActivelyProcessing}
-                  bypassEnabled={dangerouslySkipPermissions}
-                  autoAcceptEnabled={autoAcceptEdits}
-                  isArchived={session.archived || false}
-                  onToggleArchive={handleToggleArchive}
-                  previewEventIndex={forkPreviewData?.eventIndex ?? null}
-                  isActivelyProcessing={isActivelyProcessing}
-                />
-                {/* Session mode indicator - shows fork, dangerous skip permissions or auto-accept */}
-                <SessionModeIndicator
-                  sessionId={session.id}
-                  autoAcceptEdits={autoAcceptEdits}
-                  dangerouslySkipPermissions={dangerouslySkipPermissions}
-                  dangerouslySkipPermissionsExpiresAt={dangerouslySkipPermissionsExpiresAt}
-                  sessionStatus={session.status}
-                  isForkMode={!!forkPreviewData}
-                  forkTurnNumber={
-                    forkPreviewData?.eventIndex !== undefined
-                      ? events
-                          .slice(0, forkPreviewData.eventIndex)
-                          .filter(e => e.eventType === 'message' && e.role === 'user').length
-                      : undefined
-                  }
-                  forkTokenCount={forkPreviewData?.tokenCount}
-                  className="mt-2"
-                  onToggleAutoAccept={handleToggleAutoAccept}
-                  onToggleBypass={handleToggleDangerouslySkipPermissions}
-                />
-              </>
-            )}
+            <ResponseInput
+              denyingApprovalId={approvals.denyingApprovalId ?? undefined}
+              isDenying={approvals.isDenying}
+              onDeny={approvals.handleDeny}
+              handleCancelDeny={approvals.handleCancelDeny}
+              denyAgainstOldestApproval={approvals.denyAgainstOldestApproval}
+              session={session}
+              parentSessionData={parentSessionData || parentSession || undefined}
+              isResponding={actions.isResponding}
+              handleContinueSession={actions.handleContinueSession}
+              isForkMode={!!forkPreviewData}
+              forkTokenCount={forkPreviewData?.tokenCount}
+              forkTurnNumber={
+                forkPreviewData?.eventIndex !== undefined
+                  ? events
+                      .slice(0, forkPreviewData.eventIndex)
+                      .filter(e => e.eventType === 'message' && e.role === 'user').length
+                  : undefined
+              }
+              onModelChange={() => {
+                // Refresh session data if needed
+                fetchActiveSessionDetail(session.id)
+              }}
+              sessionStatus={session.status}
+              onToggleAutoAccept={handleToggleAutoAccept}
+              onToggleDangerouslySkipPermissions={handleToggleDangerouslySkipPermissions}
+              onToggleForkView={handleToggleForkView}
+              // ActionButtons props
+              canFork={forkPreviewData === null && !isActivelyProcessing}
+              bypassEnabled={dangerouslySkipPermissions}
+              autoAcceptEnabled={autoAcceptEdits}
+              isArchived={session.archived || false}
+              onToggleArchive={handleToggleArchive}
+              previewEventIndex={forkPreviewData?.eventIndex ?? null}
+              isActivelyProcessing={isActivelyProcessing}
+            />
+            {/* Session mode indicator - shows fork, dangerous skip permissions or auto-accept */}
+            <SessionModeIndicator
+              sessionId={session.id}
+              autoAcceptEdits={autoAcceptEdits}
+              dangerouslySkipPermissions={dangerouslySkipPermissions}
+              dangerouslySkipPermissionsExpiresAt={dangerouslySkipPermissionsExpiresAt}
+              sessionStatus={session.status}
+              isForkMode={!!forkPreviewData}
+              forkTurnNumber={
+                forkPreviewData?.eventIndex !== undefined
+                  ? events
+                      .slice(0, forkPreviewData.eventIndex)
+                      .filter(e => e.eventType === 'message' && e.role === 'user').length
+                  : undefined
+              }
+              forkTokenCount={forkPreviewData?.tokenCount}
+              className="mt-2"
+              onToggleAutoAccept={handleToggleAutoAccept}
+              onToggleBypass={handleToggleDangerouslySkipPermissions}
+            />
           </CardContent>
         </Card>
 
@@ -1282,13 +1028,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
           open={dangerousSkipPermissionsDialogOpen}
           onOpenChange={setDangerousSkipPermissionsDialogOpen}
           onConfirm={handleDangerousSkipPermissionsConfirm}
-        />
-
-        {/* Discard Draft Dialog */}
-        <DiscardDraftDialog
-          open={showDiscardDialog}
-          onConfirm={handleConfirmDiscard}
-          onCancel={() => setShowDiscardDialog(false)}
         />
       </section>
     </HotkeyScopeBoundary>
