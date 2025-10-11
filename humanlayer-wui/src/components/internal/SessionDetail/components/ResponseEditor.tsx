@@ -454,17 +454,7 @@ interface ResponseEditorProps {
 
 export const ResponseEditor = forwardRef<{ focus: () => void; blur?: () => void }, ResponseEditorProps>(
   (
-    {
-      initialValue,
-      onChange,
-      onKeyDown,
-      disabled,
-      placeholder,
-      className,
-      onFocus,
-      onBlur,
-      onSubmit,
-    },
+    { initialValue, onChange, onKeyDown, disabled, placeholder, className, onFocus, onBlur, onSubmit },
     ref,
   ) => {
     const onSubmitRef = React.useRef<ResponseEditorProps['onSubmit']>()

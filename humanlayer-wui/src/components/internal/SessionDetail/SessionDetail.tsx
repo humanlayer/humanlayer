@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { toast } from 'sonner'
 import { useSearchParams } from 'react-router'
@@ -9,8 +9,6 @@ import { useConversation, useKeyboardNavigationProtection } from '@/hooks'
 import { ChevronDown, FolderOpen, TextSearch } from 'lucide-react'
 import { daemonClient } from '@/lib/daemon/client'
 import { useStore } from '@/AppStore'
-import { DRAFT_LAUNCHER_PREFS, getDraftLauncherDefaults } from '@/lib/preferences'
-import { useLocalStorage } from '@/hooks/useLocalStorage'
 import { HotkeyScopeBoundary } from '@/components/HotkeyScopeBoundary'
 import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
 
@@ -85,17 +83,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
   // Get recent paths for draft directory selection
   const { paths: recentPaths } = useRecentPaths()
 
-  // Load draft launcher preferences from localStorage (only for draft sessions)
-  const defaults = getDraftLauncherDefaults()
-  const [savedBypassPermissions, setSavedBypassPermissions, bypassLoaded] = useLocalStorage(
-    DRAFT_LAUNCHER_PREFS.BYPASS_PERMISSIONS,
-    defaults.bypassPermissions,
-  )
-  const [savedAutoAccept, setSavedAutoAccept, autoAcceptLoaded] = useLocalStorage(
-    DRAFT_LAUNCHER_PREFS.AUTO_ACCEPT,
-    defaults.autoAccept,
-  )
-
   const responseEditor = useStore(state => state.responseEditor)
   const isEditingSessionTitle = useStore(state => state.isEditingSessionTitle)
   const setIsEditingSessionTitle = useStore(state => state.setIsEditingSessionTitle)
@@ -146,21 +133,16 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     }
   }, [session.workingDir])
 
-  // For draft sessions, use localStorage values directly as the source of truth
-  // For active sessions, use store values if available, otherwise fall back to session prop
-  const autoAcceptEdits =
-    isDraft && autoAcceptLoaded
-      ? savedAutoAccept
-      : sessionFromStore?.autoAcceptEdits !== undefined
-        ? sessionFromStore.autoAcceptEdits
-        : (session.autoAcceptEdits ?? false)
+  // These computed values now only apply to active sessions, not drafts
+  const autoAcceptEdits = useMemo(() => {
+    if (!session || isDraft) return false
+    return sessionFromStore?.autoAcceptEdits ?? session.autoAcceptEdits ?? false
+  }, [session, isDraft, sessionFromStore?.autoAcceptEdits])
 
-  const dangerouslySkipPermissions =
-    isDraft && bypassLoaded
-      ? savedBypassPermissions
-      : sessionFromStore?.dangerouslySkipPermissions !== undefined
-        ? sessionFromStore.dangerouslySkipPermissions
-        : (session.dangerouslySkipPermissions ?? false)
+  const dangerouslySkipPermissions = useMemo(() => {
+    if (!session || isDraft) return false
+    return sessionFromStore?.dangerouslySkipPermissions ?? session.dangerouslySkipPermissions ?? false
+  }, [session, isDraft, sessionFromStore?.dangerouslySkipPermissions])
 
   const dangerouslySkipPermissionsExpiresAt =
     sessionFromStore?.dangerouslySkipPermissionsExpiresAt !== undefined
@@ -384,89 +366,82 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
 
   // Handle launching a draft session
   const [isLaunchingDraft, setIsLaunchingDraft] = useState(false)
-  const handleLaunchDraft = useCallback(async () => {
-    if (!isDraft || isLaunchingDraft) return
+  const handleLaunchDraft = useCallback(
+    async (settings: { autoAcceptEdits: boolean; dangerouslySkipPermissions: boolean }) => {
+      if (!isDraft || isLaunchingDraft) return
 
-    // Use either the selected directory or the session's existing workingDir
-    const workingDir = selectedDirectory || session.workingDir
+      // Use either the selected directory or the session's existing workingDir
+      const workingDir = selectedDirectory || session.workingDir
 
-    // Validate that a directory is selected or exists on the session
-    if (!workingDir) {
-      toast.error('Please select a working directory', {
-        description: 'You must choose a directory before launching the session',
-      })
-      return
-    }
-
-    try {
-      setIsLaunchingDraft(true)
-
-      // Get the editor content and process mentions/slash commands properly
-      let prompt = ''
-      if (responseEditor) {
-        const json = responseEditor.getJSON()
-
-        const processNode = (node: any): string => {
-          if (node.type === 'text') {
-            return node.text || ''
-          } else if (node.type === 'mention' || node.type === 'slash-command') {
-            // Use the full path (id) instead of the display label
-            return node.attrs.id || node.attrs.label || ''
-          } else if (node.type === 'paragraph' && node.content) {
-            return node.content.map(processNode).join('')
-          } else if (node.type === 'doc' && node.content) {
-            return node.content.map(processNode).join('\n')
-          } else if (node.type === 'hardBreak') {
-            return '\n'
-          }
-          return ''
-        }
-
-        prompt = processNode(json)
+      // Validate that a directory is selected or exists on the session
+      if (!workingDir) {
+        toast.error('Please select a working directory', {
+          description: 'You must choose a directory before launching the session',
+        })
+        return
       }
 
-      // Apply localStorage settings to the draft session before launching
-      // This ensures the session is created with the user's saved preferences
-      await daemonClient.updateSession(session.id, {
-        autoAcceptEdits: autoAcceptEdits,
-        dangerouslySkipPermissions: dangerouslySkipPermissions,
-      })
+      try {
+        setIsLaunchingDraft(true)
 
-      // Launch the draft session with the prompt
-      // Note: working directory is already updated when selected in the fuzzy finder
-      await daemonClient.launchDraftSession(session.id, prompt)
+        // Get the editor content and process mentions/slash commands properly
+        let prompt = ''
+        if (responseEditor) {
+          const json = responseEditor.getJSON()
 
-      // store working directory in localStorage
-      localStorage.setItem(LAST_WORKING_DIR_KEY, selectedDirectory || '')
+          const processNode = (node: any): string => {
+            if (node.type === 'text') {
+              return node.text || ''
+            } else if (node.type === 'mention' || node.type === 'slash-command') {
+              // Use the full path (id) instead of the display label
+              return node.attrs.id || node.attrs.label || ''
+            } else if (node.type === 'paragraph' && node.content) {
+              return node.content.map(processNode).join('')
+            } else if (node.type === 'doc' && node.content) {
+              return node.content.map(processNode).join('\n')
+            } else if (node.type === 'hardBreak') {
+              return '\n'
+            }
+            return ''
+          }
 
-      // Clear the input after successful launch
-      responseEditor?.commands.setContent('')
-      localStorage.removeItem(`response-input.${session.id}`)
+          prompt = processNode(json)
+        }
 
-      const storeState = useStore.getState()
+        // Apply the settings from DraftLauncherInput to the draft session before launching
+        await daemonClient.updateSession(session.id, {
+          autoAcceptEdits: settings.autoAcceptEdits,
+          dangerouslySkipPermissions: settings.dangerouslySkipPermissions,
+        })
 
-      // Refresh sessions to update the session list, set view mode to 'normal'
-      await storeState.refreshSessions()
-      await storeState.setViewMode(ViewMode.Normal)
+        // Launch the draft session with the prompt
+        // Note: working directory is already updated when selected in the fuzzy finder
+        await daemonClient.launchDraftSession(session.id, prompt)
 
-      // Session status will update via WebSocket
-    } catch (error) {
-      toast.error('Failed to launch draft session', {
-        description: error instanceof Error ? error.message : 'Unknown error',
-      })
-    } finally {
-      setIsLaunchingDraft(false)
-    }
-  }, [
-    isDraft,
-    session.id,
-    session.workingDir,
-    responseEditor,
-    isLaunchingDraft,
-    selectedDirectory,
-    autoAcceptEdits,
-    dangerouslySkipPermissions,
-  ])
+        // store working directory in localStorage
+        localStorage.setItem(LAST_WORKING_DIR_KEY, selectedDirectory || '')
+
+        // Clear the input after successful launch
+        responseEditor?.commands.setContent('')
+        localStorage.removeItem(`response-input.${session.id}`)
+
+        const storeState = useStore.getState()
+
+        // Refresh sessions to update the session list, set view mode to 'normal'
+        await storeState.refreshSessions()
+        await storeState.setViewMode(ViewMode.Normal)
+
+        // Session status will update via WebSocket
+      } catch (error) {
+        toast.error('Failed to launch draft session', {
+          description: error instanceof Error ? error.message : 'Unknown error',
+        })
+      } finally {
+        setIsLaunchingDraft(false)
+      }
+    },
+    [isDraft, session.id, session.workingDir, responseEditor, isLaunchingDraft, selectedDirectory],
+  )
 
   // Handle directory selection change
   const handleDirectoryChange = useCallback(
@@ -619,169 +594,53 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     ],
   )
 
-  // Create reusable handler for toggling auto-accept
+  // Create reusable handler for toggling auto-accept (active sessions only)
   const handleToggleAutoAccept = useCallback(async () => {
+    // Only handle active sessions here, drafts are handled internally in DraftLauncherInput
+    if (!session || isDraft) return
+
     logger.log('toggleAutoAcceptEdits', autoAcceptEdits)
 
-    if (isDraft) {
-      // For draft sessions, just toggle localStorage value
-      const newState = !savedAutoAccept
-      setSavedAutoAccept(newState)
-    } else {
-      // For active sessions, update the session state
-      try {
-        const newState = !autoAcceptEdits
-        await updateSessionOptimistic(session.id, { autoAcceptEdits: newState })
-      } catch (error) {
-        logger.error('Failed to toggle auto-accept mode:', error)
-        toast.error('Failed to toggle auto-accept mode')
-      }
+    try {
+      const newState = !autoAcceptEdits
+      await updateSessionOptimistic(session.id, { autoAcceptEdits: newState })
+    } catch (error) {
+      logger.error('Failed to toggle auto-accept mode:', error)
+      toast.error('Failed to toggle auto-accept mode')
     }
-  }, [
-    session.id,
-    autoAcceptEdits,
-    updateSessionOptimistic,
-    isDraft,
-    savedAutoAccept,
-    setSavedAutoAccept,
-  ])
+  }, [session, isDraft, session.id, autoAcceptEdits, updateSessionOptimistic])
 
-  // Create reusable handler for toggling dangerously skip permissions
+  // Create reusable handler for toggling dangerously skip permissions (active sessions only)
   const handleToggleDangerouslySkipPermissions = useCallback(async () => {
-    if (isDraft) {
-      // For draft sessions, handle localStorage directly
-      if (savedBypassPermissions) {
-        // Disable bypass permissions
-        setSavedBypassPermissions(false)
-      } else {
-        // Show confirmation dialog
-        setDangerousSkipPermissionsDialogOpen(true)
+    // Only handle active sessions here, drafts are handled internally in DraftLauncherInput
+    if (!session || isDraft) return
+
+    // Get the current value from the store directly to avoid stale closure
+    let currentSession = useStore.getState().sessions.find(s => s.id === session.id)
+
+    if (!currentSession) {
+      const sessionState = await daemonClient.getSessionState(session.id)
+      currentSession = sessionState.session
+    }
+
+    const currentDangerouslySkipPermissions = currentSession?.dangerouslySkipPermissions ?? false
+
+    if (currentDangerouslySkipPermissions) {
+      // Disable dangerous skip permissions
+      try {
+        await updateSessionOptimistic(session.id, {
+          dangerouslySkipPermissions: false,
+          dangerouslySkipPermissionsExpiresAt: undefined,
+        })
+      } catch (error) {
+        logger.error('Failed to disable dangerous skip permissions', { error })
+        toast.error('Failed to disable dangerous skip permissions')
       }
     } else {
-      // For active sessions, use the session state
-      // Get the current value from the store directly to avoid stale closure
-      let currentSession = useStore.getState().sessions.find(s => s.id === session.id)
-
-      if (!currentSession) {
-        const sessionState = await daemonClient.getSessionState(session.id)
-        currentSession = sessionState.session
-      }
-
-      const currentDangerouslySkipPermissions = currentSession?.dangerouslySkipPermissions ?? false
-
-      if (currentDangerouslySkipPermissions) {
-        // Disable dangerous skip permissions
-        try {
-          await updateSessionOptimistic(session.id, {
-            dangerouslySkipPermissions: false,
-            dangerouslySkipPermissionsExpiresAt: undefined,
-          })
-        } catch (error) {
-          logger.error('Failed to disable dangerous skip permissions', { error })
-          toast.error('Failed to disable dangerous skip permissions')
-        }
-      } else {
-        // Show confirmation dialog
-        setDangerousSkipPermissionsDialogOpen(true)
-      }
+      // Show confirmation dialog
+      setDangerousSkipPermissionsDialogOpen(true)
     }
-  }, [session.id, updateSessionOptimistic, isDraft, savedBypassPermissions, setSavedBypassPermissions])
-
-  // ===== DRAFT MODE HOTKEYS =====
-  // These only work when in draft mode (DRAFT_LAUNCHER scope)
-
-  // Cmd+Enter handler for launching draft sessions
-  useHotkeys(
-    'meta+enter, ctrl+enter',
-    e => {
-      e.preventDefault()
-      e.stopPropagation()
-
-      // Check if editor has content
-      let prompt = ''
-      if (responseEditor) {
-        const json = responseEditor.getJSON()
-
-        const processNode = (node: any): string => {
-          if (node.type === 'text') {
-            return node.text || ''
-          } else if (node.type === 'mention' || node.type === 'slash-command') {
-            // Use the full path (id) instead of the display label
-            return node.attrs.id || node.attrs.label || ''
-          } else if (node.type === 'paragraph' && node.content) {
-            return node.content.map(processNode).join('')
-          } else if (node.type === 'doc' && node.content) {
-            return node.content.map(processNode).join('\n')
-          } else if (node.type === 'hardBreak') {
-            return '\n'
-          }
-          return ''
-        }
-
-        prompt = processNode(json)
-      }
-
-      if (!prompt.trim()) {
-        toast.error('Please enter a prompt', {
-          description: 'Cannot launch an empty session',
-        })
-        return
-      }
-
-      // Check if working directory is set
-      const workingDir = selectedDirectory || session.workingDir
-      if (!workingDir) {
-        toast.error('Please select a working directory', {
-          description: 'You must choose a directory before launching the session',
-        })
-        return
-      }
-
-      // Launch the draft
-      handleLaunchDraft()
-    },
-    {
-      enabled: isDraft,
-      preventDefault: true,
-      enableOnFormTags: ['INPUT', 'TEXTAREA', 'SELECT'], // Explicit array to ensure it works in form fields
-      scopes: [HOTKEY_SCOPES.DRAFT_LAUNCHER],
-    },
-    [selectedDirectory, session.workingDir, responseEditor, handleLaunchDraft],
-  )
-
-  // Option+A handler for auto-accept edits mode (draft version)
-  useHotkeys(
-    'alt+a, option+a',
-    () => {
-      // preventDefault handled by library with option below
-      handleToggleAutoAccept()
-    },
-    {
-      enabled: isDraft,
-      preventDefault: true,
-      enableOnFormTags: ['INPUT', 'TEXTAREA', 'SELECT'],
-      enableOnContentEditable: true, // Critical: enables hotkey on TipTap editor
-      scopes: [HOTKEY_SCOPES.DRAFT_LAUNCHER],
-    },
-    [handleToggleAutoAccept],
-  )
-
-  // Option+Y handler for dangerously skip permissions mode (draft version)
-  useHotkeys(
-    'alt+y, option+y',
-    () => {
-      // preventDefault handled by library with option below
-      handleToggleDangerouslySkipPermissions()
-    },
-    {
-      enabled: isDraft,
-      preventDefault: true,
-      enableOnFormTags: ['INPUT', 'TEXTAREA', 'SELECT'],
-      enableOnContentEditable: true, // Critical: enables hotkey on TipTap editor
-      scopes: [HOTKEY_SCOPES.DRAFT_LAUNCHER],
-    },
-    [handleToggleDangerouslySkipPermissions],
-  )
+  }, [session, isDraft, session.id, updateSessionOptimistic])
 
   // ===== NON-DRAFT MODE HOTKEYS =====
   // These only work when NOT in draft mode (SESSION_DETAIL scope)
@@ -820,26 +679,23 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
     [handleToggleDangerouslySkipPermissions],
   )
 
-  // Handle dialog confirmation
+  // Handle dialog confirmation (active sessions only)
   const handleDangerousSkipPermissionsConfirm = async (timeoutMinutes: number | null) => {
-    if (isDraft) {
-      // For draft sessions, just update localStorage
-      setSavedBypassPermissions(true)
-    } else {
-      // For active sessions, update the session state
-      try {
-        const expiresAt = timeoutMinutes
-          ? new Date(Date.now() + timeoutMinutes * 60 * 1000).toISOString()
-          : undefined
+    // Only handle active sessions here, drafts don't show this dialog
+    if (!session || isDraft) return
 
-        await updateSessionOptimistic(session.id, {
-          dangerouslySkipPermissions: true,
-          dangerouslySkipPermissionsExpiresAt: expiresAt ? new Date(expiresAt) : undefined,
-        })
-      } catch (error) {
-        logger.error('Failed to enable dangerous skip permissions', { error })
-        toast.error('Failed to enable dangerous skip permissions')
-      }
+    try {
+      const expiresAt = timeoutMinutes
+        ? new Date(Date.now() + timeoutMinutes * 60 * 1000).toISOString()
+        : undefined
+
+      await updateSessionOptimistic(session.id, {
+        dangerouslySkipPermissions: true,
+        dangerouslySkipPermissionsExpiresAt: expiresAt ? new Date(expiresAt) : undefined,
+      })
+    } catch (error) {
+      logger.error('Failed to enable dangerous skip permissions', { error })
+      toast.error('Failed to enable dangerous skip permissions')
     }
   }
 
@@ -1341,10 +1197,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                 onLaunchDraft={handleLaunchDraft}
                 onDiscardDraft={handleDiscardDraft}
                 isLaunchingDraft={isLaunchingDraft}
-                autoAcceptEnabled={autoAcceptEdits}
-                bypassEnabled={dangerouslySkipPermissions}
-                onToggleAutoAccept={handleToggleAutoAccept}
-                onToggleBypass={handleToggleDangerouslySkipPermissions}
                 onModelChange={() => {
                   // Refresh session data if needed
                   fetchActiveSessionDetail(session.id)
@@ -1364,10 +1216,6 @@ function SessionDetail({ session, onClose }: SessionDetailProps) {
                   handleContinueSession={actions.handleContinueSession}
                   isForkMode={!!forkPreviewData}
                   forkTokenCount={forkPreviewData?.tokenCount}
-                  isDraft={false}
-                  onLaunchDraft={handleLaunchDraft}
-                  onDiscardDraft={handleDiscardDraft}
-                  isLaunchingDraft={isLaunchingDraft}
                   forkTurnNumber={
                     forkPreviewData?.eventIndex !== undefined
                       ? events

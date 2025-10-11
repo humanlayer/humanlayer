@@ -2,7 +2,6 @@ import { forwardRef, useEffect, useState, useRef, useImperativeHandle, useCallba
 import { Button } from '@/components/ui/button'
 import { Session, SessionStatus } from '@/lib/daemon/types'
 import { Split, MessageCircleX, AlertCircle } from 'lucide-react'
-import { DraftActionButtons } from './DraftActionButtons'
 import { ActiveSessionActionButtons } from './ActiveSessionActionButtons'
 import { toast } from 'sonner'
 import {
@@ -21,7 +20,6 @@ import { Content } from '@tiptap/react'
 import { getCurrentWebview } from '@tauri-apps/api/webview'
 import type { UnlistenFn } from '@tauri-apps/api/event'
 import { Card, CardContent } from '@/components/ui/card'
-import { daemonClient } from '@/lib/daemon'
 
 interface ResponseInputProps {
   session: Session
@@ -49,10 +47,6 @@ interface ResponseInputProps {
   onToggleArchive?: () => void
   previewEventIndex?: number | null
   isActivelyProcessing?: boolean
-  isDraft?: boolean
-  onLaunchDraft?: () => void
-  onDiscardDraft?: () => void
-  isLaunchingDraft?: boolean
 }
 
 export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }, ResponseInputProps>(
@@ -82,10 +76,6 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
       autoAcceptEnabled = false,
       isArchived = false,
       onToggleArchive,
-      isDraft = false,
-      onLaunchDraft,
-      onDiscardDraft,
-      isLaunchingDraft = false,
     },
     ref,
   ) => {
@@ -118,7 +108,6 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
       return () => clearTimeout(timeout)
     }, [session.claudeSessionId])
     const getSendButtonText = () => {
-      if (isDraft) return isLaunchingDraft ? 'Launching...' : 'Launch'
       if (isResponding) return 'Interrupting...'
       if (isDenying) return youSure ? 'Deny?' : 'Deny'
 
@@ -152,30 +141,16 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
     const hasValidSessionData = (session.status as any) !== 'unknown' && !(session as any).fromStore
 
     if (hasValidSessionData) {
-      if (isDraft) {
-        // For draft sessions, only use editor state from database (never localStorage)
-        if (session.editorState) {
-          try {
-            initialValue = JSON.parse(session.editorState)
-            logger.log('ResponseInput - Successfully parsed editorState from database', {
-              initialValue,
-            })
-          } catch (e) {
-            logger.error('ResponseInput - error parsing editorState from database', e)
-          }
-        }
-      } else {
-        // For non-draft sessions, fall back to localStorage
-        if (
-          initialValue === null &&
-          typeof localStorageValue === 'string' &&
-          localStorageValue.length > 0
-        ) {
-          try {
-            initialValue = JSON.parse(localStorageValue)
-          } catch (e) {
-            logger.error('ResponseInput.useEffect() - error parsing localStorageValue', e)
-          }
+      // For active sessions, use localStorage for persistence
+      if (
+        initialValue === null &&
+        typeof localStorageValue === 'string' &&
+        localStorageValue.length > 0
+      ) {
+        try {
+          initialValue = JSON.parse(localStorageValue)
+        } catch (e) {
+          logger.error('ResponseInput.useEffect() - error parsing localStorageValue', e)
         }
       }
     }
@@ -183,33 +158,14 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
     const handleChange = useCallback(
       async (value: Content) => {
         const valueStr = JSON.stringify(value)
-
-        if (isDraft && session.status === SessionStatus.Draft) {
-          // For draft sessions, only save to database (not localStorage)
-          try {
-            await daemonClient.updateSession(session.id, {
-              editorState: valueStr,
-            })
-          } catch (error) {
-            // Log but don't show toast to avoid disrupting typing
-            logger.error('Failed to save editor state to database:', error)
-          }
-        } else {
-          // For non-draft sessions, save to localStorage
-          localStorage.setItem(`${ResponseInputLocalStorageKey}.${session.id}`, valueStr)
-        }
+        // For active sessions, save to localStorage
+        localStorage.setItem(`${ResponseInputLocalStorageKey}.${session.id}`, valueStr)
       },
-      [session.id, isDraft, session.status],
+      [session.id],
     )
 
     const handleSubmit = () => {
       logger.log('ResponseInput.handleSubmit()')
-
-      // Handle draft launch
-      if (isDraft) {
-        onLaunchDraft?.()
-        return
-      }
 
       // Check if this is an interruption attempt without claudeSessionId
       const isRunning =
@@ -389,9 +345,8 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
     const hasText = !isResponseEditorEmpty
     const canInterrupt = debouncedCanInterrupt // Use debounced value
 
-    // Disable when: responding OR (running without ability to interrupt) OR (not running and no text) OR launching draft
-    const isDisabled =
-      isResponding || (isRunning && !canInterrupt) || (!isRunning && !hasText) || isLaunchingDraft
+    // Disable when: responding OR (running without ability to interrupt) OR (not running and no text)
+    const isDisabled = isResponding || (isRunning && !canInterrupt) || (!isRunning && !hasText)
 
     const isMac = navigator.platform.includes('Mac')
     // Show different keyboard shortcut based on state
@@ -400,9 +355,7 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
     // Determine submit button variant based on state
     let submitButtonVariant: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link' =
       'default'
-    if (isDraft) {
-      submitButtonVariant = 'default'
-    } else if (isDenying) {
+    if (isDenying) {
       submitButtonVariant = 'destructive'
     } else if (isRunning && !hasText && canInterrupt) {
       submitButtonVariant = 'destructive'
@@ -552,41 +505,18 @@ export const ResponseInput = forwardRef<{ focus: () => void; blur?: () => void }
 
               {/* Keyboard shortcuts (condensed) */}
               <div className="flex items-center justify-between gap-2">
-                {isDraft ? (
-                  <DraftActionButtons
-                    bypassEnabled={bypassEnabled}
-                    autoAcceptEnabled={autoAcceptEnabled}
-                    onToggleBypass={handleToggleDangerouslySkipPermissions}
-                    onToggleAutoAccept={onToggleAutoAccept || (() => {})}
-                  />
-                ) : (
-                  <ActiveSessionActionButtons
-                    canFork={canFork}
-                    bypassEnabled={bypassEnabled}
-                    autoAcceptEnabled={autoAcceptEnabled}
-                    sessionStatus={sessionStatus}
-                    isArchived={isArchived || false}
-                    onToggleFork={handleToggleForkView}
-                    onToggleBypass={handleToggleDangerouslySkipPermissions}
-                    onToggleAutoAccept={onToggleAutoAccept || (() => {})}
-                    onToggleArchive={onToggleArchive || (() => {})}
-                  />
-                )}
+                <ActiveSessionActionButtons
+                  canFork={canFork}
+                  bypassEnabled={bypassEnabled}
+                  autoAcceptEnabled={autoAcceptEnabled}
+                  sessionStatus={sessionStatus}
+                  isArchived={isArchived || false}
+                  onToggleFork={handleToggleForkView}
+                  onToggleBypass={handleToggleDangerouslySkipPermissions}
+                  onToggleAutoAccept={onToggleAutoAccept || (() => {})}
+                  onToggleArchive={onToggleArchive || (() => {})}
+                />
                 <div className="flex items-center justify-end gap-2">
-                  {isDraft && (
-                    <Button
-                      onClick={onDiscardDraft}
-                      disabled={isResponding}
-                      variant="secondary"
-                      className="h-auto py-0.5 px-2 text-xs transition-all duration-200"
-                    >
-                      {/* {responseEditor && !responseEditor.isEmpty ? 'Discard' : 'Cancel'} Until we've implemented change detection we'll always discard */}
-                      {'Discard'}
-                      <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded border border-border">
-                        {isMac ? '⌘+Shift+.' : 'Ctrl+Shift+.'}
-                      </kbd>
-                    </Button>
-                  )}
                   <Button
                     onClick={handleSubmit}
                     disabled={isDisabled}
