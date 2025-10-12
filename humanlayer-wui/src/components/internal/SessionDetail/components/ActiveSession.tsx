@@ -146,6 +146,13 @@ export function ActiveSession({ session, onClose }: ActiveSessionProps) {
     setFocusedEventId: navigation.setFocusedEventId,
     setFocusSource: navigation.setFocusSource,
     scope: detailScope,
+    onStartDeny: () => {
+      // Clear fork state when entering denial mode
+      if (forkPreviewData) {
+        setForkPreviewData(null)
+        responseEditor?.commands.setContent('')
+      }
+    },
   })
 
   // Use clipboard hook
@@ -316,8 +323,12 @@ export function ActiveSession({ session, onClose }: ActiveSessionProps) {
 
   // Fork view toggle handler
   const handleToggleForkView = useCallback(() => {
+    // Clear denial state if entering fork view
+    if (!forkViewOpen && approvals.denyingApprovalId) {
+      approvals.handleCancelDeny()
+    }
     setForkViewOpen(!forkViewOpen)
-  }, [forkViewOpen])
+  }, [forkViewOpen, approvals.denyingApprovalId, approvals.handleCancelDeny])
 
   // Escape key handler
   useHotkeys(
@@ -332,11 +343,27 @@ export function ActiveSession({ session, onClose }: ActiveSessionProps) {
         return
       }
 
+      // Check for denying state early - whether editor is focused or not
+      const isDenying = approvals.denyingApprovalId !== null
+
       if (responseEditor?.isFocused) {
         responseEditor.commands.blur()
+        // If we're denying, don't process further - let the next ESC cancel the deny
+        if (isDenying) {
+          return
+        }
         return
       }
 
+      /* Everything below here implies the responseEditor is not focused */
+
+      // Cancel denial if in denying state
+      if (isDenying) {
+        approvals.handleCancelDeny()
+        return
+      }
+
+      // Check for fork mode
       if (forkPreviewData !== null) {
         setForkPreviewData(null)
         responseEditor?.commands.setContent('')
@@ -364,6 +391,8 @@ export function ActiveSession({ session, onClose }: ActiveSessionProps) {
       confirmingArchive,
       approvals.confirmingApprovalId,
       approvals.setConfirmingApprovalId,
+      approvals.denyingApprovalId,
+      approvals.handleCancelDeny,
       navigation.focusedEventId,
       navigation.setFocusedEventId,
       onClose,
@@ -791,7 +820,18 @@ export function ActiveSession({ session, onClose }: ActiveSessionProps) {
                 }
                 approvingApprovalId={approvals.approvingApprovalId}
                 denyingApprovalId={approvals.denyingApprovalId ?? undefined}
-                setDenyingApprovalId={approvals.setDenyingApprovalId}
+                setDenyingApprovalId={id => {
+                  if (id === null) {
+                    approvals.handleCancelDeny()
+                  } else {
+                    // Clear fork state when entering denial mode
+                    if (forkPreviewData) {
+                      setForkPreviewData(null)
+                      responseEditor?.commands.setContent('')
+                    }
+                    approvals.handleStartDeny(id)
+                  }
+                }}
                 onCancelDeny={approvals.handleCancelDeny}
                 focusSource={navigation.focusSource}
                 setFocusSource={navigation.setFocusSource}
