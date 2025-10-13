@@ -736,6 +736,12 @@
     font-family: 'IBM Plex Mono', 'Consolas', 'Monaco', 'Courier New', monospace;
   }
 
+  /* Global text selection styling */
+  ::selection {
+    background-color: var(--terminal-selection);
+    color: var(--terminal-fg);
+  }
+
   /* Terminal styling for all elements */
   input,
   textarea,
