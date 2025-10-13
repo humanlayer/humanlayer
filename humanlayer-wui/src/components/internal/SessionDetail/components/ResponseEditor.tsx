@@ -77,7 +77,7 @@ const MarkdownSyntaxHighlight = Extension.create({
             const textContent = doc.textContent
 
             // Performance optimization: disable highlighting for large texts
-            if (textContent.length > 5000) {
+            if (textContent.length > 10000) {
               return DecorationSet.empty
             }
 
