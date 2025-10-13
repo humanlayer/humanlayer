@@ -1,14 +1,13 @@
-import { useState, useImperativeHandle } from 'react'
-import { Pencil } from 'lucide-react'
-import { Session, SessionStatus } from '@/lib/daemon/types'
-import React from 'react'
-import { Button } from '@/components/ui/button'
-import { TokenUsageBadge } from './TokenUsageBadge'
-import { ModelSelector } from './ModelSelector'
-import { renderSessionStatus } from '@/utils/sessionStatus'
-import { getStatusTextClass } from '@/utils/component-utils'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { KeyboardShortcut } from '@/components/HotkeyPanel'
+import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Session, SessionStatus } from '@/lib/daemon/types'
+import { getStatusTextClass } from '@/utils/component-utils'
+import { renderSessionStatus } from '@/utils/sessionStatus'
+import { Pencil } from 'lucide-react'
+import React, { useImperativeHandle, useState } from 'react'
+import { ModelSelector } from './ModelSelector'
+import { TokenUsageBadge } from './TokenUsageBadge'
 
 export interface StatusBarRef {
   openModelSelector: () => void
@@ -95,6 +94,12 @@ export function StatusBar({
                   : 'cursor-not-allowed hover:bg-transparent'
               } ${isReadyForInputOrDraft ? '' : getStatusTextClass(session.status)}`}
               onClick={() => isReadyForInputOrDraft && setIsModelSelectorOpen(true)}
+              onKeyDown={e => {
+                if (isReadyForInputOrDraft && e.key === 'Enter') {
+                  e.preventDefault()
+                  setIsModelSelectorOpen(true)
+                }
+              }}
             >
               {modelText}
               {isReadyForInputOrDraft && (

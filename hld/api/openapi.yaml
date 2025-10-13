@@ -178,6 +178,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SessionResponse'
+        '400':
+          description: Invalid status transition or validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           $ref: '#/components/responses/NotFound'
         '500':
@@ -264,6 +270,31 @@ paths:
           description: Draft session deleted successfully
         '400':
           description: Session is not in draft state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /sessions/{id}/hard-delete-empty:
+    delete:
+      operationId: hardDeleteEmptyDraftSession
+      summary: Permanently delete an empty draft session
+      description: |
+        Permanently delete a draft or discarded session from the database if it is truly empty.
+        A session is considered empty if it has no meaningful content (no title, no query, default model, no editor state).
+      tags:
+        - Sessions
+      parameters:
+        - $ref: '#/components/parameters/sessionId'
+      responses:
+        '204':
+          description: Empty draft session permanently deleted
+        '400':
+          description: Session is not empty or not a draft/discarded
           content:
             application/json:
               schema:
@@ -1302,6 +1333,9 @@ components:
           type: string
           description: JSON blob of editor state for draft sessions
           example: '{"content":"console.log(\"hello\");","cursorPosition":24}'
+        status:
+          $ref: '#/components/schemas/SessionStatus'
+          description: Update session status (only draft ↔ discarded transitions allowed)
 
     ContinueSessionRequest:
       type: object

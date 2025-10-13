@@ -380,6 +380,50 @@ func (h *SessionHandlers) UpdateSession(ctx context.Context, req api.UpdateSessi
 		update.Title = req.Body.Title
 	}
 
+	// Handle status updates with validation
+	if req.Body.Status != nil {
+		// Fetch current session to validate transition
+		sess, err := h.store.GetSession(ctx, string(req.Id))
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return api.UpdateSession404JSONResponse{
+					NotFoundJSONResponse: api.NotFoundJSONResponse{
+						Error: api.ErrorDetail{
+							Code:    "HLD-1002",
+							Message: "Session not found",
+						},
+					},
+				}, nil
+			}
+			slog.Error("Failed to get session for status update",
+				"error", fmt.Sprintf("%v", err),
+				"session_id", req.Id,
+				"operation", "UpdateSession",
+			)
+			return api.UpdateSession500JSONResponse{
+				InternalErrorJSONResponse: api.InternalErrorJSONResponse{
+					Error: api.ErrorDetail{
+						Code:    "HLD-4001",
+						Message: err.Error(),
+					},
+				},
+			}, nil
+		}
+
+		// Validate allowed transitions
+		newStatus := string(*req.Body.Status)
+		if !isValidStatusTransition(sess.Status, newStatus) {
+			return api.UpdateSession400JSONResponse{
+				Error: api.ErrorDetail{
+					Code:    "HLD-3001",
+					Message: fmt.Sprintf("Invalid status transition from %s to %s", sess.Status, newStatus),
+				},
+			}, nil
+		}
+
+		update.Status = &newStatus
+	}
+
 	// Update dangerously skip permissions if specified
 	if req.Body.DangerouslySkipPermissions != nil {
 		update.DangerouslySkipPermissions = req.Body.DangerouslySkipPermissions
@@ -492,6 +536,37 @@ func (h *SessionHandlers) UpdateSession(ctx context.Context, req api.UpdateSessi
 		}, nil
 	}
 
+	// Auto-approve pending approvals if bypass permissions was just enabled
+	if req.Body.DangerouslySkipPermissions != nil && *req.Body.DangerouslySkipPermissions {
+		// Get all pending approvals for this session
+		pendingApprovals, err := h.approvalManager.GetPendingApprovals(ctx, string(req.Id))
+		if err != nil {
+			// Log error but don't fail the request
+			slog.Error("Failed to get pending approvals for auto-approval",
+				"error", err,
+				"session_id", req.Id,
+				"operation", "UpdateSession")
+		} else {
+			// Auto-approve each pending approval
+			for _, approval := range pendingApprovals {
+				err := h.approvalManager.ApproveToolCall(ctx, approval.ID, "Auto-approved due to bypass permissions")
+				if err != nil {
+					// Log error but continue with other approvals
+					slog.Error("Failed to auto-approve pending approval",
+						"error", err,
+						"approval_id", approval.ID,
+						"session_id", req.Id,
+						"operation", "UpdateSession")
+				} else {
+					slog.Info("Auto-approved pending approval due to bypass permissions",
+						"approval_id", approval.ID,
+						"session_id", req.Id,
+						"operation", "UpdateSession")
+				}
+			}
+		}
+	}
+
 	// Fetch updated session
 	session, err := h.store.GetSession(ctx, string(req.Id))
 	if err != nil {
@@ -514,6 +589,23 @@ func (h *SessionHandlers) UpdateSession(ctx context.Context, req api.UpdateSessi
 		Data: h.mapper.SessionToAPI(*session),
 	}
 	return api.UpdateSession200JSONResponse(resp), nil
+}
+
+// isValidStatusTransition validates if a status transition is allowed via PATCH
+func isValidStatusTransition(currentStatus, newStatus string) bool {
+	// Allow draft ↔ discarded transitions
+	if currentStatus == store.SessionStatusDraft && newStatus == store.SessionStatusDiscarded {
+		return true
+	}
+	if currentStatus == store.SessionStatusDiscarded && newStatus == store.SessionStatusDraft {
+		return true
+	}
+	// Allow no-op (setting to same status)
+	if currentStatus == newStatus {
+		return true
+	}
+	// Disallow all other status changes via PATCH
+	return false
 }
 
 // DeleteDraftSession deletes a draft session
@@ -584,6 +676,105 @@ func (h *SessionHandlers) DeleteDraftSession(ctx context.Context, req api.Delete
 
 	// Return 204 No Content on successful deletion
 	return api.DeleteDraftSession204Response{}, nil
+}
+
+// HardDeleteEmptyDraftSession permanently deletes an empty draft or discarded session
+func (h *SessionHandlers) HardDeleteEmptyDraftSession(ctx context.Context, req api.HardDeleteEmptyDraftSessionRequestObject) (api.HardDeleteEmptyDraftSessionResponseObject, error) {
+	// Fetch session
+	sess, err := h.store.GetSession(ctx, string(req.Id))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return api.HardDeleteEmptyDraftSession404JSONResponse{
+				NotFoundJSONResponse: api.NotFoundJSONResponse{
+					Error: api.ErrorDetail{
+						Code:    "HLD-1002",
+						Message: "Session not found",
+					},
+				},
+			}, nil
+		}
+		slog.Error("Failed to get session for hard delete",
+			"error", fmt.Sprintf("%v", err),
+			"session_id", req.Id,
+			"operation", "HardDeleteEmptyDraftSession",
+		)
+		return api.HardDeleteEmptyDraftSession500JSONResponse{
+			InternalErrorJSONResponse: api.InternalErrorJSONResponse{
+				Error: api.ErrorDetail{
+					Code:    "HLD-4009",
+					Message: err.Error(),
+				},
+			},
+		}, nil
+	}
+
+	// Validate is draft or discarded
+	if sess.Status != store.SessionStatusDraft && sess.Status != store.SessionStatusDiscarded {
+		return api.HardDeleteEmptyDraftSession400JSONResponse{
+			Error: api.ErrorDetail{
+				Code:    "HLD-4010",
+				Message: fmt.Sprintf("Can only hard delete draft or discarded sessions, current status: %s", sess.Status),
+			},
+		}, nil
+	}
+
+	// Validate session is empty
+	if !isDraftEmpty(sess) {
+		return api.HardDeleteEmptyDraftSession400JSONResponse{
+			Error: api.ErrorDetail{
+				Code:    "HLD-4011",
+				Message: "Can only hard delete empty drafts - this session has content",
+			},
+		}, nil
+	}
+
+	// Perform hard delete
+	err = h.store.HardDeleteSession(ctx, string(req.Id))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// Session was already deleted (race condition)
+			return api.HardDeleteEmptyDraftSession404JSONResponse{
+				NotFoundJSONResponse: api.NotFoundJSONResponse{
+					Error: api.ErrorDetail{
+						Code:    "HLD-1002",
+						Message: "Session not found",
+					},
+				},
+			}, nil
+		}
+		slog.Error("Failed to hard delete session",
+			"error", fmt.Sprintf("%v", err),
+			"session_id", req.Id,
+			"operation", "HardDeleteEmptyDraftSession",
+		)
+		return api.HardDeleteEmptyDraftSession500JSONResponse{
+			InternalErrorJSONResponse: api.InternalErrorJSONResponse{
+				Error: api.ErrorDetail{
+					Code:    "HLD-4009",
+					Message: err.Error(),
+				},
+			},
+		}, nil
+	}
+
+	return api.HardDeleteEmptyDraftSession204Response{}, nil
+}
+
+// isDraftEmpty checks if a draft session has no meaningful content
+func isDraftEmpty(sess *store.Session) bool {
+	// Draft is empty if it has:
+	// - No title (or default title)
+	// - No query (or empty/whitespace query)
+	// - Default model (or no model)
+	// - No editor state (or empty editor state)
+
+	hasTitle := sess.Title != "" && sess.Title != "Untitled"
+	hasQuery := sess.Query != "" && strings.TrimSpace(sess.Query) != ""
+	hasEditorState := sess.EditorState != nil && *sess.EditorState != "" && *sess.EditorState != "{}"
+	hasNonDefaultModel := sess.Model != "" && sess.Model != "sonnet"
+
+	// Empty if ALL of these are false
+	return !hasTitle && !hasQuery && !hasEditorState && !hasNonDefaultModel
 }
 
 // LaunchDraftSession launches a draft session

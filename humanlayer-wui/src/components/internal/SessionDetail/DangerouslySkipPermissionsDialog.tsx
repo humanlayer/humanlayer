@@ -180,7 +180,7 @@ const DangerouslySkipPermissionsDialogContent: FC<{
             : 'Bypass Permissions'}
           {!useTimeout || (timeoutMinutes !== '' && timeoutMinutes !== 0) ? (
             <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">
-              {navigator.platform.toLowerCase().includes('mac') ? '⌘' : 'Ctrl'}+⏎
+              {navigator.platform.toLowerCase().includes('mac') ? '⌘' : 'Ctrl'}+ENTER
             </kbd>
           ) : null}
         </Button>

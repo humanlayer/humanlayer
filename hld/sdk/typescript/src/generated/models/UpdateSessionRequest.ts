@@ -13,6 +13,14 @@
  */
 
 import { mapValues } from '../runtime';
+import type { SessionStatus } from './SessionStatus';
+import {
+    SessionStatusFromJSON,
+    SessionStatusFromJSONTyped,
+    SessionStatusToJSON,
+    SessionStatusToJSONTyped,
+} from './SessionStatus';
+
 /**
  * 
  * @export
@@ -103,7 +111,15 @@ export interface UpdateSessionRequest {
      * @memberof UpdateSessionRequest
      */
     editorState?: string;
+    /**
+     * Update session status (only draft ↔ discarded transitions allowed)
+     * @type {SessionStatus}
+     * @memberof UpdateSessionRequest
+     */
+    status?: SessionStatus;
 }
+
+
 
 /**
  * Check if a given object implements the UpdateSessionRequest interface.
@@ -136,6 +152,7 @@ export function UpdateSessionRequestFromJSONTyped(json: any, ignoreDiscriminator
         'additionalDirectories': json['additional_directories'] == null ? undefined : json['additional_directories'],
         'workingDir': json['working_dir'] == null ? undefined : json['working_dir'],
         'editorState': json['editor_state'] == null ? undefined : json['editor_state'],
+        'status': json['status'] == null ? undefined : SessionStatusFromJSON(json['status']),
     };
 }
 
@@ -164,6 +181,7 @@ export function UpdateSessionRequestToJSONTyped(value?: UpdateSessionRequest | n
         'additional_directories': value['additionalDirectories'],
         'working_dir': value['workingDir'],
         'editor_state': value['editorState'],
+        'status': SessionStatusToJSON(value['status']),
     };
 }
 

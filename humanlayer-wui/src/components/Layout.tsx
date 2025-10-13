@@ -212,14 +212,53 @@ export function Layout() {
           return
         }
 
-        // Dismiss toast if it exists
+        // Flash the button to provide visual feedback
         const toastId = `approval_required:${targetApproval.id}`
-        if (visibleToasts.some(t => t.id === toastId)) {
-          toast.dismiss(toastId)
-        }
 
-        // Navigate to the session with approval parameter
-        navigate(`/sessions/${targetApproval.sessionId}?approval=${targetApproval.id}`)
+        if (visibleToasts.some(t => t.id === toastId)) {
+          // Find the button directly using the toastId data attribute
+          // Use CSS.escape to safely handle special characters in the selector
+          const escapedToastId = CSS.escape(toastId)
+          const buttonElement = document.querySelector(
+            `[data-toast-id="${escapedToastId}"][data-button][data-action]`,
+          ) as HTMLElement
+
+          if (buttonElement) {
+            // Apply flash effect using the button's border color (accent color)
+            buttonElement.classList.add('!bg-[var(--terminal-accent)]', '!text-background')
+
+            // Also ensure text contrast for all child elements
+            const childElements = buttonElement.querySelectorAll('*')
+            childElements.forEach(child => {
+              ;(child as HTMLElement).classList.add('!text-background')
+            })
+
+            // Remove flash after 100ms
+            setTimeout(() => {
+              // Remove only the flash classes, preserving any other dynamic classes
+              buttonElement.classList.remove('!bg-[var(--terminal-accent)]', '!text-background')
+              childElements.forEach(child => {
+                ;(child as HTMLElement).classList.remove('!text-background')
+              })
+
+              // Wait another 100ms before dismissing toast
+              setTimeout(() => {
+                toast.dismiss(toastId)
+                // Navigate to the session with approval parameter
+                navigate(`/sessions/${targetApproval.sessionId}?approval=${targetApproval.id}`)
+              }, 100)
+            }, 100)
+
+            return // Early return to prevent fallback behavior
+          }
+
+          // Fallback: if button not found, just dismiss immediately and navigate
+          toast.dismiss(toastId)
+          navigate(`/sessions/${targetApproval.sessionId}?approval=${targetApproval.id}`)
+        } else {
+          // Navigate immediately since there's no toast
+          navigate(`/sessions/${targetApproval.sessionId}?approval=${targetApproval.id}`)
+        }
       } catch (error) {
         console.error('Failed to jump to approval:', error)
         toast.error('Failed to fetch approvals')

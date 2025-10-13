@@ -75,7 +75,7 @@
 }
 
 .markdown-syntax-code {
-  color: var(--terminal-color-11);
+  color: var(--terminal-color-10);
 }
 
 /* Heading syntax markers */
@@ -108,16 +108,17 @@
 
 .markdown-codeblock-content {
   font-family: 'SF Mono', Monaco, 'Cascadia Mono', 'Roboto Mono', Consolas, 'Courier New', monospace;
-  /* Remove block-level styling - let these be inline for syntax highlighting */
 }
 
 /* Markdown content styles */
 .markdown-bold {
+  color: var(--terminal-color-10);
   font-weight: 700;
 }
 
 .markdown-italic {
   font-style: italic;
+  color: var(--terminal-color-10);
 }
 
 .markdown-strike {
@@ -126,10 +127,9 @@
 
 .markdown-code {
   font-family: 'SF Mono', Monaco, 'Cascadia Mono', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  color: var(--terminal-color-10);
   background-color: var(--muted);
-  padding: 0.125rem 0.25rem;
   border-radius: 0.25rem;
-  font-size: 0.875em;
 }
 
 /* Heading content styles */

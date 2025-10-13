@@ -1,0 +1,11 @@
+{
+	"name": "scripts",
+	"private": true,
+	"devDependencies": {
+		"@types/bun": "latest",
+		"@codelayer/contracts": "workspace:*"
+	},
+	"peerDependencies": {
+		"typescript": "^5"
+	}
+}

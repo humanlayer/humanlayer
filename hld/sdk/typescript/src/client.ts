@@ -21,11 +21,14 @@ import {
     FuzzySearchFilesRequest,
     FuzzySearchFilesResponse
 } from './generated';
+import { createErrorInterceptor } from './middleware';
 
 export interface HLDClientOptions {
     baseUrl?: string;
     port?: number;
     headers?: Record<string, string>;
+    // New option for error handling
+    onFetchError?: (error: Error, context: { url: string; method?: string }) => void;
 }
 
 export interface SSEEventHandlers {
@@ -56,7 +59,22 @@ export class HLDClient {
 
         const config = new Configuration({
             basePath: this.baseUrl,
-            headers: this.headers
+            headers: this.headers,
+            // Add error interceptor middleware
+            middleware: [
+                createErrorInterceptor({
+                    onError: (error, context) => {
+                        // Call custom handler if provided
+                        if (options.onFetchError) {
+                            options.onFetchError(error, {
+                                url: context.url,
+                                method: context.init?.method,
+                            });
+                        }
+                    },
+                    logErrors: true,
+                })
+            ]
         });
 
         this.sessionsApi = new SessionsApi(config);

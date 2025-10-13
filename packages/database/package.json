@@ -1,0 +1,26 @@
+{
+	"name": "@codelayer/database",
+	"module": "index.ts",
+	"type": "module",
+	"private": true,
+	"scripts": {
+		"db:generate": "drizzle-kit generate",
+		"db:push": "drizzle-kit push",
+		"db:migrate": "bun drizzle-kit migrate",
+		"db:introspect": "drizzle-kit introspect",
+		"db:pull": "drizzle-kit pull",
+		"db:studio": "drizzle-kit studio"
+	},
+	"devDependencies": {
+		"@types/bun": "latest",
+		"drizzle-kit": "^0.31.5"
+	},
+	"peerDependencies": {
+		"typescript": "^5"
+	},
+	"dependencies": {
+		"drizzle-orm": "^0.44.6",
+		"pg": "^8.16.3",
+		"uuidv7": "^1.0.2"
+	}
+}
