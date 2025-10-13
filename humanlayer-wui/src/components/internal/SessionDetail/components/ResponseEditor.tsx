@@ -74,6 +74,13 @@ const MarkdownSyntaxHighlight = Extension.create({
         props: {
           decorations: (state: any) => {
             const doc = state.doc
+            const textContent = doc.textContent
+
+            // Performance optimization: disable highlighting for large texts
+            if (textContent.length > 10000) {
+              return DecorationSet.empty
+            }
+
             const decorations: Decoration[] = []
 
             // Track code blocks and collect lines
