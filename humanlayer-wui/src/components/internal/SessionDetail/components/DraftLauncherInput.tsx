@@ -71,18 +71,18 @@ export const DraftLauncherInput = forwardRef<
       autoAcceptEnabledProp !== undefined ? autoAcceptEnabledProp : autoAcceptEnabledInternal
     const bypassEnabled = bypassEnabledProp !== undefined ? bypassEnabledProp : bypassEnabledInternal
 
-    // Use prop handlers if provided, otherwise use internal handlers
-    const handleToggleAutoAccept =
-      onToggleAutoAcceptProp ||
-      useCallback(() => {
-        setAutoAcceptEnabledInternal(!autoAcceptEnabledInternal)
-      }, [autoAcceptEnabledInternal, setAutoAcceptEnabledInternal])
+    // Define internal handlers unconditionally
+    const handleToggleAutoAcceptInternal = useCallback(() => {
+      setAutoAcceptEnabledInternal(!autoAcceptEnabledInternal)
+    }, [autoAcceptEnabledInternal, setAutoAcceptEnabledInternal])
 
-    const handleToggleBypass =
-      onToggleBypassProp ||
-      useCallback(() => {
-        setBypassEnabledInternal(!bypassEnabledInternal)
-      }, [bypassEnabledInternal, setBypassEnabledInternal])
+    const handleToggleBypassInternal = useCallback(() => {
+      setBypassEnabledInternal(!bypassEnabledInternal)
+    }, [bypassEnabledInternal, setBypassEnabledInternal])
+
+    // Use prop handlers if provided, otherwise use internal handlers
+    const handleToggleAutoAccept = onToggleAutoAcceptProp || handleToggleAutoAcceptInternal
+    const handleToggleBypass = onToggleBypassProp || handleToggleBypassInternal
 
     const tiptapRef = useRef<{ focus: () => void; blur?: () => void }>(null)
     const statusBarRef = useRef<StatusBarRef>(null)

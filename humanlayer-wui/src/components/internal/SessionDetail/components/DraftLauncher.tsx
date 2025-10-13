@@ -263,14 +263,11 @@ export const DraftLauncher: React.FC<DraftLauncherProps> = ({ session, onSession
   }, [bypassEnabled, setBypassEnabled])
 
   // Handle bypass dialog confirmation
-  const handleDangerousSkipPermissionsConfirm = useCallback(
-    async (_timeoutMinutes: number | null) => {
-      // For drafts, we just enable the setting, we don't use timeout
-      setBypassEnabled(true)
-      setDangerousSkipPermissionsDialogOpen(false)
-    },
-    [setBypassEnabled],
-  )
+  const handleDangerousSkipPermissionsConfirm = useCallback(async () => {
+    // For drafts, we just enable the setting, we don't use timeout
+    setBypassEnabled(true)
+    setDangerousSkipPermissionsDialogOpen(false)
+  }, [setBypassEnabled])
 
   // Handle model change - save to localStorage for next draft
   const handleModelChange = useCallback(() => {
