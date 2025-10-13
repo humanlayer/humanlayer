@@ -59,6 +59,7 @@
   --terminal-success: #859900;
   --terminal-warning: #b58900;
   --terminal-error: #dc322f;
+  --terminal-selection: #2AA19899;
 
   /* Standard colors (30-37, 40-47) - Official Solarized values */
   --terminal-color-0: #073642; /* Black (base02) */
@@ -94,6 +95,7 @@
   --terminal-success: #859900;
   --terminal-warning: #b58900;
   --terminal-error: #dc322f;
+  --terminal-selection: #eee8d5;
 
   /* Standard colors - Official Solarized values (inverted for light theme) */
   --terminal-color-0: #eee8d5; /* Black (base2) */
@@ -129,6 +131,7 @@
   --terminal-success: #7b9171;
   --terminal-warning: #e9c46a;
   --terminal-error: #e63946;
+  --terminal-selection: #f4a2614d;
 
   /* Standard colors - Warm coffee-inspired palette */
   --terminal-color-0: #2f1b14; /* Black (bg) */
@@ -164,6 +167,7 @@
   --terminal-success: #a6e3a1;
   --terminal-warning: #f9e2af;
   --terminal-error: #f38ba8;
+  --terminal-selection: #9399b240;
 
   /* Standard colors - Official Catppuccin Mocha values */
   --terminal-color-0: #45475a; /* Black (surface1) */
@@ -199,6 +203,7 @@
   --terminal-success: #00ff00;
   --terminal-warning: #ffff00;
   --terminal-error: #ff0000;
+  --terminal-selection: #FFFFFF;
 
   /* Standard colors - Maximum contrast */
   --terminal-color-0: #000000; /* Black */
@@ -234,6 +239,7 @@
   --terminal-success: #32ccdc;
   --terminal-warning: #fecb6e;
   --terminal-error: #fd886b;
+  --terminal-selection: #fd579933;
 
   /* Standard colors - Modern design-tool inspired */
   --terminal-color-0: #181818; /* Black */
@@ -269,6 +275,7 @@
   --terminal-success: #22a06b;
   --terminal-warning: #cc7722;
   --terminal-error: #dc3545;
+  --terminal-selection: #0066cc26;
 
   /* Standard colors - Clean professional palette */
   --terminal-color-0: #f8f9fa; /* Black (light bg) */
@@ -304,6 +311,7 @@
   --terminal-success: #a9b665;
   --terminal-warning: #d8a657;
   --terminal-error: #ea6962;
+  --terminal-selection: #504945;
 
   /* Standard colors - Official Gruvbox dark values */
   --terminal-color-0: #282828; /* Black (bg0) */
@@ -339,6 +347,7 @@
   --terminal-success: #6c782e;
   --terminal-warning: #b47109;
   --terminal-error: #c14a4a;
+  --terminal-selection: #d5c4a1;
 
   /* Standard colors - Official Gruvbox light values */
   --terminal-color-0: #fbf1c7; /* Black (bg0) */
@@ -374,6 +383,7 @@
   --terminal-success: #a6e22e;
   --terminal-warning: #e6db74;
   --terminal-error: #f92672;
+  --terminal-selection: #49483E;
 
   /* Standard colors - Classic Monokai palette */
   --terminal-color-0: #272822; /* Black */
@@ -409,6 +419,7 @@
   --terminal-success: #458cc9;
   --terminal-warning: #ff6600;
   --terminal-error: #cc5200;
+  --terminal-selection: #ff66001a;
 
   /* Standard colors - HN/minimalist palette */
   --terminal-color-0: #f6f6ef; /* Black (bg) */
@@ -444,6 +455,7 @@
   --terminal-success: #9ccfd8;
   --terminal-warning: #f6c177;
   --terminal-error: #eb6f92;
+  --terminal-selection: #6e6a8633;
 
   /* Standard colors - Official Rosé Pine values */
   --terminal-color-0: #191724; /* Black (base) */
@@ -479,6 +491,7 @@
   --terminal-success: #56949f;
   --terminal-warning: #ea9d34;
   --terminal-error: #b4637a;
+  --terminal-selection: #6e6a8614;
 
   /* Standard colors - Official Rosé Pine Dawn values */
   --terminal-color-0: #faf4ed; /* Black (base) */
@@ -514,6 +527,7 @@
   --terminal-success: #9ccfd8;
   --terminal-warning: #f6c177;
   --terminal-error: #eb6f92;
+  --terminal-selection: #817c9c26;
 
   /* Standard colors - Official Rosé Pine Moon values */
   --terminal-color-0: #232136; /* Black (base) */
@@ -554,6 +568,7 @@
   --terminal-success: #9ece6a; /* Green */
   --terminal-warning: #e0af68; /* Yellow */
   --terminal-error: #f7768e; /* Red */
+  --terminal-selection: #515c7e4d;
 
   /* Terminal ANSI colors */
   --terminal-color-0: #15161e; /* Black */
@@ -592,6 +607,7 @@
   --terminal-success: #9ece6a; /* Green */
   --terminal-warning: #e0af68; /* Yellow */
   --terminal-error: #f7768e; /* Red */
+  --terminal-selection: #6f7bb640;
 
   /* Terminal ANSI colors */
   --terminal-color-0: #1d202f; /* Black */
@@ -630,6 +646,7 @@
   --terminal-success: #00c853; /* Green success (approve) */
   --terminal-warning: #2196f3; /* Blue for needs_approval/opus */
   --terminal-error: #d50000; /* Red error (deny) */
+  --terminal-selection: #fa4fb81a;
 
   /* Terminal ANSI colors - Same as dark for consistency */
   --terminal-color-0: #000000; /* Black */
@@ -668,6 +685,7 @@
   --terminal-success: #00ff41; /* Bright green success */
   --terminal-warning: #ffaa00; /* Amber warning */
   --terminal-error: #ff4444; /* Red error */
+  --terminal-selection: #00ff4133;
 
   /* Terminal ANSI colors - Mix of green, white, and grays */
   --terminal-color-0: #0a1510; /* Black (dark green) */
@@ -706,6 +724,7 @@
   --terminal-success: #99ffe4; /* Green/Cyan */
   --terminal-warning: #ffc799; /* Yellow */
   --terminal-error: #ff8080; /* Red */
+  --terminal-selection: #ffc79933;
 
   /* Terminal ANSI colors - Official Vesper palette */
   --terminal-color-0: #101010; /* Black */
