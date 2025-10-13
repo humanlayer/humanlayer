@@ -1,5 +1,5 @@
 // Main export for the SessionDetail module
-export { default } from './SessionDetail'
+export { default } from './SessionDetailRouter'
 
 // Export individual components if needed elsewhere
 export { ConversationStream } from '../ConversationStream/ConversationStream'

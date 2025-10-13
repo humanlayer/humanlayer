@@ -1,7 +1,8 @@
-import { useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import SessionDetail from '@/components/internal/SessionDetail'
 import { useStore } from '@/AppStore'
+import SessionDetail from '@/components/internal/SessionDetail'
+import { Button } from '@/components/ui/button'
+import { useEffect } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 
 export function SessionDetailPage() {
   const { sessionId } = useParams<{ sessionId: string }>()
@@ -45,9 +46,9 @@ export function SessionDetailPage() {
         <div className="text-center">
           <h2 className="text-lg font-semibold mb-2">Session not found</h2>
           <p className="text-muted-foreground mb-4">{activeSessionDetail.error}</p>
-          <button onClick={handleClose} className="text-primary hover:underline">
+          <Button onClick={handleClose} className="text-primary hover:underline">
             ← Back to Sessions
-          </button>
+          </Button>
         </div>
       </div>
     )
@@ -56,7 +57,7 @@ export function SessionDetailPage() {
   // Render SessionDetail even during loading so it can show its skeleton UI
   // Pass a minimal session object if still loading
 
-  let session = activeSessionDetail?.session?.id
+  const session = activeSessionDetail?.session?.id
     ? activeSessionDetail.session
     : sessionFromStore
       ? { ...sessionFromStore, fromStore: true }
