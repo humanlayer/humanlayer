@@ -41,6 +41,10 @@ if [ "$IS_CI" = true ]; then
     install_ci_tools
 fi
 
+# Install platform-specific dependencies
+echo "🔍 Checking platform-specific dependencies..."
+bash hack/install_platform_deps.sh
+
 # Install mockgen if not already installed
 if ! command -v mockgen &> /dev/null; then
     echo "📦 Installing mockgen..."
