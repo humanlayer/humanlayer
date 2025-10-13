@@ -59,7 +59,7 @@
   --terminal-success: #859900;
   --terminal-warning: #b58900;
   --terminal-error: #dc322f;
-  --terminal-selection: #2AA19899;
+  --terminal-selection: #2aa19899;
 
   /* Standard colors (30-37, 40-47) - Official Solarized values */
   --terminal-color-0: #073642; /* Black (base02) */
@@ -203,7 +203,7 @@
   --terminal-success: #00ff00;
   --terminal-warning: #ffff00;
   --terminal-error: #ff0000;
-  --terminal-selection: #FFFFFF;
+  --terminal-selection: #ffffff;
 
   /* Standard colors - Maximum contrast */
   --terminal-color-0: #000000; /* Black */
@@ -383,7 +383,7 @@
   --terminal-success: #a6e22e;
   --terminal-warning: #e6db74;
   --terminal-error: #f92672;
-  --terminal-selection: #49483E;
+  --terminal-selection: #49483e;
 
   /* Standard colors - Classic Monokai palette */
   --terminal-color-0: #272822; /* Black */
