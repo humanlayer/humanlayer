@@ -34,6 +34,8 @@
     "@sentry/react": "^10.10.0",
     "@sentry/vite-plugin": "^4.3.0",
     "@tailwindcss/vite": "^4.1.11",
+    "@tanstack/react-form": "^1.23.7",
+    "@tanstack/zod-form-adapter": "^0.42.1",
     "@tauri-apps/api": "^2.7.0",
     "@tauri-apps/plugin-clipboard-manager": "~2",
     "@tauri-apps/plugin-fs": "~2",
@@ -68,6 +70,7 @@
     "strip-ansi": "^7.1.0",
     "tailwind-merge": "^3.3.1",
     "tailwindcss": "^4.1.10",
+    "zod": "^4.1.12",
     "zustand": "^5.0.5"
   },
   "devDependencies": {
