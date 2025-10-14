@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"io/ioutil"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -23,7 +22,7 @@ func NewAgentHandlers() *AgentHandlers {
 type AgentFrontmatter struct {
 	Name        string `yaml:"name"`
 	Description string `yaml:"description,omitempty"`
-	Tools       string `yaml:"tools,omitempty"`  // Tools is a comma-separated string in the YAML
+	Tools       string `yaml:"tools,omitempty"` // Tools is a comma-separated string in the YAML
 	Model       string `yaml:"model,omitempty"`
 }
 
@@ -83,7 +82,7 @@ func (h *AgentHandlers) DiscoverAgents(ctx context.Context, req api.DiscoverAgen
 			filePath := filepath.Join(dir, entry.Name())
 			slog.Info("Processing agent file", "file", filePath)
 
-			content, err := ioutil.ReadFile(filePath)
+			content, err := os.ReadFile(filePath)
 			if err != nil {
 				slog.Warn("Failed to read agent file",
 					"file", filePath,
@@ -174,4 +173,3 @@ func (h *AgentHandlers) DiscoverAgents(ctx context.Context, req api.DiscoverAgen
 		Agents: agents,
 	}, nil
 }
-
