@@ -468,6 +468,44 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /agents/discover:
+    post:
+      summary: Discover available agents
+      description: Discovers agent definitions from .claude/agents directories
+      operationId: discoverAgents
+      tags:
+        - Agents
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - workingDir
+              properties:
+                workingDir:
+                  type: string
+                  description: Session working directory for local agent discovery
+      responses:
+        '200':
+          description: Successfully discovered agents
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - agents
+                properties:
+                  agents:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Agent'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
   /config:
     get:
       operationId: getConfig
@@ -1634,6 +1672,30 @@ components:
           items:
             $ref: '#/components/schemas/SlashCommand'
 
+    # Agent Types
+    Agent:
+      type: object
+      required:
+        - name
+        - mentionText
+        - source
+      properties:
+        name:
+          type: string
+          description: Agent name from YAML frontmatter
+          example: "codebase-locator"
+        mentionText:
+          type: string
+          description: Text to use for mentions
+          example: "@agent-codebase-locator"
+        source:
+          type: string
+          enum: [local, global]
+          description: Whether agent is from local or global directory
+        description:
+          type: string
+          description: Optional description from YAML frontmatter
+
     UpdateConfigRequest:
       type: object
       properties:
@@ -1995,3 +2057,5 @@ tags:
     description: Model proxy endpoints for alternative providers
   - name: Files
     description: File system search and navigation
+  - name: Agents
+    description: Agent discovery and management
