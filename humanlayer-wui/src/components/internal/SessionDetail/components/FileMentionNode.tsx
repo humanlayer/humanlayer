@@ -14,8 +14,8 @@ interface FileMentionNodeProps {
 export const FileMentionNode = ({ node }: FileMentionNodeProps) => {
   const { label, id, isDirectory } = node.attrs
 
-  // Check if this is an agent mention (id starts with "agent-")
-  const isAgent = id.startsWith('agent-')
+  // Check if this is an agent mention (id starts with "@agent-")
+  const isAgent = id.startsWith('@agent-')
 
   return (
     <NodeViewWrapper

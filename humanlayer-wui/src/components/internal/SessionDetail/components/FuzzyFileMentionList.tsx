@@ -213,8 +213,8 @@ export const FuzzyFileMentionList = forwardRef<FileMentionListRef, FileMentionLi
             if (selected.type === 'agent') {
               const agent = selected.data as AgentMatch
               command({
-                id: agent.mentionText.substring(1), // Remove the @ prefix since the mention system adds it
-                label: agent.mentionText.substring(1), // Also remove @ from label since FileMentionNode adds it
+                id: agent.mentionText, // Keep the full @agent-<name> for the text insertion
+                label: agent.mentionText.substring(1), // Remove @ from label since FileMentionNode adds it for display
                 isDirectory: false,
               })
             } else {
@@ -289,8 +289,8 @@ export const FuzzyFileMentionList = forwardRef<FileMentionListRef, FileMentionLi
                 onMouseEnter={() => setSelectedIndex(index)}
                 onClick={() => {
                   command({
-                    id: agent.mentionText.substring(1), // Remove the @ prefix since the mention system adds it
-                    label: agent.mentionText.substring(1), // Also remove @ from label since FileMentionNode adds it
+                    id: agent.mentionText, // Keep the full @agent-<name> for the text insertion
+                    label: agent.mentionText.substring(1), // Remove @ from label since FileMentionNode adds it for display
                     isDirectory: false,
                   })
                 }}
