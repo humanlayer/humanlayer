@@ -28,7 +28,6 @@ interface LauncherState {
   isLaunching: boolean
   error?: string
   gPrefixMode: boolean
-  selectedMenuIndex: number
 
   // Actions
   open: () => void
@@ -37,7 +36,6 @@ interface LauncherState {
   setConfig: (config: SessionConfig) => void
   setGPrefixMode: (enabled: boolean) => void
   setView: (view: 'menu' | 'input') => void
-  setSelectedMenuIndex: (index: number) => void
   launchSession: () => Promise<void>
   createNewSession: () => Promise<void>
   openSessionById: (sessionId: string) => void
@@ -146,14 +144,12 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
   },
   isLaunching: false,
   gPrefixMode: false,
-  selectedMenuIndex: 0,
 
   open: () =>
     set({
       isOpen: true,
       mode: 'command', // Always command mode
       view: 'menu',
-      selectedMenuIndex: 0,
       error: undefined,
     }),
 
@@ -172,7 +168,6 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
         basetenApiKey: getSavedBasetenKey(),
         additionalDirectories: getSavedAdditionalDirectories(),
       },
-      selectedMenuIndex: 0,
       error: undefined,
       gPrefixMode: false,
     })
@@ -252,8 +247,6 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
   setGPrefixMode: enabled => set({ gPrefixMode: enabled }),
 
   setView: view => set({ view }),
-
-  setSelectedMenuIndex: index => set({ selectedMenuIndex: index }),
 
   launchSession: async () => {
     const { query, config } = get()
@@ -426,7 +419,6 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
         basetenApiKey: getSavedBasetenKey(),
         additionalDirectories: getSavedAdditionalDirectories(),
       },
-      selectedMenuIndex: 0,
       isLaunching: false,
       error: undefined,
       gPrefixMode: false,

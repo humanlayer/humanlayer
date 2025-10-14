@@ -1,10 +1,17 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { useSessionLauncher, isViewingSessionDetail } from '@/hooks/useSessionLauncher'
 import { useStore } from '@/AppStore'
-import { cn } from '@/lib/utils'
 import { KeyboardShortcut } from './HotkeyPanel'
 import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
+import {
+  Command,
+  CommandInput,
+  CommandList,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+} from '@/components/ui/command'
 
 interface MenuOption {
   id: string
@@ -16,10 +23,10 @@ interface MenuOption {
 }
 
 export default function CommandPaletteMenu() {
-  const { createNewSession, selectedMenuIndex, setSelectedMenuIndex, close } = useSessionLauncher()
+  const { createNewSession, close } = useSessionLauncher()
 
-  const [searchQuery, setSearchQuery] = useState('')
-  const inputRef = useRef<HTMLInputElement>(null)
+  const [internalSearchValue, setInternalSearchValue] = useState('')
+  const [selectedValue, setSelectedValue] = useState<string>('')
 
   // Get sessions and state from the main app store
   const sessions = useStore(state => state.sessions)
@@ -88,7 +95,7 @@ export default function CommandPaletteMenu() {
       },
       hotkey: '?',
     },
-    ...(isSessionDetail && searchQuery.toLowerCase().includes('brain')
+    ...(isSessionDetail && internalSearchValue.toLowerCase().includes('brain')
       ? [
           {
             id: 'toggle-brainrot',
@@ -132,50 +139,18 @@ export default function CommandPaletteMenu() {
       : []),
   ]
 
-  // Filter options based on search query (match against label and description)
-  const menuOptions = searchQuery
-    ? baseOptions.filter(option => {
-        const query = searchQuery.toLowerCase()
-        const labelMatch = option.label.toLowerCase().includes(query)
-        const descriptionMatch = option.description?.toLowerCase().includes(query) || false
-        return labelMatch || descriptionMatch
-      })
-    : baseOptions
-
-  // Keyboard navigation - only arrow keys
-  useHotkeys(
-    'up',
-    () => {
-      setSelectedMenuIndex(selectedMenuIndex > 0 ? selectedMenuIndex - 1 : menuOptions.length - 1)
-    },
-    { enabled: true, enableOnFormTags: true, scopes: [HOTKEY_SCOPES.SESSION_LAUNCHER] },
-  )
-
-  useHotkeys(
-    'down',
-    () => {
-      setSelectedMenuIndex(selectedMenuIndex < menuOptions.length - 1 ? selectedMenuIndex + 1 : 0)
-    },
-    { enabled: true, enableOnFormTags: true, scopes: [HOTKEY_SCOPES.SESSION_LAUNCHER] },
-  )
-
-  useHotkeys(
-    'enter',
-    () => {
-      if (menuOptions[selectedMenuIndex]) {
-        menuOptions[selectedMenuIndex].action()
-      }
-    },
-    { enabled: true, enableOnFormTags: true, scopes: [HOTKEY_SCOPES.SESSION_LAUNCHER] },
-  )
+  // cmdk handles filtering internally - no manual filtering needed
 
   // Tab key navigates down the list
   useHotkeys(
     'tab',
     e => {
-      if (menuOptions.length === 0) return
+      if (baseOptions.length === 0) return
       e.preventDefault()
-      setSelectedMenuIndex((selectedMenuIndex + 1) % menuOptions.length)
+
+      const currentIndex = baseOptions.findIndex(opt => opt.id === selectedValue)
+      const nextIndex = (currentIndex + 1) % baseOptions.length
+      setSelectedValue(baseOptions[nextIndex].id)
     },
     {
       enabled: true,
@@ -189,9 +164,12 @@ export default function CommandPaletteMenu() {
   useHotkeys(
     'shift+tab',
     e => {
-      if (menuOptions.length === 0) return
+      if (baseOptions.length === 0) return
       e.preventDefault()
-      setSelectedMenuIndex(selectedMenuIndex > 0 ? selectedMenuIndex - 1 : menuOptions.length - 1)
+
+      const currentIndex = baseOptions.findIndex(opt => opt.id === selectedValue)
+      const prevIndex = currentIndex <= 0 ? baseOptions.length - 1 : currentIndex - 1
+      setSelectedValue(baseOptions[prevIndex].id)
     },
     {
       enabled: true,
@@ -201,74 +179,50 @@ export default function CommandPaletteMenu() {
     },
   )
 
-  // Reset selection when options change
+  // Initialize selection to first item when component mounts
   useEffect(() => {
-    if (selectedMenuIndex >= menuOptions.length) {
-      setSelectedMenuIndex(0)
+    if (baseOptions.length > 0 && !selectedValue) {
+      setSelectedValue(baseOptions[0].id)
     }
-  }, [menuOptions.length, selectedMenuIndex, setSelectedMenuIndex])
+  }, [baseOptions.length, selectedValue])
 
   return (
-    <div className="space-y-2">
-      {/* Search input */}
-      <input
-        ref={inputRef}
-        type="text"
-        value={searchQuery}
-        onChange={e => setSearchQuery(e.target.value)}
-        onKeyDown={e => {
-          // Prevent up/down from moving cursor, let them control the list
-          if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-            e.preventDefault()
-          }
-          // Enter should trigger selected option
-          if (e.key === 'Enter' && menuOptions[selectedMenuIndex]) {
-            e.preventDefault()
-            menuOptions[selectedMenuIndex].action()
-          }
-        }}
+    <Command
+      className="rounded-lg border shadow-md"
+      value={selectedValue}
+      onValueChange={setSelectedValue}
+      loop
+    >
+      <CommandInput
         placeholder="Type a command..."
-        className={cn(
-          'w-full h-9 px-3 py-2 text-sm',
-          'font-mono',
-          'bg-background border rounded-md',
-          'transition-all duration-200',
-          'placeholder:text-muted-foreground/60',
-          'border-border hover:border-primary/50 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none',
-        )}
-        autoComplete="off"
         autoFocus
+        className="border-0"
+        onValueChange={setInternalSearchValue}
       />
-
-      {menuOptions.map((option, index) => (
-        <div
-          key={option.id}
-          className={cn(
-            'p-3 rounded cursor-pointer transition-all duration-150',
-            index === selectedMenuIndex
-              ? 'bg-primary text-primary-foreground'
-              : 'bg-muted/30 hover:bg-muted/60',
-          )}
-          onClick={() => {
-            setSelectedMenuIndex(index)
-            option.action()
-          }}
-          onMouseEnter={() => setSelectedMenuIndex(index)}
-        >
-          <div className="flex items-center justify-between">
-            <div className="text-sm font-medium truncate">{option.label}</div>
-            {option.hotkey && <KeyboardShortcut keyString={option.hotkey} />}
-          </div>
-        </div>
-      ))}
-
-      <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t border-border/30">
+      <CommandList>
+        <CommandEmpty>No results found.</CommandEmpty>
+        <CommandGroup className="p-0">
+          {baseOptions.map(option => (
+            <CommandItem
+              key={option.id}
+              value={option.id}
+              keywords={[option.label, option.description || '']}
+              onSelect={() => option.action()}
+              className="flex items-center justify-between px-3 py-2.5"
+            >
+              <span className="text-sm font-medium">{option.label}</span>
+              {option.hotkey && <KeyboardShortcut keyString={option.hotkey} />}
+            </CommandItem>
+          ))}
+        </CommandGroup>
+      </CommandList>
+      <div className="flex items-center justify-between text-xs text-muted-foreground p-2 border-t">
         <div className="flex items-center space-x-3">
           <span>↑↓/Tab Navigate</span>
           <span>↵ Select</span>
         </div>
         <span>ESC Close</span>
       </div>
-    </div>
+    </Command>
   )
 }
