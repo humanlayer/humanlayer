@@ -188,7 +188,7 @@ export default function CommandPaletteMenu() {
 
   return (
     <Command
-      className="rounded-lg border shadow-md"
+      className="rounded-lg border shadow-md [&_[cmdk-input]]:h-9"
       value={selectedValue}
       onValueChange={setSelectedValue}
       loop
@@ -196,10 +196,10 @@ export default function CommandPaletteMenu() {
       <CommandInput
         placeholder="Type a command..."
         autoFocus
-        className="border-0"
+        className="border-0 font-mono text-sm"
         onValueChange={setInternalSearchValue}
       />
-      <CommandList>
+      <CommandList className="max-h-[400px]">
         <CommandEmpty>No results found.</CommandEmpty>
         <CommandGroup className="p-0">
           {baseOptions.map(option => (
@@ -208,7 +208,7 @@ export default function CommandPaletteMenu() {
               value={option.id}
               keywords={[option.label, option.description || '']}
               onSelect={() => option.action()}
-              className="flex items-center justify-between px-3 py-2.5"
+              className="flex items-center justify-between px-3 py-3 transition-all duration-150 cursor-pointer data-[selected=true]:bg-primary data-[selected=true]:text-primary-foreground hover:bg-muted/60"
             >
               <span className="text-sm font-medium">{option.label}</span>
               {option.hotkey && <KeyboardShortcut keyString={option.hotkey} />}
