@@ -1,3 +1,7 @@
+---
+description: Manage Linear tickets - create, update, comment, and follow workflow patterns
+---
+
 # Linear - Ticket Management
 
 You are tasked with managing Linear tickets, including creating tickets from thoughts documents, updating existing tickets, and following the team's specific workflow patterns.

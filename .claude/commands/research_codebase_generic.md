@@ -1,3 +1,8 @@
+---
+description: Research codebase comprehensively using parallel sub-agents
+model: opus
+---
+
 # Research Codebase
 
 You are tasked with conducting comprehensive research across the codebase to answer user questions by spawning parallel sub-agents and synthesizing their findings.
