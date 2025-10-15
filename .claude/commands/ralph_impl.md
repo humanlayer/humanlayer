@@ -1,3 +1,8 @@
+---
+description: Implement highest priority small Linear ticket with worktree setup
+model: sonnet
+---
+
 ## PART I - IF A TICKET IS MENTIONED
 
 0c. use `linear` cli to fetch the selected item into thoughts with the ticket number - ./thoughts/shared/tickets/ENG-xxxx.md

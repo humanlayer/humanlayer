@@ -1,3 +1,8 @@
+---
+description: Create detailed implementation plans through interactive research and iteration
+model: opus
+---
+
 # Implementation Plan
 
 You are tasked with creating detailed implementation plans through an interactive, iterative process. You should be skeptical, thorough, and work collaboratively with the user to produce high-quality technical specifications.

@@ -1,3 +1,7 @@
+---
+description: Resume work from handoff document with context analysis and validation
+---
+
 # Resume work from a handoff document
 
 You are tasked with resuming work from a handoff document through an interactive process. These handoffs contain critical context, learnings, and next steps from previous work sessions that need to be understood and continued.

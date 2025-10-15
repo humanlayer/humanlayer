@@ -1,3 +1,7 @@
+---
+description: Create git commits for session changes with clear, atomic messages
+---
+
 # Commit Changes
 
 You are tasked with creating git commits for the changes made during this session.

@@ -1,3 +1,7 @@
+---
+description: Debug issues by investigating logs, database state, and git history
+---
+
 # Debug
 
 You are tasked with helping debug issues during manual testing or implementation. This command allows you to investigate problems by examining logs, database state, and git history without editing files. Think of this as a way to bootstrap a debugging session without using the primary window's context.

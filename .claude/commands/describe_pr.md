@@ -1,3 +1,7 @@
+---
+description: Generate comprehensive PR descriptions following repository templates
+---
+
 # Generate PR Description
 
 You are tasked with generating a comprehensive pull request description following the repository's standard template.
