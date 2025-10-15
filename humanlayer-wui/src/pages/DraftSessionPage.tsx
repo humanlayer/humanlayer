@@ -1,46 +1,88 @@
-import { useSearchParams, useNavigate } from 'react-router-dom'
-import { useEffect, useState } from 'react'
 import { useStore } from '@/AppStore'
-import { Session } from '@/lib/daemon/types'
-import { DraftSessionForm } from '@/components/internal/SessionDetail/components/DraftSessionForm'
+import { DraftLauncherForm } from '@/components/internal/SessionDetail/components/DraftLauncherForm'
+import { daemonClient } from '@/lib/daemon'
+import { type Session, SessionStatus } from '@/lib/daemon/types'
+import { useCallback, useEffect, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 
 export function DraftSessionPage() {
-  const [searchParams] = useSearchParams()
-  const navigate = useNavigate()
-  const draftId = searchParams.get('id')
+	const [searchParams] = useSearchParams()
+	const navigate = useNavigate()
+	const draftId = searchParams.get('id')
 
-  const [draftSession, setDraftSession] = useState<Session | null>(null)
-  const [loading, setLoading] = useState(!!draftId)
+	const [draftSession, setDraftSession] = useState<Session | null>(null)
+	const [loading, setLoading] = useState(!!draftId)
 
-  const sessions = useStore(state => state.sessions)
+	const sessions = useStore((state) => state.sessions)
+	const refreshSessions = useStore((state) => state.refreshSessions)
+	const fetchActiveSessionDetail = useStore((state) => state.fetchActiveSessionDetail)
 
-  // Load existing draft if ID provided
-  useEffect(() => {
-    if (draftId) {
-      const existingDraft = sessions.find(s => s.id === draftId)
-      if (existingDraft) {
-        setDraftSession(existingDraft)
-        setLoading(false)
-      } else {
-        // Draft not found, navigate to new draft
-        navigate('/sessions/draft', { replace: true })
-        setLoading(false)
-      }
-    }
-  }, [draftId, sessions, navigate])
+	// Load existing draft if ID provided
+	useEffect(() => {
+		const loadDraft = async () => {
+			if (draftId) {
+				setLoading(true)
+				try {
+					// Always fetch fresh from daemon to ensure we have latest data
+					const allSessions = await daemonClient.listSessions()
+					console.log(
+						'editorState allSessions',
+						allSessions.filter((s) => s.status === SessionStatus.Draft),
+					)
+					const existingDraft = allSessions.find((s) => s.id === draftId && s.status === SessionStatus.Draft)
+					console.log('editorState allSessions existingDraft', existingDraft)
 
-  const handleClose = () => {
-    navigate('/')
-  }
+					if (existingDraft) {
+						setDraftSession(existingDraft)
+						// Refresh local store to ensure consistency
+						await refreshSessions()
+					} else {
+						// Draft not found, navigate to new draft
+						console.error('Draft not found with ID:', draftId)
+						navigate('/sessions/draft', { replace: true })
+					}
+				} catch (error) {
+					console.error('Failed to load draft:', error)
+					navigate('/sessions/draft', { replace: true })
+				} finally {
+					setLoading(false)
+				}
+			} else {
+				// No draft ID provided, we'll create one lazily when user starts typing
+				setLoading(false)
+			}
+		}
 
-  const handleLaunch = (sessionId: string) => {
-    // After launching, navigate to the active session
-    navigate(`/sessions/${sessionId}`)
-  }
+		loadDraft()
+	}, [draftId, navigate, refreshSessions]) // Include deps but loadDraft only runs when draftId changes
 
-  if (loading) {
-    return <div className="flex items-center justify-center h-full">Loading draft...</div>
-  }
+	const handleSessionUpdated = useCallback(() => {
+		// Refresh the session detail if it was updated
+		if (draftSession?.id && draftSession.id !== 'placeholder-draft') {
+			fetchActiveSessionDetail(draftSession.id)
+		}
+	}, [draftSession?.id, fetchActiveSessionDetail])
 
-  return <DraftSessionForm existingDraft={draftSession} onClose={handleClose} onLaunch={handleLaunch} />
+	// Monitor session status changes (when draft is launched)
+	useEffect(() => {
+		if (draftSession?.id) {
+			const currentSession = sessions.find((s) => s.id === draftSession.id)
+			if (currentSession && currentSession.status !== SessionStatus.Draft) {
+				// Session has been launched, navigate to the active session view
+				navigate(`/sessions/${draftSession.id}`)
+			}
+		}
+	}, [sessions, draftSession?.id, navigate])
+
+	if (loading) {
+		return <div className="flex items-center justify-center h-full">Loading draft...</div>
+	}
+
+	return (
+		<DraftLauncherForm
+			session={draftSession}
+			key={draftSession?.id} // this avoids us needing a useEffect when the session changes
+			onSessionUpdated={handleSessionUpdated}
+		/>
+	)
 }

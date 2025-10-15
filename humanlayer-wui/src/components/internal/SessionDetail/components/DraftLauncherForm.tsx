@@ -1,0 +1,632 @@
+import { useStore } from '@/AppStore'
+import { SearchInput } from '@/components/FuzzySearchInput'
+import { HotkeyScopeBoundary } from '@/components/HotkeyScopeBoundary'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
+import { useLocalStorage } from '@/hooks/useLocalStorage'
+import { useRecentPaths } from '@/hooks/useRecentPaths'
+import { daemonClient } from '@/lib/daemon'
+import { type Session, ViewMode } from '@/lib/daemon/types'
+import { FolderOpen, TextSearch } from 'lucide-react'
+import type React from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useHotkeys } from 'react-hotkeys-hook'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { toast } from 'sonner'
+import { DangerouslySkipPermissionsDialog } from '../DangerouslySkipPermissionsDialog'
+import { DiscardDraftDialog } from './DiscardDraftDialog'
+import { DraftLauncherInput } from './DraftLauncherInput'
+
+interface DraftLauncherFormProps {
+	session: Session | null
+	onSessionUpdated?: () => void
+	//onCreateDraft?: () => Promise<Session | null | undefined>
+}
+
+export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, onSessionUpdated }) => {
+	console.log('editorState loaded:', session?.editorState)
+	const navigate = useNavigate()
+	const [searchParams] = useSearchParams()
+	const titleInputRef = useRef<HTMLInputElement>(null)
+
+	// Core Form State
+	const [sessionId, setSessionId] = useState<string | null>(null)
+	const [title, setTitle] = useState(session?.title ?? session?.summary ?? '')
+
+	// Local Storage State
+	const [workingDirectory, setWorkingDirectory] = useLocalStorage(
+		'draft-working-directory',
+		session?.workingDir ?? '',
+	)
+	const [defaultAutoAcceptEditsSetting, setDefaultAutoAcceptEditsSetting, defaultAutoAcceptEditsSettingChecked] =
+		useLocalStorage('draft-auto-accept', session?.autoAcceptEdits ?? false)
+	const [
+		defaultDangerouslyBypassPermissionsSetting,
+		setDefaultDangerouslyBypassPermissionsSetting,
+		defaultDangerouslyBypassPermissionsSettingChecked,
+	] = useLocalStorage('draft-bypass-permissions', session?.dangerouslySkipPermissions ?? false)
+
+	// Model/Provider Persistence (via useLocalStorage)
+	const [lastUsedModel, setLastUsedModel] = useLocalStorage('draft-last-model', '')
+	const [lastUsedProvider, setLastUsedProvider] = useLocalStorage('draft-last-provider', 'anthropic')
+	const [lastUsedProxyModel, setLastUsedProxyModel] = useLocalStorage('draft-last-proxy-model', '')
+	const [lastUsedProxyBaseUrl, setLastUsedProxyBaseUrl] = useLocalStorage('draft-last-proxy-base-url', '')
+
+	const [acceptEditsEnabled, setAcceptEditsEnabled] = useState(session?.autoAcceptEdits ?? false)
+	const [dangerouslyBypassPermissionsEnabled, setDangerouslyBypassPermissionsEnabled] = useState(
+		session?.dangerouslySkipPermissions ?? false,
+	)
+
+	// Model/Provider State
+	const [model, setModel] = useState(session?.model ?? '')
+
+	const [proxyEnabled, setProxyEnabled] = useState(session?.proxyEnabled ?? false)
+	const [proxyBaseUrl, setProxyBaseUrl] = useState<string | null>(session?.proxyBaseUrl ?? null)
+	const [proxyModelOverride, setProxyModelOverride] = useState<string | null>(session?.proxyModelOverride ?? null)
+	const [provider, setProvider] = useState<'anthropic' | 'baseten' | 'openrouter'>(
+		session?.proxyBaseUrl
+			? session?.proxyBaseUrl?.includes('baseten.co')
+				? 'baseten'
+				: 'openrouter'
+			: 'anthropic',
+	)
+
+	// UI State
+	const [isLaunchingDraft, setIsLaunchingDraft] = useState(false)
+	const [showDiscardDraftDialog, setShowDiscardDraftDialog] = useState(false)
+	const [dangerousSkipPermissionsDialogOpen, setDangerousSkipPermissionsDialogOpen] = useState(false)
+	// Sync timer for debouncing updates
+	const syncTimerRef = useRef<NodeJS.Timeout | null>(null)
+
+	// Hooks
+	const { paths: recentPaths } = useRecentPaths()
+	const responseEditor = useStore((state) => state.responseEditor)
+	const refreshSessions = useStore((state) => state.refreshSessions)
+
+	const draftCreatedRef = useRef<boolean>(!!session) // if a session is passed in then the draft has already been created
+
+	// Get prompt from ResponseEditor
+	const prompt = responseEditor?.getText() || ''
+
+	// ======== NAVIGATION AND INITIAL LOAD ========
+
+	// Handle navigation and focus on mount
+	useEffect(() => {
+		// Check for session ID in query params
+		const draftId = searchParams.get('id')
+
+		// Set sessionId from query param or null
+		if (draftId) {
+			setSessionId(draftId)
+		}
+
+		// Always focus title input on mount
+		if (titleInputRef.current) {
+			titleInputRef.current.focus()
+		}
+
+		// Set the proper state for proxy, model etc. from last-used values based on local storage IFF the session is not defined.
+		if (!session) {
+			if (lastUsedProvider === 'anthropic' && lastUsedModel) {
+				setModel(lastUsedModel)
+				setProvider('anthropic')
+				setProxyEnabled(false)
+				setProxyBaseUrl(null)
+				setProxyModelOverride(null)
+			} else if (lastUsedProvider === 'openrouter' && lastUsedProxyModel && lastUsedProxyBaseUrl) {
+				setModel('')
+				setProvider('openrouter')
+				setProxyEnabled(true)
+				setProxyBaseUrl(lastUsedProxyBaseUrl)
+				setProxyModelOverride(lastUsedProxyModel)
+			} else if (lastUsedProvider === 'baseten' && lastUsedProxyModel) {
+				setModel('')
+				setProvider('baseten')
+				setProxyEnabled(true)
+				setProxyBaseUrl('https://inference.baseten.co/v1')
+				setProxyModelOverride(lastUsedProxyModel)
+			}
+		}
+		if (session?.editorState) {
+		}
+	}, []) // Run only once on mount
+
+	// if there is no session set the value to the default, otherwise leave it at what the session specifies
+	useEffect(() => {
+		if (!session && defaultDangerouslyBypassPermissionsSettingChecked)
+			setDangerouslyBypassPermissionsEnabled(defaultDangerouslyBypassPermissionsSetting)
+	}, [session, defaultDangerouslyBypassPermissionsSettingChecked])
+
+	useEffect(() => {
+		if (!session && defaultDangerouslyBypassPermissionsSettingChecked)
+			setAcceptEditsEnabled(defaultAutoAcceptEditsSetting)
+	}, [session, defaultAutoAcceptEditsSettingChecked])
+
+	// ======== DRAFT CREATION ========
+
+	// Create draft when user starts typing (title or prompt)
+	const handleCreateDraft = async () => {
+		// Don't create if we already have a sessionId or are already creating
+		if (sessionId || draftCreatedRef.current) {
+			return
+		}
+
+		draftCreatedRef.current = true
+
+		try {
+			const response = await daemonClient.launchSession({
+				query: '',
+				working_dir: workingDirectory,
+				draft: true,
+			})
+			setSessionId(response.sessionId)
+		} catch (error) {
+			console.error('Failed to create draft:', error)
+			draftCreatedRef.current = false
+		}
+	}
+
+	// ======== DRAFT UPDATES ========
+
+	// Force immediate sync (for navigation)
+	const syncImmediately = useCallback(async () => {
+		// Only sync if we have a sessionId and initial load is finished
+		if (!sessionId) {
+			return
+		}
+
+		// Clear any pending timer
+		if (syncTimerRef.current) {
+			clearTimeout(syncTimerRef.current)
+			syncTimerRef.current = null
+		}
+
+		try {
+			const editorStateJson = responseEditor ? JSON.stringify(responseEditor.getJSON()) : '{}'
+			console.log('syncing editorState', editorStateJson)
+
+			await daemonClient.updateSession(sessionId, {
+				title,
+				workingDir: workingDirectory,
+				autoAcceptEdits: defaultAutoAcceptEditsSetting,
+				dangerouslySkipPermissions: defaultDangerouslyBypassPermissionsSetting,
+				editorState: editorStateJson,
+				model,
+				proxyEnabled,
+				proxyBaseUrl: proxyBaseUrl || undefined,
+				proxyModelOverride: proxyModelOverride || undefined,
+			})
+		} catch (error) {
+			console.error('Failed to sync draft:', error)
+		}
+	}, [
+		sessionId,
+		title,
+		workingDirectory,
+		defaultAutoAcceptEditsSetting,
+		defaultDangerouslyBypassPermissionsSetting,
+		model,
+		proxyEnabled,
+		proxyBaseUrl,
+		proxyModelOverride,
+		responseEditor,
+	])
+
+	// Sync draft to daemon (debounced)
+	const syncToDaemon = useCallback(() => {
+		// Clear any existing timer
+		if (syncTimerRef.current) {
+			clearTimeout(syncTimerRef.current)
+		}
+
+		// Set new timer for debounced sync
+		syncTimerRef.current = setTimeout(async () => {
+			await syncImmediately()
+		}, 500)
+	}, [sessionId, syncImmediately])
+
+	// Watch for changes and trigger sync
+	useEffect(() => {
+		if (sessionId) syncToDaemon() // does
+	}, [
+		title,
+		workingDirectory,
+		defaultAutoAcceptEditsSetting,
+		defaultDangerouslyBypassPermissionsSetting,
+		model,
+		proxyEnabled,
+		proxyBaseUrl,
+		proxyModelOverride,
+		syncToDaemon,
+	])
+
+	// ======== RESPONSE EDITOR INTEGRATION ========
+
+	// ======== USER INTERACTIONS ========
+
+	// Handle title change
+	const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+		setTitle(e.target.value)
+		if (e.target.value.trim() !== '' && !sessionId) {
+			handleCreateDraft()
+		}
+	}
+
+	// Handle working directory change
+	const handleWorkingDirectoryChange = useCallback(
+		(value: string) => {
+			setWorkingDirectory(value)
+		},
+		[setWorkingDirectory],
+	)
+
+	// Handle model/provider changes
+	const handleModelChange = useCallback(() => {
+		// Save current configuration to localStorage for next draft
+		if (provider === 'anthropic' && model) {
+			setLastUsedProvider('anthropic')
+			setLastUsedModel(model)
+			setLastUsedProxyModel('')
+			setLastUsedProxyBaseUrl('')
+		} else if (provider === 'openrouter' && proxyModelOverride) {
+			setLastUsedProvider('openrouter')
+			setLastUsedModel('')
+			setLastUsedProxyModel(proxyModelOverride)
+			setLastUsedProxyBaseUrl('https://openrouter.ai/api/v1')
+		} else if (provider === 'baseten' && proxyModelOverride) {
+			setLastUsedProvider('baseten')
+			setLastUsedModel('')
+			setLastUsedProxyModel(proxyModelOverride)
+			setLastUsedProxyBaseUrl('https://inference.baseten.co/v1')
+		}
+
+		if (onSessionUpdated) {
+			onSessionUpdated()
+		}
+	}, [
+		provider,
+		model,
+		proxyModelOverride,
+		setLastUsedProvider,
+		setLastUsedModel,
+		setLastUsedProxyModel,
+		setLastUsedProxyBaseUrl,
+		onSessionUpdated,
+	])
+
+	// Handle launching a draft session
+	const handleLaunchDraft = useCallback(
+		async (settings: { autoAcceptEdits: boolean; dangerouslySkipPermissions: boolean }) => {
+			if (isLaunchingDraft) return
+
+			// Validate that we have a session
+			if (!sessionId) {
+				toast.error('No draft session to launch')
+				return
+			}
+
+			const workingDir = workingDirectory
+			if (!workingDir) {
+				toast.error('Please select a working directory', {
+					description: 'You must choose a directory before launching the session',
+				})
+				return
+			}
+
+			if (!prompt.trim()) {
+				toast.error('Please enter a prompt before launching')
+				return
+			}
+
+			try {
+				setIsLaunchingDraft(true)
+
+				// Apply the settings to the draft session before launching
+				await daemonClient.updateSession(sessionId, {
+					autoAcceptEdits: settings.autoAcceptEdits,
+					dangerouslySkipPermissions: settings.dangerouslySkipPermissions,
+				})
+
+				// Launch the draft session with the prompt
+				await daemonClient.launchDraftSession(sessionId, prompt)
+
+				// Store working directory in localStorage
+				localStorage.setItem('humanlayer-last-working-dir', workingDir)
+
+				// Clear the input after successful launch
+				responseEditor?.commands.setContent('')
+				localStorage.removeItem(`response-input.${sessionId}`)
+
+				const storeState = useStore.getState()
+
+				// Refresh sessions to update the session list, set view mode to 'normal'
+				await storeState.refreshSessions()
+				await storeState.setViewMode(ViewMode.Normal)
+
+				// Session status will update via WebSocket
+			} catch (error) {
+				toast.error('Failed to launch draft session', {
+					description: error instanceof Error ? error.message : 'Unknown error',
+				})
+			} finally {
+				setIsLaunchingDraft(false)
+			}
+		},
+		[sessionId, workingDirectory, prompt, responseEditor, isLaunchingDraft],
+	)
+
+	// Handle discard draft
+	const handleDiscardDraft = useCallback(async () => {
+		// Check if there's any content
+		const hasContent = title.trim() !== '' || prompt.trim() !== ''
+		if (hasContent) {
+			setShowDiscardDraftDialog(true)
+		} else {
+			// Refresh sessions before navigating back
+			await refreshSessions()
+			navigate(-1)
+		}
+	}, [navigate, title, prompt, refreshSessions])
+
+	const confirmDiscardDraft = useCallback(async () => {
+		try {
+			if (sessionId) {
+				await daemonClient.deleteDraftSession(sessionId)
+				localStorage.removeItem(`response-input.${sessionId}`)
+				await refreshSessions()
+			}
+			navigate(-1)
+		} catch (error) {
+			toast.error('Failed to discard draft', {
+				description: error instanceof Error ? error.message : 'Unknown error',
+			})
+		}
+	}, [sessionId, navigate, refreshSessions])
+
+	// Handle toggling auto-accept
+	const handleToggleAutoAccept = useCallback(() => {
+		const newValue = !defaultAutoAcceptEditsSetting
+		setAcceptEditsEnabled(newValue)
+		setDefaultAutoAcceptEditsSetting(newValue)
+	}, [defaultAutoAcceptEditsSetting, setDefaultAutoAcceptEditsSetting])
+
+	// Handle toggling bypass permissions
+	const handleToggleBypass = useCallback(() => {
+		console.log(
+			'handle toggle bypass:',
+			defaultDangerouslyBypassPermissionsSetting,
+			dangerousSkipPermissionsDialogOpen,
+		)
+		if (defaultDangerouslyBypassPermissionsSetting) {
+			setDangerousSkipPermissionsDialogOpen(false)
+			setDefaultDangerouslyBypassPermissionsSetting(false)
+		} else {
+			setDangerousSkipPermissionsDialogOpen(true)
+		}
+	}, [defaultDangerouslyBypassPermissionsSetting, setDefaultDangerouslyBypassPermissionsSetting])
+
+	// Handle bypass dialog confirmation
+	const handleDangerousSkipPermissionsConfirm = useCallback(async () => {
+		setDefaultDangerouslyBypassPermissionsSetting(true)
+		setDangerousSkipPermissionsDialogOpen(true)
+		setDangerousSkipPermissionsDialogOpen(false)
+	}, [setDefaultDangerouslyBypassPermissionsSetting])
+
+	// ======== HOTKEYS ========
+
+	// Escape key handler
+	useHotkeys(
+		'escape',
+		async () => {
+			if (responseEditor?.isFocused) {
+				responseEditor.commands.blur()
+				return
+			}
+
+			const activeElement = document.activeElement
+			const isFormElementFocused =
+				activeElement?.tagName === 'INPUT' ||
+				activeElement?.tagName === 'TEXTAREA' ||
+				activeElement?.tagName === 'SELECT'
+
+			if (isFormElementFocused && activeElement instanceof HTMLElement) {
+				activeElement.blur()
+				return
+			}
+
+			// Sync immediately before navigating away
+			await syncImmediately()
+			// Refresh sessions to ensure the draft list is up to date
+			await refreshSessions()
+			navigate(-1)
+		},
+		{
+			scopes: [HOTKEY_SCOPES.DRAFT_LAUNCHER],
+			enableOnFormTags: true,
+		},
+		[responseEditor, navigate, syncImmediately, refreshSessions],
+	)
+
+	// Enter key to refocus the prompt input
+	useHotkeys(
+		'enter',
+		(e) => {
+			const activeElement = document.activeElement
+			const isInputFocused =
+				activeElement?.tagName === 'INPUT' ||
+				activeElement?.tagName === 'TEXTAREA' ||
+				activeElement?.getAttribute('contenteditable') === 'true'
+
+			if (!isInputFocused && responseEditor && !responseEditor.isFocused) {
+				e.preventDefault()
+				responseEditor.commands.focus()
+			}
+		},
+		{
+			scopes: [HOTKEY_SCOPES.DRAFT_LAUNCHER],
+			enableOnFormTags: false,
+			enableOnContentEditable: false,
+		},
+		[responseEditor],
+	)
+
+	// 'e' key to discard draft
+	useHotkeys(
+		'e',
+		(e) => {
+			e.preventDefault()
+			handleDiscardDraft()
+		},
+		{
+			scopes: [HOTKEY_SCOPES.DRAFT_LAUNCHER],
+			enableOnFormTags: false,
+			enableOnContentEditable: false,
+		},
+		[handleDiscardDraft],
+	)
+
+	// Shift+R to focus title
+	useHotkeys(
+		'shift+r',
+		(e) => {
+			e.preventDefault()
+			if (titleInputRef.current) {
+				titleInputRef.current.focus()
+			}
+		},
+		{
+			scopes: [HOTKEY_SCOPES.DRAFT_LAUNCHER],
+			enableOnFormTags: false,
+			enableOnContentEditable: false,
+		},
+	)
+
+	// Alt+A / Option+A to toggle auto-accept
+	useHotkeys(
+		'alt+a, option+a',
+		(e) => {
+			e.preventDefault()
+			handleToggleAutoAccept()
+		},
+		{
+			enableOnFormTags: ['INPUT', 'TEXTAREA', 'SELECT'],
+			enableOnContentEditable: true,
+			scopes: [HOTKEY_SCOPES.DRAFT_LAUNCHER],
+		},
+		[handleToggleAutoAccept],
+	)
+
+	// Alt+Y / Option+Y to toggle bypass permissions
+	useHotkeys(
+		'alt+y, option+y',
+		(e) => {
+			e.preventDefault()
+			handleToggleBypass()
+		},
+		{
+			enableOnFormTags: ['INPUT', 'TEXTAREA', 'SELECT'],
+			enableOnContentEditable: true,
+			scopes: [HOTKEY_SCOPES.DRAFT_LAUNCHER],
+		},
+		[handleToggleBypass],
+	)
+
+	// Create a placeholder session for DraftLauncherInput when we don't have one yet
+	const displaySession =
+		session ||
+		({
+			id: sessionId || 'placeholder-draft',
+			status: 'draft' as any,
+			query: '',
+			summary: '',
+			title: title,
+			createdAt: new Date(),
+			lastActivityAt: new Date(),
+			runId: '',
+			workingDir: workingDirectory,
+			model: model,
+			proxyEnabled: proxyEnabled,
+			proxyBaseUrl: proxyBaseUrl,
+			proxyModelOverride: proxyModelOverride,
+			autoAcceptEdits: defaultAutoAcceptEditsSetting,
+			dangerouslySkipPermissions: defaultDangerouslyBypassPermissionsSetting,
+		} as Session)
+
+	return (
+		<HotkeyScopeBoundary scope={HOTKEY_SCOPES.DRAFT_LAUNCHER} componentName="DraftLauncherForm">
+			<div className="flex flex-col h-full">
+				{/* Title and Directory Selection */}
+				<div className="px-2">
+					<div className="mb-2">
+						<Label className="text-xs mb-1 uppercase tracking-wider text-muted-foreground">
+							<TextSearch className="h-3 w-3 inline-block mr-1" /> title
+						</Label>
+						<Input
+							ref={titleInputRef}
+							placeholder="Describe this session..."
+							className="mt-1"
+							value={title}
+							onChange={handleTitleChange}
+						/>
+					</div>
+
+					<div className="mb-2">
+						<Label className="text-xs mb-1 uppercase tracking-wider text-muted-foreground">
+							<FolderOpen className="h-3 w-3 inline-block mr-1" /> working directory
+						</Label>
+						<SearchInput
+							placeholder="Select a directory to work in..."
+							className="mt-1"
+							recentDirectories={recentPaths}
+							value={workingDirectory}
+							onChange={handleWorkingDirectoryChange}
+							onSubmit={(value) => {
+								if (value) {
+									handleWorkingDirectoryChange(value)
+								}
+							}}
+						/>
+					</div>
+
+					{/* Draft Launcher Input */}
+					<DraftLauncherInput
+						session={displaySession}
+						onLaunchDraft={handleLaunchDraft}
+						onDiscardDraft={handleDiscardDraft}
+						isLaunchingDraft={isLaunchingDraft}
+						onModelChange={handleModelChange}
+						onToggleAutoAccept={handleToggleAutoAccept}
+						onToggleBypass={handleToggleBypass}
+						dangerouslyBypassPermissionsEnabled={defaultDangerouslyBypassPermissionsSetting}
+						autoAcceptEditsEnabled={defaultAutoAcceptEditsSetting}
+					/>
+				</div>
+
+				{/* Empty space to push content to top */}
+				<div className="flex-1" />
+
+				{/* Status indicator */}
+				{sessionId && (title.trim() !== '' || prompt.trim() !== '') && (
+					<div className="px-2 pb-2">
+						<span className="text-xs text-muted-foreground">Draft saved • ID: {sessionId}</span>
+					</div>
+				)}
+
+				{/* Discard Draft Dialog */}
+				<DiscardDraftDialog
+					open={showDiscardDraftDialog}
+					onConfirm={confirmDiscardDraft}
+					onCancel={() => setShowDiscardDraftDialog(false)}
+				/>
+
+				{/* Dangerously Skip Permissions Dialog */}
+				<DangerouslySkipPermissionsDialog
+					open={dangerousSkipPermissionsDialogOpen}
+					onOpenChange={setDangerousSkipPermissionsDialogOpen}
+					onConfirm={handleDangerousSkipPermissionsConfirm}
+				/>
+			</div>
+		</HotkeyScopeBoundary>
+	)
+}

@@ -499,13 +499,28 @@ export function Layout() {
         })
       }
 
+      // Get current session to compare values
+      const currentSession = useStore.getState().sessions.find(s => s.id === data.session_id)
+
       const updates: Record<string, any> = {}
+      let hasActualChanges = false
 
       if (data.auto_accept_edits !== undefined) {
+        // Only mark as changed if the value is actually different
+        if (currentSession && currentSession.autoAcceptEdits !== data.auto_accept_edits) {
+          hasActualChanges = true
+        }
         updates.autoAcceptEdits = data.auto_accept_edits
       }
 
       if (data.dangerously_skip_permissions !== undefined) {
+        // Only mark as changed if the value is actually different
+        if (
+          currentSession &&
+          currentSession.dangerouslySkipPermissions !== data.dangerously_skip_permissions
+        ) {
+          hasActualChanges = true
+        }
         updates.dangerouslySkipPermissions = data.dangerously_skip_permissions
 
         // Calculate expiry time if timeout provided
@@ -519,8 +534,8 @@ export function Layout() {
 
       updateSession(data.session_id, updates)
 
-      // Show notification
-      if (notificationService) {
+      // Only show notification if settings actually changed
+      if (notificationService && hasActualChanges) {
         const title = data.dangerously_skip_permissions
           ? 'Bypassing permissions enabled'
           : data.auto_accept_edits

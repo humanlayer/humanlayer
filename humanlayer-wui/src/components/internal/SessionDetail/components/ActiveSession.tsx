@@ -39,7 +39,7 @@ interface ActiveSessionProps {
 /**
  * ActiveSession - Orchestrator component for active and archived sessions
  * This component handles all the complex logic for active sessions.
- * It does NOT handle draft sessions - those use DraftLauncher instead.
+ * It does NOT handle draft sessions - those use the /sessions/draft route.
  */
 export function ActiveSession({ session, onClose }: ActiveSessionProps) {
   // Determine the appropriate scope based on session state

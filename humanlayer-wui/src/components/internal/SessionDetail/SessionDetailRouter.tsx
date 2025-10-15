@@ -1,9 +1,9 @@
 import { SessionStatus } from '@/lib/daemon/types'
 import { Session } from '@/lib/daemon/types'
-import { DraftLauncher } from './components/DraftLauncher'
 import { ActiveSession } from './components/ActiveSession'
 import { SentryErrorBoundary } from '@/components/ErrorBoundary'
-import { useStore } from '@/AppStore'
+import { useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 interface SessionDetailProps {
   session: Session
@@ -15,17 +15,23 @@ interface SessionDetailProps {
  * This component contains no business logic, just a single routing decision.
  *
  * Architecture:
- * - Draft sessions → DraftLauncher
+ * - Draft sessions → Redirect to /sessions/draft route
  * - Active/archived sessions → ActiveSession
  */
 function SessionDetailRouter({ session, onClose }: SessionDetailProps) {
-  const fetchActiveSessionDetail = useStore(state => state.fetchActiveSessionDetail)
+  const navigate = useNavigate()
 
-  // Single routing decision - the ONLY isDraft check in the entire flow
+  // If a draft session somehow ends up here, redirect to the proper route
+  useEffect(() => {
+    if (session.status === SessionStatus.Draft) {
+      // Draft sessions should use the dedicated /sessions/draft route
+      navigate(`/sessions/draft?id=${session.id}`, { replace: true })
+    }
+  }, [session.status, session.id, navigate])
+
+  // If it's a draft, show nothing while redirecting
   if (session.status === SessionStatus.Draft) {
-    return (
-      <DraftLauncher session={session} onSessionUpdated={() => fetchActiveSessionDetail(session.id)} />
-    )
+    return null
   }
 
   // All non-draft sessions (active, archived, completed, failed, etc.) go to ActiveSession
