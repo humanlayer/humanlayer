@@ -1,6 +1,5 @@
 ---
 description: Research highest priority Linear ticket needing investigation
-model: sonnet
 ---
 
 ## PART I - IF A LINEAR TICKET IS MENTIONED
