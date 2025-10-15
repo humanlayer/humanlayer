@@ -259,22 +259,35 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
 	)
 
 	// Handle model/provider changes
-	const handleModelChange = useCallback(() => {
+	const handleModelChange = useCallback((config: {
+		model?: string
+		proxyEnabled: boolean
+		proxyBaseUrl?: string
+		proxyModelOverride?: string
+		provider: 'anthropic' | 'openrouter' | 'baseten'
+	}) => {
+		// Update local state with new configuration
+		setModel(config.model || '')
+		setProxyEnabled(config.proxyEnabled)
+		setProxyBaseUrl(config.proxyBaseUrl || null)
+		setProxyModelOverride(config.proxyModelOverride || null)
+		setProvider(config.provider)
+
 		// Save current configuration to localStorage for next draft
-		if (provider === 'anthropic' && model) {
+		if (config.provider === 'anthropic') {
 			setLastUsedProvider('anthropic')
-			setLastUsedModel(model)
+			setLastUsedModel(config.model || '')
 			setLastUsedProxyModel('')
 			setLastUsedProxyBaseUrl('')
-		} else if (provider === 'openrouter' && proxyModelOverride) {
+		} else if (config.provider === 'openrouter') {
 			setLastUsedProvider('openrouter')
 			setLastUsedModel('')
-			setLastUsedProxyModel(proxyModelOverride)
+			setLastUsedProxyModel(config.proxyModelOverride || '')
 			setLastUsedProxyBaseUrl('https://openrouter.ai/api/v1')
-		} else if (provider === 'baseten' && proxyModelOverride) {
+		} else if (config.provider === 'baseten') {
 			setLastUsedProvider('baseten')
 			setLastUsedModel('')
-			setLastUsedProxyModel(proxyModelOverride)
+			setLastUsedProxyModel(config.proxyModelOverride || '')
 			setLastUsedProxyBaseUrl('https://inference.baseten.co/v1')
 		}
 
@@ -282,9 +295,6 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
 			onSessionUpdated()
 		}
 	}, [
-		provider,
-		model,
-		proxyModelOverride,
 		setLastUsedProvider,
 		setLastUsedModel,
 		setLastUsedProxyModel,

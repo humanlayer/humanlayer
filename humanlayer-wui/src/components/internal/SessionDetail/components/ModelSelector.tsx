@@ -23,7 +23,13 @@ import { toast } from 'sonner'
 
 interface ModelSelectorProps {
   session: Session
-  onModelChange?: (model: string) => void
+  onModelChange?: (config: {
+    model?: string
+    proxyEnabled: boolean
+    proxyBaseUrl?: string
+    proxyModelOverride?: string
+    provider: 'anthropic' | 'openrouter' | 'baseten'
+  }) => void
   className?: string
   open?: boolean
   onOpenChange?: (open: boolean) => void
@@ -231,9 +237,15 @@ function ModelSelectorContent({
         localStorage.setItem('humanlayer-baseten-api-key', apiKey)
       }
 
-      // Notify parent component
+      // Notify parent component with full configuration
       if (onModelChange) {
-        onModelChange(modelValue)
+        onModelChange({
+          model: modelValue || undefined,
+          proxyEnabled: provider !== 'anthropic',
+          proxyBaseUrl: proxyConfig.proxyBaseUrl,
+          proxyModelOverride: proxyConfig.proxyModelOverride,
+          provider: provider,
+        })
       }
 
       // Show appropriate message based on session status

@@ -18,7 +18,13 @@ interface StatusBarProps {
   effectiveContextTokens?: number
   contextLimit?: number
   model?: string
-  onModelChange?: () => void
+  onModelChange?: (config: {
+    model?: string
+    proxyEnabled: boolean
+    proxyBaseUrl?: string
+    proxyModelOverride?: string
+    provider: 'anthropic' | 'openrouter' | 'baseten'
+  }) => void
   statusOverride?: {
     text: string | React.ReactNode
     className?: string

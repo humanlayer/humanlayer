@@ -25,7 +25,13 @@ interface DraftLauncherInputProps {
 	onLaunchDraft: (settings: LaunchSettings) => void
 	onDiscardDraft: () => void
 	isLaunchingDraft: boolean
-	onModelChange?: () => void
+	onModelChange?: (config: {
+		model?: string
+		proxyEnabled: boolean
+		proxyBaseUrl?: string
+		proxyModelOverride?: string
+		provider: 'anthropic' | 'openrouter' | 'baseten'
+	}) => void
 	onToggleAutoAccept: () => void
 	onToggleBypass: () => void
 	autoAcceptEditsEnabled: boolean
