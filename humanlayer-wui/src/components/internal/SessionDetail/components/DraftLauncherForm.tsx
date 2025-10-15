@@ -86,9 +86,6 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
 
 	const draftCreatedRef = useRef<boolean>(!!session) // if a session is passed in then the draft has already been created
 
-	// Get prompt from ResponseEditor
-	const prompt = responseEditor?.getText() || ''
-
 	// ======== NAVIGATION AND INITIAL LOAD ========
 
 	// Handle navigation and focus on mount
@@ -314,7 +311,11 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
 				return
 			}
 
-			if (!prompt.trim()) {
+			// Get the current prompt directly from the store's responseEditor
+			const storeState = useStore.getState()
+			const currentPrompt = storeState.responseEditor?.getText() || ''
+
+			if (!currentPrompt.trim()) {
 				toast.error('Please enter a prompt before launching')
 				return
 			}
@@ -329,16 +330,14 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
 				})
 
 				// Launch the draft session with the prompt
-				await daemonClient.launchDraftSession(sessionId, prompt)
+				await daemonClient.launchDraftSession(sessionId, currentPrompt)
 
 				// Store working directory in localStorage
 				localStorage.setItem('humanlayer-last-working-dir', workingDir)
 
 				// Clear the input after successful launch
-				responseEditor?.commands.setContent('')
+				storeState.responseEditor?.commands.setContent('')
 				localStorage.removeItem(`response-input.${sessionId}`)
-
-				const storeState = useStore.getState()
 
 				// Refresh sessions to update the session list, set view mode to 'normal'
 				await storeState.refreshSessions()
@@ -353,13 +352,16 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
 				setIsLaunchingDraft(false)
 			}
 		},
-		[sessionId, workingDirectory, prompt, responseEditor, isLaunchingDraft],
+		[sessionId, workingDirectory, isLaunchingDraft],
 	)
 
 	// Handle discard draft
 	const handleDiscardDraft = useCallback(async () => {
+		// Get the current prompt directly from the store's responseEditor
+		const currentPrompt = useStore.getState().responseEditor?.getText() || ''
+
 		// Check if there's any content
-		const hasContent = title.trim() !== '' || prompt.trim() !== ''
+		const hasContent = title.trim() !== '' || currentPrompt.trim() !== ''
 		if (hasContent) {
 			setShowDiscardDraftDialog(true)
 		} else {
@@ -367,7 +369,7 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
 			await refreshSessions()
 			navigate(-1)
 		}
-	}, [navigate, title, prompt, refreshSessions])
+	}, [navigate, title, refreshSessions])
 
 	const confirmDiscardDraft = useCallback(async () => {
 		try {

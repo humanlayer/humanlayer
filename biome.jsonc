@@ -11,19 +11,21 @@
     "formatter": {
         "enabled": true,
         "indentStyle": "tab",
-        "indentWidth": 4
+        "indentWidth": 4,
+        "lineWidth": 120
     },
     "linter": {
         "enabled": true,
         "rules": {
             "recommended": true,
             "correctness": {
-                "useUniqueElementIds": "off"
+                "useUniqueElementIds": "off",
+                "useExhaustiveDependencies": "info"
             },
             "a11y": {
                 "noStaticElementInteractions": "off",
-                "useKeyWithClickEvents": "off",
-            }
+                "useKeyWithClickEvents": "off"
+            },
         }
     },
     "javascript": {
@@ -31,7 +33,7 @@
             "quoteStyle": "single",
             "semicolons": "asNeeded",
             "indentWidth": 4
-        },
+        }
     },
     "assist": {
         "enabled": true,
