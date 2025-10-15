@@ -744,23 +744,29 @@ func (m *Manager) GetSessionInfo(sessionID string) (*Info, error) {
 	}
 
 	info := &Info{
-		ID:              dbSession.ID,
-		RunID:           dbSession.RunID,
-		ClaudeSessionID: dbSession.ClaudeSessionID,
-		ParentSessionID: dbSession.ParentSessionID,
-		Status:          Status(dbSession.Status),
-		StartTime:       dbSession.CreatedAt,
-		LastActivityAt:  dbSession.LastActivityAt,
-		Error:           dbSession.ErrorMessage,
-		Query:           dbSession.Query,
-		Summary:         dbSession.Summary,
-		Title:           dbSession.Title,
-		Model:           dbSession.Model,
-		ModelID:         dbSession.ModelID,
-		WorkingDir:      dbSession.WorkingDir,
-		AutoAcceptEdits: dbSession.AutoAcceptEdits,
-		Archived:        dbSession.Archived,
-		EditorState:     dbSession.EditorState,
+		ID:                                  dbSession.ID,
+		RunID:                               dbSession.RunID,
+		ClaudeSessionID:                     dbSession.ClaudeSessionID,
+		ParentSessionID:                     dbSession.ParentSessionID,
+		Status:                              Status(dbSession.Status),
+		StartTime:                           dbSession.CreatedAt,
+		LastActivityAt:                      dbSession.LastActivityAt,
+		Error:                               dbSession.ErrorMessage,
+		Query:                               dbSession.Query,
+		Summary:                             dbSession.Summary,
+		Title:                               dbSession.Title,
+		Model:                               dbSession.Model,
+		ModelID:                             dbSession.ModelID,
+		WorkingDir:                          dbSession.WorkingDir,
+		AutoAcceptEdits:                     dbSession.AutoAcceptEdits,
+		Archived:                            dbSession.Archived,
+		EditorState:                         dbSession.EditorState,
+		DangerouslySkipPermissions:          dbSession.DangerouslySkipPermissions,
+		DangerouslySkipPermissionsExpiresAt: dbSession.DangerouslySkipPermissionsExpiresAt,
+		ProxyEnabled:                        dbSession.ProxyEnabled,
+		ProxyBaseURL:                        dbSession.ProxyBaseURL,
+		ProxyModelOverride:                  dbSession.ProxyModelOverride,
+		ProxyAPIKey:                         dbSession.ProxyAPIKey,
 	}
 
 	if dbSession.CompletedAt != nil {
@@ -828,6 +834,10 @@ func (m *Manager) ListSessions() []Info {
 			DangerouslySkipPermissions:          dbSession.DangerouslySkipPermissions,
 			DangerouslySkipPermissionsExpiresAt: dbSession.DangerouslySkipPermissionsExpiresAt,
 			EditorState:                         dbSession.EditorState,
+			ProxyEnabled:                        dbSession.ProxyEnabled,
+			ProxyBaseURL:                        dbSession.ProxyBaseURL,
+			ProxyModelOverride:                  dbSession.ProxyModelOverride,
+			ProxyAPIKey:                         dbSession.ProxyAPIKey,
 		}
 
 		// Set end time if completed

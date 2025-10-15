@@ -280,6 +280,10 @@ func (h *SessionHandlers) ListSessions(ctx context.Context, req api.ListSessions
 			DangerouslySkipPermissionsExpiresAt: info.DangerouslySkipPermissionsExpiresAt,
 			Archived:                            info.Archived,
 			EditorState:                         info.EditorState,
+			ProxyEnabled:                        info.ProxyEnabled,
+			ProxyBaseURL:                        info.ProxyBaseURL,
+			ProxyModelOverride:                  info.ProxyModelOverride,
+			ProxyAPIKey:                         info.ProxyAPIKey,
 		}
 
 		// Copy result data if available
