@@ -1,6 +1,5 @@
 ---
 description: Create implementation plan for highest priority Linear ticket ready for spec
-model: sonnet
 ---
 
 ## PART I - IF A TICKET IS MENTIONED
