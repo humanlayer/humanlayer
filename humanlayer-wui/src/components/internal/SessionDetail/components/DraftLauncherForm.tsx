@@ -343,7 +343,8 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
 				await storeState.refreshSessions()
 				await storeState.setViewMode(ViewMode.Normal)
 
-				// Session status will update via WebSocket
+				// Navigate directly to the launched session
+				navigate(`/sessions/${sessionId}`)
 			} catch (error) {
 				toast.error('Failed to launch draft session', {
 					description: error instanceof Error ? error.message : 'Unknown error',
@@ -352,7 +353,7 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
 				setIsLaunchingDraft(false)
 			}
 		},
-		[sessionId, workingDirectory, isLaunchingDraft],
+		[sessionId, workingDirectory, isLaunchingDraft, navigate],
 	)
 
 	// Handle discard draft

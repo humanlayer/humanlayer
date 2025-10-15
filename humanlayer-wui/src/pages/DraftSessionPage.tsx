@@ -13,7 +13,6 @@ export function DraftSessionPage() {
 	const [draftSession, setDraftSession] = useState<Session | null>(null)
 	const [loading, setLoading] = useState(!!draftId)
 
-	const sessions = useStore((state) => state.sessions)
 	const refreshSessions = useStore((state) => state.refreshSessions)
 	const fetchActiveSessionDetail = useStore((state) => state.fetchActiveSessionDetail)
 
@@ -63,16 +62,8 @@ export function DraftSessionPage() {
 		}
 	}, [draftSession?.id, fetchActiveSessionDetail])
 
-	// Monitor session status changes (when draft is launched)
-	useEffect(() => {
-		if (draftSession?.id) {
-			const currentSession = sessions.find((s) => s.id === draftSession.id)
-			if (currentSession && currentSession.status !== SessionStatus.Draft) {
-				// Session has been launched, navigate to the active session view
-				navigate(`/sessions/${draftSession.id}`)
-			}
-		}
-	}, [sessions, draftSession?.id, navigate])
+	// Note: Navigation after launching a draft is now handled directly in DraftLauncherForm
+	// to ensure immediate navigation after successful launch
 
 	if (loading) {
 		return <div className="flex items-center justify-center h-full">Loading draft...</div>
