@@ -279,6 +279,7 @@ func (h *SessionHandlers) ListSessions(ctx context.Context, req api.ListSessions
 			DangerouslySkipPermissions:          info.DangerouslySkipPermissions,
 			DangerouslySkipPermissionsExpiresAt: info.DangerouslySkipPermissionsExpiresAt,
 			Archived:                            info.Archived,
+			EditorState:                         info.EditorState,
 		}
 
 		// Copy result data if available

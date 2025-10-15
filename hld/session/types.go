@@ -62,6 +62,7 @@ type Info struct {
 	DangerouslySkipPermissions          bool               `json:"dangerously_skip_permissions"`
 	DangerouslySkipPermissionsExpiresAt *time.Time         `json:"dangerously_skip_permissions_expires_at,omitempty"`
 	Archived                            bool               `json:"archived"`
+	EditorState                         *string            `json:"editor_state,omitempty"`
 }
 
 // LaunchSessionConfig contains the configuration for launching a new session
@@ -175,6 +176,7 @@ func SessionToInfo(s store.Session) Info {
 		DangerouslySkipPermissions:          s.DangerouslySkipPermissions,
 		DangerouslySkipPermissionsExpiresAt: s.DangerouslySkipPermissionsExpiresAt,
 		Archived:                            s.Archived,
+		EditorState:                         s.EditorState,
 		// Note: CLICommand is not stored in database, it's a build-time constant
 	}
 

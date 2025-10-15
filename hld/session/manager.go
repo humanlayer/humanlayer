@@ -760,6 +760,7 @@ func (m *Manager) GetSessionInfo(sessionID string) (*Info, error) {
 		WorkingDir:      dbSession.WorkingDir,
 		AutoAcceptEdits: dbSession.AutoAcceptEdits,
 		Archived:        dbSession.Archived,
+		EditorState:     dbSession.EditorState,
 	}
 
 	if dbSession.CompletedAt != nil {
@@ -826,6 +827,7 @@ func (m *Manager) ListSessions() []Info {
 			Archived:                            dbSession.Archived,
 			DangerouslySkipPermissions:          dbSession.DangerouslySkipPermissions,
 			DangerouslySkipPermissionsExpiresAt: dbSession.DangerouslySkipPermissionsExpiresAt,
+			EditorState:                         dbSession.EditorState,
 		}
 
 		// Set end time if completed
