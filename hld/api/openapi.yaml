@@ -440,16 +440,16 @@ paths:
     get:
       operationId: getSlashCommands
       summary: Get available slash commands
-      description: Retrieve slash commands available in the session's working directory
+      description: Retrieve slash commands available in the specified working directory
       tags:
         - Sessions
       parameters:
-        - name: session_id
+        - name: working_dir
           in: query
           required: true
           schema:
             type: string
-          description: Session ID to get working directory
+          description: Working directory to search for commands
         - name: query
           in: query
           required: false

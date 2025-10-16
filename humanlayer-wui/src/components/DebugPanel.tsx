@@ -1,5 +1,3 @@
-import { useState, useEffect } from 'react'
-import { daemonService, type DaemonInfo } from '@/services/daemon-service'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -11,15 +9,17 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Loader2, RefreshCw, Link, Server, Database, Copy } from 'lucide-react'
-import { useDaemonConnection } from '@/hooks/useDaemonConnection'
-import { logger } from '@/lib/logging'
-import { daemonClient } from '@/lib/daemon'
-import type { DebugInfo } from '@/lib/daemon/types'
-import { toast } from 'sonner'
-import { getDaemonUrl, storeDaemonUrl, clearStoredDaemonUrl } from '@/lib/daemon/http-config'
-import { useDebugStore } from '@/stores/useDebugStore'
 import { Switch } from '@/components/ui/switch'
+import { useDaemonConnection } from '@/hooks/useDaemonConnection'
+import { daemonClient } from '@/lib/daemon'
+import { clearStoredDaemonUrl, getDaemonUrl, storeDaemonUrl } from '@/lib/daemon/http-config'
+import type { DebugInfo } from '@/lib/daemon/types'
+import { logger } from '@/lib/logging'
+import { type DaemonInfo, daemonService } from '@/services/daemon-service'
+import { useDebugStore } from '@/stores/useDebugStore'
+import { Copy, Database, Link, Loader2, RefreshCw, Server } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 
 interface DebugPanelProps {
   open?: boolean
@@ -44,7 +44,7 @@ export function DebugPanel({ open, onOpenChange }: DebugPanelProps) {
     const k = 1024
     const sizes = ['B', 'KB', 'MB', 'GB']
     const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`
+    return `${(bytes / k ** i).toFixed(2)} ${sizes[i]}`
   }
 
   // Helper to copy text to clipboard
@@ -58,7 +58,7 @@ export function DebugPanel({ open, onOpenChange }: DebugPanelProps) {
 
   useEffect(() => {
     loadDaemonInfo()
-  }, [connected]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [connected])
 
   // Only show in dev mode (moved after hooks)
   if (!import.meta.env.DEV) {

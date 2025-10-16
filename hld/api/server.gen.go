@@ -914,8 +914,8 @@ type LaunchDraftSessionJSONBody struct {
 
 // GetSlashCommandsParams defines parameters for GetSlashCommands.
 type GetSlashCommandsParams struct {
-	// SessionId Session ID to get working directory
-	SessionId string `form:"session_id" json:"session_id"`
+	// WorkingDir Working directory to search for commands
+	WorkingDir string `form:"working_dir" json:"working_dir"`
 
 	// Query Fuzzy search query
 	Query *string `form:"query,omitempty" json:"query,omitempty"`
@@ -1520,18 +1520,18 @@ func (siw *ServerInterfaceWrapper) GetSlashCommands(c *gin.Context) {
 	// Parameter object where we will unmarshal all parameters from the context
 	var params GetSlashCommandsParams
 
-	// ------------- Required query parameter "session_id" -------------
+	// ------------- Required query parameter "working_dir" -------------
 
-	if paramValue := c.Query("session_id"); paramValue != "" {
+	if paramValue := c.Query("working_dir"); paramValue != "" {
 
 	} else {
-		siw.ErrorHandler(c, fmt.Errorf("Query argument session_id is required, but not found"), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Query argument working_dir is required, but not found"), http.StatusBadRequest)
 		return
 	}
 
-	err = runtime.BindQueryParameter("form", true, true, "session_id", c.Request.URL.Query(), &params.SessionId)
+	err = runtime.BindQueryParameter("form", true, true, "working_dir", c.Request.URL.Query(), &params.WorkingDir)
 	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter session_id: %w", err), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter working_dir: %w", err), http.StatusBadRequest)
 		return
 	}
 
@@ -3526,12 +3526,12 @@ var swaggerSpec = []string{
 	"ZDd0PSfqCsqY7+aBCVNquevV6WY1VzPw90hheCB1sTrw/3WmOgzCdxIqvFyHAd8wPHZT5nlUwzOlBerD",
 	"WIUDXTI3w8QrMmjyoOBvG9wREzRq29s7t8ofVNR47YFkIHysBl0F+iczx6XR5YykHPcG0QjSgQilqj1K",
 	"caHg7deshLIUXkrtBMk1vwG6gV8hv94VDYannpzBFgqHmyc76Yb0k09V8+OHteG2ipJEiOfXAIpPRzUh",
-	"NnvIJcdyPbVFakZQiamW49p72Vz2WVaLi59kO6Evinu/BM1QBMBFXWjPxhfE5uhJrrKPLAc3Z1+21aT3",
-	"WSY3R2xC9+fTZHLFC/v0+cUDrD6VnwlyPiqCaqypm4IhMXfmXhyGbMBSEjGVXnJ6P1FDBaZCkCURhKU2",
-	"sM2z4bbINsiJfkRERrO4I3jU7WpXyyMHvpf+ZHeLeN8N4O2qC48a3R4r7/CdRe6xeHdtfsQg9xFkAv3c",
-	"20Etdv8Wcr9tVGhV2bSuE9D10AhIAXa21hViHps1oZou/kaVsnrlRNY83IZotm+BStuhS5Ju05x4FQW8",
-	"7nWsUfzpZMqmak2mOecFalchqAd66aXatllYR5WCuvuba5v3HS8qY6rIVNs3OkIO2DXP2HoFKOyIH6Hy",
-	"ajQajrjnfO0daertXdOVC0GxQ5gY4fYQL8NMf+gfA65NFb/9cvsfAQAA//8ZFuVJxKkAAA==",
+	"NnvIJcdyPbVFakZQiamW49p72Vz2WdbaZttK6Ivi3i9BMxQB0K7ZVT/atIRXLKtxYu53P6W8eX/25VxN",
+	"eh9ncpPEZnR/Pk0+V7y8T593PMDtU3mbIPOjIqvGmrrpGNJzZ+7dYcgJLCURU+mlqPeTNtRhKgRZEkFY",
+	"asPbPEtui3iDzOhHRGQ0lzuCR92udrg8cvh76U92t7j33QDerr3wqDHusSIP31nwHot31+ZHDHUfQSbQ",
+	"z70g1GL6byED3MaGVvVN62oBXc+NgCxgZ2tZ4MyTsyZg00XhqFJWb53ImofbQM32LVDpPHRJ0m2aE6+u",
+	"gNe9jjiKP6BM2VStyTTnvEDtWgT1QC+9hNs2C+uoVVB3f3Nts7/jpWVMLZlq+0ZTyAG75jFbrwyFHfEj",
+	"1F+NxsQR96ivvSNN1b1runKBKHYIEyncHuJlmO8P/WPAtQnjt19u/yMAAP//RfybesqpAAA=",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

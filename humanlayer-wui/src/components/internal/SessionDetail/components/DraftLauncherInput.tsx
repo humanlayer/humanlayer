@@ -3,14 +3,13 @@ import { SentryErrorBoundary } from '@/components/ErrorBoundary'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
-import { useLocalStorage } from '@/hooks/useLocalStorage'
 import { daemonClient } from '@/lib/daemon'
 import { type Session, SessionStatus } from '@/lib/daemon/types'
 import { logger } from '@/lib/logging'
 import type { UnlistenFn } from '@tauri-apps/api/event'
 import { getCurrentWebview } from '@tauri-apps/api/webview'
 import type { Content } from '@tiptap/react'
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
+import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { DraftActionButtons } from './DraftActionButtons'
 import { ResponseEditor } from './ResponseEditor'
@@ -23,14 +22,22 @@ interface LaunchSettings {
 
 interface DraftLauncherInputProps {
   session: Session
+  workingDirectoryRef?: React.MutableRefObject<string>
   onLaunchDraft: (settings: LaunchSettings) => void
   onDiscardDraft: () => void
   isLaunchingDraft: boolean
-  onModelChange?: () => void
-  autoAcceptEnabled?: boolean
-  bypassEnabled?: boolean
-  onToggleAutoAccept?: () => void
-  onToggleBypass?: () => void
+  onModelChange?: (config: {
+    model?: string
+    proxyEnabled: boolean
+    proxyBaseUrl?: string
+    proxyModelOverride?: string
+    provider: 'anthropic' | 'openrouter' | 'baseten'
+  }) => void
+  onToggleAutoAccept: () => void
+  onToggleBypass: () => void
+  autoAcceptEditsEnabled: boolean
+  dangerouslyBypassPermissionsEnabled: boolean
+  onContentChange?: () => void
 }
 
 export const DraftLauncherInput = forwardRef<
@@ -40,14 +47,16 @@ export const DraftLauncherInput = forwardRef<
   (
     {
       session,
+      workingDirectoryRef,
       onLaunchDraft,
       onDiscardDraft,
       isLaunchingDraft,
       onModelChange,
-      autoAcceptEnabled: autoAcceptEnabledProp,
-      bypassEnabled: bypassEnabledProp,
       onToggleAutoAccept: onToggleAutoAcceptProp,
       onToggleBypass: onToggleBypassProp,
+      autoAcceptEditsEnabled,
+      dangerouslyBypassPermissionsEnabled,
+      onContentChange,
     },
     ref,
   ) => {
@@ -56,34 +65,9 @@ export const DraftLauncherInput = forwardRef<
     const responseEditor = useStore(state => state.responseEditor)
     const isResponseEditorEmpty = useStore(state => state.isResponseEditorEmpty)
 
-    // If props are provided, use them; otherwise fall back to internal state
-    const [autoAcceptEnabledInternal, setAutoAcceptEnabledInternal] = useLocalStorage(
-      'draft-auto-accept',
-      false,
-    )
-    const [bypassEnabledInternal, setBypassEnabledInternal] = useLocalStorage(
-      'draft-bypass-permissions',
-      false,
-    )
-
-    // Use props if provided, otherwise use internal state
-    const autoAcceptEnabled =
-      autoAcceptEnabledProp !== undefined ? autoAcceptEnabledProp : autoAcceptEnabledInternal
-    const bypassEnabled = bypassEnabledProp !== undefined ? bypassEnabledProp : bypassEnabledInternal
-
-    // Define internal handlers unconditionally
-    const handleToggleAutoAcceptInternal = useCallback(() => {
-      setAutoAcceptEnabledInternal(!autoAcceptEnabledInternal)
-    }, [autoAcceptEnabledInternal, setAutoAcceptEnabledInternal])
-
-    const handleToggleBypassInternal = useCallback(() => {
-      setBypassEnabledInternal(!bypassEnabledInternal)
-    }, [bypassEnabledInternal, setBypassEnabledInternal])
-
     // Use prop handlers if provided, otherwise use internal handlers
-    const handleToggleAutoAccept = onToggleAutoAcceptProp || handleToggleAutoAcceptInternal
-    const handleToggleBypass = onToggleBypassProp || handleToggleBypassInternal
-
+    const handleToggleAutoAccept = onToggleAutoAcceptProp
+    const handleToggleBypass = onToggleBypassProp
     const tiptapRef = useRef<{ focus: () => void; blur?: () => void }>(null)
     const statusBarRef = useRef<StatusBarRef>(null)
 
@@ -94,20 +78,25 @@ export const DraftLauncherInput = forwardRef<
     if (hasValidSessionData && session.editorState) {
       try {
         initialValue = JSON.parse(session.editorState)
-        logger.log('DraftLauncherInput - Successfully parsed editorState from database', {
-          initialValue,
-        })
       } catch (e) {
         logger.error('DraftLauncherInput - error parsing editorState from database', e)
       }
     }
 
-    // Handle editor changes - save to database
+    // Handle editor changes - notify parent and save to database
     const handleChange = useCallback(
       async (value: Content) => {
         const valueStr = JSON.stringify(value)
 
-        if (session.status === SessionStatus.Draft) {
+        const textContent = responseEditor?.getText() ?? ''
+
+        // Only notify parent if there's actual text content (not just empty editor structure)
+        if (onContentChange && textContent.trim().length > 0) {
+          onContentChange()
+        }
+
+        // Only save directly if draft already exists
+        if (session.status === SessionStatus.Draft && session.id) {
           try {
             await daemonClient.updateSession(session.id, {
               editorState: valueStr,
@@ -118,7 +107,7 @@ export const DraftLauncherInput = forwardRef<
           }
         }
       },
-      [session.id, session.status],
+      [session.id, session.status, onContentChange, responseEditor],
     )
 
     // Handle form submission
@@ -132,8 +121,8 @@ export const DraftLauncherInput = forwardRef<
 
       // Launch the draft with current settings
       onLaunchDraft({
-        autoAcceptEdits: autoAcceptEnabled,
-        dangerouslySkipPermissions: bypassEnabled,
+        autoAcceptEdits: autoAcceptEditsEnabled,
+        dangerouslySkipPermissions: dangerouslyBypassPermissionsEnabled,
       })
     }
 
@@ -178,7 +167,10 @@ export const DraftLauncherInput = forwardRef<
 
                   // Add space before mention if not first file
                   if (index > 0) {
-                    content.push({ type: 'text', text: ' ' })
+                    content.push({
+                      type: 'text',
+                      text: ' ',
+                    })
                   }
 
                   // Add the mention
@@ -223,8 +215,8 @@ export const DraftLauncherInput = forwardRef<
           // Defensive try-catch for Tauri v2 race condition
           try {
             unlisten()
-          } catch (error) {
-            console.warn('[DraftLauncherInput] Error during drag-drop unlisten (non-critical):', error)
+          } catch {
+            // Intentionally empty - silently ignore unlisten errors
           }
         }
       }
@@ -240,7 +232,7 @@ export const DraftLauncherInput = forwardRef<
       { enableOnFormTags: false },
     )
 
-    // Note: Alt+A and Alt+Y hotkeys are now handled in the parent DraftLauncher component
+    // Note: Alt+A and Alt+Y hotkeys are now handled in the parent DraftLauncherForm component
     // to ensure proper modal handling for bypass permissions
 
     // Cmd+Enter / Ctrl+Enter to launch the draft
@@ -321,6 +313,8 @@ export const DraftLauncherInput = forwardRef<
                       onSubmit={handleSubmit}
                       disabled={isLaunchingDraft}
                       placeholder={placeholder}
+                      workingDirRef={workingDirectoryRef}
+                      workingDir={session.workingDir}
                       className={`flex-1 min-h-[2.5rem] max-h-[50vh] overflow-y-auto ${
                         isLaunchingDraft ? 'opacity-50' : ''
                       } ${isFocused ? 'caret-accent' : ''}`}
@@ -338,8 +332,8 @@ export const DraftLauncherInput = forwardRef<
               {/* Action buttons and controls */}
               <div className="flex items-center justify-between gap-2">
                 <DraftActionButtons
-                  bypassEnabled={bypassEnabled}
-                  autoAcceptEnabled={autoAcceptEnabled}
+                  bypassEnabled={dangerouslyBypassPermissionsEnabled}
+                  autoAcceptEnabled={autoAcceptEditsEnabled}
                   onToggleBypass={handleToggleBypass}
                   onToggleAutoAccept={handleToggleAutoAccept}
                 />

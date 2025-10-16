@@ -83,7 +83,7 @@ export interface DaemonClient {
   // Session methods
   launchSession(params: LaunchSessionParams | LaunchSessionRequest): Promise<CreateSessionResponseData>
   getSlashCommands(params: {
-    sessionId: string
+    workingDir: string
     query?: string
   }): Promise<{ data: Array<{ name: string; source: 'local' | 'global' }> }>
   listSessions(): Promise<Session[]>
