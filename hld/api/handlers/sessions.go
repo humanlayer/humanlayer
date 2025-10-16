@@ -8,7 +8,9 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 
 	claudecode "github.com/humanlayer/humanlayer/claudecode-go"
@@ -19,6 +21,7 @@ import (
 	"github.com/humanlayer/humanlayer/hld/internal/version"
 	"github.com/humanlayer/humanlayer/hld/session"
 	"github.com/humanlayer/humanlayer/hld/store"
+	"github.com/sahilm/fuzzy"
 )
 
 type SessionHandlers struct {
@@ -52,6 +55,24 @@ func NewSessionHandlersWithConfig(manager session.SessionManager, store store.Co
 		version:         version.GetVersion(),
 		config:          cfg,
 	}
+}
+
+// expandTilde expands ~ to the user's home directory
+func expandTilde(path string) string {
+	if len(path) > 0 && path[0] == '~' {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return path
+		}
+		if len(path) == 1 {
+			return home
+		}
+		if path[1] == filepath.Separator {
+			return filepath.Join(home, path[2:])
+		}
+		return filepath.Join(home, path[1:])
+	}
+	return path
 }
 
 // CreateSession implements POST /sessions
@@ -132,6 +153,8 @@ func (h *SessionHandlers) CreateSession(ctx context.Context, req api.CreateSessi
 			config.Model = claudecode.ModelOpus
 		case api.Sonnet:
 			config.Model = claudecode.ModelSonnet
+		case api.Haiku:
+			config.Model = claudecode.ModelHaiku
 		default:
 			// Let Claude decide the default
 		}
@@ -359,6 +382,50 @@ func (h *SessionHandlers) UpdateSession(ctx context.Context, req api.UpdateSessi
 		update.Title = req.Body.Title
 	}
 
+	// Handle status updates with validation
+	if req.Body.Status != nil {
+		// Fetch current session to validate transition
+		sess, err := h.store.GetSession(ctx, string(req.Id))
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return api.UpdateSession404JSONResponse{
+					NotFoundJSONResponse: api.NotFoundJSONResponse{
+						Error: api.ErrorDetail{
+							Code:    "HLD-1002",
+							Message: "Session not found",
+						},
+					},
+				}, nil
+			}
+			slog.Error("Failed to get session for status update",
+				"error", fmt.Sprintf("%v", err),
+				"session_id", req.Id,
+				"operation", "UpdateSession",
+			)
+			return api.UpdateSession500JSONResponse{
+				InternalErrorJSONResponse: api.InternalErrorJSONResponse{
+					Error: api.ErrorDetail{
+						Code:    "HLD-4001",
+						Message: err.Error(),
+					},
+				},
+			}, nil
+		}
+
+		// Validate allowed transitions
+		newStatus := string(*req.Body.Status)
+		if !isValidStatusTransition(sess.Status, newStatus) {
+			return api.UpdateSession400JSONResponse{
+				Error: api.ErrorDetail{
+					Code:    "HLD-3001",
+					Message: fmt.Sprintf("Invalid status transition from %s to %s", sess.Status, newStatus),
+				},
+			}, nil
+		}
+
+		update.Status = &newStatus
+	}
+
 	// Update dangerously skip permissions if specified
 	if req.Body.DangerouslySkipPermissions != nil {
 		update.DangerouslySkipPermissions = req.Body.DangerouslySkipPermissions
@@ -471,6 +538,37 @@ func (h *SessionHandlers) UpdateSession(ctx context.Context, req api.UpdateSessi
 		}, nil
 	}
 
+	// Auto-approve pending approvals if bypass permissions was just enabled
+	if req.Body.DangerouslySkipPermissions != nil && *req.Body.DangerouslySkipPermissions {
+		// Get all pending approvals for this session
+		pendingApprovals, err := h.approvalManager.GetPendingApprovals(ctx, string(req.Id))
+		if err != nil {
+			// Log error but don't fail the request
+			slog.Error("Failed to get pending approvals for auto-approval",
+				"error", err,
+				"session_id", req.Id,
+				"operation", "UpdateSession")
+		} else {
+			// Auto-approve each pending approval
+			for _, approval := range pendingApprovals {
+				err := h.approvalManager.ApproveToolCall(ctx, approval.ID, "Auto-approved due to bypass permissions")
+				if err != nil {
+					// Log error but continue with other approvals
+					slog.Error("Failed to auto-approve pending approval",
+						"error", err,
+						"approval_id", approval.ID,
+						"session_id", req.Id,
+						"operation", "UpdateSession")
+				} else {
+					slog.Info("Auto-approved pending approval due to bypass permissions",
+						"approval_id", approval.ID,
+						"session_id", req.Id,
+						"operation", "UpdateSession")
+				}
+			}
+		}
+	}
+
 	// Fetch updated session
 	session, err := h.store.GetSession(ctx, string(req.Id))
 	if err != nil {
@@ -493,6 +591,23 @@ func (h *SessionHandlers) UpdateSession(ctx context.Context, req api.UpdateSessi
 		Data: h.mapper.SessionToAPI(*session),
 	}
 	return api.UpdateSession200JSONResponse(resp), nil
+}
+
+// isValidStatusTransition validates if a status transition is allowed via PATCH
+func isValidStatusTransition(currentStatus, newStatus string) bool {
+	// Allow draft ↔ discarded transitions
+	if currentStatus == store.SessionStatusDraft && newStatus == store.SessionStatusDiscarded {
+		return true
+	}
+	if currentStatus == store.SessionStatusDiscarded && newStatus == store.SessionStatusDraft {
+		return true
+	}
+	// Allow no-op (setting to same status)
+	if currentStatus == newStatus {
+		return true
+	}
+	// Disallow all other status changes via PATCH
+	return false
 }
 
 // DeleteDraftSession deletes a draft session
@@ -563,6 +678,105 @@ func (h *SessionHandlers) DeleteDraftSession(ctx context.Context, req api.Delete
 
 	// Return 204 No Content on successful deletion
 	return api.DeleteDraftSession204Response{}, nil
+}
+
+// HardDeleteEmptyDraftSession permanently deletes an empty draft or discarded session
+func (h *SessionHandlers) HardDeleteEmptyDraftSession(ctx context.Context, req api.HardDeleteEmptyDraftSessionRequestObject) (api.HardDeleteEmptyDraftSessionResponseObject, error) {
+	// Fetch session
+	sess, err := h.store.GetSession(ctx, string(req.Id))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return api.HardDeleteEmptyDraftSession404JSONResponse{
+				NotFoundJSONResponse: api.NotFoundJSONResponse{
+					Error: api.ErrorDetail{
+						Code:    "HLD-1002",
+						Message: "Session not found",
+					},
+				},
+			}, nil
+		}
+		slog.Error("Failed to get session for hard delete",
+			"error", fmt.Sprintf("%v", err),
+			"session_id", req.Id,
+			"operation", "HardDeleteEmptyDraftSession",
+		)
+		return api.HardDeleteEmptyDraftSession500JSONResponse{
+			InternalErrorJSONResponse: api.InternalErrorJSONResponse{
+				Error: api.ErrorDetail{
+					Code:    "HLD-4009",
+					Message: err.Error(),
+				},
+			},
+		}, nil
+	}
+
+	// Validate is draft or discarded
+	if sess.Status != store.SessionStatusDraft && sess.Status != store.SessionStatusDiscarded {
+		return api.HardDeleteEmptyDraftSession400JSONResponse{
+			Error: api.ErrorDetail{
+				Code:    "HLD-4010",
+				Message: fmt.Sprintf("Can only hard delete draft or discarded sessions, current status: %s", sess.Status),
+			},
+		}, nil
+	}
+
+	// Validate session is empty
+	if !isDraftEmpty(sess) {
+		return api.HardDeleteEmptyDraftSession400JSONResponse{
+			Error: api.ErrorDetail{
+				Code:    "HLD-4011",
+				Message: "Can only hard delete empty drafts - this session has content",
+			},
+		}, nil
+	}
+
+	// Perform hard delete
+	err = h.store.HardDeleteSession(ctx, string(req.Id))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// Session was already deleted (race condition)
+			return api.HardDeleteEmptyDraftSession404JSONResponse{
+				NotFoundJSONResponse: api.NotFoundJSONResponse{
+					Error: api.ErrorDetail{
+						Code:    "HLD-1002",
+						Message: "Session not found",
+					},
+				},
+			}, nil
+		}
+		slog.Error("Failed to hard delete session",
+			"error", fmt.Sprintf("%v", err),
+			"session_id", req.Id,
+			"operation", "HardDeleteEmptyDraftSession",
+		)
+		return api.HardDeleteEmptyDraftSession500JSONResponse{
+			InternalErrorJSONResponse: api.InternalErrorJSONResponse{
+				Error: api.ErrorDetail{
+					Code:    "HLD-4009",
+					Message: err.Error(),
+				},
+			},
+		}, nil
+	}
+
+	return api.HardDeleteEmptyDraftSession204Response{}, nil
+}
+
+// isDraftEmpty checks if a draft session has no meaningful content
+func isDraftEmpty(sess *store.Session) bool {
+	// Draft is empty if it has:
+	// - No title (or default title)
+	// - No query (or empty/whitespace query)
+	// - Default model (or no model)
+	// - No editor state (or empty editor state)
+
+	hasTitle := sess.Title != "" && sess.Title != "Untitled"
+	hasQuery := sess.Query != "" && strings.TrimSpace(sess.Query) != ""
+	hasEditorState := sess.EditorState != nil && *sess.EditorState != "" && *sess.EditorState != "{}"
+	hasNonDefaultModel := sess.Model != "" && sess.Model != "sonnet"
+
+	// Empty if ALL of these are false
+	return !hasTitle && !hasQuery && !hasEditorState && !hasNonDefaultModel
 }
 
 // LaunchDraftSession launches a draft session
@@ -1204,4 +1418,161 @@ func (h *SessionHandlers) GetDebugInfo(ctx context.Context, req api.GetDebugInfo
 	}
 
 	return response, nil
+}
+
+// GetSlashCommands retrieves available slash commands for a session
+func (h *SessionHandlers) GetSlashCommands(ctx context.Context, req api.GetSlashCommandsRequestObject) (api.GetSlashCommandsResponseObject, error) {
+	// Get session to access working directory
+	session, err := h.store.GetSession(ctx, req.Params.SessionId)
+	if err != nil {
+		slog.Error("Failed to get session for slash commands",
+			"error", fmt.Sprintf("%v", err),
+			"session_id", req.Params.SessionId,
+			"operation", "GetSlashCommands",
+		)
+		return api.GetSlashCommands400JSONResponse{
+			BadRequestJSONResponse: api.BadRequestJSONResponse{
+				Error: api.ErrorDetail{
+					Code:    "HLD-4001",
+					Message: "Invalid session ID",
+				},
+			},
+		}, nil
+	}
+
+	// Build command directory paths
+	localCommandsDir := filepath.Join(expandTilde(session.WorkingDir), ".claude", "commands")
+	homeDir, err := os.UserHomeDir()
+	globalCommandsDir := ""
+	if err == nil {
+		globalCommandsDir = filepath.Join(homeDir, ".claude", "commands")
+	}
+
+	// Use a map to track commands and handle deduplication
+	// Key is command name, value is the command with source
+	commandMap := make(map[string]api.SlashCommand)
+
+	// Helper function to discover commands from a directory
+	discoverCommands := func(dir string, source api.SlashCommandSource) error {
+		if dir == "" {
+			return nil
+		}
+
+		return filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
+			if err != nil {
+				// Directory might not exist, that's ok
+				return nil
+			}
+
+			if !d.IsDir() && strings.HasSuffix(path, ".md") {
+				// Convert path to command name with colon convention
+				relPath, _ := filepath.Rel(dir, path)
+				commandName := strings.TrimSuffix(relPath, ".md")
+
+				// Convert path separators to colons
+				commandName = strings.ReplaceAll(commandName, string(filepath.Separator), ":")
+				fullCommandName := "/" + commandName
+
+				// Check if command already exists
+				if _, exists := commandMap[fullCommandName]; exists {
+					// Global commands take precedence
+					if source == api.SlashCommandSourceGlobal {
+						commandMap[fullCommandName] = api.SlashCommand{
+							Name:   fullCommandName,
+							Source: source,
+						}
+					}
+					// If source is "local" and global already exists, do nothing (global wins)
+				} else {
+					// New command, add it
+					commandMap[fullCommandName] = api.SlashCommand{
+						Name:   fullCommandName,
+						Source: source,
+					}
+				}
+			}
+
+			return nil
+		})
+	}
+
+	// Discover local commands first
+	if err := discoverCommands(localCommandsDir, api.SlashCommandSourceLocal); err != nil && !os.IsNotExist(err) {
+		slog.Warn("Failed to read local commands directory",
+			"error", fmt.Sprintf("%v", err),
+			"commands_dir", localCommandsDir,
+			"operation", "GetSlashCommands",
+		)
+	}
+
+	// Then discover global commands (these will override local if duplicates exist)
+	if err := discoverCommands(globalCommandsDir, api.SlashCommandSourceGlobal); err != nil && !os.IsNotExist(err) {
+		slog.Warn("Failed to read global commands directory",
+			"error", fmt.Sprintf("%v", err),
+			"commands_dir", globalCommandsDir,
+			"operation", "GetSlashCommands",
+		)
+	}
+
+	// Extract all commands from map
+	var allCommands []api.SlashCommand
+	for _, cmd := range commandMap {
+		allCommands = append(allCommands, cmd)
+	}
+
+	// Initialize results as empty array instead of nil
+	results := []api.SlashCommand{}
+
+	// Apply fuzzy search if query provided
+	if req.Params.Query != nil && *req.Params.Query != "" && *req.Params.Query != "/" {
+		query := strings.TrimPrefix(*req.Params.Query, "/")
+
+		// Create searchable items (without slash prefix)
+		type searchItem struct {
+			Command api.SlashCommand
+			Name    string
+		}
+		var searchItems []searchItem
+		for _, cmd := range allCommands {
+			searchItems = append(searchItems, searchItem{
+				Command: cmd,
+				Name:    strings.TrimPrefix(cmd.Name, "/"),
+			})
+		}
+
+		// Extract just names for fuzzy search
+		var names []string
+		for _, item := range searchItems {
+			names = append(names, item.Name)
+		}
+
+		// Fuzzy search
+		matches := fuzzy.Find(query, names)
+
+		// Build results maintaining the original command objects with source
+		for _, match := range matches {
+			for _, item := range searchItems {
+				if item.Name == match.Str {
+					results = append(results, item.Command)
+					break
+				}
+			}
+		}
+	} else {
+		// Return all commands if no query
+		results = allCommands
+
+		// Sort alphabetically when no query, with local as tiebreaker
+		sort.Slice(results, func(i, j int) bool {
+			// Sort by name, but local comes before global as tiebreaker
+			if results[i].Name == results[j].Name {
+				return results[i].Source == api.SlashCommandSourceLocal && results[j].Source == api.SlashCommandSourceGlobal
+			}
+			return results[i].Name < results[j].Name
+		})
+	}
+
+	return api.GetSlashCommands200JSONResponse{
+		Data: results,
+	}, nil
 }

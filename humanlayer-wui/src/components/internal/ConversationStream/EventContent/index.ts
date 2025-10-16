@@ -2,6 +2,7 @@ export { UserMessageContent } from './UserMessageContent'
 export { AssistantMessageContent } from './AssistantMessageContent'
 export { UnknownMessageContent } from './UnknownMessageContent'
 export { BashToolCallContent } from './BashToolCallContent'
+export { BashOutputToolCallContent } from './BashOutputToolCallContent'
 
 // Phase 1 Foundation Components
 export { ApprovalWrapper } from './ApprovalWrapper'

@@ -12,7 +12,7 @@ export function DenyButtons({
   isDisabled?: boolean
 }) {
   const isMac = navigator.platform.includes('Mac')
-  const sendKey = isMac ? '⌘+⏎' : 'Ctrl+⏎'
+  const sendKey = isMac ? '⌘+ENTER' : 'Ctrl+ENTER'
 
   return (
     <div

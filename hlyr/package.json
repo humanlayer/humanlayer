@@ -1,6 +1,6 @@
 {
   "name": "humanlayer",
-  "version": "0.11.1",
+  "version": "0.12.0",
   "description": "HumanLayer, but on your command-line.",
   "type": "module",
   "bin": {
@@ -9,12 +9,15 @@
   },
   "files": [
     "dist/**/*",
+    ".claude/**/*",
     "README.md"
   ],
   "scripts": {
     "build": "tsup && npm run build-go",
     "build-go": "npm run build-daemon",
     "build-daemon": "cd ../hld && go build -o hld ./cmd/hld && mkdir -p ../hlyr/dist/bin && cp hld ../hlyr/dist/bin/",
+    "prepack": "npm run build && rimraf .claude && mkdir -p .claude && cp -r ../.claude/commands ../.claude/agents ../.claude/settings.json .claude/",
+    "postpack": "rm -rf .claude",
     "build:watch": "tsup --watch",
     "dev": "npm run build && ./dist/index.js",
     "lint": "eslint . --ext .ts",
@@ -26,6 +29,7 @@
     "clean": "rm -rf dist/"
   },
   "dependencies": {
+    "@clack/prompts": "^0.11.0",
     "@humanlayer/sdk": "^0.7.7",
     "@modelcontextprotocol/sdk": "^1.12.0",
     "chalk": "^5.4.1",

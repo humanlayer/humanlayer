@@ -13,6 +13,36 @@ servers:
     description: Local daemon server
 
 paths:
+  /fuzzy-search/files:
+    post:
+      operationId: fuzzySearchFiles
+      summary: Fuzzy search for files and folders
+      description: |
+        Performs fuzzy matching on file and folder paths within specified directories.
+        Returns matches sorted by relevance with character-level highlighting information.
+
+        Respects .gitignore by default. Search completes within 5 seconds or returns
+        partial results with timeout error.
+      tags:
+        - Files
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FuzzySearchFilesRequest'
+      responses:
+        '200':
+          description: Search completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FuzzySearchFilesResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
   /health:
     get:
       operationId: getHealth
@@ -148,6 +178,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SessionResponse'
+        '400':
+          description: Invalid status transition or validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           $ref: '#/components/responses/NotFound'
         '500':
@@ -234,6 +270,31 @@ paths:
           description: Draft session deleted successfully
         '400':
           description: Session is not in draft state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /sessions/{id}/hard-delete-empty:
+    delete:
+      operationId: hardDeleteEmptyDraftSession
+      summary: Permanently delete an empty draft session
+      description: |
+        Permanently delete a draft or discarded session from the database if it is truly empty.
+        A session is considered empty if it has no meaningful content (no title, no query, default model, no editor state).
+      tags:
+        - Sessions
+      parameters:
+        - $ref: '#/components/parameters/sessionId'
+      responses:
+        '204':
+          description: Empty draft session permanently deleted
+        '400':
+          description: Session is not empty or not a draft/discarded
           content:
             application/json:
               schema:
@@ -372,6 +433,76 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RecentPathsResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /slash-commands:
+    get:
+      operationId: getSlashCommands
+      summary: Get available slash commands
+      description: Retrieve slash commands available in the session's working directory
+      tags:
+        - Sessions
+      parameters:
+        - name: session_id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Session ID to get working directory
+        - name: query
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Fuzzy search query
+      responses:
+        '200':
+          description: List of slash commands
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SlashCommandsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /agents/discover:
+    post:
+      summary: Discover available agents
+      description: Discovers agent definitions from .claude/agents directories
+      operationId: discoverAgents
+      tags:
+        - Agents
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - workingDir
+              properties:
+                workingDir:
+                  type: string
+                  description: Session working directory for local agent discovery
+      responses:
+        '200':
+          description: Successfully discovered agents
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - agents
+                properties:
+                  agents:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Agent'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '500':
           $ref: '#/components/responses/InternalError'
 
@@ -674,6 +805,113 @@ components:
       example: appr_xyz789
 
   schemas:
+    # Fuzzy Search Schemas
+    FuzzySearchFilesRequest:
+      type: object
+      required:
+        - query
+        - paths
+      properties:
+        query:
+          type: string
+          description: Fuzzy search pattern
+          example: "handleFuzzy"
+          minLength: 1
+          maxLength: 256
+        paths:
+          type: array
+          description: Directory paths to search within
+          minItems: 1
+          maxItems: 10
+          items:
+            type: string
+            example: "/Users/dev/project"
+        limit:
+          type: integer
+          description: Maximum number of results to return
+          default: 20
+          minimum: 1
+          maximum: 1000
+        filesOnly:
+          type: boolean
+          description: Return only files, exclude directories
+          default: false
+        respectGitignore:
+          type: boolean
+          description: Filter out files/folders matching .gitignore patterns
+          default: true
+
+    FuzzySearchFilesResponse:
+      type: object
+      required:
+        - results
+        - metadata
+      properties:
+        results:
+          type: array
+          description: Matched files/folders sorted by relevance
+          items:
+            $ref: '#/components/schemas/FileMatch'
+        metadata:
+          $ref: '#/components/schemas/SearchMetadata'
+
+    FileMatch:
+      type: object
+      required:
+        - path
+        - displayPath
+        - score
+        - matchedIndexes
+        - isDirectory
+      properties:
+        path:
+          type: string
+          description: Absolute path to matched file or folder
+          example: "/Users/dev/project/src/handlers/fuzzySearch.go"
+        displayPath:
+          type: string
+          description: Relative path for display (relative to first search path if applicable)
+          example: "src/handlers/fuzzySearch.go"
+        score:
+          type: integer
+          description: Match quality score (higher is better)
+          example: 85
+        matchedIndexes:
+          type: array
+          description: Character positions of matched query characters
+          items:
+            type: integer
+          example: [23, 31, 36, 37, 38, 39]
+        isDirectory:
+          type: boolean
+          description: True if this is a directory, false for files
+          example: false
+
+    SearchMetadata:
+      type: object
+      required:
+        - totalScanned
+        - totalMatches
+        - durationMs
+        - timedOut
+      properties:
+        totalScanned:
+          type: integer
+          description: Total number of files/folders scanned
+          example: 15437
+        totalMatches:
+          type: integer
+          description: Total matches found before applying limit
+          example: 42
+        durationMs:
+          type: integer
+          description: Search duration in milliseconds
+          example: 156
+        timedOut:
+          type: boolean
+          description: True if search was terminated due to timeout
+          example: false
+
     # Health Response
     HealthResponse:
       type: object
@@ -939,7 +1177,7 @@ components:
           example: "CSV Processing Script"
         model:
           type: string
-          enum: [opus, sonnet]
+          enum: [opus, sonnet, haiku]
           description: Model to use for the session
         mcp_config:
           $ref: '#/components/schemas/MCPConfig'
@@ -1133,6 +1371,9 @@ components:
           type: string
           description: JSON blob of editor state for draft sessions
           example: '{"content":"console.log(\"hello\");","cursorPosition":24}'
+        status:
+          $ref: '#/components/schemas/SessionStatus'
+          description: Update session status (only draft ↔ discarded transitions allowed)
 
     ContinueSessionRequest:
       type: object
@@ -1403,6 +1644,57 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/RecentPath'
+
+    # Slash Command Types
+    SlashCommand:
+      type: object
+      required:
+        - name
+        - source
+      properties:
+        name:
+          type: string
+          example: "/create_plan"
+          description: Command name including slash prefix
+        source:
+          type: string
+          enum: ["local", "global"]
+          description: Source of the command - local (repo) or global (user home)
+          example: "local"
+
+    SlashCommandsResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/SlashCommand'
+
+    # Agent Types
+    Agent:
+      type: object
+      required:
+        - name
+        - mentionText
+        - source
+      properties:
+        name:
+          type: string
+          description: Agent name from YAML frontmatter
+          example: "codebase-locator"
+        mentionText:
+          type: string
+          description: Text to use for mentions
+          example: "@agent-codebase-locator"
+        source:
+          type: string
+          enum: [local, global]
+          description: Whether agent is from local or global directory
+        description:
+          type: string
+          description: Optional description from YAML frontmatter
 
     UpdateConfigRequest:
       type: object
@@ -1763,3 +2055,7 @@ tags:
     description: Real-time event streaming
   - name: Proxy
     description: Model proxy endpoints for alternative providers
+  - name: Files
+    description: File system search and navigation
+  - name: Agents
+    description: Agent discovery and management

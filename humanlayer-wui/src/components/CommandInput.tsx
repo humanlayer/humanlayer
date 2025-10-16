@@ -210,6 +210,7 @@ export default function CommandInput({
                 <SelectContent>
                   <SelectItem value="sonnet">Sonnet</SelectItem>
                   <SelectItem value="opus">Opus</SelectItem>
+                  <SelectItem value="haiku">Haiku</SelectItem>
                 </SelectContent>
               </Select>
             )}
@@ -306,7 +307,9 @@ export default function CommandInput({
             ) : (
               <>
                 Launch Session
-                <kbd className="ml-2 px-1 py-0.5 text-xs bg-muted/50 rounded">{getPlatformKey()}+⏎</kbd>
+                <kbd className="ml-2 px-1 py-0.5 text-xs bg-muted/50 rounded">
+                  {getPlatformKey()}+ENTER
+                </kbd>
               </>
             )}
           </Button>

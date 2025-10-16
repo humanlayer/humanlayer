@@ -8,9 +8,12 @@ import {
   UpdateUserSettingsRequest,
   ConfigResponse,
   UpdateConfigRequest,
+  FuzzySearchFilesResponse,
+  Agent,
 } from '@humanlayer/hld-sdk'
 import { getDaemonUrl, getDefaultHeaders } from './http-config'
 import { logger } from '@/lib/logging'
+import { captureException } from '@/lib/telemetry/sentry'
 import type {
   DaemonClient as IDaemonClient,
   LaunchSessionParams,
@@ -74,6 +77,22 @@ export class HTTPDaemonClient implements IDaemonClient {
     this.client = new HLDClient({
       baseUrl: `${baseUrl}/api/v1`,
       headers: getDefaultHeaders(),
+      // Add Sentry error handler
+      onFetchError: (error, context) => {
+        logger.error('[HTTPDaemonClient] SDK fetch error:', {
+          url: context.url,
+          method: context.method,
+          error: error.message,
+        })
+
+        // Trace to Sentry with context
+        captureException(error, {
+          component: 'HTTPDaemonClient',
+          url: context.url,
+          method: context.method,
+          errorType: 'FetchError',
+        })
+      },
     })
 
     // Verify connection with timeout
@@ -123,6 +142,17 @@ export class HTTPDaemonClient implements IDaemonClient {
 
   // Session Management Methods
 
+  async getSlashCommands(params: {
+    sessionId: string
+    query?: string
+  }): Promise<{ data: Array<{ name: string; source: 'local' | 'global' }> }> {
+    await this.ensureConnected()
+
+    const response = await this.client!.getSlashCommands(params)
+
+    return response as { data: Array<{ name: string; source: 'local' | 'global' }> }
+  }
+
   async launchSession(
     params: LaunchSessionParams | LaunchSessionRequest,
   ): Promise<CreateSessionResponseData> {
@@ -138,6 +168,8 @@ export class HTTPDaemonClient implements IDaemonClient {
         model = 'sonnet'
       } else if (params.model.includes('opus')) {
         model = 'opus'
+      } else if (params.model.includes('haiku')) {
+        model = 'haiku'
       }
     }
     // For OpenRouter and Baseten, pass model string as-is via proxyModelOverride
@@ -156,7 +188,7 @@ export class HTTPDaemonClient implements IDaemonClient {
       model:
         provider === 'openrouter' || provider === 'baseten'
           ? undefined
-          : (model as 'opus' | 'sonnet' | undefined),
+          : (model as 'opus' | 'sonnet' | 'haiku' | undefined),
       mcpConfig: 'mcpConfig' in params ? params.mcpConfig : (params as LaunchSessionRequest).mcp_config,
       permissionPromptTool:
         'permissionPromptTool' in params
@@ -569,6 +601,29 @@ export class HTTPDaemonClient implements IDaemonClient {
     // SDK client doesn't support limit parameter yet
     const response = await this.client!.getRecentPaths()
     return response // SDK now properly returns RecentPath[]
+  }
+
+  async fuzzySearchFiles(params: {
+    query: string
+    paths: string[]
+    limit?: number
+    filesOnly?: boolean
+    respectGitignore?: boolean
+  }): Promise<FuzzySearchFilesResponse> {
+    await this.ensureConnected()
+    const response = await this.client!.fuzzySearchFiles(params)
+    return response
+  }
+
+  async discoverAgents(workingDir: string): Promise<Agent[]> {
+    await this.ensureConnected()
+
+    // Use the generated SDK client method
+    const response = await this.client!.discoverAgents({
+      discoverAgentsRequest: { workingDir },
+    })
+
+    return response.agents || []
   }
 
   async getDebugInfo(): Promise<import('./types').DebugInfo> {

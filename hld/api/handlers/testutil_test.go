@@ -21,9 +21,10 @@ func setupTestRouter(t *testing.T, sessionHandlers *handlers.SessionHandlers, ap
 
 	// Create a mock settings handler for tests (not used in these tests)
 	settingsHandlers := handlers.NewSettingsHandlers(nil)
+	fileHandlers := handlers.NewFileHandlers()
 
-	// Create server implementation
-	serverImpl := handlers.NewServerImpl(sessionHandlers, approvalHandlers, sseHandler, settingsHandlers)
+	// Create server implementation (pass nil for AgentHandlers)
+	serverImpl := handlers.NewServerImpl(sessionHandlers, approvalHandlers, fileHandlers, sseHandler, settingsHandlers, nil)
 
 	// Create strict handler
 	strictHandler := api.NewStrictHandler(serverImpl, nil)

@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -42,13 +43,17 @@ type HTTPServer struct {
 	sessionManager   session.SessionManager
 	sessionHandlers  *handlers.SessionHandlers
 	approvalHandlers *handlers.ApprovalHandlers
+	fileHandlers     *handlers.FileHandlers
 	sseHandler       *handlers.SSEHandler
 	proxyHandler     *handlers.ProxyHandler
 	configHandler    *handlers.ConfigHandler
 	settingsHandlers *handlers.SettingsHandlers
+	agentHandlers    *handlers.AgentHandlers
 	approvalManager  approval.Manager
 	eventBus         bus.EventBus
-	server           *http.Server
+
+	serverMu sync.Mutex
+	server   *http.Server
 }
 
 // NewHTTPServer creates a new HTTP server instance
@@ -85,10 +90,12 @@ func NewHTTPServer(
 	// Create handlers
 	sessionHandlers := handlers.NewSessionHandlersWithConfig(sessionManager, conversationStore, approvalManager, cfg)
 	approvalHandlers := handlers.NewApprovalHandlers(approvalManager, sessionManager)
+	fileHandlers := handlers.NewFileHandlers()
 	sseHandler := handlers.NewSSEHandler(eventBus)
 	proxyHandler := handlers.NewProxyHandler(sessionManager, conversationStore)
 	configHandler := handlers.NewConfigHandler()
 	settingsHandlers := handlers.NewSettingsHandlers(conversationStore)
+	agentHandlers := handlers.NewAgentHandlers()
 
 	return &HTTPServer{
 		config:           cfg,
@@ -96,10 +103,12 @@ func NewHTTPServer(
 		sessionManager:   sessionManager,
 		sessionHandlers:  sessionHandlers,
 		approvalHandlers: approvalHandlers,
+		fileHandlers:     fileHandlers,
 		sseHandler:       sseHandler,
 		proxyHandler:     proxyHandler,
 		configHandler:    configHandler,
 		settingsHandlers: settingsHandlers,
+		agentHandlers:    agentHandlers,
 		approvalManager:  approvalManager,
 		eventBus:         eventBus,
 	}
@@ -108,7 +117,7 @@ func NewHTTPServer(
 // Start starts the HTTP server
 func (s *HTTPServer) Start(ctx context.Context) error {
 	// Create server implementation combining all handlers
-	serverImpl := handlers.NewServerImpl(s.sessionHandlers, s.approvalHandlers, s.sseHandler, s.settingsHandlers)
+	serverImpl := handlers.NewServerImpl(s.sessionHandlers, s.approvalHandlers, s.fileHandlers, s.sseHandler, s.settingsHandlers, s.agentHandlers)
 
 	// Create strict handler with middleware
 	strictHandler := api.NewStrictHandler(serverImpl, nil)
@@ -159,14 +168,17 @@ func (s *HTTPServer) Start(ctx context.Context) error {
 		"actual_address", actualAddr.String())
 
 	// Create HTTP server
+	s.serverMu.Lock()
 	s.server = &http.Server{
 		Handler: s.router,
 	}
+	server := s.server // Capture for goroutine
+	s.serverMu.Unlock()
 
 	// Start server in goroutine
 	go func() {
 		// Use the existing listener
-		if err := s.server.Serve(listener); err != nil && err != http.ErrServerClosed {
+		if err := server.Serve(listener); err != nil && err != http.ErrServerClosed {
 			slog.Error("HTTP server error", "error", err)
 		}
 	}()
@@ -178,7 +190,11 @@ func (s *HTTPServer) Start(ctx context.Context) error {
 
 // Shutdown gracefully shuts down the HTTP server
 func (s *HTTPServer) Shutdown() error {
-	if s.server == nil {
+	s.serverMu.Lock()
+	server := s.server
+	s.serverMu.Unlock()
+
+	if server == nil {
 		return nil
 	}
 
@@ -187,5 +203,5 @@ func (s *HTTPServer) Shutdown() error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	return s.server.Shutdown(ctx)
+	return server.Shutdown(ctx)
 }

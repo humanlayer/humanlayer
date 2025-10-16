@@ -9,6 +9,7 @@ import { pingCommand } from './commands/ping.js'
 import { launchCommand } from './commands/launch.js'
 import { alertCommand } from './commands/alert.js'
 import { thoughtsCommand } from './commands/thoughts.js'
+import { claudeCommand } from './commands/claude.js'
 import { joinWaitlistCommand } from './commands/joinWaitlist.js'
 import { startClaudeApprovalsMCPServer } from './mcp.js'
 import {
@@ -67,7 +68,7 @@ async function authenticate(printSelectedProject: boolean = false) {
 
 program.name('humanlayer').description('HumanLayer, but on your command-line.').version(VERSION)
 
-const UNPROTECTED_COMMANDS = ['config', 'login', 'thoughts', 'join-waitlist', 'launch', 'mcp']
+const UNPROTECTED_COMMANDS = ['config', 'login', 'thoughts', 'claude', 'join-waitlist', 'launch', 'mcp']
 
 program.hook('preAction', async (thisCmd, actionCmd) => {
   // Get the full command path by traversing up the command hierarchy
@@ -107,7 +108,7 @@ mcpCommand
 program
   .command('launch <query>')
   .description('Launch a new Claude Code session via the daemon')
-  .option('-m, --model <model>', 'Model to use (opus or sonnet)', 'sonnet')
+  .option('-m, --model <model>', 'Model to use (opus, sonnet, or haiku)', 'sonnet')
   .option('-t, --title <title>', 'Optional session title')
   .option('-w, --working-dir <path>', 'Working directory for the session')
   .option('--add-dir <directories...>', 'Additional directories Claude can access')
@@ -182,6 +183,9 @@ program
 
 // Add thoughts command
 thoughtsCommand(program)
+
+// Add claude command
+claudeCommand(program)
 
 // Add join-waitlist command
 program

@@ -1,6 +1,8 @@
 /* tslint:disable */
 /* eslint-disable */
+export * from './AgentsApi';
 export * from './ApprovalsApi';
+export * from './FilesApi';
 export * from './ProxyManualApi';
 export * from './SessionsApi';
 export * from './SettingsApi';

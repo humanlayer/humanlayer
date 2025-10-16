@@ -1,5 +1,6 @@
 /* tslint:disable */
 /* eslint-disable */
+export * from './Agent';
 export * from './Approval';
 export * from './ApprovalResponse';
 export * from './ApprovalStatus';
@@ -23,11 +24,16 @@ export * from './DebugInfoResponse';
 export * from './DecideApprovalRequest';
 export * from './DecideApprovalResponse';
 export * from './DecideApprovalResponseData';
+export * from './DiscoverAgents200Response';
+export * from './DiscoverAgentsRequest';
 export * from './ErrorDetail';
 export * from './ErrorResponse';
 export * from './Event';
 export * from './EventType';
+export * from './FileMatch';
 export * from './FileSnapshot';
+export * from './FuzzySearchFilesRequest';
+export * from './FuzzySearchFilesResponse';
 export * from './HealthResponse';
 export * from './HealthResponseDependencies';
 export * from './HealthResponseDependenciesClaude';
@@ -38,11 +44,14 @@ export * from './MCPConfig';
 export * from './MCPServer';
 export * from './RecentPath';
 export * from './RecentPathsResponse';
+export * from './SearchMetadata';
 export * from './Session';
 export * from './SessionResponse';
 export * from './SessionStatus';
 export * from './SessionsResponse';
 export * from './SessionsResponseCounts';
+export * from './SlashCommand';
+export * from './SlashCommandsResponse';
 export * from './SnapshotsResponse';
 export * from './UpdateConfigRequest';
 export * from './UpdateSessionRequest';

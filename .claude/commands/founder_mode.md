@@ -1,3 +1,7 @@
+---
+description: Create Linear ticket and PR for experimental features after implementation
+---
+
 you're working on an experimental feature that didn't get the proper ticketing and pr stuff set up.
 
 assuming you just made a commit, here are the next steps:

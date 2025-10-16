@@ -183,11 +183,6 @@ func tryLoginShell() string {
 func (c *Client) buildArgs(config SessionConfig) ([]string, error) {
 	args := []string{}
 
-	// Always use print mode for SDK
-	if config.Query != "" {
-		args = append(args, "--print", config.Query)
-	}
-
 	// Session management
 	if config.SessionID != "" {
 		args = append(args, "--resume", config.SessionID)
@@ -301,6 +296,15 @@ func (c *Client) buildArgs(config SessionConfig) ([]string, error) {
 	// Verbose
 	if config.Verbose {
 		args = append(args, "--verbose")
+	}
+
+	// Always use print mode for SDK - MUST be the last flag before --
+	// The -- separator tells the CLI parser to stop interpreting flags
+	// Correct order: <all flags> --print -- <query>
+	if config.Query != "" {
+		args = append(args, "--print")
+		args = append(args, "--")
+		args = append(args, config.Query)
 	}
 
 	return args, nil

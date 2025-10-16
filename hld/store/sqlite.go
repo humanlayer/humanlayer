@@ -1328,6 +1328,26 @@ func (s *SQLiteStore) UpdateSession(ctx context.Context, sessionID string, updat
 	return nil
 }
 
+// HardDeleteSession permanently deletes a session from the database
+func (s *SQLiteStore) HardDeleteSession(ctx context.Context, sessionID string) error {
+	query := `DELETE FROM sessions WHERE id = ?`
+	result, err := s.db.ExecContext(ctx, query, sessionID)
+	if err != nil {
+		return fmt.Errorf("failed to delete session: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+
+	return nil
+}
+
 // GetSession retrieves a session by ID
 func (s *SQLiteStore) GetSession(ctx context.Context, sessionID string) (*Session, error) {
 	query := `

@@ -63,19 +63,19 @@
 }
 
 .markdown-syntax-bold {
-  color: var(--terminal-color-12);
+  color: var(--terminal-accent);
 }
 
 .markdown-syntax-italic {
-  color: var(--terminal-color-10);
+  color: var(--terminal-accent-alt);
 }
 
 .markdown-syntax-strike {
-  color: var(--terminal-color-9);
+  color: var(--terminal-error);
 }
 
 .markdown-syntax-code {
-  color: var(--terminal-color-11);
+  color: var(--terminal-success);
 }
 
 /* Heading syntax markers */
@@ -85,39 +85,40 @@
 .markdown-syntax-heading-4,
 .markdown-syntax-heading-5,
 .markdown-syntax-heading-6 {
-  color: var(--terminal-color-14);
+  color: var(--terminal-accent);
   opacity: 0.5;
 }
 
 /* List syntax markers */
 .markdown-syntax-list {
-  color: var(--terminal-color-13);
+  color: var(--terminal-accent-alt);
   opacity: 0.5;
 }
 
 /* Code block markers */
 .markdown-syntax-codeblock {
-  color: var(--terminal-color-10);
+  color: var(--terminal-success);
   opacity: 0.5;
 }
 
 .markdown-codeblock-lang {
-  color: var(--terminal-color-14);
+  color: var(--terminal-accent);
   opacity: 0.7;
 }
 
 .markdown-codeblock-content {
   font-family: 'SF Mono', Monaco, 'Cascadia Mono', 'Roboto Mono', Consolas, 'Courier New', monospace;
-  /* Remove block-level styling - let these be inline for syntax highlighting */
 }
 
 /* Markdown content styles */
 .markdown-bold {
+  color: var(--terminal-accent);
   font-weight: 700;
 }
 
 .markdown-italic {
   font-style: italic;
+  color: var(--terminal-accent-alt);
 }
 
 .markdown-strike {
@@ -126,10 +127,9 @@
 
 .markdown-code {
   font-family: 'SF Mono', Monaco, 'Cascadia Mono', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  color: var(--terminal-success);
   background-color: var(--muted);
-  padding: 0.125rem 0.25rem;
   border-radius: 0.25rem;
-  font-size: 0.875em;
 }
 
 /* Heading content styles */
@@ -296,4 +296,10 @@
 .tiptap-editor .mention:active {
   transform: translateY(0);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* React NodeView wrapper alignment fix */
+.tiptap-editor .react-renderer {
+  display: inline-flex;
+  vertical-align: middle;
 }

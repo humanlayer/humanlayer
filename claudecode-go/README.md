@@ -110,7 +110,7 @@ type SessionConfig struct {
     SessionID string // Resume existing session
 
     // Model
-    Model Model // ModelOpus or ModelSonnet
+    Model Model // ModelOpus, ModelSonnet, or ModelHaiku
 
     // Output
     OutputFormat OutputFormat
