@@ -25,21 +25,8 @@ export function DraftSessionPage() {
         try {
           // Always fetch fresh from daemon to ensure we have latest data
           const allSessions = await daemonClient.listSessions()
-          console.log(
-            'editorState allSessions',
-            allSessions.filter(s => s.status === SessionStatus.Draft),
-          )
           const existingDraft = allSessions.find(
             s => s.id === draftId && s.status === SessionStatus.Draft,
-          )
-
-          console.log(
-            `proxy info`,
-            existingDraft?.model,
-            existingDraft?.modelId,
-            existingDraft?.proxyBaseUrl,
-            existingDraft?.proxyModelOverride,
-            existingDraft?.proxyEnabled,
           )
 
           if (existingDraft) {

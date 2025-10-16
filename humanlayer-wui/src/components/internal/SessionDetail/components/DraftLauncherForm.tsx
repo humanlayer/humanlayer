@@ -103,14 +103,6 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
   const responseEditor = useStore(state => state.responseEditor)
   const refreshSessions = useStore(state => state.refreshSessions)
 
-  // Debug log when editor changes
-  useEffect(() => {
-    console.log('[DRAFT_DEBUG] responseEditor changed in store', {
-      hasEditor: !!responseEditor,
-      editorType: responseEditor?.constructor?.name,
-      timestamp: new Date().toISOString(),
-    })
-  }, [responseEditor])
 
   const draftCreatedRef = useRef<boolean>(!!session) // if a session is passed in then the draft has already been created
 
@@ -131,19 +123,11 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
 
   // Handle navigation and focus on mount
   useEffect(() => {
-    console.log('[DRAFT_DEBUG] DraftLauncherForm mounting', {
-      hasSession: !!session,
-      sessionId: session?.id,
-      sessionTitle: session?.title,
-      timestamp: new Date().toISOString(),
-    })
-
     // Check for session ID in query params
     const draftId = searchParams.get('id')
 
     // Set sessionId from query param or null
     if (draftId) {
-      console.log('[DRAFT_DEBUG] Found draft ID in query params', { draftId })
       setSessionId(draftId)
     }
 
@@ -214,23 +198,10 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
 
   // Create draft when user starts typing (title or prompt) - stable callback with refs
   const handleCreateDraft = useCallback(async () => {
-    console.log('[DRAFT_DEBUG] handleCreateDraft called', {
-      draftCreatingRef: draftCreatingRef.current,
-      sessionIdRef: sessionIdRef.current,
-      draftCreatedRef: draftCreatedRef.current,
-      titleRef: titleRef.current,
-      workingDirectoryRef: workingDirectoryRef.current,
-      timestamp: new Date().toISOString(),
-      stack: new Error().stack,
-    })
-
     // Check if already creating to prevent race conditions
     if (draftCreatingRef.current || sessionIdRef.current || draftCreatedRef.current) {
-      console.log('[DRAFT_DEBUG] Skipping draft creation - already exists or in progress')
       return sessionIdRef.current
     }
-
-    console.log('[DRAFT_DEBUG] Starting draft creation')
     draftCreatingRef.current = true
     draftCreatedRef.current = true
 
@@ -242,13 +213,12 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
       })
 
       const newSessionId = response.sessionId
-      console.log('[DRAFT_DEBUG] Draft created successfully', { sessionId: newSessionId })
       setSessionId(newSessionId)
       sessionIdRef.current = newSessionId
 
       return newSessionId
     } catch (error) {
-      console.error('[DRAFT_DEBUG] Failed to create draft:', error)
+      console.error('Failed to create draft:', error)
       draftCreatedRef.current = false
       return null
     } finally {
@@ -258,38 +228,18 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
 
   // Listen for editor changes and trigger draft creation if needed
   useEffect(() => {
-    console.log('[DRAFT_DEBUG] Editor effect running', {
-      hasEditor: !!responseEditor,
-      timestamp: new Date().toISOString(),
-    })
-
     if (responseEditor) {
       const handleEditorUpdate = (event?: any) => {
         const content = responseEditor.getText()
-        const contentLength = content.length
-        const trimmedLength = content.trim().length
-
-        console.log('[DRAFT_DEBUG] Editor update event fired', {
-          contentLength,
-          trimmedLength,
-          contentPreview: content.substring(0, 50),
-          hasSession: !!sessionIdRef.current,
-          isCreating: draftCreatingRef.current,
-          event: event?.constructor?.name,
-          timestamp: new Date().toISOString(),
-        })
 
         // Only trigger if we have content and no session yet
         if (content.trim() && !sessionIdRef.current && !draftCreatingRef.current) {
-          console.log('[DRAFT_DEBUG] Editor update triggering draft creation')
           handleCreateDraft()
         }
       }
 
-      console.log('[DRAFT_DEBUG] Attaching editor update listener')
       responseEditor.on('update', handleEditorUpdate)
       return () => {
-        console.log('[DRAFT_DEBUG] Removing editor update listener')
         responseEditor?.off('update', handleEditorUpdate)
       }
     }
@@ -381,14 +331,7 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
   const handleEditorContentChange = useCallback(async () => {
     const currentSessionId = sessionIdRef.current
 
-    console.log('[DRAFT_DEBUG] handleEditorContentChange called from DraftLauncherInput', {
-      hasSession: !!currentSessionId,
-      sessionId: currentSessionId,
-      timestamp: new Date().toISOString(),
-    })
-
     if (!currentSessionId) {
-      console.log('[DRAFT_DEBUG] No session, triggering draft creation from editor content change')
       // Create draft on first content change
       const newSessionId = await handleCreateDraft()
       if (newSessionId) {
@@ -399,7 +342,6 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
 
     // If draft exists, trigger sync
     if (currentSessionId) {
-      console.log('[DRAFT_DEBUG] Session exists, triggering sync')
       syncToDaemon()
     }
   }, [handleCreateDraft, syncToDaemon])
@@ -413,15 +355,7 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
       setTitle(newTitle)
       titleRef.current = newTitle
 
-      console.log('[DRAFT_DEBUG] Title changed', {
-        newTitle,
-        titleLength: newTitle.length,
-        hasSession: !!sessionIdRef.current,
-        timestamp: new Date().toISOString(),
-      })
-
       if (newTitle.trim() && !sessionIdRef.current) {
-        console.log('[DRAFT_DEBUG] Title change triggering draft creation')
         handleCreateDraft()
       } else if (sessionIdRef.current) {
         syncToDaemon()
@@ -436,14 +370,7 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
       setWorkingDirectory(value)
       workingDirectoryRef.current = value
 
-      console.log('[DRAFT_DEBUG] Working directory changed', {
-        newValue: value,
-        hasSession: !!sessionIdRef.current,
-        timestamp: new Date().toISOString(),
-      })
-
       if (!sessionIdRef.current && value.trim()) {
-        console.log('[DRAFT_DEBUG] Working directory change triggering draft creation')
         handleCreateDraft()
       } else if (sessionIdRef.current) {
         syncToDaemon()
@@ -622,11 +549,6 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
 
   // Handle toggling bypass permissions
   const handleToggleBypass = useCallback(() => {
-    console.log(
-      'handle toggle bypass:',
-      defaultDangerouslyBypassPermissionsSetting,
-      dangerousSkipPermissionsDialogOpen,
-    )
     if (defaultDangerouslyBypassPermissionsSetting) {
       setDangerousSkipPermissionsDialogOpen(false)
       setDefaultDangerouslyBypassPermissionsSetting(false)

@@ -73,26 +73,11 @@ export const DraftLauncherInput = forwardRef<
     const hasValidSessionData = (session.status as any) !== 'unknown' && !(session as any).fromStore
     let initialValue = null
 
-    console.log('[DRAFT_DEBUG] DraftLauncherInput mounting', {
-      sessionStatus: session.status,
-      sessionId: session.id,
-      hasEditorState: !!session.editorState,
-      hasValidSessionData,
-      timestamp: new Date().toISOString(),
-    })
-
     if (hasValidSessionData && session.editorState) {
       try {
         initialValue = JSON.parse(session.editorState)
-        console.log(
-          '[DRAFT_DEBUG] DraftLauncherInput - Successfully parsed editorState from database',
-          {
-            initialValueLength: JSON.stringify(initialValue).length,
-            initialValuePreview: JSON.stringify(initialValue).substring(0, 100),
-          },
-        )
       } catch (e) {
-        logger.error('[DRAFT_DEBUG] DraftLauncherInput - error parsing editorState from database', e)
+        logger.error('DraftLauncherInput - error parsing editorState from database', e)
       }
     }
 
@@ -103,37 +88,20 @@ export const DraftLauncherInput = forwardRef<
 
         const textContent = responseEditor?.getText() ?? ''
 
-        console.log('[DRAFT_DEBUG] DraftLauncherInput handleChange called', {
-          valueLength: valueStr.length,
-          valuePreview: valueStr.substring(0, 100),
-          responseEditorText: textContent,
-          sessionStatus: session.status,
-          sessionId: session.id,
-          hasOnContentChange: !!onContentChange,
-          timestamp: new Date().toISOString(),
-          stack: new Error().stack?.split('\n').slice(1, 5).join('\n'),
-        })
-
         // Only notify parent if there's actual text content (not just empty editor structure)
         if (onContentChange && textContent.trim().length > 0) {
-          console.log(
-            '[DRAFT_DEBUG] Calling onContentChange from DraftLauncherInput - has real content',
-          )
           onContentChange()
-        } else if (onContentChange && textContent.trim().length === 0) {
-          console.log('[DRAFT_DEBUG] Skipping onContentChange - editor has no real text content')
         }
 
         // Only save directly if draft already exists
         if (session.status === SessionStatus.Draft && session.id) {
-          console.log('[DRAFT_DEBUG] Saving editor state to database', { sessionId: session.id })
           try {
             await daemonClient.updateSession(session.id, {
               editorState: valueStr,
             })
           } catch (error) {
             // Log but don't show toast to avoid disrupting typing
-            logger.error('[DRAFT_DEBUG] Failed to save editor state to database:', error)
+            logger.error('Failed to save editor state to database:', error)
           }
         }
       },
