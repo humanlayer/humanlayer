@@ -221,7 +221,9 @@ export function useSessionActions({
     },
     {
       scopes: [scope],
-      enableOnFormTags: true,
+      enableOnFormTags: ['INPUT', 'TEXTAREA', 'SELECT'],
+      enableOnContentEditable: true,
+      preventDefault: true,
     },
   )
 
