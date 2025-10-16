@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '@/AppStore'
 import { ViewMode } from '@/lib/daemon/types'
@@ -35,6 +35,14 @@ export function SessionTablePage() {
   const setViewMode = useStore(state => state.setViewMode)
 
   const viewMode = getViewMode()
+  const refreshSessions = useStore(state => state.refreshSessions)
+
+  // Refresh sessions when view mode changes to drafts
+  useEffect(() => {
+    if (viewMode === ViewMode.Drafts) {
+      refreshSessions()
+    }
+  }, [viewMode, refreshSessions])
 
   // Bypass permissions modal state
   const [bypassPermissionsOpen, setBypassPermissionsOpen] = useState(false)
@@ -111,7 +119,12 @@ export function SessionTablePage() {
   )
 
   const handleActivateSession = (session: any) => {
-    navigate(`/sessions/${session.id}`)
+    // Route draft sessions to the dedicated draft route
+    if (session.status === 'draft') {
+      navigate(`/sessions/draft?id=${session.id}`)
+    } else {
+      navigate(`/sessions/${session.id}`)
+    }
   }
 
   // Custom navigation functions that work with sessions

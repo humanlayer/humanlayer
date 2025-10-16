@@ -431,7 +431,6 @@ export { isViewingSessionDetail }
 
 // Helper hook for global hotkey management
 export function useSessionLauncherHotkeys() {
-  const refreshSessions = useStore(state => state.refreshSessions)
   const { open, close, isOpen, setGPrefixMode } = useSessionLauncher()
 
   // Helper to check if user is actively typing in a text input
@@ -463,26 +462,13 @@ export function useSessionLauncherHotkeys() {
     },
   )
 
-  // C - Create new session (root scope)
+  // C - Navigate to new draft session route (root scope)
   useHotkeys(
     'c',
-    async () => {
-      // Create draft session and navigate directly
-      try {
-        const response = await daemonClient.launchSession({
-          query: '', // Empty initial query for draft
-          working_dir: getLastWorkingDir() || '~/',
-          draft: true, // Create as draft
-        })
-
-        // Refresh sessions to include the new draft
-        await refreshSessions()
-
-        // Navigate directly to SessionDetail
-        window.location.hash = `#/sessions/${response.sessionId}`
-      } catch (error) {
-        logger.error('Failed to create draft session:', error)
-      }
+    () => {
+      // Navigate to draft route without creating a session
+      // The draft will be created lazily when user starts typing
+      window.location.hash = '/sessions/draft'
     },
     {
       scopes: [HOTKEY_SCOPES.ROOT],

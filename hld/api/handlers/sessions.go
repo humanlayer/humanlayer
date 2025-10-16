@@ -281,6 +281,11 @@ func (h *SessionHandlers) ListSessions(ctx context.Context, req api.ListSessions
 			DangerouslySkipPermissions:          info.DangerouslySkipPermissions,
 			DangerouslySkipPermissionsExpiresAt: info.DangerouslySkipPermissionsExpiresAt,
 			Archived:                            info.Archived,
+			EditorState:                         info.EditorState,
+			ProxyEnabled:                        info.ProxyEnabled,
+			ProxyBaseURL:                        info.ProxyBaseURL,
+			ProxyModelOverride:                  info.ProxyModelOverride,
+			ProxyAPIKey:                         info.ProxyAPIKey,
 		}
 
 		// Copy result data if available
@@ -1420,28 +1425,26 @@ func (h *SessionHandlers) GetDebugInfo(ctx context.Context, req api.GetDebugInfo
 	return response, nil
 }
 
-// GetSlashCommands retrieves available slash commands for a session
+// GetSlashCommands retrieves available slash commands for a working directory
 func (h *SessionHandlers) GetSlashCommands(ctx context.Context, req api.GetSlashCommandsRequestObject) (api.GetSlashCommandsResponseObject, error) {
-	// Get session to access working directory
-	session, err := h.store.GetSession(ctx, req.Params.SessionId)
-	if err != nil {
-		slog.Error("Failed to get session for slash commands",
-			"error", fmt.Sprintf("%v", err),
-			"session_id", req.Params.SessionId,
+	// Get working directory from parameters
+	workingDir := req.Params.WorkingDir
+	if workingDir == "" {
+		slog.Error("Working directory not provided",
 			"operation", "GetSlashCommands",
 		)
 		return api.GetSlashCommands400JSONResponse{
 			BadRequestJSONResponse: api.BadRequestJSONResponse{
 				Error: api.ErrorDetail{
 					Code:    "HLD-4001",
-					Message: "Invalid session ID",
+					Message: "Working directory is required",
 				},
 			},
 		}, nil
 	}
 
 	// Build command directory paths
-	localCommandsDir := filepath.Join(expandTilde(session.WorkingDir), ".claude", "commands")
+	localCommandsDir := filepath.Join(expandTilde(workingDir), ".claude", "commands")
 	homeDir, err := os.UserHomeDir()
 	globalCommandsDir := ""
 	if err == nil {

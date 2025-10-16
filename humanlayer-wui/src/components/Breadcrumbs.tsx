@@ -1,8 +1,4 @@
-import { useLocation, useNavigate } from 'react-router-dom'
-import { Home, Pencil, Check, X } from 'lucide-react'
-import { useState, useEffect, useRef } from 'react'
-import { toast } from 'sonner'
-import { useHotkeys } from 'react-hotkeys-hook'
+import { useStore } from '@/AppStore'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -11,11 +7,15 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
-import { useStore } from '@/AppStore'
-import { daemonClient } from '@/lib/daemon/client'
-import { HotkeyScopeBoundary } from './HotkeyScopeBoundary'
 import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
+import { daemonClient } from '@/lib/daemon/client'
 import { ViewMode } from '@/lib/daemon/types'
+import { Check, Home, Pencil, X } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { useHotkeys } from 'react-hotkeys-hook'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
+import { HotkeyScopeBoundary } from './HotkeyScopeBoundary'
 
 export function Breadcrumbs() {
   const location = useLocation()
@@ -89,7 +89,6 @@ export function Breadcrumbs() {
     if (isEditingTitle && activeSessionDetail?.session) {
       setEditValue(activeSessionDetail.session.title || activeSessionDetail.session.summary || '')
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEditingTitle])
 
   const viewModeToBreadcrumbText = {

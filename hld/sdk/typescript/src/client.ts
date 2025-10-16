@@ -238,7 +238,7 @@ export class HLDClient {
     }
 
     // Get slash commands
-    async getSlashCommands(params: { sessionId: string; query?: string }): Promise<{ data: Array<{ name: string }> }> {
+    async getSlashCommands(params: { workingDir: string; query?: string }): Promise<{ data: Array<{ name: string }> }> {
         const response = await this.sessionsApi.getSlashCommands(params);
         return response;
     }

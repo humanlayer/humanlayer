@@ -10,6 +10,7 @@ interface SlashCommandListProps {
   query: string
   command: (item: { id: string; label: string }) => void
   editor: Editor
+  workingDir?: string
 }
 
 interface SlashCommandListRef {
@@ -22,7 +23,7 @@ interface SlashCommand {
 }
 
 export const SlashCommandList = forwardRef<SlashCommandListRef, SlashCommandListProps>(
-  ({ query, command }, ref) => {
+  ({ query, command, workingDir }, ref) => {
     const [selectedIndex, setSelectedIndex] = useState(0)
     const [commands, setCommands] = useState<SlashCommand[]>([])
     const [isLoading, setIsLoading] = useState(false)
@@ -41,8 +42,11 @@ export const SlashCommandList = forwardRef<SlashCommandListRef, SlashCommandList
 
     // Fetch commands from daemon
     useEffect(() => {
-      if (!activeSessionDetail?.session?.id) {
-        // No active session - treat as empty state, not error
+      // Determine the working directory to use
+      const effectiveWorkingDir = workingDir || activeSessionDetail?.session?.workingDir
+
+      if (!effectiveWorkingDir) {
+        // No working directory - treat as empty state, not error
         setCommands([])
         setError(null)
         return
@@ -53,9 +57,9 @@ export const SlashCommandList = forwardRef<SlashCommandListRef, SlashCommandList
         setError(null)
 
         try {
-          // Call the getSlashCommands method directly on the client
+          // Call the getSlashCommands method with working directory
           const response = await daemonClient.getSlashCommands({
-            sessionId: activeSessionDetail.session.id,
+            workingDir: effectiveWorkingDir,
             query: query || '/',
           })
 
@@ -72,7 +76,7 @@ export const SlashCommandList = forwardRef<SlashCommandListRef, SlashCommandList
       }
 
       fetchCommands()
-    }, [query, activeSessionDetail?.session?.id])
+    }, [query, workingDir, activeSessionDetail?.session?.workingDir])
 
     // Reset selection when results change
     useEffect(() => {

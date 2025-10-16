@@ -2,6 +2,7 @@ import { createHashRouter } from 'react-router-dom'
 import { Layout } from '@/components/Layout'
 import { SessionTablePage } from '@/pages/SessionTablePage'
 import { SessionDetailPage } from '@/pages/SessionDetailPage'
+import { DraftSessionPage } from '@/pages/DraftSessionPage'
 import { QuickLauncher } from '@/components/QuickLauncher'
 import StoreDemo from '@/pages/StoreDemo'
 import WuiDemo from '@/pages/WuiDemo'
@@ -17,6 +18,10 @@ export const router = createHashRouter([
       {
         index: true,
         element: <SessionTablePage />,
+      },
+      {
+        path: 'sessions/draft',
+        element: <DraftSessionPage />,
       },
       {
         path: 'sessions/:sessionId',

@@ -456,16 +456,43 @@ interface ResponseEditorProps {
   onFocus?: () => void
   onBlur?: () => void
   onSubmit?: () => void
+  workingDir?: string
+  workingDirRef?: React.MutableRefObject<string>
   // NOTE: Business logic callbacks removed - now handled by SessionDetail
 }
 
 export const ResponseEditor = forwardRef<{ focus: () => void; blur?: () => void }, ResponseEditorProps>(
   (
-    { initialValue, onChange, onKeyDown, disabled, placeholder, className, onFocus, onBlur, onSubmit },
+    {
+      initialValue,
+      onChange,
+      onKeyDown,
+      disabled,
+      placeholder,
+      className,
+      onFocus,
+      onBlur,
+      onSubmit,
+      workingDir,
+      workingDirRef,
+    },
     ref,
   ) => {
     const onSubmitRef = React.useRef<ResponseEditorProps['onSubmit']>()
     const onChangeRef = React.useRef<ResponseEditorProps['onChange']>()
+
+    // Always create a local ref for backwards compatibility
+    const localWorkingDirRef = React.useRef(workingDir || '')
+
+    // Use the passed workingDirRef if provided, otherwise use the local one
+    const effectiveWorkingDirRef = workingDirRef || localWorkingDirRef
+
+    // If we're using a local ref, keep it updated with the workingDir prop
+    React.useEffect(() => {
+      if (!workingDirRef && workingDir !== undefined) {
+        localWorkingDirRef.current = workingDir
+      }
+    }, [workingDir, workingDirRef])
 
     // Tooltip state for file mentions
     const [tooltipState, setTooltipState] = useState<{
@@ -544,9 +571,12 @@ export const ResponseEditor = forwardRef<{ focus: () => void; blur?: () => void 
                     'z-50 min-w-[20rem] max-w-[30rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md'
                   document.body.appendChild(popup)
 
-                  // Create React component
+                  // Create React component with workingDir passed through
                   component = new ReactRenderer(SlashCommandList, {
-                    props,
+                    props: {
+                      ...props,
+                      workingDir: effectiveWorkingDirRef.current,
+                    },
                     editor: props.editor,
                   })
 
@@ -578,7 +608,10 @@ export const ResponseEditor = forwardRef<{ focus: () => void; blur?: () => void 
                 },
 
                 onUpdate(props: any) {
-                  component?.updateProps(props)
+                  component?.updateProps({
+                    ...props,
+                    workingDir: effectiveWorkingDirRef.current,
+                  })
 
                   // Reposition if needed
                   if (!popup || !props.clientRect) return
@@ -671,7 +704,10 @@ export const ResponseEditor = forwardRef<{ focus: () => void; blur?: () => void 
                   document.body.appendChild(popup)
 
                   component = new ReactRenderer(FuzzyFileMentionList, {
-                    props,
+                    props: {
+                      ...props,
+                      workingDir: effectiveWorkingDirRef.current,
+                    },
                     editor: props.editor,
                   })
 
@@ -721,7 +757,10 @@ export const ResponseEditor = forwardRef<{ focus: () => void; blur?: () => void 
                 },
                 onUpdate: (props: any) => {
                   if (component) {
-                    component.updateProps(props)
+                    component.updateProps({
+                      ...props,
+                      workingDir: effectiveWorkingDirRef.current,
+                    })
 
                     // Update position with intelligent placement
                     const { clientRect } = props
