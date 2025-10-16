@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { useEffect, useCallback, useRef, useMemo, useState } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { toast } from 'sonner'
 import { useSearchParams } from 'react-router'
@@ -47,7 +47,6 @@ export function ActiveSession({ session, onClose }: ActiveSessionProps) {
     ? HOTKEY_SCOPES.SESSION_DETAIL_ARCHIVED
     : HOTKEY_SCOPES.SESSION_DETAIL
 
-  const [isWideView, setIsWideView] = useState(false)
   const [expandedToolResult, setExpandedToolResult] = useState<ConversationEvent | null>(null)
   const [expandedToolCall, setExpandedToolCall] = useState<ConversationEvent | null>(null)
   const [forkViewOpen, setForkViewOpen] = useState(false)
@@ -238,17 +237,6 @@ export function ActiveSession({ session, onClose }: ActiveSessionProps) {
     setForkPreviewData(null)
     responseEditor?.commands.setContent('')
   }, [responseEditor])
-
-  // Screen size detection for responsive layout
-  useEffect(() => {
-    const checkScreenSize = () => {
-      setIsWideView(window.innerWidth >= 1024)
-    }
-
-    checkScreenSize()
-    window.addEventListener('resize', checkScreenSize)
-    return () => window.removeEventListener('resize', checkScreenSize)
-  }, [])
 
   // Reset scroll flag when session changes
   useEffect(() => {
@@ -804,7 +792,7 @@ export function ActiveSession({ session, onClose }: ActiveSessionProps) {
           />
         </div>
 
-        <div className={`flex flex-1 gap-4 ${isWideView ? 'flex-row' : 'flex-col'} min-h-0`}>
+        <div className="flex flex-1 gap-4 flex-col lg:flex-row min-h-0">
           {/* Conversation content */}
           <Card
             className={`Conversation-Card w-full relative ${cardVerticalPadding} flex flex-col min-h-0`}
@@ -874,8 +862,8 @@ export function ActiveSession({ session, onClose }: ActiveSessionProps) {
             </div>
           </Card>
 
-          {isWideView && lastTodo && (
-            <Card className="w-[20%] flex flex-col min-h-0">
+          {lastTodo && (
+            <Card className="hidden lg:flex lg:w-1/5 flex-col min-h-0">
               <CardContent className="flex flex-col flex-1 min-h-0 overflow-hidden">
                 <TodoWidget event={lastTodo} />
               </CardContent>
