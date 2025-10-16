@@ -224,11 +224,13 @@ function ModelSelectorContent({
         modelValue = '' // Clear Anthropic model when using proxy
       }
 
-      // Update session with model and proxy configuration
-      await daemonClient.updateSession(session.id, {
-        model: modelValue || undefined,
-        ...proxyConfig,
-      })
+      // Update session with model and proxy configuration (only if session exists)
+      if (session.id) {
+        await daemonClient.updateSession(session.id, {
+          model: modelValue || undefined,
+          ...proxyConfig,
+        })
+      }
 
       // Save API key to localStorage if provided
       if (apiKey && provider === 'openrouter') {
@@ -248,8 +250,10 @@ function ModelSelectorContent({
         })
       }
 
-      // Show appropriate message based on session status
-      if (session.status === 'running' || session.status === 'starting') {
+      // Show appropriate message based on session status and existence
+      if (!session.id) {
+        toast.success('Model selection saved for new draft')
+      } else if (session.status === 'running' || session.status === 'starting') {
         toast.success('Model change will apply at next message')
       } else {
         toast.success('Model updated')
@@ -260,8 +264,10 @@ function ModelSelectorContent({
       // Don't clear the API key from state - keep it for display
       // setApiKey('') // Clear API key from state after saving
 
-      // Refresh the session data to update the status bar
-      await fetchActiveSessionDetail(session.id)
+      // Refresh the session data to update the status bar (only if session exists)
+      if (session.id) {
+        await fetchActiveSessionDetail(session.id)
+      }
 
       // Close modal immediately after successful update
       onClose()
