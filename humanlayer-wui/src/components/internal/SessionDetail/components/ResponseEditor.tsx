@@ -565,11 +565,6 @@ export const ResponseEditor = forwardRef<{ focus: () => void; blur?: () => void 
 
               return {
                 onStart: (props: any) => {
-                  // Debug logging for workingDir
-                  console.log(
-                    '[WORKING-DIR] ResponseEditor passing to SlashCommandList:',
-                    effectiveWorkingDirRef.current,
-                  )
 
                   // Create popup div
                   popup = document.createElement('div')

@@ -65,13 +65,6 @@ export const DraftLauncherInput = forwardRef<
     const responseEditor = useStore(state => state.responseEditor)
     const isResponseEditorEmpty = useStore(state => state.isResponseEditorEmpty)
 
-    // Debug logging for workingDirectoryRef
-    console.log(
-      '[WORKING-DIR] DraftLauncherInput - received workingDirectoryRef.current:',
-      workingDirectoryRef?.current,
-      'session.workingDir:',
-      session.workingDir,
-    )
 
     // Use prop handlers if provided, otherwise use internal handlers
     const handleToggleAutoAccept = onToggleAutoAcceptProp
@@ -224,7 +217,6 @@ export const DraftLauncherInput = forwardRef<
           try {
             unlisten()
           } catch (error) {
-            console.warn('[DraftLauncherInput] Error during drag-drop unlisten (non-critical):', error)
           }
         }
       }

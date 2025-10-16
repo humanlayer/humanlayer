@@ -45,16 +45,7 @@ export const SlashCommandList = forwardRef<SlashCommandListRef, SlashCommandList
       // Determine the working directory to use
       const effectiveWorkingDir = workingDir || activeSessionDetail?.session?.workingDir
 
-      console.log('[DEBUG-SLASH] SlashCommandList effect triggered:', {
-        hasWorkingDir: !!effectiveWorkingDir,
-        workingDirProp: workingDir,
-        sessionWorkingDir: activeSessionDetail?.session?.workingDir,
-        query: query,
-        timestamp: new Date().toISOString(),
-      })
-
       if (!effectiveWorkingDir) {
-        console.log('[DEBUG-SLASH] No working directory available, skipping fetch')
         // No working directory - treat as empty state, not error
         setCommands([])
         setError(null)
@@ -66,19 +57,12 @@ export const SlashCommandList = forwardRef<SlashCommandListRef, SlashCommandList
         setError(null)
 
         try {
-          console.log(
-            '[DEBUG-SLASH] Fetching commands for working dir:',
-            effectiveWorkingDir,
-            'query:',
-            query,
-          )
           // Call the getSlashCommands method with working directory
           const response = await daemonClient.getSlashCommands({
             workingDir: effectiveWorkingDir,
             query: query || '/',
           })
 
-          console.log('[DEBUG-SLASH] Received commands:', response.data)
           setCommands(response.data || [])
           // Clear any previous errors on successful fetch
           setError(null)

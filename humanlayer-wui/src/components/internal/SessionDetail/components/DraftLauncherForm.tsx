@@ -14,6 +14,7 @@ import { useLocalStorage } from '@/hooks/useLocalStorage'
 import { useRecentPaths } from '@/hooks/useRecentPaths'
 import { daemonClient } from '@/lib/daemon'
 import { type Session, ViewMode } from '@/lib/daemon/types'
+import { logger } from '@/lib/logging'
 import { DangerouslySkipPermissionsDialog } from '../DangerouslySkipPermissionsDialog'
 import { DiscardDraftDialog } from './DiscardDraftDialog'
 import { DraftLauncherInput } from './DraftLauncherInput'
@@ -199,10 +200,8 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
   const handleCreateDraft = useCallback(async () => {
     // Check if already creating to prevent race conditions
     if (draftCreatingRef.current || sessionIdRef.current || draftCreatedRef.current) {
-      console.log('[DEBUG-SLASH] Draft creation skipped - already exists or in progress')
       return sessionIdRef.current
     }
-    console.log('[DEBUG-SLASH] Starting draft creation')
     draftCreatingRef.current = true
     draftCreatedRef.current = true
 
@@ -214,24 +213,17 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
       })
 
       const newSessionId = response.sessionId
-      console.log('[DEBUG-SLASH] Draft created successfully:', {
-        sessionId: newSessionId,
-        workingDir: workingDirectoryRef.current,
-      })
       setSessionId(newSessionId)
       sessionIdRef.current = newSessionId
 
       // Notify parent that draft was created if callback provided
       if (onSessionUpdated) {
-        console.log('[DEBUG-SLASH] Calling onSessionUpdated callback')
         onSessionUpdated()
-      } else {
-        console.log('[DEBUG-SLASH] No onSessionUpdated callback provided')
       }
 
       return newSessionId
     } catch (error) {
-      console.error('Failed to create draft:', error)
+      logger.error('Failed to create draft:', error)
       draftCreatedRef.current = false
       return null
     } finally {
@@ -244,17 +236,9 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
     if (responseEditor) {
       const handleEditorUpdate = () => {
         const content = responseEditor.getText()
-        console.log('[DEBUG-SLASH] Editor update triggered:', {
-          content: content.substring(0, 20) + '...',
-          hasContent: !!content.trim(),
-          sessionId: sessionIdRef.current,
-          draftCreating: draftCreatingRef.current,
-          willCreateDraft: content.trim() && !sessionIdRef.current && !draftCreatingRef.current,
-        })
 
         // Only trigger if we have content and no session yet
         if (content.trim() && !sessionIdRef.current && !draftCreatingRef.current) {
-          console.log('[DEBUG-SLASH] Editor update triggering draft creation')
           handleCreateDraft()
         }
       }
@@ -298,7 +282,7 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
         proxyModelOverride: proxyModelOverride || undefined,
       })
     } catch (error) {
-      console.error('Failed to sync draft:', error)
+      logger.error('Failed to sync draft:', error)
     }
   }, [
     // Only depend on values that don't change frequently
@@ -372,18 +356,10 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
   const handleTitleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const newTitle = e.target.value
-      console.log('[DEBUG-SLASH] handleTitleChange:', {
-        newTitle,
-        currentTitle: titleRef.current,
-        sessionId: sessionIdRef.current,
-        draftCreated: draftCreatedRef.current,
-        willCreateDraft: newTitle.trim() && !sessionIdRef.current,
-      })
       setTitle(newTitle)
       titleRef.current = newTitle
 
       if (newTitle.trim() && !sessionIdRef.current) {
-        console.log('[DEBUG-SLASH] Title change triggering draft creation')
         handleCreateDraft()
       } else if (sessionIdRef.current) {
         syncToDaemon()
@@ -416,12 +392,6 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
       proxyModelOverride?: string
       provider: 'anthropic' | 'openrouter' | 'baseten'
     }) => {
-      console.log('[DEBUG-SLASH] handleModelChange called:', {
-        provider: config.provider,
-        model: config.model,
-        sessionId: sessionIdRef.current,
-      })
-
       // Update local state with new configuration
       setModel(config.model || '')
       setProxyEnabled(config.proxyEnabled)
@@ -448,10 +418,7 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
       }
 
       if (onSessionUpdated) {
-        console.log('[DEBUG-SLASH] Calling onSessionUpdated from handleModelChange')
         onSessionUpdated()
-      } else {
-        console.log('[DEBUG-SLASH] No onSessionUpdated callback in handleModelChange')
       }
     },
     [
@@ -741,11 +708,6 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
       dangerouslySkipPermissions: defaultDangerouslyBypassPermissionsSetting,
     } as Session)
 
-  // Debug logging for workingDirectoryRef
-  console.log(
-    '[WORKING-DIR] DraftLauncherForm - workingDirectoryRef.current:',
-    workingDirectoryRef.current,
-  )
 
   return (
     <HotkeyScopeBoundary scope={HOTKEY_SCOPES.DRAFT_LAUNCHER} componentName="DraftLauncherForm">
