@@ -4,12 +4,18 @@ on:
   schedule:
     # Run daily at 7am PT (3pm UTC during standard time, 2pm UTC during daylight saving)
     - cron: "0 14 * * *"
+
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'  # Matches v0.2.0, v1.0.0, etc.
+
   workflow_dispatch:
     inputs:
       release_version:
-        description: "Version tag for the release (defaults to YYYYMMDD_HHmmss for manual, YYYYMMDD-nightly for cron)"
+        description: "Release version (e.g., 0.2.0). Leave empty to auto-increment patch version for stable builds."
         required: false
         type: string
+        default: ''
       release_nightly:
         description: "Build and release a nightly build"
         required: false
@@ -29,24 +35,125 @@ jobs:
       VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
 
     steps:
-      - name: Set release version
+      - name: Generate version
         id: version
-        run: |
-          if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ github.event.inputs.release_nightly }}" = "true" ]; then
-            # For cron/scheduled runs or test mode, use base-YYYYMMDD-HHMMSS-nightly format
-            RELEASE_VERSION="0.1.0-$(date +%Y%m%d-%H%M%S)-nightly"
-          elif [ -z "${{ github.event.inputs.release_version }}" ]; then
-            # For manual runs without specified version, use base-YYYYMMDD-HHMMSS format
-            RELEASE_VERSION="0.1.0-$(date +%Y%m%d-%H%M%S)"
-          else
-            # Use the provided version
-            RELEASE_VERSION="${{ github.event.inputs.release_version }}"
-          fi
+        uses: actions/github-script@v7
+        with:
+          script: |
+            let buildVersion, isNightly, isStable, shouldCreateTag = false;
 
-          echo "release_version=${RELEASE_VERSION}" >> $GITHUB_OUTPUT
+            // Determine build type
+            if (context.eventName === 'schedule' || context.payload.inputs?.release_nightly === 'true') {
+              // Nightly build
+              const timestamp = new Date().toISOString()
+                .replace(/[T:]/g, '-')
+                .replace(/\..+/, '')
+                .replace(/-/g, '')
+                .slice(0, -2); // Format: YYYYMMDDHHMMSS
+              buildVersion = `0.1.0-${timestamp}-nightly`;
+              isNightly = true;
+              isStable = false;
+
+            } else if (context.eventName === 'push' && context.ref.startsWith('refs/tags/v')) {
+              // Tag push - extract version from tag
+              const tagVersion = context.ref.replace('refs/tags/v', '');
+
+              // Validate it's a proper semver (no pre-release identifiers)
+              const semverRegex = /^[0-9]+\.[0-9]+\.[0-9]+$/;
+              if (!semverRegex.test(tagVersion)) {
+                throw new Error(`Tag ${tagVersion} contains pre-release identifier. Only stable semver tags supported.`);
+              }
+
+              buildVersion = tagVersion;
+              isNightly = false;
+              isStable = true;
+
+            } else if (context.eventName === 'workflow_dispatch') {
+              const inputVersion = context.payload.inputs?.release_version;
+
+              if (inputVersion) {
+                // Manual dispatch with explicit version
+                buildVersion = inputVersion;
+              } else {
+                // Manual dispatch without version - auto-increment patch
+                // Fetch tags from GitHub API
+                const tags = await github.rest.repos.listTags({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  per_page: 100
+                });
+
+                // Filter for stable semver tags (v1.2.3 format, no pre-release)
+                const semverRegex = /^v([0-9]+)\.([0-9]+)\.([0-9]+)$/;
+                const stableTags = tags.data
+                  .map(tag => tag.name)
+                  .filter(name => semverRegex.test(name))
+                  .map(name => {
+                    const match = name.match(semverRegex);
+                    return {
+                      tag: name,
+                      major: parseInt(match[1]),
+                      minor: parseInt(match[2]),
+                      patch: parseInt(match[3])
+                    };
+                  })
+                  .sort((a, b) => {
+                    if (a.major !== b.major) return b.major - a.major;
+                    if (a.minor !== b.minor) return b.minor - a.minor;
+                    return b.patch - a.patch;
+                  });
+
+                let newVersion;
+                if (stableTags.length === 0) {
+                  // No stable tags exist, start with v0.2.0
+                  newVersion = '0.2.0';
+                } else {
+                  // Increment patch version of the latest tag
+                  const latest = stableTags[0];
+                  newVersion = `${latest.major}.${latest.minor}.${latest.patch + 1}`;
+                }
+
+                buildVersion = newVersion;
+                shouldCreateTag = true; // Mark that we need to create a tag after checkout
+              }
+
+              isNightly = false;
+              isStable = true;
+
+            } else {
+              // Fallback (shouldn't happen)
+              const timestamp = new Date().toISOString()
+                .replace(/[T:]/g, '-')
+                .replace(/\..+/, '')
+                .replace(/-/g, '')
+                .slice(0, -2);
+              buildVersion = `0.1.0-${timestamp}`;
+              isNightly = false;
+              isStable = false;
+            }
+
+            // Set outputs
+            core.setOutput('release_version', buildVersion);
+            core.setOutput('is_nightly', isNightly.toString());
+            core.setOutput('is_stable', isStable.toString());
+            core.setOutput('should_create_tag', shouldCreateTag.toString());
+
+            console.log(`Build Version: ${buildVersion}`);
+            console.log(`Is Nightly: ${isNightly}`);
+            console.log(`Is Stable: ${isStable}`);
+            console.log(`Should Create Tag: ${shouldCreateTag}`);
 
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Create and push tag
+        if: steps.version.outputs.should_create_tag == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "v${{ steps.version.outputs.release_version }}" -m "Release v${{ steps.version.outputs.release_version }}"
+          git push origin "v${{ steps.version.outputs.release_version }}"
+          echo "Created and pushed tag: v${{ steps.version.outputs.release_version }}"
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -91,22 +198,27 @@ jobs:
         run: bun install
 
       - name: Build daemon for macOS ARM
-        working-directory: hld
         run: |
-          BUILD_VERSION="${{ steps.version.outputs.release_version }}"
+          cd hld
 
-          if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ github.event.inputs.release_nightly }}" = "true" ]; then
-            # Nightly build with custom defaults
-            LDFLAGS="-X github.com/humanlayer/humanlayer/hld/internal/version.BuildVersion=${BUILD_VERSION}"
+          # Set explicit LDFLAGS for each build type
+          if [[ "${{ steps.version.outputs.is_nightly }}" == "true" ]]; then
+            # Nightly build - use isolated paths and ports
+            LDFLAGS="-X github.com/humanlayer/humanlayer/hld/internal/version.BuildVersion=${{ steps.version.outputs.release_version }}"
             LDFLAGS="${LDFLAGS} -X github.com/humanlayer/humanlayer/hld/config.DefaultDatabasePath=~/.humanlayer/daemon-nightly.db"
             LDFLAGS="${LDFLAGS} -X github.com/humanlayer/humanlayer/hld/config.DefaultSocketPath=~/.humanlayer/daemon-nightly.sock"
             LDFLAGS="${LDFLAGS} -X github.com/humanlayer/humanlayer/hld/config.DefaultHTTPPort=7778"
             LDFLAGS="${LDFLAGS} -X github.com/humanlayer/humanlayer/hld/config.DefaultCLICommand=humanlayer-nightly"
           else
-            # Regular build with version only
-            LDFLAGS="-X github.com/humanlayer/humanlayer/hld/internal/version.BuildVersion=${BUILD_VERSION}"
+            # Stable build - explicitly set standard paths and ports
+            LDFLAGS="-X github.com/humanlayer/humanlayer/hld/internal/version.BuildVersion=${{ steps.version.outputs.release_version }}"
+            LDFLAGS="${LDFLAGS} -X github.com/humanlayer/humanlayer/hld/config.DefaultDatabasePath=~/.humanlayer/daemon.db"
+            LDFLAGS="${LDFLAGS} -X github.com/humanlayer/humanlayer/hld/config.DefaultSocketPath=~/.humanlayer/daemon.sock"
+            LDFLAGS="${LDFLAGS} -X github.com/humanlayer/humanlayer/hld/config.DefaultHTTPPort=7777"
+            LDFLAGS="${LDFLAGS} -X github.com/humanlayer/humanlayer/hld/config.DefaultCLICommand=humanlayer"
           fi
 
+          echo "Using LDFLAGS: ${LDFLAGS}"
           GOOS=darwin GOARCH=arm64 go build -ldflags "${LDFLAGS}" -o hld-darwin-arm64 ./cmd/hld
 
       - name: Build humanlayer CLI for macOS ARM
@@ -125,33 +237,43 @@ jobs:
           chmod +x humanlayer-wui/src-tauri/bin/hld
           chmod +x humanlayer-wui/src-tauri/bin/humanlayer
 
-      - name: Use nightly icons for scheduled build
-        if: github.event_name == 'schedule' || github.event.inputs.release_nightly == 'true'
+      - name: Swap icons for nightly build
+        if: steps.version.outputs.is_nightly == 'true'
         working-directory: humanlayer-wui/src-tauri
         run: |
-          # Backup original icons
+          # Only swap icons for nightly builds
           mv icons icons-original
-
-          # Use nightly icons
           cp -r icons-nightly icons
 
-      - name: Build Tauri app (including DMG)
+      - name: Build Tauri app
         working-directory: humanlayer-wui
         run: |
-          # Set version for Sentry release tracking from package.json
           export VITE_APP_VERSION="${{ steps.version.outputs.release_version }}"
+          bun install
 
-          if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ github.event.inputs.release_nightly }}" = "true" ]; then
-            # Use nightly config for scheduled builds
+          if [[ "${{ steps.version.outputs.is_nightly }}" == "true" ]]; then
             bun run tauri build --config src-tauri/tauri.nightly.conf.json
           else
-            # Regular build for manual runs
             bun run tauri build
           fi
         env:
-          APPLE_SIGNING_IDENTITY: "-" # Ad-hoc signing to prevent "damaged" error
+          APPLE_SIGNING_IDENTITY: "-"
           NODE_ENV: "production"
-          # Sentry environment variables already set at job level
+
+      - name: Rename DMG for consistent naming
+        working-directory: humanlayer-wui
+        run: |
+          DMG_PATH=$(find src-tauri/target/release/bundle/dmg -name "*.dmg" | head -1)
+          if [[ "${{ steps.version.outputs.is_stable }}" == "true" ]]; then
+            # Rename to CodeLayer-darwin-arm64.dmg for stable
+            NEW_NAME="CodeLayer-darwin-arm64.dmg"
+          else
+            # Keep versioned name for nightly
+            NEW_NAME=$(basename "$DMG_PATH")
+          fi
+          mv "$DMG_PATH" "src-tauri/target/release/bundle/dmg/$NEW_NAME"
+          echo "dmg_filename=$NEW_NAME" >> $GITHUB_OUTPUT
+        id: dmg_rename
 
       - name: Upload DMG artifact
         uses: actions/upload-artifact@v4
@@ -162,93 +284,132 @@ jobs:
 
       # Create GitHub Release with artifacts
       - name: Create Release
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
-        id: create_release
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' || github.event_name == 'push'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.version.outputs.release_version }}
+          tag_name: ${{ steps.version.outputs.is_stable == 'true' && format('v{0}', steps.version.outputs.release_version) || steps.version.outputs.release_version }}
           name: codelayer-${{ steps.version.outputs.release_version }}
-          body: |
-            ## codelayer-${{ steps.version.outputs.release_version }}
-
-            This release includes:
-
-            * **CodeLayer** - Desktop application (DMG installer)
-
-            ### tl;dr
-
-            ```
-            brew install --cask --no-quarantine humanlayer/humanlayer/codelayer${{ contains(steps.version.outputs.release_version, 'nightly') && '-nightly' || '' }}
-            ```
-
-            Then you can launch the app from Spotlight/Raycast/Finder/etc from CodeLayer${{ contains(steps.version.outputs.release_version, 'nightly') && '-Nightly' || '' }}
-
-            ### Custom Environment Variables
-
-            If you need to set custom environment variable for e.g. connecting to bedrock or setting `CLAUDE_BASE_MAINTAIN_WORKING_DIR=1`, 
-            you can set it with the `env` block of the built-in [Claude Code Settings File](https://docs.claude.com/en/docs/claude-code/settings#available-settings)
-
-            ### Loading Prompts
-
-            If you want to load in generic version of the humanlayer prompts, check out [this workshop gist](https://gist.github.com/dexhorthy/c5d2113621d17178b29ae4c31028bdc2)
-
-            ### Requirements
-
-            * macOS (Apple Silicon/M-series)
-
-            ### Troubleshooting / Known Issues
-
-            * If install fails, ensure you've cleaned up all previous artifacts. `brew reinstall` is worth a shot as well.
-            * Logs can be found at `~/Library/Logs/dev.humanlayer.wui${{ contains(steps.version.outputs.release_version, 'nightly') && '.nightly' || '' }}/CodeLayer${{ contains(steps.version.outputs.release_version, 'nightly') && '-Nightly' || '' }}.log`
-            * If you see errors about missing `mcp__codelayer__approvals` tool, you're missing the `humanlayer` CLI - you need to install with brew, copying the app from a DMG won't work.
-
-          draft: false
-          prerelease: ${{ contains(steps.version.outputs.release_version, 'nightly') }}
-
           files: |
-            humanlayer-wui/src-tauri/target/release/bundle/dmg/*.dmg
+            humanlayer-wui/src-tauri/target/release/bundle/dmg/${{ steps.dmg_rename.outputs.dmg_filename }}
+          draft: false
+          prerelease: ${{ steps.version.outputs.is_nightly == 'true' }}
+          make_latest: ${{ steps.version.outputs.is_stable == 'true' }}
+          body: |
+            # CodeLayer ${{ steps.version.outputs.is_nightly == 'true' && 'Nightly' || 'Stable' }} Release
 
-      # Update nightly cask for scheduled builds
-      - name: Prepare cask update
-        if: github.event_name == 'schedule' || github.event.inputs.release_nightly == 'true'
-        id: prepare
+            Version: ${{ steps.version.outputs.release_version }}
+
+            ## Installation
+
+            ### Homebrew (Recommended)
+            ```bash
+            brew tap humanlayer/humanlayer
+            brew install --cask codelayer${{ steps.version.outputs.is_nightly == 'true' && '-nightly' || '' }}
+            ```
+
+            ### Manual Installation
+            1. Download the DMG file below
+            2. Open the DMG and drag CodeLayer${{ steps.version.outputs.is_nightly == 'true' && '-Nightly' || '' }} to Applications
+            3. Launch CodeLayer${{ steps.version.outputs.is_nightly == 'true' && '-Nightly' || '' }} from Applications
+
+            ## Troubleshooting
+
+            If you encounter "damaged app" warnings:
+            ```bash
+            xattr -rc /Applications/CodeLayer${{ steps.version.outputs.is_nightly == 'true' && '-Nightly' || '' }}.app
+            ```
+
+            ## Logs
+
+            Logs can be found at:
+            ```
+            ~/Library/Logs/dev.humanlayer.wui${{ steps.version.outputs.is_nightly == 'true' && '.nightly' || '' }}/CodeLayer${{ steps.version.outputs.is_nightly == 'true' && '-Nightly' || '' }}.log
+            ```
+
+      - name: Update Homebrew Cask
+        if: steps.version.outputs.is_nightly == 'true' || steps.version.outputs.is_stable == 'true'
         run: |
-          # Get the DMG filename
-          DMG_FILE=$(ls humanlayer-wui/src-tauri/target/release/bundle/dmg/*.dmg | head -1)
-          echo "dmg_file=${DMG_FILE}" >> $GITHUB_OUTPUT
+          # Prepare variables
+          DMG_FILE="humanlayer-wui/src-tauri/target/release/bundle/dmg/${{ steps.dmg_rename.outputs.dmg_filename }}"
+          SHA256=$(shasum -a 256 "$DMG_FILE" | awk '{print $1}')
 
-          # Calculate SHA256
-          SHA256=$(shasum -a 256 "${DMG_FILE}" | cut -f1 -d' ')
-          echo "sha256=${SHA256}" >> $GITHUB_OUTPUT
+          if [[ "${{ steps.version.outputs.is_stable }}" == "true" ]]; then
+            RELEASE_TAG="v${{ steps.version.outputs.release_version }}"
+            CASK_FILE="Casks/codelayer.rb"
+            DMG_FILENAME="CodeLayer-darwin-arm64.dmg"
+          else
+            RELEASE_TAG="${{ steps.version.outputs.release_version }}"
+            CASK_FILE="Casks/codelayer-nightly.rb"
+            DMG_FILENAME="${{ steps.dmg_rename.outputs.dmg_filename }}"
+          fi
 
-          # Get release tag
-          RELEASE_TAG="${{ steps.version.outputs.release_version }}"
-          echo "release_tag=${RELEASE_TAG}" >> $GITHUB_OUTPUT
-
-          # Construct DMG URL
-          DMG_FILENAME=$(basename "${DMG_FILE}")
           DMG_URL="https://github.com/humanlayer/humanlayer/releases/download/${RELEASE_TAG}/${DMG_FILENAME}"
-          echo "dmg_url=${DMG_URL}" >> $GITHUB_OUTPUT
 
-      - name: Checkout homebrew tap
-        if: github.event_name == 'schedule' || github.event.inputs.release_nightly == 'true'
+          echo "DMG_FILE=$DMG_FILE" >> $GITHUB_ENV
+          echo "SHA256=$SHA256" >> $GITHUB_ENV
+          echo "RELEASE_TAG=$RELEASE_TAG" >> $GITHUB_ENV
+          echo "DMG_URL=$DMG_URL" >> $GITHUB_ENV
+          echo "CASK_FILE=$CASK_FILE" >> $GITHUB_ENV
+
+      - name: Checkout homebrew-humanlayer
+        if: steps.version.outputs.is_nightly == 'true' || steps.version.outputs.is_stable == 'true'
         uses: actions/checkout@v4
         with:
           repository: humanlayer/homebrew-humanlayer
+          path: homebrew-humanlayer
           token: ${{ secrets.HUMANLAYER_HOMEBREW_CASK_WRITE_GITHUB_PAT }}
-          path: homebrew-tap
 
-      - name: Update nightly cask
-        if: github.event_name == 'schedule' || github.event.inputs.release_nightly == 'true'
-        working-directory: homebrew-tap
+      - name: Generate stable cask file
+        if: steps.version.outputs.is_stable == 'true'
+        working-directory: homebrew-humanlayer
         run: |
-          # Update the cask file
+          cat > Casks/codelayer.rb << 'EOF'
+          cask "codelayer" do
+            version "${{ steps.version.outputs.release_version }}"
+            sha256 "${{ env.SHA256 }}"
+
+            url "${{ env.DMG_URL }}"
+
+            name "CodeLayer"
+            desc "Desktop application for HumanLayer AI approvals"
+            homepage "https://github.com/humanlayer/humanlayer"
+
+            livecheck do
+              url :url
+              strategy :github_latest
+              regex(/v?(\d+(?:\.\d+)+)$/i)
+            end
+
+            depends_on macos: ">= :monterey"
+
+            app "CodeLayer.app"
+
+            binary "#{appdir}/CodeLayer.app/Contents/Resources/bin/humanlayer"
+            binary "#{appdir}/CodeLayer.app/Contents/Resources/bin/hld"
+
+            zap trash: [
+              "~/.config/humanlayer/",
+              "~/.humanlayer/daemon*.db",
+              "~/.humanlayer/daemon*.sock",
+              "~/.humanlayer/logs/",
+              "~/Library/Application Support/CodeLayer/",
+              "~/Library/Logs/dev.humanlayer.wui/",
+              "~/Library/Preferences/dev.humanlayer.wui.plist",
+              "~/Library/Saved Application State/dev.humanlayer.wui.savedState",
+            ]
+          end
+          EOF
+
+      - name: Generate nightly cask file
+        if: steps.version.outputs.is_nightly == 'true'
+        working-directory: homebrew-humanlayer
+        run: |
           cat > Casks/codelayer-nightly.rb << 'EOF'
           cask "codelayer-nightly" do
-            version "${{ steps.prepare.outputs.release_tag }}"
-            sha256 "${{ steps.prepare.outputs.sha256 }}"
+            version "${{ steps.version.outputs.release_version }}"
+            sha256 "${{ env.SHA256 }}"
 
-            url "${{ steps.prepare.outputs.dmg_url }}",
+            url "${{ env.DMG_URL }}",
                 verified: "github.com/humanlayer/humanlayer/"
 
             name "CodeLayer Nightly"
@@ -275,12 +436,18 @@ jobs:
           EOF
 
       - name: Commit and push cask update
-        if: github.event_name == 'schedule' || github.event.inputs.release_nightly == 'true'
-        working-directory: homebrew-tap
+        if: steps.version.outputs.is_nightly == 'true' || steps.version.outputs.is_stable == 'true'
+        working-directory: homebrew-humanlayer
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          git add Casks/codelayer-nightly.rb
-          git commit -m "Update codelayer-nightly to ${{ steps.prepare.outputs.release_tag }}"
-          git push
+          git add "${{ env.CASK_FILE }}"
+
+          if [[ "${{ steps.version.outputs.is_stable }}" == "true" ]]; then
+            COMMIT_MSG="Update codelayer to ${{ steps.version.outputs.release_version }}"
+          else
+            COMMIT_MSG="Update codelayer-nightly to ${{ steps.version.outputs.release_version }}"
+          fi
+
+          git diff --staged --quiet || (git commit -m "$COMMIT_MSG" && git push)
