@@ -66,7 +66,7 @@ type: implementation_strategy
 ---
 
 ### 3. Approve and Sync
-Ask the user to review and approve the document. if they request any changes, you should make them and ask for approval again. Once the user approves the documents, you should run `humanlayer thoughts sync` to save the document.
+Run `humanlayer thoughts sync` to save the document.
 
 Once this is completed, you should respond to the user with the template between <template_response></template_response> XML tags. do NOT include the tags in your response.
 
@@ -92,4 +92,4 @@ Handoff created and synced! You can resume from this handoff in a new session wi
 ##.  Additional Notes & Instructions
 - **more information, not less**. This is a guideline that defines the minimum of what a handoff should be. Always feel free to include more information if necessary.
 - **be thorough and precise**. include both top-level objectives, and lower-level details as necessary.
-- **avoid excessive code snippets**. While a brief snippet to describe some key change is important, avoid large code blocks or diffs; do not include one unless it's absolutely necessary. Prefer using `/path/to/file.ext:line` references that an agent can follow later when it's ready, e.g. `packages/dashboard/src/app/dashboard/page.tsx:12-24`
+- **avoid excessive code snippets**. While a brief snippet to describe some key change is important, avoid large code blocks or diffs; do not include one unless it's necessary (e.g. pertains to an error you're debugging). Prefer using `/path/to/file.ext:line` references that an agent can follow later when it's ready, e.g. `packages/dashboard/src/app/dashboard/page.tsx:12-24`

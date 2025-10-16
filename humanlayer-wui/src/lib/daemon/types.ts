@@ -8,6 +8,8 @@ import type {
   Session as SDKSession,
   Approval,
   ConversationEvent,
+  Agent,
+  FuzzySearchFilesResponse,
 } from '@humanlayer/hld-sdk'
 
 // Re-export SDK types and values
@@ -16,7 +18,7 @@ export type { Event, EventType }
 export type RecentPath = SDKRecentPath
 
 // Export SDK types directly
-export type { Approval } from '@humanlayer/hld-sdk'
+export type { Approval, Agent } from '@humanlayer/hld-sdk'
 
 // Extend SDK Session type with WUI-specific properties
 export interface Session extends SDKSession {
@@ -161,6 +163,14 @@ export interface DaemonClient {
   // Utility methods
   getRecentPaths(limit?: number): Promise<RecentPath[]>
   getDebugInfo(): Promise<DebugInfo>
+  fuzzySearchFiles(params: {
+    query: string
+    paths: string[]
+    limit?: number
+    filesOnly?: boolean
+    respectGitignore?: boolean
+  }): Promise<FuzzySearchFilesResponse>
+  discoverAgents(workingDir: string): Promise<Agent[]>
 }
 
 // Legacy enums and types for backward compatibility (to be gradually removed)

@@ -1,11 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/react'
-import SessionDetail from './SessionDetail'
+import SessionDetailRouter from './SessionDetailRouter'
 import { Session, SessionStatus } from '@/lib/daemon/types'
 import { MemoryRouter } from 'react-router'
 
 const meta = {
   title: 'Internal/SessionDetail',
-  component: SessionDetail,
+  component: SessionDetailRouter,
   parameters: {
     layout: 'fullscreen',
   },
@@ -18,7 +18,7 @@ const meta = {
       </MemoryRouter>
     ),
   ],
-} satisfies Meta<typeof SessionDetail>
+} satisfies Meta<typeof SessionDetailRouter>
 
 export default meta
 type Story = StoryObj<typeof meta>
@@ -94,7 +94,7 @@ export const ErrorBoundaryDemo: Story = {
       },
     ) as Session
 
-    return <SessionDetail session={brokenSession} onClose={() => {}} />
+    return <SessionDetailRouter session={brokenSession} onClose={() => {}} />
   },
   parameters: {
     docs: {

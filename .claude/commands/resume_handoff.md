@@ -60,29 +60,7 @@ Then wait for the user's input.
    Based on the handoff content, spawn parallel research tasks to verify current state:
 
    ```
-   Task 1 - Verify recent changes:
-   Check if the recent changes mentioned in the handoff still exist.
-   1. Verify files mentioned in "Recent changes" section
-   2. Check if the described changes are still present
-   3. Look for any subsequent modifications
-   4. Identify any conflicts or regressions
-   Use tools: Read, Grep, Glob
-   Return: Current state of recent changes with file:line references
-   ```
-
-   ```
-   Task 2 - Validate current codebase state:
-   Verify the current state against what's described in the handoff.
-   1. Check files mentioned in "Learnings" section
-   2. Verify patterns and implementations still exist
-   3. Look for any breaking changes since handoff
-   4. Identify new related code added since handoff
-   Use tools: Read, Grep, Glob
-   Return: Validation results and any discrepancies found
-   ```
-
-   ```
-   Task 3 - Gather artifact context:
+   Task 1 - Gather artifact context:
    Read all artifacts mentioned in the handoff.
    1. Read feature documents listed in "Artifacts"
    2. Read implementation plans referenced

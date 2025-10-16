@@ -4,6 +4,8 @@ import {
     ApprovalsApi,
     SystemApi,
     SettingsApi,
+    FilesApi,
+    AgentsApi,
     CreateSessionRequest,
     Session,
     SessionsResponse,
@@ -16,13 +18,19 @@ import {
     UserSettingsResponse,
     UpdateUserSettingsRequest,
     ConfigResponse,
-    UpdateConfigRequest
+    UpdateConfigRequest,
+    FuzzySearchFilesRequest,
+    FuzzySearchFilesResponse,
+    DiscoverAgents200Response
 } from './generated';
+import { createErrorInterceptor } from './middleware';
 
 export interface HLDClientOptions {
     baseUrl?: string;
     port?: number;
     headers?: Record<string, string>;
+    // New option for error handling
+    onFetchError?: (error: Error, context: { url: string; method?: string }) => void;
 }
 
 export interface SSEEventHandlers {
@@ -42,6 +50,8 @@ export class HLDClient {
     private sessionsApi: SessionsApi;
     private approvalsApi: ApprovalsApi;
     private settingsApi: SettingsApi;
+    private filesApi: FilesApi;
+    private agentsApi: AgentsApi;
     private baseUrl: string;
     private headers?: Record<string, string>;
     private sseConnections: Map<string, EventSourceLike> = new Map();
@@ -52,12 +62,29 @@ export class HLDClient {
 
         const config = new Configuration({
             basePath: this.baseUrl,
-            headers: this.headers
+            headers: this.headers,
+            // Add error interceptor middleware
+            middleware: [
+                createErrorInterceptor({
+                    onError: (error, context) => {
+                        // Call custom handler if provided
+                        if (options.onFetchError) {
+                            options.onFetchError(error, {
+                                url: context.url,
+                                method: context.init?.method,
+                            });
+                        }
+                    },
+                    logErrors: true,
+                })
+            ]
         });
 
         this.sessionsApi = new SessionsApi(config);
         this.approvalsApi = new ApprovalsApi(config);
         this.settingsApi = new SettingsApi(config);
+        this.filesApi = new FilesApi(config);
+        this.agentsApi = new AgentsApi(config);
     }
 
     // Session Management
@@ -255,6 +282,28 @@ export class HLDClient {
 
     async updateConfig(request: UpdateConfigRequest): Promise<ConfigResponse> {
         return await this.settingsApi.updateConfig({ updateConfigRequest: request });
+    }
+
+    // Files
+    async fuzzySearchFiles(params: {
+        query: string;
+        paths: string[];
+        limit?: number;
+        filesOnly?: boolean;
+        respectGitignore?: boolean;
+    }): Promise<FuzzySearchFilesResponse> {
+        const response = await this.filesApi.fuzzySearchFiles({
+            fuzzySearchFilesRequest: params
+        });
+        return response;
+    }
+
+    // Agents
+    async discoverAgents(params: {
+        discoverAgentsRequest: { workingDir: string }
+    }): Promise<DiscoverAgents200Response> {
+        const response = await this.agentsApi.discoverAgents(params);
+        return response;
     }
 
     // Server-Sent Events using eventsource polyfill

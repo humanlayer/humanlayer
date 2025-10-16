@@ -13,6 +13,7 @@ type ConversationStore interface {
 	// Session operations
 	CreateSession(ctx context.Context, session *Session) error
 	UpdateSession(ctx context.Context, sessionID string, updates SessionUpdate) error
+	HardDeleteSession(ctx context.Context, sessionID string) error
 	GetSession(ctx context.Context, sessionID string) (*Session, error)
 	GetSessionByRunID(ctx context.Context, runID string) (*Session, error)
 	ListSessions(ctx context.Context) ([]*Session, error)

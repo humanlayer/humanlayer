@@ -28,6 +28,11 @@ func (m *MockStore) UpdateSession(ctx context.Context, sessionID string, updates
 	return args.Error(0)
 }
 
+func (m *MockStore) HardDeleteSession(ctx context.Context, sessionID string) error {
+	args := m.Called(ctx, sessionID)
+	return args.Error(0)
+}
+
 func (m *MockStore) GetSession(ctx context.Context, sessionID string) (*store.Session, error) {
 	args := m.Called(ctx, sessionID)
 	if args.Get(0) == nil {
@@ -319,7 +324,7 @@ func TestGetSlashCommands(t *testing.T) {
 			for _, cmd := range jsonResp.Data {
 				names = append(names, cmd.Name)
 				// Since we only have local commands in this test, all should be 'local'
-				assert.Equal(t, api.Local, cmd.Source,
+				assert.Equal(t, api.SlashCommandSourceLocal, cmd.Source,
 					"command %s should have source 'local'", cmd.Name)
 			}
 
@@ -434,11 +439,11 @@ func TestGetSlashCommandsWithGlobalCommands(t *testing.T) {
 				"/implement_plan", // Global only
 			},
 			expectedSources: map[string]api.SlashCommandSource{
-				"/create_plan":    api.Global,
-				"/local_only":     api.Local,
-				"/shared_command": api.Global,
-				"/global_only":    api.Global,
-				"/implement_plan": api.Global,
+				"/create_plan":    api.SlashCommandSourceGlobal,
+				"/local_only":     api.SlashCommandSourceLocal,
+				"/shared_command": api.SlashCommandSourceGlobal,
+				"/global_only":    api.SlashCommandSourceGlobal,
+				"/implement_plan": api.SlashCommandSourceGlobal,
 			},
 		},
 		{
@@ -446,8 +451,8 @@ func TestGetSlashCommandsWithGlobalCommands(t *testing.T) {
 			query:         "plan",
 			expectedNames: []string{"/create_plan", "/implement_plan"},
 			expectedSources: map[string]api.SlashCommandSource{
-				"/create_plan":    api.Global, // Global version
-				"/implement_plan": api.Global,
+				"/create_plan":    api.SlashCommandSourceGlobal, // Global version
+				"/implement_plan": api.SlashCommandSourceGlobal,
 			},
 		},
 		{
@@ -455,7 +460,7 @@ func TestGetSlashCommandsWithGlobalCommands(t *testing.T) {
 			query:         "local",
 			expectedNames: []string{"/local_only"},
 			expectedSources: map[string]api.SlashCommandSource{
-				"/local_only": api.Local,
+				"/local_only": api.SlashCommandSourceLocal,
 			},
 		},
 		{
@@ -463,7 +468,7 @@ func TestGetSlashCommandsWithGlobalCommands(t *testing.T) {
 			query:         "global",
 			expectedNames: []string{"/global_only"},
 			expectedSources: map[string]api.SlashCommandSource{
-				"/global_only": api.Global,
+				"/global_only": api.SlashCommandSourceGlobal,
 			},
 		},
 		{
@@ -471,7 +476,7 @@ func TestGetSlashCommandsWithGlobalCommands(t *testing.T) {
 			query:         "shared",
 			expectedNames: []string{"/shared_command"},
 			expectedSources: map[string]api.SlashCommandSource{
-				"/shared_command": api.Global,
+				"/shared_command": api.SlashCommandSourceGlobal,
 			},
 		},
 	}
@@ -582,9 +587,9 @@ func TestGetSlashCommandsGlobalOverridesLocal(t *testing.T) {
 
 	// All commands should be present, but all should be from global source
 	expectedCommands := map[string]api.SlashCommandSource{
-		"/duplicate1":        api.Global,
-		"/duplicate2":        api.Global,
-		"/nested:duplicate3": api.Global,
+		"/duplicate1":        api.SlashCommandSourceGlobal,
+		"/duplicate2":        api.SlashCommandSourceGlobal,
+		"/nested:duplicate3": api.SlashCommandSourceGlobal,
 	}
 
 	assert.Len(t, jsonResp.Data, len(expectedCommands),

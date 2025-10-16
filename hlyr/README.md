@@ -218,6 +218,63 @@ humanlayer thoughts config --json
 
 The thoughts system keeps your notes separate from code while making them easily accessible to AI assistants. See the [Thoughts documentation](./THOUGHTS.md) for detailed information.
 
+### `claude`
+
+Manage Claude Code configuration.
+
+```bash
+humanlayer claude <subcommand>
+```
+
+**Subcommands:**
+
+- `init` - Initialize Claude Code configuration in current directory
+
+**Examples:**
+
+```bash
+# Initialize Claude Code configuration interactively
+humanlayer claude init
+
+# Copy all files without prompting
+humanlayer claude init --all
+
+# Force overwrite existing .claude directory
+humanlayer claude init --force
+```
+
+#### Interactive Selection
+
+The `claude init` command provides an interactive experience with arrow key navigation:
+
+- Use **↑↓** arrow keys to navigate options
+- Press **space** to toggle selections
+- Press **enter** to confirm your choices
+- Press **Ctrl+C** to cancel at any time
+
+#### What Gets Copied
+
+The command copies Claude Code configuration files to your project's `.claude` directory:
+
+- **Commands** (30 files) - Workflow commands for planning, research, CI, code generation, testing, and more
+- **Agents** (6 files) - Specialized sub-agents for code analysis, debugging, and architecture review
+- **Settings** (1 file) - Project permissions configuration (`settings.local.json` is excluded via `.gitignore`)
+
+#### Command Options
+
+- `--all` - Copy all files without prompting (useful for CI/CD or automated setup)
+- `--force` - Overwrite existing `.claude` directory without confirmation
+
+#### Non-Interactive Mode
+
+For automated environments (CI/CD, scripts), use the `--all` flag:
+
+```bash
+humanlayer claude init --all
+```
+
+Without `--all`, the command requires an interactive terminal and will exit with an error in non-TTY environments.
+
 ## Use Cases
 
 - **CI/CD Pipelines**: Get human approval before deploying

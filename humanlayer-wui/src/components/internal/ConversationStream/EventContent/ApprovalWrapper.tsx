@@ -64,6 +64,11 @@ export function ApprovalWrapper({
                   className="cursor-pointer"
                   size="sm"
                   variant="destructive"
+                  onMouseDown={e => {
+                    // Prevent the button from stealing focus
+                    // This is the recommended pattern for toolbar buttons in contenteditable editors
+                    e.preventDefault()
+                  }}
                   onClick={e => {
                     e.stopPropagation()
                     onStartDeny?.()

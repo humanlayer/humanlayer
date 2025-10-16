@@ -1128,6 +1128,122 @@ export const MCPLinearListIssuesToolCall: Story = {
   },
 }
 
+// BashOutput Tool - shows successful background job output
+export const BashOutputToolCallSuccess: Story = {
+  args: {
+    event: {
+      approvalId: undefined,
+      approvalStatus: undefined,
+      claudeSessionId: 'a3751d3f-c6c5-402b-a7c6-a6fdfeaf6cd9',
+      content: undefined,
+      createdAt: new Date('2025-10-08T18:50:08Z'),
+      eventType: 'tool_call' as const,
+      id: 22,
+      isCompleted: true,
+      role: 'assistant' as const,
+      sequence: 22,
+      sessionId: '08f00f98-d110-40e1-8d0b-fdec7f594f18',
+      toolName: 'BashOutput',
+      toolInputJson: JSON.stringify({
+        bash_id: '01dfa1',
+      }),
+    },
+    toolResult: {
+      approvalId: undefined,
+      approvalStatus: undefined,
+      claudeSessionId: 'a3751d3f-c6c5-402b-a7c6-a6fdfeaf6cd9',
+      content: undefined,
+      createdAt: new Date('2025-10-08T18:50:09Z'),
+      eventType: 'tool_result' as const,
+      id: 23,
+      isCompleted: true,
+      role: 'user' as const,
+      sequence: 23,
+      sessionId: '08f00f98-d110-40e1-8d0b-fdec7f594f18',
+      toolResultContent: `<status>completed</status>
+
+<exit_code>0</exit_code>
+
+<stdout>
+hey
+</stdout>
+
+<timestamp>2025-10-08T18:50:08.532Z</timestamp>`,
+    },
+    shouldIgnoreMouseEvent: () => false,
+    setFocusedEventId: () => {},
+    setFocusSource: () => {},
+    isFocused: false,
+    isLast: true,
+    responseEditorIsFocused: false,
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: 'BashOutput tool showing successful background job completion with stdout',
+      },
+    },
+  },
+}
+
+// BashOutput Tool - shows failed background job output
+export const BashOutputToolCallFailure: Story = {
+  args: {
+    event: {
+      approvalId: undefined,
+      approvalStatus: undefined,
+      claudeSessionId: 'a3751d3f-c6c5-402b-a7c6-a6fdfeaf6cd9',
+      content: undefined,
+      createdAt: new Date('2025-10-08T18:51:08Z'),
+      eventType: 'tool_call' as const,
+      id: 24,
+      isCompleted: true,
+      role: 'assistant' as const,
+      sequence: 24,
+      sessionId: '08f00f98-d110-40e1-8d0b-fdec7f594f18',
+      toolName: 'BashOutput',
+      toolInputJson: JSON.stringify({
+        bash_id: 'c148de',
+      }),
+    },
+    toolResult: {
+      approvalId: undefined,
+      approvalStatus: undefined,
+      claudeSessionId: 'a3751d3f-c6c5-402b-a7c6-a6fdfeaf6cd9',
+      content: undefined,
+      createdAt: new Date('2025-10-08T18:51:09Z'),
+      eventType: 'tool_result' as const,
+      id: 25,
+      isCompleted: true,
+      role: 'user' as const,
+      sequence: 25,
+      sessionId: '08f00f98-d110-40e1-8d0b-fdec7f594f18',
+      toolResultContent: `<status>failed</status>
+
+<exit_code>2</exit_code>
+
+<stderr>
+ls: cannot access '/this/directory/does/not/exist': No such file or directory
+</stderr>
+
+<timestamp>2025-10-08T18:51:08.049Z</timestamp>`,
+    },
+    shouldIgnoreMouseEvent: () => false,
+    setFocusedEventId: () => {},
+    setFocusSource: () => {},
+    isFocused: false,
+    isLast: true,
+    responseEditorIsFocused: false,
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: 'BashOutput tool showing failed background job with stderr and exit code',
+      },
+    },
+  },
+}
+
 // Error Boundary Demo - shows error boundary with compact inline fallback UI
 export const ErrorBoundaryDemo: Story = {
   args: {} as any,
