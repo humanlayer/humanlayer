@@ -25,6 +25,7 @@ interface ActiveSessionInputProps {
   parentSessionData?: Partial<Session>
   isResponding: boolean
   handleContinueSession: () => void
+  interruptSession: (sessionId: string) => void
   isForkMode?: boolean
   forkTokenCount?: number | null
   forkTurnNumber?: number
@@ -60,6 +61,7 @@ export const ActiveSessionInput = forwardRef<
       parentSessionData,
       isResponding,
       handleContinueSession,
+      interruptSession,
       isForkMode,
       forkTokenCount,
       forkTurnNumber,
@@ -173,7 +175,20 @@ export const ActiveSessionInput = forwardRef<
         session.status === SessionStatus.Running || session.status === SessionStatus.Starting
       const hasText = !isResponseEditorEmpty
 
-      // Early return if no text in editor
+      // Handle interrupt-only case (no text in editor)
+      if (!hasText && isRunning) {
+        if (!debouncedCanInterrupt) {
+          toast.warning('Session cannot be interrupted yet', {
+            description: 'Waiting for Claude to initialize the session. Please try again in a moment.',
+          })
+          return
+        }
+        // Interrupt the session
+        interruptSession(session.id)
+        return
+      }
+
+      // Early return if no text in editor and not running
       if (!hasText) {
         return
       }

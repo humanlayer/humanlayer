@@ -201,7 +201,7 @@ export function ActiveSession({ session, onClose }: ActiveSessionProps) {
   }, [])
 
   // Use session actions hook
-  const actions = useSessionActions({
+  const { isResponding, handleContinueSession, interruptSession } = useSessionActions({
     session,
     onClose,
     pendingForkMessage: forkPreviewData?.message || null,
@@ -875,8 +875,9 @@ export function ActiveSession({ session, onClose }: ActiveSessionProps) {
         <ActiveSessionInput
           session={session}
           parentSessionData={parentSessionData || parentSession || undefined}
-          isResponding={actions.isResponding}
-          handleContinueSession={actions.handleContinueSession}
+          isResponding={isResponding}
+          handleContinueSession={handleContinueSession}
+          interruptSession={interruptSession}
           isForkMode={!!forkPreviewData}
           forkTokenCount={forkPreviewData?.tokenCount}
           forkTurnNumber={
