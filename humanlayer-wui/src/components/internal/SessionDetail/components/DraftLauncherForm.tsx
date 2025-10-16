@@ -228,7 +228,7 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
   // Listen for editor changes and trigger draft creation if needed
   useEffect(() => {
     if (responseEditor) {
-      const handleEditorUpdate = (event?: any) => {
+      const handleEditorUpdate = () => {
         const content = responseEditor.getText()
 
         // Only trigger if we have content and no session yet
