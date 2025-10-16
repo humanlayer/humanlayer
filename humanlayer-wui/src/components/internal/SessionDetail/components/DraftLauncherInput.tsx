@@ -22,6 +22,7 @@ interface LaunchSettings {
 
 interface DraftLauncherInputProps {
   session: Session
+  workingDirectoryRef?: React.MutableRefObject<string>
   onLaunchDraft: (settings: LaunchSettings) => void
   onDiscardDraft: () => void
   isLaunchingDraft: boolean
@@ -46,6 +47,7 @@ export const DraftLauncherInput = forwardRef<
   (
     {
       session,
+      workingDirectoryRef,
       onLaunchDraft,
       onDiscardDraft,
       isLaunchingDraft,
@@ -62,6 +64,14 @@ export const DraftLauncherInput = forwardRef<
     const [isDragHover, setIsDragHover] = useState(false)
     const responseEditor = useStore(state => state.responseEditor)
     const isResponseEditorEmpty = useStore(state => state.isResponseEditorEmpty)
+
+    // Debug logging for workingDirectoryRef
+    console.log(
+      '[WORKING-DIR] DraftLauncherInput - received workingDirectoryRef.current:',
+      workingDirectoryRef?.current,
+      'session.workingDir:',
+      session.workingDir,
+    )
 
     // Use prop handlers if provided, otherwise use internal handlers
     const handleToggleAutoAccept = onToggleAutoAcceptProp
@@ -311,6 +321,8 @@ export const DraftLauncherInput = forwardRef<
                       onSubmit={handleSubmit}
                       disabled={isLaunchingDraft}
                       placeholder={placeholder}
+                      workingDirRef={workingDirectoryRef}
+                      workingDir={session.workingDir}
                       className={`flex-1 min-h-[2.5rem] max-h-[50vh] overflow-y-auto ${
                         isLaunchingDraft ? 'opacity-50' : ''
                       } ${isFocused ? 'caret-accent' : ''}`}

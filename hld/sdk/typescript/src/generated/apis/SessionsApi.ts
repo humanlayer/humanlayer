@@ -101,7 +101,7 @@ export interface GetSessionSnapshotsRequest {
 }
 
 export interface GetSlashCommandsRequest {
-    sessionId: string;
+    workingDir: string;
     query?: string;
 }
 
@@ -265,9 +265,9 @@ export interface SessionsApiInterface {
     getSessionSnapshots(requestParameters: GetSessionSnapshotsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SnapshotsResponse>;
 
     /**
-     * Retrieve slash commands available in the session\'s working directory
+     * Retrieve slash commands available in the specified working directory
      * @summary Get available slash commands
-     * @param {string} sessionId Session ID to get working directory
+     * @param {string} workingDir Working directory to search for commands
      * @param {string} [query] Fuzzy search query
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -276,7 +276,7 @@ export interface SessionsApiInterface {
     getSlashCommandsRaw(requestParameters: GetSlashCommandsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SlashCommandsResponse>>;
 
     /**
-     * Retrieve slash commands available in the session\'s working directory
+     * Retrieve slash commands available in the specified working directory
      * Get available slash commands
      */
     getSlashCommands(requestParameters: GetSlashCommandsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SlashCommandsResponse>;
@@ -693,21 +693,21 @@ export class SessionsApi extends runtime.BaseAPI implements SessionsApiInterface
     }
 
     /**
-     * Retrieve slash commands available in the session\'s working directory
+     * Retrieve slash commands available in the specified working directory
      * Get available slash commands
      */
     async getSlashCommandsRaw(requestParameters: GetSlashCommandsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SlashCommandsResponse>> {
-        if (requestParameters['sessionId'] == null) {
+        if (requestParameters['workingDir'] == null) {
             throw new runtime.RequiredError(
-                'sessionId',
-                'Required parameter "sessionId" was null or undefined when calling getSlashCommands().'
+                'workingDir',
+                'Required parameter "workingDir" was null or undefined when calling getSlashCommands().'
             );
         }
 
         const queryParameters: any = {};
 
-        if (requestParameters['sessionId'] != null) {
-            queryParameters['session_id'] = requestParameters['sessionId'];
+        if (requestParameters['workingDir'] != null) {
+            queryParameters['working_dir'] = requestParameters['workingDir'];
         }
 
         if (requestParameters['query'] != null) {
@@ -730,7 +730,7 @@ export class SessionsApi extends runtime.BaseAPI implements SessionsApiInterface
     }
 
     /**
-     * Retrieve slash commands available in the session\'s working directory
+     * Retrieve slash commands available in the specified working directory
      * Get available slash commands
      */
     async getSlashCommands(requestParameters: GetSlashCommandsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SlashCommandsResponse> {
