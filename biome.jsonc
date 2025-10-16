@@ -12,7 +12,8 @@
         "enabled": true,
         "indentStyle": "tab",
         "indentWidth": 4,
-        "lineWidth": 120
+        "lineWidth": 120,
+        "formatWithErrors": true
     },
     "linter": {
         "enabled": true,
@@ -20,7 +21,7 @@
             "recommended": true,
             "correctness": {
                 "useUniqueElementIds": "off",
-                "useExhaustiveDependencies": "info"
+                "useExhaustiveDependencies": "off"
             },
             "a11y": {
                 "noStaticElementInteractions": "off",

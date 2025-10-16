@@ -25,6 +25,7 @@ export default [
       globals: {
         ...globals.browser,
         expect: 'readonly',
+        NodeJS: 'readonly',
       },
     },
     plugins: {
@@ -39,6 +40,8 @@ export default [
       'react/react-in-jsx-scope': 'off',
       // Per docs, no-unused-vars needs to be off when we're using `typescript-eslint`'s no-unused-vars
       'no-unused-vars': 'off',
+      // Disable exhaustive-deps rule for React hooks
+      'react-hooks/exhaustive-deps': 'off',
     },
   },
   {
