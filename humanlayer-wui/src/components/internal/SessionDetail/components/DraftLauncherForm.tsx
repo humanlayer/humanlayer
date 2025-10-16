@@ -310,7 +310,6 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
   // Watch for changes and trigger sync
   useEffect(() => {
     if (sessionId) syncToDaemon()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     sessionId,
     title,
