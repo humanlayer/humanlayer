@@ -374,6 +374,7 @@ function ModelSelectorContent({
                 <SelectItem value="default">System Default</SelectItem>
                 <SelectItem value="sonnet">Sonnet</SelectItem>
                 <SelectItem value="opus">Opus</SelectItem>
+                <SelectItem value="haiku">Haiku</SelectItem>
               </SelectContent>
             </Select>
           )}

@@ -108,7 +108,7 @@ mcpCommand
 program
   .command('launch <query>')
   .description('Launch a new Claude Code session via the daemon')
-  .option('-m, --model <model>', 'Model to use (opus or sonnet)', 'sonnet')
+  .option('-m, --model <model>', 'Model to use (opus, sonnet, or haiku)', 'sonnet')
   .option('-t, --title <title>', 'Optional session title')
   .option('-w, --working-dir <path>', 'Working directory for the session')
   .option('--add-dir <directories...>', 'Additional directories Claude can access')

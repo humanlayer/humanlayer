@@ -210,6 +210,7 @@ export default function CommandInput({
                 <SelectContent>
                   <SelectItem value="sonnet">Sonnet</SelectItem>
                   <SelectItem value="opus">Opus</SelectItem>
+                  <SelectItem value="haiku">Haiku</SelectItem>
                 </SelectContent>
               </Select>
             )}

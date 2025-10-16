@@ -179,10 +179,18 @@ jobs:
 
             ```
             brew install --cask --no-quarantine humanlayer/humanlayer/codelayer${{ contains(steps.version.outputs.release_version, 'nightly') && '-nightly' || '' }}
-            # if you want Claude to inherit your shell environment (API keys, claude env vars)
-            # then open from the CLI rather than Spotlight/Raycast/etc
-            open /Applications/CodeLayer${{ contains(steps.version.outputs.release_version, 'nightly') && '-Nightly' || '' }}.app
             ```
+
+            Then you can launch the app from Spotlight/Raycast/Finder/etc from CodeLayer${{ contains(steps.version.outputs.release_version, 'nightly') && '-Nightly' || '' }}
+
+            ### Custom Environment Variables
+
+            If you need to set custom environment variable for e.g. connecting to bedrock or setting `CLAUDE_BASE_MAINTAIN_WORKING_DIR=1`, 
+            you can set it with the `env` block of the built-in [Claude Code Settings File](https://docs.claude.com/en/docs/claude-code/settings#available-settings)
+
+            ### Loading Prompts
+
+            If you want to load in generic version of the humanlayer prompts, check out [this workshop gist](https://gist.github.com/dexhorthy/c5d2113621d17178b29ae4c31028bdc2)
 
             ### Requirements
 
@@ -192,8 +200,7 @@ jobs:
 
             * If install fails, ensure you've cleaned up all previous artifacts. `brew reinstall` is worth a shot as well.
             * Logs can be found at `~/Library/Logs/dev.humanlayer.wui${{ contains(steps.version.outputs.release_version, 'nightly') && '.nightly' || '' }}/CodeLayer${{ contains(steps.version.outputs.release_version, 'nightly') && '-Nightly' || '' }}.log`
-            * If daemon fails due to already running, close CodeLayer completely and reopen
-            * If opening from spotlight/alfred/raycast/finder fails, try `open /Applications/CodeLayer${{ contains(steps.version.outputs.release_version, 'nightly') && '-Nightly' || '' }}.app` to push your shell environment into CodeLayer so it can access your API keys and claude env vars
+            * If you see errors about missing `mcp__codelayer__approvals` tool, you're missing the `humanlayer` CLI - you need to install with brew, copying the app from a DMG won't work.
 
           draft: false
           prerelease: ${{ contains(steps.version.outputs.release_version, 'nightly') }}
