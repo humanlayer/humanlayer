@@ -153,6 +153,8 @@ func (h *SessionHandlers) CreateSession(ctx context.Context, req api.CreateSessi
 			config.Model = claudecode.ModelOpus
 		case api.Sonnet:
 			config.Model = claudecode.ModelSonnet
+		case api.Haiku:
+			config.Model = claudecode.ModelHaiku
 		default:
 			// Let Claude decide the default
 		}

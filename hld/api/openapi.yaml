@@ -1177,7 +1177,7 @@ components:
           example: "CSV Processing Script"
         model:
           type: string
-          enum: [opus, sonnet]
+          enum: [opus, sonnet, haiku]
           description: Model to use for the session
         mcp_config:
           $ref: '#/components/schemas/MCPConfig'
