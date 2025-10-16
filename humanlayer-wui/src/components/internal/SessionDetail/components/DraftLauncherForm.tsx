@@ -55,6 +55,7 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
     setDefaultDangerouslyBypassPermissionsSetting,
     defaultDangerouslyBypassPermissionsSettingChecked,
   ] = useLocalStorage('draft-bypass-permissions', session?.dangerouslySkipPermissions ?? false)
+  const [savedBypassTimeout, setSavedBypassTimeout] = useState<number | null>(15)
 
   // Model/Provider Persistence (via useLocalStorage)
   const [lastUsedModel, setLastUsedModel, lastUsedModelLoaded] = useLocalStorage('draft-last-model', '')
@@ -465,6 +466,9 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
         const updatePayload: any = {
           autoAcceptEdits: settings.autoAcceptEdits,
           dangerouslySkipPermissions: settings.dangerouslySkipPermissions,
+          dangerouslySkipPermissionsTimeoutMs: savedBypassTimeout
+            ? savedBypassTimeout * 60 * 1000
+            : undefined, // Convert minutes to milliseconds
         }
 
         // If using Baseten, include the API key from localStorage
@@ -510,7 +514,7 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
         setIsLaunchingDraft(false)
       }
     },
-    [sessionId, workingDirectory, isLaunchingDraft, navigate],
+    [sessionId, workingDirectory, isLaunchingDraft, navigate, savedBypassTimeout],
   )
 
   // Handle discard draft
@@ -556,17 +560,21 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
     if (defaultDangerouslyBypassPermissionsSetting) {
       setDangerousSkipPermissionsDialogOpen(false)
       setDefaultDangerouslyBypassPermissionsSetting(false)
+      setSavedBypassTimeout(null) // Clear timeout when disabling
     } else {
       setDangerousSkipPermissionsDialogOpen(true)
     }
   }, [defaultDangerouslyBypassPermissionsSetting, setDefaultDangerouslyBypassPermissionsSetting])
 
   // Handle bypass dialog confirmation
-  const handleDangerousSkipPermissionsConfirm = useCallback(async () => {
-    setDefaultDangerouslyBypassPermissionsSetting(true)
-    setDangerousSkipPermissionsDialogOpen(true)
-    setDangerousSkipPermissionsDialogOpen(false)
-  }, [setDefaultDangerouslyBypassPermissionsSetting])
+  const handleDangerousSkipPermissionsConfirm = useCallback(
+    async (timeoutMinutes: number | null) => {
+      setDefaultDangerouslyBypassPermissionsSetting(true)
+      setSavedBypassTimeout(timeoutMinutes)
+      setDangerousSkipPermissionsDialogOpen(false)
+    },
+    [setDefaultDangerouslyBypassPermissionsSetting],
+  )
 
   // ======== HOTKEYS ========
 
