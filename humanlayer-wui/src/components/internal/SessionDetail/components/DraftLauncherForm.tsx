@@ -103,7 +103,6 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
   const responseEditor = useStore(state => state.responseEditor)
   const refreshSessions = useStore(state => state.refreshSessions)
 
-
   const draftCreatedRef = useRef<boolean>(!!session) // if a session is passed in then the draft has already been created
 
   // ======== KEEP REFS IN SYNC WITH STATE ========
