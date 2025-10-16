@@ -3,74 +3,106 @@ title: Introduction
 description: "API and SDK for human-in-the-loop workflows"
 ---
 
-HumanLayer is an API and SDK that enables AI Agents to contact humans for help, feedback, and approvals. It's perfect for:
+## Table of Contents
 
-- Implementing manual approval steps for software- and human-driven workflows
-- Oversight of autonomous AI agents
-- Managing the transition between the two
-
-## Getting Started
-
-Get started with Humanlayer using Python or Typescript.
-
-<CardGroup cols={2}>
-  <Card title="Python Quickstart" icon="python" href="/quickstart-python">
-    Get started with Humanlayer using Python
-  </Card>
-  <Card title="Typescript Quickstart" icon="npm" href="/quickstart-typescript">
-    Get started with Humanlayer using Typescript
-  </Card>
-</CardGroup>
-
-## Features
-
-<CardGroup cols={2}>
-  <Card title="Core Features" icon="gear" href="core/require-approval">
-    Explore the core features of HumanLayer like approvals, human-as-tool, and
-    more
-  </Card>
-  <Card title="Contact Channels" icon="envelope" href="channels/introduction">
-    Learn about the different contact channels that HumanLayer supports like
-    Slack, Email, React Embeds, and more
-  </Card>
-  <Card title="Frameworks" icon="frameworks" href="frameworks/open-ai">
-    Learn about the different frameworks that HumanLayer supports like OpenAI,
-    Langchain, CrewAI, and more
-  </Card>
-  <Card title="API Reference" icon="stars" href="api-reference/introduction">
-    Dig into the details
-  </Card>
-</CardGroup>
-
-# Introduction to HumanLayer
-
-## Key Features
-
-- **Human Approvals**: Integrate human oversight into critical AI decisions
-- **Flexible Workflows**: Design custom approval workflows with multiple reviewers
-- **Timeout Management**: Set appropriate timeouts for human responses
-- **Integration Ready**: Easy integration with existing AI applications
-- **CLI Tools**: Command-line interface for common tasks
-
-## Why HumanLayer?
-
-As AI systems become more prevalent, the need for human oversight and quality control becomes increasingly important. HumanLayer provides the infrastructure needed to:
-
-- Ensure quality control in AI-generated content
-- Maintain human supervision over critical AI decisions
-- Create auditable approval workflows
-- Integrate human expertise with AI capabilities
-- Collect and export human feedback into evaluation or fine-tuning datasets
-
-## Getting Started
-
-Check out our quickstart guides:
-
-- [Python Quickstart](/quickstart-python)
-- [TypeScript Quickstart](/quickstart-typescript)
+- [Installation](#installation)
+    - [Custom Environment Variables](#custom-environment-variables)
+    - [Loading Prompts](#loading-prompts)
+- [Troubleshooting / Known Issues](#troubleshooting--known-issues)
+- [FAQ](#faq)
+    - [Where can I learn more?](#where-can-i-learn-more)
+    - [How do I get all those fancy prompts I've heard about?](#how-do-i-get-all-those-fancy-prompts-ive-heard-about)
+    - [How do I use custom claude config / bedrock / env vars?](#how-do-i-use-custom-claude-config--bedrock--env-vars)
+    - [Do you support git worktrees?](#do-you-support-git-worktrees)
+    - [How do I manage all the markdown docs](#how-do-i-manage-all-the-markdown-docs)
+    - [Can I use CodeLayer from my Phone? Can I run claude sessions in the cloud?](#can-i-use-codelayer-from-my-phone-can-i-run-claude-sessions-in-the-cloud)
+    - [How much does CodeLayer cost?](#how-much-does-codelayer-cost)
 
 ## Installation
 
+### Install CodeLayer (Recommended)
+
+The easiest way to get started is to install the CodeLayer IDE, which provides a full-featured interface for AI-assisted development.
+
+#### macOS (Homebrew)
+
 ```bash
-pip install humanlayer
+brew install --cask --no-quarantine humanlayer/humanlayer/codelayer
 ```
+
+**Note:** Optionally, opening from CLI rather than Spotlight/Raycast ensures CodeLayer inherits your shell environment including API keys and configuration.
+
+```bash
+open /Applications/CodeLayer.app
+```
+
+### Custom Environment Variables
+
+If you need to set custom environment variables (e.g., for connecting to Bedrock or setting `CLAUDE_BASE_MAINTAIN_WORKING_DIR=1`),
+you can set them in the `env` block of the built-in [Claude Code Settings File](https://docs.claude.com/en/docs/claude-code/settings#available-settings)
+
+### Loading Prompts
+
+If you want to load the generic version of the HumanLayer prompts, check out [this workshop gist](https://gist.github.com/dexhorthy/c5d2113621d17178b29ae4c31028bdc2)
+
+## Troubleshooting / Known Issues
+
+* Logs can be found at `~/Library/Logs/dev.humanlayer.wui/CodeLayer.log`
+* If you see errors about missing `mcp__codelayer__approvals` tool, you're missing the `humanlayer` CLI - you need to install with brew, copying the app from a DMG won't work
+* If install fails, ensure you've cleaned up all previous artifacts. `brew reinstall` is worth a shot as well
+
+## FAQ 
+
+#### Where can I learn more?
+
+There's a super-thread of content we've shared on X:  https://x.com/dexhorthy/status/1978676162495688719
+
+You can collaborate with other codelayer users in the [CodeLayer Discord](https://humanlayer.dev/discord)
+
+#### How do I get all those fancy prompts I've heard about?
+
+If you want to load the generic version of the HumanLayer prompts, check out [this workshop gist](https://gist.github.com/dexhorthy/c5d2113621d17178b29ae4c31028bdc2)
+
+#### How do I use custom claude config / bedrock / env vars?
+
+If you need to set custom environment variables (e.g., for connecting to Bedrock or setting `CLAUDE_BASE_MAINTAIN_WORKING_DIR=1`),
+you can set them in the `env` block of the built-in [Claude Code Settings File](https://docs.claude.com/en/docs/claude-code/settings#available-settings)
+
+```jsonc
+/* ~/.claude/settings.json */
+{
+  "env": {
+    "CLAUDE_BASE_MAINTAIN_WORKING_DIR": "1",
+    "BEDROCK_REGION": "us-east-1",
+    "BEDROCK_MODEL": "us.meta.llama3-2-11b-instruct"
+  }
+}
+```
+
+#### Do you support git worktrees?
+
+There's no built-in worktree management, but you can launch CodeLayer from any directory including worktrees.
+
+Claude is very good at making and configuring worktrees for you as well, so you can ask it to do that.
+
+**tip** - use the humanlayer CLI (or ask claude to use it) to launch a session in a newly created worktree:
+
+```
+npx humanlayer launch -w DIRECTORY -m MODEL "PROMPT"
+```
+
+#### How do I manage all the markdown docs 
+
+These features are coming to CodeLayer soon - in the meantime you can check out
+the [HumanLayer Repo](https://github.com/humanlayer/humanlayer/) and ask claude `how does the thoughts system work?`.
+
+This will set you up with our v0 janky prototype of the thoughts system. More coming soon but there are at least a handful of 
+highly-motivated engineers using the system as it exists today.
+
+#### Can I use CodeLayer from my Phone? Can I run claude sessions in the cloud?
+
+Coming soon!
+
+#### How much does CodeLayer cost? 
+
+During the private beta, CodeLayer is free to use.
