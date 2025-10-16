@@ -565,7 +565,6 @@ export const ResponseEditor = forwardRef<{ focus: () => void; blur?: () => void 
 
               return {
                 onStart: (props: any) => {
-
                   // Create popup div
                   popup = document.createElement('div')
                   popup.className =
@@ -705,7 +704,10 @@ export const ResponseEditor = forwardRef<{ focus: () => void; blur?: () => void 
                   document.body.appendChild(popup)
 
                   component = new ReactRenderer(FuzzyFileMentionList, {
-                    props,
+                    props: {
+                      ...props,
+                      workingDir: effectiveWorkingDirRef.current,
+                    },
                     editor: props.editor,
                   })
 
@@ -755,7 +757,10 @@ export const ResponseEditor = forwardRef<{ focus: () => void; blur?: () => void 
                 },
                 onUpdate: (props: any) => {
                   if (component) {
-                    component.updateProps(props)
+                    component.updateProps({
+                      ...props,
+                      workingDir: effectiveWorkingDirRef.current,
+                    })
 
                     // Update position with intelligent placement
                     const { clientRect } = props

@@ -708,7 +708,6 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
       dangerouslySkipPermissions: defaultDangerouslyBypassPermissionsSetting,
     } as Session)
 
-
   return (
     <HotkeyScopeBoundary scope={HOTKEY_SCOPES.DRAFT_LAUNCHER} componentName="DraftLauncherForm">
       <div className="flex flex-col h-full">

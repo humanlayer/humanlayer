@@ -65,7 +65,6 @@ export const DraftLauncherInput = forwardRef<
     const responseEditor = useStore(state => state.responseEditor)
     const isResponseEditorEmpty = useStore(state => state.isResponseEditorEmpty)
 
-
     // Use prop handlers if provided, otherwise use internal handlers
     const handleToggleAutoAccept = onToggleAutoAcceptProp
     const handleToggleBypass = onToggleBypassProp
@@ -216,7 +215,8 @@ export const DraftLauncherInput = forwardRef<
           // Defensive try-catch for Tauri v2 race condition
           try {
             unlisten()
-          } catch (error) {
+          } catch {
+            // Intentionally empty - silently ignore unlisten errors
           }
         }
       }
