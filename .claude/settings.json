@@ -6,5 +6,8 @@
       "Bash(bash hack/spec_metadata.sh)"
     ]
   },
-  "enableAllProjectMcpServers": false
+  "enableAllProjectMcpServers": false,
+  "env": {
+    "MAX_THINKING_TOKENS": "32000"
+  }
 }
