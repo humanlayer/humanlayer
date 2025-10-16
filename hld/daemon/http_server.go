@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -50,7 +51,9 @@ type HTTPServer struct {
 	agentHandlers    *handlers.AgentHandlers
 	approvalManager  approval.Manager
 	eventBus         bus.EventBus
-	server           *http.Server
+
+	serverMu sync.Mutex
+	server   *http.Server
 }
 
 // NewHTTPServer creates a new HTTP server instance
@@ -165,14 +168,17 @@ func (s *HTTPServer) Start(ctx context.Context) error {
 		"actual_address", actualAddr.String())
 
 	// Create HTTP server
+	s.serverMu.Lock()
 	s.server = &http.Server{
 		Handler: s.router,
 	}
+	server := s.server // Capture for goroutine
+	s.serverMu.Unlock()
 
 	// Start server in goroutine
 	go func() {
 		// Use the existing listener
-		if err := s.server.Serve(listener); err != nil && err != http.ErrServerClosed {
+		if err := server.Serve(listener); err != nil && err != http.ErrServerClosed {
 			slog.Error("HTTP server error", "error", err)
 		}
 	}()
@@ -184,7 +190,11 @@ func (s *HTTPServer) Start(ctx context.Context) error {
 
 // Shutdown gracefully shuts down the HTTP server
 func (s *HTTPServer) Shutdown() error {
-	if s.server == nil {
+	s.serverMu.Lock()
+	server := s.server
+	s.serverMu.Unlock()
+
+	if server == nil {
 		return nil
 	}
 
@@ -193,5 +203,5 @@ func (s *HTTPServer) Shutdown() error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	return s.server.Shutdown(ctx)
+	return server.Shutdown(ctx)
 }
