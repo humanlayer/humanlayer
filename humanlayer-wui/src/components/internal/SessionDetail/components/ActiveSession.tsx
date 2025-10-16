@@ -238,7 +238,6 @@ export function ActiveSession({ session, onClose }: ActiveSessionProps) {
     responseEditor?.commands.setContent('')
   }, [responseEditor])
 
-
   // Reset scroll flag when session changes
   useEffect(() => {
     if (session.id) {
