@@ -1004,6 +1004,8 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 					modelName = "opus"
 				} else if strings.Contains(lowerModel, "sonnet") {
 					modelName = "sonnet"
+				} else if strings.Contains(lowerModel, "haiku") {
+					modelName = "haiku"
 				}
 
 				// Update session with both model ID and simplified name
