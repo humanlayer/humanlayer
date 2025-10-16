@@ -272,7 +272,7 @@ func setupTestRouterFiles(t *testing.T, files *handlers.FileHandlers) *gin.Engin
 	// Create server implementation with file handlers
 	// Pass nil for handlers we don't need in these tests
 	settingsHandlers := handlers.NewSettingsHandlers(nil)
-	serverImpl := handlers.NewServerImpl(nil, nil, files, nil, settingsHandlers)
+	serverImpl := handlers.NewServerImpl(nil, nil, files, nil, settingsHandlers, nil)
 	strictHandler := api.NewStrictHandler(serverImpl, nil)
 
 	api.RegisterHandlersWithOptions(router, strictHandler,

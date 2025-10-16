@@ -1,5 +1,6 @@
 /* tslint:disable */
 /* eslint-disable */
+export * from './Agent';
 export * from './Approval';
 export * from './ApprovalResponse';
 export * from './ApprovalStatus';
@@ -23,6 +24,8 @@ export * from './DebugInfoResponse';
 export * from './DecideApprovalRequest';
 export * from './DecideApprovalResponse';
 export * from './DecideApprovalResponseData';
+export * from './DiscoverAgents200Response';
+export * from './DiscoverAgentsRequest';
 export * from './ErrorDetail';
 export * from './ErrorResponse';
 export * from './Event';

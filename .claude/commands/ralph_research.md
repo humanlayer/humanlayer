@@ -1,3 +1,7 @@
+---
+description: Research highest priority Linear ticket needing investigation
+---
+
 ## PART I - IF A LINEAR TICKET IS MENTIONED
 
 0c. use `linear` cli to fetch the selected item into thoughts with the ticket number - ./thoughts/shared/tickets/ENG-xxxx.md

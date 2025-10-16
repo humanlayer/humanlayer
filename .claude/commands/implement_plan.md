@@ -1,3 +1,7 @@
+---
+description: Implement technical plans from thoughts/shared/plans with verification
+---
+
 # Implement Plan
 
 You are tasked with implementing an approved technical plan from `thoughts/shared/plans/`. These plans contain phases with specific changes and success criteria.

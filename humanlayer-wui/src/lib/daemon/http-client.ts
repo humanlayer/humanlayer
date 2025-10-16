@@ -9,6 +9,7 @@ import {
   ConfigResponse,
   UpdateConfigRequest,
   FuzzySearchFilesResponse,
+  Agent,
 } from '@humanlayer/hld-sdk'
 import { getDaemonUrl, getDefaultHeaders } from './http-config'
 import { logger } from '@/lib/logging'
@@ -610,6 +611,17 @@ export class HTTPDaemonClient implements IDaemonClient {
     await this.ensureConnected()
     const response = await this.client!.fuzzySearchFiles(params)
     return response
+  }
+
+  async discoverAgents(workingDir: string): Promise<Agent[]> {
+    await this.ensureConnected()
+
+    // Use the generated SDK client method
+    const response = await this.client!.discoverAgents({
+      discoverAgentsRequest: { workingDir },
+    })
+
+    return response.agents || []
   }
 
   async getDebugInfo(): Promise<import('./types').DebugInfo> {

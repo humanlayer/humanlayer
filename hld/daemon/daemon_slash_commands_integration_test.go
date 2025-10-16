@@ -226,7 +226,7 @@ A global command in the tmp directory.`,
 		for _, cmd := range searchResp.Data {
 			if cmd.Name == "/tmp:test_global" {
 				found = true
-				assert.Equal(t, api.SlashCommandSource("global"), cmd.Source)
+				assert.Equal(t, api.SlashCommandSourceGlobal, cmd.Source)
 				break
 			}
 		}
@@ -250,7 +250,7 @@ A global command in the tmp directory.`,
 		for _, cmd := range duplicateSearchResp.Data {
 			if cmd.Name == "/duplicate_command" {
 				duplicateFound = true
-				assert.Equal(t, api.SlashCommandSource("global"), cmd.Source, "Duplicate command should have global source")
+				assert.Equal(t, api.SlashCommandSourceGlobal, cmd.Source, "Duplicate command should have global source")
 				break
 			}
 		}
@@ -308,10 +308,10 @@ A global command in the tmp directory.`,
 		hasGlobalCommands := false
 		hasLocalCommands := false
 		for _, cmd := range commandsResp.Data {
-			if cmd.Source == api.SlashCommandSource("global") {
+			if cmd.Source == api.SlashCommandSourceGlobal {
 				hasGlobalCommands = true
 			}
-			if cmd.Source == api.SlashCommandSource("local") {
+			if cmd.Source == api.SlashCommandSourceLocal {
 				hasLocalCommands = true
 			}
 		}

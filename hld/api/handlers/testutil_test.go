@@ -23,8 +23,8 @@ func setupTestRouter(t *testing.T, sessionHandlers *handlers.SessionHandlers, ap
 	settingsHandlers := handlers.NewSettingsHandlers(nil)
 	fileHandlers := handlers.NewFileHandlers()
 
-	// Create server implementation
-	serverImpl := handlers.NewServerImpl(sessionHandlers, approvalHandlers, fileHandlers, sseHandler, settingsHandlers)
+	// Create server implementation (pass nil for AgentHandlers)
+	serverImpl := handlers.NewServerImpl(sessionHandlers, approvalHandlers, fileHandlers, sseHandler, settingsHandlers, nil)
 
 	// Create strict handler
 	strictHandler := api.NewStrictHandler(serverImpl, nil)

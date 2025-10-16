@@ -1,3 +1,7 @@
+---
+description: Create implementation plan for highest priority Linear ticket ready for spec
+---
+
 ## PART I - IF A TICKET IS MENTIONED
 
 0c. use `linear` cli to fetch the selected item into thoughts with the ticket number - ./thoughts/shared/tickets/ENG-xxxx.md

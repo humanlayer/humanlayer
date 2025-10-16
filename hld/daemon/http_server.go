@@ -47,6 +47,7 @@ type HTTPServer struct {
 	proxyHandler     *handlers.ProxyHandler
 	configHandler    *handlers.ConfigHandler
 	settingsHandlers *handlers.SettingsHandlers
+	agentHandlers    *handlers.AgentHandlers
 	approvalManager  approval.Manager
 	eventBus         bus.EventBus
 	server           *http.Server
@@ -91,6 +92,7 @@ func NewHTTPServer(
 	proxyHandler := handlers.NewProxyHandler(sessionManager, conversationStore)
 	configHandler := handlers.NewConfigHandler()
 	settingsHandlers := handlers.NewSettingsHandlers(conversationStore)
+	agentHandlers := handlers.NewAgentHandlers()
 
 	return &HTTPServer{
 		config:           cfg,
@@ -103,6 +105,7 @@ func NewHTTPServer(
 		proxyHandler:     proxyHandler,
 		configHandler:    configHandler,
 		settingsHandlers: settingsHandlers,
+		agentHandlers:    agentHandlers,
 		approvalManager:  approvalManager,
 		eventBus:         eventBus,
 	}
@@ -111,7 +114,7 @@ func NewHTTPServer(
 // Start starts the HTTP server
 func (s *HTTPServer) Start(ctx context.Context) error {
 	// Create server implementation combining all handlers
-	serverImpl := handlers.NewServerImpl(s.sessionHandlers, s.approvalHandlers, s.fileHandlers, s.sseHandler, s.settingsHandlers)
+	serverImpl := handlers.NewServerImpl(s.sessionHandlers, s.approvalHandlers, s.fileHandlers, s.sseHandler, s.settingsHandlers, s.agentHandlers)
 
 	// Create strict handler with middleware
 	strictHandler := api.NewStrictHandler(serverImpl, nil)

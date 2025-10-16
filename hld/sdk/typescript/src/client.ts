@@ -5,6 +5,7 @@ import {
     SystemApi,
     SettingsApi,
     FilesApi,
+    AgentsApi,
     CreateSessionRequest,
     Session,
     SessionsResponse,
@@ -19,7 +20,8 @@ import {
     ConfigResponse,
     UpdateConfigRequest,
     FuzzySearchFilesRequest,
-    FuzzySearchFilesResponse
+    FuzzySearchFilesResponse,
+    DiscoverAgents200Response
 } from './generated';
 import { createErrorInterceptor } from './middleware';
 
@@ -49,6 +51,7 @@ export class HLDClient {
     private approvalsApi: ApprovalsApi;
     private settingsApi: SettingsApi;
     private filesApi: FilesApi;
+    private agentsApi: AgentsApi;
     private baseUrl: string;
     private headers?: Record<string, string>;
     private sseConnections: Map<string, EventSourceLike> = new Map();
@@ -81,6 +84,7 @@ export class HLDClient {
         this.approvalsApi = new ApprovalsApi(config);
         this.settingsApi = new SettingsApi(config);
         this.filesApi = new FilesApi(config);
+        this.agentsApi = new AgentsApi(config);
     }
 
     // Session Management
@@ -291,6 +295,14 @@ export class HLDClient {
         const response = await this.filesApi.fuzzySearchFiles({
             fuzzySearchFilesRequest: params
         });
+        return response;
+    }
+
+    // Agents
+    async discoverAgents(params: {
+        discoverAgentsRequest: { workingDir: string }
+    }): Promise<DiscoverAgents200Response> {
+        const response = await this.agentsApi.discoverAgents(params);
         return response;
     }
 

@@ -11,16 +11,18 @@ type ServerImpl struct {
 	*FileHandlers
 	*SSEHandler
 	*SettingsHandlers
+	*AgentHandlers
 }
 
 // NewServerImpl creates a new server implementation
-func NewServerImpl(sessions *SessionHandlers, approvals *ApprovalHandlers, files *FileHandlers, sse *SSEHandler, settings *SettingsHandlers) api.StrictServerInterface {
+func NewServerImpl(sessions *SessionHandlers, approvals *ApprovalHandlers, files *FileHandlers, sse *SSEHandler, settings *SettingsHandlers, agents *AgentHandlers) api.StrictServerInterface {
 	return &ServerImpl{
 		SessionHandlers:  sessions,
 		ApprovalHandlers: approvals,
 		FileHandlers:     files,
 		SSEHandler:       sse,
 		SettingsHandlers: settings,
+		AgentHandlers:    agents,
 	}
 }
 

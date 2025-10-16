@@ -1479,7 +1479,7 @@ func (h *SessionHandlers) GetSlashCommands(ctx context.Context, req api.GetSlash
 				// Check if command already exists
 				if _, exists := commandMap[fullCommandName]; exists {
 					// Global commands take precedence
-					if source == api.Global {
+					if source == api.SlashCommandSourceGlobal {
 						commandMap[fullCommandName] = api.SlashCommand{
 							Name:   fullCommandName,
 							Source: source,
@@ -1500,7 +1500,7 @@ func (h *SessionHandlers) GetSlashCommands(ctx context.Context, req api.GetSlash
 	}
 
 	// Discover local commands first
-	if err := discoverCommands(localCommandsDir, api.Local); err != nil && !os.IsNotExist(err) {
+	if err := discoverCommands(localCommandsDir, api.SlashCommandSourceLocal); err != nil && !os.IsNotExist(err) {
 		slog.Warn("Failed to read local commands directory",
 			"error", fmt.Sprintf("%v", err),
 			"commands_dir", localCommandsDir,
@@ -1509,7 +1509,7 @@ func (h *SessionHandlers) GetSlashCommands(ctx context.Context, req api.GetSlash
 	}
 
 	// Then discover global commands (these will override local if duplicates exist)
-	if err := discoverCommands(globalCommandsDir, api.Global); err != nil && !os.IsNotExist(err) {
+	if err := discoverCommands(globalCommandsDir, api.SlashCommandSourceGlobal); err != nil && !os.IsNotExist(err) {
 		slog.Warn("Failed to read global commands directory",
 			"error", fmt.Sprintf("%v", err),
 			"commands_dir", globalCommandsDir,
@@ -1569,7 +1569,7 @@ func (h *SessionHandlers) GetSlashCommands(ctx context.Context, req api.GetSlash
 		sort.Slice(results, func(i, j int) bool {
 			// Sort by name, but local comes before global as tiebreaker
 			if results[i].Name == results[j].Name {
-				return results[i].Source == api.Local && results[j].Source == api.Global
+				return results[i].Source == api.SlashCommandSourceLocal && results[j].Source == api.SlashCommandSourceGlobal
 			}
 			return results[i].Name < results[j].Name
 		})
