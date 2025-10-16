@@ -481,13 +481,16 @@ export const ResponseEditor = forwardRef<{ focus: () => void; blur?: () => void 
     const onSubmitRef = React.useRef<ResponseEditorProps['onSubmit']>()
     const onChangeRef = React.useRef<ResponseEditorProps['onChange']>()
 
-    // Use the passed workingDirRef if provided, otherwise create a local one for backwards compatibility
-    const effectiveWorkingDirRef = workingDirRef || React.useRef(workingDir || '')
+    // Always create a local ref for backwards compatibility
+    const localWorkingDirRef = React.useRef(workingDir || '')
+
+    // Use the passed workingDirRef if provided, otherwise use the local one
+    const effectiveWorkingDirRef = workingDirRef || localWorkingDirRef
 
     // If we're using a local ref, keep it updated with the workingDir prop
     React.useEffect(() => {
       if (!workingDirRef && workingDir !== undefined) {
-        effectiveWorkingDirRef.current = workingDir
+        localWorkingDirRef.current = workingDir
       }
     }, [workingDir, workingDirRef])
 
