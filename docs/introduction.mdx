@@ -69,7 +69,7 @@ If you need to set custom environment variables (e.g., for connecting to Bedrock
 you can set them in the `env` block of the built-in [Claude Code Settings File](https://docs.claude.com/en/docs/claude-code/settings#available-settings)
 
 ```jsonc
-/* ~/.claude/settings.json */
+// ~/.claude/settings.json
 {
   "env": {
     "CLAUDE_BASE_MAINTAIN_WORKING_DIR": "1",
@@ -87,8 +87,8 @@ Claude is very good at making and configuring worktrees for you as well, so you 
 
 **tip** - use the humanlayer CLI (or ask claude to use it) to launch a session in a newly created worktree:
 
-```
-npx humanlayer launch -w DIRECTORY -m MODEL "PROMPT"
+```bash
+humanlayer launch -w DIRECTORY -m MODEL "PROMPT"
 ```
 
 #### How do I manage all the markdown docs
