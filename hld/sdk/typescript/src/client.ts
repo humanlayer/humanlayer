@@ -243,6 +243,12 @@ export class HLDClient {
         return response;
     }
 
+    // Search sessions
+    async searchSessions(params: { query?: string; limit?: number }): Promise<{ data: Session[] }> {
+        const response = await this.sessionsApi.searchSessions(params);
+        return response;
+    }
+
     // Get recent paths
     async getRecentPaths(): Promise<RecentPath[]> {
         const response = await this.sessionsApi.getRecentPaths({});
