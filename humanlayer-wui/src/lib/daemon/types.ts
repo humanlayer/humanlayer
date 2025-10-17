@@ -86,6 +86,7 @@ export interface DaemonClient {
     workingDir: string
     query?: string
   }): Promise<{ data: Array<{ name: string; source: 'local' | 'global' }> }>
+  searchSessions(params: { query?: string; limit?: number }): Promise<{ data: Session[] }>
   listSessions(): Promise<Session[]>
   getSessionLeaves(request?: { filter?: 'normal' | 'archived' | 'draft' }): Promise<{
     sessions: Session[]
