@@ -30,11 +30,24 @@ The easiest way to get started is to install the CodeLayer IDE, which provides a
 brew install --cask --no-quarantine humanlayer/humanlayer/codelayer
 ```
 
+**Note:** The OSS version of codelayer doesn't have app signing, so you'll need to use the `--no-quarantine` flag to `brew install` or manually bypass the macOS quarantine in Security and Privacy settings.
+
 **Note:** Optionally, opening from CLI rather than Spotlight/Raycast ensures CodeLayer inherits your shell environment including API keys and configuration.
 
 ```bash
 open /Applications/CodeLayer.app
 ```
+
+#### Updating
+
+To update your existing install, you can run the same `brew install` command again.
+
+```bash
+brew install --cask --no-quarantine humanlayer/humanlayer/codelayer
+```
+
+Releases and release notes can be found at https://github.com/humanlayer/humanlayer/releases
+
 
 ### Custom Environment Variables
 
