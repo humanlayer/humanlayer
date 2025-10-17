@@ -333,6 +333,7 @@ export default function CommandPaletteMenu() {
                 <CommandItem
                   key={option.id}
                   value={option.id}
+                  keywords={[option.label, option.workingDir].filter(Boolean)}
                   onSelect={option.action}
                   className={cn(
                     'flex flex-col items-start px-3 py-3 transition-all duration-150 cursor-pointer data-[selected=true]:bg-primary data-[selected=true]:text-primary-foreground hover:bg-muted/60',
