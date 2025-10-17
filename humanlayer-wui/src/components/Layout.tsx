@@ -42,6 +42,7 @@ import { DangerousSkipPermissionsMonitor } from '@/components/DangerousSkipPermi
 import { KeyboardShortcut } from '@/components/HotkeyPanel'
 import { DvdScreensaver } from '@/components/DvdScreensaver'
 import { TestErrorTrigger } from '@/components/TestErrorTrigger'
+import { PostHogTestTrigger } from '@/components/PostHogTestTrigger'
 import { CodeLayerToaster } from '@/components/internal/CodeLayerToaster'
 import { useDebugStore } from '@/stores/useDebugStore'
 import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
@@ -978,6 +979,9 @@ export function Layout() {
 
       {/* Test Error Trigger for Sentry testing */}
       <TestErrorTrigger />
+
+      {/* Test PostHog Trigger for PostHog testing */}
+      {import.meta.env.DEV && <PostHogTestTrigger />}
     </div>
   )
 }
