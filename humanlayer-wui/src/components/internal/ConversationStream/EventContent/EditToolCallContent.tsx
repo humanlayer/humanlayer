@@ -6,6 +6,7 @@ import { DiffViewToggle } from './DiffViewToggle'
 import { formatToolResultPreview, detectToolError, getApprovalStatusColor } from './utils/formatters'
 import { ToolCallContentProps } from './types'
 import { ApprovalStatus } from '@humanlayer/hld-sdk'
+import { processEscapeSequences } from '@/utils/escapeSequences'
 
 export interface EditToolInput {
   file_path: string
@@ -55,8 +56,8 @@ export function EditToolCallContent({
 
       <div className="mt-2">
         <DiffViewer
-          oldContent={toolInput.old_string || ''}
-          newContent={toolInput.new_string || ''}
+          oldContent={processEscapeSequences(toolInput.old_string || '')}
+          newContent={processEscapeSequences(toolInput.new_string || '')}
           mode={isSplitView ? 'split' : 'unified'}
           showFullFile={false}
         />

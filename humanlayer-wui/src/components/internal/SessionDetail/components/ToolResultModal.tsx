@@ -8,6 +8,7 @@ import { CustomDiffViewer } from './CustomDiffViewer'
 import { AnsiText, hasAnsiCodes } from '@/utils/ansiParser'
 import { HotkeyScopeBoundary } from '@/components/HotkeyScopeBoundary'
 import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
+import { processEscapeSequences } from '@/utils/escapeSequences'
 import {
   Wrench,
   Globe,
@@ -378,7 +379,12 @@ function renderToolInput(toolCall: ConversationEvent): React.ReactNode {
           </div>
           <div className="mt-2">
             <CustomDiffViewer
-              edits={[{ oldValue: args.old_string, newValue: args.new_string }]}
+              edits={[
+                {
+                  oldValue: processEscapeSequences(args.old_string),
+                  newValue: processEscapeSequences(args.new_string),
+                },
+              ]}
               splitView={false}
             />
           </div>
@@ -392,8 +398,8 @@ function renderToolInput(toolCall: ConversationEvent): React.ReactNode {
       const edits = Array.isArray(args.edits) ? args.edits : []
 
       const allEdits = edits.map((e: any) => ({
-        oldValue: e.old_string,
-        newValue: e.new_string,
+        oldValue: processEscapeSequences(e.old_string),
+        newValue: processEscapeSequences(e.new_string),
       }))
 
       return (
