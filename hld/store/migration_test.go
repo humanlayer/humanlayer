@@ -515,7 +515,7 @@ func TestAllMigrationStates(t *testing.T) {
 				// Verify final state
 				db = s.GetDB()
 
-				// Check final version is 21
+				// Check final version is 22
 				err = db.QueryRow("SELECT MAX(version) FROM schema_version").Scan(&currentVersion)
 				require.NoError(t, err)
 				assert.Equal(t, 22, currentVersion, "Should be at version 22 after all migrations")

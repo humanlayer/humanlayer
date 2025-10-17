@@ -757,7 +757,7 @@ func TestSearchSessionsByTitle(t *testing.T) {
 			Query:          "Create profile page",
 			Status:         SessionStatusCompleted,
 			CreatedAt:      time.Now().Add(-1 * time.Hour),
-			LastActivityAt: time.Now(),
+			LastActivityAt: time.Now().Add(-100 * time.Millisecond),
 		},
 		{
 			ID:             "sess4",

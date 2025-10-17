@@ -314,7 +314,7 @@ export default function CommandPaletteMenu() {
                   onSelect={option.action}
                   className={cn(
                     'flex items-center justify-between px-3 py-3 transition-all duration-150 cursor-pointer data-[selected=true]:bg-primary data-[selected=true]:text-primary-foreground hover:bg-muted/60',
-                    selectedMenuIndex === allOptions.indexOf(option) && 'bg-accent',
+                    selectedValue === option.id && 'bg-accent',
                   )}
                 >
                   <span className="text-sm font-medium">{option.label}</span>
@@ -333,16 +333,23 @@ export default function CommandPaletteMenu() {
                 <CommandItem
                   key={option.id}
                   value={option.id}
-                  keywords={[option.label, option.workingDir].filter(Boolean)}
+                  keywords={[option.label, option.workingDir].filter(Boolean) as string[]}
                   onSelect={option.action}
                   className={cn(
                     'flex flex-col items-start px-3 py-3 transition-all duration-150 cursor-pointer data-[selected=true]:bg-primary data-[selected=true]:text-primary-foreground hover:bg-muted/60',
-                    selectedMenuIndex === allOptions.indexOf(option) && 'bg-accent',
+                    selectedValue === option.id && 'bg-accent',
                   )}
                 >
                   <span className="font-medium text-sm">{option.label}</span>
                   {option.workingDir && (
-                    <span className="text-xs text-muted-foreground">{option.workingDir}</span>
+                    <span
+                      className={cn(
+                        'text-xs text-muted-foreground',
+                        selectedValue === option.id && 'text-[var(--terminal-bg-alt)]',
+                      )}
+                    >
+                      {option.workingDir}
+                    </span>
                   )}
                 </CommandItem>
               ))}
