@@ -319,8 +319,11 @@ wui-ticket:
 		vite_port="$(VITE_PORT)"; \
 	fi && \
 	echo "Starting WUI for $(TICKET) connecting to daemon port $$port, Vite port $$vite_port" && \
+	$(if $(POSTHOG),echo "PostHog analytics enabled (nightly key)",) && \
 	echo "{\"build\":{\"devUrl\":\"http://localhost:$$vite_port\"}}" > /tmp/tauri-config-$(TICKET).json && \
 	cd humanlayer-wui && \
+	$(if $(POSTHOG),VITE_PUBLIC_POSTHOG_KEY=phc_de6RVF0G7CkTzv2UvxHddSk7nfFnE5QWD7KmZV5KfSo \
+	VITE_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com,) \
 	HUMANLAYER_WUI_AUTOLAUNCH_DAEMON=false \
 	HUMANLAYER_DAEMON_SOCKET=~/.humanlayer/daemon-$$port.sock \
 	VITE_HUMANLAYER_DAEMON_URL=http://localhost:$$port \
@@ -342,8 +345,17 @@ daemon-dev: daemon-dev-build
 
 # Run dev WUI with custom socket
 .PHONY: wui-dev
-wui-dev:
+wui-dev: ## Run CodeLayer (WUI) in development mode. Use POSTHOG=true to enable analytics debugging.
+ifdef POSTHOG
+	@echo "Running CodeLayer with PostHog analytics enabled (nightly key)"
+	cd humanlayer-wui && \
+		VITE_PUBLIC_POSTHOG_KEY=phc_de6RVF0G7CkTzv2UvxHddSk7nfFnE5QWD7KmZV5KfSo \
+		VITE_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com \
+		HUMANLAYER_DAEMON_SOCKET=~/.humanlayer/daemon-dev.sock \
+		bun run tauri dev
+else
 	cd humanlayer-wui && HUMANLAYER_DAEMON_SOCKET=~/.humanlayer/daemon-dev.sock bun run tauri dev
+endif
 
 # Run Storybook for WUI component development
 .PHONY: storybook
@@ -352,7 +364,7 @@ storybook: ## Run Storybook for WUI component documentation
 
 # Alias for wui-dev that ensures daemon is built first
 .PHONY: codelayer-dev
-codelayer-dev: daemon-dev-build
+codelayer-dev: daemon-dev-build ## Run CodeLayer in development mode. Use POSTHOG=true to enable analytics debugging.
 	@if [ -n "$(TICKET)" ]; then \
 		source hack/port-utils.sh && \
 		ticket_num=$$(extract_ticket_number "$(TICKET)") && \
@@ -368,7 +380,7 @@ codelayer-dev: daemon-dev-build
 		$(MAKE) daemon-ticket TICKET=$(TICKET) PORT=$$port & \
 		daemon_pid=$$! && \
 		sleep 2 && \
-		$(MAKE) wui-ticket TICKET=$(TICKET) PORT=$$port VITE_PORT=$$vite_port & \
+		$(MAKE) wui-ticket TICKET=$(TICKET) PORT=$$port VITE_PORT=$$vite_port POSTHOG=$(POSTHOG) & \
 		wui_pid=$$! && \
 		echo "Started daemon PID: $$daemon_pid" && \
 		echo "Started WUI PID: $$wui_pid" && \
@@ -382,7 +394,7 @@ codelayer-dev: daemon-dev-build
 		echo "Database: ~/.humanlayer/daemon-dev.db" && \
 		echo "(use TICKET=ENG-XXXX for isolated instance)" && \
 		echo "==========================================" && \
-		$(MAKE) wui-dev; \
+		$(MAKE) wui-dev POSTHOG=$(POSTHOG); \
 	fi
 
 # Test port allocation for a ticket
