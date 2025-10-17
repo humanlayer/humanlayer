@@ -26,7 +26,7 @@ interface MenuOption {
   hotkey?: string
 }
 
-export default function CommandPaletteMenu() {
+export default function CommandPaletteMenu({ ref }: { ref: React.RefObject<HTMLDivElement> }) {
   const { createNewSession, close } = useSessionLauncher()
 
   const [internalSearchValue, setInternalSearchValue] = useState('')
@@ -288,7 +288,8 @@ export default function CommandPaletteMenu() {
 
   return (
     <Command
-      className="rounded-lg border shadow-md [&_[cmdk-input]]:h-9"
+      ref={ref}
+      className="rounded-lg border shadow-md [&_[cmdk-input]]:h-9 max-w-2xl h-auto"
       value={selectedValue}
       onValueChange={setSelectedValue}
       loop

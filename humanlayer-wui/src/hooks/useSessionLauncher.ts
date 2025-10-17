@@ -22,7 +22,6 @@ interface SessionConfig {
 interface LauncherState {
   isOpen: boolean
   mode: 'command'
-  view: 'menu' | 'input'
   query: string
   config: SessionConfig
   isLaunching: boolean
@@ -35,7 +34,6 @@ interface LauncherState {
   setQuery: (query: string) => void
   setConfig: (config: SessionConfig) => void
   setGPrefixMode: (enabled: boolean) => void
-  setView: (view: 'menu' | 'input') => void
   launchSession: () => Promise<void>
   createNewSession: () => Promise<void>
   openSessionById: (sessionId: string) => void
@@ -132,7 +130,6 @@ const getSavedAdditionalDirectories = (): string[] => {
 export const useSessionLauncher = create<LauncherState>((set, get) => ({
   isOpen: false,
   mode: 'command',
-  view: 'menu',
   query: getSavedQuery(),
   config: {
     workingDir: getDefaultWorkingDir(),
@@ -149,7 +146,6 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
     set({
       isOpen: true,
       mode: 'command', // Always command mode
-      view: 'menu',
       error: undefined,
     }),
 
@@ -158,7 +154,6 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
     const savedProvider = getSavedProvider()
     set({
       isOpen: false,
-      view: 'menu',
       query: savedQuery,
       config: {
         workingDir: getDefaultWorkingDir(),
@@ -245,8 +240,6 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
   },
 
   setGPrefixMode: enabled => set({ gPrefixMode: enabled }),
-
-  setView: view => set({ view }),
 
   launchSession: async () => {
     const { query, config } = get()
@@ -409,7 +402,6 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
     return set({
       isOpen: false,
       mode: 'command',
-      view: 'menu',
       query: savedQuery,
       config: {
         workingDir: getDefaultWorkingDir(),
