@@ -153,6 +153,19 @@ export class HTTPDaemonClient implements IDaemonClient {
     return response as { data: Array<{ name: string; source: 'local' | 'global' }> }
   }
 
+  async searchSessions(params: { query?: string; limit?: number } = {}): Promise<{ data: Session[] }> {
+    await this.ensureConnected()
+
+    const response = await this.client!.searchSessions({
+      query: params.query,
+      limit: params.limit || 10,
+    })
+
+    return {
+      data: response.data.map(transformSDKSession),
+    }
+  }
+
   async launchSession(
     params: LaunchSessionParams | LaunchSessionRequest,
   ): Promise<CreateSessionResponseData> {

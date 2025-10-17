@@ -1,5 +1,6 @@
 import { describe, test, expect, mock } from 'bun:test'
 import { render, screen, fireEvent } from '@testing-library/react'
+import { createRef } from 'react'
 
 // Create mock functions
 const mockCreateNewSession = mock(() => Promise.resolve())
@@ -56,7 +57,8 @@ import CommandPaletteMenu from './CommandPaletteMenu'
 
 describe('CommandPaletteMenu', () => {
   test('renders all base menu options', () => {
-    render(<CommandPaletteMenu />)
+    const ref = createRef<HTMLDivElement>()
+    render(<CommandPaletteMenu ref={ref} />)
 
     // Check that key menu items are present
     expect(screen.getByText('Create Session')).toBeDefined()
@@ -65,10 +67,11 @@ describe('CommandPaletteMenu', () => {
   })
 
   test('filters options based on search input', async () => {
-    const { container } = render(<CommandPaletteMenu />)
+    const ref = createRef<HTMLDivElement>()
+    const { container } = render(<CommandPaletteMenu ref={ref} />)
 
     // Find the search input
-    const input = container.querySelector('input[placeholder="Type a command..."]')
+    const input = container.querySelector('input[placeholder="Search commands and sessions..."]')
     expect(input).toBeDefined()
 
     // Type "settings" in the search
@@ -82,7 +85,8 @@ describe('CommandPaletteMenu', () => {
   })
 
   test('calls action when option is selected', () => {
-    render(<CommandPaletteMenu />)
+    const ref = createRef<HTMLDivElement>()
+    render(<CommandPaletteMenu ref={ref} />)
 
     // Find and click the Settings option
     const settingsOption = screen.getByText('Settings')
@@ -94,7 +98,8 @@ describe('CommandPaletteMenu', () => {
   })
 
   test('displays hotkey badges for menu options', () => {
-    render(<CommandPaletteMenu />)
+    const ref = createRef<HTMLDivElement>()
+    render(<CommandPaletteMenu ref={ref} />)
 
     // Check that hotkey badges are rendered (KeyboardShortcut components)
     const createSessionOption = screen.getByText('Create Session')
@@ -106,7 +111,8 @@ describe('CommandPaletteMenu', () => {
   })
 
   test('shows footer help text', () => {
-    render(<CommandPaletteMenu />)
+    const ref = createRef<HTMLDivElement>()
+    render(<CommandPaletteMenu ref={ref} />)
 
     // Check for navigation hints in footer
     expect(screen.getByText('↑↓/Tab Navigate')).toBeDefined()

@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { RefObject } from 'react'
+import { useEffect, useState, useMemo, useCallback } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { useSessionLauncher, isViewingSessionDetail } from '@/hooks/useSessionLauncher'
 import { useStore } from '@/AppStore'
@@ -12,6 +13,10 @@ import {
   CommandGroup,
   CommandItem,
 } from '@/components/ui/command'
+import { daemonClient } from '@/lib/daemon'
+import { Session } from '@/lib/daemon/types'
+import { useDebounce } from '@/hooks/useDebounce'
+import { cn } from '@/lib/utils'
 
 interface MenuOption {
   id: string
@@ -22,11 +27,17 @@ interface MenuOption {
   hotkey?: string
 }
 
-export default function CommandPaletteMenu() {
+export default function CommandPaletteMenu({ ref }: { ref: RefObject<HTMLDivElement> }) {
   const { createNewSession, close } = useSessionLauncher()
 
   const [internalSearchValue, setInternalSearchValue] = useState('')
   const [selectedValue, setSelectedValue] = useState<string>('')
+  const [sessionResults, setSessionResults] = useState<Session[]>([])
+  const [isLoadingSessions, setIsLoadingSessions] = useState(false)
+  const [selectedMenuIndex, setSelectedMenuIndex] = useState<number | null>(null)
+
+  // Debounce search query for session search
+  const debouncedQuery = useDebounce(internalSearchValue, 150)
 
   // Get sessions and state from the main app store
   const sessions = useStore(state => state.sessions)
@@ -139,6 +150,96 @@ export default function CommandPaletteMenu() {
       : []),
   ]
 
+  // Fetch sessions from backend when query changes
+  useEffect(() => {
+    if (!debouncedQuery || debouncedQuery.length < 2) {
+      setSessionResults([])
+      return
+    }
+
+    let cancelled = false
+    setIsLoadingSessions(true)
+
+    const searchSessions = async () => {
+      try {
+        const response = await daemonClient.searchSessions({
+          query: debouncedQuery,
+          limit: 10,
+        })
+
+        if (!cancelled) {
+          setSessionResults(response.data || [])
+        }
+      } catch (error) {
+        console.error('Failed to search sessions:', error)
+        if (!cancelled) {
+          setSessionResults([])
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingSessions(false)
+        }
+      }
+    }
+
+    searchSessions()
+
+    return () => {
+      cancelled = true
+    }
+  }, [debouncedQuery, daemonClient])
+
+  // Combine action and session options for keyboard navigation
+  const allOptions = useMemo(() => {
+    const actionOptions = baseOptions.map(action => ({
+      type: 'action' as const,
+      id: action.id,
+      label: action.label,
+      action: action.action,
+      hotkey: action.hotkey,
+    }))
+
+    const sessionOptions = sessionResults.map(session => ({
+      type: 'session' as const,
+      id: session.id,
+      label: session.title || session.summary || session.query,
+      workingDir: session.workingDir,
+      action: () => {
+        window.location.hash = `#/sessions/${session.id}`
+        close()
+      },
+    }))
+
+    return [...actionOptions, ...sessionOptions]
+  }, [baseOptions, sessionResults, close])
+
+  // Update keyboard navigation to work with combined options
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        setSelectedMenuIndex(prev => (prev === null ? 0 : Math.min(prev + 1, allOptions.length - 1)))
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        setSelectedMenuIndex(prev => (prev === null ? allOptions.length - 1 : Math.max(prev - 1, 0)))
+      } else if (e.key === 'Enter' && selectedMenuIndex !== null) {
+        e.preventDefault()
+        const option = allOptions[selectedMenuIndex]
+        if (option) {
+          option.action()
+        }
+      }
+    },
+    [allOptions, selectedMenuIndex],
+  )
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [handleKeyDown])
+
   // cmdk handles filtering internally - no manual filtering needed
 
   // Tab key navigates down the list
@@ -188,33 +289,82 @@ export default function CommandPaletteMenu() {
 
   return (
     <Command
-      className="rounded-lg border shadow-md [&_[cmdk-input]]:h-9"
+      ref={ref}
+      className="rounded-lg border shadow-md [&_[cmdk-input]]:h-9 max-w-2xl h-auto"
       value={selectedValue}
       onValueChange={setSelectedValue}
       loop
     >
       <CommandInput
-        placeholder="Type a command..."
+        placeholder="Search commands and sessions..."
         autoFocus
         className="border-0 font-mono text-sm"
         onValueChange={setInternalSearchValue}
+        value={internalSearchValue}
       />
       <CommandList className="max-h-[400px]">
-        <CommandEmpty>No results found.</CommandEmpty>
-        <CommandGroup className="p-0">
-          {baseOptions.map(option => (
-            <CommandItem
-              key={option.id}
-              value={option.id}
-              keywords={[option.label, option.description || '']}
-              onSelect={() => option.action()}
-              className="flex items-center justify-between px-3 py-3 transition-all duration-150 cursor-pointer data-[selected=true]:bg-primary data-[selected=true]:text-primary-foreground hover:bg-muted/60"
-            >
-              <span className="text-sm font-medium">{option.label}</span>
-              {option.hotkey && <KeyboardShortcut keyString={option.hotkey} />}
-            </CommandItem>
-          ))}
-        </CommandGroup>
+        {/* Actions group */}
+        {allOptions.filter(o => o.type === 'action').length > 0 && (
+          <CommandGroup heading="Actions" className="p-0">
+            {allOptions
+              .filter(o => o.type === 'action')
+              .map(option => (
+                <CommandItem
+                  key={option.id}
+                  value={option.id}
+                  keywords={[option.label]}
+                  onSelect={option.action}
+                  className={cn(
+                    'flex items-center justify-between px-3 py-3 transition-all duration-150 cursor-pointer data-[selected=true]:bg-primary data-[selected=true]:text-primary-foreground hover:bg-muted/60',
+                    selectedValue === option.id && 'bg-accent',
+                  )}
+                >
+                  <span className="text-sm font-medium">{option.label}</span>
+                  {option.hotkey && <KeyboardShortcut keyString={option.hotkey} />}
+                </CommandItem>
+              ))}
+          </CommandGroup>
+        )}
+
+        {/* Sessions group */}
+        {allOptions.filter(o => o.type === 'session').length > 0 && (
+          <CommandGroup heading="Sessions" className="p-0">
+            {allOptions
+              .filter(o => o.type === 'session')
+              .map(option => (
+                <CommandItem
+                  key={option.id}
+                  value={option.id}
+                  keywords={[option.label, option.workingDir].filter(Boolean) as string[]}
+                  onSelect={option.action}
+                  className={cn(
+                    'flex flex-col items-start px-3 py-3 transition-all duration-150 cursor-pointer data-[selected=true]:bg-primary data-[selected=true]:text-primary-foreground hover:bg-muted/60',
+                    selectedValue === option.id && 'bg-accent',
+                  )}
+                >
+                  <span className="font-medium text-sm">{option.label}</span>
+                  {option.workingDir && (
+                    <span
+                      className={cn(
+                        'text-xs text-muted-foreground',
+                        selectedValue === option.id && 'text-[var(--terminal-bg-alt)]',
+                      )}
+                    >
+                      {option.workingDir}
+                    </span>
+                  )}
+                </CommandItem>
+              ))}
+          </CommandGroup>
+        )}
+
+        {/* Loading state */}
+        {isLoadingSessions && <CommandEmpty className="py-6">Searching sessions...</CommandEmpty>}
+
+        {/* Empty state */}
+        {!isLoadingSessions && internalSearchValue && allOptions.length === 0 && (
+          <CommandEmpty className="py-6">No results found</CommandEmpty>
+        )}
       </CommandList>
       <div className="flex items-center justify-between text-xs text-muted-foreground p-2 border-t">
         <div className="flex items-center space-x-3">

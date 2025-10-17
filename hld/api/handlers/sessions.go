@@ -1579,3 +1579,48 @@ func (h *SessionHandlers) GetSlashCommands(ctx context.Context, req api.GetSlash
 		Data: results,
 	}, nil
 }
+
+// SearchSessions handles GET /sessions/search
+func (h *SessionHandlers) SearchSessions(ctx context.Context, req api.SearchSessionsRequestObject) (api.SearchSessionsResponseObject, error) {
+	// Extract query parameters
+	query := ""
+	if req.Params.Query != nil {
+		query = strings.TrimSpace(*req.Params.Query)
+	}
+
+	limit := 10
+	if req.Params.Limit != nil {
+		limit = *req.Params.Limit
+	}
+
+	// Search sessions in database
+	sessions, err := h.store.SearchSessionsByTitle(ctx, query, limit)
+	if err != nil {
+		slog.Error("Failed to search sessions",
+			"error", fmt.Sprintf("%v", err),
+			"query", query,
+			"limit", limit,
+			"operation", "SearchSessions",
+		)
+		return api.SearchSessions500JSONResponse{
+			InternalErrorJSONResponse: api.InternalErrorJSONResponse{
+				Error: api.ErrorDetail{
+					Code:    "HLD-500",
+					Message: fmt.Sprintf("Failed to search sessions: %v", err),
+				},
+			},
+		}, nil
+	}
+
+	// Convert to API response format
+	apiSessions := make([]api.Session, 0, len(sessions))
+	for _, s := range sessions {
+		apiSession := h.mapper.SessionToAPI(*s)
+		apiSessions = append(apiSessions, apiSession)
+	}
+
+	// Return response
+	return api.SearchSessions200JSONResponse{
+		Data: apiSessions,
+	}, nil
+}
