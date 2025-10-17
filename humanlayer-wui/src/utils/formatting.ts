@@ -160,3 +160,48 @@ export function getSessionNotificationText(
   const text = session.title || session.summary || session.query
   return text.trim().slice(0, maxLength)
 }
+
+/**
+ * Extract plaintext from TipTap editor state JSON
+ * @param editorState - JSON string containing TipTap editor state
+ * @returns Extracted plaintext content
+ */
+export function extractTextFromEditorState(editorState: string | undefined): string {
+  if (!editorState) return ''
+
+  try {
+    const parsed = JSON.parse(editorState)
+    return extractTextFromNode(parsed)
+  } catch {
+    // If parsing fails, return empty string
+    return ''
+  }
+}
+
+/**
+ * Recursively extract text from a TipTap node
+ * @param node - TipTap node object
+ * @returns Extracted text content
+ */
+function extractTextFromNode(node: any): string {
+  if (!node) return ''
+
+  // Handle text nodes
+  if (node.type === 'text') {
+    return node.text || ''
+  }
+
+  // Handle mention nodes (file references)
+  if (node.type === 'mention') {
+    // Use the label if available, otherwise use the id (file path)
+    return node.attrs?.label || node.attrs?.id || ''
+  }
+
+  // Handle nodes with content (doc, paragraph, etc.)
+  if (node.content && Array.isArray(node.content)) {
+    return node.content.map(extractTextFromNode).join('')
+  }
+
+  // Default: return empty string for unknown node types
+  return ''
+}
