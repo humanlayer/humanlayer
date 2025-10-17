@@ -27,6 +27,7 @@ import type {
   LaunchDraftSessionRequest,
   RecentPathsResponse,
   SessionResponse,
+  SessionSearchResponse,
   SessionsResponse,
   SlashCommandsResponse,
   SnapshotsResponse,
@@ -57,6 +58,8 @@ import {
     RecentPathsResponseToJSON,
     SessionResponseFromJSON,
     SessionResponseToJSON,
+    SessionSearchResponseFromJSON,
+    SessionSearchResponseToJSON,
     SessionsResponseFromJSON,
     SessionsResponseToJSON,
     SlashCommandsResponseFromJSON,
@@ -121,6 +124,11 @@ export interface LaunchDraftSessionOperationRequest {
 export interface ListSessionsRequest {
     leavesOnly?: boolean;
     filter?: ListSessionsFilterEnum;
+}
+
+export interface SearchSessionsRequest {
+    query?: string;
+    limit?: number;
 }
 
 export interface UpdateSessionOperationRequest {
@@ -346,6 +354,23 @@ export interface SessionsApiInterface {
      * List sessions
      */
     listSessions(requestParameters: ListSessionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SessionsResponse>;
+
+    /**
+     * Search for sessions using SQL LIKE queries against the title field. Returns top sessions ordered by last_activity_at descending. Limited to 20 most recently modified sessions for performance. 
+     * @summary Search sessions by title
+     * @param {string} [query] Search query for title matching (uses SQL LIKE)
+     * @param {number} [limit] Maximum number of results to return
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SessionsApiInterface
+     */
+    searchSessionsRaw(requestParameters: SearchSessionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SessionSearchResponse>>;
+
+    /**
+     * Search for sessions using SQL LIKE queries against the title field. Returns top sessions ordered by last_activity_at descending. Limited to 20 most recently modified sessions for performance. 
+     * Search sessions by title
+     */
+    searchSessions(requestParameters: SearchSessionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SessionSearchResponse>;
 
     /**
      * Update session settings such as auto-accept mode or archived status. Only specified fields will be updated. 
@@ -900,6 +925,45 @@ export class SessionsApi extends runtime.BaseAPI implements SessionsApiInterface
      */
     async listSessions(requestParameters: ListSessionsRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SessionsResponse> {
         const response = await this.listSessionsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Search for sessions using SQL LIKE queries against the title field. Returns top sessions ordered by last_activity_at descending. Limited to 20 most recently modified sessions for performance. 
+     * Search sessions by title
+     */
+    async searchSessionsRaw(requestParameters: SearchSessionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SessionSearchResponse>> {
+        const queryParameters: any = {};
+
+        if (requestParameters['query'] != null) {
+            queryParameters['query'] = requestParameters['query'];
+        }
+
+        if (requestParameters['limit'] != null) {
+            queryParameters['limit'] = requestParameters['limit'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/sessions/search`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => SessionSearchResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Search for sessions using SQL LIKE queries against the title field. Returns top sessions ordered by last_activity_at descending. Limited to 20 most recently modified sessions for performance. 
+     * Search sessions by title
+     */
+    async searchSessions(requestParameters: SearchSessionsRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SessionSearchResponse> {
+        const response = await this.searchSessionsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

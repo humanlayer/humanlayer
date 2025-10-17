@@ -47,6 +47,7 @@ export * from './RecentPathsResponse';
 export * from './SearchMetadata';
 export * from './Session';
 export * from './SessionResponse';
+export * from './SessionSearchResponse';
 export * from './SessionStatus';
 export * from './SessionsResponse';
 export * from './SessionsResponseCounts';
