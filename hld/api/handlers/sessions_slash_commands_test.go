@@ -54,6 +54,14 @@ func (m *MockStore) ListSessions(ctx context.Context) ([]*store.Session, error) 
 	return args.Get(0).([]*store.Session), args.Error(1)
 }
 
+func (m *MockStore) SearchSessionsByTitle(ctx context.Context, query string, limit int) ([]*store.Session, error) {
+	args := m.Called(ctx, query, limit)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*store.Session), args.Error(1)
+}
+
 func (m *MockStore) GetExpiredDangerousPermissionsSessions(ctx context.Context) ([]*store.Session, error) {
 	args := m.Called(ctx)
 	return args.Get(0).([]*store.Session), args.Error(1)
