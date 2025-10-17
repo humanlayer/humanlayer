@@ -168,7 +168,7 @@ A global command in the tmp directory.`,
 
 		// Test 1: Get all commands (no query)
 		httpClient := &http.Client{}
-		resp, err := httpClient.Get(fmt.Sprintf("http://127.0.0.1:%d/api/v1/slash-commands?session_id=%s", httpPort, sessionID))
+		resp, err := httpClient.Get(fmt.Sprintf("http://127.0.0.1:%d/api/v1/slash-commands?working_dir=%s", httpPort, workingDir))
 		require.NoError(t, err)
 		defer resp.Body.Close()
 
@@ -209,7 +209,7 @@ A global command in the tmp directory.`,
 		assert.Equal(t, 1, duplicateCount, "Duplicate command should only appear once")
 
 		// Test 2: Fuzzy search with "test"
-		resp2, err := httpClient.Get(fmt.Sprintf("http://127.0.0.1:%d/api/v1/slash-commands?session_id=%s&query=test", httpPort, sessionID))
+		resp2, err := httpClient.Get(fmt.Sprintf("http://127.0.0.1:%d/api/v1/slash-commands?working_dir=%s&query=test", httpPort, workingDir))
 		require.NoError(t, err)
 		defer resp2.Body.Close()
 
@@ -233,7 +233,7 @@ A global command in the tmp directory.`,
 		assert.True(t, found, "Should find test_global command in search results")
 
 		// Test 3: Fuzzy search with "duplicate"
-		resp3, err := httpClient.Get(fmt.Sprintf("http://127.0.0.1:%d/api/v1/slash-commands?session_id=%s&query=duplicate", httpPort, sessionID))
+		resp3, err := httpClient.Get(fmt.Sprintf("http://127.0.0.1:%d/api/v1/slash-commands?working_dir=%s&query=duplicate", httpPort, workingDir))
 		require.NoError(t, err)
 		defer resp3.Body.Close()
 
@@ -256,20 +256,19 @@ A global command in the tmp directory.`,
 		}
 		assert.True(t, duplicateFound, "Should find duplicate_command in search results")
 
-		// Test 4: Invalid session ID
-		resp4, err := httpClient.Get(fmt.Sprintf("http://127.0.0.1:%d/api/v1/slash-commands?session_id=invalid-session", httpPort))
+		// Test 4: Missing working_dir parameter
+		resp4, err := httpClient.Get(fmt.Sprintf("http://127.0.0.1:%d/api/v1/slash-commands", httpPort))
 		require.NoError(t, err)
 		defer resp4.Body.Close()
 
 		assert.Equal(t, 400, resp4.StatusCode)
 
 		var errorResp struct {
-			Error api.ErrorDetail `json:"error"`
+			Msg string `json:"msg"`
 		}
 		err = json.NewDecoder(resp4.Body).Decode(&errorResp)
 		require.NoError(t, err)
-		assert.Equal(t, "HLD-4001", errorResp.Error.Code)
-		assert.Contains(t, errorResp.Error.Message, "Invalid session ID")
+		assert.Contains(t, errorResp.Msg, "working_dir")
 	})
 
 	t.Run("SlashCommands with missing directories", func(t *testing.T) {
@@ -292,7 +291,7 @@ A global command in the tmp directory.`,
 
 		// Get commands - should return global commands only (from earlier test)
 		httpClient := &http.Client{}
-		resp, err := httpClient.Get(fmt.Sprintf("http://127.0.0.1:%d/api/v1/slash-commands?session_id=%s", httpPort, sessionID))
+		resp, err := httpClient.Get(fmt.Sprintf("http://127.0.0.1:%d/api/v1/slash-commands?working_dir=%s", httpPort, emptyWorkingDir))
 		require.NoError(t, err)
 		defer resp.Body.Close()
 
@@ -356,7 +355,7 @@ A global command in the tmp directory.`,
 
 		// Get commands
 		httpClient := &http.Client{}
-		resp, err := httpClient.Get(fmt.Sprintf("http://127.0.0.1:%d/api/v1/slash-commands?session_id=%s", httpPort, sessionID))
+		resp, err := httpClient.Get(fmt.Sprintf("http://127.0.0.1:%d/api/v1/slash-commands?working_dir=%s", httpPort, specialWorkingDir))
 		require.NoError(t, err)
 		defer resp.Body.Close()
 
@@ -493,7 +492,7 @@ func TestSlashCommandsPerformance(t *testing.T) {
 	// Measure time to get all commands
 	httpClient := &http.Client{}
 	start := time.Now()
-	resp, err := httpClient.Get(fmt.Sprintf("http://127.0.0.1:%d/api/v1/slash-commands?session_id=%s", httpPort, sessionID))
+	resp, err := httpClient.Get(fmt.Sprintf("http://127.0.0.1:%d/api/v1/slash-commands?working_dir=%s", httpPort, workingDir))
 	require.NoError(t, err)
 	defer resp.Body.Close()
 
@@ -516,7 +515,7 @@ func TestSlashCommandsPerformance(t *testing.T) {
 
 	// Test fuzzy search performance
 	start = time.Now()
-	resp2, err := httpClient.Get(fmt.Sprintf("http://127.0.0.1:%d/api/v1/slash-commands?session_id=%s&query=cmd_25", httpPort, sessionID))
+	resp2, err := httpClient.Get(fmt.Sprintf("http://127.0.0.1:%d/api/v1/slash-commands?working_dir=%s&query=cmd_25", httpPort, workingDir))
 	require.NoError(t, err)
 	defer resp2.Body.Close()
 
