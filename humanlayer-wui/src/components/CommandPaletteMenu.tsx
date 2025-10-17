@@ -1,3 +1,4 @@
+import { RefObject } from 'react'
 import { useEffect, useState, useMemo, useCallback } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { useSessionLauncher, isViewingSessionDetail } from '@/hooks/useSessionLauncher'
@@ -26,7 +27,7 @@ interface MenuOption {
   hotkey?: string
 }
 
-export default function CommandPaletteMenu({ ref }: { ref: React.RefObject<HTMLDivElement> }) {
+export default function CommandPaletteMenu({ ref }: { ref: RefObject<HTMLDivElement> }) {
   const { createNewSession, close } = useSessionLauncher()
 
   const [internalSearchValue, setInternalSearchValue] = useState('')
