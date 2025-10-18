@@ -11,4 +11,4 @@ export const POSTHOG_EVENTS = {
   SESSION_CONTINUED: 'session_continued',
 } as const
 
-export type PosthogEvent = (typeof POSTHOG_EVENTS)[keyof typeof POSTHOG_EVENTS]
+export type PostHogEvent = (typeof POSTHOG_EVENTS)[keyof typeof POSTHOG_EVENTS]
