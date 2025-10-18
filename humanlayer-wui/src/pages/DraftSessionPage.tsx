@@ -68,17 +68,14 @@ export function DraftSessionPage() {
   }, [draftId, navigate, refreshSessions, setActiveSessionDetail, clearActiveSessionDetail]) // Include deps but loadDraft only runs when draftId changes
 
   const handleSessionUpdated = useCallback(async () => {
-    console.log('[DEBUG-SLASH] handleSessionUpdated called, draftSession:', draftSession)
     // Refresh sessions to get the latest data
     await refreshSessions()
 
     // Check if a draft was just created by looking at the component's session prop
     // The child component creates the draft but parent doesn't know about it yet
-    console.log('[DEBUG-SLASH] Checking for newly created drafts...')
 
     // If we have a draft session (either existing or newly created), populate activeSessionDetail
     if (draftSession?.id) {
-      console.log('[DEBUG-SLASH] Using existing draftSession.id:', draftSession.id)
       // Fetch fresh session data to ensure we have latest (including newly created drafts)
       const allSessions = await daemonClient.listSessions()
       const currentDraft = allSessions.find(
@@ -86,26 +83,10 @@ export function DraftSessionPage() {
       )
 
       if (currentDraft) {
-        console.log('[DEBUG-SLASH] Found draft, calling setActiveSessionDetail:', {
-          id: currentDraft.id,
-          hasTitle: !!currentDraft.title,
-          hasWorkingDir: !!currentDraft.workingDir,
-          status: currentDraft.status,
-          fullObject: currentDraft,
-        })
         setDraftSession(currentDraft)
         setActiveSessionDetail(currentDraft.id, currentDraft, [])
-        // Check store immediately after setting
-        const storeState = useStore.getState()
-        console.log('[DEBUG-SLASH] Store state after setActiveSessionDetail:', {
-          hasActiveSessionDetail: !!storeState.activeSessionDetail,
-          sessionId: storeState.activeSessionDetail?.session?.id,
-        })
-      } else {
-        console.log('[DEBUG-SLASH] Draft not found in allSessions')
       }
     } else {
-      console.log('[DEBUG-SLASH] No draftSession.id available - need to find newly created draft')
       // TODO: How do we know which draft was just created?
       // The child has the session ID but doesn't pass it to us
     }
@@ -116,18 +97,7 @@ export function DraftSessionPage() {
     // If we have a draft session but no draftId in URL (new draft created),
     // populate activeSessionDetail
     if (draftSession && !draftId) {
-      console.log('[DEBUG-SLASH] New draft without ID effect triggered:', {
-        draftSessionId: draftSession.id,
-        hasTitle: !!draftSession.title,
-        hasWorkingDir: !!draftSession.workingDir,
-      })
       setActiveSessionDetail(draftSession.id, draftSession, [])
-      // Check store after setting
-      const storeState = useStore.getState()
-      console.log('[DEBUG-SLASH] Store after new draft effect:', {
-        hasActiveSessionDetail: !!storeState.activeSessionDetail,
-        sessionId: storeState.activeSessionDetail?.session?.id,
-      })
     }
   }, [draftSession, draftId, setActiveSessionDetail])
 
@@ -145,12 +115,6 @@ export function DraftSessionPage() {
   if (loading) {
     return <div className="flex items-center justify-center h-full">Loading draft...</div>
   }
-
-  console.log('[DEBUG-SLASH] Rendering DraftLauncherForm with:', {
-    draftSessionId: draftSession?.id,
-    key: draftSession?.id,
-    hasOnSessionUpdated: !!handleSessionUpdated,
-  })
 
   return (
     <DraftLauncherForm
