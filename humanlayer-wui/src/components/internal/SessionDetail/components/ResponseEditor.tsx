@@ -567,7 +567,7 @@ export const ResponseEditor = forwardRef<{ focus: () => void; blur?: () => void 
             allow: ({ state }) => {
               // Check if there are any existing slash-command mentions in the document
               let hasExistingSlashCommand = false
-              state.doc.descendants((node) => {
+              state.doc.descendants(node => {
                 if (node.type.name === 'slash-command') {
                   hasExistingSlashCommand = true
                   return false // Stop searching
