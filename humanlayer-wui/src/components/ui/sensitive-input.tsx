@@ -16,14 +16,8 @@ export type SensitiveInputProps = React.ComponentProps<typeof Input>
  */
 export const SensitiveInput = React.forwardRef<HTMLInputElement, SensitiveInputProps>(
   ({ className, ...props }, ref) => {
-    return (
-      <Input
-        ref={ref}
-        className={cn('ph-no-capture', className)}
-        {...props}
-      />
-    )
-  }
+    return <Input ref={ref} className={cn('ph-no-capture', className)} {...props} />
+  },
 )
 
 SensitiveInput.displayName = 'SensitiveInput'

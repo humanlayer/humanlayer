@@ -527,7 +527,18 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
         setIsLaunchingDraft(false)
       }
     },
-    [sessionId, workingDirectory, isLaunchingDraft, navigate, savedBypassTimeout, trackEvent, model, proxyModelOverride, proxyEnabled, proxyBaseUrl],
+    [
+      sessionId,
+      workingDirectory,
+      isLaunchingDraft,
+      navigate,
+      savedBypassTimeout,
+      trackEvent,
+      model,
+      proxyModelOverride,
+      proxyEnabled,
+      proxyBaseUrl,
+    ],
   )
 
   // Handle discard draft

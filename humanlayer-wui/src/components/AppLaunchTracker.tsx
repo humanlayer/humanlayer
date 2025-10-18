@@ -1,7 +1,7 @@
-import { useEffect, useRef } from 'react'
 import { usePostHogTracking } from '@/hooks/usePostHogTracking'
 import { POSTHOG_EVENTS } from '@/lib/telemetry/events'
 import { getAppVersion, getBuildType } from '@/lib/version'
+import { useEffect, useRef } from 'react'
 
 export function AppLaunchTracker() {
   const { trackEvent, isTrackingEnabled } = usePostHogTracking()

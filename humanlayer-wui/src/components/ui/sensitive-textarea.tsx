@@ -16,14 +16,8 @@ export type SensitiveTextareaProps = React.ComponentProps<typeof Textarea>
  */
 export const SensitiveTextarea = React.forwardRef<HTMLTextAreaElement, SensitiveTextareaProps>(
   ({ className, ...props }, ref) => {
-    return (
-      <Textarea
-        ref={ref}
-        className={cn('ph-no-capture', className)}
-        {...props}
-      />
-    )
-  }
+    return <Textarea ref={ref} className={cn('ph-no-capture', className)} {...props} />
+  },
 )
 
 SensitiveTextarea.displayName = 'SensitiveTextarea'

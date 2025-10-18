@@ -134,7 +134,9 @@ export function useSessionActions({
       trackEvent(POSTHOG_EVENTS.SESSION_CONTINUED, {
         model: session.model || session.proxyModelOverride || undefined,
         provider: session.proxyEnabled
-          ? (session.proxyBaseUrl?.includes('baseten') ? 'baseten' : 'openrouter')
+          ? session.proxyBaseUrl?.includes('baseten')
+            ? 'baseten'
+            : 'openrouter'
           : 'anthropic',
       })
 

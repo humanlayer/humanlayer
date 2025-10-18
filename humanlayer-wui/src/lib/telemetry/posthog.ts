@@ -57,6 +57,5 @@ export const initializePostHog = () => {
     })
   }
 
-  console.log('PostHog initialized')
   return posthog
 }

@@ -7,7 +7,6 @@ const ALLOWED_KEYS = [
   'platform',
   'startup_time_ms',
 
-
   // Generic event metadata
   'category',
   'action',
@@ -78,9 +77,9 @@ const ALLOWED_KEYS = [
   'attr_class',
   'attr_id',
   'href',
-] as const 
+] as const
 
-export type AllowedPostHogKey = typeof ALLOWED_KEYS[number]
+export type AllowedPostHogKey = (typeof ALLOWED_KEYS)[number]
 
 /**
  * Recursively sanitize an object, only keeping whitelisted keys
@@ -111,7 +110,7 @@ export function sanitizeEventProperties(
       console.warn(
         `[PostHog] Filtered non-whitelisted property: "${key}" at ${currentPath}`,
         `Value type: ${typeof value}`,
-        `Consider adding to ALLOWED_KEYS if this should be tracked`
+        `Consider adding to ALLOWED_KEYS if this should be tracked`,
       )
       continue // Skip this property entirely
     }
@@ -132,14 +131,12 @@ export function sanitizeEventProperties(
 
       if (looksLikeSecret) {
         console.warn(
-          `[PostHog] Filtered potential secret in whitelisted key: "${key}" at ${currentPath}`
+          `[PostHog] Filtered potential secret in whitelisted key: "${key}" at ${currentPath}`,
         )
         // Skip this property entirely, even though key is whitelisted
         continue
       } else if (value.includes('/home/') || value.includes('/Users/') || value.includes('C:\\')) {
-        console.warn(
-          `[PostHog] Filtered file path in whitelisted key: "${key}" at ${currentPath}`
-        )
+        console.warn(`[PostHog] Filtered file path in whitelisted key: "${key}" at ${currentPath}`)
         // Skip this property entirely, even though key is whitelisted
         continue
       } else {

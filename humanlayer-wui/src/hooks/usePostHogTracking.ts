@@ -1,4 +1,5 @@
 import { useStore } from '@/AppStore'
+import { PosthogEvent } from '@/lib/telemetry/events'
 import { AllowedPostHogKey, sanitizeEventProperties } from '@/lib/telemetry/posthog-sanitizer'
 import { usePostHog } from 'posthog-js/react'
 import { useCallback } from 'react'
@@ -8,24 +9,32 @@ export function usePostHogTracking() {
   const { userSettings } = useStore()
 
   const trackEvent = useCallback(
-    (eventName: string, properties?: Partial<Record<AllowedPostHogKey, any>>) => {
+    (eventName: PosthogEvent, properties?: Partial<Record<AllowedPostHogKey, any>>) => {
       console.log('trying to track posthog event ', eventName, 'with properties', properties)
       // Only track if user has opted in and PostHog is initialized
       if (!userSettings?.optInTelemetry || !posthog) {
-        console.log(userSettings?.optInTelemetry ? 'posthog not enabled': 'posthog not found')
+        console.log(userSettings?.optInTelemetry ? 'posthog not enabled' : 'posthog not found')
         return
       }
 
       // Sanitize properties before sending
+      console.log('[PostHog Debug] Properties before sanitization:', properties)
       const sanitizedProperties = properties ? sanitizeEventProperties(properties) : undefined
+      console.log('[PostHog Debug] Properties after sanitization:', sanitizedProperties)
 
       // Track the event
       const result = posthog?.capture(eventName, sanitizedProperties)
       if (!result) console.log('failed to track posthog event')
 
-      console.log('posthog event tracked!', result?.event, result?.uuid, result?.properties, result?.timestamp)
+      console.log(
+        'posthog event tracked!',
+        result?.event,
+        result?.uuid,
+        result?.properties,
+        result?.timestamp,
+      )
     },
-    [posthog, userSettings],
+    [posthog, userSettings?.optInTelemetry],
   )
 
   const trackPageView = useCallback(
