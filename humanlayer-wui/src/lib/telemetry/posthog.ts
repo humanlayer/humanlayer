@@ -6,7 +6,7 @@ export const getPostHogConfig = () => ({
   api_host: import.meta.env.VITE_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com',
 
   // Privacy-first defaults
-  opt_out_capturing_by_default: false, // Start with capturing enabled, we'll control via opt_in/opt_out
+  opt_out_capturing_by_default: true, // Opt-out by default for privacy
   autocapture: false, // Will be toggled based on consent
   capture_pageview: false, // We'll track manually
   capture_pageleave: false,

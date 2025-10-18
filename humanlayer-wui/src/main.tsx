@@ -7,6 +7,7 @@ import { HotkeysProvider } from 'react-hotkeys-hook'
 import { attachConsole } from '@tauri-apps/plugin-log'
 import { initializeSentry } from '@/lib/telemetry/sentry'
 import { PostHogProvider } from '@/providers/PostHogProvider'
+import { AppLaunchTracker } from '@/components/AppLaunchTracker'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { HotkeyScopeDebugger } from './components/HotkeyScopeDebugger'
 
@@ -23,6 +24,7 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
       <PostHogProvider>
         <ThemeProvider>
           <HotkeysProvider initiallyActiveScopes={['*', '.']}>
+            <AppLaunchTracker />
             <RouterProvider router={router} />
             <HotkeyScopeDebugger />
           </HotkeysProvider>

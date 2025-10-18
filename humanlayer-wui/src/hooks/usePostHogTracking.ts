@@ -8,7 +8,7 @@ export function usePostHogTracking() {
   const { userSettings } = useStore()
 
   const trackEvent = useCallback(
-    (eventName: string, properties?: Record<AllowedPostHogKey, any>) => {
+    (eventName: string, properties?: Partial<Record<AllowedPostHogKey, any>>) => {
       console.log('trying to track posthog event ', eventName, 'with properties', properties)
       // Only track if user has opted in and PostHog is initialized
       if (!userSettings?.optInTelemetry || !posthog) {
@@ -25,7 +25,7 @@ export function usePostHogTracking() {
 
       console.log('posthog event tracked!', result?.event, result?.uuid, result?.properties, result?.timestamp)
     },
-    [posthog, userSettings, userSettings?.optInTelemetry],
+    [posthog, userSettings],
   )
 
   const trackPageView = useCallback(

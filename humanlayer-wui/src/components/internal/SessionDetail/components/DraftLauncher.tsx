@@ -1,4 +1,6 @@
 import { useStore } from '@/AppStore'
+import { usePostHogTracking } from '@/hooks/usePostHogTracking'
+import { POSTHOG_EVENTS } from '@/lib/telemetry/events'
 import { SearchInput } from '@/components/FuzzySearchInput'
 import { HotkeyScopeBoundary } from '@/components/HotkeyScopeBoundary'
 import { Input } from '@/components/ui/input'
@@ -27,6 +29,7 @@ interface DraftLauncherProps {
 export const DraftLauncher: React.FC<DraftLauncherProps> = ({ session, onSessionUpdated }) => {
   const navigate = useNavigate()
   const titleInputRef = useRef<HTMLInputElement>(null)
+  const { trackEvent } = usePostHogTracking()
 
   // Draft-specific state
   const [isLaunchingDraft, setIsLaunchingDraft] = useState(false)
@@ -114,6 +117,14 @@ export const DraftLauncher: React.FC<DraftLauncherProps> = ({ session, onSession
         // Note: working directory is already updated when selected in the fuzzy finder
         await daemonClient.launchDraftSession(session.id, prompt)
 
+        // Track session creation event
+        trackEvent(POSTHOG_EVENTS.SESSION_CREATED, {
+          model: session.model || session.proxyModelOverride || undefined,
+          provider: session.proxyEnabled
+            ? (session.proxyBaseUrl?.includes('baseten') ? 'baseten' : 'openrouter')
+            : 'anthropic',
+        })
+
         // store working directory in localStorage
         localStorage.setItem(LAST_WORKING_DIR_KEY, selectedDirectory || '')
 
@@ -136,7 +147,7 @@ export const DraftLauncher: React.FC<DraftLauncherProps> = ({ session, onSession
         setIsLaunchingDraft(false)
       }
     },
-    [session.id, session.workingDir, responseEditor, isLaunchingDraft, selectedDirectory],
+    [session.id, session.workingDir, session.model, session.proxyModelOverride, session.proxyEnabled, session.proxyBaseUrl, responseEditor, isLaunchingDraft, selectedDirectory, trackEvent],
   )
 
   // Handle title changes

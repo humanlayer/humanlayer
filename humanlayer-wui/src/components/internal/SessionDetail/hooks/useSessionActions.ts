@@ -9,6 +9,8 @@ import { HotkeyScope } from '@/hooks/hotkeys/scopes'
 import { logger } from '@/lib/logging'
 import { checkUnsupportedCommand } from '@/constants/unsupportedCommands'
 import { toast } from 'sonner'
+import { usePostHogTracking } from '@/hooks/usePostHogTracking'
+import { POSTHOG_EVENTS } from '@/lib/telemetry/events'
 
 interface UseSessionActionsProps {
   session: Session
@@ -30,6 +32,7 @@ export function useSessionActions({
 }: UseSessionActionsProps) {
   const [isResponding, setIsResponding] = useState(false)
   const [forkFromSessionId, setForkFromSessionId] = useState<string | null>(null)
+  const { trackEvent } = usePostHogTracking()
 
   const interruptSession = useStore(state => state.interruptSession)
   const refreshSessions = useStore(state => state.refreshSessions)
@@ -127,6 +130,14 @@ export function useSessionActions({
 
       updateActiveSessionDetail(nextSession.session)
 
+      // Track session continued event
+      trackEvent(POSTHOG_EVENTS.SESSION_CONTINUED, {
+        model: session.model || session.proxyModelOverride || undefined,
+        provider: session.proxyEnabled
+          ? (session.proxyBaseUrl?.includes('baseten') ? 'baseten' : 'openrouter')
+          : 'anthropic',
+      })
+
       // Clear fork state
       setForkFromSessionId(null)
 
@@ -184,6 +195,10 @@ export function useSessionActions({
     isResponding,
     session.id,
     session.archived,
+    session.model,
+    session.proxyModelOverride,
+    session.proxyEnabled,
+    session.proxyBaseUrl,
     navigate,
     refreshSessions,
     archiveSession,
@@ -193,6 +208,7 @@ export function useSessionActions({
     archiveOnFork,
     setViewMode,
     updateActiveSessionDetail,
+    trackEvent,
   ])
 
   // Navigate to parent session
